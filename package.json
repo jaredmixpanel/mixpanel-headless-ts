@@ -24,6 +24,7 @@
     "smoke:browser": "node scripts/browser-smoke.mjs",
     "check": "npm run typecheck && npm run lint && npm run fmt:check && npm run test && npm run smoke:browser",
     "sync:corpus": "bash scripts/sync-corpus.sh",
+    "conformance": "node scripts/run-conformance.mjs",
     "generate:api-map": "node scripts/generate-api-map.mjs"
   },
   "devDependencies": {
