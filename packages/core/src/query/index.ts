@@ -1,5 +1,26 @@
 /**
- * Placeholder for the `query` module of @mixpanel-headless/core (D11 layout).
- * Implemented in a later port batch; kept empty so the scaffold typechecks.
+ * `query` module of @mixpanel-headless/core (D11 layout) — internal
+ * query builders and validators.
+ *
+ * NOT re-exported from `packages/core/src/index.ts`; the only public
+ * member of this subtree is `validate_bookmark`, which B2 shard V1b
+ * adds to the package barrel.
+ *
+ * @module query
+ * @internal
  */
-export {};
+
+export {
+  validateFlowArgs,
+  validateFunnelArgs,
+  validateGroupByArgs,
+  validateQueryArgs,
+  validateRetentionArgs,
+  validateTimeArgs,
+  type ValidateFlowArgsOptions,
+  type ValidateFunnelArgsOptions,
+  type ValidateGroupByArgsOptions,
+  type ValidateQueryArgsOptions,
+  type ValidateRetentionArgsOptions,
+  type ValidateTimeArgsOptions,
+} from "./validation.js";

@@ -38,6 +38,32 @@
 export const BOOKMARK_ENUMS_SOURCE_MODULE =
   "mixpanel_headless._internal.bookmark_enums";
 
+/**
+ * Maximum number of steps allowed in a funnel query.
+ *
+ * Port of the module-private `_MAX_FUNNEL_STEPS`
+ * (`bookmark_enums.py:516`). Landed by the B2 V1a validator shard
+ * (b2-packets.md §V1b TS-homes coordination note: V1a reached F1
+ * first, so V1a adds the constants and V1b imports); consumed by
+ * `validateFunnelArgs` rule F1_MAX_STEPS. Exported for intra-package
+ * use only — NOT part of the package barrel.
+ *
+ * @internal
+ */
+export const _MAX_FUNNEL_STEPS = 100;
+
+/**
+ * Maximum number of holding-constant properties allowed.
+ *
+ * Port of the module-private `_MAX_HOLDING_CONSTANT`
+ * (`bookmark_enums.py:519`). Same landing note as
+ * {@link _MAX_FUNNEL_STEPS}; consumed by `validateFunnelArgs` rule
+ * F8_MAX_HOLDING_CONSTANT. Exported for intra-package use only.
+ *
+ * @internal
+ */
+export const _MAX_HOLDING_CONSTANT = 3;
+
 // =============================================================================
 // Math / aggregation types
 // =============================================================================
