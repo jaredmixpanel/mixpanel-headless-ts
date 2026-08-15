@@ -1,4 +1,4 @@
-// GENERATED FROM conformance-runner/corpus/contract/error-codes.json @ 0cc33b0ecc750acbe4929408d00542db9d555d2a — DO NOT EDIT
+// GENERATED FROM conformance-runner/corpus/contract/error-codes.json @ f6383aad6ceb9c58cb5e6b02649d45fd2a4338f4 — DO NOT EDIT
 // Regenerate with: node scripts/gen-error-codes.mjs
 //
 // Mirror of the Python-side error-code contract artifact (phase2-design C3):
@@ -9,7 +9,7 @@
 
 /** Python-side commit SHA the source artifact was generated from. */
 export const ERROR_CODES_GENERATED_FROM =
-  "0cc33b0ecc750acbe4929408d00542db9d555d2a";
+  "f6383aad6ceb9c58cb5e6b02649d45fd2a4338f4";
 
 /**
  * Exception class name → parent class name (`null` for the hierarchy

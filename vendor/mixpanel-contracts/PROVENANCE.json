@@ -8,6 +8,27 @@
     "cohorts": "No types.d.ts contract exists anywhere in the analytics repo for cohorts.",
     "alerts": "schema4api covers alerts/custom only (webapp/app_api/projects/alerts/custom/types.d.ts); whether mixpanel_headless alerts CRUD maps to that surface is an open escalation (phase1-design Escalation 4)."
   },
+  "verified_divergences": {
+    "alerts": {
+      "$comment": "E4 verification (phase2-design C5 item 3, packet P2-7). Python IS the alerts contract; the vendored alerts/custom types.d.ts is ADVISORY. Steps run: (i) endpoint surface listed from api_client.py list_alerts/create_alert/get_alert/update_alert/delete_alert/bulk_delete_alerts/get_alert_count/get_alert_history/test_alert/get_alert_screenshot_url/validate_alerts_for_bookmark (api_client.py:6078-6471) plus every recorded expect.request path in the alerts wire vectors; (ii) diffed against the vendored file's request/response models; (iii) TS CustomAlert/CreateAlertParams/... derived from the Python models + wire vectors; (iv) divergences below. Compile-time twins of these rows live in packages/core/test/types/entities/vendored-contracts.test-d.ts.",
+      "verified_on": "2026-08-15",
+      "endpoint_mapping": {
+        "confirmed": true,
+        "detail": "Every Python alert CRUD call and every recorded alert wire-vector request path targets /api/app/projects/{project_id}/alerts/custom/... (list/create '', item '{id}/', 'bulk-delete/', 'alert-count/', '{id}/history/', 'test/', 'screenshot/', 'validate-alerts-for-bookmark/'), i.e. exactly the surface the vendored alerts/custom/types.d.ts describes. This closes the coverage_holes.alerts open question: the mapping HOLDS; field-level shapes still diverge per the rows below."
+      },
+      "divergences": [
+        "CustomAlert.id: vendored `string`; Python `int` (wire vectors record integer ids). Python wins.",
+        "CustomAlert: Python-only fields creator/workspace/project (nested AlertCreator/AlertWorkspace/AlertProject objects) and results; vendored-only fields user_id/validity_status/workspace_id (flat).",
+        "CustomAlert.bookmark: vendored required `{[k]: any}`; Python optional `AlertBookmark | None` (typed subset id/name/type/...).",
+        "CustomAlert required-ness: vendored requires condition/created/frequency/modified/paused/subscriptions/valid; Python defaults all of them (lax parse tolerates server omissions).",
+        "condition / subscriptions / notification_windows: vendored structured unions (AlertConditionAnomaly|AlertConditionNormal, subscription payload unions, NotificationWindows); Python passes them through as plain dicts/lists.",
+        "AlertHistoryPagination / BookmarkHistoryPagination: Python adds page_size over the vendored CursorPaginationResponse cursor pair.",
+        "AlertHistoryResponse.results: vendored AlertHistoryAuditLog[]; Python list[dict] pass-through.",
+        "AlertCount: Python unwraps the {status, results} envelope; unwrapped keys match CustomAlertsCountResults exactly.",
+        "CreateAlertParams / UpdateAlertParams / ValidateAlertsForBookmarkParams: key sets match CreateCustomAlertRequest / UpdateCustomAlertRequest / ValidateAlertsForBookmarkRequest exactly (value types pass-through per the condition/subscriptions row)."
+      ]
+    }
+  },
   "notes": [
     "bookmark.json: generated insights bookmark schema (draft 2020-12 semantics; no $schema key; root InsightsBookmarkParams). Source: lib/common/mxpnl/report/bookmarks/generated/bookmark.json.",
     "openapi.internal.json: Mixpanel Platform API 1 (OpenAPI 3.1.0, 7 paths). @hey-api/openapi-ts generation is DEFERRED per D15c; recipe in vendor/mixpanel-contracts/README.md.",

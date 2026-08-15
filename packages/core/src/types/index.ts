@@ -8,3 +8,4 @@ export * from "./literals.js";
 export * from "./enums.js";
 export * from "./query-params/index.js";
 export * from "./results/index.js";
+export * from "./entities/index.js";

@@ -46,6 +46,8 @@ import {
   HoldingConstant,
 } from "../../packages/core/src/types/query-params/funnel.js";
 import { GroupBy } from "../../packages/core/src/types/query-params/group-by.js";
+import * as entityClasses from "../../packages/core/src/types/entities/index.js";
+import { EntityModel } from "../../packages/core/src/types/entities/model-base.js";
 import {
   CohortMetric,
   Formula,
@@ -72,66 +74,12 @@ import { loadCorpus, loadCorpusConfig } from "../src/loader.js";
 /** The conformance-runner package root. */
 const PACKAGE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-/** Rich tags whose port packet has NOT landed yet (explicit, tracked). */
-const ALLOWLIST: ReadonlySet<string> = new Set([
-  // P2-7 entity/params models
-  "BlueprintCard",
-  "BlueprintFinishParams",
-  "BulkAnomalyEntry",
-  "BulkCreateSchemasParams",
-  "BulkEventUpdate",
-  "BulkPropertyUpdate",
-  "BulkUpdateAnomalyParams",
-  "BulkUpdateBookmarkEntry",
-  "BulkUpdateCohortEntry",
-  "BulkUpdateEventsParams",
-  "BulkUpdatePropertiesParams",
-  "ComposedPropertyValue",
-  "CreateAlertParams",
-  "CreateAnnotationParams",
-  "CreateAnnotationTagParams",
-  "CreateBookmarkParams",
-  "CreateCohortParams",
-  "CreateCustomEventParams",
-  "CreateCustomPropertyParams",
-  "CreateDashboardParams",
-  "CreateDeletionRequestParams",
-  "CreateDropFilterParams",
-  "CreateExperimentParams",
-  "CreateFeatureFlagParams",
-  "CreateRcaDashboardParams",
-  "CreateTagParams",
-  "CreateWebhookParams",
-  "DuplicateExperimentParams",
-  "ExperimentConcludeParams",
-  "ExperimentDecideParams",
-  "InitSchemaEnforcementParams",
-  "MarkLookupTableReadyParams",
-  "PreviewDeletionFiltersParams",
-  "RcaSourceData",
-  "ReplaceSchemaEnforcementParams",
-  "SchemaEntry",
-  "SetTestUsersParams",
-  "UpdateAlertParams",
-  "UpdateAnnotationParams",
-  "UpdateAnomalyParams",
-  "UpdateBookmarkParams",
-  "UpdateCohortParams",
-  "UpdateCustomPropertyParams",
-  "UpdateDashboardParams",
-  "UpdateDropFilterParams",
-  "UpdateEventDefinitionParams",
-  "UpdateExperimentParams",
-  "UpdateFeatureFlagParams",
-  "UpdateLookupTableParams",
-  "UpdatePropertyDefinitionParams",
-  "UpdateReportLinkParams",
-  "UpdateSchemaEnforcementParams",
-  "UpdateTagParams",
-  "UpdateWebhookParams",
-  "ValidateAlertsForBookmarkParams",
-  "WebhookTestParams",
-]);
+/**
+ * Rich tags whose port packet has NOT landed yet (explicit, tracked).
+ * EMPTY since P2-7 registered the entity-model tags — the last packet
+ * family; P2-8 removes the mechanism entirely.
+ */
+const ALLOWLIST: ReadonlySet<string> = new Set([]);
 
 /**
  * Built-in tags the runner cannot round-trip: `callback` decodes to a
@@ -329,8 +277,22 @@ function assertRealInstance(entry: TaggedNode, decoded: unknown): void {
     case "SignedReplay":
       expect(decoded, where).toBeInstanceOf(SignedReplay);
       break;
-    default:
-      throw new Error(`no instanceof probe for round-tripped tag ${entry.tag}`);
+    default: {
+      // P2-7 entity-model tags: the class is exported from the
+      // entities barrel under EXACTLY the tag name — probe against the
+      // real class (independent of the codec's own `matches`, so a
+      // lazily registered echo codec cannot satisfy this).
+      const cls = (entityClasses as Readonly<Record<string, unknown>>)[
+        entry.tag
+      ];
+      if (typeof cls !== "function") {
+        throw new Error(
+          `no instanceof probe for round-tripped tag ${entry.tag}`,
+        );
+      }
+      expect(decoded, where).toBeInstanceOf(cls);
+      expect(decoded, where).toBeInstanceOf(EntityModel);
+    }
   }
 }
 

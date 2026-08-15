@@ -704,8 +704,250 @@ const REPLAY_DATACLASS_CODECS: ReadonlyArray<
   ],
 ];
 
+// Re-exported so the runner's SecretStr built-in swap and the codec-sweep
+// anti-vacuity probes have a single import site alongside the table.
+export { OAuthTokens, Secret };
+
+// ---------------------------------------------------------------------------
+// P2-7 entity-model tags (the 56 corpus `$type` tags of the C5 models).
+// ---------------------------------------------------------------------------
+
+import { EntityModel, type EntityModelStatics } from "./entities/model-base.js";
+import {
+  BlueprintCard,
+  BlueprintFinishParams,
+  CreateDashboardParams,
+  CreateRcaDashboardParams,
+  RcaSourceData,
+  UpdateDashboardParams,
+  UpdateReportLinkParams,
+} from "./entities/dashboards.js";
+import {
+  BulkUpdateBookmarkEntry,
+  CreateBookmarkParams,
+  UpdateBookmarkParams,
+} from "./entities/bookmarks.js";
+import {
+  BulkUpdateCohortEntry,
+  CreateCohortParams,
+  UpdateCohortParams,
+} from "./entities/cohorts.js";
+import {
+  CreateFeatureFlagParams,
+  SetTestUsersParams,
+  UpdateFeatureFlagParams,
+} from "./entities/feature-flags.js";
+import {
+  CreateExperimentParams,
+  DuplicateExperimentParams,
+  ExperimentConcludeParams,
+  ExperimentDecideParams,
+  UpdateExperimentParams,
+} from "./entities/experiments.js";
+import {
+  CreateAnnotationParams,
+  CreateAnnotationTagParams,
+  UpdateAnnotationParams,
+} from "./entities/annotations.js";
+import {
+  CreateWebhookParams,
+  UpdateWebhookParams,
+  WebhookTestParams,
+} from "./entities/webhooks.js";
+import {
+  CreateAlertParams,
+  UpdateAlertParams,
+  ValidateAlertsForBookmarkParams,
+} from "./entities/alerts.js";
+import {
+  BulkEventUpdate,
+  BulkPropertyUpdate,
+  BulkUpdateEventsParams,
+  BulkUpdatePropertiesParams,
+  CreateTagParams,
+  UpdateEventDefinitionParams,
+  UpdatePropertyDefinitionParams,
+  UpdateTagParams,
+} from "./entities/lexicon.js";
+import {
+  ComposedPropertyValue,
+  CreateCustomEventParams,
+  CreateCustomPropertyParams,
+  CreateDropFilterParams,
+  MarkLookupTableReadyParams,
+  UpdateCustomPropertyParams,
+  UpdateDropFilterParams,
+  UpdateLookupTableParams,
+} from "./entities/data-governance.js";
+import {
+  BulkAnomalyEntry,
+  BulkCreateSchemasParams,
+  BulkUpdateAnomalyParams,
+  CreateDeletionRequestParams,
+  InitSchemaEnforcementParams,
+  PreviewDeletionFiltersParams,
+  ReplaceSchemaEnforcementParams,
+  SchemaEntry,
+  UpdateAnomalyParams,
+  UpdateSchemaEnforcementParams,
+} from "./entities/schemas.js";
+
 /**
- * The Phase-2 contract tag-codec table, keyed by `$type` name.
+ * Build a {@link ContractTagCodec} for one entity-model class — the TS
+ * twin of Python's generic BaseModel codec path (`_decode_model` /
+ * the BaseModel arm of `_encode_common(tagged_models=True)`): unknown
+ * payload fields are rejected BEFORE construction (the codec is strict
+ * even where the Pydantic model allows extras), present fields decode
+ * recursively and reconstruct through the real validating `fromDict`,
+ * and encode walks ALL declared `model_fields` in declaration order
+ * with `$type` first (datetime fields re-tag their preserved iso
+ * text; computed fields are EXCLUDED — the tagged walk skips them,
+ * mirroring `tagged_models=True`).
+ *
+ * @param cls - The entity-model class statics.
+ * @returns The assembled codec entry.
+ */
+function entityModelCodec(cls: EntityModelStatics): ContractTagCodec {
+  const fields = cls.fieldSpecs.map((spec) => spec.name);
+  const fieldSet = new Set(fields);
+  const datetimeFields = new Set(
+    cls.fieldSpecs
+      .filter((spec) => spec.datetime === true)
+      .map((spec) => spec.name),
+  );
+  return {
+    decode: (payload, decodeChild) => {
+      rejectUnknownFields(payload, fieldSet, cls.modelName);
+      const bag: Record<string, unknown> = {};
+      for (const field of fields) {
+        if (Object.hasOwn(payload, field)) {
+          bag[field] = decodeChild(payload[field]);
+        }
+      }
+      try {
+        return cls.fromDict(bag);
+      } catch (error) {
+        throw new Error(
+          `could not reconstruct ${cls.modelName} from vector fields: ` +
+            (error instanceof Error ? error.message : String(error)),
+          { cause: error },
+        );
+      }
+    },
+    matches: (value) => value instanceof (cls as unknown as typeof EntityModel),
+    encode: (instance, encodeChild) => {
+      const model = instance as EntityModel;
+      const self = model as unknown as Readonly<Record<string, unknown>>;
+      const out: Record<string, unknown> = { $type: cls.modelName };
+      for (const field of fields) {
+        const value = self[field];
+        if (datetimeFields.has(field) && typeof value === "string") {
+          out[field] = { $type: "datetime", iso: value };
+          continue;
+        }
+        out[field] = encodeChild(value ?? null);
+      }
+      return out;
+    },
+  };
+}
+
+/**
+ * The 56 entity-model classes whose names occur as corpus `$type`
+ * tags (`tag-universe.json` rich set minus the query-param/result/
+ * auth families registered above). Models WITHOUT corpus tags are
+ * deliberately not registered: the C8(a) sweep asserts every
+ * registered rich tag is exercised at least once.
+ */
+const ENTITY_MODEL_CLASSES: readonly EntityModelStatics[] = [
+  // dashboards
+  BlueprintCard,
+  BlueprintFinishParams,
+  CreateDashboardParams,
+  CreateRcaDashboardParams,
+  RcaSourceData,
+  UpdateDashboardParams,
+  UpdateReportLinkParams,
+  // bookmarks
+  BulkUpdateBookmarkEntry,
+  CreateBookmarkParams,
+  UpdateBookmarkParams,
+  // cohorts
+  BulkUpdateCohortEntry,
+  CreateCohortParams,
+  UpdateCohortParams,
+  // feature flags
+  CreateFeatureFlagParams,
+  SetTestUsersParams,
+  UpdateFeatureFlagParams,
+  // experiments
+  CreateExperimentParams,
+  DuplicateExperimentParams,
+  ExperimentConcludeParams,
+  ExperimentDecideParams,
+  UpdateExperimentParams,
+  // annotations
+  CreateAnnotationParams,
+  CreateAnnotationTagParams,
+  UpdateAnnotationParams,
+  // webhooks
+  CreateWebhookParams,
+  UpdateWebhookParams,
+  WebhookTestParams,
+  // alerts (E4: shapes derive from the Python models + wire vectors)
+  CreateAlertParams,
+  UpdateAlertParams,
+  ValidateAlertsForBookmarkParams,
+  // lexicon
+  BulkEventUpdate,
+  BulkPropertyUpdate,
+  BulkUpdateEventsParams,
+  BulkUpdatePropertiesParams,
+  CreateTagParams,
+  UpdateEventDefinitionParams,
+  UpdatePropertyDefinitionParams,
+  UpdateTagParams,
+  // data governance
+  ComposedPropertyValue,
+  CreateCustomEventParams,
+  CreateCustomPropertyParams,
+  CreateDropFilterParams,
+  MarkLookupTableReadyParams,
+  UpdateCustomPropertyParams,
+  UpdateDropFilterParams,
+  UpdateLookupTableParams,
+  // schemas
+  BulkAnomalyEntry,
+  BulkCreateSchemasParams,
+  BulkUpdateAnomalyParams,
+  CreateDeletionRequestParams,
+  InitSchemaEnforcementParams,
+  PreviewDeletionFiltersParams,
+  ReplaceSchemaEnforcementParams,
+  SchemaEntry,
+  UpdateAnomalyParams,
+  UpdateSchemaEnforcementParams,
+];
+
+/**
+ * The P2-7 entity-model tag-codec rows, keyed by `$type` name.
+ *
+ * @internal Merged into {@link CONTRACT_TAG_CODECS}.
+ */
+export const ENTITY_TAG_CODECS: ReadonlyMap<string, ContractTagCodec> = new Map<
+  string,
+  ContractTagCodec
+>(
+  ENTITY_MODEL_CLASSES.map((cls): readonly [string, ContractTagCodec] => [
+    cls.modelName,
+    entityModelCodec(cls),
+  ]),
+);
+
+/**
+ * The Phase-2 contract tag-codec table, keyed by `$type` name — the
+ * P2-4 auth tag, the P2-5a..c query-param family, the P2-6 replay
+ * family, and the P2-7 entity-model rows.
  *
  * @internal
  */
@@ -726,8 +968,5 @@ export const CONTRACT_TAG_CODECS: ReadonlyMap<string, ContractTagCodec> =
         dataclassCodec(tag, spec),
       ],
     ),
+    ...ENTITY_TAG_CODECS,
   ]);
-
-// Re-exported so the runner's SecretStr built-in swap and the codec-sweep
-// anti-vacuity probes have a single import site alongside the table.
-export { OAuthTokens, Secret };

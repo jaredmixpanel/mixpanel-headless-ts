@@ -1,0 +1,1178 @@
+/**
+ * Dashboard family + blueprint/RCA/report-link params.
+ *
+ * Hand-written ports of the Pydantic entity models (phase2-design C5,
+ * packet P2-7): the PYTHON models are the source of record; vendored
+ * schema4api types are a compile-time cross-check only. Field names
+ * keep their exact Python spelling (R3.6/R7.6); optionality follows
+ * R3.9/R4.10 via the model-base materialization rules.
+ */
+
+import {
+  EntityModel,
+  oneOf,
+  prepareInit,
+  type EntityFieldSpec,
+} from "./model-base.js";
+
+/**
+ * Constructor input for {@link Dashboard} — absent keys take the Python
+ * defaults; `undefined` counts as absent (R4.10).
+ */
+export interface DashboardInit {
+  /** Unique dashboard identifier. */
+  readonly id: number;
+  /** Dashboard title. */
+  readonly title: string;
+  /** Dashboard description. */
+  readonly description?: string | null | undefined;
+  /** Whether the dashboard is private. */
+  readonly is_private?: boolean | undefined;
+  /** Whether the dashboard has restricted access. */
+  readonly is_restricted?: boolean | undefined;
+  /** ID of the dashboard creator. */
+  readonly creator_id?: number | null | undefined;
+  /** Name of the dashboard creator. */
+  readonly creator_name?: string | null | undefined;
+  /** Email of the dashboard creator. */
+  readonly creator_email?: string | null | undefined;
+  /** Creation timestamp. */
+  readonly created?: string | null | undefined;
+  /** Last modification timestamp. */
+  readonly modified?: string | null | undefined;
+  /** Whether the current user has favorited this dashboard. */
+  readonly is_favorited?: boolean | undefined;
+  /** Date the dashboard was pinned, if any. */
+  readonly pinned_date?: string | null | undefined;
+  /** Layout version metadata. */
+  readonly layout_version?: unknown | null | undefined;
+  /** Number of unique viewers. */
+  readonly unique_view_count?: number | null | undefined;
+  /** Total view count. */
+  readonly total_view_count?: number | null | undefined;
+  /** ID of the last modifier. */
+  readonly last_modified_by_id?: number | null | undefined;
+  /** Name of the last modifier. */
+  readonly last_modified_by_name?: string | null | undefined;
+  /** Email of the last modifier. */
+  readonly last_modified_by_email?: string | null | undefined;
+  /** Dashboard-level filters. */
+  readonly filters?: ReadonlyArray<unknown> | null | undefined;
+  /** Dashboard-level breakdowns. */
+  readonly breakdowns?: ReadonlyArray<unknown> | null | undefined;
+  /** Dashboard-level time filter. */
+  readonly time_filter?: unknown | null | undefined;
+  /** How the dashboard was generated. */
+  readonly generation_type?: string | null | undefined;
+  /** Parent dashboard ID for nested dashboards. */
+  readonly parent_dashboard_id?: number | null | undefined;
+  /** Child dashboard references. */
+  readonly child_dashboards?: ReadonlyArray<unknown> | null | undefined;
+  /** Permission: can update basic fields. */
+  readonly can_update_basic?: boolean | undefined;
+  /** Permission: can share. */
+  readonly can_share?: boolean | undefined;
+  /** Permission: can view. */
+  readonly can_view?: boolean | undefined;
+  /** Permission: can update restricted fields. */
+  readonly can_update_restricted?: boolean | undefined;
+  /** Permission: can update visibility. */
+  readonly can_update_visibility?: boolean | undefined;
+  /** Whether current user is superadmin. */
+  readonly is_superadmin?: boolean | undefined;
+  /** Whether staff override is allowed. */
+  readonly allow_staff_override?: boolean | undefined;
+  /** Whether current user can pin. */
+  readonly can_pin?: boolean | undefined;
+  /** Whether shared with the project. */
+  readonly is_shared_with_project?: boolean | undefined;
+  /** Creator identifier string. */
+  readonly creator?: string | null | undefined;
+  /** Ancestor dashboard references. */
+  readonly ancestors?: ReadonlyArray<unknown> | undefined;
+  /** Dashboard layout data. */
+  readonly layout?: unknown | null | undefined;
+  /** Dashboard contents data. */
+  readonly contents?: unknown | null | undefined;
+  /** Number of active public links. */
+  readonly num_active_public_links?: number | null | undefined;
+  /** New content data. */
+  readonly new_content?: unknown | null | undefined;
+  /** Template type if created from a template. */
+  readonly template_type?: string | null | undefined;
+}
+
+/**
+ * A Mixpanel dashboard as returned by the App API.
+ *
+ * Mirror of Python `mixpanel_headless.types.Dashboard` (types.py:1762;
+ * model_config: frozen=True, extra='allow').
+ */
+export class Dashboard extends EntityModel {
+  /** @internal The Python model name (and `$type` tag where recorded). */
+  static readonly modelName = "Dashboard";
+
+  /** @internal Pydantic `model_config.extra` mirror. */
+  static readonly extraPolicy = "allow" as const;
+
+  /** @internal Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+    { name: "id", required: true, kind: "int" },
+    { name: "title", required: true, kind: "str" },
+    { name: "description", kind: "str", nullable: true },
+    { name: "is_private", default: () => false, kind: "bool" },
+    { name: "is_restricted", default: () => false, kind: "bool" },
+    { name: "creator_id", kind: "int", nullable: true },
+    { name: "creator_name", kind: "str", nullable: true },
+    { name: "creator_email", kind: "str", nullable: true },
+    { name: "created", nullable: true, datetime: true },
+    { name: "modified", nullable: true, datetime: true },
+    { name: "is_favorited", default: () => false, kind: "bool" },
+    { name: "pinned_date", kind: "str", nullable: true },
+    { name: "layout_version", nullable: true },
+    { name: "unique_view_count", kind: "int", nullable: true },
+    { name: "total_view_count", kind: "int", nullable: true },
+    { name: "last_modified_by_id", kind: "int", nullable: true },
+    { name: "last_modified_by_name", kind: "str", nullable: true },
+    { name: "last_modified_by_email", kind: "str", nullable: true },
+    { name: "filters", nullable: true },
+    { name: "breakdowns", nullable: true },
+    { name: "time_filter", nullable: true },
+    { name: "generation_type", kind: "str", nullable: true },
+    { name: "parent_dashboard_id", kind: "int", nullable: true },
+    { name: "child_dashboards", nullable: true },
+    { name: "can_update_basic", default: () => false, kind: "bool" },
+    { name: "can_share", default: () => false, kind: "bool" },
+    { name: "can_view", default: () => false, kind: "bool" },
+    { name: "can_update_restricted", default: () => false, kind: "bool" },
+    { name: "can_update_visibility", default: () => false, kind: "bool" },
+    { name: "is_superadmin", default: () => false, kind: "bool" },
+    { name: "allow_staff_override", default: () => false, kind: "bool" },
+    { name: "can_pin", default: () => false, kind: "bool" },
+    { name: "is_shared_with_project", default: () => false, kind: "bool" },
+    { name: "creator", kind: "str", nullable: true },
+    { name: "ancestors", default: () => [] },
+    { name: "layout", nullable: true },
+    { name: "contents", nullable: true },
+    { name: "num_active_public_links", kind: "int", nullable: true },
+    { name: "new_content", nullable: true },
+    { name: "template_type", kind: "str", nullable: true },
+  ];
+
+  /** Unique dashboard identifier. */
+  declare readonly id: number;
+  /** Dashboard title. */
+  declare readonly title: string;
+  /** Dashboard description. */
+  declare readonly description: string | null;
+  /** Whether the dashboard is private. */
+  declare readonly is_private: boolean;
+  /** Whether the dashboard has restricted access. */
+  declare readonly is_restricted: boolean;
+  /** ID of the dashboard creator. */
+  declare readonly creator_id: number | null;
+  /** Name of the dashboard creator. */
+  declare readonly creator_name: string | null;
+  /** Email of the dashboard creator. */
+  declare readonly creator_email: string | null;
+  /** Creation timestamp. */
+  declare readonly created: string | null;
+  /** Last modification timestamp. */
+  declare readonly modified: string | null;
+  /** Whether the current user has favorited this dashboard. */
+  declare readonly is_favorited: boolean;
+  /** Date the dashboard was pinned, if any. */
+  declare readonly pinned_date: string | null;
+  /** Layout version metadata. */
+  declare readonly layout_version: unknown | null;
+  /** Number of unique viewers. */
+  declare readonly unique_view_count: number | null;
+  /** Total view count. */
+  declare readonly total_view_count: number | null;
+  /** ID of the last modifier. */
+  declare readonly last_modified_by_id: number | null;
+  /** Name of the last modifier. */
+  declare readonly last_modified_by_name: string | null;
+  /** Email of the last modifier. */
+  declare readonly last_modified_by_email: string | null;
+  /** Dashboard-level filters. */
+  declare readonly filters: ReadonlyArray<unknown> | null;
+  /** Dashboard-level breakdowns. */
+  declare readonly breakdowns: ReadonlyArray<unknown> | null;
+  /** Dashboard-level time filter. */
+  declare readonly time_filter: unknown | null;
+  /** How the dashboard was generated. */
+  declare readonly generation_type: string | null;
+  /** Parent dashboard ID for nested dashboards. */
+  declare readonly parent_dashboard_id: number | null;
+  /** Child dashboard references. */
+  declare readonly child_dashboards: ReadonlyArray<unknown> | null;
+  /** Permission: can update basic fields. */
+  declare readonly can_update_basic: boolean;
+  /** Permission: can share. */
+  declare readonly can_share: boolean;
+  /** Permission: can view. */
+  declare readonly can_view: boolean;
+  /** Permission: can update restricted fields. */
+  declare readonly can_update_restricted: boolean;
+  /** Permission: can update visibility. */
+  declare readonly can_update_visibility: boolean;
+  /** Whether current user is superadmin. */
+  declare readonly is_superadmin: boolean;
+  /** Whether staff override is allowed. */
+  declare readonly allow_staff_override: boolean;
+  /** Whether current user can pin. */
+  declare readonly can_pin: boolean;
+  /** Whether shared with the project. */
+  declare readonly is_shared_with_project: boolean;
+  /** Creator identifier string. */
+  declare readonly creator: string | null;
+  /** Ancestor dashboard references. */
+  declare readonly ancestors: ReadonlyArray<unknown>;
+  /** Dashboard layout data. */
+  declare readonly layout: unknown | null;
+  /** Dashboard contents data. */
+  declare readonly contents: unknown | null;
+  /** Number of active public links. */
+  declare readonly num_active_public_links: number | null;
+  /** New content data. */
+  declare readonly new_content: unknown | null;
+  /** Template type if created from a template. */
+  declare readonly template_type: string | null;
+
+  /**
+   * Construct a validated Dashboard (Pydantic-construction mirror).
+   *
+   * @param fields - Field values keyed by Python attribute name.
+   * @throws ResponseValidationError - On missing/invalid fields per
+   *   the Python model's validation.
+   */
+  constructor(fields: DashboardInit) {
+    super(Dashboard, fields as unknown as Readonly<Record<string, unknown>>);
+  }
+
+  /**
+   * Strict decode from a raw mapping (accepts the Pydantic
+   * validation-alias set; `$type`/computed keys are dropped).
+   *
+   * @param raw - The raw payload.
+   * @returns The reconstructed instance.
+   * @throws ResponseValidationError - On shape violations.
+   */
+  static fromDict(raw: unknown): Dashboard {
+    return new Dashboard(
+      prepareInit(Dashboard, raw) as unknown as DashboardInit,
+    );
+  }
+}
+
+/**
+ * Constructor input for {@link DashboardRowContent} — absent keys take the Python
+ * defaults; `undefined` counts as absent (R4.10).
+ */
+export interface DashboardRowContentInit {
+  /** Type of content: ``"text"`` for text cards, ``"report"`` for reports. */
+  readonly content_type: "text" | "report";
+  /** Content parameters. Shape depends on ``content_type``. */
+  readonly content_params: Readonly<Record<string, unknown>>;
+}
+
+/**
+ * A single content item within a dashboard row.
+ *
+ * Mirror of Python `mixpanel_headless.types.DashboardRowContent` (types.py:1948;
+ * model_config: extra='ignore').
+ */
+export class DashboardRowContent extends EntityModel {
+  /** @internal The Python model name (and `$type` tag where recorded). */
+  static readonly modelName = "DashboardRowContent";
+
+  /** @internal Pydantic `model_config.extra` mirror. */
+  static readonly extraPolicy = "ignore" as const;
+
+  /** @internal Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+    { name: "content_type", required: true, check: oneOf(["text", "report"]) },
+    { name: "content_params", required: true },
+  ];
+
+  /** Type of content: ``"text"`` for text cards, ``"report"`` for reports. */
+  declare readonly content_type: "text" | "report";
+  /** Content parameters. Shape depends on ``content_type``. */
+  declare readonly content_params: Readonly<Record<string, unknown>>;
+
+  /**
+   * Construct a validated DashboardRowContent (Pydantic-construction mirror).
+   *
+   * @param fields - Field values keyed by Python attribute name.
+   * @throws ResponseValidationError - On missing/invalid fields per
+   *   the Python model's validation.
+   */
+  constructor(fields: DashboardRowContentInit) {
+    super(
+      DashboardRowContent,
+      fields as unknown as Readonly<Record<string, unknown>>,
+    );
+  }
+
+  /**
+   * Strict decode from a raw mapping (accepts the Pydantic
+   * validation-alias set; `$type`/computed keys are dropped).
+   *
+   * @param raw - The raw payload.
+   * @returns The reconstructed instance.
+   * @throws ResponseValidationError - On shape violations.
+   */
+  static fromDict(raw: unknown): DashboardRowContent {
+    return new DashboardRowContent(
+      prepareInit(
+        DashboardRowContent,
+        raw,
+      ) as unknown as DashboardRowContentInit,
+    );
+  }
+}
+
+/**
+ * Constructor input for {@link DashboardRow} — absent keys take the Python
+ * defaults; `undefined` counts as absent (R4.10).
+ */
+export interface DashboardRowInit {
+  /** Content items in this row (max 4). */
+  readonly contents: ReadonlyArray<
+    DashboardRowContent | Readonly<Record<string, unknown>>
+  >;
+}
+
+/**
+ * A row of content items for a dashboard.
+ *
+ * Mirror of Python `mixpanel_headless.types.DashboardRow` (types.py:1989;
+ * model_config: extra='ignore').
+ */
+export class DashboardRow extends EntityModel {
+  /** @internal The Python model name (and `$type` tag where recorded). */
+  static readonly modelName = "DashboardRow";
+
+  /** @internal Pydantic `model_config.extra` mirror. */
+  static readonly extraPolicy = "ignore" as const;
+
+  /** @internal Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+    {
+      name: "contents",
+      required: true,
+      nested: () => DashboardRowContent,
+      container: "list",
+    },
+  ];
+
+  /** Content items in this row (max 4). */
+  declare readonly contents: ReadonlyArray<DashboardRowContent>;
+
+  /**
+   * Construct a validated DashboardRow (Pydantic-construction mirror).
+   *
+   * @param fields - Field values keyed by Python attribute name.
+   * @throws ResponseValidationError - On missing/invalid fields per
+   *   the Python model's validation.
+   */
+  constructor(fields: DashboardRowInit) {
+    super(DashboardRow, fields as unknown as Readonly<Record<string, unknown>>);
+  }
+
+  /**
+   * Strict decode from a raw mapping (accepts the Pydantic
+   * validation-alias set; `$type`/computed keys are dropped).
+   *
+   * @param raw - The raw payload.
+   * @returns The reconstructed instance.
+   * @throws ResponseValidationError - On shape violations.
+   */
+  static fromDict(raw: unknown): DashboardRow {
+    return new DashboardRow(
+      prepareInit(DashboardRow, raw) as unknown as DashboardRowInit,
+    );
+  }
+}
+
+/**
+ * Constructor input for {@link CreateDashboardParams} — absent keys take the Python
+ * defaults; `undefined` counts as absent (R4.10).
+ */
+export interface CreateDashboardParamsInit {
+  /** Dashboard title (required). */
+  readonly title: string;
+  /** Dashboard description. */
+  readonly description?: string | null | undefined;
+  /** Whether the dashboard should be private. */
+  readonly is_private?: boolean | null | undefined;
+  /** Whether the dashboard should have restricted access. */
+  readonly is_restricted?: boolean | null | undefined;
+  /** Dashboard-level filters. */
+  readonly filters?: ReadonlyArray<unknown> | null | undefined;
+  /** Dashboard-level breakdowns. */
+  readonly breakdowns?: ReadonlyArray<unknown> | null | undefined;
+  /** Dashboard-level time filter. */
+  readonly time_filter?: unknown | null | undefined;
+  /** ID of dashboard to duplicate. */
+  readonly duplicate?: number | null | undefined;
+  /** Initial content rows with layout. Each row has 1-4 content items. */
+  readonly rows?:
+    | ReadonlyArray<DashboardRow | Readonly<Record<string, unknown>>>
+    | null
+    | undefined;
+}
+
+/**
+ * Parameters for creating a new dashboard.
+ *
+ * Mirror of Python `mixpanel_headless.types.CreateDashboardParams` (types.py:2019;
+ * model_config: extra='ignore').
+ */
+export class CreateDashboardParams extends EntityModel {
+  /** @internal The Python model name (and `$type` tag where recorded). */
+  static readonly modelName = "CreateDashboardParams";
+
+  /** @internal Pydantic `model_config.extra` mirror. */
+  static readonly extraPolicy = "ignore" as const;
+
+  /** @internal Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+    { name: "title", required: true, kind: "str" },
+    { name: "description", kind: "str", nullable: true },
+    { name: "is_private", kind: "bool", nullable: true },
+    { name: "is_restricted", kind: "bool", nullable: true },
+    { name: "filters", nullable: true },
+    { name: "breakdowns", nullable: true },
+    { name: "time_filter", nullable: true },
+    { name: "duplicate", kind: "int", nullable: true },
+    {
+      name: "rows",
+      nullable: true,
+      nested: () => DashboardRow,
+      container: "list",
+    },
+  ];
+
+  /** Dashboard title (required). */
+  declare readonly title: string;
+  /** Dashboard description. */
+  declare readonly description: string | null;
+  /** Whether the dashboard should be private. */
+  declare readonly is_private: boolean | null;
+  /** Whether the dashboard should have restricted access. */
+  declare readonly is_restricted: boolean | null;
+  /** Dashboard-level filters. */
+  declare readonly filters: ReadonlyArray<unknown> | null;
+  /** Dashboard-level breakdowns. */
+  declare readonly breakdowns: ReadonlyArray<unknown> | null;
+  /** Dashboard-level time filter. */
+  declare readonly time_filter: unknown | null;
+  /** ID of dashboard to duplicate. */
+  declare readonly duplicate: number | null;
+  /** Initial content rows with layout. Each row has 1-4 content items. */
+  declare readonly rows: ReadonlyArray<DashboardRow> | null;
+
+  /**
+   * Construct a validated CreateDashboardParams (Pydantic-construction mirror).
+   *
+   * @param fields - Field values keyed by Python attribute name.
+   * @throws ResponseValidationError - On missing/invalid fields per
+   *   the Python model's validation.
+   */
+  constructor(fields: CreateDashboardParamsInit) {
+    super(
+      CreateDashboardParams,
+      fields as unknown as Readonly<Record<string, unknown>>,
+    );
+  }
+
+  /**
+   * Strict decode from a raw mapping (accepts the Pydantic
+   * validation-alias set; `$type`/computed keys are dropped).
+   *
+   * @param raw - The raw payload.
+   * @returns The reconstructed instance.
+   * @throws ResponseValidationError - On shape violations.
+   */
+  static fromDict(raw: unknown): CreateDashboardParams {
+    return new CreateDashboardParams(
+      prepareInit(
+        CreateDashboardParams,
+        raw,
+      ) as unknown as CreateDashboardParamsInit,
+    );
+  }
+}
+
+/**
+ * Constructor input for {@link UpdateDashboardParams} — absent keys take the Python
+ * defaults; `undefined` counts as absent (R4.10).
+ */
+export interface UpdateDashboardParamsInit {
+  /** New dashboard title. */
+  readonly title?: string | null | undefined;
+  /** New dashboard description. */
+  readonly description?: string | null | undefined;
+  /** New privacy setting. */
+  readonly is_private?: boolean | null | undefined;
+  /** New restriction setting. */
+  readonly is_restricted?: boolean | null | undefined;
+  /** New dashboard-level filters. */
+  readonly filters?: ReadonlyArray<unknown> | null | undefined;
+  /** New dashboard-level breakdowns. */
+  readonly breakdowns?: ReadonlyArray<unknown> | null | undefined;
+  /** New dashboard-level time filter. */
+  readonly time_filter?: unknown | null | undefined;
+  /** New dashboard layout data. */
+  readonly layout?: unknown | null | undefined;
+  /** New dashboard content data. */
+  readonly content?: unknown | null | undefined;
+}
+
+/**
+ * Parameters for updating an existing dashboard.
+ *
+ * Mirror of Python `mixpanel_headless.types.UpdateDashboardParams` (types.py:2101;
+ * model_config: extra='ignore').
+ */
+export class UpdateDashboardParams extends EntityModel {
+  /** @internal The Python model name (and `$type` tag where recorded). */
+  static readonly modelName = "UpdateDashboardParams";
+
+  /** @internal Pydantic `model_config.extra` mirror. */
+  static readonly extraPolicy = "ignore" as const;
+
+  /** @internal Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+    { name: "title", kind: "str", nullable: true },
+    { name: "description", kind: "str", nullable: true },
+    { name: "is_private", kind: "bool", nullable: true },
+    { name: "is_restricted", kind: "bool", nullable: true },
+    { name: "filters", nullable: true },
+    { name: "breakdowns", nullable: true },
+    { name: "time_filter", nullable: true },
+    { name: "layout", nullable: true },
+    { name: "content", nullable: true },
+  ];
+
+  /** New dashboard title. */
+  declare readonly title: string | null;
+  /** New dashboard description. */
+  declare readonly description: string | null;
+  /** New privacy setting. */
+  declare readonly is_private: boolean | null;
+  /** New restriction setting. */
+  declare readonly is_restricted: boolean | null;
+  /** New dashboard-level filters. */
+  declare readonly filters: ReadonlyArray<unknown> | null;
+  /** New dashboard-level breakdowns. */
+  declare readonly breakdowns: ReadonlyArray<unknown> | null;
+  /** New dashboard-level time filter. */
+  declare readonly time_filter: unknown | null;
+  /** New dashboard layout data. */
+  declare readonly layout: unknown | null;
+  /** New dashboard content data. */
+  declare readonly content: unknown | null;
+
+  /**
+   * Construct a validated UpdateDashboardParams (Pydantic-construction mirror).
+   *
+   * @param fields - Field values keyed by Python attribute name.
+   * @throws ResponseValidationError - On missing/invalid fields per
+   *   the Python model's validation.
+   */
+  constructor(fields: UpdateDashboardParamsInit) {
+    super(
+      UpdateDashboardParams,
+      fields as unknown as Readonly<Record<string, unknown>>,
+    );
+  }
+
+  /**
+   * Strict decode from a raw mapping (accepts the Pydantic
+   * validation-alias set; `$type`/computed keys are dropped).
+   *
+   * @param raw - The raw payload.
+   * @returns The reconstructed instance.
+   * @throws ResponseValidationError - On shape violations.
+   */
+  static fromDict(raw: unknown): UpdateDashboardParams {
+    return new UpdateDashboardParams(
+      prepareInit(
+        UpdateDashboardParams,
+        raw,
+      ) as unknown as UpdateDashboardParamsInit,
+    );
+  }
+}
+
+/**
+ * Constructor input for {@link BlueprintTemplate} — absent keys take the Python
+ * defaults; `undefined` counts as absent (R4.10).
+ */
+export interface BlueprintTemplateInit {
+  /** Template title key. */
+  readonly title_key: string;
+  /** Template description key. */
+  readonly description_key: string;
+  /** Alternative description key. */
+  readonly alternative_description_key?: string | null | undefined;
+  /** Number of reports in the template. */
+  readonly number_of_reports?: number | null | undefined;
+}
+
+/**
+ * A dashboard blueprint template.
+ *
+ * Mirror of Python `mixpanel_headless.types.BlueprintTemplate` (types.py:2158;
+ * model_config: frozen=True, extra='allow').
+ */
+export class BlueprintTemplate extends EntityModel {
+  /** @internal The Python model name (and `$type` tag where recorded). */
+  static readonly modelName = "BlueprintTemplate";
+
+  /** @internal Pydantic `model_config.extra` mirror. */
+  static readonly extraPolicy = "allow" as const;
+
+  /** @internal Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+    { name: "title_key", required: true, kind: "str" },
+    { name: "description_key", required: true, kind: "str" },
+    { name: "alternative_description_key", kind: "str", nullable: true },
+    { name: "number_of_reports", kind: "int", nullable: true },
+  ];
+
+  /** Template title key. */
+  declare readonly title_key: string;
+  /** Template description key. */
+  declare readonly description_key: string;
+  /** Alternative description key. */
+  declare readonly alternative_description_key: string | null;
+  /** Number of reports in the template. */
+  declare readonly number_of_reports: number | null;
+
+  /**
+   * Construct a validated BlueprintTemplate (Pydantic-construction mirror).
+   *
+   * @param fields - Field values keyed by Python attribute name.
+   * @throws ResponseValidationError - On missing/invalid fields per
+   *   the Python model's validation.
+   */
+  constructor(fields: BlueprintTemplateInit) {
+    super(
+      BlueprintTemplate,
+      fields as unknown as Readonly<Record<string, unknown>>,
+    );
+  }
+
+  /**
+   * Strict decode from a raw mapping (accepts the Pydantic
+   * validation-alias set; `$type`/computed keys are dropped).
+   *
+   * @param raw - The raw payload.
+   * @returns The reconstructed instance.
+   * @throws ResponseValidationError - On shape violations.
+   */
+  static fromDict(raw: unknown): BlueprintTemplate {
+    return new BlueprintTemplate(
+      prepareInit(BlueprintTemplate, raw) as unknown as BlueprintTemplateInit,
+    );
+  }
+}
+
+/**
+ * Constructor input for {@link BlueprintConfig} — absent keys take the Python
+ * defaults; `undefined` counts as absent (R4.10).
+ */
+export interface BlueprintConfigInit {
+  /** Template variable mappings. */
+  readonly variables: Readonly<Record<string, string>>;
+}
+
+/**
+ * Configuration for a dashboard blueprint.
+ *
+ * Mirror of Python `mixpanel_headless.types.BlueprintConfig` (types.py:2190;
+ * model_config: frozen=True, extra='allow').
+ */
+export class BlueprintConfig extends EntityModel {
+  /** @internal The Python model name (and `$type` tag where recorded). */
+  static readonly modelName = "BlueprintConfig";
+
+  /** @internal Pydantic `model_config.extra` mirror. */
+  static readonly extraPolicy = "allow" as const;
+
+  /** @internal Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+    { name: "variables", required: true },
+  ];
+
+  /** Template variable mappings. */
+  declare readonly variables: Readonly<Record<string, string>>;
+
+  /**
+   * Construct a validated BlueprintConfig (Pydantic-construction mirror).
+   *
+   * @param fields - Field values keyed by Python attribute name.
+   * @throws ResponseValidationError - On missing/invalid fields per
+   *   the Python model's validation.
+   */
+  constructor(fields: BlueprintConfigInit) {
+    super(
+      BlueprintConfig,
+      fields as unknown as Readonly<Record<string, unknown>>,
+    );
+  }
+
+  /**
+   * Strict decode from a raw mapping (accepts the Pydantic
+   * validation-alias set; `$type`/computed keys are dropped).
+   *
+   * @param raw - The raw payload.
+   * @returns The reconstructed instance.
+   * @throws ResponseValidationError - On shape violations.
+   */
+  static fromDict(raw: unknown): BlueprintConfig {
+    return new BlueprintConfig(
+      prepareInit(BlueprintConfig, raw) as unknown as BlueprintConfigInit,
+    );
+  }
+}
+
+/**
+ * Constructor input for {@link BlueprintCard} — absent keys take the Python
+ * defaults; `undefined` counts as absent (R4.10).
+ */
+export interface BlueprintCardInit {
+  /** Card type (serialized as ``"type"``). */
+  readonly card_type: string;
+  /** Text card ID, if applicable. */
+  readonly text_card_id?: number | null | undefined;
+  /** Bookmark ID, if applicable. */
+  readonly bookmark_id?: number | null | undefined;
+  /** Markdown content for text cards. */
+  readonly markdown?: string | null | undefined;
+  /** Card name. */
+  readonly name?: string | null | undefined;
+  /** Card parameters. */
+  readonly params?: Readonly<Record<string, unknown>> | null | undefined;
+}
+
+/**
+ * A card in a blueprint dashboard.
+ *
+ * Mirror of Python `mixpanel_headless.types.BlueprintCard` (types.py:2208;
+ * model_config: extra='allow', populate_by_name=True).
+ */
+export class BlueprintCard extends EntityModel {
+  /** @internal The Python model name (and `$type` tag where recorded). */
+  static readonly modelName = "BlueprintCard";
+
+  /** @internal Pydantic `model_config.extra` mirror. */
+  static readonly extraPolicy = "allow" as const;
+
+  /** @internal Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+    {
+      name: "card_type",
+      required: true,
+      aliases: ["type"],
+      wire: "type",
+      kind: "str",
+    },
+    { name: "text_card_id", kind: "int", nullable: true },
+    { name: "bookmark_id", kind: "int", nullable: true },
+    { name: "markdown", kind: "str", nullable: true },
+    { name: "name", kind: "str", nullable: true },
+    { name: "params", nullable: true },
+  ];
+
+  /** Card type (serialized as ``"type"``). */
+  declare readonly card_type: string;
+  /** Text card ID, if applicable. */
+  declare readonly text_card_id: number | null;
+  /** Bookmark ID, if applicable. */
+  declare readonly bookmark_id: number | null;
+  /** Markdown content for text cards. */
+  declare readonly markdown: string | null;
+  /** Card name. */
+  declare readonly name: string | null;
+  /** Card parameters. */
+  declare readonly params: Readonly<Record<string, unknown>> | null;
+
+  /**
+   * Construct a validated BlueprintCard (Pydantic-construction mirror).
+   *
+   * @param fields - Field values keyed by Python attribute name.
+   * @throws ResponseValidationError - On missing/invalid fields per
+   *   the Python model's validation.
+   */
+  constructor(fields: BlueprintCardInit) {
+    super(
+      BlueprintCard,
+      fields as unknown as Readonly<Record<string, unknown>>,
+    );
+  }
+
+  /**
+   * Strict decode from a raw mapping (accepts the Pydantic
+   * validation-alias set; `$type`/computed keys are dropped).
+   *
+   * @param raw - The raw payload.
+   * @returns The reconstructed instance.
+   * @throws ResponseValidationError - On shape violations.
+   */
+  static fromDict(raw: unknown): BlueprintCard {
+    return new BlueprintCard(
+      prepareInit(BlueprintCard, raw) as unknown as BlueprintCardInit,
+    );
+  }
+}
+
+/**
+ * Constructor input for {@link BlueprintFinishParams} — absent keys take the Python
+ * defaults; `undefined` counts as absent (R4.10).
+ */
+export interface BlueprintFinishParamsInit {
+  /** ID of the blueprint dashboard to finalize. */
+  readonly dashboard_id: number;
+  /** List of cards to include. */
+  readonly cards: ReadonlyArray<
+    BlueprintCard | Readonly<Record<string, unknown>>
+  >;
+}
+
+/**
+ * Parameters for finalizing a blueprint dashboard.
+ *
+ * Mirror of Python `mixpanel_headless.types.BlueprintFinishParams` (types.py:2248;
+ * model_config: extra='ignore').
+ */
+export class BlueprintFinishParams extends EntityModel {
+  /** @internal The Python model name (and `$type` tag where recorded). */
+  static readonly modelName = "BlueprintFinishParams";
+
+  /** @internal Pydantic `model_config.extra` mirror. */
+  static readonly extraPolicy = "ignore" as const;
+
+  /** @internal Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+    { name: "dashboard_id", required: true, kind: "int" },
+    {
+      name: "cards",
+      required: true,
+      nested: () => BlueprintCard,
+      container: "list",
+    },
+  ];
+
+  /** ID of the blueprint dashboard to finalize. */
+  declare readonly dashboard_id: number;
+  /** List of cards to include. */
+  declare readonly cards: ReadonlyArray<BlueprintCard>;
+
+  /**
+   * Construct a validated BlueprintFinishParams (Pydantic-construction mirror).
+   *
+   * @param fields - Field values keyed by Python attribute name.
+   * @throws ResponseValidationError - On missing/invalid fields per
+   *   the Python model's validation.
+   */
+  constructor(fields: BlueprintFinishParamsInit) {
+    super(
+      BlueprintFinishParams,
+      fields as unknown as Readonly<Record<string, unknown>>,
+    );
+  }
+
+  /**
+   * Strict decode from a raw mapping (accepts the Pydantic
+   * validation-alias set; `$type`/computed keys are dropped).
+   *
+   * @param raw - The raw payload.
+   * @returns The reconstructed instance.
+   * @throws ResponseValidationError - On shape violations.
+   */
+  static fromDict(raw: unknown): BlueprintFinishParams {
+    return new BlueprintFinishParams(
+      prepareInit(
+        BlueprintFinishParams,
+        raw,
+      ) as unknown as BlueprintFinishParamsInit,
+    );
+  }
+}
+
+/**
+ * Constructor input for {@link RcaSourceData} — absent keys take the Python
+ * defaults; `undefined` counts as absent (R4.10).
+ */
+export interface RcaSourceDataInit {
+  /** Source type (serialized as ``"type"``). */
+  readonly source_type: string;
+  /** Date string. */
+  readonly date?: string | null | undefined;
+  /** Whether this is a metric source. */
+  readonly metric_source?: boolean | null | undefined;
+}
+
+/**
+ * Source data for RCA dashboard creation.
+ *
+ * Mirror of Python `mixpanel_headless.types.RcaSourceData` (types.py:2271;
+ * model_config: extra='allow', populate_by_name=True).
+ */
+export class RcaSourceData extends EntityModel {
+  /** @internal The Python model name (and `$type` tag where recorded). */
+  static readonly modelName = "RcaSourceData";
+
+  /** @internal Pydantic `model_config.extra` mirror. */
+  static readonly extraPolicy = "allow" as const;
+
+  /** @internal Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+    {
+      name: "source_type",
+      required: true,
+      aliases: ["type"],
+      wire: "type",
+      kind: "str",
+    },
+    { name: "date", kind: "str", nullable: true },
+    { name: "metric_source", kind: "bool", nullable: true },
+  ];
+
+  /** Source type (serialized as ``"type"``). */
+  declare readonly source_type: string;
+  /** Date string. */
+  declare readonly date: string | null;
+  /** Whether this is a metric source. */
+  declare readonly metric_source: boolean | null;
+
+  /**
+   * Construct a validated RcaSourceData (Pydantic-construction mirror).
+   *
+   * @param fields - Field values keyed by Python attribute name.
+   * @throws ResponseValidationError - On missing/invalid fields per
+   *   the Python model's validation.
+   */
+  constructor(fields: RcaSourceDataInit) {
+    super(
+      RcaSourceData,
+      fields as unknown as Readonly<Record<string, unknown>>,
+    );
+  }
+
+  /**
+   * Strict decode from a raw mapping (accepts the Pydantic
+   * validation-alias set; `$type`/computed keys are dropped).
+   *
+   * @param raw - The raw payload.
+   * @returns The reconstructed instance.
+   * @throws ResponseValidationError - On shape violations.
+   */
+  static fromDict(raw: unknown): RcaSourceData {
+    return new RcaSourceData(
+      prepareInit(RcaSourceData, raw) as unknown as RcaSourceDataInit,
+    );
+  }
+}
+
+/**
+ * Constructor input for {@link CreateRcaDashboardParams} — absent keys take the Python
+ * defaults; `undefined` counts as absent (R4.10).
+ */
+export interface CreateRcaDashboardParamsInit {
+  /** Source ID for RCA analysis. */
+  readonly rca_source_id: number;
+  /** Source data configuration. */
+  readonly rca_source_data: RcaSourceData | Readonly<Record<string, unknown>>;
+}
+
+/**
+ * Parameters for creating an RCA dashboard.
+ *
+ * Mirror of Python `mixpanel_headless.types.CreateRcaDashboardParams` (types.py:2299;
+ * model_config: extra='ignore').
+ */
+export class CreateRcaDashboardParams extends EntityModel {
+  /** @internal The Python model name (and `$type` tag where recorded). */
+  static readonly modelName = "CreateRcaDashboardParams";
+
+  /** @internal Pydantic `model_config.extra` mirror. */
+  static readonly extraPolicy = "ignore" as const;
+
+  /** @internal Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+    { name: "rca_source_id", required: true, kind: "int" },
+    { name: "rca_source_data", required: true, nested: () => RcaSourceData },
+  ];
+
+  /** Source ID for RCA analysis. */
+  declare readonly rca_source_id: number;
+  /** Source data configuration. */
+  declare readonly rca_source_data: RcaSourceData;
+
+  /**
+   * Construct a validated CreateRcaDashboardParams (Pydantic-construction mirror).
+   *
+   * @param fields - Field values keyed by Python attribute name.
+   * @throws ResponseValidationError - On missing/invalid fields per
+   *   the Python model's validation.
+   */
+  constructor(fields: CreateRcaDashboardParamsInit) {
+    super(
+      CreateRcaDashboardParams,
+      fields as unknown as Readonly<Record<string, unknown>>,
+    );
+  }
+
+  /**
+   * Strict decode from a raw mapping (accepts the Pydantic
+   * validation-alias set; `$type`/computed keys are dropped).
+   *
+   * @param raw - The raw payload.
+   * @returns The reconstructed instance.
+   * @throws ResponseValidationError - On shape violations.
+   */
+  static fromDict(raw: unknown): CreateRcaDashboardParams {
+    return new CreateRcaDashboardParams(
+      prepareInit(
+        CreateRcaDashboardParams,
+        raw,
+      ) as unknown as CreateRcaDashboardParamsInit,
+    );
+  }
+}
+
+/**
+ * Constructor input for {@link UpdateReportLinkParams} — absent keys take the Python
+ * defaults; `undefined` counts as absent (R4.10).
+ */
+export interface UpdateReportLinkParamsInit {
+  /** Link type (serialized as ``"type"``). */
+  readonly link_type: string;
+}
+
+/**
+ * Parameters for updating a report link on a dashboard.
+ *
+ * Mirror of Python `mixpanel_headless.types.UpdateReportLinkParams` (types.py:2322;
+ * model_config: extra='allow', populate_by_name=True).
+ */
+export class UpdateReportLinkParams extends EntityModel {
+  /** @internal The Python model name (and `$type` tag where recorded). */
+  static readonly modelName = "UpdateReportLinkParams";
+
+  /** @internal Pydantic `model_config.extra` mirror. */
+  static readonly extraPolicy = "allow" as const;
+
+  /** @internal Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+    {
+      name: "link_type",
+      required: true,
+      aliases: ["type"],
+      wire: "type",
+      kind: "str",
+    },
+  ];
+
+  /** Link type (serialized as ``"type"``). */
+  declare readonly link_type: string;
+
+  /**
+   * Construct a validated UpdateReportLinkParams (Pydantic-construction mirror).
+   *
+   * @param fields - Field values keyed by Python attribute name.
+   * @throws ResponseValidationError - On missing/invalid fields per
+   *   the Python model's validation.
+   */
+  constructor(fields: UpdateReportLinkParamsInit) {
+    super(
+      UpdateReportLinkParams,
+      fields as unknown as Readonly<Record<string, unknown>>,
+    );
+  }
+
+  /**
+   * Strict decode from a raw mapping (accepts the Pydantic
+   * validation-alias set; `$type`/computed keys are dropped).
+   *
+   * @param raw - The raw payload.
+   * @returns The reconstructed instance.
+   * @throws ResponseValidationError - On shape violations.
+   */
+  static fromDict(raw: unknown): UpdateReportLinkParams {
+    return new UpdateReportLinkParams(
+      prepareInit(
+        UpdateReportLinkParams,
+        raw,
+      ) as unknown as UpdateReportLinkParamsInit,
+    );
+  }
+}
+
+/**
+ * Constructor input for {@link UpdateTextCardParams} — absent keys take the Python
+ * defaults; `undefined` counts as absent (R4.10).
+ */
+export interface UpdateTextCardParamsInit {
+  /** Markdown content for the text card. */
+  readonly markdown?: string | null | undefined;
+}
+
+/**
+ * Parameters for updating a text card on a dashboard.
+ *
+ * Mirror of Python `mixpanel_headless.types.UpdateTextCardParams` (types.py:2342;
+ * model_config: extra='allow').
+ */
+export class UpdateTextCardParams extends EntityModel {
+  /** @internal The Python model name (and `$type` tag where recorded). */
+  static readonly modelName = "UpdateTextCardParams";
+
+  /** @internal Pydantic `model_config.extra` mirror. */
+  static readonly extraPolicy = "allow" as const;
+
+  /** @internal Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+    { name: "markdown", kind: "str", nullable: true },
+  ];
+
+  /** Markdown content for the text card. */
+  declare readonly markdown: string | null;
+
+  /**
+   * Construct a validated UpdateTextCardParams (Pydantic-construction mirror).
+   *
+   * @param fields - Field values keyed by Python attribute name.
+   * @throws ResponseValidationError - On missing/invalid fields per
+   *   the Python model's validation.
+   */
+  constructor(fields: UpdateTextCardParamsInit) {
+    super(
+      UpdateTextCardParams,
+      fields as unknown as Readonly<Record<string, unknown>>,
+    );
+  }
+
+  /**
+   * Strict decode from a raw mapping (accepts the Pydantic
+   * validation-alias set; `$type`/computed keys are dropped).
+   *
+   * @param raw - The raw payload.
+   * @returns The reconstructed instance.
+   * @throws ResponseValidationError - On shape violations.
+   */
+  static fromDict(raw: unknown): UpdateTextCardParams {
+    return new UpdateTextCardParams(
+      prepareInit(
+        UpdateTextCardParams,
+        raw,
+      ) as unknown as UpdateTextCardParamsInit,
+    );
+  }
+}
