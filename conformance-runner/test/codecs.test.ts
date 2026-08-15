@@ -12,6 +12,8 @@ import {
   UnencodableValueError,
   encodeExpectValue,
 } from "../src/codecs.js";
+import { GroupBy } from "../../packages/core/src/types/query-params/group-by.js";
+import { registerContractCodecs } from "../src/bindings.js";
 import { JsonNumber } from "../src/json-value.js";
 import { parseLossless } from "../src/lossless-json.js";
 
@@ -184,5 +186,52 @@ describe("encodeExpectValue (D6 rules 2/5 at the output boundary)", () => {
     expect(() => encodeExpectValue(new Mystery())).toThrow(
       UnencodableValueError,
     );
+  });
+});
+
+describe("GroupBy contract codec float-carrier buckets (B2-BIND)", () => {
+  // Python `GroupBy(bucket_min=0.0, bucket_max=100.0)` is constructible
+  // (0.0 >= 100.0 is False) and records with `$type: float` children
+  // (P2-5a integral-float tagging). Decoding those children as PyFloat
+  // CARRIERS into the constructor is wrong twice over: JS `>=` on two
+  // carrier objects string-compares "[object Object]" (guard V18 fires
+  // where CPython's float comparison passes — the B2-BIND fuzz crash),
+  // and the validator's numeric bucket comparisons need the numeric
+  // value (B2-M1 carrier table: GroupBy.bucket_* → unwrap). The codec
+  // therefore unwraps bucket carriers to native numbers at decode,
+  // mirroring the SignedReplay `signed_at` precedent.
+  it("decodes $type float bucket fields to native numbers", () => {
+    const registry = new CodecRegistry();
+    registerContractCodecs(registry);
+    const decoded = registry.decodeValue({
+      $type: "GroupBy",
+      property: "revenue",
+      property_type: "number",
+      bucket_size: { $type: "float", value: "10.0" },
+      bucket_min: { $type: "float", value: "0.0" },
+      bucket_max: { $type: "float", value: "100.0" },
+      _list_item_mode: null,
+    });
+    expect(decoded).toBeInstanceOf(GroupBy);
+    const groupBy = decoded as GroupBy;
+    expect(groupBy.bucket_size).toBe(10);
+    expect(groupBy.bucket_min).toBe(0);
+    expect(groupBy.bucket_max).toBe(100);
+  });
+
+  it("still raises the V18 guard for genuinely misordered carrier buckets", () => {
+    const registry = new CodecRegistry();
+    registerContractCodecs(registry);
+    expect(() =>
+      registry.decodeValue({
+        $type: "GroupBy",
+        property: "revenue",
+        property_type: "number",
+        bucket_size: { $type: "float", value: "10.0" },
+        bucket_min: { $type: "float", value: "100.0" },
+        bucket_max: { $type: "float", value: "5.0" },
+        _list_item_mode: null,
+      }),
+    ).toThrow(UndecodableValueError);
   });
 });

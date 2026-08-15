@@ -252,6 +252,44 @@ export function isPythonInt(value: unknown): boolean {
  * @returns The Python type name Python would print for the
  *   equivalent value.
  */
+/**
+ * Reproduce CPython's hashing failure for `x in frozenset` membership
+ * tests (R10.7 bug-compatibility; B2-M2 finding 2 adjudicated at the
+ * B2-BIND differential fuzz — repro
+ * `2026-08-15-validation-validate_bookmark.json`).
+ *
+ * Python hashes the candidate: a `list`/`dict` value raises
+ * `TypeError: cannot use 'list' as a set element (unhashable type: …)`
+ * instead of yielding the enum error. In the ported value domain the
+ * unhashable inputs are exactly JSON arrays and plain dicts; every
+ * other decoded value (string, number, bool, null, PyFloat carrier —
+ * a Python float — and reconstructed core instances, which hash by
+ * identity in Python) is hashable and falls through to the membership
+ * test. Callers gate on the same condition Python does (the site's
+ * `is not None` short-circuit); a `null`/`undefined` value is a no-op
+ * here anyway.
+ *
+ * @param value - The membership-test candidate.
+ * @throws TypeError - When Python's `hash(value)` would raise.
+ */
+export function requireHashable(value: unknown): void {
+  if (Array.isArray(value)) {
+    throw new TypeError(
+      "cannot use 'list' as a set element (unhashable type: 'list')",
+    );
+  }
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    !isFloatCarrier(value) &&
+    Object.getPrototypeOf(value) === Object.prototype
+  ) {
+    throw new TypeError(
+      "cannot use 'dict' as a set element (unhashable type: 'dict')",
+    );
+  }
+}
+
 export function pythonTypeName(value: unknown): string {
   if (value === null || value === undefined) {
     return "NoneType";

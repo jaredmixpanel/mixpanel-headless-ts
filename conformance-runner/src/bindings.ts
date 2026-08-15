@@ -28,7 +28,10 @@ import {
   type PythonValue,
 } from "../../packages/core/src/compat/index.js";
 import { iterJsonlLines } from "../../packages/core/src/client/jsonl.js";
-import { MixpanelHeadlessError } from "../../packages/core/src/errors.js";
+import {
+  MixpanelHeadlessError,
+  ValidationError,
+} from "../../packages/core/src/errors.js";
 import {
   CohortBreakdown,
   CohortCriteria,
@@ -93,7 +96,28 @@ import {
   type UserActionFields,
 } from "../../packages/core/src/types/results/replays.js";
 import { CONTRACT_TAG_CODECS } from "../../packages/core/src/types/vector-codecs.js";
-import { CodecRegistry, UndecodableValueError } from "./codecs.js";
+import {
+  validateBookmark,
+  validateFlowArgs,
+  validateFlowBookmark,
+  validateFunnelArgs,
+  validateGroupByArgs,
+  validateQueryArgs,
+  validateRetentionArgs,
+  validateSortingBlock,
+  validateTimeArgs,
+  validateUserArgs,
+  validateUserParams,
+  type ValidateBookmarkOptions,
+  type ValidateFlowArgsOptions,
+  type ValidateFunnelArgsOptions,
+  type ValidateGroupByArgsOptions,
+  type ValidateQueryArgsOptions,
+  type ValidateRetentionArgsOptions,
+  type ValidateTimeArgsOptions,
+  type ValidateUserArgsOptions,
+} from "../../packages/core/src/query/index.js";
+import { CodecRegistry, PyFloat, UndecodableValueError } from "./codecs.js";
 import type { JsonValue } from "./json-value.js";
 import { JsonNumber } from "./json-value.js";
 import type {
@@ -883,6 +907,277 @@ function registerQueryParamBindings(
   );
 }
 
+// ---------------------------------------------------------------------------
+// B2 validator bindings (P3-6 step 3 / P3-2 b′ — fable rig task)
+// ---------------------------------------------------------------------------
+
+/**
+ * Encode a validator's return exactly like the Python recorder's
+ * `validation_errors` output codec (`conformance/record/codecs.py::
+ * _encode_validation_errors`): one `{path, code, severity}` object per
+ * error, emission order preserved. `message`/`suggestion`/`fix` never
+ * enter the encoding (R5.3/R5.4 — the runner's `diffReturnedValue`
+ * does NOT strip advisory keys from `expect.output`, so serializing
+ * them would fail every vector; b2-packets.md §Binding-shape).
+ *
+ * @param returned - The validator's return value.
+ * @returns The structural `[{path, code, severity}]` encoding.
+ * @throws TypeError - When the value is not `ValidationError[]` (a
+ *   binding wiring bug, mirroring Python's `UnencodableValueError`).
+ */
+function encodeValidationErrors(returned: unknown): JsonValue {
+  if (
+    !Array.isArray(returned) ||
+    returned.some((item) => !(item instanceof ValidationError))
+  ) {
+    throw new TypeError(
+      "validation_errors encoding expects ValidationError[] from the validator",
+    );
+  }
+  return returned.map((item: ValidationError) => ({
+    path: item.path,
+    code: item.code,
+    severity: item.severity,
+  }));
+}
+
+/**
+ * Unwrap one finite-integral `PyFloat` carrier to its native number.
+ *
+ * Applied ONLY at the kwarg positions the B2 module tasks measured as
+ * pure NUMERIC comparisons in the Python source (B2-M1/B2-M3 carrier
+ * tables): there Python's `30.0` compares equal to `30`, so the TS twin
+ * needs the native number. Positions with `isinstance(int/float)`
+ * semantics keep the carrier — the ported validators classify it via
+ * `isPythonInt`/`isFloatCarrier` exactly where CPython classifies a
+ * float (Caution §8; any wider unwrap is a binding-honesty smell).
+ *
+ * @param value - A decoded kwarg value.
+ * @returns The carrier's numeric value, or the value unchanged.
+ */
+function unwrapCarrierNumber(value: unknown): unknown {
+  return value instanceof PyFloat ? value.toNumber() : value;
+}
+
+/**
+ * Whether a value is a plain (prototype-Object) record — a decoded
+ * vector-JSON dict, never a reconstructed core instance.
+ *
+ * @param value - The value to test.
+ * @returns `true` for plain objects only.
+ */
+function isPlainDict(value: unknown): value is Record<string, unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    Object.getPrototypeOf(value) === Object.prototype
+  );
+}
+
+/**
+ * Deep-unwrap NON-FINITE `PyFloat` carriers to native non-finite
+ * numbers (B2-M1 rule "non-finite spellings always unwrap", the
+ * `vector-codecs.ts` SignedReplay precedent). Finite carriers stay
+ * carriers — that is what makes `isinstance(x, int)` fail in TS
+ * exactly where it fails in CPython (B18B/B22/R5/DG1/F3). The walk
+ * covers plain dicts/lists only; reconstructed core instances pass
+ * through untouched. Behavior-neutral for the carrier-aware M2 surface
+ * (`_isFinite`, `pythonIntValue`, and the sorting mirror's
+ * `optionalInt` classify native non-finite numbers identically) — this
+ * is NOT a `params.sorting` unwrap rule (B2-M2 finding 1).
+ *
+ * @param value - A decoded kwarg value.
+ * @returns The value with every non-finite carrier made native.
+ */
+function unwrapNonFiniteDeep(value: unknown): unknown {
+  if (
+    value instanceof PyFloat &&
+    ["Infinity", "-Infinity", "NaN"].includes(value.spelling)
+  ) {
+    return value.toNumber();
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => unwrapNonFiniteDeep(item));
+  }
+  if (isPlainDict(value)) {
+    const out: Record<string, unknown> = {};
+    for (const [key, member] of Object.entries(value)) {
+      out[key] = unwrapNonFiniteDeep(member);
+    }
+    return out;
+  }
+  return value;
+}
+
+/**
+ * Build one validator options bag from the decoded kwargs.
+ *
+ * Every kwarg passes through {@link unwrapNonFiniteDeep}; the
+ * `numericFields` then get the finite-carrier unwrap
+ * ({@link unwrapCarrierNumber}). Absent kwargs stay absent (R3.5 — the
+ * TS validators' destructuring defaults mirror the Python kwonly
+ * defaults). The B2-M1 table's remaining unwrap row — `GroupBy`
+ * bucket fields — is owned by the GroupBy contract codec itself
+ * (`vector-codecs.ts`, SignedReplay precedent), so decoded `group_by`
+ * values arrive here already native.
+ *
+ * @param context - The invocation context.
+ * @param numericFields - Kwarg names measured as numeric comparisons.
+ * @returns The prepared kwargs bag.
+ */
+function validatorKwargs(
+  context: InvocationContext,
+  numericFields: readonly string[],
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, raw] of Object.entries(context.kwargs)) {
+    let value = unwrapNonFiniteDeep(raw);
+    if (numericFields.includes(key)) {
+      value = unwrapCarrierNumber(value);
+    }
+    out[key] = value;
+  }
+  return out;
+}
+
+/**
+ * Read the required `params` dict kwarg of a Layer-2 validator, with
+ * the deep non-finite unwrap applied.
+ *
+ * @param context - The invocation context.
+ * @returns The prepared params dict.
+ * @throws Error - When the kwarg is missing from `call.input`.
+ */
+function requireParamsDict(
+  context: InvocationContext,
+): Record<string, unknown> {
+  return unwrapNonFiniteDeep(requireKwarg(context, "params")) as Record<
+    string,
+    unknown
+  >;
+}
+
+/**
+ * Register the B2 validator bindings — the 11 `validation.*` /
+ * `user_validators.*` registry names (b2-packets.md §Binding-plan; the
+ * 12th `_validator_entries()` row, `bookmark_schema.validate_with_pydantic`,
+ * is B3's — its prefix flips at the B3 gate).
+ *
+ * Binding honesty (P3-5 rule 3): every binding calls the real ported
+ * public entry point from `packages/core/src/query`; the only
+ * adaptations are kwarg plumbing, the measured PyFloat carrier policy
+ * (B2-M1/M2/M3 findings), the frozen-clock `today` seam, the shared
+ * error wrap, and the `validation_errors` output encoding. Nothing here
+ * re-derives a check or filters/reorders the returned list.
+ *
+ * Oracle note: oracle-ts serves every name registered here through the
+ * same registry (`differential/oracle/server.ts` `executeBound`), so
+ * this registration IS the batch's oracle-surface extension (P3-2e
+ * step 3). `validation.validate_sorting_block` has zero corpus vectors
+ * but is bound for the gate's mechanical `oracle.call` probe.
+ *
+ * @param implementations - The registry to extend.
+ */
+function registerValidatorBindings(
+  implementations: ImplementationRegistry,
+): void {
+  const bindValidator = (
+    api: string,
+    invoke: (context: InvocationContext) => ValidationError[],
+  ): void => {
+    implementations.register(api, (context) =>
+      encodeValidationErrors(guardCompat(() => invoke(context))),
+    );
+  };
+
+  bindValidator("validation.validate_time_args", (context) =>
+    validateTimeArgs(
+      validatorKwargs(context, ["last"]) as unknown as ValidateTimeArgsOptions,
+    ),
+  );
+  bindValidator("validation.validate_group_by_args", (context) =>
+    validateGroupByArgs(
+      validatorKwargs(context, []) as unknown as ValidateGroupByArgsOptions,
+    ),
+  );
+  bindValidator("validation.validate_funnel_args", (context) =>
+    // `conversion_window` and `data_group_id` keep carriers: Python
+    // type-checks them (F3_CONVERSION_WINDOW_TYPE / DG1 — B2-M1 table).
+    validateFunnelArgs(
+      validatorKwargs(context, [
+        "last",
+      ]) as unknown as ValidateFunnelArgsOptions,
+    ),
+  );
+  bindValidator("validation.validate_retention_args", (context) =>
+    // `bucket_sizes[i]` and `data_group_id` keep carriers
+    // (R5_BUCKET_SIZES_INTEGER / DG1 — B2-M1 table).
+    validateRetentionArgs(
+      validatorKwargs(context, [
+        "last",
+      ]) as unknown as ValidateRetentionArgsOptions,
+    ),
+  );
+  bindValidator("validation.validate_flow_args", (context) =>
+    validateFlowArgs(
+      validatorKwargs(context, [
+        "last",
+        "forward",
+        "reverse",
+        "cardinality",
+        "conversion_window",
+      ]) as unknown as ValidateFlowArgsOptions,
+    ),
+  );
+  bindValidator("validation.validate_query_args", (context) =>
+    validateQueryArgs(
+      validatorKwargs(context, [
+        "last",
+        "rolling",
+      ]) as unknown as ValidateQueryArgsOptions,
+    ),
+  );
+  bindValidator("validation.validate_bookmark", (context) => {
+    const bookmarkType = context.kwargs["bookmark_type"];
+    const options: ValidateBookmarkOptions =
+      bookmarkType !== undefined
+        ? { bookmark_type: bookmarkType as string }
+        : {};
+    return validateBookmark(requireParamsDict(context), options);
+  });
+  bindValidator("validation.validate_flow_bookmark", (context) =>
+    validateFlowBookmark(requireParamsDict(context)),
+  );
+  bindValidator("validation.validate_sorting_block", (context) =>
+    validateSortingBlock(unwrapNonFiniteDeep(requireKwarg(context, "sorting"))),
+  );
+  bindValidator("user_validators.validate_user_args", (context) => {
+    // B2-M3 carrier table: `limit`/`percentile`/`workers` and the
+    // ELEMENTS of `segment_by` are pure numeric comparisons in Python
+    // (no isinstance(int/float) anywhere in user_validators.py);
+    // `cohort`/`as_of` keep carriers (isinstance-only reads).
+    const options = validatorKwargs(context, [
+      "limit",
+      "percentile",
+      "workers",
+    ]);
+    const segmentBy = options["segment_by"];
+    if (Array.isArray(segmentBy)) {
+      options["segment_by"] = segmentBy.map((item) =>
+        unwrapCarrierNumber(item),
+      );
+    }
+    // U8 clock seam: the recorder and both oracles run under the frozen
+    // record epoch (b2-packets.md §V2 trap 2b) — the binding injects the
+    // shims' date; the library defaults to the real clock.
+    options["today"] = (): string => context.shims.today();
+    return validateUserArgs(options as ValidateUserArgsOptions);
+  });
+  bindValidator("user_validators.validate_user_params", (context) =>
+    validateUserParams(requireParamsDict(context)),
+  );
+}
+
 /**
  * Register the Phase-2 contract tag codecs (phase2-design C7 item 2).
  *
@@ -943,5 +1238,6 @@ export function createRunnerDeps(recordEpoch: string): RunnerDeps {
   registerClientInternalsBindings(implementations);
   registerContractCodecs(codecs);
   registerQueryParamBindings(implementations, codecs);
+  registerValidatorBindings(implementations);
   return { implementations, codecs, recordEpoch };
 }

@@ -411,7 +411,31 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
         "_list_item_mode",
       ],
       required: ["property"],
-      construct: (bag) => new GroupBy(bag as unknown as GroupByFields),
+      construct: (bag) => {
+        // B2-BIND (B2-M1 carrier table): `$type: float` bucket children
+        // decode as PyFloat carriers, but Python's GroupBy holds real
+        // floats whose ctor guard (V18 `bucket_min >= bucket_max`) and
+        // validator arithmetic compare NUMERICALLY — a carrier object
+        // string-compares under JS `>=` and inverts the guard. Unwrap
+        // the three bucket fields to native numbers before construction
+        // (the SignedReplay `signed_at` unwrap precedent below).
+        const unwrapped: Record<string, unknown> = { ...bag };
+        for (const field of ["bucket_size", "bucket_min", "bucket_max"]) {
+          const value = unwrapped[field];
+          if (
+            typeof value === "object" &&
+            value !== null &&
+            "spelling" in value &&
+            typeof (value as { spelling: unknown }).spelling === "string"
+          ) {
+            // R11.7 rig-internal exemption: the spelling is the rig's
+            // canonical PyFloat token (constructor-validated), same as
+            // the SignedReplay `signed_at` unwrap below — not user input.
+            unwrapped[field] = Number((value as { spelling: string }).spelling);
+          }
+        }
+        return new GroupBy(unwrapped as unknown as GroupByFields);
+      },
       matches: (value) => value instanceof GroupBy,
     },
   ],

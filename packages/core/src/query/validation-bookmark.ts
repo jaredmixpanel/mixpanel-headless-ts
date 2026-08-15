@@ -25,20 +25,19 @@
  *   passes B22 exactly as it does in CPython.
  * - Blank checks go through `pythonStrip` (R11.7) — never `.trim()`.
  *
- * TODO(port): Python's `value not in FROZENSET` guards (FLB3, FLB4, B7,
- * B19, B9, B11, B17, B16, B14, B15, B12, B5) raise `TypeError:
- * unhashable type` when the dict carries a `list`/`dict` at that key,
- * because `x in frozenset` hashes `x`. The TS ports below return an
- * enum error instead of throwing (the membership test is spelled
- * `typeof v === "string" && SET.has(v)`), which is the behavior the
- * whole Layer-2 contract assumes — `validate_bookmark` is documented as
- * a total function returning a list. No corpus vector, Layer-3 test or
- * builder path can produce an unhashable value at these keys (the
- * builders emit strings), and `validate_sorting_block`'s own
- * "unhashable does not crash" regression test shows the intended
- * direction. Flagged for the arbiter: if bug-compatibility (R10.7) is
- * ruled to win here, the fix is a shared `pythonHashable(v)` guard that
- * throws a `TypeError`-analog at each of the 12 sites.
+ * R10.7 note (resolved at B2-BIND, 2026-08-15): Python's `value not in
+ * FROZENSET` guards raise `TypeError: unhashable type` when the dict
+ * carries a `list`/`dict` at the checked key, because `x in frozenset`
+ * hashes `x`. B2-M2 originally shipped the total-function spelling and
+ * flagged the deviation (M2 notes finding 2); the B2-BIND differential
+ * fuzz then surfaced it as a real divergence (repro
+ * `2026-08-15-validation-validate_bookmark.json`), so bug-compatibility
+ * won: every membership site now calls the shared
+ * `requireHashable(...)` guard (validation-shared.ts) at exactly the
+ * position CPython hashes — 16 probe-verified sites (validation.py
+ * :1832/:1845/:2483/:2549/:2618/:2647/:2662/:2674/:2712/:2754/:2767/
+ * :2846/:2860/:2873/:2981/:2995), locked by
+ * `test/query/validation-unhashable.test.ts`.
  *
  * @module query/validation-bookmark
  * @internal
@@ -76,6 +75,7 @@ import {
   isPythonFloat,
   isPythonInt,
   pythonStrLoose,
+  requireHashable,
 } from "./validation-shared.js";
 
 // =============================================================================
@@ -282,6 +282,7 @@ export function validateFlowBookmark(params: Dict): ValidationError[] {
 
   // FLB3: count_type validation
   const countType = dictGet(params, "count_type");
+  requireHashable(countType); // R10.7: Python hashes in `not in` (:1832)
   if (
     !isNone(countType) &&
     !(typeof countType === "string" && VALID_FLOWS_COUNT_TYPES.has(countType))
@@ -299,6 +300,7 @@ export function validateFlowBookmark(params: Dict): ValidationError[] {
 
   // FLB4: chartType validation
   const chartType = dictGet(params, "chartType");
+  requireHashable(chartType); // R10.7: Python hashes in `not in` (:1845)
   if (
     !isNone(chartType) &&
     !(typeof chartType === "string" && VALID_FLOWS_CHART_TYPES.has(chartType))
@@ -558,6 +560,7 @@ function validateShowClause(
 
   // B7: Validate behavior.type
   const btype = dictGet(behavior, "type");
+  requireHashable(btype); // R10.7: Python hashes in `not in` (:2483)
   if (
     !isNone(btype) &&
     !(typeof btype === "string" && VALID_METRIC_TYPES.has(btype))
@@ -637,6 +640,7 @@ function validateShowClause(
 
   // B19: Validate filtersDeterminer
   const fd = dictGet(behavior, "filtersDeterminer");
+  requireHashable(fd); // R10.7: Python hashes in `not in` (:2549)
   if (
     !isNone(fd) &&
     !(typeof fd === "string" && VALID_FILTERS_DETERMINER.has(fd))
@@ -708,6 +712,7 @@ function validateMeasurement(
 
   // B9: Validate math type (context-dependent for funnel/retention)
   const math = dictGet(measurement, "math");
+  requireHashable(math); // R10.7: Python hashes in `not in` (:2618)
   if (!isNone(math)) {
     let validMath: ReadonlySet<string>;
     if (bookmarkType === "funnels") {
@@ -754,6 +759,7 @@ function validateMeasurement(
 
   // B11: Validate perUserAggregation
   const perUser = dictGet(measurement, "perUserAggregation");
+  requireHashable(perUser); // R10.7: Python hashes in `not in` (:2647)
   if (
     !isNone(perUser) &&
     !(typeof perUser === "string" && VALID_PER_USER_AGGREGATIONS.has(perUser))
@@ -773,6 +779,7 @@ function validateMeasurement(
   const prop = dictGet(measurement, "property");
   if (isDict(prop)) {
     const propType = dictGet(prop, "type");
+    requireHashable(propType); // R10.7: Python hashes in `not in` (:2662)
     if (
       !isNone(propType) &&
       !(typeof propType === "string" && VALID_PROPERTY_TYPES.has(propType))
@@ -789,6 +796,7 @@ function validateMeasurement(
       );
     }
     const propRt = dictGet(prop, "resourceType");
+    requireHashable(propRt); // R10.7: Python hashes in `not in` (:2674)
     if (
       !isNone(propRt) &&
       !(typeof propRt === "string" && VALID_RESOURCE_TYPES.has(propRt))
@@ -822,6 +830,7 @@ function validateDisplayOptions(display: Dict): ValidationError[] {
 
   // B5: chartType is required and must be valid
   const chartType = dictGet(display, "chartType");
+  requireHashable(chartType); // R10.7: Python hashes in `not in` (:2712)
   if (isNone(chartType)) {
     errors.push(
       new ValidationError(
@@ -882,6 +891,7 @@ function validateTimeClause(clause: unknown, index: number): ValidationError[] {
 
   // B12: Validate unit
   const unit = dictGet(clause, "unit");
+  requireHashable(unit); // R10.7: Python hashes in `not in` (:2754)
   if (
     !isNone(unit) &&
     !(typeof unit === "string" && VALID_TIME_UNITS.has(unit))
@@ -899,6 +909,7 @@ function validateTimeClause(clause: unknown, index: number): ValidationError[] {
 
   // B13: Validate dateRangeType
   const drt = dictGet(clause, "dateRangeType");
+  requireHashable(drt); // R10.7: Python hashes in `not in` (:2767)
   if (
     !isNone(drt) &&
     !(typeof drt === "string" && _VALID_DATE_RANGE_TYPES.has(drt))
@@ -978,6 +989,7 @@ function validateFilterClause(
 
   // B16: Validate resourceType
   const rt = dictGet(clause, "resourceType");
+  requireHashable(rt); // R10.7: Python hashes in `not in` (:2846)
   if (
     !isNone(rt) &&
     !(typeof rt === "string" && VALID_RESOURCE_TYPES.has(rt))
@@ -996,6 +1008,7 @@ function validateFilterClause(
 
   // B14: Validate filterType
   const ft = dictGet(clause, "filterType");
+  requireHashable(ft); // R10.7: Python hashes in `not in` (:2860)
   if (
     !isNone(ft) &&
     !(typeof ft === "string" && VALID_PROPERTY_TYPES.has(ft))
@@ -1013,6 +1026,7 @@ function validateFilterClause(
 
   // B15: Validate filterOperator
   const fo = dictGet(clause, "filterOperator");
+  requireHashable(fo); // R10.7: Python hashes in `not in` (:2873)
   if (
     !isNone(fo) &&
     !(typeof fo === "string" && VALID_FILTER_OPERATORS.has(fo))
@@ -1133,6 +1147,7 @@ function validateGroupClause(
 
   // B17: Validate propertyType
   const pt = dictGet(clause, "propertyType");
+  requireHashable(pt); // R10.7: Python hashes in `not in` (:2981)
   if (
     !isNone(pt) &&
     !(typeof pt === "string" && VALID_PROPERTY_TYPES.has(pt))
@@ -1151,6 +1166,7 @@ function validateGroupClause(
 
   // B16: Validate resourceType
   const rt = dictGet(clause, "resourceType");
+  requireHashable(rt); // R10.7: Python hashes in `not in` (:2995)
   if (
     !isNone(rt) &&
     !(typeof rt === "string" && VALID_RESOURCE_TYPES.has(rt))
