@@ -531,3 +531,47 @@ describe("C9 guard-totality property (fast-check #4)", () => {
     );
   });
 });
+
+describe("Filter.inCohort with an inline CohortDefinition (P2-9 gate finding)", () => {
+  it("embeds the sanitized raw cohort exactly like Python", async () => {
+    // The P2-5a stub threw TODO(port, P2-5b) on this branch; the P2-9
+    // differential gate surfaced it. Expected shape measured on
+    // oracle-py for the shrunken repro input (in_cohort criterion id 1).
+    const { CohortCriteria, CohortDefinition } =
+      await import("../../../src/types/query-params/cohort.js");
+    const definition = CohortDefinition.allOf(CohortCriteria.notInCohort(1));
+    const filter = Filter.inCohort(definition);
+    expect(filter._property).toBe("$cohorts");
+    expect(filter._operator).toBe("contains");
+    expect(filter._value).toEqual([
+      {
+        cohort: {
+          negated: false,
+          name: "",
+          raw_cohort: {
+            behaviors: {},
+            selector: {
+              children: [{ operator: "not in", property: "cohort", value: 1 }],
+              operator: "and",
+            },
+          },
+        },
+      },
+    ]);
+  });
+
+  it("negates through notInCohort with an inline definition", async () => {
+    const { CohortCriteria, CohortDefinition } =
+      await import("../../../src/types/query-params/cohort.js");
+    const definition = CohortDefinition.anyOf(CohortCriteria.inCohort(7));
+    const filter = Filter.notInCohort(definition, "Churn risk");
+    expect(filter._operator).toBe("does not contain");
+    const entry = (
+      filter._value as ReadonlyArray<Record<string, Record<string, unknown>>>
+    )[0]?.["cohort"] as Record<string, unknown>;
+    expect(entry["negated"]).toBe(true);
+    expect(entry["name"]).toBe("Churn risk");
+    expect(entry["raw_cohort"]).toBeDefined();
+    expect(entry["id"]).toBeUndefined();
+  });
+});

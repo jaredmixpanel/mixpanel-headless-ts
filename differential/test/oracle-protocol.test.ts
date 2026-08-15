@@ -428,3 +428,182 @@ describe("raw-json: ordered lossless model", () => {
     expect(() => parseRawJson('"\\x00"')).toThrow("malformed string token");
   });
 });
+
+describe("Phase-2 types.* surface (protocol §8 scope note, P2-9)", () => {
+  it("reports protocol_version 1.1 (the codec.roundtrip addendum)", () => {
+    expect(PROTOCOL_VERSION).toBe("1.1");
+  });
+
+  it("serves a types.* factory in Python's EXPECT encoding (no rich $type)", () => {
+    const result = call(makeServer(), "types.Filter.on", {
+      property: "plan",
+      date: "2025-01-01",
+    });
+    expect(result).toEqual({
+      ok: true,
+      output: {
+        _property: "plan",
+        _operator: "was on",
+        _value: "2025-01-01",
+        _property_type: "datetime",
+        _resource_type: "events",
+        _date_unit: null,
+        _list_item_filters: null,
+        _list_item_quantifier: null,
+      },
+    });
+  });
+
+  it("returns coded guard failures as {class, code} DATA (R5.4)", () => {
+    const result = call(makeServer(), "types.Filter.in_the_last", {
+      property: "p",
+      quantity: 0,
+      date_unit: "day",
+    });
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        class: "ParamValidationError",
+        code: "FD1_QUANTITY_NOT_POSITIVE",
+      },
+    });
+  });
+
+  it("preserves integral-float kwargs via the raw token (D13/Risk #3)", () => {
+    // 18.0 must construct as a FLOAT (PyFloat) and render back as the
+    // raw token 18.0, exactly like Python's json.loads/json.dumps pair.
+    const server = makeServer();
+    const envelope = serveLine(
+      server,
+      '{"jsonrpc": "2.0", "id": 9, "method": "oracle.call", "params": ' +
+        '{"api": "types.Filter.in_the_last", "input": ' +
+        '{"property": "p", "quantity": 18.0, "date_unit": "day"}}}',
+    );
+    expect(envelope.error).toBeUndefined();
+    const raw = server.handleLine(
+      '{"jsonrpc": "2.0", "id": 10, "method": "oracle.call", "params": ' +
+        '{"api": "types.Filter.in_the_last", "input": ' +
+        '{"property": "p", "quantity": 18.0, "date_unit": "day"}}}',
+    ) as string;
+    expect(raw).toContain('"_value": 18.0');
+  });
+
+  it("encodes replay classes without registered corpus tags", () => {
+    // ReplayBundle has no corpus $type tag (stays out of vector-codecs)
+    // but the oracle serves its SUCCESS outputs like oracle-py's generic
+    // dataclass expect encoder: all declared fields, cache slots null.
+    const result = call(makeServer(), "types.ReplayBundle", {
+      replays: [],
+      computed_at: "",
+      project_id: 0,
+    });
+    expect(result).toEqual({
+      ok: true,
+      output: {
+        _df_cache: null,
+        replays: [],
+        computed_at: "",
+        project_id: 0,
+        _sessions_df_cache: null,
+        _actions_df_cache: null,
+        _events_df_cache: null,
+        _mixpanel_df_cache: null,
+        _elements_df_cache: null,
+      },
+    });
+  });
+
+  it("keeps wirestub.* UNPORTED (async replay transport, Phase 3)", () => {
+    const result = call(makeServer(), "wirestub.request", {
+      method: "GET",
+      path: "/ping",
+    });
+    expect(result).toEqual({
+      ok: false,
+      error: { class: "Unported", code: "UNPORTED" },
+    });
+  });
+});
+
+describe("codec.roundtrip (protocol 1.1 addendum, §8)", () => {
+  /**
+   * Execute one `codec.roundtrip` and return its result payload.
+   *
+   * @param server - The server under test.
+   * @param value - The `params.value` member.
+   * @returns The `{ok, output}` payload.
+   */
+  function roundtrip(
+    server: OracleServer,
+    value: unknown,
+  ): Record<string, unknown> {
+    const envelope = serve(server, "codec.roundtrip", { value });
+    expect(envelope.error).toBeUndefined();
+    return envelope.result as Record<string, unknown>;
+  }
+
+  it("round-trips a tagged Filter payload to itself", () => {
+    const payload = {
+      $type: "Filter",
+      _property: "plan",
+      _operator: "equals",
+      _value: "pro",
+      _property_type: "string",
+      _resource_type: "events",
+      _date_unit: null,
+      _list_item_filters: null,
+      _list_item_quantifier: null,
+    };
+    expect(roundtrip(makeServer(), payload)).toEqual({
+      ok: true,
+      output: payload,
+    });
+  });
+
+  it("round-trips SecretStr to the REVEALED value (C8a anti-vacuity)", () => {
+    expect(
+      roundtrip(makeServer(), { $type: "SecretStr", value: "s3cr3t" }),
+    ).toEqual({ ok: true, output: { $type: "SecretStr", value: "s3cr3t" } });
+  });
+
+  it("round-trips plain-position integral floats as raw tokens", () => {
+    const server = makeServer();
+    const raw = server.handleLine(
+      '{"jsonrpc": "2.0", "id": 3, "method": "codec.roundtrip", ' +
+        '"params": {"value": [18.0, 1.5, 18]}}',
+    ) as string;
+    const envelope = JSON.parse(raw) as Envelope;
+    expect(envelope.error).toBeUndefined();
+    expect(raw).toContain("[18.0, 1.5, 18]");
+  });
+
+  it("keeps float tags INSIDE rich payloads (encode_input_value parity)", () => {
+    const payload = {
+      $type: "Filter",
+      _property: "p",
+      _operator: "is greater than",
+      _value: { $type: "float", value: "18.0" },
+      _property_type: "number",
+      _resource_type: "events",
+      _date_unit: null,
+      _list_item_filters: null,
+      _list_item_quantifier: null,
+    };
+    expect(roundtrip(makeServer(), payload)).toEqual({
+      ok: true,
+      output: payload,
+    });
+  });
+
+  it("answers -32602 for undecodable values", () => {
+    const envelope = serve(makeServer(), "codec.roundtrip", {
+      value: { $type: "NoSuchTag", x: 1 },
+    });
+    expect(envelope.error?.code).toBe(JSONRPC_INVALID_PARAMS);
+  });
+
+  it("answers -32602 when params.value is missing", () => {
+    const envelope = serve(makeServer(), "codec.roundtrip", {});
+    expect(envelope.error?.code).toBe(JSONRPC_INVALID_PARAMS);
+  });
+});

@@ -27,7 +27,12 @@ import type {
   FilterOperator,
   FilterPropertyType,
 } from "../literals.js";
-import type { CohortDefinition } from "./cohort.js";
+// Runtime import cycle note: cohort.ts imports Filter for its selector
+// builders and filter.ts imports sanitizeRawCohort for inline-definition
+// cohort filters. Both modules only USE the other's bindings inside
+// function bodies (never during module evaluation), which ESM live
+// bindings resolve safely.
+import { sanitizeRawCohort, type CohortDefinition } from "./cohort.js";
 import {
   isPyInt,
   isRealCalendarDate,
@@ -779,10 +784,6 @@ export class Filter {
    * @param negated - Whether this is a "does not contain" filter.
    * @returns Constructed Filter with cohort-specific internal fields.
    * @throws ParamValidationError - On CF1/CF2 violations.
-   * @throws Error - TODO(port, P2-5b): the inline-`CohortDefinition`
-   *   branch needs `CohortDefinition.toDict` + `sanitizeRawCohort`,
-   *   which land with the cohort-family packet (no recorded vector
-   *   reaches it today).
    */
   private static buildCohortFilter(
     cohort: number | CohortDefinition,
@@ -802,9 +803,12 @@ export class Filter {
     if (isPyInt(cohort)) {
       cohortEntry["id"] = cohort;
     } else {
-      throw new Error(
-        "TODO(port, P2-5b): inline CohortDefinition cohort filters need " +
-          "CohortDefinition.toDict + sanitizeRawCohort (cohort-family packet)",
+      // Inline definition: embed the sanitized to-dict payload exactly
+      // as Python does (`_sanitize_raw_cohort(cohort.to_dict())`).
+      // Stub closed by P2-9: the differential gate surfaced the
+      // leftover TODO(port, P2-5b) throw on this branch.
+      cohortEntry["raw_cohort"] = sanitizeRawCohort(
+        (cohort as CohortDefinition).toDict(),
       );
     }
 

@@ -48,6 +48,29 @@ export const PROPERTY_OPERATOR_MAP: ReadonlyMap<string, string> = new Map([
 ]);
 
 /**
+ * Mirror of Python's builtin `KeyError` for the ONE call site that
+ * raises it: `has_property`'s `_PROPERTY_OPERATOR_MAP[operator]` lookup
+ * (types.py ~8959) on an operator outside the map. Uncoded builtin
+ * raises are R5.5-excluded from the corpus, but the differential
+ * harness compares them by bare CLASS name (oracle-protocol.md §4.1),
+ * and the pre-fix TS port silently constructed with an `undefined`
+ * selector operator instead — a real divergence found by the P2-9 gate.
+ * Kept file-local (never exported from the package barrel): it is not
+ * part of the 28-class C3 hierarchy.
+ */
+class KeyError extends Error {
+  /**
+   * Wrap the missing key, `repr`-style like CPython.
+   *
+   * @param key - The missing map key.
+   */
+  constructor(key: string) {
+    super(JSON.stringify(key));
+    this.name = "KeyError";
+  }
+}
+
+/**
  * Set of `Filter._operator` values accepted by {@link buildEventSelector}
  * — mirror of `types._FILTER_TO_SELECTOR_SUPPORTED`.
  *
@@ -614,7 +637,14 @@ export class CohortCriteria {
       );
     }
 
-    const selectorOperator = PROPERTY_OPERATOR_MAP.get(operator) as string;
+    const selectorOperator = PROPERTY_OPERATOR_MAP.get(operator);
+    if (selectorOperator === undefined) {
+      // Python: `_PROPERTY_OPERATOR_MAP[operator]` raises KeyError for
+      // operators outside the map (uncoded builtin raise, R5.5) — the
+      // typed signature makes this unreachable from TS call sites, but
+      // vector/bridge replay can carry any recorded string.
+      throw new KeyError(operator);
+    }
 
     const selectorNode: Record<string, unknown> = {
       property: "user",

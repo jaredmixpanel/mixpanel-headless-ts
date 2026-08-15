@@ -1017,3 +1017,35 @@ describe("C9 guard-totality property (fast-check #4)", () => {
     );
   });
 });
+
+describe("CohortCriteria.hasProperty unknown-operator parity (P2-9 gate finding)", () => {
+  it("raises KeyError-by-name for operators outside the map", () => {
+    // Python: `_PROPERTY_OPERATOR_MAP[operator]` raises a bare KeyError
+    // (uncoded, R5.5); the pre-fix port silently constructed with an
+    // `undefined` selector operator — a real cross-language divergence
+    // found by the P2-9 differential gate. Class NAME is the comparison
+    // key (oracle-protocol.md §4.1 bare-class encoding).
+    let thrown: unknown;
+    try {
+      CohortCriteria.hasProperty("plan", "premium", {
+        operator: "junk" as never,
+      });
+    } catch (cause) {
+      thrown = cause;
+    }
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).name).toBe("KeyError");
+    expect((thrown as Error).constructor.name).toBe("KeyError");
+  });
+
+  it("fires AFTER the CD7 empty-property guard (Python check order)", () => {
+    // types.py ~8952: CD7 raises first; the map lookup comes second.
+    let thrown: unknown;
+    try {
+      CohortCriteria.hasProperty("", "premium", { operator: "junk" as never });
+    } catch (cause) {
+      thrown = cause;
+    }
+    expect((thrown as { code?: string }).code).toBe("CD7_EMPTY_PROPERTY");
+  });
+});

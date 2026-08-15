@@ -8,16 +8,22 @@
  * (`ok: false` payloads with class name + code, messages stripped), while
  * only harness bugs surface as JSON-RPC `error` objects.
  *
- * Phase-1 `oracle.call` surface (protocol §4.2): the D13 compat module
- * ONLY (`compat.zfill` / `compat.python_str` / `compat.python_float_str`,
- * bound to the real `packages/core` port). Every other api the naming
- * sources know answers the `{class: "Unported", code: "UNPORTED"}` skip
- * payload — the fuzz harness counts it as skip, never divergence — and a
- * name in NO mapping source is a `-32602` protocol error (fail fast; the
- * harness only emits registry names). Scope is checked BEFORE input
- * decoding on purpose: unported apis carry rich `$type` tags (`Filter`,
- * ...) this side cannot decode yet, and decoding first would turn their
- * skips into protocol errors.
+ * Phase-2 `oracle.call` surface (protocol §4.2/§8): the D13 compat module
+ * (`compat.zfill` / `compat.python_str` / `compat.python_float_str`,
+ * bound to the real `packages/core` port via the raw-token path) PLUS the
+ * 44 `types.*` contract entries, served through the SAME bindings module
+ * as the conformance runner (`conformance-runner/src/bindings.ts`
+ * `createRunnerDeps` — one registration module, so runner and oracle can
+ * never disagree; phase2-design C9). The protocol 1.1 addendum method
+ * `codec.roundtrip` round-trips `$type`-tagged values through the full
+ * rich codec table. Every other api the naming sources know answers the
+ * `{class: "Unported", code: "UNPORTED"}` skip payload — the fuzz
+ * harness counts it as skip, never divergence — and a name in NO mapping
+ * source is a `-32602` protocol error (fail fast; the harness only emits
+ * registry names). Scope is checked BEFORE input decoding on purpose:
+ * unported apis may carry rich `$type` tags whose decode failures would
+ * otherwise turn their skips into protocol errors; `wirestub.*` stays
+ * UNPORTED here (async replay transport — wire scope is Phase 3).
  *
  * The stdin/stdout loop lives in `main.ts`; this module is transport-free
  * so protocol behavior is unit-testable in-process (mirroring oracle-py's
@@ -29,17 +35,34 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { resolveApi } from "../../conformance-runner/src/api-map.js";
+import { createRunnerDeps } from "../../conformance-runner/src/bindings.js";
 import {
   canonicalize,
   canonicalizeError,
 } from "../../conformance-runner/src/canonical.js";
 import {
-  CodecRegistry,
   UndecodableValueError,
   encodeExpectValue,
 } from "../../conformance-runner/src/codecs.js";
-import type { JsonValue } from "../../conformance-runner/src/json-value.js";
+import {
+  JsonNumber,
+  type JsonValue,
+} from "../../conformance-runner/src/json-value.js";
+import type {
+  InvocationContext,
+  RunnerDeps,
+} from "../../conformance-runner/src/runner.js";
+import { createShims } from "../../conformance-runner/src/shims.js";
 import { pythonFloatStr, zfill } from "../../packages/core/src/compat/index.js";
+import {
+  ReplayBundle,
+  ReplayEvent,
+  ReplaySummary,
+  type ReplayBundleFields,
+  type ReplayEventFields,
+  type ReplaySummaryFields,
+} from "../../packages/core/src/types/results/replays.js";
+import { CONTRACT_TAG_CODECS } from "../../packages/core/src/types/vector-codecs.js";
 import { pythonStrRaw } from "./python-str-raw.js";
 import {
   RawObject,
@@ -50,8 +73,17 @@ import {
   toJsonValue,
 } from "./raw-json.js";
 
-/** Version stamp returned by `oracle.info` (oracle-protocol.md §2). */
-export const PROTOCOL_VERSION = "1.0";
+/**
+ * Version stamp returned by `oracle.info` (oracle-protocol.md §2; "1.1"
+ * adds the §8 `codec.roundtrip` method — the Phase-2 P2-9 addendum).
+ */
+export const PROTOCOL_VERSION = "1.1";
+
+/**
+ * The frozen record instant (oracle-protocol.md §7 determinism
+ * environment; corpus manifest `record_epoch`).
+ */
+const RECORD_EPOCH = "2026-01-15T12:00:00Z";
 
 /** JSON-RPC 2.0: the request line was not valid JSON. */
 export const JSONRPC_PARSE_ERROR = -32700;
@@ -59,7 +91,11 @@ export const JSONRPC_PARSE_ERROR = -32700;
 /** JSON-RPC 2.0: the request object was malformed. */
 export const JSONRPC_INVALID_REQUEST = -32600;
 
-/** JSON-RPC 2.0: the method is not one of the three oracle methods. */
+/**
+ * JSON-RPC 2.0: the method is not one of the four protocol methods
+ * (`oracle.info` / `oracle.call` / `oracle.shutdown` / `codec.roundtrip`
+ * — oracle-protocol.md §5/§8).
+ */
 export const JSONRPC_METHOD_NOT_FOUND = -32601;
 
 /** JSON-RPC 2.0: params failed validation (unknown api, bad input). */
@@ -79,6 +115,233 @@ const COMPAT_APIS: ReadonlySet<string> = new Set([
   "compat.python_str",
   "compat.python_float_str",
 ]);
+
+/**
+ * The three replay dataclass tags with NO corpus `$type` occurrences.
+ *
+ * They stay unregistered in `vector-codecs.ts` so the P2-8 sweep's
+ * every-registered-tag-exercised check stays honest, but the ORACLE
+ * needs them: `oracle.call` success outputs and `codec.roundtrip`
+ * instances of these classes must encode/decode exactly like Python's
+ * generic dataclass codec (which serves ALL registered dataclasses).
+ * The rows are registered on the oracle's own registry instance only.
+ */
+const ORACLE_REPLAY_ROWS: ReadonlyArray<
+  readonly [string, new (fields: never) => object]
+> = [
+  [
+    "ReplaySummary",
+    ReplaySummary as new (fields: ReplaySummaryFields) => object,
+  ],
+  ["ReplayEvent", ReplayEvent as new (fields: ReplayEventFields) => object],
+  ["ReplayBundle", ReplayBundle as new (fields: ReplayBundleFields) => object],
+];
+
+/**
+ * The rich (dataclass/model) `$type` tags — the tags Python's EXPECT
+ * encoder drops (`_encode_common(tagged_models=False)`), as opposed to
+ * the built-in value tags (`datetime`, `date`, `bytes`, `SecretStr`,
+ * `float`, `callback`), which appear in expect encodings too.
+ */
+const RICH_TAGS: ReadonlySet<string> = new Set([
+  ...CONTRACT_TAG_CODECS.keys(),
+  ...ORACLE_REPLAY_ROWS.map(([tag]) => tag),
+]);
+
+/**
+ * Whether one vector-JSON value is a plain (prototype-Object) record.
+ *
+ * @param value - The value to test.
+ * @returns `true` for plain objects (never `JsonNumber` tokens/arrays).
+ */
+function isPlainRecord(value: JsonValue): value is Record<string, JsonValue> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    Object.getPrototypeOf(value) === Object.prototype
+  );
+}
+
+/**
+ * Extract a finite `$type: float` payload's spelling, if any.
+ *
+ * @param value - A vector-JSON value.
+ * @returns The canonical float spelling for finite float tags (raw-token
+ *   convertible), or `null` (non-float payloads, NaN/Infinity spellings).
+ */
+function finiteFloatSpelling(value: JsonValue): string | null {
+  if (!isPlainRecord(value) || value["$type"] !== "float") {
+    return null;
+  }
+  const spelling = value["value"];
+  if (
+    typeof spelling !== "string" ||
+    ["NaN", "Infinity", "-Infinity"].includes(spelling)
+  ) {
+    return null;
+  }
+  return spelling;
+}
+
+/**
+ * Tag integral-float number TOKENS so decode preserves Python float-ness.
+ *
+ * Python's `json.loads` keeps `18.0` a `float`; the TS
+ * `decodeInputKwargs` collapses the `JsonNumber("18.0")` token to the
+ * integer-valued number `18`. Rewriting such tokens as `$type: float`
+ * payloads before decoding makes them `PyFloat` — the established
+ * float-ness carrier (D13 / Risk #3) — so both bridges construct with
+ * the same value kind. Integer tokens and fractional floats pass
+ * through untouched.
+ *
+ * @param value - The undecoded vector-JSON value.
+ * @returns The value with every integral-float token float-tagged.
+ */
+function tagIntegralFloatTokens(value: JsonValue): JsonValue {
+  if (value instanceof JsonNumber) {
+    if (!value.isIntegerToken()) {
+      const parsed = value.toNumber();
+      if (Number.isFinite(parsed) && Number.isInteger(parsed)) {
+        return { $type: "float", value: pythonFloatStr(parsed) };
+      }
+    }
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => tagIntegralFloatTokens(item));
+  }
+  if (isPlainRecord(value)) {
+    const out: Record<string, JsonValue> = {};
+    for (const [key, member] of Object.entries(value)) {
+      out[key] = tagIntegralFloatTokens(member);
+    }
+    return out;
+  }
+  return value;
+}
+
+/**
+ * Re-encode one tagged vector-JSON value in Python's EXPECT encoding.
+ *
+ * oracle-py's `oracle.call` output side is `_encode_result` →
+ * `encode_expect_value` (measured semantics): rich `$type` members are
+ * absent EVERYWHERE, floats are raw number tokens EVERYWHERE, and the
+ * built-in tags (`datetime`, `date`, `bytes`, `SecretStr`, `callback`)
+ * stay. The conformance bindings encode through the INPUT-side registry
+ * (`runGuarded` → `codecs.encodeValue`), so the oracle applies this
+ * transform to mirror oracle-py byte-for-byte. Non-finite float tags
+ * stay tagged (raw NaN/Infinity tokens are illegal vector JSON — the
+ * D6 canonicalizer rejects the payload on both sides symmetrically).
+ *
+ * @param value - The tagged vector-JSON value.
+ * @returns The expect-encoded value.
+ */
+function toExpectEncoding(value: JsonValue): JsonValue {
+  if (Array.isArray(value)) {
+    return value.map((item) => toExpectEncoding(item));
+  }
+  if (isPlainRecord(value)) {
+    const spelling = finiteFloatSpelling(value);
+    if (spelling !== null) {
+      return new JsonNumber(spelling);
+    }
+    const out: Record<string, JsonValue> = {};
+    for (const [key, member] of Object.entries(value)) {
+      if (
+        key === "$type" &&
+        typeof member === "string" &&
+        RICH_TAGS.has(member)
+      ) {
+        continue;
+      }
+      out[key] = toExpectEncoding(member);
+    }
+    return out;
+  }
+  return value;
+}
+
+/**
+ * Re-encode one tagged vector-JSON value in Python's INPUT encoding.
+ *
+ * oracle-py's `codec.roundtrip` output side is `encode_input_value`
+ * (measured semantics): rich `$type` tags stay, floats INSIDE rich
+ * payloads stay `$type: float`-tagged (recursively), but floats in
+ * PLAIN positions — top level, plain lists/dicts outside any rich
+ * payload — are raw number tokens. The TS registry tags every `PyFloat`
+ * unconditionally, so this transform un-tags exactly the plain-position
+ * ones.
+ *
+ * @param value - The registry-encoded vector-JSON value.
+ * @param inRich - Whether the walk is inside a rich `$type` payload.
+ * @returns The input-encoded value.
+ */
+function toInputEncoding(value: JsonValue, inRich: boolean): JsonValue {
+  if (Array.isArray(value)) {
+    return value.map((item) => toInputEncoding(item, inRich));
+  }
+  if (isPlainRecord(value)) {
+    if (!inRich) {
+      const spelling = finiteFloatSpelling(value);
+      if (spelling !== null) {
+        return new JsonNumber(spelling);
+      }
+    }
+    const tag = value["$type"];
+    const childRich = inRich || (typeof tag === "string" && RICH_TAGS.has(tag));
+    const out: Record<string, JsonValue> = {};
+    for (const [key, member] of Object.entries(value)) {
+      out[key] = toInputEncoding(member, childRich);
+    }
+    return out;
+  }
+  return value;
+}
+
+/**
+ * Register the oracle-only replay dataclass codecs (see
+ * {@link ORACLE_REPLAY_ROWS}) on one registry instance.
+ *
+ * Decode = pass every non-`$type` member (child-decoded) to the real
+ * constructor — guards fire exactly like Python's `_decode_dataclass`;
+ * the always-`null` cache slots are constructor-ignored on both sides.
+ * Encode = own-field walk (`$type` first), mirroring Python
+ * `_encode_common(tagged_models=True)` over declared dataclass fields.
+ *
+ * @param codecs - The oracle's codec registry.
+ */
+function registerOracleReplayCodecs(codecs: RunnerDeps["codecs"]): void {
+  for (const [tag, cls] of ORACLE_REPLAY_ROWS) {
+    codecs.registerTagCodec(
+      tag,
+      (payload, decodeField) => {
+        const bag: Record<string, unknown> = {};
+        for (const [key, member] of Object.entries(payload)) {
+          if (key !== "$type") {
+            bag[key] = decodeField(member as JsonValue);
+          }
+        }
+        try {
+          return new cls(bag as never);
+        } catch (cause) {
+          throw new UndecodableValueError(
+            `could not reconstruct ${tag} from vector fields: ${String(cause)}`,
+          );
+        }
+      },
+      {
+        matches: (value) => value instanceof cls,
+        encode: (value, encodeChild) => {
+          const out: Record<string, JsonValue> = { $type: tag };
+          for (const [key, member] of Object.entries(value as object)) {
+            out[key] = encodeChild(member) as JsonValue;
+          }
+          return out;
+        },
+      },
+    );
+  }
+}
 
 /** The `oracle.info` identity block (oracle-protocol.md §3). */
 export interface OracleIdentity {
@@ -204,8 +467,13 @@ export class OracleServer {
   /** The identity block served by `oracle.info`. */
   private readonly identity: OracleIdentity;
 
-  /** The `$type` decode table (built-ins only in Phase 1). */
-  private readonly codecs = new CodecRegistry();
+  /**
+   * The SAME bindings the conformance runner uses (phase2-design C9:
+   * one registration module, imported by both, so runner and oracle can
+   * never disagree): the full rich `$type` codec table plus the
+   * `compat.*`/`wirestub.*`/`types.*` implementation registry.
+   */
+  private readonly deps: RunnerDeps = createRunnerDeps(RECORD_EPOCH);
 
   /** Whether `oracle.shutdown` has been served. */
   private shutdown = false;
@@ -218,6 +486,7 @@ export class OracleServer {
    */
   constructor(identity: OracleIdentity) {
     this.identity = identity;
+    registerOracleReplayCodecs(this.deps.codecs);
   }
 
   /**
@@ -333,6 +602,15 @@ export class OracleServer {
       }
       return this.callFromParams(params);
     }
+    if (method === "codec.roundtrip") {
+      if (!(params instanceof RawObject)) {
+        throw new OracleProtocolError(
+          JSONRPC_INVALID_PARAMS,
+          "codec.roundtrip requires a params object",
+        );
+      }
+      return this.codecRoundtrip(params);
+    }
     throw new OracleProtocolError(
       JSONRPC_METHOD_NOT_FOUND,
       `unknown method ${JSON.stringify(method)}`,
@@ -397,6 +675,13 @@ export class OracleServer {
     if (COMPAT_APIS.has(api)) {
       return this.executeCompat(api, rawInput);
     }
+    if (!api.startsWith("wirestub.") && this.deps.implementations.has(api)) {
+      // The Phase-2 `types.*` surface: served through the SAME bindings
+      // the conformance runner replays (protocol §8 scope note).
+      // `wirestub.*` is excluded — its bindings are async and need the
+      // vector replay transport, out of oracle scope until Phase 3.
+      return this.executeBound(api, rawInput);
+    }
     if (resolveApi(api).status === "unmapped") {
       throw new OracleProtocolError(
         JSONRPC_INVALID_PARAMS,
@@ -405,6 +690,139 @@ export class OracleServer {
       );
     }
     return { ok: false, error: { class: "Unported", code: "UNPORTED" } };
+  }
+
+  /**
+   * Execute one bindings-registry entry and encode its outcome as DATA.
+   *
+   * The invocation context mirrors the conformance runner's: decoded
+   * kwargs (rich `$type` values reconstructed through the shared codec
+   * table), the undecoded lossless input, fresh per-call shims at the
+   * §7 record epoch, and an empty state map (the `types.*` surface is
+   * setup-free).
+   *
+   * @param api - A bound Python dotted api name.
+   * @param rawInput - The undecoded kwargs.
+   * @returns `{ok: true, output}` for returns; `{ok: false, error}` for
+   *   thrown library errors (class + code, messages stripped, R5.4).
+   * @throws OracleProtocolError - For undecodable input (`-32602`), an
+   *   async binding (out of oracle scope — a wiring bug, `-32000`), or
+   *   an unencodable/uncanonicalizable output (`-32000`).
+   */
+  private executeBound(api: string, rawInput: RawObject): SerializableValue {
+    const inputJson: Record<string, JsonValue> = {};
+    for (const [name, value] of rawInput.entries) {
+      // Integral-float tokens carry Python float-ness only in the raw
+      // token; re-tag them so decode yields PyFloat (D13 / Risk #3).
+      inputJson[name] = tagIntegralFloatTokens(toJsonValue(value));
+    }
+    let kwargs: Record<string, unknown>;
+    try {
+      kwargs = this.deps.codecs.decodeInputKwargs(inputJson);
+    } catch (thrown) {
+      if (thrown instanceof UndecodableValueError) {
+        throw new OracleProtocolError(
+          JSONRPC_INVALID_PARAMS,
+          `input decode failed: ${thrown.message}`,
+        );
+      }
+      throw thrown;
+    }
+    const context: InvocationContext = {
+      api,
+      kwargs,
+      rawInput: inputJson,
+      shims: createShims(this.deps.recordEpoch),
+      state: new Map<string, unknown>(),
+    };
+    const implementation = this.deps.implementations.get(api);
+    if (implementation === undefined) {
+      throw new OracleProtocolError(
+        JSONRPC_INTERNAL_ERROR,
+        `binding vanished for ${JSON.stringify(api)}`,
+      );
+    }
+    let returned: unknown;
+    try {
+      returned = implementation(context);
+    } catch (thrown) {
+      return { ok: false, error: this.errorPayload(thrown) };
+    }
+    if (typeof (returned as { then?: unknown } | null)?.then === "function") {
+      throw new OracleProtocolError(
+        JSONRPC_INTERNAL_ERROR,
+        `async binding ${JSON.stringify(api)} is out of oracle scope (D14)`,
+      );
+    }
+    let output: JsonValue;
+    try {
+      // Mirror oracle-py's `_encode_result` (EXPECT encoding): the
+      // bindings encode through the input-side tagged registry, so rich
+      // `$type` members are stripped and float tags become raw tokens
+      // (built-in non-float tags stay).
+      output = toExpectEncoding(this.deps.codecs.encodeValue(returned));
+      canonicalize(output);
+    } catch (thrown) {
+      throw new OracleProtocolError(
+        JSONRPC_INTERNAL_ERROR,
+        `output encode/canonicalization failed: ${String(thrown)}`,
+      );
+    }
+    return { ok: true, output };
+  }
+
+  /**
+   * Round-trip one `$type`-tagged value through the codec table
+   * (protocol 1.1 addendum, oracle-protocol.md §8; phase2-design C9).
+   *
+   * Decodes `params.value` with the FULL rich codec table (reconstructing
+   * the real core instances) and re-encodes with the input-side tagged
+   * encoder, so a valid tagged payload round-trips to itself modulo D6
+   * canonicalization.
+   *
+   * @param params - The raw params object; must carry a `value` member
+   *   (any vector-JSON value — untagged values round-trip through the
+   *   identity path).
+   * @returns `{ok: true, output: encode(decode(value))}`.
+   * @throws OracleProtocolError - `-32602` when `value` is missing or
+   *   undecodable (unknown tag, malformed payload, constructor guard
+   *   failure during reconstruction — §8: the harness only ships
+   *   payloads it encoded from live instances); `-32000` when the
+   *   round-tripped product cannot be encoded or canonicalized.
+   */
+  private codecRoundtrip(params: RawObject): SerializableValue {
+    const raw = params.get("value");
+    if (raw === undefined) {
+      throw new OracleProtocolError(
+        JSONRPC_INVALID_PARAMS,
+        "codec.roundtrip requires params.value",
+      );
+    }
+    let decoded: unknown;
+    try {
+      // Integral-float tokens re-tag first so decode preserves Python
+      // float-ness (see executeBound); the output side then un-tags
+      // plain-position floats to mirror `encode_input_value` exactly.
+      decoded = this.deps.codecs.decodeValue(
+        tagIntegralFloatTokens(toJsonValue(raw)),
+      );
+    } catch (thrown) {
+      throw new OracleProtocolError(
+        JSONRPC_INVALID_PARAMS,
+        `value decode failed: ${String(thrown)}`,
+      );
+    }
+    let output: JsonValue;
+    try {
+      output = toInputEncoding(this.deps.codecs.encodeValue(decoded), false);
+      canonicalize(output);
+    } catch (thrown) {
+      throw new OracleProtocolError(
+        JSONRPC_INTERNAL_ERROR,
+        `round-trip encode/canonicalization failed: ${String(thrown)}`,
+      );
+    }
+    return { ok: true, output };
   }
 
   /**
@@ -498,7 +916,7 @@ export class OracleServer {
     const decoded: Record<string, unknown> = {};
     try {
       for (const [name, value] of rawInput.entries) {
-        decoded[name] = this.codecs.decodeValue(toJsonValue(value));
+        decoded[name] = this.deps.codecs.decodeValue(toJsonValue(value));
       }
     } catch (thrown) {
       if (thrown instanceof UndecodableValueError) {

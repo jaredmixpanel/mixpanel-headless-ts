@@ -54,3 +54,76 @@ the host engine's Unicode version. Regression test:
 - Framing verified ASCII-safe (all response lines < U+0080; lone-surrogate
   and astral outputs `\uXXXX`-escaped); EOF on stdin and `oracle.shutdown`
   both exit 0.
+
+---
+
+# P2-9 Phase-2 differential gate — run record (2026-08-15)
+
+Spec: phase2-design C9/C10 + oracle-protocol.md §8 (protocol 1.1 addendum).
+Harness: `conformance/differential/fuzz_harness.py` (Python repo, branch
+`ts-port/phase2-contract-support`), oracle-py (library 0.2.1) vs oracle-ts
+(`node scripts/run-oracle.mjs`), both pinned to corpus source_commit
+8ae76314a0a6d2420812473181b509364417a243, both reporting protocol 1.1.
+
+## Surface
+
+- oracle-ts now serves the 44 `types.*` contract apis by reusing the SAME
+  bindings module as the conformance runner (`createRunnerDeps`), plus the
+  new `codec.roundtrip` method (decode → encode through the full rich
+  codec table). `wirestub.*` and everything else stays UNPORTED (skip).
+- Output parity transforms (measured against oracle-py's encoders):
+  `toExpectEncoding` for `oracle.call` (rich `$type` members stripped,
+  float tags → raw tokens) and `toInputEncoding` for `codec.roundtrip`
+  (float tags kept inside rich payloads, raw in plain positions);
+  `tagIntegralFloatTokens` on the input side preserves Python float-ness
+  of integral-float tokens (D13 / Risk #3 carrier: `PyFloat`).
+- Oracle-only codecs for `ReplaySummary`/`ReplayEvent`/`ReplayBundle`
+  (zero corpus `$type` occurrences — deliberately unregistered in
+  `vector-codecs.ts` for P2-8 sweep honesty; the oracle registers them on
+  its own registry instance).
+
+## Gate run (≥500 examples per family + full edge set)
+
+`--examples 500`, 8 Phase-2 targets. Edge set: R10.9 scalar items per
+family (dispositions in `conformance/differential/phase2-edge-coverage.json`)
+plus one corpus-harvested probe per Phase-2 guard code (81/81) and per
+`types.*` api (44/44), attached as Hypothesis `@example`s.
+
+| target                | examples | skipped | divergences |
+| --------------------- | -------- | ------- | ----------- |
+| filter_family         | 529      | 0       | 0           |
+| metric_group_family   | 523      | 0       | 0           |
+| cohort_family         | 533      | 0       | 0           |
+| funnel_family         | 508      | 0       | 0           |
+| retention_flow_family | 507      | 0       | 0           |
+| frequency_family      | 515      | 0       | 0           |
+| replay_family         | 524      | 0       | 0           |
+| codec_roundtrip       | 512      | 0       | 0           |
+| total                 | 4151     | 0       | **0**       |
+
+Full-suite regression (`--examples 200`, all 15 targets incl. Phase-1):
+status ok, 3,217 examples, 0 divergences; the six non-compat Phase-1
+targets still skip (UNPORTED) per protocol §4.2. Machine-readable gate
+record: `conformance/differential/phase2-gate.json` (Python repo).
+
+## Real findings fixed during the run (2 library bugs, then 0 divergences)
+
+1. `CohortCriteria.hasProperty` with an operator outside
+   `_PROPERTY_OPERATOR_MAP`: Python raises a bare `KeyError` (uncoded,
+   R5.5); the TS port silently constructed a selector node with an
+   `undefined` operator. Fixed: file-local `KeyError` mirror in
+   `cohort.ts` thrown after the CD7 guard (Python check order);
+   translated tests added. Repro:
+   `conformance/differential/repros/2026-08-15-types-CohortCriteria-has_property-keyerror.json`.
+2. `Filter.inCohort`/`notInCohort` with an inline `CohortDefinition`
+   still threw the P2-5a `TODO(port, P2-5b)` stub — P2-5b landed
+   `toDict`/`sanitizeRawCohort` but never closed the branch (no recorded
+   vector reaches it). Fixed: `buildCohortFilter` embeds
+   `sanitizeRawCohort(cohort.toDict())` like Python's
+   `_build_cohort_filter`; translated tests added. Repro:
+   `conformance/differential/repros/2026-08-15-types-Filter-in_cohort.json`.
+
+Oracle-infrastructure gaps fixed during bring-up (not library bugs):
+expect-vs-tagged output encoding, integral-float token fidelity, and the
+unregistered-replay-tag encode path — see the Python repo P2-9 notes
+(`context/phase2/notes/p2-9-notes.md`) triage log.
