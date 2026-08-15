@@ -1,0 +1,185 @@
+{
+  "$comment": "naming-map.md §4 exceptions table (machine-readable). Row format {python, ts, scope, rule}. scope 'api' rows map dotted call.api names; '<prefix>.*' python values are module-relocation wildcards (final segment camelized mechanically per §3, leading underscore dropped per R7.6). kwarg:/type: rows document input-casing policy for the codec layer (default keep for wire-shaped DTO fields). Consumed by scripts/generate-api-map.mjs and src/naming.ts; unlisted names in mapping domains use the mechanical §3 transform under their module wildcard; a call.api matching NO row is UNMAPPED_API (never fuzzy-matched).",
+  "rows": [
+    {
+      "python": "workspace.build_params",
+      "ts": "core/workspace.buildParams",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "segfilter.build_segfilter_entry",
+      "ts": "core/query/segfilter.buildSegfilterEntry",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "user_builders.filter_to_selector",
+      "ts": "core/query/user-builders.filterToSelector",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "expressions.normalize_on_expression",
+      "ts": "core/query/expressions.normalizeOnExpression",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "transforms.transform_event",
+      "ts": "core/services/transforms.transformEvent",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "types._sanitize_raw_cohort",
+      "ts": "core/types.sanitizeRawCohort",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "types.CohortDefinition.to_dict",
+      "ts": "core/types.CohortDefinition.toDict",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "compat.zfill",
+      "ts": "core/compat.zfill",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "compat.python_str",
+      "ts": "core/compat.pythonStr",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "compat.python_float_str",
+      "ts": "core/compat.pythonFloatStr",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "workspace.*",
+      "ts": "core/workspace.*",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "api_client.*",
+      "ts": "core/client/api-client.*",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "pagination.*",
+      "ts": "core/client/pagination.*",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "oauth_flow.*",
+      "ts": "core/auth/flow.*",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "region_probe.*",
+      "ts": "core/auth/region-probe.*",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "replays.*",
+      "ts": "core/services/replays.*",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "transforms.*",
+      "ts": "core/services/transforms.*",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "bookmark_builders.*",
+      "ts": "core/bookmarks/builders.*",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "validation.*",
+      "ts": "core/bookmarks/validation.*",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "segfilter.*",
+      "ts": "core/query/segfilter.*",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "user_builders.*",
+      "ts": "core/query/user-builders.*",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "user_validators.*",
+      "ts": "core/query/user-validators.*",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "expressions.*",
+      "ts": "core/query/expressions.*",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "types.*",
+      "ts": "core/types.*",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "replay_labels.*",
+      "ts": "core/replays/labels.*",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "compat.*",
+      "ts": "core/compat.*",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "wirestub.*",
+      "ts": "conformance-runner/wirestub.*",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "where",
+      "ts": "where",
+      "scope": "kwarg:*",
+      "rule": "keep"
+    },
+    {
+      "python": "*",
+      "ts": "*",
+      "scope": "type:*Params",
+      "rule": "keep"
+    },
+    {
+      "python": "*",
+      "ts": "*",
+      "scope": "type:Filter",
+      "rule": "keep"
+    }
+  ]
+}
