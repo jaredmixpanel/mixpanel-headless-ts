@@ -22,6 +22,7 @@ export * from "./invariant.js";
 // names — phase2-design C2). The bookmarks/ enum tables are Python
 // `_internal` and intentionally NOT re-exported here.
 export * from "./types/index.js";
+export * from "./auth/index.js";
 
 /** Package name constant exercised by the skeleton smoke test. */
 export const CORE_PACKAGE_NAME = "@mixpanel-headless/core";

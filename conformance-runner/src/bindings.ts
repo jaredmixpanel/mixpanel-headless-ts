@@ -21,7 +21,9 @@ import {
   zfill,
   type PythonValue,
 } from "../../packages/core/src/compat/index.js";
-import { CodecRegistry } from "./codecs.js";
+import { CONTRACT_TAG_CODECS } from "../../packages/core/src/types/vector-codecs.js";
+import { CodecRegistry, UndecodableValueError } from "./codecs.js";
+import type { JsonValue } from "./json-value.js";
 import { JsonNumber } from "./json-value.js";
 import type { InvocationContext, RunnerDeps } from "./runner.js";
 import { ImplementationRegistry } from "./runner.js";
@@ -169,6 +171,45 @@ function registerWireStubBindings(
 }
 
 /**
+ * Register the Phase-2 contract tag codecs (phase2-design C7 item 2).
+ *
+ * One call per Phase-2 packet's additions — the table itself lives in
+ * `packages/core/src/types/vector-codecs.ts` so the conformance runner
+ * and the differential oracle can never disagree about how a tag
+ * decodes. Decode failures wrap into {@link UndecodableValueError},
+ * mirroring Python `_decode_model` (a committed vector that fails decode
+ * is a codec-table or vector bug and must fail loudly).
+ *
+ * @param codecs - The registry to extend.
+ */
+export function registerContractCodecs(codecs: CodecRegistry): void {
+  for (const [tag, codec] of CONTRACT_TAG_CODECS) {
+    codecs.registerTagCodec(
+      tag,
+      (payload, decodeField) => {
+        try {
+          return codec.decode(payload, (value) =>
+            decodeField(value as JsonValue),
+          );
+        } catch (cause) {
+          throw new UndecodableValueError(
+            `could not reconstruct ${tag} from vector fields: ${String(cause)}`,
+          );
+        }
+      },
+      {
+        matches: (value) => codec.matches(value),
+        // The core encode walk produces vector-JSON by construction
+        // (children pass through encodeChild); the assertion re-types
+        // the structurally generic core return for the runner.
+        encode: (value, encodeChild) =>
+          codec.encode(value, encodeChild) as JsonValue,
+      },
+    );
+  }
+}
+
+/**
  * Build the runner dependencies with every current port-batch binding.
  *
  * @param recordEpoch - The frozen record instant (corpus config /
@@ -186,5 +227,6 @@ export function createRunnerDeps(recordEpoch: string): RunnerDeps {
   const codecs = new CodecRegistry();
   registerCompatBindings(implementations);
   registerWireStubBindings(implementations);
+  registerContractCodecs(codecs);
   return { implementations, codecs, recordEpoch };
 }

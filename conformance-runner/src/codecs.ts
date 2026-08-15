@@ -21,7 +21,10 @@
  * the D6 `PRECISION_LOSS` machinery depends on the distinction).
  */
 
+import { Secret } from "../../packages/core/src/secret.js";
 import { JsonNumber, type JsonValue } from "./json-value.js";
+
+export { Secret };
 
 /** Raised when a vector value cannot be decoded back to a TS value. */
 export class UndecodableValueError extends Error {
@@ -49,20 +52,15 @@ export class UnencodableValueError extends Error {
   }
 }
 
-/** Mirror of Python's `SecretStr` argument wrapper (D5.5 revealed literal). */
-export class SecretValue {
-  /** The revealed fake test value. */
-  readonly value: string;
-
-  /**
-   * Wrap a secret literal.
-   *
-   * @param value - The revealed fake test value from the vector.
-   */
-  constructor(value: string) {
-    this.value = value;
-  }
-}
+/**
+ * Historical name for the decoded `SecretStr` product.
+ *
+ * @deprecated The `$type: SecretStr` built-in now decodes to the REAL
+ * core {@link Secret} wrapper (phase2-design C7 / arbiter V4 respec) —
+ * the placeholder class is gone; this alias survives only so older call
+ * sites keep typechecking. Read the revealed value via `.reveal()`.
+ */
+export type SecretValue = Secret;
 
 /** Decoded `$type: datetime` — the ISO string, kept lossless. */
 export class PyDatetime {
@@ -135,6 +133,36 @@ export type TagDecoder = (
   payload: Readonly<Record<string, JsonValue>>,
   decodeField: (value: JsonValue) => unknown,
 ) => unknown;
+
+/**
+ * Encoder callback for one registered rich `$type` tag (phase2-design C7
+ * item 1 — the encode half of a `TagCodec`).
+ *
+ * `matches` doubles as the C8(a) anti-vacuity `instanceof` probe: it must
+ * be true ONLY for instances of the tag's real core class, so a
+ * decode-to-plain-object codec can never round-trip through it.
+ */
+export interface RichTagEncoder {
+  /**
+   * Whether a live value is an instance of this tag's core class.
+   *
+   * @param value - A live TS value produced by decode or the library.
+   * @returns True when {@link RichTagEncoder.encode} can serialize it.
+   */
+  matches(value: unknown): boolean;
+
+  /**
+   * Serialize the instance back to its tagged vector-JSON shape
+   * (`$type` first, ALL declared fields — mirror of Python
+   * `_encode_common(tagged_models=True)`).
+   *
+   * @param value - A value for which {@link RichTagEncoder.matches}
+   *   returned true.
+   * @param encodeChild - Recursive encoder for nested field values.
+   * @returns The tagged object.
+   */
+  encode(value: unknown, encodeChild: (value: unknown) => JsonValue): JsonValue;
+}
 
 /** Matches a lone (unpaired) UTF-16 surrogate anywhere in a string. */
 const LONE_SURROGATE =
@@ -227,6 +255,9 @@ export class CodecRegistry {
   /** Registered rich-tag decoders, keyed by `$type` name. */
   private readonly decoders = new Map<string, TagDecoder>();
 
+  /** Registered rich-tag encoders, keyed by `$type` name. */
+  private readonly encoders = new Map<string, RichTagEncoder>();
+
   /**
    * Register a decoder for a rich `$type` tag (e.g. `Filter`).
    *
@@ -247,6 +278,46 @@ export class CodecRegistry {
       );
     }
     this.decoders.set(tag, decoder);
+  }
+
+  /**
+   * Register a full rich-tag codec: decoder + encoder (phase2-design C7
+   * item 2 — the `registerContractCodecs` wiring point uses this).
+   *
+   * @param tag - The `$type` name exactly as vectors carry it.
+   * @param decoder - The reconstruction callback.
+   * @param encoder - The encode half ({@link encodeValue} consults it).
+   * @throws Error - If the tag is already registered or shadows a
+   *   built-in (same rules as {@link register}).
+   */
+  registerTagCodec(
+    tag: string,
+    decoder: TagDecoder,
+    encoder: RichTagEncoder,
+  ): void {
+    this.register(tag, decoder);
+    this.encoders.set(tag, encoder);
+  }
+
+  /**
+   * Encode a live TS value into vector-JSON shape, consulting the
+   * registered rich-tag encoders for core class instances the built-in
+   * {@link encodeExpectValue} table does not know.
+   *
+   * @param value - A live TS value (decode product or library output).
+   * @returns A vector-JSON structure ready for canonicalization.
+   * @throws UnencodableValueError - If no built-in branch and no
+   *   registered encoder matches.
+   */
+  encodeValue(value: unknown): JsonValue {
+    return encodeExpectValue(value, (candidate) => {
+      for (const encoder of this.encoders.values()) {
+        if (encoder.matches(candidate)) {
+          return encoder.encode(candidate, (child) => this.encodeValue(child));
+        }
+      }
+      return undefined;
+    });
   }
 
   /**
@@ -339,7 +410,10 @@ export class CodecRegistry {
       case "date":
         return new PyDate(requireTagString(payload, "iso", tag));
       case "SecretStr":
-        return new SecretValue(requireTagString(payload, "value", tag));
+        // The REAL core Secret (R4.6), not a runner placeholder — the
+        // C8(a) sweep asserts the round-trip preserves the REVEALED
+        // value (phase2-design C7 / arbiter V4 respec).
+        return new Secret(requireTagString(payload, "value", tag));
       case "bytes": {
         if (payload["encoding"] !== "base64") {
           throw new UndecodableValueError(
@@ -388,11 +462,19 @@ const BUILTIN_TAGS: ReadonlySet<string> = new Set([
  *
  * @param value - A value produced by the TS library under test (or a
  *   callback-argument capture).
+ * @param encodeRich - Optional hook for registered rich-tag instances
+ *   (phase2-design C7): consulted for any object no built-in branch
+ *   handles, BEFORE the final throw; returning `undefined` means "not
+ *   mine". {@link CodecRegistry.encodeValue} supplies the
+ *   registered-encoder lookup; direct calls omit it (built-ins only).
  * @returns A vector-JSON structure ready for canonicalization.
  * @throws UnencodableValueError - If the value has no encoding (functions,
  *   symbols, unknown class instances) or violates D6 rules 2/5.
  */
-export function encodeExpectValue(value: unknown): JsonValue {
+export function encodeExpectValue(
+  value: unknown,
+  encodeRich?: (value: object) => JsonValue | undefined,
+): JsonValue {
   if (value === null || value === undefined) {
     return null;
   }
@@ -422,11 +504,14 @@ export function encodeExpectValue(value: unknown): JsonValue {
   if (value instanceof PyDate) {
     return { $type: "date", iso: value.iso };
   }
-  if (value instanceof SecretValue) {
-    return { $type: "SecretStr", value: rejectBadString(value.value) };
+  if (value instanceof Secret) {
+    // NEVER `toJSON()` — its `'**********'` mask in an encoded vector
+    // would make mask-vs-mask comparisons vacuously equal (a FAIL per
+    // phase2-design C7); the encoded form carries the revealed value.
+    return { $type: "SecretStr", value: rejectBadString(value.reveal()) };
   }
   if (Array.isArray(value)) {
-    return value.map((item) => encodeExpectValue(item));
+    return value.map((item) => encodeExpectValue(item, encodeRich));
   }
   if (
     typeof value === "object" &&
@@ -437,9 +522,15 @@ export function encodeExpectValue(value: unknown): JsonValue {
       if (item === undefined) {
         continue; // absent, not null (R3.5 / JSON.stringify semantics)
       }
-      out[rejectBadString(key)] = encodeExpectValue(item);
+      out[rejectBadString(key)] = encodeExpectValue(item, encodeRich);
     }
     return out;
+  }
+  if (typeof value === "object" && encodeRich !== undefined) {
+    const encoded = encodeRich(value);
+    if (encoded !== undefined) {
+      return encoded;
+    }
   }
   throw new UnencodableValueError(
     `no encoding for ${typeof value === "object" ? value.constructor.name || "object" : typeof value} in output position`,

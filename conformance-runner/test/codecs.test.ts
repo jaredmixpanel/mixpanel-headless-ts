@@ -7,7 +7,7 @@ import {
   PyDate,
   PyDatetime,
   RecordingCallback,
-  SecretValue,
+  Secret,
   UndecodableValueError,
   UnencodableValueError,
   encodeExpectValue,
@@ -30,13 +30,15 @@ describe("CodecRegistry built-in tags (D4.4)", () => {
     expect((d as PyDate).iso).toBe("2026-01-15");
   });
 
-  it("decodes $type SecretStr to the revealed literal (D5.5)", () => {
+  it("decodes $type SecretStr to the real core Secret (D5.5, C7/V4)", () => {
     const secret = registry.decodeValue({
       $type: "SecretStr",
       value: "test_secret",
     });
-    expect(secret).toBeInstanceOf(SecretValue);
-    expect((secret as SecretValue).value).toBe("test_secret");
+    expect(secret).toBeInstanceOf(Secret);
+    // The revealed value survives; every stringification surface masks.
+    expect((secret as Secret).reveal()).toBe("test_secret");
+    expect(String(secret)).toBe("**********");
   });
 
   it("round-trips $type bytes through Uint8Array", () => {
@@ -169,7 +171,9 @@ describe("encodeExpectValue (D6 rules 2/5 at the output boundary)", () => {
       $type: "datetime",
       iso: "2026-01-15T12:00:00",
     });
-    expect(encodeExpectValue(new SecretValue("s"))).toEqual({
+    // Encode reads the REVEALED value via reveal(), never toJSON()'s
+    // mask (phase2-design C7 — mask-vs-mask comparisons are vacuous).
+    expect(encodeExpectValue(new Secret("s"))).toEqual({
       $type: "SecretStr",
       value: "s",
     });
