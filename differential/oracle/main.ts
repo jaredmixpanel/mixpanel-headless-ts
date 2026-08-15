@@ -23,7 +23,7 @@ export async function runOracle(): Promise<void> {
   const server = new OracleServer(resolveIdentity());
   const lines = createInterface({ input: process.stdin, terminal: false });
   for await (const line of lines) {
-    const response = server.handleLine(line);
+    const response = await server.handleLine(line);
     if (response !== null) {
       await writeLine(response);
     }

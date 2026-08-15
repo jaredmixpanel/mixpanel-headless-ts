@@ -16,9 +16,11 @@
  * are re-exported from the generated `errors-codes.gen.ts` mirror of
  * `conformance-runner/corpus/contract/error-codes.json` — never hand-typed.
  *
- * The rulebook R5.1 client-tier classes (`MixpanelApiError` /
- * `MixpanelHttpError`) wrap transport outcomes and are deferred to Phase-3
- * batch B4 (phase2-design C3/C8).
+ * The rulebook R5.1 client-tier transport class (`MixpanelHttpError`)
+ * lives in `client/internals.ts` since Phase-3 B0-2 (the B0 retry loops'
+ * catch clauses need it); it mirrors `httpx.HTTPError` and is deliberately
+ * OUTSIDE this hierarchy. `MixpanelApiError` remains deferred to B4
+ * (phase2-design C3/C8).
  */
 
 export {
@@ -211,9 +213,8 @@ export class ResponseValidationError extends MixpanelHeadlessError {
 export interface APIErrorOptions {
   /** HTTP status code from the response. */
   readonly statusCode: number;
-  /** Raw response body (string or parsed object). */
-  readonly responseBody?:
-    string | Readonly<Record<string, unknown>> | null | undefined;
+  /** Raw response body (any lossless-parsed JSON value, or raw text). */
+  readonly responseBody?: unknown;
   /** HTTP method used (GET, POST). */
   readonly requestMethod?: string | null | undefined;
   /** Full request URL. */
@@ -239,7 +240,7 @@ export interface APIErrorOptions {
  */
 export class APIError extends MixpanelHeadlessError {
   readonly #statusCode: number;
-  readonly #responseBody: string | Readonly<Record<string, unknown>> | null;
+  readonly #responseBody: unknown;
   readonly #requestMethod: string | null;
   readonly #requestUrl: string | null;
   readonly #requestParams: Readonly<Record<string, unknown>> | null;
@@ -298,8 +299,8 @@ export class APIError extends MixpanelHeadlessError {
     return this.#statusCode;
   }
 
-  /** Raw response body (string or parsed object), or `null`. */
-  get responseBody(): string | Readonly<Record<string, unknown>> | null {
+  /** Raw response body (lossless-parsed JSON or raw text), or `null`. */
+  get responseBody(): unknown {
     return this.#responseBody;
   }
 
@@ -588,8 +589,7 @@ export interface AuthenticationErrorOptions {
   /** HTTP status code (default 401). */
   readonly statusCode?: number | undefined;
   /** Raw response body. */
-  readonly responseBody?:
-    string | Readonly<Record<string, unknown>> | null | undefined;
+  readonly responseBody?: unknown;
   /** HTTP method used. */
   readonly requestMethod?: string | null | undefined;
   /** Full request URL. */
@@ -680,8 +680,7 @@ export interface RateLimitErrorOptions {
   /** HTTP status code (default 429). */
   readonly statusCode?: number | undefined;
   /** Raw response body. */
-  readonly responseBody?:
-    string | Readonly<Record<string, unknown>> | null | undefined;
+  readonly responseBody?: unknown;
   /** HTTP method used. */
   readonly requestMethod?: string | null | undefined;
   /** Full request URL. */
@@ -816,8 +815,7 @@ export interface QueryErrorOptions {
   /** HTTP status code (default 400). */
   readonly statusCode?: number | undefined;
   /** Raw response body with error details. */
-  readonly responseBody?:
-    string | Readonly<Record<string, unknown>> | null | undefined;
+  readonly responseBody?: unknown;
   /** HTTP method used. */
   readonly requestMethod?: string | null | undefined;
   /** Full request URL. */
@@ -867,8 +865,7 @@ export interface ServerErrorOptions {
   /** HTTP status code (default 500). */
   readonly statusCode?: number | undefined;
   /** Raw response body with error details. */
-  readonly responseBody?:
-    string | Readonly<Record<string, unknown>> | null | undefined;
+  readonly responseBody?: unknown;
   /** HTTP method used. */
   readonly requestMethod?: string | null | undefined;
   /** Full request URL. */
@@ -1343,8 +1340,7 @@ export interface SessionReplayErrorOptions {
   /** HTTP status; defaults to the subclass's default status. */
   readonly statusCode?: number | null | undefined;
   /** Raw response body for debugging. */
-  readonly responseBody?:
-    string | Readonly<Record<string, unknown>> | null | undefined;
+  readonly responseBody?: unknown;
   /** HTTP method (GET, POST, …). */
   readonly requestMethod?: string | null | undefined;
   /** Full request URL. */

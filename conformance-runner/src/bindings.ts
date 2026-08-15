@@ -27,6 +27,7 @@ import {
   zfill,
   type PythonValue,
 } from "../../packages/core/src/compat/index.js";
+import { iterJsonlLines } from "../../packages/core/src/client/jsonl.js";
 import { MixpanelHeadlessError } from "../../packages/core/src/errors.js";
 import {
   CohortBreakdown,
@@ -331,6 +332,63 @@ function registerCompatCompletionBindings(
     // Explicit `undefined` and omission are the same open end for
     // `cpSlice` (its own `=== undefined` checks), matching Python.
     return cpSlice(value, bound("start"), bound("end"));
+  });
+}
+
+/**
+ * Register the Phase-3 B0-2 shared-client-internal binding:
+ * `api_client._iter_jsonl_lines` over the authored chunk vectors
+ * (`corpus/authored/streaming/jsonl-chunks.jsonl`, design D2/D4.2 item 9).
+ *
+ * Mirrors the Python recorder adapter (`conformance/record/adapters.py::
+ * iter_jsonl_lines`): rebuild a boundary-preserving byte stream from the
+ * explicit chunks — decompressing when the vector's response headers say
+ * `content-encoding: gzip`, exactly as httpx decodes before
+ * `iter_bytes()` — and collect the lines the REAL `iterJsonlLines`
+ * yields (P3-5 rule-3 binding honesty: the library entry point does all
+ * the work; the binding only adds the transport shape).
+ *
+ * @param implementations - The registry to extend.
+ */
+function registerClientInternalsBindings(
+  implementations: ImplementationRegistry,
+): void {
+  implementations.register("api_client._iter_jsonl_lines", async (context) => {
+    const chunks = requireKwarg(context, "chunks") as readonly Uint8Array[];
+    const rawHeaders = context.kwargs["headers"];
+    const headers = (rawHeaders ?? {}) as Readonly<Record<string, string>>;
+    const contentEncoding = Object.entries(headers).find(
+      ([name]) => name.toLowerCase() === "content-encoding",
+    )?.[1];
+    let source: AsyncIterable<Uint8Array> = (async function* () {
+      for (const chunk of chunks) {
+        yield chunk;
+      }
+    })();
+    if (contentEncoding?.toLowerCase() === "gzip") {
+      // Transport-layer decompression (httpx does this inside the
+      // response; fetch runtimes do it inside the body stream).
+      source = new ReadableStream<Uint8Array>({
+        start(controller): void {
+          for (const chunk of chunks) {
+            controller.enqueue(chunk);
+          }
+          controller.close();
+        },
+      }).pipeThrough(
+        // Platform-typing shim: @types/node's DecompressionStream is not
+        // declared as a ReadableWritablePair; the runtime object is one.
+        new DecompressionStream("gzip") as unknown as ReadableWritablePair<
+          Uint8Array,
+          Uint8Array
+        >,
+      ) as unknown as AsyncIterable<Uint8Array>;
+    }
+    const lines: string[] = [];
+    for await (const line of iterJsonlLines(source)) {
+      lines.push(line);
+    }
+    return lines;
   });
 }
 
@@ -882,6 +940,7 @@ export function createRunnerDeps(recordEpoch: string): RunnerDeps {
   const codecs = new CodecRegistry();
   registerCompatBindings(implementations);
   registerWireStubBindings(implementations);
+  registerClientInternalsBindings(implementations);
   registerContractCodecs(codecs);
   registerQueryParamBindings(implementations, codecs);
   return { implementations, codecs, recordEpoch };

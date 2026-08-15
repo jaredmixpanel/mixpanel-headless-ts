@@ -1,8 +1,11 @@
 // Unit tests for the lossless JSON parser (D6 rule 3 / D12 hard
 // requirement): raw number tokens must survive loading verbatim.
 import { describe, expect, it } from "vitest";
-import { JsonNumber } from "../src/json-value.js";
-import { LosslessJsonError, parseLossless } from "../src/lossless-json.js";
+import { JsonNumber } from "../../src/client/json-value.js";
+import {
+  LosslessJsonError,
+  parseLossless,
+} from "../../src/client/lossless-json.js";
 
 describe("parseLossless", () => {
   it("captures number tokens verbatim", () => {

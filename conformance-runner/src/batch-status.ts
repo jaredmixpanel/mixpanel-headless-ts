@@ -47,6 +47,12 @@ export const BATCH_STATUS: ReadonlyMap<string, BatchStatus> = new Map<
   ["wirestub.", "done"],
   ["types.", "done"],
   ["api_client.", "pending"],
+  // Phase-3 B0-2 (playbook P3-5 §4): the ONE B0-owned api name — an
+  // exact-name entry is still a PREFIX under startsWith matching
+  // (longest-prefix wins over the pending `api_client.` row above); the
+  // standing collision assertion holds — no other corpus api name starts
+  // with this entry.
+  ["api_client._iter_jsonl_lines", "done"],
   ["workspace.", "pending"],
   ["validation.", "pending"],
   ["user_validators.", "pending"],

@@ -459,7 +459,7 @@ function isExpectErrorConvertible(
  * @example
  * ```typescript
  * const server = new OracleServer(resolveIdentity());
- * server.handleLine('{"jsonrpc": "2.0", "id": 1, "method": "oracle.info"}');
+ * await server.handleLine('{"jsonrpc": "2.0", "id": 1, "method": "oracle.info"}');
  * // '{"jsonrpc": "2.0", "id": 1, "result": {...}}'
  * ```
  */
@@ -505,11 +505,16 @@ export class OracleServer {
    * (a strategy-generated poison value must produce a protocol-level
    * error, "not a hang or crash" — design D14).
    *
+   * Async since Phase-3 B0-2: bound implementations may be async (the
+   * `api_client._iter_jsonl_lines` chunk adapter drives an async
+   * generator), so dispatch awaits them — closing the former
+   * "async bindings are out of oracle scope until Phase 3" note.
+   *
    * @param line - One newline-stripped request line.
    * @returns The single-line, ASCII-safe JSON response, or `null` for
    *   blank lines (ignored per oracle-protocol.md §1).
    */
-  handleLine(line: string): string | null {
+  async handleLine(line: string): Promise<string | null> {
     if (line.trim() === "") {
       return null;
     }
@@ -540,7 +545,7 @@ export class OracleServer {
     }
     let result: SerializableValue;
     try {
-      result = this.dispatch(method, request.get("params"));
+      result = await this.dispatch(method, request.get("params"));
     } catch (thrown) {
       if (thrown instanceof OracleProtocolError) {
         return this.encodeResponse(requestId, {
@@ -582,10 +587,10 @@ export class OracleServer {
    * @returns The `result` object for the response.
    * @throws OracleProtocolError - For unknown methods or invalid params.
    */
-  private dispatch(
+  private async dispatch(
     method: string,
     params: RawValue | undefined,
-  ): SerializableValue {
+  ): Promise<SerializableValue> {
     if (method === "oracle.info") {
       return this.info();
     }
@@ -625,7 +630,7 @@ export class OracleServer {
    * @throws OracleProtocolError - If `api` is missing/non-string or the
    *   optional members carry the wrong types.
    */
-  private callFromParams(params: RawObject): SerializableValue {
+  private async callFromParams(params: RawObject): Promise<SerializableValue> {
     const api = params.get("api");
     if (typeof api !== "string" || api === "") {
       throw new OracleProtocolError(
@@ -671,15 +676,15 @@ export class OracleServer {
    * @throws OracleProtocolError - For unknown apis, undecodable input,
    *   and unencodable/uncanonicalizable outputs (harness-level, D14).
    */
-  callApi(api: string, rawInput: RawObject): SerializableValue {
+  async callApi(api: string, rawInput: RawObject): Promise<SerializableValue> {
     if (COMPAT_APIS.has(api)) {
       return this.executeCompat(api, rawInput);
     }
     if (!api.startsWith("wirestub.") && this.deps.implementations.has(api)) {
-      // The Phase-2 `types.*` surface: served through the SAME bindings
-      // the conformance runner replays (protocol §8 scope note).
-      // `wirestub.*` is excluded — its bindings are async and need the
-      // vector replay transport, out of oracle scope until Phase 3.
+      // Bound library entry points: served through the SAME bindings the
+      // conformance runner replays (protocol §8 scope note). `wirestub.*`
+      // is excluded — its bindings need the vector replay TRANSPORT
+      // (`context.fetch` interactions), which oracle calls do not carry.
       return this.executeBound(api, rawInput);
     }
     if (resolveApi(api).status === "unmapped") {
@@ -705,11 +710,15 @@ export class OracleServer {
    * @param rawInput - The undecoded kwargs.
    * @returns `{ok: true, output}` for returns; `{ok: false, error}` for
    *   thrown library errors (class + code, messages stripped, R5.4).
-   * @throws OracleProtocolError - For undecodable input (`-32602`), an
-   *   async binding (out of oracle scope — a wiring bug, `-32000`), or
-   *   an unencodable/uncanonicalizable output (`-32000`).
+   * @throws OracleProtocolError - For undecodable input (`-32602`) or an
+   *   unencodable/uncanonicalizable output (`-32000`). Async bindings
+   *   are awaited (Phase-3 B0-2); rejections encode as error DATA like
+   *   sync throws.
    */
-  private executeBound(api: string, rawInput: RawObject): SerializableValue {
+  private async executeBound(
+    api: string,
+    rawInput: RawObject,
+  ): Promise<SerializableValue> {
     const inputJson: Record<string, JsonValue> = {};
     for (const [name, value] of rawInput.entries) {
       // Integral-float tokens carry Python float-ness only in the raw
@@ -744,15 +753,9 @@ export class OracleServer {
     }
     let returned: unknown;
     try {
-      returned = implementation(context);
+      returned = await implementation(context);
     } catch (thrown) {
       return { ok: false, error: this.errorPayload(thrown) };
-    }
-    if (typeof (returned as { then?: unknown } | null)?.then === "function") {
-      throw new OracleProtocolError(
-        JSONRPC_INTERNAL_ERROR,
-        `async binding ${JSON.stringify(api)} is out of oracle scope (D14)`,
-      );
     }
     let output: JsonValue;
     try {

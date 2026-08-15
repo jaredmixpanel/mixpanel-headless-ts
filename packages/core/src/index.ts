@@ -24,5 +24,12 @@ export * from "./invariant.js";
 export * from "./types/index.js";
 export * from "./auth/index.js";
 
+// Phase-3 B0-2 (R10.8): shared client internals — retry/backoff trio,
+// `_handle_response`/`_execute_with_retry`/`app_request`, header merge,
+// URL builder, JSONL splitter, scoped-path builder, and the lossless
+// response-body parser (GATE-VERDICT R5). Internal plumbing for the B4
+// client assembly; exported per R2.8 (no `private` across modules).
+export * from "./client/index.js";
+
 /** Package name constant exercised by the skeleton smoke test. */
 export const CORE_PACKAGE_NAME = "@mixpanel-headless/core";

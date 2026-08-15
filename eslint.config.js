@@ -35,8 +35,9 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    // Repo maintenance scripts run under Node.
-    files: ["scripts/**/*.mjs"],
+    // Repo maintenance scripts run under Node (throwaway/ holds the
+    // R10.9 per-module harness drivers; batch gates delete them).
+    files: ["scripts/**/*.mjs", "throwaway/**/*.mjs"],
     languageOptions: {
       globals: {
         console: "readonly",
