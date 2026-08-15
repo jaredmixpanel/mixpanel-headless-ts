@@ -6,6 +6,7 @@
  * ORDER (Risk #1), one comment per registry code.
  */
 
+import { pythonStrip } from "../../compat/index.js";
 import { ParamValidationError } from "../../errors.js";
 import type { CustomPropertyType } from "../literals.js";
 import { ListItemGroupMode, type PropertySpec } from "./filter.js";
@@ -83,7 +84,7 @@ export class GroupBy {
     this.bucket_max = fields.bucket_max ?? null;
     this._list_item_mode = fields._list_item_mode ?? null;
     // GB1_EMPTY_PROPERTY: a plain-string property must be non-blank.
-    if (typeof this.property === "string" && !this.property.trim()) {
+    if (typeof this.property === "string" && !pythonStrip(this.property)) {
       throw new ParamValidationError(
         "GroupBy.property must be a non-empty string",
         "GB1_EMPTY_PROPERTY",

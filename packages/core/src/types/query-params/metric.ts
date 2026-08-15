@@ -8,6 +8,7 @@
  * SOURCE ORDER (Risk #1), one comment per registry code.
  */
 
+import { pythonStrip } from "../../compat/index.js";
 import { ParamValidationError } from "../../errors.js";
 import type {
   FiltersCombinator,
@@ -168,7 +169,7 @@ export class Formula {
     this.expression = fields.expression;
     this.label = fields.label ?? null;
     // FM1_EMPTY_EXPRESSION: expression must be a non-empty string.
-    if (!this.expression || !this.expression.trim()) {
+    if (!this.expression || !pythonStrip(this.expression)) {
       throw new ParamValidationError(
         "Formula.expression must be a non-empty string",
         "FM1_EMPTY_EXPRESSION",

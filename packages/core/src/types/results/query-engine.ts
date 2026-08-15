@@ -11,6 +11,8 @@
  * `nodes_df`/`edges_df`/`trees_df`).
  */
 
+import { pythonInt } from "../../compat/index.js";
+import { MixpanelHeadlessError } from "../../errors.js";
 import type {
   FlowAnchorType,
   FlowChartType,
@@ -56,12 +58,26 @@ export function safeInt(value: unknown, default_ = 0): number {
     return default_;
   }
   if (typeof value === "string") {
-    // Python int(str) accepts optional sign + digits (with surrounding
-    // whitespace); anything else falls back to the default.
-    if (/^\s*[+-]?\d+\s*$/.test(value)) {
-      return parseInt(value.trim(), 10);
+    // Python: try int(value) except ValueError -> default. `pythonInt`
+    // IS the CPython int(str) grammar (underscores, non-ASCII Nd
+    // digits, the CPython numeric-whitespace surround) — the previous
+    // `\s`-regex + parseInt pair diverged on all three plus U+FEFF
+    // (B0-gate RUN.md 2026-08-15). PY_INT_UNSAFE_INTEGER (>2^53-1,
+    // where CPython returns the exact big int) also maps to the
+    // default: R4.5 leaves no faithful numeric representation (the
+    // playbook Discrepancy #6 pattern; the old parseInt path returned
+    // an IMPRECISE number there, which was no more faithful).
+    try {
+      return pythonInt(value);
+    } catch (cause) {
+      // Guarded catch (b0-review-resolution F3/A2 pattern): only the
+      // coded parse rejections are the ValueError analog; anything
+      // else propagates.
+      if (cause instanceof MixpanelHeadlessError) {
+        return default_;
+      }
+      throw cause;
     }
-    return default_;
   }
   return default_;
 }

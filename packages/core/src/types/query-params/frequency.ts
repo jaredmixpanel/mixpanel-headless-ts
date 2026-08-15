@@ -17,6 +17,7 @@
  * builder will reproduce the server-500 shape unchanged. DO NOT FIX.
  */
 
+import { pythonStrip } from "../../compat/index.js";
 import { ParamValidationError } from "../../errors.js";
 import { VALID_FREQUENCY_FILTER_OPERATORS } from "../../bookmarks/enums.js";
 import type { FrequencyFilterOperator } from "../literals.js";
@@ -84,7 +85,7 @@ export class FrequencyBreakdown {
     this.bucket_max = fields.bucket_max === undefined ? 10 : fields.bucket_max;
     this.label = fields.label ?? null;
     // FB1_EMPTY_EVENT: event must be non-empty.
-    if (!this.event.trim()) {
+    if (!pythonStrip(this.event)) {
       throw new ParamValidationError(
         "FrequencyBreakdown.event must be a non-empty string",
         "FB1_EMPTY_EVENT",
@@ -190,7 +191,7 @@ export class FrequencyFilter {
     this.event_filters = fields.event_filters ?? null;
     this.label = fields.label ?? null;
     // FF1_EMPTY_EVENT: event must be non-empty.
-    if (!this.event.trim()) {
+    if (!pythonStrip(this.event)) {
       throw new ParamValidationError(
         "FrequencyFilter.event must be a non-empty string",
         "FF1_EMPTY_EVENT",

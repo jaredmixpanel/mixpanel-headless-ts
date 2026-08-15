@@ -20,6 +20,7 @@
  *   reconstructs through the statics (see `../vector-codecs.ts`).
  */
 
+import { pythonStrip } from "../../compat/index.js";
 import { ParamValidationError } from "../../errors.js";
 import type { CohortAggregationType } from "../literals.js";
 import { CustomPropertyRef, Filter, InlineCustomProperty } from "./filter.js";
@@ -376,7 +377,7 @@ export class CohortCriteria {
     const aggregationProperty = opts.aggregation_property ?? null;
 
     // CD4_EMPTY_EVENT: event name must be non-empty.
-    if (!event || !event.trim()) {
+    if (!event || !pythonStrip(event)) {
       throw new ParamValidationError(
         "event name must be non-empty",
         "CD4_EMPTY_EVENT",
@@ -394,7 +395,7 @@ export class CohortCriteria {
 
     // CA2_EMPTY_AGGREGATION_PROPERTY: a provided aggregation_property
     // must be non-blank.
-    if (aggregationProperty !== null && !aggregationProperty.trim()) {
+    if (aggregationProperty !== null && !pythonStrip(aggregationProperty)) {
       throw new ParamValidationError(
         "aggregation_property must be a non-empty string",
         "CA2_EMPTY_AGGREGATION_PROPERTY",
@@ -630,7 +631,7 @@ export class CohortCriteria {
     const propertyType = options?.property_type ?? "string";
 
     // CD7_EMPTY_PROPERTY: property name must be non-empty.
-    if (!property || !property.trim()) {
+    if (!property || !pythonStrip(property)) {
       throw new ParamValidationError(
         "property name must be non-empty",
         "CD7_EMPTY_PROPERTY",

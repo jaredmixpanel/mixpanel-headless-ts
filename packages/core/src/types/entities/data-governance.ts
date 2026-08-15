@@ -16,6 +16,7 @@ import {
   prepareInit,
   type EntityFieldSpec,
 } from "./model-base.js";
+import { pythonStrip } from "../../compat/index.js";
 import { CustomPropertyResourceType } from "../enums.js";
 
 /**
@@ -211,7 +212,7 @@ export class CreateCustomEventParams extends EntityModel {
           modelFail(path, "min_length 1");
         }
         for (const item of value) {
-          if (typeof item !== "string" || item.trim() === "") {
+          if (typeof item !== "string" || pythonStrip(item) === "") {
             modelFail(
               path,
               "alternatives must not contain empty or whitespace-only strings",

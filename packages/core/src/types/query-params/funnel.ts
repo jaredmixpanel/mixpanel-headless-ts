@@ -7,6 +7,7 @@
  * SOURCE ORDER (Risk #1), one comment per registry code.
  */
 
+import { pythonStrip } from "../../compat/index.js";
 import { ParamValidationError } from "../../errors.js";
 import type { FiltersCombinator, FunnelOrder } from "../literals.js";
 import type { Filter } from "./filter.js";
@@ -176,7 +177,7 @@ export class HoldingConstant {
     this.resource_type =
       fields.resource_type === undefined ? "events" : fields.resource_type;
     // HC1_EMPTY_PROPERTY: property must be a non-empty string.
-    if (!this.property || !this.property.trim()) {
+    if (!this.property || !pythonStrip(this.property)) {
       throw new ParamValidationError(
         "HoldingConstant.property must be a non-empty string",
         "HC1_EMPTY_PROPERTY",

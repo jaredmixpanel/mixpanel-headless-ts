@@ -12,6 +12,7 @@
  * `filter.ts` / `metric.ts` (and, in P2-5b, `cohort.ts`).
  */
 
+import { pythonStrip } from "../../compat/index.js";
 import { ParamValidationError } from "../../errors.js";
 
 /**
@@ -79,7 +80,11 @@ export function isPyInt(value: unknown): value is number | bigint {
  */
 export function validateEventName(event: string, className: string): void {
   // EV1_EMPTY_EVENT: event must be a non-empty, non-blank string.
-  if (!event || !event.trim()) {
+  // Blankness is CPython str.strip() (pythonStrip), NOT JS .trim() — the
+  // sets diverge on U+001C..1F/U+0085 vs U+FEFF (B0-gate RUN.md
+  // 2026-08-15 divergence; this check runs BEFORE the control-char
+  // guard, so U+001C-only inputs raise EV1, matching Python order).
+  if (!event || !pythonStrip(event)) {
     throw new ParamValidationError(
       `${className}.event must be a non-empty string`,
       "EV1_EMPTY_EVENT",
@@ -122,8 +127,9 @@ export function validateCohortArgs(
       `${family}1_COHORT_ID_NOT_POSITIVE`,
     );
   }
-  // {family}2_COHORT_NAME_EMPTY: a provided name must be non-blank.
-  if (name !== null && !name.trim()) {
+  // {family}2_COHORT_NAME_EMPTY: a provided name must be non-blank
+  // (pythonStrip = CPython str.strip() blankness, not JS .trim()).
+  if (name !== null && !pythonStrip(name)) {
     throw new ParamValidationError(
       "cohort name must be non-empty when provided",
       `${family}2_COHORT_NAME_EMPTY`,

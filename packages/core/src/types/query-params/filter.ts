@@ -20,6 +20,7 @@
  *   never stringified.
  */
 
+import { pythonStrip } from "../../compat/index.js";
 import { ParamTypeError, ParamValidationError } from "../../errors.js";
 import type {
   CustomPropertyType,
@@ -216,7 +217,7 @@ export class ListItemGroupMode {
     this.sub = fields.sub;
     this.sub_type = fields.sub_type;
     // LG1_EMPTY_SUB: sub must be non-empty after stripping.
-    if (!this.sub.trim()) {
+    if (!pythonStrip(this.sub)) {
       throw new ParamValidationError(
         "ListItemGroupMode.sub must be a non-empty string",
         "LG1_EMPTY_SUB",
@@ -1184,7 +1185,7 @@ export class Filter {
     }
     for (const [key, value] of equalsEntries) {
       // LC5_EMPTY_KWARG_KEY: kwarg keys must be non-empty strings.
-      if (!key.trim()) {
+      if (!pythonStrip(key)) {
         throw new ParamValidationError(
           "Filter.list_contains: kwarg keys must be non-empty strings",
           "LC5_EMPTY_KWARG_KEY",

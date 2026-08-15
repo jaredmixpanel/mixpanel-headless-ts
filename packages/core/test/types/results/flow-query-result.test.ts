@@ -405,3 +405,40 @@ describe("safeInt (TestSafeInt)", () => {
     expect(safeInt("-5")).toBe(-5);
   });
 });
+
+describe("safeInt string branch = CPython int(str) grammar (B0-gate RUN.md 2026-08-15: trim/regex sites replaced with pythonCompat)", () => {
+  it("accepts underscores between digits like int('1_0')", () => {
+    expect(safeInt("1_0")).toBe(10);
+    expect(safeInt("100_000")).toBe(100000);
+  });
+
+  it("rejects malformed underscores (default)", () => {
+    expect(safeInt("1__0")).toBe(0);
+    expect(safeInt("_1")).toBe(0);
+    expect(safeInt("1_")).toBe(0);
+  });
+
+  it("accepts non-ASCII Nd digits like int('٤٢')", () => {
+    expect(safeInt("٤٢")).toBe(42);
+  });
+
+  it("accepts CPython numeric-whitespace surround incl. U+0085/NBSP", () => {
+    // CPython probe (python-int.test.ts:98 precedent): int("\u008542\u00a0") == 42.
+    expect(safeInt("\u008542\u00a0")).toBe(42);
+  });
+
+  it("rejects U+FEFF surround (JS \\s matches the BOM; CPython int() raises)", () => {
+    expect(safeInt("\ufeff42")).toBe(0);
+    expect(safeInt("42\ufeff")).toBe(0);
+  });
+
+  it("rejects U+001C..1F surround (str.isspace() true but Py_ISSPACE false)", () => {
+    // CPython probe (python-int.test.ts:103-105): int('\x1c42\x1f') raises.
+    expect(safeInt("\x1c42\x1f")).toBe(0);
+  });
+
+  it("magnitude beyond 2^53-1 maps to the default (R4.5 policy; playbook Discrepancy #6 pattern — CPython returns the exact big int, JS number cannot)", () => {
+    expect(safeInt("9007199254740993")).toBe(0);
+    expect(safeInt("9007199254740991")).toBe(9007199254740991);
+  });
+});
