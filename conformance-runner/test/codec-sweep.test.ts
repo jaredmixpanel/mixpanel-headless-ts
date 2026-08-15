@@ -24,6 +24,7 @@ import { describe, expect, it } from "vitest";
 import { OAuthTokens } from "../../packages/core/src/auth/token.js";
 import { Secret } from "../../packages/core/src/secret.js";
 import {
+  CohortBreakdown,
   CohortCriteria,
   CohortDefinition,
 } from "../../packages/core/src/types/query-params/cohort.js";
@@ -57,9 +58,6 @@ const PACKAGE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** Rich tags whose port packet has NOT landed yet (explicit, tracked). */
 const ALLOWLIST: ReadonlySet<string> = new Set([
-  // P2-5b cohort family (CohortCriteria/CohortDefinition landed EARLY,
-  // with P2-5a — the CM5 CohortMetric vectors decode their payloads)
-  "CohortBreakdown",
   // P2-5c funnel/retention/flow/frequency
   "FunnelStep",
   "Exclusion",
@@ -290,6 +288,10 @@ function assertRealInstance(entry: TaggedNode, decoded: unknown): void {
       break;
     case "CohortDefinition":
       expect(decoded, where).toBeInstanceOf(CohortDefinition);
+      break;
+    // P2-5b cohort-family addition.
+    case "CohortBreakdown":
+      expect(decoded, where).toBeInstanceOf(CohortBreakdown);
       break;
     default:
       throw new Error(`no instanceof probe for round-tripped tag ${entry.tag}`);

@@ -26,7 +26,11 @@
 
 import { parseOAuthTokens, OAuthTokens } from "../auth/token.js";
 import { Secret } from "../secret.js";
-import { CohortCriteria, CohortDefinition } from "./query-params/cohort.js";
+import {
+  CohortBreakdown,
+  CohortCriteria,
+  CohortDefinition,
+} from "./query-params/cohort.js";
 import {
   CustomPropertyRef,
   Filter,
@@ -294,9 +298,8 @@ const cohortDefinitionCodec: ContractTagCodec = {
 };
 
 /**
- * The P2-5a dataclass codec rows (field lists in Python
- * `dataclasses.fields` order; `CohortCriteria` rides along one packet
- * early — see `query-params/cohort.ts` for why).
+ * The P2-5a/P2-5b dataclass codec rows (field lists in Python
+ * `dataclasses.fields` order).
  */
 const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
   [
@@ -445,6 +448,19 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
           bag as unknown as ConstructorParameters<typeof CohortCriteria>[0],
         ),
       matches: (value) => value instanceof CohortCriteria,
+    },
+  ],
+  // P2-5b cohort-family addition.
+  [
+    "CohortBreakdown",
+    {
+      fields: ["cohort", "name", "include_negated"],
+      required: ["cohort"],
+      construct: (bag) =>
+        new CohortBreakdown(
+          bag as unknown as ConstructorParameters<typeof CohortBreakdown>[0],
+        ),
+      matches: (value) => value instanceof CohortBreakdown,
     },
   ],
 ];

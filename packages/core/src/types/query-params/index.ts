@@ -1,12 +1,21 @@
 /**
  * Barrel for the query-param dataclass family (phase2-design C1/C7).
  *
- * P2-5a exports the filter/metric/group core. The `cohort.ts` shells
- * (`CohortCriteria`/`CohortDefinition`) are deliberately NOT re-exported
- * yet — the P2-5b packet completes the family (factories, guards,
- * `toDict`, `CohortBreakdown`, `sanitizeRawCohort`) and adds them here.
- * `guards.ts` is `@internal` plumbing and never barrel-exported.
+ * P2-5a exports the filter/metric/group core; P2-5b adds the cohort
+ * family. `guards.ts` is `@internal` plumbing and never barrel-exported;
+ * `sanitizeRawCohort` and the cohort helper tables stay module-level
+ * `@internal` exports (consumed by the conformance binding and tests,
+ * not re-exported here).
  */
+export {
+  CohortBreakdown,
+  CohortCriteria,
+  CohortDefinition,
+  type DidEventOptions,
+  type DidNotDoEventOptions,
+  type HasPropertyOperator,
+  type HasPropertyType,
+} from "./cohort.js";
 export {
   CustomPropertyRef,
   Filter,

@@ -22,7 +22,16 @@ import {
   type PythonValue,
 } from "../../packages/core/src/compat/index.js";
 import { MixpanelHeadlessError } from "../../packages/core/src/errors.js";
-import type { CohortDefinition } from "../../packages/core/src/types/query-params/cohort.js";
+import {
+  CohortBreakdown,
+  CohortCriteria,
+  CohortDefinition,
+  sanitizeRawCohort,
+  type DidEventOptions,
+  type DidNotDoEventOptions,
+  type HasPropertyOperator,
+  type HasPropertyType,
+} from "../../packages/core/src/types/query-params/cohort.js";
 import {
   Filter,
   ListItemGroupMode,
@@ -266,8 +275,8 @@ function resourceTypeBag(context: InvocationContext): {
 }
 
 /**
- * Register the P2-5a `types.*` builder bindings (filter/metric/group
- * core — phase2-design C10).
+ * Register the P2-5a/P2-5b `types.*` builder bindings (filter/metric/
+ * group core + the cohort family — phase2-design C10).
  *
  * Each adapter is a thin shim: decoded kwargs -> the real core
  * constructor/factory -> encode the result (or wrap the coded guard
@@ -447,6 +456,107 @@ function registerQueryParamBindings(
           typeof TimeComparison
         >[0],
       ),
+  );
+
+  // ----- P2-5b cohort family (phase2-design C10) -----
+
+  bind("types.CohortCriteria.did_event", (context) => {
+    // Python signature: (event, *, at_least, at_most, exactly,
+    // within_days, within_weeks, within_months, from_date, to_date,
+    // where, aggregation, aggregation_property). Every recorded kwarg
+    // except `event` is a kw-only option — pass the decoded bag through
+    // (absent kwargs stay absent, R3.5).
+    const options = Object.fromEntries(
+      Object.entries(context.kwargs).filter(([key]) => key !== "event"),
+    );
+    return CohortCriteria.didEvent(
+      requireKwarg(context, "event") as string,
+      options as DidEventOptions,
+    );
+  });
+  bind("types.CohortCriteria.did_not_do_event", (context) => {
+    const options = Object.fromEntries(
+      Object.entries(context.kwargs).filter(([key]) => key !== "event"),
+    );
+    return CohortCriteria.didNotDoEvent(
+      requireKwarg(context, "event") as string,
+      options as DidNotDoEventOptions,
+    );
+  });
+  bind("types.CohortCriteria.has_property", (context) => {
+    const operator = context.kwargs["operator"];
+    const propertyType = context.kwargs["property_type"];
+    return CohortCriteria.hasProperty(
+      requireKwarg(context, "property") as string,
+      requireKwarg(context, "value") as
+        string | number | boolean | readonly string[],
+      {
+        ...(operator !== undefined
+          ? { operator: operator as HasPropertyOperator }
+          : {}),
+        ...(propertyType !== undefined
+          ? { property_type: propertyType as HasPropertyType }
+          : {}),
+      },
+    );
+  });
+  bind("types.CohortCriteria.property_is_set", (context) =>
+    CohortCriteria.propertyIsSet(requireKwarg(context, "property") as string),
+  );
+  bind("types.CohortCriteria.property_is_not_set", (context) =>
+    CohortCriteria.propertyIsNotSet(
+      requireKwarg(context, "property") as string,
+    ),
+  );
+  bind("types.CohortCriteria.in_cohort", (context) =>
+    CohortCriteria.inCohort(requireKwarg(context, "cohort_id") as number),
+  );
+  bind("types.CohortCriteria.not_in_cohort", (context) =>
+    CohortCriteria.notInCohort(requireKwarg(context, "cohort_id") as number),
+  );
+  bind("types.CohortDefinition", (context) => {
+    // Python signature: *criteria (positional varargs; the recorder
+    // binds them under "criteria" — all recorded vectors are the empty
+    // CD9 guard case).
+    const criteria = (context.kwargs["criteria"] ?? []) as ReadonlyArray<
+      CohortCriteria | CohortDefinition
+    >;
+    return new CohortDefinition(...criteria);
+  });
+  bind("types.CohortDefinition.all_of", (context) => {
+    const criteria = (context.kwargs["criteria"] ?? []) as ReadonlyArray<
+      CohortCriteria | CohortDefinition
+    >;
+    return CohortDefinition.allOf(...criteria);
+  });
+  bind("types.CohortDefinition.any_of", (context) => {
+    const criteria = (context.kwargs["criteria"] ?? []) as ReadonlyArray<
+      CohortCriteria | CohortDefinition
+    >;
+    return CohortDefinition.anyOf(...criteria);
+  });
+  bind("types.CohortDefinition.to_dict", (context) => {
+    const self = requireKwarg(context, "self");
+    if (!(self instanceof CohortDefinition)) {
+      throw new Error(
+        "types.CohortDefinition.to_dict: `self` did not decode to a CohortDefinition",
+      );
+    }
+    return self.toDict();
+  });
+  bind(
+    "types.CohortBreakdown",
+    (context) =>
+      new CohortBreakdown(
+        context.kwargs as unknown as ConstructorParameters<
+          typeof CohortBreakdown
+        >[0],
+      ),
+  );
+  bind("types._sanitize_raw_cohort", (context) =>
+    sanitizeRawCohort(
+      requireKwarg(context, "raw") as Readonly<Record<string, unknown>>,
+    ),
   );
 }
 
