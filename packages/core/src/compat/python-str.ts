@@ -8,6 +8,7 @@
  * `"None"` — and Python container reprs (`"[1, 2]"`, `"{'a': 1}"`) have no
  * JS equivalent at all.
  */
+import { isPythonNonPrintable } from "./non-printable.js";
 import { pythonFloatStr } from "./python-float-str.js";
 
 /**
@@ -28,16 +29,12 @@ export type PythonValue =
   | readonly PythonValue[]
   | { readonly [key: string]: PythonValue };
 
-/**
- * Matches a single codepoint that Python `str.isprintable()` reports as
- * non-printable: general categories Cc, Cf, Cs, Co, Cn, Zl, Zp and Zs.
- * The ASCII space (U+0020, category Zs) is special-cased as printable by
- * CPython and is filtered out before this pattern is consulted.
- *
- * Caveat: Cn (unassigned) follows the JS engine's Unicode database
- * version, which may differ slightly from the CPython build's.
- */
-const NON_PRINTABLE = /^[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Cn}\p{Zl}\p{Zp}\p{Zs}]$/u;
+// Printability is classified by the generated, CPython-derived range
+// table (non-printable.ts) rather than `\p{Cn}`-style engine property
+// escapes: the JS engine's Unicode database version can lead CPython's
+// (V8 Unicode 17 vs CPython 3.14's Unicode 16), and the TS-7 differential
+// run proved the skew produces live repr() divergences on codepoints
+// newly assigned in the engine's database.
 
 /**
  * Render a value exactly as Python `str()` would.
@@ -174,7 +171,7 @@ function reprString(value: string): string {
       body += "\\n";
     } else if (character === "\r") {
       body += "\\r";
-    } else if (character !== " " && NON_PRINTABLE.test(character)) {
+    } else if (isPythonNonPrintable(character.codePointAt(0) ?? 0)) {
       body += escapeCodepoint(character.codePointAt(0) ?? 0);
     } else {
       body += character;

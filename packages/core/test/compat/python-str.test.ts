@@ -95,6 +95,15 @@ describe("pythonRepr — CPython string repr rules", () => {
     expect(pythonRepr("\u{e0001}")).toBe("'\\U000e0001'");
   });
 
+  it("classifies printability by the pinned CPython table, not the JS engine", () => {
+    // TS-7 differential finding: U+323B0 is assigned in V8's Unicode 17
+    // database (printable there) but Cn in the target CPython 3.14 /
+    // Unicode 16 — CPython escapes it, so the port must too.
+    expect(pythonRepr("\u{323b0}")).toBe("'\\U000323b0'");
+    // Neighbouring U+323AF (CJK Ext H) is assigned in Unicode 16: verbatim.
+    expect(pythonRepr("\u{323af}")).toBe("'\u{323af}'");
+  });
+
   it("keeps printable non-BMP characters verbatim (R10.9 non-BMP edge)", () => {
     expect(pythonRepr("😀")).toBe("'😀'");
     expect(pythonRepr("\u{1d7d8}")).toBe("'\u{1d7d8}'");
