@@ -6,6 +6,13 @@
 #   conformance/vectors/**                    -> conformance-runner/corpus/
 #   conformance/schema/canonical-selftest.json -> conformance-runner/corpus/
 #   context/typescript-port-api-map.json       -> conformance-runner/corpus/
+#   conformance/contract/*.json                -> conformance-runner/corpus/contract/
+#
+# The contract/*.json copies are the Phase-2 P2-1 extension (phase2-design
+# C3): the generated contract artifacts (error-codes, literal-aliases,
+# tag-universe, model-coverage) ride the same snapshot pipeline as the
+# vectors. They carry their own generated_from SHA for provenance; the
+# corpus provenance gate below stays keyed on manifest.source_commit.
 #
 # The api-map.json copy is a deliberate extension over the D12 minimum list:
 # scripts/generate-api-map.mjs consumes it alongside corpus/api-index.json,
@@ -28,7 +35,10 @@
 set -euo pipefail
 
 PY_REPO="${MP_PYTHON_REPO:-/Users/jaredmcfarland/Developer/mixpanel-headless}"
-RIG_BRANCH="${MP_RIG_BRANCH:-ts-port/phase1-verification-rig}"
+# Phase 2: the corpus + contract artifacts live on the Phase-2 support
+# branch (phase2-design C3 branch discipline); the rig branch remains
+# overridable via MP_RIG_BRANCH for historical re-syncs.
+RIG_BRANCH="${MP_RIG_BRANCH:-ts-port/phase2-contract-support}"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEST="${REPO_ROOT}/conformance-runner/corpus"
@@ -38,6 +48,8 @@ CONFIG="${REPO_ROOT}/conformance-runner/corpus.config.json"
 VECTORS_REL="conformance/vectors"
 SELFTEST_REL="conformance/schema/canonical-selftest.json"
 API_MAP_REL="context/typescript-port-api-map.json"
+CONTRACT_REL="conformance/contract"
+CONTRACT_GLOB="${CONTRACT_REL}/*.json"
 
 if [[ ! -d "${PY_REPO}/.git" && ! -f "${PY_REPO}/.git" ]]; then
   echo "sync-corpus: Python repo not found at ${PY_REPO}" >&2
@@ -63,7 +75,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-DIRTY="$(git -C "${PY_REPO}" status --porcelain -- "${VECTORS_REL}" "${SELFTEST_REL}" "${API_MAP_REL}")"
+DIRTY="$(git -C "${PY_REPO}" status --porcelain -- "${VECTORS_REL}" "${SELFTEST_REL}" "${API_MAP_REL}" "${CONTRACT_GLOB}")"
 if [[ -z "${DIRTY}" ]]; then
   SRC="${PY_REPO}"
   echo "sync-corpus: source tree clean; copying from working tree @ $(git -C "${PY_REPO}" rev-parse --short HEAD) (${RIG_BRANCH})"
@@ -75,12 +87,17 @@ else
   SRC="${WORKTREE}"
 fi
 
-for rel in "${VECTORS_REL}" "${SELFTEST_REL}" "${API_MAP_REL}"; do
+for rel in "${VECTORS_REL}" "${SELFTEST_REL}" "${API_MAP_REL}" "${CONTRACT_REL}"; do
   if [[ ! -e "${SRC}/${rel}" ]]; then
     echo "sync-corpus: missing ${rel} under ${SRC}" >&2
     exit 1
   fi
 done
+CONTRACT_COUNT="$(find "${SRC}/${CONTRACT_REL}" -maxdepth 1 -name '*.json' | wc -l | tr -d ' ')"
+if [[ "${CONTRACT_COUNT}" -eq 0 ]]; then
+  echo "sync-corpus: no contract artifacts under ${SRC}/${CONTRACT_REL} (run generate_contract first)" >&2
+  exit 1
+fi
 
 MANIFEST_COMMIT="$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).source_commit)' "${SRC}/${VECTORS_REL}/manifest.json")"
 if [[ "${MANIFEST_COMMIT}" != "${PINNED_COMMIT}" ]]; then
@@ -93,6 +110,9 @@ mkdir -p "${DEST}"
 cp -R "${SRC}/${VECTORS_REL}/." "${DEST}/"
 cp "${SRC}/${SELFTEST_REL}" "${DEST}/"
 cp "${SRC}/${API_MAP_REL}" "${DEST}/"
+mkdir -p "${DEST}/contract"
+find "${SRC}/${CONTRACT_REL}" -maxdepth 1 -name '*.json' -exec cp {} "${DEST}/contract/" \;
 
 BUNDLES="$(find "${DEST}" -name '*.jsonl' | wc -l | tr -d ' ')"
-echo "sync-corpus: snapshot written to ${DEST} (${BUNDLES} bundles, source_commit ${MANIFEST_COMMIT})"
+ARTIFACTS="$(find "${DEST}/contract" -name '*.json' | wc -l | tr -d ' ')"
+echo "sync-corpus: snapshot written to ${DEST} (${BUNDLES} bundles, ${ARTIFACTS} contract artifacts, source_commit ${MANIFEST_COMMIT})"

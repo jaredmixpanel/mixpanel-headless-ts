@@ -5,16 +5,16 @@
 // authored D13 gate supplement) to its TS home (design D12/D13,
 // naming-map §5). Inputs + sha256 provenance stamps:
 //   corpus/typescript-port-api-map.json  5bd1db2d1dd9414ff5db0b49fd3fbdd02361c79c07cb94c3001f6bf8d35a7f53
-//   corpus/api-index.json                f8a6ee48a3a888ff4abdb0130ce21650f63dab86746ee09f704711ab4a4baa57
-//   src/naming-exceptions.json           f955475918f3bc208c0816abc5bf7f7b2d2845df501044f7c88a96e1668521d4
+//   corpus/api-index.json                8908677769314aa458d2e1e73c24ef01ad0b4b9b0b2f6369cdfb91ea0fb74c24
+//   src/naming-exceptions.json           ebfec88840aaf874bae4b52fa6f1e0f9bbd08a20fc51a6ddd537193de8c4ce36
 //   src/authored-apis.json               bb093c5d3b158dc6bed462855c84bfc2933179c1dd0754c816dba60c1530f988
 import type { ApiMapEntry, ApiMapSourceHashes } from "./api-map-types.js";
 
 /** sha256 stamps of the four generation inputs (D12 provenance). */
 export const API_MAP_SOURCE_HASHES: ApiMapSourceHashes = {
   apiMapJson: "5bd1db2d1dd9414ff5db0b49fd3fbdd02361c79c07cb94c3001f6bf8d35a7f53",
-  apiIndexJson: "f8a6ee48a3a888ff4abdb0130ce21650f63dab86746ee09f704711ab4a4baa57",
-  namingExceptionsJson: "f955475918f3bc208c0816abc5bf7f7b2d2845df501044f7c88a96e1668521d4",
+  apiIndexJson: "8908677769314aa458d2e1e73c24ef01ad0b4b9b0b2f6369cdfb91ea0fb74c24",
+  namingExceptionsJson: "ebfec88840aaf874bae4b52fa6f1e0f9bbd08a20fc51a6ddd537193de8c4ce36",
   authoredApisJson: "bb093c5d3b158dc6bed462855c84bfc2933179c1dd0754c816dba60c1530f988",
 };
 
@@ -2094,6 +2094,16 @@ export const API_MAP: Readonly<Record<string, ApiMapEntry>> = {
     params: ["event"],
     kwonly: ["at_least","at_most","exactly","within_days","within_weeks","within_months","from_date","to_date","where","aggregation","aggregation_property"],
   },
+  "types.CohortCriteria.did_not_do_event": {
+    pythonApi: "types.CohortCriteria.did_not_do_event",
+    pythonModule: "mixpanel_headless.types",
+    tsModule: "core/types",
+    tsName: "CohortCriteria.didNotDoEvent",
+    kind: "builder",
+    capability: "cohorts",
+    params: ["event"],
+    kwonly: ["within_days","within_weeks","within_months","from_date","to_date"],
+  },
   "types.CohortCriteria.has_property": {
     pythonApi: "types.CohortCriteria.has_property",
     pythonModule: "mixpanel_headless.types",
@@ -2122,6 +2132,26 @@ export const API_MAP: Readonly<Record<string, ApiMapEntry>> = {
     kind: "builder",
     capability: "cohorts",
     params: ["cohort_id"],
+    kwonly: [],
+  },
+  "types.CohortCriteria.property_is_not_set": {
+    pythonApi: "types.CohortCriteria.property_is_not_set",
+    pythonModule: "mixpanel_headless.types",
+    tsModule: "core/types",
+    tsName: "CohortCriteria.propertyIsNotSet",
+    kind: "builder",
+    capability: "cohorts",
+    params: ["property"],
+    kwonly: [],
+  },
+  "types.CohortCriteria.property_is_set": {
+    pythonApi: "types.CohortCriteria.property_is_set",
+    pythonModule: "mixpanel_headless.types",
+    tsModule: "core/types",
+    tsName: "CohortCriteria.propertyIsSet",
+    kind: "builder",
+    capability: "cohorts",
+    params: ["property"],
     kwonly: [],
   },
   "types.CohortDefinition": {
@@ -2344,6 +2374,16 @@ export const API_MAP: Readonly<Record<string, ApiMapEntry>> = {
     params: ["event","value","operator","date_range_value","date_range_unit","event_filters","label"],
     kwonly: [],
   },
+  "types.FunnelStep": {
+    pythonApi: "types.FunnelStep",
+    pythonModule: "mixpanel_headless.types",
+    tsModule: "core/types",
+    tsName: "FunnelStep",
+    kind: "builder",
+    capability: "funnels",
+    params: ["event","label","filters","filters_combinator","order"],
+    kwonly: [],
+  },
   "types.GroupBy": {
     pythonApi: "types.GroupBy",
     pythonModule: "mixpanel_headless.types",
@@ -2423,6 +2463,16 @@ export const API_MAP: Readonly<Record<string, ApiMapEntry>> = {
     capability: "replays",
     params: ["replay_id","distinct_id","project_id","start_time","retention_days"],
     kwonly: ["_df_cache"],
+  },
+  "types.RetentionEvent": {
+    pythonApi: "types.RetentionEvent",
+    pythonModule: "mixpanel_headless.types",
+    tsModule: "core/types",
+    tsName: "RetentionEvent",
+    kind: "builder",
+    capability: "retention",
+    params: ["event","filters","filters_combinator"],
+    kwonly: [],
   },
   "types.SignedReplay": {
     pythonApi: "types.SignedReplay",

@@ -62,8 +62,26 @@
       "rule": "rename"
     },
     {
+      "python": "types.CohortCriteria.did_not_do_event",
+      "ts": "core/types.CohortCriteria.didNotDoEvent",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
       "python": "types.CohortCriteria.has_property",
       "ts": "core/types.CohortCriteria.hasProperty",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "types.CohortCriteria.property_is_set",
+      "ts": "core/types.CohortCriteria.propertyIsSet",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "types.CohortCriteria.property_is_not_set",
+      "ts": "core/types.CohortCriteria.propertyIsNotSet",
       "scope": "api",
       "rule": "rename"
     },
