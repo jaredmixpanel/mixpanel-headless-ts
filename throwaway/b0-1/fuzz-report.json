@@ -1,0 +1,83 @@
+{
+  "examples_per_target": {
+    "cp_length": 504,
+    "cp_slice": 508,
+    "python_float": 514,
+    "python_int": 513,
+    "python_strip": 507,
+    "sorted_strings": 507
+  },
+  "left_info": {
+    "language": "python",
+    "library_version": "0.2.1",
+    "protocol_version": "1.1",
+    "source_commit": "b5c1369824052d97931ff8c4516cbfb24d73a7ad"
+  },
+  "right_info": {
+    "language": "typescript",
+    "library_version": "0.0.0",
+    "protocol_version": "1.1",
+    "source_commit": "b5c1369824052d97931ff8c4516cbfb24d73a7ad"
+  },
+  "skipped_per_target": {
+    "cp_length": 0,
+    "cp_slice": 0,
+    "python_float": 0,
+    "python_int": 0,
+    "python_strip": 0,
+    "sorted_strings": 0
+  },
+  "status": "ok",
+  "targets": [
+    {
+      "divergences": 0,
+      "error": null,
+      "examples": 513,
+      "name": "python_int",
+      "repro_path": null,
+      "skipped": 0
+    },
+    {
+      "divergences": 0,
+      "error": null,
+      "examples": 514,
+      "name": "python_float",
+      "repro_path": null,
+      "skipped": 0
+    },
+    {
+      "divergences": 0,
+      "error": null,
+      "examples": 507,
+      "name": "python_strip",
+      "repro_path": null,
+      "skipped": 0
+    },
+    {
+      "divergences": 0,
+      "error": null,
+      "examples": 507,
+      "name": "sorted_strings",
+      "repro_path": null,
+      "skipped": 0
+    },
+    {
+      "divergences": 0,
+      "error": null,
+      "examples": 504,
+      "name": "cp_length",
+      "repro_path": null,
+      "skipped": 0
+    },
+    {
+      "divergences": 0,
+      "error": null,
+      "examples": 508,
+      "name": "cp_slice",
+      "repro_path": null,
+      "skipped": 0
+    }
+  ],
+  "total_divergences": 0,
+  "total_examples": 3053
+}
