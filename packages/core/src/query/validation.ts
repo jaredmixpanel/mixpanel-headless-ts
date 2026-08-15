@@ -6,15 +6,15 @@
  *
  * - {@link validateQueryArgs} and friends: validate arguments before
  *   bookmark construction (Layer 1, rules V0-V27, F*, R*, FL*, DG1).
- * - `validateBookmark` (Layer 2, rules B1-B26): B2 shard V1b — not yet
- *   landed.
+ * - {@link validateBookmark} / {@link validateFlowBookmark} /
+ *   {@link validateSortingBlock}: validate a BUILT params dict
+ *   (Layer 2, rules B1-B26, FLB1-FLB6, S1-S9).
  *
  * Both layers return `ValidationError[]`; callers decide whether to
  * raise `BookmarkValidationError`.
  *
  * This barrel matches the playbook's home name for the module. V1a
- * re-exports the six Layer-1 validators; V1b extends it with the
- * bookmark validators.
+ * re-exported the six Layer-1 validators; V1b added the bookmark half.
  *
  * @module validation
  * @internal
@@ -34,3 +34,10 @@ export {
   type ValidateRetentionArgsOptions,
   type ValidateTimeArgsOptions,
 } from "./validation-args.js";
+
+export {
+  validateBookmark,
+  validateFlowBookmark,
+  validateSortingBlock,
+  type ValidateBookmarkOptions,
+} from "./validation-bookmark.js";

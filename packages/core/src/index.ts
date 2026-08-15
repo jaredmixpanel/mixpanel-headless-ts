@@ -31,5 +31,13 @@ export * from "./auth/index.js";
 // client assembly; exported per R2.8 (no `private` across modules).
 export * from "./client/index.js";
 
+// Phase-3 B2 (shard V1b): the ONE public member of the `query/`
+// subtree — Python's `validate_bookmark` (`__init__.py:9`, `__all__`
+// entry `"validate_bookmark"`; phase2-audit A1 deferral, owner B2).
+// The rest of `query/` mirrors Python `_internal` and stays unexported,
+// as do the `bookmarks/` tables and the `bookmark_schema` sorting slice.
+export { validateBookmark } from "./query/validation.js";
+export type { ValidateBookmarkOptions } from "./query/validation.js";
+
 /** Package name constant exercised by the skeleton smoke test. */
 export const CORE_PACKAGE_NAME = "@mixpanel-headless/core";

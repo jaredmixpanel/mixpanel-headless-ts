@@ -1,7 +1,10 @@
 /**
  * Barrel for the `bookmarks` module of @mixpanel-headless/core (D11
  * layout). Holds the `_internal/bookmark_enums.py` constant-table port
- * (P2-3); the bookmark builders arrive with Phase-3 batch B3.
+ * (P2-3) and the `_internal/bookmark_schema.py` sorting slice (B2 shard
+ * V1b: the pydantic-mirror models + error adapter that
+ * `validate_sorting_block` delegates to — B3-K1 grows that file with
+ * the rest of the module); the bookmark builders arrive with batch B3.
  *
  * Python-side this surface is `_internal` — it is exported here for
  * in-package consumers (B2/B3 validators) and the conformance lock
@@ -9,3 +12,4 @@
  * (`src/index.ts`), mirroring its absence from `__all__`.
  */
 export * from "./enums.js";
+export * from "./schema-sorting.js";

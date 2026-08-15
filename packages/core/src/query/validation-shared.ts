@@ -44,6 +44,7 @@ import {
 import type { FlowStep, RetentionEvent } from "../types/index.js";
 import {
   cpLength,
+  pythonFloat,
   pythonRepr,
   pythonStrip,
   sortedByCodepoint,
@@ -190,6 +191,28 @@ export function isFloatCarrier(
     "spelling" in value &&
     typeof (value as { spelling: unknown }).spelling === "string"
   );
+}
+
+/**
+ * Numeric value of a PyFloat carrier, for the branches that compare a
+ * float NUMERICALLY rather than by type (B2 shard V1b: FLB6's
+ * `version != 2`, B18's `bool(value)`, the sorting mirror's `int` fields).
+ *
+ * The spelling is CPython `repr(float)` output produced by the rig's
+ * codec, so it is parsed with `pythonFloat` — the R11.3 grammar — never
+ * with `Number()`/`parseFloat` (R11.7 / Caution §3).
+ *
+ * @param carrier - A value that satisfied {@link isFloatCarrier}.
+ * @returns The double the carrier stands for (`Infinity` / `NaN`
+ *   included).
+ * @throws MixpanelHeadlessError - Code `PY_FLOAT_INVALID_LITERAL` when
+ *   the spelling is not a CPython float literal (unreachable for
+ *   codec-produced carriers).
+ */
+export function floatCarrierValue(carrier: {
+  readonly spelling: string;
+}): number {
+  return pythonFloat(carrier.spelling);
 }
 
 /**

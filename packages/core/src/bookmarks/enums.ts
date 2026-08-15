@@ -23,10 +23,10 @@
  * diffs). This module mirrors a Python `_internal` module: it is NOT
  * re-exported from the package barrel (`src/index.ts`).
  *
- * TODO(port): `_MAX_FUNNEL_STEPS` (100) and `_MAX_HOLDING_CONSTANT`
- * (3) are module-private ints outside the 34 extracted constants; they
- * port with the validator batch (Phase-3 B2/B3) that consumes them —
- * out of the P2-3 packet file list (phase2-design Risk #8).
+ * The P2-3 `TODO(port)` for the two module-private ints
+ * (`_MAX_FUNNEL_STEPS`, `_MAX_HOLDING_CONSTANT`) is CLOSED: B2 shard
+ * V1a landed them below and B2 shard V1b removed the marker
+ * (b2-packets.md §V1b TS-homes).
  */
 
 /**
