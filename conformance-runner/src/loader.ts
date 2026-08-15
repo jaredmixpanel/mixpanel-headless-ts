@@ -9,11 +9,14 @@
  *   `18.0` and integers above 2^53 are preserved — plain `JSON.parse` is
  *   never used for vector payloads.
  * - Drift protection: `manifest.source_commit` must equal the pinned
- *   `sourceCommit` (from `corpus.config.json`); every bundle's `$bundle`
- *   header must carry the same commit and an accurate line count; vector
- *   ids must be corpus-unique. Any violation raises
- *   {@link CorpusIntegrityError} — a stale or hand-edited snapshot must
- *   never silently skew a conformance run.
+ *   `sourceCommit` (from `corpus.config.json`); every EXTRACTED bundle's
+ *   `$bundle` header must carry the same commit and an accurate line
+ *   count; vector ids must be corpus-unique. Authored bundles (the
+ *   `authored/` subtree, outside the record pipeline) keep their
+ *   authoring-time stamp — or none at all for storybook harvest headers —
+ *   and are exempt from the commit equality (count and id checks still
+ *   apply). Any violation raises {@link CorpusIntegrityError} — a stale
+ *   or hand-edited snapshot must never silently skew a conformance run.
  */
 
 import { readFileSync, readdirSync } from "node:fs";
@@ -140,6 +143,27 @@ function requireString(
     );
   }
   return value;
+}
+
+/**
+ * Read an optional object field, asserting it is a non-empty string when
+ * present.
+ *
+ * @param record - The containing object.
+ * @param key - The field name.
+ * @param context - Human-readable location for the error message.
+ * @returns The string value, or `undefined` when the field is absent.
+ * @throws CorpusIntegrityError - When present but not a non-empty string.
+ */
+function optionalString(
+  record: Record<string, JsonValue>,
+  key: string,
+  context: string,
+): string | undefined {
+  if (!Object.hasOwn(record, key)) {
+    return undefined;
+  }
+  return requireString(record, key, context);
 }
 
 /**
@@ -364,14 +388,19 @@ export function loadCorpus(
       headerLine["$bundle"],
       `${bundlePath} $bundle header`,
     );
-    const bundleCommit = requireString(
-      header,
-      "source_commit",
-      `${bundlePath} $bundle`,
-    );
-    if (bundleCommit !== manifest.sourceCommit) {
+    // Authored bundles (corpus `authored/` subtree, design D13/D3.1) sit
+    // outside the record pipeline: their `source_commit` is the
+    // authoring-time stamp (or absent entirely for storybook harvest
+    // headers, which carry `generator`/`source_root` provenance instead),
+    // so only extracted bundles are held to the manifest-commit equality
+    // (D12 drift protection).
+    const isAuthored = bundlePath.split(/[/\\]/)[0] === "authored";
+    const bundleCommit = isAuthored
+      ? optionalString(header, "source_commit", `${bundlePath} $bundle`)
+      : requireString(header, "source_commit", `${bundlePath} $bundle`);
+    if (!isAuthored && bundleCommit !== manifest.sourceCommit) {
       throw new CorpusIntegrityError(
-        `${bundlePath}: $bundle source_commit ${bundleCommit} != manifest ${manifest.sourceCommit}`,
+        `${bundlePath}: $bundle source_commit ${String(bundleCommit)} != manifest ${manifest.sourceCommit}`,
       );
     }
     const declaredCount = requireInteger(
@@ -385,10 +414,13 @@ export function loadCorpus(
         `${bundlePath}: $bundle count ${String(declaredCount)} != ${String(vectorLines.length)} vector lines`,
       );
     }
+    const sourceFile = isAuthored
+      ? optionalString(header, "source_file", `${bundlePath} $bundle`)
+      : requireString(header, "source_file", `${bundlePath} $bundle`);
     bundles.push({
       path: bundlePath,
-      sourceCommit: bundleCommit,
-      sourceFile: requireString(header, "source_file", `${bundlePath} $bundle`),
+      ...(bundleCommit !== undefined ? { sourceCommit: bundleCommit } : {}),
+      ...(sourceFile !== undefined ? { sourceFile } : {}),
       count: declaredCount,
     });
     for (const [index, line] of vectorLines.entries()) {

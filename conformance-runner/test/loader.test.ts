@@ -78,6 +78,41 @@ function makeMiniCorpus(options?: {
   return dir;
 }
 
+/**
+ * Write one authored bundle (`authored/bundle.jsonl`) into a mini corpus.
+ *
+ * Every vector line carries `origin: "authored"` so the bundle stays
+ * outside the manifest `counts.total` reconciliation (design D13/D3.1).
+ *
+ * @param dir - The corpus directory returned by makeMiniCorpus.
+ * @param header - `$bundle` header fields merged over the declared count
+ *   (pass `count` to override it).
+ * @param ids - Vector ids to emit, one line each.
+ */
+function addAuthoredBundle(
+  dir: string,
+  header: Record<string, unknown>,
+  ids: readonly string[],
+): void {
+  const lines = [JSON.stringify({ $bundle: { count: ids.length, ...header } })];
+  for (const id of ids) {
+    lines.push(
+      JSON.stringify({
+        id,
+        kind: "builder",
+        origin: "authored",
+        call: {
+          api: "segfilter.build_segfilter_entry",
+          input: { value: 1 },
+        },
+        expect: { output: { ok: true } },
+      }),
+    );
+  }
+  mkdirSync(join(dir, "authored"), { recursive: true });
+  writeFileSync(join(dir, "authored", "bundle.jsonl"), lines.join("\n") + "\n");
+}
+
 describe("loadCorpus on the committed snapshot (TS-4 done criterion)", () => {
   const config = loadCorpusConfig(PACKAGE_DIR);
   const corpus = loadCorpus(
@@ -173,6 +208,50 @@ describe("loadCorpus integrity checks (synthetic corpora)", () => {
   it("refuses bundle headers whose commit disagrees with the manifest", () => {
     const dir = makeMiniCorpus({ bundleCommit: "c".repeat(40) });
     expect(() => loadCorpus(dir, FAKE_SHA)).toThrow(/\$bundle source_commit/);
+  });
+
+  it("accepts authored bundles stamped with their authoring-time commit", () => {
+    const dir = makeMiniCorpus();
+    addAuthoredBundle(
+      dir,
+      {
+        source_commit: "c".repeat(40),
+        source_file: "conformance/vectors/authored/bundle.jsonl",
+      },
+      ["compat/segfilter/authored-a"],
+    );
+    const corpus = loadCorpus(dir, FAKE_SHA);
+    expect(corpus.vectors).toHaveLength(2);
+    const bundle = corpus.bundles.find((b) => b.path.startsWith("authored"));
+    expect(bundle?.sourceCommit).toBe("c".repeat(40));
+    expect(bundle?.sourceFile).toBe(
+      "conformance/vectors/authored/bundle.jsonl",
+    );
+  });
+
+  it("accepts harvest-style authored headers without source_commit", () => {
+    const dir = makeMiniCorpus();
+    addAuthoredBundle(
+      dir,
+      {
+        generator: "conformance/record/harvest_storybook.py",
+        source_root: "analytics/iron/.storybook/mocks/api",
+      },
+      ["parse/workspace/authored-storybook-a"],
+    );
+    const corpus = loadCorpus(dir, FAKE_SHA);
+    expect(corpus.vectors).toHaveLength(2);
+    const bundle = corpus.bundles.find((b) => b.path.startsWith("authored"));
+    expect(bundle?.sourceCommit).toBeUndefined();
+    expect(bundle?.sourceFile).toBeUndefined();
+  });
+
+  it("still refuses count mismatches in authored bundles", () => {
+    const dir = makeMiniCorpus();
+    addAuthoredBundle(dir, { source_commit: "c".repeat(40), count: 9 }, [
+      "compat/segfilter/authored-a",
+    ]);
+    expect(() => loadCorpus(dir, FAKE_SHA)).toThrow(/count 9 != 1/);
   });
 
   it("refuses bundles whose declared count disagrees with actual lines", () => {

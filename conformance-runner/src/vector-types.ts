@@ -55,10 +55,18 @@ export interface ConformanceVector {
 export interface BundleInfo {
   /** Corpus-relative bundle path, e.g. `funnels/test_api_client.jsonl`. */
   readonly path: string;
-  /** The bundle's stamped source commit (must match the manifest). */
-  readonly sourceCommit: string;
-  /** The Python test file the bundle was extracted from. */
-  readonly sourceFile: string;
+  /**
+   * The bundle's stamped source commit. Extracted bundles MUST match the
+   * manifest commit; authored bundles keep their authoring-time stamp, and
+   * harvest-generated headers (storybook parse corpus) omit it entirely.
+   */
+  readonly sourceCommit?: string;
+  /**
+   * The Python test file the bundle was extracted from. Absent for
+   * harvest-generated authored bundles, whose headers carry
+   * `generator`/`source_root` provenance instead.
+   */
+  readonly sourceFile?: string;
   /** Declared vector count (validated against actual lines). */
   readonly count: number;
 }
