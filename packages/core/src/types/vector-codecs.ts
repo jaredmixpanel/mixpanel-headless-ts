@@ -26,6 +26,23 @@
 
 import { parseOAuthTokens, OAuthTokens } from "../auth/token.js";
 import { Secret } from "../secret.js";
+import { CohortCriteria, CohortDefinition } from "./query-params/cohort.js";
+import {
+  CustomPropertyRef,
+  Filter,
+  InlineCustomProperty,
+  ListItemGroupMode,
+  PropertyInput,
+  type FilterFields,
+} from "./query-params/filter.js";
+import { GroupBy, type GroupByFields } from "./query-params/group-by.js";
+import {
+  CohortMetric,
+  Formula,
+  Metric,
+  TimeComparison,
+  type MetricFields,
+} from "./query-params/metric.js";
 
 /**
  * One registered rich-tag codec (phase2-design C7 `TagCodec`).
@@ -171,12 +188,283 @@ const oauthTokensCodec: ContractTagCodec = {
 };
 
 /**
+ * One row of the generic dataclass-codec table (mirror of Python
+ * `_decode_dataclass` / the dataclass arm of `_encode_common`).
+ *
+ * @internal
+ */
+interface DataclassCodecSpec {
+  /** Declared field names, in Python `dataclasses.fields` order. */
+  readonly fields: readonly string[];
+  /** Field names REQUIRED by the Python constructor (no default). */
+  readonly required: readonly string[];
+  /**
+   * Construct the real instance from decoded present-field values
+   * (constructor guards fire here, mirroring `_decode_dataclass`).
+   */
+  readonly construct: (bag: Readonly<Record<string, unknown>>) => unknown;
+  /** The C8(a) anti-vacuity `instanceof` probe. */
+  readonly matches: (value: unknown) => boolean;
+}
+
+/**
+ * Build a {@link ContractTagCodec} from a dataclass spec — the TS twin
+ * of Python's generic dataclass codec path: unknown payload fields are
+ * rejected, absent fields fall back to the constructor defaults,
+ * present fields decode recursively, and encode walks ALL declared
+ * fields in declaration order with `$type` first.
+ *
+ * @param tag - The `$type` name exactly as vectors carry it.
+ * @param spec - The dataclass codec row.
+ * @returns The assembled codec entry.
+ */
+function dataclassCodec(
+  tag: string,
+  spec: DataclassCodecSpec,
+): ContractTagCodec {
+  const fieldSet = new Set(spec.fields);
+  return {
+    decode: (payload, decodeChild) => {
+      rejectUnknownFields(payload, fieldSet, tag);
+      const bag: Record<string, unknown> = {};
+      for (const field of spec.fields) {
+        if (Object.hasOwn(payload, field)) {
+          bag[field] = decodeChild(payload[field]);
+        }
+      }
+      for (const field of spec.required) {
+        if (!Object.hasOwn(bag, field)) {
+          throw new Error(
+            `missing required field ${JSON.stringify(field)} for $type ${tag}`,
+          );
+        }
+      }
+      return spec.construct(bag);
+    },
+    matches: spec.matches,
+    encode: (instance, encodeChild) => {
+      const record = instance as Readonly<Record<string, unknown>>;
+      const out: Record<string, unknown> = { $type: tag };
+      for (const field of spec.fields) {
+        out[field] = encodeChild(record[field]);
+      }
+      return out;
+    },
+  };
+}
+
+/**
+ * The `CohortDefinition` codec — mirror of Python
+ * `_decode_cohort_definition` (`init=False`: reconstruction goes
+ * through the `allOf`/`anyOf` statics; the stored operators are exactly
+ * `"or"` and `"and"`, any other value is undecodable). Encode uses the
+ * generic declared-field walk.
+ */
+const cohortDefinitionCodec: ContractTagCodec = {
+  decode: (payload, decodeChild) => {
+    const rawCriteria = Object.hasOwn(payload, "_criteria")
+      ? payload["_criteria"]
+      : [];
+    if (!Array.isArray(rawCriteria)) {
+      throw new Error("CohortDefinition._criteria must be an array");
+    }
+    const criteria = rawCriteria.map((item) =>
+      decodeChild(item),
+    ) as ReadonlyArray<CohortCriteria | CohortDefinition>;
+    const operator = payload["_operator"];
+    if (operator === "or") {
+      return CohortDefinition.anyOf(...criteria);
+    }
+    if (operator === "and") {
+      return CohortDefinition.allOf(...criteria);
+    }
+    throw new Error(
+      `unknown CohortDefinition operator ${JSON.stringify(operator)} in vector input`,
+    );
+  },
+  matches: (value) => value instanceof CohortDefinition,
+  encode: (instance, encodeChild) => {
+    const definition = instance as CohortDefinition;
+    return {
+      $type: "CohortDefinition",
+      _criteria: encodeChild(definition._criteria),
+      _operator: definition._operator,
+    };
+  },
+};
+
+/**
+ * The P2-5a dataclass codec rows (field lists in Python
+ * `dataclasses.fields` order; `CohortCriteria` rides along one packet
+ * early — see `query-params/cohort.ts` for why).
+ */
+const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
+  [
+    "Filter",
+    {
+      fields: [
+        "_property",
+        "_operator",
+        "_value",
+        "_property_type",
+        "_resource_type",
+        "_date_unit",
+        "_list_item_filters",
+        "_list_item_quantifier",
+      ],
+      required: ["_property", "_operator", "_value"],
+      construct: (bag) => new Filter(bag as unknown as FilterFields),
+      matches: (value) => value instanceof Filter,
+    },
+  ],
+  [
+    "ListItemGroupMode",
+    {
+      fields: ["sub", "sub_type"],
+      required: ["sub", "sub_type"],
+      construct: (bag) =>
+        new ListItemGroupMode(
+          bag as unknown as ConstructorParameters<typeof ListItemGroupMode>[0],
+        ),
+      matches: (value) => value instanceof ListItemGroupMode,
+    },
+  ],
+  [
+    "PropertyInput",
+    {
+      fields: ["name", "type", "resource_type"],
+      required: ["name"],
+      construct: (bag) =>
+        new PropertyInput(
+          bag as unknown as ConstructorParameters<typeof PropertyInput>[0],
+        ),
+      matches: (value) => value instanceof PropertyInput,
+    },
+  ],
+  [
+    "InlineCustomProperty",
+    {
+      fields: ["formula", "inputs", "property_type", "resource_type"],
+      required: ["formula", "inputs"],
+      construct: (bag) =>
+        new InlineCustomProperty(
+          bag as unknown as ConstructorParameters<
+            typeof InlineCustomProperty
+          >[0],
+        ),
+      matches: (value) => value instanceof InlineCustomProperty,
+    },
+  ],
+  [
+    "CustomPropertyRef",
+    {
+      fields: ["id"],
+      required: ["id"],
+      construct: (bag) =>
+        new CustomPropertyRef(
+          bag as unknown as ConstructorParameters<typeof CustomPropertyRef>[0],
+        ),
+      matches: (value) => value instanceof CustomPropertyRef,
+    },
+  ],
+  [
+    "GroupBy",
+    {
+      fields: [
+        "property",
+        "property_type",
+        "bucket_size",
+        "bucket_min",
+        "bucket_max",
+        "_list_item_mode",
+      ],
+      required: ["property"],
+      construct: (bag) => new GroupBy(bag as unknown as GroupByFields),
+      matches: (value) => value instanceof GroupBy,
+    },
+  ],
+  [
+    "Metric",
+    {
+      fields: [
+        "event",
+        "math",
+        "property",
+        "per_user",
+        "percentile_value",
+        "filters",
+        "filters_combinator",
+        "segment_method",
+      ],
+      required: ["event"],
+      construct: (bag) => new Metric(bag as unknown as MetricFields),
+      matches: (value) => value instanceof Metric,
+    },
+  ],
+  [
+    "CohortMetric",
+    {
+      fields: ["cohort", "name"],
+      required: ["cohort"],
+      construct: (bag) =>
+        new CohortMetric(
+          bag as unknown as ConstructorParameters<typeof CohortMetric>[0],
+        ),
+      matches: (value) => value instanceof CohortMetric,
+    },
+  ],
+  [
+    "Formula",
+    {
+      fields: ["expression", "label"],
+      required: ["expression"],
+      construct: (bag) =>
+        new Formula(bag as unknown as ConstructorParameters<typeof Formula>[0]),
+      matches: (value) => value instanceof Formula,
+    },
+  ],
+  [
+    "TimeComparison",
+    {
+      fields: ["type", "unit", "date"],
+      required: ["type"],
+      construct: (bag) =>
+        new TimeComparison(
+          bag as unknown as ConstructorParameters<typeof TimeComparison>[0],
+        ),
+      matches: (value) => value instanceof TimeComparison,
+    },
+  ],
+  [
+    "CohortCriteria",
+    {
+      fields: ["_selector_node", "_behavior_key", "_behavior"],
+      required: ["_selector_node", "_behavior_key", "_behavior"],
+      construct: (bag) =>
+        new CohortCriteria(
+          bag as unknown as ConstructorParameters<typeof CohortCriteria>[0],
+        ),
+      matches: (value) => value instanceof CohortCriteria,
+    },
+  ],
+];
+
+/**
  * The Phase-2 contract tag-codec table, keyed by `$type` name.
  *
  * @internal
  */
 export const CONTRACT_TAG_CODECS: ReadonlyMap<string, ContractTagCodec> =
-  new Map([["OAuthTokens", oauthTokensCodec]]);
+  new Map<string, ContractTagCodec>([
+    ["OAuthTokens", oauthTokensCodec],
+    ["CohortDefinition", cohortDefinitionCodec],
+    ...DATACLASS_CODECS.map(
+      ([tag, spec]): readonly [string, ContractTagCodec] => [
+        tag,
+        dataclassCodec(tag, spec),
+      ],
+    ),
+  ]);
 
 // Re-exported so the runner's SecretStr built-in swap and the codec-sweep
 // anti-vacuity probes have a single import site alongside the table.

@@ -21,11 +21,34 @@ import {
   zfill,
   type PythonValue,
 } from "../../packages/core/src/compat/index.js";
+import { MixpanelHeadlessError } from "../../packages/core/src/errors.js";
+import type { CohortDefinition } from "../../packages/core/src/types/query-params/cohort.js";
+import {
+  Filter,
+  ListItemGroupMode,
+  type FilterFields,
+  type PropertySpec,
+} from "../../packages/core/src/types/query-params/filter.js";
+import {
+  GroupBy,
+  type GroupByFields,
+} from "../../packages/core/src/types/query-params/group-by.js";
+import {
+  CohortMetric,
+  Formula,
+  Metric,
+  TimeComparison,
+  type MetricFields,
+} from "../../packages/core/src/types/query-params/metric.js";
 import { CONTRACT_TAG_CODECS } from "../../packages/core/src/types/vector-codecs.js";
 import { CodecRegistry, UndecodableValueError } from "./codecs.js";
 import type { JsonValue } from "./json-value.js";
 import { JsonNumber } from "./json-value.js";
-import type { InvocationContext, RunnerDeps } from "./runner.js";
+import type {
+  ExpectErrorConvertible,
+  InvocationContext,
+  RunnerDeps,
+} from "./runner.js";
 import { ImplementationRegistry } from "./runner.js";
 import { WireStubClient, type WireStubRequestOptions } from "./wirestub.js";
 
@@ -171,6 +194,263 @@ function registerWireStubBindings(
 }
 
 /**
+ * A ported-library error re-thrown in vector `expect.error` form.
+ *
+ * Core exceptions cannot implement the runner's
+ * {@link ExpectErrorConvertible} themselves (dependency direction:
+ * runner -> core, never the reverse), so the binding layer wraps any
+ * thrown `MixpanelHeadlessError` into this adapter; the runner then
+ * diffs `{class, code}` structurally (R5.2/R5.4 — messages stripped).
+ */
+export class CoreLibraryError extends Error implements ExpectErrorConvertible {
+  /** The original core exception. */
+  readonly original: MixpanelHeadlessError;
+
+  /**
+   * Wrap a core exception.
+   *
+   * @param original - The thrown `MixpanelHeadlessError`.
+   */
+  constructor(original: MixpanelHeadlessError) {
+    super(original.message, { cause: original });
+    this.name = "CoreLibraryError";
+    this.original = original;
+  }
+
+  /**
+   * Encode this error as a vector `expect.error` value.
+   *
+   * @returns `{class: <Python exception class name>, code: <registry
+   *   code>}` — TS class names equal the Python ones by construction
+   *   (R5.1/R5.2).
+   */
+  toExpectError(): JsonValue {
+    return { class: this.original.name, code: this.original.code };
+  }
+}
+
+/**
+ * Invoke a core entry point and encode its product for the runner.
+ *
+ * @param codecs - The codec registry (rich-tag encoders included).
+ * @param invoke - Thunk performing the real library call.
+ * @returns The vector-JSON encoding of the returned instance.
+ * @throws CoreLibraryError - When the call raises a core exception.
+ * @throws unknown - Anything else, unchanged (a runner/infra bug).
+ */
+function runGuarded(codecs: CodecRegistry, invoke: () => unknown): JsonValue {
+  try {
+    return codecs.encodeValue(invoke());
+  } catch (cause) {
+    if (cause instanceof MixpanelHeadlessError) {
+      throw new CoreLibraryError(cause);
+    }
+    throw cause;
+  }
+}
+
+/**
+ * Build the kw-only options bag shared by most `Filter` factories.
+ *
+ * @param context - The invocation context.
+ * @returns `{resource_type}` when the kwarg was recorded, else empty
+ *   (absent kwargs stay absent — R3.5).
+ */
+function resourceTypeBag(context: InvocationContext): {
+  readonly resource_type?: "events" | "people";
+} {
+  const value = context.kwargs["resource_type"];
+  return value !== undefined
+    ? { resource_type: value as "events" | "people" }
+    : {};
+}
+
+/**
+ * Register the P2-5a `types.*` builder bindings (filter/metric/group
+ * core — phase2-design C10).
+ *
+ * Each adapter is a thin shim: decoded kwargs -> the real core
+ * constructor/factory -> encode the result (or wrap the coded guard
+ * error). The `types.Filter` direct-construction binding passes the
+ * decoded field bag straight through (absent fields take the dataclass
+ * defaults, exactly like Python's `Filter(**decoded)` replay).
+ *
+ * @param implementations - The registry to extend.
+ * @param codecs - The codec registry used to encode returned instances.
+ */
+function registerQueryParamBindings(
+  implementations: ImplementationRegistry,
+  codecs: CodecRegistry,
+): void {
+  const bind = (
+    api: string,
+    invoke: (context: InvocationContext) => unknown,
+  ): void => {
+    implementations.register(api, (context) =>
+      runGuarded(codecs, () => invoke(context)),
+    );
+  };
+
+  bind(
+    "types.Filter",
+    (context) => new Filter(context.kwargs as unknown as FilterFields),
+  );
+  bind("types.Filter.on", (context) =>
+    Filter.on(
+      requireKwarg(context, "property") as PropertySpec,
+      requireKwarg(context, "date") as string,
+      resourceTypeBag(context),
+    ),
+  );
+  bind("types.Filter.before", (context) =>
+    Filter.before(
+      requireKwarg(context, "property") as PropertySpec,
+      requireKwarg(context, "date") as string,
+      resourceTypeBag(context),
+    ),
+  );
+  bind("types.Filter.since", (context) =>
+    Filter.since(
+      requireKwarg(context, "property") as PropertySpec,
+      requireKwarg(context, "date") as string,
+      resourceTypeBag(context),
+    ),
+  );
+  bind("types.Filter.in_the_last", (context) =>
+    Filter.inTheLast(
+      requireKwarg(context, "property") as PropertySpec,
+      requireKwarg(context, "quantity") as number,
+      requireKwarg(context, "date_unit") as Parameters<
+        typeof Filter.inTheLast
+      >[2],
+      resourceTypeBag(context),
+    ),
+  );
+  bind("types.Filter.not_in_the_last", (context) =>
+    Filter.notInTheLast(
+      requireKwarg(context, "property") as PropertySpec,
+      requireKwarg(context, "quantity") as number,
+      requireKwarg(context, "date_unit") as Parameters<
+        typeof Filter.notInTheLast
+      >[2],
+      resourceTypeBag(context),
+    ),
+  );
+  bind("types.Filter.in_the_next", (context) =>
+    Filter.inTheNext(
+      requireKwarg(context, "property") as PropertySpec,
+      requireKwarg(context, "quantity") as number,
+      requireKwarg(context, "date_unit") as Parameters<
+        typeof Filter.inTheNext
+      >[2],
+      resourceTypeBag(context),
+    ),
+  );
+  bind("types.Filter.date_between", (context) =>
+    Filter.dateBetween(
+      requireKwarg(context, "property") as PropertySpec,
+      requireKwarg(context, "from_date") as string,
+      requireKwarg(context, "to_date") as string,
+      resourceTypeBag(context),
+    ),
+  );
+  bind("types.Filter.date_not_between", (context) =>
+    Filter.dateNotBetween(
+      requireKwarg(context, "property") as PropertySpec,
+      requireKwarg(context, "from_date") as string,
+      requireKwarg(context, "to_date") as string,
+      resourceTypeBag(context),
+    ),
+  );
+  bind("types.Filter.in_cohort", (context) =>
+    Filter.inCohort(
+      requireKwarg(context, "cohort") as number | CohortDefinition,
+      (context.kwargs["name"] ?? null) as string | null,
+    ),
+  );
+  bind("types.Filter.not_in_cohort", (context) =>
+    Filter.notInCohort(
+      requireKwarg(context, "cohort") as number | CohortDefinition,
+      (context.kwargs["name"] ?? null) as string | null,
+    ),
+  );
+  bind("types.Filter.list_contains", (context) => {
+    // Python signature: (property, *item_filters, quantifier="any",
+    // resource_type="events", **equals). The recorder binds the
+    // positional varargs under "item_filters"; EVERY other input key is
+    // an **equals kwarg, in recorded (== Python kwarg) order.
+    const named = new Set([
+      "property",
+      "item_filters",
+      "quantifier",
+      "resource_type",
+    ]);
+    const equals: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(context.kwargs)) {
+      if (!named.has(key)) {
+        equals[key] = value;
+      }
+    }
+    const itemFilters = (context.kwargs["item_filters"] ??
+      []) as readonly Filter[];
+    const quantifier = context.kwargs["quantifier"];
+    return Filter.listContains(
+      requireKwarg(context, "property") as string,
+      itemFilters,
+      {
+        ...(quantifier !== undefined
+          ? { quantifier: quantifier as "any" | "all" }
+          : {}),
+        ...resourceTypeBag(context),
+        equals: equals as Readonly<Record<string, string | readonly string[]>>,
+      },
+    );
+  });
+  bind(
+    "types.ListItemGroupMode",
+    (context) =>
+      new ListItemGroupMode(
+        context.kwargs as unknown as ConstructorParameters<
+          typeof ListItemGroupMode
+        >[0],
+      ),
+  );
+  bind(
+    "types.GroupBy",
+    (context) => new GroupBy(context.kwargs as unknown as GroupByFields),
+  );
+  bind(
+    "types.Metric",
+    (context) => new Metric(context.kwargs as unknown as MetricFields),
+  );
+  bind(
+    "types.CohortMetric",
+    (context) =>
+      new CohortMetric(
+        context.kwargs as unknown as ConstructorParameters<
+          typeof CohortMetric
+        >[0],
+      ),
+  );
+  bind(
+    "types.Formula",
+    (context) =>
+      new Formula(
+        context.kwargs as unknown as ConstructorParameters<typeof Formula>[0],
+      ),
+  );
+  bind(
+    "types.TimeComparison",
+    (context) =>
+      new TimeComparison(
+        context.kwargs as unknown as ConstructorParameters<
+          typeof TimeComparison
+        >[0],
+      ),
+  );
+}
+
+/**
  * Register the Phase-2 contract tag codecs (phase2-design C7 item 2).
  *
  * One call per Phase-2 packet's additions — the table itself lives in
@@ -228,5 +508,6 @@ export function createRunnerDeps(recordEpoch: string): RunnerDeps {
   registerCompatBindings(implementations);
   registerWireStubBindings(implementations);
   registerContractCodecs(codecs);
+  registerQueryParamBindings(implementations, codecs);
   return { implementations, codecs, recordEpoch };
 }

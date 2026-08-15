@@ -21,6 +21,7 @@
  * the D6 `PRECISION_LOSS` machinery depends on the distinction).
  */
 
+import { pythonFloatStr } from "../../packages/core/src/compat/index.js";
 import { Secret } from "../../packages/core/src/secret.js";
 import { JsonNumber, type JsonValue } from "./json-value.js";
 
@@ -74,6 +75,59 @@ export class PyDatetime {
    */
   constructor(iso: string) {
     this.iso = iso;
+  }
+}
+
+/**
+ * Decoded `$type: float` — the canonical spelling, kept lossless.
+ *
+ * P2-5a codec amendment (Risk #3, see the Python twin's
+ * `conformance/record/EXTRACTION-LEDGER.md`): the recorder tags
+ * INTEGRAL-valued floats inside rich payloads (`1716810000.0` cannot
+ * survive a double-only decode as a raw token — it collapses to the
+ * integer and the C8(a) sweep diffs), and the authored validation
+ * vectors carry the non-finite spellings (`Infinity`/`-Infinity`/`NaN`).
+ * The wrapper preserves the spelling so encode re-emits the tagged form
+ * byte-for-byte.
+ */
+export class PyFloat {
+  /** The canonical spelling exactly as the tagged payload carried it. */
+  readonly spelling: string;
+
+  /**
+   * Wrap a canonical float spelling.
+   *
+   * @param spelling - `Infinity`, `-Infinity`, `NaN`, or the canonical
+   *   Python `repr` of an integral float (e.g. `"18.0"`, `"1e+16"`).
+   * @throws UndecodableValueError - On any other spelling (non-integral
+   *   finite floats must stay raw JSON number tokens — design D6 rule 3).
+   */
+  constructor(spelling: string) {
+    if (!["Infinity", "-Infinity", "NaN"].includes(spelling)) {
+      const parsed = Number(spelling);
+      const canonical =
+        Number.isFinite(parsed) &&
+        Number.isInteger(parsed) &&
+        pythonFloatStr(parsed) === spelling;
+      if (!canonical) {
+        throw new UndecodableValueError(
+          `$type float carries non-canonical spelling ${JSON.stringify(spelling)} ` +
+            "(non-integral finite floats must be raw JSON number tokens — " +
+            "design D6 rule 3; taggable spellings are Infinity/-Infinity/NaN " +
+            "and canonical integral reprs)",
+        );
+      }
+    }
+    this.spelling = spelling;
+  }
+
+  /**
+   * The numeric value of the spelling.
+   *
+   * @returns ECMAScript `Number(spelling)` (`NaN` for the NaN spelling).
+   */
+  toNumber(): number {
+    return Number(this.spelling);
   }
 }
 
@@ -264,7 +318,8 @@ export class CodecRegistry {
    * @param tag - The `$type` name exactly as vectors carry it.
    * @param decoder - The reconstruction callback.
    * @throws Error - If the tag is already registered or shadows a
-   *   built-in (`datetime`, `date`, `SecretStr`, `bytes`, `callback`).
+   *   built-in (`datetime`, `date`, `SecretStr`, `bytes`, `callback`,
+   *   `float`).
    */
   register(tag: string, decoder: TagDecoder): void {
     if (BUILTIN_TAGS.has(tag)) {
@@ -424,6 +479,8 @@ export class CodecRegistry {
       }
       case "callback":
         return new RecordingCallback(requireTagString(payload, "name", tag));
+      case "float":
+        return new PyFloat(requireTagString(payload, "value", tag));
       default: {
         const decoder = this.decoders.get(tag);
         if (decoder === undefined) {
@@ -445,6 +502,7 @@ const BUILTIN_TAGS: ReadonlySet<string> = new Set([
   "SecretStr",
   "bytes",
   "callback",
+  "float",
 ]);
 
 /**
@@ -503,6 +561,9 @@ export function encodeExpectValue(
   }
   if (value instanceof PyDate) {
     return { $type: "date", iso: value.iso };
+  }
+  if (value instanceof PyFloat) {
+    return { $type: "float", value: value.spelling };
   }
   if (value instanceof Secret) {
     // NEVER `toJSON()` — its `'**********'` mask in an encoded vector

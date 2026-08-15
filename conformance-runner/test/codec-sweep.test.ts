@@ -23,9 +23,32 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { OAuthTokens } from "../../packages/core/src/auth/token.js";
 import { Secret } from "../../packages/core/src/secret.js";
+import {
+  CohortCriteria,
+  CohortDefinition,
+} from "../../packages/core/src/types/query-params/cohort.js";
+import {
+  CustomPropertyRef,
+  Filter,
+  InlineCustomProperty,
+  ListItemGroupMode,
+  PropertyInput,
+} from "../../packages/core/src/types/query-params/filter.js";
+import { GroupBy } from "../../packages/core/src/types/query-params/group-by.js";
+import {
+  CohortMetric,
+  Formula,
+  Metric,
+  TimeComparison,
+} from "../../packages/core/src/types/query-params/metric.js";
 import { createRunnerDeps } from "../src/bindings.js";
 import { canonicalize } from "../src/canonical.js";
-import { PyDate, PyDatetime, RecordingCallback } from "../src/codecs.js";
+import {
+  PyDate,
+  PyDatetime,
+  PyFloat,
+  RecordingCallback,
+} from "../src/codecs.js";
 import { JsonNumber, type JsonValue } from "../src/json-value.js";
 import { loadCorpus, loadCorpusConfig } from "../src/loader.js";
 
@@ -34,20 +57,8 @@ const PACKAGE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** Rich tags whose port packet has NOT landed yet (explicit, tracked). */
 const ALLOWLIST: ReadonlySet<string> = new Set([
-  // P2-5a filter/metric/group core
-  "Filter",
-  "ListItemGroupMode",
-  "PropertyInput",
-  "CustomPropertyRef",
-  "InlineCustomProperty",
-  "GroupBy",
-  "Metric",
-  "CohortMetric",
-  "Formula",
-  "TimeComparison",
-  // P2-5b cohort family
-  "CohortCriteria",
-  "CohortDefinition",
+  // P2-5b cohort family (CohortCriteria/CohortDefinition landed EARLY,
+  // with P2-5a — the CM5 CohortMetric vectors decode their payloads)
   "CohortBreakdown",
   // P2-5c funnel/retention/flow/frequency
   "FunnelStep",
@@ -121,14 +132,14 @@ const ALLOWLIST: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Built-in tags the runner cannot round-trip yet: `float` has no decode
- * arm in codecs.ts (the Python built-in table has one) — closing that
- * gap belongs to the P2-5a flip / P2-8 finalization; `callback` decodes
- * to a RecordingCallback stub that has no encode form by design (the
- * stub records calls; it is not a value). Both are decode-gap entries,
- * not port-packet allowlist entries.
+ * Built-in tags the runner cannot round-trip: `callback` decodes to a
+ * RecordingCallback stub that has no encode form by design (the stub
+ * records calls; it is not a value). The former `float` entry closed
+ * with the P2-5a flip: the tag now decodes to the lossless `PyFloat`
+ * wrapper and round-trips (see the Risk #3 integral-float amendment in
+ * the Python repo's EXTRACTION-LEDGER).
  */
-const DECODE_GAP: ReadonlySet<string> = new Set(["float", "callback"]);
+const DECODE_GAP: ReadonlySet<string> = new Set(["callback"]);
 
 /** Parsed shape of the P2-1 tag-universe contract artifact. */
 interface TagUniverse {
@@ -234,11 +245,51 @@ function assertRealInstance(entry: TaggedNode, decoded: unknown): void {
     case "date":
       expect(decoded, where).toBeInstanceOf(PyDate);
       break;
+    case "float":
+      expect(decoded, where).toBeInstanceOf(PyFloat);
+      break;
     case "bytes":
       expect(decoded, where).toBeInstanceOf(Uint8Array);
       break;
     case "callback":
       expect(decoded, where).toBeInstanceOf(RecordingCallback);
+      break;
+    // P2-5a rich tags (+ the early cohort shells).
+    case "Filter":
+      expect(decoded, where).toBeInstanceOf(Filter);
+      break;
+    case "ListItemGroupMode":
+      expect(decoded, where).toBeInstanceOf(ListItemGroupMode);
+      break;
+    case "PropertyInput":
+      expect(decoded, where).toBeInstanceOf(PropertyInput);
+      break;
+    case "CustomPropertyRef":
+      expect(decoded, where).toBeInstanceOf(CustomPropertyRef);
+      break;
+    case "InlineCustomProperty":
+      expect(decoded, where).toBeInstanceOf(InlineCustomProperty);
+      break;
+    case "GroupBy":
+      expect(decoded, where).toBeInstanceOf(GroupBy);
+      break;
+    case "Metric":
+      expect(decoded, where).toBeInstanceOf(Metric);
+      break;
+    case "CohortMetric":
+      expect(decoded, where).toBeInstanceOf(CohortMetric);
+      break;
+    case "Formula":
+      expect(decoded, where).toBeInstanceOf(Formula);
+      break;
+    case "TimeComparison":
+      expect(decoded, where).toBeInstanceOf(TimeComparison);
+      break;
+    case "CohortCriteria":
+      expect(decoded, where).toBeInstanceOf(CohortCriteria);
+      break;
+    case "CohortDefinition":
+      expect(decoded, where).toBeInstanceOf(CohortDefinition);
       break;
     default:
       throw new Error(`no instanceof probe for round-tripped tag ${entry.tag}`);
@@ -279,11 +330,16 @@ describe("C8(a) codec round-trip sweep", () => {
     expect(stale).toEqual([]);
   });
 
-  it("every registered rich tag was exercised at least once", () => {
-    // Registered rich tags so far: the P2-4 contract table (OAuthTokens).
-    // Built-ins are exempt ('date' has zero corpus occurrences by
-    // design — registered but unexercised, phase2-design inventory).
-    expect(tally.get("OAuthTokens") ?? 0).toBeGreaterThanOrEqual(1);
+  it("every registered rich tag was exercised at least once", async () => {
+    // Registered rich tags = the full contract table (P2-4 OAuthTokens +
+    // the P2-5a query-param family + the early cohort shells). Built-ins
+    // are exempt ('date' has zero corpus occurrences by design —
+    // registered but unexercised, phase2-design inventory).
+    const { CONTRACT_TAG_CODECS } =
+      await import("../../packages/core/src/types/vector-codecs.js");
+    for (const tag of CONTRACT_TAG_CODECS.keys()) {
+      expect(tally.get(tag) ?? 0, `tag ${tag}`).toBeGreaterThanOrEqual(1);
+    }
   });
 
   it("round-trips every decodable tagged subtree byte-canonically", () => {
