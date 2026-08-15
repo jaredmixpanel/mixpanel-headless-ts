@@ -22,7 +22,9 @@
     "generate": "json2ts vendor/mixpanel-contracts/bookmark.json differential/src/generated/reports/bookmark.ts --no-enableConstEnums --no-unknownAny --unreachableDefinitions",
     "vendor:drift": "bash scripts/check-vendor-drift.sh",
     "smoke:browser": "node scripts/browser-smoke.mjs",
-    "check": "npm run typecheck && npm run lint && npm run fmt:check && npm run test && npm run smoke:browser"
+    "check": "npm run typecheck && npm run lint && npm run fmt:check && npm run test && npm run smoke:browser",
+    "sync:corpus": "bash scripts/sync-corpus.sh",
+    "generate:api-map": "node scripts/generate-api-map.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
