@@ -53,6 +53,11 @@ import {
   TimeComparison,
 } from "../../packages/core/src/types/query-params/metric.js";
 import { RetentionEvent } from "../../packages/core/src/types/query-params/retention.js";
+import {
+  Replay,
+  SignedReplay,
+  UserAction,
+} from "../../packages/core/src/types/results/replays.js";
 import { createRunnerDeps } from "../src/bindings.js";
 import { canonicalize } from "../src/canonical.js";
 import {
@@ -69,10 +74,6 @@ const PACKAGE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** Rich tags whose port packet has NOT landed yet (explicit, tracked). */
 const ALLOWLIST: ReadonlySet<string> = new Set([
-  // P2-6 result classes + replay models
-  "UserAction",
-  "Replay",
-  "SignedReplay",
   // P2-7 entity/params models
   "BlueprintCard",
   "BlueprintFinishParams",
@@ -317,6 +318,16 @@ function assertRealInstance(entry: TaggedNode, decoded: unknown): void {
       break;
     case "FrequencyFilter":
       expect(decoded, where).toBeInstanceOf(FrequencyFilter);
+      break;
+    // P2-6 replay-family tags.
+    case "UserAction":
+      expect(decoded, where).toBeInstanceOf(UserAction);
+      break;
+    case "Replay":
+      expect(decoded, where).toBeInstanceOf(Replay);
+      break;
+    case "SignedReplay":
+      expect(decoded, where).toBeInstanceOf(SignedReplay);
       break;
     default:
       throw new Error(`no instanceof probe for round-tripped tag ${entry.tag}`);

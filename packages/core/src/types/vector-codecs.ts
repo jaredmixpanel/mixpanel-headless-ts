@@ -58,6 +58,16 @@ import {
   RetentionEvent,
   type RetentionEventFields,
 } from "./query-params/retention.js";
+import { pythonFloatStr } from "../compat/index.js";
+import {
+  Replay,
+  ReplayEvent,
+  SignedReplay,
+  UserAction,
+  type ReplayFields,
+  type SignedReplayFields,
+  type UserActionFields,
+} from "./results/replays.js";
 import { GroupBy, type GroupByFields } from "./query-params/group-by.js";
 import {
   CohortMetric,
@@ -569,6 +579,132 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
 ];
 
 /**
+ * The `SignedReplay` tag codec (phase2-design C6-d) — custom because
+ * its Python `signed_at` field is a FLOAT: integral values ride the
+ * corpus as `$type: float` spellings (D6 rule 3), which the generic
+ * dataclass walk cannot reproduce from a plain TS number. Decode
+ * unwraps the runner's PyFloat duck-shape; encode re-tags integral
+ * values with the canonical Python repr via `pythonFloatStr`.
+ */
+const signedReplayCodec: ContractTagCodec = {
+  decode: (payload, decodeChild) => {
+    const fields = ["replay_id", "url", "query_string", "env", "signed_at"];
+    rejectUnknownFields(payload, new Set(fields), "SignedReplay");
+    const bag: Record<string, unknown> = {};
+    for (const field of fields) {
+      if (Object.hasOwn(payload, field)) {
+        bag[field] = decodeChild(payload[field]);
+      } else {
+        throw new Error(
+          `missing required field ${JSON.stringify(field)} for $type SignedReplay`,
+        );
+      }
+    }
+    const signed_at = bag["signed_at"];
+    if (
+      typeof signed_at === "object" &&
+      signed_at !== null &&
+      "spelling" in signed_at &&
+      typeof (signed_at as { spelling: unknown }).spelling === "string"
+    ) {
+      bag["signed_at"] = Number((signed_at as { spelling: string }).spelling);
+    }
+    return new SignedReplay(bag as unknown as SignedReplayFields);
+  },
+  matches: (value) => value instanceof SignedReplay,
+  encode: (instance, encodeChild) => {
+    const signed = instance as SignedReplay;
+    const signed_at: unknown =
+      Number.isFinite(signed.signed_at) && Number.isInteger(signed.signed_at)
+        ? { $type: "float", value: pythonFloatStr(signed.signed_at) }
+        : encodeChild(signed.signed_at);
+    return {
+      $type: "SignedReplay",
+      replay_id: encodeChild(signed.replay_id),
+      url: encodeChild(signed.url),
+      query_string: encodeChild(signed.query_string),
+      env: encodeChild(signed.env),
+      signed_at,
+    };
+  },
+};
+
+/**
+ * The P2-6 replay-family dataclass codec rows (`UserAction` and
+ * `Replay` — the two remaining replay tags observed in the corpus;
+ * `ReplaySummary`/`ReplayEvent`/`ReplayBundle` have no corpus `$type`
+ * occurrences and stay unregistered so the sweep's
+ * every-registered-tag-exercised check stays honest).
+ */
+const REPLAY_DATACLASS_CODECS: ReadonlyArray<
+  readonly [string, DataclassCodecSpec]
+> = [
+  [
+    "UserAction",
+    {
+      fields: [
+        "timestamp",
+        "action",
+        "target_node_id",
+        "target_desc",
+        "url",
+        "metadata",
+        "description",
+      ],
+      required: ["timestamp", "action", "target_node_id", "target_desc", "url"],
+      construct: (bag) => new UserAction(bag as unknown as UserActionFields),
+      matches: (value) => value instanceof UserAction,
+    },
+  ],
+  [
+    "Replay",
+    {
+      // dataclasses.fields order: the inherited kw-only `_df_cache`
+      // precedes the subclass fields, the subclass kw-only caches
+      // trail — exactly as recorded payloads carry them.
+      fields: [
+        "_df_cache",
+        "replay_id",
+        "distinct_id",
+        "project_id",
+        "start_time",
+        "end_time",
+        "retention_days",
+        "rrweb_events",
+        "actions",
+        "mixpanel_events",
+        "_events_df_cache",
+        "_actions_df_cache",
+        "_mixpanel_df_cache",
+      ],
+      required: [
+        "replay_id",
+        "distinct_id",
+        "project_id",
+        "start_time",
+        "end_time",
+        "retention_days",
+      ],
+      construct: (bag) => {
+        // Nested `actions` decode through the UserAction tag codec;
+        // `mixpanel_events` are untagged in the corpus (no ReplayEvent
+        // tag) and reconstruct through the strict fromDict.
+        const coerced: Record<string, unknown> = { ...bag };
+        if (Array.isArray(coerced["mixpanel_events"])) {
+          coerced["mixpanel_events"] = (
+            coerced["mixpanel_events"] as readonly unknown[]
+          ).map((item) =>
+            item instanceof ReplayEvent ? item : ReplayEvent.fromDict(item),
+          );
+        }
+        return new Replay(coerced as unknown as ReplayFields);
+      },
+      matches: (value) => value instanceof Replay,
+    },
+  ],
+];
+
+/**
  * The Phase-2 contract tag-codec table, keyed by `$type` name.
  *
  * @internal
@@ -577,7 +713,14 @@ export const CONTRACT_TAG_CODECS: ReadonlyMap<string, ContractTagCodec> =
   new Map<string, ContractTagCodec>([
     ["OAuthTokens", oauthTokensCodec],
     ["CohortDefinition", cohortDefinitionCodec],
+    ["SignedReplay", signedReplayCodec],
     ...DATACLASS_CODECS.map(
+      ([tag, spec]): readonly [string, ContractTagCodec] => [
+        tag,
+        dataclassCodec(tag, spec),
+      ],
+    ),
+    ...REPLAY_DATACLASS_CODECS.map(
       ([tag, spec]): readonly [string, ContractTagCodec] => [
         tag,
         dataclassCodec(tag, spec),

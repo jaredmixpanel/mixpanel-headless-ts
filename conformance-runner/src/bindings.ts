@@ -71,6 +71,20 @@ import {
   RetentionEvent,
   type RetentionEventFields,
 } from "../../packages/core/src/types/query-params/retention.js";
+import {
+  Replay,
+  ReplayBundle,
+  ReplayEvent,
+  ReplaySummary,
+  SignedReplay,
+  UserAction,
+  type ReplayBundleFields,
+  type ReplayEventFields,
+  type ReplayFields,
+  type ReplaySummaryFields,
+  type SignedReplayFields,
+  type UserActionFields,
+} from "../../packages/core/src/types/results/replays.js";
 import { CONTRACT_TAG_CODECS } from "../../packages/core/src/types/vector-codecs.js";
 import { CodecRegistry, UndecodableValueError } from "./codecs.js";
 import type { JsonValue } from "./json-value.js";
@@ -620,6 +634,54 @@ function registerQueryParamBindings(
     "types.FrequencyFilter",
     (context) =>
       new FrequencyFilter(context.kwargs as unknown as FrequencyFilterFields),
+  );
+
+  // ----- P2-6 replay-family constructors (phase2-design C6-d). All
+  // recorded vectors are guard-failure cases; the decoded kwarg bag
+  // passes straight through so the constructor guards fire exactly as
+  // Python's `__post_init__` replay does. Nested `$type` children
+  // (`UserAction`, `Replay`) arrive as decoded core instances. -----
+
+  bind(
+    "types.ReplaySummary",
+    (context) =>
+      new ReplaySummary(context.kwargs as unknown as ReplaySummaryFields),
+  );
+  bind("types.SignedReplay", (context) => {
+    // The recorder captures `signed_at` as a raw float token (plain
+    // number after decode) or a `$type: float` wrapper; unwrap the
+    // wrapper's numeric value for the constructor.
+    const kwargs: Record<string, unknown> = { ...context.kwargs };
+    const signed_at = kwargs["signed_at"];
+    if (
+      typeof signed_at === "object" &&
+      signed_at !== null &&
+      "toNumber" in signed_at &&
+      typeof (signed_at as { toNumber: unknown }).toNumber === "function"
+    ) {
+      kwargs["signed_at"] = (
+        signed_at as { toNumber: () => number }
+      ).toNumber();
+    }
+    return new SignedReplay(kwargs as unknown as SignedReplayFields);
+  });
+  bind(
+    "types.UserAction",
+    (context) => new UserAction(context.kwargs as unknown as UserActionFields),
+  );
+  bind(
+    "types.ReplayEvent",
+    (context) =>
+      new ReplayEvent(context.kwargs as unknown as ReplayEventFields),
+  );
+  bind(
+    "types.Replay",
+    (context) => new Replay(context.kwargs as unknown as ReplayFields),
+  );
+  bind(
+    "types.ReplayBundle",
+    (context) =>
+      new ReplayBundle(context.kwargs as unknown as ReplayBundleFields),
   );
 }
 
