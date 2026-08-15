@@ -35,6 +35,16 @@ import {
   ListItemGroupMode,
   PropertyInput,
 } from "../../packages/core/src/types/query-params/filter.js";
+import { FlowStep } from "../../packages/core/src/types/query-params/flow.js";
+import {
+  FrequencyBreakdown,
+  FrequencyFilter,
+} from "../../packages/core/src/types/query-params/frequency.js";
+import {
+  Exclusion,
+  FunnelStep,
+  HoldingConstant,
+} from "../../packages/core/src/types/query-params/funnel.js";
 import { GroupBy } from "../../packages/core/src/types/query-params/group-by.js";
 import {
   CohortMetric,
@@ -42,6 +52,7 @@ import {
   Metric,
   TimeComparison,
 } from "../../packages/core/src/types/query-params/metric.js";
+import { RetentionEvent } from "../../packages/core/src/types/query-params/retention.js";
 import { createRunnerDeps } from "../src/bindings.js";
 import { canonicalize } from "../src/canonical.js";
 import {
@@ -58,14 +69,6 @@ const PACKAGE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** Rich tags whose port packet has NOT landed yet (explicit, tracked). */
 const ALLOWLIST: ReadonlySet<string> = new Set([
-  // P2-5c funnel/retention/flow/frequency
-  "FunnelStep",
-  "Exclusion",
-  "HoldingConstant",
-  "RetentionEvent",
-  "FlowStep",
-  "FrequencyBreakdown",
-  "FrequencyFilter",
   // P2-6 result classes + replay models
   "UserAction",
   "Replay",
@@ -292,6 +295,28 @@ function assertRealInstance(entry: TaggedNode, decoded: unknown): void {
     // P2-5b cohort-family addition.
     case "CohortBreakdown":
       expect(decoded, where).toBeInstanceOf(CohortBreakdown);
+      break;
+    // P2-5c funnel/retention/flow/frequency family.
+    case "FunnelStep":
+      expect(decoded, where).toBeInstanceOf(FunnelStep);
+      break;
+    case "Exclusion":
+      expect(decoded, where).toBeInstanceOf(Exclusion);
+      break;
+    case "HoldingConstant":
+      expect(decoded, where).toBeInstanceOf(HoldingConstant);
+      break;
+    case "RetentionEvent":
+      expect(decoded, where).toBeInstanceOf(RetentionEvent);
+      break;
+    case "FlowStep":
+      expect(decoded, where).toBeInstanceOf(FlowStep);
+      break;
+    case "FrequencyBreakdown":
+      expect(decoded, where).toBeInstanceOf(FrequencyBreakdown);
+      break;
+    case "FrequencyFilter":
+      expect(decoded, where).toBeInstanceOf(FrequencyFilter);
       break;
     default:
       throw new Error(`no instanceof probe for round-tripped tag ${entry.tag}`);

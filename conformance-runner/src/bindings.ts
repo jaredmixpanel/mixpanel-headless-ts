@@ -39,6 +39,24 @@ import {
   type PropertySpec,
 } from "../../packages/core/src/types/query-params/filter.js";
 import {
+  FlowStep,
+  type FlowStepFields,
+} from "../../packages/core/src/types/query-params/flow.js";
+import {
+  FrequencyBreakdown,
+  FrequencyFilter,
+  type FrequencyBreakdownFields,
+  type FrequencyFilterFields,
+} from "../../packages/core/src/types/query-params/frequency.js";
+import {
+  Exclusion,
+  FunnelStep,
+  HoldingConstant,
+  type ExclusionFields,
+  type FunnelStepFields,
+  type HoldingConstantFields,
+} from "../../packages/core/src/types/query-params/funnel.js";
+import {
   GroupBy,
   type GroupByFields,
 } from "../../packages/core/src/types/query-params/group-by.js";
@@ -49,6 +67,10 @@ import {
   TimeComparison,
   type MetricFields,
 } from "../../packages/core/src/types/query-params/metric.js";
+import {
+  RetentionEvent,
+  type RetentionEventFields,
+} from "../../packages/core/src/types/query-params/retention.js";
 import { CONTRACT_TAG_CODECS } from "../../packages/core/src/types/vector-codecs.js";
 import { CodecRegistry, UndecodableValueError } from "./codecs.js";
 import type { JsonValue } from "./json-value.js";
@@ -275,8 +297,9 @@ function resourceTypeBag(context: InvocationContext): {
 }
 
 /**
- * Register the P2-5a/P2-5b `types.*` builder bindings (filter/metric/
- * group core + the cohort family — phase2-design C10).
+ * Register the P2-5a/P2-5b/P2-5c `types.*` builder bindings (filter/
+ * metric/group core + the cohort family + the funnel/retention/flow/
+ * frequency family — phase2-design C10).
  *
  * Each adapter is a thin shim: decoded kwargs -> the real core
  * constructor/factory -> encode the result (or wrap the coded guard
@@ -557,6 +580,46 @@ function registerQueryParamBindings(
     sanitizeRawCohort(
       requireKwarg(context, "raw") as Readonly<Record<string, unknown>>,
     ),
+  );
+
+  // ----- P2-5c funnel/retention/flow/frequency family (phase2-design
+  // C10). All seven are plain dataclass constructors: pass the decoded
+  // kwarg bag straight through (absent fields take the Python defaults,
+  // exactly like Python's `Cls(**decoded)` replay). -----
+
+  bind(
+    "types.FunnelStep",
+    (context) => new FunnelStep(context.kwargs as unknown as FunnelStepFields),
+  );
+  bind(
+    "types.Exclusion",
+    (context) => new Exclusion(context.kwargs as unknown as ExclusionFields),
+  );
+  bind(
+    "types.HoldingConstant",
+    (context) =>
+      new HoldingConstant(context.kwargs as unknown as HoldingConstantFields),
+  );
+  bind(
+    "types.RetentionEvent",
+    (context) =>
+      new RetentionEvent(context.kwargs as unknown as RetentionEventFields),
+  );
+  bind(
+    "types.FlowStep",
+    (context) => new FlowStep(context.kwargs as unknown as FlowStepFields),
+  );
+  bind(
+    "types.FrequencyBreakdown",
+    (context) =>
+      new FrequencyBreakdown(
+        context.kwargs as unknown as FrequencyBreakdownFields,
+      ),
+  );
+  bind(
+    "types.FrequencyFilter",
+    (context) =>
+      new FrequencyFilter(context.kwargs as unknown as FrequencyFilterFields),
   );
 }
 

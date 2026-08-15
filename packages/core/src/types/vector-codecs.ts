@@ -39,6 +39,25 @@ import {
   PropertyInput,
   type FilterFields,
 } from "./query-params/filter.js";
+import { FlowStep, type FlowStepFields } from "./query-params/flow.js";
+import {
+  FrequencyBreakdown,
+  FrequencyFilter,
+  type FrequencyBreakdownFields,
+  type FrequencyFilterFields,
+} from "./query-params/frequency.js";
+import {
+  Exclusion,
+  FunnelStep,
+  HoldingConstant,
+  type ExclusionFields,
+  type FunnelStepFields,
+  type HoldingConstantFields,
+} from "./query-params/funnel.js";
+import {
+  RetentionEvent,
+  type RetentionEventFields,
+} from "./query-params/retention.js";
 import { GroupBy, type GroupByFields } from "./query-params/group-by.js";
 import {
   CohortMetric,
@@ -298,7 +317,7 @@ const cohortDefinitionCodec: ContractTagCodec = {
 };
 
 /**
- * The P2-5a/P2-5b dataclass codec rows (field lists in Python
+ * The P2-5a/P2-5b/P2-5c dataclass codec rows (field lists in Python
  * `dataclasses.fields` order).
  */
 const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
@@ -461,6 +480,90 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
           bag as unknown as ConstructorParameters<typeof CohortBreakdown>[0],
         ),
       matches: (value) => value instanceof CohortBreakdown,
+    },
+  ],
+  // P2-5c funnel/retention/flow/frequency family.
+  [
+    "FunnelStep",
+    {
+      fields: ["event", "label", "filters", "filters_combinator", "order"],
+      required: ["event"],
+      construct: (bag) => new FunnelStep(bag as unknown as FunnelStepFields),
+      matches: (value) => value instanceof FunnelStep,
+    },
+  ],
+  [
+    "Exclusion",
+    {
+      fields: ["event", "from_step", "to_step"],
+      required: ["event"],
+      construct: (bag) => new Exclusion(bag as unknown as ExclusionFields),
+      matches: (value) => value instanceof Exclusion,
+    },
+  ],
+  [
+    "HoldingConstant",
+    {
+      fields: ["property", "resource_type"],
+      required: ["property"],
+      construct: (bag) =>
+        new HoldingConstant(bag as unknown as HoldingConstantFields),
+      matches: (value) => value instanceof HoldingConstant,
+    },
+  ],
+  [
+    "RetentionEvent",
+    {
+      fields: ["event", "filters", "filters_combinator"],
+      required: ["event"],
+      construct: (bag) =>
+        new RetentionEvent(bag as unknown as RetentionEventFields),
+      matches: (value) => value instanceof RetentionEvent,
+    },
+  ],
+  [
+    "FlowStep",
+    {
+      fields: [
+        "event",
+        "forward",
+        "reverse",
+        "label",
+        "filters",
+        "filters_combinator",
+        "session_event",
+      ],
+      required: ["event"],
+      construct: (bag) => new FlowStep(bag as unknown as FlowStepFields),
+      matches: (value) => value instanceof FlowStep,
+    },
+  ],
+  [
+    "FrequencyBreakdown",
+    {
+      fields: ["event", "bucket_size", "bucket_min", "bucket_max", "label"],
+      required: ["event"],
+      construct: (bag) =>
+        new FrequencyBreakdown(bag as unknown as FrequencyBreakdownFields),
+      matches: (value) => value instanceof FrequencyBreakdown,
+    },
+  ],
+  [
+    "FrequencyFilter",
+    {
+      fields: [
+        "event",
+        "value",
+        "operator",
+        "date_range_value",
+        "date_range_unit",
+        "event_filters",
+        "label",
+      ],
+      required: ["event", "value"],
+      construct: (bag) =>
+        new FrequencyFilter(bag as unknown as FrequencyFilterFields),
+      matches: (value) => value instanceof FrequencyFilter,
     },
   ],
 ];
