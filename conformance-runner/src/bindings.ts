@@ -16,8 +16,14 @@
  */
 
 import {
+  cpLength,
+  cpSlice,
+  pythonFloat,
   pythonFloatStr,
+  pythonInt,
   pythonStr,
+  pythonStrip,
+  sortedByCodepoint,
   zfill,
   type PythonValue,
 } from "../../packages/core/src/compat/index.js";
@@ -191,6 +197,140 @@ function registerCompatBindings(implementations: ImplementationRegistry): void {
       );
     }
     return pythonFloatStr(value);
+  });
+  registerCompatCompletionBindings(implementations);
+}
+
+/**
+ * Read a required string kwarg for a compat binding.
+ *
+ * @param context - The invocation context.
+ * @param name - The Python kwarg name.
+ * @returns The string value.
+ * @throws TypeError - When the kwarg is not a string (a corpus bug — the
+ *   reference wrappers are str-typed).
+ */
+function requireStringKwarg(context: InvocationContext, name: string): string {
+  const value = requireKwarg(context, name);
+  if (typeof value !== "string") {
+    throw new TypeError(
+      `${context.api} expects ${name}: string per the Python reference`,
+    );
+  }
+  return value;
+}
+
+/**
+ * Invoke a compat entry point, wrapping coded library errors for the
+ * runner (same contract as {@link runGuarded}, without the codec walk —
+ * the B0-1 compat outputs are primitives/string arrays/`JsonNumber`).
+ *
+ * @param invoke - Thunk performing the real library call.
+ * @returns The thunk's value.
+ * @throws CoreLibraryError - When the call raises a core exception.
+ * @throws unknown - Anything else, unchanged (a runner/infra bug).
+ */
+function guardCompat<T>(invoke: () => T): T {
+  try {
+    return invoke();
+  } catch (cause) {
+    if (cause instanceof MixpanelHeadlessError) {
+      throw new CoreLibraryError(cause);
+    }
+    throw cause;
+  }
+}
+
+/**
+ * Encode one `pythonFloat` result exactly as the Python reference wrapper
+ * does (B0-notes design decision 2 — the wrapper IS the recorded api, so
+ * the binding mirrors its two output translations verbatim):
+ *
+ * - non-finite results become the `repr` sentinel strings (`"inf"` /
+ *   `"-inf"` / `"nan"`; non-finite floats are illegal in vector JSON,
+ *   D6 rule 5);
+ * - finite results ride as a `JsonNumber` carrying the CPython `repr`
+ *   token so canonical float-ness is preserved (`42.0`, not `42` — the
+ *   raw-token fidelity rule from P2-5a/P2-9).
+ *
+ * @param value - The `pythonFloat` return value.
+ * @returns The vector-JSON encoding.
+ */
+function encodePythonFloatResult(value: number): JsonValue {
+  if (Number.isNaN(value)) {
+    return "nan";
+  }
+  if (value === Infinity) {
+    return "inf";
+  }
+  if (value === -Infinity) {
+    return "-inf";
+  }
+  return new JsonNumber(pythonFloatStr(value));
+}
+
+/**
+ * Register the B0-1 pythonCompat completion bindings (P3-4 packet:
+ * R11.3 `python_int`/`python_float`, `python_strip`, R11.5
+ * `sorted_strings`, R11.6 `cp_length`/`cp_slice`).
+ *
+ * Each binding calls the real `packages/core` entry point (P3-5 rule 3 —
+ * no re-implementation); the only adaptations are kwarg plumbing, the
+ * shared error wrap, and the `pythonFloat` output encoding above.
+ *
+ * @param implementations - The registry to extend.
+ */
+function registerCompatCompletionBindings(
+  implementations: ImplementationRegistry,
+): void {
+  implementations.register("compat.python_int", (context) =>
+    guardCompat(() => pythonInt(requireStringKwarg(context, "value"))),
+  );
+  implementations.register("compat.python_float", (context) =>
+    guardCompat(() =>
+      encodePythonFloatResult(
+        pythonFloat(requireStringKwarg(context, "value")),
+      ),
+    ),
+  );
+  implementations.register("compat.python_strip", (context) =>
+    pythonStrip(requireStringKwarg(context, "value")),
+  );
+  implementations.register("compat.sorted_strings", (context) => {
+    const values = requireKwarg(context, "values");
+    if (
+      !Array.isArray(values) ||
+      values.some((item) => typeof item !== "string")
+    ) {
+      throw new TypeError(
+        "compat.sorted_strings expects values: list[str] per the Python reference",
+      );
+    }
+    return sortedByCodepoint(values as readonly string[]);
+  });
+  implementations.register("compat.cp_length", (context) =>
+    cpLength(requireStringKwarg(context, "value")),
+  );
+  implementations.register("compat.cp_slice", (context) => {
+    const value = requireStringKwarg(context, "value");
+    // Tri-state note (rig api): `start`/`end` absent and explicit-null
+    // both spell Python None (the open slice end) for this reference
+    // wrapper — cp_slice(value, start=None) IS the default.
+    const bound = (name: string): number | undefined => {
+      const raw = context.kwargs[name];
+      if (raw === undefined || raw === null) {
+        return undefined;
+      }
+      if (typeof raw !== "number") {
+        throw new TypeError(
+          `compat.cp_slice expects ${name}: int | None per the Python reference`,
+        );
+      }
+      return raw;
+    };
+    // Explicit `undefined` and omission are the same open end for
+    // `cpSlice` (its own `=== undefined` checks), matching Python.
+    return cpSlice(value, bound("start"), bound("end"));
   });
 }
 

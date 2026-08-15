@@ -38,6 +38,54 @@
       "params": ["value"],
       "target": "conformance.record.pycompat_ref:python_float_str"
     },
+    "compat.python_int": {
+      "capability": "compat",
+      "kind": "builder",
+      "kwonly": [],
+      "module": "conformance.record.pycompat_ref",
+      "params": ["value"],
+      "target": "conformance.record.pycompat_ref:python_int"
+    },
+    "compat.python_float": {
+      "capability": "compat",
+      "kind": "builder",
+      "kwonly": [],
+      "module": "conformance.record.pycompat_ref",
+      "params": ["value"],
+      "target": "conformance.record.pycompat_ref:python_float"
+    },
+    "compat.python_strip": {
+      "capability": "compat",
+      "kind": "builder",
+      "kwonly": [],
+      "module": "conformance.record.pycompat_ref",
+      "params": ["value"],
+      "target": "conformance.record.pycompat_ref:python_strip"
+    },
+    "compat.sorted_strings": {
+      "capability": "compat",
+      "kind": "builder",
+      "kwonly": [],
+      "module": "conformance.record.pycompat_ref",
+      "params": ["values"],
+      "target": "conformance.record.pycompat_ref:sorted_strings"
+    },
+    "compat.cp_length": {
+      "capability": "compat",
+      "kind": "builder",
+      "kwonly": [],
+      "module": "conformance.record.pycompat_ref",
+      "params": ["value"],
+      "target": "conformance.record.pycompat_ref:cp_length"
+    },
+    "compat.cp_slice": {
+      "capability": "compat",
+      "kind": "builder",
+      "kwonly": [],
+      "module": "conformance.record.pycompat_ref",
+      "params": ["value", "start", "end"],
+      "target": "conformance.record.pycompat_ref:cp_slice"
+    },
     "wirestub.request": {
       "capability": "compat",
       "kind": "wire_api",

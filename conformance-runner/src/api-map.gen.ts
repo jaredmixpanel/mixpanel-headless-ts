@@ -7,7 +7,7 @@
 //   corpus/typescript-port-api-map.json  5bd1db2d1dd9414ff5db0b49fd3fbdd02361c79c07cb94c3001f6bf8d35a7f53
 //   corpus/api-index.json                8908677769314aa458d2e1e73c24ef01ad0b4b9b0b2f6369cdfb91ea0fb74c24
 //   src/naming-exceptions.json           ebfec88840aaf874bae4b52fa6f1e0f9bbd08a20fc51a6ddd537193de8c4ce36
-//   src/authored-apis.json               bb093c5d3b158dc6bed462855c84bfc2933179c1dd0754c816dba60c1530f988
+//   src/authored-apis.json               06b6963726cd0e07d9bdfbd5d180917590c0a7f80edbc11cfa59f311e7f1a021
 import type { ApiMapEntry, ApiMapSourceHashes } from "./api-map-types.js";
 
 /** sha256 stamps of the four generation inputs (D12 provenance). */
@@ -15,7 +15,7 @@ export const API_MAP_SOURCE_HASHES: ApiMapSourceHashes = {
   apiMapJson: "5bd1db2d1dd9414ff5db0b49fd3fbdd02361c79c07cb94c3001f6bf8d35a7f53",
   apiIndexJson: "8908677769314aa458d2e1e73c24ef01ad0b4b9b0b2f6369cdfb91ea0fb74c24",
   namingExceptionsJson: "ebfec88840aaf874bae4b52fa6f1e0f9bbd08a20fc51a6ddd537193de8c4ce36",
-  authoredApisJson: "bb093c5d3b158dc6bed462855c84bfc2933179c1dd0754c816dba60c1530f988",
+  authoredApisJson: "06b6963726cd0e07d9bdfbd5d180917590c0a7f80edbc11cfa59f311e7f1a021",
 };
 
 /** Python module prefixes known to the corpus api-index or the
@@ -1954,11 +1954,51 @@ export const API_MAP: Readonly<Record<string, ApiMapEntry>> = {
     params: [],
     kwonly: ["from_date","to_date","last","unit"],
   },
+  "compat.cp_length": {
+    pythonApi: "compat.cp_length",
+    pythonModule: "conformance.record.pycompat_ref",
+    tsModule: "core/compat",
+    tsName: "cpLength",
+    kind: "builder",
+    capability: "compat",
+    params: ["value"],
+    kwonly: [],
+  },
+  "compat.cp_slice": {
+    pythonApi: "compat.cp_slice",
+    pythonModule: "conformance.record.pycompat_ref",
+    tsModule: "core/compat",
+    tsName: "cpSlice",
+    kind: "builder",
+    capability: "compat",
+    params: ["value","start","end"],
+    kwonly: [],
+  },
+  "compat.python_float": {
+    pythonApi: "compat.python_float",
+    pythonModule: "conformance.record.pycompat_ref",
+    tsModule: "core/compat",
+    tsName: "pythonFloat",
+    kind: "builder",
+    capability: "compat",
+    params: ["value"],
+    kwonly: [],
+  },
   "compat.python_float_str": {
     pythonApi: "compat.python_float_str",
     pythonModule: "conformance.record.pycompat_ref",
     tsModule: "core/compat",
     tsName: "pythonFloatStr",
+    kind: "builder",
+    capability: "compat",
+    params: ["value"],
+    kwonly: [],
+  },
+  "compat.python_int": {
+    pythonApi: "compat.python_int",
+    pythonModule: "conformance.record.pycompat_ref",
+    tsModule: "core/compat",
+    tsName: "pythonInt",
     kind: "builder",
     capability: "compat",
     params: ["value"],
@@ -1972,6 +2012,26 @@ export const API_MAP: Readonly<Record<string, ApiMapEntry>> = {
     kind: "builder",
     capability: "compat",
     params: ["value"],
+    kwonly: [],
+  },
+  "compat.python_strip": {
+    pythonApi: "compat.python_strip",
+    pythonModule: "conformance.record.pycompat_ref",
+    tsModule: "core/compat",
+    tsName: "pythonStrip",
+    kind: "builder",
+    capability: "compat",
+    params: ["value"],
+    kwonly: [],
+  },
+  "compat.sorted_strings": {
+    pythonApi: "compat.sorted_strings",
+    pythonModule: "conformance.record.pycompat_ref",
+    tsModule: "core/compat",
+    tsName: "sortedStrings",
+    kind: "builder",
+    capability: "compat",
+    params: ["values"],
     kwonly: [],
   },
   "compat.zfill": {
