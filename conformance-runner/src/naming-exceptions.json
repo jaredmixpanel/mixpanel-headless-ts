@@ -44,6 +44,108 @@
       "rule": "rename"
     },
     {
+      "python": "types.CohortDefinition.all_of",
+      "ts": "core/types.CohortDefinition.allOf",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "types.CohortDefinition.any_of",
+      "ts": "core/types.CohortDefinition.anyOf",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "types.CohortCriteria.did_event",
+      "ts": "core/types.CohortCriteria.didEvent",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "types.CohortCriteria.has_property",
+      "ts": "core/types.CohortCriteria.hasProperty",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "types.CohortCriteria.in_cohort",
+      "ts": "core/types.CohortCriteria.inCohort",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "types.CohortCriteria.not_in_cohort",
+      "ts": "core/types.CohortCriteria.notInCohort",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "types.Filter.before",
+      "ts": "core/types.Filter.before",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "types.Filter.date_between",
+      "ts": "core/types.Filter.dateBetween",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "types.Filter.date_not_between",
+      "ts": "core/types.Filter.dateNotBetween",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "types.Filter.in_cohort",
+      "ts": "core/types.Filter.inCohort",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "types.Filter.in_the_last",
+      "ts": "core/types.Filter.inTheLast",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "types.Filter.in_the_next",
+      "ts": "core/types.Filter.inTheNext",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "types.Filter.list_contains",
+      "ts": "core/types.Filter.listContains",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "types.Filter.not_in_cohort",
+      "ts": "core/types.Filter.notInCohort",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "types.Filter.not_in_the_last",
+      "ts": "core/types.Filter.notInTheLast",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "types.Filter.on",
+      "ts": "core/types.Filter.on",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
+      "python": "types.Filter.since",
+      "ts": "core/types.Filter.since",
+      "scope": "api",
+      "rule": "rename"
+    },
+    {
       "python": "compat.zfill",
       "ts": "core/compat.zfill",
       "scope": "api",
