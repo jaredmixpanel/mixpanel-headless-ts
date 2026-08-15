@@ -29,7 +29,7 @@ export interface ApiMapEntry {
   readonly kwonly: readonly string[];
 }
 
-/** SHA-256 provenance stamps for the three generation inputs (D12). */
+/** SHA-256 provenance stamps for the four generation inputs (D12/TS-6). */
 export interface ApiMapSourceHashes {
   /** sha256 of the snapshotted `typescript-port-api-map.json`. */
   readonly apiMapJson: string;
@@ -37,4 +37,6 @@ export interface ApiMapSourceHashes {
   readonly apiIndexJson: string;
   /** sha256 of `naming-exceptions.json`. */
   readonly namingExceptionsJson: string;
+  /** sha256 of `authored-apis.json` (D13 gate supplement, task TS-6). */
+  readonly authoredApisJson: string;
 }

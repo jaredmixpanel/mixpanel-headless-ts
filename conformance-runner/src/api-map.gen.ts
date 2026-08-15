@@ -1,37 +1,44 @@
 // GENERATED FILE — DO NOT EDIT.
 // Regenerate with: npm run generate:api-map
 //
-// Maps every Python dotted call.api in the corpus api-index to its TS
-// home (design D12, naming-map §5). Inputs + sha256 provenance stamps:
+// Maps every Python dotted call.api in the corpus api-index (plus the
+// authored D13 gate supplement) to its TS home (design D12/D13,
+// naming-map §5). Inputs + sha256 provenance stamps:
 //   corpus/typescript-port-api-map.json  5bd1db2d1dd9414ff5db0b49fd3fbdd02361c79c07cb94c3001f6bf8d35a7f53
 //   corpus/api-index.json                34d1ed8f1f350fa5c670e0842bc05fd3e4b0810e9b4e0fad1a020c3c143f7a20
 //   src/naming-exceptions.json           9feb3173aad30a50d0bf2d20409ad8044f684742c5373389104001c48e0f49f4
+//   src/authored-apis.json               bb093c5d3b158dc6bed462855c84bfc2933179c1dd0754c816dba60c1530f988
 import type { ApiMapEntry, ApiMapSourceHashes } from "./api-map-types.js";
 
-/** sha256 stamps of the three generation inputs (D12 provenance). */
+/** sha256 stamps of the four generation inputs (D12 provenance). */
 export const API_MAP_SOURCE_HASHES: ApiMapSourceHashes = {
   apiMapJson: "5bd1db2d1dd9414ff5db0b49fd3fbdd02361c79c07cb94c3001f6bf8d35a7f53",
   apiIndexJson: "34d1ed8f1f350fa5c670e0842bc05fd3e4b0810e9b4e0fad1a020c3c143f7a20",
   namingExceptionsJson: "9feb3173aad30a50d0bf2d20409ad8044f684742c5373389104001c48e0f49f4",
+  authoredApisJson: "bb093c5d3b158dc6bed462855c84bfc2933179c1dd0754c816dba60c1530f988",
 };
 
-/** Python module prefixes known to the corpus api-index — the
- * "module known" universe for the UNPORTED verdict (D12). */
+/** Python module prefixes known to the corpus api-index or the
+ * authored supplement — the "module known" universe for the
+ * UNPORTED verdict (D12/TS-6). */
 export const KNOWN_PYTHON_MODULES: readonly string[] = [
   "api_client",
   "bookmark_builders",
+  "compat",
   "expressions",
   "oauth_flow",
   "pagination",
   "region_probe",
   "replay_labels",
   "replays",
+  "rrweb_analyzer",
   "segfilter",
   "transforms",
   "types",
   "user_builders",
   "user_validators",
   "validation",
+  "wirestub",
   "workspace",
 ];
 
@@ -1917,6 +1924,36 @@ export const API_MAP: Readonly<Record<string, ApiMapEntry>> = {
     params: [],
     kwonly: ["from_date","to_date","last","unit"],
   },
+  "compat.python_float_str": {
+    pythonApi: "compat.python_float_str",
+    pythonModule: "conformance.record.pycompat_ref",
+    tsModule: "core/compat",
+    tsName: "pythonFloatStr",
+    kind: "builder",
+    capability: "compat",
+    params: ["value"],
+    kwonly: [],
+  },
+  "compat.python_str": {
+    pythonApi: "compat.python_str",
+    pythonModule: "conformance.record.pycompat_ref",
+    tsModule: "core/compat",
+    tsName: "pythonStr",
+    kind: "builder",
+    capability: "compat",
+    params: ["value"],
+    kwonly: [],
+  },
+  "compat.zfill": {
+    pythonApi: "compat.zfill",
+    pythonModule: "conformance.record.pycompat_ref",
+    tsModule: "core/compat",
+    tsName: "zfill",
+    kind: "builder",
+    capability: "compat",
+    params: ["value","width"],
+    kwonly: [],
+  },
   "expressions.normalize_on_expression": {
     pythonApi: "expressions.normalize_on_expression",
     pythonModule: "mixpanel_headless._internal.expressions",
@@ -2156,6 +2193,36 @@ export const API_MAP: Readonly<Record<string, ApiMapEntry>> = {
     capability: "validation",
     params: [],
     kwonly: ["from_date","to_date","last"],
+  },
+  "wirestub.request": {
+    pythonApi: "wirestub.request",
+    pythonModule: "conformance.record.pycompat_ref",
+    tsModule: "conformance-runner/wirestub",
+    tsName: "request",
+    kind: "wire_api",
+    capability: "compat",
+    params: ["method","path"],
+    kwonly: ["params","headers","json_body"],
+  },
+  "wirestub.request_sequence": {
+    pythonApi: "wirestub.request_sequence",
+    pythonModule: "conformance.record.pycompat_ref",
+    tsModule: "conformance-runner/wirestub",
+    tsName: "requestSequence",
+    kind: "wire_api",
+    capability: "compat",
+    params: ["requests"],
+    kwonly: [],
+  },
+  "wirestub.stream_chunks": {
+    pythonApi: "wirestub.stream_chunks",
+    pythonModule: "conformance.record.pycompat_ref",
+    tsModule: "conformance-runner/wirestub",
+    tsName: "streamChunks",
+    kind: "wire_api",
+    capability: "compat",
+    params: ["method","path"],
+    kwonly: ["headers"],
   },
   "workspace.add_report_to_dashboard": {
     pythonApi: "workspace.add_report_to_dashboard",

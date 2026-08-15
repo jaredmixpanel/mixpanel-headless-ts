@@ -403,9 +403,15 @@ export function loadCorpus(
       vectors.push({ ...vector, bundlePath });
     }
   }
-  if (vectors.length !== manifest.total) {
+  // manifest counts.total covers the RECORD-PIPELINE extraction only;
+  // authored vectors (origin "authored", design D13/D3.1) are hand-written
+  // additions outside the manifest's reconciliation scope.
+  const extractedCount = vectors.filter(
+    (vector) => vector.origin !== "authored",
+  ).length;
+  if (extractedCount !== manifest.total) {
     throw new CorpusIntegrityError(
-      `loaded ${String(vectors.length)} vectors but manifest counts.total is ${String(manifest.total)}`,
+      `loaded ${String(extractedCount)} extracted vectors but manifest counts.total is ${String(manifest.total)}`,
     );
   }
   return { manifest, bundles, vectors };

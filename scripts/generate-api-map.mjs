@@ -1,7 +1,8 @@
 // generate-api-map.mjs — write conformance-runner/src/api-map.gen.ts
 // (design D12 / naming-map §5, task TS-4).
 //
-// Three inputs, per phase1-design D12:
+// Four inputs — the three per phase1-design D12 plus the TS-6 authored
+// supplement:
 //   1. conformance-runner/corpus/typescript-port-api-map.json — authority
 //      for WORKSPACE member names/params/kwonly (R7.3). ts_signature
 //      strings are NON-NORMATIVE sketches and are never consumed
@@ -13,8 +14,12 @@
 //      (exact rows first, then `<prefix>.*` module wildcards + the
 //      mechanical §3 snake->camel transform, leading underscore dropped
 //      per R7.6).
+//   4. conformance-runner/src/authored-apis.json — api-index-shaped entries
+//      for the hand-authored D13 gate apis (compat.*, wirestub.*), which the
+//      recorded-vector api-index can never carry, plus extra known_modules
+//      for authored adapters left UNPORTED on purpose (task TS-6).
 //
-// Output is deterministic (sorted keys, sha256 stamps of all three inputs)
+// Output is deterministic (sorted keys, sha256 stamps of all four inputs)
 // so re-running on unchanged inputs is byte-identical; the freshness/parity
 // test (test/api-map.test.ts) recomputes every entry through src/naming.ts
 // and fails on drift between this script and the runtime naming module.
@@ -37,6 +42,7 @@ const API_MAP_JSON_PATH = resolve(
   "typescript-port-api-map.json",
 );
 const EXCEPTIONS_PATH = resolve(RUNNER_DIR, "src", "naming-exceptions.json");
+const AUTHORED_APIS_PATH = resolve(RUNNER_DIR, "src", "authored-apis.json");
 const OUTPUT_PATH = resolve(RUNNER_DIR, "src", "api-map.gen.ts");
 
 /** Read a file and return { text, json, sha256 }. */
@@ -101,16 +107,31 @@ function resolveTsApiName(pythonApi, apiRows) {
 const apiIndex = loadInput(API_INDEX_PATH);
 const apiMapJson = loadInput(API_MAP_JSON_PATH);
 const exceptions = loadInput(EXCEPTIONS_PATH);
+const authoredApis = loadInput(AUTHORED_APIS_PATH);
 
 const apiRows = exceptions.json.rows.filter((row) => row.scope === "api");
 const workspaceMembers = new Map(
   apiMapJson.json.workspace_members.map((member) => [member.name, member]),
 );
 
+// Merge the authored supplement into the api-index universe (TS-6/D13).
+// A name in BOTH sources means the supplement went stale after a corpus
+// re-extraction started recording it — fail hard rather than pick one.
+const universe = { ...apiIndex.json };
+for (const [pythonApi, entry] of Object.entries(authoredApis.json.entries)) {
+  if (Object.hasOwn(universe, pythonApi)) {
+    console.error(
+      `generate-api-map: authored-apis.json entry ${pythonApi} collides with api-index.json — remove the stale supplement row`,
+    );
+    process.exit(1);
+  }
+  universe[pythonApi] = entry;
+}
+
 const errors = [];
 const entries = [];
-for (const pythonApi of Object.keys(apiIndex.json).sort()) {
-  const indexEntry = apiIndex.json[pythonApi];
+for (const pythonApi of Object.keys(universe).sort()) {
+  const indexEntry = universe[pythonApi];
   let params = indexEntry.params;
   let kwonly = indexEntry.kwonly;
   if (pythonApi.startsWith("workspace.")) {
@@ -161,7 +182,10 @@ if (errors.length > 0) {
 }
 
 const knownModules = [
-  ...new Set(entries.map((e) => e.pythonApi.split(".")[0])),
+  ...new Set([
+    ...entries.map((e) => e.pythonApi.split(".")[0]),
+    ...authoredApis.json.known_modules,
+  ]),
 ].sort();
 
 const lines = [];
@@ -169,29 +193,31 @@ lines.push("// GENERATED FILE — DO NOT EDIT.");
 lines.push("// Regenerate with: npm run generate:api-map");
 lines.push("//");
 lines.push(
-  "// Maps every Python dotted call.api in the corpus api-index to its TS",
+  "// Maps every Python dotted call.api in the corpus api-index (plus the",
 );
-lines.push(
-  "// home (design D12, naming-map §5). Inputs + sha256 provenance stamps:",
-);
+lines.push("// authored D13 gate supplement) to its TS home (design D12/D13,");
+lines.push("// naming-map §5). Inputs + sha256 provenance stamps:");
 lines.push(`//   corpus/typescript-port-api-map.json  ${apiMapJson.sha256}`);
 lines.push(`//   corpus/api-index.json                ${apiIndex.sha256}`);
 lines.push(`//   src/naming-exceptions.json           ${exceptions.sha256}`);
+lines.push(`//   src/authored-apis.json               ${authoredApis.sha256}`);
 lines.push(
   'import type { ApiMapEntry, ApiMapSourceHashes } from "./api-map-types.js";',
 );
 lines.push("");
 lines.push(
-  "/** sha256 stamps of the three generation inputs (D12 provenance). */",
+  "/** sha256 stamps of the four generation inputs (D12 provenance). */",
 );
 lines.push("export const API_MAP_SOURCE_HASHES: ApiMapSourceHashes = {");
 lines.push(`  apiMapJson: "${apiMapJson.sha256}",`);
 lines.push(`  apiIndexJson: "${apiIndex.sha256}",`);
 lines.push(`  namingExceptionsJson: "${exceptions.sha256}",`);
+lines.push(`  authoredApisJson: "${authoredApis.sha256}",`);
 lines.push("};");
 lines.push("");
-lines.push("/** Python module prefixes known to the corpus api-index — the");
-lines.push(' * "module known" universe for the UNPORTED verdict (D12). */');
+lines.push("/** Python module prefixes known to the corpus api-index or the");
+lines.push(' * authored supplement — the "module known" universe for the');
+lines.push(" * UNPORTED verdict (D12/TS-6). */");
 lines.push("export const KNOWN_PYTHON_MODULES: readonly string[] = [");
 for (const moduleName of knownModules) {
   lines.push(`  "${moduleName}",`);

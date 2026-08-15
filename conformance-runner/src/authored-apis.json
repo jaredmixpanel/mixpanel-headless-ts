@@ -1,0 +1,67 @@
+{
+  "$comment": [
+    "Authored-vector api supplement — the FOURTH generate-api-map input",
+    "(task TS-6, design D13/D12). The corpus api-index.json sidecar is",
+    "emitted from RECORDED vectors only, so the hand-authored D13 gate",
+    "entries (compat.* reference wrappers and the wirestub.* replay-pipeline",
+    "test double, both registered Python-side in conformance/record/",
+    "registry.py _gate_entries) never appear in it. This file carries their",
+    "api-index-shaped entries so api-map.gen.ts can map them; entries here",
+    "must mirror the Python registry signatures exactly.",
+    "known_modules extends the UNPORTED universe (D12 'module known') for",
+    "authored-vector adapters whose TS home is deliberately NOT yet decided",
+    "(rrweb_analyzer.analyze replays as UNPORTED until the replays port",
+    "batch lands, R10.5); they get no mapped entry and no naming row."
+  ],
+  "entries": {
+    "compat.zfill": {
+      "capability": "compat",
+      "kind": "builder",
+      "kwonly": [],
+      "module": "conformance.record.pycompat_ref",
+      "params": ["value", "width"],
+      "target": "conformance.record.pycompat_ref:zfill"
+    },
+    "compat.python_str": {
+      "capability": "compat",
+      "kind": "builder",
+      "kwonly": [],
+      "module": "conformance.record.pycompat_ref",
+      "params": ["value"],
+      "target": "conformance.record.pycompat_ref:python_str"
+    },
+    "compat.python_float_str": {
+      "capability": "compat",
+      "kind": "builder",
+      "kwonly": [],
+      "module": "conformance.record.pycompat_ref",
+      "params": ["value"],
+      "target": "conformance.record.pycompat_ref:python_float_str"
+    },
+    "wirestub.request": {
+      "capability": "compat",
+      "kind": "wire_api",
+      "kwonly": ["params", "headers", "json_body"],
+      "module": "conformance.record.pycompat_ref",
+      "params": ["method", "path"],
+      "target": "conformance.record.pycompat_ref:WireStubClient.request"
+    },
+    "wirestub.request_sequence": {
+      "capability": "compat",
+      "kind": "wire_api",
+      "kwonly": [],
+      "module": "conformance.record.pycompat_ref",
+      "params": ["requests"],
+      "target": "conformance.record.pycompat_ref:WireStubClient.request_sequence"
+    },
+    "wirestub.stream_chunks": {
+      "capability": "compat",
+      "kind": "wire_api",
+      "kwonly": ["headers"],
+      "module": "conformance.record.pycompat_ref",
+      "params": ["method", "path"],
+      "target": "conformance.record.pycompat_ref:WireStubClient.stream_chunks"
+    }
+  },
+  "known_modules": ["rrweb_analyzer"]
+}

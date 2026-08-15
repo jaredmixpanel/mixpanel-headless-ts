@@ -56,6 +56,16 @@ export interface InvocationContext {
   readonly api: string;
   /** Decoded keyword arguments (codec-reconstructed rich values). */
   readonly kwargs: Readonly<Record<string, unknown>>;
+  /**
+   * The UNDECODED `call.input` values (lossless-loaded, `JsonNumber`
+   * tokens intact).
+   *
+   * Needed where Python-side argument TYPE information survives only in
+   * the raw JSON token: `18.0` and `18` both decode to the JS number
+   * `18`, but a binding whose Python contract branches on float-vs-int
+   * (the D13 `compat.python_str` gate slice) must consult the token.
+   */
+  readonly rawInput: Readonly<Record<string, JsonValue>>;
   /** Per-vector clock/UUID/virtual-sleep shims (D1.4/D12). */
   readonly shims: RunnerShims;
   /** The injected replay fetch (wire/parse vectors only). */
@@ -414,9 +424,11 @@ async function replayVector(
   const contextFor = (
     api: string,
     kwargs: Record<string, unknown>,
+    rawInput: Readonly<Record<string, JsonValue>>,
   ): InvocationContext => ({
     api,
     kwargs,
+    rawInput,
     shims,
     ...(harness !== undefined ? { fetch: harness.fetch } : {}),
     ...(vector.call["session"] !== undefined
@@ -444,7 +456,7 @@ async function replayVector(
     }
     const kwargs = deps.codecs.decodeInputKwargs(entry.input);
     try {
-      await implementation(contextFor(entry.api, kwargs));
+      await implementation(contextFor(entry.api, kwargs, entry.input));
     } catch (cause) {
       return fail(
         "FAIL_ERROR",
@@ -460,7 +472,9 @@ async function replayVector(
   let thrown: unknown;
   let didThrow = false;
   try {
-    returned = await implementation(contextFor(vector.api, kwargs));
+    returned = await implementation(
+      contextFor(vector.api, kwargs, vector.input),
+    );
   } catch (cause) {
     thrown = cause;
     didThrow = true;

@@ -62,11 +62,23 @@ const apiMapJsonInput = loadInput(
 const exceptionsInput = loadInput(
   resolve(PACKAGE_DIR, "src", "naming-exceptions.json"),
 );
+const authoredApisInput = loadInput(
+  resolve(PACKAGE_DIR, "src", "authored-apis.json"),
+);
 
 const apiIndex = JSON.parse(apiIndexInput.text) as Record<
   string,
   ApiIndexEntry
 >;
+const authoredApis = JSON.parse(authoredApisInput.text) as {
+  entries: Record<string, ApiIndexEntry>;
+  known_modules: readonly string[];
+};
+/** The full mapping universe: api-index + the authored D13 supplement. */
+const universe: Record<string, ApiIndexEntry> = {
+  ...apiIndex,
+  ...authoredApis.entries,
+};
 const exceptionRows = (
   JSON.parse(exceptionsInput.text) as { rows: readonly NamingExceptionRow[] }
 ).rows;
@@ -79,16 +91,25 @@ const workspaceMembers = new Map<string, WorkspaceMember>(
 );
 
 describe("api-map.gen.ts freshness and parity (D12)", () => {
-  it("stamps the sha256 of all three current inputs", () => {
+  it("stamps the sha256 of all four current inputs", () => {
     expect(API_MAP_SOURCE_HASHES.apiIndexJson).toBe(apiIndexInput.sha256);
     expect(API_MAP_SOURCE_HASHES.apiMapJson).toBe(apiMapJsonInput.sha256);
     expect(API_MAP_SOURCE_HASHES.namingExceptionsJson).toBe(
       exceptionsInput.sha256,
     );
+    expect(API_MAP_SOURCE_HASHES.authoredApisJson).toBe(
+      authoredApisInput.sha256,
+    );
   });
 
-  it("covers exactly the api-index universe", () => {
-    expect(Object.keys(API_MAP).sort()).toEqual(Object.keys(apiIndex).sort());
+  it("covers exactly the api-index + authored-supplement universe", () => {
+    expect(Object.keys(API_MAP).sort()).toEqual(Object.keys(universe).sort());
+  });
+
+  it("authored supplement never shadows an api-index entry (stale guard)", () => {
+    for (const pythonApi of Object.keys(authoredApis.entries)) {
+      expect(Object.hasOwn(apiIndex, pythonApi), pythonApi).toBe(false);
+    }
   });
 
   it("agrees with src/naming.ts on every TS home (generator parity)", () => {
@@ -104,7 +125,7 @@ describe("api-map.gen.ts freshness and parity (D12)", () => {
 
   it("carries api-index kind/capability/module/signature on every entry", () => {
     for (const [pythonApi, entry] of Object.entries(API_MAP)) {
-      const indexEntry = apiIndex[pythonApi] as ApiIndexEntry;
+      const indexEntry = universe[pythonApi] as ApiIndexEntry;
       expect(entry.kind, pythonApi).toBe(indexEntry.kind);
       expect(entry.capability, pythonApi).toBe(indexEntry.capability);
       expect(entry.pythonModule, pythonApi).toBe(indexEntry.module);
@@ -113,11 +134,12 @@ describe("api-map.gen.ts freshness and parity (D12)", () => {
     }
   });
 
-  it("KNOWN_PYTHON_MODULES is the sorted prefix set of the api-index", () => {
+  it("KNOWN_PYTHON_MODULES is the sorted prefix set of the full universe", () => {
     const prefixes = [
-      ...new Set(
-        Object.keys(apiIndex).map((api) => api.split(".")[0] as string),
-      ),
+      ...new Set([
+        ...Object.keys(universe).map((api) => api.split(".")[0] as string),
+        ...authoredApis.known_modules,
+      ]),
     ].sort();
     expect([...KNOWN_PYTHON_MODULES]).toEqual(prefixes);
   });
@@ -185,9 +207,14 @@ describe("TS-4 done criterion: full-corpus api resolution", () => {
       );
       expect(resolution.status, api).not.toBe("unmapped");
     }
-    // With the snapshot's own api-index as a generation input, every corpus
-    // name is mapped today; UNPORTED only appears after a corpus refresh
-    // outruns the map.
-    expect(statuses.get("mapped")).toBe(apis.size);
+    // Every corpus name is either mapped (api-index / authored supplement)
+    // or UNPORTED (authored vectors referencing apis the recorded-vector
+    // api-index does not carry — workspace parse targets,
+    // api_client._iter_jsonl_lines, rrweb_analyzer.analyze — stay in the
+    // known-module UNPORTED bucket until their port batches land, R10.5).
+    expect(
+      (statuses.get("mapped") ?? 0) + (statuses.get("unported") ?? 0),
+    ).toBe(apis.size);
+    expect(statuses.get("mapped") ?? 0).toBeGreaterThanOrEqual(300);
   });
 });

@@ -86,9 +86,18 @@ describe("loadCorpus on the committed snapshot (TS-4 done criterion)", () => {
     config.recordEpoch,
   );
 
+  /**
+   * Extracted (record-pipeline) vectors only: manifest counts cover the
+   * extraction, not the hand-authored D13/D3.1 additions.
+   */
+  const extracted = corpus.vectors.filter(
+    (vector) => vector.origin !== "authored",
+  );
+
   it("enumerates the full snapshot and matches the manifest total", () => {
     expect(corpus.manifest.sourceCommit).toBe(config.sourceCommit);
-    expect(corpus.vectors.length).toBe(corpus.manifest.total);
+    expect(extracted.length).toBe(corpus.manifest.total);
+    expect(corpus.vectors.length).toBeGreaterThanOrEqual(extracted.length);
     expect(corpus.vectors.length).toBeGreaterThanOrEqual(2500);
     expect(corpus.bundles.length).toBeGreaterThanOrEqual(100);
   });
@@ -103,7 +112,7 @@ describe("loadCorpus on the committed snapshot (TS-4 done criterion)", () => {
 
   it("reconciles per-kind counts against the manifest ledger", () => {
     const byKind = new Map<string, number>();
-    for (const vector of corpus.vectors) {
+    for (const vector of extracted) {
       byKind.set(vector.kind, (byKind.get(vector.kind) ?? 0) + 1);
     }
     const counts = corpus.manifest.raw["counts"] as { [key: string]: unknown };
