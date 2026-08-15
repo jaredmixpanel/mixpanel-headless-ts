@@ -1,5 +1,8 @@
 /**
- * Placeholder for the `types` module of @mixpanel-headless/core (D11 layout).
- * Implemented in a later port batch; kept empty so the scaffold typechecks.
+ * Barrel for the `types` module of @mixpanel-headless/core (D11
+ * layout). Phase-2 P2-3 adds the literal-alias unions and the Python
+ * Enum-class ports; later Phase-2 packets add query-params, results,
+ * and entities.
  */
-export {};
+export * from "./literals.js";
+export * from "./enums.js";

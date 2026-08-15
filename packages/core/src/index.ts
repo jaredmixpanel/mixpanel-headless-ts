@@ -17,5 +17,11 @@ export * from "./secret.js";
 export * from "./coerce.js";
 export * from "./invariant.js";
 
+// Phase-2 contract layer (P2-3): the 37 Literal-alias unions + runtime
+// membership tuples and the 8 Python Enum-class ports (public `__all__`
+// names — phase2-design C2). The bookmarks/ enum tables are Python
+// `_internal` and intentionally NOT re-exported here.
+export * from "./types/index.js";
+
 /** Package name constant exercised by the skeleton smoke test. */
 export const CORE_PACKAGE_NAME = "@mixpanel-headless/core";
