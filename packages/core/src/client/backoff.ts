@@ -114,10 +114,14 @@ export function retryWaitSeconds(
  * Parsing uses the FULL CPython `int(str)` grammar via `pythonInt`
  * (R11.3): underscores between digits, surrounding Python whitespace,
  * signs, and non-ASCII Nd digits all parse exactly as in Python. The one
- * sanctioned divergence (B0-notes decision 7, per the playbook packet):
- * values beyond 2^53 − 1 throw `PY_INT_UNSAFE_INTEGER` inside
- * `pythonInt` and read as absent here, where CPython would parse them —
- * behaviorally shielded by the 60s cap for the sleep path.
+ * sanctioned divergence (B0-notes decision 7, arbiter-blessed as
+ * playbook Discrepancy #6 — b0-review-resolution F2): a hostile header
+ * beyond 2^53 − 1 throws `PY_INT_UNSAFE_INTEGER` inside `pythonInt` and
+ * reads as absent here, where CPython parses the raw big int (sleeping
+ * the capped 60s and reporting it in `RateLimitError.retry_after`). The
+ * 60s cap keeps the sleep path behaviorally inert; the detail-bag delta
+ * (`retry_after: null` vs the huge int) exists only in that corner and
+ * is never vector-asserted.
  *
  * @param response - Response carrying the headers.
  * @returns Seconds to wait as a non-negative integer, or `null` when the

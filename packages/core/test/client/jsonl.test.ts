@@ -1,14 +1,19 @@
 // Streaming JSONL splitter unit tests — Phase-3 packet B0-2
 // (`_iter_jsonl_lines`, api_client.py:109-148).
 //
-// Python has no direct Layer-3 unit suite for `_iter_jsonl_lines` (its
-// chunk-boundary contract entered the corpus as the 6 authored vectors in
-// conformance/vectors/authored/streaming/jsonl-chunks.jsonl — design
-// D2/D4.2 item 9); these tests mirror those authored cases 1:1 plus the
-// buffering edges the Python docstring documents. Gzip decoding is the
-// transport's job (httpx decodes before `iter_bytes()`; the conformance
-// binding decompresses before calling in) — so the gzip authored vector
-// is locked by vector replay, not re-tested here.
+// Translation sources (header corrected per arbiter fix A1,
+// b0-review-resolution): tests/unit/test_api_client.py::TestIterJsonlLines
+// (:2709-2877, 8 tests driving `_iter_jsonl_lines` directly — every
+// behavior is covered below: simple lines → "handles many lines within
+// one chunk"; no-trailing-newline / blank-lines-skipped / chunk-boundary /
+// mid-codepoint-split / empty-response / whitespace-only-skipped map to
+// the authored-* and named cases; utf8_content is subsumed by the
+// strictly-harder split-😀 case), PLUS the 6 authored chunk vectors in
+// conformance/vectors/authored/streaming/jsonl-chunks.jsonl (design
+// D2/D4.2 item 9), mirrored 1:1. Gzip decoding is the transport's job
+// (httpx decodes before `iter_bytes()`; the conformance binding
+// decompresses before calling in) — so the gzip authored vector is
+// locked by vector replay, not re-tested here.
 import { describe, expect, it } from "vitest";
 import { iterJsonlLines } from "../../src/client/jsonl.js";
 

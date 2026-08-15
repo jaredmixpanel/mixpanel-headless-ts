@@ -674,6 +674,65 @@ describe("errorMessage (FF6)", () => {
   });
 });
 
+// Arbiter fixes F1 + F3/A2 (b0-review-resolution): body parsing must
+// accept the json.loads non-finite constants exactly as every Python
+// `response.json()` site does (probed live: `json.loads('{"a": NaN}')`
+// parses; a bare `Infinity` 403 body is a truthy float → the R10.7
+// TypeError branch), and the parse catch must mirror Python's
+// `except json.JSONDecodeError` scope — a parser stack overflow
+// (RangeError, the RecursionError analog) PROPAGATES, never degrades to
+// the body-as-text / INVALID_RESPONSE path.
+describe("json.loads non-finite body tokens (arbiter fix F1)", () => {
+  it("200 object body containing NaN/Infinity parses like json.loads", async () => {
+    const h = harness([res(200, '{"a": NaN, "b": Infinity, "c": -Infinity}')]);
+    const value = (await run(h)) as { a: number; b: number; c: number };
+    expect(value.a).toBeNaN();
+    expect(value.b).toBe(Infinity);
+    expect(value.c).toBe(-Infinity);
+  });
+
+  it("200 bare NaN scalar body is RETURNED (httpx .json() parity)", async () => {
+    expect(await run(harness([res(200, "NaN")]))).toBeNaN();
+  });
+
+  it("400 body with a non-finite member keeps DICT shape and error message", async () => {
+    // Python: response_body is the dict and _error_message reads `error`;
+    // pre-fix TS degraded to the truncated-string body + [:200] message.
+    const h = harness([res(400, '{"error": "boom", "extra": NaN}')]);
+    const error = (await run(h).catch((e: unknown) => e)) as QueryError;
+    expect(error).toBeInstanceOf(QueryError);
+    expect(error.message).toBe("boom");
+    const body = error.responseBody as { error: string; extra: number };
+    expect(body.error).toBe("boom");
+    expect(body.extra).toBeNaN();
+  });
+
+  it("R10.7 bug-compat: 403 bare Infinity body is a truthy float → TypeError", async () => {
+    // Python: json.loads("Infinity") → inf (truthy) → `flag in inf` →
+    // TypeError. Pre-fix TS saw the string "Infinity" → QueryError.
+    const h = harness([res(403, "Infinity")]);
+    const error = await run(h).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(TypeError);
+  });
+});
+
+describe("JSONDecodeError-analog catch scope (arbiter fix F3/A2)", () => {
+  // ~1e6 unclosed brackets overflow the recursive-descent parser's stack
+  // (the CPython twin: json.loads raises RecursionError past `except
+  // json.JSONDecodeError`, so _handle_response propagates it).
+  const deep = "[".repeat(1_000_000);
+
+  it("parser stack overflow on a 2xx body PROPAGATES (never INVALID_RESPONSE)", async () => {
+    const error = await run(harness([res(200, deep)])).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(RangeError);
+  });
+
+  it("parser stack overflow on an error-status body PROPAGATES (never body-as-text)", async () => {
+    const error = await run(harness([res(400, deep)])).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(RangeError);
+  });
+});
+
 // handleResponse-level checks that need direct access (no retry loop).
 describe("handleResponse direct", () => {
   it("401 → AuthenticationError with full request context", () => {

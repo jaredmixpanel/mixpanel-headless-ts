@@ -495,3 +495,30 @@ describe("app_request 422 with non-JSON body", () => {
     expect(error.message).toBe("x".repeat(200));
   });
 });
+
+// Arbiter fixes F1 + F3/A2 (b0-review-resolution): the 422 body parse is
+// a `response.json()` site in Python (`api_client.py:1339-1342`) — it
+// accepts json.loads' non-finite constants, and its catch scope is
+// `except json.JSONDecodeError` only (a RecursionError propagates).
+describe("app_request 422 body-parse fidelity (arbiter fixes F1/F3)", () => {
+  it("422 body with a non-finite member keeps DICT shape and error message", async () => {
+    const h = harness([res(422, '{"error": "bad field", "v": Infinity}')]);
+    const error = (await appRequest(h.deps, "GET", "/d").catch(
+      (e: unknown) => e,
+    )) as QueryError;
+    expect(error).toBeInstanceOf(QueryError);
+    expect(error.statusCode).toBe(422);
+    expect(error.message).toBe("bad field");
+    const body = error.responseBody as { error: string; v: number };
+    expect(body.error).toBe("bad field");
+    expect(body.v).toBe(Infinity);
+  });
+
+  it("parser stack overflow on a 422 body PROPAGATES (RecursionError analog)", async () => {
+    const h = harness([res(422, "[".repeat(1_000_000))]);
+    const error = await appRequest(h.deps, "GET", "/d").catch(
+      (e: unknown) => e,
+    );
+    expect(error).toBeInstanceOf(RangeError);
+  });
+});

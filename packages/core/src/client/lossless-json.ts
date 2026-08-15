@@ -6,6 +6,15 @@
  * that `18` vs `18.0` and integers above 2^53 survive loading. Duplicate
  * object keys follow last-wins semantics, matching both `JSON.parse` and
  * Python `json.loads`.
+ *
+ * Python's `json.loads` additionally accepts the three non-finite
+ * constants `NaN` / `Infinity` / `-Infinity` (exact case, `-` only on
+ * `Infinity`). The wire body-parse sites (`parseBody`, the
+ * `_handle_response` tail, the 422 branch) opt into that grammar via
+ * {@link ParseLosslessOptions.pythonConstants} — arbiter fix F1,
+ * `context/phase3/design/b0-review-resolution.md`. The DEFAULT stays
+ * strict so vector/selftest JSON keeps D6 rule 5 enforcement (non-finite
+ * tokens are barred from vector files).
  */
 
 import { JsonNumber, type JsonValue } from "./json-value.js";
@@ -36,11 +45,26 @@ const STRING_TOKEN =
   // eslint-disable-next-line no-control-regex -- RFC 8259 forbids raw control chars in strings; the class is intentional
   /"(?:[^"\\\u0000-\u001f]|\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4}))*"/y;
 
+/** Options of {@link parseLossless}. */
+export interface ParseLosslessOptions {
+  /**
+   * Accept the `json.loads` non-finite constants `NaN` / `Infinity` /
+   * `-Infinity` (exact case only, probed against CPython 3.14), parsed
+   * as NATIVE non-finite `number` values — exactly the `float('nan')` /
+   * `float('inf')` Python produces (no raw-token precision concern
+   * exists for non-finite values). Default `false` (strict RFC 8259).
+   */
+  readonly pythonConstants?: boolean;
+}
+
 /**
  * Parse JSON text losslessly.
  *
  * @param text - The JSON document.
- * @returns The parsed value; numbers are {@link JsonNumber} instances.
+ * @param options - Optional grammar extensions (see
+ *   {@link ParseLosslessOptions}).
+ * @returns The parsed value; finite numbers are {@link JsonNumber}
+ *   instances (non-finite constants, when enabled, are native numbers).
  * @throws LosslessJsonError - On any syntax error or trailing content.
  *
  * @example
@@ -49,8 +73,11 @@ const STRING_TOKEN =
  * // { a: JsonNumber { raw: "18.0" } }
  * ```
  */
-export function parseLossless(text: string): JsonValue {
-  const parser = new Parser(text);
+export function parseLossless(
+  text: string,
+  options: ParseLosslessOptions = {},
+): JsonValue {
+  const parser = new Parser(text, options.pythonConstants === true);
   const value = parser.parseValue();
   parser.skipWhitespace();
   if (!parser.atEnd()) {
@@ -67,13 +94,18 @@ class Parser {
   /** Current zero-based scan position. */
   pos = 0;
 
+  /** Whether the `json.loads` non-finite constants are accepted. */
+  private readonly pythonConstants: boolean;
+
   /**
    * Create a parser over the given source.
    *
    * @param text - The JSON document to scan.
+   * @param pythonConstants - Accept `NaN`/`Infinity`/`-Infinity`.
    */
-  constructor(text: string) {
+  constructor(text: string, pythonConstants = false) {
     this.text = text;
+    this.pythonConstants = pythonConstants;
   }
 
   /**
@@ -125,6 +157,29 @@ class Parser {
       case "n":
         this.expectLiteral("null");
         return null;
+      // json.loads non-finite constants (arbiter fix F1) — exact case,
+      // sign only on Infinity, exactly CPython's scanner constants.
+      case "N":
+        if (this.pythonConstants) {
+          this.expectLiteral("NaN");
+          return Number.NaN;
+        }
+        return this.parseNumber();
+      case "I":
+        if (this.pythonConstants) {
+          this.expectLiteral("Infinity");
+          return Number.POSITIVE_INFINITY;
+        }
+        return this.parseNumber();
+      case "-":
+        if (
+          this.pythonConstants &&
+          this.text.startsWith("-Infinity", this.pos)
+        ) {
+          this.pos += "-Infinity".length;
+          return Number.NEGATIVE_INFINITY;
+        }
+        return this.parseNumber();
       default:
         return this.parseNumber();
     }

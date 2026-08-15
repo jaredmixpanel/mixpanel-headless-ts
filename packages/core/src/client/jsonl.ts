@@ -36,6 +36,9 @@ import { pythonStrip } from "../compat/index.js";
  *
  * @example
  * ```typescript
+ * // NOTE for B4-C2 (GATE-VERDICT R5): library streaming code parses
+ * // each line via parseLossless, never bare JSON.parse — the JSON.parse
+ * // here only mirrors the Python docstring's json.loads illustration.
  * for await (const line of iterJsonlLines(response.body)) {
  *   const event = JSON.parse(line);
  * }

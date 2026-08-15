@@ -34,7 +34,7 @@ import {
 } from "./backoff.js";
 import { QUERY_ORIGIN } from "./headers.js";
 import { JsonNumber, type JsonValue } from "./json-value.js";
-import { parseLossless } from "./lossless-json.js";
+import { LosslessJsonError, parseLossless } from "./lossless-json.js";
 
 /**
  * HTTP/transport-level failure — the TS analog of `httpx.HTTPError`.
@@ -316,16 +316,25 @@ export function errorMessage(
 
 /**
  * Parse a response body exactly as `_handle_response`'s opening block
- * does: lossless JSON, else the first 500 codepoints of the text, else
+ * does: lossless JSON (with the `json.loads` non-finite constants —
+ * arbiter fix F1), else the first 500 codepoints of the text, else
  * `null` for an empty body.
  *
  * @param text - The raw body text.
  * @returns Parsed value, truncated text, or `null`.
+ * @throws RangeError - Parser stack overflow on a pathologically nested
+ *   body — the `except json.JSONDecodeError` scope does not cover
+ *   Python's RecursionError either (arbiter fix F3/A2).
  */
 function parseBody(text: string): JsonValue | null {
   try {
-    return parseLossless(text);
-  } catch {
+    return parseLossless(text, { pythonConstants: true });
+  } catch (e) {
+    // Python catches `json.JSONDecodeError` ONLY — anything else (the
+    // RecursionError analog) propagates.
+    if (!(e instanceof LosslessJsonError)) {
+      throw e;
+    }
     // Python: `response.text[:500] if response.text else None`.
     return text !== "" ? cpSlice(text, 0, 500) : null;
   }
@@ -526,10 +535,14 @@ export function handleResponse(
   }
   // ... (iii) re-parse: a JSON scalar (42, "ok", true, null) is RETURNED
   // as the result (httpx: Response(200, b"42").json() → 42); only a
-  // parse FAILURE raises INVALID_RESPONSE.
+  // parse FAILURE raises INVALID_RESPONSE (`except json.JSONDecodeError`
+  // scope — anything else propagates, arbiter fix F3/A2).
   try {
-    return parseLossless(response.text);
+    return parseLossless(response.text, { pythonConstants: true });
   } catch (cause) {
+    if (!(cause instanceof LosslessJsonError)) {
+      throw cause;
+    }
     throw new MixpanelHeadlessError(
       `Non-JSON response from ${requestMethod} ${requestUrl} ` +
         `(status ${response.status}): ${cpSlice(response.text, 0, 500)}`,

@@ -50,7 +50,11 @@ export type {
 export { JsonNumber } from "./json-value.js";
 export type { JsonValue } from "./json-value.js";
 export { iterJsonlLines } from "./jsonl.js";
-export { LosslessJsonError, parseLossless } from "./lossless-json.js";
+export {
+  LosslessJsonError,
+  parseLossless,
+  type ParseLosslessOptions,
+} from "./lossless-json.js";
 export { maybeScopedPath } from "./scope.js";
 export type { PathScope } from "./scope.js";
 export { ENDPOINTS, buildUrl, endpointBase } from "./url.js";

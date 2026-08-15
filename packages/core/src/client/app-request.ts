@@ -44,7 +44,7 @@ import {
   type TransportRequestOptions,
 } from "./internals.js";
 import type { JsonValue } from "./json-value.js";
-import { parseLossless } from "./lossless-json.js";
+import { LosslessJsonError, parseLossless } from "./lossless-json.js";
 import { buildUrl, type Region } from "./url.js";
 
 /** Dependencies of {@link appRequest} (the B4 client wires these). */
@@ -217,12 +217,18 @@ export async function appRequest(
         continue;
       }
 
-      // Handle 422 as QueryError.
+      // Handle 422 as QueryError. Body parse mirrors the Python
+      // `response.json()` site (`api_client.py:1339-1342`): json.loads
+      // non-finite constants accepted (arbiter fix F1), catch scope is
+      // the JSONDecodeError analog only (arbiter fix F3/A2).
       if (response.status === 422) {
         let errBody: JsonValue | null;
         try {
-          errBody = parseLossless(response.text);
-        } catch {
+          errBody = parseLossless(response.text, { pythonConstants: true });
+        } catch (e) {
+          if (!(e instanceof LosslessJsonError)) {
+            throw e;
+          }
           errBody =
             response.text !== "" ? cpSlice(response.text, 0, 500) : null;
         }
