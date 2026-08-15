@@ -12,8 +12,10 @@
  * - `PRECISION_LOSS` — the ONLY divergence is double-rounding of integer
  *   tokens above 2^53 (D6; R4.5 escalation trigger).
  * - `UNPORTED` — target entry point known (api-index universe) but not yet
- *   bound to a TS implementation; counted, never failing, until the
- *   module's port batch is declared done (R10.5).
+ *   bound to a TS implementation; counted, never failing, while the
+ *   module's port batch is `'pending'` in `batch-status.ts`. Once the
+ *   batch is declared `'done'` there, an unbound name is a straggler and
+ *   the runner returns `FAIL_ERROR` instead (R10.5).
  * - `UNMAPPED_API` — the api name is in NO mapping source; always failing
  *   (naming-map §4).
  */

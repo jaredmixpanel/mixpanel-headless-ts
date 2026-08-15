@@ -1,6 +1,7 @@
-// C8(a) corpus-wide codec round-trip sweep (phase2-design C8, packet
-// P2-4 initial form — the P2-8 packet finalizes it with an EMPTY
-// allowlist).
+// C8(a) corpus-wide codec round-trip sweep — FINAL form (phase2-design
+// C8(a), packet P2-8: the interim not-yet-ported allowlist mechanism is
+// REMOVED — every rich tag in the corpus must be registered and must
+// round-trip; the only exemption left is the named DECODE_GAP below).
 //
 // For every `$type`-tagged object found anywhere in a corpus vector
 // (recursive descent through `call` and `expect`, including inside
@@ -11,12 +12,8 @@
 // Anti-vacuity (mandatory, arbiter V3): the decoded product must be an
 // `instanceof` the registered core class, and `SecretStr` round-trips
 // must preserve the REVEALED value — a `'**********'` mask appearing in
-// encoded output is a FAIL.
-//
-// The explicit ALLOWLIST below names every rich tag whose port packet
-// has not yet landed (P2-5a..c query params, P2-6 results, P2-7
-// entities). Packet ordering in C10 shrinks it to empty; a stale entry
-// (tag both allowlisted AND registered) fails loudly.
+// encoded output is a FAIL. The companion raw-payload-retention audit
+// lives in `raw-payload-audit.test.ts`.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -73,13 +70,6 @@ import { loadCorpus, loadCorpusConfig } from "../src/loader.js";
 
 /** The conformance-runner package root. */
 const PACKAGE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-
-/**
- * Rich tags whose port packet has NOT landed yet (explicit, tracked).
- * EMPTY since P2-7 registered the entity-model tags — the last packet
- * family; P2-8 removes the mechanism entirely.
- */
-const ALLOWLIST: ReadonlySet<string> = new Set([]);
 
 /**
  * Built-in tags the runner cannot round-trip: `callback` decodes to a
@@ -153,7 +143,7 @@ function walk(value: JsonValue, vectorId: string, path: string): void {
   const tag = record["$type"];
   if (typeof tag === "string") {
     tally.set(tag, (tally.get(tag) ?? 0) + 1);
-    if (!ALLOWLIST.has(tag) && !DECODE_GAP.has(tag)) {
+    if (!DECODE_GAP.has(tag)) {
       roundTrippable.push({ vectorId, path, tag, node: record });
     }
   }
@@ -305,10 +295,9 @@ describe("C8(a) codec round-trip sweep", () => {
     expect(tally.get("OAuthTokens") ?? 0).toBeGreaterThanOrEqual(1);
   });
 
-  it("every corpus tag is registered, allowlisted, or a named decode gap", () => {
+  it("every corpus tag is registered or a named decode gap (no allowlist)", () => {
     const unknown = [...tally.keys()].filter(
-      (tag) =>
-        !deps.codecs.knows(tag) && !ALLOWLIST.has(tag) && !DECODE_GAP.has(tag),
+      (tag) => !deps.codecs.knows(tag) && !DECODE_GAP.has(tag),
     );
     expect(unknown).toEqual([]);
   });
@@ -319,15 +308,9 @@ describe("C8(a) codec round-trip sweep", () => {
       ...tagUniverse.rich_tags,
     ];
     const unaccounted = artifactTags.filter(
-      (tag) =>
-        !deps.codecs.knows(tag) && !ALLOWLIST.has(tag) && !DECODE_GAP.has(tag),
+      (tag) => !deps.codecs.knows(tag) && !DECODE_GAP.has(tag),
     );
     expect(unaccounted).toEqual([]);
-  });
-
-  it("the allowlist contains no stale entries (registered tags must leave it)", () => {
-    const stale = [...ALLOWLIST].filter((tag) => deps.codecs.knows(tag));
-    expect(stale).toEqual([]);
   });
 
   it("every registered rich tag was exercised at least once", async () => {

@@ -18,7 +18,9 @@
  * Verdict resolution (see `verdicts.ts` for the taxonomy): API names that
  * resolve to no mapping source are `UNMAPPED_API` (fail-fast); mapped or
  * module-known names without a bound TS implementation are `UNPORTED`
- * (counted, never failing, until the module's batch is declared done);
+ * (counted, never failing) — UNLESS the name's port batch is declared
+ * `'done'` in `batch-status.ts`, in which case the missing binding is a
+ * straggler and the verdict is `FAIL_ERROR` (R10.5 — no silent skips);
  * request-side divergence is `FAIL_REQUEST`; error-contract divergence is
  * `FAIL_ERROR`; value divergence is `FAIL_OUTPUT` — unless the ONLY
  * divergence is double-rounding of integer tokens above 2^53, which is the
@@ -26,6 +28,7 @@
  */
 
 import { resolveApi } from "./api-map.js";
+import { batchStatusFor } from "./batch-status.js";
 import {
   CanonicalizationError,
   canonicalize,
@@ -329,13 +332,38 @@ function diffThrownError(
 }
 
 /**
+ * The verdict for a mapped api name that has no bound implementation.
+ *
+ * Consults the declarative batch table (`batch-status.ts`): a name whose
+ * port batch is declared `'done'` is a straggler and FAILS — `UNPORTED`
+ * is only admissible while the batch is `'pending'` (R10.5, phase2-design
+ * C7 item 4).
+ *
+ * @param api - The unbound Python dotted api name.
+ * @returns The short-circuit gate result.
+ */
+function unboundVerdict(api: string): { verdict: Verdict; diff?: string } {
+  if (batchStatusFor(api) === "done") {
+    return {
+      verdict: "FAIL_ERROR",
+      diff:
+        `api ${JSON.stringify(api)} has no bound implementation but its ` +
+        `batch is declared done (batch-status.ts, R10.5)`,
+    };
+  }
+  return { verdict: "UNPORTED" };
+}
+
+/**
  * Resolve the replay verdict gate for a vector's api names (measured +
  * every setup entry).
  *
  * @param vector - The vector.
  * @param implementations - The current bindings.
  * @returns `null` when every name is bound (replay proceeds), else the
- *   short-circuit result (`UNMAPPED_API` fail-fast before `UNPORTED`).
+ *   short-circuit result (`UNMAPPED_API` fail-fast before the unbound
+ *   gate, which yields `UNPORTED` for pending batches and `FAIL_ERROR`
+ *   for declared-done batches — see {@link unboundVerdict}).
  */
 function gateApis(
   vector: ConformanceVector,
@@ -352,7 +380,7 @@ function gateApis(
   }
   for (const api of apis) {
     if (!implementations.has(api)) {
-      return { verdict: "UNPORTED" };
+      return unboundVerdict(api);
     }
   }
   return null;
@@ -452,7 +480,14 @@ async function replayVector(
   for (const entry of vector.setup) {
     const implementation = deps.implementations.get(entry.api);
     if (implementation === undefined) {
-      return { id: vector.id, capability, verdict: "UNPORTED" };
+      // Defensive: gateApis already short-circuited unbound names.
+      const gated = unboundVerdict(entry.api);
+      return {
+        id: vector.id,
+        capability,
+        verdict: gated.verdict,
+        ...(gated.diff !== undefined ? { diff: gated.diff } : {}),
+      };
     }
     const kwargs = deps.codecs.decodeInputKwargs(entry.input);
     try {

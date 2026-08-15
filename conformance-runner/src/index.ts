@@ -9,6 +9,7 @@ export const RUNNER_PACKAGE_NAME = "@mixpanel-headless/conformance-runner";
 
 export * from "./api-map-types.js";
 export * from "./api-map.js";
+export * from "./batch-status.js";
 export * from "./bindings.js";
 export * from "./codecs.js";
 export * from "./interactions.js";
