@@ -1,0 +1,361 @@
+{
+  "$comment": "Provenance manifest for vendor/mixpanel-contracts (phase1-design D15a/D15c, task TS-8). Every file is a verbatim byte copy from the read-only analytics checkout; scripts/check-vendor-drift.sh byte-diffs each entry against source_root when that checkout exists.",
+  "source_root": "/Users/jaredmcfarland/Developer/analytics",
+  "vendored_date": "2026-08-14",
+  "file_count": 57,
+  "coverage_holes": {
+    "webhooks": "No webapp/app_api types.d.ts — webhook types live in the iron tree only (iron/common/types/schema4api/webapp/project_webhooks/types.d.ts).",
+    "cohorts": "No types.d.ts contract exists anywhere in the analytics repo for cohorts.",
+    "alerts": "schema4api covers alerts/custom only (webapp/app_api/projects/alerts/custom/types.d.ts); whether mixpanel_headless alerts CRUD maps to that surface is an open escalation (phase1-design Escalation 4)."
+  },
+  "notes": [
+    "bookmark.json: generated insights bookmark schema (draft 2020-12 semantics; no $schema key; root InsightsBookmarkParams). Source: lib/common/mxpnl/report/bookmarks/generated/bookmark.json.",
+    "openapi.internal.json: Mixpanel Platform API 1 (OpenAPI 3.1.0, 7 paths). @hey-api/openapi-ts generation is DEFERRED per D15c; recipe in vendor/mixpanel-contracts/README.md.",
+    "webapp/app_api/**/types.d.ts: 45 files, schema4api-generated; cannot be regenerated outside Mixpanel's Django env — vendored verbatim.",
+    "iron/common/types/schema4api/**: 10 files (9 webapp/**/types.d.ts + admin-permissions.d.ts). phase1-design D15c item 1 words this as '10 iron/common/types/schema4api/webapp/**/types.d.ts'; the tree actually holds 9 webapp types.d.ts plus admin-permissions.d.ts at the schema4api root — the whole 10-file tree is vendored so the 55-file total holds."
+  ],
+  "files": [
+    {
+      "path": "bookmark.json",
+      "source_path": "lib/common/mxpnl/report/bookmarks/generated/bookmark.json",
+      "sha256": "b651829f679bc37e86f8dbdb3232ab0086465b6c44e8f0046d1ffbb788aed7f3",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "iron/common/types/schema4api/admin-permissions.d.ts",
+      "source_path": "iron/common/types/schema4api/admin-permissions.d.ts",
+      "sha256": "4f457a416c19b88cb5ec1014f20c90b4d10b076dc6c075bd98f5afc3a45105bc",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "iron/common/types/schema4api/webapp/admin/internal/analysis/canvases/types.d.ts",
+      "source_path": "iron/common/types/schema4api/webapp/admin/internal/analysis/canvases/types.d.ts",
+      "sha256": "5336bc339a39962fb1fcccafbb2d4cc86c3c5dd0b0053b9da2d4b5a7b101f15e",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "iron/common/types/schema4api/webapp/admin/internal/product_platform/manage_redis/types.d.ts",
+      "source_path": "iron/common/types/schema4api/webapp/admin/internal/product_platform/manage_redis/types.d.ts",
+      "sha256": "5b1fd4ae849792f376b29b58751a43376c156f367172fe46969975a2166a5457",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "iron/common/types/schema4api/webapp/admin/internal/product_platform/staff_registry/types.d.ts",
+      "source_path": "iron/common/types/schema4api/webapp/admin/internal/product_platform/staff_registry/types.d.ts",
+      "sha256": "24c499b7589b65afcc417710409b02e05a6d696ad0c9f8b1f6a164a2ca44a005",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "iron/common/types/schema4api/webapp/github/types.d.ts",
+      "source_path": "iron/common/types/schema4api/webapp/github/types.d.ts",
+      "sha256": "c06307dcec8ede6b9729d67ab6863b34011a63926aae87151824b8fc27605b8c",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "iron/common/types/schema4api/webapp/project_webhooks/types.d.ts",
+      "source_path": "iron/common/types/schema4api/webapp/project_webhooks/types.d.ts",
+      "sha256": "47c5d47114f12280548e170b8370083a4a1e5d7a19bc8250c61e1d05038ac1d7",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "iron/common/types/schema4api/webapp/reports/types.d.ts",
+      "source_path": "iron/common/types/schema4api/webapp/reports/types.d.ts",
+      "sha256": "7ab590fe5ad3f54b7f122c4a0eb71f23d7bf2be22079afb6b456553ea8f49c0e",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "iron/common/types/schema4api/webapp/user/security/passkeys/types.d.ts",
+      "source_path": "iron/common/types/schema4api/webapp/user/security/passkeys/types.d.ts",
+      "sha256": "f38c57fbc83962baf580324d5ac1b52dcec9bf49d095a0faed3ddcfcab04584f",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "iron/common/types/schema4api/webapp/user/security/totp_selfservice/types.d.ts",
+      "source_path": "iron/common/types/schema4api/webapp/user/security/totp_selfservice/types.d.ts",
+      "sha256": "61d4c002c3df6245d22aceb03a2fa2f3c2b840a0036b4f715e5211281e9f6a32",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "iron/common/types/schema4api/webapp/user/types.d.ts",
+      "source_path": "iron/common/types/schema4api/webapp/user/types.d.ts",
+      "sha256": "f24933f10a74fc360b778a9ab4bdf4c93a49d064ebba0643cd6dde888b3c2dc3",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "openapi.internal.json",
+      "source_path": "webapp/app_api/v1/generated/openapi.internal.json",
+      "sha256": "1f8d02d0415e9d6e0ad78686115356627e4ecd3b7a31cec5789fe0511d829687",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/avatars/types.d.ts",
+      "source_path": "webapp/app_api/avatars/types.d.ts",
+      "sha256": "4e5bd647a3d256f809598dc2fa0e295909c2e6884560223759b777f9e09a55a9",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/billing/types.d.ts",
+      "source_path": "webapp/app_api/billing/types.d.ts",
+      "sha256": "abe0fbebf6f6164c52d5857f9f9c83397bf30b065ddb49bf9fc4326ebd7d150c",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/billing_bump/detail_views/account_deletion_workflows/types.d.ts",
+      "source_path": "webapp/app_api/billing_bump/detail_views/account_deletion_workflows/types.d.ts",
+      "sha256": "bae5ec45fd7588266193baaebac0e28bf15f174aff76518b523d825671cf3738",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/billing_bump/detail_views/project_entitlements/types.d.ts",
+      "source_path": "webapp/app_api/billing_bump/detail_views/project_entitlements/types.d.ts",
+      "sha256": "2bc4a7f5419fa1b1418795bb049b3fb215138583210f8419a180de27596e9a46",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/embed/types.d.ts",
+      "source_path": "webapp/app_api/embed/types.d.ts",
+      "sha256": "ce4c6f3ab6bd4fad64b76107195a1b730b24d74e70f81228688c6ebbbea08d6e",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/me/types.d.ts",
+      "source_path": "webapp/app_api/me/types.d.ts",
+      "sha256": "53708e4cfceacb0efdf847eed6a23bceddd4c78ba883223974249262faf9c57b",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/organizations/audit_logs/types.d.ts",
+      "source_path": "webapp/app_api/organizations/audit_logs/types.d.ts",
+      "sha256": "a1616e6a6db1f4838e187387796ab04d4cc859e9c670716136553ebd8e74951c",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/organizations/domains/types.d.ts",
+      "source_path": "webapp/app_api/organizations/domains/types.d.ts",
+      "sha256": "3cf698f633ee48fea53c90de8a3f90efc9f353d6d9ffe4571d30f1e6ba741059",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/organizations/project_creation/types.d.ts",
+      "source_path": "webapp/app_api/organizations/project_creation/types.d.ts",
+      "sha256": "3b1eb7736e6f5e0d87eb792391e048e0831cddc2325ba321c0a1753738be24a5",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/organizations/sdk_settings/types.d.ts",
+      "source_path": "webapp/app_api/organizations/sdk_settings/types.d.ts",
+      "sha256": "37ff804854cb28095c9deee2cf586b7cb6ba4070f7175b1c28f11c25ea5216ca",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/organizations/service_accounts/types.d.ts",
+      "source_path": "webapp/app_api/organizations/service_accounts/types.d.ts",
+      "sha256": "4656a3b72c584f0a7bd2c44b9c84d8587fb4a2b51270ee95558836c764966361",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/organizations/teams/service_accounts/types.d.ts",
+      "source_path": "webapp/app_api/organizations/teams/service_accounts/types.d.ts",
+      "sha256": "e445bbde688908df2aa722c884286807a0c3cdc8bf1f4c651b2ec521978e5e58",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/personal_access_tokens/types.d.ts",
+      "source_path": "webapp/app_api/personal_access_tokens/types.d.ts",
+      "sha256": "3076637d5e221bbfb0dd13b0e052636fba08b9e86f5ca311fb263859c9029bdc",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/product_updates/types.d.ts",
+      "source_path": "webapp/app_api/product_updates/types.d.ts",
+      "sha256": "343b3274c6c5791d07a6f750c682ef6d338ee2411b069783390660315dc36432",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/agent_flows/types.d.ts",
+      "source_path": "webapp/app_api/projects/agent_flows/types.d.ts",
+      "sha256": "5f8c0c9890f94ab55d9e80438769a7e13ca55ff09de39827f9119e31b8e7f7a8",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/ai_skill/types.d.ts",
+      "source_path": "webapp/app_api/projects/ai_skill/types.d.ts",
+      "sha256": "e8f8e8736d6dbd90d27218a31cad56e0d818f160ec0c27cc44e10f0d3b4708a8",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/alerts/custom/types.d.ts",
+      "source_path": "webapp/app_api/projects/alerts/custom/types.d.ts",
+      "sha256": "4f8bfe571c047bc5994444c05189ed15252fbcdce7bf5588e084098d51a4cc09",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/audit_logs/types.d.ts",
+      "source_path": "webapp/app_api/projects/audit_logs/types.d.ts",
+      "sha256": "2a6473687d22550ff1ec1554e1708636035cb05121f13dea2d58e730454e8ce5",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/banners/types.d.ts",
+      "source_path": "webapp/app_api/projects/banners/types.d.ts",
+      "sha256": "b4fec9686f617918a4a9466e12adab40609b840f045bb1e4233a7789713df216",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/behaviors/types.d.ts",
+      "source_path": "webapp/app_api/projects/behaviors/types.d.ts",
+      "sha256": "b625ac805de9b4b8ca87eb612de3ca37a58d543ec220922db412fcb888c497e0",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/bookmarks/types.d.ts",
+      "source_path": "webapp/app_api/projects/bookmarks/types.d.ts",
+      "sha256": "24e4c1d353f73cbe286d086b8dc1d82ceccc190cda20d36e68b62fbae960d42e",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/connectors/types.d.ts",
+      "source_path": "webapp/app_api/projects/connectors/types.d.ts",
+      "sha256": "a3b18e40a731fd04f66a785631c923aa8cb71cc949ddc346e71f4d3c86195fad",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/dashboards/types.d.ts",
+      "source_path": "webapp/app_api/projects/dashboards/types.d.ts",
+      "sha256": "afab7793afcc87f2c30f9b3f76531d0ea6fc2ee5789a0932b525e3a92649d1ff",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/data_definitions/types.d.ts",
+      "source_path": "webapp/app_api/projects/data_definitions/types.d.ts",
+      "sha256": "8542d996f5bdb5415dac84baebe81f57efb0e778873b598cdb1772859e269a6b",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/data_governance/magic_merge/types.d.ts",
+      "source_path": "webapp/app_api/projects/data_governance/magic_merge/types.d.ts",
+      "sha256": "0752a992dfb75edfd9c5ccc103e1145771389c97e43a39470ce9275a602203cc",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/data_groups/types.d.ts",
+      "source_path": "webapp/app_api/projects/data_groups/types.d.ts",
+      "sha256": "ec73c0855e0931df020c05498aa9c75305d6a1abab21c8e1380ce06d5b6452d7",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/entitlements/types.d.ts",
+      "source_path": "webapp/app_api/projects/entitlements/types.d.ts",
+      "sha256": "509b2abdbf02bf06d23294b2fd450ac084cd1282acf5907114b87d40290700e5",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/events/types.d.ts",
+      "source_path": "webapp/app_api/projects/events/types.d.ts",
+      "sha256": "5aac6d55085e01b0cf734e206cb63422b06ec10cf510d16099467534ebef0057",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/experiments/types.d.ts",
+      "source_path": "webapp/app_api/projects/experiments/types.d.ts",
+      "sha256": "9666006efd54b817662be42821938d63771b22ddda980a48b59a1ddbab1998d6",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/feature_flags/types.d.ts",
+      "source_path": "webapp/app_api/projects/feature_flags/types.d.ts",
+      "sha256": "e2121d51d0fc1bc2def19d27a40a672591860fcfeaa06f8c5c4d685a6462e470",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/heat_maps/types.d.ts",
+      "source_path": "webapp/app_api/projects/heat_maps/types.d.ts",
+      "sha256": "c063c9fc3de9597981562861248cc2d397fd6d25fc4d074d08f4cd7bbf8febf0",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/integrations/realtime/types.d.ts",
+      "source_path": "webapp/app_api/projects/integrations/realtime/types.d.ts",
+      "sha256": "f3239b582a5b1348a1bab3d7940fe999326a585d93fb3d240c5c5bac27fb1f62",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/integrations/types.d.ts",
+      "source_path": "webapp/app_api/projects/integrations/types.d.ts",
+      "sha256": "e26583ed80a68a6033a78900777a00039ce15c481fa9bfcf42f615f851bf24ca",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/metrics/types.d.ts",
+      "source_path": "webapp/app_api/projects/metrics/types.d.ts",
+      "sha256": "36778def006f2664f3866b68bc2850e4c6a08d14c4c6cb26fd40a5ddd4758e8a",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/playlists/types.d.ts",
+      "source_path": "webapp/app_api/projects/playlists/types.d.ts",
+      "sha256": "9b8b533c9cb4250b00de83f1ae310e5e9667a581b7ff879da8e25fc6edd0b33a",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/presence/types.d.ts",
+      "source_path": "webapp/app_api/projects/presence/types.d.ts",
+      "sha256": "865f2054049584c170cc9db4ca687d5a949b9644b3e62d6756b3298fa22046fa",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/rca/types.d.ts",
+      "source_path": "webapp/app_api/projects/rca/types.d.ts",
+      "sha256": "4abdcc648e02b604e1e899c30c4ed6df04249ab7c20ed1fefd54e098cf0e88ec",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/replays/types.d.ts",
+      "source_path": "webapp/app_api/projects/replays/types.d.ts",
+      "sha256": "34f3339409c4ca1a559bc7874cf1d4984d2a98f00d307fda13064dfc4afed27a",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/sdk_settings/types.d.ts",
+      "source_path": "webapp/app_api/projects/sdk_settings/types.d.ts",
+      "sha256": "924c4e6095d04a7db0766081c017ef120116503a77ed4fbe21e82a17c946b789",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/sendbird/types.d.ts",
+      "source_path": "webapp/app_api/projects/sendbird/types.d.ts",
+      "sha256": "2890c8c3cd9ff8195bc5564d34c5b0cf7c7d0d83f09481c91501b7ef2bcd3844",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/themes/types.d.ts",
+      "source_path": "webapp/app_api/projects/themes/types.d.ts",
+      "sha256": "ff8c713e80277b380499dd2d2697172ec41a2a55c42be13b14928ca3e8e412b6",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/types.d.ts",
+      "source_path": "webapp/app_api/projects/types.d.ts",
+      "sha256": "243f64f34c08da27ee0ed7ba779c18da86ebc8de670085ff055c6c219f2e485a",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/projects/warehouse_sources/types.d.ts",
+      "source_path": "webapp/app_api/projects/warehouse_sources/types.d.ts",
+      "sha256": "9c261d463bfcdaf225461a9cd0f17adaec25347a356a0cdd22b4e67647daa80e",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/public/types.d.ts",
+      "source_path": "webapp/app_api/public/types.d.ts",
+      "sha256": "4115a7efcefec34fede61f549dd71dc795d5b9bfe0e94391293ba4198f5df2ae",
+      "vendored_date": "2026-08-14"
+    },
+    {
+      "path": "webapp/app_api/user_media/types.d.ts",
+      "source_path": "webapp/app_api/user_media/types.d.ts",
+      "sha256": "c3daa1a63b1913d4c87bca8875ea44af759fad9dba06fe15033ac541fce7871d",
+      "vendored_date": "2026-08-14"
+    }
+  ]
+}

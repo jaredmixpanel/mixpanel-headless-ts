@@ -16,7 +16,15 @@ const CORE_PURITY_MESSAGE =
 
 export default tseslint.config(
   {
-    ignores: ["**/node_modules/**", "**/dist/**", "**/coverage/**"],
+    ignores: [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/coverage/**",
+      // Vendored verbatim from the analytics checkout — never repo-linted.
+      "vendor/**",
+      // json2ts output (npm run generate) — generated content is not linted.
+      "differential/src/generated/**",
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
