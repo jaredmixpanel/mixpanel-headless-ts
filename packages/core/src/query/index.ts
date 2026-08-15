@@ -29,3 +29,11 @@ export {
   validateSortingBlock,
   type ValidateBookmarkOptions,
 } from "./validation.js";
+
+export {
+  validateUserArgs,
+  validateUserParams,
+  type ValidateUserArgsOptions,
+} from "./user-validators.js";
+
+export { isCohortFilter, isPythonDict } from "./user-builders.js";
