@@ -7,5 +7,15 @@
  */
 export * from "./compat/index.js";
 
+// Phase-2 contract layer (P2-2): error taxonomy + Secret + coercion +
+// invariant. `errors-codes.gen.ts` internals (parent-edge/default-code
+// maps) stay module-scoped for the C8(c) registry test; the two registry
+// sets mirror Python's `exceptions` module surface and re-export via
+// errors.ts.
+export * from "./errors.js";
+export * from "./secret.js";
+export * from "./coerce.js";
+export * from "./invariant.js";
+
 /** Package name constant exercised by the skeleton smoke test. */
 export const CORE_PACKAGE_NAME = "@mixpanel-headless/core";
