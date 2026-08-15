@@ -1,0 +1,63 @@
+// ESLint 9 flat config for the mixpanel-headless-ts workspace.
+//
+// Baseline: @eslint/js recommended + typescript-eslint recommended (R1.2:
+// Prettier owns formatting; no iron-internal conventions adopted).
+//
+// R9.1 core-purity boundary: packages/core is isomorphic. It must not import
+// Node built-ins (`node:*`, `fs`, `path`, `os`) or `undici`, and must not
+// touch the `process` global. Enforced here and by the browser-bundle smoke
+// test (scripts/browser-smoke.mjs) wired into `npm run check`.
+import js from "@eslint/js";
+import tseslint from "typescript-eslint";
+
+const CORE_PURITY_MESSAGE =
+  "packages/core is isomorphic (R9.1): no Node built-ins, no undici. " +
+  "Platform-specific code belongs in packages/node or packages/browser.";
+
+export default tseslint.config(
+  {
+    ignores: ["**/node_modules/**", "**/dist/**", "**/coverage/**"],
+  },
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  {
+    // Repo maintenance scripts run under Node.
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        console: "readonly",
+        process: "readonly",
+      },
+    },
+  },
+  {
+    files: ["packages/core/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            { name: "fs", message: CORE_PURITY_MESSAGE },
+            { name: "path", message: CORE_PURITY_MESSAGE },
+            { name: "os", message: CORE_PURITY_MESSAGE },
+            { name: "undici", message: CORE_PURITY_MESSAGE },
+          ],
+          patterns: [
+            {
+              group: ["node:*"],
+              message: CORE_PURITY_MESSAGE,
+            },
+          ],
+        },
+      ],
+      "no-restricted-globals": [
+        "error",
+        {
+          name: "process",
+          message:
+            "packages/core must not read process (R9.1); inject configuration instead.",
+        },
+      ],
+    },
+  },
+);

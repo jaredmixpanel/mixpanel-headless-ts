@@ -1,0 +1,51 @@
+# CI for mixpanel-headless-ts (D11).
+#
+# Committed while the repo is local-only (no remote in Phase 1, per D16);
+# it runs on push once a remote exists. Until then the same commands run
+# locally via `npm run check`, which is the actual Phase-1 gate.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # typecheck (tsc --noEmit per package), eslint, prettier --check,
+      # vitest run, core browser-bundle smoke.
+      - run: npm run check
+
+  conformance:
+    # Guarded on corpus availability (D11): the corpus snapshot lands in
+    # TS-4 (scripts/sync-corpus.sh -> conformance-runner/corpus/); the runner
+    # itself lands in TS-5. Steps below skip until both exist.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect corpus snapshot
+        id: corpus
+        run: |
+          if [ -f conformance-runner/corpus/manifest.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No corpus snapshot at conformance-runner/corpus/ - skipping."
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.corpus.outputs.present == 'true'
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+        if: steps.corpus.outputs.present == 'true'
+      - name: Conformance runner
+        if: steps.corpus.outputs.present == 'true'
+        run: npm run conformance -- --report json
