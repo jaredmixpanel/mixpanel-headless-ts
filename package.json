@@ -18,6 +18,9 @@
     "fmt": "prettier --write .",
     "fmt:check": "prettier --check .",
     "test": "vitest run",
+    "referee:bookmark": "vitest run differential/test/bookmark-schema-referee.test.ts",
+    "generate": "json2ts vendor/mixpanel-contracts/bookmark.json differential/src/generated/reports/bookmark.ts --no-enableConstEnums --no-unknownAny --unreachableDefinitions",
+    "vendor:drift": "bash scripts/check-vendor-drift.sh",
     "smoke:browser": "node scripts/browser-smoke.mjs",
     "check": "npm run typecheck && npm run lint && npm run fmt:check && npm run test && npm run smoke:browser"
   },
@@ -28,6 +31,7 @@
     "esbuild": "^0.25.0",
     "eslint": "^9.0.0",
     "fast-check": "^4.0.0",
+    "json-schema-to-typescript": "15.0.0",
     "prettier": "^3.0.0",
     "typescript": "^5.0.0",
     "typescript-eslint": "^8.0.0",
