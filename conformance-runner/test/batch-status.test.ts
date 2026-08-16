@@ -81,10 +81,8 @@ describe("batchStatusFor — table lookup", () => {
   });
 
   it("resolves pending prefixes (Phase-3 batches)", () => {
-    // Post-B6-flip anchors: only the auth batches remain pending
-    // (`region_probe.` B7, `oauth_flow.` B8 — b6-packets.md §12.1).
-    expect(batchStatusFor("region_probe.probe")).toBe("pending");
-    expect(batchStatusFor("region_probe.probe_region")).toBe("pending");
+    // Post-B7-flip anchors: only `oauth_flow.` (B8) remains pending
+    // (b7-packets.md §4.1/§4.3 — the pattern retires at the B8 gate).
     expect(batchStatusFor("oauth_flow.build_authorize_url")).toBe("pending");
     expect(batchStatusFor("oauth_flow.refresh_tokens")).toBe("pending");
   });
@@ -233,14 +231,29 @@ describe("batchStatusFor — table lookup", () => {
     );
     expect(workspaceEntries).toEqual(["workspace."]);
   });
+
+  it("region_probe.* is declared done (the B7 gate flip)", () => {
+    // Playbook P3-5 §4 B7 row / b7-packets.md §4.1: the B7 gate flips
+    // exactly this one prefix (14 vectors, all
+    // `region_probe.probe_region`, bound at B7-A2); stragglers under
+    // it must FAIL, never skip (Risk #8). `oauth_flow.` (B8) is now
+    // the ONLY pending prefix in the table.
+    expect(BATCH_STATUS.get("region_probe.")).toBe("done");
+    expect(batchStatusFor("region_probe.probe_region")).toBe("done");
+    const pendingEntries = [...BATCH_STATUS.entries()]
+      .filter(([, status]) => status === "pending")
+      .map(([prefix]) => prefix);
+    expect(pendingEntries).toEqual(["oauth_flow."]);
+  });
 });
 
 describe("runVector — batch-status verdict wiring", () => {
   it("pending batch + unbound api → UNPORTED (counted, never failing)", async () => {
-    // `region_probe.probe_region` is the post-B6-flip pending anchor
-    // (B7-owned; b6-packets.md §12.5 — the pattern retires at B8).
+    // `oauth_flow.refresh_tokens` is the post-B7-flip pending anchor
+    // (B8-owned; re-anchored at the B7 gate per b7-packets.md §4.3 —
+    // the pattern retires at the B8 gate, b6-packets.md §12.5).
     const result = await runVector(
-      vectorFor("region_probe.probe_region"),
+      vectorFor("oauth_flow.refresh_tokens"),
       bareDeps(),
     );
     expect(result.verdict).toBe("UNPORTED");

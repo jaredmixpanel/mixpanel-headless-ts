@@ -59,9 +59,18 @@ export type BatchStatus = "pending" | "done";
  * - `replays.` / `replay_labels.` / `rrweb_analyzer.` — the Phase-3
  *   B5 services (playbook P3-5 §4 B5-gate flip; 506 vectors with the
  *   B5 facade members).
+ * - `region_probe.` — the Phase-3 B7 auth resolver/probe batch
+ *   (playbook P3-5 §4 B7-gate flip / b7-packets.md §4; 14 vectors,
+ *   all `region_probe.probe_region`, bound at B7-A2 and passing
+ *   while pending). Collision assertion re-run over the FINAL table
+ *   at the gate: the only corpus api name matching the new prefix is
+ *   `region_probe.probe_region` ×14; the only still-pending corpus
+ *   api name is `oauth_flow.refresh_tokens` ×7, not prefixed by any
+ *   `done` entry.
  *
  * Pending batches (Phase 3, per plan §6 / api-map):
- * - `region_probe.` (B7), `oauth_flow.` (B8).
+ * - `oauth_flow.` (B8 — the LAST pending prefix; the UNPORTED-probe
+ *   anchor pattern retires at the B8 gate, b6-packets.md §12.5).
  */
 export const BATCH_STATUS: ReadonlyMap<string, BatchStatus> = new Map<
   string,
@@ -108,7 +117,10 @@ export const BATCH_STATUS: ReadonlyMap<string, BatchStatus> = new Map<
   ["replay_labels.", "done"],
   ["rrweb_analyzer.", "done"],
   ["oauth_flow.", "pending"],
-  ["region_probe.", "pending"],
+  // Phase-3 B7 gate flip (playbook P3-5 §4 / b7-packets.md §4): the
+  // auth resolver/region-probe batch is done — stragglers under
+  // `region_probe.` now FAIL instead of skipping.
+  ["region_probe.", "done"],
   ["pagination.", "done"],
 ]);
 
