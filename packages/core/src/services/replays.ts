@@ -547,9 +547,14 @@ export class ReplaysService {
       // signed query_string bearer credential. Scrub it before it lands
       // in an exception message or log (`replays.py:455-467`).
       const safe = exc.message.replaceAll(signed.query_string, "<redacted>");
+      // Python raises with NO details (`raise ... from exc`,
+      // `replays.py:457-460`) — the cause threads through ErrorOptions,
+      // never the details bag (B5-BIND fix: `{cause}` in details leaked
+      // into the recorded `details_contain` twin).
       throw new MixpanelHeadlessError(
         `CDN fetch failed for file ${label}: ${safe}`,
         "CDN_FETCH_ERROR",
+        null,
         { cause: exc },
       );
     }
@@ -566,9 +571,12 @@ export class ReplaysService {
           if (!(exc instanceof LosslessJsonError)) {
             throw exc;
           }
+          // Python: `raise ... from exc` with NO details
+          // (`replays.py:465-469`) — cause via ErrorOptions (B5-BIND fix).
           throw new MixpanelHeadlessError(
             `CDN file ${label} returned non-JSON: ${exc.message}`,
             "CDN_INVALID_RESPONSE",
+            null,
             { cause: exc },
           );
         }

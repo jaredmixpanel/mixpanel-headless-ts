@@ -294,9 +294,10 @@ describe("oracle.call: compat surface", () => {
 describe("oracle.call: scope, skips, and protocol errors", () => {
   it("answers UNPORTED for mapped apis outside the compat surface", async () => {
     // Exemplar re-anchored at each bind wave to a still-unported mapped
-    // api: user_builders.filter_to_selector went live at B3-BIND;
-    // workspace.build_params is B5's.
-    const result = await call(makeServer(), "workspace.build_params", {});
+    // api: user_builders.filter_to_selector went live at B3-BIND,
+    // workspace.build_params at B5-BIND; workspace.me is B6's (pending
+    // until B6 by construction — b5-packets.md §6.7/§6.8).
+    const result = await call(makeServer(), "workspace.me", {});
     expect(result).toEqual({
       ok: false,
       error: { class: "Unported", code: "UNPORTED" },
@@ -307,9 +308,10 @@ describe("oracle.call: scope, skips, and protocol errors", () => {
     // Unported apis carry rich tags whose PAYLOADS may be malformed
     // (this one lacks every Filter field); scope must be checked FIRST
     // or every such probe would crash the harness with -32602 instead
-    // of counting as a skip. (Exemplar re-anchored at B3-BIND:
-    // segfilter.build_segfilter_entry went live; build_params is B5's.)
-    const result = await call(makeServer(), "workspace.build_params", {
+    // of counting as a skip. (Exemplar re-anchored at B3-BIND —
+    // segfilter.build_segfilter_entry went live — and again at B5-BIND:
+    // build_params went live; workspace.me is B6's.)
+    const result = await call(makeServer(), "workspace.me", {
       where: { $type: "Filter", field: "x" },
     });
     expect(result).toEqual({

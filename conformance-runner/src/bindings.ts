@@ -29,6 +29,7 @@ import {
 } from "../../packages/core/src/compat/index.js";
 import { iterJsonlLines } from "../../packages/core/src/client/jsonl.js";
 import {
+  BookmarkValidationError,
   MixpanelHeadlessError,
   ValidationError,
 } from "../../packages/core/src/errors.js";
@@ -164,6 +165,8 @@ import { registerGovernanceWireBindings } from "./wire-governance.js";
 import { registerLifecycleWireBindings } from "./wire-lifecycle.js";
 import { registerPaginationBindings } from "./wire-pagination.js";
 import { registerQueryWireBindings } from "./wire-queries.js";
+import { registerWorkspaceBindings } from "./wire-workspace.js";
+import { registerReplaysBindings } from "./replays-bindings.js";
 import { WireStubClient, type WireStubRequestOptions } from "./wirestub.js";
 
 /**
@@ -527,9 +530,23 @@ export class CoreLibraryError extends Error implements ExpectErrorConvertible {
    *
    * @returns `{class: <Python exception class name>, code: <registry
    *   code>}` — TS class names equal the Python ones by construction
-   *   (R5.1/R5.2).
+   *   (R5.1/R5.2). `BookmarkValidationError` additionally carries its
+   *   `errors[]` `{path, code, severity}` triples so the facade
+   *   bypass/build vectors' `expect.error` comparisons see them
+   *   (B2-BIND forward note, b5-packets.md §6.5).
    */
   toExpectError(): JsonValue {
+    if (this.original instanceof BookmarkValidationError) {
+      return {
+        class: this.original.name,
+        code: this.original.code,
+        errors: this.original.errors.map((err) => ({
+          path: err.path,
+          code: err.code,
+          severity: err.severity,
+        })),
+      };
+    }
     return { class: this.original.name, code: this.original.code };
   }
 }
@@ -1567,6 +1584,12 @@ export function createRunnerDeps(recordEpoch: string): RunnerDeps {
   // B4-C6: pagination.paginate_all (the one `pagination.` corpus name).
   registerPaginationBindings(implementations);
   registerContractCodecs(codecs);
+  // B5 (b′): the 44 workspace.<member> facade bindings + the replays
+  // family (5 replays.* wire + 3 replay_labels.* + rrweb_analyzer.analyze
+  // builders) — b5-packets.md §6. workspace.me stays UNBOUND (§6.8,
+  // B6-owned; the P3-1 † carried vector holds UNPORTED until B6).
+  registerWorkspaceBindings(implementations, codecs);
+  registerReplaysBindings(implementations, codecs);
   registerQueryParamBindings(implementations, codecs);
   registerValidatorBindings(implementations);
   registerBuilderBindings(implementations, codecs);

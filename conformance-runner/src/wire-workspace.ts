@@ -1,0 +1,974 @@
+/**
+ * B5 (b′) binding module — the 44 `workspace.<member>` api names
+ * (b5-packets.md §6.1/§6.2).
+ *
+ * Contract (P3-5, mirrored from the Python runner
+ * `conformance/runner/execute.py::_ReplayContext.get_workspace` /
+ * `targets.py::make_workspace`):
+ *
+ * 1. `workspaceFromSession(context)` builds the ONE facade instance per
+ *    vector, memoized in `context.state` under {@link WORKSPACE_STATE_KEY}
+ *    so `call.setup[]` entries and the measured call share it. The
+ *    underlying client is the shared `clientFromSession` instance
+ *    (memoized under `CLIENT_STATE_KEY`), so `api_client.*` setup
+ *    entries mutate the same client the facade uses.
+ * 2. The facade session is `call.workspace_session` when present, else
+ *    `call.session`, else the synthetic builder session
+ *    (`targets.py::_DEFAULT_SESSION_VALUES`). Builder-kind vectors carry
+ *    no session AND no fetch — they get the synthetic session over an
+ *    EMPTY `VectorFetch`, so any accidental network attempt fails the
+ *    vector loudly (D5.1).
+ * 3. Binding honesty (P3-5 rule 3): every binding calls the REAL
+ *    `Workspace` member the recorder wrapped — never the underlying
+ *    client method, never a re-derived transform. The only adaptations
+ *    are kwarg plumbing, the U8 `today` clock seam
+ *    (`context.shims.today()` — the recorder ran under the frozen
+ *    epoch), and the recorder output-codec twins below.
+ * 4. Output codec twins: results encode exactly like the Python
+ *    recorder's `encode_expect_value` field walk (`codecs.py:377-393`)
+ *    — dataclass instances to their declared-field shape (the S-shards'
+ *    `toVectorPayload()` where present), Python-`float`-typed fields as
+ *    raw float tokens even when integral ({@link floatToken} — the
+ *    recorder writes `1.0`, not `1`; the affected fields are cited at
+ *    each twin), and `$type` tags for datetime members.
+ */
+
+import {
+  createMixpanelClient,
+  type MixpanelClient,
+} from "../../packages/core/src/client/client.js";
+import { JsonNumber as CoreJsonNumber } from "../../packages/core/src/client/json-value.js";
+import { pythonFloatStr } from "../../packages/core/src/compat/index.js";
+import { CONTRACT_TAG_CODECS } from "../../packages/core/src/types/vector-codecs.js";
+import type { EventsInput } from "../../packages/core/src/workspace-query-params.js";
+import {
+  Workspace,
+  type WorkspaceEventsOptions,
+  type WorkspaceEventCountsOptions,
+  type WorkspaceFetchReplayOptions,
+  type WorkspaceFetchReplaysOptions,
+  type WorkspaceFlowQueryOptions,
+  type WorkspaceFrequencyOptions,
+  type WorkspaceFunnelOptions,
+  type WorkspaceFunnelQueryOptions,
+  type WorkspaceEventsForReplayOptions,
+  type WorkspaceListReplaysOptions,
+  type WorkspaceNumericOptions,
+  type WorkspacePropertyCountsOptions,
+  type WorkspacePropertyValuesOptions,
+  type WorkspaceQueryOptions,
+  type WorkspaceReplaysForUserOptions,
+  type WorkspaceRetentionOptions,
+  type WorkspaceRetentionQueryOptions,
+  type WorkspaceSchemaGraphOptions,
+  type WorkspaceSegmentationNumericOptions,
+  type WorkspaceSegmentationOptions,
+  type WorkspaceSignReplayOptions,
+  type WorkspaceStreamReplayOptions,
+  type WorkspaceSubpropertiesOptions,
+  type WorkspaceTopEventsOptions,
+  type WorkspaceUserQueryOptions,
+  type WorkspaceLexiconSchemasOptions,
+} from "../../packages/core/src/workspace.js";
+import type { FunnelStep } from "../../packages/core/src/types/query-params/funnel.js";
+import type { FlowStep } from "../../packages/core/src/types/query-params/flow.js";
+import type { RetentionEvent } from "../../packages/core/src/types/query-params/retention.js";
+import type {
+  BookmarkType,
+  EntityType,
+} from "../../packages/core/src/types/literals.js";
+import { MixpanelHeadlessError } from "../../packages/core/src/errors.js";
+import type { LiveActivityFeedOptions } from "../../packages/core/src/services/live-query.js";
+import {
+  CodecRegistry,
+  PyDate,
+  PyDatetime,
+  PyFloat,
+  UnencodableValueError,
+} from "./codecs.js";
+import { JsonNumber, type JsonValue } from "./json-value.js";
+import type { ImplementationRegistry, InvocationContext } from "./runner.js";
+import { createVectorFetch } from "./vector-fetch.js";
+import {
+  buildReplaySession,
+  clientFromSession,
+  CLIENT_STATE_KEY,
+  requireWireKwarg,
+  WireCoreError,
+} from "./wire-client.js";
+
+/** The ONE well-known `context.state` key for the memoized facade. */
+export const WORKSPACE_STATE_KEY = "workspace";
+
+/**
+ * The synthetic session for builder-kind facade replays — the exact
+ * `targets.py::_DEFAULT_SESSION_VALUES` mirror (builder vectors carry no
+ * session; `Workspace` construction requires one; requests can never
+ * escape because the client binds an EMPTY `VectorFetch`).
+ */
+const DEFAULT_BUILDER_SESSION: JsonValue = {
+  type: "service_account",
+  region: "us",
+  project_id: "12345",
+  account_name: "conformance_replay",
+  username: "replay_user",
+  secret: "replay_secret",
+};
+
+/**
+ * Return (building + memoizing lazily) the vector's ONE client — the
+ * `_ReplayContext.get_client` twin (`execute.py:170-197`).
+ *
+ * Session present → the shared B4 `clientFromSession` path. Session
+ * absent → the synthetic builder session over the vector fetch when one
+ * exists (wire vectors measured on session-free targets), else an EMPTY
+ * `VectorFetch` (builder-kind: any network attempt fails loudly).
+ *
+ * @param context - The invocation context.
+ * @returns The vector's ONE `MixpanelClient` instance.
+ */
+export function clientForContext(context: InvocationContext): MixpanelClient {
+  const existing = context.state.get(CLIENT_STATE_KEY);
+  if (existing !== undefined) {
+    return existing as MixpanelClient;
+  }
+  if (context.session !== undefined) {
+    return clientFromSession(context);
+  }
+  const { session } = buildReplaySession(DEFAULT_BUILDER_SESSION);
+  const client = createMixpanelClient({
+    session,
+    fetch: context.fetch ?? createVectorFetch([]).fetch,
+    sleep: async (): Promise<void> => {
+      /* zero-delay (P3-5 §2) */
+    },
+    random: () => 0,
+    now: (): Date => context.shims.now(),
+  });
+  context.state.set(CLIENT_STATE_KEY, client);
+  return client;
+}
+
+/**
+ * Return (building + memoizing lazily) the vector's ONE `Workspace`
+ * facade — the `_ReplayContext.get_workspace` twin (`execute.py:198-217`).
+ *
+ * @param context - The invocation context.
+ * @returns The facade bound to the vector's shared client.
+ */
+export function workspaceFromSession(context: InvocationContext): Workspace {
+  const existing = context.state.get(WORKSPACE_STATE_KEY);
+  if (existing !== undefined) {
+    return existing as Workspace;
+  }
+  const client = clientForContext(context);
+  const facadeRaw =
+    context.workspaceSession ?? context.session ?? DEFAULT_BUILDER_SESSION;
+  const { session } = buildReplaySession(facadeRaw);
+  const workspace = new Workspace({ session, client });
+  context.state.set(WORKSPACE_STATE_KEY, workspace);
+  return workspace;
+}
+
+/** Rich `$type` tags the Python EXPECT encoder strips (B3 precedent). */
+const RICH_MODEL_TAGS: ReadonlySet<string> = new Set(
+  CONTRACT_TAG_CODECS.keys(),
+);
+
+/**
+ * Whether a value is a plain-JSON-style dict (no class prototype).
+ *
+ * @param value - The candidate.
+ * @returns True for `Object.prototype`/null-prototype objects.
+ */
+function isPlainObject(value: object): value is Record<string, unknown> {
+  const proto: unknown = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+/**
+ * Re-encode one already-encoded codec tree in Python's EXPECT encoding
+ * (the `toBuilderExpectOutput` twin, kept local per the wire-module
+ * self-containment precedent): rich model tags drop, finite
+ * `$type: float` payloads become raw `JsonNumber` tokens, non-finite
+ * spellings stay tagged.
+ *
+ * @param value - A vector-JSON tree from `CodecRegistry.encodeValue`.
+ * @returns The expect-encoded tree.
+ */
+function stripRichTags(value: JsonValue): JsonValue {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripRichTags(item));
+  }
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    !(value instanceof JsonNumber)
+  ) {
+    const record = value as Record<string, JsonValue>;
+    if (record["$type"] === "float") {
+      const spelling = record["value"];
+      if (
+        typeof spelling === "string" &&
+        !["NaN", "Infinity", "-Infinity"].includes(spelling)
+      ) {
+        return new JsonNumber(spelling);
+      }
+    }
+    const out: Record<string, JsonValue> = {};
+    for (const [key, member] of Object.entries(record)) {
+      if (
+        key === "$type" &&
+        typeof member === "string" &&
+        RICH_MODEL_TAGS.has(member)
+      ) {
+        continue;
+      }
+      out[key] = stripRichTags(member);
+    }
+    return out;
+  }
+  return value;
+}
+
+/**
+ * Encode a facade/service return value exactly as the Python recorder's
+ * `encode_expect_value` walk does (`codecs.py:377-393`):
+ *
+ * - primitives pass through (the runner's own `encodeExpectValue`
+ *   finishes the walk and rejects non-finite numbers);
+ * - core `JsonNumber` tokens become runner tokens (raw spelling kept);
+ * - `PyFloat` carriers become raw float tokens (expect position keeps
+ *   the recorded `18.0` spelling — D6 rule 3);
+ * - `Map`s become plain objects (Python `dict` results);
+ * - instances with `toVectorPayload()` (the S-shard recorder twins)
+ *   encode through it; contract-tagged classes encode through the
+ *   shared codec table with rich tags stripped; `toJSON()` is the last
+ *   instance fallback.
+ *
+ * @param codecs - The codec registry (contract-class encoders).
+ * @param value - The live library return value.
+ * @returns The expect-encoded vector-JSON tree.
+ * @throws Error - When a value has no encoding (a binding bug).
+ */
+export function encodeFacadeValue(
+  codecs: CodecRegistry,
+  value: unknown,
+): JsonValue {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (
+    typeof value === "string" ||
+    typeof value === "boolean" ||
+    typeof value === "number" ||
+    typeof value === "bigint"
+  ) {
+    return value as JsonValue;
+  }
+  if (value instanceof JsonNumber) {
+    return value;
+  }
+  if (value instanceof CoreJsonNumber) {
+    return new JsonNumber(value.raw);
+  }
+  if (value instanceof PyFloat) {
+    if (["NaN", "Infinity", "-Infinity"].includes(value.spelling)) {
+      return { $type: "float", value: value.spelling };
+    }
+    return new JsonNumber(value.spelling);
+  }
+  if (value instanceof PyDatetime) {
+    return { $type: "datetime", iso: value.iso };
+  }
+  if (value instanceof PyDate) {
+    return { $type: "date", iso: value.iso };
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => encodeFacadeValue(codecs, item));
+  }
+  if (value instanceof Map) {
+    const out: Record<string, JsonValue> = {};
+    for (const [key, member] of value.entries()) {
+      out[String(key)] = encodeFacadeValue(codecs, member);
+    }
+    return out;
+  }
+  if (typeof value === "object") {
+    if (isPlainObject(value)) {
+      const out: Record<string, JsonValue> = {};
+      for (const [key, member] of Object.entries(value)) {
+        if (member === undefined) {
+          continue; // absent, not null (R3.5)
+        }
+        out[key] = encodeFacadeValue(codecs, member);
+      }
+      return out;
+    }
+    const withPayload = value as { toVectorPayload?: () => unknown };
+    if (typeof withPayload.toVectorPayload === "function") {
+      return encodeFacadeValue(codecs, withPayload.toVectorPayload());
+    }
+    try {
+      return stripRichTags(codecs.encodeValue(value));
+    } catch (cause) {
+      if (!(cause instanceof UnencodableValueError)) {
+        throw cause;
+      }
+    }
+    const withJson = value as { toJSON?: () => unknown };
+    if (typeof withJson.toJSON === "function") {
+      return encodeFacadeValue(codecs, withJson.toJSON());
+    }
+  }
+  throw new Error(
+    `wire-workspace: no expect encoding for ${String(
+      typeof value === "object" ? value.constructor.name : typeof value,
+    )}`,
+  );
+}
+
+/**
+ * Render a Python-`float`-typed field as its recorded raw token
+ * (`repr(float)` spelling — integral values keep the `.0` marker the
+ * recorder wrote; non-numbers pass through untouched, matching the
+ * passthrough fields whose float-ness rides the JSON body).
+ *
+ * @param value - The encoded field value.
+ * @returns A raw float token for finite native numbers, else the input.
+ */
+function floatToken(value: JsonValue): JsonValue {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return new JsonNumber(pythonFloatStr(value));
+  }
+  return value;
+}
+
+/**
+ * Apply {@link floatToken} to one member of an encoded object, if it is
+ * an object and the member is present.
+ *
+ * @param tree - The encoded tree.
+ * @param key - The member name.
+ */
+function tagFloatMember(tree: JsonValue, key: string): void {
+  if (
+    typeof tree === "object" &&
+    tree !== null &&
+    !Array.isArray(tree) &&
+    !(tree instanceof JsonNumber)
+  ) {
+    const record = tree as Record<string, JsonValue>;
+    const value = record[key];
+    if (value !== undefined) {
+      record[key] = floatToken(value);
+    }
+  }
+}
+
+/**
+ * Read the encoded member list at `key`, when the tree is an object and
+ * the member is an array.
+ *
+ * @param tree - The encoded tree.
+ * @param key - The member name.
+ * @returns The array member, or `[]`.
+ */
+function arrayMember(tree: JsonValue, key: string): JsonValue[] {
+  if (
+    typeof tree === "object" &&
+    tree !== null &&
+    !Array.isArray(tree) &&
+    !(tree instanceof JsonNumber)
+  ) {
+    const member = (tree as Record<string, JsonValue>)[key];
+    if (Array.isArray(member)) {
+      return member;
+    }
+  }
+  return [];
+}
+
+/**
+ * Apply {@link floatToken} to every value of an object-valued member
+ * (the `results: dict[str, float]` shapes).
+ *
+ * @param tree - The encoded tree.
+ * @param key - The member name.
+ */
+function tagFloatDictValues(tree: JsonValue, key: string): void {
+  if (
+    typeof tree === "object" &&
+    tree !== null &&
+    !Array.isArray(tree) &&
+    !(tree instanceof JsonNumber)
+  ) {
+    const member = (tree as Record<string, JsonValue>)[key];
+    if (
+      typeof member === "object" &&
+      member !== null &&
+      !Array.isArray(member) &&
+      !(member instanceof JsonNumber)
+    ) {
+      const record = member as Record<string, JsonValue>;
+      for (const [inner, memberValue] of Object.entries(record)) {
+        record[inner] = floatToken(memberValue);
+      }
+    }
+  }
+}
+
+/**
+ * Invoke a facade member, encode its return for the runner, and wrap
+ * coded library errors as {@link WireCoreError} (whose `toExpectError`
+ * carries the `BookmarkValidationError` `errors[]` triples — packet
+ * §6.5).
+ *
+ * @param codecs - The codec registry.
+ * @param invoke - Thunk performing the real facade call.
+ * @returns The expect-encoded result.
+ * @throws WireCoreError - When the call raises a core exception.
+ * @throws unknown - Anything else, unchanged (harness sequence errors
+ *   and runner/infra bugs must reach the runner intact).
+ */
+async function runFacade(
+  codecs: CodecRegistry,
+  invoke: () => Promise<unknown>,
+): Promise<JsonValue> {
+  try {
+    return encodeFacadeValue(codecs, await invoke());
+  } catch (cause) {
+    if (cause instanceof MixpanelHeadlessError) {
+      throw new WireCoreError(cause);
+    }
+    throw cause;
+  }
+}
+
+/**
+ * Build the options bag for a member: every decoded kwarg except the
+ * positional names (Python kwonly names ARE the TS option keys), plus
+ * the U8 `today` clock seam when requested (the recorder and both
+ * oracles run under the frozen record epoch).
+ *
+ * @param context - The invocation context.
+ * @param positionals - Kwarg names consumed positionally.
+ * @param withToday - Whether to inject `today` from the shims.
+ * @returns The options bag, asserted to the member's option type (the
+ *   recorder guarantees the kwarg names — a bad bag is a vector bug and
+ *   surfaces as the member's own validation error).
+ */
+function optionsBag<T>(
+  context: InvocationContext,
+  positionals: readonly string[],
+  withToday = false,
+): T {
+  const out: Record<string, unknown> = { ...context.kwargs };
+  for (const name of positionals) {
+    delete out[name];
+  }
+  if (withToday) {
+    out["today"] = (): string => context.shims.today();
+  }
+  return out as T;
+}
+
+/**
+ * Register all 44 B5 `workspace.<member>` bindings (b5-packets.md §6.1).
+ *
+ * The five `build_*params` members are builder-kind (oracle-servable
+ * through this same registry — the oracle server executes bound names
+ * directly); `clear_discovery_cache` is wire_state; the rest wire_api.
+ * `workspace.me` is deliberately NOT bound (§6.8 — B6-owned; the P3-1 †
+ * carried vector stays UNPORTED through the B5 gate).
+ *
+ * @param implementations - The registry to extend.
+ * @param codecs - The codec registry (output encoding + rich inputs).
+ */
+export function registerWorkspaceBindings(
+  implementations: ImplementationRegistry,
+  codecs: CodecRegistry,
+): void {
+  // -------------------------------------------------------------------
+  // S2 — live-query / query-engine members (22)
+  // -------------------------------------------------------------------
+
+  implementations.register("workspace.segmentation", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.segmentation(
+        requireWireKwarg(context, "event") as string,
+        optionsBag<WorkspaceSegmentationOptions>(context, ["event"]),
+      ),
+    );
+  });
+
+  implementations.register("workspace.funnel", async (context) => {
+    const ws = workspaceFromSession(context);
+    const encoded = await runFacade(codecs, () =>
+      ws.funnel(
+        requireWireKwarg(context, "funnel_id") as number,
+        optionsBag<WorkspaceFunnelOptions>(context, ["funnel_id"]),
+      ),
+    );
+    // Recorder float twin: `FunnelResult.conversion_rate` and each
+    // step's `conversion_rate` are Python `float`s (division /
+    // literal 1.0 — `live_query.py:135-147`).
+    tagFloatMember(encoded, "conversion_rate");
+    for (const step of arrayMember(encoded, "steps")) {
+      tagFloatMember(step, "conversion_rate");
+    }
+    return encoded;
+  });
+
+  implementations.register("workspace.retention", async (context) => {
+    const ws = workspaceFromSession(context);
+    const encoded = await runFacade(codecs, () =>
+      ws.retention(optionsBag<WorkspaceRetentionOptions>(context, [])),
+    );
+    // Recorder float twin: `RetentionCohort.retention` is `list[float]`
+    // (rate division, `live_query.py:159-221` — `0.0` stays `0.0`).
+    for (const cohort of arrayMember(encoded, "cohorts")) {
+      if (
+        typeof cohort === "object" &&
+        cohort !== null &&
+        !Array.isArray(cohort) &&
+        !(cohort instanceof JsonNumber)
+      ) {
+        const record = cohort as Record<string, JsonValue>;
+        const rates = record["retention"];
+        if (Array.isArray(rates)) {
+          record["retention"] = rates.map((rate) => floatToken(rate));
+        }
+      }
+    }
+    return encoded;
+  });
+
+  implementations.register("workspace.event_counts", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.eventCounts(
+        requireWireKwarg(context, "events") as readonly string[],
+        optionsBag<WorkspaceEventCountsOptions>(context, ["events"]),
+      ),
+    );
+  });
+
+  implementations.register("workspace.property_counts", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.propertyCounts(
+        requireWireKwarg(context, "event") as string,
+        requireWireKwarg(context, "property_name") as string,
+        optionsBag<WorkspacePropertyCountsOptions>(context, [
+          "event",
+          "property_name",
+        ]),
+      ),
+    );
+  });
+
+  implementations.register("workspace.activity_feed", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.activityFeed(
+        requireWireKwarg(context, "distinct_ids") as readonly string[],
+        optionsBag<LiveActivityFeedOptions>(context, ["distinct_ids"]),
+      ),
+    );
+  });
+
+  implementations.register("workspace.query_saved_report", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.querySavedReport(
+        requireWireKwarg(context, "bookmark_id") as number,
+        optionsBag(context, ["bookmark_id"]),
+      ),
+    );
+  });
+
+  implementations.register("workspace.query_saved_flows", async (context) => {
+    const ws = workspaceFromSession(context);
+    const encoded = await runFacade(codecs, () =>
+      ws.querySavedFlows(requireWireKwarg(context, "bookmark_id") as number),
+    );
+    // Recorder float twin: `FlowsResult.overall_conversion_rate` is a
+    // Python float whenever the body carried a JSON number (or the 0.0
+    // default, `live_query.py:1767`); string bodies (`"NaN"`) pass
+    // through untouched.
+    tagFloatMember(encoded, "overall_conversion_rate");
+    return encoded;
+  });
+
+  implementations.register("workspace.frequency", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.frequency(optionsBag<WorkspaceFrequencyOptions>(context, [])),
+    );
+  });
+
+  implementations.register(
+    "workspace.segmentation_numeric",
+    async (context) => {
+      const ws = workspaceFromSession(context);
+      return runFacade(codecs, () =>
+        ws.segmentationNumeric(
+          requireWireKwarg(context, "event") as string,
+          optionsBag<WorkspaceSegmentationNumericOptions>(context, ["event"]),
+        ),
+      );
+    },
+  );
+
+  implementations.register("workspace.segmentation_sum", async (context) => {
+    const ws = workspaceFromSession(context);
+    const encoded = await runFacade(codecs, () =>
+      ws.segmentationSum(
+        requireWireKwarg(context, "event") as string,
+        optionsBag<WorkspaceNumericOptions>(context, ["event"]),
+      ),
+    );
+    // Recorder float twin: `NumericSumResult.results` is
+    // `dict[str, float]` — sum-endpoint values are Python floats
+    // (`types.py` annotation; the recorded corpus agrees).
+    tagFloatDictValues(encoded, "results");
+    return encoded;
+  });
+
+  implementations.register(
+    "workspace.segmentation_average",
+    async (context) => {
+      const ws = workspaceFromSession(context);
+      const encoded = await runFacade(codecs, () =>
+        ws.segmentationAverage(
+          requireWireKwarg(context, "event") as string,
+          optionsBag<WorkspaceNumericOptions>(context, ["event"]),
+        ),
+      );
+      // Same float twin as `segmentation_sum` (dict[str, float]).
+      tagFloatDictValues(encoded, "results");
+      return encoded;
+    },
+  );
+
+  implementations.register("workspace.query", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.query(
+        requireWireKwarg(context, "events") as EventsInput,
+        optionsBag<WorkspaceQueryOptions>(context, ["events"], true),
+      ),
+    );
+  });
+
+  implementations.register("workspace.build_params", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.buildParams(
+        requireWireKwarg(context, "events") as EventsInput,
+        optionsBag<WorkspaceQueryOptions>(context, ["events"], true),
+      ),
+    );
+  });
+
+  implementations.register("workspace.query_funnel", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.queryFunnel(
+        requireWireKwarg(context, "steps") as ReadonlyArray<
+          string | FunnelStep
+        >,
+        optionsBag<WorkspaceFunnelQueryOptions>(context, ["steps"], true),
+      ),
+    );
+  });
+
+  implementations.register("workspace.build_funnel_params", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.buildFunnelParams(
+        requireWireKwarg(context, "steps") as ReadonlyArray<
+          string | FunnelStep
+        >,
+        optionsBag<WorkspaceFunnelQueryOptions>(context, ["steps"], true),
+      ),
+    );
+  });
+
+  implementations.register("workspace.query_flow", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.queryFlow(
+        requireWireKwarg(context, "event") as
+          string | FlowStep | ReadonlyArray<string | FlowStep>,
+        optionsBag<WorkspaceFlowQueryOptions>(context, ["event"], true),
+      ),
+    );
+  });
+
+  implementations.register("workspace.build_flow_params", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.buildFlowParams(
+        requireWireKwarg(context, "event") as
+          string | FlowStep | ReadonlyArray<string | FlowStep>,
+        optionsBag<WorkspaceFlowQueryOptions>(context, ["event"], true),
+      ),
+    );
+  });
+
+  implementations.register("workspace.query_retention", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.queryRetention(
+        requireWireKwarg(context, "born_event") as string | RetentionEvent,
+        requireWireKwarg(context, "return_event") as string | RetentionEvent,
+        optionsBag<WorkspaceRetentionQueryOptions>(
+          context,
+          ["born_event", "return_event"],
+          true,
+        ),
+      ),
+    );
+  });
+
+  implementations.register(
+    "workspace.build_retention_params",
+    async (context) => {
+      const ws = workspaceFromSession(context);
+      return runFacade(codecs, () =>
+        ws.buildRetentionParams(
+          requireWireKwarg(context, "born_event") as string | RetentionEvent,
+          requireWireKwarg(context, "return_event") as string | RetentionEvent,
+          optionsBag<WorkspaceRetentionQueryOptions>(
+            context,
+            ["born_event", "return_event"],
+            true,
+          ),
+        ),
+      );
+    },
+  );
+
+  implementations.register("workspace.query_user", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.queryUser(optionsBag<WorkspaceUserQueryOptions>(context, [], true)),
+    );
+  });
+
+  implementations.register("workspace.build_user_params", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.buildUserParams(
+        optionsBag<WorkspaceUserQueryOptions>(context, [], true),
+      ),
+    );
+  });
+
+  // -------------------------------------------------------------------
+  // S1 — discovery / lexicon members (12)
+  // -------------------------------------------------------------------
+
+  implementations.register("workspace.events", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.events(optionsBag<WorkspaceEventsOptions>(context, [])),
+    );
+  });
+
+  implementations.register("workspace.properties", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.properties(requireWireKwarg(context, "event") as string),
+    );
+  });
+
+  implementations.register("workspace.property_values", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.propertyValues(
+        requireWireKwarg(context, "property_name") as string,
+        optionsBag<WorkspacePropertyValuesOptions>(context, ["property_name"]),
+      ),
+    );
+  });
+
+  implementations.register("workspace.subproperties", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.subproperties(
+        requireWireKwarg(context, "property_name") as string,
+        optionsBag<WorkspaceSubpropertiesOptions>(context, ["property_name"]),
+      ),
+    );
+  });
+
+  implementations.register("workspace.funnels", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () => ws.funnels());
+  });
+
+  implementations.register("workspace.cohorts", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () => ws.cohorts());
+  });
+
+  implementations.register("workspace.list_bookmarks", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.listBookmarks(
+        (context.kwargs["bookmark_type"] ?? null) as BookmarkType | null,
+      ),
+    );
+  });
+
+  implementations.register("workspace.top_events", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.topEvents(optionsBag<WorkspaceTopEventsOptions>(context, [])),
+    );
+  });
+
+  implementations.register(
+    "workspace.clear_discovery_cache",
+    async (context) => {
+      const ws = workspaceFromSession(context);
+      // wire_state (D1.2): no return contract — replays as setup only.
+      await ws.clearDiscoveryCache();
+      return null;
+    },
+  );
+
+  implementations.register("workspace.lexicon_schemas", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.lexiconSchemas(
+        optionsBag<WorkspaceLexiconSchemasOptions>(context, []),
+      ),
+    );
+  });
+
+  implementations.register("workspace.lexicon_schema", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.lexiconSchema(
+        requireWireKwarg(context, "entity_type") as EntityType,
+        requireWireKwarg(context, "name") as string,
+      ),
+    );
+  });
+
+  implementations.register("workspace.schema_graph", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.schemaGraph(optionsBag<WorkspaceSchemaGraphOptions>(context, [])),
+    );
+  });
+
+  // -------------------------------------------------------------------
+  // S3 — session-replay members (10)
+  // -------------------------------------------------------------------
+
+  implementations.register("workspace.list_replays", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.listReplays(optionsBag<WorkspaceListReplaysOptions>(context, [])),
+    );
+  });
+
+  implementations.register("workspace.events_for_replay", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.eventsForReplay(
+        requireWireKwarg(context, "replay_id") as string,
+        optionsBag<WorkspaceEventsForReplayOptions>(context, ["replay_id"]),
+      ),
+    );
+  });
+
+  implementations.register("workspace.events_for_replays", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.eventsForReplays(
+        requireWireKwarg(context, "replay_ids") as readonly string[],
+        optionsBag<WorkspaceEventsForReplayOptions>(context, ["replay_ids"]),
+      ),
+    );
+  });
+
+  implementations.register("workspace.sign_replay", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.signReplay(
+        requireWireKwarg(context, "replay_id") as string,
+        optionsBag<WorkspaceSignReplayOptions>(context, ["replay_id"]),
+      ),
+    );
+  });
+
+  implementations.register("workspace.sign_replays", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.signReplays(
+        requireWireKwarg(context, "replay_ids") as readonly string[],
+        optionsBag<WorkspaceSignReplayOptions>(context, ["replay_ids"]),
+      ),
+    );
+  });
+
+  implementations.register("workspace.fetch_replay", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.fetchReplay(
+        requireWireKwarg(context, "replay_id") as string,
+        optionsBag<WorkspaceFetchReplayOptions>(context, ["replay_id"]),
+      ),
+    );
+  });
+
+  implementations.register("workspace.stream_replay", async (context) => {
+    const ws = workspaceFromSession(context);
+    // Iterator members replay as their item list (the Python runner's
+    // `isinstance(result, Iterator)` branch, `execute.py:553-555`).
+    return runFacade(codecs, async () => {
+      const items: unknown[] = [];
+      for await (const item of ws.streamReplay(
+        requireWireKwarg(context, "replay_id") as string,
+        optionsBag<WorkspaceStreamReplayOptions>(context, ["replay_id"]),
+      )) {
+        items.push(item);
+      }
+      return items;
+    });
+  });
+
+  implementations.register("workspace.fetch_replays", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.fetchReplays(
+        requireWireKwarg(context, "replay_ids") as readonly string[],
+        optionsBag<WorkspaceFetchReplaysOptions>(context, ["replay_ids"]),
+      ),
+    );
+  });
+
+  implementations.register("workspace.replays_for_user", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.replaysForUser(
+        requireWireKwarg(context, "distinct_id") as string,
+        optionsBag<WorkspaceReplaysForUserOptions>(context, ["distinct_id"]),
+      ),
+    );
+  });
+
+  implementations.register("workspace.analyze_replay", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.analyzeReplay(requireWireKwarg(context, "replay_id") as string),
+    );
+  });
+}
