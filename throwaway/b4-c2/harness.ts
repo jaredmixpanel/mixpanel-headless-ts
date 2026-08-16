@@ -22,7 +22,10 @@ import {
   createMixpanelClient,
   type MixpanelClient,
 } from "../../packages/core/src/client/client.js";
-import { JsonNumber, toNativeJson } from "../../packages/core/src/client/json-value.js";
+import {
+  JsonNumber,
+  toNativeJson,
+} from "../../packages/core/src/client/json-value.js";
 import type { Session } from "../../packages/core/src/auth/session.js";
 import { Secret } from "../../packages/core/src/secret.js";
 import {
@@ -209,8 +212,7 @@ async function segmentationMatrix(): Promise<void> {
   await expectOk(
     "seg/200-object",
     () => seg(() => ({ status: 200, json: { data: { values: {} } } })),
-    (v) =>
-      typeof v === "object" && v !== null && Object.hasOwn(v, "data"),
+    (v) => typeof v === "object" && v !== null && Object.hasOwn(v, "data"),
   );
   await expectOk(
     "seg/200-array",
@@ -338,7 +340,10 @@ async function segmentationMatrix(): Promise<void> {
   await expectErr(
     "listBookmarks/422→QueryError",
     () =>
-      client(() => ({ status: 422, json: { error: "unprocessable" } })).c.listBookmarks(),
+      client(() => ({
+        status: 422,
+        json: { error: "unprocessable" },
+      })).c.listBookmarks(),
     (e) => e instanceof QueryError && e.statusCode === 422,
   );
 }
@@ -493,8 +498,7 @@ async function exportEventsMatrix(): Promise<void> {
   await expectErr(
     "exp/network-error retries → HTTP_ERROR",
     () =>
-      run(() => ({ status: 0, reject: "transport" }), { maxRetries: 1 })
-        .events,
+      run(() => ({ status: 0, reject: "transport" }), { maxRetries: 1 }).events,
     (e) =>
       e instanceof MixpanelHeadlessError &&
       e.code === "HTTP_ERROR" &&
@@ -694,13 +698,9 @@ async function engageStatsEncoding(): Promise<void> {
           "2024-01-01",
           "2024-01-31",
         );
-        await ctx.c.propertyCounts(
-          "e",
-          "p",
-          "2024-01-01",
-          "2024-01-31",
-          { values: [1.5, true, null, ""] as unknown as readonly string[] },
-        );
+        await ctx.c.propertyCounts("e", "p", "2024-01-01", "2024-01-31", {
+          values: [1.5, true, null, ""] as unknown as readonly string[],
+        });
         return ctx.captures.map((r) => r.params);
       },
       (v) => {
@@ -736,8 +736,7 @@ async function ownedErrorBranches(): Promise<void> {
     ],
     [
       "AC3_BEHAVIORS_COHORT_CONFLICT",
-      () =>
-        drain(okClient().exportProfiles({ behaviors: [], cohort_id: "c" })),
+      () => drain(okClient().exportProfiles({ behaviors: [], cohort_id: "c" })),
       "AC3_BEHAVIORS_COHORT_CONFLICT",
     ],
     [
@@ -880,8 +879,7 @@ async function ownedErrorBranches(): Promise<void> {
     // the canned body carries no float token) — the recorded-corpus
     // spelling path is exercised by the 317 vectors instead. 1.5 and the
     // Python True/None spellings ARE observable here.
-    (v) =>
-      JSON.stringify(v) === '["True","None","18","𝒳","1.5"]',
+    (v) => JSON.stringify(v) === '["True","None","18","𝒳","1.5"]',
   );
 }
 

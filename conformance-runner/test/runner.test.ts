@@ -128,10 +128,13 @@ describe("runVector — api gating", () => {
 
   it("returns UNPORTED for a mapped name with no bound implementation", async () => {
     // Probe name must be a mapped-but-unbound api: C1 used
-    // api_client.activity_feed, bound at B4-C2 — now a C3 shard name.
-    // The B4 GATE prefix-flip re-adjusts this suite (C1 notes item 3).
+    // api_client.activity_feed (bound at B4-C2), C2 used
+    // api_client.list_dashboards (bound at B4-C3) — now the C6 name.
+    // The B4 GATE prefix-flip re-adjusts this suite (C1 notes item 3;
+    // post-flip the probe must move to a B5+ name such as
+    // workspace.events).
     const vector = makeVector({
-      api: "api_client.list_dashboards",
+      api: "pagination.paginate_all",
       kind: "wire",
       expect: '{"result": null}',
     });

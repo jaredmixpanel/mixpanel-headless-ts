@@ -2,9 +2,28 @@
  * The `services` module of @mixpanel-headless/core (D11 layout) —
  * Phase-3 B4-C2 populated the queries half (query-host + engage +
  * streaming wire methods and the `stream_events`/`stream_profiles`
- * facade wrappers); the B5 Discovery/LiveQuery services and B6 entity
- * facades land in later batches.
+ * facade wrappers); B4-C3 added the entity-CRUD wire factories
+ * (dashboards + bookmarks-v2 + cohorts-app); the B5 Discovery/LiveQuery
+ * services and B6 entity facades land in later batches.
  */
+
+export {
+  createBookmarkMethods,
+  type BookmarkMethods,
+  type GetBookmarkHistoryOptions,
+  type ListBookmarksV2Options,
+} from "./entities/bookmarks.js";
+export {
+  createCohortMethods,
+  type CohortMethods,
+  type ListCohortsAppOptions,
+} from "./entities/cohorts.js";
+export {
+  createDashboardMethods,
+  type DashboardMethods,
+  type ListBlueprintTemplatesOptions,
+  type ListDashboardsOptions,
+} from "./entities/dashboards.js";
 
 export {
   createEngageMethods,

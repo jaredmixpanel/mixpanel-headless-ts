@@ -72,6 +72,18 @@ import {
   type StreamingMethods,
 } from "../services/queries/streaming.js";
 import {
+  createDashboardMethods,
+  type DashboardMethods,
+} from "../services/entities/dashboards.js";
+import {
+  createBookmarkMethods,
+  type BookmarkMethods,
+} from "../services/entities/bookmarks.js";
+import {
+  createCohortMethods,
+  type CohortMethods,
+} from "../services/entities/cohorts.js";
+import {
   createRequestExecutor,
   normalizedAbortError,
   rawFetch,
@@ -313,10 +325,17 @@ export interface ClientCore {
 /**
  * The assembled Mixpanel API client (C1 core surface; B4-C2..C5 extend
  * this interface with their domain methods at the marked merge point —
- * C2 landed: query-host + engage + streaming/export).
+ * C2 landed: query-host + engage + streaming/export; C3 landed:
+ * dashboards + bookmarks-v2 + cohorts-app entity CRUD).
  */
 export interface MixpanelClient
-  extends QueryHostMethods, EngageMethods, StreamingMethods {
+  extends
+    QueryHostMethods,
+    EngageMethods,
+    StreamingMethods,
+    DashboardMethods,
+    BookmarkMethods,
+    CohortMethods {
   /** The resolved Session bound to this client (`session` property). */
   readonly session: Session;
   /** The project ID from the bound Session (`project_id` property). */
@@ -958,6 +977,9 @@ export function createMixpanelClient(
     ...createQueryHostMethods(core, { resolveWorkspaceId }),
     ...createEngageMethods(core),
     ...createStreamingMethods(core),
+    ...createDashboardMethods(core),
+    ...createBookmarkMethods(core),
+    ...createCohortMethods(core),
     get session(): Session {
       return session;
     },
