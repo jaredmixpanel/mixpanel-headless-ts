@@ -276,6 +276,56 @@ export type {
   WorkspaceListLookupTablesOptions,
   WorkspaceUploadLookupTableOptions,
 } from "./workspace-members/governance-data.js";
+import {
+  bulkUpdateAnomalies as bulkUpdateAnomaliesMember,
+  cancelDeletionRequest as cancelDeletionRequestMember,
+  createDeletionRequest as createDeletionRequestMember,
+  createSchema as createSchemaMember,
+  createSchemasBulk as createSchemasBulkMember,
+  deleteSchemaEnforcement as deleteSchemaEnforcementMember,
+  deleteSchemas as deleteSchemasMember,
+  getSchemaEnforcement as getSchemaEnforcementMember,
+  initSchemaEnforcement as initSchemaEnforcementMember,
+  listDataVolumeAnomalies as listDataVolumeAnomaliesMember,
+  listDeletionRequests as listDeletionRequestsMember,
+  listSchemaRegistry as listSchemaRegistryMember,
+  previewDeletionFilters as previewDeletionFiltersMember,
+  replaceSchemaEnforcement as replaceSchemaEnforcementMember,
+  runAudit as runAuditMember,
+  runAuditEventsOnly as runAuditEventsOnlyMember,
+  updateAnomaly as updateAnomalyMember,
+  updateSchema as updateSchemaMember,
+  updateSchemaEnforcement as updateSchemaEnforcementMember,
+  updateSchemasBulk as updateSchemasBulkMember,
+  type WorkspaceDeleteSchemasOptions,
+  type WorkspaceGetSchemaEnforcementOptions,
+  type WorkspaceListDataVolumeAnomaliesOptions,
+  type WorkspaceListSchemaRegistryOptions,
+} from "./workspace-members/schemas-audit.js";
+export type {
+  WorkspaceDeleteSchemasOptions,
+  WorkspaceGetSchemaEnforcementOptions,
+  WorkspaceListDataVolumeAnomaliesOptions,
+  WorkspaceListSchemaRegistryOptions,
+} from "./workspace-members/schemas-audit.js";
+import type {
+  AuditResponse,
+  BulkCreateSchemasParams,
+  BulkCreateSchemasResponse,
+  BulkPatchResult,
+  BulkUpdateAnomalyParams,
+  CreateDeletionRequestParams,
+  DataVolumeAnomaly,
+  DeleteSchemasResponse,
+  EventDeletionRequest,
+  InitSchemaEnforcementParams,
+  PreviewDeletionFiltersParams,
+  ReplaceSchemaEnforcementParams,
+  SchemaEnforcementConfig,
+  SchemaEntry,
+  UpdateAnomalyParams,
+  UpdateSchemaEnforcementParams,
+} from "./types/entities/schemas.js";
 import type {
   CreateCustomEventParams,
   CreateCustomPropertyParams,
@@ -5263,6 +5313,349 @@ export class Workspace {
    */
   async deleteCustomEvent(customEventId: number): Promise<void> {
     return deleteCustomEventMember(this.client, customEventId);
+  }
+
+  // === B6-W8 schema-registry / schema-enforcement / audit / anomaly /
+  // deletion-request members (W8 owns; append-only) ===
+
+  /**
+   * List schema registry entries (`list_schema_registry`,
+   * `workspace.py:8654-8687`).
+   *
+   * @param options - Optional `entity_type` filter ("event",
+   *   "custom_event", "profile"); omit it to return every schema.
+   * @returns The `SchemaEntry` models, in response order.
+   * @throws ResponseValidationError - Malformed API response payload
+   *   (`RESPONSE_VALIDATION_ERROR`).
+   * @throws AuthenticationError | RateLimitError | QueryError |
+   *   ServerError - Wire failures.
+   *
+   * @example
+   * ```typescript
+   * for (const entry of await ws.listSchemaRegistry({ entity_type: "event" })) {
+   *   console.log(`${entry.name}: ${entry.entity_type}`);
+   * }
+   * ```
+   */
+  async listSchemaRegistry(
+    options: WorkspaceListSchemaRegistryOptions = {},
+  ): Promise<SchemaEntry[]> {
+    return listSchemaRegistryMember(this.client, options);
+  }
+
+  /**
+   * Create a single schema definition (`create_schema`,
+   * `workspace.py:8689-8720`).
+   *
+   * @param entityType - Entity type ("event", "custom_event", "profile").
+   * @param entityName - Entity name (event name or "$user" for profile).
+   * @param schemaJson - JSON Schema Draft 7 definition.
+   * @returns The created schema, verbatim.
+   * @throws AuthenticationError | QueryError | RateLimitError |
+   *   ServerError - Wire failures.
+   *
+   * @example
+   * ```typescript
+   * await ws.createSchema("event", "Purchase", {
+   *   properties: { amount: { type: "number" } },
+   * });
+   * ```
+   */
+  async createSchema(
+    entityType: string,
+    entityName: string,
+    schemaJson: Readonly<Record<string, unknown>>,
+  ): Promise<Record<string, unknown>> {
+    return createSchemaMember(this.client, entityType, entityName, schemaJson);
+  }
+
+  /**
+   * Bulk create schemas (`create_schemas_bulk`,
+   * `workspace.py:8722-8758`).
+   *
+   * @param params - Bulk creation parameters (entries plus the
+   *   optional `truncate` flag).
+   * @returns The response with `added` / `deleted` counts.
+   * @throws ResponseValidationError - Malformed payload.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   */
+  async createSchemasBulk(
+    params: BulkCreateSchemasParams,
+  ): Promise<BulkCreateSchemasResponse> {
+    return createSchemasBulkMember(this.client, params);
+  }
+
+  /**
+   * Update a single schema definition, merge semantics
+   * (`update_schema`, `workspace.py:8760-8791`).
+   *
+   * @param entityType - Entity type.
+   * @param entityName - Entity name.
+   * @param schemaJson - Partial JSON Schema to merge with the existing one.
+   * @returns The updated schema, verbatim.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   */
+  async updateSchema(
+    entityType: string,
+    entityName: string,
+    schemaJson: Readonly<Record<string, unknown>>,
+  ): Promise<Record<string, unknown>> {
+    return updateSchemaMember(this.client, entityType, entityName, schemaJson);
+  }
+
+  /**
+   * Bulk update schemas, merge semantics per entry
+   * (`update_schemas_bulk`, `workspace.py:8793-8828`).
+   *
+   * @param params - Bulk update parameters.
+   * @returns Per-entry results with status "ok" or "error".
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async updateSchemasBulk(
+    params: BulkCreateSchemasParams,
+  ): Promise<BulkPatchResult[]> {
+    return updateSchemasBulkMember(this.client, params);
+  }
+
+  /**
+   * Delete schemas by entity type and/or name (`delete_schemas`,
+   * `workspace.py:8830-8874`).
+   *
+   * With both filters a single schema is deleted; with `entity_type`
+   * alone every schema of that type; with neither, ALL schemas.
+   *
+   * @param options - Optional `entity_type` / `entity_name` filters.
+   * @returns The response with `delete_count`.
+   * @throws MixpanelHeadlessError - `entity_name` given without
+   *   `entity_type` (raised before any request).
+   * @throws ResponseValidationError - Malformed payload.
+   *
+   * @example
+   * ```typescript
+   * const resp = await ws.deleteSchemas({
+   *   entity_type: "event",
+   *   entity_name: "Purchase",
+   * });
+   * console.log(`Deleted: ${String(resp.delete_count)}`);
+   * ```
+   */
+  async deleteSchemas(
+    options: WorkspaceDeleteSchemasOptions = {},
+  ): Promise<DeleteSchemasResponse> {
+    return deleteSchemasMember(this.client, options);
+  }
+
+  /**
+   * Get the current schema-enforcement configuration
+   * (`get_schema_enforcement`, `workspace.py:8879-8911`).
+   *
+   * @param options - Optional comma-separated `fields` selector.
+   * @returns The enforcement configuration.
+   * @throws ResponseValidationError - Malformed payload.
+   * @throws QueryError - No enforcement configured (404).
+   */
+  async getSchemaEnforcement(
+    options: WorkspaceGetSchemaEnforcementOptions = {},
+  ): Promise<SchemaEnforcementConfig> {
+    return getSchemaEnforcementMember(this.client, options);
+  }
+
+  /**
+   * Initialize schema enforcement (`init_schema_enforcement`,
+   * `workspace.py:8913-8941`).
+   *
+   * @param params - Init parameters carrying `rule_event`.
+   * @returns The raw API response.
+   * @throws QueryError - Already initialized or invalid `rule_event` (400).
+   */
+  async initSchemaEnforcement(
+    params: InitSchemaEnforcementParams,
+  ): Promise<Record<string, unknown>> {
+    return initSchemaEnforcementMember(this.client, params);
+  }
+
+  /**
+   * Partially update the enforcement configuration
+   * (`update_schema_enforcement`, `workspace.py:8943-8971`).
+   *
+   * @param params - Partial update parameters.
+   * @returns The raw API response.
+   * @throws QueryError - No enforcement configured or validation error (400).
+   */
+  async updateSchemaEnforcement(
+    params: UpdateSchemaEnforcementParams,
+  ): Promise<Record<string, unknown>> {
+    return updateSchemaEnforcementMember(this.client, params);
+  }
+
+  /**
+   * Fully replace the enforcement configuration
+   * (`replace_schema_enforcement`, `workspace.py:8973-9003`).
+   *
+   * @param params - Complete replacement parameters.
+   * @returns The raw API response.
+   * @throws QueryError - Validation error (400).
+   */
+  async replaceSchemaEnforcement(
+    params: ReplaceSchemaEnforcementParams,
+  ): Promise<Record<string, unknown>> {
+    return replaceSchemaEnforcementMember(this.client, params);
+  }
+
+  /**
+   * Delete the enforcement configuration
+   * (`delete_schema_enforcement`, `workspace.py:9005-9021`).
+   *
+   * @returns The raw API response.
+   * @throws QueryError - No enforcement configured (404).
+   */
+  async deleteSchemaEnforcement(): Promise<Record<string, unknown>> {
+    return deleteSchemaEnforcementMember(this.client);
+  }
+
+  /**
+   * Run a full data audit — events plus properties (`run_audit`,
+   * `workspace.py:9029-9067`).
+   *
+   * @returns The audit response with violations and `computed_at`.
+   * @throws MixpanelHeadlessError - Unexpected audit-response shape.
+   * @throws ResponseValidationError - A malformed violation entry.
+   * @throws QueryError - No schemas defined (400).
+   *
+   * @example
+   * ```typescript
+   * const audit = await ws.runAudit();
+   * for (const v of audit.violations) {
+   *   console.log(`${v.violation}: ${v.name} (${String(v.count)})`);
+   * }
+   * ```
+   */
+  async runAudit(): Promise<AuditResponse> {
+    return runAuditMember(this.client);
+  }
+
+  /**
+   * Run an events-only data audit — faster
+   * (`run_audit_events_only`, `workspace.py:9069-9103`).
+   *
+   * @returns The audit response with event violations only.
+   * @throws MixpanelHeadlessError - Unexpected audit-response shape.
+   * @throws ResponseValidationError - A malformed violation entry.
+   * @throws QueryError - No schemas defined (400).
+   */
+  async runAuditEventsOnly(): Promise<AuditResponse> {
+    return runAuditEventsOnlyMember(this.client);
+  }
+
+  /**
+   * List detected data-volume anomalies
+   * (`list_data_volume_anomalies`, `workspace.py:9110-9141`).
+   *
+   * @param options - Optional `query_params` filters (status, limit,
+   *   event_id, …).
+   * @returns The `DataVolumeAnomaly` models, in response order.
+   * @throws ResponseValidationError - Malformed payload.
+   *
+   * @example
+   * ```typescript
+   * const anomalies = await ws.listDataVolumeAnomalies({
+   *   query_params: { status: "open" },
+   * });
+   * ```
+   */
+  async listDataVolumeAnomalies(
+    options: WorkspaceListDataVolumeAnomaliesOptions = {},
+  ): Promise<DataVolumeAnomaly[]> {
+    return listDataVolumeAnomaliesMember(this.client, options);
+  }
+
+  /**
+   * Update the status of a single anomaly (`update_anomaly`,
+   * `workspace.py:9143-9169`).
+   *
+   * @param params - Update parameters (id, status, anomaly_class).
+   * @returns The raw API response.
+   * @throws QueryError - Anomaly not found or invalid parameters (400).
+   */
+  async updateAnomaly(
+    params: UpdateAnomalyParams,
+  ): Promise<Record<string, unknown>> {
+    return updateAnomalyMember(this.client, params);
+  }
+
+  /**
+   * Bulk update anomaly statuses (`bulk_update_anomalies`,
+   * `workspace.py:9171-9198`).
+   *
+   * @param params - Bulk update with the anomalies list and target status.
+   * @returns The raw API response.
+   * @throws QueryError - Invalid parameters (400).
+   */
+  async bulkUpdateAnomalies(
+    params: BulkUpdateAnomalyParams,
+  ): Promise<Record<string, unknown>> {
+    return bulkUpdateAnomaliesMember(this.client, params);
+  }
+
+  /**
+   * List all event deletion requests (`list_deletion_requests`,
+   * `workspace.py:9204-9227`).
+   *
+   * @returns The `EventDeletionRequest` models, in response order.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async listDeletionRequests(): Promise<EventDeletionRequest[]> {
+    return listDeletionRequestsMember(this.client);
+  }
+
+  /**
+   * Create a new event deletion request
+   * (`create_deletion_request`, `workspace.py:9229-9266`).
+   *
+   * @param params - Deletion parameters (event name, date range,
+   *   optional filters).
+   * @returns The updated FULL list of deletion requests.
+   * @throws ResponseValidationError - Malformed payload.
+   * @throws QueryError - Validation error (400).
+   */
+  async createDeletionRequest(
+    params: CreateDeletionRequestParams,
+  ): Promise<EventDeletionRequest[]> {
+    return createDeletionRequestMember(this.client, params);
+  }
+
+  /**
+   * Cancel a pending deletion request
+   * (`cancel_deletion_request`, `workspace.py:9268-9294`).
+   *
+   * @param requestId - Deletion request ID to cancel.
+   * @returns The updated FULL list of deletion requests.
+   * @throws ResponseValidationError - Malformed payload.
+   * @throws QueryError - Request not found or not cancellable (400).
+   */
+  async cancelDeletionRequest(
+    requestId: number,
+  ): Promise<EventDeletionRequest[]> {
+    return cancelDeletionRequestMember(this.client, requestId);
+  }
+
+  /**
+   * Preview what events a deletion filter would match
+   * (`preview_deletion_filters`, `workspace.py:9296-9331`).
+   *
+   * Read-only: nothing is modified.
+   *
+   * @param params - Preview parameters (event name, date range,
+   *   optional filters).
+   * @returns The expanded/normalized filters, verbatim.
+   * @throws QueryError - Invalid filter parameters (400).
+   */
+  async previewDeletionFilters(
+    params: PreviewDeletionFiltersParams,
+  ): Promise<Array<Record<string, unknown>>> {
+    return previewDeletionFiltersMember(this.client, params);
   }
 }
 

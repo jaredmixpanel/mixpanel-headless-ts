@@ -563,33 +563,82 @@ export abstract class EntityModel {
   modelDumpExcludeNone(
     options: ModelDumpOptions = {},
   ): Record<string, unknown> {
-    const byAlias = options.byAlias === true;
+    return this.dumpFields(options.byAlias === true, true);
+  }
+
+  /**
+   * Pydantic `model_dump()` — the PLAIN request-body dump, keeping
+   * `None` values as `null`. B6-W8 (`b6-packets.md` §10) added it for
+   * the two facade sites that dump WITHOUT `exclude_none`:
+   * `update_anomaly` (`workspace.py:9169`) and
+   * `bulk_update_anomalies` (`:9198`), both
+   * `params.model_dump(by_alias=True)`.
+   *
+   * Same walk as {@link modelDumpExcludeNone} — declared fields,
+   * extras and computed fields, nested models recursing, `byAlias`
+   * threading into nested models — except that nothing is dropped:
+   * a `None` field emits `null` under its key.
+   *
+   * {@link toJSON} is NOT a substitute: it walks `model_fields` only
+   * (no extras) and never applies serialization aliases, because it
+   * mirrors the RECORDER's payload shape rather than pydantic's dump.
+   *
+   * @param options - `byAlias` mirrors pydantic's `by_alias=True`.
+   * @returns The dump mapping.
+   *
+   * @example
+   * ```typescript
+   * new UpdateAnomalyParams({ id: 1, status: "open", anomaly_class: "Event" })
+   *   .modelDump({ byAlias: true });
+   * // { id: 1, status: "open", anomalyClass: "Event" }
+   * ```
+   */
+  modelDump(options: ModelDumpOptions = {}): Record<string, unknown> {
+    return this.dumpFields(options.byAlias === true, false);
+  }
+
+  /**
+   * Shared walk behind {@link modelDumpExcludeNone} and
+   * {@link modelDump}.
+   *
+   * @param byAlias - Emit serialization aliases for declared fields.
+   * @param excludeNone - Drop `None`/absent values (pydantic
+   *   `exclude_none=True`).
+   * @returns The dump mapping.
+   * @internal
+   */
+  private dumpFields(
+    byAlias: boolean,
+    excludeNone: boolean,
+  ): Record<string, unknown> {
     const cls = this.statics();
     const out: Record<string, unknown> = {};
     const self = this as unknown as Readonly<Record<string, unknown>>;
+    const skip = (value: unknown): boolean =>
+      excludeNone && (value === null || value === undefined);
     for (const spec of cls.fieldSpecs) {
       const value = self[spec.name];
-      if (value === null || value === undefined) {
+      if (skip(value)) {
         continue;
       }
       const key = byAlias ? (spec.wire ?? spec.name) : spec.name;
       out[key] =
         spec.datetime === true && typeof value === "string"
           ? value
-          : dumpExcludeNoneValue(value, byAlias);
+          : dumpValue(value, byAlias, excludeNone);
     }
     for (const [key, value] of Object.entries(this.__extras)) {
-      if (value === null || value === undefined) {
+      if (skip(value)) {
         continue;
       }
-      out[key] = dumpExcludeNoneValue(value, byAlias);
+      out[key] = dumpValue(value, byAlias, excludeNone);
     }
     for (const computed of cls.computedSpecs ?? []) {
       const value = computed.get(this);
-      if (value === null || value === undefined) {
+      if (skip(value)) {
         continue;
       }
-      out[computed.name] = dumpExcludeNoneValue(value, byAlias);
+      out[computed.name] = dumpValue(value, byAlias, excludeNone);
     }
     return out;
   }
@@ -643,21 +692,30 @@ export function oneOf(
 }
 
 /**
- * Serialize one value for {@link EntityModel.modelDumpExcludeNone}
- * (nested models recurse with the same exclusion; lists map
- * element-wise; plain dicts keep their `None` values; scalars pass
+ * Serialize one value for {@link EntityModel.modelDumpExcludeNone} /
+ * {@link EntityModel.modelDump} (nested models recurse with the SAME
+ * exclusion setting, exactly as pydantic threads `exclude_none`; lists
+ * map element-wise; plain dicts keep their `None` values; scalars pass
  * through).
  *
  * @param value - The stored value.
+ * @param byAlias - Emit serialization aliases inside nested models.
+ * @param excludeNone - Whether nested models drop their `None` fields.
  * @returns The dumped value.
  * @internal
  */
-function dumpExcludeNoneValue(value: unknown, byAlias: boolean): unknown {
+function dumpValue(
+  value: unknown,
+  byAlias: boolean,
+  excludeNone: boolean,
+): unknown {
   if (value instanceof EntityModel) {
-    return value.modelDumpExcludeNone({ byAlias });
+    return excludeNone
+      ? value.modelDumpExcludeNone({ byAlias })
+      : value.modelDump({ byAlias });
   }
   if (Array.isArray(value)) {
-    return value.map((item) => dumpExcludeNoneValue(item, byAlias));
+    return value.map((item) => dumpValue(item, byAlias, excludeNone));
   }
   if (isPlainObject(value)) {
     // Pydantic keeps `None` VALUES inside plain dict fields
@@ -665,7 +723,7 @@ function dumpExcludeNoneValue(value: unknown, byAlias: boolean): unknown {
     const out: Record<string, unknown> = {};
     for (const [key, item] of Object.entries(value)) {
       out[key] =
-        item === undefined ? null : dumpExcludeNoneValue(item, byAlias);
+        item === undefined ? null : dumpValue(item, byAlias, excludeNone);
     }
     return out;
   }
