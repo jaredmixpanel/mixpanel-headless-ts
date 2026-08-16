@@ -316,3 +316,71 @@ describe("transformEvent", () => {
     );
   });
 });
+
+// =============================================================================
+// dictKeyText float(-carrier) pair keys — B3 arbiter fix F3
+// (`b3-review-resolution.md` 2026-08-15; fidelity F3 / assertions F2)
+// =============================================================================
+
+/**
+ * Structural twin of the rig's `PyFloat` carrier (the library cannot
+ * import rig code) — a CLASS instance with a string `spelling` field,
+ * matching the `validation-dict-fidelity.test.ts` precedent. Float
+ * keys reach `dictKeyText` only through the pathological
+ * `dict(iterable-of-pairs)` properties branch.
+ */
+class PyFloatStub {
+  /** The canonical CPython float spelling. */
+  readonly spelling: string;
+
+  /**
+   * Wrap a spelling.
+   *
+   * @param spelling - Canonical CPython `repr(float)` output.
+   */
+  constructor(spelling: string) {
+    this.spelling = spelling;
+  }
+}
+
+describe("dictKeyText — float-carrier pair keys use the json.dumps spelling (NEW, arbiter F3)", () => {
+  // NEW — oracle-py reference (CPython 3.14.6, arbiter probe
+  // 2026-08-15): transform_event with properties
+  // [(18.0, 1), (1e16, 2), (-0.0, 3)] keeps the FLOAT keys, and
+  // json.dumps spells them "18.0" / "1e+16" / "-0.0" (float.__repr__).
+  // The pre-fix `String(floatCarrierValue(key))` rendered "18" /
+  // "10000000000000000" / "0".
+  it("transformEvent renders carrier keys via pythonFloatStr, not String()", () => {
+    const result = transformEvent(
+      {
+        event: "e",
+        distinct_id: "d",
+        properties: [
+          [new PyFloatStub("18.0"), 1],
+          [new PyFloatStub("1e+16"), 2],
+          [new PyFloatStub("-0.0"), 3],
+        ],
+      },
+      { uuid: fixedUuid },
+    );
+
+    expect(result["properties"]).toEqual({ "18.0": 1, "1e+16": 2, "-0.0": 3 });
+  });
+
+  // NEW — same policy through transform_profile:
+  // transform_profile({"$distinct_id": "u", "$properties":
+  // [(2.5, "x")]}) → {"distinct_id": "u", "last_seen": null,
+  // "properties": {"2.5": "x"}} (oracle-py reference, same probe).
+  it("transformProfile renders a fractional carrier key faithfully", () => {
+    const result = transformProfile({
+      $distinct_id: "u",
+      $properties: [[new PyFloatStub("2.5"), "x"]],
+    });
+
+    expect(result).toEqual({
+      distinct_id: "u",
+      last_seen: null,
+      properties: { "2.5": "x" },
+    });
+  });
+});

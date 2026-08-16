@@ -403,7 +403,10 @@ def rand_group_element(rng: random.Random) -> Any:
             bucket_max=bucket_max,
         )
     if roll < 0.7:
-        cohort: Any = rng.choice([1, 123, COHORT_DEFS[0], COHORT_DEFS[1]])
+        # bool <: int (B3 arbiter fix F1, b3-review-resolution.md
+        # 2026-08-15): True takes the SAVED branch (id: true, groups: [])
+        # exactly like an int id; the pre-fix TS crashed TypeError.
+        cohort: Any = rng.choice([1, 123, True, COHORT_DEFS[0], COHORT_DEFS[1]])
         return CohortBreakdown(
             cohort=cohort,
             name=rng.choice([None, "PU", NON_BMP, "Power Users"]),

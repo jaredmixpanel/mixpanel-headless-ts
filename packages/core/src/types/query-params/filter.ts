@@ -35,7 +35,7 @@ import type {
 // bindings resolve safely.
 import { sanitizeRawCohort, type CohortDefinition } from "./cohort.js";
 import {
-  isPyInt,
+  isPyIntOrBool,
   isRealCalendarDate,
   matchesDateFormat,
   validateCohortArgs,
@@ -801,7 +801,10 @@ export class Filter {
       negated,
       name: name ?? "",
     };
-    if (isPyInt(cohort)) {
+    // `isinstance(cohort, int)` includes booleans (`bool <: int`):
+    // `Filter.in_cohort(True)` emits `{id: true}` — B3 arbiter fix F1
+    // (`b3-review-resolution.md` 2026-08-15).
+    if (isPyIntOrBool(cohort)) {
       cohortEntry["id"] = cohort;
     } else {
       // Inline definition: embed the sanitized to-dict payload exactly

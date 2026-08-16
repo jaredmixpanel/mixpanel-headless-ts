@@ -42,7 +42,7 @@
  * @internal
  */
 
-import { zfill } from "../compat/index.js";
+import { pythonFloatStr, zfill } from "../compat/index.js";
 import {
   floatCarrierValue,
   isFloatCarrier,
@@ -140,6 +140,20 @@ function dictPop(
  * `dict(iterable-of-pairs)` branch below, which no Mixpanel response
  * can produce; recorded in the B3-K3 notes §domain notes.
  *
+ * Spelling table (B3 arbiter fix F3, `b3-review-resolution.md`
+ * 2026-08-15 — the pre-fix `String()` rendered a carrier of `18.0` as
+ * `"18"` where `json.dumps({18.0: 1})` spells `"18.0"`):
+ *
+ * - Python `float` (PyFloat carrier, or a fractional plain number from
+ *   direct TS calls) → `pythonFloatStr` = CPython `float.__repr__`,
+ *   which is exactly json.dumps' float-key spelling (`"18.0"`,
+ *   `"1e+16"`, `"-0.0"`).
+ * - Python `int` (integral plain number / bigint) → `String()` =
+ *   digit run, identical to json.dumps' int-key spelling.
+ * - `true`/`false`/`null` → `"true"`/`"false"`/`"null"`, identical to
+ *   json.dumps (`pythonStr` would WRONGLY give `"True"` here — the
+ *   policy is the JSON spelling, not `str()`).
+ *
  * @param key - The pair's first element (already hashability-checked).
  * @returns The object-key spelling.
  */
@@ -151,7 +165,10 @@ function dictKeyText(key: unknown): string {
     return "null";
   }
   if (isFloatCarrier(key)) {
-    return String(floatCarrierValue(key));
+    return pythonFloatStr(floatCarrierValue(key));
+  }
+  if (typeof key === "number" && !Number.isInteger(key)) {
+    return pythonFloatStr(key);
   }
   return String(key);
 }
@@ -304,13 +321,18 @@ export function fromTimestampUtcIso(t: number): string {
   // OverflowError; everything inside it that still leaves `datetime`'s
   // 1..9999 year range is a ValueError.
   //
-  // TODO(port): CPython additionally raises `OSError` (errno 84) in a
-  // narrow band of very large in-int64 magnitudes where the platform
-  // `gmtime` fails before the year check (probe: 9.2e18 -> OSError,
-  // 1e16 -> ValueError). The TS twin reports ValueError across the whole
-  // out-of-range span; that band is a documented fuzz-domain exclusion
-  // (B3-K3 notes §domain notes) — the packet explicitly authorises
-  // excluding "|t| beyond datetime.max".
+  // TODO(port): CPython additionally raises `OSError` (errno 84) where
+  // the platform `gmtime` fails before the year check. Measured on this
+  // platform (macOS, CPython 3.14.6 — arbiter bisect 2026-08-15,
+  // playbook Discrepancy #11): OSError for ALL t >=
+  // 67,768,036,191,676,800 (~6.78e16, the gmtime tm_year > INT_MAX
+  // overflow) and t <= -67,768,040,609,740,801, up to the 2^63
+  // OverflowError bound — i.e. MOST of the span above datetime.max, not
+  // a narrow band. The boundary is PLATFORM-dependent. The TS twin
+  // reports ValueError across that whole span (every affected input
+  // raises on both sides — class-only divergence); the range is a
+  // documented fuzz-domain exclusion (B3-K3 notes §domain notes; the
+  // packet explicitly authorises excluding "|t| beyond datetime.max").
   if (Math.abs(secs) >= 9223372036854775808) {
     throw new OverflowError("timestamp out of range for platform time_t");
   }

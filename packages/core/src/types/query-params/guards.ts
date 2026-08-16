@@ -68,6 +68,29 @@ export function isPyInt(value: unknown): value is number | bigint {
 }
 
 /**
+ * Full `isinstance(v, int)` mirror INCLUDING booleans — Python's
+ * `bool` is a subclass of `int`, so every `isinstance(cohort, int)`
+ * saved-vs-inline split accepts `True`/`False` (B3 arbiter fix F1,
+ * `b3-review-resolution.md` 2026-08-15; ratified Discrepancy #8 makes
+ * a boolean cohort id in-annotation, b3-packets Caution #11).
+ *
+ * Contrast {@link isPyInt} (bool-EXCLUSIVE) and the B2 validators'
+ * `isPythonInt` (`validation-shared.ts`, also bool-EXCLUSIVE): those
+ * serve sites where Python checks `isinstance(v, bool)` separately
+ * FIRST — the direction flips per site; read each Python guard.
+ *
+ * @param value - The candidate value.
+ * @returns True when Python's `isinstance(value, int)` would hold.
+ *
+ * @internal
+ */
+export function isPyIntOrBool(
+  value: unknown,
+): value is number | bigint | boolean {
+  return isPyInt(value) || typeof value === "boolean";
+}
+
+/**
  * Validate that an event name is non-empty and has no control chars —
  * port of `types._validate_event_name`.
  *
@@ -103,8 +126,10 @@ export function validateEventName(event: string, className: string): void {
  * Validate cohort ID and name shared by `CohortBreakdown`, `CohortMetric`,
  * and `Filter` — port of `types._validate_cohort_args`.
  *
- * @param cohort - Saved cohort ID or inline definition (any non-int value
- *   skips the ID guard, exactly like Python's `isinstance(cohort, int)`).
+ * @param cohort - Saved cohort ID or inline definition (any non-int
+ *   value skips the ID guard, exactly like Python's
+ *   `isinstance(cohort, int)` — which INCLUDES booleans:
+ *   `CohortBreakdown(False)` fires the guard, `True` passes).
  * @param name - Display name for the cohort (`null` when not provided).
  * @param family - Error-code family of the caller — `"CF"` for
  *   `Filter.inCohort`/`notInCohort`, `"CB"` for `CohortBreakdown`, `"CM"`
@@ -120,8 +145,13 @@ export function validateCohortArgs(
   name: string | null,
   family: "CF" | "CB" | "CM",
 ): void {
-  // {family}1_COHORT_ID_NOT_POSITIVE: integer cohort IDs must be positive.
-  if (isPyInt(cohort) && cohort <= 0) {
+  // {family}1_COHORT_ID_NOT_POSITIVE: integer cohort IDs must be
+  // positive. Python's `isinstance(cohort, int) and cohort <= 0`
+  // includes booleans (`bool <: int`): `False <= 0` is True and fires
+  // the guard, `True <= 0` is False and passes — `cohort === false` is
+  // the exact boolean residue (B3 arbiter fix F1,
+  // `b3-review-resolution.md` 2026-08-15).
+  if ((isPyInt(cohort) && cohort <= 0) || cohort === false) {
     throw new ParamValidationError(
       "cohort must be a positive integer",
       `${family}1_COHORT_ID_NOT_POSITIVE`,

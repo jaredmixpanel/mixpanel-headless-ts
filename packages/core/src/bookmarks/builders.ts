@@ -40,12 +40,12 @@ import { pythonRepr } from "../compat/index.js";
 import { ParamTypeError, ParamValidationError } from "../errors.js";
 import { isPythonDict, pythonTypeName } from "../query/validation-shared.js";
 import type { QueryTimeUnit } from "../types/literals.js";
-// `sanitizeRawCohort` and `isPyInt` are module-level `@internal`
+// `sanitizeRawCohort` and `isPyIntOrBool` are module-level `@internal`
 // exports that the query-params barrel deliberately does not re-export
 // (see `types/query-params/index.ts`); import them by name from their
 // owning modules — never re-derive (R10.8).
 import { sanitizeRawCohort } from "../types/query-params/cohort.js";
-import { isPyInt } from "../types/query-params/guards.js";
+import { isPyIntOrBool } from "../types/query-params/guards.js";
 import {
   CohortBreakdown,
   CustomPropertyRef,
@@ -543,8 +543,12 @@ export function buildCohortGroupEntry(
   };
   // `isinstance(cb.cohort, int)` — a Python `float` (the rig's PyFloat
   // carrier, or a fractional number) is NOT an int and falls to the
-  // inline branch exactly as Python does.
-  if (isPyInt(cb.cohort)) {
+  // inline branch exactly as Python does. Booleans ARE ints in Python
+  // (`bool <: int`), so `CohortBreakdown(True)` takes the SAVED branch
+  // and emits `id: true` — B3 arbiter fix F1
+  // (`b3-review-resolution.md` 2026-08-15; the bool-EXCLUSIVE
+  // `isPyInt` crashed here on `cb.cohort.toDict()`).
+  if (isPyIntOrBool(cb.cohort)) {
     baseCohort["id"] = cb.cohort;
     baseCohort["groups"] = [];
   } else {
