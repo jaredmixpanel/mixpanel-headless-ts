@@ -8,15 +8,14 @@
 // packet sequences W3 last): its cases are parametrized over members
 // belonging to every entity shard.
 //
-// SHARD-ORDER DEFERRAL (recorded, not dropped): the orchestrator
-// dispatched W3 BEFORE W4–W8, so only the W1/W2/W3 members exist on
-// the facade today. Every `TestCodedResponseValidationCodes` case whose
-// member is owned by W4–W8 is carried as an `it.todo(...)` naming the
-// Python case, its line, and the owning shard — the shard that lands
-// the member converts its todo into the two-line body the translated
-// cases here already show (`_make_results_workspace` + `.code` assert).
-// Nothing about the translation is lost; the todo list IS the checklist
-// (see `B6-W3-notes.md` §deferrals).
+// SHARD-ORDER DEFERRAL — RESOLVED AT B6-ARB: the orchestrator
+// dispatched W3 BEFORE W4–W8, so W3 carried the 26 W4–W8-owned
+// `TestCodedResponseValidationCodes` cases as `it.todo(...)` stubs with
+// a per-shard conversion protocol. None of W4–W8 executed it (the B6
+// review pair's shared MAJOR finding), so the arbiter fix task
+// converted ALL 26 into the two-line bodies below
+// (`b6-review-resolution.md` Finding A; charged to the owning shards
+// per P3-3). Zero todos remain.
 //
 // Python's `httpx.MockTransport` handler becomes the injected-fetch
 // `fakeTransport` seam; `_make_workspace(temp_dir, handler)` (:73-89)
@@ -42,6 +41,9 @@ import {
   BulkUpdateCohortEntry,
   CreateCohortParams,
 } from "../../src/types/entities/cohorts.js";
+import { CreateCustomEventParams } from "../../src/types/entities/data-governance.js";
+import { CreateTagParams } from "../../src/types/entities/lexicon.js";
+import { CreateWebhookParams } from "../../src/types/entities/webhooks.js";
 import {
   BlueprintCard,
   BlueprintFinishParams,
@@ -92,14 +94,23 @@ function makeWorkspace(handler: Handler): {
  *
  * @param results - The JSON value placed under the `results` envelope
  *   key for every request.
+ * @param options - `workspaceId` pins a workspace ID on the client so
+ *   workspace-scoped methods skip workspace resolution (the Python
+ *   helper's `workspace_id=` keyword, :390).
  * @returns The facade.
  */
-function makeResultsWorkspace(results: unknown): Workspace {
-  const { ws } = makeWorkspace(() => ({
+function makeResultsWorkspace(
+  results: unknown,
+  options: { readonly workspaceId?: number } = {},
+): Workspace {
+  const { client } = createMockClient(CLIENT_SESSION, () => ({
     status: 200,
     json: { status: "ok", results },
   }));
-  return ws;
+  if (options.workspaceId !== undefined) {
+    client.setWorkspaceId(options.workspaceId);
+  }
+  return new Workspace({ session: FACADE_SESSION, client });
 }
 
 /**
@@ -382,33 +393,136 @@ describe("TestCodedResponseValidationCodes (test_workspace_crud_edge.py:416)", (
     await assertCoded(makeResultsWorkspace([{}]).listCohortsFull());
   });
 
-  // ---- Shard-order deferrals: members owned by W4–W8 (see header) ----
-  it.todo("flags family (single member) :459 — W4 `get_feature_flag`");
-  it.todo("flags family (list member) :466 — W4 `list_feature_flags`");
-  it.todo("experiments family (single member) :473 — W4 `get_experiment`");
-  it.todo("experiments family (list member) :480 — W4 `list_experiments`");
-  it.todo("annotations family (single member) :487 — W5 `get_annotation`");
-  it.todo("annotations family (list member) :494 — W5 `list_annotations`");
-  it.todo("webhooks family (single member) :501 — W5 `create_webhook`");
-  it.todo("webhooks family (list member) :508 — W5 `list_webhooks`");
-  it.todo("alerts family (single member) :515 — W5 `get_alert`");
-  it.todo("alerts family (list member) :522 — W5 `list_alerts`");
-  it.todo("lexicon definitions (events) :529 — W6 `get_event_definitions`");
-  it.todo(
-    "lexicon definitions (properties) :536 — W6 `get_property_definitions`",
-  );
-  it.todo("lexicon tags (single member) :543 — W6 `create_lexicon_tag`");
-  it.todo("lexicon tags (list member) :550 — W6 `list_lexicon_tags`");
-  it.todo("drop filters (single member) :557 — W7 `get_drop_filter_limits`");
-  it.todo("drop filters (list member) :564 — W7 `list_drop_filters`");
-  it.todo("custom properties (single member) :571 — W7 `get_custom_property`");
-  it.todo("custom properties (list member) :578 — W7 `list_custom_properties`");
-  it.todo("lookup tables (single member) :585 — W7 `get_lookup_upload_url`");
-  it.todo("lookup tables (list member) :592 — W7 `list_lookup_tables`");
-  it.todo("custom events (single member) :599 — W7 `create_custom_event`");
-  it.todo("custom events (list member) :608 — W7 `list_custom_events`");
-  it.todo("schemas family (single member) :615 — W8 `delete_schemas`");
-  it.todo("schemas family (list member) :622 — W8 `list_schema_registry`");
-  it.todo("governance monitoring (cancel) :629 — W8 `cancel_deletion_request`");
-  it.todo("governance monitoring (list) :636 — W8 `list_deletion_requests`");
+  // ---- W4–W8 members (todo conversion executed at B6-ARB, Finding A) ----
+  // The two flags cases pin `workspace_id=777` exactly as Python does
+  // (:461, :468) — feature flags are workspace-scoped.
+  it("flags family (single member): {} response is wrapped (:459)", async () => {
+    await assertCoded(
+      makeResultsWorkspace({}, { workspaceId: 777 }).getFeatureFlag("f1"),
+    );
+  });
+
+  it("flags family (list member): invalid item is wrapped (:466)", async () => {
+    await assertCoded(
+      makeResultsWorkspace([{}], { workspaceId: 777 }).listFeatureFlags(),
+    );
+  });
+
+  it("experiments family (single member): {} response is wrapped (:473)", async () => {
+    await assertCoded(makeResultsWorkspace({}).getExperiment("e1"));
+  });
+
+  it("experiments family (list member): invalid item is wrapped (:480)", async () => {
+    await assertCoded(makeResultsWorkspace([{}]).listExperiments());
+  });
+
+  it("annotations family (single member): {} response is wrapped (:487)", async () => {
+    await assertCoded(makeResultsWorkspace({}).getAnnotation(1));
+  });
+
+  it("annotations family (list member): invalid item is wrapped (:494)", async () => {
+    await assertCoded(makeResultsWorkspace([{}]).listAnnotations());
+  });
+
+  it("webhooks family (single member): {} response is wrapped (:501)", async () => {
+    await assertCoded(
+      makeResultsWorkspace({}).createWebhook(
+        new CreateWebhookParams({ name: "W", url: "https://x.test/h" }),
+      ),
+    );
+  });
+
+  it("webhooks family (list member): invalid item is wrapped (:508)", async () => {
+    await assertCoded(makeResultsWorkspace([{}]).listWebhooks());
+  });
+
+  it("alerts family (single member): {} response is wrapped (:515)", async () => {
+    await assertCoded(makeResultsWorkspace({}).getAlert(1));
+  });
+
+  it("alerts family (list member): invalid item is wrapped (:522)", async () => {
+    await assertCoded(makeResultsWorkspace([{}]).listAlerts());
+  });
+
+  it("lexicon definitions (events): invalid item is wrapped (:529)", async () => {
+    await assertCoded(
+      makeResultsWorkspace([{}]).getEventDefinitions({ names: ["x"] }),
+    );
+  });
+
+  it("lexicon definitions (properties): invalid item is wrapped (:536)", async () => {
+    await assertCoded(
+      makeResultsWorkspace([{}]).getPropertyDefinitions({ names: ["p"] }),
+    );
+  });
+
+  it("lexicon tags (single member): {} response is wrapped (:543)", async () => {
+    await assertCoded(
+      makeResultsWorkspace({}).createLexiconTag(
+        new CreateTagParams({ name: "T" }),
+      ),
+    );
+  });
+
+  it("lexicon tags (list member): invalid item is wrapped (:550)", async () => {
+    await assertCoded(makeResultsWorkspace([{}]).listLexiconTags());
+  });
+
+  it("drop filters (single member): {} response is wrapped (:557)", async () => {
+    await assertCoded(makeResultsWorkspace({}).getDropFilterLimits());
+  });
+
+  it("drop filters (list member): invalid item is wrapped (:564)", async () => {
+    await assertCoded(makeResultsWorkspace([{}]).listDropFilters());
+  });
+
+  it("custom properties (single member): {} response is wrapped (:571)", async () => {
+    await assertCoded(makeResultsWorkspace({}).getCustomProperty("cp1"));
+  });
+
+  it("custom properties (list member): invalid item is wrapped (:578)", async () => {
+    await assertCoded(makeResultsWorkspace([{}]).listCustomProperties());
+  });
+
+  it("lookup tables (single member): type-invalid url is wrapped (:585)", async () => {
+    await assertCoded(
+      makeResultsWorkspace({
+        url: 123,
+        path: "p",
+        key: "k",
+      }).getLookupUploadUrl(),
+    );
+  });
+
+  it("lookup tables (list member): invalid item is wrapped (:592)", async () => {
+    await assertCoded(makeResultsWorkspace([{}]).listLookupTables());
+  });
+
+  it("custom events (single member): {} response is wrapped (:599)", async () => {
+    await assertCoded(
+      makeResultsWorkspace({}).createCustomEvent(
+        new CreateCustomEventParams({ name: "CE", alternatives: ["A"] }),
+      ),
+    );
+  });
+
+  it("custom events (list member): invalid item is wrapped (:608)", async () => {
+    await assertCoded(makeResultsWorkspace([{}]).listCustomEvents());
+  });
+
+  it("schemas family (single member): {} response is wrapped (:615)", async () => {
+    await assertCoded(makeResultsWorkspace({}).deleteSchemas());
+  });
+
+  it("schemas family (list member): invalid item is wrapped (:622)", async () => {
+    await assertCoded(makeResultsWorkspace([{}]).listSchemaRegistry());
+  });
+
+  it("governance monitoring (cancel): invalid entry is wrapped (:629)", async () => {
+    await assertCoded(makeResultsWorkspace([{}]).cancelDeletionRequest(42));
+  });
+
+  it("governance monitoring (list): invalid item is wrapped (:636)", async () => {
+    await assertCoded(makeResultsWorkspace([{}]).listDeletionRequests());
+  });
 });

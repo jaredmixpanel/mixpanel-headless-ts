@@ -667,13 +667,14 @@ export async function uploadLookupTable(
     formData["data-group-id"] = pythonStr(params.data_group_id as PythonValue);
   }
 
-  let raw: Record<string, unknown> = native(
-    await client.registerLookupTable(formData),
-  ) as Record<string, unknown>;
+  let raw: unknown = native(await client.registerLookupTable(formData));
 
   // `{"uploadId": "..."}` marks async (Celery) processing for files
-  // >= 5 MB. `raw.get("uploadId")` treats absent and `null` alike.
-  const uploadId = raw["uploadId"] ?? null;
+  // >= 5 MB. Python guards the read with `isinstance(raw, dict)`
+  // (`:8060`) — watchlist #13 ports it as `isPlainRecord`; on a
+  // non-dict payload the read is skipped and `raw.get("uploadId")`
+  // treats absent and `null` alike (B6-ARB fidelity F2).
+  const uploadId = isPlainRecord(raw) ? (raw["uploadId"] ?? null) : null;
   if (uploadId !== null) {
     logger?.info?.(
       `Lookup table upload is processing asynchronously ` +
@@ -691,7 +692,10 @@ export async function uploadLookupTable(
 
   // The upload response may carry only `{'id': ...}`; inject the name
   // from params so LookupTable validation succeeds (`:8071-8074`).
-  if (!Object.hasOwn(raw, "name")) {
+  // Python's `isinstance(raw, dict)` half of the guard ports as
+  // `isPlainRecord` — a non-dict payload flows to validation UNTOUCHED
+  // (B6-ARB fidelity F2).
+  if (isPlainRecord(raw) && !Object.hasOwn(raw, "name")) {
     raw = { ...raw, name: params.name };
   }
   return validateResponseModel(LookupTable, raw, {

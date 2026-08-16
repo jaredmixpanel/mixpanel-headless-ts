@@ -168,6 +168,50 @@ describe("EntityModel construction semantics", () => {
   });
 });
 
+describe("model_dump identity passthrough (B6-BIND fidelity fix, B6-ARB Finding E lock)", () => {
+  // Pydantic v2 `model_dump` keeps arbitrary (non-dict, non-list,
+  // non-model) objects inside `dict[str, Any]` fields BY IDENTITY —
+  // measured live 2026-08-16 (`out['d']['k'] is c`, with and without
+  // `exclude_none`; disclosed in `B6-BIND-notes.md`). The pre-fix
+  // clone-anything walk decomposed a `Uint8Array` into index keys.
+
+  /** An arbitrary consumer class (the pydantic probe's `C()`). */
+  class Opaque {
+    /** Probe field. */
+    readonly k = 1;
+  }
+
+  it("passes custom-class members of dict fields through by reference", () => {
+    const instance = new Opaque();
+    const params = CreateCustomPropertyParams.fromDict({
+      name: "p",
+      resource_type: "events",
+      behavior: { k: instance },
+    });
+
+    const excludeNone = params.modelDumpExcludeNone();
+    expect((excludeNone["behavior"] as Record<string, unknown>)["k"]).toBe(
+      instance,
+    );
+    const plain = params.modelDump();
+    expect((plain["behavior"] as Record<string, unknown>)["k"]).toBe(instance);
+  });
+
+  it("does NOT decompose a Uint8Array into index keys (regression)", () => {
+    const bytes = new Uint8Array([1, 2, 3]);
+    const params = CreateCustomPropertyParams.fromDict({
+      name: "p",
+      resource_type: "events",
+      behavior: { payload: bytes },
+    });
+
+    const dumped = params.modelDumpExcludeNone();
+    expect((dumped["behavior"] as Record<string, unknown>)["payload"]).toBe(
+      bytes,
+    );
+  });
+});
+
 describe("hand-ported Python validators", () => {
   it("AccountTestResult: ok=True implies error is None (and vice versa)", () => {
     expect(() =>

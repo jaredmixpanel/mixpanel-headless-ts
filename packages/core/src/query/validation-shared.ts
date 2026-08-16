@@ -44,6 +44,7 @@ import {
 import type { FlowStep, RetentionEvent } from "../types/index.js";
 import {
   cpLength,
+  isPythonDict,
   pythonFloat,
   pythonFloatStr,
   pythonRepr,
@@ -299,34 +300,13 @@ export function isPythonInt(value: unknown): boolean {
  * @returns The Python type name Python would print for the
  *   equivalent value.
  */
-/**
- * TS analogue of Python `isinstance(value, dict)` — the ONE dict
- * discrimination for the ported value domain (B2 arbiter fix F1,
- * `b2-review-resolution.md` 2026-08-15; R10.4: third occurrence of the
- * pattern after `requireHashable`'s dict branch and the pre-fix
- * `isDict`/`isPlainObject` pair, so it is extracted here once — the
- * `user-builders.ts` helper of the same name re-exports it).
- *
- * Python's `isinstance(x, dict)` is False for floats and for class
- * instances. In the ported value domain a dict is exactly a PLAIN
- * object: prototype `Object.prototype` (JSON/codec decode output,
- * object literals) or `null` (`Object.create(null)` records). Class
- * instances — reconstructed core types (`Filter`, …) AND the rig's
- * `PyFloat` carrier, which is a class instance too — are excluded by
- * prototype, so a consumer dict that happens to carry a `spelling`
- * key still classifies as a dict, exactly as in Python (arbiter
- * probe record in `b2-review-resolution.md`).
- *
- * @param value - Candidate value.
- * @returns True when Python's `isinstance(value, dict)` would hold.
- */
-export function isPythonDict(value: unknown): value is Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return false;
-  }
-  const proto: unknown = Object.getPrototypeOf(value);
-  return proto === Object.prototype || proto === null;
-}
+// `isinstance(value, dict)` discrimination (B2 arbiter fix F1) — the
+// implementation MOVED to the leaf `compat/python-dict.ts` at the B6
+// arbiter pass (`b6-review-resolution.md` Finding D) so low-level
+// modules (`types/entities/model-base.ts`) can import it without an
+// evaluation cycle. Re-exported here so every existing consumer's
+// import path keeps working.
+export { isPythonDict };
 
 /**
  * Reproduce CPython's hashing failure for `x in frozenset` membership

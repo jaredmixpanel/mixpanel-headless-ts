@@ -279,8 +279,12 @@ export async function duplicateFeatureFlag(
  * Set test-user variant overrides for a feature flag
  * (`set_flag_test_users`, `workspace.py:5996-6019`).
  *
- * The one bare `model_dump()` in the shard (`:6019`) — `toJSON()` is
- * that dump's twin (module header).
+ * The one bare `model_dump()` in the shard (`:6019`) — `modelDump()`
+ * is its exact pydantic twin (W8's `modelDump` JSDoc: `toJSON` is NOT
+ * a substitute — no extras, no serialization aliases; harmonized at
+ * B6-ARB, fidelity F4. For `SetTestUsersParams` the two dumps coincide
+ * TODAY — one required alias-free field, `extra='ignore'` — so this is
+ * a future-proofing swap with no observable behavior change).
  *
  * @param client - The wire client.
  * @param flagId - Feature flag UUID.
@@ -292,7 +296,7 @@ export async function setFlagTestUsers(
   flagId: string,
   params: SetTestUsersParams,
 ): Promise<void> {
-  await client.setFlagTestUsers(flagId, params.toJSON());
+  await client.setFlagTestUsers(flagId, params.modelDump());
 }
 
 /**

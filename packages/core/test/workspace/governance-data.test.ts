@@ -57,6 +57,7 @@ import {
   AuthenticationError,
   MixpanelHeadlessError,
   QueryError,
+  ResponseValidationError,
 } from "../../src/errors.js";
 import {
   ComposedPropertyValue,
@@ -777,12 +778,15 @@ describe("TestUploadLookupTable", () => {
       file_path: "/tmp/big.csv",
     });
 
-    await expect(
-      ws.uploadLookupTable(params, {
-        poll_interval: 0.01,
-        max_poll_seconds: 0.05,
-      }),
-    ).rejects.toThrow(/timed out/);
+    const call = ws.uploadLookupTable(params, {
+      poll_interval: 0.01,
+      max_poll_seconds: 0.05,
+    });
+    // B6-ARB (assertions Finding C): Python asserts BOTH the class and
+    // the message (`pytest.raises(MixpanelHeadlessError, match="timed out")`,
+    // test_workspace_data_governance.py:1594).
+    await expect(call).rejects.toBeInstanceOf(MixpanelHeadlessError);
+    await expect(call).rejects.toThrow(/timed out/);
   });
 
   it("upload_lookup_table() raises MixpanelHeadlessError on async failure", async () => {
@@ -800,9 +804,12 @@ describe("TestUploadLookupTable", () => {
       file_path: "/tmp/bad.csv",
     });
 
-    await expect(
-      ws.uploadLookupTable(params, { poll_interval: 0.01 }),
-    ).rejects.toThrow(/failed/);
+    const call = ws.uploadLookupTable(params, { poll_interval: 0.01 });
+    // B6-ARB (assertions Finding C): Python asserts BOTH the class and
+    // the message (`pytest.raises(MixpanelHeadlessError, match="failed")`,
+    // test_workspace_data_governance.py:1644).
+    await expect(call).rejects.toBeInstanceOf(MixpanelHeadlessError);
+    await expect(call).rejects.toThrow(/failed/);
   });
 });
 
@@ -1041,7 +1048,7 @@ describe("ADDITIVE: upload_lookup_table seams and poll arms", () => {
    * @returns The stub.
    */
   function uploadStub(
-    registerResult: Record<string, unknown>,
+    registerResult: unknown,
     statuses: readonly Record<string, unknown>[] = [],
     calls: unknown[][] = [],
   ): MixpanelClient {
@@ -1137,6 +1144,36 @@ describe("ADDITIVE: upload_lookup_table seams and poll arms", () => {
     );
     expect(table.name).toBe("Injected");
     expect(table.id).toBe(7);
+  });
+
+  it("hands a non-dict register payload to validation untouched (B6-ARB FID-F2)", async () => {
+    // ADDITIVE (B6-ARB red-first lock, fidelity F2): Python guards BOTH
+    // register-response reads with `isinstance(raw, dict)`
+    // (`workspace.py:8060` uploadId read, `:8072` name-inject). Through
+    // an INJECTED client delivering a non-dict payload (the real B4
+    // client raises `expected dict` first — api_client.py:7741-7746),
+    // the raw value must reach `validate_response_model` UNTOUCHED and
+    // fail as a pydantic `model_type` error on the list itself, never
+    // as a spread-mangled `{0: …, name: …}` object missing `id`.
+    const client = uploadStub(["oops"]);
+    const clock = virtualClock();
+
+    const error = await uploadLookupTableMember(
+      client,
+      new UploadLookupTableParams({ name: "NonDict", file_path: "/tmp/t" }),
+      {},
+      { ...seams(clock.monotonic), sleep: clock.sleep },
+    ).then(
+      () => null,
+      (exc: unknown) => exc,
+    );
+
+    expect(error).toBeInstanceOf(ResponseValidationError);
+    const details = (error as ResponseValidationError).details as {
+      errors: readonly { type: string; input: unknown }[];
+    };
+    expect(details.errors[0]?.type).toBe("model_type");
+    expect(details.errors[0]?.input).toEqual(["oops"]);
   });
 
   it("raises UPLOAD_NOT_FOUND on a NOTFOUND poll", async () => {

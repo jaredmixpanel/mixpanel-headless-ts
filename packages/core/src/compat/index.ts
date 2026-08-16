@@ -11,6 +11,7 @@ export {
   cpSlice,
   sortedByCodepoint,
 } from "./codepoint.js";
+export { isPythonDict } from "./python-dict.js";
 export { pythonFloat } from "./python-float.js";
 export { pythonFloatStr } from "./python-float-str.js";
 export { pythonInt, pythonIntCoerce } from "./python-int.js";

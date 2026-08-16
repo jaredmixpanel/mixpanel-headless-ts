@@ -42,6 +42,7 @@
  */
 
 import { coerceBool, coerceFloat, coerceInt, coerceStr } from "../../coerce.js";
+import { isPythonDict } from "../../compat/python-dict.js";
 import { ResponseValidationError } from "../../errors.js";
 
 /**
@@ -717,7 +718,7 @@ function dumpValue(
   if (Array.isArray(value)) {
     return value.map((item) => dumpValue(item, byAlias, excludeNone));
   }
-  if (isPlainRecordValue(value)) {
+  if (isPythonDict(value)) {
     // Pydantic keeps `None` VALUES inside plain dict fields
     // (measured 2026-08-16) — only model fields are excluded.
     const out: Record<string, unknown> = {};
@@ -736,23 +737,12 @@ function dumpValue(
   return value;
 }
 
-/**
- * Whether a value is a PLAIN record (`Object.prototype` or null
- * prototype) — the dict shape the dump walk clones. Class instances
- * are NOT plain: they pass through {@link dumpValue} by reference,
- * mirroring pydantic's identity passthrough.
- *
- * @param value - The candidate value.
- * @returns True when the value is a plain record.
- * @internal
- */
-function isPlainRecordValue(value: unknown): value is Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return false;
-  }
-  const proto: unknown = Object.getPrototypeOf(value);
-  return proto === Object.prototype || proto === null;
-}
+// The dump walk's dict discrimination is `isPythonDict` (imported from
+// the leaf `compat/python-dict.ts`): class instances are NOT plain —
+// they pass through {@link dumpValue} by reference, mirroring
+// pydantic's identity passthrough. The BIND commit's local
+// `isPlainRecordValue` twin was removed at the B6 arbiter pass
+// (`b6-review-resolution.md` Finding D — watchlist #13, import-only).
 
 /**
  * Serialize one field value for {@link EntityModel.toJSON} /

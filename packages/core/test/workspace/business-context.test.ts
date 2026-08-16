@@ -447,15 +447,20 @@ describe("TestGetBusinessContextChain (:483)", () => {
   it("a response without org_context raises MixpanelHeadlessError", async () => {
     const { ws } = makeWorkspace(() => ok({ project_context: "# Project" }));
 
-    await expect(ws.getBusinessContextChain()).rejects.toThrow(
-      /missing required field 'org_context'/,
-    );
+    const call = ws.getBusinessContextChain();
+    // B6-ARB (assertions Finding C): Python asserts BOTH the class and
+    // the message (`pytest.raises(MixpanelHeadlessError)` + str-contains,
+    // test_workspace_business_context.py TestGetBusinessContextChain).
+    await expect(call).rejects.toBeInstanceOf(MixpanelHeadlessError);
+    await expect(call).rejects.toThrow(/missing required field 'org_context'/);
   });
 
   it("a response without project_context raises MixpanelHeadlessError", async () => {
     const { ws } = makeWorkspace(() => ok({ org_context: "# Org" }));
 
-    await expect(ws.getBusinessContextChain()).rejects.toThrow(
+    const call = ws.getBusinessContextChain();
+    await expect(call).rejects.toBeInstanceOf(MixpanelHeadlessError);
+    await expect(call).rejects.toThrow(
       /missing required field 'project_context'/,
     );
   });

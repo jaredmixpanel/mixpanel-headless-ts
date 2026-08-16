@@ -122,22 +122,27 @@ describe("TestHTTPTransportPreservation (test_workspace_use.py:132) — R6.2", (
   it("a workspace switch does NOT recreate the client", async () => {
     const { ws, client } = makeWorkspace();
     const before = ws.client;
+    // Python compares `id(client._http)` — the INNER pool. The TS twin
+    // is the pool token `httpHandle()` (B6-ARB fidelity F3), asserted
+    // through the facade path alongside the wrapper identity.
+    const poolBefore = ws.client.httpHandle();
 
     await ws.use({ workspace: 42 });
 
-    // Python compares `id(client._http)`; the TS invariant is the
-    // client instance identity (the pool lives inside it).
     expect(ws.client).toBe(before);
     expect(ws.client).toBe(client);
+    expect(ws.client.httpHandle()).toBe(poolBefore);
   });
 
   it("a project switch does NOT recreate the client", async () => {
     const { ws } = makeWorkspace();
     const before = ws.client;
+    const poolBefore = ws.client.httpHandle();
 
     await ws.use({ project: "9999999" });
 
     expect(ws.client).toBe(before);
+    expect(ws.client.httpHandle()).toBe(poolBefore);
   });
 
   it("an account switch does NOT recreate the client", async () => {
@@ -150,10 +155,12 @@ describe("TestHTTPTransportPreservation (test_workspace_use.py:132) — R6.2", (
       envWorkspaceId,
     });
     const before = ws.client;
+    const poolBefore = ws.client.httpHandle();
 
     await ws.use({ account: "other" });
 
     expect(ws.client).toBe(before);
+    expect(ws.client.httpHandle()).toBe(poolBefore);
     expect(ws.account.name).toBe("other");
   });
 });

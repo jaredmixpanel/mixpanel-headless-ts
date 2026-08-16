@@ -15,6 +15,25 @@
 //   lives behind the B7 resolver kwargs (`b6-packets.md` §14 Caution 4).
 //   The `use()` twin of the same guard (:981, :993) IS translated here.
 //
+// COVERED BY EQUAL-OR-STRONGER B5/B6 TWINS (exclusion citations added at
+// B6-ARB, `b6-review-resolution.md` Finding B — the original header
+// claimed the classes whole while translating a subset, an R10.2
+// misclaim):
+//
+// - `TestLiveQueries::test_query_saved_report_delegation` (:293) →
+//   `workspace-bookmarks.test.ts` `TestQuerySavedReport
+//   (test_workspace_bookmarks.py:210)` (8 tests, delegation + kwargs).
+// - `TestDiscovery` (:439): 9 of 11 cases have twins in the B5
+//   translation `discovery-facade.test.ts` — `property_values` (:478) →
+//   :99, `subproperties` (:498) → :112/:127, `funnels` (:523) → :137,
+//   `cohorts` (:544) → :147, `top_events` (:572) → :191,
+//   `clear_discovery_cache` (:594) → :210/:224, `lexicon_schemas`
+//   (:610) + `…_with_entity_type_filter` (:649) → :233, `lexicon_schema`
+//   (:678) → :255. The `events`/`properties` delegation pair (:442,
+//   :460) is translated below.
+// - The remaining 7 `TestLiveQueries` delegation cases (:210-:431) had
+//   NO Layer-3 twin anywhere and are translated below (B6-ARB fix).
+//
 // Python's `Workspace(session=…, _api_client=…)` factory becomes
 // `new Workspace({session, client})`; the `try/finally: ws.close()`
 // wrapper is kept (B6-W1 ports `close()`), unlike the B5 translations
@@ -39,9 +58,16 @@ import {
 } from "../../src/client/me.js";
 import { MeService, inMemoryMeCache } from "../../src/services/me.js";
 import {
-  SegmentationResult,
+  ActivityFeedResult,
+  EventCountsResult,
+  FrequencyResult,
   FunnelResult,
+  NumericAverageResult,
+  NumericBucketResult,
+  NumericSumResult,
+  PropertyCountsResult,
   RetentionResult,
+  SegmentationResult,
 } from "../../src/types/results/live-query.js";
 
 /** The `_TEST_SESSION` twin (`test_workspace.py:38-46`). */
@@ -145,6 +171,183 @@ describe("TestLiveQueries (test_workspace.py:118) — live-query delegation", ()
 
     expect(got.born_event).toBe("Sign Up");
     expect(retention).toHaveBeenCalledTimes(1);
+    await ws.close();
+  });
+
+  // The 7 cases below were translated at B6-ARB (Finding B) — they had
+  // no Layer-3 twin anywhere before.
+
+  it("eventCounts() delegates to the live-query service (T047)", async () => {
+    const { ws } = makeWorkspace();
+    const result = new EventCountsResult({
+      events: ["A", "B"],
+      from_date: "2024-01-01",
+      to_date: "2024-01-31",
+      unit: "day",
+      type: "general",
+      series: {},
+    });
+    const eventCounts = vi.fn().mockResolvedValue(result);
+    vi.spyOn(ws, "liveQueryService", "get").mockReturnValue({
+      eventCounts,
+    } as never);
+
+    const got = await ws.eventCounts(["A", "B"], {
+      from_date: "2024-01-01",
+      to_date: "2024-01-31",
+    });
+
+    expect(got.events).toEqual(["A", "B"]);
+    expect(eventCounts).toHaveBeenCalledTimes(1);
+    await ws.close();
+  });
+
+  it("propertyCounts() delegates to the live-query service (T048)", async () => {
+    const { ws } = makeWorkspace();
+    const result = new PropertyCountsResult({
+      event: "Test",
+      property_name: "country",
+      from_date: "2024-01-01",
+      to_date: "2024-01-31",
+      unit: "day",
+      type: "general",
+      series: {},
+    });
+    const propertyCounts = vi.fn().mockResolvedValue(result);
+    vi.spyOn(ws, "liveQueryService", "get").mockReturnValue({
+      propertyCounts,
+    } as never);
+
+    const got = await ws.propertyCounts("Test", "country", {
+      from_date: "2024-01-01",
+      to_date: "2024-01-31",
+    });
+
+    expect(got.property_name).toBe("country");
+    expect(propertyCounts).toHaveBeenCalledTimes(1);
+    await ws.close();
+  });
+
+  it("activityFeed() delegates to the live-query service (T049)", async () => {
+    const { ws } = makeWorkspace();
+    const result = new ActivityFeedResult({
+      distinct_ids: ["user1"],
+      from_date: null,
+      to_date: null,
+      events: [],
+    });
+    const activityFeed = vi.fn().mockResolvedValue(result);
+    vi.spyOn(ws, "liveQueryService", "get").mockReturnValue({
+      activityFeed,
+    } as never);
+
+    const got = await ws.activityFeed(["user1"]);
+
+    expect(got.distinct_ids).toEqual(["user1"]);
+    expect(activityFeed).toHaveBeenCalledTimes(1);
+    await ws.close();
+  });
+
+  it("frequency() delegates to the live-query service (T051)", async () => {
+    const { ws } = makeWorkspace();
+    const result = new FrequencyResult({
+      event: null,
+      from_date: "2024-01-01",
+      to_date: "2024-01-31",
+      unit: "day",
+      addiction_unit: "hour",
+      data: {},
+    });
+    const frequency = vi.fn().mockResolvedValue(result);
+    vi.spyOn(ws, "liveQueryService", "get").mockReturnValue({
+      frequency,
+    } as never);
+
+    const got = await ws.frequency({
+      from_date: "2024-01-01",
+      to_date: "2024-01-31",
+    });
+
+    expect(got.unit).toBe("day");
+    expect(frequency).toHaveBeenCalledTimes(1);
+    await ws.close();
+  });
+
+  it("segmentationNumeric() delegates to the live-query service (T052)", async () => {
+    const { ws } = makeWorkspace();
+    const result = new NumericBucketResult({
+      event: "Purchase",
+      from_date: "2024-01-01",
+      to_date: "2024-01-31",
+      property_expr: 'properties["amount"]',
+      unit: "day",
+      series: {},
+    });
+    const segmentationNumeric = vi.fn().mockResolvedValue(result);
+    vi.spyOn(ws, "liveQueryService", "get").mockReturnValue({
+      segmentationNumeric,
+    } as never);
+
+    const got = await ws.segmentationNumeric("Purchase", {
+      from_date: "2024-01-01",
+      to_date: "2024-01-31",
+      on: 'properties["amount"]',
+    });
+
+    expect(got.event).toBe("Purchase");
+    expect(segmentationNumeric).toHaveBeenCalledTimes(1);
+    await ws.close();
+  });
+
+  it("segmentationSum() delegates to the live-query service (T053)", async () => {
+    const { ws } = makeWorkspace();
+    const result = new NumericSumResult({
+      event: "Purchase",
+      from_date: "2024-01-01",
+      to_date: "2024-01-31",
+      property_expr: 'properties["amount"]',
+      unit: "day",
+      results: {},
+    });
+    const segmentationSum = vi.fn().mockResolvedValue(result);
+    vi.spyOn(ws, "liveQueryService", "get").mockReturnValue({
+      segmentationSum,
+    } as never);
+
+    const got = await ws.segmentationSum("Purchase", {
+      from_date: "2024-01-01",
+      to_date: "2024-01-31",
+      on: 'properties["amount"]',
+    });
+
+    expect(got.event).toBe("Purchase");
+    expect(segmentationSum).toHaveBeenCalledTimes(1);
+    await ws.close();
+  });
+
+  it("segmentationAverage() delegates to the live-query service (T054)", async () => {
+    const { ws } = makeWorkspace();
+    const result = new NumericAverageResult({
+      event: "Purchase",
+      from_date: "2024-01-01",
+      to_date: "2024-01-31",
+      property_expr: 'properties["amount"]',
+      unit: "day",
+      results: {},
+    });
+    const segmentationAverage = vi.fn().mockResolvedValue(result);
+    vi.spyOn(ws, "liveQueryService", "get").mockReturnValue({
+      segmentationAverage,
+    } as never);
+
+    const got = await ws.segmentationAverage("Purchase", {
+      from_date: "2024-01-01",
+      to_date: "2024-01-31",
+      on: 'properties["amount"]',
+    });
+
+    expect(got.event).toBe("Purchase");
+    expect(segmentationAverage).toHaveBeenCalledTimes(1);
     await ws.close();
   });
 });
