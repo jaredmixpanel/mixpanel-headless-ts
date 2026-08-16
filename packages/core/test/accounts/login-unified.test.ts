@@ -21,7 +21,8 @@ import { describe, expect, it } from "vitest";
 import { createAccountsNamespace } from "../../src/accounts/namespace.js";
 import { createSessionNamespace } from "../../src/accounts/session-namespace.js";
 import type { ProgressFactory } from "../../src/accounts/accounts-ops.js";
-import { InvalidArgumentError } from "../../src/errors.js";
+import { ConfigError, InvalidArgumentError } from "../../src/errors.js";
+import { OAuthTokens } from "../../src/auth/token.js";
 import { Secret } from "../../src/secret.js";
 import {
   makeEffects,
@@ -510,5 +511,82 @@ describe("TestLoginUnifiedPickerSortOrder (test_accounts_namespace.py:1544)", ()
     });
 
     expect(captured[0]).toEqual(["acmeproj", "betaproj"]);
+  });
+});
+
+// Spec-cited ADDITIONS (not Python translations) — pair-A arbiter
+// locks, `b7-reviewA-resolution.md` SEM-F1 / SEM-F2. Expected values
+// live-verified against CPython 2026-08-16 (arbiter probe:
+// `login_unified(token_env="")` with MP_OAUTH_TOKEN set raises
+// ConfigError "--token-env '' is unset; cannot probe region.").
+describe("B7-ARB-A resolution locks (b7-reviewA-resolution.md SEM-F1/SEM-F2)", () => {
+  it('token_env="" falls back to MP_OAUTH_TOKEN and fails at the PROBE like Python (accounts.py:1812)', async () => {
+    const bundle = makeEffects({ env: { MP_OAUTH_TOKEN: "tok-x" } });
+    const accounts = createAccountsNamespace(bundle.effects);
+
+    let caught: unknown = null;
+    try {
+      await accounts.loginUnified({ token_env: "" });
+    } catch (exc) {
+      caught = exc;
+    }
+    // NOT the `Env var '' is unset` collection error — the bearer read
+    // falls back to MP_OAUTH_TOKEN (`token_env or "MP_OAUTH_TOKEN"`),
+    // then the region probe rejects the EMPTY token_env pointer
+    // exactly as Python does (`region_probe.py:252-256`).
+    expect(caught).toBeInstanceOf(ConfigError);
+    expect((caught as ConfigError).message).toBe(
+      "--token-env '' is unset; cannot probe region.",
+    );
+  });
+
+  it("browser flow refuses an ORPHANED per-account state for the final name (accounts.py:1704-1708)", async () => {
+    const orphaned = new OAuthTokens({
+      access_token: new Secret("orphan-tok"),
+      refresh_token: new Secret("orphan-refresh"),
+      expires_at: new Date(Date.now() + 3600_000).toISOString(),
+      scope: "read:project",
+      token_type: "Bearer",
+    });
+    const bundle = makeEffects({
+      oauthFlow: {
+        login: (): Promise<OAuthTokens> =>
+          Promise.resolve(
+            new OAuthTokens({
+              access_token: new Secret("brw-tok"),
+              refresh_token: new Secret("brw-refresh"),
+              expires_at: new Date(Date.now() + 3600_000).toISOString(),
+              scope: "read:project",
+              token_type: "Bearer",
+            }),
+          ),
+      },
+      fetchImpl: meFetch({
+        user_id: 1,
+        user_email: "u@example.com",
+        organizations: { "100": { id: 100, name: "Acme" } },
+        projects: { "42": { name: "Demo", organization_id: 100 } },
+      }),
+    });
+    // The orphan state: per-account tokens exist but NO config record
+    // (Python: a leftover `~/.mp/accounts/personal/` directory).
+    bundle.tokenStore.store.writeTokens("personal", orphaned);
+    const accounts = createAccountsNamespace(bundle.effects);
+
+    let caught: unknown = null;
+    try {
+      await accounts.loginUnified({ name: "personal" });
+    } catch (exc) {
+      caught = exc;
+    }
+    expect(caught).toBeInstanceOf(ConfigError);
+    expect((caught as ConfigError).message).toContain("already exists");
+    expect((caught as ConfigError).message).toContain(
+      "mp account remove personal",
+    );
+    // Python raises BEFORE the rename publishes anything — the orphan
+    // state must be untouched (no silent overwrite).
+    expect(bundle.tokenStore.written.get("personal")).toBe(orphaned);
+    expect(bundle.config.state.accounts.has("personal")).toBe(false);
   });
 });

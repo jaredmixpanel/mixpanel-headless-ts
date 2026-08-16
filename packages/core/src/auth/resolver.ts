@@ -351,14 +351,16 @@ export function resolveProjectAxis(
 ): string | null {
   const envVal = args.env.MP_PROJECT_ID;
   if (envVal !== undefined && envVal !== "") {
-    // TODO(port): `str.isdigit()` also accepts Numeric_Type=Digit
-    // codepoints outside Nd (e.g. "²"), which CPython then REJECTS at
-    // `Project(id=...)` with "Invalid project ID" (verified live
-    // 2026-08-16, B7-A2 RUN record). JS regex has no Numeric_Type
-    // property, so those characters fail THIS guard instead — same
-    // ConfigError class + code, different message/details (disclosed;
-    // arbiter escalation in B7-A2-notes.md §disclosures). Nd digits
-    // (e.g. "٤٢") pass both guards in BOTH languages and resolve.
+    // DISCLOSED DIVERGENCE (ruled by the pair-A arbiter,
+    // `b7-reviewA-resolution.md` ruling R1 — accepted as message-only;
+    // no pinned Numeric_Type table): `str.isdigit()` also accepts
+    // Numeric_Type=Digit codepoints outside Nd (e.g. "²"), which
+    // CPython then REJECTS at `Project(id=...)` with "Invalid project
+    // ID" (verified live 2026-08-16, B7-A2 RUN record). JS regex has
+    // no Numeric_Type property, so those characters fail THIS guard
+    // instead — same ConfigError class + code (`CONFIG_ERROR`, the R5
+    // contract), different message/details. Nd digits (e.g. "٤٢")
+    // pass both guards in BOTH languages and resolve.
     if (!/^\p{Nd}+$/u.test(envVal)) {
       throw new ConfigError(
         `MP_PROJECT_ID=${pythonRepr(envVal)} must be a digit string.`,

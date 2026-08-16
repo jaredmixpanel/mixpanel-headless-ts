@@ -622,6 +622,20 @@ async function loginUnifiedNewBrowser(
     );
   }
 
+  // Orphan-state guard (`accounts.py:1704-1708`; restored per
+  // `b7-reviewA-resolution.md` SEM-F2): per-account state exists WITHOUT
+  // a config record (the config collision already raised
+  // AccountExistsError above) → refuse rather than silently overwrite.
+  // The message renders the NAME where Python renders the directory
+  // path — the in-memory seam has no path (message out of contract,
+  // R5.4; class + code identical).
+  if (effects.tokenStore.accountDirExists(finalName)) {
+    throw new ConfigError(
+      `Final account directory for '${finalName}' already exists. Run ` +
+        `\`mp account remove ${finalName}\` first or pass --name.`,
+    );
+  }
+
   // Validation passed — persist tokens, then the account record; a
   // failure inside add()/cache rolls the published dir back
   // (`accounts.py:1726-1741`).
@@ -693,7 +707,15 @@ async function loginUnifiedNewCredential(
     }
     secret = new Secret(secretRaw);
   } else {
-    const envName = args.token_env ?? "MP_OAUTH_TOKEN";
+    // Python `token_env or "MP_OAUTH_TOKEN"` (`accounts.py:1812`) —
+    // the empty string ALSO falls back (falsy-`or`, not nullish;
+    // `b7-reviewA-resolution.md` SEM-F1). `resolvedTokenEnv` below
+    // keeps the `is not None` check: `token_env=""` still records the
+    // empty pointer, exactly like Python (:1819-1822).
+    const envName =
+      args.token_env !== null && args.token_env !== ""
+        ? args.token_env
+        : "MP_OAUTH_TOKEN";
     const bearer = effects.env.get(envName);
     if (bearer === undefined || bearer === "") {
       throw new ConfigError(

@@ -607,7 +607,10 @@ export async function accountsTest(
   } catch (exc) {
     if (exc instanceof ConfigError) {
       return new AccountTestResult({
-        account_name: name ?? "(none)",
+        // Python `name or "(none)"` (`accounts.py:727`) — the empty
+        // string ALSO defaults (falsy-`or`, not nullish;
+        // `b7-reviewA-resolution.md` SEM-F1).
+        account_name: name !== null && name !== "" ? name : "(none)",
         ok: false,
         error: exc.message,
       });
@@ -738,8 +741,10 @@ export async function accountsLogin(
   }
   const projectKeys = Object.keys(meResp.projects);
   if (chosenProject === null && projectKeys.length > 0) {
-    // `next(iter(sorted(me_resp.projects)))` — codepoint sort
-    // (`accounts.py:856`).
+    // `next(iter(sorted(me_resp.projects)))` (`accounts.py:856`) —
+    // default Array.sort is UTF-16 code-UNIT order, which coincides
+    // with Python's codepoint sort for these all-ASCII digit-string
+    // project IDs (`b7-reviewA-resolution.md` SEM-N3).
     chosenProject = [...projectKeys].sort()[0] ?? null;
   }
   assertProjectRegionMatches(meResp, chosenProject, account.region);
@@ -827,7 +832,14 @@ export async function accountsExportBridge(
   effects: AuthEffects,
   options: ExportBridgeOptions,
 ): Promise<string> {
-  const name = options.account ?? effects.config.getActive().account ?? null;
+  // Python `account or cm.get_active().account` (`accounts.py:997`) —
+  // an EMPTY-string account also falls through to the active account
+  // (falsy-`or`, not nullish; `b7-reviewA-resolution.md` SEM-F1).
+  const explicitAccount = options.account ?? null;
+  const name =
+    explicitAccount !== null && explicitAccount !== ""
+      ? explicitAccount
+      : (effects.config.getActive().account ?? null);
   if (name === null) {
     throw new ConfigError(
       "No account specified and no active account configured.",

@@ -459,6 +459,9 @@ export function fakeTokenStore(): FakeTokenStore {
       },
       clientInfoPath: (region: Region): string =>
         `/fake/.mp/oauth/client_${region}.json`,
+      // In-memory dual of `account_dir(name).exists()`: any held
+      // token state counts as the per-account directory.
+      accountDirExists: (name: string): boolean => written.has(name),
     },
   };
 }

@@ -102,14 +102,22 @@ export function slugify(value: string | null | undefined): string {
  * to the literal `"account"`. Collision suffixes start at `-2` (never
  * `-1`) and increment monotonically until a unique name is found.
  *
- * ORDER CAVEAT (packet Caution #13 — NOT self-sanctioned; disclosed in
- * the shard RUN record and escalated to the shard arbiter): Python's
- * "first organization" is dict INSERTION order (`next(iter(...))`,
- * `naming.py:122`), but `MeResponse.organizations` here is a plain
- * `Record` whose integer-like org-id keys JS hoists in ascending
- * numeric order. The two agree whenever `/me` emits orgs in ascending
- * id order (every recorded fixture does); they diverge when it does
- * not.
+ * ORDER CAVEAT (packet Caution #13 — RULED by the pair-A arbiter,
+ * `b7-reviewA-resolution.md` ruling R2: standing DISCLOSED DIVERGENCE
+ * per the Discrepancy #9/#10 mechanism — the insertion order is
+ * destroyed at `JSON.parse`/object construction and cannot be
+ * recovered without an ordered-container change to the B4-owned
+ * `MeResponse` shape; the naming fuzz domain stays ascending-id, a
+ * documented omission): Python's "first organization" is dict
+ * INSERTION order (`next(iter(...))`, `naming.py:122`), but
+ * `MeResponse.organizations` here is a plain `Record` whose
+ * integer-like org-id keys JS hoists in ascending numeric order. The
+ * two agree whenever `/me` emits orgs in ascending id order (every
+ * recorded fixture does); they diverge when it does not. The same
+ * ruling covers the two sibling OUT-OF-CONTRACT sites (semantics
+ * review N2): the "Accessible projects:" listing order in
+ * `_resolve_project`'s error messages and picker-list tie order for
+ * case-folded (org, name) key collisions.
  *
  * @param me - Parsed `/me` response.
  * @param existing - Set of already-taken local account names. Treated

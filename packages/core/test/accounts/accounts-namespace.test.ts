@@ -765,4 +765,61 @@ describe("TestLogoutHonorsStorageOverride (test_accounts_namespace.py:934)", () 
 });
 
 // TestSummaryTableDynamicWidth (:967) — EXCLUDED (CLI formatter; plan
-// D4 — see the file header).
+// D4 — see the file header; exclusion RATIFIED by the pair-A arbiter,
+// `b7-reviewA-resolution.md` ASR-F1).
+
+// Spec-cited ADDITIONS (not Python translations): empty-string
+// falsiness locks for the Python `or`-defaulting parameter sites the
+// pair-A semantics review found ported as nullish-`??`
+// (`b7-reviewA-resolution.md` SEM-F1; `accounts.py:727`, `:997`).
+describe("B7-ARB-A SEM-F1 falsiness locks (b7-reviewA-resolution.md)", () => {
+  it('test("") reports account_name "(none)" like Python `name or "(none)"`', async () => {
+    const { effects } = makeEffects();
+    const accounts = createAccountsNamespace(effects);
+
+    const result = await accounts.test("");
+
+    expect(result.ok).toBe(false);
+    expect(result.account_name).toBe("(none)");
+  });
+
+  it('exportBridge(account="") falls through to the ACTIVE account', async () => {
+    const exported: string[] = [];
+    const { effects } = makeEffects({
+      bridge: {
+        load: () => null,
+        export: (options): string => {
+          exported.push(options.account.name);
+          return options.to;
+        },
+        remove: () => false,
+      },
+    });
+    const accounts = createAccountsNamespace(effects);
+    await accounts.add("team", SA_OPTS);
+
+    const path = await accounts.exportBridge({
+      to: "/fake/bridge.json",
+      account: "",
+    });
+
+    expect(path).toBe("/fake/bridge.json");
+    expect(exported).toEqual(["team"]);
+  });
+
+  it('exportBridge(account="") with no active account raises the no-account ConfigError', async () => {
+    const { effects } = makeEffects();
+    const accounts = createAccountsNamespace(effects);
+
+    let caught: unknown = null;
+    try {
+      await accounts.exportBridge({ to: "/fake/bridge.json", account: "" });
+    } catch (exc) {
+      caught = exc;
+    }
+    expect(caught).toBeInstanceOf(ConfigError);
+    expect((caught as ConfigError).message).toBe(
+      "No account specified and no active account configured.",
+    );
+  });
+});

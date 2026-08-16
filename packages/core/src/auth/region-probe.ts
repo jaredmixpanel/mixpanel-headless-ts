@@ -296,9 +296,14 @@ export function probeClientFromFetch(
  * Pure URL-stripping twin of the Python `_factory` base derivation
  * (`region_probe.py:276-277`): `urlsplit` → `urlunsplit((scheme,
  * netloc, "", "", ""))` — scheme+host only, path/query/fragment
- * dropped. The URL parser's `origin` is equivalent for http(s) URLs;
- * R2.13's concat-only rule governs REQUEST path assembly, not this
- * read-only parse (packet §2.3 item 7 / Caution #11).
+ * dropped. The URL parser's `origin` is equivalent for CANONICAL
+ * http(s) URLs — the three `ENDPOINTS[*].app` values, the only in-repo
+ * inputs. Disclosed skew for NON-canonical inputs
+ * (`b7-reviewA-resolution.md` SEM-F3): `origin` drops default ports
+ * (`:443`/`:80`) and userinfo and lowercases scheme/host, where
+ * Python's `urlunsplit` preserves all three. R2.13's concat-only rule
+ * governs REQUEST path assembly, not this read-only parse (packet §2.3
+ * item 7 / Caution #11).
  *
  * @param appUrl - The `ENDPOINTS[region]["app"]` URL.
  * @returns The scheme+host base URL.

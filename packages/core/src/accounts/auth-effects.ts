@@ -320,6 +320,20 @@ export interface TokenStore {
    * @returns Absolute path (may not exist yet).
    */
   clientInfoPath(region: Region): string;
+
+  /**
+   * Whether ANY per-account state exists for `name` — the
+   * `account_dir(name).exists()` orphan-directory probe guarding the
+   * browser new-account flow (`accounts.py:1704-1708`; added by the
+   * pair-A arbiter, `b7-reviewA-resolution.md` SEM-F2). B8 checks the
+   * on-disk `~/.mp/accounts/{name}/` directory; in-memory fakes report
+   * whether they hold state for the name.
+   *
+   * @param name - Account name.
+   * @returns `true` when the per-account directory (or fake state)
+   *   exists.
+   */
+  accountDirExists(name: string): boolean;
 }
 
 /**
@@ -532,6 +546,7 @@ export function defaultAuthEffects(): AuthEffects {
       removeTokens: unportedAuthSeam("tokenStore.removeTokens"),
       removeAccountDir: unportedAuthSeam("tokenStore.removeAccountDir"),
       clientInfoPath: unportedAuthSeam("tokenStore.clientInfoPath"),
+      accountDirExists: unportedAuthSeam("tokenStore.accountDirExists"),
     },
     tokenResolver: {
       getBrowserToken: unportedAuthSeam("tokenResolver.getBrowserToken"),
