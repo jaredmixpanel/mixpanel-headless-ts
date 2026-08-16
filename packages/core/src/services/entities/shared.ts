@@ -116,6 +116,20 @@ export function truthyList(
 }
 
 /**
+ * Python truthiness for optional dicts (`if body:` — B4-C4
+ * `duplicate_experiment`, `api_client.py:5632`): `None` and `{}` are
+ * both falsy.
+ *
+ * @param value - The optional dict.
+ * @returns Whether Python would take the branch.
+ */
+export function truthyRecord(
+  value: Record<string, unknown> | null | undefined,
+): value is Record<string, unknown> {
+  return value !== undefined && value !== null && Object.keys(value).length > 0;
+}
+
+/**
  * The `",".join(str(i) for i in ids)` twin (R11.7: `pythonStr`, never
  * `String(...)` — `str(True)` is `"True"`, `str(1.5)` is `"1.5"`).
  *

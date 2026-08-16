@@ -84,6 +84,26 @@ import {
   type CohortMethods,
 } from "../services/entities/cohorts.js";
 import {
+  createFlagMethods,
+  type FlagMethods,
+} from "../services/entities/flags.js";
+import {
+  createExperimentMethods,
+  type ExperimentMethods,
+} from "../services/entities/experiments.js";
+import {
+  createAnnotationMethods,
+  type AnnotationMethods,
+} from "../services/entities/annotations.js";
+import {
+  createWebhookMethods,
+  type WebhookMethods,
+} from "../services/entities/webhooks.js";
+import {
+  createAlertMethods,
+  type AlertMethods,
+} from "../services/entities/alerts.js";
+import {
   createRequestExecutor,
   normalizedAbortError,
   rawFetch,
@@ -326,7 +346,8 @@ export interface ClientCore {
  * The assembled Mixpanel API client (C1 core surface; B4-C2..C5 extend
  * this interface with their domain methods at the marked merge point —
  * C2 landed: query-host + engage + streaming/export; C3 landed:
- * dashboards + bookmarks-v2 + cohorts-app entity CRUD).
+ * dashboards + bookmarks-v2 + cohorts-app entity CRUD; C4 landed:
+ * flags + experiments + annotations + webhooks + alerts).
  */
 export interface MixpanelClient
   extends
@@ -335,7 +356,12 @@ export interface MixpanelClient
     StreamingMethods,
     DashboardMethods,
     BookmarkMethods,
-    CohortMethods {
+    CohortMethods,
+    FlagMethods,
+    ExperimentMethods,
+    AnnotationMethods,
+    WebhookMethods,
+    AlertMethods {
   /** The resolved Session bound to this client (`session` property). */
   readonly session: Session;
   /** The project ID from the bound Session (`project_id` property). */
@@ -971,6 +997,14 @@ export function createMixpanelClient(
     }
   };
 
+  // `require_scoped_path` (`api_client.py:1666-1694`) as a named
+  // closure: shared by the public client member below AND the C4 flag
+  // factory (feature flags are the require-scoped domain).
+  const requireScopedPath = async (domainPath: string): Promise<string> => {
+    const wsId = await resolveWorkspaceId();
+    return `/projects/${session.project.id}/workspaces/${wsId}/${domainPath}`;
+  };
+
   const client: MixpanelClient = {
     // === B4 domain-method merge point (append-only; one spread line
     // per shard — C2..C5; shards touch disjoint lines here). ===
@@ -980,6 +1014,11 @@ export function createMixpanelClient(
     ...createDashboardMethods(core),
     ...createBookmarkMethods(core),
     ...createCohortMethods(core),
+    ...createFlagMethods(core, { requireScopedPath }),
+    ...createExperimentMethods(core),
+    ...createAnnotationMethods(core),
+    ...createWebhookMethods(core),
+    ...createAlertMethods(core),
     get session(): Session {
       return session;
     },
@@ -1048,10 +1087,7 @@ export function createMixpanelClient(
         projectId: session.project.id,
         workspaceId,
       }),
-    requireScopedPath: async (domainPath: string): Promise<string> => {
-      const wsId = await resolveWorkspaceId();
-      return `/projects/${session.project.id}/workspaces/${wsId}/${domainPath}`;
-    },
+    requireScopedPath,
     withProject: (
       projectId: string,
       newWorkspaceId: number | null = null,

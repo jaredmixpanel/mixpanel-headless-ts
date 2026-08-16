@@ -160,6 +160,7 @@ import type {
 import { ImplementationRegistry } from "./runner.js";
 import { registerApiClientCoreBindings } from "./wire-client.js";
 import { registerEntityWireBindings } from "./wire-entities.js";
+import { registerLifecycleWireBindings } from "./wire-lifecycle.js";
 import { registerQueryWireBindings } from "./wire-queries.js";
 import { WireStubClient, type WireStubRequestOptions } from "./wirestub.js";
 
@@ -1555,6 +1556,8 @@ export function createRunnerDeps(recordEpoch: string): RunnerDeps {
   registerQueryWireBindings(implementations);
   // B4-C3: dashboards + bookmarks-v2 + cohorts-app entity CRUD.
   registerEntityWireBindings(implementations);
+  // B4-C4: flags + experiments + annotations + webhooks + alerts.
+  registerLifecycleWireBindings(implementations);
   registerContractCodecs(codecs);
   registerQueryParamBindings(implementations, codecs);
   registerValidatorBindings(implementations);
