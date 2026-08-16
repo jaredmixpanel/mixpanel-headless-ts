@@ -11,6 +11,7 @@
  * tests, but deliberately NOT re-exported from the package barrel
  * (`src/index.ts`), mirroring its absence from `__all__`.
  */
+export * from "./builders.js";
 export * from "./enums.js";
 export * from "./schema-sorting.js";
 export * from "./schema.js";
