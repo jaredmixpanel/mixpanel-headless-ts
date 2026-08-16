@@ -12,17 +12,38 @@
  * it is built here with the replay models and codec-registered exactly
  * like the C7 classes (phase2-design C6-d).
  *
- * NOT ported in Phase 2 (TODO(port), batch B5 — they depend on
- * `_internal/replays/` aggregators, `replay_labels`, or the rrweb
- * analyzer): `Replay.summary_markdown`, `ReplayBundle.elements_df`,
- * `top_clicks`, `rage_clicks`, `long_pauses`, `error_sessions`,
- * `find_pattern`, `sample` (Python Mersenne `random.Random(seed)`
- * parity), and `summary_markdown`. Their codec-visible cache slots
- * exist and stay `null`.
+ * The Phase-2 TODO(port) block is CLOSED as of batch B5 shard S3
+ * (`b5-packets.md` §5): `Replay.summaryMarkdown`,
+ * `ReplayBundle.toElementsRows` / `topClicks` / `rageClicks` /
+ * `longPauses` / `errorSessions` / `findPattern` / `sample` /
+ * `summaryMarkdown` now compose `src/replays/` (aggregators,
+ * `replay_labels`, the rrweb analyzer) and — for `sample` — full
+ * CPython `random.Random(seed)` parity (`compat/python-random.ts`,
+ * decision S3-D1). The codec-visible cache slots stay `null`: the
+ * pandas frames they memoized are row-array projections here, and the
+ * recorded field-walk payloads still expect `null`.
+ *
+ * Import-cycle note: `src/replays/rrweb-analyzer.ts` imports
+ * `UserAction` from THIS module, and this module imports
+ * `renderMarkdown` from it. The cycle is safe under ESM — every
+ * cross-edge is consumed inside a function body, never at module
+ * evaluation time — and mirrors Python's deferred function-local
+ * imports at exactly the same call sites (`types.py:13199`, `:13529`,
+ * `:13585`, `:13738`, `:13777`).
  */
 
-import { pythonFloatStr } from "../../compat/index.js";
+import { compareCodepoints, pythonFloatStr } from "../../compat/index.js";
+import { pythonSample } from "../../compat/python-random.js";
 import { ParamValidationError } from "../../errors.js";
+import {
+  errorSessions,
+  longPauses,
+  rageClicks,
+  realClicks,
+  topClicks,
+} from "../../replays/aggregators.js";
+import { defaultLabelFn, urlNormalizer } from "../../replays/replay-labels.js";
+import { renderMarkdown } from "../../replays/rrweb-analyzer.js";
 import {
   decodeFail,
   expectInt,
@@ -1121,6 +1142,27 @@ export class Replay {
   }
 
   /**
+   * Analyzer-produced markdown timeline rendered from `actions`
+   * (Python `summary_markdown` property, `types.py:13187-13205`).
+   * Closed at B5-S3 — the `_render_markdown` dependency landed with
+   * the analyzer.
+   *
+   * `Workspace.fetchReplay` runs the rrweb analyzer; when `actions` is
+   * non-empty this returns the markdown timeline. When `actions` is
+   * empty (test fixture, no-events fetch) it returns a one-line
+   * placeholder.
+   *
+   * @returns Multi-line markdown suitable for stdout / LLM
+   *   consumption.
+   */
+  summaryMarkdown(): string {
+    if (this.actions.length === 0) {
+      return `# Replay ${this.replay_id} — no actions extracted\n`;
+    }
+    return renderMarkdown(this.actions);
+  }
+
+  /**
    * Serialize for JSON output — byte-shape of Python `to_dict()`.
    *
    * @returns The plain dict shape.
@@ -1591,6 +1633,229 @@ export class ReplayBundle {
       computed_at: this.computed_at,
       project_id: this.project_id,
     });
+  }
+
+  /**
+   * One row per `(target_desc, normalized_url)` with click counts
+   * (Python `elements_df` property, `types.py:13512-13547`). Closed at
+   * B5-S3 — the `real_clicks` + `url_normalizer` dependencies landed
+   * with the aggregators.
+   *
+   * Counts exclude focus-only interactions (a real click fires both a
+   * `focused` and a `clicked` action; counting both double-counts every
+   * click). URLs are normalized via `urlNormalizer` so the same element
+   * on parameterized pages aggregates into one row.
+   *
+   * @returns `{target_desc, url, n_clicks, n_unique_replays}` rows;
+   *   empty when the bundle has no genuine clicks.
+   */
+  toElementsRows(): readonly Row[] {
+    const clicks = realClicks(this.toActionsRows());
+    if (clicks.length === 0) {
+      return [];
+    }
+    // `groupby(["target_desc", "url"], dropna=False).agg(...)` — pandas
+    // sorts the composite group key ascending; the URL column is the
+    // NORMALIZED one (`clicks.assign(url=...)`), and Python's
+    // `url_normalizer(u) if u else u` leaves a falsy URL untouched.
+    const groups = new Map<
+      string,
+      {
+        target_desc: unknown;
+        url: unknown;
+        n_clicks: number;
+        replays: Set<unknown>;
+      }
+    >();
+    for (const row of clicks) {
+      const rawUrl = row["url"];
+      const url =
+        typeof rawUrl === "string" && rawUrl !== ""
+          ? urlNormalizer(rawUrl)
+          : rawUrl;
+      const key = JSON.stringify([row["target_desc"] ?? null, url ?? null]);
+      let entry = groups.get(key);
+      if (entry === undefined) {
+        entry = {
+          target_desc: row["target_desc"],
+          url,
+          n_clicks: 0,
+          replays: new Set<unknown>(),
+        };
+        groups.set(key, entry);
+      }
+      entry.n_clicks += 1;
+      // `n_unique_replays=("replay_id", "nunique")` — pandas' nunique
+      // SKIPS NaN; the column is never null in this projection.
+      entry.replays.add(row["replay_id"]);
+    }
+    return [...groups.entries()]
+      .sort((a, b) => compareCodepoints(a[0], b[0]))
+      .map(([, entry]) => ({
+        target_desc: entry.target_desc,
+        url: entry.url,
+        n_clicks: entry.n_clicks,
+        n_unique_replays: entry.replays.size,
+      }));
+  }
+
+  /**
+   * Column contract of the `elements_df` frame.
+   *
+   * @returns The column list.
+   */
+  elementsRowColumns(): readonly string[] {
+    return ["target_desc", "url", "n_clicks", "n_unique_replays"];
+  }
+
+  /**
+   * Rank the most-clicked targets across every replay in the bundle
+   * (Python `top_clicks`, `types.py:13563-13588`).
+   *
+   * @param n - Maximum number of click targets to return. Default 10.
+   * @returns `{target_desc, count}` rows, descending by count.
+   */
+  topClicks(n = 10): readonly Row[] {
+    return topClicks(this, n);
+  }
+
+  /**
+   * Find rage-click bursts — repeated clicks on one target in a tight
+   * window (Python `rage_clicks`, `types.py:13590-13613`).
+   *
+   * @param options - `threshold` (default 3) / `windowMs` (default
+   *   1000).
+   * @returns `{replay_id, t_start, target_desc, count}` rows.
+   */
+  rageClicks(
+    options: { threshold?: number; windowMs?: number } = {},
+  ): readonly Row[] {
+    return rageClicks(this, options);
+  }
+
+  /**
+   * Find idle stretches between consecutive actions longer than a
+   * threshold (Python `long_pauses`, `types.py:13615-13636`).
+   *
+   * @param thresholdS - Minimum pause length in seconds. Default 10.
+   * @returns `{replay_id, t_start, duration_s}` rows.
+   */
+  longPauses(thresholdS = 10): readonly Row[] {
+    return longPauses(this, thresholdS);
+  }
+
+  /**
+   * New bundle whose action labels contain `actionSequence` as a
+   * CONTIGUOUS subsequence (Python `find_pattern`,
+   * `types.py:13718-13756`).
+   *
+   * @param actionSequence - Labels to look for, in order. An empty list
+   *   matches every replay (returns a full clone).
+   * @param options - Optional `labelFn` override (defaults to
+   *   `defaultLabelFn`).
+   * @returns The filtered bundle.
+   */
+  findPattern(
+    actionSequence: readonly string[],
+    options: { labelFn?: (action: UserAction) => string } = {},
+  ): ReplayBundle {
+    const fn = options.labelFn ?? defaultLabelFn;
+    const target = [...actionSequence];
+    if (target.length === 0) {
+      return new ReplayBundle({
+        replays: [...this.replays],
+        computed_at: this.computed_at,
+        project_id: this.project_id,
+      });
+    }
+    return this.filter((r) => {
+      const labels = r.actions.map((a) => fn(a));
+      for (let i = 0; i <= labels.length - target.length; i += 1) {
+        if (target.every((label, k) => labels[i + k] === label)) {
+          return true;
+        }
+      }
+      return false;
+    });
+  }
+
+  /**
+   * New bundle of only the replays that emitted a console error
+   * (Python `error_sessions`, `types.py:13758-13781`).
+   *
+   * @returns The filtered bundle; empty when the bundle has no console
+   *   errors.
+   */
+  errorSessions(): ReplayBundle {
+    const ids = new Set(errorSessions(this));
+    return this.filter((r) => ids.has(r.replay_id));
+  }
+
+  /**
+   * New bundle with up to `n` replays, deterministic per `seed`
+   * (Python `sample`, `types.py:13808-13831`). Closed at B5-S3 with
+   * FULL CPython `random.Random(seed).sample` parity (decision S3-D1,
+   * `B5-S3-notes.md`) — the same seed selects the same replays in both
+   * runtimes, not merely self-consistently.
+   *
+   * @param n - How many replays to sample. Default 5.
+   * @param seed - Optional integer seed for reproducible sampling.
+   *   `null` / omitted needs `entropy` (there is no `os.urandom` seam
+   *   in `core`, R9.5).
+   * @param entropy - 32-bit seed words used when `seed` is `null`.
+   * @returns A bundle whose `replays` has length `min(n, total)`.
+   * @throws MixpanelHeadlessError - Code `PY_RANDOM_SEED_UNSUPPORTED`
+   *   when neither a seed nor entropy is supplied.
+   */
+  sample(
+    n = 5,
+    seed: number | null = null,
+    entropy?: readonly number[],
+  ): ReplayBundle {
+    // Python `rng.sample` raises when k > population; clamp first.
+    const k = Math.min(n, this.replays.length);
+    const chosen = pythonSample([...this.replays], k, seed, entropy);
+    return new ReplayBundle({
+      replays: chosen,
+      computed_at: this.computed_at,
+      project_id: this.project_id,
+    });
+  }
+
+  /**
+   * Markdown rollup of the bundle: header totals plus per-session
+   * timelines (Python `summary_markdown`, `types.py:13857-13886`).
+   *
+   * @returns A markdown string; `"# No replays in bundle\n"` when the
+   *   bundle is empty.
+   */
+  summaryMarkdown(): string {
+    if (this.replays.length === 0) {
+      return "# No replays in bundle\n";
+    }
+    const sections = [
+      "# Bundle summary",
+      "",
+      `- replays: ${String(this.replays.length)}`,
+    ];
+    const rows = this.toSessionsRows();
+    if (rows.length > 0) {
+      const sum = (column: string): number =>
+        rows.reduce((acc, row) => acc + Number(row[column] ?? 0), 0);
+      sections.push(`- total events: ${String(Math.trunc(sum("n_events")))}`);
+      sections.push(`- total actions: ${String(Math.trunc(sum("n_actions")))}`);
+      sections.push(`- total errors: ${String(Math.trunc(sum("n_errors")))}`);
+    }
+    sections.push("");
+    for (const r of this.replays) {
+      // Python wraps each per-replay render in `except NotImplementedError`
+      // — a Phase-2-era holdover from the unported `summary_markdown`.
+      // The member is implemented now and cannot raise it, so the
+      // fallback branch is unreachable in both runtimes.
+      sections.push(r.summaryMarkdown());
+      sections.push("\n---\n");
+    }
+    return sections.join("\n");
   }
 
   /**

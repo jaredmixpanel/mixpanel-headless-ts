@@ -39,5 +39,18 @@ export * from "./client/index.js";
 export { validateBookmark } from "./query/validation.js";
 export type { ValidateBookmarkOptions } from "./query/validation.js";
 
+// Phase-3 B5 (shard S3): the three PUBLIC members of `replay_labels.py`
+// (`__init__.py` `__all__` entries `default_label_fn`,
+// `selector_label_fn`, `url_normalizer` — the last three phase2-audit
+// A1 deferrals). The rest of `replays/` mirrors Python `_internal`
+// (`_internal/replays/rrweb_analyzer.py`, `aggregators.py`) and stays
+// unexported, reachable through `src/replays/index.js` for the
+// in-package consumers (`types/results/replays.ts`, `workspace.ts`).
+export {
+  defaultLabelFn,
+  selectorLabelFn,
+  urlNormalizer,
+} from "./replays/replay-labels.js";
+
 /** Package name constant exercised by the skeleton smoke test. */
 export const CORE_PACKAGE_NAME = "@mixpanel-headless/core";

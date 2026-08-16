@@ -88,3 +88,58 @@ export function pythonInt(text: string): number {
   // Python int has no -0: "-0" parses to plain 0.
   return match[1] === "-" && value !== 0 ? -value : value;
 }
+
+/**
+ * CPython `int(value)` over an ARBITRARY object — the coercion ladder
+ * (as opposed to {@link pythonInt}, which is the `int(str)` grammar
+ * alone). Added at B5-S3 (`b5-packets.md` §9 Caution #3: the replay
+ * walker's `int(e.get("timestamp", 0))` and the analyzer's
+ * `int(event.get("timestamp", 0))` must TRUNCATE floats toward zero and
+ * route strings through the CPython grammar, never `Number()`).
+ *
+ * Ladder, in CPython's dispatch order:
+ * - `bool` → `1` / `0` (checked BEFORE number: `int(True) == 1`);
+ * - `int` / `float` → truncation toward zero (`int(-1.9) == -1`);
+ *   non-finite floats raise, exactly as CPython does;
+ * - `str` → {@link pythonInt};
+ * - anything else → `TypeError`, like CPython's
+ *   "int() argument must be a string... not 'X'".
+ *
+ * @param value - The value to coerce.
+ * @returns The integer.
+ * @throws MixpanelHeadlessError - Code `PY_INT_INVALID_LITERAL` /
+ *   `PY_INT_UNSAFE_INTEGER` from the string grammar, or
+ *   `PY_INT_NON_FINITE` for `inf` / `nan` floats (CPython raises
+ *   `OverflowError` / `ValueError`; both are non-`TypeError` value
+ *   failures and the code is the contract, R5.4).
+ * @throws TypeError - For a non-coercible type.
+ *
+ * @example
+ * ```typescript
+ * pythonIntCoerce(18.9); // 18
+ * pythonIntCoerce(-1.9); // -1  (truncates toward zero, not Math.floor)
+ * pythonIntCoerce("  42 "); // 42
+ * ```
+ */
+export function pythonIntCoerce(value: unknown): number {
+  if (typeof value === "boolean") {
+    return value ? 1 : 0;
+  }
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      throw new MixpanelHeadlessError(
+        `cannot convert non-finite float to integer: ${String(value)}`,
+        "PY_INT_NON_FINITE",
+      );
+    }
+    return Math.trunc(value);
+  }
+  if (typeof value === "string") {
+    return pythonInt(value);
+  }
+  throw new TypeError(
+    `int() argument must be a string, a bytes-like object or a real number, not '${
+      value === null ? "NoneType" : typeof value
+    }'`,
+  );
+}

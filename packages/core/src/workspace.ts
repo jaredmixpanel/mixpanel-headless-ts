@@ -23,10 +23,14 @@ import {
   type MixpanelClientOptions,
 } from "./client/client.js";
 import { toNativeJson, type JsonValue } from "./client/json-value.js";
-import { pythonInt } from "./compat/python-int.js";
+import { pythonInt, pythonIntCoerce } from "./compat/python-int.js";
+import { pythonRepr, type PythonValue } from "./compat/python-str.js";
+import { zfill } from "./compat/zfill.js";
+import { RrwebAnalyzer } from "./replays/rrweb-analyzer.js";
 import {
   AuthenticationError,
   MixpanelHeadlessError,
+  ParamValidationError,
   QueryError,
   RateLimitError,
   ServerError,
@@ -51,6 +55,7 @@ import {
   type LiveSegmentationNumericOptions,
   type LiveSegmentationOptions,
 } from "./services/live-query.js";
+import { ReplaysService, replayNotFoundError } from "./services/replays.js";
 import type { BookmarkType, EntityType } from "./types/literals.js";
 import type { CohortDefinition } from "./types/query-params/cohort.js";
 import type { Filter } from "./types/query-params/filter.js";
@@ -86,6 +91,13 @@ import type {
   SavedReportResult,
   SegmentationResult,
 } from "./types/results/live-query.js";
+import {
+  Replay,
+  ReplayBundle,
+  type ReplayEvent,
+  type ReplaySummary,
+  type SignedReplay,
+} from "./types/results/replays.js";
 import {
   UserQueryResult,
   type FlowQueryResult,
@@ -195,6 +207,114 @@ export interface WorkspaceSchemaGraphOptions {
   readonly include_user_properties?: boolean | undefined;
   /** Bypass the cache and re-fetch. */
   readonly force_refresh?: boolean | undefined;
+}
+
+// ---------------------------------------------------------------------------
+// B5-S3 option bags (`workspace.py:10679-11292`)
+// ---------------------------------------------------------------------------
+
+/** Keyword-only arguments of {@link Workspace.listReplays}. */
+export interface WorkspaceListReplaysOptions {
+  /** Mixpanel user identifier. Mutually exclusive with `replay_ids`. */
+  readonly distinct_id?: string | null | undefined;
+  /** Explicit replay IDs to hydrate. Mutually exclusive with above. */
+  readonly replay_ids?: readonly string[] | null | undefined;
+  /** ISO date (`YYYY-MM-DD`). Required with `distinct_id`. */
+  readonly from_date?: string | null | undefined;
+  /** ISO date (`YYYY-MM-DD`). Required with `distinct_id`. */
+  readonly to_date?: string | null | undefined;
+  /** Maximum summaries to return. Default 100. */
+  readonly limit?: number | undefined;
+}
+
+/**
+ * Keyword-only arguments shared by {@link Workspace.eventsForReplay}
+ * and {@link Workspace.eventsForReplays}.
+ */
+export interface WorkspaceEventsForReplayOptions {
+  /** Up to 5 additional event properties to include as group keys. */
+  readonly event_properties?: readonly string[] | null | undefined;
+  /** ISO date (`YYYY-MM-DD`) lower bound for the events scan. */
+  readonly from_date?: string | null | undefined;
+  /** ISO date (`YYYY-MM-DD`) upper bound; paired with `from_date`. */
+  readonly to_date?: string | null | undefined;
+}
+
+/**
+ * Keyword-only arguments of {@link Workspace.signReplay} /
+ * {@link Workspace.signReplays}.
+ */
+export interface WorkspaceSignReplayOptions {
+  /** `"prod"` (default) or `"dev"`. */
+  readonly env?: "prod" | "dev" | undefined;
+}
+
+/** Keyword-only arguments of {@link Workspace.fetchReplay}. */
+export interface WorkspaceFetchReplayOptions {
+  /** Optional user id to stamp on the returned `Replay`. */
+  readonly distinct_id?: string | null | undefined;
+  /** `"prod"` (default) or `"dev"`. */
+  readonly env?: "prod" | "dev" | undefined;
+  /** 1, 7, 30, or 90. Auto-discovered when absent. */
+  readonly retention_days?: number | null | undefined;
+  /** Hard upper bound on the CDN file walk. Default 500. */
+  readonly max_files?: number | undefined;
+  /** Follow with an events query and populate `mixpanel_events`. */
+  readonly include_mixpanel_events?: boolean | undefined;
+  /** Up to 5 extra properties for the Mixpanel join query. */
+  readonly event_properties?: readonly string[] | null | undefined;
+  /** Parallel batch size for CDN fetches. Default 50. */
+  readonly cdn_concurrency?: number | undefined;
+}
+
+/** Keyword-only arguments of {@link Workspace.streamReplay}. */
+export interface WorkspaceStreamReplayOptions {
+  /** `"prod"` (default) or `"dev"`. */
+  readonly env?: "prod" | "dev" | undefined;
+  /** 1, 7, 30, or 90. Auto-discovered when absent. */
+  readonly retention_days?: number | null | undefined;
+  /** Hard upper bound on the CDN file walk. Default 500. */
+  readonly max_files?: number | undefined;
+  /** Re-sign once on a mid-walk 403. Default `true`. */
+  readonly re_sign_on_expiry?: boolean | undefined;
+  /** Parallel batch size for CDN fetches. Default 50. */
+  readonly cdn_concurrency?: number | undefined;
+}
+
+/** Keyword-only arguments of {@link Workspace.fetchReplays}. */
+export interface WorkspaceFetchReplaysOptions {
+  /** `"prod"` (default) or `"dev"`. */
+  readonly env?: "prod" | "dev" | undefined;
+  /** Per-replay CDN bound. Default 500. */
+  readonly max_files?: number | undefined;
+  /** Join Mixpanel events (ONE batched query across all replays). */
+  readonly include_mixpanel_events?: boolean | undefined;
+  /** Up to 5 properties for the join. */
+  readonly event_properties?: readonly string[] | null | undefined;
+  /** Replay-level parallelism. Default 4. */
+  readonly concurrency?: number | undefined;
+  /** Per-replay CDN parallelism. Default 50. */
+  readonly cdn_concurrency?: number | undefined;
+  /** `{replay_id: retention_days}` so each fetch skips discovery. */
+  readonly retention_by_id?:
+    ReadonlyMap<string, number> | Readonly<Record<string, number>> | undefined;
+  /** `{replay_id: distinct_id}` stamped on each fetched `Replay`. */
+  readonly distinct_id_by_id?:
+    ReadonlyMap<string, string> | Readonly<Record<string, string>> | undefined;
+}
+
+/** Keyword-only arguments of {@link Workspace.replaysForUser}. */
+export interface WorkspaceReplaysForUserOptions {
+  /** ISO date (`YYYY-MM-DD`). */
+  readonly from_date: string;
+  /** ISO date (`YYYY-MM-DD`). */
+  readonly to_date: string;
+  /** Maximum replays to fetch. Default 20 (byte-heavy per replay). */
+  readonly limit?: number | undefined;
+  /** Default `true` for this convenience method. */
+  readonly include_mixpanel_events?: boolean | undefined;
+  /** Up to 5 properties for the Mixpanel join. */
+  readonly event_properties?: readonly string[] | null | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -523,6 +643,9 @@ export class Workspace {
 
   /** Lazily-created live query service (`self._live_query`). */
   #liveQuery: LiveQueryService | null = null;
+
+  /** Lazily-created session-replay service (`self._replays_svc`). */
+  #replays: ReplaysService | null = null;
 
   /** `warnings.warn` sink handed to the discovery service. */
   readonly #warn: WarningSink | undefined;
@@ -1859,7 +1982,613 @@ export class Workspace {
 
   // === B5-S3 session-replay members (append-only; S3 owns) ===
 
+  /**
+   * Get or create the session-replay service (044, lazy
+   * initialization — `_replays_service`, `workspace.py:1019-1033`).
+   *
+   * Constructed on first access with the BOUND {@link query} so
+   * `ReplaysService.discover` / `eventsFor` can issue Insights queries
+   * without taking a hard dependency on `Workspace`
+   * (circular-import-free DI, `replays.py:150-176`). S2 left this
+   * accessor for S3 because `ReplaysService` did not exist in the tree
+   * when S2 landed (`B5-S2-notes.md` §2).
+   *
+   * Settable, mirroring Python's `self._replays_svc = ...` attribute
+   * assignment — the seam the Layer-3 suites and the conformance
+   * bindings substitute a stub through.
+   *
+   * @returns The memoized service.
+   * @internal
+   */
+  get replaysService(): ReplaysService {
+    if (this.#replays === null) {
+      this.#replays = new ReplaysService(this.client, {
+        queryFn: async (
+          events: string,
+          options: Readonly<Record<string, unknown>>,
+        ) => this.query(events, options as WorkspaceQueryOptions),
+        ...(this.#warn !== undefined ? { warn: this.#warn } : {}),
+        ...(this.#logger !== undefined ? { logger: this.#logger } : {}),
+      });
+    }
+    return this.#replays;
+  }
+
+  /**
+   * Replace the memoized replays service (Python's plain attribute
+   * write).
+   *
+   * @param service - The service to bind.
+   * @internal
+   */
+  set replaysService(service: ReplaysService) {
+    this.#replays = service;
+  }
+
+  /**
+   * List replays for a user, or hydrate summaries for explicit IDs
+   * (`list_replays`, `workspace.py:10679-10755`).
+   *
+   * Exactly one of `distinct_id` or `replay_ids` MUST be provided.
+   * When `distinct_id` is set, `from_date` and `to_date` are required.
+   *
+   * @param options - The selector, the optional window, and the limit.
+   * @returns `ReplaySummary` rows, possibly empty.
+   * @throws ParamValidationError - Neither or both selectors
+   *   (`WR4_REPLAY_SELECTOR_REQUIRED`), or `distinct_id` without a date
+   *   window (`WR5_DATE_RANGE_REQUIRED`).
+   * @throws QueryError - Underlying Insights API failure.
+   */
+  async listReplays(
+    options: WorkspaceListReplaysOptions = {},
+  ): Promise<ReplaySummary[]> {
+    const distinctId = options.distinct_id ?? null;
+    const replayIds = options.replay_ids ?? null;
+    const fromDate = options.from_date ?? null;
+    const toDate = options.to_date ?? null;
+    const limit = options.limit ?? 100;
+
+    // Guard order is SOURCE order (`workspace.py:10730-10744`); Python's
+    // `not replay_ids` is falsiness, so an EMPTY list trips WR4.
+    const hasReplayIds = replayIds !== null && replayIds.length > 0;
+    if (distinctId === null && !hasReplayIds) {
+      throw new ParamValidationError(
+        "list_replays requires exactly one of distinct_id or replay_ids.",
+        "WR4_REPLAY_SELECTOR_REQUIRED",
+      );
+    }
+    if (distinctId !== null && hasReplayIds) {
+      throw new ParamValidationError(
+        "list_replays requires exactly one of distinct_id or " +
+          "replay_ids; both were given.",
+        "WR4_REPLAY_SELECTOR_REQUIRED",
+      );
+    }
+    if (distinctId !== null && (fromDate === null || toDate === null)) {
+      throw new ParamValidationError(
+        "list_replays(distinct_id=...) requires from_date and to_date.",
+        "WR5_DATE_RANGE_REQUIRED",
+      );
+    }
+
+    return this.replaysService.discover({
+      distinctId,
+      replayIds,
+      fromDate,
+      toDate,
+      limit,
+    });
+  }
+
+  /**
+   * Mixpanel events that occurred during a single replay's time window
+   * (`events_for_replay`, `workspace.py:10757-10793`).
+   *
+   * @param replayId - The replay to fetch events for.
+   * @param options - Extra group keys and the optional window.
+   * @returns Ordered `ReplayEvent`s; empty when the window has none.
+   * @throws ParamValidationError - More than 5 `event_properties`
+   *   (`WR1_TOO_MANY_EVENT_PROPERTIES`).
+   * @throws QueryError - Underlying Insights API failure.
+   */
+  async eventsForReplay(
+    replayId: string,
+    options: WorkspaceEventsForReplayOptions = {},
+  ): Promise<ReplayEvent[]> {
+    checkEventPropertiesCount(options.event_properties ?? null);
+    const bundle = await this.replaysService.eventsFor([replayId], {
+      eventProperties: options.event_properties ?? null,
+      fromDate: options.from_date ?? null,
+      toDate: options.to_date ?? null,
+    });
+    return bundle.get(replayId) ?? [];
+  }
+
+  /**
+   * Batched version of {@link eventsForReplay} — single round-trip
+   * (`events_for_replays`, `workspace.py:10795-10830`).
+   *
+   * @param replayIds - Replays to fetch events for.
+   * @param options - Extra group keys and the optional window.
+   * @returns `replay_id` → ordered `ReplayEvent` list (R4.8 Map);
+   *   replays with no events are omitted.
+   * @throws ParamValidationError - More than 5 `event_properties`
+   *   (`WR1_TOO_MANY_EVENT_PROPERTIES`).
+   * @throws QueryError - Underlying Insights API failure.
+   */
+  async eventsForReplays(
+    replayIds: readonly string[],
+    options: WorkspaceEventsForReplayOptions = {},
+  ): Promise<Map<string, ReplayEvent[]>> {
+    checkEventPropertiesCount(options.event_properties ?? null);
+    return this.replaysService.eventsFor(replayIds, {
+      eventProperties: options.event_properties ?? null,
+      fromDate: options.from_date ?? null,
+      toDate: options.to_date ?? null,
+    });
+  }
+
+  /**
+   * Sign a single replay ID; sugar over {@link signReplays}
+   * (`sign_replay`, `workspace.py:10832-10852`).
+   *
+   * @param replayId - Replay to sign.
+   * @param options - `env` (`"prod"` default).
+   * @returns One `SignedReplay`. `query_string` is a 5-minute bearer
+   *   credential — treat it like a session token.
+   * @throws SessionReplayAccessError - Sensitive-data flag set.
+   * @throws QueryError | ServerError - Other 4xx / 5xx.
+   */
+  async signReplay(
+    replayId: string,
+    options: WorkspaceSignReplayOptions = {},
+  ): Promise<SignedReplay> {
+    const signed = await this.replaysService.sign(
+      [replayId],
+      options.env ?? "prod",
+    );
+    return signed[0] as SignedReplay;
+  }
+
+  /**
+   * Sign multiple replays via the bulk endpoint (`sign_replays`,
+   * `workspace.py:10854-10873`).
+   *
+   * @param replayIds - Replays to sign.
+   * @param options - `env` (`"prod"` default).
+   * @returns `SignedReplay`s in input order.
+   * @throws SessionReplayAccessError - Sensitive-data flag set.
+   * @throws QueryError | ServerError - Other 4xx / 5xx.
+   */
+  async signReplays(
+    replayIds: readonly string[],
+    options: WorkspaceSignReplayOptions = {},
+  ): Promise<SignedReplay[]> {
+    return this.replaysService.sign(replayIds, options.env ?? "prod");
+  }
+
+  /**
+   * Sign, fetch, and assemble a single `Replay` (`fetch_replay`,
+   * `workspace.py:10875-10981`).
+   *
+   * Runs the vendored rrweb analyzer to populate `Replay.actions`; the
+   * raw `rrweb_events` list is also populated for downstream tools.
+   *
+   * Python's event-loop caveat (`asyncio.run` cannot run inside a
+   * running loop) has NO TS twin — this member is `async` and composes
+   * naturally (R6.1). The Python docstring's guidance to drive
+   * `walk_cdn_async` directly maps to
+   * {@link ReplaysService.walkCdnAsync}, which is public here too.
+   *
+   * @param replayId - The replay to fetch.
+   * @param options - Retention / bounds / concurrency / join knobs.
+   * @returns A `Replay` with `rrweb_events` and `actions` populated.
+   * @throws ReplayNotFoundError - First CDN file 404'd, or the walk
+   *   yielded zero events.
+   * @throws SessionReplayAccessError - Sensitive-data flag set.
+   * @throws SignedURLExpiredError - Signed URL expired during fetch.
+   * @throws ParamValidationError - More than 5 `event_properties`.
+   */
+  async fetchReplay(
+    replayId: string,
+    options: WorkspaceFetchReplayOptions = {},
+  ): Promise<Replay> {
+    checkEventPropertiesCount(options.event_properties ?? null);
+    const env = options.env ?? "prod";
+    const resolvedRetention = await this.#resolveRetention(
+      replayId,
+      options.retention_days ?? null,
+    );
+    const signed = (await this.replaysService.sign([replayId], env))[0];
+    const rrwebEvents = await this.replaysService.fetchFiles(
+      signed as SignedReplay,
+      {
+        retentionDays: resolvedRetention,
+        maxFiles: options.max_files ?? 500,
+        concurrency: options.cdn_concurrency ?? 50,
+      },
+    );
+    if (rrwebEvents.length === 0) {
+      throw replayNotFoundError(replayId, {
+        retentionDays: resolvedRetention,
+        cdnUrlPrefix: (signed as SignedReplay).url,
+      });
+    }
+
+    // Derive the window from min/max rather than first/last:
+    // `walkCdnAsync` yields in (file-number, in-file timestamp) order
+    // with no global merge, so indexing [0]/[-1] would drift if CDN
+    // files ever overlap in time.
+    const eventTimestamps = rrwebEvents.map((ev) =>
+      pythonIntCoerce(ev["timestamp"]),
+    );
+    const startTime = Math.min(...eventTimestamps);
+    const endTime = Math.max(...eventTimestamps);
+
+    let mixpanelEvents: ReplayEvent[] = [];
+    if (options.include_mixpanel_events === true) {
+      // Scope the events scan to the replay's own day(s).
+      const winFrom = utcYmdFromEpochMs(startTime);
+      const winTo = utcYmdFromEpochMs(endTime);
+      mixpanelEvents = await this.eventsForReplay(replayId, {
+        event_properties: options.event_properties ?? null,
+        from_date: winFrom,
+        to_date: winTo,
+      });
+    }
+
+    // Run the rrweb analyzer to populate actions.
+    const analyzerResult = new RrwebAnalyzer().analyze(rrwebEvents);
+    return new Replay({
+      replay_id: replayId,
+      distinct_id: options.distinct_id ?? null,
+      project_id: this.#projectId(),
+      start_time: startTime,
+      end_time: endTime,
+      retention_days: resolvedRetention,
+      rrweb_events: rrwebEvents,
+      actions: [...analyzerResult.actions],
+      mixpanel_events: mixpanelEvents,
+    });
+  }
+
+  /**
+   * Yield raw rrweb events one at a time, batched-parallel under the
+   * hood (`stream_replay`, `workspace.py:10983-11043`).
+   *
+   * R6.6 — item-level `yield*` over the service generator; nothing
+   * buffers. Python's private-event-loop plumbing
+   * (`asyncio.new_event_loop` + `run_until_complete(gen.__anext__())`)
+   * has no TS twin: the async generator composes directly, and the
+   * `finally: gen.aclose()` contract is what `for await` +
+   * `AsyncGenerator.return()` already guarantee.
+   *
+   * @param replayId - The replay to stream.
+   * @param options - Retention / bounds / concurrency / re-sign policy.
+   * @yields Raw rrweb event dicts in timestamp order.
+   * @throws ReplayNotFoundError - First CDN file 404'd.
+   * @throws SignedURLExpiredError - Re-sign retry exhausted or
+   *   disabled.
+   * @throws SessionReplayAccessError - Sensitive-data flag set.
+   */
+  async *streamReplay(
+    replayId: string,
+    options: WorkspaceStreamReplayOptions = {},
+  ): AsyncGenerator<Readonly<Record<string, unknown>>, void, undefined> {
+    const resolvedRetention = await this.#resolveRetention(
+      replayId,
+      options.retention_days ?? null,
+    );
+    const signed = (
+      await this.replaysService.sign([replayId], options.env ?? "prod")
+    )[0];
+    yield* this.replaysService.walkCdnAsync(signed as SignedReplay, {
+      retentionDays: resolvedRetention,
+      maxFiles: options.max_files ?? 500,
+      concurrency: options.cdn_concurrency ?? 50,
+      reSignOnExpiry: options.re_sign_on_expiry ?? true,
+    });
+  }
+
+  /**
+   * Fetch N replays in parallel; return a `ReplayBundle`
+   * (`fetch_replays`, `workspace.py:11045-11184`).
+   *
+   * Materializes each replay via {@link fetchReplay} and bundles them.
+   * Outer `concurrency` parallelizes across replays; inner
+   * `cdn_concurrency` parallelizes each replay's CDN file walk. Python
+   * uses a `ThreadPoolExecutor` purely so each replay's `asyncio.run`
+   * gets its own event loop — the TS port needs no such isolation, so
+   * the outer level is BOUNDED-CONCURRENCY promise scheduling with the
+   * same worker cap, the same input-order output, and the same
+   * per-replay failure isolation.
+   *
+   * Per-replay failures are isolated: a replay that 404s, stalls, or
+   * fails to parse is logged and skipped; only an all-fail batch
+   * throws (the FIRST underlying error, preserving its type).
+   *
+   * @param replayIds - Replays to fetch.
+   * @param options - Env / bounds / concurrency / join / retention and
+   *   distinct-id maps.
+   * @returns A `ReplayBundle` with `replays` in INPUT order (failed
+   *   replays omitted).
+   * @throws MixpanelHeadlessError - Only when every requested replay
+   *   failed; the first underlying error propagates with its type.
+   * @throws ParamValidationError - More than 5 `event_properties`.
+   */
+  async fetchReplays(
+    replayIds: readonly string[],
+    options: WorkspaceFetchReplaysOptions = {},
+  ): Promise<ReplayBundle> {
+    checkEventPropertiesCount(options.event_properties ?? null);
+    const retentionMap = options.retention_by_id ?? new Map<string, number>();
+    const distinctMap = options.distinct_id_by_id ?? new Map<string, string>();
+    const concurrency = Math.max(1, options.concurrency ?? 4);
+
+    // Events are joined ONCE after assembly (below), not per replay — so
+    // each fetch runs with include_mixpanel_events=false here regardless
+    // of the caller's flag.
+    const results = new Map<number, Replay>();
+    const failures: Array<[string, unknown]> = [];
+    let cursor = 0;
+    const worker = async (): Promise<void> => {
+      for (;;) {
+        const index = cursor;
+        cursor += 1;
+        if (index >= replayIds.length) {
+          return;
+        }
+        const rid = replayIds[index] as string;
+        try {
+          results.set(
+            index,
+            await this.fetchReplay(rid, {
+              distinct_id: mapGet(distinctMap, rid) ?? null,
+              env: options.env ?? "prod",
+              retention_days: mapGet(retentionMap, rid) ?? null,
+              max_files: options.max_files ?? 500,
+              include_mixpanel_events: false,
+              cdn_concurrency: options.cdn_concurrency ?? 50,
+            }),
+          );
+        } catch (exc) {
+          // One replay's CDN stall, 404, or parse error must not sink
+          // the whole bundle. Log it and keep the successful replays;
+          // only an all-fail batch raises.
+          this.#logger?.warning?.(
+            `fetch_replays: skipping replay ${rid} — ` +
+              `${exc instanceof Error ? exc.name : typeof exc}: ${String(exc)}`,
+          );
+          failures.push([rid, exc]);
+        }
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, replayIds.length) }, () =>
+        worker(),
+      ),
+    );
+    if (results.size === 0 && failures.length > 0) {
+      // Every replay failed — surface the first underlying error rather
+      // than a generic wrapper, preserving its type for callers that
+      // branch on it. Python's `failures[0]` is completion-ordered
+      // (`as_completed`); the port keeps INPUT order, which is the
+      // deterministic reading of the same rule (recorded in
+      // `B5-S3-notes.md` §2).
+      throw failures[0]?.[1];
+    }
+    let ordered = [...results.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([, replay]) => replay);
+
+    // Join Mixpanel events in ONE query across all replays (the
+    // per-replay alternative fans out N queries and exhausts the
+    // Insights rate limit). The combined window spans the earliest
+    // start to the latest end.
+    if (options.include_mixpanel_events === true && ordered.length > 0) {
+      const winFrom = utcYmdFromEpochMs(
+        Math.min(...ordered.map((r) => r.start_time)),
+      );
+      const winTo = utcYmdFromEpochMs(
+        Math.max(...ordered.map((r) => r.end_time)),
+      );
+      const eventsByReplay = await this.eventsForReplays(
+        ordered.map((r) => r.replay_id),
+        {
+          event_properties: options.event_properties ?? null,
+          from_date: winFrom,
+          to_date: winTo,
+        },
+      );
+      ordered = ordered.map((r) =>
+        eventsByReplay.has(r.replay_id)
+          ? replaceReplayEvents(
+              r,
+              eventsByReplay.get(r.replay_id) as ReplayEvent[],
+            )
+          : r,
+      );
+    }
+    return new ReplayBundle({
+      replays: ordered,
+      computed_at: isoUtc(this.client.core.now()),
+      project_id: this.#projectId(),
+    });
+  }
+
+  /**
+   * Discovery + fetch in one call (`replays_for_user`,
+   * `workspace.py:11186-11249`).
+   *
+   * Composes {@link listReplays} and {@link fetchReplays}. Defaults
+   * `include_mixpanel_events` to `true` since this is the "show me what
+   * this user did" convenience method. The default `limit` is a
+   * conservative 20 — each replay materializes its full byte stream.
+   *
+   * @param distinctId - Mixpanel user identifier.
+   * @param options - The required window plus the limit / join knobs.
+   * @returns A `ReplayBundle`; empty when no replays exist in the
+   *   window.
+   * @throws ParamValidationError - More than 5 `event_properties`.
+   */
+  async replaysForUser(
+    distinctId: string,
+    options: WorkspaceReplaysForUserOptions,
+  ): Promise<ReplayBundle> {
+    checkEventPropertiesCount(options.event_properties ?? null);
+    const summaries = await this.listReplays({
+      distinct_id: distinctId,
+      from_date: options.from_date,
+      to_date: options.to_date,
+      limit: options.limit ?? 20,
+    });
+    if (summaries.length === 0) {
+      return new ReplayBundle({
+        replays: [],
+        computed_at: isoUtc(this.client.core.now()),
+        project_id: this.#projectId(),
+      });
+    }
+    return this.fetchReplays(
+      summaries.map((s) => s.replay_id),
+      {
+        include_mixpanel_events: options.include_mixpanel_events ?? true,
+        event_properties: options.event_properties ?? null,
+        // We already discovered each replay's retention above — pass it
+        // through so fetchReplay skips re-discovering it per replay.
+        retention_by_id: new Map(
+          summaries.map((s) => [s.replay_id, s.retention_days]),
+        ),
+        // Every replay was discovered for this user — stamp it.
+        distinct_id_by_id: new Map(
+          summaries.map((s) => [s.replay_id, distinctId]),
+        ),
+      },
+    );
+  }
+
+  /**
+   * Sign + fetch + analyze a replay, returning only the markdown
+   * timeline (`analyze_replay`, `workspace.py:11251-11273`).
+   *
+   * @param replayId - The replay to analyze.
+   * @returns The markdown timeline (`Replay.summaryMarkdown()`).
+   * @throws ReplayNotFoundError - First CDN file 404'd.
+   * @throws SessionReplayAccessError - Sensitive-data flag set.
+   */
+  async analyzeReplay(replayId: string): Promise<string> {
+    return (await this.fetchReplay(replayId)).summaryMarkdown();
+  }
+
+  /**
+   * Resolve a replay's retention window, discovering it when `null`
+   * (`_resolve_retention`, `workspace.py:11275-11292`).
+   *
+   * @param replayId - The replay to look up.
+   * @param retentionDays - Caller-provided value; pass-through when
+   *   set.
+   * @returns One of 1, 7, 30, or 90. Defaults to 30 when discovery
+   *   returns no summary (the warning already fired in `discover`).
+   */
+  async #resolveRetention(
+    replayId: string,
+    retentionDays: number | null,
+  ): Promise<number> {
+    if (retentionDays !== null) {
+      return retentionDays;
+    }
+    const summaries = await this.listReplays({ replay_ids: [replayId] });
+    if (summaries.length > 0) {
+      return (summaries[0] as ReplaySummary).retention_days;
+    }
+    return 30;
+  }
+
   // === B6 members land below in W1–W7 sections (append-only) ===
+}
+
+/**
+ * Raise a coded error when `event_properties` exceeds the Insights cap
+ * (`_check_event_properties_count`, `workspace.py:303-324`).
+ *
+ * Mixpanel's Insights API caps group-by at 5 properties; the
+ * session-replay surfaces all pass through to that endpoint.
+ *
+ * @param eventProperties - Caller-supplied list (or `null`).
+ * @throws ParamValidationError - Code `WR1_TOO_MANY_EVENT_PROPERTIES`.
+ */
+export function checkEventPropertiesCount(
+  eventProperties: readonly string[] | null,
+): void {
+  if (eventProperties !== null && eventProperties.length > 5) {
+    throw new ParamValidationError(
+      `events_for_replay accepts at most 5 event_properties ` +
+        `(Insights group-by limit). Got ${String(eventProperties.length)}: ` +
+        `${pythonRepr(eventProperties as unknown as PythonValue)}`,
+      "WR1_TOO_MANY_EVENT_PROPERTIES",
+    );
+  }
+}
+
+/**
+ * `datetime.fromtimestamp(ms / 1000, timezone.utc).strftime("%Y-%m-%d")`
+ * — the two window-derivation sites in `fetch_replay` / `fetch_replays`
+ * (`workspace.py:10958-10963`, `:11205-11210`).
+ *
+ * @param epochMs - Unix milliseconds.
+ * @returns The `YYYY-MM-DD` UTC date.
+ */
+function utcYmdFromEpochMs(epochMs: number): string {
+  const date = new Date(epochMs);
+  return [
+    zfill(String(date.getUTCFullYear()), 4),
+    zfill(String(date.getUTCMonth() + 1), 2),
+    zfill(String(date.getUTCDate()), 2),
+  ].join("-");
+}
+
+/**
+ * `dataclasses.replace(replay, mixpanel_events=...)` — the one
+ * `replace()` site in `fetch_replays` (`workspace.py:11178-11182`).
+ *
+ * @param replay - The replay to copy.
+ * @param mixpanelEvents - The events to attach.
+ * @returns A new `Replay` with the events attached.
+ */
+function replaceReplayEvents(
+  replay: Replay,
+  mixpanelEvents: readonly ReplayEvent[],
+): Replay {
+  return new Replay({
+    replay_id: replay.replay_id,
+    distinct_id: replay.distinct_id,
+    project_id: replay.project_id,
+    start_time: replay.start_time,
+    end_time: replay.end_time,
+    retention_days: replay.retention_days,
+    rrweb_events: replay.rrweb_events,
+    actions: replay.actions,
+    mixpanel_events: mixpanelEvents,
+  });
+}
+
+/**
+ * `Mapping.get(key)` over the optional retention / distinct-id maps,
+ * which callers may hand in as a `Map` OR a plain record.
+ *
+ * @param source - The map or record.
+ * @param key - The replay id.
+ * @returns The value, or `undefined`.
+ */
+function mapGet<T>(
+  source: ReadonlyMap<string, T> | Readonly<Record<string, T>>,
+  key: string,
+): T | undefined {
+  if (source instanceof Map) {
+    return source.get(key);
+  }
+  const record = source as Readonly<Record<string, T>>;
+  return Object.hasOwn(record, key) ? record[key] : undefined;
 }
 
 /**
