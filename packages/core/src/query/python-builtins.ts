@@ -76,10 +76,12 @@ export class OverflowError extends Error {
  * `f["funnel_id"]`, `list_cohorts`'s `c["id"]`, `list_top_events`'s
  * `e["amount"]`) with no validation in front of them.
  *
- * NOTE (R10.4 watch, 2 occurrences): `types/query-params/cohort.ts:62`
- * carries an older module-local `KeyError` for its single operator-map
- * site. New sites use THIS one; if a third appears, fold the cohort
- * copy into this module.
+ * Also reached by `types/query-params/cohort.ts` `has_property`'s
+ * operator-map lookup (its former module-local duplicate was FOLDED
+ * into this class at the B6 gate: the two same-named classes collided
+ * in the bundled oracle — esbuild renamed one binding to `KeyError2`
+ * and the bridge compares `constructor.name` — caught as a live
+ * cohort_family divergence by the B6-gate differential regression).
  */
 export class KeyError extends Error {
   /**

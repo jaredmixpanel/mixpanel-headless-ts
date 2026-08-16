@@ -22,6 +22,7 @@
 
 import { pythonStrip } from "../../compat/index.js";
 import { ParamValidationError } from "../../errors.js";
+import { KeyError } from "../../query/python-builtins.js";
 import type { CohortAggregationType } from "../literals.js";
 import { CustomPropertyRef, Filter, InlineCustomProperty } from "./filter.js";
 import {
@@ -48,28 +49,18 @@ export const PROPERTY_OPERATOR_MAP: ReadonlyMap<string, string> = new Map([
   ["is_not_set", "not defined"],
 ]);
 
-/**
- * Mirror of Python's builtin `KeyError` for the ONE call site that
- * raises it: `has_property`'s `_PROPERTY_OPERATOR_MAP[operator]` lookup
- * (types.py ~8959) on an operator outside the map. Uncoded builtin
- * raises are R5.5-excluded from the corpus, but the differential
- * harness compares them by bare CLASS name (oracle-protocol.md §4.1),
- * and the pre-fix TS port silently constructed with an `undefined`
- * selector operator instead — a real divergence found by the P2-9 gate.
- * Kept file-local (never exported from the package barrel): it is not
- * part of the 28-class C3 hierarchy.
- */
-class KeyError extends Error {
-  /**
-   * Wrap the missing key, `repr`-style like CPython.
-   *
-   * @param key - The missing map key.
-   */
-  constructor(key: string) {
-    super(JSON.stringify(key));
-    this.name = "KeyError";
-  }
-}
+// The CPython `KeyError` twin for the ONE call site that raises it:
+// `has_property`'s `_PROPERTY_OPERATOR_MAP[operator]` lookup
+// (types.py ~8959) on an operator outside the map — a real divergence
+// found by the P2-9 gate (the pre-fix port silently constructed with an
+// `undefined` selector operator). FOLDED into the canonical
+// `query/python-builtins.ts` twin at the B6 gate per that module's own
+// R10.4 watch note: the former file-local duplicate collided with the
+// canonical class in the bundled oracle (esbuild renamed one binding to
+// `KeyError2`, and the bridge compares `constructor.name` —
+// oracle-protocol.md §4.1), which the B6-gate differential regression
+// caught as a live cohort_family divergence. `python-builtins.ts` is
+// import-free, so this types-layer import creates no cycle.
 
 /**
  * Set of `Filter._operator` values accepted by {@link buildEventSelector}

@@ -19,6 +19,7 @@ import {
   cpLength,
   cpSlice,
   pythonFloat,
+  pythonFloatCoerce,
   pythonFloatStr,
   pythonInt,
   pythonStr,
@@ -357,6 +358,18 @@ function registerCompatCompletionBindings(
     guardCompat(() =>
       encodePythonFloatResult(
         pythonFloat(requireStringKwarg(context, "value")),
+      ),
+    ),
+  );
+  // B6-GATE (B5-notes.md outbound ledger item 5): the R11.7 float(x)
+  // coercion ladder. Kwarg decode may hand a native number, bool, null,
+  // string, list, plain dict, or the runner's PyFloat spelling wrapper
+  // — the library twin handles every arm; bare TypeError/OverflowError
+  // twins propagate for class-name comparison (oracle-protocol §4.1).
+  implementations.register("compat.python_float_coerce", (context) =>
+    guardCompat(() =>
+      encodePythonFloatResult(
+        pythonFloatCoerce(requireKwarg(context, "value")),
       ),
     ),
   );

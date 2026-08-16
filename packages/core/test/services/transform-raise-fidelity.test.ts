@@ -552,3 +552,55 @@ describe("ASR-F6b: FunnelQueryResult.overall_conversion_rate float(str) arm", ()
     expect(result.overall_conversion_rate).toBe(0.25);
   });
 });
+
+// ---------------------------------------------------------------------------
+// B6-GATE — overall_conversion_rate NON-string ladder is CPython float(x)
+// (B5-notes.md outbound ledger item 5: the ASR-F6b remediation fixed the
+// string arm only; the non-string arm awaited the `pythonFloatCoerce`
+// compat twin. CPython probes recorded in B6-notes.md.)
+// ---------------------------------------------------------------------------
+
+describe("B6-GATE: FunnelQueryResult.overall_conversion_rate float(x) non-string ladder", () => {
+  /**
+   * Build a single-step result whose last step carries `value`.
+   *
+   * @param value - The `overall_conv_ratio` payload value under test.
+   * @returns The result instance.
+   */
+  function resultWith(value: unknown): FunnelQueryResult {
+    return new FunnelQueryResult({
+      computed_at: "",
+      from_date: "",
+      to_date: "",
+      steps_data: [{ overall_conv_ratio: value }],
+    });
+  }
+
+  it("coerces booleans exactly as CPython (float(True) is 1.0)", () => {
+    expect(resultWith(true).overall_conversion_rate).toBe(1.0);
+    expect(resultWith(false).overall_conversion_rate).toBe(0.0);
+  });
+
+  it("raises TypeError on None exactly where CPython float(None) raises", () => {
+    expect(() => resultWith(null).overall_conversion_rate).toThrow(TypeError);
+    expect(() => resultWith(null).overall_conversion_rate).toThrow(
+      "float() argument must be a string or a real number, not 'NoneType'",
+    );
+  });
+
+  it("raises TypeError on a list exactly where CPython float([]) raises", () => {
+    expect(() => resultWith([]).overall_conversion_rate).toThrow(
+      "float() argument must be a string or a real number, not 'list'",
+    );
+  });
+
+  it("raises TypeError on a dict exactly where CPython float({}) raises", () => {
+    expect(() => resultWith({}).overall_conversion_rate).toThrow(
+      "float() argument must be a string or a real number, not 'dict'",
+    );
+  });
+
+  it("keeps the spelling-wrapper arm working (rig float tags)", () => {
+    expect(resultWith({ spelling: "18.0" }).overall_conversion_rate).toBe(18);
+  });
+});

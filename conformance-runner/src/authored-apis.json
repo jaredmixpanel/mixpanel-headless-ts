@@ -54,6 +54,14 @@
       "params": ["value"],
       "target": "conformance.record.pycompat_ref:python_float"
     },
+    "compat.python_float_coerce": {
+      "capability": "compat",
+      "kind": "builder",
+      "kwonly": [],
+      "module": "conformance.record.pycompat_ref",
+      "params": ["value"],
+      "target": "conformance.record.pycompat_ref:python_float_coerce"
+    },
     "compat.python_strip": {
       "capability": "compat",
       "kind": "builder",
