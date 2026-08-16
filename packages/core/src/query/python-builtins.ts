@@ -68,6 +68,33 @@ export class OverflowError extends Error {
 }
 
 /**
+ * Twin of CPython's `KeyError`.
+ *
+ * Reached by the B5 discovery parsers, which subscript required API
+ * keys directly (`_parse_lexicon_schema`'s `data["entityType"]`,
+ * `_parse_bookmark_info`'s six required fields, `list_funnels`'s
+ * `f["funnel_id"]`, `list_cohorts`'s `c["id"]`, `list_top_events`'s
+ * `e["amount"]`) with no validation in front of them.
+ *
+ * NOTE (R10.4 watch, 2 occurrences): `types/query-params/cohort.ts:62`
+ * carries an older module-local `KeyError` for its single operator-map
+ * site. New sites use THIS one; if a third appears, fold the cohort
+ * copy into this module.
+ */
+export class KeyError extends Error {
+  /**
+   * Create the twin.
+   *
+   * @param key - The missing key (CPython's message is `repr(key)`;
+   *   text is out of contract, R5.4).
+   */
+  constructor(key: string) {
+    super(JSON.stringify(key));
+    this.name = "KeyError";
+  }
+}
+
+/**
  * Twin of CPython's `AttributeError`.
  *
  * Reached by `segfilter._build_datetime_filter`'s range branch when an

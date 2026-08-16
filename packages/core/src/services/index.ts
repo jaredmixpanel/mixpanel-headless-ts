@@ -1,11 +1,35 @@
 /**
  * The `services` module of @mixpanel-headless/core (D11 layout) —
+ * B5-S1 added the DiscoveryService (services/discovery.ts).
  * Phase-3 B4-C2 populated the queries half (query-host + engage +
  * streaming wire methods and the `stream_events`/`stream_profiles`
  * facade wrappers); B4-C3 added the entity-CRUD wire factories
- * (dashboards + bookmarks-v2 + cohorts-app); the B5 Discovery/LiveQuery
- * services and B6 entity facades land in later batches.
+ * (dashboards + bookmarks-v2 + cohorts-app); the B5 LiveQuery/Replays
+ * services and the B6 entity facades land in later shards.
  */
+
+export {
+  DiscoveryService,
+  inferScalarType,
+  inferSubproperties,
+  isValidIso,
+  iterDictRows,
+  parseBookmarkInfo,
+  parseLexiconDefinition,
+  parseLexiconMetadata,
+  parseLexiconProperty,
+  parseLexiconSchema,
+  type DiscoveryLogger,
+  type DiscoveryServiceOptions,
+  type GetSchemaGraphOptions,
+  type ListEventsOptions,
+  type ListPropertyValuesOptions,
+  type ListSchemasOptions,
+  type ListSubpropertiesOptions,
+  type ListTopEventsOptions,
+  type ScalarSubValue,
+  type WarningSink,
+} from "./discovery.js";
 
 export {
   createBookmarkMethods,

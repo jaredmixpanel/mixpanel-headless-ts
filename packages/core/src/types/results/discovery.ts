@@ -1052,6 +1052,39 @@ export class ProfilePageResult {
 // SchemaGraphResult
 // ---------------------------------------------------------------------------
 
+/** Node kinds of the {@link SchemaGraph} adjacency object. */
+export type SchemaGraphNodeKind = "event" | "property";
+
+/** One node of the {@link SchemaGraph} (a `networkx` node + attrs). */
+export interface SchemaGraphNode {
+  /** The bare entity name (Python `str(name)`). */
+  readonly name: string;
+  /** Whether the name denotes an event or a property. */
+  readonly kind: SchemaGraphNodeKind;
+}
+
+/** One directed event→property edge of the {@link SchemaGraph}. */
+export interface SchemaGraphEdge {
+  /** The event name the edge starts at. */
+  readonly source: string;
+  /** The property name the edge points to. */
+  readonly target: string;
+  /** The property's `densityLocal`, repeated onto each of its edges. */
+  readonly density_local: unknown;
+}
+
+/**
+ * The plain-object twin of the `networkx.DiGraph`
+ * {@link SchemaGraphResult.toGraph} builds — node and edge lists in
+ * insertion order.
+ */
+export interface SchemaGraph {
+  /** One entry per unique name, in first-insertion order. */
+  readonly nodes: readonly SchemaGraphNode[];
+  /** One entry per unique `(source, target)`, in insertion order. */
+  readonly edges: readonly SchemaGraphEdge[];
+}
+
 /** Declared constructor fields of {@link SchemaGraphResult}. */
 export interface SchemaGraphResultFields {
   /** When the graph was computed (ISO text). */
@@ -1079,10 +1112,11 @@ export interface SchemaGraphResultFields {
  * `event_to_properties` / `property_to_events` / `meta` fields are
  * computed in the constructor exactly as Python's `__post_init__`.
  *
- * `to_graph()` is NOT ported in Phase 2 — it returns a `networkx`
- * graph with no vendored TS twin. TODO(port): revisit with the B5
- * replay/analyzer batch; the codec-visible `_graph_cache` slot exists
- * (always `null`) so the field surface stays intact.
+ * `to_graph()` lands at B5-S1 as {@link SchemaGraphResult.toGraph} — a
+ * plain adjacency object (node list + edge list) carrying exactly the
+ * sets Python hands `networkx`. The codec-visible `_graph_cache` slot
+ * stays `null` (Python caches the graph object; the TS twin rebuilds it
+ * deterministically, the Phase-2 frame-cache convention).
  */
 export class SchemaGraphResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -1180,6 +1214,16 @@ export class SchemaGraphResult {
         (event_to_properties[event_name] ??= []).push(pyStr(prop_name));
       }
     }
+    // TODO(port): these two plain objects hold Python DICTS whose
+    // insertion order is contract for anything that iterates them —
+    // and JS hoists integer-like keys ("1", "0") to the front, so an
+    // event or property named with digits changes `Object.keys()`
+    // order (watchlist #10). No vector sees it (the conformance
+    // canonicalizer sorts object keys, `canonical.ts:13`) and
+    // `toGraph()` now rebuilds the order it needs from `events` /
+    // `properties` directly (B5-S1 R10.9 finding 3), but a `Map`-valued
+    // surface would be the complete fix. Phase-2 field-shape decision —
+    // escalated in `B5-S1-notes.md` §3, not changed unilaterally here.
     this.event_to_properties = event_to_properties;
     this.property_to_events = property_to_events;
     this.meta = {
@@ -1360,6 +1404,138 @@ export class SchemaGraphResult {
       }
     }
     return orphans;
+  }
+
+  /**
+   * Build the directed event→property relationship graph
+   * (`types.SchemaGraphResult.to_graph`, `types.py:11801-11853`).
+   *
+   * Event names become nodes with `kind: "event"`, property names nodes
+   * with `kind: "property"`, and a directed edge runs from each event to
+   * every property that appears on it, carrying the property's
+   * `density_local` (`null` unless `include_density` was requested).
+   * Nodes are keyed by bare name, so an event and a property sharing a
+   * name collapse to ONE node — and, exactly like `networkx`'s
+   * `add_node`, a later write updates that node's `kind` while keeping
+   * its original position.
+   *
+   * The `networkx.DiGraph` return has no vendored TS twin, so the port
+   * hands back the plain adjacency object the graph is built from:
+   * `nodes` in insertion order and `edges` in insertion order, one entry
+   * per unique `(source, target)` pair (a repeated `add_edge` updates
+   * the attributes in place, as `networkx` does). Successors of `u` are
+   * `edges.filter((e) => e.source === u)`, and `number_of_nodes()` is
+   * `nodes.length`.
+   *
+   * Python caches the graph on `_graph_cache`; the TS build is pure and
+   * deterministic, so repeated calls are deep-equal and the codec slot
+   * stays `null`.
+   *
+   * @returns The adjacency object. Empty when there are no events or
+   *   properties.
+   *
+   * @example
+   * ```typescript
+   * const graph = (await ws.schemaGraph()).toGraph();
+   * graph.nodes.find((n) => n.name === "Purchase")?.kind; // "event"
+   * ```
+   */
+  toGraph(): SchemaGraph {
+    const nodeIndex = new Map<string, number>();
+    const nodes: Array<{ name: string; kind: SchemaGraphNodeKind }> = [];
+    const addNode = (name: string, kind: SchemaGraphNodeKind): void => {
+      const existing = nodeIndex.get(name);
+      if (existing === undefined) {
+        nodeIndex.set(name, nodes.length);
+        nodes.push({ name, kind });
+        return;
+      }
+      // networkx `add_node` on an existing node UPDATES the attributes
+      // and leaves the insertion position alone.
+      (nodes[existing] as { name: string; kind: SchemaGraphNodeKind }).kind =
+        kind;
+    };
+    // `networkx` stores edges in a per-source adjacency dict, so
+    // `G.edges` yields them grouped by SOURCE NODE in node-insertion
+    // order, then by adjacency-insertion order inside each source —
+    // not in global edge-insertion order (R10.9 differential finding 2,
+    // 88/500 cases). The same two-level Map reproduces that iteration.
+    const adjacency = new Map<string, Map<string, unknown>>();
+    const addEdge = (
+      source: string,
+      target: string,
+      density_local: unknown,
+    ): void => {
+      let targets = adjacency.get(source);
+      if (targets === undefined) {
+        targets = new Map<string, unknown>();
+        adjacency.set(source, targets);
+      }
+      // A repeated `add_edge` updates the attributes in place and keeps
+      // the original adjacency position (`Map.set` does the same).
+      targets.set(target, density_local);
+    };
+
+    // Python's first loop walks `self.event_to_properties`, whose key
+    // order is: seeded event names (in `events` order) followed by
+    // attached event names (in property/entry order). `Object.keys()`
+    // CANNOT reproduce that — JS hoists integer-like keys ("1") to the
+    // front (watchlist #10; R10.9 differential finding 3) — so the same
+    // sequence is rebuilt from the two sources directly.
+    for (const event of this.events) {
+      const seeded = event["name"];
+      if (pyTruthy(seeded)) {
+        addNode(pyStr(seeded), "event");
+      }
+    }
+    for (const prop of this.properties) {
+      if (!pyTruthy(prop["name"])) {
+        continue;
+      }
+      const seeded_entries = prop["events"];
+      for (const entry of pyTruthy(seeded_entries)
+        ? (seeded_entries as readonly unknown[])
+        : []) {
+        if (isPlainRecord(entry) && pyTruthy(entry["name"])) {
+          addNode(pyStr(entry["name"]), "event");
+        }
+      }
+    }
+    for (const event of this.events) {
+      const name = event["name"];
+      if (pyTruthy(name)) {
+        addNode(pyStr(name), "event");
+      }
+    }
+    for (const prop of this.properties) {
+      const prop_name = prop["name"];
+      if (!pyTruthy(prop_name)) {
+        continue;
+      }
+      addNode(pyStr(prop_name), "property");
+      const density = Object.hasOwn(prop, "densityLocal")
+        ? prop["densityLocal"]
+        : null;
+      const entries_value = prop["events"];
+      const entries: readonly unknown[] = pyTruthy(entries_value)
+        ? (entries_value as readonly unknown[])
+        : [];
+      for (const entry of entries) {
+        if (!isPlainRecord(entry) || !pyTruthy(entry["name"])) {
+          continue;
+        }
+        addNode(pyStr(entry["name"]), "event");
+        addEdge(pyStr(entry["name"]), pyStr(prop_name), density);
+      }
+    }
+    const edges: SchemaGraphEdge[] = [];
+    for (const node of nodes) {
+      for (const [target, density_local] of adjacency.get(node.name) ??
+        new Map<string, unknown>()) {
+        edges.push({ source: node.name, target, density_local });
+      }
+    }
+    return { nodes, edges };
   }
 
   /**

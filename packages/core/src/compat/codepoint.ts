@@ -92,8 +92,12 @@ export function cpSlice(text: string, start?: number, end?: number): string {
  * @param a - Left operand.
  * @param b - Right operand.
  * @returns Negative when `a < b`, positive when `a > b`, `0` when equal.
+ *
+ * Exported since B5-S1: `sorted(items, key=...)` sites with a non-string
+ * key (tuple keys, `len()` keys) need the comparator itself, not the
+ * whole-list helper — and R10.8 forbids re-deriving it locally.
  */
-function compareCodepoints(a: string, b: string): number {
+export function compareCodepoints(a: string, b: string): number {
   let i = 0;
   let j = 0;
   while (i < a.length && j < b.length) {
