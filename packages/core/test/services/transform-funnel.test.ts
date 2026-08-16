@@ -20,9 +20,12 @@
 import { describe, expect, it } from "vitest";
 import {
   extractFunnelStepsFromSeries,
+  transformFunnel,
   transformFunnelResult,
+  transformRetention,
 } from "../../src/services/live-query-transforms.js";
 import { QueryError } from "../../src/errors.js";
+import { AttributeError } from "../../src/query/python-builtins.js";
 import { FunnelQueryResult } from "../../src/types/results/query-engine.js";
 
 // ===========================================================================
@@ -516,5 +519,54 @@ describe("TestTransformFunnelResult", () => {
     const result = transformFunnelResult(raw, BOOKMARK_PARAMS, noWarn);
 
     expect(result.series).toBe(segmentedSeries);
+  });
+});
+
+// ===========================================================================
+// R10.9 harness regressions (B5-S2): divergences the throwaway
+// differential harness found against the Python arbiter, fixed at the
+// owning layer (`throwaway/b5-s2/RUN.md`, divergence table rows T1/T2).
+// ===========================================================================
+
+describe("R10.9: AttributeError fidelity on non-mapping members", () => {
+  it("transform_funnel with data=null raises AttributeError, not TypeError", () => {
+    // Python: `raw.get("data", {})` yields `None`, and `None.items()`
+    // raises `AttributeError` (`live_query.py:141`).
+    expect(() =>
+      transformFunnel({ data: null }, 42, "2025-01-01", "2025-01-31"),
+    ).toThrow(AttributeError);
+  });
+
+  it("transform_funnel with a non-mapping data member raises AttributeError", () => {
+    expect(() =>
+      transformFunnel({ data: "nope" }, 42, "2025-01-01", "2025-01-31"),
+    ).toThrow(AttributeError);
+  });
+
+  it("transform_retention with a non-mapping cohort raises AttributeError", () => {
+    // Python: `cohort_data.get("first", 0)` on a `str`
+    // (`live_query.py:198`).
+    expect(() =>
+      transformRetention(
+        { "2025-01-01": "notadict" },
+        "Signup",
+        "Login",
+        "2025-01-01",
+        "2025-01-31",
+        "day",
+      ),
+    ).toThrow(AttributeError);
+  });
+
+  it("transform_retention with a mapping cohort still succeeds", () => {
+    const result = transformRetention(
+      { "2025-01-01": { first: 100, counts: [100, 50] } },
+      "Signup",
+      "Login",
+      "2025-01-01",
+      "2025-01-31",
+      "day",
+    );
+    expect(result.cohorts[0]!.retention).toEqual([1.0, 0.5]);
   });
 });

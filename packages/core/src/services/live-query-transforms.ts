@@ -36,8 +36,8 @@ import { pythonInt } from "../compat/python-int.js";
 import { pythonRepr, pythonStr } from "../compat/python-str.js";
 import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
 import { QueryError } from "../errors.js";
-import { isPythonDict } from "../query/validation-shared.js";
-import { ValueError } from "../query/python-builtins.js";
+import { isPythonDict, pythonTypeName } from "../query/validation-shared.js";
+import { AttributeError, ValueError } from "../query/python-builtins.js";
 import { fromTimestampUtcIso, timestampNumber } from "../query/transforms.js";
 import type { CountType, HourDayUnit, TimeUnit } from "../types/literals.js";
 import {
@@ -118,6 +118,36 @@ function passthrough<T>(value: unknown): T {
  */
 function asRecord(value: unknown): Readonly<Record<string, unknown>> {
   return value as Readonly<Record<string, unknown>>;
+}
+
+/**
+ * Assert that a value really is a Python mapping before a `.get(...)` /
+ * `.items()` / `.values()` call reads it.
+ *
+ * CPython raises `AttributeError` the moment attribute lookup for the
+ * mapping method fails on a non-mapping (`None.items()`,
+ * `"str".get(...)`). JS would either throw the WRONG class
+ * (`Object.values(null)` -> `TypeError`) or silently succeed
+ * (`Object.hasOwn("str", "first")` -> `false`), so the check is
+ * explicit. Watchlist #13: the mapping test is {@link isPythonDict}.
+ *
+ * Found by the B5-S2 R10.9 differential harness (rows T1/T2).
+ *
+ * @param value - The candidate mapping.
+ * @param attr - The mapping method Python was about to look up.
+ * @returns The same value, typed as a record.
+ * @throws AttributeError - When `value` is not a Python dict.
+ */
+function pyMapping(
+  value: unknown,
+  attr: "get" | "items" | "values",
+): Readonly<Record<string, unknown>> {
+  if (!isPythonDict(value)) {
+    throw new AttributeError(
+      `'${pythonTypeName(value)}' object has no attribute '${attr}'`,
+    );
+  }
+  return asRecord(value);
 }
 
 /**
@@ -262,7 +292,9 @@ export function transformFunnel(
   fromDate: string,
   toDate: string,
 ): FunnelResult {
-  const data = dictGetRecord(raw, "data");
+  // `raw.get("data", {}).items()` — a non-mapping `data` member is an
+  // `AttributeError` in CPython, not a `TypeError` (R10.9 row T1).
+  const data = pyMapping(dictGet(raw, "data", {}), "items");
 
   // Aggregate steps across all dates: step_idx -> (event, total_count)
   const aggregatedCounts = new Map<number, [unknown, number]>();
@@ -354,7 +386,9 @@ export function transformRetention(
 
   // Sort by date for consistent ordering
   for (const date of sortedByCodepoint(Object.keys(raw))) {
-    const cohortData = asRecord(raw[date]);
+    // `cohort_data.get("first", 0)` — a non-mapping cohort value is an
+    // `AttributeError` in CPython (`live_query.py:198`; R10.9 row T2).
+    const cohortData = pyMapping(raw[date], "get");
     const size = pyNumber(dictGet(cohortData, "first", 0));
     const counts = dictGet(cohortData, "counts", []) as unknown[];
 
