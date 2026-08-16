@@ -23,7 +23,6 @@ import {
   type CapturedFetchRequest,
 } from "../client/client-test-helpers.js";
 import type { MixpanelClient } from "../../src/client/client.js";
-import { MixpanelHeadlessError } from "../../src/errors.js";
 import { Workspace } from "../../src/workspace.js";
 import {
   BookmarkInfo,
@@ -287,11 +286,14 @@ describe("Workspace discovery members", () => {
     expect(result.computed_at).toBe("2026-08-16T12:34:56+00:00");
   });
 
-  it("the B6-owned members refuse with UNPORTED_MEMBER", async () => {
+  // B6-W1 UPDATE: this case used to assert that `use()` / `close()`
+  // threw `UNPORTED_MEMBER`. Both members are now ported (packet §3);
+  // what survives is the lifecycle pair itself — `use()` is the
+  // no-throw zero-axis swap and `close()` resolves (idempotently).
+  it("the lifecycle pair is live (B6-W1 replaced the UNPORTED stubs)", async () => {
     const { ws } = workspaceWith(() => ({ status: 200, json: [] }));
-    expect(() => ws.use()).toThrow(MixpanelHeadlessError);
-    await expect(ws.close()).rejects.toMatchObject({
-      code: "UNPORTED_MEMBER",
-    });
+    expect(await ws.use()).toBe(ws);
+    await expect(ws.close()).resolves.toBeUndefined();
+    await expect(ws.close()).resolves.toBeUndefined();
   });
 });

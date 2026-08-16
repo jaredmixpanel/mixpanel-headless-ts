@@ -62,3 +62,43 @@ describe("workspace facade scoping (session-pinned half)", () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// B6-W1 — the two classes the B5 header deferred here (both now
+// translatable because `Workspace.use()` is live).
+// ---------------------------------------------------------------------------
+
+describe("TestWorkspaceFacadeScoping (test_query_workspace_scoping.py:379)", () => {
+  it("use({workspace: N}) then events() sends the pin", async () => {
+    const canned: CannedResponse = { status: 200, json: ["Login"] };
+    const { client, transport } = createMockClient(makeSession(), () => canned);
+    const ws = new Workspace({ session: makeSession(), client });
+
+    await ws.use({ workspace: 4242 });
+    await ws.events();
+    await ws.close();
+
+    expect(transport.captures.length).toBe(1);
+    expect(transport.captures[0]!.params["workspace_id"]).toBe("4242");
+  });
+});
+
+describe("TestDiscoveryCacheAcrossUse (test_query_workspace_scoping.py:401)", () => {
+  it("use() discards the cached discovery results", async () => {
+    const canned: CannedResponse = { status: 200, json: ["Login"] };
+    const { client, transport } = createMockClient(makeSession(), () => canned);
+    const ws = new Workspace({ session: makeSession(), client });
+
+    await ws.events();
+    await ws.events();
+    // Cache hit: the repeat call must NOT issue a second request.
+    expect(transport.captures.length).toBe(1);
+
+    await ws.use({ workspace: 4242 });
+    await ws.events();
+    await ws.close();
+
+    // The swap discarded the cache, so a fresh request went out.
+    expect(transport.captures.length).toBe(2);
+  });
+});

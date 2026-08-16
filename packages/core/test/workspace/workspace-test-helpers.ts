@@ -102,6 +102,13 @@ export function mockWorkspaceClient(
 
   const stub = {
     core: { now: (): Date => now },
+    // B6-W1: the facade constructor wires the /me-backed workspace
+    // resolver (`_install_workspace_resolver`, `workspace.py:775-793`).
+    // `MagicMock(spec=MixpanelAPIClient)` auto-provides both members in
+    // Python; the TS stub declares them.
+    hasWorkspaceResolver: false,
+    setWorkspaceResolver: (): void => {},
+    close: (): Promise<void> => Promise.resolve(),
     exportProfilesPage: (
       page: number,
       options: Record<string, unknown> = {},

@@ -29,7 +29,6 @@ import { zfill } from "./compat/zfill.js";
 import { RrwebAnalyzer } from "./replays/rrweb-analyzer.js";
 import {
   AuthenticationError,
-  MixpanelHeadlessError,
   ParamValidationError,
   QueryError,
   RateLimitError,
@@ -57,6 +56,44 @@ import {
   type LiveSegmentationOptions,
 } from "./services/live-query.js";
 import { ReplaysService, replayNotFoundError } from "./services/replays.js";
+import {
+  MeService,
+  inMemoryMeCache,
+  type MeCacheStore,
+} from "./services/me.js";
+import {
+  streamEvents as streamEventsVeneer,
+  streamProfiles as streamProfilesVeneer,
+  type StreamEventsOptions,
+  type StreamProfilesOptions,
+} from "./services/queries/streaming.js";
+import {
+  getBusinessContext as getBusinessContextMember,
+  getBusinessContextChain as getBusinessContextChainMember,
+  guardTargetExclusivity,
+  mergeResolverSeams,
+  noProjectError,
+  setBusinessContext as setBusinessContextMember,
+  type BusinessContextHost,
+  type BusinessContextScopeOptions,
+  type ResolverSeams,
+} from "./workspace-members/lifecycle.js";
+export type {
+  BusinessContextLevel,
+  BusinessContextScopeOptions,
+  ResolveProjectAxisArgs,
+  ResolveSessionArgs,
+  ResolverSeams,
+} from "./workspace-members/lifecycle.js";
+export type { MeCacheStore, MeService } from "./services/me.js";
+import type { Account } from "./auth/account.js";
+import type { Project, WorkspaceRef } from "./auth/session.js";
+import type {
+  BusinessContext,
+  BusinessContextChain,
+} from "./types/entities/business-context.js";
+import type { PublicWorkspace } from "./types/entities/common.js";
+import type { MeResponse } from "./client/me.js";
 import type { BookmarkType, EntityType } from "./types/literals.js";
 import type { CohortDefinition } from "./types/query-params/cohort.js";
 import type { Filter } from "./types/query-params/filter.js";
@@ -142,6 +179,53 @@ export interface WorkspaceOptions {
   readonly warn?: WarningSink | undefined;
   /** Debug-log sink threaded into the discovery service (R9.5). */
   readonly logger?: WorkspaceLogger | undefined;
+  /**
+   * The W1-D1 resolution seams `use()` consumes. Absent members take
+   * the `UNPORTED_RESOLVER_SEAM` defaults until B7 lands
+   * (`workspace-members/lifecycle.ts`).
+   */
+  readonly seams?: Partial<ResolverSeams> | undefined;
+  /**
+   * The `/me` cache store handed to every {@link MeService} this
+   * facade builds (Python `MeCache(account_name=…)`,
+   * `workspace.py:874-876`). Absent → a per-account IN-MEMORY store;
+   * B8-N2 injects the on-disk twin from `packages/node`.
+   */
+  readonly meCache?: ((accountName: string) => MeCacheStore) | undefined;
+}
+
+/** Keyword-only arguments of {@link Workspace.use} (`workspace.py:552-560`). */
+export interface WorkspaceUseOptions {
+  /** Replacement account name. */
+  readonly account?: string | null | undefined;
+  /** Replacement project ID. */
+  readonly project?: string | null | undefined;
+  /** Replacement workspace ID. */
+  readonly workspace?: number | null | undefined;
+  /** Apply this target's three axes atomically. */
+  readonly target?: string | null | undefined;
+  /** Also write the new state to `[active]`. Default `false`. */
+  readonly persist?: boolean | undefined;
+}
+
+/** Keyword-only arguments of {@link Workspace.me}. */
+export interface WorkspaceMeOptions {
+  /** Bypass the cache and call the API. Default `false`. */
+  readonly force_refresh?: boolean | undefined;
+}
+
+/** Keyword-only arguments of {@link Workspace.projects}. */
+export interface WorkspaceProjectsOptions {
+  /** Bypass the `/me` caches and refetch. Default `false`. */
+  readonly refresh?: boolean | undefined;
+}
+
+/** Keyword-only arguments of {@link Workspace.workspaces}. */
+export interface WorkspaceWorkspacesOptions {
+  /** Project to list workspaces for. Defaults to the current project. */
+  readonly project_id?: string | null | undefined;
+  /** Bypass the `/me` caches and refetch. Default `false`. */
+  readonly refresh?: boolean | undefined;
 }
 
 /**
@@ -633,8 +717,8 @@ export interface WorkspaceUserQueryOptions {
  * ```
  */
 export class Workspace {
-  /** The resolved session bound to this facade. */
-  readonly session: Session;
+  /** The resolved session bound to this facade (`self._session`). */
+  #session: Session;
 
   /** The bound wire client (Python `self._api_client`). @internal */
   readonly client: MixpanelClient;
@@ -647,6 +731,26 @@ export class Workspace {
 
   /** Lazily-created session-replay service (`self._replays_svc`). */
   #replays: ReplaysService | null = null;
+
+  /** Lazily-created `/me` service (`self._me_service`). */
+  #meService: MeService | null = null;
+
+  /** `self._account_name` — the MeCache scope, refreshed on `use()`. */
+  #accountName: string;
+
+  // NOTE (W1-D2): Python also carries `self._initial_workspace_id`
+  // (`workspace.py:522`), whose ONLY reader is the client-recreation
+  // arm of `_get_api_client()` (`:757-766`) — the arm this port does
+  // not have, because `close()` releases the pool IN PLACE and the
+  // `readonly client` keeps its own pin (R6.2 identity). The field is
+  // therefore deliberately absent rather than dead
+  // (`B6-W1-notes.md` §W1-D2).
+
+  /** The W1-D1 resolution seams (B7 replaces the defaults). */
+  readonly #seams: ResolverSeams;
+
+  /** Factory for the `/me` cache store handed to each MeService. */
+  readonly #meCacheFactory: (accountName: string) => MeCacheStore;
 
   /** `warnings.warn` sink handed to the discovery service. */
   readonly #warn: WarningSink | undefined;
@@ -661,18 +765,51 @@ export class Workspace {
    *   client / seams.
    */
   constructor(options: WorkspaceOptions) {
-    this.session = options.session;
+    this.#session = options.session;
     this.client =
       options.client ??
       createMixpanelClient({
         session: options.session,
         ...(options.clientOptions ?? {}),
       });
+    this.#accountName = options.session.account.name;
+    this.#seams = mergeResolverSeams(options.seams);
+    this.#meCacheFactory = options.meCache ?? inMemoryMeCache;
     this.#warn = options.warn;
     this.#logger = options.logger;
+    this.#installWorkspaceResolver();
     // TODO(port): the `account` / `project` / `workspace` / `target`
     // constructor kwargs (`workspace.py:427-430`) resolve through
     // `resolve_session(...)` — batch B7. B5 takes a resolved Session.
+  }
+
+  /**
+   * The resolved session bound to this facade (`session` property,
+   * `workspace.py:546-548`). Read-only: `use()` swaps it in place.
+   */
+  get session(): Session {
+    return this.#session;
+  }
+
+  /**
+   * Wire the facade's `/me` cache into the client's workspace
+   * auto-resolver (`_install_workspace_resolver`,
+   * `workspace.py:775-793`).
+   *
+   * The closure reads {@link meService} on every call, so it keeps
+   * pointing at the CURRENT service across `use()` cache clears. A
+   * resolver already installed on an INJECTED client is left in place
+   * (`workspace.py:789-791`).
+   *
+   * @internal
+   */
+  #installWorkspaceResolver(): void {
+    if (this.client.hasWorkspaceResolver) {
+      return;
+    }
+    this.client.setWorkspaceResolver((pid: string) =>
+      this.meService.resolveWorkspace(pid),
+    );
   }
 
   /**
@@ -693,45 +830,126 @@ export class Workspace {
   }
 
   /**
-   * Switch account / project / workspace axes in place
-   * (`workspace.py` `use`).
+   * Swap one or more session axes in place; returns `this` for
+   * chaining (`use`, `workspace.py:552-694`).
    *
-   * @returns Never — B6-W1 owns this member.
-   * @throws MixpanelHeadlessError - Always, code `UNPORTED_MEMBER`.
+   * `target=` is mutually exclusive with
+   * `account=`/`project=`/`workspace=`. The wire client — and with it
+   * the connection pool — is PRESERVED across every switch (R6.2): the
+   * swap is delegated to {@link MixpanelClient.use}, which rebuilds the
+   * auth header in place. Every lazy service is then discarded so
+   * subsequent reads observe the new session.
+   *
+   * `use(workspace: N)` pins App-API and Query-host scoping; raw export
+   * streaming stays project-scoped by design (W1-D3).
+   *
+   * @param options - The axes to swap plus `persist`.
+   * @returns `this`.
+   * @throws ParamValidationError - `WS1_TARGET_MUTUALLY_EXCLUSIVE`.
+   * @throws MixpanelHeadlessError - `UNPORTED_RESOLVER_SEAM` while the
+   *   B7 seams are unimplemented (the `target=` / `account=` /
+   *   `persist=true` branches).
+   * @throws ConfigError - `account=` swap resolves no project axis.
+   *
+   * @example
+   * ```typescript
+   * for (const project of await ws.projects()) {
+   *   await ws.use({ project: project.id });
+   * }
+   * ```
    */
-  use(): this {
-    // TODO(port): B6-W1 — the axis-switch facade (and the discovery-cache
-    // reset `TestDiscoveryCacheAcrossUse` locks) land with the resolver.
-    throw new MixpanelHeadlessError(
-      "Workspace.use() is not ported yet (batch B6-W1)",
-      "UNPORTED_MEMBER",
-      { member: "workspace.use" },
-    );
+  async use(options: WorkspaceUseOptions = {}): Promise<this> {
+    guardTargetExclusivity(options);
+
+    const account = options.account ?? null;
+    const project = options.project ?? null;
+    const workspace = options.workspace ?? null;
+    const target = options.target ?? null;
+
+    let newAccount: Account | null = null;
+    let newProject: Project | null = null;
+    let newWorkspace: WorkspaceRef | null = null;
+
+    if (target !== null) {
+      // Route through the same resolver as construction so
+      // env > param > target > bridge > config applies (FR-017).
+      const resolved = await this.#seams.resolveSession({ target });
+      newAccount = resolved.account;
+      newProject = resolved.project;
+      newWorkspace = resolved.workspace ?? null;
+    } else if (account !== null) {
+      // Explicit account swap (FR-033): the project re-resolves against
+      // the NEW account; the workspace axis is cleared unless supplied
+      // explicitly or by MP_WORKSPACE_ID.
+      newAccount = await this.#seams.getAccount(account);
+      const projectId = await this.#seams.resolveProjectAxis({
+        explicit: project,
+        target_project: null,
+        account: newAccount,
+      });
+      if (projectId === null) {
+        throw noProjectError(newAccount);
+      }
+      newProject = { id: projectId };
+      if (workspace !== null) {
+        newWorkspace = { id: workspace };
+      } else {
+        const envWs = await this.#seams.envWorkspaceId();
+        newWorkspace = envWs !== null ? { id: envWs } : null;
+      }
+    } else {
+      newProject = project !== null ? { id: project } : null;
+      newWorkspace = workspace !== null ? { id: workspace } : null;
+    }
+
+    await this.client.use({
+      account: newAccount,
+      project: newProject,
+      workspace: newWorkspace,
+    });
+    this.#session = this.client.session;
+
+    // Clear the lazy services so subsequent reads observe the new
+    // session rather than the prior one (`workspace.py:679-693`).
+    this.#accountName = this.#session.account.name;
+    this.#discovery = null;
+    this.#liveQuery = null;
+    this.#meService = null;
+    this.#replays = null;
+    this.#installWorkspaceResolver();
+
+    if (options.persist === true) {
+      await this.#seams.persistActive(this.#session);
+    }
+    return this;
   }
 
   /**
-   * Release the underlying connection pool (`close`).
+   * Close all resources (`close`, `workspace.py:744-753`).
    *
-   * @returns Never — B6-W1 owns this member.
-   * @throws MixpanelHeadlessError - Always, code `UNPORTED_MEMBER`.
+   * Idempotent and safe to call repeatedly.
+   *
+   * W1-D2 (arbiter-visible): Python nulls `self._api_client` and lets
+   * `_get_api_client()` build a REPLACEMENT on the next call; TS keeps
+   * the `readonly client` the R6.2 identity assertions track and closes
+   * the pool IN PLACE — the client's own `close()` drops the pool
+   * token and `ensureHttp()` recreates it on the next request, so a
+   * post-close call behaves as Python's recreated client does. The one
+   * divergence (recorded in `B6-W1-notes.md`): Python's replacement
+   * client forgets a runtime `set_workspace_id()` pin and re-applies
+   * `_initial_workspace_id`, while the TS client keeps its current pin.
+   *
+   * @returns Nothing.
    */
-  close(): Promise<void> {
-    // TODO(port): B6-W1 — pairs with `use()` and the R6.2 connection-reuse
-    // invariant.
-    return Promise.reject(
-      new MixpanelHeadlessError(
-        "Workspace.close() is not ported yet (batch B6-W1)",
-        "UNPORTED_MEMBER",
-        { member: "workspace.close" },
-      ),
-    );
+  async close(): Promise<void> {
+    await this.client.close();
   }
 
   /**
-   * `await using` support (R6.2) — delegates to {@link close}.
+   * `await using` support (R6.2) — delegates to {@link close}, the
+   * `__exit__` twin (`workspace.py:730-742`).
    *
-   * @returns Never — B6-W1 owns this member.
-   * @throws MixpanelHeadlessError - Always, code `UNPORTED_MEMBER`.
+   * @returns Nothing.
    */
   [Symbol.asyncDispose](): Promise<void> {
     return this.close();
@@ -2507,6 +2725,286 @@ export class Workspace {
   }
 
   // === B6 members land below in W1–W7 sections (append-only) ===
+
+  // === B6-W1 lifecycle / workspace-management / me / business-context
+  // members (W1 owns; append-only) ===
+
+  /**
+   * The resolved account of the current session (`account` property,
+   * `workspace.py:530-533`).
+   */
+  get account(): Account {
+    return this.#session.account;
+  }
+
+  /**
+   * The resolved project of the current session (`project` property,
+   * `workspace.py:535-538`).
+   */
+  get project(): Project {
+    return this.#session.project;
+  }
+
+  /**
+   * The resolved workspace, or `null` when scoping stays lazy
+   * (`workspace` property, `workspace.py:540-543`).
+   */
+  get workspace(): WorkspaceRef | null {
+    return this.#session.workspace ?? null;
+  }
+
+  /**
+   * Direct access to the wire client — the escape hatch for endpoints
+   * the facade does not cover (`api` property,
+   * `workspace.py:4464-4501`).
+   */
+  get api(): MixpanelClient {
+    return this.client;
+  }
+
+  /**
+   * Get or create the `/me` service (`_me_svc`,
+   * `workspace.py:865-885`).
+   *
+   * @returns The memoized service, scoped to the CURRENT account.
+   * @internal
+   */
+  get meService(): MeService {
+    if (this.#meService === null) {
+      this.#meService = new MeService(
+        this.client,
+        this.#meCacheFactory(this.#accountName),
+        this.#session.account.region,
+        { accountType: this.#session.account.type },
+      );
+    }
+    return this.#meService;
+  }
+
+  /**
+   * The `/me` service ONLY IF it has already been created — the
+   * `self._me_service is None` peek `_cached_organization_id` performs
+   * (`workspace.py:10355-10357`). Never constructs one.
+   *
+   * @internal
+   */
+  get meServiceIfCreated(): MeService | null {
+    return this.#meService;
+  }
+
+  /**
+   * List every public workspace of the current project
+   * (`list_workspaces`, `workspace.py:801-824`).
+   *
+   * @returns The project's `PublicWorkspace` models.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   */
+  async listWorkspaces(): Promise<PublicWorkspace[]> {
+    return this.client.listWorkspaces();
+  }
+
+  /**
+   * Resolve the workspace ID used for scoped requests
+   * (`resolve_workspace_id`, `workspace.py:827-860`).
+   *
+   * @returns The resolved workspace ID.
+   * @throws WorkspaceScopeError - No workspace resolvable.
+   */
+  async resolveWorkspaceId(): Promise<number> {
+    return this.client.resolveWorkspaceId();
+  }
+
+  /**
+   * Get the `/me` response for the current credentials (cached 24h by
+   * the injected store) — `me`, `workspace.py:886-911`.
+   *
+   * @param options - `force_refresh` bypasses the caches.
+   * @returns The `/me` response.
+   * @throws ConfigError - Credentials lack `/me` access (401/403).
+   * @throws QueryError - Any other API error.
+   */
+  async me(options: WorkspaceMeOptions = {}): Promise<MeResponse> {
+    return this.meService.fetch({
+      force_refresh: options.force_refresh ?? false,
+    });
+  }
+
+  /**
+   * List accessible projects via the `/me` API (FR-035; `projects`,
+   * `workspace.py:913-956`).
+   *
+   * @param options - `refresh` bypasses the `/me` caches first.
+   * @returns Projects sorted by name.
+   * @throws ConfigError - Credentials lack `/me` access.
+   *
+   * @example
+   * ```typescript
+   * for (const project of await ws.projects()) {
+   *   await ws.use({ project: project.id });
+   * }
+   * ```
+   */
+  async projects(options: WorkspaceProjectsOptions = {}): Promise<Project[]> {
+    const service = this.meService;
+    if (options.refresh === true) {
+      await service.fetch({ force_refresh: true });
+    }
+    const entries = await service.listProjects();
+    return entries.map(([pid, info]) => ({
+      id: pid,
+      name: info.name,
+      organization_id: info.organization_id,
+      timezone: info.timezone,
+    }));
+  }
+
+  /**
+   * List a project's workspaces via the `/me` API (FR-036;
+   * `workspaces`, `workspace.py:958-1003`).
+   *
+   * @param options - `project_id` (defaults to the current project)
+   *   and `refresh`.
+   * @returns Workspace references sorted by name.
+   * @throws ConfigError - Credentials lack `/me` access, or a
+   *   non-numeric `project_id`.
+   */
+  async workspaces(
+    options: WorkspaceWorkspacesOptions = {},
+  ): Promise<WorkspaceRef[]> {
+    const service = this.meService;
+    if (options.refresh === true) {
+      await service.fetch({ force_refresh: true });
+    }
+    const pid = options.project_id ?? this.#session.project.id;
+    const infos = await service.listWorkspaces({ project_id: pid });
+    return infos.map((info) => ({
+      id: info.id,
+      name: info.name,
+      is_default: info.is_default,
+    }));
+  }
+
+  /**
+   * Stream events straight from the Export API (`stream_events`,
+   * `workspace.py:1400-1467`) — the W1-D3 R6.6 veneer over the B4-C2
+   * helper. PROJECT-scoped by design even when a workspace is pinned.
+   *
+   * @param options - Date window plus filters / `raw`.
+   * @returns An async generator of event dicts.
+   * @throws ParamValidationError - `WR2_LIMIT_TOO_SMALL` /
+   *   `WR3_LIMIT_TOO_LARGE` (on the first pull).
+   */
+  async *streamEvents(
+    options: StreamEventsOptions,
+  ): AsyncGenerator<unknown, void, undefined> {
+    yield* streamEventsVeneer(this.client, options);
+  }
+
+  /**
+   * Stream user profiles straight from the Engage API
+   * (`stream_profiles`, `workspace.py:1469-1578`) — the W1-D3 R6.6
+   * veneer over the B4-C2 helper.
+   *
+   * @param options - Filters plus `raw`.
+   * @returns An async generator of profile dicts.
+   * @throws ParamValidationError - The mutually-exclusive-filter
+   *   guards (on the first pull).
+   */
+  async *streamProfiles(
+    options: StreamProfilesOptions = {},
+  ): AsyncGenerator<unknown, void, undefined> {
+    yield* streamProfilesVeneer(this.client, options);
+  }
+
+  /**
+   * Read business context at the given scope
+   * (`get_business_context`, `workspace.py:10405-10479`).
+   *
+   * @param options - `level` (default `"project"`) and an optional
+   *   explicit `organization_id`.
+   * @returns The populated context (`content: ""` when unset).
+   * @throws ParamValidationError - `WS2_INVALID_LEVEL`.
+   * @throws WorkspaceScopeError - `ORGANIZATION_AMBIGUOUS`.
+   * @throws MixpanelHeadlessError - Response missing `content`.
+   */
+  async getBusinessContext(
+    options: BusinessContextScopeOptions = {},
+  ): Promise<BusinessContext> {
+    return getBusinessContextMember(this.#businessContextHost(), options);
+  }
+
+  /**
+   * Replace business context at the given scope
+   * (`set_business_context`, `workspace.py:10481-10566`).
+   *
+   * @param content - New markdown content (empty string clears).
+   * @param options - `level` / `organization_id`.
+   * @returns The context echoed by the server.
+   * @throws BusinessContextValidationError - Content over 50,000
+   *   characters (no HTTP call is made).
+   * @throws ParamValidationError - `WS2_INVALID_LEVEL`.
+   */
+  async setBusinessContext(
+    content: string,
+    options: BusinessContextScopeOptions = {},
+  ): Promise<BusinessContext> {
+    return setBusinessContextMember(
+      this.#businessContextHost(),
+      content,
+      options,
+    );
+  }
+
+  /**
+   * Clear business context at the given scope
+   * (`clear_business_context`, `workspace.py:10568-10610`) — the
+   * documented alias for `set_business_context("")`.
+   *
+   * @param options - `level` / `organization_id`.
+   * @returns The cleared context.
+   * @throws ParamValidationError - `WS2_INVALID_LEVEL`.
+   */
+  async clearBusinessContext(
+    options: BusinessContextScopeOptions = {},
+  ): Promise<BusinessContext> {
+    return this.setBusinessContext("", options);
+  }
+
+  /**
+   * Read organization and project business context together in ONE
+   * request (`get_business_context_chain`,
+   * `workspace.py:10612-10674`).
+   *
+   * @returns Both scopes; `organization.organization_id` stays `null`
+   *   when the `/me` cache is cold (single-round-trip guarantee).
+   * @throws MixpanelHeadlessError - Response missing `org_context` or
+   *   `project_context`.
+   */
+  async getBusinessContextChain(): Promise<BusinessContextChain> {
+    return getBusinessContextChainMember(this.#businessContextHost());
+  }
+
+  /**
+   * The facade slice the business-context member module reads.
+   *
+   * @returns The host view over this facade.
+   * @internal
+   */
+  #businessContextHost(): BusinessContextHost {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const facade = this;
+    return {
+      client: facade.client,
+      projectId: facade.#session.project.id,
+      get meService(): MeService {
+        return facade.meService;
+      },
+      get meServiceIfCreated(): MeService | null {
+        return facade.meServiceIfCreated;
+      },
+    };
+  }
 }
 
 /**

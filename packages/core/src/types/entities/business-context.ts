@@ -93,6 +93,25 @@ export class BusinessContext extends EntityModel {
   declare readonly project_id: string | null;
 
   /**
+   * Whether no context is set at this scope (Python `@computed_field`
+   * `is_empty`) — the ACCESSOR twin of the {@link computedSpecs}
+   * entry, added by B6-W1 because callers read it as a property
+   * (`test_workspace_business_context.py:166`), not only through
+   * `toJSON()`.
+   */
+  get is_empty(): boolean {
+    return this.content === "";
+  }
+
+  /**
+   * Content length in CODEPOINTS (Python `@computed_field`
+   * `character_count`); see {@link is_empty} for the accessor note.
+   */
+  get character_count(): number {
+    return codepointLength(this.content);
+  }
+
+  /**
    * Construct a validated BusinessContext (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.

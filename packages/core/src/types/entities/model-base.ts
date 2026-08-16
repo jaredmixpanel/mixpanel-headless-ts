@@ -509,6 +509,65 @@ export abstract class EntityModel {
   }
 
   /**
+   * Pydantic `model_dump(exclude_none=True)` — the request-body dump
+   * every entity-CRUD facade member performs on its params model
+   * (e.g. `create_dashboard`, `workspace.py:4564`; `create_cohort`,
+   * `:5643`). W1-D4: ONE implementation for all of B6 (R10.8) — a
+   * shard re-deriving it is a review finding.
+   *
+   * Semantics measured against pydantic v2 (2026-08-16):
+   *
+   * - declared fields, EXTRAS and computed fields all take part;
+   * - any of them whose value is `None`/absent is DROPPED;
+   * - nested models recurse (their own `None` fields drop too);
+   * - lists map element-wise (no element is dropped);
+   * - plain dict values KEEP their `None`s — `exclude_none` reaches
+   *   model fields, not mapping entries;
+   * - datetimes render as ISO text, exactly as {@link toJSON} does.
+   *
+   * {@link toJSON} is NOT a substitute: it keeps `None` as `null`, and
+   * absent-vs-null is vector-observable (R3.5).
+   *
+   * @returns The exclude-none mapping.
+   *
+   * @example
+   * ```typescript
+   * new BusinessContext({ level: "project", content: "" })
+   *   .modelDumpExcludeNone();
+   * // { level: "project", content: "", is_empty: true, character_count: 0 }
+   * ```
+   */
+  modelDumpExcludeNone(): Record<string, unknown> {
+    const cls = this.statics();
+    const out: Record<string, unknown> = {};
+    const self = this as unknown as Readonly<Record<string, unknown>>;
+    for (const spec of cls.fieldSpecs) {
+      const value = self[spec.name];
+      if (value === null || value === undefined) {
+        continue;
+      }
+      out[spec.name] =
+        spec.datetime === true && typeof value === "string"
+          ? value
+          : dumpExcludeNoneValue(value);
+    }
+    for (const [key, value] of Object.entries(this.__extras)) {
+      if (value === null || value === undefined) {
+        continue;
+      }
+      out[key] = dumpExcludeNoneValue(value);
+    }
+    for (const computed of cls.computedSpecs ?? []) {
+      const value = computed.get(this);
+      if (value === null || value === undefined) {
+        continue;
+      }
+      out[computed.name] = dumpExcludeNoneValue(value);
+    }
+    return out;
+  }
+
+  /**
    * Shared serializer behind {@link toJSON}/{@link toVectorPayload}.
    *
    * @param mode - Datetime rendering mode.
@@ -557,11 +616,40 @@ export function oneOf(
 }
 
 /**
- * Serialize one field value (nested models recurse through their own
- * walk; containers recurse; scalars pass through).
+ * Serialize one value for {@link EntityModel.modelDumpExcludeNone}
+ * (nested models recurse with the same exclusion; lists map
+ * element-wise; plain dicts keep their `None` values; scalars pass
+ * through).
  *
- * @param value - The stored field value.
- * @param mode - Datetime rendering mode threaded to nested walks.
+ * @param value - The stored value.
+ * @returns The dumped value.
+ * @internal
+ */
+function dumpExcludeNoneValue(value: unknown): unknown {
+  if (value instanceof EntityModel) {
+    return value.modelDumpExcludeNone();
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => dumpExcludeNoneValue(item));
+  }
+  if (isPlainObject(value)) {
+    // Pydantic keeps `None` VALUES inside plain dict fields
+    // (measured 2026-08-16) — only model fields are excluded.
+    const out: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value)) {
+      out[key] = item === undefined ? null : dumpExcludeNoneValue(item);
+    }
+    return out;
+  }
+  return value;
+}
+
+/**
+ * Serialize one field value for {@link EntityModel.toJSON} /
+ * {@link EntityModel.toVectorPayload}.
+ *
+ * @param value - The value to serialize.
+ * @param mode - Datetime rendering mode.
  * @returns The serialized value.
  * @internal
  */

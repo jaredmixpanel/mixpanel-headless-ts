@@ -155,6 +155,11 @@ function lexiconStub(
       );
     },
     core: { now: (): Date => new Date("2026-06-03T00:00:00.000Z") },
+    // B6-W1: the facade constructor installs the workspace resolver
+    // (`workspace.py:775-793`); `MagicMock(spec=…)` covers it in Python.
+    hasWorkspaceResolver: false,
+    setWorkspaceResolver: (): void => {},
+    close: (): Promise<void> => Promise.resolve(),
   } as unknown as MixpanelClient;
   return { client, eventDefinitionCalls, resourceTypes };
 }
