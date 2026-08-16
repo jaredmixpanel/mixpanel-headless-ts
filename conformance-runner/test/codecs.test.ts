@@ -234,4 +234,105 @@ describe("GroupBy contract codec float-carrier buckets (B2-BIND)", () => {
       }),
     ).toThrow(UndecodableValueError);
   });
+
+  // B2 gate remediation (RUN.md 2026-08-15 B2-attempt-1 divergence,
+  // repro 2026-08-16-codec-roundtrip.json): the decode-side unwrap
+  // above must be paired with an ENCODE-side re-tag for exactly the
+  // fields that ARRIVED as float carriers — Python's GroupBy buckets
+  // are `int | float | None` (types.py:8367-8373), so `18` (int) must
+  // re-encode raw while `18.0` (float) must re-encode as the carrier.
+  // The SignedReplay unconditional integral re-tag is wrong here; the
+  // codec keeps decode-time float-ness memory instead (WeakMap).
+  it("re-encodes carrier-decoded buckets as $type float (roundtrip keeps float-ness)", () => {
+    const registry = new CodecRegistry();
+    registerContractCodecs(registry);
+    const decoded = registry.decodeValue({
+      $type: "GroupBy",
+      property: "plan",
+      property_type: "string",
+      bucket_size: { $type: "float", value: "18.0" },
+      bucket_min: null,
+      bucket_max: null,
+      _list_item_mode: null,
+    });
+    expect(decoded).toBeInstanceOf(GroupBy);
+    expect(registry.encodeValue(decoded)).toEqual({
+      $type: "GroupBy",
+      property: "plan",
+      property_type: "string",
+      bucket_size: { $type: "float", value: "18.0" },
+      bucket_min: null,
+      bucket_max: null,
+      _list_item_mode: null,
+    });
+  });
+
+  it("re-encodes plain-int buckets as raw numbers (int stays int)", () => {
+    const registry = new CodecRegistry();
+    registerContractCodecs(registry);
+    const decoded = registry.decodeValue({
+      $type: "GroupBy",
+      property: "plan",
+      property_type: "string",
+      bucket_size: 18,
+      bucket_min: null,
+      bucket_max: null,
+      _list_item_mode: null,
+    });
+    expect(decoded).toBeInstanceOf(GroupBy);
+    expect(registry.encodeValue(decoded)).toEqual({
+      $type: "GroupBy",
+      property: "plan",
+      property_type: "string",
+      bucket_size: 18,
+      bucket_min: null,
+      bucket_max: null,
+      _list_item_mode: null,
+    });
+  });
+
+  it("keeps per-field float-ness on mixed int/float buckets", () => {
+    const registry = new CodecRegistry();
+    registerContractCodecs(registry);
+    const decoded = registry.decodeValue({
+      $type: "GroupBy",
+      property: "revenue",
+      property_type: "number",
+      bucket_size: { $type: "float", value: "10.0" },
+      bucket_min: 0,
+      bucket_max: { $type: "float", value: "100.0" },
+      _list_item_mode: null,
+    });
+    expect(decoded).toBeInstanceOf(GroupBy);
+    expect(registry.encodeValue(decoded)).toEqual({
+      $type: "GroupBy",
+      property: "revenue",
+      property_type: "number",
+      bucket_size: { $type: "float", value: "10.0" },
+      bucket_min: 0,
+      bucket_max: { $type: "float", value: "100.0" },
+      _list_item_mode: null,
+    });
+  });
+
+  it("encodes a directly-constructed GroupBy (no decode memory) with raw buckets", () => {
+    const registry = new CodecRegistry();
+    registerContractCodecs(registry);
+    // A library-constructed instance never carried float spellings —
+    // the generic declared-field walk applies (Python int spelling).
+    const groupBy = new GroupBy({
+      property: "plan",
+      property_type: "string",
+      bucket_size: 18,
+    });
+    expect(registry.encodeValue(groupBy)).toEqual({
+      $type: "GroupBy",
+      property: "plan",
+      property_type: "string",
+      bucket_size: 18,
+      bucket_min: null,
+      bucket_max: null,
+      _list_item_mode: null,
+    });
+  });
 });

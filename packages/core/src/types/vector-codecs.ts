@@ -400,46 +400,6 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
     },
   ],
   [
-    "GroupBy",
-    {
-      fields: [
-        "property",
-        "property_type",
-        "bucket_size",
-        "bucket_min",
-        "bucket_max",
-        "_list_item_mode",
-      ],
-      required: ["property"],
-      construct: (bag) => {
-        // B2-BIND (B2-M1 carrier table): `$type: float` bucket children
-        // decode as PyFloat carriers, but Python's GroupBy holds real
-        // floats whose ctor guard (V18 `bucket_min >= bucket_max`) and
-        // validator arithmetic compare NUMERICALLY — a carrier object
-        // string-compares under JS `>=` and inverts the guard. Unwrap
-        // the three bucket fields to native numbers before construction
-        // (the SignedReplay `signed_at` unwrap precedent below).
-        const unwrapped: Record<string, unknown> = { ...bag };
-        for (const field of ["bucket_size", "bucket_min", "bucket_max"]) {
-          const value = unwrapped[field];
-          if (
-            typeof value === "object" &&
-            value !== null &&
-            "spelling" in value &&
-            typeof (value as { spelling: unknown }).spelling === "string"
-          ) {
-            // R11.7 rig-internal exemption: the spelling is the rig's
-            // canonical PyFloat token (constructor-validated), same as
-            // the SignedReplay `signed_at` unwrap below — not user input.
-            unwrapped[field] = Number((value as { spelling: string }).spelling);
-          }
-        }
-        return new GroupBy(unwrapped as unknown as GroupByFields);
-      },
-      matches: (value) => value instanceof GroupBy,
-    },
-  ],
-  [
     "Metric",
     {
       fields: [
@@ -601,6 +561,136 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
     },
   ],
 ];
+
+/**
+ * The three GroupBy bucket fields whose Python annotation is
+ * `int | float | None` (`types.py:8367-8373`) — the fields the
+ * {@link groupByCodec} float-ness memory tracks.
+ */
+const GROUP_BY_BUCKET_FIELDS = [
+  "bucket_size",
+  "bucket_min",
+  "bucket_max",
+] as const;
+
+/**
+ * Decode-time float-ness memory for {@link groupByCodec} (B2 gate
+ * remediation, RUN.md 2026-08-15 B2-attempt-1 divergence): maps each
+ * decoded `GroupBy` instance to the set of bucket fields that ARRIVED
+ * as `$type: float` carriers, so encode can re-tag exactly those.
+ * WeakMap keying keeps the memory garbage-collectable with the
+ * instance and invisible to library consumers.
+ */
+const GROUP_BY_FLOAT_BUCKETS = new WeakMap<GroupBy, ReadonlySet<string>>();
+
+/** Shared empty set for {@link groupByCodec} instances with no memory. */
+const NO_FLOAT_BUCKETS: ReadonlySet<string> = new Set<string>();
+
+/**
+ * The `GroupBy` dataclass codec row (fields in Python
+ * `dataclasses.fields` order) — split out of {@link DATACLASS_CODECS}
+ * because {@link groupByCodec} pairs it with a custom encode.
+ */
+const GROUP_BY_SPEC: DataclassCodecSpec = {
+  fields: [
+    "property",
+    "property_type",
+    "bucket_size",
+    "bucket_min",
+    "bucket_max",
+    "_list_item_mode",
+  ],
+  required: ["property"],
+  construct: (bag) => {
+    // B2-BIND (B2-M1 carrier table): `$type: float` bucket children
+    // decode as PyFloat carriers, but Python's GroupBy holds real
+    // floats whose ctor guard (V18 `bucket_min >= bucket_max`) and
+    // validator arithmetic compare NUMERICALLY — a carrier object
+    // string-compares under JS `>=` and inverts the guard. Unwrap
+    // the three bucket fields to native numbers before construction
+    // (the SignedReplay `signed_at` unwrap precedent below), and
+    // REMEMBER which fields were float-spelled so the encode half can
+    // restore the carrier (B2 gate remediation — Python's buckets are
+    // `int | float | None`, so a plain TS number cannot carry the
+    // int-vs-float distinction by itself).
+    const unwrapped: Record<string, unknown> = { ...bag };
+    const floatFields = new Set<string>();
+    for (const field of GROUP_BY_BUCKET_FIELDS) {
+      const value = unwrapped[field];
+      if (
+        typeof value === "object" &&
+        value !== null &&
+        "spelling" in value &&
+        typeof (value as { spelling: unknown }).spelling === "string"
+      ) {
+        // R11.7 rig-internal exemption: the spelling is the rig's
+        // canonical PyFloat token (constructor-validated), same as
+        // the SignedReplay `signed_at` unwrap below — not user input.
+        unwrapped[field] = Number((value as { spelling: string }).spelling);
+        floatFields.add(field);
+      }
+    }
+    const instance = new GroupBy(unwrapped as unknown as GroupByFields);
+    if (floatFields.size > 0) {
+      GROUP_BY_FLOAT_BUCKETS.set(instance, floatFields);
+    }
+    return instance;
+  },
+  matches: (value) => value instanceof GroupBy,
+};
+
+/**
+ * The generic-half `GroupBy` codec {@link groupByCodec} wraps: decode
+ * (unknown-field rejection, required-field check, carrier unwrap +
+ * float-ness recording via {@link GROUP_BY_SPEC}) is reused verbatim.
+ */
+const groupByBaseCodec: ContractTagCodec = dataclassCodec(
+  "GroupBy",
+  GROUP_BY_SPEC,
+);
+
+/**
+ * The `GroupBy` tag codec — custom encode paired with the decode-side
+ * carrier unwrap (B2 gate remediation): a bucket field remembered in
+ * {@link GROUP_BY_FLOAT_BUCKETS} re-tags as
+ * `{$type: "float", value: pythonFloatStr(v)}` (mirroring Python
+ * `_encode_common`, which tags INTEGRAL floats inside rich payloads);
+ * every other field takes the generic declared-field walk. Python's
+ * bucket annotation is `int | float | None`, so — unlike
+ * {@link signedReplayCodec}'s always-float `signed_at` — the re-tag
+ * must be conditional on how the value arrived: `18` (int) stays `18`,
+ * `18.0` (float carrier) stays the carrier.
+ */
+const groupByCodec: ContractTagCodec = {
+  decode: groupByBaseCodec.decode,
+  matches: groupByBaseCodec.matches,
+  encode: (instance, encodeChild) => {
+    const groupBy = instance as GroupBy;
+    const record = instance as unknown as Readonly<Record<string, unknown>>;
+    const floatFields = GROUP_BY_FLOAT_BUCKETS.get(groupBy) ?? NO_FLOAT_BUCKETS;
+    const out: Record<string, unknown> = { $type: "GroupBy" };
+    for (const field of GROUP_BY_SPEC.fields) {
+      const value = record[field];
+      // The integral-finite guard mirrors Python `_encode_common`
+      // exactly: only integral finite floats ride as carriers
+      // (non-integral floats are unambiguous raw JSON tokens; the
+      // canonical-spelling check at PyFloat construction makes a
+      // remembered non-integral value unreachable — guard kept for
+      // shape parity with signedReplayCodec).
+      if (
+        floatFields.has(field) &&
+        typeof value === "number" &&
+        Number.isFinite(value) &&
+        Number.isInteger(value)
+      ) {
+        out[field] = { $type: "float", value: pythonFloatStr(value) };
+      } else {
+        out[field] = encodeChild(value);
+      }
+    }
+    return out;
+  },
+};
 
 /**
  * The `SignedReplay` tag codec (phase2-design C6-d) — custom because
@@ -979,6 +1069,7 @@ export const CONTRACT_TAG_CODECS: ReadonlyMap<string, ContractTagCodec> =
   new Map<string, ContractTagCodec>([
     ["OAuthTokens", oauthTokensCodec],
     ["CohortDefinition", cohortDefinitionCodec],
+    ["GroupBy", groupByCodec],
     ["SignedReplay", signedReplayCodec],
     ...DATACLASS_CODECS.map(
       ([tag, spec]): readonly [string, ContractTagCodec] => [
