@@ -104,6 +104,54 @@ import {
   type AlertMethods,
 } from "../services/entities/alerts.js";
 import {
+  createSchemaMethods,
+  type SchemaMethods,
+} from "../services/entities/schemas.js";
+import {
+  createLexiconMethods,
+  type LexiconMethods,
+} from "../services/entities/lexicon.js";
+import {
+  createDropFilterMethods,
+  type DropFilterMethods,
+} from "../services/entities/drop-filters.js";
+import {
+  createCustomPropertyMethods,
+  type CustomPropertyMethods,
+} from "../services/entities/custom-properties.js";
+import {
+  createLookupTableMethods,
+  type LookupTableMethods,
+} from "../services/entities/lookup-tables.js";
+import {
+  createCustomEventMethods,
+  type CustomEventMethods,
+} from "../services/entities/custom-events.js";
+import {
+  createSchemaEnforcementMethods,
+  type SchemaEnforcementMethods,
+} from "../services/entities/schema-enforcement.js";
+import {
+  createAuditMethods,
+  type AuditMethods,
+} from "../services/entities/audit.js";
+import {
+  createAnomalyMethods,
+  type AnomalyMethods,
+} from "../services/entities/anomalies.js";
+import {
+  createDeletionRequestMethods,
+  type DeletionRequestMethods,
+} from "../services/entities/deletion-requests.js";
+import {
+  createBusinessContextMethods,
+  type BusinessContextMethods,
+} from "../services/entities/business-context.js";
+import {
+  createReplaysSigningMethods,
+  type ReplaysSigningMethods,
+} from "../services/entities/replays-signing.js";
+import {
   createRequestExecutor,
   normalizedAbortError,
   rawFetch,
@@ -347,7 +395,10 @@ export interface ClientCore {
  * this interface with their domain methods at the marked merge point —
  * C2 landed: query-host + engage + streaming/export; C3 landed:
  * dashboards + bookmarks-v2 + cohorts-app entity CRUD; C4 landed:
- * flags + experiments + annotations + webhooks + alerts).
+ * flags + experiments + annotations + webhooks + alerts; C5 landed:
+ * schemas + lexicon + drop filters + custom properties + lookup
+ * tables + custom events + schema enforcement + audit + anomalies +
+ * deletion requests + business context + replays signing).
  */
 export interface MixpanelClient
   extends
@@ -361,7 +412,19 @@ export interface MixpanelClient
     ExperimentMethods,
     AnnotationMethods,
     WebhookMethods,
-    AlertMethods {
+    AlertMethods,
+    SchemaMethods,
+    LexiconMethods,
+    DropFilterMethods,
+    CustomPropertyMethods,
+    LookupTableMethods,
+    CustomEventMethods,
+    SchemaEnforcementMethods,
+    AuditMethods,
+    AnomalyMethods,
+    DeletionRequestMethods,
+    BusinessContextMethods,
+    ReplaysSigningMethods {
   /** The resolved Session bound to this client (`session` property). */
   readonly session: Session;
   /** The project ID from the bound Session (`project_id` property). */
@@ -1019,6 +1082,18 @@ export function createMixpanelClient(
     ...createAnnotationMethods(core),
     ...createWebhookMethods(core),
     ...createAlertMethods(core),
+    ...createSchemaMethods(core),
+    ...createLexiconMethods(core),
+    ...createDropFilterMethods(core),
+    ...createCustomPropertyMethods(core),
+    ...createLookupTableMethods(core),
+    ...createCustomEventMethods(core),
+    ...createSchemaEnforcementMethods(core),
+    ...createAuditMethods(core),
+    ...createAnomalyMethods(core),
+    ...createDeletionRequestMethods(core),
+    ...createBusinessContextMethods(core),
+    ...createReplaysSigningMethods(core),
     get session(): Session {
       return session;
     },

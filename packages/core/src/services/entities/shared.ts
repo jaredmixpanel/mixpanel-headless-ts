@@ -152,3 +152,101 @@ export function paramsOrNone(
 ): Record<string, string> | undefined {
   return Object.keys(params).length > 0 ? params : undefined;
 }
+
+/** Characters `urllib.parse.quote` never escapes (ALWAYS_SAFE set). */
+const QUOTE_SAFE = new Set(
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-~",
+);
+
+/**
+ * Percent-encode a path segment exactly like `urllib.parse.quote(s,
+ * safe="")`: ALPHA / DIGIT / `_.-~` pass through, EVERYTHING else —
+ * including `/` (the default safe char, suppressed here) and space
+ * (`%20`, unlike `quote_plus`'s `+`) — is `%XX` uppercase-hex over the
+ * UTF-8 bytes (B4-C5 schemas/lexicon path segments,
+ * `api_client.py:3426`/`:3469-3470`/`:7080`/`:7118`).
+ *
+ * `encodeURIComponent` is NOT equivalent (it passes `!'()*`, which
+ * Python escapes) — R11.7 twin discipline, the `quotePlus` precedent
+ * (`client/transport.ts:36-67`).
+ *
+ * @param text - The path segment to encode.
+ * @returns The encoded segment.
+ */
+export function pythonQuote(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  let out = "";
+  for (const byte of bytes) {
+    const char = String.fromCharCode(byte);
+    if (QUOTE_SAFE.has(char)) {
+      out += char;
+    } else {
+      out += `%${byte.toString(16).toUpperCase().padStart(2, "0")}`;
+    }
+  }
+  return out;
+}
+
+/**
+ * Python truthiness over a parsed wire value (`if url:` on a
+ * `dict.get` product — B4-C5 `get_lookup_download_url`,
+ * `api_client.py:7969-7971`): `None`/`False`/`0`/`0.0`/`""`/`[]`/`{}`
+ * are falsy; every other JSON product is truthy.
+ *
+ * @param value - The parsed value (or `undefined` for an absent key,
+ *   the Python `dict.get` default-`None` arm).
+ * @returns Whether Python would take the branch.
+ */
+export function jsonTruthy(value: JsonValue | undefined): boolean {
+  if (value === undefined || value === null || value === false) {
+    return false;
+  }
+  if (value === true) {
+    return true;
+  }
+  if (typeof value === "string") {
+    return value !== "";
+  }
+  if (typeof value === "bigint") {
+    return value !== 0n;
+  }
+  if (value instanceof JsonNumber) {
+    return value.toNumber() !== 0;
+  }
+  if (typeof value === "number") {
+    return value !== 0;
+  }
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+  return Object.keys(value).length > 0;
+}
+
+/**
+ * The CPython `int == <parsed wire value>` twin for the
+ * `update_custom_event` echo check (`api_client.py:8122-8123`):
+ * numeric cross-type equality (`42 == 42.0` is True, `True == 1` is
+ * True), never string/int coercion (`"42" != 42`).
+ *
+ * @param value - The parsed wire member (`result.get("customEventId")`).
+ * @param expected - The caller's integer id.
+ * @returns Whether Python `value == expected` holds.
+ */
+export function pyIntEquals(
+  value: JsonValue | undefined,
+  expected: number,
+): boolean {
+  if (typeof value === "boolean") {
+    return (value ? 1 : 0) === expected;
+  }
+  if (typeof value === "bigint") {
+    return value === BigInt(expected);
+  }
+  if (value instanceof JsonNumber) {
+    return value.toNumber() === expected;
+  }
+  if (typeof value === "number") {
+    return value === expected;
+  }
+  return false;
+}
