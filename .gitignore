@@ -3,9 +3,3 @@ dist/
 coverage/
 *.tsbuildinfo
 .notes/
-# R10.9 throwaway harness build output (the harness itself IS committed;
-# the batch gate deletes throwaway/ after arbiter sign-off).
-throwaway/*/.build/
-# Regenerable R10.9 case corpora (4 MB/seed for B3-K2; `run.sh` rebuilds
-# them deterministically from the recorded seeds).
-throwaway/*/cases.json

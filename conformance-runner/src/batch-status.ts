@@ -33,16 +33,16 @@ export type BatchStatus = "pending" | "done";
  *   P2-6 results/replays; 44 api-index entry points).
  * - `validation.` / `user_validators.` — the Phase-3 B2 validators
  *   (playbook P3-5 §4 B2-gate flip; 690 vectors).
+ * - `bookmark_builders.` / `segfilter.` / `user_builders.` /
+ *   `expressions.` / `transforms.` / `bookmark_schema.` — the
+ *   Phase-3 B3 builders (playbook P3-5 §4 B3-gate flip; 299 vectors;
+ *   `bookmark_schema.` is count-neutral — zero corpus vectors, added
+ *   so the two oracle-probed schema apis are explicitly B3-owned).
  *
- * Pending batches (Phase 3, per plan §6 / api-map — the
- * `user_builders.` / `expressions.` / `transforms.` prefixes are B3
- * scope per the playbook, superseding this file's earlier informal
- * "B2" binning; playbook Discrepancy #2):
- * - `api_client.` (B4), `workspace.` (B6), `user_builders.` /
- *   `expressions.` / `transforms.` / `bookmark_builders.` /
- *   `segfilter.` (B3), `replays.` / `replay_labels.` /
- *   `rrweb_analyzer.` (B5), `oauth_flow.` / `region_probe.` (B7/B8),
- *   `pagination.` (B4).
+ * Pending batches (Phase 3, per plan §6 / api-map):
+ * - `api_client.` / `pagination.` (B4), `workspace.` (B5/B6 split),
+ *   `replays.` / `replay_labels.` / `rrweb_analyzer.` (B5),
+ *   `region_probe.` (B7), `oauth_flow.` (B8).
  */
 export const BATCH_STATUS: ReadonlyMap<string, BatchStatus> = new Map<
   string,
@@ -63,11 +63,16 @@ export const BATCH_STATUS: ReadonlyMap<string, BatchStatus> = new Map<
   // stragglers under these prefixes now FAIL instead of skipping.
   ["validation.", "done"],
   ["user_validators.", "done"],
-  ["user_builders.", "pending"],
-  ["expressions.", "pending"],
-  ["transforms.", "pending"],
-  ["bookmark_builders.", "pending"],
-  ["segfilter.", "pending"],
+  // Phase-3 B3 gate flip (playbook P3-5 §4): builders are done —
+  // stragglers under these prefixes now FAIL instead of skipping.
+  // `bookmark_schema.` carries zero corpus vectors (its two apis are
+  // oracle/Layer-3-locked, packet b3-packets.md §Batch-status).
+  ["user_builders.", "done"],
+  ["expressions.", "done"],
+  ["transforms.", "done"],
+  ["bookmark_builders.", "done"],
+  ["segfilter.", "done"],
+  ["bookmark_schema.", "done"],
   ["replays.", "pending"],
   ["replay_labels.", "pending"],
   ["rrweb_analyzer.", "pending"],

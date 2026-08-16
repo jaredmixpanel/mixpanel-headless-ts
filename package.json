@@ -18,7 +18,7 @@
     "fmt": "prettier --write .",
     "fmt:check": "prettier --check .",
     "test": "vitest run",
-    "referee:bookmark": "vitest run differential/test/bookmark-schema-referee.test.ts",
+    "referee:bookmark": "vitest run differential/test/bookmark-schema-referee.test.ts differential/test/bookmark-referee-feed.test.ts",
     "generate": "json2ts vendor/mixpanel-contracts/bookmark.json differential/src/generated/reports/bookmark.ts --no-enableConstEnums --no-unknownAny --unreachableDefinitions",
     "generate:error-codes": "node scripts/gen-error-codes.mjs",
     "vendor:drift": "bash scripts/check-vendor-drift.sh",

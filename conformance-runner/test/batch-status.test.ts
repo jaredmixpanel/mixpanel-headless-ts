@@ -83,7 +83,7 @@ describe("batchStatusFor — table lookup", () => {
   it("resolves pending prefixes (Phase-3 batches)", () => {
     expect(batchStatusFor("workspace.build_funnel_params")).toBe("pending");
     expect(batchStatusFor("api_client.activity_feed")).toBe("pending");
-    expect(batchStatusFor("bookmark_builders.dashboard")).toBe("pending");
+    expect(batchStatusFor("pagination.paginate")).toBe("pending");
   });
 
   it("defaults to pending when no prefix matches", () => {
@@ -155,13 +155,27 @@ describe("batchStatusFor — table lookup", () => {
     expect(BATCH_STATUS.get("user_validators.")).toBe("done");
     expect(batchStatusFor("validation.validate_bookmark")).toBe("done");
     expect(batchStatusFor("user_validators.validate_user_args")).toBe("done");
-    // B3 scope stays pending (playbook Discrepancy #2 — user_builders/
-    // expressions/transforms are B3 despite the old file-comment binning).
-    expect(batchStatusFor("user_builders.filter_to_selector")).toBe("pending");
-    expect(batchStatusFor("expressions.normalize_on_expression")).toBe(
-      "pending",
+  });
+
+  it("the six B3 builder prefixes are declared done (the B3 gate flip)", () => {
+    // Playbook P3-5 §4: the B3 gate flips exactly these six prefixes
+    // (bookmark_schema. is count-neutral — zero corpus vectors; packet
+    // b3-packets.md §Batch-status); stragglers under them must FAIL,
+    // never skip (Risk #8).
+    expect(BATCH_STATUS.get("bookmark_builders.")).toBe("done");
+    expect(BATCH_STATUS.get("segfilter.")).toBe("done");
+    expect(BATCH_STATUS.get("user_builders.")).toBe("done");
+    expect(BATCH_STATUS.get("expressions.")).toBe("done");
+    expect(BATCH_STATUS.get("transforms.")).toBe("done");
+    expect(BATCH_STATUS.get("bookmark_schema.")).toBe("done");
+    expect(batchStatusFor("user_builders.filter_to_selector")).toBe("done");
+    expect(batchStatusFor("expressions.normalize_on_expression")).toBe("done");
+    expect(batchStatusFor("transforms.transform_event")).toBe("done");
+    expect(batchStatusFor("bookmark_builders.build_filter_entry")).toBe("done");
+    expect(batchStatusFor("segfilter.build_segfilter_entry")).toBe("done");
+    expect(batchStatusFor("bookmark_schema.validate_with_pydantic")).toBe(
+      "done",
     );
-    expect(batchStatusFor("transforms.transform_funnel")).toBe("pending");
   });
 });
 
