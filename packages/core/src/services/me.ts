@@ -295,7 +295,7 @@ export class MeService {
    */
   async listProjects(): Promise<Array<[string, MeProjectInfo]>> {
     const me = await this.fetch();
-    const items: Array<[string, MeProjectInfo]> = Object.entries(me.projects);
+    const items: Array<[string, MeProjectInfo]> = [...me.projects.entries()];
     items.sort((a, b) =>
       compareCodepoints(a[1].name.toLowerCase(), b[1].name.toLowerCase()),
     );
@@ -312,9 +312,7 @@ export class MeService {
    */
   async findProject(projectId: string): Promise<MeProjectInfo | null> {
     const me = await this.fetch();
-    return Object.hasOwn(me.projects, projectId)
-      ? (me.projects[projectId] as MeProjectInfo)
-      : null;
+    return me.projects.get(projectId) ?? null;
   }
 
   /**
@@ -330,7 +328,7 @@ export class MeService {
     options: MeListWorkspacesOptions = {},
   ): Promise<MeWorkspaceInfo[]> {
     const me = await this.fetch();
-    let workspaces = Object.values(me.workspaces);
+    let workspaces = [...me.workspaces.values()];
 
     const projectId = options.project_id ?? null;
     if (projectId !== null) {
@@ -394,7 +392,11 @@ export class MeService {
     } catch {
       return null;
     }
-    const views = Object.values(me.workspaces)
+    // Insertion-order values (the Python `me.workspaces.values()`
+    // iteration): `selectWorkspaceId`'s "first non-hidden" / "first"
+    // tie-breaks follow `/me` source order via the ordered Map
+    // (B8-MAPFIX, `user-ratifications.md:14-22`).
+    const views = [...me.workspaces.values()]
       .filter((ws) => ws.project_id === pidInt)
       .map((ws) => workspaceViewFromMeWorkspace(ws));
     return selectWorkspaceId(views);

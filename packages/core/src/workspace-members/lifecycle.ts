@@ -300,18 +300,15 @@ export async function resolveOrganizationId(
     return explicit;
   }
   const me = await host.meService.fetch();
-  const projectInfo = Object.hasOwn(me.projects, host.projectId)
-    ? me.projects[host.projectId]
-    : undefined;
+  const projectInfo = me.projects.get(host.projectId);
   if (projectInfo !== undefined) {
     return projectInfo.organization_id;
   }
-  const orgKeys = Object.keys(me.organizations);
-  if (orgKeys.length === 1) {
-    const sole = me.organizations[orgKeys[0] as string];
-    return (sole as { id: number }).id;
+  if (me.organizations.size === 1) {
+    const sole = me.organizations.values().next().value as { id: number };
+    return sole.id;
   }
-  const available = [...orgKeys].sort(compareCodepoints);
+  const available = [...me.organizations.keys()].sort(compareCodepoints);
   throw new WorkspaceScopeError(
     `Cannot auto-resolve organization for project ` +
       `${pyRepr(host.projectId)}. Pass organization_id explicitly. ` +
@@ -342,16 +339,13 @@ export async function cachedOrganizationId(
   if (me === null) {
     return null;
   }
-  const projectInfo = Object.hasOwn(me.projects, host.projectId)
-    ? me.projects[host.projectId]
-    : undefined;
+  const projectInfo = me.projects.get(host.projectId);
   if (projectInfo !== undefined) {
     return projectInfo.organization_id;
   }
-  const orgKeys = Object.keys(me.organizations);
-  if (orgKeys.length === 1) {
-    const sole = me.organizations[orgKeys[0] as string];
-    return (sole as { id: number }).id;
+  if (me.organizations.size === 1) {
+    const sole = me.organizations.values().next().value as { id: number };
+    return sole.id;
   }
   return null;
 }

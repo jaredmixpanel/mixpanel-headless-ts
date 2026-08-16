@@ -100,6 +100,69 @@ export type JsonValue =
   | { [key: string]: JsonValue };
 
 /**
+ * Non-enumerable sidecar recording an object's SOURCE key order where
+ * it differs from JS enumeration order (B8-MAPFIX, user ratification
+ * `user-ratifications.md:14-22`).
+ *
+ * JS plain objects enumerate integer-like keys in ascending numeric
+ * order regardless of insertion order, while Python `json.loads`
+ * preserves source order — the mechanism behind playbook Discrepancies
+ * #9/#10/#13. The lossless parser attaches this symbol (holding
+ * `readonly string[]`) to any parsed object whose source key order the
+ * plain object cannot represent; {@link orderedKeys} /
+ * {@link orderedEntries} read it back. Being non-enumerable, the
+ * sidecar is invisible to `Object.keys` / `JSON.stringify` / spread.
+ */
+export const LOSSLESS_KEY_ORDER: unique symbol = Symbol("losslessKeyOrder");
+
+/** An object possibly carrying the {@link LOSSLESS_KEY_ORDER} sidecar. */
+interface KeyOrdered {
+  /** Source key order, when the plain object cannot represent it. */
+  readonly [LOSSLESS_KEY_ORDER]?: readonly string[];
+}
+
+/**
+ * Attach the source-key-order sidecar to a parsed object.
+ *
+ * @param target - The freshly built object (mutated in place).
+ * @param keys - The source key order (first occurrence wins for
+ *   duplicate keys, matching Python dict position semantics).
+ */
+export function attachKeyOrder(target: object, keys: readonly string[]): void {
+  Object.defineProperty(target, LOSSLESS_KEY_ORDER, {
+    value: keys,
+    enumerable: false,
+    writable: false,
+    configurable: false,
+  });
+}
+
+/**
+ * An object's keys in SOURCE order: the {@link LOSSLESS_KEY_ORDER}
+ * sidecar when present, else `Object.keys` (which already equals
+ * source order for objects without out-of-order integer-like keys).
+ *
+ * @param value - Any plain object (parsed or hand-built).
+ * @returns The keys in Python-dict order.
+ */
+export function orderedKeys(value: object): readonly string[] {
+  const sidecar = (value as KeyOrdered)[LOSSLESS_KEY_ORDER];
+  return sidecar ?? Object.keys(value);
+}
+
+/**
+ * `Object.entries` in SOURCE order (see {@link orderedKeys}).
+ *
+ * @param value - Any plain object (parsed or hand-built).
+ * @returns `[key, value]` pairs in Python-dict order.
+ */
+export function orderedEntries(
+  value: Readonly<Record<string, unknown>>,
+): Array<[string, unknown]> {
+  return orderedKeys(value).map((key) => [key, value[key]]);
+}
+
+/**
  * Convert a lossless-parsed JSON tree to NATIVE JS values — the point
  * where the TS wire layer matches Python's `json.loads` product
  * (`int`/`float` → `number`, containers recursing).
@@ -125,6 +188,13 @@ export function toNativeJson(value: JsonValue): unknown {
     const out: Record<string, unknown> = {};
     for (const [key, member] of Object.entries(value)) {
       out[key] = toNativeJson(member);
+    }
+    // Key-order sidecar propagates (B8-MAPFIX): the native tree feeds
+    // the ordered-dict model fields (`MeResponse`), which must see the
+    // SOURCE order the parser captured.
+    const sidecar = (value as KeyOrdered)[LOSSLESS_KEY_ORDER];
+    if (sidecar !== undefined) {
+      attachKeyOrder(out, sidecar);
     }
     return out;
   }

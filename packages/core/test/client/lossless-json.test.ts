@@ -1,7 +1,12 @@
 // Unit tests for the lossless JSON parser (D6 rule 3 / D12 hard
 // requirement): raw number tokens must survive loading verbatim.
 import { describe, expect, it } from "vitest";
-import { JsonNumber } from "../../src/client/json-value.js";
+import {
+  JsonNumber,
+  orderedEntries,
+  orderedKeys,
+  toNativeJson,
+} from "../../src/client/json-value.js";
 import {
   LosslessJsonError,
   parseLossless,
@@ -124,5 +129,85 @@ describe("parseLossless pythonConstants (json.loads non-finite tokens)", () => {
     expect(() => parseLossless("Infinity")).toThrow(LosslessJsonError);
     expect(() => parseLossless("-Infinity")).toThrow(LosslessJsonError);
     expect(() => parseLossless('{"a": NaN}')).toThrow(LosslessJsonError);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Ordered-entries capability (B8-MAPFIX, user ratification
+// `user-ratifications.md:14-22`): the parser records SOURCE key order
+// wherever the built plain object cannot represent it (out-of-order
+// integer-like keys), read back via `orderedKeys` / `orderedEntries`.
+// Python twin: `json.loads` dict key order.
+// ---------------------------------------------------------------------------
+
+describe("parseLossless ordered entries (B8-MAPFIX)", () => {
+  it("captures source order for out-of-ascending integer-like keys", () => {
+    const value = parseLossless('{"200": 1, "100": 2}') as Record<
+      string,
+      unknown
+    >;
+    // JS enumeration hoists ascending…
+    expect(Object.keys(value)).toEqual(["100", "200"]);
+    // …the sidecar keeps Python's source order.
+    expect(orderedKeys(value)).toEqual(["200", "100"]);
+    expect(orderedEntries(value).map(([k]) => k)).toEqual(["200", "100"]);
+  });
+
+  it("mixed integer-like and plain keys keep full source order", () => {
+    const value = parseLossless('{"b": 1, "3": 2, "a": 3, "1": 4}') as Record<
+      string,
+      unknown
+    >;
+    expect(orderedKeys(value)).toEqual(["b", "3", "a", "1"]);
+  });
+
+  it("in-order objects carry no sidecar and fall back to Object.keys", () => {
+    const value = parseLossless('{"100": 1, "200": 2, "zeta": 3}') as Record<
+      string,
+      unknown
+    >;
+    expect(Object.getOwnPropertySymbols(value)).toEqual([]);
+    expect(orderedKeys(value)).toEqual(["100", "200", "zeta"]);
+  });
+
+  it("duplicate keys: FIRST position wins, LAST value wins (json.loads)", () => {
+    // Python: json.loads('{"2": 1, "1": 2, "2": 3}') → {"2": 3, "1": 2}
+    // with key order ["2", "1"].
+    const value = parseLossless('{"2": 1, "1": 2, "2": 3}') as Record<
+      string,
+      JsonNumber
+    >;
+    expect(orderedKeys(value)).toEqual(["2", "1"]);
+    expect(value["2"]?.raw).toBe("3");
+    expect(value["1"]?.raw).toBe("2");
+  });
+
+  it("the sidecar is invisible to enumeration and JSON.stringify", () => {
+    const value = parseLossless('{"9": true, "1": false}') as Record<
+      string,
+      unknown
+    >;
+    expect(Object.keys(value)).toEqual(["1", "9"]);
+    expect(JSON.stringify(value)).toBe('{"1":false,"9":true}');
+    expect({ ...value }).toEqual({ "1": false, "9": true });
+  });
+
+  it("toNativeJson propagates the sidecar through conversion", () => {
+    const parsed = parseLossless(
+      '{"outer": {"42": {"x": 1}, "7": {"x": 2}}}',
+    ) as Record<string, unknown>;
+    const native = toNativeJson(parsed as never) as Record<
+      string,
+      Record<string, unknown>
+    >;
+    expect(orderedKeys(native["outer"] as object)).toEqual(["42", "7"]);
+  });
+
+  it("nested objects capture order independently", () => {
+    const parsed = parseLossless(
+      '{"a": {"5": 1, "3": 2}, "b": {"3": 1, "5": 2}}',
+    ) as Record<string, Record<string, unknown>>;
+    expect(orderedKeys(parsed["a"] as object)).toEqual(["5", "3"]);
+    expect(orderedKeys(parsed["b"] as object)).toEqual(["3", "5"]);
   });
 });

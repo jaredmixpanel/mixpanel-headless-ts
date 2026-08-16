@@ -319,21 +319,30 @@ export interface MeResponseInit {
   readonly user_email?: string | null | undefined;
   /** User's display name. */
   readonly user_name?: string | null | undefined;
-  /** Accessible organizations, keyed by org ID. */
+  /**
+   * Accessible organizations, keyed by org ID. A `ReadonlyMap` input
+   * preserves caller-supplied insertion order exactly (the Python dict
+   * mirror — user ratification `user-ratifications.md:14-22`); a plain
+   * record is accepted for convenience but JS hoists its integer-like
+   * keys ascending, so order-sensitive callers MUST pass a Map.
+   */
   readonly organizations?:
     | Readonly<Record<string, MeOrgInfo | Readonly<Record<string, unknown>>>>
+    | ReadonlyMap<string, MeOrgInfo | Readonly<Record<string, unknown>>>
     | undefined;
-  /** Accessible projects, keyed by project ID. */
+  /** Accessible projects, keyed by project ID (ordering as above). */
   readonly projects?:
     | Readonly<
         Record<string, MeProjectInfo | Readonly<Record<string, unknown>>>
       >
+    | ReadonlyMap<string, MeProjectInfo | Readonly<Record<string, unknown>>>
     | undefined;
-  /** Accessible workspaces, keyed by workspace ID. */
+  /** Accessible workspaces, keyed by workspace ID (ordering as above). */
   readonly workspaces?:
     | Readonly<
         Record<string, MeWorkspaceInfo | Readonly<Record<string, unknown>>>
       >
+    | ReadonlyMap<string, MeWorkspaceInfo | Readonly<Record<string, unknown>>>
     | undefined;
   /** Unix timestamp when this response was cached. */
   readonly cached_at?: number | null | undefined;
@@ -358,23 +367,29 @@ export class MeResponse extends EntityModel {
     { name: "user_id", kind: "int", nullable: true },
     { name: "user_email", kind: "str", nullable: true },
     { name: "user_name", kind: "str", nullable: true },
+    // The three container maps are `ordered-dict` fields (B8-MAPFIX,
+    // user ratification `user-ratifications.md:14-22`): Python's
+    // `dict[str, …]` preserves `/me` source order, which drives the
+    // result-affecting `defaultAccountName` first-org pick and the
+    // `resolveWorkspace` tie-breaks — a plain Record cannot hold
+    // out-of-order integer-like keys, a ReadonlyMap can.
     {
       name: "organizations",
       nested: () => MeOrgInfo,
-      container: "dict",
-      default: () => ({}),
+      container: "ordered-dict",
+      default: () => new Map<string, MeOrgInfo>(),
     },
     {
       name: "projects",
       nested: () => MeProjectInfo,
-      container: "dict",
-      default: () => ({}),
+      container: "ordered-dict",
+      default: () => new Map<string, MeProjectInfo>(),
     },
     {
       name: "workspaces",
       nested: () => MeWorkspaceInfo,
-      container: "dict",
-      default: () => ({}),
+      container: "ordered-dict",
+      default: () => new Map<string, MeWorkspaceInfo>(),
     },
     { name: "cached_at", kind: "float", nullable: true },
     { name: "cached_region", kind: "str", nullable: true },
@@ -386,12 +401,16 @@ export class MeResponse extends EntityModel {
   declare readonly user_email: string | null;
   /** User's display name. */
   declare readonly user_name: string | null;
-  /** Accessible organizations, keyed by org ID. */
-  declare readonly organizations: Readonly<Record<string, MeOrgInfo>>;
-  /** Accessible projects, keyed by project ID. */
-  declare readonly projects: Readonly<Record<string, MeProjectInfo>>;
-  /** Accessible workspaces, keyed by workspace ID. */
-  declare readonly workspaces: Readonly<Record<string, MeWorkspaceInfo>>;
+  /**
+   * Accessible organizations, keyed by org ID — insertion-ordered
+   * exactly like the Python `dict` (R4.8 ReadonlyMap; user
+   * ratification `user-ratifications.md:14-22`).
+   */
+  declare readonly organizations: ReadonlyMap<string, MeOrgInfo>;
+  /** Accessible projects, keyed by project ID (insertion-ordered). */
+  declare readonly projects: ReadonlyMap<string, MeProjectInfo>;
+  /** Accessible workspaces, keyed by workspace ID (insertion-ordered). */
+  declare readonly workspaces: ReadonlyMap<string, MeWorkspaceInfo>;
   /** Unix timestamp when this response was cached. */
   declare readonly cached_at: number | null;
   /** Which region this cache is for. */

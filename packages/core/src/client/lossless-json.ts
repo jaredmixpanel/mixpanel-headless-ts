@@ -17,7 +17,7 @@
  * tokens are barred from vector files).
  */
 
-import { JsonNumber, type JsonValue } from "./json-value.js";
+import { JsonNumber, attachKeyOrder, type JsonValue } from "./json-value.js";
 
 /** Error raised for malformed JSON input, with a character offset. */
 export class LosslessJsonError extends Error {
@@ -202,12 +202,24 @@ class Parser {
   /**
    * Parse a JSON object at the current position.
    *
+   * Duplicate keys: last value wins at the FIRST occurrence's position
+   * — the Python `dict` update rule `json.loads` follows.
+   *
+   * Ordered-entries capability (B8-MAPFIX, user ratification
+   * `user-ratifications.md:14-22`): JS plain objects enumerate
+   * integer-like keys ascending regardless of source order, so when
+   * the source order cannot be represented by the built object, the
+   * parser attaches the `LOSSLESS_KEY_ORDER` sidecar (read back via
+   * `orderedKeys` / `orderedEntries` in `json-value.ts`). Objects
+   * whose enumeration already equals source order carry no sidecar.
+   *
    * @returns The parsed object (duplicate keys: last wins).
    * @throws LosslessJsonError - On malformed input.
    */
   private parseObject(): { [key: string]: JsonValue } {
     this.pos += 1; // consume '{'
     const result: { [key: string]: JsonValue } = {};
+    const sourceOrder: string[] = [];
     this.skipWhitespace();
     if (this.text[this.pos] === "}") {
       this.pos += 1;
@@ -224,6 +236,9 @@ class Parser {
         throw new LosslessJsonError("expected ':' after object key", this.pos);
       }
       this.pos += 1;
+      if (!Object.hasOwn(result, key)) {
+        sourceOrder.push(key); // duplicates keep FIRST position
+      }
       result[key] = this.parseValue();
       this.skipWhitespace();
       const next = this.text[this.pos];
@@ -233,9 +248,30 @@ class Parser {
       }
       if (next === "}") {
         this.pos += 1;
+        this.attachOrderIfNeeded(result, sourceOrder);
         return result;
       }
       throw new LosslessJsonError("expected ',' or '}' in object", this.pos);
+    }
+  }
+
+  /**
+   * Attach the key-order sidecar when enumeration diverges from the
+   * source order (only possible with out-of-order integer-like keys).
+   *
+   * @param result - The freshly built object.
+   * @param sourceOrder - Keys in first-occurrence source order.
+   */
+  private attachOrderIfNeeded(
+    result: { [key: string]: JsonValue },
+    sourceOrder: readonly string[],
+  ): void {
+    const enumerated = Object.keys(result);
+    for (let i = 0; i < enumerated.length; i += 1) {
+      if (enumerated[i] !== sourceOrder[i]) {
+        attachKeyOrder(result, sourceOrder);
+        return;
+      }
     }
   }
 

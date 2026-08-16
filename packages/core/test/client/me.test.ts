@@ -137,9 +137,11 @@ describe("TestMeResponse", () => {
     expect(me.user_id).toBeNull();
     expect(me.user_email).toBeNull();
     expect(me.user_name).toBeNull();
-    expect(me.organizations).toEqual({});
-    expect(me.projects).toEqual({});
-    expect(me.workspaces).toEqual({});
+    // Python `== {}` on the empty dicts → empty ordered Maps in TS
+    // (B8-MAPFIX ordered-dict containers, user-ratifications.md:14-22).
+    expect(me.organizations).toEqual(new Map());
+    expect(me.projects).toEqual(new Map());
+    expect(me.workspaces).toEqual(new Map());
   });
 
   it("test_construct_full", () => {
@@ -160,8 +162,8 @@ describe("TestMeResponse", () => {
       },
     });
     expect(me.user_id).toBe(42);
-    expect(Object.hasOwn(me.projects, "3713224")).toBe(true);
-    expect(me.projects["3713224"]?.name).toBe("AI Demo");
+    expect(me.projects.has("3713224")).toBe(true);
+    expect(me.projects.get("3713224")?.name).toBe("AI Demo");
   });
 
   it("test_extra_fields_allowed", () => {
@@ -201,8 +203,8 @@ describe("TestMeResponse", () => {
     const restored = MeResponse.fromDict(JSON.parse(jsonStr));
     expect(restored.user_id).toBe(original.user_id);
     expect(restored.user_email).toBe(original.user_email);
-    expect(restored.projects["3713224"]?.name).toBe("AI Demo");
-    expect(restored.workspaces["3448413"]?.is_default).toBe(true);
+    expect(restored.projects.get("3713224")?.name).toBe("AI Demo");
+    expect(restored.workspaces.get("3448413")?.is_default).toBe(true);
   });
 });
 

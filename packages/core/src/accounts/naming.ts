@@ -102,22 +102,19 @@ export function slugify(value: string | null | undefined): string {
  * to the literal `"account"`. Collision suffixes start at `-2` (never
  * `-1`) and increment monotonically until a unique name is found.
  *
- * ORDER CAVEAT (packet Caution #13 — RULED by the pair-A arbiter,
- * `b7-reviewA-resolution.md` ruling R2: standing DISCLOSED DIVERGENCE
- * per the Discrepancy #9/#10 mechanism — the insertion order is
- * destroyed at `JSON.parse`/object construction and cannot be
- * recovered without an ordered-container change to the B4-owned
- * `MeResponse` shape; the naming fuzz domain stays ascending-id, a
- * documented omission): Python's "first organization" is dict
- * INSERTION order (`next(iter(...))`, `naming.py:122`), but
- * `MeResponse.organizations` here is a plain `Record` whose
- * integer-like org-id keys JS hoists in ascending numeric order. The
- * two agree whenever `/me` emits orgs in ascending id order (every
- * recorded fixture does); they diverge when it does not. The same
- * ruling covers the two sibling OUT-OF-CONTRACT sites (semantics
- * review N2): the "Accessible projects:" listing order in
- * `_resolve_project`'s error messages and picker-list tie order for
- * case-folded (org, name) key collisions.
+ * ORDER (USER RATIFICATION 2026-08-16,
+ * `context/phase3/design/user-ratifications.md:14-22` — supersedes the
+ * B7-ARB-A R2 exclusion, `b7-reviewA-resolution.md`, and closes
+ * playbook Discrepancy #13's result-affecting site): Python's "first
+ * organization" is dict INSERTION order (`next(iter(...))`,
+ * `naming.py:122`), and `MeResponse.organizations` is now an
+ * insertion-order-preserving `ReadonlyMap` sourced from the lossless
+ * JSON layer's key-order capture (B8-MAPFIX), so the first-org pick
+ * matches Python exactly — including when `/me` emits organizations
+ * out of ascending-id order. The former ascending-id fuzz-domain
+ * exclusion is REMOVED (out-of-order org strategies run in
+ * `test/accounts/naming-order.test.ts` and the B8-MAPFIX R10.9
+ * harness).
  *
  * @param me - Parsed `/me` response.
  * @param existing - Set of already-taken local account names. Treated
@@ -135,13 +132,14 @@ export function defaultAccountName(
   me: MeResponse,
   existing: ReadonlySet<string>,
 ): string {
-  const entries = Object.entries(me.organizations);
+  // `next(iter(me.organizations.items()))` (`naming.py:122`) — the
+  // ReadonlyMap iterates in Python-dict insertion order (B8-MAPFIX).
+  const first = me.organizations.entries().next();
   let base: string;
-  if (entries.length === 0) {
+  if (first.done === true) {
     base = "account";
   } else {
-    const first = entries[0] as [string, { readonly name: string | null }];
-    const [firstOrgId, firstOrg] = first;
+    const [firstOrgId, firstOrg] = first.value;
     base = slugify(firstOrg.name);
     if (base === "") {
       base = `org-${firstOrgId}`;

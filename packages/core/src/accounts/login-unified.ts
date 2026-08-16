@@ -139,10 +139,13 @@ export function resolveProjectForLogin(
   projectPicker: ProjectPicker | null,
 ): string | null {
   const projects = me.projects;
-  const projectKeys = Object.keys(projects);
+  // Insertion-order keys (the Python dict iteration) — the ReadonlyMap
+  // preserves `/me` source order (B8-MAPFIX), so the "Accessible
+  // projects:" listings below match Python's line order exactly.
+  const projectKeys = [...projects.keys()];
 
   if (explicitProject !== null) {
-    if (Object.hasOwn(projects, explicitProject)) {
+    if (projects.has(explicitProject)) {
       return explicitProject;
     }
     throw new ProjectNotFoundError(explicitProject, projectKeys);
@@ -150,12 +153,12 @@ export function resolveProjectForLogin(
 
   const envProject = effects.env.get("MP_PROJECT_ID");
   if (envProject !== undefined && envProject !== "") {
-    if (Object.hasOwn(projects, envProject)) {
+    if (projects.has(envProject)) {
       return envProject;
     }
     const accessibleLines = projectKeys
       .map((pid) => {
-        const info = projects[pid] as MeProjectInfo;
+        const info = projects.get(pid) as MeProjectInfo;
         const domain =
           info.domain !== null && info.domain !== ""
             ? info.domain
@@ -182,7 +185,7 @@ export function resolveProjectForLogin(
   if (projectPicker === null) {
     const accessibleLines = projectKeys
       .map((pid) => {
-        const info = projects[pid] as MeProjectInfo;
+        const info = projects.get(pid) as MeProjectInfo;
         const domain =
           info.domain !== null && info.domain !== ""
             ? info.domain
@@ -199,7 +202,7 @@ export function resolveProjectForLogin(
   }
 
   const sortKey = (info: MeProjectInfo): readonly [string, string] => {
-    const org = me.organizations[String(info.organization_id)];
+    const org = me.organizations.get(String(info.organization_id));
     // TODO(port): a null org NAME would raise AttributeError in Python
     // (`org.name.lower()` via the tuple key) — unreachable in practice
     // (/me org names are strings); the TS twin folds null to "".
@@ -209,7 +212,10 @@ export function resolveProjectForLogin(
         : `~org ${String(info.organization_id)}`;
     return [orgName.toLowerCase(), (info.name ?? "").toLowerCase()];
   };
-  const sortedProjects = Object.entries(projects)
+  // Stable sort over insertion-order entries: picker-list tie order
+  // for case-folded (org, name) collisions now matches Python's
+  // `sorted(...)` stability over dict order (B8-MAPFIX).
+  const sortedProjects = [...projects.entries()]
     .map(([pid, info]) => [pid, info] as const)
     .sort((a, b) => {
       const [aOrg, aName] = sortKey(a[1]);
@@ -235,8 +241,8 @@ export function summaryWithMe(
   projectId: string | null,
 ): AccountSummary {
   let projectName: string | null = null;
-  if (projectId !== null && Object.hasOwn(me.projects, projectId)) {
-    projectName = (me.projects[projectId] as MeProjectInfo).name;
+  if (projectId !== null && me.projects.has(projectId)) {
+    projectName = (me.projects.get(projectId) as MeProjectInfo).name;
   }
   return new AccountSummary({
     name: summary.name,

@@ -43,6 +43,7 @@
 
 import { coerceBool, coerceFloat, coerceInt, coerceStr } from "../../coerce.js";
 import { isPythonDict } from "../../compat/python-dict.js";
+import { orderedEntries } from "../../client/json-value.js";
 import { ResponseValidationError } from "../../errors.js";
 
 /**
@@ -122,8 +123,19 @@ export interface EntityFieldSpec {
    * instances pass through.
    */
   readonly nested?: () => EntityModelStatics;
-  /** Container shape for `nested` (absent = single nested value). */
-  readonly container?: "list" | "dict";
+  /**
+   * Container shape for `nested` (absent = single nested value).
+   *
+   * `"ordered-dict"` (B8-MAPFIX, user ratification
+   * `user-ratifications.md:14-22`) reconstructs into an
+   * insertion-order-preserving `ReadonlyMap<string, Model>` (R4.8):
+   * plain-object input reads the lossless layer's key-order sidecar
+   * (`orderedEntries`), and `Map` input keeps its own order — the
+   * Python-`dict`-order mirror for fields whose integer-like keys a
+   * plain JS object cannot hold in insertion order (`MeResponse`'s
+   * three container maps).
+   */
+  readonly container?: "list" | "dict" | "ordered-dict";
   /**
    * Pydantic `mode="before"` field-validator port — runs on the raw
    * present value before any other processing.
@@ -330,6 +342,25 @@ function reconstructNested(
     const out: Record<string, unknown> = {};
     for (const [key, item] of Object.entries(value)) {
       out[key] = one(item, `${path}.${key}`);
+    }
+    return out;
+  }
+  if (spec.container === "ordered-dict") {
+    // Python-dict-order container (see the EntityFieldSpec.container
+    // doc): Map input keeps its order; plain-object input reads the
+    // lossless key-order sidecar via `orderedEntries`.
+    const entries: Array<[string, unknown]> =
+      value instanceof Map
+        ? [...(value as ReadonlyMap<unknown, unknown>)].map(([k, item]) => [
+            String(k),
+            item,
+          ])
+        : isPlainObject(value)
+          ? orderedEntries(value)
+          : modelFail(path, "expected an object");
+    const out = new Map<string, unknown>();
+    for (const [key, item] of entries) {
+      out.set(key, one(item, `${path}.${key}`));
     }
     return out;
   }
@@ -715,6 +746,17 @@ function dumpValue(
       ? value.modelDumpExcludeNone({ byAlias })
       : value.modelDump({ byAlias });
   }
+  if (value instanceof Map) {
+    // Ordered-dict container fields dump like plain dict fields:
+    // entries keep their `None` values (pydantic `exclude_none`
+    // reaches model fields, not mapping entries) and values recurse.
+    const out: Record<string, unknown> = {};
+    for (const [key, item] of value as ReadonlyMap<unknown, unknown>) {
+      out[String(key)] =
+        item === undefined ? null : dumpValue(item, byAlias, excludeNone);
+    }
+    return out;
+  }
   if (Array.isArray(value)) {
     return value.map((item) => dumpValue(item, byAlias, excludeNone));
   }
@@ -756,6 +798,18 @@ function dumpValue(
 function serializeValue(value: unknown, mode: "json" | "vector"): unknown {
   if (value instanceof EntityModel) {
     return mode === "vector" ? value.toVectorPayload() : value.toJSON();
+  }
+  if (value instanceof Map) {
+    // Ordered-dict container fields serialize back to a plain record —
+    // the recorder shape. A plain JS object cannot represent
+    // out-of-order integer-like keys, so THIS is the one boundary
+    // where key order narrows to JS enumeration order; the in-memory
+    // Map keeps the Python order for every consumer (B8-MAPFIX).
+    const out: Record<string, unknown> = {};
+    for (const [key, item] of value as ReadonlyMap<unknown, unknown>) {
+      out[String(key)] = serializeValue(item, mode);
+    }
+    return out;
   }
   if (Array.isArray(value)) {
     return value.map((item) => serializeValue(item, mode));

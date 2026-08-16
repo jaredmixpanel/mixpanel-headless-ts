@@ -134,11 +134,12 @@ describe("TestDefaultAccountName (test_naming.py:100)", () => {
     expect(defaultAccountName(me, new Set(["account"]))).toBe("account-2");
   });
 
-  it("first org wins when multiple (ascending-id record order)", () => {
-    // Python asserts INSERTION order (`next(iter(...))`); the TS
-    // Record hoists integer-like keys ascending — identical here
-    // because the fixture inserts ascending ids (packet Caution #13,
-    // disclosed + escalated in the shard notes).
+  it("first org wins when multiple (insertion order)", () => {
+    // Python asserts INSERTION order (`next(iter(...))`), which the
+    // ordered `MeResponse.organizations` Map now preserves for ANY
+    // key order (B8-MAPFIX, `user-ratifications.md:14-22` — the
+    // former Caution #13 ascending-id caveat is closed; out-of-order
+    // fixtures are locked in `naming-order.test.ts`).
     const me = new MeResponse({
       organizations: {
         "100": { id: 100, name: "Alpha" },

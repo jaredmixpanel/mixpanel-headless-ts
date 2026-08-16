@@ -29,7 +29,7 @@ import type {
 import type { Session } from "../auth/session.js";
 import { createMixpanelClient } from "../client/client.js";
 import { toNativeJson, type JsonValue } from "../client/json-value.js";
-import { MeResponse } from "../client/me.js";
+import { MeResponse, type MeProjectInfo } from "../client/me.js";
 import {
   ConfigError,
   MixpanelHeadlessError,
@@ -54,9 +54,7 @@ import { defaultAccountName } from "./naming.js";
  */
 export type ProjectPicker = (
   me: MeResponse,
-  sortedProjects: ReadonlyArray<
-    readonly [string, MeResponse["projects"][string]]
-  >,
+  sortedProjects: ReadonlyArray<readonly [string, MeProjectInfo]>,
 ) => string;
 
 /**
@@ -221,10 +219,10 @@ export function assertProjectRegionMatches(
   chosenProject: string | null,
   authRegion: Region,
 ): void {
-  if (chosenProject === null || !Object.hasOwn(me.projects, chosenProject)) {
+  if (chosenProject === null || !me.projects.has(chosenProject)) {
     return;
   }
-  const projInfo = me.projects[chosenProject];
+  const projInfo = me.projects.get(chosenProject);
   if (projInfo === undefined) {
     return;
   }
@@ -668,7 +666,7 @@ export async function accountsTest(
     if (meResp.user_id !== null && meResp.user_email !== null) {
       user = { id: meResp.user_id, email: meResp.user_email };
     }
-    const projectCount = Object.keys(meResp.projects).length;
+    const projectCount = meResp.projects.size;
     return new AccountTestResult({
       account_name: summary.name,
       ok: true,
@@ -739,7 +737,7 @@ export async function accountsLogin(
   if (meResp.user_id !== null && meResp.user_email !== null) {
     user = { id: meResp.user_id, email: meResp.user_email };
   }
-  const projectKeys = Object.keys(meResp.projects);
+  const projectKeys = [...meResp.projects.keys()];
   if (chosenProject === null && projectKeys.length > 0) {
     // `next(iter(sorted(me_resp.projects)))` (`accounts.py:856`) —
     // default Array.sort is UTF-16 code-UNIT order, which coincides
