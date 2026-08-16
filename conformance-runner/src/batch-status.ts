@@ -40,25 +40,28 @@ export type BatchStatus = "pending" | "done";
  *   so the two oracle-probed schema apis are explicitly B3-owned).
  * - `api_client.` / `pagination.` — the Phase-3 B4 wire client
  *   (playbook P3-5 §4 B4-gate flip; 843 vectors, gate delta 842 — the
- *   P3-1 † carried vector waits on its `workspace.me` setup until B6).
- * - The 44 exact-name `workspace.<member>` entries + `replays.` /
- *   `replay_labels.` / `rrweb_analyzer.` — the Phase-3 B5 services +
- *   facade query half (playbook P3-5 §4 B5-gate flip; 506 vectors).
- *   The 44 names are jq-generated from the api-map
- *   (`.workspace_members[] | select(.batch=="B5")`); an exact name is
- *   still a PREFIX under startsWith matching, so the standing collision
- *   assertion was re-run at the gate: the ONLY cross-batch capture is
- *   `workspace.list_bookmarks` (zero corpus vectors) prefix-capturing
- *   the B6 member `workspace.list_bookmarks_v2` (7 vectors) — resolved
- *   by the longer `workspace.list_bookmarks_v2` → `pending` override
- *   below (REMOVED at the B6 gate when the whole `workspace.` prefix
- *   collapses to `done`); `workspace.query`/`workspace.segmentation`
- *   capture only same-batch B5 names (flipping together, harmless).
+ *   P3-1 † carried vector waited on its `workspace.me` setup until B6).
+ * - `workspace.` — the ENTIRE facade, collapsed at the B6 gate
+ *   (playbook P3-5 §4 B6-gate rule / b6-packets.md §12.1): the B5 gate
+ *   had flipped 44 exact-name `workspace.<member>` entries over a
+ *   `workspace.` → `pending` row (plus a `workspace.list_bookmarks_v2`
+ *   → `pending` override shielding the B6 member's 7 vectors from the
+ *   B5 `workspace.list_bookmarks` exact-name prefix-capture); with the
+ *   158 B6 members done (353 vectors + the P3-1 † carried
+ *   `api_client.resolve_workspace_id` vector = gate delta 354), the
+ *   exact names, the override, and the pending row all collapse to
+ *   this single prefix — longest-prefix keeps the states equivalent
+ *   for every B5 name, and the override removal is the B5-gate forward
+ *   note landing here. Collision assertion re-run over the FINAL
+ *   table at the gate: the only still-pending corpus api names are
+ *   `region_probe.probe_region` ×14 and `oauth_flow.refresh_tokens`
+ *   ×7, neither prefixed by any `done` entry.
+ * - `replays.` / `replay_labels.` / `rrweb_analyzer.` — the Phase-3
+ *   B5 services (playbook P3-5 §4 B5-gate flip; 506 vectors with the
+ *   B5 facade members).
  *
  * Pending batches (Phase 3, per plan §6 / api-map):
- * - `workspace.` (the 158 B6 members — the B5 members carry exact-name
- *   `done` overrides above the prefix),
- *   `region_probe.` (B7), `oauth_flow.` (B8).
+ * - `region_probe.` (B7), `oauth_flow.` (B8).
  */
 export const BATCH_STATUS: ReadonlyMap<string, BatchStatus> = new Map<
   string,
@@ -78,60 +81,13 @@ export const BATCH_STATUS: ReadonlyMap<string, BatchStatus> = new Map<
   // the b4-packets flip spec); the standing collision assertion holds —
   // no other corpus api name starts with this entry.
   ["api_client._iter_jsonl_lines", "done"],
-  ["workspace.", "pending"],
-  // Phase-3 B5 gate flip (playbook P3-5 §4): the 44 B5-member exact
-  // names — longest-prefix wins over the `workspace.` pending row above;
-  // stragglers under these names now FAIL instead of skipping.
-  ["workspace.activity_feed", "done"],
-  ["workspace.analyze_replay", "done"],
-  ["workspace.build_flow_params", "done"],
-  ["workspace.build_funnel_params", "done"],
-  ["workspace.build_params", "done"],
-  ["workspace.build_retention_params", "done"],
-  ["workspace.build_user_params", "done"],
-  ["workspace.clear_discovery_cache", "done"],
-  ["workspace.cohorts", "done"],
-  ["workspace.event_counts", "done"],
-  ["workspace.events", "done"],
-  ["workspace.events_for_replay", "done"],
-  ["workspace.events_for_replays", "done"],
-  ["workspace.fetch_replay", "done"],
-  ["workspace.fetch_replays", "done"],
-  ["workspace.frequency", "done"],
-  ["workspace.funnel", "done"],
-  ["workspace.funnels", "done"],
-  ["workspace.lexicon_schema", "done"],
-  ["workspace.lexicon_schemas", "done"],
-  ["workspace.list_bookmarks", "done"],
-  // The B5-gate pending override (playbook P3-5 §4, REMOVED at B6):
-  // `workspace.list_bookmarks` (B5, zero corpus vectors) would
-  // prefix-capture the B6 member's 7 vectors and flip them to
-  // FAIL_ERROR; this longer entry wins longest-prefix and keeps them
-  // UNPORTED until the B6 gate.
-  ["workspace.list_bookmarks_v2", "pending"],
-  ["workspace.list_replays", "done"],
-  ["workspace.properties", "done"],
-  ["workspace.property_counts", "done"],
-  ["workspace.property_values", "done"],
-  ["workspace.query", "done"],
-  ["workspace.query_flow", "done"],
-  ["workspace.query_funnel", "done"],
-  ["workspace.query_retention", "done"],
-  ["workspace.query_saved_flows", "done"],
-  ["workspace.query_saved_report", "done"],
-  ["workspace.query_user", "done"],
-  ["workspace.replays_for_user", "done"],
-  ["workspace.retention", "done"],
-  ["workspace.schema_graph", "done"],
-  ["workspace.segmentation", "done"],
-  ["workspace.segmentation_average", "done"],
-  ["workspace.segmentation_numeric", "done"],
-  ["workspace.segmentation_sum", "done"],
-  ["workspace.sign_replay", "done"],
-  ["workspace.sign_replays", "done"],
-  ["workspace.stream_replay", "done"],
-  ["workspace.subproperties", "done"],
-  ["workspace.top_events", "done"],
+  // Phase-3 B6 gate collapse (playbook P3-5 §4 / b6-packets.md §12.1):
+  // the whole facade is done — the B5-era 44 exact-name entries, the
+  // `workspace.list_bookmarks_v2` pending override, and the
+  // `workspace.` pending row all collapse to this single prefix;
+  // stragglers under any `workspace.*` name now FAIL instead of
+  // skipping.
+  ["workspace.", "done"],
   // Phase-3 B2 gate flip (playbook P3-5 §4): validators are done —
   // stragglers under these prefixes now FAIL instead of skipping.
   ["validation.", "done"],

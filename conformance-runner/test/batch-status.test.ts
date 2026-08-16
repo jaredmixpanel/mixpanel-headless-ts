@@ -81,12 +81,12 @@ describe("batchStatusFor — table lookup", () => {
   });
 
   it("resolves pending prefixes (Phase-3 batches)", () => {
-    // Post-B5-flip anchors: `workspace.me` is B6-owned (api-map batch
-    // field) and stays pending until the B6 gate.
-    expect(batchStatusFor("workspace.me")).toBe("pending");
-    expect(batchStatusFor("workspace.list_dashboards")).toBe("pending");
+    // Post-B6-flip anchors: only the auth batches remain pending
+    // (`region_probe.` B7, `oauth_flow.` B8 — b6-packets.md §12.1).
     expect(batchStatusFor("region_probe.probe")).toBe("pending");
+    expect(batchStatusFor("region_probe.probe_region")).toBe("pending");
     expect(batchStatusFor("oauth_flow.build_authorize_url")).toBe("pending");
+    expect(batchStatusFor("oauth_flow.refresh_tokens")).toBe("pending");
   });
 
   it("defaults to pending when no prefix matches", () => {
@@ -195,83 +195,54 @@ describe("batchStatusFor — table lookup", () => {
     expect(batchStatusFor("pagination.paginate_all")).toBe("done");
   });
 
-  it("the 44 B5 workspace members + replays-family prefixes are declared done (the B5 gate flip)", () => {
-    // Playbook P3-5 §4: the B5 gate flips the 44 exact-name
-    // `workspace.<member>` entries (jq-generated from the api-map
-    // `batch=="B5"` rows), the three replays-family prefixes, AND adds
-    // the `workspace.list_bookmarks_v2` pending override (the sole
-    // cross-batch startsWith capture — removed at the B6 gate).
-    const b5Members = [
-      "activity_feed",
-      "analyze_replay",
-      "build_flow_params",
-      "build_funnel_params",
-      "build_params",
-      "build_retention_params",
-      "build_user_params",
-      "clear_discovery_cache",
-      "cohorts",
-      "event_counts",
-      "events",
-      "events_for_replay",
-      "events_for_replays",
-      "fetch_replay",
-      "fetch_replays",
-      "frequency",
-      "funnel",
-      "funnels",
-      "lexicon_schema",
-      "lexicon_schemas",
-      "list_bookmarks",
-      "list_replays",
-      "properties",
-      "property_counts",
-      "property_values",
-      "query",
-      "query_flow",
-      "query_funnel",
-      "query_retention",
-      "query_saved_flows",
-      "query_saved_report",
-      "query_user",
-      "replays_for_user",
-      "retention",
-      "schema_graph",
-      "segmentation",
-      "segmentation_average",
-      "segmentation_numeric",
-      "segmentation_sum",
-      "sign_replay",
-      "sign_replays",
-      "stream_replay",
-      "subproperties",
-      "top_events",
-    ];
-    expect(b5Members).toHaveLength(44);
-    for (const member of b5Members) {
-      expect(BATCH_STATUS.get(`workspace.${member}`), member).toBe("done");
-      expect(batchStatusFor(`workspace.${member}`), member).toBe("done");
-    }
+  it("replays-family prefixes are declared done (the B5 gate flip)", () => {
+    // Playbook P3-5 §4: the B5 gate flipped the three replays-family
+    // prefixes (the 44 B5 exact-name `workspace.<member>` entries it
+    // also flipped collapsed into the single `workspace.` prefix at
+    // the B6 gate — next test).
     expect(BATCH_STATUS.get("replays.")).toBe("done");
     expect(BATCH_STATUS.get("replay_labels.")).toBe("done");
     expect(BATCH_STATUS.get("rrweb_analyzer.")).toBe("done");
     expect(batchStatusFor("replays.fetch_files")).toBe("done");
     expect(batchStatusFor("replay_labels.url_normalizer")).toBe("done");
     expect(batchStatusFor("rrweb_analyzer.analyze")).toBe("done");
-    // The pending override: longest-prefix beats the B5
-    // `workspace.list_bookmarks` exact-name entry, keeping the 7
-    // unported B6 vectors UNPORTED (never FAIL) until the B6 gate.
-    expect(BATCH_STATUS.get("workspace.list_bookmarks_v2")).toBe("pending");
-    expect(batchStatusFor("workspace.list_bookmarks_v2")).toBe("pending");
-    // The base `workspace.` prefix itself stays pending (B6 members).
-    expect(BATCH_STATUS.get("workspace.")).toBe("pending");
+  });
+
+  it("workspace.* is a single collapsed done prefix (the B6 gate flip)", () => {
+    // Playbook P3-5 §4 B6-gate rule / b6-packets.md §12.1: the 44 B5
+    // exact-name entries, the `workspace.list_bookmarks_v2` pending
+    // override, and the `workspace.` pending row all COLLAPSED to one
+    // `workspace.` → done entry — longest-prefix keeps every B5 name's
+    // state equivalent, and the override removal is the B5-gate
+    // forward note landing here.
+    expect(BATCH_STATUS.get("workspace.")).toBe("done");
+    expect(BATCH_STATUS.get("workspace.list_bookmarks_v2")).toBeUndefined();
+    expect(BATCH_STATUS.get("workspace.list_bookmarks")).toBeUndefined();
+    expect(BATCH_STATUS.get("workspace.build_params")).toBeUndefined();
+    // Representative names across B5 + B6 members all resolve done via
+    // the single prefix.
+    expect(batchStatusFor("workspace.build_params")).toBe("done");
+    expect(batchStatusFor("workspace.list_bookmarks")).toBe("done");
+    expect(batchStatusFor("workspace.list_bookmarks_v2")).toBe("done");
+    expect(batchStatusFor("workspace.me")).toBe("done");
+    expect(batchStatusFor("workspace.use")).toBe("done");
+    expect(batchStatusFor("workspace.list_dashboards")).toBe("done");
+    // Exactly one workspace-prefixed entry remains in the table.
+    const workspaceEntries = [...BATCH_STATUS.keys()].filter((p) =>
+      p.startsWith("workspace."),
+    );
+    expect(workspaceEntries).toEqual(["workspace."]);
   });
 });
 
 describe("runVector — batch-status verdict wiring", () => {
   it("pending batch + unbound api → UNPORTED (counted, never failing)", async () => {
-    // `workspace.me` is the post-B5-flip pending anchor (B6-owned).
-    const result = await runVector(vectorFor("workspace.me"), bareDeps());
+    // `region_probe.probe_region` is the post-B6-flip pending anchor
+    // (B7-owned; b6-packets.md §12.5 — the pattern retires at B8).
+    const result = await runVector(
+      vectorFor("region_probe.probe_region"),
+      bareDeps(),
+    );
     expect(result.verdict).toBe("UNPORTED");
     expect(result.diff).toBeUndefined();
   });

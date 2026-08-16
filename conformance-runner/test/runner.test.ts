@@ -147,12 +147,14 @@ describe("runVector — api gating", () => {
   it("gates on setup apis too (pending unbound setup entry → UNPORTED)", async () => {
     // Post-B4-flip the setup probe must come from a still-pending batch
     // (`api_client.set_workspace_id` is done+bound now). `workspace.me`
-    // is exactly the P3-1 † carried-vector shape: a bound measured
-    // api_client name held UNPORTED by its pending B6 setup api.
+    // played the P3-1 † carried-vector shape until the B6 gate flipped
+    // the whole `workspace.` prefix to done; re-anchored to
+    // `region_probe.probe_region`, pending until B7 by construction
+    // (b6-packets.md §12.5 — the pattern retires at the B8 gate).
     const vector = makeVector({
       api: "api_client.activity_feed",
       kind: "wire",
-      setup: [{ api: "workspace.me", input: "{}" }],
+      setup: [{ api: "region_probe.probe_region", input: "{}" }],
       expect: '{"result": null}',
     });
     const deps = depsWith({ "api_client.activity_feed": () => null });
