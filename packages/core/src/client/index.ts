@@ -103,6 +103,14 @@ export {
   parseLossless,
   type ParseLosslessOptions,
 } from "./lossless-json.js";
+export {
+  MAX_PAGES,
+  MAX_RATE_LIMIT_RETRIES,
+  PAGINATION_BACKOFF_BASE_SECONDS,
+  PAGINATION_BACKOFF_MAX_SECONDS,
+  paginateAll,
+} from "./pagination.js";
+export type { PaginateAllOptions, PaginationClient } from "./pagination.js";
 export { maybeScopedPath } from "./scope.js";
 export type { PathScope } from "./scope.js";
 export { ENDPOINTS, buildUrl, endpointBase } from "./url.js";

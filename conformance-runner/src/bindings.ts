@@ -162,6 +162,7 @@ import { registerApiClientCoreBindings } from "./wire-client.js";
 import { registerEntityWireBindings } from "./wire-entities.js";
 import { registerGovernanceWireBindings } from "./wire-governance.js";
 import { registerLifecycleWireBindings } from "./wire-lifecycle.js";
+import { registerPaginationBindings } from "./wire-pagination.js";
 import { registerQueryWireBindings } from "./wire-queries.js";
 import { WireStubClient, type WireStubRequestOptions } from "./wirestub.js";
 
@@ -1563,6 +1564,8 @@ export function createRunnerDeps(recordEpoch: string): RunnerDeps {
   // properties/lookup tables/custom events/enforcement/audit/
   // anomalies/deletion requests) + replays signing.
   registerGovernanceWireBindings(implementations);
+  // B4-C6: pagination.paginate_all (the one `pagination.` corpus name).
+  registerPaginationBindings(implementations);
   registerContractCodecs(codecs);
   registerQueryParamBindings(implementations, codecs);
   registerValidatorBindings(implementations);
