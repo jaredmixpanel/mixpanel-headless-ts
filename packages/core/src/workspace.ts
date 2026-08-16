@@ -238,6 +238,60 @@ export type {
   WorkspaceGetEventDefinitionsOptions,
   WorkspaceGetPropertyDefinitionsOptions,
 } from "./workspace-members/lexicon-tracking.js";
+import {
+  createCustomEvent as createCustomEventMember,
+  createCustomProperty as createCustomPropertyMember,
+  createDropFilter as createDropFilterMember,
+  defaultMonotonic,
+  deleteCustomEvent as deleteCustomEventMember,
+  deleteCustomProperty as deleteCustomPropertyMember,
+  deleteDropFilter as deleteDropFilterMember,
+  deleteLookupTables as deleteLookupTablesMember,
+  downloadLookupTable as downloadLookupTableMember,
+  getCustomProperty as getCustomPropertyMember,
+  getDropFilterLimits as getDropFilterLimitsMember,
+  getLookupDownloadUrl as getLookupDownloadUrlMember,
+  getLookupUploadStatus as getLookupUploadStatusMember,
+  getLookupUploadUrl as getLookupUploadUrlMember,
+  listCustomEvents as listCustomEventsMember,
+  listCustomProperties as listCustomPropertiesMember,
+  listDropFilters as listDropFiltersMember,
+  listLookupTables as listLookupTablesMember,
+  markLookupTableReady as markLookupTableReadyMember,
+  unportedReadFile,
+  updateCustomEvent as updateCustomEventMember,
+  updateCustomProperty as updateCustomPropertyMember,
+  updateDropFilter as updateDropFilterMember,
+  updateLookupTable as updateLookupTableMember,
+  uploadLookupTable as uploadLookupTableMember,
+  validateCustomProperty as validateCustomPropertyMember,
+  type LookupUploadSeams,
+  type WorkspaceDownloadLookupTableOptions,
+  type WorkspaceListLookupTablesOptions,
+  type WorkspaceUploadLookupTableOptions,
+} from "./workspace-members/governance-data.js";
+export type {
+  LookupUploadSeams,
+  WorkspaceDownloadLookupTableOptions,
+  WorkspaceListLookupTablesOptions,
+  WorkspaceUploadLookupTableOptions,
+} from "./workspace-members/governance-data.js";
+import type {
+  CreateCustomEventParams,
+  CreateCustomPropertyParams,
+  CreateDropFilterParams,
+  CustomEvent,
+  CustomProperty,
+  DropFilter,
+  DropFilterLimitsResponse,
+  LookupTable,
+  LookupTableUploadUrl,
+  MarkLookupTableReadyParams,
+  UpdateCustomPropertyParams,
+  UpdateDropFilterParams,
+  UpdateLookupTableParams,
+  UploadLookupTableParams,
+} from "./types/entities/data-governance.js";
 import type {
   BulkUpdateEventsParams,
   BulkUpdatePropertiesParams,
@@ -419,6 +473,21 @@ export interface WorkspaceOptions {
    * B8-N2 injects the on-disk twin from `packages/node`.
    */
   readonly meCache?: ((accountName: string) => MeCacheStore) | undefined;
+  /**
+   * `Path(file_path).read_bytes()` for {@link Workspace.uploadLookupTable}
+   * (`workspace.py:8044`) — B6-W7 decision W7-D1. `packages/core` is
+   * runtime-agnostic, so the byte source is injected; the default
+   * throws `UNPORTED_FILE_READ_SEAM` until B8 wires `node:fs` in
+   * `packages/node`.
+   */
+  readonly readFile?: ((path: string) => Promise<Uint8Array>) | undefined;
+  /**
+   * `time.monotonic()` in SECONDS, used by the
+   * {@link Workspace.uploadLookupTable} poll deadline
+   * (`workspace.py:8099`) — B6-W7 decision W7-D2. Default:
+   * `Date.now() / 1000`.
+   */
+  readonly monotonic?: (() => number) | undefined;
 }
 
 /** Keyword-only arguments of {@link Workspace.use} (`workspace.py:552-560`). */
@@ -469,6 +538,14 @@ export interface WorkspaceLogger extends DiscoveryLogger {
    * @param message - The formatted text (never vector-compared).
    */
   warning?(message: string): void;
+  /**
+   * Record an informational message — added at B6-W7 for the single
+   * `logger.info` site of the lookup-table upload orchestrator
+   * (`workspace.py:8062-8066`).
+   *
+   * @param message - The formatted text (never vector-compared).
+   */
+  info?(message: string): void;
 }
 
 /** Options bag of {@link Workspace.events}. */
@@ -985,6 +1062,14 @@ export class Workspace {
   /** Debug-log sink handed to the discovery service. */
   readonly #logger: WorkspaceLogger | undefined;
 
+  // --- B6-W7 seams (W7 owns; see `WorkspaceOptions.readFile`/`monotonic`) ---
+
+  /** `Path(...).read_bytes()` seam of `uploadLookupTable` (W7-D1). */
+  readonly #readFile: (path: string) => Promise<Uint8Array>;
+
+  /** `time.monotonic()` seam (seconds) of the upload poll (W7-D2). */
+  readonly #monotonic: () => number;
+
   /**
    * Create a workspace facade.
    *
@@ -1004,6 +1089,9 @@ export class Workspace {
     this.#meCacheFactory = options.meCache ?? inMemoryMeCache;
     this.#warn = options.warn;
     this.#logger = options.logger;
+    // B6-W7 seams (W7 owns these two lines).
+    this.#readFile = options.readFile ?? unportedReadFile;
+    this.#monotonic = options.monotonic ?? defaultMonotonic;
     this.#installWorkspaceResolver();
     // TODO(port): the `account` / `project` / `workspace` / `target`
     // constructor kwargs (`workspace.py:427-430`) resolve through
@@ -4731,6 +4819,450 @@ export class Workspace {
     options: WorkspaceExportLexiconOptions = {},
   ): Promise<Record<string, unknown>> {
     return exportLexiconMember(this.client, options);
+  }
+
+  // === B6-W7 drop-filter / custom-property / lookup-table /
+  // custom-event members (W7 owns; append-only) ===
+
+  /**
+   * The W7-D1/W7-D2 seam bag handed to
+   * {@link Workspace.uploadLookupTable} — the injected `readFile` and
+   * `monotonic` plus the client's OWN sleep seam (R6.3/R10.8: the
+   * facade never builds a second timer).
+   *
+   * @returns The seams.
+   * @internal
+   */
+  get #lookupUploadSeams(): LookupUploadSeams {
+    return {
+      readFile: this.#readFile,
+      monotonic: this.#monotonic,
+      sleep: this.client.core.sleep,
+    };
+  }
+
+  /**
+   * List all drop filters (`list_drop_filters`,
+   * `workspace.py:7586-7611`).
+   *
+   * @returns The `DropFilter` models, in response order.
+   * @throws ResponseValidationError - Malformed API response payload
+   *   (`RESPONSE_VALIDATION_ERROR`).
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   *
+   * @example
+   * ```typescript
+   * for (const filter of await ws.listDropFilters()) {
+   *   console.log(`${filter.event_name}: active=${String(filter.active)}`);
+   * }
+   * ```
+   */
+  async listDropFilters(): Promise<DropFilter[]> {
+    return listDropFiltersMember(this.client);
+  }
+
+  /**
+   * Create a new drop filter (`create_drop_filter`,
+   * `workspace.py:7613-7646`).
+   *
+   * @param params - Drop filter creation parameters.
+   * @returns The FULL list of `DropFilter` models after creation.
+   * @throws ResponseValidationError - Malformed payload.
+   *
+   * @example
+   * ```typescript
+   * const filters = await ws.createDropFilter(
+   *   new CreateDropFilterParams({
+   *     event_name: "Debug Event",
+   *     filters: { property: "env", value: "test" },
+   *   }),
+   * );
+   * ```
+   */
+  async createDropFilter(
+    params: CreateDropFilterParams,
+  ): Promise<DropFilter[]> {
+    return createDropFilterMember(this.client, params);
+  }
+
+  /**
+   * Update a drop filter (`update_drop_filter`,
+   * `workspace.py:7648-7680`).
+   *
+   * @param params - Update parameters (must include the filter ID).
+   * @returns The FULL list of `DropFilter` models after the update.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async updateDropFilter(
+    params: UpdateDropFilterParams,
+  ): Promise<DropFilter[]> {
+    return updateDropFilterMember(this.client, params);
+  }
+
+  /**
+   * Delete a drop filter (`delete_drop_filter`,
+   * `workspace.py:7682-7709`).
+   *
+   * @param dropFilterId - Drop filter ID (integer).
+   * @returns The FULL list of remaining `DropFilter` models.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async deleteDropFilter(dropFilterId: number): Promise<DropFilter[]> {
+    return deleteDropFilterMember(this.client, dropFilterId);
+  }
+
+  /**
+   * Get drop filter usage limits (`get_drop_filter_limits`,
+   * `workspace.py:7711-7736`).
+   *
+   * @returns The `DropFilterLimitsResponse`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async getDropFilterLimits(): Promise<DropFilterLimitsResponse> {
+    return getDropFilterLimitsMember(this.client);
+  }
+
+  /**
+   * List all custom properties (`list_custom_properties`,
+   * `workspace.py:7742-7789`).
+   *
+   * A 400 whose body names `displayFormula` means the project holds a
+   * corrupt custom property; that case is re-raised as a `QueryError`
+   * with an actionable message pointing at
+   * {@link Workspace.getCustomProperty}.
+   *
+   * @returns The `CustomProperty` models, in response order.
+   * @throws QueryError - Server-side data corruption, or any other
+   *   query failure, propagated verbatim.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async listCustomProperties(): Promise<CustomProperty[]> {
+    return listCustomPropertiesMember(this.client);
+  }
+
+  /**
+   * Create a new custom property (`create_custom_property`,
+   * `workspace.py:7791-7829`).
+   *
+   * @param params - Creation parameters (`name`, `resource_type` and
+   *   one of `display_formula` / `behavior` are required).
+   * @returns The created `CustomProperty`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async createCustomProperty(
+    params: CreateCustomPropertyParams,
+  ): Promise<CustomProperty> {
+    return createCustomPropertyMember(this.client, params);
+  }
+
+  /**
+   * Get a custom property by ID (`get_custom_property`,
+   * `workspace.py:7831-7859`).
+   *
+   * @param propertyId - Custom property ID (string).
+   * @returns The `CustomProperty`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async getCustomProperty(propertyId: string): Promise<CustomProperty> {
+    return getCustomPropertyMember(this.client, propertyId);
+  }
+
+  /**
+   * Update a custom property (`update_custom_property`,
+   * `workspace.py:7861-7895`).
+   *
+   * @param propertyId - Custom property ID (string).
+   * @param params - Fields to update.
+   * @returns The updated `CustomProperty`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async updateCustomProperty(
+    propertyId: string,
+    params: UpdateCustomPropertyParams,
+  ): Promise<CustomProperty> {
+    return updateCustomPropertyMember(this.client, propertyId, params);
+  }
+
+  /**
+   * Delete a custom property (`delete_custom_property`,
+   * `workspace.py:7897-7916`).
+   *
+   * @param propertyId - Custom property ID (string).
+   * @returns Nothing.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   */
+  async deleteCustomProperty(propertyId: string): Promise<void> {
+    return deleteCustomPropertyMember(this.client, propertyId);
+  }
+
+  /**
+   * Validate a custom property definition without creating it
+   * (`validate_custom_property`, `workspace.py:7918-7951`).
+   *
+   * @param params - Parameters to validate.
+   * @returns The raw validation result.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   */
+  async validateCustomProperty(
+    params: CreateCustomPropertyParams,
+  ): Promise<Record<string, unknown>> {
+    return validateCustomPropertyMember(this.client, params);
+  }
+
+  /**
+   * List lookup tables (`list_lookup_tables`,
+   * `workspace.py:7957-7987`).
+   *
+   * @param options - Optional `data_group_id` filter (keyword-only in
+   *   Python).
+   * @returns The `LookupTable` models, in response order.
+   * @throws ResponseValidationError - Malformed payload.
+   *
+   * @example
+   * ```typescript
+   * const tables = await ws.listLookupTables({ data_group_id: 5 });
+   * ```
+   */
+  async listLookupTables(
+    options: WorkspaceListLookupTablesOptions = {},
+  ): Promise<LookupTable[]> {
+    return listLookupTablesMember(this.client, options);
+  }
+
+  /**
+   * Upload a CSV file as a new lookup table (`upload_lookup_table`,
+   * `workspace.py:7989-8075`) — signed URL → upload → register, then
+   * (for payloads the API processes asynchronously) poll until the
+   * task completes.
+   *
+   * The CSV bytes come from the injected
+   * {@link WorkspaceOptions.readFile} seam (W7-D1) since
+   * `packages/core` never touches a filesystem; the poll deadline uses
+   * {@link WorkspaceOptions.monotonic} and the client's sleep seam
+   * (W7-D2).
+   *
+   * @param params - Upload parameters (`name`, `file_path`, optional
+   *   `data_group_id`).
+   * @param options - `poll_interval` / `max_poll_seconds`, both in
+   *   SECONDS under their Python names (defaults `2.0` / `300.0`).
+   * @returns The created `LookupTable`.
+   * @throws MixpanelHeadlessError - `UNPORTED_FILE_READ_SEAM` when no
+   *   `readFile` seam is injected; `UPLOAD_FAILED` /
+   *   `UPLOAD_NOT_FOUND` / `UPLOAD_TIMEOUT` / `INVALID_RESPONSE` from
+   *   the async poll.
+   * @throws ResponseValidationError - Malformed payload.
+   *
+   * @example
+   * ```typescript
+   * const table = await ws.uploadLookupTable(
+   *   new UploadLookupTableParams({
+   *     name: "Country Codes",
+   *     file_path: "/path/to/countries.csv",
+   *   }),
+   * );
+   * ```
+   */
+  async uploadLookupTable(
+    params: UploadLookupTableParams,
+    options: WorkspaceUploadLookupTableOptions = {},
+  ): Promise<LookupTable> {
+    return uploadLookupTableMember(
+      this.client,
+      params,
+      options,
+      this.#lookupUploadSeams,
+      this.#logger,
+    );
+  }
+
+  /**
+   * Mark a lookup table as ready after upload
+   * (`mark_lookup_table_ready`, `workspace.py:8146-8188`).
+   *
+   * @param params - Parameters (`name`, `key`, optional
+   *   `data_group_id`).
+   * @returns The updated `LookupTable`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async markLookupTableReady(
+    params: MarkLookupTableReadyParams,
+  ): Promise<LookupTable> {
+    return markLookupTableReadyMember(this.client, params);
+  }
+
+  /**
+   * Get a signed URL for uploading lookup table data
+   * (`get_lookup_upload_url`, `workspace.py:8190-8220`).
+   *
+   * @param contentType - MIME type of the file to upload (positional
+   *   in Python; default `"text/csv"`).
+   * @returns The `LookupTableUploadUrl` (url / path / key).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async getLookupUploadUrl(
+    contentType = "text/csv",
+  ): Promise<LookupTableUploadUrl> {
+    return getLookupUploadUrlMember(this.client, contentType);
+  }
+
+  /**
+   * Get the processing status of a lookup table upload
+   * (`get_lookup_upload_status`, `workspace.py:8222-8245`) — the raw
+   * record, unvalidated.
+   *
+   * @param uploadId - Upload ID returned from the upload process.
+   * @returns The opaque status record.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   */
+  async getLookupUploadStatus(
+    uploadId: string,
+  ): Promise<Record<string, unknown>> {
+    return getLookupUploadStatusMember(this.client, uploadId);
+  }
+
+  /**
+   * Update a lookup table (`update_lookup_table`,
+   * `workspace.py:8247-8279`).
+   *
+   * @param dataGroupId - Data group ID of the lookup table.
+   * @param params - Fields to update.
+   * @returns The updated `LookupTable`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async updateLookupTable(
+    dataGroupId: number,
+    params: UpdateLookupTableParams,
+  ): Promise<LookupTable> {
+    return updateLookupTableMember(this.client, dataGroupId, params);
+  }
+
+  /**
+   * Delete one or more lookup tables (`delete_lookup_tables`,
+   * `workspace.py:8281-8300`).
+   *
+   * @param dataGroupIds - Data group IDs to delete.
+   * @returns Nothing.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   */
+  async deleteLookupTables(dataGroupIds: readonly number[]): Promise<void> {
+    return deleteLookupTablesMember(this.client, dataGroupIds);
+  }
+
+  /**
+   * Download lookup table data as raw CSV bytes
+   * (`download_lookup_table`, `workspace.py:8302-8335`).
+   *
+   * @param dataGroupId - Data group ID of the lookup table.
+   * @param options - Optional `file_name` / `limit` (keyword-only in
+   *   Python).
+   * @returns The raw CSV bytes.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   */
+  async downloadLookupTable(
+    dataGroupId: number,
+    options: WorkspaceDownloadLookupTableOptions = {},
+  ): Promise<Uint8Array> {
+    return downloadLookupTableMember(this.client, dataGroupId, options);
+  }
+
+  /**
+   * Get a signed download URL for a lookup table
+   * (`get_lookup_download_url`, `workspace.py:8337-8360`).
+   *
+   * @param dataGroupId - Data group ID of the lookup table.
+   * @returns The signed URL string.
+   * @throws MixpanelHeadlessError - `MISSING_URL` when the response
+   *   carries no URL.
+   */
+  async getLookupDownloadUrl(dataGroupId: number): Promise<string> {
+    return getLookupDownloadUrlMember(this.client, dataGroupId);
+  }
+
+  /**
+   * Create a new custom event (`create_custom_event`,
+   * `workspace.py:8366-8407`).
+   *
+   * A custom event is a composite alias grouping one or more
+   * underlying events under a single name; it appears alongside
+   * regular events in queries and dashboards.
+   *
+   * @param params - Creation parameters (non-empty `name` and a
+   *   non-empty, duplicate-free `alternatives` list).
+   * @returns The created `CustomEvent` (server-assigned `id`).
+   * @throws ResponseValidationError - Malformed payload.
+   *
+   * @example
+   * ```typescript
+   * const ce = await ws.createCustomEvent(
+   *   new CreateCustomEventParams({
+   *     name: "Metric Tree Opened",
+   *     alternatives: ["Enter room"],
+   *   }),
+   * );
+   * ```
+   */
+  async createCustomEvent(
+    params: CreateCustomEventParams,
+  ): Promise<CustomEvent> {
+    return createCustomEventMember(this.client, params);
+  }
+
+  /**
+   * List all custom events (`list_custom_events`,
+   * `workspace.py:8409-8434`).
+   *
+   * @returns The `EventDefinition` models for custom events.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async listCustomEvents(): Promise<EventDefinition[]> {
+    return listCustomEventsMember(this.client);
+  }
+
+  /**
+   * Update a custom event's Lexicon entry
+   * (`update_custom_event`, `workspace.py:8436-8492`).
+   *
+   * Identified by `custom_event_id`, never by display name: a
+   * name-only PATCH makes the data-definitions endpoint fabricate a
+   * new, unlinked lexicon entry. Take the id from
+   * {@link Workspace.createCustomEvent}'s return value or the
+   * `custom_event_id` field of {@link Workspace.listCustomEvents}.
+   *
+   * @param customEventId - Server-assigned custom event ID.
+   * @param params - Fields to update.
+   * @returns The updated `EventDefinition`.
+   * @throws MixpanelHeadlessError - `UPDATE_TARGET_MISMATCH` when the
+   *   server echoes a different `customEventId`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async updateCustomEvent(
+    customEventId: number,
+    params: UpdateEventDefinitionParams,
+  ): Promise<EventDefinition> {
+    return updateCustomEventMember(this.client, customEventId, params);
+  }
+
+  /**
+   * Delete a custom event (`delete_custom_event`,
+   * `workspace.py:8494-8524`).
+   *
+   * Identified by `custom_event_id` for the same reason
+   * {@link Workspace.updateCustomEvent} is: a name-only DELETE is
+   * ambiguous when lexicon rows share a display name.
+   *
+   * @param customEventId - Server-assigned custom event ID.
+   * @returns Nothing.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   */
+  async deleteCustomEvent(customEventId: number): Promise<void> {
+    return deleteCustomEventMember(this.client, customEventId);
   }
 }
 

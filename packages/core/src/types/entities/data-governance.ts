@@ -16,7 +16,7 @@ import {
   prepareInit,
   type EntityFieldSpec,
 } from "./model-base.js";
-import { pythonStrip } from "../../compat/index.js";
+import { pythonJsonDumps, pythonStrip } from "../../compat/index.js";
 import { CustomPropertyResourceType } from "../enums.js";
 
 /**
@@ -261,6 +261,40 @@ export class CreateCustomEventParams extends EntityModel {
       ) as unknown as CreateCustomEventParamsInit,
     );
   }
+
+  /**
+   * Serialize to the form-encoded body the Mixpanel API expects
+   * (Python `to_form_body`, `types.py:4929-4942` — ported at B6-W7,
+   * decision W7-D3: the Python MODEL owns this serializer, so its twin
+   * lands here rather than in the facade member module).
+   *
+   * `alternatives` is a CPython `json.dumps` of `[{"event": name}, …]`
+   * — DEFAULT arguments, i.e. a space after every colon/comma and
+   * `ensure_ascii=True`. {@link pythonJsonDumps} is that twin (R10.8:
+   * never re-derive the dumper, and never `JSON.stringify`, whose
+   * separators and non-ASCII handling both differ).
+   *
+   * @returns A record with two string fields: `name` (the display
+   *   name) and `alternatives` (the JSON-encoded event list).
+   *
+   * @example
+   * ```typescript
+   * new CreateCustomEventParams({
+   *   name: "Page View",
+   *   alternatives: ["Home", "Product"],
+   * }).toFormBody();
+   * // { name: "Page View",
+   * //   alternatives: '[{"event": "Home"}, {"event": "Product"}]' }
+   * ```
+   */
+  toFormBody(): Record<string, string> {
+    return {
+      name: this.name,
+      alternatives: pythonJsonDumps(
+        this.alternatives.map((event) => ({ event })),
+      ),
+    };
+  }
 }
 
 /**
@@ -383,7 +417,14 @@ export class CreateDropFilterParams extends EntityModel {
   /** @internal Declared fields in Python `model_fields` order. */
   static readonly fieldSpecs: readonly EntityFieldSpec[] = [
     { name: "event_name", required: true, kind: "str" },
-    { name: "filters", required: true },
+    // Python `filters: Any` (`types.py:5276`) — REQUIRED but nullable:
+    // a bare `Any` annotation admits `None` in pydantic v2 (probe
+    // 2026-08-16: `CreateDropFilterParams(event_name="e",
+    // filters=None)` validates and `exclude_none` then drops the key,
+    // while omitting the key raises). `nullable: true` added at B6-W7,
+    // the field's first consumer; it is the ONLY bare required `Any`
+    // in the Python model set (grep-verified).
+    { name: "filters", required: true, nullable: true },
   ];
 
   /** Event name to filter. */
