@@ -41,20 +41,12 @@
  * @internal
  */
 
-import {
-  pythonFloatStr,
-  pythonRepr,
-  pythonStr,
-  sortedByCodepoint,
-  zfill,
-  type PythonValue,
-} from "../compat/index.js";
+import { pythonRepr, sortedByCodepoint, zfill } from "../compat/index.js";
 import { ParamValidationError } from "../errors.js";
 import type { Filter } from "../types/index.js";
 import {
-  floatCarrierValue,
-  isFloatCarrier,
   pythonIterableElements,
+  pythonStrValue,
   pythonTypeName,
 } from "./validation-shared.js";
 import { AttributeError, ValueError } from "./python-builtins.js";
@@ -167,10 +159,12 @@ const DATETIME_RANGE_OPS: ReadonlySet<string> = new Set([
  *   (class instances, `undefined`) — out-of-annotation input only.
  */
 function operandStr(value: unknown): string {
-  if (isFloatCarrier(value)) {
-    return pythonFloatStr(floatCarrierValue(value));
-  }
-  return pythonStr(value as PythonValue);
+  // R10.8 (extracted at B3-K4, the pattern's second ported site —
+  // `user_builders.py:42` `_format_value`): the carrier-aware
+  // `str(value)` body lives once in `validation-shared.ts`. Behavior is
+  // unchanged; this wrapper keeps the R10.11 documentation attached to
+  // the positions it governs.
+  return pythonStrValue(value);
 }
 
 /**

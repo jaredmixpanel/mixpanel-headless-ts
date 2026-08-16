@@ -45,9 +45,12 @@ import type { FlowStep, RetentionEvent } from "../types/index.js";
 import {
   cpLength,
   pythonFloat,
+  pythonFloatStr,
   pythonRepr,
+  pythonStr,
   pythonStrip,
   sortedByCodepoint,
+  type PythonValue,
 } from "../compat/index.js";
 import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
 import { DECIMAL_DIGIT_RUNS } from "../compat/decimal-digits.gen.js";
@@ -222,6 +225,41 @@ export function floatCarrierValue(carrier: {
   readonly spelling: string;
 }): number {
   return pythonFloat(carrier.spelling);
+}
+
+/**
+ * Python `str(value)` for a value that may be a PyFloat carrier — the
+ * ONE implementation of the "stringify an operand whose float-ness the
+ * rig preserved" pattern (R10.8).
+ *
+ * `pythonStr` already matches CPython for strings, bools, `None`,
+ * containers and non-integral numbers. The one gap JS cannot close on
+ * its own is int-vs-float-ness of an INTEGRAL value; where the
+ * conformance rig preserves it ({@link isFloatCarrier}), the carrier's
+ * CPython `repr` spelling is used, so `18.0` renders `"18.0"` and not
+ * `"18"`.
+ *
+ * Ported call sites (both are `str(x)` landing in OUTPUT, so
+ * `String(...)` is forbidden — `String(true)` is `"true"`, Python's is
+ * `"True"`, watchlist #8):
+ *
+ * - `segfilter.py:187,189,249` — the number/datetime operand positions
+ *   (B3-K3; the R10.11 canonicalizer rescue applies only to the numeric
+ *   ones, so non-numeric operands must already be Python-spelled).
+ * - `query/user_builders.py:42` — `_format_value`'s non-string branch
+ *   (B3-K4; the `selector_str` codec compares VERBATIM, no rescue at
+ *   all).
+ *
+ * @param value - The value to stringify.
+ * @returns The CPython `str()` rendering.
+ * @throws TypeError - When the value is outside the `pythonStr` domain
+ *   (class instances, `undefined`) — out-of-annotation input only.
+ */
+export function pythonStrValue(value: unknown): string {
+  if (isFloatCarrier(value)) {
+    return pythonFloatStr(floatCarrierValue(value));
+  }
+  return pythonStr(value as PythonValue);
 }
 
 /**
