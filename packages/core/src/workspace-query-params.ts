@@ -56,6 +56,8 @@ import {
   buildTimeSection,
   patchCustomPropertyFiltersForTransform,
 } from "./bookmarks/builders.js";
+import { toNativeJson } from "./client/json-value.js";
+import { parseLossless } from "./client/lossless-json.js";
 import { pythonJsonDumps } from "./compat/python-json-dumps.js";
 import { pythonRepr } from "./compat/python-str.js";
 import {
@@ -2290,7 +2292,7 @@ export function buildPageKwargs(
   if (Object.hasOwn(params, "output_properties")) {
     const val = params["output_properties"];
     kwargs["output_properties"] =
-      typeof val === "string" ? (JSON.parse(val) as unknown) : val;
+      typeof val === "string" ? pythonJsonLoads(val) : val;
   }
   if (Object.hasOwn(params, "sort_key")) {
     kwargs["sort_key"] = params["sort_key"];
@@ -2319,7 +2321,72 @@ export function buildPageKwargs(
   if (Object.hasOwn(params, "distinct_ids")) {
     const val = params["distinct_ids"];
     kwargs["distinct_ids"] =
-      typeof val === "string" ? (JSON.parse(val) as unknown) : val;
+      typeof val === "string" ? pythonJsonLoads(val) : val;
   }
   return kwargs;
+}
+
+// ===========================================================================
+// The `engage_stats` kwargs block of `_execute_user_aggregate`
+// (`workspace.py:10027-10046`)
+// ===========================================================================
+
+/**
+ * Extract the `engage_stats` kwargs from the engage params dict — the
+ * `self`-free block of `_execute_user_aggregate`
+ * (`workspace.py:10027-10046`), lifted here for the same R7.2 reason
+ * as {@link buildPageKwargs} (and so the Layer-3 malformed-JSON case
+ * `test_query_user_edge_cases.py:664` has a reachable seam; the Python
+ * test calls the private method directly).
+ *
+ * `segment_by_cohorts` is decoded back to a dict when it arrives as a
+ * string, exactly as Python does.
+ *
+ * @param params - The engage params dict.
+ * @returns The keyword arguments for `engage_stats`.
+ * @throws LosslessJsonError - Malformed `segment_by_cohorts` JSON
+ *   (Python's `json.JSONDecodeError`).
+ */
+export function buildStatsKwargs(
+  params: Readonly<Record<string, unknown>>,
+): ParamsDict {
+  const kwargs: ParamsDict = {};
+  if (Object.hasOwn(params, "where")) {
+    kwargs["where"] = params["where"];
+  }
+  if (Object.hasOwn(params, "action")) {
+    kwargs["action"] = params["action"];
+  }
+  if (Object.hasOwn(params, "filter_by_cohort")) {
+    kwargs["filter_by_cohort"] = params["filter_by_cohort"];
+  }
+  if (Object.hasOwn(params, "segment_by_cohorts")) {
+    const raw = params["segment_by_cohorts"];
+    kwargs["segment_by_cohorts"] =
+      typeof raw === "string" ? pythonJsonLoads(raw) : raw;
+  }
+  if (Object.hasOwn(params, "data_group_id")) {
+    kwargs["group_id"] = params["data_group_id"];
+  }
+  if (Object.hasOwn(params, "as_of_timestamp")) {
+    kwargs["as_of_timestamp"] = params["as_of_timestamp"];
+  }
+  if (Object.hasOwn(params, "include_all_users")) {
+    kwargs["include_all_users"] = params["include_all_users"];
+  }
+  return kwargs;
+}
+
+/**
+ * `json.loads(text)` for the three engage-param round-trips — the
+ * library encoded these with `pythonJsonDumps`, so the decode uses the
+ * shared lossless parser (B0-1 F1: never a bare `JSON.parse`) and its
+ * `LosslessJsonError` is the `json.JSONDecodeError` analog.
+ *
+ * @param text - The JSON text.
+ * @returns The native-valued tree.
+ * @throws LosslessJsonError - On malformed JSON.
+ */
+function pythonJsonLoads(text: string): unknown {
+  return toNativeJson(parseLossless(text, { pythonConstants: true }));
 }

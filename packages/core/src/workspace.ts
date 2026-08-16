@@ -95,6 +95,7 @@ import {
 } from "./types/results/query-engine.js";
 import {
   buildPageKwargs,
+  buildStatsKwargs,
   resolveAndBuildFlowParams,
   resolveAndBuildFunnelParams,
   resolveAndBuildParams,
@@ -1421,30 +1422,9 @@ export class Workspace {
       ParamsDict,
     ]
   > {
-    const statsKwargs: Record<string, unknown> = {};
-    if (Object.hasOwn(params, "where")) {
-      statsKwargs["where"] = params["where"];
-    }
-    if (Object.hasOwn(params, "action")) {
-      statsKwargs["action"] = params["action"];
-    }
-    if (Object.hasOwn(params, "filter_by_cohort")) {
-      statsKwargs["filter_by_cohort"] = params["filter_by_cohort"];
-    }
-    if (Object.hasOwn(params, "segment_by_cohorts")) {
-      const raw = params["segment_by_cohorts"];
-      statsKwargs["segment_by_cohorts"] =
-        typeof raw === "string" ? (JSON.parse(raw) as unknown) : raw;
-    }
-    if (Object.hasOwn(params, "data_group_id")) {
-      statsKwargs["group_id"] = params["data_group_id"];
-    }
-    if (Object.hasOwn(params, "as_of_timestamp")) {
-      statsKwargs["as_of_timestamp"] = params["as_of_timestamp"];
-    }
-    if (Object.hasOwn(params, "include_all_users")) {
-      statsKwargs["include_all_users"] = params["include_all_users"];
-    }
+    // The kwargs block is the exported `buildStatsKwargs` (R7.2 split
+    // of the `self`-free half, `workspace.py:10027-10046`).
+    const statsKwargs = buildStatsKwargs(params);
 
     const response = (await this.client.engageStats(
       statsKwargs as never,
