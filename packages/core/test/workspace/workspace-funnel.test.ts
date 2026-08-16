@@ -242,9 +242,9 @@ describe("TestQueryFunnelExecution", () => {
 
 describe("TestBuildFunnelParamsVsQueryFunnel", () => {
   it("returns a plain dict, not a result object", async () => {
-    const params = await workspaceFactory(mockWorkspaceClient()).buildFunnelParams(
-      ["Signup", "Purchase"],
-    );
+    const params = await workspaceFactory(
+      mockWorkspaceClient(),
+    ).buildFunnelParams(["Signup", "Purchase"]);
     expect(typeof params).toBe("object");
     expect(params).not.toBeInstanceOf(FunnelQueryResult);
   });
@@ -279,9 +279,9 @@ describe("TestBuildFunnelParamsVsQueryFunnel", () => {
   });
 
   it("the result has sections and displayOptions", async () => {
-    const params = await workspaceFactory(mockWorkspaceClient()).buildFunnelParams(
-      ["Signup", "Purchase"],
-    );
+    const params = await workspaceFactory(
+      mockWorkspaceClient(),
+    ).buildFunnelParams(["Signup", "Purchase"]);
     expect(Object.hasOwn(params, "sections")).toBe(true);
     expect(Object.hasOwn(params, "displayOptions")).toBe(true);
   });

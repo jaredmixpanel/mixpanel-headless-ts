@@ -39,7 +39,11 @@ const MOCK_RETENTION_RESPONSE: Record<string, unknown> = {
   date_range: { from_date: "2025-01-01", to_date: "2025-01-31" },
   series: {
     "Signup and then Login": {
-      "2025-01-01": { first: 100, counts: [100, 50, 25], rates: [1.0, 0.5, 0.25] },
+      "2025-01-01": {
+        first: 100,
+        counts: [100, 50, 25],
+        rates: [1.0, 0.5, 0.25],
+      },
       $average: { first: 100, counts: [100, 50, 25], rates: [1.0, 0.5, 0.25] },
     },
   },

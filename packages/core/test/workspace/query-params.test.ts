@@ -581,9 +581,7 @@ describe("TestFormulaObjectParams", () => {
         new Metric({ event: "Signup", math: "unique" }),
         new Metric({ event: "Purchase", math: "unique" }),
       ],
-      formulas: [
-        new Formula({ expression: "(B / A) * 100", label: "Conv %" }),
-      ],
+      formulas: [new Formula({ expression: "(B / A) * 100", label: "Conv %" })],
     });
     const show = section(params, "show");
     expect(show.length).toBe(3);

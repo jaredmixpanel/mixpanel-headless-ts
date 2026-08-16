@@ -38,7 +38,10 @@ describe("workspace facade scoping (session-pinned half)", () => {
       makeSession({ workspaceId: 4242 }),
       () => canned,
     );
-    const ws = new Workspace({ session: makeSession({ workspaceId: 4242 }), client });
+    const ws = new Workspace({
+      session: makeSession({ workspaceId: 4242 }),
+      client,
+    });
 
     await ws.events();
 

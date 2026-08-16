@@ -159,7 +159,12 @@ describe("TestBuildFlowParams", () => {
     const params = buildFlowParams({
       ...BASE_BUILD,
       steps: [
-        new FlowStep({ event: "Purchase", forward: 2, reverse: 1, label: "Buy" }),
+        new FlowStep({
+          event: "Purchase",
+          forward: 2,
+          reverse: 1,
+          label: "Buy",
+        }),
       ],
     });
     const step = stepsOf(params)[0]!;

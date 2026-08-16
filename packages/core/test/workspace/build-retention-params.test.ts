@@ -106,7 +106,9 @@ describe("TestBuildRetentionParamsDefaults", () => {
     expect(Object.hasOwn(sorting, "bar")).toBe(true);
     expect(Object.hasOwn(sorting, "line")).toBe(true);
     expect(Object.hasOwn(sorting, "table")).toBe(true);
-    expect((sorting["bar"] as Record<string, unknown>)["sortBy"]).toBe("column");
+    expect((sorting["bar"] as Record<string, unknown>)["sortBy"]).toBe(
+      "column",
+    );
   });
 
   it("the columnWidths object is present", async () => {
@@ -264,27 +266,27 @@ describe("TestBuildRetentionParamsMode", () => {
     const result = await makeWs().buildRetentionParams("Signup", "Login", {
       mode: "curve",
     });
-    expect((result["displayOptions"] as Record<string, unknown>)["chartType"]).toBe(
-      "retention-curve",
-    );
+    expect(
+      (result["displayOptions"] as Record<string, unknown>)["chartType"],
+    ).toBe("retention-curve");
   });
 
   it("mode='trends' produces chartType 'line'", async () => {
     const result = await makeWs().buildRetentionParams("Signup", "Login", {
       mode: "trends",
     });
-    expect((result["displayOptions"] as Record<string, unknown>)["chartType"]).toBe(
-      "line",
-    );
+    expect(
+      (result["displayOptions"] as Record<string, unknown>)["chartType"],
+    ).toBe("line");
   });
 
   it("mode='table' produces chartType 'table'", async () => {
     const result = await makeWs().buildRetentionParams("Signup", "Login", {
       mode: "table",
     });
-    expect((result["displayOptions"] as Record<string, unknown>)["chartType"]).toBe(
-      "table",
-    );
+    expect(
+      (result["displayOptions"] as Record<string, unknown>)["chartType"],
+    ).toBe("table");
   });
 });
 

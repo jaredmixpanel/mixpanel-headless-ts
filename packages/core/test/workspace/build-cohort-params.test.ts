@@ -350,10 +350,7 @@ describe("TestBuildGroupSectionCohort", () => {
 describe("TestBuildGroupSectionMixed", () => {
   it("a CohortBreakdown plus a string produces two group entries", async () => {
     const result = await makeWs().buildParams("Login", {
-      group_by: [
-        new CohortBreakdown({ cohort: 123, name: "PU" }),
-        "country",
-      ],
+      group_by: [new CohortBreakdown({ cohort: 123, name: "PU" }), "country"],
     });
     expect(section(result, "group").length).toBe(2);
   });
@@ -538,8 +535,7 @@ describe("TestBuildParamsCohortMetric", () => {
 
   it("CM5: an inline CohortDefinition raises at construction", () => {
     expect(
-      () =>
-        new CohortMetric({ cohort: simpleCohortDef(), name: "Active" }),
+      () => new CohortMetric({ cohort: simpleCohortDef(), name: "Active" }),
     ).toThrow(/CohortMetric does not support inline CohortDefinition/);
   });
 });
@@ -720,9 +716,9 @@ describe("TestBuildFlowCohortFilterDirect", () => {
   });
 
   it("a non-cohort filter raises", () => {
-    expect(() =>
-      buildFlowCohortFilter(Filter.equals("country", "US")),
-    ).toThrow(/only accepts cohort filters/);
+    expect(() => buildFlowCohortFilter(Filter.equals("country", "US"))).toThrow(
+      /only accepts cohort filters/,
+    );
   });
 
   it("multiple cohort filters raise", () => {
@@ -769,7 +765,10 @@ describe("TestCodedFlowCohortFilterCodes", () => {
   it("BB5: two cohort filters", () => {
     expectCode(
       () =>
-        buildFlowCohortFilter([Filter.inCohort(1, "A"), Filter.inCohort(2, "B")]),
+        buildFlowCohortFilter([
+          Filter.inCohort(1, "A"),
+          Filter.inCohort(2, "B"),
+        ]),
       "BB5_FLOW_MULTIPLE_COHORT_FILTERS",
     );
   });

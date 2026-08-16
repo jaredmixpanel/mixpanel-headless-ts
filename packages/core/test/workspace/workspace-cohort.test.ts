@@ -50,10 +50,7 @@ function simpleCohortDef(): CohortDefinition {
 }
 
 /** Read `params.sections.<name>` as an array. */
-function section(
-  params: Record<string, unknown>,
-  name: string,
-): unknown[] {
+function section(params: Record<string, unknown>, name: string): unknown[] {
   const sections = params["sections"] as Record<string, unknown>;
   return sections[name] as unknown[];
 }
@@ -64,45 +61,40 @@ function section(
 
 describe("TestQueryFlowWhere", () => {
   it("build_flow_params accepts a cohort filter in where=", async () => {
-    const result = await workspaceFactory(mockWorkspaceClient()).buildFlowParams(
-      "Login",
-      { where: Filter.inCohort(123, "Power Users") },
-    );
+    const result = await workspaceFactory(
+      mockWorkspaceClient(),
+    ).buildFlowParams("Login", { where: Filter.inCohort(123, "Power Users") });
     expect(Object.hasOwn(result, "filter_by_cohort")).toBe(true);
   });
 
   it("filter_by_cohort has the correct cohort id", async () => {
-    const result = await workspaceFactory(mockWorkspaceClient()).buildFlowParams(
-      "Login",
-      { where: Filter.inCohort(456, "Active") },
-    );
+    const result = await workspaceFactory(
+      mockWorkspaceClient(),
+    ).buildFlowParams("Login", { where: Filter.inCohort(456, "Active") });
     const fbc = result["filter_by_cohort"] as Record<string, unknown>;
     expect(fbc["id"]).toBe(456);
   });
 
   it("filter_by_cohort has the correct cohort name", async () => {
-    const result = await workspaceFactory(mockWorkspaceClient()).buildFlowParams(
-      "Login",
-      { where: Filter.inCohort(456, "Active") },
-    );
+    const result = await workspaceFactory(
+      mockWorkspaceClient(),
+    ).buildFlowParams("Login", { where: Filter.inCohort(456, "Active") });
     const fbc = result["filter_by_cohort"] as Record<string, unknown>;
     expect(fbc["name"]).toBe("Active");
   });
 
   it("not_in_cohort sets negated=true", async () => {
-    const result = await workspaceFactory(mockWorkspaceClient()).buildFlowParams(
-      "Login",
-      { where: Filter.notInCohort(789, "Bots") },
-    );
+    const result = await workspaceFactory(
+      mockWorkspaceClient(),
+    ).buildFlowParams("Login", { where: Filter.notInCohort(789, "Bots") });
     const fbc = result["filter_by_cohort"] as Record<string, unknown>;
     expect(fbc["negated"]).toBe(true);
   });
 
   it("a property filter produces filter_by_event", async () => {
-    const result = await workspaceFactory(mockWorkspaceClient()).buildFlowParams(
-      "Login",
-      { where: Filter.equals("country", "US") },
-    );
+    const result = await workspaceFactory(
+      mockWorkspaceClient(),
+    ).buildFlowParams("Login", { where: Filter.equals("country", "US") });
     expect(Object.hasOwn(result, "filter_by_event")).toBe(true);
     const fbe = result["filter_by_event"] as Record<string, unknown>;
     expect(fbe["operator"]).toBe("and");
@@ -110,12 +102,11 @@ describe("TestQueryFlowWhere", () => {
   });
 
   it("mixed cohort + property filters produce both keys", async () => {
-    const result = await workspaceFactory(mockWorkspaceClient()).buildFlowParams(
-      "Login",
-      {
-        where: [Filter.inCohort(123, "PU"), Filter.equals("country", "US")],
-      },
-    );
+    const result = await workspaceFactory(
+      mockWorkspaceClient(),
+    ).buildFlowParams("Login", {
+      where: [Filter.inCohort(123, "PU"), Filter.equals("country", "US")],
+    });
     expect(Object.hasOwn(result, "filter_by_cohort")).toBe(true);
     expect(Object.hasOwn(result, "filter_by_event")).toBe(true);
     const fbc = result["filter_by_cohort"] as Record<string, unknown>;
@@ -125,9 +116,9 @@ describe("TestQueryFlowWhere", () => {
   });
 
   it("no where= produces no filter_by_cohort key", async () => {
-    const result = await workspaceFactory(mockWorkspaceClient()).buildFlowParams(
-      "Login",
-    );
+    const result = await workspaceFactory(
+      mockWorkspaceClient(),
+    ).buildFlowParams("Login");
     expect(Object.hasOwn(result, "filter_by_cohort")).toBe(false);
   });
 

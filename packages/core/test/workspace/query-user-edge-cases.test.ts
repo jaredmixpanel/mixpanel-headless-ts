@@ -411,9 +411,10 @@ describe("TestTier3ValidationGaps", () => {
     });
     expect(params["where"]).toBe('properties["plan"] == "premium"');
     expect(Object.hasOwn(params, "filter_by_cohort")).toBe(true);
-    const parsed = JSON.parse(
-      params["filter_by_cohort"] as string,
-    ) as Record<string, unknown>;
+    const parsed = JSON.parse(params["filter_by_cohort"] as string) as Record<
+      string,
+      unknown
+    >;
     expect(parsed["id"]).toBe(42);
   });
 

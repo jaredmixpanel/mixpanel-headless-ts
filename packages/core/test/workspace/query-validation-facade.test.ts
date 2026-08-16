@@ -274,15 +274,15 @@ describe("TestGroupByValidation", () => {
   });
 
   it("V12: bucket_size must be positive (caught at construction)", () => {
-    expect(
-      () => new GroupBy({ property: "amount", bucket_size: 0 }),
-    ).toThrow(/bucket_size must be positive/);
+    expect(() => new GroupBy({ property: "amount", bucket_size: 0 })).toThrow(
+      /bucket_size must be positive/,
+    );
   });
 
   it("V12: a negative bucket_size is caught at construction", () => {
-    expect(
-      () => new GroupBy({ property: "amount", bucket_size: -10 }),
-    ).toThrow(/bucket_size must be positive/);
+    expect(() => new GroupBy({ property: "amount", bucket_size: -10 })).toThrow(
+      /bucket_size must be positive/,
+    );
   });
 
   it("bucket_size with the default string property_type is rejected", async () => {

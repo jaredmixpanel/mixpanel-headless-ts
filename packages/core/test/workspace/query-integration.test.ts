@@ -132,7 +132,9 @@ function wsWith(response: unknown): {
 }
 
 /** Read `params.sections.show`. */
-function showOf(params: Record<string, unknown>): Array<Record<string, unknown>> {
+function showOf(
+  params: Record<string, unknown>,
+): Array<Record<string, unknown>> {
   const sections = params["sections"] as Record<string, unknown>;
   return sections["show"] as Array<Record<string, unknown>>;
 }
