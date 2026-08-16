@@ -213,6 +213,42 @@ export type {
   WorkspaceListAlertsOptions,
   WorkspaceListAnnotationsOptions,
 } from "./workspace-members/annotations-webhooks-alerts.js";
+import {
+  bulkUpdateEventDefinitions as bulkUpdateEventDefinitionsMember,
+  bulkUpdatePropertyDefinitions as bulkUpdatePropertyDefinitionsMember,
+  createLexiconTag as createLexiconTagMember,
+  deleteEventDefinition as deleteEventDefinitionMember,
+  deleteLexiconTag as deleteLexiconTagMember,
+  exportLexicon as exportLexiconMember,
+  getEventDefinitions as getEventDefinitionsMember,
+  getEventHistory as getEventHistoryMember,
+  getPropertyDefinitions as getPropertyDefinitionsMember,
+  getPropertyHistory as getPropertyHistoryMember,
+  getTrackingMetadata as getTrackingMetadataMember,
+  listLexiconTags as listLexiconTagsMember,
+  updateEventDefinition as updateEventDefinitionMember,
+  updateLexiconTag as updateLexiconTagMember,
+  updatePropertyDefinition as updatePropertyDefinitionMember,
+  type WorkspaceExportLexiconOptions,
+  type WorkspaceGetEventDefinitionsOptions,
+  type WorkspaceGetPropertyDefinitionsOptions,
+} from "./workspace-members/lexicon-tracking.js";
+export type {
+  WorkspaceExportLexiconOptions,
+  WorkspaceGetEventDefinitionsOptions,
+  WorkspaceGetPropertyDefinitionsOptions,
+} from "./workspace-members/lexicon-tracking.js";
+import type {
+  BulkUpdateEventsParams,
+  BulkUpdatePropertiesParams,
+  CreateTagParams,
+  EventDefinition,
+  LexiconTag,
+  PropertyDefinition,
+  UpdateEventDefinitionParams,
+  UpdatePropertyDefinitionParams,
+  UpdateTagParams,
+} from "./types/entities/lexicon.js";
 import type {
   Annotation,
   AnnotationTag,
@@ -4426,6 +4462,275 @@ export class Workspace {
     params: ValidateAlertsForBookmarkParams,
   ): Promise<ValidateAlertsForBookmarkResponse> {
     return validateAlertsForBookmarkMember(this.client, params);
+  }
+
+  // === B6-W6 lexicon + tracking/history members (W6 owns; append-only) ===
+
+  /**
+   * Get event definitions from Lexicon by name
+   * (`get_event_definitions`, `workspace.py:7201-7233`).
+   *
+   * @param options - `names` (keyword-only and REQUIRED in Python).
+   * @returns The `EventDefinition` models, in response order.
+   * @throws ResponseValidationError - Malformed API response payload
+   *   (`RESPONSE_VALIDATION_ERROR`).
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   *
+   * @example
+   * ```typescript
+   * const defs = await ws.getEventDefinitions({
+   *   names: ["Signup", "Login"],
+   * });
+   * for (const d of defs) {
+   *   console.log(`${d.name}: ${d.description ?? ""}`);
+   * }
+   * ```
+   */
+  async getEventDefinitions(
+    options: WorkspaceGetEventDefinitionsOptions,
+  ): Promise<EventDefinition[]> {
+    return getEventDefinitionsMember(this.client, options);
+  }
+
+  /**
+   * Update an event definition in Lexicon
+   * (`update_event_definition`, `workspace.py:7235-7270`).
+   *
+   * @param eventName - Name of the event to update.
+   * @param params - Fields to update (hidden, dropped, merged,
+   *   verified, tags, display_name, description).
+   * @returns The updated `EventDefinition`.
+   * @throws ResponseValidationError - Malformed payload.
+   *
+   * @example
+   * ```typescript
+   * const definition = await ws.updateEventDefinition(
+   *   "Signup",
+   *   new UpdateEventDefinitionParams({ description: "User signed up" }),
+   * );
+   * ```
+   */
+  async updateEventDefinition(
+    eventName: string,
+    params: UpdateEventDefinitionParams,
+  ): Promise<EventDefinition> {
+    return updateEventDefinitionMember(this.client, eventName, params);
+  }
+
+  /**
+   * Delete an event definition from Lexicon
+   * (`delete_event_definition`, `workspace.py:7272-7291`).
+   *
+   * @param eventName - Name of the event to delete.
+   * @returns Nothing.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   */
+  async deleteEventDefinition(eventName: string): Promise<void> {
+    return deleteEventDefinitionMember(this.client, eventName);
+  }
+
+  /**
+   * Bulk-update event definitions in Lexicon
+   * (`bulk_update_event_definitions`, `workspace.py:7293-7329`).
+   *
+   * @param params - Bulk update parameters (a list of event updates:
+   *   name + fields to change).
+   * @returns The updated `EventDefinition` models, in response order.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async bulkUpdateEventDefinitions(
+    params: BulkUpdateEventsParams,
+  ): Promise<EventDefinition[]> {
+    return bulkUpdateEventDefinitionsMember(this.client, params);
+  }
+
+  /**
+   * Get property definitions from Lexicon by name
+   * (`get_property_definitions`, `workspace.py:7331-7373`).
+   *
+   * @param options - `names` (REQUIRED) plus the optional
+   *   `resource_type` filter, both keyword-only in Python.
+   * @returns The `PropertyDefinition` models, in response order.
+   * @throws ResponseValidationError - Malformed payload.
+   *
+   * @example
+   * ```typescript
+   * const defs = await ws.getPropertyDefinitions({
+   *   names: ["plan_type", "country"],
+   *   resource_type: "event",
+   * });
+   * ```
+   */
+  async getPropertyDefinitions(
+    options: WorkspaceGetPropertyDefinitionsOptions,
+  ): Promise<PropertyDefinition[]> {
+    return getPropertyDefinitionsMember(this.client, options);
+  }
+
+  /**
+   * Update a property definition in Lexicon
+   * (`update_property_definition`, `workspace.py:7375-7410`).
+   *
+   * @param propertyName - Name of the property to update.
+   * @param params - Fields to update (hidden, dropped, merged,
+   *   sensitive, display_name, description, example_value,
+   *   resource_type).
+   * @returns The updated `PropertyDefinition`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async updatePropertyDefinition(
+    propertyName: string,
+    params: UpdatePropertyDefinitionParams,
+  ): Promise<PropertyDefinition> {
+    return updatePropertyDefinitionMember(this.client, propertyName, params);
+  }
+
+  /**
+   * Bulk-update property definitions in Lexicon
+   * (`bulk_update_property_definitions`,
+   * `workspace.py:7412-7456`).
+   *
+   * @param params - Bulk update parameters (a list of property
+   *   updates: name + fields to change).
+   * @returns The updated `PropertyDefinition` models, in response
+   *   order.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async bulkUpdatePropertyDefinitions(
+    params: BulkUpdatePropertiesParams,
+  ): Promise<PropertyDefinition[]> {
+    return bulkUpdatePropertyDefinitionsMember(this.client, params);
+  }
+
+  /**
+   * List all Lexicon tags (`list_lexicon_tags`,
+   * `workspace.py:7460-7500`).
+   *
+   * The list endpoint may return plain tag-name strings without IDs;
+   * those entries come back with `id` set to the `0` sentinel. Do NOT
+   * pass that sentinel to {@link updateLexiconTag} — use name-based
+   * operations (e.g. {@link deleteLexiconTag}) for such tags.
+   *
+   * @returns The `LexiconTag` models, in response order.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async listLexiconTags(): Promise<LexiconTag[]> {
+    return listLexiconTagsMember(this.client);
+  }
+
+  /**
+   * Create a new Lexicon tag (`create_lexicon_tag`,
+   * `workspace.py:7502-7528`).
+   *
+   * @param params - Tag creation parameters (name required).
+   * @returns The created `LexiconTag`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async createLexiconTag(params: CreateTagParams): Promise<LexiconTag> {
+    return createLexiconTagMember(this.client, params);
+  }
+
+  /**
+   * Update a Lexicon tag (`update_lexicon_tag`,
+   * `workspace.py:7530-7559`).
+   *
+   * @param tagId - Tag ID (integer).
+   * @param params - Fields to update (e.g. name).
+   * @returns The updated `LexiconTag`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async updateLexiconTag(
+    tagId: number,
+    params: UpdateTagParams,
+  ): Promise<LexiconTag> {
+    return updateLexiconTagMember(this.client, tagId, params);
+  }
+
+  /**
+   * Delete a Lexicon tag BY NAME (`delete_lexicon_tag`,
+   * `workspace.py:7561-7580`).
+   *
+   * @param tagName - Name of the tag to delete.
+   * @returns Nothing.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   */
+  async deleteLexiconTag(tagName: string): Promise<void> {
+    return deleteLexiconTagMember(this.client, tagName);
+  }
+
+  /**
+   * Get tracking metadata for an event (`get_tracking_metadata`,
+   * `workspace.py:8530-8556`) — the raw record, unvalidated.
+   *
+   * @param eventName - Name of the event.
+   * @returns The opaque tracking-metadata record.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   */
+  async getTrackingMetadata(
+    eventName: string,
+  ): Promise<Record<string, unknown>> {
+    return getTrackingMetadataMember(this.client, eventName);
+  }
+
+  /**
+   * Get change history for an event definition
+   * (`get_event_history`, `workspace.py:8558-8583`) — raw records,
+   * unvalidated.
+   *
+   * @param eventName - Name of the event.
+   * @returns The history entries, in response order.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   */
+  async getEventHistory(
+    eventName: string,
+  ): Promise<Array<Record<string, unknown>>> {
+    return getEventHistoryMember(this.client, eventName);
+  }
+
+  /**
+   * Get change history for a property definition
+   * (`get_property_history`, `workspace.py:8585-8614`) — raw records,
+   * unvalidated.
+   *
+   * @param propertyName - Name of the property.
+   * @param entityType - Entity type ("event", "user", "group", ...).
+   * @returns The history entries, in response order.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   */
+  async getPropertyHistory(
+    propertyName: string,
+    entityType: string,
+  ): Promise<Array<Record<string, unknown>>> {
+    return getPropertyHistoryMember(this.client, propertyName, entityType);
+  }
+
+  /**
+   * Export Lexicon data definitions (`export_lexicon`,
+   * `workspace.py:8618-8648`) — the raw record, unvalidated.
+   *
+   * @param options - `export_types` (keyword-only in Python; omit to
+   *   let the client apply its default two-entry list).
+   * @returns The opaque export record.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   *
+   * @example
+   * ```typescript
+   * const exported = await ws.exportLexicon({
+   *   export_types: ["All Events and Properties"],
+   * });
+   * ```
+   */
+  async exportLexicon(
+    options: WorkspaceExportLexiconOptions = {},
+  ): Promise<Record<string, unknown>> {
+    return exportLexiconMember(this.client, options);
   }
 }
 

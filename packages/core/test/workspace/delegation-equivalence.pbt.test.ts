@@ -38,6 +38,7 @@ import {
   validateRetentionArgs,
   validateTimeArgs,
 } from "../../src/query/validation-args.js";
+import { pythonStrip } from "../../src/compat/index.js";
 import type { ValidationError } from "../../src/errors.js";
 import type {
   ConversionWindowUnit,
@@ -370,8 +371,16 @@ describe("TestEventNameConsistency (test_delegation_equivalence_pbt.py:337)", ()
         safeTextArb,
         (prefix, ctrl, suffix) => {
           const name = prefix + ctrl + suffix;
-          if (name.trim() === "") {
-            // Empty-after-strip names trigger different rules; skip.
+          if (pythonStrip(name) === "") {
+            // Empty-after-strip names trigger different rules; skip
+            // (`if not name.strip()`, :364). R11.7: the guard MUST be
+            // `pythonStrip`, never JS `trim` — CPython's `str.strip()`
+            // treats U+001C..U+001F as whitespace (`"\x1f".isspace()`
+            // is True) while `trim` does not, so a bare `trim` let the
+            // single-`\x1f` name through to the V22 assertion even
+            // though the validator had already short-circuited on V17.
+            // Found as a ~1-in-N `npm run check` flake at B6-W6;
+            // fix recorded in `B6-W6-notes.md` §4.
             return;
           }
 
