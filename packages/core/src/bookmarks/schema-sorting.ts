@@ -37,6 +37,25 @@
  * port) IMPORTS and GROWS this file — it must never re-implement the
  * sorting models, the code mappers or the loc→JSONPath renderer.
  *
+ * **B3-K1 growth (2026-08-15)**: the model-description machinery below
+ * (`FieldType` / `FieldSpec` / `ModelSpec` / `UnionSpec` /
+ * {@link validateModel}) is now EXPORTED and generalised so
+ * `bookmarks/schema.ts` can describe the non-sorting model tree with
+ * the same one pydantic-core twin. Added kinds: `float`, `bool`,
+ * `json`, `literalInt`, generic `list`/`dict`/`tuple`, nested `model`
+ * (thunked, for the recursive `SubBehavior` / `Behavior` cycle) and
+ * `plainUnion` (pydantic smart unions). Added model-level
+ * `extra: "allow"` (FlowsBookmarkParams) and field-level `nullable`
+ * (non-Optional fields WITH defaults, e.g. `forward: int = 0`, reject
+ * explicit `null` — probe `fbp/collapse_repeated-null`). The old
+ * `optionalStr` / `optionalInt` / `ignore` kinds folded into
+ * `str` / `int` / `json` + `nullable`; the sorting specs below were
+ * rewritten onto them with identical semantics.
+ *
+ * B3-K1 probe evidence: `context/phase3/notes/B3-K1-notes.md` §Probe
+ * (`throwaway/b3-k1/probe-{schema,grammar,detail,order,bool}.py`,
+ * CPython + pydantic pin, run 2026-08-15).
+ *
  * @module bookmarks/schema-sorting
  * @internal
  */
@@ -324,6 +343,101 @@ function pydanticIntFromString(text: string): boolean {
 }
 
 /**
+ * ASCII-only lowercase fold (R11.7: no locale-sensitive
+ * `toLowerCase`, no `/i` regex flag whose Unicode folding differs
+ * from pydantic-core's `eq_ignore_ascii_case`).
+ *
+ * @param text - Input string.
+ * @returns `text` with `A-Z` folded to `a-z`, everything else verbatim.
+ */
+function asciiLower(text: string): string {
+  let out = "";
+  for (const ch of text) {
+    const cp = ch.codePointAt(0)!;
+    out += cp >= 0x41 && cp <= 0x5a ? String.fromCodePoint(cp + 0x20) : ch;
+  }
+  return out;
+}
+
+/**
+ * True when every `_` in `text` sits strictly between two ASCII
+ * digits — pydantic-core's numeric-underscore rule (probe finding:
+ * `1_0` / `1_0.5` / `1.0_0` accepted, `1__0` / `_1` / `1_` rejected).
+ *
+ * @param text - Candidate numeric string (already trimmed).
+ * @returns True when the underscore placement is legal.
+ */
+function underscoresWellPlaced(text: string): boolean {
+  const digits = "0123456789";
+  for (let i = 0; i < text.length; i += 1) {
+    if (text[i] !== "_") {
+      continue;
+    }
+    const prev = i > 0 ? text[i - 1]! : "";
+    const next = i + 1 < text.length ? text[i + 1]! : "";
+    if (!digits.includes(prev) || !digits.includes(next)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * pydantic-core's lax `str -> float` grammar (accept/reject only).
+ *
+ * Probe-pinned (`throwaway/b3-k1/probe-grammar.py`): trim with
+ * {@link pydanticTrim}, then either a signed `inf`/`infinity`/`nan`
+ * word (ASCII case-insensitive) or a decimal literal with an optional
+ * fraction and exponent, single underscores allowed between digits.
+ * Accepts `"5."`, `".5"`, `"1e3"`, `"1_000.0"` and an NBSP-led
+ * `"\u00a05"`; rejects `"0x5"`, `"1,000"`, `""`, a FEFF-led
+ * `"\ufeff5"`, an Arabic-Indic digit `"\u0665"`, and `"1__0"`.
+ *
+ * @param text - The candidate string.
+ * @returns True when pydantic-core would parse it as a float.
+ */
+function pydanticFloatFromString(text: string): boolean {
+  const trimmed = pydanticTrim(text);
+  const word = asciiLower(
+    trimmed.startsWith("+") || trimmed.startsWith("-")
+      ? trimmed.slice(1)
+      : trimmed,
+  );
+  if (word === "inf" || word === "infinity" || word === "nan") {
+    return true;
+  }
+  if (!underscoresWellPlaced(trimmed)) {
+    return false;
+  }
+  const cleaned = trimmed.replaceAll("_", "");
+  // ASCII digit grammar only — `\d` without `u` is exactly 0-9.
+  return /^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$/.test(
+    cleaned,
+  );
+}
+
+/**
+ * pydantic-core's lax `str -> bool` vocabulary.
+ *
+ * Probe-pinned: ASCII case-insensitive membership, and — unlike the
+ * numeric parsers — **no trimming** (`" true "` is rejected).
+ */
+const PYDANTIC_BOOL_STRINGS: ReadonlySet<string> = new Set([
+  "0",
+  "off",
+  "f",
+  "false",
+  "n",
+  "no",
+  "1",
+  "on",
+  "t",
+  "true",
+  "y",
+  "yes",
+]);
+
+/**
  * True for the TS analogue of a Python `dict` — delegates to the
  * shared {@link isPythonDict} discrimination (B2 arbiter fix F1):
  * PyFloat carriers (Python floats) and reconstructed class instances
@@ -336,21 +450,106 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return isPythonDict(value);
 }
 
+/**
+ * `2**63` — pydantic-core converts a float to an integer through Rust's
+ * `i64`, so an INTEGRAL float at or beyond this magnitude does not
+ * reach the int/bool coercion paths at all (probe `probe-bool2.py`:
+ * `4.6e18 -> bool_parsing / int OK` but `9.223372036854776e18 ->
+ * bool_type / int_parsing_size`). Python `int`s have no such ceiling —
+ * `2**70` validates fine on an `int` field — so the guard is keyed on
+ * float-ness, never on magnitude alone.
+ */
+const I64_LIMIT = 2 ** 63;
+
+/**
+ * Numeric view of a value for pydantic's lax scalar coercions: plain
+ * JS numbers stand for Python `int`s, PyFloat carriers for Python
+ * `float`s, and both classify by VALUE (probe: `2` and `2.0` both
+ * reach the same accept/reject decision on every field kind K1 owns).
+ * Booleans are excluded — pydantic handles `bool` before `int`.
+ *
+ * @param value - Candidate value.
+ * @returns The numeric value, or `undefined` when not numeric.
+ */
+function numericValue(value: unknown): number | undefined {
+  if (isFloatCarrier(value)) {
+    return floatCarrierValue(value);
+  }
+  return typeof value === "number" ? value : undefined;
+}
+
+/**
+ * True when a numeric value stands for a Python `float` rather than a
+ * Python `int`.
+ *
+ * Contract rule (P2 codec convention): Python floats cross the wire as
+ * PyFloat carriers, so a BARE JS number is a Python `int` — unless it
+ * is non-integral, which no Python `int` can be. This is the only
+ * place the int/float distinction changes an outcome (`int` fields:
+ * Python ints are arbitrary-precision and always fit, floats blow up
+ * past `i64`).
+ *
+ * @param value - The original (possibly carrier-wrapped) value.
+ * @param numeric - Its numeric view.
+ * @returns True for Python-float semantics.
+ */
+function isPythonFloat(value: unknown, numeric: number): boolean {
+  return isFloatCarrier(value) || !Number.isInteger(numeric);
+}
+
 // =============================================================================
 // Model description tables (bookmark_schema.py:390-680)
 // =============================================================================
 
-/** A field's declared type, in pydantic-lax terms. */
-type FieldType =
+/**
+ * A field's declared type, in pydantic-lax terms.
+ *
+ * `model` carries a THUNK because the Python model tree is cyclic
+ * (`SubBehavior.behaviors: list[SubBehavior]`,
+ * `FormulaShowClause.referencedMetrics: list[BehaviorShowClause]`) —
+ * a direct reference would hit the TS temporal dead zone.
+ */
+export type FieldType =
+  /** `Literal["a", "b"]` over strings — exact, case-sensitive. */
   | { readonly kind: "literal"; readonly values: readonly string[] }
-  | { readonly kind: "optionalStr" }
-  | { readonly kind: "optionalInt" }
-  | { readonly kind: "ignore" }
-  | { readonly kind: "listOf"; readonly union: UnionSpec }
-  | { readonly kind: "union"; readonly union: UnionSpec };
+  /** `Literal[0, 1, …]` over ints — Python equality, so `True`/`1.0` match `1`. */
+  | { readonly kind: "literalInt"; readonly values: readonly number[] }
+  /** `str`. */
+  | { readonly kind: "str" }
+  /** `int`. */
+  | { readonly kind: "int" }
+  /** `float`. */
+  | { readonly kind: "float" }
+  /** `bool`. */
+  | { readonly kind: "bool" }
+  /** `JsonValue` / `Any` — accepted verbatim, never reported. */
+  | { readonly kind: "json" }
+  /** `list[T]`. */
+  | { readonly kind: "list"; readonly item: FieldType }
+  /** `dict[str, T]`. */
+  | { readonly kind: "dict"; readonly value: FieldType }
+  /** `tuple[A, B]` — fixed arity. */
+  | { readonly kind: "tuple"; readonly items: readonly FieldType[] }
+  /** A nested `BaseModel` (thunked for recursive trees). */
+  | { readonly kind: "model"; readonly model: () => ModelSpec }
+  /** `Annotated[A | B, Discriminator(...)]`. */
+  | { readonly kind: "union"; readonly union: UnionSpec }
+  /** A plain `A | B` smart union. */
+  | {
+      readonly kind: "plainUnion";
+      readonly members: readonly PlainUnionMember[];
+    };
+
+/** One member of a plain (non-discriminated) pydantic union. */
+export interface PlainUnionMember {
+  /** Name pydantic appends to `loc` (`"int"`, `"CustomMultiAttribution"`, …). */
+  readonly name: string;
+  /** The member's declared type. */
+  readonly type: FieldType;
+}
 
 /** One model field, in class-body declaration order. */
-interface FieldSpec {
+export interface FieldSpec {
   /** Wire key (alias when the model declares one). */
   readonly key: string;
   /** Alternate key accepted because `populate_by_name=True`. */
@@ -359,26 +558,76 @@ interface FieldSpec {
   readonly type: FieldType;
   /** Whether pydantic reports `missing` when the key is absent. */
   readonly required: boolean;
+  /**
+   * Whether an explicit `null` is accepted (`X | None` in the
+   * annotation). Defaults to `!required`, which is right for every
+   * `X | None = None` field; set it to `false` for the non-Optional
+   * fields that merely carry a DEFAULT (`forward: int = 0`,
+   * `conv_first_step: bool = False`) — those reject `null` with the
+   * field's own type error (probe `fbp/collapse_repeated-null`).
+   */
+  readonly nullable?: boolean;
 }
 
-/** A pydantic `BaseModel` with `extra="forbid"`. */
-interface ModelSpec {
+/** A pydantic `BaseModel`. */
+export interface ModelSpec {
   /** Class name (also the `Tag` name in discriminated unions). */
   readonly name: string;
   /** Fields in class-body declaration order (= error emission order). */
   readonly fields: readonly FieldSpec[];
+  /**
+   * `model_config.extra`. Defaults to `"forbid"` (`_BASE_CONFIG`);
+   * only `FlowsBookmarkParams` declares `"allow"`
+   * (`bookmark_schema.py:1514`, pinned by
+   * `test_flows_bookmark_params_currently_allows_extras`).
+   */
+  readonly extra?: "forbid" | "allow";
 }
 
 /** A `Discriminator(callable) + Tag(...)` union. */
-interface UnionSpec {
+export interface UnionSpec {
   /** Port of the Python discriminator callable. */
   readonly discriminate: (value: unknown) => string;
   /** Tag name → variant model. */
   readonly variants: ReadonlyMap<string, ModelSpec>;
 }
 
+/**
+ * A named structural validator for one model — the TS stand-in for a
+ * pydantic model CLASS.
+ *
+ * `validate_with_pydantic(model_cls, …)` takes a class; TS has none,
+ * so the port passes this handle around instead. `.name` is what the
+ * conformance `model_name` output codec serialises for
+ * `get_root_model_for_bookmark_type`, and what B6-W3's dispatch keys
+ * on; `.validate` is what {@link validateWithPydantic} consumes.
+ */
+export interface RootModelHandle {
+  /** The Python class name. */
+  readonly name: string;
+  /** Structural validator: raw value → pydantic error stream. */
+  readonly validate: (raw: unknown) => PydanticErrorEntry[];
+}
+
+/**
+ * Wrap a {@link ModelSpec} as a {@link RootModelHandle}.
+ *
+ * @param spec - The model description.
+ * @returns A handle whose `validate` runs the model at `loc = ()`.
+ */
+export function modelHandle(spec: ModelSpec): RootModelHandle {
+  return {
+    name: spec.name,
+    validate: (raw: unknown): PydanticErrorEntry[] => {
+      const out: PydanticErrorEntry[] = [];
+      validateModel(raw, spec, [], out);
+      return out;
+    },
+  };
+}
+
 /** Mirrors sorting.py `SortOrder`. */
-const SORT_ORDER_LITERAL = ["asc", "desc"] as const;
+export const SORT_ORDER_LITERAL = ["asc", "desc"] as const;
 
 /** Mirrors sorting.py `FlatLabelSortConfig` (`bookmark_schema.py:390-401`). */
 const FLAT_LABEL_SORT_CONFIG: ModelSpec = {
@@ -394,8 +643,8 @@ const FLAT_LABEL_SORT_CONFIG: ModelSpec = {
       type: { kind: "literal", values: SORT_ORDER_LITERAL },
       required: true,
     },
-    { key: "valueField", type: { kind: "optionalStr" }, required: false },
-    { key: "viewNLimit", type: { kind: "optionalInt" }, required: false },
+    { key: "valueField", type: { kind: "str" }, required: false },
+    { key: "viewNLimit", type: { kind: "int" }, required: false },
   ],
 };
 
@@ -413,8 +662,8 @@ const FLAT_VALUE_SORT_CONFIG: ModelSpec = {
       type: { kind: "literal", values: SORT_ORDER_LITERAL },
       required: true,
     },
-    { key: "valueField", type: { kind: "optionalStr" }, required: false },
-    { key: "viewNLimit", type: { kind: "optionalInt" }, required: false },
+    { key: "valueField", type: { kind: "str" }, required: false },
+    { key: "viewNLimit", type: { kind: "int" }, required: false },
   ],
 };
 
@@ -456,15 +705,15 @@ const SORT_BY_COLUMNS_CONFIG: ModelSpec = {
       type: { kind: "literal", values: ["column"] },
       required: true,
     },
-    { key: "valueField", type: { kind: "optionalStr" }, required: false },
+    { key: "valueField", type: { kind: "str" }, required: false },
     {
       key: "colSortAttrs",
-      type: { kind: "listOf", union: FLAT_SORT_CONFIG },
+      type: { kind: "list", item: { kind: "union", union: FLAT_SORT_CONFIG } },
       required: true,
     },
     // Tolerated legacy fields (`Ignore[JsonValue]` in source).
-    { key: "sortOrder", type: { kind: "ignore" }, required: false },
-    { key: "viewNLimit", type: { kind: "ignore" }, required: false },
+    { key: "sortOrder", type: { kind: "json" }, required: false },
+    { key: "viewNLimit", type: { kind: "json" }, required: false },
   ],
 };
 
@@ -482,13 +731,13 @@ const SORT_BY_VALUE_CONFIG: ModelSpec = {
       type: { kind: "literal", values: SORT_ORDER_LITERAL },
       required: false,
     },
-    { key: "valueField", type: { kind: "optionalStr" }, required: false },
+    { key: "valueField", type: { kind: "str" }, required: false },
     {
       key: "colSortAttrs",
-      type: { kind: "listOf", union: FLAT_SORT_CONFIG },
+      type: { kind: "list", item: { kind: "union", union: FLAT_SORT_CONFIG } },
       required: true,
     },
-    { key: "viewNLimit", type: { kind: "optionalInt" }, required: false },
+    { key: "viewNLimit", type: { kind: "int" }, required: false },
   ],
 };
 
@@ -542,7 +791,7 @@ const OLD_TABLE_SORT_BY_VALUE: ModelSpec = {
     },
     {
       key: "colSortAttrs",
-      type: { kind: "listOf", union: FLAT_SORT_CONFIG },
+      type: { kind: "list", item: { kind: "union", union: FLAT_SORT_CONFIG } },
       required: true,
     },
   ],
@@ -638,7 +887,7 @@ const TABLE_SORT_CONFIG: UnionSpec = {
  * emission order; the kebab-case keys come from the model's
  * `alias_generator`, the snake_case ones from `populate_by_name=True`.
  */
-const INSIGHTS_BOOKMARK_SORT_CONFIG: ModelSpec = {
+export const INSIGHTS_BOOKMARK_SORT_CONFIG: ModelSpec = {
   name: "InsightsBookmarkSortConfig",
   fields: [
     {
@@ -694,15 +943,17 @@ const INSIGHTS_BOOKMARK_SORT_CONFIG: ModelSpec = {
  * @param loc - `loc` prefix for emitted errors (includes the field key).
  * @param out - Error sink, appended in emission order.
  */
-function validateFieldValue(
+export function validateFieldValue(
   value: unknown,
   type: FieldType,
   loc: readonly (string | number)[],
   out: PydanticErrorEntry[],
 ): void {
   switch (type.kind) {
-    case "ignore":
-      // `Ignore[JsonValue]` — accepted at parse time, never reported.
+    case "json":
+      // `JsonValue` / `Any` / `Ignore[JsonValue]` — accepted at parse
+      // time, never reported (probe `sections/behavior-ignore-filter-junk`,
+      // `jsonvalue/*`: dicts, lists, scalars, NaN and Infinity all pass).
       return;
     case "literal": {
       if (typeof value === "string" && type.values.includes(value)) {
@@ -711,12 +962,28 @@ function validateFieldValue(
       out.push({
         type: "literal_error",
         loc,
-        msg: literalMessage(type.values),
+        msg: literalMessage(type.values.map((v) => `'${v}'`)),
       });
       return;
     }
-    case "optionalStr": {
-      if (value === null || typeof value === "string") {
+    case "literalInt": {
+      // Python equality decides membership, so `True`/`False` match
+      // `1`/`0` and `1.0` matches `1`; strings never coerce
+      // (probe `lit-int/*`).
+      const numeric =
+        typeof value === "boolean" ? (value ? 1 : 0) : numericValue(value);
+      if (numeric !== undefined && type.values.includes(numeric)) {
+        return;
+      }
+      out.push({
+        type: "literal_error",
+        loc,
+        msg: literalMessage(type.values.map((v) => String(v))),
+      });
+      return;
+    }
+    case "str": {
+      if (typeof value === "string") {
         return;
       }
       out.push({
@@ -726,8 +993,8 @@ function validateFieldValue(
       });
       return;
     }
-    case "optionalInt": {
-      if (value === null || typeof value === "boolean") {
+    case "int": {
+      if (typeof value === "boolean") {
         return;
       }
       // A PyFloat carrier IS a Python float here (Caution §8). pydantic
@@ -736,20 +1003,28 @@ function validateFieldValue(
       // never by JS type — that keeps the binding free of a sorting-only
       // unwrap rule (which would collide with B18B's `isinstance(int)`
       // check on the SAME params dict).
-      const numeric = isFloatCarrier(value) ? floatCarrierValue(value) : value;
-      if (typeof numeric === "number") {
+      const numeric = numericValue(value);
+      if (numeric !== undefined) {
         if (!Number.isFinite(numeric)) {
           out.push({
             type: "finite_number",
             loc,
             msg: "Input should be a finite number",
           });
-        } else if (!Number.isInteger(numeric)) {
-          out.push({
-            type: "int_from_float",
-            loc,
-            msg: "Input should be a valid integer, got a number with a fractional part",
-          });
+        } else if (isPythonFloat(value, numeric)) {
+          if (Math.abs(numeric) >= I64_LIMIT) {
+            out.push({
+              type: "int_parsing_size",
+              loc,
+              msg: "Unable to parse input string as an integer, exceeded maximum size",
+            });
+          } else if (!Number.isInteger(numeric)) {
+            out.push({
+              type: "int_from_float",
+              loc,
+              msg: "Input should be a valid integer, got a number with a fractional part",
+            });
+          }
         }
         return;
       }
@@ -770,7 +1045,77 @@ function validateFieldValue(
       });
       return;
     }
-    case "listOf": {
+    case "float": {
+      // Every finite AND non-finite number is accepted, ints included
+      // (probe `lax/float/*`: `inf`, `nan`, `True` all pass).
+      if (typeof value === "boolean" || numericValue(value) !== undefined) {
+        return;
+      }
+      if (typeof value === "string") {
+        if (!pydanticFloatFromString(value)) {
+          out.push({
+            type: "float_parsing",
+            loc,
+            msg: "Input should be a valid number, unable to parse string as a number",
+          });
+        }
+        return;
+      }
+      out.push({
+        type: "float_type",
+        loc,
+        msg: "Input should be a valid number",
+      });
+      return;
+    }
+    case "bool": {
+      if (typeof value === "boolean") {
+        return;
+      }
+      const numeric = numericValue(value);
+      if (numeric !== undefined) {
+        // Probe `probe-bool.py` / `probe-bool2.py`: value-based, NOT
+        // type-based — `0`/`1`/`0.0`/`1.0`/`-0.0` pass; other INTEGRAL
+        // numbers inside the i64 window give `bool_parsing`; everything
+        // else (fractional, inf, nan, |v| >= 2**63 whether int or
+        // float) gives `bool_type`.
+        if (numeric === 0 || numeric === 1) {
+          return;
+        }
+        out.push(
+          Number.isInteger(numeric) && Math.abs(numeric) < I64_LIMIT
+            ? {
+                type: "bool_parsing",
+                loc,
+                msg: "Input should be a valid boolean, unable to interpret input",
+              }
+            : {
+                type: "bool_type",
+                loc,
+                msg: "Input should be a valid boolean",
+              },
+        );
+        return;
+      }
+      if (typeof value === "string") {
+        // No trimming here — probe: `" true "` is rejected.
+        if (!PYDANTIC_BOOL_STRINGS.has(asciiLower(value))) {
+          out.push({
+            type: "bool_parsing",
+            loc,
+            msg: "Input should be a valid boolean, unable to interpret input",
+          });
+        }
+        return;
+      }
+      out.push({
+        type: "bool_type",
+        loc,
+        msg: "Input should be a valid boolean",
+      });
+      return;
+    }
+    case "list": {
       if (!Array.isArray(value)) {
         out.push({
           type: "list_type",
@@ -780,13 +1125,85 @@ function validateFieldValue(
         return;
       }
       value.forEach((item, index) => {
-        validateUnion(item, type.union, [...loc, index], out);
+        validateFieldValue(item, type.item, [...loc, index], out);
       });
       return;
     }
+    case "dict": {
+      if (!isPlainObject(value)) {
+        out.push({
+          type: "dict_type",
+          loc,
+          msg: "Input should be a valid dictionary",
+        });
+        return;
+      }
+      for (const key of Object.keys(value)) {
+        validateFieldValue(value[key], type.value, [...loc, key], out);
+      }
+      return;
+    }
+    case "tuple": {
+      // Probe `tuple/*`: a non-list element gives `tuple_type`, a short
+      // element gives one `missing` per absent slot, a long one gives a
+      // single `too_long` at the tuple's own loc.
+      if (!Array.isArray(value)) {
+        out.push({
+          type: "tuple_type",
+          loc,
+          msg: "Input should be a valid tuple",
+        });
+        return;
+      }
+      if (value.length > type.items.length) {
+        out.push({
+          type: "too_long",
+          loc,
+          msg: `Tuple should have at most ${String(type.items.length)} items after validation, not ${String(value.length)}`,
+        });
+        return;
+      }
+      type.items.forEach((itemType, index) => {
+        if (index >= value.length) {
+          out.push({
+            type: "missing",
+            loc: [...loc, index],
+            msg: "Field required",
+          });
+          return;
+        }
+        validateFieldValue(value[index], itemType, [...loc, index], out);
+      });
+      return;
+    }
+    case "model":
+      validateModel(value, type.model(), loc, out);
+      return;
     case "union":
       validateUnion(value, type.union, loc, out);
       return;
+    case "plainUnion": {
+      // pydantic smart union: the first member that validates wins and
+      // silences everything; when none does, EVERY member's errors are
+      // emitted in declaration order, each tagged with the member name
+      // (probe `sections/meas-multiattr-bad-type`, `nesteddict/*`).
+      const collected: PydanticErrorEntry[] = [];
+      for (const member of type.members) {
+        const memberErrors: PydanticErrorEntry[] = [];
+        validateFieldValue(
+          value,
+          member.type,
+          [...loc, member.name],
+          memberErrors,
+        );
+        if (memberErrors.length === 0) {
+          return;
+        }
+        collected.push(...memberErrors);
+      }
+      out.push(...collected);
+      return;
+    }
   }
 }
 
@@ -795,11 +1212,11 @@ function validateFieldValue(
  * (display-only, R5.4 — reproduced for parity of the ported message
  * text only).
  *
- * @param values - The literal's admitted values.
+ * @param quoted - The literal's admitted values, already rendered
+ *   (string literals arrive single-quoted, int literals bare).
  * @returns The message pydantic emits.
  */
-function literalMessage(values: readonly string[]): string {
-  const quoted = values.map((v) => `'${v}'`);
+function literalMessage(quoted: readonly string[]): string {
   const rendered =
     quoted.length === 1
       ? quoted[0]!
@@ -816,7 +1233,7 @@ function literalMessage(values: readonly string[]): string {
  * @param loc - `loc` prefix (without the Tag).
  * @param out - Error sink.
  */
-function validateUnion(
+export function validateUnion(
   value: unknown,
   union: UnionSpec,
   loc: readonly (string | number)[],
@@ -832,10 +1249,17 @@ function validateUnion(
 }
 
 /**
- * Validate a value against a model with `extra="forbid"`.
+ * Validate a value against a model.
  *
- * Emission order (probe finding 1): declared fields in class-body
- * order, then unexpected keys in input insertion order.
+ * Emission order (probe finding 1, re-confirmed at B3-K1 by
+ * `order/do-multiple`): declared fields in class-body order, then —
+ * for `extra="forbid"` models only — unexpected keys in input
+ * insertion order.
+ *
+ * Alias handling under `populate_by_name=True`: the ALIAS wins when
+ * both spellings are present, and the Python-name key then falls
+ * through to the extras pass (probe `alias/fsstc-both`,
+ * `alias/both-_idx-and-idx`, `alias/steps-both-from`).
  *
  * @param value - The input value.
  * @param model - The model spec.
@@ -843,7 +1267,7 @@ function validateUnion(
  *   was reached through a discriminated union).
  * @param out - Error sink.
  */
-function validateModel(
+export function validateModel(
   value: unknown,
   model: ModelSpec,
   loc: readonly (string | number)[],
@@ -880,11 +1304,14 @@ function validateModel(
     }
     consumed.add(key);
     const raw = value[key];
-    if (raw === null && !field.required) {
+    if (raw === null && (field.nullable ?? !field.required)) {
       // `X | None = None` — an explicit null hits the Optional branch.
       continue;
     }
     validateFieldValue(raw, field.type, [...loc, key], out);
+  }
+  if (model.extra === "allow") {
+    return;
   }
   for (const key of Object.keys(value)) {
     if (!consumed.has(key)) {
@@ -918,6 +1345,42 @@ export function validateInsightsBookmarkSortConfig(
   validateModel(raw, INSIGHTS_BOOKMARK_SORT_CONFIG, [], out);
   return out;
 }
+
+// =============================================================================
+// Model handles (B3-K1) — the TS stand-ins for the pydantic classes
+// =============================================================================
+
+/** Handle for `FlatLabelSortConfig`. */
+export const FLAT_LABEL_SORT_CONFIG_MODEL: RootModelHandle = modelHandle(
+  FLAT_LABEL_SORT_CONFIG,
+);
+
+/** Handle for `FlatValueSortConfig`. */
+export const FLAT_VALUE_SORT_CONFIG_MODEL: RootModelHandle = modelHandle(
+  FLAT_VALUE_SORT_CONFIG,
+);
+
+/** Handle for `SortByColumnsConfig`. */
+export const SORT_BY_COLUMNS_CONFIG_MODEL: RootModelHandle = modelHandle(
+  SORT_BY_COLUMNS_CONFIG,
+);
+
+/** Handle for `SortByValueConfig`. */
+export const SORT_BY_VALUE_CONFIG_MODEL: RootModelHandle =
+  modelHandle(SORT_BY_VALUE_CONFIG);
+
+/** Handle for `OldTableSortByValue`. */
+export const OLD_TABLE_SORT_BY_VALUE_MODEL: RootModelHandle = modelHandle(
+  OLD_TABLE_SORT_BY_VALUE,
+);
+
+/**
+ * Handle for `InsightsBookmarkSortConfig` — the model the (b′) binder
+ * resolves for the `"InsightsBookmarkSortConfig"` adapter name.
+ */
+export const INSIGHTS_BOOKMARK_SORT_CONFIG_MODEL: RootModelHandle = modelHandle(
+  INSIGHTS_BOOKMARK_SORT_CONFIG,
+);
 
 /**
  * Options for {@link validateWithPydantic} (Python kwonly args, R3.9).

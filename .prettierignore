@@ -14,3 +14,5 @@ conformance-runner/src/api-map.gen.ts
 packages/core/src/compat/non-printable.gen.ts
 # Local agent scratch notes (git-ignored).
 .notes/
+# R10.9 throwaway harnesses (deleted by the batch gate; B0-1 precedent).
+throwaway/

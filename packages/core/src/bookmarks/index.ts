@@ -13,3 +13,4 @@
  */
 export * from "./enums.js";
 export * from "./schema-sorting.js";
+export * from "./schema.js";

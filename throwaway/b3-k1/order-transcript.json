@@ -1,0 +1,1583 @@
+{
+ "fields/RollingMeasurement": [
+  {
+   "name": "rollingWindowSize",
+   "alias": null,
+   "required": false
+  }
+ ],
+ "fields/MultiAttributionWeights": [
+  {
+   "name": "first",
+   "alias": null,
+   "required": true
+  },
+  {
+   "name": "middle",
+   "alias": null,
+   "required": true
+  },
+  {
+   "name": "last",
+   "alias": null,
+   "required": true
+  }
+ ],
+ "fields/CustomMultiAttribution": [
+  {
+   "name": "type",
+   "alias": null,
+   "required": true
+  },
+  {
+   "name": "name",
+   "alias": null,
+   "required": true
+  },
+  {
+   "name": "weights",
+   "alias": null,
+   "required": true
+  }
+ ],
+ "fields/PredefinedMultiAttribution": [
+  {
+   "name": "type",
+   "alias": null,
+   "required": true
+  },
+  {
+   "name": "name",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "weights",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "step_index",
+   "alias": null,
+   "required": false
+  }
+ ],
+ "fields/StepRange": [
+  {
+   "name": "from_step",
+   "alias": "from",
+   "required": false
+  },
+  {
+   "name": "to_step",
+   "alias": "to",
+   "required": false
+  }
+ ],
+ "fields/FunnelStep": [
+  {
+   "name": "bool_op",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "property_filter_params_list",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "event",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "event_id",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "custom_event",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "custom_event_name",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "step_label",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "session_event",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "forward",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "reverse",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "dropdown_tab_index",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "filter",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "property",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "selected_property_type",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "serialized",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "type",
+   "alias": null,
+   "required": false
+  }
+ ],
+ "fields/ExclusionFunnelStep": [
+  {
+   "name": "bool_op",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "property_filter_params_list",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "event",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "event_id",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "custom_event",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "custom_event_name",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "step_label",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "session_event",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "forward",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "reverse",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "dropdown_tab_index",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "filter",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "property",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "selected_property_type",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "serialized",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "type",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "steps",
+   "alias": null,
+   "required": true
+  }
+ ],
+ "fields/MetricDisplay": [
+  {
+   "name": "abbrev",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "axis",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "direction",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "hideTrendline",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "precision",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "prefix",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "suffix",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "trendline",
+   "alias": null,
+   "required": false
+  }
+ ],
+ "fields/Bucket": [
+  {
+   "name": "bucketSize",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "disabled",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "groups",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "max",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "min",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "offset",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "unit",
+   "alias": null,
+   "required": false
+  }
+ ],
+ "fields/Winsorization": [
+  {
+   "name": "enabled",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "lower_percentile",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "upper_percentile",
+   "alias": null,
+   "required": false
+  }
+ ],
+ "fields/Statsig": [
+  {
+   "name": "confidence",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "control_key",
+   "alias": null,
+   "required": true
+  },
+  {
+   "name": "sequential_testing_adjustment",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "pre_exposure_date_range",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "winsorization",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "math",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "exposures",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "version",
+   "alias": null,
+   "required": false
+  }
+ ],
+ "fields/SRM": [
+  {
+   "name": "expectedRatios",
+   "alias": null,
+   "required": true
+  }
+ ],
+ "fields/Goal": [
+  {
+   "name": "id",
+   "alias": null,
+   "required": true
+  },
+  {
+   "name": "label",
+   "alias": null,
+   "required": true
+  },
+  {
+   "name": "checkpoints",
+   "alias": null,
+   "required": true
+  },
+  {
+   "name": "target_type",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "target_input",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "unit",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "direction",
+   "alias": null,
+   "required": false
+  }
+ ],
+ "fields/SubBehavior": [
+  {
+   "name": "type",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "id",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "name",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "renamed",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "filters",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "filtersDeterminer",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "funnelOrder",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "behaviors",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "display",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "customEventSet",
+   "alias": null,
+   "required": false
+  }
+ ],
+ "fields/Behavior": [
+  {
+   "name": "type",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "id",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "name",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "renamed",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "dataGroupId",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "filter",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "filters",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "filtersDeterminer",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "resourceType",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "behaviors",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "raw_cohort",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "customBucket",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "conversionWindowDuration",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "conversionWindowUnit",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "funnelReentryMode",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "funnelOrder",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "exclusions",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "aggregateBy",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "retentionType",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "retentionAlignmentType",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "retentionUnit",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "retentionUnbounded",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "retentionUnboundedMode",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "retentionCustomBucketSizes",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "segmentationEvent",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "unsavedId",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "search",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "profileType",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "dataset",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "datasetId",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "projectId",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "display",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "disableCohortize",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "customEventSet",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "hasUnsavedChanges",
+   "alias": null,
+   "required": false
+  }
+ ],
+ "fields/BehaviorMeasurement": [
+  {
+   "name": "dataGroupId",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "math",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "property",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "cumulative",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "perUserAggregation",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "rolling",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "segmentMethod",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "multiAttribution",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "stepIndex",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "actionMode",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "actionStep",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "retentionBucketIndex",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "retentionCumulative",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "retentionSegmentationEvent",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "percentile",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "id",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "type",
+   "alias": null,
+   "required": false
+  }
+ ],
+ "fields/FormulaMeasurement": [
+  {
+   "name": "cumulative",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "rolling",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "multiAttribution",
+   "alias": null,
+   "required": false
+  }
+ ],
+ "fields/BehaviorShowClause": [
+  {
+   "name": "idx",
+   "alias": "_idx",
+   "required": false
+  },
+  {
+   "name": "type",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "id",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "userNamed",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "name",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "behavior",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "measurement",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "statsig",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "srm",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "comparisons",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "display",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "isHidden",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "isExpanded",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "labelPrefix",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "formulaLabel",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "showClauseIndex",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "hasUnsavedChanges",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "goals",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "overrides",
+   "alias": null,
+   "required": false
+  }
+ ],
+ "fields/FormulaShowClause": [
+  {
+   "name": "idx",
+   "alias": "_idx",
+   "required": false
+  },
+  {
+   "name": "type",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "formula",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "measurement",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "statsig",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "display",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "isHidden",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "isExpanded",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "userNamed",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "comparisons",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "id",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "definition",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "name",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "referencedMetrics",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "hasUnsavedChanges",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "overrides",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "goals",
+   "alias": null,
+   "required": false
+  }
+ ],
+ "fields/Sections": [
+  {
+   "name": "cohorts",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "filter",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "formula",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "globalDataGroupId",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "group",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "group_by",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "metricLevelDataGroups",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "show",
+   "alias": null,
+   "required": true
+  },
+  {
+   "name": "time",
+   "alias": null,
+   "required": true
+  }
+ ],
+ "fields/AnnotationOptions": [
+  {
+   "name": "tagFilterIds",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "showUntagged",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "sortOrder",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "hideAnnotations",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "creatorFilterIds",
+   "alias": null,
+   "required": false
+  }
+ ],
+ "fields/CommentOptions": [
+  {
+   "name": "commentsDisabled",
+   "alias": null,
+   "required": false
+  }
+ ],
+ "fields/SegmentId": [
+  {
+   "name": "prop",
+   "alias": null,
+   "required": true
+  },
+  {
+   "name": "propName",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "cohortDesc",
+   "alias": null,
+   "required": false
+  }
+ ],
+ "fields/FunnelStepsSelectedTableColumns": [
+  {
+   "name": "conv_first_step",
+   "alias": "conv-first-step",
+   "required": false
+  },
+  {
+   "name": "conv_prev_step",
+   "alias": "conv-prev-step",
+   "required": false
+  },
+  {
+   "name": "count",
+   "alias": "count",
+   "required": false
+  },
+  {
+   "name": "stat_sig",
+   "alias": "stat-sig",
+   "required": false
+  },
+  {
+   "name": "time_first_step",
+   "alias": "time-first-step",
+   "required": false
+  },
+  {
+   "name": "time_prev_step",
+   "alias": "time-prev-step",
+   "required": false
+  }
+ ],
+ "fields/DisplayOptions": [
+  {
+   "name": "chartType",
+   "alias": null,
+   "required": true
+  },
+  {
+   "name": "plotStyle",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "analysis",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "value",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "rollingWindowSize",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "timeUnit",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "primaryYAxisOptions",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "secondaryYAxisOptions",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "theme",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "xAxisOptions",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "annotationOptions",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "commentOptions",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "queryTimeSampling",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "tableSummaryAggregation",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "statSigControl",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "funnelStepsSelectedTableColumns",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "axisAssignments",
+   "alias": null,
+   "required": false
+  }
+ ],
+ "fields/InsightsBookmarkParams": [
+  {
+   "name": "columnWidths",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "displayOptions",
+   "alias": null,
+   "required": true
+  },
+  {
+   "name": "forecastComparison",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "legend",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "liftComparison",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "name",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "sections",
+   "alias": null,
+   "required": true
+  },
+  {
+   "name": "sorting",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "timeComparison",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "versions",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "executedMigrations",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "alignment",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "anchor_position",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "anchorPosition",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "cardinality",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "cardinality_threshold",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "chart_type",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "chartType",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "count_type",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "date_range",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "error",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "exclusions",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "fields",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "filter_by_cohort",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "filter_by_event",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "global_access_type",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "graph_sort_priority",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "group_by",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "hidden_events",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "icon",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "id",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "isNewQBEnabled",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "modified",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "segments",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "smartHub",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "steps",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "title",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "trend_unit",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "trendType",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "ttcVizType",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "use_query_sampling",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "user",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "user_id",
+   "alias": null,
+   "required": false
+  }
+ ],
+ "fields/FlowsBookmarkStep": [
+  {
+   "name": "event",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "event_id",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "custom_event",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "session_event",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "step_label",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "forward",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "reverse",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "bool_op",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "property_filter_params_list",
+   "alias": null,
+   "required": false
+  }
+ ],
+ "fields/FlowsBookmarkParams": [
+  {
+   "name": "steps",
+   "alias": null,
+   "required": true
+  },
+  {
+   "name": "date_range",
+   "alias": null,
+   "required": true
+  },
+  {
+   "name": "flows_merge_type",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "count_type",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "cardinality_threshold",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "version",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "conversion_window",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "anchor_position",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "alignment",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "collapse_repeated",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "show_custom_events",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "hidden_events",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "exclusions",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "filter_by_cohort",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "filter_by_event",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "group_by",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "aggregate_by",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "data_group_id",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "segments",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "time_percentiles_enabled",
+   "alias": null,
+   "required": false
+  },
+  {
+   "name": "chartType",
+   "alias": null,
+   "required": false
+  }
+ ],
+ "excl/empty": [
+  "missing@show.0.BehaviorShowClause.behavior.exclusions.0.steps"
+ ],
+ "excl/steps-null": [
+  "model_type@show.0.BehaviorShowClause.behavior.exclusions.0.steps"
+ ],
+ "excl/multi": [
+  "string_type@show.0.BehaviorShowClause.behavior.exclusions.0.event",
+  "model_type@show.0.BehaviorShowClause.behavior.exclusions.0.steps",
+  "extra_forbidden@show.0.BehaviorShowClause.behavior.exclusions.0.zzz"
+ ],
+ "multiattr/weights-null": [
+  "OK"
+ ],
+ "multiattr/weights-partial": [
+  "missing@show.0.BehaviorShowClause.measurement.multiAttribution.PredefinedMultiAttribution.weights.middle",
+  "missing@show.0.BehaviorShowClause.measurement.multiAttribution.PredefinedMultiAttribution.weights.last",
+  "missing@show.0.BehaviorShowClause.measurement.multiAttribution.CustomMultiAttribution.weights.middle",
+  "missing@show.0.BehaviorShowClause.measurement.multiAttribution.CustomMultiAttribution.weights.last"
+ ],
+ "fbp/pfpl-null": [
+  "list_type@steps.0.property_filter_params_list"
+ ],
+ "fbp/collapse_repeated-null": [
+  "bool_type@collapse_repeated"
+ ],
+ "fbp/flows_merge_type-null": [
+  "string_type@flows_merge_type"
+ ],
+ "sections/globalDataGroupId-int": [
+  "string_type@globalDataGroupId"
+ ],
+ "do/commentOptions-null": [
+  "OK"
+ ],
+ "do/statSigControl-null": [
+  "OK"
+ ],
+ "do/statSigControl-elem-null": [
+  "model_type@statSigControl.0"
+ ],
+ "ibp/sorting-nested": [
+  "missing@sorting.bar.SortByValueConfig.colSortAttrs"
+ ],
+ "ibp/sorting-null": [
+  "OK"
+ ],
+ "ibp/executedMigrations-bad": [
+  "list_type@executedMigrations"
+ ]
+}
