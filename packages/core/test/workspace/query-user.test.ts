@@ -852,9 +852,9 @@ describe("TestQueryUserPaginationSessionId", () => {
 describe("TestQueryUserValueErrorWrapping", () => {
   it("an unsupported filter operator raises BookmarkValidationError", async () => {
     const f = new Filter({
-      property: "prop",
-      operator: "unsupported_op" as never,
-      value: "val",
+      _property: "prop",
+      _operator: "unsupported_op" as never,
+      _value: "val",
     });
     const ws = workspaceFactory(mockWorkspaceClient());
 

@@ -428,7 +428,8 @@ describe("TestParallelFailedPageHandling", () => {
     expect(
       log.warnings.some(
         (msg) =>
-          msg.toLowerCase().includes("page") || msg.toLowerCase().includes("fail"),
+          msg.toLowerCase().includes("page") ||
+          msg.toLowerCase().includes("fail"),
       ),
     ).toBe(true);
   });

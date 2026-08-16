@@ -113,3 +113,25 @@ export class AttributeError extends Error {
     this.name = "AttributeError";
   }
 }
+
+/**
+ * Twin of CPython's `RuntimeError`.
+ *
+ * Added at B5-S2: `validate_user_args`'s U24 guard catches
+ * `(ValueError, TypeError, RuntimeError)` around
+ * `CohortDefinition.to_dict()` (`user_validators.py:463-476`), and
+ * `test_workspace_query_user_integration.py:594-618` patches `to_dict`
+ * to raise a `RuntimeError` specifically. Without this twin the TS
+ * catch could not name the third arm.
+ */
+export class RuntimeError extends Error {
+  /**
+   * Create the twin.
+   *
+   * @param message - CPython's message text (out of contract, R5.4).
+   */
+  constructor(message: string) {
+    super(message);
+    this.name = "RuntimeError";
+  }
+}

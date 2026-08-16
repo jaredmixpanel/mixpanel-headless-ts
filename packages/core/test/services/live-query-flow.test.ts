@@ -26,7 +26,6 @@ import {
   parseTreeNode,
   transformFlowResult,
 } from "../../src/services/live-query-transforms.js";
-import { QueryError } from "../../src/errors.js";
 import { FlowQueryResult } from "../../src/types/results/query-engine.js";
 import type { MixpanelClient } from "../../src/client/client.js";
 import type { JsonValue } from "../../src/client/json-value.js";
@@ -186,9 +185,7 @@ function sampleTreeResponse(): Record<string, unknown> {
  * @returns The `trees[0].root` record.
  */
 function sampleTreeRoot(): Record<string, unknown> {
-  const trees = sampleTreeResponse()["trees"] as Array<
-    Record<string, unknown>
-  >;
+  const trees = sampleTreeResponse()["trees"] as Array<Record<string, unknown>>;
   return trees[0]!["root"] as Record<string, unknown>;
 }
 
@@ -464,11 +461,7 @@ describe("TestQueryFlowTree", () => {
     mock.setReturnValue(sampleTreeResponse());
     const live = new LiveQueryService(mock.client);
 
-    const result = await live.queryFlow(
-      sampleBookmarkParams(),
-      12345,
-      "tree",
-    );
+    const result = await live.queryFlow(sampleBookmarkParams(), 12345, "tree");
 
     expect(result).toBeInstanceOf(FlowQueryResult);
     expect(result.mode).toBe("tree");

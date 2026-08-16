@@ -100,11 +100,14 @@ describe("TestParallelLimit1FallsBackToSequential", () => {
   it("limit=1 with parallel=true uses the sequential path", async () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(() =>
-      makePageResult([makeRawProfile("user_solo", undefined, { plan: "premium" })], {
-        total: 5000,
-        page_size: 1000,
-        has_more: true,
-      }),
+      makePageResult(
+        [makeRawProfile("user_solo", undefined, { plan: "premium" })],
+        {
+          total: 5000,
+          page_size: 1000,
+          has_more: true,
+        },
+      ),
     );
 
     const result = await workspaceFactory(mock).queryUser({

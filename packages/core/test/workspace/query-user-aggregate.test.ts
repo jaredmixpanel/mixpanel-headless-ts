@@ -220,9 +220,7 @@ describe("TestAggregateWithProperty", () => {
 
   it("a fractional percentile renders in the action string", async () => {
     const mock = mockWorkspaceClient();
-    mock.setEngageStats(
-      makeStatsResponse({ percentile: 99.5, result: 980.0 }),
-    );
+    mock.setEngageStats(makeStatsResponse({ percentile: 99.5, result: 980.0 }));
 
     const result = await workspaceFactory(mock).queryUser({
       mode: "aggregate",
@@ -268,7 +266,9 @@ describe("TestAggregateWithProperty", () => {
     });
 
     expect(typeof result.params).toBe("object");
-    expect(result.params["action"]).toBe('numeric_summary(properties["score"])');
+    expect(result.params["action"]).toBe(
+      'numeric_summary(properties["score"])',
+    );
   });
 });
 

@@ -35,6 +35,10 @@ import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
 import { DECIMAL_DIGIT_RUNS } from "../compat/decimal-digits.gen.js";
 import { pythonRepr, pythonStrip, zfill } from "../compat/index.js";
 import { ParamValidationError, ValidationError } from "../errors.js";
+import {
+  RuntimeError as PyRuntimeError,
+  ValueError as PyValueError,
+} from "./python-builtins.js";
 import { CohortDefinition, Filter } from "../types/index.js";
 import { isCohortFilter, isPythonDict } from "./user-builders.js";
 import {
@@ -748,13 +752,28 @@ export function validateUserArgs(
     try {
       cohort.toDict();
     } catch (exc) {
-      // Python catches `(ValueError, TypeError, RuntimeError)`. In the
-      // ported domain `toDict()` can only raise `ParamValidationError`
-      // — which dual-inherits `ValueError` in Python
-      // (`exceptions.py:97`) — or a native `TypeError`; everything
-      // else propagates exactly as Python lets `KeyError`/
-      // `AttributeError`/`RecursionError` propagate.
-      if (!(exc instanceof ParamValidationError || exc instanceof TypeError)) {
+      // Python catches `(ValueError, TypeError, RuntimeError)`, so the
+      // TS catch names all three arms plus the dual-inheriting
+      // `ParamValidationError` (`exceptions.py:97`): `ValueError` /
+      // `RuntimeError` are the `query/python-builtins.ts` twins and
+      // `TypeError` is native. Everything else propagates exactly as
+      // Python lets `KeyError` / `AttributeError` / `RecursionError`
+      // propagate.
+      //
+      // B5-S2 FIX (recorded in `B5-S2-notes.md` §3): the original B2
+      // narrowing to `ParamValidationError | TypeError` reasoned that
+      // the ported `toDict()` can only raise those. It is right about
+      // the LIBRARY path, but
+      // `test_workspace_query_user_integration.py:594-649` patches
+      // `to_dict` to raise `RuntimeError("serialization failed")` and
+      // `ValueError("bad selector node")` and pins U24 for both, so the
+      // narrowing was Layer-3-visible.
+      if (!(
+        exc instanceof ParamValidationError ||
+        exc instanceof TypeError ||
+        exc instanceof PyValueError ||
+        exc instanceof PyRuntimeError
+      )) {
         throw exc;
       }
       errors.push(

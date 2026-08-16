@@ -126,7 +126,9 @@ const rawFunnelResponse: fc.Arbitrary<Record<string, unknown>> = fc
       // pool is padded/trimmed to the same length.
       const steps: Array<Record<string, unknown>> = [];
       for (let i = 0; i < numSteps; i += 1) {
-        steps.push(drawn[i % Math.max(drawn.length, 1)] ?? { event: "e", count: 0 });
+        steps.push(
+          drawn[i % Math.max(drawn.length, 1)] ?? { event: "e", count: 0 },
+        );
       }
       data[date] = { steps, analysis: {} };
     });

@@ -95,7 +95,11 @@ describe("TestSegmentation", () => {
         legend_size: 1,
       },
     }));
-    const result = await live.segmentation("Sign Up", "2024-01-01", "2024-01-03");
+    const result = await live.segmentation(
+      "Sign Up",
+      "2024-01-01",
+      "2024-01-03",
+    );
 
     expect(result.event).toBe("Sign Up");
     expect(result.from_date).toBe("2024-01-01");
@@ -625,10 +629,15 @@ describe("TestEventCounts", () => {
         legend_size: 1,
       },
     }));
-    const result = await live.eventCounts(["Test"], "2024-01-01", "2024-01-31", {
-      type: "unique",
-      unit: "week",
-    });
+    const result = await live.eventCounts(
+      ["Test"],
+      "2024-01-01",
+      "2024-01-31",
+      {
+        type: "unique",
+        unit: "week",
+      },
+    );
 
     const urlStr = firstUrl(transport);
     expect(urlStr).toContain("type=unique");
@@ -754,9 +763,15 @@ describe("TestPropertyCounts", () => {
         legend_size: 1,
       },
     }));
-    await live.propertyCounts("Purchase", "country", "2024-01-01", "2024-01-01", {
-      values: ["US", "CA"],
-    });
+    await live.propertyCounts(
+      "Purchase",
+      "country",
+      "2024-01-01",
+      "2024-01-01",
+      {
+        values: ["US", "CA"],
+      },
+    );
 
     // Verify the values parameter is JSON-encoded onto the query string
     expect(firstUrl(transport)).toContain("values=");
@@ -770,9 +785,15 @@ describe("TestPropertyCounts", () => {
         legend_size: 1,
       },
     }));
-    await live.propertyCounts("Purchase", "country", "2024-01-01", "2024-01-01", {
-      limit: 10,
-    });
+    await live.propertyCounts(
+      "Purchase",
+      "country",
+      "2024-01-01",
+      "2024-01-01",
+      {
+        limit: 10,
+      },
+    );
 
     expect(firstUrl(transport)).toContain("limit=10");
   });

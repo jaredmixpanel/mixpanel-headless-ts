@@ -157,9 +157,9 @@ describe("TestFilterTranslation", () => {
 
   it("no where omits the param", async () => {
     const params = await makeWs().buildUserParams();
-    expect(
-      !Object.hasOwn(params, "where") || params["where"] === null,
-    ).toBe(true);
+    expect(!Object.hasOwn(params, "where") || params["where"] === null).toBe(
+      true,
+    );
   });
 
   it("a single Filter (not wrapped in a list) is accepted", async () => {

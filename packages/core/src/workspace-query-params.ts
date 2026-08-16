@@ -58,7 +58,11 @@ import {
 } from "./bookmarks/builders.js";
 import { pythonJsonDumps } from "./compat/python-json-dumps.js";
 import { pythonRepr } from "./compat/python-str.js";
-import { BookmarkValidationError, ValidationError } from "./errors.js";
+import {
+  BookmarkValidationError,
+  ParamValidationError,
+  ValidationError,
+} from "./errors.js";
 import { buildSegfilterEntry } from "./query/segfilter.js";
 import {
   extractCohortFilter,
@@ -1971,10 +1975,23 @@ export function resolveAndBuildUserParams(
       try {
         selector = filtersToSelector(remaining);
       } catch (exc) {
-        if (exc instanceof ValueError) {
-          throw new BookmarkValidationError([
+        // Python's `except ValueError` here catches BOTH the builtin and
+        // `ParamValidationError`, which dual-inherits `ValueError`
+        // (`exceptions.py:97`). The converted ES* guards inside
+        // `filters_to_selector` raise the latter, and RR-4
+        // (`test_workspace_query_user_integration.py:1116-1152`) pins
+        // that they surface here as `U_FILTER` with the guard error as
+        // the chained cause. The Phase-2 header note ("`except
+        // ValueError` reachability is a Python-side concern only",
+        // `errors.ts:11-14`) does NOT hold at this one site, so the
+        // catch names both classes explicitly.
+        if (exc instanceof ValueError || exc instanceof ParamValidationError) {
+          const wrapped = new BookmarkValidationError([
             new ValidationError("where", exc.message, "U_FILTER"),
           ]);
+          // Python's `raise ... from exc`.
+          (wrapped as { cause?: unknown }).cause = exc;
+          throw wrapped;
         }
         throw exc;
       }

@@ -49,7 +49,11 @@ function mockResponse(
     date_range: { from_date: "2025-01-01", to_date: "2025-01-31" },
     series: {
       "Signup and then Login": {
-        "2025-01-01": { first: 100, counts: [100, 50, 25], rates: [1.0, 0.5, 0.25] },
+        "2025-01-01": {
+          first: 100,
+          counts: [100, 50, 25],
+          rates: [1.0, 0.5, 0.25],
+        },
         "2025-01-02": { first: 80, counts: [80, 40], rates: [1.0, 0.5] },
         $average: { first: 90, counts: [90, 45, 22], rates: [1.0, 0.5, 0.244] },
       },
@@ -300,7 +304,9 @@ describe("TestTransformRetentionNonDictSeries", () => {
   });
 
   it("a list metric value raises QueryError", () => {
-    const raw = mockResponse({ series: { "Signup and then Login": [1, 2, 3] } });
+    const raw = mockResponse({
+      series: { "Signup and then Login": [1, 2, 3] },
+    });
     expect(() => transformRetentionResult(raw, BOOKMARK_PARAMS)).toThrow(
       /not a dict.*got list/,
     );

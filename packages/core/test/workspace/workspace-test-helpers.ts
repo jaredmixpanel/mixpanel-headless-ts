@@ -211,9 +211,13 @@ export function makeProfilesBatch(
   const out: Array<Record<string, unknown>> = [];
   for (let i = 0; i < count; i += 1) {
     out.push(
-      makeRawProfile(`user_${`${startIndex + i}`.padStart(3, "0")}`, undefined, {
-        plan: "free",
-      }),
+      makeRawProfile(
+        `user_${`${startIndex + i}`.padStart(3, "0")}`,
+        undefined,
+        {
+          plan: "free",
+        },
+      ),
     );
   }
   return out;
@@ -249,7 +253,8 @@ export function makePageResult(
     page: options.page ?? 0,
     total: options.total ?? 100,
     page_size: options.page_size ?? 1000,
-    session_id: options.session_id === undefined ? "sess_abc123" : options.session_id,
+    session_id:
+      options.session_id === undefined ? "sess_abc123" : options.session_id,
     has_more: options.has_more ?? false,
   });
 }
