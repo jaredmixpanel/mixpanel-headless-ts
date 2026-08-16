@@ -135,6 +135,9 @@ describe("TestTransformRetentionErrors", () => {
     const errorResponse: Record<string, unknown> = { error: "invalid query" };
     expect(() =>
       transformRetentionResult(errorResponse, BOOKMARK_PARAMS),
+    ).toThrow(QueryError);
+    expect(() =>
+      transformRetentionResult(errorResponse, BOOKMARK_PARAMS),
     ).toThrow(/invalid query/);
   });
 
@@ -179,6 +182,9 @@ describe("TestTransformRetentionErrors", () => {
       meta: {},
     };
     expect(() => transformRetentionResult(raw, BOOKMARK_PARAMS)).toThrow(
+      QueryError,
+    );
+    expect(() => transformRetentionResult(raw, BOOKMARK_PARAMS)).toThrow(
       /missing 'series' key/,
     );
   });
@@ -197,6 +203,9 @@ describe("TestTransformRetentionErrors", () => {
         metric_b: { "2025-01-01": { first: 5, counts: [5], rates: [1.0] } },
       },
     });
+    expect(() => transformRetentionResult(raw, BOOKMARK_PARAMS)).toThrow(
+      QueryError,
+    );
     expect(() => transformRetentionResult(raw, BOOKMARK_PARAMS)).toThrow(
       /segmented series/,
     );
@@ -276,6 +285,9 @@ describe("TestTransformRetentionNonDictSeries", () => {
   it("series=[] raises QueryError with a descriptive message", () => {
     const raw = mockResponse({ series: [] });
     expect(() => transformRetentionResult(raw, BOOKMARK_PARAMS)).toThrow(
+      QueryError,
+    );
+    expect(() => transformRetentionResult(raw, BOOKMARK_PARAMS)).toThrow(
       /series.*list.*expected dict/,
     );
   });
@@ -283,12 +295,18 @@ describe("TestTransformRetentionNonDictSeries", () => {
   it("series='pending' raises QueryError", () => {
     const raw = mockResponse({ series: "pending" });
     expect(() => transformRetentionResult(raw, BOOKMARK_PARAMS)).toThrow(
+      QueryError,
+    );
+    expect(() => transformRetentionResult(raw, BOOKMARK_PARAMS)).toThrow(
       /series.*str.*expected dict/,
     );
   });
 
   it("series=0 raises QueryError", () => {
     const raw = mockResponse({ series: 0 });
+    expect(() => transformRetentionResult(raw, BOOKMARK_PARAMS)).toThrow(
+      QueryError,
+    );
     expect(() => transformRetentionResult(raw, BOOKMARK_PARAMS)).toThrow(
       /series.*int.*expected dict/,
     );
@@ -299,6 +317,9 @@ describe("TestTransformRetentionNonDictSeries", () => {
       series: { "Signup and then Login": "error: timeout" },
     });
     expect(() => transformRetentionResult(raw, BOOKMARK_PARAMS)).toThrow(
+      QueryError,
+    );
+    expect(() => transformRetentionResult(raw, BOOKMARK_PARAMS)).toThrow(
       /not a dict.*got str/,
     );
   });
@@ -307,6 +328,9 @@ describe("TestTransformRetentionNonDictSeries", () => {
     const raw = mockResponse({
       series: { "Signup and then Login": [1, 2, 3] },
     });
+    expect(() => transformRetentionResult(raw, BOOKMARK_PARAMS)).toThrow(
+      QueryError,
+    );
     expect(() => transformRetentionResult(raw, BOOKMARK_PARAMS)).toThrow(
       /not a dict.*got list/,
     );

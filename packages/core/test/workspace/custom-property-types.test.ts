@@ -31,6 +31,7 @@
 
 import { describe, expect, it } from "vitest";
 import { Workspace } from "../../src/workspace.js";
+import { BookmarkValidationError } from "../../src/errors.js";
 import {
   CustomPropertyRef,
   Filter,
@@ -265,10 +266,26 @@ describe("TestCustomPropertyValidationCP1", () => {
           property_type: "number",
         }),
       }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().buildParams("Purchase", {
+        group_by: new GroupBy({
+          property: new CustomPropertyRef({ id: 0 }),
+          property_type: "number",
+        }),
+      }),
     ).rejects.toThrow(/positive integer/);
   });
 
   it("CustomPropertyRef(-1) raises", async () => {
+    await expect(
+      makeWs().buildParams("Purchase", {
+        group_by: new GroupBy({
+          property: new CustomPropertyRef({ id: -1 }),
+          property_type: "number",
+        }),
+      }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().buildParams("Purchase", {
         group_by: new GroupBy({
@@ -290,6 +307,11 @@ describe("TestCustomPropertyValidationCP2", () => {
       makeWs().buildParams("Purchase", {
         group_by: new GroupBy({ property: icp, property_type: "string" }),
       }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().buildParams("Purchase", {
+        group_by: new GroupBy({ property: icp, property_type: "string" }),
+      }),
     ).rejects.toThrow(/non-empty/);
   });
 
@@ -302,6 +324,11 @@ describe("TestCustomPropertyValidationCP2", () => {
       makeWs().buildParams("Purchase", {
         group_by: new GroupBy({ property: icp, property_type: "string" }),
       }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().buildParams("Purchase", {
+        group_by: new GroupBy({ property: icp, property_type: "string" }),
+      }),
     ).rejects.toThrow(/non-empty/);
   });
 });
@@ -309,6 +336,11 @@ describe("TestCustomPropertyValidationCP2", () => {
 describe("TestCustomPropertyValidationCP3", () => {
   it("an empty inputs dict raises", async () => {
     const icp = new InlineCustomProperty({ formula: "A", inputs: {} });
+    await expect(
+      makeWs().buildParams("Purchase", {
+        group_by: new GroupBy({ property: icp, property_type: "string" }),
+      }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().buildParams("Purchase", {
         group_by: new GroupBy({ property: icp, property_type: "string" }),
@@ -328,6 +360,11 @@ describe("TestCustomPropertyValidationCP4", () => {
         makeWs().buildParams("Purchase", {
           group_by: new GroupBy({ property: icp, property_type: "string" }),
         }),
+      ).rejects.toBeInstanceOf(BookmarkValidationError);
+      await expect(
+        makeWs().buildParams("Purchase", {
+          group_by: new GroupBy({ property: icp, property_type: "string" }),
+        }),
       ).rejects.toThrow(/uppercase/);
     });
   }
@@ -339,6 +376,11 @@ describe("TestCustomPropertyValidationCP5", () => {
       formula: "A".repeat(20001),
       inputs: { A: new PropertyInput({ name: "price" }) },
     });
+    await expect(
+      makeWs().buildParams("Purchase", {
+        group_by: new GroupBy({ property: icp, property_type: "string" }),
+      }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().buildParams("Purchase", {
         group_by: new GroupBy({ property: icp, property_type: "string" }),
@@ -364,6 +406,11 @@ describe("TestCustomPropertyValidationCP6", () => {
       formula: "A",
       inputs: { A: new PropertyInput({ name: "" }) },
     });
+    await expect(
+      makeWs().buildParams("Purchase", {
+        group_by: new GroupBy({ property: icp, property_type: "string" }),
+      }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().buildParams("Purchase", {
         group_by: new GroupBy({ property: icp, property_type: "string" }),
@@ -399,12 +446,26 @@ describe("TestCustomPropertyValidationFilterPosition", () => {
       makeWs().buildParams("Purchase", {
         where: Filter.greaterThan(new CustomPropertyRef({ id: 0 }), 100),
       }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().buildParams("Purchase", {
+        where: Filter.greaterThan(new CustomPropertyRef({ id: 0 }), 100),
+      }),
     ).rejects.toThrow(/positive integer/);
   });
 });
 
 describe("TestCustomPropertyValidationMeasurementPosition", () => {
   it("CustomPropertyRef(0) in Metric.property raises", async () => {
+    await expect(
+      makeWs().buildParams(
+        new Metric({
+          event: "Purchase",
+          math: "average",
+          property: new CustomPropertyRef({ id: 0 }),
+        }),
+      ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().buildParams(
         new Metric({
@@ -426,10 +487,26 @@ describe("TestCustomPropertyValidationFunnelRetention", () => {
           property_type: "number",
         }),
       }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().buildFunnelParams(["Signup", "Purchase"], {
+        group_by: new GroupBy({
+          property: new CustomPropertyRef({ id: 0 }),
+          property_type: "number",
+        }),
+      }),
     ).rejects.toThrow(/positive integer/);
   });
 
   it("CustomPropertyRef(0) in retention group_by raises", async () => {
+    await expect(
+      makeWs().buildRetentionParams("Signup", "Login", {
+        group_by: new GroupBy({
+          property: new CustomPropertyRef({ id: 0 }),
+          property_type: "number",
+        }),
+      }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().buildRetentionParams("Signup", "Login", {
         group_by: new GroupBy({
@@ -445,10 +522,20 @@ describe("TestCustomPropertyValidationFunnelRetention", () => {
       makeWs().buildFunnelParams(["Signup", "Purchase"], {
         where: Filter.greaterThan(new CustomPropertyRef({ id: 0 }), 100),
       }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().buildFunnelParams(["Signup", "Purchase"], {
+        where: Filter.greaterThan(new CustomPropertyRef({ id: 0 }), 100),
+      }),
     ).rejects.toThrow(/positive integer/);
   });
 
   it("CustomPropertyRef(0) in retention where raises", async () => {
+    await expect(
+      makeWs().buildRetentionParams("Signup", "Login", {
+        where: Filter.greaterThan(new CustomPropertyRef({ id: 0 }), 100),
+      }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().buildRetentionParams("Signup", "Login", {
         where: Filter.greaterThan(new CustomPropertyRef({ id: 0 }), 100),

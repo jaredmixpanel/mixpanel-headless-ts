@@ -13,6 +13,7 @@
 
 import { describe, expect, it } from "vitest";
 import { Workspace } from "../../src/workspace.js";
+import { BookmarkValidationError } from "../../src/errors.js";
 import {
   CustomPropertyRef,
   Filter,
@@ -50,10 +51,28 @@ describe("TestR2V1FlowStepFiltersCPFixed", () => {
         }),
         { last: 7 },
       ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().buildFlowParams(
+        new FlowStep({
+          event: "Purchase",
+          filters: [Filter.isSet(new CustomPropertyRef({ id: 0 }))],
+        }),
+        { last: 7 },
+      ),
     ).rejects.toThrow(/positive integer/);
   });
 
   it("CustomPropertyRef(-1) in FlowStep.filters raises", async () => {
+    await expect(
+      makeWs().buildFlowParams(
+        new FlowStep({
+          event: "Purchase",
+          filters: [Filter.isSet(new CustomPropertyRef({ id: -1 }))],
+        }),
+        { last: 7 },
+      ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().buildFlowParams(
         new FlowStep({
@@ -70,6 +89,12 @@ describe("TestR2V1FlowStepFiltersCPFixed", () => {
       formula: "",
       inputs: { A: new PropertyInput({ name: "$browser" }) },
     });
+    await expect(
+      makeWs().buildFlowParams(
+        new FlowStep({ event: "Purchase", filters: [Filter.isSet(badCp)] }),
+        { last: 7 },
+      ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().buildFlowParams(
         new FlowStep({ event: "Purchase", filters: [Filter.isSet(badCp)] }),
@@ -105,10 +130,30 @@ describe("TestR2V2RetentionEventFiltersCPFixed", () => {
         "Login",
         { last: 7 },
       ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().buildRetentionParams(
+        new RetentionEvent({
+          event: "Signup",
+          filters: [Filter.isSet(new CustomPropertyRef({ id: 0 }))],
+        }),
+        "Login",
+        { last: 7 },
+      ),
     ).rejects.toThrow(/positive integer/);
   });
 
   it("CustomPropertyRef(0) in the return event raises", async () => {
+    await expect(
+      makeWs().buildRetentionParams(
+        "Signup",
+        new RetentionEvent({
+          event: "Login",
+          filters: [Filter.isSet(new CustomPropertyRef({ id: 0 }))],
+        }),
+        { last: 7 },
+      ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().buildRetentionParams(
         "Signup",
@@ -126,6 +171,13 @@ describe("TestR2V2RetentionEventFiltersCPFixed", () => {
       formula: "",
       inputs: { A: new PropertyInput({ name: "$browser" }) },
     });
+    await expect(
+      makeWs().buildRetentionParams(
+        new RetentionEvent({ event: "Signup", filters: [Filter.isSet(badCp)] }),
+        "Login",
+        { last: 7 },
+      ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().buildRetentionParams(
         new RetentionEvent({ event: "Signup", filters: [Filter.isSet(badCp)] }),
@@ -159,10 +211,25 @@ describe("TestR2V3NaNFilterFixed", () => {
         where: Filter.greaterThan("age", Number.NaN),
         last: 7,
       }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().buildParams("AnyEvent", {
+        where: Filter.greaterThan("age", Number.NaN),
+        last: 7,
+      }),
     ).rejects.toThrow(/finite number/);
   });
 
   it("NaN in Metric.filters raises", async () => {
+    await expect(
+      makeWs().buildParams(
+        new Metric({
+          event: "AnyEvent",
+          filters: [Filter.greaterThan("age", Number.NaN)],
+        }),
+        { last: 7 },
+      ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().buildParams(
         new Metric({
@@ -194,10 +261,22 @@ describe("TestR2V4InfFilterFixed", () => {
         where: Filter.greaterThan("age", Infinity),
         last: 7,
       }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().buildParams("AnyEvent", {
+        where: Filter.greaterThan("age", Infinity),
+        last: 7,
+      }),
     ).rejects.toThrow(/finite number/);
   });
 
   it("negative infinity also raises", async () => {
+    await expect(
+      makeWs().buildParams("AnyEvent", {
+        where: Filter.greaterThan("age", -Infinity),
+        last: 7,
+      }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().buildParams("AnyEvent", {
         where: Filter.greaterThan("age", -Infinity),
@@ -232,10 +311,32 @@ describe("TestR2CombinedFixes", () => {
         }),
         { last: 7 },
       ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().buildFlowParams(
+        new FlowStep({
+          event: "Purchase",
+          filters: [
+            Filter.isSet(new CustomPropertyRef({ id: 0 })),
+            Filter.greaterThan("amount", Number.NaN),
+          ],
+        }),
+        { last: 7 },
+      ),
     ).rejects.toThrow(/positive integer/);
   });
 
   it("a RetentionEvent CP error is caught", async () => {
+    await expect(
+      makeWs().buildRetentionParams(
+        new RetentionEvent({
+          event: "Signup",
+          filters: [Filter.isSet(new CustomPropertyRef({ id: -1 }))],
+        }),
+        "Login",
+        { where: Filter.greaterThan("age", Infinity), last: 7 },
+      ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().buildRetentionParams(
         new RetentionEvent({

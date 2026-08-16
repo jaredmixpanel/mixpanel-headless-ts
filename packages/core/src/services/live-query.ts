@@ -49,6 +49,7 @@ import type {
 } from "../types/results/query-engine.js";
 import type { WarningSink } from "./discovery.js";
 import {
+  pyMapping,
   transformActivityFeed,
   transformFlowResult,
   transformFlows,
@@ -216,19 +217,19 @@ function nativeRecord(raw: JsonValue): Readonly<Record<string, unknown>> {
  * and `property_counts` inline (`live_query.py:923`, `:996`).
  *
  * Absent keys yield `{}`; an explicitly non-mapping `data` member makes
- * the nested read throw, exactly as Python's `AttributeError` does at
- * the same statement (class differs, both raise — recorded in
- * `B5-S2-notes.md`).
+ * the nested `.get` raise CPython's `AttributeError` via
+ * {@link pyMapping} (B5-ARB FID-F2 — the pre-fix `Object.hasOwn` read
+ * silently returned `{}` for str/number receivers and threw the wrong
+ * class for `null`).
  *
  * @param raw - The native response record.
  * @returns The `data.values` mapping.
+ * @throws AttributeError - When the `data` member is not a dict.
  */
 function dataValues(
   raw: Readonly<Record<string, unknown>>,
 ): Readonly<Record<string, Readonly<Record<string, number>>>> {
-  const data = (Object.hasOwn(raw, "data") ? raw["data"] : {}) as Readonly<
-    Record<string, unknown>
-  >;
+  const data = pyMapping(Object.hasOwn(raw, "data") ? raw["data"] : {}, "get");
   return (Object.hasOwn(data, "values") ? data["values"] : {}) as Readonly<
     Record<string, Readonly<Record<string, number>>>
   >;

@@ -459,12 +459,21 @@ export class ReplaysService {
           }
         }
         // Python `sorted(events, key=lambda e: int(e.get("timestamp", 0)))`
-        // — STABLE, and the key is the CPython `int()` ladder (Caution #3).
-        const ordered = [...events].sort(
-          (a, b) =>
-            pythonIntCoerce(a["timestamp"] ?? 0) -
-            pythonIntCoerce(b["timestamp"] ?? 0),
-        );
+        // — STABLE, and the key is the CPython `int()` ladder
+        // (Caution #3). Decorate-sort-undecorate (B5-ARB FID-F3):
+        // Python computes the key for EVERY element — including
+        // single-element files a JS comparator would never visit —
+        // and `.get`'s default applies only when the key is ABSENT
+        // (an explicit `null` raises `int(None)`'s `TypeError`).
+        const ordered = events
+          .map((event) => ({
+            event,
+            key: pythonIntCoerce(
+              Object.hasOwn(event, "timestamp") ? event["timestamp"] : 0,
+            ),
+          }))
+          .sort((a, b) => a.key - b.key)
+          .map((decorated) => decorated.event);
         for (const ev of ordered) {
           yield ev;
         }

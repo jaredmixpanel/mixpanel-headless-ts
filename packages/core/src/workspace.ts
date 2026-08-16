@@ -35,6 +35,7 @@ import {
   RateLimitError,
   ServerError,
 } from "./errors.js";
+import { KeyError } from "./query/python-builtins.js";
 import { transformProfile } from "./query/transforms.js";
 import {
   DiscoveryService,
@@ -754,17 +755,12 @@ export class Workspace {
     return this.#liveQuery;
   }
 
-  // TODO(port): the `_replays_service` accessor (`workspace.py:1019-1033`)
-  // belongs in THIS section by packet §2 ("S2 … owns the
-  // `query`-bound `_replays_service` accessor that S3 needs"), but
-  // `ReplaysService` does not exist in the TS tree until S3 lands, so
-  // S2 cannot reference the class. **S3 must add it here**, memoized in
-  // a `#replays` field, constructed as
-  // `new ReplaysService(this.client, {query_fn: (...a) => this.query(...a)})`
-  // — the bound `query` member, so `discover`/`events_for` can issue
-  // Insights queries without a hard dependency on `Workspace`
-  // (circular-import-free DI, `replays.py:150-176`). Recorded in
-  // `B5-S2-notes.md` §2.
+  // Placement note (B5-ARB, resolving the stale S2 TODO): the
+  // `_replays_service` accessor (`workspace.py:1019-1033`) was assigned
+  // to this section by packet §2, but S3 landed it in the S3 section
+  // below (`replaysService` get/set, memoized in `#replays`) with the
+  // packet-specified `query_fn` DI. Behavior is per spec; only the
+  // placement differs. See `b5-review-resolution.md` ASR-F5.
 
   /**
    * Run a segmentation query against the Mixpanel API
@@ -2219,9 +2215,15 @@ export class Workspace {
     // `walkCdnAsync` yields in (file-number, in-file timestamp) order
     // with no global merge, so indexing [0]/[-1] would drift if CDN
     // files ever overlap in time.
-    const eventTimestamps = rrwebEvents.map((ev) =>
-      pythonIntCoerce(ev["timestamp"]),
-    );
+    // Python `int(ev["timestamp"])` (`workspace.py:10946`) — a
+    // SUBSCRIPT, so a missing key is a KeyError, not the int() ladder's
+    // TypeError (B5-ARB FID-F5).
+    const eventTimestamps = rrwebEvents.map((ev) => {
+      if (!Object.hasOwn(ev, "timestamp")) {
+        throw new KeyError("timestamp");
+      }
+      return pythonIntCoerce(ev["timestamp"]);
+    });
     const startTime = Math.min(...eventTimestamps);
     const endTime = Math.max(...eventTimestamps);
 

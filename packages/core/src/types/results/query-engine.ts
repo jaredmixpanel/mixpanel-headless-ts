@@ -11,7 +11,7 @@
  * `nodes_df`/`edges_df`/`trees_df`).
  */
 
-import { pythonInt } from "../../compat/index.js";
+import { pythonFloat, pythonInt } from "../../compat/index.js";
 import { MixpanelHeadlessError } from "../../errors.js";
 import type {
   FlowAnchorType,
@@ -425,10 +425,13 @@ export class FunnelQueryResult {
     const value = Object.hasOwn(last ?? {}, "overall_conv_ratio")
       ? last?.["overall_conv_ratio"]
       : 0.0;
-    // Python applies float(...) to the looked-up value (numeric
-    // strings coerce; anything else would raise there too).
+    // Python applies float(...) to the looked-up value. The string arm
+    // is CPython's float(str) grammar (R11.7 — B5-ARB ASR-F6b fix:
+    // `Number("")` is 0 where CPython raises, and `"inf"` casings
+    // diverge). The non-string ladder (float(None) TypeError etc.)
+    // is the ledgered R11.7 straggler owned by the B6 gate.
     if (typeof value === "string") {
-      return Number(value);
+      return pythonFloat(value);
     }
     return floatValue(value) ?? 0.0;
   }

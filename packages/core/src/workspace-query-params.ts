@@ -118,7 +118,7 @@ import {
   TimeComparison,
 } from "./types/query-params/metric.js";
 import { RetentionEvent } from "./types/query-params/retention.js";
-import { pythonTypeName } from "./query/validation-shared.js";
+import { isPythonDict, pythonTypeName } from "./query/validation-shared.js";
 
 /** Any JSON-ish dict the bookmark builders emit or consume. */
 export type ParamsDict = Record<string, unknown>;
@@ -2027,7 +2027,7 @@ export function resolveAndBuildUserParams(
       ]);
     }
     const firstItem: unknown = rawValue[0];
-    if (!isPlainDict(firstItem)) {
+    if (!isPythonDict(firstItem)) {
       throw new BookmarkValidationError([
         new ValidationError(
           "where",
@@ -2149,22 +2149,6 @@ export function resolveAndBuildUserParams(
   }
 
   return params;
-}
-
-/**
- * `isinstance(x, dict)` for the `in_cohort` payload walk.
- *
- * @param value - The candidate.
- * @returns Whether it is a plain mapping.
- */
-function isPlainDict(value: unknown): value is Record<string, unknown> {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    !Array.isArray(value) &&
-    (Object.getPrototypeOf(value) === Object.prototype ||
-      Object.getPrototypeOf(value) === null)
-  );
 }
 
 /**

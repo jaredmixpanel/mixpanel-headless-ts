@@ -834,3 +834,58 @@ describe("events_for parses the $all_events series (TestEventsForParsing)", () =
     expect(Object.hasOwn(kwargs, "last")).toBe(false);
   });
 });
+
+// =============================================================================
+// B5-ARB FID-F3 (additive — `b5-review-resolution.md`): the walker's
+// per-file sort key is Python `int(e.get("timestamp", 0))` — an ABSENT
+// key defaults to 0, an explicit `null` raises `TypeError` (CPython
+// probe), and `sorted(key=...)` computes the key even for single-element
+// files, where a bare JS comparator would never run.
+// =============================================================================
+
+describe("FID-F3: walker per-file sort key null vs absent timestamps", () => {
+  it("an explicit null timestamp in a single-event file raises TypeError", async () => {
+    const fileContents = new Map<
+      number,
+      readonly Record<string, unknown>[] | null
+    >([
+      [0, [{ type: 3, data: {}, timestamp: null }]],
+      [1, null],
+    ]);
+    const { client } = mockApiClient();
+    const service = new ReplaysService(client, {
+      fetchImpl: cdnFetch(makeCdnHandler({ fileContents })),
+    });
+
+    await expect(
+      service.fetchFiles(signedFixture(), {
+        retentionDays: 30,
+        maxFiles: 500,
+        concurrency: 50,
+      }),
+    ).rejects.toThrow(
+      /int\(\) argument must be a string, a bytes-like object or a real number, not 'NoneType'/,
+    );
+  });
+
+  it("an absent timestamp key defaults to 0 and sorts first", async () => {
+    const fileContents = new Map<
+      number,
+      readonly Record<string, unknown>[] | null
+    >([
+      [0, [rrwebEvent(20), { type: 3, data: {} }]],
+      [1, null],
+    ]);
+    const { client } = mockApiClient();
+    const service = new ReplaysService(client, {
+      fetchImpl: cdnFetch(makeCdnHandler({ fileContents })),
+    });
+
+    const events = await service.fetchFiles(signedFixture(), {
+      retentionDays: 30,
+      maxFiles: 500,
+      concurrency: 50,
+    });
+    expect(events.map((e) => e["timestamp"])).toEqual([undefined, 20]);
+  });
+});

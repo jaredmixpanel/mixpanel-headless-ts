@@ -34,6 +34,10 @@
 
 import { describe, expect, it } from "vitest";
 import { Workspace } from "../../src/workspace.js";
+import {
+  BookmarkValidationError,
+  ParamValidationError,
+} from "../../src/errors.js";
 import { GroupBy } from "../../src/types/query-params/group-by.js";
 import { Formula, Metric } from "../../src/types/query-params/metric.js";
 import {
@@ -67,18 +71,27 @@ function makeWs(mock: MockWorkspaceClient = mockWorkspaceClient()): Workspace {
 
 describe("TestTimeRangeValidation", () => {
   it("V7: last must be a positive integer", async () => {
+    await expect(makeWs().query("Login", { last: 0 })).rejects.toBeInstanceOf(
+      BookmarkValidationError,
+    );
     await expect(makeWs().query("Login", { last: 0 })).rejects.toThrow(
       /last must be a positive integer/,
     );
   });
 
   it("V7: a negative last is rejected", async () => {
+    await expect(makeWs().query("Login", { last: -5 })).rejects.toBeInstanceOf(
+      BookmarkValidationError,
+    );
     await expect(makeWs().query("Login", { last: -5 })).rejects.toThrow(
       /last must be a positive integer/,
     );
   });
 
   it("V8: from_date must be YYYY-MM-DD", async () => {
+    await expect(
+      makeWs().query("Login", { from_date: "01/01/2024" }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().query("Login", { from_date: "01/01/2024" }),
     ).rejects.toThrow(/from_date must be YYYY-MM-DD format/);
@@ -90,16 +103,32 @@ describe("TestTimeRangeValidation", () => {
         from_date: "2024-01-01",
         to_date: "Jan 31 2024",
       }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().query("Login", {
+        from_date: "2024-01-01",
+        to_date: "Jan 31 2024",
+      }),
     ).rejects.toThrow(/to_date must be YYYY-MM-DD format/);
   });
 
   it("V9: to_date without from_date is rejected", async () => {
     await expect(
       makeWs().query("Login", { to_date: "2024-01-31" }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().query("Login", { to_date: "2024-01-31" }),
     ).rejects.toThrow(/to_date requires from_date/);
   });
 
   it("V10: a non-default last cannot combine with explicit dates", async () => {
+    await expect(
+      makeWs().query("Login", {
+        last: 7,
+        from_date: "2024-01-01",
+        to_date: "2024-01-31",
+      }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().query("Login", {
         last: 7,
@@ -118,6 +147,9 @@ describe("TestAggregationValidation", () => {
   it("V1: property-based math requires math_property", async () => {
     await expect(
       makeWs().query("Purchase", { math: "average" }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().query("Purchase", { math: "average" }),
     ).rejects.toThrow(/requires math_property/);
   });
 
@@ -134,11 +166,17 @@ describe("TestAggregationValidation", () => {
     ]) {
       await expect(
         makeWs().query("Purchase", { math: mathType }),
+      ).rejects.toBeInstanceOf(BookmarkValidationError);
+      await expect(
+        makeWs().query("Purchase", { math: mathType }),
       ).rejects.toThrow(/requires math_property/);
     }
   });
 
   it("V2: non-property math rejects math_property", async () => {
+    await expect(
+      makeWs().query("Login", { math: "unique", math_property: "amount" }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().query("Login", { math: "unique", math_property: "amount" }),
     ).rejects.toThrow(/math_property is only valid/);
@@ -147,10 +185,16 @@ describe("TestAggregationValidation", () => {
   it("V2: 'unique' math rejects math_property", async () => {
     await expect(
       makeWs().query("Login", { math: "unique", math_property: "amount" }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().query("Login", { math: "unique", math_property: "amount" }),
     ).rejects.toThrow(/math_property is only valid/);
   });
 
   it("V3: per_user is incompatible with DAU", async () => {
+    await expect(
+      makeWs().query("Login", { math: "dau", per_user: "average" }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().query("Login", { math: "dau", per_user: "average" }),
     ).rejects.toThrow(/per_user is incompatible/);
@@ -159,10 +203,16 @@ describe("TestAggregationValidation", () => {
   it("V3: per_user is incompatible with WAU", async () => {
     await expect(
       makeWs().query("Login", { math: "wau", per_user: "total" }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().query("Login", { math: "wau", per_user: "total" }),
     ).rejects.toThrow(/per_user is incompatible/);
   });
 
   it("V3: per_user is incompatible with MAU", async () => {
+    await expect(
+      makeWs().query("Login", { math: "mau", per_user: "min" }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().query("Login", { math: "mau", per_user: "min" }),
     ).rejects.toThrow(/per_user is incompatible/);
@@ -176,11 +226,19 @@ describe("TestAggregationValidation", () => {
 describe("TestPerMetricValidation", () => {
   it("V13: a Metric with property math requires a property", () => {
     expect(() => new Metric({ event: "Purchase", math: "average" })).toThrow(
+      ParamValidationError,
+    );
+    expect(() => new Metric({ event: "Purchase", math: "average" })).toThrow(
       /requires a property/,
     );
   });
 
   it("V14: a Metric with non-property math rejects a property", async () => {
+    await expect(
+      makeWs().query(
+        new Metric({ event: "Login", math: "unique", property: "amount" }),
+      ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().query(
         new Metric({ event: "Login", math: "unique", property: "amount" }),
@@ -204,10 +262,20 @@ describe("TestPerMetricValidation", () => {
       makeWs().query(
         new Metric({ event: "Login", math: "dau", per_user: "average" }),
       ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().query(
+        new Metric({ event: "Login", math: "dau", per_user: "average" }),
+      ),
     ).rejects.toThrow(/per_user is incompatible/);
   });
 
   it("per-Metric per_user requires a property", async () => {
+    await expect(
+      makeWs().query(
+        new Metric({ event: "Login", math: "total", per_user: "average" }),
+      ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().query(
         new Metric({ event: "Login", math: "total", per_user: "average" }),
@@ -224,6 +292,9 @@ describe("TestFormulaValidation", () => {
   it("V4: a formula requires at least 2 events", async () => {
     await expect(
       makeWs().query("Login", { formula: "A * 100" }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().query("Login", { formula: "A * 100" }),
     ).rejects.toThrow(/formula requires at least 2 events/);
   });
 });
@@ -236,16 +307,25 @@ describe("TestAnalysisModeValidation", () => {
   it("V5: rolling and cumulative are mutually exclusive", async () => {
     await expect(
       makeWs().query("Login", { rolling: 7, cumulative: true }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().query("Login", { rolling: 7, cumulative: true }),
     ).rejects.toThrow(/mutually exclusive/);
   });
 
   it("V6: rolling must be a positive integer", async () => {
+    await expect(
+      makeWs().query("Login", { rolling: 0 }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(makeWs().query("Login", { rolling: 0 })).rejects.toThrow(
       /rolling must be a positive integer/,
     );
   });
 
   it("V6: a negative rolling is rejected", async () => {
+    await expect(
+      makeWs().query("Login", { rolling: -3 }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(makeWs().query("Login", { rolling: -3 })).rejects.toThrow(
       /rolling must be a positive integer/,
     );
@@ -262,10 +342,20 @@ describe("TestGroupByValidation", () => {
       makeWs().query("Purchase", {
         group_by: new GroupBy({ property: "amount", bucket_min: 0 }),
       }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().query("Purchase", {
+        group_by: new GroupBy({ property: "amount", bucket_min: 0 }),
+      }),
     ).rejects.toThrow(/bucket_min\/bucket_max require bucket_size/);
   });
 
   it("V11: bucket_max requires bucket_size", async () => {
+    await expect(
+      makeWs().query("Purchase", {
+        group_by: new GroupBy({ property: "amount", bucket_max: 100 }),
+      }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().query("Purchase", {
         group_by: new GroupBy({ property: "amount", bucket_max: 100 }),
@@ -275,17 +365,28 @@ describe("TestGroupByValidation", () => {
 
   it("V12: bucket_size must be positive (caught at construction)", () => {
     expect(() => new GroupBy({ property: "amount", bucket_size: 0 })).toThrow(
+      ParamValidationError,
+    );
+    expect(() => new GroupBy({ property: "amount", bucket_size: 0 })).toThrow(
       /bucket_size must be positive/,
     );
   });
 
   it("V12: a negative bucket_size is caught at construction", () => {
     expect(() => new GroupBy({ property: "amount", bucket_size: -10 })).toThrow(
+      ParamValidationError,
+    );
+    expect(() => new GroupBy({ property: "amount", bucket_size: -10 })).toThrow(
       /bucket_size must be positive/,
     );
   });
 
   it("bucket_size with the default string property_type is rejected", async () => {
+    await expect(
+      makeWs().query("Purchase", {
+        group_by: new GroupBy({ property: "amount", bucket_size: 10 }),
+      }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().query("Purchase", {
         group_by: new GroupBy({ property: "amount", bucket_size: 10 }),
@@ -319,6 +420,15 @@ describe("TestGroupByValidation", () => {
           bucket_size: 10,
         }),
       }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().query("Purchase", {
+        group_by: new GroupBy({
+          property: "amount",
+          property_type: "number",
+          bucket_size: 10,
+        }),
+      }),
     ).rejects.toThrow(/bucket_size requires both/);
   });
 });
@@ -329,6 +439,9 @@ describe("TestGroupByValidation", () => {
 
 describe("TestEmptyEventsValidation", () => {
   it("V0: an empty events list is rejected", async () => {
+    await expect(makeWs().query([])).rejects.toBeInstanceOf(
+      BookmarkValidationError,
+    );
     await expect(makeWs().query([])).rejects.toThrow(
       /At least one event is required/,
     );
@@ -353,10 +466,23 @@ describe("TestFormulaInListValidation", () => {
   it("a Formula as the sole argument is rejected", async () => {
     await expect(
       makeWs().query(new Formula({ expression: "A * 100" })),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().query(new Formula({ expression: "A * 100" })),
     ).rejects.toThrow(/Formula cannot be the only item/);
   });
 
   it("mixing a list Formula with a top-level formula is rejected", async () => {
+    await expect(
+      makeWs().query(
+        [
+          new Metric({ event: "A" }),
+          new Metric({ event: "B" }),
+          new Formula({ expression: "A + B" }),
+        ],
+        { formula: "A - B" },
+      ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().query(
         [
@@ -372,6 +498,9 @@ describe("TestFormulaInListValidation", () => {
   it("a list Formula with only 1 event triggers V4", async () => {
     await expect(
       makeWs().query(["Login", new Formula({ expression: "A * 100" })]),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().query(["Login", new Formula({ expression: "A * 100" })]),
     ).rejects.toThrow(/formula requires at least 2 events/);
   });
 });
@@ -382,6 +511,9 @@ describe("TestFormulaInListValidation", () => {
 
 describe("TestBuildParamsValidation", () => {
   it("rejects last=0", async () => {
+    await expect(
+      makeWs().buildParams("Login", { last: 0 }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(makeWs().buildParams("Login", { last: 0 })).rejects.toThrow(
       /last must be a positive integer/,
     );
@@ -390,10 +522,16 @@ describe("TestBuildParamsValidation", () => {
   it("rejects a formula without enough events", async () => {
     await expect(
       makeWs().buildParams("Login", { formula: "A + B" }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().buildParams("Login", { formula: "A + B" }),
     ).rejects.toThrow(/formula requires at least 2 events/);
   });
 
   it("rejects an invalid date format", async () => {
+    await expect(
+      makeWs().buildParams("Login", { from_date: "01/01/2024" }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().buildParams("Login", { from_date: "01/01/2024" }),
     ).rejects.toThrow(/YYYY-MM-DD/);
@@ -411,6 +549,12 @@ describe("TestPercentileValidation", () => {
         math: "percentile",
         percentile_value: 95,
       }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().buildParams("Login", {
+        math: "percentile",
+        percentile_value: 95,
+      }),
     ).rejects.toThrow(/requires math_property/);
   });
 
@@ -420,10 +564,24 @@ describe("TestPercentileValidation", () => {
         math: "percentile",
         math_property: "duration",
       }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().buildParams("Login", {
+        math: "percentile",
+        math_property: "duration",
+      }),
     ).rejects.toThrow(/percentile_value/);
   });
 
   it("V26: a Metric with math='percentile' requires a value", () => {
+    expect(
+      () =>
+        new Metric({
+          event: "Login",
+          math: "percentile",
+          property: "duration",
+        }),
+    ).toThrow(ParamValidationError);
     expect(
       () =>
         new Metric({
@@ -452,6 +610,9 @@ describe("TestHistogramValidation", () => {
   it("V1: math='histogram' requires math_property", async () => {
     await expect(
       makeWs().buildParams("Login", { math: "histogram" }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().buildParams("Login", { math: "histogram" }),
     ).rejects.toThrow(/requires math_property/);
   });
 
@@ -461,10 +622,25 @@ describe("TestHistogramValidation", () => {
         math: "histogram",
         math_property: "amount",
       }),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().buildParams("Purchase", {
+        math: "histogram",
+        math_property: "amount",
+      }),
     ).rejects.toThrow(/requires per_user/);
   });
 
   it("V27: Metric(math='histogram') requires per_user", async () => {
+    await expect(
+      makeWs().buildParams(
+        new Metric({
+          event: "Purchase",
+          math: "histogram",
+          property: "amount",
+        }),
+      ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().buildParams(
         new Metric({

@@ -23,7 +23,10 @@
 
 import { describe, expect, it } from "vitest";
 import { Workspace } from "../../src/workspace.js";
-import { BookmarkValidationError } from "../../src/errors.js";
+import {
+  BookmarkValidationError,
+  ParamValidationError,
+} from "../../src/errors.js";
 import { LosslessJsonError } from "../../src/client/lossless-json.js";
 import {
   buildPageKwargs,
@@ -333,6 +336,7 @@ describe("TestTier2CrashPaths", () => {
       _property_type: "string",
     });
 
+    expect(() => filterToSelector(f)).toThrow(ParamValidationError);
     expect(() => filterToSelector(f)).toThrow(
       /Unsupported filter operator.*unknown_op/,
     );
@@ -346,6 +350,7 @@ describe("TestTier2CrashPaths", () => {
       _property_type: "string",
     });
 
+    expect(() => filterToSelector(f)).toThrow(ParamValidationError);
     expect(() => filterToSelector(f)).toThrow(/Expected list/);
   });
 
@@ -357,6 +362,7 @@ describe("TestTier2CrashPaths", () => {
       _property_type: "number",
     });
 
+    expect(() => filterToSelector(f)).toThrow(ParamValidationError);
     expect(() => filterToSelector(f)).toThrow(/Expected list/);
   });
 

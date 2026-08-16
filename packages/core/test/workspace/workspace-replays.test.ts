@@ -926,3 +926,27 @@ describe("coded replay guards (TestCodedReplayGuardCodes)", () => {
     );
   });
 });
+
+// =============================================================================
+// B5-ARB FID-F5 (additive — `b5-review-resolution.md`): the window
+// derivation is Python `int(ev["timestamp"])` (`workspace.py:10946`) —
+// a SUBSCRIPT, not a `.get`, so a missing key raises `KeyError` (the
+// pre-fix TS fell through `pythonIntCoerce(undefined)` to a TypeError
+// naming 'undefined').
+// =============================================================================
+
+describe("FID-F5: fetch_replay window derivation missing-timestamp class", () => {
+  it("an rrweb event without a timestamp key raises the KeyError twin", async () => {
+    const ws = makeWorkspace();
+    const stub = installStubService(ws);
+    stub.signResult = [signedFixture()];
+    stub.fetchFilesResult = [{ type: 4, data: {} }]; // no timestamp key
+
+    const caught = await ws
+      .fetchReplay("r-1", { retention_days: 30 })
+      .then(() => null)
+      .catch((e: unknown) => e);
+    expect(caught).toBeInstanceOf(Error);
+    expect((caught as Error).name).toBe("KeyError");
+  });
+});

@@ -14,7 +14,10 @@
 //   Python fixture also builds an unused `MagicMock()` ConfigManager
 //   (dead since the 042 session redesign) which has no TS twin.
 // - `pytest.raises(BookmarkValidationError, match="positive integer")`
-//   translates to a class + message-substring assertion. R5.4 puts
+//   translates to a class + message-substring assertion PAIR
+//   (`.rejects.toBeInstanceOf` + `.rejects.toThrow`). The class half
+//   was omitted by the original S2 translation despite this header —
+//   added at B5-ARB (`b5-review-resolution.md` ASR-F1). R5.4 puts
 //   message TEXT out of the VECTOR contract, but these Layer-3 cases
 //   assert on it in Python, so the substrings are matched here too (the
 //   TS messages are transcribed verbatim from Python).
@@ -24,6 +27,10 @@
 import { describe, expect, it } from "vitest";
 import { Workspace } from "../../src/workspace.js";
 import type { ValidationError } from "../../src/errors.js";
+import {
+  BookmarkValidationError,
+  ParamValidationError,
+} from "../../src/errors.js";
 import { validateBookmark } from "../../src/query/validation-bookmark.js";
 import {
   CustomPropertyRef,
@@ -91,10 +98,28 @@ describe("TestVector1MetricFilterCPFixed", () => {
         }),
         { last: 7 },
       ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().buildParams(
+        new Metric({
+          event: "AnyEvent",
+          filters: [Filter.isSet(new CustomPropertyRef({ id: 0 }))],
+        }),
+        { last: 7 },
+      ),
     ).rejects.toThrow(/positive integer/);
   });
 
   it("CustomPropertyRef(-1) in Metric.filters raises", async () => {
+    await expect(
+      makeWs().buildParams(
+        new Metric({
+          event: "AnyEvent",
+          filters: [Filter.isSet(new CustomPropertyRef({ id: -1 }))],
+        }),
+        { last: 7 },
+      ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().buildParams(
         new Metric({
@@ -156,6 +181,18 @@ describe("TestVector2FunnelStepFilterCPFixed", () => {
         ],
         { last: 30 },
       ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().buildFunnelParams(
+        [
+          new FunnelStep({
+            event: "Step1",
+            filters: [Filter.isSet(new CustomPropertyRef({ id: 0 }))],
+          }),
+          "Step2",
+        ],
+        { last: 30 },
+      ),
     ).rejects.toThrow(/positive integer/);
   });
 
@@ -193,6 +230,9 @@ describe("TestVector3InlineCohortDesignChoice", () => {
   });
 
   it("CohortCriteria.did_event('') raises at construction", () => {
+    expect(() =>
+      CohortCriteria.didEvent("", { at_least: 1, within_days: 30 }),
+    ).toThrow(ParamValidationError);
     expect(() =>
       CohortCriteria.didEvent("", { at_least: 1, within_days: 30 }),
     ).toThrow(/non-empty/);
@@ -279,10 +319,28 @@ describe("TestVector5NegativeCPRefFixed", () => {
         }),
         { last: 7 },
       ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().buildParams(
+        new Metric({
+          event: "AnyEvent",
+          filters: [Filter.isSet(new CustomPropertyRef({ id: -1 }))],
+        }),
+        { last: 7 },
+      ),
     ).rejects.toThrow(/positive integer/);
   });
 
   it("CustomPropertyRef(-999999) raises", async () => {
+    await expect(
+      makeWs().buildParams(
+        new Metric({
+          event: "AnyEvent",
+          filters: [Filter.isSet(new CustomPropertyRef({ id: -999999 }))],
+        }),
+        { last: 7 },
+      ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().buildParams(
         new Metric({
@@ -305,6 +363,12 @@ describe("TestVector6EmptyFormulaFixed", () => {
       formula: "",
       inputs: { A: new PropertyInput({ name: "$browser" }) },
     });
+    await expect(
+      makeWs().buildParams(
+        new Metric({ event: "AnyEvent", filters: [Filter.isSet(badCp)] }),
+        { last: 7 },
+      ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().buildParams(
         new Metric({ event: "AnyEvent", filters: [Filter.isSet(badCp)] }),
@@ -372,6 +436,15 @@ describe("TestCombinedFixes", () => {
         }),
         { group_by: "country", last: 7 },
       ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
+    await expect(
+      makeWs().buildParams(
+        new Metric({
+          event: "AnyEvent",
+          filters: [Filter.isSet(new CustomPropertyRef({ id: 0 }))],
+        }),
+        { group_by: "country", last: 7 },
+      ),
     ).rejects.toThrow(/positive integer/);
   });
 
@@ -380,6 +453,15 @@ describe("TestCombinedFixes", () => {
       formula: "",
       inputs: { A: new PropertyInput({ name: "$browser" }) },
     });
+    await expect(
+      makeWs().buildFunnelParams(
+        [
+          new FunnelStep({ event: "Step1", filters: [Filter.isSet(badCp)] }),
+          "Step2",
+        ],
+        { last: 30 },
+      ),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
       makeWs().buildFunnelParams(
         [

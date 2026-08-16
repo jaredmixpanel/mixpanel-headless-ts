@@ -138,9 +138,9 @@ function asRecord(value: unknown): Readonly<Record<string, unknown>> {
  * @returns The same value, typed as a record.
  * @throws AttributeError - When `value` is not a Python dict.
  */
-function pyMapping(
+export function pyMapping(
   value: unknown,
-  attr: "get" | "items" | "values",
+  attr: "get" | "items" | "keys" | "values",
 ): Readonly<Record<string, unknown>> {
   if (!isPythonDict(value)) {
     throw new AttributeError(
@@ -153,21 +153,142 @@ function pyMapping(
 /**
  * `raw.get(key, {})` where the result is consumed with `.get(...)`.
  *
- * Python raises `AttributeError` when the member is not a dict; the
- * consumption sites below reproduce that by calling {@link dictGet} on
- * the value only when it really is a mapping, and otherwise letting the
- * TS `Object.hasOwn` call raise the same way Python's attribute lookup
- * does. Keeping the read in one helper documents the shared shape.
+ * Python raises `AttributeError` at the nested read when the member is
+ * not a dict (`None.get(...)`, `"str".get(...)`), so the helper guards
+ * with {@link pyMapping} — the B5-ARB FID-F2 remediation
+ * (`b5-review-resolution.md`); the pre-fix `Object.hasOwn` read
+ * silently returned `false` for str/list/number receivers.
  *
  * @param data - The mapping.
  * @param key - The key to read.
  * @returns The member when present, otherwise an empty record.
+ * @throws AttributeError - When the member is present but not a dict.
  */
 function dictGetRecord(
   data: Readonly<Record<string, unknown>>,
   key: string,
 ): Readonly<Record<string, unknown>> {
-  return asRecord(dictGet(data, key, {}));
+  return pyMapping(dictGet(data, key, {}), "get");
+}
+
+/**
+ * CPython's binary `+` over the JSON value domain
+ * (`existing + count`, `live_query.py:127` — B5-ARB FID-F1: the raw
+ * values are stored and the coercion happens AT the operator site).
+ *
+ * @param a - The left operand.
+ * @param b - The right operand.
+ * @returns Number addition, string concatenation or list concatenation,
+ *   exactly as CPython dispatches.
+ * @throws TypeError - CPython's `unsupported operand type(s) for +`
+ *   with both operand type names, in order.
+ */
+function pyAdd(a: unknown, b: unknown): unknown {
+  const aNum = typeof a === "number" || typeof a === "boolean";
+  const bNum = typeof b === "number" || typeof b === "boolean";
+  if (aNum && bNum) {
+    return Number(a) + Number(b);
+  }
+  if (typeof a === "string" && typeof b === "string") {
+    return a + b;
+  }
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return [...a, ...b];
+  }
+  throw new TypeError(
+    `unsupported operand type(s) for +: '${pythonTypeNameOf(a)}' and '${pythonTypeNameOf(b)}'`,
+  );
+}
+
+/**
+ * CPython's `value > 0` (the division guards, `live_query.py:135`,
+ * `:145`, `:196` — B5-ARB FID-F1: evaluated on the RAW stored value).
+ *
+ * @param value - The left operand.
+ * @returns The comparison result (`bool` compares as an int).
+ * @throws TypeError - CPython's `'>' not supported between instances
+ *   of '<T>' and 'int'` for every non-numeric operand.
+ */
+function pyGtZero(value: unknown): boolean {
+  if (typeof value === "number") {
+    return value > 0;
+  }
+  if (typeof value === "boolean") {
+    return value;
+  }
+  throw new TypeError(
+    `'>' not supported between instances of '${pythonTypeNameOf(value)}' and 'int'`,
+  );
+}
+
+/**
+ * CPython's true division `a / b` (`count / prev_count`,
+ * `count / size` — B5-ARB FID-F1; every call site is guarded by
+ * {@link pyGtZero}, so the denominator is a positive number here).
+ *
+ * @param a - The numerator.
+ * @param b - The denominator.
+ * @returns IEEE-754 division (bools divide as ints).
+ * @throws TypeError - CPython's `unsupported operand type(s) for /`
+ *   with both operand type names, in order.
+ */
+function pyDiv(a: unknown, b: unknown): number {
+  const aNum = typeof a === "number" || typeof a === "boolean";
+  const bNum = typeof b === "number" || typeof b === "boolean";
+  if (aNum && bNum) {
+    return Number(a) / Number(b);
+  }
+  throw new TypeError(
+    `unsupported operand type(s) for /: '${pythonTypeNameOf(a)}' and '${pythonTypeNameOf(b)}'`,
+  );
+}
+
+/**
+ * CPython's `key in container` for a string key (B5-ARB FID-F2:
+ * `"steps" in date_data`, `live_query.py:67-74` — a str container is a
+ * SUBSTRING test, a list is a membership test, everything else raises).
+ *
+ * @param key - The string key.
+ * @param container - The candidate container.
+ * @returns The membership result.
+ * @throws TypeError - CPython 3.14's `argument of type '<T>' is not a
+ *   container or iterable` for non-container operands.
+ */
+function pyIn(key: string, container: unknown): boolean {
+  if (isPythonDict(container)) {
+    return Object.hasOwn(asRecord(container), key);
+  }
+  if (typeof container === "string") {
+    return container.includes(key);
+  }
+  if (Array.isArray(container)) {
+    return container.some((element) => element === key);
+  }
+  throw new TypeError(
+    `argument of type '${pythonTypeNameOf(container)}' is not a container or iterable`,
+  );
+}
+
+/**
+ * CPython's `for x in value` over the JSON value domain (B5-ARB
+ * FID-F2: a dict iterates its KEYS, a str its characters, a list its
+ * members; everything else raises).
+ *
+ * @param value - The iterable candidate.
+ * @returns The items Python's `for` would visit, in order.
+ * @throws TypeError - CPython's `'<T>' object is not iterable`.
+ */
+function pyIter(value: unknown): readonly unknown[] {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    return [...value];
+  }
+  if (isPythonDict(value)) {
+    return Object.keys(asRecord(value));
+  }
+  throw new TypeError(`'${pythonTypeNameOf(value)}' object is not iterable`);
 }
 
 /**
@@ -208,8 +329,24 @@ function pyNumber(value: unknown): number {
     return value ? 1 : 0;
   }
   throw new TypeError(
-    `unsupported operand type(s) for +: 'int' and '${typeof value}'`,
+    `unsupported operand type(s) for +: 'int' and '${pythonTypeNameOf(value)}'`,
   );
+}
+
+/**
+ * The lazy count stream of `_transform_segmentation`'s `sum(...)`
+ * generator (`live_query.py:246-248` — B5-ARB FID-F2: each
+ * `.values()` lookup raises `AttributeError` only when the generator
+ * REACHES it, interleaved with the `+` coercions `pySum` applies).
+ *
+ * @param values - The `data.values` member.
+ * @yields Every per-segment count, in Python's iteration order.
+ * @throws AttributeError - When `values` or a segment is not a dict.
+ */
+function* segmentationCounts(values: unknown): Generator<unknown> {
+  for (const segmentValues of Object.values(pyMapping(values, "values"))) {
+    yield* Object.values(pyMapping(segmentValues, "values"));
+  }
 }
 
 /**
@@ -221,12 +358,14 @@ function pyNumber(value: unknown): number {
  * Unicode decimal digit (`\p{Nd}`), not just ASCII, and `\s` matches the
  * 29 code points `str.isspace()` reports. Python's `$` additionally
  * matches just before a single trailing newline, which the optional
- * `\n` reproduces.
+ * `\n` reproduces. The capture group is `[^\n]` rather than `.`
+ * because Python's `.` excludes ONLY `\n` while JS `.` also excludes
+ * `\r`, U+2028 and U+2029 (B5-ARB FID-F4).
  */
 const STEP_PREFIX_RE = new RegExp(
   `^(\\p{Nd}+)\\.[${[...PYTHON_STR_WHITESPACE]
     .map((cp) => `\\u{${cp.toString(16)}}`)
-    .join("")}]*(.+)(?:\\n)?$`,
+    .join("")}]*([^\\n]+)(?:\\n)?$`,
   "u",
 );
 
@@ -247,18 +386,19 @@ const STEP_PREFIX_RE = new RegExp(
  * @returns The step dictionaries (`[]` for an unrecognized format or a
  *   non-list member).
  */
-export function extractStepsFromDateData(
-  dateData: Readonly<Record<string, unknown>>,
-): unknown[] {
-  // Non-segmented format: data has "steps" key
-  if (Object.hasOwn(dateData, "steps")) {
-    const steps = dictGet(dateData, "steps", []);
+export function extractStepsFromDateData(dateData: unknown): unknown[] {
+  // Non-segmented format: data has "steps" key. Python's `in` is a
+  // SUBSTRING test on a str member and a membership test on a list —
+  // and the `.get(...)` that follows raises `AttributeError` on both
+  // (B5-ARB FID-F2, CPython-probed).
+  if (pyIn("steps", dateData)) {
+    const steps = dictGet(pyMapping(dateData, "get"), "steps", []);
     return Array.isArray(steps) ? steps : [];
   }
 
   // Segmented format: use $overall for aggregate data
-  if (Object.hasOwn(dateData, "$overall")) {
-    const overall = dictGet(dateData, "$overall", []);
+  if (pyIn("$overall", dateData)) {
+    const overall = dictGet(pyMapping(dateData, "get"), "$overall", []);
     return Array.isArray(overall) ? overall : [];
   }
 
@@ -292,17 +432,21 @@ export function transformFunnel(
   fromDate: string,
   toDate: string,
 ): FunnelResult {
-  // `raw.get("data", {}).items()` — a non-mapping `data` member is an
-  // `AttributeError` in CPython, not a `TypeError` (R10.9 row T1).
-  const data = pyMapping(dictGet(raw, "data", {}), "items");
+  // `raw.get("data", {})` then `data.values()` — a non-mapping `data`
+  // member is an `AttributeError` in CPython, not a `TypeError`
+  // (R10.9 row T1; attr name corrected to `values` at B5-ARB).
+  const data = pyMapping(dictGet(raw, "data", {}), "values");
 
-  // Aggregate steps across all dates: step_idx -> (event, total_count)
-  const aggregatedCounts = new Map<number, [unknown, number]>();
+  // Aggregate steps across all dates: step_idx -> (event, total_count).
+  // B5-ARB FID-F1: counts are stored RAW — Python coerces only at the
+  // `+` aggregation site (`existing + count`, `live_query.py:127`).
+  const aggregatedCounts = new Map<number, [unknown, unknown]>();
 
   for (const dateData of Object.values(data)) {
-    const stepsData = extractStepsFromDateData(asRecord(dateData));
+    const stepsData = extractStepsFromDateData(dateData);
     for (const [idx, stepRaw] of stepsData.entries()) {
-      const step = asRecord(stepRaw);
+      // `step.get(...)` — a non-dict step raises in CPython (FID-F2).
+      const step = pyMapping(stepRaw, "get");
       const event = dictGet(
         step,
         "event",
@@ -311,23 +455,26 @@ export function transformFunnel(
       const count = dictGet(step, "count", 0);
       const existingEntry = aggregatedCounts.get(idx);
       if (existingEntry !== undefined) {
-        aggregatedCounts.set(idx, [event, existingEntry[1] + pyNumber(count)]);
+        aggregatedCounts.set(idx, [event, pyAdd(existingEntry[1], count)]);
       } else {
-        aggregatedCounts.set(idx, [event, pyNumber(count)]);
+        aggregatedCounts.set(idx, [event, count]);
       }
     }
   }
 
-  // Build the step list with recalculated conversion rates
+  // Build the step list with recalculated conversion rates. The `> 0`
+  // guards and `/` divisions run on the RAW values, raising CPython's
+  // operator TypeErrors exactly where Python does (FID-F1).
   const steps: FunnelResultStep[] = [];
-  let prevCount = 0;
+  let prevCount: unknown = 0;
   for (const idx of [...aggregatedCounts.keys()].sort((a, b) => a - b)) {
     const [event, count] = aggregatedCounts.get(idx)!;
-    const convRate = idx === 0 ? 1.0 : prevCount > 0 ? count / prevCount : 0.0;
+    const convRate =
+      idx === 0 ? 1.0 : pyGtZero(prevCount) ? pyDiv(count, prevCount) : 0.0;
     steps.push(
       new FunnelResultStep({
         event: passthrough(event),
-        count,
+        count: passthrough(count),
         conversion_rate: convRate,
       }),
     );
@@ -339,7 +486,7 @@ export function transformFunnel(
   if (steps.length > 0) {
     const first = steps[0]!;
     const last = steps[steps.length - 1]!;
-    overallRate = first.count > 0 ? last.count / first.count : 0.0;
+    overallRate = pyGtZero(first.count) ? pyDiv(last.count, first.count) : 0.0;
   } else {
     overallRate = 0.0;
   }
@@ -389,15 +536,19 @@ export function transformRetention(
     // `cohort_data.get("first", 0)` — a non-mapping cohort value is an
     // `AttributeError` in CPython (`live_query.py:198`; R10.9 row T2).
     const cohortData = pyMapping(raw[date], "get");
-    const size = pyNumber(dictGet(cohortData, "first", 0));
-    const counts = dictGet(cohortData, "counts", []) as unknown[];
+    // B5-ARB FID-F1: `size` is stored RAW; Python compares/divides only
+    // inside the per-count comprehension (`live_query.py:196`), so an
+    // empty `counts` never touches it. Iteration is Python `for` —
+    // a dict iterates keys, a str its characters (FID-F2).
+    const size = dictGet(cohortData, "first", 0);
+    const counts = dictGet(cohortData, "counts", []);
 
     // Calculate retention percentages
-    const retention = [...counts].map((count) =>
-      size > 0 ? pyNumber(count) / size : 0.0,
+    const retention = pyIter(counts).map((count) =>
+      pyGtZero(size) ? pyDiv(count, size) : 0.0,
     );
 
-    cohorts.push(new CohortInfo({ date, size, retention }));
+    cohorts.push(new CohortInfo({ date, size: passthrough(size), retention }));
   }
 
   return new RetentionResult({
@@ -435,15 +586,17 @@ export function transformSegmentation(
   unit: TimeUnit,
   on: string | null,
 ): SegmentationResult {
+  // `raw.get("data", {}).get("values", {})` — non-dict members raise
+  // `AttributeError` in CPython (B5-ARB FID-F2).
   const data = dictGetRecord(raw, "data");
-  const values = dictGetRecord(data, "values");
+  const values = dictGet(data, "values", {});
 
-  // Calculate total by summing all counts
-  const total = pySum(
-    Object.values(values).flatMap((segmentValues) =>
-      Object.values(asRecord(segmentValues)),
-    ),
-  );
+  // Calculate total by summing all counts. The generator is LAZY in
+  // Python: `sum(count for segment_values in values.values() for count
+  // in segment_values.values())` — a bad count in an early segment
+  // raises the `+` TypeError BEFORE a later segment's `.values()`
+  // AttributeError is reached, so the TS twin iterates lazily too.
+  const total = pySum(segmentationCounts(values));
 
   return new SegmentationResult({
     event,
@@ -644,7 +797,9 @@ export function extractFunnelStepsFromSeries(
    */
   const getVal = (metric: string, stepName: string): unknown => {
     const metricData = dictGet(funnelData, metric, {});
-    const stepData = dictGet(asRecord(metricData), stepName, {});
+    // `metric_data.get(step_name, {})` — a non-dict metric member
+    // raises `AttributeError` in CPython (B5-ARB FID-F2).
+    const stepData = dictGet(pyMapping(metricData, "get"), stepName, {});
     if (isPythonDict(stepData)) {
       return dictGet(asRecord(stepData), "all", 0);
     }
@@ -949,13 +1104,16 @@ export function transformActivityFeed(
   fromDate: string | null,
   toDate: string | null,
 ): ActivityFeedResult {
+  // `raw.get("results", {}).get(...)` — non-dict members raise
+  // `AttributeError` in CPython; `for event_data in raw_events` is
+  // Python iteration (a dict iterates KEYS — B5-ARB FID-F2).
   const results = dictGetRecord(raw, "results");
-  const rawEvents = dictGet(results, "events", []) as unknown[];
+  const rawEvents = dictGet(results, "events", []);
   const sentinelEvent = dictGet(results, "sentinel_event", undefined);
 
   const events: UserEvent[] = [];
-  for (const eventRaw of rawEvents) {
-    const eventData = asRecord(eventRaw);
+  for (const eventRaw of pyIter(rawEvents)) {
+    const eventData = pyMapping(eventRaw, "get");
     const eventName = dictGet(eventData, "event", "");
     const props = dictGetRecord(eventData, "properties");
 
@@ -1026,10 +1184,15 @@ export function transformSavedReport(
     headers = dictGet(raw, "headers", []);
     series = dictGet(raw, "series", {});
   } else if (bookmarkType === "funnels") {
-    // {computed_at, data: {date: {steps}}, meta}
+    // {computed_at, data: {date: {steps}}, meta}. Python tests
+    // truthiness FIRST (`sorted(data.keys()) if data else []`), so a
+    // FALSY non-dict `data` short-circuits while a truthy one raises
+    // `AttributeError` at `.keys()` (B5-ARB FID-F2).
     computedAt = dictGet(raw, "computed_at", "");
-    const data = dictGetRecord(raw, "data");
-    const dateKeys = pyTruthy(data) ? sortedByCodepoint(Object.keys(data)) : [];
+    const data = dictGet(raw, "data", {});
+    const dateKeys = pyTruthy(data)
+      ? sortedByCodepoint(Object.keys(pyMapping(data, "keys")))
+      : [];
     fromDate = dateKeys.length > 0 ? dateKeys[0] : "";
     toDate = dateKeys.length > 0 ? dateKeys[dateKeys.length - 1] : "";
     headers = ["$funnel"]; // Synthetic header for type detection
@@ -1134,8 +1297,11 @@ export function transformFlowResult(
   // Parse tree data when in tree mode
   const trees: FlowTreeNode[] = [];
   if (mode === "tree") {
-    for (const treeRaw of dictGet(raw, "trees", []) as unknown[]) {
-      const rootDict = dictGetRecord(asRecord(treeRaw), "root");
+    // Python: `for tree_dict in raw.get("trees", [])` then
+    // `tree_dict.get("root", {})` — the root VALUE is read raw; a
+    // truthy non-dict raises inside `_parse_tree_node` (B5-ARB FID-F2).
+    for (const treeRaw of pyIter(dictGet(raw, "trees", []))) {
+      const rootDict = dictGet(pyMapping(treeRaw, "get"), "root", {});
       if (pyTruthy(rootDict)) {
         const parsedRoot = parseTreeNode(rootDict);
         // The API returns a virtual root with `step=null`; the real
@@ -1177,16 +1343,18 @@ export function transformFlowResult(
  * @param raw - Raw node dict with `step`, `children` and count fields.
  * @returns The parsed node, children first.
  */
-export function parseTreeNode(
-  raw: Readonly<Record<string, unknown>>,
-): FlowTreeNode {
-  const stepRaw = dictGet(raw, "step", null);
-  const step: Readonly<Record<string, unknown>> = pyTruthy(stepRaw)
-    ? asRecord(stepRaw)
-    : {};
-  const children = (dictGet(raw, "children", []) as unknown[]).map((c) =>
-    parseTreeNode(asRecord(c)),
+export function parseTreeNode(raw: unknown): FlowTreeNode {
+  // `raw.get("step") or {}` — a non-dict node raises at the `.get`
+  // (B5-ARB FID-F2). The `step` value itself stays RAW here: Python
+  // parses `children` FIRST and only then reads `step.get(...)`, so a
+  // bad child raises before a bad step does.
+  const rawMap = pyMapping(raw, "get");
+  const stepRaw = dictGet(rawMap, "step", null);
+  const stepVal: unknown = pyTruthy(stepRaw) ? stepRaw : {};
+  const children = pyIter(dictGet(rawMap, "children", [])).map((c) =>
+    parseTreeNode(c),
   );
+  const step = pyMapping(stepVal, "get");
 
   // Support both camelCase (live API) and snake_case (test fixtures)
   const stepNumberRaw = dictGet(
@@ -1194,16 +1362,20 @@ export function parseTreeNode(
     "stepNumber",
     dictGet(step, "step_number", 0),
   );
-  const totalCount = dictGet(raw, "totalCount", dictGet(raw, "total_count", 0));
+  const totalCount = dictGet(
+    rawMap,
+    "totalCount",
+    dictGet(rawMap, "total_count", 0),
+  );
   const dropOffCount = dictGet(
-    raw,
+    rawMap,
     "dropOffTotalCount",
-    dictGet(raw, "drop_off_total_count", 0),
+    dictGet(rawMap, "drop_off_total_count", 0),
   );
   const convertedCount = dictGet(
-    raw,
+    rawMap,
     "convertedTotalCount",
-    dictGet(raw, "converted_total_count", 0),
+    dictGet(rawMap, "converted_total_count", 0),
   );
   const anchorType = dictGet(
     step,
@@ -1217,17 +1389,17 @@ export function parseTreeNode(
   );
 
   // Time percentiles: camelCase or snake_case, may be null
-  const tpStartRaw = dictGet(raw, "timePercentilesFromStart", null);
-  const tpPrevRaw = dictGet(raw, "timePercentilesFromPrev", null);
+  const tpStartRaw = dictGet(rawMap, "timePercentilesFromStart", null);
+  const tpPrevRaw = dictGet(rawMap, "timePercentilesFromPrev", null);
   const tpStart = pyTruthy(tpStartRaw)
     ? tpStartRaw
-    : pyTruthy(dictGet(raw, "time_percentiles_from_start", null))
-      ? dictGet(raw, "time_percentiles_from_start", null)
+    : pyTruthy(dictGet(rawMap, "time_percentiles_from_start", null))
+      ? dictGet(rawMap, "time_percentiles_from_start", null)
       : {};
   const tpPrev = pyTruthy(tpPrevRaw)
     ? tpPrevRaw
-    : pyTruthy(dictGet(raw, "time_percentiles_from_prev", null))
-      ? dictGet(raw, "time_percentiles_from_prev", null)
+    : pyTruthy(dictGet(rawMap, "time_percentiles_from_prev", null))
+      ? dictGet(rawMap, "time_percentiles_from_prev", null)
       : {};
 
   return new FlowTreeNode({

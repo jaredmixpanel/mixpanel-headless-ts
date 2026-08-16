@@ -395,7 +395,10 @@ export class DOMTracker {
             currentParentId !== null && currentParentId !== 0
               ? this.nodes.get(currentParentId)
               : undefined;
-          if (parentRecord !== undefined && "text" in parentRecord) {
+          if (
+            parentRecord !== undefined &&
+            Object.hasOwn(parentRecord, "text")
+          ) {
             parentRecord.text = textContent;
           }
         }
@@ -470,7 +473,7 @@ export class DOMTracker {
     const parentId = record?.parent_id ?? null;
     if (parentId !== null && parentId !== 0) {
       const parent = this.nodes.get(parentId);
-      if (parent !== undefined && "text" in parent) {
+      if (parent !== undefined && Object.hasOwn(parent, "text")) {
         if (pyTruthyValue(sanitizedText)) {
           parent.text = sanitizedText;
         } else {
@@ -851,7 +854,12 @@ export class EventAnalyzer {
    */
   processEvent(event: Dict): void {
     const eventType = event["type"];
-    const timestamp = pythonIntCoerce(event["timestamp"] ?? 0);
+    // `int(event.get("timestamp", 0))` — the default applies ONLY when
+    // the key is ABSENT; an explicit `null` reaches `int(None)` and
+    // raises `TypeError` (B5-ARB FID-F3).
+    const timestamp = pythonIntCoerce(
+      Object.hasOwn(event, "timestamp") ? event["timestamp"] : 0,
+    );
     const rawData = event["data"];
     const data: Dict = isPythonDict(rawData) ? rawData : {};
 
@@ -1124,7 +1132,7 @@ export class EventAnalyzer {
           const nodeData = this.domTracker.nodes.get(
             startNodeId as number,
           ) as TrackedNode;
-          if ("text" in nodeData) {
+          if (Object.hasOwn(nodeData, "text")) {
             const textContent = String(nodeData.text);
             // R11.6 — Python slicing is by CODE POINT.
             const text = pythonStrip(
@@ -1308,12 +1316,20 @@ export class RrwebAnalyzer {
     }
 
     // Python `sorted(...)` is STABLE; so is `Array.prototype.sort` in
-    // every ES2019+ engine.
-    const sortedEvents = [...events].sort(
-      (a, b) =>
-        pythonIntCoerce(a["timestamp"] ?? 0) -
-        pythonIntCoerce(b["timestamp"] ?? 0),
-    );
+    // every ES2019+ engine. Decorate-sort-undecorate (B5-ARB FID-F3):
+    // Python computes `int(e.get("timestamp", 0))` for EVERY element —
+    // including single-element lists a JS comparator would never
+    // visit — and the default applies only when the key is ABSENT
+    // (an explicit `null` raises `int(None)`'s `TypeError`).
+    const sortedEvents = events
+      .map((event) => ({
+        event,
+        key: pythonIntCoerce(
+          Object.hasOwn(event, "timestamp") ? event["timestamp"] : 0,
+        ),
+      }))
+      .sort((a, b) => a.key - b.key)
+      .map((decorated) => decorated.event);
 
     const domTracker = new DOMTracker(this.#logger);
     const eventAnalyzer = new EventAnalyzer(domTracker);
