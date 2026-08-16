@@ -1,0 +1,1372 @@
+/**
+ * Live-query response transforms — TS port of the module-level
+ * functions of `mixpanel_headless/_internal/services/live_query.py`
+ * (`:51-674` head block and `:1567-2042` tail block) for Phase-3 batch
+ * B5, shard S2 (`context/phase3/design/b5-packets.md` §3).
+ *
+ * The service class itself lives in the sibling `live-query.ts`
+ * (R7.2 split — the Python file is 2,042 lines).
+ *
+ * These transforms are the **S10/S11 smoke-patch surface**: the packet
+ * (§9 Caution 1) requires byte-fidelity on the conversion math, so the
+ * division guards below are transcribed statement-for-statement:
+ *
+ * - step 0 conversion rate is the literal `1.0`; step N is
+ *   `count / prev_count` guarded by `prev_count > 0`, else `0.0`
+ *   (`live_query.py:135`);
+ * - the overall rate is `steps[-1].count / steps[0].count` guarded by
+ *   `steps[0].count > 0`, else `0.0` (`:145-147`);
+ * - retention is `count / size` guarded by `size > 0`, else `0.0`
+ *   (`:196`) — an all-zero cohort yields an all-`0.0` row, never NaN.
+ *
+ * Port-wide conventions applied here:
+ *
+ * - R11.5 — every `sorted(...)` over strings is code-point ordered
+ *   ({@link sortedByCodepoint} / {@link compareCodepoints}).
+ * - R11.6 — `key[:10]` is a CODE-POINT slice ({@link cpSlice}).
+ * - R11.7 — `int(...)` coercions route through {@link pythonInt}.
+ * - R9.5 — the one `warnings.warn` site is an injected sink
+ *   ({@link WarningSink}), never `console`.
+ * - Watchlist #13 — `isinstance(x, dict)` is {@link isPythonDict}.
+ */
+
+import { compareCodepoints, sortedByCodepoint } from "../compat/codepoint.js";
+import { cpSlice } from "../compat/codepoint.js";
+import { pythonInt } from "../compat/python-int.js";
+import { pythonRepr, pythonStr } from "../compat/python-str.js";
+import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
+import { QueryError } from "../errors.js";
+import { isPythonDict } from "../query/validation-shared.js";
+import { ValueError } from "../query/python-builtins.js";
+import { fromTimestampUtcIso, timestampNumber } from "../query/transforms.js";
+import type { CountType, HourDayUnit, TimeUnit } from "../types/literals.js";
+import {
+  ActivityFeedResult,
+  CohortInfo,
+  FlowsResult,
+  FrequencyResult,
+  FunnelResult,
+  FunnelResultStep,
+  NumericAverageResult,
+  NumericBucketResult,
+  NumericSumResult,
+  RetentionResult,
+  SavedReportResult,
+  SegmentationResult,
+  UserEvent,
+} from "../types/results/live-query.js";
+import {
+  FlowQueryResult,
+  FlowTreeNode,
+  FunnelQueryResult,
+  QueryResult,
+  RetentionQueryResult,
+  safeInt,
+} from "../types/results/query-engine.js";
+import { pyTruthy } from "../types/results/result-base.js";
+import type { WarningSink } from "./discovery.js";
+
+/** Bookmark types `query_saved_report` normalizes (`live_query.py:1626`). */
+export type SavedReportBookmarkType =
+  "insights" | "funnels" | "retention" | "flows";
+
+/** Flow visualization modes (`_transform_flow_result` `mode`). */
+export type FlowMode = "sankey" | "paths" | "tree";
+
+// ---------------------------------------------------------------------------
+// Small CPython-shaped helpers (module-local, mirroring the precedent in
+// `query/transforms.ts:104`, `services/discovery.ts:117`)
+// ---------------------------------------------------------------------------
+
+/**
+ * Read a mapping member the way Python's `dict.get(key, default)` does.
+ *
+ * @param data - The mapping.
+ * @param key - The key to read.
+ * @param fallback - Python's default.
+ * @returns The member or the fallback.
+ */
+function dictGet(
+  data: Readonly<Record<string, unknown>>,
+  key: string,
+  fallback: unknown,
+): unknown {
+  return Object.hasOwn(data, key) ? data[key] : fallback;
+}
+
+/**
+ * Hand an unvalidated API value to a Phase-2 result field.
+ *
+ * The Python transforms are passthroughs — they never type-check what
+ * the API sent — so re-typing here (rather than running a Phase-2
+ * `expect*` guard) is what keeps the TS behaviour identical.
+ *
+ * @param value - The raw API value.
+ * @returns The same value at the declared field type.
+ */
+function passthrough<T>(value: unknown): T {
+  return value as T;
+}
+
+/**
+ * Narrow an unknown to the `Record` shape Python's `dict` methods need.
+ *
+ * @param value - The candidate.
+ * @returns The same value typed as a record (callers guard with
+ *   {@link isPythonDict} first, exactly where Python's `isinstance`
+ *   guard sits).
+ */
+function asRecord(value: unknown): Readonly<Record<string, unknown>> {
+  return value as Readonly<Record<string, unknown>>;
+}
+
+/**
+ * `raw.get(key, {})` where the result is consumed with `.get(...)`.
+ *
+ * Python raises `AttributeError` when the member is not a dict; the
+ * consumption sites below reproduce that by calling {@link dictGet} on
+ * the value only when it really is a mapping, and otherwise letting the
+ * TS `Object.hasOwn` call raise the same way Python's attribute lookup
+ * does. Keeping the read in one helper documents the shared shape.
+ *
+ * @param data - The mapping.
+ * @param key - The key to read.
+ * @returns The member when present, otherwise an empty record.
+ */
+function dictGetRecord(
+  data: Readonly<Record<string, unknown>>,
+  key: string,
+): Readonly<Record<string, unknown>> {
+  return asRecord(dictGet(data, key, {}));
+}
+
+/**
+ * CPython `sum(...)` over an iterable of API numbers.
+ *
+ * Python's `sum` starts at the int `0` and uses `+`, so a non-numeric
+ * member raises `TypeError`. JS `+` would silently concatenate, so the
+ * type is checked first (watchlist: never let JS coercion invent a
+ * result Python refuses to produce).
+ *
+ * @param values - The values to add.
+ * @returns The sum.
+ * @throws TypeError - When a member is neither a number nor a bool
+ *   (Python: `unsupported operand type(s) for +`).
+ */
+function pySum(values: Iterable<unknown>): number {
+  let total = 0;
+  for (const value of values) {
+    total += pyNumber(value);
+  }
+  return total;
+}
+
+/**
+ * CPython numeric coercion for `int + x` / `x / y` operand positions.
+ *
+ * `bool` is an `int` subclass, so `True` adds as 1.
+ *
+ * @param value - The operand.
+ * @returns The numeric value.
+ * @throws TypeError - When Python's arithmetic would refuse the type.
+ */
+function pyNumber(value: unknown): number {
+  if (typeof value === "number") {
+    return value;
+  }
+  if (typeof value === "boolean") {
+    return value ? 1 : 0;
+  }
+  throw new TypeError(
+    `unsupported operand type(s) for +: 'int' and '${typeof value}'`,
+  );
+}
+
+/**
+ * Matches step names like `"1. Signup"` and captures (index, event)
+ * (`_STEP_PREFIX_RE`, `live_query.py:48`).
+ *
+ * Two Python-`re` fidelity details are spelled out rather than reusing
+ * the JS shorthand classes: `\d` in a Python `str` pattern matches every
+ * Unicode decimal digit (`\p{Nd}`), not just ASCII, and `\s` matches the
+ * 29 code points `str.isspace()` reports. Python's `$` additionally
+ * matches just before a single trailing newline, which the optional
+ * `\n` reproduces.
+ */
+const STEP_PREFIX_RE = new RegExp(
+  `^(\\p{Nd}+)\\.[${[...PYTHON_STR_WHITESPACE]
+    .map((cp) => `\\u{${cp.toString(16)}}`)
+    .join("")}]*(.+)(?:\\n)?$`,
+  "u",
+);
+
+// ---------------------------------------------------------------------------
+// `_extract_steps_from_date_data` (`live_query.py:51-77`)
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract steps from one date's funnel data, handling the regular and
+ * the segmented response formats (`_extract_steps_from_date_data`,
+ * `live_query.py:51-77`).
+ *
+ * API response formats:
+ * - without `on`: `{"steps": [step1, step2, ...]}`
+ * - with `on`: `{"$overall": [step1, ...], "Chrome": [...], ...}`
+ *
+ * @param dateData - A single date's data from the funnel response.
+ * @returns The step dictionaries (`[]` for an unrecognized format or a
+ *   non-list member).
+ */
+export function extractStepsFromDateData(
+  dateData: Readonly<Record<string, unknown>>,
+): unknown[] {
+  // Non-segmented format: data has "steps" key
+  if (Object.hasOwn(dateData, "steps")) {
+    const steps = dictGet(dateData, "steps", []);
+    return Array.isArray(steps) ? steps : [];
+  }
+
+  // Segmented format: use $overall for aggregate data
+  if (Object.hasOwn(dateData, "$overall")) {
+    const overall = dictGet(dateData, "$overall", []);
+    return Array.isArray(overall) ? overall : [];
+  }
+
+  // Fallback: no recognized format
+  return [];
+}
+
+// ---------------------------------------------------------------------------
+// `_transform_funnel` (`live_query.py:80-156`)
+// ---------------------------------------------------------------------------
+
+/**
+ * Transform a raw `/funnels` response into a {@link FunnelResult}
+ * (`_transform_funnel`, `live_query.py:80-156`).
+ *
+ * Aggregates step counts across every date, then recomputes conversion
+ * rates: step 0 is `1.0`, step N is `count[N] / count[N-1]` (guarded),
+ * and the overall rate is last/first (guarded). See the module header —
+ * this arithmetic is byte-fidelity critical.
+ *
+ * @param raw - Raw API response with a `data[date]` structure.
+ * @param funnelId - Funnel identifier.
+ * @param fromDate - Query start date.
+ * @param toDate - Query end date.
+ * @returns The typed result with aggregated steps and rates.
+ * @throws TypeError - When a step count is not a number (Python's `+`).
+ */
+export function transformFunnel(
+  raw: Readonly<Record<string, unknown>>,
+  funnelId: number,
+  fromDate: string,
+  toDate: string,
+): FunnelResult {
+  const data = dictGetRecord(raw, "data");
+
+  // Aggregate steps across all dates: step_idx -> (event, total_count)
+  const aggregatedCounts = new Map<number, [unknown, number]>();
+
+  for (const dateData of Object.values(data)) {
+    const stepsData = extractStepsFromDateData(asRecord(dateData));
+    for (const [idx, stepRaw] of stepsData.entries()) {
+      const step = asRecord(stepRaw);
+      const event = dictGet(
+        step,
+        "event",
+        dictGet(step, "goal", `Step ${idx + 1}`),
+      );
+      const count = dictGet(step, "count", 0);
+      const existingEntry = aggregatedCounts.get(idx);
+      if (existingEntry !== undefined) {
+        aggregatedCounts.set(idx, [event, existingEntry[1] + pyNumber(count)]);
+      } else {
+        aggregatedCounts.set(idx, [event, pyNumber(count)]);
+      }
+    }
+  }
+
+  // Build the step list with recalculated conversion rates
+  const steps: FunnelResultStep[] = [];
+  let prevCount = 0;
+  for (const idx of [...aggregatedCounts.keys()].sort((a, b) => a - b)) {
+    const [event, count] = aggregatedCounts.get(idx)!;
+    const convRate = idx === 0 ? 1.0 : prevCount > 0 ? count / prevCount : 0.0;
+    steps.push(
+      new FunnelResultStep({
+        event: passthrough(event),
+        count,
+        conversion_rate: convRate,
+      }),
+    );
+    prevCount = count;
+  }
+
+  // Overall conversion rate: last step / first step
+  let overallRate: number;
+  if (steps.length > 0) {
+    const first = steps[0]!;
+    const last = steps[steps.length - 1]!;
+    overallRate = first.count > 0 ? last.count / first.count : 0.0;
+  } else {
+    overallRate = 0.0;
+  }
+
+  return new FunnelResult({
+    funnel_id: funnelId,
+    funnel_name: "", // Not available from API
+    from_date: fromDate,
+    to_date: toDate,
+    conversion_rate: overallRate,
+    steps,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// `_transform_retention` (`live_query.py:159-219`)
+// ---------------------------------------------------------------------------
+
+/**
+ * Transform a raw `/retention` response into a {@link RetentionResult}
+ * (`_transform_retention`, `live_query.py:159-219`).
+ *
+ * `retention[i] = counts[i] / cohort_size`, guarded by `size > 0` — a
+ * zero-size cohort yields `0.0` for every period (never a division by
+ * zero, never NaN).
+ *
+ * @param raw - Raw API response keyed by cohort date.
+ * @param bornEvent - Event that defines cohort membership.
+ * @param returnEvent - Event that defines return.
+ * @param fromDate - Query start date.
+ * @param toDate - Query end date.
+ * @param unit - Retention period unit.
+ * @returns The typed result with cohorts sorted by date (ascending).
+ */
+export function transformRetention(
+  raw: Readonly<Record<string, unknown>>,
+  bornEvent: string,
+  returnEvent: string,
+  fromDate: string,
+  toDate: string,
+  unit: TimeUnit,
+): RetentionResult {
+  const cohorts: CohortInfo[] = [];
+
+  // Sort by date for consistent ordering
+  for (const date of sortedByCodepoint(Object.keys(raw))) {
+    const cohortData = asRecord(raw[date]);
+    const size = pyNumber(dictGet(cohortData, "first", 0));
+    const counts = dictGet(cohortData, "counts", []) as unknown[];
+
+    // Calculate retention percentages
+    const retention = [...counts].map((count) =>
+      size > 0 ? pyNumber(count) / size : 0.0,
+    );
+
+    cohorts.push(new CohortInfo({ date, size, retention }));
+  }
+
+  return new RetentionResult({
+    born_event: bornEvent,
+    return_event: returnEvent,
+    from_date: fromDate,
+    to_date: toDate,
+    unit,
+    cohorts,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// `_transform_segmentation` (`live_query.py:222-259`)
+// ---------------------------------------------------------------------------
+
+/**
+ * Transform a raw `/segmentation` response into a
+ * {@link SegmentationResult} (`_transform_segmentation`,
+ * `live_query.py:222-259`).
+ *
+ * @param raw - Raw API response.
+ * @param event - Event name that was queried.
+ * @param fromDate - Query start date.
+ * @param toDate - Query end date.
+ * @param unit - Time aggregation unit.
+ * @param on - Property used for segmentation (or `null`).
+ * @returns The typed result with the calculated total.
+ */
+export function transformSegmentation(
+  raw: Readonly<Record<string, unknown>>,
+  event: string,
+  fromDate: string,
+  toDate: string,
+  unit: TimeUnit,
+  on: string | null,
+): SegmentationResult {
+  const data = dictGetRecord(raw, "data");
+  const values = dictGetRecord(data, "values");
+
+  // Calculate total by summing all counts
+  const total = pySum(
+    Object.values(values).flatMap((segmentValues) =>
+      Object.values(asRecord(segmentValues)),
+    ),
+  );
+
+  return new SegmentationResult({
+    event,
+    from_date: fromDate,
+    to_date: toDate,
+    unit,
+    segment_property: on,
+    total,
+    series: passthrough(values),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// `_transform_query_result` (`live_query.py:262-310`)
+// ---------------------------------------------------------------------------
+
+/**
+ * Transform a raw insights-query response into a {@link QueryResult}
+ * (`_transform_query_result`, `live_query.py:262-310`).
+ *
+ * @param raw - Raw API response from the insights query.
+ * @param bookmarkParams - The bookmark params dict sent to the API.
+ * @returns The typed result with every field populated.
+ * @throws QueryError - When the response carries an `error` key
+ *   (error-as-200) or is missing `series`.
+ */
+export function transformQueryResult(
+  raw: Readonly<Record<string, unknown>>,
+  bookmarkParams: Readonly<Record<string, unknown>>,
+): QueryResult {
+  // Check for error responses that leaked through as HTTP 200
+  if (Object.hasOwn(raw, "error")) {
+    throw new QueryError(
+      `Insights query failed: ${pythonStr(passthrough(raw["error"]))}`,
+      {
+        statusCode: 200,
+        responseBody: raw,
+        requestBody: bookmarkParams,
+      },
+    );
+  }
+
+  if (!Object.hasOwn(raw, "series")) {
+    throw new QueryError(
+      "Insights query returned unexpected response shape " +
+        `(missing 'series' key). Keys present: ${pythonRepr(
+          sortedByCodepoint(Object.keys(raw)),
+        )}`,
+      { statusCode: 200, responseBody: raw, requestBody: bookmarkParams },
+    );
+  }
+
+  const dateRange = dictGetRecord(raw, "date_range");
+  return new QueryResult({
+    computed_at: passthrough(dictGet(raw, "computed_at", "")),
+    from_date: passthrough(dictGet(dateRange, "from_date", "")),
+    to_date: passthrough(dictGet(dateRange, "to_date", "")),
+    headers: passthrough(dictGet(raw, "headers", [])),
+    series: passthrough(raw["series"]),
+    params: passthrough(bookmarkParams),
+    meta: passthrough(dictGet(raw, "meta", {})),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// `_extract_funnel_steps_from_series` (`live_query.py:313-440`)
+// ---------------------------------------------------------------------------
+
+/**
+ * Sort key of a funnel step name (`_step_sort_key`,
+ * `live_query.py:409-411`): the numeric prefix, then the raw name.
+ *
+ * @param name - The step name (e.g. `"10. Purchase"`).
+ * @returns The `(index, name)` tuple, with `2**31` for unprefixed names
+ *   so they sort last.
+ */
+function stepSortKey(name: string): [number, string] {
+  const m = STEP_PREFIX_RE.exec(name);
+  return m ? [pythonInt(m[1]!), name] : [2 ** 31, name];
+}
+
+/**
+ * Pivot the metric-keyed insights funnel series into a flat list of
+ * step dicts (`_extract_funnel_steps_from_series`,
+ * `live_query.py:313-440`).
+ *
+ * @param series - Raw series data from the insights API response.
+ * @param warn - Sink for the unrecognized-format `UserWarning` (R9.5).
+ * @returns Step dicts with `event`, `count`, `step_conv_ratio`,
+ *   `overall_conv_ratio`, `avg_time` and `avg_time_from_start` keys.
+ */
+export function extractFunnelStepsFromSeries(
+  series: unknown,
+  warn: WarningSink,
+): Record<string, unknown>[] {
+  if (Array.isArray(series)) {
+    return series as Record<string, unknown>[];
+  }
+
+  if (!isPythonDict(series)) {
+    return [];
+  }
+
+  const seriesDict = asRecord(series);
+
+  // Direct "steps" key (alternative format)
+  if (Object.hasOwn(seriesDict, "steps")) {
+    const steps = seriesDict["steps"];
+    if (Array.isArray(steps)) {
+      return steps as Record<string, unknown>[];
+    }
+  }
+
+  // Top-level "$overall" key (legacy/alternative format)
+  if (Object.hasOwn(seriesDict, "$overall")) {
+    const overall = seriesDict["$overall"];
+    if (isPythonDict(overall) && Object.hasOwn(asRecord(overall), "steps")) {
+      const overallSteps = asRecord(overall)["steps"];
+      if (Array.isArray(overallSteps)) {
+        return overallSteps as Record<string, unknown>[];
+      }
+    }
+    if (Array.isArray(overall)) {
+      return overall as Record<string, unknown>[];
+    }
+  }
+
+  // Insights API funnel format:
+  //   series = {funnel_key: {metric: {step: {seg: val}}}}
+  // With group_by: {funnel_key: {$overall: {metric: ...}, segment: {...}}}
+  // With trends:   {funnel_key: {date: {metric: ...}, ...}}
+  let funnelData: Readonly<Record<string, unknown>> | null = null;
+  for (const value of Object.values(seriesDict)) {
+    if (!isPythonDict(value)) {
+      continue;
+    }
+    const valueDict = asRecord(value);
+    // Direct metrics format (no group_by, mode=steps)
+    if (Object.hasOwn(valueDict, "count")) {
+      funnelData = valueDict;
+      break;
+    }
+    // Segmented format (group_by): look for $overall
+    if (Object.hasOwn(valueDict, "$overall")) {
+      const overallVal = valueDict["$overall"];
+      if (
+        isPythonDict(overallVal) &&
+        Object.hasOwn(asRecord(overallVal), "count")
+      ) {
+        funnelData = asRecord(overallVal);
+        break;
+      }
+    }
+    // Trends format: look for first date-like key with metrics
+    for (const subVal of Object.values(valueDict)) {
+      if (isPythonDict(subVal) && Object.hasOwn(asRecord(subVal), "count")) {
+        funnelData = asRecord(subVal);
+        break;
+      }
+    }
+    if (funnelData !== null) {
+      break;
+    }
+  }
+
+  if (funnelData === null) {
+    if (pyTruthy(seriesDict)) {
+      warn(
+        "Funnel query returned data in an unrecognized format " +
+          `(series keys: ${pythonRepr(sortedByCodepoint(Object.keys(seriesDict)))}). ` +
+          "The raw response is available in the 'series' field.",
+      );
+    }
+    return [];
+  }
+
+  // Extract step names from the "count" metric (always present)
+  const countData = dictGet(funnelData, "count", {});
+  if (!isPythonDict(countData)) {
+    return [];
+  }
+
+  // Step names are like "1. Signup" — sort by numeric prefix so that
+  // "10." follows "2." (a lexicographic sort would not).
+  const stepNames = [...Object.keys(asRecord(countData))].sort((a, b) => {
+    const [ai, an] = stepSortKey(a);
+    const [bi, bn] = stepSortKey(b);
+    return ai !== bi ? ai - bi : compareCodepoints(an, bn);
+  });
+
+  /**
+   * Read a metric value for a step, unwrapping the `"all"` segment
+   * (`_get_val`, `live_query.py:416-421`).
+   *
+   * @param metric - The metric name.
+   * @param stepName - The step key.
+   * @returns The metric value (`0` when absent or `None`).
+   */
+  const getVal = (metric: string, stepName: string): unknown => {
+    const metricData = dictGet(funnelData, metric, {});
+    const stepData = dictGet(asRecord(metricData), stepName, {});
+    if (isPythonDict(stepData)) {
+      return dictGet(asRecord(stepData), "all", 0);
+    }
+    return stepData !== null ? stepData : 0;
+  };
+
+  // Build step dicts
+  const result: Record<string, unknown>[] = [];
+  for (const stepName of stepNames) {
+    const match = STEP_PREFIX_RE.exec(stepName);
+    const event = match ? match[2]! : stepName;
+
+    result.push({
+      event,
+      count: getVal("count", stepName),
+      step_conv_ratio: getVal("step_conv_ratio", stepName),
+      overall_conv_ratio: getVal("overall_conv_ratio", stepName),
+      avg_time: getVal("avg_time", stepName),
+      avg_time_from_start: getVal("avg_time_from_start", stepName),
+    });
+  }
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// `_transform_funnel_result` (`live_query.py:443-495`)
+// ---------------------------------------------------------------------------
+
+/**
+ * Transform a raw insights funnel response into a
+ * {@link FunnelQueryResult} (`_transform_funnel_result`,
+ * `live_query.py:443-495`).
+ *
+ * @param raw - Raw API response from the insights query.
+ * @param bookmarkParams - The bookmark params dict sent to the API.
+ * @param warn - Sink for the unrecognized-format warning (R9.5).
+ * @returns The typed result with step data and metadata.
+ * @throws QueryError - Error-as-200 or a missing `series` key.
+ */
+export function transformFunnelResult(
+  raw: Readonly<Record<string, unknown>>,
+  bookmarkParams: Readonly<Record<string, unknown>>,
+  warn: WarningSink,
+): FunnelQueryResult {
+  // Check for error responses that leaked through as HTTP 200
+  if (Object.hasOwn(raw, "error")) {
+    throw new QueryError(
+      `Funnel query failed: ${pythonStr(passthrough(raw["error"]))}`,
+      { statusCode: 200, responseBody: raw, requestBody: bookmarkParams },
+    );
+  }
+
+  if (!Object.hasOwn(raw, "series")) {
+    throw new QueryError(
+      "Funnel query returned unexpected response shape " +
+        `(missing 'series' key). Keys present: ${pythonRepr(
+          sortedByCodepoint(Object.keys(raw)),
+        )}`,
+      { statusCode: 200, responseBody: raw, requestBody: bookmarkParams },
+    );
+  }
+
+  const dateRange = dictGetRecord(raw, "date_range");
+  const series = raw["series"];
+  const stepsData = extractFunnelStepsFromSeries(series, warn);
+
+  return new FunnelQueryResult({
+    computed_at: passthrough(dictGet(raw, "computed_at", "")),
+    from_date: passthrough(dictGet(dateRange, "from_date", "")),
+    to_date: passthrough(dictGet(dateRange, "to_date", "")),
+    steps_data: passthrough(stepsData),
+    series: passthrough(series),
+    params: passthrough(bookmarkParams),
+    meta: passthrough(dictGet(raw, "meta", {})),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// `_normalize_cohort_date` / `_extract_cohorts_and_average`
+// (`live_query.py:498-534`)
+// ---------------------------------------------------------------------------
+
+/**
+ * Normalize an ISO-timestamp cohort key to `YYYY-MM-DD`
+ * (`_normalize_cohort_date`, `live_query.py:498-511`).
+ *
+ * The slice is CODE-POINT based (R11.6) — Python's `key[:10]` counts
+ * code points, not UTF-16 units.
+ *
+ * @param key - Cohort date key from the API response.
+ * @returns The normalized date string.
+ */
+export function normalizeCohortDate(key: string): string {
+  return key.includes("T") ? cpSlice(key, 0, 10) : key;
+}
+
+/**
+ * Split a cohort data dict into date-keyed cohorts and `$average`
+ * (`_extract_cohorts_and_average`, `live_query.py:514-534`).
+ *
+ * @param data - Cohort data dict (date keys + optional `$average`).
+ * @returns The `[cohorts, average]` pair.
+ */
+export function extractCohortsAndAverage(
+  data: Readonly<Record<string, unknown>>,
+): [Record<string, Record<string, unknown>>, Record<string, unknown>] {
+  let average: Record<string, unknown> = {};
+  const cohorts: Record<string, Record<string, unknown>> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (key === "$average") {
+      average = isPythonDict(value)
+        ? (asRecord(value) as Record<string, unknown>)
+        : {};
+    } else if (isPythonDict(value)) {
+      cohorts[normalizeCohortDate(key)] = asRecord(value) as Record<
+        string,
+        unknown
+      >;
+    }
+  }
+  return [cohorts, average];
+}
+
+// ---------------------------------------------------------------------------
+// `_transform_retention_result` (`live_query.py:537-674`)
+// ---------------------------------------------------------------------------
+
+/**
+ * Transform a raw insights retention response into a
+ * {@link RetentionQueryResult} (`_transform_retention_result`,
+ * `live_query.py:537-674`).
+ *
+ * Unwraps the single metric-name key, then splits `$overall` and the
+ * named segments when the query was segmented.
+ *
+ * @param raw - Raw API response from the insights query.
+ * @param bookmarkParams - The bookmark params dict sent to the API.
+ * @returns The typed result with cohort data and metadata.
+ * @throws QueryError - Error-as-200, a missing/non-dict `series`, more
+ *   than one top-level series key, or a non-dict metric value.
+ */
+export function transformRetentionResult(
+  raw: Readonly<Record<string, unknown>>,
+  bookmarkParams: Readonly<Record<string, unknown>>,
+): RetentionQueryResult {
+  // Check for error responses that leaked through as HTTP 200
+  if (Object.hasOwn(raw, "error")) {
+    throw new QueryError(
+      `Retention query failed: ${pythonStr(passthrough(raw["error"]))}`,
+      { statusCode: 200, responseBody: raw, requestBody: bookmarkParams },
+    );
+  }
+
+  if (!Object.hasOwn(raw, "series")) {
+    throw new QueryError(
+      "Retention query returned unexpected response shape " +
+        `(missing 'series' key). Keys present: ${pythonRepr(
+          sortedByCodepoint(Object.keys(raw)),
+        )}`,
+      { statusCode: 200, responseBody: raw, requestBody: bookmarkParams },
+    );
+  }
+
+  const dateRange = dictGetRecord(raw, "date_range");
+  const series = dictGet(raw, "series", {});
+
+  if (!isPythonDict(series)) {
+    throw new QueryError(
+      `Retention query 'series' field is ${pythonTypeNameOf(series)}, ` +
+        "expected dict.",
+      { statusCode: 200, responseBody: raw, requestBody: bookmarkParams },
+    );
+  }
+
+  const seriesDict = asRecord(series);
+
+  // Unwrap the metric name key: series = {"metric_name": {date_cohorts}}
+  let cohortData: Readonly<Record<string, unknown>> = {};
+  if (pyTruthy(seriesDict)) {
+    const seriesKeys = Object.keys(seriesDict);
+    if (seriesKeys.length > 1) {
+      throw new QueryError(
+        "Retention query returned segmented series with " +
+          `${seriesKeys.length} keys that cannot be represented as a ` +
+          "single RetentionQueryResult without losing data. " +
+          `Keys: ${pythonRepr(sortedByCodepoint(seriesKeys))}`,
+        { statusCode: 200, responseBody: raw, requestBody: bookmarkParams },
+      );
+    }
+    let found = false;
+    for (const value of Object.values(seriesDict)) {
+      if (isPythonDict(value)) {
+        cohortData = asRecord(value);
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      // No dict value found — the metric key maps to a non-dict
+      const metricKey = seriesKeys[0]!;
+      throw new QueryError(
+        `Retention series value for key ${pythonRepr(metricKey)} is not a ` +
+          `dict (got ${pythonTypeNameOf(seriesDict[metricKey])}). ` +
+          "Expected cohort data dictionary.",
+        { statusCode: 200, responseBody: raw, requestBody: bookmarkParams },
+      );
+    }
+  }
+
+  // Handle segmented responses: $overall + named segments
+  const segments: Record<string, Record<string, Record<string, unknown>>> = {};
+  const segmentAverages: Record<string, Record<string, unknown>> = {};
+
+  let cohorts: Record<string, Record<string, unknown>>;
+  let average: Record<string, unknown>;
+
+  if (
+    Object.hasOwn(cohortData, "$overall") &&
+    isPythonDict(cohortData["$overall"])
+  ) {
+    // Extract aggregate from $overall
+    const overallData = asRecord(cohortData["$overall"]);
+    [cohorts, average] = extractCohortsAndAverage(overallData);
+
+    // Extract named segments (everything except $overall)
+    for (const [segKey, segValue] of Object.entries(cohortData)) {
+      if (segKey === "$overall" || !isPythonDict(segValue)) {
+        continue;
+      }
+      const [segCohorts, segAvg] = extractCohortsAndAverage(asRecord(segValue));
+      segments[segKey] = segCohorts;
+      if (pyTruthy(segAvg)) {
+        segmentAverages[segKey] = segAvg;
+      }
+    }
+  } else {
+    // Unsegmented: extract $average and date-keyed cohorts directly
+    [cohorts, average] = extractCohortsAndAverage(cohortData);
+  }
+
+  return new RetentionQueryResult({
+    computed_at: passthrough(dictGet(raw, "computed_at", "")),
+    from_date: passthrough(dictGet(dateRange, "from_date", "")),
+    to_date: passthrough(dictGet(dateRange, "to_date", "")),
+    cohorts: passthrough(cohorts),
+    average: passthrough(average),
+    params: passthrough(bookmarkParams),
+    meta: passthrough(dictGet(raw, "meta", {})),
+    segments: passthrough(segments),
+    segment_averages: passthrough(segmentAverages),
+  });
+}
+
+/**
+ * CPython `type(x).__name__` for the JSON value domain the retention
+ * error messages interpolate.
+ *
+ * @param value - The value.
+ * @returns The Python type name.
+ */
+function pythonTypeNameOf(value: unknown): string {
+  if (value === null) {
+    return "NoneType";
+  }
+  if (typeof value === "boolean") {
+    return "bool";
+  }
+  if (typeof value === "string") {
+    return "str";
+  }
+  if (typeof value === "number") {
+    return Number.isInteger(value) ? "int" : "float";
+  }
+  if (Array.isArray(value)) {
+    return "list";
+  }
+  return "dict";
+}
+
+// ---------------------------------------------------------------------------
+// Phase 008 transforms (`live_query.py:1567-2042`)
+// ---------------------------------------------------------------------------
+
+/**
+ * Transform a raw activity-feed response into an
+ * {@link ActivityFeedResult} (`_transform_activity_feed`,
+ * `live_query.py:1567-1620`).
+ *
+ * @param raw - Raw API response.
+ * @param distinctIds - Queried user identifiers.
+ * @param fromDate - Query start date.
+ * @param toDate - Query end date.
+ * @returns The typed result with chronological events and the
+ *   stream/bookmark pagination cursor when present.
+ * @throws ValueError - When an event has no `time` property (Python
+ *   raises the builtin `ValueError`).
+ */
+export function transformActivityFeed(
+  raw: Readonly<Record<string, unknown>>,
+  distinctIds: readonly string[],
+  fromDate: string | null,
+  toDate: string | null,
+): ActivityFeedResult {
+  const results = dictGetRecord(raw, "results");
+  const rawEvents = dictGet(results, "events", []) as unknown[];
+  const sentinelEvent = dictGet(results, "sentinel_event", undefined);
+
+  const events: UserEvent[] = [];
+  for (const eventRaw of rawEvents) {
+    const eventData = asRecord(eventRaw);
+    const eventName = dictGet(eventData, "event", "");
+    const props = dictGetRecord(eventData, "properties");
+
+    // Convert Unix timestamp to datetime. Mixpanel events always carry
+    // a `time` field; a missing one signals data corruption.
+    const timestamp = dictGet(props, "time", null);
+    if (timestamp === null) {
+      throw new ValueError(
+        `Event missing required 'time' field: ${String(
+          dictGet(eventData, "event", "unknown"),
+        )}`,
+      );
+    }
+    const eventTime = fromTimestampUtcIso(timestampNumber(timestamp));
+
+    events.push(
+      new UserEvent({
+        event: passthrough(eventName),
+        time: eventTime,
+        properties: props,
+      }),
+    );
+  }
+
+  return new ActivityFeedResult({
+    distinct_ids: [...distinctIds],
+    from_date: fromDate,
+    to_date: toDate,
+    events,
+    sentinel_event: passthrough(
+      sentinelEvent === undefined ? null : sentinelEvent,
+    ),
+  });
+}
+
+/**
+ * Transform a raw saved-report response into a
+ * {@link SavedReportResult} (`_transform_saved_report`,
+ * `live_query.py:1623-1695`).
+ *
+ * Normalizes the four endpoint shapes (insights / funnels / retention /
+ * flows) into the one result type, inventing the synthetic
+ * `$funnel` / `$retention` / `$flows` headers Python uses for report
+ * type detection.
+ *
+ * @param raw - Raw API response.
+ * @param bookmarkId - Saved report identifier.
+ * @param bookmarkType - Type of bookmark that was queried.
+ * @returns The typed result.
+ */
+export function transformSavedReport(
+  raw: Readonly<Record<string, unknown>>,
+  bookmarkId: number,
+  bookmarkType: SavedReportBookmarkType = "insights",
+): SavedReportResult {
+  let computedAt: unknown;
+  let fromDate: unknown;
+  let toDate: unknown;
+  let headers: unknown;
+  let series: unknown;
+
+  if (bookmarkType === "insights") {
+    // {computed_at, date_range: {from_date, to_date}, headers, series}
+    computedAt = dictGet(raw, "computed_at", "");
+    const dateRange = dictGetRecord(raw, "date_range");
+    fromDate = dictGet(dateRange, "from_date", "");
+    toDate = dictGet(dateRange, "to_date", "");
+    headers = dictGet(raw, "headers", []);
+    series = dictGet(raw, "series", {});
+  } else if (bookmarkType === "funnels") {
+    // {computed_at, data: {date: {steps}}, meta}
+    computedAt = dictGet(raw, "computed_at", "");
+    const data = dictGetRecord(raw, "data");
+    const dateKeys = pyTruthy(data) ? sortedByCodepoint(Object.keys(data)) : [];
+    fromDate = dateKeys.length > 0 ? dateKeys[0] : "";
+    toDate = dateKeys.length > 0 ? dateKeys[dateKeys.length - 1] : "";
+    headers = ["$funnel"]; // Synthetic header for type detection
+    series = data;
+  } else if (bookmarkType === "retention") {
+    // {date: {first, counts, rates}} — the whole response is the data
+    computedAt = ""; // Not provided by retention API
+    const dateKeys = pyTruthy(raw) ? sortedByCodepoint(Object.keys(raw)) : [];
+    fromDate = dateKeys.length > 0 ? dateKeys[0] : "";
+    toDate = dateKeys.length > 0 ? dateKeys[dateKeys.length - 1] : "";
+    headers = ["$retention"]; // Synthetic header for type detection
+    series = raw; // Entire response is the data
+  } else if (bookmarkType === "flows") {
+    // {computed_at, steps, breakdowns, overallConversionRate, metadata}
+    computedAt = dictGet(raw, "computed_at", "");
+    fromDate = ""; // Not provided by flows API
+    toDate = "";
+    headers = ["$flows"]; // Synthetic header for type detection
+    series = {
+      steps: dictGet(raw, "steps", []),
+      breakdowns: dictGet(raw, "breakdowns", []),
+      overallConversionRate: dictGet(raw, "overallConversionRate", 0.0),
+    };
+  } else {
+    // Fallback to insights behavior
+    computedAt = dictGet(raw, "computed_at", "");
+    const dateRange = dictGetRecord(raw, "date_range");
+    fromDate = dictGet(dateRange, "from_date", "");
+    toDate = dictGet(dateRange, "to_date", "");
+    headers = dictGet(raw, "headers", []);
+    series = dictGet(raw, "series", {});
+  }
+
+  return new SavedReportResult({
+    bookmark_id: bookmarkId,
+    computed_at: passthrough(computedAt),
+    from_date: passthrough(fromDate),
+    to_date: passthrough(toDate),
+    headers: passthrough(headers),
+    series: passthrough(series),
+  });
+}
+
+/**
+ * Transform a raw `arb_funnels` flow response into a
+ * {@link FlowQueryResult} (`_transform_flow_result`,
+ * `live_query.py:1698-1806`).
+ *
+ * @param raw - Raw API response from the arb_funnels query.
+ * @param bookmarkParams - The bookmark params dict sent to the API.
+ * @param mode - Flow visualization mode.
+ * @returns The typed result with steps, flows, breakdowns, conversion
+ *   rate and metadata.
+ * @throws QueryError - Error-as-200, or (outside tree mode) a body with
+ *   no recognizable flow key.
+ */
+export function transformFlowResult(
+  raw: Readonly<Record<string, unknown>>,
+  bookmarkParams: Readonly<Record<string, unknown>>,
+  mode: string,
+): FlowQueryResult {
+  // Check for error responses that leaked through as HTTP 200
+  if (Object.hasOwn(raw, "error")) {
+    throw new QueryError(
+      `Flow query failed: ${pythonStr(passthrough(raw["error"]))}`,
+      { statusCode: 200, responseBody: raw, requestBody: bookmarkParams },
+    );
+  }
+
+  // Validate the expected response shape. Tree mode may legitimately
+  // return only metadata with no `trees` key, so only sankey/paths
+  // enforce structural presence.
+  const expectedKeys = new Set([
+    "steps",
+    "flows",
+    "trees",
+    "computed_at",
+    "metadata",
+  ]);
+  const rawKeys = Object.keys(raw);
+  if (
+    mode !== "tree" &&
+    !Object.hasOwn(raw, "steps") &&
+    !Object.hasOwn(raw, "flows") &&
+    !rawKeys.some((key) => expectedKeys.has(key))
+  ) {
+    throw new QueryError(
+      "Flow query returned unexpected response shape " +
+        "(missing 'steps' and 'flows' keys). " +
+        `Keys present: ${pythonRepr(sortedByCodepoint(rawKeys))}`,
+      { statusCode: 200, responseBody: raw, requestBody: bookmarkParams },
+    );
+  }
+
+  const computedAt = dictGet(raw, "computed_at", "");
+  const steps = dictGet(raw, "steps", []);
+  const flows = dictGet(raw, "flows", []);
+  const breakdowns = dictGet(raw, "breakdowns", []);
+  const overallConversionRate = dictGet(raw, "overallConversionRate", 0.0);
+  const metadata = dictGet(raw, "metadata", {});
+
+  // Parse tree data when in tree mode
+  const trees: FlowTreeNode[] = [];
+  if (mode === "tree") {
+    for (const treeRaw of dictGet(raw, "trees", []) as unknown[]) {
+      const rootDict = dictGetRecord(asRecord(treeRaw), "root");
+      if (pyTruthy(rootDict)) {
+        const parsedRoot = parseTreeNode(rootDict);
+        // The API returns a virtual root with `step=null`; the real
+        // anchors are its children. A root WITH an event (test
+        // fixtures) is kept as-is.
+        if (pyTruthy(parsedRoot.event)) {
+          trees.push(parsedRoot);
+        } else {
+          trees.push(...parsedRoot.children);
+        }
+      }
+    }
+  }
+
+  // Determine the result mode literal
+  const resultMode: FlowMode =
+    mode === "tree" ? "tree" : mode === "paths" ? "paths" : "sankey";
+
+  return new FlowQueryResult({
+    computed_at: passthrough(computedAt),
+    steps: passthrough(steps),
+    flows: passthrough(flows),
+    breakdowns: passthrough(breakdowns),
+    overall_conversion_rate: passthrough(overallConversionRate),
+    params: passthrough(bookmarkParams),
+    meta: passthrough(metadata),
+    mode: resultMode,
+    trees,
+  });
+}
+
+/**
+ * Parse a recursive raw dict into a {@link FlowTreeNode}
+ * (`_parse_tree_node`, `live_query.py:1809-1876`).
+ *
+ * Accepts both the live API's camelCase field names and the test
+ * fixtures' snake_case twins.
+ *
+ * @param raw - Raw node dict with `step`, `children` and count fields.
+ * @returns The parsed node, children first.
+ */
+export function parseTreeNode(
+  raw: Readonly<Record<string, unknown>>,
+): FlowTreeNode {
+  const stepRaw = dictGet(raw, "step", null);
+  const step: Readonly<Record<string, unknown>> = pyTruthy(stepRaw)
+    ? asRecord(stepRaw)
+    : {};
+  const children = (dictGet(raw, "children", []) as unknown[]).map((c) =>
+    parseTreeNode(asRecord(c)),
+  );
+
+  // Support both camelCase (live API) and snake_case (test fixtures)
+  const stepNumberRaw = dictGet(
+    step,
+    "stepNumber",
+    dictGet(step, "step_number", 0),
+  );
+  const totalCount = dictGet(raw, "totalCount", dictGet(raw, "total_count", 0));
+  const dropOffCount = dictGet(
+    raw,
+    "dropOffTotalCount",
+    dictGet(raw, "drop_off_total_count", 0),
+  );
+  const convertedCount = dictGet(
+    raw,
+    "convertedTotalCount",
+    dictGet(raw, "converted_total_count", 0),
+  );
+  const anchorType = dictGet(
+    step,
+    "anchorType",
+    dictGet(step, "anchor_type", "NORMAL"),
+  );
+  const isComputed = dictGet(
+    step,
+    "isComputed",
+    dictGet(step, "is_computed", false),
+  );
+
+  // Time percentiles: camelCase or snake_case, may be null
+  const tpStartRaw = dictGet(raw, "timePercentilesFromStart", null);
+  const tpPrevRaw = dictGet(raw, "timePercentilesFromPrev", null);
+  const tpStart = pyTruthy(tpStartRaw)
+    ? tpStartRaw
+    : pyTruthy(dictGet(raw, "time_percentiles_from_start", null))
+      ? dictGet(raw, "time_percentiles_from_start", null)
+      : {};
+  const tpPrev = pyTruthy(tpPrevRaw)
+    ? tpPrevRaw
+    : pyTruthy(dictGet(raw, "time_percentiles_from_prev", null))
+      ? dictGet(raw, "time_percentiles_from_prev", null)
+      : {};
+
+  return new FlowTreeNode({
+    event: passthrough(dictGet(step, "event", "")),
+    type: passthrough(dictGet(step, "type", "")),
+    step_number: safeInt(stepNumberRaw),
+    total_count: safeInt(totalCount),
+    drop_off_count: safeInt(dropOffCount),
+    converted_count: safeInt(convertedCount),
+    anchor_type: passthrough(anchorType),
+    is_computed: passthrough(isComputed),
+    children,
+    time_percentiles_from_start: passthrough(
+      isPythonDict(tpStart) ? tpStart : {},
+    ),
+    time_percentiles_from_prev: passthrough(isPythonDict(tpPrev) ? tpPrev : {}),
+  });
+}
+
+/**
+ * Transform a raw saved-flows response into a {@link FlowsResult}
+ * (`_transform_flows`, `live_query.py:1879-1907`).
+ *
+ * @param raw - Raw API response.
+ * @param bookmarkId - Saved flows report identifier.
+ * @returns The typed result.
+ */
+export function transformFlows(
+  raw: Readonly<Record<string, unknown>>,
+  bookmarkId: number,
+): FlowsResult {
+  return new FlowsResult({
+    bookmark_id: bookmarkId,
+    computed_at: passthrough(dictGet(raw, "computed_at", "")),
+    steps: passthrough(dictGet(raw, "steps", [])),
+    breakdowns: passthrough(dictGet(raw, "breakdowns", [])),
+    overall_conversion_rate: passthrough(
+      dictGet(raw, "overallConversionRate", 0.0),
+    ),
+    metadata: passthrough(dictGet(raw, "metadata", {})),
+  });
+}
+
+/**
+ * Transform a raw frequency response into a {@link FrequencyResult}
+ * (`_transform_frequency`, `live_query.py:1910-1940`).
+ *
+ * @param raw - Raw API response.
+ * @param event - Filtered event name (or `null`).
+ * @param fromDate - Query start date.
+ * @param toDate - Query end date.
+ * @param unit - Overall time period.
+ * @param addictionUnit - Measurement granularity.
+ * @returns The typed result.
+ */
+export function transformFrequency(
+  raw: Readonly<Record<string, unknown>>,
+  event: string | null,
+  fromDate: string,
+  toDate: string,
+  unit: TimeUnit,
+  addictionUnit: HourDayUnit,
+): FrequencyResult {
+  return new FrequencyResult({
+    event,
+    from_date: fromDate,
+    to_date: toDate,
+    unit,
+    addiction_unit: addictionUnit,
+    data: passthrough(dictGet(raw, "data", {})),
+  });
+}
+
+/**
+ * Transform a raw numeric-bucket response into a
+ * {@link NumericBucketResult} (`_transform_numeric_bucket`,
+ * `live_query.py:1943-1974`).
+ *
+ * @param raw - Raw API response.
+ * @param event - Event name queried.
+ * @param fromDate - Query start date.
+ * @param toDate - Query end date.
+ * @param on - Property expression used for bucketing.
+ * @param unit - Time aggregation unit.
+ * @returns The typed result.
+ */
+export function transformNumericBucket(
+  raw: Readonly<Record<string, unknown>>,
+  event: string,
+  fromDate: string,
+  toDate: string,
+  on: string,
+  unit: HourDayUnit,
+): NumericBucketResult {
+  const data = dictGetRecord(raw, "data");
+  const values = dictGet(data, "values", {});
+
+  return new NumericBucketResult({
+    event,
+    from_date: fromDate,
+    to_date: toDate,
+    property_expr: on,
+    unit,
+    series: passthrough(values),
+  });
+}
+
+/**
+ * Transform a raw sum response into a {@link NumericSumResult}
+ * (`_transform_numeric_sum`, `live_query.py:1977-2009`).
+ *
+ * @param raw - Raw API response.
+ * @param event - Event name queried.
+ * @param fromDate - Query start date.
+ * @param toDate - Query end date.
+ * @param on - Property expression summed.
+ * @param unit - Time aggregation unit.
+ * @returns The typed result.
+ */
+export function transformNumericSum(
+  raw: Readonly<Record<string, unknown>>,
+  event: string,
+  fromDate: string,
+  toDate: string,
+  on: string,
+  unit: HourDayUnit,
+): NumericSumResult {
+  const results = dictGet(raw, "results", {});
+  const computedAt = dictGet(raw, "computed_at", null);
+
+  return new NumericSumResult({
+    event,
+    from_date: fromDate,
+    to_date: toDate,
+    property_expr: on,
+    unit,
+    results: passthrough(results),
+    computed_at: passthrough(computedAt),
+  });
+}
+
+/**
+ * Transform a raw average response into a
+ * {@link NumericAverageResult} (`_transform_numeric_average`,
+ * `live_query.py:2012-2042`).
+ *
+ * @param raw - Raw API response.
+ * @param event - Event name queried.
+ * @param fromDate - Query start date.
+ * @param toDate - Query end date.
+ * @param on - Property expression averaged.
+ * @param unit - Time aggregation unit.
+ * @returns The typed result.
+ */
+export function transformNumericAverage(
+  raw: Readonly<Record<string, unknown>>,
+  event: string,
+  fromDate: string,
+  toDate: string,
+  on: string,
+  unit: HourDayUnit,
+): NumericAverageResult {
+  const results = dictGet(raw, "results", {});
+
+  return new NumericAverageResult({
+    event,
+    from_date: fromDate,
+    to_date: toDate,
+    property_expr: on,
+    unit,
+    results: passthrough(results),
+  });
+}
+
+/** Re-export so callers can name the count type without a second import. */
+export type { CountType };

@@ -365,11 +365,16 @@ export function fromTimestampUtcIso(t: number): string {
  * (the sanctioned numeric-consumption unwrap point — b3-packets.md
  * §Binding-shapes "PyFloat discipline").
  *
+ * Exported (B5-S2, R10.8) because `_transform_activity_feed`
+ * (`live_query.py:1602`) calls `datetime.fromtimestamp` on the same
+ * `properties["time"]` value and must coerce identically — the second
+ * consumer imports this helper rather than re-deriving it.
+ *
  * @param value - The raw `time` property value.
  * @returns The timestamp as a JS number.
  * @throws TypeError - When Python would reject the type.
  */
-function timestampNumber(value: unknown): number {
+export function timestampNumber(value: unknown): number {
   if (typeof value === "number") {
     return value;
   }

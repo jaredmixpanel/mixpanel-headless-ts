@@ -1256,8 +1256,12 @@ export class DiscoveryService {
  *
  * @param when - The clock reading.
  * @returns The ISO-8601 text.
+ *
+ * Exported for B5-S2 (R10.8): the query-user engine stamps
+ * `computed_at` from the same `datetime.now(timezone.utc).isoformat()`
+ * expression (`workspace.py:9711`, `:10112`, `:10051`).
  */
-function isoUtc(when: Date): string {
+export function isoUtc(when: Date): string {
   const iso = when.toISOString(); // YYYY-MM-DDTHH:mm:ss.sssZ
   const millis = iso.slice(20, 23);
   const head = iso.slice(0, 19);
