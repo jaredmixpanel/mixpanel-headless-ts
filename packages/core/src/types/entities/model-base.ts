@@ -52,6 +52,19 @@ import { ResponseValidationError } from "../../errors.js";
 export type EntityFieldKind = "int" | "str" | "bool" | "float";
 
 /**
+ * Options of {@link EntityModel.modelDumpExcludeNone} — the pydantic
+ * `model_dump(...)` flags the B6 facade members pass (B6-W2).
+ */
+export interface ModelDumpOptions {
+  /**
+   * Pydantic `by_alias=True`: emit each declared field under its
+   * serialization alias ({@link EntityFieldSpec.wire}) when one is
+   * configured. Threads into nested models, exactly as pydantic does.
+   */
+  readonly byAlias?: boolean;
+}
+
+/**
  * One declared Python model field, in `model_fields` order.
  *
  * @internal
@@ -528,6 +541,16 @@ export abstract class EntityModel {
    * {@link toJSON} is NOT a substitute: it keeps `None` as `null`, and
    * absent-vs-null is vector-observable (R3.5).
    *
+   * B6-W2 extension (`b6-packets.md` §4; 21 `by_alias=True` dump sites
+   * in `workspace.py`, e.g. `finalize_blueprint` :4985,
+   * `create_rca_dashboard` :5022, `update_report_link` :5109): passing
+   * `byAlias` emits each declared field under its
+   * {@link EntityFieldSpec.wire} serialization key when one is
+   * configured, RECURSIVELY (pydantic threads `by_alias` into nested
+   * models). Extras and computed fields have no alias and keep their
+   * own key.
+   *
+   * @param options - `byAlias` mirrors pydantic's `by_alias=True`.
    * @returns The exclude-none mapping.
    *
    * @example
@@ -537,7 +560,10 @@ export abstract class EntityModel {
    * // { level: "project", content: "", is_empty: true, character_count: 0 }
    * ```
    */
-  modelDumpExcludeNone(): Record<string, unknown> {
+  modelDumpExcludeNone(
+    options: ModelDumpOptions = {},
+  ): Record<string, unknown> {
+    const byAlias = options.byAlias === true;
     const cls = this.statics();
     const out: Record<string, unknown> = {};
     const self = this as unknown as Readonly<Record<string, unknown>>;
@@ -546,23 +572,24 @@ export abstract class EntityModel {
       if (value === null || value === undefined) {
         continue;
       }
-      out[spec.name] =
+      const key = byAlias ? (spec.wire ?? spec.name) : spec.name;
+      out[key] =
         spec.datetime === true && typeof value === "string"
           ? value
-          : dumpExcludeNoneValue(value);
+          : dumpExcludeNoneValue(value, byAlias);
     }
     for (const [key, value] of Object.entries(this.__extras)) {
       if (value === null || value === undefined) {
         continue;
       }
-      out[key] = dumpExcludeNoneValue(value);
+      out[key] = dumpExcludeNoneValue(value, byAlias);
     }
     for (const computed of cls.computedSpecs ?? []) {
       const value = computed.get(this);
       if (value === null || value === undefined) {
         continue;
       }
-      out[computed.name] = dumpExcludeNoneValue(value);
+      out[computed.name] = dumpExcludeNoneValue(value, byAlias);
     }
     return out;
   }
@@ -625,19 +652,20 @@ export function oneOf(
  * @returns The dumped value.
  * @internal
  */
-function dumpExcludeNoneValue(value: unknown): unknown {
+function dumpExcludeNoneValue(value: unknown, byAlias: boolean): unknown {
   if (value instanceof EntityModel) {
-    return value.modelDumpExcludeNone();
+    return value.modelDumpExcludeNone({ byAlias });
   }
   if (Array.isArray(value)) {
-    return value.map((item) => dumpExcludeNoneValue(item));
+    return value.map((item) => dumpExcludeNoneValue(item, byAlias));
   }
   if (isPlainObject(value)) {
     // Pydantic keeps `None` VALUES inside plain dict fields
     // (measured 2026-08-16) — only model fields are excluded.
     const out: Record<string, unknown> = {};
     for (const [key, item] of Object.entries(value)) {
-      out[key] = item === undefined ? null : dumpExcludeNoneValue(item);
+      out[key] =
+        item === undefined ? null : dumpExcludeNoneValue(item, byAlias);
     }
     return out;
   }

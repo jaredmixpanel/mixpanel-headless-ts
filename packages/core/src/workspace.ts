@@ -86,6 +86,47 @@ export type {
   ResolverSeams,
 } from "./workspace-members/lifecycle.js";
 export type { MeCacheStore, MeService } from "./services/me.js";
+import {
+  addReportToDashboard as addReportToDashboardMember,
+  bulkDeleteDashboards as bulkDeleteDashboardsMember,
+  createBlueprint as createBlueprintMember,
+  createDashboard as createDashboardMember,
+  createRcaDashboard as createRcaDashboardMember,
+  deleteDashboard as deleteDashboardMember,
+  favoriteDashboard as favoriteDashboardMember,
+  finalizeBlueprint as finalizeBlueprintMember,
+  getBlueprintConfig as getBlueprintConfigMember,
+  getBookmarkDashboardIds as getBookmarkDashboardIdsMember,
+  getDashboard as getDashboardMember,
+  getDashboardErf as getDashboardErfMember,
+  listBlueprintTemplates as listBlueprintTemplatesMember,
+  listDashboards as listDashboardsMember,
+  pinDashboard as pinDashboardMember,
+  removeReportFromDashboard as removeReportFromDashboardMember,
+  unfavoriteDashboard as unfavoriteDashboardMember,
+  unpinDashboard as unpinDashboardMember,
+  updateBlueprintCohorts as updateBlueprintCohortsMember,
+  updateDashboard as updateDashboardMember,
+  updateReportLink as updateReportLinkMember,
+  updateTextCard as updateTextCardMember,
+  type WorkspaceListBlueprintTemplatesOptions,
+  type WorkspaceListDashboardsOptions,
+} from "./workspace-members/dashboards.js";
+export type {
+  WorkspaceListBlueprintTemplatesOptions,
+  WorkspaceListDashboardsOptions,
+} from "./workspace-members/dashboards.js";
+import type {
+  BlueprintConfig,
+  BlueprintFinishParams,
+  BlueprintTemplate,
+  CreateDashboardParams,
+  CreateRcaDashboardParams,
+  Dashboard,
+  UpdateDashboardParams,
+  UpdateReportLinkParams,
+  UpdateTextCardParams,
+} from "./types/entities/dashboards.js";
 import type { Account } from "./auth/account.js";
 import type { Project, WorkspaceRef } from "./auth/session.js";
 import type {
@@ -3004,6 +3045,322 @@ export class Workspace {
         return facade.meServiceIfCreated;
       },
     };
+  }
+
+  // === B6-W2 dashboard members (W2 owns; append-only) ===
+
+  /**
+   * List dashboards for the current project/workspace
+   * (`list_dashboards`, `workspace.py:4506-4536`).
+   *
+   * @param options - Optional `ids` filter.
+   * @returns The `Dashboard` models, in response order.
+   * @throws ResponseValidationError - Malformed API response payload
+   *   (`RESPONSE_VALIDATION_ERROR`).
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   *
+   * @example
+   * ```typescript
+   * for (const d of await ws.listDashboards()) {
+   *   console.log(`${d.title} (id=${String(d.id)})`);
+   * }
+   * ```
+   */
+  async listDashboards(
+    options: WorkspaceListDashboardsOptions = {},
+  ): Promise<Dashboard[]> {
+    return listDashboardsMember(this.client, options);
+  }
+
+  /**
+   * Create a new dashboard (`create_dashboard`,
+   * `workspace.py:4538-4569`).
+   *
+   * @param params - Dashboard creation parameters.
+   * @returns The newly created `Dashboard`.
+   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async createDashboard(params: CreateDashboardParams): Promise<Dashboard> {
+    return createDashboardMember(this.client, params);
+  }
+
+  /**
+   * Get a single dashboard by ID (`get_dashboard`,
+   * `workspace.py:4571-4600`).
+   *
+   * @param dashboardId - Dashboard identifier.
+   * @returns The `Dashboard`.
+   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async getDashboard(dashboardId: number): Promise<Dashboard> {
+    return getDashboardMember(this.client, dashboardId);
+  }
+
+  /**
+   * Update an existing dashboard (`update_dashboard`,
+   * `workspace.py:4602-4638`).
+   *
+   * @param dashboardId - Dashboard identifier.
+   * @param params - Fields to update.
+   * @returns The updated `Dashboard`.
+   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async updateDashboard(
+    dashboardId: number,
+    params: UpdateDashboardParams,
+  ): Promise<Dashboard> {
+    return updateDashboardMember(this.client, dashboardId, params);
+  }
+
+  /**
+   * Delete a dashboard (`delete_dashboard`,
+   * `workspace.py:4640-4659`).
+   *
+   * @param dashboardId - Dashboard identifier.
+   * @returns Nothing.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   */
+  async deleteDashboard(dashboardId: number): Promise<void> {
+    return deleteDashboardMember(this.client, dashboardId);
+  }
+
+  /**
+   * Delete multiple dashboards (`bulk_delete_dashboards`,
+   * `workspace.py:4661-4680`).
+   *
+   * @param ids - Dashboard IDs to delete.
+   * @returns Nothing.
+   */
+  async bulkDeleteDashboards(ids: readonly number[]): Promise<void> {
+    return bulkDeleteDashboardsMember(this.client, ids);
+  }
+
+  /**
+   * Favorite a dashboard (`favorite_dashboard`,
+   * `workspace.py:4686-4705`).
+   *
+   * @param dashboardId - Dashboard identifier.
+   * @returns Nothing.
+   */
+  async favoriteDashboard(dashboardId: number): Promise<void> {
+    return favoriteDashboardMember(this.client, dashboardId);
+  }
+
+  /**
+   * Unfavorite a dashboard (`unfavorite_dashboard`,
+   * `workspace.py:4707-4726`).
+   *
+   * @param dashboardId - Dashboard identifier.
+   * @returns Nothing.
+   */
+  async unfavoriteDashboard(dashboardId: number): Promise<void> {
+    return unfavoriteDashboardMember(this.client, dashboardId);
+  }
+
+  /**
+   * Pin a dashboard (`pin_dashboard`, `workspace.py:4728-4747`).
+   *
+   * @param dashboardId - Dashboard identifier.
+   * @returns Nothing.
+   */
+  async pinDashboard(dashboardId: number): Promise<void> {
+    return pinDashboardMember(this.client, dashboardId);
+  }
+
+  /**
+   * Unpin a dashboard (`unpin_dashboard`,
+   * `workspace.py:4749-4768`).
+   *
+   * @param dashboardId - Dashboard identifier.
+   * @returns Nothing.
+   */
+  async unpinDashboard(dashboardId: number): Promise<void> {
+    return unpinDashboardMember(this.client, dashboardId);
+  }
+
+  /**
+   * Remove a report from a dashboard
+   * (`remove_report_from_dashboard`, `workspace.py:4770-4800`).
+   *
+   * @param dashboardId - Dashboard identifier.
+   * @param bookmarkId - Bookmark/report identifier to remove.
+   * @returns The updated `Dashboard`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async removeReportFromDashboard(
+    dashboardId: number,
+    bookmarkId: number,
+  ): Promise<Dashboard> {
+    return removeReportFromDashboardMember(
+      this.client,
+      dashboardId,
+      bookmarkId,
+    );
+  }
+
+  /**
+   * Add a report to a dashboard (`add_report_to_dashboard`,
+   * `workspace.py:4802-4841`) — clones the bookmark onto the board.
+   *
+   * @param dashboardId - Dashboard identifier.
+   * @param bookmarkId - Bookmark/report identifier to add.
+   * @returns The updated `Dashboard`.
+   * @throws MixpanelHeadlessError - Response is not a dashboard dict
+   *   carrying `id` (`UNKNOWN_ERROR`).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async addReportToDashboard(
+    dashboardId: number,
+    bookmarkId: number,
+  ): Promise<Dashboard> {
+    return addReportToDashboardMember(this.client, dashboardId, bookmarkId);
+  }
+
+  /**
+   * List available dashboard blueprint templates
+   * (`list_blueprint_templates`, `workspace.py:4841-4869`).
+   *
+   * @param options - `include_reports` (default `false`).
+   * @returns The `BlueprintTemplate` models.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async listBlueprintTemplates(
+    options: WorkspaceListBlueprintTemplatesOptions = {},
+  ): Promise<BlueprintTemplate[]> {
+    return listBlueprintTemplatesMember(this.client, options);
+  }
+
+  /**
+   * Create a dashboard from a blueprint template
+   * (`create_blueprint`, `workspace.py:4871-4900`).
+   *
+   * @param templateType - Blueprint template type identifier.
+   * @returns The newly created `Dashboard`.
+   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async createBlueprint(templateType: string): Promise<Dashboard> {
+    return createBlueprintMember(this.client, templateType);
+  }
+
+  /**
+   * Get the blueprint configuration for a dashboard
+   * (`get_blueprint_config`, `workspace.py:4902-4933`).
+   *
+   * @param dashboardId - Dashboard identifier.
+   * @returns The `BlueprintConfig`.
+   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async getBlueprintConfig(dashboardId: number): Promise<BlueprintConfig> {
+    return getBlueprintConfigMember(this.client, dashboardId);
+  }
+
+  /**
+   * Update cohorts for blueprint configuration
+   * (`update_blueprint_cohorts`, `workspace.py:4935-4954`).
+   *
+   * @param cohorts - Cohort configuration dicts.
+   * @returns Nothing.
+   */
+  async updateBlueprintCohorts(
+    cohorts: ReadonlyArray<Record<string, unknown>>,
+  ): Promise<void> {
+    return updateBlueprintCohortsMember(this.client, cohorts);
+  }
+
+  /**
+   * Finalize a blueprint dashboard with cards
+   * (`finalize_blueprint`, `workspace.py:4956-4991`).
+   *
+   * @param params - Blueprint finalization parameters.
+   * @returns The finalized `Dashboard`.
+   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async finalizeBlueprint(params: BlueprintFinishParams): Promise<Dashboard> {
+    return finalizeBlueprintMember(this.client, params);
+  }
+
+  /**
+   * Create an RCA (Root Cause Analysis) dashboard
+   * (`create_rca_dashboard`, `workspace.py:4993-5028`).
+   *
+   * @param params - RCA dashboard parameters.
+   * @returns The newly created `Dashboard`.
+   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async createRcaDashboard(
+    params: CreateRcaDashboardParams,
+  ): Promise<Dashboard> {
+    return createRcaDashboardMember(this.client, params);
+  }
+
+  /**
+   * Dashboard IDs containing a bookmark/report
+   * (`get_bookmark_dashboard_ids`, `workspace.py:5030-5052`).
+   *
+   * @param bookmarkId - Bookmark identifier.
+   * @returns The dashboard IDs.
+   */
+  async getBookmarkDashboardIds(bookmarkId: number): Promise<number[]> {
+    return getBookmarkDashboardIdsMember(this.client, bookmarkId);
+  }
+
+  /**
+   * ERF data for a dashboard (`get_dashboard_erf`,
+   * `workspace.py:5054-5076`).
+   *
+   * @param dashboardId - Dashboard identifier.
+   * @returns The ERF metrics mapping.
+   */
+  async getDashboardErf(dashboardId: number): Promise<Record<string, unknown>> {
+    return getDashboardErfMember(this.client, dashboardId);
+  }
+
+  /**
+   * Update a report link on a dashboard (`update_report_link`,
+   * `workspace.py:5078-5110`).
+   *
+   * @param dashboardId - Dashboard identifier.
+   * @param reportLinkId - Report link identifier.
+   * @param params - Update parameters.
+   * @returns Nothing.
+   */
+  async updateReportLink(
+    dashboardId: number,
+    reportLinkId: number,
+    params: UpdateReportLinkParams,
+  ): Promise<void> {
+    return updateReportLinkMember(
+      this.client,
+      dashboardId,
+      reportLinkId,
+      params,
+    );
+  }
+
+  /**
+   * Update a text card on a dashboard (`update_text_card`,
+   * `workspace.py:5112-5145`).
+   *
+   * @param dashboardId - Dashboard identifier.
+   * @param textCardId - Text card identifier.
+   * @param params - Update parameters.
+   * @returns Nothing.
+   */
+  async updateTextCard(
+    dashboardId: number,
+    textCardId: number,
+    params: UpdateTextCardParams,
+  ): Promise<void> {
+    return updateTextCardMember(this.client, dashboardId, textCardId, params);
   }
 }
 
