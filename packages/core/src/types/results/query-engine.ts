@@ -825,11 +825,79 @@ export interface FlowTreeNodeFields {
   readonly time_percentiles_from_prev?: Readonly<Record<string, unknown>>;
 }
 
+/** One node of the {@link FlowQueryResult.graph} adjacency object. */
+export interface FlowGraphNode {
+  /** `"{event}@{step}"` — Python's networkx node key. */
+  readonly id: string;
+  /** Zero-based step index. */
+  readonly step: number;
+  /** Event name (`""` when absent). */
+  readonly event: unknown;
+  /** Node type (`""` when absent). */
+  readonly type: unknown;
+  /** `_safe_int(node["totalCount"])`. */
+  readonly count: number;
+  /** Anchor classification (`""` when absent). */
+  readonly anchor_type: unknown;
+}
+
+/** One edge of the {@link FlowQueryResult.graph} adjacency object. */
+export interface FlowGraphEdge {
+  /** Source node id. */
+  readonly source: string;
+  /** Target node id (`"{event}@{targetStep}"`). */
+  readonly target: string;
+  /** `_safe_int(edge["totalCount"])`. */
+  readonly count: number;
+  /** Edge type (`""` when absent). */
+  readonly type: unknown;
+}
+
+/**
+ * The plain adjacency object {@link FlowQueryResult.graph} emits — the
+ * stand-in for `networkx.DiGraph` (B5-S2 closure of the Phase-2
+ * TODO(port)).
+ */
+export interface FlowGraph {
+  /** Nodes, in Python's `add_node` order. */
+  readonly nodes: readonly FlowGraphNode[];
+  /** Edges, in Python's `add_edge` order. */
+  readonly edges: readonly FlowGraphEdge[];
+}
+
+/**
+ * The parent-linked node {@link FlowTreeNode.toAnytree} emits — the
+ * plain-object stand-in for `anytree.AnyNode` (B5-S2 closure of the
+ * Phase-2 TODO(port)).
+ */
+export interface AnyTreeNode {
+  /** Parent node, or `null` at the root. */
+  readonly parent: AnyTreeNode | null;
+  /** Event name at this node. */
+  readonly event: string;
+  /** Node type. */
+  readonly type: FlowNodeType;
+  /** Zero-based step number. */
+  readonly step_number: number;
+  /** Users reaching this node. */
+  readonly total_count: number;
+  /** Users dropping off at this node. */
+  readonly drop_off_count: number;
+  /** Users converting from this node. */
+  readonly converted_count: number;
+  /** Anchor classification. */
+  readonly anchor_type: string;
+  /** Whether the node is computed. */
+  readonly is_computed: boolean;
+  /** Child nodes (populated during the walk). */
+  readonly children: AnyTreeNode[];
+}
+
 /**
  * One node of a tree-mode flow query — TS port of
- * `types.FlowTreeNode` (`to_anytree()` is NOT ported — it returns
- * `anytree` nodes with no vendored TS twin; TODO(port): revisit with
- * batch B5).
+ * `types.FlowTreeNode`. `to_anytree()` IS ported (B5-S2) as
+ * {@link FlowTreeNode.toAnytree}, emitting the plain
+ * {@link AnyTreeNode} tree rather than `anytree.AnyNode` objects.
  */
 export class FlowTreeNode {
   /** Event name at this node. */
@@ -916,6 +984,60 @@ export class FlowTreeNode {
       return 1;
     }
     return this.children.reduce((sum, c) => sum + c.leaf_count, 0);
+  }
+
+  /**
+   * The parent-linked tree view — TS twin of Python `to_anytree()`
+   * (`types.py:10985-11037`), closed at B5-S2 per the packet §3
+   * instruction ("implement `FlowTreeNode.toAnytree()`-equivalent as a
+   * PLAIN nested-object tree").
+   *
+   * `anytree.AnyNode` has no vendored TS library, so the port emits
+   * {@link AnyTreeNode}: the SAME eight attributes Python copies onto
+   * each `AnyNode`, plus the `parent` back-reference and `children`
+   * array that make the anytree navigation surface (`node.parent`,
+   * `node.children`, `node.path`) reproducible in plain TS.
+   * `RenderTree` and `findall` are library helpers, not data, and have
+   * no twin.
+   *
+   * @returns The root of the parallel tree (`parent === null`).
+   *
+   * @example
+   * ```typescript
+   * const at = root.toAnytree();
+   * at.children[0]?.parent === at; // true
+   * ```
+   */
+  toAnytree(): AnyTreeNode {
+    return this.#buildAnytreeNode(null);
+  }
+
+  /**
+   * Recursively build the parallel tree (`_build_anytree_node`,
+   * `types.py:11013-11037`).
+   *
+   * @param parent - The parent node, or `null` for the root.
+   * @returns The node with its children attached.
+   */
+  #buildAnytreeNode(parent: AnyTreeNode | null): AnyTreeNode {
+    const node: AnyTreeNode = {
+      parent,
+      event: this.event,
+      type: this.type,
+      step_number: this.step_number,
+      total_count: this.total_count,
+      drop_off_count: this.drop_off_count,
+      converted_count: this.converted_count,
+      anchor_type: this.anchor_type,
+      is_computed: this.is_computed,
+      children: [],
+    };
+    for (const child of this.children) {
+      // Python attaches by passing `parent=node`; anytree mutates the
+      // parent's `children` tuple. The TS twin pushes explicitly.
+      node.children.push(child.#buildAnytreeNode(node));
+    }
+    return node;
   }
 
   /**
@@ -1166,9 +1288,11 @@ export interface FlowQueryResultFields {
  * (+ `toTreesRows()`), and the main `.df` is MODE-AWARE (sankey →
  * nodes frame, tree → trees frame, paths → its own row shape).
  *
- * `graph` (networkx) and `anytree` are NOT ported in Phase 2 —
- * TODO(port): revisit with batch B5; their codec-visible cache slots
- * (`_graph_cache`, `_anytree_cache`) exist and stay `null`.
+ * `graph` (networkx) and `anytree` are ported at B5-S2 as the plain
+ * {@link FlowQueryResult.graph} adjacency object and the
+ * {@link FlowQueryResult.anytree} parent-linked roots; their
+ * codec-visible cache slots (`_graph_cache`, `_anytree_cache`) exist
+ * and stay `null` because both builds are pure.
  */
 export class FlowQueryResult {
   /** Codec-visible DataFrame cache slot (`@internal`) — always `null`. */
@@ -1232,6 +1356,77 @@ export class FlowQueryResult {
     this.meta = fields.meta ?? {};
     this.mode = fields.mode ?? "sankey";
     this.trees = fields.trees ?? [];
+  }
+
+  /**
+   * The directed flow graph — TS twin of Python's `graph` property
+   * (`types.py:11203-11255`), closed at B5-S2 per the packet §3
+   * instruction ("`FlowQueryResult.graph` as a plain adjacency object
+   * (nodes/edges arrays mirroring what Python feeds networkx)").
+   *
+   * `networkx.DiGraph` has no vendored TS library, so the port emits
+   * the adjacency data Python hands to `add_node` / `add_edge`, in the
+   * same order and with the same per-key defaults: node ids are
+   * `"{event}@{step}"`, node attributes are `step` / `event` / `type` /
+   * `count` / `anchor_type`, and edge attributes are `count` / `type`
+   * with the `step_idx + 1` target-step fallback.
+   *
+   * Python caches into `_graph_cache`; the TS build is pure and
+   * deterministic, so the codec-visible slot stays `null` (the
+   * Phase-2 caching convention: repeated calls are equal).
+   *
+   * @returns The `{nodes, edges}` adjacency object (empty arrays when
+   *   `steps` is empty).
+   *
+   * @example
+   * ```typescript
+   * const g = result.graph();
+   * g.nodes.find((n) => n.id === "Login@0")?.count; // 100
+   * ```
+   */
+  graph(): FlowGraph {
+    const nodes: FlowGraphNode[] = [];
+    const edges: FlowGraphEdge[] = [];
+    this.steps.forEach((step, step_idx) => {
+      for (const node of FlowQueryResult.#stepNodes(step)) {
+        const nodeId = `${String(node["event"] ?? "")}@${String(step_idx)}`;
+        nodes.push({
+          id: nodeId,
+          step: step_idx,
+          event: node["event"] ?? "",
+          type: node["type"] ?? "",
+          count: safeInt(node["totalCount"] ?? "0"),
+          anchor_type: node["anchorType"] ?? "",
+        });
+        for (const edge of FlowQueryResult.#nodeEdges(node)) {
+          const targetStep = safeInt(
+            edge["step"] ?? step_idx + 1,
+            step_idx + 1,
+          );
+          edges.push({
+            source: nodeId,
+            target: `${String(edge["event"] ?? "")}@${String(targetStep)}`,
+            count: safeInt(edge["totalCount"] ?? "0"),
+            type: edge["type"] ?? "",
+          });
+        }
+      }
+    });
+    return { nodes, edges };
+  }
+
+  /**
+   * The parent-linked roots of the tree-mode data — TS twin of
+   * Python's `anytree` property (`types.py:11475-11498`), closed at
+   * B5-S2 alongside {@link FlowTreeNode.toAnytree}.
+   *
+   * Python caches into `_anytree_cache`; the TS build is pure, so the
+   * codec-visible slot stays `null`.
+   *
+   * @returns One {@link AnyTreeNode} root per member of `trees`.
+   */
+  anytree(): AnyTreeNode[] {
+    return this.trees.map((t) => t.toAnytree());
   }
 
   /**
