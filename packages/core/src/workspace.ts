@@ -17,6 +17,7 @@
  */
 
 import type { Session } from "./auth/session.js";
+import { resolveSession, type ResolverSources } from "./auth/resolver.js";
 import {
   createMixpanelClient,
   type MixpanelClient,
@@ -29,6 +30,7 @@ import { zfill } from "./compat/zfill.js";
 import { RrwebAnalyzer } from "./replays/rrweb-analyzer.js";
 import {
   AuthenticationError,
+  MixpanelHeadlessError,
   ParamValidationError,
   QueryError,
   RateLimitError,
@@ -492,8 +494,33 @@ import {
 
 /** Options bag of the {@link Workspace} constructor. */
 export interface WorkspaceOptions {
-  /** The RESOLVED session (account + project + optional workspace). */
-  readonly session: Session;
+  /**
+   * A pre-built RESOLVED session — the full resolver bypass
+   * (`Workspace(session=…)`, `workspace.py:473-474`). When absent, the
+   * B7 resolver axes ({@link account} / {@link project} /
+   * {@link workspace} / {@link target}) resolve through
+   * `resolveSession(...)` over {@link sources}.
+   */
+  readonly session?: Session | undefined;
+  /** Named account from config (resolver axis, `workspace.py:427`). */
+  readonly account?: string | null | undefined;
+  /** Project ID override (resolver axis, digit string). */
+  readonly project?: string | null | undefined;
+  /** Workspace ID override (resolver axis, positive int). */
+  readonly workspace?: number | null | undefined;
+  /**
+   * Apply all three axes from `[targets.NAME]`. Mutually exclusive
+   * with `account`/`project`/`workspace`
+   * (`WS1_TARGET_MUTUALLY_EXCLUSIVE`, `workspace.py:455-465`).
+   */
+  readonly target?: string | null | undefined;
+  /**
+   * The injected resolver sources used when no {@link session} is
+   * given (R9.4 — Python builds `ConfigManager()` / `load_bridge()`
+   * inline; B8's node wiring supplies the on-disk defaults). Required
+   * for resolver-path construction in `packages/core`.
+   */
+  readonly sources?: ResolverSources | undefined;
   /**
    * Injected wire client — the test/replay seam mirroring Python's
    * `_api_client` kwarg (`workspace.py:424-432`; conformance twin
@@ -1106,6 +1133,17 @@ export class Workspace {
   /** Factory for the `/me` cache store handed to each MeService. */
   readonly #meCacheFactory: (accountName: string) => MeCacheStore;
 
+  /**
+   * Per-account memo of cache STORES (B7-A1): Python's
+   * `MeCache(account_name=…)` re-reads the same per-account disk file
+   * however many times the lazy `MeService` is rebuilt, so a
+   * `use(project=…)` swap keeps the warm cache
+   * (`TestFacadeResolverWiring::test_resolver_follows_project_swap`).
+   * The in-memory default must share state the same way — the factory
+   * runs once per account name per facade.
+   */
+  readonly #meCacheStores = new Map<string, MeCacheStore>();
+
   /** `warnings.warn` sink handed to the discovery service. */
   readonly #warn: WarningSink | undefined;
 
@@ -1127,14 +1165,49 @@ export class Workspace {
    *   client / seams.
    */
   constructor(options: WorkspaceOptions) {
-    this.#session = options.session;
+    // The WS1 constructor guard fires BEFORE the session/resolver
+    // branch (`workspace.py:455-465` — packet §14 Caution 4 order).
+    guardTargetExclusivity(options);
+    let session: Session;
+    if (options.session !== undefined) {
+      session = options.session;
+    } else {
+      // B7-A1: the resolver constructor kwargs (`workspace.py:427-430`)
+      // resolve through `resolveSession(...)` over injected sources
+      // (R9.4). The bridge-token materialization side effect
+      // (`workspace.py:479-513`) is B8's (`TestBridgeTokenMaterialization`
+      // stays deferred, `b7-packets.md` §3.4).
+      const sources = options.sources;
+      if (sources === undefined) {
+        // TODO(port): B8's node wiring supplies the on-disk
+        // ConfigManager / bridge defaults so `new Workspace({})` works
+        // as Python's `Workspace()` does.
+        throw new MixpanelHeadlessError(
+          "Workspace construction without `session` requires injected " +
+            "`sources` in @mixpanel-headless/core (the on-disk default " +
+            "wiring is batch B8)",
+          "UNPORTED_AUTH_SEAM",
+          { seam: "workspaceSources" },
+        );
+      }
+      session = resolveSession(
+        {
+          account: options.account ?? null,
+          project: options.project ?? null,
+          workspace: options.workspace ?? null,
+          target: options.target ?? null,
+        },
+        sources,
+      );
+    }
+    this.#session = session;
     this.client =
       options.client ??
       createMixpanelClient({
-        session: options.session,
+        session,
         ...(options.clientOptions ?? {}),
       });
-    this.#accountName = options.session.account.name;
+    this.#accountName = session.account.name;
     this.#seams = mergeResolverSeams(options.seams);
     this.#meCacheFactory = options.meCache ?? inMemoryMeCache;
     this.#warn = options.warn;
@@ -1143,9 +1216,6 @@ export class Workspace {
     this.#readFile = options.readFile ?? unportedReadFile;
     this.#monotonic = options.monotonic ?? defaultMonotonic;
     this.#installWorkspaceResolver();
-    // TODO(port): the `account` / `project` / `workspace` / `target`
-    // constructor kwargs (`workspace.py:427-430`) resolve through
-    // `resolve_session(...)` — batch B7. B5 takes a resolved Session.
   }
 
   /**
@@ -3136,9 +3206,14 @@ export class Workspace {
    */
   get meService(): MeService {
     if (this.#meService === null) {
+      let store = this.#meCacheStores.get(this.#accountName);
+      if (store === undefined) {
+        store = this.#meCacheFactory(this.#accountName);
+        this.#meCacheStores.set(this.#accountName, store);
+      }
       this.#meService = new MeService(
         this.client,
-        this.#meCacheFactory(this.#accountName),
+        store,
         this.#session.account.region,
         { accountType: this.#session.account.type },
       );

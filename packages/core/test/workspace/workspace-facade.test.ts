@@ -4,16 +4,20 @@
 // (:712), `TestLimitValidation` (:754), `TestWorkspacesMethod` (:808),
 // `TestProjectsMethod` (:861), `TestCodedWorkspaceGuardCodes` (:919).
 //
-// DEFERRED (header-cited, not dropped):
+// B7-A1 resolutions (`b7-packets.md` §3.4 — this header now lists ZERO
+// B7 deferrals):
 //
-// - `TestCredentialResolution` (:96) → B7. The class body is empty in
-//   Python (every case was removed in B1 "Fix 10"); nothing to port.
+// - `TestCredentialResolution` (:96): the class body is EMPTY in
+//   Python (every case was removed in B1 "Fix 10"); nothing to port —
+//   decision recorded here, no translation exists by construction.
 // - `TestCodedWorkspaceGuardCodes::test_ws1_init_target_with_account`
 //   (:969), `…_with_workspace` (:975) and
-//   `test_ws_guards_stay_catchable_as_value_error` (:1021) → B7: all
-//   three call the CONSTRUCTOR guard (`workspace.py:455-465`), which
-//   lives behind the B7 resolver kwargs (`b6-packets.md` §14 Caution 4).
-//   The `use()` twin of the same guard (:981, :993) IS translated here.
+//   `test_ws_guards_stay_catchable_as_value_error` (:1021): the
+//   CONSTRUCTOR-guard trio is translated in `workspace-init.test.ts`
+//   (B7 constructor section). The `use()` twin (:981, :993) stays here.
+// - `TestFacadeResolverWiring` (test_workspace_resolution.py:611) is
+//   translated at the BOTTOM of this file (the stale B4-C1 header in
+//   `client-workspace.test.ts` mis-assigned it — packet Caution #17).
 //
 // COVERED BY EQUAL-OR-STRONGER B5/B6 TWINS (exclusion citations added at
 // B6-ARB, `b6-review-resolution.md` Finding B — the original header
@@ -57,6 +61,10 @@ import {
   MeResponse,
 } from "../../src/client/me.js";
 import { MeService, inMemoryMeCache } from "../../src/services/me.js";
+import { Secret } from "../../src/secret.js";
+import { createAccountsNamespace } from "../../src/accounts/namespace.js";
+import { resolverSeamsFromEffects } from "../../src/accounts/resolver-seams.js";
+import { makeEffects } from "../accounts/fake-auth-effects.js";
 import {
   ActivityFeedResult,
   EventCountsResult,
@@ -651,5 +659,211 @@ describe("MeService construction (workspace.py:866-885)", () => {
     expect(await cache.get()).toBe(response);
     await cache.invalidate();
     expect(await cache.get()).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// B7-A1: `TestFacadeResolverWiring` (test_workspace_resolution.py:611)
+// — the dagger vector's Layer-3 twin, landed here per `b7-packets.md`
+// §3.4 (the stale B4-C1 header orphaned it — Caution #17).
+//
+// Mechanism substitutions (R10.2, header-cited): the httpx
+// MockTransport handler becomes the `createMockClient` canned handler;
+// the tmp-`$HOME` MeCache isolation is inherent (in-memory cache
+// factory); the account-swap case's ConfigManager becomes the
+// in-memory effects fake + real `resolverSeamsFromEffects`.
+// ---------------------------------------------------------------------------
+
+/** `_me_dict` twin (test_workspace_resolution.py:46-61). */
+function meDict(
+  workspaces: Record<string, unknown>,
+  projects: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    user_id: 1,
+    user_email: "ak@example.com",
+    projects,
+    workspaces,
+  };
+}
+
+/** `_ws` twin (test_workspace_resolution.py:64-93). */
+function wsEntry(
+  wid: number,
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    id: wid,
+    name: "view",
+    project_id: 4025120,
+    is_default: null,
+    is_global: null,
+    is_visible: null,
+    ...overrides,
+  };
+}
+
+describe("TestFacadeResolverWiring (test_workspace_resolution.py:611)", () => {
+  it("a warm /me resolves without hitting /workspaces/public", async () => {
+    const calls: string[] = [];
+    const session = makeSession({
+      name: "facade",
+      projectId: "4025120",
+      username: "u",
+      secret: "s",
+    });
+    const { client } = createMockClient(session, (request) => {
+      calls.push(new URL(request.url).pathname);
+      if (request.url.endsWith("/me")) {
+        return {
+          status: 200,
+          json: {
+            results: meDict(
+              {
+                "2": wsEntry(2, {
+                  project_id: 4025120,
+                  name: "All Project Data",
+                  is_global: true,
+                }),
+              },
+              { "4025120": { name: "demo", organization_id: 1 } },
+            ),
+          },
+        };
+      }
+      return { status: 200, json: { results: [] } };
+    });
+    const ws = new Workspace({ session, client });
+
+    await ws.me(); // warm the per-account /me cache (as `mp login` would)
+    expect(await ws.api.resolveWorkspaceId()).toBe(2);
+    expect(calls.some((p) => p.includes("workspaces/public"))).toBe(false);
+    await ws.close();
+  });
+
+  it("after use({project}), the resolver selects the new project's view", async () => {
+    const session = makeSession({
+      name: "facade",
+      projectId: "4025120",
+      username: "u",
+      secret: "s",
+    });
+    const { client } = createMockClient(session, (request) => {
+      if (request.url.endsWith("/me")) {
+        return {
+          status: 200,
+          json: {
+            results: meDict(
+              {
+                "2": wsEntry(2, { project_id: 4025120, is_global: true }),
+                "3": wsEntry(3, { project_id: 777, is_global: true }),
+              },
+              {
+                "4025120": { name: "a", organization_id: 1 },
+                "777": { name: "b", organization_id: 1 },
+              },
+            ),
+          },
+        };
+      }
+      return { status: 200, json: { results: [] } };
+    });
+    const ws = new Workspace({ session, client });
+
+    await ws.me();
+    expect(await ws.api.resolveWorkspaceId()).toBe(2);
+    await ws.use({ project: "777" });
+    expect(await ws.api.resolveWorkspaceId()).toBe(3);
+    await ws.close();
+  });
+
+  it("after use({account}), the resolver reads the NEW account's cold cache", async () => {
+    const bundle = makeEffects();
+    const accounts = createAccountsNamespace(bundle.effects);
+    await accounts.add("acct_a", {
+      type: "service_account",
+      region: "us",
+      default_project: "100",
+      username: "ua",
+      secret: new Secret("sa"),
+    });
+    await accounts.add("acct_b", {
+      type: "service_account",
+      region: "us",
+      default_project: "200",
+      username: "ub",
+      secret: new Secret("sb"),
+    });
+
+    const session = makeSession({
+      name: "acct_a",
+      projectId: "100",
+      username: "ua",
+      secret: "sa",
+    });
+    const { client } = createMockClient(session, (request) => {
+      const path = new URL(request.url).pathname;
+      if (path.endsWith("/me")) {
+        // Account A's /me: a global workspace (11) for project 100.
+        return {
+          status: 200,
+          json: {
+            results: meDict(
+              { "11": wsEntry(11, { project_id: 100, is_global: true }) },
+              { "100": { name: "a", organization_id: 1 } },
+            ),
+          },
+        };
+      }
+      if (path.includes("workspaces/public")) {
+        // Account B's project (200) public workspace.
+        return {
+          status: 200,
+          json: {
+            results: [
+              {
+                id: 22,
+                name: "B default",
+                project_id: 200,
+                is_default: true,
+              },
+            ],
+          },
+        };
+      }
+      return { status: 200, json: { results: [] } };
+    });
+    const ws = new Workspace({
+      session,
+      client,
+      seams: resolverSeamsFromEffects(bundle.effects),
+    });
+
+    await ws.me(); // warm acct_a's /me cache
+    expect(await ws.api.resolveWorkspaceId()).toBe(11);
+    await ws.use({ account: "acct_b" }); // acct_b's /me cache is cold
+    expect(await ws.api.resolveWorkspaceId()).toBe(22);
+    await ws.close();
+  });
+
+  it("a resolver wired onto an injected client is not overwritten", async () => {
+    const session = makeSession({
+      name: "facade",
+      projectId: "4025120",
+      username: "u",
+      secret: "s",
+    });
+    const { client } = createMockClient(session, () => ({
+      status: 200,
+      json: [],
+    }));
+    const custom = vi.fn().mockResolvedValue(99);
+    client.setWorkspaceResolver(custom);
+
+    new Workspace({ session, client });
+
+    // Facade left the caller's resolver in place.
+    expect(await client.resolveWorkspaceId()).toBe(99);
+    expect(custom).toHaveBeenCalledTimes(1);
   });
 });

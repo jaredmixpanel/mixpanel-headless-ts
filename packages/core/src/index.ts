@@ -52,5 +52,13 @@ export {
   urlNormalizer,
 } from "./replays/replay-labels.js";
 
+// Phase-3 B7 (shard A1): the namespace surface behind the four
+// deferred `__all__` names `accounts` / `session` / `targets` /
+// `login_unified` (playbook `:74-79`). Core exports FACTORIES over the
+// injected `AuthEffects` bag plus the throwing `defaultAuthEffects()`;
+// B8 exports the ready-made namespace objects bound to on-disk
+// effects (`b7-packets.md` §3.1-§3.2).
+export * from "./accounts/index.js";
+
 /** Package name constant exercised by the skeleton smoke test. */
 export const CORE_PACKAGE_NAME = "@mixpanel-headless/core";

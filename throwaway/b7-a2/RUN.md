@@ -30,17 +30,17 @@ resolver-truth: checks 788 (incl. 600 fuzz runs, seed 20260816)  failures 0  fuz
 probe-branches: checks 660 (incl. 600 fuzz runs, seed 20260817)  failures 0  fuzz-divergences 0
 ```
 
-| group                                                                   | checks |
-| ------------------------------------------------------------------------ | -----: |
-| account-axis bitmap 2^6 vs `firstPresent` mini-model                      |     64 |
-| project-axis 2^4 × 3 account states                                       |     48 |
-| workspace-axis 2^5 (incl. all-absent → null terminal)                     |     32 |
-| resolver error rows + rule locks (§2.6 list, incl. Nd/No two-stage)       |     32 |
-| resolver mandatory edge set (`""`/`"𝒳"`/`18.0`/`1.5` per admitted param) |     12 |
-| resolver fast-check fuzz (seed **20260816**, 600 runs ≥ 500 budget)       |    600 |
-| probe branches (items 1-9: positions, statuses, net, order, cap, timeout) |     47 |
-| `probe_region_for_credential` branches + `probeBaseUrl` shapes (item 10)  |     13 |
-| probe fast-check fuzz (seed **20260817**, 600 runs ≥ 500 budget)          |    600 |
+| group                                                                     |   checks |
+| ------------------------------------------------------------------------- | -------: |
+| account-axis bitmap 2^6 vs `firstPresent` mini-model                      |       64 |
+| project-axis 2^4 × 3 account states                                       |       48 |
+| workspace-axis 2^5 (incl. all-absent → null terminal)                     |       32 |
+| resolver error rows + rule locks (§2.6 list, incl. Nd/No two-stage)       |       32 |
+| resolver mandatory edge set (`""`/`"𝒳"`/`18.0`/`1.5` per admitted param)  |       12 |
+| resolver fast-check fuzz (seed **20260816**, 600 runs ≥ 500 budget)       |      600 |
+| probe branches (items 1-9: positions, statuses, net, order, cap, timeout) |       47 |
+| `probe_region_for_credential` branches + `probeBaseUrl` shapes (item 10)  |       13 |
+| probe fast-check fuzz (seed **20260817**, 600 runs ≥ 500 budget)          |      600 |
 | **total**                                                                 | **1448** |
 
 Zero divergences in both fuzz families (zero-divergence table: empty).
@@ -80,7 +80,7 @@ Zero divergences in both fuzz families (zero-divergence table: empty).
 3. **Network-error rendering reverse table** (packet Caution #8):
    committed `ECONNREFUSED → ConnectError`,
    `UND_ERR_CONNECT_TIMEOUT → ConnectTimeout`, `UND_ERR_SOCKET →
-   ReadError`, fallback = inner cause `name` (a fired TS timeout clock
+ReadError`, fallback = inner cause `name` (a fired TS timeout clock
    renders `TimeoutError: ...` vs httpx's `ConnectTimeout/ReadTimeout`
    split — best-effort, vector-locked for `ECONNREFUSED` only).
 4. **Pending-exemplar re-anchors pulled forward from the gate spec**

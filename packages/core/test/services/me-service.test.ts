@@ -412,3 +412,78 @@ describe("MeService cache-store seam", () => {
     expect(await cache.get()).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// B7-A1: `TestMeServiceResolveWorkspace` (test_workspace_resolution.py
+// :154) — landed here per `b7-packets.md` §3.4 (the stale B4-C1 "is
+// B8" note in `client-workspace.test.ts` is corrected in that file,
+// packet Caution #17). Three of the class's five cases are LITERAL
+// DUPLICATES of the dagger-path section above and are cited rather
+// than re-translated (R10.2): `test_no_workspaces_for_project_is_none`
+// (:196) ≡ "returns null when the project has no views";
+// `test_non_numeric_project_is_none` (:203) ≡ "returns null for a
+// non-numeric project id"; `test_cold_cache_is_none_without_network`
+// (:208) ≡ "returns null on a cold cache WITHOUT calling the API".
+// ---------------------------------------------------------------------------
+
+describe("TestMeServiceResolveWorkspace (test_workspace_resolution.py:154)", () => {
+  it("picks the global view for the requested project (:175)", async () => {
+    const raw: Record<string, JsonValue> = {
+      user_id: 1,
+      user_email: "ak@example.com",
+      projects: { "4025120": { name: "demo", organization_id: 1 } },
+      workspaces: {
+        "1": {
+          id: 1,
+          name: "Console",
+          project_id: 4025120,
+          is_default: true,
+          is_global: null,
+          is_visible: null,
+        },
+        "2": {
+          id: 2,
+          name: "All Project Data",
+          project_id: 4025120,
+          is_default: null,
+          is_global: true,
+          is_visible: null,
+        },
+      },
+    };
+    const { service } = makeService({ behaviour: () => Promise.resolve(raw) });
+    await service.fetch(); // warm, as the Python fixture does
+
+    expect(await service.resolveWorkspace("4025120")).toBe(2);
+  });
+
+  it("only workspaces of the requested project are considered (:186)", async () => {
+    const raw: Record<string, JsonValue> = {
+      user_id: 1,
+      user_email: "ak@example.com",
+      projects: { "4025120": { name: "demo", organization_id: 1 } },
+      workspaces: {
+        "1": {
+          id: 1,
+          name: "All Project Data",
+          project_id: 999,
+          is_default: null,
+          is_global: true,
+          is_visible: null,
+        },
+        "2": {
+          id: 2,
+          name: "mine",
+          project_id: 4025120,
+          is_default: true,
+          is_global: null,
+          is_visible: null,
+        },
+      },
+    };
+    const { service } = makeService({ behaviour: () => Promise.resolve(raw) });
+    await service.fetch();
+
+    expect(await service.resolveWorkspace("4025120")).toBe(2);
+  });
+});

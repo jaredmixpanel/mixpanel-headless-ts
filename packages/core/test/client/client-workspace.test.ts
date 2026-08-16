@@ -9,10 +9,11 @@
 // - tests/unit/test_workspace_resolution.py::
 //   TestResolveWorkspaceIdWithResolver (:228-456) and
 //   ::TestProjectsMetadataIndex (:459-608). TestSelectWorkspaceId lives
-//   in me.test.ts; ::TestMeServiceResolveWorkspace (:154) is B8
-//   (MeService — playbook Discrepancy #5) and ::TestFacadeResolverWiring
-//   (:611) is B6 (Workspace facade) — header exclusions per packet C1
-//   §Layer-3.
+//   in me.test.ts; ::TestMeServiceResolveWorkspace (:154) is translated
+//   in `test/services/me-service.test.ts` and ::TestFacadeResolverWiring
+//   (:611) in `test/workspace/workspace-facade.test.ts` — both landed
+//   at B7-A1 (`b7-packets.md` §3.4; the original "B8"/"B6" assignments
+//   here were STALE post-W1, corrected per packet Caution #17).
 //
 // Entry-point substitutions as in client-core.test.ts; MagicMock
 // resolvers translate to counting closures.
