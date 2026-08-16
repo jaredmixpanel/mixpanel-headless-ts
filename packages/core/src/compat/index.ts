@@ -9,6 +9,7 @@ export { cpLength, cpSlice, sortedByCodepoint } from "./codepoint.js";
 export { pythonFloat } from "./python-float.js";
 export { pythonFloatStr } from "./python-float-str.js";
 export { pythonInt } from "./python-int.js";
+export { pythonJsonDumps } from "./python-json-dumps.js";
 export { pythonStrip } from "./python-strip.js";
 export { pythonRepr, pythonStr } from "./python-str.js";
 export type { PythonValue } from "./python-str.js";

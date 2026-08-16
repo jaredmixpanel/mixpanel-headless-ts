@@ -127,8 +127,11 @@ describe("runVector — api gating", () => {
   });
 
   it("returns UNPORTED for a mapped name with no bound implementation", async () => {
+    // Probe name must be a mapped-but-unbound api: C1 used
+    // api_client.activity_feed, bound at B4-C2 — now a C3 shard name.
+    // The B4 GATE prefix-flip re-adjusts this suite (C1 notes item 3).
     const vector = makeVector({
-      api: "api_client.activity_feed",
+      api: "api_client.list_dashboards",
       kind: "wire",
       expect: '{"result": null}',
     });
@@ -492,7 +495,13 @@ describe("runVector — wire kind", () => {
     expect((await runVector(vector, deps)).verdict).toBe("PASS");
   });
 
-  it("FAIL_ERROR when a setup call raises", async () => {
+  it("swallows a raising setup call (D2 limitation, execute.py:532-541)", async () => {
+    // The Python runner deliberately ignores setup returns/raises —
+    // earlier test calls may have raised under pytest.raises at record
+    // time too (e.g. a recorded 400 on a get_event_properties setup).
+    // Their request sides stay diffed via interactions[]; the vector
+    // proceeds to the measured call (adjusted at B4-C2 to mirror the
+    // Python semantics; previously locked FAIL_ERROR).
     const vector = makeVector({
       kind: "wire",
       api: "api_client.get_events",
@@ -506,8 +515,7 @@ describe("runVector — wire kind", () => {
       "api_client.get_events": () => null,
     });
     const result = await runVector(vector, deps);
-    expect(result.verdict).toBe("FAIL_ERROR");
-    expect(result.diff).toContain("setup call");
+    expect(result.verdict).toBe("PASS");
   });
 
   it("surfaces a transport error the port wraps into its taxonomy (R2.10)", async () => {

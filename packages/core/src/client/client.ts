@@ -60,6 +60,18 @@ import {
 import { validateResponseModels } from "./response-validation.js";
 import { maybeScopedPath } from "./scope.js";
 import {
+  createEngageMethods,
+  type EngageMethods,
+} from "../services/queries/engage.js";
+import {
+  createQueryHostMethods,
+  type QueryHostMethods,
+} from "../services/queries/query-host.js";
+import {
+  createStreamingMethods,
+  type StreamingMethods,
+} from "../services/queries/streaming.js";
+import {
   createRequestExecutor,
   normalizedAbortError,
   rawFetch,
@@ -300,9 +312,11 @@ export interface ClientCore {
 
 /**
  * The assembled Mixpanel API client (C1 core surface; B4-C2..C5 extend
- * this interface with their domain methods at the marked merge point).
+ * this interface with their domain methods at the marked merge point —
+ * C2 landed: query-host + engage + streaming/export).
  */
-export interface MixpanelClient {
+export interface MixpanelClient
+  extends QueryHostMethods, EngageMethods, StreamingMethods {
   /** The resolved Session bound to this client (`session` property). */
   readonly session: Session;
   /** The project ID from the bound Session (`project_id` property). */
@@ -939,6 +953,11 @@ export function createMixpanelClient(
   };
 
   const client: MixpanelClient = {
+    // === B4 domain-method merge point (append-only; one spread line
+    // per shard — C2..C5; shards touch disjoint lines here). ===
+    ...createQueryHostMethods(core, { resolveWorkspaceId }),
+    ...createEngageMethods(core),
+    ...createStreamingMethods(core),
     get session(): Session {
       return session;
     },
@@ -1060,9 +1079,6 @@ export function createMixpanelClient(
       httpHandle = null;
     },
   };
-
-  // === B4 domain-method merge point (append-only; one line per shard,
-  // Object.assign(client, create<Domain>Methods(core)) — C2..C5). ===
 
   return client;
 }

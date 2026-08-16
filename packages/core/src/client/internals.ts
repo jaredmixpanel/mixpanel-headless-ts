@@ -235,8 +235,11 @@ function jsonDumpsLike(value: JsonValue): string {
 
 /**
  * Render a parsed JSON value the way Python `str()` renders the
- * `json.loads` product — consumed only by `_error_message`'s non-string
- * `error` stringification (message text; out of contract per R5.4).
+ * `json.loads` product — consumed by `_error_message`'s non-string
+ * `error` stringification (message text; out of contract per R5.4) and
+ * by B4-C2's `engage_stats` non-dict guard / `get_events` /
+ * `get_property_values` `str(e)` element casts (`api_client.py:2339`,
+ * `:2427`, `:2479` — exported for those R10.8 by-name consumers).
  *
  * Integer `JsonNumber` tokens map to `bigint` (Python `int`, arbitrary
  * precision); float tokens map to `number` — an INTEGRAL float token
@@ -246,7 +249,7 @@ function jsonDumpsLike(value: JsonValue): string {
  * @param value - The parsed value.
  * @returns Python's `str()` rendering (containers via `repr`).
  */
-function jsonValuePythonStr(value: JsonValue): string {
+export function jsonValuePythonStr(value: JsonValue): string {
   return pythonStr(toPythonValue(value));
 }
 

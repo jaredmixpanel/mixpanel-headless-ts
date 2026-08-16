@@ -29,7 +29,7 @@
 
 import { canonicalize } from "./canonical.js";
 import type { GivenResponse, ParsedInteraction } from "./interactions.js";
-import type { JsonValue } from "./json-value.js";
+import { JsonNumber, type JsonValue } from "./json-value.js";
 import { createTransportRejection } from "./transport-errors.js";
 
 /** Raised into the library when replay traffic diverges from the record. */
@@ -138,7 +138,8 @@ function chunkBytes(encoding: "utf8" | "base64", data: string): Uint8Array {
  * Build the canned `Response` for one recorded `givenResponse`.
  *
  * Body precedence follows the schema's mutually exclusive fields: `body`
- * (canonical JSON text), `body_text`, `body_base64`, or `body_stream`
+ * (compact JSON text in STORED key order — see {@link storedJsonText}),
+ * `body_text`, `body_base64`, or `body_stream`
  * (a `ReadableStream` enqueuing each recorded chunk as its own
  * `Uint8Array`, preserving boundaries per D2). When a JSON `body` is
  * present and the recorded headers carry no `content-type`,
@@ -148,11 +149,50 @@ function chunkBytes(encoding: "utf8" | "base64", data: string): Uint8Array {
  * @param given - The parsed recorded response.
  * @returns A fresh `Response`.
  */
+/**
+ * Serialize a recorded JSON `body` EXACTLY as the Python replay
+ * transport does (`conformance/runner/transport.py:188-190` —
+ * `json.dumps(body, separators=(",", ":"), ensure_ascii=False)`):
+ * compact separators, stored KEY ORDER preserved (never canonicalized —
+ * key order is observable to order-sensitive consumers like
+ * `get_event_properties`'s `list(response.keys())`, found by the first
+ * B4-C2 replay), lossless number tokens verbatim.
+ *
+ * @param value - The loaded body value.
+ * @returns The serialized text.
+ */
+function storedJsonText(value: JsonValue): string {
+  if (value === null) {
+    return "null";
+  }
+  if (value === true) {
+    return "true";
+  }
+  if (value === false) {
+    return "false";
+  }
+  if (typeof value === "string") {
+    return JSON.stringify(value);
+  }
+  if (typeof value === "number" || typeof value === "bigint") {
+    return String(value);
+  }
+  if (value instanceof JsonNumber) {
+    return value.raw;
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => storedJsonText(item)).join(",")}]`;
+  }
+  return `{${Object.entries(value)
+    .map(([key, member]) => `${JSON.stringify(key)}:${storedJsonText(member)}`)
+    .join(",")}}`;
+}
+
 export function buildResponse(given: GivenResponse): Response {
   const headers = new Headers(given.headers);
   let body: BodyInit | null = null;
   if (given.hasBody) {
-    body = canonicalize(given.body ?? null);
+    body = storedJsonText(given.body ?? null);
     if (!headers.has("content-type")) {
       headers.set("content-type", "application/json");
     }

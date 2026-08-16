@@ -502,11 +502,14 @@ async function replayVector(
     const kwargs = deps.codecs.decodeInputKwargs(entry.input);
     try {
       await implementation(contextFor(entry.api, kwargs, entry.input));
-    } catch (cause) {
-      return fail(
-        "FAIL_ERROR",
-        `setup call ${JSON.stringify(entry.api)} raised: ${String(cause)}`,
-      );
+    } catch {
+      // Setup returns/raises are NOT diffed (design D2 logged
+      // limitation, Python runner execute.py:532-541): earlier test
+      // calls may have raised under pytest.raises at record time too.
+      // Their request sides stay fully diffed via interactions[];
+      // divergence surfaces there (found by the first B4-C2 replay —
+      // a recorded 400 on a get_event_properties SETUP call).
+      continue;
     }
   }
 

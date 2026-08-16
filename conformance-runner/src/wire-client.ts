@@ -61,7 +61,10 @@ export const CLIENT_STATE_KEY = "api_client";
  * @returns The decoded kwarg value.
  * @throws Error - When the kwarg is missing from `call.input`.
  */
-function requireWireKwarg(context: InvocationContext, name: string): unknown {
+export function requireWireKwarg(
+  context: InvocationContext,
+  name: string,
+): unknown {
   if (!Object.hasOwn(context.kwargs, name)) {
     throw new Error(
       `${context.api}: vector call.input is missing required kwarg ${JSON.stringify(name)}`,
@@ -409,7 +412,9 @@ export class WireCoreError extends Error implements ExpectErrorConvertible {
  * @throws unknown - Anything else, unchanged (harness sequence errors
  *   and runner/infra bugs must reach the runner intact).
  */
-async function runWire(invoke: () => Promise<unknown>): Promise<JsonValue> {
+export async function runWire(
+  invoke: () => Promise<unknown>,
+): Promise<JsonValue> {
   try {
     return coreToVectorJson(await invoke());
   } catch (cause) {
@@ -427,7 +432,7 @@ async function runWire(invoke: () => Promise<unknown>): Promise<JsonValue> {
  * @param name - The kwarg name.
  * @returns The record bag, or an empty bag when absent/null.
  */
-function optionalRecord(
+export function optionalRecord(
   context: InvocationContext,
   name: string,
 ): Record<string, unknown> | undefined {
