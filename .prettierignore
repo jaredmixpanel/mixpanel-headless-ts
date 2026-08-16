@@ -14,3 +14,5 @@ conformance-runner/src/api-map.gen.ts
 packages/core/src/compat/non-printable.gen.ts
 # Local agent scratch notes (git-ignored).
 .notes/
+# R10.9 throwaway harness bundles (git-ignored .build output).
+throwaway/*/.build/

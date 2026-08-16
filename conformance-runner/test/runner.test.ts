@@ -6,12 +6,12 @@
 // path; the stubs themselves are replay-pipeline test doubles in the D13
 // wirestub spirit.
 import { describe, expect, it } from "vitest";
-import { createRunnerDeps } from "../src/bindings.js";
-import { RecordingCallback } from "../src/codecs.js";
+import { createRunnerDeps, registerContractCodecs } from "../src/bindings.js";
+import { CodecRegistry, RecordingCallback } from "../src/codecs.js";
 import type { JsonValue } from "../src/json-value.js";
 import { parseLossless } from "../src/lossless-json.js";
 import type { InvocationContext, RunnerDeps } from "../src/runner.js";
-import { runVector } from "../src/runner.js";
+import { ImplementationRegistry, runVector } from "../src/runner.js";
 import type { ConformanceVector } from "../src/vector-types.js";
 
 const RECORD_EPOCH = "2026-01-15T12:00:00Z";
@@ -63,7 +63,12 @@ function makeVector(overrides: {
 }
 
 /**
- * Build deps with stub bindings.
+ * Build deps with stub bindings over a FRESH (empty) implementation
+ * registry — synthetic stub tests must stay independent of the REAL
+ * port-batch bindings, which grow every batch and would otherwise
+ * collide on the corpus api names the stubs borrow (first hit: the
+ * B4-C1 `api_client.set_workspace_id` binding). The contract codecs are
+ * still registered so decode behavior matches production.
  *
  * @param bind - Api-name → stub pairs to register.
  * @returns Runner deps.
@@ -71,7 +76,14 @@ function makeVector(overrides: {
 function depsWith(
   bind: Record<string, (ctx: InvocationContext) => unknown>,
 ): RunnerDeps {
-  const deps = createRunnerDeps(RECORD_EPOCH);
+  const implementations = new ImplementationRegistry();
+  const codecs = new CodecRegistry();
+  registerContractCodecs(codecs);
+  const deps: RunnerDeps = {
+    implementations,
+    codecs,
+    recordEpoch: RECORD_EPOCH,
+  };
   for (const [api, impl] of Object.entries(bind)) {
     deps.implementations.register(api, impl);
   }

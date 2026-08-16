@@ -151,12 +151,21 @@ export function knownTransportErrorClass(httpxClass: string): boolean {
  * // (rejection.cause as Error & { code: string }).code === "ECONNREFUSED"
  * ```
  */
-export function createTransportRejection(httpxClass: string): TypeError {
+export function createTransportRejection(
+  httpxClass: string,
+  message?: string,
+): TypeError {
   const spec = REJECTION_TABLE[httpxClass];
   if (spec === undefined) {
     throw new UnknownTransportErrorClass(httpxClass);
   }
-  const cause = new Error(spec.causeMessage) as Error & { code: string };
+  // The recorded exception message wins when present (B4-C1): the
+  // Python replay transport re-raises `cls(recorded_message)` and
+  // `str(e)` flows into `details_contain.error`, so the TS cause must
+  // carry the same text for the wire error diff to reproduce it.
+  const cause = new Error(message ?? spec.causeMessage) as Error & {
+    code: string;
+  };
   cause.name = spec.causeName;
   cause.code = spec.causeCode;
   return new TypeError("fetch failed", { cause });

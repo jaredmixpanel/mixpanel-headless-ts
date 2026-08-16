@@ -47,8 +47,56 @@ export type {
   TransportRequestOptions,
   WireResponse,
 } from "./internals.js";
-export { JsonNumber } from "./json-value.js";
+export { createMixpanelClient } from "./client.js";
+export type {
+  ClientAppRequestOptions,
+  ClientCore,
+  ClientRequestOptions,
+  ClientUseOptions,
+  CustomHeaderEnvSource,
+  HttpHandle,
+  MixpanelClient,
+  MixpanelClientOptions,
+  QueryHostRequestOptions,
+} from "./client.js";
+export { JsonNumber, toNativeJson } from "./json-value.js";
 export type { JsonValue } from "./json-value.js";
+export {
+  MeOrgInfo,
+  MeProjectInfo,
+  MeResponse,
+  MeWorkspaceInfo,
+  selectWorkspaceId,
+  workspaceViewFromMeWorkspace,
+  workspaceViewFromMetadataEntry,
+  workspaceViewFromPublic,
+} from "./me.js";
+export type {
+  MeOrgInfoInit,
+  MeProjectInfoInit,
+  MeResponseInit,
+  MeWorkspaceInfoInit,
+  WorkspaceResolver,
+  WorkspaceView,
+} from "./me.js";
+export {
+  validateResponseModel,
+  validateResponseModels,
+} from "./response-validation.js";
+export type {
+  PydanticStyleError,
+  ResponseModelClass,
+} from "./response-validation.js";
+export {
+  appendQueryParams,
+  createRequestExecutor,
+  normalizedAbortError,
+  primitiveParamValue,
+  quotePlus,
+  rawFetch,
+  urlEncodePairs,
+} from "./transport.js";
+export type { RawFetchResult } from "./transport.js";
 export { iterJsonlLines } from "./jsonl.js";
 export {
   LosslessJsonError,

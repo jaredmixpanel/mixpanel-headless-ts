@@ -158,6 +158,7 @@ import type {
   RunnerDeps,
 } from "./runner.js";
 import { ImplementationRegistry } from "./runner.js";
+import { registerApiClientCoreBindings } from "./wire-client.js";
 import { WireStubClient, type WireStubRequestOptions } from "./wirestub.js";
 
 /**
@@ -1544,6 +1545,10 @@ export function createRunnerDeps(recordEpoch: string): RunnerDeps {
   registerCompatBindings(implementations);
   registerWireStubBindings(implementations);
   registerClientInternalsBindings(implementations);
+  // B4 wire-client bindings (P3-2 b′ inline for a fable batch): C1
+  // client core; later shards append their registrations in
+  // wire-client.ts / sibling modules.
+  registerApiClientCoreBindings(implementations);
   registerContractCodecs(codecs);
   registerQueryParamBindings(implementations, codecs);
   registerValidatorBindings(implementations);

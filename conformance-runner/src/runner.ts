@@ -77,6 +77,13 @@ export interface InvocationContext {
   readonly session?: JsonValue;
   /** The raw `call.workspace_session` object, when recorded (D5.1). */
   readonly workspaceSession?: JsonValue;
+  /**
+   * The raw `call.client_options` object, when recorded (schema
+   * extension 12 — non-default client constructor kwargs such as
+   * `max_retries`; mirror of the Python runner's
+   * `execute.py:529` plumb into `make_api_client`).
+   */
+  readonly clientOptions?: JsonValue;
   /** Mutable per-vector state shared across setup + measured calls. */
   readonly state: Map<string, unknown>;
 }
@@ -464,6 +471,9 @@ async function replayVector(
       : {}),
     ...(vector.call["workspace_session"] !== undefined
       ? { workspaceSession: vector.call["workspace_session"] }
+      : {}),
+    ...(vector.call["client_options"] !== undefined
+      ? { clientOptions: vector.call["client_options"] }
       : {}),
     state,
   });

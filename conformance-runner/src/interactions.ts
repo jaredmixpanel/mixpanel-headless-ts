@@ -88,6 +88,14 @@ export interface TransportErrorResponse {
   readonly type: "transport_error";
   /** The httpx exception class name the mock handler raised. */
   readonly httpxClass: string;
+  /**
+   * The recorded exception message, when captured. The Python replay
+   * transport re-raises `cls(message)` (`transport.py:144-162`), and
+   * `str(e)` flows into wire `details_contain.error` bags — so the TS
+   * rejection must carry it too (threaded into the fetch rejection's
+   * `cause.message` by `vector-fetch.ts`).
+   */
+  readonly message?: string;
 }
 
 /** One parsed interaction: expected request + canned response. */
@@ -255,7 +263,12 @@ function parseResponse(
     `${context}.response`,
   );
   if (transportError !== undefined) {
-    return { type: "transport_error", httpxClass: transportError };
+    const message = optionalString(record, "message", `${context}.response`);
+    return {
+      type: "transport_error",
+      httpxClass: transportError,
+      ...(message !== undefined ? { message } : {}),
+    };
   }
   const status = record["status"];
   if (!(status instanceof JsonNumber) || !status.isIntegerToken()) {

@@ -98,3 +98,35 @@ export type JsonValue =
   | JsonNumber
   | JsonValue[]
   | { [key: string]: JsonValue };
+
+/**
+ * Convert a lossless-parsed JSON tree to NATIVE JS values — the point
+ * where the TS wire layer matches Python's `json.loads` product
+ * (`int`/`float` → `number`, containers recursing).
+ *
+ * Used by response-model validation paths (`list_workspaces`), where the
+ * Pydantic-lax coercion mirror consumes native scalars. Two documented
+ * narrowings (R4.5 numbers policy): integer tokens beyond 2^53−1
+ * double-round (Python keeps the exact int — no modeled endpoint emits
+ * such ids), and float-ness of integral tokens is erased (`42.0` → `42`;
+ * Pydantic-lax accepts both identically at every consuming field).
+ *
+ * @param value - The parsed tree ({@link JsonNumber} tokens intact).
+ * @returns The native-valued tree.
+ */
+export function toNativeJson(value: JsonValue): unknown {
+  if (value instanceof JsonNumber) {
+    return value.toNumber();
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => toNativeJson(item));
+  }
+  if (typeof value === "object" && value !== null) {
+    const out: Record<string, unknown> = {};
+    for (const [key, member] of Object.entries(value)) {
+      out[key] = toNativeJson(member);
+    }
+    return out;
+  }
+  return value;
+}

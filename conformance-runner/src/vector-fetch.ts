@@ -306,7 +306,10 @@ export function createVectorFetch(
     consumed[slotIndex] = true;
     const slot = interactions[slotIndex] as ParsedInteraction;
     if (slot.response.type === "transport_error") {
-      throw createTransportRejection(slot.response.httpxClass);
+      throw createTransportRejection(
+        slot.response.httpxClass,
+        slot.response.message,
+      );
     }
     return buildResponse(slot.response);
   }) as typeof fetch;
