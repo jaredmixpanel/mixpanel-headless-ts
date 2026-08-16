@@ -82,8 +82,9 @@ describe("batchStatusFor — table lookup", () => {
 
   it("resolves pending prefixes (Phase-3 batches)", () => {
     expect(batchStatusFor("workspace.build_funnel_params")).toBe("pending");
-    expect(batchStatusFor("api_client.activity_feed")).toBe("pending");
-    expect(batchStatusFor("pagination.paginate")).toBe("pending");
+    expect(batchStatusFor("replays.replays_for_user")).toBe("pending");
+    expect(batchStatusFor("region_probe.probe")).toBe("pending");
+    expect(batchStatusFor("oauth_flow.build_authorize_url")).toBe("pending");
   });
 
   it("defaults to pending when no prefix matches", () => {
@@ -177,12 +178,26 @@ describe("batchStatusFor — table lookup", () => {
       "done",
     );
   });
+
+  it("api_client.* + pagination.* are declared done (the B4 gate flip)", () => {
+    // Playbook P3-5 §4: the B4 gate flips exactly these two prefixes
+    // (single flip at the gate; bound names already replayed while
+    // pending); stragglers under them must FAIL, never skip (Risk #8).
+    // The B0-era exact-name entry `api_client._iter_jsonl_lines` stays
+    // as a shadowed-but-consistent longer prefix (b4-packets flip spec).
+    expect(BATCH_STATUS.get("api_client.")).toBe("done");
+    expect(BATCH_STATUS.get("pagination.")).toBe("done");
+    expect(BATCH_STATUS.get("api_client._iter_jsonl_lines")).toBe("done");
+    expect(batchStatusFor("api_client.activity_feed")).toBe("done");
+    expect(batchStatusFor("api_client._iter_jsonl_lines")).toBe("done");
+    expect(batchStatusFor("pagination.paginate_all")).toBe("done");
+  });
 });
 
 describe("runVector — batch-status verdict wiring", () => {
   it("pending batch + unbound api → UNPORTED (counted, never failing)", async () => {
     const result = await runVector(
-      vectorFor("api_client.activity_feed"),
+      vectorFor("workspace.build_funnel_params"),
       bareDeps(),
     );
     expect(result.verdict).toBe("UNPORTED");

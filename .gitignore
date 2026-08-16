@@ -3,4 +3,3 @@ dist/
 coverage/
 *.tsbuildinfo
 .notes/
-throwaway/*/.build/

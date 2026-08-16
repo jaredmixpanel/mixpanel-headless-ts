@@ -38,9 +38,12 @@ export type BatchStatus = "pending" | "done";
  *   Phase-3 B3 builders (playbook P3-5 §4 B3-gate flip; 299 vectors;
  *   `bookmark_schema.` is count-neutral — zero corpus vectors, added
  *   so the two oracle-probed schema apis are explicitly B3-owned).
+ * - `api_client.` / `pagination.` — the Phase-3 B4 wire client
+ *   (playbook P3-5 §4 B4-gate flip; 843 vectors, gate delta 842 — the
+ *   P3-1 † carried vector waits on its `workspace.me` setup until B6).
  *
  * Pending batches (Phase 3, per plan §6 / api-map):
- * - `api_client.` / `pagination.` (B4), `workspace.` (B5/B6 split),
+ * - `workspace.` (B5/B6 split),
  *   `replays.` / `replay_labels.` / `rrweb_analyzer.` (B5),
  *   `region_probe.` (B7), `oauth_flow.` (B8).
  */
@@ -51,12 +54,16 @@ export const BATCH_STATUS: ReadonlyMap<string, BatchStatus> = new Map<
   ["compat.", "done"],
   ["wirestub.", "done"],
   ["types.", "done"],
-  ["api_client.", "pending"],
+  // Phase-3 B4 gate flip (playbook P3-5 §4): the wire client is done —
+  // stragglers under `api_client.`/`pagination.` (bottom of table) now
+  // FAIL instead of skipping.
+  ["api_client.", "done"],
   // Phase-3 B0-2 (playbook P3-5 §4): the ONE B0-owned api name — an
   // exact-name entry is still a PREFIX under startsWith matching
-  // (longest-prefix wins over the pending `api_client.` row above); the
-  // standing collision assertion holds — no other corpus api name starts
-  // with this entry.
+  // (longest-prefix wins over the `api_client.` row above; both read
+  // `done` since the B4 gate flip — shadowed-but-consistent, kept per
+  // the b4-packets flip spec); the standing collision assertion holds —
+  // no other corpus api name starts with this entry.
   ["api_client._iter_jsonl_lines", "done"],
   ["workspace.", "pending"],
   // Phase-3 B2 gate flip (playbook P3-5 §4): validators are done —
@@ -78,7 +85,7 @@ export const BATCH_STATUS: ReadonlyMap<string, BatchStatus> = new Map<
   ["rrweb_analyzer.", "pending"],
   ["oauth_flow.", "pending"],
   ["region_probe.", "pending"],
-  ["pagination.", "pending"],
+  ["pagination.", "done"],
 ]);
 
 /**
