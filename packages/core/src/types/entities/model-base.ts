@@ -717,7 +717,7 @@ function dumpValue(
   if (Array.isArray(value)) {
     return value.map((item) => dumpValue(item, byAlias, excludeNone));
   }
-  if (isPlainObject(value)) {
+  if (isPlainRecordValue(value)) {
     // Pydantic keeps `None` VALUES inside plain dict fields
     // (measured 2026-08-16) — only model fields are excluded.
     const out: Record<string, unknown> = {};
@@ -727,7 +727,31 @@ function dumpValue(
     }
     return out;
   }
+  // Non-record instances pass through BY REFERENCE — pydantic v2
+  // `model_dump` keeps arbitrary objects inside `dict[str, Any]`
+  // fields by identity (measured 2026-08-16: `out['d']['k'] is c` for
+  // a custom-class member, with and without `exclude_none`). The
+  // previous clone-anything walk stripped class behavior (e.g. a
+  // `Uint8Array` decomposed into index keys) — B6-BIND fidelity fix.
   return value;
+}
+
+/**
+ * Whether a value is a PLAIN record (`Object.prototype` or null
+ * prototype) — the dict shape the dump walk clones. Class instances
+ * are NOT plain: they pass through {@link dumpValue} by reference,
+ * mirroring pydantic's identity passthrough.
+ *
+ * @param value - The candidate value.
+ * @returns True when the value is a plain record.
+ * @internal
+ */
+function isPlainRecordValue(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const proto: unknown = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
 }
 
 /**

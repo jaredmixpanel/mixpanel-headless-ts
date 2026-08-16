@@ -1,6 +1,9 @@
 /**
  * B5 (b′) binding module — the 44 `workspace.<member>` api names
- * (b5-packets.md §6.1/§6.2).
+ * (b5-packets.md §6.1/§6.2) — plus, since B6-BIND, the 11 B6-W1
+ * lifecycle/me/business-context names (b6-packets.md §11.3: W1 names
+ * fold in beside `workspaceFromSession`; the W2–W8 entity names live
+ * in the sibling module `wire-workspace-entities.ts`).
  *
  * Contract (P3-5, mirrored from the Python runner
  * `conformance/runner/execute.py::_ReplayContext.get_workspace` /
@@ -43,6 +46,11 @@ import { CONTRACT_TAG_CODECS } from "../../packages/core/src/types/vector-codecs
 import type { EventsInput } from "../../packages/core/src/workspace-query-params.js";
 import {
   Workspace,
+  type BusinessContextScopeOptions,
+  type WorkspaceMeOptions,
+  type WorkspaceProjectsOptions,
+  type WorkspaceUseOptions,
+  type WorkspaceWorkspacesOptions,
   type WorkspaceEventsOptions,
   type WorkspaceEventCountsOptions,
   type WorkspaceFetchReplayOptions,
@@ -431,7 +439,7 @@ function tagFloatDictValues(tree: JsonValue, key: string): void {
  * @throws unknown - Anything else, unchanged (harness sequence errors
  *   and runner/infra bugs must reach the runner intact).
  */
-async function runFacade(
+export async function runFacade(
   codecs: CodecRegistry,
   invoke: () => Promise<unknown>,
 ): Promise<JsonValue> {
@@ -458,7 +466,7 @@ async function runFacade(
  *   recorder guarantees the kwarg names — a bad bag is a vector bug and
  *   surfaces as the member's own validation error).
  */
-function optionsBag<T>(
+export function optionsBag<T>(
   context: InvocationContext,
   positionals: readonly string[],
   withToday = false,
@@ -479,8 +487,14 @@ function optionsBag<T>(
  * The five `build_*params` members are builder-kind (oracle-servable
  * through this same registry — the oracle server executes bound names
  * directly); `clear_discovery_cache` is wire_state; the rest wire_api.
- * `workspace.me` is deliberately NOT bound (§6.8 — B6-owned; the P3-1 †
- * carried vector stays UNPORTED through the B5 gate).
+ *
+ * B6-BIND extension (b6-packets.md §11): the 11 B6-W1 names register
+ * here too — `use`/`close` are wire_state (`registry.py:99-104`; no
+ * return-shape contract, the `clear_discovery_cache` precedent), and
+ * binding `workspace.me` closes the B4 dagger holdback (§11.2): the
+ * carried `api_client.resolve_workspace_id` vector's `workspace.me`
+ * setup now executes over the SHARED `clientFromSession` client, whose
+ * workspace resolver is installed at `Workspace` construction.
  *
  * @param implementations - The registry to extend.
  * @param codecs - The codec registry (output encoding + rich inputs).
@@ -971,4 +985,107 @@ export function registerWorkspaceBindings(
       ws.analyzeReplay(requireWireKwarg(context, "replay_id") as string),
     );
   });
+
+  // -------------------------------------------------------------------
+  // B6-W1 — lifecycle / /me trio / business context (11)
+  // -------------------------------------------------------------------
+
+  implementations.register("workspace.use", async (context) => {
+    const ws = workspaceFromSession(context);
+    // wire_state (registry.py:99-104): setup-only replay, no
+    // return-shape contract — Python returns `self`, which has no
+    // vector encoding (the `clear_discovery_cache` precedent).
+    return runFacade(codecs, async () => {
+      await ws.use(optionsBag<WorkspaceUseOptions>(context, []));
+      return null;
+    });
+  });
+
+  implementations.register("workspace.close", async (context) => {
+    const ws = workspaceFromSession(context);
+    // wire_state: no return contract (Python returns None anyway).
+    return runFacade(codecs, async () => {
+      await ws.close();
+      return null;
+    });
+  });
+
+  implementations.register("workspace.list_workspaces", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () => ws.listWorkspaces());
+  });
+
+  implementations.register(
+    "workspace.resolve_workspace_id",
+    async (context) => {
+      const ws = workspaceFromSession(context);
+      return runFacade(codecs, () => ws.resolveWorkspaceId());
+    },
+  );
+
+  implementations.register("workspace.me", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.me(optionsBag<WorkspaceMeOptions>(context, [])),
+    );
+  });
+
+  implementations.register("workspace.projects", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.projects(optionsBag<WorkspaceProjectsOptions>(context, [])),
+    );
+  });
+
+  implementations.register("workspace.workspaces", async (context) => {
+    const ws = workspaceFromSession(context);
+    return runFacade(codecs, () =>
+      ws.workspaces(optionsBag<WorkspaceWorkspacesOptions>(context, [])),
+    );
+  });
+
+  implementations.register(
+    "workspace.get_business_context",
+    async (context) => {
+      const ws = workspaceFromSession(context);
+      return runFacade(codecs, () =>
+        ws.getBusinessContext(
+          optionsBag<BusinessContextScopeOptions>(context, []),
+        ),
+      );
+    },
+  );
+
+  implementations.register(
+    "workspace.set_business_context",
+    async (context) => {
+      const ws = workspaceFromSession(context);
+      return runFacade(codecs, () =>
+        ws.setBusinessContext(
+          requireWireKwarg(context, "content") as string,
+          optionsBag<BusinessContextScopeOptions>(context, ["content"]),
+        ),
+      );
+    },
+  );
+
+  implementations.register(
+    "workspace.clear_business_context",
+    async (context) => {
+      const ws = workspaceFromSession(context);
+      return runFacade(codecs, () =>
+        ws.clearBusinessContext(
+          optionsBag<BusinessContextScopeOptions>(context, []),
+        ),
+      );
+    },
+  );
+
+  implementations.register(
+    "workspace.get_business_context_chain",
+    async (context) => {
+      const ws = workspaceFromSession(context);
+      return runFacade(codecs, () => ws.getBusinessContextChain());
+    },
+  );
 }

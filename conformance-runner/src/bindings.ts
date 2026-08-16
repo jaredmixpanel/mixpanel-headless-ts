@@ -166,6 +166,7 @@ import { registerLifecycleWireBindings } from "./wire-lifecycle.js";
 import { registerPaginationBindings } from "./wire-pagination.js";
 import { registerQueryWireBindings } from "./wire-queries.js";
 import { registerWorkspaceBindings } from "./wire-workspace.js";
+import { registerWorkspaceEntityBindings } from "./wire-workspace-entities.js";
 import { registerReplaysBindings } from "./replays-bindings.js";
 import { WireStubClient, type WireStubRequestOptions } from "./wirestub.js";
 
@@ -1586,9 +1587,14 @@ export function createRunnerDeps(recordEpoch: string): RunnerDeps {
   registerContractCodecs(codecs);
   // B5 (b′): the 44 workspace.<member> facade bindings + the replays
   // family (5 replays.* wire + 3 replay_labels.* + rrweb_analyzer.analyze
-  // builders) — b5-packets.md §6. workspace.me stays UNBOUND (§6.8,
-  // B6-owned; the P3-1 † carried vector holds UNPORTED until B6).
+  // builders) — b5-packets.md §6. Since B6-BIND the same module also
+  // registers the 11 B6-W1 lifecycle/me/business-context names —
+  // binding workspace.me closes the P3-1 † dagger holdback
+  // (b6-packets.md §11.2).
   registerWorkspaceBindings(implementations, codecs);
+  // B6 (b′): the 143 W2–W8 workspace.<member> entity bindings
+  // (b6-packets.md §11 — 154 B6 names total with the W1 group above).
+  registerWorkspaceEntityBindings(implementations, codecs);
   registerReplaysBindings(implementations, codecs);
   registerQueryParamBindings(implementations, codecs);
   registerValidatorBindings(implementations);

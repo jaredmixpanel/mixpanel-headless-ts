@@ -130,12 +130,13 @@ describe("runVector — api gating", () => {
     // Probe name must be a mapped-but-unbound api: C1 used
     // api_client.activity_feed (bound at B4-C2), C2 used
     // api_client.list_dashboards (bound at B4-C3), C5 left
-    // pagination.paginate_all (bound at B4-C6) — every B4 name is now
-    // bound, so the probe moves to a B6 facade name as the C1 note
-    // predicted. Still valid after the B4 gate flip (`workspace.` stays
-    // pending until B5/B6).
+    // pagination.paginate_all (bound at B4-C6), then
+    // workspace.list_dashboards (bound at B6-BIND — every workspace
+    // name is now bound). Re-anchored to region_probe.probe_region,
+    // pending until B7 by construction (b6-packets.md §12.5 — the
+    // pattern retires at the B8 gate when no pending names remain).
     const vector = makeVector({
-      api: "workspace.list_dashboards",
+      api: "region_probe.probe_region",
       kind: "wire",
       expect: '{"result": null}',
     });
