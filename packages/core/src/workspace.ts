@@ -116,6 +116,46 @@ export type {
   WorkspaceListBlueprintTemplatesOptions,
   WorkspaceListDashboardsOptions,
 } from "./workspace-members/dashboards.js";
+import {
+  bookmarkLinkedDashboardIds as bookmarkLinkedDashboardIdsMember,
+  bulkDeleteBookmarks as bulkDeleteBookmarksMember,
+  bulkDeleteCohorts as bulkDeleteCohortsMember,
+  bulkUpdateBookmarks as bulkUpdateBookmarksMember,
+  bulkUpdateCohorts as bulkUpdateCohortsMember,
+  createBookmark as createBookmarkMember,
+  createCohort as createCohortMember,
+  deleteBookmark as deleteBookmarkMember,
+  deleteCohort as deleteCohortMember,
+  getBookmark as getBookmarkMember,
+  getBookmarkHistory as getBookmarkHistoryMember,
+  getCohort as getCohortMember,
+  listBookmarksV2 as listBookmarksV2Member,
+  listCohortsFull as listCohortsFullMember,
+  updateBookmark as updateBookmarkMember,
+  updateCohort as updateCohortMember,
+  type WorkspaceGetBookmarkHistoryOptions,
+  type WorkspaceListBookmarksV2Options,
+  type WorkspaceListCohortsFullOptions,
+} from "./workspace-members/bookmarks-cohorts.js";
+export type {
+  WorkspaceGetBookmarkHistoryOptions,
+  WorkspaceListBookmarksV2Options,
+  WorkspaceListCohortsFullOptions,
+} from "./workspace-members/bookmarks-cohorts.js";
+export { validateBookmarkParamsSchema } from "./workspace-members/bookmarks-cohorts.js";
+import type {
+  Bookmark,
+  BookmarkHistoryResponse,
+  BulkUpdateBookmarkEntry,
+  CreateBookmarkParams,
+  UpdateBookmarkParams,
+} from "./types/entities/bookmarks.js";
+import type {
+  BulkUpdateCohortEntry,
+  Cohort,
+  CreateCohortParams,
+  UpdateCohortParams,
+} from "./types/entities/cohorts.js";
 import type {
   BlueprintConfig,
   BlueprintFinishParams,
@@ -3361,6 +3401,240 @@ export class Workspace {
     params: UpdateTextCardParams,
   ): Promise<void> {
     return updateTextCardMember(this.client, dashboardId, textCardId, params);
+  }
+
+  // === B6-W3 bookmark/report + cohort members (W3 owns; append-only) ===
+
+  /**
+   * List bookmarks/reports via the App API v2 endpoint
+   * (`list_bookmarks_v2`, `workspace.py:5150-5183`).
+   *
+   * @param options - Optional `bookmark_type` / `ids` filters.
+   * @returns The `Bookmark` models, in response order.
+   * @throws ResponseValidationError - Malformed API response payload
+   *   (`RESPONSE_VALIDATION_ERROR`).
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   *
+   * @example
+   * ```typescript
+   * for (const r of await ws.listBookmarksV2({ bookmark_type: "funnels" })) {
+   *   console.log(`${r.name} (${r.bookmark_type})`);
+   * }
+   * ```
+   */
+  async listBookmarksV2(
+    options: WorkspaceListBookmarksV2Options = {},
+  ): Promise<Bookmark[]> {
+    return listBookmarksV2Member(this.client, options);
+  }
+
+  /**
+   * Create a new bookmark (saved report) (`create_bookmark`,
+   * `workspace.py:5247-5324`).
+   *
+   * @param params - Bookmark creation parameters; `dashboard_id` is
+   *   required by the Mixpanel v2 API.
+   * @returns The newly created `Bookmark`.
+   * @throws MixpanelHeadlessError - `dashboard_id` missing, or an empty
+   *   response (`UNKNOWN_ERROR`).
+   * @throws BookmarkValidationError - Client-side schema validation
+   *   failed (raised before the API call).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async createBookmark(params: CreateBookmarkParams): Promise<Bookmark> {
+    return createBookmarkMember(
+      this.client,
+      params,
+      (dashboardId, bookmarkId) =>
+        this.addReportToDashboard(dashboardId, bookmarkId),
+      this.#logger,
+    );
+  }
+
+  /**
+   * Get a single bookmark by ID (`get_bookmark`,
+   * `workspace.py:5326-5355`).
+   *
+   * @param bookmarkId - Bookmark identifier.
+   * @returns The `Bookmark`.
+   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async getBookmark(bookmarkId: number): Promise<Bookmark> {
+    return getBookmarkMember(this.client, bookmarkId);
+  }
+
+  /**
+   * Update an existing bookmark (`update_bookmark`,
+   * `workspace.py:5357-5414`).
+   *
+   * @param bookmarkId - Bookmark identifier.
+   * @param params - Fields to update.
+   * @returns The updated `Bookmark`.
+   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
+   * @throws BookmarkValidationError - Partial-mode schema validation
+   *   failed (raised before the API call).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async updateBookmark(
+    bookmarkId: number,
+    params: UpdateBookmarkParams,
+  ): Promise<Bookmark> {
+    return updateBookmarkMember(this.client, bookmarkId, params, this.#logger);
+  }
+
+  /**
+   * Delete a bookmark (`delete_bookmark`, `workspace.py:5416-5435`).
+   *
+   * @param bookmarkId - Bookmark identifier.
+   * @returns Nothing.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   */
+  async deleteBookmark(bookmarkId: number): Promise<void> {
+    return deleteBookmarkMember(this.client, bookmarkId);
+  }
+
+  /**
+   * Delete multiple bookmarks (`bulk_delete_bookmarks`,
+   * `workspace.py:5437-5456`).
+   *
+   * @param ids - Bookmark IDs to delete.
+   * @returns Nothing.
+   */
+  async bulkDeleteBookmarks(ids: readonly number[]): Promise<void> {
+    return bulkDeleteBookmarksMember(this.client, ids);
+  }
+
+  /**
+   * Update multiple bookmarks (`bulk_update_bookmarks`,
+   * `workspace.py:5458-5479`).
+   *
+   * @param entries - Bookmark update entries.
+   * @returns Nothing.
+   */
+  async bulkUpdateBookmarks(
+    entries: readonly BulkUpdateBookmarkEntry[],
+  ): Promise<void> {
+    return bulkUpdateBookmarksMember(this.client, entries);
+  }
+
+  /**
+   * Dashboard IDs linked to a bookmark
+   * (`bookmark_linked_dashboard_ids`, `workspace.py:5481-5503`).
+   *
+   * @param bookmarkId - Bookmark identifier.
+   * @returns The dashboard IDs.
+   */
+  async bookmarkLinkedDashboardIds(bookmarkId: number): Promise<number[]> {
+    return bookmarkLinkedDashboardIdsMember(this.client, bookmarkId);
+  }
+
+  /**
+   * Change history for a bookmark (`get_bookmark_history`,
+   * `workspace.py:5505-5542`).
+   *
+   * @param bookmarkId - Bookmark identifier.
+   * @param options - `cursor` / `page_size` (keyword-only in Python).
+   * @returns The `BookmarkHistoryResponse`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async getBookmarkHistory(
+    bookmarkId: number,
+    options: WorkspaceGetBookmarkHistoryOptions = {},
+  ): Promise<BookmarkHistoryResponse> {
+    return getBookmarkHistoryMember(this.client, bookmarkId, options);
+  }
+
+  /**
+   * List cohorts via the App API, full detail (`list_cohorts_full`,
+   * `workspace.py:5548-5584`).
+   *
+   * @param options - Optional `data_group_id` / `ids` filters.
+   * @returns The `Cohort` models, in response order.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async listCohortsFull(
+    options: WorkspaceListCohortsFullOptions = {},
+  ): Promise<Cohort[]> {
+    return listCohortsFullMember(this.client, options);
+  }
+
+  /**
+   * Get a single cohort by ID (`get_cohort`,
+   * `workspace.py:5586-5615`).
+   *
+   * @param cohortId - Cohort identifier.
+   * @returns The `Cohort`.
+   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async getCohort(cohortId: number): Promise<Cohort> {
+    return getCohortMember(this.client, cohortId);
+  }
+
+  /**
+   * Create a new cohort (`create_cohort`, `workspace.py:5617-5648`).
+   *
+   * @param params - Cohort creation parameters.
+   * @returns The newly created `Cohort`.
+   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async createCohort(params: CreateCohortParams): Promise<Cohort> {
+    return createCohortMember(this.client, params);
+  }
+
+  /**
+   * Update an existing cohort (`update_cohort`,
+   * `workspace.py:5650-5682`).
+   *
+   * @param cohortId - Cohort identifier.
+   * @param params - Fields to update.
+   * @returns The updated `Cohort`.
+   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async updateCohort(
+    cohortId: number,
+    params: UpdateCohortParams,
+  ): Promise<Cohort> {
+    return updateCohortMember(this.client, cohortId, params);
+  }
+
+  /**
+   * Delete a cohort (`delete_cohort`, `workspace.py:5684-5703`).
+   *
+   * @param cohortId - Cohort identifier.
+   * @returns Nothing.
+   */
+  async deleteCohort(cohortId: number): Promise<void> {
+    return deleteCohortMember(this.client, cohortId);
+  }
+
+  /**
+   * Delete multiple cohorts (`bulk_delete_cohorts`,
+   * `workspace.py:5705-5724`).
+   *
+   * @param ids - Cohort IDs to delete.
+   * @returns Nothing.
+   */
+  async bulkDeleteCohorts(ids: readonly number[]): Promise<void> {
+    return bulkDeleteCohortsMember(this.client, ids);
+  }
+
+  /**
+   * Update multiple cohorts (`bulk_update_cohorts`,
+   * `workspace.py:5726-5747`).
+   *
+   * @param entries - Cohort update entries.
+   * @returns Nothing.
+   */
+  async bulkUpdateCohorts(
+    entries: readonly BulkUpdateCohortEntry[],
+  ): Promise<void> {
+    return bulkUpdateCohortsMember(this.client, entries);
   }
 }
 

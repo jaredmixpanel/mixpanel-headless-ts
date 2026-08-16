@@ -12,7 +12,41 @@ import {
   EntityModel,
   prepareInit,
   type EntityFieldSpec,
+  type ModelDumpOptions,
 } from "./model-base.js";
+
+/**
+ * `_DefinitionFlatteningModel.model_dump` (`types.py:2865-2878`): pop
+ * `definition` out of the dump and, when TRUTHY, merge its keys into
+ * the top level.
+ *
+ * Added at B6-W3 — the three cohort param models inherit the override
+ * in Python, so it belongs on the models here too (the facade must not
+ * re-derive it, R10.8). Falsy definitions (`{}`) are dropped entirely,
+ * exactly as `if definition:` does; the merged keys land AFTER the
+ * declared fields, mirroring `dict.update()` insertion order.
+ *
+ * @param dumped - The plain `exclude_none` dump.
+ * @returns The dump with `definition` flattened.
+ */
+function flattenDefinition(
+  dumped: Record<string, unknown>,
+): Record<string, unknown> {
+  if (!Object.hasOwn(dumped, "definition")) {
+    return dumped;
+  }
+  const definition = dumped["definition"];
+  delete dumped["definition"];
+  if (
+    definition !== null &&
+    definition !== undefined &&
+    typeof definition === "object" &&
+    Object.keys(definition as Record<string, unknown>).length > 0
+  ) {
+    Object.assign(dumped, definition as Record<string, unknown>);
+  }
+  return dumped;
+}
 
 /**
  * Constructor input for {@link CohortCreator} — absent keys take the Python
@@ -285,6 +319,19 @@ export class CreateCohortParams extends EntityModel {
    * @returns The reconstructed instance.
    * @throws ResponseValidationError - On shape violations.
    */
+  /**
+   * `model_dump(exclude_none=True)` with `definition` flattened into
+   * the top level (`_DefinitionFlatteningModel`, `types.py:2865-2878`).
+   *
+   * @param options - Pydantic dump flags (`by_alias`).
+   * @returns The flattened payload.
+   */
+  override modelDumpExcludeNone(
+    options: ModelDumpOptions = {},
+  ): Record<string, unknown> {
+    return flattenDefinition(super.modelDumpExcludeNone(options));
+  }
+
   static fromDict(raw: unknown): CreateCohortParams {
     return new CreateCohortParams(
       prepareInit(CreateCohortParams, raw) as unknown as CreateCohortParamsInit,
@@ -374,6 +421,19 @@ export class UpdateCohortParams extends EntityModel {
    * @returns The reconstructed instance.
    * @throws ResponseValidationError - On shape violations.
    */
+  /**
+   * `model_dump(exclude_none=True)` with `definition` flattened into
+   * the top level (`_DefinitionFlatteningModel`, `types.py:2865-2878`).
+   *
+   * @param options - Pydantic dump flags (`by_alias`).
+   * @returns The flattened payload.
+   */
+  override modelDumpExcludeNone(
+    options: ModelDumpOptions = {},
+  ): Record<string, unknown> {
+    return flattenDefinition(super.modelDumpExcludeNone(options));
+  }
+
   static fromDict(raw: unknown): UpdateCohortParams {
     return new UpdateCohortParams(
       prepareInit(UpdateCohortParams, raw) as unknown as UpdateCohortParamsInit,
@@ -448,6 +508,19 @@ export class BulkUpdateCohortEntry extends EntityModel {
    * @returns The reconstructed instance.
    * @throws ResponseValidationError - On shape violations.
    */
+  /**
+   * `model_dump(exclude_none=True)` with `definition` flattened into
+   * the top level (`_DefinitionFlatteningModel`, `types.py:2865-2878`).
+   *
+   * @param options - Pydantic dump flags (`by_alias`).
+   * @returns The flattened payload.
+   */
+  override modelDumpExcludeNone(
+    options: ModelDumpOptions = {},
+  ): Record<string, unknown> {
+    return flattenDefinition(super.modelDumpExcludeNone(options));
+  }
+
   static fromDict(raw: unknown): BulkUpdateCohortEntry {
     return new BulkUpdateCohortEntry(
       prepareInit(

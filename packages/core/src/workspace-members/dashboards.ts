@@ -31,7 +31,7 @@
 
 import type { MixpanelClient } from "../client/client.js";
 import { isPlainRecord } from "../client/internals.js";
-import { toNativeJson, type JsonValue } from "../client/json-value.js";
+import { native, requireResponse } from "./shared.js";
 import {
   validateResponseModel,
   validateResponseModels,
@@ -62,36 +62,8 @@ export interface WorkspaceListBlueprintTemplatesOptions {
   readonly include_reports?: boolean | undefined;
 }
 
-/**
- * `if raw is None: raise MixpanelHeadlessError(...)` — the facade's
- * empty-response guard (e.g. `workspace.py:4565-4568`).
- *
- * @param raw - The client's return value.
- * @param member - The Python member name used in the message.
- * @returns The payload, narrowed to non-nullish.
- * @throws MixpanelHeadlessError - Code `UNKNOWN_ERROR` when the
- *   payload is `None`.
- */
-function requireResponse(raw: unknown, member: string): unknown {
-  if (raw === null || raw === undefined) {
-    throw new MixpanelHeadlessError(
-      `API returned empty response for ${member}`,
-    );
-  }
-  return raw;
-}
-
-/**
- * `json.loads`-native view of a client payload — the Phase-2 models
- * validate against native values, not the lossless `JsonValue` tree
- * (the `client.ts:878` `list_workspaces` precedent).
- *
- * @param raw - The lossless payload.
- * @returns The native-valued tree.
- */
-function native(raw: unknown): unknown {
-  return toNativeJson(raw as JsonValue);
-}
+// `requireResponse` / `native` moved to `./shared.js` at B6-W3 so the
+// W3–W8 member modules consume ONE implementation (R10.8).
 
 /**
  * List dashboards for the current project/workspace

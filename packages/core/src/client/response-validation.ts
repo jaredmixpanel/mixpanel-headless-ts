@@ -30,6 +30,7 @@ import { ResponseValidationError } from "../errors.js";
 import { isPythonDict } from "../query/validation-shared.js";
 import type {
   EntityFieldKind,
+  EntityFieldSpec,
   EntityModel,
   EntityModelStatics,
 } from "../types/entities/model-base.js";
@@ -207,6 +208,42 @@ function nullNotAllowedError(
 }
 
 /**
+ * The payload key pydantic would bind to `spec` — the attribute name
+ * when accepted, otherwise the first present validation alias.
+ *
+ * @param payload - The raw payload.
+ * @param spec - The field spec.
+ * @returns The matched key, or `null` when the field is absent.
+ */
+function matchedKey(
+  payload: Readonly<Record<string, unknown>>,
+  spec: EntityFieldSpec,
+): string | null {
+  const candidates: string[] = [];
+  if (spec.nameAccepted !== false) {
+    candidates.push(spec.name);
+  }
+  candidates.push(...(spec.aliases ?? []));
+  for (const key of candidates) {
+    if (Object.hasOwn(payload, key) && payload[key] !== undefined) {
+      return key;
+    }
+  }
+  return null;
+}
+
+/**
+ * The `loc` pydantic reports for an ABSENT field: the validation alias
+ * when one is configured, else the attribute name.
+ *
+ * @param spec - The field spec.
+ * @returns The `loc` element.
+ */
+function aliasLoc(spec: EntityFieldSpec): string {
+  return spec.aliases?.[0] ?? spec.name;
+}
+
+/**
  * Collect pydantic-v2-shaped errors for one payload against a model's
  * field specs (the `model_validate` failure list, in `model_fields`
  * order — exactly the order pydantic reports).
@@ -231,10 +268,17 @@ function collectModelErrors(
   }
   const errors: PydanticStyleError[] = [];
   for (const spec of cls.fieldSpecs) {
-    const loc = [spec.name] as const;
-    const present =
-      Object.hasOwn(payload, spec.name) && payload[spec.name] !== undefined;
-    if (!present) {
+    // Pydantic accepts the attribute name AND every validation alias
+    // (`populate_by_name=True` + `AliasChoices`), and reports the ALIAS
+    // in `loc` for an aliased field — verified against the arbiter:
+    // `Bookmark.model_validate({"id":1,"name":"A"})` yields
+    // `loc == ["type"]`, and both `type=` and `bookmark_type=` are
+    // accepted (B6-W3; the collector was alias-blind before, which no
+    // B4/B5 consumer exercised because none had an aliased REQUIRED
+    // field).
+    const matched = matchedKey(payload, spec);
+    const loc = [matched ?? aliasLoc(spec)] as const;
+    if (matched === null) {
       if (spec.required === true) {
         errors.push({
           type: "missing",
@@ -245,7 +289,7 @@ function collectModelErrors(
       }
       continue;
     }
-    const value = payload[spec.name];
+    const value = payload[matched];
     if (value === null) {
       if (spec.nullable !== true) {
         errors.push(nullNotAllowedError(spec.kind, loc));
