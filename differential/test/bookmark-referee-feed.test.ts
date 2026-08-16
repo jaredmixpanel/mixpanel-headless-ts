@@ -1,4 +1,11 @@
-// Referee (a) runner feed — B3 gate (playbook P3-7 / phase1-design D15a).
+// Referee (a) runner feed — B3 gate (playbook P3-7 / phase1-design D15a),
+// extended at the B5 gate (b5-packets.md §7.4): `workspace.build_params`
+// EMITS full insights bookmark params (all 115 output vectors are exactly
+// `{displayOptions, sections}` — the schema's root shape), so P3-7's
+// "if a B5 module emits a bookmark payload anyway, its gate adds the
+// referees" clause fires and its TS-built outputs are fed AS-IS (no
+// skeleton wrap — the D15b routing-table row `workspace.build_params →
+// insights, as-is`, `conformance/referee_bookmark_parser/README.md`).
 //
 // D15a's feed rule: pipe builder-kind vector outputs that are
 // INSIGHTS-SHAPED through the ajv bookmark.json referee as a secondary
@@ -58,15 +65,45 @@ import type { JsonObject } from "../referees/bookmark-schema/known-payloads.js";
 import { refereeBookmarkPayload } from "../referees/bookmark-schema/referee.js";
 
 /**
- * The pinned expected-REJECT vector ids (see the header disclosure).
- * Every listed vector must reject WITH a `dataGroupId` error; every other
- * fed vector must be accepted.
+ * The pinned expected-REJECT vector ids (see the header disclosure),
+ * mapping each id to the error substring its REJECT must carry — a pinned
+ * vector rejecting for any OTHER reason still fails the suite. Every
+ * unpinned fed vector must be accepted.
+ *
+ * The four B3 pins are the clause-level `dataGroupId` int-threading
+ * disclosure (`context/phase3/bug-reports/
+ * mixpanel-headless-datagroupid-int-clause.md`); the B5-gate pin is the
+ * SAME R10.7 `data_group_id` threading family at a NEW site (bug-report
+ * addendum, B5 gate 2026-08-16): `workspace.build_params` emits
+ * `sections.dataGroupId` (int, `workspace.py:2278`) where the generated
+ * contract's `Sections` (`additionalProperties: false`) knows only
+ * `globalDataGroupId: string | null` — so ajv rejects on the extra
+ * sections key, not on a `dataGroupId` type error. (The deep voluptuous
+ * referee (b) ACCEPTS the same payload — its sections-level model
+ * tolerates the key — which is why B3's referee-(b) runs never surfaced
+ * this site.)
  */
-const EXPECTED_DATAGROUPID_REJECTS: ReadonlySet<string> = new Set([
-  "bookmarks/bookmark_builders.build_group_section/test_bookmark_builders-testbuildgroupsectiondatagroupid-test_cohort_breakdown_group_with_data_group_id",
-  "bookmarks/bookmark_builders.build_group_section/test_bookmark_builders-testbuildgroupsectiondatagroupid-test_custom_property_ref_group_with_data_group_id",
-  "bookmarks/bookmark_builders.build_group_section/test_bookmark_builders-testbuildgroupsectiondatagroupid-test_inline_custom_property_group_with_data_group_id",
-  "bookmarks/bookmark_builders.build_group_section/test_bookmark_builders-testbuildgroupsectionfrequency-test_data_group_id_threaded_to_frequency",
+const EXPECTED_DATAGROUPID_REJECTS: ReadonlyMap<string, string> = new Map([
+  [
+    "bookmarks/bookmark_builders.build_group_section/test_bookmark_builders-testbuildgroupsectiondatagroupid-test_cohort_breakdown_group_with_data_group_id",
+    "dataGroupId",
+  ],
+  [
+    "bookmarks/bookmark_builders.build_group_section/test_bookmark_builders-testbuildgroupsectiondatagroupid-test_custom_property_ref_group_with_data_group_id",
+    "dataGroupId",
+  ],
+  [
+    "bookmarks/bookmark_builders.build_group_section/test_bookmark_builders-testbuildgroupsectiondatagroupid-test_inline_custom_property_group_with_data_group_id",
+    "dataGroupId",
+  ],
+  [
+    "bookmarks/bookmark_builders.build_group_section/test_bookmark_builders-testbuildgroupsectionfrequency-test_data_group_id_threaded_to_frequency",
+    "dataGroupId",
+  ],
+  [
+    "bookmarks/workspace.build_params/test_query_params-testdatagroupidinsights-test_build_params_with_data_group_id",
+    "/sections: must NOT have additional properties",
+  ],
 ]);
 
 /** How each fed api's output lands inside the `sections` object. */
@@ -81,6 +118,25 @@ const FEED_SLOTS: ReadonlyMap<string, (output: unknown) => JsonObject> =
     ["bookmark_builders.build_group_section", (o) => ({ group: o })],
     ["bookmark_builders.build_time_section", (o) => ({ time: o })],
   ]);
+
+/**
+ * Apis whose output IS a full `InsightsBookmarkParams` payload, fed as-is
+ * with no skeleton wrap (B5 gate, b5-packets.md §7.4 / the D15b
+ * routing-table "as-is" row).
+ */
+const FULL_PAYLOAD_APIS: ReadonlySet<string> = new Set([
+  "workspace.build_params",
+]);
+
+/**
+ * Whether an api participates in this feed (section-slot or full-payload).
+ *
+ * @param api - The vector's api name.
+ * @returns True when the api's output vectors are fed to the referee.
+ */
+function isFedApi(api: string): boolean {
+  return FEED_SLOTS.has(api) || FULL_PAYLOAD_APIS.has(api);
+}
 
 /**
  * Wrap a TS-built fragment into the minimal valid insights payload.
@@ -118,31 +174,34 @@ describe("referee (a) feed — insights-shaped B3 builder outputs", () => {
   const fed: ConformanceVector[] = [];
   const skippedErrorVectors: ConformanceVector[] = [];
   for (const vector of corpus.vectors) {
-    if (!FEED_SLOTS.has(vector.api)) continue;
+    if (!isFedApi(vector.api)) continue;
     if (Object.hasOwn(vector.expect, "output")) fed.push(vector);
     else skippedErrorVectors.push(vector);
   }
 
-  it("covers every output vector of the five fed apis (none silently dropped)", () => {
+  it("covers every output vector of the six fed apis (none silently dropped)", () => {
     const perApi = new Map<string, number>();
     for (const vector of fed) {
       perApi.set(vector.api, (perApi.get(vector.api) ?? 0) + 1);
     }
     // Every fed api must be present with at least one output vector, and
     // fed + skipped must account for every vector under the fed apis.
-    for (const api of FEED_SLOTS.keys()) {
+    for (const api of [...FEED_SLOTS.keys(), ...FULL_PAYLOAD_APIS]) {
       expect(
         perApi.get(api) ?? 0,
         `no output vectors fed for ${api}`,
       ).toBeGreaterThan(0);
     }
     const total = fed.length + skippedErrorVectors.length;
-    const inCorpus = corpus.vectors.filter((v) => FEED_SLOTS.has(v.api)).length;
+    const inCorpus = corpus.vectors.filter((v) => isFedApi(v.api)).length;
     expect(total).toBe(inCorpus);
-    expect(fed.length).toBeGreaterThanOrEqual(90);
+    // 98 B3 builder-fragment vectors + the 115 B5 `workspace.build_params`
+    // full payloads.
+    expect(fed.length).toBeGreaterThanOrEqual(200);
+    expect(perApi.get("workspace.build_params")).toBe(115);
   });
 
-  it("every TS-built fragment is ACCEPTED by the ajv bookmark.json referee (modulo the 4 pinned dataGroupId disclosures)", async () => {
+  it("every TS-built fragment is ACCEPTED by the ajv bookmark.json referee (modulo the 5 pinned dataGroupId disclosures)", async () => {
     expect(fed.length).toBeGreaterThan(0);
     const unexpectedRejects: string[] = [];
     const seenExpectedRejects = new Set<string>();
@@ -161,13 +220,19 @@ describe("referee (a) feed — insights-shaped B3 builder outputs", () => {
       // Bindings emit expect-position encodings (JsonNumber wrappers);
       // the canonical writer renders them as plain JSON for ajv.
       const plain: unknown = JSON.parse(canonicalize(returned as JsonValue));
-      const verdict = refereeBookmarkPayload(wrapFragment(vector.api, plain));
+      // Full-payload apis feed as-is (D15b routing "as-is" row); the
+      // fragment apis are injected into the skeleton's section slot.
+      const payload = FULL_PAYLOAD_APIS.has(vector.api)
+        ? (plain as JsonObject)
+        : wrapFragment(vector.api, plain);
+      const verdict = refereeBookmarkPayload(payload);
       if (verdict.valid) continue;
-      if (EXPECTED_DATAGROUPID_REJECTS.has(vector.id)) {
+      const pinnedError = EXPECTED_DATAGROUPID_REJECTS.get(vector.id);
+      if (pinnedError !== undefined) {
         // The pinned disclosure must fail for the DISCLOSED reason only.
         expect(
-          verdict.errors.some((e) => e.includes("dataGroupId")),
-          `${vector.id} rejected without a dataGroupId error: ${verdict.errors.join("; ")}`,
+          verdict.errors.some((e) => e.includes(pinnedError)),
+          `${vector.id} rejected without the pinned ${JSON.stringify(pinnedError)} error: ${verdict.errors.join("; ")}`,
         ).toBe(true);
         seenExpectedRejects.add(vector.id);
         continue;
@@ -178,7 +243,7 @@ describe("referee (a) feed — insights-shaped B3 builder outputs", () => {
     // The disclosure set must stay exact: a pinned vector turning ACCEPT
     // means the Python-side fix landed — unpin and close the bug report.
     expect([...seenExpectedRejects].sort()).toEqual(
-      [...EXPECTED_DATAGROUPID_REJECTS].sort(),
+      [...EXPECTED_DATAGROUPID_REJECTS.keys()].sort(),
     );
   });
 });
