@@ -54,7 +54,7 @@ import {
   type WireResponse,
 } from "./internals.js";
 import { JsonNumber, type JsonValue } from "./json-value.js";
-import { LosslessJsonError, parseLossless } from "./lossless-json.js";
+import { parseLossless } from "./lossless-json.js";
 import { normalizedAbortError } from "./transport.js";
 
 /**
@@ -418,12 +418,11 @@ export async function* paginateAll(
     try {
       data = parseLossless(response.text, { pythonConstants: true });
     } catch (cause) {
-      // Python catches broad `Exception` here; the sanctioned TS twin
-      // guards on the JSONDecodeError analog (B0-ARB F3 — a RangeError
-      // from pathological nesting propagates, disclosed at B0).
-      if (!(cause instanceof LosslessJsonError)) {
-        throw cause;
-      }
+      // Python catches broad `except Exception` at THIS site
+      // (pagination.py:246-254) — unlike the `except json.JSONDecodeError`
+      // sites B0-ARB F3 ruled on — so EVERY parse failure (a RangeError
+      // from pathological nesting included) wraps as INVALID_RESPONSE
+      // (B4-ARB W-F4 corrected the earlier mis-citation here).
       const contentType = response.header("content-type");
       throw new MixpanelHeadlessError(
         `Non-JSON response during pagination (content-type: ` +

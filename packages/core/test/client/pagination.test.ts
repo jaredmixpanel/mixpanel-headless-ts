@@ -311,6 +311,32 @@ describe("TestPaginateAllRobustness", () => {
     ).rejects.toThrow(/Non-JSON response/);
   });
 
+  it("wraps ANY body-parse failure as INVALID_RESPONSE (W-F4)", async () => {
+    // TS-native B4-ARB lock (b4-review-wire.md F4): pagination.py:246
+    // catches broad `except Exception` — even a RecursionError from
+    // pathological nesting wraps as INVALID_RESPONSE. The TS analog is
+    // the RangeError the recursive-descent parser throws on deep
+    // nesting; it must NOT escape uncoded.
+    const { client } = createMockClient(
+      oauthCredentials(),
+      (): CannedResponse => ({
+        status: 200,
+        text: "[".repeat(200000),
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    let raised: unknown = null;
+    try {
+      await drain(paginateAll(client, "/projects/12345/items"));
+    } catch (cause) {
+      raised = cause;
+    }
+    expect(raised).toBeInstanceOf(MixpanelHeadlessError);
+    const error = raised as MixpanelHeadlessError;
+    expect(error.code).toBe("INVALID_RESPONSE");
+    expect(error.message).toMatch(/Non-JSON response during pagination/);
+  });
+
   it("test_http_429_mid_pagination", async () => {
     let callCount = 0;
     const { client, sleeps } = createMockClient(

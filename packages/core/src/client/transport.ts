@@ -181,6 +181,19 @@ function isAbortRejection(cause: unknown): boolean {
 export interface RawFetchResult {
   /** The platform `Response` (body unread). */
   readonly response: Response;
+  /**
+   * Stop the request-timeout clock (idempotent). Streaming callers
+   * invoke this once headers arrive: body reads are NOT clock-bounded
+   * (deviation D-B4ARB-1 — httpx read-timeouts are per-read, so a
+   * healthy long-running export stream must not be killed by a total
+   * wall clock). Caller-signal abort forwarding stays live.
+   */
+  readonly stopTimeout: () => void;
+  /**
+   * {@link stopTimeout} plus detach caller-signal forwarding — call
+   * once the body is fully consumed (or on error). Idempotent.
+   */
+  readonly release: () => void;
 }
 
 /**
@@ -190,13 +203,27 @@ export interface RawFetchResult {
  * `Response` — the seam C2's streaming exports consume (they must not
  * buffer the body).
  *
+ * Timeout enforcement (B4-ARB W-F2 — Python `timeout=... or
+ * self._timeout` on every httpx call): `options.timeoutSeconds` arms a
+ * clock that aborts the request when it fires. httpx timeouts are
+ * per-operation (connect/read/write each get the budget); fetch has no
+ * per-read primitive, so the TS clock covers the headers phase here and
+ * — for buffered callers — the body read, via the returned handles
+ * (deviation D-B4ARB-1, sanctioned in b4-review-resolution.md). A fired
+ * clock rejects like httpx.TimeoutException ⊂ httpx.HTTPError: it
+ * normalizes to {@link MixpanelHttpError} and is therefore retried and
+ * then wrapped as `HTTP_ERROR` by the B0 loops.
+ *
  * @param fetchImpl - The injected fetch (R2.4).
  * @param options - The outbound request.
  * @param signal - Optional per-call cancellation signal (R6.7 point 2:
  *   "into the request").
- * @returns The raw response wrapper.
- * @throws MixpanelHttpError - Any transport-level failure (R2.10).
- * @throws DOMException - Name `AbortError` on cancellation (R6.7).
+ * @returns The raw response wrapper (plus the timeout/release handles).
+ * @throws MixpanelHttpError - Any transport-level failure (R2.10),
+ *   including a fired request-timeout clock.
+ * @throws DOMException - Name `AbortError` on cancellation (R6.7) —
+ *   EVERY caller-initiated abort exits this way, custom reasons
+ *   included (B4-ARB W-F3).
  */
 export async function rawFetch(
   fetchImpl: typeof fetch,
@@ -219,6 +246,45 @@ export async function rawFetch(
       headers["Content-Type"] = "application/json";
     }
   }
+  // One controller merges the caller signal and the timeout clock; the
+  // caller signal's reason is forwarded verbatim so a caller abort is
+  // distinguishable (checked FIRST in the catch below).
+  const controller = new AbortController();
+  const forwardAbort = (): void => {
+    controller.abort(signal?.reason);
+  };
+  if (signal !== undefined) {
+    if (signal.aborted) {
+      forwardAbort();
+    } else {
+      signal.addEventListener("abort", forwardAbort, { once: true });
+    }
+  }
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const timeoutMs = options.timeoutSeconds * 1000;
+  if (Number.isFinite(timeoutMs) && timeoutMs > 0) {
+    timer = setTimeout(() => {
+      controller.abort(
+        new DOMException(
+          `Request timed out after ${options.timeoutSeconds} seconds`,
+          "TimeoutError",
+        ),
+      );
+    }, timeoutMs);
+    // Node-only: an un-released clock must not hold the process open
+    // (browsers return a number — no unref, harmless).
+    (timer as unknown as { unref?: () => void }).unref?.();
+  }
+  const stopTimeout = (): void => {
+    if (timer !== null) {
+      clearTimeout(timer);
+      timer = null;
+    }
+  };
+  const release = (): void => {
+    stopTimeout();
+    signal?.removeEventListener("abort", forwardAbort);
+  };
   let response: Response;
   try {
     response = await fetchImpl(url, {
@@ -226,22 +292,28 @@ export async function rawFetch(
       headers,
       ...(body !== null ? { body } : {}),
       redirect: "manual",
-      ...(signal !== undefined ? { signal } : {}),
+      signal: controller.signal,
     });
   } catch (cause) {
-    if (isAbortRejection(cause)) {
-      throw cause;
+    release();
+    if (signal?.aborted === true) {
+      // R6.7 / W-F3: caller cancellation wins and ALWAYS exits as a
+      // DOMException named AbortError, whatever the abort reason was.
+      throw normalizedAbortError(signal.reason);
     }
     if (cause instanceof TypeError || cause instanceof DOMException) {
       // R2.10: the adapter owns the fetch TypeError / DOMException /
       // UND_ERR_* mapping — the B0 retry loops catch MixpanelHttpError
       // (the `httpx.HTTPError` analog) and wrap it as HTTP_ERROR.
+      // A non-caller AbortError/TimeoutError lands here too: with the
+      // caller signal quiet, the only abort source is the timeout clock
+      // (the httpx.TimeoutException analog — an HTTPError in Python).
       // Message derivation mirrors httpx's `str(e)` (which flows into
       // the HTTP_ERROR `details.error` bag): fetch's own "fetch failed"
       // wrapper text is useless, so the underlying cause's message wins
       // when present — that is where undici (and the conformance
       // harness) carry the real failure description.
-      const inner: unknown = cause.cause;
+      const inner: unknown = (cause as { cause?: unknown }).cause;
       const description =
         inner instanceof Error && inner.message !== ""
           ? inner.message
@@ -250,7 +322,7 @@ export async function rawFetch(
     }
     throw cause;
   }
-  return { response };
+  return { response, stopTimeout, release };
 }
 
 /**
@@ -269,13 +341,25 @@ export function createRequestExecutor(
   signal?: AbortSignal,
 ): RequestExecutor {
   return async (options: TransportRequestOptions): Promise<WireResponse> => {
-    const { response } = await rawFetch(fetchImpl, options, signal);
+    // Buffered view: the timeout clock keeps running across the body
+    // read (httpx read-timeouts also bound `response.read()`), released
+    // once the text is in hand.
+    const { response, release } = await rawFetch(fetchImpl, options, signal);
     let text: string;
     try {
       text = await response.text();
     } catch (cause) {
+      if (signal?.aborted === true) {
+        // R6.7 / W-F3: caller cancellation always exits as AbortError.
+        throw normalizedAbortError(signal.reason);
+      }
       if (isAbortRejection(cause)) {
-        throw cause;
+        // Not caller-initiated: the request-timeout clock fired during
+        // the body read (httpx.ReadTimeout analog).
+        throw new MixpanelHttpError(
+          `Request timed out after ${options.timeoutSeconds} seconds`,
+          { cause },
+        );
       }
       // Body-read failures are transport errors in httpx too
       // (`httpx.ReadError` while consuming the stream).
@@ -285,6 +369,8 @@ export function createRequestExecutor(
           cause,
         },
       );
+    } finally {
+      release();
     }
     return {
       status: response.status,

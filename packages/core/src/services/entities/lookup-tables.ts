@@ -236,7 +236,7 @@ export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
     const path = scopedPath("data-definitions/lookup-tables/");
     const url = core.buildUrl("app", path);
     const authHeader = await core.getAuthHeader();
-    const { response } = await core.rawRequest(
+    const { response, release } = await core.rawRequest(
       {
         method: "POST",
         url,
@@ -248,7 +248,13 @@ export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
       },
       signal,
     );
-    const text = await response.text();
+    let text: string;
+    try {
+      // Buffered read under the request-timeout clock (B4-ARB W-F2).
+      text = await response.text();
+    } finally {
+      release();
+    }
     if (response.status >= 400) {
       handleResponse(
         {
@@ -451,7 +457,7 @@ export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
       if (options.limit !== undefined && options.limit !== null) {
         params["limit"] = pythonStr(options.limit);
       }
-      const { response } = await core.rawRequest(
+      const { response, release } = await core.rawRequest(
         {
           method: "GET",
           url,
@@ -463,25 +469,30 @@ export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
         },
         options.signal,
       );
-      if (response.status >= 400) {
-        const text = await response.text();
-        // Delegate error handling (`:7926-7934`).
-        handleResponse(
-          {
-            status: response.status,
-            text,
-            header: (name) => response.headers.get(name),
-          },
-          {
-            projectId: core.projectId(),
-            requestMethod: "GET",
-            requestUrl: url,
-            requestParams: params,
-            requestBody: null,
-          },
-        );
+      try {
+        // Buffered read under the request-timeout clock (B4-ARB W-F2).
+        if (response.status >= 400) {
+          const text = await response.text();
+          // Delegate error handling (`:7926-7934`).
+          handleResponse(
+            {
+              status: response.status,
+              text,
+              header: (name) => response.headers.get(name),
+            },
+            {
+              projectId: core.projectId(),
+              requestMethod: "GET",
+              requestUrl: url,
+              requestParams: params,
+              requestBody: null,
+            },
+          );
+        }
+        return new Uint8Array(await response.arrayBuffer());
+      } finally {
+        release();
       }
-      return new Uint8Array(await response.arrayBuffer());
     },
 
     getLookupDownloadUrl: async (

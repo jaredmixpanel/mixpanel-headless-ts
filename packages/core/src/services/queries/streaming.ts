@@ -38,6 +38,7 @@ import {
   LosslessJsonError,
   parseLossless,
 } from "../../client/lossless-json.js";
+import { normalizedAbortError } from "../../client/transport.js";
 import {
   AuthenticationError,
   MixpanelHeadlessError,
@@ -189,6 +190,47 @@ function bodyByteSource(
 }
 
 /**
+ * {@link bodyByteSource} with R2.10 normalization over PRODUCER-side
+ * failures (B4-ARB W-F1): a body-read error while consuming the stream
+ * is an `httpx.ReadError` ⊂ `httpx.HTTPError` in Python
+ * (`api_client.py:1870-1953` — the `_iter_jsonl_lines` walk sits inside
+ * the `except httpx.HTTPError` scope), so it must surface as
+ * {@link MixpanelHttpError} for the export retry loop to catch. Caller
+ * cancellation exits as a normalized `AbortError` instead (R6.7).
+ *
+ * Consumer-side exits (`return()` from an early-terminated `for await`)
+ * run the generator's return path, not this catch.
+ *
+ * @param body - The platform response body.
+ * @param signal - The caller's cancellation signal, if any.
+ * @returns The guarded byte source.
+ */
+async function* guardedByteSource(
+  body: ReadableStream<Uint8Array> | null,
+  signal: AbortSignal | undefined,
+): AsyncGenerator<Uint8Array, void, undefined> {
+  try {
+    for await (const chunk of bodyByteSource(body)) {
+      yield chunk;
+    }
+  } catch (cause) {
+    if (signal?.aborted === true) {
+      throw normalizedAbortError(signal.reason);
+    }
+    if (cause instanceof DOMException && cause.name === "AbortError") {
+      throw cause;
+    }
+    if (cause instanceof MixpanelHttpError) {
+      throw cause;
+    }
+    throw new MixpanelHttpError(
+      `transport body read failure: ${String(cause)}`,
+      { cause },
+    );
+  }
+}
+
+/**
  * The httpx `raise_for_status` message twin for the export stream's
  * non-2xx statuses (text reaches only `HTTP_ERROR.details.error` —
  * no vector or Layer-3 lock asserts it; shape kept close for humans).
@@ -316,8 +358,9 @@ export function createStreamingMethods(core: ClientCore): StreamingMethods {
 
     for (let attempt = 0; attempt <= core.maxRetries; attempt += 1) {
       let batchCount = 0; // Reset on each attempt (deviation-3 lock).
+      let releaseRaw: (() => void) | null = null;
       try {
-        const { response } = await core.rawRequest(
+        const { response, stopTimeout, release } = await core.rawRequest(
           {
             method: "GET",
             url,
@@ -329,6 +372,12 @@ export function createStreamingMethods(core: ClientCore): StreamingMethods {
           },
           options.signal,
         );
+        releaseRaw = release;
+        // Headers are in: stop the export-timeout clock. Body reads are
+        // not clock-bounded (D-B4ARB-1 — httpx read-timeouts are
+        // per-read; a total clock would kill healthy long exports).
+        // Caller-signal forwarding stays live for the stream.
+        stopTimeout();
         const headerCarrier = {
           header: (name: string): string | null => response.headers.get(name),
         };
@@ -392,7 +441,7 @@ export function createStreamingMethods(core: ClientCore): StreamingMethods {
           throw new MixpanelHttpError(httpStatusText(response.status, url));
         }
         for await (const line of iterJsonlLines(
-          bodyByteSource(response.body),
+          guardedByteSource(response.body, options.signal),
         )) {
           let event: JsonValue;
           try {
@@ -430,6 +479,10 @@ export function createStreamingMethods(core: ClientCore): StreamingMethods {
           );
         }
         await sleep(calculateBackoff(attempt, core.random) * 1000);
+      } finally {
+        // Detach the attempt's signal forwarding once its body is done
+        // (success, retryable failure, or consumer return()).
+        releaseRaw?.();
       }
     }
   }
@@ -495,7 +548,7 @@ export function createStreamingMethods(core: ClientCore): StreamingMethods {
     }
 
     const url = core.buildUrl("engage", "");
-    let sessionId: string | null = null;
+    let sessionId: JsonValue = null;
     let page = 0;
     let totalCount = 0;
     const onBatch = options.onBatch ?? null;
@@ -505,8 +558,14 @@ export function createStreamingMethods(core: ClientCore): StreamingMethods {
         project_id: core.projectId(),
         page,
       };
-      if (sessionId !== null && sessionId !== "") {
-        params["session_id"] = sessionId;
+      // `if session_id:` — Python truthiness; the value threads into
+      // the next page's JSON body VERBATIM (B4-ARB W-F5: an int stays
+      // an int — no stringification). Lossless tokens fold to native
+      // via toNativeJson for JSON.stringify (an unsafe-int session_id
+      // would round through a JS double — disclosed residual, see
+      // b4-review-resolution.md W-F5).
+      if (pyTruthyJson(sessionId)) {
+        params["session_id"] = toNativeJson(sessionId);
       }
       if (
         options.where !== undefined &&
@@ -580,10 +639,10 @@ export function createStreamingMethods(core: ClientCore): StreamingMethods {
         ? (record["session_id"] as JsonValue)
         : null;
       // `if not session_id: break` — same truthiness discipline.
-      if (nextSession === null || !pyTruthyJson(nextSession)) {
+      if (!pyTruthyJson(nextSession)) {
         break;
       }
-      sessionId = String(nextSession);
+      sessionId = nextSession;
       page += 1;
     }
   }
