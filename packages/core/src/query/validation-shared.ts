@@ -323,6 +323,34 @@ export function requireHashable(value: unknown): void {
   }
 }
 
+/**
+ * Elements CPython's iteration protocol would yield, or `null` when the
+ * value is not iterable.
+ *
+ * Strings yield CODE POINTS (never UTF-16 units), lists yield their
+ * elements and dicts yield their KEYS. Ported once here (R10.8) because
+ * two B3-K3 modules need it: `segfilter`'s range comprehensions
+ * (`[str(v) for v in value]`, `segfilter.py:187,247`) and `transforms`'
+ * `dict(properties)` copy (`transforms.py:60,123`). Callers decide what
+ * a `null` means — CPython's message differs per site — so this helper
+ * never throws.
+ *
+ * @param value - The value being iterated.
+ * @returns The drawn elements in order, or `null` for a non-iterable.
+ */
+export function pythonIterableElements(value: unknown): unknown[] | null {
+  if (typeof value === "string") {
+    return [...value];
+  }
+  if (Array.isArray(value)) {
+    return [...(value as unknown[])];
+  }
+  if (isPythonDict(value)) {
+    return Object.keys(value);
+  }
+  return null;
+}
+
 export function pythonTypeName(value: unknown): string {
   if (value === null || value === undefined) {
     return "NoneType";
