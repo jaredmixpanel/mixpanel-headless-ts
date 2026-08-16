@@ -143,6 +143,56 @@ export type {
   WorkspaceListCohortsFullOptions,
 } from "./workspace-members/bookmarks-cohorts.js";
 export { validateBookmarkParamsSchema } from "./workspace-members/bookmarks-cohorts.js";
+import {
+  archiveExperiment as archiveExperimentMember,
+  archiveFeatureFlag as archiveFeatureFlagMember,
+  concludeExperiment as concludeExperimentMember,
+  createExperiment as createExperimentMember,
+  createFeatureFlag as createFeatureFlagMember,
+  decideExperiment as decideExperimentMember,
+  deleteExperiment as deleteExperimentMember,
+  deleteFeatureFlag as deleteFeatureFlagMember,
+  duplicateExperiment as duplicateExperimentMember,
+  duplicateFeatureFlag as duplicateFeatureFlagMember,
+  getExperiment as getExperimentMember,
+  getFeatureFlag as getFeatureFlagMember,
+  getFlagHistory as getFlagHistoryMember,
+  getFlagLimits as getFlagLimitsMember,
+  launchExperiment as launchExperimentMember,
+  listErfExperiments as listErfExperimentsMember,
+  listExperiments as listExperimentsMember,
+  listFeatureFlags as listFeatureFlagsMember,
+  restoreExperiment as restoreExperimentMember,
+  restoreFeatureFlag as restoreFeatureFlagMember,
+  setFlagTestUsers as setFlagTestUsersMember,
+  updateExperiment as updateExperimentMember,
+  updateFeatureFlag as updateFeatureFlagMember,
+  type WorkspaceConcludeExperimentOptions,
+  type WorkspaceGetFlagHistoryOptions,
+  type WorkspaceListExperimentsOptions,
+  type WorkspaceListFeatureFlagsOptions,
+} from "./workspace-members/flags-experiments.js";
+export type {
+  WorkspaceConcludeExperimentOptions,
+  WorkspaceGetFlagHistoryOptions,
+  WorkspaceListExperimentsOptions,
+  WorkspaceListFeatureFlagsOptions,
+} from "./workspace-members/flags-experiments.js";
+import type {
+  CreateFeatureFlagParams,
+  FeatureFlag,
+  FlagHistoryResponse,
+  FlagLimitsResponse,
+  SetTestUsersParams,
+  UpdateFeatureFlagParams,
+} from "./types/entities/feature-flags.js";
+import type {
+  CreateExperimentParams,
+  DuplicateExperimentParams,
+  Experiment,
+  ExperimentDecideParams,
+  UpdateExperimentParams,
+} from "./types/entities/experiments.js";
 import type {
   Bookmark,
   BookmarkHistoryResponse,
@@ -3635,6 +3685,337 @@ export class Workspace {
     entries: readonly BulkUpdateCohortEntry[],
   ): Promise<void> {
     return bulkUpdateCohortsMember(this.client, entries);
+  }
+
+  // === B6-W4 feature-flag + experiment members (W4 owns; append-only) ===
+
+  /**
+   * List feature flags for the current project/workspace
+   * (`list_feature_flags`, `workspace.py:5753-5782`).
+   *
+   * @param options - `include_archived` (keyword-only in Python).
+   * @returns The `FeatureFlag` models, in response order.
+   * @throws ResponseValidationError - Malformed API response payload
+   *   (`RESPONSE_VALIDATION_ERROR`).
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   *
+   * @example
+   * ```typescript
+   * for (const f of await ws.listFeatureFlags()) {
+   *   console.log(`${f.name} (${f.key})`);
+   * }
+   * ```
+   */
+  async listFeatureFlags(
+    options: WorkspaceListFeatureFlagsOptions = {},
+  ): Promise<FeatureFlag[]> {
+    return listFeatureFlagsMember(this.client, options);
+  }
+
+  /**
+   * Create a new feature flag (`create_feature_flag`,
+   * `workspace.py:5784-5815`).
+   *
+   * @param params - Flag creation parameters.
+   * @returns The newly created `FeatureFlag`.
+   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
+   * @throws ResponseValidationError - Malformed payload.
+   *
+   * @example
+   * ```typescript
+   * const flag = await ws.createFeatureFlag(
+   *   new CreateFeatureFlagParams({ name: "Dark Mode", key: "dark_mode" }),
+   * );
+   * ```
+   */
+  async createFeatureFlag(
+    params: CreateFeatureFlagParams,
+  ): Promise<FeatureFlag> {
+    return createFeatureFlagMember(this.client, params);
+  }
+
+  /**
+   * Get a single feature flag by ID (`get_feature_flag`,
+   * `workspace.py:5817-5846`).
+   *
+   * @param flagId - Feature flag UUID.
+   * @returns The `FeatureFlag`.
+   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async getFeatureFlag(flagId: string): Promise<FeatureFlag> {
+    return getFeatureFlagMember(this.client, flagId);
+  }
+
+  /**
+   * Update a feature flag, full replacement / PUT semantics
+   * (`update_feature_flag`, `workspace.py:5848-5886`).
+   *
+   * @param flagId - Feature flag UUID.
+   * @param params - Complete flag configuration.
+   * @returns The updated `FeatureFlag`.
+   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async updateFeatureFlag(
+    flagId: string,
+    params: UpdateFeatureFlagParams,
+  ): Promise<FeatureFlag> {
+    return updateFeatureFlagMember(this.client, flagId, params);
+  }
+
+  /**
+   * Delete a feature flag (`delete_feature_flag`,
+   * `workspace.py:5888-5907`).
+   *
+   * @param flagId - Feature flag UUID.
+   * @returns Nothing.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   */
+  async deleteFeatureFlag(flagId: string): Promise<void> {
+    return deleteFeatureFlagMember(this.client, flagId);
+  }
+
+  /**
+   * Archive a feature flag, a soft delete (`archive_feature_flag`,
+   * `workspace.py:5913-5932`).
+   *
+   * @param flagId - Feature flag UUID.
+   * @returns Nothing.
+   */
+  async archiveFeatureFlag(flagId: string): Promise<void> {
+    return archiveFeatureFlagMember(this.client, flagId);
+  }
+
+  /**
+   * Restore an archived feature flag (`restore_feature_flag`,
+   * `workspace.py:5934-5961`).
+   *
+   * @param flagId - Feature flag UUID.
+   * @returns The restored `FeatureFlag`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async restoreFeatureFlag(flagId: string): Promise<FeatureFlag> {
+    return restoreFeatureFlagMember(this.client, flagId);
+  }
+
+  /**
+   * Duplicate a feature flag (`duplicate_feature_flag`,
+   * `workspace.py:5963-5991`).
+   *
+   * @param flagId - Feature flag UUID.
+   * @returns The newly created duplicate `FeatureFlag`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async duplicateFeatureFlag(flagId: string): Promise<FeatureFlag> {
+    return duplicateFeatureFlagMember(this.client, flagId);
+  }
+
+  /**
+   * Set test-user variant overrides for a feature flag
+   * (`set_flag_test_users`, `workspace.py:5996-6019`).
+   *
+   * @param flagId - Feature flag UUID.
+   * @param params - Test user mapping.
+   * @returns Nothing.
+   */
+  async setFlagTestUsers(
+    flagId: string,
+    params: SetTestUsersParams,
+  ): Promise<void> {
+    return setFlagTestUsersMember(this.client, flagId, params);
+  }
+
+  /**
+   * Get paginated change history for a feature flag
+   * (`get_flag_history`, `workspace.py:6021-6063`).
+   *
+   * @param flagId - Feature flag UUID.
+   * @param options - `page` / `page_size` (keyword-only in Python).
+   * @returns The `FlagHistoryResponse` (events + count).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async getFlagHistory(
+    flagId: string,
+    options: WorkspaceGetFlagHistoryOptions = {},
+  ): Promise<FlagHistoryResponse> {
+    return getFlagHistoryMember(this.client, flagId, options);
+  }
+
+  /**
+   * Get account-level feature flag limits and usage
+   * (`get_flag_limits`, `workspace.py:6065-6091`).
+   *
+   * @returns The `FlagLimitsResponse`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async getFlagLimits(): Promise<FlagLimitsResponse> {
+    return getFlagLimitsMember(this.client);
+  }
+
+  /**
+   * List experiments for the current project (`list_experiments`,
+   * `workspace.py:6096-6123`).
+   *
+   * @param options - `include_archived` (keyword-only in Python).
+   * @returns The `Experiment` models, in response order.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async listExperiments(
+    options: WorkspaceListExperimentsOptions = {},
+  ): Promise<Experiment[]> {
+    return listExperimentsMember(this.client, options);
+  }
+
+  /**
+   * Create a new experiment in Draft status (`create_experiment`,
+   * `workspace.py:6125-6156`).
+   *
+   * @param params - Experiment creation parameters.
+   * @returns The newly created `Experiment`.
+   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async createExperiment(params: CreateExperimentParams): Promise<Experiment> {
+    return createExperimentMember(this.client, params);
+  }
+
+  /**
+   * Get a single experiment by ID (`get_experiment`,
+   * `workspace.py:6158-6187`).
+   *
+   * @param experimentId - Experiment UUID.
+   * @returns The `Experiment`.
+   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async getExperiment(experimentId: string): Promise<Experiment> {
+    return getExperimentMember(this.client, experimentId);
+  }
+
+  /**
+   * Update an experiment, PATCH semantics (`update_experiment`,
+   * `workspace.py:6189-6225`).
+   *
+   * @param experimentId - Experiment UUID.
+   * @param params - Fields to update.
+   * @returns The updated `Experiment`.
+   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async updateExperiment(
+    experimentId: string,
+    params: UpdateExperimentParams,
+  ): Promise<Experiment> {
+    return updateExperimentMember(this.client, experimentId, params);
+  }
+
+  /**
+   * Delete an experiment (`delete_experiment`,
+   * `workspace.py:6227-6246`).
+   *
+   * @param experimentId - Experiment UUID.
+   * @returns Nothing.
+   */
+  async deleteExperiment(experimentId: string): Promise<void> {
+    return deleteExperimentMember(this.client, experimentId);
+  }
+
+  /**
+   * Launch an experiment, Draft → Active (`launch_experiment`,
+   * `workspace.py:6252-6277`).
+   *
+   * @param experimentId - Experiment UUID.
+   * @returns The launched `Experiment` with updated status.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async launchExperiment(experimentId: string): Promise<Experiment> {
+    return launchExperimentMember(this.client, experimentId);
+  }
+
+  /**
+   * Conclude an experiment, Active → Concluded
+   * (`conclude_experiment`, `workspace.py:6279-6302`) — always sends a
+   * JSON body, `{}` when no params are supplied.
+   *
+   * @param experimentId - Experiment UUID.
+   * @param options - `params` (keyword-only in Python).
+   * @returns The concluded `Experiment`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async concludeExperiment(
+    experimentId: string,
+    options: WorkspaceConcludeExperimentOptions = {},
+  ): Promise<Experiment> {
+    return concludeExperimentMember(this.client, experimentId, options);
+  }
+
+  /**
+   * Record the experiment decision, Concluded → Success/Fail
+   * (`decide_experiment`, `workspace.py:6304-6337`).
+   *
+   * @param experimentId - Experiment UUID.
+   * @param params - Decision parameters (success, variant, message).
+   * @returns The decided `Experiment` with terminal status.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async decideExperiment(
+    experimentId: string,
+    params: ExperimentDecideParams,
+  ): Promise<Experiment> {
+    return decideExperimentMember(this.client, experimentId, params);
+  }
+
+  /**
+   * Archive an experiment (`archive_experiment`,
+   * `workspace.py:6354-6373`).
+   *
+   * @param experimentId - Experiment UUID.
+   * @returns Nothing.
+   */
+  async archiveExperiment(experimentId: string): Promise<void> {
+    return archiveExperimentMember(this.client, experimentId);
+  }
+
+  /**
+   * Restore an archived experiment (`restore_experiment`,
+   * `workspace.py:6375-6400`).
+   *
+   * @param experimentId - Experiment UUID.
+   * @returns The restored `Experiment`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async restoreExperiment(experimentId: string): Promise<Experiment> {
+    return restoreExperimentMember(this.client, experimentId);
+  }
+
+  /**
+   * Duplicate an experiment (`duplicate_experiment`,
+   * `workspace.py:6402-6439`) — `params` is required because the
+   * Mixpanel API returns an empty body when duplicating without a name.
+   *
+   * @param experimentId - Experiment UUID.
+   * @param params - Duplication parameters (`name` is required).
+   * @returns The newly created duplicate `Experiment`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async duplicateExperiment(
+    experimentId: string,
+    params: DuplicateExperimentParams,
+  ): Promise<Experiment> {
+    return duplicateExperimentMember(this.client, experimentId, params);
+  }
+
+  /**
+   * List experiments in ERF (Experiment Results Framework) format
+   * (`list_erf_experiments`, `workspace.py:6441-6461`).
+   *
+   * @returns The ERF experiment dicts, verbatim.
+   */
+  async listErfExperiments(): Promise<Array<Record<string, unknown>>> {
+    return listErfExperimentsMember(this.client);
   }
 }
 
