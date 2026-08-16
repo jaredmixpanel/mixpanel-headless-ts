@@ -178,6 +178,66 @@ export type {
   WorkspaceListExperimentsOptions,
   WorkspaceListFeatureFlagsOptions,
 } from "./workspace-members/flags-experiments.js";
+import {
+  bulkDeleteAlerts as bulkDeleteAlertsMember,
+  createAlert as createAlertMember,
+  createAnnotation as createAnnotationMember,
+  createAnnotationTag as createAnnotationTagMember,
+  createWebhook as createWebhookMember,
+  deleteAlert as deleteAlertMember,
+  deleteAnnotation as deleteAnnotationMember,
+  deleteWebhook as deleteWebhookMember,
+  getAlert as getAlertMember,
+  getAlertCount as getAlertCountMember,
+  getAlertHistory as getAlertHistoryMember,
+  getAlertScreenshotUrl as getAlertScreenshotUrlMember,
+  getAnnotation as getAnnotationMember,
+  listAlerts as listAlertsMember,
+  listAnnotations as listAnnotationsMember,
+  listAnnotationTags as listAnnotationTagsMember,
+  listWebhooks as listWebhooksMember,
+  testAlert as testAlertMember,
+  testWebhook as testWebhookMember,
+  updateAlert as updateAlertMember,
+  updateAnnotation as updateAnnotationMember,
+  updateWebhook as updateWebhookMember,
+  validateAlertsForBookmark as validateAlertsForBookmarkMember,
+  type WorkspaceGetAlertCountOptions,
+  type WorkspaceGetAlertHistoryOptions,
+  type WorkspaceListAlertsOptions,
+  type WorkspaceListAnnotationsOptions,
+} from "./workspace-members/annotations-webhooks-alerts.js";
+export type {
+  WorkspaceGetAlertCountOptions,
+  WorkspaceGetAlertHistoryOptions,
+  WorkspaceListAlertsOptions,
+  WorkspaceListAnnotationsOptions,
+} from "./workspace-members/annotations-webhooks-alerts.js";
+import type {
+  Annotation,
+  AnnotationTag,
+  CreateAnnotationParams,
+  CreateAnnotationTagParams,
+  UpdateAnnotationParams,
+} from "./types/entities/annotations.js";
+import type {
+  CreateWebhookParams,
+  ProjectWebhook,
+  UpdateWebhookParams,
+  WebhookMutationResult,
+  WebhookTestParams,
+  WebhookTestResult,
+} from "./types/entities/webhooks.js";
+import type {
+  AlertCount,
+  AlertHistoryResponse,
+  AlertScreenshotResponse,
+  CreateAlertParams,
+  CustomAlert,
+  UpdateAlertParams,
+  ValidateAlertsForBookmarkParams,
+  ValidateAlertsForBookmarkResponse,
+} from "./types/entities/alerts.js";
 import type {
   CreateFeatureFlagParams,
   FeatureFlag,
@@ -4016,6 +4076,356 @@ export class Workspace {
    */
   async listErfExperiments(): Promise<Array<Record<string, unknown>>> {
     return listErfExperimentsMember(this.client);
+  }
+
+  // === B6-W5 annotation + webhook + alert members (W5 owns; append-only) ===
+
+  /**
+   * List timeline annotations for the project (`list_annotations`,
+   * `workspace.py:6466-6505`).
+   *
+   * @param options - `from_date` / `to_date` / `tags` (keyword-only in
+   *   Python). Dates are ISO `YYYY-MM-DD` STRINGS end-to-end.
+   * @returns The `Annotation` models, in response order.
+   * @throws ResponseValidationError - Malformed API response payload
+   *   (`RESPONSE_VALIDATION_ERROR`).
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   *
+   * @example
+   * ```typescript
+   * for (const ann of await ws.listAnnotations({ from_date: "2026-01-01" })) {
+   *   console.log(`${ann.date}: ${ann.description}`);
+   * }
+   * ```
+   */
+  async listAnnotations(
+    options: WorkspaceListAnnotationsOptions = {},
+  ): Promise<Annotation[]> {
+    return listAnnotationsMember(this.client, options);
+  }
+
+  /**
+   * Create a new timeline annotation (`create_annotation`,
+   * `workspace.py:6507-6537`).
+   *
+   * @param params - Annotation creation parameters (date, description
+   *   required).
+   * @returns The created `Annotation`.
+   * @throws ResponseValidationError - Malformed payload.
+   *
+   * @example
+   * ```typescript
+   * const ann = await ws.createAnnotation(
+   *   new CreateAnnotationParams({
+   *     date: "2026-03-31",
+   *     description: "v2.5 release",
+   *   }),
+   * );
+   * ```
+   */
+  async createAnnotation(params: CreateAnnotationParams): Promise<Annotation> {
+    return createAnnotationMember(this.client, params);
+  }
+
+  /**
+   * Get a single annotation by ID (`get_annotation`,
+   * `workspace.py:6539-6565`).
+   *
+   * @param annotationId - Annotation ID.
+   * @returns The `Annotation`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async getAnnotation(annotationId: number): Promise<Annotation> {
+    return getAnnotationMember(this.client, annotationId);
+  }
+
+  /**
+   * Update an annotation, PATCH semantics (`update_annotation`,
+   * `workspace.py:6567-6598`).
+   *
+   * @param annotationId - Annotation ID.
+   * @param params - Fields to update (description, tags).
+   * @returns The updated `Annotation`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async updateAnnotation(
+    annotationId: number,
+    params: UpdateAnnotationParams,
+  ): Promise<Annotation> {
+    return updateAnnotationMember(this.client, annotationId, params);
+  }
+
+  /**
+   * Delete an annotation (`delete_annotation`,
+   * `workspace.py:6600-6619`).
+   *
+   * @param annotationId - Annotation ID.
+   * @returns Nothing.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   */
+  async deleteAnnotation(annotationId: number): Promise<void> {
+    return deleteAnnotationMember(this.client, annotationId);
+  }
+
+  /**
+   * List annotation tags for the project (`list_annotation_tags`,
+   * `workspace.py:6621-6647`).
+   *
+   * @returns The `AnnotationTag` models, in response order.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async listAnnotationTags(): Promise<AnnotationTag[]> {
+    return listAnnotationTagsMember(this.client);
+  }
+
+  /**
+   * Create a new annotation tag (`create_annotation_tag`,
+   * `workspace.py:6649-6679`).
+   *
+   * @param params - Tag creation parameters (name required).
+   * @returns The created `AnnotationTag`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async createAnnotationTag(
+    params: CreateAnnotationTagParams,
+  ): Promise<AnnotationTag> {
+    return createAnnotationTagMember(this.client, params);
+  }
+
+  /**
+   * List all webhooks for the current project (`list_webhooks`,
+   * `workspace.py:6685-6711`).
+   *
+   * @returns The `ProjectWebhook` models, in response order.
+   * @throws ResponseValidationError - Malformed payload.
+   *
+   * @example
+   * ```typescript
+   * for (const wh of await ws.listWebhooks()) {
+   *   console.log(`${wh.name} -> ${wh.url}`);
+   * }
+   * ```
+   */
+  async listWebhooks(): Promise<ProjectWebhook[]> {
+    return listWebhooksMember(this.client);
+  }
+
+  /**
+   * Create a new webhook (`create_webhook`,
+   * `workspace.py:6713-6744`).
+   *
+   * @param params - Webhook creation parameters.
+   * @returns The `WebhookMutationResult` (new webhook id + name).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async createWebhook(
+    params: CreateWebhookParams,
+  ): Promise<WebhookMutationResult> {
+    return createWebhookMember(this.client, params);
+  }
+
+  /**
+   * Update an existing webhook, PATCH semantics (`update_webhook`,
+   * `workspace.py:6746-6780`).
+   *
+   * @param webhookId - Webhook UUID string.
+   * @param params - Fields to update.
+   * @returns The `WebhookMutationResult` (updated id + name).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async updateWebhook(
+    webhookId: string,
+    params: UpdateWebhookParams,
+  ): Promise<WebhookMutationResult> {
+    return updateWebhookMember(this.client, webhookId, params);
+  }
+
+  /**
+   * Delete a webhook (`delete_webhook`, `workspace.py:6782-6801`).
+   *
+   * @param webhookId - Webhook UUID string.
+   * @returns Nothing.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   */
+  async deleteWebhook(webhookId: string): Promise<void> {
+    return deleteWebhookMember(this.client, webhookId);
+  }
+
+  /**
+   * Test webhook connectivity (`test_webhook`,
+   * `workspace.py:6803-6833`).
+   *
+   * @param params - Webhook test parameters (`url` required).
+   * @returns The `WebhookTestResult` (success, status_code, message).
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async testWebhook(params: WebhookTestParams): Promise<WebhookTestResult> {
+    return testWebhookMember(this.client, params);
+  }
+
+  /**
+   * List custom alerts for the current project (`list_alerts`,
+   * `workspace.py:6839-6874`).
+   *
+   * @param options - `bookmark_id` / `skip_user_filter` (keyword-only
+   *   in Python).
+   * @returns The `CustomAlert` models, in response order.
+   * @throws ResponseValidationError - Malformed payload.
+   *
+   * @example
+   * ```typescript
+   * for (const alert of await ws.listAlerts()) {
+   *   console.log(`${alert.name} (paused=${alert.paused})`);
+   * }
+   * ```
+   */
+  async listAlerts(
+    options: WorkspaceListAlertsOptions = {},
+  ): Promise<CustomAlert[]> {
+    return listAlertsMember(this.client, options);
+  }
+
+  /**
+   * Create a new custom alert (`create_alert`,
+   * `workspace.py:6876-6912`).
+   *
+   * @param params - Alert creation parameters.
+   * @returns The created `CustomAlert`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async createAlert(params: CreateAlertParams): Promise<CustomAlert> {
+    return createAlertMember(this.client, params);
+  }
+
+  /**
+   * Get a single custom alert by ID (`get_alert`,
+   * `workspace.py:6914-6940`).
+   *
+   * @param alertId - Alert ID (integer).
+   * @returns The `CustomAlert`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async getAlert(alertId: number): Promise<CustomAlert> {
+    return getAlertMember(this.client, alertId);
+  }
+
+  /**
+   * Update a custom alert, PATCH semantics (`update_alert`,
+   * `workspace.py:6942-6971`).
+   *
+   * @param alertId - Alert ID (integer).
+   * @param params - Fields to update.
+   * @returns The updated `CustomAlert`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async updateAlert(
+    alertId: number,
+    params: UpdateAlertParams,
+  ): Promise<CustomAlert> {
+    return updateAlertMember(this.client, alertId, params);
+  }
+
+  /**
+   * Delete a custom alert (`delete_alert`,
+   * `workspace.py:6973-6992`).
+   *
+   * @param alertId - Alert ID (integer).
+   * @returns Nothing.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   */
+  async deleteAlert(alertId: number): Promise<void> {
+    return deleteAlertMember(this.client, alertId);
+  }
+
+  /**
+   * Bulk-delete custom alerts (`bulk_delete_alerts`,
+   * `workspace.py:6994-7013`).
+   *
+   * @param ids - Alert IDs to delete.
+   * @returns Nothing.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   */
+  async bulkDeleteAlerts(ids: readonly number[]): Promise<void> {
+    return bulkDeleteAlertsMember(this.client, ids);
+  }
+
+  /**
+   * Get the project's alert count against its limit
+   * (`get_alert_count`, `workspace.py:7015-7042`).
+   *
+   * @param options - `alert_type` (keyword-only in Python).
+   * @returns The `AlertCount`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async getAlertCount(
+    options: WorkspaceGetAlertCountOptions = {},
+  ): Promise<AlertCount> {
+    return getAlertCountMember(this.client, options);
+  }
+
+  /**
+   * Get paginated alert trigger history (`get_alert_history`,
+   * `workspace.py:7044-7088`).
+   *
+   * @param alertId - Alert ID (integer).
+   * @param options - `page_size` / `next_cursor` / `previous_cursor`
+   *   (keyword-only in Python).
+   * @returns The `AlertHistoryResponse`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async getAlertHistory(
+    alertId: number,
+    options: WorkspaceGetAlertHistoryOptions = {},
+  ): Promise<AlertHistoryResponse> {
+    return getAlertHistoryMember(this.client, alertId, options);
+  }
+
+  /**
+   * Send a test alert notification (`test_alert`,
+   * `workspace.py:7090-7119`) — the payload is returned VERBATIM;
+   * Python performs no model validation.
+   *
+   * @param params - Alert parameters for the test (same shape as
+   *   create).
+   * @returns The opaque result record.
+   * @throws AuthenticationError | QueryError | ServerError - Wire
+   *   failures.
+   */
+  async testAlert(params: CreateAlertParams): Promise<Record<string, unknown>> {
+    return testAlertMember(this.client, params);
+  }
+
+  /**
+   * Get a signed URL for an alert screenshot
+   * (`get_alert_screenshot_url`, `workspace.py:7121-7149`).
+   *
+   * @param gcsKey - GCS object key from the alert payload.
+   * @returns The `AlertScreenshotResponse`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async getAlertScreenshotUrl(
+    gcsKey: string,
+  ): Promise<AlertScreenshotResponse> {
+    return getAlertScreenshotUrlMember(this.client, gcsKey);
+  }
+
+  /**
+   * Validate alerts against a bookmark definition
+   * (`validate_alerts_for_bookmark`, `workspace.py:7151-7196`).
+   *
+   * @param params - Alert IDs plus the bookmark type and params.
+   * @returns The `ValidateAlertsForBookmarkResponse`.
+   * @throws ResponseValidationError - Malformed payload.
+   */
+  async validateAlertsForBookmark(
+    params: ValidateAlertsForBookmarkParams,
+  ): Promise<ValidateAlertsForBookmarkResponse> {
+    return validateAlertsForBookmarkMember(this.client, params);
   }
 }
 
