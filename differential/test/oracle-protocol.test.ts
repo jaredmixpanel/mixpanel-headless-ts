@@ -295,11 +295,11 @@ describe("oracle.call: scope, skips, and protocol errors", () => {
   it("answers UNPORTED for mapped apis outside the compat surface", async () => {
     // Exemplar re-anchored at each bind wave to a still-unported mapped
     // api: user_builders.filter_to_selector went live at B3-BIND,
-    // workspace.build_params at B5-BIND, workspace.me at B6-BIND;
-    // region_probe.probe_region is B7's (pending until B7 by
-    // construction — b6-packets.md §12.5; the pattern retires at the
-    // B8 gate).
-    const result = await call(makeServer(), "region_probe.probe_region", {});
+    // workspace.build_params at B5-BIND, workspace.me at B6-BIND,
+    // region_probe.probe_region at B7-A2; oauth_flow.refresh_tokens is
+    // B8's (pending until B8 by construction — b6-packets.md §12.5;
+    // the pattern retires at the B8 gate).
+    const result = await call(makeServer(), "oauth_flow.refresh_tokens", {});
     expect(result).toEqual({
       ok: false,
       error: { class: "Unported", code: "UNPORTED" },
@@ -312,9 +312,10 @@ describe("oracle.call: scope, skips, and protocol errors", () => {
     // or every such probe would crash the harness with -32602 instead
     // of counting as a skip. (Exemplar re-anchored at B3-BIND —
     // segfilter.build_segfilter_entry went live — at B5-BIND:
-    // build_params went live — and at B6-BIND: workspace.me went live;
-    // region_probe.probe_region is B7's.)
-    const result = await call(makeServer(), "region_probe.probe_region", {
+    // build_params went live — at B6-BIND: workspace.me went live —
+    // and at B7-A2: region_probe.probe_region went live;
+    // oauth_flow.refresh_tokens is B8's.)
+    const result = await call(makeServer(), "oauth_flow.refresh_tokens", {
       where: { $type: "Filter", field: "x" },
     });
     expect(result).toEqual({

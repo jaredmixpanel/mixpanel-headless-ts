@@ -169,6 +169,7 @@ import { registerQueryWireBindings } from "./wire-queries.js";
 import { registerWorkspaceBindings } from "./wire-workspace.js";
 import { registerWorkspaceEntityBindings } from "./wire-workspace-entities.js";
 import { registerReplaysBindings } from "./replays-bindings.js";
+import { registerAuthWireBindings } from "./wire-auth.js";
 import { WireStubClient, type WireStubRequestOptions } from "./wirestub.js";
 
 /**
@@ -1612,5 +1613,9 @@ export function createRunnerDeps(recordEpoch: string): RunnerDeps {
   registerQueryParamBindings(implementations, codecs);
   registerValidatorBindings(implementations);
   registerBuilderBindings(implementations, codecs);
+  // B7-A2 (b′ inline): region_probe.probe_region (14 auth vectors) —
+  // replays while `region_probe.` is still pending; the flip is the
+  // B7 gate's (b7-packets.md §2.7, §4).
+  registerAuthWireBindings(implementations);
   return { implementations, codecs, recordEpoch };
 }

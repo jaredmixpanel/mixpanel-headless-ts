@@ -12,3 +12,5 @@
 export * from "./account.js";
 export * from "./session.js";
 export * from "./token.js";
+export * from "./resolver.js";
+export * from "./region-probe.js";

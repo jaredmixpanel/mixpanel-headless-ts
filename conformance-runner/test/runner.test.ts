@@ -132,11 +132,12 @@ describe("runVector — api gating", () => {
     // api_client.list_dashboards (bound at B4-C3), C5 left
     // pagination.paginate_all (bound at B4-C6), then
     // workspace.list_dashboards (bound at B6-BIND — every workspace
-    // name is now bound). Re-anchored to region_probe.probe_region,
-    // pending until B7 by construction (b6-packets.md §12.5 — the
-    // pattern retires at the B8 gate when no pending names remain).
+    // name is now bound), then region_probe.probe_region (bound at
+    // B7-A2). Re-anchored to oauth_flow.refresh_tokens, pending until
+    // B8 by construction (b6-packets.md §12.5 / b7-packets.md §4.3 —
+    // the pattern retires at the B8 gate when no pending names remain).
     const vector = makeVector({
-      api: "region_probe.probe_region",
+      api: "oauth_flow.refresh_tokens",
       kind: "wire",
       expect: '{"result": null}',
     });
@@ -148,13 +149,14 @@ describe("runVector — api gating", () => {
     // Post-B4-flip the setup probe must come from a still-pending batch
     // (`api_client.set_workspace_id` is done+bound now). `workspace.me`
     // played the P3-1 † carried-vector shape until the B6 gate flipped
-    // the whole `workspace.` prefix to done; re-anchored to
-    // `region_probe.probe_region`, pending until B7 by construction
+    // the whole `workspace.` prefix to done; `region_probe.probe_region`
+    // held the anchor until B7-A2 bound it; re-anchored to
+    // `oauth_flow.refresh_tokens`, pending until B8 by construction
     // (b6-packets.md §12.5 — the pattern retires at the B8 gate).
     const vector = makeVector({
       api: "api_client.activity_feed",
       kind: "wire",
-      setup: [{ api: "region_probe.probe_region", input: "{}" }],
+      setup: [{ api: "oauth_flow.refresh_tokens", input: "{}" }],
       expect: '{"result": null}',
     });
     const deps = depsWith({ "api_client.activity_feed": () => null });
