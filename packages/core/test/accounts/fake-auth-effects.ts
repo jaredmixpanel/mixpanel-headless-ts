@@ -23,7 +23,6 @@ import type {
 } from "../../src/accounts/auth-effects.js";
 import type { MeResponse } from "../../src/client/me.js";
 import {
-  AccountExistsError,
   AccountInUseError,
   ConfigError,
   OAuthError,
@@ -162,7 +161,11 @@ export function fakeConfig(): FakeConfig {
     getCustomHeader: (): readonly [string, string] | null => state.customHeader,
     addAccount: (name: string, params: AddAccountParams): void => {
       if (state.accounts.has(name)) {
-        throw new AccountExistsError(name);
+        // PLAIN ConfigError, matching `ConfigManager._apply_add_account`
+        // (`config.py:446`). `AccountExistsError` is reserved for the
+        // login_unified name-collision path (`accounts.py:1689`) —
+        // B7-ARB-B fix, `b7-reviewB-resolution.md` B-E2E-F1.
+        throw new ConfigError(`Account '${name}' already exists.`);
       }
       const raw: Record<string, unknown> = {
         type: params.type,

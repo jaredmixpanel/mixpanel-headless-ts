@@ -11,6 +11,19 @@
  * `workspace-members/lifecycle.ts:111-122`). The committed
  * {@link UNPORTED_AUTH_SEAMS} constant is the named still-stubbed list
  * the B8 packet consumes BY NAME.
+ *
+ * SECRET SERIALIZATION RULE for implementors (B7-ARB-B CRED-F3,
+ * `b7-reviewB-resolution.md`): `Secret.toJSON()` returns the redaction
+ * mask, so routing a `Secret`-bearing bag through `JSON.stringify` (or
+ * any generic serializer) PERSISTS literal asterisks — silent
+ * credential corruption discovered only at next auth. Every on-disk
+ * credential writer ({@link ConfigWrites} members taking
+ * {@link AddAccountParams} / {@link UpdateAccountFields},
+ * {@link TokenStore.writeTokens}, {@link BridgeEffects.export}) MUST
+ * call `reveal()` at its designated write site — the in-memory fakes
+ * demonstrate the pattern (`test/accounts/fake-auth-effects.ts`
+ * `accountToRaw` / `toText`). B8 adds a Layer-3 write→read round-trip
+ * lock over a `Secret`-bearing account.
  */
 
 import type {
@@ -123,9 +136,17 @@ export interface AddTargetOptions {
  *
  * Transaction contract: every member is ONE `_mutate()` transaction in
  * Python. In particular {@link addAccount} auto-promotes the FIRST
- * account to `[active].account` inside the same transaction (FR-045,
- * `accounts.py:472-489`), and {@link applyTarget} replaces `[active]`
- * wholesale (a target with no workspace clears any prior pin,
+ * account to `[active].account` inside the same transaction (FR-045).
+ * Layering note (B7-ARB-B B-E2E-N1, `b7-reviewB-resolution.md`): that
+ * promotion belongs to the `accounts.add` NAMESPACE transaction
+ * (`accounts.py:472-489` — `_apply_add_account` + first-account
+ * `_apply_set_active` under one `_mutate()`), NOT to
+ * `ConfigManager.add_account` itself, which does not promote. B8-N1
+ * must implement the promotion exactly ONCE — in its `ConfigWrites`
+ * adapter transaction — and keep the underlying `ConfigManager` twin
+ * non-promoting (`test_config.py`'s `add_account` asserts are the lock
+ * for that layer). {@link applyTarget} replaces `[active]` wholesale
+ * (a target with no workspace clears any prior pin,
  * `config.py:951-1002`).
  */
 export interface ConfigWrites {
@@ -135,8 +156,11 @@ export interface ConfigWrites {
    *
    * @param name - Account name (`^[a-zA-Z0-9_-]{1,64}$`).
    * @param params - Typed credential fields.
-   * @throws ConfigError - Duplicate name (`AccountExistsError`),
-   *   missing/incompatible fields, or validation failure.
+   * @throws ConfigError - Duplicate name (PLAIN `ConfigError` /
+   *   CONFIG_ERROR, `config.py:446` — never `AccountExistsError`,
+   *   which Python reserves for the login_unified name-collision path,
+   *   `accounts.py:1689`; B7-ARB-B B-E2E-F1), missing/incompatible
+   *   fields, or validation failure.
    */
   addAccount(name: string, params: AddAccountParams): void;
 

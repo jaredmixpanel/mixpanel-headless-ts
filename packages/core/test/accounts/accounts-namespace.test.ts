@@ -190,6 +190,31 @@ describe("TestAdd (test_accounts_namespace.py:46)", () => {
     ).rejects.toBeInstanceOf(ConfigError);
   });
 
+  // B7-ARB-B B-E2E-F1 lock (spec-cited ADDITION, R10.2-safe): Python's
+  // duplicate-add path raises PLAIN `ConfigError` (`config.py:446`,
+  // code CONFIG_ERROR); `AccountExistsError` / ACCOUNT_EXISTS is
+  // reserved for the login_unified name-collision path
+  // (`accounts.py:1689`). R5 makes the CODE the contract — pin it so
+  // B8-N1's real ConfigWrites adapter cannot inherit the stronger
+  // class from the interface JSDoc (`b7-reviewB-resolution.md`).
+  it("duplicate add surfaces plain CONFIG_ERROR, never ACCOUNT_EXISTS", async () => {
+    const { effects } = makeEffects();
+    const accounts = createAccountsNamespace(effects);
+    await accounts.add("team", SA_OPTS);
+
+    let caught: unknown = null;
+    try {
+      await accounts.add("team", { type: "oauth_browser", region: "us" });
+    } catch (exc) {
+      caught = exc;
+    }
+    expect(caught).toBeInstanceOf(ConfigError);
+    const err = caught as ConfigError;
+    expect(err.code).toBe("CONFIG_ERROR");
+    expect(err.constructor).toBe(ConfigError);
+    expect(err.message).toBe("Account 'team' already exists.");
+  });
+
   it("re-add with region null fails fast — no probe, region preserved", async () => {
     const { effects, config } = makeEffects();
     const accounts = createAccountsNamespace(effects);
