@@ -31,13 +31,18 @@ export type BatchStatus = "pending" | "done";
  * - `compat.` / `wirestub.` — the Phase-1 D13 gate slice (the 42).
  * - `types.` — the Phase-2 contract layer (P2-5a..c query params,
  *   P2-6 results/replays; 44 api-index entry points).
+ * - `validation.` / `user_validators.` — the Phase-3 B2 validators
+ *   (playbook P3-5 §4 B2-gate flip; 690 vectors).
  *
- * Pending batches (Phase 3, per plan §6 / api-map):
- * - `api_client.` (B4), `workspace.` (B6), `validation.` /
- *   `user_validators.` / `user_builders.` / `expressions.` /
- *   `transforms.` (B2), `bookmark_builders.` / `segfilter.` (B3),
- *   `replays.` / `replay_labels.` / `rrweb_analyzer.` (B5),
- *   `oauth_flow.` / `region_probe.` (B7/B8), `pagination.` (B4).
+ * Pending batches (Phase 3, per plan §6 / api-map — the
+ * `user_builders.` / `expressions.` / `transforms.` prefixes are B3
+ * scope per the playbook, superseding this file's earlier informal
+ * "B2" binning; playbook Discrepancy #2):
+ * - `api_client.` (B4), `workspace.` (B6), `user_builders.` /
+ *   `expressions.` / `transforms.` / `bookmark_builders.` /
+ *   `segfilter.` (B3), `replays.` / `replay_labels.` /
+ *   `rrweb_analyzer.` (B5), `oauth_flow.` / `region_probe.` (B7/B8),
+ *   `pagination.` (B4).
  */
 export const BATCH_STATUS: ReadonlyMap<string, BatchStatus> = new Map<
   string,
@@ -54,8 +59,10 @@ export const BATCH_STATUS: ReadonlyMap<string, BatchStatus> = new Map<
   // with this entry.
   ["api_client._iter_jsonl_lines", "done"],
   ["workspace.", "pending"],
-  ["validation.", "pending"],
-  ["user_validators.", "pending"],
+  // Phase-3 B2 gate flip (playbook P3-5 §4): validators are done —
+  // stragglers under these prefixes now FAIL instead of skipping.
+  ["validation.", "done"],
+  ["user_validators.", "done"],
   ["user_builders.", "pending"],
   ["expressions.", "pending"],
   ["transforms.", "pending"],

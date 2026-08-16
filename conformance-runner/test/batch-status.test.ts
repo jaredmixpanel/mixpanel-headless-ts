@@ -83,7 +83,7 @@ describe("batchStatusFor — table lookup", () => {
   it("resolves pending prefixes (Phase-3 batches)", () => {
     expect(batchStatusFor("workspace.build_funnel_params")).toBe("pending");
     expect(batchStatusFor("api_client.activity_feed")).toBe("pending");
-    expect(batchStatusFor("validation.validate_bookmark")).toBe("pending");
+    expect(batchStatusFor("bookmark_builders.dashboard")).toBe("pending");
   });
 
   it("defaults to pending when no prefix matches", () => {
@@ -146,6 +146,22 @@ describe("batchStatusFor — table lookup", () => {
 
   it("types.* is declared done (the P2-8 flip)", () => {
     expect(BATCH_STATUS.get("types.")).toBe("done");
+  });
+
+  it("validation.* + user_validators.* are declared done (the B2 gate flip)", () => {
+    // Playbook P3-5 §4: the B2 gate flips exactly these two prefixes;
+    // stragglers under them must FAIL, never skip (Risk #8).
+    expect(BATCH_STATUS.get("validation.")).toBe("done");
+    expect(BATCH_STATUS.get("user_validators.")).toBe("done");
+    expect(batchStatusFor("validation.validate_bookmark")).toBe("done");
+    expect(batchStatusFor("user_validators.validate_user_args")).toBe("done");
+    // B3 scope stays pending (playbook Discrepancy #2 — user_builders/
+    // expressions/transforms are B3 despite the old file-comment binning).
+    expect(batchStatusFor("user_builders.filter_to_selector")).toBe("pending");
+    expect(batchStatusFor("expressions.normalize_on_expression")).toBe(
+      "pending",
+    );
+    expect(batchStatusFor("transforms.transform_funnel")).toBe("pending");
   });
 });
 
