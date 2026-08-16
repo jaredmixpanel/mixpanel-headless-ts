@@ -72,6 +72,7 @@ import {
   _MAX_FILTER_VALUES,
   floatCarrierValue,
   isFloatCarrier,
+  isPythonDict,
   isPythonFloat,
   isPythonInt,
   pythonStrLoose,
@@ -88,11 +89,15 @@ type Dict = Record<string, unknown>;
 /**
  * TS analogue of `isinstance(value, dict)`.
  *
+ * Delegates to the shared {@link isPythonDict} discrimination (B2
+ * arbiter fix F1): PyFloat carriers (Python floats) and reconstructed
+ * class instances are NOT dicts, exactly as in Python.
+ *
  * @param value - Candidate value.
- * @returns True for a plain (non-array) object.
+ * @returns True when Python's `isinstance(value, dict)` would hold.
  */
 function isDict(value: unknown): value is Dict {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return isPythonDict(value);
 }
 
 /**

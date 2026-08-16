@@ -62,9 +62,19 @@ const validDateStrsArb: fc.Arbitrary<string> = fc
       `${String(d).padStart(2, "0")}`,
   );
 
-/** Letters + digits, mirroring `st.characters(categories=("L", "N"))`. */
+/**
+ * Representative alphabet for `st.characters(categories=("L", "N"))`.
+ *
+ * fast-check has no Unicode-category generator, so this is a NARROWED
+ * stand-in (B2 arbiter fix, b2-review-resolution.md assertions-F1):
+ * ASCII letters/digits plus explicit non-ASCII category-L/N members —
+ * é (Ll), Ω (Lu), ж (Ll), 中 (Lo), ٤ (Nd), Ⅻ (Nl) and the non-BMP
+ * 𝒳 (U+1D4B3, Lu) — every entry strictly inside Python's L/N domain.
+ * Full-Unicode cross-language behavior is additionally locked by the
+ * Python-side R10.9 fuzz strategies (`_B2_NON_BMP` edges).
+ */
 const LN_ALPHABET =
-  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" + "éΩж中٤Ⅻ𝒳";
 
 /**
  * Build an arbitrary string from an explicit alphabet.
@@ -92,8 +102,14 @@ const validSetsArb: fc.Arbitrary<ReadonlySet<string>> = fc
   .array(stringFrom([...LN_ALPHABET], 1, 15), { minLength: 1, maxLength: 30 })
   .map((items) => new Set(items));
 
-/** Port of `query_strings = st.text(min_size=0, max_size=20)`. */
-const queryStringsArb = fc.string({ maxLength: 20 });
+/**
+ * Port of `query_strings = st.text(min_size=0, max_size=20)` —
+ * `unit: "binary"` for Python's full-Unicode `st.text()` domain
+ * (B2 arbiter fix: the pre-fix default `fc.string()` was
+ * printable-ASCII only, and Layer-3 is the sole lock on `_suggest`'s
+ * Unicode behavior since suggestions are advisory, R5.3).
+ */
+const queryStringsArb = fc.string({ unit: "binary", maxLength: 20 });
 
 /** Port of `uppercase_keys = st.from_regex(r"^[A-Z]$")`. */
 const uppercaseKeysArb = fc.constantFrom(
@@ -103,9 +119,12 @@ const uppercaseKeysArb = fc.constantFrom(
 /** Port of `property_names` (1-30 chars, categories L/N). */
 const propertyNamesArb = stringFrom([...LN_ALPHABET], 1, 30);
 
-/** Port of `nonempty_formulas` (text 1-100 filtered on `.strip()`). */
+/**
+ * Port of `nonempty_formulas` (full-Unicode `st.text()` 1-100 filtered
+ * on `.strip()`) — `unit: "binary"` per the arbiter fix above.
+ */
 const nonemptyFormulasArb: fc.Arbitrary<string> = fc
-  .string({ minLength: 1, maxLength: 100 })
+  .string({ unit: "binary", minLength: 1, maxLength: 100 })
   .filter((s) => pythonStrip(s) !== "");
 
 // =============================================================================

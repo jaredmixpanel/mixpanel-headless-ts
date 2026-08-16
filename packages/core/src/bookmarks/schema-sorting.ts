@@ -52,6 +52,7 @@ import { ValidationError } from "../errors.js";
 import {
   floatCarrierValue,
   isFloatCarrier,
+  isPythonDict,
 } from "../query/validation-shared.js";
 
 // =============================================================================
@@ -322,9 +323,17 @@ function pydanticIntFromString(text: string): boolean {
   return /^[+-]?[0-9]+(?:_[0-9]+)*(?:\.0+)?$/.test(pydanticTrim(text));
 }
 
-/** True for a plain JS object — the TS analogue of a Python `dict`. */
+/**
+ * True for the TS analogue of a Python `dict` — delegates to the
+ * shared {@link isPythonDict} discrimination (B2 arbiter fix F1):
+ * PyFloat carriers (Python floats) and reconstructed class instances
+ * are NOT dicts, exactly as pydantic sees them.
+ *
+ * @param value - Candidate value.
+ * @returns True when Python's `isinstance(value, dict)` would hold.
+ */
 function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return isPythonDict(value);
 }
 
 // =============================================================================

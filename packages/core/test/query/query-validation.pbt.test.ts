@@ -62,17 +62,31 @@ const maybeDatesArb: fc.Arbitrary<string | null> = fc.oneof(
 /** Port of `last_values = st.integers(min_value=-100, max_value=5000)`. */
 const lastValuesArb = fc.integer({ min: -100, max: 5000 });
 
-/** Letters + digits, mirroring `st.characters(categories=("L", "N"))`. */
-const LN_ALPHABET =
-  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+/**
+ * Representative alphabet for `st.characters(categories=("L", "N"))`,
+ * split on code points (the non-BMP member must never yield a lone
+ * surrogate).
+ *
+ * fast-check has no Unicode-category generator, so this is a NARROWED
+ * stand-in (B2 arbiter fix, b2-review-resolution.md assertions-F1):
+ * ASCII letters/digits plus explicit non-ASCII category-L/N members —
+ * é (Ll), Ω (Lu), ж (Ll), 中 (Lo), ٤ (Nd), Ⅻ (Nl) and the non-BMP
+ * 𝒳 (U+1D4B3, Lu) — every entry strictly inside Python's L/N domain.
+ * Full-Unicode cross-language behavior is additionally locked by the
+ * Python-side R10.9 fuzz strategies (`_B2_NON_BMP` edges).
+ */
+const LN_CHARS: readonly string[] = [
+  ...("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" +
+    "éΩж中٤Ⅻ𝒳"),
+];
 
 /** Port of `property_names` (min_size=1, max_size=30, categories L/N). */
 const propertyNamesArb: fc.Arbitrary<string> = fc
-  .array(fc.integer({ min: 0, max: LN_ALPHABET.length - 1 }), {
+  .array(fc.integer({ min: 0, max: LN_CHARS.length - 1 }), {
     minLength: 1,
     maxLength: 30,
   })
-  .map((idxs) => idxs.map((i) => LN_ALPHABET[i] ?? "a").join(""));
+  .map((idxs) => idxs.map((i) => LN_CHARS[i] ?? "a").join(""));
 
 /** Port of `property_types`. */
 const propertyTypesArb = fc.constantFrom(

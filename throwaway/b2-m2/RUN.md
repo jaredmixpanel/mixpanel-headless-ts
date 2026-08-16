@@ -56,7 +56,19 @@ Breakdown at the recorded seed:
   · `validate_sorting_block` 600 — all ≥ the P2-9 500-example budget.
 - **Total compared 1,921 · divergences 0.**
 
-### Skips — one class only, and it is UNILATERAL (recorded in full)
+### Skips — one class only (recorded in full)
+
+**CORRECTION (B2 arbiter, 2026-08-15 — b2-review-resolution.md F5; the
+paragraph below this note is the ORIGINAL pre-fix record and its skip
+classification is stale).** After the B2-BIND commit `2015565` landed
+the R10.7 `requireHashable` adjudication, the same 8 recorded-seed
+skips (and the fresh-seed skips) are **BILATERAL**: report.json
+`skip_reasons` now read "ts threw + python errored" — the TS port
+raises the same `TypeError` CPython raises at the 16 frozenset-
+membership sites. The counts are unchanged (1,921 compared / 8 skips /
+0 divergences at seed 20260815, re-verified post-arbiter-fixes); only
+the class description below is superseded. The batch notes file
+(`context/phase3/notes/B2-M2-notes.md`) carries the surviving record.
 
 All 8 skips (5 at the fresh seed) are
 `validation.validate_bookmark :: python raised: {"class":"TypeError"}`.
@@ -71,7 +83,8 @@ NOT hidden by the skip accounting — the harness records these as
 `unilateral: true` with the full input and the TS answer, and any skip
 class other than this one would be a finding.
 
-Zero bilateral skips: no input was refused by both sides.
+Zero bilateral skips at the original (pre-`2015565`) run: no input was
+refused by both sides.
 
 ### Mandatory edge set (R10.9), per api
 

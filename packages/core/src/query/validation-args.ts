@@ -25,6 +25,7 @@
 import { ValidationError } from "../errors.js";
 import {
   CohortBreakdown,
+  CohortDefinition,
   CohortMetric,
   Exclusion,
   Formula,
@@ -1503,7 +1504,10 @@ export function validateQueryArgs(
     // as it is unreachable in Python — the branch is ported for
     // completeness because callers may hold pre-existing instances.
     if (item instanceof CohortMetric) {
-      if (typeof item.cohort !== "number") {
+      // B2 arbiter fix F3: spelled `instanceof CohortDefinition`, the
+      // literal twin of Python's isinstance — a bool or float-carrier
+      // cohort (ctor-constructible in BOTH languages) must NOT fire CM5.
+      if (item.cohort instanceof CohortDefinition) {
         errors.push(
           new ValidationError(
             epath,

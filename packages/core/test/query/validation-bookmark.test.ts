@@ -3,7 +3,7 @@
  * `tests/unit/test_validation.py` (Python revision:
  * `ts-port/phase2-contract-support` HEAD; 1,238 LOC).
  *
- * Scope per b2-packets.md §V1b: `TestValidateBookmarkLayer2` (22),
+ * Scope per b2-packets.md §V1b: `TestValidateBookmarkLayer2` (20),
  * `TestValidateMeasurementFunnelContext` (4) and
  * `TestValidateSortingBlock` (32). The `validate_query_args` classes
  * (`TestValidateQueryArgsLayer1`, `TestFuzzyMatching`,

@@ -20,29 +20,15 @@
 
 import type { Filter } from "../types/index.js";
 
-/**
- * Test whether a value is a Python `dict` in the ported value domain.
- *
- * Python `isinstance(x, dict)` is true only for mappings; class
- * instances (`Filter`, `JsonNumber`, …) and lists are NOT dicts. The
- * TS analog is "plain object": prototype is `Object.prototype` or
- * `null` (the `Object.create(null)` shape a decoder can produce).
- *
- * This is a language primitive, not a port of a named Python function —
- * it lives here (rather than being duplicated) because both
- * `_is_cohort_filter` below and `user_validators.validate_user_params`
- * spell `isinstance(..., dict)`.
- *
- * @param value - Candidate value.
- * @returns True when Python would classify the value as a `dict`.
- */
-export function isPythonDict(value: unknown): boolean {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return false;
-  }
-  const proto: unknown = Object.getPrototypeOf(value);
-  return proto === Object.prototype || proto === null;
-}
+// R10.8 / B2 arbiter fix F1 (b2-review-resolution.md, 2026-08-15): the
+// `isinstance(x, dict)` discrimination now has exactly ONE
+// implementation, in `validation-shared.ts` (semantics unchanged for
+// this file's consumers: plain object — prototype `Object.prototype`
+// or `null`). Re-exported here so `user-validators.ts` and the B3-K4
+// grower keep their established import site.
+import { isPythonDict } from "./validation-shared.js";
+
+export { isPythonDict };
 
 /**
  * Return true if *f* is a cohort filter (`in_cohort` / `not_in_cohort`).

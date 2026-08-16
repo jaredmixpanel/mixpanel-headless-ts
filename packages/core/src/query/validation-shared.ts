@@ -178,6 +178,14 @@ export const _FLOW_MAX_WINDOW: ReadonlyMap<string, number> = new Map([
  * R5_BUCKET_SIZES_INTEGER) classify carriers exactly where Python
  * classifies floats, without any binding-side unwrapping.
  *
+ * B2 arbiter tightening (b2-review-resolution.md F1, 2026-08-15): the
+ * rig's carrier is a CLASS instance (`conformance-runner/src/codecs.ts`
+ * `PyFloat` — its single construction site), never a plain object, so
+ * the duck check additionally rejects {@link isPythonDict} values. A
+ * consumer dict `{"spelling": "..."}` is a Python dict, not a float —
+ * the pre-fix shape test crashed `pythonTruthy` on `{"spelling": "hi"}`
+ * (PY_FLOAT_INVALID_LITERAL) where Python returns `bool(dict)`.
+ *
  * @param value - Candidate value.
  * @returns True when `value` carries the PyFloat duck-shape.
  */
@@ -188,6 +196,7 @@ export function isFloatCarrier(
     typeof value === "object" &&
     value !== null &&
     !Array.isArray(value) &&
+    !isPythonDict(value) &&
     "spelling" in value &&
     typeof (value as { spelling: unknown }).spelling === "string"
   );
@@ -253,6 +262,35 @@ export function isPythonInt(value: unknown): boolean {
  *   equivalent value.
  */
 /**
+ * TS analogue of Python `isinstance(value, dict)` — the ONE dict
+ * discrimination for the ported value domain (B2 arbiter fix F1,
+ * `b2-review-resolution.md` 2026-08-15; R10.4: third occurrence of the
+ * pattern after `requireHashable`'s dict branch and the pre-fix
+ * `isDict`/`isPlainObject` pair, so it is extracted here once — the
+ * `user-builders.ts` helper of the same name re-exports it).
+ *
+ * Python's `isinstance(x, dict)` is False for floats and for class
+ * instances. In the ported value domain a dict is exactly a PLAIN
+ * object: prototype `Object.prototype` (JSON/codec decode output,
+ * object literals) or `null` (`Object.create(null)` records). Class
+ * instances — reconstructed core types (`Filter`, …) AND the rig's
+ * `PyFloat` carrier, which is a class instance too — are excluded by
+ * prototype, so a consumer dict that happens to carry a `spelling`
+ * key still classifies as a dict, exactly as in Python (arbiter
+ * probe record in `b2-review-resolution.md`).
+ *
+ * @param value - Candidate value.
+ * @returns True when Python's `isinstance(value, dict)` would hold.
+ */
+export function isPythonDict(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const proto: unknown = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+/**
  * Reproduce CPython's hashing failure for `x in frozenset` membership
  * tests (R10.7 bug-compatibility; B2-M2 finding 2 adjudicated at the
  * B2-BIND differential fuzz — repro
@@ -278,12 +316,7 @@ export function requireHashable(value: unknown): void {
       "cannot use 'list' as a set element (unhashable type: 'list')",
     );
   }
-  if (
-    typeof value === "object" &&
-    value !== null &&
-    !isFloatCarrier(value) &&
-    Object.getPrototypeOf(value) === Object.prototype
-  ) {
+  if (isPythonDict(value)) {
     throw new TypeError(
       "cannot use 'dict' as a set element (unhashable type: 'dict')",
     );
