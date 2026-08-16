@@ -117,7 +117,39 @@ import {
   type ValidateTimeArgsOptions,
   type ValidateUserArgsOptions,
 } from "../../packages/core/src/query/index.js";
-import { CodecRegistry, PyFloat, UndecodableValueError } from "./codecs.js";
+import {
+  buildDateRange,
+  buildFilterEntry,
+  buildFilterSection,
+  buildFlowCohortFilter,
+  buildFlowPropertyFilter,
+  buildFrequencyFilterEntry,
+  buildGroupSection,
+  buildTimeSection,
+} from "../../packages/core/src/bookmarks/builders.js";
+import {
+  BOOKMARK_MODEL_HANDLES,
+  getRootModelForBookmarkType,
+} from "../../packages/core/src/bookmarks/schema.js";
+import { validateWithPydantic } from "../../packages/core/src/bookmarks/schema-sorting.js";
+import { normalizeOnExpression } from "../../packages/core/src/query/expressions.js";
+import { ValueError } from "../../packages/core/src/query/python-builtins.js";
+import { buildSegfilterEntry } from "../../packages/core/src/query/segfilter.js";
+import {
+  transformEvent,
+  transformProfile,
+} from "../../packages/core/src/query/transforms.js";
+import {
+  extractCohortFilter,
+  filterToSelector,
+  filtersToSelector,
+} from "../../packages/core/src/query/user-builders.js";
+import {
+  CodecRegistry,
+  PyDatetime,
+  PyFloat,
+  UndecodableValueError,
+} from "./codecs.js";
 import type { JsonValue } from "./json-value.js";
 import { JsonNumber } from "./json-value.js";
 import type {
@@ -1178,6 +1210,282 @@ function registerValidatorBindings(
   );
 }
 
+// ---------------------------------------------------------------------------
+// B3 builder bindings (P3-6 step 3 / P3-2 b′ — fable rig task)
+// ---------------------------------------------------------------------------
+
+/**
+ * The rich (dataclass/model) `$type` tags whose members Python's EXPECT
+ * encoder drops (`_encode_common(tagged_models=False)`), as opposed to
+ * the built-in value tags (`datetime`, `date`, `bytes`, `SecretStr`,
+ * `float`), which appear in expect encodings too. Derived from the
+ * shared contract-codec table so this set can never drift from the
+ * decode side.
+ */
+const RICH_MODEL_TAGS: ReadonlySet<string> = new Set(
+  CONTRACT_TAG_CODECS.keys(),
+);
+
+/**
+ * Re-encode one `codecs.encodeValue` product in Python's EXPECT
+ * encoding (b3-packets.md §Binding shapes).
+ *
+ * The runner's `diffReturnedValue` canonicalizes the binding's return
+ * with NO rich-tag hook and the canonicalizer does not normalize
+ * `$type: float` payloads, so builder bindings emit expect-position
+ * encodings themselves: rich model tags are dropped (Python
+ * `encode_expect_value` serializes dataclasses to their plain to-dict
+ * shape — the `extract_cohort_filter` Filter outputs), and finite
+ * `$type: float` payloads become raw `JsonNumber` tokens so float-ness
+ * renders `18.0` exactly like the recorded expect token (D6 rule 3).
+ * Built-in tags (`datetime`, `bytes`, ...) and non-finite float
+ * spellings stay tagged, mirroring oracle-py `_encode_result` and
+ * oracle-ts `toExpectEncoding` (`differential/oracle/server.ts` — whose
+ * own transform is idempotent over this one).
+ *
+ * @param value - A vector-JSON tree from {@link CodecRegistry.encodeValue}.
+ * @returns The expect-encoded tree.
+ */
+function toBuilderExpectOutput(value: JsonValue): JsonValue {
+  if (Array.isArray(value)) {
+    return value.map((item) => toBuilderExpectOutput(item));
+  }
+  if (isPlainDict(value)) {
+    if (value["$type"] === "float") {
+      const spelling = value["value"];
+      if (
+        typeof spelling === "string" &&
+        !["NaN", "Infinity", "-Infinity"].includes(spelling)
+      ) {
+        return new JsonNumber(spelling);
+      }
+    }
+    const out: Record<string, JsonValue> = {};
+    for (const [key, member] of Object.entries(value)) {
+      if (
+        key === "$type" &&
+        typeof member === "string" &&
+        RICH_MODEL_TAGS.has(member)
+      ) {
+        continue;
+      }
+      out[key] = toBuilderExpectOutput(member as JsonValue);
+    }
+    return out;
+  }
+  return value;
+}
+
+/**
+ * Register the B3 builder bindings — the 17 `bookmark_builders.*` /
+ * `segfilter.*` / `expressions.*` / `transforms.*` / `user_builders.*` /
+ * `bookmark_schema.*` registry names (b3-packets.md §Binding plan).
+ *
+ * Binding honesty (P3-5 rule 3): every binding calls the real ported
+ * public entry point (`bookmarks/builders.ts`, `bookmarks/schema.ts`,
+ * `query/{segfilter,expressions,transforms,user-builders}.ts`). The only
+ * adaptations are kwarg plumbing (decoded kwargs pass through
+ * UNCONVERTED — the modules are carrier-aware, b3-packets §Binding
+ * shapes "PyFloat discipline"), the `today`/`uuid` determinism seams,
+ * the shared error wrap, and the recorder output-codec twins:
+ * {@link toBuilderExpectOutput} (generic expect encoding),
+ * `model_name` (`codecs.py:780-784` — the handle's `.name` or `null`),
+ * `selector_str` (verbatim strings — pass through untouched), the
+ * 2-element JSON array for the `extract_cohort_filter` tuple, the
+ * `PyDatetime` wrap of `transform_event().event_time` iso text
+ * (`codecs.py:227-228`), and the B2 `validation_errors` encoder for
+ * `validate_with_pydantic`.
+ *
+ * The K3 builtin-exception twins (`ValueError`/`OverflowError`/
+ * `AttributeError`, `query/python-builtins.ts`) are NOT
+ * `MixpanelHeadlessError` descendants, so {@link runGuarded} rethrows
+ * them raw; the oracle's `errorPayload` encodes their
+ * `constructor.name`, matching oracle-py's bare-class encoding
+ * (B3-K3-notes §7.3). No corpus vector reaches them.
+ *
+ * Oracle note: oracle-ts serves every name registered here through the
+ * same registry (`differential/oracle/server.ts` `executeBound`), so
+ * this registration IS the batch's oracle-surface extension (P3-2e
+ * step 3). `transforms.transform_event`,
+ * `bookmark_schema.get_root_model_for_bookmark_type` and
+ * `bookmark_schema.validate_with_pydantic` have zero corpus vectors but
+ * are bound for the gate's mechanical `oracle.call` probe and the
+ * gate-flip straggler rule.
+ *
+ * @param implementations - The registry to extend.
+ * @param codecs - The codec registry used to encode returned values.
+ */
+function registerBuilderBindings(
+  implementations: ImplementationRegistry,
+  codecs: CodecRegistry,
+): void {
+  const bindBuilder = (
+    api: string,
+    invoke: (context: InvocationContext) => unknown,
+  ): void => {
+    implementations.register(api, (context) =>
+      toBuilderExpectOutput(runGuarded(codecs, () => invoke(context))),
+    );
+  };
+
+  // ----- bookmark_builders (packet K2) -----
+
+  bindBuilder("bookmark_builders.build_filter_entry", (context) =>
+    buildFilterEntry(requireKwarg(context, "f") as Filter),
+  );
+  bindBuilder("bookmark_builders.build_filter_section", (context) =>
+    buildFilterSection(
+      requireKwarg(context, "where") as Parameters<
+        typeof buildFilterSection
+      >[0],
+    ),
+  );
+  bindBuilder("bookmark_builders.build_frequency_filter_entry", (context) =>
+    buildFrequencyFilterEntry(requireKwarg(context, "ff") as FrequencyFilter),
+  );
+  bindBuilder("bookmark_builders.build_group_section", (context) =>
+    buildGroupSection(
+      requireKwarg(context, "group_by") as Parameters<
+        typeof buildGroupSection
+      >[0],
+      // Absent kwarg stays absent (R3.5); the TS default (`?? null`)
+      // mirrors the Python kwonly default `data_group_id=None`.
+      Object.hasOwn(context.kwargs, "data_group_id")
+        ? { data_group_id: context.kwargs["data_group_id"] as number | null }
+        : {},
+    ),
+  );
+  bindBuilder("bookmark_builders.build_flow_property_filter", (context) =>
+    buildFlowPropertyFilter(
+      requireKwarg(context, "filters") as readonly Filter[],
+    ),
+  );
+  bindBuilder("bookmark_builders.build_flow_cohort_filter", (context) =>
+    buildFlowCohortFilter(
+      requireKwarg(context, "where") as Parameters<
+        typeof buildFlowCohortFilter
+      >[0],
+    ),
+  );
+  bindBuilder("bookmark_builders.build_date_range", (context) =>
+    buildDateRange({
+      from_date: requireKwarg(context, "from_date") as string | null,
+      to_date: requireKwarg(context, "to_date") as string | null,
+      last: requireKwarg(context, "last") as number,
+    }),
+  );
+  bindBuilder("bookmark_builders.build_time_section", (context) =>
+    buildTimeSection({
+      from_date: requireKwarg(context, "from_date") as string | null,
+      to_date: requireKwarg(context, "to_date") as string | null,
+      last: requireKwarg(context, "last") as number,
+      unit: requireKwarg(context, "unit") as Parameters<
+        typeof buildTimeSection
+      >[0]["unit"],
+      // D1.4 clock seam (b3-packets §Binding shapes): the from-only
+      // branch fills `to_date` with today(); the runner/oracle shims
+      // freeze it at the record epoch (2026-01-15).
+      today: (): string => context.shims.today(),
+    }),
+  );
+
+  // ----- segfilter / expressions / transforms (packet K3) -----
+
+  bindBuilder("segfilter.build_segfilter_entry", (context) =>
+    buildSegfilterEntry(requireKwarg(context, "f") as Filter),
+  );
+  bindBuilder("expressions.normalize_on_expression", (context) =>
+    normalizeOnExpression(requireKwarg(context, "on") as string),
+  );
+  bindBuilder("transforms.transform_event", (context) => {
+    const transformed = transformEvent(
+      requireKwarg(context, "event") as Readonly<Record<string, unknown>>,
+      // D1.4 UUID seam: the deterministic counter stream
+      // (`00000000-0000-4000-8000-{seq:012d}`), reset per vector/call on
+      // both sides (`clock.py:30` ↔ `shims.ts:107-110`).
+      { uuid: (): string => context.shims.uuid() },
+    );
+    return {
+      ...transformed,
+      // Python returns a datetime; the library twin returns Python
+      // isoformat TEXT (B3-K3 design decision). Wrap it so encode emits
+      // `{"$type": "datetime", "iso": ...}` byte-matching Python
+      // `isoformat()` (`codecs.py:227-228`).
+      event_time: new PyDatetime(transformed["event_time"] as string),
+    };
+  });
+  bindBuilder("transforms.transform_profile", (context) =>
+    transformProfile(
+      requireKwarg(context, "profile") as Readonly<Record<string, unknown>>,
+    ),
+  );
+
+  // ----- user_builders selector path (packet K4) -----
+
+  bindBuilder("user_builders.filter_to_selector", (context) =>
+    // `selector_str` codec twin: the returned string is emitted VERBATIM
+    // (strings pass through the expect walk untouched; no trimming, no
+    // normalization — watchlist #2, no canonicalizer rescue).
+    filterToSelector(requireKwarg(context, "f") as Filter),
+  );
+  bindBuilder("user_builders.filters_to_selector", (context) =>
+    filtersToSelector(requireKwarg(context, "filters") as readonly Filter[]),
+  );
+  bindBuilder("user_builders.extract_cohort_filter", (context) =>
+    // Tuple twin: a 2-element JSON array — element 0 the remaining
+    // Filters, element 1 the first cohort Filter or null. The SAME
+    // decoded Filter instances flow through (identity semantics); the
+    // expect walk serializes them to their Python-spelled `_`-field
+    // dicts.
+    extractCohortFilter(requireKwarg(context, "filters") as readonly Filter[]),
+  );
+
+  // ----- bookmark_schema (packet K1) -----
+
+  bindBuilder("bookmark_schema.get_root_model_for_bookmark_type", (context) => {
+    // `model_name` output codec twin (`codecs.py:780-784`): the root
+    // model HANDLE serializes as its Python class name, `None` as null.
+    const handle = getRootModelForBookmarkType(
+      requireKwarg(context, "bookmark_type") as string,
+    );
+    return handle === null ? null : handle.name;
+  });
+  implementations.register(
+    "bookmark_schema.validate_with_pydantic",
+    (context) =>
+      encodeValidationErrors(
+        guardCompat(() => {
+          // Mirror of the Python name-resolving adapter
+          // (`conformance/record/adapters.py::validate_with_pydantic`,
+          // b3-packets §"validate_with_pydantic — adapter retarget"):
+          // resolve the model NAME over the fixed five-entry map and
+          // forward with the DEFAULT code mapper.
+          const modelName = requireKwarg(context, "model");
+          if (typeof modelName !== "string") {
+            throw new TypeError(
+              "bookmark_schema.validate_with_pydantic expects model: str " +
+                "per the Python adapter",
+            );
+          }
+          const handle = BOOKMARK_MODEL_HANDLES.get(modelName);
+          if (handle === undefined) {
+            // Twin of the Python adapter's unknown-name ValueError (the
+            // fuzz strategies draw the five mapped names only).
+            throw new ValueError(
+              `unknown bookmark_schema model ${JSON.stringify(modelName)}`,
+            );
+          }
+          const prefix = context.kwargs["path_prefix"];
+          return validateWithPydantic(
+            handle.validate,
+            requireKwarg(context, "value"),
+            prefix !== undefined ? { path_prefix: prefix as string } : {},
+          );
+        }),
+      ),
+  );
+}
+
 /**
  * Register the Phase-2 contract tag codecs (phase2-design C7 item 2).
  *
@@ -1239,5 +1547,6 @@ export function createRunnerDeps(recordEpoch: string): RunnerDeps {
   registerContractCodecs(codecs);
   registerQueryParamBindings(implementations, codecs);
   registerValidatorBindings(implementations);
+  registerBuilderBindings(implementations, codecs);
   return { implementations, codecs, recordEpoch };
 }
