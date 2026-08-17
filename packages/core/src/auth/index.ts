@@ -18,3 +18,10 @@ export * from "./region-probe.js";
 // the browser CredentialStore seam (interface + key table only).
 export * from "./pkce.js";
 export * from "./credential-store.js";
+// B9-R2 (b9-packets.md §3.1): the fetch-pure OAuth hoist — constants,
+// parse_qs twin, redirect parsing, and the authorize/token/DCR HTTP
+// halves shared by node (re-export/delegate) and browser (import).
+export * from "./oauth-constants.js";
+export * from "./query-params.js";
+export * from "./redirect-parse.js";
+export * from "./oauth-http.js";

@@ -1,0 +1,401 @@
+// Layer-3 suite for the browser redirect PKCE flow (b9-packets.md
+// §3.2 / §3.4). Contract arbiters: `flow.py` for every twinned
+// behavior (region gate `flow.py:160-165`; exchange form fields
+// `flow.py:428-434`; network-error rows `test_auth_flow.py:802`;
+// region URLs `test_auth_flow.py:759` + validation `:984`), and
+// R9.3 / plan §4.3 for the redirect-shape adaptation (begin/complete
+// split, pending record, ALWAYS-persist posture) — no Python twin
+// exists for those branches, headers cite the contract instead
+// (phase2-audit A2 style).
+//
+// Browser-inapplicable Python classes are EXCLUDED here with cites
+// (§3.4 dispositions): TestOAuthFlowLogin (:88) and
+// TestOAuthFlowPasteFallback (:286) — callback server / port probing /
+// webbrowser / stdin are node-only surfaces (R9.2), translated at B8;
+// TestOAuthFlowRefresh (:490) and TestOAuthFlowGetValidToken (:610) —
+// browser v1 has no refresh surface (§2.2 disposition, Phase-4 ledger
+// row 8).
+
+import { describe, expect, it } from "vitest";
+
+import { OAuthError } from "../../core/src/errors.js";
+import { InMemoryCredentialStore } from "../src/credential-store.js";
+import {
+  beginLogin,
+  completeLogin,
+  CREDENTIAL_KEYS,
+  createBrowserWorkspaceFromStore,
+} from "../src/index.js";
+import {
+  bodyCapturingTransport,
+  jsonResponse,
+  makeTokenResponse,
+  type BodyCapturingTransport,
+} from "./flow-helpers.js";
+
+const REDIRECT_URI = "https://app.example.com/oauth/callback";
+const FROZEN_NOW_MS = Date.UTC(2026, 0, 15, 10, 30, 0);
+
+/**
+ * A canned IdP: DCR returns a client_id; the token endpoint returns a
+ * well-formed token payload.
+ *
+ * @returns The canned transport.
+ */
+function cannedIdp(): BodyCapturingTransport {
+  return bodyCapturingTransport((request) => {
+    if (request.url.endsWith("mcp/register/")) {
+      return jsonResponse(201, { client_id: "dcr-client-123" });
+    }
+    if (request.url.endsWith("token/")) {
+      return jsonResponse(200, makeTokenResponse());
+    }
+    throw new Error(`unexpected URL: ${request.url}`);
+  });
+}
+
+/**
+ * Run beginLogin over a canned IdP with a frozen clock.
+ *
+ * @param store - The credential store.
+ * @param transport - The canned transport.
+ * @param region - Region (default us).
+ * @returns The begin result.
+ */
+async function begin(
+  store: InMemoryCredentialStore,
+  transport: BodyCapturingTransport,
+  region: "us" | "eu" | "in" = "us",
+): Promise<{ authorizeUrl: string; state: string }> {
+  return beginLogin({
+    region,
+    redirectUri: REDIRECT_URI,
+    store,
+    fetch: transport.fetch,
+    now: () => FROZEN_NOW_MS,
+  });
+}
+
+describe("beginLogin", () => {
+  it("returns the authorize URL over the region host and never navigates", async () => {
+    const store = new InMemoryCredentialStore();
+    const transport = cannedIdp();
+    const result = await begin(store, transport);
+    expect(
+      result.authorizeUrl.startsWith(
+        "https://mixpanel.com/oauth/authorize/?response_type=code&client_id=dcr-client-123&",
+      ),
+    ).toBe(true);
+    const url = new URL(result.authorizeUrl);
+    expect(url.searchParams.get("redirect_uri")).toBe(REDIRECT_URI);
+    expect(url.searchParams.get("state")).toBe(result.state);
+    expect(url.searchParams.get("code_challenge_method")).toBe("S256");
+    expect(url.searchParams.get("code_challenge")).toMatch(
+      /^[A-Za-z0-9_-]{43}$/,
+    );
+    // Scope intentionally omitted (`flow.py:625-627` — contract, §3.3).
+    expect(url.searchParams.has("scope")).toBe(false);
+    // Only the DCR POST hit the network — the library NEVER navigates.
+    expect(transport.captures).toHaveLength(1);
+    expect(transport.captures[0]?.url).toBe(
+      "https://mixpanel.com/oauth/mcp/register/",
+    );
+  });
+
+  it.each([
+    ["eu", "https://eu.mixpanel.com/oauth/authorize/"],
+    ["in", "https://in.mixpanel.com/oauth/authorize/"],
+  ] as const)(
+    "uses the %s region authorize host (test_auth_flow.py:759 twin)",
+    async (region, prefix) => {
+      const store = new InMemoryCredentialStore();
+      const result = await begin(store, cannedIdp(), region);
+      expect(result.authorizeUrl.startsWith(prefix)).toBe(true);
+    },
+  );
+
+  it.each([["uk"], ["US"], [""]])(
+    "rejects region %j with OAUTH_CONFIG_ERROR (test_auth_flow.py:984 twins)",
+    async (region) => {
+      const transport = cannedIdp();
+      const error = await beginLogin({
+        region: region as "us",
+        redirectUri: REDIRECT_URI,
+        store: new InMemoryCredentialStore(),
+        fetch: transport.fetch,
+      }).then(
+        () => null,
+        (exc: unknown) => exc,
+      );
+      expect(error).toBeInstanceOf(OAuthError);
+      expect((error as OAuthError).code).toBe("OAUTH_CONFIG_ERROR");
+      expect(transport.captures).toHaveLength(0);
+    },
+  );
+
+  it("persists the pending record with the R11.9 tokens-twin created_at shape", async () => {
+    const store = new InMemoryCredentialStore();
+    const result = await begin(store, cannedIdp());
+    const raw = await store.get(CREDENTIAL_KEYS.pendingLogin("us"));
+    expect(raw).not.toBeNull();
+    const pending = JSON.parse(raw as string) as Record<string, unknown>;
+    // Fixed, non-numeric key set in insertion order (§7 caution 7).
+    expect(Object.keys(pending)).toEqual([
+      "state",
+      "verifier",
+      "client_id",
+      "redirect_uri",
+      "created_at",
+    ]);
+    expect(pending["state"]).toBe(result.state);
+    expect(pending["verifier"]).toMatch(/^[A-Za-z0-9_-]{86}$/);
+    expect(pending["client_id"]).toBe("dcr-client-123");
+    expect(pending["redirect_uri"]).toBe(REDIRECT_URI);
+    // tokens-twin formatter: `+00:00`, never `Z` (§3.2 pending-record
+    // spec; R11.9).
+    expect(pending["created_at"]).toBe("2026-01-15T10:30:00+00:00");
+  });
+
+  it("generates a 43-char base64url state, fresh per call (`token_urlsafe(32)` shape)", async () => {
+    const store = new InMemoryCredentialStore();
+    const transport = cannedIdp();
+    const first = await begin(store, transport);
+    const second = await begin(store, transport);
+    for (const result of [first, second]) {
+      expect(result.state).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    }
+    expect(first.state).not.toBe(second.state);
+  });
+});
+
+describe("completeLogin", () => {
+  it("exchanges the code with the five verbatim form fields (`flow.py:428-434`)", async () => {
+    const store = new InMemoryCredentialStore();
+    const transport = cannedIdp();
+    const { state } = await begin(store, transport);
+    const pendingRaw = await store.get(CREDENTIAL_KEYS.pendingLogin("us"));
+    const pending = JSON.parse(pendingRaw as string) as Record<string, string>;
+
+    const tokens = await completeLogin({
+      region: "us",
+      returnUrl: `${REDIRECT_URI}?code=auth-code&state=${state}`,
+      store,
+      fetch: transport.fetch,
+      now: () => FROZEN_NOW_MS,
+    });
+
+    const tokenRequest = transport.captures.find((request) =>
+      request.url.endsWith("token/"),
+    );
+    expect(tokenRequest?.url).toBe("https://mixpanel.com/oauth/token/");
+    expect(tokenRequest?.headers["content-type"]).toBe(
+      "application/x-www-form-urlencoded",
+    );
+    // Byte-compare the urlencoded body — field-for-field, insertion
+    // order (`flow.py:428-434`).
+    expect(tokenRequest?.body).toBe(
+      "grant_type=authorization_code&code=auth-code&" +
+        // quote_plus(REDIRECT_URI) — no space/`+`/`~` chars in the
+        // fixture, so encodeURIComponent agrees byte-for-byte here.
+        `redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+        `&client_id=dcr-client-123&code_verifier=${pending["verifier"] as string}`,
+    );
+    expect(tokens.access_token.reveal()).toBe("new-access-token");
+    // Frozen clock: expires_at = now + 3600s, isoformat `+00:00` shape.
+    expect(tokens.expires_at).toBe("2026-01-15T11:30:00+00:00");
+  });
+
+  it("ALWAYS persists tokens under the region key in the R11.9 writer shape", async () => {
+    const store = new InMemoryCredentialStore();
+    const transport = cannedIdp();
+    const { state } = await begin(store, transport);
+    await completeLogin({
+      region: "us",
+      returnUrl: `?code=auth-code&state=${state}`,
+      store,
+      fetch: transport.fetch,
+      now: () => FROZEN_NOW_MS,
+    });
+    const raw = await store.get(CREDENTIAL_KEYS.tokens("us"));
+    expect(raw).not.toBeNull();
+    const payload = JSON.parse(raw as string) as Record<string, unknown>;
+    expect(payload["access_token"]).toBe("new-access-token");
+    expect(payload["refresh_token"]).toBe("new-refresh-token");
+    expect(payload["expires_at"]).toBe("2026-01-15T11:30:00+00:00");
+  });
+
+  it("round-trips into createBrowserWorkspaceFromStore (§3.6 R1+R2 integration lock)", async () => {
+    const store = new InMemoryCredentialStore();
+    const transport = cannedIdp();
+    const { state } = await begin(store, transport);
+    await completeLogin({
+      region: "us",
+      returnUrl: `?code=auth-code&state=${state}`,
+      store,
+      fetch: transport.fetch,
+      now: () => FROZEN_NOW_MS,
+    });
+    const workspace = await createBrowserWorkspaceFromStore({
+      region: "us",
+      projectId: "12345",
+      store,
+      fetch: transport.fetch,
+      now: () => FROZEN_NOW_MS,
+    });
+    expect(workspace.session.project.id).toBe("12345");
+  });
+
+  it("accepts the parsePastedRedirect grammar (full URL, `?`-prefixed, bare query)", async () => {
+    for (const shape of [
+      (state: string): string => `${REDIRECT_URI}?code=ABC&state=${state}`,
+      (state: string): string => `?code=ABC&state=${state}`,
+      (state: string): string => `code=ABC&state=${state}`,
+    ]) {
+      const store = new InMemoryCredentialStore();
+      const transport = cannedIdp();
+      const { state } = await begin(store, transport);
+      const tokens = await completeLogin({
+        region: "us",
+        returnUrl: shape(state),
+        store,
+        fetch: transport.fetch,
+      });
+      expect(tokens.token_type).toBe("Bearer");
+    }
+  });
+
+  it("throws BROWSER_NO_PENDING_LOGIN when no login was begun (replay/expired-tab branch)", async () => {
+    const transport = cannedIdp();
+    await expect(
+      completeLogin({
+        region: "us",
+        returnUrl: "?code=ABC&state=XYZ",
+        store: new InMemoryCredentialStore(),
+        fetch: transport.fetch,
+      }),
+    ).rejects.toMatchObject({ code: "BROWSER_NO_PENDING_LOGIN" });
+    expect(transport.captures).toHaveLength(0);
+  });
+
+  it("deletes the pending record BEFORE the exchange — a replay of the same returnUrl hits BROWSER_NO_PENDING_LOGIN", async () => {
+    const store = new InMemoryCredentialStore();
+    const transport = cannedIdp();
+    const { state } = await begin(store, transport);
+    const returnUrl = `?code=auth-code&state=${state}`;
+    await completeLogin({
+      region: "us",
+      returnUrl,
+      store,
+      fetch: transport.fetch,
+    });
+    await expect(
+      completeLogin({
+        region: "us",
+        returnUrl,
+        store,
+        fetch: transport.fetch,
+      }),
+    ).rejects.toMatchObject({ code: "BROWSER_NO_PENDING_LOGIN" });
+  });
+
+  it("isolates pending records per region (cross-region key isolation)", async () => {
+    const store = new InMemoryCredentialStore();
+    const transport = cannedIdp();
+    const usResult = await begin(store, transport, "us");
+    const euResult = await begin(store, transport, "eu");
+    expect(usResult.state).not.toBe(euResult.state);
+    // Completing EU consumes only the EU record; US stays pending.
+    await completeLogin({
+      region: "eu",
+      returnUrl: `?code=auth-code&state=${euResult.state}`,
+      store,
+      fetch: transport.fetch,
+    });
+    expect(await store.get(CREDENTIAL_KEYS.pendingLogin("eu"))).toBeNull();
+    expect(await store.get(CREDENTIAL_KEYS.pendingLogin("us"))).not.toBeNull();
+    expect(await store.get(CREDENTIAL_KEYS.tokens("eu"))).not.toBeNull();
+    expect(await store.get(CREDENTIAL_KEYS.tokens("us"))).toBeNull();
+  });
+
+  it.each([["uk"], ["US"], [""]])(
+    "rejects region %j with OAUTH_CONFIG_ERROR before touching the store",
+    async (region) => {
+      await expect(
+        completeLogin({
+          region: region as "us",
+          returnUrl: "?code=ABC&state=XYZ",
+          store: new InMemoryCredentialStore(),
+          fetch: cannedIdp().fetch,
+        }),
+      ).rejects.toMatchObject({ code: "OAUTH_CONFIG_ERROR" });
+    },
+  );
+
+  describe("network-error rows (test_auth_flow.py:802 exchange rows)", () => {
+    /**
+     * Begin a login and complete it against the given token-endpoint
+     * behavior.
+     *
+     * @param tokenHandler - Canned token-endpoint outcome.
+     * @returns The completeLogin rejection value.
+     */
+    async function completeAgainst(
+      tokenHandler: () => Response,
+    ): Promise<unknown> {
+      const store = new InMemoryCredentialStore();
+      const beginTransport = cannedIdp();
+      const { state } = await begin(store, beginTransport);
+      const transport = bodyCapturingTransport((request) => {
+        if (request.url.endsWith("token/")) {
+          return tokenHandler();
+        }
+        throw new Error(`unexpected URL: ${request.url}`);
+      });
+      return completeLogin({
+        region: "us",
+        returnUrl: `?code=auth-code&state=${state}`,
+        store,
+        fetch: transport.fetch,
+      }).then(
+        () => null,
+        (exc: unknown) => exc,
+      );
+    }
+
+    it("wraps a transport rejection in OAUTH_TOKEN_ERROR (timeout/connect twins)", async () => {
+      const error = await completeAgainst(() => {
+        throw new TypeError("fetch failed");
+      });
+      expect(error).toBeInstanceOf(OAuthError);
+      expect((error as OAuthError).code).toBe("OAUTH_TOKEN_ERROR");
+    });
+
+    it("wraps a non-JSON 200 in OAUTH_TOKEN_ERROR", async () => {
+      const error = await completeAgainst(
+        () =>
+          new Response("<html>error</html>", {
+            status: 200,
+            headers: { "content-type": "text/html" },
+          }),
+      );
+      expect((error as OAuthError).code).toBe("OAUTH_TOKEN_ERROR");
+    });
+
+    it("wraps a 200 body missing access_token in OAUTH_TOKEN_ERROR", async () => {
+      const error = await completeAgainst(() =>
+        jsonResponse(200, { token_type: "Bearer", expires_in: 3600 }),
+      );
+      expect((error as OAuthError).code).toBe("OAUTH_TOKEN_ERROR");
+    });
+
+    it("wraps a 400 invalid_grant in OAUTH_TOKEN_ERROR (exchange stays generic — caution 6)", async () => {
+      const error = await completeAgainst(() =>
+        jsonResponse(400, {
+          error: "invalid_grant",
+          error_description: "Bad code",
+        }),
+      );
+      expect((error as OAuthError).code).toBe("OAUTH_TOKEN_ERROR");
+    });
+  });
+});

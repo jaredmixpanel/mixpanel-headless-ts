@@ -29,6 +29,7 @@ export {
 } from "./client.js";
 export {
   BROWSER_EXPORT_UNSUPPORTED,
+  BROWSER_NO_PENDING_LOGIN,
   BROWSER_SERVICE_ACCOUNT_REFUSED,
   BrowserUnsupportedError,
 } from "./errors.js";
@@ -36,6 +37,19 @@ export {
   serializeClientInfoPayload,
   serializeTokensPayload,
 } from "./token-serialization.js";
+
+// ── Redirect PKCE flow (B9-R2, b9-packets.md §3.2) ─────────────────────
+export {
+  beginLogin,
+  completeLogin,
+  type BeginLoginOptions,
+  type BeginLoginResult,
+  type CompleteLoginOptions,
+} from "./redirect-flow.js";
+export {
+  ensureBrowserClientRegistered,
+  type EnsureBrowserClientRegisteredOptions,
+} from "./registration.js";
 
 // ── Core re-exports (the surface a browser consumer needs — §2.5) ─────
 export {

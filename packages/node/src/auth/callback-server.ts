@@ -23,6 +23,7 @@
 import { createServer, type Server, type ServerResponse } from "node:http";
 
 import { OAuthError } from "../../../core/src/errors.js";
+import { CallbackResult } from "../../../core/src/auth/redirect-parse.js";
 import { parseQs } from "./query-params.js";
 
 /** Ports to attempt binding to, in order (`callback_server.py:32`). */
@@ -74,35 +75,12 @@ function htmlEscape(text: string): string {
     .replaceAll("'", "&#x27;");
 }
 
-/**
- * Immutable result from an OAuth authorization callback (port of the
- * frozen dataclass `CallbackResult`, `callback_server.py:54-76`).
- *
- * @example
- * ```typescript
- * const result = new CallbackResult({ code: "abc123", state: "xyz789" });
- * // result.code === "abc123"
- * ```
- */
-export class CallbackResult {
-  /** The authorization code from the OAuth provider. */
-  readonly code: string;
-
-  /** The state parameter for CSRF validation. */
-  readonly state: string;
-
-  /**
-   * Construct a result (frozen — strict-mode mutation throws
-   * `TypeError`, the `FrozenInstanceError` twin).
-   *
-   * @param fields - The code/state pair.
-   */
-  constructor(fields: { readonly code: string; readonly state: string }) {
-    this.code = fields.code;
-    this.state = fields.state;
-    Object.freeze(this);
-  }
-}
+// `CallbackResult` moved to core `redirect-parse.ts` at B9-R2 with the
+// `parsePastedRedirect` hoist (b9-packets.md §3.1 row 3 — it is the
+// parser's return type and is node:*-free; hoist note recorded in
+// B9-R2-notes.md). Re-exported here so every existing import path
+// holds (class body verbatim; the untouched B8 suites prove it).
+export { CallbackResult };
 
 /** Options bag of {@link startCallbackServer} (`callback_server.py:79-83`). */
 export interface StartCallbackServerOptions {

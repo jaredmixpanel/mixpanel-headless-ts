@@ -9,46 +9,25 @@
  * THE DCR persistence duty) to avoid redundant network calls; the
  * cached fast path performs ZERO fetches.
  *
- * `OAUTH_BASE_URLS` is imported from N2's `oauth-constants.ts` — the
- * constant's Python home is THIS module (`client_registration.py:39-44`)
- * but the TS home moved so the N2 refresh half never depends on this
- * N3 module (packet §3.1 row 2 home note).
- *
- * Transport runs over the injected `fetchImpl` through the R2.10
- * adapter (`createRequestExecutor`); bodies parse via `parseLossless`
- * (GATE-R5 — never `response.json()`).
+ * B9-R2 HOIST (b9-packets.md §3.1 row 6, second R10.8 ruling): the
+ * fetch-pure POST half (`client_registration.py:96-170`) moved to core
+ * `oauth-http.ts` as `registerClient`; this module KEEPS the
+ * `OAuthStorage` cache wrapper (`storage.save_client_info` write,
+ * `:168` — outside the hoist) and delegates the POST. `DEFAULT_SCOPE`
+ * and `OAUTH_BASE_URLS` moved to core `oauth-constants.ts`
+ * (re-exported here / via `./oauth-constants.js`). The untouched B8
+ * suite (`client-registration.test.ts`) is the zero-behavior-change
+ * proof.
  */
 
-import { pythonUtcIsoformat } from "../../../core/src/auth/token.js";
+import { registerClient } from "../../../core/src/auth/oauth-http.js";
+import { DEFAULT_SCOPE } from "../../../core/src/auth/oauth-constants.js";
 import type { OAuthClientInfo } from "../../../core/src/auth/token.js";
-import {
-  MixpanelHttpError,
-  isPlainRecord,
-} from "../../../core/src/client/internals.js";
-import { toNativeJson } from "../../../core/src/client/json-value.js";
-import { parseLossless } from "../../../core/src/client/lossless-json.js";
-import { createRequestExecutor } from "../../../core/src/client/transport.js";
-import { pythonStr } from "../../../core/src/compat/python-str.js";
-import { OAuthError } from "../../../core/src/errors.js";
-import { OAUTH_BASE_URLS } from "./oauth-constants.js";
 import type { OAuthStorage } from "./storage.js";
 
-/**
- * httpx default total timeout in seconds (the Python caller threads
- * its own `httpx.Client`; the N2 flow default is mirrored here — not
- * vector-observable, R2.12 unit spelling kept).
- */
-const DEFAULT_TIMEOUT_SECONDS = 5;
-
-/**
- * Scopes sent in the DCR request body for server-side validation
- * (`_DEFAULT_SCOPE`, `client_registration.py:46-52`). Advisory only —
- * DCR does NOT store these on the application model; the created app
- * has an empty scope field, meaning all scopes are allowed.
- */
-export const DEFAULT_SCOPE: string =
-  "projects analysis events insights segmentation retention " +
-  "data:read funnels flows data_definitions dashboard_reports bookmarks";
+// Re-export preserving the B8 import path (`DEFAULT_SCOPE`'s TS home
+// until the B9-R2 hoist).
+export { DEFAULT_SCOPE };
 
 /** Options bag of {@link ensureClientRegistered} (the Python params). */
 export interface EnsureClientRegisteredOptions {
@@ -107,112 +86,17 @@ export async function ensureClientRegistered(
     return cached;
   }
 
-  // Register new client (`client_registration.py:96-104`).
-  if (!Object.hasOwn(OAUTH_BASE_URLS, region)) {
-    throw new OAuthError(
-      `Unknown region: ${JSON.stringify(region)}. Must be one of: ` +
-        `${Object.keys(OAUTH_BASE_URLS).sort().join(", ")}`,
-      "OAUTH_REGISTRATION_ERROR",
-    );
-  }
-  const baseUrl = OAUTH_BASE_URLS[region] as string;
-  const registerUrl = `${baseUrl}mcp/register/`;
-
-  // Body keys in Python dict insertion order
-  // (`client_registration.py:106-112`).
-  const body: Record<string, unknown> = {
-    redirect_uris: [redirectUri],
-    grant_types: ["authorization_code", "refresh_token"],
-    response_types: ["code"],
-    token_endpoint_auth_method: "none",
-    scope: DEFAULT_SCOPE,
-  };
-
-  const execute = createRequestExecutor(options.fetchImpl);
-  let response: {
-    status: number;
-    text: string;
-    header(name: string): string | null;
-  };
-  try {
-    response = await execute({
-      method: "POST",
-      url: registerUrl,
-      params: {},
-      jsonBody: body,
-      formBody: null,
-      headers: {},
-      timeoutSeconds: DEFAULT_TIMEOUT_SECONDS,
-    });
-  } catch (exc) {
-    if (!(exc instanceof MixpanelHttpError)) {
-      throw exc;
-    }
-    throw new OAuthError(
-      `Client registration request failed: ${exc.message}`,
-      "OAUTH_REGISTRATION_ERROR",
-      { region, url: registerUrl },
-      { cause: exc },
-    );
-  }
-
-  if (response.status === 429) {
-    throw new OAuthError(
-      "Client registration rate limited. Please try again later.",
-      "OAUTH_REGISTRATION_ERROR",
-      {
-        region,
-        status_code: 429,
-        retry_after: response.header("Retry-After"),
-      },
-    );
-  }
-
-  // httpx `is_success` = 2xx (`client_registration.py:134-144`).
-  if (response.status < 200 || response.status >= 300) {
-    throw new OAuthError(
-      `Client registration failed with status ${response.status}: ` +
-        `${response.text}`,
-      "OAUTH_REGISTRATION_ERROR",
-      {
-        region,
-        status_code: response.status,
-        response_body: response.text,
-      },
-    );
-  }
-
-  let clientId: string;
-  try {
-    const data = toNativeJson(parseLossless(response.text));
-    if (!isPlainRecord(data) || !("client_id" in data)) {
-      // The `KeyError` / `TypeError` branch of `str(data["client_id"])`.
-      throw new Error("'client_id'");
-    }
-    clientId = pythonStr(data["client_id"] as never);
-  } catch (exc) {
-    throw new OAuthError(
-      `Invalid registration response: ` +
-        `${exc instanceof Error ? exc.message : String(exc)}`,
-      "OAUTH_REGISTRATION_ERROR",
-      {
-        region,
-        response_body: response.text,
-      },
-      { cause: exc },
-    );
-  }
-
-  const nowMs = options.now !== undefined ? options.now() : Date.now();
-  const clientInfo: OAuthClientInfo = {
-    client_id: clientId,
+  // Register new client (`client_registration.py:96-165`) — the POST
+  // half delegates to the B9-R2 core hoist (module header).
+  const clientInfo: OAuthClientInfo = await registerClient(
+    options.fetchImpl,
     region,
-    redirect_uri: redirectUri,
-    scope: DEFAULT_SCOPE,
-    created_at: pythonUtcIsoformat(nowMs),
-  };
+    redirectUri,
+    { now: options.now },
+  );
 
-  // Cache for future use — persist BEFORE returning.
+  // Cache for future use — persist BEFORE returning
+  // (`client_registration.py:168`; stays node-homed, outside the hoist).
   storage.saveClientInfo(clientInfo);
 
   return clientInfo;
