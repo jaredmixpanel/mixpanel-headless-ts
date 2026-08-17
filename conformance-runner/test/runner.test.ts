@@ -133,11 +133,14 @@ describe("runVector — api gating", () => {
     // pagination.paginate_all (bound at B4-C6), then
     // workspace.list_dashboards (bound at B6-BIND — every workspace
     // name is now bound), then region_probe.probe_region (bound at
-    // B7-A2). Re-anchored to oauth_flow.refresh_tokens, pending until
-    // B8 by construction (b6-packets.md §12.5 / b7-packets.md §4.3 —
-    // the pattern retires at the B8 gate when no pending names remain).
+    // B7-A2), then oauth_flow.refresh_tokens (bound at B8-N2 — the
+    // LAST corpus name). Re-anchored to the NON-CORPUS module-known
+    // name oauth_flow.build_authorize_url (the batch-status.test.ts:86
+    // precedent: the seam takes arbitrary names) while `oauth_flow.`
+    // is still pending; the B8 gate completes the retirement with a
+    // synthetic batch table (b8-packets.md §5.3, b6-packets.md:1033).
     const vector = makeVector({
-      api: "oauth_flow.refresh_tokens",
+      api: "oauth_flow.build_authorize_url",
       kind: "wire",
       expect: '{"result": null}',
     });
@@ -150,13 +153,15 @@ describe("runVector — api gating", () => {
     // (`api_client.set_workspace_id` is done+bound now). `workspace.me`
     // played the P3-1 † carried-vector shape until the B6 gate flipped
     // the whole `workspace.` prefix to done; `region_probe.probe_region`
-    // held the anchor until B7-A2 bound it; re-anchored to
-    // `oauth_flow.refresh_tokens`, pending until B8 by construction
-    // (b6-packets.md §12.5 — the pattern retires at the B8 gate).
+    // held the anchor until B7-A2 bound it; `oauth_flow.refresh_tokens`
+    // until B8-N2 bound it. Re-anchored to the NON-CORPUS module-known
+    // `oauth_flow.build_authorize_url` (this registry is isolated via
+    // `depsWith`, but the probe tracks the same retirement path —
+    // b8-packets.md §5.3 finishes it at the gate).
     const vector = makeVector({
       api: "api_client.activity_feed",
       kind: "wire",
-      setup: [{ api: "oauth_flow.refresh_tokens", input: "{}" }],
+      setup: [{ api: "oauth_flow.build_authorize_url", input: "{}" }],
       expect: '{"result": null}',
     });
     const deps = depsWith({ "api_client.activity_feed": () => null });

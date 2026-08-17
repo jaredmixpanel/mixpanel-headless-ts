@@ -74,6 +74,47 @@ function requireTzAware(iso: string, options: ParseAccountOptions): string {
   return iso;
 }
 
+/**
+ * Render an epoch instant the way Python
+ * `datetime.now(timezone.utc).isoformat()` does (B8-N2 core touch,
+ * b8-packets.md §0.3.2 — the 7 `oauth_flow.refresh_tokens` wire vectors
+ * lock this text): offset is always `+00:00` (never `Z`); NO fractional
+ * digits when the microsecond field is 0, else exactly 6.
+ *
+ * @param epochMs - Epoch milliseconds (may carry sub-second precision).
+ * @returns The Python-isoformat text, e.g. `"2026-01-15T13:00:00+00:00"`.
+ */
+export function pythonUtcIsoformat(epochMs: number): string {
+  let seconds = Math.floor(epochMs / 1000);
+  let microseconds = Math.round((epochMs - seconds * 1000) * 1000);
+  if (microseconds === 1_000_000) {
+    // Sub-microsecond input rounded up to the next whole second.
+    seconds += 1;
+    microseconds = 0;
+  }
+  const date = new Date(seconds * 1000);
+  const pad = (value: number, width: number): string =>
+    String(value).padStart(width, "0");
+  const base =
+    `${pad(date.getUTCFullYear(), 4)}-${pad(date.getUTCMonth() + 1, 2)}-` +
+    `${pad(date.getUTCDate(), 2)}T${pad(date.getUTCHours(), 2)}:` +
+    `${pad(date.getUTCMinutes(), 2)}:${pad(date.getUTCSeconds(), 2)}`;
+  if (microseconds === 0) {
+    return `${base}+00:00`;
+  }
+  return `${base}.${pad(microseconds, 6)}+00:00`;
+}
+
+/**
+ * Optional injectable clock (B8-N2 core touch, b8-packets.md §0.3.2 —
+ * D1.4: the conformance binding and the flow twin freeze `now` at the
+ * record epoch; existing callers omit it and get the ambient clock).
+ */
+export interface TokenClockOptions {
+  /** Epoch-milliseconds clock (default `Date.now`). */
+  readonly now?: (() => number) | undefined;
+}
+
 /** Constructor fields for {@link OAuthTokens}. */
 export interface OAuthTokensFields {
   /** The OAuth access token. */
@@ -157,11 +198,15 @@ export class OAuthTokens {
    * Uses a 30-second safety buffer to avoid sending tokens that expire
    * during in-flight requests.
    *
+   * @param options - Optional injected clock (B8-N2, packet §0.3.2 —
+   *   Python compares against `datetime.now(timezone.utc)`; the seam
+   *   lets the flow twin and the R10.9 harness freeze it).
    * @returns `true` if the token is expired or will expire within 30
    *   seconds of now.
    */
-  isExpired(): boolean {
-    return Date.now() + 30_000 >= Date.parse(this.expires_at);
+  isExpired(options: TokenClockOptions = {}): boolean {
+    const now = options.now ?? Date.now;
+    return now() + 30_000 >= Date.parse(this.expires_at);
   }
 
   /**
@@ -169,17 +214,18 @@ export class OAuthTokens {
    * (port of Python `from_token_response`).
    *
    * Computes `expires_at` by adding `expires_in` seconds to the current
-   * UTC time.
-   *
-   * TODO(port): Python renders `expires_at` via `datetime.isoformat()`
-   * (`+00:00` offset, microseconds); this port emits
-   * `Date.toISOString()` (`Z`, milliseconds). Both are tz-aware UTC and
-   * nothing in Phase 2 locks the rendering — the B8 `oauth_flow` wire
-   * vectors (Phase 3) pin it down.
+   * UTC time and renders it with Python `datetime.isoformat()` semantics
+   * ({@link pythonUtcIsoformat} — `+00:00`, no fractional digits at a
+   * whole second; the B8 `oauth_flow.refresh_tokens` wire vectors lock
+   * the text, b8-packets.md §0.3.2 — the Phase-2 rendering deferral
+   * that lived here is CLOSED, not re-scoped).
    *
    * @param data - Raw JSON response from the token endpoint. Must carry
    *   `access_token`, `expires_in`, `scope`, and `token_type`; may carry
    *   `refresh_token`.
+   * @param options - Optional injected clock (default: ambient
+   *   `Date.now`; the conformance binding freezes it at the record
+   *   epoch, D1.4).
    * @returns A new token set.
    * @throws ParamValidationError - When required keys are missing or
    *   `expires_in` is not an integer (Python raises
@@ -188,6 +234,7 @@ export class OAuthTokens {
    */
   static fromTokenResponse(
     data: Readonly<Record<string, unknown>>,
+    options: TokenClockOptions = {},
   ): OAuthTokens {
     for (const key of ["access_token", "expires_in", "token_type"]) {
       if (!Object.hasOwn(data, key)) {
@@ -202,7 +249,8 @@ export class OAuthTokens {
       kind: "param",
       field: "expires_in",
     });
-    const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
+    const now = options.now ?? Date.now;
+    const expiresAt = pythonUtcIsoformat(now() + expiresIn * 1000);
     const rawRefresh = data["refresh_token"];
     const refreshToken =
       rawRefresh === undefined || rawRefresh === null

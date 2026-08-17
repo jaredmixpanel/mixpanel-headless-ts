@@ -1,8 +1,20 @@
 /**
- * B7-A2 wire bindings — the single `region_probe.probe_region` name
- * (14 vectors, `corpus/auth/test_region_probe.jsonl`), registered
- * inline in the shard commit per the P3-2 b′ fable-batch rule
- * (`b7-packets.md` §2.7).
+ * Auth wire bindings:
+ *
+ * - B7-A2: the `region_probe.probe_region` name (14 vectors,
+ *   `corpus/auth/test_region_probe.jsonl`), registered inline in the
+ *   shard commit per the P3-2 b′ fable-batch rule (`b7-packets.md`
+ *   §2.7).
+ * - B8-N2: the `oauth_flow.refresh_tokens` name (7 vectors,
+ *   `corpus/auth/test_auth_flow.jsonl` — THE LAST pending corpus api;
+ *   b8-packets.md §3.4). The runner executes in a node context, so the
+ *   binding imports the REAL `packages/node` `OAuthFlow` exactly as
+ *   wire bindings import core. Binding honesty (P3-5 §3): it calls the
+ *   real exported `refreshTokens` — it never POSTs, never classifies
+ *   statuses, never builds form bodies; the return-value walk below is
+ *   the recorder's `_encode_common` output-codec twin only. NO
+ *   batch-status flip here: `oauth_flow.` stays `pending` until the B8
+ *   gate (bound-while-pending, the designed B4 pattern).
  *
  * Binding honesty (P3-5 §3): the binding calls the REAL exported
  * `probeRegion` with the REAL `probeClientFromFetch` — it never issues
@@ -18,15 +30,22 @@
  * bound-name-while-pending is the designed B4 pattern.
  */
 
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import type { Region } from "../../packages/core/src/auth/account.js";
 import {
   probeClientFromFetch,
   probeRegion,
   type ClientFactory,
 } from "../../packages/core/src/auth/region-probe.js";
-import { RecordingCallback } from "./codecs.js";
+import { OAuthTokens } from "../../packages/core/src/auth/token.js";
+import { MixpanelHeadlessError } from "../../packages/core/src/errors.js";
+import { OAuthFlow } from "../../packages/node/src/auth/flow.js";
+import { OAuthStorage } from "../../packages/node/src/auth/storage.js";
+import { PyDatetime, RecordingCallback } from "./codecs.js";
 import type { ImplementationRegistry, InvocationContext } from "./runner.js";
-import { runWire } from "./wire-client.js";
+import { WireCoreError, runWire } from "./wire-client.js";
 
 /** The Python fixture's placeholder base URL (all 14 vectors). */
 const PROBE_SCHEME_HOST = "https://test.invalid";
@@ -61,13 +80,66 @@ function rebuildClientFactory(context: InvocationContext): ClientFactory {
 }
 
 /**
- * Register the B7-A2 binding (1 name).
+ * Register the auth wire bindings (2 names).
  *
  * @param implementations - The registry to extend.
  */
 export function registerAuthWireBindings(
   implementations: ImplementationRegistry,
 ): void {
+  implementations.register(
+    "oauth_flow.refresh_tokens",
+    async (context: InvocationContext) => {
+      const fetchImpl = context.fetch;
+      if (fetchImpl === undefined) {
+        throw new Error(
+          "oauth_flow.refresh_tokens vector provided no replay fetch harness",
+        );
+      }
+      const tokens = context.kwargs["tokens"];
+      if (!(tokens instanceof OAuthTokens)) {
+        throw new Error(
+          "oauth_flow.refresh_tokens vector is missing the $type:OAuthTokens kwarg",
+        );
+      }
+      const clientId = context.kwargs["client_id"] as string;
+      // Construction per packet §3.4: region "us" (the recorded
+      // scheme_host is OAUTH_BASE_URLS.us — no base-URL override),
+      // frozen record-epoch clock (D1.4; drives the vector-locked
+      // Python-isoformat `expires_at` text), and a tmp-dir storage stub
+      // that refresh_tokens never consults.
+      const flow = new OAuthFlow({
+        region: "us",
+        fetchImpl,
+        now: () => context.shims.now().getTime(),
+        storage: new OAuthStorage({
+          storageDir: join(tmpdir(), "b8-n2-refresh-unused"),
+        }),
+      });
+      // Absent `account_name` stays absent (library default, R3.5).
+      const options = Object.hasOwn(context.kwargs, "account_name")
+        ? { accountName: context.kwargs["account_name"] as string }
+        : {};
+      try {
+        const result = await flow.refreshTokens(tokens, clientId, options);
+        // Output-codec twin of the recorder's `_encode_common` walk:
+        // every declared field under its Python name; Secret /
+        // datetime leaves stay rich for `encodeExpectValue`.
+        return {
+          access_token: result.access_token,
+          refresh_token: result.refresh_token,
+          expires_at: new PyDatetime(result.expires_at),
+          scope: result.scope,
+          token_type: result.token_type,
+        };
+      } catch (cause) {
+        if (cause instanceof MixpanelHeadlessError) {
+          throw new WireCoreError(cause);
+        }
+        throw cause;
+      }
+    },
+  );
   implementations.register("region_probe.probe_region", (context) =>
     runWire(async () => {
       const factory = rebuildClientFactory(context);

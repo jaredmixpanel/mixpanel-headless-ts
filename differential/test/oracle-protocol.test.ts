@@ -296,10 +296,15 @@ describe("oracle.call: scope, skips, and protocol errors", () => {
     // Exemplar re-anchored at each bind wave to a still-unported mapped
     // api: user_builders.filter_to_selector went live at B3-BIND,
     // workspace.build_params at B5-BIND, workspace.me at B6-BIND,
-    // region_probe.probe_region at B7-A2; oauth_flow.refresh_tokens is
-    // B8's (pending until B8 by construction — b6-packets.md §12.5;
-    // the pattern retires at the B8 gate).
-    const result = await call(makeServer(), "oauth_flow.refresh_tokens", {});
+    // region_probe.probe_region at B7-A2, oauth_flow.refresh_tokens at
+    // B8-N2 (the LAST corpus name). Re-anchored to the NON-CORPUS
+    // module-known oauth_flow.build_authorize_url; the B8 gate
+    // completes the retirement (b8-packets.md §5.3, b6-packets.md §12.5).
+    const result = await call(
+      makeServer(),
+      "oauth_flow.build_authorize_url",
+      {},
+    );
     expect(result).toEqual({
       ok: false,
       error: { class: "Unported", code: "UNPORTED" },
@@ -313,9 +318,10 @@ describe("oracle.call: scope, skips, and protocol errors", () => {
     // of counting as a skip. (Exemplar re-anchored at B3-BIND —
     // segfilter.build_segfilter_entry went live — at B5-BIND:
     // build_params went live — at B6-BIND: workspace.me went live —
-    // and at B7-A2: region_probe.probe_region went live;
-    // oauth_flow.refresh_tokens is B8's.)
-    const result = await call(makeServer(), "oauth_flow.refresh_tokens", {
+    // at B7-A2: region_probe.probe_region went live — and at B8-N2:
+    // oauth_flow.refresh_tokens went live; now the NON-CORPUS
+    // module-known oauth_flow.build_authorize_url.)
+    const result = await call(makeServer(), "oauth_flow.build_authorize_url", {
       where: { $type: "Filter", field: "x" },
     });
     expect(result).toEqual({

@@ -1,0 +1,457 @@
+// Layer-3 translation of `tests/unit/test_bridge_export.py` (395 lines,
+// 19 tests; ALL 4 classes — b8-packets.md §3.3 row 4) plus the inbound
+// `test_042_edge_cases.py::TestBridgeEdgeCases` (:394,
+// `b6-packets.md:1032`).
+//
+// SPLIT (header-cited per §3.3 row 4): `TestAccountsNamespaceWiring`
+// (:236) exercises the Python `mp.accounts` namespace over the on-disk
+// world; the ready-made node namespaces land at B8-N3 (bag assembly).
+// N2 translates those four tests against `createNodeBridgeEffects()` /
+// the ConfigManager-backed custom-header source DIRECTLY; N3's swap-in
+// run re-covers the namespace wiring.
+//
+// The Python `_isolated_home` autouse fixture translates to the
+// HOME/MP_CONFIG_PATH/MP_AUTH_FILE save-scrub in beforeEach.
+
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import {
+  ConfigError,
+  OAuthError,
+  ParamValidationError,
+} from "../../core/src/errors.js";
+import { Secret } from "../../core/src/secret.js";
+import type {
+  Account,
+  OAuthBrowserAccount,
+  OAuthTokenAccount,
+  ServiceAccount,
+} from "../../core/src/auth/account.js";
+import {
+  createNodeBridgeEffects,
+  exportBridge,
+  loadBridge,
+  parseBridgeFile,
+  removeBridge,
+} from "../src/auth/bridge.js";
+import { makeTempDir, scrubMpEnv } from "./helpers.js";
+
+const POSIX = process.platform !== "win32";
+const itPosix = POSIX ? it : it.skip;
+
+const cleanups: (() => void)[] = [];
+let restoreEnv: () => void = () => undefined;
+let savedHome: string | undefined;
+let savedCwd = "";
+let home = "";
+
+beforeEach(() => {
+  restoreEnv = scrubMpEnv();
+  savedHome = process.env["HOME"];
+  savedCwd = process.cwd();
+  home = makeTempDir(cleanups);
+  process.env["HOME"] = home;
+  process.env["MP_CONFIG_PATH"] = join(home, ".mp", "config.toml");
+  delete process.env["MP_AUTH_FILE"];
+});
+
+afterEach(() => {
+  process.chdir(savedCwd);
+  if (savedHome === undefined) {
+    delete process.env["HOME"];
+  } else {
+    process.env["HOME"] = savedHome;
+  }
+  restoreEnv();
+  while (cleanups.length > 0) {
+    cleanups.pop()?.();
+  }
+});
+
+/** Standard SA fixture (test_bridge_export.py:77). */
+function teamSa(): ServiceAccount {
+  return {
+    type: "service_account",
+    name: "team",
+    region: "us",
+    default_project: "3713224",
+    username: "sa.user",
+    secret: new Secret("sa-secret"),
+  };
+}
+
+/** ISO instant one hour out with `+00:00` offset. */
+function isoIn(hours: number): string {
+  return new Date(Date.now() + hours * 3_600_000)
+    .toISOString()
+    .replace(/\.\d{3}Z$/, "+00:00");
+}
+
+/** The `_seed_browser_tokens` fixture twin (test_bridge_export.py:51). */
+function seedBrowserTokens(name: string): void {
+  const dir = join(home, ".mp", "accounts", name);
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  const path = join(dir, "tokens.json");
+  writeFileSync(
+    path,
+    JSON.stringify({
+      access_token: `acc-${name}`,
+      refresh_token: `ref-${name}`,
+      expires_at: isoIn(1),
+      scope: "read",
+      token_type: "Bearer",
+    }),
+    "utf8",
+  );
+  if (POSIX) {
+    chmodSync(path, 0o600);
+  }
+}
+
+describe("TestExportBridgeFunctional (test_bridge_export.py:72)", () => {
+  it("test_service_account_writes_v2_schema", () => {
+    const out = join(makeTempDir(cleanups), "bridge.json");
+    const result = exportBridge(teamSa(), { to: out });
+    expect(result).toBe(out);
+    expect(existsSync(out)).toBe(true);
+    const bridge = loadBridge(out);
+    expect(bridge).not.toBeNull();
+    expect(bridge?.version).toBe(2);
+    expect(bridge?.account.name).toBe("team");
+    expect(bridge?.account.type).toBe("service_account");
+    expect(bridge?.tokens).toBeNull(); // SAs don't carry OAuth tokens
+  });
+
+  it("test_oauth_browser_embeds_tokens_from_disk", () => {
+    const account: OAuthBrowserAccount = {
+      type: "oauth_browser",
+      name: "personal",
+      region: "us",
+    };
+    seedBrowserTokens("personal");
+    const out = join(makeTempDir(cleanups), "bridge.json");
+    exportBridge(account, { to: out });
+    const bridge = loadBridge(out);
+    expect(bridge?.tokens).not.toBeNull();
+    expect(bridge?.tokens?.access_token.reveal()).toBe("acc-personal");
+    expect(bridge?.tokens?.refresh_token?.reveal()).toBe("ref-personal");
+  });
+
+  it("test_oauth_browser_without_tokens_raises_oauth_error", () => {
+    const account: OAuthBrowserAccount = {
+      type: "oauth_browser",
+      name: "ghost",
+      region: "us",
+    };
+    const out = join(makeTempDir(cleanups), "bridge.json");
+    expect(() => exportBridge(account, { to: out })).toThrow(OAuthError);
+    // The aborted write must NOT leave a partial file behind.
+    expect(existsSync(out)).toBe(false);
+  });
+
+  it("test_oauth_token_inline_embedded", () => {
+    const account: OAuthTokenAccount = {
+      type: "oauth_token",
+      name: "ci",
+      region: "us",
+      default_project: "3713224",
+      token: new Secret("inline-bearer"),
+      token_env: null,
+    };
+    const out = join(makeTempDir(cleanups), "bridge.json");
+    exportBridge(account, { to: out });
+    const bridge = loadBridge(out);
+    expect(bridge?.tokens).toBeNull();
+    expect(bridge?.account.type).toBe("oauth_token");
+    // Secrets inline by design (B3) — the on-disk JSON carries the RAW
+    // value, never the mask (CRED-F3).
+    const raw = JSON.parse(readFileSync(out, "utf8")) as {
+      account: Record<string, unknown>;
+    };
+    expect(raw.account["token"]).toBe("inline-bearer");
+  });
+
+  itPosix("test_writes_file_with_mode_0o600", () => {
+    const out = join(makeTempDir(cleanups), "bridge.json");
+    exportBridge(teamSa(), { to: out });
+    expect(statSync(out).mode & 0o7777).toBe(0o600);
+  });
+
+  it("test_creates_parent_dir_with_mode_0o700", () => {
+    const tmp = makeTempDir(cleanups);
+    const nested = join(tmp, "subdir1", "subdir2");
+    const out = join(nested, "bridge.json");
+    exportBridge(teamSa(), { to: out });
+    expect(existsSync(out)).toBe(true);
+    expect(statSync(nested).isDirectory()).toBe(true);
+  });
+
+  it("test_project_workspace_headers_round_trip", () => {
+    const out = join(makeTempDir(cleanups), "bridge.json");
+    exportBridge(teamSa(), {
+      to: out,
+      project: "3018488",
+      workspace: 3448414,
+      headers: { "X-Mixpanel-Cluster": "internal-1" },
+    });
+    const bridge = loadBridge(out);
+    expect(bridge?.project).toBe("3018488");
+    expect(bridge?.workspace).toBe(3448414);
+    expect(bridge?.headers).toEqual({ "X-Mixpanel-Cluster": "internal-1" });
+  });
+
+  it("test_idempotent_overwrite_at_same_path", () => {
+    const out = join(makeTempDir(cleanups), "bridge.json");
+    exportBridge(teamSa(), { to: out });
+    const first = readFileSync(out);
+    exportBridge(teamSa(), { to: out });
+    const second = readFileSync(out);
+    expect(Buffer.compare(first, second)).toBe(0);
+  });
+});
+
+describe("TestRemoveBridgeFunctional (test_bridge_export.py:210)", () => {
+  it("test_removes_existing_bridge", () => {
+    const target = join(makeTempDir(cleanups), "bridge.json");
+    writeFileSync(target, "{}", "utf8");
+    expect(removeBridge({ at: target })).toBe(true);
+    expect(existsSync(target)).toBe(false);
+  });
+
+  it("test_returns_false_when_absent", () => {
+    const target = join(makeTempDir(cleanups), "nope.json");
+    expect(removeBridge({ at: target })).toBe(false);
+  });
+
+  it("test_default_path_uses_search_order", () => {
+    const target = join(makeTempDir(cleanups), "auth.json");
+    writeFileSync(target, "{}", "utf8");
+    process.env["MP_AUTH_FILE"] = target;
+    expect(removeBridge()).toBe(true);
+    expect(existsSync(target)).toBe(false);
+  });
+});
+
+describe("TestAccountsNamespaceWiring (test_bridge_export.py:236 — translated against BridgeEffects directly; N3's bag swap-in re-covers the namespaces, §3.3 split)", () => {
+  it("test_export_bridge_via_bridge_effects", () => {
+    const effects = createNodeBridgeEffects();
+    const out = join(makeTempDir(cleanups), "bridge.json");
+    const result = effects.export({
+      account: teamSa() as Account,
+      to: out,
+      project: null,
+      workspace: null,
+      headers: null,
+      tokenResolver: {
+        getBrowserToken: () => Promise.reject(new Error("unused")),
+        getStaticToken: () => Promise.reject(new Error("unused")),
+      },
+    });
+    expect(result).toBe(out);
+    const bridge = loadBridge(out);
+    expect(bridge?.account.name).toBe("team");
+  });
+
+  it("test_export_bridge_attaches_custom_headers", () => {
+    // The `[settings].custom_header` propagation is the CALLER's
+    // composition in Python (`accounts.export_bridge` reads the config
+    // and passes `headers=`); the effect-level lock is that a supplied
+    // headers map lands in the bridge verbatim.
+    const effects = createNodeBridgeEffects();
+    const out = join(makeTempDir(cleanups), "bridge.json");
+    effects.export({
+      account: teamSa() as Account,
+      to: out,
+      project: null,
+      workspace: null,
+      headers: { "X-Mixpanel-Cluster": "cell-3" },
+      tokenResolver: {
+        getBrowserToken: () => Promise.reject(new Error("unused")),
+        getStaticToken: () => Promise.reject(new Error("unused")),
+      },
+    });
+    const bridge = loadBridge(out);
+    expect(bridge?.headers).toEqual({ "X-Mixpanel-Cluster": "cell-3" });
+  });
+
+  it("test_remove_bridge_via_bridge_effects", () => {
+    const effects = createNodeBridgeEffects();
+    const target = join(makeTempDir(cleanups), "bridge.json");
+    writeFileSync(target, "{}", "utf8");
+    expect(effects.remove(target)).toBe(true);
+    expect(existsSync(target)).toBe(false);
+  });
+
+  it("test_load_bridge_via_bridge_effects_returns_view", () => {
+    const out = join(makeTempDir(cleanups), "bridge.json");
+    exportBridge(teamSa(), {
+      to: out,
+      project: "3018488",
+      headers: { "X-H": "v" },
+    });
+    process.env["MP_AUTH_FILE"] = out;
+    const effects = createNodeBridgeEffects();
+    const view = effects.load();
+    expect(view).not.toBeNull();
+    expect(view?.account.name).toBe("team");
+    expect(view?.project).toBe("3018488");
+    expect(view?.workspace).toBeNull();
+    expect(view?.headers).toEqual({ "X-H": "v" });
+  });
+});
+
+describe("TestBridgeSymlinkRejection (test_bridge_export.py:303)", () => {
+  itPosix("test_load_bridge_symlink_raises_configerror", () => {
+    const tmp = makeTempDir(cleanups);
+    const attacker = join(tmp, "attacker_bridge.json");
+    writeFileSync(
+      attacker,
+      JSON.stringify({
+        version: 2,
+        account: {
+          name: "evil",
+          type: "service_account",
+          region: "us",
+          default_project: "999",
+          username: "attacker",
+          secret: "stolen",
+        },
+      }),
+      "utf8",
+    );
+    chmodSync(attacker, 0o600);
+    const link = join(tmp, "bridge.json");
+    symlinkSync(attacker, link);
+    expect(() => loadBridge(link)).toThrow(ConfigError);
+    expect(() => loadBridge(link)).toThrow(/symlink/);
+  });
+
+  itPosix("test_export_bridge_symlinked_tokens_raises_oautherror", () => {
+    const account: OAuthBrowserAccount = {
+      type: "oauth_browser",
+      name: "personal",
+      region: "us",
+    };
+    const accountDir = join(home, ".mp", "accounts", "personal");
+    mkdirSync(accountDir, { recursive: true, mode: 0o700 });
+    const attacker = join(home, "attacker_tokens.json");
+    writeFileSync(
+      attacker,
+      JSON.stringify({
+        access_token: "stolen",
+        expires_at: isoIn(1),
+        token_type: "Bearer",
+      }),
+      "utf8",
+    );
+    chmodSync(attacker, 0o600);
+    symlinkSync(attacker, join(accountDir, "tokens.json"));
+    const out = join(home, "bridge.json");
+    expect(() => exportBridge(account, { to: out })).toThrow(OAuthError);
+    expect(() => exportBridge(account, { to: out })).toThrow(/symlink/);
+  });
+
+  itPosix("test_dangling_bridge_symlink_rejected", () => {
+    const tmp = makeTempDir(cleanups);
+    const link = join(tmp, "bridge.json");
+    symlinkSync(join(tmp, "missing.json"), link);
+    expect(() => loadBridge(link)).toThrow(ConfigError);
+    expect(() => loadBridge(link)).toThrow(/symlink/);
+  });
+
+  itPosix("test_dangling_browser_tokens_symlink_rejected", () => {
+    const account: OAuthBrowserAccount = {
+      type: "oauth_browser",
+      name: "personal",
+      region: "us",
+    };
+    const accountDir = join(home, ".mp", "accounts", "personal");
+    mkdirSync(accountDir, { recursive: true, mode: 0o700 });
+    symlinkSync(join(home, "missing.json"), join(accountDir, "tokens.json"));
+    const out = join(home, "bridge.json");
+    expect(() => exportBridge(account, { to: out })).toThrow(/symlink/);
+  });
+});
+
+describe("TestBridgeEdgeCases (test_042_edge_cases.py:394 — inbound b6-packets.md:1032)", () => {
+  it("test_oauth_browser_without_tokens_rejected", () => {
+    const payload = {
+      version: 2,
+      account: {
+        type: "oauth_browser",
+        name: "personal",
+        region: "us",
+      },
+      // No tokens.
+    };
+    expect(() => parseBridgeFile(payload)).toThrow(ParamValidationError);
+  });
+
+  it.each([[1], [3], ["2"]])(
+    "test_version_mismatch_rejected[%s]",
+    (badVersion) => {
+      const payload = {
+        version: badVersion,
+        account: {
+          type: "service_account",
+          name: "team",
+          region: "us",
+          username: "u",
+          secret: "s",
+        },
+      };
+      expect(() => parseBridgeFile(payload)).toThrow(ParamValidationError);
+    },
+  );
+
+  it("test_load_bridge_returns_none_for_missing_path", () => {
+    process.env["MP_AUTH_FILE"] = join(home, "nonexistent.json");
+    // Cwd default search would find a stray mixpanel_auth.json;
+    // isolate cwd too (the Python `monkeypatch.chdir` twin).
+    process.chdir(home);
+    expect(loadBridge()).toBeNull();
+  });
+
+  it("test_load_bridge_malformed_json_raises_with_path", () => {
+    const bridgePath = join(makeTempDir(cleanups), "bridge.json");
+    writeFileSync(bridgePath, '{"version": 2', "utf8"); // truncated
+    if (POSIX) {
+      chmodSync(bridgePath, 0o600);
+    }
+    process.env["MP_AUTH_FILE"] = bridgePath;
+    let caught: ConfigError | null = null;
+    try {
+      loadBridge();
+    } catch (exc) {
+      caught = exc as ConfigError;
+    }
+    expect(caught).toBeInstanceOf(ConfigError);
+    expect(caught?.message).toContain(bridgePath);
+  });
+
+  it("extra top-level key rejected (extra='forbid')", () => {
+    // BridgeFile `extra="forbid"` — packet §3.2 item 9.
+    const payload = {
+      version: 2,
+      account: {
+        type: "service_account",
+        name: "team",
+        region: "us",
+        username: "u",
+        secret: "s",
+      },
+      surprise: true,
+    };
+    expect(() => parseBridgeFile(payload)).toThrow(ParamValidationError);
+  });
+});

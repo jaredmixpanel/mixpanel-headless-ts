@@ -6,9 +6,12 @@
 // (`b7-packets.md` §3.4; the Python `two_accounts` tmp-config fixture
 // re-expresses over the in-memory fake config, header rule).
 //
-// DEFERRED (header-cited): `TestBridgeTokenMaterialization` (:167) →
-// B8 (bridge/token disk I/O — the constructor's bridge-token
-// materialization side effect, `workspace.py:479-513`).
+// `TestBridgeTokenMaterialization` (:167) is translated at B8-N2 in
+// `packages/node/test/workspace-bridge-materialization.test.ts` (the
+// constructor's bridge-token materialization side effect,
+// `workspace.py:476-513`, needs node:fs — the core-purity eslint
+// boundary covers core TEST files too; disclosed relocation, B8-N2
+// notes). ZERO deferrals remain in this header.
 //
 // `TestSessionBypass::test_session_use_chain_equivalence` (:130) is
 // SPLIT: the W1 chain half runs against stubbed seams below; the FULL

@@ -6,15 +6,19 @@
 //   reaches `Session.headers` through `resolveSession`).
 // - TestNoEnvMutation :71            → translated below (resolution over
 //   the real `createNodeEnv` bag never mutates `process.env`).
-// - TestBridgeHeaderAttachment :97   → B8-N2 (bridge; packet §3.3).
+// - TestBridgeHeaderAttachment :97   → translated below at B8-N2
+//   (bridge headers reach `Session.headers` through `BridgeView`;
+//   packet §3.3 row 7).
 // - TestSessionHeadersOnOutboundRequests :156 → translated at B0, NOT
 //   re-translated (playbook `:244-246`).
 
+import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { resolveSession } from "../../core/src/auth/resolver.js";
 import { Secret } from "../../core/src/secret.js";
+import { createNodeBridgeEffects } from "../src/auth/bridge.js";
 import { ConfigManager } from "../src/config.js";
 import { createNodeConfigSource } from "../src/config-writes.js";
 import { createNodeEnv } from "../src/env.js";
@@ -86,6 +90,66 @@ describe("TestNoEnvMutation", () => {
     cm.setCustomHeader({ name: "X-Hdr", value: "v" });
     const before = { ...process.env };
     resolveSession({}, { env: createNodeEnv(), config, bridge: null });
+    const after = { ...process.env };
+    expect(after).toEqual(before);
+  });
+});
+
+describe("TestBridgeHeaderAttachment (test_settings_headers.py:97 — B8-N2)", () => {
+  /** Write the SA bridge fixture and point MP_AUTH_FILE at it. */
+  function writeBridgeFixture(headers: Record<string, string>): string {
+    const dir = makeTempDir(cleanups);
+    const bridgePath = join(dir, "bridge.json");
+    writeFileSync(
+      bridgePath,
+      JSON.stringify({
+        version: 2,
+        account: {
+          type: "service_account",
+          name: "bridged",
+          region: "us",
+          username: "bridge.user",
+          secret: "bridge-secret",
+        },
+        project: "3018488",
+        headers,
+      }),
+      "utf8",
+    );
+    if (process.platform !== "win32") {
+      chmodSync(bridgePath, 0o600);
+    }
+    process.env["MP_AUTH_FILE"] = bridgePath;
+    return bridgePath;
+  }
+
+  it("test_bridge_headers_populate_session", () => {
+    const { config } = cmWithAccountActive();
+    writeBridgeFixture({ "X-Mixpanel-Cluster": "internal-1" });
+    const session = resolveSession(
+      {},
+      {
+        env: createNodeEnv(),
+        config,
+        bridge: createNodeBridgeEffects().load(),
+      },
+    );
+    expect(session.headers.get("X-Mixpanel-Cluster")).toBe("internal-1");
+    expect(session.account.name).toBe("bridged");
+  });
+
+  it("test_bridge_does_not_mutate_environ", () => {
+    const { config } = cmWithAccountActive();
+    writeBridgeFixture({ "X-Hdr": "v" });
+    const before = { ...process.env };
+    resolveSession(
+      {},
+      {
+        env: createNodeEnv(),
+        config,
+        bridge: createNodeBridgeEffects().load(),
+      },
+    );
     const after = { ...process.env };
     expect(after).toEqual(before);
   });
