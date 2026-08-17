@@ -461,7 +461,9 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
     expect(responseData).toContain("<redacted>");
   });
 
-  it("test_non_secret_fields_stay_visible", async () => {
+  it("test_safe_fields_stay_visible", async () => {
+    // ARB-B F-B2/E-1 flip: unknown-key VALUES are now redacted (the old
+    // deny-list kept `hint` verbatim); key names stay visible.
     const flow = flowWithPayload({
       access_token: "SECRET_AT",
       scope: "projects analysis",
@@ -479,24 +481,156 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
     expect(responseData).not.toContain("SECRET_AT");
     expect(responseData).toContain("projects analysis");
     expect(responseData).toContain("Bearer");
-    expect(responseData).toContain("weird-idp-extra");
+    expect(responseData).not.toContain("weird-idp-extra");
+    expect(responseData).toContain("'hint': '<redacted>'");
+  });
+
+  it.each([
+    {
+      id: "nested-envelope",
+      payload: { result: { access_token: "SECRET_NEST" } } as Record<
+        string,
+        unknown
+      >,
+      secret: "SECRET_NEST",
+      visibleKey: "result",
+    },
+    {
+      id: "list-value",
+      payload: { tokens: ["SECRET_L1"] } as Record<string, unknown>,
+      secret: "SECRET_L1",
+      visibleKey: "tokens",
+    },
+    {
+      id: "non-canonical-key",
+      payload: { client_secret: "SECRET_CS" } as Record<string, unknown>,
+      secret: "SECRET_CS",
+      visibleKey: "client_secret",
+    },
+    {
+      id: "case-variant-key",
+      payload: { Access_Token: "SECRET_UPPER" } as Record<string, unknown>,
+      secret: "SECRET_UPPER",
+      visibleKey: "Access_Token",
+    },
+  ])(
+    "test_nested_and_non_canonical_token_material_redacted[$id]",
+    async ({ payload, secret, visibleKey }) => {
+      // ARB-B F-B2/E-1: envelope / non-canonical shapes leak nothing —
+      // allowlist redaction closes every value channel (Python twin:
+      // TestTokenPayloadRedaction::
+      // test_nested_and_non_canonical_token_material_redacted).
+      const flow = flowWithPayload(payload);
+      const error = await flow
+        .exchangeCode("c", "v", "cid", "http://localhost:19284/callback")
+        .then(
+          () => null,
+          (exc: unknown) => exc,
+        );
+      expect(error).toBeInstanceOf(OAuthError);
+      const exc = error as OAuthError;
+      expect(exc.code).toBe("OAUTH_TOKEN_ERROR");
+      const serialized =
+        String(exc) +
+        JSON.stringify(exc.details) +
+        JSON.stringify(exc.toDict());
+      expect(serialized).not.toContain(secret);
+      const responseData = String(exc.details["response_data"]);
+      expect(responseData).toContain(visibleKey);
+      expect(responseData).toContain("<redacted>");
+    },
+  );
+
+  it("test_safe_primitive_values_byte_exact", async () => {
+    // Locks pythonStr rendering of kept int/str values byte-identical to
+    // the Python twin's `str()` output.
+    const flow = flowWithPayload({
+      expires_in: 3600,
+      token_type: "Bearer",
+      scope: "projects",
+    });
+    const error = await flow
+      .exchangeCode("c", "v", "cid", "http://localhost:19284/callback")
+      .then(
+        () => null,
+        (exc: unknown) => exc,
+      );
+    expect(error).toBeInstanceOf(OAuthError);
+    expect((error as OAuthError).details["response_data"]).toBe(
+      "{'expires_in': 3600, 'token_type': 'Bearer', 'scope': 'projects'}",
+    );
+  });
+
+  it("test_safe_key_with_container_value_redacted", async () => {
+    // ARB-B F-B2: only PRIMITIVE values survive under safe keys — a dict
+    // smuggled under `scope` must not carry token material through.
+    const flow = flowWithPayload({
+      scope: { access_token: "SECRET_SC" },
+    });
+    const error = await flow
+      .exchangeCode("c", "v", "cid", "http://localhost:19284/callback")
+      .then(
+        () => null,
+        (exc: unknown) => exc,
+      );
+    expect(error).toBeInstanceOf(OAuthError);
+    const exc = error as OAuthError;
+    const serialized =
+      String(exc) + JSON.stringify(exc.details) + JSON.stringify(exc.toDict());
+    expect(serialized).not.toContain("SECRET_SC");
+    expect(String(exc.details["response_data"])).toContain(
+      "'scope': '<redacted>'",
+    );
+  });
+
+  it("test_exchange_non_json_200_body_not_embedded", async () => {
+    // ARB-B F-B1: a truncated token payload fails JSON parsing but still
+    // contains live bearer material — never embedded; only content-type
+    // and code-point length survive.
+    const body = '{"access_token": "SECRET_TRUNC", "refr';
+    const { fetchImpl } = mockTransport(
+      () =>
+        new Response(body, {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    const storage = new OAuthStorage({ storageDir: makeTempDir(cleanups) });
+    const flow = new OAuthFlow({ region: "us", storage, fetchImpl });
+    const error = await flow
+      .exchangeCode("c", "v", "cid", "http://localhost:19284/callback")
+      .then(
+        () => null,
+        (exc: unknown) => exc,
+      );
+    expect(error).toBeInstanceOf(OAuthError);
+    const exc = error as OAuthError;
+    expect(exc.code).toBe("OAUTH_TOKEN_ERROR");
+    const serialized =
+      String(exc) + JSON.stringify(exc.details) + JSON.stringify(exc.toDict());
+    expect(serialized).not.toContain("SECRET_TRUNC");
+    expect(exc.details).not.toHaveProperty("response_body");
+    expect(exc.details["content_type"]).toBe("application/json");
+    expect(exc.details["body_length"]).toBe(Array.from(body).length);
   });
 
   // ARB-A F1 (pair-A fidelity review): the Python bug-(d) redaction fix
   // initially crashed with an uncoded AttributeError on non-dict 200
   // JSON bodies while this side already guarded with `isPlainRecord`.
-  // Python now mirrors the guard (`flow.py` isinstance branch); these
-  // members lock the converged behavior byte-for-byte on both sides
-  // (Python twin: TestTokenPayloadRedaction::
+  // Python now mirrors the guard; ARB-B F-B3 hardened the shared
+  // behavior: `response_data` is a fixed placeholder, never a verbatim
+  // rendering — a bare JSON string body IS the credential when an IdP
+  // returns the token as a naked string (Python twin:
+  // TestTokenPayloadRedaction::
   // test_exchange_non_dict_200_body_raises_oauth_error).
   it.each([
-    { id: "list", body: [1, 2] as unknown, expected: "[1, 2]" },
-    { id: "str", body: "hello" as unknown, expected: "hello" },
-    { id: "int", body: 42 as unknown, expected: "42" },
-    { id: "null", body: null as unknown, expected: "None" },
+    { id: "list", body: [1, 2] as unknown },
+    { id: "str", body: "SECRET_BARE_STRING" as unknown },
+    { id: "int", body: 42 as unknown },
+    { id: "null", body: null as unknown },
   ])(
     "test_exchange_non_dict_200_body_raises_oauth_error[$id]",
-    async ({ body, expected }) => {
+    async ({ body }) => {
       const { fetchImpl } = mockTransport(() => jsonResponse(200, body));
       const storage = new OAuthStorage({ storageDir: makeTempDir(cleanups) });
       const flow = new OAuthFlow({ region: "us", storage, fetchImpl });
@@ -509,9 +643,12 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
       expect(error).toBeInstanceOf(OAuthError);
       const exc = error as OAuthError;
       expect(exc.code).toBe("OAUTH_TOKEN_ERROR");
-      // Byte-exact Python `str(body)` rendering, unredacted (a non-dict
-      // body has no token-bearing keys).
-      expect(exc.details["response_data"]).toBe(expected);
+      const serialized =
+        String(exc) +
+        JSON.stringify(exc.details) +
+        JSON.stringify(exc.toDict());
+      expect(serialized).not.toContain("SECRET_BARE_STRING");
+      expect(exc.details["response_data"]).toBe("<redacted non-object body>");
     },
   );
 

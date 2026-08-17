@@ -67,15 +67,20 @@ Node-only for now; Phase-4 ledger row 8).
   is discarded and `completeLogin` fails with `BROWSER_NO_PENDING_LOGIN` —
   start a fresh `beginLogin`.
 - **Error details redact token material.** On a malformed 200 token
-  response, `OAuthError.details.response_data` REDACTS the values of
-  token-bearing keys (`access_token`, `refresh_token`, `id_token`) and
-  keeps only field names and non-secret values (Python parity — the
-  FIX-2 redaction, fix-of-record
-  `context/phase3/bug-reports/python-oauth-error-details-token-payload.md`;
-  the old verbatim-payload behavior retired with the R10.7 batch).
-  Scrubbing `error.details` before forwarding to logging/telemetry
-  pipelines (Sentry etc.) remains good hygiene, but bearer material no
-  longer flows through it.
+  response, `OAuthError.details.response_data` keeps field names but
+  redacts every value except the primitive values of the safe RFC 6749
+  metadata keys (`token_type`, `expires_in`, `scope`, `error`,
+  `error_description`) — any other value, under any key at any nesting,
+  renders as `<redacted>`; non-object 200 bodies render as a fixed
+  placeholder and 200 bodies that fail JSON parsing are never embedded
+  at all (Python parity — the FIX-2 redaction hardened by the ARB-B
+  pair-B review, fix-of-record
+  `context/phase3/bug-reports/python-oauth-error-details-token-payload.md`).
+  Still scrub `error.details` before forwarding to logging/telemetry
+  pipelines (Sentry etc.): non-200 responses embed the raw IdP ERROR
+  body in `details.response_body` (an error document, not a token
+  grant, but its contents are IdP-controlled), and defense in depth
+  costs one line.
 
 ## Credential storage
 

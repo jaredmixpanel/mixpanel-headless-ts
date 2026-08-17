@@ -43,17 +43,66 @@ import {
 const DEFAULT_TIMEOUT_SECONDS = 5;
 
 /**
- * Token-endpoint response keys whose values are live credential
- * material. Redacted from OAuthError details when a malformed 200
- * payload fails `OAuthTokens.fromTokenResponse` — see
- * {@link postTokenRequest}'s Security note (twin of
- * `flow.py::_TOKEN_BEARING_KEYS` post-FIX-2).
+ * Token-endpoint response keys whose values are structurally non-secret
+ * RFC 6749 §5.1 metadata. ONLY these survive redaction (and only when
+ * the value is a primitive) — every OTHER value in a malformed 200
+ * token payload is replaced with `"<redacted>"`, whatever its key:
+ * pair-B review (ARB-B F-B2/E-1) probe-confirmed that a deny-list over
+ * canonical token keys leaks nested envelopes, list values,
+ * non-canonical credential keys (`client_secret`) and case-variant
+ * keys (`Access_Token`). Twin of `flow.py::_SAFE_TOKEN_DETAIL_KEYS`.
  */
-const TOKEN_BEARING_KEYS: ReadonlySet<string> = new Set([
-  "access_token",
-  "refresh_token",
-  "id_token",
+const SAFE_TOKEN_DETAIL_KEYS: ReadonlySet<string> = new Set([
+  "token_type",
+  "expires_in",
+  "scope",
+  "error",
+  "error_description",
 ]);
+
+/**
+ * Rendering for non-object 200 JSON token bodies in error details: the
+ * VALUE itself can be the credential (an IdP returning the bare token
+ * as a JSON string), so it never renders verbatim (ARB-B F-B3;
+ * byte-identical constant in the Python twin, flow.py).
+ */
+const NON_OBJECT_BODY_PLACEHOLDER = "<redacted non-object body>";
+
+/**
+ * Render a malformed 200 token payload safely for OAuthError details
+ * (twin of `flow.py::_redact_token_payload`, ARB-B hardening of the
+ * FIX-2 deny-list). Every field NAME stays visible for diagnosis, but
+ * only the values of {@link SAFE_TOKEN_DETAIL_KEYS} survive — and only
+ * when they are primitives. Every other value renders as
+ * `"<redacted>"` regardless of nesting, and a non-object body renders
+ * as {@link NON_OBJECT_BODY_PLACEHOLDER}, so no value channel can
+ * carry bearer material into serialized error details.
+ *
+ * @param data - The parsed 200 token-endpoint JSON body (any value).
+ * @returns The `pythonStr` rendering of the redacted mapping
+ *   (byte-matching the Python twin's `str()`), or the fixed
+ *   placeholder for non-object bodies.
+ */
+function redactTokenPayload(data: unknown): string {
+  if (!isPlainRecord(data)) {
+    return NON_OBJECT_BODY_PLACEHOLDER;
+  }
+  return pythonStr(
+    Object.fromEntries(
+      Object.entries(data).map(([k, v]) => [
+        k,
+        SAFE_TOKEN_DETAIL_KEYS.has(k) &&
+        (v === null ||
+          typeof v === "string" ||
+          typeof v === "number" ||
+          typeof v === "bigint" ||
+          typeof v === "boolean")
+          ? v
+          : "<redacted>",
+      ]),
+    ) as never,
+  );
+}
 
 /**
  * Build the OAuth authorization URL with PKCE parameters (port of
@@ -135,17 +184,27 @@ export interface PostTokenRequestContext {
  *   `OAUTH_REFRESH_REVOKED` refresh-only mapping, non-JSON body,
  *   missing required fields).
  *
- * Security: when a 200 response parses as JSON but fails
- * `OAuthTokens.fromTokenResponse` (malformed IdP payload), the raised
- * error's `details.response_data` REDACTS the values of token-bearing
- * keys (`access_token`, `refresh_token`, `id_token`) and keeps only
- * field names and non-secret values. The payload may contain live
- * bearer / refresh material that never passes through `Secret`, so
- * embedding it verbatim would exfiltrate credentials into any consumer
- * that serializes error details (logging, telemetry, browser error
- * reporters — this helper is shared by the node refresh path AND the
- * browser `completeLogin` exchange path). Twin of the Python FIX-2
- * change; fix-of-record:
+ * Security: a 200 token-endpoint body may BE the live token payload
+ * even when it is malformed, so no 200-branch error path embeds it
+ * (this helper is shared by the node refresh path AND the browser
+ * `completeLogin` exchange path, where error-detail exfiltration via
+ * telemetry is the default posture):
+ *
+ * - JSON-object body failing `OAuthTokens.fromTokenResponse`:
+ *   `details.response_data` keeps every field name but only the
+ *   primitive values of the safe RFC 6749 metadata keys
+ *   ({@link SAFE_TOKEN_DETAIL_KEYS}); every other value — any key, any
+ *   nesting — renders as `"<redacted>"` (ARB-B F-B2/E-1).
+ * - Non-object JSON body: fixed `"<redacted non-object body>"`
+ *   placeholder — the value itself can be the credential (ARB-B F-B3).
+ * - Body that fails JSON parsing (truncated / proxy-mangled token
+ *   JSON): never embedded; only `content_type` and `body_length`
+ *   (code points) survive (ARB-B F-B1).
+ *
+ * Non-200 branches still embed the raw ERROR body in
+ * `details.response_body` — those are IdP error documents, not token
+ * grants, and their shapes are vector-locked. Twin of the Python FIX-2
+ * change (+ ARB-B hardening); fix-of-record:
  * context/phase3/bug-reports/python-oauth-error-details-token-payload.md.
  */
 export async function postTokenRequest(
@@ -244,11 +303,18 @@ export async function postTokenRequest(
   try {
     data = toNativeJson(parseLossless(response.text));
   } catch (exc) {
+    // Never embed the body: a 200 that fails JSON parsing can still BE
+    // the token payload (truncated JSON, trailing proxy garbage) —
+    // ARB-B F-B1. body_length counts code points (`Array.from`),
+    // matching the Python twin's `len(response.text)`.
     throw new OAuthError(
       `${operation} returned non-JSON response: ` +
         `${response.header("content-type") ?? "unknown"}`,
       errorCode,
-      { response_body: response.text },
+      {
+        content_type: response.header("content-type") ?? "unknown",
+        body_length: Array.from(response.text).length,
+      },
       { cause: exc },
     );
   }
@@ -265,27 +331,16 @@ export async function postTokenRequest(
     if (!(exc instanceof MixpanelHeadlessError)) {
       throw exc;
     }
-    // Redact token-bearing values before embedding: `data` is a live
-    // (if malformed) token payload — see the Security section of the
-    // function JSDoc (`flow.py:617-630` post-FIX-2; the R10.7
-    // verbatim-payload twin retired with the Python-first fix). The
-    // record guard covers the non-object-200 branch above (Python
-    // mirrors it with an `isinstance(data, dict)` guard on its
-    // `.items()` walk since ARB-A F1 — both languages raise the coded
-    // OAuthError); a non-record body has no token-bearing KEYS, so it
-    // renders as before.
-    const redacted = isPlainRecord(data as never)
-      ? Object.fromEntries(
-          Object.entries(data as Record<string, unknown>).map(([k, v]) => [
-            k,
-            TOKEN_BEARING_KEYS.has(k) ? "<redacted>" : v,
-          ]),
-        )
-      : data;
+    // Redact before embedding: `data` is a live (if malformed) token
+    // payload — see the Security section of the function JSDoc.
+    // `redactTokenPayload` handles the non-record edge (ARB-A F1 guard,
+    // hardened to a placeholder by ARB-B F-B3 — both languages raise
+    // the coded OAuthError) and allowlist-redacts object bodies
+    // (ARB-B F-B2/E-1), mirroring `flow.py::_redact_token_payload`.
     throw new OAuthError(
       `${operation} response missing required fields: ${exc.message}`,
       errorCode,
-      { response_data: pythonStr(redacted as never) },
+      { response_data: redactTokenPayload(data) },
       { cause: exc },
     );
   }

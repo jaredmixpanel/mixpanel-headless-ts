@@ -263,8 +263,43 @@ describe("TestOAuthFlowRefresh (test_auth_flow.py:490)", () => {
     }
     expect(caught).toBeInstanceOf(OAuthError);
     expect(caught?.code).toBe("OAUTH_REFRESH_ERROR");
-    // Byte-exact Python `str([1, 2])` rendering, unredacted.
-    expect(caught?.details["response_data"]).toBe("[1, 2]");
+    // ARB-B F-B3: fixed placeholder, never a verbatim rendering — the
+    // value itself can be the credential.
+    expect(caught?.details["response_data"]).toBe("<redacted non-object body>");
+  });
+
+  it("test_refresh_non_json_200_body_not_embedded", async () => {
+    // ARB-B F-B1: a 200 body that fails JSON parsing can still BE the
+    // token payload (valid token JSON + trailing proxy garbage). It is
+    // never embedded — only content-type and code-point length survive
+    // (Python twin: TestTokenPayloadRedaction::
+    // test_refresh_non_json_200_body_not_embedded).
+    const body = '{"access_token":"SECRET_GARB"}garbage';
+    const { fetchImpl } = mockTransport(
+      () =>
+        new Response(body, {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    const storage = new OAuthStorage({ storageDir: makeTempDir(cleanups) });
+    const flow = new OAuthFlow({ region: "us", storage, fetchImpl });
+    let caught: OAuthError | null = null;
+    try {
+      await flow.refreshTokens(expiredTokens(), "cid");
+    } catch (exc) {
+      caught = exc as OAuthError;
+    }
+    expect(caught).toBeInstanceOf(OAuthError);
+    expect(caught?.code).toBe("OAUTH_REFRESH_ERROR");
+    const serialized =
+      String(caught) +
+      JSON.stringify(caught?.details) +
+      JSON.stringify(caught?.toDict());
+    expect(serialized).not.toContain("SECRET_GARB");
+    expect(caught?.details).not.toHaveProperty("response_body");
+    expect(caught?.details["content_type"]).toBe("application/json");
+    expect(caught?.details["body_length"]).toBe(Array.from(body).length);
   });
 });
 
