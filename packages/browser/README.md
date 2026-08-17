@@ -66,10 +66,16 @@ Node-only for now; Phase-4 ledger row 8).
   time-bounded (default 30 minutes, `maxPendingAgeMs`); an expired record
   is discarded and `completeLogin` fails with `BROWSER_NO_PENDING_LOGIN` —
   start a fresh `beginLogin`.
-- **Error details can carry token material.** On a malformed 200 token
-  response, `OAuthError.details.response_data` contains the raw payload
-  (verbatim Python parity, `flow.py:596-605`) — scrub `error.details`
-  before forwarding errors to logging/telemetry pipelines (Sentry etc.).
+- **Error details redact token material.** On a malformed 200 token
+  response, `OAuthError.details.response_data` REDACTS the values of
+  token-bearing keys (`access_token`, `refresh_token`, `id_token`) and
+  keeps only field names and non-secret values (Python parity — the
+  FIX-2 redaction, fix-of-record
+  `context/phase3/bug-reports/python-oauth-error-details-token-payload.md`;
+  the old verbatim-payload behavior retired with the R10.7 batch).
+  Scrubbing `error.details` before forwarding to logging/telemetry
+  pipelines (Sentry etc.) remains good hygiene, but bearer material no
+  longer flows through it.
 
 ## Credential storage
 

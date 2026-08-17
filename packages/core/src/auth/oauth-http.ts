@@ -43,6 +43,19 @@ import {
 const DEFAULT_TIMEOUT_SECONDS = 5;
 
 /**
+ * Token-endpoint response keys whose values are live credential
+ * material. Redacted from OAuthError details when a malformed 200
+ * payload fails `OAuthTokens.fromTokenResponse` — see
+ * {@link postTokenRequest}'s Security note (twin of
+ * `flow.py::_TOKEN_BEARING_KEYS` post-FIX-2).
+ */
+const TOKEN_BEARING_KEYS: ReadonlySet<string> = new Set([
+  "access_token",
+  "refresh_token",
+  "id_token",
+]);
+
+/**
  * Build the OAuth authorization URL with PKCE parameters (port of
  * `_build_authorize_url`, `flow.py:606-635` — lifted from the private
  * `OAuthFlow.#buildAuthorizeUrl` to a module-level pure function at
@@ -121,6 +134,19 @@ export interface PostTokenRequestContext {
  *   (transport failure, non-200 incl. the `invalid_grant`→
  *   `OAUTH_REFRESH_REVOKED` refresh-only mapping, non-JSON body,
  *   missing required fields).
+ *
+ * Security: when a 200 response parses as JSON but fails
+ * `OAuthTokens.fromTokenResponse` (malformed IdP payload), the raised
+ * error's `details.response_data` REDACTS the values of token-bearing
+ * keys (`access_token`, `refresh_token`, `id_token`) and keeps only
+ * field names and non-secret values. The payload may contain live
+ * bearer / refresh material that never passes through `Secret`, so
+ * embedding it verbatim would exfiltrate credentials into any consumer
+ * that serializes error details (logging, telemetry, browser error
+ * reporters — this helper is shared by the node refresh path AND the
+ * browser `completeLogin` exchange path). Twin of the Python FIX-2
+ * change; fix-of-record:
+ * context/phase3/bug-reports/python-oauth-error-details-token-payload.md.
  */
 export async function postTokenRequest(
   fetchImpl: typeof fetch,
@@ -239,17 +265,26 @@ export async function postTokenRequest(
     if (!(exc instanceof MixpanelHeadlessError)) {
       throw exc;
     }
-    // SECURITY NOTE (pair-B B9-ARB-B; Python-parity `flow.py:596-605`,
-    // R10.7 — do not fix unilaterally): `response_data` carries the
-    // FULL 200 token payload (possibly live bearer/refresh material)
-    // in plaintext. Shared by the node refresh path AND the browser
-    // exchange path. Python-first fix queued:
-    // context/phase3/bug-reports/python-oauth-error-details-token-payload.md;
-    // Phase-4 outbound ledger row 1 cites this site.
+    // Redact token-bearing values before embedding: `data` is a live
+    // (if malformed) token payload — see the Security section of the
+    // function JSDoc (`flow.py:617-630` post-FIX-2; the R10.7
+    // verbatim-payload twin retired with the Python-first fix). The
+    // record guard covers the non-object-200 branch above (Python has
+    // no such branch — `data.items()` presumes a dict there); a
+    // non-record body has no token-bearing KEYS, so it renders as
+    // before.
+    const redacted = isPlainRecord(data as never)
+      ? Object.fromEntries(
+          Object.entries(data as Record<string, unknown>).map(([k, v]) => [
+            k,
+            TOKEN_BEARING_KEYS.has(k) ? "<redacted>" : v,
+          ]),
+        )
+      : data;
     throw new OAuthError(
       `${operation} response missing required fields: ${exc.message}`,
       errorCode,
-      { response_data: pythonStr(data as never) },
+      { response_data: pythonStr(redacted as never) },
       { cause: exc },
     );
   }

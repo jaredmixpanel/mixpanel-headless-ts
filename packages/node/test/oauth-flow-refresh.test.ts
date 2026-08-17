@@ -1,6 +1,8 @@
 // Layer-3 translation of the REFRESH classes of
 // `tests/unit/test_auth_flow.py` (b8-packets.md §3.3 row 5):
-// `TestOAuthFlowRefresh` (:490), `TestOAuthFlowGetValidToken` (:610),
+// `TestOAuthFlowRefresh` (:490), the REFRESH member of
+// `TestTokenPayloadRedaction` (FIX-2, bug (d) — exchange members are
+// in `oauth-flow-login.test.ts`), `TestOAuthFlowGetValidToken` (:610),
 // the refresh/timeout members of `TestOAuthFlowNetworkErrors` (:802 —
 // the exchange-op members are N3's, header-cited split), and
 // `TestOAuthFlowRegionValidation` (:984 — lands with the N2 class
@@ -204,6 +206,45 @@ describe("TestOAuthFlowRefresh (test_auth_flow.py:490)", () => {
     });
     // The refusal fires BEFORE any request (packet §3.2 item 2).
     expect(captured).toHaveLength(0);
+  });
+
+  it("test_refresh_missing_fields_error_redacts_token_material", async () => {
+    // TestTokenPayloadRedaction refresh member (Python FIX-2;
+    // fix-of-record context/phase3/bug-reports/
+    // python-oauth-error-details-token-payload.md; exchange members in
+    // `oauth-flow-login.test.ts`, header-cited split). Also
+    // vector-locked: auth/oauth_flow.refresh_tokens/...-
+    // testtokenpayloadredaction-... pins the exact response_data string.
+    const { fetchImpl } = mockTransport(() =>
+      jsonResponse(200, {
+        access_token: "SECRET_AT",
+        refresh_token: "SECRET_RT",
+        id_token: "SECRET_ID",
+      }),
+    );
+    const storage = new OAuthStorage({ storageDir: makeTempDir(cleanups) });
+    const flow = new OAuthFlow({ region: "us", storage, fetchImpl });
+    let caught: OAuthError | null = null;
+    try {
+      await flow.refreshTokens(expiredTokens(), "cid");
+    } catch (exc) {
+      caught = exc as OAuthError;
+    }
+    expect(caught).toBeInstanceOf(OAuthError);
+    expect(caught?.code).toBe("OAUTH_REFRESH_ERROR");
+    const serialized =
+      String(caught) +
+      JSON.stringify(caught?.details) +
+      JSON.stringify(caught?.toDict());
+    expect(serialized).not.toContain("SECRET_AT");
+    expect(serialized).not.toContain("SECRET_RT");
+    expect(serialized).not.toContain("SECRET_ID");
+    // Byte-exact Python `str(dict)` rendering (the vector's
+    // details_contain lock).
+    expect(caught?.details["response_data"]).toBe(
+      "{'access_token': '<redacted>', 'refresh_token': '<redacted>', " +
+        "'id_token': '<redacted>'}",
+    );
   });
 });
 

@@ -12,7 +12,7 @@
 discovery, entity management, streaming data extraction, and session replay analysis.
 Fully typed, isomorphic (Node.js and browser), and continuously verified against the
 battle-tested [Python `mixpanel_headless`](https://github.com/mixpanel/mixpanel-headless)
-library it ports — 3,251 conformance vectors, zero divergence.
+library it ports — 3,262 conformance vectors, zero divergence.
 
 ```typescript
 import { Workspace } from "@mixpanel-headless/core";
@@ -590,7 +590,7 @@ names with three rules:
 | `funnel.overall_conversion_rate`         | `funnel.overall_conversion_rate`               | Result fields stay snake_case                                    |
 
 **Parity is verified, not aspirational.** Every release replays a conformance corpus of
-**3,251 test vectors extracted from the Python implementation** — covering outputs,
+**3,262 test vectors extracted from the Python implementation** — covering outputs,
 error behavior, and the exact HTTP requests made — with zero failures, and a
 cross-language differential oracle continuously fuzzes the two implementations against
 each other. Even Python-specific rendering quirks (float formatting, `str()` semantics)

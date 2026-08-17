@@ -732,12 +732,12 @@ describe("buildFrequencyGroupEntry", () => {
     expect(result["dataGroupId"]).toBeNull();
   });
 
-  it("data group id threaded", () => {
+  it("data group id threaded as a string (contract: string | null)", () => {
     const result = buildFrequencyGroupEntry(
       new FrequencyBreakdown({ event: "Purchase" }),
       { data_group_id: 5 },
     );
-    expect(result["dataGroupId"]).toBe(5);
+    expect(result["dataGroupId"]).toBe("5");
   });
 
   it("empty-string label is emitted verbatim (`is not None`, not truthiness)", () => {
@@ -753,27 +753,51 @@ describe("buildFrequencyGroupEntry", () => {
 // =============================================================================
 // tests/unit/test_bookmark_builders.py::TestBuildFrequencyFilterEntry (T022)
 //
-// R10.7 BUG-COMPAT LOCK: this clause shape is server-rejected (HTTP 500);
-// probe record `context/phase1/addendum/frequency-filter-probe.md`.
-// These nine assertions replicate it byte-for-byte. NEVER "fix" the shape.
+// FIX-1 (bug (a)): the old R10.7 customProperty-nested bug-compat lock
+// retired with the Python-first fix — this suite now locks the
+// platform-native clause (fix-of-record
+// `context/phase1/addendum/frequency-filter-probe.md` +
+// `context/phase1/bug-reports/mixpanel-headless-frequency-filter-clause-shape.md`).
 // =============================================================================
 
-describe("buildFrequencyFilterEntry (R10.7 bug-compat)", () => {
+describe("buildFrequencyFilterEntry (platform-native clause)", () => {
   it("basic structure", () => {
     const result = buildFrequencyFilterEntry(
       new FrequencyFilter({ event: "Login", value: 5 }),
     );
-    expect(result["resourceType"]).toBe("people");
-    expect(result["behaviorType"]).toBe("$frequency");
-    expect(Object.hasOwn(result, "customProperty")).toBe(true);
-    const behavior = (result["customProperty"] as Record<string, unknown>)[
-      "behavior"
-    ] as Record<string, unknown>;
-    expect(behavior["event"]).toBe("Login");
-    expect(behavior["aggregation"]).toBe("total");
-    expect(behavior["filterOperator"]).toBe("is at least");
-    // R10.12: native number, never "5".
-    expect(behavior["filterValue"]).toBe(5);
+    expect(result).toEqual({
+      dataset: "$mixpanel",
+      resourceType: "people",
+      profileType: null,
+      search: "",
+      dataGroupId: null,
+      behavior: {
+        aggregationOperator: "total",
+        behaviorType: "$frequency",
+        dateRange: null,
+        event: { label: "Login", value: "Login" },
+        filters: [],
+        filtersOperator: "and",
+      },
+      filterType: "number",
+      defaultType: "number",
+      filterOperator: "is at least",
+      // R10.12: native number, never "5".
+      filterValue: 5,
+      propertyObjectKey: null,
+      value: "Login Frequency",
+    });
+  });
+
+  it("no customProperty nesting (bug (a) retired shape must not appear)", () => {
+    const result = buildFrequencyFilterEntry(
+      new FrequencyFilter({ event: "Login", value: 5 }),
+    );
+    expect(Object.hasOwn(result, "customProperty")).toBe(false);
+    expect(Object.hasOwn(result, "behaviorType")).toBe(false);
+    expect(
+      (result["behavior"] as Record<string, unknown>)["behaviorType"],
+    ).toBe("$frequency");
   });
 
   it("custom operator", () => {
@@ -784,11 +808,8 @@ describe("buildFrequencyFilterEntry (R10.7 bug-compat)", () => {
         value: 10,
       }),
     );
-    const behavior = (result["customProperty"] as Record<string, unknown>)[
-      "behavior"
-    ] as Record<string, unknown>;
-    expect(behavior["filterOperator"]).toBe("is greater than");
-    expect(behavior["filterValue"]).toBe(10);
+    expect(result["filterOperator"]).toBe("is greater than");
+    expect(result["filterValue"]).toBe(10);
   });
 
   it("with date range", () => {
@@ -800,23 +821,22 @@ describe("buildFrequencyFilterEntry (R10.7 bug-compat)", () => {
         date_range_unit: "day",
       }),
     );
-    const behavior = (result["customProperty"] as Record<string, unknown>)[
-      "behavior"
-    ] as Record<string, unknown>;
-    expect(Object.hasOwn(behavior, "dateRange")).toBe(true);
-    const dateRange = behavior["dateRange"] as Record<string, unknown>;
-    expect(dateRange["value"]).toBe(30);
-    expect(dateRange["unit"]).toBe("day");
+    expect(
+      (result["behavior"] as Record<string, unknown>)["dateRange"],
+    ).toEqual({
+      type: "in the last",
+      unit: "day",
+      window: { unit: "day", value: 30 },
+    });
   });
 
   it("without date range", () => {
     const result = buildFrequencyFilterEntry(
       new FrequencyFilter({ event: "Login", value: 5 }),
     );
-    const behavior = (result["customProperty"] as Record<string, unknown>)[
-      "behavior"
-    ] as Record<string, unknown>;
-    expect(Object.hasOwn(behavior, "dateRange")).toBe(false);
+    expect(
+      (result["behavior"] as Record<string, unknown>)["dateRange"],
+    ).toBeNull();
   });
 
   it("with event filters", () => {
@@ -827,39 +847,36 @@ describe("buildFrequencyFilterEntry (R10.7 bug-compat)", () => {
         event_filters: [Filter.equals("country", "US")],
       }),
     );
-    const behavior = (result["customProperty"] as Record<string, unknown>)[
-      "behavior"
-    ] as Record<string, unknown>;
-    expect(Object.hasOwn(behavior, "eventFilters")).toBe(true);
-    const eventFilters = behavior["eventFilters"] as Array<
-      Record<string, unknown>
-    >;
-    expect(eventFilters).toHaveLength(1);
-    expect(eventFilters[0]!["value"]).toBe("country");
-    expect(eventFilters[0]!["filterOperator"]).toBe("equals");
+    const behavior = result["behavior"] as Record<string, unknown>;
+    const filters = behavior["filters"] as Array<Record<string, unknown>>;
+    expect(filters).toHaveLength(1);
+    expect(filters[0]!["value"]).toBe("country");
+    expect(filters[0]!["filterOperator"]).toBe("equals");
+    expect(Object.hasOwn(behavior, "eventFilters")).toBe(false);
   });
 
   it("without event filters", () => {
     const result = buildFrequencyFilterEntry(
       new FrequencyFilter({ event: "Login", value: 5 }),
     );
-    const behavior = (result["customProperty"] as Record<string, unknown>)[
-      "behavior"
-    ] as Record<string, unknown>;
+    const behavior = result["behavior"] as Record<string, unknown>;
+    expect(behavior["filters"]).toEqual([]);
     expect(Object.hasOwn(behavior, "eventFilters")).toBe(false);
   });
 
-  it("label included", () => {
+  it("label expressed via top-level value when set", () => {
     const result = buildFrequencyFilterEntry(
       new FrequencyFilter({ event: "Login", value: 5, label: "Active Users" }),
     );
-    expect(result["label"]).toBe("Active Users");
+    expect(result["value"]).toBe("Active Users");
+    expect(Object.hasOwn(result, "label")).toBe(false);
   });
 
-  it("label omitted when none", () => {
+  it("value defaults to '<event> Frequency' when label is null", () => {
     const result = buildFrequencyFilterEntry(
       new FrequencyFilter({ event: "Login", value: 5 }),
     );
+    expect(result["value"]).toBe("Login Frequency");
     expect(Object.hasOwn(result, "label")).toBe(false);
   });
 
@@ -874,22 +891,18 @@ describe("buildFrequencyFilterEntry (R10.7 bug-compat)", () => {
         ],
       }),
     );
-    const behavior = (result["customProperty"] as Record<string, unknown>)[
-      "behavior"
-    ] as Record<string, unknown>;
-    const eventFilters = behavior["eventFilters"] as Array<
-      Record<string, unknown>
-    >;
-    expect(eventFilters).toHaveLength(2);
-    expect(eventFilters[0]!["filterOperator"]).toBe("equals");
-    expect(eventFilters[1]!["filterOperator"]).toBe("is greater than");
+    const filters = (result["behavior"] as Record<string, unknown>)[
+      "filters"
+    ] as Array<Record<string, unknown>>;
+    expect(filters).toHaveLength(2);
+    expect(filters[0]!["filterOperator"]).toBe("equals");
+    expect(filters[1]!["filterOperator"]).toBe("is greater than");
   });
 
-  it("emits the probe-recorded key order byte-for-byte", () => {
-    // NEW (R10.7 lock, packet §"R10.7 bug-compat"): key order
-    // `event, aggregation, filterOperator, filterValue[, dateRange]
-    // [, eventFilters]` inside `behavior`, and
-    // `resourceType, behaviorType, customProperty[, label]` outside.
+  it("emits the fixed clause's key order byte-for-byte", () => {
+    // TS-only insertion-order lock (re-pointed from the retired
+    // customProperty shape): Python dict insertion order — dateRange /
+    // filters re-assignment keeps the created position.
     const result = buildFrequencyFilterEntry(
       new FrequencyFilter({
         event: "Login",
@@ -901,33 +914,38 @@ describe("buildFrequencyFilterEntry (R10.7 bug-compat)", () => {
       }),
     );
     expect(Object.keys(result)).toEqual([
+      "dataset",
       "resourceType",
-      "behaviorType",
-      "customProperty",
-      "label",
-    ]);
-    const behavior = (result["customProperty"] as Record<string, unknown>)[
-      "behavior"
-    ] as Record<string, unknown>;
-    expect(Object.keys(behavior)).toEqual([
-      "event",
-      "aggregation",
+      "profileType",
+      "search",
+      "dataGroupId",
+      "behavior",
+      "filterType",
+      "defaultType",
       "filterOperator",
       "filterValue",
+      "propertyObjectKey",
+      "value",
+    ]);
+    expect(Object.keys(result["behavior"] as Record<string, unknown>)).toEqual([
+      "aggregationOperator",
+      "behaviorType",
       "dateRange",
-      "eventFilters",
+      "event",
+      "filters",
+      "filtersOperator",
     ]);
   });
 
-  it("an empty event_filters list still emits the key", () => {
-    // NEW: the guard is `is not None`, so `[]` emits `eventFilters: []`.
+  it("an empty event_filters list re-assigns filters: [] (is-not-None guard)", () => {
+    // The Python guard is `is not None`, so `[]` re-assigns
+    // `behavior["filters"] = []` — indistinguishable from the default.
     const result = buildFrequencyFilterEntry(
       new FrequencyFilter({ event: "Login", value: 5, event_filters: [] }),
     );
-    const behavior = (result["customProperty"] as Record<string, unknown>)[
-      "behavior"
-    ] as Record<string, unknown>;
-    expect(behavior["eventFilters"]).toEqual([]);
+    const behavior = result["behavior"] as Record<string, unknown>;
+    expect(behavior["filters"]).toEqual([]);
+    expect(Object.hasOwn(behavior, "eventFilters")).toBe(false);
   });
 });
 
@@ -961,12 +979,12 @@ describe("buildGroupSection — FrequencyBreakdown dispatch", () => {
     ).toBe("$frequency");
   });
 
-  it("data group id threaded to frequency", () => {
+  it("data group id threaded to frequency as a string", () => {
     const result = buildGroupSection(
       new FrequencyBreakdown({ event: "Purchase" }),
       { data_group_id: 5 },
     );
-    expect(result[0]!["dataGroupId"]).toBe(5);
+    expect(result[0]!["dataGroupId"]).toBe("5");
   });
 });
 
@@ -981,7 +999,9 @@ describe("buildFilterSection — FrequencyFilter dispatch", () => {
     );
     expect(result).toHaveLength(1);
     expect(result[0]!["resourceType"]).toBe("people");
-    expect(result[0]!["behaviorType"]).toBe("$frequency");
+    expect(
+      (result[0]!["behavior"] as Record<string, unknown>)["behaviorType"],
+    ).toBe("$frequency");
   });
 
   it("mixed filter and frequency", () => {
@@ -993,7 +1013,9 @@ describe("buildFilterSection — FrequencyFilter dispatch", () => {
     expect(result[0]!["value"]).toBe("country");
     expect(result[0]!["filterOperator"]).toBe("equals");
     expect(result[1]!["resourceType"]).toBe("people");
-    expect(result[1]!["behaviorType"]).toBe("$frequency");
+    expect(
+      (result[1]!["behavior"] as Record<string, unknown>)["behaviorType"],
+    ).toBe("$frequency");
   });
 });
 
@@ -1006,7 +1028,7 @@ describe("buildGroupSection — data_group_id threading", () => {
     const gb = new GroupBy({ property: new CustomPropertyRef({ id: 42 }) });
     const result = buildGroupSection(gb, { data_group_id: 5 });
     expect(result).toHaveLength(1);
-    expect(result[0]!["dataGroupId"]).toBe(5);
+    expect(result[0]!["dataGroupId"]).toBe("5");
   });
 
   it("custom property ref group without data group id", () => {
@@ -1026,18 +1048,20 @@ describe("buildGroupSection — data_group_id threading", () => {
     const gb = new GroupBy({ property: prop, property_type: "number" });
     const result = buildGroupSection(gb, { data_group_id: 3 });
     expect(result).toHaveLength(1);
-    expect(result[0]!["dataGroupId"]).toBe(3);
+    expect(result[0]!["dataGroupId"]).toBe("3");
   });
 
   it("cohort breakdown group with data group id", () => {
     const cb = new CohortBreakdown({ cohort: 123, name: "Power Users" });
     const result = buildGroupSection(cb, { data_group_id: 7 });
     expect(result).toHaveLength(1);
-    expect(result[0]!["dataGroupId"]).toBe(7);
+    // Contract: GroupClause.dataGroupId is string | null.
+    expect(result[0]!["dataGroupId"]).toBe("7");
+    // Contract: GroupByCohort.data_group_id is string | null.
     for (const cohort of result[0]!["cohorts"] as Array<
       Record<string, unknown>
     >) {
-      expect(cohort["data_group_id"]).toBe(7);
+      expect(cohort["data_group_id"]).toBe("7");
     }
   });
 

@@ -381,16 +381,19 @@ describe("TestBuildRetentionParamsCumulative", () => {
 // ===========================================================================
 
 describe("TestDataGroupIdRetention", () => {
-  it("data_group_id=5 includes dataGroupId in sections", async () => {
+  it('data_group_id=5 includes globalDataGroupId: "5" in sections', async () => {
     const result = await makeWs().buildRetentionParams("Signup", "Login", {
       data_group_id: 5,
     });
-    expect(section(result, "dataGroupId")).toBe(5);
+    expect(section(result, "globalDataGroupId")).toBe("5");
+    const sections = result["sections"] as Record<string, unknown>;
+    expect(Object.hasOwn(sections, "dataGroupId")).toBe(false);
   });
 
   it("omitting data_group_id omits the key", async () => {
     const result = await makeWs().buildRetentionParams("Signup", "Login");
     const sections = result["sections"] as Record<string, unknown>;
+    expect(Object.hasOwn(sections, "globalDataGroupId")).toBe(false);
     expect(Object.hasOwn(sections, "dataGroupId")).toBe(false);
   });
 });

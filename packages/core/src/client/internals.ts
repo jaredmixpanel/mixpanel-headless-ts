@@ -162,46 +162,14 @@ export function isPlainRecord(
 }
 
 /**
- * Python truthiness over parsed JSON values (watchlist §8 item 6).
- *
- * Falsy: `null`, `false`, numeric zero (including a zero-valued
- * `JsonNumber` token), `""`, `[]`, `{}`.
- *
- * @param value - A parsed body value.
- * @returns The Python `bool(value)`.
- */
-function pyTruthy(value: JsonValue): boolean {
-  if (value === null || value === false) {
-    return false;
-  }
-  if (typeof value === "string") {
-    return value !== "";
-  }
-  if (typeof value === "number") {
-    return value !== 0;
-  }
-  if (typeof value === "bigint") {
-    return value !== 0n;
-  }
-  if (value instanceof JsonNumber) {
-    return value.toNumber() !== 0;
-  }
-  if (Array.isArray(value)) {
-    return value.length > 0;
-  }
-  if (typeof value === "object") {
-    return Object.keys(value).length > 0;
-  }
-  return true;
-}
-
-/**
- * Serialize a parsed dict body the way `json.dumps` does — consumed ONLY
- * by the 403 branch's substring scan (`"SESSION_RECORDING_SENSITIVE_DATA"
- * in body_text`). Separator/escaping differences from CPython cannot
- * create or destroy an all-ASCII flag substring (every token boundary
- * contains a quote character the flag lacks), so this rendering is
- * behaviorally equivalent for its one consumer.
+ * Serialize a parsed non-string body the way `json.dumps` does —
+ * consumed ONLY by the 403 branch's substring scan
+ * (`"SESSION_RECORDING_SENSITIVE_DATA" in body_text`, applied uniformly
+ * to dict/list/scalar bodies post-FIX-2). Separator/escaping
+ * differences from CPython cannot create or destroy an all-ASCII flag
+ * substring (every token boundary contains a quote character the flag
+ * lacks), so this rendering is behaviorally equivalent for its one
+ * consumer.
  *
  * @param value - The parsed value.
  * @returns The serialized text (JsonNumber tokens verbatim).
@@ -396,9 +364,6 @@ function raiseForStatus(
  * @throws MixpanelHttpError - For residual non-2xx (1xx/3xx) statuses.
  * @throws MixpanelHeadlessError - Code `INVALID_RESPONSE` for a 2xx
  *   non-JSON body.
- * @throws TypeError - R10.7 bug-compat: a 403 whose parsed body is a
- *   truthy non-container scalar reproduces Python's `in` TypeError
- *   (B0-notes decision 5).
  */
 export function handleResponse(
   response: WireResponse,
@@ -429,26 +394,20 @@ export function handleResponse(
     // the `sensitive_data_replay` permission. Map to SessionReplayAccessError
     // so callers can branch on it instead of pattern-matching the message.
     //
-    // Python: `json.dumps(body) if isinstance(body, dict) else (body or "")`
-    // then `flag in body_text` — for a LIST body that is element-equality
-    // membership; for a truthy non-container scalar it raises TypeError.
-    // Both reproduced verbatim (R10.7; B0-notes decision 5).
+    // Python (post-FIX-2, `api_client.py:565-574`): serialize every
+    // non-str JSON body for the sniff (None → ""), giving uniform
+    // SUBSTRING semantics across dict/list/scalar bodies — no TypeError
+    // possible (fix-of-record:
+    // context/phase3/bug-reports/python-handle-response-403-typeerror.md;
+    // the R10.7 element-membership / TypeError twin retired with it).
     const flag = "SESSION_RECORDING_SENSITIVE_DATA";
-    const bodyText: JsonValue = isPlainRecord(responseBody)
-      ? jsonDumpsLike(responseBody)
-      : responseBody !== null && pyTruthy(responseBody)
+    const bodyText: string =
+      typeof responseBody === "string"
         ? responseBody
-        : "";
-    let flagged: boolean;
-    if (typeof bodyText === "string") {
-      flagged = bodyText.includes(flag);
-    } else if (Array.isArray(bodyText)) {
-      flagged = bodyText.includes(flag);
-    } else {
-      throw new TypeError(
-        `argument of type '${typeof bodyText}' is not iterable`,
-      );
-    }
+        : responseBody === null
+          ? ""
+          : jsonDumpsLike(responseBody);
+    const flagged = bodyText.includes(flag);
     if (flagged) {
       const projectIdInt = pythonInt(context.projectId);
       throw new SessionReplayAccessError(

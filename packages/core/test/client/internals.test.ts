@@ -491,36 +491,65 @@ describe("TestSensitiveDataMapping (403 branch — R10.8 founding example)", () 
     const error = await run(h).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(SessionReplayAccessError);
   });
+});
 
-  it("R10.7 bug-compat: 403 LIST body uses element equality, not substring", async () => {
-    // Python: `flag in body_text` where body_text is the parsed LIST —
-    // list membership matches only an exact element.
+// Twin of tests/unit/_internal/test_api_client_sign_replays.py::
+// TestSensitiveData403BodyShapes (Python FIX-2, bug (c)): the 403 sniff
+// applies uniform substring semantics across dict/list/scalar bodies —
+// the old R10.7 element-membership / TypeError twins retired with the
+// Python-first fix (fix-of-record:
+// context/phase3/bug-reports/python-handle-response-403-typeerror.md).
+describe("TestSensitiveData403BodyShapes (bug (c) fix)", () => {
+  it("403 LIST body: uniform SUBSTRING semantics (exact element AND substring match)", async () => {
+    // Python post-FIX-2 serializes every non-str body for the sniff —
+    // element-membership retired (test_api_client_sign_replays.py::
+    // TestSensitiveData403BodyShapes list-exact + list-substring twins).
     const h1 = harness([res(403, ["SESSION_RECORDING_SENSITIVE_DATA"])]);
     expect(await run(h1).catch((e: unknown) => e)).toBeInstanceOf(
       SessionReplayAccessError,
     );
     const h2 = harness([
-      res(403, ["has SESSION_RECORDING_SENSITIVE_DATA set"]),
+      res(403, ["error: SESSION_RECORDING_SENSITIVE_DATA is set"]),
     ]);
     const error = await run(h2).catch((e: unknown) => e);
-    expect(error).toBeInstanceOf(QueryError);
-    expect(error).not.toBeInstanceOf(SessionReplayAccessError);
+    expect(error).toBeInstanceOf(SessionReplayAccessError);
   });
 
-  it("R10.7 bug-compat: 403 truthy scalar body raises TypeError (Python parity)", async () => {
-    // Python: `("..." in 42)` → TypeError. Reproduced verbatim
-    // (B0-notes decision 5; filed as a Python-side issue).
-    const h = harness([res(403, "42")]);
-    const error = await run(h).catch((e: unknown) => e);
-    expect(error).toBeInstanceOf(TypeError);
+  it("403 truthy scalar body raises QueryError, never TypeError (bug (c) fix)", async () => {
+    // Python post-FIX-2: `json.dumps(42)` → "42" → no flag → QueryError
+    // (TestSensitiveData403BodyShapes truthy-scalar twins; fix-of-record
+    // context/phase3/bug-reports/python-handle-response-403-typeerror.md).
+    for (const raw of ["42", "1.5", "true"]) {
+      const h = harness([res(403, raw)]);
+      const error = (await run(h).catch((e: unknown) => e)) as QueryError;
+      expect(error).toBeInstanceOf(QueryError);
+      expect(error).not.toBeInstanceOf(SessionReplayAccessError);
+      expect(error.statusCode).toBe(403);
+    }
   });
 
-  it("R10.7 bug-compat: 403 falsy scalar body falls through to QueryError", async () => {
-    // Python: `(0 or "")` → "" → no flag → QueryError default.
-    const h = harness([res(403, "0")]);
-    const error = (await run(h).catch((e: unknown) => e)) as QueryError;
-    expect(error).toBeInstanceOf(QueryError);
-    expect(error.message).toBe("Permission denied");
+  it("403 falsy scalar body falls through to QueryError", async () => {
+    // Python post-FIX-2: json.dumps(0) → "0" → no flag → QueryError
+    // (TestSensitiveData403BodyShapes falsy-scalar twins: 0/false/null).
+    for (const raw of ["0", "false", "null"]) {
+      const h = harness([res(403, raw)]);
+      const error = (await run(h).catch((e: unknown) => e)) as QueryError;
+      expect(error).toBeInstanceOf(QueryError);
+      expect(error.message).toBe("Permission denied");
+    }
+  });
+
+  it("403 JSON string body containing the flag raises SessionReplayAccessError", async () => {
+    // TestSensitiveData403BodyShapes string-body twin: the parsed str
+    // branch passes through UNSERIALIZED (no json.dumps quoting).
+    const h = harness([
+      res(403, JSON.stringify("SESSION_RECORDING_SENSITIVE_DATA denied")),
+    ]);
+    const error = (await run(h).catch(
+      (e: unknown) => e,
+    )) as SessionReplayAccessError;
+    expect(error).toBeInstanceOf(SessionReplayAccessError);
+    expect(error.statusCode).toBe(403);
   });
 });
 
@@ -677,8 +706,8 @@ describe("errorMessage (FF6)", () => {
 // Arbiter fixes F1 + F3/A2 (b0-review-resolution): body parsing must
 // accept the json.loads non-finite constants exactly as every Python
 // `response.json()` site does (probed live: `json.loads('{"a": NaN}')`
-// parses; a bare `Infinity` 403 body is a truthy float → the R10.7
-// TypeError branch), and the parse catch must mirror Python's
+// parses; a bare `Infinity` 403 body serializes to "Infinity" for the
+// post-FIX-2 sniff), and the parse catch must mirror Python's
 // `except json.JSONDecodeError` scope — a parser stack overflow
 // (RangeError, the RecursionError analog) PROPAGATES, never degrades to
 // the body-as-text / INVALID_RESPONSE path.
@@ -707,12 +736,14 @@ describe("json.loads non-finite body tokens (arbiter fix F1)", () => {
     expect(body.extra).toBeNaN();
   });
 
-  it("R10.7 bug-compat: 403 bare Infinity body is a truthy float → TypeError", async () => {
-    // Python: json.loads("Infinity") → inf (truthy) → `flag in inf` →
-    // TypeError. Pre-fix TS saw the string "Infinity" → QueryError.
+  it("403 bare Infinity body serializes for the sniff → QueryError (bug (c) fix)", async () => {
+    // Python post-FIX-2: json.loads("Infinity") → inf, json.dumps(inf)
+    // → "Infinity" (allow_nan default) → no flag → QueryError. The
+    // jsonDumpsLike twin renders the JsonNumber token verbatim.
     const h = harness([res(403, "Infinity")]);
-    const error = await run(h).catch((e: unknown) => e);
-    expect(error).toBeInstanceOf(TypeError);
+    const error = (await run(h).catch((e: unknown) => e)) as QueryError;
+    expect(error).toBeInstanceOf(QueryError);
+    expect(error.message).toBe("Permission denied");
   });
 });
 

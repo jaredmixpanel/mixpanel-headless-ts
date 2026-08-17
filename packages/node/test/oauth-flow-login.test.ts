@@ -2,7 +2,9 @@
 // `tests/unit/test_auth_flow.py` (b8-packets.md §4.3 row 4):
 // `TestOAuthFlowLogin` (:88), `TestParsePastedRedirect` (:215),
 // `TestOAuthFlowPasteFallback` (:286), `TestOAuthFlowTokenExchange`
-// (:385), `TestOAuthFlowRegionUrls` (:759), and the EXCHANGE-op
+// (:385), the EXCHANGE members of `TestTokenPayloadRedaction` (FIX-2,
+// bug (d) — refresh member split into `oauth-flow-refresh.test.ts`),
+// `TestOAuthFlowRegionUrls` (:759), and the EXCHANGE-op
 // members of `TestOAuthFlowNetworkErrors` (:802 — the refresh/timeout
 // members were N2's, header-cited split in
 // `oauth-flow-refresh.test.ts`).
@@ -416,6 +418,79 @@ describe("TestOAuthFlowTokenExchange (test_auth_flow.py:385)", () => {
     // `invalid_grant` maps to REVOKED only for the refresh operation
     // (packet §7 caution 6) — exchange keeps the generic code.
     expect((error as OAuthError).code).toBe("OAUTH_TOKEN_ERROR");
+  });
+});
+
+describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::TestTokenPayloadRedaction)", () => {
+  // Twin of the Python FIX-2 suite (fix-of-record:
+  // context/phase3/bug-reports/python-oauth-error-details-token-payload.md):
+  // a malformed-200 token response must not leak token material into
+  // OAuthError details. The refresh member lives in
+  // `oauth-flow-refresh.test.ts` (header-cited split, same as the
+  // network-error classes).
+
+  /** Build an OAuthFlow whose token endpoint 200s with `payload`. */
+  function flowWithPayload(payload: Record<string, unknown>): OAuthFlow {
+    const { fetchImpl } = mockTransport(() => jsonResponse(200, payload));
+    const storage = new OAuthStorage({ storageDir: makeTempDir(cleanups) });
+    return new OAuthFlow({ region: "us", storage, fetchImpl });
+  }
+
+  it("test_exchange_missing_fields_error_redacts_token_material", async () => {
+    const flow = flowWithPayload({
+      access_token: "SECRET_AT",
+      refresh_token: "SECRET_RT",
+    });
+    const error = await flow
+      .exchangeCode("c", "v", "cid", "http://localhost:19284/callback")
+      .then(
+        () => null,
+        (exc: unknown) => exc,
+      );
+    expect(error).toBeInstanceOf(OAuthError);
+    const exc = error as OAuthError;
+    expect(exc.code).toBe("OAUTH_TOKEN_ERROR");
+    const serialized =
+      String(exc) + JSON.stringify(exc.details) + JSON.stringify(exc.toDict());
+    expect(serialized).not.toContain("SECRET_AT");
+    expect(serialized).not.toContain("SECRET_RT");
+    // Field names stay visible for diagnosis.
+    const responseData = String(exc.details["response_data"]);
+    expect(responseData).toContain("access_token");
+    expect(responseData).toContain("refresh_token");
+    expect(responseData).toContain("<redacted>");
+  });
+
+  it("test_non_secret_fields_stay_visible", async () => {
+    const flow = flowWithPayload({
+      access_token: "SECRET_AT",
+      scope: "projects analysis",
+      token_type: "Bearer",
+      hint: "weird-idp-extra",
+    });
+    const error = await flow
+      .exchangeCode("c", "v", "cid", "http://localhost:19284/callback")
+      .then(
+        () => null,
+        (exc: unknown) => exc,
+      );
+    expect(error).toBeInstanceOf(OAuthError);
+    const responseData = String((error as OAuthError).details["response_data"]);
+    expect(responseData).not.toContain("SECRET_AT");
+    expect(responseData).toContain("projects analysis");
+    expect(responseData).toContain("Bearer");
+    expect(responseData).toContain("weird-idp-extra");
+  });
+
+  it("test_success_path_unchanged", async () => {
+    const flow = flowWithPayload(makeTokenResponse());
+    const tokens = await flow.exchangeCode(
+      "c",
+      "v",
+      "cid",
+      "http://localhost:19284/callback",
+    );
+    expect(tokens.access_token.reveal()).toBe("access-tok-123");
   });
 });
 

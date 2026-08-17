@@ -984,7 +984,9 @@ describe("TestFrequencyFilterInBuildParams", () => {
     const filt = section(params, "filter");
     expect(filt.length).toBe(1);
     expect(filt[0]!["resourceType"]).toBe("people");
-    expect(filt[0]!["behaviorType"]).toBe("$frequency");
+    expect(
+      (filt[0]!["behavior"] as Record<string, unknown>)["behaviorType"],
+    ).toBe("$frequency");
   });
 
   it("a mixed Filter + FrequencyFilter list works", async () => {
@@ -997,7 +999,9 @@ describe("TestFrequencyFilterInBuildParams", () => {
     const filt = section(params, "filter");
     expect(filt.length).toBe(2);
     expect(filt[0]!["value"]).toBe("country");
-    expect(filt[1]!["behaviorType"]).toBe("$frequency");
+    expect(
+      (filt[1]!["behavior"] as Record<string, unknown>)["behaviorType"],
+    ).toBe("$frequency");
   });
 
   it("existing Filter usage still works", async () => {
@@ -1015,27 +1019,32 @@ describe("TestFrequencyFilterInBuildParams", () => {
 // ===========================================================================
 
 describe("TestDataGroupIdInsights", () => {
-  it("build_params with data_group_id=5 emits dataGroupId", async () => {
+  it('build_params with data_group_id=5 emits globalDataGroupId: "5"', async () => {
     const params = await makeWs().buildParams("Login", { data_group_id: 5 });
     const sections = params["sections"] as Record<string, unknown>;
-    expect(sections["dataGroupId"]).toBe(5);
+    expect(sections["globalDataGroupId"]).toBe("5");
+    // The old off-contract sections-level spelling must not appear (bug (b)).
+    expect(Object.hasOwn(sections, "dataGroupId")).toBe(false);
   });
 
   it("build_params without data_group_id omits the key", async () => {
     const params = await makeWs().buildParams("Login");
     const sections = params["sections"] as Record<string, unknown>;
+    expect(Object.hasOwn(sections, "globalDataGroupId")).toBe(false);
     expect(Object.hasOwn(sections, "dataGroupId")).toBe(false);
   });
 
-  it("_build_query_params with data_group_id=3 emits dataGroupId", () => {
+  it('_build_query_params with data_group_id=3 emits globalDataGroupId: "3"', () => {
     const params = build({ data_group_id: 3 });
     const sections = params["sections"] as Record<string, unknown>;
-    expect(sections["dataGroupId"]).toBe(3);
+    expect(sections["globalDataGroupId"]).toBe("3");
+    expect(Object.hasOwn(sections, "dataGroupId")).toBe(false);
   });
 
   it("_build_query_params without data_group_id omits the key", () => {
     const params = build();
     const sections = params["sections"] as Record<string, unknown>;
+    expect(Object.hasOwn(sections, "globalDataGroupId")).toBe(false);
     expect(Object.hasOwn(sections, "dataGroupId")).toBe(false);
   });
 });

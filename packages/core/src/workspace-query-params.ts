@@ -508,7 +508,12 @@ export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
     group: groupSection,
   };
   if (data_group_id !== null && data_group_id !== undefined) {
-    sections["dataGroupId"] = data_group_id;
+    // Contract: the Sections model has no `dataGroupId` key — the
+    // sections-level spelling is `globalDataGroupId: string | null`
+    // (`workspace.py` insights/funnel/retention sites post-FIX-1;
+    // fix-of-record
+    // context/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md).
+    sections["globalDataGroupId"] = String(data_group_id);
   }
 
   return { sections, displayOptions };
@@ -922,7 +927,12 @@ export function buildFunnelParams(
     formula: [],
   };
   if (data_group_id !== null && data_group_id !== undefined) {
-    sections["dataGroupId"] = data_group_id;
+    // Contract: the Sections model has no `dataGroupId` key — the
+    // sections-level spelling is `globalDataGroupId: string | null`
+    // (`workspace.py` insights/funnel/retention sites post-FIX-1;
+    // fix-of-record
+    // context/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md).
+    sections["globalDataGroupId"] = String(data_group_id);
   }
 
   return { sections, displayOptions };
@@ -1235,7 +1245,12 @@ export function buildRetentionParams(
     formula: [],
   };
   if (data_group_id !== null && data_group_id !== undefined) {
-    sections["dataGroupId"] = data_group_id;
+    // Contract: the Sections model has no `dataGroupId` key — the
+    // sections-level spelling is `globalDataGroupId: string | null`
+    // (`workspace.py` insights/funnel/retention sites post-FIX-1;
+    // fix-of-record
+    // context/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md).
+    sections["globalDataGroupId"] = String(data_group_id);
   }
 
   return {

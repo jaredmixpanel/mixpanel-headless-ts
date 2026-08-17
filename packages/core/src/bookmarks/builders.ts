@@ -353,7 +353,10 @@ export function patchCustomPropertyFiltersForTransform(
  *   `FrequencyBreakdown` produce their own entry shapes; lists mix all
  *   four.
  * @param options - Optional bag: `data_group_id` (default `null`),
- *   threaded into `dataGroupId` fields on the entries that carry one.
+ *   threaded into `dataGroupId` fields on the entries that carry one,
+ *   coerced to a string at emission (the bookmark contract types
+ *   clause-level `dataGroupId` as `string | null` — fix-of-record
+ *   `context/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md`).
  * @returns Array of group-entry dicts (possibly empty).
  * @throws ParamTypeError - `BB1_GROUP_BY_ELEMENT_TYPE` when an element
  *   is none of the four accepted shapes.
@@ -372,6 +375,11 @@ export function buildGroupSection(
     return [];
   }
   const dataGroupId = options?.data_group_id ?? null;
+  // Contract: GroupClause.dataGroupId is string | null — coerce the
+  // int-typed parameter once at emission (`bookmark_builders.py:292-295`
+  // post-FIX-1). The RAW value still threads into the frequency/cohort
+  // sub-builders, which coerce themselves (mirroring Python).
+  const dgid = dataGroupId === null ? null : String(dataGroupId);
 
   // Python: `list(group_by) if isinstance(group_by, (list, tuple))`.
   const groups: readonly GroupByElement[] = Array.isArray(groupBy)
@@ -404,7 +412,7 @@ export function buildGroupSection(
           resourceType: "events",
           profileType: null,
           search: "",
-          dataGroupId: dataGroupId,
+          dataGroupId: dgid,
           dataset: "$mixpanel",
           propertyType: g.property_type,
           typeCast: null,
@@ -428,7 +436,7 @@ export function buildGroupSection(
           resourceType: prop.resource_type,
           profileType: null,
           search: "",
-          dataGroupId: dataGroupId,
+          dataGroupId: dgid,
           dataset: "$mixpanel",
           propertyType: effectiveType,
           typeCast: null,
@@ -517,7 +525,9 @@ export function buildGroupSection(
  * @param cb - CohortBreakdown specification.
  * @param options - Optional bag: `data_group_id` (default `null`),
  *   threaded into both `data_group_id` (cohort entries) and
- *   `dataGroupId` (the group entry).
+ *   `dataGroupId` (the group entry), coerced to a string (the bookmark
+ *   contract types both slots `string | null` — fix-of-record
+ *   `context/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md`).
  * @returns Group-entry dict carrying a `cohorts` array of one or two
  *   entries depending on `include_negated`.
  *
@@ -534,12 +544,16 @@ export function buildCohortGroupEntry(
   options?: { readonly data_group_id?: number | null },
 ): BookmarkFragment {
   const dataGroupId = options?.data_group_id ?? null;
+  // Contract: GroupByCohort.data_group_id and GroupClause.dataGroupId
+  // are both string | null — coerce the int-typed parameter at emission
+  // (`bookmark_builders.py:441-443` post-FIX-1).
+  const dgid = dataGroupId === null ? null : String(dataGroupId);
   const name = cb.name || "";
 
   const baseCohort: BookmarkFragment = {
     name: name,
     negated: false,
-    data_group_id: dataGroupId,
+    data_group_id: dgid,
   };
   // `isinstance(cb.cohort, int)` — a Python `float` (the rig's PyFloat
   // carrier, or a fractional number) is NOT an int and falls to the
@@ -568,7 +582,7 @@ export function buildCohortGroupEntry(
     resourceType: "events",
     profileType: null,
     search: "",
-    dataGroupId: dataGroupId,
+    dataGroupId: dgid,
     propertyType: null,
     typeCast: null,
     cohorts: cohorts,
@@ -878,7 +892,10 @@ export function buildFlowCohortFilter(
  * verbatim.
  *
  * @param fb - FrequencyBreakdown specification.
- * @param options - Optional bag: `data_group_id` (default `null`).
+ * @param options - Optional bag: `data_group_id` (default `null`),
+ *   coerced to a string at emission (the bookmark contract types
+ *   `dataGroupId` as `string | null` — fix-of-record
+ *   `context/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md`).
  * @returns Group-entry dict with `behaviorType` nested inside
  *   `behavior`, `event` as a `{label, value}` object, and bucket
  *   configuration under `customBucket` with camelCase keys.
@@ -896,6 +913,10 @@ export function buildFrequencyGroupEntry(
   options?: { readonly data_group_id?: number | null },
 ): BookmarkFragment {
   const dataGroupId = options?.data_group_id ?? null;
+  // Contract: GroupClause.dataGroupId is string | null — coerce the
+  // int-typed parameter at emission (`bookmark_builders.py:793-795`
+  // post-FIX-1).
+  const dgid = dataGroupId === null ? null : String(dataGroupId);
   const displayLabel = fb.label !== null ? fb.label : `${fb.event} Frequency`;
   return {
     dataset: "$mixpanel",
@@ -910,7 +931,7 @@ export function buildFrequencyGroupEntry(
     value: displayLabel,
     resourceType: "people",
     propertyType: "number",
-    dataGroupId: dataGroupId,
+    dataGroupId: dgid,
     customBucket: {
       bucketSize: fb.bucket_size,
       min: fb.bucket_min,
@@ -922,68 +943,81 @@ export function buildFrequencyGroupEntry(
 
 /**
  * Build a single frequency filter entry for `sections.filter[]` — port
- * of `build_frequency_filter_entry` (`bookmark_builders.py:805-855`).
+ * of `build_frequency_filter_entry` (`bookmark_builders.py:820-895`
+ * post-FIX-1).
  *
- * **R10.7 BUG-COMPATIBILITY — DO NOT "FIX" THIS SHAPE.** The emitted
- * `customProperty`-nested clause causes a server **HTTP 500** at the
- * execution layer. Probe record:
- * `context/phase1/addendum/frequency-filter-probe.md` (VERDICT:
- * REJECTS); open Python bug report:
- * `context/phase1/bug-reports/mixpanel-headless-frequency-filter-clause-shape.md`.
- * The port replicates the shape byte-for-byte — key order `event`,
- * `aggregation`, `filterOperator`, `filterValue`, the conditional
- * `dateRange` (only when BOTH `date_range_value` and `date_range_unit`
- * are non-null, `:839-843`), the conditional `eventFilters`
- * (`is not None`, so an EMPTY list still emits the key, `:844-845`),
- * the outer `resourceType: "people"` / `behaviorType: "$frequency"`,
- * and the conditional top-level `label` (`:853-854`). The nine
- * `build_frequency_filter_entry` corpus vectors are the byte-compat
- * lock, and the B3 gate's bookmark_parser referee carries this shape as
- * a standing, expected-and-disclosed REJECT.
+ * Emits the platform-native frequency filter clause: top-level
+ * `filterType` / `filterOperator` / `filterValue` with the
+ * `"$frequency"` marker nested under `behavior.behaviorType` (the old
+ * `customProperty`-nested clause the query engine 500'd on — the R10.7
+ * bug-compat twin — retired with the Python-first fix; fix-of-record:
+ * `context/phase1/addendum/frequency-filter-probe.md` +
+ * `context/phase1/bug-reports/mixpanel-headless-frequency-filter-clause-shape.md`).
+ * Conditionals ported verbatim: the lookback `dateRange` renders as an
+ * `"in the last"` range with a `window` offset only when BOTH
+ * `date_range_value` and `date_range_unit` are non-null; event filters
+ * render into `behavior.filters` when `event_filters` is non-null (an
+ * EMPTY list re-assigns `filters: []`, same as the default); the
+ * display label lands in top-level `value`, defaulting to
+ * `"<event> Frequency"` when `label` is null.
  *
- * R10.12 applies here too: `behavior.filterValue` is `ff.value`
- * NATIVELY (`:837`).
+ * R10.12 applies here too: `filterValue` is `ff.value` NATIVELY.
  *
  * @param ff - FrequencyFilter specification.
- * @returns Filter-entry dict with a `customProperty.behavior` sub-dict.
+ * @returns Filter clause dict with `dataset`, `resourceType`
+ *   (`"people"`), `profileType`, `search`, `dataGroupId`, a `behavior`
+ *   sub-dict (`aggregationOperator`, `behaviorType`, `dateRange`,
+ *   `event` as `{label, value}`, `filters`, `filtersOperator`),
+ *   `filterType` / `defaultType` (`"number"`), `filterOperator`,
+ *   `filterValue`, `propertyObjectKey`, and `value`.
  *
  * @example
  * ```typescript
  * buildFrequencyFilterEntry(new FrequencyFilter({ event: "Login", value: 5 }));
- * // { resourceType: "people", behaviorType: "$frequency",
- * //   customProperty: { behavior: { event: "Login", … } } }
+ * // { resourceType: "people", filterType: "number",
+ * //   filterOperator: "is at least", filterValue: 5,
+ * //   behavior: { behaviorType: "$frequency",
+ * //     event: { label: "Login", value: "Login" }, … },
+ * //   value: "Login Frequency", … }
  * ```
  */
 export function buildFrequencyFilterEntry(
   ff: FrequencyFilter,
 ): BookmarkFragment {
   const behavior: BookmarkFragment = {
-    event: ff.event,
-    aggregation: "total",
-    filterOperator: ff.operator,
-    // R10.12: native pass-through.
-    filterValue: ff.value,
+    aggregationOperator: "total",
+    behaviorType: "$frequency",
+    dateRange: null,
+    event: { label: ff.event, value: ff.event },
+    filters: [],
+    filtersOperator: "and",
   };
   if (ff.date_range_value !== null && ff.date_range_unit !== null) {
     behavior["dateRange"] = {
-      value: ff.date_range_value,
+      type: "in the last",
       unit: ff.date_range_unit,
+      window: { unit: ff.date_range_unit, value: ff.date_range_value },
     };
   }
   if (ff.event_filters !== null) {
-    behavior["eventFilters"] = ff.event_filters.map((f) => buildFilterEntry(f));
+    behavior["filters"] = ff.event_filters.map((f) => buildFilterEntry(f));
   }
-  const entry: BookmarkFragment = {
+  const displayLabel = ff.label !== null ? ff.label : `${ff.event} Frequency`;
+  return {
+    dataset: "$mixpanel",
     resourceType: "people",
-    behaviorType: "$frequency",
-    customProperty: {
-      behavior: behavior,
-    },
+    profileType: null,
+    search: "",
+    dataGroupId: null,
+    behavior: behavior,
+    filterType: "number",
+    defaultType: "number",
+    filterOperator: ff.operator,
+    // R10.12: native pass-through.
+    filterValue: ff.value,
+    propertyObjectKey: null,
+    value: displayLabel,
   };
-  if (ff.label !== null) {
-    entry["label"] = ff.label;
-  }
-  return entry;
 }
 
 /**

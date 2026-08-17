@@ -21,9 +21,7 @@
 //   `sections.filter` entries; `build_filter_section` → the whole
 //   `sections.filter` array. (Schema power is limited: `Sections.filter`
 //   items are `JsonValue` — root/sections `additionalProperties` and the
-//   skeleton contract still apply. The frequency-filter clause shape the
-//   deep voluptuous oracle rejects — the two standing R10.7 true
-//   positives — is therefore ACCEPTED here by design.)
+//   skeleton contract still apply.)
 // - `build_group_section` → `sections.group` (`GroupClause` items with
 //   `additionalProperties: false` — the discriminating slot).
 // - `build_time_section` → `sections.time` (items are `JsonValue`).
@@ -37,15 +35,12 @@
 //
 // Error-expectation vectors carry no output and are skipped (counted).
 //
-// EXPECTED-AND-DISCLOSED REJECTS (R10.7, frequency-filter precedent): the
-// library threads its `data_group_id: int | None` parameter verbatim into
-// clause-level `dataGroupId`, which BOTH analytics oracles type
-// `string | null` (vendored `DataGroupId` def; voluptuous
-// `insights/validate.py:222,263,301,368`). Filed Python-side as
-// `context/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md`
-// (B3 gate, 2026-08-15); until that Python-first fix cycle lands, the TS
-// port replicates the int byte-for-byte and the four affected vectors are
-// pinned below. Any reject beyond the pinned set still blocks.
+// NO STANDING DISCLOSURES (R10.7 four-bug batch, 2026-08-17): the
+// dataGroupId int-threading + off-contract `sections.dataGroupId`
+// disclosure pins (B3/B5 gates; fix-of-record
+// `context/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md`)
+// RETIRED with the Python-first fix and the corpus re-pin @ 700db99 —
+// every fed vector must now be accepted; any REJECT is a new finding.
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -63,48 +58,6 @@ import { createShims } from "../../conformance-runner/src/shims.js";
 import { KNOWN_VALID_INSIGHTS_PAYLOAD } from "../referees/bookmark-schema/known-payloads.js";
 import type { JsonObject } from "../referees/bookmark-schema/known-payloads.js";
 import { refereeBookmarkPayload } from "../referees/bookmark-schema/referee.js";
-
-/**
- * The pinned expected-REJECT vector ids (see the header disclosure),
- * mapping each id to the error substring its REJECT must carry — a pinned
- * vector rejecting for any OTHER reason still fails the suite. Every
- * unpinned fed vector must be accepted.
- *
- * The four B3 pins are the clause-level `dataGroupId` int-threading
- * disclosure (`context/phase3/bug-reports/
- * mixpanel-headless-datagroupid-int-clause.md`); the B5-gate pin is the
- * SAME R10.7 `data_group_id` threading family at a NEW site (bug-report
- * addendum, B5 gate 2026-08-16): `workspace.build_params` emits
- * `sections.dataGroupId` (int, `workspace.py:2278`) where the generated
- * contract's `Sections` (`additionalProperties: false`) knows only
- * `globalDataGroupId: string | null` — so ajv rejects on the extra
- * sections key, not on a `dataGroupId` type error. (The deep voluptuous
- * referee (b) ACCEPTS the same payload — its sections-level model
- * tolerates the key — which is why B3's referee-(b) runs never surfaced
- * this site.)
- */
-const EXPECTED_DATAGROUPID_REJECTS: ReadonlyMap<string, string> = new Map([
-  [
-    "bookmarks/bookmark_builders.build_group_section/test_bookmark_builders-testbuildgroupsectiondatagroupid-test_cohort_breakdown_group_with_data_group_id",
-    "dataGroupId",
-  ],
-  [
-    "bookmarks/bookmark_builders.build_group_section/test_bookmark_builders-testbuildgroupsectiondatagroupid-test_custom_property_ref_group_with_data_group_id",
-    "dataGroupId",
-  ],
-  [
-    "bookmarks/bookmark_builders.build_group_section/test_bookmark_builders-testbuildgroupsectiondatagroupid-test_inline_custom_property_group_with_data_group_id",
-    "dataGroupId",
-  ],
-  [
-    "bookmarks/bookmark_builders.build_group_section/test_bookmark_builders-testbuildgroupsectionfrequency-test_data_group_id_threaded_to_frequency",
-    "dataGroupId",
-  ],
-  [
-    "bookmarks/workspace.build_params/test_query_params-testdatagroupidinsights-test_build_params_with_data_group_id",
-    "/sections: must NOT have additional properties",
-  ],
-]);
 
 /** How each fed api's output lands inside the `sections` object. */
 const FEED_SLOTS: ReadonlyMap<string, (output: unknown) => JsonObject> =
@@ -195,16 +148,16 @@ describe("referee (a) feed — insights-shaped B3 builder outputs", () => {
     const total = fed.length + skippedErrorVectors.length;
     const inCorpus = corpus.vectors.filter((v) => isFedApi(v.api)).length;
     expect(total).toBe(inCorpus);
-    // 98 B3 builder-fragment vectors + the 115 B5 `workspace.build_params`
-    // full payloads.
+    // 99 builder-fragment vectors (98 B3 + the FIX-1
+    // `test_no_custom_property_nesting` addition) + the 115 B5
+    // `workspace.build_params` full payloads.
     expect(fed.length).toBeGreaterThanOrEqual(200);
     expect(perApi.get("workspace.build_params")).toBe(115);
   });
 
-  it("every TS-built fragment is ACCEPTED by the ajv bookmark.json referee (modulo the 5 pinned dataGroupId disclosures)", async () => {
+  it("every TS-built fragment is ACCEPTED by the ajv bookmark.json referee (no standing disclosures)", async () => {
     expect(fed.length).toBeGreaterThan(0);
     const unexpectedRejects: string[] = [];
-    const seenExpectedRejects = new Set<string>();
     for (const vector of fed) {
       const implementation = deps.implementations.get(vector.api);
       expect(implementation, `unbound api ${vector.api}`).toBeDefined();
@@ -227,23 +180,10 @@ describe("referee (a) feed — insights-shaped B3 builder outputs", () => {
         : wrapFragment(vector.api, plain);
       const verdict = refereeBookmarkPayload(payload);
       if (verdict.valid) continue;
-      const pinnedError = EXPECTED_DATAGROUPID_REJECTS.get(vector.id);
-      if (pinnedError !== undefined) {
-        // The pinned disclosure must fail for the DISCLOSED reason only.
-        expect(
-          verdict.errors.some((e) => e.includes(pinnedError)),
-          `${vector.id} rejected without the pinned ${JSON.stringify(pinnedError)} error: ${verdict.errors.join("; ")}`,
-        ).toBe(true);
-        seenExpectedRejects.add(vector.id);
-        continue;
-      }
       unexpectedRejects.push(`${vector.id}: ${verdict.errors.join("; ")}`);
     }
+    // The R10.7 dataGroupId disclosure pins retired with the four-bug
+    // batch re-pin — ANY reject is a new finding and blocks.
     expect(unexpectedRejects, unexpectedRejects.join("\n")).toEqual([]);
-    // The disclosure set must stay exact: a pinned vector turning ACCEPT
-    // means the Python-side fix landed — unpin and close the bug report.
-    expect([...seenExpectedRejects].sort()).toEqual(
-      [...EXPECTED_DATAGROUPID_REJECTS.keys()].sort(),
-    );
   });
 });
