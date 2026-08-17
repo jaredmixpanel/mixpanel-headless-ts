@@ -112,6 +112,35 @@ merge-forward + re-pin across all three open PRs). Report:
 |---|---|---|
 | (e) | `paginate_all()` silent-empty on scalar top-level JSON (`pagination.py:260` region) | `context/phase4/bug-reports/python-paginate-all-scalar-response.md` |
 
+**ADDENDUM 2026-08-17b — first live QA pass (pre-burn-in evidence + follow-ups).**
+An independent Claude session ran the full mixpanelyst/dashboard-expert
+workflow live through the TS packages (OAuth account, project 3). Headline:
+**every live failure reproduced byte-for-byte in Python** — the first
+real-world cross-language parity evidence ahead of Layer-4 burn-in. Three
+port gaps found and FIXED same-day (all red-first, corpus HELD 3,262/0/0):
+core barrel now exports `Workspace` (+ A1-deferral barrel lock in
+`index.test.ts`), `createNodeWorkspace()` added as the Python `Workspace()`
+zero-config twin (README recipes updated), and `PropertyInput` gained the
+Python-dataclass eager missing-`name` `TypeError`. Follow-ups:
+
+- **Burn-in probe candidates** (both languages fail identically; determine
+  server-vs-library fault): behavioral `createCohort` → 500;
+  `deleteBookmark` → 500 while `bulkDeleteBookmarks` succeeds (suspicious —
+  possible library-side endpoint/params bug, frequency-filter-style);
+  `schemaGraph`/Lexicon 500/timeout.
+- **Known/expected, document**: `streamEvents` under an OAuth bearer →
+  "must pass API secret" (Export API is secret-auth + Node-only per the D2
+  spike table); `listBookmarks*` timeout on multi-thousand-bookmark
+  projects; dashboard delete cascades inline-created bookmarks but NOT
+  `createBookmark` ones (verified live — orphan probe).
+- **TS-side sweep candidate**: eager required-field `TypeError` guards
+  across the other dataclass-twin constructors (PropertyInput is the
+  pattern; untyped-JS callers otherwise crash lazily in compat helpers).
+- **Phase-5 skills note**: the three README translation rules held live
+  (camelCase methods, snake_case option keys, `toRows()` for `.df`); add a
+  fourth — TS constructors take a single fields object where Python
+  accepts positionals.
+
 ## 3. The JsonNumber facade round-trip gap
 
 In the LIBRARY result path a >2^53 integer token collapses at

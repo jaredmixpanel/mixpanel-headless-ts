@@ -21,6 +21,9 @@ export default tseslint.config(
       "**/node_modules/**",
       "**/dist/**",
       "**/coverage/**",
+      // Local agent scratch (git-ignored per CLAUDE.md conventions) —
+      // scratch .ts probe scripts are not repo code (QA 2026-08-17).
+      ".notes/**",
       // Vendored verbatim from the analytics checkout — never repo-linted.
       "vendor/**",
       // json2ts output (npm run generate) — generated content is not linted.

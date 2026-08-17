@@ -15,10 +15,9 @@ battle-tested [Python `mixpanel_headless`](https://github.com/mixpanel/mixpanel-
 library it ports — 3,262 conformance vectors, zero divergence.
 
 ```typescript
-import { Workspace } from "@mixpanel-headless/core";
-import { createNodeWorkspaceSources } from "@mixpanel-headless/node";
+import { createNodeWorkspace } from "@mixpanel-headless/node";
 
-const ws = new Workspace({ sources: createNodeWorkspaceSources() });
+const ws = createNodeWorkspace(); // env vars, ~/.mp/config.toml, or bridge file
 
 const result = await ws.query("Purchase", {
   math: "unique",
@@ -88,11 +87,17 @@ export MP_REGION="us"          # or "eu", "in"
 ```
 
 ```typescript
-import { Workspace } from "@mixpanel-headless/core";
-import { createNodeWorkspaceSources } from "@mixpanel-headless/node";
+import { createNodeWorkspace } from "@mixpanel-headless/node";
 
-const ws = new Workspace({ sources: createNodeWorkspaceSources() });
+const ws = createNodeWorkspace();
 ```
+
+`createNodeWorkspace()` is the twin of Python's bare `Workspace()`: it wires the
+resolver sources (env → config file → bridge), the on-disk OAuth token refresh,
+and the `/me` cache in one call. (Composing `new Workspace({ sources })` by hand
+from `@mixpanel-headless/core` also works, but OAuth accounts then need
+`clientOptions: { tokenResolver }` wired explicitly — see the `createNodeWorkspace`
+source for the full recipe.)
 
 **Interactive OAuth — your laptop.** One call opens the browser for PKCE login, derives
 an account name from your org, picks your project, and persists everything to
@@ -506,11 +511,7 @@ await targets.use("prod"); // apply all three axes atomically
 Workspaces can also pin axes per-instance, without touching the persisted session:
 
 ```typescript
-const ws = new Workspace({
-  account: "team",
-  project: "12345",
-  sources: createNodeWorkspaceSources(),
-});
+const ws = createNodeWorkspace({ account: "team", project: "12345" });
 
 await ws.use({ project: "67890" }); // repoint this instance
 await ws.use({ account: "other", persist: true }); // …or persist the switch

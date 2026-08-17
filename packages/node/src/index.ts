@@ -53,6 +53,12 @@ export {
   type NodeFlowSeams,
 } from "./auth-effects.js";
 
+// QA 2026-08-17: the Python `Workspace()` zero-config twin — sources +
+// on-disk token resolver + on-disk MeCache + node:fs read seam in one
+// call (see workspace.ts header for why the pieces alone weren't
+// enough).
+export { createNodeWorkspace, type NodeWorkspaceOptions } from "./workspace.js";
+
 /**
  * A fresh default bag (call-time env reads — module header).
  *

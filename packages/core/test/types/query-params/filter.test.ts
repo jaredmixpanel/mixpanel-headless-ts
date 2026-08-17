@@ -436,6 +436,36 @@ describe("property-spec helper types", () => {
     expect(input.resource_type).toBe("event");
   });
 
+  it("PropertyInput fails EAGERLY on a missing name, like the Python dataclass", () => {
+    // Python twin (frozen dataclass): `PropertyInput()` raises
+    // `TypeError: PropertyInput.__init__() missing 1 required
+    // positional argument: 'name'` AT CONSTRUCTION. Pre-fix, an
+    // untyped JS caller (e.g. `{ property: "x" }` typo — QA
+    // 2026-08-17 finding #3) sailed through and crashed later, deep
+    // in `compat/python-strip.ts`, at first use. Class and timing now
+    // match Python; tsc-typed callers are unaffected.
+    expect(
+      () => new PropertyInput(undefined as unknown as { name: string }),
+    ).toThrowError(
+      new TypeError(
+        "PropertyInput.__init__() missing 1 required positional argument: 'name'",
+      ),
+    );
+    expect(
+      () => new PropertyInput({ property: "x" } as unknown as { name: string }),
+    ).toThrowError(
+      new TypeError(
+        "PropertyInput.__init__() missing 1 required positional argument: 'name'",
+      ),
+    );
+    // Parity boundary: Python dataclasses do NOT type-check field
+    // values — `PropertyInput(name=123)` constructs fine and fails
+    // only at use. The guard must not be stricter than Python.
+    expect(
+      () => new PropertyInput({ name: 123 } as unknown as { name: string }),
+    ).not.toThrow();
+  });
+
   it("CustomPropertyRef holds its id", () => {
     expect(new CustomPropertyRef({ id: 42 }).id).toBe(42);
   });

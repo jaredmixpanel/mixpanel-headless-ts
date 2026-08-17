@@ -72,6 +72,17 @@ export class PropertyInput {
     readonly type?: "string" | "number" | "boolean" | "datetime" | "list";
     readonly resource_type?: "event" | "user";
   }) {
+    // Python's frozen dataclass fails EAGERLY at construction when
+    // `name` is absent (`TypeError: ... missing 1 required positional
+    // argument: 'name'`). Untyped JS callers (QA 2026-08-17 finding
+    // #3: `{ property: "x" }` typo) previously crashed lazily inside
+    // `pythonStrip` at first use. Missing-field check only — Python
+    // dataclasses do not type-check values, so neither does this.
+    if (fields === undefined || fields.name === undefined) {
+      throw new TypeError(
+        "PropertyInput.__init__() missing 1 required positional argument: 'name'",
+      );
+    }
     this.name = fields.name;
     this.type = fields.type === undefined ? "string" : fields.type;
     this.resource_type =

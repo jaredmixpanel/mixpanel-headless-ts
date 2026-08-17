@@ -225,9 +225,19 @@ export function createNodeResolverSources(
  * @returns The injected-source bag for `new Workspace({ sources })`.
  * @throws ConfigError - Malformed bridge file.
  *
+ * NOTE (QA 2026-08-17): sources alone do NOT wire OAuth token refresh —
+ * an oauth_browser account constructed this way fails its first query
+ * with `TokenResolver is required`. Prefer `createNodeWorkspace()`
+ * (workspace.ts), which composes sources + tokenResolver + MeCache +
+ * readFile; use this factory directly only when injecting a custom
+ * resolver via `clientOptions`.
+ *
  * @example
  * ```typescript
- * const ws = new Workspace({ sources: createNodeWorkspaceSources() });
+ * const ws = new Workspace({
+ *   sources: createNodeWorkspaceSources(),
+ *   clientOptions: { tokenResolver: createNodeAuthEffects().tokenResolver },
+ * });
  * ```
  */
 export function createNodeWorkspaceSources(

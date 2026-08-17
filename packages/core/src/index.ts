@@ -60,5 +60,17 @@ export {
 // effects (`b7-packets.md` §3.1-§3.2).
 export * from "./accounts/index.js";
 
+// Phase-3 B6 deferred barrel line (phase2-audit A1 ledger row
+// `Workspace` → B6), landed post-QA 2026-08-17: B6 shipped the facade
+// class but never added its barrel export, so the README quick start
+// (`import { Workspace } from "@mixpanel-headless/core"`) did not
+// compile. The class + constructor-options type only; the rest of
+// `workspace.ts`'s type surface mirrors Python `_internal` re-exports
+// and stays path-imported by the platform packages. (The browser
+// entry's TYPE-only `Workspace` posture — B9 FB-2 — is unaffected:
+// that gate governs `@mixpanel-headless/browser`'s own surface.)
+export { Workspace } from "./workspace.js";
+export type { WorkspaceOptions } from "./workspace.js";
+
 /** Package name constant exercised by the skeleton smoke test. */
 export const CORE_PACKAGE_NAME = "@mixpanel-headless/core";

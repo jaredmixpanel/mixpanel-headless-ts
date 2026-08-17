@@ -3,3 +3,6 @@ dist/
 coverage/
 *.tsbuildinfo
 .notes/
+
+# macOS noise
+.DS_Store
