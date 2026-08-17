@@ -41,6 +41,7 @@ import {
   createNodeBridgeEffects,
   exportBridge,
   loadBridge,
+  materializeBridgeTokens,
   parseBridgeFile,
   removeBridge,
 } from "../src/auth/bridge.js";
@@ -597,4 +598,97 @@ describe("B8-ARB-A readBrowserTokens error-class locks (bridge.py:221-242)", () 
       expect((caught as OAuthError).code).toBe("OAUTH_TOKEN_ERROR");
     },
   );
+});
+
+// B8-ARB-B F1 + F2 locks (b8-reviewB-resolution.md).
+//
+// F1: `BridgeFile.tokens` is a Pydantic model in Python — LAX, so a
+// numeric epoch-seconds `expires_at` in a v2 bridge is ACCEPTED (live
+// probe: OAuthTokens.model_validate({... 1893456000 ...}) →
+// 2030-01-01T00:00:00+00:00). The TS parse routes the shared lax
+// mirror before `parseOAuthTokens`.
+//
+// F2: Python's `_serialize_bridge` renders datetimes through Pydantic's
+// JSON mode (`bridge.py:292` `model_dump(mode="json")`) which spells
+// UTC instants with a `Z` suffix (live probe recorded in the
+// resolution); the tokens.json writers render through
+// `datetime.isoformat()` (`+00:00`). The TS writers re-render the
+// stored ISO text through the matching formatter instead of echoing it.
+describe("B8-ARB-B F1/F2 bridge epoch acceptance + writer datetime shapes", () => {
+  function browserBridgePayload(expiresAt: unknown): Record<string, unknown> {
+    return {
+      version: 2,
+      account: { type: "oauth_browser", name: "personal", region: "us" },
+      tokens: {
+        access_token: "acc-personal",
+        refresh_token: "ref-personal",
+        expires_at: expiresAt,
+        scope: "read",
+        token_type: "Bearer",
+      },
+    };
+  }
+
+  it("F1: numeric epoch-seconds tokens.expires_at parses (pydantic lax twin)", () => {
+    const bridge = parseBridgeFile(browserBridgePayload(1_893_456_000));
+    expect(bridge.tokens?.expires_at).toBe("2030-01-01T00:00:00+00:00");
+  });
+
+  it("F1: numeric-string epoch tokens.expires_at parses", () => {
+    const bridge = parseBridgeFile(browserBridgePayload("1893456000"));
+    expect(bridge.tokens?.expires_at).toBe("2030-01-01T00:00:00+00:00");
+  });
+
+  it("F1 sibling: tz-suffixed but non-instant expires_at rejects (pydantic rejects month 99)", () => {
+    expect(() =>
+      parseBridgeFile(browserBridgePayload("2030-99-99T00:00:00+00:00")),
+    ).toThrow(ParamValidationError);
+  });
+
+  it("F2: exported bridge renders tokens.expires_at in pydantic-JSON Z form", () => {
+    const account: OAuthBrowserAccount = {
+      type: "oauth_browser",
+      name: "personal",
+      region: "us",
+    };
+    // Seed with the canonical library-written `+00:00` spelling.
+    const dir = join(home, ".mp", "accounts", "personal");
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+    const tokensPath = join(dir, "tokens.json");
+    writeFileSync(
+      tokensPath,
+      JSON.stringify({
+        access_token: "acc-personal",
+        refresh_token: "ref-personal",
+        expires_at: "2030-01-01T00:00:00+00:00",
+        scope: "read",
+        token_type: "Bearer",
+      }),
+      "utf8",
+    );
+    if (POSIX) {
+      chmodSync(tokensPath, 0o600);
+    }
+    const out = join(makeTempDir(cleanups), "bridge.json");
+    exportBridge(account, { to: out });
+    const text = readFileSync(out, "utf8");
+    expect(text).toContain('"expires_at": "2030-01-01T00:00:00Z"');
+    expect(text).not.toContain("+00:00");
+  });
+
+  it("F2: materialization renders tokens.json expires_at in isoformat +00:00 form even from a Z-text bridge", () => {
+    // A py-written bridge carries the pydantic `Z` spelling; Python's
+    // materialization re-renders via `datetime.isoformat()` →
+    // `+00:00` (`token_payload_bytes`, `token.py:188-212`).
+    const bridge = parseBridgeFile(
+      browserBridgePayload("2030-01-01T00:00:00Z"),
+    );
+    process.env["MP_OAUTH_STORAGE_DIR"] = join(home, ".mp");
+    const written = materializeBridgeTokens(bridge);
+    expect(written).not.toBeNull();
+    const text = readFileSync(written as string, "utf8");
+    // `json.dumps` default separators (`token.py:212` — byte parity).
+    expect(text).toContain('"expires_at": "2030-01-01T00:00:00+00:00"');
+    expect(text).not.toContain('Z"');
+  });
 });

@@ -17,6 +17,7 @@ import {
   chmodSync,
   existsSync,
   mkdirSync,
+  readFileSync,
   statSync,
   writeFileSync,
 } from "node:fs";
@@ -553,5 +554,110 @@ describe("TestOAuthStorageConcurrency (test_auth_storage.py:748)", () => {
     for (const result of readResults) {
       expect(result === null || result instanceof OAuthTokens).toBe(true);
     }
+  });
+});
+
+// B8-ARB-B F1 + F2 locks (b8-reviewB-resolution.md): the legacy-world
+// read path already carried the pydantic-lax epoch mirror (B8-N2
+// decision 3), but not the numeric-STRING spelling nor speedate's
+// seconds/milliseconds watershed (|v| > 2e10 → ms) — all live-probed
+// against CPython/pydantic in the resolution. Writers: Python
+// `save_tokens` renders `datetime.isoformat()` (`+00:00`);
+// `save_client_info` renders pydantic JSON mode (`Z`).
+describe("B8-ARB-B F1/F2 storage lax-datetime + writer-shape locks", () => {
+  it("F1: numeric-STRING epoch expires_at loads (speedate digit-string epoch)", () => {
+    const tmp = makeTempDir(cleanups);
+    const storage = new OAuthStorage({ storageDir: tmp });
+    const path = join(tmp, "tokens_us.json");
+    writeFileSync(
+      path,
+      JSON.stringify({
+        access_token: "a",
+        refresh_token: "r",
+        expires_at: "1893456000",
+        scope: "read",
+        token_type: "Bearer",
+      }),
+      "utf8",
+    );
+    if (POSIX) {
+      chmodSync(path, 0o600);
+    }
+    const loaded = storage.loadTokens("us");
+    expect(loaded?.expires_at).toBe("2030-01-01T00:00:00+00:00");
+  });
+
+  it("F1: epoch beyond the 2e10 watershed reads as MILLISECONDS (speedate)", () => {
+    const tmp = makeTempDir(cleanups);
+    const storage = new OAuthStorage({ storageDir: tmp });
+    const path = join(tmp, "tokens_us.json");
+    writeFileSync(
+      path,
+      JSON.stringify({
+        access_token: "a",
+        expires_at: 1_893_456_000_000, // ms — pydantic: 2030-01-01
+        scope: "read",
+        token_type: "Bearer",
+      }),
+      "utf8",
+    );
+    if (POSIX) {
+      chmodSync(path, 0o600);
+    }
+    const loaded = storage.loadTokens("us");
+    expect(loaded?.expires_at).toBe("2030-01-01T00:00:00+00:00");
+  });
+
+  it("F1: epoch created_at in client_{region}.json loads (pydantic lax on OAuthClientInfo)", () => {
+    const tmp = makeTempDir(cleanups);
+    const storage = new OAuthStorage({ storageDir: tmp });
+    const path = join(tmp, "client_us.json");
+    writeFileSync(
+      path,
+      JSON.stringify({
+        client_id: "cid",
+        region: "us",
+        redirect_uri: "http://localhost:19284/callback",
+        scope: "read",
+        created_at: 1_893_456_000,
+      }),
+      "utf8",
+    );
+    if (POSIX) {
+      chmodSync(path, 0o600);
+    }
+    const loaded = storage.loadClientInfo("us");
+    expect(loaded?.created_at).toBe("2030-01-01T00:00:00+00:00");
+  });
+
+  it("F2: saveTokens renders a Z-text model in isoformat +00:00 form (storage.py:471)", () => {
+    const tmp = makeTempDir(cleanups);
+    const storage = new OAuthStorage({ storageDir: tmp });
+    storage.saveTokens(
+      new OAuthTokens({
+        access_token: new Secret("a"),
+        refresh_token: null,
+        expires_at: "2030-01-01T00:00:00Z",
+        scope: "read",
+        token_type: "Bearer",
+      }),
+      "us",
+    );
+    const text = readFileSync(join(tmp, "tokens_us.json"), "utf8");
+    expect(text).toContain('"expires_at": "2030-01-01T00:00:00+00:00"');
+  });
+
+  it("F2: saveClientInfo renders created_at in pydantic-JSON Z form (storage.py:541)", () => {
+    const tmp = makeTempDir(cleanups);
+    const storage = new OAuthStorage({ storageDir: tmp });
+    storage.saveClientInfo({
+      client_id: "cid",
+      region: "us",
+      redirect_uri: "http://localhost:19284/callback",
+      scope: "read",
+      created_at: "2030-01-01T00:00:00+00:00",
+    });
+    const text = readFileSync(join(tmp, "client_us.json"), "utf8");
+    expect(text).toContain('"created_at": "2030-01-01T00:00:00Z"');
   });
 });

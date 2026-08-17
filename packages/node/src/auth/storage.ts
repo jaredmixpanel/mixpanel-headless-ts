@@ -38,7 +38,6 @@ import { join } from "node:path";
 
 import {
   parseOAuthClientInfo,
-  pythonUtcIsoformat,
   OAuthTokens,
   type OAuthClientInfo,
 } from "../../../core/src/auth/token.js";
@@ -58,6 +57,11 @@ import {
   readCredentialText,
   rejectIfSymlink,
 } from "../io-utils.js";
+import {
+  coerceLaxExpiresAt,
+  pydanticJsonDatetimeText,
+  pythonIsoformatDatetimeText,
+} from "./pydantic-datetime.js";
 
 /**
  * Injected log sink (R9.5 — log text is never vector-compared and the
@@ -406,7 +410,9 @@ export class OAuthStorage {
     OAuthStorage.validateRegion(region);
     const data: Record<string, unknown> = {
       access_token: tokens.access_token.reveal(),
-      expires_at: tokens.expires_at,
+      // `datetime.isoformat()` twin (`storage.py:471` — B8-ARB-B F2:
+      // never echo a foreign `Z` spelling into the written file).
+      expires_at: pythonIsoformatDatetimeText(tokens.expires_at),
       scope: tokens.scope,
       token_type: tokens.token_type,
     };
@@ -441,7 +447,7 @@ export class OAuthStorage {
         rawRefresh === null || rawRefresh === undefined
           ? null
           : new Secret(pythonStr(rawRefresh as PythonValue));
-      const expiresAt = coerceStoredExpiresAt(data["expires_at"]);
+      const expiresAt = coerceLaxExpiresAt(data["expires_at"]);
       if (!Object.hasOwn(data, "scope") || !Object.hasOwn(data, "token_type")) {
         throw new ParamValidationError("missing scope/token_type");
       }
@@ -483,7 +489,9 @@ export class OAuthStorage {
       region: info.region,
       redirect_uri: info.redirect_uri,
       scope: info.scope,
-      created_at: info.created_at,
+      // Pydantic JSON mode spells UTC with `Z` (`storage.py:541`
+      // `model_dump(mode="json")` — B8-ARB-B F2 byte-parity lock).
+      created_at: pydanticJsonDatetimeText(info.created_at),
     };
     this.#writeFile(this.clientPath(info.region), data);
   }
@@ -503,7 +511,17 @@ export class OAuthStorage {
       return null;
     }
     try {
-      return parseOAuthClientInfo(data);
+      // Pydantic-LAX twin for `created_at` (`storage.py:566`
+      // `OAuthClientInfo.model_validate` — B8-ARB-B F1 sibling: a
+      // numeric epoch coerces; unparseable text degrades to null).
+      let payload: Record<string, unknown> = data;
+      if (Object.hasOwn(payload, "created_at")) {
+        payload = {
+          ...payload,
+          created_at: coerceLaxExpiresAt(payload["created_at"]),
+        };
+      }
+      return parseOAuthClientInfo(payload);
     } catch (exc) {
       if (exc instanceof MixpanelHeadlessError) {
         this.#logger.warning(
@@ -567,30 +585,8 @@ export class OAuthStorage {
   }
 }
 
-/**
- * Validate/normalize a stored `expires_at` value the way Pydantic's
- * lax datetime coercion does at `storage.py:514`: tz-aware ISO text
- * passes through verbatim; numeric epoch SECONDS convert to aware UTC;
- * anything else (naive text, garbage, wrong type) is invalid.
- *
- * @param value - The raw stored value.
- * @returns The tz-aware ISO text.
- * @throws ParamValidationError - Unparseable / naive value (caught by
- *   `loadTokens`, degrading to `null` exactly like Python's
- *   `ValueError` catch).
- */
-function coerceStoredExpiresAt(value: unknown): string {
-  if (typeof value === "string") {
-    if (Number.isNaN(Date.parse(value))) {
-      throw new ParamValidationError(
-        `invalid expires_at value: ${JSON.stringify(value)}`,
-      );
-    }
-    // Naive text is rejected by the OAuthTokens constructor validator.
-    return value;
-  }
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return pythonUtcIsoformat(value * 1000);
-  }
-  throw new ParamValidationError("expires_at must be ISO text or epoch");
-}
+// NOTE (B8-ARB-B, `b8-reviewB-resolution.md` F1): the former private
+// `coerceStoredExpiresAt` helper moved to `./pydantic-datetime.ts` as
+// `coerceLaxExpiresAt` — ONE pydantic-lax mirror shared by every
+// credential read path (R10.8), now covering the numeric-STRING epoch
+// spelling and the speedate seconds/milliseconds watershed too.

@@ -137,3 +137,33 @@ describe("TokenStore — real node implementation (packet §3.1)", () => {
     expect(store.readTokens("me")).toBeNull();
   });
 });
+
+// B8-ARB-B F1 consistency lock (b8-reviewB-resolution.md):
+// `readTokens` has no direct Python twin (B8-N2 disclosure 4) but reads
+// the SAME per-account tokens.json the OnDiskTokenResolver serves — it
+// takes the same pydantic-lax expires_at mirror so the two readers of
+// one file can never disagree.
+describe("B8-ARB-B F1 readTokens pydantic-lax expires_at", () => {
+  it("numeric epoch-seconds expires_at parses instead of degrading to null", () => {
+    const store = createNodeTokenStore();
+    const dir = accountDir("me");
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+    const path = join(dir, "tokens.json");
+    writeFileSync(
+      path,
+      JSON.stringify({
+        access_token: "a",
+        refresh_token: "r",
+        expires_at: 1_893_456_000,
+        scope: "read",
+        token_type: "Bearer",
+      }),
+      "utf8",
+    );
+    if (POSIX) {
+      chmodSync(path, 0o600);
+    }
+    const read = store.readTokens("me");
+    expect(read?.expires_at).toBe("2030-01-01T00:00:00+00:00");
+  });
+});

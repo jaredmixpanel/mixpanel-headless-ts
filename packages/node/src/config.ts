@@ -84,9 +84,20 @@ export type RawConfig = Record<string, unknown>;
 /**
  * The default config path — `~/.mp/config.toml` (`config.py:59`).
  *
- * @returns The absolute default path (computed at call time so tests
- *   that fake `HOME` see the change; Python evaluates at import, but
- *   the value only ever feeds the ctor default).
+ * SANCTIONED DEVIATION (B8-ARB-B F3, `b8-reviewB-resolution.md`;
+ * playbook Discrepancy #15): Python freezes `_DEFAULT_CONFIG_PATH` at
+ * MODULE IMPORT (`Path.home()` evaluated once), so a Python process
+ * that changes `HOME` after import keeps writing the import-time
+ * config; the TS twin resolves `homedir()` at every `ConfigManager`
+ * construction and follows the new `HOME`. Divergent ONLY when `HOME`
+ * changes mid-process with `MP_CONFIG_PATH` unset (test harnesses /
+ * long-lived agent hosts — observed live by the pair-B e2e review).
+ * Python's own bridge and storage defaults are call-time; only the
+ * config default is import-frozen, and matching an import-time freeze
+ * in ESM would pin module-evaluation-order trivia. Blessed as
+ * call-time per R10.7's disclose option.
+ *
+ * @returns The absolute default path (computed at call time).
  */
 function defaultConfigPath(): string {
   return join(homedir(), ".mp", "config.toml");

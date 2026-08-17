@@ -45,6 +45,10 @@ import {
   readCredentialText,
   rejectIfSymlink,
 } from "../io-utils.js";
+import {
+  coerceLaxExpiresAt,
+  pydanticJsonDatetimeText,
+} from "./pydantic-datetime.js";
 import { accountDir, ensureAccountDir } from "./storage.js";
 import { tokenPayloadBytes } from "./token-payload.js";
 
@@ -119,8 +123,17 @@ export function parseBridgeFile(raw: unknown): BridgeFile {
   }
   const account = parseAccount(raw["account"], { boundary: "param" });
   let tokens: OAuthTokens | null = null;
-  const rawTokens = raw["tokens"];
+  let rawTokens = raw["tokens"];
   if (rawTokens !== undefined && rawTokens !== null) {
+    // Pydantic-LAX twin (B8-ARB-B F1, `b8-reviewB-resolution.md`): the
+    // Python `BridgeFile.tokens` model coerces numeric epoch
+    // `expires_at` values, and rejects tz-suffixed non-instants.
+    if (isPythonDict(rawTokens) && Object.hasOwn(rawTokens, "expires_at")) {
+      rawTokens = {
+        ...rawTokens,
+        expires_at: coerceLaxExpiresAt(rawTokens["expires_at"]),
+      };
+    }
     tokens = parseOAuthTokens(rawTokens, { boundary: "param" });
   }
   let project: string | null = null;
@@ -410,7 +423,9 @@ function serializeBridge(bridge: BridgeFile): Uint8Array {
   if (bridge.tokens !== null) {
     const tokens: Record<string, unknown> = {
       access_token: bridge.tokens.access_token.reveal(),
-      expires_at: bridge.tokens.expires_at,
+      // Pydantic JSON mode spells UTC with `Z` (`bridge.py:292`
+      // `model_dump(mode="json")` — B8-ARB-B F2 byte-parity lock).
+      expires_at: pydanticJsonDatetimeText(bridge.tokens.expires_at),
       scope: bridge.tokens.scope,
       token_type: bridge.tokens.token_type,
     };

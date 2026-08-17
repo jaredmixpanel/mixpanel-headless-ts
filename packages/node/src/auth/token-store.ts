@@ -26,7 +26,9 @@ import {
   parseOAuthTokens,
   type OAuthTokens,
 } from "../../../core/src/auth/token.js";
+import { isPythonDict } from "../../../core/src/compat/python-dict.js";
 import { atomicWriteBytes, readCredentialText } from "../io-utils.js";
+import { coerceLaxExpiresAt } from "./pydantic-datetime.js";
 import {
   OAuthStorage,
   accountDir,
@@ -61,7 +63,15 @@ export function createNodeTokenStore(
         return null;
       }
       try {
-        const parsed: unknown = JSON.parse(readCredentialText(path));
+        let parsed: unknown = JSON.parse(readCredentialText(path));
+        // Shared pydantic-lax mirror (B8-ARB-B F1) — this reader and
+        // the OnDiskTokenResolver consume the SAME file and must agree.
+        if (isPythonDict(parsed) && Object.hasOwn(parsed, "expires_at")) {
+          parsed = {
+            ...parsed,
+            expires_at: coerceLaxExpiresAt(parsed["expires_at"]),
+          };
+        }
         return parseOAuthTokens(parsed, { boundary: "param" });
       } catch (exc) {
         logger.warning(

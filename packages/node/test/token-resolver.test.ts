@@ -549,3 +549,58 @@ describe("B8-ARB-A SEM-F6 probe errno-wrap lock (token_resolver.py:104-111)", ()
     },
   );
 });
+
+// B8-ARB-B F1 (b8-reviewB-resolution.md): the per-account read path is
+// `OAuthTokens.model_validate_json` in Python (`token_resolver.py:134-148`)
+// — Pydantic-LAX, so numeric epoch-seconds `expires_at` (and its
+// numeric-string spelling) is ACCEPTED and converted to an aware UTC
+// datetime (live probe: 1893456000 → 2030-01-01T00:00:00+00:00). The
+// TS twin routes the same lax mirror (`coerceLaxExpiresAt`) before
+// `parseOAuthTokens`.
+describe("B8-ARB-B F1 pydantic-lax expires_at at the resolver read (token_resolver.py:134-148)", () => {
+  /** Write a tokens.json with an ARBITRARY (non-string) expires_at. */
+  function writeRawTokensFile(name: string, expiresAt: unknown): string {
+    const dir = join(home, ".mp", "accounts", name);
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+    const path = join(dir, "tokens.json");
+    writeFileSync(
+      path,
+      JSON.stringify({
+        access_token: "at-epoch",
+        refresh_token: "rt",
+        expires_at: expiresAt,
+        scope: "read",
+        token_type: "Bearer",
+      }),
+      "utf8",
+    );
+    if (POSIX) {
+      chmodSync(path, 0o600);
+    }
+    return path;
+  }
+
+  it("numeric epoch-seconds expires_at serves the token (py: pydantic lax)", async () => {
+    writeRawTokensFile("acme", 1_893_456_000); // 2030-01-01T00:00:00Z
+    const resolver = new OnDiskTokenResolver();
+    await expect(resolver.getBrowserToken("acme", "us")).resolves.toBe(
+      "at-epoch",
+    );
+  });
+
+  it("numeric-STRING epoch expires_at serves the token (speedate parses digit strings as epochs)", async () => {
+    writeRawTokensFile("acme", "1893456000");
+    const resolver = new OnDiskTokenResolver();
+    await expect(resolver.getBrowserToken("acme", "us")).resolves.toBe(
+      "at-epoch",
+    );
+  });
+
+  it("epoch beyond year 9999 still rejects (speedate range: dates after 9999 are invalid)", async () => {
+    writeRawTokensFile("acme", 253_402_300_800_000); // 10000-01-01 in ms
+    const resolver = new OnDiskTokenResolver();
+    await expect(resolver.getBrowserToken("acme", "us")).rejects.toMatchObject({
+      code: "OAUTH_TOKEN_ERROR",
+    });
+  });
+});

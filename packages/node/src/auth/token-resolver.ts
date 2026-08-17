@@ -31,6 +31,7 @@ import type {
 } from "../../../core/src/auth/account.js";
 import { OAuthTokens, parseOAuthTokens } from "../../../core/src/auth/token.js";
 import type { OAuthClientInfo } from "../../../core/src/auth/token.js";
+import { isPythonDict } from "../../../core/src/compat/python-dict.js";
 import { MixpanelHeadlessError, OAuthError } from "../../../core/src/errors.js";
 import {
   atomicWriteBytes,
@@ -38,6 +39,7 @@ import {
   readCredentialBytes,
   rejectIfSymlink,
 } from "../io-utils.js";
+import { coerceLaxExpiresAt } from "./pydantic-datetime.js";
 import { OAuthFlow } from "./flow.js";
 import { OAuthStorage } from "./storage.js";
 import { accountDir } from "./storage.js";
@@ -200,11 +202,19 @@ export class OnDiskTokenResolver implements TokenResolver {
 
     // Single source of truth for parsing (`token_resolver.py:134-148`)
     // — the OAuthTokens model enforces the tz-aware expiry invariant
-    // and the secret wrapping in one place.
+    // and the secret wrapping in one place. Python's read is
+    // Pydantic-LAX, so a numeric epoch `expires_at` is coerced first
+    // (B8-ARB-B F1, `b8-reviewB-resolution.md` — the shared mirror).
     let tokens: OAuthTokens;
     try {
       const text = new TextDecoder("utf-8", { fatal: true }).decode(raw);
-      const parsed: unknown = JSON.parse(text);
+      let parsed: unknown = JSON.parse(text);
+      if (isPythonDict(parsed) && Object.hasOwn(parsed, "expires_at")) {
+        parsed = {
+          ...parsed,
+          expires_at: coerceLaxExpiresAt(parsed["expires_at"]),
+        };
+      }
       tokens = parseOAuthTokens(parsed, { boundary: "param" });
       if (Number.isNaN(Date.parse(tokens.expires_at))) {
         throw new MixpanelHeadlessError(
