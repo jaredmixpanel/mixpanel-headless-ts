@@ -99,6 +99,19 @@ per-fix notes `bugfix-batch-notes.md`, arbiter resolutions
 `bugfix-reviewA-resolution.md` / `bugfix-reviewB-resolution.md`.
 Burn-in expectation from here: **3,262 / 0 / 0 @ 700db996**.
 
+**ADDENDUM 2026-08-17 — item (e) OPEN (queue no longer empty).** PR #206
+review (Copilot inline thread, verified real) found `paginate_all()` silently
+yields an empty iteration on scalar top-level JSON bodies — inconsistent with
+the adjacent `results`-must-be-a-list `INVALID_RESPONSE` raise. User ruling:
+fix **post-merge** via the standing choreography (the TS twin mirrors the
+silent behavior bug-compatibly; an in-stack fix would force a mid-review
+merge-forward + re-pin across all three open PRs). Report:
+`context/phase4/bug-reports/python-paginate-all-scalar-response.md`.
+
+| # | Bug | Source of record |
+|---|---|---|
+| (e) | `paginate_all()` silent-empty on scalar top-level JSON (`pagination.py:260` region) | `context/phase4/bug-reports/python-paginate-all-scalar-response.md` |
+
 ## 3. The JsonNumber facade round-trip gap
 
 In the LIBRARY result path a >2^53 integer token collapses at
