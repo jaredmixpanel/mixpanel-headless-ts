@@ -139,4 +139,63 @@ describe("LocalStorageCredentialStore specifics (§2.1 / §2.6)", () => {
     expect(source).toMatch(/in-memory/i);
     expect(source).toMatch(/re-?login/i);
   });
+
+  it("FB-9 (pair-B): the warning names ALL persisted payload families and the bulk-clear helper", () => {
+    // b9-reviewB-threat.md F6: the store also persists the PKCE
+    // verifier + CSRF state (pending login) and the DCR registration —
+    // the warning must say so, and the logout instruction must point
+    // at a supported enumeration (CREDENTIAL_KEYS.all).
+    const source = localStorageAdapterSource;
+    expect(source).toMatch(/verifier/i);
+    expect(source).toMatch(/pending[- ]login/i);
+    expect(source).toMatch(/DCR|client registration/i);
+    expect(source).toMatch(/CREDENTIAL_KEYS\.all/);
+  });
+
+  it("FB-9 (pair-B): CREDENTIAL_KEYS.all(region) enumerates every key family for a region", () => {
+    expect(CREDENTIAL_KEYS.all("us")).toEqual([
+      "mp.tokens.us",
+      "mp.oauth_client.us",
+      "mp.pending_login.us",
+    ]);
+    expect(CREDENTIAL_KEYS.all("eu")).toEqual([
+      CREDENTIAL_KEYS.tokens("eu"),
+      CREDENTIAL_KEYS.clientInfo("eu"),
+      CREDENTIAL_KEYS.pendingLogin("eu"),
+    ]);
+  });
+
+  it("FB-11 (pair-B): backend failures re-throw as coded OAUTH_CONFIG_ERROR (never a bare DOMException)", async () => {
+    // b9-reviewB-e2e.md F5: Safari-private/quota failures escaped as
+    // uncoded DOMExceptions, inconsistent with R5 and with the
+    // constructor's own OAUTH_CONFIG_ERROR posture.
+    const quotaError = new Error("quota exceeded");
+    quotaError.name = "QuotaExceededError";
+    const store = new LocalStorageCredentialStore({
+      getItem: (): string | null => {
+        throw quotaError;
+      },
+      setItem: (): void => {
+        throw quotaError;
+      },
+      removeItem: (): void => {
+        throw quotaError;
+      },
+    });
+    for (const op of [
+      (): unknown => store.get("mp.tokens.us"),
+      (): unknown => store.set("mp.tokens.us", "{}"),
+      (): unknown => store.delete("mp.tokens.us"),
+    ]) {
+      let thrown: unknown;
+      try {
+        op();
+      } catch (error) {
+        thrown = error;
+      }
+      expect(thrown).toBeInstanceOf(OAuthError);
+      expect((thrown as OAuthError).code).toBe("OAUTH_CONFIG_ERROR");
+      expect((thrown as OAuthError).cause).toBe(quotaError);
+    }
+  });
 });

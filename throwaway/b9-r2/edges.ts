@@ -63,7 +63,11 @@ async function pendingStore(state: string): Promise<InMemoryCredentialStore> {
       verifier: "v".repeat(86),
       client_id: "cid",
       redirect_uri: REDIRECT,
-      created_at: "2026-01-15T10:30:00+00:00",
+      // B9-ARB-B (b9-reviewB-resolution.md FB-5): completeLogin now
+      // enforces a pending-record TTL (default 30 min) against the
+      // ambient clock this harness runs on — a frozen 2026-01-15
+      // stamp would expire every leg. Stamp "now" instead.
+      created_at: new Date().toISOString().replace(/(?:\.\d+)?Z$/, "+00:00"),
     }),
   );
   return store;

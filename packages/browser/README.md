@@ -15,6 +15,10 @@ APIs are CORS-open with bearer auth in all regions, so the full core
    the coded error `BROWSER_SERVICE_ACCOUNT_REFUSED`: Basic credentials are
    long-lived secrets that must not ship to a browser origin (policy holds
    even though CORS would technically permit it — plan §4.3 Tier C note).
+   The guard also covers clients derived via `client.withProject(...)`
+   (recursively), and the entry point deliberately exports `Workspace` as a
+   TYPE only — the gated factories are the only construction paths
+   (pair-B review, `b9-reviewB-resolution.md`).
 
 ## PKCE-in-browser status (D2 spike, b9-packets.md §4)
 
@@ -39,15 +43,49 @@ that redirect; (3) a browser-origin `token/` POST succeeding cross-origin.
 Browser v1 has no token-refresh surface (`refresh_token` grant is
 Node-only for now; Phase-4 ledger row 8).
 
+### Using the redirect flow safely (pair-B review, `b9-reviewB-resolution.md`)
+
+- **`redirectUri` must be a compile-time constant.** NEVER derive it from
+  user input or query parameters (`?returnTo=…`): DCR registers arbitrary
+  third-party https origins (verified live), so an attacker-influenced
+  value delivers the authorization code to the attacker's origin.
+  `beginLogin` rejects non-absolute / non-https values (http is allowed
+  only on loopback hosts, RFC 8252 §7.3) with `OAUTH_CONFIG_ERROR`, but
+  that gate cannot detect a hostile https origin — the constant-only rule
+  is on you.
+- **The store must survive the redirect navigation.** `completeLogin` runs
+  on a fresh page load; the in-memory default store cannot carry the
+  pending login across it (`BROWSER_NO_PENDING_LOGIN`). Use
+  `new LocalStorageCredentialStore(sessionStorage)` for the login hop —
+  sessionStorage is tab-scoped and clears on tab close, a narrower
+  exposure than localStorage.
+- **Secure context required.** PKCE uses WebCrypto's `SubtleCrypto`, which
+  browsers expose only on https or localhost origins; elsewhere the flow
+  fails with `OAUTH_CONFIG_ERROR`.
+- **Pending logins expire.** The `beginLogin` record is single-use AND
+  time-bounded (default 30 minutes, `maxPendingAgeMs`); an expired record
+  is discarded and `completeLogin` fails with `BROWSER_NO_PENDING_LOGIN` —
+  start a fresh `beginLogin`.
+- **Error details can carry token material.** On a malformed 200 token
+  response, `OAuthError.details.response_data` contains the raw payload
+  (verbatim Python parity, `flow.py:596-605`) — scrub `error.details`
+  before forwarding errors to logging/telemetry pipelines (Sentry etc.).
+
 ## Credential storage
 
 The default `CredentialStore` is in-memory (`InMemoryCredentialStore`):
 nothing persists across a reload; re-login on reload is the recommended
-posture. `LocalStorageCredentialStore` is provided as a documented adapter
-— **security warning**: localStorage is origin-scoped, synchronous,
-readable by ANY script running on the origin (XSS ⇒ token theft), and
-survives logout unless explicitly deleted. See the class JSDoc in
-`src/credential-store.ts` before opting in.
+posture (note: the redirect PKCE flow itself needs a navigation-surviving
+store — see "Using the redirect flow safely" above).
+`LocalStorageCredentialStore` is provided as a documented adapter —
+**security warning**: localStorage is origin-scoped, synchronous, readable
+by ANY script running on the origin, and survives logout unless explicitly
+deleted. It holds THREE payload families per region — bearer/refresh
+tokens, the pending-login record (PKCE verifier + CSRF state), and the DCR
+client registration — all XSS-exfiltratable. On logout delete every key in
+`CREDENTIAL_KEYS.all(region)` for each region used. Backend failures
+(quota, private browsing) re-throw as coded `OAUTH_CONFIG_ERROR`. See the
+class JSDoc in `src/credential-store.ts` before opting in.
 
 ## Node-only surfaces
 

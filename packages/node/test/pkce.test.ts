@@ -17,7 +17,7 @@
 // core WebCrypto path).
 
 import { createHash } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { PkceChallenge } from "../src/auth/pkce.js";
 
@@ -105,5 +105,28 @@ describe("TestPkceChallenge (test_auth_pkce.py:25)", () => {
         "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
       ),
     ).toBe("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
+  });
+
+  it("FB-10 (pair-B, b9-reviewB-resolution.md): missing crypto.subtle rejects with coded OAUTH_CONFIG_ERROR", async () => {
+    // b9-reviewB-threat.md F7: in an insecure browser context
+    // (http:// non-localhost) `crypto.getRandomValues` exists but
+    // `crypto.subtle` is undefined — the flow used to die with a bare
+    // uncoded TypeError, contrary to R5.
+    const original = globalThis.crypto;
+    vi.stubGlobal("crypto", {
+      getRandomValues: original.getRandomValues.bind(original),
+    });
+    try {
+      await expect(
+        PkceChallenge.challengeFor(
+          "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+        ),
+      ).rejects.toMatchObject({ code: "OAUTH_CONFIG_ERROR" });
+      await expect(PkceChallenge.generate()).rejects.toMatchObject({
+        code: "OAUTH_CONFIG_ERROR",
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

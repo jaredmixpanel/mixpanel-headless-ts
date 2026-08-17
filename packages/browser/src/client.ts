@@ -313,11 +313,15 @@ function guardBrowserFetch(inner: typeof fetch): typeof fetch {
 
 /**
  * Wrap the core client so its in-memory session-replacement path
- * (`client.use({account})`) refuses service accounts — §2.3 path 4.
- * Installed WITHOUT a core edit through the `WorkspaceOptions.client`
- * injection point (the seam the packet row names); a Proxy preserves
- * the closure-backed getters (`session`, `projectId`, …) of the core
- * client object.
+ * (`client.use({account})`) refuses service accounts — §2.3 path 4 —
+ * and so every client DERIVED from it (`client.withProject(...)`)
+ * carries the same guard — §2.3 path 6, added by the pair-B blind
+ * review (b9-reviewB-threat.md F1 / b9-reviewB-e2e.md F1: core
+ * `withProject` builds a fresh, unguarded client, which bypassed the
+ * refusal until the guard recursed). Installed WITHOUT a core edit
+ * through the `WorkspaceOptions.client` injection point (the seam the
+ * packet row names); a Proxy preserves the closure-backed getters
+ * (`session`, `projectId`, …) of the core client object.
  *
  * @param client - The assembled core client.
  * @returns The guarded client, injected into the core `Workspace`.
@@ -335,6 +339,17 @@ function guardClientUse(client: MixpanelClient): MixpanelClient {
           }
           return target.use(useOptions);
         };
+      }
+      if (property === "withProject") {
+        // §2.3 path 6: re-guard the derived client (recursively — a
+        // chain of withProject calls stays gated at every link). The
+        // derived client already inherits the export-guarded fetch and
+        // the browser token resolver from the core options threading.
+        return (
+          projectId: string,
+          newWorkspaceId: number | null = null,
+        ): MixpanelClient =>
+          guardClientUse(target.withProject(projectId, newWorkspaceId));
       }
       return Reflect.get(target, property, target);
     },

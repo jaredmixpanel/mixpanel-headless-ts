@@ -42,6 +42,7 @@ export {
 export {
   beginLogin,
   completeLogin,
+  DEFAULT_MAX_PENDING_AGE_MS,
   type BeginLoginOptions,
   type BeginLoginResult,
   type CompleteLoginOptions,
@@ -65,6 +66,11 @@ export {
   parseOAuthTokens,
   type OAuthClientInfo,
 } from "../../core/src/auth/token.js";
-export { Workspace } from "../../core/src/workspace.js";
+// TYPE-ONLY re-export (pair-B FB-2, b9-reviewB-threat.md F2): a VALUE
+// export let `new Workspace({session})` accept a service-account
+// session with neither the §2.3 SA gate nor the §2.4 export guard.
+// Annotations keep working; construction goes through the gated
+// factories (`createBrowserWorkspace` / `createBrowserWorkspaceFromStore`).
+export type { Workspace } from "../../core/src/workspace.js";
 // The error hierarchy (coded errors; programs key on `.code` — R5).
 export * from "../../core/src/errors.js";

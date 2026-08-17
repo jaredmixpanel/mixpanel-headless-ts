@@ -239,6 +239,13 @@ export async function postTokenRequest(
     if (!(exc instanceof MixpanelHeadlessError)) {
       throw exc;
     }
+    // SECURITY NOTE (pair-B B9-ARB-B; Python-parity `flow.py:596-605`,
+    // R10.7 — do not fix unilaterally): `response_data` carries the
+    // FULL 200 token payload (possibly live bearer/refresh material)
+    // in plaintext. Shared by the node refresh path AND the browser
+    // exchange path. Python-first fix queued:
+    // context/phase3/bug-reports/python-oauth-error-details-token-payload.md;
+    // Phase-4 outbound ledger row 1 cites this site.
     throw new OAuthError(
       `${operation} response missing required fields: ${exc.message}`,
       errorCode,

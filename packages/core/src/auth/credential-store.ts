@@ -95,4 +95,21 @@ export const CREDENTIAL_KEYS = {
    * @returns The namespaced key.
    */
   pendingLogin: (region: string): string => `mp.pending_login.${region}`,
+
+  /**
+   * EVERY key family for a region, in table order — the supported
+   * logout/wipe enumeration (pair-B FB-9, `b9-reviewB-resolution.md`:
+   * correct logout previously required the caller to know all three
+   * builders × every region used). Delete each returned key to clear
+   * a region completely.
+   *
+   * @param region - Mixpanel region.
+   * @returns The three namespaced keys (tokens, client info, pending
+   *   login).
+   */
+  all: (region: string): readonly string[] => [
+    CREDENTIAL_KEYS.tokens(region),
+    CREDENTIAL_KEYS.clientInfo(region),
+    CREDENTIAL_KEYS.pendingLogin(region),
+  ],
 } as const;

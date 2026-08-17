@@ -156,6 +156,52 @@ describe("beginLogin", () => {
     expect(pending["created_at"]).toBe("2026-01-15T10:30:00+00:00");
   });
 
+  it.each([
+    ["not a url"],
+    ["/relative/callback"],
+    ["javascript:alert(1)"],
+    ["http://app.example.com/oauth/callback"],
+  ])(
+    "FB-4 (pair-B): rejects untrusted redirectUri %j with OAUTH_CONFIG_ERROR before any network",
+    async (redirectUri) => {
+      // b9-reviewB-threat.md F4: the redirect URI must be an absolute
+      // https URL (http only for loopback, RFC 8252 §7.3 — the
+      // `flow.py:54-58` localhost posture); it must never be derived
+      // from user input (the D2 spike proved DCR registers arbitrary
+      // third-party https origins).
+      const transport = cannedIdp();
+      await expect(
+        beginLogin({
+          region: "us",
+          redirectUri,
+          store: new InMemoryCredentialStore(),
+          fetch: transport.fetch,
+        }),
+      ).rejects.toMatchObject({ code: "OAUTH_CONFIG_ERROR" });
+      expect(transport.captures).toHaveLength(0);
+    },
+  );
+
+  it.each([
+    ["http://localhost:3000/oauth/callback"],
+    ["http://127.0.0.1:19284/callback"],
+  ])(
+    "FB-4 (pair-B): loopback http redirect URIs stay allowed (%s)",
+    async (redirectUri) => {
+      const transport = cannedIdp();
+      const result = await beginLogin({
+        region: "us",
+        redirectUri,
+        store: new InMemoryCredentialStore(),
+        fetch: transport.fetch,
+        now: () => FROZEN_NOW_MS,
+      });
+      expect(
+        new URL(result.authorizeUrl).searchParams.get("redirect_uri"),
+      ).toBe(redirectUri);
+    },
+  );
+
   it("generates a 43-char base64url state, fresh per call (`token_urlsafe(32)` shape)", async () => {
     const store = new InMemoryCredentialStore();
     const transport = cannedIdp();
@@ -259,6 +305,7 @@ describe("completeLogin", () => {
         returnUrl: shape(state),
         store,
         fetch: transport.fetch,
+        now: () => FROZEN_NOW_MS,
       });
       expect(tokens.token_type).toBe("Bearer");
     }
@@ -287,6 +334,7 @@ describe("completeLogin", () => {
       returnUrl,
       store,
       fetch: transport.fetch,
+      now: () => FROZEN_NOW_MS,
     });
     await expect(
       completeLogin({
@@ -294,6 +342,7 @@ describe("completeLogin", () => {
         returnUrl,
         store,
         fetch: transport.fetch,
+        now: () => FROZEN_NOW_MS,
       }),
     ).rejects.toMatchObject({ code: "BROWSER_NO_PENDING_LOGIN" });
   });
@@ -310,6 +359,7 @@ describe("completeLogin", () => {
       returnUrl: `?code=auth-code&state=${euResult.state}`,
       store,
       fetch: transport.fetch,
+      now: () => FROZEN_NOW_MS,
     });
     expect(await store.get(CREDENTIAL_KEYS.pendingLogin("eu"))).toBeNull();
     expect(await store.get(CREDENTIAL_KEYS.pendingLogin("us"))).not.toBeNull();
@@ -330,6 +380,155 @@ describe("completeLogin", () => {
       ).rejects.toMatchObject({ code: "OAUTH_CONFIG_ERROR" });
     },
   );
+
+  describe("pair-B fixes (b9-reviewB-resolution.md — blind-review findings)", () => {
+    it("FB-8: accepts `location.href` with a hash-router fragment (code-first ordering)", async () => {
+      // b9-reviewB-threat.md F8 / b9-reviewB-e2e.md F4: the shared core
+      // parser folds the fragment into the last query value (CPython
+      // parse_qs parity); the browser adapter must strip the fragment
+      // BEFORE delegating, because its documented input is location.href.
+      const store = new InMemoryCredentialStore();
+      const transport = cannedIdp();
+      const { state } = await begin(store, transport);
+      const tokens = await completeLogin({
+        region: "us",
+        returnUrl: `${REDIRECT_URI}?code=auth-code&state=${state}#/dashboard`,
+        store,
+        fetch: transport.fetch,
+        now: () => FROZEN_NOW_MS,
+      });
+      expect(tokens.token_type).toBe("Bearer");
+    });
+
+    it("FB-8: fragment content is NEVER transmitted to the token endpoint (state-first ordering)", async () => {
+      const store = new InMemoryCredentialStore();
+      const transport = cannedIdp();
+      const { state } = await begin(store, transport);
+      await completeLogin({
+        region: "us",
+        returnUrl: `${REDIRECT_URI}?state=${state}&code=auth-code#session=abc`,
+        store,
+        fetch: transport.fetch,
+        now: () => FROZEN_NOW_MS,
+      });
+      const tokenRequest = transport.captures.find((request) =>
+        request.url.endsWith("token/"),
+      );
+      expect(tokenRequest?.body).toContain("code=auth-code&redirect_uri=");
+      expect(tokenRequest?.body).not.toContain("%23session");
+    });
+
+    it("FB-5: a pending record older than the default 30-minute lifetime is refused AND consumed", async () => {
+      // b9-reviewB-threat.md F5 / b9-reviewB-e2e.md F6: created_at was
+      // written but never read — no TTL.
+      const store = new InMemoryCredentialStore();
+      const transport = cannedIdp();
+      const { state } = await begin(store, transport);
+      const thirtyOneMinutes = 31 * 60 * 1000;
+      await expect(
+        completeLogin({
+          region: "us",
+          returnUrl: `?code=auth-code&state=${state}`,
+          store,
+          fetch: transport.fetch,
+          now: () => FROZEN_NOW_MS + thirtyOneMinutes,
+        }),
+      ).rejects.toMatchObject({ code: "BROWSER_NO_PENDING_LOGIN" });
+      // Expiry consumes the record (the stale verifier does not stay
+      // redeemable at rest).
+      expect(await store.get(CREDENTIAL_KEYS.pendingLogin("us"))).toBeNull();
+      // Nothing reached the token endpoint.
+      expect(
+        transport.captures.filter((request) => request.url.endsWith("token/")),
+      ).toHaveLength(0);
+    });
+
+    it("FB-5: a record within the default lifetime still completes", async () => {
+      const store = new InMemoryCredentialStore();
+      const transport = cannedIdp();
+      const { state } = await begin(store, transport);
+      const tokens = await completeLogin({
+        region: "us",
+        returnUrl: `?code=auth-code&state=${state}`,
+        store,
+        fetch: transport.fetch,
+        now: () => FROZEN_NOW_MS + 29 * 60 * 1000,
+      });
+      expect(tokens.token_type).toBe("Bearer");
+    });
+
+    it("FB-5: maxPendingAgeMs is an overridable seam", async () => {
+      const store = new InMemoryCredentialStore();
+      const transport = cannedIdp();
+      const { state } = await begin(store, transport);
+      await expect(
+        completeLogin({
+          region: "us",
+          returnUrl: `?code=auth-code&state=${state}`,
+          store,
+          fetch: transport.fetch,
+          now: () => FROZEN_NOW_MS + 2_000,
+          maxPendingAgeMs: 1_000,
+        }),
+      ).rejects.toMatchObject({ code: "BROWSER_NO_PENDING_LOGIN" });
+    });
+
+    it("FB-6: two concurrent completeLogin calls with the same returnUrl share ONE exchange (React StrictMode twin)", async () => {
+      // b9-reviewB-e2e.md F2: load→parse→delete spans awaits, so both
+      // concurrent calls redeemed the code (2 token POSTs; one rejects
+      // against a single-use-code IdP).
+      const store = new InMemoryCredentialStore();
+      const transport = cannedIdp();
+      const { state } = await begin(store, transport);
+      const returnUrl = `?code=auth-code&state=${state}`;
+      const options = {
+        region: "us",
+        returnUrl,
+        store,
+        fetch: transport.fetch,
+        now: () => FROZEN_NOW_MS,
+      } as const;
+      const [first, second] = await Promise.allSettled([
+        completeLogin(options),
+        completeLogin(options),
+      ]);
+      expect(first.status).toBe("fulfilled");
+      expect(second.status).toBe("fulfilled");
+      expect(
+        transport.captures.filter((request) => request.url.endsWith("token/")),
+      ).toHaveLength(1);
+    });
+
+    it("FB-6: a concurrent call with a DIFFERENT returnUrl waits, then fails clean (no second exchange)", async () => {
+      const store = new InMemoryCredentialStore();
+      const transport = cannedIdp();
+      const { state } = await begin(store, transport);
+      const [first, second] = await Promise.allSettled([
+        completeLogin({
+          region: "us",
+          returnUrl: `?code=auth-code&state=${state}`,
+          store,
+          fetch: transport.fetch,
+          now: () => FROZEN_NOW_MS,
+        }),
+        completeLogin({
+          region: "us",
+          returnUrl: `?code=other-code&state=${state}`,
+          store,
+          fetch: transport.fetch,
+          now: () => FROZEN_NOW_MS,
+        }),
+      ]);
+      expect(first.status).toBe("fulfilled");
+      expect(second.status).toBe("rejected");
+      expect(
+        (second as PromiseRejectedResult).reason as { code?: string },
+      ).toMatchObject({ code: "BROWSER_NO_PENDING_LOGIN" });
+      expect(
+        transport.captures.filter((request) => request.url.endsWith("token/")),
+      ).toHaveLength(1);
+    });
+  });
 
   describe("network-error rows (test_auth_flow.py:802 exchange rows)", () => {
     /**
@@ -356,6 +555,7 @@ describe("completeLogin", () => {
         returnUrl: `?code=auth-code&state=${state}`,
         store,
         fetch: transport.fetch,
+        now: () => FROZEN_NOW_MS,
       }).then(
         () => null,
         (exc: unknown) => exc,

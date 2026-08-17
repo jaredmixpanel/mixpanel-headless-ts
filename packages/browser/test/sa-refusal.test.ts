@@ -10,6 +10,7 @@
 
 import { describe, expect, it } from "vitest";
 
+import * as browserEntry from "../src/index.js";
 import type { Session } from "../../core/src/auth/session.js";
 import { Secret } from "../../core/src/secret.js";
 import {
@@ -159,5 +160,77 @@ describe("§2.3 path 4 — session switching on a browser-built facade", () => {
     await expect(ws.use({ account: "anything" })).rejects.toMatchObject({
       code: "UNPORTED_RESOLVER_SEAM",
     });
+  });
+});
+
+describe("§2.3 path 6 (pair-B FB-1) — clients DERIVED via withProject keep the SA guard", () => {
+  // Pair-B blind review (b9-reviewB-threat.md F1 / b9-reviewB-e2e.md F1,
+  // both reproduced by the arbiter): `withProject` returns a fresh core
+  // client, so without recursion the §2.3 path-4 guard is bypassed and
+  // `derived.use({account: SA})` builds a Basic header in the browser
+  // build. The guard must wrap every derived client too.
+  it("derived.use({account: SA}) is refused; no Basic header ever reaches the wire", async () => {
+    const transport = fakeTransport(() => ({ status: 200, json: {} }));
+    const ws = createBrowserWorkspace({
+      token: "tok-123",
+      projectId: "12345",
+      region: "us",
+      fetch: transport.fetch,
+    });
+    const derived = ws.client.withProject("67890");
+    await expect(
+      derived.use({ account: serviceAccountSession().account }),
+    ).rejects.toMatchObject({ code: BROWSER_SERVICE_ACCOUNT_REFUSED });
+    // Atomic-on-failure: the derived client keeps its oauth_token session.
+    expect(derived.session.account.type).toBe("oauth_token");
+    expect(transport.captures).toHaveLength(0);
+  });
+
+  it("the guard RECURSES: a client derived from a derived client still refuses SA", async () => {
+    const transport = fakeTransport(() => ({ status: 200, json: {} }));
+    const ws = createBrowserWorkspace({
+      token: "tok-123",
+      projectId: "12345",
+      region: "us",
+      fetch: transport.fetch,
+    });
+    const twiceDerived = ws.client.withProject("67890").withProject("13579");
+    await expect(
+      twiceDerived.use({ account: serviceAccountSession().account }),
+    ).rejects.toMatchObject({ code: BROWSER_SERVICE_ACCOUNT_REFUSED });
+    expect(transport.captures).toHaveLength(0);
+  });
+
+  it("derived clients stay fully usable for non-SA traffic (guard is transparent)", async () => {
+    const transport = fakeTransport(() => ({ status: 200, json: {} }));
+    const ws = createBrowserWorkspace({
+      token: "tok-123",
+      projectId: "12345",
+      region: "us",
+      fetch: transport.fetch,
+    });
+    const derived = ws.client.withProject("67890");
+    expect(derived.projectId).toBe("67890");
+    await derived.use({ project: "24680" });
+    expect(derived.projectId).toBe("24680");
+  });
+});
+
+describe("§2.3 path 7 (pair-B FB-2) — no raw Workspace constructor in the browser entry", () => {
+  // Pair-B blind review (b9-reviewB-threat.md F2, reproduced): a VALUE
+  // re-export of core `Workspace` let `new Workspace({session: SA})`
+  // bypass both the SA gate and the export-refusing fetch wrap. The
+  // entry now re-exports `Workspace` as a TYPE only — annotations keep
+  // working; construction must go through the gated factories.
+  it("`Workspace` is type-only: the entry point exposes no runtime value", () => {
+    expect(Object.keys(browserEntry)).not.toContain("Workspace");
+  });
+
+  it("the gated factories remain the only construction paths exported", () => {
+    expect(typeof browserEntry.createBrowserWorkspace).toBe("function");
+    expect(typeof browserEntry.createBrowserWorkspaceFromStore).toBe(
+      "function",
+    );
+    expect(typeof browserEntry.browserSession).toBe("function");
   });
 });

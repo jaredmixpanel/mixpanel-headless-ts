@@ -26,6 +26,8 @@
  * verifier — Python is the behavior arbiter, so 64 random bytes it is.
  */
 
+import { OAuthError } from "../errors.js";
+
 /**
  * The RFC 4648 §5 base64url alphabet (`-`/`_`, no `+`/`/`). The core
  * `base64EncodeUtf8` (`account.ts`) is TEXT→base64 over the STANDARD
@@ -150,8 +152,24 @@ export class PkceChallenge {
    * @returns The base64url-encoded challenge (no padding).
    */
   static async challengeFor(verifier: string): Promise<string> {
+    // Pair-B FB-10 (`b9-reviewB-resolution.md`): in an insecure
+    // browser context (any http:// origin other than localhost)
+    // `crypto.getRandomValues` exists but `crypto.subtle` is
+    // UNDEFINED — fail with a coded error (R5) instead of a bare
+    // TypeError. Browser-environmental branch with no Python twin
+    // (hashlib is always available); R9.3 arbitrated.
+    const subtle = (globalThis.crypto as Crypto | undefined)?.subtle as
+      SubtleCrypto | undefined;
+    if (subtle === undefined) {
+      throw new OAuthError(
+        "WebCrypto SubtleCrypto is unavailable — PKCE requires a secure " +
+          "context (https or localhost) in browsers, or Node >= 20.",
+        "OAUTH_CONFIG_ERROR",
+        { seam: "crypto.subtle" },
+      );
+    }
     const ascii = new TextEncoder().encode(verifier);
-    const digest = await crypto.subtle.digest("SHA-256", ascii);
+    const digest = await subtle.digest("SHA-256", ascii);
     return base64UrlEncodeBytes(new Uint8Array(digest));
   }
 }
