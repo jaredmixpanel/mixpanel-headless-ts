@@ -112,6 +112,22 @@ merge-forward + re-pin across all three open PRs). Report:
 |---|---|---|
 | (e) | `paginate_all()` silent-empty on scalar top-level JSON (`pagination.py:260` region) | `context/phase4/bug-reports/python-paginate-all-scalar-response.md` |
 
+**ADDENDUM 2026-08-17c — corpus-pin provenance after the stack restack.**
+GitHub's Stacked-PR rebase (user-initiated; completed locally after the
+GitHub outage broke the built-in flow) rewrote the #207/#208 branch
+history onto the #206 review commit `3c9e265`: new tips #207 `c3dfeaf`,
+#208 `26d9d27`; **zero conflicts** (old-vs-new tip diff = exactly the
+12-line docstring insertion). Consequence: the corpus pin
+`700db996cc95…` now names a PRE-rebase commit no longer on any branch
+(content identical at rebased SHA `7219fdb`; old tips kept as local tags
+`pre-restack-207`/`pre-restack-208`). Nothing breaks mechanically —
+stamps are injected strings, so the Python D8 drift check and the TS
+snapshot replay are content-based and stay green — but provenance
+resolution of the pin SHA requires the tags/reflog until the **next
+re-pin event** (item (e) fix, post-merge), which refreshes stamps to a
+then-current SHA per the standing choreography. Expect further SHA churn
+at every future restack (e.g. when #206 merges); same posture applies.
+
 **ADDENDUM 2026-08-17b — first live QA pass (pre-burn-in evidence + follow-ups).**
 An independent Claude session ran the full mixpanelyst/dashboard-expert
 workflow live through the TS packages (OAuth account, project 3). Headline:
