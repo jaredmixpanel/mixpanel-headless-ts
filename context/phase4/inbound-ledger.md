@@ -112,6 +112,30 @@ merge-forward + re-pin across all three open PRs). Report:
 |---|---|---|
 | (e) | `paginate_all()` silent-empty on scalar top-level JSON (`pagination.py:260` region) | `context/phase4/bug-reports/python-paginate-all-scalar-response.md` |
 
+**ADDENDUM 2026-08-17d — first-real-CI shakeout: RESOLVED (corpus now
+3,264 @ `af999c9`).** The stack's first genuine GitHub Actions runs
+surfaced three latent issues, all fixed same-day: (1) `mkdocs build
+--strict` failed on 5 griffe warnings from coding-pass Raises
+docstrings with under-indented continuation lines (fixed on #207,
+`b13dbad` — `just check` never ran mkdocs, a real superset-claim gap);
+(2) the conformance CI job ran Python 3.12 while the manifest records
+its extraction interpreter 3.14.6, guaranteeing D8 manifest drift — the
+job now reads its interpreter pin FROM the manifest (`jq` + `uv python
+pin`, self-synchronizing); (3) the drift check correctly demanded the 2
+ARB refresh-path vectors queued for "the next re-pin event" — that
+re-pin executed on #208 (`9ea3790`): corpus **3,262 → 3,264**, stamps →
+`af999c9` (2026-08-17), TS re-synced and green at **3,264/0/0**
+(`e052119`; sync-corpus now sources the api-map from this repo's
+`context/`, its post-relocation home). Bonus: a live Hypothesis flake
+(`list_contains` kwargs collision on a generated key named `property`)
+fixed by excluding the three reserved parameter names from the strategy
+(`af999c9`). This SUPERSEDES the provenance concern in 2026-08-17c —
+the pin is post-restack and branch-reachable again. Residual: #206's
+outage-killed CodeQL analysis can't be re-run via API (default-setup
+restriction); re-trigger from the UI or let the next push/merge heal
+it — #207's composite "CodeQL" check failure is derived (missing base
+analysis) and clears with it.
+
 **ADDENDUM 2026-08-17c — corpus-pin provenance after the stack restack.**
 GitHub's Stacked-PR rebase (user-initiated; completed locally after the
 GitHub outage broke the built-in flow) rewrote the #207/#208 branch
