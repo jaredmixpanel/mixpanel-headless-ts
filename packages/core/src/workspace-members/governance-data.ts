@@ -59,8 +59,9 @@
  *   `packages/core` is runtime-agnostic (no `node:fs`), so the byte
  *   source is injected via {@link LookupUploadSeams.readFile}
  *   (`WorkspaceOptions.readFile`); the default throws
- *   `UNPORTED_FILE_READ_SEAM`. TODO(port): B8 wires `node:fs` in
- *   `packages/node`.
+ *   `UNPORTED_FILE_READ_SEAM`. The real reader ships in
+ *   `packages/node` (`nodeReadFile`, fs-seams.ts — B8-N1); core stays
+ *   runtime-agnostic (core-alone posture, b8-packets.md §4.4).
  * - **W7-D2 — the poll clock.** Python's `_poll_lookup_upload` mixes
  *   `time.monotonic()` (deadline) with `time.sleep()` (`:8099-8102`).
  *   The sleep rides the client's existing injected seam
@@ -210,18 +211,21 @@ export interface LookupUploadLogger {
 }
 
 /**
- * The default {@link LookupUploadSeams.readFile} — B8 replaces it.
+ * The default {@link LookupUploadSeams.readFile} — the real reader
+ * ships in `packages/node` (`nodeReadFile`, fs-seams.ts — B8-N1); this
+ * default stays so core without a wired reader still throws the coded
+ * error (core-alone posture, b8-packets.md §4.4; marker retired at the
+ * B8 pair-A arbiter, `b8-reviewA-resolution.md` ASR-F2).
  *
  * @returns Never; always throws.
  * @throws MixpanelHeadlessError - Code `UNPORTED_FILE_READ_SEAM`.
  */
 export function unportedReadFile(): Promise<Uint8Array> {
-  // TODO(port): B8 wires `node:fs` (`readFile`) in `packages/node`;
-  // `packages/core` stays runtime-agnostic (packet §9 W7-D1).
   return Promise.reject(
     new MixpanelHeadlessError(
-      "Workspace file-read seam 'readFile' is not ported yet (batch B8): " +
-        "upload_lookup_table needs a runtime file reader",
+      "Workspace file-read seam 'readFile' has no implementation in " +
+        "@mixpanel-headless/core alone — inject `readFile` " +
+        "(packages/node: nodeReadFile)",
       "UNPORTED_FILE_READ_SEAM",
       { seam: "readFile" },
     ),

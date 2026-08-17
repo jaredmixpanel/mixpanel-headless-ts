@@ -848,3 +848,55 @@ describe("B7-ARB-A SEM-F1 falsiness locks (b7-reviewA-resolution.md)", () => {
     );
   });
 });
+
+// B8-ARB-A ASR-F1 (b8-reviewA-resolution.md): the COMPOSITION half of
+// `test_bridge_export.py::test_export_bridge_attaches_settings_custom_header`
+// (:274) — the N2 translation split the Python lock and kept only the
+// effect-level "supplied headers land verbatim" half
+// (packages/node/test/bridge.test.ts `test_export_bridge_attaches_custom_headers`).
+// This locks the joining orchestration: `[settings].custom_header` read
+// via `getCustomHeader()` becomes the one-entry headers bag handed to
+// `effects.bridge.export` (accounts-ops.ts:847-848) — a name/value swap
+// or dropped-header regression there now fails here.
+describe("B8-ARB-A ASR-F1 custom-header export composition lock (test_bridge_export.py:274)", () => {
+  it("[settings].custom_header propagates into the exported headers bag through the orchestration", async () => {
+    const exportedHeaders: (Readonly<Record<string, string>> | null)[] = [];
+    const { effects, config } = makeEffects({
+      bridge: {
+        load: () => null,
+        export: (options): string => {
+          exportedHeaders.push(options.headers);
+          return options.to;
+        },
+        remove: () => false,
+      },
+    });
+    config.state.customHeader = ["X-Mixpanel-Cluster", "cell-3"];
+    const accounts = createAccountsNamespace(effects);
+    await accounts.add("team", SA_OPTS);
+
+    await accounts.exportBridge({ to: "/fake/bridge.json", account: "team" });
+
+    expect(exportedHeaders).toEqual([{ "X-Mixpanel-Cluster": "cell-3" }]);
+  });
+
+  it("no custom header configured → the exported headers bag stays null (anti-vacuity companion)", async () => {
+    const exportedHeaders: (Readonly<Record<string, string>> | null)[] = [];
+    const { effects } = makeEffects({
+      bridge: {
+        load: () => null,
+        export: (options): string => {
+          exportedHeaders.push(options.headers);
+          return options.to;
+        },
+        remove: () => false,
+      },
+    });
+    const accounts = createAccountsNamespace(effects);
+    await accounts.add("team", SA_OPTS);
+
+    await accounts.exportBridge({ to: "/fake/bridge.json", account: "team" });
+
+    expect(exportedHeaders).toEqual([null]);
+  });
+});

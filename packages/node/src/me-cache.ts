@@ -177,6 +177,13 @@ export class MeCache implements MeCacheStore {
         );
         return null;
       }
+      // Python degrades `(json.JSONDecodeError, OSError)` only
+      // (`me.py:514`) — a UnicodeDecodeError escapes RAW. The TS twin
+      // (TextDecoder fatal-mode TypeError) propagates unchanged
+      // (B8-ARB-A SEM-F2c, live CPython probe in the resolution).
+      if (exc instanceof TypeError) {
+        throw exc;
+      }
       this.#logger.debug?.(
         `Corrupted cache file me.json: ${exc instanceof Error ? exc.message : String(exc)}`,
       );

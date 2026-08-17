@@ -24,6 +24,7 @@ import { parseAccount, type Account } from "../../../core/src/auth/account.js";
 import type { BridgeView } from "../../../core/src/auth/resolver.js";
 import { OAuthTokens, parseOAuthTokens } from "../../../core/src/auth/token.js";
 import type { BridgeEffects } from "../../../core/src/accounts/auth-effects.js";
+import { sortedByCodepoint } from "../../../core/src/compat/codepoint.js";
 import { isPythonDict } from "../../../core/src/compat/python-dict.js";
 import { pythonInt } from "../../../core/src/compat/python-int.js";
 import {
@@ -38,7 +39,9 @@ import {
 } from "../../../core/src/errors.js";
 import { Secret } from "../../../core/src/secret.js";
 import {
+  CredentialPathError,
   atomicWriteBytes,
+  isErrnoError,
   readCredentialText,
   rejectIfSymlink,
 } from "../io-utils.js";
@@ -211,14 +214,18 @@ export function loadBridge(path?: string | null): BridgeFile | null {
 
   for (const candidate of candidates) {
     // Symlink probe BEFORE the existence check (`bridge.py:166-176`).
+    // Python wraps ANY OSError from the probe (`except OSError`) —
+    // errno-bearing lstat failures code up like the symlink refusal
+    // (B8-ARB-A SEM-F6 family, `b8-reviewA-resolution.md`).
     try {
       rejectIfSymlink(candidate);
     } catch (exc) {
-      if (!(exc instanceof MixpanelHeadlessError)) {
+      if (!(exc instanceof MixpanelHeadlessError) && !isErrnoError(exc)) {
         throw exc;
       }
+      const rendered = exc instanceof Error ? exc.message : String(exc);
       throw new ConfigError(
-        `Could not read bridge file at ${candidate}: ${exc.message}`,
+        `Could not read bridge file at ${candidate}: ${rendered}`,
         { path: candidate },
         { cause: exc },
       );
@@ -230,6 +237,17 @@ export function loadBridge(path?: string | null): BridgeFile | null {
     try {
       payload = JSON.parse(readCredentialText(candidate));
     } catch (exc) {
+      // Python wraps `(OSError, json.JSONDecodeError)` only
+      // (`bridge.py:181`); a UnicodeDecodeError escapes RAW — the TS
+      // twin (TextDecoder fatal-mode TypeError) propagates unchanged
+      // (B8-ARB-A SEM-F2b, live CPython probe in the resolution).
+      if (
+        !(exc instanceof CredentialPathError) &&
+        !(exc instanceof SyntaxError) &&
+        !isErrnoError(exc)
+      ) {
+        throw exc;
+      }
       throw new ConfigError(
         `Could not read bridge file at ${candidate}: ` +
           `${exc instanceof Error ? exc.message : String(exc)}`,
@@ -264,15 +282,19 @@ export function loadBridge(path?: string | null): BridgeFile | null {
  */
 function readBrowserTokens(name: string): OAuthTokens {
   const path = join(accountDir(name), "tokens.json");
+  // Python wraps ANY OSError from the probe (`bridge.py:221-227`
+  // `except OSError`) — errno-bearing lstat failures included
+  // (B8-ARB-A SEM-F6 family, `b8-reviewA-resolution.md`).
   try {
     rejectIfSymlink(path);
   } catch (exc) {
-    if (!(exc instanceof MixpanelHeadlessError)) {
+    if (!(exc instanceof MixpanelHeadlessError) && !isErrnoError(exc)) {
       throw exc;
     }
+    const rendered = exc instanceof Error ? exc.message : String(exc);
     throw new OAuthError(
       `Could not read OAuth tokens for account '${name}' from ${path}: ` +
-        `${exc.message}`,
+        `${rendered}`,
       "OAUTH_TOKEN_ERROR",
       { account_name: name, path },
       { cause: exc },
@@ -290,6 +312,16 @@ function readBrowserTokens(name: string): OAuthTokens {
   try {
     payload = JSON.parse(readCredentialText(path));
   } catch (exc) {
+    // Python wraps `(OSError, json.JSONDecodeError)` only
+    // (`bridge.py:235-242`); the UnicodeDecodeError twin (TextDecoder
+    // fatal-mode TypeError) propagates RAW (B8-ARB-A SEM-F2 family).
+    if (
+      !(exc instanceof CredentialPathError) &&
+      !(exc instanceof SyntaxError) &&
+      !isErrnoError(exc)
+    ) {
+      throw exc;
+    }
     throw new OAuthError(
       `Could not read OAuth tokens for account '${name}' from ${path}: ` +
         `${exc instanceof Error ? exc.message : String(exc)}`,
@@ -399,7 +431,10 @@ function serializeBridge(bridge: BridgeFile): Uint8Array {
 /**
  * Recursively sort object keys (the `json.dumps(sort_keys=True)`
  * twin; string keys sort lexicographically and JS preserves string-key
- * insertion order).
+ * insertion order). Python `sorted()` orders by CODEPOINT, so the
+ * comparator is R11.5's `sortedByCodepoint` — the default
+ * `Array.prototype.sort` compares UTF-16 code units, which inverts
+ * e.g. `"｡"` vs `"😀"` (B8-ARB-A SEM-F4, `b8-reviewA-resolution.md`).
  *
  * @param value - Any JSON-serializable value.
  * @returns A key-sorted deep copy.
@@ -410,7 +445,7 @@ function sortKeys(value: unknown): unknown {
   }
   if (isPythonDict(value)) {
     const out: Record<string, unknown> = {};
-    for (const key of Object.keys(value).sort()) {
+    for (const key of sortedByCodepoint(Object.keys(value))) {
       out[key] = sortKeys(value[key]);
     }
     return out;
@@ -445,8 +480,10 @@ export interface ExportBridgeOptions {
  * @returns The path written (same as `options.to`).
  * @throws OAuthError - oauth_browser account with missing/malformed
  *   on-disk tokens.
- * @throws ConfigError - Bridge validation failure (bad project format,
- *   non-positive workspace — the documented `BridgeFile` contract).
+ * @throws ParamValidationError - Bad project format / non-positive
+ *   workspace, RAW (Python's pydantic ValidationError escapes
+ *   `export_bridge` unwrapped, `bridge.py:357-364` — B8-ARB-A SEM-F3;
+ *   the Python docstring's ConfigError claim is wrong in Python too).
  */
 export function exportBridge(
   account: Account,
@@ -456,24 +493,19 @@ export function exportBridge(
   if (account.type === "oauth_browser") {
     tokens = readBrowserTokens(account.name);
   }
-  let bridge: BridgeFile;
-  try {
-    bridge = {
-      version: 2,
-      account,
-      tokens,
-      project: validatedProject(options.project ?? null),
-      workspace: validatedWorkspace(options.workspace ?? null),
-      headers: options.headers ?? {},
-    };
-  } catch (exc) {
-    if (!(exc instanceof MixpanelHeadlessError)) {
-      throw exc;
-    }
-    throw new ConfigError(`Invalid bridge fields: ${exc.message}`, null, {
-      cause: exc,
-    });
-  }
+  // Invalid pins propagate the model's ParamValidationError RAW —
+  // Python builds `BridgeFile(...)` with no try/except
+  // (`bridge.py:357-364`; the pydantic ValidationError escapes
+  // unwrapped, matching the established validation-error convention).
+  // B8-ARB-A SEM-F3, `b8-reviewA-resolution.md`.
+  const bridge: BridgeFile = {
+    version: 2,
+    account,
+    tokens,
+    project: validatedProject(options.project ?? null),
+    workspace: validatedWorkspace(options.workspace ?? null),
+    headers: options.headers ?? {},
+  };
   const parent = dirname(options.to);
   if (!existsSync(parent)) {
     mkdirSync(parent, { recursive: true, mode: 0o700 });
@@ -601,10 +633,13 @@ export function materializeBridgeTokens(bridge: BridgeFile): string | null {
 
 /**
  * The `Workspace()` startup composition (`workspace.py:476-513`):
- * `load_bridge()` + the materialization side effect. B8-N3's default
- * `ResolverSources` wiring calls THIS (not the pure `loadBridge`) at
- * facade construction; in-session `use()` re-resolution goes through
- * the pure loader (Python does not re-materialize on `use`).
+ * `load_bridge()` + the materialization side effect. The SHIPPED
+ * caller is `createNodeWorkspaceSources()` (auth-effects.ts — the
+ * facade-construction sources; B8-ARB-A SEM-F1,
+ * `b8-reviewA-resolution.md`); in-session `use()` re-resolution and
+ * the namespace surfaces go through the pure loader
+ * (`createNodeResolverSources` — Python does not re-materialize on
+ * `use`).
  *
  * @returns The loaded bridge (post-materialization), or `null`.
  * @throws ConfigError - Malformed bridge file.

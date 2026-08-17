@@ -14,12 +14,20 @@
 //
 // Python's `Workspace()` constructor performs the bridge-token
 // materialization side effect (`workspace.py:476-513`); the node twin
-// is `loadBridgeForStartup()` (bridge.ts), which the N3 default-source
-// wiring composes into `new Workspace({})`. The test drives it exactly
-// as that wiring will, then proves the payload flows through the REAL
-// resolver chain (`OnDiskTokenResolver`).
+// is `loadBridgeForStartup()` (bridge.ts), composed into the SHIPPED
+// startup sources by `createNodeWorkspaceSources()` (auth-effects.ts —
+// B8-ARB-A SEM-F1 fix, b8-reviewA-resolution.md). The first class
+// drives the mechanism directly; the SEM-F1 class below locks the
+// default composition end-to-end through the REAL resolver chain
+// (`OnDiskTokenResolver`).
 
-import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -28,6 +36,10 @@ import {
   loadBridgeForStartup,
   bridgeViewFromFile,
 } from "../src/auth/bridge.js";
+import {
+  createNodeResolverSources,
+  createNodeWorkspaceSources,
+} from "../src/auth-effects.js";
 import { createNodeConfigSource } from "../src/config-writes.js";
 import { createNodeEnv } from "../src/env.js";
 import { OnDiskTokenResolver } from "../src/auth/token-resolver.js";
@@ -179,5 +191,78 @@ describe("TestBridgeTokenMaterialization (test_workspace_init.py:167)", () => {
     await expect(resolver.getBrowserToken(accountName, "us")).resolves.toBe(
       "FRESH",
     );
+  });
+});
+
+// B8-ARB-A SEM-F1 (b8-reviewA-resolution.md): the `workspace.py:476-513`
+// startup sequence must be reachable from a SHIPPED node composition —
+// not only by hand-calling `loadBridgeForStartup()` as the class above
+// does. `createNodeWorkspaceSources()` is that composition (facade
+// construction); `createNodeResolverSources()` stays PURE (in-session
+// `use()` re-resolution must never clobber tokens refreshed mid-session
+// with a stale bridge payload — B8-N2-notes.md disclosure #1).
+describe("B8-ARB-A SEM-F1: default node workspace composition materializes bridge tokens", () => {
+  /** Write a fresh oauth_browser bridge and point MP_AUTH_FILE at it. */
+  function seedBridge(accountName: string): string {
+    const bridgePath = join(home, "bridge.json");
+    writeFileSync(
+      bridgePath,
+      JSON.stringify({
+        version: 2,
+        account: { type: "oauth_browser", name: accountName, region: "us" },
+        tokens: {
+          access_token: "FRESH",
+          refresh_token: "FRESH-REFRESH",
+          expires_at: isoIn(1),
+          scope: "read",
+          token_type: "Bearer",
+        },
+        project: "12345",
+      }),
+      "utf8",
+    );
+    if (POSIX) {
+      chmodSync(bridgePath, 0o600);
+    }
+    process.env["MP_AUTH_FILE"] = bridgePath;
+    return join(home, ".mp", "accounts", accountName, "tokens.json");
+  }
+
+  it("fresh HOME + bridge, no per-account tokens: Workspace over createNodeWorkspaceSources() succeeds end-to-end (the Cowork courier contract)", async () => {
+    const tokensPath = seedBridge("personal");
+
+    const ws = new Workspace({
+      sources: createNodeWorkspaceSources({
+        configPath: join(home, ".mp", "config.toml"),
+      }),
+    });
+    expect(ws.account.name).toBe("personal");
+
+    // The side effect ran: the per-account file exists...
+    const written = JSON.parse(readFileSync(tokensPath, "utf8")) as Record<
+      string,
+      unknown
+    >;
+    expect(written["access_token"]).toBe("FRESH");
+    // ...and the first token materialization through the REAL resolver
+    // serves the bridge bearer (Python-green; pre-fix this threw
+    // OAUTH_TOKEN_ERROR "No OAuth tokens found").
+    const resolver = new OnDiskTokenResolver();
+    await expect(resolver.getBrowserToken("personal", "us")).resolves.toBe(
+      "FRESH",
+    );
+  });
+
+  it("createNodeResolverSources() stays PURE — no materialization side effect (N2 disclosure #1 split)", () => {
+    const tokensPath = seedBridge("personal");
+
+    const sources = createNodeResolverSources({
+      configPath: join(home, ".mp", "config.toml"),
+    });
+    expect(sources.bridge?.account.name).toBe("personal");
+    // Pure loader: the resolver rung sees the bridge, but nothing was
+    // written to the per-account path (Python `load_bridge()` twin —
+    // materialization is the Workspace() constructor's alone).
+    expect(existsSync(tokensPath)).toBe(false);
   });
 });

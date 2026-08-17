@@ -12,6 +12,7 @@
 
 import {
   chmodSync,
+  mkdirSync,
   readFileSync,
   statSync,
   symlinkSync,
@@ -716,4 +717,52 @@ describe("TestConfigManagerEdgeCases (test_042_edge_cases.py:459)", () => {
     cm.setActive({ account: "team" });
     expect(cm.getActive().account).toBe("team");
   });
+});
+
+// B8-ARB-A SEM-F6 (b8-reviewA-resolution.md): Python `_read_raw` wraps
+// ANY OSError from the symlink probe into ConfigError
+// (`config.py:180-183` `except OSError`); the pre-fix TS `readRaw`
+// rethrew errno-bearing probe failures uncoded (only
+// CredentialPathError was wrapped).
+describe("B8-ARB-A SEM-F6 probe errno-wrap lock", () => {
+  it.skipIf(!POSIX || process.getuid?.() === 0)(
+    "config under an unreadable parent dir raises ConfigError, not a raw errno error",
+    () => {
+      const locked = join(makeTempDir(cleanups), "locked");
+      mkdirSync(locked);
+      chmodSync(locked, 0o000);
+      cleanups.push(() => {
+        chmodSync(locked, 0o700);
+      });
+      const cm = new ConfigManager({
+        configPath: join(locked, "config.toml"),
+      });
+      expect(() => cm.listAccounts()).toThrow(ConfigError);
+    },
+  );
+
+  // SEM-F2 family ripple (arbiter-caught): Python `_read_raw` catches
+  // `(tomllib.TOMLDecodeError, OSError)` only (`config.py:186-189`) —
+  // an invalid-UTF-8 config file raises UnicodeDecodeError RAW (live
+  // CPython probe in the resolution). The TS twin (TextDecoder
+  // fatal-mode TypeError) must propagate — it carries the string code
+  // ERR_ENCODING_INVALID_ENCODED_DATA, so a code-only OSError-twin
+  // predicate would have wrapped it into ConfigError.
+  it.skipIf(!POSIX)(
+    "invalid-UTF-8 config file (0600) raises the RAW decode TypeError, not ConfigError",
+    () => {
+      const path = join(makeTempDir(cleanups), "config.toml");
+      writeFileSync(path, Buffer.from([0xff, 0xfe]));
+      chmodSync(path, 0o600);
+      const cm = new ConfigManager({ configPath: path });
+      let caught: unknown = null;
+      try {
+        cm.listAccounts();
+      } catch (exc) {
+        caught = exc;
+      }
+      expect(caught).toBeInstanceOf(TypeError);
+      expect(caught).not.toBeInstanceOf(ConfigError);
+    },
+  );
 });

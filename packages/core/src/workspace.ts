@@ -1179,13 +1179,17 @@ export class Workspace {
       // stays deferred, `b7-packets.md` §3.4).
       const sources = options.sources;
       if (sources === undefined) {
-        // TODO(port): B8's node wiring supplies the on-disk
-        // ConfigManager / bridge defaults so `new Workspace({})` works
-        // as Python's `Workspace()` does.
+        // Core-alone posture (b8-packets.md §4.4): the on-disk default
+        // wiring ships in `packages/node` — Python's `Workspace()` twin
+        // is `new Workspace({ sources: createNodeWorkspaceSources() })`
+        // (the STARTUP sources incl. the `workspace.py:476-513`
+        // bridge-token materialization side effect; B8-ARB-A SEM-F1,
+        // `b8-reviewA-resolution.md`). Core stays runtime-agnostic, so
+        // sessionless construction here requires injected sources.
         throw new MixpanelHeadlessError(
           "Workspace construction without `session` requires injected " +
-            "`sources` in @mixpanel-headless/core (the on-disk default " +
-            "wiring is batch B8)",
+            "`sources` in @mixpanel-headless/core (packages/node: " +
+            "createNodeWorkspaceSources())",
           "UNPORTED_AUTH_SEAM",
           { seam: "workspaceSources" },
         );

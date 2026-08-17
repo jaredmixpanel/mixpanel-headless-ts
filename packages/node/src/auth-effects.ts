@@ -28,7 +28,11 @@ import type { Region } from "../../core/src/auth/account.js";
 import type { ResolverSources } from "../../core/src/auth/resolver.js";
 import type { Session } from "../../core/src/auth/session.js";
 import type { OAuthTokens } from "../../core/src/auth/token.js";
-import { createNodeBridgeEffects } from "./auth/bridge.js";
+import {
+  bridgeViewFromFile,
+  createNodeBridgeEffects,
+  loadBridgeForStartup,
+} from "./auth/bridge.js";
 import { OAuthFlow, type OAuthFlowOptions } from "./auth/flow.js";
 import type { StorageLogger } from "./auth/storage.js";
 import { createNodeTokenStore } from "./auth/token-store.js";
@@ -199,4 +203,41 @@ export function createNodeResolverSources(
   options: NodeAuthEffectsOptions = {},
 ): ResolverSources {
   return resolverSourcesFromEffects(createNodeAuthEffects(options));
+}
+
+/**
+ * Build the `Workspace()` STARTUP sources — the `workspace.py:476-513`
+ * constructor sequence: `load_bridge()` PLUS the bridge-token
+ * materialization side effect (oauth_browser bridge tokens are written
+ * to the per-account `tokens.json` so the `OnDiskTokenResolver` can
+ * serve them downstream — the Cowork credential-courier contract).
+ *
+ * Split rationale (B8-N2-notes.md disclosure #1 / B8-ARB-A SEM-F1,
+ * `b8-reviewA-resolution.md`): Python materializes ONLY in the
+ * `Workspace()` constructor; every other resolution (`use()` re-reads,
+ * the accounts/session/targets namespaces) goes through the PURE
+ * loader so a stale bridge payload never clobbers tokens refreshed
+ * mid-session. Use THIS at facade construction and
+ * {@link createNodeResolverSources} everywhere else.
+ *
+ * @param options - Optional bag seams (see
+ *   {@link NodeAuthEffectsOptions}).
+ * @returns The injected-source bag for `new Workspace({ sources })`.
+ * @throws ConfigError - Malformed bridge file.
+ *
+ * @example
+ * ```typescript
+ * const ws = new Workspace({ sources: createNodeWorkspaceSources() });
+ * ```
+ */
+export function createNodeWorkspaceSources(
+  options: NodeAuthEffectsOptions = {},
+): ResolverSources {
+  const effects = createNodeAuthEffects(options);
+  const bridge = loadBridgeForStartup();
+  return {
+    env: effects.env,
+    config: effects.config,
+    bridge: bridge === null ? null : bridgeViewFromFile(bridge),
+  };
 }

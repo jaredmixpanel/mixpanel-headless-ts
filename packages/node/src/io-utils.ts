@@ -120,6 +120,32 @@ export class CredentialPathError extends MixpanelHeadlessError {
 }
 
 /**
+ * True for node SYSTEM errors (libuv syscall failures) — the `OSError`
+ * class-test twin at every ported `except OSError` boundary
+ * (`config.py:186-189`, `bridge.py:172-176`, `storage.py:405-419`).
+ * Defined ONCE here (R10.8); consumers import it by name — B8-ARB-A
+ * hoisted it from `config.ts` when the bridge/storage read paths
+ * gained the same clause (`b8-reviewA-resolution.md` SEM-F2/F6).
+ *
+ * The predicate requires BOTH a string `code` and a numeric `errno`:
+ * node also stamps string codes on NON-system errors (the TextDecoder
+ * fatal-mode `TypeError` carries `ERR_ENCODING_INVALID_ENCODED_DATA`),
+ * and those are the `UnicodeDecodeError` twins that Python's
+ * `except OSError` clauses let PROPAGATE — a code-only test would
+ * swallow them into the OSError arm.
+ *
+ * @param exc - Thrown value.
+ * @returns Whether `exc` is a libuv errno error (the OSError twin).
+ */
+export function isErrnoError(exc: unknown): exc is NodeJS.ErrnoException {
+  return (
+    exc instanceof Error &&
+    typeof (exc as NodeJS.ErrnoException).code === "string" &&
+    typeof (exc as NodeJS.ErrnoException).errno === "number"
+  );
+}
+
+/**
  * The injectable FS operation set of {@link atomicWriteBytes} — the
  * `unittest.mock.patch("…io_utils.os.replace")` monkeypatch twin used
  * by the crash-window resilience tests (test_io_utils.py:210-300) and

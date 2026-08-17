@@ -34,6 +34,7 @@ import type { OAuthClientInfo } from "../../../core/src/auth/token.js";
 import { MixpanelHeadlessError, OAuthError } from "../../../core/src/errors.js";
 import {
   atomicWriteBytes,
+  isErrnoError,
   readCredentialBytes,
   rejectIfSymlink,
 } from "../io-utils.js";
@@ -160,11 +161,16 @@ export class OnDiskTokenResolver implements TokenResolver {
     try {
       rejectIfSymlink(path);
     } catch (exc) {
-      if (!(exc instanceof MixpanelHeadlessError)) {
+      // Python wraps ANY OSError from the probe
+      // (`token_resolver.py:104-111` `except OSError`) — errno-bearing
+      // lstat failures included (B8-ARB-A SEM-F6 family,
+      // `b8-reviewA-resolution.md`).
+      if (!(exc instanceof MixpanelHeadlessError) && !isErrnoError(exc)) {
         throw exc;
       }
+      const rendered = exc instanceof Error ? exc.message : String(exc);
       throw new OAuthError(
-        `OAuth tokens path is a symlink at ${path}: ${exc.message}. ` +
+        `OAuth tokens path is a symlink at ${path}: ${rendered}. ` +
           `Remove the symlink and re-run \`mp account login ${name}\`.`,
         "OAUTH_TOKEN_ERROR",
         { account_name: name, path },

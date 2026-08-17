@@ -5,7 +5,10 @@
  * B8-N3 (b8-packets.md §4.1 row 5) turns the Phase-1 skeleton into the
  * ready-made public surface: `createNodeAuthEffects` (the real
  * {@link AuthEffects} bag), `createNodeResolverSources` (default
- * `ResolverSources` wiring), and the `accounts` / `session` /
+ * `ResolverSources` wiring — PURE bridge load),
+ * `createNodeWorkspaceSources` (the `Workspace()` STARTUP wiring with
+ * the bridge-token materialization side effect, `workspace.py:476-513`
+ * — B8-ARB-A SEM-F1), and the `accounts` / `session` /
  * `targets` namespaces + `loginUnified` over the real bag — closing
  * the four Phase-2 `__all__` deferrals at node level (Python's
  * `mp.accounts` / `mp.session` / `mp.targets` /
@@ -45,6 +48,7 @@ export const NODE_PACKAGE_NAME = "@mixpanel-headless/node";
 export {
   createNodeAuthEffects,
   createNodeResolverSources,
+  createNodeWorkspaceSources,
   type NodeAuthEffectsOptions,
   type NodeFlowSeams,
 } from "./auth-effects.js";

@@ -496,10 +496,14 @@ export const UNPORTED_AUTH_SEAMS: readonly string[] = [
  */
 function unportedAuthSeam(name: string): (...args: never[]) => never {
   return (): never => {
-    // TODO(port): B8 replaces this default with the real node effect
-    // (packet §3.2 ownership table; `UNPORTED_AUTH_SEAMS`).
+    // Core-alone posture (b8-packets.md §4.4): the real implementation
+    // of every `UNPORTED_AUTH_SEAMS` member SHIPS in `packages/node`
+    // (`createNodeAuthEffects()`); this default stays so core without
+    // a wired bag still throws the coded error. Marker retired at the
+    // B8 pair-A arbiter (`b8-reviewA-resolution.md` ASR-F2).
     throw new MixpanelHeadlessError(
-      `Auth effect '${name}' is not ported yet (batch B8)`,
+      `Auth effect '${name}' has no implementation in @mixpanel-headless/core ` +
+        "alone — pass a wired effect bag (packages/node: createNodeAuthEffects())",
       "UNPORTED_AUTH_SEAM",
       { seam: name },
     );

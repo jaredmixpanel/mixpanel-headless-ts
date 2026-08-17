@@ -455,3 +455,146 @@ describe("TestBridgeEdgeCases (test_042_edge_cases.py:394 — inbound b6-packets
     expect(() => parseBridgeFile(payload)).toThrow(ParamValidationError);
   });
 });
+
+// B8-ARB-A pair-A semantics minors (b8-reviewA-resolution.md) — error
+// CLASS and byte-format locks aligning degenerate corners to the
+// Python behavior arbiter:
+// - SEM-F2b: an invalid-UTF-8 bridge file propagates the decode error
+//   RAW (`bridge.py:181` catches only OSError + JSONDecodeError; the
+//   CPython probe raises UnicodeDecodeError — the TS twin is the
+//   TextDecoder fatal-mode TypeError).
+// - SEM-F3: invalid export pins propagate the model's
+//   ParamValidationError RAW (`bridge.py:357-364` builds `BridgeFile`
+//   with no try/except — pydantic ValidationError escapes unwrapped;
+//   the docstring's ConfigError claim is wrong in Python itself).
+// - SEM-F4: `serializeBridge` sorts keys by CODEPOINT
+//   (`json.dumps(sort_keys=True)`, `bridge.py:311` — R11.5).
+// - SEM-F6 family: an errno-bearing lstat failure at the symlink probe
+//   wraps into ConfigError exactly as Python's `except OSError`
+//   (`bridge.py:172-176`).
+describe("B8-ARB-A SEM-F2b/F3/F4/F6 error-class + byte-format locks", () => {
+  itPosix(
+    "SEM-F2b: invalid-UTF-8 bridge file (0600) raises the RAW decode TypeError, not ConfigError",
+    () => {
+      const bridgePath = join(makeTempDir(cleanups), "bridge.json");
+      writeFileSync(bridgePath, Buffer.from([0xff, 0xfe, 0x7b, 0x7d]));
+      chmodSync(bridgePath, 0o600);
+      process.env["MP_AUTH_FILE"] = bridgePath;
+      let caught: unknown = null;
+      try {
+        loadBridge();
+      } catch (exc) {
+        caught = exc;
+      }
+      expect(caught).toBeInstanceOf(TypeError);
+      expect(caught).not.toBeInstanceOf(ConfigError);
+    },
+  );
+
+  it('SEM-F3: exportBridge(project="abc") propagates ParamValidationError raw', () => {
+    const out = join(makeTempDir(cleanups), "bridge.json");
+    let caught: unknown = null;
+    try {
+      exportBridge(teamSa(), { to: out, project: "abc" });
+    } catch (exc) {
+      caught = exc;
+    }
+    expect(caught).toBeInstanceOf(ParamValidationError);
+    expect(caught).not.toBeInstanceOf(ConfigError);
+    expect(existsSync(out)).toBe(false);
+  });
+
+  it("SEM-F3: exportBridge(workspace=0) propagates ParamValidationError raw", () => {
+    const out = join(makeTempDir(cleanups), "bridge.json");
+    expect(() => exportBridge(teamSa(), { to: out, workspace: 0 })).toThrow(
+      ParamValidationError,
+    );
+    expect(existsSync(out)).toBe(false);
+  });
+
+  it("SEM-F4: serialized headers keys sort by codepoint (non-BMP after U+FF61, matching json.dumps sort_keys)", () => {
+    // UTF-16 code units order "😀" (surrogate 0xD83D…) BEFORE "｡"
+    // (0xFF61); Python codepoint order is the reverse. CPython:
+    // json.dumps({"😀":1,"｡":2}, sort_keys=True) → {"｡": 2, "😀": 1}.
+    const out = join(makeTempDir(cleanups), "bridge.json");
+    exportBridge(teamSa(), {
+      to: out,
+      headers: { "\u{1F600}": "grin", "｡": "stop" },
+    });
+    const text = readFileSync(out, "utf8");
+    expect(text.indexOf("｡")).toBeGreaterThan(-1);
+    expect(text.indexOf("｡")).toBeLessThan(text.indexOf("\u{1F600}"));
+  });
+
+  it.skipIf(!POSIX || process.getuid?.() === 0)(
+    "SEM-F6 family: unreadable parent dir at the probe wraps into ConfigError (bridge.py:172-176 `except OSError`)",
+    () => {
+      const locked = join(makeTempDir(cleanups), "locked");
+      mkdirSync(locked);
+      const bridgePath = join(locked, "auth.json");
+      chmodSync(locked, 0o000);
+      cleanups.push(() => {
+        chmodSync(locked, 0o700);
+      });
+      expect(() => loadBridge(bridgePath)).toThrow(ConfigError);
+    },
+  );
+});
+
+// B8-ARB-A SEM-F2/F6 family ripple at `_read_browser_tokens`
+// (`bridge.py:221-242` — arbiter-caught, same clauses as loadBridge):
+// probe `except OSError` wraps errno failures into the coded
+// OAuthError; the read catch is `(OSError, json.JSONDecodeError)` so
+// the UnicodeDecodeError twin propagates RAW.
+describe("B8-ARB-A readBrowserTokens error-class locks (bridge.py:221-242)", () => {
+  itPosix(
+    "invalid-UTF-8 per-account tokens.json raises the RAW decode TypeError",
+    () => {
+      const account: OAuthBrowserAccount = {
+        type: "oauth_browser",
+        name: "personal",
+        region: "us",
+      };
+      const dir = join(home, ".mp", "accounts", "personal");
+      mkdirSync(dir, { recursive: true, mode: 0o700 });
+      const tokensPath = join(dir, "tokens.json");
+      writeFileSync(tokensPath, Buffer.from([0xff]));
+      chmodSync(tokensPath, 0o600);
+      const out = join(makeTempDir(cleanups), "bridge.json");
+      let caught: unknown = null;
+      try {
+        exportBridge(account, { to: out });
+      } catch (exc) {
+        caught = exc;
+      }
+      expect(caught).toBeInstanceOf(TypeError);
+      expect(caught).not.toBeInstanceOf(OAuthError);
+    },
+  );
+
+  it.skipIf(!POSIX || process.getuid?.() === 0)(
+    "unreadable accounts dir at the probe wraps into OAUTH_TOKEN_ERROR",
+    () => {
+      const account: OAuthBrowserAccount = {
+        type: "oauth_browser",
+        name: "personal",
+        region: "us",
+      };
+      const accountsDir = join(home, ".mp", "accounts");
+      mkdirSync(accountsDir, { recursive: true, mode: 0o700 });
+      chmodSync(accountsDir, 0o000);
+      cleanups.push(() => {
+        chmodSync(accountsDir, 0o700);
+      });
+      const out = join(makeTempDir(cleanups), "bridge.json");
+      let caught: unknown = null;
+      try {
+        exportBridge(account, { to: out });
+      } catch (exc) {
+        caught = exc;
+      }
+      expect(caught).toBeInstanceOf(OAuthError);
+      expect((caught as OAuthError).code).toBe("OAUTH_TOKEN_ERROR");
+    },
+  );
+});

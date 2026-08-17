@@ -347,6 +347,16 @@ export class OAuthStorage {
         );
         return null;
       }
+      // Python degrades ONLY the ValueError family —
+      // `(json.JSONDecodeError, ValueError, UnicodeDecodeError)`
+      // (`storage.py:415-419`); the TS twins are `SyntaxError`
+      // (JSON.parse) and `TypeError` (TextDecoder fatal decode). An
+      // OSError (errno error, e.g. EACCES on a root-owned file)
+      // PROPAGATES rather than reading a permission problem as "no
+      // tokens" — B8-ARB-A SEM-F2a (`b8-reviewA-resolution.md`).
+      if (!(exc instanceof SyntaxError || exc instanceof TypeError)) {
+        throw exc;
+      }
       this.#logger.warning(
         `Corrupted or invalid JSON in ${path} — ignoring file.`,
       );

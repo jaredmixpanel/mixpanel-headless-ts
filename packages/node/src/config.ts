@@ -72,6 +72,7 @@ import type {
 import {
   CredentialPathError,
   atomicWriteBytes,
+  isErrnoError,
   readCredentialText,
   rejectIfSymlink,
   type AtomicWriteOptions,
@@ -127,20 +128,6 @@ function setdefaultBlock(raw: RawConfig, key: string): Record<string, unknown> {
   // crash on `.items()`; the TS twin degrades to a detached record —
   // out of contract (no test reaches a non-table top-level section).
   return {};
-}
-
-/**
- * True for node system errors carrying a string `code` — the `OSError`
- * catch twin at the `_read_raw` boundary (`config.py:186-189`).
- *
- * @param exc - Thrown value.
- * @returns Whether `exc` looks like a node errno error.
- */
-function isErrnoError(exc: unknown): exc is NodeJS.ErrnoException {
-  return (
-    exc instanceof Error &&
-    typeof (exc as NodeJS.ErrnoException).code === "string"
-  );
 }
 
 /**
@@ -354,9 +341,14 @@ export class ConfigManager {
     try {
       rejectIfSymlink(this.#path);
     } catch (exc) {
-      if (exc instanceof CredentialPathError) {
+      // Python wraps ANY OSError from the probe (`config.py:180-183`),
+      // so errno-bearing lstat failures (e.g. EACCES on an unreadable
+      // parent) code up exactly like the symlink refusal — B8-ARB-A
+      // SEM-F6 (`b8-reviewA-resolution.md`).
+      if (exc instanceof CredentialPathError || isErrnoError(exc)) {
+        const rendered = exc instanceof Error ? exc.message : String(exc);
         throw new ConfigError(
-          `Could not parse config at ${this.#path}: ${exc.message}`,
+          `Could not parse config at ${this.#path}: ${rendered}`,
           null,
           { cause: exc },
         );

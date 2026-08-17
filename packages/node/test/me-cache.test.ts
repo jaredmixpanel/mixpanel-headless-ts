@@ -291,3 +291,24 @@ describe("Ordered-organizations re-hydration (packet §3.2 item 10 / §2.2 last 
     expect([...(loaded?.organizations.keys() ?? [])]).toEqual(["900", "100"]);
   });
 });
+
+// B8-ARB-A SEM-F2c (b8-reviewA-resolution.md): Python `MeCache.get`
+// catches `(json.JSONDecodeError, OSError)` + CredentialPathError only
+// (`me.py:505-515`) — an invalid-UTF-8 cache file raises
+// UnicodeDecodeError RAW (live CPython probe in the resolution). The
+// TS twin is the TextDecoder fatal-mode TypeError, which must
+// propagate rather than degrade to the corrupt-file `null`.
+describe("B8-ARB-A SEM-F2c decode error-class lock", () => {
+  itPosix(
+    "invalid-UTF-8 me.json (0600) raises the RAW decode TypeError, not null",
+    () => {
+      const dir = join(makeTempDir(cleanups), "accounts", "personal");
+      mkdirSync(dir, { recursive: true, mode: 0o700 });
+      const cache = new MeCache({ accountName: "personal", storageDir: dir });
+      const path = join(dir, "me.json");
+      writeFileSync(path, Buffer.from([0xff]));
+      chmodSync(path, 0o600);
+      expect(() => cache.get()).toThrow(TypeError);
+    },
+  );
+});

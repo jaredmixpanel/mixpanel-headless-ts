@@ -1,21 +1,22 @@
 // Layer-3 translation of `tests/unit/test_storage.py` (327 lines, 15
-// tests; ALL 5 classes translated — b8-packets.md §3.3 row 2).
+// tests; all 5 classes covered — 13/15 members translated, 2
+// Python-only members cited below — b8-packets.md §3.3 row 2; header
+// wording corrected per B8-ARB-A ASR-F3, `b8-reviewA-resolution.md`).
 //
 // Python's `monkeypatch.setenv("HOME", ...)` isolation translates to a
 // saved/restored `process.env.HOME` (node `os.homedir()` reads `$HOME`
 // at call time on POSIX); every path lives under `mkdtempSync` tmp dirs
 // (packet §7 caution 3 — the real-home guard in `helpers.ts`).
 //
-// PYTHON-ONLY (header-cited per §3.3 / §2.1 drop): none in this file —
-// all 15 tests are lstat/stat-expressible. The
-// `TestOAuthStorageSymlinkRejection` fchmod-specific member
-// (`test_check_and_fix_permissions_uses_fchmod_not_chmod`, :275) is
-// Python-only (fd-flag hardening dropped per plan §4.2 / R9.2); its
-// lstat-expressible siblings are translated below. The
-// `test_windows_skip_does_not_crash` member (:303) probes a
-// `monkeypatch.delattr(os, "O_NOFOLLOW")` platform shim with no node
-// analog (the TS no-op branch keys on `process.platform`) — Python-only,
-// same citation.
+// PYTHON-ONLY members (header-cited per §3.3 / §2.1 drop):
+// - `TestOAuthStorageSymlinkRejection::
+//   test_check_and_fix_permissions_uses_fchmod_not_chmod` (:275) —
+//   fd-flag mechanism probe (fd-flag hardening dropped per plan §4.2 /
+//   R9.2); its lstat-expressible siblings are translated below.
+// - `test_windows_skip_does_not_crash` (:303) — probes a
+//   `monkeypatch.delattr(os, "O_NOFOLLOW")` platform shim with no node
+//   analog (the TS no-op branch keys on `process.platform`) — same
+//   citation.
 
 import {
   chmodSync,

@@ -110,11 +110,15 @@ export interface ResolverSeams {
  */
 function unportedSeam(name: string): () => never {
   return (): never => {
-    // TODO(port): B7 replaces this default with the real resolver
-    // (`workspace.py:618-668`, `:696-722`); B8 supplies the config /
-    // bridge / env I/O underneath it.
+    // Core-alone posture (b8-packets.md §4.4): the real seams ship via
+    // `resolverSeamsFromEffects(...)` (B7) over the node effect bag
+    // (B8, `createNodeAuthEffects()`); this default stays so a facade
+    // built without seams still throws the coded error. Marker retired
+    // at the B8 pair-A arbiter (`b8-reviewA-resolution.md` ASR-F2).
     throw new MixpanelHeadlessError(
-      `Workspace resolver seam '${name}' is not ported yet (batch B7)`,
+      `Workspace resolver seam '${name}' has no implementation in ` +
+        "@mixpanel-headless/core alone — pass `seams` " +
+        "(resolverSeamsFromEffects over a wired effect bag)",
       "UNPORTED_RESOLVER_SEAM",
       { seam: name },
     );

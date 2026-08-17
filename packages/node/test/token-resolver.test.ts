@@ -522,3 +522,30 @@ describe("ASR-F4c re-take (test_042_edge_cases.py:655 — b7-reviewA-resolution.
     expect(new OAuthStorage().storageDir).toBe(join(home, ".mp", "oauth"));
   });
 });
+
+// B8-ARB-A SEM-F6 family ripple (b8-reviewA-resolution.md): Python's
+// symlink-probe catch is `except OSError` (`token_resolver.py:104-111`)
+// — errno-bearing lstat failures wrap into the coded OAuthError exactly
+// like the symlink refusal; pre-fix TS rethrew them uncoded.
+describe("B8-ARB-A SEM-F6 probe errno-wrap lock (token_resolver.py:104-111)", () => {
+  it.skipIf(!POSIX || process.getuid?.() === 0)(
+    "unreadable accounts dir at the probe wraps into OAUTH_TOKEN_ERROR",
+    async () => {
+      const accountsDir = join(home, ".mp", "accounts");
+      mkdirSync(accountsDir, { recursive: true, mode: 0o700 });
+      chmodSync(accountsDir, 0o000);
+      cleanups.push(() => {
+        chmodSync(accountsDir, 0o700);
+      });
+      const resolver = new OnDiskTokenResolver();
+      let caught: unknown = null;
+      try {
+        await resolver.getBrowserToken("me", "us");
+      } catch (exc) {
+        caught = exc;
+      }
+      expect(caught).toBeInstanceOf(OAuthError);
+      expect((caught as OAuthError).code).toBe("OAUTH_TOKEN_ERROR");
+    },
+  );
+});
