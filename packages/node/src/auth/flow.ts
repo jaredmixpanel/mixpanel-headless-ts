@@ -491,7 +491,10 @@ export class OAuthFlow {
 
     // Step 1: PKCE challenge and state (`flow.py:268-270` —
     // `secrets.token_urlsafe(32)` = 32 random bytes, base64url no-pad).
-    const pkce = PkceChallenge.generate();
+    // B9-R1 §1.3: `generate()` is async since the WebCrypto migration
+    // (`crypto.subtle.digest` is Promise-returning) — the one
+    // call-site edit; generation still precedes all I/O, as in Python.
+    const pkce = await PkceChallenge.generate();
     const state = randomBytes(32).toString("base64url");
 
     // Step 2: find an available callback port by probing before

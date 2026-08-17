@@ -14,3 +14,7 @@ export * from "./session.js";
 export * from "./token.js";
 export * from "./resolver.js";
 export * from "./region-probe.js";
+// B9-R1 (b9-packets.md §0.3): WebCrypto PKCE primitives (plan §4.1) +
+// the browser CredentialStore seam (interface + key table only).
+export * from "./pkce.js";
+export * from "./credential-store.js";

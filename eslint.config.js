@@ -11,8 +11,9 @@ import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 
 const CORE_PURITY_MESSAGE =
-  "packages/core is isomorphic (R9.1): no Node built-ins, no undici. " +
-  "Platform-specific code belongs in packages/node or packages/browser.";
+  "packages/core is isomorphic (R9.1) and packages/browser is " +
+  "browser-only (R9.3, b9-packets.md §0.4): no Node built-ins, no " +
+  "undici. Node-specific code belongs in packages/node.";
 
 export default tseslint.config(
   {
@@ -45,7 +46,11 @@ export default tseslint.config(
     },
   },
   {
-    files: ["packages/core/**/*.ts"],
+    // B9-R1 (b9-packets.md §0.4): packages/browser shares the core
+    // purity boundary — browser globals only, no node:*; the browser
+    // storage object is touched solely via an injected Storage-shaped
+    // parameter in the localStorage adapter.
+    files: ["packages/core/**/*.ts", "packages/browser/**/*.ts"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -69,7 +74,8 @@ export default tseslint.config(
         {
           name: "process",
           message:
-            "packages/core must not read process (R9.1); inject configuration instead.",
+            "packages/core (R9.1) and packages/browser (R9.4: env is " +
+            "node-only) must not read process; inject configuration instead.",
         },
       ],
     },
