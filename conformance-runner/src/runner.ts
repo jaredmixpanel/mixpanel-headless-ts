@@ -28,7 +28,8 @@
  */
 
 import { resolveApi } from "./api-map.js";
-import { batchStatusFor } from "./batch-status.js";
+import { BATCH_STATUS, batchStatusFor } from "./batch-status.js";
+import type { BatchStatus } from "./batch-status.js";
 import {
   CanonicalizationError,
   canonicalize,
@@ -182,6 +183,14 @@ export interface RunnerDeps {
   readonly codecs: CodecRegistry;
   /** The frozen record instant (corpus manifest `record_epoch`). */
   readonly recordEpoch: string;
+  /**
+   * The api-prefix → batch-status table (defaults to the shipped
+   * {@link BATCH_STATUS}). Injectable so tests can exercise the
+   * `UNPORTED` gate path with a SYNTHETIC pending table now that the
+   * shipped table is terminal — zero pending entries after the B8 gate
+   * flip (b8-packets.md §5.3 UNPORTED-probe re-anchor).
+   */
+  readonly batchStatuses?: ReadonlyMap<string, BatchStatus>;
 }
 
 /**
@@ -347,10 +356,16 @@ function diffThrownError(
  * C7 item 4).
  *
  * @param api - The unbound Python dotted api name.
+ * @param statuses - The batch-status table (shipped table by default;
+ *   injectable via {@link RunnerDeps.batchStatuses} for the synthetic
+ *   pending-table tests — the shipped table is terminal post-B8).
  * @returns The short-circuit gate result.
  */
-function unboundVerdict(api: string): { verdict: Verdict; diff?: string } {
-  if (batchStatusFor(api) === "done") {
+function unboundVerdict(
+  api: string,
+  statuses: ReadonlyMap<string, BatchStatus>,
+): { verdict: Verdict; diff?: string } {
+  if (batchStatusFor(api, statuses) === "done") {
     return {
       verdict: "FAIL_ERROR",
       diff:
@@ -367,6 +382,7 @@ function unboundVerdict(api: string): { verdict: Verdict; diff?: string } {
  *
  * @param vector - The vector.
  * @param implementations - The current bindings.
+ * @param statuses - The batch-status table (see {@link unboundVerdict}).
  * @returns `null` when every name is bound (replay proceeds), else the
  *   short-circuit result (`UNMAPPED_API` fail-fast before the unbound
  *   gate, which yields `UNPORTED` for pending batches and `FAIL_ERROR`
@@ -375,6 +391,7 @@ function unboundVerdict(api: string): { verdict: Verdict; diff?: string } {
 function gateApis(
   vector: ConformanceVector,
   implementations: ImplementationRegistry,
+  statuses: ReadonlyMap<string, BatchStatus>,
 ): { verdict: Verdict; diff?: string } | null {
   const apis = [...vector.setup.map((entry) => entry.api), vector.api];
   for (const api of apis) {
@@ -387,7 +404,7 @@ function gateApis(
   }
   for (const api of apis) {
     if (!implementations.has(api)) {
-      return unboundVerdict(api);
+      return unboundVerdict(api, statuses);
     }
   }
   return null;
@@ -413,7 +430,11 @@ export async function runVector(
   deps: RunnerDeps,
 ): Promise<VectorResult> {
   const capability = vectorCapability(vector);
-  const gated = gateApis(vector, deps.implementations);
+  const gated = gateApis(
+    vector,
+    deps.implementations,
+    deps.batchStatuses ?? BATCH_STATUS,
+  );
   if (gated !== null) {
     return {
       id: vector.id,
@@ -491,7 +512,10 @@ async function replayVector(
     const implementation = deps.implementations.get(entry.api);
     if (implementation === undefined) {
       // Defensive: gateApis already short-circuited unbound names.
-      const gated = unboundVerdict(entry.api);
+      const gated = unboundVerdict(
+        entry.api,
+        deps.batchStatuses ?? BATCH_STATUS,
+      );
       return {
         id: vector.id,
         capability,

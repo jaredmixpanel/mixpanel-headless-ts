@@ -62,15 +62,25 @@ export type BatchStatus = "pending" | "done";
  * - `region_probe.` — the Phase-3 B7 auth resolver/probe batch
  *   (playbook P3-5 §4 B7-gate flip / b7-packets.md §4; 14 vectors,
  *   all `region_probe.probe_region`, bound at B7-A2 and passing
- *   while pending). Collision assertion re-run over the FINAL table
- *   at the gate: the only corpus api name matching the new prefix is
- *   `region_probe.probe_region` ×14; the only still-pending corpus
- *   api name is `oauth_flow.refresh_tokens` ×7, not prefixed by any
- *   `done` entry.
+ *   while pending).
+ * - `oauth_flow.` — the Phase-3 B8 node/auth batch (playbook P3-5 §4
+ *   B8-gate flip / b8-packets.md §5.1; 7 vectors, all
+ *   `oauth_flow.refresh_tokens`, bound at B8-N2 and passing while
+ *   pending). This was the LAST pending prefix.
  *
- * Pending batches (Phase 3, per plan §6 / api-map):
- * - `oauth_flow.` (B8 — the LAST pending prefix; the UNPORTED-probe
- *   anchor pattern retires at the B8 gate, b6-packets.md §12.5).
+ * TERMINAL STATE (B8 gate, 2026-08-16): the table contains ZERO
+ * `'pending'` entries — every corpus api name (measured and setup)
+ * resolves `'done'`, and the full-corpus report reads
+ * 3,251 PASS / 0 FAIL / 0 UNPORTED (corpus pin `70c904dc`). Collision
+ * assertion re-run over the FINAL table at the gate: the only corpus
+ * api name matching the freshly flipped prefix is
+ * `oauth_flow.refresh_tokens` ×7, and NO still-pending corpus api name
+ * remains (there are no pending entries left to shadow). The
+ * UNPORTED-probe corpus-name anchor pattern is retired per
+ * b8-packets.md §5.3 / b6-packets.md §12.5: the runner's UNPORTED path
+ * stays covered by SYNTHETIC batch tables injected through
+ * `RunnerDeps.batchStatuses` inside the tests — a pending entry never
+ * re-enters this shipped table.
  */
 export const BATCH_STATUS: ReadonlyMap<string, BatchStatus> = new Map<
   string,
@@ -116,7 +126,11 @@ export const BATCH_STATUS: ReadonlyMap<string, BatchStatus> = new Map<
   ["replays.", "done"],
   ["replay_labels.", "done"],
   ["rrweb_analyzer.", "done"],
-  ["oauth_flow.", "pending"],
+  // Phase-3 B8 gate flip (playbook P3-5 §4 / b8-packets.md §5.1): the
+  // node/auth batch is done — stragglers under `oauth_flow.` now FAIL
+  // instead of skipping. This flip closes the ENTIRE corpus: zero
+  // pending entries remain (terminal state, header comment above).
+  ["oauth_flow.", "done"],
   // Phase-3 B7 gate flip (playbook P3-5 §4 / b7-packets.md §4): the
   // auth resolver/region-probe batch is done — stragglers under
   // `region_probe.` now FAIL instead of skipping.
@@ -138,8 +152,8 @@ export const BATCH_STATUS: ReadonlyMap<string, BatchStatus> = new Map<
  * ```typescript
  * batchStatusFor("types.Filter.on");
  * // "done"
- * batchStatusFor("workspace.build_funnel_params");
- * // "pending"
+ * batchStatusFor("oauth_flow.refresh_tokens");
+ * // "done" (terminal state — every corpus api name resolves done)
  * ```
  */
 export function batchStatusFor(

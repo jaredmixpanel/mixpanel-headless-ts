@@ -24,7 +24,7 @@ describe("parseArgs", () => {
 });
 
 describe("main", () => {
-  it("replays the committed snapshot: zero failures, all UNPORTED at TS-5", async () => {
+  it("replays the committed snapshot: full corpus green — zero failures, ZERO UNPORTED (B8 gate terminal checkpoint)", async () => {
     const stdout: string[] = [];
     const outSpy = vi
       .spyOn(process.stdout, "write")
@@ -47,10 +47,12 @@ describe("main", () => {
       expect(code).toBe(0);
       expect(report.failed).toBe(0);
       expect(report.failures).toEqual([]);
-      // PR-7's authored compat vectors are not yet in the snapshot, so
-      // every vector is UNPORTED (TS-6 re-syncs and flips compat to PASS).
+      // B8-gate terminal checkpoint (b8-packets.md §5.3c — the Risk-8
+      // "UNPORTED must FAIL after flip" assert's terminal form): with
+      // the corpus closed, NO vector may report UNPORTED at all.
+      expect(report.skipped_unported).toBe(0);
       expect(report.total).toBeGreaterThan(2000);
-      expect(report.passed + report.skipped_unported).toBe(report.total);
+      expect(report.passed).toBe(report.total);
     } finally {
       outSpy.mockRestore();
       errSpy.mockRestore();

@@ -134,17 +134,22 @@ describe("runVector — api gating", () => {
     // workspace.list_dashboards (bound at B6-BIND — every workspace
     // name is now bound), then region_probe.probe_region (bound at
     // B7-A2), then oauth_flow.refresh_tokens (bound at B8-N2 — the
-    // LAST corpus name). Re-anchored to the NON-CORPUS module-known
-    // name oauth_flow.build_authorize_url (the batch-status.test.ts:86
-    // precedent: the seam takes arbitrary names) while `oauth_flow.`
-    // is still pending; the B8 gate completes the retirement with a
-    // synthetic batch table (b8-packets.md §5.3, b6-packets.md:1033).
+    // LAST corpus name). TERMINAL RE-ANCHOR (B8 gate, b8-packets.md
+    // §5.3a, b6-packets.md:1033): the shipped table has zero pending
+    // entries, so the probe keeps the NON-CORPUS module-known name
+    // oauth_flow.build_authorize_url AND injects a synthetic pending
+    // table through the `RunnerDeps.batchStatuses` seam — the pattern
+    // is fully detached from corpus/shipped-table state.
     const vector = makeVector({
       api: "oauth_flow.build_authorize_url",
       kind: "wire",
       expect: '{"result": null}',
     });
-    const result = await runVector(vector, createRunnerDeps(RECORD_EPOCH));
+    const deps = {
+      ...createRunnerDeps(RECORD_EPOCH),
+      batchStatuses: new Map([["oauth_flow.", "pending" as const]]),
+    };
+    const result = await runVector(vector, deps);
     expect(result.verdict).toBe("UNPORTED");
   });
 
@@ -154,17 +159,21 @@ describe("runVector — api gating", () => {
     // played the P3-1 † carried-vector shape until the B6 gate flipped
     // the whole `workspace.` prefix to done; `region_probe.probe_region`
     // held the anchor until B7-A2 bound it; `oauth_flow.refresh_tokens`
-    // until B8-N2 bound it. Re-anchored to the NON-CORPUS module-known
-    // `oauth_flow.build_authorize_url` (this registry is isolated via
-    // `depsWith`, but the probe tracks the same retirement path —
-    // b8-packets.md §5.3 finishes it at the gate).
+    // until B8-N2 bound it. TERMINAL RE-ANCHOR (B8 gate, b8-packets.md
+    // §5.3a): the NON-CORPUS module-known
+    // `oauth_flow.build_authorize_url` stays the setup probe, with a
+    // synthetic pending table injected via `batchStatuses` — the
+    // shipped table is terminal (zero pending entries).
     const vector = makeVector({
       api: "api_client.activity_feed",
       kind: "wire",
       setup: [{ api: "oauth_flow.build_authorize_url", input: "{}" }],
       expect: '{"result": null}',
     });
-    const deps = depsWith({ "api_client.activity_feed": () => null });
+    const deps = {
+      ...depsWith({ "api_client.activity_feed": () => null }),
+      batchStatuses: new Map([["oauth_flow.", "pending" as const]]),
+    };
     const result = await runVector(vector, deps);
     expect(result.verdict).toBe("UNPORTED");
   });

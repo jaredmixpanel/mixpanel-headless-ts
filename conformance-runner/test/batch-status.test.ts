@@ -80,11 +80,17 @@ describe("batchStatusFor — table lookup", () => {
     expect(batchStatusFor("wirestub.wire_get")).toBe("done");
   });
 
-  it("resolves pending prefixes (Phase-3 batches)", () => {
-    // Post-B7-flip anchors: only `oauth_flow.` (B8) remains pending
-    // (b7-packets.md §4.1/§4.3 — the pattern retires at the B8 gate).
-    expect(batchStatusFor("oauth_flow.build_authorize_url")).toBe("pending");
-    expect(batchStatusFor("oauth_flow.refresh_tokens")).toBe("pending");
+  it("resolves pending entries via a SYNTHETIC table (terminal re-anchor)", () => {
+    // B8-gate retirement (b8-packets.md §5.3a / b6-packets.md §12.5):
+    // the shipped table has ZERO pending entries, so pending-lookup
+    // logic keeps coverage through a fictional-prefix fixture table
+    // pinned to `pending` INSIDE THE TEST — never in the shipped table.
+    const table: ReadonlyMap<string, BatchStatus> = new Map([
+      ["synthetic_batch.", "pending"],
+      ["types.", "done"],
+    ]);
+    expect(batchStatusFor("synthetic_batch.call", table)).toBe("pending");
+    expect(batchStatusFor("types.Filter.on", table)).toBe("done");
   });
 
   it("defaults to pending when no prefix matches", () => {
@@ -236,25 +242,66 @@ describe("batchStatusFor — table lookup", () => {
     // Playbook P3-5 §4 B7 row / b7-packets.md §4.1: the B7 gate flips
     // exactly this one prefix (14 vectors, all
     // `region_probe.probe_region`, bound at B7-A2); stragglers under
-    // it must FAIL, never skip (Risk #8). `oauth_flow.` (B8) is now
-    // the ONLY pending prefix in the table.
+    // it must FAIL, never skip (Risk #8).
     expect(BATCH_STATUS.get("region_probe.")).toBe("done");
     expect(batchStatusFor("region_probe.probe_region")).toBe("done");
+  });
+
+  it("oauth_flow.* is declared done and the table is TERMINAL (the B8 gate flip)", () => {
+    // Playbook P3-5 §4 B8 row / b8-packets.md §5.1: the B8 gate flips
+    // the LAST pending prefix (7 vectors, all
+    // `oauth_flow.refresh_tokens`, bound at B8-N2 and passing while
+    // pending). Terminal assertions per the §5.3b re-anchor:
+    // zero pending entries remain in the shipped table.
+    expect(BATCH_STATUS.get("oauth_flow.")).toBe("done");
+    expect(batchStatusFor("oauth_flow.refresh_tokens")).toBe("done");
     const pendingEntries = [...BATCH_STATUS.entries()]
       .filter(([, status]) => status === "pending")
       .map(([prefix]) => prefix);
-    expect(pendingEntries).toEqual(["oauth_flow."]);
+    expect(pendingEntries).toEqual([]);
+  });
+
+  it("every corpus api name (measured + setup) resolves done (terminal state)", () => {
+    // b8-packets.md §5.3b: with the corpus closed, no api the loader
+    // yields may resolve `pending` — a pending resolution would mean a
+    // silently skippable vector (Risk #8's terminal form).
+    const config = loadCorpusConfig(PACKAGE_DIR);
+    const corpus = loadCorpus(
+      resolve(PACKAGE_DIR, config.vectorsPath),
+      config.sourceCommit,
+      config.recordEpoch,
+    );
+    const pending = new Set<string>();
+    for (const vector of corpus.vectors) {
+      for (const api of [
+        ...vector.setup.map((entry) => entry.api),
+        vector.api,
+      ]) {
+        if (batchStatusFor(api) !== "done") {
+          pending.add(api);
+        }
+      }
+    }
+    expect([...pending]).toEqual([]);
   });
 });
 
 describe("runVector — batch-status verdict wiring", () => {
   it("pending batch + unbound api → UNPORTED (counted, never failing)", async () => {
-    // `oauth_flow.refresh_tokens` is the post-B7-flip pending anchor
-    // (B8-owned; re-anchored at the B7 gate per b7-packets.md §4.3 —
-    // the pattern retires at the B8 gate, b6-packets.md §12.5).
+    // Terminal re-anchor (b8-packets.md §5.3a): the shipped table has
+    // no pending entries left, so the UNPORTED code path is exercised
+    // with a SYNTHETIC pending table injected via the
+    // `RunnerDeps.batchStatuses` seam over a mapped-but-unbound api
+    // name (`oauth_flow.build_authorize_url` — module-known, never a
+    // corpus name; the batch-status logic test's arbitrary-name seam
+    // precedent). The fictional table lives only inside this test.
+    const deps: RunnerDeps = {
+      ...bareDeps(),
+      batchStatuses: new Map<string, BatchStatus>([["oauth_flow.", "pending"]]),
+    };
     const result = await runVector(
-      vectorFor("oauth_flow.refresh_tokens"),
-      bareDeps(),
+      vectorFor("oauth_flow.build_authorize_url"),
+      deps,
     );
     expect(result.verdict).toBe("UNPORTED");
     expect(result.diff).toBeUndefined();
