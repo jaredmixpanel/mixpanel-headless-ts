@@ -10,6 +10,8 @@
 
 import { describe, expect, it } from "vitest";
 
+import { parseAccount } from "../../core/src/auth/account.js";
+import { parseSession, type Session } from "../../core/src/auth/session.js";
 import { ParamValidationError } from "../../core/src/errors.js";
 import {
   browserSession,
@@ -97,6 +99,68 @@ describe("createBrowserWorkspace (§2.2) — core Workspace over a guarded trans
     // workspace is pinned (core `scope.ts` twin — no re-implementation).
     expect(capture.url).toContain("/api/app/workspaces/789/dashboards");
     expect(capture.headers["authorization"]).toBe("Bearer tok-123");
+  });
+
+  // B9-ARB-A SEM-F1 (b9-reviewA-resolution.md): the "static token
+  // unresolvable" condition matches the Python twin's code + details
+  // (`OnDiskTokenResolver.get_static_token`, token_resolver.py:273-282
+  // → OAUTH_TOKEN_ERROR {account_name, env_var}) so the condition is
+  // uniform across runtimes; the MESSAGE stays browser-explanatory
+  // (env reading is node-only, R9.4 — out of contract per R5.4).
+  it("token_env account (hand-built session) refuses with the Python-coded OAUTH_TOKEN_ERROR {account_name, env_var} (token_resolver.py:273-282 twin)", async () => {
+    const transport = fakeTransport(() => ({ status: 200, json: [] }));
+    const session = parseSession(
+      {
+        account: parseAccount(
+          {
+            type: "oauth_token",
+            name: "env-acct",
+            region: "us",
+            token_env: "MP_OAUTH_TOKEN",
+          },
+          { boundary: "param" },
+        ),
+        project: { id: "12345" },
+      },
+      { boundary: "param" },
+    );
+    const ws = createBrowserWorkspace({
+      session,
+      token: "unused",
+      projectId: "12345",
+      region: "us",
+      fetch: transport.fetch,
+    });
+    await expect(ws.client.getEvents()).rejects.toMatchObject({
+      code: "OAUTH_TOKEN_ERROR",
+      details: { account_name: "env-acct", env_var: "MP_OAUTH_TOKEN" },
+    });
+    expect(transport.captures).toHaveLength(0);
+  });
+
+  it("neither-token-nor-token_env (model-invariant arm) refuses with OAUTH_TOKEN_ERROR {account_name} (token_resolver.py:267-272 twin)", async () => {
+    const transport = fakeTransport(() => ({ status: 200, json: [] }));
+    // The XOR invariant makes this account shape unbuildable through
+    // `parseAccount` — hand-built literal, exactly the Python
+    // `pragma: no cover` model-invariant arm (survives without asserts).
+    const session: Session = {
+      account: { type: "oauth_token", name: "bare-acct", region: "us" },
+      project: { id: "12345" },
+      workspace: null,
+      headers: new Map(),
+    };
+    const ws = createBrowserWorkspace({
+      session,
+      token: "unused",
+      projectId: "12345",
+      region: "us",
+      fetch: transport.fetch,
+    });
+    await expect(ws.client.getEvents()).rejects.toMatchObject({
+      code: "OAUTH_TOKEN_ERROR",
+      details: { account_name: "bare-acct" },
+    });
+    expect(transport.captures).toHaveLength(0);
   });
 
   it("returns the REAL core Workspace facade (not a wrapper class)", () => {

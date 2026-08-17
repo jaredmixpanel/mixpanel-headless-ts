@@ -19,8 +19,8 @@ APIs are CORS-open with bearer auth in all regions, so the full core
 ## PKCE-in-browser status (D2 spike, b9-packets.md §4)
 
 **PKCE-in-browser ships ENABLED.** DCR accepts third-party https redirect
-URIs (verified 2026-08-16); end-to-end browser consent/exchange verified in
-Phase-4 live burn-in.
+URIs (verified 2026-08-16); end-to-end browser consent/exchange to be
+verified in Phase-4 live burn-in.
 
 Verified: a live Dynamic Client Registration POST (`mcp/register/`,
 RFC 7591, unauthenticated) with

@@ -119,28 +119,49 @@ function serviceAccountRefusal(path: string): BrowserUnsupportedError {
 
 /**
  * Resolve the static bearer of an `oauth_token` account — the browser
- * arm of `OnDiskTokenResolver.get_static_token`. `token_env` is
- * node-only (env reading is forbidden in browser, R9.4 — documented
- * narrowing; `browserSession` can only build inline-token accounts, so
- * this arm is reachable only via a hand-built session).
+ * arm of `OnDiskTokenResolver.get_static_token`
+ * (`token_resolver.py:250-282`). `token_env` is node-only (env reading
+ * is forbidden in browser, R9.4 — documented narrowing; `browserSession`
+ * can only build inline-token accounts, so the refusal arms are
+ * reachable only via a hand-built session). Failure arms carry the
+ * Python twin's code + details — `OAUTH_TOKEN_ERROR` with
+ * `{account_name, env_var}` (env arm, `token_resolver.py:273-282`) /
+ * `{account_name}` (model-invariant arm, `:267-272`) — so the "static
+ * token unresolvable" condition is uniform across runtimes (B9-ARB-A
+ * SEM-F1, `b9-reviewA-resolution.md`); only the MESSAGE is
+ * browser-specific (out of contract, R5.4).
  *
  * @param account - The `oauth_token` account.
  * @returns The bearer token.
  */
 function staticTokenFromAccount(account: OAuthTokenAccount): Promise<string> {
   const token = account.token;
-  if (token === undefined || token === null) {
+  if (token !== undefined && token !== null) {
+    return Promise.resolve(token.reveal());
+  }
+  const envName = account.token_env;
+  if (envName === undefined || envName === null) {
+    // Model invariant (`token XOR token_env`) — explicit raise so it
+    // survives without assertions (`token_resolver.py:267-272`).
     return Promise.reject(
       new OAuthError(
-        "oauth_token account carries token_env, which requires " +
-          "environment access — env reading is node-only (R9.4). Pass " +
-          "an inline token in the browser.",
-        "OAUTH_CONFIG_ERROR",
-        { field: "token_env" },
+        `OAuth account '${account.name}' has neither \`token\` nor ` +
+          "`token_env`.",
+        "OAUTH_TOKEN_ERROR",
+        { account_name: account.name },
       ),
     );
   }
-  return Promise.resolve(token.reveal());
+  return Promise.reject(
+    new OAuthError(
+      `OAuth account '${account.name}' references env var ` +
+        `\`${envName}\`, but environment access is node-only (R9.4) — ` +
+        "env vars cannot be read in a browser. Pass an inline token " +
+        "instead.",
+      "OAUTH_TOKEN_ERROR",
+      { account_name: account.name, env_var: envName },
+    ),
+  );
 }
 
 /**

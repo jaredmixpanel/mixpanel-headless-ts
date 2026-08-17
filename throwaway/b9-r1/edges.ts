@@ -281,8 +281,11 @@ async function main(): Promise<void> {
     }),
   );
 
-  // token_env-only account through getStaticToken → OAUTH_CONFIG_ERROR
+  // token_env-only account through getStaticToken → OAUTH_TOKEN_ERROR
   // (hand-built session; browserSession cannot express it).
+  // B9-ARB-A SEM-F1: expectation changed OAUTH_CONFIG_ERROR →
+  // OAUTH_TOKEN_ERROR (aligned to the Python twin
+  // token_resolver.py:273-282; b9-reviewA-resolution.md).
   const envSession: Session = {
     account: {
       type: "oauth_token",
@@ -301,7 +304,7 @@ async function main(): Promise<void> {
     region: "us",
     fetch: cannedFetch,
   });
-  await expectCode("token_env in browser", "OAUTH_CONFIG_ERROR", () =>
+  await expectCode("token_env in browser", "OAUTH_TOKEN_ERROR", () =>
     envWs.client.getEvents(),
   );
 

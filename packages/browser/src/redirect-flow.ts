@@ -43,7 +43,7 @@
  * ships ENABLED — DCR accepts third-party https redirect URIs (verified
  * 2026-08-16, live `mcp/register/` 201 for
  * `https://spike-b9.example.com/oauth/callback`); end-to-end browser
- * consent/exchange verified in Phase-4 live burn-in. Residual gap
+ * consent/exchange to be verified in Phase-4 live burn-in. Residual gap
  * (§4.5, unverified without a real browser session): authorize-time
  * `redirect_uri_allowed` enforcement for the registered third-party
  * URI, consent-screen code issuance to that redirect, and the token
