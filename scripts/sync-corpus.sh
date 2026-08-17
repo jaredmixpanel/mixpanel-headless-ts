@@ -47,7 +47,11 @@ CONFIG="${REPO_ROOT}/conformance-runner/corpus.config.json"
 # Repo-relative paths this script snapshots (also the dirty-check scope).
 VECTORS_REL="conformance/vectors"
 SELFTEST_REL="conformance/schema/canonical-selftest.json"
-API_MAP_REL="context/typescript-port-api-map.json"
+# The api-map moved INTO this repo with the 2026-08-17 context
+# relocation (the port's spec of record lives at context/ here now; the
+# Python repo keeps only conformance/ + bug reports). It is sourced
+# locally, not from the Python checkout.
+API_MAP_LOCAL="${REPO_ROOT}/context/typescript-port-api-map.json"
 CONTRACT_REL="conformance/contract"
 CONTRACT_GLOB="${CONTRACT_REL}/*.json"
 
@@ -75,7 +79,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-DIRTY="$(git -C "${PY_REPO}" status --porcelain -- "${VECTORS_REL}" "${SELFTEST_REL}" "${API_MAP_REL}" "${CONTRACT_GLOB}")"
+DIRTY="$(git -C "${PY_REPO}" status --porcelain -- "${VECTORS_REL}" "${SELFTEST_REL}" "${CONTRACT_GLOB}")"
 if [[ -z "${DIRTY}" ]]; then
   SRC="${PY_REPO}"
   echo "sync-corpus: source tree clean; copying from working tree @ $(git -C "${PY_REPO}" rev-parse --short HEAD) (${RIG_BRANCH})"
@@ -87,12 +91,16 @@ else
   SRC="${WORKTREE}"
 fi
 
-for rel in "${VECTORS_REL}" "${SELFTEST_REL}" "${API_MAP_REL}" "${CONTRACT_REL}"; do
+for rel in "${VECTORS_REL}" "${SELFTEST_REL}" "${CONTRACT_REL}"; do
   if [[ ! -e "${SRC}/${rel}" ]]; then
     echo "sync-corpus: missing ${rel} under ${SRC}" >&2
     exit 1
   fi
 done
+if [[ ! -f "${API_MAP_LOCAL}" ]]; then
+  echo "sync-corpus: missing ${API_MAP_LOCAL} (relocated spec of record)" >&2
+  exit 1
+fi
 CONTRACT_COUNT="$(find "${SRC}/${CONTRACT_REL}" -maxdepth 1 -name '*.json' | wc -l | tr -d ' ')"
 if [[ "${CONTRACT_COUNT}" -eq 0 ]]; then
   echo "sync-corpus: no contract artifacts under ${SRC}/${CONTRACT_REL} (run generate_contract first)" >&2
@@ -109,7 +117,7 @@ rm -rf "${DEST}"
 mkdir -p "${DEST}"
 cp -R "${SRC}/${VECTORS_REL}/." "${DEST}/"
 cp "${SRC}/${SELFTEST_REL}" "${DEST}/"
-cp "${SRC}/${API_MAP_REL}" "${DEST}/"
+cp "${API_MAP_LOCAL}" "${DEST}/"
 mkdir -p "${DEST}/contract"
 find "${SRC}/${CONTRACT_REL}" -maxdepth 1 -name '*.json' -exec cp {} "${DEST}/contract/" \;
 
