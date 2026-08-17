@@ -246,6 +246,26 @@ describe("TestOAuthFlowRefresh (test_auth_flow.py:490)", () => {
         "'id_token': '<redacted>'}",
     );
   });
+
+  it("test_refresh_non_dict_200_body_raises_oauth_error", async () => {
+    // ARB-A F1: refresh path shares `postTokenRequest`, so the
+    // non-record-200 guard is locked on the refresh error code too
+    // (Python twin: TestTokenPayloadRedaction::
+    // test_refresh_non_dict_200_body_raises_oauth_error).
+    const { fetchImpl } = mockTransport(() => jsonResponse(200, [1, 2]));
+    const storage = new OAuthStorage({ storageDir: makeTempDir(cleanups) });
+    const flow = new OAuthFlow({ region: "us", storage, fetchImpl });
+    let caught: OAuthError | null = null;
+    try {
+      await flow.refreshTokens(expiredTokens(), "cid");
+    } catch (exc) {
+      caught = exc as OAuthError;
+    }
+    expect(caught).toBeInstanceOf(OAuthError);
+    expect(caught?.code).toBe("OAUTH_REFRESH_ERROR");
+    // Byte-exact Python `str([1, 2])` rendering, unredacted.
+    expect(caught?.details["response_data"]).toBe("[1, 2]");
+  });
 });
 
 describe("TestOAuthFlowGetValidToken (test_auth_flow.py:610)", () => {

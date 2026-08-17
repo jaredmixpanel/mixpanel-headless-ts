@@ -269,10 +269,11 @@ export async function postTokenRequest(
     // (if malformed) token payload — see the Security section of the
     // function JSDoc (`flow.py:617-630` post-FIX-2; the R10.7
     // verbatim-payload twin retired with the Python-first fix). The
-    // record guard covers the non-object-200 branch above (Python has
-    // no such branch — `data.items()` presumes a dict there); a
-    // non-record body has no token-bearing KEYS, so it renders as
-    // before.
+    // record guard covers the non-object-200 branch above (Python
+    // mirrors it with an `isinstance(data, dict)` guard on its
+    // `.items()` walk since ARB-A F1 — both languages raise the coded
+    // OAuthError); a non-record body has no token-bearing KEYS, so it
+    // renders as before.
     const redacted = isPlainRecord(data as never)
       ? Object.fromEntries(
           Object.entries(data as Record<string, unknown>).map(([k, v]) => [

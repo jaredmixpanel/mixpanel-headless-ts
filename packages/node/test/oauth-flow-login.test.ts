@@ -482,6 +482,39 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
     expect(responseData).toContain("weird-idp-extra");
   });
 
+  // ARB-A F1 (pair-A fidelity review): the Python bug-(d) redaction fix
+  // initially crashed with an uncoded AttributeError on non-dict 200
+  // JSON bodies while this side already guarded with `isPlainRecord`.
+  // Python now mirrors the guard (`flow.py` isinstance branch); these
+  // members lock the converged behavior byte-for-byte on both sides
+  // (Python twin: TestTokenPayloadRedaction::
+  // test_exchange_non_dict_200_body_raises_oauth_error).
+  it.each([
+    { id: "list", body: [1, 2] as unknown, expected: "[1, 2]" },
+    { id: "str", body: "hello" as unknown, expected: "hello" },
+    { id: "int", body: 42 as unknown, expected: "42" },
+    { id: "null", body: null as unknown, expected: "None" },
+  ])(
+    "test_exchange_non_dict_200_body_raises_oauth_error[$id]",
+    async ({ body, expected }) => {
+      const { fetchImpl } = mockTransport(() => jsonResponse(200, body));
+      const storage = new OAuthStorage({ storageDir: makeTempDir(cleanups) });
+      const flow = new OAuthFlow({ region: "us", storage, fetchImpl });
+      const error = await flow
+        .exchangeCode("c", "v", "cid", "http://localhost:19284/callback")
+        .then(
+          () => null,
+          (exc: unknown) => exc,
+        );
+      expect(error).toBeInstanceOf(OAuthError);
+      const exc = error as OAuthError;
+      expect(exc.code).toBe("OAUTH_TOKEN_ERROR");
+      // Byte-exact Python `str(body)` rendering, unredacted (a non-dict
+      // body has no token-bearing keys).
+      expect(exc.details["response_data"]).toBe(expected);
+    },
+  );
+
   it("test_success_path_unchanged", async () => {
     const flow = flowWithPayload(makeTokenResponse());
     const tokens = await flow.exchangeCode(

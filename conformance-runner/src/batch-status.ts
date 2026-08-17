@@ -81,6 +81,12 @@ export type BatchStatus = "pending" | "done";
  * stays covered by SYNTHETIC batch tables injected through
  * `RunnerDeps.batchStatuses` inside the tests — a pending entry never
  * re-enters this shipped table.
+ *
+ * ADDENDUM (ARB-A R1, 2026-08-17): the TERMINAL STATE paragraph above
+ * is a dated historical record of the B8 gate, not current corpus
+ * state — the R10.7 four-bug maintenance batch subsequently re-pinned
+ * the corpus (pin `70c904dc` -> `700db996`, 3,251 -> 3,262 vectors;
+ * still 0 FAIL / 0 UNPORTED, zero pending entries).
  */
 export const BATCH_STATUS: ReadonlyMap<string, BatchStatus> = new Map<
   string,
