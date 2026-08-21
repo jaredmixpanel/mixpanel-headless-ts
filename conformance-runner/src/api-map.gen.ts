@@ -5,7 +5,7 @@
 // authored D13 gate supplement) to its TS home (design D12/D13,
 // naming-map §5). Inputs + sha256 provenance stamps:
 //   corpus/typescript-port-api-map.json  5bd1db2d1dd9414ff5db0b49fd3fbdd02361c79c07cb94c3001f6bf8d35a7f53
-//   corpus/api-index.json                8908677769314aa458d2e1e73c24ef01ad0b4b9b0b2f6369cdfb91ea0fb74c24
+//   corpus/api-index.json                820769053172e90c6cf9ccd1444c714836811000c3ac35917d9a568fed5d4c7a
 //   src/naming-exceptions.json           ebfec88840aaf874bae4b52fa6f1e0f9bbd08a20fc51a6ddd537193de8c4ce36
 //   src/authored-apis.json               5083c9f957dd8fedbe5e724b0a976739ae33149f57c1b890cb77ce2de774ba53
 import type { ApiMapEntry, ApiMapSourceHashes } from "./api-map-types.js";
@@ -13,7 +13,7 @@ import type { ApiMapEntry, ApiMapSourceHashes } from "./api-map-types.js";
 /** sha256 stamps of the four generation inputs (D12 provenance). */
 export const API_MAP_SOURCE_HASHES: ApiMapSourceHashes = {
   apiMapJson: "5bd1db2d1dd9414ff5db0b49fd3fbdd02361c79c07cb94c3001f6bf8d35a7f53",
-  apiIndexJson: "8908677769314aa458d2e1e73c24ef01ad0b4b9b0b2f6369cdfb91ea0fb74c24",
+  apiIndexJson: "820769053172e90c6cf9ccd1444c714836811000c3ac35917d9a568fed5d4c7a",
   namingExceptionsJson: "ebfec88840aaf874bae4b52fa6f1e0f9bbd08a20fc51a6ddd537193de8c4ce36",
   authoredApisJson: "5083c9f957dd8fedbe5e724b0a976739ae33149f57c1b890cb77ce2de774ba53",
 };
@@ -1263,6 +1263,16 @@ export const API_MAP: Readonly<Record<string, ApiMapEntry>> = {
     capability: "data-governance",
     params: [],
     kwonly: ["data_group_id"],
+  },
+  "api_client.list_per_event_properties": {
+    pythonApi: "api_client.list_per_event_properties",
+    pythonModule: "mixpanel_headless._internal.api_client",
+    tsModule: "core/client/api-client",
+    tsName: "listPerEventProperties",
+    kind: "wire_api",
+    capability: "entities",
+    params: [],
+    kwonly: [],
   },
   "api_client.list_property_definitions": {
     pythonApi: "api_client.list_property_definitions",

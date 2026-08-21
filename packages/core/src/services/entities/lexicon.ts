@@ -8,8 +8,11 @@
  * metadata, history, and export.
  *
  * All methods route through B0 `appRequest` over `maybe_scoped_path`
- * (R10.8). Results are returned verbatim after the source's isinstance
- * guards (Caution #11).
+ * (R10.8) — except `listPerEventProperties`, which is a query-host
+ * request (`_request` twin, Python PR #215: the schema-graph edge
+ * gather moved off the App API's deadline-bound `includeEvents` join).
+ * Results are returned verbatim after the source's isinstance guards
+ * (Caution #11).
  */
 
 import { appRequest } from "../../client/app-request.js";
@@ -178,6 +181,28 @@ export interface LexiconMethods {
   listPropertyDefinitions(
     options?: ListPropertyDefinitionsOptions,
   ): Promise<JsonValue[]>;
+
+  /**
+   * List every event with the properties observed on it
+   * (`list_per_event_properties`, `api_client.py:6884-6929` — GET
+   * `{query}/data_definitions/events` with
+   * `fetch_per_event_properties=true`, the internal query-API surface
+   * the Mixpanel Lexicon UI itself uses, unwrapping the `results`
+   * envelope). This is the relationship source for the schema graph:
+   * the App API's `includeEvents=true` bulk call computes the same
+   * event↔property join behind a ~120s gateway deadline it cannot meet
+   * on large projects, while the query-API route permits longer runs,
+   * so this request is sent with the export timeout. A pinned workspace
+   * is injected as `workspace_id` and the server applies its event-name
+   * filters.
+   *
+   * @param signal - Optional cancellation signal (R6.7).
+   * @returns List of event dicts; each carries a `properties` list of
+   *   property definition dicts (at minimum `{name: ...}`-shaped).
+   * @throws MixpanelHeadlessError - Non-list `results` payload (plus
+   *   the wire-contract errors of the query-host path).
+   */
+  listPerEventProperties(signal?: AbortSignal): Promise<JsonValue[]>;
 
   /**
    * Update a property definition (`update_property_definition`,
@@ -488,6 +513,33 @@ export function createLexiconMethods(core: ClientCore): LexiconMethods {
         includeZeroCounts: options.include_zero_counts ?? true,
         ...(options.signal !== undefined ? { signal: options.signal } : {}),
       }),
+
+    listPerEventProperties: async (
+      signal?: AbortSignal,
+    ): Promise<JsonValue[]> => {
+      const url = core.buildUrl("query", "/data_definitions/events");
+      const result = await core.requestQueryHost("GET", url, {
+        params: { fetch_per_event_properties: "true" },
+        timeoutSeconds: core.exportTimeoutSeconds,
+        ...(signal !== undefined ? { signal } : {}),
+      });
+      // Python `result.get("results") if isinstance(result, dict) else
+      // result` — a missing key reads as None (`.get` default).
+      const rows: JsonValue | null = isPlainRecord(result)
+        ? Object.hasOwn(result, "results")
+          ? // noUncheckedIndexedAccess: hasOwn guarantees presence and
+            // the lossless JSON model carries no undefined members.
+            (result["results"] ?? null)
+          : null
+        : result;
+      if (!Array.isArray(rows)) {
+        throw new MixpanelHeadlessError(
+          `Unexpected response from per-event properties: ` +
+            `expected list, got ${pythonTypeNameOf(rows)}`,
+        );
+      }
+      return rows;
+    },
 
     updatePropertyDefinition: async (
       name: string,

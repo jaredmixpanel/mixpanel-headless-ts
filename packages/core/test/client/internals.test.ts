@@ -111,7 +111,10 @@ function harness(
     },
     random: () => 0,
     maxRetries: options.maxRetries ?? 3,
-    timeoutSeconds: 120,
+    // The route-aware `_default_timeout` seam pinned flat — the harness
+    // asserts request shape, not timeout routing (server-deadline.test.ts
+    // owns that).
+    defaultTimeoutSeconds: () => 120,
     requestHeaders: (extra) => ({ "User-Agent": "test", ...extra }),
     projectId: options.projectId ?? "12345",
   };

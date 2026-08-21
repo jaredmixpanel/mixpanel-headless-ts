@@ -16,7 +16,8 @@
  *   (`getEvents`, `getEventProperties`, `getPropertyValues`,
  *   `listFunnels`, `listCohorts`, `listBookmarks`, `getTopEvents`,
  *   `getSchemas`, `getSchema`, `listEventDefinitions`,
- *   `listPropertyDefinitions`); nothing is re-assembled here.
+ *   `listPropertyDefinitions`, `listPerEventProperties`); nothing is
+ *   re-assembled here.
  * - B4 client methods hand back the lossless `JsonValue` tree
  *   (`JsonNumber` tokens intact); every consumption point converts with
  *   {@link toNativeJson} — the documented point where the TS wire layer
@@ -36,6 +37,7 @@ import { toNativeJson, type JsonValue } from "../client/json-value.js";
 import type { MixpanelClient } from "../client/client.js";
 import { parseLossless, LosslessJsonError } from "../client/lossless-json.js";
 import { compareCodepoints, sortedByCodepoint } from "../compat/codepoint.js";
+import { pythonStr, type PythonValue } from "../compat/index.js";
 import { EventNotFoundError, QueryError } from "../errors.js";
 import { KeyError, ValueError } from "../query/python-builtins.js";
 import { isPythonDict } from "../query/validation-shared.js";
@@ -749,6 +751,66 @@ export interface GetSchemaGraphOptions {
   readonly force_refresh?: boolean | undefined;
 }
 
+/**
+ * Python `str(x)` for names in the per-event inversion (identity for
+ * strings; the compat port for scalar non-strings) — the same twin the
+ * SchemaGraphResult node builder applies.
+ *
+ * @param value - A payload value that passed a truthiness check.
+ * @returns The Python string form.
+ */
+function pyStr(value: unknown): string {
+  return typeof value === "string" ? value : pythonStr(value as PythonValue);
+}
+
+/**
+ * Invert per-event property lists into a property→events map — TS port
+ * of `_invert_per_event_properties` (`discovery.py:359-385`,
+ * PR #215).
+ *
+ * Each input row is an event dict carrying a `properties` list (the
+ * query-API `fetch_per_event_properties` shape). Rows without an event
+ * name, and property entries that are not name-carrying dicts,
+ * contribute no edges. Event order is preserved per property.
+ *
+ * @param perEventRows - Event dicts, each with an optional `properties`
+ *   list.
+ * @returns Map of property name to the ordered list of event names it
+ *   appears on.
+ */
+function invertPerEventProperties(
+  perEventRows: ReadonlyArray<Record<string, unknown>>,
+): Map<string, string[]> {
+  const propertyToEvents = new Map<string, string[]>();
+  for (const eventRow of perEventRows) {
+    const eventName = eventRow["name"];
+    if (!pyTruthy(eventName)) {
+      continue;
+    }
+    // Python `event_row.get("properties") or []` — a falsy value (None,
+    // [], "", 0) reads as no properties; a non-list truthy value would
+    // raise in the for-loop, matching Python's TypeError only for
+    // non-iterables (dicts/strings iterate there) — the wire shape is a
+    // list, and non-list truthy shapes are outside the ported contract.
+    const rawProperties = eventRow["properties"];
+    const properties: unknown[] = Array.isArray(rawProperties)
+      ? rawProperties
+      : [];
+    for (const prop of properties) {
+      if (isPythonDict(prop) && pyTruthy(prop["name"])) {
+        const key = pyStr(prop["name"]);
+        let attached = propertyToEvents.get(key);
+        if (attached === undefined) {
+          attached = [];
+          propertyToEvents.set(key, attached);
+        }
+        attached.push(pyStr(eventName));
+      }
+    }
+  }
+  return propertyToEvents;
+}
+
 /** Cache-key tuple members (`str | int | None` in Python). */
 type CacheKeyPart = string | number | boolean | null;
 
@@ -1163,11 +1225,17 @@ export class DiscoveryService {
 
   /**
    * Gather the full Lexicon schema and the event↔property graph
-   * (`get_schema_graph`, `discovery.py:833-920`).
+   * (`get_schema_graph`, `discovery.py:862-949` post-PR-#215).
    *
-   * Two or three bulk Lexicon calls (event definitions and event
-   * properties always, user properties when requested) folded into a
-   * {@link SchemaGraphResult}, which derives the adjacency maps.
+   * Three or four bulk calls: event definitions, event properties, and
+   * the query-API per-event properties gather always, plus user
+   * properties when requested. The per-event gather
+   * (`data_definitions/events?fetch_per_event_properties`) is inverted
+   * client-side into per-property `events` lists, which
+   * {@link SchemaGraphResult} folds into the adjacency maps. The App
+   * API's `includeEvents=true` bulk call is deliberately not used: it
+   * computes the same join behind a ~120s gateway deadline it cannot
+   * meet on large projects.
    *
    * @param options - Density / user-property / refresh switches.
    * @returns The schema graph.
@@ -1195,13 +1263,27 @@ export class DiscoveryService {
     const events = (await this.apiClient.listEventDefinitions()).map((entry) =>
       toNativeRecord(entry),
     );
-    const properties = (
+    const flatProperties = (
       await this.apiClient.listPropertyDefinitions({
         resource_type: "Event",
-        include_events: true,
         include_density: includeDensity,
       })
     ).map((entry) => toNativeRecord(entry));
+    const perEventRows = (await this.apiClient.listPerEventProperties()).map(
+      (entry) => toNativeRecord(entry),
+    );
+    const propertyToEvents = invertPerEventProperties(perEventRows);
+    // Attach the inverted edges as per-property `events` lists (copies,
+    // not mutations) so `properties` keeps its single-source-of-truth
+    // contract with SchemaGraphResult. Edges for properties absent from
+    // the flat list are dropped — the flat list defines the node set.
+    const properties = flatProperties.map((row) => ({
+      ...row,
+      events: (pyTruthy(row["name"])
+        ? (propertyToEvents.get(pyStr(row["name"])) ?? [])
+        : []
+      ).map((eventName) => ({ name: eventName })),
+    }));
     let userProperties: Array<Record<string, unknown>> = [];
     if (includeUserProperties) {
       userProperties = (

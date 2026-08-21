@@ -62,6 +62,32 @@ export const ENDPOINTS: ReadonlyMap<
 ]);
 
 /**
+ * Server-side read deadlines Mixpanel's edge enforces per route family
+ * (nginx `proxy_read_timeout`), and the route-aware client defaults
+ * sized to outlast them — TS port of the `api_client.py:186-196`
+ * constants. App API routes get ~120s; `/api/query` routes get 488s.
+ * The defaults add a margin so a slow request is always resolved by the
+ * server's own answer (success or 5xx with diagnostics) and never
+ * pre-empted by a client read timeout. An explicit timeout (constructor
+ * or per-call) overrides them.
+ */
+export const APP_API_SERVER_DEADLINE_S: number = 120.0;
+
+/** The `/api/query` route family's server-side read deadline. */
+export const QUERY_API_SERVER_DEADLINE_S: number = 488.0;
+
+/** Margin added over each server deadline (`_SERVER_DEADLINE_MARGIN_S`). */
+const SERVER_DEADLINE_MARGIN_S: number = 15.0;
+
+/** Route-aware default timeout for App API requests (135s). */
+export const DEFAULT_APP_TIMEOUT_S: number =
+  APP_API_SERVER_DEADLINE_S + SERVER_DEADLINE_MARGIN_S;
+
+/** Route-aware default timeout for query-host requests (503s). */
+export const DEFAULT_QUERY_TIMEOUT_S: number =
+  QUERY_API_SERVER_DEADLINE_S + SERVER_DEADLINE_MARGIN_S;
+
+/**
  * Look up the base URL for a region/API-family pair.
  *
  * Python indexes `ENDPOINTS[region][api_type]` directly (a `KeyError` is

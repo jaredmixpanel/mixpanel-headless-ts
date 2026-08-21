@@ -315,7 +315,11 @@ export async function* paginateAll(
           jsonBody: null,
           formBody: null,
           headers,
-          timeoutSeconds: core.timeoutSeconds,
+          // `client._default_timeout(url)` (`pagination.py:175`) — never
+          // the raw client timeout: a bare None would mean "no timeout
+          // at all" in httpx; the route-aware default outlasts the App
+          // API's ~120s server deadline instead.
+          timeoutSeconds: core.defaultTimeoutSeconds(url),
         });
       } catch (cause) {
         // `except httpx.HTTPError` — the transport-error class filter

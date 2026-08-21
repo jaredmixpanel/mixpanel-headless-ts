@@ -121,38 +121,56 @@ interface LexiconStub {
   readonly eventDefinitionCalls: { count: number };
   /** The `resource_type` of each `list_property_definitions` call. */
   readonly resourceTypes: Array<string | undefined>;
+  /** The `include_events` of each `list_property_definitions` call. */
+  readonly includeEventsFlags: Array<boolean | undefined>;
+  /** `list_per_event_properties.call_count`. */
+  readonly perEventCalls: { count: number };
+  /** Mutable `list_per_event_properties.return_value`. */
+  readonly perEvent: { rows: JsonValue[] };
 }
 
 /**
- * `TestDiscoveryGetSchemaGraph._mock_api` (test_schema_graph.py:401-420)
- * generalized over the response pair.
+ * `TestDiscoveryGetSchemaGraph._mock_api` (test_schema_graph.py:454-479)
+ * generalized over the response triple. The flat property rows carry no
+ * `events` lists; the relationship edges come from the query-API
+ * per-event gather and are inverted client-side.
  *
  * @param events - The `list_event_definitions` return.
  * @param properties - The `list_property_definitions` return, either a
  *   fixed list or a `resource_type`-dispatching function.
+ * @param perEventRows - The `list_per_event_properties` return.
  * @returns The stub client plus its call logs.
  */
 function lexiconStub(
   events: JsonValue[],
   properties: JsonValue[] | ((resourceType: string) => JsonValue[]),
+  perEventRows: JsonValue[] = [],
 ): LexiconStub {
   const eventDefinitionCalls = { count: 0 };
+  const perEventCalls = { count: 0 };
   const resourceTypes: Array<string | undefined> = [];
+  const includeEventsFlags: Array<boolean | undefined> = [];
+  const perEvent = { rows: perEventRows };
   const client = {
     listEventDefinitions: (): Promise<JsonValue[]> => {
       eventDefinitionCalls.count += 1;
       return Promise.resolve(events);
     },
     listPropertyDefinitions: (
-      options: { resource_type?: string } = {},
+      options: { resource_type?: string; include_events?: boolean } = {},
     ): Promise<JsonValue[]> => {
       resourceTypes.push(options.resource_type);
+      includeEventsFlags.push(options.include_events);
       const resourceType = options.resource_type ?? "Event";
       return Promise.resolve(
         typeof properties === "function"
           ? properties(resourceType)
           : properties,
       );
+    },
+    listPerEventProperties: (): Promise<JsonValue[]> => {
+      perEventCalls.count += 1;
+      return Promise.resolve(perEvent.rows);
     },
     core: { now: (): Date => new Date("2026-06-03T00:00:00.000Z") },
     // B6-W1: the facade constructor installs the workspace resolver
@@ -161,20 +179,31 @@ function lexiconStub(
     setWorkspaceResolver: (): void => {},
     close: (): Promise<void> => Promise.resolve(),
   } as unknown as MixpanelClient;
-  return { client, eventDefinitionCalls, resourceTypes };
+  return {
+    client,
+    eventDefinitionCalls,
+    resourceTypes,
+    includeEventsFlags,
+    perEventCalls,
+    perEvent,
+  };
 }
 
-/** The default `_mock_api` payloads (test_schema_graph.py:401-420). */
+/** The default `_mock_api` payloads (test_schema_graph.py:454-479). */
 function defaultMockApi(): LexiconStub {
   return lexiconStub(
     [{ name: "Purchase", displayName: "Purchase" }, { name: "Login" }],
     (resourceType) =>
       resourceType === "User"
         ? [{ name: "plan", resourceType: "User" }]
-        : [
-            { name: "amount", events: [{ name: "Purchase" }] },
-            { name: "ts", events: [{ name: "Purchase" }, { name: "Login" }] },
-          ],
+        : [{ name: "amount" }, { name: "ts" }],
+    [
+      {
+        name: "Purchase",
+        properties: [{ name: "amount" }, { name: "ts" }],
+      },
+      { name: "Login", properties: [{ name: "ts" }] },
+    ],
   );
 }
 
@@ -337,6 +366,53 @@ describe("TestApiClientBulkLexicon", () => {
   });
 });
 
+describe("TestApiClientPerEventProperties", () => {
+  // The query-API per-event properties gather (the relationship
+  // source). The App API's `includeEvents=true` bulk call computes this
+  // same join behind a ~120s gateway deadline it cannot meet on large
+  // projects, so the schema graph fetches the edges from the query API
+  // instead. (`test_uses_export_timeout` lives in
+  // `client/server-deadline.test.ts` — it needs the transport-timeout
+  // capture seam.)
+
+  it("test_url_params_and_unwrap", async () => {
+    let seenUrl = "";
+    let seenParams: Record<string, string> = {};
+    const client = mockClient((request) => {
+      seenUrl = request.url.split("?")[0] ?? "";
+      seenParams = { ...request.params };
+      return {
+        status: 200,
+        json: {
+          results: [{ name: "Purchase", properties: [{ name: "amount" }] }],
+        },
+      };
+    });
+    const rows = await client.listPerEventProperties();
+    expect(seenUrl).toBe(
+      "https://mixpanel.com/api/query/data_definitions/events",
+    );
+    expect(seenParams["fetch_per_event_properties"]).toBe("true");
+    expect(seenParams["project_id"]).toBe("12345");
+    expect(rows).toEqual([
+      { name: "Purchase", properties: [{ name: "amount" }] },
+    ]);
+  });
+
+  it("test_raises_on_unexpected_shape", async () => {
+    const client = mockClient(() => ({
+      status: 200,
+      json: { results: { unexpected: "shape" } },
+    }));
+    await expect(client.listPerEventProperties()).rejects.toThrow(
+      MixpanelHeadlessError,
+    );
+    await expect(client.listPerEventProperties()).rejects.toThrow(
+      /expected list/,
+    );
+  });
+});
+
 describe("TestCanonicalResourceType", () => {
   it.each([
     ["event", "Event"],
@@ -352,16 +428,53 @@ describe("TestCanonicalResourceType", () => {
 });
 
 describe("TestDiscoveryGetSchemaGraph", () => {
-  it("builds the adjacency maps from the property event lists", async () => {
+  it("builds the adjacency maps from the inverted per-event gather", async () => {
     const stub = defaultMockApi();
     const result = await new DiscoveryService(stub.client).getSchemaGraph();
     expect(result.event_to_properties["Purchase"]).toEqual(["amount", "ts"]);
     expect(result.event_to_properties["Login"]).toEqual(["ts"]);
     expect(result.property_to_events["amount"]).toEqual(["Purchase"]);
+    expect(result.property_to_events["ts"]).toEqual(["Purchase", "Login"]);
     expect(result.user_properties).toEqual([
       { name: "plan", resourceType: "User" },
     ]);
     expect(result.meta["event_count"]).toBe(2);
+  });
+
+  it("omits include_events from every flat properties call", async () => {
+    // No list_property_definitions call may request the App API join:
+    // the `includeEvents=true` join times out server-side on large
+    // projects; the edges must come from list_per_event_properties.
+    const stub = defaultMockApi();
+    await new DiscoveryService(stub.client).getSchemaGraph();
+    expect(stub.perEventCalls.count).toBe(1);
+    for (const flag of stub.includeEventsFlags) {
+      expect(flag ?? false).toBe(false);
+    }
+  });
+
+  it("skips nameless events and malformed per-event property entries", async () => {
+    const stub = defaultMockApi();
+    stub.perEvent.rows = [
+      { properties: [{ name: "amount" }] }, // nameless event -> dropped
+      { name: "Purchase", properties: ["bad", { no: "name" }] },
+      { name: "Login", properties: [{ name: "ts" }] },
+      { name: "NoProps" }, // no properties key -> no edges
+    ];
+    const result = await new DiscoveryService(stub.client).getSchemaGraph();
+    expect(result.property_to_events["amount"]).toEqual([]);
+    expect(result.property_to_events["ts"]).toEqual(["Login"]);
+  });
+
+  it("ignores per-event properties absent from the flat list", async () => {
+    // A per-event property absent from the flat list creates no node.
+    const stub = defaultMockApi();
+    stub.perEvent.rows = [
+      { name: "Purchase", properties: [{ name: "ghost" }] },
+    ];
+    const result = await new DiscoveryService(stub.client).getSchemaGraph();
+    expect(Object.hasOwn(result.property_to_events, "ghost")).toBe(false);
+    expect(result.event_to_properties["Purchase"]).toEqual([]);
   });
 
   it("caches results; force_refresh re-fetches", async () => {
@@ -397,13 +510,8 @@ describe("TestDiscoveryGetSchemaGraph", () => {
   it("flows a property-level densityLocal onto every edge", async () => {
     const stub = lexiconStub(
       [{ name: "Purchase" }],
-      [
-        {
-          name: "amount",
-          densityLocal: 0.75,
-          events: [{ name: "Purchase" }],
-        },
-      ],
+      [{ name: "amount", densityLocal: 0.75 }],
+      [{ name: "Purchase", properties: [{ name: "amount" }] }],
     );
     const result = await new DiscoveryService(stub.client).getSchemaGraph({
       include_density: true,
@@ -414,13 +522,11 @@ describe("TestDiscoveryGetSchemaGraph", () => {
     expect(edgeDensity(result.toGraph(), "Purchase", "amount")).toBe(0.75);
   });
 
-  it("emits a debug summary for dropped rows", async () => {
+  it("emits a debug summary for dropped (nameless) rows", async () => {
     const stub = lexiconStub(
       [{ name: "Purchase" }, { count: 1 }],
-      [
-        { name: "amount", events: ["bad", { name: "Purchase" }] },
-        { events: [] },
-      ],
+      [{ name: "amount" }, { description: "nameless" }],
+      [{ name: "Purchase", properties: [{ name: "amount" }] }],
     );
     const { logger, messages } = recordingLogger();
     await new DiscoveryService(stub.client, { logger }).getSchemaGraph({
@@ -432,7 +538,8 @@ describe("TestDiscoveryGetSchemaGraph", () => {
   it("emits no drop summary for a clean gather", async () => {
     const stub = lexiconStub(
       [{ name: "Purchase" }],
-      [{ name: "amount", events: [{ name: "Purchase" }] }],
+      [{ name: "amount" }],
+      [{ name: "Purchase", properties: [{ name: "amount" }] }],
     );
     const { logger, messages } = recordingLogger();
     await new DiscoveryService(stub.client, { logger }).getSchemaGraph({

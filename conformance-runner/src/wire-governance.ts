@@ -212,6 +212,11 @@ export function registerGovernanceWireBindings(
   );
 
   implementations.register(
+    "api_client.list_per_event_properties",
+    withClient((client) => client.listPerEventProperties()),
+  );
+
+  implementations.register(
     "api_client.update_property_definition",
     withClient((client, context) =>
       client.updatePropertyDefinition(

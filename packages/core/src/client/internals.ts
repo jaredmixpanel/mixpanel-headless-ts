@@ -525,8 +525,17 @@ export interface RetryExecutorDeps {
   readonly random: RandomSource;
   /** Maximum retry attempts for rate-limited requests (Python default 3). */
   readonly maxRetries: number;
-  /** Default request timeout in seconds (Python `self._timeout`). */
-  readonly timeoutSeconds: number;
+  /**
+   * Resolve the default request timeout for a URL — the
+   * `self._default_timeout(url)` seam (`api_client.py:489-509`): an
+   * explicit constructor timeout wins; otherwise the default is
+   * route-aware (135s on App API routes, 503s elsewhere), sized to
+   * outlast the server's own read deadline.
+   *
+   * @param url - The full request URL.
+   * @returns The timeout in seconds.
+   */
+  defaultTimeoutSeconds(url: string): number;
   /**
    * The B0-owned 4-layer header merge, pre-bound to the session
    * (`headers.ts` `requestHeaders`; B4-C1 imports it by name).
@@ -598,14 +607,15 @@ export async function executeWithRetry(
   const params = args.params ?? {};
   params["query_origin"] = QUERY_ORIGIN;
   const requestHeaders = deps.requestHeaders(args.headers);
-  // Python `timeout or self._timeout`: None AND 0 both fall back
-  // (truthiness preserved on purpose).
+  // Python `timeout or self._default_timeout(url)`: None AND 0 both
+  // fall back (truthiness preserved on purpose) to the route-aware
+  // default (explicit constructor timeout wins inside the seam).
   const timeoutSeconds =
     args.timeoutSeconds !== null &&
     args.timeoutSeconds !== undefined &&
     args.timeoutSeconds !== 0
       ? args.timeoutSeconds
-      : deps.timeoutSeconds;
+      : deps.defaultTimeoutSeconds(args.url);
 
   for (let attempt = 0; attempt <= deps.maxRetries; attempt += 1) {
     try {

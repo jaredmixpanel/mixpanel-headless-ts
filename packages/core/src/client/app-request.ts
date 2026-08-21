@@ -57,8 +57,15 @@ export interface AppRequestDeps {
   readonly random: RandomSource;
   /** Maximum retry attempts for rate-limited requests (Python default 3). */
   readonly maxRetries: number;
-  /** Request timeout in seconds (`self._timeout`). */
-  readonly timeoutSeconds: number;
+  /**
+   * Resolve the default request timeout for a URL
+   * (`self._default_timeout(url)`, `api_client.py:489-509`): explicit
+   * constructor timeout wins, else the route-aware default.
+   *
+   * @param url - The full request URL.
+   * @returns The timeout in seconds.
+   */
+  defaultTimeoutSeconds(url: string): number;
   /**
    * The B0-owned 4-layer header merge, pre-bound to the session.
    *
@@ -180,7 +187,7 @@ export async function appRequest(
         jsonBody: formBody !== null ? null : jsonBody,
         formBody,
         headers,
-        timeoutSeconds: deps.timeoutSeconds,
+        timeoutSeconds: deps.defaultTimeoutSeconds(url),
       } satisfies TransportRequestOptions);
 
       // Handle 204 No Content.

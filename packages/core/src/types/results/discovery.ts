@@ -1105,6 +1105,12 @@ export interface SchemaGraphResultFields {
  * Result of a schema-graph discovery call — TS port of
  * `types.SchemaGraphResult`.
  *
+ * The event↔property adjacency comes from the query API's per-event
+ * properties gather (`data_definitions/events?
+ * fetch_per_event_properties=true`, inverted client-side onto each
+ * property by the discovery service — Python PR #215), so for any
+ * event you can list the properties that travel with it.
+ *
  * A multi-DataFrame surface (phase2-design C6): `events_df` /
  * `properties_df` / `relationships_df` become `toEventsRows()` /
  * `toPropertiesRows()` / `toRelationshipsRows()`; the main `.df`

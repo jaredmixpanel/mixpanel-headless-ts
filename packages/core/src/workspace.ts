@@ -2610,8 +2610,13 @@ export class Workspace {
 
   /**
    * Gather the full Lexicon schema and the event↔property
-   * relationships (`schema_graph`, `workspace.py:1346-1394`). Cached
+   * relationships (`schema_graph`, `workspace.py:1346-1397`). Cached
    * per `(include_density, include_user_properties)`.
+   *
+   * The adjacency comes from the query API's per-event properties
+   * gather, which tolerates large projects (the App API join it
+   * replaces timed out at the ~120s gateway deadline); on very large
+   * projects the gather can still take minutes.
    *
    * Group properties are not gathered (headless has no data-groups
    * listing to enumerate them).

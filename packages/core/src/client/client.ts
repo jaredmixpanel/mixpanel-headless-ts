@@ -159,6 +159,8 @@ import {
 } from "./transport.js";
 import {
   buildUrl,
+  DEFAULT_APP_TIMEOUT_S,
+  DEFAULT_QUERY_TIMEOUT_S,
   endpointBase,
   type EndpointKind,
   type Region,
@@ -184,8 +186,15 @@ export type CustomHeaderEnvSource = () => {
 export interface MixpanelClientOptions {
   /** Resolved Session (account + project + optional workspace). */
   readonly session: Session;
-  /** Request timeout in seconds for regular requests (Python default 120). */
-  readonly timeoutSeconds?: number | undefined;
+  /**
+   * Request timeout in seconds for regular requests. When `null`/absent
+   * (the default, Python `timeout: float | None = None`), each request
+   * gets a route-aware timeout sized to outlast the server's own
+   * deadline (135s on App API routes, 503s otherwise), so the server —
+   * not this client — resolves a slow request. An explicit value
+   * applies to every request.
+   */
+  readonly timeoutSeconds?: number | null | undefined;
   /** Request timeout for export operations (Python default 600). */
   readonly exportTimeoutSeconds?: number | undefined;
   /** Maximum retry attempts for rate-limited requests (Python default 3,
@@ -286,8 +295,21 @@ export interface HttpHandle {
  * published API docs.
  */
 export interface ClientCore {
-  /** The resolved per-instance options (defaults applied). */
-  readonly timeoutSeconds: number;
+  /** The explicit constructor timeout, or `null` for the route-aware
+   * defaults (Python `self._timeout: float | None`). */
+  readonly timeoutSeconds: number | null;
+  /**
+   * Resolve the read timeout for a request to `url` — TS port of
+   * `_default_timeout` (`api_client.py:489-509`). An explicit
+   * constructor timeout wins; otherwise the default is route-aware and
+   * sized to outlast the server's own read deadline (~120s on App API
+   * routes, 488s on query routes), so the server — never this client —
+   * is the side that resolves a slow request.
+   *
+   * @param url - The full request URL.
+   * @returns The timeout in seconds for the request.
+   */
+  defaultTimeoutSeconds(url: string): number;
   /** Export-operation timeout in seconds (`self._export_timeout`). */
   readonly exportTimeoutSeconds: number;
   /** Maximum 429 retries (`self._max_retries`). */
@@ -719,7 +741,9 @@ function signalAwareSleep(
 export function createMixpanelClient(
   options: MixpanelClientOptions,
 ): MixpanelClient {
-  const timeoutSeconds = options.timeoutSeconds ?? 120.0;
+  // Python `timeout: float | None = None` — `null` means "route-aware
+  // defaults"; an explicit value applies to every request.
+  const timeoutSeconds: number | null = options.timeoutSeconds ?? null;
   const exportTimeoutSeconds = options.exportTimeoutSeconds ?? 600.0;
   const maxRetries = options.maxRetries ?? 3;
   const tokenResolver = options.tokenResolver ?? null;
@@ -750,6 +774,20 @@ export function createMixpanelClient(
       httpHandle = { fetchImpl };
     }
     return httpHandle;
+  };
+
+  // `_default_timeout` (`api_client.py:489-509`): explicit constructor
+  // timeout wins; else route-aware, reading the CURRENT session's region
+  // (an account swap via `use()` re-routes, exactly like Python's
+  // `self._session.account.region` read).
+  const defaultTimeoutSeconds = (url: string): number => {
+    if (timeoutSeconds !== null) {
+      return timeoutSeconds;
+    }
+    if (url.startsWith(endpointBase(session.account.region, "app"))) {
+      return DEFAULT_APP_TIMEOUT_S;
+    }
+    return DEFAULT_QUERY_TIMEOUT_S;
   };
 
   const getAuthHeader = async (): Promise<string> => {
@@ -783,7 +821,7 @@ export function createMixpanelClient(
     sleep: signalAwareSleep(sleep, signal),
     random,
     maxRetries,
-    timeoutSeconds,
+    defaultTimeoutSeconds,
     requestHeaders: coreRequestHeaders,
     projectId: session.project.id,
     logger,
@@ -794,7 +832,7 @@ export function createMixpanelClient(
     sleep: signalAwareSleep(sleep, signal),
     random,
     maxRetries,
-    timeoutSeconds,
+    defaultTimeoutSeconds,
     requestHeaders: coreRequestHeaders,
     projectId: session.project.id,
     region: session.account.region,
@@ -835,6 +873,7 @@ export function createMixpanelClient(
 
   const core: ClientCore = {
     timeoutSeconds,
+    defaultTimeoutSeconds,
     exportTimeoutSeconds,
     maxRetries,
     sleep,

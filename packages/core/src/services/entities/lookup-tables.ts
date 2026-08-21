@@ -244,7 +244,7 @@ export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
         jsonBody: null,
         formBody: formData,
         headers: core.requestHeaders({ Authorization: authHeader }),
-        timeoutSeconds: core.timeoutSeconds,
+        timeoutSeconds: core.defaultTimeoutSeconds(url),
       },
       signal,
     );
@@ -465,7 +465,7 @@ export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
           jsonBody: null,
           formBody: null,
           headers: core.requestHeaders({ Authorization: authHeader }),
-          timeoutSeconds: core.timeoutSeconds,
+          timeoutSeconds: core.defaultTimeoutSeconds(url),
         },
         options.signal,
       );
