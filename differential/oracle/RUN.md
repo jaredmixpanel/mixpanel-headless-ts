@@ -127,3 +127,33 @@ Oracle-infrastructure gaps fixed during bring-up (not library bugs):
 expect-vs-tagged output encoding, integral-float token fidelity, and the
 unregistered-replay-tag encode path — see the Python repo P2-9 notes
 (`context/phase2/notes/p2-9-notes.md`) triage log.
+
+# PR #215 follow gate run (2026-08-21, inbound-ledger row 2a)
+
+Differential regression for the schema_graph query-API gather +
+server-deadline timeout port (Python `main` squash `6f26131`; corpus pin
+`390c6e7fe79485d3844c75af78fb5fe90142af68`).
+
+- Command (re-runnable; seeded generation):
+
+  ```bash
+  uv run python -m conformance.differential.fuzz_harness \
+    --right "node /Users/jaredmcfarland/Developer/mixpanel-headless-ts/scripts/run-oracle.mjs" \
+    --examples 500 --seed <seed> --report json
+  ```
+
+- Bridges: oracle-py @ `main` 6f26131, oracle-ts @ main 7c7d776, both
+  reporting `source_commit 390c6e7f…`, protocol 1.1.
+- Seeds: fresh **879279927** + replay of the ENTIRE bugfix-batch gate
+  set (1059451707, 3343231, 28631260, 52794688, 40075993, 53062695,
+  47824574, 628997442, 715310894, 419393897, 741097477).
+- Totals, ALL 12 runs: **28,091 examples / 0 skips / 0 divergences
+  each** (337,092 examples total), every run `status: ok`, exit 0, no
+  repros written (`repros/` still exactly the two RESOLVED P2-9
+  records). 55 families, 0 UNPORTED skips.
+- Referee (a) ajv (`npm run referee:bookmark`): 9/9 green, 0 REJECT —
+  the change touches no bookmark payloads; referee (b) not re-run per
+  the standing choreography (bookmark-payload trigger absent).
+- The port changed real wire behavior (the schema-graph edge gather
+  route) — expected divergences were exactly none because both sides
+  changed identically, and that is what was observed.

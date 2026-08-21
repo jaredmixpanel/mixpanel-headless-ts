@@ -136,6 +136,13 @@ restriction); re-trigger from the UI or let the next push/merge heal
 it — #207's composite "CodeQL" check failure is derived (missing base
 analysis) and clears with it.
 
+**ADDENDUM 2026-08-21 — PR #215 follow (row 2a below): corpus now
+3,272 @ `390c6e7f`.** Re-pinned `af999c9` → `390c6e7fe794…` (Python
+`main` squash `6f26131`, +8 schema-graph/timeout vectors; manifest
+3,044 → 3,052; runner total incl. authored/enums 3,264 → 3,272). Both
+languages green at the pin. The pin names a real, branch-reachable
+`main` commit — the 2026-08-17c provenance caveat does not apply to it.
+
 **ADDENDUM 2026-08-17c — corpus-pin provenance after the stack restack.**
 GitHub's Stacked-PR rebase (user-initiated; completed locally after the
 GitHub outage broke the built-in flow) rewrote the #207/#208 branch
@@ -180,6 +187,77 @@ Python-dataclass eager missing-`name` `TypeError`. Follow-ups:
   (camelCase methods, snake_case option keys, `toRows()` for `.df`); add a
   fourth — TS constructors take a single fields object where Python
   accepts positionals.
+
+## 2a. Inbound divergence — Python PR #215 `schema_graph` timeouts (query-API per-event gather + server-deadline timeouts)
+
+**OPENED AND CLOSED 2026-08-21.** Python PR #215 (squash `6f26131` on
+`main`, "fix: schema_graph timeouts on large projects") moved ahead of
+the port: (A) the schema-graph edge gather left the App API's
+`includeEvents=true` join (server-killed at ~120 s on large projects)
+for a new query-API client method `list_per_event_properties()`
+(`GET /api/query/data_definitions/events?fetch_per_event_properties=true`,
+sent under the EXPORT timeout, inverted client-side event→properties ⇒
+property→events); (B) route-aware default timeouts sized to outlast the
+server deadlines (`DEFAULT_APP_TIMEOUT_S` 135.0 / `DEFAULT_QUERY_TIMEOUT_S`
+503.0 = deadline + 15 s margin; explicit constructor timeout always wins;
+constructor type widened to `float | None`), including the
+`pagination.py` guard (`client._default_timeout(url)`, never the raw —
+now nullable — client timeout); (C) corpus re-pin +8 vectors.
+
+**CLOSED via the standing choreography, strict order held:**
+
+- **Re-pin first**: corpus `af999c9` → `390c6e7fe79485d3844c75af78fb5fe90142af68`
+  (manifest 3,044 → **3,052**, extraction 2026-08-21; runner total incl.
+  authored/enums 3,264 → **3,272**). Delta exactly the 8 disclosed
+  vectors (entities/test_api_client +2, entities/test_schema_graph +3,
+  pagination/test_pagination +1, segmentation/test_api_client +2), all
+  other bundles stamp-only. TS commit `6fe206d`.
+- **Red state recorded**: 3,269/3,272 — 3 `FAIL_ERROR` on the
+  `api_client.list_per_event_properties` vectors (unbound api). The 5
+  timeout-routing vectors passed PRE-port: the extraction rig does not
+  record `request.extensions["timeout"]` into wire vectors (timeout is
+  not vector-observable — `wire-auth.ts` header), so their wire shapes
+  were already identical. **R10.9 honesty note**: the
+  explicit-wins / null / 135-503 byte-parity is therefore enforced by
+  the transport-capture twin suite
+  (`packages/core/test/client/server-deadline.test.ts`, a
+  `createRequestExecutor` wrap — the `extensions["timeout"]["read"]`
+  analog), not by the corpus.
+- **Port red-first** (TS commit `7c7d776`): twins written and observed
+  failing (12 red), then `listPerEventProperties` (query-host path,
+  results-envelope unwrap, export timeout), the discovery-service
+  per-event gather + `invertPerEventProperties`, route-aware
+  `_default_timeout` on `ClientCore` (constants live in `url.ts` beside
+  `ENDPOINTS`), threaded through `executeWithRetry` / `appRequest` /
+  `paginateAll` / both lookup-table raw-transport sites. api-map row
+  auto-generated (regular snake→camel, no naming exception).
+- **Green**: corpus **3,272 / 0 FAIL / 0 UNPORTED** @ `390c6e7f`; full
+  `npm run check` green (10,016 tests, browser smoke OK).
+- **Gate**: fresh seed **879279927** + replay of the ENTIRE bugfix-gate
+  11-seed set — see `differential/oracle/RUN.md` (this repo) for the
+  per-seed table; referee (a) ajv 9/9 green, 0 REJECT.
+
+**Sanctioned deviations / no-op notes (all pre-existing shapes):**
+
+1. `uploadToSignedUrl` — Python swapped `self._timeout` →
+   `self._default_timeout(url)` on its fresh `httpx.Client`; the TS twin
+   deliberately carries NO timeout clock on that fresh-fetch path
+   (`lookup-tables.ts` fresh-request semantics), so the swap is
+   unobservable in the port. Unchanged.
+2. Python's `_ensure_client` pool-level timeout fallback
+   (`DEFAULT_QUERY_TIMEOUT_S` when unset) has no TS twin — the
+   `HttpHandle` pool token has no timeout concept and EVERY TS request
+   site passes a per-request timeout, which is exactly the guarantee
+   Python's own comment claims for the fallback ("unreachable").
+3. `tests/pbt/test_schema_graph_pbt.py` had no TS twin before this
+   change (Phase-3 B5 scope: covered by the unit twins) and still has
+   none; its mock-shape change is reflected in the updated
+   `schema-graph.test.ts` stubs.
+4. `invertPerEventProperties`: a truthy NON-list `properties` value
+   (e.g. a number) yields no edges in TS where Python would raise a raw
+   `TypeError` (non-iterable). Dict/string values yield no edges in
+   BOTH. Outside the wire contract (the recorded shape is a list);
+   documented at the code site.
 
 ## 3. The JsonNumber facade round-trip gap
 
