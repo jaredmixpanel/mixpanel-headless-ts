@@ -5,7 +5,7 @@
   "type": "module",
   "description": "TypeScript port of mixpanel_headless (Phase 1 verification rig scaffold).",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "workspaces": [
     "packages/*",

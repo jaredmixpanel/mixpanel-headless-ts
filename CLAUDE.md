@@ -25,7 +25,9 @@ CI (`.github/workflows/ci.yml`) mirrors `npm run check`.
 
 ## Commands
 
-Node >= 20 required. Install with `npm ci` (lockfile-exact).
+Node >= 22 required (the conformance rig's request-side float twin uses
+`JSON.rawJSON`, absent before Node 21; CI runs 24). Install with `npm ci`
+(lockfile-exact).
 
 - `npm run check` — **the repo gate**: per-workspace `tsc --noEmit`, eslint,
   `prettier --check`, full vitest run, browser-bundle smoke. Run before committing.
