@@ -13,8 +13,8 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -29,7 +29,7 @@ jobs:
     # itself lands in TS-5. Steps below skip until both exist.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Detect corpus snapshot
         id: corpus
         run: |
@@ -39,7 +39,7 @@ jobs:
             echo "present=false" >> "$GITHUB_OUTPUT"
             echo "No corpus snapshot at conformance-runner/corpus/ - skipping."
           fi
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: steps.corpus.outputs.present == 'true'
         with:
           node-version: 24
