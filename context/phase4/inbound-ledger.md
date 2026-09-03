@@ -140,8 +140,10 @@ analysis) and clears with it.
 3,272 @ `390c6e7f`.** Re-pinned `af999c9` → `390c6e7fe794…` (Python
 `main` squash `6f26131`, +8 schema-graph/timeout vectors; manifest
 3,044 → 3,052; runner total incl. authored/enums 3,264 → 3,272). Both
-languages green at the pin. The pin names a real, branch-reachable
-`main` commit — the 2026-08-17c provenance caveat does not apply to it.
+languages green at the pin. The pin was BELIEVED to name a branch-reachable `main` commit —
+WRONG, corrected 2026-09-03: `390c6e7f` was the pre-squash tip of the
+PR #215 branch (`main` holds the squash `6f26131`); see row 2b's
+provenance repair.
 
 **ADDENDUM 2026-08-17c — corpus-pin provenance after the stack restack.**
 GitHub's Stacked-PR rebase (user-initiated; completed locally after the
@@ -393,6 +395,32 @@ ideal differential-fuzz families (pure, total, cross-language) — propose
 oracle side when the next oracle-surface change lands; and ask Python to
 re-stamp `manifest.source_commit` at the next extraction (see the
 provenance note above).
+
+**ADDENDUM 2026-09-03 — provenance repaired, pin moved to `c9991d1`.**
+Investigating the stamp lag showed the problem was systemic, not a
+PR-#223 one-off: NO stamp in the Python corpus was reachable from
+`main` (`390c6e7f` = pre-squash PR #215 branch tip; the contract
+`generated_from` `4504f3e3` = a pre-implementation "[Spec Kit] Add
+tasks" commit on the PR #223 branch; the authored bundles' `52696743` /
+`b5c1369` likewise pre-squash). The CI drift check re-injects the
+manifest's own stamp, so it could never notice. Python PR #224 (squash
+`1c29b97`) re-extracted with `--mp-record-commit=c9991d1…` (7,647
+record-run tests, 165 stamp-only diffs, contract `generated_from` →
+`c9991d1…`, D8 drift CLEAN), added `conformance/record/check_stamps.py`
++ a CI step (rule 1: every extracted/contract stamp must be an
+ancestor of `origin/main` and equal the manifest; rule 2: in-scope
+vector content may not move without the manifest stamp moving — the
+exact PR #223 failure mode; authored bundles allow-listed by name),
+and documented the two-step protocol (library PR first, then a re-pin
+PR stamped with the library PR's squash SHA) in
+`conformance/record/README.md` "Which SHA to stamp". TS follow: pin
+`390c6e7f` → **`c9991d1eed03fec1830b6e460091724b9263b8aa`**,
+`sync:corpus` re-run (169 stamp-only diffs: 164 bundle headers +
+manifest + 4 contract artifacts, 0 content lines), `errors-codes.gen.ts`
+regenerated for the new `generated_from`, api-map byte-identical.
+Burn-in expectation from here: **3,340 / 0 / 0 @ c9991d1**, both
+bridges reporting `c9991d1…`. Row 2a's "branch-reachable" claim is
+corrected in place above.
 
 ## 3. The JsonNumber facade round-trip gap
 

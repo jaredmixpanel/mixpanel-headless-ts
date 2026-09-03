@@ -187,3 +187,9 @@ did not move with the PR's extraction, see the ledger provenance note).
 - Referee (a) ajv (`npm run referee:bookmark`): green, 0 REJECT; the
   feed now carries 125 `workspace.build_params` payloads (115 + the 10
   report-link seam hits from PR #223).
+
+Post-run note (2026-09-03, later the same day): Python PR #224 repaired
+the corpus provenance (stamps → `c9991d1…`, see ledger row 2b addendum)
+and the TS pin followed; corpus content is byte-identical to what this
+run exercised, so the run stands. Both bridges now report
+`source_commit c9991d1…`.
