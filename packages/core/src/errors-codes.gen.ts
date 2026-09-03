@@ -1,4 +1,4 @@
-// GENERATED FROM conformance-runner/corpus/contract/error-codes.json @ f6383aad6ceb9c58cb5e6b02649d45fd2a4338f4 — DO NOT EDIT
+// GENERATED FROM conformance-runner/corpus/contract/error-codes.json @ 4504f3e3d25749768b053ccfd46a07302d3fc5c4 — DO NOT EDIT
 // Regenerate with: node scripts/gen-error-codes.mjs
 //
 // Mirror of the Python-side error-code contract artifact (phase2-design C3):
@@ -9,7 +9,7 @@
 
 /** Python-side commit SHA the source artifact was generated from. */
 export const ERROR_CODES_GENERATED_FROM =
-  "f6383aad6ceb9c58cb5e6b02649d45fd2a4338f4";
+  "4504f3e3d25749768b053ccfd46a07302d3fc5c4";
 
 /**
  * Exception class name → parent class name (`null` for the hierarchy
@@ -38,12 +38,18 @@ export const EXCEPTION_CLASS_PARENTS: ReadonlyMap<string, string | null> =
     ["RegionProbeError", "OAuthError"],
     ["RegionProbeNetworkError", "RegionProbeError"],
     ["ReplayNotFoundError", "SessionReplayError"],
+    ["ReportLinkError", "MixpanelHeadlessError"],
+    ["ReportLinkNotFoundError", "ReportLinkError"],
+    ["ReportLinkParseError", "ReportLinkError"],
+    ["ReportLinkScopeMismatchError", "ReportLinkError"],
     ["ResponseValidationError", "MixpanelHeadlessError"],
     ["ServerError", "APIError"],
     ["SessionReplayAccessError", "SessionReplayError"],
     ["SessionReplayError", "APIError"],
+    ["ShortLinkResolutionError", "ReportLinkError"],
     ["SignedURLExpiredError", "SessionReplayError"],
     ["UnsupportedReplayFormatError", "SessionReplayError"],
+    ["UnsupportedReportLinkError", "ReportLinkError"],
     ["WorkspaceScopeError", "MixpanelHeadlessError"],
   ]);
 
@@ -70,12 +76,18 @@ export const DEFAULT_ERROR_CODES: ReadonlyMap<string, string> = new Map([
   ["RegionProbeError", "OAUTH_REGION_PROBE_FAILED"],
   ["RegionProbeNetworkError", "OAUTH_NETWORK_UNREACHABLE"],
   ["ReplayNotFoundError", "REPLAY_NOT_FOUND"],
+  ["ReportLinkError", "REPORT_LINK_ERROR"],
+  ["ReportLinkNotFoundError", "REPORT_LINK_NOT_FOUND"],
+  ["ReportLinkParseError", "REPORT_LINK_UNPARSEABLE"],
+  ["ReportLinkScopeMismatchError", "REPORT_LINK_SCOPE_MISMATCH"],
   ["ResponseValidationError", "RESPONSE_VALIDATION_ERROR"],
   ["ServerError", "SERVER_ERROR"],
   ["SessionReplayAccessError", "SESSION_REPLAY_ACCESS_ERROR"],
   ["SessionReplayError", "SESSION_REPLAY_ERROR"],
+  ["ShortLinkResolutionError", "SHORT_LINK_RESOLUTION_ERROR"],
   ["SignedURLExpiredError", "SIGNED_URL_EXPIRED"],
   ["UnsupportedReplayFormatError", "UNSUPPORTED_REPLAY_FORMAT"],
+  ["UnsupportedReportLinkError", "UNSUPPORTED_REPORT_LINK"],
   ["WorkspaceScopeError", "NO_WORKSPACES"],
 ]);
 
@@ -170,6 +182,12 @@ export const CODED_GUARD_REGISTRY: ReadonlySet<string> = new Set([
   "RE2_EMPTY_EVENT_NAME",
   "RE3_EVENT_TIME_NOT_POSITIVE",
   "RESPONSE_VALIDATION_ERROR",
+  "RL1_UNKNOWN_REPORT_TYPE",
+  "RL2_INVALID_SLUG",
+  "RL3_UNKNOWN_REGION",
+  "RL4_REPORT_TYPE_CONFLICT",
+  "RL5_RESOLVED_REPORT_INCONSISTENT",
+  "RL6_INVALID_ID",
   "RP1_EMPTY_REPLAY_ID",
   "RP2_PROJECT_ID_NOT_POSITIVE",
   "RP3_START_TIME_NOT_POSITIVE",

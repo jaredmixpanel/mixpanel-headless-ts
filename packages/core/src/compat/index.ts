@@ -21,3 +21,5 @@ export { pythonStrip } from "./python-strip.js";
 export { pythonRepr, pythonStr } from "./python-str.js";
 export type { PythonValue } from "./python-str.js";
 export { zfill } from "./zfill.js";
+export { UrlSplitError, urljoin, urlsplit, urlunsplit } from "./urllib.js";
+export type { SplitResult } from "./urllib.js";

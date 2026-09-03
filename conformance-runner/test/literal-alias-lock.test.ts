@@ -4,7 +4,7 @@
 // conformance-runner/corpus/contract/literal-aliases.json.
 //
 // 1. Alias-name set equality: the TS registry keys exactly the
-//    artifact's 37 distinct alias names (a new/renamed Python alias
+//    artifact's 38 distinct alias names (a new/renamed Python alias
 //    fails here, telling you exactly which alias drifted).
 // 2. Per-alias member SET equality (member order is contractual for
 //    nothing — C2).
@@ -56,7 +56,7 @@ const artifact = JSON.parse(
 describe("C8(d) literal-alias lock", () => {
   it("artifact carries provenance and the measured cardinalities", () => {
     expect(artifact.generated_from).toMatch(/^[0-9a-f]{40}$/);
-    expect(Object.keys(artifact.literal_aliases)).toHaveLength(37);
+    expect(Object.keys(artifact.literal_aliases)).toHaveLength(38);
     expect(Object.keys(artifact.enums)).toHaveLength(8);
   });
 

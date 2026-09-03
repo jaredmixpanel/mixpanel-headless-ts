@@ -157,3 +157,33 @@ server-deadline timeout port (Python `main` squash `6f26131`; corpus pin
 - The port changed real wire behavior (the schema-graph edge gather
   route) — expected divergences were exactly none because both sides
   changed identically, and that is what was observed.
+
+# PR #223 follow gate run (2026-09-03, inbound-ledger row 2b)
+
+Differential regression for the 045 report-links port (Python `main`
+squash `c9991d1`; corpus pin UNCHANGED at
+`390c6e7fe79485d3844c75af78fb5fe90142af68` — the Python manifest stamp
+did not move with the PR's extraction, see the ledger provenance note).
+
+- Command (re-runnable; seeded generation):
+
+  ```bash
+  uv run python -m conformance.differential.fuzz_harness \
+    --right "node /Users/jaredmcfarland/Developer/mixpanel-headless-ts/scripts/run-oracle.mjs" \
+    --examples 500 --seed 906568853 --report json
+  ```
+
+- Bridges: oracle-py @ `main` c9991d1 (reports `library_version 0.2.1`,
+  informational), oracle-ts @ this change, both
+  reporting `source_commit 390c6e7f…`, protocol 1.1.
+- Seed: fresh **906568853**. Totals: **28,091 examples / 0 skips /
+  0 divergences**, `status: ok`, exit 0, no repros written (`repros/`
+  still exactly the two RESOLVED P2-9 records). 55 families, 0 UNPORTED
+  skips. The prior 12-seed set was not replayed: the change adds no
+  oracle family and touches no oracle-exercised surface (the four new
+  wire methods and the `Workspace` members are corpus-locked, not
+  oracle-locked); the fresh seed is the regression signal for the
+  shared builders the `workspace.build_*_params` families cover.
+- Referee (a) ajv (`npm run referee:bookmark`): green, 0 REJECT; the
+  feed now carries 125 `workspace.build_params` payloads (115 + the 10
+  report-link seam hits from PR #223).

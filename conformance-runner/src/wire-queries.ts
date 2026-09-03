@@ -344,6 +344,17 @@ export function registerQueryWireBindings(
     withClient((client, context) =>
       client.insightsQuery(
         requireWireKwarg(context, "body") as Record<string, unknown>,
+        kwargBag(context, ["workspace_id", "inject_workspace_id"]),
+      ),
+    ),
+  );
+
+  implementations.register(
+    "api_client.arb_funnels_query",
+    withClient((client, context) =>
+      client.arbFunnelsQuery(
+        requireWireKwarg(context, "body") as Record<string, unknown>,
+        kwargBag(context, ["workspace_id", "inject_workspace_id"]),
       ),
     ),
   );

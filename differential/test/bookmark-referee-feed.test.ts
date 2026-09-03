@@ -149,10 +149,12 @@ describe("referee (a) feed — insights-shaped B3 builder outputs", () => {
     const inCorpus = corpus.vectors.filter((v) => isFedApi(v.api)).length;
     expect(total).toBe(inCorpus);
     // 99 builder-fragment vectors (98 B3 + the FIX-1
-    // `test_no_custom_property_nesting` addition) + the 115 B5
-    // `workspace.build_params` full payloads.
+    // `test_no_custom_property_nesting` addition) + the 125 B5
+    // `workspace.build_params` full payloads (115 + the 10
+    // `test_workspace_report_links` seam hits from Python PR #223,
+    // corpus re-sync 2026-09-03).
     expect(fed.length).toBeGreaterThanOrEqual(200);
-    expect(perApi.get("workspace.build_params")).toBe(115);
+    expect(perApi.get("workspace.build_params")).toBe(125);
   });
 
   it("every TS-built fragment is ACCEPTED by the ajv bookmark.json referee (no standing disclosures)", async () => {

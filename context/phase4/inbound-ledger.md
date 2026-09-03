@@ -259,6 +259,141 @@ now nullable — client timeout); (C) corpus re-pin +8 vectors.
    BOTH. Outside the wire contract (the recorded shape is a list);
    documented at the code site.
 
+## 2b. Inbound feature — Python PR #223 report links (045: create / resolve / run Mixpanel report links)
+
+**OPENED AND CLOSED 2026-09-03.** Python PR #223 (squash `c9991d1` on
+`main`, "feat(report-links): create, resolve, and run Mixpanel report
+links (045)") moved ahead of the port with a whole feature: (A) a pure
+`_internal/report_links.py` module (URL grammar parser `parse_report_link`,
+builders `build_slug_url` / `build_bookmark_url`, `generate_slug`, the
+host/app/hash tables); (B) three new client methods —
+`create_bookmark_url` / `get_bookmark_url` (project-scoped
+`/bookmark-urls/` slug records, 404 → `REPORT_LINK_SLUG_NOT_FOUND`) and
+`resolve_short_link` (one authenticated GET with `follow_redirects=False`,
+`Location` header OR the 200 `window.location.href` script, `/login`
+targets → `AuthenticationError`, its own 429 backoff loop); (C) kw-only
+`workspace_id` / `inject_workspace_id` on `insights_query` /
+`arb_funnels_query`, threaded through the four inline `LiveQueryService`
+methods; (D) four `Workspace` members — `create_report_link`,
+`resolve_report_link`, `query_report_link`, `saved_report_link`; (E) six
+new exception classes under `ReportLinkError`, six new `RL1..RL6`
+`ParamValidationError` guard codes, the `ReportLinkType` literal, the
+`BookmarkUrl` Pydantic model, and the `ReportLink` / `ResolvedReport`
+dataclasses; (F) a CLI surface (`mp reports ...`, `mp query --link`) that
+has no TS twin by standing posture (the port ships no CLI).
+
+**CLOSED via the standing choreography, strict order held:**
+
+- **Corpus re-sync first** (TS commit: this change). The Python
+  `main` manifest at `c9991d1` STILL stamps `source_commit
+  390c6e7fe79485d3844c75af78fb5fe90142af68` — the PR's extraction did
+  not move the stamp — so the TS pin is UNCHANGED and `sync-corpus`
+  accepted the copy from the clean `main` working tree @ `c9991d1`.
+  Provenance note: the pin therefore names the commit BEFORE the
+  vectors it now pins were added; content-addressed drift checks are
+  unaffected, but the next Python extraction should re-stamp
+  (`manifest.source_commit` → a `main` SHA ≥ `c9991d1`). Delta:
+  manifest 3,052 → **3,120** (+68: bookmarks +30, entities +30, flows
+  +2, funnels +5, retention +1); runner total incl. authored/enums
+  3,272 → **3,340**. Contract artifacts regenerated Python-side @
+  `4504f3e3`: error-codes 28 → 34 classes / 120 → 126 registry codes,
+  literal-aliases 37 → 38 (`ReportLinkType`), model-coverage 125 → 126
+  (`BookmarkUrl`, authored-fixture row → `authored-fixtures.test.ts`).
+  `errors-codes.gen.ts` + `api-map.gen.ts` regenerated (api-map +4
+  rows, all mechanical snake→camel, no naming exception: the newly
+  indexed `arb_funnels_query`, `create_bookmark_url`, `get_bookmark_url`,
+  `resolve_short_link`; `insights_query` gains the two kwonly names).
+- **Red state recorded**: **3,289 / 3,340** — 47 `FAIL_ERROR` (the
+  four unbound api names) + 4 `FAIL_REQUEST` (`insights_query` vectors
+  carrying `workspace_id` / `inject_workspace_id`; the binding dropped
+  them). The 10 `workspace.build_params` report-link seam vectors and
+  the 6 `build_{funnel,flow,retention}_params` ones passed PRE-port
+  (pure builder seam hits, shapes unchanged).
+- **Port**: `packages/core/src/report-links.ts` (+ `compat/urllib.ts`:
+  CPython `urlsplit` / `urljoin` / `urlunsplit` / `.hostname` twins —
+  the WHATWG `URL` class re-serializes and is not a substitute),
+  `types/report-links.ts` (`ReportLink`, `ResolvedReport`,
+  `ReportLinkQueryResult`), `types/entities/bookmarks.ts` (`BookmarkUrl`),
+  `types/literals.ts` (`ReportLinkType`), `errors.ts` (six classes,
+  `new.target` default-code pattern), `services/entities/bookmark-urls.ts`
+  (`createBookmarkUrl` / `getBookmarkUrl` over B0 `appRequest`;
+  `resolveShortLink` over the raw `RequestExecutor` — already
+  `redirect: "manual"` per R2.11 — with the backoff trio),
+  `services/queries/query-host.ts` (`InlineQueryOptions`),
+  `services/live-query.ts` (`InlineQueryScope`, always forwards both
+  keywords like Python), `workspace.ts` (the four members + the
+  `generateSlug` constructor seam replacing Python's `@patch`), runner
+  bindings in `wire-queries.ts` / `wire-entities.ts`.
+- **Green**: corpus **3,340 / 0 FAIL / 0 UNPORTED** @ `390c6e7f` (content
+  `c9991d1`); browser-bundle smoke OK (the CSPRNG slug minter uses
+  `globalThis.crypto.getRandomValues`, no Node import).
+- **Gate**: fresh seed **906568853**, 55 families, **28,091 examples /
+  0 skips / 0 divergences** (no new oracle families — the Python PR
+  added none); referee (a) ajv green incl. the 10 new
+  `workspace.build_params` report-link payloads (feed count 115 → 125),
+  0 REJECT. Record: `differential/oracle/RUN.md`.
+- **Twins**: Python `tests/unit/test_report_links.py`,
+  `test_report_links_pbt.py`, `test_api_client_bookmark_urls.py`,
+  `test_query_workspace_scoping.py` (the two new classes),
+  `test_live_query_workspace.py`, `test_workspace_report_links.py`,
+  `test_exceptions_report_links.py`, `test_types_report_links.py` →
+  `packages/core/test/report-links{,.pbt}.test.ts`,
+  `client/client-bookmark-urls.test.ts`,
+  `client/client-inline-query-scope.test.ts`,
+  `services/live-query-workspace.test.ts`,
+  `workspace/workspace-report-links.test.ts`,
+  `errors-report-links.test.ts`, `types/report-links.test.ts`.
+  Twin census: 150 + 18 (parser + fast-check PBT), 45 + 7 + 15
+  (client, inline-query scope, live-query passthrough), 103 (workspace),
+  45 + 19 (exceptions, types) — 402 tests. Translation posture per
+  R5.4 (message text → class/code/details), `@patch(generate_slug)` →
+  the `generateSlug` constructor seam, `MagicMock(spec=...)` → local
+  stub clients, `caplog` → the injected logger. ONE real gap the
+  twins found and this change fixed: `BookmarkUrl.params` accepted a
+  non-dict (Python's `dict[str, Any]` rejects it) — the entity
+  field-spec vocabulary has no bare dict guard, so the check lives in
+  the model's `afterValidate` hook (also covers `overrides`). ONE
+  documented skip, a STANDING posture rather than a new gap: Python's
+  `BookmarkUrl` is `frozen=True`, the TS `EntityModel` base never
+  `Object.freeze`s (compile-time `readonly` only) — true of every
+  entity model in the port since Phase 2.
+
+**Sanctioned deviations / no-op notes:**
+
+1. **Browser `resolveShortLink` 3xx**: a browser `fetch` with
+   `redirect: "manual"` yields an opaque-redirect response (status 0,
+   no headers), so header-redirect shortlinks resolve only on
+   Node/undici and read as `SHORT_LINK_UNEXPECTED_RESPONSE` (status 0)
+   in a browser; the 200-with-script form works everywhere. Documented
+   at the module header and in the README; no code twin possible.
+2. **`urljoin` `;params`**: CPython's `urlparse` splits `;params` off
+   the last path segment before joining; the TS twin keeps `;` in the
+   path. Unobservable for Mixpanel targets (never carry path params).
+3. **`urlsplit` bracketed-host validation** uses a local IPv6/IPvFuture
+   validator instead of `ipaddress.ip_address`; both reject
+   `https://[::1/...` (unbalanced) as `REPORT_LINK_UNPARSEABLE`, both
+   accept `[::1]` as a non-Mixpanel host.
+4. **Ids > 2^53** in parsed paths/hashes go through `Number(...)` where
+   CPython keeps the exact int — the standing discrepancy #6/#7 class
+   (row 3 / row 6); live project/bookmark ids are far below the band.
+5. **No CLI twin** for `mp reports create|resolve|run|link` and
+   `mp query --link` (standing posture: the TS port ships no CLI; the
+   library members are the public surface, README recipe added).
+6. **Message text** (incl. the `hint` strings, which ARE asserted by
+   vectors through `details_contain`) copied verbatim; other message
+   text out of contract per R5.4.
+7. **Informational**: oracle-py reports `library_version 0.2.1` while
+   Python `main` is at 0.2.2; irrelevant to the run (the harness
+   compares `source_commit`, and both bridges agree) — noted so nobody
+   reads it as a bridge mismatch.
+
+**Follow-ups (not blocking):** `parse_report_link` / `build_*_url` are
+ideal differential-fuzz families (pure, total, cross-language) — propose
+`report_link_parse_family` / `report_link_build_family` on the Python
+oracle side when the next oracle-surface change lands; and ask Python to
+re-stamp `manifest.source_commit` at the next extraction (see the
+provenance note above).
+
 ## 3. The JsonNumber facade round-trip gap
 
 In the LIBRARY result path a >2^53 integer token collapses at

@@ -10,10 +10,12 @@
 
 import {
   EntityModel,
+  modelFail,
   oneOf,
   prepareInit,
   type EntityFieldSpec,
 } from "./model-base.js";
+import { isPythonDict } from "../../compat/python-dict.js";
 
 /**
  * Constructor input for {@link BookmarkMetadata} — absent keys take the Python
@@ -737,6 +739,143 @@ export class BookmarkHistoryResponse extends EntityModel {
         BookmarkHistoryResponse,
         raw,
       ) as unknown as BookmarkHistoryResponseInit,
+    );
+  }
+}
+
+/**
+ * Constructor input for {@link BookmarkUrl} — absent keys take the
+ * Python defaults; `undefined` counts as absent (R4.10).
+ */
+export interface BookmarkUrlInit {
+  /** The 12-character slug. */
+  readonly slug: string;
+  /** Report type (aliased from ``"type"``). */
+  readonly bookmark_type: string;
+  /** The raw query parameters stored under the slug (default `{}`). */
+  readonly params?: Readonly<Record<string, unknown>> | undefined;
+  /** Optional report name. */
+  readonly name?: string | null | undefined;
+  /** Optional report description. */
+  readonly description?: string | null | undefined;
+  /** Stored overrides (for example `originDashboard`). Never merged. */
+  readonly overrides?: Readonly<Record<string, unknown>> | null | undefined;
+  /** Project the record belongs to. */
+  readonly project_id?: number | null | undefined;
+  /** Creator id. */
+  readonly user_id?: number | null | undefined;
+  /** ISO timestamp from the server. */
+  readonly created_at?: string | null | undefined;
+  /** Saved-report reference, present only when the server did not expand it. */
+  readonly bookmark_id?: number | null | undefined;
+  /** The embedded saved report when one exists. */
+  readonly bookmark?:
+    Bookmark | Readonly<Record<string, unknown>> | null | undefined;
+}
+
+/**
+ * The server record for an unsaved report, keyed by a 12-character slug
+ * (045-report-links, Python PR #223).
+ *
+ * Returned by `GET /api/app/projects/{pid}/bookmark-urls/{slug}/`. The
+ * `bookmark_type` field is aliased from `"type"` in the API response,
+ * the same as {@link Bookmark}. When the record references a saved
+ * report, the server replaces `bookmark_id` with the full `bookmark`.
+ *
+ * Mirror of Python `mixpanel_headless.types.BookmarkUrl` (model_config:
+ * frozen=True, extra='allow', populate_by_name=True).
+ */
+export class BookmarkUrl extends EntityModel {
+  /** @internal The Python model name (and `$type` tag where recorded). */
+  static readonly modelName = "BookmarkUrl";
+
+  /** @internal Pydantic `model_config.extra` mirror. */
+  static readonly extraPolicy = "allow" as const;
+
+  /** @internal Declared fields in Python `model_fields` order. */
+  static readonly fieldSpecs: readonly EntityFieldSpec[] = [
+    { name: "slug", required: true, kind: "str" },
+    {
+      name: "bookmark_type",
+      required: true,
+      aliases: ["type"],
+      wire: "type",
+      kind: "str",
+    },
+    { name: "params", default: (): Record<string, unknown> => ({}) },
+    { name: "name", kind: "str", nullable: true },
+    { name: "description", kind: "str", nullable: true },
+    { name: "overrides", nullable: true },
+    { name: "project_id", kind: "int", nullable: true },
+    { name: "user_id", kind: "int", nullable: true },
+    { name: "created_at", kind: "str", nullable: true },
+    { name: "bookmark_id", kind: "int", nullable: true },
+    { name: "bookmark", nullable: true, nested: () => Bookmark },
+  ];
+
+  /** The 12-character slug. */
+  declare readonly slug: string;
+  /** Report type (aliased from ``"type"``). */
+  declare readonly bookmark_type: string;
+  /** The raw query parameters stored under the slug. */
+  declare readonly params: Readonly<Record<string, unknown>>;
+  /** Optional report name. */
+  declare readonly name: string | null;
+  /** Optional report description. */
+  declare readonly description: string | null;
+  /** Stored overrides (for example `originDashboard`). Never merged. */
+  declare readonly overrides: Readonly<Record<string, unknown>> | null;
+  /** Project the record belongs to. */
+  declare readonly project_id: number | null;
+  /** Creator id. */
+  declare readonly user_id: number | null;
+  /** ISO timestamp from the server. */
+  declare readonly created_at: string | null;
+  /** Saved-report reference, present only when the server did not expand it. */
+  declare readonly bookmark_id: number | null;
+  /** The embedded saved report when one exists. */
+  declare readonly bookmark: Bookmark | null;
+
+  /**
+   * Construct a validated BookmarkUrl (Pydantic-construction mirror).
+   *
+   * @param fields - Field values keyed by Python attribute name.
+   * @throws ResponseValidationError - On missing/invalid fields per
+   *   the Python model's validation.
+   */
+  constructor(fields: BookmarkUrlInit) {
+    super(BookmarkUrl, fields as unknown as Readonly<Record<string, unknown>>);
+  }
+
+  /**
+   * Pydantic's `dict[str, Any]` annotation on `params` (and
+   * `dict[str, Any] | None` on `overrides`) rejects non-mapping values;
+   * the field-spec vocabulary has no bare dict guard, so the shape check
+   * lives here (the `model_validator(mode="after")` slot).
+   *
+   * @throws ResponseValidationError - `params` / `overrides` is not a
+   *   plain mapping.
+   */
+  protected override afterValidate(): void {
+    if (!isPythonDict(this.params)) {
+      modelFail("BookmarkUrl.params", "expected an object");
+    }
+    if (this.overrides !== null && !isPythonDict(this.overrides)) {
+      modelFail("BookmarkUrl.overrides", "expected an object");
+    }
+  }
+
+  /**
+   * Strict decode from a raw mapping (accepts the Pydantic
+   * validation-alias set; `$type`/computed keys are dropped).
+   *
+   * @param raw - The raw payload.
+   * @returns The reconstructed instance.
+   * @throws ResponseValidationError - On shape violations.
+   */
+  static fromDict(raw: unknown): BookmarkUrl {
+    return new BookmarkUrl(
+      prepareInit(BookmarkUrl, raw) as unknown as BookmarkUrlInit,
     );
   }
 }

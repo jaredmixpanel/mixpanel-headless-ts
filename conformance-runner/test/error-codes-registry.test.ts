@@ -1,6 +1,6 @@
 // C8(c) exception/code registry-equality lock (phase2-design C3):
 //
-// 1. `errors.ts` exports EXACTLY the 28 exception class names in the
+// 1. `errors.ts` exports EXACTLY the 34 exception class names in the
 //    synced contract artifact, with the same parent-edge set (verified by
 //    walking `Object.getPrototypeOf` chains).
 // 2. The TS `CODED_GUARD_REGISTRY` / `CODED_GUARD_TWIN_CODES` sets
@@ -103,17 +103,25 @@ const INSTANTIATION_TABLE: Readonly<
     new errors.BusinessContextValidationError("m"),
   BookmarkValidationError: () =>
     new errors.BookmarkValidationError([new errors.ValidationError("p", "m")]),
+  // 045-report-links family (Python PR #223).
+  ReportLinkError: () => new errors.ReportLinkError("m"),
+  ReportLinkParseError: () => new errors.ReportLinkParseError("m"),
+  UnsupportedReportLinkError: () => new errors.UnsupportedReportLinkError("m"),
+  ReportLinkNotFoundError: () => new errors.ReportLinkNotFoundError("m"),
+  ReportLinkScopeMismatchError: () =>
+    new errors.ReportLinkScopeMismatchError("m"),
+  ShortLinkResolutionError: () => new errors.ShortLinkResolutionError("m"),
 };
 
 describe("C8(c) registry equality vs corpus/contract/error-codes.json", () => {
-  it("artifact sanity: 28 classes, 120 registry codes, 9 twin codes", () => {
-    expect(Object.keys(artifact.exception_classes)).toHaveLength(28);
-    expect(Object.keys(artifact.default_codes)).toHaveLength(28);
-    expect(artifact.coded_guard_registry).toHaveLength(120);
+  it("artifact sanity: 34 classes, 126 registry codes, 9 twin codes", () => {
+    expect(Object.keys(artifact.exception_classes)).toHaveLength(34);
+    expect(Object.keys(artifact.default_codes)).toHaveLength(34);
+    expect(artifact.coded_guard_registry).toHaveLength(126);
     expect(artifact.coded_guard_twin_codes).toHaveLength(9);
   });
 
-  it("(a) errors.ts exports exactly the artifact's 28 exception classes", () => {
+  it("(a) errors.ts exports exactly the artifact's 34 exception classes", () => {
     const exported = [...exportedClasses.keys()].sort();
     const expected = Object.keys(artifact.exception_classes).sort();
     expect(exported).toEqual(expected);

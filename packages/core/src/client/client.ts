@@ -80,6 +80,10 @@ import {
   type BookmarkMethods,
 } from "../services/entities/bookmarks.js";
 import {
+  createBookmarkUrlMethods,
+  type BookmarkUrlMethods,
+} from "../services/entities/bookmark-urls.js";
+import {
   createCohortMethods,
   type CohortMethods,
 } from "../services/entities/cohorts.js";
@@ -429,6 +433,7 @@ export interface MixpanelClient
     StreamingMethods,
     DashboardMethods,
     BookmarkMethods,
+    BookmarkUrlMethods,
     CohortMethods,
     FlagMethods,
     ExperimentMethods,
@@ -1115,6 +1120,7 @@ export function createMixpanelClient(
     ...createStreamingMethods(core),
     ...createDashboardMethods(core),
     ...createBookmarkMethods(core),
+    ...createBookmarkUrlMethods(core),
     ...createCohortMethods(core),
     ...createFlagMethods(core, { requireScopedPath }),
     ...createExperimentMethods(core),

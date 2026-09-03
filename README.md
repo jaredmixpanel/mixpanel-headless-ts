@@ -339,6 +339,40 @@ const seg = await ws.segmentation({
 
 </details>
 
+## Report links
+
+Any query can be turned into a URL that opens it in the Mixpanel report editor, and
+any Mixpanel report URL (or shortlink, or bare 12-character slug) can be turned back
+into its query parameters and run:
+
+```typescript
+// Query -> shareable link (stores an unsaved report under a minted slug)
+const result = await ws.query("Login", { last: 7 });
+const link = await ws.createReportLink(result, { name: "Logins, last 7 days" });
+console.log(link.url);
+// https://mixpanel.com/project/3/view/75/app/insights#EBrV5bW2u9Mw
+
+// Link -> params -> results
+const resolved = await ws.resolveReportLink(
+  "https://mixpanel.com/project/3/view/75/app/insights#EBrV5bW2u9Mw",
+);
+resolved.report_type; // "insights" | "funnels" | "retention" | "flows" | ...
+const rows = (await ws.queryReportLink(resolved)).toRows();
+
+// Saved report (bookmark) URL, no network
+ws.savedReportLink(123, { report_type: "funnels" });
+// https://mixpanel.com/project/3/app/funnels#view/123
+```
+
+`resolveReportLink` checks the link's region, project, and (when one is pinned)
+workspace against the active session before fetching anything, and rejects dashboard
+links and legacy `~(...)` hashes with a `hint` in `details`. Every failure in this
+family is a `ReportLinkError` subclass (`ReportLinkParseError`,
+`UnsupportedReportLinkError`, `ReportLinkNotFoundError`,
+`ReportLinkScopeMismatchError`, `ShortLinkResolutionError`). Browser note: a shortlink
+that answers with a `3xx` cannot be expanded from a browser (`fetch` hides redirect
+headers); the long-URL `200` form resolves everywhere.
+
 ## Streaming data extraction (Node.js)
 
 Raw events and profiles as async iterators — constant memory, no intermediate storage,

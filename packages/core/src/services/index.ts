@@ -38,6 +38,10 @@ export {
   type ListBookmarksV2Options,
 } from "./entities/bookmarks.js";
 export {
+  createBookmarkUrlMethods,
+  type BookmarkUrlMethods,
+} from "./entities/bookmark-urls.js";
+export {
   createCohortMethods,
   type CohortMethods,
   type ListCohortsAppOptions,
@@ -61,6 +65,7 @@ export {
   EVENTS_NAMES_MAX_LIMIT,
   EVENTS_NAMES_WIDE_FROM_DATE,
   type ActivityFeedOptions,
+  type InlineQueryOptions,
   type QueryHostMethods,
   type QuerySavedReportOptions,
   type RetentionOptions,

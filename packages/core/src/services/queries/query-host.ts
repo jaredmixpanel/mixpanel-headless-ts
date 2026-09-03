@@ -271,6 +271,47 @@ export interface ActivityFeedOptions {
   readonly signal?: AbortSignal | undefined;
 }
 
+/**
+ * Keyword options of the two inline query methods
+ * (`insights_query` / `arb_funnels_query`, 045-report-links): an
+ * explicit data view plus the pin opt-out (Python kw-only, R3.8).
+ */
+export interface InlineQueryOptions {
+  /**
+   * Optional data view to run under. When set it is sent as the
+   * `workspace_id` query parameter and wins over the pinned session
+   * workspace.
+   */
+  readonly workspace_id?: number | null | undefined;
+  /**
+   * When `true` (default) and `workspace_id` is `null`, the pinned
+   * session workspace, if any, is sent. `false` sends no pin, so the
+   * query runs project-wide unless `workspace_id` is set.
+   */
+  readonly inject_workspace_id?: boolean | undefined;
+  /** Optional cancellation signal (R6.7). */
+  readonly signal?: AbortSignal | undefined;
+}
+
+/**
+ * Build the query params that carry an explicit data view, or `null`
+ * (`_explicit_workspace_params`). `requestQueryHost` injects the pinned
+ * workspace with `setdefault` semantics, so a `workspace_id` placed here
+ * wins over the pin; `null` leaves the params empty and the pin rule
+ * unchanged.
+ *
+ * @param workspaceId - The data view to run under, or `null`.
+ * @returns `{workspace_id}` or `null`.
+ */
+function explicitWorkspaceParams(
+  workspaceId: number | null | undefined,
+): Record<string, unknown> | null {
+  if (workspaceId === null || workspaceId === undefined) {
+    return null;
+  }
+  return { workspace_id: workspaceId };
+}
+
 /** Options bag of {@link QueryHostMethods.querySavedReport}. */
 export interface QuerySavedReportOptions {
   /** Bookmark type routing the query. */
@@ -540,7 +581,7 @@ export interface QueryHostMethods {
    */
   insightsQuery(
     body: Record<string, unknown>,
-    signal?: AbortSignal,
+    options?: InlineQueryOptions,
   ): Promise<JsonValue>;
 
   /**
@@ -568,7 +609,7 @@ export interface QueryHostMethods {
    */
   arbFunnelsQuery(
     body: Record<string, unknown>,
-    signal?: AbortSignal,
+    options?: InlineQueryOptions,
   ): Promise<JsonValue>;
 
   /**
@@ -1111,13 +1152,15 @@ export function createQueryHostMethods(
 
     insightsQuery: async (
       body: Record<string, unknown>,
-      signal?: AbortSignal,
+      options: InlineQueryOptions = {},
     ): Promise<JsonValue> => {
       const url = core.buildUrl("query", "/insights");
       return core.requestQueryHost("POST", url, {
+        params: explicitWorkspaceParams(options.workspace_id),
         data: body,
         injectProjectId: false,
-        signal,
+        injectWorkspaceId: options.inject_workspace_id ?? true,
+        signal: options.signal,
       });
     },
 
@@ -1134,13 +1177,15 @@ export function createQueryHostMethods(
 
     arbFunnelsQuery: async (
       body: Record<string, unknown>,
-      signal?: AbortSignal,
+      options: InlineQueryOptions = {},
     ): Promise<JsonValue> => {
       const url = core.buildUrl("query", "/arb_funnels");
       return core.requestQueryHost("POST", url, {
+        params: explicitWorkspaceParams(options.workspace_id),
         data: body,
         injectProjectId: false,
-        signal,
+        injectWorkspaceId: options.inject_workspace_id ?? true,
+        signal: options.signal,
       });
     },
 

@@ -236,6 +236,38 @@ function dataValues(
 }
 
 /**
+ * Data-view scope of the four inline query methods (045-report-links,
+ * Python kw-only `workspace_id` / `inject_workspace_id`): forwarded to
+ * the client, where an explicit `workspace_id` wins over the pinned
+ * session workspace and `inject_workspace_id: false` runs project-wide.
+ */
+export interface InlineQueryScope {
+  /** Optional data view to run under. */
+  readonly workspace_id?: number | null | undefined;
+  /** `true` (default) lets the pinned session workspace apply when
+   * `workspace_id` is `null`; `false` runs project-wide instead. */
+  readonly inject_workspace_id?: boolean | undefined;
+}
+
+/**
+ * Materialize the Python defaults (`workspace_id=None`,
+ * `inject_workspace_id=True`) so the client always receives both
+ * keywords, exactly as the Python service forwards them.
+ *
+ * @param options - The caller's scope bag.
+ * @returns The fully-populated scope.
+ */
+function inlineScope(options: InlineQueryScope): {
+  readonly workspace_id: number | null;
+  readonly inject_workspace_id: boolean;
+} {
+  return {
+    workspace_id: options.workspace_id ?? null,
+    inject_workspace_id: options.inject_workspace_id ?? true,
+  };
+}
+
+/**
  * Service for executing live queries against the Mixpanel Query API —
  * TS port of `live_query.LiveQueryService` (`live_query.py:677`).
  *
@@ -557,13 +589,14 @@ export class LiveQueryService {
   async query(
     bookmarkParams: Readonly<Record<string, unknown>>,
     projectId: number,
+    options: InlineQueryScope = {},
   ): Promise<QueryResult> {
     const body: Record<string, unknown> = {
       bookmark: bookmarkParams,
       project_id: projectId,
       queryLimits: { limit: 3000 },
     };
-    const raw = await this.apiClient.insightsQuery(body);
+    const raw = await this.apiClient.insightsQuery(body, inlineScope(options));
     return transformQueryResult(nativeRecord(raw), bookmarkParams);
   }
 
@@ -581,13 +614,14 @@ export class LiveQueryService {
   async queryFunnel(
     bookmarkParams: Readonly<Record<string, unknown>>,
     projectId: number,
+    options: InlineQueryScope = {},
   ): Promise<FunnelQueryResult> {
     const body: Record<string, unknown> = {
       bookmark: bookmarkParams,
       project_id: projectId,
       queryLimits: { limit: 3000 },
     };
-    const raw = await this.apiClient.insightsQuery(body);
+    const raw = await this.apiClient.insightsQuery(body, inlineScope(options));
     return transformFunnelResult(nativeRecord(raw), bookmarkParams, this.#warn);
   }
 
@@ -605,13 +639,14 @@ export class LiveQueryService {
   async queryRetention(
     bookmarkParams: Readonly<Record<string, unknown>>,
     projectId: number,
+    options: InlineQueryScope = {},
   ): Promise<RetentionQueryResult> {
     const body: Record<string, unknown> = {
       bookmark: bookmarkParams,
       project_id: projectId,
       queryLimits: { limit: 3000 },
     };
-    const raw = await this.apiClient.insightsQuery(body);
+    const raw = await this.apiClient.insightsQuery(body, inlineScope(options));
     return transformRetentionResult(nativeRecord(raw), bookmarkParams);
   }
 
@@ -635,6 +670,7 @@ export class LiveQueryService {
     bookmarkParams: Readonly<Record<string, unknown>>,
     projectId: number,
     mode: string = "sankey",
+    options: InlineQueryScope = {},
   ): Promise<FlowQueryResult> {
     let queryType: string;
     if (mode === "paths") {
@@ -649,7 +685,10 @@ export class LiveQueryService {
       project_id: projectId,
       query_type: queryType,
     };
-    const raw = await this.apiClient.arbFunnelsQuery(body);
+    const raw = await this.apiClient.arbFunnelsQuery(
+      body,
+      inlineScope(options),
+    );
     return transformFlowResult(nativeRecord(raw), bookmarkParams, mode);
   }
 

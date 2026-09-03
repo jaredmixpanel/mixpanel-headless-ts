@@ -1449,3 +1449,141 @@ export class UnsupportedReplayFormatError extends SessionReplayError {
   /** @inheritDoc */
   protected static override readonly defaultStatus: number = 501;
 }
+
+// ---------------------------------------------------------------------------
+// Report-link exceptions (045-report-links, Python PR #223).
+// ---------------------------------------------------------------------------
+
+/** Options bag shared by the {@link ReportLinkError} family (Python kw-only). */
+export interface ReportLinkErrorOptions {
+  /** Machine-readable code; defaults to the subclass's default code. */
+  readonly code?: string | null | undefined;
+  /**
+   * Parsed link fields that are available (`kind`, `region`,
+   * `project_id`, `workspace_id`, `slug`, `bookmark_id`, `short_code`)
+   * plus `hint` when one exists. Snake_case keys (wire spelling).
+   */
+  readonly details?: Readonly<Record<string, unknown>> | null | undefined;
+  /** Underlying cause, threaded to `Error#cause`. */
+  readonly cause?: unknown;
+}
+
+/**
+ * Base class for report-link failures (045-report-links).
+ *
+ * Report links are Mixpanel web URLs that open a report in the browser.
+ * Most failures in this family are local — a link that does not parse,
+ * a link that points at another project or region, or a link kind that
+ * headless cannot resolve — so the base is {@link MixpanelHeadlessError}
+ * rather than {@link APIError}. The HTTP-shaped failures,
+ * {@link ReportLinkNotFoundError} and {@link ShortLinkResolutionError},
+ * carry the parsed link fields in `details` instead of HTTP context.
+ *
+ * Not in this family: the pure URL builders and `createReportLink`
+ * input guards throw {@link ParamValidationError} with the codes
+ * `RL1_UNKNOWN_REPORT_TYPE`, `RL2_INVALID_SLUG`, `RL3_UNKNOWN_REGION`,
+ * `RL4_REPORT_TYPE_CONFLICT`, `RL5_RESOLVED_REPORT_INCONSISTENT`, and
+ * `RL6_INVALID_ID`. An `instanceof ReportLinkError` check does not catch
+ * them. Every failure in this family carries a `hint` in `details`.
+ *
+ * Subclasses override the static default code, mirroring the Python
+ * `_DEFAULT_CODE` class attribute (read via `new.target` so the
+ * most-derived class wins).
+ */
+export class ReportLinkError extends MixpanelHeadlessError {
+  /** Default machine code when the constructor receives none. */
+  protected static readonly defaultCode: string = "REPORT_LINK_ERROR";
+
+  /**
+   * Initialize a report-link error.
+   *
+   * @param message - Human-readable error message (out of contract,
+   *   R5.4; the Python repo's
+   *   `specs/045-report-links/contracts/error-messages.md` holds the
+   *   stable wording per code).
+   * @param options - Keyword-only bag; `code` defaults to the
+   *   most-derived class's static default.
+   */
+  constructor(message: string, options: ReportLinkErrorOptions = {}) {
+    const ctor = new.target as typeof ReportLinkError;
+    super(
+      message,
+      options.code ?? ctor.defaultCode,
+      options.details ?? null,
+      options.cause !== undefined ? { cause: options.cause } : undefined,
+    );
+  }
+}
+
+/**
+ * The input string is not a recognizable Mixpanel report link.
+ *
+ * Codes: `REPORT_LINK_UNPARSEABLE` (default),
+ * `REPORT_LINK_NOT_MIXPANEL_HOST`, `REPORT_LINK_UNRECOGNIZED_PATH`,
+ * `REPORT_LINK_UNRECOGNIZED_HASH`, `REPORT_LINK_EMPTY_HASH`. The parser
+ * is total: this is the only exception it throws for any input string.
+ */
+export class ReportLinkParseError extends ReportLinkError {
+  /** @inheritDoc */
+  protected static override readonly defaultCode: string =
+    "REPORT_LINK_UNPARSEABLE";
+}
+
+/**
+ * The link was recognized but headless cannot resolve or run it.
+ *
+ * Codes: `UNSUPPORTED_REPORT_LINK` (default), `UNSUPPORTED_LEGACY_HASH`
+ * (a `~(...)` JSURL hash), `UNSUPPORTED_DASHBOARD_LINK` (a board, not a
+ * single report), `UNSUPPORTED_REPORT_TYPE` (for example
+ * `launch-analysis` passed to `queryReportLink`).
+ */
+export class UnsupportedReportLinkError extends ReportLinkError {
+  /** @inheritDoc */
+  protected static override readonly defaultCode: string =
+    "UNSUPPORTED_REPORT_LINK";
+}
+
+/**
+ * The slug, saved report, or shortlink does not exist in scope.
+ *
+ * Codes: `REPORT_LINK_NOT_FOUND` (default), `REPORT_LINK_SLUG_NOT_FOUND`,
+ * `REPORT_LINK_BOOKMARK_NOT_FOUND`, `SHORT_LINK_NOT_FOUND`. A slug is
+ * readable only in the project and region that created it, so a 404 on
+ * a slug often means the caller is on the wrong project.
+ */
+export class ReportLinkNotFoundError extends ReportLinkError {
+  /** @inheritDoc */
+  protected static override readonly defaultCode: string =
+    "REPORT_LINK_NOT_FOUND";
+}
+
+/**
+ * The link names a project or region other than the active session.
+ *
+ * Codes: `REPORT_LINK_SCOPE_MISMATCH` (default),
+ * `REPORT_LINK_PROJECT_MISMATCH`, `REPORT_LINK_REGION_MISMATCH`,
+ * `REPORT_LINK_WORKSPACE_MISMATCH` (only when the session pins a
+ * workspace and the link names a different one). The region check runs
+ * before any HTTP call. The project and workspace checks run before the
+ * record fetch; for a shortlink that is after the one redirect GET,
+ * because the target is not known before it.
+ */
+export class ReportLinkScopeMismatchError extends ReportLinkError {
+  /** @inheritDoc */
+  protected static override readonly defaultCode: string =
+    "REPORT_LINK_SCOPE_MISMATCH";
+}
+
+/**
+ * A `/s/{code}` shortlink could not be expanded to a full report URL.
+ *
+ * Codes: `SHORT_LINK_RESOLUTION_ERROR` (default), `SHORT_LINK_NO_LOCATION`
+ * (3xx without `Location`), `SHORT_LINK_UNEXPECTED_RESPONSE` (200 body
+ * without the `window.location.href` script), `SHORT_LINK_CHAIN` (the
+ * target is another shortlink; headless follows one redirect only).
+ */
+export class ShortLinkResolutionError extends ReportLinkError {
+  /** @inheritDoc */
+  protected static override readonly defaultCode: string =
+    "SHORT_LINK_RESOLUTION_ERROR";
+}

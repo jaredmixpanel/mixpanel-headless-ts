@@ -299,6 +299,30 @@ export function registerEntityWireBindings(
     ),
   );
 
+  // ----- 045-report-links (Python PR #223): slug records + shortlinks -----
+  implementations.register(
+    "api_client.create_bookmark_url",
+    withClient((client, context) =>
+      client.createBookmarkUrl(
+        requireWireKwarg(context, "body") as Record<string, unknown>,
+      ),
+    ),
+  );
+
+  implementations.register(
+    "api_client.get_bookmark_url",
+    withClient((client, context) =>
+      client.getBookmarkUrl(requireWireKwarg(context, "slug") as string),
+    ),
+  );
+
+  implementations.register(
+    "api_client.resolve_short_link",
+    withClient((client, context) =>
+      client.resolveShortLink(requireWireKwarg(context, "code") as string),
+    ),
+  );
+
   implementations.register(
     "api_client.update_bookmark",
     withClient((client, context) =>

@@ -632,6 +632,22 @@ export const BOOKMARK_TYPE_VALUES = [
 ] as const satisfies readonly BookmarkType[];
 
 /**
+ * The four report types the `bookmark-urls` (unsaved report) endpoint
+ * accepts (045-report-links). `launch-analysis` is a valid
+ * {@link BookmarkType} for saved-report URLs but cannot be stored as an
+ * unsaved-report slug record.
+ */
+export type ReportLinkType = "insights" | "funnels" | "retention" | "flows";
+
+/** Runtime membership tuple for {@link ReportLinkType}. */
+export const REPORT_LINK_TYPE_VALUES = [
+  "insights",
+  "funnels",
+  "retention",
+  "flows",
+] as const satisfies readonly ReportLinkType[];
+
+/**
  * Report type detected from saved report query results (derived from
  * the headers array in the API response).
  */
@@ -729,6 +745,7 @@ export const LITERAL_ALIAS_VALUES: ReadonlyMap<string, readonly string[]> =
     ["FilterDateUnit", FILTER_DATE_UNIT_VALUES],
     ["FiltersCombinator", FILTERS_COMBINATOR_VALUES],
     ["BookmarkType", BOOKMARK_TYPE_VALUES],
+    ["ReportLinkType", REPORT_LINK_TYPE_VALUES],
     ["SavedReportType", SAVED_REPORT_TYPE_VALUES],
     ["EntityType", ENTITY_TYPE_VALUES],
     ["Region", REGION_VALUES],
@@ -801,6 +818,7 @@ export type LiteralAliasCoverageProof = AssertAllNever<
     Exclude<FilterDateUnit, (typeof FILTER_DATE_UNIT_VALUES)[number]>,
     Exclude<FiltersCombinator, (typeof FILTERS_COMBINATOR_VALUES)[number]>,
     Exclude<BookmarkType, (typeof BOOKMARK_TYPE_VALUES)[number]>,
+    Exclude<ReportLinkType, (typeof REPORT_LINK_TYPE_VALUES)[number]>,
     Exclude<SavedReportType, (typeof SAVED_REPORT_TYPE_VALUES)[number]>,
     Exclude<EntityType, (typeof ENTITY_TYPE_VALUES)[number]>,
     Exclude<Region, (typeof REGION_VALUES)[number]>,

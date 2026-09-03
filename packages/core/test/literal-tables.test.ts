@@ -16,8 +16,8 @@ import {
 import { BOOKMARK_ENUM_TABLES } from "../src/bookmarks/index.js";
 
 describe("literal-alias and enum tables (C9 #7 runtime backstop)", () => {
-  it("registers exactly 37 aliases, 8 enums, and 34 bookmark tables", () => {
-    expect(LITERAL_ALIAS_VALUES.size).toBe(37);
+  it("registers exactly 38 aliases, 8 enums, and 34 bookmark tables", () => {
+    expect(LITERAL_ALIAS_VALUES.size).toBe(38);
     expect(ENUM_TABLES.size).toBe(8);
     expect(BOOKMARK_ENUM_TABLES.size).toBe(34);
   });
