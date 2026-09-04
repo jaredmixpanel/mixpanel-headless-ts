@@ -88,13 +88,27 @@ export * from "../../core/src/errors.js";
 // Safe by construction, and deliberately unlike the `Workspace` case
 // above: these are the pure `types/query-params` dataclasses plus
 // `validate_bookmark`. They hold no session, open no socket and reach
-// no transport — their whole module graph is `compat/`, `errors.js`,
-// `types/literals`, `bookmarks/enums` and `query/python-builtins`. They
-// cannot bypass the §2.3 service-account gate or the §2.4 export guard
-// because they never touch `fetch`; the gated factories remain the only
-// way to get something that does. `query-vocabulary.test.ts` pins both
-// that identity-with-core property and the absence of a transport seam,
-// and fails if core grows a builder this barrel does not forward.
+// no transport.
+//
+// The graph is not small — measured with esbuild on 2026-09-03, these
+// builders plus `validateBookmark` pull 69 core modules (70 once the
+// entity-params and identity-helper subsections below are counted in),
+// spanning `compat/`, `types/` (query-params, entities, results,
+// literals/enums), `query/` validation, `bookmarks/` (enums,
+// schema-sorting, infer-type), `replays/`, `coerce` and the error
+// hierarchy. Size is not the property that matters; SHAPE is. What the
+// graph contains is dataclasses, validators and pure Python-parity
+// helpers. What it contains ZERO of is a way to talk to Mixpanel:
+// no `auth/` module, no `client/transport`, no `client/client`. The one
+// `client/` file reached is `client/json-value.ts`, a JSON type/guard
+// module with no I/O.
+//
+// That is why they cannot bypass the §2.3 service-account gate or the
+// §2.4 export guard — they never touch `fetch`; the gated factories
+// remain the only way to get something that does.
+// `query-vocabulary.test.ts` pins both that identity-with-core property
+// and the absence of a transport seam, and fails if core grows a
+// runtime export in `types/query-params` this barrel does not forward.
 export {
   CohortBreakdown,
   CohortCriteria,
@@ -156,3 +170,18 @@ export type { ValidateBookmarkOptions } from "../../core/src/query/validation.js
 // guard. `query-vocabulary.test.ts` pins the identity, the absence of
 // a transport seam, and the one-class scope.
 export { CreateAnnotationParams } from "../../core/src/types/entities/annotations.js";
+
+// ── Identity helpers (core re-exports) ────────────────────────────────
+// Pages compute and cite QueryRef hashes (heads spec 02 §3.3): the hash
+// is taken over `pythonJsonDumpsCanonical(params)` — CPython-parity
+// `json.dumps(…, sort_keys=True, separators=(",", ":"))` — and the ref
+// is labelled with the report type `inferBookmarkType(params)` derives.
+// A page that builds params from its own controls therefore needs both
+// at runtime on THIS entry point, for the same reason the vocabulary
+// above is here: the vendored IIFE exposes exactly this barrel.
+//
+// Same posture as the builders — pure functions over plain data, no
+// session, no transport (`inferBookmarkType` adds only
+// `bookmarks/infer-type`; the canonicalizer is already in the graph).
+export { inferBookmarkType } from "../../core/src/bookmarks/infer-type.js";
+export { pythonJsonDumpsCanonical } from "../../core/src/compat/python-json-dumps-canonical.js";

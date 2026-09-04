@@ -515,7 +515,10 @@ The browser entry also exposes the full query vocabulary — `Filter`, `Metric`,
 build and re-build queries client-side without a second import from
 `@mixpanel-headless/core`. They are the same pure classes core exports; only
 `Workspace` itself is type-only here, since construction must go through the gated
-factories above.
+factories above. Alongside them it re-exports the two identity helpers a page needs to
+name what it just built — `pythonJsonDumpsCanonical` (the CPython-parity canonical
+JSON a query-reference hash is taken over) and `inferBookmarkType` (the report type a
+params object describes, or `null`).
 
 ```typescript
 import { Filter, FunnelStep } from "@mixpanel-headless/browser";
