@@ -27,8 +27,17 @@
  * `'{"1": "x"}'`) cannot arise because JS object keys are already
  * strings. Anything non-serializable raises the CPython `TypeError`
  * message shape.
+ *
+ * Since the heads-platform canonical form landed this module owns the
+ * encoder for BOTH argument sets: the default-argument
+ * {@link pythonJsonDumps} above and the `sort_keys=True`,
+ * `separators=(",", ":")` canonical spelling in
+ * `python-json-dumps-canonical.ts`. They differ only by a
+ * {@link JsonDumpsStyle}; the recursion, the escape table, the number
+ * spelling and the `TypeError` shape are shared so the two cannot drift.
  */
 
+import { compareCodepoints } from "./codepoint.js";
 import { pythonFloatStr } from "./python-float-str.js";
 
 /** CPython short escapes for the control characters that have them. */
@@ -84,25 +93,41 @@ function typeNameOf(value: unknown): string {
 }
 
 /**
- * Serialize a value the way CPython `json.dumps(value)` does with all
- * defaults (see the module header for the exact contract).
+ * The two `json.dumps` argument sets this module supports, reduced to the
+ * three knobs that actually change the bytes.
+ *
+ * @internal Consumed by `python-json-dumps-canonical.ts`; not part of the
+ *   `pythonCompat` public surface.
+ */
+export interface JsonDumpsStyle {
+  /** Text between array items / object members (`", "` or `","`). */
+  readonly itemSeparator: string;
+  /** Text between an object key and its value (`": "` or `":"`). */
+  readonly keySeparator: string;
+  /** CPython `sort_keys` — sort object keys by Unicode code point. */
+  readonly sortKeys: boolean;
+}
+
+/** CPython `json.dumps(value)` with every argument left at its default. */
+const DEFAULT_STYLE: JsonDumpsStyle = {
+  itemSeparator: ", ",
+  keySeparator: ": ",
+  sortKeys: false,
+};
+
+/**
+ * The shared recursive encoder. Both public spellings route through this
+ * one body so the escape table, the number rules and the `TypeError`
+ * shape can never diverge between them (R10.8).
  *
  * @param value - The value to serialize (decoded caller data).
+ * @param style - Separator/ordering knobs; see {@link JsonDumpsStyle}.
  * @returns The CPython-spelled JSON text.
- * @throws TypeError - For values Python's encoder rejects
- *   (`Object of type X is not JSON serializable`).
+ * @throws TypeError - For values Python's encoder rejects.
  *
- * @example
- * ```typescript
- * pythonJsonDumps(["Purchase", "View"]);
- * // '["Purchase", "View"]'
- * pythonJsonDumps({ id: "12345" });
- * // '{"id": "12345"}'
- * pythonJsonDumps("𝒳");
- * // '"\\ud835\\udcb3"'
- * ```
+ * @internal Consumed by `python-json-dumps-canonical.ts`.
  */
-export function pythonJsonDumps(value: unknown): string {
+export function dumpsStyled(value: unknown, style: JsonDumpsStyle): string {
   if (value === null) {
     return "null";
   }
@@ -137,19 +162,50 @@ export function pythonJsonDumps(value: unknown): string {
     return pythonFloatStr(value);
   }
   if (Array.isArray(value)) {
-    return `[${value.map((item) => pythonJsonDumps(item)).join(", ")}]`;
+    return `[${value
+      .map((item) => dumpsStyled(item, style))
+      .join(style.itemSeparator)}]`;
   }
   if (typeof value === "object") {
     const entries = Object.entries(value as Record<string, unknown>);
+    if (style.sortKeys) {
+      // CPython `sorted(dct.items())` compares str by CODE POINT; JS
+      // `.sort()` compares UTF-16 code UNITS and inverts e.g. U+FF61 vs
+      // U+1F600 (compat/codepoint.ts owns that comparator — R10.8).
+      entries.sort(([a], [b]) => compareCodepoints(a, b));
+    }
     const body = entries
       .map(
         ([key, member]) =>
-          `${encodeStringAscii(key)}: ${pythonJsonDumps(member)}`,
+          `${encodeStringAscii(key)}${style.keySeparator}${dumpsStyled(member, style)}`,
       )
-      .join(", ");
+      .join(style.itemSeparator);
     return `{${body}}`;
   }
   throw new TypeError(
     `Object of type ${typeNameOf(value)} is not JSON serializable`,
   );
+}
+
+/**
+ * Serialize a value the way CPython `json.dumps(value)` does with all
+ * defaults (see the module header for the exact contract).
+ *
+ * @param value - The value to serialize (decoded caller data).
+ * @returns The CPython-spelled JSON text.
+ * @throws TypeError - For values Python's encoder rejects
+ *   (`Object of type X is not JSON serializable`).
+ *
+ * @example
+ * ```typescript
+ * pythonJsonDumps(["Purchase", "View"]);
+ * // '["Purchase", "View"]'
+ * pythonJsonDumps({ id: "12345" });
+ * // '{"id": "12345"}'
+ * pythonJsonDumps("𝒳");
+ * // '"\\ud835\\udcb3"'
+ * ```
+ */
+export function pythonJsonDumps(value: unknown): string {
+  return dumpsStyled(value, DEFAULT_STYLE);
 }

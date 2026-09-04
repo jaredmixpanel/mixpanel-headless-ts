@@ -1,0 +1,1238 @@
+[
+  {
+    "name": "empty-object",
+    "source": "hand",
+    "params": {},
+    "canonical": "{}",
+    "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+  },
+  {
+    "name": "empty-containers",
+    "source": "hand",
+    "params": {
+      "a": [],
+      "o": {},
+      "s": ""
+    },
+    "canonical": "{\"a\":[],\"o\":{},\"s\":\"\"}",
+    "sha256": "c127f9b3c6f4233b3976f8e2d54486ab15f9a46cfa50fc14ae6d0787d1ac2917"
+  },
+  {
+    "name": "nested-objects-and-arrays",
+    "source": "hand",
+    "params": {
+      "b": {
+        "z": 1,
+        "a": [
+          1,
+          2,
+          {
+            "k": null,
+            "j": [[], [{}]]
+          }
+        ]
+      },
+      "a": true,
+      "c": [
+        {
+          "n": 1
+        },
+        {
+          "n": 2
+        }
+      ]
+    },
+    "canonical": "{\"a\":true,\"b\":{\"a\":[1,2,{\"j\":[[],[{}]],\"k\":null}],\"z\":1},\"c\":[{\"n\":1},{\"n\":2}]}",
+    "sha256": "c7ba129425e6d8661514c30993043f8b9609e37337cee64e353376c7e96bd430"
+  },
+  {
+    "name": "numbers-int-vs-float",
+    "source": "hand",
+    "params": {
+      "int_one": 1,
+      "int_zero": 0,
+      "int_neg": -42,
+      "int_large_safe": 9007199254740991,
+      "int_large_safe_neg": -9007199254740991,
+      "float_half": 1.5,
+      "float_tiny": 1e-7,
+      "float_tinier": 2.5e-10,
+      "float_exact_binary": 123456789.0625,
+      "float_near_int": 0.9999999999999999,
+      "float_third": 0.3333333333333333,
+      "float_neg": -0.125
+    },
+    "canonical": "{\"float_exact_binary\":123456789.0625,\"float_half\":1.5,\"float_near_int\":0.9999999999999999,\"float_neg\":-0.125,\"float_third\":0.3333333333333333,\"float_tinier\":2.5e-10,\"float_tiny\":1e-07,\"int_large_safe\":9007199254740991,\"int_large_safe_neg\":-9007199254740991,\"int_neg\":-42,\"int_one\":1,\"int_zero\":0}",
+    "sha256": "05fd931b5f3b7286aec93cc3c916f0cc173b72a4df85ac82b3da303af6773cf6"
+  },
+  {
+    "name": "booleans-and-null",
+    "source": "hand",
+    "params": {
+      "t": true,
+      "f": false,
+      "n": null
+    },
+    "canonical": "{\"f\":false,\"n\":null,\"t\":true}",
+    "sha256": "22e00dc2f7b01420f940fbdbfbdf34fa0667cc6500186495023ba37722cbd05e"
+  },
+  {
+    "name": "non-ascii-bmp",
+    "source": "hand",
+    "params": {
+      "caf\u00e9": "r\u00e9sum\u00e9",
+      "\u3053\u3093\u306b\u3061\u306f": "\u4e16\u754c",
+      "\u0400\u0401": "\u05d0\u05d1"
+    },
+    "canonical": "{\"caf\\u00e9\":\"r\\u00e9sum\\u00e9\",\"\\u0400\\u0401\":\"\\u05d0\\u05d1\",\"\\u3053\\u3093\\u306b\\u3061\\u306f\":\"\\u4e16\\u754c\"}",
+    "sha256": "29e5bc2f176c171ca101d062a85dad3b84c37f3234e542c7e07cf96392c79269"
+  },
+  {
+    "name": "astral-values",
+    "source": "hand",
+    "params": {
+      "emoji": "\ud83d\ude00\ud83c\uddfa\ud83c\uddf8",
+      "math": "\ud835\udcb3"
+    },
+    "canonical": "{\"emoji\":\"\\ud83d\\ude00\\ud83c\\uddfa\\ud83c\\uddf8\",\"math\":\"\\ud835\\udcb3\"}",
+    "sha256": "899b07ae47e98ddb155b2fe8d204ecdd97cab88f2eec179562f3acf40935264f"
+  },
+  {
+    "name": "key-order-codepoint-vs-utf16",
+    "source": "hand",
+    "params": {
+      "\uff5e": "fullwidth tilde U+FF5E",
+      "\ud83d\ude00": "grinning face U+1F600",
+      "\uff61": "halfwidth ideographic full stop U+FF61",
+      "\ud835\udcb3": "script capital X U+1D4B3",
+      "\ud7ff": "last BMP char below the surrogate block",
+      "\ue000": "first private-use char above it",
+      "Z": "ascii upper",
+      "a": "ascii lower",
+      "": "empty key sorts first"
+    },
+    "canonical": "{\"\":\"empty key sorts first\",\"Z\":\"ascii upper\",\"a\":\"ascii lower\",\"\\ud7ff\":\"last BMP char below the surrogate block\",\"\\ue000\":\"first private-use char above it\",\"\\uff5e\":\"fullwidth tilde U+FF5E\",\"\\uff61\":\"halfwidth ideographic full stop U+FF61\",\"\\ud835\\udcb3\":\"script capital X U+1D4B3\",\"\\ud83d\\ude00\":\"grinning face U+1F600\"}",
+    "sha256": "6bfe9638ead565bc07f4b70c0042012069b15d41e617ef3580840145664bba60"
+  },
+  {
+    "name": "control-characters-and-short-escapes",
+    "source": "hand",
+    "params": {
+      "short": "\b\t\n\f\r\"\\",
+      "c0": "\u0000\u0001\u0002\u001e\u001f",
+      "del-and-c1": "\u007f\u0080\u009f",
+      "line-separators": "\u2028\u2029"
+    },
+    "canonical": "{\"c0\":\"\\u0000\\u0001\\u0002\\u001e\\u001f\",\"del-and-c1\":\"\\u007f\\u0080\\u009f\",\"line-separators\":\"\\u2028\\u2029\",\"short\":\"\\b\\t\\n\\f\\r\\\"\\\\\"}",
+    "sha256": "a91b1ce0e1832ec5eb73ff9e6978fdc1093dfb99dff31cb7791c5f574a0c4e2d"
+  },
+  {
+    "name": "unicode-escaped-source",
+    "source": "hand",
+    "params": {
+      "k": "caf\u00e9",
+      "astral": "\ud83d\ude00"
+    },
+    "canonical": "{\"astral\":\"\\ud83d\\ude00\",\"k\":\"caf\\u00e9\"}",
+    "sha256": "bbf2e028cbc079608d28efbf52a6e32990c54b308a80be01101c3d80b0d70f83"
+  },
+  {
+    "name": "unicode-raw-source",
+    "source": "hand",
+    "params": {
+      "k": "caf\u00e9",
+      "astral": "\ud83d\ude00"
+    },
+    "canonical": "{\"astral\":\"\\ud83d\\ude00\",\"k\":\"caf\\u00e9\"}",
+    "sha256": "bbf2e028cbc079608d28efbf52a6e32990c54b308a80be01101c3d80b0d70f83"
+  },
+  {
+    "name": "bookmark-shaped",
+    "source": "hand",
+    "params": {
+      "sections": {
+        "show": [
+          {
+            "dataset": "$mixpanel",
+            "value": {
+              "name": "Purchase",
+              "resourceType": "events"
+            },
+            "resourceType": "events",
+            "profileType": null,
+            "search": "",
+            "math": "total",
+            "property": null,
+            "type": "metric"
+          }
+        ],
+        "time": [
+          {
+            "unit": "day",
+            "value": 30,
+            "type": "unit"
+          }
+        ],
+        "filter": {
+          "clauses": [],
+          "determiner": "all"
+        },
+        "group": [],
+        "formula": []
+      },
+      "displayOptions": {
+        "chartType": "line",
+        "plotStyle": "standard",
+        "analysis": "linear",
+        "value": "absolute"
+      }
+    },
+    "canonical": "{\"displayOptions\":{\"analysis\":\"linear\",\"chartType\":\"line\",\"plotStyle\":\"standard\",\"value\":\"absolute\"},\"sections\":{\"filter\":{\"clauses\":[],\"determiner\":\"all\"},\"formula\":[],\"group\":[],\"show\":[{\"dataset\":\"$mixpanel\",\"math\":\"total\",\"profileType\":null,\"property\":null,\"resourceType\":\"events\",\"search\":\"\",\"type\":\"metric\",\"value\":{\"name\":\"Purchase\",\"resourceType\":\"events\"}}],\"time\":[{\"type\":\"unit\",\"unit\":\"day\",\"value\":30}]}}",
+    "sha256": "6fe6456de6d52fce93cbf74278e553e226fdce208a50c8047852d89b7c60d842"
+  },
+  {
+    "name": "slot-markers-templated-params",
+    "source": "hand",
+    "params": {
+      "event": {
+        "$slot": "checkout_event"
+      },
+      "property": {
+        "$slot": "platform_property",
+        "$as": "event_property"
+      },
+      "zz": 1
+    },
+    "canonical": "{\"event\":{\"$slot\":\"checkout_event\"},\"property\":{\"$as\":\"event_property\",\"$slot\":\"platform_property\"},\"zz\":1}",
+    "sha256": "78fe7e42ebb1d935d914fdb96b932f7f2703adeef18a53fabe351039a0f7bd8f"
+  },
+  {
+    "name": "top-level-array",
+    "source": "hand",
+    "params": [
+      1,
+      "two",
+      null,
+      true,
+      {
+        "k": [1.5]
+      }
+    ],
+    "canonical": "[1,\"two\",null,true,{\"k\":[1.5]}]",
+    "sha256": "c0cc00833ac18b5845865c5e160b87e3ba0328ebacc2ecb3ec031b6fc8c73bef"
+  },
+  {
+    "name": "top-level-scalar-string",
+    "source": "hand",
+    "params": "just a string with \u00e9 and \ud83d\ude00",
+    "canonical": "\"just a string with \\u00e9 and \\ud83d\\ude00\"",
+    "sha256": "0d3ce13f91227bff04feac6ca34fb61c30a355a1f35a9e42db0a27dfeabaf779"
+  },
+  {
+    "name": "top-level-scalar-int",
+    "source": "hand",
+    "params": 12345,
+    "canonical": "12345",
+    "sha256": "5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5"
+  },
+  {
+    "name": "bookmarks/bookmark_builders.build_date_range/authored-absolute-between",
+    "source": "corpus",
+    "params": {
+      "from_date": "2025-01-01",
+      "to_date": "2025-01-31",
+      "type": "between"
+    },
+    "canonical": "{\"from_date\":\"2025-01-01\",\"to_date\":\"2025-01-31\",\"type\":\"between\"}",
+    "sha256": "684dd67badc375e82e79dbb7f63565a9c7e5c2e9d9d802b4d78a49427d246128"
+  },
+  {
+    "name": "bookmarks/workspace.build_params/test_build_cohort_params-testbuildgroupsectionmixed-test_mixed_breakdown_and_string_produces_two_entries",
+    "source": "corpus",
+    "params": {
+      "displayOptions": {
+        "analysis": "linear",
+        "chartType": "line"
+      },
+      "sections": {
+        "filter": [],
+        "group": [
+          {
+            "cohorts": [
+              {
+                "data_group_id": null,
+                "groups": [],
+                "id": 123,
+                "name": "PU",
+                "negated": false
+              },
+              {
+                "data_group_id": null,
+                "groups": [],
+                "id": 123,
+                "name": "PU",
+                "negated": true
+              }
+            ],
+            "dataGroupId": null,
+            "isHidden": false,
+            "profileType": null,
+            "propertyType": null,
+            "resourceType": "events",
+            "search": "",
+            "typeCast": null,
+            "value": ["PU", "Not In PU"]
+          },
+          {
+            "propertyDefaultType": "string",
+            "propertyName": "country",
+            "propertyType": "string",
+            "resourceType": "events",
+            "value": "country"
+          }
+        ],
+        "show": [
+          {
+            "behavior": {
+              "filters": [],
+              "filtersDeterminer": "all",
+              "name": "Login",
+              "resourceType": "events",
+              "type": "event"
+            },
+            "measurement": {
+              "math": "total"
+            },
+            "type": "metric"
+          }
+        ],
+        "time": [
+          {
+            "dateRangeType": "in the last",
+            "unit": "day",
+            "window": {
+              "unit": "day",
+              "value": 30
+            }
+          }
+        ]
+      }
+    },
+    "canonical": "{\"displayOptions\":{\"analysis\":\"linear\",\"chartType\":\"line\"},\"sections\":{\"filter\":[],\"group\":[{\"cohorts\":[{\"data_group_id\":null,\"groups\":[],\"id\":123,\"name\":\"PU\",\"negated\":false},{\"data_group_id\":null,\"groups\":[],\"id\":123,\"name\":\"PU\",\"negated\":true}],\"dataGroupId\":null,\"isHidden\":false,\"profileType\":null,\"propertyType\":null,\"resourceType\":\"events\",\"search\":\"\",\"typeCast\":null,\"value\":[\"PU\",\"Not In PU\"]},{\"propertyDefaultType\":\"string\",\"propertyName\":\"country\",\"propertyType\":\"string\",\"resourceType\":\"events\",\"value\":\"country\"}],\"show\":[{\"behavior\":{\"filters\":[],\"filtersDeterminer\":\"all\",\"name\":\"Login\",\"resourceType\":\"events\",\"type\":\"event\"},\"measurement\":{\"math\":\"total\"},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]}}",
+    "sha256": "4ac0639db48bc56f09a36f961ea27a62a180972ce0aa5d44f1863d718a1add86"
+  },
+  {
+    "name": "bookmarks/workspace.build_params/test_custom_property_builders-testmeasurementpropertybuilder-test_custom_property_ref_in_measurement",
+    "source": "corpus",
+    "params": {
+      "displayOptions": {
+        "analysis": "linear",
+        "chartType": "line"
+      },
+      "sections": {
+        "filter": [],
+        "group": [],
+        "show": [
+          {
+            "behavior": {
+              "filters": [],
+              "filtersDeterminer": "all",
+              "name": "Purchase",
+              "resourceType": "events",
+              "type": "event"
+            },
+            "measurement": {
+              "math": "average",
+              "property": {
+                "customPropertyId": 42,
+                "name": "",
+                "resourceType": "events"
+              }
+            },
+            "type": "metric"
+          }
+        ],
+        "time": [
+          {
+            "dateRangeType": "in the last",
+            "unit": "day",
+            "window": {
+              "unit": "day",
+              "value": 30
+            }
+          }
+        ]
+      }
+    },
+    "canonical": "{\"displayOptions\":{\"analysis\":\"linear\",\"chartType\":\"line\"},\"sections\":{\"filter\":[],\"group\":[],\"show\":[{\"behavior\":{\"filters\":[],\"filtersDeterminer\":\"all\",\"name\":\"Purchase\",\"resourceType\":\"events\",\"type\":\"event\"},\"measurement\":{\"math\":\"average\",\"property\":{\"customPropertyId\":42,\"name\":\"\",\"resourceType\":\"events\"}},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]}}",
+    "sha256": "f02447e914fbfc7a1994e3eedc057e563cfae0a629b90145334643bc15953aa9"
+  },
+  {
+    "name": "bookmarks/workspace.build_params/test_query_params-testfrequencybreakdowninbuildparams-test_frequency_breakdown_in_group_section",
+    "source": "corpus",
+    "params": {
+      "displayOptions": {
+        "analysis": "linear",
+        "chartType": "line"
+      },
+      "sections": {
+        "filter": [],
+        "group": [
+          {
+            "behavior": {
+              "aggregationOperator": "total",
+              "behaviorType": "$frequency",
+              "dateRange": null,
+              "event": {
+                "label": "Purchase",
+                "value": "Purchase"
+              },
+              "filters": [],
+              "filtersOperator": "and"
+            },
+            "customBucket": {
+              "bucketSize": 1,
+              "disabled": false,
+              "max": 10,
+              "min": 0
+            },
+            "dataGroupId": null,
+            "dataset": "$mixpanel",
+            "propertyType": "number",
+            "resourceType": "people",
+            "value": "Purchase Frequency"
+          }
+        ],
+        "show": [
+          {
+            "behavior": {
+              "filters": [],
+              "filtersDeterminer": "all",
+              "name": "Login",
+              "resourceType": "events",
+              "type": "event"
+            },
+            "measurement": {
+              "math": "total"
+            },
+            "type": "metric"
+          }
+        ],
+        "time": [
+          {
+            "dateRangeType": "in the last",
+            "unit": "day",
+            "window": {
+              "unit": "day",
+              "value": 30
+            }
+          }
+        ]
+      }
+    },
+    "canonical": "{\"displayOptions\":{\"analysis\":\"linear\",\"chartType\":\"line\"},\"sections\":{\"filter\":[],\"group\":[{\"behavior\":{\"aggregationOperator\":\"total\",\"behaviorType\":\"$frequency\",\"dateRange\":null,\"event\":{\"label\":\"Purchase\",\"value\":\"Purchase\"},\"filters\":[],\"filtersOperator\":\"and\"},\"customBucket\":{\"bucketSize\":1,\"disabled\":false,\"max\":10,\"min\":0},\"dataGroupId\":null,\"dataset\":\"$mixpanel\",\"propertyType\":\"number\",\"resourceType\":\"people\",\"value\":\"Purchase Frequency\"}],\"show\":[{\"behavior\":{\"filters\":[],\"filtersDeterminer\":\"all\",\"name\":\"Login\",\"resourceType\":\"events\",\"type\":\"event\"},\"measurement\":{\"math\":\"total\"},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]}}",
+    "sha256": "a0af119753c63fc8120723d396bf4b1c371796c367bb5361a5e69056fb773990"
+  },
+  {
+    "name": "bookmarks/workspace.build_params/test_query_params-testsegmentmethodinbuildparams-test_segment_method_string_event_omits_key",
+    "source": "corpus",
+    "params": {
+      "displayOptions": {
+        "analysis": "linear",
+        "chartType": "line"
+      },
+      "sections": {
+        "filter": [],
+        "group": [],
+        "show": [
+          {
+            "behavior": {
+              "filters": [],
+              "filtersDeterminer": "all",
+              "name": "Login",
+              "resourceType": "events",
+              "type": "event"
+            },
+            "measurement": {
+              "math": "total"
+            },
+            "type": "metric"
+          }
+        ],
+        "time": [
+          {
+            "dateRangeType": "in the last",
+            "unit": "day",
+            "window": {
+              "unit": "day",
+              "value": 30
+            }
+          }
+        ]
+      }
+    },
+    "canonical": "{\"displayOptions\":{\"analysis\":\"linear\",\"chartType\":\"line\"},\"sections\":{\"filter\":[],\"group\":[],\"show\":[{\"behavior\":{\"filters\":[],\"filtersDeterminer\":\"all\",\"name\":\"Login\",\"resourceType\":\"events\",\"type\":\"event\"},\"measurement\":{\"math\":\"total\"},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]}}",
+    "sha256": "b4f6954a70b11d67256d4979f0a2bcf164ad602d2961d563f8c7a1a2b354d5bc"
+  },
+  {
+    "name": "bookmarks/workspace.build_params/test_workspace_report_links-testcreatereportlinkfromdict-test_body_omits_empty_optionals_and_workspace_id",
+    "source": "corpus",
+    "params": {
+      "displayOptions": {
+        "analysis": "linear",
+        "chartType": "line"
+      },
+      "sections": {
+        "filter": [],
+        "group": [],
+        "show": [
+          {
+            "behavior": {
+              "filters": [],
+              "filtersDeterminer": "all",
+              "name": "Login",
+              "resourceType": "events",
+              "type": "event"
+            },
+            "measurement": {
+              "math": "total"
+            },
+            "type": "metric"
+          }
+        ],
+        "time": [
+          {
+            "dateRangeType": "in the last",
+            "unit": "day",
+            "window": {
+              "unit": "day",
+              "value": 7
+            }
+          }
+        ]
+      }
+    },
+    "canonical": "{\"displayOptions\":{\"analysis\":\"linear\",\"chartType\":\"line\"},\"sections\":{\"filter\":[],\"group\":[],\"show\":[{\"behavior\":{\"filters\":[],\"filtersDeterminer\":\"all\",\"name\":\"Login\",\"resourceType\":\"events\",\"type\":\"event\"},\"measurement\":{\"math\":\"total\"},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":7}}]}}",
+    "sha256": "1699be4c036ffc292e8bcd7032e6ea8e90a6dad55595230dc2109f75785e0987"
+  },
+  {
+    "name": "cohorts/types.cohortdefinition.to_dict/test_cohort_definition-testcohortdefinitioncrudintegration-test_nested_definition_with_crud",
+    "source": "corpus",
+    "params": {
+      "behaviors": {
+        "bhvr_0": {
+          "count": {
+            "event_selector": {
+              "event": "Login",
+              "selector": null
+            },
+            "type": "absolute"
+          },
+          "window": {
+            "unit": "day",
+            "value": 30
+          }
+        }
+      },
+      "selector": {
+        "children": [
+          {
+            "children": [
+              {
+                "operand": "premium",
+                "operator": "==",
+                "property": "user",
+                "type": "string",
+                "value": "plan"
+              },
+              {
+                "operand": 5,
+                "operator": ">=",
+                "property": "behaviors",
+                "value": "bhvr_0"
+              }
+            ],
+            "operator": "and"
+          },
+          {
+            "operator": "in",
+            "property": "cohort",
+            "value": 789
+          }
+        ],
+        "operator": "or"
+      }
+    },
+    "canonical": "{\"behaviors\":{\"bhvr_0\":{\"count\":{\"event_selector\":{\"event\":\"Login\",\"selector\":null},\"type\":\"absolute\"},\"window\":{\"unit\":\"day\",\"value\":30}}},\"selector\":{\"children\":[{\"children\":[{\"operand\":\"premium\",\"operator\":\"==\",\"property\":\"user\",\"type\":\"string\",\"value\":\"plan\"},{\"operand\":5,\"operator\":\">=\",\"property\":\"behaviors\",\"value\":\"bhvr_0\"}],\"operator\":\"and\"},{\"operator\":\"in\",\"property\":\"cohort\",\"value\":789}],\"operator\":\"or\"}}",
+    "sha256": "a1ca7797d88ddcbfd6f5dcacb9128ac45008c9fa28acedc1ff6995f0409272e8"
+  },
+  {
+    "name": "engage/workspace.build_user_params/test_workspace_build_user_params-testaggregatemodeparams-test_aggregate_extremes_action",
+    "source": "corpus",
+    "params": {
+      "action": "extremes(properties[\"revenue\"])"
+    },
+    "canonical": "{\"action\":\"extremes(properties[\\\"revenue\\\"])\"}",
+    "sha256": "3fbf624f6e99d66b9019a1a5356c1bf494a830f20b4a906f0d6fb8aca5115822"
+  },
+  {
+    "name": "engage/workspace.build_user_params/test_workspace_build_user_params-testfiltertranslation-test_contains_filter",
+    "source": "corpus",
+    "params": {
+      "action": "count()",
+      "where": "\"corp\" in properties[\"email\"]"
+    },
+    "canonical": "{\"action\":\"count()\",\"where\":\"\\\"corp\\\" in properties[\\\"email\\\"]\"}",
+    "sha256": "1529269f1880b0e03e47c10682f032b245cd22bbaefcebbe425a94d472534a85"
+  },
+  {
+    "name": "engage/workspace.build_user_params/test_workspace_build_user_params-testsortbytranslation-test_sort_by_translates_to_sort_key",
+    "source": "corpus",
+    "params": {
+      "sort_key": "properties[\"ltv\"]",
+      "sort_order": "descending"
+    },
+    "canonical": "{\"sort_key\":\"properties[\\\"ltv\\\"]\",\"sort_order\":\"descending\"}",
+    "sha256": "731fc70c7b8087815872871117c7b7218aa2a42a4085cec4e62e8e7f2d8bfc0f"
+  },
+  {
+    "name": "filters/bookmark_builders.build_filter_entry/test_bookmark_builders-testnewfilteroperatorsinbuilder-test_in_the_next_filter_operator",
+    "source": "corpus",
+    "params": {
+      "defaultType": "datetime",
+      "filterDateUnit": "day",
+      "filterOperator": "was in the next",
+      "filterType": "datetime",
+      "filterValue": 7,
+      "resourceType": "events",
+      "value": "expires"
+    },
+    "canonical": "{\"defaultType\":\"datetime\",\"filterDateUnit\":\"day\",\"filterOperator\":\"was in the next\",\"filterType\":\"datetime\",\"filterValue\":7,\"resourceType\":\"events\",\"value\":\"expires\"}",
+    "sha256": "a83893aef2f509e22a5d3496e8333396ad37173994e1dab6d6fc474b2fa7e9c9"
+  },
+  {
+    "name": "filters/bookmark_builders.build_flow_cohort_filter/test_build_cohort_params-testbuildflowcohortfilterdirect-test_inline_cohort_filter",
+    "source": "corpus",
+    "params": {
+      "name": "Active",
+      "negated": false,
+      "raw_cohort": {
+        "behaviors": {
+          "bhvr_0": {
+            "count": {
+              "event_selector": {
+                "event": "Purchase"
+              },
+              "type": "absolute"
+            },
+            "window": {
+              "unit": "day",
+              "value": 30
+            }
+          }
+        },
+        "selector": {
+          "children": [
+            {
+              "operand": 1,
+              "operator": ">=",
+              "property": "behaviors",
+              "value": "bhvr_0"
+            }
+          ],
+          "operator": "and"
+        }
+      }
+    },
+    "canonical": "{\"name\":\"Active\",\"negated\":false,\"raw_cohort\":{\"behaviors\":{\"bhvr_0\":{\"count\":{\"event_selector\":{\"event\":\"Purchase\"},\"type\":\"absolute\"},\"window\":{\"unit\":\"day\",\"value\":30}}},\"selector\":{\"children\":[{\"operand\":1,\"operator\":\">=\",\"property\":\"behaviors\",\"value\":\"bhvr_0\"}],\"operator\":\"and\"}}}",
+    "sha256": "3bda039437f7fdf7558d86a06ed94f8ac9c813b34baec6d6c8cf64a329cf1ad5"
+  },
+  {
+    "name": "filters/segfilter.build_segfilter_entry/test_segfilter-testsegfilterdatetimeoperators-test_no_unit_for_absolute_dates",
+    "source": "corpus",
+    "params": {
+      "filter": {
+        "operand": "01/15/2026",
+        "operator": "=="
+      },
+      "property": {
+        "name": "$time",
+        "source": "properties",
+        "type": "datetime"
+      },
+      "selected_property_type": "datetime",
+      "type": "datetime"
+    },
+    "canonical": "{\"filter\":{\"operand\":\"01/15/2026\",\"operator\":\"==\"},\"property\":{\"name\":\"$time\",\"source\":\"properties\",\"type\":\"datetime\"},\"selected_property_type\":\"datetime\",\"type\":\"datetime\"}",
+    "sha256": "185c5a6d5e1e6c3ea00b0f7ec9caea3ce3c5defd1afdb291dcafc3ca181a8b6b"
+  },
+  {
+    "name": "filters/segfilter.build_segfilter_entry/test_segfilter-testsegfilterstringoperators-test_is_set",
+    "source": "corpus",
+    "params": {
+      "filter": {
+        "operand": "",
+        "operator": "set"
+      },
+      "property": {
+        "name": "email",
+        "source": "properties",
+        "type": "string"
+      },
+      "selected_property_type": "string",
+      "type": "string"
+    },
+    "canonical": "{\"filter\":{\"operand\":\"\",\"operator\":\"set\"},\"property\":{\"name\":\"email\",\"source\":\"properties\",\"type\":\"string\"},\"selected_property_type\":\"string\",\"type\":\"string\"}",
+    "sha256": "12131ad225da972b8abc803eb96423f42e2ce9929eaa841cd1e3b25f553ae0d2"
+  },
+  {
+    "name": "flows/workspace.build_flow_params/test_workspace_cohort-testqueryflowwhere-test_not_in_cohort_filter_negated_true",
+    "source": "corpus",
+    "params": {
+      "anchor_position": 1,
+      "cardinality_threshold": 3,
+      "chartType": "sankey",
+      "collapse_repeated": false,
+      "conversion_window": {
+        "unit": "day",
+        "value": 7
+      },
+      "count_type": "unique",
+      "date_range": {
+        "from_date": {
+          "unit": "day",
+          "value": 30
+        },
+        "to_date": "$now",
+        "type": "in the last"
+      },
+      "exclusions": [],
+      "filter_by_cohort": {
+        "id": 789,
+        "name": "Bots",
+        "negated": true
+      },
+      "flows_merge_type": "graph",
+      "hidden_events": [],
+      "show_custom_events": true,
+      "steps": [
+        {
+          "bool_op": "and",
+          "event": "Login",
+          "forward": 3,
+          "property_filter_params_list": [],
+          "reverse": 0,
+          "step_label": "Login"
+        }
+      ],
+      "version": 2
+    },
+    "canonical": "{\"anchor_position\":1,\"cardinality_threshold\":3,\"chartType\":\"sankey\",\"collapse_repeated\":false,\"conversion_window\":{\"unit\":\"day\",\"value\":7},\"count_type\":\"unique\",\"date_range\":{\"from_date\":{\"unit\":\"day\",\"value\":30},\"to_date\":\"$now\",\"type\":\"in the last\"},\"exclusions\":[],\"filter_by_cohort\":{\"id\":789,\"name\":\"Bots\",\"negated\":true},\"flows_merge_type\":\"graph\",\"hidden_events\":[],\"show_custom_events\":true,\"steps\":[{\"bool_op\":\"and\",\"event\":\"Login\",\"forward\":3,\"property_filter_params_list\":[],\"reverse\":0,\"step_label\":\"Login\"}],\"version\":2}",
+    "sha256": "7f1e3958f13d156e0a5f081f42f51172883c59444aa2971facd679732aa45c1f"
+  },
+  {
+    "name": "flows/workspace.build_flow_params/test_workspace_flow-testmultistepnormalization-test_list_of_strings",
+    "source": "corpus",
+    "params": {
+      "anchor_position": 1,
+      "cardinality_threshold": 3,
+      "chartType": "sankey",
+      "collapse_repeated": false,
+      "conversion_window": {
+        "unit": "day",
+        "value": 7
+      },
+      "count_type": "unique",
+      "date_range": {
+        "from_date": {
+          "unit": "day",
+          "value": 30
+        },
+        "to_date": "$now",
+        "type": "in the last"
+      },
+      "exclusions": [],
+      "flows_merge_type": "graph",
+      "hidden_events": [],
+      "show_custom_events": true,
+      "steps": [
+        {
+          "bool_op": "and",
+          "event": "A",
+          "forward": 3,
+          "property_filter_params_list": [],
+          "reverse": 0,
+          "step_label": "A"
+        },
+        {
+          "bool_op": "and",
+          "event": "B",
+          "forward": 3,
+          "property_filter_params_list": [],
+          "reverse": 0,
+          "step_label": "B"
+        }
+      ],
+      "version": 2
+    },
+    "canonical": "{\"anchor_position\":1,\"cardinality_threshold\":3,\"chartType\":\"sankey\",\"collapse_repeated\":false,\"conversion_window\":{\"unit\":\"day\",\"value\":7},\"count_type\":\"unique\",\"date_range\":{\"from_date\":{\"unit\":\"day\",\"value\":30},\"to_date\":\"$now\",\"type\":\"in the last\"},\"exclusions\":[],\"flows_merge_type\":\"graph\",\"hidden_events\":[],\"show_custom_events\":true,\"steps\":[{\"bool_op\":\"and\",\"event\":\"A\",\"forward\":3,\"property_filter_params_list\":[],\"reverse\":0,\"step_label\":\"A\"},{\"bool_op\":\"and\",\"event\":\"B\",\"forward\":3,\"property_filter_params_list\":[],\"reverse\":0,\"step_label\":\"B\"}],\"version\":2}",
+    "sha256": "2adf424b558cd2133ecea8df6b7c3ee57862d9dbd24e23cddd60d21281b47b51"
+  },
+  {
+    "name": "funnels/workspace.build_funnel_params/test_build_funnel_params-testbuildfunnelparamsconfiguration-test_mode_trends_chart_type",
+    "source": "corpus",
+    "params": {
+      "displayOptions": {
+        "chartType": "line"
+      },
+      "sections": {
+        "filter": [],
+        "formula": [],
+        "group": [],
+        "show": [
+          {
+            "behavior": {
+              "aggregateBy": [],
+              "behaviors": [
+                {
+                  "filters": [],
+                  "filtersDeterminer": "all",
+                  "funnelOrder": "loose",
+                  "id": null,
+                  "name": "Signup",
+                  "type": "event"
+                },
+                {
+                  "filters": [],
+                  "filtersDeterminer": "all",
+                  "funnelOrder": "loose",
+                  "id": null,
+                  "name": "Purchase",
+                  "type": "event"
+                }
+              ],
+              "conversionWindowDuration": 14,
+              "conversionWindowUnit": "day",
+              "exclusions": [],
+              "filter": [],
+              "funnelOrder": "loose",
+              "resourceType": "events",
+              "type": "funnel"
+            },
+            "measurement": {
+              "math": "conversion_rate_unique",
+              "property": null,
+              "stepIndex": null
+            },
+            "type": "metric"
+          }
+        ],
+        "time": [
+          {
+            "dateRangeType": "in the last",
+            "unit": "day",
+            "window": {
+              "unit": "day",
+              "value": 30
+            }
+          }
+        ]
+      }
+    },
+    "canonical": "{\"displayOptions\":{\"chartType\":\"line\"},\"sections\":{\"filter\":[],\"formula\":[],\"group\":[],\"show\":[{\"behavior\":{\"aggregateBy\":[],\"behaviors\":[{\"filters\":[],\"filtersDeterminer\":\"all\",\"funnelOrder\":\"loose\",\"id\":null,\"name\":\"Signup\",\"type\":\"event\"},{\"filters\":[],\"filtersDeterminer\":\"all\",\"funnelOrder\":\"loose\",\"id\":null,\"name\":\"Purchase\",\"type\":\"event\"}],\"conversionWindowDuration\":14,\"conversionWindowUnit\":\"day\",\"exclusions\":[],\"filter\":[],\"funnelOrder\":\"loose\",\"resourceType\":\"events\",\"type\":\"funnel\"},\"measurement\":{\"math\":\"conversion_rate_unique\",\"property\":null,\"stepIndex\":null},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]}}",
+    "sha256": "79ab51ecacf500469f24c6922df228e3c9aae391e301202a62d1afa0f24a1fd1"
+  },
+  {
+    "name": "funnels/workspace.build_funnel_params/test_build_funnel_params-testbuildfunnelparamsexclusions-test_string_exclusion_has_correct_name",
+    "source": "corpus",
+    "params": {
+      "displayOptions": {
+        "chartType": "funnel-steps"
+      },
+      "sections": {
+        "filter": [],
+        "formula": [],
+        "group": [],
+        "show": [
+          {
+            "behavior": {
+              "aggregateBy": [],
+              "behaviors": [
+                {
+                  "filters": [],
+                  "filtersDeterminer": "all",
+                  "funnelOrder": "loose",
+                  "id": null,
+                  "name": "A",
+                  "type": "event"
+                },
+                {
+                  "filters": [],
+                  "filtersDeterminer": "all",
+                  "funnelOrder": "loose",
+                  "id": null,
+                  "name": "B",
+                  "type": "event"
+                },
+                {
+                  "filters": [],
+                  "filtersDeterminer": "all",
+                  "funnelOrder": "loose",
+                  "id": null,
+                  "name": "C",
+                  "type": "event"
+                }
+              ],
+              "conversionWindowDuration": 14,
+              "conversionWindowUnit": "day",
+              "exclusions": [
+                {
+                  "event": "Logout",
+                  "steps": {
+                    "from": 1,
+                    "to": 3
+                  }
+                }
+              ],
+              "filter": [],
+              "funnelOrder": "loose",
+              "resourceType": "events",
+              "type": "funnel"
+            },
+            "measurement": {
+              "math": "conversion_rate_unique",
+              "property": null,
+              "stepIndex": null
+            },
+            "type": "metric"
+          }
+        ],
+        "time": [
+          {
+            "dateRangeType": "in the last",
+            "unit": "day",
+            "window": {
+              "unit": "day",
+              "value": 30
+            }
+          }
+        ]
+      }
+    },
+    "canonical": "{\"displayOptions\":{\"chartType\":\"funnel-steps\"},\"sections\":{\"filter\":[],\"formula\":[],\"group\":[],\"show\":[{\"behavior\":{\"aggregateBy\":[],\"behaviors\":[{\"filters\":[],\"filtersDeterminer\":\"all\",\"funnelOrder\":\"loose\",\"id\":null,\"name\":\"A\",\"type\":\"event\"},{\"filters\":[],\"filtersDeterminer\":\"all\",\"funnelOrder\":\"loose\",\"id\":null,\"name\":\"B\",\"type\":\"event\"},{\"filters\":[],\"filtersDeterminer\":\"all\",\"funnelOrder\":\"loose\",\"id\":null,\"name\":\"C\",\"type\":\"event\"}],\"conversionWindowDuration\":14,\"conversionWindowUnit\":\"day\",\"exclusions\":[{\"event\":\"Logout\",\"steps\":{\"from\":1,\"to\":3}}],\"filter\":[],\"funnelOrder\":\"loose\",\"resourceType\":\"events\",\"type\":\"funnel\"},\"measurement\":{\"math\":\"conversion_rate_unique\",\"property\":null,\"stepIndex\":null},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]}}",
+    "sha256": "eb85869d202264744169f113abdba8200a1760bbf59ae7047947223cf18f2d62"
+  },
+  {
+    "name": "funnels/workspace.build_funnel_params/test_build_funnel_params-testbuildfunnelparamsperstepfilters-test_filters_combinator_any",
+    "source": "corpus",
+    "params": {
+      "displayOptions": {
+        "chartType": "funnel-steps"
+      },
+      "sections": {
+        "filter": [],
+        "formula": [],
+        "group": [],
+        "show": [
+          {
+            "behavior": {
+              "aggregateBy": [],
+              "behaviors": [
+                {
+                  "filters": [],
+                  "filtersDeterminer": "all",
+                  "funnelOrder": "loose",
+                  "id": null,
+                  "name": "Signup",
+                  "type": "event"
+                },
+                {
+                  "filters": [
+                    {
+                      "defaultType": "number",
+                      "filterOperator": "is greater than",
+                      "filterType": "number",
+                      "filterValue": 50,
+                      "resourceType": "events",
+                      "value": "amount"
+                    }
+                  ],
+                  "filtersDeterminer": "any",
+                  "funnelOrder": "loose",
+                  "id": null,
+                  "name": "Purchase",
+                  "type": "event"
+                }
+              ],
+              "conversionWindowDuration": 14,
+              "conversionWindowUnit": "day",
+              "exclusions": [],
+              "filter": [],
+              "funnelOrder": "loose",
+              "resourceType": "events",
+              "type": "funnel"
+            },
+            "measurement": {
+              "math": "conversion_rate_unique",
+              "property": null,
+              "stepIndex": null
+            },
+            "type": "metric"
+          }
+        ],
+        "time": [
+          {
+            "dateRangeType": "in the last",
+            "unit": "day",
+            "window": {
+              "unit": "day",
+              "value": 30
+            }
+          }
+        ]
+      }
+    },
+    "canonical": "{\"displayOptions\":{\"chartType\":\"funnel-steps\"},\"sections\":{\"filter\":[],\"formula\":[],\"group\":[],\"show\":[{\"behavior\":{\"aggregateBy\":[],\"behaviors\":[{\"filters\":[],\"filtersDeterminer\":\"all\",\"funnelOrder\":\"loose\",\"id\":null,\"name\":\"Signup\",\"type\":\"event\"},{\"filters\":[{\"defaultType\":\"number\",\"filterOperator\":\"is greater than\",\"filterType\":\"number\",\"filterValue\":50,\"resourceType\":\"events\",\"value\":\"amount\"}],\"filtersDeterminer\":\"any\",\"funnelOrder\":\"loose\",\"id\":null,\"name\":\"Purchase\",\"type\":\"event\"}],\"conversionWindowDuration\":14,\"conversionWindowUnit\":\"day\",\"exclusions\":[],\"filter\":[],\"funnelOrder\":\"loose\",\"resourceType\":\"events\",\"type\":\"funnel\"},\"measurement\":{\"math\":\"conversion_rate_unique\",\"property\":null,\"stepIndex\":null},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]}}",
+    "sha256": "230432c965cff4fd07812e41f65bb2d28807dd40b000ac8620bb1f1d5defa58d"
+  },
+  {
+    "name": "funnels/workspace.build_funnel_params/test_workspace_funnel-testbuildfunnelparamsvsqueryfunnel-test_params_structure_matches_query_funnel",
+    "source": "corpus",
+    "params": {
+      "displayOptions": {
+        "chartType": "funnel-steps"
+      },
+      "sections": {
+        "filter": [],
+        "formula": [],
+        "group": [],
+        "show": [
+          {
+            "behavior": {
+              "aggregateBy": [],
+              "behaviors": [
+                {
+                  "filters": [],
+                  "filtersDeterminer": "all",
+                  "funnelOrder": "loose",
+                  "id": null,
+                  "name": "Signup",
+                  "type": "event"
+                },
+                {
+                  "filters": [],
+                  "filtersDeterminer": "all",
+                  "funnelOrder": "loose",
+                  "id": null,
+                  "name": "Purchase",
+                  "type": "event"
+                }
+              ],
+              "conversionWindowDuration": 14,
+              "conversionWindowUnit": "day",
+              "exclusions": [],
+              "filter": [],
+              "funnelOrder": "loose",
+              "resourceType": "events",
+              "type": "funnel"
+            },
+            "measurement": {
+              "math": "conversion_rate_unique",
+              "property": null,
+              "stepIndex": null
+            },
+            "type": "metric"
+          }
+        ],
+        "time": [
+          {
+            "dateRangeType": "in the last",
+            "unit": "day",
+            "window": {
+              "unit": "day",
+              "value": 30
+            }
+          }
+        ]
+      }
+    },
+    "canonical": "{\"displayOptions\":{\"chartType\":\"funnel-steps\"},\"sections\":{\"filter\":[],\"formula\":[],\"group\":[],\"show\":[{\"behavior\":{\"aggregateBy\":[],\"behaviors\":[{\"filters\":[],\"filtersDeterminer\":\"all\",\"funnelOrder\":\"loose\",\"id\":null,\"name\":\"Signup\",\"type\":\"event\"},{\"filters\":[],\"filtersDeterminer\":\"all\",\"funnelOrder\":\"loose\",\"id\":null,\"name\":\"Purchase\",\"type\":\"event\"}],\"conversionWindowDuration\":14,\"conversionWindowUnit\":\"day\",\"exclusions\":[],\"filter\":[],\"funnelOrder\":\"loose\",\"resourceType\":\"events\",\"type\":\"funnel\"},\"measurement\":{\"math\":\"conversion_rate_unique\",\"property\":null,\"stepIndex\":null},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]}}",
+    "sha256": "821ff9f08a520c1e7afc6ed9a907c9178599bab23090dcbbbf5919be1529f8ed"
+  },
+  {
+    "name": "retention/workspace.build_retention_params/test_build_retention_params-testbuildretentionparamsdefaults-test_has_sections_with_expected_keys",
+    "source": "corpus",
+    "params": {
+      "columnWidths": {
+        "bar": {}
+      },
+      "displayOptions": {
+        "chartType": "retention-curve"
+      },
+      "sections": {
+        "filter": [],
+        "formula": [],
+        "group": [],
+        "show": [
+          {
+            "behavior": {
+              "behaviors": [
+                {
+                  "filters": [],
+                  "filtersDeterminer": "all",
+                  "id": null,
+                  "name": "Signup",
+                  "type": "event"
+                },
+                {
+                  "filters": [],
+                  "filtersDeterminer": "all",
+                  "id": null,
+                  "name": "Login",
+                  "type": "event"
+                }
+              ],
+              "filter": [],
+              "resourceType": "events",
+              "retentionAlignmentType": "birth",
+              "retentionCustomBucketSizes": [],
+              "retentionUnit": "week",
+              "type": "retention"
+            },
+            "measurement": {
+              "math": "retention_rate"
+            },
+            "type": "metric"
+          }
+        ],
+        "time": [
+          {
+            "dateRangeType": "in the last",
+            "unit": "day",
+            "window": {
+              "unit": "day",
+              "value": 30
+            }
+          }
+        ]
+      },
+      "sorting": {
+        "bar": {
+          "colSortAttrs": [],
+          "sortBy": "column"
+        },
+        "line": {
+          "colSortAttrs": [
+            {
+              "sortBy": "value",
+              "sortOrder": "desc",
+              "valueField": "averageValue"
+            }
+          ],
+          "sortBy": "column"
+        },
+        "table": {
+          "colSortAttrs": [
+            {
+              "sortBy": "value",
+              "sortOrder": "desc",
+              "valueField": "size",
+              "viewNLimit": 12
+            }
+          ],
+          "sortBy": "column"
+        }
+      }
+    },
+    "canonical": "{\"columnWidths\":{\"bar\":{}},\"displayOptions\":{\"chartType\":\"retention-curve\"},\"sections\":{\"filter\":[],\"formula\":[],\"group\":[],\"show\":[{\"behavior\":{\"behaviors\":[{\"filters\":[],\"filtersDeterminer\":\"all\",\"id\":null,\"name\":\"Signup\",\"type\":\"event\"},{\"filters\":[],\"filtersDeterminer\":\"all\",\"id\":null,\"name\":\"Login\",\"type\":\"event\"}],\"filter\":[],\"resourceType\":\"events\",\"retentionAlignmentType\":\"birth\",\"retentionCustomBucketSizes\":[],\"retentionUnit\":\"week\",\"type\":\"retention\"},\"measurement\":{\"math\":\"retention_rate\"},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]},\"sorting\":{\"bar\":{\"colSortAttrs\":[],\"sortBy\":\"column\"},\"line\":{\"colSortAttrs\":[{\"sortBy\":\"value\",\"sortOrder\":\"desc\",\"valueField\":\"averageValue\"}],\"sortBy\":\"column\"},\"table\":{\"colSortAttrs\":[{\"sortBy\":\"value\",\"sortOrder\":\"desc\",\"valueField\":\"size\",\"viewNLimit\":12}],\"sortBy\":\"column\"}}}",
+    "sha256": "dfdc3ecbf229936a7c9be2d5b0f5a4c2924a58b6f66bd5dbc777df3d0ae96220"
+  },
+  {
+    "name": "retention/workspace.build_retention_params/test_build_retention_params-testdatagroupidretention-test_build_retention_params_without_data_group_id",
+    "source": "corpus",
+    "params": {
+      "columnWidths": {
+        "bar": {}
+      },
+      "displayOptions": {
+        "chartType": "retention-curve"
+      },
+      "sections": {
+        "filter": [],
+        "formula": [],
+        "group": [],
+        "show": [
+          {
+            "behavior": {
+              "behaviors": [
+                {
+                  "filters": [],
+                  "filtersDeterminer": "all",
+                  "id": null,
+                  "name": "Signup",
+                  "type": "event"
+                },
+                {
+                  "filters": [],
+                  "filtersDeterminer": "all",
+                  "id": null,
+                  "name": "Login",
+                  "type": "event"
+                }
+              ],
+              "filter": [],
+              "resourceType": "events",
+              "retentionAlignmentType": "birth",
+              "retentionCustomBucketSizes": [],
+              "retentionUnit": "week",
+              "type": "retention"
+            },
+            "measurement": {
+              "math": "retention_rate"
+            },
+            "type": "metric"
+          }
+        ],
+        "time": [
+          {
+            "dateRangeType": "in the last",
+            "unit": "day",
+            "window": {
+              "unit": "day",
+              "value": 30
+            }
+          }
+        ]
+      },
+      "sorting": {
+        "bar": {
+          "colSortAttrs": [],
+          "sortBy": "column"
+        },
+        "line": {
+          "colSortAttrs": [
+            {
+              "sortBy": "value",
+              "sortOrder": "desc",
+              "valueField": "averageValue"
+            }
+          ],
+          "sortBy": "column"
+        },
+        "table": {
+          "colSortAttrs": [
+            {
+              "sortBy": "value",
+              "sortOrder": "desc",
+              "valueField": "size",
+              "viewNLimit": 12
+            }
+          ],
+          "sortBy": "column"
+        }
+      }
+    },
+    "canonical": "{\"columnWidths\":{\"bar\":{}},\"displayOptions\":{\"chartType\":\"retention-curve\"},\"sections\":{\"filter\":[],\"formula\":[],\"group\":[],\"show\":[{\"behavior\":{\"behaviors\":[{\"filters\":[],\"filtersDeterminer\":\"all\",\"id\":null,\"name\":\"Signup\",\"type\":\"event\"},{\"filters\":[],\"filtersDeterminer\":\"all\",\"id\":null,\"name\":\"Login\",\"type\":\"event\"}],\"filter\":[],\"resourceType\":\"events\",\"retentionAlignmentType\":\"birth\",\"retentionCustomBucketSizes\":[],\"retentionUnit\":\"week\",\"type\":\"retention\"},\"measurement\":{\"math\":\"retention_rate\"},\"type\":\"metric\"}],\"time\":[{\"dateRangeType\":\"in the last\",\"unit\":\"day\",\"window\":{\"unit\":\"day\",\"value\":30}}]},\"sorting\":{\"bar\":{\"colSortAttrs\":[],\"sortBy\":\"column\"},\"line\":{\"colSortAttrs\":[{\"sortBy\":\"value\",\"sortOrder\":\"desc\",\"valueField\":\"averageValue\"}],\"sortBy\":\"column\"},\"table\":{\"colSortAttrs\":[{\"sortBy\":\"value\",\"sortOrder\":\"desc\",\"valueField\":\"size\",\"viewNLimit\":12}],\"sortBy\":\"column\"}}}",
+    "sha256": "dfdc3ecbf229936a7c9be2d5b0f5a4c2924a58b6f66bd5dbc777df3d0ae96220"
+  }
+]
