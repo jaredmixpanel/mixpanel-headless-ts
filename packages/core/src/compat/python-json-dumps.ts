@@ -106,6 +106,14 @@ export interface JsonDumpsStyle {
   readonly keySeparator: string;
   /** CPython `sort_keys` — sort object keys by Unicode code point. */
   readonly sortKeys: boolean;
+  /**
+   * Throw for numbers with no stable cross-language identity: non-finite
+   * values (no JSON spelling that round-trips) and magnitudes past
+   * `Number.MAX_SAFE_INTEGER` (where a JS number no longer names one
+   * integer, and `String()` flips to exponent form). Canonical form only —
+   * the default-argument twin keeps CPython's `allow_nan=True` spellings.
+   */
+  readonly rejectUnsafeNumbers: boolean;
 }
 
 /** CPython `json.dumps(value)` with every argument left at its default. */
@@ -113,6 +121,7 @@ const DEFAULT_STYLE: JsonDumpsStyle = {
   itemSeparator: ", ",
   keySeparator: ": ",
   sortKeys: false,
+  rejectUnsafeNumbers: false,
 };
 
 /**
@@ -144,6 +153,20 @@ export function dumpsStyled(value: unknown, style: JsonDumpsStyle): string {
     return value.toString(10);
   }
   if (typeof value === "number") {
+    if (style.rejectUnsafeNumbers) {
+      if (!Number.isFinite(value)) {
+        // CPython's own `allow_nan=False` wording, plus the value.
+        throw new TypeError(
+          `Out of range float values are not JSON compliant: ${String(value)}`,
+        );
+      }
+      if (Math.abs(value) > Number.MAX_SAFE_INTEGER) {
+        throw new TypeError(
+          `Number ${String(value)} exceeds Number.MAX_SAFE_INTEGER and has no ` +
+            "exact canonical spelling; carry it as a bigint instead",
+        );
+      }
+    }
     if (Number.isNaN(value)) {
       return "NaN";
     }

@@ -24,24 +24,50 @@ Two input sets are emitted:
   ``build_*_params`` results, so the fixture table exercises the shapes the
   two-body identity actually hashes.
 
-Two refusals, both deliberate and both hard errors for hand inputs:
+The **numeric normalization rule** (canonical form, both bodies): any
+number whose value is integral renders as an integer — ``2.0`` -> ``2``,
+``1000000000000000.0`` -> ``1000000000000000``, ``-0.0`` -> ``0``. Python
+needs a pre-pass (``normalize_numbers`` below, ``float.is_integer()`` ->
+``int``); JavaScript gets it free, having one number type. The rule closes
+a **reachable** divergence, not a theoretical one: Python
+``bookmark_builders.py:514`` emits ``"filterValue"`` verbatim and
+``GroupBy.bucket_size`` accepts a float, so ``Filter.greater_than("age",
+1e15)`` puts a genuine float in params. ``REQUIRED_CORPUS_VECTORS`` pins
+the corpus vector that does exactly that, so the case can never fall out
+of the sample again.
+
+Two refusals, both deliberate and both hard errors — including for corpus
+input, because a skip is how the previous version of this file hid a live
+divergence:
 
 1. ``default=str`` must never fire. The TS twin throws for an
    unserializable value rather than guessing a rendering, so a fixture that
    needed the ``default`` hook would be asserting a divergence. The
    ``_never_default`` hook below raises if CPython ever reaches for it.
-2. The input must be **JS-representable**. JavaScript has one number type:
-   an integral Python float (``1.0``, ``-0.0``) and an integer wider than
-   ``Number.MAX_SAFE_INTEGER`` both lose the distinction CPython spells
-   (``"1.0"`` vs ``"1"``; the digits vs ``"1e+22"``). Bookmark params carry
-   neither — spec section 3.1 rule 4 — so rather than paper over it with a
-   carrier format the generator refuses such inputs. Corpus vectors that
-   trip this (or that carry a ``$type`` carrier object, which is the
-   corpus's own encoding for non-JSON Python values) are skipped and
-   counted, so a corpus re-pin cannot silently break the build.
+2. No number may exceed ``Number.MAX_SAFE_INTEGER`` in magnitude, and none
+   may be non-finite. Past 2**53 a JS number no longer names one integer
+   and ``String()`` flips to exponent form; ``NaN``/``inf`` have no JSON
+   spelling that round-trips. No real params carry either (verified: zero
+   such values across all builder vectors at corpus pin c9991d1), so if a
+   re-pin introduces one we want a **red build**, not a quiet skip.
+
+``$type`` carrier objects are the one thing still skipped: they are the
+corpus's own encoding for non-JSON Python values (datetime, bytes,
+callables), so they are not params data at all. The skip is counted and
+printed.
 
 Usage (any CPython 3.11+):
+
     python3 scripts/generate-canonical-fixtures.py
+    npm run fmt
+
+**The `npm run fmt` step is required**, not optional: Prettier owns
+formatting for every file in this repo including the emitted JSON, and it
+reflows the arrays and rewrites number literals in the ``params`` field
+(``1e-07`` -> ``1e-7``). Both spellings parse to the same double, so the
+fixtures are unaffected — but skipping the step leaves ``npm run check``
+red on ``prettier --check``. The ``canonical`` field is a JSON *string*
+and is never touched.
 
 Re-run + commit whenever the hand table changes or the corpus pin in
 ``conformance-runner/corpus.config.json`` moves.
@@ -51,6 +77,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import sys
 from pathlib import Path
 from typing import Any
@@ -73,9 +100,27 @@ OUT_PATH = (
 CORPUS_STRIDE = 24
 MAX_SAFE_INTEGER = 2**53 - 1
 
+#: Corpus vectors that must be in the sample no matter where the stride
+#: lands. Named individually because each one pins a specific hazard, and
+#: stride sampling is exactly how the first version of this file lost the
+#: integral-float case.
+REQUIRED_CORPUS_VECTORS: tuple[str, ...] = (
+    # `Filter.greater_than("age", 1e15)` -> "filterValue": 1000000000000000.0,
+    # a real build_params payload carrying an integral FLOAT. Without the
+    # normalization rule CPython spells it "1e+15" and TypeScript "1e+15"
+    # only by luck of magnitude; with it, both spell the digits.
+    "bookmarks/workspace.build_params/"
+    "test_validation_bypass_r2-testr2v4inffilterfixed-"
+    "test_large_finite_value_passes",
+)
 
-class NotRepresentable(Exception):
-    """An input JavaScript cannot hold without losing the distinction."""
+
+class UnsafeNumber(Exception):
+    """A number with no stable cross-language canonical spelling."""
+
+
+class CarrierValue(Exception):
+    """A corpus ``$type`` carrier — not plain JSON params data."""
 
 
 def _never_default(value: object) -> object:
@@ -94,53 +139,62 @@ def _never_default(value: object) -> object:
     )
 
 
-def assert_js_representable(value: Any, path: str = "$") -> None:
-    """Refuse inputs whose CPython spelling JavaScript cannot reproduce.
+def normalize_numbers(value: Any, path: str = "$") -> Any:
+    """Apply the canonical numeric normalization rule to a whole value.
+
+    Integral numbers become Python ``int`` so ``json.dumps`` spells them
+    as bare digit runs — the same bytes JavaScript produces natively for
+    the same value. Non-integral floats are returned untouched and keep
+    CPython ``repr``.
 
     Args:
-        value: The (sub)value to check.
-        path: Dotted path used in the error message.
+        value: The (sub)value to normalize.
+        path: Dotted path used in error messages.
+
+    Returns:
+        The value with every integral number replaced by an ``int``.
 
     Raises:
-        NotRepresentable: For integral/non-finite floats, out-of-range
-            integers, ``$type`` carrier objects, and non-JSON values.
+        UnsafeNumber: For non-finite numbers and magnitudes past
+            ``Number.MAX_SAFE_INTEGER``.
+        CarrierValue: For a corpus ``$type`` carrier object.
+        TypeError: For anything that is not JSON data (which would send
+            ``json.dumps`` down the forbidden ``default`` branch).
     """
+    # bool is an int subclass — test it first or True becomes 1.
     if value is None or isinstance(value, (str, bool)):
-        return
-    if isinstance(value, int):
+        return value
+    if isinstance(value, (int, float)):
+        if isinstance(value, float) and not math.isfinite(value):
+            raise UnsafeNumber(
+                f"{path}: non-finite number {value!r} has no canonical JSON "
+                "spelling that round-trips"
+            )
         if abs(value) > MAX_SAFE_INTEGER:
-            raise NotRepresentable(
-                f"{path}: int {value} exceeds Number.MAX_SAFE_INTEGER; JSON.parse "
-                "would round it (pass a bigint in TypeScript instead)"
+            raise UnsafeNumber(
+                f"{path}: {value!r} exceeds Number.MAX_SAFE_INTEGER "
+                f"({MAX_SAFE_INTEGER}); past 2**53 a JS number no longer names "
+                "one integer, so there is no shared canonical spelling"
             )
-        return
-    if isinstance(value, float):
-        if value != value or value in (float("inf"), float("-inf")):
-            raise NotRepresentable(
-                f"{path}: non-finite float {value!r} cannot live in a JSON fixture "
-                "file (covered by the hand-written oracle table instead)"
-            )
-        if value.is_integer():
-            raise NotRepresentable(
-                f"{path}: integral float {value!r} spells {value!r} in CPython but "
-                '"' + repr(int(value)) + '" in JavaScript, which has one number type'
-            )
-        return
+        if isinstance(value, float) and value.is_integer():
+            # THE rule. int(-0.0) is 0, which is what JS String(-0) gives.
+            return int(value)
+        return value
     if isinstance(value, list):
-        for i, item in enumerate(value):
-            assert_js_representable(item, f"{path}[{i}]")
-        return
+        return [normalize_numbers(item, f"{path}[{i}]") for i, item in enumerate(value)]
     if isinstance(value, dict):
         if "$type" in value:
-            raise NotRepresentable(
-                f"{path}: corpus $type carrier ({value.get('$type')!r}) is not plain JSON"
+            raise CarrierValue(
+                f"{path}: corpus $type carrier ({value.get('$type')!r}) "
+                "is not plain JSON params data"
             )
+        out: dict[str, Any] = {}
         for key, member in value.items():
             if not isinstance(key, str):
-                raise NotRepresentable(f"{path}: non-str key {key!r}")
-            assert_js_representable(member, f"{path}.{key}")
-        return
-    raise NotRepresentable(f"{path}: {type(value).__name__} is not JSON data")
+                raise TypeError(f"{path}: non-str key {key!r}")
+            out[key] = normalize_numbers(member, f"{path}.{key}")
+        return out
+    raise TypeError(f"{path}: {type(value).__name__} is not JSON data")
 
 
 def canonical(params: Any) -> str:
@@ -185,14 +239,55 @@ def hand_authored() -> list[tuple[str, Any]]:
                 "float_half": 1.5,
                 "float_tiny": 1e-7,
                 "float_tinier": 2.5e-10,
-                # Every float >= 2**53 is integral, so the high-exponent
-                # repr branch cannot appear in a JSON fixture at all (see
-                # the module docstring's representability refusal); the
-                # low-exponent branch is covered by float_tiny/float_tinier.
+                # Every float >= 2**53 is integral AND out of safe range,
+                # so the high-exponent repr branch cannot appear at all;
+                # the low-exponent branch is float_tiny/float_tinier.
                 "float_exact_binary": 123456789.0625,
                 "float_near_int": 0.9999999999999999,
                 "float_third": 1 / 3,
                 "float_neg": -0.125,
+            },
+        ),
+        (
+            # The normalization rule, isolated. Each value on the left is a
+            # Python FLOAT; each must canonicalize to the integer spelling,
+            # which is what the TypeScript twin produces natively for the
+            # same JS number. This row is the fixture the cross-body test
+            # in python-json-dumps-canonical.test.ts compares against.
+            "integral-floats-normalize-to-ints",
+            {
+                "two": 2.0,
+                "neg_zero": -0.0,
+                "pos_zero": 0.0,
+                "e15": 1e15,
+                "neg_two": -2.0,
+                "max_safe_as_float": float(MAX_SAFE_INTEGER - 1),
+            },
+        ),
+        (
+            # ...and the other side of the rule: non-integral floats are
+            # untouched and keep CPython repr.
+            "non-integral-floats-keep-repr",
+            {"tiny": 1e-7, "half": 2.5, "third": 1 / 3, "neg": -0.125},
+        ),
+        (
+            # The reachable divergence in its natural habitat: a filter
+            # value that build_params emits verbatim (bookmark_builders.py
+            # :514). Mirrors the pinned corpus vector below.
+            "filter-value-integral-float",
+            {
+                "sections": {
+                    "filter": {
+                        "clauses": [
+                            {
+                                "filterOperator": "greater",
+                                "filterValue": 1e15,
+                                "resourceType": "events",
+                            }
+                        ],
+                        "determiner": "all",
+                    }
+                }
             },
         ),
         ("booleans-and-null", {"t": True, "f": False, "n": None}),
@@ -296,11 +391,22 @@ def hand_authored() -> list[tuple[str, Any]]:
 def corpus_sample() -> list[tuple[str, Any]]:
     """A deterministic sample of builder-vector outputs from the corpus.
 
+    Every ``REQUIRED_CORPUS_VECTORS`` entry is included regardless of where
+    the stride lands, and a missing one is a hard error — the point of
+    naming them is that they cannot drift out of the sample.
+
     Returns:
-        ``(name, params)`` pairs; ``name`` is the corpus vector id.
+        ``(name, params)`` pairs, ``name`` being the corpus vector id and
+        ``params`` the RAW output (normalization happens once, in `emit`).
+
+    Raises:
+        UnsafeNumber: If any builder output carries a non-finite or
+            out-of-safe-range number (none do at the current pin; a re-pin
+            that introduces one must break the build, not be skipped).
+        AssertionError: If a required vector is absent from the corpus.
     """
     eligible: list[tuple[str, Any]] = []
-    skipped = 0
+    carriers = 0
     for path in sorted(CORPUS_DIR.rglob("*.jsonl")):
         with path.open(encoding="utf-8") as handle:
             for line in handle:
@@ -315,19 +421,37 @@ def corpus_sample() -> list[tuple[str, Any]]:
                 if not isinstance(output, dict) or not isinstance(vector_id, str):
                     continue
                 try:
-                    assert_js_representable(output, "$")
-                except NotRepresentable:
-                    skipped += 1
+                    # Validation only — the RAW output is what gets stored,
+                    # so `emit` can tell whether normalization changed it.
+                    normalize_numbers(output, "$")
+                except CarrierValue:
+                    # Not params data — the corpus's encoding for a Python
+                    # value JSON has no spelling for. Skipped, counted.
+                    carriers += 1
                     continue
+                except UnsafeNumber as exc:
+                    raise UnsafeNumber(f"{vector_id}: {exc}") from exc
                 eligible.append((vector_id, output))
+
     eligible.sort(key=lambda pair: pair[0])
-    sampled = eligible[::CORPUS_STRIDE]
+    by_id = dict(eligible)
+    sampled = dict(eligible[::CORPUS_STRIDE])
+
+    for required in REQUIRED_CORPUS_VECTORS:
+        if required not in by_id:
+            raise AssertionError(
+                f"required corpus vector missing at this pin: {required}"
+            )
+        sampled[required] = by_id[required]
+
+    ordered = sorted(sampled.items(), key=lambda pair: pair[0])
     print(
         f"corpus: {len(eligible)} eligible builder outputs "
-        f"({skipped} skipped as not JS-representable), "
-        f"sampled {len(sampled)} at stride {CORPUS_STRIDE}"
+        f"({carriers} skipped as $type carriers), "
+        f"sampled {len(ordered)} at stride {CORPUS_STRIDE} "
+        f"(+{len(REQUIRED_CORPUS_VECTORS)} pinned)"
     )
-    return sampled
+    return ordered
 
 
 def main() -> int:
@@ -338,51 +462,77 @@ def main() -> int:
     """
     fixtures: list[dict[str, Any]] = []
 
-    for name, params in hand_authored():
-        # Hand inputs are a hard error, not a skip: an unrepresentable one
-        # is an authoring mistake, and silently dropping it would hollow out
-        # the table the parity claim rests on.
-        assert_js_representable(params, "$")
+    def emit(name: str, source: str, raw: Any) -> None:
+        """Normalize one input and append its fixture row.
+
+        Args:
+            name: Fixture id.
+            source: ``"hand"`` or ``"corpus"``.
+            raw: The pre-normalization value.
+        """
+        params = normalize_numbers(raw, "$")
         text = canonical(params)
         fixtures.append(
             {
                 "name": name,
-                "source": "hand",
+                "source": source,
+                # True when the numeric normalization rule actually changed
+                # the bytes — i.e. this row is a regression fixture for it.
+                "normalized": canonical(raw) != text,
                 "params": params,
                 "canonical": text,
                 "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
             }
         )
 
+    # Hand inputs are a hard error, never a skip: an unsafe one is an
+    # authoring mistake, and dropping it would hollow out the table.
+    for name, raw in hand_authored():
+        emit(name, "hand", raw)
     for vector_id, params in corpus_sample():
-        text = canonical(params)
-        fixtures.append(
-            {
-                "name": vector_id,
-                "source": "corpus",
-                "params": params,
-                "canonical": text,
-                "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
-            }
-        )
+        emit(vector_id, "corpus", params)
 
     names = [f["name"] for f in fixtures]
     if len(set(names)) != len(names):
         raise AssertionError("duplicate fixture names")
 
+    pin = json.loads(CORPUS_CONFIG.read_text(encoding="utf-8"))["sourceCommit"]
+    py = ".".join(str(v) for v in sys.version_info[:3])
+    document = {
+        "$comment": [
+            "GENERATED FILE - do not hand-edit.",
+            "Source: scripts/generate-canonical-fixtures.py (CPython is the oracle).",
+            "Reproduce with:  python3 scripts/generate-canonical-fixtures.py "
+            "&& npm run fmt",
+            "The `npm run fmt` step is REQUIRED - Prettier owns formatting for",
+            "this file and rewrites number literals in `params` (1e-07 -> 1e-7);",
+            "both parse to the same double, and the `canonical` field is a",
+            "string Prettier never touches. Skipping it leaves the gate red.",
+            "",
+            "Each row: `canonical` is CPython json.dumps(params, sort_keys=True,",
+            "separators=(',', ':')) byte for byte and `sha256` is the sha256 of",
+            "its UTF-8 bytes - the heads-platform QueryRef hash (spec 02 3.1).",
+            "`normalized: true` means the numeric normalization rule (integral",
+            "number -> integer spelling) changed the bytes for this row.",
+            f"Provenance: CPython {py}, corpus pin {pin}, {len(fixtures)} fixtures.",
+        ],
+        "fixtures": fixtures,
+    }
+
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     # ensure_ascii keeps the committed file pure ASCII, so no editor or
     # transport can renormalize an astral character out from under the test.
     OUT_PATH.write_text(
-        json.dumps(fixtures, indent=2, ensure_ascii=True, sort_keys=False) + "\n",
+        json.dumps(document, indent=2, ensure_ascii=True, sort_keys=False) + "\n",
         encoding="utf-8",
     )
-    pin = json.loads(CORPUS_CONFIG.read_text(encoding="utf-8"))["sourceCommit"]
-    py = ".".join(str(v) for v in sys.version_info[:3])
+    changed = sum(1 for f in fixtures if f["normalized"])
     print(
         f"wrote {OUT_PATH.relative_to(REPO_ROOT)}: {len(fixtures)} fixtures "
+        f"({changed} exercise the normalization rule) "
         f"(CPython {py}, corpus pin {pin})"
     )
+    print("NEXT: run `npm run fmt` — Prettier owns this file's formatting.")
     return 0
 
 

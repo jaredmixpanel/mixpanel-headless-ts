@@ -3,10 +3,15 @@
 //
 // The contract under test is CPython
 // `json.dumps(value, sort_keys=True, separators=(",", ":"))` with
-// `ensure_ascii=True` and `allow_nan=True`, byte for byte. Every expected
-// string in the table below was produced by CPython 3.14 on 2026-09-03; the
-// bulk table lives in `fixtures/canonical-fixtures.json`, emitted by
-// `scripts/generate-canonical-fixtures.py`.
+// `ensure_ascii=True`, byte for byte, PLUS the numeric normalization rule
+// (any integral number renders as an integer) and the two refusals the
+// canonical form adds over the default twin: non-finite numbers and
+// magnitudes past 2**53 throw rather than being spelled.
+//
+// Every expected string in the table below was produced by CPython 3.14 on
+// 2026-09-03; the bulk table lives in `fixtures/canonical-fixtures.json`,
+// emitted by `scripts/generate-canonical-fixtures.py` (re-run it and then
+// `npm run fmt` — Prettier owns that file's formatting).
 //
 // Non-ASCII and control characters are written as braced `\u{...}` escapes on
 // purpose: the expected values are byte contracts, and a raw astral or C0
@@ -70,14 +75,60 @@ describe("pythonJsonDumpsCanonical — CPython oracle table", () => {
     );
   });
 
-  it("spells non-finite floats the JSON-extension way (allow_nan=True)", () => {
-    expect(
-      pythonJsonDumpsCanonical([
-        Number.NaN,
-        Number.POSITIVE_INFINITY,
-        Number.NEGATIVE_INFINITY,
-      ]),
-    ).toBe("[NaN,Infinity,-Infinity]");
+  it("normalizes every integral number to an integer spelling", () => {
+    // The numeric normalization rule: both bodies pre-normalize an
+    // integral float to an int, so JS's inability to tell 2 from 2.0
+    // stops being a divergence and becomes the defined behaviour.
+    expect(pythonJsonDumpsCanonical({ v: 2 })).toBe('{"v":2}');
+    expect(pythonJsonDumpsCanonical({ v: 1e15 })).toBe(
+      '{"v":1000000000000000}',
+    );
+  });
+
+  it("renders negative zero as 0, not -0", () => {
+    // `String(-0)` is already "0", but this is a contract, not a
+    // coincidence: Python's pre-pass does `int(-0.0)` == 0.
+    expect(pythonJsonDumpsCanonical({ v: -0 })).toBe('{"v":0}');
+    expect(pythonJsonDumpsCanonical([-0, 0])).toBe("[0,0]");
+  });
+
+  it("refuses non-finite numbers (they have no JSON identity)", () => {
+    // The default-argument twin keeps CPython's allow_nan=True spelling;
+    // the canonical form is a hash payload that must survive a JSON
+    // round-trip, and NaN/Infinity do not.
+    for (const bad of [
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      Number.NEGATIVE_INFINITY,
+    ]) {
+      expect(() => pythonJsonDumpsCanonical({ v: bad })).toThrow(TypeError);
+      expect(() => pythonJsonDumpsCanonical({ v: bad })).toThrow(
+        /Out of range float values are not JSON compliant/,
+      );
+    }
+    // ...but the default twin is untouched by that refusal.
+    expect(pythonJsonDumps([Number.NaN, Number.POSITIVE_INFINITY])).toBe(
+      "[NaN, Infinity]",
+    );
+  });
+
+  it("refuses numbers past MAX_SAFE_INTEGER instead of spelling them wrong", () => {
+    // `String(1e22)` is "1e+22" while Python spells the digits, and past
+    // 2**53 a JS number no longer identifies one integer. Bigints are the
+    // supported way to carry such a value and are NOT refused.
+    expect(() => pythonJsonDumpsCanonical({ v: 1e22 })).toThrow(TypeError);
+    expect(() => pythonJsonDumpsCanonical({ v: 1e22 })).toThrow(
+      /exceeds Number.MAX_SAFE_INTEGER/,
+    );
+    expect(() => pythonJsonDumpsCanonical({ v: -(2 ** 53) })).toThrow(
+      TypeError,
+    );
+    expect(pythonJsonDumpsCanonical({ v: Number.MAX_SAFE_INTEGER })).toBe(
+      '{"v":9007199254740991}',
+    );
+    expect(pythonJsonDumpsCanonical({ v: 10n ** 22n })).toBe(
+      '{"v":10000000000000000000000}',
+    );
   });
 
   it("throws the CPython TypeError shape for unserializable values", () => {
@@ -115,7 +166,9 @@ interface CanonicalFixture {
   readonly name: string;
   /** `"hand"` (authored in the generator) or `"corpus"` (builder vector). */
   readonly source: string;
-  /** The value CPython canonicalized. */
+  /** True when the numeric normalization rule changed this row's bytes. */
+  readonly normalized: boolean;
+  /** The value CPython canonicalized, after the normalization pre-pass. */
   readonly params: unknown;
   /** CPython's `json.dumps(params, sort_keys=True, separators=(",",":"))`. */
   readonly canonical: string;
@@ -123,7 +176,24 @@ interface CanonicalFixture {
   readonly sha256: string;
 }
 
-const fixtures = fixtureTable as unknown as readonly CanonicalFixture[];
+const fixtures = (fixtureTable as unknown as { fixtures: CanonicalFixture[] })
+  .fixtures;
+
+/**
+ * Look one fixture up by name.
+ *
+ * @param name - The fixture id.
+ * @returns The row.
+ * @throws Error - When the name is absent (a renamed fixture must fail
+ *   loudly, not silently skip the assertion that cites it).
+ */
+function fixture(name: string): CanonicalFixture {
+  const found = fixtures.find((f) => f.name === name);
+  if (found === undefined) {
+    throw new Error(`fixture "${name}" is missing — regenerate the table`);
+  }
+  return found;
+}
 
 /**
  * sha256 of a string's UTF-8 bytes, as 64 lowercase hex — the QueryRef
@@ -170,6 +240,55 @@ describe("pythonJsonDumpsCanonical — CPython fixture parity (spec §6.1)", () 
     },
   );
 
+  it("pins the rows that exercise the numeric normalization rule", () => {
+    // Anti-inert guard. Stride sampling is how the integral-float case
+    // fell out of the table the first time; these three rows must exist
+    // AND must be the ones whose bytes the rule changed.
+    const normalizedNames = fixtures
+      .filter((f) => f.normalized)
+      .map((f) => f.name)
+      .sort();
+    expect(normalizedNames).toStrictEqual(
+      [
+        "bookmarks/workspace.build_params/" +
+          "test_validation_bypass_r2-testr2v4inffilterfixed-" +
+          "test_large_finite_value_passes",
+        "filter-value-integral-float",
+        "integral-floats-normalize-to-ints",
+      ].sort(),
+    );
+  });
+
+  it("pins the real build_params payload that carries an integral float", () => {
+    // `Filter.greater_than("age", 1e15)` — CPython would spell the raw
+    // float `1e+15`; the rule makes both bodies spell the digits.
+    const row = fixture(
+      "bookmarks/workspace.build_params/" +
+        "test_validation_bypass_r2-testr2v4inffilterfixed-" +
+        "test_large_finite_value_passes",
+    );
+    expect(row.canonical).toContain('"filterValue":1000000000000000');
+    expect(row.canonical).not.toContain("1e+15");
+    expect(row.canonical).not.toContain("1000000000000000.0");
+  });
+
+  it("gives a JS number 2 the same identity as Python's 2.0", async () => {
+    // The cross-body claim in one assertion: the fixture below was
+    // generated from Python FLOATS (2.0, -0.0, 1e15, ...); the object
+    // here is plain JS numbers. Same canonical bytes, same hash.
+    const row = fixture("integral-floats-normalize-to-ints");
+    const fromJs = {
+      two: 2,
+      neg_zero: -0,
+      pos_zero: 0,
+      e15: 1e15,
+      neg_two: -2,
+      max_safe_as_float: Number.MAX_SAFE_INTEGER - 1,
+    };
+    expect(pythonJsonDumpsCanonical(fromJs)).toBe(row.canonical);
+    expect(await sha256Hex(pythonJsonDumpsCanonical(fromJs))).toBe(row.sha256);
+  });
+
   it("escapes every non-ASCII byte out of the canonical form", () => {
     // `ensure_ascii=True` in one assertion: the identity's bytes are pure
     // printable ASCII, so no transport can renormalize them.
@@ -207,7 +326,15 @@ const jsonValue = fc.letrec<{ node: unknown }>((tie) => ({
     fc.constant(null),
     fc.boolean(),
     fc.integer({ min: -1_000_000, max: 1_000_000 }),
-    fc.double({ noNaN: true, noDefaultInfinity: true }),
+    // Bounded to the safe range: the canonicalizer REFUSES non-finite
+    // numbers and magnitudes past 2**53, so generating them would be
+    // testing the refusal, which the oracle table already does.
+    fc.double({
+      noNaN: true,
+      noDefaultInfinity: true,
+      min: -Number.MAX_SAFE_INTEGER,
+      max: Number.MAX_SAFE_INTEGER,
+    }),
     fc.string({ unit: "grapheme" }),
     fc.array(tie("node"), { maxLength: 4 }),
     fc.dictionary(fc.string({ unit: "grapheme" }), tie("node"), {

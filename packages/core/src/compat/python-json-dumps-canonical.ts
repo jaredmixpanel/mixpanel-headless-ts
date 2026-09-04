@@ -9,34 +9,61 @@
  * (`renderer/sandbox/pyBootstrap.ts`), whose sha256 of these bytes is the
  * existing `params_hash`; this module is the second body of that identity.
  *
- * It differs from the default-argument {@link pythonJsonDumps} in exactly
- * three ways, and shares everything else through `dumpsStyled`:
+ * It differs from the default-argument {@link pythonJsonDumps} in four
+ * ways, and shares everything else through `dumpsStyled`:
  *
  * 1. **`sort_keys=True`** — object keys sorted by Unicode **code point**.
  *    JS's default string compare uses UTF-16 code units, which inverts
  *    astral characters against BMP characters above U+D800 (U+FF5E sorts
  *    BEFORE U+1F600 in Python, AFTER it in a naive JS `.sort()`).
  * 2. **compact separators** — `,` and `:` with no whitespace.
- * 3. nothing else: `ensure_ascii=True` (lowercase `\uXXXX`, surrogate
- *    pairs for astral, the seven short escapes), `allow_nan=True`
- *    (`NaN`/`Infinity`/`-Infinity`), integers as bare digit runs, floats
- *    via CPython `repr` (`pythonFloatStr`).
+ * 3. the **numeric normalization rule** below.
+ * 4. `ensure_ascii=True` is unchanged (lowercase `\uXXXX`, surrogate pairs
+ *    for astral, the seven short escapes), as is CPython `repr` spelling
+ *    for non-integral floats (`pythonFloatStr`).
  *
- * **No `default=str` emulation.** CPython's `default` hook would render an
- * unserializable value via `str()`; this twin throws instead, because a
- * silently-`str()`-ed value is an identity that two bodies would spell
- * differently (spec §3.1 rule 6). `scripts/generate-canonical-fixtures.py`
- * asserts the Python side never took the `default` branch for any fixture.
+ * ## Numeric normalization rule
  *
- * **Representability caveat (the one thing JS cannot mirror).** Python
- * distinguishes `1` from `1.0`; JS does not — `Number.isInteger(1.0)` is
- * `true`, so an integral Python float would canonicalize here as `1`, not
- * `1.0`. Bookmark params never carry one (spec §3.1 rule 4: `buildParams`
- * already matches Python's int-vs-float-ness, proven by the 1,785 builder
- * vectors), and the fixture generator refuses any input that would depend
- * on the distinction rather than papering over it. Integers wider than
- * `Number.MAX_SAFE_INTEGER` must be passed as `bigint` for the same
- * reason: `String(1e22)` is `"1e+22"`, while Python spells the digits.
+ * **Any number whose value is integral renders as an integer**: `2.0` → `2`,
+ * `1000000000000000.0` → `1000000000000000`, `-0.0` → `0`. Both bodies
+ * apply it, so it is the defined canonical behaviour rather than a JS
+ * limitation leaking into the identity. In TypeScript it is free (JS has
+ * one number type); Python pre-normalizes with `float.is_integer()` → `int`
+ * before `json.dumps`, which the fixture generator does and the desktop's
+ * P12 capture adopts.
+ *
+ * The rule exists because the divergence it closes is **reachable, not
+ * theoretical**: Python `bookmark_builders.py:514` emits `"filterValue"`
+ * verbatim and `GroupBy.bucket_size` accepts a float, so
+ * `Filter.greater_than("age", 1e15)` really does produce a `1e+15` float
+ * inside params. One corpus builder vector
+ * (`…test_validation_bypass_r2-testr2v4inffilterfixed-test_large_finite_value_passes`,
+ * `filterValue: 1000000000000000.0`) is exactly that payload, and it is a
+ * pinned fixture here for that reason.
+ *
+ * ## Refusals
+ *
+ * - **No `default=str` emulation.** CPython's `default` hook would render
+ *   an unserializable value via `str()`; this twin throws instead, because
+ *   a silently-`str()`-ed value is an identity two bodies would spell
+ *   differently (spec §3.1 rule 6).
+ *   `scripts/generate-canonical-fixtures.py` asserts the Python side never
+ *   took the `default` branch for any fixture.
+ * - **Non-finite numbers throw**, unlike the default twin's
+ *   `allow_nan=True` spellings: `NaN` / `Infinity` are not JSON and cannot
+ *   survive the parse→hash round-trip an identity depends on.
+ * - **Numbers past `Number.MAX_SAFE_INTEGER` throw.** Beyond 2**53 a JS
+ *   number no longer names one integer, and `String(1e22)` is `"1e+22"`
+ *   while Python spells the digits. Carry such a value as a `bigint`,
+ *   which renders as a bare digit run and is never refused.
+ *
+ * ## Scope
+ *
+ * This canonicalizer is for **plain JSON values** — objects, arrays,
+ * strings, numbers, bigints, booleans, `null`. Rig-internal wrapper types
+ * (the conformance `PyFloat` float-ness carrier, for one) are ordinary
+ * objects to it and would serialize as their fields (`{"spelling":…}`);
+ * unwrapping them is the rig's concern, not the identity's.
  */
 
 import { dumpsStyled, type JsonDumpsStyle } from "./python-json-dumps.js";
@@ -46,6 +73,7 @@ const CANONICAL_STYLE: JsonDumpsStyle = {
   itemSeparator: ",",
   keySeparator: ":",
   sortKeys: true,
+  rejectUnsafeNumbers: true,
 };
 
 /**
@@ -58,8 +86,9 @@ const CANONICAL_STYLE: JsonDumpsStyle = {
  * @param value - The value to serialize (typically bookmark `params`).
  * @returns The canonical CPython-spelled JSON text.
  * @throws TypeError - For values Python's encoder rejects
- *   (`Object of type X is not JSON serializable`); there is deliberately
- *   no `default=str` fallback.
+ *   (`Object of type X is not JSON serializable`; there is deliberately no
+ *   `default=str` fallback), for non-finite numbers, and for numbers past
+ *   `Number.MAX_SAFE_INTEGER`.
  *
  * @example
  * ```typescript
