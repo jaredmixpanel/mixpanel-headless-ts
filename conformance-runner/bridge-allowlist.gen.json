@@ -1,0 +1,3570 @@
+{
+  "schema": 1,
+  "corpusCommit": "c9991d1eed03fec1830b6e460091724b9263b8aa",
+  "generatedAt": "2026-09-04T02:41:44.591Z",
+  "headlessCommit": "0ea8da8bb6f87ade38f11790aa37de091ea82760",
+  "rulesSha256": "e198d4372be6ae240272fa83a026b9af140ac244aa1dbc66efe5a923a5c271c7",
+  "verbsSha256": "041351bfc1c757957b3ca5eefa77b3574953feeaaf7a3500af00b4e924b2bb03",
+  "rows": [
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/me",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "resolveWorkspaceId",
+      "pyApi": "api_client.resolve_workspace_id",
+      "capability": "auth",
+      "vectorCount": 1
+    },
+    {
+      "method": "PUT",
+      "family": "app",
+      "template": "/api/app/organizations/{param}/business-context",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "governance",
+      "consentVerb": "set this project's business context",
+      "tsMethod": "setBusinessContext",
+      "pyApi": "workspace.set_business_context",
+      "capability": "entities",
+      "vectorCount": 1
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/metadata/index",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "projectsMetadataIndex",
+      "pyApi": "api_client.projects_metadata_index",
+      "capability": "auth",
+      "vectorCount": 17,
+      "aliases": [
+        {
+          "pyApi": "api_client.resolve_workspace_id",
+          "tsMethod": "resolveWorkspaceId",
+          "capability": "auth",
+          "vectorCount": 6
+        },
+        {
+          "pyApi": "api_client.require_scoped_path",
+          "tsMethod": "requireScopedPath",
+          "capability": "auth",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/alerts/custom/",
+      "paramNames": [
+        "bookmark_id",
+        "skip_user_filter"
+      ],
+      "access": "read",
+      "tsMethod": "listAlerts",
+      "pyApi": "api_client.list_alerts",
+      "capability": "entities",
+      "vectorCount": 10,
+      "aliases": [
+        {
+          "pyApi": "workspace.list_alerts",
+          "tsMethod": "listAlerts",
+          "capability": "entities",
+          "vectorCount": 4
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/alerts/custom/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "alerts",
+      "consentVerb": "create an alert",
+      "tsMethod": "createAlert",
+      "pyApi": "api_client.create_alert",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.create_alert",
+          "tsMethod": "createAlert",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/alerts/custom/alert-count/",
+      "paramNames": [
+        "type"
+      ],
+      "access": "read",
+      "tsMethod": "getAlertCount",
+      "pyApi": "api_client.get_alert_count",
+      "capability": "entities",
+      "vectorCount": 5,
+      "aliases": [
+        {
+          "pyApi": "workspace.get_alert_count",
+          "tsMethod": "getAlertCount",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/alerts/custom/bulk-delete/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "alerts",
+      "consentVerb": "delete several alerts",
+      "tsMethod": "bulkDeleteAlerts",
+      "pyApi": "api_client.bulk_delete_alerts",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.bulk_delete_alerts",
+          "tsMethod": "bulkDeleteAlerts",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/alerts/custom/screenshot/",
+      "paramNames": [
+        "gcs_key"
+      ],
+      "access": "read",
+      "tsMethod": "getAlertScreenshotUrl",
+      "pyApi": "api_client.get_alert_screenshot_url",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.get_alert_screenshot_url",
+          "tsMethod": "getAlertScreenshotUrl",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/alerts/custom/test/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "alerts",
+      "consentVerb": "send a test alert",
+      "tsMethod": "testAlert",
+      "pyApi": "api_client.test_alert",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.test_alert",
+          "tsMethod": "testAlert",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/alerts/custom/validate-alerts-for-bookmark/",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "validateAlertsForBookmark",
+      "pyApi": "api_client.validate_alerts_for_bookmark",
+      "capability": "bookmarks",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.validate_alerts_for_bookmark",
+          "tsMethod": "validateAlertsForBookmark",
+          "capability": "bookmarks",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/alerts/custom/{param}/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "alerts",
+      "consentVerb": "delete an alert",
+      "tsMethod": "deleteAlert",
+      "pyApi": "api_client.delete_alert",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.delete_alert",
+          "tsMethod": "deleteAlert",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/alerts/custom/{param}/",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "getAlert",
+      "pyApi": "api_client.get_alert",
+      "capability": "entities",
+      "vectorCount": 4,
+      "aliases": [
+        {
+          "pyApi": "workspace.get_alert",
+          "tsMethod": "getAlert",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/alerts/custom/{param}/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "alerts",
+      "consentVerb": "update an alert",
+      "tsMethod": "updateAlert",
+      "pyApi": "api_client.update_alert",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.update_alert",
+          "tsMethod": "updateAlert",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/alerts/custom/{param}/history/",
+      "paramNames": [
+        "next_cursor",
+        "page_size"
+      ],
+      "access": "read",
+      "tsMethod": "getAlertHistory",
+      "pyApi": "api_client.get_alert_history",
+      "capability": "entities",
+      "vectorCount": 5,
+      "aliases": [
+        {
+          "pyApi": "workspace.get_alert_history",
+          "tsMethod": "getAlertHistory",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/annotations/",
+      "paramNames": [
+        "fromDate",
+        "tags",
+        "toDate"
+      ],
+      "access": "read",
+      "tsMethod": "listAnnotations",
+      "pyApi": "api_client.list_annotations",
+      "capability": "entities",
+      "vectorCount": 11,
+      "aliases": [
+        {
+          "pyApi": "workspace.list_annotations",
+          "tsMethod": "listAnnotations",
+          "capability": "entities",
+          "vectorCount": 4
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/annotations/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "annotations",
+      "consentVerb": "create an annotation",
+      "tsMethod": "createAnnotation",
+      "pyApi": "api_client.create_annotation",
+      "capability": "entities",
+      "vectorCount": 4,
+      "aliases": [
+        {
+          "pyApi": "workspace.create_annotation",
+          "tsMethod": "createAnnotation",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/annotations/tags/",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "listAnnotationTags",
+      "pyApi": "api_client.list_annotation_tags",
+      "capability": "entities",
+      "vectorCount": 5,
+      "aliases": [
+        {
+          "pyApi": "workspace.list_annotation_tags",
+          "tsMethod": "listAnnotationTags",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/annotations/tags/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "annotations",
+      "consentVerb": "create an annotation tag",
+      "tsMethod": "createAnnotationTag",
+      "pyApi": "api_client.create_annotation_tag",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.create_annotation_tag",
+          "tsMethod": "createAnnotationTag",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/annotations/{param}/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "annotations",
+      "consentVerb": "delete an annotation",
+      "tsMethod": "deleteAnnotation",
+      "pyApi": "api_client.delete_annotation",
+      "capability": "entities",
+      "vectorCount": 4,
+      "aliases": [
+        {
+          "pyApi": "workspace.delete_annotation",
+          "tsMethod": "deleteAnnotation",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/annotations/{param}/",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "getAnnotation",
+      "pyApi": "workspace.get_annotation",
+      "capability": "entities",
+      "vectorCount": 5,
+      "aliases": [
+        {
+          "pyApi": "api_client.get_annotation",
+          "tsMethod": "getAnnotation",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/annotations/{param}/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "annotations",
+      "consentVerb": "update an annotation",
+      "tsMethod": "updateAnnotation",
+      "pyApi": "api_client.update_annotation",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.update_annotation",
+          "tsMethod": "updateAnnotation",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/bookmark-urls/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "bookmarks",
+      "consentVerb": "create a shareable report link",
+      "tsMethod": "createBookmarkUrl",
+      "pyApi": "api_client.create_bookmark_url",
+      "capability": "bookmarks",
+      "vectorCount": 9
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/bookmark-urls/{param}/",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "getBookmarkUrl",
+      "pyApi": "api_client.get_bookmark_url",
+      "capability": "bookmarks",
+      "vectorCount": 6
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/bookmarks",
+      "paramNames": [
+        "ids",
+        "project_id",
+        "query_origin",
+        "type",
+        "v"
+      ],
+      "access": "read",
+      "tsMethod": "listBookmarks",
+      "pyApi": "api_client.list_bookmarks",
+      "capability": "bookmarks",
+      "vectorCount": 21,
+      "aliases": [
+        {
+          "pyApi": "workspace.list_bookmarks_v2",
+          "tsMethod": "listBookmarksV2",
+          "capability": "bookmarks",
+          "vectorCount": 7
+        },
+        {
+          "pyApi": "api_client.list_bookmarks_v2",
+          "tsMethod": "listBookmarksV2",
+          "capability": "bookmarks",
+          "vectorCount": 5
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/bookmarks",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "bookmarks",
+      "consentVerb": "create a saved report",
+      "tsMethod": "createBookmark",
+      "pyApi": "workspace.create_bookmark",
+      "capability": "bookmarks",
+      "vectorCount": 11,
+      "aliases": [
+        {
+          "pyApi": "api_client.create_bookmark",
+          "tsMethod": "createBookmark",
+          "capability": "bookmarks",
+          "vectorCount": 3
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/bookmarks/bulk-delete",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "bookmarks",
+      "consentVerb": "delete several saved reports",
+      "tsMethod": "bulkDeleteBookmarks",
+      "pyApi": "workspace.bulk_delete_bookmarks",
+      "capability": "bookmarks",
+      "vectorCount": 4,
+      "aliases": [
+        {
+          "pyApi": "api_client.bulk_delete_bookmarks",
+          "tsMethod": "bulkDeleteBookmarks",
+          "capability": "bookmarks",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/bookmarks/bulk-update",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "bookmarks",
+      "consentVerb": "update several saved reports",
+      "tsMethod": "bulkUpdateBookmarks",
+      "pyApi": "workspace.bulk_update_bookmarks",
+      "capability": "bookmarks",
+      "vectorCount": 5,
+      "aliases": [
+        {
+          "pyApi": "api_client.bulk_update_bookmarks",
+          "tsMethod": "bulkUpdateBookmarks",
+          "capability": "bookmarks",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/bookmarks/{param}",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "bookmarks",
+      "consentVerb": "delete a saved report",
+      "tsMethod": "deleteBookmark",
+      "pyApi": "workspace.delete_bookmark",
+      "capability": "bookmarks",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "api_client.delete_bookmark",
+          "tsMethod": "deleteBookmark",
+          "capability": "bookmarks",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/bookmarks/{param}",
+      "paramNames": [
+        "v"
+      ],
+      "access": "read",
+      "tsMethod": "getBookmark",
+      "pyApi": "workspace.get_bookmark",
+      "capability": "bookmarks",
+      "vectorCount": 5,
+      "aliases": [
+        {
+          "pyApi": "api_client.get_bookmark",
+          "tsMethod": "getBookmark",
+          "capability": "bookmarks",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/bookmarks/{param}",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "bookmarks",
+      "consentVerb": "update a saved report",
+      "tsMethod": "updateBookmark",
+      "pyApi": "workspace.update_bookmark",
+      "capability": "bookmarks",
+      "vectorCount": 6,
+      "aliases": [
+        {
+          "pyApi": "api_client.update_bookmark",
+          "tsMethod": "updateBookmark",
+          "capability": "bookmarks",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/bookmarks/{param}/history",
+      "paramNames": [
+        "cursor",
+        "page_size"
+      ],
+      "access": "read",
+      "tsMethod": "getBookmarkHistory",
+      "pyApi": "api_client.get_bookmark_history",
+      "capability": "bookmarks",
+      "vectorCount": 6,
+      "aliases": [
+        {
+          "pyApi": "workspace.get_bookmark_history",
+          "tsMethod": "getBookmarkHistory",
+          "capability": "bookmarks",
+          "vectorCount": 3
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/bookmarks/{param}/linked-dashboard-ids",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "bookmarkLinkedDashboardIds",
+      "pyApi": "api_client.bookmark_linked_dashboard_ids",
+      "capability": "bookmarks",
+      "vectorCount": 9,
+      "aliases": [
+        {
+          "pyApi": "workspace.bookmark_linked_dashboard_ids",
+          "tsMethod": "bookmarkLinkedDashboardIds",
+          "capability": "bookmarks",
+          "vectorCount": 3
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/business-context",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "getBusinessContext",
+      "pyApi": "workspace.get_business_context",
+      "capability": "entities",
+      "vectorCount": 4
+    },
+    {
+      "method": "PUT",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/business-context",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "governance",
+      "consentVerb": "set this project's business context",
+      "tsMethod": "setBusinessContext",
+      "pyApi": "workspace.set_business_context",
+      "capability": "entities",
+      "vectorCount": 4,
+      "aliases": [
+        {
+          "pyApi": "workspace.clear_business_context",
+          "tsMethod": "clearBusinessContext",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/business-context/chain",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "getBusinessContextChain",
+      "pyApi": "workspace.get_business_context_chain",
+      "capability": "entities",
+      "vectorCount": 3
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/cohorts",
+      "paramNames": [
+        "data_group_id",
+        "ids"
+      ],
+      "access": "read",
+      "tsMethod": "listCohortsFull",
+      "pyApi": "workspace.list_cohorts_full",
+      "capability": "cohorts",
+      "vectorCount": 11,
+      "aliases": [
+        {
+          "pyApi": "api_client.list_cohorts_app",
+          "tsMethod": "listCohortsApp",
+          "capability": "cohorts",
+          "vectorCount": 5
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/cohorts",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "cohorts",
+      "consentVerb": "create a cohort",
+      "tsMethod": "createCohort",
+      "pyApi": "workspace.create_cohort",
+      "capability": "cohorts",
+      "vectorCount": 7,
+      "aliases": [
+        {
+          "pyApi": "api_client.create_cohort",
+          "tsMethod": "createCohort",
+          "capability": "cohorts",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/cohorts/bulk-delete",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "cohorts",
+      "consentVerb": "delete several cohorts",
+      "tsMethod": "bulkDeleteCohorts",
+      "pyApi": "workspace.bulk_delete_cohorts",
+      "capability": "cohorts",
+      "vectorCount": 4,
+      "aliases": [
+        {
+          "pyApi": "api_client.bulk_delete_cohorts",
+          "tsMethod": "bulkDeleteCohorts",
+          "capability": "cohorts",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/cohorts/bulk-update",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "cohorts",
+      "consentVerb": "update several cohorts",
+      "tsMethod": "bulkUpdateCohorts",
+      "pyApi": "workspace.bulk_update_cohorts",
+      "capability": "cohorts",
+      "vectorCount": 5,
+      "aliases": [
+        {
+          "pyApi": "api_client.bulk_update_cohorts",
+          "tsMethod": "bulkUpdateCohorts",
+          "capability": "cohorts",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/cohorts/{param}",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "cohorts",
+      "consentVerb": "delete a cohort",
+      "tsMethod": "deleteCohort",
+      "pyApi": "workspace.delete_cohort",
+      "capability": "cohorts",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "api_client.delete_cohort",
+          "tsMethod": "deleteCohort",
+          "capability": "cohorts",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/cohorts/{param}",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "getCohort",
+      "pyApi": "workspace.get_cohort",
+      "capability": "cohorts",
+      "vectorCount": 8,
+      "aliases": [
+        {
+          "pyApi": "api_client.get_cohort",
+          "tsMethod": "getCohort",
+          "capability": "cohorts",
+          "vectorCount": 3
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/cohorts/{param}",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "cohorts",
+      "consentVerb": "update a cohort",
+      "tsMethod": "updateCohort",
+      "pyApi": "workspace.update_cohort",
+      "capability": "cohorts",
+      "vectorCount": 6,
+      "aliases": [
+        {
+          "pyApi": "api_client.update_cohort",
+          "tsMethod": "updateCohort",
+          "capability": "cohorts",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/custom_events/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "governance",
+      "consentVerb": "create a custom event",
+      "tsMethod": "createCustomEvent",
+      "pyApi": "api_client.create_custom_event",
+      "capability": "entities",
+      "vectorCount": 14,
+      "aliases": [
+        {
+          "pyApi": "workspace.create_custom_event",
+          "tsMethod": "createCustomEvent",
+          "capability": "entities",
+          "vectorCount": 4
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/custom_properties/",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "listCustomProperties",
+      "pyApi": "api_client.list_custom_properties",
+      "capability": "entities",
+      "vectorCount": 6,
+      "aliases": [
+        {
+          "pyApi": "workspace.list_custom_properties",
+          "tsMethod": "listCustomProperties",
+          "capability": "entities",
+          "vectorCount": 3
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/custom_properties/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "governance",
+      "consentVerb": "create a custom property",
+      "tsMethod": "createCustomProperty",
+      "pyApi": "api_client.create_custom_property",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.create_custom_property",
+          "tsMethod": "createCustomProperty",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/custom_properties/validate/",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "validateCustomProperty",
+      "pyApi": "api_client.validate_custom_property",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.validate_custom_property",
+          "tsMethod": "validateCustomProperty",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/custom_properties/{param}/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "governance",
+      "consentVerb": "delete a custom property",
+      "tsMethod": "deleteCustomProperty",
+      "pyApi": "api_client.delete_custom_property",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.delete_custom_property",
+          "tsMethod": "deleteCustomProperty",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/custom_properties/{param}/",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "getCustomProperty",
+      "pyApi": "api_client.get_custom_property",
+      "capability": "entities",
+      "vectorCount": 4,
+      "aliases": [
+        {
+          "pyApi": "workspace.get_custom_property",
+          "tsMethod": "getCustomProperty",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "PUT",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/custom_properties/{param}/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "governance",
+      "consentVerb": "update a custom property",
+      "tsMethod": "updateCustomProperty",
+      "pyApi": "api_client.update_custom_property",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.update_custom_property",
+          "tsMethod": "updateCustomProperty",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/dashboards",
+      "paramNames": [
+        "ids"
+      ],
+      "access": "read",
+      "tsMethod": "listDashboards",
+      "pyApi": "api_client.list_dashboards",
+      "capability": "entities",
+      "vectorCount": 15,
+      "aliases": [
+        {
+          "pyApi": "workspace.list_dashboards",
+          "tsMethod": "listDashboards",
+          "capability": "entities",
+          "vectorCount": 6
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/dashboards",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "dashboards",
+      "consentVerb": "create a dashboard",
+      "tsMethod": "createDashboard",
+      "pyApi": "workspace.create_dashboard",
+      "capability": "entities",
+      "vectorCount": 8,
+      "aliases": [
+        {
+          "pyApi": "api_client.create_dashboard",
+          "tsMethod": "createDashboard",
+          "capability": "entities",
+          "vectorCount": 3
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/dashboards/blueprints",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "dashboards",
+      "consentVerb": "create a dashboard blueprint",
+      "tsMethod": "createBlueprint",
+      "pyApi": "api_client.create_blueprint",
+      "capability": "entities",
+      "vectorCount": 1
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/dashboards/blueprints-all",
+      "paramNames": [
+        "include_reports"
+      ],
+      "access": "read",
+      "tsMethod": "listBlueprintTemplates",
+      "pyApi": "api_client.list_blueprint_templates",
+      "capability": "entities",
+      "vectorCount": 5
+    },
+    {
+      "method": "PUT",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/dashboards/blueprints/cohorts",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "dashboards",
+      "consentVerb": "update a dashboard blueprint's cohorts",
+      "tsMethod": "updateBlueprintCohorts",
+      "pyApi": "api_client.update_blueprint_cohorts",
+      "capability": "cohorts",
+      "vectorCount": 2,
+      "aliases": [
+        {
+          "pyApi": "workspace.update_blueprint_cohorts",
+          "tsMethod": "updateBlueprintCohorts",
+          "capability": "cohorts",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/dashboards/blueprints/finish",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "dashboards",
+      "consentVerb": "finalize a dashboard blueprint",
+      "tsMethod": "finalizeBlueprint",
+      "pyApi": "api_client.finalize_blueprint",
+      "capability": "entities",
+      "vectorCount": 2,
+      "aliases": [
+        {
+          "pyApi": "workspace.finalize_blueprint",
+          "tsMethod": "finalizeBlueprint",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/dashboards/bookmarks/{param}/dashboard-ids",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "bookmarkLinkedDashboardIds",
+      "pyApi": "api_client.bookmark_linked_dashboard_ids",
+      "capability": "bookmarks",
+      "vectorCount": 4,
+      "aliases": [
+        {
+          "pyApi": "api_client.get_bookmark_dashboard_ids",
+          "tsMethod": "getBookmarkDashboardIds",
+          "capability": "bookmarks",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/dashboards/bulk-delete",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "dashboards",
+      "consentVerb": "delete several dashboards",
+      "tsMethod": "bulkDeleteDashboards",
+      "pyApi": "workspace.bulk_delete_dashboards",
+      "capability": "entities",
+      "vectorCount": 5,
+      "aliases": [
+        {
+          "pyApi": "api_client.bulk_delete_dashboards",
+          "tsMethod": "bulkDeleteDashboards",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/dashboards/rca",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "dashboards",
+      "consentVerb": "create a root-cause-analysis dashboard",
+      "tsMethod": "createRcaDashboard",
+      "pyApi": "api_client.create_rca_dashboard",
+      "capability": "entities",
+      "vectorCount": 2,
+      "aliases": [
+        {
+          "pyApi": "workspace.create_rca_dashboard",
+          "tsMethod": "createRcaDashboard",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/dashboards/{param}",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "dashboards",
+      "consentVerb": "delete a dashboard",
+      "tsMethod": "deleteDashboard",
+      "pyApi": "api_client.delete_dashboard",
+      "capability": "entities",
+      "vectorCount": 4,
+      "aliases": [
+        {
+          "pyApi": "workspace.delete_dashboard",
+          "tsMethod": "deleteDashboard",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/dashboards/{param}",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "getDashboard",
+      "pyApi": "workspace.get_dashboard",
+      "capability": "entities",
+      "vectorCount": 5,
+      "aliases": [
+        {
+          "pyApi": "api_client.get_dashboard",
+          "tsMethod": "getDashboard",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/dashboards/{param}",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "dashboards",
+      "consentVerb": "create a saved report",
+      "tsMethod": "createBookmark",
+      "pyApi": "workspace.create_bookmark",
+      "capability": "bookmarks",
+      "vectorCount": 19,
+      "aliases": [
+        {
+          "pyApi": "workspace.update_dashboard",
+          "tsMethod": "updateDashboard",
+          "capability": "entities",
+          "vectorCount": 4
+        },
+        {
+          "pyApi": "workspace.add_report_to_dashboard",
+          "tsMethod": "addReportToDashboard",
+          "capability": "entities",
+          "vectorCount": 3
+        },
+        {
+          "pyApi": "api_client.add_report_to_dashboard",
+          "tsMethod": "addReportToDashboard",
+          "capability": "entities",
+          "vectorCount": 1
+        },
+        {
+          "pyApi": "api_client.remove_report_from_dashboard",
+          "tsMethod": "removeReportFromDashboard",
+          "capability": "entities",
+          "vectorCount": 1
+        },
+        {
+          "pyApi": "api_client.update_dashboard",
+          "tsMethod": "updateDashboard",
+          "capability": "entities",
+          "vectorCount": 1
+        },
+        {
+          "pyApi": "workspace.remove_report_from_dashboard",
+          "tsMethod": "removeReportFromDashboard",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/dashboards/{param}/blueprint-config",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "getBlueprintConfig",
+      "pyApi": "api_client.get_blueprint_config",
+      "capability": "entities",
+      "vectorCount": 1
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/dashboards/{param}/erf",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "getDashboardErf",
+      "pyApi": "api_client.get_dashboard_erf",
+      "capability": "entities",
+      "vectorCount": 1
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/dashboards/{param}/favorites",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "dashboards",
+      "consentVerb": "unfavorite a dashboard",
+      "tsMethod": "unfavoriteDashboard",
+      "pyApi": "api_client.unfavorite_dashboard",
+      "capability": "entities",
+      "vectorCount": 1
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/dashboards/{param}/favorites",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "dashboards",
+      "consentVerb": "favorite a dashboard",
+      "tsMethod": "favoriteDashboard",
+      "pyApi": "api_client.favorite_dashboard",
+      "capability": "entities",
+      "vectorCount": 2
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/dashboards/{param}/pin",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "dashboards",
+      "consentVerb": "unpin a dashboard",
+      "tsMethod": "unpinDashboard",
+      "pyApi": "api_client.unpin_dashboard",
+      "capability": "entities",
+      "vectorCount": 1
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/dashboards/{param}/pin",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "dashboards",
+      "consentVerb": "pin a dashboard",
+      "tsMethod": "pinDashboard",
+      "pyApi": "api_client.pin_dashboard",
+      "capability": "entities",
+      "vectorCount": 1
+    },
+    {
+      "method": "PATCH",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/dashboards/{param}/report-links/{param}",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "dashboards",
+      "consentVerb": "update a report card on a dashboard",
+      "tsMethod": "updateReportLink",
+      "pyApi": "api_client.update_report_link",
+      "capability": "entities",
+      "vectorCount": 2,
+      "aliases": [
+        {
+          "pyApi": "workspace.update_report_link",
+          "tsMethod": "updateReportLink",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/dashboards/{param}/text-cards/{param}",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "dashboards",
+      "consentVerb": "update a text card on a dashboard",
+      "tsMethod": "updateTextCard",
+      "pyApi": "api_client.update_text_card",
+      "capability": "entities",
+      "vectorCount": 1
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/audit-events-only/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "lexicon",
+      "consentVerb": "run a Lexicon audit over events",
+      "tsMethod": "runAuditEventsOnly",
+      "pyApi": "api_client.run_audit_events_only",
+      "capability": "entities",
+      "vectorCount": 6,
+      "aliases": [
+        {
+          "pyApi": "workspace.run_audit_events_only",
+          "tsMethod": "runAuditEventsOnly",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/audit/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "lexicon",
+      "consentVerb": "run a Lexicon audit",
+      "tsMethod": "runAudit",
+      "pyApi": "api_client.run_audit",
+      "capability": "entities",
+      "vectorCount": 8,
+      "aliases": [
+        {
+          "pyApi": "workspace.run_audit",
+          "tsMethod": "runAudit",
+          "capability": "entities",
+          "vectorCount": 3
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/data-volume-anomalies/",
+      "paramNames": [
+        "status"
+      ],
+      "access": "read",
+      "tsMethod": "listDataVolumeAnomalies",
+      "pyApi": "api_client.list_data_volume_anomalies",
+      "capability": "entities",
+      "vectorCount": 9,
+      "aliases": [
+        {
+          "pyApi": "workspace.list_data_volume_anomalies",
+          "tsMethod": "listDataVolumeAnomalies",
+          "capability": "entities",
+          "vectorCount": 3
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/data-volume-anomalies/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "lexicon",
+      "consentVerb": "update a data-volume anomaly",
+      "tsMethod": "updateAnomaly",
+      "pyApi": "api_client.update_anomaly",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.update_anomaly",
+          "tsMethod": "updateAnomaly",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/data-volume-anomalies/bulk/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "lexicon",
+      "consentVerb": "update several data-volume anomalies",
+      "tsMethod": "bulkUpdateAnomalies",
+      "pyApi": "api_client.bulk_update_anomalies",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.bulk_update_anomalies",
+          "tsMethod": "bulkUpdateAnomalies",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/events/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "lexicon",
+      "consentVerb": "delete a custom event",
+      "tsMethod": "deleteCustomEvent",
+      "pyApi": "api_client.delete_custom_event",
+      "capability": "entities",
+      "vectorCount": 8,
+      "aliases": [
+        {
+          "pyApi": "api_client.delete_event_definition",
+          "tsMethod": "deleteEventDefinition",
+          "capability": "entities",
+          "vectorCount": 2
+        },
+        {
+          "pyApi": "workspace.delete_custom_event",
+          "tsMethod": "deleteCustomEvent",
+          "capability": "entities",
+          "vectorCount": 2
+        },
+        {
+          "pyApi": "workspace.delete_event_definition",
+          "tsMethod": "deleteEventDefinition",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/events/",
+      "paramNames": [
+        "custom_event",
+        "name[]"
+      ],
+      "access": "read",
+      "tsMethod": "getEventDefinitions",
+      "pyApi": "api_client.get_event_definitions",
+      "capability": "entities",
+      "vectorCount": 14,
+      "aliases": [
+        {
+          "pyApi": "workspace.get_event_definitions",
+          "tsMethod": "getEventDefinitions",
+          "capability": "entities",
+          "vectorCount": 4
+        },
+        {
+          "pyApi": "workspace.list_custom_events",
+          "tsMethod": "listCustomEvents",
+          "capability": "entities",
+          "vectorCount": 3
+        },
+        {
+          "pyApi": "api_client.list_event_definitions",
+          "tsMethod": "listEventDefinitions",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/events/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "lexicon",
+      "consentVerb": "update a custom event",
+      "tsMethod": "updateCustomEvent",
+      "pyApi": "api_client.update_custom_event",
+      "capability": "entities",
+      "vectorCount": 16,
+      "aliases": [
+        {
+          "pyApi": "workspace.update_custom_event",
+          "tsMethod": "updateCustomEvent",
+          "capability": "entities",
+          "vectorCount": 4
+        },
+        {
+          "pyApi": "api_client.bulk_update_event_definitions",
+          "tsMethod": "bulkUpdateEventDefinitions",
+          "capability": "entities",
+          "vectorCount": 2
+        },
+        {
+          "pyApi": "api_client.update_event_definition",
+          "tsMethod": "updateEventDefinition",
+          "capability": "entities",
+          "vectorCount": 2
+        },
+        {
+          "pyApi": "workspace.bulk_update_event_definitions",
+          "tsMethod": "bulkUpdateEventDefinitions",
+          "capability": "entities",
+          "vectorCount": 2
+        },
+        {
+          "pyApi": "workspace.update_event_definition",
+          "tsMethod": "updateEventDefinition",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/events/deletion-requests/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "deletion_requests",
+      "consentVerb": "cancel a data-deletion request",
+      "tsMethod": "cancelDeletionRequest",
+      "pyApi": "api_client.cancel_deletion_request",
+      "capability": "entities",
+      "vectorCount": 5,
+      "aliases": [
+        {
+          "pyApi": "workspace.cancel_deletion_request",
+          "tsMethod": "cancelDeletionRequest",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/events/deletion-requests/",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "listDeletionRequests",
+      "pyApi": "api_client.list_deletion_requests",
+      "capability": "entities",
+      "vectorCount": 6,
+      "aliases": [
+        {
+          "pyApi": "workspace.list_deletion_requests",
+          "tsMethod": "listDeletionRequests",
+          "capability": "entities",
+          "vectorCount": 3
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/events/deletion-requests/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "deletion_requests",
+      "consentVerb": "request deletion of event data",
+      "tsMethod": "createDeletionRequest",
+      "pyApi": "api_client.create_deletion_request",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.create_deletion_request",
+          "tsMethod": "createDeletionRequest",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/events/deletion-requests/preview-filters/",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "previewDeletionFilters",
+      "pyApi": "api_client.preview_deletion_filters",
+      "capability": "entities",
+      "vectorCount": 4,
+      "aliases": [
+        {
+          "pyApi": "workspace.preview_deletion_filters",
+          "tsMethod": "previewDeletionFilters",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/events/drop-filters/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "governance",
+      "consentVerb": "delete a data drop filter",
+      "tsMethod": "deleteDropFilter",
+      "pyApi": "api_client.delete_drop_filter",
+      "capability": "data-governance",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.delete_drop_filter",
+          "tsMethod": "deleteDropFilter",
+          "capability": "data-governance",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/events/drop-filters/",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "listDropFilters",
+      "pyApi": "api_client.list_drop_filters",
+      "capability": "data-governance",
+      "vectorCount": 6,
+      "aliases": [
+        {
+          "pyApi": "workspace.list_drop_filters",
+          "tsMethod": "listDropFilters",
+          "capability": "data-governance",
+          "vectorCount": 3
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/events/drop-filters/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "governance",
+      "consentVerb": "update a data drop filter",
+      "tsMethod": "updateDropFilter",
+      "pyApi": "api_client.update_drop_filter",
+      "capability": "data-governance",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.update_drop_filter",
+          "tsMethod": "updateDropFilter",
+          "capability": "data-governance",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/events/drop-filters/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "governance",
+      "consentVerb": "create a data drop filter",
+      "tsMethod": "createDropFilter",
+      "pyApi": "api_client.create_drop_filter",
+      "capability": "data-governance",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.create_drop_filter",
+          "tsMethod": "createDropFilter",
+          "capability": "data-governance",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/events/drop-filters/limits/",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "getDropFilterLimits",
+      "pyApi": "api_client.get_drop_filter_limits",
+      "capability": "data-governance",
+      "vectorCount": 5,
+      "aliases": [
+        {
+          "pyApi": "workspace.get_drop_filter_limits",
+          "tsMethod": "getDropFilterLimits",
+          "capability": "data-governance",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/events/tracking-metadata/",
+      "paramNames": [
+        "event_name"
+      ],
+      "access": "read",
+      "tsMethod": "getTrackingMetadata",
+      "pyApi": "api_client.get_tracking_metadata",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.get_tracking_metadata",
+          "tsMethod": "getTrackingMetadata",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/events/{param}/history/",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "getEventHistory",
+      "pyApi": "api_client.get_event_history",
+      "capability": "entities",
+      "vectorCount": 4,
+      "aliases": [
+        {
+          "pyApi": "workspace.get_event_history",
+          "tsMethod": "getEventHistory",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/export/",
+      "paramNames": [
+        "export_type"
+      ],
+      "access": "read",
+      "tsMethod": "exportLexicon",
+      "pyApi": "api_client.export_lexicon",
+      "capability": "streaming",
+      "vectorCount": 8,
+      "aliases": [
+        {
+          "pyApi": "workspace.export_lexicon",
+          "tsMethod": "exportLexicon",
+          "capability": "streaming",
+          "vectorCount": 3
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/lookup-tables/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "lookup_tables",
+      "consentVerb": "delete lookup tables",
+      "tsMethod": "deleteLookupTables",
+      "pyApi": "api_client.delete_lookup_tables",
+      "capability": "data-governance",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.delete_lookup_tables",
+          "tsMethod": "deleteLookupTables",
+          "capability": "data-governance",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/lookup-tables/",
+      "paramNames": [
+        "data-group-id"
+      ],
+      "access": "read",
+      "tsMethod": "listLookupTables",
+      "pyApi": "api_client.list_lookup_tables",
+      "capability": "data-governance",
+      "vectorCount": 8,
+      "aliases": [
+        {
+          "pyApi": "workspace.list_lookup_tables",
+          "tsMethod": "listLookupTables",
+          "capability": "data-governance",
+          "vectorCount": 4
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/lookup-tables/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "lookup_tables",
+      "consentVerb": "update a lookup table",
+      "tsMethod": "updateLookupTable",
+      "pyApi": "api_client.update_lookup_table",
+      "capability": "data-governance",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.update_lookup_table",
+          "tsMethod": "updateLookupTable",
+          "capability": "data-governance",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/lookup-tables/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "lookup_tables",
+      "consentVerb": "register a lookup table",
+      "tsMethod": "registerLookupTable",
+      "pyApi": "api_client.register_lookup_table",
+      "capability": "data-governance",
+      "vectorCount": 6,
+      "aliases": [
+        {
+          "pyApi": "api_client.mark_lookup_table_ready",
+          "tsMethod": "markLookupTableReady",
+          "capability": "data-governance",
+          "vectorCount": 2
+        },
+        {
+          "pyApi": "workspace.mark_lookup_table_ready",
+          "tsMethod": "markLookupTableReady",
+          "capability": "data-governance",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/lookup-tables/download-url/",
+      "paramNames": [
+        "data-group-id"
+      ],
+      "access": "read",
+      "tsMethod": "getLookupDownloadUrl",
+      "pyApi": "api_client.get_lookup_download_url",
+      "capability": "data-governance",
+      "vectorCount": 4,
+      "aliases": [
+        {
+          "pyApi": "workspace.get_lookup_download_url",
+          "tsMethod": "getLookupDownloadUrl",
+          "capability": "data-governance",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/lookup-tables/download/",
+      "paramNames": [
+        "data-group-id",
+        "file-name",
+        "limit"
+      ],
+      "access": "read",
+      "tsMethod": "downloadLookupTable",
+      "pyApi": "api_client.download_lookup_table",
+      "capability": "data-governance",
+      "vectorCount": 5,
+      "aliases": [
+        {
+          "pyApi": "workspace.download_lookup_table",
+          "tsMethod": "downloadLookupTable",
+          "capability": "data-governance",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/lookup-tables/upload-status/",
+      "paramNames": [
+        "upload-id"
+      ],
+      "access": "read",
+      "tsMethod": "getLookupUploadStatus",
+      "pyApi": "api_client.get_lookup_upload_status",
+      "capability": "data-governance",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.get_lookup_upload_status",
+          "tsMethod": "getLookupUploadStatus",
+          "capability": "data-governance",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/lookup-tables/upload-url/",
+      "paramNames": [
+        "content-type"
+      ],
+      "access": "read",
+      "tsMethod": "getLookupUploadUrl",
+      "pyApi": "api_client.get_lookup_upload_url",
+      "capability": "data-governance",
+      "vectorCount": 7,
+      "aliases": [
+        {
+          "pyApi": "workspace.get_lookup_upload_url",
+          "tsMethod": "getLookupUploadUrl",
+          "capability": "data-governance",
+          "vectorCount": 3
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/properties/",
+      "paramNames": [
+        "includeCustom",
+        "includeDensity",
+        "includeEvents",
+        "includeZeroCounts",
+        "name[]",
+        "resourceType"
+      ],
+      "access": "read",
+      "tsMethod": "getPropertyDefinitions",
+      "pyApi": "api_client.get_property_definitions",
+      "capability": "entities",
+      "vectorCount": 12,
+      "aliases": [
+        {
+          "pyApi": "api_client.list_property_definitions",
+          "tsMethod": "listPropertyDefinitions",
+          "capability": "entities",
+          "vectorCount": 4
+        },
+        {
+          "pyApi": "workspace.get_property_definitions",
+          "tsMethod": "getPropertyDefinitions",
+          "capability": "entities",
+          "vectorCount": 4
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/properties/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "lexicon",
+      "consentVerb": "update several property definitions",
+      "tsMethod": "bulkUpdatePropertyDefinitions",
+      "pyApi": "workspace.bulk_update_property_definitions",
+      "capability": "entities",
+      "vectorCount": 10,
+      "aliases": [
+        {
+          "pyApi": "workspace.update_property_definition",
+          "tsMethod": "updatePropertyDefinition",
+          "capability": "entities",
+          "vectorCount": 3
+        },
+        {
+          "pyApi": "api_client.bulk_update_property_definitions",
+          "tsMethod": "bulkUpdatePropertyDefinitions",
+          "capability": "entities",
+          "vectorCount": 2
+        },
+        {
+          "pyApi": "api_client.update_property_definition",
+          "tsMethod": "updatePropertyDefinition",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/properties/{param}/history/",
+      "paramNames": [
+        "entity_type"
+      ],
+      "access": "read",
+      "tsMethod": "getPropertyHistory",
+      "pyApi": "api_client.get_property_history",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.get_property_history",
+          "tsMethod": "getPropertyHistory",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/schema/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "schemas",
+      "consentVerb": "turn off schema enforcement",
+      "tsMethod": "deleteSchemaEnforcement",
+      "pyApi": "api_client.delete_schema_enforcement",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.delete_schema_enforcement",
+          "tsMethod": "deleteSchemaEnforcement",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/schema/",
+      "paramNames": [
+        "fields"
+      ],
+      "access": "read",
+      "tsMethod": "getSchemaEnforcement",
+      "pyApi": "api_client.get_schema_enforcement",
+      "capability": "entities",
+      "vectorCount": 6,
+      "aliases": [
+        {
+          "pyApi": "workspace.get_schema_enforcement",
+          "tsMethod": "getSchemaEnforcement",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/schema/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "schemas",
+      "consentVerb": "update the schema-enforcement settings",
+      "tsMethod": "updateSchemaEnforcement",
+      "pyApi": "api_client.update_schema_enforcement",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.update_schema_enforcement",
+          "tsMethod": "updateSchemaEnforcement",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/schema/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "schemas",
+      "consentVerb": "turn on schema enforcement",
+      "tsMethod": "initSchemaEnforcement",
+      "pyApi": "api_client.init_schema_enforcement",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.init_schema_enforcement",
+          "tsMethod": "initSchemaEnforcement",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "PUT",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/schema/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "schemas",
+      "consentVerb": "replace the schema-enforcement settings",
+      "tsMethod": "replaceSchemaEnforcement",
+      "pyApi": "api_client.replace_schema_enforcement",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.replace_schema_enforcement",
+          "tsMethod": "replaceSchemaEnforcement",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/tags/",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "listLexiconTags",
+      "pyApi": "api_client.list_lexicon_tags",
+      "capability": "entities",
+      "vectorCount": 6,
+      "aliases": [
+        {
+          "pyApi": "workspace.list_lexicon_tags",
+          "tsMethod": "listLexiconTags",
+          "capability": "entities",
+          "vectorCount": 3
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/tags/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "lexicon",
+      "consentVerb": "create a Lexicon tag",
+      "tsMethod": "createLexiconTag",
+      "pyApi": "api_client.create_lexicon_tag",
+      "capability": "entities",
+      "vectorCount": 7,
+      "aliases": [
+        {
+          "pyApi": "api_client.delete_lexicon_tag",
+          "tsMethod": "deleteLexiconTag",
+          "capability": "entities",
+          "vectorCount": 2
+        },
+        {
+          "pyApi": "workspace.create_lexicon_tag",
+          "tsMethod": "createLexiconTag",
+          "capability": "entities",
+          "vectorCount": 2
+        },
+        {
+          "pyApi": "workspace.delete_lexicon_tag",
+          "tsMethod": "deleteLexiconTag",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/tags/{param}/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "lexicon",
+      "consentVerb": "update a Lexicon tag",
+      "tsMethod": "updateLexiconTag",
+      "pyApi": "api_client.update_lexicon_tag",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.update_lexicon_tag",
+          "tsMethod": "updateLexiconTag",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/experiments/",
+      "paramNames": [
+        "include_archived"
+      ],
+      "access": "read",
+      "tsMethod": "listExperiments",
+      "pyApi": "api_client.list_experiments",
+      "capability": "entities",
+      "vectorCount": 8,
+      "aliases": [
+        {
+          "pyApi": "workspace.list_experiments",
+          "tsMethod": "listExperiments",
+          "capability": "entities",
+          "vectorCount": 4
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/experiments/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "experiments",
+      "consentVerb": "create an experiment",
+      "tsMethod": "createExperiment",
+      "pyApi": "api_client.create_experiment",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.create_experiment",
+          "tsMethod": "createExperiment",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/experiments/erf/",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "listErfExperiments",
+      "pyApi": "api_client.list_erf_experiments",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.list_erf_experiments",
+          "tsMethod": "listErfExperiments",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/experiments/{param}",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "experiments",
+      "consentVerb": "delete an experiment",
+      "tsMethod": "deleteExperiment",
+      "pyApi": "api_client.delete_experiment",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.delete_experiment",
+          "tsMethod": "deleteExperiment",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/experiments/{param}",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "getExperiment",
+      "pyApi": "api_client.get_experiment",
+      "capability": "entities",
+      "vectorCount": 4,
+      "aliases": [
+        {
+          "pyApi": "workspace.get_experiment",
+          "tsMethod": "getExperiment",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/experiments/{param}",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "experiments",
+      "consentVerb": "update an experiment",
+      "tsMethod": "updateExperiment",
+      "pyApi": "api_client.update_experiment",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.update_experiment",
+          "tsMethod": "updateExperiment",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/experiments/{param}/archive",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "experiments",
+      "consentVerb": "restore an archived experiment",
+      "tsMethod": "restoreExperiment",
+      "pyApi": "api_client.restore_experiment",
+      "capability": "entities",
+      "vectorCount": 2,
+      "aliases": [
+        {
+          "pyApi": "workspace.restore_experiment",
+          "tsMethod": "restoreExperiment",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/experiments/{param}/archive",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "experiments",
+      "consentVerb": "archive an experiment",
+      "tsMethod": "archiveExperiment",
+      "pyApi": "api_client.archive_experiment",
+      "capability": "entities",
+      "vectorCount": 2,
+      "aliases": [
+        {
+          "pyApi": "workspace.archive_experiment",
+          "tsMethod": "archiveExperiment",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/experiments/{param}/decide",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "experiments",
+      "consentVerb": "pick an experiment's winning variant",
+      "tsMethod": "decideExperiment",
+      "pyApi": "api_client.decide_experiment",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.decide_experiment",
+          "tsMethod": "decideExperiment",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/experiments/{param}/duplicate",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "experiments",
+      "consentVerb": "duplicate an experiment",
+      "tsMethod": "duplicateExperiment",
+      "pyApi": "workspace.duplicate_experiment",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "api_client.duplicate_experiment",
+          "tsMethod": "duplicateExperiment",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "PUT",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/experiments/{param}/force_conclude",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "experiments",
+      "consentVerb": "conclude an experiment",
+      "tsMethod": "concludeExperiment",
+      "pyApi": "api_client.conclude_experiment",
+      "capability": "entities",
+      "vectorCount": 6,
+      "aliases": [
+        {
+          "pyApi": "workspace.conclude_experiment",
+          "tsMethod": "concludeExperiment",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "PUT",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/experiments/{param}/launch",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "experiments",
+      "consentVerb": "launch an experiment",
+      "tsMethod": "launchExperiment",
+      "pyApi": "api_client.launch_experiment",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.launch_experiment",
+          "tsMethod": "launchExperiment",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/feature-flags/limits/",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "getFlagLimits",
+      "pyApi": "api_client.get_flag_limits",
+      "capability": "entities",
+      "vectorCount": 5,
+      "aliases": [
+        {
+          "pyApi": "workspace.get_flag_limits",
+          "tsMethod": "getFlagLimits",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/replays/sign/bulk",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "signReplays",
+      "pyApi": "api_client.sign_replays",
+      "capability": "replays",
+      "vectorCount": 19
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/schemas",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "schemas",
+      "consentVerb": "delete schemas",
+      "tsMethod": "deleteSchemas",
+      "pyApi": "api_client.delete_schemas",
+      "capability": "entities",
+      "vectorCount": 7,
+      "aliases": [
+        {
+          "pyApi": "workspace.delete_schemas",
+          "tsMethod": "deleteSchemas",
+          "capability": "entities",
+          "vectorCount": 3
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/schemas",
+      "paramNames": [
+        "query_origin"
+      ],
+      "access": "read",
+      "tsMethod": "getSchemas",
+      "pyApi": "api_client.get_schemas",
+      "capability": "entities",
+      "vectorCount": 17,
+      "aliases": [
+        {
+          "pyApi": "workspace.list_schema_registry",
+          "tsMethod": "listSchemaRegistry",
+          "capability": "entities",
+          "vectorCount": 6
+        },
+        {
+          "pyApi": "api_client.list_schema_registry",
+          "tsMethod": "listSchemaRegistry",
+          "capability": "entities",
+          "vectorCount": 5
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/schemas",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "schemas",
+      "consentVerb": "update several schemas",
+      "tsMethod": "updateSchemasBulk",
+      "pyApi": "api_client.update_schemas_bulk",
+      "capability": "entities",
+      "vectorCount": 9,
+      "aliases": [
+        {
+          "pyApi": "workspace.update_schemas_bulk",
+          "tsMethod": "updateSchemasBulk",
+          "capability": "entities",
+          "vectorCount": 4
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/schemas",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "schemas",
+      "consentVerb": "create several schemas",
+      "tsMethod": "createSchemasBulk",
+      "pyApi": "api_client.create_schemas_bulk",
+      "capability": "entities",
+      "vectorCount": 13,
+      "aliases": [
+        {
+          "pyApi": "workspace.create_schemas_bulk",
+          "tsMethod": "createSchemasBulk",
+          "capability": "entities",
+          "vectorCount": 4
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/schemas/{param}",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "schemas",
+      "consentVerb": "delete schemas",
+      "tsMethod": "deleteSchemas",
+      "pyApi": "workspace.delete_schemas",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "api_client.delete_schemas",
+          "tsMethod": "deleteSchemas",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/schemas/{param}",
+      "paramNames": [
+        "entity_name",
+        "query_origin"
+      ],
+      "access": "read",
+      "tsMethod": "getSchema",
+      "pyApi": "api_client.get_schema",
+      "capability": "entities",
+      "vectorCount": 10,
+      "aliases": [
+        {
+          "pyApi": "api_client.get_schemas",
+          "tsMethod": "getSchemas",
+          "capability": "entities",
+          "vectorCount": 2
+        },
+        {
+          "pyApi": "api_client.list_schema_registry",
+          "tsMethod": "listSchemaRegistry",
+          "capability": "entities",
+          "vectorCount": 2
+        },
+        {
+          "pyApi": "workspace.list_schema_registry",
+          "tsMethod": "listSchemaRegistry",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/schemas/{param}/{param}",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "schemas",
+      "consentVerb": "delete schemas",
+      "tsMethod": "deleteSchemas",
+      "pyApi": "api_client.delete_schemas",
+      "capability": "entities",
+      "vectorCount": 2,
+      "aliases": [
+        {
+          "pyApi": "workspace.delete_schemas",
+          "tsMethod": "deleteSchemas",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/schemas/{param}/{param}",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "schemas",
+      "consentVerb": "update a schema",
+      "tsMethod": "updateSchema",
+      "pyApi": "api_client.update_schema",
+      "capability": "entities",
+      "vectorCount": 8,
+      "aliases": [
+        {
+          "pyApi": "workspace.update_schema",
+          "tsMethod": "updateSchema",
+          "capability": "entities",
+          "vectorCount": 3
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/schemas/{param}/{param}",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "schemas",
+      "consentVerb": "create a schema",
+      "tsMethod": "createSchema",
+      "pyApi": "api_client.create_schema",
+      "capability": "entities",
+      "vectorCount": 10,
+      "aliases": [
+        {
+          "pyApi": "workspace.create_schema",
+          "tsMethod": "createSchema",
+          "capability": "entities",
+          "vectorCount": 3
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/webhooks/",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "listWebhooks",
+      "pyApi": "api_client.list_webhooks",
+      "capability": "entities",
+      "vectorCount": 7,
+      "aliases": [
+        {
+          "pyApi": "workspace.list_webhooks",
+          "tsMethod": "listWebhooks",
+          "capability": "entities",
+          "vectorCount": 3
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/webhooks/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "webhooks",
+      "consentVerb": "create a webhook",
+      "tsMethod": "createWebhook",
+      "pyApi": "workspace.create_webhook",
+      "capability": "entities",
+      "vectorCount": 5,
+      "aliases": [
+        {
+          "pyApi": "api_client.create_webhook",
+          "tsMethod": "createWebhook",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/webhooks/test/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "webhooks",
+      "consentVerb": "send a test webhook",
+      "tsMethod": "testWebhook",
+      "pyApi": "api_client.test_webhook",
+      "capability": "entities",
+      "vectorCount": 5,
+      "aliases": [
+        {
+          "pyApi": "workspace.test_webhook",
+          "tsMethod": "testWebhook",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/webhooks/{param}/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "webhooks",
+      "consentVerb": "delete a webhook",
+      "tsMethod": "deleteWebhook",
+      "pyApi": "api_client.delete_webhook",
+      "capability": "entities",
+      "vectorCount": 4,
+      "aliases": [
+        {
+          "pyApi": "workspace.delete_webhook",
+          "tsMethod": "deleteWebhook",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/webhooks/{param}/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "webhooks",
+      "consentVerb": "update a webhook",
+      "tsMethod": "updateWebhook",
+      "pyApi": "api_client.update_webhook",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.update_webhook",
+          "tsMethod": "updateWebhook",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/workspaces/public",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "resolveWorkspaceId",
+      "pyApi": "api_client.resolve_workspace_id",
+      "capability": "auth",
+      "vectorCount": 27,
+      "aliases": [
+        {
+          "pyApi": "api_client.list_workspaces",
+          "tsMethod": "listWorkspaces",
+          "capability": "entities",
+          "vectorCount": 5
+        },
+        {
+          "pyApi": "api_client.require_scoped_path",
+          "tsMethod": "requireScopedPath",
+          "capability": "auth",
+          "vectorCount": 3
+        },
+        {
+          "pyApi": "api_client.resolve_workspace",
+          "tsMethod": "resolveWorkspace",
+          "capability": "entities",
+          "vectorCount": 3
+        },
+        {
+          "pyApi": "workspace.list_workspaces",
+          "tsMethod": "listWorkspaces",
+          "capability": "entities",
+          "vectorCount": 2
+        },
+        {
+          "pyApi": "workspace.resolve_workspace_id",
+          "tsMethod": "resolveWorkspaceId",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/workspaces/{int}/feature-flags/",
+      "paramNames": [
+        "include_archived"
+      ],
+      "access": "read",
+      "tsMethod": "listFeatureFlags",
+      "pyApi": "api_client.list_feature_flags",
+      "capability": "entities",
+      "vectorCount": 10,
+      "aliases": [
+        {
+          "pyApi": "workspace.list_feature_flags",
+          "tsMethod": "listFeatureFlags",
+          "capability": "entities",
+          "vectorCount": 5
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/workspaces/{int}/feature-flags/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "feature_flags",
+      "consentVerb": "create a feature flag",
+      "tsMethod": "createFeatureFlag",
+      "pyApi": "api_client.create_feature_flag",
+      "capability": "entities",
+      "vectorCount": 4,
+      "aliases": [
+        {
+          "pyApi": "workspace.create_feature_flag",
+          "tsMethod": "createFeatureFlag",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/workspaces/{int}/feature-flags/{param}/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "feature_flags",
+      "consentVerb": "delete a feature flag",
+      "tsMethod": "deleteFeatureFlag",
+      "pyApi": "api_client.delete_feature_flag",
+      "capability": "entities",
+      "vectorCount": 4,
+      "aliases": [
+        {
+          "pyApi": "workspace.delete_feature_flag",
+          "tsMethod": "deleteFeatureFlag",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/workspaces/{int}/feature-flags/{param}/",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "getFeatureFlag",
+      "pyApi": "workspace.get_feature_flag",
+      "capability": "entities",
+      "vectorCount": 5,
+      "aliases": [
+        {
+          "pyApi": "api_client.get_feature_flag",
+          "tsMethod": "getFeatureFlag",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "PUT",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/workspaces/{int}/feature-flags/{param}/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "feature_flags",
+      "consentVerb": "update a feature flag",
+      "tsMethod": "updateFeatureFlag",
+      "pyApi": "api_client.update_feature_flag",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "workspace.update_feature_flag",
+          "tsMethod": "updateFeatureFlag",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/workspaces/{int}/feature-flags/{param}/archive/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "feature_flags",
+      "consentVerb": "restore an archived feature flag",
+      "tsMethod": "restoreFeatureFlag",
+      "pyApi": "api_client.restore_feature_flag",
+      "capability": "entities",
+      "vectorCount": 2,
+      "aliases": [
+        {
+          "pyApi": "workspace.restore_feature_flag",
+          "tsMethod": "restoreFeatureFlag",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/workspaces/{int}/feature-flags/{param}/archive/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "feature_flags",
+      "consentVerb": "archive a feature flag",
+      "tsMethod": "archiveFeatureFlag",
+      "pyApi": "api_client.archive_feature_flag",
+      "capability": "entities",
+      "vectorCount": 2,
+      "aliases": [
+        {
+          "pyApi": "workspace.archive_feature_flag",
+          "tsMethod": "archiveFeatureFlag",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/workspaces/{int}/feature-flags/{param}/duplicate/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "feature_flags",
+      "consentVerb": "duplicate a feature flag",
+      "tsMethod": "duplicateFeatureFlag",
+      "pyApi": "api_client.duplicate_feature_flag",
+      "capability": "entities",
+      "vectorCount": 2,
+      "aliases": [
+        {
+          "pyApi": "workspace.duplicate_feature_flag",
+          "tsMethod": "duplicateFeatureFlag",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/workspaces/{int}/feature-flags/{param}/history/",
+      "paramNames": [
+        "page",
+        "page_size"
+      ],
+      "access": "read",
+      "tsMethod": "getFlagHistory",
+      "pyApi": "api_client.get_flag_history",
+      "capability": "entities",
+      "vectorCount": 5,
+      "aliases": [
+        {
+          "pyApi": "workspace.get_flag_history",
+          "tsMethod": "getFlagHistory",
+          "capability": "entities",
+          "vectorCount": 2
+        }
+      ]
+    },
+    {
+      "method": "PUT",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/workspaces/{int}/feature-flags/{param}/test-users/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "feature_flags",
+      "consentVerb": "set a feature flag's test users",
+      "tsMethod": "setFlagTestUsers",
+      "pyApi": "workspace.set_flag_test_users",
+      "capability": "entities",
+      "vectorCount": 3,
+      "aliases": [
+        {
+          "pyApi": "api_client.set_flag_test_users",
+          "tsMethod": "setFlagTestUsers",
+          "capability": "entities",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/workspaces/{int}/custom_events/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "governance",
+      "consentVerb": "create a custom event",
+      "tsMethod": "createCustomEvent",
+      "pyApi": "api_client.create_custom_event",
+      "capability": "entities",
+      "vectorCount": 1
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/workspaces/{int}/dashboards",
+      "paramNames": [],
+      "access": "read",
+      "tsMethod": "listDashboards",
+      "pyApi": "api_client.list_dashboards",
+      "capability": "entities",
+      "vectorCount": 1
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/workspaces/{int}/data-definitions/events/",
+      "paramNames": [],
+      "access": "write",
+      "writeClass": "lexicon",
+      "consentVerb": "delete a custom event",
+      "tsMethod": "deleteCustomEvent",
+      "pyApi": "api_client.delete_custom_event",
+      "capability": "entities",
+      "vectorCount": 1
+    },
+    {
+      "method": "POST",
+      "family": "engage",
+      "template": "/api/query/engage/",
+      "paramNames": [
+        "project_id",
+        "query_origin"
+      ],
+      "access": "read",
+      "tsMethod": "exportProfilesPage",
+      "pyApi": "api_client.export_profiles_page",
+      "capability": "engage",
+      "vectorCount": 50,
+      "aliases": [
+        {
+          "pyApi": "api_client.export_profiles",
+          "tsMethod": "exportProfiles",
+          "capability": "engage",
+          "vectorCount": 19
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "engage",
+      "template": "/api/query/engage/stats",
+      "paramNames": [
+        "project_id",
+        "query_origin"
+      ],
+      "access": "read",
+      "tsMethod": "engageStats",
+      "pyApi": "api_client.engage_stats",
+      "capability": "engage",
+      "vectorCount": 21
+    },
+    {
+      "method": "GET",
+      "family": "query",
+      "template": "/api/query/arb_funnels",
+      "paramNames": [
+        "bookmark_id",
+        "project_id",
+        "query_origin",
+        "query_type"
+      ],
+      "access": "read",
+      "tsMethod": "querySavedFlows",
+      "pyApi": "api_client.query_saved_flows",
+      "capability": "funnels",
+      "vectorCount": 5,
+      "aliases": [
+        {
+          "pyApi": "api_client.query_saved_report",
+          "tsMethod": "querySavedReport",
+          "capability": "bookmarks",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "family": "query",
+      "template": "/api/query/arb_funnels",
+      "paramNames": [
+        "query_origin",
+        "workspace_id"
+      ],
+      "access": "read",
+      "tsMethod": "arbFunnelsQuery",
+      "pyApi": "api_client.arb_funnels_query",
+      "capability": "funnels",
+      "vectorCount": 2
+    },
+    {
+      "method": "POST",
+      "family": "query",
+      "template": "/api/query/cohorts/list",
+      "paramNames": [
+        "project_id",
+        "query_origin"
+      ],
+      "access": "read",
+      "tsMethod": "listCohorts",
+      "pyApi": "api_client.list_cohorts",
+      "capability": "cohorts",
+      "vectorCount": 5
+    },
+    {
+      "method": "GET",
+      "family": "query",
+      "template": "/api/query/data_definitions/events",
+      "paramNames": [
+        "fetch_per_event_properties",
+        "project_id",
+        "query_origin"
+      ],
+      "access": "read",
+      "tsMethod": "listPerEventProperties",
+      "pyApi": "api_client.list_per_event_properties",
+      "capability": "entities",
+      "vectorCount": 3
+    },
+    {
+      "method": "GET",
+      "family": "query",
+      "template": "/api/query/events",
+      "paramNames": [
+        "event",
+        "from_date",
+        "project_id",
+        "query_origin",
+        "to_date",
+        "type",
+        "unit"
+      ],
+      "access": "read",
+      "tsMethod": "eventCounts",
+      "pyApi": "api_client.event_counts",
+      "capability": "entities",
+      "vectorCount": 5
+    },
+    {
+      "method": "GET",
+      "family": "query",
+      "template": "/api/query/events/names",
+      "paramNames": [
+        "from_date",
+        "limit",
+        "project_id",
+        "query_origin",
+        "to_date",
+        "type",
+        "workspace_id"
+      ],
+      "access": "read",
+      "tsMethod": "getEvents",
+      "pyApi": "api_client.get_events",
+      "capability": "discovery",
+      "vectorCount": 54
+    },
+    {
+      "method": "GET",
+      "family": "query",
+      "template": "/api/query/events/properties",
+      "paramNames": [
+        "event",
+        "from_date",
+        "limit",
+        "name",
+        "project_id",
+        "query_origin",
+        "to_date",
+        "type",
+        "unit",
+        "values"
+      ],
+      "access": "read",
+      "tsMethod": "propertyCounts",
+      "pyApi": "api_client.property_counts",
+      "capability": "discovery",
+      "vectorCount": 7
+    },
+    {
+      "method": "GET",
+      "family": "query",
+      "template": "/api/query/events/properties/top",
+      "paramNames": [
+        "event",
+        "project_id",
+        "query_origin"
+      ],
+      "access": "read",
+      "tsMethod": "getEventProperties",
+      "pyApi": "api_client.get_event_properties",
+      "capability": "discovery",
+      "vectorCount": 6,
+      "aliases": [
+        {
+          "pyApi": "api_client.get_events",
+          "tsMethod": "getEvents",
+          "capability": "discovery",
+          "vectorCount": 1
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "family": "query",
+      "template": "/api/query/events/properties/values",
+      "paramNames": [
+        "event",
+        "limit",
+        "name",
+        "project_id",
+        "query_origin"
+      ],
+      "access": "read",
+      "tsMethod": "getPropertyValues",
+      "pyApi": "api_client.get_property_values",
+      "capability": "discovery",
+      "vectorCount": 23
+    },
+    {
+      "method": "GET",
+      "family": "query",
+      "template": "/api/query/events/top",
+      "paramNames": [
+        "limit",
+        "project_id",
+        "query_origin",
+        "type"
+      ],
+      "access": "read",
+      "tsMethod": "getTopEvents",
+      "pyApi": "api_client.get_top_events",
+      "capability": "discovery",
+      "vectorCount": 6
+    },
+    {
+      "method": "GET",
+      "family": "query",
+      "template": "/api/query/funnels",
+      "paramNames": [
+        "from_date",
+        "funnel_id",
+        "project_id",
+        "query_origin",
+        "to_date"
+      ],
+      "access": "read",
+      "tsMethod": "funnel",
+      "pyApi": "api_client.funnel",
+      "capability": "funnels",
+      "vectorCount": 7
+    },
+    {
+      "method": "GET",
+      "family": "query",
+      "template": "/api/query/funnels/list",
+      "paramNames": [
+        "project_id",
+        "query_origin"
+      ],
+      "access": "read",
+      "tsMethod": "listFunnels",
+      "pyApi": "api_client.list_funnels",
+      "capability": "funnels",
+      "vectorCount": 4
+    },
+    {
+      "method": "GET",
+      "family": "query",
+      "template": "/api/query/insights",
+      "paramNames": [
+        "bookmark_id",
+        "project_id",
+        "query_origin"
+      ],
+      "access": "read",
+      "tsMethod": "querySavedReport",
+      "pyApi": "api_client.query_saved_report",
+      "capability": "bookmarks",
+      "vectorCount": 6
+    },
+    {
+      "method": "POST",
+      "family": "query",
+      "template": "/api/query/insights",
+      "paramNames": [
+        "query_origin",
+        "workspace_id"
+      ],
+      "access": "read",
+      "tsMethod": "insightsQuery",
+      "pyApi": "api_client.insights_query",
+      "capability": "bookmarks",
+      "vectorCount": 6
+    },
+    {
+      "method": "GET",
+      "family": "query",
+      "template": "/api/query/retention",
+      "paramNames": [
+        "born_event",
+        "born_where",
+        "event",
+        "from_date",
+        "interval",
+        "interval_count",
+        "project_id",
+        "query_origin",
+        "retention_type",
+        "to_date",
+        "unit"
+      ],
+      "access": "read",
+      "tsMethod": "retention",
+      "pyApi": "api_client.retention",
+      "capability": "retention",
+      "vectorCount": 10
+    },
+    {
+      "method": "GET",
+      "family": "query",
+      "template": "/api/query/retention/addiction",
+      "paramNames": [
+        "addiction_unit",
+        "event",
+        "from_date",
+        "project_id",
+        "query_origin",
+        "to_date",
+        "unit",
+        "workspace_id"
+      ],
+      "access": "read",
+      "tsMethod": "frequency",
+      "pyApi": "api_client.frequency",
+      "capability": "retention",
+      "vectorCount": 10
+    },
+    {
+      "method": "GET",
+      "family": "query",
+      "template": "/api/query/segmentation",
+      "paramNames": [
+        "event",
+        "from_date",
+        "on",
+        "project_id",
+        "query_origin",
+        "to_date",
+        "type",
+        "unit",
+        "where"
+      ],
+      "access": "read",
+      "tsMethod": "segmentation",
+      "pyApi": "api_client.segmentation",
+      "capability": "segmentation",
+      "vectorCount": 10
+    },
+    {
+      "method": "GET",
+      "family": "query",
+      "template": "/api/query/segmentation/average",
+      "paramNames": [
+        "event",
+        "from_date",
+        "on",
+        "project_id",
+        "query_origin",
+        "to_date",
+        "unit",
+        "workspace_id"
+      ],
+      "access": "read",
+      "tsMethod": "segmentationAverage",
+      "pyApi": "api_client.segmentation_average",
+      "capability": "segmentation",
+      "vectorCount": 9
+    },
+    {
+      "method": "GET",
+      "family": "query",
+      "template": "/api/query/segmentation/numeric",
+      "paramNames": [
+        "event",
+        "from_date",
+        "on",
+        "project_id",
+        "query_origin",
+        "to_date",
+        "type",
+        "unit",
+        "workspace_id"
+      ],
+      "access": "read",
+      "tsMethod": "segmentationNumeric",
+      "pyApi": "api_client.segmentation_numeric",
+      "capability": "segmentation",
+      "vectorCount": 9
+    },
+    {
+      "method": "GET",
+      "family": "query",
+      "template": "/api/query/segmentation/sum",
+      "paramNames": [
+        "event",
+        "from_date",
+        "on",
+        "project_id",
+        "query_origin",
+        "to_date",
+        "unit",
+        "where",
+        "workspace_id"
+      ],
+      "access": "read",
+      "tsMethod": "segmentationSum",
+      "pyApi": "api_client.segmentation_sum",
+      "capability": "segmentation",
+      "vectorCount": 9
+    },
+    {
+      "method": "POST",
+      "family": "query",
+      "template": "/api/query/stream/bookmark",
+      "paramNames": [
+        "query_origin",
+        "workspace_id"
+      ],
+      "access": "read",
+      "tsMethod": "activityFeed",
+      "pyApi": "api_client.activity_feed",
+      "capability": "bookmarks",
+      "vectorCount": 26
+    },
+    {
+      "method": "GET",
+      "family": "query",
+      "template": "/api/query/{param}",
+      "paramNames": [
+        "bookmark_id",
+        "from_date",
+        "funnel_id",
+        "project_id",
+        "query_origin",
+        "to_date",
+        "workspace_id"
+      ],
+      "access": "read",
+      "tsMethod": "querySavedReport",
+      "pyApi": "api_client.query_saved_report",
+      "capability": "bookmarks",
+      "vectorCount": 13
+    }
+  ]
+}

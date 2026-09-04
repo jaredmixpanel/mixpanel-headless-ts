@@ -27,7 +27,8 @@
     "sync:corpus": "bash scripts/sync-corpus.sh",
     "conformance": "node scripts/run-conformance.mjs",
     "oracle": "node scripts/run-oracle.mjs",
-    "generate:api-map": "node scripts/generate-api-map.mjs"
+    "generate:api-map": "node scripts/generate-api-map.mjs",
+    "generate:bridge-allowlist": "node scripts/generate-bridge-allowlist.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
