@@ -27,6 +27,11 @@ import * as coreQueryParams from "../../core/src/types/query-params/index.js";
 import { CreateAnnotationParams as coreCreateAnnotationParams } from "../../core/src/types/entities/annotations.js";
 import { inferBookmarkType as coreInferBookmarkType } from "../../core/src/bookmarks/infer-type.js";
 import { pythonJsonDumpsCanonical as corePythonJsonDumpsCanonical } from "../../core/src/compat/python-json-dumps-canonical.js";
+import { Workspace } from "../../core/src/workspace.js";
+import {
+  mockWorkspaceClient,
+  TEST_SESSION,
+} from "../../core/test/workspace/workspace-test-helpers.js";
 import {
   CohortBreakdown,
   CohortCriteria,
@@ -246,7 +251,32 @@ describe("browser entry — identity helpers (core re-exports)", () => {
     expect(canonicalize(params)).toBe('{"a":[2,3],"b":1,"event":"Purchase"}');
   });
 
-  it("infers the report type through the entry exactly as core does", () => {
+  it("labels REAL builder output through the entry: funnel params -> `funnels`", async () => {
+    // The positive case, and deliberately not a hand-written object: a
+    // hand-written params bag would test the classifier against a
+    // fiction. This is what `buildFunnelParams` actually emits — the
+    // same posture `packages/core/test/bookmarks/infer-type.test.ts`
+    // takes. The builders are pure, so the mocked client is never
+    // called. `Workspace` is path-imported from core because the browser
+    // barrel exports it TYPE-only (FB-2) — that gate is unaffected here.
+    const entry = browserEntry as unknown as Record<string, unknown>;
+    const infer = entry["inferBookmarkType"] as (value: unknown) => unknown;
+    const ws = new Workspace({
+      session: TEST_SESSION,
+      client: mockWorkspaceClient().client,
+    });
+    const funnelParams = await ws.buildFunnelParams([
+      "Signup",
+      new FunnelStep({
+        event: "Purchase",
+        filters: [Filter.equals("plan", "pro")],
+      }),
+    ]);
+    expect(infer(funnelParams)).toBe("funnels");
+    expect(infer(funnelParams)).toBe(coreInferBookmarkType(funnelParams));
+  });
+
+  it("returns null rather than guessing, exactly as core does", () => {
     const entry = browserEntry as unknown as Record<string, unknown>;
     const infer = entry["inferBookmarkType"] as (value: unknown) => unknown;
     expect(infer({ foo: "bar" })).toBe(coreInferBookmarkType({ foo: "bar" }));

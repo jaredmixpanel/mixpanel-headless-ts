@@ -34,6 +34,10 @@ const entryPoints = [
  * `pythonJsonDumpsCanonical` was optional-and-reported here while spec 02's
  * canonicalizer was still landing; it is on the browser barrel now, and a
  * page cannot compute a QueryRef hash without it, so it is required.
+ * `inferBookmarkType` is the other half of that pair (the report type a
+ * params object describes) and is listed for the same reason — this smoke
+ * runs standalone as `npm run smoke:browser`, so it must go red on its own
+ * if either re-export disappears rather than leaning on the vitest suite.
  */
 const REQUIRED_EXPORTS = [
   "InMemoryCredentialStore",
@@ -43,6 +47,7 @@ const REQUIRED_EXPORTS = [
   "completeLogin",
   "createBrowserWorkspace",
   "createBrowserWorkspaceFromStore",
+  "inferBookmarkType",
   "pythonJsonDumpsCanonical",
 ];
 
