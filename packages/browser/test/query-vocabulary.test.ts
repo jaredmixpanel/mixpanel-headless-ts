@@ -20,10 +20,12 @@ import { describe, expect, it } from "vitest";
 
 import * as browserEntry from "../src/index.js";
 import * as coreQueryParams from "../../core/src/types/query-params/index.js";
+import { CreateAnnotationParams as coreCreateAnnotationParams } from "../../core/src/types/entities/annotations.js";
 import {
   CohortBreakdown,
   CohortCriteria,
   CohortDefinition,
+  CreateAnnotationParams,
   Filter,
   FlowStep,
   Formula,
@@ -147,5 +149,46 @@ describe("browser entry — the re-exports are the core values themselves", () =
       expect(Object.hasOwn(value, "transport")).toBe(false);
       expect(Object.hasOwn(value.prototype as object, "fetch")).toBe(false);
     }
+  });
+});
+
+describe("browser entry — entity params for the v1 write scopes", () => {
+  // Annotations is the ONE grantable write scope in v1 (spec 05 §2.1,
+  // §3.2 rule 7), and `ws.createAnnotation(params)` takes a
+  // `CreateAnnotationParams` INSTANCE — so a page with that scope
+  // cannot call it unless this class has a runtime presence on the
+  // bundled entry. It is the only entity model forwarded; the other
+  // ~119 stay off this barrel until their write class is grantable.
+  it("re-exports `CreateAnnotationParams` as a runtime class, by identity", () => {
+    expect(Object.keys(browserEntry)).toContain("CreateAnnotationParams");
+    expect(typeof CreateAnnotationParams).toBe("function");
+    expect(CreateAnnotationParams).toBe(coreCreateAnnotationParams);
+  });
+
+  it("constructs from the documented field set", () => {
+    const params = new CreateAnnotationParams({
+      date: "2026-09-03 12:00:00",
+      description: "Pricing page relaunch",
+    });
+    expect(params).toBeInstanceOf(CreateAnnotationParams);
+    expect(params.description).toBe("Pricing page relaunch");
+  });
+
+  it("carries no transport: no fetch/transport seam", () => {
+    expect(Object.hasOwn(CreateAnnotationParams, "fetch")).toBe(false);
+    expect(Object.hasOwn(CreateAnnotationParams, "transport")).toBe(false);
+    expect(Object.hasOwn(CreateAnnotationParams.prototype, "fetch")).toBe(
+      false,
+    );
+    expect(Object.hasOwn(CreateAnnotationParams.prototype, "transport")).toBe(
+      false,
+    );
+  });
+
+  it("does NOT drag the rest of the entity family onto the barrel", () => {
+    // The lead's scope line: one class, not the ~119-model surface.
+    expect(Object.keys(browserEntry)).not.toContain("CreateCohortParams");
+    expect(Object.keys(browserEntry)).not.toContain("CreateFeatureFlagParams");
+    expect(Object.keys(browserEntry)).not.toContain("CreateDashboardParams");
   });
 });

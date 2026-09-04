@@ -140,3 +140,19 @@ export {
 // into from here.
 export { validateBookmark } from "../../core/src/query/validation.js";
 export type { ValidateBookmarkOptions } from "../../core/src/query/validation.js";
+
+// ── Entity params exposed for v1 write scopes ─────────────────────────
+// Annotations is the ONE grantable write class in v1 (heads spec 05
+// §2.1, §3.2 rule 7), and `ws.createAnnotation(params)` takes a
+// `CreateAnnotationParams` INSTANCE — so a page holding that scope
+// cannot call it unless the class has a runtime presence here.
+//
+// This subsection is deliberately one class wide. The other ~119
+// entity models stay off the browser barrel; a further `Create*Params`
+// is added here ONLY when its write class becomes grantable to a page.
+// Like the builders above this is a pure `EntityModel` dataclass — it
+// validates and shapes a payload, it does not send one — so it opens
+// no path around the §2.3 service-account gate or the §2.4 export
+// guard. `query-vocabulary.test.ts` pins the identity, the absence of
+// a transport seam, and the one-class scope.
+export { CreateAnnotationParams } from "../../core/src/types/entities/annotations.js";

@@ -34,6 +34,12 @@ above) exporting them as values cannot bypass the service-account or export
 gates. `test/query-vocabulary.test.ts` pins that property and fails if core
 grows a builder this barrel does not forward.
 
+Exactly one entity model is forwarded alongside it: `CreateAnnotationParams`,
+because annotations is the only write class grantable to a page in v1 and
+`createAnnotation` takes an instance. The other ~119 entity models stay off
+this barrel; another `Create*Params` is added only when its write class
+becomes grantable.
+
 ## PKCE-in-browser status (D2 spike, b9-packets.md §4)
 
 **PKCE-in-browser ships ENABLED.** DCR accepts third-party https redirect
