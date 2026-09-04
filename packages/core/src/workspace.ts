@@ -55,6 +55,7 @@ import {
   type ParsedReportLink,
 } from "./report-links.js";
 import { validateBookmarkParamsSchema } from "./workspace-members/bookmarks-cohorts.js";
+import { requireEntityId } from "./workspace-members/shared.js";
 import {
   ReportLink,
   ResolvedReport,
@@ -1550,11 +1551,14 @@ export class Workspace {
    * @throws ConfigError - Credentials not available.
    * @throws AuthenticationError | QueryError | RateLimitError - Wire
    *   failures.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `funnelId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async funnel(
     funnelId: number,
     options: WorkspaceFunnelOptions,
   ): Promise<FunnelResult> {
+    requireEntityId("funnel_id", funnelId);
     const { from_date, to_date, ...rest } = options;
     return this.liveQueryService.funnel(funnelId, from_date, to_date, rest);
   }
@@ -1661,11 +1665,14 @@ export class Workspace {
    * @returns The normalized report data.
    * @throws ConfigError - Credentials not available.
    * @throws QueryError - Invalid `bookmark_id` or report not found.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `bookmarkId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async querySavedReport(
     bookmarkId: number,
     options: LiveQuerySavedReportOptions = {},
   ): Promise<SavedReportResult> {
+    requireEntityId("bookmark_id", bookmarkId);
     return this.liveQueryService.querySavedReport(bookmarkId, options);
   }
 
@@ -1677,8 +1684,11 @@ export class Workspace {
    * @returns Steps, breakdowns and the conversion rate.
    * @throws ConfigError - Credentials not available.
    * @throws QueryError - Invalid `bookmark_id` or report not found.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `bookmarkId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async querySavedFlows(bookmarkId: number): Promise<FlowsResult> {
+    requireEntityId("bookmark_id", bookmarkId);
     return this.liveQueryService.querySavedFlows(bookmarkId);
   }
 
@@ -3604,8 +3614,11 @@ export class Workspace {
    * @returns The `Dashboard`.
    * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
    * @throws ResponseValidationError - Malformed payload.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async getDashboard(dashboardId: number): Promise<Dashboard> {
+    requireEntityId("dashboard_id", dashboardId);
     return getDashboardMember(this.client, dashboardId);
   }
 
@@ -3618,11 +3631,14 @@ export class Workspace {
    * @returns The updated `Dashboard`.
    * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
    * @throws ResponseValidationError - Malformed payload.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async updateDashboard(
     dashboardId: number,
     params: UpdateDashboardParams,
   ): Promise<Dashboard> {
+    requireEntityId("dashboard_id", dashboardId);
     return updateDashboardMember(this.client, dashboardId, params);
   }
 
@@ -3634,8 +3650,11 @@ export class Workspace {
    * @returns Nothing.
    * @throws AuthenticationError | QueryError | ServerError - Wire
    *   failures.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async deleteDashboard(dashboardId: number): Promise<void> {
+    requireEntityId("dashboard_id", dashboardId);
     return deleteDashboardMember(this.client, dashboardId);
   }
 
@@ -3656,8 +3675,11 @@ export class Workspace {
    *
    * @param dashboardId - Dashboard identifier.
    * @returns Nothing.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async favoriteDashboard(dashboardId: number): Promise<void> {
+    requireEntityId("dashboard_id", dashboardId);
     return favoriteDashboardMember(this.client, dashboardId);
   }
 
@@ -3667,8 +3689,11 @@ export class Workspace {
    *
    * @param dashboardId - Dashboard identifier.
    * @returns Nothing.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async unfavoriteDashboard(dashboardId: number): Promise<void> {
+    requireEntityId("dashboard_id", dashboardId);
     return unfavoriteDashboardMember(this.client, dashboardId);
   }
 
@@ -3677,8 +3702,11 @@ export class Workspace {
    *
    * @param dashboardId - Dashboard identifier.
    * @returns Nothing.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async pinDashboard(dashboardId: number): Promise<void> {
+    requireEntityId("dashboard_id", dashboardId);
     return pinDashboardMember(this.client, dashboardId);
   }
 
@@ -3688,8 +3716,11 @@ export class Workspace {
    *
    * @param dashboardId - Dashboard identifier.
    * @returns Nothing.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async unpinDashboard(dashboardId: number): Promise<void> {
+    requireEntityId("dashboard_id", dashboardId);
     return unpinDashboardMember(this.client, dashboardId);
   }
 
@@ -3701,11 +3732,15 @@ export class Workspace {
    * @param bookmarkId - Bookmark/report identifier to remove.
    * @returns The updated `Dashboard`.
    * @throws ResponseValidationError - Malformed payload.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId` / `bookmarkId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async removeReportFromDashboard(
     dashboardId: number,
     bookmarkId: number,
   ): Promise<Dashboard> {
+    requireEntityId("dashboard_id", dashboardId);
+    requireEntityId("bookmark_id", bookmarkId);
     return removeReportFromDashboardMember(
       this.client,
       dashboardId,
@@ -3723,11 +3758,15 @@ export class Workspace {
    * @throws MixpanelHeadlessError - Response is not a dashboard dict
    *   carrying `id` (`UNKNOWN_ERROR`).
    * @throws ResponseValidationError - Malformed payload.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId` / `bookmarkId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async addReportToDashboard(
     dashboardId: number,
     bookmarkId: number,
   ): Promise<Dashboard> {
+    requireEntityId("dashboard_id", dashboardId);
+    requireEntityId("bookmark_id", bookmarkId);
     return addReportToDashboardMember(this.client, dashboardId, bookmarkId);
   }
 
@@ -3766,8 +3805,11 @@ export class Workspace {
    * @returns The `BlueprintConfig`.
    * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
    * @throws ResponseValidationError - Malformed payload.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async getBlueprintConfig(dashboardId: number): Promise<BlueprintConfig> {
+    requireEntityId("dashboard_id", dashboardId);
     return getBlueprintConfigMember(this.client, dashboardId);
   }
 
@@ -3818,8 +3860,11 @@ export class Workspace {
    *
    * @param bookmarkId - Bookmark identifier.
    * @returns The dashboard IDs.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `bookmarkId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async getBookmarkDashboardIds(bookmarkId: number): Promise<number[]> {
+    requireEntityId("bookmark_id", bookmarkId);
     return getBookmarkDashboardIdsMember(this.client, bookmarkId);
   }
 
@@ -3829,8 +3874,11 @@ export class Workspace {
    *
    * @param dashboardId - Dashboard identifier.
    * @returns The ERF metrics mapping.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async getDashboardErf(dashboardId: number): Promise<Record<string, unknown>> {
+    requireEntityId("dashboard_id", dashboardId);
     return getDashboardErfMember(this.client, dashboardId);
   }
 
@@ -3842,12 +3890,16 @@ export class Workspace {
    * @param reportLinkId - Report link identifier.
    * @param params - Update parameters.
    * @returns Nothing.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId` / `reportLinkId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async updateReportLink(
     dashboardId: number,
     reportLinkId: number,
     params: UpdateReportLinkParams,
   ): Promise<void> {
+    requireEntityId("dashboard_id", dashboardId);
+    requireEntityId("report_link_id", reportLinkId);
     return updateReportLinkMember(
       this.client,
       dashboardId,
@@ -3864,12 +3916,16 @@ export class Workspace {
    * @param textCardId - Text card identifier.
    * @param params - Update parameters.
    * @returns Nothing.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId` / `textCardId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async updateTextCard(
     dashboardId: number,
     textCardId: number,
     params: UpdateTextCardParams,
   ): Promise<void> {
+    requireEntityId("dashboard_id", dashboardId);
+    requireEntityId("text_card_id", textCardId);
     return updateTextCardMember(this.client, dashboardId, textCardId, params);
   }
 
@@ -3930,8 +3986,11 @@ export class Workspace {
    * @returns The `Bookmark`.
    * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
    * @throws ResponseValidationError - Malformed payload.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `bookmarkId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async getBookmark(bookmarkId: number): Promise<Bookmark> {
+    requireEntityId("bookmark_id", bookmarkId);
     return getBookmarkMember(this.client, bookmarkId);
   }
 
@@ -3946,11 +4005,14 @@ export class Workspace {
    * @throws BookmarkValidationError - Partial-mode schema validation
    *   failed (raised before the API call).
    * @throws ResponseValidationError - Malformed payload.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `bookmarkId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async updateBookmark(
     bookmarkId: number,
     params: UpdateBookmarkParams,
   ): Promise<Bookmark> {
+    requireEntityId("bookmark_id", bookmarkId);
     return updateBookmarkMember(this.client, bookmarkId, params, this.#logger);
   }
 
@@ -3961,8 +4023,11 @@ export class Workspace {
    * @returns Nothing.
    * @throws AuthenticationError | QueryError | ServerError - Wire
    *   failures.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `bookmarkId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async deleteBookmark(bookmarkId: number): Promise<void> {
+    requireEntityId("bookmark_id", bookmarkId);
     return deleteBookmarkMember(this.client, bookmarkId);
   }
 
@@ -3996,8 +4061,11 @@ export class Workspace {
    *
    * @param bookmarkId - Bookmark identifier.
    * @returns The dashboard IDs.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `bookmarkId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async bookmarkLinkedDashboardIds(bookmarkId: number): Promise<number[]> {
+    requireEntityId("bookmark_id", bookmarkId);
     return bookmarkLinkedDashboardIdsMember(this.client, bookmarkId);
   }
 
@@ -4009,11 +4077,14 @@ export class Workspace {
    * @param options - `cursor` / `page_size` (keyword-only in Python).
    * @returns The `BookmarkHistoryResponse`.
    * @throws ResponseValidationError - Malformed payload.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `bookmarkId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async getBookmarkHistory(
     bookmarkId: number,
     options: WorkspaceGetBookmarkHistoryOptions = {},
   ): Promise<BookmarkHistoryResponse> {
+    requireEntityId("bookmark_id", bookmarkId);
     return getBookmarkHistoryMember(this.client, bookmarkId, options);
   }
 
@@ -4039,8 +4110,11 @@ export class Workspace {
    * @returns The `Cohort`.
    * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
    * @throws ResponseValidationError - Malformed payload.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `cohortId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async getCohort(cohortId: number): Promise<Cohort> {
+    requireEntityId("cohort_id", cohortId);
     return getCohortMember(this.client, cohortId);
   }
 
@@ -4065,11 +4139,14 @@ export class Workspace {
    * @returns The updated `Cohort`.
    * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
    * @throws ResponseValidationError - Malformed payload.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `cohortId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async updateCohort(
     cohortId: number,
     params: UpdateCohortParams,
   ): Promise<Cohort> {
+    requireEntityId("cohort_id", cohortId);
     return updateCohortMember(this.client, cohortId, params);
   }
 
@@ -4078,8 +4155,11 @@ export class Workspace {
    *
    * @param cohortId - Cohort identifier.
    * @returns Nothing.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `cohortId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async deleteCohort(cohortId: number): Promise<void> {
+    requireEntityId("cohort_id", cohortId);
     return deleteCohortMember(this.client, cohortId);
   }
 
@@ -4495,8 +4575,11 @@ export class Workspace {
    * @param annotationId - Annotation ID.
    * @returns The `Annotation`.
    * @throws ResponseValidationError - Malformed payload.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `annotationId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async getAnnotation(annotationId: number): Promise<Annotation> {
+    requireEntityId("annotation_id", annotationId);
     return getAnnotationMember(this.client, annotationId);
   }
 
@@ -4508,11 +4591,14 @@ export class Workspace {
    * @param params - Fields to update (description, tags).
    * @returns The updated `Annotation`.
    * @throws ResponseValidationError - Malformed payload.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `annotationId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async updateAnnotation(
     annotationId: number,
     params: UpdateAnnotationParams,
   ): Promise<Annotation> {
+    requireEntityId("annotation_id", annotationId);
     return updateAnnotationMember(this.client, annotationId, params);
   }
 
@@ -4524,8 +4610,11 @@ export class Workspace {
    * @returns Nothing.
    * @throws AuthenticationError | QueryError | ServerError - Wire
    *   failures.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `annotationId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async deleteAnnotation(annotationId: number): Promise<void> {
+    requireEntityId("annotation_id", annotationId);
     return deleteAnnotationMember(this.client, annotationId);
   }
 
@@ -4667,8 +4756,11 @@ export class Workspace {
    * @param alertId - Alert ID (integer).
    * @returns The `CustomAlert`.
    * @throws ResponseValidationError - Malformed payload.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `alertId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async getAlert(alertId: number): Promise<CustomAlert> {
+    requireEntityId("alert_id", alertId);
     return getAlertMember(this.client, alertId);
   }
 
@@ -4680,11 +4772,14 @@ export class Workspace {
    * @param params - Fields to update.
    * @returns The updated `CustomAlert`.
    * @throws ResponseValidationError - Malformed payload.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `alertId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async updateAlert(
     alertId: number,
     params: UpdateAlertParams,
   ): Promise<CustomAlert> {
+    requireEntityId("alert_id", alertId);
     return updateAlertMember(this.client, alertId, params);
   }
 
@@ -4696,8 +4791,11 @@ export class Workspace {
    * @returns Nothing.
    * @throws AuthenticationError | QueryError | ServerError - Wire
    *   failures.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `alertId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async deleteAlert(alertId: number): Promise<void> {
+    requireEntityId("alert_id", alertId);
     return deleteAlertMember(this.client, alertId);
   }
 
@@ -4737,11 +4835,14 @@ export class Workspace {
    *   (keyword-only in Python).
    * @returns The `AlertHistoryResponse`.
    * @throws ResponseValidationError - Malformed payload.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `alertId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async getAlertHistory(
     alertId: number,
     options: WorkspaceGetAlertHistoryOptions = {},
   ): Promise<AlertHistoryResponse> {
+    requireEntityId("alert_id", alertId);
     return getAlertHistoryMember(this.client, alertId, options);
   }
 
@@ -4964,11 +5065,14 @@ export class Workspace {
    * @param params - Fields to update (e.g. name).
    * @returns The updated `LexiconTag`.
    * @throws ResponseValidationError - Malformed payload.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `tagId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async updateLexiconTag(
     tagId: number,
     params: UpdateTagParams,
   ): Promise<LexiconTag> {
+    requireEntityId("tag_id", tagId);
     return updateLexiconTagMember(this.client, tagId, params);
   }
 
@@ -5143,8 +5247,11 @@ export class Workspace {
    * @param dropFilterId - Drop filter ID (integer).
    * @returns The FULL list of remaining `DropFilter` models.
    * @throws ResponseValidationError - Malformed payload.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `dropFilterId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async deleteDropFilter(dropFilterId: number): Promise<DropFilter[]> {
+    requireEntityId("drop_filter_id", dropFilterId);
     return deleteDropFilterMember(this.client, dropFilterId);
   }
 
@@ -5368,11 +5475,14 @@ export class Workspace {
    * @param params - Fields to update.
    * @returns The updated `LookupTable`.
    * @throws ResponseValidationError - Malformed payload.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `dataGroupId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async updateLookupTable(
     dataGroupId: number,
     params: UpdateLookupTableParams,
   ): Promise<LookupTable> {
+    requireEntityId("data_group_id", dataGroupId);
     return updateLookupTableMember(this.client, dataGroupId, params);
   }
 
@@ -5399,11 +5509,14 @@ export class Workspace {
    * @returns The raw CSV bytes.
    * @throws AuthenticationError | QueryError | ServerError - Wire
    *   failures.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `dataGroupId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async downloadLookupTable(
     dataGroupId: number,
     options: WorkspaceDownloadLookupTableOptions = {},
   ): Promise<Uint8Array> {
+    requireEntityId("data_group_id", dataGroupId);
     return downloadLookupTableMember(this.client, dataGroupId, options);
   }
 
@@ -5415,8 +5528,11 @@ export class Workspace {
    * @returns The signed URL string.
    * @throws MixpanelHeadlessError - `MISSING_URL` when the response
    *   carries no URL.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `dataGroupId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async getLookupDownloadUrl(dataGroupId: number): Promise<string> {
+    requireEntityId("data_group_id", dataGroupId);
     return getLookupDownloadUrlMember(this.client, dataGroupId);
   }
 
@@ -5476,11 +5592,14 @@ export class Workspace {
    * @throws MixpanelHeadlessError - `UPDATE_TARGET_MISMATCH` when the
    *   server echoes a different `customEventId`.
    * @throws ResponseValidationError - Malformed payload.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `customEventId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async updateCustomEvent(
     customEventId: number,
     params: UpdateEventDefinitionParams,
   ): Promise<EventDefinition> {
+    requireEntityId("custom_event_id", customEventId);
     return updateCustomEventMember(this.client, customEventId, params);
   }
 
@@ -5496,8 +5615,11 @@ export class Workspace {
    * @returns Nothing.
    * @throws AuthenticationError | QueryError | ServerError - Wire
    *   failures.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `customEventId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async deleteCustomEvent(customEventId: number): Promise<void> {
+    requireEntityId("custom_event_id", customEventId);
     return deleteCustomEventMember(this.client, customEventId);
   }
 
@@ -5820,10 +5942,13 @@ export class Workspace {
    * @returns The updated FULL list of deletion requests.
    * @throws ResponseValidationError - Malformed payload.
    * @throws QueryError - Request not found or not cancellable (400).
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `requestId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   async cancelDeletionRequest(
     requestId: number,
   ): Promise<EventDeletionRequest[]> {
+    requireEntityId("request_id", requestId);
     return cancelDeletionRequestMember(this.client, requestId);
   }
 
@@ -6459,11 +6584,14 @@ export class Workspace {
    * ws.savedReportLink(123, { report_type: "funnels" });
    * // "https://mixpanel.com/project/3/app/funnels#view/123"
    * ```
+   * @throws ParamValidationError - `RL6_INVALID_ID` when `bookmarkId`
+   *   is not a positive integer (network-free guard, before any request).
    */
   savedReportLink(
     bookmarkId: number,
     options: WorkspaceSavedReportLinkOptions = {},
   ): string {
+    requireEntityId("bookmark_id", bookmarkId);
     const reportType = options.report_type ?? "insights";
     const normalized = reportType === "funnel" ? "funnels" : reportType;
     const pinned = this.#session.workspace ?? null;

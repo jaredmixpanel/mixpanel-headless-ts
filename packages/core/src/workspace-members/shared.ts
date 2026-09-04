@@ -9,7 +9,7 @@
  */
 
 import { toNativeJson, type JsonValue } from "../client/json-value.js";
-import { MixpanelHeadlessError } from "../errors.js";
+import { MixpanelHeadlessError, ParamValidationError } from "../errors.js";
 
 /**
  * `if raw is None: raise MixpanelHeadlessError(...)` — the facade's
@@ -45,4 +45,78 @@ export function requireResponse(raw: unknown, member: string): unknown {
  */
 export function native(raw: unknown): unknown {
   return toNativeJson(raw as JsonValue);
+}
+
+/**
+ * Render an untrusted value for an error message without echoing it:
+ * primitives as `typeof` + a 40-char slice, objects by constructor name
+ * only (a caller's whole params bag never lands in a log line).
+ *
+ * @param value - The received value.
+ * @returns A short, deterministic description.
+ */
+function describeReceived(value: unknown): string {
+  if (value === null) {
+    return "null";
+  }
+  if (value === undefined) {
+    return "undefined";
+  }
+  if (Array.isArray(value)) {
+    return "array";
+  }
+  switch (typeof value) {
+    case "object": {
+      const proto: unknown = Object.getPrototypeOf(value);
+      const ctor =
+        proto !== null && typeof proto === "object"
+          ? (proto as { constructor?: { name?: string } }).constructor?.name
+          : undefined;
+      return `object (${ctor ?? "null prototype"})`;
+    }
+    case "function":
+      return "function";
+    case "string":
+      return `string "${value.slice(0, 40)}"`;
+    default:
+      return `${typeof value} ${String(value).slice(0, 40)}`;
+  }
+}
+
+/**
+ * Reject a positional entity id that is not a positive safe integer
+ * BEFORE any request is assembled — the facade-level twin of the
+ * report-link builders' `_require_positive_id` (`RL6_INVALID_ID`).
+ *
+ * Motivation: a caller passing `{ annotation_id: 2078447 }` where
+ * `deleteAnnotation(annotationId: number)` expects the bare number had
+ * the port interpolate `/annotations/[object Object]/` into the path and
+ * surface the server's 404 as `QUERY_FAILED`. Python does not guard
+ * these arguments (its signatures are `int`-typed and the same call
+ * fails the same way server-side), so this is additive hardening: it
+ * rejects only calls the server would reject anyway and changes no
+ * conformance verdict (every vector carries a valid id).
+ *
+ * The code is Python's own `RL6_INVALID_ID` ("An id is a positive
+ * integer") rather than a new registry entry: the registry is generated
+ * from the Python-side contract artifact and cannot grow on the TS side.
+ *
+ * @param field - The Python parameter name (`annotation_id`), used in the
+ *   message and `details.field`.
+ * @param value - The received value, untrusted.
+ * @returns `value`, narrowed to `number`.
+ * @throws ParamValidationError - `RL6_INVALID_ID` when `value` is not a
+ *   finite positive integer (`0`, negatives, fractions, `NaN`,
+ *   `Infinity`, numeric strings, objects, `null`, `undefined`).
+ */
+export function requireEntityId(field: string, value: unknown): number {
+  if (typeof value === "number" && Number.isSafeInteger(value) && value > 0) {
+    return value;
+  }
+  const received = describeReceived(value);
+  throw new ParamValidationError(
+    `Invalid ${field}: expected a positive integer id, received ${received}.`,
+    "RL6_INVALID_ID",
+    { field, received },
+  );
 }
