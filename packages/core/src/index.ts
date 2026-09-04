@@ -71,6 +71,9 @@ export * from "./accounts/index.js";
 // that gate governs `@mixpanel-headless/browser`'s own surface.)
 export { Workspace } from "./workspace.js";
 export type { WorkspaceOptions } from "./workspace.js";
+/** The network-free bookmark-params schema gate (`Workspace._validate_bookmark_params_schema`) that consumers run for dry-run / proposal previews without a session. */
+export { validateBookmarkParamsSchema } from "./workspace.js";
+export type { ValidateBookmarkParamsSchemaOptions } from "./workspace-members/bookmarks-cohorts.js";
 
 // Authored surface for the heads platform (spec 02 §10.1). `bookmarks/`
 // is otherwise `_internal` and deliberately unexported (see that barrel's
