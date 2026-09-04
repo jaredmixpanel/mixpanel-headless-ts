@@ -28,7 +28,13 @@ const entryPoints = [
   "packages/browser/src/index.ts",
 ];
 
-/** The surface heads spec 04 §3.3 requires the vendored bundle to expose. */
+/**
+ * The surface heads spec 04 §3.3 requires the vendored bundle to expose.
+ *
+ * `pythonJsonDumpsCanonical` was optional-and-reported here while spec 02's
+ * canonicalizer was still landing; it is on the browser barrel now, and a
+ * page cannot compute a QueryRef hash without it, so it is required.
+ */
 const REQUIRED_EXPORTS = [
   "InMemoryCredentialStore",
   "LocalStorageCredentialStore",
@@ -37,14 +43,8 @@ const REQUIRED_EXPORTS = [
   "completeLogin",
   "createBrowserWorkspace",
   "createBrowserWorkspaceFromStore",
+  "pythonJsonDumpsCanonical",
 ];
-
-/**
- * Spec 02's canonicalizer has not landed on `main`. Its absence is
- * reported, not fatal — this list is the handshake, and it should not need
- * editing on the day the symbol appears.
- */
-const OPTIONAL_EXPORTS = ["pythonJsonDumpsCanonical"];
 
 const fail = (message, err) => {
   console.error(message);
@@ -113,8 +113,3 @@ console.log(
   `browser-bundle recipe OK: \`${GLOBAL_NAME}\` exposes ${exported.length} exports ` +
     `(all ${REQUIRED_EXPORTS.length} required present); ${sizes}`,
 );
-for (const name of OPTIONAL_EXPORTS) {
-  console.log(
-    `browser-bundle recipe: optional export \`${name}\` ${exported.includes(name) ? "PRESENT" : "not present yet (not fatal)"}`,
-  );
-}

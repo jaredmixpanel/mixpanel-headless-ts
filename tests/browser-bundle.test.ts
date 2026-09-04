@@ -42,14 +42,18 @@ const REQUIRED_EXPORTS = [
   "completeLogin",
   "createBrowserWorkspace",
   "createBrowserWorkspaceFromStore",
+  // Spec 02 §3.3: a page cannot compute or cite a QueryRef hash without
+  // the canonicalizer the hash is defined over. Reported-not-required
+  // while it was still landing; required now that it is on the barrel.
+  "pythonJsonDumpsCanonical",
 ] as const;
 
 /**
- * Spec 02's canonicalizer is not on `main` yet; the gate reports its
- * presence rather than demanding it, so this test does not have to be
- * edited on the day it lands.
+ * Spec 02 §3.3's other half — the report type a params object describes.
+ * Same lane, same reason: a page that names what it built needs it on
+ * the global.
  */
-const OPTIONAL_EXPORT = "pythonJsonDumpsCanonical";
+const CANONICAL_IDENTITY_EXPORT = "inferBookmarkType";
 
 /**
  * Purity needles. `node:` on its own is NOT usable: the minified bundle
@@ -211,12 +215,16 @@ describe("browser bundle recipe", () => {
     expect(readManifest(outA).exports).toEqual(keys);
   });
 
-  it("reports whether the spec-02 canonicalizer is in the bundle yet", () => {
+  it("carries the spec-02 identity helpers on the global and in the manifest", () => {
     const keys = globalKeysOf(readFileSync(join(outA, IIFE_NAME), "utf8"));
-    // Not a requirement on `main` — but if it is exported it must be
-    // reachable from the browser barrel, i.e. present on the global too.
-    const inManifest = readManifest(outA).exports.includes(OPTIONAL_EXPORT);
-    expect(inManifest).toBe(keys.includes(OPTIONAL_EXPORT));
+    const manifestExports = readManifest(outA).exports;
+    for (const name of [
+      "pythonJsonDumpsCanonical",
+      CANONICAL_IDENTITY_EXPORT,
+    ]) {
+      expect(keys).toContain(name);
+      expect(manifestExports).toContain(name);
+    }
   });
 
   it("is byte-for-byte reproducible across runs", () => {
