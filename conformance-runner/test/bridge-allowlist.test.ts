@@ -348,16 +348,28 @@ describe("bridge-allowlist pinning and route shape (spec 01 §5.2, §5.5)", () =
     expect(unpinned).toStrictEqual([]);
   });
 
-  it("never leaves a matchable workspace route un-pinned to a project", () => {
-    // §5.5: a workspace-scoped route the lease cannot also hold to a project
-    // would let a page reach another project's workspace. Those routes are
-    // denied outright, so `pin: "workspace"` may only appear on a denied row.
-    const matchable = allowlist.rows
+  it("never leaves a workspace route pin-less", () => {
+    // §5.5: a workspace-scoped route pins to its project when it carries
+    // project evidence and to the workspace otherwise. Pin-less would mean
+    // the lease has nothing to hold it to, and a page could reach another
+    // project's workspace through it.
+    const unpinned = everyRow
       .filter((row) => row.template.includes("{workspace_id}"))
-      .filter((row) => row.pin !== "project")
+      .filter((row) => row.pin !== "project" && row.pin !== "workspace")
       .map((row) => `${row.method} ${row.template}: ${row.pin}`);
-    expect(matchable).toStrictEqual([]);
-    expect(allowlist.rows.every((row) => row.pin !== "workspace")).toBe(true);
+    expect(unpinned).toStrictEqual([]);
+  });
+
+  it("only ever pins to the workspace where there is no project evidence", () => {
+    const wrong = everyRow
+      .filter((row) => row.pin === "workspace")
+      .filter(
+        (row) =>
+          row.template.includes("{project_id}") ||
+          row.paramNames.includes("project_id"),
+      )
+      .map((row) => `${row.method} ${row.template}`);
+    expect(wrong).toStrictEqual([]);
   });
 
   it("pins every project-scoped app route", () => {

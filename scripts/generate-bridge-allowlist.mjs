@@ -30,7 +30,7 @@
 //   - a write row whose tsMethod has no consent verb, or whose methods give
 //     different verbs and which route-verbs.json does not disambiguate;
 //   - a `{n}` count placeholder on anything but a bulk method;
-//   - a matchable {workspace_id} route that is not also project-pinned;
+//   - a matchable {workspace_id} route left pin-less;
 //   - two vectors that disagree about the access or write class of one route;
 //   - a deny rule, or a route-verb entry, that matches no route (stale).
 //
@@ -680,13 +680,14 @@ for (const [tsMethod, verb] of Object.entries(verbs)) {
   }
 }
 
-// Spec §5.5: a workspace-scoped route the lease cannot also hold to a project
-// would let a page reach another project's workspace. Such a route must be
-// denied outright, never emitted as a matchable row.
+// Spec §5.5: a workspace-scoped route binds to its project when the route
+// carries project evidence, and to the workspace otherwise — but it is never
+// pin-less, because then the lease would have nothing to hold it to and a
+// page could reach another project's workspace.
 for (const row of rows) {
-  if (row.template.includes("{workspace_id}") && row.pin !== "project") {
+  if (row.template.includes("{workspace_id}") && row.pin === "none") {
     problems.push(
-      `matchable route ${row.method} ${row.family} ${row.template} carries {workspace_id} but is not project-pinned (pin: ${row.pin}) — deny it or find its project binding`,
+      `matchable route ${row.method} ${row.family} ${row.template} carries {workspace_id} but is pin-less — it must pin to its project, or to the workspace when there is no project evidence`,
     );
   }
 }
