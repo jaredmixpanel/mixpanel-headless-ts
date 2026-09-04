@@ -12,6 +12,11 @@
  * (`src/index.ts`), mirroring its absence from `__all__`.
  */
 export * from "./builders.js";
+// Authored (no Python twin): the report-type classifier heads spec 02
+// §10.1 asks headless to own. Unlike the rest of this module it IS
+// re-exported from the package barrel — it is a public request from a
+// downstream consumer, not an `_internal` mirror.
+export * from "./infer-type.js";
 export * from "./enums.js";
 export * from "./schema-sorting.js";
 export * from "./schema.js";
