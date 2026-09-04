@@ -509,6 +509,29 @@ const ws = await createBrowserWorkspaceFromStore({
 });
 ```
 
+The browser entry also exposes the full query vocabulary — `Filter`, `Metric`,
+`Formula`, `GroupBy`, `FunnelStep`, `FlowStep`, `RetentionEvent`, `TimeComparison`,
+`FrequencyBreakdown`, the inline-cohort classes, and `validateBookmark` — so a page can
+build and re-build queries client-side without a second import from
+`@mixpanel-headless/core`. They are the same pure classes core exports; only
+`Workspace` itself is type-only here, since construction must go through the gated
+factories above.
+
+```typescript
+import { Filter, FunnelStep } from "@mixpanel-headless/browser";
+
+const funnel = await ws.queryFunnel(
+  [
+    "Signup",
+    new FunnelStep({
+      event: "Purchase",
+      filters: [Filter.equals("plan", "pro")],
+    }),
+  ],
+  { last: 30 },
+);
+```
+
 **Credential storage is injectable and defaults to memory.** `InMemoryCredentialStore`
 (the default) keeps tokens out of persistent storage entirely — users re-login on
 reload. `LocalStorageCredentialStore` persists across navigations (required for the
