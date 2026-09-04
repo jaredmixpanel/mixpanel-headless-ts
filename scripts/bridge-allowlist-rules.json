@@ -15,9 +15,78 @@
     { "pathPrefix": "/api/query/", "family": "query" },
     { "pathPrefix": "/api/app/", "family": "app" }
   ],
+  "pathPlaceholders": {
+    "note": "How a path segment becomes a placeholder (spec 01 §5.3 step 2), in this order: session project_id -> {project_id}; a value carried under a closedEnumKey -> LITERAL, because the api's parameter is a fixed set of route names and a placeholder there would wildcard the family; a value carried under a keyedPlaceholder key (or that placeholder's sessionField) -> that named placeholder, so §5.5 has something to pin; any other call.input value -> {param}; an all-digit leftover -> {int}; everything else literal. Keyed lookups read call.setup[*].input as well as call.input, because the client learns its workspace from a setup call (api_client.set_workspace_id) rather than from the measured call's own arguments.",
+    "closedEnumKeys": ["bookmark_type", "report_type"],
+    "keyedPlaceholders": [
+      {
+        "placeholder": "{organization_id}",
+        "inputKeys": ["organization_id", "org_id"]
+      },
+      {
+        "placeholder": "{workspace_id}",
+        "inputKeys": ["workspace_id"],
+        "sessionField": "workspace_id"
+      }
+    ],
+    "familyRootMustBeLiteral": true
+  },
+  "pinRules": {
+    "note": "Which identifier spec 01 §5.5 can hold a route to. §5.5 pins EVERY occurrence of a project identifier, and the query family carries its project id as a query param or a top-level JSON body field rather than as a path segment — so evidence is taken from all three places, not just the template. `kinds` is in precedence order (first with any evidence wins) and each row also records `pinSources`, the places that identifier actually appears, so the handler knows what to check. A route with no bindable id at all is pin \"none\".",
+    "kinds": [
+      {
+        "pin": "project",
+        "placeholder": "{project_id}",
+        "fields": ["project_id"]
+      },
+      {
+        "pin": "organization",
+        "placeholder": "{organization_id}",
+        "fields": ["organization_id", "org_id"]
+      },
+      {
+        "pin": "workspace",
+        "placeholder": "{workspace_id}",
+        "fields": ["workspace_id"]
+      }
+    ],
+    "default": "none"
+  },
+  "consent": {
+    "note": "Spec 01 §7.2. `countPlaceholder` is filled by the desktop's consent composer from the request body's `ids` array length; the generator only validates that it appears solely on bulk methods, identified by the prefix/suffix below.",
+    "countPlaceholder": "{n}",
+    "bulkMethodPrefix": "bulk",
+    "bulkMethodSuffix": "Bulk"
+  },
+  "deniedRoutes": [
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/workspaces/{workspace_id}/custom_events/",
+      "reason": "Workspace-only variant with no project segment and no project_id param or body field, so spec 01 §5.5 has nothing to pin it to — a page could reach another project's workspace through it. api_client.create_custom_event keeps its project-scoped row, POST /api/app/projects/{project_id}/custom_events/, so nothing is lost."
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/workspaces/{workspace_id}/dashboards",
+      "reason": "Workspace-only variant with no project segment and no project_id param or body field, so spec 01 §5.5 has nothing to pin it to. api_client.list_dashboards keeps its project-scoped row, GET /api/app/projects/{project_id}/dashboards."
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/workspaces/{workspace_id}/data-definitions/events/",
+      "reason": "Workspace-only variant with no project segment and no project_id param or body field, so spec 01 §5.5 has nothing to pin it to — and it is a delete. api_client.delete_custom_event keeps its project-scoped row, DELETE /api/app/projects/{project_id}/data-definitions/events/."
+    },
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/lookup-tables/upload-url/",
+      "reason": "Mints a signed off-host PUT URL. Handing that to a page would create an unbounded upload capability outside the regional host set and outside the allowlist, and the lookup_tables write class is not grantable to page principals in v1. The route stays visible here, out of `rows`, so the handler can name what it refused instead of failing as an unknown route."
+    }
+  ],
   "excludedApis": {
-    "api_client.app_request": "Generic escape hatch: caller supplies an arbitrary method and App-API path, so its recorded paths (/api/app/test, /api/app/dashboards) are test literals rather than routes. Spec 01 §5.3 step 1 excludes it by name.",
-    "api_client.request": "Generic escape hatch: caller supplies an arbitrary method and absolute URL. Same class as app_request (recorded path /api/app/test is a test literal); admitting it would make the allowlist a wildcard.",
+    "api_client.app_request": "Generic escape hatch (arbitrary method+path); recorded paths are a mix of real routes and test literals; every real route it hits is covered by its own method's row. Spec 01 §5.3 step 1 excludes it by name.",
+    "api_client.request": "Generic escape hatch (arbitrary method+path); recorded paths are a mix of real routes and test literals; every real route it hits is covered by its own method's row.",
     "pagination.paginate_all": "Generic paginator over a caller-supplied path; 73 of its 82 recorded interactions use the synthetic test path /api/app/projects/12345/items. The real routes it walks are covered by the apis that own them (e.g. api_client.list_dashboards).",
     "api_client.export_events": "Export family. Its only host is https://data.mixpanel.com, which spec 01 §5.2 never admits — the bridge refuses export before the network.",
     "replays.fetch_files": "Session-replay CDN walk (https://cdn.test in the corpus). Admitted at runtime through a response-derived grant minted from a sign_replays 200 (spec 01 §5.4), never through a route template.",
@@ -130,10 +199,10 @@
       { "contains": "/experiments", "class": "experiments" },
       { "contains": "/webhooks", "class": "webhooks" },
       { "contains": "/drop-filters", "class": "governance" },
-      { "contains": "/custom_properties", "class": "governance" },
-      { "contains": "/custom-properties", "class": "governance" },
-      { "contains": "/custom_events", "class": "governance" },
-      { "contains": "/custom-events", "class": "governance" },
+      { "contains": "/custom_properties", "class": "custom_properties" },
+      { "contains": "/custom-properties", "class": "custom_properties" },
+      { "contains": "/custom_events", "class": "custom_events" },
+      { "contains": "/custom-events", "class": "custom_events" },
       { "contains": "/business-context", "class": "governance" },
       { "contains": "/deletion-requests", "class": "deletion_requests" },
       { "contains": "/deletion", "class": "deletion_requests" },

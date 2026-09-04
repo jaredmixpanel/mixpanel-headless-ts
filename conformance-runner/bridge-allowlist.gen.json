@@ -1,10 +1,12 @@
 {
+  "note": "GENERATED FILE — DO NOT EDIT. Regenerate with `npm run generate:bridge-allowlist`. `generatedAt` and `headlessCommit` are informational provenance only: they move on every run, are excluded from the freshness comparison, and nothing may make a policy decision from them. The load-bearing stamps are `corpusCommit`, `rulesSha256`, `verbsSha256` and `routeVerbsSha256`. `rows` is the matchable table; `deniedRoutes` are routes the corpus records that the rules refuse to admit — they are never matchable, and exist so a refusal can be named. A `{n}` in a `consentVerb` is filled by the consent composer from the request body's `ids` array length; it only ever appears on bulk routes.",
   "schema": 1,
   "corpusCommit": "c9991d1eed03fec1830b6e460091724b9263b8aa",
-  "generatedAt": "2026-09-04T02:41:44.591Z",
-  "headlessCommit": "0ea8da8bb6f87ade38f11790aa37de091ea82760",
-  "rulesSha256": "e198d4372be6ae240272fa83a026b9af140ac244aa1dbc66efe5a923a5c271c7",
-  "verbsSha256": "041351bfc1c757957b3ca5eefa77b3574953feeaaf7a3500af00b4e924b2bb03",
+  "generatedAt": "2026-09-04T03:11:20.861Z",
+  "headlessCommit": "ece11eaa2861c9aa6a5fb871f1b3fbba52bb345a",
+  "rulesSha256": "dd787440e030ee4dc88b7beca403bd8c1b0a08e7ecbba3180fa020e1eaa7395e",
+  "verbsSha256": "b061f37e1150f534a6cc6d84188637d200f5897a69cee95284cfac60467d4288",
+  "routeVerbsSha256": "eb9d8b5d30044d5687d229f43f0eb3b3645c39fdecae34f44d1028c02c9e43b5",
   "rows": [
     {
       "method": "GET",
@@ -12,6 +14,8 @@
       "template": "/api/app/me",
       "paramNames": [],
       "access": "read",
+      "pin": "none",
+      "pinSources": [],
       "tsMethod": "resolveWorkspaceId",
       "pyApi": "api_client.resolve_workspace_id",
       "capability": "auth",
@@ -20,11 +24,15 @@
     {
       "method": "PUT",
       "family": "app",
-      "template": "/api/app/organizations/{param}/business-context",
+      "template": "/api/app/organizations/{organization_id}/business-context",
       "paramNames": [],
       "access": "write",
+      "pin": "organization",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "governance",
-      "consentVerb": "set this project's business context",
+      "consentVerb": "replace this organization's business context",
       "tsMethod": "setBusinessContext",
       "pyApi": "workspace.set_business_context",
       "capability": "entities",
@@ -36,6 +44,8 @@
       "template": "/api/app/projects/metadata/index",
       "paramNames": [],
       "access": "read",
+      "pin": "none",
+      "pinSources": [],
       "tsMethod": "projectsMetadataIndex",
       "pyApi": "api_client.projects_metadata_index",
       "capability": "auth",
@@ -64,6 +74,10 @@
         "skip_user_filter"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "listAlerts",
       "pyApi": "api_client.list_alerts",
       "capability": "entities",
@@ -83,6 +97,10 @@
       "template": "/api/app/projects/{project_id}/alerts/custom/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "alerts",
       "consentVerb": "create an alert",
       "tsMethod": "createAlert",
@@ -106,6 +124,10 @@
         "type"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getAlertCount",
       "pyApi": "api_client.get_alert_count",
       "capability": "entities",
@@ -125,8 +147,12 @@
       "template": "/api/app/projects/{project_id}/alerts/custom/bulk-delete/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "alerts",
-      "consentVerb": "delete several alerts",
+      "consentVerb": "delete {n} alerts",
       "tsMethod": "bulkDeleteAlerts",
       "pyApi": "api_client.bulk_delete_alerts",
       "capability": "entities",
@@ -148,6 +174,10 @@
         "gcs_key"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getAlertScreenshotUrl",
       "pyApi": "api_client.get_alert_screenshot_url",
       "capability": "entities",
@@ -167,6 +197,10 @@
       "template": "/api/app/projects/{project_id}/alerts/custom/test/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "alerts",
       "consentVerb": "send a test alert",
       "tsMethod": "testAlert",
@@ -188,6 +222,10 @@
       "template": "/api/app/projects/{project_id}/alerts/custom/validate-alerts-for-bookmark/",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "validateAlertsForBookmark",
       "pyApi": "api_client.validate_alerts_for_bookmark",
       "capability": "bookmarks",
@@ -207,6 +245,10 @@
       "template": "/api/app/projects/{project_id}/alerts/custom/{param}/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "alerts",
       "consentVerb": "delete an alert",
       "tsMethod": "deleteAlert",
@@ -228,6 +270,10 @@
       "template": "/api/app/projects/{project_id}/alerts/custom/{param}/",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getAlert",
       "pyApi": "api_client.get_alert",
       "capability": "entities",
@@ -247,6 +293,10 @@
       "template": "/api/app/projects/{project_id}/alerts/custom/{param}/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "alerts",
       "consentVerb": "update an alert",
       "tsMethod": "updateAlert",
@@ -271,6 +321,10 @@
         "page_size"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getAlertHistory",
       "pyApi": "api_client.get_alert_history",
       "capability": "entities",
@@ -294,6 +348,10 @@
         "toDate"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "listAnnotations",
       "pyApi": "api_client.list_annotations",
       "capability": "entities",
@@ -313,6 +371,10 @@
       "template": "/api/app/projects/{project_id}/annotations/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "annotations",
       "consentVerb": "create an annotation",
       "tsMethod": "createAnnotation",
@@ -334,6 +396,10 @@
       "template": "/api/app/projects/{project_id}/annotations/tags/",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "listAnnotationTags",
       "pyApi": "api_client.list_annotation_tags",
       "capability": "entities",
@@ -353,6 +419,10 @@
       "template": "/api/app/projects/{project_id}/annotations/tags/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "annotations",
       "consentVerb": "create an annotation tag",
       "tsMethod": "createAnnotationTag",
@@ -374,6 +444,10 @@
       "template": "/api/app/projects/{project_id}/annotations/{param}/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "annotations",
       "consentVerb": "delete an annotation",
       "tsMethod": "deleteAnnotation",
@@ -395,6 +469,10 @@
       "template": "/api/app/projects/{project_id}/annotations/{param}/",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getAnnotation",
       "pyApi": "workspace.get_annotation",
       "capability": "entities",
@@ -414,6 +492,10 @@
       "template": "/api/app/projects/{project_id}/annotations/{param}/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "annotations",
       "consentVerb": "update an annotation",
       "tsMethod": "updateAnnotation",
@@ -435,6 +517,10 @@
       "template": "/api/app/projects/{project_id}/bookmark-urls/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "bookmarks",
       "consentVerb": "create a shareable report link",
       "tsMethod": "createBookmarkUrl",
@@ -448,6 +534,10 @@
       "template": "/api/app/projects/{project_id}/bookmark-urls/{param}/",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getBookmarkUrl",
       "pyApi": "api_client.get_bookmark_url",
       "capability": "bookmarks",
@@ -465,6 +555,11 @@
         "v"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path",
+        "query"
+      ],
       "tsMethod": "listBookmarks",
       "pyApi": "api_client.list_bookmarks",
       "capability": "bookmarks",
@@ -490,6 +585,10 @@
       "template": "/api/app/projects/{project_id}/bookmarks",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "bookmarks",
       "consentVerb": "create a saved report",
       "tsMethod": "createBookmark",
@@ -511,8 +610,12 @@
       "template": "/api/app/projects/{project_id}/bookmarks/bulk-delete",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "bookmarks",
-      "consentVerb": "delete several saved reports",
+      "consentVerb": "delete {n} saved reports",
       "tsMethod": "bulkDeleteBookmarks",
       "pyApi": "workspace.bulk_delete_bookmarks",
       "capability": "bookmarks",
@@ -532,8 +635,12 @@
       "template": "/api/app/projects/{project_id}/bookmarks/bulk-update",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "bookmarks",
-      "consentVerb": "update several saved reports",
+      "consentVerb": "update {n} saved reports",
       "tsMethod": "bulkUpdateBookmarks",
       "pyApi": "workspace.bulk_update_bookmarks",
       "capability": "bookmarks",
@@ -553,6 +660,10 @@
       "template": "/api/app/projects/{project_id}/bookmarks/{param}",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "bookmarks",
       "consentVerb": "delete a saved report",
       "tsMethod": "deleteBookmark",
@@ -576,6 +687,10 @@
         "v"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getBookmark",
       "pyApi": "workspace.get_bookmark",
       "capability": "bookmarks",
@@ -595,6 +710,10 @@
       "template": "/api/app/projects/{project_id}/bookmarks/{param}",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "bookmarks",
       "consentVerb": "update a saved report",
       "tsMethod": "updateBookmark",
@@ -619,6 +738,10 @@
         "page_size"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getBookmarkHistory",
       "pyApi": "api_client.get_bookmark_history",
       "capability": "bookmarks",
@@ -638,6 +761,10 @@
       "template": "/api/app/projects/{project_id}/bookmarks/{param}/linked-dashboard-ids",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "bookmarkLinkedDashboardIds",
       "pyApi": "api_client.bookmark_linked_dashboard_ids",
       "capability": "bookmarks",
@@ -657,6 +784,10 @@
       "template": "/api/app/projects/{project_id}/business-context",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getBusinessContext",
       "pyApi": "workspace.get_business_context",
       "capability": "entities",
@@ -668,8 +799,12 @@
       "template": "/api/app/projects/{project_id}/business-context",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "governance",
-      "consentVerb": "set this project's business context",
+      "consentVerb": "replace or clear this project's business context",
       "tsMethod": "setBusinessContext",
       "pyApi": "workspace.set_business_context",
       "capability": "entities",
@@ -689,6 +824,10 @@
       "template": "/api/app/projects/{project_id}/business-context/chain",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getBusinessContextChain",
       "pyApi": "workspace.get_business_context_chain",
       "capability": "entities",
@@ -703,6 +842,10 @@
         "ids"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "listCohortsFull",
       "pyApi": "workspace.list_cohorts_full",
       "capability": "cohorts",
@@ -722,6 +865,10 @@
       "template": "/api/app/projects/{project_id}/cohorts",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "cohorts",
       "consentVerb": "create a cohort",
       "tsMethod": "createCohort",
@@ -743,8 +890,12 @@
       "template": "/api/app/projects/{project_id}/cohorts/bulk-delete",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "cohorts",
-      "consentVerb": "delete several cohorts",
+      "consentVerb": "delete {n} cohorts",
       "tsMethod": "bulkDeleteCohorts",
       "pyApi": "workspace.bulk_delete_cohorts",
       "capability": "cohorts",
@@ -764,8 +915,12 @@
       "template": "/api/app/projects/{project_id}/cohorts/bulk-update",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "cohorts",
-      "consentVerb": "update several cohorts",
+      "consentVerb": "update {n} cohorts",
       "tsMethod": "bulkUpdateCohorts",
       "pyApi": "workspace.bulk_update_cohorts",
       "capability": "cohorts",
@@ -785,6 +940,10 @@
       "template": "/api/app/projects/{project_id}/cohorts/{param}",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "cohorts",
       "consentVerb": "delete a cohort",
       "tsMethod": "deleteCohort",
@@ -806,6 +965,10 @@
       "template": "/api/app/projects/{project_id}/cohorts/{param}",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getCohort",
       "pyApi": "workspace.get_cohort",
       "capability": "cohorts",
@@ -825,6 +988,10 @@
       "template": "/api/app/projects/{project_id}/cohorts/{param}",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "cohorts",
       "consentVerb": "update a cohort",
       "tsMethod": "updateCohort",
@@ -846,7 +1013,11 @@
       "template": "/api/app/projects/{project_id}/custom_events/",
       "paramNames": [],
       "access": "write",
-      "writeClass": "governance",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
+      "writeClass": "custom_events",
       "consentVerb": "create a custom event",
       "tsMethod": "createCustomEvent",
       "pyApi": "api_client.create_custom_event",
@@ -867,6 +1038,10 @@
       "template": "/api/app/projects/{project_id}/custom_properties/",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "listCustomProperties",
       "pyApi": "api_client.list_custom_properties",
       "capability": "entities",
@@ -886,7 +1061,11 @@
       "template": "/api/app/projects/{project_id}/custom_properties/",
       "paramNames": [],
       "access": "write",
-      "writeClass": "governance",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
+      "writeClass": "custom_properties",
       "consentVerb": "create a custom property",
       "tsMethod": "createCustomProperty",
       "pyApi": "api_client.create_custom_property",
@@ -907,6 +1086,10 @@
       "template": "/api/app/projects/{project_id}/custom_properties/validate/",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "validateCustomProperty",
       "pyApi": "api_client.validate_custom_property",
       "capability": "entities",
@@ -926,7 +1109,11 @@
       "template": "/api/app/projects/{project_id}/custom_properties/{param}/",
       "paramNames": [],
       "access": "write",
-      "writeClass": "governance",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
+      "writeClass": "custom_properties",
       "consentVerb": "delete a custom property",
       "tsMethod": "deleteCustomProperty",
       "pyApi": "api_client.delete_custom_property",
@@ -947,6 +1134,10 @@
       "template": "/api/app/projects/{project_id}/custom_properties/{param}/",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getCustomProperty",
       "pyApi": "api_client.get_custom_property",
       "capability": "entities",
@@ -966,7 +1157,11 @@
       "template": "/api/app/projects/{project_id}/custom_properties/{param}/",
       "paramNames": [],
       "access": "write",
-      "writeClass": "governance",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
+      "writeClass": "custom_properties",
       "consentVerb": "update a custom property",
       "tsMethod": "updateCustomProperty",
       "pyApi": "api_client.update_custom_property",
@@ -989,6 +1184,10 @@
         "ids"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "listDashboards",
       "pyApi": "api_client.list_dashboards",
       "capability": "entities",
@@ -1008,6 +1207,10 @@
       "template": "/api/app/projects/{project_id}/dashboards",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "dashboards",
       "consentVerb": "create a dashboard",
       "tsMethod": "createDashboard",
@@ -1029,6 +1232,10 @@
       "template": "/api/app/projects/{project_id}/dashboards/blueprints",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "dashboards",
       "consentVerb": "create a dashboard blueprint",
       "tsMethod": "createBlueprint",
@@ -1044,6 +1251,10 @@
         "include_reports"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "listBlueprintTemplates",
       "pyApi": "api_client.list_blueprint_templates",
       "capability": "entities",
@@ -1055,6 +1266,10 @@
       "template": "/api/app/projects/{project_id}/dashboards/blueprints/cohorts",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "dashboards",
       "consentVerb": "update a dashboard blueprint's cohorts",
       "tsMethod": "updateBlueprintCohorts",
@@ -1076,6 +1291,10 @@
       "template": "/api/app/projects/{project_id}/dashboards/blueprints/finish",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "dashboards",
       "consentVerb": "finalize a dashboard blueprint",
       "tsMethod": "finalizeBlueprint",
@@ -1097,6 +1316,10 @@
       "template": "/api/app/projects/{project_id}/dashboards/bookmarks/{param}/dashboard-ids",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "bookmarkLinkedDashboardIds",
       "pyApi": "api_client.bookmark_linked_dashboard_ids",
       "capability": "bookmarks",
@@ -1116,8 +1339,12 @@
       "template": "/api/app/projects/{project_id}/dashboards/bulk-delete",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "dashboards",
-      "consentVerb": "delete several dashboards",
+      "consentVerb": "delete {n} dashboards",
       "tsMethod": "bulkDeleteDashboards",
       "pyApi": "workspace.bulk_delete_dashboards",
       "capability": "entities",
@@ -1137,6 +1364,10 @@
       "template": "/api/app/projects/{project_id}/dashboards/rca",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "dashboards",
       "consentVerb": "create a root-cause-analysis dashboard",
       "tsMethod": "createRcaDashboard",
@@ -1158,6 +1389,10 @@
       "template": "/api/app/projects/{project_id}/dashboards/{param}",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "dashboards",
       "consentVerb": "delete a dashboard",
       "tsMethod": "deleteDashboard",
@@ -1179,6 +1414,10 @@
       "template": "/api/app/projects/{project_id}/dashboards/{param}",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getDashboard",
       "pyApi": "workspace.get_dashboard",
       "capability": "entities",
@@ -1198,8 +1437,12 @@
       "template": "/api/app/projects/{project_id}/dashboards/{param}",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "dashboards",
-      "consentVerb": "create a saved report",
+      "consentVerb": "change a dashboard: its settings or which reports are on it",
       "tsMethod": "createBookmark",
       "pyApi": "workspace.create_bookmark",
       "capability": "bookmarks",
@@ -1249,6 +1492,10 @@
       "template": "/api/app/projects/{project_id}/dashboards/{param}/blueprint-config",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getBlueprintConfig",
       "pyApi": "api_client.get_blueprint_config",
       "capability": "entities",
@@ -1260,6 +1507,10 @@
       "template": "/api/app/projects/{project_id}/dashboards/{param}/erf",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getDashboardErf",
       "pyApi": "api_client.get_dashboard_erf",
       "capability": "entities",
@@ -1271,6 +1522,10 @@
       "template": "/api/app/projects/{project_id}/dashboards/{param}/favorites",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "dashboards",
       "consentVerb": "unfavorite a dashboard",
       "tsMethod": "unfavoriteDashboard",
@@ -1284,6 +1539,10 @@
       "template": "/api/app/projects/{project_id}/dashboards/{param}/favorites",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "dashboards",
       "consentVerb": "favorite a dashboard",
       "tsMethod": "favoriteDashboard",
@@ -1297,6 +1556,10 @@
       "template": "/api/app/projects/{project_id}/dashboards/{param}/pin",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "dashboards",
       "consentVerb": "unpin a dashboard",
       "tsMethod": "unpinDashboard",
@@ -1310,6 +1573,10 @@
       "template": "/api/app/projects/{project_id}/dashboards/{param}/pin",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "dashboards",
       "consentVerb": "pin a dashboard",
       "tsMethod": "pinDashboard",
@@ -1323,6 +1590,10 @@
       "template": "/api/app/projects/{project_id}/dashboards/{param}/report-links/{param}",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "dashboards",
       "consentVerb": "update a report card on a dashboard",
       "tsMethod": "updateReportLink",
@@ -1344,6 +1615,10 @@
       "template": "/api/app/projects/{project_id}/dashboards/{param}/text-cards/{param}",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "dashboards",
       "consentVerb": "update a text card on a dashboard",
       "tsMethod": "updateTextCard",
@@ -1357,6 +1632,10 @@
       "template": "/api/app/projects/{project_id}/data-definitions/audit-events-only/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "lexicon",
       "consentVerb": "run a Lexicon audit over events",
       "tsMethod": "runAuditEventsOnly",
@@ -1378,6 +1657,10 @@
       "template": "/api/app/projects/{project_id}/data-definitions/audit/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "lexicon",
       "consentVerb": "run a Lexicon audit",
       "tsMethod": "runAudit",
@@ -1401,6 +1684,10 @@
         "status"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "listDataVolumeAnomalies",
       "pyApi": "api_client.list_data_volume_anomalies",
       "capability": "entities",
@@ -1420,6 +1707,10 @@
       "template": "/api/app/projects/{project_id}/data-definitions/data-volume-anomalies/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "lexicon",
       "consentVerb": "update a data-volume anomaly",
       "tsMethod": "updateAnomaly",
@@ -1441,8 +1732,12 @@
       "template": "/api/app/projects/{project_id}/data-definitions/data-volume-anomalies/bulk/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "lexicon",
-      "consentVerb": "update several data-volume anomalies",
+      "consentVerb": "update {n} data-volume anomalies",
       "tsMethod": "bulkUpdateAnomalies",
       "pyApi": "api_client.bulk_update_anomalies",
       "capability": "entities",
@@ -1462,8 +1757,12 @@
       "template": "/api/app/projects/{project_id}/data-definitions/events/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "lexicon",
-      "consentVerb": "delete a custom event",
+      "consentVerb": "delete a custom event or event definition",
       "tsMethod": "deleteCustomEvent",
       "pyApi": "api_client.delete_custom_event",
       "capability": "entities",
@@ -1498,6 +1797,10 @@
         "name[]"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getEventDefinitions",
       "pyApi": "api_client.get_event_definitions",
       "capability": "entities",
@@ -1529,8 +1832,12 @@
       "template": "/api/app/projects/{project_id}/data-definitions/events/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "lexicon",
-      "consentVerb": "update a custom event",
+      "consentVerb": "update event definitions (possibly several)",
       "tsMethod": "updateCustomEvent",
       "pyApi": "api_client.update_custom_event",
       "capability": "entities",
@@ -1574,6 +1881,10 @@
       "template": "/api/app/projects/{project_id}/data-definitions/events/deletion-requests/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "deletion_requests",
       "consentVerb": "cancel a data-deletion request",
       "tsMethod": "cancelDeletionRequest",
@@ -1595,6 +1906,10 @@
       "template": "/api/app/projects/{project_id}/data-definitions/events/deletion-requests/",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "listDeletionRequests",
       "pyApi": "api_client.list_deletion_requests",
       "capability": "entities",
@@ -1614,6 +1929,10 @@
       "template": "/api/app/projects/{project_id}/data-definitions/events/deletion-requests/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "deletion_requests",
       "consentVerb": "request deletion of event data",
       "tsMethod": "createDeletionRequest",
@@ -1635,6 +1954,10 @@
       "template": "/api/app/projects/{project_id}/data-definitions/events/deletion-requests/preview-filters/",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "previewDeletionFilters",
       "pyApi": "api_client.preview_deletion_filters",
       "capability": "entities",
@@ -1654,6 +1977,10 @@
       "template": "/api/app/projects/{project_id}/data-definitions/events/drop-filters/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "governance",
       "consentVerb": "delete a data drop filter",
       "tsMethod": "deleteDropFilter",
@@ -1675,6 +2002,10 @@
       "template": "/api/app/projects/{project_id}/data-definitions/events/drop-filters/",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "listDropFilters",
       "pyApi": "api_client.list_drop_filters",
       "capability": "data-governance",
@@ -1694,6 +2025,10 @@
       "template": "/api/app/projects/{project_id}/data-definitions/events/drop-filters/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "governance",
       "consentVerb": "update a data drop filter",
       "tsMethod": "updateDropFilter",
@@ -1715,6 +2050,10 @@
       "template": "/api/app/projects/{project_id}/data-definitions/events/drop-filters/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "governance",
       "consentVerb": "create a data drop filter",
       "tsMethod": "createDropFilter",
@@ -1736,6 +2075,10 @@
       "template": "/api/app/projects/{project_id}/data-definitions/events/drop-filters/limits/",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getDropFilterLimits",
       "pyApi": "api_client.get_drop_filter_limits",
       "capability": "data-governance",
@@ -1757,6 +2100,10 @@
         "event_name"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getTrackingMetadata",
       "pyApi": "api_client.get_tracking_metadata",
       "capability": "entities",
@@ -1776,6 +2123,10 @@
       "template": "/api/app/projects/{project_id}/data-definitions/events/{param}/history/",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getEventHistory",
       "pyApi": "api_client.get_event_history",
       "capability": "entities",
@@ -1797,6 +2148,10 @@
         "export_type"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "exportLexicon",
       "pyApi": "api_client.export_lexicon",
       "capability": "streaming",
@@ -1816,6 +2171,10 @@
       "template": "/api/app/projects/{project_id}/data-definitions/lookup-tables/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "lookup_tables",
       "consentVerb": "delete lookup tables",
       "tsMethod": "deleteLookupTables",
@@ -1839,6 +2198,10 @@
         "data-group-id"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "listLookupTables",
       "pyApi": "api_client.list_lookup_tables",
       "capability": "data-governance",
@@ -1858,6 +2221,10 @@
       "template": "/api/app/projects/{project_id}/data-definitions/lookup-tables/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "lookup_tables",
       "consentVerb": "update a lookup table",
       "tsMethod": "updateLookupTable",
@@ -1879,8 +2246,12 @@
       "template": "/api/app/projects/{project_id}/data-definitions/lookup-tables/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "lookup_tables",
-      "consentVerb": "register a lookup table",
+      "consentVerb": "register a lookup table or mark one ready",
       "tsMethod": "registerLookupTable",
       "pyApi": "api_client.register_lookup_table",
       "capability": "data-governance",
@@ -1908,6 +2279,10 @@
         "data-group-id"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getLookupDownloadUrl",
       "pyApi": "api_client.get_lookup_download_url",
       "capability": "data-governance",
@@ -1931,6 +2306,10 @@
         "limit"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "downloadLookupTable",
       "pyApi": "api_client.download_lookup_table",
       "capability": "data-governance",
@@ -1952,6 +2331,10 @@
         "upload-id"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getLookupUploadStatus",
       "pyApi": "api_client.get_lookup_upload_status",
       "capability": "data-governance",
@@ -1968,27 +2351,6 @@
     {
       "method": "GET",
       "family": "app",
-      "template": "/api/app/projects/{project_id}/data-definitions/lookup-tables/upload-url/",
-      "paramNames": [
-        "content-type"
-      ],
-      "access": "read",
-      "tsMethod": "getLookupUploadUrl",
-      "pyApi": "api_client.get_lookup_upload_url",
-      "capability": "data-governance",
-      "vectorCount": 7,
-      "aliases": [
-        {
-          "pyApi": "workspace.get_lookup_upload_url",
-          "tsMethod": "getLookupUploadUrl",
-          "capability": "data-governance",
-          "vectorCount": 3
-        }
-      ]
-    },
-    {
-      "method": "GET",
-      "family": "app",
       "template": "/api/app/projects/{project_id}/data-definitions/properties/",
       "paramNames": [
         "includeCustom",
@@ -1999,6 +2361,10 @@
         "resourceType"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getPropertyDefinitions",
       "pyApi": "api_client.get_property_definitions",
       "capability": "entities",
@@ -2024,8 +2390,12 @@
       "template": "/api/app/projects/{project_id}/data-definitions/properties/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "lexicon",
-      "consentVerb": "update several property definitions",
+      "consentVerb": "update property definitions (possibly several)",
       "tsMethod": "bulkUpdatePropertyDefinitions",
       "pyApi": "workspace.bulk_update_property_definitions",
       "capability": "entities",
@@ -2059,6 +2429,10 @@
         "entity_type"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getPropertyHistory",
       "pyApi": "api_client.get_property_history",
       "capability": "entities",
@@ -2078,6 +2452,10 @@
       "template": "/api/app/projects/{project_id}/data-definitions/schema/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "schemas",
       "consentVerb": "turn off schema enforcement",
       "tsMethod": "deleteSchemaEnforcement",
@@ -2101,6 +2479,10 @@
         "fields"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getSchemaEnforcement",
       "pyApi": "api_client.get_schema_enforcement",
       "capability": "entities",
@@ -2120,6 +2502,10 @@
       "template": "/api/app/projects/{project_id}/data-definitions/schema/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "schemas",
       "consentVerb": "update the schema-enforcement settings",
       "tsMethod": "updateSchemaEnforcement",
@@ -2141,6 +2527,10 @@
       "template": "/api/app/projects/{project_id}/data-definitions/schema/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "schemas",
       "consentVerb": "turn on schema enforcement",
       "tsMethod": "initSchemaEnforcement",
@@ -2162,6 +2552,10 @@
       "template": "/api/app/projects/{project_id}/data-definitions/schema/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "schemas",
       "consentVerb": "replace the schema-enforcement settings",
       "tsMethod": "replaceSchemaEnforcement",
@@ -2183,6 +2577,10 @@
       "template": "/api/app/projects/{project_id}/data-definitions/tags/",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "listLexiconTags",
       "pyApi": "api_client.list_lexicon_tags",
       "capability": "entities",
@@ -2202,8 +2600,12 @@
       "template": "/api/app/projects/{project_id}/data-definitions/tags/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "lexicon",
-      "consentVerb": "create a Lexicon tag",
+      "consentVerb": "create or delete a Lexicon tag",
       "tsMethod": "createLexiconTag",
       "pyApi": "api_client.create_lexicon_tag",
       "capability": "entities",
@@ -2235,6 +2637,10 @@
       "template": "/api/app/projects/{project_id}/data-definitions/tags/{param}/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "lexicon",
       "consentVerb": "update a Lexicon tag",
       "tsMethod": "updateLexiconTag",
@@ -2258,6 +2664,10 @@
         "include_archived"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "listExperiments",
       "pyApi": "api_client.list_experiments",
       "capability": "entities",
@@ -2277,6 +2687,10 @@
       "template": "/api/app/projects/{project_id}/experiments/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "experiments",
       "consentVerb": "create an experiment",
       "tsMethod": "createExperiment",
@@ -2298,6 +2712,10 @@
       "template": "/api/app/projects/{project_id}/experiments/erf/",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "listErfExperiments",
       "pyApi": "api_client.list_erf_experiments",
       "capability": "entities",
@@ -2317,6 +2735,10 @@
       "template": "/api/app/projects/{project_id}/experiments/{param}",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "experiments",
       "consentVerb": "delete an experiment",
       "tsMethod": "deleteExperiment",
@@ -2338,6 +2760,10 @@
       "template": "/api/app/projects/{project_id}/experiments/{param}",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getExperiment",
       "pyApi": "api_client.get_experiment",
       "capability": "entities",
@@ -2357,6 +2783,10 @@
       "template": "/api/app/projects/{project_id}/experiments/{param}",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "experiments",
       "consentVerb": "update an experiment",
       "tsMethod": "updateExperiment",
@@ -2378,6 +2808,10 @@
       "template": "/api/app/projects/{project_id}/experiments/{param}/archive",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "experiments",
       "consentVerb": "restore an archived experiment",
       "tsMethod": "restoreExperiment",
@@ -2399,6 +2833,10 @@
       "template": "/api/app/projects/{project_id}/experiments/{param}/archive",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "experiments",
       "consentVerb": "archive an experiment",
       "tsMethod": "archiveExperiment",
@@ -2420,8 +2858,12 @@
       "template": "/api/app/projects/{project_id}/experiments/{param}/decide",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "experiments",
-      "consentVerb": "pick an experiment's winning variant",
+      "consentVerb": "end an experiment by picking a winning variant",
       "tsMethod": "decideExperiment",
       "pyApi": "api_client.decide_experiment",
       "capability": "entities",
@@ -2441,6 +2883,10 @@
       "template": "/api/app/projects/{project_id}/experiments/{param}/duplicate",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "experiments",
       "consentVerb": "duplicate an experiment",
       "tsMethod": "duplicateExperiment",
@@ -2462,8 +2908,12 @@
       "template": "/api/app/projects/{project_id}/experiments/{param}/force_conclude",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "experiments",
-      "consentVerb": "conclude an experiment",
+      "consentVerb": "force-conclude an experiment (stops it for all users)",
       "tsMethod": "concludeExperiment",
       "pyApi": "api_client.conclude_experiment",
       "capability": "entities",
@@ -2483,6 +2933,10 @@
       "template": "/api/app/projects/{project_id}/experiments/{param}/launch",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "experiments",
       "consentVerb": "launch an experiment",
       "tsMethod": "launchExperiment",
@@ -2504,6 +2958,10 @@
       "template": "/api/app/projects/{project_id}/feature-flags/limits/",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getFlagLimits",
       "pyApi": "api_client.get_flag_limits",
       "capability": "entities",
@@ -2523,6 +2981,10 @@
       "template": "/api/app/projects/{project_id}/replays/sign/bulk",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "signReplays",
       "pyApi": "api_client.sign_replays",
       "capability": "replays",
@@ -2534,8 +2996,12 @@
       "template": "/api/app/projects/{project_id}/schemas",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "schemas",
-      "consentVerb": "delete schemas",
+      "consentVerb": "delete ALL matching schemas in this project",
       "tsMethod": "deleteSchemas",
       "pyApi": "api_client.delete_schemas",
       "capability": "entities",
@@ -2557,6 +3023,10 @@
         "query_origin"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getSchemas",
       "pyApi": "api_client.get_schemas",
       "capability": "entities",
@@ -2582,8 +3052,12 @@
       "template": "/api/app/projects/{project_id}/schemas",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "schemas",
-      "consentVerb": "update several schemas",
+      "consentVerb": "update {n} schemas",
       "tsMethod": "updateSchemasBulk",
       "pyApi": "api_client.update_schemas_bulk",
       "capability": "entities",
@@ -2603,8 +3077,12 @@
       "template": "/api/app/projects/{project_id}/schemas",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "schemas",
-      "consentVerb": "create several schemas",
+      "consentVerb": "create {n} schemas",
       "tsMethod": "createSchemasBulk",
       "pyApi": "api_client.create_schemas_bulk",
       "capability": "entities",
@@ -2624,8 +3102,12 @@
       "template": "/api/app/projects/{project_id}/schemas/{param}",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "schemas",
-      "consentVerb": "delete schemas",
+      "consentVerb": "delete a schema group",
       "tsMethod": "deleteSchemas",
       "pyApi": "workspace.delete_schemas",
       "capability": "entities",
@@ -2648,6 +3130,10 @@
         "query_origin"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getSchema",
       "pyApi": "api_client.get_schema",
       "capability": "entities",
@@ -2679,8 +3165,12 @@
       "template": "/api/app/projects/{project_id}/schemas/{param}/{param}",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "schemas",
-      "consentVerb": "delete schemas",
+      "consentVerb": "delete one schema",
       "tsMethod": "deleteSchemas",
       "pyApi": "api_client.delete_schemas",
       "capability": "entities",
@@ -2700,6 +3190,10 @@
       "template": "/api/app/projects/{project_id}/schemas/{param}/{param}",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "schemas",
       "consentVerb": "update a schema",
       "tsMethod": "updateSchema",
@@ -2721,6 +3215,10 @@
       "template": "/api/app/projects/{project_id}/schemas/{param}/{param}",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "schemas",
       "consentVerb": "create a schema",
       "tsMethod": "createSchema",
@@ -2742,6 +3240,10 @@
       "template": "/api/app/projects/{project_id}/webhooks/",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "listWebhooks",
       "pyApi": "api_client.list_webhooks",
       "capability": "entities",
@@ -2761,6 +3263,10 @@
       "template": "/api/app/projects/{project_id}/webhooks/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "webhooks",
       "consentVerb": "create a webhook",
       "tsMethod": "createWebhook",
@@ -2782,6 +3288,10 @@
       "template": "/api/app/projects/{project_id}/webhooks/test/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "webhooks",
       "consentVerb": "send a test webhook",
       "tsMethod": "testWebhook",
@@ -2803,6 +3313,10 @@
       "template": "/api/app/projects/{project_id}/webhooks/{param}/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "webhooks",
       "consentVerb": "delete a webhook",
       "tsMethod": "deleteWebhook",
@@ -2824,6 +3338,10 @@
       "template": "/api/app/projects/{project_id}/webhooks/{param}/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "webhooks",
       "consentVerb": "update a webhook",
       "tsMethod": "updateWebhook",
@@ -2845,6 +3363,10 @@
       "template": "/api/app/projects/{project_id}/workspaces/public",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "resolveWorkspaceId",
       "pyApi": "api_client.resolve_workspace_id",
       "capability": "auth",
@@ -2885,11 +3407,15 @@
     {
       "method": "GET",
       "family": "app",
-      "template": "/api/app/projects/{project_id}/workspaces/{int}/feature-flags/",
+      "template": "/api/app/projects/{project_id}/workspaces/{workspace_id}/feature-flags/",
       "paramNames": [
         "include_archived"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "listFeatureFlags",
       "pyApi": "api_client.list_feature_flags",
       "capability": "entities",
@@ -2906,9 +3432,13 @@
     {
       "method": "POST",
       "family": "app",
-      "template": "/api/app/projects/{project_id}/workspaces/{int}/feature-flags/",
+      "template": "/api/app/projects/{project_id}/workspaces/{workspace_id}/feature-flags/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "feature_flags",
       "consentVerb": "create a feature flag",
       "tsMethod": "createFeatureFlag",
@@ -2927,9 +3457,13 @@
     {
       "method": "DELETE",
       "family": "app",
-      "template": "/api/app/projects/{project_id}/workspaces/{int}/feature-flags/{param}/",
+      "template": "/api/app/projects/{project_id}/workspaces/{workspace_id}/feature-flags/{param}/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "feature_flags",
       "consentVerb": "delete a feature flag",
       "tsMethod": "deleteFeatureFlag",
@@ -2948,9 +3482,13 @@
     {
       "method": "GET",
       "family": "app",
-      "template": "/api/app/projects/{project_id}/workspaces/{int}/feature-flags/{param}/",
+      "template": "/api/app/projects/{project_id}/workspaces/{workspace_id}/feature-flags/{param}/",
       "paramNames": [],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getFeatureFlag",
       "pyApi": "workspace.get_feature_flag",
       "capability": "entities",
@@ -2967,9 +3505,13 @@
     {
       "method": "PUT",
       "family": "app",
-      "template": "/api/app/projects/{project_id}/workspaces/{int}/feature-flags/{param}/",
+      "template": "/api/app/projects/{project_id}/workspaces/{workspace_id}/feature-flags/{param}/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "feature_flags",
       "consentVerb": "update a feature flag",
       "tsMethod": "updateFeatureFlag",
@@ -2988,9 +3530,13 @@
     {
       "method": "DELETE",
       "family": "app",
-      "template": "/api/app/projects/{project_id}/workspaces/{int}/feature-flags/{param}/archive/",
+      "template": "/api/app/projects/{project_id}/workspaces/{workspace_id}/feature-flags/{param}/archive/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "feature_flags",
       "consentVerb": "restore an archived feature flag",
       "tsMethod": "restoreFeatureFlag",
@@ -3009,9 +3555,13 @@
     {
       "method": "POST",
       "family": "app",
-      "template": "/api/app/projects/{project_id}/workspaces/{int}/feature-flags/{param}/archive/",
+      "template": "/api/app/projects/{project_id}/workspaces/{workspace_id}/feature-flags/{param}/archive/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "feature_flags",
       "consentVerb": "archive a feature flag",
       "tsMethod": "archiveFeatureFlag",
@@ -3030,9 +3580,13 @@
     {
       "method": "POST",
       "family": "app",
-      "template": "/api/app/projects/{project_id}/workspaces/{int}/feature-flags/{param}/duplicate/",
+      "template": "/api/app/projects/{project_id}/workspaces/{workspace_id}/feature-flags/{param}/duplicate/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "feature_flags",
       "consentVerb": "duplicate a feature flag",
       "tsMethod": "duplicateFeatureFlag",
@@ -3051,12 +3605,16 @@
     {
       "method": "GET",
       "family": "app",
-      "template": "/api/app/projects/{project_id}/workspaces/{int}/feature-flags/{param}/history/",
+      "template": "/api/app/projects/{project_id}/workspaces/{workspace_id}/feature-flags/{param}/history/",
       "paramNames": [
         "page",
         "page_size"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "tsMethod": "getFlagHistory",
       "pyApi": "api_client.get_flag_history",
       "capability": "entities",
@@ -3073,9 +3631,13 @@
     {
       "method": "PUT",
       "family": "app",
-      "template": "/api/app/projects/{project_id}/workspaces/{int}/feature-flags/{param}/test-users/",
+      "template": "/api/app/projects/{project_id}/workspaces/{workspace_id}/feature-flags/{param}/test-users/",
       "paramNames": [],
       "access": "write",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
       "writeClass": "feature_flags",
       "consentVerb": "set a feature flag's test users",
       "tsMethod": "setFlagTestUsers",
@@ -3093,43 +3655,6 @@
     },
     {
       "method": "POST",
-      "family": "app",
-      "template": "/api/app/workspaces/{int}/custom_events/",
-      "paramNames": [],
-      "access": "write",
-      "writeClass": "governance",
-      "consentVerb": "create a custom event",
-      "tsMethod": "createCustomEvent",
-      "pyApi": "api_client.create_custom_event",
-      "capability": "entities",
-      "vectorCount": 1
-    },
-    {
-      "method": "GET",
-      "family": "app",
-      "template": "/api/app/workspaces/{int}/dashboards",
-      "paramNames": [],
-      "access": "read",
-      "tsMethod": "listDashboards",
-      "pyApi": "api_client.list_dashboards",
-      "capability": "entities",
-      "vectorCount": 1
-    },
-    {
-      "method": "DELETE",
-      "family": "app",
-      "template": "/api/app/workspaces/{int}/data-definitions/events/",
-      "paramNames": [],
-      "access": "write",
-      "writeClass": "lexicon",
-      "consentVerb": "delete a custom event",
-      "tsMethod": "deleteCustomEvent",
-      "pyApi": "api_client.delete_custom_event",
-      "capability": "entities",
-      "vectorCount": 1
-    },
-    {
-      "method": "POST",
       "family": "engage",
       "template": "/api/query/engage/",
       "paramNames": [
@@ -3137,6 +3662,11 @@
         "query_origin"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "query",
+        "body"
+      ],
       "tsMethod": "exportProfilesPage",
       "pyApi": "api_client.export_profiles_page",
       "capability": "engage",
@@ -3159,6 +3689,11 @@
         "query_origin"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "query",
+        "body"
+      ],
       "tsMethod": "engageStats",
       "pyApi": "api_client.engage_stats",
       "capability": "engage",
@@ -3175,6 +3710,10 @@
         "query_type"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "query"
+      ],
       "tsMethod": "querySavedFlows",
       "pyApi": "api_client.query_saved_flows",
       "capability": "funnels",
@@ -3197,6 +3736,10 @@
         "workspace_id"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "body"
+      ],
       "tsMethod": "arbFunnelsQuery",
       "pyApi": "api_client.arb_funnels_query",
       "capability": "funnels",
@@ -3211,6 +3754,10 @@
         "query_origin"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "query"
+      ],
       "tsMethod": "listCohorts",
       "pyApi": "api_client.list_cohorts",
       "capability": "cohorts",
@@ -3226,6 +3773,10 @@
         "query_origin"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "query"
+      ],
       "tsMethod": "listPerEventProperties",
       "pyApi": "api_client.list_per_event_properties",
       "capability": "entities",
@@ -3245,6 +3796,10 @@
         "unit"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "query"
+      ],
       "tsMethod": "eventCounts",
       "pyApi": "api_client.event_counts",
       "capability": "entities",
@@ -3264,6 +3819,10 @@
         "workspace_id"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "query"
+      ],
       "tsMethod": "getEvents",
       "pyApi": "api_client.get_events",
       "capability": "discovery",
@@ -3286,6 +3845,10 @@
         "values"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "query"
+      ],
       "tsMethod": "propertyCounts",
       "pyApi": "api_client.property_counts",
       "capability": "discovery",
@@ -3301,6 +3864,10 @@
         "query_origin"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "query"
+      ],
       "tsMethod": "getEventProperties",
       "pyApi": "api_client.get_event_properties",
       "capability": "discovery",
@@ -3326,6 +3893,10 @@
         "query_origin"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "query"
+      ],
       "tsMethod": "getPropertyValues",
       "pyApi": "api_client.get_property_values",
       "capability": "discovery",
@@ -3342,6 +3913,10 @@
         "type"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "query"
+      ],
       "tsMethod": "getTopEvents",
       "pyApi": "api_client.get_top_events",
       "capability": "discovery",
@@ -3359,10 +3934,22 @@
         "to_date"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "query"
+      ],
       "tsMethod": "funnel",
       "pyApi": "api_client.funnel",
       "capability": "funnels",
-      "vectorCount": 7
+      "vectorCount": 13,
+      "aliases": [
+        {
+          "pyApi": "api_client.query_saved_report",
+          "tsMethod": "querySavedReport",
+          "capability": "bookmarks",
+          "vectorCount": 6
+        }
+      ]
     },
     {
       "method": "GET",
@@ -3373,6 +3960,10 @@
         "query_origin"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "query"
+      ],
       "tsMethod": "listFunnels",
       "pyApi": "api_client.list_funnels",
       "capability": "funnels",
@@ -3385,13 +3976,18 @@
       "paramNames": [
         "bookmark_id",
         "project_id",
-        "query_origin"
+        "query_origin",
+        "workspace_id"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "query"
+      ],
       "tsMethod": "querySavedReport",
       "pyApi": "api_client.query_saved_report",
       "capability": "bookmarks",
-      "vectorCount": 6
+      "vectorCount": 12
     },
     {
       "method": "POST",
@@ -3402,6 +3998,10 @@
         "workspace_id"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "body"
+      ],
       "tsMethod": "insightsQuery",
       "pyApi": "api_client.insights_query",
       "capability": "bookmarks",
@@ -3412,6 +4012,7 @@
       "family": "query",
       "template": "/api/query/retention",
       "paramNames": [
+        "bookmark_id",
         "born_event",
         "born_where",
         "event",
@@ -3425,10 +4026,22 @@
         "unit"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "query"
+      ],
       "tsMethod": "retention",
       "pyApi": "api_client.retention",
       "capability": "retention",
-      "vectorCount": 10
+      "vectorCount": 11,
+      "aliases": [
+        {
+          "pyApi": "api_client.query_saved_report",
+          "tsMethod": "querySavedReport",
+          "capability": "bookmarks",
+          "vectorCount": 1
+        }
+      ]
     },
     {
       "method": "GET",
@@ -3445,6 +4058,10 @@
         "workspace_id"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "query"
+      ],
       "tsMethod": "frequency",
       "pyApi": "api_client.frequency",
       "capability": "retention",
@@ -3466,6 +4083,10 @@
         "where"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "query"
+      ],
       "tsMethod": "segmentation",
       "pyApi": "api_client.segmentation",
       "capability": "segmentation",
@@ -3486,6 +4107,10 @@
         "workspace_id"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "query"
+      ],
       "tsMethod": "segmentationAverage",
       "pyApi": "api_client.segmentation_average",
       "capability": "segmentation",
@@ -3507,6 +4132,10 @@
         "workspace_id"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "query"
+      ],
       "tsMethod": "segmentationNumeric",
       "pyApi": "api_client.segmentation_numeric",
       "capability": "segmentation",
@@ -3528,6 +4157,10 @@
         "workspace_id"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "query"
+      ],
       "tsMethod": "segmentationSum",
       "pyApi": "api_client.segmentation_sum",
       "capability": "segmentation",
@@ -3542,29 +4175,94 @@
         "workspace_id"
       ],
       "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "body"
+      ],
       "tsMethod": "activityFeed",
       "pyApi": "api_client.activity_feed",
       "capability": "bookmarks",
       "vectorCount": 26
+    }
+  ],
+  "deniedRoutes": [
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/lookup-tables/upload-url/",
+      "paramNames": [
+        "content-type"
+      ],
+      "access": "read",
+      "pin": "project",
+      "pinSources": [
+        "path"
+      ],
+      "tsMethod": "getLookupUploadUrl",
+      "pyApi": "api_client.get_lookup_upload_url",
+      "capability": "data-governance",
+      "vectorCount": 7,
+      "aliases": [
+        {
+          "pyApi": "workspace.get_lookup_upload_url",
+          "tsMethod": "getLookupUploadUrl",
+          "capability": "data-governance",
+          "vectorCount": 3
+        }
+      ],
+      "denyReason": "Mints a signed off-host PUT URL. Handing that to a page would create an unbounded upload capability outside the regional host set and outside the allowlist, and the lookup_tables write class is not grantable to page principals in v1. The route stays visible here, out of `rows`, so the handler can name what it refused instead of failing as an unknown route."
+    },
+    {
+      "method": "POST",
+      "family": "app",
+      "template": "/api/app/workspaces/{workspace_id}/custom_events/",
+      "paramNames": [],
+      "access": "write",
+      "pin": "workspace",
+      "pinSources": [
+        "path"
+      ],
+      "writeClass": "custom_events",
+      "consentVerb": "create a custom event",
+      "tsMethod": "createCustomEvent",
+      "pyApi": "api_client.create_custom_event",
+      "capability": "entities",
+      "vectorCount": 1,
+      "denyReason": "Workspace-only variant with no project segment and no project_id param or body field, so spec 01 §5.5 has nothing to pin it to — a page could reach another project's workspace through it. api_client.create_custom_event keeps its project-scoped row, POST /api/app/projects/{project_id}/custom_events/, so nothing is lost."
     },
     {
       "method": "GET",
-      "family": "query",
-      "template": "/api/query/{param}",
-      "paramNames": [
-        "bookmark_id",
-        "from_date",
-        "funnel_id",
-        "project_id",
-        "query_origin",
-        "to_date",
-        "workspace_id"
-      ],
+      "family": "app",
+      "template": "/api/app/workspaces/{workspace_id}/dashboards",
+      "paramNames": [],
       "access": "read",
-      "tsMethod": "querySavedReport",
-      "pyApi": "api_client.query_saved_report",
-      "capability": "bookmarks",
-      "vectorCount": 13
+      "pin": "workspace",
+      "pinSources": [
+        "path"
+      ],
+      "tsMethod": "listDashboards",
+      "pyApi": "api_client.list_dashboards",
+      "capability": "entities",
+      "vectorCount": 1,
+      "denyReason": "Workspace-only variant with no project segment and no project_id param or body field, so spec 01 §5.5 has nothing to pin it to. api_client.list_dashboards keeps its project-scoped row, GET /api/app/projects/{project_id}/dashboards."
+    },
+    {
+      "method": "DELETE",
+      "family": "app",
+      "template": "/api/app/workspaces/{workspace_id}/data-definitions/events/",
+      "paramNames": [],
+      "access": "write",
+      "pin": "workspace",
+      "pinSources": [
+        "path"
+      ],
+      "writeClass": "lexicon",
+      "consentVerb": "delete a custom event",
+      "tsMethod": "deleteCustomEvent",
+      "pyApi": "api_client.delete_custom_event",
+      "capability": "entities",
+      "vectorCount": 1,
+      "denyReason": "Workspace-only variant with no project segment and no project_id param or body field, so spec 01 §5.5 has nothing to pin it to — and it is a delete. api_client.delete_custom_event keeps its project-scoped row, DELETE /api/app/projects/{project_id}/data-definitions/events/."
     }
   ]
 }
