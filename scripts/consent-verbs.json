@@ -1,5 +1,5 @@
 {
-  "note": "tsMethod -> the imperative phrase the host consent dialog renders as `<label> wants to <verb phrase> in project <name>` (heads spec 01 \u00a77.2). Plain language, no jargon the dialog does not already show, no trailing punctuation. A `{n}` placeholder is filled by the consent composer from the request body's `ids` array length and is only permitted on bulk methods. These are METHOD-level verbs; when the apis sharing one route disagree, scripts/route-verbs.json must give the route its own phrase, and scripts/generate-bridge-allowlist.mjs fails until it does.",
+  "note": "tsMethod -> the imperative phrase the host consent dialog renders as `<label> wants to <verb phrase> in project <name>` (heads spec 01 §7.2). Plain language, no jargon the dialog does not already show, no trailing punctuation. A `{n}` placeholder is filled by the consent composer from the request body's `ids` array length and is only permitted on bulk methods. These are METHOD-level verbs; when the apis sharing one route disagree, scripts/route-verbs.json must give the route its own phrase, and scripts/generate-bridge-allowlist.mjs fails until it does.",
   "verbs": {
     "addReportToDashboard": "add a report to a dashboard",
     "archiveExperiment": "archive an experiment",

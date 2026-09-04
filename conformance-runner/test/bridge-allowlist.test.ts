@@ -247,7 +247,11 @@ describe("bridge-allowlist row invariants (spec 01 §5.3, §7.2)", () => {
 
   it("has exactly one row per (method, family, template), sorted", () => {
     const keys = allowlist.rows.map(
-      (row) => `${row.family} ${row.template} ${row.method}`,
+      // NUL separator, written as an escape so this file stays plain
+      // text: it sorts below every printable character, so comparing
+      // the joined keys is exactly comparing the (family, template,
+      // method) tuples the generator sorted by.
+      (row) => `${row.family}\u0000${row.template}\u0000${row.method}`,
     );
     expect(new Set(keys).size).toBe(keys.length);
     expect(keys).toStrictEqual([...keys].sort());
@@ -550,6 +554,17 @@ describe("bridge-allowlist denied routes (spec 01 §5.3)", () => {
       )
       .map((row) => `${row.method} ${row.template}`);
     expect(leaked).toStrictEqual([]);
+  });
+
+  it("denies exactly the routes it is supposed to, by name", () => {
+    // Identity, not just count: a refusal quietly disappearing (or a new
+    // route quietly appearing in the denied set) is the failure mode.
+    const denied = allowlist.deniedRoutes
+      .map((row) => `${row.method} ${row.family} ${row.template}`)
+      .sort();
+    expect(denied).toStrictEqual([
+      "GET app /api/app/projects/{project_id}/data-definitions/lookup-tables/upload-url/",
+    ]);
   });
 
   it("gives every denied route a written justification", () => {

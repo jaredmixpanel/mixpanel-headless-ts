@@ -2,10 +2,10 @@
   "note": "GENERATED FILE — DO NOT EDIT. Regenerate with `npm run generate:bridge-allowlist`. `generatedAt` and `headlessCommit` are informational provenance only: they move on every run, are excluded from the freshness comparison, and nothing may make a policy decision from them. The load-bearing stamps are `corpusCommit`, `rulesSha256`, `verbsSha256` and `routeVerbsSha256`. `rows` is the matchable table; `deniedRoutes` are routes the corpus records that the rules refuse to admit — they are never matchable, and exist so a refusal can be named. A `{n}` in a `consentVerb` is filled by the consent composer from the request body's `ids` array length; it only ever appears on bulk routes.",
   "schema": 1,
   "corpusCommit": "c9991d1eed03fec1830b6e460091724b9263b8aa",
-  "generatedAt": "2026-09-04T03:14:40.980Z",
-  "headlessCommit": "bfc69129ed69c92e5bd315f31e97d81d638763b4",
-  "rulesSha256": "f9e915650148c324d8a963c8cbb7b4e253835f10494dd36e65d25a34fe534c65",
-  "verbsSha256": "b061f37e1150f534a6cc6d84188637d200f5897a69cee95284cfac60467d4288",
+  "generatedAt": "2026-09-04T03:27:56.736Z",
+  "headlessCommit": "bfcebb37fc143e4a5bef82e44dbaa223a74d0dd4",
+  "rulesSha256": "c1918a46e7958cca081f67f5cc85afa198bbcb21de018c45a87a7edebac5ec95",
+  "verbsSha256": "3df22c986ad813fabe8e240fdab7d21d010f6b1f8b6bc6f2ee4020fa981467e9",
   "routeVerbsSha256": "eb9d8b5d30044d5687d229f43f0eb3b3645c39fdecae34f44d1028c02c9e43b5",
   "rows": [
     {
