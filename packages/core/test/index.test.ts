@@ -14,6 +14,7 @@ import {
   CORE_PACKAGE_NAME,
   Workspace,
   validateBookmark,
+  validateBookmarkParamsSchema,
   defaultLabelFn,
   selectorLabelFn,
   urlNormalizer,
@@ -33,5 +34,25 @@ describe("@mixpanel-headless/core package skeleton", () => {
     expect(typeof defaultLabelFn).toBe("function");
     expect(typeof selectorLabelFn).toBe("function");
     expect(typeof urlNormalizer).toBe("function");
+  });
+
+  it("exports the network-free bookmark params schema gate", () => {
+    // Consumers building a dry-run / proposal layer over `Workspace`
+    // (e.g. `@mixpanel/mixpanelyst`) run the schema gate without a
+    // session; before this line they had to deep-import
+    // `workspace-members/bookmarks-cohorts.js`. Behaviour is unchanged:
+    // an empty payload is clean, a malformed `sorting` block (the same
+    // fixture `crud-bookmarks-cohorts.test.ts` rejects pre-wire) is not.
+    expect(typeof validateBookmarkParamsSchema).toBe("function");
+    expect(validateBookmarkParamsSchema({}, null, { partial: true })).toEqual(
+      [],
+    );
+    const malformedSorting = {
+      sorting: { bar: { sortBy: "value", segmentation: "value" } },
+    };
+    expect(
+      validateBookmarkParamsSchema(malformedSorting, null, { partial: true })
+        .length,
+    ).toBeGreaterThan(0);
   });
 });
