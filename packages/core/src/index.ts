@@ -72,5 +72,12 @@ export * from "./accounts/index.js";
 export { Workspace } from "./workspace.js";
 export type { WorkspaceOptions } from "./workspace.js";
 
+// Authored surface for the heads platform (spec 02 §10.1). `bookmarks/`
+// is otherwise `_internal` and deliberately unexported (see that barrel's
+// header); `inferBookmarkType` is the one member downstream asked for by
+// name, so it gets an explicit line rather than opening the module up —
+// the same posture `validateBookmark` takes for `query/` above.
+export { inferBookmarkType } from "./bookmarks/infer-type.js";
+
 /** Package name constant exercised by the skeleton smoke test. */
 export const CORE_PACKAGE_NAME = "@mixpanel-headless/core";

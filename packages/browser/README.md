@@ -20,6 +20,26 @@ APIs are CORS-open with bearer auth in all regions, so the full core
    TYPE only — the gated factories are the only construction paths
    (pair-B review, `b9-reviewB-resolution.md`).
 
+## Entry-point surface
+
+The entry point re-exports the core **query vocabulary** as runtime values —
+`Filter`, `Metric`, `Formula`, `GroupBy`, `FunnelStep`, `FlowStep`,
+`RetentionEvent`, `TimeComparison`, `FrequencyBreakdown`, the inline-cohort
+classes (`CohortDefinition` / `CohortCriteria` / `CohortBreakdown`), and
+`validateBookmark`. A bundled browser build exposes only what this barrel
+exports, and a page that re-queries when a control moves has to rebuild its
+params in the page. These are the pure `types/query-params` dataclasses: they
+hold no session and reach no transport, so unlike `Workspace` (TYPE only,
+above) exporting them as values cannot bypass the service-account or export
+gates. `test/query-vocabulary.test.ts` pins that property and fails if core
+grows a builder this barrel does not forward.
+
+Exactly one entity model is forwarded alongside it: `CreateAnnotationParams`,
+because annotations is the only write class grantable to a page in v1 and
+`createAnnotation` takes an instance. The other ~119 entity models stay off
+this barrel; another `Create*Params` is added only when its write class
+becomes grantable.
+
 ## PKCE-in-browser status (D2 spike, b9-packets.md §4)
 
 **PKCE-in-browser ships ENABLED.** DCR accepts third-party https redirect

@@ -1,0 +1,8 @@
+// Repo-level tests (`tests/`) belong to no workspace, so `npm run
+// typecheck --workspaces` never sees them. This project pulls them under
+// the same strict base as everything else; `npm run typecheck` runs it
+// after the workspace pass.
+{
+  "extends": "./tsconfig.base.json",
+  "include": ["tests"]
+}
