@@ -1,0 +1,205 @@
+{
+  "note": "Data (not code) for scripts/generate-bridge-allowlist.mjs. Transcribed from the heads platform spec of record, docs/specs/heads/01-lease-and-bridge.md §5.2-§5.3 (mixpanel-desktop-app). Everything here is an explicit table: the generator does no fuzzy matching and fails hard on anything these tables do not cover.",
+  "admittedHosts": {
+    "https://mixpanel.com": "us",
+    "https://eu.mixpanel.com": "eu",
+    "https://in.mixpanel.com": "in"
+  },
+  "exportHosts": {
+    "https://data.mixpanel.com": "us",
+    "https://data-eu.mixpanel.com": "eu",
+    "https://data-in.mixpanel.com": "in"
+  },
+  "families": [
+    { "pathPrefix": "/api/query/engage", "family": "engage" },
+    { "pathPrefix": "/api/query/", "family": "query" },
+    { "pathPrefix": "/api/app/", "family": "app" }
+  ],
+  "pathPlaceholders": {
+    "note": "How a path segment becomes a placeholder (spec 01 §5.3 step 2), in this order: session project_id -> {project_id}; a value carried under a closedEnumKey -> LITERAL, because the api's parameter is a fixed set of route names and a placeholder there would wildcard the family; a value carried under a keyedPlaceholder key (or that placeholder's sessionField) -> that named placeholder, so §5.5 has something to pin; any other call.input value -> {param}; an all-digit leftover -> {int}; everything else literal. Keyed lookups read call.setup[*].input as well as call.input, because a client can learn an identifier from a setup call rather than from the measured call's own arguments. Which forms actually fire differs per placeholder, so each entry below records its own coverage.",
+    "closedEnumKeys": ["bookmark_type", "report_type"],
+    "keyedPlaceholders": [
+      {
+        "placeholder": "{organization_id}",
+        "inputKeys": ["organization_id", "org_id"],
+        "note": "The direct call.input form is what mints this placeholder today: workspace.set_business_context passes organization_id=100 and the route is PUT /api/app/organizations/{organization_id}/business-context. `org_id` is an accepted alias that the pinned corpus never uses."
+      },
+      {
+        "placeholder": "{workspace_id}",
+        "inputKeys": ["workspace_id"],
+        "sessionField": "workspace_id",
+        "note": "In the pinned corpus ONLY the call.setup[*].input form resolves a workspace id — the client learns it from api_client.set_workspace_id, never from the measured call's own arguments. The direct call.input and `sessionField` forms currently match nothing here and are kept because a corpus refresh may start carrying them."
+      }
+    ],
+    "familyRootMustBeLiteral": true
+  },
+  "pinRules": {
+    "note": "Which identifier spec 01 §5.5 can hold a route to. §5.5 pins EVERY occurrence of a project identifier, and the query family carries its project id as a query param or a top-level JSON body field rather than as a path segment — so evidence is taken from all three places, not just the template. `kinds` is in precedence order (first with any evidence wins) and each row also records `pinSources`, the places that identifier actually appears, so the handler knows what to check. A workspace-scoped route pins to its project when it carries project evidence and to the workspace otherwise; it is never pin-less, and the generator fails if one ever is. Only a route with no bindable identifier at all — the account-level reads GET /api/app/me and GET /api/app/projects/metadata/index — is pin \"none\".",
+    "kinds": [
+      {
+        "pin": "project",
+        "placeholder": "{project_id}",
+        "fields": ["project_id"]
+      },
+      {
+        "pin": "organization",
+        "placeholder": "{organization_id}",
+        "fields": ["organization_id", "org_id"]
+      },
+      {
+        "pin": "workspace",
+        "placeholder": "{workspace_id}",
+        "fields": ["workspace_id"]
+      }
+    ],
+    "default": "none"
+  },
+  "consent": {
+    "note": "Spec 01 §7.2. `countPlaceholder` is filled by the desktop's consent composer from the request body's `ids` array length; the generator only validates that it appears solely on bulk methods, identified by the prefix/suffix below.",
+    "countPlaceholder": "{n}",
+    "bulkMethodPrefix": "bulk",
+    "bulkMethodSuffix": "Bulk"
+  },
+  "deniedRoutes": [
+    {
+      "method": "GET",
+      "family": "app",
+      "template": "/api/app/projects/{project_id}/data-definitions/lookup-tables/upload-url/",
+      "reason": "Mints a signed off-host PUT URL. Handing that to a page would create an unbounded upload capability outside the regional host set and outside the allowlist, and the lookup_tables write class is not grantable to page principals in v1. The route stays visible here, out of `rows`, so the handler can name what it refused instead of failing as an unknown route."
+    }
+  ],
+  "excludedApis": {
+    "api_client.app_request": "Generic escape hatch (arbitrary method+path); recorded paths are a mix of real routes and test literals; every real route it hits is covered by its own method's row. Spec 01 §5.3 step 1 excludes it by name.",
+    "api_client.request": "Generic escape hatch (arbitrary method+path); recorded paths are a mix of real routes and test literals; every real route it hits is covered by its own method's row.",
+    "pagination.paginate_all": "Generic paginator over a caller-supplied path; 73 of its 82 recorded interactions use the synthetic test path /api/app/projects/12345/items. The real routes it walks are covered by the apis that own them (e.g. api_client.list_dashboards).",
+    "api_client.export_events": "Export family. Its only host is https://data.mixpanel.com, which spec 01 §5.2 never admits — the bridge refuses export before the network.",
+    "replays.fetch_files": "Session-replay CDN walk (https://cdn.test in the corpus). Admitted at runtime through a response-derived grant minted from a sign_replays 200 (spec 01 §5.4), never through a route template.",
+    "api_client.upload_to_signed_url": "PUT to a signed object-store URL (storage.googleapis.com / storage.example.com). Outside the regional host set entirely; the same derived-grant pattern as fetch_files applies, not the allowlist.",
+    "oauth_flow.refresh_tokens": "Auth plane: POST /oauth/token/, not /api/query/ or /api/app/, so spec 01 §5.2 rejects the path. Main owns the token and refreshes it itself (§5.6); the page never performs this call.",
+    "region_probe.probe_region": "Auth plane: runs before a lease exists, and is recorded only against the base_url override host https://test.invalid. Its real route, GET /api/app/me, is in the table via api_client.resolve_workspace_id.",
+    "api_client.resolve_short_link": "GET /s/<code> — outside the /api/query/ and /api/app/ path space spec 01 §5.2 admits."
+  },
+  "coverageExceptions": {
+    "api_client.maybe_scoped_path": "No wire vector in the pinned corpus. It is the non-raising sibling of api_client.require_scoped_path (returns null instead of raising when the project has no workspace) and resolves the same route, GET /api/app/projects/{project_id}/workspaces/public, which require_scoped_path already puts in the table.",
+    "workspace.me": "No wire vector in the pinned corpus. It is the Workspace facade over GET /api/app/me, which api_client.resolve_workspace_id already puts in the table."
+  },
+  "access": {
+    "note": "Classification is by the PYTHON method name (the segment after the last dot), never the HTTP verb — spec 01 §5.3 step 4. readPrefixes/writePrefixes are transcribed from the spec; readMethods/writeMethods are exact-name rows for corpus apis no spec prefix reaches. A name matching both a read and a write rule is a generator error, as is a name matching neither.",
+    "readPrefixes": [
+      "get_",
+      "list_",
+      "query",
+      "fetch_",
+      "stream_",
+      "segmentation",
+      "funnel",
+      "retention",
+      "frequency",
+      "event_counts",
+      "property_counts",
+      "activity_feed",
+      "top_events",
+      "events",
+      "properties",
+      "property_values",
+      "subproperties",
+      "funnels",
+      "cohorts",
+      "lexicon_",
+      "schema_graph",
+      "me",
+      "projects",
+      "workspaces",
+      "resolve_workspace_id",
+      "download_lookup_table",
+      "validate_custom_property",
+      "validate_alerts_for_bookmark",
+      "preview_deletion_filters",
+      "sign_replay",
+      "list_replays",
+      "events_for_replay",
+      "fetch_replay",
+      "replays_for_user",
+      "analyze_replay"
+    ],
+    "writePrefixes": [
+      "create_",
+      "update_",
+      "delete_",
+      "bulk_",
+      "set_",
+      "launch_",
+      "conclude_",
+      "decide_",
+      "archive_",
+      "restore_",
+      "duplicate_",
+      "upload_",
+      "mark_",
+      "init_",
+      "replace_",
+      "cancel_",
+      "favorite_",
+      "unfavorite_",
+      "pin_",
+      "unpin_",
+      "finalize_",
+      "add_report_to_dashboard",
+      "remove_report_from_dashboard",
+      "run_audit",
+      "test_webhook",
+      "test_alert",
+      "clear_business_context"
+    ],
+    "readMethods": {
+      "arb_funnels_query": "POST /api/query/arb_funnels — an ad-hoc funnel query; reads only.",
+      "bookmark_linked_dashboard_ids": "GET of the dashboards a saved report is on.",
+      "engage_stats": "POST /api/query/engage/stats — a profile-count query; reads only.",
+      "export_lexicon": "GET /api/app/.../data-definitions/export/ — downloads the Lexicon; unrelated to the export event host.",
+      "export_profiles": "POST /api/query/engage/ — pages profiles off the Engage query host; reads only.",
+      "export_profiles_page": "One page of the same Engage profile read.",
+      "insights_query": "POST /api/query/insights — an ad-hoc Insights query; reads only.",
+      "require_scoped_path": "GET of the project's public workspace, to build a workspace-scoped path.",
+      "resolve_workspace": "GET of the project's public workspace."
+    },
+    "writeMethods": {
+      "register_lookup_table": "POST /api/app/.../data-definitions/lookup-tables/ — creates the lookup-table record after an upload."
+    }
+  },
+  "writeClasses": {
+    "note": "First match wins over the route template, so the specific rows come before the general ones. Classes are spec 01 §5.3 step 5; the `contains` strings are the shapes the corpus actually records (the App API mixes hyphens and underscores).",
+    "rules": [
+      { "contains": "/dashboards/blueprints", "class": "dashboards" },
+      { "contains": "/alerts/custom", "class": "alerts" },
+      { "contains": "/annotations", "class": "annotations" },
+      { "contains": "/bookmark-urls", "class": "bookmarks" },
+      { "contains": "/bookmarks", "class": "bookmarks" },
+      { "contains": "/cohorts", "class": "cohorts" },
+      { "contains": "/dashboards", "class": "dashboards" },
+      { "contains": "/boards", "class": "dashboards" },
+      { "contains": "/blueprints", "class": "dashboards" },
+      { "contains": "/feature-flags", "class": "feature_flags" },
+      { "contains": "/flags", "class": "feature_flags" },
+      { "contains": "/experiments", "class": "experiments" },
+      { "contains": "/webhooks", "class": "webhooks" },
+      { "contains": "/drop-filters", "class": "governance" },
+      { "contains": "/custom_properties", "class": "custom_properties" },
+      { "contains": "/custom-properties", "class": "custom_properties" },
+      { "contains": "/custom_events", "class": "custom_events" },
+      { "contains": "/custom-events", "class": "custom_events" },
+      { "contains": "/business-context", "class": "governance" },
+      { "contains": "/deletion-requests", "class": "deletion_requests" },
+      { "contains": "/deletion", "class": "deletion_requests" },
+      { "contains": "/lookup-tables", "class": "lookup_tables" },
+      { "contains": "/data-groups", "class": "lookup_tables" },
+      { "contains": "/lookup", "class": "lookup_tables" },
+      { "contains": "/schemas", "class": "schemas" },
+      { "contains": "/data-definitions/schema", "class": "schemas" },
+      { "contains": "/lexicon", "class": "lexicon" },
+      { "contains": "/event-definitions", "class": "lexicon" },
+      { "contains": "/property-definitions", "class": "lexicon" },
+      { "contains": "/tracking", "class": "lexicon" },
+      { "contains": "/data-definitions", "class": "lexicon" }
+    ]
+  }
+}

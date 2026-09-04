@@ -1,0 +1,16 @@
+{
+  "note": "Route-level consent phrases, keyed \"<METHOD> <family> <template>\" (heads spec 01 §7.2). Consent is authorised per ROUTE, not per method: several headless methods can share one route, and the server cannot tell them apart, so the dialog must describe the union of what the route can do. scripts/generate-bridge-allowlist.mjs fails on a write row whose apis map to different method verbs unless that route appears here, fails on an entry here that matches no route, and a `{n}` placeholder is only accepted on bulk methods.",
+  "verbs": {
+    "DELETE app /api/app/projects/{project_id}/data-definitions/events/": "delete a custom event or event definition",
+    "DELETE app /api/app/projects/{project_id}/schemas": "delete ALL matching schemas in this project",
+    "DELETE app /api/app/projects/{project_id}/schemas/{param}": "delete a schema group",
+    "DELETE app /api/app/projects/{project_id}/schemas/{param}/{param}": "delete one schema",
+    "PATCH app /api/app/projects/{project_id}/dashboards/{param}": "change a dashboard: its settings or which reports are on it",
+    "PATCH app /api/app/projects/{project_id}/data-definitions/events/": "update event definitions (possibly several)",
+    "PATCH app /api/app/projects/{project_id}/data-definitions/properties/": "update property definitions (possibly several)",
+    "POST app /api/app/projects/{project_id}/data-definitions/lookup-tables/": "register a lookup table or mark one ready",
+    "POST app /api/app/projects/{project_id}/data-definitions/tags/": "create or delete a Lexicon tag",
+    "PUT app /api/app/organizations/{organization_id}/business-context": "replace this organization's business context",
+    "PUT app /api/app/projects/{project_id}/business-context": "replace or clear this project's business context"
+  }
+}
