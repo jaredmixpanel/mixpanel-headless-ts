@@ -1,19 +1,58 @@
 // Browser-bundle smoke test (R9.1 / D11; two-entry promotion B9-R1,
 // b9-packets.md §2.5).
 //
-// Bundles @mixpanel-headless/core AND @mixpanel-headless/browser for the
-// browser platform with esbuild — one build call, two entries; the build
-// fails if EITHER entry pulls a Node built-in (node:*, fs, path, os) or
-// undici anywhere in its module graph, backstopping the ESLint boundary.
-// packages/browser is a REAL browser build target from B9 on.
+// Part 1 — purity. Bundles @mixpanel-headless/core AND
+// @mixpanel-headless/browser for the browser platform with esbuild — one
+// build call, two entries; the build fails if EITHER entry pulls a Node
+// built-in (node:*, fs, path, os) or undici anywhere in its module graph,
+// backstopping the ESLint boundary. packages/browser is a REAL browser
+// build target from B9 on.
+//
+// Part 2 — the shipped bundle (heads spec 04 §3). Runs the real recipe
+// (scripts/build-browser-bundle.mjs) in memory and asserts that the IIFE
+// installs a `MixpanelHeadless` global carrying the surface the consumer's
+// artifact lane depends on. Catching a rename here — rather than in a
+// vendored copy three repos downstream — is the point.
+//
 // Wired into `npm run check`.
 import { build } from "esbuild";
+import {
+  GLOBAL_NAME,
+  IIFE_FILE,
+  buildBrowserBundles,
+  iifeGlobalKeys,
+} from "./build-browser-bundle.mjs";
 
 const entryPoints = [
   "packages/core/src/index.ts",
   "packages/browser/src/index.ts",
 ];
 
+/** The surface heads spec 04 §3.3 requires the vendored bundle to expose. */
+const REQUIRED_EXPORTS = [
+  "InMemoryCredentialStore",
+  "LocalStorageCredentialStore",
+  "MixpanelHeadlessError",
+  "beginLogin",
+  "completeLogin",
+  "createBrowserWorkspace",
+  "createBrowserWorkspaceFromStore",
+];
+
+/**
+ * Spec 02's canonicalizer has not landed on `main`. Its absence is
+ * reported, not fatal — this list is the handshake, and it should not need
+ * editing on the day the symbol appears.
+ */
+const OPTIONAL_EXPORTS = ["pythonJsonDumpsCanonical"];
+
+const fail = (message, err) => {
+  console.error(message);
+  if (err !== undefined) console.error(err);
+  process.exit(1);
+};
+
+// ── Part 1: purity of both entry points ────────────────────────────────
 try {
   const result = await build({
     entryPoints,
@@ -31,9 +70,51 @@ try {
     `browser-bundle smoke OK: ${entryPoints.join(" + ")} bundled for browser (${bytes} bytes)`,
   );
 } catch (err) {
-  console.error(
+  fail(
     "browser-bundle smoke FAILED: core/browser do not bundle for the browser platform.",
+    err,
   );
-  console.error(err);
-  process.exit(1);
+}
+
+// ── Part 2: the shipped IIFE + ESM recipe ──────────────────────────────
+let bundles;
+try {
+  // `allowDirty` because the gate runs on working trees; provenance is the
+  // committed build's problem, not the smoke's. `write: false` keeps the
+  // gate from touching dist/.
+  bundles = await buildBrowserBundles({ allowDirty: true, write: false });
+} catch (err) {
+  fail("browser-bundle smoke FAILED: the vendoring recipe did not build.", err);
+}
+
+let exported;
+try {
+  exported = iifeGlobalKeys(bundles.iifeText);
+} catch (err) {
+  fail(
+    `browser-bundle smoke FAILED: ${IIFE_FILE} did not install the \`${GLOBAL_NAME}\` global.`,
+    err,
+  );
+}
+
+const missing = REQUIRED_EXPORTS.filter((name) => !exported.includes(name));
+if (missing.length > 0) {
+  fail(
+    `browser-bundle smoke FAILED: \`${GLOBAL_NAME}\` is missing required ` +
+      `export(s): ${missing.join(", ")}. The consumer's artifact lane ` +
+      "(heads spec 04 §3.3) depends on these names.",
+  );
+}
+
+const sizes = bundles.artifacts
+  .map((a) => `${a.name} ${(a.size / 1024).toFixed(1)} KB min`)
+  .join(", ");
+console.log(
+  `browser-bundle recipe OK: \`${GLOBAL_NAME}\` exposes ${exported.length} exports ` +
+    `(all ${REQUIRED_EXPORTS.length} required present); ${sizes}`,
+);
+for (const name of OPTIONAL_EXPORTS) {
+  console.log(
+    `browser-bundle recipe: optional export \`${name}\` ${exported.includes(name) ? "PRESENT" : "not present yet (not fatal)"}`,
+  );
 }
