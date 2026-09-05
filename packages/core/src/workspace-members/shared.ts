@@ -48,6 +48,21 @@ export function native(raw: unknown): unknown {
 }
 
 /**
+ * {@link native} for payloads carrying int64 ids: an integer token whose
+ * exact value is not a safe integer becomes a `bigint` instead of a
+ * rounded double. Used by the members that build a `LookupTable`
+ * (its `id` is a negative int64 such as `-8644926364725811123`); the
+ * model's `"int64"` field kind then keeps the `bigint` and `toJSON()`
+ * emits it as-is.
+ *
+ * @param raw - The lossless payload.
+ * @returns The native-valued tree, unsafe integers as `bigint`.
+ */
+export function nativeInt64(raw: unknown): unknown {
+  return toNativeJson(raw as JsonValue, { unsafeIntegers: "bigint" });
+}
+
+/**
  * Render an untrusted value for an error message without echoing it:
  * primitives as `typeof` + a 40-char slice, objects by constructor name
  * only (a caller's whole params bag never lands in a log line).
@@ -116,6 +131,58 @@ export function requireEntityId(field: string, value: unknown): number {
   const received = describeReceived(value);
   throw new ParamValidationError(
     `Invalid ${field}: expected a positive integer id, received ${received}.`,
+    "RL6_INVALID_ID",
+    { field, received },
+  );
+}
+
+/**
+ * The lookup-table twin of {@link requireEntityId}: a `data_group_id` is
+ * a NON-ZERO int64 (Mixpanel assigns negative ids such as
+ * `-8644926364725811123`, beyond 2^53), so the guard accepts a
+ * `number | bigint` integer of either sign and any magnitude — but
+ * REJECTS a `number` outside the safe-integer range, because such a
+ * value has already been rounded by the time it reaches the facade and
+ * would address the wrong table. The message tells the caller to pass a
+ * `bigint` (or the decimal string through `BigInt(...)`).
+ *
+ * Same code as {@link requireEntityId} (`RL6_INVALID_ID`); the registry
+ * cannot grow on the TS side.
+ *
+ * @param field - The Python parameter name (`data_group_id`).
+ * @param value - The received value, untrusted.
+ * @returns `value`, narrowed to `number | bigint`.
+ * @throws ParamValidationError - `RL6_INVALID_ID` when `value` is `0`,
+ *   `0n`, a fraction, `NaN`, `Infinity`, a `number` beyond
+ *   `Number.MAX_SAFE_INTEGER`, a string, an object, `null` or
+ *   `undefined`.
+ */
+export function requireInt64Id(field: string, value: unknown): number | bigint {
+  if (typeof value === "bigint" && value !== 0n) {
+    return value;
+  }
+  if (typeof value === "number" && Number.isSafeInteger(value) && value !== 0) {
+    return value;
+  }
+  const received = describeReceived(value);
+  if (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    !Number.isSafeInteger(value)
+  ) {
+    // Integral but unsafe: `2 ** 60`, or a JSON.parse'd int64 — already
+    // rounded, so the exact id is unrecoverable from here.
+    throw new ParamValidationError(
+      `Invalid ${field}: received ${received}, which is beyond ` +
+        `Number.MAX_SAFE_INTEGER and already rounded; pass the id as a ` +
+        `bigint (e.g. -8644926364725811123n or BigInt("<digits>")).`,
+      "RL6_INVALID_ID",
+      { field, received },
+    );
+  }
+  throw new ParamValidationError(
+    `Invalid ${field}: expected a non-zero integer id (number or bigint), ` +
+      `received ${received}.`,
     "RL6_INVALID_ID",
     { field, received },
   );

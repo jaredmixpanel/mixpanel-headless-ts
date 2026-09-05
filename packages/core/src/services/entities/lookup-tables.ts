@@ -43,8 +43,12 @@ import {
 
 /** Options bag of {@link LookupTableMethods.listLookupTables}. */
 export interface ListLookupTablesOptions {
-  /** Optional data-group-ID filter (`data-group-id` on the wire). */
-  readonly data_group_id?: number | null | undefined;
+  /**
+   * Optional data-group-ID filter (`data-group-id` on the wire). A
+   * `bigint` carries an int64 id beyond 2^53 exactly (`pythonStr`
+   * spells its digits).
+   */
+  readonly data_group_id?: number | bigint | null | undefined;
   /** Optional cancellation signal (R6.7). */
   readonly signal?: AbortSignal | undefined;
 }
@@ -156,14 +160,15 @@ export interface LookupTableMethods {
    * Update table metadata (`update_lookup_table`, `:7811-7848` —
    * PATCH with `{**body, "data-group-id": id}`).
    *
-   * @param dataGroupId - Data group ID.
+   * @param dataGroupId - Data group ID (signed int64; a `bigint` beyond
+   *   2^53 is emitted into the JSON body as its exact digits).
    * @param body - Fields to update.
    * @param signal - Optional cancellation signal.
    * @returns The updated table dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
   updateLookupTable(
-    dataGroupId: number,
+    dataGroupId: number | bigint,
     body: Record<string, unknown>,
     signal?: AbortSignal,
   ): Promise<Record<string, JsonValue>>;
@@ -172,12 +177,13 @@ export interface LookupTableMethods {
    * Delete lookup tables (`delete_lookup_tables`, `:7850-7872` —
    * DELETE with `{"data-group-ids": [...]}`).
    *
-   * @param dataGroupIds - Data group IDs to delete.
+   * @param dataGroupIds - Data group IDs to delete (signed int64s; a
+   *   `bigint` beyond 2^53 is emitted as its exact digits).
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
   deleteLookupTables(
-    dataGroupIds: readonly number[],
+    dataGroupIds: readonly (number | bigint)[],
     signal?: AbortSignal,
   ): Promise<void>;
 
@@ -186,14 +192,15 @@ export interface LookupTableMethods {
    * `:7874-7935` — direct GET, `handleResponse` on ≥ 400, raw bytes
    * on success).
    *
-   * @param dataGroupId - Data group ID.
+   * @param dataGroupId - Data group ID (signed int64; a `bigint` beyond
+   *   2^53 is spelled exactly into the `data-group-id` query param).
    * @param options - Optional `file_name`/`limit` + signal.
    * @returns Raw CSV bytes.
    * @throws AuthenticationError | QueryError | ServerError - Per the
    *   `handleResponse` mapping on non-2xx.
    */
   downloadLookupTable(
-    dataGroupId: number,
+    dataGroupId: number | bigint,
     options?: DownloadLookupTableOptions,
   ): Promise<Uint8Array>;
 
@@ -203,14 +210,15 @@ export interface LookupTableMethods {
    * `download_url` from a dict result, passes a string result
    * through).
    *
-   * @param dataGroupId - Data group ID.
+   * @param dataGroupId - Data group ID (signed int64; a `bigint` beyond
+   *   2^53 is spelled exactly into the `data-group-id` query param).
    * @param signal - Optional cancellation signal.
    * @returns The signed URL string.
    * @throws MixpanelHeadlessError - No URL in a dict response
    *   (`MISSING_URL`), or a non-dict/non-string response.
    */
   getLookupDownloadUrl(
-    dataGroupId: number,
+    dataGroupId: number | bigint,
     signal?: AbortSignal,
   ): Promise<string>;
 }
@@ -419,11 +427,13 @@ export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
     },
 
     updateLookupTable: async (
-      dataGroupId: number,
+      dataGroupId: number | bigint,
       body: Record<string, unknown>,
       signal?: AbortSignal,
     ): Promise<Record<string, JsonValue>> => {
       const path = scopedPath("data-definitions/lookup-tables/");
+      // A bigint id reaches the wire as an exact integer token via the
+      // transport's bigint-aware body serializer (`stringifyJsonBody`).
       const payload = { ...body, "data-group-id": dataGroupId };
       const result = await appRequest(core.appDeps(signal), "PATCH", path, {
         jsonBody: payload,
@@ -432,7 +442,7 @@ export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
     },
 
     deleteLookupTables: async (
-      dataGroupIds: readonly number[],
+      dataGroupIds: readonly (number | bigint)[],
       signal?: AbortSignal,
     ): Promise<void> => {
       const path = scopedPath("data-definitions/lookup-tables/");
@@ -442,7 +452,7 @@ export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
     },
 
     downloadLookupTable: async (
-      dataGroupId: number,
+      dataGroupId: number | bigint,
       options: DownloadLookupTableOptions = {},
     ): Promise<Uint8Array> => {
       const path = scopedPath("data-definitions/lookup-tables/download/");
@@ -496,7 +506,7 @@ export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
     },
 
     getLookupDownloadUrl: async (
-      dataGroupId: number,
+      dataGroupId: number | bigint,
       signal?: AbortSignal,
     ): Promise<string> => {
       const path = scopedPath("data-definitions/lookup-tables/download-url/");

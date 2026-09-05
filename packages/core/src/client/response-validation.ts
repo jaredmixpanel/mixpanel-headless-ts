@@ -25,7 +25,13 @@
  * structure and error CLASS/code are locked either way).
  */
 
-import { coerceBool, coerceFloat, coerceInt, coerceStr } from "../coerce.js";
+import {
+  coerceBool,
+  coerceFloat,
+  coerceInt,
+  coerceInt64,
+  coerceStr,
+} from "../coerce.js";
 import { ResponseValidationError } from "../errors.js";
 import { isPythonDict } from "../query/validation-shared.js";
 import type {
@@ -78,8 +84,11 @@ function classifyKindError(
     }
   };
   switch (kind) {
-    case "int": {
-      if (attempt(() => coerceInt(value))) {
+    case "int":
+    case "int64": {
+      // Same pydantic `int` error family; only the acceptance differs.
+      const coerce = kind === "int" ? coerceInt : coerceInt64;
+      if (attempt(() => coerce(value))) {
         return null;
       }
       if (typeof value === "string") {
@@ -170,6 +179,7 @@ function nullNotAllowedError(
 ): PydanticStyleError {
   switch (kind) {
     case "int":
+    case "int64":
       return {
         type: "int_type",
         loc,

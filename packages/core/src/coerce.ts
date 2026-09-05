@@ -5,6 +5,9 @@
  * boundaries. The NORMATIVE contract is the R4.12 table:
  *
  * - `coerceInt` accepts `42` / `42.0` / `"42"`, rejects `42.5` and booleans;
+ * - `coerceInt64` is the same table without the double's 2^53 ceiling:
+ *   it also takes a `bigint` or a lossless `JsonNumber` token and yields a
+ *   `bigint` only when the exact value is not a safe integer;
  * - `coerceStr` does NOT coerce numbers/booleans to string;
  * - `coerceBool` accepts exactly the `true|t|yes|y|on|1` /
  *   `false|f|no|n|off|0` string sets (case-insensitive) plus `0`/`1`
@@ -28,6 +31,7 @@
  * out of contract (R5.4).
  */
 
+import { JsonNumber } from "./client/json-value.js";
 import { ParamValidationError, ResponseValidationError } from "./errors.js";
 
 /** Which R5.5 boundary a failed coercion belongs to. */
@@ -137,6 +141,69 @@ export function coerceInt(value: unknown, options: CoerceOptions = {}): number {
     }
   }
   fail("int", value, options);
+}
+
+/**
+ * Narrow an exact integer to the `number | bigint` int64 carrier: a
+ * `number` when it is a safe integer, the `bigint` otherwise.
+ *
+ * @param exact - The exact integer.
+ * @returns The narrowed carrier.
+ */
+function narrowInt64(exact: bigint): number | bigint {
+  if (
+    exact >= BigInt(Number.MIN_SAFE_INTEGER) &&
+    exact <= BigInt(Number.MAX_SAFE_INTEGER)
+  ) {
+    return Number(exact);
+  }
+  return exact;
+}
+
+/**
+ * Coerce a JSON value to an integer WITHOUT the double's 2^53 ceiling —
+ * the carrier for Python `int` fields whose live values exceed
+ * `Number.MAX_SAFE_INTEGER` (lookup-table `data_group_id`s are negative
+ * int64s such as `-8644926364725811123`).
+ *
+ * Same acceptance as {@link coerceInt} (integral numbers, CPython int
+ * strings, no booleans) plus two exact carriers: a `bigint`, and a
+ * {@link JsonNumber} token as the lossless parser captured it. The
+ * result is a `number` whenever the exact value is a safe integer and a
+ * `bigint` otherwise, so callers pay the `bigint` only when a `number`
+ * would round. An unsafe-magnitude `number` INPUT is returned unchanged
+ * — it was already rounded upstream and no exact value exists to
+ * recover; feed the token or a `bigint` to keep the digits.
+ *
+ * @param value - The raw value to coerce.
+ * @param options - Boundary kind + field name for errors.
+ * @returns The coerced integer (`number` when safe, else `bigint`).
+ * @throws ParamValidationError - Invalid input at the `'param'` boundary.
+ * @throws ResponseValidationError - Invalid input at the `'response'`
+ *   boundary (default).
+ */
+export function coerceInt64(
+  value: unknown,
+  options: CoerceOptions = {},
+): number | bigint {
+  if (typeof value === "bigint") {
+    return narrowInt64(value);
+  }
+  if (value instanceof JsonNumber) {
+    if (value.isIntegerToken()) {
+      return narrowInt64(BigInt(value.raw));
+    }
+    return coerceInt(value.toNumber(), options);
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (INT_STRING.test(trimmed)) {
+      const integerPart = trimmed.split(".")[0] ?? trimmed;
+      return narrowInt64(BigInt(integerPart.replace(/_/g, "")));
+    }
+    fail("int", value, options);
+  }
+  return coerceInt(value, options);
 }
 
 /**

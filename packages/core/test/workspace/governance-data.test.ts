@@ -56,6 +56,7 @@ import type { MixpanelClient } from "../../src/client/client.js";
 import {
   AuthenticationError,
   MixpanelHeadlessError,
+  ParamValidationError,
   QueryError,
   ResponseValidationError,
 } from "../../src/errors.js";
@@ -1374,5 +1375,215 @@ describe("ADDITIVE: delegation contracts", () => {
       }),
     );
     expect(result).toEqual({ anything: [1, 2] });
+  });
+});
+
+// =============================================================================
+// ADDITIVE — lossless int64 lookup-table ids. Mixpanel assigns negative
+// int64 `data_group_id`s (e.g. `-8644926364725811123`) that exceed 2^53;
+// Python carries them as unbounded ints, the port as `bigint` past the
+// safe-integer range on both legs (outbound guard + URL/body spelling,
+// inbound `LookupTable.id`).
+// =============================================================================
+
+describe("ADDITIVE: lossless int64 lookup-table ids", () => {
+  const BIG = -8644926364725811123n;
+  const BIG_DIGITS = "-8644926364725811123";
+  /** The same id after `JSON.parse` — rounded, and NOT what was sent. */
+  const ROUNDED_DIGITS = "-8644926364725811000";
+
+  /**
+   * Serve a body as RAW TEXT so this test's own `JSON.stringify` /
+   * `JSON.parse` can never round the id before the port sees it.
+   *
+   * @param resultsJson - The literal JSON text of `results`.
+   * @returns The canned response.
+   */
+  function okRaw(resultsJson: string): CannedResponse {
+    return {
+      status: 200,
+      text: `{"status":"ok","results":${resultsJson}}`,
+      headers: { "content-type": "application/json" },
+    };
+  }
+
+  /**
+   * Await `thunk` and return what it threw.
+   *
+   * @param thunk - The call under test.
+   * @returns The thrown value.
+   */
+  async function caught(thunk: () => unknown): Promise<unknown> {
+    try {
+      await thunk();
+    } catch (exc) {
+      return exc;
+    }
+    return undefined;
+  }
+
+  // ---- outbound: URL leg -------------------------------------------------
+
+  it("downloadLookupTable(bigint) spells the exact digits into data-group-id", async () => {
+    const { ws, transport } = makeWorkspace(() => ({
+      status: 200,
+      text: "id,name\n1,A\n",
+    }));
+    await ws.downloadLookupTable(BIG);
+    expect(transport.captures[0]?.params["data-group-id"]).toBe(BIG_DIGITS);
+    expect(transport.captures[0]?.url).not.toContain(ROUNDED_DIGITS);
+  });
+
+  it("downloadLookupTable(-5) is accepted (negative ids are the norm)", async () => {
+    const { ws, transport } = makeWorkspace(() => ({ status: 200, text: "" }));
+    await ws.downloadLookupTable(-5);
+    expect(transport.captures[0]?.params["data-group-id"]).toBe("-5");
+  });
+
+  it("downloadLookupTable(2 ** 60) is refused with RL6_INVALID_ID and the bigint hint, network-free", async () => {
+    const { ws, transport } = makeWorkspace(() => ({ status: 200, text: "" }));
+    const error = await caught(() => ws.downloadLookupTable(2 ** 60));
+    expect(error).toBeInstanceOf(ParamValidationError);
+    expect((error as ParamValidationError).code).toBe("RL6_INVALID_ID");
+    expect((error as ParamValidationError).message).toContain(
+      "pass the id as a bigint",
+    );
+    expect(transport.captures).toHaveLength(0);
+  });
+
+  it("getLookupDownloadUrl(bigint) spells the exact digits; a rounded number is refused", async () => {
+    const { ws, transport } = makeWorkspace(() =>
+      ok("https://storage.googleapis.com/download/abc"),
+    );
+    await ws.getLookupDownloadUrl(BIG);
+    expect(transport.captures[0]?.params["data-group-id"]).toBe(BIG_DIGITS);
+
+    const error = await caught(() => ws.getLookupDownloadUrl(2 ** 60));
+    expect((error as ParamValidationError).code).toBe("RL6_INVALID_ID");
+    expect(transport.captures).toHaveLength(1);
+  });
+
+  // ---- outbound: JSON-body leg -------------------------------------------
+
+  it("updateLookupTable(bigint) sends the id as an exact integer token in the PATCH body", async () => {
+    const { ws, transport } = makeWorkspace(() =>
+      okRaw(`{"id":${BIG_DIGITS},"name":"Renamed"}`),
+    );
+    const result = await ws.updateLookupTable(
+      BIG,
+      new UpdateLookupTableParams({ name: "Renamed" }),
+    );
+    expect(transport.captures[0]?.method).toBe("PATCH");
+    expect(transport.captures[0]?.bodyText).toBe(
+      `{"name":"Renamed","data-group-id":${BIG_DIGITS}}`,
+    );
+    expect(result.id).toBe(BIG);
+  });
+
+  it("updateLookupTable(-5) / (2 ** 60): negative accepted, rounded refused", async () => {
+    const { ws, transport } = makeWorkspace(() => ok(lookupTableJson(-5)));
+    const params = new UpdateLookupTableParams({ name: "n" });
+    const result = await ws.updateLookupTable(-5, params);
+    expect(result.id).toBe(-5);
+    expect(transport.captures[0]?.bodyText).toContain('"data-group-id":-5');
+
+    const error = await caught(() => ws.updateLookupTable(2 ** 60, params));
+    expect((error as ParamValidationError).code).toBe("RL6_INVALID_ID");
+    expect((error as ParamValidationError).message).toContain("bigint");
+    expect(transport.captures).toHaveLength(1);
+  });
+
+  it("deleteLookupTables([bigint, number]) sends exact integer tokens; a rounded element is refused", async () => {
+    const { ws, transport } = makeWorkspace(() => okBare());
+    await ws.deleteLookupTables([BIG, 7]);
+    expect(transport.captures[0]?.method).toBe("DELETE");
+    expect(transport.captures[0]?.bodyText).toBe(
+      `{"data-group-ids":[${BIG_DIGITS},7]}`,
+    );
+
+    const error = await caught(() => ws.deleteLookupTables([7, 2 ** 60]));
+    expect((error as ParamValidationError).code).toBe("RL6_INVALID_ID");
+    expect((error as ParamValidationError).details).toMatchObject({
+      field: "data_group_ids",
+    });
+    expect(transport.captures).toHaveLength(1);
+  });
+
+  it("listLookupTables({ data_group_id: bigint }) filters by the exact digits", async () => {
+    const { ws, transport } = makeWorkspace(() => ok([]));
+    await ws.listLookupTables({ data_group_id: BIG });
+    expect(transport.captures[0]?.params["data-group-id"]).toBe(BIG_DIGITS);
+  });
+
+  it("markLookupTableReady with a bigint data_group_id form-encodes the exact digits", async () => {
+    const { ws, transport } = makeWorkspace(() =>
+      okRaw(`{"id":${BIG_DIGITS},"name":"Products"}`),
+    );
+    const result = await ws.markLookupTableReady(
+      new MarkLookupTableReadyParams({
+        name: "Products",
+        key: "product_id",
+        data_group_id: BIG,
+      }),
+    );
+    expect(transport.captures[0]?.bodyText).toContain(
+      `data-group-id=${BIG_DIGITS}`,
+    );
+    expect(result.id).toBe(BIG);
+  });
+
+  // ---- inbound: LookupTable.id -------------------------------------------
+
+  it("listLookupTables keeps an int64 id exact as a bigint and a safe id as a number", async () => {
+    const { ws } = makeWorkspace(() =>
+      okRaw(
+        `[{"id":${BIG_DIGITS},"name":"Big"},` +
+          `{"id":7,"name":"Small"},` +
+          `{"id":9007199254740991,"name":"Edge"}]`,
+      ),
+    );
+    const tables = await ws.listLookupTables();
+    expect(tables).toHaveLength(3);
+    expect(tables[0]?.id).toBe(BIG);
+    expect(typeof tables[0]?.id).toBe("bigint");
+    expect(tables[1]?.id).toBe(7);
+    expect(typeof tables[1]?.id).toBe("number");
+    expect(tables[2]?.id).toBe(Number.MAX_SAFE_INTEGER);
+    expect(typeof tables[2]?.id).toBe("number");
+  });
+
+  it("toJSON() / modelDump() emit the bigint unchanged (digits available via String)", async () => {
+    const { ws } = makeWorkspace(() =>
+      okRaw(`[{"id":${BIG_DIGITS},"name":"Big","token":"t"}]`),
+    );
+    const [table] = await ws.listLookupTables();
+    const json = table!.toJSON();
+    expect(json["id"]).toBe(BIG);
+    expect(String(json["id"])).toBe(BIG_DIGITS);
+    expect(table!.modelDump()["id"]).toBe(BIG);
+    // A bigint-aware replacer (the consumer's JSON-form layer) renders
+    // the digits; plain JSON.stringify throws on bigint by design.
+    expect(
+      JSON.stringify(json, (_key, value: unknown) =>
+        typeof value === "bigint" ? value.toString() : value,
+      ),
+    ).toContain(`"id":"${BIG_DIGITS}"`);
+    expect(() => JSON.stringify(json)).toThrow(TypeError);
+    // Round trip through the model's own decoder.
+    expect(LookupTable.fromDict(json).id).toBe(BIG);
+  });
+
+  it("LookupTable construction narrows: safe bigint → number, unsafe → bigint, decimal string → exact", () => {
+    expect(new LookupTable({ id: 7n, name: "n" }).id).toBe(7);
+    expect(new LookupTable({ id: BIG, name: "n" }).id).toBe(BIG);
+    expect(LookupTable.fromDict({ id: BIG_DIGITS, name: "n" }).id).toBe(BIG);
+    expect(LookupTable.fromDict({ id: "7", name: "n" }).id).toBe(7);
+  });
+
+  it("a non-integer id is still a ResponseValidationError", async () => {
+    const { ws } = makeWorkspace(() => okRaw(`[{"id":1.5,"name":"x"}]`));
+    await expect(ws.listLookupTables()).rejects.toBeInstanceOf(
+      ResponseValidationError,
+    );
   });
 });

@@ -41,7 +41,13 @@
  * the public package surface.
  */
 
-import { coerceBool, coerceFloat, coerceInt, coerceStr } from "../../coerce.js";
+import {
+  coerceBool,
+  coerceFloat,
+  coerceInt,
+  coerceInt64,
+  coerceStr,
+} from "../../coerce.js";
 import { isPythonDict } from "../../compat/python-dict.js";
 import { orderedEntries } from "../../client/json-value.js";
 import { ResponseValidationError } from "../../errors.js";
@@ -49,9 +55,15 @@ import { ResponseValidationError } from "../../errors.js";
 /**
  * Lax scalar coercion kinds (R4.12) applied to non-null present values.
  *
+ * `"int64"` is the `"int"` table without the double's 2^53 ceiling
+ * ({@link coerceInt64}): the field materializes as a `number` when the
+ * exact value is a safe integer and as a `bigint` otherwise. Reserved
+ * for Python `int` fields whose live values exceed
+ * `Number.MAX_SAFE_INTEGER` (lookup-table `data_group_id`s).
+ *
  * @internal
  */
-export type EntityFieldKind = "int" | "str" | "bool" | "float";
+export type EntityFieldKind = "int" | "int64" | "str" | "bool" | "float";
 
 /**
  * Options of {@link EntityModel.modelDumpExcludeNone} — the pydantic
@@ -284,6 +296,8 @@ function coerceScalar(
     switch (kind) {
       case "int":
         return coerceInt(value, { kind: "response", field: path });
+      case "int64":
+        return coerceInt64(value, { kind: "response", field: path });
       case "str":
         return coerceStr(value, { kind: "response", field: path });
       case "bool":

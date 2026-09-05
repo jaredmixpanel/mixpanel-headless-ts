@@ -22,7 +22,9 @@
  * - form bodies via the same `quotePlus` grammar (the recorded
  *   `body_text` fields are exact-byte comparisons);
  * - JSON bodies via `JSON.stringify` (request-side diffs compare
- *   canonically after lossless parsing, so whitespace is free).
+ *   canonically after lossless parsing, so whitespace is free), with a
+ *   `bigint` member emitted as its exact digit run — the carrier for
+ *   int64 ids beyond 2^53 ({@link stringifyJsonBody}).
  */
 
 import { pythonFloatStr } from "../compat/index.js";
@@ -241,7 +243,7 @@ export async function rawFetch(
       headers["Content-Type"] = "application/x-www-form-urlencoded";
     }
   } else if (options.jsonBody !== null) {
-    body = JSON.stringify(options.jsonBody);
+    body = stringifyJsonBody(options.jsonBody);
     if (!hasContentType(headers)) {
       headers["Content-Type"] = "application/json";
     }
@@ -378,4 +380,42 @@ export function createRequestExecutor(
       header: (name: string): string | null => response.headers.get(name),
     };
   };
+}
+
+/** The ES2024 `JSON.rawJSON` hook (typed locally — not in every lib). */
+interface RawJsonCapableJson {
+  readonly rawJSON?: ((text: string) => unknown) | undefined;
+}
+
+/**
+ * `JSON.stringify` for a request body whose members may be `bigint`s —
+ * the carrier for int64 ids beyond 2^53 (lookup-table `data-group-id`s
+ * such as `-8644926364725811123`, which `update_lookup_table` and
+ * `delete_lookup_tables` send in the JSON body).
+ *
+ * A `bigint` member is emitted as its exact digit run via
+ * `JSON.rawJSON` (ES2024; Node ≥ 21 and evergreen browsers), where
+ * Python writes the same bare integer token. Bodies without a `bigint`
+ * serialize byte-identically to plain `JSON.stringify` (the replacer
+ * returns every other member unchanged).
+ *
+ * @param value - The JSON body.
+ * @returns The serialized body text.
+ * @throws TypeError - A `bigint` member on an engine without
+ *   `JSON.rawJSON` (plain `JSON.stringify` would throw for it too).
+ */
+export function stringifyJsonBody(value: unknown): string {
+  const rawJSON = (JSON as RawJsonCapableJson).rawJSON;
+  return JSON.stringify(value, (_key, member: unknown) => {
+    if (typeof member !== "bigint") {
+      return member;
+    }
+    if (rawJSON === undefined) {
+      throw new TypeError(
+        "A bigint JSON body member needs JSON.rawJSON (ES2024), which this " +
+          "engine lacks; pass a safe-integer number instead",
+      );
+    }
+    return rawJSON.call(JSON, member.toString(10));
+  });
 }

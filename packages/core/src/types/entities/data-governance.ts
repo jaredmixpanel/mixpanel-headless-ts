@@ -1253,8 +1253,14 @@ export class UpdateCustomPropertyParams extends EntityModel {
  * defaults; `undefined` counts as absent (R4.10).
  */
 export interface LookupTableInit {
-  /** Server-assigned table ID. */
-  readonly id: number;
+  /**
+   * Server-assigned table ID — a signed int64 (Mixpanel assigns negative
+   * ids such as `-8644926364725811123`). A `number` when the value is a
+   * safe integer, a `bigint` beyond 2^53 (the pydantic-lax decode also
+   * narrows a decimal string or a lossless `JsonNumber` token the same
+   * way).
+   */
+  readonly id: number | bigint;
   /** Table name. */
   readonly name: string;
   /** Table token. */
@@ -1282,7 +1288,8 @@ export class LookupTable extends EntityModel {
 
   /** @internal Declared fields in Python `model_fields` order. */
   static readonly fieldSpecs: readonly EntityFieldSpec[] = [
-    { name: "id", required: true, kind: "int" },
+    // int64, not int: live ids exceed 2^53 (see `LookupTableInit.id`).
+    { name: "id", required: true, kind: "int64" },
     { name: "name", required: true, kind: "str" },
     { name: "token", kind: "str", nullable: true },
     {
@@ -1308,8 +1315,13 @@ export class LookupTable extends EntityModel {
     },
   ];
 
-  /** Server-assigned table ID. */
-  declare readonly id: number;
+  /**
+   * Server-assigned table ID: a `number` when it is a safe integer,
+   * else the exact `bigint` (signed int64 — never rounded). `toJSON()`
+   * emits the `bigint` unchanged; render it with a bigint-aware
+   * serializer (plain `JSON.stringify` throws on `bigint`).
+   */
+  declare readonly id: number | bigint;
   /** Table name. */
   declare readonly name: string;
   /** Table token. */
@@ -1356,8 +1368,11 @@ export interface UploadLookupTableParamsInit {
   readonly name: string;
   /** Path to local CSV file. */
   readonly file_path: string;
-  /** For replacing an existing table. */
-  readonly data_group_id?: number | null | undefined;
+  /**
+   * For replacing an existing table — a signed int64; pass a `bigint`
+   * for ids beyond 2^53.
+   */
+  readonly data_group_id?: number | bigint | null | undefined;
 }
 
 /**
@@ -1390,15 +1405,15 @@ export class UploadLookupTableParams extends EntityModel {
       },
     },
     { name: "file_path", required: true, kind: "str" },
-    { name: "data_group_id", kind: "int", nullable: true },
+    { name: "data_group_id", kind: "int64", nullable: true },
   ];
 
   /** Table name (1-255 characters). */
   declare readonly name: string;
   /** Path to local CSV file. */
   declare readonly file_path: string;
-  /** For replacing an existing table. */
-  declare readonly data_group_id: number | null;
+  /** For replacing an existing table (`bigint` beyond 2^53). */
+  declare readonly data_group_id: number | bigint | null;
 
   /**
    * Construct a validated UploadLookupTableParams (Pydantic-construction mirror).
@@ -1441,8 +1456,11 @@ export interface MarkLookupTableReadyParamsInit {
   readonly name: string;
   /** Primary key column name. */
   readonly key: string;
-  /** For replacing an existing table. */
-  readonly data_group_id?: number | null | undefined;
+  /**
+   * For replacing an existing table — a signed int64; pass a `bigint`
+   * for ids beyond 2^53.
+   */
+  readonly data_group_id?: number | bigint | null | undefined;
 }
 
 /**
@@ -1462,15 +1480,15 @@ export class MarkLookupTableReadyParams extends EntityModel {
   static readonly fieldSpecs: readonly EntityFieldSpec[] = [
     { name: "name", required: true, kind: "str" },
     { name: "key", required: true, kind: "str" },
-    { name: "data_group_id", kind: "int", nullable: true },
+    { name: "data_group_id", kind: "int64", nullable: true },
   ];
 
   /** Table name. */
   declare readonly name: string;
   /** Primary key column name. */
   declare readonly key: string;
-  /** For replacing an existing table. */
-  declare readonly data_group_id: number | null;
+  /** For replacing an existing table (`bigint` beyond 2^53). */
+  declare readonly data_group_id: number | bigint | null;
 
   /**
    * Construct a validated MarkLookupTableReadyParams (Pydantic-construction mirror).
