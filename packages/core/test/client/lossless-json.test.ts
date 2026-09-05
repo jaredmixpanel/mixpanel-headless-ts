@@ -211,3 +211,45 @@ describe("parseLossless ordered entries (B8-MAPFIX)", () => {
     expect(orderedKeys(parsed["b"] as object)).toEqual(["3", "5"]);
   });
 });
+
+// ADDITIVE: the int64 opt-out of the R4.5 double-rounding narrowing —
+// the carrier for lookup-table ids beyond 2^53.
+describe("toNativeJson unsafeIntegers", () => {
+  const TEXT =
+    '{"big": -8644926364725811123, "safe": 7, "edge": 9007199254740991, ' +
+    '"first_unsafe": 9007199254740992, "float": 42.0, "list": [1, 2 ** 0]}'.replace(
+      "2 ** 0",
+      "-9007199254740993",
+    );
+
+  it("rounds by default (the documented R4.5 narrowing)", () => {
+    const native = toNativeJson(parseLossless(TEXT)) as Record<string, unknown>;
+    expect(native["big"]).toBe(-8644926364725811000);
+    expect(native["safe"]).toBe(7);
+  });
+
+  it('"bigint" keeps unsafe integer tokens exact and everything else native', () => {
+    const native = toNativeJson(parseLossless(TEXT), {
+      unsafeIntegers: "bigint",
+    }) as Record<string, unknown>;
+    expect(native["big"]).toBe(-8644926364725811123n);
+    expect(native["safe"]).toBe(7);
+    expect(native["edge"]).toBe(9007199254740991);
+    expect(native["first_unsafe"]).toBe(9007199254740992n);
+    expect(native["float"]).toBe(42);
+    expect(native["list"]).toEqual([1, -9007199254740993n]);
+  });
+
+  it("threads the option through nested containers and keeps the key-order sidecar", () => {
+    const parsed = parseLossless(
+      '{"outer": {"42": {"id": -8644926364725811123}, "7": {"id": 1}}}',
+    );
+    const native = toNativeJson(parsed, { unsafeIntegers: "bigint" }) as Record<
+      string,
+      Record<string, Record<string, unknown>>
+    >;
+    expect(native["outer"]?.["42"]?.["id"]).toBe(-8644926364725811123n);
+    expect(native["outer"]?.["7"]?.["id"]).toBe(1);
+    expect(orderedKeys(native["outer"] as object)).toEqual(["42", "7"]);
+  });
+});

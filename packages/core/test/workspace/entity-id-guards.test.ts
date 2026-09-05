@@ -16,7 +16,10 @@
 
 import { describe, expect, it } from "vitest";
 import { Workspace } from "../../src/workspace.js";
-import { requireEntityId } from "../../src/workspace-members/shared.js";
+import {
+  requireEntityId,
+  requireInt64Id,
+} from "../../src/workspace-members/shared.js";
 import {
   CODED_GUARD_REGISTRY,
   ParamValidationError,
@@ -149,6 +152,95 @@ describe("requireEntityId", () => {
     expect(strErr?.message).toContain(`"${"x".repeat(40)}"`);
     expect(strErr?.message).not.toContain("x".repeat(41));
   });
+});
+
+// =============================================================================
+// requireInt64Id — the lookup-table twin (signed int64 ids)
+// =============================================================================
+
+describe("requireInt64Id", () => {
+  const BIG = -8644926364725811123n; // a live lookup-table data_group_id
+
+  it.each<number | bigint>([
+    1,
+    -5,
+    42,
+    Number.MAX_SAFE_INTEGER,
+    Number.MIN_SAFE_INTEGER,
+    7n,
+    -7n,
+    BIG,
+    2n ** 60n,
+  ])("passes a non-zero integer through unchanged (%s)", (value) => {
+    expect(requireInt64Id("data_group_id", value)).toBe(value);
+  });
+
+  it.each<[string, unknown, string]>([
+    ["zero", 0, "number 0"],
+    ["bigint zero", 0n, "bigint 0"],
+    ["non-integer", 1.5, "number 1.5"],
+    ["NaN", Number.NaN, "number NaN"],
+    ["Infinity", Number.POSITIVE_INFINITY, "number Infinity"],
+    ['string "12"', "12", 'string "12"'],
+    [
+      "decimal string of a big id",
+      "-8644926364725811123",
+      'string "-8644926364725811123"',
+    ],
+    ["object", { data_group_id: 5 }, "object (Object)"],
+    ["array", [1], "array"],
+    ["undefined", undefined, "undefined"],
+    ["null", null, "null"],
+    ["boolean", true, "boolean true"],
+  ])("rejects %s with RL6_INVALID_ID naming the field", (_, value, shown) => {
+    let error: unknown;
+    try {
+      requireInt64Id("data_group_id", value);
+    } catch (exc) {
+      error = exc;
+    }
+    expect(error).toBeInstanceOf(ParamValidationError);
+    const coded = error as ParamValidationError;
+    expect(coded.code).toBe("RL6_INVALID_ID");
+    expect(coded.message).toBe(
+      `Invalid data_group_id: expected a non-zero integer id (number or bigint), received ${shown}.`,
+    );
+    expect(coded.details).toEqual({ field: "data_group_id", received: shown });
+  });
+
+  it.each<[string, number, string]>([
+    ["2 ** 53", 2 ** 53, "number 9007199254740992"],
+    // JS prints 2 ** 60 shortest-round-trip: not its exact digits.
+    ["2 ** 60", 2 ** 60, "number 1152921504606847000"],
+    ["-(2 ** 53)", -(2 ** 53), "number -9007199254740992"],
+    [
+      "JSON.parse'd big id (already rounded)",
+      JSON.parse("-8644926364725811123") as number,
+      "number -8644926364725811000",
+    ],
+  ])(
+    "refuses an unsafe-magnitude number (%s) and says to pass a bigint",
+    (_, value, shown) => {
+      let error: unknown;
+      try {
+        requireInt64Id("data_group_id", value);
+      } catch (exc) {
+        error = exc;
+      }
+      expect(error).toBeInstanceOf(ParamValidationError);
+      const coded = error as ParamValidationError;
+      expect(coded.code).toBe("RL6_INVALID_ID");
+      expect(coded.message).toBe(
+        `Invalid data_group_id: received ${shown}, which is beyond ` +
+          `Number.MAX_SAFE_INTEGER and already rounded; pass the id as a ` +
+          `bigint (e.g. -8644926364725811123n or BigInt("<digits>")).`,
+      );
+      expect(coded.details).toEqual({
+        field: "data_group_id",
+        received: shown,
+      });
+    },
+  );
 });
 
 // =============================================================================
@@ -379,24 +471,6 @@ const GUARDED: ReadonlyArray<
   ],
   [
     "governance",
-    "updateLookupTable",
-    "data_group_id",
-    (ws) => ws.updateLookupTable(BAD_ID, {} as never),
-  ],
-  [
-    "governance",
-    "downloadLookupTable",
-    "data_group_id",
-    (ws) => ws.downloadLookupTable(BAD_ID),
-  ],
-  [
-    "governance",
-    "getLookupDownloadUrl",
-    "data_group_id",
-    (ws) => ws.getLookupDownloadUrl(BAD_ID),
-  ],
-  [
-    "governance",
     "updateCustomEvent",
     "custom_event_id",
     (ws) => ws.updateCustomEvent(BAD_ID, {} as never),
@@ -422,6 +496,40 @@ const GUARDED: ReadonlyArray<
   ],
 ];
 
+/**
+ * The lookup-table members: their `data_group_id` is a signed int64
+ * (negative ids beyond 2^53 are the norm), so they take the
+ * `requireInt64Id` guard instead — same code, different acceptance.
+ */
+const INT64_GUARDED: ReadonlyArray<
+  [string, string, string, (ws: Workspace, id: number | bigint) => unknown]
+> = [
+  [
+    "governance",
+    "updateLookupTable",
+    "data_group_id",
+    (ws, id) => ws.updateLookupTable(id, {} as never),
+  ],
+  [
+    "governance",
+    "downloadLookupTable",
+    "data_group_id",
+    (ws, id) => ws.downloadLookupTable(id),
+  ],
+  [
+    "governance",
+    "getLookupDownloadUrl",
+    "data_group_id",
+    (ws, id) => ws.getLookupDownloadUrl(id),
+  ],
+  [
+    "governance",
+    "deleteLookupTables",
+    "data_group_ids",
+    (ws, id) => ws.deleteLookupTables([id]),
+  ],
+];
+
 describe("Workspace positional entity-id guards (network-free)", () => {
   it.each(GUARDED)(
     "[%s] %s rejects a non-integer %s before any request",
@@ -438,9 +546,40 @@ describe("Workspace positional entity-id guards (network-free)", () => {
     },
   );
 
-  it("covers every int-typed positional id on the facade (41 members)", () => {
+  it.each(INT64_GUARDED)(
+    "[%s] %s rejects a non-integer %s before any request (int64 guard)",
+    async (_family, _member, field, call) => {
+      const { ws, calls } = makeWorkspace();
+      const error = await caught(() => call(ws, BAD_ID));
+      expect(error).toBeInstanceOf(ParamValidationError);
+      const coded = error as ParamValidationError;
+      expect(coded.code).toBe("RL6_INVALID_ID");
+      expect(coded.message).toBe(
+        `Invalid ${field}: expected a non-zero integer id (number or bigint), received object (Object).`,
+      );
+      expect(calls).toEqual([]);
+    },
+  );
+
+  it.each(INT64_GUARDED)(
+    "[%s] %s refuses an already-rounded %s (2 ** 60) and asks for a bigint",
+    async (_family, _member, field, call) => {
+      const { ws, calls } = makeWorkspace();
+      const error = await caught(() => call(ws, 2 ** 60));
+      const coded = error as ParamValidationError;
+      expect(coded.code).toBe("RL6_INVALID_ID");
+      expect(coded.message).toContain(`Invalid ${field}:`);
+      expect(coded.message).toContain("pass the id as a bigint");
+      expect(calls).toEqual([]);
+    },
+  );
+
+  it("covers every int-typed positional id on the facade (41 members + deleteLookupTables)", () => {
     const members = new Set(GUARDED.map(([, member]) => member));
-    expect(members.size).toBe(41);
+    const int64Members = new Set(INT64_GUARDED.map(([, member]) => member));
+    expect(members.size).toBe(38);
+    expect(int64Members.size).toBe(4);
+    expect([...members].some((member) => int64Members.has(member))).toBe(false);
   });
 
   it("the live-run shape: deleteAnnotation({annotation_id}) never builds `/annotations/[object Object]/`", async () => {

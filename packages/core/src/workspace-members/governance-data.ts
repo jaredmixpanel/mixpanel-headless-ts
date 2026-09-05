@@ -126,7 +126,7 @@ import {
   EventDefinition,
   type UpdateEventDefinitionParams,
 } from "../types/entities/lexicon.js";
-import { native } from "./shared.js";
+import { native, nativeInt64 } from "./shared.js";
 
 // ---------------------------------------------------------------------------
 // Options bags (R3.3/R3.8 — keyword-only tails; keys keep the Python
@@ -135,8 +135,11 @@ import { native } from "./shared.js";
 
 /** Options bag of `Workspace.listLookupTables` (`workspace.py:7957`). */
 export interface WorkspaceListLookupTablesOptions {
-  /** Optional filter by data group ID (Python default `None`). */
-  readonly data_group_id?: number | null | undefined;
+  /**
+   * Optional filter by data group ID (Python default `None`); a
+   * `bigint` carries an int64 id beyond 2^53 exactly.
+   */
+  readonly data_group_id?: number | bigint | null | undefined;
 }
 
 /** Options bag of `Workspace.downloadLookupTable` (`workspace.py:8302`). */
@@ -528,7 +531,9 @@ export async function listLookupTables(
   const rawList = await client.listLookupTables({
     data_group_id: options.data_group_id ?? null,
   });
-  return validateResponseModels(LookupTable, rawList.map(native), {
+  // `nativeInt64`, not `native`: `LookupTable.id` is a signed int64 that
+  // a double would round (e.g. `-8644926364725811123`).
+  return validateResponseModels(LookupTable, rawList.map(nativeInt64), {
     endpoint: "list_lookup_tables",
   });
 }
@@ -562,7 +567,7 @@ async function pollLookupUpload(
     // R2.12: seconds in the Python-named option, milliseconds at the
     // ONE conversion point.
     await seams.sleep(pollInterval * 1000);
-    const status = native(
+    const status = nativeInt64(
       await client.getLookupUploadStatus(uploadId),
     ) as Record<string, unknown>;
     // `status.get("uploadStatus", "UNKNOWN")` — the default fires on
@@ -671,7 +676,7 @@ export async function uploadLookupTable(
     formData["data-group-id"] = pythonStr(params.data_group_id as PythonValue);
   }
 
-  let raw: unknown = native(await client.registerLookupTable(formData));
+  let raw: unknown = nativeInt64(await client.registerLookupTable(formData));
 
   // `{"uploadId": "..."}` marks async (Celery) processing for files
   // >= 5 MB. Python guards the read with `isinstance(raw, dict)`
@@ -732,7 +737,7 @@ export async function markLookupTableReady(
     formData["data-group-id"] = pythonStr(params.data_group_id as PythonValue);
   }
   const raw = await client.markLookupTableReady(formData);
-  return validateResponseModel(LookupTable, native(raw), {
+  return validateResponseModel(LookupTable, nativeInt64(raw), {
     endpoint: "mark_lookup_table_ready",
   });
 }
@@ -782,7 +787,8 @@ export async function getLookupUploadStatus(
  * `workspace.py:8247-8279`).
  *
  * @param client - The wire client.
- * @param dataGroupId - Data group ID of the lookup table.
+ * @param dataGroupId - Data group ID of the lookup table (signed int64;
+ *   `bigint` beyond 2^53).
  * @param params - Fields to update (dumped WITHOUT `by_alias`,
  *   `:8277`).
  * @returns The updated `LookupTable`.
@@ -790,14 +796,14 @@ export async function getLookupUploadStatus(
  */
 export async function updateLookupTable(
   client: MixpanelClient,
-  dataGroupId: number,
+  dataGroupId: number | bigint,
   params: UpdateLookupTableParams,
 ): Promise<LookupTable> {
   const raw = await client.updateLookupTable(
     dataGroupId,
     params.modelDumpExcludeNone(),
   );
-  return validateResponseModel(LookupTable, native(raw), {
+  return validateResponseModel(LookupTable, nativeInt64(raw), {
     endpoint: "update_lookup_table",
   });
 }
@@ -807,14 +813,15 @@ export async function updateLookupTable(
  * `workspace.py:8281-8300`).
  *
  * @param client - The wire client.
- * @param dataGroupIds - Data group IDs to delete.
+ * @param dataGroupIds - Data group IDs to delete (signed int64s;
+ *   `bigint` beyond 2^53).
  * @returns Nothing.
  * @throws AuthenticationError | QueryError | ServerError - Wire
  *   failures.
  */
 export async function deleteLookupTables(
   client: MixpanelClient,
-  dataGroupIds: readonly number[],
+  dataGroupIds: readonly (number | bigint)[],
 ): Promise<void> {
   await client.deleteLookupTables(dataGroupIds);
 }
@@ -824,7 +831,8 @@ export async function deleteLookupTables(
  * (`download_lookup_table`, `workspace.py:8302-8335`).
  *
  * @param client - The wire client.
- * @param dataGroupId - Data group ID of the lookup table.
+ * @param dataGroupId - Data group ID of the lookup table (signed int64;
+ *   `bigint` beyond 2^53).
  * @param options - Optional `file_name` / `limit` (keyword-only).
  * @returns The raw CSV bytes (Python `bytes`).
  * @throws AuthenticationError | QueryError | ServerError - Wire
@@ -832,7 +840,7 @@ export async function deleteLookupTables(
  */
 export async function downloadLookupTable(
   client: MixpanelClient,
-  dataGroupId: number,
+  dataGroupId: number | bigint,
   options: WorkspaceDownloadLookupTableOptions = {},
 ): Promise<Uint8Array> {
   return client.downloadLookupTable(dataGroupId, {
@@ -846,14 +854,15 @@ export async function downloadLookupTable(
  * (`get_lookup_download_url`, `workspace.py:8337-8360`).
  *
  * @param client - The wire client.
- * @param dataGroupId - Data group ID of the lookup table.
+ * @param dataGroupId - Data group ID of the lookup table (signed int64;
+ *   `bigint` beyond 2^53).
  * @returns The signed URL string.
  * @throws MixpanelHeadlessError - `MISSING_URL` (raised by the B4
  *   client when the response carries no URL).
  */
 export async function getLookupDownloadUrl(
   client: MixpanelClient,
-  dataGroupId: number,
+  dataGroupId: number | bigint,
 ): Promise<string> {
   return client.getLookupDownloadUrl(dataGroupId);
 }

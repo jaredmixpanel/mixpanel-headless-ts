@@ -162,6 +162,16 @@ export function orderedEntries(
   return orderedKeys(value).map((key) => [key, value[key]]);
 }
 
+/** Options of {@link toNativeJson}. */
+export interface ToNativeJsonOptions {
+  /**
+   * What an integer token above the safe-integer range becomes:
+   * `"round"` (default) — the correctly-rounded double, `"bigint"` — the
+   * exact `bigint`.
+   */
+  readonly unsafeIntegers?: "round" | "bigint" | undefined;
+}
+
 /**
  * Convert a lossless-parsed JSON tree to NATIVE JS values — the point
  * where the TS wire layer matches Python's `json.loads` product
@@ -169,25 +179,45 @@ export function orderedEntries(
  *
  * Used by response-model validation paths (`list_workspaces`), where the
  * Pydantic-lax coercion mirror consumes native scalars. Two documented
- * narrowings (R4.5 numbers policy): integer tokens beyond 2^53−1
- * double-round (Python keeps the exact int — no modeled endpoint emits
- * such ids), and float-ness of integral tokens is erased (`42.0` → `42`;
- * Pydantic-lax accepts both identically at every consuming field).
+ * narrowings (R4.5 numbers policy): by default integer tokens beyond
+ * 2^53−1 double-round (Python keeps the exact int), and float-ness of
+ * integral tokens is erased (`42.0` → `42`; Pydantic-lax accepts both
+ * identically at every consuming field).
+ *
+ * The first narrowing is opt-out: `unsafeIntegers: "bigint"` maps an
+ * integer token whose exact value is not a safe integer to a `bigint`
+ * instead (safe integers and float tokens still become `number`). The
+ * lookup-table members use it because Mixpanel's `data_group_id`s are
+ * negative int64s (`-8644926364725811123`) that a double would round.
  *
  * @param value - The parsed tree ({@link JsonNumber} tokens intact).
+ * @param options - `unsafeIntegers`: `"round"` (default) or `"bigint"`.
  * @returns The native-valued tree.
  */
-export function toNativeJson(value: JsonValue): unknown {
+export function toNativeJson(
+  value: JsonValue,
+  options: ToNativeJsonOptions = {},
+): unknown {
   if (value instanceof JsonNumber) {
+    if (
+      options.unsafeIntegers === "bigint" &&
+      value.isIntegerToken() &&
+      !Number.isSafeInteger(value.toNumber())
+    ) {
+      // Safe-range test, not `isUnsafeInteger()`: ±2^53 itself is
+      // representable yet not safe, and `coerceInt64` narrows on the
+      // same boundary so the two agree.
+      return BigInt(value.raw);
+    }
     return value.toNumber();
   }
   if (Array.isArray(value)) {
-    return value.map((item) => toNativeJson(item));
+    return value.map((item) => toNativeJson(item, options));
   }
   if (typeof value === "object" && value !== null) {
     const out: Record<string, unknown> = {};
     for (const [key, member] of Object.entries(value)) {
-      out[key] = toNativeJson(member);
+      out[key] = toNativeJson(member, options);
     }
     // Key-order sidecar propagates (B8-MAPFIX): the native tree feeds
     // the ordered-dict model fields (`MeResponse`), which must see the

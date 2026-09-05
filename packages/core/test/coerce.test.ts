@@ -12,9 +12,11 @@ import {
   coerceBool,
   coerceFloat,
   coerceInt,
+  coerceInt64,
   coerceStr,
   resolveWithDefault,
 } from "../src/coerce.js";
+import { JsonNumber } from "../src/client/json-value.js";
 import {
   ParamValidationError,
   ResponseValidationError,
@@ -84,6 +86,95 @@ describe("coerceInt", () => {
         fc.double({ noNaN: true, noInteger: true, noDefaultInfinity: true }),
         (n) => {
           expect(() => coerceInt(n)).toThrow(ResponseValidationError);
+        },
+      ),
+    );
+  });
+});
+
+// ADDITIVE (no Python twin — Python ints are unbounded): the int64
+// carrier for lookup-table ids beyond 2^53.
+describe("coerceInt64", () => {
+  const BIG = "-8644926364725811123"; // a live lookup-table data_group_id
+
+  it("keeps the coerceInt table for safe values, as numbers", () => {
+    expect(coerceInt64(42)).toBe(42);
+    expect(coerceInt64(42.0)).toBe(42);
+    expect(coerceInt64("42")).toBe(42);
+    expect(coerceInt64(" -42 ")).toBe(-42);
+    expect(coerceInt64("1_000")).toBe(1000);
+    expect(coerceInt64("42.0")).toBe(42);
+    expect(coerceInt64(Number.MAX_SAFE_INTEGER)).toBe(Number.MAX_SAFE_INTEGER);
+  });
+
+  it("narrows a safe-range bigint to a number", () => {
+    expect(coerceInt64(7n)).toBe(7);
+    expect(coerceInt64(-7n)).toBe(-7);
+    expect(coerceInt64(BigInt(Number.MAX_SAFE_INTEGER))).toBe(
+      Number.MAX_SAFE_INTEGER,
+    );
+    expect(coerceInt64(BigInt(Number.MIN_SAFE_INTEGER))).toBe(
+      Number.MIN_SAFE_INTEGER,
+    );
+  });
+
+  it("keeps an unsafe bigint exact", () => {
+    expect(coerceInt64(BigInt(BIG))).toBe(BigInt(BIG));
+    expect(coerceInt64(2n ** 53n)).toBe(2n ** 53n);
+    expect(coerceInt64(-(2n ** 53n))).toBe(-(2n ** 53n));
+  });
+
+  it("reads a lossless JsonNumber token exactly (the wire path)", () => {
+    expect(coerceInt64(new JsonNumber(BIG))).toBe(BigInt(BIG));
+    expect(coerceInt64(new JsonNumber("7"))).toBe(7);
+    // Float tokens go through the coerceInt lax table.
+    expect(coerceInt64(new JsonNumber("42.0"))).toBe(42);
+    expect(() => coerceInt64(new JsonNumber("42.5"))).toThrow(
+      ResponseValidationError,
+    );
+  });
+
+  it("parses a decimal string beyond 2^53 exactly", () => {
+    expect(coerceInt64(BIG)).toBe(BigInt(BIG));
+    expect(coerceInt64(` ${BIG} `)).toBe(BigInt(BIG));
+    expect(coerceInt64(`${BIG}.0`)).toBe(BigInt(BIG));
+    expect(coerceInt64("+9007199254740993")).toBe(9007199254740993n);
+  });
+
+  it("returns an already-rounded unsafe number unchanged (no exact value exists)", () => {
+    expect(coerceInt64(2 ** 60)).toBe(2 ** 60);
+  });
+
+  it("rejects what coerceInt rejects, at the same boundaries", () => {
+    expect(() => coerceInt64(42.5)).toThrow(ResponseValidationError);
+    expect(() => coerceInt64(true)).toThrow(ResponseValidationError);
+    expect(() => coerceInt64("abc")).toThrow(ResponseValidationError);
+    expect(() => coerceInt64(null)).toThrow(ResponseValidationError);
+    expect(() => coerceInt64(undefined)).toThrow(ResponseValidationError);
+    expect(() => coerceInt64("1e3")).toThrow(ResponseValidationError);
+    expect(() => coerceInt64("abc", { kind: "param" })).toThrow(
+      ParamValidationError,
+    );
+  });
+
+  it("property: every safe integer round-trips as a number, every unsafe bigint as itself", () => {
+    fc.assert(
+      fc.property(fc.maxSafeInteger(), (n) => {
+        expect(coerceInt64(n)).toBe(n);
+        expect(coerceInt64(BigInt(n))).toBe(n);
+        expect(coerceInt64(String(n))).toBe(n);
+        expect(coerceInt64(new JsonNumber(String(n)))).toBe(n);
+      }),
+    );
+    fc.assert(
+      fc.property(
+        fc.bigInt({ min: 2n ** 53n, max: 2n ** 63n - 1n }),
+        fc.boolean(),
+        (magnitude, negative) => {
+          const exact = negative ? -magnitude : magnitude;
+          expect(coerceInt64(exact)).toBe(exact);
+          expect(coerceInt64(exact.toString())).toBe(exact);
+          expect(coerceInt64(new JsonNumber(exact.toString()))).toBe(exact);
         },
       ),
     );

@@ -55,7 +55,7 @@ import {
   type ParsedReportLink,
 } from "./report-links.js";
 import { validateBookmarkParamsSchema } from "./workspace-members/bookmarks-cohorts.js";
-import { requireEntityId } from "./workspace-members/shared.js";
+import { requireEntityId, requireInt64Id } from "./workspace-members/shared.js";
 import {
   ReportLink,
   ResolvedReport,
@@ -5471,18 +5471,23 @@ export class Workspace {
    * Update a lookup table (`update_lookup_table`,
    * `workspace.py:8247-8279`).
    *
-   * @param dataGroupId - Data group ID of the lookup table.
+   * @param dataGroupId - Data group ID of the lookup table — a signed
+   *   int64: a `number` when it is a safe integer, a `bigint` beyond
+   *   2^53 (Mixpanel assigns ids such as `-8644926364725811123n`). The
+   *   id is sent in the JSON body as an exact integer token.
    * @param params - Fields to update.
    * @returns The updated `LookupTable`.
    * @throws ResponseValidationError - Malformed payload.
    * @throws ParamValidationError - `RL6_INVALID_ID` when `dataGroupId`
-   *   is not a positive integer (network-free guard, before any request).
+   *   is not a non-zero integer, or is a `number` beyond
+   *   `Number.MAX_SAFE_INTEGER` (already rounded — pass a `bigint`);
+   *   network-free guard, before any request.
    */
   async updateLookupTable(
-    dataGroupId: number,
+    dataGroupId: number | bigint,
     params: UpdateLookupTableParams,
   ): Promise<LookupTable> {
-    requireEntityId("data_group_id", dataGroupId);
+    requireInt64Id("data_group_id", dataGroupId);
     return updateLookupTableMember(this.client, dataGroupId, params);
   }
 
@@ -5490,12 +5495,22 @@ export class Workspace {
    * Delete one or more lookup tables (`delete_lookup_tables`,
    * `workspace.py:8281-8300`).
    *
-   * @param dataGroupIds - Data group IDs to delete.
+   * @param dataGroupIds - Data group IDs to delete — signed int64s
+   *   (`bigint` beyond 2^53), each sent as an exact integer token.
    * @returns Nothing.
    * @throws AuthenticationError | QueryError | ServerError - Wire
    *   failures.
+   * @throws ParamValidationError - `RL6_INVALID_ID` when any element is
+   *   not a non-zero integer, or is a `number` beyond
+   *   `Number.MAX_SAFE_INTEGER` (already rounded — pass a `bigint`);
+   *   network-free guard, before any request.
    */
-  async deleteLookupTables(dataGroupIds: readonly number[]): Promise<void> {
+  async deleteLookupTables(
+    dataGroupIds: readonly (number | bigint)[],
+  ): Promise<void> {
+    for (const dataGroupId of dataGroupIds) {
+      requireInt64Id("data_group_ids", dataGroupId);
+    }
     return deleteLookupTablesMember(this.client, dataGroupIds);
   }
 
@@ -5503,20 +5518,25 @@ export class Workspace {
    * Download lookup table data as raw CSV bytes
    * (`download_lookup_table`, `workspace.py:8302-8335`).
    *
-   * @param dataGroupId - Data group ID of the lookup table.
+   * @param dataGroupId - Data group ID of the lookup table — a signed
+   *   int64: a `number` when it is a safe integer, a `bigint` beyond
+   *   2^53 (Mixpanel assigns ids such as `-8644926364725811123n`),
+   *   spelled exactly into the `data-group-id` query param.
    * @param options - Optional `file_name` / `limit` (keyword-only in
    *   Python).
    * @returns The raw CSV bytes.
    * @throws AuthenticationError | QueryError | ServerError - Wire
    *   failures.
    * @throws ParamValidationError - `RL6_INVALID_ID` when `dataGroupId`
-   *   is not a positive integer (network-free guard, before any request).
+   *   is not a non-zero integer, or is a `number` beyond
+   *   `Number.MAX_SAFE_INTEGER` (already rounded — pass a `bigint`);
+   *   network-free guard, before any request.
    */
   async downloadLookupTable(
-    dataGroupId: number,
+    dataGroupId: number | bigint,
     options: WorkspaceDownloadLookupTableOptions = {},
   ): Promise<Uint8Array> {
-    requireEntityId("data_group_id", dataGroupId);
+    requireInt64Id("data_group_id", dataGroupId);
     return downloadLookupTableMember(this.client, dataGroupId, options);
   }
 
@@ -5524,15 +5544,19 @@ export class Workspace {
    * Get a signed download URL for a lookup table
    * (`get_lookup_download_url`, `workspace.py:8337-8360`).
    *
-   * @param dataGroupId - Data group ID of the lookup table.
+   * @param dataGroupId - Data group ID of the lookup table — a signed
+   *   int64: a `number` when it is a safe integer, a `bigint` beyond
+   *   2^53, spelled exactly into the `data-group-id` query param.
    * @returns The signed URL string.
    * @throws MixpanelHeadlessError - `MISSING_URL` when the response
    *   carries no URL.
    * @throws ParamValidationError - `RL6_INVALID_ID` when `dataGroupId`
-   *   is not a positive integer (network-free guard, before any request).
+   *   is not a non-zero integer, or is a `number` beyond
+   *   `Number.MAX_SAFE_INTEGER` (already rounded — pass a `bigint`);
+   *   network-free guard, before any request.
    */
-  async getLookupDownloadUrl(dataGroupId: number): Promise<string> {
-    requireEntityId("data_group_id", dataGroupId);
+  async getLookupDownloadUrl(dataGroupId: number | bigint): Promise<string> {
+    requireInt64Id("data_group_id", dataGroupId);
     return getLookupDownloadUrlMember(this.client, dataGroupId);
   }
 
