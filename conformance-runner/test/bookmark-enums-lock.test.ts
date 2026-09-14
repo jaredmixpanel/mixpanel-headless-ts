@@ -19,7 +19,7 @@ import {
   MAX_CONVERSION_WINDOW,
   VALID_CHART_TYPES,
   bookmarkEnumTablesSnapshot,
-} from "../../packages/core/src/bookmarks/index.js";
+} from "@mixpanel-headless/core/internal";
 
 /** The repo root (this file lives in conformance-runner/test). */
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");

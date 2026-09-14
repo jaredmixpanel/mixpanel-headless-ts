@@ -17,10 +17,12 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createMixpanelClient } from "../../core/src/client/client.js";
-import { ENDPOINTS } from "../../core/src/client/url.js";
-import { Secret } from "../../core/src/secret.js";
-import type { Session } from "../../core/src/auth/session.js";
+import {
+  createMixpanelClient,
+  ENDPOINTS,
+  Secret,
+} from "@mixpanel-headless/core";
+import type { Session } from "@mixpanel-headless/core";
 import {
   createNodeEndpointOverrides,
   createNodeEnv,

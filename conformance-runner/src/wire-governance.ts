@@ -17,8 +17,8 @@
  * registration here is complete.
  */
 
-import type { MixpanelClient } from "../../packages/core/src/client/client.js";
-import type { ReplayEnv } from "../../packages/core/src/services/entities/replays-signing.js";
+import type { MixpanelClient } from "@mixpanel-headless/core";
+import type { ReplayEnv } from "@mixpanel-headless/core/internal";
 import { encodeExpectValue } from "./codecs.js";
 import type { JsonValue } from "./json-value.js";
 import type { ImplementationRegistry, InvocationContext } from "./runner.js";

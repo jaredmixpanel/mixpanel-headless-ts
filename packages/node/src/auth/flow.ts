@@ -54,14 +54,12 @@ import { createInterface } from "node:readline";
 import {
   buildAuthorizeUrl,
   postTokenRequest,
-} from "../../../core/src/auth/oauth-http.js";
-import { parsePastedRedirect } from "../../../core/src/auth/redirect-parse.js";
-import {
+  parsePastedRedirect,
   OAuthTokens,
   pythonUtcIsoformat,
-} from "../../../core/src/auth/token.js";
-import type { OAuthClientInfo } from "../../../core/src/auth/token.js";
-import { OAuthError } from "../../../core/src/errors.js";
+  OAuthError,
+} from "@mixpanel-headless/core";
+import type { OAuthClientInfo } from "@mixpanel-headless/core";
 import {
   CALLBACK_PORTS,
   CallbackResult,

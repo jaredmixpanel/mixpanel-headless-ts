@@ -27,63 +27,41 @@ import {
   sortedByCodepoint,
   zfill,
   type PythonValue,
-} from "../../packages/core/src/compat/index.js";
-import { iterJsonlLines } from "../../packages/core/src/client/jsonl.js";
-import {
   BookmarkValidationError,
   MixpanelHeadlessError,
   ValidationError,
-} from "../../packages/core/src/errors.js";
-import {
   CohortBreakdown,
   CohortCriteria,
   CohortDefinition,
-  sanitizeRawCohort,
   type DidEventOptions,
   type DidNotDoEventOptions,
   type HasPropertyOperator,
   type HasPropertyType,
-} from "../../packages/core/src/types/query-params/cohort.js";
-import {
   Filter,
   ListItemGroupMode,
   type FilterFields,
   type PropertySpec,
-} from "../../packages/core/src/types/query-params/filter.js";
-import {
   FlowStep,
   type FlowStepFields,
-} from "../../packages/core/src/types/query-params/flow.js";
-import {
   FrequencyBreakdown,
   FrequencyFilter,
   type FrequencyBreakdownFields,
   type FrequencyFilterFields,
-} from "../../packages/core/src/types/query-params/frequency.js";
-import {
   Exclusion,
   FunnelStep,
   HoldingConstant,
   type ExclusionFields,
   type FunnelStepFields,
   type HoldingConstantFields,
-} from "../../packages/core/src/types/query-params/funnel.js";
-import {
   GroupBy,
   type GroupByFields,
-} from "../../packages/core/src/types/query-params/group-by.js";
-import {
   CohortMetric,
   Formula,
   Metric,
   TimeComparison,
   type MetricFields,
-} from "../../packages/core/src/types/query-params/metric.js";
-import {
   RetentionEvent,
   type RetentionEventFields,
-} from "../../packages/core/src/types/query-params/retention.js";
-import {
   Replay,
   ReplayBundle,
   ReplayEvent,
@@ -96,10 +74,12 @@ import {
   type ReplaySummaryFields,
   type SignedReplayFields,
   type UserActionFields,
-} from "../../packages/core/src/types/results/replays.js";
-import { CONTRACT_TAG_CODECS } from "./vector-codecs.js";
-import {
   validateBookmark,
+  type ValidateBookmarkOptions,
+} from "@mixpanel-headless/core";
+import {
+  iterJsonlLines,
+  sanitizeRawCohort,
   validateFlowArgs,
   validateFlowBookmark,
   validateFunnelArgs,
@@ -110,7 +90,6 @@ import {
   validateTimeArgs,
   validateUserArgs,
   validateUserParams,
-  type ValidateBookmarkOptions,
   type ValidateFlowArgsOptions,
   type ValidateFunnelArgsOptions,
   type ValidateGroupByArgsOptions,
@@ -118,8 +97,6 @@ import {
   type ValidateRetentionArgsOptions,
   type ValidateTimeArgsOptions,
   type ValidateUserArgsOptions,
-} from "../../packages/core/src/query/index.js";
-import {
   buildDateRange,
   buildFilterEntry,
   buildFilterSection,
@@ -128,24 +105,19 @@ import {
   buildFrequencyFilterEntry,
   buildGroupSection,
   buildTimeSection,
-} from "../../packages/core/src/bookmarks/builders.js";
-import {
   BOOKMARK_MODEL_HANDLES,
   getRootModelForBookmarkType,
-} from "../../packages/core/src/bookmarks/schema.js";
-import { validateWithPydantic } from "../../packages/core/src/bookmarks/schema-sorting.js";
-import { normalizeOnExpression } from "../../packages/core/src/query/expressions.js";
-import { ValueError } from "../../packages/core/src/query/python-builtins.js";
-import { buildSegfilterEntry } from "../../packages/core/src/query/segfilter.js";
-import {
+  validateWithPydantic,
+  normalizeOnExpression,
+  ValueError,
+  buildSegfilterEntry,
   transformEvent,
   transformProfile,
-} from "../../packages/core/src/query/transforms.js";
-import {
   extractCohortFilter,
   filterToSelector,
   filtersToSelector,
-} from "../../packages/core/src/query/user-builders.js";
+} from "@mixpanel-headless/core/internal";
+import { CONTRACT_TAG_CODECS } from "./vector-codecs.js";
 import {
   CodecRegistry,
   PyDatetime,

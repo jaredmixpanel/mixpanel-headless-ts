@@ -5,7 +5,4 @@
  * the rig. The rig re-imports from core (GF5 direction rule); its unit
  * suite moved with the parser (colocated per R7.1).
  */
-export {
-  LosslessJsonError,
-  parseLossless,
-} from "../../packages/core/src/client/lossless-json.js";
+export { LosslessJsonError, parseLossless } from "@mixpanel-headless/core";

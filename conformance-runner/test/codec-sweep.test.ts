@@ -18,45 +18,35 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { OAuthTokens } from "../../packages/core/src/auth/token.js";
-import { Secret } from "../../packages/core/src/secret.js";
 import {
+  OAuthTokens,
+  Secret,
   CohortBreakdown,
   CohortCriteria,
   CohortDefinition,
-} from "../../packages/core/src/types/query-params/cohort.js";
-import {
   CustomPropertyRef,
   Filter,
   InlineCustomProperty,
   ListItemGroupMode,
   PropertyInput,
-} from "../../packages/core/src/types/query-params/filter.js";
-import { FlowStep } from "../../packages/core/src/types/query-params/flow.js";
-import {
+  FlowStep,
   FrequencyBreakdown,
   FrequencyFilter,
-} from "../../packages/core/src/types/query-params/frequency.js";
-import {
   Exclusion,
   FunnelStep,
   HoldingConstant,
-} from "../../packages/core/src/types/query-params/funnel.js";
-import { GroupBy } from "../../packages/core/src/types/query-params/group-by.js";
-import * as entityClasses from "@mixpanel-headless/core";
-import { EntityModel } from "../../packages/core/src/types/entities/model-base.js";
-import {
+  GroupBy,
   CohortMetric,
   Formula,
   Metric,
   TimeComparison,
-} from "../../packages/core/src/types/query-params/metric.js";
-import { RetentionEvent } from "../../packages/core/src/types/query-params/retention.js";
-import {
+  RetentionEvent,
   Replay,
   SignedReplay,
   UserAction,
-} from "../../packages/core/src/types/results/replays.js";
+} from "@mixpanel-headless/core";
+import * as entityClasses from "@mixpanel-headless/core";
+import { EntityModel } from "@mixpanel-headless/core/internal";
 import { createRunnerDeps } from "../src/bindings.js";
 import { canonicalize } from "../src/canonical.js";
 import {

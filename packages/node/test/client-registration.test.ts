@@ -10,7 +10,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { OAuthError } from "../../core/src/errors.js";
+import { OAuthError } from "@mixpanel-headless/core";
 import { ensureClientRegistered } from "../src/auth/client-registration.js";
 import { OAuthStorage } from "../src/auth/storage.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";

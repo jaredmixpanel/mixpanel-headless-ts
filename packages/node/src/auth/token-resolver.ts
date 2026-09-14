@@ -28,11 +28,15 @@ import type {
   OAuthTokenAccount,
   Region,
   TokenResolver,
-} from "../../../core/src/auth/account.js";
-import { OAuthTokens, parseOAuthTokens } from "../../../core/src/auth/token.js";
-import type { OAuthClientInfo } from "../../../core/src/auth/token.js";
-import { isPythonDict } from "../../../core/src/compat/python-dict.js";
-import { MixpanelHeadlessError, OAuthError } from "../../../core/src/errors.js";
+  OAuthClientInfo,
+} from "@mixpanel-headless/core";
+import {
+  OAuthTokens,
+  parseOAuthTokens,
+  isPythonDict,
+  MixpanelHeadlessError,
+  OAuthError,
+} from "@mixpanel-headless/core";
 import {
   atomicWriteBytes,
   isErrnoError,

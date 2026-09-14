@@ -46,15 +46,17 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { createRunnerDeps } from "../../conformance-runner/src/bindings.js";
-import { canonicalize } from "../../conformance-runner/src/canonical.js";
-import type { JsonValue } from "../../conformance-runner/src/json-value.js";
 import {
+  createRunnerDeps,
+  canonicalize,
   loadCorpus,
   loadCorpusConfig,
-} from "../../conformance-runner/src/loader.js";
-import type { ConformanceVector } from "../../conformance-runner/src/vector-types.js";
-import { createShims } from "../../conformance-runner/src/shims.js";
+  createShims,
+} from "@mixpanel-headless/conformance-runner";
+import type {
+  JsonValue,
+  ConformanceVector,
+} from "@mixpanel-headless/conformance-runner";
 import { KNOWN_VALID_INSIGHTS_PAYLOAD } from "../referees/bookmark-schema/known-payloads.js";
 import type { JsonObject } from "../referees/bookmark-schema/known-payloads.js";
 import { refereeBookmarkPayload } from "../referees/bookmark-schema/referee.js";

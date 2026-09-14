@@ -31,7 +31,7 @@ import {
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { Workspace } from "../../core/src/workspace.js";
+import { Workspace } from "@mixpanel-headless/core";
 import {
   loadBridgeForStartup,
   bridgeViewFromFile,

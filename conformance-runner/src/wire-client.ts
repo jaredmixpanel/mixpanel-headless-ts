@@ -23,20 +23,15 @@
 import {
   createMixpanelClient,
   type MixpanelClient,
-} from "../../packages/core/src/client/client.js";
-import { JsonNumber as CoreJsonNumber } from "../../packages/core/src/client/json-value.js";
-import type { WorkspaceRef } from "../../packages/core/src/auth/session.js";
-import type { Session } from "../../packages/core/src/auth/session.js";
-import {
+  JsonNumber as CoreJsonNumber,
   parseAccount,
   type Account,
   type OAuthTokenAccount,
   type TokenResolver,
-} from "../../packages/core/src/auth/account.js";
-import {
   BookmarkValidationError,
   MixpanelHeadlessError,
-} from "../../packages/core/src/errors.js";
+} from "@mixpanel-headless/core";
+import type { WorkspaceRef, Session } from "@mixpanel-headless/core";
 import {
   UndecodableValueError,
   UnencodableValueError,

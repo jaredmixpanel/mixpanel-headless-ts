@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { ParamValidationError } from "../../core/src/errors.js";
+import { ParamValidationError } from "@mixpanel-headless/core";
 import {
   coerceLaxExpiresAt,
   pydanticJsonDatetimeText,

@@ -55,25 +55,22 @@ export {
 } from "./registration.js";
 
 // ── Core re-exports (the surface a browser consumer needs — §2.5) ─────
-export {
-  CREDENTIAL_KEYS,
-  type CredentialStore,
-} from "../../core/src/auth/credential-store.js";
-export { PkceChallenge } from "../../core/src/auth/pkce.js";
-export type { Account, Region } from "../../core/src/auth/account.js";
-export type { Session } from "../../core/src/auth/session.js";
+export { CREDENTIAL_KEYS, type CredentialStore } from "@mixpanel-headless/core";
+export { PkceChallenge } from "@mixpanel-headless/core";
+export type { Account, Region } from "@mixpanel-headless/core";
+export type { Session } from "@mixpanel-headless/core";
 export {
   OAuthTokens,
   parseOAuthClientInfo,
   parseOAuthTokens,
   type OAuthClientInfo,
-} from "../../core/src/auth/token.js";
+} from "@mixpanel-headless/core";
 // TYPE-ONLY re-export (pair-B FB-2, b9-reviewB-threat.md F2): a VALUE
 // export let `new Workspace({session})` accept a service-account
 // session with neither the §2.3 SA gate nor the §2.4 export guard.
 // Annotations keep working; construction goes through the gated
 // factories (`createBrowserWorkspace` / `createBrowserWorkspaceFromStore`).
-export type { Workspace } from "../../core/src/workspace.js";
+export type { Workspace } from "@mixpanel-headless/core";
 // The error hierarchy (coded errors; programs key on `.code` — R5).
 // Listed by name: `export *` from another package would forward whatever
 // core adds later without this barrel's review.
@@ -126,7 +123,7 @@ export {
   type ServerErrorOptions,
   type SessionReplayErrorOptions,
   type ValidationSeverity,
-} from "../../core/src/errors.js";
+} from "@mixpanel-headless/core";
 
 // ── Query vocabulary (core re-exports) ────────────────────────────────
 // Browser pages BUILD queries client-side: a control moves, the page
@@ -197,14 +194,14 @@ export {
   type MetricFields,
   type PropertySpec,
   type RetentionEventFields,
-} from "../../core/src/types/query-params/index.js";
+} from "@mixpanel-headless/core";
 // The ONE public member of core's `query/` subtree (core barrel
 // comment: Python `__all__` entry `validate_bookmark`) — pages
 // pre-flight the params they assemble before spending a lease call.
 // The rest of `query/` mirrors Python `_internal` and is NOT reached
 // into from here.
-export { validateBookmark } from "../../core/src/query/validation.js";
-export type { ValidateBookmarkOptions } from "../../core/src/query/validation.js";
+export { validateBookmark } from "@mixpanel-headless/core";
+export type { ValidateBookmarkOptions } from "@mixpanel-headless/core";
 
 // ── Entity params exposed for v1 write scopes ─────────────────────────
 // Annotations is the ONE grantable write class in v1 (heads spec 05
@@ -220,7 +217,7 @@ export type { ValidateBookmarkOptions } from "../../core/src/query/validation.js
 // no path around the §2.3 service-account gate or the §2.4 export
 // guard. `query-vocabulary.test.ts` pins the identity, the absence of
 // a transport seam, and the one-class scope.
-export { CreateAnnotationParams } from "../../core/src/types/entities/annotations.js";
+export { CreateAnnotationParams } from "@mixpanel-headless/core";
 
 // ── Identity helpers (core re-exports) ────────────────────────────────
 // Pages compute and cite QueryRef hashes (heads spec 02 §3.3): the hash
@@ -234,5 +231,5 @@ export { CreateAnnotationParams } from "../../core/src/types/entities/annotation
 // Same posture as the builders — pure functions over plain data, no
 // session, no transport (`inferBookmarkType` adds only
 // `bookmarks/infer-type`; the canonicalizer is already in the graph).
-export { inferBookmarkType } from "../../core/src/bookmarks/infer-type.js";
-export { pythonJsonDumpsCanonical } from "../../core/src/compat/python-json-dumps-canonical.js";
+export { inferBookmarkType } from "@mixpanel-headless/core";
+export { pythonJsonDumpsCanonical } from "@mixpanel-headless/core";

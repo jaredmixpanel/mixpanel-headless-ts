@@ -39,12 +39,8 @@
 import {
   createMixpanelClient,
   type MixpanelClient,
-} from "../../packages/core/src/client/client.js";
-import { JsonNumber as CoreJsonNumber } from "../../packages/core/src/client/json-value.js";
-import { pythonFloatStr } from "../../packages/core/src/compat/index.js";
-import { CONTRACT_TAG_CODECS } from "./vector-codecs.js";
-import type { EventsInput } from "../../packages/core/src/workspace-query-params.js";
-import {
+  JsonNumber as CoreJsonNumber,
+  pythonFloatStr,
   Workspace,
   type BusinessContextScopeOptions,
   type WorkspaceMeOptions,
@@ -77,16 +73,20 @@ import {
   type WorkspaceTopEventsOptions,
   type WorkspaceUserQueryOptions,
   type WorkspaceLexiconSchemasOptions,
-} from "../../packages/core/src/workspace.js";
-import type { FunnelStep } from "../../packages/core/src/types/query-params/funnel.js";
-import type { FlowStep } from "../../packages/core/src/types/query-params/flow.js";
-import type { RetentionEvent } from "../../packages/core/src/types/query-params/retention.js";
+  MixpanelHeadlessError,
+} from "@mixpanel-headless/core";
+import { CONTRACT_TAG_CODECS } from "./vector-codecs.js";
 import type {
+  EventsInput,
+  LiveActivityFeedOptions,
+} from "@mixpanel-headless/core/internal";
+import type {
+  FunnelStep,
+  FlowStep,
+  RetentionEvent,
   BookmarkType,
   EntityType,
-} from "../../packages/core/src/types/literals.js";
-import { MixpanelHeadlessError } from "../../packages/core/src/errors.js";
-import type { LiveActivityFeedOptions } from "../../packages/core/src/services/live-query.js";
+} from "@mixpanel-headless/core";
 import {
   CodecRegistry,
   PyDate,

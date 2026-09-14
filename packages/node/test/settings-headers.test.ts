@@ -16,8 +16,7 @@ import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { resolveSession } from "../../core/src/auth/resolver.js";
-import { Secret } from "../../core/src/secret.js";
+import { resolveSession, Secret } from "@mixpanel-headless/core";
 import { createNodeBridgeEffects } from "../src/auth/bridge.js";
 import { ConfigManager } from "../src/config.js";
 import { createNodeConfigSource } from "../src/config-writes.js";

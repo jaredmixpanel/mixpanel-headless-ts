@@ -19,8 +19,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import type {
   OAuthTokenAccount,
   ServiceAccount,
-} from "../../core/src/auth/account.js";
-import { Secret } from "../../core/src/secret.js";
+} from "@mixpanel-headless/core";
+import { Secret } from "@mixpanel-headless/core";
 import { createNodeConfigSource } from "../src/config-writes.js";
 import { makeTempDir } from "./helpers.js";
 

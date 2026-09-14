@@ -15,12 +15,8 @@
  * defined by the JSON tree shape itself.
  */
 
-import {
-  pythonFloatStr,
-  pythonRepr,
-  pythonStr,
-} from "../../packages/core/src/compat/index.js";
-import { JsonNumber } from "../../conformance-runner/src/json-value.js";
+import { pythonFloatStr, pythonRepr, pythonStr } from "@mixpanel-headless/core";
+import { JsonNumber } from "@mixpanel-headless/conformance-runner";
 import { RawObject, type RawValue } from "./raw-json.js";
 
 /**

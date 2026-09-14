@@ -44,12 +44,12 @@ import {
 import { constants as osConstants } from "node:os";
 import { basename, dirname, join } from "node:path";
 
-import { pythonStrip } from "../../core/src/compat/python-strip.js";
 import {
+  pythonStrip,
   ConfigError,
   MixpanelHeadlessError,
   ParamValidationError,
-} from "../../core/src/errors.js";
+} from "@mixpanel-headless/core";
 
 /**
  * Hard ceiling on a single secret read from stdin

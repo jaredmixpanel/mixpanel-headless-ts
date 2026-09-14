@@ -34,7 +34,7 @@ import {
   pythonUtcIsoformat,
   type OAuthClientInfo,
   type OAuthTokens,
-} from "../../core/src/auth/token.js";
+} from "@mixpanel-headless/core";
 
 /** UTC-instant suffix grammar accepted by the closed-loop renderers. */
 const UTC_SUFFIX = /(?:Z|[+-]00:00)$/;

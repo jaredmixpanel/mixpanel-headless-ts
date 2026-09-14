@@ -22,7 +22,7 @@
 import {
   JsonNumber,
   type JsonValue,
-} from "../../conformance-runner/src/json-value.js";
+} from "@mixpanel-headless/conformance-runner";
 
 /** Error raised for malformed JSON request text, with a character offset. */
 export class RawJsonError extends Error {

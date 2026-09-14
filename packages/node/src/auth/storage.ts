@@ -40,17 +40,13 @@ import {
   parseOAuthClientInfo,
   OAuthTokens,
   type OAuthClientInfo,
-} from "../../../core/src/auth/token.js";
-import { isPythonDict } from "../../../core/src/compat/python-dict.js";
-import {
+  isPythonDict,
   pythonStr,
   type PythonValue,
-} from "../../../core/src/compat/python-str.js";
-import {
   MixpanelHeadlessError,
   ParamValidationError,
-} from "../../../core/src/errors.js";
-import { Secret } from "../../../core/src/secret.js";
+  Secret,
+} from "@mixpanel-headless/core";
 import {
   CredentialPathError,
   atomicWriteBytes,

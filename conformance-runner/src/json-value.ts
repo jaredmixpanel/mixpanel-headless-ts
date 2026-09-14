@@ -7,7 +7,4 @@
  * stable through this shim, and `instanceof JsonNumber` identity is
  * preserved because there is exactly ONE class definition (core's).
  */
-export {
-  JsonNumber,
-  type JsonValue,
-} from "../../packages/core/src/client/json-value.js";
+export { JsonNumber, type JsonValue } from "@mixpanel-headless/core";

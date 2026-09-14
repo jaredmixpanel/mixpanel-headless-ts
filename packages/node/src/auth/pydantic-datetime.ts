@@ -39,8 +39,10 @@
  * gates on `Date.parse` + the tz-aware suffix first).
  */
 
-import { pythonUtcIsoformat } from "../../../core/src/auth/token.js";
-import { ParamValidationError } from "../../../core/src/errors.js";
+import {
+  pythonUtcIsoformat,
+  ParamValidationError,
+} from "@mixpanel-headless/core";
 
 /** The speedate seconds→milliseconds watershed (`|v|` strictly above). */
 const MS_WATERSHED = 20_000_000_000;

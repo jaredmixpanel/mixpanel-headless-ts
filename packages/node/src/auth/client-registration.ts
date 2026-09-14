@@ -20,9 +20,8 @@
  * proof.
  */
 
-import { registerClient } from "../../../core/src/auth/oauth-http.js";
-import { DEFAULT_SCOPE } from "../../../core/src/auth/oauth-constants.js";
-import type { OAuthClientInfo } from "../../../core/src/auth/token.js";
+import { registerClient, DEFAULT_SCOPE } from "@mixpanel-headless/core";
+import type { OAuthClientInfo } from "@mixpanel-headless/core";
 import type { OAuthStorage } from "./storage.js";
 
 // Re-export preserving the B8 import path (`DEFAULT_SCOPE`'s TS home

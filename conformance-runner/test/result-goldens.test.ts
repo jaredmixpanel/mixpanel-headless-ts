@@ -24,8 +24,8 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { ResponseValidationError } from "../../packages/core/src/errors.js";
 import {
+  ResponseValidationError,
   ActivityFeedResult,
   FlowsResult,
   FrequencyResult,
@@ -35,8 +35,8 @@ import {
   NumericSumResult,
   RetentionResult,
   SavedReportResult,
-} from "../../packages/core/src/types/results/live-query.js";
-import { ProfilePageResult } from "../../packages/core/src/types/results/discovery.js";
+  ProfilePageResult,
+} from "@mixpanel-headless/core";
 import { createRunnerDeps } from "../src/bindings.js";
 import { JsonNumber, type JsonValue } from "../src/json-value.js";
 import { loadCorpus, loadCorpusConfig } from "../src/loader.js";

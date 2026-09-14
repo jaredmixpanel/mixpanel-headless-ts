@@ -34,35 +34,32 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { resolveApi } from "../../conformance-runner/src/api-map.js";
-import { createRunnerDeps } from "../../conformance-runner/src/bindings.js";
 import {
+  resolveApi,
+  createRunnerDeps,
   canonicalize,
   canonicalizeError,
-} from "../../conformance-runner/src/canonical.js";
-import {
   UndecodableValueError,
   encodeExpectValue,
-} from "../../conformance-runner/src/codecs.js";
-import {
   JsonNumber,
   type JsonValue,
-} from "../../conformance-runner/src/json-value.js";
+  createShims,
+  CONTRACT_TAG_CODECS,
+} from "@mixpanel-headless/conformance-runner";
 import type {
   InvocationContext,
   RunnerDeps,
-} from "../../conformance-runner/src/runner.js";
-import { createShims } from "../../conformance-runner/src/shims.js";
-import { pythonFloatStr, zfill } from "../../packages/core/src/compat/index.js";
+} from "@mixpanel-headless/conformance-runner";
 import {
+  pythonFloatStr,
+  zfill,
   ReplayBundle,
   ReplayEvent,
   ReplaySummary,
   type ReplayBundleFields,
   type ReplayEventFields,
   type ReplaySummaryFields,
-} from "../../packages/core/src/types/results/replays.js";
-import { CONTRACT_TAG_CODECS } from "../../conformance-runner/src/vector-codecs.js";
+} from "@mixpanel-headless/core";
 import { pythonStrRaw } from "./python-str-raw.js";
 import {
   RawObject,

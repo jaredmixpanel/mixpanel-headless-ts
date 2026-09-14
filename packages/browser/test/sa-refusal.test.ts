@@ -11,8 +11,8 @@
 import { describe, expect, it } from "vitest";
 
 import * as browserEntry from "../src/index.js";
-import type { Session } from "../../core/src/auth/session.js";
-import { Secret } from "../../core/src/secret.js";
+import type { Session } from "@mixpanel-headless/core";
+import { Secret } from "@mixpanel-headless/core";
 import {
   BROWSER_SERVICE_ACCOUNT_REFUSED,
   BrowserUnsupportedError,

@@ -48,7 +48,7 @@ import {
   MixpanelHeadlessError,
   ConfigError,
   ParamValidationError,
-} from "../../core/src/errors.js";
+} from "@mixpanel-headless/core";
 import {
   MAX_CREDENTIAL_BYTES,
   SECRET_STDIN_MAX_BYTES,

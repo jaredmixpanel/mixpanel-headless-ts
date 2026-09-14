@@ -12,4 +12,4 @@
  * (`engines.node: ">=20"`).
  */
 
-export { PkceChallenge } from "../../../core/src/auth/pkce.js";
+export { PkceChallenge } from "@mixpanel-headless/core";

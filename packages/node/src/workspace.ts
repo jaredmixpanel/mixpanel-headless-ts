@@ -17,8 +17,8 @@
  * failed on the first OAuth query with `TokenResolver is required`.
  */
 
-import { Workspace, type WorkspaceOptions } from "../../core/src/workspace.js";
-import type { MixpanelClientOptions } from "../../core/src/client/client.js";
+import { Workspace, type WorkspaceOptions } from "@mixpanel-headless/core";
+import type { MixpanelClientOptions } from "@mixpanel-headless/core";
 import {
   createNodeAuthEffects,
   type NodeAuthEffectsOptions,

@@ -21,13 +21,17 @@
  * namespace exports in `index.ts` do exactly that).
  */
 
-import type { AuthEffects } from "../../core/src/accounts/auth-effects.js";
-import { persistActiveToConfig } from "../../core/src/accounts/resolver-seams.js";
-import { resolverSourcesFromEffects } from "../../core/src/accounts/resolver-seams.js";
-import type { Region } from "../../core/src/auth/account.js";
-import type { ResolverSources } from "../../core/src/auth/resolver.js";
-import type { Session } from "../../core/src/auth/session.js";
-import type { OAuthTokens } from "../../core/src/auth/token.js";
+import type {
+  AuthEffects,
+  Region,
+  ResolverSources,
+  Session,
+  OAuthTokens,
+} from "@mixpanel-headless/core";
+import {
+  persistActiveToConfig,
+  resolverSourcesFromEffects,
+} from "@mixpanel-headless/core/internal";
 import {
   bridgeViewFromFile,
   createNodeBridgeEffects,

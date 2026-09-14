@@ -33,16 +33,15 @@
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { Region } from "../../packages/core/src/auth/account.js";
+import type { Region } from "@mixpanel-headless/core";
 import {
-  probeClientFromFetch,
   probeRegion,
   type ClientFactory,
-} from "../../packages/core/src/auth/region-probe.js";
-import { OAuthTokens } from "../../packages/core/src/auth/token.js";
-import { MixpanelHeadlessError } from "../../packages/core/src/errors.js";
-import { OAuthFlow } from "../../packages/node/src/auth/flow.js";
-import { OAuthStorage } from "../../packages/node/src/auth/storage.js";
+  OAuthTokens,
+  MixpanelHeadlessError,
+} from "@mixpanel-headless/core";
+import { probeClientFromFetch } from "@mixpanel-headless/core/internal";
+import { OAuthFlow, OAuthStorage } from "@mixpanel-headless/node";
 import { PyDatetime, RecordingCallback } from "./codecs.js";
 import type { ImplementationRegistry, InvocationContext } from "./runner.js";
 import { WireCoreError, runWire } from "./wire-client.js";

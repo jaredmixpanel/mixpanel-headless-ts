@@ -12,7 +12,7 @@
 import { createServer, type Server } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { OAuthError } from "../../core/src/errors.js";
+import { OAuthError } from "@mixpanel-headless/core";
 import {
   CALLBACK_PORTS,
   CallbackResult,

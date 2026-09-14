@@ -20,15 +20,13 @@ import type {
   ConfigWrites,
   SetActiveUpdate,
   UpdateAccountFields,
-} from "../../core/src/accounts/auth-effects.js";
-import type { Account } from "../../core/src/auth/account.js";
-import type { ResolverConfigSource } from "../../core/src/auth/resolver.js";
-import type { ActiveSession } from "../../core/src/auth/session.js";
-import { isPythonDict } from "../../core/src/compat/python-dict.js";
-import type {
+  Account,
+  ResolverConfigSource,
+  ActiveSession,
   AccountSummary,
   Target,
-} from "../../core/src/types/entities/accounts.js";
+} from "@mixpanel-headless/core";
+import { isPythonDict } from "@mixpanel-headless/core";
 import { ConfigManager } from "./config.js";
 
 /** Options of {@link createNodeConfigSource} (packet §2.4). */

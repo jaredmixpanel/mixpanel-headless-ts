@@ -18,8 +18,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { Secret } from "../../core/src/secret.js";
-import { OAuthTokens } from "../../core/src/auth/token.js";
+import { Secret, OAuthTokens } from "@mixpanel-headless/core";
 import { OAuthStorage } from "../src/auth/storage.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 

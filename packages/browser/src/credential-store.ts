@@ -22,8 +22,8 @@
  *   short.
  */
 
-import type { CredentialStore } from "../../core/src/auth/credential-store.js";
-import { OAuthError } from "../../core/src/errors.js";
+import type { CredentialStore } from "@mixpanel-headless/core";
+import { OAuthError } from "@mixpanel-headless/core";
 
 /**
  * Structural view of the Web `Storage` API — the injection seam of

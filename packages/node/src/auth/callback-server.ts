@@ -22,8 +22,7 @@
 
 import { createServer, type Server, type ServerResponse } from "node:http";
 
-import { OAuthError } from "../../../core/src/errors.js";
-import { CallbackResult } from "../../../core/src/auth/redirect-parse.js";
+import { OAuthError, CallbackResult } from "@mixpanel-headless/core";
 import { parseQs } from "./query-params.js";
 
 /** Ports to attempt binding to, in order (`callback_server.py:32`). */

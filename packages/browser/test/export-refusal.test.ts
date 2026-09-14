@@ -14,7 +14,7 @@ import {
   ENDPOINTS,
   type EndpointOverrides,
   type EndpointOverridesSource,
-} from "../../core/src/client/url.js";
+} from "@mixpanel-headless/core";
 import {
   BROWSER_EXPORT_UNSUPPORTED,
   BrowserUnsupportedError,

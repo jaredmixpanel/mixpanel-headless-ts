@@ -23,12 +23,10 @@
 import {
   CREDENTIAL_KEYS,
   type CredentialStore,
-} from "../../core/src/auth/credential-store.js";
-import { registerClient } from "../../core/src/auth/oauth-http.js";
-import {
+  registerClient,
   parseOAuthClientInfo,
   type OAuthClientInfo,
-} from "../../core/src/auth/token.js";
+} from "@mixpanel-headless/core";
 import { serializeClientInfoPayload } from "./token-serialization.js";
 
 /** Options bag of {@link ensureBrowserClientRegistered}. */

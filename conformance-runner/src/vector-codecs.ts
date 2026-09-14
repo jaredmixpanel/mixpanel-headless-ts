@@ -24,45 +24,30 @@
 import {
   parseOAuthTokens,
   OAuthTokens,
-} from "../../packages/core/src/auth/token.js";
-import { Secret } from "../../packages/core/src/secret.js";
-import {
+  Secret,
   CohortBreakdown,
   CohortCriteria,
   CohortDefinition,
-} from "../../packages/core/src/types/query-params/cohort.js";
-import {
   CustomPropertyRef,
   Filter,
-  filterUnchecked,
   InlineCustomProperty,
   ListItemGroupMode,
   PropertyInput,
-} from "../../packages/core/src/types/query-params/filter.js";
-import {
   FlowStep,
   type FlowStepFields,
-} from "../../packages/core/src/types/query-params/flow.js";
-import {
   FrequencyBreakdown,
   FrequencyFilter,
   type FrequencyBreakdownFields,
   type FrequencyFilterFields,
-} from "../../packages/core/src/types/query-params/frequency.js";
-import {
   Exclusion,
   FunnelStep,
   HoldingConstant,
   type ExclusionFields,
   type FunnelStepFields,
   type HoldingConstantFields,
-} from "../../packages/core/src/types/query-params/funnel.js";
-import {
   RetentionEvent,
   type RetentionEventFields,
-} from "../../packages/core/src/types/query-params/retention.js";
-import { pythonFloatStr } from "../../packages/core/src/compat/index.js";
-import {
+  pythonFloatStr,
   Replay,
   ReplayEvent,
   SignedReplay,
@@ -70,23 +55,13 @@ import {
   type ReplayFields,
   type SignedReplayFields,
   type UserActionFields,
-} from "../../packages/core/src/types/results/replays.js";
-import {
   GroupBy,
   type GroupByFields,
-} from "../../packages/core/src/types/query-params/group-by.js";
-import {
   CohortMetric,
   Formula,
   Metric,
   TimeComparison,
   type MetricFields,
-} from "../../packages/core/src/types/query-params/metric.js";
-import {
-  EntityModel,
-  type EntityModelStatics,
-} from "../../packages/core/src/types/entities/model-base.js";
-import {
   BlueprintCard,
   BlueprintFinishParams,
   CreateDashboardParams,
@@ -94,45 +69,29 @@ import {
   RcaSourceData,
   UpdateDashboardParams,
   UpdateReportLinkParams,
-} from "../../packages/core/src/types/entities/dashboards.js";
-import {
   BulkUpdateBookmarkEntry,
   CreateBookmarkParams,
   UpdateBookmarkParams,
-} from "../../packages/core/src/types/entities/bookmarks.js";
-import {
   BulkUpdateCohortEntry,
   CreateCohortParams,
   UpdateCohortParams,
-} from "../../packages/core/src/types/entities/cohorts.js";
-import {
   CreateFeatureFlagParams,
   SetTestUsersParams,
   UpdateFeatureFlagParams,
-} from "../../packages/core/src/types/entities/feature-flags.js";
-import {
   CreateExperimentParams,
   DuplicateExperimentParams,
   ExperimentConcludeParams,
   ExperimentDecideParams,
   UpdateExperimentParams,
-} from "../../packages/core/src/types/entities/experiments.js";
-import {
   CreateAnnotationParams,
   CreateAnnotationTagParams,
   UpdateAnnotationParams,
-} from "../../packages/core/src/types/entities/annotations.js";
-import {
   CreateWebhookParams,
   UpdateWebhookParams,
   WebhookTestParams,
-} from "../../packages/core/src/types/entities/webhooks.js";
-import {
   CreateAlertParams,
   UpdateAlertParams,
   ValidateAlertsForBookmarkParams,
-} from "../../packages/core/src/types/entities/alerts.js";
-import {
   BulkEventUpdate,
   BulkPropertyUpdate,
   BulkUpdateEventsParams,
@@ -141,8 +100,6 @@ import {
   UpdateEventDefinitionParams,
   UpdatePropertyDefinitionParams,
   UpdateTagParams,
-} from "../../packages/core/src/types/entities/lexicon.js";
-import {
   ComposedPropertyValue,
   CreateCustomEventParams,
   CreateCustomPropertyParams,
@@ -151,8 +108,6 @@ import {
   UpdateCustomPropertyParams,
   UpdateDropFilterParams,
   UpdateLookupTableParams,
-} from "../../packages/core/src/types/entities/data-governance.js";
-import {
   BulkAnomalyEntry,
   BulkCreateSchemasParams,
   BulkUpdateAnomalyParams,
@@ -163,7 +118,12 @@ import {
   SchemaEntry,
   UpdateAnomalyParams,
   UpdateSchemaEnforcementParams,
-} from "../../packages/core/src/types/entities/schemas.js";
+} from "@mixpanel-headless/core";
+import {
+  filterUnchecked,
+  EntityModel,
+  type EntityModelStatics,
+} from "@mixpanel-headless/core/internal";
 
 /**
  * One registered rich-tag codec (phase2-design C7 `TagCodec`).

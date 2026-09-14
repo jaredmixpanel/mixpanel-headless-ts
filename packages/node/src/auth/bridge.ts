@@ -20,24 +20,23 @@ import { existsSync, mkdirSync, unlinkSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { parseAccount, type Account } from "../../../core/src/auth/account.js";
-import type { BridgeView } from "../../../core/src/auth/resolver.js";
-import { OAuthTokens, parseOAuthTokens } from "../../../core/src/auth/token.js";
-import type { BridgeEffects } from "../../../core/src/accounts/auth-effects.js";
-import { sortedByCodepoint } from "../../../core/src/compat/codepoint.js";
-import { isPythonDict } from "../../../core/src/compat/python-dict.js";
-import { pythonInt } from "../../../core/src/compat/python-int.js";
 import {
+  parseAccount,
+  type Account,
+  OAuthTokens,
+  parseOAuthTokens,
+  sortedByCodepoint,
+  isPythonDict,
+  pythonInt,
   pythonStr,
   type PythonValue,
-} from "../../../core/src/compat/python-str.js";
-import {
   ConfigError,
   MixpanelHeadlessError,
   OAuthError,
   ParamValidationError,
-} from "../../../core/src/errors.js";
-import { Secret } from "../../../core/src/secret.js";
+  Secret,
+} from "@mixpanel-headless/core";
+import type { BridgeView, BridgeEffects } from "@mixpanel-headless/core";
 import {
   CredentialPathError,
   atomicWriteBytes,

@@ -11,4 +11,4 @@
  * concern dissolves with the core home.)
  */
 
-export { OAUTH_BASE_URLS } from "../../../core/src/auth/oauth-constants.js";
+export { OAUTH_BASE_URLS } from "@mixpanel-headless/core";

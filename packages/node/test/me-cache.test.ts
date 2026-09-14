@@ -20,8 +20,7 @@ import {
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { ConfigError } from "../../core/src/errors.js";
-import { MeResponse } from "../../core/src/client/me.js";
+import { ConfigError, MeResponse } from "@mixpanel-headless/core";
 import { MeCache, type MeCacheLogger } from "../src/me-cache.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 

@@ -22,10 +22,10 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { OAuthError } from "../../core/src/errors.js";
+import { OAuthError } from "@mixpanel-headless/core";
 import { CallbackResult } from "../src/auth/callback-server.js";
 import { OAuthFlow, parsePastedRedirect } from "../src/auth/flow.js";
-import type { OAuthClientInfo } from "../../core/src/auth/token.js";
+import type { OAuthClientInfo } from "@mixpanel-headless/core";
 import { OAuthStorage } from "../src/auth/storage.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 

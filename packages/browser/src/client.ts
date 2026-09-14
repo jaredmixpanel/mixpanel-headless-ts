@@ -23,25 +23,21 @@ import {
   parseAccount,
   type OAuthTokenAccount,
   type TokenResolver,
-} from "../../core/src/auth/account.js";
-import {
   CREDENTIAL_KEYS,
   type CredentialStore,
-} from "../../core/src/auth/credential-store.js";
-import { parseSession, type Session } from "../../core/src/auth/session.js";
-import {
+  parseSession,
+  type Session,
   parseOAuthTokens,
   type OAuthTokens,
-} from "../../core/src/auth/token.js";
-import {
   createMixpanelClient,
   type ClientUseOptions,
   type MixpanelClient,
   type MixpanelClientOptions,
-} from "../../core/src/client/client.js";
-import { ENDPOINTS, type EndpointKind } from "../../core/src/client/url.js";
-import { OAuthError } from "../../core/src/errors.js";
-import { Workspace } from "../../core/src/workspace.js";
+  ENDPOINTS,
+  type EndpointKind,
+  OAuthError,
+  Workspace,
+} from "@mixpanel-headless/core";
 import { InMemoryCredentialStore } from "./credential-store.js";
 import {
   BROWSER_EXPORT_UNSUPPORTED,

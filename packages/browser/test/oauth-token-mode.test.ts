@@ -10,9 +10,12 @@
 
 import { describe, expect, it } from "vitest";
 
-import { parseAccount } from "../../core/src/auth/account.js";
-import { parseSession, type Session } from "../../core/src/auth/session.js";
-import { ParamValidationError } from "../../core/src/errors.js";
+import {
+  parseAccount,
+  parseSession,
+  type Session,
+  ParamValidationError,
+} from "@mixpanel-headless/core";
 import {
   browserSession,
   createBrowserWorkspace,

@@ -8,7 +8,7 @@
  * message text.
  */
 
-import { MixpanelHeadlessError } from "../../core/src/errors.js";
+import { MixpanelHeadlessError } from "@mixpanel-headless/core";
 
 /**
  * Code for the service-account Basic-auth runtime refusal (rulebook

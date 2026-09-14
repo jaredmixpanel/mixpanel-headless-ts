@@ -28,7 +28,7 @@ import {
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { ParamValidationError } from "../../core/src/errors.js";
+import { ParamValidationError } from "@mixpanel-headless/core";
 import {
   OAuthStorage,
   accountDir,

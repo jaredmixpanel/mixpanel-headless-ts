@@ -26,13 +26,13 @@ import {
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { OAuthError } from "../../core/src/errors.js";
-import { Secret } from "../../core/src/secret.js";
 import {
+  OAuthError,
+  Secret,
   OAuthTokens,
   type OAuthClientInfo,
-} from "../../core/src/auth/token.js";
-import type { OAuthTokenAccount } from "../../core/src/auth/account.js";
+} from "@mixpanel-headless/core";
+import type { OAuthTokenAccount } from "@mixpanel-headless/core";
 import {
   OnDiskTokenResolver,
   accountTokensPath,

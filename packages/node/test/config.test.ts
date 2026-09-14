@@ -25,13 +25,13 @@ import {
   AccountInUseError,
   ConfigError,
   ParamValidationError,
-} from "../../core/src/errors.js";
-import { Secret } from "../../core/src/secret.js";
-import { AccountSummary } from "../../core/src/types/entities/accounts.js";
+  Secret,
+  AccountSummary,
+} from "@mixpanel-headless/core";
 import type {
   OAuthTokenAccount,
   ServiceAccount,
-} from "../../core/src/auth/account.js";
+} from "@mixpanel-headless/core";
 import { ConfigManager } from "../src/config.js";
 import { atomicWriteBytes } from "../src/io-utils.js";
 import { makeTempDir } from "./helpers.js";

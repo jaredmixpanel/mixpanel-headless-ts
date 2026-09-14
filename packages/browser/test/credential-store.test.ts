@@ -14,7 +14,7 @@ import {
   LocalStorageCredentialStore,
   type CredentialStore,
 } from "../src/index.js";
-import { OAuthError } from "../../core/src/errors.js";
+import { OAuthError } from "@mixpanel-headless/core";
 import { fakeStorage } from "./helpers.js";
 
 describe("CREDENTIAL_KEYS (b9-packets.md §2.1 — the namespace table)", () => {

@@ -18,19 +18,16 @@ import {
   type DiscoverOptions,
   type EventsForOptions,
   type WalkCdnOptions,
-} from "../../packages/core/src/services/replays.js";
+  RrwebAnalyzer,
+} from "@mixpanel-headless/core/internal";
 import {
   defaultLabelFn,
   selectorLabelFn,
   urlNormalizer,
-} from "../../packages/core/src/replays/replay-labels.js";
-import { RrwebAnalyzer } from "../../packages/core/src/replays/rrweb-analyzer.js";
-import type {
-  SignedReplay,
-  UserAction,
-} from "../../packages/core/src/types/results/replays.js";
-import { MixpanelHeadlessError } from "../../packages/core/src/errors.js";
-import { pythonFloatStr } from "../../packages/core/src/compat/index.js";
+  MixpanelHeadlessError,
+  pythonFloatStr,
+} from "@mixpanel-headless/core";
+import type { SignedReplay, UserAction } from "@mixpanel-headless/core";
 import { PyFloat, type CodecRegistry } from "./codecs.js";
 import { JsonNumber, type JsonValue } from "./json-value.js";
 import type { ImplementationRegistry, InvocationContext } from "./runner.js";

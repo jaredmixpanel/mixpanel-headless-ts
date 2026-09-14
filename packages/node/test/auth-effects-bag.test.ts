@@ -24,17 +24,18 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { UNPORTED_AUTH_SEAMS } from "../../core/src/accounts/auth-effects.js";
-import { createAccountsNamespace } from "../../core/src/accounts/namespace.js";
-import { createSessionNamespace } from "../../core/src/accounts/session-namespace.js";
-import { createTargetsNamespace } from "../../core/src/accounts/targets-namespace.js";
-import { resolverSeamsFromEffects } from "../../core/src/accounts/resolver-seams.js";
-import type { OAuthTokenAccount } from "../../core/src/auth/account.js";
-import type { Session } from "../../core/src/auth/session.js";
-import { OAuthTokens } from "../../core/src/auth/token.js";
-import { MeResponse } from "../../core/src/client/me.js";
-import { Secret } from "../../core/src/secret.js";
-import { Workspace } from "../../core/src/workspace.js";
+import {
+  UNPORTED_AUTH_SEAMS,
+  createAccountsNamespace,
+  createSessionNamespace,
+  createTargetsNamespace,
+  OAuthTokens,
+  MeResponse,
+  Secret,
+  Workspace,
+} from "@mixpanel-headless/core";
+import { resolverSeamsFromEffects } from "@mixpanel-headless/core/internal";
+import type { OAuthTokenAccount, Session } from "@mixpanel-headless/core";
 import {
   createMockClient,
   makeSession,

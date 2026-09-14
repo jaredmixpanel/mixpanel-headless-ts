@@ -13,11 +13,11 @@
  * (`resolver.ts` owns the `=== ""` rungs; watchlist #6).
  */
 
-import type { ResolverEnv } from "../../core/src/auth/resolver.js";
+import type { ResolverEnv } from "@mixpanel-headless/core";
 import {
   endpointOverridesFromEnv,
   type EndpointOverrides,
-} from "../../core/src/client/url.js";
+} from "@mixpanel-headless/core";
 
 /** The full env surface the auth effects consume (`AuthEffects.env`). */
 export type NodeEnv = ResolverEnv & {

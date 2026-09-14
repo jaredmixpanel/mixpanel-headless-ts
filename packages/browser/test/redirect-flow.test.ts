@@ -18,7 +18,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { OAuthError } from "../../core/src/errors.js";
+import { OAuthError } from "@mixpanel-headless/core";
 import { InMemoryCredentialStore } from "../src/credential-store.js";
 import {
   beginLogin,

@@ -29,14 +29,14 @@ import {
   ConfigError,
   OAuthError,
   ParamValidationError,
-} from "../../core/src/errors.js";
-import { Secret } from "../../core/src/secret.js";
+  Secret,
+} from "@mixpanel-headless/core";
 import type {
   Account,
   OAuthBrowserAccount,
   OAuthTokenAccount,
   ServiceAccount,
-} from "../../core/src/auth/account.js";
+} from "@mixpanel-headless/core";
 import {
   createNodeBridgeEffects,
   exportBridge,

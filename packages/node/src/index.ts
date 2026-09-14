@@ -22,24 +22,17 @@
  * themselves via {@link createNodeAuthEffects} and the core factories.
  */
 
-import type { AuthEffects } from "../../core/src/accounts/auth-effects.js";
+import type { AuthEffects, AccountSummary } from "@mixpanel-headless/core";
 import {
   loginUnified as coreLoginUnified,
   type LoginUnifiedOptions,
-} from "../../core/src/accounts/login-unified.js";
-import {
   createAccountsNamespace,
   type AccountsNamespace,
-} from "../../core/src/accounts/namespace.js";
-import {
   createSessionNamespace,
   type SessionNamespace,
-} from "../../core/src/accounts/session-namespace.js";
-import {
   createTargetsNamespace,
   type TargetsNamespace,
-} from "../../core/src/accounts/targets-namespace.js";
-import type { AccountSummary } from "../../core/src/types/entities/accounts.js";
+} from "@mixpanel-headless/core";
 import { createNodeAuthEffects } from "./auth-effects.js";
 
 /** Package name constant exercised by the skeleton smoke test. */

@@ -16,12 +16,12 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { OAuthError } from "../../core/src/errors.js";
-import { Secret } from "../../core/src/secret.js";
 import {
+  OAuthError,
+  Secret,
   OAuthTokens,
   type OAuthClientInfo,
-} from "../../core/src/auth/token.js";
+} from "@mixpanel-headless/core";
 import { OAuthFlow } from "../src/auth/flow.js";
 import { OAUTH_BASE_URLS } from "../src/auth/oauth-constants.js";
 import { OAuthStorage } from "../src/auth/storage.js";

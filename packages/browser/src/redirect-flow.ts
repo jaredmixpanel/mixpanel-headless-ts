@@ -55,22 +55,16 @@
 import {
   CREDENTIAL_KEYS,
   type CredentialStore,
-} from "../../core/src/auth/credential-store.js";
-import { OAUTH_BASE_URLS } from "../../core/src/auth/oauth-constants.js";
-import {
+  OAUTH_BASE_URLS,
   buildAuthorizeUrl,
   postTokenRequest,
-} from "../../core/src/auth/oauth-http.js";
-import {
-  base64UrlEncodeBytes,
   PkceChallenge,
-} from "../../core/src/auth/pkce.js";
-import { parsePastedRedirect } from "../../core/src/auth/redirect-parse.js";
-import {
+  parsePastedRedirect,
   pythonUtcIsoformat,
   type OAuthTokens,
-} from "../../core/src/auth/token.js";
-import { OAuthError } from "../../core/src/errors.js";
+  OAuthError,
+} from "@mixpanel-headless/core";
+import { base64UrlEncodeBytes } from "@mixpanel-headless/core/internal";
 import { BROWSER_NO_PENDING_LOGIN, BrowserUnsupportedError } from "./errors.js";
 import { ensureBrowserClientRegistered } from "./registration.js";
 import { serializeTokensPayload } from "./token-serialization.js";

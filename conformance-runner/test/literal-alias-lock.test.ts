@@ -24,7 +24,7 @@ import { describe, expect, it } from "vitest";
 import {
   ENUM_TABLES,
   LITERAL_ALIAS_VALUES,
-} from "../../packages/core/src/types/index.js";
+} from "@mixpanel-headless/core/internal";
 
 /** The repo root (this file lives in conformance-runner/test). */
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");

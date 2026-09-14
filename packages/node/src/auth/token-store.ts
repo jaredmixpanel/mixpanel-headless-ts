@@ -20,13 +20,12 @@
 import { existsSync, rmSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 
-import type { TokenStore } from "../../../core/src/accounts/auth-effects.js";
-import type { Region } from "../../../core/src/auth/account.js";
+import type { TokenStore, Region } from "@mixpanel-headless/core";
 import {
   parseOAuthTokens,
   type OAuthTokens,
-} from "../../../core/src/auth/token.js";
-import { isPythonDict } from "../../../core/src/compat/python-dict.js";
+  isPythonDict,
+} from "@mixpanel-headless/core";
 import { atomicWriteBytes, readCredentialText } from "../io-utils.js";
 import { coerceLaxExpiresAt } from "./pydantic-datetime.js";
 import {

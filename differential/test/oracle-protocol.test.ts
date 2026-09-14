@@ -22,7 +22,7 @@ import {
   serializeAsciiJson,
   toJsonValue,
 } from "../oracle/raw-json.js";
-import { JsonNumber } from "../../conformance-runner/src/json-value.js";
+import { JsonNumber } from "@mixpanel-headless/conformance-runner";
 
 /** Fixed identity injected in every test (no filesystem dependence). */
 const TEST_IDENTITY: OracleIdentity = {

@@ -21,8 +21,7 @@
  * the D6 `PRECISION_LOSS` machinery depends on the distinction).
  */
 
-import { pythonFloatStr } from "../../packages/core/src/compat/index.js";
-import { Secret } from "../../packages/core/src/secret.js";
+import { pythonFloatStr, Secret } from "@mixpanel-headless/core";
 import { JsonNumber, type JsonValue } from "./json-value.js";
 
 export { Secret };

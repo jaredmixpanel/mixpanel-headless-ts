@@ -33,52 +33,34 @@ import type {
   UpdateDashboardParams,
   UpdateReportLinkParams,
   UpdateTextCardParams,
-} from "../../packages/core/src/types/entities/dashboards.js";
-import type {
   BulkUpdateBookmarkEntry,
   CreateBookmarkParams,
   UpdateBookmarkParams,
-} from "../../packages/core/src/types/entities/bookmarks.js";
-import type {
   BulkUpdateCohortEntry,
   CreateCohortParams,
   UpdateCohortParams,
-} from "../../packages/core/src/types/entities/cohorts.js";
-import type {
   CreateFeatureFlagParams,
   SetTestUsersParams,
   UpdateFeatureFlagParams,
-} from "../../packages/core/src/types/entities/feature-flags.js";
-import type {
   CreateExperimentParams,
   DuplicateExperimentParams,
   ExperimentDecideParams,
   UpdateExperimentParams,
-} from "../../packages/core/src/types/entities/experiments.js";
-import type {
   CreateAnnotationParams,
   CreateAnnotationTagParams,
   UpdateAnnotationParams,
-} from "../../packages/core/src/types/entities/annotations.js";
-import type {
   CreateWebhookParams,
   UpdateWebhookParams,
   WebhookTestParams,
-} from "../../packages/core/src/types/entities/webhooks.js";
-import type {
   CreateAlertParams,
   UpdateAlertParams,
   ValidateAlertsForBookmarkParams,
-} from "../../packages/core/src/types/entities/alerts.js";
-import type {
   BulkUpdateEventsParams,
   BulkUpdatePropertiesParams,
   CreateTagParams,
   UpdateEventDefinitionParams,
   UpdatePropertyDefinitionParams,
   UpdateTagParams,
-} from "../../packages/core/src/types/entities/lexicon.js";
-import type {
   CreateCustomEventParams,
   CreateCustomPropertyParams,
   CreateDropFilterParams,
@@ -87,8 +69,6 @@ import type {
   UpdateDropFilterParams,
   UpdateLookupTableParams,
   UploadLookupTableParams,
-} from "../../packages/core/src/types/entities/data-governance.js";
-import type {
   BulkCreateSchemasParams,
   BulkUpdateAnomalyParams,
   CreateDeletionRequestParams,
@@ -97,8 +77,6 @@ import type {
   ReplaceSchemaEnforcementParams,
   UpdateAnomalyParams,
   UpdateSchemaEnforcementParams,
-} from "../../packages/core/src/types/entities/schemas.js";
-import type {
   Workspace,
   WorkspaceConcludeExperimentOptions,
   WorkspaceDeleteSchemasOptions,
@@ -123,8 +101,8 @@ import type {
   WorkspaceListLookupTablesOptions,
   WorkspaceListSchemaRegistryOptions,
   WorkspaceUploadLookupTableOptions,
-} from "../../packages/core/src/workspace.js";
-import { EntityModel } from "../../packages/core/src/types/entities/model-base.js";
+} from "@mixpanel-headless/core";
+import { EntityModel } from "@mixpanel-headless/core/internal";
 import { PyFloat, type CodecRegistry } from "./codecs.js";
 import type { JsonValue } from "./json-value.js";
 import type { ImplementationRegistry, InvocationContext } from "./runner.js";

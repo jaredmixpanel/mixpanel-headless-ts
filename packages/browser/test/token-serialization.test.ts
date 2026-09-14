@@ -19,8 +19,8 @@ import {
   parseOAuthClientInfo,
   parseOAuthTokens,
   type OAuthClientInfo,
-} from "../../core/src/auth/token.js";
-import { Secret } from "../../core/src/secret.js";
+  Secret,
+} from "@mixpanel-headless/core";
 import {
   serializeClientInfoPayload,
   serializeTokensPayload,

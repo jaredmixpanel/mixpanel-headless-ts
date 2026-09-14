@@ -12,7 +12,7 @@ import {
   UnencodableValueError,
   encodeExpectValue,
 } from "../src/codecs.js";
-import { GroupBy } from "../../packages/core/src/types/query-params/group-by.js";
+import { GroupBy } from "@mixpanel-headless/core";
 import { registerContractCodecs } from "../src/bindings.js";
 import { JsonNumber } from "../src/json-value.js";
 import { parseLossless } from "../src/lossless-json.js";

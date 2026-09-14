@@ -47,28 +47,22 @@ import {
   parseAccount,
   type Account,
   type Region,
-} from "../../core/src/auth/account.js";
-import {
   parseActiveSession,
   type ActiveSession,
-} from "../../core/src/auth/session.js";
-import { isPythonDict } from "../../core/src/compat/python-dict.js";
-import {
+  isPythonDict,
   AccountInUseError,
   ConfigError,
   ParamValidationError,
-} from "../../core/src/errors.js";
-import { Secret } from "../../core/src/secret.js";
-import {
+  Secret,
   AccountSummary,
   Target,
-} from "../../core/src/types/entities/accounts.js";
+} from "@mixpanel-headless/core";
 import type {
   AddAccountParams,
   AddTargetOptions,
   ApplySessionUpdate,
   UpdateAccountFields,
-} from "../../core/src/accounts/auth-effects.js";
+} from "@mixpanel-headless/core";
 import {
   CredentialPathError,
   atomicWriteBytes,

@@ -7,4 +7,4 @@
  * proof.
  */
 
-export { parseQs, pythonUnquote } from "../../../core/src/auth/query-params.js";
+export { parseQs, pythonUnquote } from "@mixpanel-headless/core/internal";

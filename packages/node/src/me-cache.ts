@@ -32,12 +32,14 @@ import { chmodSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-import type { MeCacheEffects } from "../../core/src/accounts/auth-effects.js";
-import { MeResponse } from "../../core/src/client/me.js";
-import { toNativeJson } from "../../core/src/client/json-value.js";
-import { parseLossless } from "../../core/src/client/lossless-json.js";
-import type { MeCacheStore } from "../../core/src/services/me.js";
-import { ConfigError, MixpanelHeadlessError } from "../../core/src/errors.js";
+import type { MeCacheEffects, MeCacheStore } from "@mixpanel-headless/core";
+import {
+  MeResponse,
+  toNativeJson,
+  parseLossless,
+  ConfigError,
+  MixpanelHeadlessError,
+} from "@mixpanel-headless/core";
 import {
   CredentialPathError,
   atomicWriteBytes,

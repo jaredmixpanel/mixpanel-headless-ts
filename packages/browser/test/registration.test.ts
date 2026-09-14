@@ -11,8 +11,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_SCOPE } from "../../core/src/auth/oauth-constants.js";
-import { OAuthError } from "../../core/src/errors.js";
+import { DEFAULT_SCOPE, OAuthError } from "@mixpanel-headless/core";
 import { InMemoryCredentialStore } from "../src/credential-store.js";
 import { ensureBrowserClientRegistered } from "../src/registration.js";
 import { CREDENTIAL_KEYS } from "../src/index.js";
