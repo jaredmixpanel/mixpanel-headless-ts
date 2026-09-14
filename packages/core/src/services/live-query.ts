@@ -26,6 +26,8 @@
 import type { MixpanelClient } from "../client/client.js";
 import { toNativeJson, type JsonValue } from "../client/json-value.js";
 import { normalizeOnExpression } from "../query/expressions.js";
+import { ValueError } from "../query/python-builtins.js";
+import { pythonRepr } from "../compat/python-str.js";
 import type { CountType, HourDayUnit, TimeUnit } from "../types/literals.js";
 import {
   ActivityFeedResult,
@@ -265,6 +267,101 @@ function inlineScope(options: InlineQueryScope): {
     workspace_id: options.workspace_id ?? null,
     inject_workspace_id: options.inject_workspace_id ?? true,
   };
+}
+
+/**
+ * Segments returned per query when the caller does not ask for more
+ * (`DEFAULT_SEGMENTATION_LIMIT`, `live_query.py:50`).
+ *
+ * Matches the Mixpanel UI, which truncates a report at 3000 segments.
+ */
+export const DEFAULT_SEGMENTATION_LIMIT = 3000;
+
+/**
+ * Largest `queryLimits.limit` the query API accepts
+ * (`MAX_SEGMENTATION_LIMIT`, `live_query.py:56`).
+ *
+ * The cap is enforced server-side. A larger value is rejected with
+ * `Query limit exceeds max limit of 50000 (<n> was given)`.
+ */
+export const MAX_SEGMENTATION_LIMIT = 50_000;
+
+/**
+ * Render a rejected `limit` the way Python's `{limit!r}` does, falling
+ * back to `String()` for values outside the repr-able domain.
+ *
+ * @param value - The rejected limit.
+ * @returns The repr text for the error message.
+ */
+function reprLimit(value: unknown): string {
+  if (
+    value === null ||
+    typeof value === "number" ||
+    typeof value === "string" ||
+    typeof value === "boolean" ||
+    typeof value === "bigint"
+  ) {
+    return pythonRepr(value);
+  }
+  return String(value);
+}
+
+/**
+ * Build the `queryLimits` body fragment for a query request
+ * (`_query_limits`, `live_query.py:64-99`).
+ *
+ * Python rejects `bool` explicitly because `bool` subclasses `int`; in
+ * TS the `typeof` check excludes booleans (and strings) on its own. A
+ * `bigint` inside the band is accepted — it IS a Python int — and
+ * narrowed to a `number` so the body serializes as a JSON number
+ * (R10.12: never a string, never `true`).
+ *
+ * @param limit - Requested segment cap, or `null` / `undefined` for
+ *   {@link DEFAULT_SEGMENTATION_LIMIT}.
+ * @returns The `queryLimits` dict to place in the request body.
+ * @throws ValueError - `limit` is not an integer, or is outside 1 to
+ *   {@link MAX_SEGMENTATION_LIMIT}. Raised before any HTTP call, so a bad
+ *   limit never costs a request against the project's rate budget.
+ *
+ * @example
+ * ```typescript
+ * queryLimits(null); // { limit: 3000 }
+ * queryLimits(50_000); // { limit: 50000 }
+ * ```
+ */
+export function queryLimits(limit: number | bigint | null | undefined): {
+  readonly limit: number;
+} {
+  if (limit === null || limit === undefined) {
+    return { limit: DEFAULT_SEGMENTATION_LIMIT };
+  }
+  const value: unknown = limit;
+  const inBand =
+    (typeof value === "number" &&
+      Number.isInteger(value) &&
+      value >= 1 &&
+      value <= MAX_SEGMENTATION_LIMIT) ||
+    (typeof value === "bigint" &&
+      value >= 1n &&
+      value <= BigInt(MAX_SEGMENTATION_LIMIT));
+  if (!inBand) {
+    throw new ValueError(
+      `limit must be an integer between 1 and ${MAX_SEGMENTATION_LIMIT}, ` +
+        `got ${reprLimit(value)}`,
+    );
+  }
+  return { limit: Number(value) };
+}
+
+/**
+ * {@link InlineQueryScope} plus the segment cap, for the three insights
+ * query paths that carry a `queryLimits` block (Python kw-only `limit`
+ * on `query` / `query_funnel` / `query_retention`).
+ */
+export interface InlineQueryScopeWithLimit extends InlineQueryScope {
+  /** Segments to return, 1 to {@link MAX_SEGMENTATION_LIMIT}. `null` /
+   * `undefined` keeps {@link DEFAULT_SEGMENTATION_LIMIT}. */
+  readonly limit?: number | bigint | null | undefined;
 }
 
 /**
@@ -581,7 +678,10 @@ export class LiveQueryService {
    *
    * @param bookmarkParams - Pre-built bookmark params dict.
    * @param projectId - Mixpanel project ID.
+   * @param options - `limit` (segments to return, 1 to 50000; default
+   *   3000) plus the data-view scope.
    * @returns The typed result with series data and metadata.
+   * @throws ValueError - `limit` is not an integer from 1 to 50000.
    * @throws AuthenticationError - Invalid credentials.
    * @throws QueryError - Invalid bookmark params or an error-as-200.
    * @throws RateLimitError - Rate limit exceeded.
@@ -589,12 +689,12 @@ export class LiveQueryService {
   async query(
     bookmarkParams: Readonly<Record<string, unknown>>,
     projectId: number,
-    options: InlineQueryScope = {},
+    options: InlineQueryScopeWithLimit = {},
   ): Promise<QueryResult> {
     const body: Record<string, unknown> = {
       bookmark: bookmarkParams,
       project_id: projectId,
-      queryLimits: { limit: 3000 },
+      queryLimits: queryLimits(options.limit),
     };
     const raw = await this.apiClient.insightsQuery(body, inlineScope(options));
     return transformQueryResult(nativeRecord(raw), bookmarkParams);
@@ -606,7 +706,10 @@ export class LiveQueryService {
    *
    * @param bookmarkParams - Pre-built funnel bookmark params dict.
    * @param projectId - Mixpanel project ID.
+   * @param options - `limit` (segments to return, 1 to 50000; default
+   *   3000) plus the data-view scope.
    * @returns The typed result with step data and metadata.
+   * @throws ValueError - `limit` is not an integer from 1 to 50000.
    * @throws AuthenticationError - Invalid credentials.
    * @throws QueryError - Invalid bookmark params or an error-as-200.
    * @throws RateLimitError - Rate limit exceeded.
@@ -614,12 +717,12 @@ export class LiveQueryService {
   async queryFunnel(
     bookmarkParams: Readonly<Record<string, unknown>>,
     projectId: number,
-    options: InlineQueryScope = {},
+    options: InlineQueryScopeWithLimit = {},
   ): Promise<FunnelQueryResult> {
     const body: Record<string, unknown> = {
       bookmark: bookmarkParams,
       project_id: projectId,
-      queryLimits: { limit: 3000 },
+      queryLimits: queryLimits(options.limit),
     };
     const raw = await this.apiClient.insightsQuery(body, inlineScope(options));
     return transformFunnelResult(nativeRecord(raw), bookmarkParams, this.#warn);
@@ -631,7 +734,10 @@ export class LiveQueryService {
    *
    * @param bookmarkParams - Pre-built retention bookmark params dict.
    * @param projectId - Mixpanel project ID.
+   * @param options - `limit` (segments to return, 1 to 50000; default
+   *   3000) plus the data-view scope.
    * @returns The typed result with cohort data and metadata.
+   * @throws ValueError - `limit` is not an integer from 1 to 50000.
    * @throws AuthenticationError - Invalid credentials.
    * @throws QueryError - Invalid bookmark params or an error-as-200.
    * @throws RateLimitError - Rate limit exceeded.
@@ -639,12 +745,12 @@ export class LiveQueryService {
   async queryRetention(
     bookmarkParams: Readonly<Record<string, unknown>>,
     projectId: number,
-    options: InlineQueryScope = {},
+    options: InlineQueryScopeWithLimit = {},
   ): Promise<RetentionQueryResult> {
     const body: Record<string, unknown> = {
       bookmark: bookmarkParams,
       project_id: projectId,
-      queryLimits: { limit: 3000 },
+      queryLimits: queryLimits(options.limit),
     };
     const raw = await this.apiClient.insightsQuery(body, inlineScope(options));
     return transformRetentionResult(nativeRecord(raw), bookmarkParams);

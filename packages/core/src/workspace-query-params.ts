@@ -15,6 +15,7 @@
  * | Python | Here |
  * |---|---|
  * | `_check_step_direction` `:353` | {@link checkStepDirection} |
+ * | `_flow_mode_from_params` `:438` | {@link flowModeFromParams} |
  * | `_build_query_params` `:2047` | {@link buildQueryParams} |
  * | `_resolve_and_build_params` `:2546` | {@link resolveAndBuildParams} |
  * | `_build_funnel_params` `:2746` | {@link buildFunnelParams} |
@@ -111,6 +112,7 @@ import {
 } from "./types/query-params/funnel.js";
 import { GroupBy } from "./types/query-params/group-by.js";
 import { isPyInt } from "./types/query-params/guards.js";
+import type { FlowMode } from "./services/live-query-transforms.js";
 import {
   CohortMetric,
   Formula,
@@ -244,6 +246,73 @@ export function checkStepDirection(
     ];
   }
   return [];
+}
+
+// ===========================================================================
+// `_flow_mode_from_params` (`workspace.py:410-465`)
+// ===========================================================================
+
+/**
+ * Maps a flow `flows_merge_type` value to the `query_flow` mode that
+ * runs it (`_FLOW_MERGE_TYPE_TO_MODE`, `workspace.py:410`).
+ *
+ * `build_flow_params` writes this key for every mode, so it is the
+ * authoritative source when present.
+ */
+const FLOW_MERGE_TYPE_TO_MODE: ReadonlyMap<string, FlowMode> = new Map([
+  ["tree", "tree"],
+  ["list", "paths"],
+  ["graph", "sankey"],
+]);
+
+/**
+ * Maps a flow `chartType` value to the `query_flow` mode that runs it
+ * (`_FLOW_CHART_TYPE_TO_MODE`, `workspace.py:422`).
+ *
+ * Fallback for params without `flows_merge_type`. `build_flow_params`
+ * writes `"top-paths"` for paths mode and `"sankey"` for both sankey and
+ * tree mode, so `chartType` alone cannot tell tree from sankey.
+ * `"paths"` and `"tree"` are accepted for hand-written params.
+ */
+const FLOW_CHART_TYPE_TO_MODE: ReadonlyMap<string, FlowMode> = new Map([
+  ["sankey", "sankey"],
+  ["top-paths", "paths"],
+  ["paths", "paths"],
+  ["tree", "tree"],
+]);
+
+/**
+ * Derive the flow chart mode from pre-built flow params
+ * (`_flow_mode_from_params`, `workspace.py:438-465`).
+ *
+ * `flows_merge_type` wins when present and recognised. `chartType` is
+ * the fallback. Anything else runs as sankey.
+ *
+ * @param params - Flow bookmark params, normally from `buildFlowParams`.
+ * @returns `"sankey"`, `"paths"`, or `"tree"`.
+ *
+ * @example
+ * ```typescript
+ * flowModeFromParams({ chartType: "sankey", flows_merge_type: "tree" }); // "tree"
+ * flowModeFromParams({ chartType: "top-paths" }); // "paths"
+ * flowModeFromParams({}); // "sankey"
+ * ```
+ */
+export function flowModeFromParams(
+  params: Readonly<Record<string, unknown>>,
+): FlowMode {
+  const mergeType = params["flows_merge_type"];
+  if (typeof mergeType === "string") {
+    const mode = FLOW_MERGE_TYPE_TO_MODE.get(mergeType);
+    if (mode !== undefined) {
+      return mode;
+    }
+  }
+  const chartType = params["chartType"];
+  if (typeof chartType === "string") {
+    return FLOW_CHART_TYPE_TO_MODE.get(chartType) ?? "sankey";
+  }
+  return "sankey";
 }
 
 // ===========================================================================
