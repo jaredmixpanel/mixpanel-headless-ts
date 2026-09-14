@@ -59,6 +59,15 @@ export {
 // enough).
 export { createNodeWorkspace, type NodeWorkspaceOptions } from "./workspace.js";
 
+// Python PR #235 (AIE-925): `MP_API_BASE_URL` / `MP_APP_BASE_URL` read
+// per request from `process.env` — the node half of the alternate-host
+// override (the core half is `MixpanelClientOptions.endpointOverrides`).
+export {
+  createNodeEndpointOverrides,
+  createNodeEnv,
+  type NodeEnv,
+} from "./env.js";
+
 /**
  * A fresh default bag (call-time env reads — module header).
  *

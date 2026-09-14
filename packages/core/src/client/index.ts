@@ -113,5 +113,23 @@ export {
 export type { PaginateAllOptions, PaginationClient } from "./pagination.js";
 export { maybeScopedPath } from "./scope.js";
 export type { PathScope } from "./scope.js";
-export { ENDPOINTS, buildUrl, endpointBase } from "./url.js";
-export type { EndpointKind } from "./url.js";
+export {
+  API_BASE_URL_ENV,
+  APP_BASE_URL_ENV,
+  ENDPOINTS,
+  OVERRIDE_PATH_PREFIXES,
+  WORKSPACE_SCOPED_FAMILIES,
+  apiFamilyFor,
+  buildUrl,
+  endpointBase,
+  endpointOverridesFromEnv,
+  endpointOverridesProvider,
+  endpointsFor,
+  hasApiBaseUrlOverride,
+  normalizeBaseUrlOverride,
+} from "./url.js";
+export type {
+  EndpointKind,
+  EndpointOverrides,
+  EndpointOverridesSource,
+} from "./url.js";

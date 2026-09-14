@@ -28,6 +28,7 @@ import type {
 } from "../auth/account.js";
 import type { Session } from "../auth/session.js";
 import { createMixpanelClient } from "../client/client.js";
+import { endpointOverridesFromEnv } from "../client/url.js";
 import { toNativeJson, type JsonValue } from "../client/json-value.js";
 import { MeResponse, type MeProjectInfo } from "../client/me.js";
 import {
@@ -145,6 +146,11 @@ export async function fetchMe(
     session: probeSession,
     fetch: effects.fetchImpl,
     tokenResolver: options.tokenResolver ?? effects.tokenResolver,
+    // PR #235: `/me` honours `MP_API_BASE_URL` / `MP_APP_BASE_URL`, read
+    // per request through the injected env bag (never `process.env`).
+    endpointOverrides: endpointOverridesFromEnv((name) =>
+      effects.env.get(name),
+    ),
   });
   try {
     // Same `toNativeJson` step every model site performs on wire JSON
@@ -643,6 +649,9 @@ export async function accountsTest(
     session: probeSession,
     fetch: effects.fetchImpl,
     tokenResolver: effects.tokenResolver,
+    endpointOverrides: endpointOverridesFromEnv((name) =>
+      effects.env.get(name),
+    ),
   });
   try {
     let meRaw: unknown;

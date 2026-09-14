@@ -580,20 +580,85 @@ await ws.use({ account: "other", persist: true }); // …or persist the switch
 <details>
 <summary><strong>Environment variable reference</strong></summary>
 
-| Variable                    | Purpose                                                         |
-| --------------------------- | --------------------------------------------------------------- |
-| `MP_USERNAME` / `MP_SECRET` | Service-account credentials (both required together)            |
-| `MP_PROJECT_ID`             | Project to query                                                |
-| `MP_REGION`                 | Data residency: `us`, `eu`, or `in`                             |
-| `MP_OAUTH_TOKEN`            | Pre-obtained static bearer token                                |
-| `MP_WORKSPACE_ID`           | Optional workspace pin                                          |
-| `MP_CONFIG_PATH`            | Override the config file location (default `~/.mp/config.toml`) |
-| `MP_OAUTH_STORAGE_DIR`      | Override the token storage root (default `~/.mp`)               |
-| `MP_AUTH_FILE`              | Path to a Cowork bridge credentials file                        |
+| Variable                    | Purpose                                                          |
+| --------------------------- | ---------------------------------------------------------------- |
+| `MP_USERNAME` / `MP_SECRET` | Service-account credentials (both required together)             |
+| `MP_PROJECT_ID`             | Project to query                                                 |
+| `MP_REGION`                 | Data residency: `us`, `eu`, or `in`                              |
+| `MP_OAUTH_TOKEN`            | Pre-obtained static bearer token                                 |
+| `MP_WORKSPACE_ID`           | Optional workspace pin                                           |
+| `MP_CONFIG_PATH`            | Override the config file location (default `~/.mp/config.toml`)  |
+| `MP_OAUTH_STORAGE_DIR`      | Override the token storage root (default `~/.mp`)                |
+| `MP_AUTH_FILE`              | Path to a Cowork bridge credentials file                         |
+| `MP_API_BASE_URL`           | Route every API family at one alternate host — see below         |
+| `MP_APP_BASE_URL`           | Optional: re-home only the App API family (`{app_base}/api/app`) |
 
 The full service-account set (`MP_USERNAME` + `MP_SECRET` + `MP_PROJECT_ID` +
 `MP_REGION`) takes precedence over `MP_OAUTH_TOKEN` when both are present. Environment
 variables beat the config file; explicit `Workspace` options beat both.
+
+</details>
+
+<details>
+<summary><strong>Alternate API host (<code>MP_API_BASE_URL</code>)</strong></summary>
+
+By default the client picks its hosts per region (`mixpanel.com`, `eu.mixpanel.com`,
+`in.mixpanel.com`, plus the `data*.mixpanel.com` export hosts). Set `MP_API_BASE_URL` to
+point **every** API family at one alternate host instead — a headless Mixpanel pod behind a
+single nginx front door, a local proxy, or an in-sandbox fake server:
+
+```bash
+export MP_API_BASE_URL=http://devbox:8080
+export MP_USERNAME=... MP_SECRET=... MP_PROJECT_ID=... MP_REGION=us
+```
+
+```typescript
+const ws = createNodeWorkspace();
+await ws.events(); // → GET http://devbox:8080/api/query/events/names
+```
+
+When set (a trailing slash is tolerated), the region lookup is bypassed and the families
+resolve to fixed path prefixes on that base:
+
+| API family                                               | URL under the override    | Live `us` equivalent                    |
+| -------------------------------------------------------- | ------------------------- | --------------------------------------- |
+| Query (`/insights`, `/segmentation`, `/events/names`, …) | `{base}/api/query`        | `https://mixpanel.com/api/query`        |
+| Export (`streamEvents`)                                  | `{base}/api/2.0`          | `https://data.mixpanel.com/api/2.0`     |
+| Engage (`queryUser`, profile streams)                    | `{base}/api/query/engage` | `https://mixpanel.com/api/query/engage` |
+| App API (dashboards, cohorts, Lexicon, `/me`, …)         | `{base}/api/app`          | `https://mixpanel.com/api/app`          |
+
+Details:
+
+- **Read per request, not at construction.** `createNodeWorkspace()` wires a `process.env`
+  reader that is consulted on every request, so `ws.use({ account })` swaps, long-lived
+  processes, and test env patching all see the current value (exactly the Python
+  library's `os.environ` semantics). `@mixpanel-headless/core` never reads `process.env`:
+  when you build a core client by hand, pass `endpointOverrides` yourself — a static
+  `{ apiBaseUrl, appBaseUrl }` bag, or a provider such as
+  `createNodeEndpointOverrides()` from `@mixpanel-headless/node`.
+- **Route-aware behaviour is preserved.** The App-vs-Query read-timeout choice and the
+  pinned `workspace_id` injection key off the API family, not the hostname.
+- **`MP_REGION` is still required** and still meaningful for everything that is not a URL
+  (account records, `/me` domain cross-checks, report-link hostnames). Report links keep
+  producing real `*.mixpanel.com` URLs.
+- **Login region probe.** Probing `us → eu → in` against one host is pointless, so under the
+  override the probe runs once against the base and labels the account with `MP_REGION`
+  (when it is `us`/`eu`/`in`) or `us`.
+- **Plain `http://` bases are accepted** with no extra flag. They are intended for local or
+  headless deployments only — never send real credentials over cleartext to a remote host.
+- **`MP_APP_BASE_URL`** (optional) re-homes just the App API family at `{app_base}/api/app`.
+  It works on its own (the other three families stay live) or on top of `MP_API_BASE_URL`
+  (App API moves to the second host). With only `MP_APP_BASE_URL` set, the login probe
+  still walks `us → eu → in` (each `/me` probe hits the App override base) because the
+  region it persists still decides which live cluster the other families use.
+- **Family detection is longest-prefix**, so split configs where one base sits under the
+  other (for example `MP_API_BASE_URL=https://proxy` with
+  `MP_APP_BASE_URL=https://proxy/api/query`) still classify every request correctly.
+- **Browser builds** take the same option through `clientOptions.endpointOverrides`
+  (config only — there is no env). The Export-API refusal guard still keys on the live
+  export origins, so an export routed at an override host is attempted, not refused.
+
+With neither variable set, behaviour is byte-identical to the per-region defaults.
 
 </details>
 

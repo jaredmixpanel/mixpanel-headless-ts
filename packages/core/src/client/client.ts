@@ -162,11 +162,16 @@ import {
   type RawFetchResult,
 } from "./transport.js";
 import {
+  apiFamilyFor,
   buildUrl,
   DEFAULT_APP_TIMEOUT_S,
   DEFAULT_QUERY_TIMEOUT_S,
-  endpointBase,
+  endpointOverridesProvider,
+  endpointsFor,
+  WORKSPACE_SCOPED_FAMILIES,
   type EndpointKind,
+  type EndpointOverrides,
+  type EndpointOverridesSource,
   type Region,
 } from "./url.js";
 
@@ -221,6 +226,17 @@ export interface MixpanelClientOptions {
   readonly logger?: RetryLogger | undefined;
   /** Header layer-2 env pair provider (defaults to an empty source). */
   readonly getCustomHeaderEnv?: CustomHeaderEnvSource | undefined;
+  /**
+   * Alternate-host routing (Python PR #235: `MP_API_BASE_URL` /
+   * `MP_APP_BASE_URL`). `apiBaseUrl` routes EVERY API family at one
+   * base (`query` → `/api/query`, `export` → `/api/2.0`, `engage` →
+   * `/api/query/engage`, `app` → `/api/app`); `appBaseUrl` re-homes only
+   * the App API. Pass a static bag, or a provider that is consulted on
+   * EVERY request (the node package wires a `process.env` reader, the
+   * twin of Python's per-request `os.environ` read). Absent → the live
+   * per-region hosts, byte-identical to before.
+   */
+  readonly endpointOverrides?: EndpointOverridesSource | undefined;
 }
 
 /** Per-call options of {@link MixpanelClient.request}. */
@@ -337,6 +353,20 @@ export interface ClientCore {
   region(): Region;
   /** @returns The explicit workspace pin, or `null`. */
   workspaceId(): number | null;
+  /**
+   * The CURRENT override bag (the per-request provider's value —
+   * `endpointOverrides` option, PR #235).
+   *
+   * @returns The override bag (frozen empty bag when none).
+   */
+  endpointOverrides(): EndpointOverrides;
+  /**
+   * The family → base-URL table for the current session's region under
+   * the current overrides (`_endpoints_for(region)`, PR #235).
+   *
+   * @returns The resolved table (the live object when nothing is overridden).
+   */
+  endpoints(): ReadonlyMap<EndpointKind, string>;
   /**
    * Build the full URL for an API family + path (B0 `url.ts` by name).
    *
@@ -760,6 +790,16 @@ export function createMixpanelClient(
   const getCustomHeaderEnv: CustomHeaderEnvSource =
     options.getCustomHeaderEnv ??
     ((): { name?: string; value?: string } => ({}));
+  // PR #235: the override SOURCE is kept (not its value) so a provider is
+  // consulted on every request — Python's `_endpoints_for` reads
+  // `os.environ` per call, never at construction.
+  const endpointOverridesSource = options.endpointOverrides;
+  const getEndpointOverrides = endpointOverridesProvider(
+    endpointOverridesSource,
+  );
+  /** `_endpoints_for(self._session.account.region)` — per call. */
+  const currentEndpoints = (): ReadonlyMap<EndpointKind, string> =>
+    endpointsFor(session.account.region, getEndpointOverrides());
 
   // ----- mutable client state (the Python instance attributes) -----
   let session = options.session;
@@ -789,7 +829,11 @@ export function createMixpanelClient(
     if (timeoutSeconds !== null) {
       return timeoutSeconds;
     }
-    if (url.startsWith(endpointBase(session.account.region, "app"))) {
+    // Family classification (longest prefix, PR #235) replaces the old
+    // `startswith(app)` check so App routes on an override host — even a
+    // split `appBaseUrl` nested under the query prefix — keep the App
+    // timeout.
+    if (apiFamilyFor(url, currentEndpoints()) === "app") {
       return DEFAULT_APP_TIMEOUT_S;
     }
     return DEFAULT_QUERY_TIMEOUT_S;
@@ -841,6 +885,9 @@ export function createMixpanelClient(
     requestHeaders: coreRequestHeaders,
     projectId: session.project.id,
     region: session.account.region,
+    // Snapshot of the provider's CURRENT value — `appDeps()` is built per
+    // call, so this is still a per-request read (PR #235).
+    endpointOverrides: getEndpointOverrides(),
     getAuthHeader,
     logger,
   });
@@ -854,9 +901,15 @@ export function createMixpanelClient(
     if (callOptions.injectProjectId !== false) {
       params["project_id"] = session.project.id;
     }
+    // `_WORKSPACE_SCOPED_FAMILIES` (PR #235): query + engage, classified
+    // by longest prefix — identical to the old `startswith(query)` on the
+    // live table (engage sits under the query prefix) and correct under
+    // split overrides.
+    const family = apiFamilyFor(url, currentEndpoints());
     if (
       callOptions.injectWorkspaceId !== false &&
-      url.startsWith(endpointBase(session.account.region, "query"))
+      family !== null &&
+      WORKSPACE_SCOPED_FAMILIES.has(family)
     ) {
       // Explicit-only pin injection (`api_client.py:893-902`): a
       // caller-supplied workspace_id always wins (setdefault), and no
@@ -890,8 +943,10 @@ export function createMixpanelClient(
     projectId: (): string => session.project.id,
     region: (): Region => session.account.region,
     workspaceId: (): number | null => workspaceId,
+    endpointOverrides: getEndpointOverrides,
+    endpoints: currentEndpoints,
     buildUrl: (kind: EndpointKind, path: string): string =>
-      buildUrl(session.account.region, kind, path),
+      buildUrl(session.account.region, kind, path, getEndpointOverrides()),
     getAuthHeader,
     requestHeaders: coreRequestHeaders,
     http: ensureHttp,
@@ -1231,6 +1286,7 @@ export function createMixpanelClient(
         now,
         logger,
         getCustomHeaderEnv,
+        endpointOverrides: endpointOverridesSource,
       });
       if (newWorkspaceId !== null && newWorkspaceId !== undefined) {
         newClient.setWorkspaceId(newWorkspaceId);

@@ -24,6 +24,7 @@ import {
   type NodeAuthEffectsOptions,
 } from "./auth-effects.js";
 import { bridgeViewFromFile, loadBridgeForStartup } from "./auth/bridge.js";
+import { createNodeEndpointOverrides } from "./env.js";
 import { nodeReadFile } from "./fs-seams.js";
 import { MeCache } from "./me-cache.js";
 
@@ -42,7 +43,9 @@ export interface NodeWorkspaceOptions extends NodeAuthEffectsOptions {
   readonly target?: string | null | undefined;
   /**
    * Extra client options (transport / timing seams). A caller-supplied
-   * `tokenResolver` wins over the on-disk default this factory wires.
+   * `tokenResolver` wins over the on-disk default this factory wires;
+   * a caller-supplied `endpointOverrides` wins over the `process.env`
+   * reader (`MP_API_BASE_URL` / `MP_APP_BASE_URL`) it wires.
    */
   readonly clientOptions?: Omit<MixpanelClientOptions, "session"> | undefined;
 }
@@ -102,6 +105,9 @@ export function createNodeWorkspace(
     },
     clientOptions: {
       tokenResolver: effects.tokenResolver,
+      // `MP_API_BASE_URL` / `MP_APP_BASE_URL`, read per request (PR #235);
+      // an explicit `clientOptions.endpointOverrides` wins.
+      endpointOverrides: createNodeEndpointOverrides(),
       ...options.clientOptions,
     },
     meCache: (accountName: string) => new MeCache({ accountName }),

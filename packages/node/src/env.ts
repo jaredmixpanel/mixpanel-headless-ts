@@ -14,6 +14,10 @@
  */
 
 import type { ResolverEnv } from "../../core/src/auth/resolver.js";
+import {
+  endpointOverridesFromEnv,
+  type EndpointOverrides,
+} from "../../core/src/client/url.js";
 
 /** The full env surface the auth effects consume (`AuthEffects.env`). */
 export type NodeEnv = ResolverEnv & {
@@ -70,4 +74,33 @@ export function createNodeEnv(): NodeEnv {
       return read("MP_WORKSPACE_ID");
     },
   };
+}
+
+/**
+ * The alternate-host override provider over `process.env` — the node
+ * twin of Python PR #235's per-request `os.environ.get("MP_API_BASE_URL")`
+ * / `os.environ.get("MP_APP_BASE_URL")` reads (`api_client._endpoints_for`).
+ *
+ * The returned provider reads BOTH variables on every call (never at
+ * construction, never at module load), so a value exported after the
+ * client exists still redirects the next request and unsetting it
+ * restores the live hosts — exactly Python's semantics.
+ * {@link createNodeWorkspace} wires it into the client automatically; pass
+ * it yourself when building a core client by hand.
+ *
+ * @returns A per-call provider for `MixpanelClientOptions.endpointOverrides`.
+ *
+ * @example
+ * ```typescript
+ * process.env.MP_API_BASE_URL = "http://127.0.0.1:8080/";
+ * const client = createMixpanelClient({
+ *   session,
+ *   endpointOverrides: createNodeEndpointOverrides(),
+ * });
+ * client.core.buildUrl("query", "/events/names");
+ * // "http://127.0.0.1:8080/api/query/events/names"
+ * ```
+ */
+export function createNodeEndpointOverrides(): () => EndpointOverrides {
+  return endpointOverridesFromEnv((name) => process.env[name]);
 }
