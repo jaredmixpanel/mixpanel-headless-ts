@@ -3,19 +3,23 @@
 #
 # 1. Always: verify every file listed in vendor/mixpanel-contracts/PROVENANCE.json
 #    exists and matches its recorded sha256 (self-integrity of the vendored copy).
-# 2. When the analytics checkout is present (default
-#    /Users/jaredmcfarland/Developer/analytics, override via $ANALYTICS_ROOT):
-#    byte-diff each vendored file against its source_path. Any drift fails with
-#    a "re-vendor" message. The analytics checkout is READ-ONLY: this script
-#    only reads from it.
-# 3. When the checkout is absent: skip the drift half and exit 0 (the TS repo
-#    must build without the checkout mounted).
+# 2. When $ANALYTICS_ROOT points at an analytics checkout: byte-diff each
+#    vendored file against its source_path. Any drift fails with a "re-vendor"
+#    message. The analytics checkout is READ-ONLY: this script only reads
+#    from it.
+# 3. When $ANALYTICS_ROOT is unset: skip the drift half and exit 0 (the TS
+#    repo must build without the checkout mounted). When it is set but does
+#    not exist, fail — that is a misconfiguration, not an absent checkout.
+#
+# Usage:
+#   npm run vendor:drift                          # integrity only
+#   ANALYTICS_ROOT=/path/to/analytics npm run vendor:drift
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENDOR_DIR="$REPO_ROOT/vendor/mixpanel-contracts"
 PROVENANCE="$VENDOR_DIR/PROVENANCE.json"
-ANALYTICS_ROOT="${ANALYTICS_ROOT:-/Users/jaredmcfarland/Developer/analytics}"
+ANALYTICS_ROOT="${ANALYTICS_ROOT:-}"
 
 if [[ ! -f "$PROVENANCE" ]]; then
   echo "ERROR: $PROVENANCE not found" >&2
@@ -33,10 +37,13 @@ manifest_rows() {
 }
 
 have_checkout=0
-if [[ -d "$ANALYTICS_ROOT" ]]; then
+if [[ -z "$ANALYTICS_ROOT" ]]; then
+  echo "NOTE: ANALYTICS_ROOT is unset — skipping source drift diff (integrity check only). Set ANALYTICS_ROOT=/path/to/analytics to enable it."
+elif [[ -d "$ANALYTICS_ROOT" ]]; then
   have_checkout=1
 else
-  echo "NOTE: analytics checkout not found at $ANALYTICS_ROOT — skipping source drift diff (integrity check only)."
+  echo "ERROR: ANALYTICS_ROOT=$ANALYTICS_ROOT is not a directory." >&2
+  exit 1
 fi
 
 integrity_failures=0

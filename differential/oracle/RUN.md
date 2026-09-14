@@ -138,7 +138,7 @@ server-deadline timeout port (Python `main` squash `6f26131`; corpus pin
 
   ```bash
   uv run python -m conformance.differential.fuzz_harness \
-    --right "node /Users/jaredmcfarland/Developer/mixpanel-headless-ts/scripts/run-oracle.mjs" \
+    --right "node ../mixpanel-headless-ts/scripts/run-oracle.mjs" \
     --examples 500 --seed <seed> --report json
   ```
 
@@ -169,7 +169,7 @@ did not move with the PR's extraction, see the ledger provenance note).
 
   ```bash
   uv run python -m conformance.differential.fuzz_harness \
-    --right "node /Users/jaredmcfarland/Developer/mixpanel-headless-ts/scripts/run-oracle.mjs" \
+    --right "node ../mixpanel-headless-ts/scripts/run-oracle.mjs" \
     --examples 500 --seed 906568853 --report json
   ```
 
@@ -206,7 +206,7 @@ open feature ports (not oracle- or corpus-locked). Corpus after re-pin:
 
   ```bash
   uv run python -m conformance.differential.fuzz_harness \
-    --right "node /Users/jaredmcfarland/Developer/mixpanel-headless-ts/scripts/run-oracle.mjs" \
+    --right "node ../mixpanel-headless-ts/scripts/run-oracle.mjs" \
     --examples 500 --seed 403581649 --report json
   ```
 

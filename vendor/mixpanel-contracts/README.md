@@ -1,8 +1,8 @@
 # vendor/mixpanel-contracts
 
 Verbatim byte copies of the machine-readable API contracts from the internal
-`analytics` repository (read-only checkout at
-`/Users/jaredmcfarland/Developer/analytics`). See `PROVENANCE.json` for the
+`analytics` repository (a read-only local checkout; its path is supplied via
+`$ANALYTICS_ROOT`, see `scripts/check-vendor-drift.sh`). See `PROVENANCE.json` for the
 per-file `sha256` / `source_path` / `vendored_date` manifest and the known
 coverage holes (webhooks iron-only, cohorts none, alerts custom-only).
 

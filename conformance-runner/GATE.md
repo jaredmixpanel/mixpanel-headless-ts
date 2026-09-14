@@ -29,7 +29,7 @@ all passing.
 ### 1. Python corpus runner passes all authored compat vectors — PASS
 
 ```
-cd /Users/jaredmcfarland/Developer/mixpanel-headless
+cd ../mixpanel-headless   # the Python checkout
 uv run python -m conformance.runner --vectors conformance/vectors --filter 'compat/*' --report json
 ```
 

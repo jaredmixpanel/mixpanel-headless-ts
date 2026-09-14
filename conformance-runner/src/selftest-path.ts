@@ -4,8 +4,7 @@
  * The selftest file is the cross-language contract artifact for the two
  * canonicalizer implementations. Its home in this repo is the committed
  * corpus snapshot (`conformance-runner/corpus/`, synced by
- * `scripts/sync-corpus.sh` in TS-4); before the first snapshot exists, the
- * suite falls back to reading it directly from the Python repo checkout.
+ * `scripts/sync-corpus.sh`), which always carries it alongside the vectors.
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -20,15 +19,6 @@ const PACKAGE_DIR = resolve(MODULE_DIR, "..");
 
 /** Selftest file name as written by Python task PR-4 (D6). */
 const SELFTEST_FILENAME = "canonical-selftest.json";
-
-/**
- * Pre-snapshot fallback: the authoring location in the Python repo
- * (`conformance/schema/`, task PR-4 of design D18).
- */
-const PYTHON_REPO_FALLBACK = resolve(
-  "/Users/jaredmcfarland/Developer/mixpanel-headless/conformance/schema",
-  SELFTEST_FILENAME,
-);
 
 /** Shape of the optional `corpus.config.json` fields used here (D12). */
 interface CorpusConfig {
@@ -45,7 +35,6 @@ interface CorpusConfig {
  *    snapshot; `sync-corpus.sh` copies the selftest alongside the vectors
  *    per D12) — used when the file exists there.
  * 3. The default snapshot location `conformance-runner/corpus/`.
- * 4. The Python repo authoring path (pre-snapshot use).
  *
  * @returns An absolute path. The last candidate is returned even when the
  *   file does not exist so the caller can raise a diagnostic naming the
@@ -62,7 +51,6 @@ export function resolveSelftestPath(): string {
     candidates.push(resolve(PACKAGE_DIR, configured, SELFTEST_FILENAME));
   }
   candidates.push(resolve(PACKAGE_DIR, "corpus", SELFTEST_FILENAME));
-  candidates.push(PYTHON_REPO_FALLBACK);
   for (const candidate of candidates) {
     if (existsSync(candidate)) {
       return candidate;
