@@ -3,7 +3,20 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "TypeScript port of mixpanel_headless (Phase 1 verification rig scaffold).",
+  "description": "TypeScript port of the Python mixpanel_headless library: typed Mixpanel analytics queries, entity management, and data extraction for Node.js and browsers, verified against a Python-extracted conformance corpus.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jaredmixpanel/mixpanel-headless-ts.git"
+  },
+  "keywords": [
+    "mixpanel",
+    "analytics",
+    "typescript",
+    "headless",
+    "api-client",
+    "monorepo"
+  ],
   "engines": {
     "node": ">=22"
   },

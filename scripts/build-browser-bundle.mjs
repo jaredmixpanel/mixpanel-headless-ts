@@ -48,12 +48,13 @@ export const IIFE_FILE = "mixpanel-headless.js";
 export const ESM_FILE = "mixpanel-headless.mjs";
 export const MANIFEST_FILE = "manifest.json";
 
-// A fixed header — no year, no build date, nothing that changes between
-// runs. `legalComments: "inline"` keeps any dependency licence comments
-// in the bytes rather than in a side file nobody vendors.
+// A fixed header — no build date, nothing that changes between runs (the
+// copyright years are the fixed span in LICENSE, not the build year).
+// `legalComments: "inline"` keeps any dependency licence comments in the
+// bytes rather than in a side file nobody vendors.
 const LICENSE_BANNER =
   `/*! ${PACKAGE_NAME} — bundled from ${SOURCE_REPO}. ` +
-  `Copyright Mixpanel, Inc. All rights reserved. */`;
+  `Copyright (c) 2025-2026 Jared McFarland. MIT License. */`;
 
 // Recorded verbatim in the manifest so the consumer can reproduce the
 // build without reading this file.

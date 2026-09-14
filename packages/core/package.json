@@ -3,6 +3,21 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "description": "Isomorphic core of Mixpanel Headless: the Workspace facade, query builders, result types, and error hierarchy, with zero Node dependencies.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jaredmixpanel/mixpanel-headless-ts.git",
+    "directory": "packages/core"
+  },
+  "keywords": [
+    "mixpanel",
+    "analytics",
+    "typescript",
+    "headless",
+    "isomorphic",
+    "api-client"
+  ],
   "scripts": {
     "typecheck": "tsc --noEmit"
   }

@@ -3,6 +3,22 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "description": "Browser surface of Mixpanel Headless: bearer-token and redirect-PKCE auth, injectable credential storage, and a browser-safe Workspace factory.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jaredmixpanel/mixpanel-headless-ts.git",
+    "directory": "packages/browser"
+  },
+  "keywords": [
+    "mixpanel",
+    "analytics",
+    "typescript",
+    "headless",
+    "browser",
+    "pkce",
+    "api-client"
+  ],
   "exports": {
     ".": "./src/index.ts"
   },

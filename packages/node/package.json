@@ -3,6 +3,22 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "description": "Node.js surface of Mixpanel Headless: config-file and env-var accounts, OAuth login, streaming export, and a ready-wired Workspace factory.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jaredmixpanel/mixpanel-headless-ts.git",
+    "directory": "packages/node"
+  },
+  "keywords": [
+    "mixpanel",
+    "analytics",
+    "typescript",
+    "headless",
+    "nodejs",
+    "oauth",
+    "api-client"
+  ],
   "scripts": {
     "typecheck": "tsc --noEmit"
   },

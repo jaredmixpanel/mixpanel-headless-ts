@@ -3,6 +3,19 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "description": "Differential rig for Mixpanel Headless: the oracle-ts stdio bridge for cross-language fuzzing and the ajv bookmark-schema referee.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jaredmixpanel/mixpanel-headless-ts.git",
+    "directory": "differential"
+  },
+  "keywords": [
+    "mixpanel",
+    "differential-testing",
+    "fuzzing",
+    "json-schema"
+  ],
   "scripts": {
     "typecheck": "tsc --noEmit"
   }
