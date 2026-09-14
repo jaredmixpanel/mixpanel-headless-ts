@@ -22,19 +22,16 @@ byte-diffs every vendored file against its source and fails with a
 
 ## Regeneration recipes
 
-### bookmark.ts (ACTIVE — run via `npm run generate`)
+### bookmark.ts (RETIRED)
 
-`json-schema-to-typescript@15.0.0` (EXACT pin, matching analytics
-`package.json`), same flags as analytics `tools/generate_schema.sh`:
-
-```sh
-json2ts vendor/mixpanel-contracts/bookmark.json \
-  differential/src/generated/reports/bookmark.ts \
-  --no-enableConstEnums --no-unknownAny --unreachableDefinitions
-```
-
-Output is committed as generated content; CI freshness check is
-`npm run generate && git diff --exit-code differential/src/generated/`.
+No TypeScript types are generated from `bookmark.json` any more: the
+bookmark-schema referee (`differential/referees/bookmark-schema/`) validates
+payloads with ajv directly against the JSON schema, and nothing consumed the
+json2ts output. If a typed view is ever wanted again, analytics generates its
+own with `json-schema-to-typescript@15.0.0` and the flags
+`--no-enableConstEnums --no-unknownAny --unreachableDefinitions`
+(`tools/generate_schema.sh`); pin the same version so the `tsType` extension
+keys resolve identically.
 
 ### Platform v1 client (DEFERRED per phase1-design D15c)
 

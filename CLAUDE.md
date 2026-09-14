@@ -41,8 +41,8 @@ Install with `npm ci` (lockfile-exact).
 - `npm run sync:corpus` — re-snapshot the conformance corpus from the Python repo.
 - `npm run vendor:drift` — verify `vendor/mixpanel-contracts` sha256 integrity and
   (if the analytics checkout is mounted) byte-diff against source.
-- Generators (see "Generated files" below): `npm run generate`,
-  `npm run generate:error-codes`, `npm run generate:api-map`.
+- Generators (see "Generated files" below): `npm run generate:error-codes`,
+  `npm run generate:api-map`.
 
 ## Layout (npm workspaces)
 
@@ -101,7 +101,6 @@ Each has a generator and a byte-exact freshness test; regenerate instead of edit
 - `conformance-runner/src/api-map.gen.ts` ← `npm run generate:api-map`
 - `packages/core/src/errors-codes.gen.ts` ← `npm run generate:error-codes`
 - `packages/core/src/compat/non-printable.gen.ts` ← `scripts/generate-non-printable.py`
-- `differential/src/generated/**` ← `npm run generate` (json2ts from vendored schema)
 - `vendor/**` — vendored verbatim with sha256 provenance (`PROVENANCE.json`); re-vendor, don't patch.
 
 ## Conventions
