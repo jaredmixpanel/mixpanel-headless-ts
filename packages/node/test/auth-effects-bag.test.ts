@@ -22,7 +22,7 @@
 // and the real-server e2e runs in the R10.9 harness, throwaway/b8-n3,
 // to keep fixed-port binds out of the parallel vitest workers).
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { UNPORTED_AUTH_SEAMS } from "../../core/src/accounts/auth-effects.js";
 import { createAccountsNamespace } from "../../core/src/accounts/namespace.js";
@@ -205,10 +205,18 @@ describe("§4.4 seam-closure sweep — zero UNPORTED throws over the real bag", 
     expect(effects.readSecretStdin()).toBe("sweep-secret");
 
     // narrate (owner N3; not in the constant — core default is a
-    // silent no-op, the node bag writes stderr).
-    expect(() => {
+    // silent no-op, the node bag writes one line to stderr). Capture
+    // the write so the assertion is on the sink, not on the terminal.
+    const stderrWrite = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+    try {
       effects.narrate("sweep: narrate wired");
-    }).not.toThrow();
+      expect(stderrWrite).toHaveBeenCalledTimes(1);
+      expect(stderrWrite).toHaveBeenCalledWith("sweep: narrate wired\n");
+    } finally {
+      stderrWrite.mockRestore();
+    }
 
     // Core seam-bag routing over the real bag (readFile is W7-D1 —
     // N1's nodeReadFile; not in the auth constant but same duty).
