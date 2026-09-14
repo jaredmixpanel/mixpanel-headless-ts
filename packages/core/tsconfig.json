@@ -1,6 +1,13 @@
 {
   "extends": "../../tsconfig.lib.json",
   "compilerOptions": {
+    "lib": [
+      "es2023",
+      "dom",
+      "dom.iterable",
+      "dom.asynciterable",
+      "esnext.disposable"
+    ],
     "rootDir": "src",
     "outDir": "dist"
   },

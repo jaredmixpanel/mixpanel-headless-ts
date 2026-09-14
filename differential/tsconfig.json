@@ -2,6 +2,16 @@
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
+    // DOM libs: this project pulls in conformance-runner/src by relative
+    // import (Phase 3 fixes that), which needs the fetch typing names
+    // (BodyInit, ReadableWritablePair) @types/node does not expose.
+    "lib": [
+      "es2023",
+      "dom",
+      "dom.iterable",
+      "dom.asynciterable",
+      "esnext.disposable"
+    ],
     "types": ["node"]
   },
   "include": ["src", "test", "referees", "oracle"],

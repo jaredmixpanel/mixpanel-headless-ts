@@ -12,8 +12,11 @@ describe("invariant", () => {
   });
 
   it("throws MixpanelHeadlessError (code UNKNOWN_ERROR) on falsy", () => {
+    // Widened so the `asserts` signature does not mark the next line
+    // unreachable (allowUnreachableCode: false).
+    const condition = false as boolean;
     try {
-      invariant(false, "the invariant text");
+      invariant(condition, "the invariant text");
       expect.unreachable();
     } catch (exc) {
       expect(exc).toBeInstanceOf(MixpanelHeadlessError);
