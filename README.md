@@ -760,6 +760,13 @@ are reproduced so results match byte-for-byte across languages.
 - **TypeScript optional but rewarding** — the packages ship complete types under
   `strict`; plain JavaScript works fine.
 
+### Toolchain pins (developing the repo)
+
+- **`typescript` is pinned `~6.0.3`, not `^`.** TypeScript 7 is `latest` on npm,
+  but typescript-eslint's peer range is `<6.1.0`, so a casual
+  `npm i -D typescript` would break `npm run lint`. Move the pin when
+  typescript-eslint (and TypeDoc) support TS 7.
+
 ---
 
 _Developing the port itself? This README covers the consumer surface — see
