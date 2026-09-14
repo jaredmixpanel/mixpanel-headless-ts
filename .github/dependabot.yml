@@ -1,0 +1,46 @@
+# Dependabot configuration (CLEANUP-PLAN.md §13.2).
+#
+# Both ecosystems use a 7-day cooldown: a release must be at least a week old
+# before Dependabot proposes it. This matches the owner's npm
+# `min-release-age=7` policy, so a PR here never asks for a version that a
+# local `npm install` would refuse.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    # Minor + patch bumps arrive as one grouped PR per week; majors stay
+    # separate so each one is reviewed (and its changelog read) on its own.
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]
+    ignore:
+      # TypeScript is pinned `~6.0.3` on purpose: the strict/isolatedDeclarations
+      # flag set and typescript-eslint support are validated per minor, and a
+      # major is a deliberate migration, not a dependency bump.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      # @types/node majors track Node release lines. The lowest supported line
+      # is Node 22 (`engines`), so the types must stay on 22.x — a newer major
+      # would type-check APIs that do not exist on the oldest supported runtime.
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    # Actions are SHA-pinned in the workflows; Dependabot updates the SHA and
+    # the trailing `# vX.Y.Z` comment together.
+    groups:
+      github-actions:
+        update-types: [minor, patch]

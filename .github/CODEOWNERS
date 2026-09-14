@@ -1,0 +1,10 @@
+# Code owners are requested for review automatically (and required when branch
+# protection enables "require review from Code Owners").
+
+# Default owner for the whole repository.
+* @jaredmixpanel
+
+# Workflows are the supply-chain boundary (token permissions, SHA-pinned
+# actions). Listed explicitly so ownership of them is never lost if the
+# default line above is ever broadened.
+/.github/workflows/ @jaredmixpanel
