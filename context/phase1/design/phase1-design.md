@@ -333,7 +333,7 @@ Answer to the recon PBT question re upstream rename of `test_query_user_structur
 
 ## D11 TS repo scaffold
 
-**Location: `/Users/jaredmcfarland/Developer/mixpanel-headless-ts` — `git init` only, NO GitHub repo (local commits, D16).**
+**Location: `~/Developer/mixpanel-headless-ts` — `git init` only, NO GitHub repo (local commits, D16).**
 
 Layout (plan §4.1, npm workspaces):
 ```
@@ -408,7 +408,7 @@ Phase-1 done-criterion for the harness: runs green against oracle-py↔oracle-py
 
 ## D15 Referee harnesses
 
-All invocation recipes below are PROVEN by transcripts in `context/phase1/recon/referee-assets.md` (§1, §2A, §2B). `/Users/jaredmcfarland/Developer/analytics` remains READ-ONLY throughout.
+All invocation recipes below are PROVEN by transcripts in `context/phase1/recon/referee-assets.md` (§1, §2A, §2B). `~/Developer/analytics` remains READ-ONLY throughout.
 
 ### D15.a bookmark.json validation (TS repo, ajv)
 - Lives in the TS repo: `differential/referees/bookmark-schema/` with the schema COPIED with provenance into `vendor/mixpanel-contracts/bookmark.json` (`{sha256, source_path, vendored_date}` in a sibling `PROVENANCE.json`). Copy-not-reference because the TS repo must build without the analytics checkout mounted; a freshness script `scripts/check-vendor-drift.sh` byte-diffs against the live path WHEN the analytics checkout exists locally (recon §3f step 5) — drift fails with a "re-vendor" message.
@@ -420,8 +420,8 @@ All invocation recipes below are PROVEN by transcripts in `context/phase1/recon/
 - Lives in the PYTHON repo: `conformance/referee_bookmark_parser/harness.py` (it runs Python and needs the analytics checkout; the TS repo only produces payloads).
 - Payload handoff format: a JSONL file of `{"id": ..., "bookmark_type": "insights"|"funnels"|"common", "params": {...}}` — produced either by the Python corpus runner (Phase 1) or shipped from the TS runner's output dir (Phase 3+). File-based, not RPC: referee runs are batch/nightly, and the env bootstraps differ per oracle.
 - Two oracles, invoked as recon proved:
-  1. Structural (draft-04): `PYTHONPATH=/Users/jaredmcfarland/Developer/analytics uv run --no-project --with jsonschema python harness.py --oracle structural` → `bookmark_parser.validate.assert_valid_schema(params, "common/schema/bookmark.json" | "funnels/schema/bookmark.json")`; verdict = pass / `jsonschema.exceptions.ValidationError`.
-  2. Deep insights (voluptuous): `PYTHONPATH=/Users/jaredmcfarland/Developer uv run --no-project --with voluptuous --with protobuf --with pandas --with pytz python harness.py --oracle deep` → `analytics.bookmark_parser.insights.validate.validate_insights_bookmark_params_schema(params, require_all_keys=False)`; verdict = pass / `voluptuous.error.MultipleInvalid`. Versions of the four wheels are PINNED in `harness.py`'s header (recorded at first scripted run — recon resolved "latest at run time", a listed risk).
+  1. Structural (draft-04): `PYTHONPATH=~/Developer/analytics uv run --no-project --with jsonschema python harness.py --oracle structural` → `bookmark_parser.validate.assert_valid_schema(params, "common/schema/bookmark.json" | "funnels/schema/bookmark.json")`; verdict = pass / `jsonschema.exceptions.ValidationError`.
+  2. Deep insights (voluptuous): `PYTHONPATH=~/Developer uv run --no-project --with voluptuous --with protobuf --with pandas --with pytz python harness.py --oracle deep` → `analytics.bookmark_parser.insights.validate.validate_insights_bookmark_params_schema(params, require_all_keys=False)`; verdict = pass / `voluptuous.error.MultipleInvalid`. Versions of the four wheels are PINNED in `harness.py`'s header (recorded at first scripted run — recon resolved "latest at run time", a listed risk).
 - Comparison rule: per-payload ACCEPT/REJECT verdicts per oracle, never message equality; the deep validator is enum-loose on `math` (an `Any()`/ALLOW_EXTRA branch — recon §2B negative-control `bad-math-strict -> PASSED`), so "deep accepts" is necessary-not-sufficient. Dialect rule: referee (a) + structural validate the MODERN nested dialect; the deep validator expects the LEGACY flat show clause — the harness routes payloads by dialect and the fixture set must include both (migrations exist at `bookmark_parser/common/migrations/insights/legacy.py`).
 - Also note (used by D6 rule 4 rationale): draft-04 schemas hardcode only 2 levels of filter-group nesting; deeper trees pass unvalidated in both languages — never use deep nesting as a discriminating vector.
 
@@ -440,7 +440,7 @@ Per recon §3f — regeneration from source requires a Django boot, so we VENDOR
 ## D16 Branch/commit plan
 
 - **Python repo**: new branch `ts-port/phase1-verification-rig` based on `fix/latent-bugs-stress-test` (@ 5269674). LOCAL COMMITS ONLY — never push, never open a PR (PR #206 is intentionally unmerged; the orchestrator owns merge sequencing). `src/`, `tests/`, `CLAUDE.md`, `.claude/`, and existing `pyproject.toml` sections are untouched except the explicitly scoped additions in D17.
-- **TS repo**: `git init` at `/Users/jaredmcfarland/Developer/mixpanel-headless-ts`, default branch `main`, local commits only, no remote.
+- **TS repo**: `git init` at `~/Developer/mixpanel-headless-ts`, default branch `main`, local commits only, no remote.
 - Commit granularity (Python repo, in order — each commit leaves `just check` green):
   1. `conformance: scaffold package + vector schema + pyproject/tooling scope` (D17 changes, empty runner passes trivially) — ALSO commits the currently-untracked `context/typescript-port-api-map.json` / `.md` (and the other `context/typescript-port-*` artifacts git-status shows as `??`), because `api-map.gen.ts` provenance must be SHA-pinnable (D12); an untracked input can silently change or vanish
   2. `conformance: record plugin (transport hook, clock/uuid freeze, emit)` (D1)
@@ -487,7 +487,7 @@ Conventions: every task is self-contained (an agent reads only this design doc +
 **PR-10 oracle-py + fuzz harness.** after: PR-3, PR-4. `oracle_py/__main__.py` (D14 protocol), `differential/fuzz_harness.py` + `strategies.py` (import-or-vendor per D14), self-parity run (oracle-py vs oracle-py, 200 examples per target). Done: protocol tests green; self-parity zero divergences.
 **PR-11 bookmark_parser referee harness.** after: PR-6. `referee_bookmark_parser/harness.py` + README with the two PYTHONPATH recipes (D15b), pin wheel versions on first run; batch run over bookmark-capability vector outputs. Done: all Python-built bookmark payloads ACCEPTED by the structural oracle (modern dialect via generated-schema referee is TS-side); rejects logged and triaged (a reject here = real finding, escalate).
 
-### Workflow B — TS side (`/Users/jaredmcfarland/Developer/mixpanel-headless-ts`)
+### Workflow B — TS side (`~/Developer/mixpanel-headless-ts`)
 
 **TS-1 Scaffold.** git init; workspaces, tsconfig.base per D11, ESLint flat config with R9.1 boundary, Prettier, Vitest, fast-check; `.github/workflows/ci.yml`; empty package skeletons; `npm run check` green. Files: package.json(s), tsconfig*, eslint.config.js, ci.yml.
 **TS-2 pythonCompat module.** after: TS-1. `packages/core/src/compat/{zfill,python-str,python-float-str}.ts` + vitest unit tests (TDD: tests first from R11.1/2/4 semantics + D13 case list); fast-check properties for zfill/floatStr. Done: tests green incl. non-BMP + exponent-window cases.

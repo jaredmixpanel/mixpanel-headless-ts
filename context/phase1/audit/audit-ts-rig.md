@@ -2,8 +2,8 @@
 
 Auditor: independent verification agent (re-executed everything; trusted no report).
 Date: 2026-08-15 (checks began 2026-08-14 ~23:58 local).
-TS repo: /Users/jaredmcfarland/Developer/mixpanel-headless-ts @ `8110cea` (branch `main`, working tree clean before and after audit).
-Python repo: /Users/jaredmcfarland/Developer/mixpanel-headless @ `63db3b0` (branch `ts-port/phase1-verification-rig`).
+TS repo: ~/Developer/mixpanel-headless-ts @ `8110cea` (branch `main`, working tree clean before and after audit).
+Python repo: ~/Developer/mixpanel-headless @ `63db3b0` (branch `ts-port/phase1-verification-rig`).
 Design of record: `context/phase1/design/phase1-design.md` D11–D16; gate record: `conformance-runner/GATE.md`.
 
 ## Verdict: PASS (with 3 minor findings)

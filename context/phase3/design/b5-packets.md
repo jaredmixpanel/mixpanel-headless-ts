@@ -21,7 +21,7 @@ signatures, but source is the spec). Python repo branch
    Layer-3 translations = **opus**, effort ≤ high. Binding+oracle task (b′),
    review pair ×2, arbiter, gate = **fable**. R10.13 incremental protocol on
    every agent (skeleton first, small frequent edits, notes file). NO
-   mutation testing `[SA1]`. `/Users/jaredmcfarland/Developer/analytics` is
+   mutation testing `[SA1]`. `~/Developer/analytics` is
    READ-ONLY (S3 may READ `iron/replay-embed/__test__/fixtures.ts` for
    fixture extraction per plan §Layer-3, `typescript-port-plan.md:351-354`).
    Python via `uv`; bare `python` and the literal p-y-t-e-s-t string are

@@ -2,8 +2,8 @@
 
 Auditor: independent (re-executed every check; no build-agent claim trusted).
 Date: 2026-08-15 (checks run ~00:00-00:05 local).
-Repos: Python `/Users/jaredmcfarland/Developer/mixpanel-headless` @ `ts-port/phase1-verification-rig` (63db3b0);
-TS `/Users/jaredmcfarland/Developer/mixpanel-headless-ts` @ `main` (8110cea).
+Repos: Python `~/Developer/mixpanel-headless` @ `ts-port/phase1-verification-rig` (63db3b0);
+TS `~/Developer/mixpanel-headless-ts` @ `main` (8110cea).
 
 **Verdict: PASS with minor findings.** No publishing, no analytics contamination, no ~/.mp
 residue, whitelist compliant; all four reported deviations are documented and none silently
@@ -80,7 +80,7 @@ Files changed outside `conformance/` + `context/` on `5269674..ts-port/phase1-ve
 
 ## (e) Worktree / tmp residue — PASS with cleanup list
 
-- `git worktree list` (Python repo): main tree + `/Users/jaredmcfarland/Developer/
+- `git worktree list` (Python repo): main tree + `~/Developer/
   mixpanel-headless-pr195` [pr195-fixes] — **pre-existing** (created 2026-07-06, tracks the
   gslopez fork branch; unrelated to the rig). No `/tmp/mp-smoke-*` worktree registrations
   remain (smoke worktrees were pruned properly). TS repo: single tree.

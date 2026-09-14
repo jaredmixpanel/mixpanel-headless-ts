@@ -38,7 +38,7 @@ The fix-of-record names the platform-native shape (top-level `filterType`/`filte
 - ajv referee (a) does NOT constrain filter clauses (`Sections.filter` is `JsonValue[]` in
   `vendor/mixpanel-contracts/bookmark.json`) — the deep referee (b) is the binding oracle here.
 - EMPIRICAL ACCEPT (pre-implementation probe, referee-(b) recipe env,
-  `PYTHONPATH=/Users/jaredmcfarland/Developer`, voluptuous==0.16.0):
+  `PYTHONPATH=~/Developer`, voluptuous==0.16.0):
   `validate_insights_bookmark_params_schema(..., require_all_keys=False)` ACCEPTs all three
   candidate variants (basic, in-the-last window dateRange, event filters in `behavior.filters`).
 
@@ -295,7 +295,7 @@ every other prefix unchanged. Playbook P3-0 updated with the re-pin bullet
 - Standing-disclosure pin removed: referee README "Batch results" section rewritten
   (no expected-REJECT set remains on the Python side; any future REJECT = new finding).
   No code-level allowlist existed on the Python side (verified by grep).
-- `/Users/jaredmcfarland/Developer/analytics` used READ-ONLY (PYTHONPATH recipes only).
+- `~/Developer/analytics` used READ-ONLY (PYTHONPATH recipes only).
 - NOT in scope here: the ajv referee (a) pinned dataGroupId REJECT set lives in the TS
   repo and retires with the TS follow-up task (R10.7 flip discipline).
 

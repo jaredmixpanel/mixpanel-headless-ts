@@ -109,7 +109,7 @@ no action needed from the batch executors.
 - 403 matrix probe `/tmp/probe_403.py` → exactly the fix-of-record post-fix table.
 - OAuth probe `/tmp/probe_oauth2.py` → redaction correct + F1 AttributeError repro.
 - Deep-oracle probe `/tmp/probe_deep2.py` (recipe env: voluptuous==0.16.0,
-  protobuf==7.35.1, pandas==3.0.5, pytz==2026.3.post1, PYTHONPATH=/Users/jaredmcfarland/
+  protobuf==7.35.1, pandas==3.0.5, pytz==2026.3.post1, PYTHONPATH=~/
   Developer, analytics READ-ONLY) → 4/4 ACCEPT.
 - `uv run python -m conformance.runner` → 3,262 ok; TS `npm run conformance` → 3,262/0/0;
   `npm run referee:bookmark` → 9/9, 0 REJECT.

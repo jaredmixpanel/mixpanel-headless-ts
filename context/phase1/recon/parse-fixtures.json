@@ -1,6 +1,6 @@
 {
   "generated": "2026-08-14",
-  "repo": "/Users/jaredmcfarland/Developer/mixpanel-headless",
+  "repo": "~/Developer/mixpanel-headless",
   "commit": "5269674",
   "python_repo_fixtures": {
     "root": "tests/fixtures",
@@ -61,7 +61,7 @@
     "note": "conftest_042.py:22 reads developer's real ~/.mp/oauth/tokens_us.json"
   },
   "analytics_storybook_mocks": {
-    "root": "/Users/jaredmcfarland/Developer/analytics/iron/.storybook/mocks/api",
+    "root": "~/Developer/analytics/iron/.storybook/mocks/api",
     "read_only": true,
     "total_files": 81,
     "total_kb_du": 1196,
@@ -86,7 +86,7 @@
     ]
   },
   "replay_embed_fixtures_ts": {
-    "path": "/Users/jaredmcfarland/Developer/analytics/iron/replay-embed/__test__/fixtures.ts",
+    "path": "~/Developer/analytics/iron/replay-embed/__test__/fixtures.ts",
     "lines": 190,
     "static_rrweb_json": false,
     "contents": {

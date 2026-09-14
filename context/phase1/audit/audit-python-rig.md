@@ -2,7 +2,7 @@
 
 - Auditor: independent (re-executed every check; no build-agent claim trusted).
 - Date: 2026-08-15
-- Repo: /Users/jaredmcfarland/Developer/mixpanel-headless
+- Repo: ~/Developer/mixpanel-headless
 - Branch: `ts-port/phase1-verification-rig` @ 63db3b0 (base `fix/latent-bugs-stress-test` @ 5269674 — confirmed 52696743b913a0c4c152deb48af987ae412b5aee)
 - Pre-existing working-tree state noted (NOT touched by this audit): modified `context/typescript-port-rulebook.md` (+9 lines, uncommitted) and untracked `context/phase1/{bug-reports,design/escalation-resolutions.md,pr6-notes.md}`, `context/typescript-port-*` files.
 - Audit writes: this file only (plus scratch under /tmp: `audit-re-extract`, `audit-re-extract-perturbed`, throwaway worktree `audit-sabotage`, removed after use).

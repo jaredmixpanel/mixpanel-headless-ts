@@ -56,7 +56,7 @@ canonical corpus seed for the replay analyzer.
   corpus exists in live tests.** conftest_042.py:22 reads the developer's real
   `~/.mp/oauth/tokens_us.json` — a pattern to avoid in the rig.
 
-## 4. /Users/jaredmcfarland/Developer/analytics/iron/.storybook/mocks/api/** (READ-ONLY)
+## 4. ~/Developer/analytics/iron/.storybook/mocks/api/** (READ-ONLY)
 
 Total: 81 JSON files, ~1.2 MB (`du -sk` = 1196 KB; app 460 KB, query 736 KB).
 

@@ -1,6 +1,6 @@
 {
   "meta": {
-    "repo": "/Users/jaredmcfarland/Developer/mixpanel-headless",
+    "repo": "~/Developer/mixpanel-headless",
     "branch": "fix/latent-bugs-stress-test",
     "commit": "52696743b913a0c4c152deb48af987ae412b5aee",
     "generated": "2026-08-14",

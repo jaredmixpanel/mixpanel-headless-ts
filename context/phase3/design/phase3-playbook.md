@@ -12,12 +12,12 @@ orchestrator launches instantiate P3-6 with the batch rows of P3-1 and the loop 
 
 ## P3-0 Ground state & binding inputs
 
-- **Python repo**: `/Users/jaredmcfarland/Developer/mixpanel-headless`, branch
+- **Python repo**: `~/Developer/mixpanel-headless`, branch
   `ts-port/phase2-contract-support` (verify `git branch --show-current` before every commit;
   LOCAL COMMITS ONLY, never push). Conformance rig lives in `conformance/`; recorder registry
   `conformance/record/registry.py`; compat reference module `conformance/record/pycompat_ref.py`;
   oracle-py `conformance/oracle_py/`.
-- **TS repo**: `/Users/jaredmcfarland/Developer/mixpanel-headless-ts`, branch `main`
+- **TS repo**: `~/Developer/mixpanel-headless-ts`, branch `main`
   (local-only, D16). Corpus snapshot pinned in `conformance-runner/corpus.config.json`
   (`sourceCommit 8ae76314…`, `recordEpoch 2026-01-15T12:00:00Z`). Conformance report at
   Phase-2 exit: **3,179 vectors — 461 PASS / 0 FAIL / 2,718 UNPORTED**.
@@ -31,7 +31,7 @@ orchestrator launches instantiate P3-6 with the batch rows of P3-1 and the loop 
 - **Standing constraints**: NO mutation testing anywhere `[SA1]`. R10.13 on every agent
   (effort ≤ high + incremental work protocol: skeleton file first, small frequent edits,
   running notes file, assemble final answer from disk). R10.7 bug-compatibility.
-  `/Users/jaredmcfarland/Developer/analytics` is READ-ONLY. Python via `uv`; the literal
+  `~/Developer/analytics` is READ-ONLY. Python via `uv`; the literal
   p-y-t-e-s-t string and bare `python` are hook-blocked in shell commands — use
   `uv run python -m pytest`.
 - **Vector-count provenance**: every count in P3-1 was measured 2026-08-15 by

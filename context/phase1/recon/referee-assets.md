@@ -1,6 +1,6 @@
 # Referee-Asset Recon (Phase 1)
 
-Date: 2026-08-14. All paths under `/Users/jaredmcfarland/Developer/analytics` are READ-ONLY reference; every probe below ran from `/tmp` with `uv run --no-project --with <dep>` isolation. No writes, no installs into the analytics repo.
+Date: 2026-08-14. All paths under `~/Developer/analytics` are READ-ONLY reference; every probe below ran from `/tmp` with `uv run --no-project --with <dep>` isolation. No writes, no installs into the analytics repo.
 
 Mission scope note: mutation testing is out of scope (user directive 2026-08-14); nothing below depends on mutmut/StrykerJS.
 
@@ -44,7 +44,7 @@ There is **no report-type discriminator at the root** — this file only models 
 $ cd /tmp && uv run --no-project --with jsonschema python - <<'EOF'
 import json, jsonschema
 from jsonschema import Draft202012Validator
-schema = json.load(open('/Users/jaredmcfarland/Developer/analytics/lib/common/mxpnl/report/bookmarks/generated/bookmark.json'))
+schema = json.load(open('~/Developer/analytics/lib/common/mxpnl/report/bookmarks/generated/bookmark.json'))
 payload = {
     "displayOptions": {"chartType": "line"},
     "sections": {
@@ -129,7 +129,7 @@ Direct third-party imports inside the package: `jsonschema` (2), `voluptuous` (4
 ### Transcript A — bare import (mission's exact probe) + standalone validate
 
 ```
-$ cd /tmp && PYTHONPATH=/Users/jaredmcfarland/Developer/analytics \
+$ cd /tmp && PYTHONPATH=~/Developer/analytics \
   uv run --no-project --with jsonschema python -c "
 import bookmark_parser
 print('import bookmark_parser OK, file =', bookmark_parser.__file__)
@@ -138,13 +138,13 @@ print('import bookmark_parser.validate OK')
 import bookmark_parser.exceptions as e
 print('exceptions:', e.BookmarkValidationError)
 "
-import bookmark_parser OK, file = /Users/jaredmcfarland/Developer/analytics/bookmark_parser/__init__.py
+import bookmark_parser OK, file = ~/Developer/analytics/bookmark_parser/__init__.py
 import bookmark_parser.validate OK
 exceptions: <class 'bookmark_parser.exceptions.BookmarkValidationError'>
 ```
 
 ```
-$ cd /tmp && PYTHONPATH=/Users/jaredmcfarland/Developer/analytics uv run --no-project --with jsonschema python - <<'EOF'
+$ cd /tmp && PYTHONPATH=~/Developer/analytics uv run --no-project --with jsonschema python - <<'EOF'
 import json
 from bookmark_parser.validate import assert_valid_schema
 payload = {
@@ -169,7 +169,7 @@ negative control raised: jsonschema.exceptions.ValidationError 'fortnight' is no
 
 ### Transcript B — deep insights validator (make-or-break item): WORKS with 4 extra wheels
 
-Absolute `analytics.*` imports require `PYTHONPATH=/Users/jaredmcfarland/Developer` (parent of the repo; the repo root has an `__init__.py`, so the checkout itself is the `analytics` package).
+Absolute `analytics.*` imports require `PYTHONPATH=~/Developer` (parent of the repo; the repo root has an `__init__.py`, so the checkout itself is the `analytics` package).
 
 Failure ladder observed (exact errors):
 1. bare: `ModuleNotFoundError: No module named 'google'` (via `analytics/backend/util/behaviors/attribution.py:5` → `analytics.protobuf.backend.common.pb.over_time_params_pb2`) → add `protobuf`
@@ -177,7 +177,7 @@ Failure ladder observed (exact errors):
 3. `ModuleNotFoundError: No module named 'pytz'` (via `analytics/backend/util/time_utils/project_time.py:8`; pandas 3.x no longer drags pytz in) → add `pytz`
 
 ```
-$ cd /tmp && PYTHONPATH=/Users/jaredmcfarland/Developer \
+$ cd /tmp && PYTHONPATH=~/Developer \
   uv run --no-project --with voluptuous --with protobuf --with pandas --with pytz python -c "
 from analytics.bookmark_parser.insights.validate import validate_insights_bookmark_params_schema
 print('deep import OK')
@@ -204,7 +204,7 @@ bad-chartType   -> raised MultipleInvalid : value must be one of ['bar', 'column
 bad-math-strict -> PASSED        # {'math': 'NOT_A_MATH'} sneaks through: one Any(...) branch (multi-metric clause, ALLOW_EXTRA) accepts it
 ```
 
-**Conclusion**: the deep voluptuous validator is usable as a differential oracle with exactly `PYTHONPATH=/Users/jaredmcfarland/Developer` + `--with voluptuous --with protobuf --with pandas --with pytz` (pin: voluptuous latest-at-run, protobuf 6.x wheel resolved by uv, pandas 3.x, pytz). It is structure-strict but **not** enum-strict on `math` (Any-branch looseness) — the referee should treat "both validators accept" / "both reject" as the oracle signal, not error-message equality. Note the two validators disagree on shape vocabulary: `insights/validate.py` expects the legacy flat show clause (`math`/`resourceType`/`value`), while `generated/bookmark.json` expects the modern nested clause (`behavior`/`measurement`); a corpus fixture set needs both dialects (migrations in `common/migrations/insights/legacy.py` convert between them).
+**Conclusion**: the deep voluptuous validator is usable as a differential oracle with exactly `PYTHONPATH=~/Developer` + `--with voluptuous --with protobuf --with pandas --with pytz` (pin: voluptuous latest-at-run, protobuf 6.x wheel resolved by uv, pandas 3.x, pytz). It is structure-strict but **not** enum-strict on `math` (Any-branch looseness) — the referee should treat "both validators accept" / "both reject" as the oracle signal, not error-message equality. Note the two validators disagree on shape vocabulary: `insights/validate.py` expects the legacy flat show clause (`math`/`resourceType`/`value`), while `generated/bookmark.json` expects the modern nested clause (`behavior`/`measurement`); a corpus fixture set needs both dialects (migrations in `common/migrations/insights/legacy.py` convert between them).
 
 ---
 
@@ -259,6 +259,6 @@ Do NOT try to regenerate specs from the analytics repo (needs a full Django boot
 | Harness | Oracle | Status | Invocation |
 |---|---|---|---|
 | Insights-bookmark schema referee | `generated/bookmark.json` + jsonschema `Draft202012Validator` / ajv `Ajv2020` | **proven** (§1 transcript, pos+2 neg controls) | `uv run --no-project --with jsonschema` from /tmp |
-| bookmark_parser structural referee | `bookmark_parser.validate.assert_valid_schema` (draft-04, file-refs) | **proven** (§2 transcript A) | `PYTHONPATH=/Users/jaredmcfarland/Developer/analytics uv run --no-project --with jsonschema` |
-| bookmark_parser deep-validator referee | `analytics.bookmark_parser.insights.validate.validate_insights_bookmark_params_schema` | **proven with caveats** (§2 transcript B; enum-loose on `math`; legacy show-clause dialect) | `PYTHONPATH=/Users/jaredmcfarland/Developer uv run --no-project --with voluptuous --with protobuf --with pandas --with pytz` |
+| bookmark_parser structural referee | `bookmark_parser.validate.assert_valid_schema` (draft-04, file-refs) | **proven** (§2 transcript A) | `PYTHONPATH=~/Developer/analytics uv run --no-project --with jsonschema` |
+| bookmark_parser deep-validator referee | `analytics.bookmark_parser.insights.validate.validate_insights_bookmark_params_schema` | **proven with caveats** (§2 transcript B; enum-loose on `math`; legacy show-clause dialect) | `PYTHONPATH=~/Developer uv run --no-project --with voluptuous --with protobuf --with pandas --with pytz` |
 | App-API type referee | vendored types.d.ts + hey-api/json2ts regeneration | **recipe defined** (§3f); no OpenAPI for entity CRUD exists — types.d.ts are the only contract | n/a (compile-time) |

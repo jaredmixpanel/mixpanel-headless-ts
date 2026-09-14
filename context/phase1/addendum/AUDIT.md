@@ -3,7 +3,7 @@
 - **Auditor**: AD-10 (independent re-execution; no reliance on prior task reports)
 - **Date**: 2026-08-15
 - **Audited HEAD**: `6b821af` on `ts-port/phase1-addendum` (base: `852d718` on `ts-port/phase1-verification-rig`)
-- **TS repo**: `/Users/jaredmcfarland/Developer/mixpanel-headless-ts` @ `9ad06d6` (branch `main`)
+- **TS repo**: `~/Developer/mixpanel-headless-ts` @ `9ad06d6` (branch `main`)
 - **Method**: every claim below was re-executed live during this audit — `just check`, the corpus runner CLI, a full 14-patch smoke re-run at HEAD, vector sampling with live guard execution, PII greps, `npm run check`, the TS conformance CLI, and remote/porcelain inspection. No verdict was copied from a prior report.
 
 ## Verdict: PASS (7/7 items)
@@ -91,7 +91,7 @@ uv run python -m conformance.runner --vectors conformance/vectors --report json
 
 - Python repo: remotes exist (`origin`, `gslopez`) but `git branch -r` lists **no** `ts-port/*` remote branches, and neither local `ts-port/phase1-verification-rig` nor `ts-port/phase1-addendum` has an upstream (`branch -vv`). Local-only confirmed.
 - TS repo: `git remote -v` is **empty** (remoteless), branch `main`, porcelain clean.
-- `/Users/jaredmcfarland/Developer/analytics`: `git status --porcelain` → **0 lines** (clean).
+- `~/Developer/analytics`: `git status --porcelain` → **0 lines** (clean).
 
 ---
 

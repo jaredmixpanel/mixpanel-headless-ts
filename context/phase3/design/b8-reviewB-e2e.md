@@ -235,7 +235,7 @@ confirmation (#14 bridge project), everything else field-identical.
 ## RUN record
 
 ```
-# Python side (from /Users/jaredmcfarland/Developer/mixpanel-headless)
+# Python side (from ~/Developer/mixpanel-headless)
 uv run python /tmp/b8e2e/py_driver.py main  > /tmp/b8e2e/out/py-main.json   # 17 scenarios, 0 crashes
 uv run python /tmp/b8e2e/py_r2.py main      > /tmp/b8e2e/out/py-r2.json     # 14 scenarios, 0 crashes
 uv run python /tmp/b8e2e/py_r3.py main      > /tmp/b8e2e/out/py-r3.json
@@ -244,7 +244,7 @@ uv run python /tmp/b8e2e/py_driver.py cross > /tmp/b8e2e/out/py-cross.json  # re
 uv run python /tmp/b8e2e/py_r2.py cross     > /tmp/b8e2e/out/py-r2-cross.json
 uv run python /tmp/b8e2e/py_r3.py cross     > /tmp/b8e2e/out/py-r3-cross.json
 
-# TS side (from /Users/jaredmcfarland/Developer/mixpanel-headless-ts)
+# TS side (from ~/Developer/mixpanel-headless-ts)
 npx vite-node throwaway/b8-reviewB-e2e/ts_driver.ts > /tmp/b8e2e/out/ts-main.json  # 17 + cross, 0 crashes
 npx vite-node throwaway/b8-reviewB-e2e/ts_r2.ts     > /tmp/b8e2e/out/ts-r2.json
 npx vite-node throwaway/b8-reviewB-e2e/ts_r3.ts     > /tmp/b8e2e/out/ts-r3.json

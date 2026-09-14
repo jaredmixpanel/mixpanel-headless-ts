@@ -1,6 +1,6 @@
 # Phase 1 Recon: Test Infra + CI Machinery
 
-Repo: `/Users/jaredmcfarland/Developer/mixpanel-headless` @ `5269674` (branch `fix/latent-bugs-stress-test`).
+Repo: `~/Developer/mixpanel-headless` @ `5269674` (branch `fix/latent-bugs-stress-test`).
 All line numbers cite that commit. Scope amendment honored: mutation testing (`[tool.mutmut]`, `just mutate*`, StrykerJS) is OUT OF SCOPE and ignored; judge validation = deliberate-break smoke test (Section 3).
 
 ## Counts (verified, not estimated)
@@ -28,7 +28,7 @@ Derivations:
 - `uv run pytest --collect-only -q -o addopts="" -m "not live" -k "_pbt"` → `556/7325` (numeric coincidence with live count; sets are disjoint — `-m live -k "_pbt"` collects 0).
 - `grep -rc "@st.composite" tests/` (decorator lines, 13 files) → 41. Plan's claim of 41 composite strategies VERIFIED.
 - `find tests -name "*_pbt.py" | wc -l` → 39 files (12 in `tests/pbt/`, rest in `tests/` and `tests/unit/`, incl. `tests/unit/cli/`).
-- `uv run python -c "import mixpanel_headless; print(mixpanel_headless.__file__)"` → `/Users/jaredmcfarland/Developer/mixpanel-headless/src/mixpanel_headless/__init__.py` (editable, resolves repo src).
+- `uv run python -c "import mixpanel_headless; print(mixpanel_headless.__file__)"` → `~/Developer/mixpanel-headless/src/mixpanel_headless/__init__.py` (editable, resolves repo src).
 
 ## 1. pytest config + autouse fixtures
 
@@ -122,7 +122,7 @@ Relevant justfile recipes (justfile, tracked):
 
 ```
 $ uv run python -c "import mixpanel_headless; print(mixpanel_headless.__file__)"
-/Users/jaredmcfarland/Developer/mixpanel-headless/src/mixpanel_headless/__init__.py
+~/Developer/mixpanel-headless/src/mixpanel_headless/__init__.py
 
 $ uv run pytest --collect-only -q 2>/dev/null | tail -3
 ============= 6769/7325 tests collected (556 deselected) in 0.97s ==============

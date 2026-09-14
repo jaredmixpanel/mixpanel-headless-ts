@@ -97,7 +97,7 @@ bug-(b) funnel vector flipped `"dataGroupId": 5` → `"globalDataGroupId": "5"`
 - Retirement is genuine: README "Batch results" section rewritten to
   "no standing expected-REJECT set … any REJECT is a NEW finding"; `harness.py`
   / `handoff.py` UNCHANGED in the batch diff (no code allowlist existed or was
-  added). `/Users/jaredmcfarland/Developer/analytics` used read-only
+  added). `~/Developer/analytics` used read-only
   (PYTHONPATH only; its working tree untouched).
 
 ## 5. Referee (a) — ajv bookmark referee, run FRESH (fully clean)

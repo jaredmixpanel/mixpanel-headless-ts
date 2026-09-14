@@ -23,9 +23,9 @@ Begin executing the TypeScript port of mixpanel-headless — Phase 1 onward of
   merge it). Base any new Python-repo branches on it, and stamp every extracted vector
   file with the source commit SHA so the corpus can be regenerated after #206 merges.
 - The TS repo does not exist yet. Create it locally at
-  `/Users/jaredmcfarland/Developer/mixpanel-headless-ts` per plan §4.1 (git init only —
+  `~/Developer/mixpanel-headless-ts` per plan §4.1 (git init only —
   do not create or push a GitHub repo without asking).
-- `/Users/jaredmcfarland/Developer/analytics` is read-only reference: bookmark JSON
+- `~/Developer/analytics` is read-only reference: bookmark JSON
   Schema (`lib/common/mxpnl/report/bookmarks/generated/bookmark.json`), `bookmark_parser/`,
   schema4api `types.d.ts`, iron idioms (`iron/common/report/queries/`). Never write there.
 - Live credentials exist (`mp account test mixpanel-2` refreshes tokens); Query API budget

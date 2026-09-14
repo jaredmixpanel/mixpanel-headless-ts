@@ -3,7 +3,7 @@
 > vitest run differential/test/bookmark-schema-referee.test.ts differential/test/bookmark-referee-feed.test.ts
 
 
- RUN  v3.2.7 /Users/jaredmcfarland/Developer/mixpanel-headless-ts
+ RUN  v3.2.7 ~/Developer/mixpanel-headless-ts
 
  ✓ differential/test/bookmark-schema-referee.test.ts (7 tests) 54ms
  ✓ differential/test/bookmark-referee-feed.test.ts (2 tests) 83ms

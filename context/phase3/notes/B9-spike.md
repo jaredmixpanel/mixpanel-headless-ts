@@ -32,7 +32,7 @@ stderr was never suppressed on any call.
 `~/.mp/oauth/` before any live call:
 
 ```
-/Users/jaredmcfarland/.mp/oauth/client_us.json  mtime 1784236054 (Jul 16 14:07:34 2026)  (only file present)
+~/.mp/oauth/client_us.json  mtime 1784236054 (Jul 16 14:07:34 2026)  (only file present)
 ```
 
 ## 1. Credentials check (mandated first, §4.1.1)
@@ -186,7 +186,7 @@ passing the (unverified) authorize/consent path.
 After all live calls:
 
 ```
-/Users/jaredmcfarland/.mp/oauth/client_us.json  mtime 1784236054 (Jul 16 14:07:34 2026)  — UNCHANGED, still the only file
+~/.mp/oauth/client_us.json  mtime 1784236054 (Jul 16 14:07:34 2026)  — UNCHANGED, still the only file
 ```
 
 No repo file outside `context/phase3/notes/` + the packet addendum

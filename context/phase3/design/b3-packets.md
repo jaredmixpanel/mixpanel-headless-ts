@@ -999,6 +999,6 @@ row exactly. ✓ Per corpus file: see the table in the header (sums 299). ✓
 K1–K4: **opus**, effort ≤ high, R10.13 incremental protocol, escalation = retry
 once on fable with failure context. (b′) binding + adapter + re-pin, review
 pair ×2 + arbiter per shard, batch gate + referees: **fable**, effort ≤ high.
-NO mutation testing anywhere [SA1]. `/Users/jaredmcfarland/Developer/analytics`
+NO mutation testing anywhere [SA1]. `~/Developer/analytics`
 is READ-ONLY. Python via `uv` (`uv run python -m pytest`); bare `python` and the
 literal p-y-t-e-s-t string are hook-blocked.

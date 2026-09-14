@@ -121,7 +121,7 @@ on the first full run.
 
 ```bash
 uv run python -m conformance.differential.fuzz_harness \
-  --right "node /Users/jaredmcfarland/Developer/mixpanel-headless-ts/scripts/run-oracle.mjs" \
+  --right "node ~/Developer/mixpanel-headless-ts/scripts/run-oracle.mjs" \
   --targets workspace_build_params_family,workspace_build_funnel_params_family,\
 workspace_build_flow_params_family,workspace_build_retention_params_family,\
 workspace_build_user_params_family,replay_url_normalizer_family,\

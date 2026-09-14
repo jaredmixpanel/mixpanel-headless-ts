@@ -2,7 +2,7 @@
 
 Auditor: independent verification agent (read-only mandate).
 Date: 2026-08-15.
-Repo: `/Users/jaredmcfarland/Developer/mixpanel-headless`, branch `ts-port/phase1-verification-rig` @ `63db3b08a69afa3aacdc2cac8da23f9db7d313bc`.
+Repo: `~/Developer/mixpanel-headless`, branch `ts-port/phase1-verification-rig` @ `63db3b08a69afa3aacdc2cac8da23f9db7d313bc`.
 Scope: `conformance/smoke/run_smoke.py`, `conformance/smoke/patches/S01..S13.patch`, `conformance/smoke/last-run.json`, runner crash/catch semantics, independent re-execution of control + 5 patches.
 
 Verdict: **PASS with minor findings** — the smoke rig is sound, the recorded PASS is reproducible, and no defect undermines the D9.3 judge-validity claim.
@@ -69,7 +69,7 @@ All 13 patches are syntactically valid, behavior-only edits to `src/`; none remo
 
 - `run_smoke.py` removes each worktree in a `finally` block (`--keep-worktrees` off by default) and prunes registrations; after my full re-run, `/tmp` contains no `mp-smoke-*` directories.
 - I created one manual worktree (`/tmp/mp-audit-manual`) for reason-level inspection and removed + pruned it.
-- `git worktree list` after cleanup shows the main tree plus two NON-smoke worktrees that predate/parallel this audit and are not mine to remove: `/Users/jaredmcfarland/Developer/mixpanel-headless-pr195` (branch `pr195-fixes`, pre-existing developer worktree) and `/private/tmp/audit-sabotage` (detached at the same HEAD — consistent with a concurrent audit lens; left in place). Neither is a smoke-rig leftover (Finding F3).
+- `git worktree list` after cleanup shows the main tree plus two NON-smoke worktrees that predate/parallel this audit and are not mine to remove: `~/Developer/mixpanel-headless-pr195` (branch `pr195-fixes`, pre-existing developer worktree) and `/private/tmp/audit-sabotage` (detached at the same HEAD — consistent with a concurrent audit lens; left in place). Neither is a smoke-rig leftover (Finding F3).
 
 ## Read-only compliance
 

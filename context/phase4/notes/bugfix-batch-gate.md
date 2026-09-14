@@ -204,5 +204,5 @@ BLIND and converged from opposite directions on the same ground truth:
 - All Python gates run as `env -u FORCE_COLOR -u COLORTERM just check`
   (FORCE_COLOR=3 harness gotcha).
 - NO live API calls anywhere in the batch or this gate; NO mutation testing
-  [SA1]; `/Users/jaredmcfarland/Developer/analytics` READ-ONLY throughout.
+  [SA1]; `~/Developer/analytics` READ-ONLY throughout.
 - uv-only Python invocation; local commits only.
