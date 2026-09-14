@@ -19,8 +19,9 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      # typecheck (tsc --noEmit per package), eslint, prettier --check,
-      # vitest run, core browser-bundle smoke.
+      # tsc -b (builds packages/*/dist), publint + attw on the packed
+      # tarballs, knip, eslint, prettier --check, vitest run (incl. the
+      # pack-and-install consumption test), browser-bundle smoke.
       - run: npm run check
 
   conformance:
