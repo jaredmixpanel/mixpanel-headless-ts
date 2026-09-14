@@ -85,7 +85,7 @@ import { serializeTokensPayload } from "./token-serialization.js";
  * slow consent/MFA hop; override via
  * {@link CompleteLoginOptions.maxPendingAgeMs}.
  */
-export const DEFAULT_MAX_PENDING_AGE_MS = 30 * 60 * 1000;
+export const DEFAULT_MAX_PENDING_AGE_MS: number = 30 * 60 * 1000;
 
 /** Options bag of {@link beginLogin} (b9-packets.md §3.2 — pasted contract). */
 export interface BeginLoginOptions {

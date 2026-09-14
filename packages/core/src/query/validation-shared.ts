@@ -78,7 +78,7 @@ export const _SESSION_MATH: ReadonlySet<string> = new Set([
  * Port of `_FORMULA_POSITION_RE` (`validation.py:342`) — ASCII-only
  * class, safe as a JS regex.
  */
-export const _FORMULA_POSITION_RE = /[A-Z]/g;
+export const _FORMULA_POSITION_RE: RegExp = /[A-Z]/g;
 
 /**
  * Codepoint test for the `_CONTROL_CHAR_RE` class (`validation.py:343`,

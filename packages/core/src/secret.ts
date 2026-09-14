@@ -17,6 +17,9 @@
 /** Pydantic's exact redaction literal: ten asterisks. */
 const REDACTION = "**********";
 
+/** Node's `util.inspect` hook key, via `Symbol.for` (no `node:util`). */
+const INSPECT_CUSTOM: unique symbol = Symbol.for("nodejs.util.inspect.custom");
+
 /**
  * Opaque wrapper around a sensitive string (service-account secrets, OAuth
  * bearer/refresh tokens).
@@ -75,16 +78,20 @@ export class Secret {
   toJSON(): string {
     return REDACTION;
   }
-
-  /**
-   * Render the redaction mask for Node's `util.inspect` / `console.log`.
-   *
-   * Registered via `Symbol.for('nodejs.util.inspect.custom')` so no
-   * `node:util` import is needed (R9.1); non-Node runtimes ignore it.
-   *
-   * @returns The literal `'**********'` (never the wrapped value).
-   */
-  [Symbol.for("nodejs.util.inspect.custom")](): string {
-    return REDACTION;
-  }
 }
+
+// Render the redaction mask for Node's `util.inspect` / `console.log`.
+// Registered via `Symbol.for('nodejs.util.inspect.custom')` so no
+// `node:util` import is needed (R9.1); non-Node runtimes ignore it.
+// Installed on the prototype (with a class method's attributes) rather
+// than declared in the class body: `isolatedDeclarations` only accepts
+// well-known `Symbol.*` computed names, and the method was never part of
+// the emitted declaration anyway. Returns the literal `'**********'`.
+Object.defineProperty(Secret.prototype, INSPECT_CUSTOM, {
+  value: function inspect(this: Secret): string {
+    return REDACTION;
+  },
+  writable: true,
+  enumerable: false,
+  configurable: true,
+});

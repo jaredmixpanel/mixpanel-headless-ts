@@ -57,14 +57,14 @@ import {
  * OAuth bearers are < 8 KiB; a larger payload is almost always the
  * wrong file being piped.
  */
-export const SECRET_STDIN_MAX_BYTES = 64 * 1024;
+export const SECRET_STDIN_MAX_BYTES: number = 64 * 1024;
 
 /**
  * Hard ceiling on a credential file's size (`io_utils.py:66-80`).
  * 1 MiB is 100x the largest realistic file; anything larger is a
  * runaway write, a corrupted file, or an attacker-planted blob.
  */
-export const MAX_CREDENTIAL_BYTES = 1 << 20;
+export const MAX_CREDENTIAL_BYTES: number = 1 << 20;
 
 /**
  * Render a mode like CPython `oct()` — e.g. `0o644` (message parity

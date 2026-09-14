@@ -256,13 +256,13 @@ export class DOMTracker {
   MAX_NODES = 50000;
 
   /** Ancestor-traversal bound (per-instance mirror of the class attr). */
-  MAX_ANCESTOR_DEPTH = DOMTracker.MAX_ANCESTOR_DEPTH;
+  MAX_ANCESTOR_DEPTH: number = DOMTracker.MAX_ANCESTOR_DEPTH;
 
   /** The node map (`self.nodes`). */
-  readonly nodes = new Map<number, TrackedNode>();
+  readonly nodes: Map<number, TrackedNode> = new Map();
 
   /** Memoized descriptions (`self._description_cache`). */
-  readonly descriptionCache = new Map<number, string>();
+  readonly descriptionCache: Map<number, string> = new Map();
 
   /** Whether the node cap has been hit at least once. */
   reachedMaxNodes = false;
@@ -792,7 +792,7 @@ export class EventAnalyzer {
   lastSelectionTime = 0;
 
   /** Per-node last-input timestamps (`self.last_input_time`). */
-  readonly lastInputTime = new Map<number, number>();
+  readonly lastInputTime: Map<number, number> = new Map();
 
   /**
    * Initialize the analyzer with an optional pre-seeded DOM tracker

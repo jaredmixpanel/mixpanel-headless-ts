@@ -649,7 +649,7 @@ async function pollLookupUpload(
 export async function uploadLookupTable(
   client: MixpanelClient,
   params: UploadLookupTableParams,
-  options: WorkspaceUploadLookupTableOptions = {},
+  options: WorkspaceUploadLookupTableOptions | undefined = {},
   seams: LookupUploadSeams,
   logger?: LookupUploadLogger | undefined,
 ): Promise<LookupTable> {

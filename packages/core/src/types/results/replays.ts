@@ -441,17 +441,6 @@ export class SignedReplay {
   }
 
   /**
-   * Node `util.inspect` hook — same masked rendering as
-   * {@link toString} (registered via `Symbol.for`, no `node:util`
-   * import — R9.1-safe, ignored in browsers).
-   *
-   * @returns The masked representation.
-   */
-  [Symbol.for("nodejs.util.inspect.custom")](): string {
-    return this.toString();
-  }
-
-  /**
    * Strictly decode a recorded field-walk payload (`signed_at` may
    * arrive as a `$type: float`-decoded wrapper).
    *
@@ -483,6 +472,26 @@ export class SignedReplay {
     });
   }
 }
+
+// Node `util.inspect` hook for {@link SignedReplay} — same masked
+// rendering as `toString()` (registered via `Symbol.for`, no `node:util`
+// import — R9.1-safe, ignored in browsers). Installed on the prototype
+// with a class method's attributes rather than declared in the class
+// body: `isolatedDeclarations` only accepts well-known `Symbol.*`
+// computed names, and the method was never part of the emitted
+// declaration anyway.
+Object.defineProperty(
+  SignedReplay.prototype,
+  Symbol.for("nodejs.util.inspect.custom"),
+  {
+    value: function inspect(this: SignedReplay): string {
+      return this.toString();
+    },
+    writable: true,
+    enumerable: false,
+    configurable: true,
+  },
+);
 
 // ---------------------------------------------------------------------------
 // UserAction

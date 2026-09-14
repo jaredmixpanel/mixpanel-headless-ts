@@ -23,7 +23,7 @@ import { ParamValidationError } from "../../errors.js";
  * @internal
  */
 // eslint-disable-next-line no-control-regex
-export const CONTROL_CHAR_RE = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
+export const CONTROL_CHAR_RE: RegExp = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
 
 /**
  * Math types that require a measurement property — mirror of

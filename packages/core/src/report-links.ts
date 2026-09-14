@@ -38,7 +38,7 @@ export const SLUG_ALPHABET =
 export const SLUG_LENGTH = 12;
 
 /** The server-side slug regex. Wider than the mint alphabet on purpose. */
-export const SLUG_RE = /^[0-9a-zA-Z_-]{12}$/u;
+export const SLUG_RE: RegExp = /^[0-9a-zA-Z_-]{12}$/u;
 
 /** Web host per region. Builders always emit these hosts. Read-only. */
 export const WEB_HOSTS: ReadonlyMap<string, string> = new Map([

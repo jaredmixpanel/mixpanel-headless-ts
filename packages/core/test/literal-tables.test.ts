@@ -1,8 +1,8 @@
 // Colocated runtime backstop for fast-check property list item #7
 // (phase2-design C9): enum/alias membership tables contain no
 // duplicates and match the declared cardinalities. The compile-time
-// half (union⇄tuple drift) is enforced in literals.ts by the
-// `satisfies` clauses + `LiteralAliasCoverageProof`; the cross-language
+// half (union⇄tuple drift, both directions) is enforced in literals.ts
+// by `LiteralAliasCoverageProof`; the cross-language
 // value lock is the C8(d) artifact test in conformance-runner/test.
 import { describe, expect, it } from "vitest";
 import {

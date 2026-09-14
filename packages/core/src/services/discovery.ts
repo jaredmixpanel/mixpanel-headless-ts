@@ -854,10 +854,10 @@ export class DiscoveryService {
   readonly apiClient: MixpanelClient;
 
   /** List-shaped discovery cache (`self._cache`). @internal */
-  readonly cache = new Map<string, unknown[]>();
+  readonly cache: Map<string, unknown[]> = new Map();
 
   /** Schema-graph cache (`self._schema_graph_cache`). @internal */
-  readonly schemaGraphCache = new Map<string, SchemaGraphResult>();
+  readonly schemaGraphCache: Map<string, SchemaGraphResult> = new Map();
 
   /** The `warnings.warn` sink. */
   readonly #warn: WarningSink;
