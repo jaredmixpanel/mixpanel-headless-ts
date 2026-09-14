@@ -29,11 +29,12 @@ import { Buffer } from "node:buffer";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
 import { gzipSync } from "node:zlib";
 import { build, version as esbuildVersion } from "esbuild";
+import { esbuildAliases } from "./lib/workspace-aliases.mjs";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -64,6 +65,12 @@ const BUILD_ARGS = [
   "--target=chrome148",
   "--minify",
   "--legal-comments=inline",
+  // The workspace aliases (source, not dist) as the equivalent CLI flags,
+  // so the recorded recipe reproduces the same bytes.
+  ...Object.entries(esbuildAliases()).map(
+    ([specifier, path]) =>
+      `--alias:${specifier}=./${relative(REPO_ROOT, path).split(sep).join("/")}`,
+  ),
 ];
 
 /**
@@ -126,6 +133,10 @@ async function bundleOne(format, globalName) {
   const result = await build({
     entryPoints: [join(REPO_ROOT, ENTRY)],
     bundle: true,
+    // `@mixpanel-headless/core` inside the browser sources resolves to core's
+    // TypeScript, so the vendored bytes are built from source at
+    // `sourceCommit` rather than from whatever `dist/` happens to hold.
+    alias: esbuildAliases(),
     format,
     platform: "browser",
     target: "chrome148",

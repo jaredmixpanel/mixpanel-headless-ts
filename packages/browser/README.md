@@ -154,3 +154,8 @@ workspace.
   serves CORS headers (see "Alternate API host" above).
 - Callback-server / paste-fallback login, env/config/bridge resolution, and
   token refresh live in `@mixpanel-headless/node`.
+
+## Publishing status
+
+Published as `"private": true` until the release process lands; flipping
+that flag is the owner's one-line change.

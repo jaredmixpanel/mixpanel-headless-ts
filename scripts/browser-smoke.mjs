@@ -22,6 +22,7 @@ import {
   buildBrowserBundles,
   iifeGlobalKeys,
 } from "./build-browser-bundle.mjs";
+import { esbuildAliases } from "./lib/workspace-aliases.mjs";
 
 const entryPoints = [
   "packages/core/src/index.ts",
@@ -62,6 +63,8 @@ try {
   const result = await build({
     entryPoints,
     bundle: true,
+    // Source, not dist: the purity proof must cover the code under test.
+    alias: esbuildAliases(),
     platform: "browser",
     format: "esm",
     write: false,

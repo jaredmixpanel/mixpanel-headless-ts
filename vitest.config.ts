@@ -1,7 +1,15 @@
 // Root Vitest configuration: discovers tests in every workspace package.
 import { defineConfig } from "vitest/config";
+import { vitestAliases } from "./scripts/lib/workspace-aliases.mjs";
 
 export default defineConfig({
+  resolve: {
+    // Bare `@mixpanel-headless/*` specifiers resolve to `src/`, not to the
+    // `dist/` the packages' `exports` maps publish — tests execute the
+    // TypeScript under test, never a stale build. Table lives in
+    // scripts/lib/workspace-aliases.mjs (shared with the esbuild CLIs).
+    alias: vitestAliases(),
+  },
   test: {
     include: [
       "packages/*/test/**/*.test.ts",

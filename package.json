@@ -26,6 +26,8 @@
     "differential"
   ],
   "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean",
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "fmt": "prettier --write .",
