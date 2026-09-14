@@ -118,6 +118,19 @@ client registration — all XSS-exfiltratable. On logout delete every key in
 (quota, private browsing) re-throw as coded `OAUTH_CONFIG_ERROR`. See the
 class JSDoc in `src/credential-store.ts` before opting in.
 
+## Alternate API host (`endpointOverrides`)
+
+There is no environment in a browser build, so the Python library's
+`MP_API_BASE_URL` / `MP_APP_BASE_URL` override arrives as plain config:
+`clientOptions.endpointOverrides` on `createBrowserWorkspace` /
+`createBrowserWorkspaceFromStore` (a static `{ apiBaseUrl, appBaseUrl }`
+bag, or a provider consulted on every request). `apiBaseUrl` routes every
+API family at one base (`/api/query`, `/api/2.0`, `/api/query/engage`,
+`/api/app`); `appBaseUrl` re-homes only the App API. The Export-API
+refusal guard keys on the LIVE export origins, so an export routed at an
+override host is attempted rather than refused. See the root README's
+"Alternate API host" section for the full semantics.
+
 ## Node-only surfaces
 
 - **Export API streaming** (`streamEvents` / `streamProfiles` / raw export

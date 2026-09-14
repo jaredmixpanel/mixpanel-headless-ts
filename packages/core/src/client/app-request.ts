@@ -45,7 +45,7 @@ import {
 } from "./internals.js";
 import type { JsonValue } from "./json-value.js";
 import { LosslessJsonError, parseLossless } from "./lossless-json.js";
-import { buildUrl, type Region } from "./url.js";
+import { buildUrl, type EndpointOverrides, type Region } from "./url.js";
 
 /** Dependencies of {@link appRequest} (the B4 client wires these). */
 export interface AppRequestDeps {
@@ -77,6 +77,12 @@ export interface AppRequestDeps {
   readonly projectId: string;
   /** Data-residency region (`session.account.region`). */
   readonly region: Region;
+  /**
+   * Alternate-host overrides in force for THIS request (the client
+   * snapshots its per-request provider when it builds the deps — PR
+   * #235). Absent → the live per-region App API host.
+   */
+  readonly endpointOverrides?: EndpointOverrides | undefined;
   /**
    * Per-request Authorization resolver (`_get_auth_header`, R2.9):
    * re-resolves refreshed OAuth bearers on every `appRequest` call;
@@ -161,7 +167,7 @@ export async function appRequest(
     );
   }
 
-  const url = buildUrl(deps.region, "app", path);
+  const url = buildUrl(deps.region, "app", path, deps.endpointOverrides);
   // Re-resolve per request via the getAuthHeader seam so refreshed
   // OAuth tokens (browser refresh / static-token rotation) reach App
   // API calls without rebuilding the client (api_client.py:1258-1263).

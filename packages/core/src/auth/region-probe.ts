@@ -22,13 +22,36 @@
  *   `probe_region_for_credential` reads `os.environ[token_env]`; the TS
  *   twin takes a `getEnv` seam (R9.4 — B8 wires `process.env`).
  * - **No logging.** Progress narration is the caller's `narrate` hook.
+ *
+ * Alternate-host override (Python PR #235): when `apiBaseUrl` is set,
+ * every region maps to the same host, so {@link probeRegionForCredential}
+ * collapses the walk to a single probe at that base — the region is the
+ * injected region hint (`MP_REGION`) when it names a valid region, else
+ * `us`. `appBaseUrl` alone re-homes `/me` but keeps the full `us → eu →
+ * in` walk, because the discovered region still routes the live Query /
+ * Export / Engage hosts. The overrides arrive injected (a bag or a
+ * per-call provider); absent, they are read through the `getEnv` seam
+ * (`MP_API_BASE_URL` / `MP_APP_BASE_URL` / `MP_REGION`) — the exact
+ * twin of Python's `os.environ` reads, still with no `process` access
+ * in `core`.
  */
 
 import { cpSlice } from "../compat/codepoint.js";
 import { pythonRepr } from "../compat/python-str.js";
 import { MixpanelHttpError } from "../client/internals.js";
 import { createRequestExecutor } from "../client/transport.js";
-import { endpointBase } from "../client/url.js";
+import {
+  API_BASE_URL_ENV,
+  APP_BASE_URL_ENV,
+  appPathPrefix,
+  endpointOverridesFromEnv,
+  endpointOverridesProvider,
+  endpointBase,
+  hasApiBaseUrlOverride,
+  normalizeBaseUrlOverride,
+  type EndpointOverrides,
+  type EndpointOverridesSource,
+} from "../client/url.js";
 import {
   ConfigError,
   RegionProbeError,
@@ -293,29 +316,125 @@ export function probeClientFromFetch(
 }
 
 /**
- * Pure URL-stripping twin of the Python `_factory` base derivation
- * (`region_probe.py:276-277`): `urlsplit` → `urlunsplit((scheme,
- * netloc, "", "", ""))` — scheme+host only, path/query/fragment
- * dropped. The URL parser's `origin` is equivalent for CANONICAL
- * http(s) URLs — the three `ENDPOINTS[*].app` values, the only in-repo
- * inputs. Disclosed skew for NON-canonical inputs
- * (`b7-reviewA-resolution.md` SEM-F3): `origin` drops default ports
- * (`:443`/`:80`) and userinfo and lowercases scheme/host, where
- * Python's `urlunsplit` preserves all three. R2.13's concat-only rule
- * governs REQUEST path assembly, not this read-only parse (packet §2.3
- * item 7 / Caution #11).
+ * Derive the probe client base from an App API URL — TS port of
+ * `api_client._probe_base_url` (PR #235; formerly the inline `_factory`
+ * derivation, `region_probe.py:276-277`).
  *
- * @param appUrl - The `ENDPOINTS[region]["app"]` URL.
- * @returns The scheme+host base URL.
+ * {@link probeRegion} issues `/api/app/me` relative to the client base,
+ * so the base must be the App API URL MINUS its `/api/app` suffix. That
+ * keeps any extra path prefix an override base carries (e.g.
+ * `https://proxy.example/mp`) in front of `/api/app/me`. When the URL
+ * does not end in `/api/app` the path is dropped entirely and the
+ * scheme + host are used (the pre-override behaviour: Python
+ * `urlsplit` → `urlunsplit((scheme, netloc, "", "", ""))`; the URL
+ * parser's `origin` is equivalent for canonical http(s) URLs — the
+ * disclosed skew for NON-canonical inputs, `b7-reviewA-resolution.md`
+ * SEM-F3, is unchanged: `origin` drops default ports and userinfo and
+ * lowercases scheme/host).
+ *
+ * @param appUrl - The App API base URL for a region (live or overridden).
+ * @returns The base URL to bind the probe client to, without a trailing
+ *   slash.
  *
  * @example
  * ```typescript
  * probeBaseUrl("https://mixpanel.com/api/app");
  * // "https://mixpanel.com"
+ * probeBaseUrl("https://proxy.example/mp/api/app/");
+ * // "https://proxy.example/mp"
  * ```
  */
 export function probeBaseUrl(appUrl: string): string {
-  return new URL(appUrl).origin;
+  const trimmed = appUrl.replace(/\/+$/, "");
+  const appPrefix = appPathPrefix();
+  if (trimmed.endsWith(appPrefix)) {
+    return trimmed.slice(0, trimmed.length - appPrefix.length);
+  }
+  return new URL(trimmed).origin;
+}
+
+/** The three valid region labels, in probe order (`_VALID_REGIONS`). */
+const VALID_REGIONS: readonly Region[] = ["us", "eu", "in"];
+
+/**
+ * The single-region probe order when `apiBaseUrl` is active — TS port
+ * of `api_client._override_probe_order` (PR #235).
+ *
+ * With `apiBaseUrl` set, every family — and therefore every region —
+ * resolves to the same host, so walking `us → eu → in` would hit it
+ * three times on failure for no gain. The region label still has to be
+ * SOME valid region (it is persisted on the account and used for
+ * non-URL purposes), so it is taken from `requestedRegion` (the
+ * `MP_REGION` hint) when that is valid, else `us`.
+ *
+ * `appBaseUrl` on its own deliberately does NOT collapse the walk:
+ * Query, Export and Engage still go to the live regional hosts, so the
+ * region the probe discovers still decides where those requests land.
+ *
+ * @param overrides - The override bag.
+ * @param requestedRegion - The `MP_REGION` hint (raw; may be anything).
+ * @returns A one-element order when `apiBaseUrl` is set; `null`
+ *   otherwise (callers then use `probeRegion`'s default order).
+ *
+ * @example
+ * ```typescript
+ * overrideProbeOrder({ apiBaseUrl: "http://127.0.0.1:8080" }, "eu");
+ * // ["eu"]
+ * ```
+ */
+export function overrideProbeOrder(
+  overrides: EndpointOverrides,
+  requestedRegion: string | undefined,
+): readonly Region[] | null {
+  if (!hasApiBaseUrlOverride(overrides)) {
+    return null;
+  }
+  for (const region of VALID_REGIONS) {
+    if (requestedRegion === region) {
+      return [region];
+    }
+  }
+  return ["us"];
+}
+
+/**
+ * The first `mp login` probe narration line under an override — TS port
+ * of `api_client._override_probe_narration` (PR #235). Names whichever
+ * override(s) are active so a user debugging a login failure sees the
+ * configuration that actually shaped the probe.
+ *
+ * @param overrides - The override bag.
+ * @returns `null` when neither member is set (the caller emits its
+ *   legacy line). With `apiBaseUrl` set: a line naming the single probe
+ *   base. With only `appBaseUrl` set: a line saying regions are still
+ *   walked, at the App override base.
+ *
+ * @example
+ * ```typescript
+ * overrideProbeNarration({ appBaseUrl: "http://app.internal:9000" });
+ * // "Probing regions at http://app.internal:9000 (MP_APP_BASE_URL override) for /me access ..."
+ * ```
+ */
+export function overrideProbeNarration(
+  overrides: EndpointOverrides,
+): string | null {
+  const active: string[] = [];
+  if (normalizeBaseUrlOverride(overrides.apiBaseUrl) !== "") {
+    active.push(API_BASE_URL_ENV);
+  }
+  if (normalizeBaseUrlOverride(overrides.appBaseUrl) !== "") {
+    active.push(APP_BASE_URL_ENV);
+  }
+  if (active.length === 0) {
+    return null;
+  }
+  // The App URL is region-independent under either override.
+  const base = probeBaseUrl(endpointBase("us", "app", overrides));
+  const label = `(${active.join(" + ")} override)`;
+  if (hasApiBaseUrlOverride(overrides)) {
+    return `Probing ${base} ${label} for /me ...`;
+  }
+  return `Probing regions at ${base} ${label} for /me access ...`;
 }
 
 /** Options bag for {@link probeRegionForCredential} (packet §2.3). */
@@ -336,14 +455,31 @@ export interface ProbeRegionForCredentialOptions {
   readonly getEnv: (name: string) => string | undefined;
   /** The injected fetch the real probe clients run over (R2.4). */
   readonly fetchImpl: typeof fetch;
+  /**
+   * Alternate-host overrides (PR #235) — a bag or per-call provider.
+   * Absent → read through `getEnv` (`MP_API_BASE_URL` /
+   * `MP_APP_BASE_URL`), Python's own source.
+   */
+  readonly endpointOverrides?: EndpointOverridesSource | undefined;
+  /**
+   * The region label to persist under an `apiBaseUrl` override (the
+   * `MP_REGION` twin; anything outside `us`/`eu`/`in` falls back to
+   * `us`). Absent → `getEnv("MP_REGION")`.
+   */
+  readonly regionHint?: string | null | undefined;
 }
 
 /**
  * Build the credential header, probe `us → eu → in`, return the region
  * (port of `probe_region_for_credential`, `region_probe.py:194-287`).
  *
+ * Under an `apiBaseUrl` override (PR #235) the walk collapses to one
+ * probe at the override base and the returned region is the region
+ * hint (when valid) or `us` — see {@link overrideProbeOrder}.
+ *
  * @param options - Credential material + seams (see the field docs).
- * @returns The first region whose `/me` returned 200.
+ * @returns The first region whose `/me` returned 200 (under an
+ *   override: the single probed region).
  * @throws ConfigError - Missing credential material for the given
  *   `account_type`, or `token_env` points at an unset/empty variable.
  * @throws RegionProbeError - Propagated from {@link probeRegion} when
@@ -406,22 +542,41 @@ export async function probeRegionForCredential(
     );
   }
 
+  // PR #235: overrides injected, else Python's env reads via the seam.
+  const getOverrides =
+    options.endpointOverrides === undefined
+      ? endpointOverridesFromEnv(getEnv)
+      : endpointOverridesProvider(options.endpointOverrides);
+  const overrides = getOverrides();
+  const regionHint =
+    options.regionHint === undefined
+      ? getEnv("MP_REGION")
+      : (options.regionHint ?? undefined);
+
   /**
-   * Build a region-scoped probe client bound to the API host root
-   * (the Python `_factory` twin, `region_probe.py:267-278`).
+   * Build a region-scoped probe client bound to the App API host
+   * (the Python `_factory` twin, `region_probe.py:267-278`; base via
+   * {@link probeBaseUrl} so an override base keeps its path prefix).
    *
-   * @param region - The region to probe.
+   * @param region - The region to probe (ignored for URL purposes when
+   *   an `apiBaseUrl` override is active).
    * @returns The real probe client.
    */
   const factory: ClientFactory = (region: Region): ProbeClient => {
-    const appUrl = endpointBase(region, "app");
+    const appUrl = endpointBase(region, "app", overrides);
     return probeClientFromFetch(options.fetchImpl, probeBaseUrl(appUrl));
   };
 
+  const overrideOrder = overrideProbeOrder(overrides, regionHint);
   if (narrate !== null) {
-    narrate("Probing regions for /me access ...");
+    narrate(
+      overrideProbeNarration(overrides) ?? "Probing regions for /me access ...",
+    );
   }
-  const result = await probeRegion(factory, headers);
+  const result =
+    overrideOrder === null
+      ? await probeRegion(factory, headers)
+      : await probeRegion(factory, headers, { order: overrideOrder });
   if (narrate !== null) {
     for (const [regionName, status] of result.attempts) {
       const marker = status === 200 ? "✓" : "✗";
