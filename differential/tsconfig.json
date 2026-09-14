@@ -1,7 +1,9 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
+    "noEmit": true,
     "types": ["node"]
   },
-  "include": ["src", "test", "referees", "oracle"]
+  "include": ["src", "test", "referees", "oracle"],
+  "references": [{ "path": "../packages/core" }]
 }

@@ -17,6 +17,6 @@
     "json-schema"
   ],
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc -b"
   }
 }

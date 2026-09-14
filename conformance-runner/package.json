@@ -16,6 +16,6 @@
     "testing"
   ],
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc -b"
   }
 }

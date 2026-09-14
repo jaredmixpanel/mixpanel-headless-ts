@@ -1,0 +1,12 @@
+// Library build: the three publishable packages extend this (composite,
+// declaration + source maps into `dist/`). Test/rig projects extend
+// `tsconfig.base.json` directly with `noEmit`.
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
+  }
+}

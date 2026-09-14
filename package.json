@@ -26,7 +26,7 @@
     "differential"
   ],
   "scripts": {
-    "typecheck": "npm run typecheck --workspaces && tsc --noEmit -p tsconfig.tests.json",
+    "typecheck": "tsc -b",
     "lint": "eslint .",
     "fmt": "prettier --write .",
     "fmt:check": "prettier --check .",
