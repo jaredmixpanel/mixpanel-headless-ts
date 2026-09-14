@@ -292,6 +292,33 @@ const count = await ws.queryUser({ where: Filter.isSet("$email") });
 console.log(`Users with email: ${count.value}`);
 ```
 
+### Build, inspect, run
+
+Every engine has a `build*Params()` half that returns the exact bookmark params
+`query*()` would send, and a `run*Params()` half that executes them. Inspect or edit in
+between, or run params the typed builders cannot express (a lookup-table join breakdown,
+say):
+
+```typescript
+const params = await ws.buildParams("Login", { group_by: "$city", last: 7 });
+// ...inspect or edit `params` here...
+const result = await ws.runParams(params, { limit: 50_000 });
+
+// Flow params carry their own mode; user params route on their `action` key
+const tree = await ws.runFlowParams(
+  await ws.buildFlowParams("Purchase", { mode: "tree" }),
+);
+const premium = await ws.runUserParams(
+  await ws.buildUserParams({ mode: "profiles", where: Filter.isSet("$email") }),
+  { limit: 500, parallel: true },
+);
+```
+
+`query()`, `queryFunnel()`, `queryRetention()` and their `run*Params()` twins accept
+`limit` (1 to 50000, default 3000) to raise the segment cap for high-cardinality
+breakdowns. Check `result.meta["is_segmentation_limit_hit"]` to see whether the result
+was still truncated.
+
 ### Cohorts, defined inline
 
 Build cohorts in code and use them anywhere a filter or breakdown goes — no UI trip
