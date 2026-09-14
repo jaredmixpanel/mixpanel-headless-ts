@@ -422,6 +422,40 @@ Burn-in expectation from here: **3,340 / 0 / 0 @ c9991d1**, both
 bridges reporting `c9991d1…`. Row 2a's "branch-reachable" claim is
 corrected in place above.
 
+## 2c. Inbound re-pin — Python PRs #225 / #235 / #236 (corpus `c9991d1` → `0dde506`, TS twin of #236)
+
+**2026-09-14.** Python PR #237 (squash `4438a1c`) re-pinned the corpus to
+the library squash `0dde50608a6af026e94cdb75bacbcebe5ce105db` (two-step
+protocol, step 2). Three library PRs had landed on Python `main` since
+the `c9991d1` pin:
+
+| Python PR | Change | Corpus footprint | TS disposition |
+|---|---|---|---|
+| #225 (`b61b94c`) | `limit=` on `query*` + new `run_*_params` methods | +5 bundles of builder seam hits (`test_query_limit` ×3 → `workspace.build_params` ×2 / `build_funnel_params` / `build_retention_params`; `test_run_flow_user_params` ×2 → `build_flow_params` ×8 / `build_user_params` ×4) — all hit UNCHANGED builders | **OPEN — feature port not started.** The seam hits pass against the existing builders; `limit` / `run_*_params` are not corpus-locked. Linear AIE-924 (child of AIE-908). |
+| #235 (`c93b00c`) | `MP_API_BASE_URL` / `MP_APP_BASE_URL` route every API family at one alternate host; region probe collapses to one region | +2 bundles (`test_api_base_url_override` discovery ×3 / engage ×1) — the 4 override-UNSET tests; the 31 override-SET nodeids are in the new `env_base_url_override` exclusion bucket (no TS manifest schema validates bucket names, so nothing to add here) | **OPEN — feature port not started.** Core reads no `process.env` (R9.1); the TS twin is a `packages/node` config seam + core endpoint-table override. Linear AIE-925 (child of AIE-908). |
+| #236 (`0dde506`) | `Filter.__post_init__` validates `_operator` on direct construction, normalizes the 25 factory-name aliases + `"is equal to"`, collapses boolean `equals`/`does not equal` + bool to `true`/`false`, rejects value-bearing `true`/`false`; `_filter_unchecked` for the codec | +93 `filters` vectors (`test_query_types` +88 incl. `TestFilterDirectConstruction`'s LC1-after-normalization case; `test_segfilter` +8/−2), and ONE pre-existing body change: `test_is_equal_to_number` now records `_operator: "equals"`. The 50 plain-`ValueError` construction cases are `uncoded_raise`-excluded (contract still pins 126 codes). | **PORTED this change (Linear AIE-923).** `Filter` constructor (`packages/core/src/types/query-params/filter.ts`) runs the `__post_init__` sequence in Python source order; `FilterOperatorInput` literal added to `literals.ts`; `FILTER_OPERATOR_ALIASES` typed `Record<Exclude<FilterOperatorInput, FilterOperator>, FilterOperator>` so the compiler holds table and literal in lockstep; `filterUnchecked()` is the `_filter_unchecked` twin and the contract codec (`vector-codecs.ts`) rehydrates `$type: Filter` through it (the SG1/SG2/SG3 + ES13 vectors carry `magical_unicorn` / `unknown_op` operators the constructor now rejects). Test probes that drove those builder guards through `new Filter(...)` moved to `filterUnchecked` (segfilter, user-builders, query-user ×2), mirroring Python's `make_unchecked_filter`. 82 new direct-construction tests translated from `TestFilterDirectConstruction`. |
+
+**Sync shape**: pin `c9991d1` → `0dde506`; `sync:corpus` from the clean
+Python working tree @ `07bfe57` (`main`; 185 bundles, 5 contract
+artifacts). 176 corpus paths touched: 7 new bundles, 167 stamp-only
+header diffs, 2 content diffs (both `filters/`), manifest (`3,120` →
+`3,233` extracted) + 4 contract artifacts (`generated_from` only;
+`tag-universe` `Filter` 409 → 501, `InlineCustomProperty` 35 → 36,
+`PropertyInput` 45 → 46). Regenerated: `errors-codes.gen.ts` (stamp
+only), `bridge-allowlist.gen.json` (pin + digests); api-map
+byte-identical (api-index unchanged — the override tests are excluded).
+Referee-(a) feed now carries 127 `workspace.build_params` payloads (125 +
+the 2 `test_query_limit` seam hits; `bookmark-referee-feed.test.ts`
+count updated).
+
+**Gate**: corpus **3,453 / 0 / 0 @ `0dde506`** (3,340 before; +113 =
++93 filters, +5 #225 seam bundles' 16 vectors, +4 override-unset, ...),
+`npm run check` green, referee (a) 0 REJECT. Differential fuzz: fresh
+seed **403581649**, 55 families, **28,091 examples / 0 skips / 0
+divergences**, both bridges reporting `source_commit 0dde506…` (RUN.md
+2026-09-14 entry). Burn-in expectation from here: **3,453 / 0 / 0 @
+0dde506**.
+
 ## 3. The JsonNumber facade round-trip gap
 
 In the LIBRARY result path a >2^53 integer token collapses at

@@ -584,6 +584,51 @@ export const FILTER_OPERATOR_VALUES = [
 ] as const satisfies readonly FilterOperator[];
 
 /**
+ * Every spelling `new Filter({...})` accepts for `_operator` on direct
+ * construction — port of `_literal_types.FilterOperatorInput` (Python PR
+ * #236).
+ *
+ * The union of {@link FilterOperator}, the public `Filter` factory-method
+ * names in their Python spelling (`"greater_than"`, `"is_set"`, ...) and
+ * the segfilter-only `"is equal to"`. The `Filter` constructor normalizes
+ * any alias to its {@link FilterOperator} member, so a constructed Filter
+ * always *stores* a canonical operator; this wider type only describes
+ * what may be passed in. Kept in lockstep with
+ * `FILTER_OPERATOR_ALIASES` (`types/query-params/filter.ts`) by a unit
+ * test.
+ */
+export type FilterOperatorInput =
+  | FilterOperator
+  // --- Filter factory-method names accepted as aliases ---
+  | "at_least"
+  | "at_most"
+  | "before"
+  | "between"
+  | "date_between"
+  | "date_not_between"
+  | "ends_with"
+  | "greater_than"
+  | "in_cohort"
+  | "in_the_last"
+  | "in_the_next"
+  | "is_false"
+  | "is_not_set"
+  | "is_set"
+  | "is_true"
+  | "less_than"
+  | "not_between"
+  | "not_contains"
+  | "not_equals"
+  | "not_in_cohort"
+  | "not_in_the_last"
+  | "not_on"
+  | "on"
+  | "since"
+  | "starts_with"
+  // --- Segmentation-`where` spelling kept constructible ---
+  | "is equal to";
+
+/**
  * Time unit for relative date filters (`Filter.in_the_last` /
  * `Filter.not_in_the_last`). Maps to `filterDateUnit` in bookmark JSON.
  */

@@ -193,3 +193,39 @@ the corpus provenance (stamps → `c9991d1…`, see ledger row 2b addendum)
 and the TS pin followed; corpus content is byte-identical to what this
 run exercised, so the run stands. Both bridges now report
 `source_commit c9991d1…`.
+
+## 2026-09-14 — corpus re-pin `c9991d1` → `0dde506` (Python PRs #225 / #235 / #236) + `Filter` constructor twin
+
+Inbound ledger row 2c (`context/phase4/inbound-ledger.md`). The TS change
+ports Python PR #236 (`Filter.__post_init__` operator validation + alias
+normalization, `_filter_unchecked` for the codec); PRs #225 and #235 are
+open feature ports (not oracle- or corpus-locked). Corpus after re-pin:
+3,453 / 0 / 0.
+
+- Command (re-runnable; seeded generation):
+
+  ```bash
+  uv run python -m conformance.differential.fuzz_harness \
+    --right "node /Users/jaredmcfarland/Developer/mixpanel-headless-ts/scripts/run-oracle.mjs" \
+    --examples 500 --seed 403581649 --report json
+  ```
+
+- Bridges: oracle-py @ `main` `07bfe57` (reports `library_version 0.2.1`,
+  informational), oracle-ts @ this change, both reporting
+  `source_commit 0dde50608a6a…`, protocol 1.1.
+- Seed: fresh **403581649**. Totals: **28,091 examples / 0 skips /
+  0 divergences**, `status: ok`, exit 0, no repros written (`repros/`
+  still exactly the two RESOLVED P2-9 records). 55 families, 0 UNPORTED
+  skips.
+- Why the run matters for this change: every oracle family that takes a
+  `Filter` receives it through the shared contract codec, which now
+  rehydrates via `filterUnchecked` (Python: `_filter_unchecked`) instead
+  of the validating constructor. Python's strategies build their
+  deliberately invalid ES13 probes the same way, so the codec-path
+  change is exactly what the fresh seed exercises; the constructor
+  itself is locked by 82 unit tests translated from
+  `TestFilterDirectConstruction` (no oracle family constructs a Filter
+  from a raw operator string, so none was added).
+- Referee (a) ajv (`npm run referee:bookmark`): green, 0 REJECT; the
+  feed now carries 127 `workspace.build_params` payloads (125 + the 2
+  `test_query_limit` seam hits from PR #225).

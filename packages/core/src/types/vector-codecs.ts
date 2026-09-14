@@ -34,10 +34,10 @@ import {
 import {
   CustomPropertyRef,
   Filter,
+  filterUnchecked,
   InlineCustomProperty,
   ListItemGroupMode,
   PropertyInput,
-  type FilterFields,
 } from "./query-params/filter.js";
 import { FlowStep, type FlowStepFields } from "./query-params/flow.js";
 import {
@@ -345,7 +345,11 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
         "_list_item_quantifier",
       ],
       required: ["_property", "_operator", "_value"],
-      construct: (bag) => new Filter(bag as unknown as FilterFields),
+      // Python PR #236: the codec rehydrates through `_filter_unchecked`,
+      // not `Filter(**kwargs)` — recorded Filters must reach the builder
+      // under test with their fields exactly as captured (SG1/SG2/SG3 and
+      // ES13 vectors carry operators the constructor now rejects).
+      construct: (bag) => filterUnchecked(bag),
       matches: (value) => value instanceof Filter,
     },
   ],

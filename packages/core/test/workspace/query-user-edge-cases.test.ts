@@ -37,7 +37,10 @@ import {
   validateUserArgs,
   validateUserParams,
 } from "../../src/query/user-validators.js";
-import { Filter } from "../../src/types/query-params/filter.js";
+import {
+  Filter,
+  filterUnchecked,
+} from "../../src/types/query-params/filter.js";
 import { UserQueryResult } from "../../src/types/results/query-engine.js";
 import {
   makePageResult,
@@ -329,9 +332,11 @@ describe("TestTier2CrashPaths", () => {
   });
 
   it("T2.05: an unsupported filter operator raises", () => {
-    const f = new Filter({
+    // Python PR #236: unknown operators no longer survive the constructor;
+    // the ES13 seam is driven through the unchecked rebuild instead.
+    const f = filterUnchecked({
       _property: "fake",
-      _operator: "unknown_op" as never,
+      _operator: "unknown_op",
       _value: null,
       _property_type: "string",
     });

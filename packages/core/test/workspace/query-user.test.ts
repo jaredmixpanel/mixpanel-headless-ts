@@ -30,7 +30,7 @@
 import { describe, expect, it } from "vitest";
 import { Workspace } from "../../src/workspace.js";
 import { BookmarkValidationError } from "../../src/errors.js";
-import { Filter } from "../../src/types/query-params/filter.js";
+import { filterUnchecked } from "../../src/types/query-params/filter.js";
 import { UserQueryResult } from "../../src/types/results/query-engine.js";
 import { ProfilePageResult } from "../../src/types/results/discovery.js";
 import { sortedByCodepoint } from "../../src/compat/codepoint.js";
@@ -851,9 +851,12 @@ describe("TestQueryUserPaginationSessionId", () => {
 
 describe("TestQueryUserValueErrorWrapping", () => {
   it("an unsupported filter operator raises BookmarkValidationError", async () => {
-    const f = new Filter({
+    // Python PR #236: the constructor rejects unknown operators, so the
+    // ES13 builder guard is driven through the unchecked rebuild (Python
+    // `make_unchecked_filter`).
+    const f = filterUnchecked({
       _property: "prop",
-      _operator: "unsupported_op" as never,
+      _operator: "unsupported_op",
       _value: "val",
     });
     const ws = workspaceFactory(mockWorkspaceClient());
