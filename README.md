@@ -682,8 +682,10 @@ Details:
   other (for example `MP_API_BASE_URL=https://proxy` with
   `MP_APP_BASE_URL=https://proxy/api/query`) still classify every request correctly.
 - **Browser builds** take the same option through `clientOptions.endpointOverrides`
-  (config only — there is no env). The Export-API refusal guard still keys on the live
-  export origins, so an export routed at an override host is attempted, not refused.
+  (config only — there is no env). The Export-API refusal guard is evaluated per
+  request against the effective table: `apiBaseUrl` re-homes Export at
+  `{apiBaseUrl}/api/2.0`, which the guard admits (the override host must serve CORS
+  headers), while the live export origins stay refused even under an override.
 
 With neither variable set, behaviour is byte-identical to the per-region defaults.
 

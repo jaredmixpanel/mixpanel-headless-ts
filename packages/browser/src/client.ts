@@ -39,7 +39,7 @@ import {
   type MixpanelClient,
   type MixpanelClientOptions,
 } from "../../core/src/client/client.js";
-import { ENDPOINTS } from "../../core/src/client/url.js";
+import { ENDPOINTS, type EndpointKind } from "../../core/src/client/url.js";
 import { OAuthError } from "../../core/src/errors.js";
 import { Workspace } from "../../core/src/workspace.js";
 import { InMemoryCredentialStore } from "./credential-store.js";
@@ -257,54 +257,136 @@ function storeTokenResolver(
   };
 }
 
+/** Memo for {@link liveExportOrigins} (filled on the first request). */
+let liveExportOriginSet: ReadonlySet<string> | null = null;
+
+/**
+ * The live Export-API origins of EVERY region (`data.mixpanel.com` and
+ * its regional twins) — the hosts the D2 spike found serve no CORS
+ * headers, and therefore the guard's refusal set. Derived once from the
+ * core `ENDPOINTS` table (a module constant; never restated literals):
+ * the refusal rationale is these hosts' missing CORS headers, not the
+ * export API family, so an export re-homed onto a user-controlled host
+ * by `endpointOverrides.apiBaseUrl` (normally a CORS-capable proxy) is
+ * deliberately NOT in this set (AIE-926). Computed lazily — the bundle
+ * recipe evaluates the IIFE in a bare context with no `URL` global, so
+ * nothing may parse a URL at module-evaluation time.
+ *
+ * @returns The set of live export origins.
+ */
+function liveExportOrigins(): ReadonlySet<string> {
+  if (liveExportOriginSet === null) {
+    liveExportOriginSet = new Set<string>(
+      [...ENDPOINTS.values()].flatMap((table) => {
+        const base = table.get("export");
+        return base === undefined ? [] : [new URL(base).origin];
+      }),
+    );
+  }
+  return liveExportOriginSet;
+}
+
+/**
+ * The origin a fetch input targets, or `null` for relative/unparseable
+ * inputs (those never target an export host; the inner fetch produces
+ * its own error for them).
+ *
+ * @param input - The fetch input (`Request`, `URL`, or string).
+ * @returns The origin, or `null`.
+ */
+function requestOrigin(input: RequestInfo | URL): string | null {
+  const url =
+    input instanceof Request
+      ? input.url
+      : input instanceof URL
+        ? input.href
+        : input;
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Build the Export-API refusal for a request that targeted a live
+ * export origin (R9.3 explanatory message; programs key on the CODE —
+ * R5). The trailing hint is phrased from the EFFECTIVE endpoint table:
+ * while export still lives on the live host it points at the
+ * `endpointOverrides.apiBaseUrl` re-homing route; once export IS
+ * re-homed (the request bypassed the override and addressed a live
+ * host directly) it says so instead.
+ *
+ * @param origin - The refused live export origin (kept in `details`).
+ * @param effective - The client's effective family → base-URL table.
+ * @returns The coded error (throw at the call site).
+ */
+function exportRefusal(
+  origin: string,
+  effective: ReadonlyMap<EndpointKind, string>,
+): BrowserUnsupportedError {
+  const effectiveExport = effective.get("export");
+  const rehomed =
+    effectiveExport !== undefined &&
+    !liveExportOrigins().has(new URL(effectiveExport).origin);
+  const hint = rehomed
+    ? `Export is currently re-homed at ${effectiveExport} by ` +
+      "endpointOverrides.apiBaseUrl; this request addressed the live " +
+      "host directly."
+    : "Export can instead be routed through a CORS-capable proxy you " +
+      "control by setting endpointOverrides.apiBaseUrl (the guard " +
+      "admits the override host and keeps refusing the live hosts).";
+  return new BrowserUnsupportedError(
+    `The Export API host ${origin} is Node-only (it serves no CORS ` +
+      "headers — plan §4.3): raw event/profile export streaming " +
+      "cannot run from a browser origin. Use @mixpanel-headless/node " +
+      `for export workloads. ${hint}`,
+    BROWSER_EXPORT_UNSUPPORTED,
+    { origin },
+  );
+}
+
 /**
  * Wrap a fetch with the Export-API refusal guard (§2.4; plan §4.3:
- * Export is Node-only — the export hosts serve no CORS headers). The
- * origin set derives from the core `ENDPOINTS` table at wrap time
- * (never restated literals); a matching request rejects with
+ * Export is Node-only — the LIVE export hosts serve no CORS headers).
+ * A request to a live export origin of ANY region rejects with
  * {@link BROWSER_EXPORT_UNSUPPORTED} BEFORE any network attempt, so
  * export paths fail fast with one coded, documented error instead of
  * an opaque CORS `TypeError`. Wraps WHATEVER fetch the caller injected
  * (the R2.4 seam is preserved).
  *
+ * The refusal predicate is membership in the LIVE export-origin set —
+ * a property of those hosts (no CORS headers), never of the API
+ * family — so the effective endpoint table decides the outcome per
+ * request (PR #11 follow-up, AIE-926): under
+ * `endpointOverrides.apiBaseUrl` the client re-homes the export family
+ * at `{apiBaseUrl}/api/2.0`, an origin outside the live set, so the
+ * requests it builds are admitted (the override host is user-controlled
+ * and is where browser export can actually work), while the live
+ * origins stay refused even under an override (defence in depth). A
+ * provider-form override is consulted on every call by the client and,
+ * on refusal, by this guard — flipping it between requests changes the
+ * verdict without re-wrapping. The effective table itself is only read
+ * when a refusal is being built (to phrase the diagnostic), so the
+ * admit path allocates nothing beyond the `URL` parse; with no override
+ * `core.endpoints()` returns the live table object itself.
+ *
  * @param inner - The caller-injected (or global) fetch.
+ * @param currentEndpoints - The client's `core.endpoints()` accessor (the
+ *   effective family → base-URL table under the current overrides).
  * @returns The guarded fetch.
  */
-function guardBrowserFetch(inner: typeof fetch): typeof fetch {
-  const exportOrigins = new Set<string>();
-  for (const table of ENDPOINTS.values()) {
-    const base = table.get("export");
-    if (base !== undefined) {
-      exportOrigins.add(new URL(base).origin);
-    }
-  }
+function guardBrowserFetch(
+  inner: typeof fetch,
+  currentEndpoints: () => ReadonlyMap<EndpointKind, string>,
+): typeof fetch {
   const guarded = async (
     input: RequestInfo | URL,
     init?: RequestInit,
   ): Promise<Response> => {
-    const url =
-      input instanceof Request
-        ? input.url
-        : input instanceof URL
-          ? input.href
-          : input;
-    let origin: string | null = null;
-    try {
-      origin = new URL(url).origin;
-    } catch {
-      // Relative/unparseable URLs never target an export host; let the
-      // inner fetch produce its own error.
-      origin = null;
-    }
-    if (origin !== null && exportOrigins.has(origin)) {
-      throw new BrowserUnsupportedError(
-        `The Export API host ${origin} is Node-only (it serves no CORS ` +
-          "headers — plan §4.3): raw event/profile export streaming " +
-          "cannot run from a browser origin. Use @mixpanel-headless/node " +
-          "for export workloads.",
-        BROWSER_EXPORT_UNSUPPORTED,
-        { origin },
-      );
+    const origin = requestOrigin(input);
+    if (origin !== null && liveExportOrigins().has(origin)) {
+      throw exportRefusal(origin, currentEndpoints());
     }
     return inner(input, init);
   };
@@ -379,11 +461,15 @@ function assembleWorkspace(
     (coreNow === undefined ? undefined : (): number => coreNow().getTime());
   const tokenResolver =
     clientOptions.tokenResolver ?? storeTokenResolver(store, resolverNow);
-  const client = createMixpanelClient({
+  // The guard reads the client's OWN effective endpoint table per
+  // request (`core.endpoints()` = `endpointsFor(region, overrides())`), so
+  // the refusal verdict and the URLs the client builds always agree.
+  // `client` is only dereferenced at request time, after assignment.
+  const client: MixpanelClient = createMixpanelClient({
     ...clientOptions,
     session,
     tokenResolver,
-    fetch: guardBrowserFetch(baseFetch),
+    fetch: guardBrowserFetch(baseFetch, () => client.core.endpoints()),
   });
   return new Workspace({ session, client: guardClientUse(client) });
 }

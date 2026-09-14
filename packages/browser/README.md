@@ -126,10 +126,20 @@ There is no environment in a browser build, so the Python library's
 `createBrowserWorkspaceFromStore` (a static `{ apiBaseUrl, appBaseUrl }`
 bag, or a provider consulted on every request). `apiBaseUrl` routes every
 API family at one base (`/api/query`, `/api/2.0`, `/api/query/engage`,
-`/api/app`); `appBaseUrl` re-homes only the App API. The Export-API
-refusal guard keys on the LIVE export origins, so an export routed at an
-override host is attempted rather than refused. See the root README's
+`/api/app`); `appBaseUrl` re-homes only the App API. See the root README's
 "Alternate API host" section for the full semantics.
+
+`apiBaseUrl` also **re-homes Export in the browser**: the Export-API refusal
+guard is evaluated per request against the effective endpoint table, so an
+export request to `{apiBaseUrl}/api/2.0/...` is admitted, while the live
+export origins (`data.mixpanel.com` and regional twins) stay refused even
+with an override active. The override host is user-controlled and must
+serve CORS headers for the browser origin for export to actually work — a
+CORS-capable proxy in front of the Export API is the intended shape.
+`appBaseUrl` alone does not move Export (it stays on the live host and stays
+refused). A provider-form override is consulted on every request, so
+flipping it between calls changes the verdict without rebuilding the
+workspace.
 
 ## Node-only surfaces
 
@@ -137,6 +147,10 @@ override host is attempted rather than refused. See the root README's
   paths): the export hosts (`data.mixpanel.com` and regional twins) serve
   no CORS headers (plan §4.3), so browser calls are dead on arrival. The
   browser factory refuses them fast with the coded error
-  `BROWSER_EXPORT_UNSUPPORTED` instead of an opaque CORS `TypeError`.
+  `BROWSER_EXPORT_UNSUPPORTED` instead of an opaque CORS `TypeError`. The
+  refusal is about those live hosts, not the API family: setting
+  `clientOptions.endpointOverrides.apiBaseUrl` re-homes Export at
+  `{apiBaseUrl}/api/2.0`, which the guard admits — provided that host
+  serves CORS headers (see "Alternate API host" above).
 - Callback-server / paste-fallback login, env/config/bridge resolution, and
   token refresh live in `@mixpanel-headless/node`.
