@@ -29,13 +29,20 @@ Node >= 22.12 required (`engines` + `.node-version`; the conformance rig's
 request-side float twin uses `JSON.rawJSON`, absent before Node 21; CI runs 24).
 Install with `npm ci` (lockfile-exact).
 
-- `npm run check` — **the repo gate**: `tsc -b` (root solution file), eslint,
-  `prettier --check`, full vitest run, browser-bundle smoke. Run before committing.
-- `npm run typecheck` — `tsc -b` over the root `tsconfig.json` solution file: builds
-  the three packages into their `dist/` (gitignored) and type-checks every test,
-  rig and script project. After toggling a flag in `tsconfig.lib.json`, run
-  `npx tsc -b --force` once — incremental builds have been seen to miss
-  `isolatedDeclarations` diagnostics.
+- `npm run check` — **the repo gate**: `tsc -b` (root solution file — this is
+  also the build), `pack:check` (publint + attw on each package's `npm pack`
+  tarball), knip, eslint, `prettier --check`, full vitest run (including
+  `tests/package-consumption.test.ts`, which packs and installs the three
+  tarballs — `MP_SKIP_PACK_TEST=1` skips it locally), browser-bundle smoke.
+  Run before committing.
+- `npm run build` / `npm run typecheck` — both `tsc -b` over the root
+  `tsconfig.json` solution file: builds the three packages into their `dist/`
+  (gitignored) and type-checks every test, rig and script project.
+  `npm run clean` = `tsc -b --clean`. After toggling a flag in
+  `tsconfig.lib.json`, run `npx tsc -b --force` once — incremental builds have
+  been seen to miss `isolatedDeclarations` diagnostics.
+- `npm run knip` — unused files/deps/exports. Unused exports/types are
+  _warnings_ until Phase 6's un-export sweep (`knip.jsonc` `rules`).
 - `npm test` — vitest across all workspaces (config in root `vitest.config.ts`).
 - Single test file: `npx vitest run conformance-runner/test/runner.test.ts`
 - Conformance replay CLI: `npm run conformance -- --report json --filter "compat/"`
@@ -59,17 +66,34 @@ Install with `npm ci` (lockfile-exact).
 | `conformance-runner` | Replays the Python-extracted vector corpus (D12/D13)                                 |
 | `differential`       | oracle-ts stdio bridge (D14) + ajv bookmark-schema referee (D15a)                    |
 
-Nothing consumes a build yet: `tsc -b` emits `packages/*/dist/` (declarations +
-source maps) but vitest executes TS directly from `src`/`test` via relative
-imports, and the two CLIs (`scripts/run-conformance.mjs`, `scripts/run-oracle.mjs`)
-esbuild-bundle their entry point into their workspace's `dist/` on each invocation.
-A stale `packages/*/dist/` therefore cannot shadow source for tests.
+Cross-workspace imports use the bare specifiers `@mixpanel-headless/core`,
+`@mixpanel-headless/core/internal` (rig/platform-package plumbing, **not
+semver-stable**), `@mixpanel-headless/node` and — from `differential` —
+`@mixpanel-headless/conformance-runner`. Never import another workspace by
+relative path (the only sanctioned exception: node/browser _tests_ reach
+`packages/core/test-support/` relatively). `scripts/codemods/rewrite-workspace-imports.mjs`
+is the idempotent codemod that produced/maintains this (`--check` to audit).
+
+The three packages' `exports` maps point at `dist/` (what `tsc -b` project
+references and any consumer see). Everything that executes TypeScript from
+source — vitest, the two esbuild CLIs (`scripts/run-conformance.mjs`,
+`scripts/run-oracle.mjs`), the browser smoke and the vendoring recipe — maps
+the bare specifiers back to `src/` through the one alias table in
+`scripts/lib/workspace-aliases.mjs`, so a stale `dist/` can never shadow the
+code under test. `conformance-runner` is private and exports `./src/index.ts`
+directly.
+
+Public-API curation: `packages/core/src/index.ts` is an explicit, sectioned
+named list (no `export *`; ~720 names) and `src/internal.ts` holds what the
+platform packages and the rig need beyond it; `tests/core-public-surface.test.ts`
+locks "nothing `@internal` reachable from `.`", disjoint barrels, no
+`export *`. `stripInternal` is deliberately off (see `tsconfig.lib.json`).
 
 tsconfig layout: `tsconfig.base.json` (shared strict flags) ← `tsconfig.lib.json`
 (composite library build: `declaration`, `declarationMap`, `sourceMap`,
 `isolatedDeclarations`) ← `packages/*/tsconfig.json` (`rootDir: src`, `outDir:
-dist`); each package also has `tsconfig.test.json` (`noEmit`, includes `test`,
-references the package build). `conformance-runner`, `differential`, `scripts`
+dist`); each package also has `tsconfig.test.json` (`noEmit`, includes `test` —
+plus `test-support/` for core — and references the package build). `conformance-runner`, `differential`, `scripts`
 (`allowJs`) and the root `tsconfig.tests.json` (`tests/`) are `noEmit` projects
 referencing the packages they import. Core/browser configs add the DOM libs;
 Node-side projects use `types: ["node"]`.
