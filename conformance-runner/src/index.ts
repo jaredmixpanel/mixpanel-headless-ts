@@ -11,6 +11,7 @@ export * from "./api-map-types.js";
 export * from "./api-map.js";
 export * from "./batch-status.js";
 export * from "./bindings.js";
+export * from "./canonical.js";
 export * from "./codecs.js";
 export * from "./interactions.js";
 export * from "./json-value.js";
@@ -24,3 +25,8 @@ export * from "./transport-errors.js";
 export * from "./vector-fetch.js";
 export * from "./vector-types.js";
 export * from "./verdicts.js";
+export {
+  CONTRACT_TAG_CODECS,
+  ENTITY_TAG_CODECS,
+  type ContractTagCodec,
+} from "./vector-codecs.js";

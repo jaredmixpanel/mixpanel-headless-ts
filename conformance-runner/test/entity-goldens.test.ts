@@ -32,7 +32,7 @@ import {
   parseWorkspaceRef,
   type WorkspaceRef,
 } from "../../packages/core/src/auth/session.js";
-import * as entities from "../../packages/core/src/types/entities/index.js";
+import * as entities from "@mixpanel-headless/core";
 import {
   EntityModel,
   type EntityModelStatics,

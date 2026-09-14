@@ -23,7 +23,7 @@
 import { describe, expect, it } from "vitest";
 
 import * as browserEntry from "../src/index.js";
-import * as coreQueryParams from "../../core/src/types/query-params/index.js";
+import { queryParamsModule as coreQueryParams } from "@mixpanel-headless/core/internal";
 import { CreateAnnotationParams as coreCreateAnnotationParams } from "../../core/src/types/entities/annotations.js";
 import { inferBookmarkType as coreInferBookmarkType } from "../../core/src/bookmarks/infer-type.js";
 import { pythonJsonDumpsCanonical as corePythonJsonDumpsCanonical } from "../../core/src/compat/python-json-dumps-canonical.js";

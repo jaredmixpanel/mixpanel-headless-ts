@@ -68,6 +68,60 @@ export {
   type NodeEnv,
 } from "./env.js";
 
+// ── Facade re-export ───────────────────────────────────────────────────
+// `import { Workspace } from "@mixpanel-headless/node"` is the documented
+// Node entry; the class is core's, re-exported so a Node consumer needs one
+// package.
+export { Workspace, type WorkspaceOptions } from "@mixpanel-headless/core";
+
+// ── Node platform classes (CLEANUP-PLAN §7.4) ──────────────────────────
+// Previously reachable only by deep path: the TOML config manager, the
+// callback-server OAuth flow, on-disk token storage, the Cowork bridge
+// file trio, the on-disk /me cache and the credential-path error.
+export {
+  ConfigManager,
+  type ConfigManagerOptions,
+  type ConfigWriteBytes,
+  type CustomHeaderParams,
+  type ManagerClearActive,
+  type ManagerSetActive,
+  type RawConfig,
+} from "./config.js";
+export {
+  OAuthFlow,
+  findAvailablePort,
+  type LoginOptions,
+  type OAuthFlowOptions,
+  type RefreshTokensOptions,
+} from "./auth/flow.js";
+export {
+  OAuthStorage,
+  accountDir,
+  accountsRoot,
+  ensureAccountDir,
+  storageRoot,
+  type OAuthStorageOptions,
+  type StorageLogger,
+} from "./auth/storage.js";
+export {
+  defaultBridgeSearchPaths,
+  exportBridge,
+  loadBridge,
+  parseBridgeFile,
+  removeBridge,
+  type BridgeFile,
+  type ExportBridgeOptions,
+  type RemoveBridgeOptions,
+} from "./auth/bridge.js";
+export {
+  MeCache,
+  createNodeMeCacheEffects,
+  type MeCacheLogger,
+  type MeCacheOptions,
+} from "./me-cache.js";
+export type { MeCacheStore } from "@mixpanel-headless/core";
+export { CredentialPathError } from "./io-utils.js";
+
 /**
  * A fresh default bag (call-time env reads — module header).
  *

@@ -16,7 +16,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import * as errors from "../../packages/core/src/errors.js";
+import { errorsModule as errors } from "@mixpanel-headless/core/internal";
 import {
   CODED_GUARD_REGISTRY,
   CODED_GUARD_TWIN_CODES,

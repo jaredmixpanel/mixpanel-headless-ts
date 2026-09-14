@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "description": "Conformance rig for Mixpanel Headless: replays the Python-extracted vector corpus against the TypeScript port.",
   "license": "MIT",
   "repository": {

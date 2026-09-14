@@ -43,7 +43,7 @@ import {
   HoldingConstant,
 } from "../../packages/core/src/types/query-params/funnel.js";
 import { GroupBy } from "../../packages/core/src/types/query-params/group-by.js";
-import * as entityClasses from "../../packages/core/src/types/entities/index.js";
+import * as entityClasses from "@mixpanel-headless/core";
 import { EntityModel } from "../../packages/core/src/types/entities/model-base.js";
 import {
   CohortMetric,

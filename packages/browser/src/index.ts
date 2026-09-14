@@ -75,7 +75,58 @@ export {
 // factories (`createBrowserWorkspace` / `createBrowserWorkspaceFromStore`).
 export type { Workspace } from "../../core/src/workspace.js";
 // The error hierarchy (coded errors; programs key on `.code` — R5).
-export * from "../../core/src/errors.js";
+// Listed by name: `export *` from another package would forward whatever
+// core adds later without this barrel's review.
+export {
+  APIError,
+  AccountExistsError,
+  AccountInUseError,
+  AccountNotFoundError,
+  AuthenticationError,
+  BookmarkValidationError,
+  BusinessContextValidationError,
+  ConfigError,
+  DateRangeTooLargeError,
+  EventNotFoundError,
+  InvalidArgumentError,
+  MixpanelHeadlessError,
+  OAuthError,
+  ParamTypeError,
+  ParamValidationError,
+  ProjectNotFoundError,
+  QueryError,
+  RateLimitError,
+  RegionProbeError,
+  RegionProbeNetworkError,
+  ReplayNotFoundError,
+  ReportLinkError,
+  ReportLinkNotFoundError,
+  ReportLinkParseError,
+  ReportLinkScopeMismatchError,
+  ResponseValidationError,
+  ServerError,
+  SessionReplayAccessError,
+  SessionReplayError,
+  ShortLinkResolutionError,
+  SignedURLExpiredError,
+  UnsupportedReplayFormatError,
+  UnsupportedReportLinkError,
+  ValidationError,
+  WorkspaceScopeError,
+  type APIErrorOptions,
+  type AuthenticationErrorOptions,
+  type ErrorDict,
+  type InvalidArgumentErrorOptions,
+  type InvalidArgumentViolation,
+  type QueryErrorOptions,
+  type RateLimitErrorOptions,
+  type RegionProbeAttempt,
+  type RegionProbeErrorOptions,
+  type ReportLinkErrorOptions,
+  type ServerErrorOptions,
+  type SessionReplayErrorOptions,
+  type ValidationSeverity,
+} from "../../core/src/errors.js";
 
 // ── Query vocabulary (core re-exports) ────────────────────────────────
 // Browser pages BUILD queries client-side: a control moves, the page
