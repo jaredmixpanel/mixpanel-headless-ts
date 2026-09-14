@@ -29,8 +29,13 @@ Node >= 22.12 required (`engines` + `.node-version`; the conformance rig's
 request-side float twin uses `JSON.rawJSON`, absent before Node 21; CI runs 24).
 Install with `npm ci` (lockfile-exact).
 
-- `npm run check` — **the repo gate**: per-workspace `tsc --noEmit`, eslint,
+- `npm run check` — **the repo gate**: `tsc -b` (root solution file), eslint,
   `prettier --check`, full vitest run, browser-bundle smoke. Run before committing.
+- `npm run typecheck` — `tsc -b` over the root `tsconfig.json` solution file: builds
+  the three packages into their `dist/` (gitignored) and type-checks every test,
+  rig and script project. After toggling a flag in `tsconfig.lib.json`, run
+  `npx tsc -b --force` once — incremental builds have been seen to miss
+  `isolatedDeclarations` diagnostics.
 - `npm test` — vitest across all workspaces (config in root `vitest.config.ts`).
 - Single test file: `npx vitest run conformance-runner/test/runner.test.ts`
 - Conformance replay CLI: `npm run conformance -- --report json --filter "compat/"`
@@ -54,9 +59,20 @@ Install with `npm ci` (lockfile-exact).
 | `conformance-runner` | Replays the Python-extracted vector corpus (D12/D13)                                 |
 | `differential`       | oracle-ts stdio bridge (D14) + ajv bookmark-schema referee (D15a)                    |
 
-There is **no build step**: `tsc` runs `--noEmit`, vitest executes TS directly, and
-the two CLIs (`scripts/run-conformance.mjs`, `scripts/run-oracle.mjs`) esbuild-bundle
-their entry point into `dist/` on each invocation.
+Nothing consumes a build yet: `tsc -b` emits `packages/*/dist/` (declarations +
+source maps) but vitest executes TS directly from `src`/`test` via relative
+imports, and the two CLIs (`scripts/run-conformance.mjs`, `scripts/run-oracle.mjs`)
+esbuild-bundle their entry point into their workspace's `dist/` on each invocation.
+A stale `packages/*/dist/` therefore cannot shadow source for tests.
+
+tsconfig layout: `tsconfig.base.json` (shared strict flags) ← `tsconfig.lib.json`
+(composite library build: `declaration`, `declarationMap`, `sourceMap`,
+`isolatedDeclarations`) ← `packages/*/tsconfig.json` (`rootDir: src`, `outDir:
+dist`); each package also has `tsconfig.test.json` (`noEmit`, includes `test`,
+references the package build). `conformance-runner`, `differential`, `scripts`
+(`allowJs`) and the root `tsconfig.tests.json` (`tests/`) are `noEmit` projects
+referencing the packages they import. Core/browser configs add the DOM libs;
+Node-side projects use `types: ["node"]`.
 
 ## Core-purity boundary (R9.1 / R9.3)
 
@@ -105,8 +121,14 @@ Each has a generator and a byte-exact freshness test; regenerate instead of edit
 
 ## Conventions
 
-- tsconfig is strict everywhere: `exactOptionalPropertyTypes`,
-  `noUncheckedIndexedAccess`, `verbatimModuleSyntax`, NodeNext modules.
+- tsconfig is strict everywhere (`tsconfig.base.json`): `strict`,
+  `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`,
+  `noPropertyAccessFromIndexSignature` (use `obj["key"]` for index-signature
+  reads), `noUnusedLocals`/`noUnusedParameters`, `noImplicitOverride`,
+  `noImplicitReturns`, `erasableSyntaxOnly` (no `enum`/`namespace` — use
+  `as const` objects + literal unions), `verbatimModuleSyntax`, NodeNext modules,
+  target/lib `es2023`. Library builds additionally require `isolatedDeclarations`
+  (every exported binding needs an explicit type unless trivially inferable).
 - Task-scoped scratch notes go in `.notes/` (see `.notes/ts5-scratch.md` for the
   pattern); durable run records go in `GATE.md` / `RUN.md`.
 - Environment overrides for scripts: `MP_PYTHON_REPO` (Python checkout path),
