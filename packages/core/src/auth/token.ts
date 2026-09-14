@@ -4,7 +4,7 @@
  *
  * `OAuthTokens` is in Phase-2 scope because `$type: "OAuthTokens"`
  * appears in the corpus (7 occurrences in `auth/test_auth_flow.jsonl`);
- * the codec entry lives in `types/vector-codecs.ts`. Datetimes are held
+ * the codec entry lives in `conformance-runner/src/vector-codecs.ts`. Datetimes are held
  * as ISO-8601 STRINGS (never `Date`) so the recorded `iso` text
  * round-trips byte-for-byte through the codec — exactly the reason the
  * runner's `PyDatetime` wrapper keeps the raw text.

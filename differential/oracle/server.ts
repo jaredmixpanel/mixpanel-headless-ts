@@ -62,7 +62,7 @@ import {
   type ReplayEventFields,
   type ReplaySummaryFields,
 } from "../../packages/core/src/types/results/replays.js";
-import { CONTRACT_TAG_CODECS } from "../../packages/core/src/types/vector-codecs.js";
+import { CONTRACT_TAG_CODECS } from "../../conformance-runner/src/vector-codecs.js";
 import { pythonStrRaw } from "./python-str-raw.js";
 import {
   RawObject,

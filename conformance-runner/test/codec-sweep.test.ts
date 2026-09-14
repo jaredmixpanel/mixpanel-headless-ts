@@ -318,8 +318,7 @@ describe("C8(a) codec round-trip sweep", () => {
     // the P2-5a query-param family + the early cohort shells). Built-ins
     // are exempt ('date' has zero corpus occurrences by design —
     // registered but unexercised, phase2-design inventory).
-    const { CONTRACT_TAG_CODECS } =
-      await import("../../packages/core/src/types/vector-codecs.js");
+    const { CONTRACT_TAG_CODECS } = await import("../src/vector-codecs.js");
     for (const tag of CONTRACT_TAG_CODECS.keys()) {
       expect(tally.get(tag) ?? 0, `tag ${tag}`).toBeGreaterThanOrEqual(1);
     }

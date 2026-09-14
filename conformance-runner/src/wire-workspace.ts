@@ -42,7 +42,7 @@ import {
 } from "../../packages/core/src/client/client.js";
 import { JsonNumber as CoreJsonNumber } from "../../packages/core/src/client/json-value.js";
 import { pythonFloatStr } from "../../packages/core/src/compat/index.js";
-import { CONTRACT_TAG_CODECS } from "../../packages/core/src/types/vector-codecs.js";
+import { CONTRACT_TAG_CODECS } from "./vector-codecs.js";
 import type { EventsInput } from "../../packages/core/src/workspace-query-params.js";
 import {
   Workspace,

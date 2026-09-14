@@ -10,27 +10,27 @@
  * declared fields, `$type` first, `null` for Python `None`.
  *
  * The table is wired into the conformance runner by
- * `conformance-runner/src/bindings.ts::registerContractCodecs` — this
- * module stays free of runner imports (dependency direction: runner ->
- * core, never the reverse), so the child-codec callbacks are typed
- * structurally (`unknown`) and datetime children are duck-typed on their
- * `iso` field rather than on the runner's `PyDatetime` class.
+ * `bindings.ts::registerContractCodecs`. It lives in the rig (moved out of
+ * `packages/core/src/types/` at CLEANUP-PLAN §7.3 — the library never
+ * imports it); the child-codec callbacks are typed structurally
+ * (`unknown`) and datetime children are duck-typed on their `iso` field
+ * rather than on the runner's `PyDatetime` class.
  *
  * P2-4 seeds the table with `OAuthTokens` (the one auth-model corpus
  * tag); P2-5a..c, P2-6, and P2-7 extend it with the query-param, result,
  * and entity tags.
- *
- * @internal Exported for the conformance binding — NOT part of the
- * public package surface (excluded from the barrel).
  */
 
-import { parseOAuthTokens, OAuthTokens } from "../auth/token.js";
-import { Secret } from "../secret.js";
+import {
+  parseOAuthTokens,
+  OAuthTokens,
+} from "../../packages/core/src/auth/token.js";
+import { Secret } from "../../packages/core/src/secret.js";
 import {
   CohortBreakdown,
   CohortCriteria,
   CohortDefinition,
-} from "./query-params/cohort.js";
+} from "../../packages/core/src/types/query-params/cohort.js";
 import {
   CustomPropertyRef,
   Filter,
@@ -38,14 +38,17 @@ import {
   InlineCustomProperty,
   ListItemGroupMode,
   PropertyInput,
-} from "./query-params/filter.js";
-import { FlowStep, type FlowStepFields } from "./query-params/flow.js";
+} from "../../packages/core/src/types/query-params/filter.js";
+import {
+  FlowStep,
+  type FlowStepFields,
+} from "../../packages/core/src/types/query-params/flow.js";
 import {
   FrequencyBreakdown,
   FrequencyFilter,
   type FrequencyBreakdownFields,
   type FrequencyFilterFields,
-} from "./query-params/frequency.js";
+} from "../../packages/core/src/types/query-params/frequency.js";
 import {
   Exclusion,
   FunnelStep,
@@ -53,12 +56,12 @@ import {
   type ExclusionFields,
   type FunnelStepFields,
   type HoldingConstantFields,
-} from "./query-params/funnel.js";
+} from "../../packages/core/src/types/query-params/funnel.js";
 import {
   RetentionEvent,
   type RetentionEventFields,
-} from "./query-params/retention.js";
-import { pythonFloatStr } from "../compat/index.js";
+} from "../../packages/core/src/types/query-params/retention.js";
+import { pythonFloatStr } from "../../packages/core/src/compat/index.js";
 import {
   Replay,
   ReplayEvent,
@@ -67,15 +70,100 @@ import {
   type ReplayFields,
   type SignedReplayFields,
   type UserActionFields,
-} from "./results/replays.js";
-import { GroupBy, type GroupByFields } from "./query-params/group-by.js";
+} from "../../packages/core/src/types/results/replays.js";
+import {
+  GroupBy,
+  type GroupByFields,
+} from "../../packages/core/src/types/query-params/group-by.js";
 import {
   CohortMetric,
   Formula,
   Metric,
   TimeComparison,
   type MetricFields,
-} from "./query-params/metric.js";
+} from "../../packages/core/src/types/query-params/metric.js";
+import {
+  EntityModel,
+  type EntityModelStatics,
+} from "../../packages/core/src/types/entities/model-base.js";
+import {
+  BlueprintCard,
+  BlueprintFinishParams,
+  CreateDashboardParams,
+  CreateRcaDashboardParams,
+  RcaSourceData,
+  UpdateDashboardParams,
+  UpdateReportLinkParams,
+} from "../../packages/core/src/types/entities/dashboards.js";
+import {
+  BulkUpdateBookmarkEntry,
+  CreateBookmarkParams,
+  UpdateBookmarkParams,
+} from "../../packages/core/src/types/entities/bookmarks.js";
+import {
+  BulkUpdateCohortEntry,
+  CreateCohortParams,
+  UpdateCohortParams,
+} from "../../packages/core/src/types/entities/cohorts.js";
+import {
+  CreateFeatureFlagParams,
+  SetTestUsersParams,
+  UpdateFeatureFlagParams,
+} from "../../packages/core/src/types/entities/feature-flags.js";
+import {
+  CreateExperimentParams,
+  DuplicateExperimentParams,
+  ExperimentConcludeParams,
+  ExperimentDecideParams,
+  UpdateExperimentParams,
+} from "../../packages/core/src/types/entities/experiments.js";
+import {
+  CreateAnnotationParams,
+  CreateAnnotationTagParams,
+  UpdateAnnotationParams,
+} from "../../packages/core/src/types/entities/annotations.js";
+import {
+  CreateWebhookParams,
+  UpdateWebhookParams,
+  WebhookTestParams,
+} from "../../packages/core/src/types/entities/webhooks.js";
+import {
+  CreateAlertParams,
+  UpdateAlertParams,
+  ValidateAlertsForBookmarkParams,
+} from "../../packages/core/src/types/entities/alerts.js";
+import {
+  BulkEventUpdate,
+  BulkPropertyUpdate,
+  BulkUpdateEventsParams,
+  BulkUpdatePropertiesParams,
+  CreateTagParams,
+  UpdateEventDefinitionParams,
+  UpdatePropertyDefinitionParams,
+  UpdateTagParams,
+} from "../../packages/core/src/types/entities/lexicon.js";
+import {
+  ComposedPropertyValue,
+  CreateCustomEventParams,
+  CreateCustomPropertyParams,
+  CreateDropFilterParams,
+  MarkLookupTableReadyParams,
+  UpdateCustomPropertyParams,
+  UpdateDropFilterParams,
+  UpdateLookupTableParams,
+} from "../../packages/core/src/types/entities/data-governance.js";
+import {
+  BulkAnomalyEntry,
+  BulkCreateSchemasParams,
+  BulkUpdateAnomalyParams,
+  CreateDeletionRequestParams,
+  InitSchemaEnforcementParams,
+  PreviewDeletionFiltersParams,
+  ReplaceSchemaEnforcementParams,
+  SchemaEntry,
+  UpdateAnomalyParams,
+  UpdateSchemaEnforcementParams,
+} from "../../packages/core/src/types/entities/schemas.js";
 
 /**
  * One registered rich-tag codec (phase2-design C7 `TagCodec`).
@@ -829,86 +917,6 @@ export { OAuthTokens, Secret };
 // ---------------------------------------------------------------------------
 // P2-7 entity-model tags (the 56 corpus `$type` tags of the C5 models).
 // ---------------------------------------------------------------------------
-
-import { EntityModel, type EntityModelStatics } from "./entities/model-base.js";
-import {
-  BlueprintCard,
-  BlueprintFinishParams,
-  CreateDashboardParams,
-  CreateRcaDashboardParams,
-  RcaSourceData,
-  UpdateDashboardParams,
-  UpdateReportLinkParams,
-} from "./entities/dashboards.js";
-import {
-  BulkUpdateBookmarkEntry,
-  CreateBookmarkParams,
-  UpdateBookmarkParams,
-} from "./entities/bookmarks.js";
-import {
-  BulkUpdateCohortEntry,
-  CreateCohortParams,
-  UpdateCohortParams,
-} from "./entities/cohorts.js";
-import {
-  CreateFeatureFlagParams,
-  SetTestUsersParams,
-  UpdateFeatureFlagParams,
-} from "./entities/feature-flags.js";
-import {
-  CreateExperimentParams,
-  DuplicateExperimentParams,
-  ExperimentConcludeParams,
-  ExperimentDecideParams,
-  UpdateExperimentParams,
-} from "./entities/experiments.js";
-import {
-  CreateAnnotationParams,
-  CreateAnnotationTagParams,
-  UpdateAnnotationParams,
-} from "./entities/annotations.js";
-import {
-  CreateWebhookParams,
-  UpdateWebhookParams,
-  WebhookTestParams,
-} from "./entities/webhooks.js";
-import {
-  CreateAlertParams,
-  UpdateAlertParams,
-  ValidateAlertsForBookmarkParams,
-} from "./entities/alerts.js";
-import {
-  BulkEventUpdate,
-  BulkPropertyUpdate,
-  BulkUpdateEventsParams,
-  BulkUpdatePropertiesParams,
-  CreateTagParams,
-  UpdateEventDefinitionParams,
-  UpdatePropertyDefinitionParams,
-  UpdateTagParams,
-} from "./entities/lexicon.js";
-import {
-  ComposedPropertyValue,
-  CreateCustomEventParams,
-  CreateCustomPropertyParams,
-  CreateDropFilterParams,
-  MarkLookupTableReadyParams,
-  UpdateCustomPropertyParams,
-  UpdateDropFilterParams,
-  UpdateLookupTableParams,
-} from "./entities/data-governance.js";
-import {
-  BulkAnomalyEntry,
-  BulkCreateSchemasParams,
-  BulkUpdateAnomalyParams,
-  CreateDeletionRequestParams,
-  InitSchemaEnforcementParams,
-  PreviewDeletionFiltersParams,
-  ReplaceSchemaEnforcementParams,
-  SchemaEntry,
-  UpdateAnomalyParams,
-  UpdateSchemaEnforcementParams,
-} from "./entities/schemas.js";
 
 /**
  * Build a {@link ContractTagCodec} for one entity-model class — the TS

@@ -17,7 +17,7 @@
  *   comment per registry code.
  * - `CohortDefinition` mirrors Python's `init=False` design: variadic
  *   constructor (AND) + `allOf`/`anyOf` statics; its codec decoder
- *   reconstructs through the statics (see `../vector-codecs.ts`).
+ *   reconstructs through the statics (see `conformance-runner/src/vector-codecs.ts`).
  */
 
 import { pythonStrip } from "../../compat/index.js";

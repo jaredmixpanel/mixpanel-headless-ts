@@ -17,7 +17,7 @@
  * - §8: Python `float` values reach TS either as non-integral /
  *   non-finite JS numbers or as the conformance rig's PyFloat carrier
  *   duck-shape `{ spelling: string }` (precedent:
- *   `types/vector-codecs.ts` SignedReplay decode); {@link isPythonFloat}
+ *   `conformance-runner/src/vector-codecs.ts` SignedReplay decode); {@link isPythonFloat}
  *   and {@link _isFinite} classify both spellings.
  * - §9 (R11.6): `len(str)` bounds count codepoints via `cpLength`.
  * - §6: `_suggest` is a faithful `difflib.get_close_matches` port —
@@ -177,7 +177,7 @@ export const _FLOW_MAX_WINDOW: ReadonlyMap<string, number> = new Map([
  * spellings `Infinity`/`-Infinity`/`NaN`) rides a decoded kwargs bag.
  *
  * Precedent: the SignedReplay codec unwrap in
- * `types/vector-codecs.ts` (b2-packets.md Caution §8). Recognizing
+ * `conformance-runner/src/vector-codecs.ts` (b2-packets.md Caution §8). Recognizing
  * the shape here lets `isinstance(x, float)` branches (e.g. retention
  * R5_BUCKET_SIZES_INTEGER) classify carriers exactly where Python
  * classifies floats, without any binding-side unwrapping.

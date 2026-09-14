@@ -97,7 +97,7 @@ import {
   type SignedReplayFields,
   type UserActionFields,
 } from "../../packages/core/src/types/results/replays.js";
-import { CONTRACT_TAG_CODECS } from "../../packages/core/src/types/vector-codecs.js";
+import { CONTRACT_TAG_CODECS } from "./vector-codecs.js";
 import {
   validateBookmark,
   validateFlowArgs,
@@ -1528,7 +1528,7 @@ function registerBuilderBindings(
  * Register the Phase-2 contract tag codecs (phase2-design C7 item 2).
  *
  * One call per Phase-2 packet's additions — the table itself lives in
- * `packages/core/src/types/vector-codecs.ts` so the conformance runner
+ * `vector-codecs.ts` so the conformance runner
  * and the differential oracle can never disagree about how a tag
  * decodes. Decode failures wrap into {@link UndecodableValueError},
  * mirroring Python `_decode_model` (a committed vector that fails decode

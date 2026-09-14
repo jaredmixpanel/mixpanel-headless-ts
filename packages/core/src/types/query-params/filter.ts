@@ -1498,7 +1498,7 @@ export class Filter {
  * normalizes alias spellings. Two callers legitimately need the
  * pre-validation object instead:
  *
- * - the conformance codec (`types/vector-codecs.ts`), which must rehydrate
+ * - the conformance codec (`conformance-runner/src/vector-codecs.ts`), which must rehydrate
  *   a *recorded* Filter faithfully — pinned vectors capture the downstream
  *   builders' own guard behaviour (engage `ES13`, segfilter `SG1` / `SG2`
  *   / `SG3`) on an already-constructed Filter, so re-validating or
