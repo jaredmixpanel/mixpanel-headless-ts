@@ -5,6 +5,8 @@ coverage/
 .eslintcache
 .vitest/
 .notes/
+# Claude Code agent worktrees / local session state.
+.claude/
 
 # macOS noise
 .DS_Store

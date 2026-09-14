@@ -11,5 +11,9 @@ export default defineConfig({
       // contracts). Typechecked by the root `tsconfig.tests.json`.
       "tests/**/*.test.ts",
     ],
+    // Vitest's default exclude does not cover .claude/; without this the
+    // include globs above would also run every test inside an agent
+    // worktree checked out under .claude/worktrees/.
+    exclude: ["**/node_modules/**", "**/dist/**", "**/.claude/**"],
   },
 });

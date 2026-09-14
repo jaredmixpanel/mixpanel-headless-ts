@@ -25,6 +25,8 @@ export default defineConfig(
     // Local agent scratch (git-ignored per CLAUDE.md conventions) —
     // scratch .ts probe scripts are not repo code (QA 2026-08-17).
     ".notes/**",
+    // Claude Code agent worktrees: full repo copies, never repo code.
+    ".claude/**",
     // Claude Code agent worktrees (local only, git-ignored).
     ".claude/**",
     // Vendored verbatim from the analytics checkout — never repo-linted.
