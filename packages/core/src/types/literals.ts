@@ -701,8 +701,6 @@ export const ACCOUNT_TYPE_VALUES = [
  * alias name → its runtime membership tuple. `ReadonlyMap` per R4.8
  * (name-keyed lookup table). Keyed on the 274-distinct-name surface —
  * the 10 `__all__` duplicate strings (Discrepancy Log #9) key once.
- *
- * @internal
  */
 export const LITERAL_ALIAS_VALUES: ReadonlyMap<string, readonly string[]> =
   new Map<string, readonly string[]>([

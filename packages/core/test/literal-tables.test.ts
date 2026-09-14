@@ -13,7 +13,7 @@ import {
   LITERAL_ALIAS_VALUES,
   TIME_UNIT_VALUES,
 } from "../src/types/index.js";
-import { BOOKMARK_ENUM_TABLES } from "../src/bookmarks/index.js";
+import { BOOKMARK_ENUM_TABLES } from "../src/bookmarks/enums.js";
 
 describe("literal-alias and enum tables (C9 #7 runtime backstop)", () => {
   it("registers exactly 38 aliases, 8 enums, and 34 bookmark tables", () => {

@@ -159,8 +159,6 @@ export interface EnumTableEntry {
  * test: class name → `{kind, members}`. Built by spreading the live
  * enum objects so this registry cannot drift from the declarations
  * above. `ReadonlyMap` per R4.8.
- *
- * @internal
  */
 export const ENUM_TABLES: ReadonlyMap<string, EnumTableEntry> = new Map<
   string,

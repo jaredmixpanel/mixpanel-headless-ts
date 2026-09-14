@@ -1517,7 +1517,6 @@ export class Filter {
  *   check applied.
  * @throws TypeError - If a required field is missing or an unknown field
  *   name is supplied.
- * @internal
  */
 export function filterUnchecked(
   values: Readonly<Record<string, unknown>>,

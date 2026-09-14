@@ -766,7 +766,7 @@ export class CohortCriteria {
  * @param raw - Output of `CohortDefinition.toDict()`.
  * @returns Sanitized deep copy safe for API submission.
  *
- * @internal Not part of the public package surface — exported from this
+ * @remarks Not part of the public package surface — exported from this
  * module for the conformance binding and translated tests only.
  */
 export function sanitizeRawCohort(

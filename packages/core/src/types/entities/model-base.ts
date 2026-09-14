@@ -178,8 +178,6 @@ export interface ComputedFieldSpec {
 
 /**
  * The per-class static contract every entity model carries.
- *
- * @internal
  */
 export interface EntityModelStatics {
   /** The Python model name (also the `$type` tag where one exists). */
@@ -437,7 +435,7 @@ export function prepareInit(
  * Base class of every entity-model port. Subclasses `declare` their
  * readonly fields; this constructor validates and assigns them.
  *
- * @internal Concrete entity classes are public; the base is plumbing.
+ * @remarks Concrete entity classes are public; the base is plumbing.
  */
 export abstract class EntityModel {
   /**

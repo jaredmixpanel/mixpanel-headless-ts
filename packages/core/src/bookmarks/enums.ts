@@ -32,8 +32,6 @@
 /**
  * Python source module these tables mirror (locked against the
  * `source_module` field of the extracted vector file).
- *
- * @internal
  */
 export const BOOKMARK_ENUMS_SOURCE_MODULE =
   "mixpanel_headless._internal.bookmark_enums";
@@ -677,8 +675,6 @@ export const VALID_FREQUENCY_FILTER_OPERATORS: ReadonlySet<string> = new Set([
  * Python constant names. `ReadonlyMap` per R4.8; consumed by the
  * serialization view below and by the C8(d) lock test's key-set
  * equality check.
- *
- * @internal
  */
 export const BOOKMARK_ENUM_TABLES: ReadonlyMap<
   string,
@@ -728,7 +724,6 @@ export const BOOKMARK_ENUM_TABLES: ReadonlyMap<
  * `conformance/vectors/enums/bookmark_enums.json` (all values are
  * ASCII, so JS code-unit sort and Python codepoint sort agree).
  *
- * @internal
  * @returns Constant name → normalized table, for canonical diffing
  *   against the extracted vector file.
  */

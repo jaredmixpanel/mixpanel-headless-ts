@@ -7,6 +7,16 @@
     "composite": true,
     "declaration": true,
     "isolatedDeclarations": true,
+    // `stripInternal` is deliberately OFF (CLEANUP-PLAN §7.4 deviation,
+    // measured 2026-09-14): tsc strips any declaration whose LEADING COMMENT
+    // contains the substring "@internal" — prose mentions and the 13
+    // `@module … @internal` file headers (which sit above the first import
+    // and would strip it from the .d.ts) included — and ~170 member-level
+    // tags are exercised by the rig, browser src and the white-box tests
+    // (571 errors). Enabling it is a Phase-5/6 follow-up: reword the
+    // mentions, untag members outsiders use, then flip. The boundary the
+    // plan actually wants — nothing tagged `@internal` reachable from the
+    // public barrel — is enforced by tests/core-public-surface.test.ts.
     "declarationMap": true,
     "sourceMap": true
   }
