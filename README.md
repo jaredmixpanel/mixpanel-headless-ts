@@ -754,14 +754,22 @@ are reproduced so results match byte-for-byte across languages.
 
 ## Requirements
 
-- **Node.js ≥ 22.12** for `@mixpanel-headless/node`; any evergreen browser for
-  `@mixpanel-headless/browser`.
+- **Node.js ≥ 22.12** to _use_ `@mixpanel-headless/node`; any evergreen browser
+  for `@mixpanel-headless/browser`. _Developing_ this repository needs a newer
+  Node — see [Toolchain pins](#toolchain-pins-developing-the-repo).
 - **ESM only.** All packages are native ES modules.
 - **TypeScript optional but rewarding** — the packages ship complete types under
   `strict`; plain JavaScript works fine.
 
 ### Toolchain pins (developing the repo)
 
+- **Two Node floors.** The published packages run on Node ≥ 22.12
+  (`.node-version` pins the 22 line; CI runs 24). Developing the repo needs
+  **Node ^22.22.2 or ≥ 24.15** — the strictest dev dependency
+  (`eslint-plugin-jsdoc` 64) requires it, so the root `package.json`
+  `engines` carries that higher floor and `.npmrc`'s `engine-strict=true`
+  turns it into one clear `npm ci` error up front rather than a confusing
+  per-package failure mid-install.
 - **`typescript` is pinned `~6.0.3`, not `^`.** TypeScript 7 is `latest` on npm,
   but typescript-eslint's peer range is `<6.1.0`, so a casual
   `npm i -D typescript` would break `npm run lint`. Move the pin when
