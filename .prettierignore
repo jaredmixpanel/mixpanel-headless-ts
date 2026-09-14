@@ -20,5 +20,3 @@ packages/core/src/compat/non-printable.gen.ts
 .claude/
 # Port-process docs mirrored verbatim from the Python repo (historical record — do not reformat).
 context/
-# Claude Code agent worktrees (local only).
-.claude/
