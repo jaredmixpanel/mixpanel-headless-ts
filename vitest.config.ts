@@ -1,4 +1,4 @@
-// Root Vitest 3 configuration: discovers tests in every workspace package.
+// Root Vitest configuration: discovers tests in every workspace package.
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({

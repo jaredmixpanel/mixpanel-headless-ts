@@ -4,5 +4,8 @@
 // after the workspace pass.
 {
   "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
   "include": ["tests"]
 }
