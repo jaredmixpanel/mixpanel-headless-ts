@@ -422,7 +422,7 @@ export function validateBookmark(
     return errors;
   }
 
-  const sections = params.sections;
+  const sections = params["sections"];
   if (!isDict(sections)) {
     errors.push(
       new ValidationError(
@@ -491,7 +491,7 @@ export function validateBookmark(
 
   // Validate optional top-level sorting block
   if (hasKey(params, "sorting")) {
-    errors.push(...validateSortingBlock(params.sorting));
+    errors.push(...validateSortingBlock(params["sorting"]));
   }
 
   return errors;
@@ -584,7 +584,7 @@ function validateShowClause(
 
   // B8: Event behaviors need a name
   if (btype === "event" || btype === "simple" || btype === "custom-event") {
-    const value = hasKey(behavior, "value") ? behavior.value : {};
+    const value = hasKey(behavior, "value") ? behavior["value"] : {};
     const hasName =
       (isDict(value) && !isNone(dictGet(value, "name"))) ||
       !isNone(dictGet(behavior, "name"));

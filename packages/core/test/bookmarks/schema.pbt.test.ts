@@ -301,7 +301,7 @@ describe("TestRoundtripSoundness", () => {
         fc.string({ minLength: 1, maxLength: 50, unit: "binary" }),
         (name) => {
           const params = validMinimalInsights();
-          params.name = name;
+          params["name"] = name;
           expect(validateInsights(params)).toEqual([]);
           // The twin has no `model_dump`; re-validating the same input
           // is the statelessness half of the Python property.
@@ -359,7 +359,7 @@ describe("TestExtraFieldRejection", () => {
     fc.assert(
       fc.property(safeExtraFieldNames, (fieldName) => {
         const params = validMinimalInsights();
-        (params.sections as Dict)[fieldName] = "anything";
+        (params["sections"] as Dict)[fieldName] = "anything";
         const errs = validateInsights(params);
         expect(
           errs.some(
@@ -375,8 +375,8 @@ describe("TestExtraFieldRejection", () => {
     fc.assert(
       fc.property(safeExtraFieldNames, (fieldName) => {
         const params = validMinimalInsights();
-        const show = (params.sections as Dict).show as Dict[];
-        (show[0]!.behavior as Dict)[fieldName] = 1;
+        const show = (params["sections"] as Dict)["show"] as Dict[];
+        (show[0]!["behavior"] as Dict)[fieldName] = 1;
         const errs = validateInsights(params);
         expect(
           errs.some(
@@ -436,7 +436,7 @@ describe("TestRequiredFieldRejection", () => {
     fc.assert(
       fc.property(fc.constantFrom("show", "time"), (fieldName) => {
         const params = validMinimalInsights();
-        delete (params.sections as Dict)[fieldName];
+        delete (params["sections"] as Dict)[fieldName];
         const errs = validateInsights(params);
         expect(
           errs.some(
@@ -474,8 +474,8 @@ describe("TestDiscriminatorRejection", () => {
           .filter((s) => !KNOWN_METRIC_TYPES.has(s)),
         (badType) => {
           const params = validMinimalInsights();
-          const show = (params.sections as Dict).show as Dict[];
-          (show[0]!.behavior as Dict).type = badType;
+          const show = (params["sections"] as Dict)["show"] as Dict[];
+          (show[0]!["behavior"] as Dict)["type"] = badType;
           const errs = validateInsights(params);
           expect(
             errs.some(

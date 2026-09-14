@@ -678,7 +678,7 @@ const FLAT_VALUE_SORT_CONFIG: ModelSpec = {
 function flatSortDiscriminator(value: unknown): string {
   const sortBy = isPlainObject(value)
     ? Object.hasOwn(value, "sortBy")
-      ? value.sortBy
+      ? value["sortBy"]
       : undefined
     : undefined;
   if (sortBy === "label") {
@@ -752,7 +752,7 @@ const SORT_BY_VALUE_CONFIG: ModelSpec = {
 function sortConfigDiscriminator(value: unknown): string {
   const sortBy = isPlainObject(value)
     ? Object.hasOwn(value, "sortBy")
-      ? value.sortBy
+      ? value["sortBy"]
       : undefined
     : undefined;
   if (sortBy === "column") {
@@ -810,9 +810,9 @@ function flatOrColumnSortDiscriminator(value: unknown): string {
   let sortBy: unknown;
   let hasCols: boolean;
   if (isPlainObject(value)) {
-    sortBy = Object.hasOwn(value, "sortBy") ? value.sortBy : undefined;
+    sortBy = Object.hasOwn(value, "sortBy") ? value["sortBy"] : undefined;
     const cols = Object.hasOwn(value, "colSortAttrs")
-      ? value.colSortAttrs
+      ? value["colSortAttrs"]
       : undefined;
     hasCols = cols !== undefined && cols !== null;
   } else {
@@ -856,7 +856,7 @@ function tableSortDiscriminator(value: unknown): string {
   let sortBy: unknown;
   let hasSortColumn: boolean;
   if (isPlainObject(value)) {
-    sortBy = Object.hasOwn(value, "sortBy") ? value.sortBy : undefined;
+    sortBy = Object.hasOwn(value, "sortBy") ? value["sortBy"] : undefined;
     hasSortColumn = Object.hasOwn(value, "sortColumn");
   } else {
     sortBy = undefined;

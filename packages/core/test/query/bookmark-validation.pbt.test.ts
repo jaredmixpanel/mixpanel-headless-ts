@@ -95,9 +95,9 @@ function minimalBookmark(): Dict {
  */
 function bookmarkWithMath(math: string): Dict {
   const bm = minimalBookmark();
-  const sections = bm.sections as Dict;
-  const show = sections.show as Dict[];
-  (show[0]!.measurement as Dict).math = math;
+  const sections = bm["sections"] as Dict;
+  const show = sections["show"] as Dict[];
+  (show[0]!["measurement"] as Dict)["math"] = math;
   return bm;
 }
 
@@ -111,8 +111,8 @@ function bookmarkWithMath(math: string): Dict {
  */
 function bookmarkWithFilter(operator: string): Dict {
   const bm = minimalBookmark();
-  const sections = bm.sections as Dict;
-  sections.filter = [
+  const sections = bm["sections"] as Dict;
+  sections["filter"] = [
     {
       filterType: "string",
       filterOperator: operator,
@@ -134,7 +134,7 @@ function bookmarkWithFilter(operator: string): Dict {
  */
 function bookmarkWithChartType(chartType: string): Dict {
   const bm = minimalBookmark();
-  (bm.displayOptions as Dict).chartType = chartType;
+  (bm["displayOptions"] as Dict)["chartType"] = chartType;
   return bm;
 }
 

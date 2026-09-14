@@ -82,7 +82,7 @@ describe("TestValidateFlowBookmarkFLB1", () => {
 
   it("test_missing_steps_key_returns_flb1_error", () => {
     const params = validFlowBookmark();
-    delete params.steps;
+    delete params["steps"];
     const errors = validateFlowBookmark(params);
     expect(errors.some((e) => e.code === "FLB1_EMPTY_STEPS")).toBe(true);
   });
@@ -259,7 +259,7 @@ describe("TestValidateFlowBookmarkFLB4", () => {
 describe("TestValidateFlowBookmarkFLB5", () => {
   it("test_missing_date_range_returns_flb5_error", () => {
     const params = validFlowBookmark();
-    delete params.date_range;
+    delete params["date_range"];
     const errors = validateFlowBookmark(params);
     expect(errors.some((e) => e.code === "FLB5_MISSING_DATE_RANGE")).toBe(true);
   });
@@ -271,7 +271,7 @@ describe("TestValidateFlowBookmarkFLB5", () => {
 
   it("test_flb5_error_path_is_date_range", () => {
     const params = validFlowBookmark();
-    delete params.date_range;
+    delete params["date_range"];
     const errors = validateFlowBookmark(params);
     const flb5Errors = withCode(errors, "FLB5_MISSING_DATE_RANGE");
     expect(flb5Errors.length).toBe(1);
@@ -301,7 +301,7 @@ describe("TestValidateFlowBookmarkFLB6", () => {
 
   it("test_missing_version_returns_flb6_error", () => {
     const params = validFlowBookmark();
-    delete params.version;
+    delete params["version"];
     const errors = validateFlowBookmark(params);
     expect(errors.some((e) => e.code === "FLB6_INVALID_VERSION")).toBe(true);
   });

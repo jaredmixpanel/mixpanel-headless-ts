@@ -177,7 +177,7 @@ describe("TestValidateBookmarkLayer2", () => {
 
   it("test_b5_invalid_chart_type", () => {
     const bm = minimalBookmark();
-    bm.displayOptions.chartType = "barchart";
+    bm.displayOptions["chartType"] = "barchart";
     const errors = validateBookmark(bm);
     const chartErrors = withCode(errors, "B5_INVALID_CHART_TYPE");
     expect(chartErrors.length).toBe(1);
@@ -187,7 +187,7 @@ describe("TestValidateBookmarkLayer2", () => {
 
   it("test_b5_missing_chart_type", () => {
     const bm = minimalBookmark();
-    delete bm.displayOptions.chartType;
+    delete bm.displayOptions["chartType"];
     const errors = validateBookmark(bm);
     expect(errors.some((e) => e.code === "B5_INVALID_CHART_TYPE")).toBe(true);
   });
@@ -201,7 +201,7 @@ describe("TestValidateBookmarkLayer2", () => {
 
   it("test_b9_invalid_math", () => {
     const bm = minimalBookmark();
-    (bm.sections.show[0]!.measurement as Dict).math = "totl";
+    (bm.sections.show[0]!["measurement"] as Dict)["math"] = "totl";
     const errors = validateBookmark(bm);
     const mathErrors = withCode(errors, "B9_INVALID_MATH");
     expect(mathErrors.length).toBe(1);
@@ -211,7 +211,7 @@ describe("TestValidateBookmarkLayer2", () => {
 
   it("test_b10_math_missing_property", () => {
     const bm = minimalBookmark();
-    (bm.sections.show[0]!.measurement as Dict).math = "average";
+    (bm.sections.show[0]!["measurement"] as Dict)["math"] = "average";
     const errors = validateBookmark(bm);
     const propErrors = withCode(errors, "B10_MATH_MISSING_PROPERTY");
     expect(propErrors.length).toBe(1);
@@ -221,14 +221,14 @@ describe("TestValidateBookmarkLayer2", () => {
 
   it("test_b12_invalid_time_unit", () => {
     const bm = minimalBookmark();
-    bm.sections.time = [{ unit: "fortnite" }];
+    bm.sections["time"] = [{ unit: "fortnite" }];
     const errors = validateBookmark(bm);
     expect(errors.some((e) => e.code === "B12_INVALID_TIME_UNIT")).toBe(true);
   });
 
   it("test_b14_invalid_filter_type", () => {
     const bm = minimalBookmark();
-    bm.sections.filter = [
+    bm.sections["filter"] = [
       {
         filterType: "nope",
         filterOperator: "equals",
@@ -242,7 +242,7 @@ describe("TestValidateBookmarkLayer2", () => {
 
   it("test_b15_invalid_filter_operator_warning", () => {
     const bm = minimalBookmark();
-    bm.sections.filter = [
+    bm.sections["filter"] = [
       {
         filterType: "string",
         filterOperator: "approximately",
@@ -271,7 +271,7 @@ describe("TestValidateBookmarkLayer2", () => {
     ];
     for (const op of insightsDateOps) {
       const bm = minimalBookmark();
-      bm.sections.filter = [
+      bm.sections["filter"] = [
         {
           filterType: "datetime",
           filterOperator: op,
@@ -290,7 +290,7 @@ describe("TestValidateBookmarkLayer2", () => {
 
   it("test_b18_missing_filter_property", () => {
     const bm = minimalBookmark();
-    bm.sections.filter = [
+    bm.sections["filter"] = [
       {
         filterType: "string",
         filterOperator: "equals",
@@ -305,7 +305,7 @@ describe("TestValidateBookmarkLayer2", () => {
 
   it("test_b18_custom_property_id_passes", () => {
     const bm = minimalBookmark();
-    bm.sections.filter = [
+    bm.sections["filter"] = [
       {
         filterType: "string",
         filterOperator: "equals",
@@ -322,7 +322,7 @@ describe("TestValidateBookmarkLayer2", () => {
 
   it("test_b18_custom_property_dict_passes", () => {
     const bm = minimalBookmark();
-    bm.sections.filter = [
+    bm.sections["filter"] = [
       {
         filterType: "string",
         filterOperator: "equals",
@@ -351,7 +351,7 @@ describe("TestValidateBookmarkLayer2", () => {
 
   it("test_valid_filter_passes", () => {
     const bm = minimalBookmark();
-    bm.sections.filter = [
+    bm.sections["filter"] = [
       {
         filterType: "string",
         filterOperator: "equals",
@@ -372,7 +372,7 @@ describe("TestValidateBookmarkLayer2", () => {
 
   it("test_valid_group_passes", () => {
     const bm = minimalBookmark();
-    bm.sections.group = [
+    bm.sections["group"] = [
       {
         propertyName: "platform",
         propertyType: "string",
@@ -434,7 +434,7 @@ describe("TestValidateMeasurementFunnelContext", () => {
     ];
     for (const mathType of funnelOnly) {
       const bm = minimalBookmark();
-      (bm.sections.show[0]!.measurement as Dict).math = mathType;
+      (bm.sections.show[0]!["measurement"] as Dict)["math"] = mathType;
       const errors = validateBookmark(bm, { bookmark_type: "insights" });
       const mathErrors = withCode(errors, "B9_INVALID_MATH");
       expect(
@@ -467,7 +467,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_empty_dict_no_errors", () => {
     const bm = minimalBookmark();
-    bm.sorting = {};
+    bm["sorting"] = {};
     const errors = validateBookmark(bm);
     const sortErrors = errors.filter((e) => e.code.startsWith("S"));
     expect(sortErrors).toEqual([]);
@@ -475,7 +475,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_canonical_column_config_passes", () => {
     const bm = minimalBookmark();
-    bm.sorting = {
+    bm["sorting"] = {
       bar: { sortBy: "column", colSortAttrs: [] },
     };
     const errors = validateBookmark(bm);
@@ -485,7 +485,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_value_config_with_attrs_passes", () => {
     const bm = minimalBookmark();
-    bm.sorting = {
+    bm["sorting"] = {
       bar: {
         sortBy: "column",
         colSortAttrs: [
@@ -504,7 +504,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_invalid_sort_by_caught", () => {
     const bm = minimalBookmark();
-    bm.sorting = { bar: { sortBy: "totally bogus", colSortAttrs: [] } };
+    bm["sorting"] = { bar: { sortBy: "totally bogus", colSortAttrs: [] } };
     const errors = validateBookmark(bm);
     const s1 = withCode(errors, "S1_INVALID_SORT_BY");
     expect(s1.length).toBe(1);
@@ -513,7 +513,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_extra_segmentation_field_caught", () => {
     const bm = minimalBookmark();
-    bm.sorting = {
+    bm["sorting"] = {
       bar: {
         sortBy: "value",
         segmentation: "value",
@@ -528,7 +528,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_missing_col_sort_attrs_caught", () => {
     const bm = minimalBookmark();
-    bm.sorting = { bar: { sortBy: "value" } };
+    bm["sorting"] = { bar: { sortBy: "value" } };
     const errors = validateBookmark(bm);
     const missing = withCode(errors, "S2_MISSING_COL_SORT_ATTRS");
     expect(missing.length).toBe(1);
@@ -537,7 +537,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_collects_missing_col_sort_attrs_and_extra_segmentation", () => {
     const bm = minimalBookmark();
-    bm.sorting = {
+    bm["sorting"] = {
       bar: {
         sortBy: "value",
         sortOrder: "asc",
@@ -560,7 +560,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_unknown_chart_type_warning", () => {
     const bm = minimalBookmark();
-    bm.sorting = { barz: { sortBy: "column", colSortAttrs: [] } };
+    bm["sorting"] = { barz: { sortBy: "column", colSortAttrs: [] } };
     const errors = validateBookmark(bm);
     const unknown = withCode(errors, "S4_UNKNOWN_CHART_TYPE");
     expect(unknown.length).toBe(1);
@@ -571,7 +571,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_chart_config_must_be_dict", () => {
     const bm = minimalBookmark();
-    bm.sorting = { bar: "asc" };
+    bm["sorting"] = { bar: "asc" };
     const errors = validateBookmark(bm);
     const typeErr = withCode(errors, "S5_NOT_A_DICT");
     expect(typeErr.length).toBe(1);
@@ -580,7 +580,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_block_must_be_dict", () => {
     const bm = minimalBookmark();
-    bm.sorting = ["asc"];
+    bm["sorting"] = ["asc"];
     const errors = validateBookmark(bm);
     const typeErr = withCode(errors, "S5_NOT_A_DICT");
     expect(typeErr.length).toBe(1);
@@ -589,7 +589,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_invalid_col_sort_attr_sort_order", () => {
     const bm = minimalBookmark();
-    bm.sorting = {
+    bm["sorting"] = {
       bar: {
         sortBy: "column",
         colSortAttrs: [
@@ -604,7 +604,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_col_sort_attrs_must_be_list", () => {
     const bm = minimalBookmark();
-    bm.sorting = { bar: { sortBy: "column", colSortAttrs: {} } };
+    bm["sorting"] = { bar: { sortBy: "column", colSortAttrs: {} } };
     const errors = validateBookmark(bm);
     const notAList = withCode(errors, "S7_NOT_A_LIST");
     expect(notAList.length).toBe(1);
@@ -613,7 +613,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_value_config_with_canonical_top_level_fields_passes", () => {
     const bm = minimalBookmark();
-    bm.sorting = {
+    bm["sorting"] = {
       bar: {
         sortBy: "value",
         sortOrder: "asc",
@@ -629,7 +629,9 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_lift_comparison_value_accepted", () => {
     const bm = minimalBookmark();
-    bm.sorting = { bar: { sortBy: "liftComparisonValue", colSortAttrs: [] } };
+    bm["sorting"] = {
+      bar: { sortBy: "liftComparisonValue", colSortAttrs: [] },
+    };
     const errors = validateBookmark(bm);
     const s1 = withCode(errors, "S1_INVALID_SORT_BY");
     expect(s1).toEqual([]);
@@ -637,7 +639,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_line_flat_label_config_accepted", () => {
     const bm = minimalBookmark();
-    bm.sorting = { line: { sortBy: "label", sortOrder: "asc" } };
+    bm["sorting"] = { line: { sortBy: "label", sortOrder: "asc" } };
     const errors = validateBookmark(bm);
     const sortErrors = errors.filter((e) => e.code.startsWith("S"));
     expect(sortErrors).toEqual([]);
@@ -645,7 +647,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_line_flat_value_config_accepted", () => {
     const bm = minimalBookmark();
-    bm.sorting = {
+    bm["sorting"] = {
       line: {
         sortBy: "value",
         sortOrder: "desc",
@@ -659,7 +661,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_line_column_config_still_requires_col_sort_attrs", () => {
     const bm = minimalBookmark();
-    bm.sorting = { line: { sortBy: "column" } };
+    bm["sorting"] = { line: { sortBy: "column" } };
     const errors = validateBookmark(bm);
     const missing = withCode(errors, "S2_MISSING_COL_SORT_ATTRS");
     expect(missing.length).toBe(1);
@@ -668,7 +670,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_line_invalid_sort_by_caught", () => {
     const bm = minimalBookmark();
-    bm.sorting = { line: { sortBy: "totally bogus", sortOrder: "asc" } };
+    bm["sorting"] = { line: { sortBy: "totally bogus", sortOrder: "asc" } };
     const errors = validateBookmark(bm);
     const s1 = withCode(errors, "S1_INVALID_SORT_BY");
     expect(s1.length).toBe(1);
@@ -677,7 +679,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_non_line_label_still_rejected", () => {
     const bm = minimalBookmark();
-    bm.sorting = { bar: { sortBy: "label", colSortAttrs: [] } };
+    bm["sorting"] = { bar: { sortBy: "label", colSortAttrs: [] } };
     const errors = validateBookmark(bm);
     const s1 = withCode(errors, "S1_INVALID_SORT_BY");
     expect(s1.length).toBe(1);
@@ -686,7 +688,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_col_sort_attr_missing_sort_by_caught", () => {
     const bm = minimalBookmark();
-    bm.sorting = {
+    bm["sorting"] = {
       bar: {
         sortBy: "column",
         colSortAttrs: [{ sortOrder: "asc" }],
@@ -700,7 +702,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_col_sort_attr_invalid_sort_by_caught", () => {
     const bm = minimalBookmark();
-    bm.sorting = {
+    bm["sorting"] = {
       bar: {
         sortBy: "column",
         colSortAttrs: [{ sortBy: "bogus", sortOrder: "asc" }],
@@ -714,7 +716,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_col_sort_attr_column_sort_by_rejected", () => {
     const bm = minimalBookmark();
-    bm.sorting = {
+    bm["sorting"] = {
       bar: {
         sortBy: "column",
         colSortAttrs: [{ sortBy: "column", sortOrder: "asc" }],
@@ -728,7 +730,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_col_sort_attr_missing_sort_order_caught", () => {
     const bm = minimalBookmark();
-    bm.sorting = {
+    bm["sorting"] = {
       bar: {
         sortBy: "column",
         colSortAttrs: [{ sortBy: "value", valueField: "x" }],
@@ -742,7 +744,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_col_sort_attr_label_sort_by_accepted", () => {
     const bm = minimalBookmark();
-    bm.sorting = {
+    bm["sorting"] = {
       bar: {
         sortBy: "column",
         colSortAttrs: [{ sortBy: "label", sortOrder: "asc" }],
@@ -759,7 +761,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_invalid_top_level_sort_order_rejected", () => {
     const bm = minimalBookmark();
-    bm.sorting = {
+    bm["sorting"] = {
       bar: {
         sortBy: "value",
         sortOrder: "ascending",
@@ -774,7 +776,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_unhashable_sort_by_does_not_crash", () => {
     const bm = minimalBookmark();
-    bm.sorting = { bar: { sortBy: [], colSortAttrs: [] } };
+    bm["sorting"] = { bar: { sortBy: [], colSortAttrs: [] } };
     const errors = validateBookmark(bm);
     const s1 = withCode(errors, "S1_INVALID_SORT_BY");
     expect(s1.length).toBe(1);
@@ -783,7 +785,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_col_sort_attrs_none_rejected", () => {
     const bm = minimalBookmark();
-    bm.sorting = { bar: { sortBy: "column", colSortAttrs: null } };
+    bm["sorting"] = { bar: { sortBy: "column", colSortAttrs: null } };
     const errors = validateBookmark(bm);
     const s7 = withCode(errors, "S7_NOT_A_LIST");
     expect(s7.length).toBe(1);
@@ -792,7 +794,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_line_flat_missing_sort_order_caught", () => {
     const bm = minimalBookmark();
-    bm.sorting = { line: { sortBy: "label" } };
+    bm["sorting"] = { line: { sortBy: "label" } };
     const errors = validateBookmark(bm);
     const s9 = withCode(errors, "S9_MISSING_SORT_ORDER");
     expect(s9.length).toBe(1);
@@ -801,7 +803,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_line_flat_extra_field_caught", () => {
     const bm = minimalBookmark();
-    bm.sorting = {
+    bm["sorting"] = {
       line: { sortBy: "label", sortOrder: "asc", segmentation: "x" },
     };
     const errors = validateBookmark(bm);
@@ -812,7 +814,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_line_label_with_col_sort_attrs_rejected", () => {
     const bm = minimalBookmark();
-    bm.sorting = {
+    bm["sorting"] = {
       line: { sortBy: "label", sortOrder: "asc", colSortAttrs: [] },
     };
     const errors = validateBookmark(bm);
@@ -823,7 +825,7 @@ describe("TestValidateSortingBlock", () => {
 
   it("test_sorting_line_value_with_col_sort_attrs_routes_to_sort_config", () => {
     const bm = minimalBookmark();
-    bm.sorting = { line: { sortBy: "value", colSortAttrs: [] } };
+    bm["sorting"] = { line: { sortBy: "value", colSortAttrs: [] } };
     const errors = validateBookmark(bm);
     const sortErrors = errors.filter((e) => e.code.startsWith("S"));
     expect(sortErrors).toEqual([]);

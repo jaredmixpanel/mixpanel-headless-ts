@@ -227,9 +227,9 @@ function bookmarkWithGroup(groupEntry: Dict): Dict {
  * @returns The behavior dict.
  */
 function firstBehavior(params: Dict): Dict {
-  const sections = params.sections as Dict;
-  const show = sections.show as Dict[];
-  return show[0]!.behavior as Dict;
+  const sections = params["sections"] as Dict;
+  const show = sections["show"] as Dict[];
+  return show[0]!["behavior"] as Dict;
 }
 
 /**
@@ -239,9 +239,9 @@ function firstBehavior(params: Dict): Dict {
  * @returns The measurement dict.
  */
 function firstMeasurement(params: Dict): Dict {
-  const sections = params.sections as Dict;
-  const show = sections.show as Dict[];
-  return show[0]!.measurement as Dict;
+  const sections = params["sections"] as Dict;
+  const show = sections["show"] as Dict[];
+  return show[0]!["measurement"] as Dict;
 }
 
 // =============================================================================
@@ -258,7 +258,7 @@ describe("TestCohortFilterValidation", () => {
 
   it("test_cohort_filter_with_wrong_value_returns_b25_error", () => {
     const entry = validCohortFilterEntry();
-    entry.value = "wrong_property";
+    entry["value"] = "wrong_property";
     const params = bookmarkWithFilter(entry);
     const errors = validateBookmark(params);
     expect(codes(errors)).toContain("B25_COHORT_FILTER_VALUE");
@@ -292,7 +292,7 @@ describe("TestCohortGroupValidation", () => {
 
   it("test_empty_cohorts_array_returns_b26_error", () => {
     const entry = validCohortGroupEntry();
-    entry.cohorts = [];
+    entry["cohorts"] = [];
     const params = bookmarkWithGroup(entry);
     const errors = validateBookmark(params);
     expect(codes(errors)).toContain("B26_EMPTY_COHORTS");
@@ -328,14 +328,14 @@ describe("TestCohortShowValidation", () => {
 
   it("test_b22_negative_id_returns_error", () => {
     const params = validCohortShow();
-    firstBehavior(params).id = -1;
+    firstBehavior(params)["id"] = -1;
     const errors = validateBookmark(params);
     expect(codes(errors)).toContain("B22_COHORT_BEHAVIOR_ID");
   });
 
   it("test_b22_zero_id_returns_error", () => {
     const params = validCohortShow();
-    firstBehavior(params).id = 0;
+    firstBehavior(params)["id"] = 0;
     const errors = validateBookmark(params);
     expect(codes(errors)).toContain("B22_COHORT_BEHAVIOR_ID");
   });
@@ -343,15 +343,15 @@ describe("TestCohortShowValidation", () => {
   it("test_b22_missing_id_with_raw_cohort_no_error", () => {
     const params = validCohortShow();
     const behavior = firstBehavior(params);
-    delete behavior.id;
-    behavior.raw_cohort = { selector: {}, behaviors: {} };
+    delete behavior["id"];
+    behavior["raw_cohort"] = { selector: {}, behaviors: {} };
     const errors = validateBookmark(params);
     expect(codes(errors)).not.toContain("B22_COHORT_BEHAVIOR_ID");
   });
 
   it("test_b23_wrong_resource_type_returns_error", () => {
     const params = validCohortShow();
-    firstBehavior(params).resourceType = "events";
+    firstBehavior(params)["resourceType"] = "events";
     const errors = validateBookmark(params);
     expect(codes(errors)).toContain("B23_COHORT_RESOURCE_TYPE");
   });
@@ -364,7 +364,7 @@ describe("TestCohortShowValidation", () => {
 
   it("test_b24_wrong_math_returns_error", () => {
     const params = validCohortShow();
-    firstMeasurement(params).math = "total";
+    firstMeasurement(params)["math"] = "total";
     const errors = validateBookmark(params);
     expect(codes(errors)).toContain("B24_COHORT_MATH");
   });

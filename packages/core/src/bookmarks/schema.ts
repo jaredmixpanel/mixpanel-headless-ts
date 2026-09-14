@@ -865,7 +865,7 @@ function showClauseDiscriminator(v: unknown): string {
   let clauseType: unknown;
   let hasFormula: boolean;
   if (isPythonDict(v)) {
-    clauseType = Object.hasOwn(v, "type") ? v.type : undefined;
+    clauseType = Object.hasOwn(v, "type") ? v["type"] : undefined;
     hasFormula = Object.hasOwn(v, "formula");
   } else {
     clauseType = undefined;
