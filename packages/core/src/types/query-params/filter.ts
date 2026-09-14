@@ -20,13 +20,16 @@
  *   never stringified.
  */
 
-import { pythonStrip } from "../../compat/index.js";
+import { pythonRepr, pythonStrip } from "../../compat/index.js";
 import { ParamTypeError, ParamValidationError } from "../../errors.js";
-import type {
-  CustomPropertyType,
-  FilterDateUnit,
-  FilterOperator,
-  FilterPropertyType,
+import { ValueError } from "../../query/python-builtins.js";
+import {
+  FILTER_OPERATOR_VALUES,
+  type CustomPropertyType,
+  type FilterDateUnit,
+  type FilterOperator,
+  type FilterOperatorInput,
+  type FilterPropertyType,
 } from "../literals.js";
 // Runtime import cycle note: cohort.ts imports Filter for its selector
 // builders and filter.ts imports sanitizeRawCohort for inline-definition
@@ -263,14 +266,28 @@ export type FilterValue =
   | ReadonlyArray<Readonly<Record<string, unknown>>>
   | null;
 
+/**
+ * Value shapes the {@link Filter} constructor accepts for `_value` — the
+ * stored {@link FilterValue} union plus the bare / singly-wrapped booleans
+ * that the boolean-equality collapse (`equals` + `true` on a `boolean`
+ * property → `true` / `null`) consumes. Python's dataclass is untyped at
+ * runtime, so `Filter("flag", "equals", True, "boolean")` is legal there;
+ * this alias is the typed TS spelling of that call.
+ */
+export type FilterValueInput = FilterValue | boolean | readonly boolean[];
+
 /** Declared constructor fields of {@link Filter} (Python field order). */
 export interface FilterFields {
   /** Property to filter on (name, ref, or inline). */
   readonly _property: PropertySpec;
-  /** Internal operator string (one of the `FilterOperator` values). */
-  readonly _operator: FilterOperator;
+  /**
+   * Operator string: a `FilterOperator` wire spelling or a factory-method
+   * alias (`"greater_than"`, `"is_set"`, ...); aliases are normalized to
+   * the wire spelling at construction.
+   */
+  readonly _operator: FilterOperatorInput;
   /** Value(s) to compare against. */
-  readonly _value: FilterValue;
+  readonly _value: FilterValueInput;
   /** Data type of the property. Default: `"string"`. */
   readonly _property_type?: FilterPropertyType;
   /** Resource type to filter. Default: `"events"`. */
@@ -283,15 +300,159 @@ export interface FilterFields {
   readonly _list_item_quantifier?: "any" | "all" | null;
 }
 
+/** Runtime view of `FilterOperator` for construction-time validation. */
+const FILTER_WIRE_OPERATORS: ReadonlySet<string> = new Set<string>(
+  FILTER_OPERATOR_VALUES,
+);
+
+/**
+ * Spellings accepted as `_operator` on direct construction and normalized
+ * — port of `types._FILTER_OPERATOR_ALIASES` (Python PR #236).
+ *
+ * Each key is the Python name of a public `Filter` factory whose spelling
+ * differs from the wire operator it emits; the value is that wire
+ * operator. `equals`, `contains` and `list_contains` are absent because
+ * their names already *are* the wire spelling. The constructor rewrites
+ * an alias to its wire operator so
+ * `new Filter({ _property: "gold", _operator: "greater_than", _value: 10, _property_type: "number" })`
+ * serializes exactly like `Filter.greaterThan("gold", 10)`.
+ *
+ * Two entries also keep the segmentation `where` builder's wider operator
+ * map constructible: `"between"` (a factory name) and `"is equal to"`
+ * (not a factory name) are `NUMBER_OPERATOR_MAP` rows outside the
+ * literal; their targets map to the same segfilter operators (`><` and
+ * `==`), so normalizing them changes nothing on the wire.
+ *
+ * The key type is `Exclude<FilterOperatorInput, FilterOperator>`, so the
+ * compiler holds this table and the `FilterOperatorInput` literal in
+ * lockstep (a missing or extra key is a type error).
+ *
+ * @internal Exported for the factory-name lockstep unit test only.
+ */
+export const FILTER_OPERATOR_ALIASES: Readonly<
+  Record<Exclude<FilterOperatorInput, FilterOperator>, FilterOperator>
+> = Object.freeze({
+  not_equals: "does not equal",
+  not_contains: "does not contain",
+  greater_than: "is greater than",
+  less_than: "is less than",
+  between: "is between",
+  not_between: "not between",
+  at_least: "is at least",
+  at_most: "is at most",
+  is_set: "is set",
+  is_not_set: "is not set",
+  starts_with: "starts with",
+  ends_with: "ends with",
+  is_true: "true",
+  is_false: "false",
+  in_cohort: "contains",
+  not_in_cohort: "does not contain",
+  on: "was on",
+  not_on: "was not on",
+  before: "was before",
+  since: "was since",
+  in_the_last: "was in the",
+  not_in_the_last: "was not in the",
+  date_between: "was between",
+  date_not_between: "was not between",
+  in_the_next: "was in the next",
+  // Segfilter-compat spelling: a NUMBER_OPERATOR_MAP row in
+  // query/segfilter.ts that pre-dates the FilterOperator literal.
+  // `equals` maps to the same `==` there, so output is unchanged.
+  "is equal to": "equals",
+});
+
+/** The only operators the platform accepts for `filterType == "boolean"`. */
+const BOOLEAN_FILTER_OPERATORS: ReadonlySet<string> = new Set([
+  "true",
+  "false",
+]);
+
+/**
+ * Python-`repr` a rejected operator or value for an error message, falling
+ * back to `String()` for shapes outside the `PythonValue` domain (class
+ * instances, `undefined`, functions) so the guard itself never throws
+ * anything but its own `ValueError`.
+ *
+ * @param value - The rejected value.
+ * @returns Its Python-style repr, or `String(value)` when un-repr-able.
+ */
+function safeRepr(value: unknown): string {
+  try {
+    return pythonRepr(value as never);
+  } catch {
+    return String(value);
+  }
+}
+
+/**
+ * Build the `ValueError` text for an operator `Filter` cannot accept —
+ * port of `types._unknown_filter_operator_message`. Shared by the
+ * non-string guard and the literal-membership guard so both failure modes
+ * read identically.
+ *
+ * @param operator - The rejected `_operator` value (any type).
+ * @returns A message naming the operator, listing the valid wire
+ *   operators, and pointing at the factory methods and the accepted
+ *   alias spellings.
+ */
+function unknownFilterOperatorMessage(operator: unknown): string {
+  const wire = [...FILTER_WIRE_OPERATORS].sort();
+  const aliases = Object.keys(FILTER_OPERATOR_ALIASES).sort();
+  return (
+    `Unknown Filter operator ${safeRepr(operator)}. Valid operators: ` +
+    `${pythonRepr(wire)}. Prefer the factory methods ` +
+    "(Filter.equals(), Filter.greater_than(), Filter.is_set(), " +
+    "Filter.is_true(), ...); their names are also accepted as " +
+    `operator aliases: ${pythonRepr(aliases)}.`
+  );
+}
+
+/**
+ * Extract the bool a directly-constructed boolean-equality Filter carries
+ * — port of `types._boolean_filter_value`.
+ *
+ * @param value - Raw `_value` payload: `true` / `false` or a one-element
+ *   array wrapping one (the `Filter.equals` list convention).
+ * @returns The bool, or `null` when `value` is not a bare or singly-wrapped
+ *   bool (`1` / `0` and strings deliberately do not qualify).
+ */
+function booleanFilterValue(value: unknown): boolean | null {
+  if (typeof value === "boolean") return value;
+  if (Array.isArray(value) && value.length === 1) {
+    const first: unknown = value[0];
+    if (typeof first === "boolean") return first;
+  }
+  return null;
+}
+
 /**
  * Represents a typed filter condition on a property — TS port of
  * `types.Filter`.
  *
- * Constructed exclusively via the static factories in the public API —
- * each maps to specific filterType/filterOperator/filterValue formats in
- * the bookmark JSON. The field constructor mirrors the Python dataclass
- * constructor (codec reconstruction reaches it, so the `__post_init__`
- * guards fire on decode too).
+ * The static factories (`Filter.equals`, `Filter.greaterThan`,
+ * `Filter.isSet`, ...) are the recommended way to build a Filter: each one
+ * maps to a specific filterType / filterOperator / filterValue format in
+ * the bookmark JSON. Direct construction is supported and validated
+ * (Python PR #236): `_operator` must be a `FilterOperator` member or a
+ * factory-method name in its Python spelling (`"greater_than"`,
+ * `"is_set"`, ...), which the constructor normalizes to the wire spelling
+ * so both paths serialize identically. Anything else throws `ValueError`
+ * at construction instead of surfacing as an HTTP 400 from the query API.
+ * The field constructor mirrors the Python dataclass constructor +
+ * `__post_init__`; the conformance codec bypasses it via
+ * {@link filterUnchecked} exactly as Python's `_filter_unchecked` does.
+ *
+ * @example
+ * ```typescript
+ * const f2 = Filter.greaterThan("age", 18);
+ * // Direct construction accepts the factory-method spelling as an alias
+ * new Filter({ _property: "age", _operator: "greater_than", _value: 18, _property_type: "number" });
+ * // -> same fields as f2
+ * new Filter({ _property: "won", _operator: "equals", _value: true, _property_type: "boolean" });
+ * // -> same fields as Filter.isTrue("won")
+ * ```
  */
 export class Filter {
   /**
@@ -354,11 +515,39 @@ export class Filter {
   readonly _list_item_quantifier: "any" | "all" | null;
 
   /**
-   * Reconstruct a filter from its declared fields (mirror of the Python
-   * dataclass constructor; `__post_init__` guards fire here).
+   * Construct a filter from its declared fields (mirror of the Python
+   * dataclass constructor; the `__post_init__` guards fire here).
+   *
+   * Runs on every construction, including the static factories (whose
+   * output is already canonical and passes through untouched). In Python
+   * source order:
+   *
+   * 1. `_operator` must be a string; a factory-method spelling in
+   *    {@link FILTER_OPERATOR_ALIASES} (`"greater_than"`, `"is_set"`, ...)
+   *    is rewritten to the wire operator that factory emits, and the
+   *    result must be a `FilterOperator` member.
+   * 2. The effective property type is derived the same way
+   *    `buildFilterEntry` derives `filterType`: an `InlineCustomProperty`
+   *    with a declared `property_type` wins over `_property_type`.
+   * 3. On a `boolean` property, `equals` / `does not equal` with a bool
+   *    value collapse to `true` / `false` with `_value = null`, matching
+   *    {@link isTrue} / {@link isFalse}; any other operator on a boolean
+   *    property is rejected.
+   * 4. `true` / `false` (however spelled) take no value: a non-`null`
+   *    `_value` is rejected on every property type, because the platform
+   *    serializes boolean filters with `filterValue: null`.
+   * 5. The pre-existing `list_contains` shape guards run last.
+   *
+   * Already-valid input is never rewritten: a wire operator and its value
+   * serialize exactly as given.
    *
    * @param fields - Declared fields; absent optionals take the Python
    *   defaults.
+   * @throws ValueError - If `_operator` is not a string, is neither a
+   *   `FilterOperator` member nor a known alias, is an operator other than
+   *   `true` / `false` on a boolean property, or is `true` / `false` with
+   *   a non-`null` value. Plain (uncoded) `ValueError`, as in Python: the
+   *   contract pins the coded-guard registry, so no code was registered.
    * @throws ParamValidationError - `LC1_MISSING_ITEM_FILTERS` /
    *   `LC2_MISSING_QUANTIFIER` when `_operator === "list_contains"` but
    *   the corresponding list-contains field is `null` (construct via
@@ -366,8 +555,6 @@ export class Filter {
    */
   constructor(fields: FilterFields) {
     this._property = fields._property;
-    this._operator = fields._operator;
-    this._value = fields._value;
     this._property_type =
       fields._property_type === undefined ? "string" : fields._property_type;
     this._resource_type =
@@ -375,9 +562,63 @@ export class Filter {
     this._date_unit = fields._date_unit ?? null;
     this._list_item_filters = fields._list_item_filters ?? null;
     this._list_item_quantifier = fields._list_item_quantifier ?? null;
-    // __post_init__ (Python source order): only the list_contains mode
-    // is validated here; other operator modes rely on factory-only
-    // validation.
+    // __post_init__ (Python source order).
+    const raw: unknown = fields._operator;
+    // typeof first: a list/dict/null operator must not reach the set
+    // lookup (Python: TypeError unhashable) — it gets the same ValueError.
+    if (typeof raw !== "string") {
+      throw new ValueError(unknownFilterOperatorMessage(raw));
+    }
+    const aliases: Readonly<Record<string, FilterOperator | undefined>> =
+      FILTER_OPERATOR_ALIASES;
+    let operator: string = Object.hasOwn(aliases, raw)
+      ? (aliases[raw] as FilterOperator)
+      : raw;
+    if (!FILTER_WIRE_OPERATORS.has(operator)) {
+      throw new ValueError(unknownFilterOperatorMessage(operator));
+    }
+    // Mirror buildFilterEntry: an inline custom property's declared type
+    // overrides _property_type for filterType / defaultType.
+    const prop = this._property;
+    let effectiveType: string = this._property_type;
+    if (prop instanceof InlineCustomProperty && prop.property_type !== null) {
+      effectiveType = prop.property_type;
+    }
+    let value: unknown = fields._value;
+    if (
+      effectiveType === "boolean" &&
+      (operator === "equals" || operator === "does not equal")
+    ) {
+      const truth = booleanFilterValue(value);
+      if (truth !== null) {
+        operator = truth === (operator === "equals") ? "true" : "false";
+        value = null;
+      }
+    }
+    if (
+      effectiveType === "boolean" &&
+      !BOOLEAN_FILTER_OPERATORS.has(operator)
+    ) {
+      throw new ValueError(
+        `Filter operator ${pythonRepr(operator)} is not valid for a boolean property ` +
+          `(${safeRepr(prop)}); boolean filters only support 'true' and 'false' ` +
+          "with no value. Use Filter.is_true() / Filter.is_false(), or pass " +
+          "value True / False with operator 'equals'.",
+      );
+    }
+    if (BOOLEAN_FILTER_OPERATORS.has(operator) && value !== null) {
+      throw new ValueError(
+        `Filter operator ${pythonRepr(operator)} takes no value (got ` +
+          `${safeRepr(value)}); the platform serializes boolean filters with ` +
+          "filterValue null. Use Filter.is_true() / Filter.is_false(), or " +
+          "pass value True / False with operator 'equals' on a boolean " +
+          "property.",
+      );
+    }
+    this._operator = operator as FilterOperator;
+    // A bare bool that did NOT collapse (non-boolean property type) is
+    // stored as given, exactly as Python's untyped dataclass does.
+    this._value = value as FilterValue;
     if (this._operator === "list_contains") {
       // LC1_MISSING_ITEM_FILTERS: list_contains requires item filters.
       if (this._list_item_filters === null) {
@@ -1247,4 +1488,69 @@ export class Filter {
       _list_item_quantifier: quantifier,
     });
   }
+}
+
+/**
+ * Rebuild a {@link Filter} field-for-field WITHOUT running the constructor
+ * guards — port of `types._filter_unchecked` (Python PR #236).
+ *
+ * `new Filter(...)` validates `_operator` against `FilterOperator` and
+ * normalizes alias spellings. Two callers legitimately need the
+ * pre-validation object instead:
+ *
+ * - the conformance codec (`types/vector-codecs.ts`), which must rehydrate
+ *   a *recorded* Filter faithfully — pinned vectors capture the downstream
+ *   builders' own guard behaviour (engage `ES13`, segfilter `SG1` / `SG2`
+ *   / `SG3`) on an already-constructed Filter, so re-validating or
+ *   rewriting the fields on the way in would change what the builder
+ *   under test sees;
+ * - tests and the differential harness that drive those same builder
+ *   guards with operators the constructor now rejects.
+ *
+ * Library code never calls it.
+ *
+ * @param values - Dataclass field values keyed by field name. Fields with
+ *   a dataclass default may be omitted; `_property`, `_operator` and
+ *   `_value` are required.
+ * @returns A Filter whose fields hold exactly the given values, with no
+ *   alias normalization, operator validation, or `list_contains` shape
+ *   check applied.
+ * @throws TypeError - If a required field is missing or an unknown field
+ *   name is supplied.
+ * @internal
+ */
+export function filterUnchecked(
+  values: Readonly<Record<string, unknown>>,
+): Filter {
+  const remaining: Record<string, unknown> = { ...values };
+  const take = (name: string, fallback?: () => unknown): unknown => {
+    if (Object.hasOwn(remaining, name)) {
+      const v = remaining[name];
+      delete remaining[name];
+      return v;
+    }
+    if (fallback === undefined) {
+      throw new TypeError(
+        `_filter_unchecked() missing required field ${pythonRepr(name)}`,
+      );
+    }
+    return fallback();
+  };
+  const instance = Object.create(Filter.prototype) as Record<string, unknown>;
+  // Python `dataclasses.fields(Filter)` order.
+  instance["_property"] = take("_property");
+  instance["_operator"] = take("_operator");
+  instance["_value"] = take("_value");
+  instance["_property_type"] = take("_property_type", () => "string");
+  instance["_resource_type"] = take("_resource_type", () => "events");
+  instance["_date_unit"] = take("_date_unit", () => null);
+  instance["_list_item_filters"] = take("_list_item_filters", () => null);
+  instance["_list_item_quantifier"] = take("_list_item_quantifier", () => null);
+  const unknown = Object.keys(remaining).sort();
+  if (unknown.length > 0) {
+    throw new TypeError(
+      `_filter_unchecked() got unknown Filter field(s): ${pythonRepr(unknown)}`,
+    );
+  }
+  return instance as unknown as Filter;
 }

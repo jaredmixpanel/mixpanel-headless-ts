@@ -35,10 +35,7 @@ import {
   ParamValidationError,
 } from "../../src/errors.js";
 import { Filter } from "../../src/types/index.js";
-import type {
-  FilterOperator,
-  FilterPropertyType,
-} from "../../src/types/literals.js";
+import { filterUnchecked } from "../../src/types/query-params/filter.js";
 import {
   RESOURCE_TYPE_MAP,
   buildDatetimeFilter,
@@ -210,9 +207,13 @@ describe("segfilter number operators", () => {
   it("number 'is equal to' maps to '==' with stringified operand", () => {
     // Backward-compat dispatch alias; no Filter factory produces it
     // (Python marks the same line `# type: ignore[arg-type]`).
-    const f = new Filter({
+    // Python PR #236: the constructor now normalizes "is equal to" to
+    // "equals"; this probe drives the raw NUMBER_OPERATOR_MAP row, so it
+    // bypasses the constructor exactly as Python's `_segfilter_row_sweep`
+    // does via `_filter_unchecked`.
+    const f = filterUnchecked({
       _property: "count",
-      _operator: "is equal to" as FilterOperator,
+      _operator: "is equal to",
       _value: 42,
       _property_type: "number",
       _resource_type: "events",
@@ -503,9 +504,9 @@ describe("convertDateFormat", () => {
 
 describe("segfilter edge cases", () => {
   it("unknown operator for a property type raises the string guard", () => {
-    const f = new Filter({
+    const f = filterUnchecked({
       _property: "x",
-      _operator: "magical_unicorn" as FilterOperator,
+      _operator: "magical_unicorn",
       _value: "y",
       _property_type: "string",
       _resource_type: "events",
@@ -525,9 +526,9 @@ describe("segfilter edge cases", () => {
   });
 
   it("unknown number operator raises the number guard", () => {
-    const f = new Filter({
+    const f = filterUnchecked({
       _property: "x",
-      _operator: "magical_unicorn" as FilterOperator,
+      _operator: "magical_unicorn",
       _value: 1,
       _property_type: "number",
       _resource_type: "events",
@@ -545,9 +546,9 @@ describe("segfilter edge cases", () => {
   });
 
   it("unknown datetime operator raises the datetime guard", () => {
-    const f = new Filter({
+    const f = filterUnchecked({
       _property: "x",
-      _operator: "magical_unicorn" as FilterOperator,
+      _operator: "magical_unicorn",
       _value: "2026-01-01",
       _property_type: "datetime",
       _resource_type: "events",
@@ -603,11 +604,13 @@ function filterWith(
   value: unknown,
   propertyType: string,
 ): Filter {
-  return new Filter({
+  // Python PR #236: `_filter_with` now goes through `_filter_unchecked`
+  // so deliberately invalid operators still reach the builder guards.
+  return filterUnchecked({
     _property: "x",
-    _operator: operator as FilterOperator,
-    _value: value as string,
-    _property_type: propertyType as FilterPropertyType,
+    _operator: operator,
+    _value: value,
+    _property_type: propertyType,
     _resource_type: "events",
   });
 }

@@ -70,12 +70,8 @@ import {
   CohortDefinition,
   Filter,
 } from "../../src/types/index.js";
-import type {
-  FilterFields,
-  FilterOperator,
-  FilterValue,
-  PropertySpec,
-} from "../../src/types/index.js";
+import { filterUnchecked } from "../../src/types/query-params/filter.js";
+import type { FilterFields } from "../../src/types/index.js";
 import {
   extractCohortFilter,
   filterToSelector,
@@ -102,10 +98,13 @@ function rawFilter(
   value: unknown,
   extra?: Partial<FilterFields>,
 ): Filter {
-  return new Filter({
-    _property: property as PropertySpec,
-    _operator: operator as FilterOperator,
-    _value: value as FilterValue,
+  // Python PR #236: the constructor now rejects unknown operators, so the
+  // ES13 probes rebuild through the unchecked path (Python
+  // `make_unchecked_filter`), exactly as the conformance codec does.
+  return filterUnchecked({
+    _property: property,
+    _operator: operator,
+    _value: value,
     ...extra,
   });
 }
