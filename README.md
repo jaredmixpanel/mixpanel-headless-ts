@@ -1,7 +1,7 @@
 # Mixpanel Headless for TypeScript
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)](https://www.typescriptlang.org/)
-[![Node](https://img.shields.io/badge/node-%3E%3D20-339933)](https://nodejs.org/)
+[![Node](https://img.shields.io/badge/node-%3E%3D22.12-339933)](https://nodejs.org/)
 [![Runtime](https://img.shields.io/badge/runtime-Node%20%2B%20Browser-blue)](#which-package-do-i-need)
 
 > **⚠️ Pre-release software.** These packages are not yet published to npm and APIs may
@@ -12,7 +12,7 @@
 discovery, entity management, streaming data extraction, and session replay analysis.
 Fully typed, isomorphic (Node.js and browser), and continuously verified against the
 battle-tested [Python `mixpanel_headless`](https://github.com/mixpanel/mixpanel-headless)
-library it ports — 3,262 conformance vectors, zero divergence.
+library it ports — 3,453 conformance vectors, zero divergence.
 
 ```typescript
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -58,11 +58,11 @@ shapes. Mixpanel Headless wraps all of it in one consistent, typed surface:
 
 ## Which package do I need?
 
-| Package                      | Runtime      | What's inside                                                                                                                                                                                          |
-| ---------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `@mixpanel-headless/node`    | Node.js ≥ 20 | Everything for servers, scripts, and CI: config-file accounts (`~/.mp/config.toml`), env-var auth, programmatic OAuth login, and ready-made `accounts` / `session` / `targets` management. Start here. |
-| `@mixpanel-headless/browser` | Browsers     | Bearer-token and redirect-PKCE auth, injectable credential storage, and a `Workspace` factory gated to browser-safe capabilities.                                                                      |
-| `@mixpanel-headless/core`    | Both         | The isomorphic engine: the `Workspace` facade, query builders, result types, and the error hierarchy. Zero Node dependencies — the platform packages wire it up for you.                               |
+| Package                      | Runtime         | What's inside                                                                                                                                                                                          |
+| ---------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@mixpanel-headless/node`    | Node.js ≥ 22.12 | Everything for servers, scripts, and CI: config-file accounts (`~/.mp/config.toml`), env-var auth, programmatic OAuth login, and ready-made `accounts` / `session` / `targets` management. Start here. |
+| `@mixpanel-headless/browser` | Browsers        | Bearer-token and redirect-PKCE auth, injectable credential storage, and a `Workspace` factory gated to browser-safe capabilities.                                                                      |
+| `@mixpanel-headless/core`    | Both            | The isomorphic engine: the `Workspace` facade, query builders, result types, and the error hierarchy. Zero Node dependencies — the platform packages wire it up for you.                               |
 
 All packages are ESM, ship TypeScript types, and share the same `Workspace` API — code
 written against core runs in either environment.
@@ -745,15 +745,16 @@ names with three rules:
 | `funnel.overall_conversion_rate`         | `funnel.overall_conversion_rate`               | Result fields stay snake_case                                    |
 
 **Parity is verified, not aspirational.** Every release replays a conformance corpus of
-**3,262 test vectors extracted from the Python implementation** — covering outputs,
+**3,453 test vectors extracted from the Python implementation** — covering outputs,
 error behavior, and the exact HTTP requests made — with zero failures, and a
 cross-language differential oracle continuously fuzzes the two implementations against
-each other. Even Python-specific rendering quirks (float formatting, `str()` semantics)
+each other (run records: [`conformance-runner/GATE.md`](conformance-runner/GATE.md) and
+[`differential/oracle/RUN.md`](differential/oracle/RUN.md)). Even Python-specific rendering quirks (float formatting, `str()` semantics)
 are reproduced so results match byte-for-byte across languages.
 
 ## Requirements
 
-- **Node.js ≥ 20** for `@mixpanel-headless/node`; any evergreen browser for
+- **Node.js ≥ 22.12** for `@mixpanel-headless/node`; any evergreen browser for
   `@mixpanel-headless/browser`.
 - **ESM only.** All packages are native ES modules.
 - **TypeScript optional but rewarding** — the packages ship complete types under
