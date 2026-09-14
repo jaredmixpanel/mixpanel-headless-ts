@@ -60,6 +60,13 @@ export interface MockWorkspaceClient {
   readonly insightsCalls: Array<Record<string, unknown>>;
   /** Every `arbFunnelsQuery` body, in order. */
   readonly arbFunnelsCalls: Array<Record<string, unknown>>;
+  /** Every `insightsQuery` options bag (Python's `workspace_id` /
+   * `inject_workspace_id` kwargs), in order — parallel to
+   * {@link insightsCalls}. */
+  readonly insightsOptions: Array<Record<string, unknown> | undefined>;
+  /** Every `arbFunnelsQuery` options bag, in order — parallel to
+   * {@link arbFunnelsCalls}. */
+  readonly arbFunnelsOptions: Array<Record<string, unknown> | undefined>;
   /** Install the `export_profiles_page` behaviour. */
   setPageHandler(handler: PageHandler): void;
   /** Install a fixed `engage_stats` response. */
@@ -87,6 +94,8 @@ export function mockWorkspaceClient(
   const engageStatsCalls: Array<Record<string, unknown>> = [];
   const insightsCalls: Array<Record<string, unknown>> = [];
   const arbFunnelsCalls: Array<Record<string, unknown>> = [];
+  const insightsOptions: Array<Record<string, unknown> | undefined> = [];
+  const arbFunnelsOptions: Array<Record<string, unknown> | undefined> = [];
   let pageHandler: PageHandler = () =>
     new ProfilePageResult({
       profiles: [],
@@ -126,12 +135,20 @@ export function mockWorkspaceClient(
       engageStatsCalls.push(options);
       return Promise.resolve(engageStats as JsonValue);
     },
-    insightsQuery: (body: Record<string, unknown>): Promise<JsonValue> => {
+    insightsQuery: (
+      body: Record<string, unknown>,
+      options?: Record<string, unknown>,
+    ): Promise<JsonValue> => {
       insightsCalls.push(body);
+      insightsOptions.push(options);
       return Promise.resolve(insightsResponse as JsonValue);
     },
-    arbFunnelsQuery: (body: Record<string, unknown>): Promise<JsonValue> => {
+    arbFunnelsQuery: (
+      body: Record<string, unknown>,
+      options?: Record<string, unknown>,
+    ): Promise<JsonValue> => {
       arbFunnelsCalls.push(body);
+      arbFunnelsOptions.push(options);
       return Promise.resolve(arbFunnelsResponse as JsonValue);
     },
   };
@@ -142,6 +159,8 @@ export function mockWorkspaceClient(
     engageStatsCalls,
     insightsCalls,
     arbFunnelsCalls,
+    insightsOptions,
+    arbFunnelsOptions,
     setPageHandler(handler: PageHandler): void {
       pageHandler = handler;
     },

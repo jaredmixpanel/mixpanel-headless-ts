@@ -72,6 +72,7 @@ import {
 } from "./services/discovery.js";
 import {
   LiveQueryService,
+  type FlowMode,
   type LiveActivityFeedOptions,
   type LiveEventCountsOptions,
   type LiveFrequencyOptions,
@@ -509,6 +510,7 @@ import {
 import {
   buildPageKwargs,
   buildStatsKwargs,
+  flowModeFromParams,
   resolveAndBuildFlowParams,
   resolveAndBuildFunnelParams,
   resolveAndBuildParams,
@@ -934,6 +936,12 @@ export interface WorkspaceQueryOptions {
   readonly time_comparison?: TimeComparison | null | undefined;
   /** Optional data group ID. */
   readonly data_group_id?: number | null | undefined;
+  /** Segments to return, 1 to 50000. Default `null` keeps the 3000 the
+   * Mixpanel UI uses. Raise it for a high-cardinality breakdown, and
+   * check `result.meta["is_segmentation_limit_hit"]` to see whether the
+   * answer was still truncated. Ignored by {@link Workspace.buildParams}
+   * (an execution setting the params do not store). */
+  readonly limit?: number | null | undefined;
   /** Clock seam threaded into the time-section builder. */
   readonly today?: TodayFn | undefined;
 }
@@ -982,6 +990,9 @@ export interface WorkspaceFunnelQueryOptions {
   readonly time_comparison?: TimeComparison | null | undefined;
   /** Optional data group ID. */
   readonly data_group_id?: number | null | undefined;
+  /** Segments to return, 1 to 50000. Default `null` keeps the 3000 the
+   * Mixpanel UI uses. Ignored by {@link Workspace.buildFunnelParams}. */
+  readonly limit?: number | null | undefined;
   /** Clock seam. */
   readonly today?: TodayFn | undefined;
 }
@@ -1062,6 +1073,9 @@ export interface WorkspaceRetentionQueryOptions {
   readonly time_comparison?: TimeComparison | null | undefined;
   /** Optional data group ID. */
   readonly data_group_id?: number | null | undefined;
+  /** Segments to return, 1 to 50000. Default `null` keeps the 3000 the
+   * Mixpanel UI uses. Ignored by {@link Workspace.buildRetentionParams}. */
+  readonly limit?: number | null | undefined;
   /** Clock seam. */
   readonly today?: TodayFn | undefined;
 }
@@ -1116,6 +1130,55 @@ export interface WorkspaceUserQueryOptions {
   readonly include_all_users?: boolean | undefined;
   /** Clock seam for the U8 `as_of` future check. */
   readonly today?: TodayFn | undefined;
+}
+
+/**
+ * Keyword-only arguments of {@link Workspace.runParams},
+ * {@link Workspace.runFunnelParams} and
+ * {@link Workspace.runRetentionParams} (`workspace.py:2518-2523`,
+ * `:3340-3345`, `:4584-4589`).
+ */
+export interface WorkspaceRunParamsOptions {
+  /** Segments to return, 1 to 50000. Default `null` keeps the 3000 the
+   * Mixpanel UI uses. */
+  readonly limit?: number | null | undefined;
+  /** Optional data view to run under. Wins over the pinned session
+   * workspace. */
+  readonly workspace_id?: number | null | undefined;
+}
+
+/**
+ * Keyword-only arguments of {@link Workspace.runFlowParams}
+ * (`workspace.py:4170-4175`).
+ */
+export interface WorkspaceRunFlowParamsOptions {
+  /** Flow chart mode. `null` / `undefined` (default) derives it from the
+   * params: `flows_merge_type` (`"tree"`, `"list"` for paths, `"graph"`
+   * for sankey) when present, else `chartType` (`"top-paths"` or
+   * `"paths"` for paths, `"tree"`, anything else sankey). Params from
+   * {@link Workspace.buildFlowParams} always resolve to the mode they
+   * were built with. Pass a value to override. */
+  readonly mode?: FlowMode | null | undefined;
+  /** Optional data view to run under. Wins over the pinned session
+   * workspace. */
+  readonly workspace_id?: number | null | undefined;
+}
+
+/**
+ * Keyword-only arguments of {@link Workspace.runUserParams}
+ * (`workspace.py:10141-10148`) — the execution settings
+ * {@link Workspace.buildUserParams} does not store, with the same
+ * defaults as {@link Workspace.queryUser}.
+ */
+export interface WorkspaceRunUserParamsOptions {
+  /** Maximum profiles to return in profiles mode. `null` fetches all
+   * matching profiles. Ignored in aggregate mode. Default `1`. */
+  readonly limit?: number | null | undefined;
+  /** Fetch profile pages concurrently. Ignored when `limit` is `1` or
+   * in aggregate mode. Default `false`. */
+  readonly parallel?: boolean | undefined;
+  /** Maximum concurrent workers for parallel fetching. Default `5`. */
+  readonly workers?: number | undefined;
 }
 
 /**
@@ -1798,8 +1861,10 @@ export class Workspace {
    * @param events - Event name(s): a string, a `Metric`, a
    *   `CohortMetric`, a `Formula`, or a sequence mixing them (Formula
    *   members are extracted and appended as formula show clauses).
-   * @param options - The 17 keyword-only knobs.
+   * @param options - The 17 keyword-only knobs plus `limit` (segments
+   *   to return, 1 to 50000; default 3000).
    * @returns The series data and metadata.
+   * @throws ValueError - `limit` is not an integer from 1 to 50000.
    * @throws BookmarkValidationError - Argument or bookmark validation.
    * @throws AuthenticationError | QueryError | RateLimitError - Wire
    *   failures.
@@ -1814,7 +1879,43 @@ export class Workspace {
     options: WorkspaceQueryOptions = {},
   ): Promise<QueryResult> {
     const params = this.#resolveQueryParams(events, options);
-    return this.liveQueryService.query(params, this.#projectId());
+    return this.liveQueryService.query(params, this.#projectId(), {
+      limit: options.limit ?? null,
+    });
+  }
+
+  /**
+   * Run pre-built insights bookmark params against the Mixpanel API
+   * (`run_params`, `workspace.py:2518-2560`).
+   *
+   * The execution half of {@link buildParams}. Use it when the params
+   * need editing before they run, or when they express something the
+   * typed builders do not cover, such as a lookup-table join breakdown.
+   *
+   * @param params - Bookmark params dict, normally from
+   *   {@link buildParams}. Sent as the request `bookmark`.
+   * @param options - `limit` (segments to return, 1 to 50000; default
+   *   3000) and `workspace_id` (data view override).
+   * @returns The series data and metadata.
+   * @throws ValueError - `limit` is not an integer from 1 to 50000.
+   * @throws AuthenticationError | QueryError | RateLimitError - Wire
+   *   failures.
+   *
+   * @example
+   * ```typescript
+   * const params = await ws.buildParams("Login", { group_by: "$city", last: 7 });
+   * params["sections"]["filter"] = myCustomFilter;
+   * const result = await ws.runParams(params, { limit: 50_000 });
+   * ```
+   */
+  async runParams(
+    params: Readonly<Record<string, unknown>>,
+    options: WorkspaceRunParamsOptions = {},
+  ): Promise<QueryResult> {
+    return this.liveQueryService.query(params, this.#projectId(), {
+      limit: options.limit ?? null,
+      workspace_id: options.workspace_id ?? null,
+    });
   }
 
   /**
@@ -1878,8 +1979,10 @@ export class Workspace {
    * `workspace.py:3064-3200`).
    *
    * @param steps - Funnel steps (strings or `FunnelStep` objects).
-   * @param options - The 17 keyword-only knobs.
+   * @param options - The 17 keyword-only knobs plus `limit` (segments
+   *   to return, 1 to 50000; default 3000).
    * @returns Step data, conversion rates and metadata.
+   * @throws ValueError - `limit` is not an integer from 1 to 50000.
    * @throws BookmarkValidationError - Argument or bookmark validation.
    * @throws AuthenticationError | QueryError | RateLimitError - Wire
    *   failures.
@@ -1889,7 +1992,40 @@ export class Workspace {
     options: WorkspaceFunnelQueryOptions = {},
   ): Promise<FunnelQueryResult> {
     const params = this.#resolveFunnelParams(steps, options);
-    return this.liveQueryService.queryFunnel(params, this.#projectId());
+    return this.liveQueryService.queryFunnel(params, this.#projectId(), {
+      limit: options.limit ?? null,
+    });
+  }
+
+  /**
+   * Run pre-built funnel bookmark params against the Mixpanel API
+   * (`run_funnel_params`, `workspace.py:3340-3380`).
+   *
+   * The execution half of {@link buildFunnelParams}.
+   *
+   * @param params - Funnel bookmark params dict, normally from
+   *   {@link buildFunnelParams}. Sent as the request `bookmark`.
+   * @param options - `limit` (segments to return, 1 to 50000; default
+   *   3000) and `workspace_id` (data view override).
+   * @returns Step data, conversion rates and metadata.
+   * @throws ValueError - `limit` is not an integer from 1 to 50000.
+   * @throws AuthenticationError | QueryError | RateLimitError - Wire
+   *   failures.
+   *
+   * @example
+   * ```typescript
+   * const params = await ws.buildFunnelParams(["Signup", "Purchase"]);
+   * const result = await ws.runFunnelParams(params, { limit: 50_000 });
+   * ```
+   */
+  async runFunnelParams(
+    params: Readonly<Record<string, unknown>>,
+    options: WorkspaceRunParamsOptions = {},
+  ): Promise<FunnelQueryResult> {
+    return this.liveQueryService.queryFunnel(params, this.#projectId(), {
+      limit: options.limit ?? null,
+      workspace_id: options.workspace_id ?? null,
+    });
   }
 
   /**
@@ -1972,6 +2108,41 @@ export class Workspace {
   }
 
   /**
+   * Run pre-built flow bookmark params against the Mixpanel API
+   * (`run_flow_params`, `workspace.py:4170-4216`).
+   *
+   * The execution half of {@link buildFlowParams}. The chart mode is
+   * read from the params via {@link flowModeFromParams} unless
+   * `options.mode` overrides it.
+   *
+   * @param params - Flow bookmark params dict, normally from
+   *   {@link buildFlowParams}. Sent as the request `bookmark`.
+   * @param options - `mode` (override; default derived from the params)
+   *   and `workspace_id` (data view override).
+   * @returns Steps, flows, breakdowns and metadata.
+   * @throws AuthenticationError | QueryError | RateLimitError - Wire
+   *   failures.
+   *
+   * @example
+   * ```typescript
+   * const params = await ws.buildFlowParams("Login", { mode: "tree", last: 7 });
+   * const result = await ws.runFlowParams(params); // runs as tree
+   * ```
+   */
+  async runFlowParams(
+    params: Readonly<Record<string, unknown>>,
+    options: WorkspaceRunFlowParamsOptions = {},
+  ): Promise<FlowQueryResult> {
+    const resolvedMode = options.mode ?? flowModeFromParams(params);
+    return this.liveQueryService.queryFlow(
+      params,
+      this.#projectId(),
+      resolvedMode,
+      { workspace_id: options.workspace_id ?? null },
+    );
+  }
+
+  /**
    * Build validated flow bookmark params WITHOUT calling the API
    * (`build_flow_params`, `workspace.py:3988-4095`).
    *
@@ -2031,8 +2202,10 @@ export class Workspace {
    *
    * @param bornEvent - Event defining cohort membership.
    * @param returnEvent - Event defining return.
-   * @param options - The 15 keyword-only knobs.
+   * @param options - The 15 keyword-only knobs plus `limit` (segments
+   *   to return, 1 to 50000; default 3000).
    * @returns Cohort data, averages and metadata.
+   * @throws ValueError - `limit` is not an integer from 1 to 50000.
    * @throws BookmarkValidationError - Argument or bookmark validation.
    * @throws AuthenticationError | QueryError | RateLimitError - Wire
    *   failures.
@@ -2047,7 +2220,40 @@ export class Workspace {
       returnEvent,
       options,
     );
-    return this.liveQueryService.queryRetention(params, this.#projectId());
+    return this.liveQueryService.queryRetention(params, this.#projectId(), {
+      limit: options.limit ?? null,
+    });
+  }
+
+  /**
+   * Run pre-built retention bookmark params against the Mixpanel API
+   * (`run_retention_params`, `workspace.py:4584-4625`).
+   *
+   * The execution half of {@link buildRetentionParams}.
+   *
+   * @param params - Retention bookmark params dict, normally from
+   *   {@link buildRetentionParams}. Sent as the request `bookmark`.
+   * @param options - `limit` (segments to return, 1 to 50000; default
+   *   3000) and `workspace_id` (data view override).
+   * @returns Cohort data, averages and metadata.
+   * @throws ValueError - `limit` is not an integer from 1 to 50000.
+   * @throws AuthenticationError | QueryError | RateLimitError - Wire
+   *   failures.
+   *
+   * @example
+   * ```typescript
+   * const params = await ws.buildRetentionParams("Signup", "Login");
+   * const result = await ws.runRetentionParams(params, { limit: 50_000 });
+   * ```
+   */
+  async runRetentionParams(
+    params: Readonly<Record<string, unknown>>,
+    options: WorkspaceRunParamsOptions = {},
+  ): Promise<RetentionQueryResult> {
+    return this.liveQueryService.queryRetention(params, this.#projectId(), {
+      limit: options.limit ?? null,
+      workspace_id: options.workspace_id ?? null,
+    });
   }
 
   /**
@@ -2114,9 +2320,11 @@ export class Workspace {
    * Query user profiles from Mixpanel's Engage API (`query_user`,
    * `workspace.py:9722-9881`).
    *
-   * `mode="aggregate"` (the default) routes to the engage stats
-   * endpoint; `mode="profiles"` fetches pages sequentially, or
-   * concurrently when `parallel` is set and `limit !== 1`.
+   * Builds the engage params and hands them to {@link runUserParams},
+   * which routes on the params: an aggregate `action` key goes to the
+   * engage stats endpoint; anything else fetches profile pages
+   * sequentially, or concurrently when `parallel` is set and
+   * `limit !== 1`.
    *
    * @param options - The 19 keyword-only knobs.
    * @returns Profiles/aggregate payload with metadata.
@@ -2128,13 +2336,51 @@ export class Workspace {
     options: WorkspaceUserQueryOptions = {},
   ): Promise<UserQueryResult> {
     const limit = options.limit === undefined ? 1 : options.limit;
-    const mode = options.mode ?? "aggregate";
     const parallel = options.parallel ?? false;
     const workers = options.workers ?? 5;
     const params = this.#resolveUserParams(options);
 
-    // Route by mode
-    if (mode === "aggregate") {
+    return this.runUserParams(params, { limit, parallel, workers });
+  }
+
+  /**
+   * Run pre-built Engage API params against the Mixpanel API
+   * (`run_user_params`, `workspace.py:10141-10230`).
+   *
+   * The execution half of {@link buildUserParams}. The mode is read
+   * from the params: a dict that carries an aggregate `action` key runs
+   * as an aggregate query, any other dict runs as a profiles query.
+   * `limit`, `parallel` and `workers` are execution settings that
+   * {@link buildUserParams} does not store, so they are passed here
+   * with the same defaults as {@link queryUser}.
+   *
+   * @param params - Engage API params dict, normally from
+   *   {@link buildUserParams}.
+   * @param options - `limit` (default `1`; `null` fetches all),
+   *   `parallel` (default `false`) and `workers` (default `5`).
+   * @returns Profiles/aggregate payload with metadata.
+   * @throws AuthenticationError | QueryError | RateLimitError |
+   *   ServerError - Wire failures.
+   *
+   * @example
+   * ```typescript
+   * const params = await ws.buildUserParams({
+   *   mode: "profiles",
+   *   where: Filter.equals("plan", "premium"),
+   * });
+   * params["output_properties"] = JSON.stringify(["$email", "ltv"]);
+   * const result = await ws.runUserParams(params, { limit: 500, parallel: true });
+   * ```
+   */
+  async runUserParams(
+    params: ParamsDict,
+    options: WorkspaceRunUserParamsOptions = {},
+  ): Promise<UserQueryResult> {
+    const limit = options.limit === undefined ? 1 : options.limit;
+    const parallel = options.parallel ?? false;
+    const workers = options.workers ?? 5;
+
+    if (Object.hasOwn(params, "action")) {
       const [aggregateData, total, computedAt, meta] =
         await this.#executeUserAggregate(params);
       return new UserQueryResult({
