@@ -23,7 +23,7 @@ import {
   type CannedResponse,
   type CapturedFetchRequest,
   type FakeTransport,
-} from "../client/client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 import type { MixpanelClient } from "../../src/client/client.js";
 import {
   CreateWebhookParams,

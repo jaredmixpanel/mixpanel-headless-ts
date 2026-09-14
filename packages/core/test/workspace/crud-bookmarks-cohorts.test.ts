@@ -29,7 +29,7 @@ import {
   type CannedResponse,
   type CapturedFetchRequest,
   type FakeTransport,
-} from "../client/client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 import {
   BookmarkValidationError,
   MixpanelHeadlessError,
@@ -51,7 +51,10 @@ import {
   MINIMAL_FUNNEL_PARAMS,
   MINIMAL_INSIGHTS_PARAMS,
 } from "./bookmark-fixtures.js";
-import { logCollector, type LogCollector } from "./workspace-test-helpers.js";
+import {
+  logCollector,
+  type LogCollector,
+} from "../../test-support/workspace-test-helpers.js";
 
 /** A canned-response handler (the `httpx.MockTransport` handler twin). */
 type Handler = (request: CapturedFetchRequest) => CannedResponse;

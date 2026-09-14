@@ -23,7 +23,7 @@ import {
   createMockClient,
   makeSession,
   type CannedResponse,
-} from "./client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 
 /** A frozen instant for the date-defaulting tests (UTC noon). */
 const FROZEN_NOW = new Date("2026-08-15T12:00:00Z");

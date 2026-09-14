@@ -26,7 +26,7 @@ import {
   createMockClient,
   makeSession,
   type CapturedFetchRequest,
-} from "./client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 
 describe("TestPublicRequest", () => {
   it("test_request_sends_auth_header", async () => {

@@ -40,7 +40,10 @@ import {
 } from "../../src/types/query-params/filter.js";
 import { GroupBy } from "../../src/types/query-params/group-by.js";
 import { Metric } from "../../src/types/query-params/metric.js";
-import { mockWorkspaceClient, TEST_SESSION } from "./workspace-test-helpers.js";
+import {
+  mockWorkspaceClient,
+  TEST_SESSION,
+} from "../../test-support/workspace-test-helpers.js";
 
 /**
  * The `ws` fixture (test file :294-301).

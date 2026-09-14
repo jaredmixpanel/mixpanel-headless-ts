@@ -29,7 +29,7 @@ import {
 } from "../../src/client/url.js";
 import { pythonStrip } from "../../src/compat/index.js";
 import { createMixpanelClient } from "../../src/client/client.js";
-import { makeSession } from "./client-test-helpers.js";
+import { makeSession } from "../../test-support/client-test-helpers.js";
 
 /** Decode a base64 payload to UTF-8 text (the tests' b64decode+decode). */
 function decodeBase64Utf8(encoded: string): string {

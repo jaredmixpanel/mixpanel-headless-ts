@@ -5,7 +5,7 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import { rawFetch, stringifyJsonBody } from "../../src/client/transport.js";
-import { fakeTransport } from "./client-test-helpers.js";
+import { fakeTransport } from "../../test-support/client-test-helpers.js";
 
 const BIG = -8644926364725811123n;
 

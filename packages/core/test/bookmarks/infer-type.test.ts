@@ -18,7 +18,7 @@ import { FlowStep } from "../../src/types/query-params/flow.js";
 import {
   mockWorkspaceClient,
   TEST_SESSION,
-} from "../workspace/workspace-test-helpers.js";
+} from "../../test-support/workspace-test-helpers.js";
 
 /**
  * A Workspace with mocked dependencies — the builders are pure, so no

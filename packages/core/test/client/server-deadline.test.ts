@@ -36,7 +36,7 @@ import {
   createMockClient,
   makeSession,
   type CannedResponse,
-} from "./client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 
 /** The per-request `extensions["timeout"]["read"]` capture log. */
 const capturedTimeouts: number[] = [];

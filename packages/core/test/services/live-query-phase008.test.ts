@@ -29,7 +29,7 @@ import {
   makeSession,
   type CannedResponse,
   type CapturedFetchRequest,
-} from "../client/client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 import { LiveQueryService } from "../../src/services/live-query.js";
 import { AuthenticationError, QueryError } from "../../src/errors.js";
 import { ValueError } from "../../src/query/python-builtins.js";

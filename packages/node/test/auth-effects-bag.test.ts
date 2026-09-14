@@ -39,7 +39,7 @@ import {
   createMockClient,
   makeSession,
   type CannedResponse,
-} from "../../core/test/client/client-test-helpers.js";
+} from "../../core/test-support/client-test-helpers.js";
 import { CallbackResult } from "../src/auth/callback-server.js";
 import { createNodeAuthEffects } from "../src/auth-effects.js";
 import { ConfigManager } from "../src/config.js";

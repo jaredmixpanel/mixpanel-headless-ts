@@ -34,7 +34,7 @@ import { Workspace } from "../../src/workspace.js";
 import {
   createMockClient,
   makeSession,
-} from "../client/client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 import { BookmarkInfo } from "../../src/types/results/discovery.js";
 import {
   FlowsResult,

@@ -21,7 +21,7 @@ import {
   type EndpointKind,
   type Region,
 } from "../../src/client/url.js";
-import { makeSession } from "./client-test-helpers.js";
+import { makeSession } from "../../test-support/client-test-helpers.js";
 
 /** The documented per-family path prefixes. */
 const PREFIXES: Readonly<Record<EndpointKind, string>> = {

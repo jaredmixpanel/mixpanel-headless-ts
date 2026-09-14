@@ -9,12 +9,12 @@
 // needs releasing (R6.2), so the translations DROP the `finally` and
 // record the omission here rather than in every file.
 
-import type { MixpanelClient } from "../../src/client/client.js";
-import type { JsonValue } from "../../src/client/json-value.js";
-import type { Session } from "../../src/auth/session.js";
-import { Secret } from "../../src/secret.js";
-import { ProfilePageResult } from "../../src/types/results/discovery.js";
-import type { WorkspaceLogger } from "../../src/workspace.js";
+import type { MixpanelClient } from "../src/client/client.js";
+import type { JsonValue } from "../src/client/json-value.js";
+import type { Session } from "../src/auth/session.js";
+import { Secret } from "../src/secret.js";
+import { ProfilePageResult } from "../src/types/results/discovery.js";
+import type { WorkspaceLogger } from "../src/workspace.js";
 
 /**
  * The canonical fake Session the query-user test modules declare

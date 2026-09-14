@@ -53,7 +53,7 @@ import {
   staticTokenResolver,
   type CannedResponse,
   type CapturedFetchRequest,
-} from "./client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 
 /** The per-request `extensions["timeout"]["read"]` capture log. */
 const capturedTimeouts: number[] = [];

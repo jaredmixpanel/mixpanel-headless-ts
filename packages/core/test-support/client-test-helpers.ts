@@ -9,16 +9,16 @@ import type {
   Account,
   OAuthTokenAccount,
   TokenResolver,
-} from "../../src/auth/account.js";
-import type { Region } from "../../src/client/url.js";
-import type { Session } from "../../src/auth/session.js";
-import { Secret } from "../../src/secret.js";
-import { OAuthError } from "../../src/errors.js";
+} from "../src/auth/account.js";
+import type { Region } from "../src/client/url.js";
+import type { Session } from "../src/auth/session.js";
+import { Secret } from "../src/secret.js";
+import { OAuthError } from "../src/errors.js";
 import {
   createMixpanelClient,
   type MixpanelClient,
   type MixpanelClientOptions,
-} from "../../src/client/client.js";
+} from "../src/client/client.js";
 
 /** Kwargs of the `make_session` mirror (defaults match conftest.py). */
 export interface MakeSessionOptions {

@@ -23,7 +23,7 @@ import { Workspace } from "../../src/workspace.js";
 import {
   createMockClient,
   makeSession,
-} from "../client/client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 import type { Account } from "../../src/auth/account.js";
 import { ParamValidationError } from "../../src/errors.js";
 import { Secret } from "../../src/secret.js";

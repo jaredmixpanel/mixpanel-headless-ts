@@ -7,7 +7,7 @@
 // Translation notes (applied consistently):
 // - `live_query_factory` -> `liveQueryFactory` over the B4
 //   `createMockClient` httpx.MockTransport analog
-//   (`test/client/client-test-helpers.ts`). Python's explicit
+//   (`test-support/client-test-helpers.ts`). Python's explicit
 //   `client.__enter__()` / `__exit__` has no TS twin (R6.2: the TS
 //   client owns no pool that needs opening).
 // - Handlers that `assert` on the captured request assert AFTER the
@@ -29,7 +29,7 @@ import {
   type CannedResponse,
   type CapturedFetchRequest,
   type FakeTransport,
-} from "../client/client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 import { LiveQueryService } from "../../src/services/live-query.js";
 import { extractStepsFromDateData } from "../../src/services/live-query-transforms.js";
 import { AuthenticationError, QueryError } from "../../src/errors.js";

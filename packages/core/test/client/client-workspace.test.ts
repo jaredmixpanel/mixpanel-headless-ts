@@ -33,7 +33,7 @@ import {
   makeSession,
   type CannedResponse,
   type CapturedFetchRequest,
-} from "./client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 
 /** oauth_credentials fixture (test_app_api_client.py:40-42). */
 function oauthSession(): ReturnType<typeof makeSession> {

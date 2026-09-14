@@ -33,7 +33,7 @@ import {
   fakeTransport,
   makeSession,
   staticTokenResolver,
-} from "./client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 
 /** Drain an async generator into an array (`list(...)`). */
 async function drain<T>(source: AsyncIterable<T>): Promise<T[]> {

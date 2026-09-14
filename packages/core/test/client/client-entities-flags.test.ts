@@ -14,7 +14,7 @@ import {
   createMockClient,
   type FakeTransport,
   makeSession,
-} from "./client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 import type { Session } from "../../src/auth/session.js";
 
 /** The `oauth_credentials` fixture twin (test_api_client_flags.py:28-31). */

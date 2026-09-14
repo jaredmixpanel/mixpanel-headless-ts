@@ -38,7 +38,7 @@ import {
   makeSession,
   type CannedResponse,
   type CapturedFetchRequest,
-} from "./client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 
 /** The `oauth_credentials` fixture (test_pagination.py:36-39). */
 function oauthCredentials(): Session {

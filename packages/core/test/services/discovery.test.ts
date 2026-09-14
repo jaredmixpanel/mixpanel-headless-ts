@@ -9,7 +9,7 @@
 // Translation notes (applied consistently):
 // - `discovery_factory` -> `discoveryFactory` over the B4
 //   `createMockClient` httpx.MockTransport analog
-//   (`test/client/client-test-helpers.ts`); `success_handler` ->
+//   (`test-support/client-test-helpers.ts`); `success_handler` ->
 //   `successHandler`.
 // - Python's `_cache` dict -> the `cache` Map (R4.8); `== {}` asserts
 //   become `.size === 0`.
@@ -37,7 +37,7 @@ import {
   makeSession,
   type CannedResponse,
   type CapturedFetchRequest,
-} from "../client/client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 import {
   DiscoveryService,
   inferScalarType,

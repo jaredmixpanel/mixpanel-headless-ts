@@ -30,7 +30,7 @@ import {
   mockWorkspaceClient,
   TEST_SESSION,
   type MockWorkspaceClient,
-} from "./workspace-test-helpers.js";
+} from "../../test-support/workspace-test-helpers.js";
 
 /**
  * The `workspace_factory` fixture.

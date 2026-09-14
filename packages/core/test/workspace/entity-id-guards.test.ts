@@ -29,7 +29,7 @@ import {
   makeSession,
   type CannedResponse,
   type CapturedFetchRequest,
-} from "../client/client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 import { UpdateAnnotationParams } from "../../src/types/entities/annotations.js";
 
 /** The OAuth session the mock client is built over. */

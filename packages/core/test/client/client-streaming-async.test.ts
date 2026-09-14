@@ -17,7 +17,10 @@ import {
   streamEvents,
   streamProfiles,
 } from "../../src/services/queries/streaming.js";
-import { makeSession, staticTokenResolver } from "./client-test-helpers.js";
+import {
+  makeSession,
+  staticTokenResolver,
+} from "../../test-support/client-test-helpers.js";
 
 /** Build a fetch serving one streamed response from explicit chunks. */
 function chunkedFetch(

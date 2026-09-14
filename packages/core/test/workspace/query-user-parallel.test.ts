@@ -46,7 +46,7 @@ import {
   TEST_SESSION,
   type LogCollector,
   type MockWorkspaceClient,
-} from "./workspace-test-helpers.js";
+} from "../../test-support/workspace-test-helpers.js";
 
 /**
  * The `workspace_factory` fixture (test file :209-236).

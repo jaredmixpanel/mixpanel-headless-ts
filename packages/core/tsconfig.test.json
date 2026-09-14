@@ -11,6 +11,6 @@
     ],
     "types": []
   },
-  "include": ["test"],
+  "include": ["test", "test-support"],
   "references": [{ "path": "./tsconfig.json" }]
 }

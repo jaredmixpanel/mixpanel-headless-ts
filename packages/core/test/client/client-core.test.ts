@@ -29,7 +29,7 @@ import {
   createMockClient,
   makeSession,
   staticTokenResolver,
-} from "./client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 
 /** The `session_team` fixture (test_api_client_session.py:28-39). */
 function sessionTeam(): Session {

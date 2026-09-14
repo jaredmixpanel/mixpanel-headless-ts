@@ -30,12 +30,12 @@ import { QueryResult } from "../../src/types/results/query-engine.js";
 import {
   createMockClient,
   makeSession,
-} from "../client/client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 import {
   mockWorkspaceClient,
   TEST_SESSION,
   type MockWorkspaceClient,
-} from "./workspace-test-helpers.js";
+} from "../../test-support/workspace-test-helpers.js";
 
 /**
  * The `ws` fixture (test file :47-52).

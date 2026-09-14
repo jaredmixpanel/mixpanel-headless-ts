@@ -29,7 +29,7 @@ import {
   createMockClient,
   makeSession,
   type CannedResponse,
-} from "../client/client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 
 describe("workspace facade scoping (session-pinned half)", () => {
   it("a session-pinned workspace scopes ws.events()", async () => {

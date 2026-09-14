@@ -18,7 +18,7 @@ import {
   makeSession,
   type CannedResponse,
   type CapturedFetchRequest,
-} from "../client/client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 import { PublicWorkspace } from "../../src/types/entities/common.js";
 
 /** The `_TEST_SESSION` twin (`test_workspace_oauth.py:34-43`). */

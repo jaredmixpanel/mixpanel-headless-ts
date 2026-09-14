@@ -26,7 +26,7 @@ import {
   createMockClient,
   makeSession,
   type CannedResponse,
-} from "../client/client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 import type { Account } from "../../src/auth/account.js";
 import type { Session } from "../../src/auth/session.js";
 import { Secret } from "../../src/secret.js";

@@ -20,7 +20,7 @@
 
 import { describe, expect, it } from "vitest";
 import { Workspace } from "../../src/workspace.js";
-import { makeSession } from "../client/client-test-helpers.js";
+import { makeSession } from "../../test-support/client-test-helpers.js";
 import type { MixpanelClient } from "../../src/client/client.js";
 import type { JsonValue } from "../../src/client/json-value.js";
 

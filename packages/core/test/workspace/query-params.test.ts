@@ -47,7 +47,10 @@ import {
   FrequencyFilter,
 } from "../../src/types/query-params/frequency.js";
 import { Formula, Metric } from "../../src/types/query-params/metric.js";
-import { mockWorkspaceClient, TEST_SESSION } from "./workspace-test-helpers.js";
+import {
+  mockWorkspaceClient,
+  TEST_SESSION,
+} from "../../test-support/workspace-test-helpers.js";
 
 /**
  * The `ws` fixture (test file :36-41).

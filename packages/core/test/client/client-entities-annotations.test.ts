@@ -3,7 +3,10 @@
 // annotation CRUD + annotation tags list/create).
 import { describe, expect, it } from "vitest";
 import { toNativeJson } from "../../src/client/json-value.js";
-import { createMockClient, makeSession } from "./client-test-helpers.js";
+import {
+  createMockClient,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 import type { Session } from "../../src/auth/session.js";
 
 /** The `oauth_credentials` fixture twin (test_api_client_annotations.py:27-30). */

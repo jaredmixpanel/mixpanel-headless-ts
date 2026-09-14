@@ -28,7 +28,10 @@ import {
   CohortDefinition,
   sanitizeRawCohort,
 } from "../../src/types/query-params/cohort.js";
-import { mockWorkspaceClient, TEST_SESSION } from "./workspace-test-helpers.js";
+import {
+  mockWorkspaceClient,
+  TEST_SESSION,
+} from "../../test-support/workspace-test-helpers.js";
 
 /**
  * The `ws` fixture (test file :95-102).

@@ -35,7 +35,7 @@ import {
   makeSession,
   type CannedResponse,
   type CapturedFetchRequest,
-} from "./client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 
 const SLUG = "EBrV5bW2u9Mw";
 const PARAMS = {

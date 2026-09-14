@@ -72,7 +72,7 @@ import {
   logCollector,
   TEST_SESSION,
   type LogCollector,
-} from "./workspace-test-helpers.js";
+} from "../../test-support/workspace-test-helpers.js";
 
 const SLUG = "EBrV5bW2u9Mw";
 

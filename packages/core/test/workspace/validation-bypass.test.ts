@@ -45,7 +45,10 @@ import {
 } from "../../src/types/query-params/cohort.js";
 import { FunnelStep } from "../../src/types/query-params/funnel.js";
 import { Metric } from "../../src/types/query-params/metric.js";
-import { mockWorkspaceClient, TEST_SESSION } from "./workspace-test-helpers.js";
+import {
+  mockWorkspaceClient,
+  TEST_SESSION,
+} from "../../test-support/workspace-test-helpers.js";
 
 /**
  * The `ws` fixture (test_validation_bypass.py:59-67).

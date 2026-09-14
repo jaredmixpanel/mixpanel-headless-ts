@@ -15,7 +15,10 @@ import { describe, expect, it } from "vitest";
 import { Workspace } from "../../src/workspace.js";
 import { Filter } from "../../src/types/query-params/filter.js";
 import { RetentionEvent } from "../../src/types/query-params/retention.js";
-import { mockWorkspaceClient, TEST_SESSION } from "./workspace-test-helpers.js";
+import {
+  mockWorkspaceClient,
+  TEST_SESSION,
+} from "../../test-support/workspace-test-helpers.js";
 
 /**
  * The `ws` fixture (test file :48-58).

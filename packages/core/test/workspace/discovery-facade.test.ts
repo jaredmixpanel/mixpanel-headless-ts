@@ -21,7 +21,7 @@ import {
   makeSession,
   type CannedResponse,
   type CapturedFetchRequest,
-} from "../client/client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 import type { MixpanelClient } from "../../src/client/client.js";
 import { Workspace } from "../../src/workspace.js";
 import {

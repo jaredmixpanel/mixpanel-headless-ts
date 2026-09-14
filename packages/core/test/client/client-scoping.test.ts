@@ -28,7 +28,7 @@ import {
   createMockClient,
   makeSession,
   type CapturedFetchRequest,
-} from "./client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 
 const PINNED_WORKSPACE_ID = 777;
 

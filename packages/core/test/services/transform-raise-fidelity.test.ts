@@ -38,7 +38,7 @@ import {
   createMockClient,
   makeSession,
   type CannedResponse,
-} from "../client/client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 
 /** Silent warning sink for the funnel-series transform. */
 const noWarn = (): void => undefined;

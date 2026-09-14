@@ -15,7 +15,7 @@ import {
   makeSession,
   staticTokenResolver,
   type CannedResponse,
-} from "./client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 
 /** One canned page body with the given ids and cursor. */
 function page(ids: number[], nextCursor: string | null): CannedResponse {

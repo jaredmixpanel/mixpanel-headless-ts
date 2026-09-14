@@ -44,7 +44,7 @@ import {
   mockWorkspaceClient,
   TEST_SESSION,
   type MockWorkspaceClient,
-} from "./workspace-test-helpers.js";
+} from "../../test-support/workspace-test-helpers.js";
 
 /** An empty-but-valid insights response (the Python mock's shape). */
 const EMPTY_OK: Record<string, unknown> = {

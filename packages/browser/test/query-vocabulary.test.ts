@@ -31,7 +31,7 @@ import { Workspace } from "../../core/src/workspace.js";
 import {
   mockWorkspaceClient,
   TEST_SESSION,
-} from "../../core/test/workspace/workspace-test-helpers.js";
+} from "../../core/test-support/workspace-test-helpers.js";
 import {
   CohortBreakdown,
   CohortCriteria,

@@ -43,7 +43,7 @@ import {
   makeSession,
   type CannedResponse,
   type CapturedFetchRequest,
-} from "../client/client-test-helpers.js";
+} from "../../test-support/client-test-helpers.js";
 import { ParamValidationError, ReplayNotFoundError } from "../../src/errors.js";
 import { checkEventPropertiesCount, Workspace } from "../../src/workspace.js";
 import { ReplaysService } from "../../src/services/replays.js";
