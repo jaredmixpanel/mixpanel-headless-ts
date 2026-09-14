@@ -1,9 +1,11 @@
 /**
  * The 8 Python `Enum` classes from `src/mixpanel_headless/types.py`
- * (phase2-design C2, rulebook R4.3): the 7 `str` enums become TS string
- * enums (closed wire domains referenced by member NAME at Python call
- * sites), and the one `IntEnum` (`AlertFrequencyPreset`) becomes a
- * `const` object + numeric literal union, preserving numeric values.
+ * (phase2-design C2, rulebook R4.3): every enum becomes an `as const`
+ * object + literal union under the same name (closed wire domains
+ * referenced by member NAME at Python call sites; member VALUES are
+ * byte-identical to Python's). No TS `enum` syntax is used, so the
+ * module is erasable (`erasableSyntaxOnly`); the one `IntEnum`
+ * (`AlertFrequencyPreset`) keeps its numeric values.
  *
  * Hand-written source, machine-verified sync: the C8(d) lock test
  * (`conformance-runner/test/literal-alias-lock.test.ts`) asserts
@@ -23,11 +25,15 @@
  * default state), `ARCHIVED` (soft-deleted, excluded from default
  * listings).
  */
-export enum FeatureFlagStatus {
-  ENABLED = "enabled",
-  DISABLED = "disabled",
-  ARCHIVED = "archived",
-}
+export const FeatureFlagStatus = {
+  ENABLED: "enabled",
+  DISABLED: "disabled",
+  ARCHIVED: "archived",
+} as const;
+
+/** String literal union of {@link FeatureFlagStatus} values. */
+export type FeatureFlagStatus =
+  (typeof FeatureFlagStatus)[keyof typeof FeatureFlagStatus];
 
 /**
  * Controls how flag values are delivered to clients.
@@ -36,23 +42,30 @@ export enum FeatureFlagStatus {
  * (server-side only), `REMOTE_OR_LOCAL` (remote preferred, local
  * fallback), `REMOTE_ONLY` (remote evaluation only).
  */
-export enum ServingMethod {
-  CLIENT = "client",
-  SERVER = "server",
-  REMOTE_OR_LOCAL = "remote_or_local",
-  REMOTE_ONLY = "remote_only",
-}
+export const ServingMethod = {
+  CLIENT: "client",
+  SERVER: "server",
+  REMOTE_OR_LOCAL: "remote_or_local",
+  REMOTE_ONLY: "remote_only",
+} as const;
+
+/** String literal union of {@link ServingMethod} values. */
+export type ServingMethod = (typeof ServingMethod)[keyof typeof ServingMethod];
 
 /**
  * Account-level flag contract status.
  *
  * Members: `ACTIVE`, `GRACE_PERIOD`, `EXPIRED`.
  */
-export enum FlagContractStatus {
-  ACTIVE = "active",
-  GRACE_PERIOD = "grace_period",
-  EXPIRED = "expired",
-}
+export const FlagContractStatus = {
+  ACTIVE: "active",
+  GRACE_PERIOD: "grace_period",
+  EXPIRED: "expired",
+} as const;
+
+/** String literal union of {@link FlagContractStatus} values. */
+export type FlagContractStatus =
+  (typeof FlagContractStatus)[keyof typeof FlagContractStatus];
 
 /**
  * Lifecycle state of an experiment.
@@ -60,22 +73,30 @@ export enum FlagContractStatus {
  * State transitions: `draft` → `active` (launch) → `concluded`
  * (conclude) → `success` | `fail` (decide).
  */
-export enum ExperimentStatus {
-  DRAFT = "draft",
-  ACTIVE = "active",
-  CONCLUDED = "concluded",
-  SUCCESS = "success",
-  FAIL = "fail",
-}
+export const ExperimentStatus = {
+  DRAFT: "draft",
+  ACTIVE: "active",
+  CONCLUDED: "concluded",
+  SUCCESS: "success",
+  FAIL: "fail",
+} as const;
+
+/** String literal union of {@link ExperimentStatus} values. */
+export type ExperimentStatus =
+  (typeof ExperimentStatus)[keyof typeof ExperimentStatus];
 
 /**
  * Authentication type for webhooks.
  *
  * Members: `BASIC` (HTTP Basic authentication).
  */
-export enum WebhookAuthType {
-  BASIC = "basic",
-}
+export const WebhookAuthType = {
+  BASIC: "basic",
+} as const;
+
+/** String literal union of {@link WebhookAuthType} values. */
+export type WebhookAuthType =
+  (typeof WebhookAuthType)[keyof typeof WebhookAuthType];
 
 /**
  * Preset frequency values for alert check intervals, in seconds.
@@ -100,22 +121,30 @@ export type AlertFrequencyPreset =
  * Members: `EVENT`, `USER`, `GROUPPROFILE` (wire format
  * `"groupprofile"`).
  */
-export enum PropertyResourceType {
-  EVENT = "event",
-  USER = "user",
-  GROUPPROFILE = "groupprofile",
-}
+export const PropertyResourceType = {
+  EVENT: "event",
+  USER: "user",
+  GROUPPROFILE: "groupprofile",
+} as const;
+
+/** String literal union of {@link PropertyResourceType} values. */
+export type PropertyResourceType =
+  (typeof PropertyResourceType)[keyof typeof PropertyResourceType];
 
 /**
  * Resource type for custom properties.
  *
  * Members: `EVENTS`, `PEOPLE`, `GROUP_PROFILES`.
  */
-export enum CustomPropertyResourceType {
-  EVENTS = "events",
-  PEOPLE = "people",
-  GROUP_PROFILES = "group_profiles",
-}
+export const CustomPropertyResourceType = {
+  EVENTS: "events",
+  PEOPLE: "people",
+  GROUP_PROFILES: "group_profiles",
+} as const;
+
+/** String literal union of {@link CustomPropertyResourceType} values. */
+export type CustomPropertyResourceType =
+  (typeof CustomPropertyResourceType)[keyof typeof CustomPropertyResourceType];
 
 /** One entry of the {@link ENUM_TABLES} serialization view. */
 export interface EnumTableEntry {
