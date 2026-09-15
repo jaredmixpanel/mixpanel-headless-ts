@@ -55,6 +55,18 @@ describe("parseLossless", () => {
     expect(value["a"]?.raw).toBe("2");
   });
 
+  it('keeps a "__proto__" key as an own property (json.loads parity)', () => {
+    const value = parseLossless('{"__proto__": {"a": 1}, "b": 2}') as Record<
+      string,
+      unknown
+    >;
+    expect(Object.getPrototypeOf(value)).toBe(Object.prototype);
+    expect(Object.keys(value)).toEqual(["__proto__", "b"]);
+    const native = toNativeJson(value as never) as Record<string, unknown>;
+    expect(Object.getPrototypeOf(native)).toBe(Object.prototype);
+    expect(JSON.stringify(native)).toBe('{"__proto__":{"a":1},"b":2}');
+  });
+
   it("rejects trailing content", () => {
     expect(() => parseLossless("1 2")).toThrow(LosslessJsonError);
   });

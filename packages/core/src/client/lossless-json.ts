@@ -17,6 +17,7 @@
  * tokens are barred from vector files).
  */
 
+import { setOwn } from "../compat/python-dict.js";
 import { attachKeyOrder, JsonNumber, type JsonValue } from "./json-value.js";
 
 /** Error raised for malformed JSON input, with a character offset. */
@@ -248,7 +249,7 @@ class Parser {
       if (!Object.hasOwn(result, key)) {
         sourceOrder.push(key); // duplicates keep FIRST position
       }
-      result[key] = this.parseValue();
+      setOwn(result, key, this.parseValue());
       this.skipWhitespace();
       const next = this.text[this.pos];
       if (next === ",") {

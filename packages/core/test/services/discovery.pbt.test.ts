@@ -437,6 +437,26 @@ describe("TestParseLexiconSchemaProperties", () => {
       { numRuns: 100 },
     );
   });
+
+  // Deterministic twin of the fast-check shrink above: a decoded
+  // `"__proto__"` property name is an ordinary dict key in Python, and
+  // `JSON.parse` keeps it as an own key too. Copying it with a plain
+  // `record[key] = …` on a `{}` literal would hit the inherited
+  // accessor instead and drop the entry (seeds -316969922 / 2012938764).
+  it('keeps a JSON-decoded "__proto__" property as an own key', () => {
+    const data = JSON.parse(
+      '{"entityType":"event","name":"e","schemaJson":' +
+        '{"properties":{"__proto__":{"type":"number"},"a":{}}}}',
+    ) as Record<string, unknown>;
+    const { properties } = parseLexiconSchema(data).schema_json;
+    expect(Object.getPrototypeOf(properties)).toBe(Object.prototype);
+    expect(
+      Object.entries(properties).map(([key, prop]) => [key, prop.type]),
+    ).toEqual([
+      ["__proto__", "number"],
+      ["a", "string"],
+    ]);
+  });
 });
 
 // =============================================================================

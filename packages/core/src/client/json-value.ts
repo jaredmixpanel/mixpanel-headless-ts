@@ -10,6 +10,8 @@
  * {@link JsonNumber} wrapping its verbatim source token.
  */
 
+import { setOwn } from "../compat/python-dict.js";
+
 /** Matches a syntactically valid RFC 8259 JSON number token. */
 const JSON_NUMBER_TOKEN = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/;
 
@@ -217,7 +219,7 @@ export function toNativeJson(
   if (typeof value === "object" && value !== null) {
     const out: Record<string, unknown> = {};
     for (const [key, member] of Object.entries(value)) {
-      out[key] = toNativeJson(member, options);
+      setOwn(out, key, toNativeJson(member, options));
     }
     // Key-order sidecar propagates (B8-MAPFIX): the native tree feeds
     // the ordered-dict model fields (`MeResponse`), which must see the
