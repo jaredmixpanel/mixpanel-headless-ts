@@ -158,6 +158,84 @@ const NO_PROCESS_GLOBAL = [
 ];
 
 // ---------------------------------------------------------------------------
+// Naming (D1; CLEANUP-PLAN.md §3 D1 and §8.2)
+// ---------------------------------------------------------------------------
+
+/**
+ * `@typescript-eslint/naming-convention` options. Identifiers are camelCase
+ * (PascalCase for types and classes, UPPER_CASE for constants and
+ * environment-variable mirrors). Object-literal keys and methods are
+ * unconstrained everywhere: that is where wire payloads, JSON fixtures and
+ * Python-keyword option bags are written (D1). Declared property names —
+ * interface/type members, class fields, accessors — are camelCase unless
+ * `snakeCaseProperties` is set, which the contract scopes below use for
+ * files whose shapes mirror Python data 1:1 (Python underscore-prefixed
+ * fields such as `_df_cache` and `Filter._property` are mirrored verbatim,
+ * hence the leading-underscore allowance there).
+ */
+function namingConvention({ snakeCaseProperties = false } = {}) {
+  const propertyFormats = snakeCaseProperties
+    ? ["camelCase", "snake_case", "UPPER_CASE"]
+    : ["camelCase", "UPPER_CASE"];
+  return [
+    "error",
+    {
+      selector: "default",
+      format: ["camelCase"],
+      leadingUnderscore: "forbid",
+      trailingUnderscore: "forbid",
+    },
+    { selector: "import", format: ["camelCase", "PascalCase"] },
+    // Trailing underscore: unicorn/catch-error-name's shadow suffix
+    // (`error_`) and Python-keyword avoidance (`default_`, `type_`).
+    {
+      selector: "variable",
+      format: ["camelCase", "UPPER_CASE", "PascalCase"],
+      trailingUnderscore: "allow",
+    },
+    { selector: "variable", modifiers: ["destructured"], format: null },
+    { selector: "function", format: ["camelCase", "PascalCase"] },
+    {
+      selector: "parameter",
+      format: ["camelCase"],
+      leadingUnderscore: "allow",
+      trailingUnderscore: "allow",
+    },
+    { selector: "typeLike", format: ["PascalCase"] },
+    {
+      selector: "memberLike",
+      modifiers: ["private"],
+      format: ["camelCase"],
+      leadingUnderscore: "forbid",
+    },
+    // D1: object-literal keys are unconstrained (wire payloads, fixtures,
+    // Python kwargs); the value-side rule lives on the declared types.
+    {
+      selector: ["objectLiteralProperty", "objectLiteralMethod"],
+      format: null,
+    },
+    {
+      selector: ["classProperty", "typeProperty"],
+      modifiers: ["requiresQuotes"],
+      format: null,
+    },
+    // `static readonly` class constants read like module constants.
+    {
+      selector: "classProperty",
+      modifiers: ["static", "readonly"],
+      format: ["camelCase", "UPPER_CASE"],
+    },
+    {
+      selector: ["classProperty", "typeProperty", "classicAccessor"],
+      format: propertyFormats,
+      ...(snakeCaseProperties
+        ? { leadingUnderscore: "allowSingleOrDouble" }
+        : {}),
+    },
+  ];
+}
+
+// ---------------------------------------------------------------------------
 // Lane blocks (Phase 4 hand-fix categories; CLEANUP-PLAN.md §8.4)
 // ---------------------------------------------------------------------------
 
@@ -525,45 +603,9 @@ const config = defineConfig([
       "@typescript-eslint/no-empty-function": "error",
       "@typescript-eslint/prefer-readonly": "error",
       "@typescript-eslint/no-useless-default-assignment": "error",
-      "@typescript-eslint/naming-convention": [
-        "error",
-        // D1: camelCase identifiers everywhere; snake_case only for
-        // wire/contract properties (directory-scoped block below).
-        {
-          selector: "default",
-          format: ["camelCase"],
-          leadingUnderscore: "forbid",
-          trailingUnderscore: "forbid",
-        },
-        { selector: "import", format: ["camelCase", "PascalCase"] },
-        {
-          selector: "variable",
-          format: ["camelCase", "UPPER_CASE", "PascalCase"],
-        },
-        { selector: "variable", modifiers: ["destructured"], format: null },
-        { selector: "function", format: ["camelCase", "PascalCase"] },
-        {
-          selector: "parameter",
-          format: ["camelCase"],
-          leadingUnderscore: "allow",
-        },
-        { selector: "typeLike", format: ["PascalCase"] },
-        {
-          selector: "memberLike",
-          modifiers: ["private"],
-          format: ["camelCase"],
-          leadingUnderscore: "forbid",
-        },
-        {
-          selector: ["classProperty", "objectLiteralProperty", "typeProperty"],
-          modifiers: ["requiresQuotes"],
-          format: null,
-        },
-        {
-          selector: ["objectLiteralProperty", "typeProperty"],
-          format: ["camelCase", "UPPER_CASE"],
-        },
-      ],
+      // D1: camelCase identifiers; declared property names camelCase except
+      // in the two snake-case contract scopes below (see namingConvention).
+      "@typescript-eslint/naming-convention": namingConvention(),
 
       // --- typescript-eslint: off ------------------------------------------
       // 603 hits, purely stylistic, and it fights `require-await` here.
@@ -638,55 +680,61 @@ const config = defineConfig([
     },
   },
   {
-    // D1: wire/contract shapes and Python-mirroring option bags keep their
-    // snake_case property names.
+    // D1: files whose declared property names mirror Python data 1:1 keep
+    // snake_case — entity/result/param models, bookmark params, error
+    // `details`, the Workspace/service query-option bags that mirror Python
+    // keyword arguments, and on-disk/wire records (accounts, OAuth tokens,
+    // `/me`). Constructor/config option bags in these files stay camelCase;
+    // tests/naming-config-bags.test.ts locks them. Extend by whole file only.
     name: "repo/library-src/snake-case-contracts",
     files: [
       "packages/core/src/types/entities/**/*.ts",
       "packages/core/src/types/results/**/*.ts",
       "packages/core/src/types/query-params/**/*.ts",
+      "packages/core/src/types/report-links.ts",
       "packages/core/src/bookmarks/**/*.ts",
       "packages/core/src/errors.ts",
+      "packages/core/src/workspace.ts",
       "packages/core/src/workspace-query-params.ts",
+      "packages/core/src/workspace-members/**/*.ts",
+      "packages/core/src/services/**/*.ts",
+      "packages/core/src/query/validation-*.ts",
+      "packages/core/src/query/user-validators.ts",
+      "packages/core/src/accounts/accounts-ops.ts",
+      "packages/core/src/accounts/auth-effects.ts",
+      "packages/core/src/accounts/login-unified.ts",
+      "packages/core/src/auth/account.ts",
+      "packages/core/src/auth/region-probe.ts",
+      "packages/core/src/auth/resolver.ts",
+      "packages/core/src/auth/session.ts",
+      "packages/core/src/auth/token.ts",
+      "packages/core/src/client/me.ts",
+      "packages/core/src/client/pagination.ts",
+      "packages/core/src/replays/aggregators.ts",
+      "packages/core/src/replays/rrweb-analyzer.ts",
+      "packages/core/src/report-links.ts",
+      "packages/browser/src/redirect-flow.ts",
     ],
     rules: {
-      "@typescript-eslint/naming-convention": [
-        "error",
-        {
-          selector: "default",
-          format: ["camelCase"],
-          leadingUnderscore: "forbid",
-          trailingUnderscore: "forbid",
-        },
-        { selector: "import", format: ["camelCase", "PascalCase"] },
-        {
-          selector: "variable",
-          format: ["camelCase", "UPPER_CASE", "PascalCase"],
-        },
-        { selector: "variable", modifiers: ["destructured"], format: null },
-        { selector: "function", format: ["camelCase", "PascalCase"] },
-        {
-          selector: "parameter",
-          format: ["camelCase"],
-          leadingUnderscore: "allow",
-        },
-        { selector: "typeLike", format: ["PascalCase"] },
-        {
-          selector: "memberLike",
-          modifiers: ["private"],
-          format: ["camelCase"],
-          leadingUnderscore: "forbid",
-        },
-        {
-          selector: ["classProperty", "objectLiteralProperty", "typeProperty"],
-          modifiers: ["requiresQuotes"],
-          format: null,
-        },
-        {
-          selector: ["classProperty", "objectLiteralProperty", "typeProperty"],
-          format: ["camelCase", "snake_case", "UPPER_CASE"],
-        },
-      ],
+      "@typescript-eslint/naming-convention": namingConvention({
+        snakeCaseProperties: true,
+      }),
+    },
+  },
+  {
+    // D1: tests and the conformance rig declare shapes for Python fixtures,
+    // recorded kwargs and JSON artifacts; their property names follow the
+    // data they describe.
+    name: "repo/tests-and-rig/snake-case-fixtures",
+    files: [
+      ...TEST_FILES,
+      "conformance-runner/src/**/*.ts",
+      "differential/**/*.ts",
+    ],
+    rules: {
+      "@typescript-eslint/naming-convention": namingConvention({
+        snakeCaseProperties: true,
+      }),
     },
   },
 
