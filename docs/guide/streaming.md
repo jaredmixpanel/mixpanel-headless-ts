@@ -612,4 +612,4 @@ Event export is project-scoped by design: a pinned workspace (`ws.use({ workspac
 
 - [Live Analytics](/guide/live-analytics) — Real-time Mixpanel reports
 - [User Profiles](/guide/query-users) — Typed profile queries with cohorts and aggregation
-- Reference: [`Workspace.streamEvents()`](/reference/core/classes/Workspace#streamevents), [`Workspace.streamProfiles()`](/reference/core/classes/Workspace#streamprofiles), [`createNodeWorkspace()`](/reference/node/functions/createNodeWorkspace), [`ParamValidationError`](/reference/core/classes/ParamValidationError)
+- Reference: [`Workspace.streamEvents()`](/reference/core/classes/Workspace#streamevents), [`Workspace.streamProfiles()`](/reference/core/classes/Workspace#streamprofiles), [`createNodeWorkspace()`](/reference/node/functions/createNodeWorkspace), [`StreamEventsOptions`](/reference/core/interfaces/StreamEventsOptions), [`StreamProfilesOptions`](/reference/core/interfaces/StreamProfilesOptions), [`ParamValidationError`](/reference/core/classes/ParamValidationError)
