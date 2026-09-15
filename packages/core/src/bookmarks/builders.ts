@@ -36,7 +36,12 @@
  * @internal
  */
 
-import { isPythonDict, pythonRepr, pythonTypeName } from "../compat/index.js";
+import {
+  isPythonDict,
+  pythonRepr,
+  pythonTypeName,
+  setOwn,
+} from "../compat/index.js";
 import { ParamTypeError, ParamValidationError } from "../errors.js";
 import { defaultToday } from "../query/validation-shared.js";
 import type { QueryTimeUnit } from "../types/literals.js";
@@ -143,11 +148,13 @@ export function buildComposedProperties(
 ): Record<string, Record<string, string>> {
   const result: Record<string, Record<string, string>> = {};
   for (const [key, prop] of Object.entries(inputs)) {
-    result[key] = {
+    // `setOwn`: an input key of `"__proto__"` must land as an own key,
+    // exactly as the Python dict comprehension keeps it.
+    setOwn(result, key, {
       value: prop.name,
       type: prop.type,
       resourceType: prop.resource_type,
-    };
+    });
   }
   return result;
 }
