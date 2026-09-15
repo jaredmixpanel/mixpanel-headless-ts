@@ -29,87 +29,115 @@ import type { Secret } from "../secret.js";
 import type { AccountSummary, Target } from "../types/entities/accounts.js";
 
 /**
- * Fields accepted by {@link ConfigWrites.addAccount} — the
+ * Fields accepted by {@link ConfigWrites.addAccount}; keys mirror the
  * `ConfigManager.add_account` keyword surface.
+ *
+ * @see mixpanel_headless._internal.config.ConfigManager.add_account
  */
 export interface AddAccountParams {
-  /** Account discriminator (`service_account` / `oauth_browser` / `oauth_token`). */
+  /**
+   * Account discriminator: `service_account`, `oauth_browser` or
+   * `oauth_token`.
+   */
   readonly type: AccountType;
   /** Mixpanel region. */
   readonly region: Region;
-  /** Optional home project (digit string). */
+  /**
+   * Home project (digit string).
+   *
+   * @defaultValue `null`
+   */
   readonly default_project?: string | null | undefined;
-  /** SA username (service_account only). */
+  /** Service-account username; `service_account` only. */
   readonly username?: string | null | undefined;
-  /** SA secret (service_account only). */
+  /** Service-account secret; `service_account` only. */
   readonly secret?: Secret | string | null | undefined;
-  /** Inline bearer (oauth_token only; XOR with `token_env`). */
+  /** Inline bearer; `oauth_token` only, exclusive with `token_env`. */
   readonly token?: Secret | string | null | undefined;
-  /** Env-var name carrying the bearer (oauth_token only). */
+  /** Env-var name carrying the bearer; `oauth_token` only. */
   readonly token_env?: string | null | undefined;
 }
 
 /**
- * Fields accepted by {@link ConfigWrites.updateAccount} — the
- * `ConfigManager.update_account` keyword surface.
- * Absent/`undefined` members leave the field untouched.
+ * Fields accepted by {@link ConfigWrites.updateAccount}; keys mirror the
+ * `ConfigManager.update_account` keyword surface. An absent or
+ * `undefined` member leaves that field untouched.
+ *
+ * @see mixpanel_headless._internal.config.ConfigManager.update_account
  */
 export interface UpdateAccountFields {
   /** New region. */
   readonly region?: Region | null | undefined;
   /** New home project (digit string). */
   readonly default_project?: string | null | undefined;
-  /** New username (service_account only). */
+  /** New username; `service_account` only. */
   readonly username?: string | null | undefined;
-  /** New secret (service_account only). */
+  /** New secret; `service_account` only. */
   readonly secret?: Secret | string | null | undefined;
-  /** New inline token (oauth_token only). */
+  /** New inline token; `oauth_token` only. */
   readonly token?: Secret | string | null | undefined;
-  /** New env-var pointer (oauth_token only). */
+  /** New env-var pointer; `oauth_token` only. */
   readonly token_env?: string | null | undefined;
 }
 
 /**
- * Per-axis update of the persisted `[active]` block — the
- * `ConfigManager.set_active` / `clear_active` composition the
- * namespaces drive as one transaction.
+ * Per-axis update of the persisted `[active]` block: the
+ * `ConfigManager.set_active` / `clear_active` composition the namespaces
+ * drive as one transaction.
  *
- * An absent / `undefined` member leaves that axis untouched;
+ * @remarks
+ * An absent or `undefined` member leaves that axis untouched;
  * `workspace: null` clears `[active].workspace` (the account-swap clear
- * in `accounts.use` — both writes in a single transaction, never two).
+ * in `accounts.use`, both writes in a single transaction, never two).
+ * @see mixpanel_headless._internal.config.ConfigManager.set_active
  */
 export interface SetActiveUpdate {
-  /** New active account name (must reference an existing account). */
+  /** New active account name; must reference an existing account. */
   readonly account?: string | undefined;
   /** New workspace pin; `null` clears the axis. */
   readonly workspace?: number | null | undefined;
 }
 
 /**
- * Atomic per-axis session update — the `ConfigManager.apply_session`
- * keyword surface. All axes land in one read-modify-write
- * transaction; `project` writes to the explicit
- * `account` (if given) else the persisted active account and raises a
- * coded `ConfigError` when neither resolves.
+ * Atomic per-axis session update; keys mirror the
+ * `ConfigManager.apply_session` keyword surface.
+ *
+ * @remarks
+ * All axes land in one read-modify-write transaction. `project` writes
+ * to the explicit `account` when given, else to the persisted active
+ * account, and raises a coded `ConfigError` when neither resolves.
+ * @see mixpanel_headless._internal.config.ConfigManager.apply_session
  */
 export interface ApplySessionUpdate {
   /** New active account name. */
   readonly account?: string | null | undefined;
   /** New `default_project` for the target account. */
   readonly project?: string | null | undefined;
-  /** New active workspace ID (mutually exclusive with `clear_workspace`). */
+  /** New active workspace ID; exclusive with `clear_workspace`. */
   readonly workspace?: number | null | undefined;
-  /** When `true`, drop `[active].workspace`. */
+  /**
+   * When `true`, drop `[active].workspace`.
+   *
+   * @defaultValue `false`
+   */
   readonly clear_workspace?: boolean | undefined;
 }
 
-/** Options of {@link ConfigWrites.addTarget}. */
+/**
+ * Options of {@link ConfigWrites.addTarget}.
+ *
+ * @see mixpanel_headless._internal.config.ConfigManager.add_target
+ */
 export interface AddTargetOptions {
-  /** Referenced account name (must exist). */
+  /** Referenced account name; must exist. */
   readonly account: string;
   /** Project ID (digit string). */
   readonly project: string;
-  /** Optional workspace ID (positive int). */
+  /**
+   * Workspace ID (positive integer) pinned by the target.
+   *
+   * @defaultValue `null`
+   */
   readonly workspace?: number | null | undefined;
 }
 
@@ -135,12 +163,12 @@ export interface ConfigWrites {
    * Add an account block (validating per-type fields), promoting the
    * first-ever account to `[active].account` in the same transaction.
    *
-   * @param name - Account name (`^[a-zA-Z0-9_-]{1,64}$`).
+   * @param name - Account name matching `^[a-zA-Z0-9_-]{1,64}$`.
    * @param params - Typed credential fields.
-   * @throws ConfigError - Duplicate name (a plain `ConfigError` /
-   *   `CONFIG_ERROR` — never `AccountExistsError`, which Python reserves
-   *   for the `login_unified` name collision), missing or incompatible
-   *   fields, or validation failure.
+   * @throws {@link ConfigError} - When the name is taken (a plain
+   *   `CONFIG_ERROR`, never `AccountExistsError`, which Python reserves
+   *   for the `login_unified` name collision), a field is missing or
+   *   incompatible with the type, or validation fails.
    */
   addAccount: (name: string, params: AddAccountParams) => void;
 
@@ -149,8 +177,8 @@ export interface ConfigWrites {
    *
    * @param name - Account to update.
    * @param fields - Fields to rewrite.
-   * @throws ConfigError - Missing account, type-incompatible field, or
-   *   validation failure.
+   * @throws {@link ConfigError} - When the account is missing, a field
+   *   does not fit its type, or validation fails.
    */
   updateAccount: (name: string, fields: UpdateAccountFields) => void;
 
@@ -158,10 +186,12 @@ export interface ConfigWrites {
    * Remove an account, clearing `[active]` when it was the active one.
    *
    * @param name - Account to remove.
-   * @param options - `force` removes even when targets reference it.
+   * @param options - `force` (default `false`) removes the account even
+   *   when targets reference it.
    * @returns Sorted names of targets that referenced the account.
-   * @throws ConfigError - Missing account.
-   * @throws AccountInUseError - Referenced and `force` not set.
+   * @throws {@link ConfigError} - When the account is missing.
+   * @throws {@link AccountInUseError} - When targets reference the
+   *   account and `force` is not set.
    */
   removeAccount: (
     name: string,
@@ -181,7 +211,8 @@ export interface ConfigWrites {
    * {@link SetActiveUpdate} for the per-axis semantics).
    *
    * @param update - The axes to touch.
-   * @throws ConfigError - Unknown account or validation failure.
+   * @throws {@link ConfigError} - When the account is unknown or
+   *   validation fails.
    */
   setActive: (update: SetActiveUpdate) => void;
 
@@ -189,8 +220,8 @@ export interface ConfigWrites {
    * Atomically apply per-axis session updates.
    *
    * @param update - The axes to touch.
-   * @throws ConfigError - Unknown account, or `project` with no
-   *   resolvable account.
+   * @throws {@link ConfigError} - When the account is unknown, or
+   *   `project` is given with no resolvable account.
    */
   applySession: (update: ApplySessionUpdate) => void;
 
@@ -199,7 +230,8 @@ export interface ConfigWrites {
    * account's `default_project` updated, in one transaction.
    *
    * @param name - Target to apply.
-   * @throws ConfigError - Unknown target, or its account is gone.
+   * @throws {@link ConfigError} - When the target is unknown, or its
+   *   account is gone.
    */
   applyTarget: (name: string) => void;
 
@@ -207,10 +239,11 @@ export interface ConfigWrites {
    * Add a target block.
    *
    * @param name - Target name.
-   * @param options - account / project / workspace.
+   * @param options - The referenced `account`, the `project` and an
+   *   optional `workspace`.
    * @returns The constructed {@link Target}.
-   * @throws ConfigError - Duplicate name, missing account, or
-   *   validation failure (Target model errors are wrapped in
+   * @throws {@link ConfigError} - When the name is taken, the account is
+   *   missing, or validation fails (`Target` model errors are wrapped in
    *   `ConfigError`, as Python does).
    */
   addTarget: (name: string, options: AddTargetOptions) => Target;
@@ -219,7 +252,7 @@ export interface ConfigWrites {
    * Remove a target block.
    *
    * @param name - Target to remove.
-   * @throws ConfigError - Unknown target.
+   * @throws {@link ConfigError} - When the target is unknown.
    */
   removeTarget: (name: string) => void;
 
@@ -248,10 +281,13 @@ export interface BridgeEffects {
   /**
    * Write a v2 bridge file (0o600) for the given account.
    *
-   * @param options - Account + destination + optional pins.
+   * @param options - The `account` to export, the destination path `to`,
+   *   optional `project` / `workspace` pins, custom `headers` (or
+   *   `null`) and the `tokenResolver` used to read browser tokens.
    * @returns The path written (same as `options.to`).
-   * @throws ConfigError - `BridgeFile` validation failure.
-   * @throws OAuthError - `oauth_browser` account with no tokens.
+   * @throws {@link ConfigError} - When `BridgeFile` validation fails.
+   * @throws {@link OAuthError} - When an `oauth_browser` account has no
+   *   tokens.
    */
   export: (options: {
     readonly account: Account;
@@ -299,27 +335,28 @@ export interface TokenStore {
   writeTokens: (name: string, tokens: OAuthTokens) => string;
 
   /**
-   * Delete the persisted tokens if present (Python `logout`). A missing
-   * file is a no-op.
+   * Delete the persisted tokens if present; a missing file is a no-op.
    *
    * @param name - Account name.
+   * @see mixpanel_headless.accounts.logout
    */
   removeTokens: (name: string) => void;
 
   /**
    * Remove the whole per-account directory, warning (never raising) on
-   * failure (Python `_safe_rmtree_warn`).
+   * failure.
    *
    * @param name - Account name.
+   * @see mixpanel_headless.accounts._safe_rmtree_warn
    */
   removeAccountDir: (name: string) => void;
 
   /**
-   * Where the DCR client info for `region` lives (Python
-   * `_client_info_path`).
+   * Return where the DCR client info for `region` lives.
    *
    * @param region - Mixpanel region.
-   * @returns Absolute path (may not exist yet).
+   * @returns Absolute path; the file may not exist yet.
+   * @see mixpanel_headless.accounts._client_info_path
    */
   clientInfoPath: (region: Region) => string;
 
@@ -349,9 +386,10 @@ export interface OAuthFlowEffects {
    * Run the PKCE login dance for a region.
    *
    * @param region - The region the flow commits to.
-   * @param options - `openBrowser` mirrors Python's `open_browser`.
+   * @param options - `openBrowser` launches the system browser; when
+   *   `false` the authorize URL is printed instead.
    * @returns The freshly minted tokens (not persisted).
-   * @throws OAuthError - Any leg of the flow fails.
+   * @throws {@link OAuthError} - When any leg of the flow fails.
    */
   login: (
     region: Region,
@@ -436,12 +474,13 @@ export interface AuthEffects {
    */
   readSecretStdin: () => string;
   /**
-   * Single-line progress narration (Python `_narrate`, a stderr write).
-   * The core default is a silent no-op — the messages are out of
-   * contract — so this member is not in {@link UNPORTED_AUTH_SEAMS};
-   * node wires `process.stderr`.
+   * Write one line of progress narration (a stderr write on node).
    *
-   * @param msg - Single-line message (no trailing newline).
+   * @remarks
+   * The core default is a silent no-op because the messages are out of
+   * contract, so this member is not in {@link UNPORTED_AUTH_SEAMS}.
+   * @param msg - Single-line message, no trailing newline.
+   * @see mixpanel_headless.accounts._narrate
    */
   narrate: (msg: string) => void;
   /** The injected fetch every probe/client runs over (a core member, no stub). */
@@ -525,15 +564,19 @@ function unportedMethodBag<T extends object>(prefix: string): T {
 }
 
 /**
- * The default {@link AuthEffects} — every node-owned member throws
- * `UNPORTED_AUTH_SEAM` with `{seam: name}`; `narrate` is a silent
- * no-op; `fetchImpl` / `now` are the ambient web-standard globals (core
- * members, no stub).
+ * Build the default {@link AuthEffects} bag, in which every node-owned
+ * member throws `UNPORTED_AUTH_SEAM`.
  *
+ * @remarks
+ * The thrown error carries `{ seam: name }` in its details; `narrate` is
+ * a silent no-op; `fetchImpl` / `now` are the ambient web-standard
+ * globals (core members, no stub). Spread it under a partial bag so an
+ * unwired member fails loudly instead of as a bare `TypeError`.
  * @returns The stubbed bag.
  * @example
  * ```typescript
  * const effects = { ...defaultAuthEffects(), config: myFakeConfig };
+ * effects.tokenStore.readTokens("team"); // throws UNPORTED_AUTH_SEAM
  * ```
  */
 export function defaultAuthEffects(): AuthEffects {

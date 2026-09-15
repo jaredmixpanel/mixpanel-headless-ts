@@ -26,11 +26,10 @@ const SLUG_MAX_LEN = 32;
 const NON_SLUG_CHARS = /[^a-z0-9]+/g;
 
 /**
- * Reduce an org name to the `[a-z0-9-]{0,32}` subset (Python
- * `slugify`).
+ * Reduce an organization name to the `[a-z0-9-]{0,32}` subset.
  *
- * Six-step normalization (applied in order):
- *
+ * @remarks
+ * Six-step normalization, applied in order:
  * 1. Coerce `null` / empty input to `""`.
  * 2. NFKD-normalize and ASCII-fold (drop every codepoint above 0x7F —
  *    the `encode("ascii", errors="ignore")` twin).
@@ -40,7 +39,6 @@ const NON_SLUG_CHARS = /[^a-z0-9]+/g;
  * 5. Strip leading and trailing `-`.
  * 6. Truncate to 32 characters; strip any trailing `-` left by the
  *    truncation.
- *
  * @param value - An arbitrary string (typically an organization name).
  *   `null`/`undefined` is treated as the empty string.
  * @returns The slug, matching `^[a-z0-9-]{0,32}$`. Empty string when no
@@ -53,6 +51,7 @@ const NON_SLUG_CHARS = /[^a-z0-9]+/g;
  * slugify("Café Industries");  // "cafe-industries"
  * slugify("---");              // ""
  * ```
+ * @see mixpanel_headless._internal.auth.naming.slugify
  */
 export function slugify(value: string | null | undefined): string {
   // Python `if not value` — None and "" both fall through.
@@ -87,21 +86,19 @@ export function slugify(value: string | null | undefined): string {
 }
 
 /**
- * Pick a default account name from `/me`, suffixing on collision
- * (Python `default_account_name`).
+ * Pick a default account name from `/me`, suffixing on collision.
  *
- * Picks the first organization from `me.organizations` as the slug
+ * @remarks
+ * The first organization in `me.organizations` is the slug
  * source. When the slugified org name is empty, falls back to
  * `org-{org_id}`. When `me.organizations` is itself empty, falls back
  * to the literal `"account"`. Collision suffixes start at `-2` (never
  * `-1`) and increment monotonically until a unique name is found.
- *
  * Python's "first organization" is dict insertion order
  * (`next(iter(...))`); `MeResponse.organizations` is an
  * insertion-ordered `ReadonlyMap` fed by the lossless JSON layer's
  * key-order capture, so the pick matches Python even when `/me` lists
  * organizations out of ascending-id order.
- *
  * @param me - Parsed `/me` response.
  * @param existing - Set of already-taken local account names. Treated
  *   as immutable; never modified.
@@ -112,6 +109,7 @@ export function slugify(value: string | null | undefined): string {
  * defaultAccountName(me, new Set());          // "acme-corp"
  * defaultAccountName(me, new Set(["acme-corp"])); // "acme-corp-2"
  * ```
+ * @see mixpanel_headless._internal.auth.naming.default_account_name
  */
 export function defaultAccountName(
   me: MeResponse,

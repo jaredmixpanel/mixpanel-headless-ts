@@ -20,16 +20,25 @@ import type { ResolverSeams } from "../workspace-members/lifecycle.js";
 import type { AuthEffects, ConfigWrites } from "./auth-effects.js";
 
 /**
- * Build the {@link ResolverSources} bag `resolveSession` consumes from
- * an effect bag — the `config=ConfigManager()` / `bridge=load_bridge()`
+ * Build the {@link ResolverSources} bag that `resolveSession` consumes
+ * from an effect bag.
+ *
+ * @remarks
+ * These are the `config=ConfigManager()` / `bridge=load_bridge()`
  * defaults Python builds inline, made explicit because core does no I/O.
- *
- * The bridge is loaded at call time (Python loads it per resolution),
- * so call this next to each `resolveSession` use rather than caching
- * the result.
- *
+ * The bridge is loaded at call time (Python loads it per resolution), so
+ * call this next to each `resolveSession` use rather than caching the
+ * result.
  * @param effects - The effect bag.
  * @returns The injected-source bag.
+ * @example
+ * ```typescript
+ * const session = resolveSession(
+ *   { account: "team" },
+ *   resolverSourcesFromEffects(effects),
+ * );
+ * ```
+ * @see mixpanel_headless._internal.auth.resolver.resolve_session
  */
 export function resolverSourcesFromEffects(
   effects: AuthEffects,
@@ -42,8 +51,8 @@ export function resolverSourcesFromEffects(
 }
 
 /**
- * Build the full seam bag over an effect bag — `Workspace` construction
- * accepts it through `WorkspaceOptions.seams`.
+ * Build the full seam bag a `Workspace` accepts through
+ * `WorkspaceOptions.seams`.
  *
  * @param effects - The effect bag.
  * @returns The five seams; `persistActive` routes to the effect member,
@@ -80,16 +89,25 @@ export function resolverSeamsFromEffects(effects: AuthEffects): ResolverSeams {
 }
 
 /**
- * The `persistActive` routing over a config-write surface: all three
- * axes land in one `applySession` transaction, with `clear_workspace`
- * set when the in-session workspace was cleared, so a stale
- * `[active].workspace` never survives an account swap.
- * `@mixpanel-headless/node` binds it to the on-disk `ConfigManager`
+ * Persist a session's three axes to `[active]` in one `applySession`
+ * transaction.
+ *
+ * @remarks
+ * `clear_workspace` is set when the in-session workspace was cleared, so
+ * a stale `[active].workspace` never survives an account swap.
+ * `@mixpanel-headless/node` binds this to the on-disk `ConfigManager`
  * when implementing the `persistActive` effect; tests wire it to the
  * in-memory config fake.
- *
  * @param config - The config-write surface.
  * @param session - The post-swap session to persist.
+ * @example
+ * ```typescript
+ * const effects = {
+ *   ...nodeEffects,
+ *   persistActive: (session) =>
+ *     persistActiveToConfig(nodeEffects.config, session),
+ * };
+ * ```
  * @see mixpanel_headless.workspace.Workspace._persist_active
  */
 export function persistActiveToConfig(
