@@ -1,10 +1,9 @@
 /**
- * Flow query-param types — TS port of the corresponding frozen
- * dataclass in `mixpanel_headless/types.py` (phase2-design C7, packet
- * P2-5c): `FlowStep`.
+ * `FlowStep`: an anchor event in a flow query with its per-step
+ * configuration. Constructor guards fire in the Python `__post_init__`
+ * order, one comment per rule code.
  *
- * Guard blocks are transcribed from the Python `__post_init__` body IN
- * SOURCE ORDER (Risk #1), one comment per registry code.
+ * @see mixpanel_headless.types.FlowStep
  */
 
 import { ParamValidationError } from "../../errors.js";
@@ -16,27 +15,57 @@ import { validateEventName } from "./guards.js";
 export interface FlowStepFields {
   /** The event name to anchor this step on. */
   readonly event: string;
-  /** Max forward steps to trace from this event. Default: `null`. */
+  /**
+   * Max forward steps to trace from this event.
+   *
+   * @defaultValue `null`
+   */
   readonly forward?: number | null;
-  /** Max reverse steps to trace from this event. Default: `null`. */
+  /**
+   * Max reverse steps to trace from this event.
+   *
+   * @defaultValue `null`
+   */
   readonly reverse?: number | null;
-  /** Display label for this step. Default: `null` (event name). */
+  /**
+   * Display label for this step.
+   *
+   * @defaultValue `null` (event name)
+   */
   readonly label?: string | null;
-  /** Per-step filter conditions. Default: `null`. */
+  /**
+   * Per-step filter conditions.
+   *
+   * @defaultValue `null`
+   */
   readonly filters?: readonly Filter[] | null;
-  /** How per-step filters combine. Default: `"all"`. */
+  /**
+   * How per-step filters combine.
+   *
+   * @defaultValue `"all"`
+   */
   readonly filters_combinator?: FiltersCombinator;
-  /** Session anchor type (`"start"`/`"end"`). Default: `null`. */
+  /**
+   * Session anchor type (`"start"`/`"end"`).
+   *
+   * @defaultValue `null`
+   */
   readonly session_event?: FlowSessionEvent | null;
 }
 
 /**
- * An anchor event in a flow query with per-step configuration — TS
- * port of `types.FlowStep`.
+ * An anchor event in a flow query with its per-step configuration.
  *
- * Each flow step identifies a specific event and optional constraints
- * (forward/reverse step counts, filters) that define a node in the
+ * Each step names an event and optional constraints (forward/reverse
+ * step counts, filters, a session anchor) that define one node of the
  * flow analysis.
+ *
+ * @example
+ * ```ts
+ * const step = new FlowStep({ event: "Signup", forward: 3, reverse: 1 });
+ * const start = new FlowStep({ event: "$session_start", session_event: "start" });
+ * ```
+ * @see mixpanel_headless.types.FlowStep
  */
 export class FlowStep {
   /** The event name to anchor this step on. */
@@ -64,12 +93,11 @@ export class FlowStep {
   readonly session_event: FlowSessionEvent | null;
 
   /**
-   * Create a flow step (guards fire exactly as Python's
-   * `__post_init__`).
+   * Create a flow step; the guards fire in Python `__post_init__` order.
    *
    * @param fields - Declared fields; absent optionals take the Python
    *   defaults.
-   * @throws ParamValidationError - `EV1_EMPTY_EVENT` /
+   * @throws {@link ParamValidationError} - `EV1_EMPTY_EVENT` /
    *   `EV2_CONTROL_CHAR_EVENT` (shared event-name guard), then
    *   `FL3_FORWARD_RANGE` / `FL4_REVERSE_RANGE` when forward/reverse
    *   is outside 0-5, then `FS1_SESSION_EVENT_MISMATCH` when

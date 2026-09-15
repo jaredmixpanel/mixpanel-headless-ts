@@ -1,12 +1,12 @@
 /**
- * Barrel for the query-param dataclass family (phase2-design C1/C7).
+ * Query-parameter value types: the typed filters, metrics, breakdowns and
+ * per-step specifications that `Workspace` query methods accept.
  *
- * P2-5a exports the filter/metric/group core; P2-5b adds the cohort
- * family; P2-5c adds the funnel/retention/flow/frequency family.
- * `guards.ts` is `@internal` plumbing and never barrel-exported;
- * `sanitizeRawCohort` and the cohort helper tables stay module-level
- * `@internal` exports (consumed by the conformance binding and tests,
- * not re-exported here).
+ * Every class mirrors a frozen dataclass in the Python `types` module and
+ * validates itself at construction with the same rule codes. `guards.ts`
+ * (the shared validators) is internal and not re-exported here.
+ *
+ * @see mixpanel_headless.types
  */
 export {
   CohortBreakdown,
