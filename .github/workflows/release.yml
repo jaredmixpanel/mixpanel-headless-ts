@@ -1,0 +1,72 @@
+# Release process: Changesets + npm trusted publishing.
+#
+# On every push to main, changesets/action either (a) opens or refreshes the
+# "Version Packages" pull request when unreleased `.changeset/*.md` entries
+# exist (running `npm run version` = `changeset version`), or (b) when there
+# are none, runs `npm run release` = `changeset publish`, which publishes any
+# package whose version is not on the registry yet.
+#
+# Publishing is a documented no-op today: the three packages carry
+# `"private": true`, which `changeset publish` skips. Enabling releases is the
+# owner's three-step flip (CONTRIBUTING.md, "Releasing"): remove `private`
+# from the three manifests, register this repository + workflow as the
+# trusted publisher for each package on npmjs.com, merge the "Version
+# Packages" PR. No NPM_TOKEN is used or needed — `id-token: write` lets npm
+# mint a short-lived OIDC credential, and `publishConfig.provenance` in each
+# manifest attaches the provenance attestation.
+#
+# Supply-chain rules (same as ci.yml): SHA-pinned actions, least privilege,
+# and the full gate before anything is versioned or published.
+name: release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write # commit the version bump / changelogs
+  pull-requests: write # open the "Version Packages" PR
+  id-token: write # npm trusted publishing (OIDC)
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  npm_config_fund: "false"
+  npm_config_audit: "false"
+
+jobs:
+  release:
+    name: version or publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # A deployment environment named `npm`: protect it in the repository
+    # settings (required reviewers) to put a human in front of every publish.
+    environment: npm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Node 24: its npm (>= 11.5.1) speaks trusted publishing; Node 22's does not.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install (lockfile-exact)
+        run: npm ci
+
+      # The whole gate (its first step, `tsc -b`, is the build the publish
+      # step ships): nothing is versioned or published from a red tree.
+      - name: Gate
+        run: npm run check
+
+      - name: Version packages or publish
+        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        with:
+          version-script: npm run version
+          publish-script: npm run release
+          commit-message: "chore(release): version packages"
+          pr-title: "chore(release): version packages"

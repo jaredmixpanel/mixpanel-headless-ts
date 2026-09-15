@@ -39,7 +39,7 @@
     "typecheck": "tsc -b tsconfig.json tsconfig.test.json"
   },
   "dependencies": {
-    "@mixpanel-headless/core": "0.1.0"
+    "@mixpanel-headless/core": "^0.1.0"
   },
   "publishConfig": {
     "access": "public",

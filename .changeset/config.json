@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@4.0.0/schema.json",
+  "changelog": "@changesets/cli/changelog",
+  "commit": false,
+  "fixed": [
+    [
+      "@mixpanel-headless/core",
+      "@mixpanel-headless/node",
+      "@mixpanel-headless/browser"
+    ]
+  ],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "privatePackages": { "version": true, "tag": false },
+  "ignore": [
+    "@mixpanel-headless/conformance-runner",
+    "@mixpanel-headless/differential"
+  ]
+}

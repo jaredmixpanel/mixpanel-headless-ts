@@ -57,7 +57,7 @@ describe.skipIf(SKIP)(
         ).trim();
         return join(scratch, out.split("\n").at(-1) ?? "");
       });
-      // All three at once so node/browser's `@mixpanel-headless/core@0.1.0`
+      // All three at once so node/browser's `@mixpanel-headless/core@^0.1.0`
       // dependency is satisfied by the packed core, not the registry.
       npm(
         [
