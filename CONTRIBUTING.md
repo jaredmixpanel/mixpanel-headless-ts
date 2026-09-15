@@ -323,6 +323,13 @@ Commands (all root npm scripts; `scripts/README.md` lists them too):
 - `npm run docs:build` — the same, then `vitepress build docs` into
   `docs/.vitepress/dist/` (the site, `llms.txt`, `llms-full.txt`, and a
   Markdown twin next to every page); `npm run docs:preview` serves that.
+- The three VitePress aliases run Node with `--max-old-space-size=10240`:
+  the full site (24 pages, ~450 twoslash blocks) peaks at about 9 GB RSS
+  because every hover is compiled as a Vue component and Vite holds the
+  client, server and lean variants of each page at once; Node's default
+  heap (~4 GB) runs out during the bundle step. The twoslash results are
+  cached under `docs/.vitepress/cache/twoslash/` (keyed by snippet text),
+  which makes rebuilds faster but does not lower the peak.
 - `npm run docs:api` regenerates the reference; `npm run docs:api:check`
   validates it without writing (`--emit none --treatWarningsAsErrors`, with
   `notExported`, `invalidLink`, `notDocumented` and `rewrittenLink` on).

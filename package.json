@@ -58,9 +58,9 @@
     "audit:comments:fix": "node scripts/audit/comment-archaeology.mjs --fix",
     "docs:api": "typedoc",
     "docs:api:check": "typedoc --emit none --treatWarningsAsErrors",
-    "docs:dev": "npm run build && npm run docs:api && vitepress dev docs",
-    "docs:build": "npm run build && npm run docs:api && vitepress build docs",
-    "docs:preview": "vitepress preview docs"
+    "docs:dev": "npm run build && npm run docs:api && node --max-old-space-size=10240 node_modules/vitepress/bin/vitepress.js dev docs",
+    "docs:build": "npm run build && npm run docs:api && node --max-old-space-size=10240 node_modules/vitepress/bin/vitepress.js build docs",
+    "docs:preview": "node --max-old-space-size=10240 node_modules/vitepress/bin/vitepress.js preview docs"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",

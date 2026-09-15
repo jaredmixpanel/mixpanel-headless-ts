@@ -13,6 +13,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { transformerTwoslash } from "@shikijs/vitepress-twoslash";
+import { createFileSystemTypesCache } from "@shikijs/vitepress-twoslash/cache-fs";
 import ts from "typescript";
 import {
   type DefaultTheme,
@@ -135,6 +136,11 @@ export default defineConfig({
   markdown: {
     codeTransformers: [
       transformerTwoslash({
+        // Twoslash results keyed by snippet hash, under the git-ignored Vite
+        // cache: a rebuild re-compiles only the blocks that changed.
+        typesCache: createFileSystemTypesCache({
+          dir: "docs/.vitepress/cache/twoslash",
+        }),
         twoslashOptions: {
           compilerOptions: {
             // Snippets are consumer code: modern Node, the repo's strict
