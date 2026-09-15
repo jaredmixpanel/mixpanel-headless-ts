@@ -16,14 +16,12 @@ import type { ClientCore } from "../../client/core.js";
 import { bindFirst, isPlainRecord } from "../../client/internals.js";
 import type { JsonValue } from "../../client/json-value.js";
 import { MixpanelHeadlessError } from "../../errors.js";
-import { scopedPath } from "../shared.js";
+import { pythonTypeNameOf, scopedPath, truthyList } from "../shared.js";
 import {
   expectListResult,
   expectRecordResult,
   joinIds,
   paramsOrNone,
-  pythonTypeNameOf,
-  truthyList,
 } from "./shared.js";
 
 /** Options bag of {@link DashboardMethods.listDashboards}. */

@@ -49,10 +49,7 @@ import type { QueryTimeUnit } from "../types/literals.js";
 // exports that the query-params barrel deliberately does not re-export
 // (see `types/query-params/index.ts`); import them by name from their
 // owning modules — never re-derive (R10.8).
-import {
-  CohortBreakdown,
-  sanitizeRawCohort,
-} from "../types/query-params/cohort.js";
+import { CohortBreakdown } from "../types/query-params/cohort.js";
 import {
   CustomPropertyRef,
   Filter,
@@ -64,7 +61,10 @@ import {
   FrequencyFilter,
 } from "../types/query-params/frequency.js";
 import { GroupBy } from "../types/query-params/group-by.js";
-import { isPyIntOrBool } from "../types/query-params/guards.js";
+import {
+  isPyIntOrBool,
+  sanitizeRawCohort,
+} from "../types/query-params/guards.js";
 import type { TimeComparison } from "../types/query-params/metric.js";
 
 /**

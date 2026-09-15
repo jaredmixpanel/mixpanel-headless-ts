@@ -8,8 +8,8 @@
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
+import { cpLength } from "../../compat/codepoint.js";
 import {
-  codepointLength,
   type EntityFieldSpecs,
   EntityModel,
   modelFail,
@@ -273,7 +273,7 @@ export class CreateAnnotationParams extends EntityModel<CreateAnnotationParamsIn
       kind: "str",
       // Python: Field(max_length=512) — codepoint-counted (R11.6).
       check: (value: unknown, path: string): void => {
-        if (typeof value === "string" && codepointLength(value) > 512) {
+        if (typeof value === "string" && cpLength(value) > 512) {
           modelFail(path, "max_length 512");
         }
       },
@@ -347,7 +347,7 @@ export class UpdateAnnotationParams extends EntityModel<UpdateAnnotationParamsIn
       nullable: true,
       // Python: Field(default=None, max_length=512) — codepoint-counted.
       check: (value: unknown, path: string): void => {
-        if (typeof value === "string" && codepointLength(value) > 512) {
+        if (typeof value === "string" && cpLength(value) > 512) {
           modelFail(path, "max_length 512");
         }
       },

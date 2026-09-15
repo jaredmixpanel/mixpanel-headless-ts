@@ -17,12 +17,8 @@ import { isPlainRecord, jsonValuePythonStr } from "../../client/internals.js";
 import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
 import { MixpanelHeadlessError } from "../../errors.js";
-import {
-  expectListResult,
-  expectRecordResult,
-  pyIntEquals,
-  pythonTypeNameOf,
-} from "./shared.js";
+import { pythonTypeNameOf } from "../shared.js";
+import { expectListResult, expectRecordResult, pyIntEquals } from "./shared.js";
 
 /** The C5 custom-event method surface (mixed into `MixpanelClient`). */
 export interface CustomEventMethods {

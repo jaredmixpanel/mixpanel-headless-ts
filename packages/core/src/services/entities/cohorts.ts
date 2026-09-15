@@ -12,13 +12,12 @@ import { appRequest } from "../../client/app-request.js";
 import type { ClientCore } from "../../client/core.js";
 import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
+import { truthyList, truthyStr } from "../shared.js";
 import {
   expectListResult,
   expectRecordResult,
   joinIds,
   paramsOrNone,
-  truthyList,
-  truthyStr,
 } from "./shared.js";
 
 /** Options bag of {@link CohortMethods.listCohortsApp}. */

@@ -83,7 +83,7 @@ import {
   validateResponseModels,
 } from "../client/response-validation.js";
 import { MixpanelHeadlessError } from "../errors.js";
-import { pythonTypeNameOf } from "../services/entities/shared.js";
+import { pythonTypeNameOf } from "../services/shared.js";
 import {
   AuditResponse,
   AuditViolation,

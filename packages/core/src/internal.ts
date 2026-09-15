@@ -36,13 +36,18 @@ export {
 
 // ── Model base, lock-test tables ────────────────────────────────────────
 export {
+  describeValue,
+  modelFail,
+  requireIsoText,
+} from "./types/entities/decode-utils.js";
+export {
   EntityModel,
   type EntityModelStatics,
 } from "./types/entities/model-base.js";
 export { ENUM_TABLES } from "./types/enums.js";
 export { LITERAL_ALIAS_VALUES } from "./types/literals.js";
-export { sanitizeRawCohort } from "./types/query-params/cohort.js";
 export { filterUnchecked } from "./types/query-params/filter.js";
+export { sanitizeRawCohort } from "./types/query-params/guards.js";
 
 // ── Auth / accounts internals ───────────────────────────────────────────
 export {
@@ -50,13 +55,14 @@ export {
   resolverSeamsFromEffects,
   resolverSourcesFromEffects,
 } from "./accounts/resolver-seams.js";
+export { requireOAuthBaseUrl } from "./auth/oauth-constants.js";
 export { base64UrlEncodeBytes } from "./auth/pkce.js";
 export { parseQs, pythonUnquote } from "./auth/query-params.js";
 export { probeClientFromFetch } from "./auth/region-probe.js";
 
 // ── Query validators, transforms, builders ──────────────────────────────
+export { ValueError } from "./compat/python-builtins.js";
 export { normalizeOnExpression } from "./query/expressions.js";
-export { ValueError } from "./query/python-builtins.js";
 export { buildSegfilterEntry } from "./query/segfilter.js";
 export { transformEvent, transformProfile } from "./query/transforms.js";
 export {
@@ -113,7 +119,16 @@ export {
 export { validateWithPydantic } from "./bookmarks/schema-sorting.js";
 
 // ── Replays internals ───────────────────────────────────────────────────
-export { RrwebAnalyzer } from "./replays/rrweb-analyzer.js";
+export {
+  DOMTracker,
+  type DOMTrackerOptions,
+  RrwebAnalyzer,
+} from "./replays/rrweb-analyzer.js";
+
+// ── Python-parity internals (`compat/`) ─────────────────────────────────
+export { dateTodayIso, isLeapYear } from "./compat/python-dates.js";
+export { isPythonValue } from "./compat/python-str.js";
+export { isFloatCarrier } from "./compat/python-values.js";
 
 // ── Module namespaces for the lock tests ─────────────────────────────────
 // `error-codes-registry.test.ts` walks every Error subclass `errors.ts`
@@ -122,7 +137,3 @@ export { RrwebAnalyzer } from "./replays/rrweb-analyzer.js";
 // also carries `UrlSplitError`, `LosslessJsonError`, …).
 export * as errorsModule from "./errors.js";
 export * as queryParamsModule from "./types/query-params/index.js";
-
-// Lane F (Phase 6) appended these two for packages/node and packages/browser; Ω folds them into their sections.
-export { requireOAuthBaseUrl } from "./auth/oauth-constants.js";
-export { isPythonValue } from "./compat/python-str.js";

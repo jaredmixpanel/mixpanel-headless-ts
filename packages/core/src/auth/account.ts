@@ -163,9 +163,6 @@ export interface OAuthTokenAccount {
  */
 export type Account = ServiceAccount | OAuthBrowserAccount | OAuthTokenAccount;
 
-// TODO(Ω): shim — `ParseAccountOptions` moved to ./shared.ts; repoint index.ts and delete.
-export type { ParseAccountOptions } from "./shared.js";
-
 /** Account `name` constraint: Python `pattern=r"^[a-zA-Z0-9_-]+$"`. */
 const NAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
 

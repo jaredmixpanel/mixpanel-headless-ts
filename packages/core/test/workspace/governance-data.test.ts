@@ -75,12 +75,13 @@ import {
   UpdateEventDefinitionParams,
 } from "../../src/types/entities/lexicon.js";
 import { CustomPropertyResourceType } from "../../src/types/enums.js";
-import { Workspace, type WorkspaceOptions } from "../../src/workspace.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   listCustomProperties as listCustomPropertiesMember,
   type LookupUploadSeams,
   uploadLookupTable as uploadLookupTableMember,
 } from "../../src/workspace-members/governance-data.js";
+import type { WorkspaceOptions } from "../../src/workspace-members/options.js";
 import {
   type CannedResponse,
   type CapturedFetchRequest,

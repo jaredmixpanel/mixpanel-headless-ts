@@ -32,10 +32,8 @@ import { describe, expect, it } from "vitest";
 import { Filter } from "../../src/types/query-params/filter.js";
 import { FlowStep } from "../../src/types/query-params/flow.js";
 import { GroupBy } from "../../src/types/query-params/group-by.js";
-import {
-  FlowQueryResult,
-  FlowTreeNode,
-} from "../../src/types/results/query-engine.js";
+import { FlowTreeNode } from "../../src/types/results/flow-tree.js";
+import { FlowQueryResult } from "../../src/types/results/query-engine.js";
 import { Workspace } from "../../src/workspace.js";
 import { buildFlowParams } from "../../src/workspace-query-params.js";
 import {

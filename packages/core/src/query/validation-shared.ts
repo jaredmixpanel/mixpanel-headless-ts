@@ -912,20 +912,3 @@ export function scanCustomProperties(
 
   return errors;
 }
-
-// TODO(Ω): shim — these helpers moved to `compat/python-values.ts`; the
-// re-export keeps foreign importers resolving until the sweep repoints them.
-export {
-  codepointGreater,
-  floatCarrierValue,
-  isFloatCarrier,
-  isPythonFloat,
-  isPythonInt,
-  pythonIterableElements,
-  pythonListRepr,
-  pythonNumberStr,
-  pythonStrLoose,
-  pythonStrValue,
-  pythonTypeName,
-  requireHashable,
-} from "../compat/python-values.js";

@@ -30,7 +30,7 @@ import {
   MarkdownReporter,
   RrwebAnalyzer,
 } from "../../src/replays/rrweb-analyzer.js";
-import type { UserAction } from "../../src/types/results/replays.js";
+import type { UserAction } from "../../src/replays/user-action.js";
 
 type Dict = Record<string, unknown>;
 

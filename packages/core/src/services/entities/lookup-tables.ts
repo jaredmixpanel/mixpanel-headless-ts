@@ -33,13 +33,12 @@ import {
 } from "../../client/lossless-json.js";
 import { cpSlice, pythonStr, pythonStrOf } from "../../compat/index.js";
 import { MixpanelHeadlessError } from "../../errors.js";
-import { scopedPath } from "../shared.js";
+import { pythonTypeNameOf, scopedPath } from "../shared.js";
 import {
   expectListResult,
   expectRecordResult,
   jsonTruthy,
   paramsOrNone,
-  pythonTypeNameOf,
 } from "./shared.js";
 
 /** Options bag of {@link LookupTableMethods.listLookupTables}. */

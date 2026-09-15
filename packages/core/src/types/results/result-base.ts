@@ -24,6 +24,7 @@
  */
 
 import { ResponseValidationError } from "../../errors.js";
+import { describeValue } from "../entities/decode-utils.js";
 
 /**
  * One pre-pandas row exactly as Python builds it before
@@ -53,25 +54,6 @@ export function decodeFail(
   throw new ResponseValidationError(
     `${cls}.${field}: expected ${expected}, got ${describeValue(value)}`,
   );
-}
-
-// TODO(Ω): `describeValue` duplicates `types/entities/model-base.ts`; fold
-// both into Lane D's `types/entities/decode-utils.ts` once it lands.
-/**
- * Describe a value's JSON kind for strict-decode error messages.
- *
- * @param value - Any value.
- * @returns A short human-readable kind label.
- * @internal
- */
-function describeValue(value: unknown): string {
-  if (value === null) {
-    return "null";
-  }
-  if (Array.isArray(value)) {
-    return "array";
-  }
-  return typeof value;
 }
 
 /**

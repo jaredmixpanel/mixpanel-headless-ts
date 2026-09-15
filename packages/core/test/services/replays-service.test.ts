@@ -39,7 +39,7 @@ import {
 } from "../../src/errors.js";
 import type { WarningSink } from "../../src/services/discovery.js";
 import { ReplaysService } from "../../src/services/replays.js";
-import { SignedReplay } from "../../src/types/results/replays.js";
+import { SignedReplay } from "../../src/types/results/replay-models.js";
 import {
   type CannedResponse,
   type CapturedFetchRequest,

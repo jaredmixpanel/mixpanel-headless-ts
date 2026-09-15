@@ -16,7 +16,7 @@ import { isPlainRecord } from "../../client/internals.js";
 import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
 import { MixpanelHeadlessError } from "../../errors.js";
-import { pythonTypeNameOf } from "./shared.js";
+import { pythonTypeNameOf } from "../shared.js";
 
 /** The C5 audit method surface (mixed into `MixpanelClient`). */
 export interface AuditMethods {

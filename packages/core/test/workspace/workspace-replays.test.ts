@@ -43,13 +43,14 @@ import { ParamValidationError, ReplayNotFoundError } from "../../src/errors.js";
 import { ReplaysService } from "../../src/services/replays.js";
 import {
   Replay,
-  ReplayBundle,
   ReplayEvent,
   ReplaySummary,
   SignedReplay,
-} from "../../src/types/results/replays.js";
-import { checkEventPropertiesCount, Workspace } from "../../src/workspace.js";
+} from "../../src/types/results/replay-models.js";
+import { ReplayBundle } from "../../src/types/results/replays.js";
+import { Workspace } from "../../src/workspace.js";
 import type { WorkspaceLogger } from "../../src/workspace-members/options.js";
+import { checkEventPropertiesCount } from "../../src/workspace-members/replay-methods.js";
 import {
   type CannedResponse,
   type CapturedFetchRequest,

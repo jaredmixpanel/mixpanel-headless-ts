@@ -197,11 +197,11 @@ import type {
 } from "./types/results/query-engine.js";
 import type {
   Replay,
-  ReplayBundle,
   ReplayEvent,
   ReplaySummary,
   SignedReplay,
-} from "./types/results/replays.js";
+} from "./types/results/replay-models.js";
+import type { ReplayBundle } from "./types/results/replays.js";
 import type {
   WorkspaceGetAlertCountOptions,
   WorkspaceGetAlertHistoryOptions,
@@ -314,55 +314,6 @@ import {
   resolveAndBuildRetentionParams,
   resolveAndBuildUserParams,
 } from "./workspace-query-params.js";
-
-export { validateBookmarkParamsSchema } from "./workspace-members/bookmarks-cohorts.js";
-export { NOOP_LOGGER } from "./workspace-members/options.js";
-// TODO(Ω): shim — checkEventPropertiesCount lives in replay-methods.ts.
-export { checkEventPropertiesCount } from "./workspace-members/replay-methods.js";
-// TODO(Ω): shim — the option types live in ./workspace-members/options.ts;
-// repoint the barrel and delete this re-export.
-export type { MeCacheStore, MeService } from "./services/me.js";
-export type {
-  ReportLinkParamsInput,
-  WorkspaceCreateReportLinkOptions,
-  WorkspaceEventCountsOptions,
-  WorkspaceEventsForReplayOptions,
-  WorkspaceEventsOptions,
-  WorkspaceFetchReplayOptions,
-  WorkspaceFetchReplaysOptions,
-  WorkspaceFlowQueryOptions,
-  WorkspaceFrequencyOptions,
-  WorkspaceFunnelOptions,
-  WorkspaceFunnelQueryOptions,
-  WorkspaceLexiconSchemasOptions,
-  WorkspaceListReplaysOptions,
-  WorkspaceLogger,
-  WorkspaceMeOptions,
-  WorkspaceNumericOptions,
-  WorkspaceOptions,
-  WorkspaceProjectsOptions,
-  WorkspacePropertyCountsOptions,
-  WorkspacePropertyValuesOptions,
-  WorkspaceQueryOptions,
-  WorkspaceQueryReportLinkOptions,
-  WorkspaceReplaysForUserOptions,
-  WorkspaceRetentionOptions,
-  WorkspaceRetentionQueryOptions,
-  WorkspaceRunFlowParamsOptions,
-  WorkspaceRunParamsOptions,
-  WorkspaceRunUserParamsOptions,
-  WorkspaceSavedReportLinkOptions,
-  WorkspaceSchemaGraphOptions,
-  WorkspaceSegmentationNumericOptions,
-  WorkspaceSegmentationOptions,
-  WorkspaceSignReplayOptions,
-  WorkspaceStreamReplayOptions,
-  WorkspaceSubpropertiesOptions,
-  WorkspaceTopEventsOptions,
-  WorkspaceUseOptions,
-  WorkspaceUserQueryOptions,
-  WorkspaceWorkspacesOptions,
-} from "./workspace-members/options.js";
 
 /** `last` default of the four query builders (`Workspace.query(last=30)`). */
 const DEFAULT_QUERY_LAST_DAYS = 30;

@@ -17,14 +17,12 @@ import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
 import { pythonStr } from "../../compat/python-str.js";
 import { MixpanelHeadlessError } from "../../errors.js";
+import { pythonTypeNameOf, truthyList, truthyStr } from "../shared.js";
 import {
   expectListResult,
   expectRecordResult,
   joinIds,
   paramsOrNone,
-  pythonTypeNameOf,
-  truthyList,
-  truthyStr,
 } from "./shared.js";
 
 /** Options bag of {@link BookmarkMethods.listBookmarksV2}. */

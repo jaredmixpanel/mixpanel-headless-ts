@@ -18,11 +18,11 @@ import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
 import { pythonStr } from "../../compat/python-str.js";
 import { MixpanelHeadlessError } from "../../errors.js";
+import { pythonTypeNameOf } from "../shared.js";
 import {
   expectListResult,
   expectRecordResult,
   paramsOrNone,
-  pythonTypeNameOf,
 } from "./shared.js";
 
 /** Options bag of {@link AlertMethods.listAlerts}. */

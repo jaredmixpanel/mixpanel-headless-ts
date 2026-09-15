@@ -63,7 +63,7 @@ import {
   ReplayEvent,
   ReplaySummary,
   SignedReplay,
-} from "../types/results/replays.js";
+} from "../types/results/replay-models.js";
 import type { WarningSink } from "./discovery.js";
 
 /** Any JSON-shaped mapping the parsers walk. */

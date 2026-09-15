@@ -15,7 +15,7 @@ import type { JsonValue } from "../src/client/json-value.js";
 import { toError } from "../src/invariant.js";
 import { Secret } from "../src/secret.js";
 import { ProfilePageResult } from "../src/types/results/discovery.js";
-import type { WorkspaceLogger } from "../src/workspace.js";
+import type { WorkspaceLogger } from "../src/workspace-members/options.js";
 
 /**
  * The canonical fake Session the query-user test modules declare

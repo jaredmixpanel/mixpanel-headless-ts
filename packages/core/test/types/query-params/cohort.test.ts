@@ -20,9 +20,9 @@ import {
   CohortDefinition,
   FILTER_TO_SELECTOR_SUPPORTED,
   PROPERTY_OPERATOR_MAP,
-  sanitizeRawCohort,
 } from "../../../src/types/query-params/cohort.js";
 import { Filter } from "../../../src/types/query-params/filter.js";
+import { sanitizeRawCohort } from "../../../src/types/query-params/guards.js";
 
 /**
  * Assert a thunk throws the exact guard `{class, code}` pair.

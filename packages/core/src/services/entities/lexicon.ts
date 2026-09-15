@@ -21,13 +21,8 @@ import { bindFirst, isPlainRecord } from "../../client/internals.js";
 import type { JsonValue } from "../../client/json-value.js";
 import { pythonJsonDumps } from "../../compat/index.js";
 import { MixpanelHeadlessError } from "../../errors.js";
-import { scopedPath } from "../shared.js";
-import {
-  expectListResult,
-  expectRecordResult,
-  pythonQuote,
-  pythonTypeNameOf,
-} from "./shared.js";
+import { pythonTypeNameOf, scopedPath } from "../shared.js";
+import { expectListResult, expectRecordResult, pythonQuote } from "./shared.js";
 
 /**
  * `_RESOURCE_TYPE_CANONICAL` (`api_client.py:257-263`): the App API

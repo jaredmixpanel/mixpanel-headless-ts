@@ -13,10 +13,10 @@
 // P2-5c.
 import { describe, expect, it } from "vitest";
 
+import { safeInt } from "../../../src/types/results/flow-graph.js";
 import {
   FlowQueryResult,
   type FlowQueryResultFields,
-  safeInt,
 } from "../../../src/types/results/query-engine.js";
 
 /** Build a default-valid FlowQueryResult (Python `_make_result`). */

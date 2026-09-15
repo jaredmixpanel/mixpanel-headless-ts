@@ -10,9 +10,48 @@
 
 // ── Facade — `Workspace` and its per-method option types ────────────────
 export type { MeCacheStore } from "./services/me.js";
+export { Workspace } from "./workspace.js";
+export type {
+  WorkspaceGetAlertCountOptions,
+  WorkspaceGetAlertHistoryOptions,
+  WorkspaceListAlertsOptions,
+  WorkspaceListAnnotationsOptions,
+} from "./workspace-members/annotations-webhooks-alerts.js";
 export {
+  validateBookmarkParamsSchema,
+  type ValidateBookmarkParamsSchemaOptions,
+  type WorkspaceGetBookmarkHistoryOptions,
+  type WorkspaceListBookmarksV2Options,
+  type WorkspaceListCohortsFullOptions,
+} from "./workspace-members/bookmarks-cohorts.js";
+export type {
+  WorkspaceListBlueprintTemplatesOptions,
+  WorkspaceListDashboardsOptions,
+} from "./workspace-members/dashboards.js";
+export type {
+  WorkspaceConcludeExperimentOptions,
+  WorkspaceGetFlagHistoryOptions,
+  WorkspaceListExperimentsOptions,
+  WorkspaceListFeatureFlagsOptions,
+} from "./workspace-members/flags-experiments.js";
+export type {
+  WorkspaceDownloadLookupTableOptions,
+  WorkspaceListLookupTablesOptions,
+  WorkspaceUploadLookupTableOptions,
+} from "./workspace-members/governance-data.js";
+export type {
+  WorkspaceExportLexiconOptions,
+  WorkspaceGetEventDefinitionsOptions,
+  WorkspaceGetPropertyDefinitionsOptions,
+} from "./workspace-members/lexicon-tracking.js";
+export type {
+  BusinessContextLevel,
+  BusinessContextScopeOptions,
+} from "./workspace-members/lifecycle.js";
+export {
+  NOOP_LOGGER,
   type ReportLinkParamsInput,
-  Workspace,
+  type ResolvedWorkspaceLogger,
   type WorkspaceCreateReportLinkOptions,
   type WorkspaceEventCountsOptions,
   type WorkspaceEventsForReplayOptions,
@@ -51,44 +90,7 @@ export {
   type WorkspaceUseOptions,
   type WorkspaceUserQueryOptions,
   type WorkspaceWorkspacesOptions,
-} from "./workspace.js";
-export type {
-  WorkspaceGetAlertCountOptions,
-  WorkspaceGetAlertHistoryOptions,
-  WorkspaceListAlertsOptions,
-  WorkspaceListAnnotationsOptions,
-} from "./workspace-members/annotations-webhooks-alerts.js";
-export {
-  validateBookmarkParamsSchema,
-  type ValidateBookmarkParamsSchemaOptions,
-  type WorkspaceGetBookmarkHistoryOptions,
-  type WorkspaceListBookmarksV2Options,
-  type WorkspaceListCohortsFullOptions,
-} from "./workspace-members/bookmarks-cohorts.js";
-export type {
-  WorkspaceListBlueprintTemplatesOptions,
-  WorkspaceListDashboardsOptions,
-} from "./workspace-members/dashboards.js";
-export type {
-  WorkspaceConcludeExperimentOptions,
-  WorkspaceGetFlagHistoryOptions,
-  WorkspaceListExperimentsOptions,
-  WorkspaceListFeatureFlagsOptions,
-} from "./workspace-members/flags-experiments.js";
-export type {
-  WorkspaceDownloadLookupTableOptions,
-  WorkspaceListLookupTablesOptions,
-  WorkspaceUploadLookupTableOptions,
-} from "./workspace-members/governance-data.js";
-export type {
-  WorkspaceExportLexiconOptions,
-  WorkspaceGetEventDefinitionsOptions,
-  WorkspaceGetPropertyDefinitionsOptions,
-} from "./workspace-members/lexicon-tracking.js";
-export type {
-  BusinessContextLevel,
-  BusinessContextScopeOptions,
-} from "./workspace-members/lifecycle.js";
+} from "./workspace-members/options.js";
 export type {
   WorkspaceDeleteSchemasOptions,
   WorkspaceGetSchemaEnforcementOptions,
@@ -169,6 +171,8 @@ export {
   DateRangeTooLargeError,
   type ErrorDict,
   EventNotFoundError,
+  type HttpErrorContext,
+  type HttpErrorOptions,
   InvalidArgumentError,
   type InvalidArgumentErrorOptions,
   type InvalidArgumentViolation,
@@ -479,6 +483,7 @@ export {
 } from "./types/entities/webhooks.js";
 
 // ── Result models ───────────────────────────────────────────────────────
+export { UserAction, type UserActionFields } from "./replays/user-action.js";
 export {
   ReportLink,
   type ReportLinkFields,
@@ -510,6 +515,10 @@ export {
   TopEvent,
   type TopEventFields,
 } from "./types/results/discovery.js";
+export {
+  FlowTreeNode,
+  type FlowTreeNodeFields,
+} from "./types/results/flow-tree.js";
 export {
   ActivityFeedResult,
   type ActivityFeedResultFields,
@@ -545,8 +554,6 @@ export {
 export {
   FlowQueryResult,
   type FlowQueryResultFields,
-  FlowTreeNode,
-  type FlowTreeNodeFields,
   FunnelQueryResult,
   type FunnelQueryResultFields,
   QueryResult,
@@ -559,8 +566,6 @@ export {
 } from "./types/results/query-engine.js";
 export {
   Replay,
-  ReplayBundle,
-  type ReplayBundleFields,
   ReplayEvent,
   type ReplayEventFields,
   type ReplayFields,
@@ -568,8 +573,11 @@ export {
   type ReplaySummaryFields,
   SignedReplay,
   type SignedReplayFields,
-  UserAction,
-  type UserActionFields,
+} from "./types/results/replay-models.js";
+export {
+  ReplayBundle,
+  type ReplayBundleFields,
+  type ReplayFetchFailure,
 } from "./types/results/replays.js";
 export type {
   FlowEdge,
@@ -590,6 +598,7 @@ export {
   type HasPropertyType,
 } from "./types/query-params/cohort.js";
 export {
+  type CohortDefinitionLike,
   CustomPropertyRef,
   Filter,
   type FilterFields,
@@ -729,7 +738,6 @@ export {
   type OAuthBrowserAccount,
   type OAuthTokenAccount,
   parseAccount,
-  type ParseAccountOptions,
   type ProjectId,
   type ServiceAccount,
   type TargetName,
@@ -781,6 +789,7 @@ export {
   type SessionReplaceUpdate,
   type WorkspaceRef,
 } from "./auth/session.js";
+export type { ParseAccountOptions } from "./auth/shared.js";
 export {
   type OAuthClientInfo,
   OAuthTokens,

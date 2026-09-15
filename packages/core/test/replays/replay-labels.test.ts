@@ -22,7 +22,7 @@ import {
   selectorLabelFn,
   urlNormalizer,
 } from "../../src/replays/replay-labels.js";
-import { UserAction } from "../../src/types/results/replays.js";
+import { UserAction } from "../../src/replays/user-action.js";
 
 /**
  * Construct a `UserAction` for label tests (Python `_build_action`,

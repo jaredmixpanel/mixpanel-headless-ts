@@ -8,10 +8,10 @@
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
+import { cpLength } from "../../compat/codepoint.js";
 import { pythonJsonDumps, pythonStrip } from "../../compat/index.js";
 import type { CustomPropertyResourceType } from "../enums.js";
 import {
-  codepointLength,
   type EntityFieldSpecs,
   EntityModel,
   modelFail,
@@ -48,7 +48,7 @@ export class CustomEventAlternative extends EntityModel<CustomEventAlternativeIn
       required: true,
       kind: "str",
       check: (value: unknown, path: string): void => {
-        if (typeof value === "string" && codepointLength(value) < 1)
+        if (typeof value === "string" && cpLength(value) < 1)
           modelFail(path, "min_length 1");
         if (Array.isArray(value) && value.length === 0)
           modelFail(path, "min_length 1");
@@ -185,7 +185,7 @@ export class CreateCustomEventParams extends EntityModel<CreateCustomEventParams
       required: true,
       kind: "str",
       check: (value: unknown, path: string): void => {
-        if (typeof value === "string" && codepointLength(value) < 1)
+        if (typeof value === "string" && cpLength(value) < 1)
           modelFail(path, "min_length 1");
         if (Array.isArray(value) && value.length === 0)
           modelFail(path, "min_length 1");
@@ -1330,10 +1330,10 @@ export class UploadLookupTableParams extends EntityModel<UploadLookupTableParams
       kind: "str",
       // Python: Field(min_length=1, max_length=255) — codepoint-counted.
       check: (value: unknown, path: string): void => {
-        if (typeof value === "string" && codepointLength(value) < 1) {
+        if (typeof value === "string" && cpLength(value) < 1) {
           modelFail(path, "min_length 1");
         }
-        if (typeof value === "string" && codepointLength(value) > 255) {
+        if (typeof value === "string" && cpLength(value) > 255) {
           modelFail(path, "max_length 255");
         }
       },

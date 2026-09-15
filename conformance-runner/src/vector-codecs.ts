@@ -122,6 +122,8 @@ import {
   type EntityModel,
   type EntityModelStatics,
   filterUnchecked,
+  isFloatCarrier,
+  requireIsoText,
 } from "@mixpanel-headless/core/internal";
 
 /**
@@ -163,40 +165,6 @@ export interface ContractTagCodec {
     instance: unknown,
     encodeChild: (value: unknown) => unknown,
   ) => Readonly<Record<string, unknown>>;
-}
-
-/**
- * Extract the ISO text from a decoded datetime child.
- *
- * TODO(Ω): verbatim twin of core `types/entities/decode-utils.ts#requireIsoText`
- * (different error class only); import it once `internal.ts` exports it.
- *
- * The runner decodes `$type: datetime` payloads to its lossless
- * `PyDatetime` wrapper (an object with a string `iso` field); this module
- * cannot import that class, so it duck-types the shape. A raw string
- * passes through (already-decoded callers).
- *
- * @param value - The decoded child value.
- * @param field - Field name for error messages.
- * @returns The ISO-8601 text.
- * @throws Error - When the value is neither an iso-carrying object nor a
- *   string (a malformed vector payload — must fail loudly).
- */
-function requireIsoText(value: unknown, field: string): string {
-  if (typeof value === "string") {
-    return value;
-  }
-  if (
-    typeof value === "object" &&
-    value !== null &&
-    "iso" in value &&
-    typeof value.iso === "string"
-  ) {
-    return (value as { iso: string }).iso;
-  }
-  throw new Error(
-    `OAuthTokens.${field} must decode to a datetime (got ${typeof value})`,
-  );
 }
 
 /**
@@ -671,18 +639,11 @@ const GROUP_BY_SPEC: DataclassCodecSpec = {
     const floatFields = new Set<string>();
     for (const field of GROUP_BY_BUCKET_FIELDS) {
       const value = unwrapped[field];
-      // TODO(Ω): `isFloatCarrier` (core) once `internal.ts` exports it — its
-      // extra `!isPythonDict` guard is equivalent here (PyFloat is a class).
-      if (
-        typeof value === "object" &&
-        value !== null &&
-        "spelling" in value &&
-        typeof value.spelling === "string"
-      ) {
+      if (isFloatCarrier(value)) {
         // R11.7 rig-internal exemption: the spelling is the rig's
         // canonical PyFloat token (constructor-validated), same as
         // the SignedReplay `signed_at` unwrap below — not user input.
-        unwrapped[field] = Number((value as { spelling: string }).spelling);
+        unwrapped[field] = Number(value.spelling);
         floatFields.add(field);
       }
     }
@@ -771,14 +732,8 @@ const signedReplayCodec: ContractTagCodec = {
       }
     }
     const signedAt = bag["signed_at"];
-    // TODO(Ω): `isFloatCarrier` (core) once `internal.ts` exports it.
-    if (
-      typeof signedAt === "object" &&
-      signedAt !== null &&
-      "spelling" in signedAt &&
-      typeof signedAt.spelling === "string"
-    ) {
-      bag["signed_at"] = Number((signedAt as { spelling: string }).spelling);
+    if (isFloatCarrier(signedAt)) {
+      bag["signed_at"] = Number(signedAt.spelling);
     }
     return new SignedReplay(bag as unknown as SignedReplayFields);
   },

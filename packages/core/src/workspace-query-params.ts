@@ -64,6 +64,7 @@ import { dateTodayIso, isLeapYear } from "./compat/python-dates.js";
 import { isPythonDict } from "./compat/python-dict.js";
 import { pythonJsonDumps } from "./compat/python-json-dumps.js";
 import { isPythonValue, pythonRepr, pythonStrOf } from "./compat/python-str.js";
+import { pythonTypeName } from "./compat/python-values.js";
 import {
   BookmarkValidationError,
   ParamValidationError,
@@ -91,7 +92,6 @@ import {
 } from "./query/validation-bookmark.js";
 import {
   containsControlChars,
-  pythonTypeName,
   scanCustomProperties,
 } from "./query/validation-shared.js";
 import type { FlowMode } from "./services/live-query-transforms.js";
@@ -99,7 +99,6 @@ import type { QueryTimeUnit } from "./types/literals.js";
 import {
   type CohortBreakdown,
   CohortDefinition,
-  sanitizeRawCohort,
 } from "./types/query-params/cohort.js";
 import {
   CustomPropertyRef,
@@ -117,7 +116,7 @@ import {
   HoldingConstant,
 } from "./types/query-params/funnel.js";
 import type { GroupBy } from "./types/query-params/group-by.js";
-import { isPyInt } from "./types/query-params/guards.js";
+import { isPyInt, sanitizeRawCohort } from "./types/query-params/guards.js";
 import {
   CohortMetric,
   Formula,

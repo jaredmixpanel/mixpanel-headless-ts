@@ -32,10 +32,6 @@ import {
   validateCohortArgs,
 } from "./guards.js";
 
-// TODO(Ω): shim — `sanitizeRawCohort` moved to `guards.ts`; repoint the
-// barrel/rig/test importers and delete this line.
-export { sanitizeRawCohort } from "./guards.js";
-
 /**
  * Maps `CohortCriteria.hasProperty()` operator names to selector tree
  * operators — mirror of `types._PROPERTY_OPERATOR_MAP` (entry order =

@@ -197,7 +197,3 @@ export function pyIntEquals(
   }
   return false;
 }
-
-// TODO(Ω): shim — the entity factories and workspace members still import
-// these three from here; repoint them to services/shared.ts and drop this.
-export { pythonTypeNameOf, truthyList, truthyStr } from "../shared.js";

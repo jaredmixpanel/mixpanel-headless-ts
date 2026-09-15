@@ -24,17 +24,17 @@ import {
   type MixpanelHeadlessError,
   ParamValidationError,
 } from "../../../src/errors.js";
+import { UserAction } from "../../../src/replays/user-action.js";
 import {
   Replay,
-  ReplayBundle,
   ReplayEvent,
   type ReplayEventFields,
   ReplaySummary,
   type ReplaySummaryFields,
   SignedReplay,
   type SignedReplayFields,
-  UserAction,
-} from "../../../src/types/results/replays.js";
+} from "../../../src/types/results/replay-models.js";
+import { ReplayBundle } from "../../../src/types/results/replays.js";
 
 /**
  * Assert a thunk throws the exact guard `{class, code}` pair.

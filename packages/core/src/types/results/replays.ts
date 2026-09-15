@@ -39,26 +39,6 @@ import {
   type Row,
 } from "./result-base.js";
 
-// TODO(Ω): shim — the per-replay dataclasses moved to `./replay-models.ts`
-// and `UserAction` to `replays/user-action.ts`; the frozen root barrel and
-// the foreign importers still read them from here. Repoint and delete.
-export {
-  type ReplayActionLabel,
-  UserAction,
-  type UserActionFields,
-} from "../../replays/user-action.js";
-export {
-  Replay,
-  ReplayEvent,
-  type ReplayEventFields,
-  type ReplayFields,
-  ReplaySummary,
-  type ReplaySummaryFields,
-  rrwebEventRow,
-  SignedReplay,
-  type SignedReplayFields,
-} from "./replay-models.js";
-
 /**
  * One replay `fetch_replays` skipped — TS-only. Python's `ReplayBundle`
  * has no such field: its `fetch_replays` only logs the skipped id.

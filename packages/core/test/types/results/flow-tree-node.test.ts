@@ -10,10 +10,10 @@
 // coverage map). Python tuple children translate to readonly arrays.
 import { describe, expect, it } from "vitest";
 
+import { FlowTreeNode } from "../../../src/types/results/flow-tree.js";
 import {
   FlowQueryResult,
   type FlowQueryResultFields,
-  FlowTreeNode,
 } from "../../../src/types/results/query-engine.js";
 
 /** Build the 3-level sample tree (Python `_sample_tree`). */

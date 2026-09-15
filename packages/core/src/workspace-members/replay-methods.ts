@@ -27,11 +27,13 @@ import {
 } from "../services/replays.js";
 import {
   Replay,
-  ReplayBundle,
   type ReplayEvent,
-  type ReplayFetchFailure,
   type ReplaySummary,
   type SignedReplay,
+} from "../types/results/replay-models.js";
+import {
+  ReplayBundle,
+  type ReplayFetchFailure,
 } from "../types/results/replays.js";
 import type {
   ResolvedWorkspaceLogger,

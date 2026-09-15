@@ -21,13 +21,8 @@ import { isPlainRecord } from "../../client/internals.js";
 import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
 import { MixpanelHeadlessError } from "../../errors.js";
-import { dictGet } from "../shared.js";
-import {
-  expectListResult,
-  expectRecordResult,
-  pythonQuote,
-  pythonTypeNameOf,
-} from "./shared.js";
+import { dictGet, pythonTypeNameOf } from "../shared.js";
+import { expectListResult, expectRecordResult, pythonQuote } from "./shared.js";
 
 /** Options bag of {@link SchemaMethods.getSchemas}. */
 export interface GetSchemasOptions {

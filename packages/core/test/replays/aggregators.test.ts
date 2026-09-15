@@ -25,11 +25,9 @@ import {
   rageClicks,
   topClicks,
 } from "../../src/replays/aggregators.js";
-import {
-  Replay,
-  ReplayBundle,
-  UserAction,
-} from "../../src/types/results/replays.js";
+import { UserAction } from "../../src/replays/user-action.js";
+import { Replay } from "../../src/types/results/replay-models.js";
+import { ReplayBundle } from "../../src/types/results/replays.js";
 
 /**
  * Construct a `UserAction` (Python `_build_action`,

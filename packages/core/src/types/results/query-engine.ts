@@ -46,21 +46,6 @@ import {
   type Row,
 } from "./result-base.js";
 
-// TODO(Ω): shim — `FlowTreeNode`/`AnyTreeNode` moved to `./flow-tree.ts`,
-// the graph types and `safeInt` to `./flow-graph.ts`; the frozen root
-// barrel and the translated tests still read them from here.
-export {
-  type FlowGraph,
-  type FlowGraphEdge,
-  type FlowGraphNode,
-  safeInt,
-} from "./flow-graph.js";
-export {
-  type AnyTreeNode,
-  FlowTreeNode,
-  type FlowTreeNodeFields,
-} from "./flow-tree.js";
-
 /**
  * Strip timezone offsets from ISO timestamps — mirror of
  * `types._normalize_date_key`.

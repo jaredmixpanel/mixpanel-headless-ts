@@ -25,9 +25,9 @@ import type { BookmarkValidationError } from "../../src/errors.js";
 import {
   CohortCriteria,
   CohortDefinition,
-  sanitizeRawCohort,
 } from "../../src/types/query-params/cohort.js";
 import { Filter } from "../../src/types/query-params/filter.js";
+import { sanitizeRawCohort } from "../../src/types/query-params/guards.js";
 import { Workspace } from "../../src/workspace.js";
 import { expectRejects } from "../../test-support/raises.js";
 import {

@@ -14,7 +14,7 @@
 import type { Account } from "../auth/account.js";
 import type { Session } from "../auth/session.js";
 import type { JsonValue } from "../client/json-value.js";
-import { compareCodepoints } from "../compat/codepoint.js";
+import { compareCodepoints, cpLength } from "../compat/codepoint.js";
 import { pythonRepr } from "../compat/python-str.js";
 import {
   BusinessContextValidationError,
@@ -29,7 +29,6 @@ import {
   BusinessContext,
   BusinessContextChain,
 } from "../types/entities/business-context.js";
-import { codepointLength } from "../types/entities/model-base.js";
 
 // ---------------------------------------------------------------------------
 // W1-D1 — the resolver seams (B7 replaces the defaults).
@@ -489,7 +488,7 @@ export async function setBusinessContext(
   const level = options.level ?? "project";
   validateBusinessContextLevel(level);
   // `len(content)` counts CODEPOINTS in Python (R11.7 family).
-  const length = codepointLength(content);
+  const length = cpLength(content);
   if (length > BUSINESS_CONTEXT_MAX_CHARS) {
     throw new BusinessContextValidationError(
       `content exceeds maximum length of ` +

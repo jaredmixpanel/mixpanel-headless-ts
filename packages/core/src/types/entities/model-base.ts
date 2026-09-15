@@ -60,10 +60,6 @@ import { modelFail, requireIsoText } from "./decode-utils.js";
 // with the result models); entity classes keep importing it from here,
 // next to the base they extend.
 export { modelFail } from "./decode-utils.js";
-// TODO(Ω): shim — `workspace-members/lifecycle.ts` still imports
-// `codepointLength` from here; repoint it to `compat/codepoint.ts` and
-// delete this line.
-export { cpLength as codepointLength } from "../../compat/codepoint.js";
 
 /**
  * Lax scalar coercion kinds (R4.12) applied to non-null present values.
