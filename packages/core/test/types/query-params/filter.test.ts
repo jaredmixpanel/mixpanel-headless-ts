@@ -453,14 +453,14 @@ describe("property-spec helper types", () => {
     // match Python; tsc-typed callers are unaffected.
     expect(
       () => new PropertyInput(undefined as unknown as { name: string }),
-    ).toThrowError(
+    ).toThrow(
       new TypeError(
         "PropertyInput.__init__() missing 1 required positional argument: 'name'",
       ),
     );
     expect(
       () => new PropertyInput({ property: "x" } as unknown as { name: string }),
-    ).toThrowError(
+    ).toThrow(
       new TypeError(
         "PropertyInput.__init__() missing 1 required positional argument: 'name'",
       ),

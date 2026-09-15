@@ -23,7 +23,10 @@ import { describe, expect, it } from "vitest";
 import type { MixpanelClient } from "../../src/client/client.js";
 import type { JsonValue } from "../../src/client/json-value.js";
 import { Workspace } from "../../src/workspace.js";
-import { makeSession } from "../../test-support/client-test-helpers.js";
+import {
+  asyncIterableOf,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** The `_TEST_SESSION` twin (`test_workspace_streaming.py:21-29`). */
 const TEST_SESSION = makeSession({
@@ -45,10 +48,8 @@ interface StubClient {
   readonly client: MixpanelClient;
   readonly exportEventsCalls: ExportEventsCall[];
   readonly exportProfilesCalls: Array<Record<string, unknown>>;
-  setEvents: (source: () => AsyncGenerator<JsonValue, void, undefined>) => void;
-  setProfiles: (
-    source: () => AsyncGenerator<JsonValue, void, undefined>,
-  ) => void;
+  setEvents: (source: () => Iterable<JsonValue>) => void;
+  setProfiles: (source: () => Iterable<JsonValue>) => void;
 }
 
 /**
@@ -59,10 +60,8 @@ interface StubClient {
 function stubClient(): StubClient {
   const exportEventsCalls: ExportEventsCall[] = [];
   const exportProfilesCalls: Array<Record<string, unknown>> = [];
-  let events: () => AsyncGenerator<JsonValue, void, undefined> =
-    async function* () {};
-  let profiles: () => AsyncGenerator<JsonValue, void, undefined> =
-    async function* () {};
+  let events: () => Iterable<JsonValue> = () => [];
+  let profiles: () => Iterable<JsonValue> = () => [];
   const client = {
     // The `MagicMock(spec=MixpanelAPIClient)` twin auto-provides every
     // client member; the facade constructor touches these two
@@ -74,19 +73,19 @@ function stubClient(): StubClient {
       fromDate: string,
       toDate: string,
       options: Record<string, unknown> = {},
-    ): AsyncGenerator<JsonValue, void, undefined> => {
+    ): AsyncIterable<JsonValue> => {
       exportEventsCalls.push({
         from_date: fromDate,
         to_date: toDate,
         options,
       });
-      return events();
+      return asyncIterableOf(events());
     },
     exportProfiles: (
       options: Record<string, unknown> = {},
-    ): AsyncGenerator<JsonValue, void, undefined> => {
+    ): AsyncIterable<JsonValue> => {
       exportProfilesCalls.push(options);
-      return profiles();
+      return asyncIterableOf(profiles());
     },
   } as unknown as MixpanelClient;
   return {
@@ -181,7 +180,7 @@ type Rec = Record<string, unknown>;
 describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
   it("T006: basic streaming with the default (normalized) format", async () => {
     const stub = stubClient();
-    stub.setEvents(async function* () {
+    stub.setEvents(function* () {
       yield rawEvent("PageView", "user_1", 1705328400, { page: "/home" });
       yield rawEvent("Click", "user_2", 1705328500, { button: "signup" });
     });
@@ -204,7 +203,7 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
 
   it("T006: an event-name filter forwards verbatim", async () => {
     const stub = stubClient();
-    stub.setEvents(async function* () {
+    stub.setEvents(function* () {
       yield rawEvent("Purchase", "user_1", 1705328400, { amount: 99.99 });
     });
     const ws = makeWorkspace(stub);
@@ -236,7 +235,7 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
 
   it("T006: a WHERE filter forwards verbatim", async () => {
     const stub = stubClient();
-    stub.setEvents(async function* () {
+    stub.setEvents(function* () {
       yield rawEvent("PageView", "user_1", 1705328400, { country: "US" });
     });
     const ws = makeWorkspace(stub);
@@ -258,7 +257,7 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
 
   it("T006: raw=true returns the Mixpanel API format", async () => {
     const stub = stubClient();
-    stub.setEvents(async function* () {
+    stub.setEvents(function* () {
       yield rawEvent("PageView", "user_1", 1705328400, { page: "/home" });
       yield rawEvent("Click", "user_2", 1705328500, { button: "signup" });
     });
@@ -284,7 +283,7 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
 
   it("T006: raw=false (default) transforms the payload", async () => {
     const stub = stubClient();
-    stub.setEvents(async function* () {
+    stub.setEvents(function* () {
       yield rawEvent("Purchase", "user_123", 1705328400, { amount: 49.99 });
     });
     const ws = makeWorkspace(stub);
@@ -314,7 +313,7 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
 
   it("returns an empty stream when the export yields nothing", async () => {
     const stub = stubClient();
-    stub.setEvents(async function* () {});
+    stub.setEvents(function* () {});
     const ws = makeWorkspace(stub);
 
     const events = await drain(
@@ -328,7 +327,7 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
   it("is a lazy iterator (nothing runs before the first pull)", async () => {
     const stub = stubClient();
     let callCount = 0;
-    stub.setEvents(async function* () {
+    stub.setEvents(function* () {
       for (let i = 0; i < 3; i += 1) {
         callCount += 1;
         yield rawEvent("Event", `user_${String(i)}`, 1705328400 + i);
@@ -351,7 +350,7 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
 
   it("forwards the limit parameter", async () => {
     const stub = stubClient();
-    stub.setEvents(async function* () {
+    stub.setEvents(function* () {
       yield rawEvent("Event", "user_1", 1705328400);
     });
     const ws = makeWorkspace(stub);
@@ -372,7 +371,7 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
 describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
   it("T010: basic streaming with the default (normalized) format", async () => {
     const stub = stubClient();
-    stub.setProfiles(async function* () {
+    stub.setProfiles(function* () {
       yield rawProfile("user_1", "2024-01-15T10:00:00", { name: "Alice" });
       yield rawProfile("user_2", "2024-01-15T11:00:00", { name: "Bob" });
     });
@@ -394,7 +393,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
 
   it("T010: a WHERE filter forwards verbatim", async () => {
     const stub = stubClient();
-    stub.setProfiles(async function* () {
+    stub.setProfiles(function* () {
       yield rawProfile("user_1", null, { plan: "premium" });
     });
     const ws = makeWorkspace(stub);
@@ -412,7 +411,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
 
   it("forwards cohort_id", async () => {
     const stub = stubClient();
-    stub.setProfiles(async function* () {
+    stub.setProfiles(function* () {
       yield rawProfile("user_1", null, { plan: "premium" });
     });
     const ws = makeWorkspace(stub);
@@ -428,7 +427,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
 
   it("forwards output_properties", async () => {
     const stub = stubClient();
-    stub.setProfiles(async function* () {
+    stub.setProfiles(function* () {
       yield rawProfile("user_1", null, { email: "test@example.com" });
     });
     const ws = makeWorkspace(stub);
@@ -446,7 +445,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
 
   it("forwards every filter together", async () => {
     const stub = stubClient();
-    stub.setProfiles(async function* () {
+    stub.setProfiles(function* () {
       yield rawProfile("user_1", null);
     });
     const ws = makeWorkspace(stub);
@@ -472,7 +471,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
 
   it("T010: raw=true returns the Mixpanel API format", async () => {
     const stub = stubClient();
-    stub.setProfiles(async function* () {
+    stub.setProfiles(function* () {
       yield rawProfile("user_1", "2024-01-15T10:00:00", { name: "Alice" });
       yield rawProfile("user_2", null, { name: "Bob" });
     });
@@ -493,7 +492,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
 
   it("T010: raw=false (default) transforms the payload", async () => {
     const stub = stubClient();
-    stub.setProfiles(async function* () {
+    stub.setProfiles(function* () {
       yield rawProfile("user_abc", "2024-01-15T14:30:00", {
         email: "test@example.com",
       });
@@ -514,7 +513,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
 
   it("returns an empty stream when the export yields nothing", async () => {
     const stub = stubClient();
-    stub.setProfiles(async function* () {});
+    stub.setProfiles(function* () {});
     const ws = makeWorkspace(stub);
 
     expect(await drain(ws.streamProfiles())).toEqual([]);
@@ -525,7 +524,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
 describe("TestNormalizedEventFormat (test_workspace_streaming.py:622)", () => {
   it("T019: normalized events carry every required field", async () => {
     const stub = stubClient();
-    stub.setEvents(async function* () {
+    stub.setEvents(function* () {
       yield rawEvent("Purchase", "user_abc123", 1705328400, { amount: 99.99 });
     });
     const ws = makeWorkspace(stub);
@@ -557,7 +556,7 @@ describe("TestNormalizedEventFormat (test_workspace_streaming.py:622)", () => {
 describe("TestRawEventFormat (test_workspace_streaming.py:659)", () => {
   it("T020: raw events keep the Mixpanel API structure", async () => {
     const stub = stubClient();
-    stub.setEvents(async function* () {
+    stub.setEvents(function* () {
       yield rawEvent("Purchase", "user_abc123", 1705328400, { amount: 99.99 });
     });
     const ws = makeWorkspace(stub);
@@ -584,7 +583,7 @@ describe("TestRawEventFormat (test_workspace_streaming.py:659)", () => {
 describe("TestNormalizedProfileFormat (test_workspace_streaming.py:689)", () => {
   it("T021: normalized profiles carry every required field", async () => {
     const stub = stubClient();
-    stub.setProfiles(async function* () {
+    stub.setProfiles(function* () {
       yield rawProfile("user_abc123", "2024-01-15T14:30:00", {
         name: "Alice",
       });
@@ -609,7 +608,7 @@ describe("TestNormalizedProfileFormat (test_workspace_streaming.py:689)", () => 
 describe("TestRawProfileFormat (test_workspace_streaming.py:720)", () => {
   it("T022: raw profiles keep the `$`-prefixed API structure", async () => {
     const stub = stubClient();
-    stub.setProfiles(async function* () {
+    stub.setProfiles(function* () {
       yield rawProfile("user_abc123", "2024-01-15T14:30:00", {
         name: "Alice",
       });
@@ -634,7 +633,7 @@ describe("W1-D3 — the streaming veneers stay PROJECT-scoped", () => {
     // `workspace.py:566-573`: "Raw export streaming remains
     // project-scoped by design."
     const stub = stubClient();
-    stub.setEvents(async function* () {});
+    stub.setEvents(function* () {});
     const ws = new Workspace({
       session: makeSession({ workspaceId: 4242 }),
       client: stub.client,

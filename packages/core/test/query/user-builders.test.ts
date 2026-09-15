@@ -540,7 +540,7 @@ describe("filterToSelector between bounds (TestFilterToSelectorBetweenBoundsVali
 
     // Python: `pytest.raises(ValueError, match="int or float for lower bound")`
     // — class + code twin (R5.4).
-    expect(() => filterToSelector(f)).toThrowError(ParamValidationError);
+    expect(() => filterToSelector(f)).toThrow(ParamValidationError);
     try {
       filterToSelector(f);
       expect.unreachable();
@@ -554,7 +554,7 @@ describe("filterToSelector between bounds (TestFilterToSelectorBetweenBoundsVali
   it("string upper bound is rejected", () => {
     const f = rawFilter("prop", "is between", [0, "high"]);
 
-    expect(() => filterToSelector(f)).toThrowError(ParamValidationError);
+    expect(() => filterToSelector(f)).toThrow(ParamValidationError);
     try {
       filterToSelector(f);
       expect.unreachable();

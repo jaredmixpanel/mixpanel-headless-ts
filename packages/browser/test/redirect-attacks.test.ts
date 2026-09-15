@@ -111,7 +111,7 @@ describe("redirect-flow attacks", () => {
 
   it("treats a corrupted pending record as BROWSER_NO_PENDING_LOGIN (documented twin-less branch)", async () => {
     const { store, transport, state } = await preparedLogin();
-    await store.set(CREDENTIAL_KEYS.pendingLogin("us"), "{not json");
+    store.set(CREDENTIAL_KEYS.pendingLogin("us"), "{not json");
     await expect(
       completeLogin({
         region: "us",
@@ -182,7 +182,7 @@ describe("redirect-flow attacks", () => {
     ).rejects.toMatchObject({ code: "OAUTH_TOKEN_ERROR" });
     // The pending record was consumed BEFORE the exchange (single-use
     // state); the same returnUrl now hits the no-pending branch.
-    expect(await store.get(CREDENTIAL_KEYS.pendingLogin("us"))).toBeNull();
+    expect(store.get(CREDENTIAL_KEYS.pendingLogin("us"))).toBeNull();
     await expect(
       completeLogin({
         region: "us",

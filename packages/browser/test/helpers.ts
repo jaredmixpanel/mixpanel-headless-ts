@@ -44,7 +44,7 @@ export function fakeTransport(
   handler: (request: CapturedFetchRequest) => CannedResponse,
 ): FakeTransport {
   const captures: CapturedFetchRequest[] = [];
-  const fakeFetch = (async (
+  const fakeFetch = ((
     input: string | URL | Request,
     init?: RequestInit,
   ): Promise<Response> => {
@@ -63,10 +63,12 @@ export function fakeTransport(
     };
     captures.push(captured);
     const canned = handler(captured);
-    return new Response(JSON.stringify(canned.json ?? null), {
-      status: canned.status,
-      headers: { "content-type": "application/json" },
-    });
+    return Promise.resolve(
+      new Response(JSON.stringify(canned.json ?? null), {
+        status: canned.status,
+        headers: { "content-type": "application/json" },
+      }),
+    );
   }) as typeof fetch;
   return { fetch: fakeFetch, captures };
 }

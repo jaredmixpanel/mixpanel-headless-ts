@@ -140,7 +140,7 @@ function parseFileNum(url: string): number {
  * @returns The fetch implementation.
  */
 function cdnFetch(handler: CdnHandler): typeof fetch {
-  return (async (input: string | URL | Request): Promise<Response> => {
+  return ((input: string | URL | Request): Promise<Response> => {
     const url =
       typeof input === "string"
         ? input
@@ -156,7 +156,9 @@ function cdnFetch(handler: CdnHandler): typeof fetch {
     } else if (canned.text !== undefined) {
       body = canned.text;
     }
-    return new Response(body, { status: canned.status, headers });
+    return Promise.resolve(
+      new Response(body, { status: canned.status, headers }),
+    );
   }) as typeof fetch;
 }
 
@@ -442,9 +444,9 @@ describe("credential redaction on transport errors (TestFetchFilesCredentialReda
       // A fetch rejection is the `httpx.ConnectError` analog (R2.10
       // normalizes it to MixpanelHttpError); the message embeds the
       // credentialed URL exactly as httpx's does.
-      fetchImpl: (async (input: string | URL | Request): Promise<Response> => {
+      fetchImpl: ((input: string | URL | Request): Promise<Response> => {
         const url = typeof input === "string" ? input : String(input);
-        throw new TypeError(`connection failed for ${url}`);
+        return Promise.reject(new TypeError(`connection failed for ${url}`));
       }) as typeof fetch,
     });
 
@@ -530,9 +532,9 @@ describe("discover without query_fn (TestDiscoverNoQueryFn)", () => {
     const { client } = mockApiClient();
     const calls: unknown[] = [];
     const service = new ReplaysService(client, {
-      queryFn: async (events, options) => {
+      queryFn: (events, options) => {
         calls.push([events, options]);
-        return { series: {} };
+        return Promise.resolve({ series: {} });
       },
     });
     const result = await service.discover({ replayIds: [] });
@@ -629,9 +631,9 @@ function serviceWithSeries(
   );
   const calls: QueryCall[] = [];
   const service = new ReplaysService(client, {
-    queryFn: async (events, queryOptions) => {
+    queryFn: (events, queryOptions) => {
       calls.push({ events, options: queryOptions });
-      return { series };
+      return Promise.resolve({ series });
     },
     ...(options.warn === undefined ? {} : { warn: options.warn }),
   });

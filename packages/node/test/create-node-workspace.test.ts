@@ -102,13 +102,13 @@ function capturingFetch(): {
   seen: Array<{ url: string; auth: string | null }>;
 } {
   const seen: Array<{ url: string; auth: string | null }> = [];
-  const fetchImpl = (async (
+  const fetchImpl = ((
     input: RequestInfo | URL,
     init?: RequestInit,
   ): Promise<Response> => {
     const headers = new Headers(init?.headers);
     seen.push({ url: String(input), auth: headers.get("authorization") });
-    return new Response(null, { status: 204 });
+    return Promise.resolve(new Response(null, { status: 204 }));
   }) as typeof fetch;
   return { fetchImpl, seen };
 }
@@ -140,7 +140,7 @@ describe("createNodeWorkspace (Python Workspace() zero-config twin)", () => {
       sources: createNodeWorkspaceSources(),
       clientOptions: { fetch: fetchImpl },
     });
-    await expect(ws.deleteCohort(1)).rejects.toThrowError(
+    await expect(ws.deleteCohort(1)).rejects.toThrow(
       /TokenResolver is required/,
     );
   });

@@ -486,7 +486,7 @@ export function meFetch(
   payload: Record<string, unknown> | (() => Record<string, unknown>),
   status = 200,
 ): typeof fetch {
-  return (async (): Promise<Response> => {
+  return ((): Promise<Response> => {
     const body = typeof payload === "function" ? payload() : payload;
     // The app-API envelope: `appRequest` unwraps `results` (matching
     // Python's `api_client.me()`, which the monkeypatched `_fake_me`
@@ -495,10 +495,12 @@ export function meFetch(
       status === 200 && !Object.hasOwn(body, "results")
         ? { results: body }
         : body;
-    return new Response(JSON.stringify(wrapped), {
-      status,
-      headers: { "content-type": "application/json" },
-    });
+    return Promise.resolve(
+      new Response(JSON.stringify(wrapped), {
+        status,
+        headers: { "content-type": "application/json" },
+      }),
+    );
   }) as typeof fetch;
 }
 
@@ -651,9 +653,10 @@ export function makeEffects(options: MakeEffectsOptions = {}): EffectsBundle {
     },
     fetchImpl:
       options.fetchImpl ??
-      ((async (): Promise<Response> => {
-        throw new TypeError("fetch failed (no fetchImpl stubbed)");
-      }) as typeof fetch),
+      (((): Promise<Response> =>
+        Promise.reject(
+          new TypeError("fetch failed (no fetchImpl stubbed)"),
+        )) as typeof fetch),
     now: (): number => Date.now(),
   };
 

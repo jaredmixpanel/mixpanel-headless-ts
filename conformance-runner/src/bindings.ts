@@ -412,11 +412,14 @@ function registerClientInternalsBindings(
     const contentEncoding = Object.entries(headers).find(
       ([name]) => name.toLowerCase() === "content-encoding",
     )?.[1];
-    let source: AsyncIterable<Uint8Array> = (async function* () {
-      for (const chunk of chunks) {
-        yield chunk;
-      }
-    })();
+    let source: AsyncIterable<Uint8Array> = new ReadableStream<Uint8Array>({
+      start(controller): void {
+        for (const chunk of chunks) {
+          controller.enqueue(chunk);
+        }
+        controller.close();
+      },
+    });
     if (contentEncoding?.toLowerCase() === "gzip") {
       // Transport-layer decompression (httpx does this inside the
       // response; fetch runtimes do it inside the body stream).

@@ -421,7 +421,7 @@ describe("oracle.call: scope, skips, and protocol errors", () => {
 });
 
 describe("raw-json: ordered lossless model", () => {
-  it("preserves member order and number tokens", async () => {
+  it("preserves member order and number tokens", () => {
     const value = parseRawJson('{"1": 18.0, "0": null}');
     expect(value).toBeInstanceOf(RawObject);
     const entries = (value as RawObject).entries;
@@ -430,7 +430,7 @@ describe("raw-json: ordered lossless model", () => {
     expect((entries[0]?.[1] as JsonNumber).raw).toBe("18.0");
   });
 
-  it("flattens to JsonValue for codec/canonicalizer consumers", async () => {
+  it("flattens to JsonValue for codec/canonicalizer consumers", () => {
     const flat = toJsonValue(parseRawJson('{"a": [1, "x"], "b": true}'));
     expect(flat).toEqual({
       a: [new JsonNumber("1"), "x"],
@@ -438,7 +438,7 @@ describe("raw-json: ordered lossless model", () => {
     });
   });
 
-  it("serializes ASCII-safe lines with lone surrogates escaped", async () => {
+  it("serializes ASCII-safe lines with lone surrogates escaped", () => {
     const text = serializeAsciiJson({
       astral: "\u{1F40D}",
       lone: "\uD800",
@@ -452,7 +452,7 @@ describe("raw-json: ordered lossless model", () => {
     expect(text).toContain("123456789012345678901");
   });
 
-  it("rejects trailing content and malformed tokens", async () => {
+  it("rejects trailing content and malformed tokens", () => {
     expect(() => parseRawJson('{"a": 1} extra')).toThrow(
       "unexpected trailing content",
     );
@@ -464,7 +464,7 @@ describe("raw-json: ordered lossless model", () => {
 });
 
 describe("Phase-2 types.* surface (protocol §8 scope note, P2-9)", () => {
-  it("reports protocol_version 1.1 (the codec.roundtrip addendum)", async () => {
+  it("reports protocol_version 1.1 (the codec.roundtrip addendum)", () => {
     expect(PROTOCOL_VERSION).toBe("1.1");
   });
 

@@ -19,6 +19,7 @@ import {
   streamProfiles,
 } from "../../src/services/queries/streaming.js";
 import {
+  drain,
   makeSession,
   staticTokenResolver,
 } from "../../test-support/client-test-helpers.js";
@@ -29,13 +30,15 @@ function chunkedFetch(
   options: { status?: number; delayMs?: number } = {},
 ): typeof fetch {
   const encoder = new TextEncoder();
-  return (async (
+  return ((
     _input: string | URL | Request,
     init?: RequestInit,
   ): Promise<Response> => {
     const signal = init?.signal ?? null;
     if (signal?.aborted === true) {
-      throw new DOMException("The operation was aborted.", "AbortError");
+      return Promise.reject(
+        new DOMException("The operation was aborted.", "AbortError"),
+      );
     }
     const body = new ReadableStream<Uint8Array>({
       async pull(controller): Promise<void> {
@@ -56,7 +59,9 @@ function chunkedFetch(
         }
       },
     });
-    return new Response(body, { status: options.status ?? 200 });
+    return Promise.resolve(
+      new Response(body, { status: options.status ?? 200 }),
+    );
   }) as typeof fetch;
 }
 
@@ -72,8 +77,9 @@ function clientOver(
   const client = createMixpanelClient({
     session: makeSession(),
     fetch: fetchImpl,
-    sleep: async (ms: number): Promise<void> => {
+    sleep: (ms: number): Promise<void> => {
       sleeps.push(ms);
+      return Promise.resolve();
     },
     random: () => 0,
     tokenResolver: staticTokenResolver(),
@@ -140,17 +146,21 @@ describe("retry timing in the export 429 loop", () => {
   it("honors a positive Retry-After through the ms sleep seam", async () => {
     let calls = 0;
     const encoder = new TextEncoder();
-    const fetchImpl = (async (): Promise<Response> => {
+    const fetchImpl = ((): Promise<Response> => {
       calls += 1;
       if (calls === 1) {
-        return new Response(null, {
-          status: 429,
-          headers: { "Retry-After": "5" },
-        });
+        return Promise.resolve(
+          new Response(null, {
+            status: 429,
+            headers: { "Retry-After": "5" },
+          }),
+        );
       }
-      return new Response(encoder.encode('{"event":"A","properties":{}}\n'), {
-        status: 200,
-      });
+      return Promise.resolve(
+        new Response(encoder.encode('{"event":"A","properties":{}}\n'), {
+          status: 200,
+        }),
+      );
     }) as typeof fetch;
     const { client, sleeps } = clientOver(fetchImpl);
     const events: JsonValue[] = [];
@@ -164,9 +174,9 @@ describe("retry timing in the export 429 loop", () => {
   it("normalizes an abort during the backoff sleep to AbortError", async () => {
     const controller = new AbortController();
     let calls = 0;
-    const fetchImpl = (async (): Promise<Response> => {
+    const fetchImpl = ((): Promise<Response> => {
       calls += 1;
-      return new Response(null, { status: 429 });
+      return Promise.resolve(new Response(null, { status: 429 }));
     }) as typeof fetch;
     const sleeps: number[] = [];
     const client = createMixpanelClient({
@@ -186,13 +196,11 @@ describe("retry timing in the export 429 loop", () => {
     });
     let caught: unknown;
     try {
-      for await (const event of client.exportEvents(
-        "2024-01-01",
-        "2024-01-31",
-        { signal: controller.signal },
-      )) {
-        void event; // unreachable
-      }
+      await drain(
+        client.exportEvents("2024-01-01", "2024-01-31", {
+          signal: controller.signal,
+        }),
+      ); // unreachable past the abort
     } catch (error) {
       caught = error;
     }
@@ -265,18 +273,20 @@ describe("stream_events / stream_profiles facade wrappers", () => {
   });
 
   it("normalizes profiles via transformProfile", async () => {
-    const fetchImpl = (async (): Promise<Response> =>
-      new Response(
-        JSON.stringify({
-          results: [
-            {
-              $distinct_id: "u1",
-              $properties: { $last_seen: "2024-01-15T10:30:00", plan: "pro" },
-            },
-          ],
-          session_id: null,
-        }),
-        { status: 200, headers: { "content-type": "application/json" } },
+    const fetchImpl = ((): Promise<Response> =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            results: [
+              {
+                $distinct_id: "u1",
+                $properties: { $last_seen: "2024-01-15T10:30:00", plan: "pro" },
+              },
+            ],
+            session_id: null,
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
       )) as typeof fetch;
     const { client } = clientOver(fetchImpl);
     const out: Array<Record<string, unknown>> = [];

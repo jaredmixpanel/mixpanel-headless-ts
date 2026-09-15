@@ -260,7 +260,7 @@ describe("TestParsePastedRedirect (test_auth_flow.py:215)", () => {
   it("test_empty_paste_raises", () => {
     expect(() =>
       parsePastedRedirect("   \n", { expectedState: "XYZ" }),
-    ).toThrowError(/Empty paste/);
+    ).toThrow(/Empty paste/);
   });
 
   it("test_state_mismatch_raises", () => {
@@ -268,19 +268,19 @@ describe("TestParsePastedRedirect (test_auth_flow.py:215)", () => {
     // into pasting an attacker-generated code.
     expect(() =>
       parsePastedRedirect("code=ABC&state=ATTACKER", { expectedState: "XYZ" }),
-    ).toThrowError(/State mismatch/);
+    ).toThrow(/State mismatch/);
   });
 
   it("test_missing_code_raises", () => {
     expect(() =>
       parsePastedRedirect("state=XYZ", { expectedState: "XYZ" }),
-    ).toThrowError(/missing `code` or `state`/);
+    ).toThrow(/missing `code` or `state`/);
   });
 
   it("test_missing_state_raises", () => {
     expect(() =>
       parsePastedRedirect("code=ABC", { expectedState: "XYZ" }),
-    ).toThrowError(/missing `code` or `state`/);
+    ).toThrow(/missing `code` or `state`/);
   });
 
   it("test_oauth_error_param_surfaces", () => {
@@ -289,7 +289,7 @@ describe("TestParsePastedRedirect (test_auth_flow.py:215)", () => {
         "http://localhost:19284/callback?error=access_denied&state=XYZ",
         { expectedState: "XYZ" },
       ),
-    ).toThrowError(/access_denied/);
+    ).toThrow(/access_denied/);
   });
 
   it("test_oauth_error_with_description_includes_description", () => {
@@ -298,7 +298,7 @@ describe("TestParsePastedRedirect (test_auth_flow.py:215)", () => {
         "?error=access_denied&error_description=user+cancelled&state=XYZ",
         { expectedState: "XYZ" },
       ),
-    ).toThrowError(/user cancelled/);
+    ).toThrow(/user cancelled/);
   });
 });
 

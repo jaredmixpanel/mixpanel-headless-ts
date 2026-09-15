@@ -1873,8 +1873,10 @@ export class ReplayBundle {
    * @param properties - Ignored, as in Python.
    * @returns A copy of this bundle.
    */
-  joinMixpanelEvents(properties?: readonly string[] | null): ReplayBundle {
-    void properties;
+  joinMixpanelEvents(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for arity parity with Python's `join_mixpanel_events(properties=None)`, whose body ignores it too
+    _properties?: readonly string[] | null,
+  ): ReplayBundle {
     return new ReplayBundle({
       replays: [...this.replays],
       computed_at: this.computed_at,

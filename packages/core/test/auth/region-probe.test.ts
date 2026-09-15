@@ -481,8 +481,10 @@ describe("probe_region_for_credential guards (docstring contract)", () => {
 
 // Type-level exhaustiveness anchor: RegionProbeResult stays the
 // two-field shape the corpus encodes.
-const _shapeCheck: RegionProbeResult = {
-  region: "us",
-  attempts: [["us", 200]],
-};
-void _shapeCheck;
+it("RegionProbeResult keeps the two-field corpus shape", () => {
+  const shape: RegionProbeResult = {
+    region: "us",
+    attempts: [["us", 200]],
+  };
+  expect(Object.keys(shape)).toEqual(["region", "attempts"]);
+});

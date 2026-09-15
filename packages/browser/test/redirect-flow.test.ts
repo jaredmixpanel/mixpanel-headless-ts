@@ -137,7 +137,7 @@ describe("beginLogin", () => {
   it("persists the pending record with the R11.9 tokens-twin created_at shape", async () => {
     const store = new InMemoryCredentialStore();
     const result = await begin(store, cannedIdp());
-    const raw = await store.get(CREDENTIAL_KEYS.pendingLogin("us"));
+    const raw = store.get(CREDENTIAL_KEYS.pendingLogin("us"));
     expect(raw).not.toBeNull();
     const pending = JSON.parse(raw as string) as Record<string, unknown>;
     // Fixed, non-numeric key set in insertion order (§7 caution 7).
@@ -220,7 +220,7 @@ describe("completeLogin", () => {
     const store = new InMemoryCredentialStore();
     const transport = cannedIdp();
     const { state } = await begin(store, transport);
-    const pendingRaw = await store.get(CREDENTIAL_KEYS.pendingLogin("us"));
+    const pendingRaw = store.get(CREDENTIAL_KEYS.pendingLogin("us"));
     const pending = JSON.parse(pendingRaw as string) as Record<string, string>;
 
     const tokens = await completeLogin({
@@ -263,7 +263,7 @@ describe("completeLogin", () => {
       fetch: transport.fetch,
       now: () => FROZEN_NOW_MS,
     });
-    const raw = await store.get(CREDENTIAL_KEYS.tokens("us"));
+    const raw = store.get(CREDENTIAL_KEYS.tokens("us"));
     expect(raw).not.toBeNull();
     const payload = JSON.parse(raw as string) as Record<string, unknown>;
     expect(payload["access_token"]).toBe("new-access-token");
@@ -362,10 +362,10 @@ describe("completeLogin", () => {
       fetch: transport.fetch,
       now: () => FROZEN_NOW_MS,
     });
-    expect(await store.get(CREDENTIAL_KEYS.pendingLogin("eu"))).toBeNull();
-    expect(await store.get(CREDENTIAL_KEYS.pendingLogin("us"))).not.toBeNull();
-    expect(await store.get(CREDENTIAL_KEYS.tokens("eu"))).not.toBeNull();
-    expect(await store.get(CREDENTIAL_KEYS.tokens("us"))).toBeNull();
+    expect(store.get(CREDENTIAL_KEYS.pendingLogin("eu"))).toBeNull();
+    expect(store.get(CREDENTIAL_KEYS.pendingLogin("us"))).not.toBeNull();
+    expect(store.get(CREDENTIAL_KEYS.tokens("eu"))).not.toBeNull();
+    expect(store.get(CREDENTIAL_KEYS.tokens("us"))).toBeNull();
   });
 
   it.each([["uk"], ["US"], [""]])(
@@ -437,7 +437,7 @@ describe("completeLogin", () => {
       ).rejects.toMatchObject({ code: "BROWSER_NO_PENDING_LOGIN" });
       // Expiry consumes the record (the stale verifier does not stay
       // redeemable at rest).
-      expect(await store.get(CREDENTIAL_KEYS.pendingLogin("us"))).toBeNull();
+      expect(store.get(CREDENTIAL_KEYS.pendingLogin("us"))).toBeNull();
       // Nothing reached the token endpoint.
       expect(
         transport.captures.filter((request) => request.url.endsWith("token/")),

@@ -59,8 +59,9 @@ function clientOver(
   const client = createMixpanelClient({
     session: makeSession(),
     fetch: fetchImpl,
-    sleep: async (ms: number): Promise<void> => {
+    sleep: (ms: number): Promise<void> => {
       sleeps.push(ms);
+      return Promise.resolve();
     },
     random: () => 0,
     tokenResolver: staticTokenResolver(),
@@ -77,12 +78,14 @@ function brokenBodyFetch(
 ): { fetchImpl: typeof fetch; calls: () => number } {
   const encoder = new TextEncoder();
   let calls = 0;
-  const fetchImpl = (async (): Promise<Response> => {
+  const fetchImpl = ((): Promise<Response> => {
     calls += 1;
     if (options.failForever !== true && calls > 1) {
-      return new Response(encoder.encode(options.goodBody ?? lines.join("")), {
-        status: 200,
-      });
+      return Promise.resolve(
+        new Response(encoder.encode(options.goodBody ?? lines.join("")), {
+          status: 200,
+        }),
+      );
     }
     // Deliver the good lines across pulls, THEN error: erroring a
     // stream discards its queue, so the error must wait for the reads.
@@ -98,7 +101,7 @@ function brokenBodyFetch(
         controller.error(failure());
       },
     });
-    return new Response(body, { status: 200 });
+    return Promise.resolve(new Response(body, { status: 200 }));
   }) as typeof fetch;
   return { fetchImpl, calls: () => calls };
 }
@@ -139,7 +142,7 @@ function slowChunkFetch(
 ): typeof fetch {
   const encoder = new TextEncoder();
   const remaining = [...chunks];
-  return (async (): Promise<Response> => {
+  return ((): Promise<Response> => {
     const body = new ReadableStream<Uint8Array>({
       async pull(controller): Promise<void> {
         if (remaining.length === 0) {
@@ -153,7 +156,7 @@ function slowChunkFetch(
         }
       },
     });
-    return new Response(body, { status: 200 });
+    return Promise.resolve(new Response(body, { status: 200 }));
   }) as typeof fetch;
 }
 

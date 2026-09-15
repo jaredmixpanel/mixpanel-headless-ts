@@ -137,8 +137,10 @@ describe("TestBookmarkUrl", () => {
   // `@ts-expect-error`, which `tsc` still checks on a skipped body).
   it.skip("test_frozen", () => {
     const record = new BookmarkUrl({ slug: SLUG, bookmark_type: "insights" });
-    // @ts-expect-error -- `slug` is readonly (compile-time frozen contract).
-    const assign = (): void => void (record.slug = "x");
+    const assign = (): void => {
+      // @ts-expect-error -- `slug` is readonly (compile-time frozen contract).
+      record.slug = "x";
+    };
     expect(Object.isFrozen(record)).toBe(true);
     expect(assign).toThrow(TypeError);
   });
@@ -210,8 +212,10 @@ describe("TestReportLink", () => {
 
   it("test_frozen", () => {
     const link = build();
-    // @ts-expect-error -- `slug` is readonly (compile-time frozen contract).
-    const assign = (): void => void (link.slug = "x");
+    const assign = (): void => {
+      // @ts-expect-error -- `slug` is readonly (compile-time frozen contract).
+      link.slug = "x";
+    };
     expect(Object.isFrozen(link)).toBe(true);
     expect(assign).toThrow(TypeError);
     expect(link.slug).toBe(SLUG);
@@ -310,8 +314,10 @@ describe("TestResolvedReport", () => {
 
   it("test_frozen", () => {
     const resolved = build(null);
-    // @ts-expect-error -- `params` is readonly (compile-time frozen contract).
-    const assign = (): void => void (resolved.params = {});
+    const assign = (): void => {
+      // @ts-expect-error -- `params` is readonly (compile-time frozen contract).
+      resolved.params = {};
+    };
     expect(Object.isFrozen(resolved)).toBe(true);
     expect(assign).toThrow(TypeError);
     expect(resolved.params).toEqual(PARAMS);

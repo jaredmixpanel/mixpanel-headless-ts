@@ -812,7 +812,7 @@ describe("handleResponse direct", () => {
         requestBody: null,
         projectId: "12345",
       }),
-    ).toThrowError(AuthenticationError);
+    ).toThrow(AuthenticationError);
   });
 
   it("404 → QueryError 'Resource not found' default", () => {

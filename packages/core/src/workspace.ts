@@ -1944,11 +1944,11 @@ export class Workspace {
    * @returns Bookmark params with `sections` and `displayOptions`.
    * @throws BookmarkValidationError - Argument or bookmark validation.
    */
-  async buildParams(
+  buildParams(
     events: EventsInput,
     options: WorkspaceQueryOptions = {},
   ): Promise<ParamsDict> {
-    return this.#resolveQueryParams(events, options);
+    return asPromise(() => this.#resolveQueryParams(events, options));
   }
 
   /**
@@ -2053,11 +2053,11 @@ export class Workspace {
    * @returns Bookmark params with `sections` and `displayOptions`.
    * @throws BookmarkValidationError - Argument or bookmark validation.
    */
-  async buildFunnelParams(
+  buildFunnelParams(
     steps: ReadonlyArray<string | FunnelStep>,
     options: WorkspaceFunnelQueryOptions = {},
   ): Promise<ParamsDict> {
-    return this.#resolveFunnelParams(steps, options);
+    return asPromise(() => this.#resolveFunnelParams(steps, options));
   }
 
   /**
@@ -2166,11 +2166,11 @@ export class Workspace {
    * @returns The FLAT flow bookmark params dict.
    * @throws BookmarkValidationError - Argument or bookmark validation.
    */
-  async buildFlowParams(
+  buildFlowParams(
     event: string | FlowStep | ReadonlyArray<string | FlowStep>,
     options: WorkspaceFlowQueryOptions = {},
   ): Promise<ParamsDict> {
-    return this.#resolveFlowParams(event, options);
+    return asPromise(() => this.#resolveFlowParams(event, options));
   }
 
   /**
@@ -2281,12 +2281,14 @@ export class Workspace {
    *   `sorting` and `columnWidths`.
    * @throws BookmarkValidationError - Argument or bookmark validation.
    */
-  async buildRetentionParams(
+  buildRetentionParams(
     bornEvent: string | RetentionEvent,
     returnEvent: string | RetentionEvent,
     options: WorkspaceRetentionQueryOptions = {},
   ): Promise<ParamsDict> {
-    return this.#resolveRetentionParams(bornEvent, returnEvent, options);
+    return asPromise(() =>
+      this.#resolveRetentionParams(bornEvent, returnEvent, options),
+    );
   }
 
   /**
@@ -2444,10 +2446,10 @@ export class Workspace {
    * @returns The engage params dict.
    * @throws BookmarkValidationError - Argument or param validation.
    */
-  async buildUserParams(
+  buildUserParams(
     options: WorkspaceUserQueryOptions = {},
   ): Promise<ParamsDict> {
-    return this.#resolveUserParams(options);
+    return asPromise(() => this.#resolveUserParams(options));
   }
 
   /**
@@ -2941,10 +2943,11 @@ export class Workspace {
    * never been created there is nothing to clear and NO service is
    * constructed as a side effect.
    */
-  async clearDiscoveryCache(): Promise<void> {
+  clearDiscoveryCache(): Promise<void> {
     if (this.#discovery !== null) {
       this.#discovery.clearCache();
     }
+    return Promise.resolve();
   }
 
   /**
@@ -6925,6 +6928,23 @@ function replaceReplayEvents(
     rrweb_events: replay.rrweb_events,
     actions: replay.actions,
     mixpanel_events: mixpanelEvents,
+  });
+}
+
+/**
+ * Run a synchronous builder and hand back its result as a Promise — or its
+ * throw as a rejection — exactly as the `async` wrapper it replaces did.
+ * The `build*Params` members are synchronous in Python; the TS surface
+ * keeps the Promise shape for symmetry with `query*`, and callers rely on
+ * validation errors arriving as rejections (`.rejects` / `.catch`), never
+ * as synchronous throws.
+ *
+ * @param compute - The synchronous builder.
+ * @returns A promise settled from `compute()`.
+ */
+function asPromise<T>(compute: () => T): Promise<T> {
+  return new Promise((resolve) => {
+    resolve(compute());
   });
 }
 

@@ -1318,11 +1318,13 @@ export function createMixpanelClient(
     },
     isHttpOpen: (): boolean => httpHandle !== null,
     httpHandle: ensureHttp,
-    close: async (): Promise<void> => {
+    close: (): Promise<void> => {
       httpHandle = null;
+      return Promise.resolve();
     },
-    [Symbol.asyncDispose]: async (): Promise<void> => {
+    [Symbol.asyncDispose]: (): Promise<void> => {
       httpHandle = null;
+      return Promise.resolve();
     },
   };
 

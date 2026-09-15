@@ -30,7 +30,10 @@ import {
   type Region,
 } from "../../src/client/url.js";
 import { pythonStrip } from "../../src/compat/index.js";
-import { makeSession } from "../../test-support/client-test-helpers.js";
+import {
+  asyncIterableOf,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** Decode a base64 payload to UTF-8 text (the tests' b64decode+decode). */
 function decodeBase64Utf8(encoded: string): string {
@@ -311,11 +314,7 @@ function splitBytesAtPositions(
 async function collectLinesFromChunks(
   chunks: readonly Uint8Array[],
 ): Promise<string[]> {
-  const source = (async function* (): AsyncIterable<Uint8Array> {
-    for (const chunk of chunks) {
-      yield chunk;
-    }
-  })();
+  const source = asyncIterableOf(chunks);
   const lines: string[] = [];
   for await (const line of iterJsonlLines(source)) {
     lines.push(line);

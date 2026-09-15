@@ -14,6 +14,7 @@ import { paginateAll } from "../../src/client/pagination.js";
 import {
   type CannedResponse,
   createMockClient,
+  drain,
   makeSession,
   staticTokenResolver,
 } from "../../test-support/client-test-helpers.js";
@@ -126,13 +127,11 @@ describe("PaginationAsyncBehavior", () => {
     });
     let raised: unknown = null;
     try {
-      for await (const item of paginateAll(
-        abortingClient,
-        "/projects/12345/items",
-        { signal: controller.signal },
-      )) {
-        void item;
-      }
+      await drain(
+        paginateAll(abortingClient, "/projects/12345/items", {
+          signal: controller.signal,
+        }),
+      );
     } catch (error) {
       raised = error;
     }

@@ -263,14 +263,14 @@ describe("TestAccountsNamespaceWiring (test_bridge_export.py:236 — translated 
     expect(bridge?.account.name).toBe("team");
   });
 
-  it("test_export_bridge_attaches_custom_headers", () => {
+  it("test_export_bridge_attaches_custom_headers", async () => {
     // The `[settings].custom_header` propagation is the CALLER's
     // composition in Python (`accounts.export_bridge` reads the config
     // and passes `headers=`); the effect-level lock is that a supplied
     // headers map lands in the bridge verbatim.
     const effects = createNodeBridgeEffects();
     const out = join(makeTempDir(cleanups), "bridge.json");
-    effects.export({
+    await effects.export({
       account: teamSa() as Account,
       to: out,
       project: null,

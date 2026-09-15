@@ -188,11 +188,9 @@ describe("createBrowserWorkspaceFromStore (§2.2) — PKCE-persisted tokens path
    * @param expiresAt - Expiry text for the persisted tokens.
    * @returns The seeded store.
    */
-  async function seededStore(
-    expiresAt: string,
-  ): Promise<InMemoryCredentialStore> {
+  function seededStore(expiresAt: string): InMemoryCredentialStore {
     const store = new InMemoryCredentialStore();
-    await store.set(
+    store.set(
       CREDENTIAL_KEYS.tokens("us"),
       JSON.stringify({
         access_token: "stored-tok",
@@ -209,7 +207,7 @@ describe("createBrowserWorkspaceFromStore (§2.2) — PKCE-persisted tokens path
     const ws = await createBrowserWorkspaceFromStore({
       region: "us",
       projectId: "12345",
-      store: await seededStore("2030-01-01T00:00:00+00:00"),
+      store: seededStore("2030-01-01T00:00:00+00:00"),
       fetch: transport.fetch,
       now: () => Date.parse("2026-01-01T00:00:00Z"),
     });
@@ -225,7 +223,7 @@ describe("createBrowserWorkspaceFromStore (§2.2) — PKCE-persisted tokens path
       createBrowserWorkspaceFromStore({
         region: "us",
         projectId: "12345",
-        store: await seededStore("2020-01-01T00:00:00+00:00"),
+        store: seededStore("2020-01-01T00:00:00+00:00"),
         fetch: fakeTransport(() => ({ status: 200, json: [] })).fetch,
         now: () => Date.parse("2026-01-01T00:00:00Z"),
       }),
@@ -245,7 +243,7 @@ describe("createBrowserWorkspaceFromStore (§2.2) — PKCE-persisted tokens path
 
   it("rejects malformed persisted tokens (strict parse — no lax read path)", async () => {
     const store = new InMemoryCredentialStore();
-    await store.set(
+    store.set(
       CREDENTIAL_KEYS.tokens("us"),
       JSON.stringify({ access_token: "x" }), // missing required fields
     );
