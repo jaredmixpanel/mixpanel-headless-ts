@@ -58,6 +58,7 @@ export interface BookmarkMethods {
    *   (429).
    * @throws {@link QueryError} - Other 4xx responses (400/403/404/422).
    * @throws {@link ServerError} - Server-side errors (5xx).
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_bookmarks_v2
    */
   listBookmarksV2: (options?: ListBookmarksV2Options) => Promise<JsonValue[]>;
@@ -168,6 +169,7 @@ export interface BookmarkMethods {
    * @param options - Cursor/page-size + signal.
    * @returns `{results, pagination}` per the source's shaping.
    * @throws {@link MixpanelHeadlessError} - Non-dict, non-list raw response.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_bookmark_history
    */
   getBookmarkHistory: (

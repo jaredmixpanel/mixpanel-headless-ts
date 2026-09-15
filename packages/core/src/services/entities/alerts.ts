@@ -69,6 +69,7 @@ export interface AlertMethods {
    *   (429).
    * @throws {@link QueryError} - Other 4xx responses (400/403/404/422).
    * @throws {@link ServerError} - Server-side errors (5xx).
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_alerts
    */
   listAlerts: (options?: ListAlertsOptions) => Promise<JsonValue[]>;
@@ -147,6 +148,7 @@ export interface AlertMethods {
    * @param options - alert_type filter + signal.
    * @returns The count dict.
    * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_alert_count
    */
   getAlertCount: (
@@ -161,6 +163,7 @@ export interface AlertMethods {
    * @param options - page_size/cursor params + signal.
    * @returns A dict with `results` list and `pagination` metadata.
    * @throws {@link MixpanelHeadlessError} - Missing/malformed `results` shape.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_alert_history
    */
   getAlertHistory: (

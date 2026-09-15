@@ -195,6 +195,7 @@ export interface LexiconMethods {
    * @param options - Optional kw-only toggles + signal.
    * @returns The definition list verbatim.
    * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_property_definitions
    */
   listPropertyDefinitions: (
