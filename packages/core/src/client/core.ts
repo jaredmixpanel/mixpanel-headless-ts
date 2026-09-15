@@ -31,7 +31,11 @@ export interface ClientRequestOptions {
   readonly jsonBody?: Record<string, unknown> | null | undefined;
   /** Optional additional headers (Authorization is added automatically). */
   readonly headers?: Readonly<Record<string, string>> | null | undefined;
-  /** Optional request timeout in seconds. */
+  /**
+   * Request timeout in seconds.
+   *
+   * @defaultValue `null` (the client's route-aware default)
+   */
   readonly timeoutSeconds?: number | null | undefined;
   /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
@@ -45,7 +49,11 @@ export interface ClientAppRequestOptions {
   readonly jsonBody?: Record<string, unknown> | null | undefined;
   /** Optional form-encoded body (mutually exclusive with `jsonBody`). */
   readonly formBody?: Record<string, string> | null | undefined;
-  /** Return the full response without unwrapping `results` (Python `_raw`). */
+  /**
+   * Return the full response without unwrapping `results` (Python `_raw`).
+   *
+   * @defaultValue `false`
+   */
   readonly raw?: boolean | undefined;
   /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
@@ -62,13 +70,23 @@ export interface QueryHostRequestOptions {
   readonly data?: Record<string, unknown> | null | undefined;
   /** Form-encoded request body. */
   readonly formData?: Record<string, string> | null | undefined;
-  /** Override the default timeout (seconds). */
+  /**
+   * Override the route-aware default timeout, in seconds.
+   *
+   * @defaultValue `null` (route-aware default)
+   */
   readonly timeoutSeconds?: number | null | undefined;
-  /** Auto-add `project_id` to query params (Python default True). */
+  /**
+   * Auto-add `project_id` to the query params.
+   *
+   * @defaultValue `true`
+   */
   readonly injectProjectId?: boolean | undefined;
   /**
-   * Inject the pinned `workspace_id` on Query-host requests (Python
-   * default True; explicit opt-out forces a project-scoped query).
+   * Inject the pinned `workspace_id` on Query-host requests; an explicit
+   * opt-out forces a project-scoped query.
+   *
+   * @defaultValue `true`
    */
   readonly injectWorkspaceId?: boolean | undefined;
   /** Optional cancellation signal. */

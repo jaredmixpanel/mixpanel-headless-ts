@@ -56,20 +56,23 @@ const PAGINATION_BACKOFF_BASE_SECONDS = 1.0;
 export const PAGINATION_BACKOFF_MAX_SECONDS = 60.0;
 
 /**
- * Parse a `Retry-After` header value into a safe number of seconds —
- * the module-level string-input parser (`pagination._parse_retry_after`),
- * not the client's response-based `parseRetryAfter` in `backoff.ts`.
+ * Parse a `Retry-After` header value into a safe number of seconds — the
+ * module-level string-input parser, not the client's response-based
+ * `parseRetryAfter` in `backoff.ts`.
  *
+ * @remarks
  * Anything that is not a finite, non-negative number is rejected so the
  * caller falls back to the exponential-backoff schedule. `float(raw)`
  * ports as `pythonFloat` — `"inf"` parses and is then filtered to
  * `null`; `"1,000"` fails the CPython grammar. The value is not capped
  * here; `PAGINATION_BACKOFF_MAX_SECONDS` applies at the point of
  * sleeping.
- *
  * @param raw - Raw header value, or `null` when the header is absent.
  * @returns The advertised delay in seconds, or `null` when the header
  *   is absent, empty, unparseable, negative, NaN, or infinite.
+ * @throws Any non-`PY_FLOAT_INVALID_LITERAL` error raised by
+ *   `pythonFloat`, unchanged (a programming error, never a header value).
+ * @see mixpanel_headless._internal.pagination._parse_retry_after
  */
 function parseRetryAfterSeconds(raw: string | null): number | null {
   // Python `if not raw:` — None and "" are both falsy.
@@ -96,7 +99,7 @@ function parseRetryAfterSeconds(raw: string | null): number | null {
 }
 
 /**
- * `type(x).__name__` over a lossless-parsed wire value — the Python
+ * Return `type(x).__name__` for a lossless-parsed wire value — the Python
  * `json.loads` product domain (`NoneType`/`bool`/`int`/`float`/`str`/
  * `list`/`dict`), used for the malformed-`results` error detail
  * (the recorded vectors lock `results_type`).
@@ -134,11 +137,11 @@ function pythonJsonTypeName(value: JsonValue): string {
  * `primitive_value_to_str` + `str()` would for the value Python
  * assigned into `request_params["cursor"]`.
  *
+ * @remarks
  * Cursors are strings in every recorded exchange; the non-string arms
  * exist only because Python's `dict[str, str]` annotation is not
  * enforced at runtime. Integer tokens keep their exact digits; float
  * tokens render via the CPython float repr.
- *
  * @param cursor - The non-null `next_cursor` value.
  * @returns The value to place in the request params.
  */
@@ -176,12 +179,17 @@ export interface PaginationClient {
 export interface PaginateAllOptions {
   /** Optional additional query parameters for each request. */
   readonly params?: Readonly<Record<string, string>> | null | undefined;
-  /** Number of items per page (Python `page_size`, default 100). */
+  /**
+   * Number of items per page (Python `page_size`).
+   *
+   * @defaultValue `100`
+   */
   readonly page_size?: number | undefined;
   /**
-   * Page-limit override (default {@link MAX_PAGES}) — the injectable
-   * replacement for Python tests' `MAX_PAGES` monkeypatch; an option,
-   * not a mutable module global.
+   * Page-limit override — the injectable replacement for Python tests'
+   * `MAX_PAGES` monkeypatch; an option, not a mutable module global.
+   *
+   * @defaultValue `10000` ({@link MAX_PAGES})
    */
   readonly maxPages?: number | undefined;
   /** Optional cancellation signal. */
@@ -189,29 +197,30 @@ export interface PaginateAllOptions {
 }
 
 /**
- * Iterate through all pages of a paginated App API response
- * (`paginate_all`).
+ * Iterate through all pages of a paginated App API response.
  *
+ * @remarks
  * Makes repeated raw GET requests to the App API path, following the
  * `pagination.next_cursor` field until it is `null`/absent. The
  * canonical `query_origin=mixpanel-headless` telemetry param is set
  * last so caller params can never override it.
- *
  * @param client - The assembled client (per-request auth resolution is
  *   preserved).
  * @param path - App API path (e.g. `/projects/12345/dashboards`).
- * @param options - Optional params/page_size/maxPages/signal.
- * @returns Async generator of individual items across all pages.
- * @throws AuthenticationError - Invalid credentials (401).
- * @throws RateLimitError - Rate limit exceeded after max retries (429;
- *   the reduced constructor shape — no `project_id`, no
+ * @param options - Optional params, `page_size` (default 100),
+ *   `maxPages` (default 10000) and cancellation `signal`.
+ * @yields Each individual item across all pages, in page order.
+ * @throws {@link AuthenticationError} - Invalid credentials (401).
+ * @throws {@link RateLimitError} - Rate limit exceeded after the maximum
+ *   retries (429; the reduced constructor shape — no `project_id`, no
  *   `request_params`).
- * @throws ServerError - Server-side errors (5xx).
- * @throws MixpanelHeadlessError - `NETWORK_ERROR` (transport failure),
- *   `PAGINATION_LIMIT` (page limit exceeded), `API_ERROR` (other non-2xx
- *   statuses, unfollowed 3xx included), or `INVALID_RESPONSE` (non-JSON
- *   body, or a `results` field that is neither a list nor null).
- * @throws DOMException - Name `AbortError` on cancellation.
+ * @throws {@link ServerError} - Server-side errors (5xx).
+ * @throws {@link MixpanelHeadlessError} - `NETWORK_ERROR` (transport
+ *   failure), `PAGINATION_LIMIT` (page limit exceeded), `API_ERROR` (other
+ *   non-2xx statuses, unfollowed 3xx included), or `INVALID_RESPONSE`
+ *   (non-JSON body, or a `results` field that is neither a list nor
+ *   null).
+ * @throws {@link DOMException} - Name `AbortError` on cancellation.
  * @example
  * ```typescript
  * const client = createMixpanelClient({ session });
@@ -224,6 +233,7 @@ export interface PaginateAllOptions {
  *   dashboards.push(item);
  * }
  * ```
+ * @see mixpanel_headless._internal.pagination.paginate_all
  */
 // eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export async function* paginateAll(

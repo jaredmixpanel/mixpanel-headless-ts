@@ -36,6 +36,7 @@ export interface PathScope {
  * maybeScopedPath("dashboards", { projectId: "12345", workspaceId: 789 });
  * // "/workspaces/789/dashboards"
  * ```
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.maybe_scoped_path
  */
 export function maybeScopedPath(domainPath: string, scope: PathScope): string {
   if (scope.workspaceId !== null) {

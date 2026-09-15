@@ -13,20 +13,20 @@
 import { pythonStrip } from "../compat/index.js";
 
 /**
- * Iterate over JSONL lines from a streaming byte source with proper
+ * Iterate over the JSONL lines of a streaming byte source with byte-first
  * buffering.
  *
- * httpx's `iter_lines()` can incorrectly split lines at chunk
- * boundaries, especially with gzip-compressed responses; like the Python
- * original, this uses manual byte buffering to handle incomplete lines
- * correctly.
- *
+ * @remarks
+ * httpx's `iter_lines()` can split lines incorrectly at chunk boundaries,
+ * especially on gzip-compressed responses; like the Python original, this
+ * buffers bytes manually so an incomplete line is completed by the next
+ * chunk.
  * @param source - Decoded body bytes in arrival order (a `fetch` body
  *   `ReadableStream<Uint8Array>` is an `AsyncIterable<Uint8Array>` on
  *   every supported runtime).
- * @returns Async generator of complete lines, stripped of surrounding
- *   whitespace (Python `str.strip()` set); empty lines are skipped. The
- *   final line is flushed even without a trailing newline.
+ * @yields Each complete line, stripped of surrounding whitespace (Python
+ *   `str.strip()` set); empty lines are skipped and the final line is
+ *   flushed even without a trailing newline.
  * @example
  * ```typescript
  * // Library code parses each line with `parseLossless`; `JSON.parse`
@@ -35,6 +35,7 @@ import { pythonStrip } from "../compat/index.js";
  *   const event = JSON.parse(line);
  * }
  * ```
+ * @see mixpanel_headless._internal.api_client._iter_jsonl_lines
  */
 export async function* iterJsonlLines(
   source: AsyncIterable<Uint8Array>,

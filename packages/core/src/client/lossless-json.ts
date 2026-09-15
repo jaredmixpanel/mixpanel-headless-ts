@@ -12,7 +12,18 @@
 import { setOwn } from "../compat/python-dict.js";
 import { attachKeyOrder, JsonNumber, type JsonValue } from "./json-value.js";
 
-/** Error raised for malformed JSON input, with a character offset. */
+/**
+ * Error raised for malformed JSON input, with a character offset.
+ *
+ * @example
+ * ```typescript
+ * try {
+ *   parseLossless("{");
+ * } catch (error) {
+ *   (error as LosslessJsonError).offset; // 1
+ * }
+ * ```
+ */
 export class LosslessJsonError extends Error {
   /** Zero-based character offset where parsing failed. */
   readonly offset: number;
@@ -45,7 +56,9 @@ export interface ParseLosslessOptions {
    * `-Infinity` (exact case only, probed against CPython 3.14), parsed
    * as native non-finite `number` values — exactly the `float('nan')` /
    * `float('inf')` Python produces (no raw-token precision concern
-   * exists for non-finite values). Default `false` (strict RFC 8259).
+   * exists for non-finite values).
+   *
+   * @defaultValue `false` (strict RFC 8259)
    */
   readonly pythonConstants?: boolean;
 }
@@ -58,7 +71,7 @@ export interface ParseLosslessOptions {
  *   {@link ParseLosslessOptions}).
  * @returns The parsed value; finite numbers are {@link JsonNumber}
  *   instances (non-finite constants, when enabled, are native numbers).
- * @throws LosslessJsonError - On any syntax error or trailing content.
+ * @throws {@link LosslessJsonError} - On any syntax error or trailing content.
  * @example
  * ```typescript
  * const value = parseLossless('{"a": 18.0}');
@@ -78,7 +91,16 @@ export function parseLossless(
   return value;
 }
 
-/** Recursive-descent JSON parser over a source string. */
+/**
+ * Recursive-descent JSON parser over a source string.
+ *
+ * @example
+ * ```typescript
+ * const parser = new Parser('[1, 2]');
+ * parser.parseValue(); // [JsonNumber("1"), JsonNumber("2")]
+ * parser.atEnd(); // true
+ * ```
+ */
 class Parser {
   /** The JSON source text. */
   private readonly text: string;
@@ -101,7 +123,7 @@ class Parser {
   }
 
   /**
-   * Whether the scan position has reached the end of input.
+   * Report whether the scan position has reached the end of input.
    *
    * @returns `true` when no characters remain.
    */
@@ -125,7 +147,7 @@ class Parser {
    * Parse one JSON value at the current position.
    *
    * @returns The parsed value.
-   * @throws LosslessJsonError - On malformed input.
+   * @throws {@link LosslessJsonError} - On malformed input.
    */
   parseValue(): JsonValue {
     this.skipWhitespace();
@@ -193,7 +215,7 @@ class Parser {
    * Consume an exact literal (`true` / `false` / `null`).
    *
    * @param literal - The expected literal text.
-   * @throws LosslessJsonError - If the source does not match.
+   * @throws {@link LosslessJsonError} - If the source does not match.
    */
   private expectLiteral(literal: string): void {
     if (this.text.startsWith(literal, this.pos)) {
@@ -217,7 +239,7 @@ class Parser {
    * whose enumeration already equals source order carry no sidecar.
    *
    * @returns The parsed object (duplicate keys: last wins).
-   * @throws LosslessJsonError - On malformed input.
+   * @throws {@link LosslessJsonError} - On malformed input.
    */
   private parseObject(): Record<string, JsonValue> {
     this.pos += 1; // consume '{'
@@ -282,7 +304,7 @@ class Parser {
    * Parse a JSON array at the current position.
    *
    * @returns The parsed array.
-   * @throws LosslessJsonError - On malformed input.
+   * @throws {@link LosslessJsonError} - On malformed input.
    */
   private parseArray(): JsonValue[] {
     this.pos += 1; // consume '['
@@ -315,7 +337,7 @@ class Parser {
    * which is guaranteed well-formed by the token regex.
    *
    * @returns The decoded string value.
-   * @throws LosslessJsonError - On malformed input.
+   * @throws {@link LosslessJsonError} - On malformed input.
    */
   private parseString(): string {
     STRING_TOKEN.lastIndex = this.pos;
@@ -331,7 +353,7 @@ class Parser {
    * Parse a JSON number token at the current position.
    *
    * @returns A {@link JsonNumber} wrapping the verbatim token.
-   * @throws LosslessJsonError - On malformed input.
+   * @throws {@link LosslessJsonError} - On malformed input.
    */
   private parseNumber(): JsonNumber {
     NUMBER_TOKEN.lastIndex = this.pos;

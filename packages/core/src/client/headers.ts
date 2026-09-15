@@ -43,45 +43,55 @@ export type EntryPoint = "lib" | "cli";
 let entryPoint: EntryPoint = "lib";
 
 /**
- * Record how this process was launched (call once at startup) — TS port
- * of `client_metadata.set_entry_point`.
+ * Record how this process was launched; call once at startup.
  *
+ * @remarks
  * The CLI calls this with `"cli"` on import so the User-Agent tag
  * reflects interactive vs programmatic use; library callers leave the
  * default `"lib"`.
- *
  * @param value - One of `"lib"` or `"cli"`.
+ * @example
+ * ```typescript
+ * setEntryPoint("cli");
+ * getUserAgent(); // "mixpanel-headless/0.0.0 (entry=cli; ts)"
+ * ```
+ * @see mixpanel_headless._internal.client_metadata.set_entry_point
  */
 export function setEntryPoint(value: EntryPoint): void {
   entryPoint = value;
 }
 
 /**
- * Return the currently recorded entry point — TS port of
- * `client_metadata.get_entry_point`.
+ * Return the currently recorded entry point.
  *
  * @returns `"lib"` (default) or `"cli"` once flipped.
+ * @example
+ * ```typescript
+ * getEntryPoint(); // "lib"
+ * ```
+ * @see mixpanel_headless._internal.client_metadata.get_entry_point
  */
 export function getEntryPoint(): EntryPoint {
   return entryPoint;
 }
 
 /**
- * Build the User-Agent string for outbound requests — TS port of
- * `client_metadata.get_user_agent`.
+ * Build the User-Agent string for outbound requests.
  *
- * Python format: `mixpanel-headless/<version> (entry=<lib|cli>; python/<x.y>)`.
- * The runtime tag becomes `ts` here (the User-Agent is telemetry
+ * @remarks
+ * Python's format is
+ * `mixpanel-headless/<version> (entry=<lib|cli>; python/<x.y>)`; the
+ * runtime tag becomes `ts` here (the User-Agent is telemetry
  * identification, never byte-locked by a vector — vectors assert headers
  * via `headers_contain` subsets). Re-read on every call so an entry-point
- * change after import is reflected immediately, exactly as in Python.
- *
+ * change after import is reflected immediately.
  * @returns The User-Agent header value.
  * @example
  * ```typescript
  * getUserAgent();
  * // "mixpanel-headless/0.0.0 (entry=lib; ts)"
  * ```
+ * @see mixpanel_headless._internal.client_metadata.get_user_agent
  */
 export function getUserAgent(): string {
   return `mixpanel-headless/${LIBRARY_VERSION} (entry=${entryPoint}; ts)`;
@@ -109,9 +119,9 @@ export interface RequestHeadersDeps {
 }
 
 /**
- * Compose the per-request header set: defaults → env → session → caller —
- * TS port of `MixpanelAPIClient._request_headers`.
+ * Compose the per-request header set from the four precedence layers.
  *
+ * @remarks
  * Each later layer overrides the prior on header-name collision:
  *
  * 1. Library defaults — currently `User-Agent` so backend telemetry can
@@ -126,10 +136,19 @@ export interface RequestHeadersDeps {
  *
  * Merging is name-case-sensitive exactly like Python `dict.update`; HTTP
  * case-insensitivity is the transport's concern.
- *
- * @param deps - Injected environment (see {@link RequestHeadersDeps}).
- * @param extra - Per-call headers (e.g. Authorization). May be empty.
- * @returns New object with all layers merged in precedence order.
+ * @param deps - Injected environment (User-Agent source, env-pair
+ *   provider, session headers).
+ * @param extra - Per-call headers such as `Authorization`; may be empty.
+ * @returns A new object with all layers merged in precedence order.
+ * @example
+ * ```typescript
+ * const headers = requestHeaders(
+ *   { getUserAgent, getCustomHeaderEnv: () => ({}), sessionHeaders: {} },
+ *   { Authorization: "Bearer …" },
+ * );
+ * // { "User-Agent": "mixpanel-headless/0.0.0 (entry=lib; ts)", Authorization: "Bearer …" }
+ * ```
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient._request_headers
  */
 export function requestHeaders(
   deps: RequestHeadersDeps,

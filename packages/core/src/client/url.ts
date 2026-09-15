@@ -153,6 +153,12 @@ export function normalizeBaseUrlOverride(
  *
  * @param source - Static bag, provider, or `undefined`.
  * @returns A zero-arg provider.
+ * @example
+ * ```typescript
+ * endpointOverridesProvider({ apiBaseUrl: "http://devbox:8080" })();
+ * // { apiBaseUrl: "http://devbox:8080" }
+ * endpointOverridesProvider(undefined)(); // {}
+ * ```
  */
 export function endpointOverridesProvider(
   source: EndpointOverridesSource | undefined,
@@ -175,6 +181,11 @@ export function endpointOverridesProvider(
  * @param getEnv - Reads one variable by name (`undefined` when unset).
  * @returns A provider that reads {@link API_BASE_URL_ENV} and
  *   {@link APP_BASE_URL_ENV} on every call.
+ * @example
+ * ```typescript
+ * const overrides = endpointOverridesFromEnv((name) => process.env[name]);
+ * overrides(); // { apiBaseUrl: undefined, appBaseUrl: "http://devbox:8080" }
+ * ```
  */
 export function endpointOverridesFromEnv(
   getEnv: (name: string) => string | undefined,
@@ -186,11 +197,17 @@ export function endpointOverridesFromEnv(
 }
 
 /**
- * Whether the bag routes every family at one host (`apiBaseUrl` set
- * after normalisation) — the condition that collapses the region probe.
+ * Report whether the bag routes every family at one host (`apiBaseUrl`
+ * set after normalisation) — the condition that collapses the region
+ * probe.
  *
  * @param overrides - The override bag.
  * @returns `true` when `apiBaseUrl` is effectively set.
+ * @example
+ * ```typescript
+ * hasApiBaseUrlOverride({ apiBaseUrl: "/" }); // false
+ * hasApiBaseUrlOverride({ apiBaseUrl: "http://devbox:8080" }); // true
+ * ```
  */
 export function hasApiBaseUrlOverride(overrides: EndpointOverrides): boolean {
   return normalizeBaseUrlOverride(overrides.apiBaseUrl) !== "";
@@ -212,12 +229,12 @@ function liveEndpoints(region: Region): ReadonlyMap<EndpointKind, string> {
 
 /**
  * Resolve the API-family → base-URL table for `region`, honouring the
- * overrides (`_endpoints_for`, Python PR #235).
+ * overrides (Python PR #235).
  *
+ * @remarks
  * Every read of {@link ENDPOINTS} inside the client goes through this
  * function so the family checks that pick the App-vs-Query timeout and
  * inject `workspace_id` stay correct under an override.
- *
  * @param region - Mixpanel region key.
  * @param overrides - The injected override bag (default: none).
  * @returns With neither member set: the live `ENDPOINTS[region]` object
@@ -225,13 +242,15 @@ function liveEndpoints(region: Region): ReadonlyMap<EndpointKind, string> {
  *   table of `{base}{prefix}` for every family. With `appBaseUrl` set:
  *   the `app` entry becomes `{appBase}/api/app` on top of whichever
  *   table applies. The live table is never mutated.
- * @throws MixpanelError - `region` is not a table key (only reachable
- *   when no override applies, matching Python's `KeyError`).
+ * @throws {@link MixpanelHeadlessError} - `region` is not a table key
+ *   (raised by `invariant`); unreachable by types, matching Python's
+ *   `KeyError`.
  * @example
  * ```typescript
  * endpointsFor("eu", { apiBaseUrl: "http://devbox:8080" }).get("export");
  * // "http://devbox:8080/api/2.0"
  * ```
+ * @see mixpanel_headless._internal.api_client._endpoints_for
  */
 export function endpointsFor(
   region: Region,
@@ -258,9 +277,14 @@ export function endpointsFor(
 }
 
 /**
- * The App family's fixed path prefix (`_OVERRIDE_PATH_PREFIXES["app"]`).
+ * Return the App family's fixed path prefix
+ * (`_OVERRIDE_PATH_PREFIXES["app"]`).
  *
  * @returns `"/api/app"`.
+ * @example
+ * ```typescript
+ * appPathPrefix(); // "/api/app"
+ * ```
  */
 export function appPathPrefix(): string {
   const prefix = OVERRIDE_PATH_PREFIXES.get("app");
@@ -270,15 +294,15 @@ export function appPathPrefix(): string {
 
 /**
  * Classify `url` by the API family whose base is its longest prefix
- * (`_api_family_for`, Python PR #235).
+ * (Python PR #235).
  *
+ * @remarks
  * Longest-prefix (rather than first-match) matters in two places: live
  * Engage URLs also start with the Query base, and split overrides can
  * nest one family's base under another's (`apiBaseUrl: "https://proxy"`
  * with `appBaseUrl: "https://proxy/api/query"` puts the App base under
  * the Query prefix). Ties keep the first family in table order, exactly
  * like Python's strict `>` comparison.
- *
  * @param url - The full request URL.
  * @param endpoints - A family → base-URL table, normally from
  *   {@link endpointsFor}.
@@ -291,6 +315,7 @@ export function appPathPrefix(): string {
  * apiFamilyFor("https://example.com/x", endpointsFor("us"));
  * // null
  * ```
+ * @see mixpanel_headless._internal.api_client._api_family_for
  */
 export function apiFamilyFor(
   url: string,
@@ -338,17 +363,22 @@ export const DEFAULT_QUERY_TIMEOUT_S: number =
 /**
  * Look up the base URL for a region/API-family pair.
  *
+ * @remarks
  * Python indexes `ENDPOINTS[region][api_type]` directly (a `KeyError` is
  * unreachable — both keys are `Literal`-typed); the TS table lookup is
  * equally unreachable-by-types and guarded with `invariant`.
- *
  * @param region - Data-residency region.
  * @param kind - API family.
  * @param overrides - Alternate-host overrides (Python PR #235); default none,
  *   which returns the live per-region entry unchanged.
  * @returns The base URL (no trailing slash).
- * @throws MixpanelError - If the table is missing an entry (impossible by
- *   construction; guards table edits).
+ * @throws {@link MixpanelHeadlessError} - The table is missing an entry
+ *   (raised by `invariant`; impossible by construction, guards table
+ *   edits).
+ * @example
+ * ```typescript
+ * endpointBase("eu", "app"); // "https://eu.mixpanel.com/api/app"
+ * ```
  */
 export function endpointBase(
   region: Region,
@@ -361,11 +391,10 @@ export function endpointBase(
 }
 
 /**
- * Build the full URL for the given API family and path — TS port of
- * `MixpanelAPIClient._build_url`.
+ * Build the full URL for the given API family and path.
  *
+ * @remarks
  * A missing leading `/` on `path` is added, exactly as in Python.
- *
  * @param region - Data-residency region (Python reads
  *   `session.account.region`; the client threads it here).
  * @param kind - One of `"query"`, `"export"`, `"engage"`, `"app"`.
@@ -380,6 +409,7 @@ export function endpointBase(
  * buildUrl("us", "query", "/segmentation", { apiBaseUrl: "http://devbox:8080" });
  * // "http://devbox:8080/api/query/segmentation"
  * ```
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient._build_url
  */
 export function buildUrl(
   region: Region,

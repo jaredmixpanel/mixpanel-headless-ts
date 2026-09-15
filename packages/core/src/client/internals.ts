@@ -47,6 +47,13 @@ import { LosslessJsonError, parseLossless } from "./lossless-json.js";
  * catch it with the `if (!(e instanceof MixpanelHttpError)) throw e;`
  * idiom before wrapping it as `MixpanelHeadlessError` code `HTTP_ERROR`.
  * Library callers therefore never observe it directly.
+ *
+ * @example
+ * ```typescript
+ * throw new MixpanelHttpError("connect ECONNREFUSED", { cause: error });
+ * // or, from raiseForStatus:
+ * new MixpanelHttpError("HTTP status 302 for url …", { status: 302 }).status; // 302
+ * ```
  */
 export class MixpanelHttpError extends Error {
   /** HTTP status when the failure came from a live response. */
@@ -146,15 +153,20 @@ export interface ResponseContext {
 /**
  * Fix the leading argument of a module-level method implementation.
  *
+ * @remarks
  * The client factories keep their methods as plain functions whose first
  * parameter is the shared client core (or the assembled client context)
  * and re-attach them to the method bag they return with
  * `{ listDashboards: bindFirst(core, listDashboards) }` — no closure per
  * method, so nothing can be captured by accident.
- *
  * @param first - The value bound as `method`'s first argument.
  * @param method - A function taking that value first.
  * @returns `method` with its first parameter fixed.
+ * @example
+ * ```typescript
+ * const listDashboards = bindFirst(core, listDashboardsImpl);
+ * await listDashboards({ ids: [1, 2] });
+ * ```
  */
 export function bindFirst<First, Args extends unknown[], Result>(
   first: First,
@@ -164,13 +176,18 @@ export function bindFirst<First, Args extends unknown[], Result>(
 }
 
 /**
- * Whether a parsed JSON value is a plain record (Python `dict`).
+ * Report whether a parsed JSON value is a plain record (Python `dict`).
  *
+ * @remarks
  * `JsonNumber` instances are objects but not dicts — they are the
  * lossless number tokens (never treat them as records).
- *
  * @param value - A parsed body value.
  * @returns `true` for plain objects.
+ * @example
+ * ```typescript
+ * isPlainRecord(parseLossless('{"a": 1}')); // true
+ * isPlainRecord(parseLossless("18.0")); // false — a JsonNumber
+ * ```
  */
 export function isPlainRecord(
   value: unknown,
@@ -228,16 +245,19 @@ function jsonDumpsLike(value: JsonValue): string {
  * `json.loads` product — consumed by `_error_message`'s non-string
  * `error` stringification (message text, out of contract) and by the
  * `engage_stats` non-dict guard and the `get_events` /
- * `get_property_values` `str(e)` element casts (exported for those
- * consumers).
+ * `get_property_values` `str(e)` element casts.
  *
+ * @remarks
  * Integer `JsonNumber` tokens map to `bigint` (Python `int`, arbitrary
  * precision); float tokens map to `number` — an integral float token
  * (`42.0`) therefore renders `"42"` where Python says `"42.0"`, a
  * documented message-text-only approximation.
- *
  * @param value - The parsed value.
  * @returns Python's `str()` rendering (containers via `repr`).
+ * @example
+ * ```typescript
+ * jsonValuePythonStr(parseLossless('["a", 1, null]')); // "['a', 1, None]"
+ * ```
  */
 export function jsonValuePythonStr(value: JsonValue): string {
   return pythonStr(toPythonValue(value));
@@ -275,6 +295,14 @@ function toPythonValue(value: JsonValue): PythonValue {
  *
  * @param text - The response body text.
  * @returns The parsed body, its 500-code-point prefix, or `null`.
+ * @throws Any non-`LosslessJsonError` from the parser, unchanged (the
+ *   `RecursionError` analog on a pathologically nested body).
+ * @example
+ * ```typescript
+ * parseErrorBody('{"error": "bad"}'); // { error: "bad" }
+ * parseErrorBody("<html>oops</html>"); // "<html>oops</html>"
+ * parseErrorBody(""); // null
+ * ```
  */
 export function parseErrorBody(text: string): JsonValue | null {
   try {
@@ -288,22 +316,28 @@ export function parseErrorBody(text: string): JsonValue | null {
 }
 
 /**
- * Extract a human-readable error message from a parsed error body — TS
- * port of `_error_message`.
+ * Extract a human-readable error message from a parsed error body.
  *
+ * @remarks
  * Mixpanel error bodies are either a JSON object with an `error` key, a
  * plain-text blob, or nothing at all. Any of those can be empty or
- * blank, which must not produce a blank exception message.
- *
+ * blank, which must not produce a blank exception message. A body of
  * `{"error": null}` and an absent `error` key are indistinguishable to
  * Python's `body.get("error") is None` — both yield the default, never
  * the string `"None"`.
- *
  * @param responseBody - Parsed JSON value, raw text, or `null`.
  * @param defaultMessage - Message when the body carries no usable text.
  * @returns The extracted message, or the default when the body is
  *   missing, blank, or has no `error` key. Non-string `error` values
  *   (lists, nested objects) are stringified rather than returned as-is.
+ * @example
+ * ```typescript
+ * errorMessage(parseLossless('{"error": "Invalid date"}'), "Unknown error");
+ * // "Invalid date"
+ * errorMessage(parseLossless('{"error": null}'), "Unknown error");
+ * // "Unknown error"
+ * ```
+ * @see mixpanel_headless._internal.api_client._error_message
  */
 export function errorMessage(
   responseBody: JsonValue | null,
@@ -335,8 +369,8 @@ export function errorMessage(
  *
  * @param text - The raw body text.
  * @returns Parsed value, truncated text, or `null`.
- * @throws RangeError - Parser stack overflow on a pathologically nested
- *   body — the `except json.JSONDecodeError` scope does not cover
+ * @throws {@link RangeError} - Parser stack overflow on a pathologically
+ *   nested body — the `except json.JSONDecodeError` scope does not cover
  *   Python's RecursionError either.
  */
 function parseBody(text: string): JsonValue | null {
@@ -363,7 +397,7 @@ function parseBody(text: string): JsonValue | null {
  *
  * @param response - The response.
  * @param requestUrl - URL for the message (out of contract).
- * @throws MixpanelHttpError - For any status outside 200-299.
+ * @throws {@link MixpanelHttpError} - For any status outside 200-299.
  */
 function raiseForStatus(
   response: WireResponse,
@@ -378,9 +412,10 @@ function raiseForStatus(
 }
 
 /**
- * Handle an API response, raising appropriate exceptions with full
- * context (`_handle_response`, every branch in source order).
+ * Handle an API response, raising the appropriate error with full context
+ * (every branch in Python source order).
  *
+ * @remarks
  * Status code handling:
  * - 200-299: parse and return the lossless JSON body
  * - 401: `AuthenticationError` (invalid credentials)
@@ -390,20 +425,30 @@ function raiseForStatus(
  * - 400: `QueryError` ("Unknown error"); 404: `QueryError` ("Resource
  *   not found"); other 4xx: `QueryError` ("Request failed")
  * - 5xx: `ServerError` ("Server error: " prefix)
- *
- * 429 is handled by the callers' retry loops, never here.
- *
+ * - 429 is handled by the callers' retry loops, never here.
  * @param response - The HTTP response to handle.
  * @param context - Request context + bound project id.
  * @returns Parsed lossless JSON body for successful requests (objects,
  *   arrays, and bare JSON scalars — httpx `.json()` returns scalars too).
- * @throws AuthenticationError - On 401.
- * @throws SessionReplayAccessError - On the flagged 403.
- * @throws QueryError - On 400/403/404/other 4xx.
- * @throws ServerError - On 5xx.
- * @throws MixpanelHttpError - For residual non-2xx (1xx/3xx) statuses.
- * @throws MixpanelHeadlessError - Code `INVALID_RESPONSE` for a 2xx
- *   non-JSON body.
+ * @throws {@link AuthenticationError} - On 401.
+ * @throws {@link SessionReplayAccessError} - On the flagged 403.
+ * @throws {@link QueryError} - On 400/403/404/other 4xx.
+ * @throws {@link ServerError} - On 5xx.
+ * @throws {@link MixpanelHttpError} - For residual non-2xx (1xx/3xx)
+ *   statuses.
+ * @throws {@link MixpanelHeadlessError} - Code `INVALID_RESPONSE` for a
+ *   2xx non-JSON body.
+ * @example
+ * ```typescript
+ * const body = handleResponse(response, {
+ *   requestMethod: "GET",
+ *   requestUrl: url,
+ *   requestParams: params,
+ *   projectId: "12345",
+ * });
+ * // 200 → the lossless JSON body; 404 → throws QueryError("Resource not found")
+ * ```
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient._handle_response
  */
 // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function handleResponse(
@@ -581,32 +626,45 @@ export interface ExecuteWithRetryArgs {
   readonly formData?: Record<string, string> | null | undefined;
   /** Request headers (must include Authorization). */
   readonly headers: Record<string, string>;
-  /** Optional per-call timeout in seconds. */
+  /**
+   * Per-call timeout in seconds; `null` and `0` both fall back to the
+   * route-aware default.
+   *
+   * @defaultValue `null`
+   */
   readonly timeoutSeconds?: number | null | undefined;
 }
 
 /**
- * Execute an HTTP request with retry logic for rate limiting — TS port
- * of `_execute_with_retry`.
+ * Execute an HTTP request with retry logic for rate limiting.
  *
+ * @remarks
  * The core request-execution path shared by the Query-host methods and
  * the public `request()` escape hatch. Injects the canonical
  * `query_origin` telemetry param (caller values are overwritten), merges
  * headers through the four-layer merge, retries 429s with
  * Retry-After/backoff timing, and maps error responses via
  * {@link handleResponse}.
- *
  * @param deps - Injected client dependencies.
  * @param args - The request.
  * @returns Parsed lossless JSON response.
- * @throws AuthenticationError - Invalid credentials (401).
- * @throws RateLimitError - Rate limit exceeded after max retries (429);
- *   carries `retry_after`, the lossless body, and `project_id` at every
- *   raise site.
- * @throws QueryError - Invalid parameters (400/403/404/4xx).
- * @throws ServerError - Server-side errors (5xx).
- * @throws MixpanelHeadlessError - Code `HTTP_ERROR` for network /
- *   transport / residual-status errors.
+ * @throws {@link RateLimitError} - Rate limit exceeded after the maximum
+ *   retries (429); carries `retry_after`, the lossless body, and
+ *   `project_id` at every raise site.
+ * @throws {@link MixpanelHeadlessError} - Code `HTTP_ERROR` for network /
+ *   transport / residual-status errors, plus every class
+ *   {@link handleResponse} raises (`AuthenticationError`, `QueryError`,
+ *   `ServerError`, …).
+ * @example
+ * ```typescript
+ * const result = await executeWithRetry(core.executeDeps(signal), {
+ *   method: "GET",
+ *   url: core.buildUrl("query", "/events/names"),
+ *   params: { type: "general" },
+ *   headers: { Authorization: await core.getAuthHeader() },
+ * });
+ * ```
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient._execute_with_retry
  */
 export async function executeWithRetry(
   deps: RetryExecutorDeps,

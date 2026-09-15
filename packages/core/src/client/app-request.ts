@@ -44,7 +44,7 @@ export interface AppRequestDeps {
   sleep: (ms: number) => Promise<void>;
   /** Uniform-[0,1) RNG for backoff jitter. */
   readonly random: RandomSource;
-  /** Maximum retry attempts for rate-limited requests (Python default 3). */
+  /** Maximum retry attempts for rate-limited requests (the client's default is 3). */
   readonly maxRetries: number;
   /**
    * Resolve the default request timeout for a URL
@@ -98,22 +98,23 @@ export interface AppRequestOptions {
    */
   readonly formBody?: Record<string, string> | null | undefined;
   /**
-   * If `true`, return the full response value without unwrapping the
-   * `results` field (Python `_raw`) — useful for endpoints that include
-   * pagination metadata alongside results.
+   * Return the full response value without unwrapping the `results`
+   * field (Python `_raw`) — useful for endpoints that include pagination
+   * metadata alongside results.
+   *
+   * @defaultValue `false`
    */
   readonly raw?: boolean | undefined;
 }
 
 /**
- * Make an authenticated request to the Mixpanel App API — TS port of
- * `app_request`.
+ * Make an authenticated request to the Mixpanel App API.
  *
+ * @remarks
  * Uses Bearer auth (OAuth) or Basic auth depending on the resolved
  * header; builds the URL from the `app` endpoint for the configured
  * region; unwraps the `results` field from the response JSON when
  * present.
- *
  * @param deps - Injected client dependencies.
  * @param method - HTTP method (GET, POST, PATCH, DELETE, etc.).
  * @param path - API path (e.g. `/projects/12345/dashboards`).
@@ -122,15 +123,15 @@ export interface AppRequestOptions {
  *   otherwise the full response body. For 204 No Content responses,
  *   returns `{status: "ok"}`. When `raw` is true, the full response
  *   value is returned without unwrapping `results`.
- * @throws ParamValidationError - Both `jsonBody` and `formBody` were
- *   provided (`AC1_BODY_MUTUALLY_EXCLUSIVE`).
- * @throws AuthenticationError - Invalid credentials (401).
- * @throws RateLimitError - Rate limit exceeded after max retries (429).
- * @throws QueryError - Invalid parameters or resource not found
+ * @throws {@link ParamValidationError} - Both `jsonBody` and `formBody`
+ *   were provided (`AC1_BODY_MUTUALLY_EXCLUSIVE`).
+ * @throws {@link RateLimitError} - Rate limit exceeded after the maximum
+ *   retries (429).
+ * @throws {@link QueryError} - Invalid parameters or resource not found
  *   (400, 404, 422).
- * @throws ServerError - Server-side errors (5xx).
- * @throws MixpanelHeadlessError - Network/connection errors
- *   (`HTTP_ERROR`).
+ * @throws {@link MixpanelHeadlessError} - Network/connection errors
+ *   (`HTTP_ERROR`), plus `AuthenticationError` (401) and `ServerError`
+ *   (5xx) raised by {@link handleResponse}.
  * @example
  * ```typescript
  * const dashboards = await appRequest(deps, "GET", "/projects/12345/dashboards");
@@ -139,6 +140,7 @@ export interface AppRequestOptions {
  *   formBody: { name: "X", alternatives: '[{"event": "Y"}]' },
  * });
  * ```
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.app_request
  */
 // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export async function appRequest(

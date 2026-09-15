@@ -45,8 +45,18 @@ export interface MeOrgInfoInit {
 }
 
 /**
- * Organization information within a `/me` response (Python `MeOrgInfo`;
- * model_config: `extra='allow'`, `frozen=True`).
+ * Organization information within a `/me` response.
+ *
+ * @remarks
+ * Python `model_config`: `extra='allow'`, `frozen=True` — unknown keys
+ * are kept under {@link MeOrgInfo.modelExtra}; instances are read-only at
+ * the type level.
+ * @example
+ * ```typescript
+ * const org = MeOrgInfo.fromDict({ id: 100, name: "Acme Corp", role: "admin" });
+ * org.permissions; // null
+ * ```
+ * @see mixpanel_headless._internal.me.MeOrgInfo
  */
 export class MeOrgInfo extends EntityModel<MeOrgInfoInit> {
   /** The Python model name. */
@@ -76,7 +86,7 @@ export class MeOrgInfo extends EntityModel<MeOrgInfoInit> {
    * Construct a validated MeOrgInfo (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields.
+   * @throws {@link ResponseValidationError} - On missing/invalid fields.
    */
   constructor(fields: MeOrgInfoInit) {
     super(MeOrgInfo, fields);
@@ -97,7 +107,7 @@ export class MeOrgInfo extends EntityModel<MeOrgInfoInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): MeOrgInfo {
     return new MeOrgInfo(prepareInit(MeOrgInfo, raw));
@@ -124,8 +134,21 @@ export interface MeProjectInfoInit {
 }
 
 /**
- * Project information within a `/me` response (Python `MeProjectInfo`;
- * model_config: `extra='allow'`, `frozen=True`).
+ * Project information within a `/me` response.
+ *
+ * @remarks
+ * Python `model_config`: `extra='allow'`, `frozen=True` (see
+ * {@link MeOrgInfo}).
+ * @example
+ * ```typescript
+ * const project = MeProjectInfo.fromDict({
+ *   name: "Web",
+ *   organization_id: 100,
+ *   has_workspaces: true,
+ * });
+ * project.timezone; // null
+ * ```
+ * @see mixpanel_headless._internal.me.MeProjectInfo
  */
 export class MeProjectInfo extends EntityModel<MeProjectInfoInit> {
   /** The Python model name. */
@@ -166,7 +189,7 @@ export class MeProjectInfo extends EntityModel<MeProjectInfoInit> {
    * Construct a validated MeProjectInfo (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields.
+   * @throws {@link ResponseValidationError} - On missing/invalid fields.
    */
   constructor(fields: MeProjectInfoInit) {
     super(MeProjectInfo, fields);
@@ -186,7 +209,7 @@ export class MeProjectInfo extends EntityModel<MeProjectInfoInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): MeProjectInfo {
     return new MeProjectInfo(prepareInit(MeProjectInfo, raw));
@@ -219,8 +242,22 @@ export interface MeWorkspaceInfoInit {
 }
 
 /**
- * Workspace information within a `/me` response (Python
- * `MeWorkspaceInfo`; `extra='allow'`, `frozen=True`).
+ * Workspace information within a `/me` response.
+ *
+ * @remarks
+ * Python `model_config`: `extra='allow'`, `frozen=True` (see
+ * {@link MeOrgInfo}).
+ * @example
+ * ```typescript
+ * const ws = MeWorkspaceInfo.fromDict({
+ *   id: 7,
+ *   name: "All Project Data",
+ *   project_id: 12345,
+ *   is_global: true,
+ * });
+ * workspaceViewFromMeWorkspace(ws).is_global; // true
+ * ```
+ * @see mixpanel_headless._internal.me.MeWorkspaceInfo
  */
 export class MeWorkspaceInfo extends EntityModel<MeWorkspaceInfoInit> {
   /** The Python model name. */
@@ -266,7 +303,7 @@ export class MeWorkspaceInfo extends EntityModel<MeWorkspaceInfoInit> {
    * mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields.
+   * @throws {@link ResponseValidationError} - On missing/invalid fields.
    */
   constructor(fields: MeWorkspaceInfoInit) {
     super(MeWorkspaceInfo, fields);
@@ -286,7 +323,7 @@ export class MeWorkspaceInfo extends EntityModel<MeWorkspaceInfoInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): MeWorkspaceInfo {
     return new MeWorkspaceInfo(prepareInit(MeWorkspaceInfo, raw));
@@ -336,9 +373,20 @@ export interface MeResponseInit {
 }
 
 /**
- * Model of the Mixpanel `/me` API response (Python `MeResponse`;
- * `extra='allow'`, `frozen=True`). All fields optional;
- * the three container maps default to `{}`.
+ * Model of the Mixpanel `/me` API response. All fields are optional; the
+ * three container maps default to empty, insertion-ordered maps.
+ *
+ * @remarks
+ * Python `model_config`: `extra='allow'`, `frozen=True` (see
+ * {@link MeOrgInfo}). Pass `ReadonlyMap`s for the containers when
+ * organization order matters — a plain record hoists integer-like keys.
+ * @example
+ * ```typescript
+ * const me = MeResponse.fromDict(toNativeJson(payload));
+ * me.projects.get("12345")?.name; // "Web"
+ * [...me.organizations.keys()]; // in `/me` source order
+ * ```
+ * @see mixpanel_headless._internal.me.MeResponse
  */
 export class MeResponse extends EntityModel<MeResponseInit> {
   /** The Python model name. */
@@ -404,7 +452,7 @@ export class MeResponse extends EntityModel<MeResponseInit> {
    *
    * @param fields - Field values keyed by Python attribute name
    *   (defaults to the all-optional empty response).
-   * @throws ResponseValidationError - On invalid fields.
+   * @throws {@link ResponseValidationError} - On invalid fields.
    */
   constructor(fields: MeResponseInit = {}) {
     super(MeResponse, fields);
@@ -424,7 +472,7 @@ export class MeResponse extends EntityModel<MeResponseInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): MeResponse {
     return new MeResponse(prepareInit(MeResponse, raw));
@@ -432,13 +480,14 @@ export class MeResponse extends EntityModel<MeResponseInit> {
 }
 
 /**
- * The workspace fields used to pick a project's default data view —
- * TS port of the frozen dataclass `WorkspaceView`.
+ * The workspace fields used to pick a project's default data view.
  *
+ * @remarks
  * A normalized view over the differently-shaped sources a workspace can
  * be resolved from (the cached `/me` response, `/workspaces/public`, and
  * the projects metadata index) so they all share one selection rule
  * ({@link selectWorkspaceId}).
+ * @see mixpanel_headless._internal.me.WorkspaceView
  */
 export interface WorkspaceView {
   /** Workspace ID. */
@@ -454,11 +503,16 @@ export interface WorkspaceView {
 }
 
 /**
- * Build a view from a cached `/me` workspace entry (Python
- * `WorkspaceView.from_me_workspace`).
+ * Build a view from a cached `/me` workspace entry.
  *
  * @param ws - A workspace from the per-account `/me` response.
  * @returns The normalized {@link WorkspaceView}.
+ * @example
+ * ```typescript
+ * const views = [...me.workspaces.values()].map(workspaceViewFromMeWorkspace);
+ * selectWorkspaceId(views); // 7
+ * ```
+ * @see mixpanel_headless._internal.me.WorkspaceView.from_me_workspace
  */
 export function workspaceViewFromMeWorkspace(
   ws: MeWorkspaceInfo,
@@ -473,12 +527,17 @@ export function workspaceViewFromMeWorkspace(
 }
 
 /**
- * Build a view from a `/workspaces/public` workspace (Python
- * `WorkspaceView.from_public`).
+ * Build a view from a `/workspaces/public` workspace.
  *
  * @param ws - A workspace returned by
  *   `GET /projects/{pid}/workspaces/public`.
  * @returns The normalized {@link WorkspaceView}.
+ * @example
+ * ```typescript
+ * const workspaces = await client.listWorkspaces();
+ * selectWorkspaceId(workspaces.map(workspaceViewFromPublic));
+ * ```
+ * @see mixpanel_headless._internal.me.WorkspaceView.from_public
  */
 export function workspaceViewFromPublic(ws: PublicWorkspace): WorkspaceView {
   return {
@@ -493,10 +552,10 @@ export function workspaceViewFromPublic(ws: PublicWorkspace): WorkspaceView {
 /**
  * Narrow a loosely-typed metadata value to the tri-state flag domain.
  *
+ * @remarks
  * Python stores the raw value and later tests it with `is True` /
  * `is False` only, so any non-bool value behaves exactly like `None` in
  * the selection ladder — this narrowing is selection-equivalent.
- *
  * @param value - A raw metadata-entry member.
  * @returns `true` / `false` for booleans, else `null`.
  */
@@ -514,6 +573,7 @@ function triStateFlag(value: unknown): boolean | null {
  * Extract a usable integer workspace id from a raw metadata value —
  * the TS twin of Python's `isinstance(wid, (int, str))` + `int(wid)`.
  *
+ * @remarks
  * Python subtleties preserved: `bool` is an `int` subclass
  * (`True → 1`); string ids parse with the CPython `int(str)` grammar
  * (`pythonInt`); floats (native or float-token) are neither `int` nor
@@ -522,9 +582,10 @@ function triStateFlag(value: unknown): boolean | null {
  * fraction/exponent token is Python's `float`. Divergence: integer
  * tokens beyond 2^53−1 read as unusable (`null`); Python returns the
  * exact big int. No real workspace id reaches that range.
- *
  * @param wid - The raw `id` member.
  * @returns The integer id, or `null` when unusable.
+ * @throws Any non-`MixpanelHeadlessError` raised by `pythonInt`, unchanged
+ *   (a programming error, never an id value).
  */
 function metadataWorkspaceId(wid: unknown): number | null {
   if (typeof wid === "boolean") {
@@ -555,18 +616,24 @@ function metadataWorkspaceId(wid: unknown): number | null {
 }
 
 /**
- * Build a view from a projects-metadata-index workspace entry (Python
- * `WorkspaceView.from_metadata_entry`).
+ * Build a view from a projects-metadata-index workspace entry.
  *
+ * @remarks
  * The metadata index is a raw, loosely-typed payload, so this is the
  * one construction path that defends against shape: a non-mapping
  * entry, or an id that is neither an int nor an int-coercible string,
  * yields `null` (the caller skips it).
- *
  * @param raw - A single workspace value from a metadata-index
  *   `workspaces` block (expected to be a mapping, but not trusted).
  * @returns The normalized {@link WorkspaceView}, or `null` when `raw`
  *   is not a mapping or carries no usable integer id.
+ * @example
+ * ```typescript
+ * workspaceViewFromMetadataEntry({ id: "7", name: "Console", is_default: true });
+ * // { id: 7, name: "Console", is_global: null, is_default: true, is_visible: null }
+ * workspaceViewFromMetadataEntry("not a mapping"); // null
+ * ```
+ * @see mixpanel_headless._internal.me.WorkspaceView.from_metadata_entry
  */
 export function workspaceViewFromMetadataEntry(
   raw: unknown,
@@ -596,15 +663,14 @@ export function workspaceViewFromMetadataEntry(
 }
 
 /**
- * Pick the best workspace id for auto-resolution from a project's views
- * — TS port of `select_workspace_id`.
+ * Pick the best workspace id for auto-resolution from a project's views.
  *
+ * @remarks
  * Preference order: the global "see everything" view wins, then the
  * conventionally-named "All Project Data" view, then the project
  * default, then the first non-hidden view, then the first. Shared by
  * every resolution path so a project resolves to the same view
  * regardless of which source answered.
- *
  * @param views - Candidate views, already filtered to one project.
  * @returns The selected workspace id, or `null` when `views` is empty.
  * @example
@@ -615,6 +681,7 @@ export function workspaceViewFromMetadataEntry(
  * ]);
  * // 2 — the global view beats the default
  * ```
+ * @see mixpanel_headless._internal.me.select_workspace_id
  */
 export function selectWorkspaceId(
   views: readonly WorkspaceView[],
@@ -650,9 +717,9 @@ export function selectWorkspaceId(
 }
 
 /**
- * Resolve a project's best workspace id from a warm, in-process cache
- * (the Python `WorkspaceResolver` Protocol).
+ * Resolve a project's best workspace id from a warm, in-process cache.
  *
+ * @remarks
  * The contract the client relies on: the input is a project id as a
  * numeric string; the return is a workspace id, or `null` meaning
  * "can't answer right now" (for example, a cold cache) — not an error.
@@ -660,6 +727,7 @@ export function selectWorkspaceId(
  * a returned `null` is what makes the client fall back to
  * `/workspaces/public`. The TS signature admits a promise because
  * cache-store reads may be asynchronous.
+ * @see mixpanel_headless._internal.me.WorkspaceResolver
  */
 export type WorkspaceResolver = (
   projectId: string,

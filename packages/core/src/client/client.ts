@@ -208,39 +208,68 @@ export interface MixpanelClientOptions {
   /** Resolved Session (account + project + optional workspace). */
   readonly session: Session;
   /**
-   * Request timeout in seconds for regular requests. When `null`/absent
-   * (the default, Python `timeout: float | None = None`), each request
-   * gets a route-aware timeout sized to outlast the server's own
+   * Request timeout in seconds for regular requests. When `null`, each
+   * request gets a route-aware timeout sized to outlast the server's own
    * deadline (135s on App API routes, 503s otherwise), so the server —
-   * not this client — resolves a slow request. An explicit value
-   * applies to every request.
+   * not this client — resolves a slow request. An explicit value applies
+   * to every request.
+   *
+   * @defaultValue `null`
    */
   readonly timeoutSeconds?: number | null | undefined;
-  /** Request timeout for export operations (Python default 600). */
+  /**
+   * Request timeout in seconds for export operations.
+   *
+   * @defaultValue `600`
+   */
   readonly exportTimeoutSeconds?: number | undefined;
-  /** Maximum retry attempts for rate-limited requests (Python default 3). */
+  /**
+   * Maximum retry attempts for rate-limited requests.
+   *
+   * @defaultValue `3`
+   */
   readonly maxRetries?: number | undefined;
   /**
    * Token resolver for OAuth accounts. Python defaults to the on-disk
    * resolver; in `core` the default is none (the node package supplies
    * it), and OAuth auth-header resolution without one throws
    * `ParamTypeError`.
+   *
+   * @defaultValue `null`
    */
   readonly tokenResolver?: TokenResolver | null | undefined;
-  /** Injectable transport (the TS analog of `_transport`). */
+  /**
+   * Injectable transport (the TS analog of `_transport`).
+   *
+   * @defaultValue the global `fetch`
+   */
   readonly fetch?: typeof fetch | undefined;
-  /** Sleep seam in milliseconds (fake-timer friendly). */
+  /**
+   * Sleep seam in milliseconds (fake-timer friendly).
+   *
+   * @defaultValue a `setTimeout`-backed sleep
+   */
   readonly sleep?: ((ms: number) => Promise<void>) | undefined;
-  /** Uniform-[0,1) RNG for backoff jitter. */
+  /**
+   * Uniform-[0, 1) RNG for backoff jitter.
+   *
+   * @defaultValue `Math.random`
+   */
   readonly random?: RandomSource | undefined;
   /**
    * Clock seam, read through `ClientCore.now` by the query-host date
    * defaults, the streaming exports and the discovery service.
+   *
+   * @defaultValue `() => new Date()`
    */
   readonly now?: (() => Date) | undefined;
   /** Optional retry-warning logger. */
   readonly logger?: RetryLogger | undefined;
-  /** Header layer-2 env pair provider (defaults to an empty source). */
+  /**
+   * Header layer-2 env pair provider.
+   *
+   * @defaultValue an empty source (the layer is disabled)
+   */
   readonly getCustomHeaderEnv?: CustomHeaderEnvSource | undefined;
   /**
    * Alternate-host routing (Python PR #235: `MP_API_BASE_URL` /
@@ -249,8 +278,9 @@ export interface MixpanelClientOptions {
    * `/api/query/engage`, `app` → `/api/app`); `appBaseUrl` re-homes only
    * the App API. Pass a static bag, or a provider that is consulted on
    * every request (the node package wires a `process.env` reader, the
-   * twin of Python's per-request `os.environ` read). Absent → the live
-   * per-region hosts, byte-identical to before.
+   * twin of Python's per-request `os.environ` read).
+   *
+   * @defaultValue no overrides — the live per-region hosts
    */
   readonly endpointOverrides?: EndpointOverridesSource | undefined;
 }
@@ -304,9 +334,9 @@ export interface MixpanelClient
   readonly core: ClientCore;
 
   /**
-   * The current Authorization header value, computed on every access
-   * (Python's `current_auth_header` property; a property doing token I/O
-   * becomes a method).
+   * Return the current Authorization header value, computed on every
+   * access (Python's `current_auth_header` property; a property doing
+   * token I/O becomes a method).
    *
    * @returns The header value (`Basic ...` or `Bearer ...`).
    */
@@ -330,11 +360,13 @@ export interface MixpanelClient
    * @param url - Full URL to request.
    * @param options - Optional params/body/headers/timeout/signal.
    * @returns Parsed JSON response.
-   * @throws AuthenticationError - Invalid credentials (401).
-   * @throws RateLimitError - Rate limit exceeded after max retries.
-   * @throws QueryError - Invalid parameters (400/403/404/other 4xx).
-   * @throws ServerError - Server-side errors (5xx).
-   * @throws MixpanelHeadlessError - Network/connection errors
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - Rate limit exceeded after the
+   *   maximum retries.
+   * @throws {@link QueryError} - Invalid parameters (400/403/404/other
+   *   4xx).
+   * @throws {@link ServerError} - Server-side errors (5xx).
+   * @throws {@link MixpanelHeadlessError} - Network/connection errors
    *   (`HTTP_ERROR`).
    */
   request: (
@@ -353,10 +385,11 @@ export interface MixpanelClient
    * @param options - Optional params/body/raw/signal.
    * @returns The `results` field when present (unless `raw`), the full
    *   body otherwise; `{status: "ok"}` for 204.
-   * @throws ParamValidationError - Both body kinds provided
+   * @throws {@link ParamValidationError} - Both body kinds provided
    *   (`AC1_BODY_MUTUALLY_EXCLUSIVE`).
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError | MixpanelHeadlessError - As for {@link appRequest}.
+   * @throws {@link MixpanelHeadlessError} - Every class
+   *   {@link appRequest} raises (`AuthenticationError`, `RateLimitError`,
+   *   `QueryError`, `ServerError`, `HTTP_ERROR`).
    */
   appRequest: (
     method: string,
@@ -365,7 +398,7 @@ export interface MixpanelClient
   ) => Promise<JsonValue>;
 
   /**
-   * The query-host request path (`_request`). See
+   * Issue a query-host request (`_request`). See
    * {@link ClientCore.requestQueryHost}.
    *
    * @param method - HTTP method.
@@ -392,8 +425,10 @@ export interface MixpanelClient
    * zero-axis `use()`) clears both `session.workspace` and the pin.
    *
    * @param options - The axes to swap.
-   * @throws OAuthError | ParamTypeError - New-account auth probe
-   *   failures (state unchanged).
+   * @throws {@link OAuthError} - The new account's token probe failed
+   *   (state unchanged).
+   * @throws {@link ParamTypeError} - An OAuth account was supplied with no
+   *   token resolver bound (state unchanged).
    */
   use: (options?: ClientUseOptions) => Promise<void>;
 
@@ -402,7 +437,7 @@ export interface MixpanelClient
    * (`resolve_workspace`).
    *
    * @returns The session's WorkspaceRef (cached per session lifetime).
-   * @throws WorkspaceScopeError - No accessible workspaces.
+   * @throws {@link WorkspaceScopeError} - No accessible workspaces.
    */
   resolveWorkspace: () => Promise<WorkspaceRef>;
 
@@ -422,11 +457,12 @@ export interface MixpanelClient
    * projects metadata index → `WorkspaceScopeError`.
    *
    * @returns The resolved workspace ID (memoized).
-   * @throws WorkspaceScopeError - Code `NO_WORKSPACES` when every
+   * @throws {@link WorkspaceScopeError} - Code `NO_WORKSPACES` when every
    *   source is exhausted.
-   * @throws AuthenticationError | RateLimitError | ServerError |
-   *   QueryError | MixpanelHeadlessError - Non-403/404 discovery
-   *   failures propagate rather than masking as "no workspace".
+   * @throws {@link MixpanelHeadlessError} - Any non-403/404 discovery
+   *   failure (`AuthenticationError`, `RateLimitError`, `ServerError`,
+   *   `QueryError`, `HTTP_ERROR`) propagates rather than masking as "no
+   *   workspace".
    */
   resolveWorkspaceId: () => Promise<number>;
 
@@ -463,7 +499,8 @@ export interface MixpanelClient
    *
    * @param domainPath - Domain-relative path.
    * @returns `/projects/{pid}/workspaces/{wid}/{domainPath}`.
-   * @throws WorkspaceScopeError - No workspaces found for the project.
+   * @throws {@link WorkspaceScopeError} - No workspaces found for the
+   *   project.
    */
   requireScopedPath: (domainPath: string) => Promise<string>;
 
@@ -492,9 +529,9 @@ export interface MixpanelClient
    * List public workspaces for the current project (`list_workspaces`).
    *
    * @returns Validated {@link PublicWorkspace} models.
-   * @throws ResponseValidationError - A workspace entry fails model
-   *   validation (`RESPONSE_VALIDATION_ERROR`).
-   * @throws MixpanelHeadlessError - Non-list response payload.
+   * @throws {@link ResponseValidationError} - A workspace entry fails
+   *   model validation (`RESPONSE_VALIDATION_ERROR`).
+   * @throws {@link MixpanelHeadlessError} - Non-list response payload.
    */
   listWorkspaces: () => Promise<PublicWorkspace[]>;
 
@@ -507,7 +544,7 @@ export interface MixpanelClient
   ensureHttpOpen: () => void;
 
   /**
-   * Whether the pool token exists (`_client is not None`).
+   * Report whether the pool token exists (`_client is not None`).
    *
    * @returns `true` while the handle is open.
    * @internal
@@ -515,8 +552,8 @@ export interface MixpanelClient
   isHttpOpen: () => boolean;
 
   /**
-   * The pool token, lazily created (`_http` property — the identity the
-   * transport-preservation tests compare).
+   * Return the pool token, lazily created (`_http` property — the
+   * identity the transport-preservation tests compare).
    *
    * @returns The handle.
    * @internal
@@ -530,7 +567,12 @@ export interface MixpanelClient
   [Symbol.asyncDispose]: () => Promise<void>;
 }
 
-/** Default sleep seam: real timers, milliseconds. */
+/**
+ * Sleep on real timers — the default sleep seam.
+ *
+ * @param ms - Milliseconds to wait.
+ * @returns A promise that resolves after the delay.
+ */
 function defaultSleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
@@ -630,7 +672,14 @@ interface ClientContext {
 
 // ----- ClientCore members -----
 
-/** `_endpoints_for(self._session.account.region)` — per call. */
+/**
+ * Resolve the endpoint table for the current session's region under the
+ * current overrides — `_endpoints_for(self._session.account.region)`,
+ * evaluated per call.
+ *
+ * @param ctx - The client context.
+ * @returns The family → base-URL table.
+ */
 function currentEndpoints(
   ctx: ClientContext,
 ): ReadonlyMap<EndpointKind, string> {
@@ -765,7 +814,12 @@ async function requestQueryHost(
   });
 }
 
-/** Assemble the {@link ClientCore} seam the domain factories consume. */
+/**
+ * Assemble the {@link ClientCore} seam the domain factories consume.
+ *
+ * @param ctx - The client context.
+ * @returns The core seam, bound to `ctx`.
+ */
 function buildClientCore(ctx: ClientContext): ClientCore {
   const { config, state } = ctx;
   return {
@@ -1115,6 +1169,7 @@ async function me(ctx: ClientContext): Promise<Record<string, JsonValue>> {
  *   "https://mixpanel.com/api/app/test",
  * );
  * ```
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.__init__
  */
 export function createMixpanelClient(
   options: MixpanelClientOptions,

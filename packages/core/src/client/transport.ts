@@ -29,12 +29,16 @@ const QUOTE_PLUS_SAFE = new Set(
  * default safe set: ALPHA / DIGIT / `_.-~` pass through, space becomes
  * `+`, everything else is `%XX` uppercase-hex over the UTF-8 bytes.
  *
+ * @remarks
  * `encodeURIComponent` is not equivalent (it passes `!'()*`, which
  * Python escapes) — the recorded form `body_text` fields are byte-exact
  * comparisons, so the grammar must match urllib char-for-char.
- *
  * @param text - The text to encode.
  * @returns The encoded text.
+ * @example
+ * ```typescript
+ * quotePlus("a b&c*"); // "a+b%26c%2A"
+ * ```
  */
 export function quotePlus(text: string): string {
   const bytes = new TextEncoder().encode(text);
@@ -57,16 +61,22 @@ export function quotePlus(text: string): string {
  * `primitive_value_to_str` does: `True → "true"`, `False → "false"`,
  * `None → ""`, everything else `str(value)`.
  *
- * Number rendering note: integers render as decimal digits; non-integral
+ * @remarks
+ * Number rendering: integers render as decimal digits; non-integral
  * numbers use the CPython float repr ({@link pythonFloatStr}) so a
  * fractional param spells exactly what Python sent. An integral Python
  * float param (`10.0` → `"10.0"`) is not representable from a plain JS
  * number; the core client passes no float params, and the query-host
  * methods thread float-ness through their own call shapes where a vector
  * requires it.
- *
  * @param value - The primitive value.
  * @returns The wire string.
+ * @example
+ * ```typescript
+ * primitiveParamValue(true); // "true"
+ * primitiveParamValue(null); // ""
+ * primitiveParamValue(0.1); // "0.1"
+ * ```
  */
 export function primitiveParamValue(value: unknown): string {
   if (value === true) {
@@ -93,6 +103,11 @@ export function primitiveParamValue(value: unknown): string {
  *
  * @param data - The mapping to serialize.
  * @returns The `k=v&k2=v2` text (empty string for an empty mapping).
+ * @example
+ * ```typescript
+ * urlEncodePairs({ event: ["a", "b"], unit: "day" });
+ * // "event=a&event=b&unit=day"
+ * ```
  */
 export function urlEncodePairs(
   data: Readonly<Record<string, unknown>>,
@@ -114,6 +129,11 @@ export function urlEncodePairs(
  * @param url - The base URL (may already carry a query string).
  * @param params - The query params (empty mapping appends nothing).
  * @returns The final URL.
+ * @example
+ * ```typescript
+ * appendQueryParams("https://mixpanel.com/api/query/events", { unit: "day" });
+ * // "https://mixpanel.com/api/query/events?unit=day"
+ * ```
  */
 export function appendQueryParams(
   url: string,
@@ -127,7 +147,7 @@ export function appendQueryParams(
 }
 
 /**
- * Whether a merged header set already names `Content-Type`
+ * Report whether a merged header set already names `Content-Type`
  * (case-insensitive, like httpx's header merge — an explicit caller
  * header wins over the body-derived default).
  *
@@ -147,6 +167,10 @@ function hasContentType(headers: Readonly<Record<string, string>>): boolean {
  *
  * @param reason - The signal's abort reason (may be anything).
  * @returns The `AbortError` DOMException to throw.
+ * @example
+ * ```typescript
+ * normalizedAbortError(new Error("stop")).name; // "AbortError"
+ * ```
  */
 export function normalizedAbortError(reason: unknown): DOMException {
   if (reason instanceof DOMException && reason.name === "AbortError") {
@@ -156,7 +180,7 @@ export function normalizedAbortError(reason: unknown): DOMException {
 }
 
 /**
- * Whether a fetch rejection is a cancellation (passes through rather
+ * Report whether a fetch rejection is a cancellation (passes through rather
  * than normalizing to {@link MixpanelHttpError}).
  *
  * @param cause - The rejection value.
@@ -195,6 +219,7 @@ export interface RawFetchResult {
  * `Response` — the seam the streaming exports consume (they must not
  * buffer the body).
  *
+ * @remarks
  * Timeout enforcement (Python passes `timeout=... or self._timeout` on
  * every httpx call): `options.timeoutSeconds` arms a clock that aborts
  * the request when it fires. Divergence: httpx timeouts are
@@ -204,15 +229,32 @@ export interface RawFetchResult {
  * fired clock rejects like `httpx.TimeoutException` (an
  * `httpx.HTTPError`): it normalizes to {@link MixpanelHttpError} and is
  * therefore retried and then wrapped as `HTTP_ERROR` by the retry loops.
- *
  * @param fetchImpl - The injected fetch.
  * @param options - The outbound request.
  * @param signal - Optional per-call cancellation signal.
  * @returns The raw response wrapper (plus the timeout/release handles).
- * @throws MixpanelHttpError - Any transport-level failure,
+ * @throws {@link MixpanelHttpError} - Any transport-level failure,
  *   including a fired request-timeout clock.
- * @throws DOMException - Name `AbortError` on cancellation — every
+ * @throws {@link DOMException} - Name `AbortError` on cancellation — every
  *   caller-initiated abort exits this way, custom reasons included.
+ * @example
+ * ```typescript
+ * const { response, stopTimeout, release } = await rawFetch(fetch, {
+ *   method: "GET",
+ *   url: "https://data.mixpanel.com/api/2.0/export",
+ *   params: { from_date: "2026-01-01", to_date: "2026-01-02" },
+ *   jsonBody: null,
+ *   formBody: null,
+ *   headers: { Authorization: "Basic …" },
+ *   timeoutSeconds: 503,
+ * });
+ * stopTimeout(); // headers arrived; stream the body without a wall clock
+ * try {
+ *   for await (const line of iterJsonlLines(response.body!)) { /* … *\/ }
+ * } finally {
+ *   release();
+ * }
+ * ```
  */
 export async function rawFetch(
   fetchImpl: typeof fetch,
@@ -325,6 +367,19 @@ export async function rawFetch(
  * @param signal - Optional per-call cancellation signal, curried in at
  *   client assembly so the executor's own signature stays signal-free.
  * @returns The executor.
+ * @example
+ * ```typescript
+ * const request = createRequestExecutor(fetch, controller.signal);
+ * const { status, text } = await request({
+ *   method: "GET",
+ *   url: "https://mixpanel.com/api/app/me",
+ *   params: {},
+ *   jsonBody: null,
+ *   formBody: null,
+ *   headers: { Authorization: "Bearer …" },
+ *   timeoutSeconds: 135,
+ * });
+ * ```
  */
 export function createRequestExecutor(
   fetchImpl: typeof fetch,
@@ -376,21 +431,26 @@ interface RawJsonCapableJson {
 }
 
 /**
- * `JSON.stringify` for a request body whose members may be `bigint`s —
- * the carrier for int64 ids beyond 2^53 (lookup-table `data-group-id`s
- * such as `-8644926364725811123`, which `update_lookup_table` and
+ * Serialize a request body whose members may be `bigint`s — the carrier
+ * for int64 ids beyond 2^53 (lookup-table `data-group-id`s such as
+ * `-8644926364725811123`, which `update_lookup_table` and
  * `delete_lookup_tables` send in the JSON body).
  *
+ * @remarks
  * A `bigint` member is emitted as its exact digit run via
  * `JSON.rawJSON` (ES2024; Node ≥ 21 and evergreen browsers), where
  * Python writes the same bare integer token. Bodies without a `bigint`
  * serialize byte-identically to plain `JSON.stringify` (the replacer
  * returns every other member unchanged).
- *
  * @param value - The JSON body.
  * @returns The serialized body text.
- * @throws TypeError - A `bigint` member on an engine without
+ * @throws {@link TypeError} - A `bigint` member on an engine without
  *   `JSON.rawJSON` (plain `JSON.stringify` would throw for it too).
+ * @example
+ * ```typescript
+ * stringifyJsonBody({ data_group_id: -8644926364725811123n, name: "x" });
+ * // '{"data_group_id":-8644926364725811123,"name":"x"}'
+ * ```
  */
 export function stringifyJsonBody(value: unknown): string {
   const rawJSON = (JSON as RawJsonCapableJson).rawJSON;

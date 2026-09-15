@@ -153,7 +153,7 @@ function classifyKindError(
 }
 
 /**
- * The pydantic "null where not allowed" error for a kinded field.
+ * Build the pydantic "null where not allowed" error for a kinded field.
  *
  * @param kind - The field's scalar kind (drives the `*_type` tag).
  * @param loc - The error location tuple.
@@ -210,8 +210,8 @@ function nullNotAllowedError(
 }
 
 /**
- * The payload key pydantic would bind to `spec` — the attribute name
- * when accepted, otherwise the first present validation alias.
+ * Return the payload key pydantic would bind to `spec` — the attribute
+ * name when accepted, otherwise the first present validation alias.
  *
  * @param payload - The raw payload.
  * @param spec - The field spec.
@@ -235,8 +235,8 @@ function matchedKey(
 }
 
 /**
- * The `loc` pydantic reports for an absent field: the validation alias
- * when one is configured, else the attribute name.
+ * Return the `loc` pydantic reports for an absent field: the validation
+ * alias when one is configured, else the attribute name.
  *
  * @param spec - The field spec.
  * @returns The `loc` element.
@@ -309,8 +309,7 @@ function collectModelErrors(
 }
 
 /**
- * Validate an API response payload against an entity response model
- * (`validate_response_model`).
+ * Validate an API response payload against an entity response model.
  *
  * @param model - The response model class to validate against.
  * @param payload - The raw (already JSON-decoded, native-valued)
@@ -318,9 +317,9 @@ function collectModelErrors(
  * @param options - Carries `endpoint`, the calling method name used for
  *   the error message and debugging context.
  * @returns The validated model instance.
- * @throws ResponseValidationError - The payload does not conform to the
- *   model (code `RESPONSE_VALIDATION_ERROR`); the pydantic-style error
- *   list is carried in `details.errors` and the model name in
+ * @throws {@link ResponseValidationError} - The payload does not conform
+ *   to the model (code `RESPONSE_VALIDATION_ERROR`); the pydantic-style
+ *   error list is carried in `details.errors` and the model name in
  *   `details.model`.
  * @example
  * ```typescript
@@ -328,6 +327,7 @@ function collectModelErrors(
  *   endpoint: "list_workspaces",
  * });
  * ```
+ * @see mixpanel_headless._internal.response_validation.validate_response_model
  */
 export function validateResponseModel<T extends EntityModel>(
   model: ResponseModelClass<T>,
@@ -369,16 +369,23 @@ export function validateResponseModel<T extends EntityModel>(
 }
 
 /**
- * Validate a sequence of API response payloads against a response model
- * (`validate_response_models`).
+ * Validate a sequence of API response payloads against a response model.
  *
  * @param model - The response model class to validate against.
  * @param payloads - Iterable of raw payload items.
  * @param options - Carries `endpoint` (see
  *   {@link validateResponseModel}).
  * @returns List of validated model instances, in input order.
- * @throws ResponseValidationError - Any item does not conform (raised
- *   at the first failing item, exactly like the Python comprehension).
+ * @throws {@link ResponseValidationError} - Any item does not conform
+ *   (raised at the first failing item, exactly like the Python
+ *   comprehension).
+ * @example
+ * ```typescript
+ * const workspaces = validateResponseModels(PublicWorkspace, rows, {
+ *   endpoint: "list_workspaces",
+ * });
+ * ```
+ * @see mixpanel_headless._internal.response_validation.validate_response_models
  */
 export function validateResponseModels<T extends EntityModel>(
   model: ResponseModelClass<T>,
