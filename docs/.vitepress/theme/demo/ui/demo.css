@@ -1,30 +1,69 @@
 /*
  * Playground styles, scoped under `.mp-demo`. Colours come from the theme's
  * `--vp-c-*` / `--mp-*` variables (theme/mixpanel.css), so light and dark
- * mode need no separate rules except where an alpha-shaded fill is built.
- * Loaded only with the playground chunk; the skeleton the page markup
- * carries is hidden as soon as this file arrives.
+ * mode need no separate rules except where an alpha-shaded fill is built or
+ * a brand tint falls short of 4.5:1 in one scheme. Loaded only with the
+ * playground chunk; the skeleton the page markup carries is hidden as soon
+ * as this file arrives.
+ *
+ * Layout: a workbench column (engine tabs, the active builder, the result)
+ * beside a sticky code panel; under 1100 px the panel drops below the
+ * result. Type scale: UI 15 px, chips and tables 14 px, kickers 12 px,
+ * code 13.5 px.
  */
 
 .mp-demo-skeleton {
   display: none;
 }
 
+/*
+ * The page drops the sidebar and the outline (`sidebar: false`,
+ * `aside: false`); without either, VitePress caps the doc container at
+ * 992–1104 px and the content at 752–784 px. The workbench wants the
+ * width, so the `pageClass` lifts both caps (scoped rules carry one extra
+ * attribute selector, hence the `.Layout` prefix to outrank them).
+ */
+@media (min-width: 960px) {
+  .Layout.mp-playground .VPDoc:not(.has-sidebar) .container,
+  .Layout.mp-playground .VPDoc:not(.has-sidebar) .content {
+    max-width: 1440px;
+  }
+}
+
 .mp-demo {
-  --mp-demo-radius: 8px;
+  --mp-demo-radius: 10px;
+  /*
+   * Selected segments and chips: brand text on the brand tint. In dark
+   * mode the purple-light on its tint measures under 4.5:1, so the text
+   * falls back to the body colour and the brand border marks selection.
+   */
+  --mp-selected-bg: var(--vp-c-brand-soft);
+  --mp-selected-text: var(--vp-c-brand-1);
+  --mp-selected-border: var(--vp-c-brand-1);
+  /* Primary buttons: brand fill, white text, in both schemes. */
+  --mp-primary-bg: var(--vp-c-brand-1);
+  --mp-primary-hover: var(--vp-c-brand-2);
   margin: 24px 0;
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: 15px;
+  line-height: 1.5;
   color: var(--vp-c-text-1);
 }
 
+.dark .mp-demo {
+  --mp-selected-text: var(--vp-c-text-1);
+  --mp-primary-bg: var(--vp-c-brand-3);
+  --mp-primary-hover: var(--vp-button-brand-hover-bg);
+}
+
+/* Kicker labels: EVENTS, CODE, RESULT. */
 .mp-demo h2,
 .mp-demo h3 {
   margin: 0;
   padding: 0;
   border: 0;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
+  line-height: 1.5;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--vp-c-text-2);
@@ -46,7 +85,7 @@
 }
 
 /*
- * Text-only tints. The brand green and red are fill colours: as 12 px text
+ * Text-only tints. The brand green and red are fill colours: as small text
  * on the page background they reach only 3.8:1 in light mode and 4.1:1 in
  * dark, so the change indicators use a darker (light) or lighter (dark)
  * shade of each that clears 4.5:1.
@@ -99,10 +138,10 @@
 .mp-chart-empty .mp-empty {
   display: flex;
   align-items: center;
-  min-height: 120px;
-  padding: 0 12px;
+  min-height: 160px;
+  padding: 0 16px;
   border: 1px dashed var(--vp-c-divider);
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 /* --- Mode bar, intro, footer -------------------------------------------- */
@@ -112,7 +151,7 @@
   gap: 16px;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 14px 18px;
   border: 1px solid var(--vp-c-divider);
   border-radius: var(--mp-demo-radius);
   background: var(--vp-c-bg-soft);
@@ -122,8 +161,14 @@
   margin: 0;
 }
 
+/* The way out of the demo stays one line; the copy beside it wraps. */
+.mp-modebar > .mp-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .mp-intro {
-  padding: 20px;
+  padding: 24px;
   border: 1px solid var(--vp-c-divider);
   border-radius: var(--mp-demo-radius);
   background: var(--vp-c-bg-soft);
@@ -133,7 +178,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  align-items: flex-end;
+  align-items: center;
   margin: 12px 0;
 }
 
@@ -149,8 +194,8 @@
 }
 
 .mp-footnote {
-  margin: 16px 0 0;
-  font-size: 13px;
+  margin: 20px 0 0;
+  font-size: 14px;
   color: var(--vp-c-text-2);
 }
 
@@ -158,65 +203,133 @@
 
 .mp-grid {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(0, 2.2fr) minmax(0, 1.8fr);
-  gap: 16px;
-  margin-top: 16px;
-}
-
-@media (max-width: 959px) {
-  .mp-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
+  grid-template-columns: minmax(0, 1.6fr) minmax(380px, 1fr);
+  gap: 24px;
+  align-items: start;
+  margin-top: 20px;
 }
 
 .mp-col {
   min-width: 0;
-  padding: 12px;
+  padding: 16px 20px 20px;
   border: 1px solid var(--vp-c-divider);
   border-radius: var(--mp-demo-radius);
   background: var(--vp-c-bg);
 }
 
+/* The code stays in view while the result scrolls beside it. */
+.mp-col-code {
+  position: sticky;
+  top: calc(var(--vp-nav-height) + 24px);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - var(--vp-nav-height) - 48px);
+  overflow: auto;
+}
+
+@media (max-width: 1100px) {
+  .mp-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mp-col-code {
+    position: static;
+    max-height: none;
+  }
+}
+
 .mp-col-head {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   align-items: center;
   justify-content: space-between;
-  min-height: 28px;
+  min-height: 32px;
   margin: 0 0 8px;
 }
 
-.mp-col-left .mp-col-head:not(:first-child) {
-  margin-top: 20px;
-  padding-top: 12px;
-  border-top: 1px solid var(--vp-c-divider);
+/* --- Engine tabs --------------------------------------------------------- */
+
+.mp-tabbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 16px;
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+
+.mp-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.mp-tab {
+  margin-bottom: -1px;
+  padding: 8px 14px 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--vp-c-text-2);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.mp-tab:hover {
+  color: var(--vp-c-text-1);
+}
+
+.mp-tab[aria-selected="true"] {
+  border-bottom-color: var(--vp-c-brand-1);
+  color: var(--vp-c-text-1);
+  font-weight: 600;
+}
+
+.mp-tab:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+.mp-tabbar .mp-segmented {
+  margin-bottom: 8px;
+}
+
+.mp-tabpanel {
+  margin: 0 0 20px;
 }
 
 /* --- Controls ------------------------------------------------------------ */
 
 .mp-btn {
-  padding: 5px 12px;
+  padding: 6px 14px;
   border: 1px solid var(--vp-c-border);
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--vp-c-bg);
-  color: var(--vp-c-text-1);
+  color: var(--vp-c-text-2);
   font: inherit;
-  font-size: 13px;
-  line-height: 1.4;
+  font-size: 14px;
+  line-height: 1.45;
   cursor: pointer;
   transition:
     background-color 0.15s ease,
-    border-color 0.15s ease;
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .mp-btn:hover:not(:disabled) {
   border-color: var(--vp-c-brand-1);
-  color: var(--vp-c-brand-1);
+  color: var(--vp-c-text-1);
 }
 
+/* Disabled controls fade as a whole; the text never changes colour. */
 .mp-btn:disabled {
   cursor: not-allowed;
-  opacity: 0.55;
+  opacity: 0.6;
 }
 
 /* One ring for every focusable thing on the page, keyboard focus only. */
@@ -233,25 +346,30 @@
 }
 
 .mp-btn-brand {
-  border-color: var(--vp-button-brand-border);
-  background: var(--vp-button-brand-bg);
-  color: #fff;
+  border-color: var(--mp-primary-bg);
+  background: var(--mp-primary-bg);
+  color: var(--vp-c-white);
+  font-weight: 600;
 }
 
 .mp-btn-brand:hover:not(:disabled) {
-  border-color: var(--vp-button-brand-hover-border);
-  background: var(--vp-button-brand-hover-bg);
-  color: #fff;
+  border-color: var(--mp-primary-hover);
+  background: var(--mp-primary-hover);
+  color: var(--vp-c-white);
+}
+
+.mp-btn-brand:disabled {
+  opacity: 0.55;
 }
 
 .mp-btn-small {
-  padding: 3px 10px;
-  font-size: 12px;
+  padding: 4px 10px;
+  font-size: 13px;
 }
 
 .mp-btn-icon {
-  padding: 3px 8px;
-  line-height: 1;
+  padding: 4px 9px;
+  line-height: 1.2;
 }
 
 .mp-btn-link {
@@ -259,28 +377,30 @@
   border: 0;
   background: none;
   color: var(--vp-c-brand-1);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .mp-select {
   max-width: 100%;
-  padding: 5px 8px;
+  padding: 6px 10px;
   border: 1px solid var(--vp-c-border);
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--vp-c-bg);
   color: var(--vp-c-text-1);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .mp-segmented {
   display: inline-flex;
   border: 1px solid var(--vp-c-border);
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
 .mp-seg {
+  position: relative;
   border: 0;
   border-radius: 0;
   border-right: 1px solid var(--vp-c-border);
@@ -291,43 +411,56 @@
 }
 
 .mp-seg[aria-pressed="true"] {
-  background: var(--vp-c-brand-soft);
-  color: var(--vp-c-brand-1);
+  background: var(--mp-selected-bg);
+  color: var(--mp-selected-text);
   font-weight: 600;
+  box-shadow: inset 0 0 0 1px var(--mp-selected-border);
 }
 
 .mp-field {
   display: inline-flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--vp-c-text-2);
+}
+
+/* Caption beside the control, for the one-row builders. */
+.mp-field-inline {
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+}
+
+.mp-field-caption {
+  white-space: nowrap;
 }
 
 .mp-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  align-items: flex-end;
-  margin: 8px 0 12px;
+  gap: 12px 16px;
+  align-items: center;
+  margin: 12px 0 0;
 }
 
 .mp-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin: 0 0 12px;
-  font-size: 12px;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0 0;
+  font-size: 14px;
 }
 
 .mp-chip {
-  padding: 2px 8px;
+  padding: 3px 12px;
   border-radius: 999px;
-  background: var(--vp-c-brand-soft);
-  color: var(--vp-c-brand-1);
+  background: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
 }
 
-/* --- Event list ---------------------------------------------------------- */
+/* --- Event strip --------------------------------------------------------- */
 
 /* The default theme styles every list inside `.vp-doc`; these are controls. */
 .vp-doc .mp-demo :is(ul, ol) {
@@ -341,30 +474,56 @@
   margin: 0;
 }
 
-.mp-event {
+.mp-events {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  align-items: stretch;
-  width: 100%;
-  padding: 6px 8px;
-  border: 0;
-  border-radius: 6px;
-  background: none;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Every other event, once "More…" has loaded them: a scrolling band. */
+.mp-events-all {
+  max-height: 132px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--vp-c-divider);
+  overflow-y: auto;
+}
+
+.mp-event {
+  display: inline-flex;
+  gap: 8px;
+  align-items: baseline;
+  max-width: 100%;
+  padding: 5px 12px;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 999px;
+  background: var(--vp-c-bg);
   color: var(--vp-c-text-1);
   font: inherit;
+  font-size: 14px;
+  line-height: 1.45;
   text-align: left;
   cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .mp-event:hover {
+  border-color: var(--vp-c-brand-1);
   background: var(--vp-c-bg-soft);
 }
 
 .mp-event-active {
-  background: var(--vp-c-brand-soft);
-  color: var(--vp-c-brand-1);
+  border-color: var(--mp-selected-border);
+  background: var(--mp-selected-bg);
+  color: var(--mp-selected-text);
   font-weight: 600;
+}
+
+.mp-event-more {
+  border-style: dashed;
+  color: var(--vp-c-text-2);
 }
 
 .mp-event-name {
@@ -374,9 +533,10 @@
 }
 
 .mp-event-meta {
-  display: flex;
-  gap: 8px;
-  font-size: 12px;
+  display: inline-flex;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
   color: var(--vp-c-text-2);
 }
@@ -393,53 +553,69 @@
 
 .mp-builder {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: flex-start;
-}
-
-.mp-builder .mp-select {
-  width: 100%;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  align-items: center;
 }
 
 .mp-steps {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 100%;
-  counter-reset: step;
+  display: contents;
 }
 
-.mp-steps li {
-  display: flex;
-  gap: 6px;
+/* A step: its number, the event (a select drawn as the chip's text), ×. */
+.mp-step {
+  display: inline-flex;
+  gap: 2px;
   align-items: center;
-  counter-increment: step;
+  padding: 0 4px 0 12px;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 999px;
+  background: var(--vp-c-bg-soft);
 }
 
-.mp-steps .mp-select {
-  flex: 1 1 auto;
-  min-width: 0;
+.mp-step-n {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vp-c-text-2);
 }
 
-.mp-steps li::before {
-  content: counter(step);
-  flex-shrink: 0;
-  width: 1.4em;
-  font-size: 12px;
+.mp-select-bare {
+  padding: 5px 4px;
+  border: 0;
+  background: transparent;
+  font-weight: 500;
+}
+
+.mp-step-remove {
+  padding: 2px 6px;
+  border: 0;
+  background: none;
+  font-size: 15px;
+}
+
+.mp-step-add {
+  border-style: dashed;
+  border-radius: 999px;
   color: var(--vp-c-text-2);
 }
 
 /* --- Result -------------------------------------------------------------- */
 
+.mp-result {
+  padding-top: 16px;
+  border-top: 1px solid var(--vp-c-divider);
+}
+
 .mp-result-title {
-  margin: 0 0 4px;
+  margin: 0 0 12px;
+  font-size: 18px;
   font-weight: 600;
+  line-height: 1.4;
 }
 
 .mp-result-body {
   position: relative;
-  min-height: 120px;
+  min-height: 160px;
   overflow-x: auto;
   transition: opacity 0.15s ease;
 }
@@ -449,8 +625,8 @@
 }
 
 .mp-skeleton-chart,
-.mp-skeleton-row {
-  border-radius: 6px;
+.mp-skeleton-chip {
+  border-radius: 8px;
   background: linear-gradient(
     90deg,
     var(--vp-c-bg-soft) 25%,
@@ -462,12 +638,13 @@
 }
 
 .mp-skeleton-chart {
-  aspect-ratio: 640 / 240;
+  height: 320px;
 }
 
-.mp-skeleton-row {
-  height: 28px;
-  margin: 4px 0;
+.mp-skeleton-chip {
+  width: 140px;
+  height: 34px;
+  border-radius: 999px;
 }
 
 @keyframes mp-shimmer {
@@ -497,9 +674,9 @@
 .mp-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
-  margin: 12px 0;
+  margin: 16px 0;
 }
 
 .mp-tip-anchor {
@@ -513,13 +690,14 @@
   left: 0;
   z-index: 20;
   display: none;
-  width: min(380px, 80vw);
-  padding: 8px 10px;
+  width: min(420px, 80vw);
+  padding: 10px 12px;
   border: 1px solid var(--vp-c-divider);
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--vp-c-bg-elv);
   box-shadow: var(--vp-shadow-2);
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.5;
   color: var(--vp-c-text-1);
 }
 
@@ -542,7 +720,7 @@
 .mp-chart svg {
   display: block;
   width: 100%;
-  height: auto;
+  height: 320px;
   font-family: var(--vp-font-family-base);
 }
 
@@ -553,7 +731,7 @@
 
 .mp-chart-tick {
   fill: var(--vp-c-text-2);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .mp-chart-line {
@@ -577,16 +755,23 @@
 .mp-chart-box {
   fill: var(--vp-c-bg-elv);
   stroke: var(--vp-c-divider);
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.12));
+}
+
+.dark .mp-chart-box {
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
 }
 
 .mp-chart-box-title {
   fill: var(--vp-c-text-1);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 }
 
 .mp-chart-box-row {
-  font-size: 11px;
+  fill: var(--vp-c-text-1);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 .mp-chart-hover {
@@ -596,17 +781,17 @@
 .mp-chart-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 14px;
-  margin-top: 4px;
-  font-size: 12px;
+  gap: 4px 16px;
+  margin-top: 8px;
+  font-size: 13px;
 }
 
 .mp-legend-item::before {
   content: "";
   display: inline-block;
-  width: 10px;
+  width: 12px;
   height: 3px;
-  margin-right: 5px;
+  margin-right: 6px;
   vertical-align: middle;
   background: currentcolor;
 }
@@ -614,7 +799,7 @@
 /* --- Bars ---------------------------------------------------------------- */
 
 .mp-bar-row {
-  margin: 0 0 10px;
+  margin: 0 0 14px;
 }
 
 .mp-bar-head {
@@ -628,8 +813,8 @@
 }
 
 .mp-bar-track {
-  height: 14px;
-  margin: 4px 0;
+  height: 16px;
+  margin: 6px 0;
   border-radius: 4px;
   background: var(--vp-c-bg-soft);
   overflow: hidden;
@@ -643,7 +828,7 @@
 }
 
 .mp-bar-meta {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--vp-c-text-2);
 }
 
@@ -651,9 +836,9 @@
 
 .mp-table-wrap {
   max-height: 320px;
-  margin-top: 8px;
+  margin-top: 4px;
   border: 1px solid var(--vp-c-divider);
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: auto;
 }
 
@@ -662,13 +847,13 @@
   width: 100%;
   margin: 0;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
 
 .mp-demo th,
 .mp-demo td {
-  padding: 4px 8px;
+  padding: 6px 12px;
   border: 0;
   border-bottom: 1px solid var(--vp-c-divider);
   text-align: left;
@@ -678,9 +863,15 @@
 .mp-demo thead th {
   position: sticky;
   top: 0;
+  z-index: 1;
   background: var(--vp-c-bg-soft);
-  color: var(--vp-c-text-1);
+  color: var(--vp-c-text-2);
+  font-size: 13px;
   font-weight: 600;
+}
+
+.mp-demo tbody tr:nth-child(even) > :is(td, th) {
+  background: var(--vp-c-bg-soft);
 }
 
 .mp-demo tr:last-child td {
@@ -689,19 +880,22 @@
 
 .mp-table-foot {
   margin: 0;
-  padding: 4px 8px;
-  font-size: 11px;
+  padding: 6px 12px;
+  font-size: 13px;
   color: var(--vp-c-text-2);
 }
 
 .mp-retention {
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
+/* Shaded cells paint over the zebra stripe. */
+.mp-demo tbody tr:nth-child(even) > td.mp-cell,
 .mp-cell {
   background: rgba(79, 68, 224, var(--mp-cell-alpha, 0));
 }
 
+.dark .mp-demo tbody tr:nth-child(even) > td.mp-cell,
 .dark .mp-cell {
   background: rgba(120, 86, 255, var(--mp-cell-alpha, 0));
 }
@@ -718,15 +912,31 @@
 
 .mp-code {
   margin: 0;
-  padding: 12px 14px;
-  border-radius: 6px;
+  padding: 14px 16px;
+  border-radius: 8px;
   background: var(--vp-code-block-bg);
   font-family: var(--vp-font-family-mono);
-  font-size: 12.5px;
+  font-size: 13.5px;
   line-height: 1.6;
+  /* Wrap at spaces only, never inside a token; a lone token wider than
+     the column scrolls instead. */
   white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  word-break: normal;
+  overflow-x: auto;
   color: var(--vp-code-color);
+}
+
+.mp-code-string {
+  white-space: nowrap;
+}
+
+/* Each source line is a block; a wrapped continuation hangs by 2ch. */
+.mp-code-line {
+  display: block;
+  min-height: 1.6em;
+  padding-left: 2ch;
+  text-indent: -2ch;
 }
 
 .mp-code span {
@@ -738,31 +948,31 @@
 }
 
 .mp-code-result {
-  margin-top: 12px;
+  margin-top: 16px;
 }
 
 .mp-code-result h3 {
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 /* --- Errors -------------------------------------------------------------- */
 
 .mp-error {
   margin: 8px 0;
-  padding: 8px 12px;
+  padding: 10px 14px;
   border-left: 3px solid var(--mp-red);
-  border-radius: 4px;
+  border-radius: 6px;
   background: var(--vp-c-bg-soft);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .mp-error-details {
   max-height: 200px;
   margin: 8px 0 0;
   padding: 8px;
-  border-radius: 4px;
+  border-radius: 6px;
   background: var(--vp-code-block-bg);
-  font-size: 11px;
+  font-size: 12px;
   overflow: auto;
 }
 
@@ -782,10 +992,11 @@
 .mp-region {
   display: inline-block;
   padding: 1px 6px;
+  border: 1px solid var(--mp-selected-border);
   border-radius: 4px;
-  background: var(--vp-c-brand-soft);
-  color: var(--vp-c-brand-1);
-  font-size: 11px;
+  background: var(--mp-selected-bg);
+  color: var(--mp-selected-text);
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
 }
@@ -815,7 +1026,7 @@
   flex-wrap: wrap;
   gap: 12px;
   align-items: center;
-  padding: 8px 0;
+  padding: 10px 0;
   border-top: 1px solid var(--vp-c-divider);
 }
 
@@ -830,14 +1041,10 @@
 
 /* --- where filter --- */
 
-.mp-chips[role="group"] {
-  align-items: center;
-}
-
 button.mp-chip-toggle {
   border: 1px solid transparent;
   font: inherit;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.5;
   cursor: pointer;
 }
@@ -847,23 +1054,25 @@ button.mp-chip-toggle:hover {
 }
 
 button.mp-chip-toggle[aria-pressed="true"] {
-  background: var(--vp-c-brand-1);
-  color: var(--vp-c-white);
+  border-color: var(--mp-selected-border);
+  background: var(--mp-selected-bg);
+  color: var(--mp-selected-text);
   font-weight: 600;
 }
 
 .mp-filter-line {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
-  margin: 0 0 12px;
-  font-size: 13px;
+  margin: 0;
+  font-size: 14px;
   color: var(--vp-c-text-2);
 }
 
 .mp-filter-line code {
-  font-size: 12px;
+  font-size: 13px;
+  color: var(--vp-c-text-1);
 }
 
 .mp-filter-clear {

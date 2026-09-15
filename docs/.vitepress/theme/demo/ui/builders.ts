@@ -1,7 +1,7 @@
-// The left column's funnel and retention builders. Each keeps its own
-// draft (steps, window, born/return, unit) and emits a complete request
-// when the user presses Run; the playground adds the shared time range and
-// turns it into the spec it executes.
+// The funnel and retention tabs' builders, each one wrapping row. Each
+// keeps its own draft (steps, window, born/return, unit) and emits a
+// complete request when the user presses Run; the playground adds the
+// shared time range and turns it into the spec it executes.
 
 import {
   computed,
@@ -34,6 +34,7 @@ export interface RetentionDraft {
 }
 
 const MAX_STEPS = 5;
+const INLINE = { class: "mp-field mp-field-inline" } as const;
 
 const eventOptions = (
   events: readonly string[],
@@ -45,7 +46,7 @@ export const FunnelBuilder = defineComponent({
   name: "DemoFunnelBuilder",
   props: {
     events: { type: Array as PropType<readonly string[]>, required: true },
-    /** The event selected in the list, offered as the first step. */
+    /** The event selected in the strip, offered as the first step. */
     seed: { type: String as PropType<string | null>, default: null },
     /** Whether the full event list has been loaded (hides "more events"). */
     complete: { type: Boolean, default: false },
@@ -71,25 +72,24 @@ export const FunnelBuilder = defineComponent({
     const removeStep = (index: number): void => {
       steps.value = shown.value.filter((_, i) => i !== index);
     };
+    const step = (event: string, i: number): VNode =>
+      h("li", { key: i, class: "mp-step" }, [
+        h("span", { class: "mp-step-n", "aria-hidden": "true" }, String(i + 1)),
+        select(eventOptions(props.events), event, (next) => setStep(i, next), {
+          class: "mp-select mp-select-bare",
+          "aria-label": `Step ${i + 1}`,
+        }),
+        button("×", () => removeStep(i), {
+          class: "mp-btn mp-btn-icon mp-step-remove",
+          "aria-label": `Remove step ${i + 1}`,
+        }),
+      ]);
     return (): VNode =>
       h("div", { class: "mp-builder" }, [
         h(
           "ol",
           { class: "mp-steps" },
-          shown.value.map((step, i) =>
-            h("li", { key: i }, [
-              select(
-                eventOptions(props.events),
-                step,
-                (event) => setStep(i, event),
-                { "aria-label": `Step ${i + 1}` },
-              ),
-              button("×", () => removeStep(i), {
-                class: "mp-btn mp-btn-icon",
-                "aria-label": `Remove step ${i + 1}`,
-              }),
-            ]),
-          ),
+          shown.value.map((event, i) => step(event, i)),
         ),
         shown.value.length < props.maxSteps
           ? select(
@@ -98,7 +98,13 @@ export const FunnelBuilder = defineComponent({
               (event) => {
                 steps.value = [...shown.value, event];
               },
-              { placeholder: "+ add step", "aria-label": "Add step" },
+              {
+                // Remount after each pick so the placeholder shows again.
+                key: shown.value.length,
+                class: "mp-select mp-step-add",
+                placeholder: "+ add step",
+                "aria-label": "Add step",
+              },
             )
           : null,
         props.complete
@@ -107,7 +113,7 @@ export const FunnelBuilder = defineComponent({
               class: "mp-btn mp-btn-link",
             }),
         field(
-          "Conversion window",
+          "Window",
           select(
             CONVERSION_WINDOWS.map((n) => ({
               value: n,
@@ -118,6 +124,7 @@ export const FunnelBuilder = defineComponent({
               window.value = n;
             },
           ),
+          INLINE,
         ),
         button(
           "Run funnel",
@@ -174,12 +181,14 @@ export const RetentionBuilder = defineComponent({
             born.value = event;
             returnEvent.value = null;
           }),
+          INLINE,
         ),
         field(
           "Return",
           select(eventOptions(returnEvents), returnValue, (event) => {
             returnEvent.value = event;
           }),
+          INLINE,
         ),
         segmented(
           RETENTION_UNITS.map((u) => ({ value: u, label: u })),

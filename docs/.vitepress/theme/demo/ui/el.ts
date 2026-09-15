@@ -115,10 +115,15 @@ export function segmented<T extends string | number>(
  *
  * @param caption - The visible caption.
  * @param control - The control node.
+ * @param attrs - Extra attributes (`class` replaces the default).
  * @returns A `<label>` wrapping both.
  */
-export function field(caption: string, control: VNode): VNode {
-  return h("label", { class: "mp-field" }, [
+export function field(
+  caption: string,
+  control: VNode,
+  attrs: Attrs = {},
+): VNode {
+  return h("label", { class: "mp-field", ...attrs }, [
     h("span", { class: "mp-field-caption" }, caption),
     control,
   ]);

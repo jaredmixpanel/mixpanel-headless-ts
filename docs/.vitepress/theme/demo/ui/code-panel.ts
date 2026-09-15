@@ -1,5 +1,6 @@
-// The right column: the setup snippet plus every call behind what is on
-// screen, highlighted by the model's tokenizer. Tokens get the same
+// The right column, sticky beside the workbench: the setup snippet plus
+// every call behind what is on screen, highlighted by the model's
+// tokenizer. Tokens get the same
 // `--shiki-light` / `--shiki-dark` variables Shiki emits, so the block
 // matches the site's code blocks in both colour schemes.
 
@@ -45,25 +46,51 @@ export function programText(setup: string, calls: readonly Call[]): string {
 }
 
 /**
- * Highlight a program as spans.
+ * Highlight a program: one block per source line (so a line that wraps
+ * gets a hanging indent from the stylesheet), one span per token in it.
  *
  * @param code - The program text.
- * @returns One span per token.
+ * @returns One line block per line, trailing newline dropped.
  */
 function highlight(code: string): VNode[] {
-  return tokenize(code).map((token, i) => {
+  const lines: VNode[][] = [[]];
+  for (const token of tokenize(code)) {
     const colour = COLOURS[token.type];
-    return h(
-      "span",
-      colour === undefined
-        ? { key: i }
-        : {
-            key: i,
-            style: { "--shiki-light": colour[0], "--shiki-dark": colour[1] },
-          },
-      token.text,
-    );
-  });
+    for (const [k, text] of token.text.split("\n").entries()) {
+      if (k > 0) {
+        lines.push([]);
+      }
+      if (text !== "") {
+        const line = lines.at(-1);
+        // Strings carry hyphens and slashes (module specifiers, URLs),
+        // which browsers treat as break opportunities; the class keeps
+        // them whole.
+        const string = token.type === "string" ? "mp-code-string" : "";
+        line?.push(
+          h(
+            "span",
+            colour === undefined
+              ? { key: line.length, class: string }
+              : {
+                  key: line.length,
+                  class: string,
+                  style: {
+                    "--shiki-light": colour[0],
+                    "--shiki-dark": colour[1],
+                  },
+                },
+            text,
+          ),
+        );
+      }
+    }
+  }
+  if (code.endsWith("\n")) {
+    lines.pop();
+  }
+  return lines.map((spans, i) =>
+    h("span", { key: i, class: "mp-code-line" }, spans),
+  );
 }
 
 /** Code panel. */
@@ -97,7 +124,7 @@ export default defineComponent({
             "button",
             {
               type: "button",
-              class: "mp-btn mp-btn-small",
+              class: "mp-btn",
               onClick: () => void copy(),
             },
             copied.value ? "Copied" : "Copy code",

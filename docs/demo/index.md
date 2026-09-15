@@ -3,6 +3,8 @@ title: Playground
 description: "Run @mixpanel-headless/browser in your browser against a synthetic demo project, or sign in with PKCE and query your own — with the exact TypeScript call beside every result."
 aside: false
 outline: false
+sidebar: false
+pageClass: mp-playground
 ---
 
 # Playground

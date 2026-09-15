@@ -1,8 +1,9 @@
 // Root of `/demo`: owns the page state (one `DemoState`), builds the
 // offline workspace over the fixture transport, drives the live states
 // (sign-in, project picker, session header, sign-out) and wires the
-// columns together. Offline and live share the same query controller;
-// only the facade behind it differs, so the columns never know the mode.
+// workbench (tabs, strip, builders, result) to the code panel beside it.
+// Offline and live share the same query controller; only the facade
+// behind it differs, so the components never know the mode.
 
 import "./demo.css";
 
@@ -58,10 +59,10 @@ import {
 import { FunnelBuilder, RetentionBuilder } from "./builders.js";
 import CodePanel, { programText } from "./code-panel.js";
 import { button } from "./el.js";
-import EventList from "./event-list.js";
+import EventStrip from "./event-list.js";
 import ProjectPicker from "./project-picker.js";
-import QueryPanel from "./query-panel.js";
 import ResultActions from "./result-actions.js";
+import ResultPanel from "./result-panel.js";
 import {
   clearSession,
   forgetRegion,
@@ -71,6 +72,8 @@ import {
   session,
   wasLive,
 } from "./session.js";
+import EngineTabs, { type Engine, panelId, tabId } from "./tabs.js";
+import TrendControls from "./trend-controls.js";
 import { useQuery } from "./use-query.js";
 
 const DEMO_PROJECT = {
@@ -158,6 +161,7 @@ export default defineComponent({
     const state = shallowRef<DemoState>({ mode: "offline", ws: offlineWs });
     const region = ref<Region>(session.region ?? "us");
     const last = ref<TimeRange>(30);
+    const engine = ref<Engine>("trend");
     const linkPending = ref(false);
     const busy = ref(false);
     const expiring = ref(false);
@@ -462,10 +466,10 @@ export default defineComponent({
       );
     };
 
-    const leftColumn = (): VNode =>
-      h("aside", { class: "mp-col mp-col-left" }, [
-        h("div", { class: "mp-col-head" }, [h("h2", "Events")]),
-        h(EventList, {
+    const trendTab = (): VNode[] => {
+      const spec = query.spec.value;
+      return [
+        h(EventStrip, {
           events: query.topEvents.value.map((e) => ({
             event: e.event,
             count: e.count,
@@ -474,65 +478,93 @@ export default defineComponent({
           selected: selectedEvent.value,
           loading: query.topLoading.value,
           names: query.allEvents.value,
+          complete: offline.value,
           onSelect: (event: string) => trend(event),
           onMoreEvents: () => void query.loadAllEvents(),
         }),
-        h("div", { class: "mp-col-head" }, [h("h2", "Funnel")]),
-        h(FunnelBuilder, {
-          events: offline.value ? coverage.funnelEvents : eventNames.value,
-          seed: selectedEvent.value,
-          ...(offline.value ? { maxSteps: OFFLINE_MAX_STEPS } : {}),
-          complete: offline.value || query.allEvents.value !== null,
-          onRun: ({ steps, conversionWindow }) =>
-            run({ kind: "funnel", steps, last: last.value, conversionWindow }),
-          onMoreEvents: () => void query.loadAllEvents(),
-        }),
-        h("div", { class: "mp-col-head" }, [h("h2", "Retention")]),
-        h(RetentionBuilder, {
-          events: eventNames.value,
-          pairs: offline.value ? coverage.retentionPairs : null,
-          seed: selectedEvent.value,
-          onRun: ({ born, returnEvent, retentionUnit }) =>
-            run({
-              kind: "retention",
-              born,
-              returnEvent,
-              retentionUnit,
-              last: last.value,
-            }),
-        }),
-      ]);
+        spec?.kind === "trend"
+          ? h(TrendControls, {
+              spec,
+              properties: query.properties.value,
+              values: query.values.value,
+              onMath: (math) => rerun({ math }),
+              onBreakdownOpen: () => void query.openBreakdown(),
+              onGroupBy: (property) => trend(spec.event, property),
+              onValues: (property) => void query.showValues(property),
+              onWhere: (where) => run(withWhere(spec, where)),
+            })
+          : null,
+      ].filter((node): node is VNode => node !== null);
+    };
 
-    const mainColumn = (): VNode =>
-      h("section", { class: "mp-col mp-col-main" }, [
+    const funnelTab = (): VNode =>
+      h(FunnelBuilder, {
+        events: offline.value ? coverage.funnelEvents : eventNames.value,
+        seed: selectedEvent.value,
+        ...(offline.value ? { maxSteps: OFFLINE_MAX_STEPS } : {}),
+        complete: offline.value || query.allEvents.value !== null,
+        onRun: ({ steps, conversionWindow }) =>
+          run({ kind: "funnel", steps, last: last.value, conversionWindow }),
+        onMoreEvents: () => void query.loadAllEvents(),
+      });
+
+    const retentionTab = (): VNode =>
+      h(RetentionBuilder, {
+        events: eventNames.value,
+        pairs: offline.value ? coverage.retentionPairs : null,
+        seed: selectedEvent.value,
+        onRun: ({ born, returnEvent, retentionUnit }) =>
+          run({
+            kind: "retention",
+            born,
+            returnEvent,
+            retentionUnit,
+            last: last.value,
+          }),
+      });
+
+    const tabPanel = (): VNode => {
+      const current = engine.value;
+      const tabs: Readonly<Record<Engine, () => VNode[]>> = {
+        trend: trendTab,
+        funnel: () => [funnelTab()],
+        retention: () => [retentionTab()],
+      };
+      const content = tabs[current]();
+      return h(
+        "div",
+        {
+          key: current,
+          class: `mp-tabpanel mp-tabpanel-${current}`,
+          role: "tabpanel",
+          id: panelId(current),
+          "aria-labelledby": tabId(current),
+        },
+        content,
+      );
+    };
+
+    const workbench = (): VNode =>
+      h("section", { class: "mp-col mp-col-work" }, [
+        h(EngineTabs, {
+          engine: engine.value,
+          last: last.value,
+          onSelect: (next: Engine) => {
+            engine.value = next;
+          },
+          onRange: (n: TimeRange) => {
+            last.value = n;
+            rerun({ last: n });
+          },
+        }),
+        tabPanel(),
         h(
-          QueryPanel,
+          ResultPanel,
           {
             spec: query.spec.value,
             result: query.result.value,
             loading: query.loading.value,
             error: query.error.value,
-            properties: query.properties.value,
-            values: query.values.value,
-            onMath: (math) => rerun({ math }),
-            onRange: (n) => {
-              last.value = n;
-              rerun({ last: n });
-            },
-            onBreakdownOpen: () => void query.openBreakdown(),
-            onGroupBy: (property) => {
-              const current = query.spec.value;
-              if (current?.kind === "trend") {
-                trend(current.event, property);
-              }
-            },
-            onValues: (property) => void query.showValues(property),
-            onWhere: (where) => {
-              const current = query.spec.value;
-              if (current?.kind === "trend") {
-                run(withWhere(current, where));
-              }
-            },
           },
           {
             actions: () =>
@@ -549,7 +581,7 @@ export default defineComponent({
       ]);
 
     const codeColumn = (): VNode =>
-      h("section", { class: "mp-col mp-col-code" }, [
+      h("aside", { class: "mp-col mp-col-code" }, [
         h(CodePanel, {
           setup: setup.value,
           calls: query.calls.value,
@@ -559,11 +591,7 @@ export default defineComponent({
       ]);
 
     const grid = (): VNode =>
-      h("div", { class: "mp-grid" }, [
-        leftColumn(),
-        mainColumn(),
-        codeColumn(),
-      ]);
+      h("div", { class: "mp-grid" }, [workbench(), codeColumn()]);
 
     const body = (): VNode | VNode[] => {
       const current = state.value;

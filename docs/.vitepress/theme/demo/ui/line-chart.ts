@@ -1,6 +1,8 @@
-// Dependency-free trend chart: one `<path>` per series inside a fixed
-// viewBox, so it scales with the column without a resize observer. The
-// `<svg>` is one image to assistive technology (`role="img"` with a summary
+// Dependency-free trend chart: one `<path>` per series. The viewBox is
+// the figure's own width (a resize observer keeps it so) at a fixed
+// height, so one unit is one CSS pixel and the tick labels, strokes and
+// tooltip keep their size at every column width instead of shrinking with
+// it. The `<svg>` is one image to assistive technology (`role="img"` with a summary
 // label, described by the result table), and the crosshair is keyboard
 // driven: Left/Right step the day, Home/End jump, and a polite live region
 // reads the values out. Every point also carries a `<title>` for mouse
@@ -11,6 +13,8 @@ import {
   computed,
   defineComponent,
   h,
+  onBeforeUnmount,
+  onMounted,
   type PropType,
   ref,
   type VNode,
@@ -18,11 +22,13 @@ import {
 
 import { allZero, formatCount, type TrendLine } from "../model/series.js";
 
-const WIDTH = 640;
-const HEIGHT = 240;
-const PAD = { top: 12, right: 12, bottom: 28, left: 52 } as const;
-const PLOT_W = WIDTH - PAD.left - PAD.right;
+/** Width before the first measurement (and without a resize observer). */
+const DEFAULT_WIDTH = 960;
+const HEIGHT = 320;
+const PAD = { top: 16, right: 16, bottom: 34, left: 60 } as const;
 const PLOT_H = HEIGHT - PAD.top - PAD.bottom;
+/** Crosshair tooltip geometry (px). */
+const BOX = { width: 220, pad: 10, row: 20, title: 24 } as const;
 /** Target tick count; the 1-2-5 step then rounds the axis top up. */
 const TICKS = 5;
 const ANCHORS = ["start", "middle", "end"] as const;
@@ -96,6 +102,23 @@ export default defineComponent({
     groupBy: { type: String as PropType<string | null>, default: null },
   },
   setup(props) {
+    const figure = ref<HTMLElement | null>(null);
+    const width = ref(DEFAULT_WIDTH);
+    let observer: ResizeObserver | null = null;
+    onMounted(() => {
+      if (figure.value === null || typeof ResizeObserver === "undefined") {
+        return;
+      }
+      observer = new ResizeObserver((entries) => {
+        const measured = entries[0]?.contentRect.width ?? 0;
+        if (measured > 0) {
+          width.value = Math.round(measured);
+        }
+      });
+      observer.observe(figure.value);
+    });
+    onBeforeUnmount(() => observer?.disconnect());
+    const plotW = computed(() => width.value - PAD.left - PAD.right);
     const hover = ref<number | null>(null);
     /** What the live region reads; set by the keyboard only, never the mouse. */
     const announcement = ref("");
@@ -118,7 +141,8 @@ export default defineComponent({
       return Math.max(Math.ceil(max / step.value), 1) * step.value;
     });
     const x = (index: number): number =>
-      PAD.left + (length.value > 1 ? (index / (length.value - 1)) * PLOT_W : 0);
+      PAD.left +
+      (length.value > 1 ? (index / (length.value - 1)) * plotW.value : 0);
     const y = (value: number): number =>
       PAD.top + PLOT_H - (value / top.value) * PLOT_H;
     const dates = computed(
@@ -152,8 +176,9 @@ export default defineComponent({
 
     const moveHover = (clientX: number, svg: SVGSVGElement): void => {
       const rect = svg.getBoundingClientRect();
-      const plotX = ((clientX - rect.left) / rect.width) * WIDTH - PAD.left;
-      const index = Math.round((plotX / PLOT_W) * (length.value - 1));
+      const plotX =
+        ((clientX - rect.left) / rect.width) * width.value - PAD.left;
+      const index = Math.round((plotX / plotW.value) * (length.value - 1));
       hover.value = Math.min(Math.max(index, 0), length.value - 1);
     };
     const onKeydown = (event: KeyboardEvent): void => {
@@ -178,7 +203,7 @@ export default defineComponent({
         h("g", { key: tick }, [
           h("line", {
             x1: PAD.left,
-            x2: WIDTH - PAD.right,
+            x2: width.value - PAD.right,
             y1: y(tick),
             y2: y(tick),
             class: "mp-chart-grid",
@@ -186,7 +211,7 @@ export default defineComponent({
           h(
             "text",
             {
-              x: PAD.left - 6,
+              x: PAD.left - 8,
               y: y(tick) + 4,
               class: "mp-chart-tick",
               "text-anchor": "end",
@@ -208,7 +233,7 @@ export default defineComponent({
           {
             key: i,
             x: x(i),
-            y: HEIGHT - 8,
+            y: HEIGHT - 10,
             class: "mp-chart-tick",
             "text-anchor": ANCHORS[k === indices.length - 1 ? 2 : k],
           },
@@ -241,7 +266,7 @@ export default defineComponent({
                 {
                   cx: x(i),
                   cy: y(p.value),
-                  r: hover.value === i ? 4 : 2.5,
+                  r: hover.value === i ? 4.5 : 3,
                   class: "mp-chart-dot",
                 },
                 [
@@ -262,8 +287,12 @@ export default defineComponent({
         return null;
       }
       const rows = rowsAt(i);
-      const boxW = 180;
-      const left = x(i) + boxW + 16 > WIDTH ? x(i) - boxW - 8 : x(i) + 8;
+      const left =
+        x(i) + BOX.width + 20 > width.value ? x(i) - BOX.width - 12 : x(i) + 12;
+      const rowY = (k: number): number =>
+        PAD.top + BOX.pad + BOX.title + k * BOX.row;
+      // Each value row carries its line's colour as a swatch; the text
+      // itself stays in the body colour so it reads in both schemes.
       return h("g", { class: "mp-chart-hover" }, [
         h("line", {
           x1: x(i),
@@ -275,28 +304,40 @@ export default defineComponent({
         h("rect", {
           x: left,
           y: PAD.top,
-          width: boxW,
-          height: 16 + rows.length * 16,
-          rx: 4,
+          width: BOX.width,
+          height: BOX.pad * 2 + BOX.title + rows.length * BOX.row - 6,
+          rx: 6,
           class: "mp-chart-box",
         }),
         h(
           "text",
-          { x: left + 8, y: PAD.top + 14, class: "mp-chart-box-title" },
+          {
+            x: left + BOX.pad,
+            y: PAD.top + BOX.pad + 12,
+            class: "mp-chart-box-title",
+          },
           dates.value[i] ?? "",
         ),
-        ...rows.map((row, k) =>
+        ...rows.flatMap((row, k) => [
+          h("rect", {
+            key: `swatch-${k}`,
+            x: left + BOX.pad,
+            y: rowY(k) - 2,
+            width: 10,
+            height: 3,
+            fill: SERIES_COLOURS[k % SERIES_COLOURS.length],
+          }),
           h(
             "text",
             {
-              x: left + 8,
-              y: PAD.top + 30 + k * 16,
+              key: `row-${k}`,
+              x: left + BOX.pad + 16,
+              y: rowY(k) + 3,
               class: "mp-chart-box-row",
-              style: { fill: SERIES_COLOURS[k % SERIES_COLOURS.length] },
             },
             row,
           ),
-        ),
+        ]),
       ]);
     };
 
@@ -335,11 +376,11 @@ export default defineComponent({
           ),
         ]);
       }
-      return h("figure", { class: "mp-chart" }, [
+      return h("figure", { class: "mp-chart", ref: figure }, [
         h(
           "svg",
           {
-            viewBox: `0 0 ${WIDTH} ${HEIGHT}`,
+            viewBox: `0 0 ${width.value} ${HEIGHT}`,
             role: "img",
             "aria-label": summary.value,
             "aria-describedby": "mp-result-table",
