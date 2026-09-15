@@ -68,6 +68,8 @@ jobs:
           echo "DOCS_BASE=/${REPOSITORY#*/}/" >> "$GITHUB_ENV"
           echo "DOCS_ORIGIN=https://${REPOSITORY%%/*}.github.io" >> "$GITHUB_ENV"
 
+      # The full site peaks at about 9 GB RSS (docs:build raises Node's heap
+      # to 10 GB; CONTRIBUTING.md "Documentation"); standard runners have 16 GB.
       - name: Build site
         run: npm run docs:build
 
