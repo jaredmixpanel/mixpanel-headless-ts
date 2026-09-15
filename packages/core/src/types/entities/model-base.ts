@@ -476,8 +476,7 @@ export abstract class EntityModel {
       }
       if (cls.extraPolicy === "forbid") {
         modelFail(cls.modelName, `unknown field ${JSON.stringify(key)}`);
-      }
-      if (cls.extraPolicy === "allow") {
+      } else if (cls.extraPolicy === "allow") {
         extras[key] = value;
       }
     }

@@ -93,7 +93,7 @@ describe("§2.3 path 2 — browserSession cannot even EXPRESS an SA (compile-tim
 describe("§2.3 path 3 — createBrowserWorkspaceFromStore over a store holding SA creds", () => {
   it("refuses a persisted record whose type is service_account (out-of-band write)", async () => {
     const store = new InMemoryCredentialStore();
-    await store.set(
+    store.set(
       CREDENTIAL_KEYS.tokens("us"),
       JSON.stringify({
         type: "service_account",

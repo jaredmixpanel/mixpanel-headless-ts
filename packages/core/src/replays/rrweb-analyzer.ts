@@ -510,17 +510,13 @@ export class DOMTracker {
     }
     const record = this.nodes.get(nodeId);
     if (record !== undefined) {
-      if (record.attributes === undefined) {
-        record.attributes = new Map<string, unknown>();
-      }
+      record.attributes ??= new Map<string, unknown>();
       for (const [k, v] of descriptiveAttrs) {
         record.attributes.set(k, v);
       }
       const selectors = selectorAttrs(sanitizedAttrs);
       if (selectors.size > 0) {
-        if (record.selectors === undefined) {
-          record.selectors = new Map<string, string>();
-        }
+        record.selectors ??= new Map<string, string>();
         for (const [k, v] of selectors) {
           record.selectors.set(k, v);
         }
@@ -839,7 +835,7 @@ export class EventAnalyzer {
           targetDesc === undefined || targetDesc === null || targetDesc === ""
             ? description
             : targetDesc,
-        url: url !== undefined && url !== null ? url : this.currentUrl,
+        url: url ?? this.currentUrl,
         metadata: metadata ?? {},
         description,
       }),

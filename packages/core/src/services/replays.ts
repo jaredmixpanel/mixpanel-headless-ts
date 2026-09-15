@@ -811,9 +811,7 @@ export class ReplaysService {
       if (key === "$overall") {
         continue;
       }
-      if (fallbackKey === null) {
-        fallbackKey = key;
-      }
+      fallbackKey ??= key;
       let window: number;
       try {
         window = pythonIntCoerce(key);
@@ -1074,7 +1072,7 @@ export function toUnixMs(value: unknown): number {
   }
   if (typeof value === "string") {
     const ms = parseIsoToMs(value);
-    return ms === null ? 0 : ms;
+    return ms ?? 0;
   }
   return 0;
 }

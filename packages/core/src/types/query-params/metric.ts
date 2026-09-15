@@ -99,15 +99,12 @@ export class Metric {
    */
   constructor(fields: MetricFields) {
     this.event = fields.event;
-    this.math = fields.math === undefined ? "total" : fields.math;
+    this.math = fields.math ?? "total";
     this.property = fields.property ?? null;
     this.per_user = fields.per_user ?? null;
     this.percentile_value = fields.percentile_value ?? null;
     this.filters = fields.filters ?? null;
-    this.filters_combinator =
-      fields.filters_combinator === undefined
-        ? "all"
-        : fields.filters_combinator;
+    this.filters_combinator = fields.filters_combinator ?? "all";
     this.segment_method = fields.segment_method ?? null;
     // EV1_EMPTY_EVENT / EV2_CONTROL_CHAR_EVENT: shared event-name guard.
     validateEventName(this.event, "Metric");

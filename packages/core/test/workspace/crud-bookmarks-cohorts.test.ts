@@ -228,9 +228,11 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
 
   it("create_bookmark() returns the created Bookmark (:614)", async () => {
     const { ws } = makeWorkspace((request) =>
-      request.method === "PATCH"
-        ? ok(dashboardJson(99))
-        : ok(bookmarkJson(10, "New Bookmark", "insights")),
+      ok(
+        request.method === "PATCH"
+          ? dashboardJson(99)
+          : bookmarkJson(10, "New Bookmark", "insights"),
+      ),
     );
     const bookmark = await ws.createBookmark(
       new CreateBookmarkParams({
@@ -445,9 +447,11 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
     const logger = logCollector();
     const { ws } = makeWorkspace(
       (request) =>
-        request.method === "PATCH"
-          ? ok(dashboardJson(99))
-          : ok(bookmarkJson(77, "WarnTest", "insights")),
+        ok(
+          request.method === "PATCH"
+            ? dashboardJson(99)
+            : bookmarkJson(77, "WarnTest", "insights"),
+        ),
       logger,
     );
     const goodParams: Record<string, unknown> = {
@@ -470,9 +474,11 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
 
   it("create_bookmark() accepts the canonical valid sorting block (:927)", async () => {
     const { ws } = makeWorkspace((request) =>
-      request.method === "PATCH"
-        ? ok(dashboardJson(99))
-        : ok(bookmarkJson(77, "Good Sort", "insights")),
+      ok(
+        request.method === "PATCH"
+          ? dashboardJson(99)
+          : bookmarkJson(77, "Good Sort", "insights"),
+      ),
     );
     const goodParams: Record<string, unknown> = {
       ...MINIMAL_INSIGHTS_PARAMS,
@@ -694,9 +700,11 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
 
   it("create_bookmark() works with the funnel bookmark type (:1285)", async () => {
     const { ws } = makeWorkspace((request) =>
-      request.method === "PATCH"
-        ? ok(dashboardJson(99))
-        : ok(bookmarkJson(20, "Funnel BM", "funnels")),
+      ok(
+        request.method === "PATCH"
+          ? dashboardJson(99)
+          : bookmarkJson(20, "Funnel BM", "funnels"),
+      ),
     );
     const bookmark = await ws.createBookmark(
       new CreateBookmarkParams({

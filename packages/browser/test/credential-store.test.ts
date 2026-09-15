@@ -99,10 +99,10 @@ describe("LocalStorageCredentialStore specifics (§2.1 / §2.6)", () => {
   it("uses ONLY the injected StorageLike — no global touch", async () => {
     const { storage, map } = fakeStorage();
     const store = new LocalStorageCredentialStore(storage);
-    await store.set("mp.tokens.us", "injected");
+    store.set("mp.tokens.us", "injected");
     expect(map.get("mp.tokens.us")).toBe("injected");
     expect(await store.get("mp.tokens.us")).toBe("injected");
-    await store.delete("mp.tokens.us");
+    store.delete("mp.tokens.us");
     expect(map.has("mp.tokens.us")).toBe(false);
   });
 

@@ -79,10 +79,9 @@ export class FrequencyBreakdown {
    */
   constructor(fields: FrequencyBreakdownFields) {
     this.event = fields.event;
-    this.bucket_size =
-      fields.bucket_size === undefined ? 1 : fields.bucket_size;
-    this.bucket_min = fields.bucket_min === undefined ? 0 : fields.bucket_min;
-    this.bucket_max = fields.bucket_max === undefined ? 10 : fields.bucket_max;
+    this.bucket_size = fields.bucket_size ?? 1;
+    this.bucket_min = fields.bucket_min ?? 0;
+    this.bucket_max = fields.bucket_max ?? 10;
     this.label = fields.label ?? null;
     // FB1_EMPTY_EVENT: event must be non-empty.
     if (!pythonStrip(this.event)) {
@@ -184,8 +183,7 @@ export class FrequencyFilter {
   constructor(fields: FrequencyFilterFields) {
     this.event = fields.event;
     this.value = fields.value;
-    this.operator =
-      fields.operator === undefined ? "is at least" : fields.operator;
+    this.operator = fields.operator ?? "is at least";
     this.date_range_value = fields.date_range_value ?? null;
     this.date_range_unit = fields.date_range_unit ?? null;
     this.event_filters = fields.event_filters ?? null;

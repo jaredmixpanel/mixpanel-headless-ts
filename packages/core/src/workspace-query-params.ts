@@ -715,10 +715,11 @@ export function resolveAndBuildParams(
   // Normalize events to a sequence, separating Formula objects
   let eventsList: Array<string | Metric | CohortMetric>;
   let formulasFromList: Formula[];
-  if (typeof events === "string") {
-    eventsList = [events];
-    formulasFromList = [];
-  } else if (events instanceof Metric || events instanceof CohortMetric) {
+  if (
+    typeof events === "string" ||
+    events instanceof Metric ||
+    events instanceof CohortMetric
+  ) {
     eventsList = [events];
     formulasFromList = [];
   } else if (events instanceof Formula) {
@@ -1423,8 +1424,8 @@ export function buildFlowParams(options: BuildFlowParamsOptions): ParamsDict {
       // Python `step.label or step.event` — an empty label falls back.
       step_label:
         step.label !== null && step.label !== "" ? step.label : step.event,
-      forward: step.forward === null ? 0 : step.forward,
-      reverse: step.reverse === null ? 0 : step.reverse,
+      forward: step.forward ?? 0,
+      reverse: step.reverse ?? 0,
       bool_op: step.filters_combinator === "any" ? "or" : "and",
       property_filter_params_list: (step.filters ?? []).map((f) =>
         buildSegfilterEntry(f),
@@ -1455,8 +1456,7 @@ export function buildFlowParams(options: BuildFlowParamsOptions): ParamsDict {
     // Python `hidden_events or []` — an empty list also falls back.
     hidden_events:
       hidden_events !== null && hidden_events.length > 0 ? hidden_events : [],
-    exclusions:
-      exclusions !== null && exclusions !== undefined ? exclusions : [],
+    exclusions: exclusions ?? [],
   };
 
   if (data_group_id !== null && data_group_id !== undefined) {
@@ -1589,8 +1589,8 @@ export function resolveAndBuildFlowParams(
     (s) =>
       new FlowStep({
         event: s.event,
-        forward: s.forward === null ? forward : s.forward,
-        reverse: s.reverse === null ? reverse : s.reverse,
+        forward: s.forward ?? forward,
+        reverse: s.reverse ?? reverse,
         label: s.label,
         filters: s.filters,
         filters_combinator: s.filters_combinator,

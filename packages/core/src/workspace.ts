@@ -2635,7 +2635,7 @@ export class Workspace {
     const page0 = await this.#exportPage(0, pageKwargs);
     const total = page0.total;
     // Python `page0.page_size or 1000` — 0/None fall back.
-    const pageSize = page0.page_size ? page0.page_size : 1000;
+    const pageSize = page0.page_size || 1000;
     const sessionId = page0.session_id;
     const computedAt = isoUtc(this.client.core.now());
 
@@ -6549,11 +6549,7 @@ export class Workspace {
     const projectId = this.#projectId();
     const pinned = this.#session.workspace ?? null;
     const workspaceId =
-      parsed.workspace_id === null
-        ? pinned === null
-          ? null
-          : pinned.id
-        : parsed.workspace_id;
+      parsed.workspace_id ?? (pinned === null ? null : pinned.id);
 
     if (parsed.kind === "slug") {
       const raw = await this.client.getBookmarkUrl(parsed.slug as string);
@@ -6841,8 +6837,7 @@ export class Workspace {
     const normalized = reportType === "funnel" ? "funnels" : reportType;
     const pinned = this.#session.workspace ?? null;
     const explicit = options.workspace_id ?? null;
-    const wid =
-      explicit === null ? (pinned === null ? null : pinned.id) : explicit;
+    const wid = explicit ?? (pinned === null ? null : pinned.id);
     return buildBookmarkUrl({
       region: this.#session.account.region,
       project_id: this.#projectId(),

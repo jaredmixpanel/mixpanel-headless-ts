@@ -56,10 +56,8 @@ describe("TestListDashboards", () => {
       return { status: 200, json: { status: "ok", results: [] } };
     });
     await client.listDashboards({ ids: [1, 2] });
-    expect(
-      capturedUrls[0]?.includes("ids=1%2C2") ||
-        capturedUrls[0]?.includes("ids=1,2"),
-    ).toBe(true);
+    const url = capturedUrls[0] ?? "";
+    expect(url.includes("ids=1%2C2") || url.includes("ids=1,2")).toBe(true);
   });
 
   it("test_uses_maybe_scoped_path", async () => {

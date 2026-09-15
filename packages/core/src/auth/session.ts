@@ -285,23 +285,22 @@ function checkWorkspaceProjectCoupling(
   session: Pick<Session, "project" | "workspace">,
   options: ParseAccountOptions,
 ): void {
-  const workspace = session.workspace;
+  const workspace = session.workspace ?? null;
+  const workspaceProjectId = workspace?.project_id ?? null;
   if (
     workspace !== null &&
-    workspace !== undefined &&
-    workspace.project_id !== null &&
-    workspace.project_id !== undefined &&
-    workspace.project_id !== session.project.id
+    workspaceProjectId !== null &&
+    workspaceProjectId !== session.project.id
   ) {
     parseFail(
       `Workspace ${String(workspace.id)} belongs to project ` +
-        `${JSON.stringify(workspace.project_id)}, not ` +
+        `${JSON.stringify(workspaceProjectId)}, not ` +
         `${JSON.stringify(session.project.id)}. Re-resolve the workspace ` +
         "under the correct project.",
       options,
       {
         workspace_id: workspace.id,
-        workspace_project_id: workspace.project_id,
+        workspace_project_id: workspaceProjectId,
         project_id: session.project.id,
       },
     );
@@ -430,14 +429,8 @@ export function sessionReplace(
   session: Session,
   update: SessionReplaceUpdate = {},
 ): Session {
-  const account =
-    update.account !== undefined && update.account !== null
-      ? update.account
-      : session.account;
-  const project =
-    update.project !== undefined && update.project !== null
-      ? update.project
-      : session.project;
+  const account = update.account ?? session.account;
+  const project = update.project ?? session.project;
   const workspace = Object.hasOwn(update, "workspace")
     ? (update.workspace ?? null)
     : session.workspace;

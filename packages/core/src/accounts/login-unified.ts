@@ -614,8 +614,7 @@ async function loginUnifiedNewBrowser(
   const existingNames = new Set(
     effects.config.listAccounts().map((summary) => summary.name),
   );
-  const finalName =
-    args.name === null ? defaultAccountName(meResp, existingNames) : args.name;
+  const finalName = args.name ?? defaultAccountName(meResp, existingNames);
   if (existingNames.has(finalName)) {
     throw new AccountExistsError(finalName);
   }

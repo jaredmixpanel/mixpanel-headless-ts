@@ -919,8 +919,7 @@ export class ConfigManager {
       }
       if (project !== null) {
         const activeBlock = blockAt(raw, "active");
-        const targetAccount =
-          account === null ? activeBlock["account"] : account;
+        const targetAccount = account ?? activeBlock["account"];
         if (typeof targetAccount !== "string") {
           throw new ConfigError(
             "Cannot set project: no active account. " +

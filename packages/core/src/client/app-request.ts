@@ -180,8 +180,7 @@ export async function appRequest(
     Object.assign(requestParams, options.params);
   }
 
-  const requestBody: Record<string, unknown> | null =
-    formBody === null ? jsonBody : formBody;
+  const requestBody: Record<string, unknown> | null = formBody ?? jsonBody;
 
   for (let attempt = 0; attempt <= deps.maxRetries; attempt += 1) {
     try {

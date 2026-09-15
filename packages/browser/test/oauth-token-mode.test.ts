@@ -192,7 +192,7 @@ describe("createBrowserWorkspaceFromStore (§2.2) — PKCE-persisted tokens path
     expiresAt: string,
   ): Promise<InMemoryCredentialStore> {
     const store = new InMemoryCredentialStore();
-    await store.set(
+    store.set(
       CREDENTIAL_KEYS.tokens("us"),
       JSON.stringify({
         access_token: "stored-tok",
@@ -245,7 +245,7 @@ describe("createBrowserWorkspaceFromStore (§2.2) — PKCE-persisted tokens path
 
   it("rejects malformed persisted tokens (strict parse — no lax read path)", async () => {
     const store = new InMemoryCredentialStore();
-    await store.set(
+    store.set(
       CREDENTIAL_KEYS.tokens("us"),
       JSON.stringify({ access_token: "x" }), // missing required fields
     );

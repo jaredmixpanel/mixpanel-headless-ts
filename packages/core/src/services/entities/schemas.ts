@@ -263,10 +263,11 @@ export function createSchemaMethods(core: ClientCore): SchemaMethods {
       options: ListSchemaRegistryOptions = {},
     ): Promise<JsonValue[]> => {
       const entityType = options.entity_type;
-      const path =
+      const path = scopedPath(
         entityType !== undefined && entityType !== null
-          ? scopedPath(`schemas/${pythonQuote(entityType)}`)
-          : scopedPath("schemas");
+          ? `schemas/${pythonQuote(entityType)}`
+          : "schemas",
+      );
       const result = await appRequest(
         core.appDeps(options.signal),
         "GET",

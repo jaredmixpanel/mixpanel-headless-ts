@@ -81,10 +81,7 @@ export class FlowStep {
     this.reverse = fields.reverse ?? null;
     this.label = fields.label ?? null;
     this.filters = fields.filters ?? null;
-    this.filters_combinator =
-      fields.filters_combinator === undefined
-        ? "all"
-        : fields.filters_combinator;
+    this.filters_combinator = fields.filters_combinator ?? "all";
     this.session_event = fields.session_event ?? null;
     // EV1_EMPTY_EVENT / EV2_CONTROL_CHAR_EVENT: shared event-name guard.
     validateEventName(this.event, "FlowStep");

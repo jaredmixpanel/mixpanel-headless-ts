@@ -445,7 +445,14 @@ const config = defineConfig([
       "@typescript-eslint/consistent-indexed-object-style": ["error", "record"],
       "@typescript-eslint/no-unnecessary-type-assertion": "error",
       "@typescript-eslint/no-unnecessary-template-expression": "error",
-      "@typescript-eslint/no-confusing-void-expression": "error",
+      // Arrow shorthands returning void (`expect(() => f()).toThrow()`,
+      // `(...args) => ns.use(...args)` forwarders) are the idiom here — 49
+      // sites, all stylistic; the option keeps the rule's real catches
+      // (`const x = voidCall()`, `return voidCall()` in a non-arrow).
+      "@typescript-eslint/no-confusing-void-expression": [
+        "error",
+        { ignoreArrowShorthand: true },
+      ],
       "@typescript-eslint/prefer-optional-chain": "error",
       // Its fix (`x as T` → `x!`) is exactly what `no-non-null-assertion`
       // forbids in source, where narrowing helpers are wanted instead; the

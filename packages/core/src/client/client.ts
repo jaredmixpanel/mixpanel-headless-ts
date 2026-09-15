@@ -828,9 +828,7 @@ export function createMixpanelClient(
   let httpHandle: HttpHandle | null = null;
 
   const ensureHttp = (): HttpHandle => {
-    if (httpHandle === null) {
-      httpHandle = { fetchImpl };
-    }
+    httpHandle ??= { fetchImpl };
     return httpHandle;
   };
 
@@ -855,9 +853,7 @@ export function createMixpanelClient(
   const getAuthHeader = async (): Promise<string> => {
     const account = session.account;
     if (account.type === "service_account") {
-      if (cachedBasicHeader === null) {
-        cachedBasicHeader = await accountAuthHeader(account, {});
-      }
+      cachedBasicHeader ??= await accountAuthHeader(account, {});
       return cachedBasicHeader;
     }
     // OAuth variants re-resolve per call so a refreshed bearer surfaces

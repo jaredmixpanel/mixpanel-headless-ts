@@ -341,13 +341,11 @@ export function validateUserArgs(
   // other field above takes the `?? null` form because its Python
   // default IS `None` (R4.10/R4.11).
   const limit = options.limit === undefined ? 1 : options.limit;
-  const mode = options.mode === undefined ? "aggregate" : options.mode;
-  const aggregate =
-    options.aggregate === undefined ? "count" : options.aggregate;
-  const parallel = options.parallel === undefined ? false : options.parallel;
-  const workers = options.workers === undefined ? 5 : options.workers;
-  const includeAllUsers =
-    options.include_all_users === undefined ? false : options.include_all_users;
+  const mode = options.mode ?? "aggregate";
+  const aggregate = options.aggregate ?? "count";
+  const parallel = options.parallel ?? false;
+  const workers = options.workers ?? 5;
+  const includeAllUsers = options.include_all_users ?? false;
   const today = options.today ?? defaultToday;
 
   const errors: ValidationError[] = [];

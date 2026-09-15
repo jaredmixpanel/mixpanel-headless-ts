@@ -738,12 +738,8 @@ export function createQueryHostMethods(
     // Capture today once so the initial to_date and the retry's
     // from_date can't diverge across midnight (`api_client.py:2399`).
     const today = civilFromInstantUtc(core.now());
-    const resolvedFrom =
-      fromDate !== undefined && fromDate !== null
-        ? fromDate
-        : EVENTS_NAMES_WIDE_FROM_DATE;
-    const resolvedTo =
-      toDate !== undefined && toDate !== null ? toDate : formatYmd(today);
+    const resolvedFrom = fromDate ?? EVENTS_NAMES_WIDE_FROM_DATE;
+    const resolvedTo = toDate ?? formatYmd(today);
     const params: Record<string, unknown> = {
       type: "general",
       limit,

@@ -326,7 +326,7 @@ class Parser {
   private parseString(): string {
     STRING_TOKEN.lastIndex = this.pos;
     const match = STRING_TOKEN.exec(this.text);
-    if (match === null || match.index !== this.pos) {
+    if (match?.index !== this.pos) {
       throw new LosslessJsonError("malformed string token", this.pos);
     }
     this.pos = STRING_TOKEN.lastIndex;
@@ -342,7 +342,7 @@ class Parser {
   private parseNumber(): JsonNumber {
     NUMBER_TOKEN.lastIndex = this.pos;
     const match = NUMBER_TOKEN.exec(this.text);
-    if (match === null || match.index !== this.pos) {
+    if (match?.index !== this.pos) {
       throw new LosslessJsonError("malformed number token", this.pos);
     }
     this.pos = NUMBER_TOKEN.lastIndex;

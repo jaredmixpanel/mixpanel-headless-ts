@@ -87,9 +87,8 @@ export class PropertyInput {
       );
     }
     this.name = fields.name;
-    this.type = fields.type === undefined ? "string" : fields.type;
-    this.resource_type =
-      fields.resource_type === undefined ? "event" : fields.resource_type;
+    this.type = fields.type ?? "string";
+    this.resource_type = fields.resource_type ?? "event";
   }
 }
 
@@ -136,8 +135,7 @@ export class InlineCustomProperty {
     this.formula = fields.formula;
     this.inputs = fields.inputs;
     this.property_type = fields.property_type ?? null;
-    this.resource_type =
-      fields.resource_type === undefined ? "events" : fields.resource_type;
+    this.resource_type = fields.resource_type ?? "events";
   }
 
   /**
@@ -550,10 +548,8 @@ export class Filter {
    */
   constructor(fields: FilterFields) {
     this._property = fields._property;
-    this._property_type =
-      fields._property_type === undefined ? "string" : fields._property_type;
-    this._resource_type =
-      fields._resource_type === undefined ? "events" : fields._resource_type;
+    this._property_type = fields._property_type ?? "string";
+    this._resource_type = fields._resource_type ?? "events";
     this._date_unit = fields._date_unit ?? null;
     this._list_item_filters = fields._list_item_filters ?? null;
     this._list_item_quantifier = fields._list_item_quantifier ?? null;

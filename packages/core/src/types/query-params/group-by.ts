@@ -77,8 +77,7 @@ export class GroupBy {
    */
   constructor(fields: GroupByFields) {
     this.property = fields.property;
-    this.property_type =
-      fields.property_type === undefined ? "string" : fields.property_type;
+    this.property_type = fields.property_type ?? "string";
     this.bucket_size = fields.bucket_size ?? null;
     this.bucket_min = fields.bucket_min ?? null;
     this.bucket_max = fields.bucket_max ?? null;

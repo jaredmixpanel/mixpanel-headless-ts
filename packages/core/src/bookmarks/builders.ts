@@ -202,7 +202,7 @@ export function buildTimeSection(options: {
     };
   } else {
     const today = options.today ?? defaultToday;
-    const effectiveTo = options.to_date === null ? today() : options.to_date;
+    const effectiveTo = options.to_date ?? today();
     timeEntry = {
       dateRangeType: "between",
       unit: options.unit,
@@ -416,8 +416,7 @@ export function buildGroupSection(
           isHidden: false,
         };
       } else if (prop instanceof InlineCustomProperty) {
-        const effectiveType =
-          prop.property_type === null ? g.property_type : prop.property_type;
+        const effectiveType = prop.property_type ?? g.property_type;
         const composed = buildComposedProperties(prop.inputs);
         groupEntry = {
           customProperty: {
@@ -543,7 +542,7 @@ export function buildCohortGroupEntry(
   // are both string | null — coerce the int-typed parameter at emission
   // (`bookmark_builders.py:441-443` post-FIX-1).
   const dgid = dataGroupId === null ? null : String(dataGroupId);
-  const name = cb.name || "";
+  const name = cb.name ?? "";
 
   const baseCohort: BookmarkFragment = {
     name,
@@ -627,8 +626,7 @@ export function buildFilterEntry(f: Filter): BookmarkFragment {
     entry["customPropertyId"] = prop.id;
     entry["dataset"] = "$mixpanel";
   } else if (prop instanceof InlineCustomProperty) {
-    const effectiveType =
-      prop.property_type === null ? f._property_type : prop.property_type;
+    const effectiveType = prop.property_type ?? f._property_type;
     entry["customProperty"] = {
       displayFormula: prop.formula,
       composedProperties: buildComposedProperties(prop.inputs),
@@ -907,7 +905,7 @@ export function buildFrequencyGroupEntry(
   // int-typed parameter at emission (`bookmark_builders.py:793-795`
   // post-FIX-1).
   const dgid = dataGroupId === null ? null : String(dataGroupId);
-  const displayLabel = fb.label === null ? `${fb.event} Frequency` : fb.label;
+  const displayLabel = fb.label ?? `${fb.event} Frequency`;
   return {
     dataset: "$mixpanel",
     behavior: {
@@ -991,7 +989,7 @@ export function buildFrequencyFilterEntry(
   if (ff.event_filters !== null) {
     behavior["filters"] = ff.event_filters.map((f) => buildFilterEntry(f));
   }
-  const displayLabel = ff.label === null ? `${ff.event} Frequency` : ff.label;
+  const displayLabel = ff.label ?? `${ff.event} Frequency`;
   return {
     dataset: "$mixpanel",
     resourceType: "people",
