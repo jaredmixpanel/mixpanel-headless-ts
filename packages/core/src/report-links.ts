@@ -86,7 +86,7 @@ export const APP_TO_REPORT_TYPE: ReadonlyMap<string, string> = new Map([
 ]);
 
 /** What a parsed link points at. */
-export type ReportLinkKind =
+type ReportLinkKind =
   "slug" | "bookmark" | "short_link" | "dashboard" | "legacy_jsurl";
 
 /** Recognized web hosts. `mixpanel.org` parses as US; builders never emit it. */

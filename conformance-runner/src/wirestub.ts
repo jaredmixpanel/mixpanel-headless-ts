@@ -47,10 +47,7 @@ const CAUSE_CODE_TO_HTTPX_CLASS: Readonly<Record<string, string>> = {
  * raises, so the runner can diff it against `expect.error` structurally
  * (R5.2/R5.4 — class name, never message text).
  */
-export class WireStubTransportError
-  extends Error
-  implements ExpectErrorConvertible
-{
+class WireStubTransportError extends Error implements ExpectErrorConvertible {
   /** The httpx transport exception class name (e.g. `ConnectError`). */
   readonly httpxClass: string;
 

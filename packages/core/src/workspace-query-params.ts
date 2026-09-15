@@ -217,7 +217,7 @@ const RETENTION_CHART_TYPE: ReadonlyMap<string, string> = new Map([
  * @param stepPath - Parent path for error reporting (`"steps[0]"`).
  * @returns The findings (empty when valid).
  */
-export function checkStepDirection(
+function checkStepDirection(
   value: unknown,
   name: "forward" | "reverse",
   stepPath: string,
@@ -823,7 +823,7 @@ export function resolveAndBuildParams(
 // ===========================================================================
 
 /** Keyword-only arguments of {@link buildFunnelParams}. */
-export interface BuildFunnelParamsOptions {
+interface BuildFunnelParamsOptions {
   /** Normalized funnel steps. */
   readonly steps: readonly FunnelStep[];
   /** Conversion window size. */
@@ -871,9 +871,7 @@ export interface BuildFunnelParamsOptions {
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns Bookmark params ready for the insights query API.
  */
-export function buildFunnelParams(
-  options: BuildFunnelParamsOptions,
-): ParamsDict {
+function buildFunnelParams(options: BuildFunnelParamsOptions): ParamsDict {
   const {
     steps,
     conversion_window,
@@ -1175,7 +1173,7 @@ export function resolveAndBuildFunnelParams(
 // ===========================================================================
 
 /** Keyword-only arguments of {@link buildRetentionParams}. */
-export interface BuildRetentionParamsOptions {
+interface BuildRetentionParamsOptions {
   /** Normalized born event. */
   readonly born_event: RetentionEvent;
   /** Normalized return event. */
@@ -1224,7 +1222,7 @@ export interface BuildRetentionParamsOptions {
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns Bookmark params ready for the insights query API.
  */
-export function buildRetentionParams(
+function buildRetentionParams(
   options: BuildRetentionParamsOptions,
 ): ParamsDict {
   const {

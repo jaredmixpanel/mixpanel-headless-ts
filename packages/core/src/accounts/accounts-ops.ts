@@ -190,7 +190,7 @@ const DOMAIN_TO_REGION: Readonly<Record<string, Region>> = {
  * domainToRegion("foo.example.com");            // null
  * ```
  */
-export function domainToRegion(domain: string): Region | null {
+function domainToRegion(domain: string): Region | null {
   if (domain === "") {
     return null;
   }
@@ -263,7 +263,7 @@ export function assertProjectRegionMatches(
  * @param exc - The exception that was caught.
  * @returns A populated failure result (`ok=false`).
  */
-export function buildTestFailureResult(
+function buildTestFailureResult(
   accountName: string,
   prefix: string,
   exc: unknown,
@@ -397,7 +397,7 @@ export async function accountsAdd(
 }
 
 /** Arguments of {@link deriveAccountNameForCredential} (kwonly, R3.8). */
-export interface DeriveNameArgs {
+interface DeriveNameArgs {
   /** `"service_account"` or `"oauth_token"`. */
   readonly account_type: AccountType;
   /** Resolved region. */
@@ -423,7 +423,7 @@ export interface DeriveNameArgs {
  * @throws AuthenticationError | OAuthError | QueryError - Propagated
  *   from the `/me` call.
  */
-export async function deriveAccountNameForCredential(
+async function deriveAccountNameForCredential(
   effects: AuthEffects,
   args: DeriveNameArgs,
 ): Promise<string> {

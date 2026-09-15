@@ -13,12 +13,13 @@
   // (`npm run generate:compat-tables`); a system tool, not an npm dependency.
   "ignoreBinaries": ["uv"],
   "rules": {
-    // Phase 6 (§2.7 un-export sweep) turns these back to "error". Until
-    // then the 145 unused exports / 126 unused types it will remove are
-    // reported as warnings so the gate stays green and the list stays live.
-    "exports": "warn",
-    "types": "warn",
+    "exports": "error",
+    "types": "error",
   },
+  // Interfaces/type aliases that only appear in their own module's exported
+  // signatures must stay exported (declaration emit rejects a private name in
+  // a public signature); every other kind of export must have an importer.
+  "ignoreExportsUsedInFile": { "interface": true, "type": true },
   "workspaces": {
     ".": {
       "entry": ["scripts/**/*.mjs", "tests/**/*.test.ts"],

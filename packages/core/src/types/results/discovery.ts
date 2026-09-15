@@ -1055,10 +1055,10 @@ export class ProfilePageResult {
 // ---------------------------------------------------------------------------
 
 /** Node kinds of the {@link SchemaGraph} adjacency object. */
-export type SchemaGraphNodeKind = "event" | "property";
+type SchemaGraphNodeKind = "event" | "property";
 
 /** One node of the {@link SchemaGraph} (a `networkx` node + attrs). */
-export interface SchemaGraphNode {
+interface SchemaGraphNode {
   /** The bare entity name (Python `str(name)`). */
   readonly name: string;
   /** Whether the name denotes an event or a property. */
@@ -1066,7 +1066,7 @@ export interface SchemaGraphNode {
 }
 
 /** One directed event→property edge of the {@link SchemaGraph}. */
-export interface SchemaGraphEdge {
+interface SchemaGraphEdge {
   /** The event name the edge starts at. */
   readonly source: string;
   /** The property name the edge points to. */

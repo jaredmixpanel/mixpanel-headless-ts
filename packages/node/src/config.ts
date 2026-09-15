@@ -15,6 +15,3 @@ export {
   type ConfigWriteBytes,
   type CustomHeaderParams,
 } from "./config/manager.js";
-
-/** Re-export the region type for adapter convenience. */
-export { type Region } from "@mixpanel-headless/core";

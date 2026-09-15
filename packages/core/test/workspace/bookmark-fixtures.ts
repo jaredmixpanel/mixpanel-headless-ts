@@ -40,23 +40,3 @@ export const MINIMAL_FUNNEL_PARAMS: Readonly<Record<string, unknown>> = {
     time: [],
   },
 };
-
-/** Minimal valid retention bookmark params dict. */
-export const MINIMAL_RETENTION_PARAMS: Readonly<Record<string, unknown>> = {
-  displayOptions: { chartType: "retention-curve" },
-  sections: {
-    show: [
-      {
-        type: "metric",
-        behavior: {
-          type: "retention",
-          behaviors: [
-            { type: "event", name: "Signup" },
-            { type: "event", name: "Login" },
-          ],
-        },
-      },
-    ],
-    time: [],
-  },
-};

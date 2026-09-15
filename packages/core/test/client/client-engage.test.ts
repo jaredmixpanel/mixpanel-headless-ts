@@ -21,7 +21,7 @@ import { describe, expect, it } from "vitest";
 
 import { toNativeJson } from "../../src/client/json-value.js";
 import { ParamValidationError, QueryError } from "../../src/errors.js";
-import { ProfilePageResult } from "../../src/types/results/index.js";
+import { ProfilePageResult } from "../../src/types/results/discovery.js";
 import {
   type CannedResponse,
   createMockClient,

@@ -115,7 +115,7 @@ export type JsonValue =
  * {@link orderedEntries} read it back. Being non-enumerable, the
  * sidecar is invisible to `Object.keys` / `JSON.stringify` / spread.
  */
-export const LOSSLESS_KEY_ORDER: unique symbol = Symbol("losslessKeyOrder");
+const LOSSLESS_KEY_ORDER: unique symbol = Symbol("losslessKeyOrder");
 
 /** An object possibly carrying the {@link LOSSLESS_KEY_ORDER} sidecar. */
 interface KeyOrdered {

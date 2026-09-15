@@ -87,35 +87,35 @@ export interface ReplayHost {
 }
 
 /** Signing environment default (`env="prod"`). */
-export const DEFAULT_REPLAY_ENV = "prod";
+const DEFAULT_REPLAY_ENV = "prod";
 
 /** `max_files` default of the CDN walk (`fetch_replay(max_files=500)`). */
-export const DEFAULT_MAX_REPLAY_FILES = 500;
+const DEFAULT_MAX_REPLAY_FILES = 500;
 
 /** `cdn_concurrency` default — parallel CDN file fetches per replay. */
-export const DEFAULT_CDN_CONCURRENCY = 50;
+const DEFAULT_CDN_CONCURRENCY = 50;
 
 /** `concurrency` default of `fetch_replays` — replays fetched at once. */
-export const DEFAULT_FETCH_REPLAYS_CONCURRENCY = 4;
+const DEFAULT_FETCH_REPLAYS_CONCURRENCY = 4;
 
 /** `limit` default of `list_replays`. */
-export const DEFAULT_LIST_REPLAYS_LIMIT = 100;
+const DEFAULT_LIST_REPLAYS_LIMIT = 100;
 
 /**
  * `limit` default of `replays_for_user` — conservative because each
  * replay materializes its full byte stream.
  */
-export const DEFAULT_REPLAYS_FOR_USER_LIMIT = 20;
+const DEFAULT_REPLAYS_FOR_USER_LIMIT = 20;
 
 /**
  * Retention window assumed when discovery returns no summary for a
  * replay (`_resolve_retention`'s fallback; the warning already fired in
  * `discover`).
  */
-export const FALLBACK_RETENTION_DAYS = 30;
+const FALLBACK_RETENTION_DAYS = 30;
 
 /** Insights group-by cap that bounds `event_properties`. */
-export const MAX_EVENT_PROPERTIES = 5;
+const MAX_EVENT_PROPERTIES = 5;
 
 /**
  * List replays for a user, or hydrate summaries for explicit IDs

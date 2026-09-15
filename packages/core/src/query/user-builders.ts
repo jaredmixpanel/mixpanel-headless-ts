@@ -210,7 +210,7 @@ export function formatValue(value: unknown): string {
  *   unsupported in `query_user()` filters).
  * @internal
  */
-export function propRef(f: Filter): string {
+function propRef(f: Filter): string {
   const property: unknown = f._property;
   if (typeof property !== "string") {
     throw new ParamValidationError(

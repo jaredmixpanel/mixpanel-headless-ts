@@ -468,12 +468,6 @@ const FUNNEL_STEP_FIELDS = [
   { key: "type", type: JSON_VALUE, required: false },
 ] as const;
 
-/** Mirrors show.py `FunnelStep` (`:889-915`). */
-const FUNNEL_STEP: ModelSpec = {
-  name: "FunnelStep",
-  fields: FUNNEL_STEP_FIELDS,
-};
-
 /**
  * Mirrors show.py `ExclusionFunnelStep` (`:918-921`). Pydantic orders
  * inherited fields FIRST and the subclass's `steps` last — that IS the
@@ -1263,14 +1257,6 @@ export const FLOWS_BOOKMARK_STEP_MODEL: RootModelHandle =
 /** Handle for `BehaviorMeasurement` (leaf; used by the Layer-3 lock). */
 export const BEHAVIOR_MEASUREMENT_MODEL: RootModelHandle =
   modelHandle(BEHAVIOR_MEASUREMENT);
-
-/**
- * Handle for `FunnelStep`. The insights tree only ever reaches the
- * subclass (`Behavior.exclusions: list[ExclusionFunnelStep]`), but the
- * base model is a public name of the Python module, so the twin
- * exposes it too rather than inlining its field list into the subclass.
- */
-export const FUNNEL_STEP_MODEL: RootModelHandle = modelHandle(FUNNEL_STEP);
 
 // =============================================================================
 // Root-model dispatch (bookmark_schema.py:333-379, :1548-1553)

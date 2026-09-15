@@ -13,7 +13,7 @@ import { isPlainRecord, jsonValuePythonStr } from "../../client/internals.js";
 import { JsonNumber, type JsonValue } from "../../client/json-value.js";
 import { pythonJsonDumps } from "../../compat/index.js";
 import { QueryError } from "../../errors.js";
-import { ProfilePageResult } from "../../types/results/index.js";
+import { ProfilePageResult } from "../../types/results/discovery.js";
 import { isSet, pythonTypeNameOf, truthyList, truthyStr } from "../shared.js";
 
 /** Options bag of {@link EngageMethods.engageStats}. */

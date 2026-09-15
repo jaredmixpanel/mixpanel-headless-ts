@@ -30,7 +30,7 @@ import { ParamValidationError } from "../../errors.js";
  * @internal
  */
 // eslint-disable-next-line no-control-regex -- the class exists to match control characters (Python `_CONTROL_CHAR_RE`)
-export const CONTROL_CHAR_RE: RegExp = /[\x00-\x08\v\f\x0E-\x1F\x7F]/;
+const CONTROL_CHAR_RE: RegExp = /[\x00-\x08\v\f\x0E-\x1F\x7F]/;
 
 /**
  * Math types that require a measurement property — mirror of

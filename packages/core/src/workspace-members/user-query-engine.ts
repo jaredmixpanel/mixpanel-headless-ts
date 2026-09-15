@@ -49,20 +49,20 @@ export const DEFAULT_USER_QUERY_WORKERS = 5;
  * `ThreadPoolExecutor(max_workers=min(workers, 5))`; the U23 validator
  * rejects larger requests before the engine runs.
  */
-export const MAX_PARALLEL_WORKERS = 5;
+const MAX_PARALLEL_WORKERS = 5;
 
 /**
  * Page count above which the parallel engine warns: the engage API
  * allows roughly 60 queries per hour, so a query that needs more than
  * this many pages is likely to be rate limited.
  */
-export const RATE_LIMIT_PAGE_WARNING_THRESHOLD = 48;
+const RATE_LIMIT_PAGE_WARNING_THRESHOLD = 48;
 
 /**
  * Page size assumed when page 0 reports none — Python's
  * `page0.page_size or 1000`.
  */
-export const FALLBACK_ENGAGE_PAGE_SIZE = 1000;
+const FALLBACK_ENGAGE_PAGE_SIZE = 1000;
 
 /** `[profiles, total, computed_at, meta]` — what a profiles engine returns. */
 type ProfilesEngineResult = [
@@ -155,7 +155,7 @@ export async function runUserParams(
  * @throws AuthenticationError | RateLimitError | QueryError |
  *   ServerError - Wire failures.
  */
-export async function executeUserQuerySequential(
+async function executeUserQuerySequential(
   host: UserQueryHost,
   params: ParamsDict,
   limit: number | null,
@@ -222,7 +222,7 @@ export async function executeUserQuerySequential(
  * @throws AuthenticationError | RateLimitError | QueryError |
  *   ServerError - Wire failures.
  */
-export async function executeUserAggregate(
+async function executeUserAggregate(
   host: UserQueryHost,
   params: ParamsDict,
 ): Promise<
@@ -292,7 +292,7 @@ export async function executeUserAggregate(
  * @throws AuthenticationError | RateLimitError | ServerError |
  *   QueryError - Propagated from any page.
  */
-export async function executeUserQueryParallel(
+async function executeUserQueryParallel(
   host: UserQueryHost,
   params: ParamsDict,
   limit: number | null,

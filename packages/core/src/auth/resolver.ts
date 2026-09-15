@@ -506,7 +506,7 @@ function resolveHeaders(
  *
  * @returns The error message body.
  */
-export function formatNoAccountError(): string {
+function formatNoAccountError(): string {
   return (
     "No account configured.\n" +
     "\n" +
@@ -529,7 +529,7 @@ export function formatNoAccountError(): string {
  *   can name it explicitly.
  * @returns The error message body.
  */
-export function formatNoProjectError(account: Account | null = null): string {
+function formatNoProjectError(account: Account | null = null): string {
   if (account !== null) {
     return (
       `No project configured for account ${pythonRepr(account.name)}.\n` +

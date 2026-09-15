@@ -354,7 +354,7 @@ export interface OracleIdentity {
  * library errors never raise this; they are returned as `ok: false`
  * result DATA.
  */
-export class OracleProtocolError extends Error {
+class OracleProtocolError extends Error {
   /** The JSON-RPC error code (one of the module constants). */
   readonly code: number;
 

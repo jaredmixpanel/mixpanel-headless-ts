@@ -63,7 +63,7 @@ import type { RetentionEvent } from "../types/query-params/retention.js";
 const CP_INPUT_KEY_RE = /^[A-Z]$/;
 
 /** Port of `_CP_MAX_FORMULA_LENGTH` (`validation.py:92`). */
-export const CP_MAX_FORMULA_LENGTH = 20_000;
+const CP_MAX_FORMULA_LENGTH = 20_000;
 
 /**
  * Port of `_SESSION_MATH` (`validation.py:338`): session-based math
@@ -641,7 +641,7 @@ function isCustomProperty(
  *   `"events[0]"` or `"steps[1]"`).
  * @returns List of validation errors for invalid custom properties.
  */
-export function scanFiltersForCustomProperties(
+function scanFiltersForCustomProperties(
   filters: readonly Filter[],
   basePath: string,
 ): ValidationError[] {

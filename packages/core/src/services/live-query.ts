@@ -70,10 +70,10 @@ import {
 } from "./live-query-transforms.js";
 
 /** Counting methods the multi-event/property endpoints accept. */
-export type CountingType = "general" | "unique" | "average";
+type CountingType = "general" | "unique" | "average";
 
 /** Day/week/month unit of the multi-event/property endpoints. */
-export type DayWeekMonth = "day" | "week" | "month";
+type DayWeekMonth = "day" | "week" | "month";
 
 /** Construction options of {@link LiveQueryService}. */
 export interface LiveQueryServiceOptions {
@@ -976,7 +976,4 @@ export class LiveQueryService {
   }
 }
 
-export {
-  type FlowMode,
-  type SavedReportBookmarkType,
-} from "./live-query-transforms.js";
+export { type FlowMode } from "./live-query-transforms.js";

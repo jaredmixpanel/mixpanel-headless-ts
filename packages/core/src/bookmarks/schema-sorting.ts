@@ -95,7 +95,7 @@ export interface PydanticErrorEntry {
  *
  * Port of the `CodeMapper` alias (`bookmark_schema.py:98-107`).
  */
-export type CodeMapper = (
+type CodeMapper = (
   errType: string,
   loc: ReadonlyArray<string | number>,
 ) => string;
@@ -224,7 +224,7 @@ export function sortingCodeMapper(
  * including the two `ShowClause` tags, which belong to the B3-K1 half
  * of the module but are part of the same frozenset in Python.
  */
-export const DISCRIMINATOR_TAGS: ReadonlySet<string> = new Set([
+const DISCRIMINATOR_TAGS: ReadonlySet<string> = new Set([
   // FlatSortConfig (colSortAttrs[i])
   "FlatLabelSortConfig",
   "FlatValueSortConfig",
@@ -543,7 +543,7 @@ export type FieldType =
     };
 
 /** One member of a plain (non-discriminated) pydantic union. */
-export interface PlainUnionMember {
+interface PlainUnionMember {
   /** Name pydantic appends to `loc` (`"int"`, `"CustomMultiAttribution"`, …). */
   readonly name: string;
   /** The member's declared type. */
@@ -551,7 +551,7 @@ export interface PlainUnionMember {
 }
 
 /** One model field, in class-body declaration order. */
-export interface FieldSpec {
+interface FieldSpec {
   /** Wire key (alias when the model declares one). */
   readonly key: string;
   /** Alternate key accepted because `populate_by_name=True`. */
@@ -943,7 +943,7 @@ export const INSIGHTS_BOOKMARK_SORT_CONFIG: ModelSpec = {
  * @param loc - `loc` prefix for emitted errors (includes the field key).
  * @param out - Error sink, appended in emission order.
  */
-export function validateFieldValue(
+function validateFieldValue(
   value: unknown,
   type: FieldType,
   loc: ReadonlyArray<string | number>,
@@ -1235,7 +1235,7 @@ function literalMessage(quoted: readonly string[]): string {
  * @param loc - `loc` prefix (without the Tag).
  * @param out - Error sink.
  */
-export function validateUnion(
+function validateUnion(
   value: unknown,
   union: UnionSpec,
   loc: ReadonlyArray<string | number>,
@@ -1269,7 +1269,7 @@ export function validateUnion(
  *   was reached through a discriminated union).
  * @param out - Error sink.
  */
-export function validateModel(
+function validateModel(
   value: unknown,
   model: ModelSpec,
   loc: ReadonlyArray<string | number>,
@@ -1370,11 +1370,6 @@ export const SORT_BY_COLUMNS_CONFIG_MODEL: RootModelHandle = modelHandle(
 /** Handle for `SortByValueConfig`. */
 export const SORT_BY_VALUE_CONFIG_MODEL: RootModelHandle =
   modelHandle(SORT_BY_VALUE_CONFIG);
-
-/** Handle for `OldTableSortByValue`. */
-export const OLD_TABLE_SORT_BY_VALUE_MODEL: RootModelHandle = modelHandle(
-  OLD_TABLE_SORT_BY_VALUE,
-);
 
 /**
  * Handle for `InsightsBookmarkSortConfig` — the model the (b′) binder

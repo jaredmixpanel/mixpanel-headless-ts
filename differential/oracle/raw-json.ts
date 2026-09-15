@@ -32,7 +32,7 @@ import {
 } from "@mixpanel-headless/conformance-runner";
 
 /** Error raised for malformed JSON request text, with a character offset. */
-export class RawJsonError extends Error {
+class RawJsonError extends Error {
   /** Zero-based character offset where parsing failed. */
   readonly offset: number;
 

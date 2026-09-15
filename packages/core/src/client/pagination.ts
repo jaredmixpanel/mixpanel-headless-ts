@@ -64,7 +64,7 @@ import { normalizedAbortError } from "./transport.js";
  * {@link PaginateAllOptions.maxPages} (the injectable replacement for
  * Python's `MAX_PAGES` monkeypatch — packet C6 §Layer-3).
  */
-export const MAX_PAGES = 10000;
+const MAX_PAGES = 10000;
 
 /**
  * Maximum number of retries for rate-limited (429) responses per page
@@ -79,7 +79,7 @@ export const MAX_RATE_LIMIT_RETRIES = 3;
  * a `*_SECONDS` name per R2.12 — ms conversion happens only at the
  * sleep seam).
  */
-export const PAGINATION_BACKOFF_BASE_SECONDS = 1.0;
+const PAGINATION_BACKOFF_BASE_SECONDS = 1.0;
 
 /**
  * Maximum backoff delay in SECONDS (`_BACKOFF_MAX`, `pagination.py:44`).

@@ -25,7 +25,7 @@ import { MixpanelHeadlessError } from "../errors.js";
  * Retry-After is honored up to the max; anything larger would park the
  * process for hours.
  */
-export const BACKOFF_BASE_SECONDS = 1.0;
+const BACKOFF_BASE_SECONDS = 1.0;
 
 /** See {@link BACKOFF_BASE_SECONDS}. */
 export const BACKOFF_MAX_SECONDS = 60.0;

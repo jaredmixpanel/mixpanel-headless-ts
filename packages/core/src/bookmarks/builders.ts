@@ -83,7 +83,7 @@ export type GroupByElement =
   string | GroupBy | CohortBreakdown | FrequencyBreakdown;
 
 /** Elements accepted by {@link buildFilterSection}. */
-export type FilterSectionElement = Filter | FrequencyFilter;
+type FilterSectionElement = Filter | FrequencyFilter;
 
 /**
  * Render a value the way a Python `{x!r}` conversion would — display
@@ -526,7 +526,7 @@ export function buildGroupSection(
  * ```
  * @internal Module-private in Python (`_`-prefixed).
  */
-export function buildCohortGroupEntry(
+function buildCohortGroupEntry(
   cb: CohortBreakdown,
   options?: { readonly data_group_id?: number | null },
 ): BookmarkFragment {
@@ -666,7 +666,7 @@ export function buildFilterEntry(f: Filter): BookmarkFragment {
  *   `filterJoinType: "list"`).
  * @internal Module-private in Python (`_`-prefixed).
  */
-export function buildListContainsEntry(f: Filter): BookmarkFragment {
+function buildListContainsEntry(f: Filter): BookmarkFragment {
   const listItemFilters = f._list_item_filters as readonly Filter[];
   const listItemQuantifier = f._list_item_quantifier as "any" | "all";
   const inner: BookmarkFragment[] = [];

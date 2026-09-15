@@ -36,12 +36,12 @@ import {
  * Server-side ceiling on the `/events/names` `limit` parameter
  * (`api_client.py:2348`).
  */
-export const EVENTS_NAMES_MAX_LIMIT = 5000;
+const EVENTS_NAMES_MAX_LIMIT = 5000;
 
 /**
  * Widest `from_date` the server accepts (`api_client.py:2355`).
  */
-export const EVENTS_NAMES_WIDE_FROM_DATE = "2000-01-01";
+const EVENTS_NAMES_WIDE_FROM_DATE = "2000-01-01";
 
 /**
  * The `re.search(r"exceeds\s+(\d+)\s+days", ...)` twin

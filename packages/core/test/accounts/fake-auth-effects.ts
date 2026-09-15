@@ -36,7 +36,7 @@ import { Secret } from "../../src/secret.js";
 import { AccountSummary, Target } from "../../src/types/entities/accounts.js";
 
 /** Mutable state behind a {@link FakeConfig}. */
-export interface FakeConfigState {
+interface FakeConfigState {
   /** Account records keyed by name (insertion order preserved). */
   readonly accounts: Map<string, Account>;
   /** The `[active]` block. */
@@ -51,7 +51,7 @@ export interface FakeConfigState {
 }
 
 /** The fake config: reads + writes + the exposed state. */
-export interface FakeConfig extends ResolverConfigSource, ConfigWrites {
+interface FakeConfig extends ResolverConfigSource, ConfigWrites {
   /** Direct state access for assertions. */
   readonly state: FakeConfigState;
 }
@@ -107,7 +107,7 @@ function toText(value: Secret | string | null | undefined): string | null {
  *
  * @returns The fake, with `state` exposed for assertions.
  */
-export function fakeConfig(): FakeConfig {
+function fakeConfig(): FakeConfig {
   const state: FakeConfigState = {
     accounts: new Map<string, Account>(),
     active: {},
@@ -430,7 +430,7 @@ export function fakeConfig(): FakeConfig {
 }
 
 /** The in-memory token store plus its captured state. */
-export interface FakeTokenStore {
+interface FakeTokenStore {
   /** Tokens written per account name. */
   readonly written: Map<string, OAuthTokens>;
   /** Account dirs removed (rollback calls). */
@@ -444,7 +444,7 @@ export interface FakeTokenStore {
  *
  * @returns The fake plus its capture maps.
  */
-export function fakeTokenStore(): FakeTokenStore {
+function fakeTokenStore(): FakeTokenStore {
   const written = new Map<string, OAuthTokens>();
   const removedDirs: string[] = [];
   return {

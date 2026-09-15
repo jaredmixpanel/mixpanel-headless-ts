@@ -35,13 +35,13 @@ import {
 // ---------------------------------------------------------------------------
 
 /** Arguments of the {@link ResolverSeams.resolveSession} seam. */
-export interface ResolveSessionArgs {
+interface ResolveSessionArgs {
   /** The `[targets.NAME]` cursor to apply (all three axes). */
   readonly target: string;
 }
 
 /** Arguments of the {@link ResolverSeams.resolveProjectAxis} seam. */
-export interface ResolveProjectAxisArgs {
+interface ResolveProjectAxisArgs {
   /** The explicit `project=` kwarg, when supplied. */
   readonly explicit: string | null;
   /** The target's project, when the call came from a target. */
@@ -139,7 +139,7 @@ function unportedSeam(name: string): () => never {
  * const seams = { ...defaultResolverSeams(), getAccount: myLoader };
  * ```
  */
-export function defaultResolverSeams(): ResolverSeams {
+function defaultResolverSeams(): ResolverSeams {
   return {
     resolveSession: unportedSeam("resolveSession"),
     getAccount: unportedSeam("getAccount"),
@@ -291,7 +291,7 @@ export interface BusinessContextScopeOptions {
  * @throws ConfigError - `/me` cannot be fetched.
  * @throws WorkspaceScopeError - `ORGANIZATION_AMBIGUOUS`.
  */
-export async function resolveOrganizationId(
+async function resolveOrganizationId(
   host: BusinessContextHost,
   explicit: number | null,
 ): Promise<number> {
@@ -327,7 +327,7 @@ export async function resolveOrganizationId(
  * @param host - The facade slice.
  * @returns The cached organization ID, or `null` on a cold cache.
  */
-export async function cachedOrganizationId(
+async function cachedOrganizationId(
   host: BusinessContextHost,
 ): Promise<number | null> {
   const service = host.meServiceIfCreated();
@@ -359,7 +359,7 @@ export async function cachedOrganizationId(
  * @returns The string value (empty string is valid).
  * @throws MixpanelHeadlessError - Key absent, or value not a string.
  */
-export function requireStrField(
+function requireStrField(
   raw: Record<string, JsonValue>,
   key: string,
   method: string,

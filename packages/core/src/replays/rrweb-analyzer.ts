@@ -59,21 +59,18 @@ type Dict = Readonly<Record<string, unknown>>;
 // =============================================================================
 
 /** RRWeb event types (`EventType`, `rrweb_analyzer.py:52-59`). */
-export const EventType = {
+const EventType = {
   FULL_SNAPSHOT: 2,
   INCREMENTAL_SNAPSHOT: 3,
   META: 4,
   PLUGIN: 6,
 } as const;
 
-/** The numeric domain of {@link EventType}. */
-export type EventTypeValue = (typeof EventType)[keyof typeof EventType];
-
 /**
  * RRWeb `IncrementalSnapshot.data.source` discriminators we handle
  * (`IncrementalSource`, `rrweb_analyzer.py:61-69`).
  */
-export const IncrementalSource = {
+const IncrementalSource = {
   MUTATION: 0,
   MOUSE_INTERACTION: 2,
   SCROLL: 3,
@@ -81,15 +78,11 @@ export const IncrementalSource = {
   SELECTION: 14,
 } as const;
 
-/** The numeric domain of {@link IncrementalSource}. */
-export type IncrementalSourceValue =
-  (typeof IncrementalSource)[keyof typeof IncrementalSource];
-
 /**
  * `MouseInteraction.data.type` values we emit actions for
  * (`MouseInteractionType`, `rrweb_analyzer.py:71-79`).
  */
-export const MouseInteractionType = {
+const MouseInteractionType = {
   CLICK: 2,
   CONTEXT_MENU: 3,
   DBL_CLICK: 4,
@@ -97,18 +90,11 @@ export const MouseInteractionType = {
   TOUCH_START: 7,
 } as const;
 
-/** The numeric domain of {@link MouseInteractionType}. */
-export type MouseInteractionTypeValue =
-  (typeof MouseInteractionType)[keyof typeof MouseInteractionType];
-
 /** rrweb DOM node types (`NodeType`, `rrweb_analyzer.py:81-86`). */
-export const NodeType = {
+const NodeType = {
   ELEMENT: 2,
   TEXT: 3,
 } as const;
-
-/** The numeric domain of {@link NodeType}. */
-export type NodeTypeValue = (typeof NodeType)[keyof typeof NodeType];
 
 // =============================================================================
 // Public result types
@@ -118,7 +104,7 @@ export type NodeTypeValue = (typeof NodeType)[keyof typeof NodeType];
  * A single page navigation extracted from Meta events (`PageVisit`,
  * `rrweb_analyzer.py:94-105`).
  */
-export interface PageVisit {
+interface PageVisit {
   /** Unix ms timestamp of the Meta event. */
   readonly timestamp: number;
   /** The navigated-to URL. */
@@ -129,7 +115,7 @@ export interface PageVisit {
  * A console-error log entry extracted from the rrweb console plugin
  * (`ConsoleError`, `rrweb_analyzer.py:107-120`).
  */
-export interface ConsoleError {
+interface ConsoleError {
   /** Unix ms timestamp. */
   readonly timestamp: number;
   /** Joined message text. */
@@ -187,7 +173,7 @@ export interface AnalyzerLogger {
  * @returns The subset whose keys start with `data-` and whose values are
  *   non-empty strings. Empty when the node carries no such attribute.
  */
-export function selectorAttrs(
+function selectorAttrs(
   sanitizedAttrs: ReadonlyMap<string, unknown>,
 ): Map<string, string> {
   const out = new Map<string, string>();
@@ -757,7 +743,7 @@ const INTERACTION_TO_ACTION: ReadonlyMap<string, string> = new Map([
  * Applies per-source debouncing (scroll / input / selection at 1s each)
  * and plugin-event filtering for `rrweb/console@*` console errors.
  */
-export class EventAnalyzer {
+class EventAnalyzer {
   /** Scroll debounce window in ms (`SCROLL_DEBOUNCE_MS`). */
   static readonly SCROLL_DEBOUNCE_MS = 1000;
 
@@ -1251,7 +1237,7 @@ export class EventAnalyzer {
  * @param lines - `(timestamp_ms, description)` pairs in timeline order.
  * @returns Newline-joined markdown; `""` for empty input.
  */
-export function collapseTimeline(
+function collapseTimeline(
   lines: ReadonlyArray<readonly [number, string]>,
 ): string {
   const out: string[] = [];

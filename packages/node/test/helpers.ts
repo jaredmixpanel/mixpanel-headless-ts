@@ -33,7 +33,7 @@ export function makeTempDir(cleanups: Array<() => void>): string {
  * @param path - Candidate path about to be used by a test.
  * @throws Error - When the resolved path is inside the real home dir.
  */
-export function assertNotUnderHome(path: string): void {
+function assertNotUnderHome(path: string): void {
   const home = resolve(os.homedir());
   const resolved = resolve(path);
   if (resolved === home || resolved.startsWith(home + sep)) {

@@ -65,7 +65,7 @@ export function safeInt(value: unknown, default_ = 0): number {
 }
 
 /** One node of the {@link buildFlowGraph} adjacency object. */
-export interface FlowGraphNode {
+interface FlowGraphNode {
   /** `"{event}@{step}"` — Python's networkx node key. */
   readonly id: string;
   /** Zero-based step index. */
@@ -81,7 +81,7 @@ export interface FlowGraphNode {
 }
 
 /** One edge of the {@link buildFlowGraph} adjacency object. */
-export interface FlowGraphEdge {
+interface FlowGraphEdge {
   /** Source node id. */
   readonly source: string;
   /** Target node id (`"{event}@{targetStep}"`). */

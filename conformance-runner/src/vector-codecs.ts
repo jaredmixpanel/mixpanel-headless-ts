@@ -1044,5 +1044,3 @@ export const CONTRACT_TAG_CODECS: ReadonlyMap<string, ContractTagCodec> =
     ),
     ...ENTITY_TAG_CODECS,
   ]);
-
-export { OAuthTokens, Secret } from "@mixpanel-headless/core";

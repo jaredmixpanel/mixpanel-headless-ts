@@ -55,7 +55,7 @@ import {
  *   contains a `T`; otherwise unchanged.
  * @internal
  */
-export function normalizeDateKey(dateKey: string): string {
+function normalizeDateKey(dateKey: string): string {
   if (dateKey.length > 19 && dateKey.includes("T")) {
     return dateKey.slice(0, 19);
   }

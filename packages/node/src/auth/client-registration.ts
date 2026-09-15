@@ -94,5 +94,3 @@ export async function ensureClientRegistered(
 
   return clientInfo;
 }
-
-export { DEFAULT_SCOPE } from "@mixpanel-headless/core";

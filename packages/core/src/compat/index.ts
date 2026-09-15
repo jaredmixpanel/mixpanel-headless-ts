@@ -14,27 +14,15 @@ export {
   sortedByCodepoint,
 } from "./codepoint.js";
 export { getCloseMatches } from "./difflib.js";
-export {
-  AttributeError,
-  KeyError,
-  OverflowError,
-  RuntimeError,
-  ValueError,
-} from "./python-builtins.js";
 export { isPythonDict, setOwn } from "./python-dict.js";
 export { pythonFloat } from "./python-float.js";
 export { pythonFloatCoerce } from "./python-float-coerce.js";
 export { pythonFloatStr } from "./python-float-str.js";
-export { pythonInt, pythonIntCoerce } from "./python-int.js";
+export { pythonInt } from "./python-int.js";
 export { pythonJsonDumps } from "./python-json-dumps.js";
 export { pythonJsonDumpsCanonical } from "./python-json-dumps-canonical.js";
 export type { PythonValue } from "./python-str.js";
-export {
-  isPythonValue,
-  pythonRepr,
-  pythonStr,
-  pythonStrOf,
-} from "./python-str.js";
+export { pythonRepr, pythonStr, pythonStrOf } from "./python-str.js";
 export { pythonStrip } from "./python-strip.js";
 export {
   codepointGreater,
@@ -51,6 +39,4 @@ export {
   pythonTypeName,
   requireHashable,
 } from "./python-values.js";
-export type { SplitResult } from "./urllib.js";
-export { urljoin, urlsplit, UrlSplitError, urlunsplit } from "./urllib.js";
 export { zfill } from "./zfill.js";

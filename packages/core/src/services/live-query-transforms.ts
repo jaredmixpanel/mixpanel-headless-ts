@@ -897,7 +897,7 @@ export function transformFunnelResult(
  * @param key - Cohort date key from the API response.
  * @returns The normalized date string.
  */
-export function normalizeCohortDate(key: string): string {
+function normalizeCohortDate(key: string): string {
   return key.includes("T") ? cpSlice(key, 0, 10) : key;
 }
 
@@ -908,7 +908,7 @@ export function normalizeCohortDate(key: string): string {
  * @param data - Cohort data dict (date keys + optional `$average`).
  * @returns The `[cohorts, average]` pair.
  */
-export function extractCohortsAndAverage(
+function extractCohortsAndAverage(
   data: Readonly<Record<string, unknown>>,
 ): [Record<string, Record<string, unknown>>, Record<string, unknown>] {
   let average: Record<string, unknown> = {};
@@ -1558,7 +1558,3 @@ export function transformNumericAverage(
     results: passthrough(results),
   });
 }
-
-/** Re-export so callers can name the count type without a second import. */
-
-export { type CountType } from "../types/literals.js";

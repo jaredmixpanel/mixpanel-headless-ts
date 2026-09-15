@@ -36,7 +36,7 @@ export const TEST_SESSION: Session = {
 };
 
 /** One recorded `exportProfilesPage` call. */
-export interface ExportPageCall {
+interface ExportPageCall {
   /** The zero-based page index. */
   readonly page: number;
   /** The options bag (Python's kwargs). */

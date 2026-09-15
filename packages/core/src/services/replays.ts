@@ -107,7 +107,7 @@ const CDN_TIMEOUT_SECONDS = 30;
  * @param event - A single deserialized CDN-file element.
  * @returns `true` when the event carries the three required keys.
  */
-export function looksLikeRrweb(event: unknown): boolean {
+function looksLikeRrweb(event: unknown): boolean {
   if (!isPythonDict(event)) {
     return false;
   }
@@ -955,7 +955,7 @@ export class ReplaysService {
  * @param series - The `result.series` value (expected `dict`).
  * @returns The replay-level dict, or `null`.
  */
-export function firstMetricNode(series: unknown): Dict | null {
+function firstMetricNode(series: unknown): Dict | null {
   if (!isPythonDict(series)) {
     return null;
   }
@@ -975,7 +975,7 @@ export function firstMetricNode(series: unknown): Dict | null {
  * @returns The `"all"` value for dict leaves; the leaf itself
  *   otherwise.
  */
-export function leafValue(leaf: unknown): unknown {
+function leafValue(leaf: unknown): unknown {
   if (isPythonDict(leaf)) {
     return leaf["all"] ?? null;
   }
@@ -990,7 +990,7 @@ export function leafValue(leaf: unknown): unknown {
  * @param groupBy - Group-by property names in request order.
  * @returns One row per non-rollup leaf. Empty for a non-dict series.
  */
-export function flattenSeries(
+function flattenSeries(
   series: unknown,
   groupBy: readonly string[],
 ): Array<Record<string, unknown>> {
@@ -1059,7 +1059,7 @@ function walkSeries(
  * @param value - Raw cell from the result series.
  * @returns Unix milliseconds, or `0` when uninterpretable.
  */
-export function toUnixMs(value: unknown): number {
+function toUnixMs(value: unknown): number {
   if (value === null || value === undefined) {
     return 0;
   }
@@ -1088,7 +1088,7 @@ export function toUnixMs(value: unknown): number {
  * @param value - Raw cell from the result series.
  * @returns Unix seconds, or `0` when uninterpretable.
  */
-export function toUnixSeconds(value: unknown): number {
+function toUnixSeconds(value: unknown): number {
   const ms = toUnixMs(value);
   // Python `ms // 1000` is FLOOR division; `ms > 0` guards the branch.
   return ms > 0 ? Math.floor(ms / 1000) : 0;

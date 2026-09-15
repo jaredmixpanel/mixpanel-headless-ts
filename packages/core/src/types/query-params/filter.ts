@@ -276,7 +276,7 @@ export type FilterValue =
  * runtime, so `Filter("flag", "equals", True, "boolean")` is legal there;
  * this alias is the typed TS spelling of that call.
  */
-export type FilterValueInput = FilterValue | boolean | readonly boolean[];
+type FilterValueInput = FilterValue | boolean | readonly boolean[];
 
 /** Declared constructor fields of {@link Filter} (Python field order). */
 export interface FilterFields {

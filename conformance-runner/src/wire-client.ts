@@ -310,7 +310,7 @@ export function clientFromSession(context: InvocationContext): MixpanelClient {
  * @throws UnencodableValueError - Non-finite native numbers (D6 rule 5
  *   — mirrors the recorder's `_reject_bad_float`).
  */
-export function coreToVectorJson(value: unknown): JsonValue {
+function coreToVectorJson(value: unknown): JsonValue {
   if (value === null || value === undefined) {
     return null;
   }
@@ -446,7 +446,7 @@ export async function runWire(
  * @param name - The kwarg name.
  * @returns The record bag, or an empty bag when absent/null.
  */
-export function optionalRecord(
+function optionalRecord(
   context: InvocationContext,
   name: string,
 ): Record<string, unknown> | undefined {

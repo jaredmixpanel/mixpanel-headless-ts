@@ -69,7 +69,7 @@ export const RESOURCE_TYPE_MAP: ReadonlyMap<string, string> = new Map([
 ]);
 
 /** Maps string-typed Filter operators to segfilter operators. */
-export const STRING_OPERATOR_MAP: ReadonlyMap<string, string> = new Map([
+const STRING_OPERATOR_MAP: ReadonlyMap<string, string> = new Map([
   ["equals", "=="],
   ["does not equal", "!="],
   ["contains", "in"],
@@ -79,7 +79,7 @@ export const STRING_OPERATOR_MAP: ReadonlyMap<string, string> = new Map([
 ]);
 
 /** Maps number-typed Filter operators to segfilter operators. */
-export const NUMBER_OPERATOR_MAP: ReadonlyMap<string, string> = new Map([
+const NUMBER_OPERATOR_MAP: ReadonlyMap<string, string> = new Map([
   ["is greater than", ">"],
   ["is less than", "<"],
   ["is equal to", "=="],
@@ -95,7 +95,7 @@ export const NUMBER_OPERATOR_MAP: ReadonlyMap<string, string> = new Map([
 ]);
 
 /** Maps datetime-typed Filter operators to segfilter operators. */
-export const DATETIME_OPERATOR_MAP: ReadonlyMap<string, string> = new Map([
+const DATETIME_OPERATOR_MAP: ReadonlyMap<string, string> = new Map([
   ["was on", "=="],
   ["was not on", "!="],
   // Segfilter operators describe the operand's relation to matching
@@ -307,7 +307,7 @@ export function buildNumberFilter(
  * @param operator - The `Filter._operator` value.
  * @returns Dict with only an `operand` key.
  */
-export function buildBooleanFilter(operator: string): SegfilterFragment {
+function buildBooleanFilter(operator: string): SegfilterFragment {
   return { operand: operator };
 }
 

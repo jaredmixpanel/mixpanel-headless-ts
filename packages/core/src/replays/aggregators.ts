@@ -87,16 +87,6 @@ export interface TopClickRow extends Row {
 }
 
 /**
- * Column contract of the {@link topClicks} frame
- * (`pd.DataFrame(columns=["target_desc", "count"])`).
- *
- * @returns The column list.
- */
-export function topClicksRowColumns(): readonly string[] {
-  return ["target_desc", "count"];
-}
-
-/**
  * Top-N click targets across the bundle (`top_clicks`,
  * `aggregators.py:52-77`).
  *
@@ -148,15 +138,6 @@ export interface RageClickRow extends Row {
   target_desc: string;
   /** How many clicks the burst contains. */
   count: number;
-}
-
-/**
- * Column contract of the {@link rageClicks} frame.
- *
- * @returns The column list.
- */
-export function rageClicksRowColumns(): readonly string[] {
-  return ["replay_id", "t_start", "target_desc", "count"];
 }
 
 /**
@@ -220,15 +201,6 @@ export interface LongPauseRow extends Row {
   t_start: number;
   /** The pause length in seconds. */
   duration_s: number;
-}
-
-/**
- * Column contract of the {@link longPauses} frame.
- *
- * @returns The column list.
- */
-export function longPausesRowColumns(): readonly string[] {
-  return ["replay_id", "t_start", "duration_s"];
 }
 
 /**

@@ -42,7 +42,7 @@ import type {
 } from "../types/entities/model-base.js";
 
 /** One pydantic-v2-shaped validation error (`errors(include_url=False)`). */
-export interface PydanticStyleError {
+interface PydanticStyleError {
   /** The pydantic error type tag (e.g. `"missing"`, `"int_parsing"`). */
   readonly type: string;
   /** Location tuple — the field path from the model root. */

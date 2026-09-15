@@ -106,7 +106,7 @@ import {
 } from "./wire-client.js";
 
 /** The ONE well-known `context.state` key for the memoized facade. */
-export const WORKSPACE_STATE_KEY = "workspace";
+const WORKSPACE_STATE_KEY = "workspace";
 
 /**
  * The synthetic session for builder-kind facade replays — the exact

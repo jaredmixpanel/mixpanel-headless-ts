@@ -89,7 +89,7 @@ export interface LoginUnifiedOptions {
  * @param tokenEnv - When set, forces `oauth_token`.
  * @returns The detected auth type.
  */
-export function detectLoginType(
+function detectLoginType(
   effects: AuthEffects,
   accountType: AccountType | null,
   tokenEnv: string | null,
@@ -132,7 +132,7 @@ export function detectLoginType(
  * @throws ConfigError - Stale `MP_PROJECT_ID`, or multi-project with
  *   no picker (E-8).
  */
-export function resolveProjectForLogin(
+function resolveProjectForLogin(
   effects: AuthEffects,
   me: MeResponse,
   explicitProject: string | null,
@@ -233,7 +233,7 @@ export function resolveProjectForLogin(
  * @returns A new summary carrying `user_email` / `project_id` /
  *   `project_name`.
  */
-export function summaryWithMe(
+function summaryWithMe(
   summary: AccountSummary,
   me: MeResponse,
   projectId: string | null,

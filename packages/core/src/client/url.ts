@@ -109,13 +109,15 @@ export type EndpointOverridesSource =
  * (Python `_OVERRIDE_PATH_PREFIXES`) — the prefixes a headless Mixpanel
  * pod's nginx routes on. Insertion order matches the live tables.
  */
-export const OVERRIDE_PATH_PREFIXES: ReadonlyMap<EndpointKind, string> =
-  new Map<EndpointKind, string>([
-    ["query", "/api/query"],
-    ["export", "/api/2.0"],
-    ["engage", "/api/query/engage"],
-    ["app", "/api/app"],
-  ]);
+const OVERRIDE_PATH_PREFIXES: ReadonlyMap<EndpointKind, string> = new Map<
+  EndpointKind,
+  string
+>([
+  ["query", "/api/query"],
+  ["export", "/api/2.0"],
+  ["engage", "/api/query/engage"],
+  ["app", "/api/app"],
+]);
 
 /**
  * Families whose requests are scoped by the pinned `workspace_id`

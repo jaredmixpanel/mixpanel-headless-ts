@@ -307,7 +307,7 @@ const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;
  * @returns Whether it represents a real calendar date/datetime.
  * @internal
  */
-export function isValidIso(s: string): boolean {
+function isValidIso(s: string): boolean {
   const match = DATE_PATTERN.exec(s);
   if (match === null) {
     return false;

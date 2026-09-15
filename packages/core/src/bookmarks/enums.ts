@@ -486,7 +486,7 @@ export const VALID_ANALYSIS_TYPES: ReadonlySet<string> = new Set([
 // =============================================================================
 
 /** Valid date range types for time section clauses. */
-export const VALID_DATE_RANGE_TYPES: ReadonlySet<string> = new Set([
+const VALID_DATE_RANGE_TYPES: ReadonlySet<string> = new Set([
   "in the last",
   "between",
   "since",
@@ -617,16 +617,13 @@ export const VALID_RETENTION_UNBOUNDED_MODES: ReadonlySet<string> = new Set([
 ]);
 
 /** Valid segment method values for `measurement.segmentMethod`. */
-export const VALID_SEGMENT_METHODS: ReadonlySet<string> = new Set([
-  "all",
-  "first",
-]);
+const VALID_SEGMENT_METHODS: ReadonlySet<string> = new Set(["all", "first"]);
 
 /**
  * Valid time comparison type values for
  * `displayOptions.timeComparison`.
  */
-export const VALID_TIME_COMPARISON_TYPES: ReadonlySet<string> = new Set([
+const VALID_TIME_COMPARISON_TYPES: ReadonlySet<string> = new Set([
   "relative",
   "absolute-start",
   "absolute-end",
@@ -635,7 +632,7 @@ export const VALID_TIME_COMPARISON_TYPES: ReadonlySet<string> = new Set([
 /**
  * Valid time comparison unit values for relative time comparisons.
  */
-export const VALID_TIME_COMPARISON_UNITS: ReadonlySet<string> = new Set([
+const VALID_TIME_COMPARISON_UNITS: ReadonlySet<string> = new Set([
   "day",
   "week",
   "month",
@@ -646,7 +643,7 @@ export const VALID_TIME_COMPARISON_UNITS: ReadonlySet<string> = new Set([
 /**
  * Valid cohort aggregation operators for behavioral cohort conditions.
  */
-export const VALID_COHORT_AGGREGATION_OPERATORS: ReadonlySet<string> = new Set([
+const VALID_COHORT_AGGREGATION_OPERATORS: ReadonlySet<string> = new Set([
   "total",
   "unique",
   "average",
