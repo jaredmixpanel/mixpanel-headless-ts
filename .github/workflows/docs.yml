@@ -12,12 +12,12 @@
 # SHA and the trailing `# vX.Y.Z` comment together), least-privilege token per
 # job, and no secrets — the build never talks to Mixpanel.
 #
-# Deployment needs GitHub Pages enabled on the repository (Settings → Pages →
-# Source "GitHub Actions"); on a private repository that requires a paid plan.
-# Until it is enabled the `build` job still runs on every push and PR and the
-# site is downloadable as an artifact (the Pages upload is a plain artifact
-# upload and succeeds), while `deploy` fails at actions/deploy-pages. There
-# is no configure-pages step: the base path is derived from the repository
+# Deployment relies on GitHub Pages being enabled on the repository with
+# source "GitHub Actions" (Settings → Pages). Should it ever be disabled, the
+# `build` job still runs on every push and PR and the site is downloadable as
+# an artifact (the Pages upload is a plain artifact upload and succeeds),
+# while `deploy` fails at actions/deploy-pages. There is no configure-pages
+# step: the base path is derived from the repository
 # name below, and that action would need `pages` permission and an enabled
 # site just to read metadata nothing here uses.
 name: docs

@@ -341,10 +341,10 @@ Commands (all root npm scripts; `scripts/README.md` lists them too):
   site (24 pages, ~890 twoslash blocks): floating-vue emits a Vue component
   per hover, which needed 6 GB of V8 heap (8.1 GB RSS) for half as many
   blocks and fails under Node's default ~4 GB; the static renderer builds
-  the whole site in the default heap at 3.5 GB RSS in 42 s. Standard GitHub
-  runners for a private repository have 8 GB, so the static renderer is the
-  one that fits; floating-vue (hover UI with smarter placement) is the
-  alternative once the repository is public and 16 GB runners apply. The
+  the whole site in the default heap at 3.5 GB RSS in 42 s. The static
+  renderer was chosen while the repository was private (8 GB runners); the
+  public repository's 16 GB runners would also fit floating-vue (hover UI
+  with smarter placement), which remains the alternative. The
   static popups get `position: fixed` in `mixpanel.css` so the code block's
   horizontal scroll cannot clip them. Twoslash results are cached under
   `docs/.vitepress/cache/twoslash/` (keyed by snippet text, so wipe it after
@@ -389,9 +389,10 @@ are deliberately partial stay plain ``ts````. Never put real
 artifact on pull requests) and deploys to GitHub Pages from `main`, then
 checks every URL in the deployed `llms.txt`. `DOCS_BASE` is derived from the
 repository name there (`/mixpanel-headless-ts/`); a custom domain later means
-dropping the variable, not editing the config. Deployment needs Pages enabled
-with source "GitHub Actions" — on a private repository that requires a paid
-plan; until then the build still runs and the deploy job fails.
+dropping the variable, not editing the config. Pages is enabled with source
+"GitHub Actions"; the site is at https://jaredmixpanel.github.io/mixpanel-headless-ts/.
+If Pages were ever disabled, the build would still run and only the deploy
+job would fail.
 
 ## Commits and pull requests
 
