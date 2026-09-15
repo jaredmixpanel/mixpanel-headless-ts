@@ -126,8 +126,8 @@ describe("UserQueryResult construction (TestUserQueryResultConstruction)", () =>
   });
 
   it("test_construct_with_dict_aggregate_data", () => {
-    const seg_data = { cohort_123: 42, cohort_456: 78 };
-    const r = makeResult({ mode: "aggregate", aggregate_data: seg_data });
+    const segData = { cohort_123: 42, cohort_456: 78 };
+    const r = makeResult({ mode: "aggregate", aggregate_data: segData });
     expect(typeof r.aggregate_data).toBe("object");
     expect((r.aggregate_data as Record<string, unknown>)["cohort_123"]).toBe(
       42,
@@ -173,9 +173,9 @@ describe("UserQueryResult.df profiles mode (TestUserQueryResultProfilesDf)", () 
       profiles: sampleProfiles(),
       total: 2,
     }).rowColumns();
-    const property_cols = cols.slice(2);
-    expect(property_cols).toStrictEqual(
-      [...property_cols].sort(compareCodeUnits),
+    const propertyCols = cols.slice(2);
+    expect(propertyCols).toStrictEqual(
+      [...propertyCols].sort(compareCodeUnits),
     );
   });
 
@@ -368,8 +368,8 @@ describe("UserQueryResult.df segmented (TestUserQueryResultSegmentedAggregateDf)
     expect(new Set(rows.map((row) => row["segment"]))).toStrictEqual(
       new Set(["cohort_123", "cohort_456"]),
     );
-    const row_123 = rows.find((row) => row["segment"] === "cohort_123");
-    expect(row_123?.["value"]).toBe(42);
+    const row123 = rows.find((row) => row["segment"] === "cohort_123");
+    expect(row123?.["value"]).toBe(42);
   });
 
   it("test_segmented_single_segment", () => {
@@ -632,9 +632,9 @@ describe("UserQueryResult.to_dict (TestUserQueryResultToDict)", () => {
       params: { where: "plan == premium" },
       meta: { session_id: "abc" },
     }).toJSON();
-    const json_str = JSON.stringify(d);
-    expect(json_str).toContain("user_solo");
-    expect(json_str).toContain("plan == premium");
+    const jsonStr = JSON.stringify(d);
+    expect(jsonStr).toContain("user_solo");
+    expect(jsonStr).toContain("plan == premium");
   });
 
   it("test_to_dict_aggregate_json_serializable", () => {

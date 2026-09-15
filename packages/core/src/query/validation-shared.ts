@@ -18,7 +18,7 @@
  *   non-finite JS numbers or as the conformance rig's PyFloat carrier
  *   duck-shape `{ spelling: string }` (precedent:
  *   `conformance-runner/src/vector-codecs.ts` SignedReplay decode); {@link isPythonFloat}
- *   and {@link _isFinite} classify both spellings.
+ *   and {@link isFiniteNumber} classify both spellings.
  * - §9 (R11.6): `len(str)` bounds count codepoints via `cpLength`.
  * - §6: `_suggest` is a faithful `difflib.get_close_matches` port —
  *   SequenceMatcher `ratio()` with the `real_quick_ratio`/`quick_ratio`
@@ -63,16 +63,16 @@ import {
 // =============================================================================
 
 /** Port of `_CP_INPUT_KEY_RE` (`validation.py:91`) — ASCII-only class. */
-const _CP_INPUT_KEY_RE = /^[A-Z]$/;
+const CP_INPUT_KEY_RE = /^[A-Z]$/;
 
 /** Port of `_CP_MAX_FORMULA_LENGTH` (`validation.py:92`). */
-export const _CP_MAX_FORMULA_LENGTH = 20_000;
+export const CP_MAX_FORMULA_LENGTH = 20_000;
 
 /**
  * Port of `_SESSION_MATH` (`validation.py:338`): session-based math
  * types requiring `conversion_window_unit='session'`.
  */
-export const _SESSION_MATH: ReadonlySet<string> = new Set([
+export const SESSION_MATH: ReadonlySet<string> = new Set([
   "conversion_rate_session",
 ]);
 
@@ -80,7 +80,7 @@ export const _SESSION_MATH: ReadonlySet<string> = new Set([
  * Port of `_FORMULA_POSITION_RE` (`validation.py:342`) — ASCII-only
  * class, safe as a JS regex.
  */
-export const _FORMULA_POSITION_RE: RegExp = /[A-Z]/g;
+export const FORMULA_POSITION_RE: RegExp = /[A-Z]/g;
 
 /**
  * Codepoint test for the `_CONTROL_CHAR_RE` class (`validation.py:343`,
@@ -109,15 +109,15 @@ function isControlCodepoint(cp: number): boolean {
  * the Python `\s` class: U+200B ZWSP, U+200C ZWNJ, U+200D ZWJ,
  * U+FEFF BOM, U+00AD SOFT HYPHEN, U+2060 WORD JOINER.
  */
-const _INVISIBLE_EXTRAS: ReadonlySet<number> = new Set([
+const INVISIBLE_EXTRAS: ReadonlySet<number> = new Set([
   0x200b, 0x200c, 0x200d, 0xfeff, 0x00ad, 0x2060,
 ]);
 
 /** Port of `_MAX_LAST_DAYS` (`validation.py:364`) — 10 years. */
-export const _MAX_LAST_DAYS = 3650;
+export const MAX_LAST_DAYS = 3650;
 
 /** Port of `_MAX_ROLLING` (`validation.py:365`) — rolling window cap. */
-export const _MAX_ROLLING = 365;
+export const MAX_ROLLING = 365;
 
 /**
  * Port of `_MAX_FILTER_VALUES` (`validation.py:366`) — server rejects
@@ -125,13 +125,13 @@ export const _MAX_ROLLING = 365;
  * validators (B20B/B21); declared here with the other module
  * constants exactly as in the Python source.
  */
-export const _MAX_FILTER_VALUES = 1000;
+export const MAX_FILTER_VALUES = 1000;
 
 /**
  * Port of `_VALID_RETENTION_MATH_PUBLIC` (`validation.py:1162-1164`):
  * public-facing retention math types (Layer 1).
  */
-export const _VALID_RETENTION_MATH_PUBLIC: ReadonlySet<string> = new Set([
+export const VALID_RETENTION_MATH_PUBLIC: ReadonlySet<string> = new Set([
   "retention_rate",
   "unique",
   "total",
@@ -142,27 +142,27 @@ export const _VALID_RETENTION_MATH_PUBLIC: ReadonlySet<string> = new Set([
  * Port of `_VALID_RETENTION_MODES` (`validation.py:1172`): valid
  * display modes for retention queries.
  */
-export const _VALID_RETENTION_MODES: ReadonlySet<string> = new Set([
+export const VALID_RETENTION_MODES: ReadonlySet<string> = new Set([
   "curve",
   "trends",
   "table",
 ]);
 
 /** Port of `_MAX_RETENTION_BUCKETS` (`validation.py:1175`). */
-export const _MAX_RETENTION_BUCKETS = 730;
+export const MAX_RETENTION_BUCKETS = 730;
 
 /** Port of `_MAX_FLOW_STEPS_DIRECTION` (`validation.py:1484`). */
-export const _MAX_FLOW_STEPS_DIRECTION = 5;
+export const MAX_FLOW_STEPS_DIRECTION = 5;
 
 /** Port of `_MAX_FLOW_CARDINALITY` (`validation.py:1487`). */
-export const _MAX_FLOW_CARDINALITY = 50;
+export const MAX_FLOW_CARDINALITY = 50;
 
 /**
  * Port of `_FLOW_MAX_WINDOW` (`validation.py:1490-1494`): maximum
  * conversion window per unit (366-day equivalent for a leap year).
  * ReadonlyMap per R4.8.
  */
-export const _FLOW_MAX_WINDOW: ReadonlyMap<string, number> = new Map([
+export const FLOW_MAX_WINDOW: ReadonlyMap<string, number> = new Map([
   ["month", 12],
   ["week", 52],
   ["day", 366],
@@ -489,7 +489,7 @@ export function containsControlChars(s: string): boolean {
 export function isInvisibleOnly(s: string): boolean {
   for (const ch of s) {
     const cp = ch.codePointAt(0) as number;
-    if (!PYTHON_STR_WHITESPACE.has(cp) && !_INVISIBLE_EXTRAS.has(cp)) {
+    if (!PYTHON_STR_WHITESPACE.has(cp) && !INVISIBLE_EXTRAS.has(cp)) {
       return false;
     }
   }
@@ -544,7 +544,7 @@ export function matchesDateRe(s: string): boolean {
 }
 
 /** Days per month in a non-leap year (calendar table, watchlist #5). */
-const _DAYS_IN_MONTH: readonly number[] = [
+const DAYS_IN_MONTH: readonly number[] = [
   31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
 ];
 
@@ -568,7 +568,7 @@ const _DAYS_IN_MONTH: readonly number[] = [
  * @param dateStr - Date string (regex-gated by the caller).
  * @returns True if the date is a valid calendar date.
  */
-export function _isValidDate(dateStr: string): boolean {
+export function isValidDate(dateStr: string): boolean {
   if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(dateStr)) {
     return false;
   }
@@ -583,7 +583,7 @@ export function _isValidDate(dateStr: string): boolean {
   }
   const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
   const maxDay =
-    month === 2 && isLeap ? 29 : (_DAYS_IN_MONTH[month - 1] as number);
+    month === 2 && isLeap ? 29 : (DAYS_IN_MONTH[month - 1] as number);
   return day >= 1 && day <= maxDay;
 }
 
@@ -637,7 +637,7 @@ export function codepointGreater(a: string, b: string): boolean {
  * @param value - Numeric value to check (loose input domain, R4.9).
  * @returns True if finite or not a float at all.
  */
-export function _isFinite(value: unknown): boolean {
+export function isFiniteNumber(value: unknown): boolean {
   if (value === null || value === undefined) {
     return true;
   }
@@ -1001,7 +1001,7 @@ export function getCloseMatches(
  * @param cutoff - Minimum similarity ratio (default 0.5).
  * @returns Frozen array of closest matches, or null if none.
  */
-export function _suggest(
+export function suggest(
   value: string,
   valid: ReadonlySet<string>,
   n = 3,
@@ -1031,7 +1031,7 @@ export function _suggest(
  * @param severity - Error severity level (default `"error"`).
  * @returns ValidationError with fuzzy-matched suggestions.
  */
-export function _enumError(
+export function enumError(
   path: string,
   field: string,
   value: string,
@@ -1039,7 +1039,7 @@ export function _enumError(
   code: string,
   severity: "error" | "warning" = "error",
 ): ValidationError {
-  const suggestion = _suggest(value, valid);
+  const suggestion = suggest(value, valid);
   let msg: string;
   if (suggestion !== null && suggestion.length > 0) {
     msg = `Invalid ${field} '${value}'`;
@@ -1065,7 +1065,7 @@ export function _enumError(
  *   `null`/absent skips validation.
  * @returns List with one `ValidationError` if invalid, empty otherwise.
  */
-export function _validateDataGroupId(dataGroupId: unknown): ValidationError[] {
+export function validateDataGroupId(dataGroupId: unknown): ValidationError[] {
   if (dataGroupId !== null && dataGroupId !== undefined) {
     if (typeof dataGroupId === "boolean" || !isPythonInt(dataGroupId)) {
       return [
@@ -1103,7 +1103,7 @@ export function _validateDataGroupId(dataGroupId: unknown): ValidationError[] {
  * @param path - JSONPath-like location for error reporting.
  * @returns List of validation errors; empty means valid.
  */
-export function _validateCustomProperty(
+export function validateCustomProperty(
   prop: CustomPropertyRef | InlineCustomProperty,
   path: string,
 ): ValidationError[] {
@@ -1145,7 +1145,7 @@ export function _validateCustomProperty(
 
     // CP4: input keys must be single uppercase letters A-Z
     for (const key of Object.keys(prop.inputs)) {
-      if (!_CP_INPUT_KEY_RE.test(key)) {
+      if (!CP_INPUT_KEY_RE.test(key)) {
         errors.push(
           new ValidationError(
             path,
@@ -1158,7 +1158,7 @@ export function _validateCustomProperty(
     }
 
     // CP5: formula must not exceed max length
-    if (cpLength(prop.formula) > _CP_MAX_FORMULA_LENGTH) {
+    if (cpLength(prop.formula) > CP_MAX_FORMULA_LENGTH) {
       errors.push(
         new ValidationError(
           path,
@@ -1198,7 +1198,7 @@ export function _validateCustomProperty(
  *   `"events[0]"` or `"steps[1]"`).
  * @returns List of validation errors for invalid custom properties.
  */
-export function _scanFiltersForCustomProperties(
+export function scanFiltersForCustomProperties(
   filters: readonly Filter[],
   basePath: string,
 ): ValidationError[] {
@@ -1210,14 +1210,14 @@ export function _scanFiltersForCustomProperties(
       f._property instanceof InlineCustomProperty
     ) {
       const fpath = `${basePath}.filters[${String(i)}]`;
-      errors.push(..._validateCustomProperty(f._property, fpath));
+      errors.push(...validateCustomProperty(f._property, fpath));
     }
   }
   return errors;
 }
 
 /**
- * Options bag for {@link _scanCustomProperties} — mirrors the all-kwonly,
+ * Options bag for {@link scanCustomProperties} — mirrors the all-kwonly,
  * all-default-`None` Python signature (R3.9: absent and `null` are
  * equivalent).
  */
@@ -1242,12 +1242,12 @@ export interface ScanCustomPropertiesOptions {
  * Port of `_scan_custom_properties` (`validation.py:218-335`):
  * collects `CustomPropertyRef`/`InlineCustomProperty` values from
  * group_by, where, events, funnel/flow steps and retention events,
- * and runs {@link _validateCustomProperty} on each, in source order.
+ * and runs {@link validateCustomProperty} on each, in source order.
  *
  * @param options - The scan positions (all optional).
  * @returns List of validation errors; empty means all valid.
  */
-export function _scanCustomProperties(
+export function scanCustomProperties(
   options: ScanCustomPropertiesOptions,
 ): ValidationError[] {
   const {
@@ -1273,7 +1273,7 @@ export function _scanCustomProperties(
           g.property instanceof InlineCustomProperty)
       ) {
         const gpath = groups.length > 1 ? `group_by[${String(i)}]` : "group_by";
-        errors.push(..._validateCustomProperty(g.property, gpath));
+        errors.push(...validateCustomProperty(g.property, gpath));
       }
     }
   }
@@ -1292,7 +1292,7 @@ export function _scanCustomProperties(
               ef._property instanceof InlineCustomProperty
             ) {
               const fpath = `where[${String(i)}].event_filters[${String(fi)}]`;
-              errors.push(..._validateCustomProperty(ef._property, fpath));
+              errors.push(...validateCustomProperty(ef._property, fpath));
             }
           }
         }
@@ -1304,7 +1304,7 @@ export function _scanCustomProperties(
           f._property instanceof InlineCustomProperty)
       ) {
         const fpath = filters.length > 1 ? `where[${String(i)}]` : "where";
-        errors.push(..._validateCustomProperty(f._property, fpath));
+        errors.push(...validateCustomProperty(f._property, fpath));
       }
     }
   }
@@ -1321,12 +1321,12 @@ export function _scanCustomProperties(
         item.property instanceof InlineCustomProperty
       ) {
         errors.push(
-          ..._validateCustomProperty(item.property, `events[${String(idx)}]`),
+          ...validateCustomProperty(item.property, `events[${String(idx)}]`),
         );
       }
       if (item.filters !== null && item.filters.length > 0) {
         errors.push(
-          ..._scanFiltersForCustomProperties(
+          ...scanFiltersForCustomProperties(
             item.filters,
             `events[${String(idx)}]`,
           ),
@@ -1344,7 +1344,7 @@ export function _scanCustomProperties(
         step.filters.length > 0
       ) {
         errors.push(
-          ..._scanFiltersForCustomProperties(
+          ...scanFiltersForCustomProperties(
             step.filters,
             `steps[${String(idx)}]`,
           ),
@@ -1355,11 +1355,11 @@ export function _scanCustomProperties(
 
   // Scan flow steps (FlowStep.filters)
   if (flow_steps !== null) {
-    for (const [idx, flow_step] of flow_steps.entries()) {
-      const fstep = flow_step;
+    for (const [idx, flowStep] of flow_steps.entries()) {
+      const fstep = flowStep;
       if (fstep.filters !== null && fstep.filters.length > 0) {
         errors.push(
-          ..._scanFiltersForCustomProperties(
+          ...scanFiltersForCustomProperties(
             fstep.filters,
             `steps[${String(idx)}]`,
           ),
@@ -1371,11 +1371,11 @@ export function _scanCustomProperties(
   // Scan retention events (RetentionEvent.filters)
   // retention_events is always [born_event, return_event]
   if (retention_events !== null) {
-    for (const [idx, retention_event] of retention_events.entries()) {
-      const rev = retention_event;
+    for (const [idx, retentionEvent] of retention_events.entries()) {
+      const rev = retentionEvent;
       if (rev.filters !== null && rev.filters.length > 0) {
         const label = idx === 0 ? "born_event" : "return_event";
-        errors.push(..._scanFiltersForCustomProperties(rev.filters, label));
+        errors.push(...scanFiltersForCustomProperties(rev.filters, label));
       }
     }
   }

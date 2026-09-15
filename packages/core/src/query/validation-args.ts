@@ -23,12 +23,12 @@
  */
 
 import {
-  _MAX_FUNNEL_STEPS,
-  _MAX_HOLDING_CONSTANT,
   MATH_NO_PER_USER,
   MATH_PROPERTY_OPTIONAL,
   MATH_REQUIRING_PROPERTY,
   MAX_CONVERSION_WINDOW,
+  MAX_FUNNEL_STEPS,
+  MAX_HOLDING_CONSTANT,
   VALID_CONVERSION_WINDOW_UNITS,
   VALID_FLOWS_CONVERSION_WINDOW_UNITS,
   VALID_FLOWS_COUNT_TYPES,
@@ -52,32 +52,32 @@ import {
   Metric,
 } from "../types/index.js";
 import {
-  _enumError,
-  _FLOW_MAX_WINDOW,
-  _FORMULA_POSITION_RE,
-  _isFinite,
-  _isValidDate,
-  _MAX_FLOW_CARDINALITY,
-  _MAX_FLOW_STEPS_DIRECTION,
-  _MAX_LAST_DAYS,
-  _MAX_RETENTION_BUCKETS,
-  _MAX_ROLLING,
-  _scanCustomProperties,
-  _SESSION_MATH,
-  _suggest,
-  _VALID_RETENTION_MATH_PUBLIC,
-  _VALID_RETENTION_MODES,
-  _validateDataGroupId,
   codepointGreater,
   containsControlChars,
+  enumError,
+  FLOW_MAX_WINDOW,
+  FORMULA_POSITION_RE,
+  isFiniteNumber,
   isInvisibleOnly,
   isPythonFloat,
   isPythonInt,
+  isValidDate,
   matchesDateRe,
+  MAX_FLOW_CARDINALITY,
+  MAX_FLOW_STEPS_DIRECTION,
+  MAX_LAST_DAYS,
+  MAX_RETENTION_BUCKETS,
+  MAX_ROLLING,
   pythonListRepr,
   pythonNumberStr,
   pythonStrLoose,
   pythonTypeName,
+  scanCustomProperties,
+  SESSION_MATH,
+  suggest,
+  VALID_RETENTION_MATH_PUBLIC,
+  VALID_RETENTION_MODES,
+  validateDataGroupId,
 } from "./validation-shared.js";
 
 // =============================================================================
@@ -141,7 +141,7 @@ export function validateTimeArgs(
           "V8_DATE_FORMAT",
         ),
       );
-    } else if (!_isValidDate(from_date)) {
+    } else if (!isValidDate(from_date)) {
       errors.push(
         new ValidationError(
           "from_date",
@@ -160,7 +160,7 @@ export function validateTimeArgs(
           "V8_DATE_FORMAT",
         ),
       );
-    } else if (!_isValidDate(to_date)) {
+    } else if (!isValidDate(to_date)) {
       errors.push(
         new ValidationError(
           "to_date",
@@ -215,12 +215,12 @@ export function validateTimeArgs(
   }
 
   // V20: last must not be absurdly large
-  if (last > _MAX_LAST_DAYS) {
+  if (last > MAX_LAST_DAYS) {
     errors.push(
       new ValidationError(
         "last",
         `last=${pythonNumberStr(last)} exceeds maximum of ` +
-          `${String(_MAX_LAST_DAYS)} days (~10 years)`,
+          `${String(MAX_LAST_DAYS)} days (~10 years)`,
         "V20_LAST_TOO_LARGE",
       ),
     );
@@ -291,7 +291,7 @@ export function validateGroupByArgs(
         ["bucket_max", g.bucket_max],
       ];
       for (const [fname, fval] of bucketFields) {
-        if (!_isFinite(fval)) {
+        if (!isFiniteNumber(fval)) {
           errors.push(
             new ValidationError(
               gpath,
@@ -443,7 +443,7 @@ export function validateFunnelArgs(
     data_group_id = null,
   } = options;
   // DG1: data_group_id must be positive if provided
-  const errors: ValidationError[] = [..._validateDataGroupId(data_group_id)];
+  const errors: ValidationError[] = [...validateDataGroupId(data_group_id)];
 
   // F1: At least 2 steps required
   if (steps.length < 2) {
@@ -457,11 +457,11 @@ export function validateFunnelArgs(
   }
 
   // F1b: Maximum 100 steps
-  if (steps.length > _MAX_FUNNEL_STEPS) {
+  if (steps.length > MAX_FUNNEL_STEPS) {
     errors.push(
       new ValidationError(
         "steps",
-        `Maximum ${String(_MAX_FUNNEL_STEPS)} steps allowed ` +
+        `Maximum ${String(MAX_FUNNEL_STEPS)} steps allowed ` +
           `(got ${String(steps.length)})`,
         "F1_MAX_STEPS",
       ),
@@ -549,7 +549,7 @@ export function validateFunnelArgs(
   // F7: Conversion window unit validation
   if (!VALID_CONVERSION_WINDOW_UNITS.has(conversion_window_unit)) {
     errors.push(
-      _enumError(
+      enumError(
         "conversion_window_unit",
         "conversion_window_unit",
         conversion_window_unit,
@@ -576,7 +576,7 @@ export function validateFunnelArgs(
     }
 
     // F9: Session math requires session window
-    if (_SESSION_MATH.has(math) && conversion_window_unit !== "session") {
+    if (SESSION_MATH.has(math) && conversion_window_unit !== "session") {
       errors.push(
         new ValidationError(
           "math",
@@ -587,7 +587,7 @@ export function validateFunnelArgs(
     }
     if (
       conversion_window_unit === "session" &&
-      !_SESSION_MATH.has(math) &&
+      !SESSION_MATH.has(math) &&
       window !== 1
     ) {
       errors.push(
@@ -719,12 +719,12 @@ export function validateFunnelArgs(
 
   if (
     holding_constant !== null &&
-    holding_constant.length > _MAX_HOLDING_CONSTANT
+    holding_constant.length > MAX_HOLDING_CONSTANT
   ) {
     errors.push(
       new ValidationError(
         "holding_constant",
-        `Maximum ${String(_MAX_HOLDING_CONSTANT)} holding_constant ` +
+        `Maximum ${String(MAX_HOLDING_CONSTANT)} holding_constant ` +
           `properties allowed (got ${String(holding_constant.length)})`,
         "F8_MAX_HOLDING_CONSTANT",
       ),
@@ -737,12 +737,12 @@ export function validateFunnelArgs(
   errors.push(
     ...validateTimeArgs({ from_date, to_date, last }),
     ...validateGroupByArgs({ group_by }),
-    ..._scanCustomProperties({ group_by, funnel_steps: steps }),
+    ...scanCustomProperties({ group_by, funnel_steps: steps }),
   );
 
   // F12: reentry_mode validation
   if (reentry_mode !== null && !VALID_FUNNEL_REENTRY_MODES.has(reentry_mode)) {
-    const suggestion = _suggest(reentry_mode, VALID_FUNNEL_REENTRY_MODES);
+    const suggestion = suggest(reentry_mode, VALID_FUNNEL_REENTRY_MODES);
     errors.push(
       new ValidationError(
         "reentry_mode",
@@ -834,7 +834,7 @@ export function validateRetentionArgs(
     data_group_id = null,
   } = options;
   // DG1: data_group_id must be positive if provided
-  const errors: ValidationError[] = [..._validateDataGroupId(data_group_id)];
+  const errors: ValidationError[] = [...validateDataGroupId(data_group_id)];
 
   // R1: born_event must be non-empty string
   if (pythonStrip(born_event) === "") {
@@ -933,12 +933,12 @@ export function validateRetentionArgs(
     }
 
     // R5c: Maximum bucket count
-    if (bucket_sizes.length > _MAX_RETENTION_BUCKETS) {
+    if (bucket_sizes.length > MAX_RETENTION_BUCKETS) {
       errors.push(
         new ValidationError(
           "bucket_sizes",
           `bucket_sizes has ${String(bucket_sizes.length)} entries, ` +
-            `maximum is ${String(_MAX_RETENTION_BUCKETS)}`,
+            `maximum is ${String(MAX_RETENTION_BUCKETS)}`,
           "R5_BUCKET_SIZES_TOO_MANY",
         ),
       );
@@ -966,7 +966,7 @@ export function validateRetentionArgs(
   // R7: retention_unit validation
   if (!VALID_RETENTION_UNITS.has(retention_unit)) {
     errors.push(
-      _enumError(
+      enumError(
         "retention_unit",
         "retention_unit",
         retention_unit,
@@ -979,7 +979,7 @@ export function validateRetentionArgs(
   // R8: alignment validation
   if (!VALID_RETENTION_ALIGNMENT.has(alignment)) {
     errors.push(
-      _enumError(
+      enumError(
         "alignment",
         "alignment",
         alignment,
@@ -990,26 +990,26 @@ export function validateRetentionArgs(
   }
 
   // R9: math validation (public-facing subset)
-  if (!_VALID_RETENTION_MATH_PUBLIC.has(math)) {
+  if (!VALID_RETENTION_MATH_PUBLIC.has(math)) {
     errors.push(
-      _enumError(
+      enumError(
         "math",
         "math",
         math,
-        _VALID_RETENTION_MATH_PUBLIC,
+        VALID_RETENTION_MATH_PUBLIC,
         "R9_INVALID_MATH",
       ),
     );
   }
 
   // R10: mode validation
-  if (mode === null || !_VALID_RETENTION_MODES.has(mode)) {
+  if (mode === null || !VALID_RETENTION_MODES.has(mode)) {
     errors.push(
-      _enumError(
+      enumError(
         "mode",
         "mode",
         pythonStrLoose(mode),
-        _VALID_RETENTION_MODES,
+        VALID_RETENTION_MODES,
         "R10_INVALID_MODE",
       ),
     );
@@ -1018,7 +1018,7 @@ export function validateRetentionArgs(
   // R11: unit must be valid for retention context (day, week, month only)
   if (unit === null || !VALID_RETENTION_UNITS.has(unit)) {
     errors.push(
-      _enumError(
+      enumError(
         "unit",
         "unit",
         pythonStrLoose(unit),
@@ -1065,17 +1065,14 @@ export function validateRetentionArgs(
   }
 
   // CP1-CP6: Custom property validation
-  errors.push(..._scanCustomProperties({ group_by }));
+  errors.push(...scanCustomProperties({ group_by }));
 
   // R13: unbounded_mode validation
   if (
     unbounded_mode !== null &&
     !VALID_RETENTION_UNBOUNDED_MODES.has(unbounded_mode)
   ) {
-    const suggestion = _suggest(
-      unbounded_mode,
-      VALID_RETENTION_UNBOUNDED_MODES,
-    );
+    const suggestion = suggest(unbounded_mode, VALID_RETENTION_UNBOUNDED_MODES);
     errors.push(
       new ValidationError(
         "unbounded_mode",
@@ -1164,7 +1161,7 @@ export function validateFlowArgs(
     data_group_id = null,
   } = options;
   // DG1: data_group_id must be positive if provided
-  const errors: ValidationError[] = [..._validateDataGroupId(data_group_id)];
+  const errors: ValidationError[] = [...validateDataGroupId(data_group_id)];
 
   // Flows do not support time comparison
   if (time_comparison !== null && time_comparison !== undefined) {
@@ -1224,11 +1221,11 @@ export function validateFlowArgs(
   }
 
   // FL3: forward must be in range 0-5
-  if (forward < 0 || forward > _MAX_FLOW_STEPS_DIRECTION) {
+  if (forward < 0 || forward > MAX_FLOW_STEPS_DIRECTION) {
     errors.push(
       new ValidationError(
         "forward",
-        `forward must be between 0 and ${String(_MAX_FLOW_STEPS_DIRECTION)} ` +
+        `forward must be between 0 and ${String(MAX_FLOW_STEPS_DIRECTION)} ` +
           `(got ${pythonNumberStr(forward)})`,
         "FL3_FORWARD_RANGE",
       ),
@@ -1236,11 +1233,11 @@ export function validateFlowArgs(
   }
 
   // FL4: reverse must be in range 0-5
-  if (reverse < 0 || reverse > _MAX_FLOW_STEPS_DIRECTION) {
+  if (reverse < 0 || reverse > MAX_FLOW_STEPS_DIRECTION) {
     errors.push(
       new ValidationError(
         "reverse",
-        `reverse must be between 0 and ${String(_MAX_FLOW_STEPS_DIRECTION)} ` +
+        `reverse must be between 0 and ${String(MAX_FLOW_STEPS_DIRECTION)} ` +
           `(got ${pythonNumberStr(reverse)})`,
         "FL4_REVERSE_RANGE",
       ),
@@ -1260,11 +1257,11 @@ export function validateFlowArgs(
   }
 
   // FL6: cardinality must be in range 1-50
-  if (cardinality < 1 || cardinality > _MAX_FLOW_CARDINALITY) {
+  if (cardinality < 1 || cardinality > MAX_FLOW_CARDINALITY) {
     errors.push(
       new ValidationError(
         "cardinality",
-        `cardinality must be between 1 and ${String(_MAX_FLOW_CARDINALITY)} ` +
+        `cardinality must be between 1 and ${String(MAX_FLOW_CARDINALITY)} ` +
           `(got ${pythonNumberStr(cardinality)})`,
         "FL6_CARDINALITY_RANGE",
       ),
@@ -1285,10 +1282,10 @@ export function validateFlowArgs(
   // FL7b: conversion_window max per unit (366-day equivalent)
   if (
     conversion_window > 0 &&
-    _FLOW_MAX_WINDOW.has(conversion_window_unit) &&
-    conversion_window > (_FLOW_MAX_WINDOW.get(conversion_window_unit) as number)
+    FLOW_MAX_WINDOW.has(conversion_window_unit) &&
+    conversion_window > (FLOW_MAX_WINDOW.get(conversion_window_unit) as number)
   ) {
-    const maxVal = _FLOW_MAX_WINDOW.get(conversion_window_unit) as number;
+    const maxVal = FLOW_MAX_WINDOW.get(conversion_window_unit) as number;
     errors.push(
       new ValidationError(
         "conversion_window",
@@ -1302,7 +1299,7 @@ export function validateFlowArgs(
   // Enum: count_type validation
   if (!VALID_FLOWS_COUNT_TYPES.has(count_type)) {
     errors.push(
-      _enumError(
+      enumError(
         "count_type",
         "count_type",
         count_type,
@@ -1315,14 +1312,14 @@ export function validateFlowArgs(
   // Enum: mode validation
   if (!VALID_FLOWS_MODES.has(mode)) {
     errors.push(
-      _enumError("mode", "mode", mode, VALID_FLOWS_MODES, "FL_INVALID_MODE"),
+      enumError("mode", "mode", mode, VALID_FLOWS_MODES, "FL_INVALID_MODE"),
     );
   }
 
   // Enum: conversion_window_unit validation
   if (!VALID_FLOWS_CONVERSION_WINDOW_UNITS.has(conversion_window_unit)) {
     errors.push(
-      _enumError(
+      enumError(
         "conversion_window_unit",
         "conversion_window_unit",
         conversion_window_unit,
@@ -1444,7 +1441,7 @@ export function validateQueryArgs(
     data_group_id = null,
   } = options;
   // DG1: data_group_id must be positive if provided
-  const errors: ValidationError[] = [..._validateDataGroupId(data_group_id)];
+  const errors: ValidationError[] = [...validateDataGroupId(data_group_id)];
 
   // V0: At least one event required
   if (events.length === 0) {
@@ -1643,7 +1640,7 @@ export function validateQueryArgs(
       const fpath = resolved.length > 1 ? `formula[${String(fi)}]` : "formula";
 
       // V16: Formula must contain at least one position letter
-      const positions = new Set(expr.match(_FORMULA_POSITION_RE));
+      const positions = new Set(expr.match(FORMULA_POSITION_RE));
       if (positions.size === 0) {
         errors.push(
           new ValidationError(
@@ -1699,12 +1696,12 @@ export function validateQueryArgs(
   }
 
   // V23: Rolling window sanity cap
-  if (rolling !== null && rolling > _MAX_ROLLING) {
+  if (rolling !== null && rolling > MAX_ROLLING) {
     errors.push(
       new ValidationError(
         "rolling",
         `rolling=${pythonNumberStr(rolling)} exceeds maximum of ` +
-          `${String(_MAX_ROLLING)} periods`,
+          `${String(MAX_ROLLING)} periods`,
         "V23_ROLLING_TOO_LARGE",
       ),
     );
@@ -1716,7 +1713,7 @@ export function validateQueryArgs(
   errors.push(
     ...validateTimeArgs({ from_date, to_date, last }),
     ...validateGroupByArgs({ group_by }),
-    ..._scanCustomProperties({ group_by, where: null, events }),
+    ...scanCustomProperties({ group_by, where: null, events }),
   );
 
   // V13-V14: Per-Metric validation

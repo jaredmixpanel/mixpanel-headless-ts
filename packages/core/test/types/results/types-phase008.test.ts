@@ -20,14 +20,14 @@ import {
 
 describe("UserEvent (TestUserEvent)", () => {
   it("test_basic_creation", () => {
-    const event_time = "2024-01-01T12:00:00+00:00";
+    const eventTime = "2024-01-01T12:00:00+00:00";
     const event = new UserEvent({
       event: "Sign Up",
-      time: event_time,
+      time: eventTime,
       properties: { plan: "premium", $distinct_id: "user_123" },
     });
     expect(event.event).toBe("Sign Up");
-    expect(event.time).toBe(event_time);
+    expect(event.time).toBe(eventTime);
     expect(event.properties["plan"]).toBe("premium");
   });
 
@@ -38,8 +38,8 @@ describe("UserEvent (TestUserEvent)", () => {
       properties: { plan: "premium" },
     });
     const data = event.toJSON();
-    const json_str = JSON.stringify(data);
-    expect(json_str).toContain("Sign Up");
+    const jsonStr = JSON.stringify(data);
+    expect(jsonStr).toContain("Sign Up");
     expect(data["event"]).toBe("Sign Up");
     expect(data["time"]).toContain("2024-01-01");
   });
@@ -439,9 +439,9 @@ describe("NumericBucketResult (TestNumericBucketResult)", () => {
       unit: "day",
       series: { "0 - 100": { "2024-01-01": 50 } },
     });
-    const json_str = JSON.stringify(result.toJSON());
-    expect(json_str).toContain("Purchase");
-    expect(json_str).toContain("0 - 100");
+    const jsonStr = JSON.stringify(result.toJSON());
+    expect(jsonStr).toContain("Purchase");
+    expect(jsonStr).toContain("0 - 100");
   });
 });
 

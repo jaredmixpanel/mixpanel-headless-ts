@@ -98,33 +98,30 @@ const RRWEB_SOURCE_MOUSE_INTERACTION = 2;
  */
 export function rrwebEventRow(event: Readonly<Record<string, unknown>>): Row {
   const type_ = event["type"] ?? null;
-  const raw_data = event["data"];
-  const data: Readonly<Record<string, unknown>> = isPlainRecord(raw_data)
-    ? raw_data
+  const rawData = event["data"];
+  const data: Readonly<Record<string, unknown>> = isPlainRecord(rawData)
+    ? rawData
     : {};
   const source =
     type_ === RRWEB_TYPE_INCREMENTAL_SNAPSHOT ? (data["source"] ?? null) : null;
-  let mouse_type: number | null = null;
+  let mouseType: number | null = null;
   if (source === RRWEB_SOURCE_MOUSE_INTERACTION) {
-    const raw_mouse_type = data["type"];
-    if (
-      typeof raw_mouse_type === "number" &&
-      Number.isInteger(raw_mouse_type)
-    ) {
-      mouse_type = raw_mouse_type;
+    const rawMouseType = data["type"];
+    if (typeof rawMouseType === "number" && Number.isInteger(rawMouseType)) {
+      mouseType = rawMouseType;
     }
   }
-  const raw_id = data["id"];
-  const target_node_id =
-    typeof raw_id === "number" && Number.isInteger(raw_id) ? raw_id : null;
+  const rawId = data["id"];
+  const targetNodeId =
+    typeof rawId === "number" && Number.isInteger(rawId) ? rawId : null;
   const url = type_ === RRWEB_TYPE_META ? (data["href"] ?? null) : null;
   const timestamp = event["timestamp"];
   return {
     t: typeof timestamp === "number" ? Math.trunc(timestamp) : 0,
     type: type_,
     source,
-    mouse_type,
-    target_node_id,
+    mouse_type: mouseType,
+    target_node_id: targetNodeId,
     url,
     raw: event,
   };
@@ -436,13 +433,13 @@ export class SignedReplay {
    */
   toString(): string {
     const masked = `<redacted ${String(this.query_string.length)} chars>`;
-    const signed_at_repr =
+    const signedAtRepr =
       Number.isFinite(this.signed_at) && Number.isInteger(this.signed_at)
         ? pythonFloatStr(this.signed_at)
         : String(this.signed_at);
     return (
       `SignedReplay(replay_id='${this.replay_id}', url='${this.url}', ` +
-      `query_string='${masked}', env='${this.env}', signed_at=${signed_at_repr})`
+      `query_string='${masked}', env='${this.env}', signed_at=${signedAtRepr})`
     );
   }
 
@@ -465,8 +462,8 @@ export class SignedReplay {
       cls,
     );
     requirePresent(payload, "signed_at", cls);
-    const signed_at = floatValue(payload["signed_at"]);
-    if (signed_at === undefined) {
+    const signedAt = floatValue(payload["signed_at"]);
+    if (signedAt === undefined) {
       decodeFail(cls, "signed_at", "number", payload["signed_at"]);
     }
     return new SignedReplay({
@@ -474,7 +471,7 @@ export class SignedReplay {
       url: expectStr(payload, "url", cls),
       query_string: expectStr(payload, "query_string", cls),
       env: expectStr(payload, "env", cls) as "prod" | "dev",
-      signed_at,
+      signed_at: signedAt,
     });
   }
 }
@@ -625,12 +622,12 @@ export class UserAction {
     );
     requirePresent(payload, "target_node_id", cls);
     requirePresent(payload, "url", cls);
-    const node_id = payload["target_node_id"];
+    const nodeId = payload["target_node_id"];
     if (
-      node_id !== null &&
-      (typeof node_id !== "number" || !Number.isInteger(node_id))
+      nodeId !== null &&
+      (typeof nodeId !== "number" || !Number.isInteger(nodeId))
     ) {
-      decodeFail(cls, "target_node_id", "integer | null", node_id);
+      decodeFail(cls, "target_node_id", "integer | null", nodeId);
     }
     const url = payload["url"];
     if (url !== null && typeof url !== "string") {
@@ -639,7 +636,7 @@ export class UserAction {
     return new UserAction({
       timestamp: expectInt(payload, "timestamp", cls),
       action: expectStr(payload, "action", cls) as ReplayActionLabel,
-      target_node_id: node_id,
+      target_node_id: nodeId,
       target_desc: expectStr(payload, "target_desc", cls),
       url,
       ...(Object.hasOwn(payload, "metadata")
@@ -1383,14 +1380,14 @@ export class ReplayBundle {
    */
   toSessionsRows(): readonly Row[] {
     return this.replays.map((r) => {
-      const n_clicks = r.actions.filter((a) => a.action === "click").length;
-      const n_inputs = r.actions.filter((a) => a.action === "input").length;
-      const n_errors = r.actions.filter(
+      const nClicks = r.actions.filter((a) => a.action === "click").length;
+      const nInputs = r.actions.filter((a) => a.action === "input").length;
+      const nErrors = r.actions.filter(
         (a) => a.action === "console_error",
       ).length;
       const navigations = r.actions.filter((a) => a.action === "navigate");
-      const entry_url = navigations.length > 0 ? navigations[0]?.url : null;
-      const exit_url = navigations.length > 0 ? navigations.at(-1)?.url : null;
+      const entryUrl = navigations.length > 0 ? navigations[0]?.url : null;
+      const exitUrl = navigations.length > 0 ? navigations.at(-1)?.url : null;
       return {
         replay_id: r.replay_id,
         distinct_id: r.distinct_id,
@@ -1400,13 +1397,13 @@ export class ReplayBundle {
         retention_days: r.retention_days,
         n_events: r.rrweb_events.length,
         n_actions: r.actions.length,
-        n_clicks,
-        n_inputs,
+        n_clicks: nClicks,
+        n_inputs: nInputs,
         n_pages: navigations.length,
-        n_errors,
+        n_errors: nErrors,
         n_mp_events: r.mixpanel_events.length,
-        entry_url: entry_url ?? null,
-        exit_url: exit_url ?? null,
+        entry_url: entryUrl ?? null,
+        exit_url: exitUrl ?? null,
       };
     });
   }
@@ -1601,34 +1598,34 @@ export class ReplayBundle {
     readonly min_duration_s?: number | null;
     readonly max_duration_s?: number | null;
   }): ReplayBundle {
-    const distinct_id = options.distinct_id ?? null;
-    const contains_url = options.contains_url ?? null;
-    const has_event = options.has_event ?? null;
-    const min_duration_s = options.min_duration_s ?? null;
-    const max_duration_s = options.max_duration_s ?? null;
+    const distinctId = options.distinct_id ?? null;
+    const containsUrl = options.contains_url ?? null;
+    const hasEvent = options.has_event ?? null;
+    const minDurationS = options.min_duration_s ?? null;
+    const maxDurationS = options.max_duration_s ?? null;
     const ok = (r: Replay): boolean => {
-      if (distinct_id !== null && r.distinct_id !== distinct_id) {
+      if (distinctId !== null && r.distinct_id !== distinctId) {
         return false;
       }
       if (
-        contains_url !== null &&
+        containsUrl !== null &&
         r.actions.every(
           (a) =>
-            !(a.action === "navigate" && (a.url ?? "").includes(contains_url)),
+            !(a.action === "navigate" && (a.url ?? "").includes(containsUrl)),
         )
       ) {
         return false;
       }
       if (
-        has_event !== null &&
-        r.mixpanel_events.every((e) => e.event_name !== has_event)
+        hasEvent !== null &&
+        r.mixpanel_events.every((e) => e.event_name !== hasEvent)
       ) {
         return false;
       }
-      if (min_duration_s !== null && r.duration_seconds < min_duration_s) {
+      if (minDurationS !== null && r.duration_seconds < minDurationS) {
         return false;
       }
-      return max_duration_s === null || !(r.duration_seconds > max_duration_s);
+      return maxDurationS === null || !(r.duration_seconds > maxDurationS);
     };
     return this.filter(ok);
   }

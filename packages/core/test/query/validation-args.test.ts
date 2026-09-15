@@ -23,7 +23,7 @@ import {
   validateQueryArgs,
   type ValidateQueryArgsOptions,
 } from "../../src/query/validation-args.js";
-import { _suggest } from "../../src/query/validation-shared.js";
+import { suggest } from "../../src/query/validation-shared.js";
 import { GroupBy, Metric } from "../../src/types/index.js";
 
 // =============================================================================
@@ -62,20 +62,20 @@ function validArgs(
 
 describe("TestFuzzyMatching", () => {
   it("test_close_match", () => {
-    const result = _suggest("totl", new Set(["total", "unique", "average"]));
+    const result = suggest("totl", new Set(["total", "unique", "average"]));
     expect(result).not.toBeNull();
     expect(result).toContain("total");
   });
 
   it("test_no_match", () => {
-    const result = _suggest("zzzzz", new Set(["total", "unique"]));
+    const result = suggest("zzzzz", new Set(["total", "unique"]));
     expect(result).toBeNull();
   });
 
   it("test_returns_tuple", () => {
     // Python asserts `isinstance(result, tuple)`; the TS port returns a
     // frozen array (the closest immutable-sequence analog, R4.2).
-    const result = _suggest("averge", new Set(["average", "median"]));
+    const result = suggest("averge", new Set(["average", "median"]));
     expect(result).not.toBeNull();
     expect(Array.isArray(result)).toBe(true);
   });

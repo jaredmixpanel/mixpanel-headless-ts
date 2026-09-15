@@ -63,10 +63,10 @@ function meta(ts: number, href: string): Record<string, unknown> {
 }
 
 /** IncrementalSnapshot Click event (Python `_click`). */
-function click(ts: number, node_id: number): Record<string, unknown> {
+function click(ts: number, nodeId: number): Record<string, unknown> {
   return {
     type: 3,
-    data: { source: 2, type: 2, id: node_id, x: 100, y: 200 },
+    data: { source: 2, type: 2, id: nodeId, x: 100, y: 200 },
     timestamp: ts,
   };
 }
@@ -131,7 +131,7 @@ function buildAction(
 }
 
 /** Build a Replay from actions (Python `_make_replay`). */
-function makeReplay(replay_id: string, actions: readonly UserAction[]): Replay {
+function makeReplay(replayId: string, actions: readonly UserAction[]): Replay {
   const start =
     actions.length > 0
       ? Math.min(...actions.map((a) => a.timestamp))
@@ -144,7 +144,7 @@ function makeReplay(replay_id: string, actions: readonly UserAction[]): Replay {
     .filter((a) => a.action === "navigate")
     .map((a) => ({ type: 4, data: { href: a.url }, timestamp: a.timestamp }));
   return new Replay({
-    replay_id,
+    replay_id: replayId,
     distinct_id: null,
     project_id: 12345,
     start_time: start,
@@ -412,19 +412,19 @@ describe("ReplaySummary construction (TestReplaySummaryConstruction)", () => {
   });
 
   it("test_invalid_retention_rejected", () => {
-    for (const bad_retention of [0, 2, 5, 14, 60, 100]) {
+    for (const badRetention of [0, 2, 5, 14, 60, 100]) {
       expectGuard(
-        () => buildSummary({ retention_days: bad_retention }),
+        () => buildSummary({ retention_days: badRetention }),
         "RS4_INVALID_RETENTION_DAYS",
       );
     }
   });
 
   it("test_valid_retention_accepted", () => {
-    for (const good_retention of [1, 7, 30, 90]) {
+    for (const goodRetention of [1, 7, 30, 90]) {
       expect(
-        buildSummary({ retention_days: good_retention }).retention_days,
-      ).toBe(good_retention);
+        buildSummary({ retention_days: goodRetention }).retention_days,
+      ).toBe(goodRetention);
     }
   });
 });
@@ -678,17 +678,17 @@ describe("SignedReplay validation (TestSignedReplayValidation)", () => {
   });
 
   it("test_invalid_env_rejected", () => {
-    for (const bad_env of ["staging", "PROD", "test", ""]) {
+    for (const badEnv of ["staging", "PROD", "test", ""]) {
       expectGuard(
-        () => buildSigned({ env: bad_env as "prod" }),
+        () => buildSigned({ env: badEnv as "prod" }),
         "SR3_INVALID_ENV",
       );
     }
   });
 
   it("test_valid_env_accepted", () => {
-    for (const good_env of ["prod", "dev"] as const) {
-      expect(buildSigned({ env: good_env }).env).toBe(good_env);
+    for (const goodEnv of ["prod", "dev"] as const) {
+      expect(buildSigned({ env: goodEnv }).env).toBe(goodEnv);
     }
   });
 
@@ -723,10 +723,10 @@ describe("ReplayBundle projections (TestReplayBundleProjections)", () => {
       expect(b.sessionsRowColumns()).toContain(col);
     }
     // r-2 has 3 clicks; r-3 has 1 error.
-    const r2_row = rows.find((row) => row["replay_id"] === "r-2");
-    expect(r2_row?.["n_clicks"]).toBe(3);
-    const r3_row = rows.find((row) => row["replay_id"] === "r-3");
-    expect(r3_row?.["n_errors"]).toBe(1);
+    const r2Row = rows.find((row) => row["replay_id"] === "r-2");
+    expect(r2Row?.["n_clicks"]).toBe(3);
+    const r3Row = rows.find((row) => row["replay_id"] === "r-3");
+    expect(r3Row?.["n_errors"]).toBe(1);
   });
 
   it("test_actions_df_long_format", () => {

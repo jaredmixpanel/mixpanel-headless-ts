@@ -48,14 +48,14 @@ describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
   });
 
   it("test_properties_df_covers_event_and_user", () => {
-    const by_name = new Map(
+    const byName = new Map(
       sampleResult()
         .toPropertiesRows()
         .map((row) => [row["name"], row]),
     );
-    expect(by_name.get("amount")?.["resource_type"]).toBe("event");
-    expect(by_name.get("plan")?.["resource_type"]).toBe("user");
-    expect(by_name.get("plan")?.["display_name"]).toBe("Plan");
+    expect(byName.get("amount")?.["resource_type"]).toBe("event");
+    expect(byName.get("plan")?.["resource_type"]).toBe("user");
+    expect(byName.get("plan")?.["display_name"]).toBe("Plan");
   });
 
   it("test_relationships_df_is_edge_list", () => {

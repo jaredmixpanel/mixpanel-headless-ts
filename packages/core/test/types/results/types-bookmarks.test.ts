@@ -337,23 +337,23 @@ describe("BookmarkInfo (TestBookmarkInfo)", () => {
   });
 
   it("test_all_bookmark_types", () => {
-    const bookmark_types: readonly BookmarkType[] = [
+    const bookmarkTypes: readonly BookmarkType[] = [
       "insights",
       "funnels",
       "retention",
       "flows",
       "launch-analysis",
     ];
-    for (const bm_type of bookmark_types) {
+    for (const bmType of bookmarkTypes) {
       const info = new BookmarkInfo({
         id: 1,
         name: "Test",
-        type: bm_type,
+        type: bmType,
         project_id: 100,
         created: "2024-01-01T00:00:00",
         modified: "2024-01-01T00:00:00",
       });
-      expect(info.type).toBe(bm_type);
+      expect(info.type).toBe(bmType);
     }
   });
 });

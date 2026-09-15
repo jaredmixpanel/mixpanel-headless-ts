@@ -50,19 +50,19 @@ export const BOOKMARK_ENUMS_SOURCE_MODULE =
  *
  * @internal
  */
-export const _MAX_FUNNEL_STEPS = 100;
+export const MAX_FUNNEL_STEPS = 100;
 
 /**
  * Maximum number of holding-constant properties allowed.
  *
  * Port of the module-private `_MAX_HOLDING_CONSTANT`
  * (`bookmark_enums.py:519`). Same landing note as
- * {@link _MAX_FUNNEL_STEPS}; consumed by `validateFunnelArgs` rule
+ * {@link MAX_FUNNEL_STEPS}; consumed by `validateFunnelArgs` rule
  * F8_MAX_HOLDING_CONSTANT. Exported for intra-package use only.
  *
  * @internal
  */
-export const _MAX_HOLDING_CONSTANT = 3;
+export const MAX_HOLDING_CONSTANT = 3;
 
 // =============================================================================
 // Math / aggregation types

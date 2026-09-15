@@ -95,13 +95,13 @@ type ExtraKeysAre<A, B, Only extends PropertyKey> = [
 // ---------------------------------------------------------------------------
 
 // Request params: key sets match the vendored request models exactly.
-type _AlertCreateKeys = Expect<
+type AlertCreateKeys = Expect<
   KeysEqual<CreateAlertParamsInit, CreateCustomAlertRequest>
 >;
-type _AlertUpdateKeys = Expect<
+type AlertUpdateKeys = Expect<
   KeysEqual<UpdateAlertParamsInit, UpdateCustomAlertRequest>
 >;
-type _AlertValidateKeys = Expect<
+type AlertValidateKeys = Expect<
   KeysEqual<
     ValidateAlertsForBookmarkParamsInit,
     ValidateAlertsForBookmarkRequest
@@ -110,7 +110,7 @@ type _AlertValidateKeys = Expect<
 
 // Alert count: Python unwraps the `{status, results}` envelope; the
 // unwrapped shape is assignable to the vendored results model.
-type _AlertCountShape = Expect<
+type AlertCountShape = Expect<
   Pick<
     AlertCount,
     "anomaly_alerts_count" | "alert_limit" | "is_below_limit"
@@ -125,14 +125,14 @@ type _AlertCountShape = Expect<
 // validity_status / workspace_id). `id` is `int` in Python (wire
 // vectors record integers) vs `string` in the vendored file — Python
 // wins (E4).
-type _CustomAlertPythonOnly = Expect<
+type CustomAlertPythonOnly = Expect<
   ExtraKeysAre<
     CustomAlertInit,
     VendoredCustomAlert,
     "creator" | "workspace" | "project" | "results"
   >
 >;
-type _CustomAlertVendoredOnly = Expect<
+type CustomAlertVendoredOnly = Expect<
   ExtraKeysAre<
     VendoredCustomAlert,
     CustomAlertInit,
@@ -143,7 +143,7 @@ type _CustomAlertVendoredOnly = Expect<
 // Alert history pagination: Python adds `page_size` on top of the
 // vendored cursor pair (checked via the shared CursorPagination model,
 // which the alerts/bookmarks history paginations mirror).
-type _CursorPaginationExtra = Expect<
+type CursorPaginationExtra = Expect<
   ExtraKeysAre<
     CursorPaginationInit,
     AlertsCursorPaginationResponse,
@@ -155,22 +155,22 @@ type _CursorPaginationExtra = Expect<
 // Webhooks (iron-only contract — PROVENANCE coverage_holes.webhooks).
 // ---------------------------------------------------------------------------
 
-type _WebhookCreateKeys = Expect<
+type WebhookCreateKeys = Expect<
   KeysEqual<CreateWebhookParamsInit, WebhookCreatePayload>
 >;
-type _WebhookUpdateKeys = Expect<
+type WebhookUpdateKeys = Expect<
   KeysEqual<UpdateWebhookParamsInit, WebhookUpdatePayload>
 >;
-type _WebhookTestKeys = Expect<
+type WebhookTestKeys = Expect<
   KeysEqual<WebhookTestParamsInit, WebhookTestPayload>
 >;
 // ProjectWebhook models one Python-only extra over the vendored list
 // item: `auth_type` (Python parses it from detail responses; the iron
 // list-item model omits it).
-type _WebhookItemExtras = Expect<
+type WebhookItemExtras = Expect<
   ExtraKeysAre<ProjectWebhookInit, WebhookItem, "auth_type">
 >;
-type _WebhookItemCoversVendored = Expect<
+type WebhookItemCoversVendored = Expect<
   Exclude<keyof WebhookItem, keyof ProjectWebhookInit> extends never
     ? true
     : false
@@ -181,7 +181,7 @@ type _WebhookItemCoversVendored = Expect<
 // ---------------------------------------------------------------------------
 
 // Create params are a strict key subset of the server payload model.
-type _FlagCreateSubset = Expect<
+type FlagCreateSubset = Expect<
   Exclude<
     keyof CreateFeatureFlagParamsInit,
     keyof FeatureFlagApiPayload
@@ -191,7 +191,7 @@ type _FlagCreateSubset = Expect<
 >;
 // Limits: Python subsets the vendored results model (the extra
 // startup_block_* / is_startup_blocked fields are not modeled).
-type _FlagLimitsSubset = Expect<
+type FlagLimitsSubset = Expect<
   Exclude<
     keyof FlagLimitsResponseInit,
     keyof FeatureFlagLimitsResults
@@ -227,12 +227,12 @@ type VendoredExperimentCreateDeclaredKeys =
   | "settings"
   | "tags"
   | "variants";
-type _ExperimentDeclaredKeysHonest = Expect<
+type ExperimentDeclaredKeysHonest = Expect<
   VendoredExperimentCreateDeclaredKeys extends keyof ExperimentCreatePayload
     ? true
     : false
 >;
-type _ExperimentCreateExtras = Expect<
+type ExperimentCreateExtras = Expect<
   ExtraKeysAre<
     CreateExperimentParamsInit,
     Record<VendoredExperimentCreateDeclaredKeys, unknown>,
@@ -245,7 +245,7 @@ type _ExperimentCreateExtras = Expect<
 // overlap with a vendored model).
 // ---------------------------------------------------------------------------
 
-type _DropFilterLimitsKeys = Expect<
+type DropFilterLimitsKeys = Expect<
   KeysEqual<DropFilterLimitsResponseInit, EventDropFiltersLimitResults>
 >;
 
@@ -254,21 +254,21 @@ type _DropFilterLimitsKeys = Expect<
  * no unused locals (the tuple itself is never imported anywhere).
  */
 export type VendoredContractChecks = [
-  _AlertCreateKeys,
-  _AlertUpdateKeys,
-  _AlertValidateKeys,
-  _AlertCountShape,
-  _CustomAlertPythonOnly,
-  _CustomAlertVendoredOnly,
-  _CursorPaginationExtra,
-  _WebhookCreateKeys,
-  _WebhookUpdateKeys,
-  _WebhookTestKeys,
-  _WebhookItemExtras,
-  _WebhookItemCoversVendored,
-  _FlagCreateSubset,
-  _FlagLimitsSubset,
-  _ExperimentDeclaredKeysHonest,
-  _ExperimentCreateExtras,
-  _DropFilterLimitsKeys,
+  AlertCreateKeys,
+  AlertUpdateKeys,
+  AlertValidateKeys,
+  AlertCountShape,
+  CustomAlertPythonOnly,
+  CustomAlertVendoredOnly,
+  CursorPaginationExtra,
+  WebhookCreateKeys,
+  WebhookUpdateKeys,
+  WebhookTestKeys,
+  WebhookItemExtras,
+  WebhookItemCoversVendored,
+  FlagCreateSubset,
+  FlagLimitsSubset,
+  ExperimentDeclaredKeysHonest,
+  ExperimentCreateExtras,
+  DropFilterLimitsKeys,
 ];

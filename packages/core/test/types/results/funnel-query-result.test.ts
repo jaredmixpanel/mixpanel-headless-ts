@@ -224,10 +224,10 @@ describe("FunnelQueryResult (TestFunnelQueryResult)", () => {
       steps_data: SAMPLE_STEPS_DATA,
       params: { funnel_type: "steps" },
     });
-    const json_str = JSON.stringify(result.toJSON());
-    expect(json_str).toContain("2025-04-05T12:00:00Z");
-    expect(json_str).toContain("Signup");
-    expect(json_str).toContain("Purchase");
+    const jsonStr = JSON.stringify(result.toJSON());
+    expect(jsonStr).toContain("2025-04-05T12:00:00Z");
+    expect(jsonStr).toContain("Signup");
+    expect(jsonStr).toContain("Purchase");
   });
 
   it("test_to_dict_with_defaults", () => {

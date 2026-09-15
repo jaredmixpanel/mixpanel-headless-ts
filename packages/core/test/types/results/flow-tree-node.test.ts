@@ -18,7 +18,7 @@ import {
 
 /** Build the 3-level sample tree (Python `_sample_tree`). */
 function sampleTree(): FlowTreeNode {
-  const purchase_via_search = new FlowTreeNode({
+  const purchaseViaSearch = new FlowTreeNode({
     event: "Purchase",
     type: "ANCHOR",
     step_number: 2,
@@ -26,7 +26,7 @@ function sampleTree(): FlowTreeNode {
     drop_off_count: 0,
     converted_count: 400,
   });
-  const dropoff_after_search = new FlowTreeNode({
+  const dropoffAfterSearch = new FlowTreeNode({
     event: "DROPOFF",
     type: "DROPOFF",
     step_number: 2,
@@ -41,9 +41,9 @@ function sampleTree(): FlowTreeNode {
     total_count: 600,
     drop_off_count: 100,
     converted_count: 500,
-    children: [purchase_via_search, dropoff_after_search],
+    children: [purchaseViaSearch, dropoffAfterSearch],
   });
-  const purchase_via_browse = new FlowTreeNode({
+  const purchaseViaBrowse = new FlowTreeNode({
     event: "Purchase",
     type: "ANCHOR",
     step_number: 2,
@@ -58,9 +58,9 @@ function sampleTree(): FlowTreeNode {
     total_count: 300,
     drop_off_count: 50,
     converted_count: 250,
-    children: [purchase_via_browse],
+    children: [purchaseViaBrowse],
   });
-  const dropoff_from_login = new FlowTreeNode({
+  const dropoffFromLogin = new FlowTreeNode({
     event: "DROPOFF",
     type: "DROPOFF",
     step_number: 1,
@@ -75,7 +75,7 @@ function sampleTree(): FlowTreeNode {
     total_count: 1000,
     drop_off_count: 50,
     converted_count: 950,
-    children: [search, browse, dropoff_from_login],
+    children: [search, browse, dropoffFromLogin],
   });
 }
 
@@ -131,8 +131,8 @@ describe("FlowTreeNode construction (TestFlowTreeNodeConstruction)", () => {
   });
 
   it("test_construct_with_all_fields", () => {
-    const tp_start = { percentiles: [50, 90], values: [1.0, 5.0] };
-    const tp_prev = { percentiles: [50], values: [0.5] };
+    const tpStart = { percentiles: [50, 90], values: [1.0, 5.0] };
+    const tpPrev = { percentiles: [50], values: [0.5] };
     const child = new FlowTreeNode({
       event: "Search",
       type: "NORMAL",
@@ -149,8 +149,8 @@ describe("FlowTreeNode construction (TestFlowTreeNodeConstruction)", () => {
       anchor_type: "RELATIVE_FORWARD",
       is_computed: true,
       children: [child],
-      time_percentiles_from_start: tp_start,
-      time_percentiles_from_prev: tp_prev,
+      time_percentiles_from_start: tpStart,
+      time_percentiles_from_prev: tpPrev,
     });
     expect(node.drop_off_count).toBe(10);
     expect(node.converted_count).toBe(90);
@@ -158,8 +158,8 @@ describe("FlowTreeNode construction (TestFlowTreeNodeConstruction)", () => {
     expect(node.is_computed).toBe(true);
     expect(node.children).toHaveLength(1);
     expect(node.children[0]?.event).toBe("Search");
-    expect(node.time_percentiles_from_start).toStrictEqual(tp_start);
-    expect(node.time_percentiles_from_prev).toStrictEqual(tp_prev);
+    expect(node.time_percentiles_from_start).toStrictEqual(tpStart);
+    expect(node.time_percentiles_from_prev).toStrictEqual(tpPrev);
   });
 
   it("test_empty_children_default", () => {
@@ -261,14 +261,12 @@ describe("FlowTreeNode.all_paths (TestFlowTreeNodeAllPaths)", () => {
 
   it("test_paths_contain_node_chain", () => {
     const paths = sampleTree().allPaths();
-    const purchase_paths = paths.filter((p) => p.at(-1)?.event === "Purchase");
-    expect(purchase_paths).toHaveLength(2);
-    const search_purchase = purchase_paths.find(
-      (p) => p[1]?.event === "Search",
-    );
-    expect(search_purchase?.[0]?.total_count).toBe(1000); // Login
-    expect(search_purchase?.[1]?.total_count).toBe(600); // Search
-    expect(search_purchase?.[2]?.total_count).toBe(400); // Purchase
+    const purchasePaths = paths.filter((p) => p.at(-1)?.event === "Purchase");
+    expect(purchasePaths).toHaveLength(2);
+    const searchPurchase = purchasePaths.find((p) => p[1]?.event === "Search");
+    expect(searchPurchase?.[0]?.total_count).toBe(1000); // Login
+    expect(searchPurchase?.[1]?.total_count).toBe(600); // Search
+    expect(searchPurchase?.[2]?.total_count).toBe(400); // Purchase
   });
 });
 
@@ -311,9 +309,9 @@ describe("FlowTreeNode.flatten (TestFlowTreeNodeFlatten)", () => {
   it("test_flatten_is_preorder", () => {
     const flat = sampleTree().flatten();
     expect(flat[0]?.event).toBe("Login");
-    const search_idx = flat.findIndex((n) => n.event === "Search");
-    const browse_idx = flat.findIndex((n) => n.event === "Browse");
-    expect(search_idx).toBeLessThan(browse_idx);
+    const searchIdx = flat.findIndex((n) => n.event === "Search");
+    const browseIdx = flat.findIndex((n) => n.event === "Browse");
+    expect(searchIdx).toBeLessThan(browseIdx);
   });
 });
 
@@ -380,7 +378,7 @@ describe("FlowTreeNode.render (TestFlowTreeNodeRender)", () => {
 });
 
 describe("FlowQueryResult tree mode (TestFlowQueryResultTreeMode)", () => {
-  const expected_cols = [
+  const expectedCols = [
     "tree_index",
     "depth",
     "path",
@@ -412,7 +410,7 @@ describe("FlowQueryResult tree mode (TestFlowQueryResultTreeMode)", () => {
   });
 
   it("test_df_tree_mode_columns", () => {
-    expect(makeTreeResult().rowColumns()).toStrictEqual(expected_cols);
+    expect(makeTreeResult().rowColumns()).toStrictEqual(expectedCols);
   });
 
   it("test_df_tree_mode_row_count", () => {
@@ -437,7 +435,7 @@ describe("FlowQueryResult tree mode (TestFlowQueryResultTreeMode)", () => {
   it("test_df_tree_mode_empty_trees", () => {
     const r = makeTreeResult({ trees: [] });
     expect(r.toRows()).toHaveLength(0);
-    expect(r.rowColumns()).toStrictEqual(expected_cols);
+    expect(r.rowColumns()).toStrictEqual(expectedCols);
   });
 
   it("test_to_dict_includes_trees", () => {

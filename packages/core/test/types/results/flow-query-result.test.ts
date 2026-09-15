@@ -195,7 +195,7 @@ describe("FlowQueryResult.to_dict (TestFlowQueryResultToDict)", () => {
 });
 
 describe("FlowQueryResult.nodes_df (TestFlowQueryResultNodesDf)", () => {
-  const expected_cols = [
+  const expectedCols = [
     "step",
     "event",
     "type",
@@ -207,7 +207,7 @@ describe("FlowQueryResult.nodes_df (TestFlowQueryResultNodesDf)", () => {
 
   it("test_nodes_df_columns", () => {
     const r = makeResult({ steps: sampleSankeySteps() });
-    expect(r.nodesRowColumns()).toStrictEqual(expected_cols);
+    expect(r.nodesRowColumns()).toStrictEqual(expectedCols);
   });
 
   it("test_nodes_df_row_count", () => {
@@ -218,7 +218,7 @@ describe("FlowQueryResult.nodes_df (TestFlowQueryResultNodesDf)", () => {
   it("test_nodes_df_empty_steps", () => {
     const r = makeResult({ steps: [] });
     expect(r.toNodesRows()).toHaveLength(0);
-    expect(r.nodesRowColumns()).toStrictEqual(expected_cols);
+    expect(r.nodesRowColumns()).toStrictEqual(expectedCols);
   });
 
   it("test_nodes_df_total_count_parsed_as_int", () => {
@@ -237,7 +237,7 @@ describe("FlowQueryResult.nodes_df (TestFlowQueryResultNodesDf)", () => {
 });
 
 describe("FlowQueryResult.edges_df (TestFlowQueryResultEdgesDf)", () => {
-  const expected_cols = [
+  const expectedCols = [
     "source_step",
     "source_event",
     "target_step",
@@ -248,7 +248,7 @@ describe("FlowQueryResult.edges_df (TestFlowQueryResultEdgesDf)", () => {
 
   it("test_edges_df_columns", () => {
     const r = makeResult({ steps: sampleSankeySteps() });
-    expect(r.edgesRowColumns()).toStrictEqual(expected_cols);
+    expect(r.edgesRowColumns()).toStrictEqual(expectedCols);
   });
 
   it("test_edges_df_row_count", () => {
@@ -260,7 +260,7 @@ describe("FlowQueryResult.edges_df (TestFlowQueryResultEdgesDf)", () => {
   it("test_edges_df_empty_steps", () => {
     const r = makeResult({ steps: [] });
     expect(r.toEdgesRows()).toHaveLength(0);
-    expect(r.edgesRowColumns()).toStrictEqual(expected_cols);
+    expect(r.edgesRowColumns()).toStrictEqual(expectedCols);
   });
 
   it("test_edges_df_count_parsed_as_int", () => {
@@ -356,10 +356,10 @@ describe("FlowQueryResult.drop_off_summary (TestFlowQueryResultDropOffSummary)",
   it("test_dropoff_count_from_edges_of_non_dropoff_nodes", () => {
     const summary = makeResult({ steps: sampleSankeySteps() }).dropOffSummary();
     // Step 0: Login ANCHOR has DROPOFF edge count=20
-    const step_0 = summary["step_0"] as Record<string, unknown>;
-    expect(step_0["total"]).toBe(100);
-    expect(step_0["dropoff"]).toBe(20);
-    expect(step_0["rate"]).toBe(20 / 100);
+    const step0 = summary["step_0"] as Record<string, unknown>;
+    expect(step0["total"]).toBe(100);
+    expect(step0["dropoff"]).toBe(20);
+    expect(step0["rate"]).toBe(20 / 100);
   });
 
   it("test_empty_steps_returns_empty_dict", () => {

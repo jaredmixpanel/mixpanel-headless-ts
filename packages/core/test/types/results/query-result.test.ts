@@ -233,9 +233,9 @@ describe("QueryResult.df segmented (TestQueryResultSegmentedDataFrame)", () => {
     const rows = qr.toRows();
     // $overall + US + EU = 3 rows
     expect(rows).toHaveLength(3);
-    const us_rows = rows.filter((row) => row["segment"] === "US");
-    expect(us_rows).toHaveLength(1);
-    expect(us_rows[0]?.["count"]).toBe(300);
+    const usRows = rows.filter((row) => row["segment"] === "US");
+    expect(usRows).toHaveLength(1);
+    expect(usRows[0]?.["count"]).toBe(300);
   });
 
   it("test_segmented_timeseries_columns", () => {
@@ -299,11 +299,11 @@ describe("QueryResult.df segmented (TestQueryResultSegmentedDataFrame)", () => {
     });
     const rows = qr.toRows();
     expect(rows).toHaveLength(4);
-    const us_jan1 = rows.filter(
+    const usJan1 = rows.filter(
       (row) => row["segment"] === "US" && row["date"] === "2024-01-01",
     );
-    expect(us_jan1).toHaveLength(1);
-    expect(us_jan1[0]?.["count"]).toBe(60);
+    expect(usJan1).toHaveLength(1);
+    expect(usJan1[0]?.["count"]).toBe(60);
   });
 
   it("test_segmented_timeseries_strips_timezone", () => {
@@ -334,10 +334,10 @@ describe("QueryResult.df segmented (TestQueryResultSegmentedDataFrame)", () => {
     });
     const rows = qr.toRows();
     expect(rows).toHaveLength(4);
-    const login_us = rows.find(
+    const loginUs = rows.find(
       (row) => row["event"] === "Login [Total]" && row["segment"] === "US",
     );
-    expect(login_us?.["count"]).toBe(300);
+    expect(loginUs?.["count"]).toBe(300);
   });
 });
 

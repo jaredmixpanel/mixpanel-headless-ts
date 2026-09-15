@@ -915,16 +915,14 @@ function registerQueryParamBindings(
     // number after decode) or a `$type: float` wrapper; unwrap the
     // wrapper's numeric value for the constructor.
     const kwargs: Record<string, unknown> = { ...context.kwargs };
-    const signed_at = kwargs["signed_at"];
+    const signedAt = kwargs["signed_at"];
     if (
-      typeof signed_at === "object" &&
-      signed_at !== null &&
-      "toNumber" in signed_at &&
-      typeof signed_at.toNumber === "function"
+      typeof signedAt === "object" &&
+      signedAt !== null &&
+      "toNumber" in signedAt &&
+      typeof signedAt.toNumber === "function"
     ) {
-      kwargs["signed_at"] = (
-        signed_at as { toNumber: () => number }
-      ).toNumber();
+      kwargs["signed_at"] = (signedAt as { toNumber: () => number }).toNumber();
     }
     return new SignedReplay(kwargs as unknown as SignedReplayFields);
   });

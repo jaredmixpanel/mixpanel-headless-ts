@@ -88,10 +88,10 @@ import {
   validateFlowBookmark,
 } from "./query/validation-bookmark.js";
 import {
-  _scanCustomProperties,
   containsControlChars,
   isPythonDict,
   pythonTypeName,
+  scanCustomProperties,
 } from "./query/validation-shared.js";
 import type { FlowMode } from "./services/live-query-transforms.js";
 import {
@@ -375,7 +375,7 @@ export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
     per_user,
     percentile_value = null,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     unit,
     group_by,
@@ -542,7 +542,7 @@ export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
   // --- Build sections.time (array) ---
   const timeSection = buildTimeSection({
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     unit: unit as never,
     ...(options.today === undefined ? {} : { today: options.today }),
@@ -656,7 +656,7 @@ export function resolveAndBuildParams(
   const {
     events,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     unit,
     math,
@@ -772,7 +772,7 @@ export function resolveAndBuildParams(
     per_user,
     percentile_value,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     has_formula: resolvedFormulas.length > 0,
     rolling,
@@ -782,7 +782,7 @@ export function resolveAndBuildParams(
     data_group_id,
   });
   // CP1-CP6: Custom property validation for where filters
-  argErrors.push(..._scanCustomProperties({ where: where as never }));
+  argErrors.push(...scanCustomProperties({ where: where as never }));
   if (anyError(argErrors)) {
     throw new BookmarkValidationError(argErrors);
   }
@@ -795,7 +795,7 @@ export function resolveAndBuildParams(
     per_user,
     percentile_value,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     unit,
     group_by,
@@ -882,7 +882,7 @@ export function buildFunnelParams(
     math,
     math_property,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     unit,
     group_by,
@@ -971,7 +971,7 @@ export function buildFunnelParams(
   // Build sections using the shared builders
   const timeSection = buildTimeSection({
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     unit: unit as never,
     ...(options.today === undefined ? {} : { today: options.today }),
@@ -1073,7 +1073,7 @@ export function resolveAndBuildFunnelParams(
     math,
     math_property,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     unit,
     group_by,
@@ -1122,14 +1122,14 @@ export function resolveAndBuildFunnelParams(
     exclusions: normalizedExclusions.length > 0 ? normalizedExclusions : null,
     holding_constant: normalizedHc.length > 0 ? normalizedHc : null,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     group_by,
     reentry_mode,
     data_group_id,
   });
   // CP1-CP6: Custom property validation for where filters
-  argErrors.push(..._scanCustomProperties({ where }));
+  argErrors.push(...scanCustomProperties({ where }));
   if (anyError(argErrors)) {
     throw new BookmarkValidationError(argErrors);
   }
@@ -1143,7 +1143,7 @@ export function resolveAndBuildFunnelParams(
     math,
     math_property,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     unit,
     group_by,
@@ -1233,7 +1233,7 @@ export function buildRetentionParams(
     bucket_sizes,
     math,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     unit,
     group_by,
@@ -1289,7 +1289,7 @@ export function buildRetentionParams(
   // Build sections using the shared builders
   const timeSection = buildTimeSection({
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     unit: unit as never,
     ...(options.today === undefined ? {} : { today: options.today }),
@@ -1400,7 +1400,7 @@ export function buildFlowParams(options: BuildFlowParamsOptions): ParamsDict {
   const {
     steps,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     conversion_window,
     conversion_window_unit,
@@ -1438,7 +1438,7 @@ export function buildFlowParams(options: BuildFlowParamsOptions): ParamsDict {
 
   const params: ParamsDict = {
     steps: stepDicts,
-    date_range: buildDateRange({ from_date, to_date, last }),
+    date_range: buildDateRange({ from_date, to_date: toDate, last }),
     chartType: mode === "paths" ? "top-paths" : "sankey",
     flows_merge_type: flowsMergeType(mode),
     count_type,
@@ -1566,7 +1566,7 @@ export function resolveAndBuildFlowParams(
     segments = null,
     exclusions = null,
   } = options;
-  let to_date = options.to_date;
+  let toDate = options.to_date;
 
   // Normalize input: str → FlowStep, single → list
   let rawSteps: ReadonlyArray<string | FlowStep>;
@@ -1681,8 +1681,8 @@ export function resolveAndBuildFlowParams(
 
   // Default to_date to today when from_date is set alone, so the
   // absolute date isn't silently ignored by build_date_range().
-  if (from_date !== null && to_date === null) {
-    to_date = (options.today ?? defaultToday)();
+  if (from_date !== null && toDate === null) {
+    toDate = (options.today ?? defaultToday)();
   }
 
   // Layer 1: Argument validation — use the effective direction values
@@ -1700,13 +1700,13 @@ export function resolveAndBuildFlowParams(
     conversion_window,
     conversion_window_unit,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     data_group_id,
   });
   // CP1-CP6: Custom property validation for flow step filters
   argErrors.push(
-    ..._scanCustomProperties({
+    ...scanCustomProperties({
       flow_steps: steps,
       where,
     }),
@@ -1719,7 +1719,7 @@ export function resolveAndBuildFlowParams(
   const params = buildFlowParams({
     steps,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     conversion_window,
     conversion_window_unit,
@@ -1829,7 +1829,7 @@ export function resolveAndBuildRetentionParams(
     bucket_sizes,
     math,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     unit,
     group_by,
@@ -1862,7 +1862,7 @@ export function resolveAndBuildRetentionParams(
     mode,
     unit,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     group_by,
     unbounded_mode,
@@ -1870,7 +1870,7 @@ export function resolveAndBuildRetentionParams(
   });
   // CP1-CP6: Custom property validation for where and event filters
   argErrors.push(
-    ..._scanCustomProperties({
+    ...scanCustomProperties({
       where,
       retention_events: [normBorn, normReturn],
     }),
@@ -1888,7 +1888,7 @@ export function resolveAndBuildRetentionParams(
     bucket_sizes,
     math,
     from_date,
-    to_date,
+    to_date: toDate,
     last,
     unit,
     group_by,

@@ -148,9 +148,9 @@ export class SegmentationResult {
    */
   toRows(): readonly Row[] {
     const rows: Row[] = [];
-    for (const [segment_name, date_counts] of Object.entries(this.series)) {
-      for (const [date_str, count] of Object.entries(date_counts)) {
-        rows.push({ date: date_str, segment: segment_name, count });
+    for (const [segmentName, dateCounts] of Object.entries(this.series)) {
+      for (const [dateStr, count] of Object.entries(dateCounts)) {
+        rows.push({ date: dateStr, segment: segmentName, count });
       }
     }
     return rows;
@@ -650,8 +650,8 @@ export class RetentionResult {
         cohort_date: cohort.date,
         cohort_size: cohort.size,
       };
-      for (const [i, retention_value] of cohort.retention.entries()) {
-        row[`period_${String(i)}`] = retention_value;
+      for (const [i, retentionValue] of cohort.retention.entries()) {
+        row[`period_${String(i)}`] = retentionValue;
       }
       return row;
     });
@@ -817,9 +817,9 @@ export class EventCountsResult {
    */
   toRows(): readonly Row[] {
     const rows: Row[] = [];
-    for (const [event_name, date_counts] of Object.entries(this.series)) {
-      for (const [date_str, count] of Object.entries(date_counts)) {
-        rows.push({ date: date_str, event: event_name, count });
+    for (const [eventName, dateCounts] of Object.entries(this.series)) {
+      for (const [dateStr, count] of Object.entries(dateCounts)) {
+        rows.push({ date: dateStr, event: eventName, count });
       }
     }
     return rows;
@@ -960,9 +960,9 @@ export class PropertyCountsResult {
    */
   toRows(): readonly Row[] {
     const rows: Row[] = [];
-    for (const [value, date_counts] of Object.entries(this.series)) {
-      for (const [date_str, count] of Object.entries(date_counts)) {
-        rows.push({ date: date_str, value, count });
+    for (const [value, dateCounts] of Object.entries(this.series)) {
+      for (const [dateStr, count] of Object.entries(dateCounts)) {
+        rows.push({ date: dateStr, value, count });
       }
     }
     return rows;
@@ -1197,14 +1197,14 @@ export class ActivityFeedResult {
    * @returns The rows list.
    */
   toRows(): readonly Row[] {
-    return this.events.map((user_event) => {
-      const distinctId = user_event.properties["$distinct_id"];
+    return this.events.map((userEvent) => {
+      const distinctId = userEvent.properties["$distinct_id"];
       const row: Row = {
-        event: user_event.event,
-        time: user_event.time,
+        event: userEvent.event,
+        time: userEvent.time,
         distinct_id: distinctId === undefined ? "" : distinctId,
       };
-      for (const [key, value] of Object.entries(user_event.properties)) {
+      for (const [key, value] of Object.entries(userEvent.properties)) {
         if (key !== "$distinct_id") {
           row[key] = value;
         }
@@ -1418,10 +1418,10 @@ export class SavedReportResult {
   toRows(): readonly Row[] {
     if (this.report_type === "insights") {
       const rows: Row[] = [];
-      for (const [event_name, date_counts] of Object.entries(this.series)) {
-        if (isPlainRecord(date_counts)) {
-          for (const [date_str, count] of Object.entries(date_counts)) {
-            rows.push({ date: date_str, event: event_name, count });
+      for (const [eventName, dateCounts] of Object.entries(this.series)) {
+        if (isPlainRecord(dateCounts)) {
+          for (const [dateStr, count] of Object.entries(dateCounts)) {
+            rows.push({ date: dateStr, event: eventName, count });
           }
         }
       }
@@ -1790,8 +1790,8 @@ export class FrequencyResult {
    */
   toRows(): readonly Row[] {
     const rows: Row[] = [];
-    for (const [date_str, counts] of Object.entries(this.data)) {
-      const row: Row = { date: date_str };
+    for (const [dateStr, counts] of Object.entries(this.data)) {
+      const row: Row = { date: dateStr };
       for (const [index, count] of counts.entries()) {
         row[`period_${String(index + 1)}`] = count;
       }
@@ -1959,9 +1959,9 @@ export class NumericBucketResult {
    */
   toRows(): readonly Row[] {
     const rows: Row[] = [];
-    for (const [bucket, date_counts] of Object.entries(this.series)) {
-      for (const [date_str, count] of Object.entries(date_counts)) {
-        rows.push({ date: date_str, bucket, count });
+    for (const [bucket, dateCounts] of Object.entries(this.series)) {
+      for (const [dateStr, count] of Object.entries(dateCounts)) {
+        rows.push({ date: dateStr, bucket, count });
       }
     }
     return rows;
@@ -2124,8 +2124,8 @@ export class NumericSumResult {
    * @returns The rows list.
    */
   toRows(): readonly Row[] {
-    return Object.entries(this.results).map(([date_str, value]) => ({
-      date: date_str,
+    return Object.entries(this.results).map(([dateStr, value]) => ({
+      date: dateStr,
       sum: value,
     }));
   }
@@ -2318,8 +2318,8 @@ export class NumericAverageResult {
    * @returns The rows list.
    */
   toRows(): readonly Row[] {
-    return Object.entries(this.results).map(([date_str, value]) => ({
-      date: date_str,
+    return Object.entries(this.results).map(([dateStr, value]) => ({
+      date: dateStr,
       average: value,
     }));
   }

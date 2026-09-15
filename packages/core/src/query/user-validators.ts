@@ -42,7 +42,7 @@ import {
 } from "./python-builtins.js";
 import { isCohortFilter, isPythonDict } from "./user-builders.js";
 import {
-  _isValidDate,
+  isValidDate,
   matchesDateRe,
   pythonNumberStr,
   pythonTypeName,
@@ -108,7 +108,7 @@ const PY_DIGIT_CLASS = DECIMAL_DIGIT_RUNS.map(([start, , length]) =>
  * The `u` flag makes the classes and `[^\n]` operate on codepoints,
  * matching Python's per-codepoint `str` semantics (R11.6).
  */
-const _ACTION_RE = new RegExp(
+const ACTION_RE = new RegExp(
   `^(${String.raw`count\(\)`}${String.raw`|extremes\(properties\["[^\n]+"\]\)`}${String.raw`|percentile\(properties\["[^\n]+"\],[${PY_SPACE_CLASS}]*[${PY_DIGIT_CLASS}.]+\)`}${String.raw`|numeric_summary\(properties\["[^\n]+"\]\)`})$`,
   "u",
 );
@@ -123,7 +123,7 @@ function matchesActionRe(action: string): boolean {
   // Python `$` matches at the end OR just before a single trailing
   // newline; `count()\n` matches, `count()\n\n` does not (probed).
   const core = action.endsWith("\n") ? action.slice(0, -1) : action;
-  return _ACTION_RE.test(core);
+  return ACTION_RE.test(core);
 }
 
 // =============================================================================
@@ -136,7 +136,7 @@ function matchesActionRe(action: string): boolean {
  *
  * Watchlist #5: the clock is READ here, never used to PARSE a date
  * string; `as_of` grammar checking is a pure calendar computation
- * ({@link matchesDateRe} + {@link _isValidDate}).
+ * ({@link matchesDateRe} + {@link isValidDate}).
  *
  * @returns Today's date as `YYYY-MM-DD`.
  */
@@ -153,7 +153,7 @@ function defaultToday(): string {
  * (Python `date > date`).
  *
  * Both operands are ASCII-canonical by construction: `left` passed
- * {@link _isValidDate} and `right` comes from the `today` seam.
+ * {@link isValidDate} and `right` comes from the `today` seam.
  *
  * @param left - Left operand.
  * @param right - Right operand.
@@ -222,7 +222,7 @@ function asciiDigitsToInt(digits: string): number {
  * @param where - Raw where argument from the caller.
  * @returns List of candidate filter items (possibly empty).
  */
-function _normalizeFilters(
+function normalizeFilters(
   where: Filter | readonly unknown[] | string | null,
 ): unknown[] {
   if (where === null || typeof where === "string") {
@@ -353,7 +353,7 @@ export function validateUserArgs(
   const errors: ValidationError[] = [];
   // Python rebinds the single name `filters` after the U0 pass; TS
   // splits it into two bindings so the narrowed element type survives.
-  const rawFilters = _normalizeFilters(where);
+  const rawFilters = normalizeFilters(where);
 
   // U1: distinct_id and distinct_ids mutually exclusive
   if (distinctId !== null && distinctIds !== null) {
@@ -443,7 +443,7 @@ export function validateUserArgs(
     // newline pass `_DATE_RE` but raise ValueError), so the ported
     // pair `matchesDateRe` + `_isValidDate` is exact.
     let parsedDate: string | null = null;
-    if (matchesDateRe(asOf) && _isValidDate(asOf)) {
+    if (matchesDateRe(asOf) && isValidDate(asOf)) {
       parsedDate = asOf;
     }
     if (parsedDate === null) {

@@ -29,9 +29,9 @@ import {
 } from "../../src/compat/index.js";
 import { validateTimeArgs } from "../../src/query/validation-args.js";
 import {
-  _suggest,
-  _validateCustomProperty,
   containsControlChars,
+  suggest,
+  validateCustomProperty,
 } from "../../src/query/validation-shared.js";
 import {
   CustomPropertyRef,
@@ -144,7 +144,7 @@ describe("TestSuggestInvariants", () => {
   it("test_results_are_subset_of_valid", () => {
     fc.assert(
       fc.property(queryStringsArb, validSetsArb, (value, valid) => {
-        const result = _suggest(value, valid);
+        const result = suggest(value, valid);
         // `null` (no suggestion) is vacuously a subset.
         expect(
           (result ?? []).every((r) => valid.has(r)),
@@ -162,7 +162,7 @@ describe("TestSuggestInvariants", () => {
         validSetsArb,
         fc.integer({ min: 1, max: 10 }),
         (value, valid, n) => {
-          const result = _suggest(value, valid, n);
+          const result = suggest(value, valid, n);
           const count = result === null ? 0 : result.length;
           expect(
             count,
@@ -179,7 +179,7 @@ describe("TestSuggestInvariants", () => {
       fc.property(validSetsArb, (valid) => {
         // Python: `value = sorted(valid)[0]` — codepoint sort (R11.5).
         const value = sortedByCodepoint([...valid])[0]!;
-        const result = _suggest(value, valid);
+        const result = suggest(value, valid);
         expect(
           result,
           `Exact match ${JSON.stringify(value)} not found`,
@@ -282,15 +282,19 @@ describe("TestValidateTimeArgsSoundness", () => {
     fc.assert(
       fc.property(validDateStrsArb, validDateStrsArb, (a, b) => {
         // Ensure chronological order (Python `if from_date > to_date`).
-        let from_date = a;
-        let to_date = b;
-        if (from_date > to_date) {
-          [from_date, to_date] = [to_date, from_date];
+        let fromDate = a;
+        let toDate = b;
+        if (fromDate > toDate) {
+          [fromDate, toDate] = [toDate, fromDate];
         }
-        const errors = validateTimeArgs({ from_date, to_date, last: 30 });
+        const errors = validateTimeArgs({
+          from_date: fromDate,
+          to_date: toDate,
+          last: 30,
+        });
         expect(
           errors,
-          `Unexpected errors for valid dates ${from_date} to ${to_date}`,
+          `Unexpected errors for valid dates ${fromDate} to ${toDate}`,
         ).toStrictEqual([]);
       }),
       { numRuns: 100 },
@@ -342,7 +346,7 @@ describe("TestCustomPropertyRefValidation", () => {
     fc.assert(
       fc.property(fc.integer({ min: 1, max: 10_000 }), (propId) => {
         const ref = new CustomPropertyRef({ id: propId });
-        const errors = _validateCustomProperty(ref, "test");
+        const errors = validateCustomProperty(ref, "test");
         expect(
           errors,
           `Unexpected errors for id=${String(propId)}`,
@@ -356,7 +360,7 @@ describe("TestCustomPropertyRefValidation", () => {
     fc.assert(
       fc.property(fc.integer({ max: 0 }), (propId) => {
         const ref = new CustomPropertyRef({ id: propId });
-        const errors = _validateCustomProperty(ref, "test");
+        const errors = validateCustomProperty(ref, "test");
         expect(
           errors,
           `Expected exactly 1 error for id=${String(propId)}`,
@@ -381,7 +385,7 @@ describe("TestInlineCustomPropertyValidation", () => {
             inputs[k] = new PropertyInput({ name: names[i]! });
           }
           const prop = new InlineCustomProperty({ formula, inputs });
-          const errors = _validateCustomProperty(prop, "test");
+          const errors = validateCustomProperty(prop, "test");
           expect(
             errors,
             "Unexpected errors for valid InlineCustomProperty",
@@ -406,7 +410,7 @@ describe("TestInlineCustomPropertyValidation", () => {
             formula: " ".repeat(3),
             inputs,
           });
-          const errors = _validateCustomProperty(prop, "test");
+          const errors = validateCustomProperty(prop, "test");
           const codes = new Set(errors.map((e) => e.code));
           expect(
             codes.has("CP2_EMPTY_FORMULA"),

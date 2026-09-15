@@ -67,14 +67,14 @@ import {
 import { pythonStrip } from "../compat/index.js";
 import { ValidationError } from "../errors.js";
 import {
-  _enumError,
-  _isFinite,
-  _MAX_FILTER_VALUES,
+  enumError,
   floatCarrierValue,
+  isFiniteNumber,
   isFloatCarrier,
   isPythonDict,
   isPythonFloat,
   isPythonInt,
+  MAX_FILTER_VALUES,
   pythonStrLoose,
   requireHashable,
 } from "./validation-shared.js";
@@ -294,7 +294,7 @@ export function validateFlowBookmark(params: Dict): ValidationError[] {
     !(typeof countType === "string" && VALID_FLOWS_COUNT_TYPES.has(countType))
   ) {
     errors.push(
-      _enumError(
+      enumError(
         "count_type",
         "count_type",
         pythonStrLoose(countType),
@@ -312,7 +312,7 @@ export function validateFlowBookmark(params: Dict): ValidationError[] {
     !(typeof chartType === "string" && VALID_FLOWS_CHART_TYPES.has(chartType))
   ) {
     errors.push(
-      _enumError(
+      enumError(
         "chartType",
         "chartType",
         pythonStrLoose(chartType),
@@ -571,7 +571,7 @@ function validateShowClause(
     !(typeof btype === "string" && VALID_METRIC_TYPES.has(btype))
   ) {
     errors.push(
-      _enumError(
+      enumError(
         `${path}.behavior.type`,
         "behavior type",
         pythonStrLoose(btype),
@@ -649,7 +649,7 @@ function validateShowClause(
     !(typeof fd === "string" && VALID_FILTERS_DETERMINER.has(fd))
   ) {
     errors.push(
-      _enumError(
+      enumError(
         `${path}.behavior.filtersDeterminer`,
         "filtersDeterminer",
         pythonStrLoose(fd),
@@ -727,7 +727,7 @@ function validateMeasurement(
     }
     if (!(typeof math === "string" && validMath.has(math))) {
       errors.push(
-        _enumError(
+        enumError(
           `${path}.math`,
           "math",
           pythonStrLoose(math),
@@ -768,7 +768,7 @@ function validateMeasurement(
     !(typeof perUser === "string" && VALID_PER_USER_AGGREGATIONS.has(perUser))
   ) {
     errors.push(
-      _enumError(
+      enumError(
         `${path}.perUserAggregation`,
         "perUserAggregation",
         pythonStrLoose(perUser),
@@ -788,7 +788,7 @@ function validateMeasurement(
       !(typeof propType === "string" && VALID_PROPERTY_TYPES.has(propType))
     ) {
       errors.push(
-        _enumError(
+        enumError(
           `${path}.property.type`,
           "property type",
           pythonStrLoose(propType),
@@ -805,7 +805,7 @@ function validateMeasurement(
       !(typeof propRt === "string" && VALID_RESOURCE_TYPES.has(propRt))
     ) {
       errors.push(
-        _enumError(
+        enumError(
           `${path}.property.resourceType`,
           "resourceType",
           pythonStrLoose(propRt),
@@ -846,7 +846,7 @@ function validateDisplayOptions(display: Dict): ValidationError[] {
     typeof chartType === "string" && VALID_CHART_TYPES.has(chartType)
   )) {
     errors.push(
-      _enumError(
+      enumError(
         "displayOptions.chartType",
         "chartType",
         pythonStrLoose(chartType),
@@ -860,7 +860,7 @@ function validateDisplayOptions(display: Dict): ValidationError[] {
 }
 
 /** Valid `dateRangeType` values (inline frozenset, `validation.py:2767-2773`). */
-const _VALID_DATE_RANGE_TYPES: ReadonlySet<string> = new Set([
+const VALID_DATE_RANGE_TYPES: ReadonlySet<string> = new Set([
   "in the last",
   "between",
   "since",
@@ -900,7 +900,7 @@ function validateTimeClause(clause: unknown, index: number): ValidationError[] {
     !(typeof unit === "string" && VALID_TIME_UNITS.has(unit))
   ) {
     errors.push(
-      _enumError(
+      enumError(
         `${path}.unit`,
         "time unit",
         pythonStrLoose(unit),
@@ -915,7 +915,7 @@ function validateTimeClause(clause: unknown, index: number): ValidationError[] {
   requireHashable(drt); // R10.7: Python hashes in `not in` (:2767)
   if (
     !isNone(drt) &&
-    !(typeof drt === "string" && _VALID_DATE_RANGE_TYPES.has(drt))
+    !(typeof drt === "string" && VALID_DATE_RANGE_TYPES.has(drt))
   ) {
     errors.push(
       new ValidationError(
@@ -998,7 +998,7 @@ function validateFilterClause(
     !(typeof rt === "string" && VALID_RESOURCE_TYPES.has(rt))
   ) {
     errors.push(
-      _enumError(
+      enumError(
         `${path}.resourceType`,
         "resourceType",
         pythonStrLoose(rt),
@@ -1017,7 +1017,7 @@ function validateFilterClause(
     !(typeof ft === "string" && VALID_PROPERTY_TYPES.has(ft))
   ) {
     errors.push(
-      _enumError(
+      enumError(
         `${path}.filterType`,
         "filterType",
         pythonStrLoose(ft),
@@ -1035,7 +1035,7 @@ function validateFilterClause(
     !(typeof fo === "string" && VALID_FILTER_OPERATORS.has(fo))
   ) {
     errors.push(
-      _enumError(
+      enumError(
         `${path}.filterOperator`,
         "filterOperator",
         pythonStrLoose(fo),
@@ -1084,19 +1084,19 @@ function validateFilterClause(
   }
 
   // B21: Validate filterValue list length
-  if (Array.isArray(fv) && fv.length > _MAX_FILTER_VALUES) {
+  if (Array.isArray(fv) && fv.length > MAX_FILTER_VALUES) {
     errors.push(
       new ValidationError(
         `${path}.filterValue`,
         `filterValue has ${String(fv.length)} entries, ` +
-          `maximum is ${String(_MAX_FILTER_VALUES)}`,
+          `maximum is ${String(MAX_FILTER_VALUES)}`,
         "B21_FILTER_VALUE_TOO_MANY",
       ),
     );
   }
 
   // B20B: Numeric filter values must be finite (not NaN/Inf)
-  if (isPythonFloat(fv) && !_isFinite(fv)) {
+  if (isPythonFloat(fv) && !isFiniteNumber(fv)) {
     errors.push(
       new ValidationError(
         `${path}.filterValue`,
@@ -1106,7 +1106,7 @@ function validateFilterClause(
     );
   } else if (Array.isArray(fv)) {
     for (const [vi, v] of fv.entries()) {
-      if (isPythonFloat(v) && !_isFinite(v)) {
+      if (isPythonFloat(v) && !isFiniteNumber(v)) {
         errors.push(
           new ValidationError(
             `${path}.filterValue[${String(vi)}]`,
@@ -1156,7 +1156,7 @@ function validateGroupClause(
     !(typeof pt === "string" && VALID_PROPERTY_TYPES.has(pt))
   ) {
     errors.push(
-      _enumError(
+      enumError(
         `${path}.propertyType`,
         "propertyType",
         pythonStrLoose(pt),
@@ -1175,7 +1175,7 @@ function validateGroupClause(
     !(typeof rt === "string" && VALID_RESOURCE_TYPES.has(rt))
   ) {
     errors.push(
-      _enumError(
+      enumError(
         `${path}.resourceType`,
         "resourceType",
         pythonStrLoose(rt),
@@ -1248,7 +1248,7 @@ export function validateSortingBlock(sorting: unknown): ValidationError[] {
       known[chartType] = config;
     } else {
       errors.push(
-        _enumError(
+        enumError(
           `sorting.${chartType}`,
           "chart type",
           chartType,

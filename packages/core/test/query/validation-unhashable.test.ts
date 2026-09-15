@@ -207,25 +207,25 @@ describe("validateBookmark unhashable membership candidates (R10.7)", () => {
 
   it("hashable non-string values still return enum errors (probe controls)", () => {
     // CPython: True / 1.5 hash fine → membership False → enum error.
-    const math_true = validateBookmark(
+    const mathTrue = validateBookmark(
       bmShow({
         behavior: { type: "event", value: { name: "L" } },
         measurement: { math: true },
       }),
     );
-    expect(math_true.map((e) => e.code)).toContain("B9_INVALID_MATH");
-    const math_float = validateBookmark(
+    expect(mathTrue.map((e) => e.code)).toContain("B9_INVALID_MATH");
+    const mathFloat = validateBookmark(
       bmShow({
         behavior: { type: "event", value: { name: "L" } },
         measurement: { math: 1.5 },
       }),
     );
-    expect(math_float.map((e) => e.code)).toContain("B9_INVALID_MATH");
+    expect(mathFloat.map((e) => e.code)).toContain("B9_INVALID_MATH");
     // chartType=None takes the missing branch — never hashed.
-    const chart_none = validateBookmark(
+    const chartNone = validateBookmark(
       bm({ displayOptions: { chartType: null } }),
     );
-    expect(chart_none.map((e) => e.code)).toContain("B5_INVALID_CHART_TYPE");
+    expect(chartNone.map((e) => e.code)).toContain("B5_INVALID_CHART_TYPE");
   });
 });
 

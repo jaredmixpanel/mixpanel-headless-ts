@@ -1183,41 +1183,41 @@ export class SchemaGraphResult {
     this.include_density = fields.include_density ?? false;
     this.params = fields.params ?? {};
 
-    const event_to_properties: Record<string, string[]> = {};
-    let events_without_name = 0;
+    const eventToProperties: Record<string, string[]> = {};
+    let eventsWithoutName = 0;
     for (const event of this.events) {
       const name = event["name"];
       if (pyTruthy(name)) {
-        event_to_properties[pyStr(name)] = [];
+        eventToProperties[pyStr(name)] = [];
       } else {
-        events_without_name += 1;
+        eventsWithoutName += 1;
       }
     }
-    const property_to_events: Record<string, string[]> = {};
-    let properties_without_name = 0;
-    let property_event_entries_dropped = 0;
-    let relationship_edges = 0;
+    const propertyToEvents: Record<string, string[]> = {};
+    let propertiesWithoutName = 0;
+    let propertyEventEntriesDropped = 0;
+    let relationshipEdges = 0;
     for (const prop of this.properties) {
-      const prop_name = prop["name"];
-      if (!pyTruthy(prop_name)) {
-        properties_without_name += 1;
+      const propName = prop["name"];
+      if (!pyTruthy(propName)) {
+        propertiesWithoutName += 1;
         continue;
       }
-      const raw_entries_value = prop["events"];
-      const raw_entries: readonly unknown[] = pyTruthy(raw_entries_value)
-        ? (raw_entries_value as readonly unknown[])
+      const rawEntriesValue = prop["events"];
+      const rawEntries: readonly unknown[] = pyTruthy(rawEntriesValue)
+        ? (rawEntriesValue as readonly unknown[])
         : [];
       const attached: string[] = [];
-      for (const entry of raw_entries) {
+      for (const entry of rawEntries) {
         if (isPlainRecord(entry) && pyTruthy(entry["name"])) {
           attached.push(pyStr(entry["name"]));
         }
       }
-      property_event_entries_dropped += raw_entries.length - attached.length;
-      property_to_events[pyStr(prop_name)] = attached;
-      relationship_edges += attached.length;
-      for (const event_name of attached) {
-        (event_to_properties[event_name] ??= []).push(pyStr(prop_name));
+      propertyEventEntriesDropped += rawEntries.length - attached.length;
+      propertyToEvents[pyStr(propName)] = attached;
+      relationshipEdges += attached.length;
+      for (const eventName of attached) {
+        (eventToProperties[eventName] ??= []).push(pyStr(propName));
       }
     }
     // TODO(port): these two plain objects hold Python DICTS whose
@@ -1230,16 +1230,16 @@ export class SchemaGraphResult {
     // `properties` directly (B5-S1 R10.9 finding 3), but a `Map`-valued
     // surface would be the complete fix. Phase-2 field-shape decision —
     // escalated in `B5-S1-notes.md` §3, not changed unilaterally here.
-    this.event_to_properties = event_to_properties;
-    this.property_to_events = property_to_events;
+    this.event_to_properties = eventToProperties;
+    this.property_to_events = propertyToEvents;
     this.meta = {
       event_count: this.events.length,
       event_property_count: this.properties.length,
       user_property_count: this.user_properties.length,
-      events_without_name,
-      properties_without_name,
-      property_event_entries_dropped,
-      relationship_edges,
+      events_without_name: eventsWithoutName,
+      properties_without_name: propertiesWithoutName,
+      property_event_entries_dropped: propertyEventEntriesDropped,
+      relationship_edges: relationshipEdges,
     };
   }
 
@@ -1328,17 +1328,17 @@ export class SchemaGraphResult {
         continue;
       }
       const density = prop["densityLocal"] ?? null;
-      const entries_value = prop["events"];
-      const entries: readonly unknown[] = pyTruthy(entries_value)
-        ? (entries_value as readonly unknown[])
+      const entriesValue = prop["events"];
+      const entries: readonly unknown[] = pyTruthy(entriesValue)
+        ? (entriesValue as readonly unknown[])
         : [];
       for (const entry of entries) {
-        const event_name = isPlainRecord(entry) ? entry["name"] : null;
-        if (!pyTruthy(event_name)) {
+        const eventName = isPlainRecord(entry) ? entry["name"] : null;
+        if (!pyTruthy(eventName)) {
           continue;
         }
         rows.push({
-          event: pyStr(event_name),
+          event: pyStr(eventName),
           property: pyStr(name),
           density_local: density,
         });
@@ -1469,7 +1469,7 @@ export class SchemaGraphResult {
     const addEdge = (
       source: string,
       target: string,
-      density_local: unknown,
+      densityLocal: unknown,
     ): void => {
       let targets = adjacency.get(source);
       if (targets === undefined) {
@@ -1478,7 +1478,7 @@ export class SchemaGraphResult {
       }
       // A repeated `add_edge` updates the attributes in place and keeps
       // the original adjacency position (`Map.set` does the same).
-      targets.set(target, density_local);
+      targets.set(target, densityLocal);
     };
 
     // Python's first loop walks `self.event_to_properties`, whose key
@@ -1497,9 +1497,9 @@ export class SchemaGraphResult {
       if (!pyTruthy(prop["name"])) {
         continue;
       }
-      const seeded_entries = prop["events"];
-      for (const entry of pyTruthy(seeded_entries)
-        ? (seeded_entries as readonly unknown[])
+      const seededEntries = prop["events"];
+      for (const entry of pyTruthy(seededEntries)
+        ? (seededEntries as readonly unknown[])
         : []) {
         if (isPlainRecord(entry) && pyTruthy(entry["name"])) {
           addNode(pyStr(entry["name"]), "event");
@@ -1513,31 +1513,31 @@ export class SchemaGraphResult {
       }
     }
     for (const prop of this.properties) {
-      const prop_name = prop["name"];
-      if (!pyTruthy(prop_name)) {
+      const propName = prop["name"];
+      if (!pyTruthy(propName)) {
         continue;
       }
-      addNode(pyStr(prop_name), "property");
+      addNode(pyStr(propName), "property");
       const density = Object.hasOwn(prop, "densityLocal")
         ? prop["densityLocal"]
         : null;
-      const entries_value = prop["events"];
-      const entries: readonly unknown[] = pyTruthy(entries_value)
-        ? (entries_value as readonly unknown[])
+      const entriesValue = prop["events"];
+      const entries: readonly unknown[] = pyTruthy(entriesValue)
+        ? (entriesValue as readonly unknown[])
         : [];
       for (const entry of entries) {
         if (!isPlainRecord(entry) || !pyTruthy(entry["name"])) {
           continue;
         }
         addNode(pyStr(entry["name"]), "event");
-        addEdge(pyStr(entry["name"]), pyStr(prop_name), density);
+        addEdge(pyStr(entry["name"]), pyStr(propName), density);
       }
     }
     const edges: SchemaGraphEdge[] = [];
     for (const node of nodes) {
-      for (const [target, density_local] of adjacency.get(node.name) ??
+      for (const [target, densityLocal] of adjacency.get(node.name) ??
         new Map<string, unknown>()) {
-        edges.push({ source: node.name, target, density_local });
+        edges.push({ source: node.name, target, density_local: densityLocal });
       }
     }
     return { nodes, edges };
@@ -1644,21 +1644,21 @@ function pyStr(value: unknown): string {
  * shape — mirror of Python `SchemaGraphResult._property_row`.
  *
  * @param prop - Raw property dict.
- * @param default_resource - Resource fallback when `resourceType` is
+ * @param defaultResource - Resource fallback when `resourceType` is
  *   falsy.
  * @returns The row.
  */
 function propertyRow(
   prop: Readonly<Record<string, unknown>>,
-  default_resource: string,
+  defaultResource: string,
 ): Row {
   const resource = prop["resourceType"];
-  const resource_type = pyTruthy(resource)
+  const resourceType = pyTruthy(resource)
     ? pyStr(resource).toLowerCase()
-    : default_resource;
+    : defaultResource;
   return {
     name: prop["name"] ?? null,
-    resource_type,
+    resource_type: resourceType,
     display_name: prop["displayName"] ?? null,
     description: prop["description"] ?? null,
     example_value: prop["exampleValue"] ?? null,

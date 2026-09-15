@@ -765,21 +765,21 @@ const signedReplayCodec: ContractTagCodec = {
         );
       }
     }
-    const signed_at = bag["signed_at"];
+    const signedAt = bag["signed_at"];
     if (
-      typeof signed_at === "object" &&
-      signed_at !== null &&
-      "spelling" in signed_at &&
-      typeof signed_at.spelling === "string"
+      typeof signedAt === "object" &&
+      signedAt !== null &&
+      "spelling" in signedAt &&
+      typeof signedAt.spelling === "string"
     ) {
-      bag["signed_at"] = Number((signed_at as { spelling: string }).spelling);
+      bag["signed_at"] = Number((signedAt as { spelling: string }).spelling);
     }
     return new SignedReplay(bag as unknown as SignedReplayFields);
   },
   matches: (value) => value instanceof SignedReplay,
   encode: (instance, encodeChild) => {
     const signed = instance as SignedReplay;
-    const signed_at: unknown =
+    const signedAt: unknown =
       Number.isFinite(signed.signed_at) && Number.isInteger(signed.signed_at)
         ? { $type: "float", value: pythonFloatStr(signed.signed_at) }
         : encodeChild(signed.signed_at);
@@ -789,7 +789,7 @@ const signedReplayCodec: ContractTagCodec = {
       url: encodeChild(signed.url),
       query_string: encodeChild(signed.query_string),
       env: encodeChild(signed.env),
-      signed_at,
+      signed_at: signedAt,
     };
   },
 };

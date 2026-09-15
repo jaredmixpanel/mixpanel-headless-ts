@@ -91,16 +91,16 @@ export function safeInt(value: unknown, default_ = 0): number {
  * Strip timezone offsets from ISO timestamps — mirror of
  * `types._normalize_date_key`.
  *
- * @param date_key - Date string from an API response.
+ * @param dateKey - Date string from an API response.
  * @returns The first 19 characters when the key is longer than 19 and
  *   contains a `T`; otherwise unchanged.
  * @internal
  */
-export function normalizeDateKey(date_key: string): string {
-  if (date_key.length > 19 && date_key.includes("T")) {
-    return date_key.slice(0, 19);
+export function normalizeDateKey(dateKey: string): string {
+  if (dateKey.length > 19 && dateKey.includes("T")) {
+    return dateKey.slice(0, 19);
   }
-  return date_key;
+  return dateKey;
 }
 
 /**
@@ -198,55 +198,53 @@ export class QueryResult {
     readonly has_dates: boolean;
   } {
     const rows: Row[] = [];
-    let has_segments = false;
-    let has_dates = false;
-    for (const [metric_name, date_values] of Object.entries(this.series)) {
-      if (!isPlainRecord(date_values)) {
+    let hasSegments = false;
+    let hasDates = false;
+    for (const [metricName, dateValues] of Object.entries(this.series)) {
+      if (!isPlainRecord(dateValues)) {
         continue;
       }
-      const first_value = Object.values(date_values)[0];
-      if (isPlainRecord(first_value)) {
-        has_segments = true;
-        for (const [segment_name, segment_data] of Object.entries(
-          date_values,
-        )) {
-          if (!isPlainRecord(segment_data)) {
+      const firstValue = Object.values(dateValues)[0];
+      if (isPlainRecord(firstValue)) {
+        hasSegments = true;
+        for (const [segmentName, segmentData] of Object.entries(dateValues)) {
+          if (!isPlainRecord(segmentData)) {
             continue;
           }
-          for (const [date_key, value] of Object.entries(segment_data)) {
-            if (date_key === "all") {
+          for (const [dateKey, value] of Object.entries(segmentData)) {
+            if (dateKey === "all") {
               rows.push({
-                event: metric_name,
-                segment: segment_name,
+                event: metricName,
+                segment: segmentName,
                 count: value,
               });
             } else {
-              has_dates = true;
+              hasDates = true;
               rows.push({
-                date: normalizeDateKey(date_key),
-                event: metric_name,
-                segment: segment_name,
+                date: normalizeDateKey(dateKey),
+                event: metricName,
+                segment: segmentName,
                 count: value,
               });
             }
           }
         }
       } else {
-        for (const [date_key, value] of Object.entries(date_values)) {
-          if (date_key === "all") {
-            rows.push({ event: metric_name, count: value });
+        for (const [dateKey, value] of Object.entries(dateValues)) {
+          if (dateKey === "all") {
+            rows.push({ event: metricName, count: value });
           } else {
-            has_dates = true;
+            hasDates = true;
             rows.push({
-              date: normalizeDateKey(date_key),
-              event: metric_name,
+              date: normalizeDateKey(dateKey),
+              event: metricName,
               count: value,
             });
           }
         }
       }
     }
-    return { rows, has_segments, has_dates };
+    return { rows, has_segments: hasSegments, has_dates: hasDates };
   }
 
   /**
@@ -267,17 +265,21 @@ export class QueryResult {
    * @returns The column list.
    */
   rowColumns(): readonly string[] {
-    const { rows, has_segments, has_dates } = this.#buildRows();
+    const {
+      rows,
+      has_segments: hasSegments,
+      has_dates: hasDates,
+    } = this.#buildRows();
     if (rows.length === 0) {
       return ["date", "event", "count"];
     }
-    if (has_segments && has_dates) {
+    if (hasSegments && hasDates) {
       return ["date", "event", "segment", "count"];
     }
-    if (has_segments) {
+    if (hasSegments) {
       return ["event", "segment", "count"];
     }
-    if (has_dates) {
+    if (hasDates) {
       return ["date", "event", "count"];
     }
     return ["event", "count"];
@@ -672,22 +674,26 @@ export class RetentionQueryResult {
   toRows(): readonly Row[] {
     const rows: Row[] = [];
     if (Object.keys(this.segments).length > 0) {
-      for (const segment_name of sortedKeys(Object.keys(this.segments))) {
-        const segment_cohorts = this.segments[segment_name] ?? {};
-        for (const cohort_date of sortedKeys(Object.keys(segment_cohorts))) {
-          const cohort = segment_cohorts[cohort_date] ?? {};
+      for (const segmentName of sortedKeys(Object.keys(this.segments))) {
+        const segmentCohorts = this.segments[segmentName] ?? {};
+        for (const cohortDate of sortedKeys(Object.keys(segmentCohorts))) {
+          const cohort = segmentCohorts[cohortDate] ?? {};
           rows.push(
             ...RetentionQueryResult.#cohortRows(cohort, {
-              segment: segment_name,
-              cohort_date,
+              segment: segmentName,
+              cohort_date: cohortDate,
             }),
           );
         }
       }
     } else {
-      for (const cohort_date of sortedKeys(Object.keys(this.cohorts))) {
-        const cohort = this.cohorts[cohort_date] ?? {};
-        rows.push(...RetentionQueryResult.#cohortRows(cohort, { cohort_date }));
+      for (const cohortDate of sortedKeys(Object.keys(this.cohorts))) {
+        const cohort = this.cohorts[cohortDate] ?? {};
+        rows.push(
+          ...RetentionQueryResult.#cohortRows(cohort, {
+            cohort_date: cohortDate,
+          }),
+        );
       }
     }
     return rows;
@@ -1080,8 +1086,8 @@ export class FlowTreeNode {
     }
     const paths: FlowTreeNode[][] = [];
     for (const child of this.children) {
-      for (const child_path of child.allPaths()) {
-        paths.push([this, ...child_path]);
+      for (const childPath of child.allPaths()) {
+        paths.push([this, ...childPath]);
       }
     }
     return paths;
@@ -1144,24 +1150,24 @@ export class FlowTreeNode {
    * `render()` (box-drawing connectors, `event (total_count)` lines).
    *
    * @param _prefix - Accumulated indentation (internal recursion).
-   * @param _is_last - Whether this node is its parent's last child.
-   * @param _is_root - Whether this node is the render root.
+   * @param _isLast - Whether this node is its parent's last child.
+   * @param _isRoot - Whether this node is the render root.
    * @returns The rendered text (trailing newline included).
    */
-  render(_prefix = "", _is_last = true, _is_root = true): string {
+  render(_prefix = "", _isLast = true, _isRoot = true): string {
     let line: string;
-    let child_prefix: string;
-    if (_is_root) {
+    let childPrefix: string;
+    if (_isRoot) {
       line = `${this.event} (${String(this.total_count)})\n`;
-      child_prefix = "";
+      childPrefix = "";
     } else {
-      const connector = _is_last ? "└── " : "├── ";
+      const connector = _isLast ? "└── " : "├── ";
       line = `${_prefix}${connector}${this.event} (${String(this.total_count)})\n`;
-      child_prefix = _prefix + (_is_last ? " ".repeat(4) : "│   ");
+      childPrefix = _prefix + (_isLast ? " ".repeat(4) : "│   ");
     }
     for (const [i, child] of this.children.entries()) {
-      const is_last_child = i === this.children.length - 1;
-      line += child.render(child_prefix, is_last_child, false);
+      const isLastChild = i === this.children.length - 1;
+      line += child.render(childPrefix, isLastChild, false);
     }
     return line;
   }
@@ -1391,22 +1397,19 @@ export class FlowQueryResult {
   graph(): FlowGraph {
     const nodes: FlowGraphNode[] = [];
     const edges: FlowGraphEdge[] = [];
-    for (const [step_idx, step] of this.steps.entries()) {
+    for (const [stepIdx, step] of this.steps.entries()) {
       for (const node of FlowQueryResult.#stepNodes(step)) {
-        const nodeId = `${pythonStrOf(node["event"] ?? "")}@${String(step_idx)}`;
+        const nodeId = `${pythonStrOf(node["event"] ?? "")}@${String(stepIdx)}`;
         nodes.push({
           id: nodeId,
-          step: step_idx,
+          step: stepIdx,
           event: node["event"] ?? "",
           type: node["type"] ?? "",
           count: safeInt(node["totalCount"] ?? "0"),
           anchor_type: node["anchorType"] ?? "",
         });
         for (const edge of FlowQueryResult.#nodeEdges(node)) {
-          const targetStep = safeInt(
-            edge["step"] ?? step_idx + 1,
-            step_idx + 1,
-          );
+          const targetStep = safeInt(edge["step"] ?? stepIdx + 1, stepIdx + 1);
           edges.push({
             source: nodeId,
             target: `${pythonStrOf(edge["event"] ?? "")}@${String(targetStep)}`,
@@ -1457,10 +1460,10 @@ export class FlowQueryResult {
    */
   toNodesRows(): readonly Row[] {
     const rows: Row[] = [];
-    for (const [step_idx, step] of this.steps.entries()) {
+    for (const [stepIdx, step] of this.steps.entries()) {
       for (const node of FlowQueryResult.#stepNodes(step)) {
         rows.push({
-          step: step_idx,
+          step: stepIdx,
           event: node["event"] ?? "",
           type: node["type"] ?? "",
           count: safeInt(node["totalCount"] ?? "0"),
@@ -1513,13 +1516,13 @@ export class FlowQueryResult {
    */
   toEdgesRows(): readonly Row[] {
     const rows: Row[] = [];
-    for (const [step_idx, step] of this.steps.entries()) {
+    for (const [stepIdx, step] of this.steps.entries()) {
       for (const node of FlowQueryResult.#stepNodes(step)) {
         for (const edge of FlowQueryResult.#nodeEdges(node)) {
           rows.push({
-            source_step: step_idx,
+            source_step: stepIdx,
             source_event: node["event"] ?? "",
-            target_step: safeInt(edge["step"] ?? step_idx + 1, step_idx + 1),
+            target_step: safeInt(edge["step"] ?? stepIdx + 1, stepIdx + 1),
             target_event: edge["event"] ?? "",
             count: safeInt(edge["totalCount"] ?? "0"),
             target_type: edge["type"] ?? "",
@@ -1555,8 +1558,8 @@ export class FlowQueryResult {
    */
   toTreesRows(): readonly Row[] {
     const rows: Row[] = [];
-    for (const [tree_idx, tree] of this.trees.entries()) {
-      FlowQueryResult.#flattenTreeNode(tree, tree_idx, [], rows);
+    for (const [treeIdx, tree] of this.trees.entries()) {
+      FlowQueryResult.#flattenTreeNode(tree, treeIdx, [], rows);
     }
     return rows;
   }
@@ -1585,21 +1588,21 @@ export class FlowQueryResult {
    * `FlowQueryResult._flatten_tree_node`.
    *
    * @param node - Current node.
-   * @param tree_index - Root index.
+   * @param treeIndex - Root index.
    * @param ancestors - Ancestor event names.
    * @param rows - Output row accumulator.
    */
   static #flattenTreeNode(
     node: FlowTreeNode,
-    tree_index: number,
+    treeIndex: number,
     ancestors: readonly string[],
     rows: Row[],
   ): void {
-    const path_parts = [...ancestors, node.event];
+    const pathParts = [...ancestors, node.event];
     rows.push({
-      tree_index,
+      tree_index: treeIndex,
       depth: ancestors.length,
-      path: path_parts.join(" > "),
+      path: pathParts.join(" > "),
       event: node.event,
       type: node.type,
       step_number: node.step_number,
@@ -1608,7 +1611,7 @@ export class FlowQueryResult {
       converted_count: node.converted_count,
     });
     for (const child of node.children) {
-      FlowQueryResult.#flattenTreeNode(child, tree_index, path_parts, rows);
+      FlowQueryResult.#flattenTreeNode(child, treeIndex, pathParts, rows);
     }
   }
 
@@ -1626,16 +1629,16 @@ export class FlowQueryResult {
       return this.toTreesRows();
     }
     const rows: Row[] = [];
-    for (const [path_idx, flow] of this.flows.entries()) {
-      const flow_steps = flow["flowSteps"];
+    for (const [pathIdx, flow] of this.flows.entries()) {
+      const flowSteps = flow["flowSteps"];
       const steps: ReadonlyArray<Readonly<Record<string, unknown>>> =
-        Array.isArray(flow_steps)
-          ? (flow_steps as ReadonlyArray<Readonly<Record<string, unknown>>>)
+        Array.isArray(flowSteps)
+          ? (flowSteps as ReadonlyArray<Readonly<Record<string, unknown>>>)
           : [];
-      for (const [step_idx, fs] of steps.entries()) {
+      for (const [stepIdx, fs] of steps.entries()) {
         rows.push({
-          path_index: path_idx,
-          step: step_idx,
+          path_index: pathIdx,
+          step: stepIdx,
           event: fs["event"] ?? "",
           type: fs["type"] ?? "",
           count: safeInt(fs["totalCount"] ?? "0"),
@@ -1694,14 +1697,14 @@ export class FlowQueryResult {
       return {};
     }
     const summary: Record<string, unknown> = {};
-    for (const [step_idx, step] of this.steps.entries()) {
+    for (const [stepIdx, step] of this.steps.entries()) {
       let total = 0;
       let dropoff = 0;
       for (const node of FlowQueryResult.#stepNodes(step)) {
         const count = safeInt(node["totalCount"] ?? "0");
-        const node_type = node["type"] ?? "";
+        const nodeType = node["type"] ?? "";
         total += count;
-        if (node_type !== "DROPOFF") {
+        if (nodeType !== "DROPOFF") {
           for (const edge of FlowQueryResult.#nodeEdges(node)) {
             if (edge["type"] === "DROPOFF") {
               dropoff += safeInt(edge["totalCount"] ?? "0");
@@ -1710,7 +1713,7 @@ export class FlowQueryResult {
         }
       }
       const rate = total > 0 ? dropoff / total : 0.0;
-      summary[`step_${String(step_idx)}`] = { total, dropoff, rate };
+      summary[`step_${String(stepIdx)}`] = { total, dropoff, rate };
     }
     return summary;
   }
@@ -1911,8 +1914,8 @@ export class UserQueryResult {
       const props = profile["properties"];
       if (isPlainRecord(props)) {
         for (const [key, val] of Object.entries(props)) {
-          const clean_key = key.startsWith("$") ? key.slice(1) : key;
-          row[clean_key] = val;
+          const cleanKey = key.startsWith("$") ? key.slice(1) : key;
+          row[cleanKey] = val;
         }
       }
       return row;
@@ -2072,11 +2075,11 @@ export class UserQueryResult {
     );
     expectNullCache(payload, "_df_cache", cls);
     const aggregate = payload["aggregate_data"];
-    const aggregate_value = floatValue(aggregate);
+    const aggregateValue = floatValue(aggregate);
     if (
       Object.hasOwn(payload, "aggregate_data") &&
       aggregate !== null &&
-      aggregate_value === undefined &&
+      aggregateValue === undefined &&
       !isPlainRecord(aggregate)
     ) {
       decodeFail(cls, "aggregate_data", "object | number | null", aggregate);
@@ -2100,7 +2103,7 @@ export class UserQueryResult {
         ? {
             aggregate_data: isPlainRecord(aggregate)
               ? aggregate
-              : (aggregate_value ?? null),
+              : (aggregateValue ?? null),
           }
         : {}),
     });

@@ -109,8 +109,8 @@ describe("SegmentationResult (TestSegmentationResult)", () => {
       total: 5000,
       series: { US: { "2024-01-01": 100 } },
     });
-    const json_str = JSON.stringify(result.toJSON());
-    expect(json_str).toContain("Purchase");
+    const jsonStr = JSON.stringify(result.toJSON());
+    expect(jsonStr).toContain("Purchase");
   });
 });
 
@@ -238,8 +238,8 @@ describe("FunnelResult (TestFunnelResult)", () => {
       steps,
     });
     const data = result.toJSON();
-    const json_str = JSON.stringify(data);
-    expect(json_str).toContain("Test");
+    const jsonStr = JSON.stringify(data);
+    expect(jsonStr).toContain("Test");
     expect(data["steps"]).toHaveLength(1);
   });
 });
@@ -338,9 +338,9 @@ describe("FunnelInfo (TestFunnelInfo)", () => {
   it("test_to_dict_serializable", () => {
     const info = new FunnelInfo({ funnel_id: 12345, name: "Checkout Funnel" });
     const data = info.toJSON();
-    const json_str = JSON.stringify(data);
-    expect(json_str).toContain("12345");
-    expect(json_str).toContain("Checkout Funnel");
+    const jsonStr = JSON.stringify(data);
+    expect(jsonStr).toContain("12345");
+    expect(jsonStr).toContain("Checkout Funnel");
     expect(data["funnel_id"]).toBe(12345);
     expect(data["name"]).toBe("Checkout Funnel");
   });
@@ -642,11 +642,11 @@ describe("ProfilePageResult (TestProfilePageResult)", () => {
       total: 1000,
       page_size: 1000,
     });
-    const json_str = JSON.stringify(result.toJSON());
-    expect(json_str).toContain("session123");
-    expect(json_str).toContain("profile_count");
-    expect(json_str).toContain("total");
-    expect(json_str).toContain("num_pages");
+    const jsonStr = JSON.stringify(result.toJSON());
+    expect(jsonStr).toContain("session123");
+    expect(jsonStr).toContain("profile_count");
+    expect(jsonStr).toContain("total");
+    expect(jsonStr).toContain("num_pages");
   });
 });
 

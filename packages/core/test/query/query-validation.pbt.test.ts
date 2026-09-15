@@ -145,9 +145,13 @@ describe("TestTimeValidationEquivalence", () => {
         maybeDatesArb,
         maybeDatesArb,
         lastValuesArb,
-        (from_date, to_date, last) => {
+        (fromDate, toDate, last) => {
           const standaloneCodes = new Set(
-            validateTimeArgs({ from_date, to_date, last }).map((e) => e.code),
+            validateTimeArgs({
+              from_date: fromDate,
+              to_date: toDate,
+              last,
+            }).map((e) => e.code),
           );
           const monolithicTimeCodes = new Set(
             validateQueryArgs({
@@ -155,8 +159,8 @@ describe("TestTimeValidationEquivalence", () => {
               math: "total",
               math_property: null,
               per_user: null,
-              from_date,
-              to_date,
+              from_date: fromDate,
+              to_date: toDate,
               last,
               has_formula: false,
               rolling: null,
@@ -168,8 +172,8 @@ describe("TestTimeValidationEquivalence", () => {
           );
           expect(
             standaloneCodes,
-            `Mismatch for from_date=${JSON.stringify(from_date)}, ` +
-              `to_date=${JSON.stringify(to_date)}, last=${String(last)}`,
+            `Mismatch for from_date=${JSON.stringify(fromDate)}, ` +
+              `to_date=${JSON.stringify(toDate)}, last=${String(last)}`,
           ).toStrictEqual(monolithicTimeCodes);
         },
       ),
@@ -191,15 +195,15 @@ describe("TestGroupByValidationEquivalence", () => {
         bucketSizesArb,
         bucketBoundsArb,
         bucketBoundsArb,
-        (prop, prop_type, bucket_size, bucket_min, bucket_max) => {
+        (prop, propType, bucketSize, bucketMin, bucketMax) => {
           let g: GroupBy;
           try {
             g = new GroupBy({
               property: prop,
-              property_type: prop_type,
-              bucket_size,
-              bucket_min,
-              bucket_max,
+              property_type: propType,
+              bucket_size: bucketSize,
+              bucket_min: bucketMin,
+              bucket_max: bucketMax,
             });
           } catch (error) {
             // The constructor guard rejected this combination
@@ -235,8 +239,8 @@ describe("TestGroupByValidationEquivalence", () => {
           expect(
             standaloneCodes,
             `Mismatch for GroupBy(${JSON.stringify(prop)}, ` +
-              `type=${JSON.stringify(prop_type)}, size=${String(bucket_size)}, ` +
-              `min=${String(bucket_min)}, max=${String(bucket_max)})`,
+              `type=${JSON.stringify(propType)}, size=${String(bucketSize)}, ` +
+              `min=${String(bucketMin)}, max=${String(bucketMax)})`,
           ).toStrictEqual(monolithicGroupCodes);
         },
       ),
