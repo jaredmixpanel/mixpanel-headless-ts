@@ -1,48 +1,15 @@
 /**
- * The `Workspace` query-parameter engine — TS port of the private
- * param-building methods of `mixpanel_headless/workspace.py` for
- * Phase-3 batch B5, shard S2
- * (`docs/history/phase3/design/b5-packets.md` §3).
+ * The query-parameter engine behind the `query*` / `run*Params` /
+ * `build*Params` facade families: the insights, funnel, retention, flow
+ * and user-profile param builders, ported as free functions because
+ * Python's are `self`-free apart from the `_build_*` chain. Guard order
+ * is source order in every function — the corpus pins it. The argument
+ * validators and bookmark builders are imported, never re-implemented;
+ * the chart-type lookups are `ReadonlyMap`s so a `mode` of `"toString"`
+ * cannot reach `Object.prototype`; `json.dumps` renders through
+ * {@link pythonJsonDumps} (CPython separators and `\uXXXX` policy).
  *
- * Split out of `workspace.ts` per R7.2 (the facade file already carries
- * the S1/S3/B6 member sections; these ten helpers are ~1,100 lines on
- * their own). Every one of them is `self`-free in Python apart from the
- * `self._build_*_params` call chain, so they port as free functions and
- * the facade members delegate.
- *
- * Contents, in Python source order:
- *
- * | Python | Here |
- * |---|---|
- * | `_check_step_direction` `:353` | {@link checkStepDirection} |
- * | `_flow_mode_from_params` `:438` | {@link flowModeFromParams} |
- * | `_build_query_params` `:2047` | {@link buildQueryParams} |
- * | `_resolve_and_build_params` `:2546` | {@link resolveAndBuildParams} |
- * | `_build_funnel_params` `:2746` | {@link buildFunnelParams} |
- * | `_resolve_and_build_funnel_params` `:2930` | {@link resolveAndBuildFunnelParams} |
- * | `_build_retention_params` `:3321` | {@link buildRetentionParams} |
- * | `_build_flow_params` `:3493` | {@link buildFlowParams} |
- * | `_resolve_and_build_flow_params` `:3635` | {@link resolveAndBuildFlowParams} |
- * | `_resolve_and_build_retention_params` `:4100` | {@link resolveAndBuildRetentionParams} |
- * | `_resolve_and_build_user_params` `:9336` | {@link resolveAndBuildUserParams} |
- * | `_build_page_kwargs` `:10209` | {@link buildPageKwargs} |
- *
- * Port-wide conventions applied here:
- *
- * - R10.8 — the B2 validators (`validateQueryArgs`, `validateFunnelArgs`,
- *   `validateRetentionArgs`, `validateFlowArgs`, `validateUserArgs`,
- *   `validateUserParams`, `validateBookmark`, `validateFlowBookmark`,
- *   `_scanCustomProperties`) and the B3 builders (`buildTimeSection`,
- *   `buildFilterSection`, `buildGroupSection`, `buildFilterEntry`,
- *   `buildDateRange`, `buildSegfilterEntry`, `buildFlowCohortFilter`,
- *   `buildFlowPropertyFilter`, `buildTimeComparison`,
- *   `patchCustomPropertyFiltersForTransform`, `buildComposedProperties`,
- *   `sanitizeRawCohort`) are IMPORTED BY NAME, never re-implemented.
- * - R4.8 — the three `chart_type_map` lookups are `ReadonlyMap`s, so a
- *   `mode` of `"toString"` cannot reach `Object.prototype`.
- * - R11.7 — `json.dumps` renders through {@link pythonJsonDumps}
- *   (CPython's separators and `\uXXXX` policy), never `JSON.stringify`.
- * - Guard order is SOURCE order in every function.
+ * @see mixpanel_headless.workspace.Workspace
  */
 
 import {
@@ -199,13 +166,10 @@ const RETENTION_CHART_TYPE: ReadonlyMap<string, string> = new Map([
   ["table", "table"],
 ]);
 
-// ===========================================================================
-// `_check_step_direction`
-// ===========================================================================
+// --- _check_step_direction ---
 
 /**
- * Validate a per-step `forward`/`reverse` value for type and range
- * (`_check_step_direction`, `workspace.py`).
+ * Validate a per-step `forward`/`reverse` value for type and range.
  *
  * `None` means "inherit the default" and produces no finding. The type
  * check rejects `bool` explicitly (Python's `bool` is an `int`
@@ -216,6 +180,7 @@ const RETENTION_CHART_TYPE: ReadonlyMap<string, string> = new Map([
  * @param name - Field name (`"forward"` or `"reverse"`).
  * @param stepPath - Parent path for error reporting (`"steps[0]"`).
  * @returns The findings (empty when valid).
+ * @see mixpanel_headless.workspace._check_step_direction
  */
 function checkStepDirection(
   value: unknown,
@@ -248,13 +213,10 @@ function checkStepDirection(
   return [];
 }
 
-// ===========================================================================
-// `_flow_mode_from_params`
-// ===========================================================================
+// --- _flow_mode_from_params ---
 
 /**
- * Maps a flow `flows_merge_type` value to the `query_flow` mode that
- * runs it (`_FLOW_MERGE_TYPE_TO_MODE`, `workspace.py`).
+ * The `query_flow` mode that runs each flow `flows_merge_type` value.
  *
  * `build_flow_params` writes this key for every mode, so it is the
  * authoritative source when present.
@@ -266,8 +228,7 @@ const FLOW_MERGE_TYPE_TO_MODE: ReadonlyMap<string, FlowMode> = new Map([
 ]);
 
 /**
- * Maps a flow `chartType` value to the `query_flow` mode that runs it
- * (`_FLOW_CHART_TYPE_TO_MODE`, `workspace.py`).
+ * The `query_flow` mode that runs each flow `chartType` value.
  *
  * Fallback for params without `flows_merge_type`. `build_flow_params`
  * writes `"top-paths"` for paths mode and `"sankey"` for both sankey and
@@ -282,8 +243,7 @@ const FLOW_CHART_TYPE_TO_MODE: ReadonlyMap<string, FlowMode> = new Map([
 ]);
 
 /**
- * Derive the flow chart mode from pre-built flow params
- * (`_flow_mode_from_params`, `workspace.py`).
+ * Derive the flow chart mode from pre-built flow params.
  *
  * `flows_merge_type` wins when present and recognised. `chartType` is
  * the fallback. Anything else runs as sankey.
@@ -296,6 +256,7 @@ const FLOW_CHART_TYPE_TO_MODE: ReadonlyMap<string, FlowMode> = new Map([
  * flowModeFromParams({ chartType: "top-paths" }); // "paths"
  * flowModeFromParams({}); // "sankey"
  * ```
+ * @see mixpanel_headless.workspace._flow_mode_from_params
  */
 export function flowModeFromParams(
   params: Readonly<Record<string, unknown>>,
@@ -314,9 +275,7 @@ export function flowModeFromParams(
   return "sankey";
 }
 
-// ===========================================================================
-// `_build_query_params`
-// ===========================================================================
+// --- _build_query_params ---
 
 /** Keyword-only arguments of {@link buildQueryParams}. */
 export interface BuildQueryParamsOptions {
@@ -328,7 +287,11 @@ export interface BuildQueryParamsOptions {
   readonly math_property: unknown;
   /** Per-user pre-aggregation. */
   readonly per_user: string | null;
-  /** Custom percentile value. */
+  /**
+   * Custom percentile value.
+   *
+   * @defaultValue `null`
+   */
   readonly percentile_value?: number | null | undefined;
   /** Start date (`YYYY-MM-DD`) or `null`. */
   readonly from_date: string | null;
@@ -350,20 +313,41 @@ export interface BuildQueryParamsOptions {
   readonly cumulative: boolean;
   /** Result mode (`timeseries`, `total`, `table`). */
   readonly mode: string;
-  /** Optional period-over-period comparison. */
+  /**
+   * Optional period-over-period comparison.
+   *
+   * @defaultValue `null`
+   */
   readonly time_comparison?: TimeComparison | null | undefined;
-  /** Optional data group ID. */
+  /**
+   * Optional data group ID.
+   *
+   * @defaultValue `null`
+   */
   readonly data_group_id?: number | null | undefined;
-  /** Clock seam threaded into {@link buildTimeSection}. */
+  /**
+   * Clock seam threaded into {@link buildTimeSection}.
+   *
+   * @defaultValue the host's current date
+   */
   readonly today?: TodayFn | undefined;
 }
 
 /**
- * Build the insights bookmark params dict from typed arguments
- * (`_build_query_params`, `workspace.py`).
+ * Build the insights bookmark params dict from typed arguments.
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns Bookmark params ready for the insights query API.
+ * @example
+ * ```typescript
+ * const params = buildQueryParams({
+ *   events: ["Signup"], math: "total", math_property: null, per_user: null,
+ *   from_date: null, to_date: null, last: 30, unit: "day", group_by: null,
+ *   where: null, formulas: [], rolling: null, cumulative: false,
+ *   mode: "timeseries",
+ * });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace._build_query_params
  */
 // eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
@@ -498,7 +482,7 @@ export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
 
     // Build behavior block with optional per-metric filters
     let behaviorFilters: ParamsDict[] = [];
-    // Python `if item_filters:` — an emptiness test (watchlist #6).
+    // Python `if item_filters:` — an emptiness test, not a null check.
     if (itemFilters !== null && itemFilters.length > 0) {
       behaviorFilters = itemFilters.map((f) => buildFilterEntry(f));
     }
@@ -531,7 +515,7 @@ export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
       measurement: {},
       referencedMetrics: [],
     };
-    // Python `if f.label:` — empty labels are dropped (watchlist #6).
+    // Python `if f.label:` — empty labels are dropped.
     if (f.label !== null && f.label !== "") {
       formulaEntry["name"] = f.label;
     }
@@ -579,20 +563,15 @@ export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
     group: groupSection,
   };
   if (data_group_id !== null) {
-    // Contract: the Sections model has no `dataGroupId` key — the
-    // sections-level spelling is `globalDataGroupId: string | null`
-    // (`workspace.py` insights/funnel/retention sites post-FIX-1;
-    // fix-of-record
-    // docs/history/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md).
+    // The Sections model has no `dataGroupId` key; the sections-level
+    // spelling is `globalDataGroupId: string | null`, as Python emits it.
     sections["globalDataGroupId"] = String(data_group_id);
   }
 
   return { sections, displayOptions };
 }
 
-// ===========================================================================
-// `_resolve_and_build_params`
-// ===========================================================================
+// --- _resolve_and_build_params ---
 
 /** Keyword-only arguments of {@link resolveAndBuildParams}. */
 export interface ResolveAndBuildParamsOptions {
@@ -612,33 +591,76 @@ export interface ResolveAndBuildParamsOptions {
   readonly math_property: unknown;
   /** Per-user pre-aggregation. */
   readonly per_user: string | null;
-  /** Custom percentile value. */
+  /**
+   * Custom percentile value.
+   *
+   * @defaultValue `null`
+   */
   readonly percentile_value?: number | null | undefined;
-  /** Breakdown specification. */
+  /**
+   * Breakdown specification.
+   *
+   * @defaultValue `null`
+   */
   readonly group_by?: GroupByInput;
-  /** Filter conditions. */
+  /**
+   * Filter conditions.
+   *
+   * @defaultValue `null`
+   */
   readonly where?: unknown;
-  /** Top-level formula expression. */
+  /**
+   * Top-level formula expression.
+   *
+   * @defaultValue `null`
+   */
   readonly formula?: string | null | undefined;
-  /** Display label for the formula. */
+  /**
+   * Display label for the formula.
+   *
+   * @defaultValue `null`
+   */
   readonly formula_label?: string | null | undefined;
-  /** Rolling window size. */
+  /**
+   * Rolling window size.
+   *
+   * @defaultValue `null`
+   */
   readonly rolling?: number | null | undefined;
-  /** Cumulative analysis mode. */
+  /**
+   * Cumulative analysis mode.
+   *
+   * @defaultValue `false`
+   */
   readonly cumulative?: boolean | undefined;
-  /** Result shape. */
+  /**
+   * Result shape.
+   *
+   * @defaultValue `"timeseries"`
+   */
   readonly mode?: string | undefined;
-  /** Optional period-over-period comparison. */
+  /**
+   * Optional period-over-period comparison.
+   *
+   * @defaultValue `null`
+   */
   readonly time_comparison?: TimeComparison | null | undefined;
-  /** Optional data group ID. */
+  /**
+   * Optional data group ID.
+   *
+   * @defaultValue `null`
+   */
   readonly data_group_id?: number | null | undefined;
-  /** Clock seam. */
+  /**
+   * Clock seam.
+   *
+   * @defaultValue the host's current date
+   */
   readonly today?: TodayFn | undefined;
 }
 
 /**
- * Normalize, validate and build insights bookmark params
- * (`_resolve_and_build_params`, `workspace.py`).
+ * Normalize, validate and build insights bookmark params.
  *
  * Shared implementation of `query` and `build_params`: type guards,
  * event/formula normalization, Layer-1 argument validation, bookmark
@@ -646,10 +668,19 @@ export interface ResolveAndBuildParamsOptions {
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The validated bookmark params dict.
- * @throws BookmarkValidationError - Any layer's blocking findings
+ * @throws {@link BookmarkValidationError} - Any layer's blocking findings
  *   (`V21_INVALID_EVENT_TYPE`, `V25_INVALID_FILTER_TYPE`,
  *   `V0_NO_EVENTS`, `V4_FORMULA_CONFLICT`, then the `V*` and `B*`
  *   sets).
+ * @example
+ * ```typescript
+ * const params = resolveAndBuildParams({
+ *   events: ["Signup", "Purchase"], from_date: null, to_date: null, last: 30,
+ *   unit: "day", math: "total", math_property: null, per_user: null,
+ *   formula: "B / A", formula_label: "Conversion",
+ * });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace._resolve_and_build_params
  */
 // eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function resolveAndBuildParams(
@@ -820,9 +851,7 @@ export function resolveAndBuildParams(
   return params;
 }
 
-// ===========================================================================
-// `_build_funnel_params`
-// ===========================================================================
+// --- _build_funnel_params ---
 
 /** Keyword-only arguments of {@link buildFunnelParams}. */
 interface BuildFunnelParamsOptions {
@@ -856,22 +885,38 @@ interface BuildFunnelParamsOptions {
   readonly holding_constant: readonly HoldingConstant[];
   /** Display mode (`steps`, `trends`, `table`). */
   readonly mode: string;
-  /** Funnel reentry mode. */
+  /**
+   * Funnel reentry mode.
+   *
+   * @defaultValue `null`
+   */
   readonly reentry_mode?: string | null | undefined;
-  /** Optional period-over-period comparison. */
+  /**
+   * Optional period-over-period comparison.
+   *
+   * @defaultValue `null`
+   */
   readonly time_comparison?: TimeComparison | null | undefined;
-  /** Optional data group ID. */
+  /**
+   * Optional data group ID.
+   *
+   * @defaultValue `null`
+   */
   readonly data_group_id?: number | null | undefined;
-  /** Clock seam. */
+  /**
+   * Clock seam.
+   *
+   * @defaultValue the host's current date
+   */
   readonly today?: TodayFn | undefined;
 }
 
 /**
- * Build the funnel bookmark params dict (`_build_funnel_params`,
- * `workspace.py`).
+ * Build the funnel bookmark params dict.
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns Bookmark params ready for the insights query API.
+ * @see mixpanel_headless.workspace.Workspace._build_funnel_params
  */
 function buildFunnelParams(options: BuildFunnelParamsOptions): ParamsDict {
   const {
@@ -998,20 +1043,15 @@ function buildFunnelParams(options: BuildFunnelParamsOptions): ParamsDict {
     formula: [],
   };
   if (data_group_id !== null) {
-    // Contract: the Sections model has no `dataGroupId` key — the
-    // sections-level spelling is `globalDataGroupId: string | null`
-    // (`workspace.py` insights/funnel/retention sites post-FIX-1;
-    // fix-of-record
-    // docs/history/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md).
+    // The Sections model has no `dataGroupId` key; the sections-level
+    // spelling is `globalDataGroupId: string | null`, as Python emits it.
     sections["globalDataGroupId"] = String(data_group_id);
   }
 
   return { sections, displayOptions };
 }
 
-// ===========================================================================
-// `_resolve_and_build_funnel_params`
-// ===========================================================================
+// --- _resolve_and_build_funnel_params ---
 
 /** Keyword-only arguments of {@link resolveAndBuildFunnelParams}. */
 export interface ResolveAndBuildFunnelParamsOptions {
@@ -1046,23 +1086,49 @@ export interface ResolveAndBuildFunnelParamsOptions {
     string | HoldingConstant | ReadonlyArray<string | HoldingConstant> | null;
   /** Display mode. */
   readonly mode: string;
-  /** Funnel reentry mode. */
+  /**
+   * Funnel reentry mode.
+   *
+   * @defaultValue `null`
+   */
   readonly reentry_mode?: string | null | undefined;
-  /** Optional period-over-period comparison. */
+  /**
+   * Optional period-over-period comparison.
+   *
+   * @defaultValue `null`
+   */
   readonly time_comparison?: TimeComparison | null | undefined;
-  /** Optional data group ID. */
+  /**
+   * Optional data group ID.
+   *
+   * @defaultValue `null`
+   */
   readonly data_group_id?: number | null | undefined;
-  /** Clock seam. */
+  /**
+   * Clock seam.
+   *
+   * @defaultValue the host's current date
+   */
   readonly today?: TodayFn | undefined;
 }
 
 /**
- * Normalize, validate and build funnel bookmark params
- * (`_resolve_and_build_funnel_params`, `workspace.py`).
+ * Normalize, validate and build funnel bookmark params.
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The validated bookmark params dict.
- * @throws BookmarkValidationError - Layer-1 or Layer-2 findings.
+ * @throws {@link BookmarkValidationError} - Layer-1 or Layer-2 findings.
+ * @example
+ * ```typescript
+ * const params = resolveAndBuildFunnelParams({
+ *   steps: ["Signup", "Purchase"], conversion_window: 14,
+ *   conversion_window_unit: "day", order: "loose", math: "conversion_rate_unique",
+ *   math_property: null, from_date: null, to_date: null, last: 30, unit: "day",
+ *   group_by: null, where: null, exclusions: null, holding_constant: null,
+ *   mode: "steps",
+ * });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace._resolve_and_build_funnel_params
  */
 export function resolveAndBuildFunnelParams(
   options: ResolveAndBuildFunnelParamsOptions,
@@ -1170,9 +1236,7 @@ export function resolveAndBuildFunnelParams(
   return params;
 }
 
-// ===========================================================================
-// `_build_retention_params`
-// ===========================================================================
+// --- _build_retention_params ---
 
 /** Keyword-only arguments of {@link buildRetentionParams}. */
 interface BuildRetentionParamsOptions {
@@ -1202,27 +1266,47 @@ interface BuildRetentionParamsOptions {
   readonly where: FilterWhereInput;
   /** Display mode (`curve`, `trends`, `table`). */
   readonly mode: string;
-  /** Retention unbounded mode. */
+  /**
+   * Retention unbounded mode.
+   *
+   * @defaultValue `null`
+   */
   readonly unbounded_mode?: string | null | undefined;
-  /** Cumulative retention counting. */
+  /**
+   * Cumulative retention counting.
+   *
+   * @defaultValue `false`
+   */
   readonly retention_cumulative?: boolean | undefined;
-  /** Optional period-over-period comparison. */
+  /**
+   * Optional period-over-period comparison.
+   *
+   * @defaultValue `null`
+   */
   readonly time_comparison?: TimeComparison | null | undefined;
-  /** Optional data group ID. */
+  /**
+   * Optional data group ID.
+   *
+   * @defaultValue `null`
+   */
   readonly data_group_id?: number | null | undefined;
-  /** Clock seam. */
+  /**
+   * Clock seam.
+   *
+   * @defaultValue the host's current date
+   */
   readonly today?: TodayFn | undefined;
 }
 
 /**
- * Build the retention bookmark params dict
- * (`_build_retention_params`, `workspace.py`).
+ * Build the retention bookmark params dict.
  *
  * The trailing `sorting` / `columnWidths` literals are transcribed
  * verbatim — they are part of the emitted contract.
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns Bookmark params ready for the insights query API.
+ * @see mixpanel_headless.workspace.Workspace._build_retention_params
  */
 function buildRetentionParams(
   options: BuildRetentionParamsOptions,
@@ -1318,11 +1402,8 @@ function buildRetentionParams(
     formula: [],
   };
   if (data_group_id !== null) {
-    // Contract: the Sections model has no `dataGroupId` key — the
-    // sections-level spelling is `globalDataGroupId: string | null`
-    // (`workspace.py` insights/funnel/retention sites post-FIX-1;
-    // fix-of-record
-    // docs/history/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md).
+    // The Sections model has no `dataGroupId` key; the sections-level
+    // spelling is `globalDataGroupId: string | null`, as Python emits it.
     sections["globalDataGroupId"] = String(data_group_id);
   }
 
@@ -1353,9 +1434,7 @@ function buildRetentionParams(
   };
 }
 
-// ===========================================================================
-// `_build_flow_params`
-// ===========================================================================
+// --- _build_flow_params ---
 
 /** Keyword-only arguments of {@link buildFlowParams}. */
 export interface BuildFlowParamsOptions {
@@ -1381,24 +1460,49 @@ export interface BuildFlowParamsOptions {
   readonly hidden_events: readonly string[] | null;
   /** Display mode (`sankey`, `paths`, `tree`). */
   readonly mode: string;
-  /** Filter results by cohort membership or property conditions. */
+  /**
+   * Filter results by cohort membership or property conditions.
+   *
+   * @defaultValue `null`
+   */
   readonly where?: FilterWhereInput;
-  /** Optional data group ID. */
+  /**
+   * Optional data group ID.
+   *
+   * @defaultValue `null`
+   */
   readonly data_group_id?: number | null | undefined;
-  /** Segment (breakdown) specification. */
+  /**
+   * Segment (breakdown) specification.
+   *
+   * @defaultValue `null`
+   */
   readonly segments?: GroupByInput;
-  /** Event names to exclude from flow paths. */
+  /**
+   * Event names to exclude from flow paths.
+   *
+   * @defaultValue `null`
+   */
   readonly exclusions?: readonly string[] | null | undefined;
 }
 
 /**
- * Build the FLAT flow bookmark params dict (`_build_flow_params`,
- * `workspace.py`).
+ * Build the flat flow bookmark params dict.
  *
  * Flows use a flat dict (no `sections` / `displayOptions` wrapper).
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The flat bookmark params dict.
+ * @example
+ * ```typescript
+ * const params = buildFlowParams({
+ *   steps: [new FlowStep({ event: "Login" })], from_date: null, to_date: null,
+ *   last: 30, conversion_window: 7, conversion_window_unit: "day",
+ *   count_type: "unique", cardinality: 3, collapse_repeated: false,
+ *   hidden_events: null, mode: "sankey",
+ * });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace._build_flow_params
  */
 // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function buildFlowParams(options: BuildFlowParamsOptions): ParamsDict {
@@ -1496,9 +1600,7 @@ export function buildFlowParams(options: BuildFlowParamsOptions): ParamsDict {
   return params;
 }
 
-// ===========================================================================
-// `_resolve_and_build_flow_params`
-// ===========================================================================
+// --- _resolve_and_build_flow_params ---
 
 /** Keyword-only arguments of {@link resolveAndBuildFlowParams}. */
 export interface ResolveAndBuildFlowParamsOptions {
@@ -1528,27 +1630,56 @@ export interface ResolveAndBuildFlowParamsOptions {
   readonly hidden_events: readonly string[] | null;
   /** Display mode. */
   readonly mode: string;
-  /** Filter conditions. */
+  /**
+   * Filter conditions.
+   *
+   * @defaultValue `null`
+   */
   readonly where?: FilterWhereInput;
-  /** Optional data group ID. */
+  /**
+   * Optional data group ID.
+   *
+   * @defaultValue `null`
+   */
   readonly data_group_id?: number | null | undefined;
-  /** Segment (breakdown) specification. */
+  /**
+   * Segment (breakdown) specification.
+   *
+   * @defaultValue `null`
+   */
   readonly segments?: GroupByInput;
-  /** Event names to exclude from flow paths. */
+  /**
+   * Event names to exclude from flow paths.
+   *
+   * @defaultValue `null`
+   */
   readonly exclusions?: readonly string[] | null | undefined;
-  /** Clock seam for the `to_date` default (`_date.today()`). */
+  /**
+   * Clock seam for the `to_date` default (`_date.today()`).
+   *
+   * @defaultValue the host's current date
+   */
   readonly today?: TodayFn | undefined;
 }
 
 /**
- * Normalize, validate and build flow bookmark params
- * (`_resolve_and_build_flow_params`, `workspace.py`).
+ * Normalize, validate and build flow bookmark params.
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The validated flow bookmark params dict.
- * @throws BookmarkValidationError - Layer-0.5, Layer-1 or Layer-2
+ * @throws {@link BookmarkValidationError} - Layer-0.5, Layer-1 or Layer-2
  *   findings (`FL_TYPE_*`, `FL3`/`FL4`, `FL_INVALID_*`, then the FL*
  *   argument and bookmark sets).
+ * @example
+ * ```typescript
+ * const params = resolveAndBuildFlowParams({
+ *   event: "Login", forward: 3, reverse: 0, from_date: null, to_date: null,
+ *   last: 30, conversion_window: 7, conversion_window_unit: "day",
+ *   count_type: "unique", cardinality: 3, collapse_repeated: false,
+ *   hidden_events: null, mode: "sankey",
+ * });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace._resolve_and_build_flow_params
  */
 // eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function resolveAndBuildFlowParams(
@@ -1755,7 +1886,7 @@ export function resolveAndBuildFlowParams(
  * @param values - The candidates (never empty — `steps` always has at
  *   least one member by the time this runs).
  * @returns The maximum.
- * @throws ValueError - On an empty sequence (CPython's
+ * @throws {@link ValueError} - On an empty sequence (CPython's
  *   `max() iterable argument is empty`).
  */
 function pyMax(values: readonly number[]): number {
@@ -1772,9 +1903,7 @@ function pyMax(values: readonly number[]): number {
   return best;
 }
 
-// ===========================================================================
-// `_resolve_and_build_retention_params`
-// ===========================================================================
+// --- _resolve_and_build_retention_params ---
 
 /** Keyword-only arguments of {@link resolveAndBuildRetentionParams}. */
 export interface ResolveAndBuildRetentionParamsOptions {
@@ -1804,25 +1933,54 @@ export interface ResolveAndBuildRetentionParamsOptions {
   readonly where: FilterWhereInput;
   /** Display mode. */
   readonly mode: string;
-  /** Retention unbounded mode. */
+  /**
+   * Retention unbounded mode.
+   *
+   * @defaultValue `null`
+   */
   readonly unbounded_mode?: string | null | undefined;
-  /** Cumulative retention counting. */
+  /**
+   * Cumulative retention counting.
+   *
+   * @defaultValue `false`
+   */
   readonly retention_cumulative?: boolean | undefined;
-  /** Optional period-over-period comparison. */
+  /**
+   * Optional period-over-period comparison.
+   *
+   * @defaultValue `null`
+   */
   readonly time_comparison?: TimeComparison | null | undefined;
-  /** Optional data group ID. */
+  /**
+   * Optional data group ID.
+   *
+   * @defaultValue `null`
+   */
   readonly data_group_id?: number | null | undefined;
-  /** Clock seam. */
+  /**
+   * Clock seam.
+   *
+   * @defaultValue the host's current date
+   */
   readonly today?: TodayFn | undefined;
 }
 
 /**
- * Normalize, validate and build retention bookmark params
- * (`_resolve_and_build_retention_params`, `workspace.py`).
+ * Normalize, validate and build retention bookmark params.
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The validated bookmark params dict.
- * @throws BookmarkValidationError - Layer-1 or Layer-2 findings.
+ * @throws {@link BookmarkValidationError} - Layer-1 or Layer-2 findings.
+ * @example
+ * ```typescript
+ * const params = resolveAndBuildRetentionParams({
+ *   born_event: "Signup", return_event: "Login", retention_unit: "week",
+ *   alignment: "birth", bucket_sizes: null, math: "retention_rate",
+ *   from_date: null, to_date: null, last: 30, unit: "day", group_by: null,
+ *   where: null, mode: "curve",
+ * });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace._resolve_and_build_retention_params
  */
 export function resolveAndBuildRetentionParams(
   options: ResolveAndBuildRetentionParamsOptions,
@@ -1918,63 +2076,147 @@ export function resolveAndBuildRetentionParams(
   return params;
 }
 
-// ===========================================================================
-// `_resolve_and_build_user_params`
-// ===========================================================================
+// --- _resolve_and_build_user_params ---
 
 /** Keyword-only arguments of {@link resolveAndBuildUserParams}. */
 export interface ResolveAndBuildUserParamsOptions {
-  /** Profile filter (single, list, raw selector, or `null`). */
+  /**
+   * Profile filter (single, list, raw selector, or `null`).
+   *
+   * @defaultValue `null`
+   */
   readonly where?: unknown;
-  /** Cohort membership filter. */
+  /**
+   * Cohort membership filter.
+   *
+   * @defaultValue `null`
+   */
   readonly cohort?: number | CohortDefinition | null | undefined;
-  /** Output properties. */
+  /**
+   * Output properties.
+   *
+   * @defaultValue `null`
+   */
   readonly properties?: readonly string[] | null | undefined;
-  /** Property name to sort by. */
+  /**
+   * Property name to sort by.
+   *
+   * @defaultValue `null`
+   */
   readonly sort_by?: string | null | undefined;
-  /** Sort direction. */
+  /**
+   * Sort direction.
+   *
+   * @defaultValue `"descending"`
+   */
   readonly sort_order?: string | undefined;
-  /** Full-text search term. */
+  /**
+   * Full-text search term.
+   *
+   * @defaultValue `null`
+   */
   readonly search?: string | null | undefined;
-  /** Single distinct-ID lookup. */
+  /**
+   * Single distinct-ID lookup.
+   *
+   * @defaultValue `null`
+   */
   readonly distinct_id?: string | null | undefined;
-  /** Batch distinct-ID lookup. */
+  /**
+   * Batch distinct-ID lookup.
+   *
+   * @defaultValue `null`
+   */
   readonly distinct_ids?: readonly string[] | null | undefined;
-  /** Group-profile scope. */
+  /**
+   * Group-profile scope.
+   *
+   * @defaultValue `null`
+   */
   readonly group_id?: string | null | undefined;
-  /** Point-in-time query (ISO date string or Unix timestamp). */
+  /**
+   * Point-in-time query (ISO date string or Unix timestamp).
+   *
+   * @defaultValue `null`
+   */
   readonly as_of?: string | number | null | undefined;
-  /** Output mode. */
+  /**
+   * Output mode.
+   *
+   * @defaultValue `"aggregate"`
+   */
   readonly mode?: string | undefined;
-  /** Aggregation function. */
+  /**
+   * Aggregation function.
+   *
+   * @defaultValue `"count"`
+   */
   readonly aggregate?: string | undefined;
-  /** Property to aggregate on. */
+  /**
+   * Property to aggregate on.
+   *
+   * @defaultValue `null`
+   */
   readonly aggregate_property?: string | null | undefined;
-  /** Percentile value. */
+  /**
+   * Percentile value.
+   *
+   * @defaultValue `null`
+   */
   readonly percentile?: number | null | undefined;
-  /** Cohort IDs for segmented aggregation. */
+  /**
+   * Cohort IDs for segmented aggregation.
+   *
+   * @defaultValue `null`
+   */
   readonly segment_by?: readonly number[] | null | undefined;
-  /** Concurrent page fetching. */
+  /**
+   * Concurrent page fetching.
+   *
+   * @defaultValue `false`
+   */
   readonly parallel?: boolean | undefined;
-  /** Maximum concurrent workers. */
+  /**
+   * Maximum concurrent workers.
+   *
+   * @defaultValue `5`
+   */
   readonly workers?: number | undefined;
-  /** Maximum profiles (validation only; not emitted). */
+  /**
+   * Maximum profiles (validation only; not emitted).
+   *
+   * @defaultValue `1`
+   */
   readonly limit?: number | null | undefined;
-  /** Include non-members in cohort query results. */
+  /**
+   * Include non-members in cohort query results.
+   *
+   * @defaultValue `false`
+   */
   readonly include_all_users?: boolean | undefined;
-  /** Clock seam for the U8 `as_of` future check. */
+  /**
+   * Clock seam for the U8 `as_of` future check.
+   *
+   * @defaultValue the host's current date
+   */
   readonly today?: TodayFn | undefined;
 }
 
 /**
- * Validate arguments and build the engage API params dict
- * (`_resolve_and_build_user_params`, `workspace.py`).
+ * Validate arguments and build the engage API params dict.
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The engage params dict for `export_profiles_page`.
- * @throws BookmarkValidationError - Argument-level (U1-U28) or
+ * @throws {@link BookmarkValidationError} - Argument-level (U1-U28) or
  *   param-level (UP1-UP4) findings, plus the `U9` / `U_FILTER` /
  *   `U_COHORT` guards raised here.
+ * @example
+ * ```typescript
+ * const params = resolveAndBuildUserParams({
+ *   cohort: 12345, mode: "aggregate", aggregate: "count",
+ * });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace._resolve_and_build_user_params
  */
 // eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function resolveAndBuildUserParams(
@@ -2029,9 +2271,9 @@ export function resolveAndBuildUserParams(
     properties,
     sort_by,
     // Python's `Literal[...]` is erased at runtime, so an out-of-union
-    // string MUST still reach the validator (which raises U2/U13/U14
+    // string must still reach the validator (which raises U2/U13/U14
     // for it). The casts restore that reachability past the TS
-    // narrowing on the B2 options bag.
+    // narrowing of the options bag.
     sort_order: sort_order as "ascending" | "descending",
     limit,
     search,
@@ -2072,16 +2314,12 @@ export function resolveAndBuildUserParams(
       try {
         selector = filtersToSelector(remaining);
       } catch (error) {
-        // Python's `except ValueError` here catches BOTH the builtin and
-        // `ParamValidationError`, which dual-inherits `ValueError`
-        // (`exceptions.py`). The converted ES* guards inside
-        // `filters_to_selector` raise the latter, and RR-4
-        // (`test_workspace_query_user_integration.py`) pins
-        // that they surface here as `U_FILTER` with the guard error as
-        // the chained cause. The Phase-2 header note ("`except
-        // ValueError` reachability is a Python-side concern only",
-        // `errors.ts:11-14`) does NOT hold at this one site, so the
-        // catch names both classes explicitly.
+        // Python's `except ValueError` here catches both the builtin and
+        // `ParamValidationError`, which dual-inherits `ValueError`. The
+        // converted ES* guards inside `filters_to_selector` raise the
+        // latter, and Python's integration tests pin that they surface
+        // here as `U_FILTER` with the guard error as the chained cause,
+        // so the catch names both classes explicitly.
         if (
           error instanceof ValueError ||
           error instanceof ParamValidationError
@@ -2269,8 +2507,8 @@ function pythonNumberText(value: number | null | undefined): string {
 }
 
 /**
- * `calendar.timegm(date.fromisoformat(s).timetuple())`
- * (`workspace.py`) — midnight UTC of an ISO calendar date.
+ * `calendar.timegm(date.fromisoformat(s).timetuple())` — midnight UTC of
+ * an ISO calendar date.
  *
  * `date.fromisoformat` accepts only `YYYY-MM-DD` in the range this
  * code path can reach (the U8 validator has already rejected malformed
@@ -2279,7 +2517,7 @@ function pythonNumberText(value: number | null | undefined): string {
  *
  * @param value - The ISO date text.
  * @returns The Unix timestamp of midnight UTC.
- * @throws ValueError - When the text is not an ISO calendar date
+ * @throws {@link ValueError} - When the text is not an ISO calendar date
  *   (CPython's `Invalid isoformat string`).
  */
 function timegmFromIsoDate(value: string): number {
@@ -2349,13 +2587,10 @@ function daysFromCivilDate(y: number, m: number, d: number): number {
   return era * 146097 + doe - 719468;
 }
 
-// ===========================================================================
-// `_build_page_kwargs`
-// ===========================================================================
+// --- _build_page_kwargs ---
 
 /**
- * Extract `export_profiles_page` kwargs from the engage params dict
- * (`_build_page_kwargs`, `workspace.py`).
+ * Extract `export_profiles_page` kwargs from the engage params dict.
  *
  * The two JSON-encoded members (`output_properties`, `distinct_ids`)
  * are decoded back to lists when they arrive as strings, exactly as
@@ -2363,6 +2598,13 @@ function daysFromCivilDate(y: number, m: number, d: number): number {
  *
  * @param params - The engage params dict.
  * @returns The keyword arguments for the page call.
+ * @throws {@link LosslessJsonError} - Malformed `output_properties` or
+ *   `distinct_ids` JSON (Python's `json.JSONDecodeError`).
+ * @example
+ * ```typescript
+ * const kwargs = buildPageKwargs(ws.buildUserParams({ properties: ["$email"] }));
+ * ```
+ * @see mixpanel_headless.workspace.Workspace._build_page_kwargs
  */
 export function buildPageKwargs(
   params: Readonly<Record<string, unknown>>,
@@ -2408,26 +2650,24 @@ export function buildPageKwargs(
   return kwargs;
 }
 
-// ===========================================================================
-// The `engage_stats` kwargs block of `_execute_user_aggregate`
-// (`workspace.py`)
-// ===========================================================================
+// --- the engage_stats kwargs block of _execute_user_aggregate ---
 
 /**
  * Extract the `engage_stats` kwargs from the engage params dict — the
- * `self`-free block of `_execute_user_aggregate`
- * (`workspace.py`), lifted here for the same R7.2 reason
- * as {@link buildPageKwargs} (and so the Layer-3 malformed-JSON case
- * `test_query_user_edge_cases.py` has a reachable seam; the Python
- * test calls the private method directly).
- *
- * `segment_by_cohorts` is decoded back to a dict when it arrives as a
- * string, exactly as Python does.
+ * `self`-free block of `_execute_user_aggregate`, lifted out so the
+ * malformed-JSON case has a reachable seam (Python's tests call the
+ * private method directly). `segment_by_cohorts` is decoded back to a
+ * dict when it arrives as a string, exactly as Python does.
  *
  * @param params - The engage params dict.
  * @returns The keyword arguments for `engage_stats`.
- * @throws LosslessJsonError - Malformed `segment_by_cohorts` JSON
+ * @throws {@link LosslessJsonError} - Malformed `segment_by_cohorts` JSON
  *   (Python's `json.JSONDecodeError`).
+ * @example
+ * ```typescript
+ * const kwargs = buildStatsKwargs(ws.buildUserParams({ aggregate: "count" }));
+ * ```
+ * @see mixpanel_headless.workspace.Workspace._execute_user_aggregate
  */
 export function buildStatsKwargs(
   params: Readonly<Record<string, unknown>>,
@@ -2462,12 +2702,12 @@ export function buildStatsKwargs(
 /**
  * `json.loads(text)` for the three engage-param round-trips — the
  * library encoded these with `pythonJsonDumps`, so the decode uses the
- * shared lossless parser (B0-1 F1: never a bare `JSON.parse`) and its
+ * shared lossless parser (never a bare `JSON.parse`) and its
  * `LosslessJsonError` is the `json.JSONDecodeError` analog.
  *
  * @param text - The JSON text.
  * @returns The native-valued tree.
- * @throws LosslessJsonError - On malformed JSON.
+ * @throws {@link LosslessJsonError} - On malformed JSON.
  */
 function pythonJsonLoads(text: string): unknown {
   return toNativeJson(parseLossless(text, { pythonConstants: true }));

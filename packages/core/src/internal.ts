@@ -1,16 +1,16 @@
 /**
- * `@mixpanel-headless/core/internal` — the NOT-semver-stable surface.
+ * `@mixpanel-headless/core/internal` — exported plumbing that is not
+ * semver-stable: validators, bookmark builders, model bases, service
+ * classes and the lock-test tables that the platform packages
+ * (`@mixpanel-headless/node`, `@mixpanel-headless/browser`) and the
+ * verification rig (`conformance-runner`, `differential`) need beyond the
+ * public barrel. Anything here may change or disappear in a patch
+ * release; application code imports from `@mixpanel-headless/core` only.
  *
- * Exists for the verification rig (`conformance-runner`, `differential`)
- * and the platform packages (`@mixpanel-headless/node`,
- * `@mixpanel-headless/browser`), which need core plumbing that the public
- * barrel (`./index.ts`) deliberately does not promise to keep: validators,
- * bookmark builders, model bases, service classes, lock-test tables.
- * Anything here may change or disappear in a patch release. Application
- * code should import from `@mixpanel-headless/core` only.
+ * @packageDocumentation
  */
 
-// ── Facade / services internals ─────────────────────────────────────────
+// --- Facade / services internals ---
 export type { ReplayEnv } from "./services/entities/replays-signing.js";
 export type { LiveActivityFeedOptions } from "./services/live-query.js";
 export {
@@ -21,12 +21,12 @@ export {
 } from "./services/replays.js";
 export type { EventsInput } from "./workspace-query-params.js";
 
-// ── Client plumbing, invariants ─────────────────────────────────────────
+// --- Client plumbing, invariants ---
 export { iterJsonlLines } from "./client/jsonl.js";
 export { paginateAll } from "./client/pagination.js";
 export { exceptionMessage } from "./invariant.js";
 
-// ── Error-code registry (generated) ─────────────────────────────────────
+// --- Error-code registry (generated) ---
 export {
   CODED_GUARD_REGISTRY,
   CODED_GUARD_TWIN_CODES,
@@ -35,7 +35,7 @@ export {
   EXCEPTION_CLASS_PARENTS,
 } from "./errors-codes.gen.js";
 
-// ── Model base, lock-test tables ────────────────────────────────────────
+// --- Model base, lock-test tables ---
 export {
   describeValue,
   modelFail,
@@ -50,7 +50,7 @@ export { LITERAL_ALIAS_VALUES } from "./types/literals.js";
 export { filterUnchecked } from "./types/query-params/filter.js";
 export { sanitizeRawCohort } from "./types/query-params/guards.js";
 
-// ── Auth / accounts internals ───────────────────────────────────────────
+// --- Auth / accounts internals ---
 export {
   persistActiveToConfig,
   resolverSeamsFromEffects,
@@ -61,7 +61,7 @@ export { base64UrlEncodeBytes } from "./auth/pkce.js";
 export { parseQs, pythonUnquote } from "./auth/query-params.js";
 export { probeClientFromFetch } from "./auth/region-probe.js";
 
-// ── Query validators, transforms, builders ──────────────────────────────
+// --- Query validators, transforms, builders ---
 export { ValueError } from "./compat/python-builtins.js";
 export { normalizeOnExpression } from "./query/expressions.js";
 export { buildSegfilterEntry } from "./query/segfilter.js";
@@ -95,7 +95,7 @@ export {
   validateSortingBlock,
 } from "./query/validation-bookmark.js";
 
-// ── Bookmark builders, schema mirrors, enum tables ──────────────────────
+// --- Bookmark builders, schema mirrors, enum tables ---
 export {
   buildDateRange,
   buildFilterEntry,
@@ -119,22 +119,22 @@ export {
 } from "./bookmarks/schema.js";
 export { validateWithPydantic } from "./bookmarks/schema-sorting.js";
 
-// ── Replays internals ───────────────────────────────────────────────────
+// --- Replays internals ---
 export {
   DOMTracker,
   type DOMTrackerOptions,
   RrwebAnalyzer,
 } from "./replays/rrweb-analyzer.js";
 
-// ── Python-parity internals (`compat/`) ─────────────────────────────────
+// --- Python-parity internals (`compat/`) ---
 export { dateTodayIso, isLeapYear } from "./compat/python-dates.js";
 export { isPythonValue } from "./compat/python-str.js";
 export { isFloatCarrier } from "./compat/python-values.js";
 
-// ── Module namespaces for the lock tests ─────────────────────────────────
+// --- Module namespaces for the lock tests ---
 // `error-codes-registry.test.ts` walks every Error subclass `errors.ts`
 // exports; `query-vocabulary.test.ts` walks every runtime export of the
-// query-params barrel. Both need the MODULE, not the public surface (which
-// also carries `UrlSplitError`, `LosslessJsonError`, …).
+// query-params barrel. Both need the module namespace, not the public
+// surface (which also carries `UrlSplitError`, `LosslessJsonError`, …).
 export * as errorsModule from "./errors.js";
 export * as queryParamsModule from "./types/query-params/index.js";

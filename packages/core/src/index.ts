@@ -1,14 +1,33 @@
 /**
- * @mixpanel-headless/core — the public, semver-stable surface of the
- * isomorphic core (R9.1: no Node built-ins, no undici, no `process`).
+ * `@mixpanel-headless/core` — the isomorphic TypeScript port of the Python
+ * `mixpanel_headless` library: the {@link Workspace} facade, the wire
+ * client, the auth and account primitives, the entity / result /
+ * query-parameter models and the Python-parity helpers behind them.
  *
- * Every export is listed by name, grouped by area; nothing is re-exported
- * wholesale. Names the platform packages and the verification rig need
- * beyond this list live on `./internal.ts` (`@mixpanel-headless/core/internal`),
- * which is NOT semver-stable.
+ * The package is pure — no Node built-ins, no `undici`, no `process`
+ * reads; anything that touches a file system, an environment or a
+ * browser is injected. Three entry points share the code:
+ *
+ * - `@mixpanel-headless/core` (this file): the public, semver-stable
+ *   surface. Every export is listed by name, grouped by area; nothing is
+ *   re-exported wholesale.
+ * - `@mixpanel-headless/core/internal` (`./internal.ts`): plumbing the
+ *   platform packages and the verification rig need; not semver-stable.
+ * - `@mixpanel-headless/node` and `@mixpanel-headless/browser`: the
+ *   platform packages that supply the injected pieces (config files,
+ *   environment, OAuth callback and redirect flows, credential stores).
+ *
+ * Naming: Python `snake_case` methods become `camelCase`; option-bag keys
+ * that mirror Python keyword arguments or wire fields stay `snake_case`
+ * (README "Naming"). Behaviour is locked against Python by the
+ * conformance corpus (`conformance-runner/`) and the differential oracle
+ * (`differential/`); every known deviation is listed in `PORTING.md`.
+ *
+ * @see mixpanel_headless
+ * @packageDocumentation
  */
 
-// ── Facade — `Workspace` and its per-method option types ────────────────
+// --- Facade — `Workspace` and its per-method option types ---
 export type { MeCacheStore } from "./services/me.js";
 export { Workspace } from "./workspace.js";
 export type {
@@ -98,7 +117,7 @@ export type {
   WorkspaceListSchemaRegistryOptions,
 } from "./workspace-members/schemas-audit.js";
 
-// ── Client — factory, option types, JSON model, endpoints, /me models ───
+// --- Client — factory, option types, JSON model, endpoints, /me models ---
 export {
   type ClientAppRequestOptions,
   type ClientCore,
@@ -146,7 +165,7 @@ export {
   ENDPOINTS,
 } from "./client/url.js";
 
-// ── Errors, Secret, coercion ────────────────────────────────────────────
+// --- Errors, Secret, coercion ---
 export {
   coerceBool,
   coerceFloat,
@@ -211,7 +230,7 @@ export {
 } from "./errors.js";
 export { Secret } from "./secret.js";
 
-// ── Entity models (App API request/response dataclasses) ────────────────
+// --- Entity models (App API request/response dataclasses) ---
 export {
   AccountSummary,
   type AccountSummaryInit,
@@ -482,7 +501,7 @@ export {
   type WebhookTestResultInit,
 } from "./types/entities/webhooks.js";
 
-// ── Result models ───────────────────────────────────────────────────────
+// --- Result models ---
 export { UserAction, type UserActionFields } from "./replays/user-action.js";
 export {
   ReportLink,
@@ -587,7 +606,7 @@ export type {
   RetentionCohortData,
 } from "./types/results/typed-dicts.js";
 
-// ── Query vocabulary (`types/query-params`) ─────────────────────────────
+// --- Query vocabulary (`types/query-params`) ---
 export {
   CohortBreakdown,
   CohortCriteria,
@@ -636,7 +655,7 @@ export {
   type RetentionEventFields,
 } from "./types/query-params/retention.js";
 
-// ── Literal unions, membership tuples, enums ────────────────────────────
+// --- Literal unions, membership tuples, enums ---
 export {
   AlertFrequencyPreset,
   CustomPropertyResourceType,
@@ -800,7 +819,7 @@ export {
   type TokenClockOptions,
 } from "./auth/token.js";
 
-// ── Accounts — the injectable effects contract and namespace factories ──
+// --- Accounts — the injectable effects contract and namespace factories ---
 export {
   type AddAccountParams,
   type AddTargetOptions,
@@ -835,7 +854,7 @@ export {
   type TargetsNamespace,
 } from "./accounts/targets-namespace.js";
 
-// ── Public members of `query/`, `replays/`, `bookmarks/` ────────────────
+// --- Public members of `query/`, `replays/`, `bookmarks/` ---
 export { inferBookmarkType } from "./bookmarks/infer-type.js";
 export {
   validateBookmark,
@@ -847,7 +866,7 @@ export {
   urlNormalizer,
 } from "./replays/replay-labels.js";
 
-// ── Python-parity helpers (`compat/`) ───────────────────────────────────
+// --- Python-parity helpers (`compat/`) ---
 export {
   codepoints,
   compareCodepoints,
@@ -877,6 +896,3 @@ export {
   urlunsplit,
 } from "./compat/urllib.js";
 export { zfill } from "./compat/zfill.js";
-
-/** Package name constant exercised by the skeleton smoke test. */
-export const CORE_PACKAGE_NAME = "@mixpanel-headless/core";

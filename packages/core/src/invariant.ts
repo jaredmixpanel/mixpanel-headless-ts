@@ -1,13 +1,11 @@
 /**
- * `invariant()` helper — the TS port target for Python `assert`
- * statements (rulebook R6.8).
+ * Runtime invariants — the port's replacement for Python `assert` and for
+ * `!` non-null assertions, which would erase the check — plus the two
+ * small twins every caught-exception path needs: `str(exc)` and "coerce a
+ * thrown value to an `Error`". Violations throw the hierarchy root so
+ * every catch-all handler sees the same base class.
  *
- * R6.8: Python `assert` → `invariant(cond, msg)`, never a `!` non-null
- * assertion (which erases the runtime check). The rule names the thrown
- * class `MixpanelError`; that R5.1 client-tier base is deferred to
- * Phase-3 B4 (phase2-design C3), so the hierarchy root
- * `MixpanelHeadlessError` is thrown here — every catch-all handler sees
- * the same base either way.
+ * @see mixpanel_headless.exceptions.MixpanelHeadlessError
  */
 
 import { MixpanelHeadlessError } from "./errors.js";
@@ -15,24 +13,21 @@ import { MixpanelHeadlessError } from "./errors.js";
 /**
  * Assert an invariant that Python enforced with a bare `assert`.
  *
- * NOTE for mechanical translation: JS truthiness differs from Python's
- * for empty collections (`[]`/`{}` are truthy in JS — semantic-trap
- * watchlist #6). Call sites must pass explicit predicates
+ * @remarks
+ * JS truthiness differs from Python's for empty collections (`[]` and
+ * `{}` are truthy in JS), so call sites pass explicit predicates
  * (`steps.length > 0`), never bare collection values.
- *
- * Example:
- * ```ts
- * invariant(pages.length > 0, "paginator yielded no pages");
- * // control flow past this line has `pages.length > 0` proven
- * ```
- *
- * @param condition - The invariant condition; narrowed to truthy for the
- *   remainder of the scope (`asserts condition`).
- * @param message - Human-readable violation message (display only —
- *   never vector-compared, R5.4).
- * @returns Nothing; narrows `condition` on success.
- * @throws MixpanelHeadlessError - When `condition` is falsy (code
+ * @param condition - The invariant; narrowed to truthy for the rest of
+ *   the scope (`asserts condition`).
+ * @param message - Human-readable violation message (display only; never
+ *   part of the conformance contract).
+ * @throws {@link MixpanelHeadlessError} - When `condition` is falsy (code
  *   `UNKNOWN_ERROR`, matching Python's uncoded `AssertionError` sites).
+ * @example
+ * ```typescript
+ * invariant(pages.length > 0, "paginator yielded no pages");
+ * // `pages.length > 0` is proven from here on
+ * ```
  */
 export function invariant(
   condition: unknown,
@@ -45,13 +40,18 @@ export function invariant(
 
 /**
  * Narrow a possibly-missing value, throwing where a `!` assertion would
- * merely have lied (R6.8 — the runtime check stays). For indexed reads
- * whose presence a prior length check or loop bound already guarantees.
+ * merely have lied. For indexed reads whose presence a prior length
+ * check or loop bound already guarantees.
  *
  * @param value - The value to narrow.
  * @param what - What the value is, for the violation message.
  * @returns `value`, narrowed to exclude `null` / `undefined`.
- * @throws MixpanelHeadlessError - When `value` is `null` or `undefined`.
+ * @throws {@link MixpanelHeadlessError} - When `value` is `null` or
+ *   `undefined`.
+ * @example
+ * ```typescript
+ * const first = defined(steps[0], "first funnel step");
+ * ```
  */
 export function defined<T>(value: T | null | undefined, what: string): T {
   if (value === null || value === undefined) {
@@ -61,12 +61,16 @@ export function defined<T>(value: T | null | undefined, what: string): T {
 }
 
 /**
- * The Python `str(exc)` twin for a caught value: an `Error`'s message,
- * anything else stringified — the text every `f"...: {exc}"` port
- * interpolates.
+ * Return the Python `str(exc)` twin of a caught value: an `Error`'s
+ * message, anything else stringified — the text every `f"...: {exc}"`
+ * port interpolates.
  *
  * @param exc - The caught value.
  * @returns Its message text.
+ * @example
+ * ```typescript
+ * throw new ConfigError(`Failed to load config: ${exceptionMessage(exc)}`);
+ * ```
  */
 export function exceptionMessage(exc: unknown): string {
   return exc instanceof Error ? exc.message : String(exc);
@@ -75,11 +79,15 @@ export function exceptionMessage(exc: unknown): string {
 /**
  * Coerce a caught value to an `Error` so it can be re-thrown or stored
  * where an `Error` is required (Python can only raise `BaseException`;
- * JS can throw anything). Errors pass through untouched; anything else
- * is wrapped with the original value as `cause`.
+ * JS can throw anything). Errors pass through untouched; anything else is
+ * wrapped with the original value as `cause`.
  *
  * @param value - The caught value.
  * @returns `value` itself when it is an `Error`, else a wrapping `Error`.
+ * @example
+ * ```typescript
+ * const failure = toError(caught); // always an Error, `cause` preserved
+ * ```
  */
 export function toError(value: unknown): Error {
   if (value instanceof Error) {

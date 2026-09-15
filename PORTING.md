@@ -255,6 +255,26 @@ marked `// Divergence:` at the site.
 - Printability for `repr()` uses a generated CPython 3.14.6 / Unicode 16.0
   table rather than the host engine's Unicode version (`compat/non-printable.ts`).
 
+<!-- lane 5A -->
+
+### Facade layer (lane 5A additions)
+
+- `requireInt64Id` (`workspace-members/shared.ts`) is the `data_group_id`
+  twin of the additive `requireEntityId` guard above: it accepts a non-zero
+  `number | bigint` of either sign and rejects a `number` beyond
+  ±(2^53 − 1) as already rounded, with the same `RL6_INVALID_ID`; Python
+  sends whatever it is given.
+- Sites that now carry a `// Divergence:` marker for entries already
+  listed above: `Workspace.close` (`workspace.ts`, the workspace-id pin);
+  `noProjectError` (`workspace-members/lifecycle.ts` — its `TODO(port)` is
+  gone, so that entry's `TODO(port)` parenthetical is stale);
+  `auditResponseFrom` (`workspace-members/schemas-audit.ts` — the
+  `{"computed_at": null}` entry's trigger is the audit metadata, so
+  `runAudit` / `auditResponseFrom` name it more precisely than
+  `listSchemaRegistry`); `requireEntityId` (`workspace-members/shared.ts`).
+
+<!-- /lane 5A -->
+
 ## What the rig proves — and does not
 
 **Corpus** (`conformance-runner/`, replayed by `corpus.test.ts` and

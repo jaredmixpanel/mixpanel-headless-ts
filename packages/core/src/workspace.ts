@@ -1,19 +1,13 @@
 /**
- * The `Workspace` facade — TS port of `mixpanel_headless/workspace.py`.
+ * The `Workspace` facade — one class carrying every public operation of
+ * the Python `Workspace`: queries, discovery, session replays, lifecycle
+ * and `/me`, and the entity CRUD families. The class owns the session,
+ * the wire client and the lazily built services; each member is a thin
+ * delegation into `workspace-members/*` (entity bodies) or
+ * `workspace-query-params.ts` (the param builders), never a
+ * re-implementation of what the client or a service already does.
  *
- * Phase-3 batch B5 splits this file three ways
- * (`docs/history/phase3/design/b5-packets.md` §2): the class skeleton plus
- * the 22 query members (S2), the 12 discovery/lexicon members (S1) and
- * the 10 session-replay members (S3). Each shard owns ONE marked,
- * append-only section; B6 appends its own below them.
- *
- * SEQUENCING NOTE (B5-S1, recorded in `B5-S1-notes.md` §0): the packet
- * assigns the skeleton below to S2, but the orchestrator dispatched S1
- * first against the Phase-1 placeholder. S1 therefore built the §2
- * skeleton to the packet's contract, verbatim, and filled only its own
- * section. S2 EXTENDS this file — its marker is already in place — and
- * owns the `_live_query_service` accessor plus the `query`-bound
- * `_replays_service` accessor that S3 needs.
+ * @see mixpanel_headless.workspace.Workspace
  */
 
 import type { Account } from "./auth/account.js";
@@ -319,25 +313,33 @@ import {
 const DEFAULT_QUERY_LAST_DAYS = 30;
 
 /**
- * Main facade for Mixpanel operations — TS port of
- * `workspace.Workspace` (`workspace.py+`).
+ * Main facade for Mixpanel operations, bound to one resolved
+ * {@link Session}.
  *
- * The B5 constructor takes a RESOLVED {@link Session} only. Python's
- * `account` / `project` / `workspace` / `target` kwargs
- * (`workspace.py`) are the resolver axes, which are batch B7;
- * `use()` is B6-W1.
- *
+ * @remarks
+ * Construct it either with a pre-built `session` (the resolver bypass)
+ * or with the resolver axes `account` / `project` / `workspace` /
+ * `target` plus injected {@link WorkspaceOptions.sources}; the core
+ * package never reads config files or the environment itself, so the
+ * Python-equivalent `Workspace()` with on-disk defaults lives in
+ * `@mixpanel-headless/node`. {@link Workspace.use} swaps axes in place.
  * @example
  * ```typescript
  * const ws = new Workspace({ session });
  * const events = await ws.events();
+ * await ws.use({ project: "123456" });
  * ```
+ * @see mixpanel_headless.workspace.Workspace
  */
 export class Workspace {
   /** The resolved session bound to this facade (`self._session`). */
   #session: Session;
 
-  /** The bound wire client (Python `self._api_client`). @internal */
+  /**
+   * The bound wire client (Python `self._api_client`).
+   *
+   * @internal
+   */
   readonly client: MixpanelClient;
 
   /** Lazily-created discovery service (`self._discovery`). */
@@ -355,28 +357,24 @@ export class Workspace {
   /** `self._account_name` — the MeCache scope, refreshed on `use()`. */
   #accountName: string;
 
-  // NOTE (W1-D2): Python also carries `self._initial_workspace_id`
-  // (`workspace.py:522`), whose ONLY reader is the client-recreation
-  // arm of `_get_api_client()` (`:757-766`) — the arm this port does
-  // not have, because `close()` releases the pool IN PLACE and the
-  // `readonly client` keeps its own pin (R6.2 identity). The field is
-  // therefore deliberately absent rather than dead
-  // (`B6-W1-notes.md` §W1-D2).
+  // Python also carries `self._initial_workspace_id`, read only by the
+  // client-recreation arm of `_get_api_client()`. This port has no such
+  // arm: `close()` releases the pool in place and the `readonly client`
+  // keeps its own pin, so the field is deliberately absent rather than
+  // dead.
 
-  /** The W1-D1 resolution seams (B7 replaces the defaults). */
+  /** The resolution seams `use()` consumes (see {@link ResolverSeams}). */
   readonly #seams: ResolverSeams;
 
   /** Factory for the `/me` cache store handed to each MeService. */
   readonly #meCacheFactory: (accountName: string) => MeCacheStore;
 
   /**
-   * Per-account memo of cache STORES (B7-A1): Python's
-   * `MeCache(account_name=…)` re-reads the same per-account disk file
-   * however many times the lazy `MeService` is rebuilt, so a
-   * `use(project=…)` swap keeps the warm cache
-   * (`TestFacadeResolverWiring::test_resolver_follows_project_swap`).
-   * The in-memory default must share state the same way — the factory
-   * runs once per account name per facade.
+   * Per-account memo of cache stores. Python's `MeCache(account_name=…)`
+   * re-reads the same per-account disk file however many times the lazy
+   * `MeService` is rebuilt, so a `use(project=…)` swap keeps the warm
+   * cache; the in-memory default must share state the same way, so the
+   * factory runs once per account name per facade.
    */
   readonly #meCacheStores = new Map<string, MeCacheStore>();
 
@@ -385,43 +383,41 @@ export class Workspace {
 
   /** The log seam; {@link NOOP_LOGGER} unless the host injected one. */
   readonly #logger: ResolvedWorkspaceLogger;
-  /** The `generate_slug` seam (045-report-links). */
+  /** The `generate_slug` seam of `createReportLink`. */
   readonly #generateSlug: () => string;
 
-  // --- B6-W7 seams (W7 owns; see `WorkspaceOptions.readFile`/`monotonic`) ---
-
-  /** `Path(...).read_bytes()` seam of `uploadLookupTable` (W7-D1). */
+  /** `Path(...).read_bytes()` seam of `uploadLookupTable`. */
   readonly #readFile: (path: string) => Promise<Uint8Array>;
 
-  /** `time.monotonic()` seam (seconds) of the upload poll (W7-D2). */
+  /** `time.monotonic()` seam (seconds) of the upload poll. */
   readonly #monotonic: () => number;
 
   /**
    * Create a workspace facade.
    *
-   * @param options - The resolved session plus the optional injected
-   *   client / seams.
+   * @param options - A resolved session, or the resolver axes plus
+   *   injected sources; optionally an injected client and seams.
+   * @throws {@link ParamValidationError} - `WS1_TARGET_MUTUALLY_EXCLUSIVE`
+   *   when `target` is combined with `account` / `project` / `workspace`.
+   * @throws {@link MixpanelHeadlessError} - `UNPORTED_AUTH_SEAM` when
+   *   neither `session` nor `sources` is given.
+   * @throws {@link ConfigError} - The account or project axis cannot be
+   *   resolved from the sources.
+   * @see mixpanel_headless.workspace.Workspace.__init__
    */
   constructor(options: WorkspaceOptions) {
-    // The WS1 constructor guard fires BEFORE the session/resolver
-    // branch (`workspace.py` — packet §14 Caution 4 order).
+    // The exclusivity guard fires before any resolution side effect, as
+    // in Python.
     guardTargetExclusivity(options);
     let session: Session;
     if (options.session === undefined) {
-      // B7-A1: the resolver constructor kwargs (`workspace.py`)
-      // resolve through `resolveSession(...)` over injected sources
-      // (R9.4). The bridge-token materialization side effect
-      // is B8's (`TestBridgeTokenMaterialization`
-      // stays deferred, `b7-packets.md` §3.4).
       const sources = options.sources;
       if (sources === undefined) {
-        // Core-alone posture (b8-packets.md §4.4): the on-disk default
-        // wiring ships in `packages/node` — Python's `Workspace()` twin
-        // is `new Workspace({ sources: createNodeWorkspaceSources() })`
-        // (the STARTUP sources incl. the `workspace.py`
-        // bridge-token materialization side effect; B8-ARB-A SEM-F1,
-        // `b8-reviewA-resolution.md`). Core stays runtime-agnostic, so
-        // sessionless construction here requires injected sources.
+        // Python's bare `Workspace()` reads the bridge file and config
+        // from disk (and materializes bridge tokens as a side effect).
+        // Core is runtime-agnostic, so that wiring ships in
+        // `@mixpanel-headless/node` (`createNodeWorkspaceSources()`)
+        // and sessionless construction here requires injected sources.
         throw new MixpanelHeadlessError(
           "Workspace construction without `session` requires injected " +
             "`sources` in @mixpanel-headless/core (packages/node: " +
@@ -455,15 +451,17 @@ export class Workspace {
     this.#warn = options.warn;
     this.#logger = resolveWorkspaceLogger(options.logger);
     this.#generateSlug = options.generateSlug ?? ((): string => generateSlug());
-    // B6-W7 seams (W7 owns these two lines).
     this.#readFile = options.readFile ?? unportedReadFile;
     this.#monotonic = options.monotonic ?? defaultMonotonic;
     this.#installWorkspaceResolver();
   }
 
   /**
-   * The resolved session bound to this facade (`session` property,
-   * `workspace.py`). Read-only: `use()` swaps it in place.
+   * The resolved session bound to this facade. Read-only: `use()` swaps
+   * it in place.
+   *
+   * @returns The current session.
+   * @see mixpanel_headless.workspace.Workspace.session
    */
   get session(): Session {
     return this.#session;
@@ -471,15 +469,12 @@ export class Workspace {
 
   /**
    * Wire the facade's `/me` cache into the client's workspace
-   * auto-resolver (`_install_workspace_resolver`,
-   * `workspace.py`).
+   * auto-resolver. The closure reads {@link meService} on every call, so
+   * it keeps pointing at the current service across `use()` cache
+   * clears; a resolver already installed on an injected client is left
+   * in place.
    *
-   * The closure reads {@link meService} on every call, so it keeps
-   * pointing at the CURRENT service across `use()` cache clears. A
-   * resolver already installed on an INJECTED client is left in place
-   * (`workspace.py`).
-   *
-   * @internal
+   * @see mixpanel_headless.workspace.Workspace._install_workspace_resolver
    */
   #installWorkspaceResolver(): void {
     if (this.client.hasWorkspaceResolver) {
@@ -491,11 +486,11 @@ export class Workspace {
   }
 
   /**
-   * Get or create the discovery service (lazy initialization —
-   * `workspace.py`).
+   * Get or create the discovery service.
    *
    * @returns The memoized service.
    * @internal
+   * @see mixpanel_headless.workspace.Workspace._discovery_service
    */
   get discoveryService(): DiscoveryService {
     if (this.#discovery === null) {
@@ -508,32 +503,31 @@ export class Workspace {
   }
 
   /**
-   * Swap one or more session axes in place; returns `this` for
-   * chaining (`use`, `workspace.py`).
+   * Swap one or more session axes in place and return `this` for
+   * chaining.
    *
-   * `target=` is mutually exclusive with
-   * `account=`/`project=`/`workspace=`. The wire client — and with it
-   * the connection pool — is PRESERVED across every switch: the
-   * swap is delegated to {@link MixpanelClient.use}, which rebuilds the
-   * auth header in place. Every lazy service is then discarded so
-   * subsequent reads observe the new session.
-   *
-   * `use(workspace: N)` pins App-API and Query-host scoping; raw export
-   * streaming stays project-scoped by design (W1-D3).
-   *
+   * @remarks
+   * `target` is mutually exclusive with `account` / `project` /
+   * `workspace`. The wire client — and with it the connection pool — is
+   * preserved across every switch: the swap is delegated to
+   * {@link MixpanelClient.use}, which rebuilds the auth header in place,
+   * and every lazy service is then discarded so subsequent reads observe
+   * the new session. `use({ workspace })` pins App-API and Query-host
+   * scoping; raw export streaming stays project-scoped by design.
    * @param options - The axes to swap plus `persist`.
    * @returns `this`.
-   * @throws ParamValidationError - `WS1_TARGET_MUTUALLY_EXCLUSIVE`.
-   * @throws MixpanelHeadlessError - `UNPORTED_RESOLVER_SEAM` while the
-   *   B7 seams are unimplemented (the `target=` / `account=` /
-   *   `persist=true` branches).
-   * @throws ConfigError - `account=` swap resolves no project axis.
+   * @throws {@link ParamValidationError} - `WS1_TARGET_MUTUALLY_EXCLUSIVE`.
+   * @throws {@link MixpanelHeadlessError} - `UNPORTED_RESOLVER_SEAM` when
+   *   the `target` / `account` / `persist: true` branches run on a facade
+   *   built without resolver seams.
+   * @throws {@link ConfigError} - An `account` swap resolves no project.
    * @example
    * ```typescript
    * for (const project of await ws.projects()) {
    *   await ws.use({ project: project.id });
    * }
    * ```
+   * @see mixpanel_headless.workspace.Workspace.use
    */
   async use(options: WorkspaceUseOptions = {}): Promise<this> {
     guardTargetExclusivity(options);
@@ -549,7 +543,7 @@ export class Workspace {
 
     if (target !== null) {
       // Route through the same resolver as construction so
-      // env > param > target > bridge > config applies (FR-017).
+      // env > param > target > bridge > config applies.
       const resolved = await this.#seams.resolveSession({ target });
       newAccount = resolved.account;
       newProject = resolved.project;
@@ -558,9 +552,9 @@ export class Workspace {
       newProject = project === null ? null : { id: project };
       newWorkspace = workspace === null ? null : { id: workspace };
     } else {
-      // Explicit account swap (FR-033): the project re-resolves against
-      // the NEW account; the workspace axis is cleared unless supplied
-      // explicitly or by MP_WORKSPACE_ID.
+      // Explicit account swap: the project re-resolves against the new
+      // account; the workspace axis is cleared unless supplied explicitly
+      // or by MP_WORKSPACE_ID.
       newAccount = await this.#seams.getAccount(account);
       const projectId = await this.#seams.resolveProjectAxis({
         explicit: project,
@@ -587,7 +581,7 @@ export class Workspace {
     this.#session = this.client.session;
 
     // Clear the lazy services so subsequent reads observe the new
-    // session rather than the prior one (`workspace.py`).
+    // session rather than the prior one.
     this.#accountName = this.#session.account.name;
     this.#discovery = null;
     this.#liveQuery = null;
@@ -602,23 +596,22 @@ export class Workspace {
   }
 
   /**
-   * Close all resources (`close`, `workspace.py`).
+   * Close the HTTP resources. Idempotent and safe to call repeatedly; a
+   * later call on the facade reopens them.
    *
-   * Idempotent and safe to call repeatedly.
-   *
-   * W1-D2 (arbiter-visible): Python nulls `self._api_client` and lets
-   * `_get_api_client()` build a REPLACEMENT on the next call; TS keeps
-   * the `readonly client` the R6.2 identity assertions track and closes
-   * the pool IN PLACE — the client's own `close()` drops the pool
-   * token and `ensureHttp()` recreates it on the next request, so a
-   * post-close call behaves as Python's recreated client does. The one
-   * divergence (recorded in `B6-W1-notes.md`): Python's replacement
-   * client forgets a runtime `set_workspace_id()` pin and re-applies
-   * `_initial_workspace_id`, while the TS client keeps its current pin.
-   *
+   * @remarks
+   * Python nulls `self._api_client` and lets `_get_api_client()` build a
+   * replacement on the next call; this port keeps the `readonly client`
+   * and closes the pool in place — the client's own `close()` drops the
+   * pool and `ensureHttp()` recreates it on the next request, so a
+   * post-close call behaves as Python's recreated client does.
    * @returns Nothing.
+   * @see mixpanel_headless.workspace.Workspace.close
    */
   async close(): Promise<void> {
+    // Divergence: Python's recreated client forgets a runtime
+    // `set_workspace_id()` pin and re-applies the initial one; the kept
+    // client retains its current pin (PORTING.md).
     await this.client.close();
   }
 
@@ -635,11 +628,11 @@ export class Workspace {
   // --- Query members ---
 
   /**
-   * Get or create the live query service (lazy initialization —
-   * `workspace.py`).
+   * Get or create the live query service.
    *
    * @returns The memoized service.
    * @internal
+   * @see mixpanel_headless.workspace.Workspace._live_query_service
    */
   get liveQueryService(): LiveQueryService {
     if (this.#liveQuery === null) {
@@ -650,23 +643,24 @@ export class Workspace {
     return this.#liveQuery;
   }
 
-  // Placement note (B5-ARB, resolving the stale S2 TODO): the
-  // `_replays_service` accessor was assigned
-  // to this section by packet §2, but S3 landed it in the S3 section
-  // below (`replaysService` get/set, memoized in `#replays`) with the
-  // packet-specified `query_fn` DI. Behavior is per spec; only the
-  // placement differs. See `b5-review-resolution.md` ASR-F5.
-
   /**
-   * Run a segmentation query against the Mixpanel API
-   * (`segmentation`, `workspace.py`).
+   * Run a segmentation query against the Mixpanel API.
    *
    * @param event - Event name to query.
    * @param options - Required date window plus `on` / `unit` / `where`.
    * @returns Time-series data with the calculated total.
-   * @throws ConfigError - Credentials not available.
-   * @throws AuthenticationError | QueryError | RateLimitError - Wire
+   * @throws {@link ConfigError} - Credentials not available.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link RateLimitError} - Wire
    *   failures.
+   * @example
+   * ```typescript
+   * const r = await ws.segmentation("Login", {
+   *   from_date: "2026-01-01",
+   *   to_date: "2026-01-31",
+   *   unit: "week",
+   * });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.segmentation
    */
   async segmentation(
     event: string,
@@ -677,17 +671,21 @@ export class Workspace {
   }
 
   /**
-   * Run a funnel analysis query (`funnel`,
-   * `workspace.py`).
+   * Run a funnel analysis query.
    *
    * @param funnelId - ID of the saved funnel.
    * @param options - Required date window plus `unit` / `on`.
    * @returns Step conversion rates.
-   * @throws ConfigError - Credentials not available.
-   * @throws AuthenticationError | QueryError | RateLimitError - Wire
+   * @throws {@link ConfigError} - Credentials not available.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link RateLimitError} - Wire
    *   failures.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `funnelId`
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `funnelId`
    *   is not a positive integer (network-free guard, before any request).
+   * @example
+   * ```typescript
+   * const r = await ws.funnel(12345, { from_date: "2026-01-01", to_date: "2026-01-31" });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.funnel
    */
   async funnel(
     funnelId: number,
@@ -699,15 +697,15 @@ export class Workspace {
   }
 
   /**
-   * Run a retention analysis query (`retention`,
-   * `workspace.py`).
+   * Run a retention analysis query.
    *
    * @param options - Born/return events, the date window and the
    *   interval knobs (all keyword-only in Python).
    * @returns Cohort retention data.
-   * @throws ConfigError - Credentials not available.
-   * @throws AuthenticationError | QueryError | RateLimitError - Wire
+   * @throws {@link ConfigError} - Credentials not available.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link RateLimitError} - Wire
    *   failures.
+   * @see mixpanel_headless.workspace.Workspace.retention
    */
   async retention(
     options: WorkspaceRetentionOptions,
@@ -723,15 +721,23 @@ export class Workspace {
   }
 
   /**
-   * Get counts for multiple events (`event_counts`,
-   * `workspace.py`).
+   * Get counts for multiple events.
    *
    * @param events - Event names.
    * @param options - Required date window plus `type` / `unit`.
    * @returns Time series per event.
-   * @throws ConfigError - Credentials not available.
-   * @throws AuthenticationError | QueryError | RateLimitError - Wire
+   * @throws {@link ConfigError} - Credentials not available.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link RateLimitError} - Wire
    *   failures.
+   * @example
+   * ```typescript
+   * const r = await ws.eventCounts(["Login", "Purchase"], {
+   *   from_date: "2026-01-01",
+   *   to_date: "2026-01-31",
+   *   unit: "day",
+   * });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.event_counts
    */
   async eventCounts(
     events: readonly string[],
@@ -742,17 +748,25 @@ export class Workspace {
   }
 
   /**
-   * Get event counts broken down by property value
-   * (`property_counts`, `workspace.py`).
+   * Get event counts broken down by property value.
    *
    * @param event - Event name.
    * @param propertyName - Property to break down by.
    * @param options - Required date window plus `type` / `unit` /
    *   `values` / `limit`.
    * @returns Time series per property value.
-   * @throws ConfigError - Credentials not available.
-   * @throws AuthenticationError | QueryError | RateLimitError - Wire
+   * @throws {@link ConfigError} - Credentials not available.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link RateLimitError} - Wire
    *   failures.
+   * @example
+   * ```typescript
+   * const r = await ws.propertyCounts("Purchase", "plan", {
+   *   from_date: "2026-01-01",
+   *   to_date: "2026-01-31",
+   *   limit: 10,
+   * });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.property_counts
    */
   async propertyCounts(
     event: string,
@@ -770,8 +784,7 @@ export class Workspace {
   }
 
   /**
-   * Get the activity feed for specific users (`activity_feed`,
-   * `workspace.py`).
+   * Get the activity feed for specific users.
    *
    * Events come back oldest-first within a page; when `limit` is set
    * the most recent events lead and `sentinel_event` pages backward.
@@ -780,9 +793,14 @@ export class Workspace {
    * @param options - Dates / limit / include / exclude / search /
    *   pagination.
    * @returns The events plus the `sentinel_event` cursor.
-   * @throws ConfigError - Credentials not available.
-   * @throws QueryError - Both `include_events` and `exclude_events`
+   * @throws {@link ConfigError} - Credentials not available.
+   * @throws {@link QueryError} - Both `include_events` and `exclude_events`
    *   given (and the other wire rejections).
+   * @example
+   * ```typescript
+   * const feed = await ws.activityFeed(["user-1"], { from_date: "2026-01-01", to_date: "2026-01-31", limit: 100 });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.activity_feed
    */
   async activityFeed(
     distinctIds: readonly string[],
@@ -792,16 +810,24 @@ export class Workspace {
   }
 
   /**
-   * Query a saved report by bookmark type (`query_saved_report`,
-   * `workspace.py`).
+   * Query a saved report by bookmark type.
    *
    * @param bookmarkId - ID of the saved report.
    * @param options - `bookmark_type` plus the funnel date window.
    * @returns The normalized report data.
-   * @throws ConfigError - Credentials not available.
-   * @throws QueryError - Invalid `bookmark_id` or report not found.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `bookmarkId`
+   * @throws {@link ConfigError} - Credentials not available.
+   * @throws {@link QueryError} - Invalid `bookmark_id` or report not found.
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `bookmarkId`
    *   is not a positive integer (network-free guard, before any request).
+   * @example
+   * ```typescript
+   * const report = await ws.querySavedReport(987, {
+   *   bookmark_type: "funnels",
+   *   from_date: "2026-01-01",
+   *   to_date: "2026-01-31",
+   * });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.query_saved_report
    */
   async querySavedReport(
     bookmarkId: number,
@@ -812,15 +838,15 @@ export class Workspace {
   }
 
   /**
-   * Query a saved Flows report (`query_saved_flows`,
-   * `workspace.py`).
+   * Query a saved Flows report.
    *
    * @param bookmarkId - ID of the saved flows report.
    * @returns Steps, breakdowns and the conversion rate.
-   * @throws ConfigError - Credentials not available.
-   * @throws QueryError - Invalid `bookmark_id` or report not found.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `bookmarkId`
+   * @throws {@link ConfigError} - Credentials not available.
+   * @throws {@link QueryError} - Invalid `bookmark_id` or report not found.
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `bookmarkId`
    *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.query_saved_flows
    */
   async querySavedFlows(bookmarkId: number): Promise<FlowsResult> {
     requireEntityId("bookmark_id", bookmarkId);
@@ -828,15 +854,15 @@ export class Workspace {
   }
 
   /**
-   * Analyze the event frequency distribution (`frequency`,
-   * `workspace.py`).
+   * Analyze the event frequency distribution.
    *
    * @param options - Required date window plus `unit` /
    *   `addiction_unit` / `event` / `where`.
    * @returns The frequency distribution.
-   * @throws ConfigError - Credentials not available.
-   * @throws AuthenticationError | QueryError | RateLimitError - Wire
+   * @throws {@link ConfigError} - Credentials not available.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link RateLimitError} - Wire
    *   failures.
+   * @see mixpanel_headless.workspace.Workspace.frequency
    */
   async frequency(
     options: WorkspaceFrequencyOptions,
@@ -846,15 +872,23 @@ export class Workspace {
   }
 
   /**
-   * Bucket events by numeric property ranges
-   * (`segmentation_numeric`, `workspace.py`).
+   * Bucket events by numeric property ranges.
    *
    * @param event - Event name.
    * @param options - Required date window and `on`, plus `unit` /
    *   `where` / `type`.
    * @returns The bucketed data.
-   * @throws ConfigError - Credentials not available.
-   * @throws QueryError - Invalid parameters or a non-numeric property.
+   * @throws {@link ConfigError} - Credentials not available.
+   * @throws {@link QueryError} - Invalid parameters or a non-numeric property.
+   * @example
+   * ```typescript
+   * const r = await ws.segmentationNumeric("Purchase", {
+   *   from_date: "2026-01-01",
+   *   to_date: "2026-01-31",
+   *   on: 'properties["amount"]',
+   * });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.segmentation_numeric
    */
   async segmentationNumeric(
     event: string,
@@ -871,15 +905,23 @@ export class Workspace {
   }
 
   /**
-   * Calculate the sum of a numeric property over time
-   * (`segmentation_sum`, `workspace.py`).
+   * Calculate the sum of a numeric property over time.
    *
    * @param event - Event name.
    * @param options - Required date window and `on`, plus `unit` /
    *   `where`.
    * @returns Sum values per period.
-   * @throws ConfigError - Credentials not available.
-   * @throws QueryError - Invalid parameters or a non-numeric property.
+   * @throws {@link ConfigError} - Credentials not available.
+   * @throws {@link QueryError} - Invalid parameters or a non-numeric property.
+   * @example
+   * ```typescript
+   * const r = await ws.segmentationSum("Purchase", {
+   *   from_date: "2026-01-01",
+   *   to_date: "2026-01-31",
+   *   on: 'properties["amount"]',
+   * });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.segmentation_sum
    */
   async segmentationSum(
     event: string,
@@ -896,15 +938,23 @@ export class Workspace {
   }
 
   /**
-   * Calculate the average of a numeric property over time
-   * (`segmentation_average`, `workspace.py`).
+   * Calculate the average of a numeric property over time.
    *
    * @param event - Event name.
    * @param options - Required date window and `on`, plus `unit` /
    *   `where`.
    * @returns Average values per period.
-   * @throws ConfigError - Credentials not available.
-   * @throws QueryError - Invalid parameters or a non-numeric property.
+   * @throws {@link ConfigError} - Credentials not available.
+   * @throws {@link QueryError} - Invalid parameters or a non-numeric property.
+   * @example
+   * ```typescript
+   * const r = await ws.segmentationAverage("Purchase", {
+   *   from_date: "2026-01-01",
+   *   to_date: "2026-01-31",
+   *   on: 'properties["amount"]',
+   * });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.segmentation_average
    */
   async segmentationAverage(
     event: string,
@@ -920,12 +970,10 @@ export class Workspace {
     );
   }
 
-  // -------------------------------------------------------------------
-  // INSIGHTS QUERY API (Phase 029) — `workspace.py`
-  // -------------------------------------------------------------------
+  // --- Insights query ---
 
   /**
-   * Run a typed insights query (`query`, `workspace.py`).
+   * Run a typed insights query.
    *
    * Builds bookmark params from the arguments, POSTs them inline to
    * `/api/query/insights`, and returns the structured result.
@@ -936,14 +984,15 @@ export class Workspace {
    * @param options - The 17 keyword-only knobs plus `limit` (segments
    *   to return, 1 to 50000; default 3000).
    * @returns The series data and metadata.
-   * @throws ValueError - `limit` is not an integer from 1 to 50000.
-   * @throws BookmarkValidationError - Argument or bookmark validation.
-   * @throws AuthenticationError | QueryError | RateLimitError - Wire
+   * @throws {@link ValueError} - `limit` is not an integer from 1 to 50000.
+   * @throws {@link BookmarkValidationError} - Argument or bookmark validation.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link RateLimitError} - Wire
    *   failures.
    * @example
    * ```typescript
    * const result = await ws.query("Login", { math: "unique", last: 7 });
    * ```
+   * @see mixpanel_headless.workspace.Workspace.query
    */
   async query(
     events: EventsInput,
@@ -956,8 +1005,7 @@ export class Workspace {
   }
 
   /**
-   * Run pre-built insights bookmark params against the Mixpanel API
-   * (`run_params`, `workspace.py`).
+   * Run pre-built insights bookmark params against the Mixpanel API.
    *
    * The execution half of {@link buildParams}. Use it when the params
    * need editing before they run, or when they express something the
@@ -968,8 +1016,8 @@ export class Workspace {
    * @param options - `limit` (segments to return, 1 to 50000; default
    *   3000) and `workspace_id` (data view override).
    * @returns The series data and metadata.
-   * @throws ValueError - `limit` is not an integer from 1 to 50000.
-   * @throws AuthenticationError | QueryError | RateLimitError - Wire
+   * @throws {@link ValueError} - `limit` is not an integer from 1 to 50000.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link RateLimitError} - Wire
    *   failures.
    * @example
    * ```typescript
@@ -977,6 +1025,7 @@ export class Workspace {
    * params["sections"]["filter"] = myCustomFilter;
    * const result = await ws.runParams(params, { limit: 50_000 });
    * ```
+   * @see mixpanel_headless.workspace.Workspace.run_params
    */
   async runParams(
     params: Readonly<Record<string, unknown>>,
@@ -989,13 +1038,17 @@ export class Workspace {
   }
 
   /**
-   * Build validated insights bookmark params WITHOUT calling the API
-   * (`build_params`, `workspace.py`).
+   * Build validated insights bookmark params without calling the API.
    *
    * @param events - Same input union as {@link query}.
    * @param options - The same 17 keyword-only knobs.
    * @returns Bookmark params with `sections` and `displayOptions`.
-   * @throws BookmarkValidationError - Argument or bookmark validation.
+   * @throws {@link BookmarkValidationError} - Argument or bookmark validation.
+   * @example
+   * ```typescript
+   * const params = await ws.buildParams("Login", { math: "unique", group_by: "$city", last: 7 });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.build_params
    */
   buildParams(
     events: EventsInput,
@@ -1006,12 +1059,12 @@ export class Workspace {
 
   /**
    * Shared body of {@link query} and {@link buildParams} — the option
-   * unpacking Python spells out twice (`:2402-2421`, `:2523-2542`).
+   * unpacking Python spells out twice.
    *
    * @param events - The events input.
    * @param options - The keyword-only knobs.
    * @returns The validated bookmark params.
-   * @throws BookmarkValidationError - Any validation layer.
+   * @throws {@link BookmarkValidationError} - Any validation layer.
    */
   #resolveQueryParams(
     events: EventsInput,
@@ -1040,22 +1093,24 @@ export class Workspace {
     });
   }
 
-  // -------------------------------------------------------------------
-  // FUNNEL QUERY (Phase 032) — `workspace.py`
-  // -------------------------------------------------------------------
+  // --- Funnel query ---
 
   /**
-   * Run a typed funnel query (`query_funnel`,
-   * `workspace.py`).
+   * Run a typed funnel query.
    *
    * @param steps - Funnel steps (strings or `FunnelStep` objects).
    * @param options - The 17 keyword-only knobs plus `limit` (segments
    *   to return, 1 to 50000; default 3000).
    * @returns Step data, conversion rates and metadata.
-   * @throws ValueError - `limit` is not an integer from 1 to 50000.
-   * @throws BookmarkValidationError - Argument or bookmark validation.
-   * @throws AuthenticationError | QueryError | RateLimitError - Wire
+   * @throws {@link ValueError} - `limit` is not an integer from 1 to 50000.
+   * @throws {@link BookmarkValidationError} - Argument or bookmark validation.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link RateLimitError} - Wire
    *   failures.
+   * @example
+   * ```typescript
+   * const r = await ws.queryFunnel(["Signup", "Purchase"], { conversion_window: 7, last: 30 });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.query_funnel
    */
   async queryFunnel(
     steps: ReadonlyArray<string | FunnelStep>,
@@ -1068,8 +1123,7 @@ export class Workspace {
   }
 
   /**
-   * Run pre-built funnel bookmark params against the Mixpanel API
-   * (`run_funnel_params`, `workspace.py`).
+   * Run pre-built funnel bookmark params against the Mixpanel API.
    *
    * The execution half of {@link buildFunnelParams}.
    *
@@ -1078,14 +1132,15 @@ export class Workspace {
    * @param options - `limit` (segments to return, 1 to 50000; default
    *   3000) and `workspace_id` (data view override).
    * @returns Step data, conversion rates and metadata.
-   * @throws ValueError - `limit` is not an integer from 1 to 50000.
-   * @throws AuthenticationError | QueryError | RateLimitError - Wire
+   * @throws {@link ValueError} - `limit` is not an integer from 1 to 50000.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link RateLimitError} - Wire
    *   failures.
    * @example
    * ```typescript
    * const params = await ws.buildFunnelParams(["Signup", "Purchase"]);
    * const result = await ws.runFunnelParams(params, { limit: 50_000 });
    * ```
+   * @see mixpanel_headless.workspace.Workspace.run_funnel_params
    */
   async runFunnelParams(
     params: Readonly<Record<string, unknown>>,
@@ -1098,13 +1153,17 @@ export class Workspace {
   }
 
   /**
-   * Build validated funnel bookmark params WITHOUT calling the API
-   * (`build_funnel_params`, `workspace.py`).
+   * Build validated funnel bookmark params without calling the API.
    *
    * @param steps - Funnel steps (strings or `FunnelStep` objects).
    * @param options - The same 17 keyword-only knobs.
    * @returns Bookmark params with `sections` and `displayOptions`.
-   * @throws BookmarkValidationError - Argument or bookmark validation.
+   * @throws {@link BookmarkValidationError} - Argument or bookmark validation.
+   * @example
+   * ```typescript
+   * const params = await ws.buildFunnelParams(["Signup", "Purchase"], { order: "strict" });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.build_funnel_params
    */
   buildFunnelParams(
     steps: ReadonlyArray<string | FunnelStep>,
@@ -1120,7 +1179,7 @@ export class Workspace {
    * @param steps - The step specs.
    * @param options - The keyword-only knobs.
    * @returns The validated bookmark params.
-   * @throws BookmarkValidationError - Any validation layer.
+   * @throws {@link BookmarkValidationError} - Any validation layer.
    */
   #resolveFunnelParams(
     steps: ReadonlyArray<string | FunnelStep>,
@@ -1149,20 +1208,22 @@ export class Workspace {
     });
   }
 
-  // -------------------------------------------------------------------
-  // FLOW QUERY (inline ad-hoc) — `workspace.py`
-  // -------------------------------------------------------------------
+  // --- Flow query ---
 
   /**
-   * Run a typed flow query (`query_flow`,
-   * `workspace.py`).
+   * Run a typed flow query.
    *
    * @param event - Anchor event(s): a string, a `FlowStep`, or a list.
    * @param options - The 16 keyword-only knobs.
    * @returns Steps, flows, breakdowns and metadata.
-   * @throws BookmarkValidationError - Argument or bookmark validation.
-   * @throws AuthenticationError | QueryError | RateLimitError - Wire
+   * @throws {@link BookmarkValidationError} - Argument or bookmark validation.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link RateLimitError} - Wire
    *   failures.
+   * @example
+   * ```typescript
+   * const r = await ws.queryFlow("Login", { forward: 3, mode: "tree", last: 7 });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.query_flow
    */
   async queryFlow(
     event: string | FlowStep | ReadonlyArray<string | FlowStep>,
@@ -1177,8 +1238,7 @@ export class Workspace {
   }
 
   /**
-   * Run pre-built flow bookmark params against the Mixpanel API
-   * (`run_flow_params`, `workspace.py`).
+   * Run pre-built flow bookmark params against the Mixpanel API.
    *
    * The execution half of {@link buildFlowParams}. The chart mode is
    * read from the params via {@link flowModeFromParams} unless
@@ -1189,13 +1249,14 @@ export class Workspace {
    * @param options - `mode` (override; default derived from the params)
    *   and `workspace_id` (data view override).
    * @returns Steps, flows, breakdowns and metadata.
-   * @throws AuthenticationError | QueryError | RateLimitError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link RateLimitError} - Wire
    *   failures.
    * @example
    * ```typescript
    * const params = await ws.buildFlowParams("Login", { mode: "tree", last: 7 });
    * const result = await ws.runFlowParams(params); // runs as tree
    * ```
+   * @see mixpanel_headless.workspace.Workspace.run_flow_params
    */
   async runFlowParams(
     params: Readonly<Record<string, unknown>>,
@@ -1211,13 +1272,17 @@ export class Workspace {
   }
 
   /**
-   * Build validated flow bookmark params WITHOUT calling the API
-   * (`build_flow_params`, `workspace.py`).
+   * Build validated flow bookmark params without calling the API.
    *
    * @param event - Anchor event(s).
    * @param options - The same 16 keyword-only knobs.
-   * @returns The FLAT flow bookmark params dict.
-   * @throws BookmarkValidationError - Argument or bookmark validation.
+   * @returns The flat flow bookmark params dict.
+   * @throws {@link BookmarkValidationError} - Argument or bookmark validation.
+   * @example
+   * ```typescript
+   * const params = await ws.buildFlowParams("Login", { reverse: 2, last: 7 });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.build_flow_params
    */
   buildFlowParams(
     event: string | FlowStep | ReadonlyArray<string | FlowStep>,
@@ -1232,7 +1297,7 @@ export class Workspace {
    * @param event - The anchor event input.
    * @param options - The keyword-only knobs.
    * @returns The validated flow bookmark params.
-   * @throws BookmarkValidationError - Any validation layer.
+   * @throws {@link BookmarkValidationError} - Any validation layer.
    */
   #resolveFlowParams(
     event: string | FlowStep | ReadonlyArray<string | FlowStep>,
@@ -1260,23 +1325,25 @@ export class Workspace {
     });
   }
 
-  // -------------------------------------------------------------------
-  // RETENTION QUERY (inline ad-hoc) — `workspace.py`
-  // -------------------------------------------------------------------
+  // --- Retention query ---
 
   /**
-   * Run a typed retention query (`query_retention`,
-   * `workspace.py`).
+   * Run a typed retention query.
    *
    * @param bornEvent - Event defining cohort membership.
    * @param returnEvent - Event defining return.
    * @param options - The 15 keyword-only knobs plus `limit` (segments
    *   to return, 1 to 50000; default 3000).
    * @returns Cohort data, averages and metadata.
-   * @throws ValueError - `limit` is not an integer from 1 to 50000.
-   * @throws BookmarkValidationError - Argument or bookmark validation.
-   * @throws AuthenticationError | QueryError | RateLimitError - Wire
+   * @throws {@link ValueError} - `limit` is not an integer from 1 to 50000.
+   * @throws {@link BookmarkValidationError} - Argument or bookmark validation.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link RateLimitError} - Wire
    *   failures.
+   * @example
+   * ```typescript
+   * const r = await ws.queryRetention("Signup", "Login", { retention_unit: "week", last: 90 });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.query_retention
    */
   async queryRetention(
     bornEvent: string | RetentionEvent,
@@ -1294,8 +1361,7 @@ export class Workspace {
   }
 
   /**
-   * Run pre-built retention bookmark params against the Mixpanel API
-   * (`run_retention_params`, `workspace.py`).
+   * Run pre-built retention bookmark params against the Mixpanel API.
    *
    * The execution half of {@link buildRetentionParams}.
    *
@@ -1304,14 +1370,15 @@ export class Workspace {
    * @param options - `limit` (segments to return, 1 to 50000; default
    *   3000) and `workspace_id` (data view override).
    * @returns Cohort data, averages and metadata.
-   * @throws ValueError - `limit` is not an integer from 1 to 50000.
-   * @throws AuthenticationError | QueryError | RateLimitError - Wire
+   * @throws {@link ValueError} - `limit` is not an integer from 1 to 50000.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link RateLimitError} - Wire
    *   failures.
    * @example
    * ```typescript
    * const params = await ws.buildRetentionParams("Signup", "Login");
    * const result = await ws.runRetentionParams(params, { limit: 50_000 });
    * ```
+   * @see mixpanel_headless.workspace.Workspace.run_retention_params
    */
   async runRetentionParams(
     params: Readonly<Record<string, unknown>>,
@@ -1324,15 +1391,19 @@ export class Workspace {
   }
 
   /**
-   * Build validated retention bookmark params WITHOUT calling the API
-   * (`build_retention_params`, `workspace.py`).
+   * Build validated retention bookmark params without calling the API.
    *
    * @param bornEvent - Event defining cohort membership.
    * @param returnEvent - Event defining return.
    * @param options - The same 15 keyword-only knobs.
    * @returns Bookmark params with `sections`, `displayOptions`,
    *   `sorting` and `columnWidths`.
-   * @throws BookmarkValidationError - Argument or bookmark validation.
+   * @throws {@link BookmarkValidationError} - Argument or bookmark validation.
+   * @example
+   * ```typescript
+   * const params = await ws.buildRetentionParams("Signup", "Login", { retention_unit: "day" });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.build_retention_params
    */
   buildRetentionParams(
     bornEvent: string | RetentionEvent,
@@ -1352,7 +1423,7 @@ export class Workspace {
    * @param returnEvent - The return-event input.
    * @param options - The keyword-only knobs.
    * @returns The validated bookmark params.
-   * @throws BookmarkValidationError - Any validation layer.
+   * @throws {@link BookmarkValidationError} - Any validation layer.
    */
   #resolveRetentionParams(
     bornEvent: string | RetentionEvent,
@@ -1381,13 +1452,10 @@ export class Workspace {
     });
   }
 
-  // -------------------------------------------------------------------
-  // USER QUERY ENGINE (Phase 039) — `workspace.py`
-  // -------------------------------------------------------------------
+  // --- User query engine ---
 
   /**
-   * Query user profiles from Mixpanel's Engage API (`query_user`,
-   * `workspace.py`).
+   * Query user profiles from Mixpanel's Engage API.
    *
    * Builds the engage params and hands them to {@link runUserParams},
    * which routes on the params: an aggregate `action` key goes to the
@@ -1397,9 +1465,10 @@ export class Workspace {
    *
    * @param options - The 19 keyword-only knobs.
    * @returns Profiles/aggregate payload with metadata.
-   * @throws BookmarkValidationError - Argument or param validation.
-   * @throws AuthenticationError | QueryError | RateLimitError |
-   *   ServerError - Wire failures.
+   * @throws {@link BookmarkValidationError} - Argument or param validation.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link RateLimitError} |
+   *   {@link ServerError} - Wire failures.
+   * @see mixpanel_headless.workspace.Workspace.query_user
    */
   async queryUser(
     options: WorkspaceUserQueryOptions = {},
@@ -1414,8 +1483,7 @@ export class Workspace {
   }
 
   /**
-   * Run pre-built Engage API params against the Mixpanel API
-   * (`run_user_params`, `workspace.py`).
+   * Run pre-built Engage API params against the Mixpanel API.
    *
    * The execution half of {@link buildUserParams}. The mode is read
    * from the params: a dict that carries an aggregate `action` key runs
@@ -1429,8 +1497,8 @@ export class Workspace {
    * @param options - `limit` (default `1`; `null` fetches all),
    *   `parallel` (default `false`) and `workers` (default `5`).
    * @returns Profiles/aggregate payload with metadata.
-   * @throws AuthenticationError | QueryError | RateLimitError |
-   *   ServerError - Wire failures.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link RateLimitError} |
+   *   {@link ServerError} - Wire failures.
    * @example
    * ```typescript
    * const params = await ws.buildUserParams({
@@ -1440,6 +1508,7 @@ export class Workspace {
    * params["output_properties"] = JSON.stringify(["$email", "ltv"]);
    * const result = await ws.runUserParams(params, { limit: 500, parallel: true });
    * ```
+   * @see mixpanel_headless.workspace.Workspace.run_user_params
    */
   async runUserParams(
     params: ParamsDict,
@@ -1453,12 +1522,12 @@ export class Workspace {
   }
 
   /**
-   * Build validated engage params WITHOUT calling the API
-   * (`build_user_params`, `workspace.py`).
+   * Build validated engage params without calling the API.
    *
    * @param options - The same 19 keyword-only knobs.
    * @returns The engage params dict.
-   * @throws BookmarkValidationError - Argument or param validation.
+   * @throws {@link BookmarkValidationError} - Argument or param validation.
+   * @see mixpanel_headless.workspace.Workspace.build_user_params
    */
   buildUserParams(
     options: WorkspaceUserQueryOptions = {},
@@ -1471,7 +1540,7 @@ export class Workspace {
    *
    * @param options - The keyword-only knobs.
    * @returns The validated engage params dict.
-   * @throws BookmarkValidationError - Any validation layer.
+   * @throws {@link BookmarkValidationError} - Any validation layer.
    */
   // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
   #resolveUserParams(options: WorkspaceUserQueryOptions): ParamsDict {
@@ -1513,8 +1582,8 @@ export class Workspace {
    * project id every inline query body carries.
    *
    * @returns The numeric project id.
-   * @throws PythonIntError - When the stored id is not an integer
-   *   literal (CPython's `int(str)` twin, R11.7).
+   * @throws {@link MixpanelHeadlessError} - `PY_INT_INVALID_LITERAL` when the
+   *   stored id is not an integer literal (CPython's `int(str)` grammar).
    */
   #projectId(): number {
     return pythonInt(this.session.project.id);
@@ -1523,47 +1592,51 @@ export class Workspace {
   // --- Discovery/lexicon members ---
 
   /**
-   * List event names in the Mixpanel project (`events`,
-   * `workspace.py`).
+   * List event names in the Mixpanel project.
    *
    * Defaults to the widest window `/events/names` accepts
    * (`limit=5000`, `from_date=2000-01-01`, `to_date=today`); the wire
    * layer retries a date-range-gated 403 with the project's
    * `max_data_history_days` ceiling. The result reflects events seen in
-   * the window — it is NOT the Lexicon registry.
+   * the window — it is not the Lexicon registry.
    *
    * Cached per `(limit, from_date, to_date)` for the facade's lifetime.
    *
    * @param options - Optional limit / date bounds.
    * @returns Alphabetically sorted event names.
-   * @throws AuthenticationError - Credentials rejected.
-   * @throws QueryError - Non-gate 403s and other 4xx errors.
+   * @throws {@link AuthenticationError} - Credentials rejected.
+   * @throws {@link QueryError} - Non-gate 403s and other 4xx errors.
+   * @see mixpanel_headless.workspace.Workspace.events
    */
   async events(options: WorkspaceEventsOptions = {}): Promise<string[]> {
     return this.discoveryService.listEvents(options);
   }
 
   /**
-   * List all property names for an event (`properties`,
-   * `workspace.py`). Cached per event.
+   * List all property names for an event. Cached per event.
    *
    * @param event - Event name.
    * @returns Alphabetically sorted property names.
-   * @throws EventNotFoundError - Unknown event (with suggestions).
+   * @throws {@link EventNotFoundError} - Unknown event (with suggestions).
+   * @see mixpanel_headless.workspace.Workspace.properties
    */
   async properties(event: string): Promise<string[]> {
     return this.discoveryService.listProperties(event);
   }
 
   /**
-   * Get sample values for a property (`property_values`,
-   * `workspace.py`). Cached per
+   * Get sample values for a property. Cached per
    * `(property, event, limit)`.
    *
    * @param propertyName - Property to get values for.
    * @param options - Optional event filter and limit.
    * @returns Sample property values as strings (unsorted).
-   * @throws AuthenticationError - Credentials rejected.
+   * @throws {@link AuthenticationError} - Credentials rejected.
+   * @example
+   * ```typescript
+   * const values = await ws.propertyValues("plan", { event: "Purchase", limit: 20 });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.property_values
    */
   async propertyValues(
     propertyName: string,
@@ -1573,17 +1646,16 @@ export class Workspace {
   }
 
   /**
-   * List inferred subproperties of a list-of-object property
-   * (`subproperties`, `workspace.py`).
+   * List inferred subproperties of a list-of-object property.
    *
-   * Only SCALAR sub-values (string / number / boolean / ISO datetime
+   * Only scalar sub-values (string / number / boolean / ISO datetime
    * string) are reported; nested dicts and lists are skipped because
    * `GroupBy.list_item` / `Filter.list_contains` cannot use them.
    *
    * @param propertyName - Top-level property name (e.g. `"cart"`).
    * @param options - Optional event scope and sample size.
    * @returns Alphabetically sorted subproperty infos.
-   * @throws AuthenticationError - Credentials rejected.
+   * @throws {@link AuthenticationError} - Credentials rejected.
    *
    * Emits the injected {@link WarningSink} (Python `UserWarning`) for
    * mixed scalar types, mixed scalar/nested shapes, and all-null keys.
@@ -1593,6 +1665,7 @@ export class Workspace {
    *   console.log(sp.name, sp.type, sp.sample_values);
    * }
    * ```
+   * @see mixpanel_headless.workspace.Workspace.subproperties
    */
   async subproperties(
     propertyName: string,
@@ -1602,32 +1675,34 @@ export class Workspace {
   }
 
   /**
-   * List saved funnels (`funnels`, `workspace.py`). Cached.
+   * List saved funnels. Cached.
    *
    * @returns Funnel infos sorted by name.
-   * @throws AuthenticationError - Credentials rejected.
+   * @throws {@link AuthenticationError} - Credentials rejected.
+   * @see mixpanel_headless.workspace.Workspace.funnels
    */
   async funnels(): Promise<FunnelInfo[]> {
     return this.discoveryService.listFunnels();
   }
 
   /**
-   * List saved cohorts (`cohorts`, `workspace.py`). Cached.
+   * List saved cohorts. Cached.
    *
    * @returns Saved cohorts sorted by name.
-   * @throws AuthenticationError - Credentials rejected.
+   * @throws {@link AuthenticationError} - Credentials rejected.
+   * @see mixpanel_headless.workspace.Workspace.cohorts
    */
   async cohorts(): Promise<SavedCohort[]> {
     return this.discoveryService.listCohorts();
   }
 
   /**
-   * List saved reports (bookmarks) (`list_bookmarks`,
-   * `workspace.py`). NOT cached.
+   * List saved reports (bookmarks). Not cached.
    *
    * @param bookmarkType - Optional report-type filter.
    * @returns Bookmark metadata rows (empty when none exist).
-   * @throws QueryError - Permission denied or invalid type parameter.
+   * @throws {@link QueryError} - Permission denied or invalid type parameter.
+   * @see mixpanel_headless.workspace.Workspace.list_bookmarks
    */
   async listBookmarks(
     bookmarkType: BookmarkType | null = null,
@@ -1636,12 +1711,12 @@ export class Workspace {
   }
 
   /**
-   * Today's most active events (`top_events`,
-   * `workspace.py`). NOT cached — real-time data.
+   * List today's most active events. Not cached — real-time data.
    *
    * @param options - Counting method and limit.
    * @returns Top events with `event`, `count` and `percent_change`.
-   * @throws AuthenticationError - Credentials rejected.
+   * @throws {@link AuthenticationError} - Credentials rejected.
+   * @see mixpanel_headless.workspace.Workspace.top_events
    */
   async topEvents(
     options: WorkspaceTopEventsOptions = {},
@@ -1653,12 +1728,14 @@ export class Workspace {
   }
 
   /**
-   * Clear cached discovery results (`clear_discovery_cache`,
-   * `workspace.py`).
+   * Clear cached discovery results.
    *
-   * Mirrors Python's guard exactly: when the discovery service has
-   * never been created there is nothing to clear and NO service is
-   * constructed as a side effect.
+   * @remarks
+   * Mirrors Python's guard exactly: when the discovery service has never
+   * been created there is nothing to clear and no service is constructed
+   * as a side effect.
+   * @returns Nothing.
+   * @see mixpanel_headless.workspace.Workspace.clear_discovery_cache
    */
   clearDiscoveryCache(): Promise<void> {
     if (this.#discovery !== null) {
@@ -1668,13 +1745,13 @@ export class Workspace {
   }
 
   /**
-   * List Lexicon schemas (`lexicon_schemas`,
-   * `workspace.py`). Cached for the facade's lifetime — the
+   * List Lexicon schemas. Cached for the facade's lifetime — the
    * Lexicon API allows only 5 requests/minute.
    *
    * @param options - Optional entity-type filter.
    * @returns Schemas sorted by `(entity_type, name)`.
-   * @throws AuthenticationError - Credentials rejected.
+   * @throws {@link AuthenticationError} - Credentials rejected.
+   * @see mixpanel_headless.workspace.Workspace.lexicon_schemas
    */
   async lexiconSchemas(
     options: WorkspaceLexiconSchemasOptions = {},
@@ -1683,13 +1760,17 @@ export class Workspace {
   }
 
   /**
-   * Get one Lexicon schema (`lexicon_schema`,
-   * `workspace.py`). Cached.
+   * Get one Lexicon schema. Cached.
    *
    * @param entityType - Entity type (`"event"` / `"profile"`).
    * @param name - Entity name.
    * @returns The schema.
-   * @throws QueryError - Schema not found.
+   * @throws {@link QueryError} - Schema not found.
+   * @example
+   * ```typescript
+   * const schema = await ws.lexiconSchema("event", "Purchase");
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.lexicon_schema
    */
   async lexiconSchema(
     entityType: EntityType,
@@ -1700,7 +1781,7 @@ export class Workspace {
 
   /**
    * Gather the full Lexicon schema and the event↔property
-   * relationships (`schema_graph`, `workspace.py`). Cached
+   * relationships. Cached
    * per `(include_density, include_user_properties)`.
    *
    * The adjacency comes from the query API's per-event properties
@@ -1713,13 +1794,14 @@ export class Workspace {
    *
    * @param options - Density / user-property / refresh switches.
    * @returns The schema graph, with row views and `toGraph()`.
-   * @throws AuthenticationError - Credentials rejected.
+   * @throws {@link AuthenticationError} - Credentials rejected.
    * @example
    * ```typescript
    * const schema = await ws.schemaGraph();
    * schema.propertiesForEvent("Purchase");
    * schema.toGraph();
    * ```
+   * @see mixpanel_headless.workspace.Workspace.schema_graph
    */
   async schemaGraph(
     options: WorkspaceSchemaGraphOptions = {},
@@ -1730,22 +1812,18 @@ export class Workspace {
   // --- Session-replay members ---
 
   /**
-   * Get or create the session-replay service (044, lazy
-   * initialization — `_replays_service`, `workspace.py`).
+   * Get or create the session-replay service.
    *
-   * Constructed on first access with the BOUND {@link query} so
-   * `ReplaysService.discover` / `eventsFor` can issue Insights queries
-   * without taking a hard dependency on `Workspace`
-   * (circular-import-free DI, `replays.py:150-176`). S2 left this
-   * accessor for S3 because `ReplaysService` did not exist in the tree
-   * when S2 landed (`B5-S2-notes.md` §2).
-   *
-   * Settable, mirroring Python's `self._replays_svc = ...` attribute
-   * assignment — the seam the Layer-3 suites and the conformance
-   * bindings substitute a stub through.
-   *
+   * @remarks
+   * Constructed on first access with the bound {@link query} injected as
+   * its `queryFn`, so `ReplaysService.discover` / `eventsFor` can issue
+   * Insights queries without a hard dependency on `Workspace` (the same
+   * circular-import-free injection Python uses). Settable, mirroring
+   * Python's `self._replays_svc = ...` attribute write — the seam the
+   * test suites and the conformance bindings substitute a stub through.
    * @returns The memoized service.
    * @internal
+   * @see mixpanel_headless.workspace.Workspace._replays_service
    */
   get replaysService(): ReplaysService {
     if (this.#replays === null) {
@@ -1796,18 +1874,18 @@ export class Workspace {
   }
 
   /**
-   * List replays for a user, or hydrate summaries for explicit IDs
-   * (`list_replays`, `workspace.py`).
+   * List replays for a user, or hydrate summaries for explicit IDs.
    *
-   * Exactly one of `distinct_id` or `replay_ids` MUST be provided.
+   * Exactly one of `distinct_id` or `replay_ids` must be provided.
    * When `distinct_id` is set, `from_date` and `to_date` are required.
    *
    * @param options - The selector, the optional window, and the limit.
    * @returns `ReplaySummary` rows, possibly empty.
-   * @throws ParamValidationError - Neither or both selectors
+   * @throws {@link ParamValidationError} - Neither or both selectors
    *   (`WR4_REPLAY_SELECTOR_REQUIRED`), or `distinct_id` without a date
    *   window (`WR5_DATE_RANGE_REQUIRED`).
-   * @throws QueryError - Underlying Insights API failure.
+   * @throws {@link QueryError} - Underlying Insights API failure.
+   * @see mixpanel_headless.workspace.Workspace.list_replays
    */
   async listReplays(
     options: WorkspaceListReplaysOptions = {},
@@ -1816,15 +1894,19 @@ export class Workspace {
   }
 
   /**
-   * Mixpanel events that occurred during a single replay's time window
-   * (`events_for_replay`, `workspace.py`).
+   * Mixpanel events that occurred during a single replay's time window.
    *
    * @param replayId - The replay to fetch events for.
    * @param options - Extra group keys and the optional window.
    * @returns Ordered `ReplayEvent`s; empty when the window has none.
-   * @throws ParamValidationError - More than 5 `event_properties`
+   * @throws {@link ParamValidationError} - More than 5 `event_properties`
    *   (`WR1_TOO_MANY_EVENT_PROPERTIES`).
-   * @throws QueryError - Underlying Insights API failure.
+   * @throws {@link QueryError} - Underlying Insights API failure.
+   * @example
+   * ```typescript
+   * const events = await ws.eventsForReplay("replay-id", { event_properties: ["$current_url"] });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.events_for_replay
    */
   async eventsForReplay(
     replayId: string,
@@ -1834,16 +1916,24 @@ export class Workspace {
   }
 
   /**
-   * Batched version of {@link eventsForReplay} — single round-trip
-   * (`events_for_replays`, `workspace.py`).
+   * Batched version of {@link eventsForReplay} — single round-trip.
    *
    * @param replayIds - Replays to fetch events for.
    * @param options - Extra group keys and the optional window.
-   * @returns `replay_id` → ordered `ReplayEvent` list (R4.8 Map);
-   *   replays with no events are omitted.
-   * @throws ParamValidationError - More than 5 `event_properties`
+   * @returns `replay_id` → ordered `ReplayEvent` list, as a `Map` so
+   *   integer-like ids keep their order; replays with no events are
+   *   omitted.
+   * @throws {@link ParamValidationError} - More than 5 `event_properties`
    *   (`WR1_TOO_MANY_EVENT_PROPERTIES`).
-   * @throws QueryError - Underlying Insights API failure.
+   * @throws {@link QueryError} - Underlying Insights API failure.
+   * @example
+   * ```typescript
+   * const byReplay = await ws.eventsForReplays(["r1", "r2"], {
+   *   from_date: "2026-01-01",
+   *   to_date: "2026-01-31",
+   * });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.events_for_replays
    */
   async eventsForReplays(
     replayIds: readonly string[],
@@ -1857,15 +1947,19 @@ export class Workspace {
   }
 
   /**
-   * Sign a single replay ID; sugar over {@link signReplays}
-   * (`sign_replay`, `workspace.py`).
+   * Sign a single replay ID; sugar over {@link signReplays}.
    *
    * @param replayId - Replay to sign.
    * @param options - `env` (`"prod"` default).
    * @returns One `SignedReplay`. `query_string` is a 5-minute bearer
    *   credential — treat it like a session token.
-   * @throws SessionReplayAccessError - Sensitive-data flag set.
-   * @throws QueryError | ServerError - Other 4xx / 5xx.
+   * @throws {@link SessionReplayAccessError} - Sensitive-data flag set.
+   * @throws {@link QueryError} | {@link ServerError} - Other 4xx / 5xx.
+   * @example
+   * ```typescript
+   * const signed = await ws.signReplay("replay-id", { env: "prod" });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.sign_replay
    */
   async signReplay(
     replayId: string,
@@ -1875,14 +1969,18 @@ export class Workspace {
   }
 
   /**
-   * Sign multiple replays via the bulk endpoint (`sign_replays`,
-   * `workspace.py`).
+   * Sign multiple replays via the bulk endpoint.
    *
    * @param replayIds - Replays to sign.
    * @param options - `env` (`"prod"` default).
    * @returns `SignedReplay`s in input order.
-   * @throws SessionReplayAccessError - Sensitive-data flag set.
-   * @throws QueryError | ServerError - Other 4xx / 5xx.
+   * @throws {@link SessionReplayAccessError} - Sensitive-data flag set.
+   * @throws {@link QueryError} | {@link ServerError} - Other 4xx / 5xx.
+   * @example
+   * ```typescript
+   * const signed = await ws.signReplays(["r1", "r2"], { env: "prod" });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.sign_replays
    */
   async signReplays(
     replayIds: readonly string[],
@@ -1892,26 +1990,29 @@ export class Workspace {
   }
 
   /**
-   * Sign, fetch, and assemble a single `Replay` (`fetch_replay`,
-   * `workspace.py`).
+   * Sign, fetch, and assemble a single `Replay`.
    *
+   * @remarks
    * Runs the vendored rrweb analyzer to populate `Replay.actions`; the
    * raw `rrweb_events` list is also populated for downstream tools.
-   *
    * Python's event-loop caveat (`asyncio.run` cannot run inside a
-   * running loop) has NO TS twin — this member is `async` and composes
-   * naturally (R6.1). The Python docstring's guidance to drive
-   * `walk_cdn_async` directly maps to
-   * {@link ReplaysService.walkCdnAsync}, which is public here too.
-   *
+   * running loop) has no TS counterpart — this member is `async` and
+   * composes naturally; the Python docstring's advice to drive
+   * `walk_cdn_async` directly maps to {@link ReplaysService.walkCdnAsync},
+   * which is public here too.
    * @param replayId - The replay to fetch.
    * @param options - Retention / bounds / concurrency / join knobs.
    * @returns A `Replay` with `rrweb_events` and `actions` populated.
-   * @throws ReplayNotFoundError - First CDN file 404'd, or the walk
+   * @throws {@link ReplayNotFoundError} - First CDN file 404'd, or the walk
    *   yielded zero events.
-   * @throws SessionReplayAccessError - Sensitive-data flag set.
-   * @throws SignedURLExpiredError - Signed URL expired during fetch.
-   * @throws ParamValidationError - More than 5 `event_properties`.
+   * @throws {@link SessionReplayAccessError} - Sensitive-data flag set.
+   * @throws {@link SignedURLExpiredError} - Signed URL expired during fetch.
+   * @throws {@link ParamValidationError} - More than 5 `event_properties`.
+   * @example
+   * ```typescript
+   * const replay = await ws.fetchReplay("replay-id", { include_mixpanel_events: true });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.fetch_replay
    */
   async fetchReplay(
     replayId: string,
@@ -1921,23 +2022,30 @@ export class Workspace {
   }
 
   /**
-   * Yield raw rrweb events one at a time, batched-parallel under the
-   * hood (`stream_replay`, `workspace.py`).
+   * Yield raw rrweb events one at a time, fetched batched-parallel under
+   * the hood.
    *
-   * R6.6 — item-level `yield*` over the service generator; nothing
+   * @remarks
+   * An item-level `yield*` over the service generator, so nothing
    * buffers. Python's private-event-loop plumbing
    * (`asyncio.new_event_loop` + `run_until_complete(gen.__anext__())`)
-   * has no TS twin: the async generator composes directly, and the
-   * `finally: gen.aclose()` contract is what `for await` +
+   * has no TS counterpart: the async generator composes directly, and
+   * the `finally: gen.aclose()` contract is what `for await` +
    * `AsyncGenerator.return()` already guarantee.
-   *
    * @param replayId - The replay to stream.
    * @param options - Retention / bounds / concurrency / re-sign policy.
    * @yields Raw rrweb event dicts in timestamp order.
-   * @throws ReplayNotFoundError - First CDN file 404'd.
-   * @throws SignedURLExpiredError - Re-sign retry exhausted or
+   * @throws {@link ReplayNotFoundError} - First CDN file 404'd.
+   * @throws {@link SignedURLExpiredError} - Re-sign retry exhausted or
    *   disabled.
-   * @throws SessionReplayAccessError - Sensitive-data flag set.
+   * @throws {@link SessionReplayAccessError} - Sensitive-data flag set.
+   * @example
+   * ```typescript
+   * for await (const event of ws.streamReplay("replay-id", { max_files: 50 })) {
+   *   console.log(event["timestamp"]);
+   * }
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.stream_replay
    */
   async *streamReplay(
     replayId: string,
@@ -1947,30 +2055,33 @@ export class Workspace {
   }
 
   /**
-   * Fetch N replays in parallel; return a `ReplayBundle`
-   * (`fetch_replays`, `workspace.py`).
+   * Fetch several replays in parallel and return them as a `ReplayBundle`.
    *
+   * @remarks
    * Materializes each replay via {@link fetchReplay} and bundles them.
    * Outer `concurrency` parallelizes across replays; inner
    * `cdn_concurrency` parallelizes each replay's CDN file walk. Python
    * uses a `ThreadPoolExecutor` purely so each replay's `asyncio.run`
-   * gets its own event loop — the TS port needs no such isolation, so
-   * the outer level is BOUNDED-CONCURRENCY promise scheduling with the
-   * same worker cap, the same input-order output, and the same
-   * per-replay failure isolation.
-   *
-   * Per-replay failures are isolated: a replay that 404s, stalls, or
-   * fails to parse is logged and skipped; only an all-fail batch
-   * throws (the FIRST underlying error, preserving its type).
-   *
+   * gets its own event loop — the port needs no such isolation, so the
+   * outer level is bounded-concurrency promise scheduling with the same
+   * worker cap, the same input-order output and the same per-replay
+   * failure isolation: a replay that 404s, stalls, or fails to parse is
+   * logged, recorded on `ReplayBundle.failures` and skipped; only an
+   * all-fail batch throws (the first underlying error, preserving its
+   * type).
    * @param replayIds - Replays to fetch.
    * @param options - Env / bounds / concurrency / join / retention and
    *   distinct-id maps.
-   * @returns A `ReplayBundle` with `replays` in INPUT order (failed
+   * @returns A `ReplayBundle` with `replays` in input order (failed
    *   replays omitted).
-   * @throws MixpanelHeadlessError - Only when every requested replay
+   * @throws {@link MixpanelHeadlessError} - Only when every requested replay
    *   failed; the first underlying error propagates with its type.
-   * @throws ParamValidationError - More than 5 `event_properties`.
+   * @throws {@link ParamValidationError} - More than 5 `event_properties`.
+   * @example
+   * ```typescript
+   * const bundle = await ws.fetchReplays(["r1", "r2"], { concurrency: 4 });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.fetch_replays
    */
   async fetchReplays(
     replayIds: readonly string[],
@@ -1980,8 +2091,7 @@ export class Workspace {
   }
 
   /**
-   * Discovery + fetch in one call (`replays_for_user`,
-   * `workspace.py`).
+   * Discovery + fetch in one call.
    *
    * Composes {@link listReplays} and {@link fetchReplays}. Defaults
    * `include_mixpanel_events` to `true` since this is the "show me what
@@ -1992,7 +2102,16 @@ export class Workspace {
    * @param options - The required window plus the limit / join knobs.
    * @returns A `ReplayBundle`; empty when no replays exist in the
    *   window.
-   * @throws ParamValidationError - More than 5 `event_properties`.
+   * @throws {@link ParamValidationError} - More than 5 `event_properties`.
+   * @example
+   * ```typescript
+   * const bundle = await ws.replaysForUser("user-1", {
+   *   from_date: "2026-01-01",
+   *   to_date: "2026-01-31",
+   *   limit: 5,
+   * });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.replays_for_user
    */
   async replaysForUser(
     distinctId: string,
@@ -2007,40 +2126,44 @@ export class Workspace {
 
   /**
    * Sign + fetch + analyze a replay, returning only the markdown
-   * timeline (`analyze_replay`, `workspace.py`).
+   * timeline.
    *
    * @param replayId - The replay to analyze.
    * @returns The markdown timeline (`Replay.summaryMarkdown()`).
-   * @throws ReplayNotFoundError - First CDN file 404'd.
-   * @throws SessionReplayAccessError - Sensitive-data flag set.
+   * @throws {@link ReplayNotFoundError} - First CDN file 404'd.
+   * @throws {@link SessionReplayAccessError} - Sensitive-data flag set.
+   * @see mixpanel_headless.workspace.Workspace.analyze_replay
    */
   async analyzeReplay(replayId: string): Promise<string> {
     return replayMethods.analyzeReplay(this.#replayHost(), replayId);
   }
-  // --- Members land below in W1–W7 sections ---
-
-  // === B6-W1 lifecycle / workspace-management / me / business-context
-  // members (W1 owns; append-only) ===
+  // --- Lifecycle, /me and business context ---
 
   /**
-   * The resolved account of the current session (`account` property,
-   * `workspace.py`).
+   * The resolved account of the current session.
+   *
+   * @returns The account.
+   * @see mixpanel_headless.workspace.Workspace.account
    */
   get account(): Account {
     return this.#session.account;
   }
 
   /**
-   * The resolved project of the current session (`project` property,
-   * `workspace.py`).
+   * The resolved project of the current session.
+   *
+   * @returns The project.
+   * @see mixpanel_headless.workspace.Workspace.project
    */
   get project(): Project {
     return this.#session.project;
   }
 
   /**
-   * The resolved workspace, or `null` when scoping stays lazy
-   * (`workspace` property, `workspace.py`).
+   * The resolved workspace, or `null` when scoping stays lazy.
+   *
+   * @returns The workspace reference, if one is pinned.
+   * @see mixpanel_headless.workspace.Workspace.workspace
    */
   get workspace(): WorkspaceRef | null {
     return this.#session.workspace ?? null;
@@ -2048,18 +2171,19 @@ export class Workspace {
 
   /**
    * Direct access to the wire client — the escape hatch for endpoints
-   * the facade does not cover (`api` property,
-   * `workspace.py`).
+   * the facade does not cover.
+   *
+   * @returns The bound client.
+   * @see mixpanel_headless.workspace.Workspace.api
    */
   get api(): MixpanelClient {
     return this.client;
   }
 
   /**
-   * Get or create the `/me` service (`_me_svc`,
-   * `workspace.py`).
+   * Get or create the `/me` service.
    *
-   * @returns The memoized service, scoped to the CURRENT account.
+   * @returns The memoized service, scoped to the current account.
    * @internal
    */
   get meService(): MeService {
@@ -2080,10 +2204,11 @@ export class Workspace {
   }
 
   /**
-   * The `/me` service ONLY IF it has already been created — the
-   * `self._me_service is None` peek `_cached_organization_id` performs
-   * (`workspace.py`). Never constructs one.
+   * The `/me` service only if it has already been created — the
+   * `self._me_service is None` peek `_cached_organization_id` performs.
+   * Never constructs one.
    *
+   * @returns The service, or `null` before first use.
    * @internal
    */
   get meServiceIfCreated(): MeService | null {
@@ -2091,36 +2216,37 @@ export class Workspace {
   }
 
   /**
-   * List every public workspace of the current project
-   * (`list_workspaces`, `workspace.py`).
+   * List every public workspace of the current project.
    *
    * @returns The project's `PublicWorkspace` models.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
+   * @see mixpanel_headless.workspace.Workspace.list_workspaces
    */
   async listWorkspaces(): Promise<PublicWorkspace[]> {
     return this.client.listWorkspaces();
   }
 
   /**
-   * Resolve the workspace ID used for scoped requests
-   * (`resolve_workspace_id`, `workspace.py`).
+   * Resolve the workspace ID used for scoped requests.
    *
    * @returns The resolved workspace ID.
-   * @throws WorkspaceScopeError - No workspace resolvable.
+   * @throws {@link WorkspaceScopeError} - No workspace resolvable.
+   * @see mixpanel_headless.workspace.Workspace.resolve_workspace_id
    */
   async resolveWorkspaceId(): Promise<number> {
     return this.client.resolveWorkspaceId();
   }
 
   /**
-   * Get the `/me` response for the current credentials (cached 24h by
-   * the injected store) — `me`, `workspace.py`.
+   * Fetch the `/me` response for the current credentials, cached for 24
+   * hours by the injected store.
    *
    * @param options - `force_refresh` bypasses the caches.
    * @returns The `/me` response.
-   * @throws ConfigError - Credentials lack `/me` access (401/403).
-   * @throws QueryError - Any other API error.
+   * @throws {@link ConfigError} - Credentials lack `/me` access (401/403).
+   * @throws {@link QueryError} - Any other API error.
+   * @see mixpanel_headless.workspace.Workspace.me
    */
   async me(options: WorkspaceMeOptions = {}): Promise<MeResponse> {
     return this.meService.fetch({
@@ -2129,18 +2255,18 @@ export class Workspace {
   }
 
   /**
-   * List accessible projects via the `/me` API (FR-035; `projects`,
-   * `workspace.py`).
+   * List the projects the credentials can access, via the `/me` API.
    *
    * @param options - `refresh` bypasses the `/me` caches first.
    * @returns Projects sorted by name.
-   * @throws ConfigError - Credentials lack `/me` access.
+   * @throws {@link ConfigError} - Credentials lack `/me` access.
    * @example
    * ```typescript
    * for (const project of await ws.projects()) {
    *   await ws.use({ project: project.id });
    * }
    * ```
+   * @see mixpanel_headless.workspace.Workspace.projects
    */
   async projects(options: WorkspaceProjectsOptions = {}): Promise<Project[]> {
     const service = this.meService;
@@ -2157,14 +2283,14 @@ export class Workspace {
   }
 
   /**
-   * List a project's workspaces via the `/me` API (FR-036;
-   * `workspaces`, `workspace.py`).
+   * List a project's workspaces via the `/me` API.
    *
    * @param options - `project_id` (defaults to the current project)
    *   and `refresh`.
    * @returns Workspace references sorted by name.
-   * @throws ConfigError - Credentials lack `/me` access, or a
+   * @throws {@link ConfigError} - Credentials lack `/me` access, or a
    *   non-numeric `project_id`.
+   * @see mixpanel_headless.workspace.Workspace.workspaces
    */
   async workspaces(
     options: WorkspaceWorkspacesOptions = {},
@@ -2183,14 +2309,20 @@ export class Workspace {
   }
 
   /**
-   * Stream events straight from the Export API (`stream_events`,
-   * `workspace.py`) — the W1-D3 R6.6 veneer over the B4-C2
-   * helper. PROJECT-scoped by design even when a workspace is pinned.
+   * Stream raw events from the Export API. Project-scoped by design,
+   * even when a workspace is pinned.
    *
    * @param options - Date window plus filters / `raw`.
-   * @returns An async generator of event dicts.
-   * @throws ParamValidationError - `WR2_LIMIT_TOO_SMALL` /
+   * @yields Event dicts, in export order.
+   * @throws {@link ParamValidationError} - `WR2_LIMIT_TOO_SMALL` /
    *   `WR3_LIMIT_TOO_LARGE` (on the first pull).
+   * @example
+   * ```typescript
+   * for await (const event of ws.streamEvents({ from_date: "2026-01-01", to_date: "2026-01-02" })) {
+   *   console.log(event);
+   * }
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.stream_events
    */
   async *streamEvents(
     options: StreamEventsOptions,
@@ -2199,14 +2331,13 @@ export class Workspace {
   }
 
   /**
-   * Stream user profiles straight from the Engage API
-   * (`stream_profiles`, `workspace.py`) — the W1-D3 R6.6
-   * veneer over the B4-C2 helper.
+   * Stream user profiles from the Engage API.
    *
    * @param options - Filters plus `raw`.
-   * @returns An async generator of profile dicts.
-   * @throws ParamValidationError - The mutually-exclusive-filter
+   * @yields Profile dicts, page by page.
+   * @throws {@link ParamValidationError} - The mutually-exclusive-filter
    *   guards (on the first pull).
+   * @see mixpanel_headless.workspace.Workspace.stream_profiles
    */
   async *streamProfiles(
     options: StreamProfilesOptions = {},
@@ -2215,15 +2346,15 @@ export class Workspace {
   }
 
   /**
-   * Read business context at the given scope
-   * (`get_business_context`, `workspace.py`).
+   * Read business context at the given scope.
    *
    * @param options - `level` (default `"project"`) and an optional
    *   explicit `organization_id`.
    * @returns The populated context (`content: ""` when unset).
-   * @throws ParamValidationError - `WS2_INVALID_LEVEL`.
-   * @throws WorkspaceScopeError - `ORGANIZATION_AMBIGUOUS`.
-   * @throws MixpanelHeadlessError - Response missing `content`.
+   * @throws {@link ParamValidationError} - `WS2_INVALID_LEVEL`.
+   * @throws {@link WorkspaceScopeError} - `ORGANIZATION_AMBIGUOUS`.
+   * @throws {@link MixpanelHeadlessError} - Response missing `content`.
+   * @see mixpanel_headless.workspace.Workspace.get_business_context
    */
   async getBusinessContext(
     options: BusinessContextScopeOptions = {},
@@ -2232,15 +2363,22 @@ export class Workspace {
   }
 
   /**
-   * Replace business context at the given scope
-   * (`set_business_context`, `workspace.py`).
+   * Replace business context at the given scope.
    *
    * @param content - New markdown content (empty string clears).
    * @param options - `level` / `organization_id`.
    * @returns The context echoed by the server.
-   * @throws BusinessContextValidationError - Content over 50,000
+   * @throws {@link BusinessContextValidationError} - Content over 50,000
    *   characters (no HTTP call is made).
-   * @throws ParamValidationError - `WS2_INVALID_LEVEL`.
+   * @throws {@link ParamValidationError} - `WS2_INVALID_LEVEL`.
+   * @throws {@link WorkspaceScopeError} - `ORGANIZATION_AMBIGUOUS` at the
+   *   organization level.
+   * @throws {@link MixpanelHeadlessError} - Response missing `content`.
+   * @example
+   * ```typescript
+   * await ws.setBusinessContext("# Acme\nB2B SaaS, EMEA focus.", { level: "project" });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.set_business_context
    */
   async setBusinessContext(
     content: string,
@@ -2254,13 +2392,15 @@ export class Workspace {
   }
 
   /**
-   * Clear business context at the given scope
-   * (`clear_business_context`, `workspace.py`) — the
+   * Clear business context at the given scope — the
    * documented alias for `set_business_context("")`.
    *
    * @param options - `level` / `organization_id`.
    * @returns The cleared context.
-   * @throws ParamValidationError - `WS2_INVALID_LEVEL`.
+   * @throws {@link ParamValidationError} - `WS2_INVALID_LEVEL`.
+   * @throws {@link WorkspaceScopeError} - `ORGANIZATION_AMBIGUOUS` at the
+   *   organization level.
+   * @see mixpanel_headless.workspace.Workspace.clear_business_context
    */
   async clearBusinessContext(
     options: BusinessContextScopeOptions = {},
@@ -2269,14 +2409,14 @@ export class Workspace {
   }
 
   /**
-   * Read organization and project business context together in ONE
-   * request (`get_business_context_chain`,
-   * `workspace.py`).
+   * Read organization and project business context together in one
+   * request.
    *
    * @returns Both scopes; `organization.organization_id` stays `null`
    *   when the `/me` cache is cold (single-round-trip guarantee).
-   * @throws MixpanelHeadlessError - Response missing `org_context` or
+   * @throws {@link MixpanelHeadlessError} - Response missing `org_context` or
    *   `project_context`.
+   * @see mixpanel_headless.workspace.Workspace.get_business_context_chain
    */
   async getBusinessContextChain(): Promise<BusinessContextChain> {
     return lifecycle.getBusinessContextChain(this.#businessContextHost());
@@ -2300,14 +2440,13 @@ export class Workspace {
   // --- Dashboard members ---
 
   /**
-   * List dashboards for the current project/workspace
-   * (`list_dashboards`, `workspace.py`).
+   * List dashboards for the current project/workspace.
    *
    * @param options - Optional `ids` filter.
    * @returns The `Dashboard` models, in response order.
-   * @throws ResponseValidationError - Malformed API response payload
+   * @throws {@link ResponseValidationError} - Malformed API response payload
    *   (`RESPONSE_VALIDATION_ERROR`).
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
    * @example
    * ```typescript
@@ -2315,6 +2454,7 @@ export class Workspace {
    *   console.log(`${d.title} (id=${String(d.id)})`);
    * }
    * ```
+   * @see mixpanel_headless.workspace.Workspace.list_dashboards
    */
   async listDashboards(
     options: WorkspaceListDashboardsOptions = {},
@@ -2323,28 +2463,28 @@ export class Workspace {
   }
 
   /**
-   * Create a new dashboard (`create_dashboard`,
-   * `workspace.py`).
+   * Create a new dashboard.
    *
    * @param params - Dashboard creation parameters.
    * @returns The newly created `Dashboard`.
-   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.create_dashboard
    */
   async createDashboard(params: CreateDashboardParams): Promise<Dashboard> {
     return dashboards.createDashboard(this.client, params);
   }
 
   /**
-   * Get a single dashboard by ID (`get_dashboard`,
-   * `workspace.py`).
+   * Fetch a single dashboard by id.
    *
    * @param dashboardId - Dashboard identifier.
    * @returns The `Dashboard`.
-   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId`
+   * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `dashboardId`
    *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.get_dashboard
    */
   async getDashboard(dashboardId: number): Promise<Dashboard> {
     requireEntityId("dashboard_id", dashboardId);
@@ -2352,16 +2492,20 @@ export class Workspace {
   }
 
   /**
-   * Update an existing dashboard (`update_dashboard`,
-   * `workspace.py`).
+   * Update an existing dashboard.
    *
    * @param dashboardId - Dashboard identifier.
    * @param params - Fields to update.
    * @returns The updated `Dashboard`.
-   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId`
+   * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `dashboardId`
    *   is not a positive integer (network-free guard, before any request).
+   * @example
+   * ```typescript
+   * await ws.updateDashboard(12, new UpdateDashboardParams({ title: "Renamed" }));
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.update_dashboard
    */
   async updateDashboard(
     dashboardId: number,
@@ -2372,15 +2516,15 @@ export class Workspace {
   }
 
   /**
-   * Delete a dashboard (`delete_dashboard`,
-   * `workspace.py`).
+   * Delete a dashboard.
    *
    * @param dashboardId - Dashboard identifier.
    * @returns Nothing.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId`
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `dashboardId`
    *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.delete_dashboard
    */
   async deleteDashboard(dashboardId: number): Promise<void> {
     requireEntityId("dashboard_id", dashboardId);
@@ -2388,24 +2532,26 @@ export class Workspace {
   }
 
   /**
-   * Delete multiple dashboards (`bulk_delete_dashboards`,
-   * `workspace.py`).
+   * Delete multiple dashboards.
    *
    * @param ids - Dashboard IDs to delete.
    * @returns Nothing.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
+   *   failures.
+   * @see mixpanel_headless.workspace.Workspace.bulk_delete_dashboards
    */
   async bulkDeleteDashboards(ids: readonly number[]): Promise<void> {
     return dashboards.bulkDeleteDashboards(this.client, ids);
   }
 
   /**
-   * Favorite a dashboard (`favorite_dashboard`,
-   * `workspace.py`).
+   * Favorite a dashboard.
    *
    * @param dashboardId - Dashboard identifier.
    * @returns Nothing.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId`
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `dashboardId`
    *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.favorite_dashboard
    */
   async favoriteDashboard(dashboardId: number): Promise<void> {
     requireEntityId("dashboard_id", dashboardId);
@@ -2413,13 +2559,13 @@ export class Workspace {
   }
 
   /**
-   * Unfavorite a dashboard (`unfavorite_dashboard`,
-   * `workspace.py`).
+   * Unfavorite a dashboard.
    *
    * @param dashboardId - Dashboard identifier.
    * @returns Nothing.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId`
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `dashboardId`
    *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.unfavorite_dashboard
    */
   async unfavoriteDashboard(dashboardId: number): Promise<void> {
     requireEntityId("dashboard_id", dashboardId);
@@ -2427,12 +2573,13 @@ export class Workspace {
   }
 
   /**
-   * Pin a dashboard (`pin_dashboard`, `workspace.py`).
+   * Pin a dashboard.
    *
    * @param dashboardId - Dashboard identifier.
    * @returns Nothing.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId`
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `dashboardId`
    *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.pin_dashboard
    */
   async pinDashboard(dashboardId: number): Promise<void> {
     requireEntityId("dashboard_id", dashboardId);
@@ -2440,13 +2587,13 @@ export class Workspace {
   }
 
   /**
-   * Unpin a dashboard (`unpin_dashboard`,
-   * `workspace.py`).
+   * Unpin a dashboard.
    *
    * @param dashboardId - Dashboard identifier.
    * @returns Nothing.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId`
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `dashboardId`
    *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.unpin_dashboard
    */
   async unpinDashboard(dashboardId: number): Promise<void> {
     requireEntityId("dashboard_id", dashboardId);
@@ -2454,15 +2601,19 @@ export class Workspace {
   }
 
   /**
-   * Remove a report from a dashboard
-   * (`remove_report_from_dashboard`, `workspace.py`).
+   * Remove a report from a dashboard.
    *
    * @param dashboardId - Dashboard identifier.
    * @param bookmarkId - Bookmark/report identifier to remove.
    * @returns The updated `Dashboard`.
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId` / `bookmarkId`
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `dashboardId` / `bookmarkId`
    *   is not a positive integer (network-free guard, before any request).
+   * @example
+   * ```typescript
+   * const dash = await ws.removeReportFromDashboard(12, 987);
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.remove_report_from_dashboard
    */
   async removeReportFromDashboard(
     dashboardId: number,
@@ -2478,17 +2629,21 @@ export class Workspace {
   }
 
   /**
-   * Add a report to a dashboard (`add_report_to_dashboard`,
-   * `workspace.py`) — clones the bookmark onto the board.
+   * Add a report to a dashboard — clones the bookmark onto the board.
    *
    * @param dashboardId - Dashboard identifier.
    * @param bookmarkId - Bookmark/report identifier to add.
    * @returns The updated `Dashboard`.
-   * @throws MixpanelHeadlessError - Response is not a dashboard dict
+   * @throws {@link MixpanelHeadlessError} - Response is not a dashboard dict
    *   carrying `id` (`UNKNOWN_ERROR`).
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId` / `bookmarkId`
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `dashboardId` / `bookmarkId`
    *   is not a positive integer (network-free guard, before any request).
+   * @example
+   * ```typescript
+   * const dash = await ws.addReportToDashboard(12, 987);
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.add_report_to_dashboard
    */
   async addReportToDashboard(
     dashboardId: number,
@@ -2504,12 +2659,12 @@ export class Workspace {
   }
 
   /**
-   * List available dashboard blueprint templates
-   * (`list_blueprint_templates`, `workspace.py`).
+   * List the available dashboard blueprint templates.
    *
    * @param options - `include_reports` (default `false`).
    * @returns The `BlueprintTemplate` models.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.list_blueprint_templates
    */
   async listBlueprintTemplates(
     options: WorkspaceListBlueprintTemplatesOptions = {},
@@ -2518,28 +2673,28 @@ export class Workspace {
   }
 
   /**
-   * Create a dashboard from a blueprint template
-   * (`create_blueprint`, `workspace.py`).
+   * Create a dashboard from a blueprint template.
    *
    * @param templateType - Blueprint template type identifier.
    * @returns The newly created `Dashboard`.
-   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.create_blueprint
    */
   async createBlueprint(templateType: string): Promise<Dashboard> {
     return dashboards.createBlueprint(this.client, templateType);
   }
 
   /**
-   * Get the blueprint configuration for a dashboard
-   * (`get_blueprint_config`, `workspace.py`).
+   * Fetch the blueprint configuration of a dashboard.
    *
    * @param dashboardId - Dashboard identifier.
    * @returns The `BlueprintConfig`.
-   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId`
+   * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `dashboardId`
    *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.get_blueprint_config
    */
   async getBlueprintConfig(dashboardId: number): Promise<BlueprintConfig> {
     requireEntityId("dashboard_id", dashboardId);
@@ -2547,11 +2702,13 @@ export class Workspace {
   }
 
   /**
-   * Update cohorts for blueprint configuration
-   * (`update_blueprint_cohorts`, `workspace.py`).
+   * Replace the cohorts of a blueprint configuration.
    *
    * @param cohorts - Cohort configuration dicts.
    * @returns Nothing.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
+   *   failures.
+   * @see mixpanel_headless.workspace.Workspace.update_blueprint_cohorts
    */
   async updateBlueprintCohorts(
     cohorts: ReadonlyArray<Record<string, unknown>>,
@@ -2560,26 +2717,26 @@ export class Workspace {
   }
 
   /**
-   * Finalize a blueprint dashboard with cards
-   * (`finalize_blueprint`, `workspace.py`).
+   * Finalize a blueprint dashboard with cards.
    *
    * @param params - Blueprint finalization parameters.
    * @returns The finalized `Dashboard`.
-   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.finalize_blueprint
    */
   async finalizeBlueprint(params: BlueprintFinishParams): Promise<Dashboard> {
     return dashboards.finalizeBlueprint(this.client, params);
   }
 
   /**
-   * Create an RCA (Root Cause Analysis) dashboard
-   * (`create_rca_dashboard`, `workspace.py`).
+   * Create an RCA (Root Cause Analysis) dashboard.
    *
    * @param params - RCA dashboard parameters.
    * @returns The newly created `Dashboard`.
-   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.create_rca_dashboard
    */
   async createRcaDashboard(
     params: CreateRcaDashboardParams,
@@ -2588,13 +2745,13 @@ export class Workspace {
   }
 
   /**
-   * Dashboard IDs containing a bookmark/report
-   * (`get_bookmark_dashboard_ids`, `workspace.py`).
+   * List the ids of the dashboards that contain a bookmark.
    *
    * @param bookmarkId - Bookmark identifier.
    * @returns The dashboard IDs.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `bookmarkId`
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `bookmarkId`
    *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.get_bookmark_dashboard_ids
    */
   async getBookmarkDashboardIds(bookmarkId: number): Promise<number[]> {
     requireEntityId("bookmark_id", bookmarkId);
@@ -2602,13 +2759,13 @@ export class Workspace {
   }
 
   /**
-   * ERF data for a dashboard (`get_dashboard_erf`,
-   * `workspace.py`).
+   * Fetch the ERF data of a dashboard.
    *
    * @param dashboardId - Dashboard identifier.
    * @returns The ERF metrics mapping.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId`
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `dashboardId`
    *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.get_dashboard_erf
    */
   async getDashboardErf(dashboardId: number): Promise<Record<string, unknown>> {
     requireEntityId("dashboard_id", dashboardId);
@@ -2616,15 +2773,19 @@ export class Workspace {
   }
 
   /**
-   * Update a report link on a dashboard (`update_report_link`,
-   * `workspace.py`).
+   * Update a report link on a dashboard.
    *
    * @param dashboardId - Dashboard identifier.
    * @param reportLinkId - Report link identifier.
    * @param params - Update parameters.
    * @returns Nothing.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId` / `reportLinkId`
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `dashboardId` / `reportLinkId`
    *   is not a positive integer (network-free guard, before any request).
+   * @example
+   * ```typescript
+   * await ws.updateReportLink(12, 456, new UpdateReportLinkParams({ link_type: "embedded" }));
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.update_report_link
    */
   async updateReportLink(
     dashboardId: number,
@@ -2642,15 +2803,19 @@ export class Workspace {
   }
 
   /**
-   * Update a text card on a dashboard (`update_text_card`,
-   * `workspace.py`).
+   * Update a text card on a dashboard.
    *
    * @param dashboardId - Dashboard identifier.
    * @param textCardId - Text card identifier.
    * @param params - Update parameters.
    * @returns Nothing.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `dashboardId` / `textCardId`
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `dashboardId` / `textCardId`
    *   is not a positive integer (network-free guard, before any request).
+   * @example
+   * ```typescript
+   * await ws.updateTextCard(12, 789, new UpdateTextCardParams({ markdown: "## Notes" }));
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.update_text_card
    */
   async updateTextCard(
     dashboardId: number,
@@ -2670,14 +2835,13 @@ export class Workspace {
   // --- Bookmark/report + cohort members ---
 
   /**
-   * List bookmarks/reports via the App API v2 endpoint
-   * (`list_bookmarks_v2`, `workspace.py`).
+   * List bookmarks/reports via the App API v2 endpoint.
    *
    * @param options - Optional `bookmark_type` / `ids` filters.
    * @returns The `Bookmark` models, in response order.
-   * @throws ResponseValidationError - Malformed API response payload
+   * @throws {@link ResponseValidationError} - Malformed API response payload
    *   (`RESPONSE_VALIDATION_ERROR`).
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
    * @example
    * ```typescript
@@ -2685,6 +2849,7 @@ export class Workspace {
    *   console.log(`${r.name} (${r.bookmark_type})`);
    * }
    * ```
+   * @see mixpanel_headless.workspace.Workspace.list_bookmarks_v2
    */
   async listBookmarksV2(
     options: WorkspaceListBookmarksV2Options = {},
@@ -2693,17 +2858,20 @@ export class Workspace {
   }
 
   /**
-   * Create a new bookmark (saved report) (`create_bookmark`,
-   * `workspace.py`).
+   * Create a new bookmark (saved report).
    *
-   * @param params - Bookmark creation parameters; `dashboard_id` is
-   *   required by the Mixpanel v2 API.
+   * @remarks
+   * `dashboard_id` is required by the Mixpanel v2 API; the create call
+   * stores the bookmark and a second request then places it on that
+   * dashboard.
+   * @param params - Bookmark creation parameters.
    * @returns The newly created `Bookmark`.
-   * @throws MixpanelHeadlessError - `dashboard_id` missing, or an empty
+   * @throws {@link MixpanelHeadlessError} - `dashboard_id` missing, or an empty
    *   response (`UNKNOWN_ERROR`).
-   * @throws BookmarkValidationError - Client-side schema validation
+   * @throws {@link BookmarkValidationError} - Client-side schema validation
    *   failed (raised before the API call).
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.create_bookmark
    */
   async createBookmark(params: CreateBookmarkParams): Promise<Bookmark> {
     return bookmarksCohorts.createBookmark(
@@ -2716,15 +2884,15 @@ export class Workspace {
   }
 
   /**
-   * Get a single bookmark by ID (`get_bookmark`,
-   * `workspace.py`).
+   * Fetch a single bookmark by id.
    *
    * @param bookmarkId - Bookmark identifier.
    * @returns The `Bookmark`.
-   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `bookmarkId`
+   * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `bookmarkId`
    *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.get_bookmark
    */
   async getBookmark(bookmarkId: number): Promise<Bookmark> {
     requireEntityId("bookmark_id", bookmarkId);
@@ -2732,18 +2900,22 @@ export class Workspace {
   }
 
   /**
-   * Update an existing bookmark (`update_bookmark`,
-   * `workspace.py`).
+   * Update an existing bookmark.
    *
    * @param bookmarkId - Bookmark identifier.
    * @param params - Fields to update.
    * @returns The updated `Bookmark`.
-   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
-   * @throws BookmarkValidationError - Partial-mode schema validation
+   * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+   * @throws {@link BookmarkValidationError} - Partial-mode schema validation
    *   failed (raised before the API call).
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `bookmarkId`
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `bookmarkId`
    *   is not a positive integer (network-free guard, before any request).
+   * @example
+   * ```typescript
+   * await ws.updateBookmark(987, new UpdateBookmarkParams({ name: "Weekly actives" }));
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.update_bookmark
    */
   async updateBookmark(
     bookmarkId: number,
@@ -2759,14 +2931,15 @@ export class Workspace {
   }
 
   /**
-   * Delete a bookmark (`delete_bookmark`, `workspace.py`).
+   * Delete a bookmark.
    *
    * @param bookmarkId - Bookmark identifier.
    * @returns Nothing.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `bookmarkId`
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `bookmarkId`
    *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.delete_bookmark
    */
   async deleteBookmark(bookmarkId: number): Promise<void> {
     requireEntityId("bookmark_id", bookmarkId);
@@ -2774,22 +2947,26 @@ export class Workspace {
   }
 
   /**
-   * Delete multiple bookmarks (`bulk_delete_bookmarks`,
-   * `workspace.py`).
+   * Delete multiple bookmarks.
    *
    * @param ids - Bookmark IDs to delete.
    * @returns Nothing.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
+   *   failures.
+   * @see mixpanel_headless.workspace.Workspace.bulk_delete_bookmarks
    */
   async bulkDeleteBookmarks(ids: readonly number[]): Promise<void> {
     return bookmarksCohorts.bulkDeleteBookmarks(this.client, ids);
   }
 
   /**
-   * Update multiple bookmarks (`bulk_update_bookmarks`,
-   * `workspace.py`).
+   * Update multiple bookmarks.
    *
    * @param entries - Bookmark update entries.
    * @returns Nothing.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
+   *   failures.
+   * @see mixpanel_headless.workspace.Workspace.bulk_update_bookmarks
    */
   async bulkUpdateBookmarks(
     entries: readonly BulkUpdateBookmarkEntry[],
@@ -2798,13 +2975,13 @@ export class Workspace {
   }
 
   /**
-   * Dashboard IDs linked to a bookmark
-   * (`bookmark_linked_dashboard_ids`, `workspace.py`).
+   * List the ids of the dashboards a bookmark is linked to.
    *
    * @param bookmarkId - Bookmark identifier.
    * @returns The dashboard IDs.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `bookmarkId`
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `bookmarkId`
    *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.bookmark_linked_dashboard_ids
    */
   async bookmarkLinkedDashboardIds(bookmarkId: number): Promise<number[]> {
     requireEntityId("bookmark_id", bookmarkId);
@@ -2812,15 +2989,19 @@ export class Workspace {
   }
 
   /**
-   * Change history for a bookmark (`get_bookmark_history`,
-   * `workspace.py`).
+   * Fetch the change history of a bookmark.
    *
    * @param bookmarkId - Bookmark identifier.
    * @param options - `cursor` / `page_size` (keyword-only in Python).
    * @returns The `BookmarkHistoryResponse`.
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `bookmarkId`
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `bookmarkId`
    *   is not a positive integer (network-free guard, before any request).
+   * @example
+   * ```typescript
+   * const history = await ws.getBookmarkHistory(987, { page_size: 20 });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.get_bookmark_history
    */
   async getBookmarkHistory(
     bookmarkId: number,
@@ -2835,12 +3016,12 @@ export class Workspace {
   }
 
   /**
-   * List cohorts via the App API, full detail (`list_cohorts_full`,
-   * `workspace.py`).
+   * List cohorts via the App API, full detail.
    *
    * @param options - Optional `data_group_id` / `ids` filters.
    * @returns The `Cohort` models, in response order.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.list_cohorts_full
    */
   async listCohortsFull(
     options: WorkspaceListCohortsFullOptions = {},
@@ -2849,15 +3030,15 @@ export class Workspace {
   }
 
   /**
-   * Get a single cohort by ID (`get_cohort`,
-   * `workspace.py`).
+   * Fetch a single cohort by id.
    *
    * @param cohortId - Cohort identifier.
    * @returns The `Cohort`.
-   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `cohortId`
+   * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `cohortId`
    *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.get_cohort
    */
   async getCohort(cohortId: number): Promise<Cohort> {
     requireEntityId("cohort_id", cohortId);
@@ -2865,28 +3046,33 @@ export class Workspace {
   }
 
   /**
-   * Create a new cohort (`create_cohort`, `workspace.py`).
+   * Create a new cohort.
    *
    * @param params - Cohort creation parameters.
    * @returns The newly created `Cohort`.
-   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.create_cohort
    */
   async createCohort(params: CreateCohortParams): Promise<Cohort> {
     return bookmarksCohorts.createCohort(this.client, params);
   }
 
   /**
-   * Update an existing cohort (`update_cohort`,
-   * `workspace.py`).
+   * Update an existing cohort.
    *
    * @param cohortId - Cohort identifier.
    * @param params - Fields to update.
    * @returns The updated `Cohort`.
-   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `cohortId`
+   * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `cohortId`
    *   is not a positive integer (network-free guard, before any request).
+   * @example
+   * ```typescript
+   * await ws.updateCohort(55, new UpdateCohortParams({ name: "Power users" }));
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.update_cohort
    */
   async updateCohort(
     cohortId: number,
@@ -2897,12 +3083,13 @@ export class Workspace {
   }
 
   /**
-   * Delete a cohort (`delete_cohort`, `workspace.py`).
+   * Delete a cohort.
    *
    * @param cohortId - Cohort identifier.
    * @returns Nothing.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `cohortId`
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `cohortId`
    *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.delete_cohort
    */
   async deleteCohort(cohortId: number): Promise<void> {
     requireEntityId("cohort_id", cohortId);
@@ -2910,22 +3097,26 @@ export class Workspace {
   }
 
   /**
-   * Delete multiple cohorts (`bulk_delete_cohorts`,
-   * `workspace.py`).
+   * Delete multiple cohorts.
    *
    * @param ids - Cohort IDs to delete.
    * @returns Nothing.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
+   *   failures.
+   * @see mixpanel_headless.workspace.Workspace.bulk_delete_cohorts
    */
   async bulkDeleteCohorts(ids: readonly number[]): Promise<void> {
     return bookmarksCohorts.bulkDeleteCohorts(this.client, ids);
   }
 
   /**
-   * Update multiple cohorts (`bulk_update_cohorts`,
-   * `workspace.py`).
+   * Update multiple cohorts.
    *
    * @param entries - Cohort update entries.
    * @returns Nothing.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
+   *   failures.
+   * @see mixpanel_headless.workspace.Workspace.bulk_update_cohorts
    */
   async bulkUpdateCohorts(
     entries: readonly BulkUpdateCohortEntry[],
@@ -2936,14 +3127,13 @@ export class Workspace {
   // --- Feature-flag + experiment members ---
 
   /**
-   * List feature flags for the current project/workspace
-   * (`list_feature_flags`, `workspace.py`).
+   * List feature flags for the current project/workspace.
    *
    * @param options - `include_archived` (keyword-only in Python).
    * @returns The `FeatureFlag` models, in response order.
-   * @throws ResponseValidationError - Malformed API response payload
+   * @throws {@link ResponseValidationError} - Malformed API response payload
    *   (`RESPONSE_VALIDATION_ERROR`).
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
    * @example
    * ```typescript
@@ -2951,6 +3141,7 @@ export class Workspace {
    *   console.log(`${f.name} (${f.key})`);
    * }
    * ```
+   * @see mixpanel_headless.workspace.Workspace.list_feature_flags
    */
   async listFeatureFlags(
     options: WorkspaceListFeatureFlagsOptions = {},
@@ -2959,19 +3150,19 @@ export class Workspace {
   }
 
   /**
-   * Create a new feature flag (`create_feature_flag`,
-   * `workspace.py`).
+   * Create a new feature flag.
    *
    * @param params - Flag creation parameters.
    * @returns The newly created `FeatureFlag`.
-   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+   * @throws {@link ResponseValidationError} - Malformed payload.
    * @example
    * ```typescript
    * const flag = await ws.createFeatureFlag(
    *   new CreateFeatureFlagParams({ name: "Dark Mode", key: "dark_mode" }),
    * );
    * ```
+   * @see mixpanel_headless.workspace.Workspace.create_feature_flag
    */
   async createFeatureFlag(
     params: CreateFeatureFlagParams,
@@ -2980,27 +3171,34 @@ export class Workspace {
   }
 
   /**
-   * Get a single feature flag by ID (`get_feature_flag`,
-   * `workspace.py`).
+   * Fetch a single feature flag by id.
    *
    * @param flagId - Feature flag UUID.
    * @returns The `FeatureFlag`.
-   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.get_feature_flag
    */
   async getFeatureFlag(flagId: string): Promise<FeatureFlag> {
     return flagsExperiments.getFeatureFlag(this.client, flagId);
   }
 
   /**
-   * Update a feature flag, full replacement / PUT semantics
-   * (`update_feature_flag`, `workspace.py`).
+   * Update a feature flag, full replacement / PUT semantics.
    *
    * @param flagId - Feature flag UUID.
    * @param params - Complete flag configuration.
    * @returns The updated `FeatureFlag`.
-   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @example
+   * ```typescript
+   * await ws.updateFeatureFlag(
+   *   "flag-uuid",
+   *   new UpdateFeatureFlagParams({ name: "Dark Mode", key: "dark_mode", ruleset }),
+   * );
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.update_feature_flag
    */
   async updateFeatureFlag(
     flagId: string,
@@ -3010,60 +3208,68 @@ export class Workspace {
   }
 
   /**
-   * Delete a feature flag (`delete_feature_flag`,
-   * `workspace.py`).
+   * Delete a feature flag.
    *
    * @param flagId - Feature flag UUID.
    * @returns Nothing.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
+   * @see mixpanel_headless.workspace.Workspace.delete_feature_flag
    */
   async deleteFeatureFlag(flagId: string): Promise<void> {
     return flagsExperiments.deleteFeatureFlag(this.client, flagId);
   }
 
   /**
-   * Archive a feature flag, a soft delete (`archive_feature_flag`,
-   * `workspace.py`).
+   * Archive a feature flag, a soft delete.
    *
    * @param flagId - Feature flag UUID.
    * @returns Nothing.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
+   *   failures.
+   * @see mixpanel_headless.workspace.Workspace.archive_feature_flag
    */
   async archiveFeatureFlag(flagId: string): Promise<void> {
     return flagsExperiments.archiveFeatureFlag(this.client, flagId);
   }
 
   /**
-   * Restore an archived feature flag (`restore_feature_flag`,
-   * `workspace.py`).
+   * Restore an archived feature flag.
    *
    * @param flagId - Feature flag UUID.
    * @returns The restored `FeatureFlag`.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.restore_feature_flag
    */
   async restoreFeatureFlag(flagId: string): Promise<FeatureFlag> {
     return flagsExperiments.restoreFeatureFlag(this.client, flagId);
   }
 
   /**
-   * Duplicate a feature flag (`duplicate_feature_flag`,
-   * `workspace.py`).
+   * Duplicate a feature flag.
    *
    * @param flagId - Feature flag UUID.
    * @returns The newly created duplicate `FeatureFlag`.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.duplicate_feature_flag
    */
   async duplicateFeatureFlag(flagId: string): Promise<FeatureFlag> {
     return flagsExperiments.duplicateFeatureFlag(this.client, flagId);
   }
 
   /**
-   * Set test-user variant overrides for a feature flag
-   * (`set_flag_test_users`, `workspace.py`).
+   * Set test-user variant overrides for a feature flag.
    *
    * @param flagId - Feature flag UUID.
    * @param params - Test user mapping.
    * @returns Nothing.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
+   *   failures.
+   * @example
+   * ```typescript
+   * await ws.setFlagTestUsers("flag-uuid", new SetTestUsersParams({ users: testUsers }));
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.set_flag_test_users
    */
   async setFlagTestUsers(
     flagId: string,
@@ -3073,13 +3279,17 @@ export class Workspace {
   }
 
   /**
-   * Get paginated change history for a feature flag
-   * (`get_flag_history`, `workspace.py`).
+   * Get paginated change history for a feature flag.
    *
    * @param flagId - Feature flag UUID.
    * @param options - `page` / `page_size` (keyword-only in Python).
    * @returns The `FlagHistoryResponse` (events + count).
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @example
+   * ```typescript
+   * const history = await ws.getFlagHistory("flag-uuid", { page_size: 50 });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.get_flag_history
    */
   async getFlagHistory(
     flagId: string,
@@ -3089,23 +3299,23 @@ export class Workspace {
   }
 
   /**
-   * Get account-level feature flag limits and usage
-   * (`get_flag_limits`, `workspace.py`).
+   * Get account-level feature flag limits and usage.
    *
    * @returns The `FlagLimitsResponse`.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.get_flag_limits
    */
   async getFlagLimits(): Promise<FlagLimitsResponse> {
     return flagsExperiments.getFlagLimits(this.client);
   }
 
   /**
-   * List experiments for the current project (`list_experiments`,
-   * `workspace.py`).
+   * List experiments for the current project.
    *
    * @param options - `include_archived` (keyword-only in Python).
    * @returns The `Experiment` models, in response order.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.list_experiments
    */
   async listExperiments(
     options: WorkspaceListExperimentsOptions = {},
@@ -3114,40 +3324,47 @@ export class Workspace {
   }
 
   /**
-   * Create a new experiment in Draft status (`create_experiment`,
-   * `workspace.py`).
+   * Create a new experiment in Draft status.
    *
    * @param params - Experiment creation parameters.
    * @returns The newly created `Experiment`.
-   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.create_experiment
    */
   async createExperiment(params: CreateExperimentParams): Promise<Experiment> {
     return flagsExperiments.createExperiment(this.client, params);
   }
 
   /**
-   * Get a single experiment by ID (`get_experiment`,
-   * `workspace.py`).
+   * Fetch a single experiment by id.
    *
    * @param experimentId - Experiment UUID.
    * @returns The `Experiment`.
-   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.get_experiment
    */
   async getExperiment(experimentId: string): Promise<Experiment> {
     return flagsExperiments.getExperiment(this.client, experimentId);
   }
 
   /**
-   * Update an experiment, PATCH semantics (`update_experiment`,
-   * `workspace.py`).
+   * Update an experiment, PATCH semantics.
    *
    * @param experimentId - Experiment UUID.
    * @param params - Fields to update.
    * @returns The updated `Experiment`.
-   * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @example
+   * ```typescript
+   * await ws.updateExperiment(
+   *   "exp-uuid",
+   *   new UpdateExperimentParams({ description: "Checkout redesign, EU only" }),
+   * );
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.update_experiment
    */
   async updateExperiment(
     experimentId: string,
@@ -3157,37 +3374,45 @@ export class Workspace {
   }
 
   /**
-   * Delete an experiment (`delete_experiment`,
-   * `workspace.py`).
+   * Delete an experiment.
    *
    * @param experimentId - Experiment UUID.
    * @returns Nothing.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
+   *   failures.
+   * @see mixpanel_headless.workspace.Workspace.delete_experiment
    */
   async deleteExperiment(experimentId: string): Promise<void> {
     return flagsExperiments.deleteExperiment(this.client, experimentId);
   }
 
   /**
-   * Launch an experiment, Draft → Active (`launch_experiment`,
-   * `workspace.py`).
+   * Launch an experiment, Draft → Active.
    *
    * @param experimentId - Experiment UUID.
    * @returns The launched `Experiment` with updated status.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.launch_experiment
    */
   async launchExperiment(experimentId: string): Promise<Experiment> {
     return flagsExperiments.launchExperiment(this.client, experimentId);
   }
 
   /**
-   * Conclude an experiment, Active → Concluded
-   * (`conclude_experiment`, `workspace.py`) — always sends a
+   * Conclude an experiment, Active → Concluded — always sends a
    * JSON body, `{}` when no params are supplied.
    *
    * @param experimentId - Experiment UUID.
    * @param options - `params` (keyword-only in Python).
    * @returns The concluded `Experiment`.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @example
+   * ```typescript
+   * await ws.concludeExperiment("exp-uuid", {
+   *   params: new ExperimentConcludeParams({ end_date: "2026-03-31" }),
+   * });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.conclude_experiment
    */
   async concludeExperiment(
     experimentId: string,
@@ -3201,13 +3426,20 @@ export class Workspace {
   }
 
   /**
-   * Record the experiment decision, Concluded → Success/Fail
-   * (`decide_experiment`, `workspace.py`).
+   * Record the experiment decision, Concluded → Success/Fail.
    *
    * @param experimentId - Experiment UUID.
    * @param params - Decision parameters (success, variant, message).
    * @returns The decided `Experiment` with terminal status.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @example
+   * ```typescript
+   * await ws.decideExperiment(
+   *   "exp-uuid",
+   *   new ExperimentDecideParams({ success: true, variant: "treatment" }),
+   * );
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.decide_experiment
    */
   async decideExperiment(
     experimentId: string,
@@ -3217,37 +3449,44 @@ export class Workspace {
   }
 
   /**
-   * Archive an experiment (`archive_experiment`,
-   * `workspace.py`).
+   * Archive an experiment.
    *
    * @param experimentId - Experiment UUID.
    * @returns Nothing.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
+   *   failures.
+   * @see mixpanel_headless.workspace.Workspace.archive_experiment
    */
   async archiveExperiment(experimentId: string): Promise<void> {
     return flagsExperiments.archiveExperiment(this.client, experimentId);
   }
 
   /**
-   * Restore an archived experiment (`restore_experiment`,
-   * `workspace.py`).
+   * Restore an archived experiment.
    *
    * @param experimentId - Experiment UUID.
    * @returns The restored `Experiment`.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.restore_experiment
    */
   async restoreExperiment(experimentId: string): Promise<Experiment> {
     return flagsExperiments.restoreExperiment(this.client, experimentId);
   }
 
   /**
-   * Duplicate an experiment (`duplicate_experiment`,
-   * `workspace.py:6402-6439`) — `params` is required because the
-   * Mixpanel API returns an empty body when duplicating without a name.
+   * Duplicate an experiment under a new name. `params` is required
+   * because the Mixpanel API returns an empty body when duplicating
+   * without a name.
    *
    * @param experimentId - Experiment UUID.
    * @param params - Duplication parameters (`name` is required).
    * @returns The newly created duplicate `Experiment`.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @example
+   * ```typescript
+   * await ws.duplicateExperiment("exp-uuid", new DuplicateExperimentParams({ name: "Checkout v2 (copy)" }));
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.duplicate_experiment
    */
   async duplicateExperiment(
     experimentId: string,
@@ -3261,10 +3500,12 @@ export class Workspace {
   }
 
   /**
-   * List experiments in ERF (Experiment Results Framework) format
-   * (`list_erf_experiments`, `workspace.py`).
+   * List experiments in ERF (Experiment Results Framework) format.
    *
    * @returns The ERF experiment dicts, verbatim.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
+   *   failures.
+   * @see mixpanel_headless.workspace.Workspace.list_erf_experiments
    */
   async listErfExperiments(): Promise<Array<Record<string, unknown>>> {
     return flagsExperiments.listErfExperiments(this.client);
@@ -3273,15 +3514,14 @@ export class Workspace {
   // --- Annotation + webhook + alert members ---
 
   /**
-   * List timeline annotations for the project (`list_annotations`,
-   * `workspace.py`).
+   * List timeline annotations for the project.
    *
    * @param options - `from_date` / `to_date` / `tags` (keyword-only in
-   *   Python). Dates are ISO `YYYY-MM-DD` STRINGS end-to-end.
+   *   Python). Dates are ISO `YYYY-MM-DD` strings end-to-end.
    * @returns The `Annotation` models, in response order.
-   * @throws ResponseValidationError - Malformed API response payload
+   * @throws {@link ResponseValidationError} - Malformed API response payload
    *   (`RESPONSE_VALIDATION_ERROR`).
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
    * @example
    * ```typescript
@@ -3289,6 +3529,7 @@ export class Workspace {
    *   console.log(`${ann.date}: ${ann.description}`);
    * }
    * ```
+   * @see mixpanel_headless.workspace.Workspace.list_annotations
    */
   async listAnnotations(
     options: WorkspaceListAnnotationsOptions = {},
@@ -3297,13 +3538,12 @@ export class Workspace {
   }
 
   /**
-   * Create a new timeline annotation (`create_annotation`,
-   * `workspace.py`).
+   * Create a new timeline annotation.
    *
    * @param params - Annotation creation parameters (date, description
    *   required).
    * @returns The created `Annotation`.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
    * @example
    * ```typescript
    * const ann = await ws.createAnnotation(
@@ -3313,20 +3553,21 @@ export class Workspace {
    *   }),
    * );
    * ```
+   * @see mixpanel_headless.workspace.Workspace.create_annotation
    */
   async createAnnotation(params: CreateAnnotationParams): Promise<Annotation> {
     return annotationsWebhooksAlerts.createAnnotation(this.client, params);
   }
 
   /**
-   * Get a single annotation by ID (`get_annotation`,
-   * `workspace.py`).
+   * Fetch a single annotation by id.
    *
    * @param annotationId - Annotation ID.
    * @returns The `Annotation`.
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `annotationId`
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `annotationId`
    *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.get_annotation
    */
   async getAnnotation(annotationId: number): Promise<Annotation> {
     requireEntityId("annotation_id", annotationId);
@@ -3334,15 +3575,19 @@ export class Workspace {
   }
 
   /**
-   * Update an annotation, PATCH semantics (`update_annotation`,
-   * `workspace.py`).
+   * Update an annotation, PATCH semantics.
    *
    * @param annotationId - Annotation ID.
    * @param params - Fields to update (description, tags).
    * @returns The updated `Annotation`.
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `annotationId`
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `annotationId`
    *   is not a positive integer (network-free guard, before any request).
+   * @example
+   * ```typescript
+   * await ws.updateAnnotation(2078447, new UpdateAnnotationParams({ description: "v2.5.1 hotfix" }));
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.update_annotation
    */
   async updateAnnotation(
     annotationId: number,
@@ -3357,15 +3602,15 @@ export class Workspace {
   }
 
   /**
-   * Delete an annotation (`delete_annotation`,
-   * `workspace.py`).
+   * Delete an annotation.
    *
    * @param annotationId - Annotation ID.
    * @returns Nothing.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `annotationId`
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `annotationId`
    *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.delete_annotation
    */
   async deleteAnnotation(annotationId: number): Promise<void> {
     requireEntityId("annotation_id", annotationId);
@@ -3376,23 +3621,23 @@ export class Workspace {
   }
 
   /**
-   * List annotation tags for the project (`list_annotation_tags`,
-   * `workspace.py`).
+   * List annotation tags for the project.
    *
    * @returns The `AnnotationTag` models, in response order.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.list_annotation_tags
    */
   async listAnnotationTags(): Promise<AnnotationTag[]> {
     return annotationsWebhooksAlerts.listAnnotationTags(this.client);
   }
 
   /**
-   * Create a new annotation tag (`create_annotation_tag`,
-   * `workspace.py`).
+   * Create a new annotation tag.
    *
    * @param params - Tag creation parameters (name required).
    * @returns The created `AnnotationTag`.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.create_annotation_tag
    */
   async createAnnotationTag(
     params: CreateAnnotationTagParams,
@@ -3401,29 +3646,29 @@ export class Workspace {
   }
 
   /**
-   * List all webhooks for the current project (`list_webhooks`,
-   * `workspace.py`).
+   * List all webhooks for the current project.
    *
    * @returns The `ProjectWebhook` models, in response order.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
    * @example
    * ```typescript
    * for (const wh of await ws.listWebhooks()) {
    *   console.log(`${wh.name} -> ${wh.url}`);
    * }
    * ```
+   * @see mixpanel_headless.workspace.Workspace.list_webhooks
    */
   async listWebhooks(): Promise<ProjectWebhook[]> {
     return annotationsWebhooksAlerts.listWebhooks(this.client);
   }
 
   /**
-   * Create a new webhook (`create_webhook`,
-   * `workspace.py`).
+   * Create a new webhook.
    *
    * @param params - Webhook creation parameters.
    * @returns The `WebhookMutationResult` (new webhook id + name).
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.create_webhook
    */
   async createWebhook(
     params: CreateWebhookParams,
@@ -3432,13 +3677,17 @@ export class Workspace {
   }
 
   /**
-   * Update an existing webhook, PATCH semantics (`update_webhook`,
-   * `workspace.py`).
+   * Update an existing webhook, PATCH semantics.
    *
    * @param webhookId - Webhook UUID string.
    * @param params - Fields to update.
    * @returns The `WebhookMutationResult` (updated id + name).
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @example
+   * ```typescript
+   * await ws.updateWebhook("webhook-uuid", new UpdateWebhookParams({ is_enabled: false }));
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.update_webhook
    */
   async updateWebhook(
     webhookId: string,
@@ -3452,43 +3701,44 @@ export class Workspace {
   }
 
   /**
-   * Delete a webhook (`delete_webhook`, `workspace.py`).
+   * Delete a webhook.
    *
    * @param webhookId - Webhook UUID string.
    * @returns Nothing.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
+   * @see mixpanel_headless.workspace.Workspace.delete_webhook
    */
   async deleteWebhook(webhookId: string): Promise<void> {
     return annotationsWebhooksAlerts.deleteWebhook(this.client, webhookId);
   }
 
   /**
-   * Test webhook connectivity (`test_webhook`,
-   * `workspace.py`).
+   * Test webhook connectivity.
    *
    * @param params - Webhook test parameters (`url` required).
    * @returns The `WebhookTestResult` (success, status_code, message).
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.test_webhook
    */
   async testWebhook(params: WebhookTestParams): Promise<WebhookTestResult> {
     return annotationsWebhooksAlerts.testWebhook(this.client, params);
   }
 
   /**
-   * List custom alerts for the current project (`list_alerts`,
-   * `workspace.py`).
+   * List custom alerts for the current project.
    *
    * @param options - `bookmark_id` / `skip_user_filter` (keyword-only
    *   in Python).
    * @returns The `CustomAlert` models, in response order.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
    * @example
    * ```typescript
    * for (const alert of await ws.listAlerts()) {
    *   console.log(`${alert.name} (paused=${alert.paused})`);
    * }
    * ```
+   * @see mixpanel_headless.workspace.Workspace.list_alerts
    */
   async listAlerts(
     options: WorkspaceListAlertsOptions = {},
@@ -3497,26 +3747,26 @@ export class Workspace {
   }
 
   /**
-   * Create a new custom alert (`create_alert`,
-   * `workspace.py`).
+   * Create a new custom alert.
    *
    * @param params - Alert creation parameters.
    * @returns The created `CustomAlert`.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.create_alert
    */
   async createAlert(params: CreateAlertParams): Promise<CustomAlert> {
     return annotationsWebhooksAlerts.createAlert(this.client, params);
   }
 
   /**
-   * Get a single custom alert by ID (`get_alert`,
-   * `workspace.py`).
+   * Fetch a single custom alert by id.
    *
    * @param alertId - Alert ID (integer).
    * @returns The `CustomAlert`.
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `alertId`
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `alertId`
    *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.get_alert
    */
   async getAlert(alertId: number): Promise<CustomAlert> {
     requireEntityId("alert_id", alertId);
@@ -3524,15 +3774,19 @@ export class Workspace {
   }
 
   /**
-   * Update a custom alert, PATCH semantics (`update_alert`,
-   * `workspace.py`).
+   * Update a custom alert, PATCH semantics.
    *
    * @param alertId - Alert ID (integer).
    * @param params - Fields to update.
    * @returns The updated `CustomAlert`.
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `alertId`
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `alertId`
    *   is not a positive integer (network-free guard, before any request).
+   * @example
+   * ```typescript
+   * await ws.updateAlert(31, new UpdateAlertParams({ paused: true }));
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.update_alert
    */
   async updateAlert(
     alertId: number,
@@ -3543,15 +3797,15 @@ export class Workspace {
   }
 
   /**
-   * Delete a custom alert (`delete_alert`,
-   * `workspace.py`).
+   * Delete a custom alert.
    *
    * @param alertId - Alert ID (integer).
    * @returns Nothing.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `alertId`
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `alertId`
    *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.delete_alert
    */
   async deleteAlert(alertId: number): Promise<void> {
     requireEntityId("alert_id", alertId);
@@ -3559,25 +3813,25 @@ export class Workspace {
   }
 
   /**
-   * Bulk-delete custom alerts (`bulk_delete_alerts`,
-   * `workspace.py`).
+   * Bulk-delete custom alerts.
    *
    * @param ids - Alert IDs to delete.
    * @returns Nothing.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
+   * @see mixpanel_headless.workspace.Workspace.bulk_delete_alerts
    */
   async bulkDeleteAlerts(ids: readonly number[]): Promise<void> {
     return annotationsWebhooksAlerts.bulkDeleteAlerts(this.client, ids);
   }
 
   /**
-   * Get the project's alert count against its limit
-   * (`get_alert_count`, `workspace.py`).
+   * Get the project's alert count against its limit.
    *
    * @param options - `alert_type` (keyword-only in Python).
    * @returns The `AlertCount`.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.get_alert_count
    */
   async getAlertCount(
     options: WorkspaceGetAlertCountOptions = {},
@@ -3586,16 +3840,20 @@ export class Workspace {
   }
 
   /**
-   * Get paginated alert trigger history (`get_alert_history`,
-   * `workspace.py`).
+   * Get paginated alert trigger history.
    *
    * @param alertId - Alert ID (integer).
    * @param options - `page_size` / `next_cursor` / `previous_cursor`
    *   (keyword-only in Python).
    * @returns The `AlertHistoryResponse`.
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `alertId`
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `alertId`
    *   is not a positive integer (network-free guard, before any request).
+   * @example
+   * ```typescript
+   * const history = await ws.getAlertHistory(31, { page_size: 25 });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.get_alert_history
    */
   async getAlertHistory(
     alertId: number,
@@ -3610,27 +3868,27 @@ export class Workspace {
   }
 
   /**
-   * Send a test alert notification (`test_alert`,
-   * `workspace.py`) — the payload is returned VERBATIM;
+   * Send a test alert notification — the payload is returned verbatim;
    * Python performs no model validation.
    *
    * @param params - Alert parameters for the test (same shape as
    *   create).
    * @returns The opaque result record.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
+   * @see mixpanel_headless.workspace.Workspace.test_alert
    */
   async testAlert(params: CreateAlertParams): Promise<Record<string, unknown>> {
     return annotationsWebhooksAlerts.testAlert(this.client, params);
   }
 
   /**
-   * Get a signed URL for an alert screenshot
-   * (`get_alert_screenshot_url`, `workspace.py`).
+   * Get a signed URL for an alert screenshot.
    *
    * @param gcsKey - GCS object key from the alert payload.
    * @returns The `AlertScreenshotResponse`.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.get_alert_screenshot_url
    */
   async getAlertScreenshotUrl(
     gcsKey: string,
@@ -3639,12 +3897,12 @@ export class Workspace {
   }
 
   /**
-   * Validate alerts against a bookmark definition
-   * (`validate_alerts_for_bookmark`, `workspace.py`).
+   * Validate alerts against a bookmark definition.
    *
    * @param params - Alert IDs plus the bookmark type and params.
    * @returns The `ValidateAlertsForBookmarkResponse`.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.validate_alerts_for_bookmark
    */
   async validateAlertsForBookmark(
     params: ValidateAlertsForBookmarkParams,
@@ -3658,14 +3916,13 @@ export class Workspace {
   // --- Lexicon + tracking/history members ---
 
   /**
-   * Get event definitions from Lexicon by name
-   * (`get_event_definitions`, `workspace.py`).
+   * Get event definitions from Lexicon by name.
    *
-   * @param options - `names` (keyword-only and REQUIRED in Python).
+   * @param options - `names` (keyword-only and required in Python).
    * @returns The `EventDefinition` models, in response order.
-   * @throws ResponseValidationError - Malformed API response payload
+   * @throws {@link ResponseValidationError} - Malformed API response payload
    *   (`RESPONSE_VALIDATION_ERROR`).
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
    * @example
    * ```typescript
@@ -3676,6 +3933,7 @@ export class Workspace {
    *   console.log(`${d.name}: ${d.description ?? ""}`);
    * }
    * ```
+   * @see mixpanel_headless.workspace.Workspace.get_event_definitions
    */
   async getEventDefinitions(
     options: WorkspaceGetEventDefinitionsOptions,
@@ -3684,14 +3942,13 @@ export class Workspace {
   }
 
   /**
-   * Update an event definition in Lexicon
-   * (`update_event_definition`, `workspace.py`).
+   * Update an event definition in Lexicon.
    *
    * @param eventName - Name of the event to update.
    * @param params - Fields to update (hidden, dropped, merged,
    *   verified, tags, display_name, description).
    * @returns The updated `EventDefinition`.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
    * @example
    * ```typescript
    * const definition = await ws.updateEventDefinition(
@@ -3699,6 +3956,7 @@ export class Workspace {
    *   new UpdateEventDefinitionParams({ description: "User signed up" }),
    * );
    * ```
+   * @see mixpanel_headless.workspace.Workspace.update_event_definition
    */
   async updateEventDefinition(
     eventName: string,
@@ -3712,26 +3970,26 @@ export class Workspace {
   }
 
   /**
-   * Delete an event definition from Lexicon
-   * (`delete_event_definition`, `workspace.py`).
+   * Delete an event definition from Lexicon.
    *
    * @param eventName - Name of the event to delete.
    * @returns Nothing.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
+   * @see mixpanel_headless.workspace.Workspace.delete_event_definition
    */
   async deleteEventDefinition(eventName: string): Promise<void> {
     return lexiconTracking.deleteEventDefinition(this.client, eventName);
   }
 
   /**
-   * Bulk-update event definitions in Lexicon
-   * (`bulk_update_event_definitions`, `workspace.py`).
+   * Bulk-update event definitions in Lexicon.
    *
    * @param params - Bulk update parameters (a list of event updates:
    *   name + fields to change).
    * @returns The updated `EventDefinition` models, in response order.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.bulk_update_event_definitions
    */
   async bulkUpdateEventDefinitions(
     params: BulkUpdateEventsParams,
@@ -3740,13 +3998,12 @@ export class Workspace {
   }
 
   /**
-   * Get property definitions from Lexicon by name
-   * (`get_property_definitions`, `workspace.py`).
+   * Get property definitions from Lexicon by name.
    *
-   * @param options - `names` (REQUIRED) plus the optional
+   * @param options - `names` (required) plus the optional
    *   `resource_type` filter, both keyword-only in Python.
    * @returns The `PropertyDefinition` models, in response order.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
    * @example
    * ```typescript
    * const defs = await ws.getPropertyDefinitions({
@@ -3754,6 +4011,7 @@ export class Workspace {
    *   resource_type: "event",
    * });
    * ```
+   * @see mixpanel_headless.workspace.Workspace.get_property_definitions
    */
   async getPropertyDefinitions(
     options: WorkspaceGetPropertyDefinitionsOptions,
@@ -3762,15 +4020,22 @@ export class Workspace {
   }
 
   /**
-   * Update a property definition in Lexicon
-   * (`update_property_definition`, `workspace.py`).
+   * Update a property definition in Lexicon.
    *
    * @param propertyName - Name of the property to update.
    * @param params - Fields to update (hidden, dropped, merged,
    *   sensitive, display_name, description, example_value,
    *   resource_type).
    * @returns The updated `PropertyDefinition`.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @example
+   * ```typescript
+   * await ws.updatePropertyDefinition(
+   *   "plan",
+   *   new UpdatePropertyDefinitionParams({ description: "Billing plan" }),
+   * );
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.update_property_definition
    */
   async updatePropertyDefinition(
     propertyName: string,
@@ -3784,15 +4049,14 @@ export class Workspace {
   }
 
   /**
-   * Bulk-update property definitions in Lexicon
-   * (`bulk_update_property_definitions`,
-   * `workspace.py`).
+   * Bulk-update property definitions in Lexicon.
    *
    * @param params - Bulk update parameters (a list of property
    *   updates: name + fields to change).
    * @returns The updated `PropertyDefinition` models, in response
    *   order.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.bulk_update_property_definitions
    */
   async bulkUpdatePropertyDefinitions(
     params: BulkUpdatePropertiesParams,
@@ -3801,43 +4065,47 @@ export class Workspace {
   }
 
   /**
-   * List all Lexicon tags (`list_lexicon_tags`,
-   * `workspace.py`).
+   * List all Lexicon tags.
    *
    * The list endpoint may return plain tag-name strings without IDs;
-   * those entries come back with `id` set to the `0` sentinel. Do NOT
+   * those entries come back with `id` set to the `0` sentinel. Do not
    * pass that sentinel to {@link updateLexiconTag} — use name-based
    * operations (e.g. {@link deleteLexiconTag}) for such tags.
    *
    * @returns The `LexiconTag` models, in response order.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.list_lexicon_tags
    */
   async listLexiconTags(): Promise<LexiconTag[]> {
     return lexiconTracking.listLexiconTags(this.client);
   }
 
   /**
-   * Create a new Lexicon tag (`create_lexicon_tag`,
-   * `workspace.py`).
+   * Create a new Lexicon tag.
    *
    * @param params - Tag creation parameters (name required).
    * @returns The created `LexiconTag`.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.create_lexicon_tag
    */
   async createLexiconTag(params: CreateTagParams): Promise<LexiconTag> {
     return lexiconTracking.createLexiconTag(this.client, params);
   }
 
   /**
-   * Update a Lexicon tag (`update_lexicon_tag`,
-   * `workspace.py`).
+   * Update a Lexicon tag.
    *
    * @param tagId - Tag ID (integer).
    * @param params - Fields to update (e.g. name).
    * @returns The updated `LexiconTag`.
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `tagId`
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `tagId`
    *   is not a positive integer (network-free guard, before any request).
+   * @example
+   * ```typescript
+   * await ws.updateLexiconTag(7, new UpdateTagParams({ name: "growth" }));
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.update_lexicon_tag
    */
   async updateLexiconTag(
     tagId: number,
@@ -3848,26 +4116,26 @@ export class Workspace {
   }
 
   /**
-   * Delete a Lexicon tag BY NAME (`delete_lexicon_tag`,
-   * `workspace.py`).
+   * Delete a Lexicon tag by name.
    *
    * @param tagName - Name of the tag to delete.
    * @returns Nothing.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
+   * @see mixpanel_headless.workspace.Workspace.delete_lexicon_tag
    */
   async deleteLexiconTag(tagName: string): Promise<void> {
     return lexiconTracking.deleteLexiconTag(this.client, tagName);
   }
 
   /**
-   * Get tracking metadata for an event (`get_tracking_metadata`,
-   * `workspace.py`) — the raw record, unvalidated.
+   * Get tracking metadata for an event — the raw record, unvalidated.
    *
    * @param eventName - Name of the event.
    * @returns The opaque tracking-metadata record.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
+   * @see mixpanel_headless.workspace.Workspace.get_tracking_metadata
    */
   async getTrackingMetadata(
     eventName: string,
@@ -3876,14 +4144,14 @@ export class Workspace {
   }
 
   /**
-   * Get change history for an event definition
-   * (`get_event_history`, `workspace.py`) — raw records,
+   * Get change history for an event definition — raw records,
    * unvalidated.
    *
    * @param eventName - Name of the event.
    * @returns The history entries, in response order.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
+   * @see mixpanel_headless.workspace.Workspace.get_event_history
    */
   async getEventHistory(
     eventName: string,
@@ -3892,15 +4160,19 @@ export class Workspace {
   }
 
   /**
-   * Get change history for a property definition
-   * (`get_property_history`, `workspace.py`) — raw records,
+   * Get change history for a property definition — raw records,
    * unvalidated.
    *
    * @param propertyName - Name of the property.
    * @param entityType - Entity type ("event", "user", "group", ...).
    * @returns The history entries, in response order.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
+   * @example
+   * ```typescript
+   * const history = await ws.getPropertyHistory("plan", "event");
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.get_property_history
    */
   async getPropertyHistory(
     propertyName: string,
@@ -3914,13 +4186,12 @@ export class Workspace {
   }
 
   /**
-   * Export Lexicon data definitions (`export_lexicon`,
-   * `workspace.py`) — the raw record, unvalidated.
+   * Export Lexicon data definitions — the raw record, unvalidated.
    *
    * @param options - `export_types` (keyword-only in Python; omit to
    *   let the client apply its default two-entry list).
    * @returns The opaque export record.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
    * @example
    * ```typescript
@@ -3928,6 +4199,7 @@ export class Workspace {
    *   export_types: ["All Events and Properties"],
    * });
    * ```
+   * @see mixpanel_headless.workspace.Workspace.export_lexicon
    */
   async exportLexicon(
     options: WorkspaceExportLexiconOptions = {},
@@ -3935,17 +4207,14 @@ export class Workspace {
     return lexiconTracking.exportLexicon(this.client, options);
   }
 
-  // === B6-W7 drop-filter / custom-property / lookup-table /
-  // custom-event members (W7 owns; append-only) ===
+  // --- Drop filters, custom properties, lookup tables, custom events ---
 
   /**
-   * The W7-D1/W7-D2 seam bag handed to
-   * {@link Workspace.uploadLookupTable} — the injected `readFile` and
-   * `monotonic` plus the client's OWN sleep seam (R6.3/R10.8: the
-   * facade never builds a second timer).
+   * The seam bag handed to {@link Workspace.uploadLookupTable}: the
+   * injected `readFile` and `monotonic` plus the client's own sleep seam,
+   * so the facade never builds a second timer and tests drive one clock.
    *
    * @returns The seams.
-   * @internal
    */
   get #lookupUploadSeams(): LookupUploadSeams {
     return {
@@ -3956,13 +4225,12 @@ export class Workspace {
   }
 
   /**
-   * List all drop filters (`list_drop_filters`,
-   * `workspace.py`).
+   * List all drop filters.
    *
    * @returns The `DropFilter` models, in response order.
-   * @throws ResponseValidationError - Malformed API response payload
+   * @throws {@link ResponseValidationError} - Malformed API response payload
    *   (`RESPONSE_VALIDATION_ERROR`).
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
    * @example
    * ```typescript
@@ -3970,18 +4238,18 @@ export class Workspace {
    *   console.log(`${filter.event_name}: active=${String(filter.active)}`);
    * }
    * ```
+   * @see mixpanel_headless.workspace.Workspace.list_drop_filters
    */
   async listDropFilters(): Promise<DropFilter[]> {
     return governanceData.listDropFilters(this.client);
   }
 
   /**
-   * Create a new drop filter (`create_drop_filter`,
-   * `workspace.py`).
+   * Create a new drop filter.
    *
    * @param params - Drop filter creation parameters.
-   * @returns The FULL list of `DropFilter` models after creation.
-   * @throws ResponseValidationError - Malformed payload.
+   * @returns The full list of `DropFilter` models after creation.
+   * @throws {@link ResponseValidationError} - Malformed payload.
    * @example
    * ```typescript
    * const filters = await ws.createDropFilter(
@@ -3991,6 +4259,7 @@ export class Workspace {
    *   }),
    * );
    * ```
+   * @see mixpanel_headless.workspace.Workspace.create_drop_filter
    */
   async createDropFilter(
     params: CreateDropFilterParams,
@@ -3999,12 +4268,12 @@ export class Workspace {
   }
 
   /**
-   * Update a drop filter (`update_drop_filter`,
-   * `workspace.py`).
+   * Update a drop filter.
    *
    * @param params - Update parameters (must include the filter ID).
-   * @returns The FULL list of `DropFilter` models after the update.
-   * @throws ResponseValidationError - Malformed payload.
+   * @returns The full list of `DropFilter` models after the update.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.update_drop_filter
    */
   async updateDropFilter(
     params: UpdateDropFilterParams,
@@ -4013,14 +4282,14 @@ export class Workspace {
   }
 
   /**
-   * Delete a drop filter (`delete_drop_filter`,
-   * `workspace.py`).
+   * Delete a drop filter.
    *
    * @param dropFilterId - Drop filter ID (integer).
-   * @returns The FULL list of remaining `DropFilter` models.
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `dropFilterId`
+   * @returns The full list of remaining `DropFilter` models.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `dropFilterId`
    *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.delete_drop_filter
    */
   async deleteDropFilter(dropFilterId: number): Promise<DropFilter[]> {
     requireEntityId("drop_filter_id", dropFilterId);
@@ -4028,19 +4297,18 @@ export class Workspace {
   }
 
   /**
-   * Get drop filter usage limits (`get_drop_filter_limits`,
-   * `workspace.py`).
+   * Get drop filter usage limits.
    *
    * @returns The `DropFilterLimitsResponse`.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.get_drop_filter_limits
    */
   async getDropFilterLimits(): Promise<DropFilterLimitsResponse> {
     return governanceData.getDropFilterLimits(this.client);
   }
 
   /**
-   * List all custom properties (`list_custom_properties`,
-   * `workspace.py`).
+   * List all custom properties.
    *
    * A 400 whose body names `displayFormula` means the project holds a
    * corrupt custom property; that case is re-raised as a `QueryError`
@@ -4048,22 +4316,23 @@ export class Workspace {
    * {@link Workspace.getCustomProperty}.
    *
    * @returns The `CustomProperty` models, in response order.
-   * @throws QueryError - Server-side data corruption, or any other
+   * @throws {@link QueryError} - Server-side data corruption, or any other
    *   query failure, propagated verbatim.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.list_custom_properties
    */
   async listCustomProperties(): Promise<CustomProperty[]> {
     return governanceData.listCustomProperties(this.client);
   }
 
   /**
-   * Create a new custom property (`create_custom_property`,
-   * `workspace.py`).
+   * Create a new custom property.
    *
    * @param params - Creation parameters (`name`, `resource_type` and
    *   one of `display_formula` / `behavior` are required).
    * @returns The created `CustomProperty`.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.create_custom_property
    */
   async createCustomProperty(
     params: CreateCustomPropertyParams,
@@ -4072,25 +4341,32 @@ export class Workspace {
   }
 
   /**
-   * Get a custom property by ID (`get_custom_property`,
-   * `workspace.py`).
+   * Fetch a custom property by id.
    *
    * @param propertyId - Custom property ID (string).
    * @returns The `CustomProperty`.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.get_custom_property
    */
   async getCustomProperty(propertyId: string): Promise<CustomProperty> {
     return governanceData.getCustomProperty(this.client, propertyId);
   }
 
   /**
-   * Update a custom property (`update_custom_property`,
-   * `workspace.py`).
+   * Update a custom property.
    *
    * @param propertyId - Custom property ID (string).
    * @param params - Fields to update.
    * @returns The updated `CustomProperty`.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @example
+   * ```typescript
+   * await ws.updateCustomProperty(
+   *   "property-id",
+   *   new UpdateCustomPropertyParams({ description: "Net revenue" }),
+   * );
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.update_custom_property
    */
   async updateCustomProperty(
     propertyId: string,
@@ -4100,26 +4376,26 @@ export class Workspace {
   }
 
   /**
-   * Delete a custom property (`delete_custom_property`,
-   * `workspace.py`).
+   * Delete a custom property.
    *
    * @param propertyId - Custom property ID (string).
    * @returns Nothing.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
+   * @see mixpanel_headless.workspace.Workspace.delete_custom_property
    */
   async deleteCustomProperty(propertyId: string): Promise<void> {
     return governanceData.deleteCustomProperty(this.client, propertyId);
   }
 
   /**
-   * Validate a custom property definition without creating it
-   * (`validate_custom_property`, `workspace.py`).
+   * Validate a custom property definition without creating it.
    *
    * @param params - Parameters to validate.
    * @returns The raw validation result.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
+   * @see mixpanel_headless.workspace.Workspace.validate_custom_property
    */
   async validateCustomProperty(
     params: CreateCustomPropertyParams,
@@ -4128,17 +4404,17 @@ export class Workspace {
   }
 
   /**
-   * List lookup tables (`list_lookup_tables`,
-   * `workspace.py`).
+   * List lookup tables.
    *
    * @param options - Optional `data_group_id` filter (keyword-only in
    *   Python).
    * @returns The `LookupTable` models, in response order.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
    * @example
    * ```typescript
    * const tables = await ws.listLookupTables({ data_group_id: 5 });
    * ```
+   * @see mixpanel_headless.workspace.Workspace.list_lookup_tables
    */
   async listLookupTables(
     options: WorkspaceListLookupTablesOptions = {},
@@ -4147,27 +4423,25 @@ export class Workspace {
   }
 
   /**
-   * Upload a CSV file as a new lookup table (`upload_lookup_table`,
-   * `workspace.py`) — signed URL → upload → register, then
-   * (for payloads the API processes asynchronously) poll until the
-   * task completes.
+   * Upload a CSV file as a new lookup table: signed URL, upload,
+   * register, then — for payloads the API processes asynchronously —
+   * poll until the task completes.
    *
-   * The CSV bytes come from the injected
-   * {@link WorkspaceOptions.readFile} seam (W7-D1) since
-   * `packages/core` never touches a filesystem; the poll deadline uses
-   * {@link WorkspaceOptions.monotonic} and the client's sleep seam
-   * (W7-D2).
-   *
+   * @remarks
+   * The byte source ({@link WorkspaceOptions.readFile}) and the poll
+   * clock ({@link WorkspaceOptions.monotonic}, seconds, with the client's
+   * sleep seam) are injected so core stays runtime-agnostic and tests can
+   * drive time.
    * @param params - Upload parameters (`name`, `file_path`, optional
    *   `data_group_id`).
    * @param options - `poll_interval` / `max_poll_seconds`, both in
-   *   SECONDS under their Python names (defaults `2.0` / `300.0`).
+   *   seconds under their Python names (defaults `2.0` / `300.0`).
    * @returns The created `LookupTable`.
-   * @throws MixpanelHeadlessError - `UNPORTED_FILE_READ_SEAM` when no
+   * @throws {@link MixpanelHeadlessError} - `UNPORTED_FILE_READ_SEAM` when no
    *   `readFile` seam is injected; `UPLOAD_FAILED` /
    *   `UPLOAD_NOT_FOUND` / `UPLOAD_TIMEOUT` / `INVALID_RESPONSE` from
    *   the async poll.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
    * @example
    * ```typescript
    * const table = await ws.uploadLookupTable(
@@ -4177,6 +4451,7 @@ export class Workspace {
    *   }),
    * );
    * ```
+   * @see mixpanel_headless.workspace.Workspace.upload_lookup_table
    */
   async uploadLookupTable(
     params: UploadLookupTableParams,
@@ -4192,13 +4467,13 @@ export class Workspace {
   }
 
   /**
-   * Mark a lookup table as ready after upload
-   * (`mark_lookup_table_ready`, `workspace.py`).
+   * Mark a lookup table as ready after upload.
    *
    * @param params - Parameters (`name`, `key`, optional
    *   `data_group_id`).
    * @returns The updated `LookupTable`.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.mark_lookup_table_ready
    */
   async markLookupTableReady(
     params: MarkLookupTableReadyParams,
@@ -4207,13 +4482,13 @@ export class Workspace {
   }
 
   /**
-   * Get a signed URL for uploading lookup table data
-   * (`get_lookup_upload_url`, `workspace.py`).
+   * Get a signed URL for uploading lookup table data.
    *
    * @param contentType - MIME type of the file to upload (positional
    *   in Python; default `"text/csv"`).
    * @returns The `LookupTableUploadUrl` (url / path / key).
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.get_lookup_upload_url
    */
   async getLookupUploadUrl(
     contentType = "text/csv",
@@ -4222,14 +4497,14 @@ export class Workspace {
   }
 
   /**
-   * Get the processing status of a lookup table upload
-   * (`get_lookup_upload_status`, `workspace.py`) — the raw
+   * Get the processing status of a lookup table upload — the raw
    * record, unvalidated.
    *
    * @param uploadId - Upload ID returned from the upload process.
    * @returns The opaque status record.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
+   * @see mixpanel_headless.workspace.Workspace.get_lookup_upload_status
    */
   async getLookupUploadStatus(
     uploadId: string,
@@ -4238,8 +4513,7 @@ export class Workspace {
   }
 
   /**
-   * Update a lookup table (`update_lookup_table`,
-   * `workspace.py`).
+   * Update a lookup table.
    *
    * @param dataGroupId - Data group ID of the lookup table — a signed
    *   int64: a `number` when it is a safe integer, a `bigint` beyond
@@ -4247,11 +4521,16 @@ export class Workspace {
    *   id is sent in the JSON body as an exact integer token.
    * @param params - Fields to update.
    * @returns The updated `LookupTable`.
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `dataGroupId`
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `dataGroupId`
    *   is not a non-zero integer, or is a `number` beyond
    *   `Number.MAX_SAFE_INTEGER` (already rounded — pass a `bigint`);
    *   network-free guard, before any request.
+   * @example
+   * ```typescript
+   * await ws.updateLookupTable(-8644926364725811123n, new UpdateLookupTableParams({ name: "Countries v2" }));
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.update_lookup_table
    */
   async updateLookupTable(
     dataGroupId: number | bigint,
@@ -4262,18 +4541,18 @@ export class Workspace {
   }
 
   /**
-   * Delete one or more lookup tables (`delete_lookup_tables`,
-   * `workspace.py`).
+   * Delete one or more lookup tables.
    *
    * @param dataGroupIds - Data group IDs to delete — signed int64s
    *   (`bigint` beyond 2^53), each sent as an exact integer token.
    * @returns Nothing.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when any element is
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when any element is
    *   not a non-zero integer, or is a `number` beyond
    *   `Number.MAX_SAFE_INTEGER` (already rounded — pass a `bigint`);
    *   network-free guard, before any request.
+   * @see mixpanel_headless.workspace.Workspace.delete_lookup_tables
    */
   async deleteLookupTables(
     dataGroupIds: ReadonlyArray<number | bigint>,
@@ -4285,8 +4564,7 @@ export class Workspace {
   }
 
   /**
-   * Download lookup table data as raw CSV bytes
-   * (`download_lookup_table`, `workspace.py`).
+   * Download lookup table data as raw CSV bytes.
    *
    * @param dataGroupId - Data group ID of the lookup table — a signed
    *   int64: a `number` when it is a safe integer, a `bigint` beyond
@@ -4295,12 +4573,17 @@ export class Workspace {
    * @param options - Optional `file_name` / `limit` (keyword-only in
    *   Python).
    * @returns The raw CSV bytes.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `dataGroupId`
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `dataGroupId`
    *   is not a non-zero integer, or is a `number` beyond
    *   `Number.MAX_SAFE_INTEGER` (already rounded — pass a `bigint`);
    *   network-free guard, before any request.
+   * @example
+   * ```typescript
+   * const csv = await ws.downloadLookupTable(-8644926364725811123n, { limit: 1000 });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.download_lookup_table
    */
   async downloadLookupTable(
     dataGroupId: number | bigint,
@@ -4315,19 +4598,19 @@ export class Workspace {
   }
 
   /**
-   * Get a signed download URL for a lookup table
-   * (`get_lookup_download_url`, `workspace.py`).
+   * Get a signed download URL for a lookup table.
    *
    * @param dataGroupId - Data group ID of the lookup table — a signed
    *   int64: a `number` when it is a safe integer, a `bigint` beyond
    *   2^53, spelled exactly into the `data-group-id` query param.
    * @returns The signed URL string.
-   * @throws MixpanelHeadlessError - `MISSING_URL` when the response
+   * @throws {@link MixpanelHeadlessError} - `MISSING_URL` when the response
    *   carries no URL.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `dataGroupId`
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `dataGroupId`
    *   is not a non-zero integer, or is a `number` beyond
    *   `Number.MAX_SAFE_INTEGER` (already rounded — pass a `bigint`);
    *   network-free guard, before any request.
+   * @see mixpanel_headless.workspace.Workspace.get_lookup_download_url
    */
   async getLookupDownloadUrl(dataGroupId: number | bigint): Promise<string> {
     requireInt64Id("data_group_id", dataGroupId);
@@ -4335,8 +4618,7 @@ export class Workspace {
   }
 
   /**
-   * Create a new custom event (`create_custom_event`,
-   * `workspace.py`).
+   * Create a new custom event.
    *
    * A custom event is a composite alias grouping one or more
    * underlying events under a single name; it appears alongside
@@ -4345,7 +4627,7 @@ export class Workspace {
    * @param params - Creation parameters (non-empty `name` and a
    *   non-empty, duplicate-free `alternatives` list).
    * @returns The created `CustomEvent` (server-assigned `id`).
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
    * @example
    * ```typescript
    * const ce = await ws.createCustomEvent(
@@ -4355,6 +4637,7 @@ export class Workspace {
    *   }),
    * );
    * ```
+   * @see mixpanel_headless.workspace.Workspace.create_custom_event
    */
   async createCustomEvent(
     params: CreateCustomEventParams,
@@ -4363,19 +4646,18 @@ export class Workspace {
   }
 
   /**
-   * List all custom events (`list_custom_events`,
-   * `workspace.py`).
+   * List all custom events.
    *
    * @returns The `EventDefinition` models for custom events.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.list_custom_events
    */
   async listCustomEvents(): Promise<EventDefinition[]> {
     return governanceData.listCustomEvents(this.client);
   }
 
   /**
-   * Update a custom event's Lexicon entry
-   * (`update_custom_event`, `workspace.py`).
+   * Update a custom event's Lexicon entry.
    *
    * Identified by `custom_event_id`, never by display name: a
    * name-only PATCH makes the data-definitions endpoint fabricate a
@@ -4386,11 +4668,16 @@ export class Workspace {
    * @param customEventId - Server-assigned custom event ID.
    * @param params - Fields to update.
    * @returns The updated `EventDefinition`.
-   * @throws MixpanelHeadlessError - `UPDATE_TARGET_MISMATCH` when the
+   * @throws {@link MixpanelHeadlessError} - `UPDATE_TARGET_MISMATCH` when the
    *   server echoes a different `customEventId`.
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `customEventId`
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `customEventId`
    *   is not a positive integer (network-free guard, before any request).
+   * @example
+   * ```typescript
+   * await ws.updateCustomEvent(4242, new UpdateEventDefinitionParams({ description: "Any room entry" }));
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.update_custom_event
    */
   async updateCustomEvent(
     customEventId: number,
@@ -4401,8 +4688,7 @@ export class Workspace {
   }
 
   /**
-   * Delete a custom event (`delete_custom_event`,
-   * `workspace.py`).
+   * Delete a custom event.
    *
    * Identified by `custom_event_id` for the same reason
    * {@link Workspace.updateCustomEvent} is: a name-only DELETE is
@@ -4410,36 +4696,36 @@ export class Workspace {
    *
    * @param customEventId - Server-assigned custom event ID.
    * @returns Nothing.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `customEventId`
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `customEventId`
    *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.delete_custom_event
    */
   async deleteCustomEvent(customEventId: number): Promise<void> {
     requireEntityId("custom_event_id", customEventId);
     return governanceData.deleteCustomEvent(this.client, customEventId);
   }
 
-  // === B6-W8 schema-registry / schema-enforcement / audit / anomaly /
-  // deletion-request members (W8 owns; append-only) ===
+  // --- Schema registry, enforcement, audit, anomalies, deletion requests ---
 
   /**
-   * List schema registry entries (`list_schema_registry`,
-   * `workspace.py`).
+   * List schema registry entries.
    *
    * @param options - Optional `entity_type` filter ("event",
    *   "custom_event", "profile"); omit it to return every schema.
    * @returns The `SchemaEntry` models, in response order.
-   * @throws ResponseValidationError - Malformed API response payload
+   * @throws {@link ResponseValidationError} - Malformed API response payload
    *   (`RESPONSE_VALIDATION_ERROR`).
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Wire failures.
+   * @throws {@link AuthenticationError} | {@link RateLimitError} | {@link QueryError} |
+   *   {@link ServerError} - Wire failures.
    * @example
    * ```typescript
    * for (const entry of await ws.listSchemaRegistry({ entity_type: "event" })) {
    *   console.log(`${entry.name}: ${entry.entity_type}`);
    * }
    * ```
+   * @see mixpanel_headless.workspace.Workspace.list_schema_registry
    */
   async listSchemaRegistry(
     options: WorkspaceListSchemaRegistryOptions = {},
@@ -4448,21 +4734,21 @@ export class Workspace {
   }
 
   /**
-   * Create a single schema definition (`create_schema`,
-   * `workspace.py`).
+   * Create a single schema definition.
    *
    * @param entityType - Entity type ("event", "custom_event", "profile").
    * @param entityName - Entity name (event name or "$user" for profile).
    * @param schemaJson - JSON Schema Draft 7 definition.
    * @returns The created schema, verbatim.
-   * @throws AuthenticationError | QueryError | RateLimitError |
-   *   ServerError - Wire failures.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link RateLimitError} |
+   *   {@link ServerError} - Wire failures.
    * @example
    * ```typescript
    * await ws.createSchema("event", "Purchase", {
    *   properties: { amount: { type: "number" } },
    * });
    * ```
+   * @see mixpanel_headless.workspace.Workspace.create_schema
    */
   async createSchema(
     entityType: string,
@@ -4478,15 +4764,15 @@ export class Workspace {
   }
 
   /**
-   * Bulk create schemas (`create_schemas_bulk`,
-   * `workspace.py`).
+   * Bulk create schemas.
    *
    * @param params - Bulk creation parameters (entries plus the
    *   optional `truncate` flag).
    * @returns The response with `added` / `deleted` counts.
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
+   * @see mixpanel_headless.workspace.Workspace.create_schemas_bulk
    */
   async createSchemasBulk(
     params: BulkCreateSchemasParams,
@@ -4495,15 +4781,21 @@ export class Workspace {
   }
 
   /**
-   * Update a single schema definition, merge semantics
-   * (`update_schema`, `workspace.py`).
+   * Update a single schema definition, merge semantics.
    *
    * @param entityType - Entity type.
    * @param entityName - Entity name.
    * @param schemaJson - Partial JSON Schema to merge with the existing one.
    * @returns The updated schema, verbatim.
-   * @throws AuthenticationError | QueryError | ServerError - Wire
+   * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
    *   failures.
+   * @example
+   * ```typescript
+   * await ws.updateSchema("event", "Purchase", {
+   *   properties: { currency: { type: "string" } },
+   * });
+   * ```
+   * @see mixpanel_headless.workspace.Workspace.update_schema
    */
   async updateSchema(
     entityType: string,
@@ -4519,12 +4811,12 @@ export class Workspace {
   }
 
   /**
-   * Bulk update schemas, merge semantics per entry
-   * (`update_schemas_bulk`, `workspace.py`).
+   * Bulk update schemas, merge semantics per entry.
    *
    * @param params - Bulk update parameters.
    * @returns Per-entry results with status "ok" or "error".
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.update_schemas_bulk
    */
   async updateSchemasBulk(
     params: BulkCreateSchemasParams,
@@ -4533,17 +4825,16 @@ export class Workspace {
   }
 
   /**
-   * Delete schemas by entity type and/or name (`delete_schemas`,
-   * `workspace.py`).
+   * Delete schemas by entity type and/or name.
    *
    * With both filters a single schema is deleted; with `entity_type`
-   * alone every schema of that type; with neither, ALL schemas.
+   * alone every schema of that type; with neither, every schema.
    *
    * @param options - Optional `entity_type` / `entity_name` filters.
    * @returns The response with `delete_count`.
-   * @throws MixpanelHeadlessError - `entity_name` given without
+   * @throws {@link MixpanelHeadlessError} - `entity_name` given without
    *   `entity_type` (raised before any request).
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
    * @example
    * ```typescript
    * const resp = await ws.deleteSchemas({
@@ -4552,6 +4843,7 @@ export class Workspace {
    * });
    * console.log(`Deleted: ${String(resp.delete_count)}`);
    * ```
+   * @see mixpanel_headless.workspace.Workspace.delete_schemas
    */
   async deleteSchemas(
     options: WorkspaceDeleteSchemasOptions = {},
@@ -4560,13 +4852,13 @@ export class Workspace {
   }
 
   /**
-   * Get the current schema-enforcement configuration
-   * (`get_schema_enforcement`, `workspace.py`).
+   * Get the current schema-enforcement configuration.
    *
    * @param options - Optional comma-separated `fields` selector.
    * @returns The enforcement configuration.
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws QueryError - No enforcement configured (404).
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link QueryError} - No enforcement configured (404).
+   * @see mixpanel_headless.workspace.Workspace.get_schema_enforcement
    */
   async getSchemaEnforcement(
     options: WorkspaceGetSchemaEnforcementOptions = {},
@@ -4575,12 +4867,12 @@ export class Workspace {
   }
 
   /**
-   * Initialize schema enforcement (`init_schema_enforcement`,
-   * `workspace.py`).
+   * Initialize schema enforcement.
    *
    * @param params - Init parameters carrying `rule_event`.
    * @returns The raw API response.
-   * @throws QueryError - Already initialized or invalid `rule_event` (400).
+   * @throws {@link QueryError} - Already initialized or invalid `rule_event` (400).
+   * @see mixpanel_headless.workspace.Workspace.init_schema_enforcement
    */
   async initSchemaEnforcement(
     params: InitSchemaEnforcementParams,
@@ -4589,12 +4881,12 @@ export class Workspace {
   }
 
   /**
-   * Partially update the enforcement configuration
-   * (`update_schema_enforcement`, `workspace.py`).
+   * Partially update the enforcement configuration.
    *
    * @param params - Partial update parameters.
    * @returns The raw API response.
-   * @throws QueryError - No enforcement configured or validation error (400).
+   * @throws {@link QueryError} - No enforcement configured or validation error (400).
+   * @see mixpanel_headless.workspace.Workspace.update_schema_enforcement
    */
   async updateSchemaEnforcement(
     params: UpdateSchemaEnforcementParams,
@@ -4603,12 +4895,12 @@ export class Workspace {
   }
 
   /**
-   * Fully replace the enforcement configuration
-   * (`replace_schema_enforcement`, `workspace.py`).
+   * Fully replace the enforcement configuration.
    *
    * @param params - Complete replacement parameters.
    * @returns The raw API response.
-   * @throws QueryError - Validation error (400).
+   * @throws {@link QueryError} - Validation error (400).
+   * @see mixpanel_headless.workspace.Workspace.replace_schema_enforcement
    */
   async replaceSchemaEnforcement(
     params: ReplaceSchemaEnforcementParams,
@@ -4617,24 +4909,25 @@ export class Workspace {
   }
 
   /**
-   * Delete the enforcement configuration
-   * (`delete_schema_enforcement`, `workspace.py`).
+   * Delete the enforcement configuration.
    *
    * @returns The raw API response.
-   * @throws QueryError - No enforcement configured (404).
+   * @throws {@link QueryError} - No enforcement configured (404).
+   * @see mixpanel_headless.workspace.Workspace.delete_schema_enforcement
    */
   async deleteSchemaEnforcement(): Promise<Record<string, unknown>> {
     return schemasAudit.deleteSchemaEnforcement(this.client);
   }
 
   /**
-   * Run a full data audit — events plus properties (`run_audit`,
-   * `workspace.py`).
+   * Run a full data audit — events plus properties.
    *
    * @returns The audit response with violations and `computed_at`.
-   * @throws MixpanelHeadlessError - Unexpected audit-response shape.
-   * @throws ResponseValidationError - A malformed violation entry.
-   * @throws QueryError - No schemas defined (400).
+   * @throws {@link MixpanelHeadlessError} - Unexpected audit-response shape.
+   * @throws {@link ResponseValidationError} - A malformed violation entry,
+   *   or `computed_at: null` in the metadata (where Python leaks a bare
+   *   pydantic error; see PORTING.md).
+   * @throws {@link QueryError} - No schemas defined (400).
    * @example
    * ```typescript
    * const audit = await ws.runAudit();
@@ -4642,38 +4935,40 @@ export class Workspace {
    *   console.log(`${v.violation}: ${v.name} (${String(v.count)})`);
    * }
    * ```
+   * @see mixpanel_headless.workspace.Workspace.run_audit
    */
   async runAudit(): Promise<AuditResponse> {
     return schemasAudit.runAudit(this.client);
   }
 
   /**
-   * Run an events-only data audit — faster
-   * (`run_audit_events_only`, `workspace.py`).
+   * Run an events-only data audit — faster.
    *
    * @returns The audit response with event violations only.
-   * @throws MixpanelHeadlessError - Unexpected audit-response shape.
-   * @throws ResponseValidationError - A malformed violation entry.
-   * @throws QueryError - No schemas defined (400).
+   * @throws {@link MixpanelHeadlessError} - Unexpected audit-response shape.
+   * @throws {@link ResponseValidationError} - A malformed violation entry,
+   *   or `computed_at: null` in the metadata (see {@link runAudit}).
+   * @throws {@link QueryError} - No schemas defined (400).
+   * @see mixpanel_headless.workspace.Workspace.run_audit_events_only
    */
   async runAuditEventsOnly(): Promise<AuditResponse> {
     return schemasAudit.runAuditEventsOnly(this.client);
   }
 
   /**
-   * List detected data-volume anomalies
-   * (`list_data_volume_anomalies`, `workspace.py`).
+   * List detected data-volume anomalies.
    *
    * @param options - Optional `query_params` filters (status, limit,
    *   event_id, …).
    * @returns The `DataVolumeAnomaly` models, in response order.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
    * @example
    * ```typescript
    * const anomalies = await ws.listDataVolumeAnomalies({
    *   query_params: { status: "open" },
    * });
    * ```
+   * @see mixpanel_headless.workspace.Workspace.list_data_volume_anomalies
    */
   async listDataVolumeAnomalies(
     options: WorkspaceListDataVolumeAnomaliesOptions = {},
@@ -4682,12 +4977,12 @@ export class Workspace {
   }
 
   /**
-   * Update the status of a single anomaly (`update_anomaly`,
-   * `workspace.py`).
+   * Update the status of a single anomaly.
    *
    * @param params - Update parameters (id, status, anomaly_class).
    * @returns The raw API response.
-   * @throws QueryError - Anomaly not found or invalid parameters (400).
+   * @throws {@link QueryError} - Anomaly not found or invalid parameters (400).
+   * @see mixpanel_headless.workspace.Workspace.update_anomaly
    */
   async updateAnomaly(
     params: UpdateAnomalyParams,
@@ -4696,12 +4991,12 @@ export class Workspace {
   }
 
   /**
-   * Bulk update anomaly statuses (`bulk_update_anomalies`,
-   * `workspace.py`).
+   * Bulk update anomaly statuses.
    *
    * @param params - Bulk update with the anomalies list and target status.
    * @returns The raw API response.
-   * @throws QueryError - Invalid parameters (400).
+   * @throws {@link QueryError} - Invalid parameters (400).
+   * @see mixpanel_headless.workspace.Workspace.bulk_update_anomalies
    */
   async bulkUpdateAnomalies(
     params: BulkUpdateAnomalyParams,
@@ -4710,25 +5005,25 @@ export class Workspace {
   }
 
   /**
-   * List all event deletion requests (`list_deletion_requests`,
-   * `workspace.py`).
+   * List all event deletion requests.
    *
    * @returns The `EventDeletionRequest` models, in response order.
-   * @throws ResponseValidationError - Malformed payload.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @see mixpanel_headless.workspace.Workspace.list_deletion_requests
    */
   async listDeletionRequests(): Promise<EventDeletionRequest[]> {
     return schemasAudit.listDeletionRequests(this.client);
   }
 
   /**
-   * Create a new event deletion request
-   * (`create_deletion_request`, `workspace.py`).
+   * Create a new event deletion request.
    *
    * @param params - Deletion parameters (event name, date range,
    *   optional filters).
-   * @returns The updated FULL list of deletion requests.
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws QueryError - Validation error (400).
+   * @returns The updated full list of deletion requests.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link QueryError} - Validation error (400).
+   * @see mixpanel_headless.workspace.Workspace.create_deletion_request
    */
   async createDeletionRequest(
     params: CreateDeletionRequestParams,
@@ -4737,15 +5032,15 @@ export class Workspace {
   }
 
   /**
-   * Cancel a pending deletion request
-   * (`cancel_deletion_request`, `workspace.py`).
+   * Cancel a pending deletion request.
    *
    * @param requestId - Deletion request ID to cancel.
-   * @returns The updated FULL list of deletion requests.
-   * @throws ResponseValidationError - Malformed payload.
-   * @throws QueryError - Request not found or not cancellable (400).
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `requestId`
+   * @returns The updated full list of deletion requests.
+   * @throws {@link ResponseValidationError} - Malformed payload.
+   * @throws {@link QueryError} - Request not found or not cancellable (400).
+   * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `requestId`
    *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.cancel_deletion_request
    */
   async cancelDeletionRequest(
     requestId: number,
@@ -4755,15 +5050,15 @@ export class Workspace {
   }
 
   /**
-   * Preview what events a deletion filter would match
-   * (`preview_deletion_filters`, `workspace.py`).
+   * Preview what events a deletion filter would match.
    *
    * Read-only: nothing is modified.
    *
    * @param params - Preview parameters (event name, date range,
    *   optional filters).
    * @returns The expanded/normalized filters, verbatim.
-   * @throws QueryError - Invalid filter parameters (400).
+   * @throws {@link QueryError} - Invalid filter parameters (400).
+   * @see mixpanel_headless.workspace.Workspace.preview_deletion_filters
    */
   async previewDeletionFilters(
     params: PreviewDeletionFiltersParams,
@@ -4771,8 +5066,7 @@ export class Workspace {
     return schemasAudit.previewDeletionFilters(this.client, params);
   }
 
-  // === 045 report links (Python PR #223 twin; `workspace.py` REPORT
-  // LINKS section, AIE-561/562) ===
+  // --- Report links ---
 
   /**
    * The facade slice the report-link members read; session, project id
@@ -4797,8 +5091,7 @@ export class Workspace {
   }
 
   /**
-   * Turn query params (or a typed result) into a shareable report link
-   * (`create_report_link`).
+   * Turn query params (or a typed result) into a shareable report link.
    *
    * Stores an **unsaved report** on the Mixpanel server under a
    * client-minted 12-character slug and returns the web URL that opens
@@ -4813,16 +5106,16 @@ export class Workspace {
    *   `workspace_id`, `bookmark_id`, `validate`.
    * @returns A {@link ReportLink} whose `url` opens the query in the
    *   browser.
-   * @throws ParamValidationError - `RL4_REPORT_TYPE_CONFLICT` on a
+   * @throws {@link ParamValidationError} - `RL4_REPORT_TYPE_CONFLICT` on a
    *   contradicting `report_type`; `RL1`/`RL3` from the URL builder;
    *   `RL6_INVALID_ID` for a zero or negative `workspace_id`. All of
    *   these fire before the POST, so no record is created for bad input.
-   * @throws BookmarkValidationError - Params failed schema validation
+   * @throws {@link BookmarkValidationError} - Params failed schema validation
    *   (raised before any network call).
-   * @throws AuthenticationError - Invalid credentials (401).
-   * @throws QueryError - The server rejected the record (400/422).
-   * @throws RateLimitError - Rate limit exceeded (429).
-   * @throws ServerError - Server-side errors (5xx).
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link QueryError} - The server rejected the record (400/422).
+   * @throws {@link RateLimitError} - Rate limit exceeded (429).
+   * @throws {@link ServerError} - Server-side errors (5xx).
    * @example
    * ```typescript
    * const result = await ws.query(Metric.total("Login"), { last: 7 });
@@ -4833,6 +5126,7 @@ export class Workspace {
    * // From raw params, without running the query first
    * const link2 = await ws.createReportLink(await ws.buildParams("Login", { last: 7 }));
    * ```
+   * @see mixpanel_headless.workspace.Workspace.create_report_link
    */
   async createReportLink(
     params: ReportLinkParamsInput,
@@ -4847,7 +5141,7 @@ export class Workspace {
 
   /**
    * Turn a report link, a bare slug, or a shortlink into its query
-   * params (`resolve_report_link`).
+   * params.
    *
    * Accepts a full Mixpanel URL to an unsaved report (slug) or a saved
    * report (bookmark), a bare 12-character slug, or a
@@ -4862,24 +5156,24 @@ export class Workspace {
    *   percent-encoded `#` are all tolerated.
    * @returns A {@link ResolvedReport} with `report_type`, `params`, the
    *   canonical `url`, and the saved `bookmark` when one exists.
-   * @throws ReportLinkParseError - The string is not a recognizable link.
-   * @throws UnsupportedReportLinkError - A dashboard link or a legacy
+   * @throws {@link ReportLinkParseError} - The string is not a recognizable link.
+   * @throws {@link UnsupportedReportLinkError} - A dashboard link or a legacy
    *   `~(...)` hash.
-   * @throws ReportLinkScopeMismatchError - The link's region or project
+   * @throws {@link ReportLinkScopeMismatchError} - The link's region or project
    *   differs from the session, or its workspace differs from the pinned
    *   session workspace. The record was not fetched.
-   * @throws ReportLinkNotFoundError - The slug, saved report, or
+   * @throws {@link ReportLinkNotFoundError} - The slug, saved report, or
    *   shortlink does not exist in scope.
-   * @throws ShortLinkResolutionError - The shortlink target could not be
+   * @throws {@link ShortLinkResolutionError} - The shortlink target could not be
    *   extracted, or it is another shortlink.
-   * @throws AuthenticationError - Invalid credentials, or the shortlink
+   * @throws {@link AuthenticationError} - Invalid credentials, or the shortlink
    *   redirected to the login page.
-   * @throws RateLimitError - Rate limit exceeded (429).
-   * @throws ServerError - Server-side errors (5xx).
-   * @throws QueryError - Other App API rejections (400/403/422).
-   * @throws ResponseValidationError - The slug or bookmark record the
+   * @throws {@link RateLimitError} - Rate limit exceeded (429).
+   * @throws {@link ServerError} - Server-side errors (5xx).
+   * @throws {@link QueryError} - Other App API rejections (400/403/422).
+   * @throws {@link ResponseValidationError} - The slug or bookmark record the
    *   server returned does not match the expected shape.
-   * @throws MixpanelHeadlessError - A transport failure (`HTTP_ERROR`)
+   * @throws {@link MixpanelHeadlessError} - A transport failure (`HTTP_ERROR`)
    *   or a response that is not a JSON object.
    * @example
    * ```typescript
@@ -4890,14 +5184,14 @@ export class Workspace {
    * r.params;      // the raw params dict
    * (await ws.queryReportLink(r)).toRows();
    * ```
+   * @see mixpanel_headless.workspace.Workspace.resolve_report_link
    */
   async resolveReportLink(link: string): Promise<ResolvedReport> {
     return reportLinkMethods.resolveReportLink(this.#reportLinkHost(), link);
   }
 
   /**
-   * Run the query behind a report link through the matching engine
-   * (`query_report_link`).
+   * Run the query behind a report link through the matching engine.
    *
    * The query runs under the scope the report records
    * (`ResolvedReport.workspace_id`: the URL `wid`, else the pin at
@@ -4913,18 +5207,18 @@ export class Workspace {
    * @returns `QueryResult` for insights, `FunnelQueryResult` for funnels,
    *   `RetentionQueryResult` for retention, or `FlowQueryResult` for
    *   flows.
-   * @throws UnsupportedReportLinkError - `UNSUPPORTED_REPORT_TYPE` for a
+   * @throws {@link UnsupportedReportLinkError} - `UNSUPPORTED_REPORT_TYPE` for a
    *   type that cannot be run (for example `launch-analysis`).
-   * @throws ReportLinkScopeMismatchError - A {@link ResolvedReport} whose
+   * @throws {@link ReportLinkScopeMismatchError} - A {@link ResolvedReport} whose
    *   recorded `region` or `project_id` differs from the active session,
    *   or whose recorded `workspace_id` differs from the pinned session
    *   workspace. Raised before any query.
-   * @throws ReportLinkError - Any resolution failure when `link` is a
+   * @throws {@link ReportLinkError} - Any resolution failure when `link` is a
    *   string (see {@link resolveReportLink}).
-   * @throws QueryError - The query engine rejected the params.
-   * @throws AuthenticationError - Invalid credentials.
-   * @throws RateLimitError - Rate limit exceeded.
-   * @throws ServerError - Server-side errors.
+   * @throws {@link QueryError} - The query engine rejected the params.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link RateLimitError} - Rate limit exceeded.
+   * @throws {@link ServerError} - Server-side errors.
    * @example
    * ```typescript
    * const rows = (await ws.queryReportLink("EBrV5bW2u9Mw")).toRows();
@@ -4934,6 +5228,7 @@ export class Workspace {
    *   const result = await ws.queryReportLink(resolved, { mode: "paths" });
    * }
    * ```
+   * @see mixpanel_headless.workspace.Workspace.query_report_link
    */
   async queryReportLink(
     link: string | ResolvedReport,
@@ -4947,8 +5242,7 @@ export class Workspace {
   }
 
   /**
-   * Build the web URL for a saved report (bookmark). Pure; no network
-   * (`saved_report_link`).
+   * Build the web URL for a saved report (bookmark). Pure; no network.
    *
    * @param bookmarkId - Numeric saved-report id.
    * @param options - `report_type` (default `insights`; the singular
@@ -4957,16 +5251,15 @@ export class Workspace {
    *   `resolveWorkspaceId()` is never called here).
    * @returns `https://{host}/project/{pid}[/view/{wid}]/app/{app}#{hash}`
    *   for the session region.
-   * @throws ParamValidationError - `RL1_UNKNOWN_REPORT_TYPE`,
-   *   `RL3_UNKNOWN_REGION`, or `RL6_INVALID_ID` (a zero or negative
-   *   `bookmark_id` or `workspace_id`).
+   * @throws {@link ParamValidationError} - `RL1_UNKNOWN_REPORT_TYPE`,
+   *   `RL3_UNKNOWN_REGION`, or `RL6_INVALID_ID` (a `bookmarkId` or
+   *   `workspace_id` that is not a positive integer).
    * @example
    * ```typescript
    * ws.savedReportLink(123, { report_type: "funnels" });
    * // "https://mixpanel.com/project/3/app/funnels#view/123"
    * ```
-   * @throws ParamValidationError - `RL6_INVALID_ID` when `bookmarkId`
-   *   is not a positive integer (network-free guard, before any request).
+   * @see mixpanel_headless.workspace.Workspace.saved_report_link
    */
   savedReportLink(
     bookmarkId: number,

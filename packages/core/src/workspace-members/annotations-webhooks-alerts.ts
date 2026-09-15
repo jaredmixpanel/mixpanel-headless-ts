@@ -1,56 +1,14 @@
 /**
- * B6-W5 member module — the `Workspace` annotation, webhook and alert
- * members (`workspace.py`: Annotations, Webhook CRUD and
- * Alert CRUD, Phase 026).
+ * Annotation, webhook and alert members of the `Workspace` facade. Every
+ * one is a pure forward — the body of one facade method: options-bag
+ * mapping, the params dump, the like-named client call and result-model
+ * validation with the endpoint name Python passes. None of these Python
+ * members has an empty-response guard, so `requireResponse` is
+ * deliberately unused here; dates travel as the caller's `YYYY-MM-DD`
+ * strings end to end. No request assembly, header merging, URL building
+ * or status branching happens here.
  *
- * Packet contract (`b6-packets.md` §2/§7): the `workspace.ts` B6-W5
- * section holds ONE-LINE delegations into this module; every member
- * here is a THIN facade body — options-bag mapping, the
- * params dump (W1-D4 {@link EntityModel.modelDumpExcludeNone}), the
- * like-named B4-C4 client method
- * (`services/entities/{annotations,webhooks,alerts}.ts`, composed onto
- * the client at `client.ts:1077+`) and result-model construction via
- * `validateResponseModel(s)` with the exact `endpoint=` string Python
- * passes. No request assembly, no header merging, no URL building, no
- * status branching (R10.8 — compose, never re-implement).
- *
- * Shard-wide observations from the Python re-read (all 23 bodies read
- * line-by-line at HEAD 2026-08-16):
- *
- * - **Every one of the 23 members is a pure forward.** Unlike W2/W4
- *   there is NO composite body in this range: no multi-step
- *   orchestration, no conditional query assembly, no decision-payload
- *   shaping. Each body is `client = self._require_api_client()`, an
- *   optional `body = params.model_dump(exclude_none=True)`, the
- *   like-named client call, and either
- *   `validate_response_model(s)(...)` or a bare return. The packet's
- *   "`test_alert`, `get_alert_screenshot_url`,
- *   `validate_alerts_for_bookmark` have more-than-forward bodies" note
- *   (§7 Scope) did NOT survive re-measurement — recorded in
- *   `B6-W5-notes.md` §2 as the arbiter-visible finding.
- * - **ZERO empty-response guards** (`if raw is None: raise …`) in
- *   `:6462-7196` — verified by grep. So {@link requireResponse} is
- *   deliberately unused here; adding it would invent a branch Python
- *   does not have.
- * - **`test_alert` is the shard's one opaque passthrough**
- *   (`:7118-7119` returns `client.test_alert(body)` verbatim with a
- *   `dict[str, Any]` annotation and no model validation) — the
- *   `list_erf_experiments` precedent from W4.
- * - **Dates are strings end-to-end** (packet Caution #12 / watchlist
- *   #5): `list_annotations`'s `from_date`/`to_date` and
- *   `CreateAnnotationParams.date` are forwarded as the caller's
- *   strings; no `Date` is ever constructed in the request path.
- * - **No `int(str)`, no `.strip()`, no `isinstance(x, dict)`, no
- *   truthiness guard** anywhere in the range, so R11.7 / watchlist
- *   #6 / watchlist #13 have no site to bite in this shard.
- *
- * Two option-bag members take keyword-only tails that the client
- * mirrors 1:1 ({@link listAlerts}'s `bookmark_id`/`skip_user_filter`
- * and {@link getAlertHistory}'s cursor trio); Python passes the raw
- * `None` defaults straight through (`:6871-6872`, `:7076-7080`), and
- * the client owns the `is not None` gating, so the facade forwards
- * `?? null` rather than dropping absent keys (R3.9 — never re-derive
- * the gate).
+ * @see mixpanel_headless.workspace.Workspace
  */
 
 import type { MixpanelClient } from "../client/client.js";
@@ -85,62 +43,96 @@ import {
   WebhookTestResult,
 } from "../types/entities/webhooks.js";
 
-// ---------------------------------------------------------------------------
-// Options bags (R3.3/R3.8 — keyword-only tails; keys keep the Python
-// spelling per packet Caution #6, since the recorder replays kwargs by
-// name).
-// ---------------------------------------------------------------------------
+// --- Options bags (keyword-only tails; keys keep the Python spelling) ---
 
 /** Options bag of `Workspace.listAnnotations` (keyword-only in Python). */
 export interface WorkspaceListAnnotationsOptions {
-  /** Start-date filter, ISO `YYYY-MM-DD` STRING (Python default `None`). */
+  /**
+   * Start-date filter as an ISO `YYYY-MM-DD` string.
+   *
+   * @defaultValue `null` (no lower bound)
+   */
   readonly from_date?: string | null | undefined;
-  /** End-date filter, ISO `YYYY-MM-DD` STRING (Python default `None`). */
+  /**
+   * End-date filter as an ISO `YYYY-MM-DD` string.
+   *
+   * @defaultValue `null` (no upper bound)
+   */
   readonly to_date?: string | null | undefined;
-  /** Tag IDs to filter by (Python default `None`). */
+  /**
+   * Restrict the listing to annotations carrying these tag ids.
+   *
+   * @defaultValue `null` (every tag)
+   */
   readonly tags?: readonly number[] | null | undefined;
 }
 
 /** Options bag of `Workspace.listAlerts` (keyword-only in Python). */
 export interface WorkspaceListAlertsOptions {
-  /** Filter alerts by linked bookmark ID (Python default `None`). */
+  /**
+   * Restrict the listing to alerts linked to this bookmark.
+   *
+   * @defaultValue `null` (every bookmark)
+   */
   readonly bookmark_id?: number | null | undefined;
-  /** When `true`, list alerts for all users (Python default `None`). */
+  /**
+   * List alerts for all users rather than the caller only.
+   *
+   * @defaultValue `null` (the server's default, caller only)
+   */
   readonly skip_user_filter?: boolean | null | undefined;
 }
 
 /** Options bag of `Workspace.getAlertCount` (keyword-only in Python). */
 export interface WorkspaceGetAlertCountOptions {
-  /** Optional alert-type filter (Python default `None`). */
+  /**
+   * Count only alerts of this type.
+   *
+   * @defaultValue `null` (every type)
+   */
   readonly alert_type?: string | null | undefined;
 }
 
 /** Options bag of `Workspace.getAlertHistory` (keyword-only tail). */
 export interface WorkspaceGetAlertHistoryOptions {
-  /** Number of results per page (Python default `None`). */
+  /**
+   * Results per page.
+   *
+   * @defaultValue `null` (server default)
+   */
   readonly page_size?: number | null | undefined;
-  /** Cursor for the next page (Python default `None`). */
+  /**
+   * Cursor for the next page.
+   *
+   * @defaultValue `null`
+   */
   readonly next_cursor?: string | null | undefined;
-  /** Cursor for the previous page (Python default `None`). */
+  /**
+   * Cursor for the previous page.
+   *
+   * @defaultValue `null`
+   */
   readonly previous_cursor?: string | null | undefined;
 }
 
-// ---------------------------------------------------------------------------
-// Annotations (Phase 026) — `workspace.py`
-// ---------------------------------------------------------------------------
+// --- Annotations ---
 
 /**
- * List timeline annotations for the project (`list_annotations`,
- * `workspace.py`).
+ * List timeline annotations for the project.
  *
  * @param client - The wire client.
  * @param options - `from_date` / `to_date` / `tags` (keyword-only in
- *   Python; dates stay STRINGS, watchlist #5).
+ *   Python; dates are strings).
  * @returns The `Annotation` models, in response order.
- * @throws ResponseValidationError - Malformed payload
+ * @throws {@link ResponseValidationError} - Malformed payload
  *   (`RESPONSE_VALIDATION_ERROR`).
- * @throws AuthenticationError | QueryError | ServerError - Wire
- *   failures per the B0 contract.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
+ *   failures.
+ * @example
+ * ```typescript
+ * const q1 = await ws.listAnnotations({ from_date: "2026-01-01", to_date: "2026-03-31" });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.list_annotations
  */
 export async function listAnnotations(
   client: MixpanelClient,
@@ -161,14 +153,20 @@ export async function listAnnotations(
 }
 
 /**
- * Create a new timeline annotation (`create_annotation`,
- * `workspace.py`).
+ * Create a new timeline annotation.
  *
  * @param client - The wire client.
  * @param params - Annotation creation parameters (date, description
  *   required).
  * @returns The created `Annotation`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const note = await ws.createAnnotation(
+ *   new CreateAnnotationParams({ date: "2026-02-14", description: "v3 launch" }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.create_annotation
  */
 export async function createAnnotation(
   client: MixpanelClient,
@@ -181,13 +179,17 @@ export async function createAnnotation(
 }
 
 /**
- * Get a single annotation by ID (`get_annotation`,
- * `workspace.py`).
+ * Fetch a single annotation by id.
  *
  * @param client - The wire client.
  * @param annotationId - Annotation ID.
  * @returns The `Annotation`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const note = await ws.getAnnotation(42);
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.get_annotation
  */
 export async function getAnnotation(
   client: MixpanelClient,
@@ -200,14 +202,18 @@ export async function getAnnotation(
 }
 
 /**
- * Update an annotation, PATCH semantics (`update_annotation`,
- * `workspace.py`).
+ * Update an annotation with PATCH semantics.
  *
  * @param client - The wire client.
  * @param annotationId - Annotation ID.
  * @param params - Fields to update (description, tags).
  * @returns The updated `Annotation`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * await ws.updateAnnotation(42, new UpdateAnnotationParams({ description: "v3.1 launch" }));
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.update_annotation
  */
 export async function updateAnnotation(
   client: MixpanelClient,
@@ -224,14 +230,18 @@ export async function updateAnnotation(
 }
 
 /**
- * Delete an annotation (`delete_annotation`,
- * `workspace.py`).
+ * Delete an annotation.
  *
  * @param client - The wire client.
  * @param annotationId - Annotation ID.
  * @returns Nothing.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @example
+ * ```typescript
+ * await ws.deleteAnnotation(42);
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.delete_annotation
  */
 export async function deleteAnnotation(
   client: MixpanelClient,
@@ -241,12 +251,16 @@ export async function deleteAnnotation(
 }
 
 /**
- * List annotation tags for the project (`list_annotation_tags`,
- * `workspace.py`).
+ * List annotation tags for the project.
  *
  * @param client - The wire client.
  * @returns The `AnnotationTag` models, in response order.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const tags = await ws.listAnnotationTags();
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.list_annotation_tags
  */
 export async function listAnnotationTags(
   client: MixpanelClient,
@@ -262,13 +276,17 @@ export async function listAnnotationTags(
 }
 
 /**
- * Create a new annotation tag (`create_annotation_tag`,
- * `workspace.py`).
+ * Create a new annotation tag.
  *
  * @param client - The wire client.
  * @param params - Tag creation parameters (name required).
  * @returns The created `AnnotationTag`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const tag = await ws.createAnnotationTag(new CreateAnnotationTagParams({ name: "release" }));
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.create_annotation_tag
  */
 export async function createAnnotationTag(
   client: MixpanelClient,
@@ -280,17 +298,19 @@ export async function createAnnotationTag(
   });
 }
 
-// ---------------------------------------------------------------------------
-// Webhook CRUD (Phase 026) — `workspace.py`
-// ---------------------------------------------------------------------------
+// --- Webhooks ---
 
 /**
- * List all webhooks for the current project (`list_webhooks`,
- * `workspace.py`).
+ * List all webhooks for the current project.
  *
  * @param client - The wire client.
  * @returns The `ProjectWebhook` models, in response order.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const webhooks = await ws.listWebhooks();
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.list_webhooks
  */
 export async function listWebhooks(
   client: MixpanelClient,
@@ -306,13 +326,19 @@ export async function listWebhooks(
 }
 
 /**
- * Create a new webhook (`create_webhook`,
- * `workspace.py`).
+ * Create a new webhook.
  *
  * @param client - The wire client.
  * @param params - Webhook creation parameters.
  * @returns The `WebhookMutationResult` (new webhook id + name).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const created = await ws.createWebhook(
+ *   new CreateWebhookParams({ name: "Ops", url: "https://hooks.example.com/mixpanel" }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.create_webhook
  */
 export async function createWebhook(
   client: MixpanelClient,
@@ -325,14 +351,18 @@ export async function createWebhook(
 }
 
 /**
- * Update an existing webhook, PATCH semantics (`update_webhook`,
- * `workspace.py`).
+ * Update an existing webhook with PATCH semantics.
  *
  * @param client - The wire client.
  * @param webhookId - Webhook UUID string.
  * @param params - Fields to update.
  * @returns The `WebhookMutationResult` (updated id + name).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * await ws.updateWebhook(webhookId, new UpdateWebhookParams({ is_enabled: false }));
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.update_webhook
  */
 export async function updateWebhook(
   client: MixpanelClient,
@@ -349,13 +379,18 @@ export async function updateWebhook(
 }
 
 /**
- * Delete a webhook (`delete_webhook`, `workspace.py`).
+ * Delete a webhook.
  *
  * @param client - The wire client.
  * @param webhookId - Webhook UUID string.
  * @returns Nothing.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @example
+ * ```typescript
+ * await ws.deleteWebhook(webhookId);
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.delete_webhook
  */
 export async function deleteWebhook(
   client: MixpanelClient,
@@ -365,13 +400,19 @@ export async function deleteWebhook(
 }
 
 /**
- * Test webhook connectivity (`test_webhook`,
- * `workspace.py`).
+ * Send a test delivery to a webhook URL and report the outcome.
  *
  * @param client - The wire client.
  * @param params - Webhook test parameters (`url` required).
  * @returns The `WebhookTestResult` (success, status_code, message).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const result = await ws.testWebhook(
+ *   new WebhookTestParams({ url: "https://hooks.example.com/mixpanel" }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.test_webhook
  */
 export async function testWebhook(
   client: MixpanelClient,
@@ -383,20 +424,22 @@ export async function testWebhook(
   });
 }
 
-// ---------------------------------------------------------------------------
-// Alert CRUD (Phase 026) — `workspace.py`
-// ---------------------------------------------------------------------------
+// --- Alerts ---
 
 /**
- * List custom alerts for the current project (`list_alerts`,
- * `workspace.py`).
+ * List custom alerts for the current project.
  *
  * @param client - The wire client.
  * @param options - `bookmark_id` / `skip_user_filter` (keyword-only in
- *   Python; both default `None` and are forwarded as-is — the client
- *   owns the `is not None` gate).
+ *   Python; forwarded as `null` when absent — the client owns the
+ *   `is not None` gate).
  * @returns The `CustomAlert` models, in response order.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const alerts = await ws.listAlerts({ bookmark_id: 987 });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.list_alerts
  */
 export async function listAlerts(
   client: MixpanelClient,
@@ -416,13 +459,19 @@ export async function listAlerts(
 }
 
 /**
- * Create a new custom alert (`create_alert`,
- * `workspace.py`).
+ * Create a new custom alert.
  *
  * @param client - The wire client.
  * @param params - Alert creation parameters.
  * @returns The created `CustomAlert`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const alert = await ws.createAlert(
+ *   new CreateAlertParams({ bookmark_id: 987, condition, frequency, paused: false, subscriptions }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.create_alert
  */
 export async function createAlert(
   client: MixpanelClient,
@@ -435,13 +484,17 @@ export async function createAlert(
 }
 
 /**
- * Get a single custom alert by ID (`get_alert`,
- * `workspace.py`).
+ * Fetch a single custom alert by id.
  *
  * @param client - The wire client.
  * @param alertId - Alert ID (integer).
  * @returns The `CustomAlert`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const alert = await ws.getAlert(7);
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.get_alert
  */
 export async function getAlert(
   client: MixpanelClient,
@@ -454,14 +507,18 @@ export async function getAlert(
 }
 
 /**
- * Update a custom alert, PATCH semantics (`update_alert`,
- * `workspace.py`).
+ * Update a custom alert with PATCH semantics.
  *
  * @param client - The wire client.
  * @param alertId - Alert ID (integer).
  * @param params - Fields to update.
  * @returns The updated `CustomAlert`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * await ws.updateAlert(7, new UpdateAlertParams({ paused: true }));
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.update_alert
  */
 export async function updateAlert(
   client: MixpanelClient,
@@ -475,13 +532,18 @@ export async function updateAlert(
 }
 
 /**
- * Delete a custom alert (`delete_alert`, `workspace.py`).
+ * Delete a custom alert.
  *
  * @param client - The wire client.
  * @param alertId - Alert ID (integer).
  * @returns Nothing.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @example
+ * ```typescript
+ * await ws.deleteAlert(7);
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.delete_alert
  */
 export async function deleteAlert(
   client: MixpanelClient,
@@ -491,14 +553,18 @@ export async function deleteAlert(
 }
 
 /**
- * Bulk-delete custom alerts (`bulk_delete_alerts`,
- * `workspace.py`).
+ * Bulk-delete custom alerts.
  *
  * @param client - The wire client.
  * @param ids - Alert IDs to delete.
  * @returns Nothing.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @example
+ * ```typescript
+ * await ws.bulkDeleteAlerts([7, 8]);
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.bulk_delete_alerts
  */
 export async function bulkDeleteAlerts(
   client: MixpanelClient,
@@ -508,13 +574,17 @@ export async function bulkDeleteAlerts(
 }
 
 /**
- * Get the project's alert count against its limit
- * (`get_alert_count`, `workspace.py`).
+ * Fetch the project's alert count against its limit.
  *
  * @param client - The wire client.
  * @param options - `alert_type` (keyword-only in Python).
  * @returns The `AlertCount`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const count = await ws.getAlertCount({ alert_type: "anomaly" });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.get_alert_count
  */
 export async function getAlertCount(
   client: MixpanelClient,
@@ -529,15 +599,19 @@ export async function getAlertCount(
 }
 
 /**
- * Get paginated alert trigger history (`get_alert_history`,
- * `workspace.py`).
+ * Fetch a page of an alert's trigger history.
  *
  * @param client - The wire client.
  * @param alertId - Alert ID (integer).
  * @param options - `page_size` / `next_cursor` / `previous_cursor`
  *   (keyword-only in Python).
  * @returns The `AlertHistoryResponse`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const page = await ws.getAlertHistory(7, { page_size: 20 });
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.get_alert_history
  */
 export async function getAlertHistory(
   client: MixpanelClient,
@@ -555,16 +629,20 @@ export async function getAlertHistory(
 }
 
 /**
- * Send a test alert notification (`test_alert`,
- * `workspace.py`) — returned VERBATIM; Python performs no
- * model validation (`return client.test_alert(body)`, `:7119`).
+ * Send a test alert notification and return the response verbatim
+ * (Python performs no model validation here).
  *
  * @param client - The wire client.
  * @param params - Alert parameters for the test (same shape as
  *   create).
  * @returns The opaque result record.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @example
+ * ```typescript
+ * const outcome = await ws.testAlert(alertParams);
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.test_alert
  */
 export async function testAlert(
   client: MixpanelClient,
@@ -575,13 +653,17 @@ export async function testAlert(
 }
 
 /**
- * Get a signed URL for an alert screenshot
- * (`get_alert_screenshot_url`, `workspace.py`).
+ * Fetch a signed URL for an alert screenshot.
  *
  * @param client - The wire client.
  * @param gcsKey - GCS object key from the alert payload.
  * @returns The `AlertScreenshotResponse`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const signed = await ws.getAlertScreenshotUrl("alerts/7/2026-02-14.png");
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.get_alert_screenshot_url
  */
 export async function getAlertScreenshotUrl(
   client: MixpanelClient,
@@ -594,13 +676,19 @@ export async function getAlertScreenshotUrl(
 }
 
 /**
- * Validate alerts against a bookmark definition
- * (`validate_alerts_for_bookmark`, `workspace.py`).
+ * Validate alerts against a bookmark definition.
  *
  * @param client - The wire client.
  * @param params - Alert IDs plus the bookmark type and params.
  * @returns The `ValidateAlertsForBookmarkResponse`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const report = await ws.validateAlertsForBookmark(
+ *   new ValidateAlertsForBookmarkParams({ alert_ids: [7], bookmark_params: params }),
+ * );
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.validate_alerts_for_bookmark
  */
 export async function validateAlertsForBookmark(
   client: MixpanelClient,
