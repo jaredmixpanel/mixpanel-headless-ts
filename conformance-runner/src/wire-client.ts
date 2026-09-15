@@ -39,12 +39,9 @@ import {
   UndecodableValueError,
   UnencodableValueError,
 } from "./codecs.js";
+import type { ExpectErrorConvertible } from "./internal/guards.js";
 import { JsonNumber, type JsonValue } from "./json-value.js";
-import type {
-  ExpectErrorConvertible,
-  ImplementationRegistry,
-  InvocationContext,
-} from "./runner.js";
+import type { ImplementationRegistry, InvocationContext } from "./runner.js";
 
 /** The ONE well-known `context.state` key for the memoized client. */
 export const CLIENT_STATE_KEY = "api_client";

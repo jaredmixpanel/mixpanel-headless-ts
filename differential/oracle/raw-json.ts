@@ -8,6 +8,12 @@
  * renders keys in INSERTION order. A bridge that silently reorders keys
  * would report false divergences the library never produced.
  *
+ * Two parsers exist on purpose: core's `parseLossless`
+ * (`client/lossless-json.ts`) is the LIBRARY's response-body parser and
+ * yields the runner's plain-object `JsonValue` model; this one is the
+ * oracle's request-line parser and must additionally keep member ORDER,
+ * which plain JS objects cannot.
+ *
  * This module therefore parses request lines into a {@link RawValue} tree
  * that keeps object members as an ordered entry list ({@link RawObject})
  * and every number as a verbatim {@link JsonNumber} token, plus:
@@ -20,6 +26,7 @@
  */
 
 import {
+  isPlainObject,
   JsonNumber,
   type JsonValue,
 } from "@mixpanel-headless/conformance-runner";
@@ -425,9 +432,12 @@ export function serializeAsciiJson(value: SerializableValue): string {
     );
     return `{${rawMembers.join(", ")}}`;
   }
-  if (typeof value === "object" && !isPlainObject(value)) {
+  if (!isPlainObject(value)) {
+    // Every remaining shape is a class instance whose data does not live
+    // in enumerable own properties (`Date`, `Map`, core models, ...).
+    const ctorName = (value as object).constructor.name;
     throw new Error(
-      `no ASCII-JSON serialization for ${value.constructor.name || "object"}`,
+      `no ASCII-JSON serialization for ${ctorName === "" ? "object" : ctorName}`,
     );
   }
   const members = Object.entries(value)
@@ -437,17 +447,6 @@ export function serializeAsciiJson(value: SerializableValue): string {
         `${serializeAsciiString(key)}: ${serializeAsciiJson(member)}`,
     );
   return `{${members.join(", ")}}`;
-}
-
-/**
- * Whether a value is a plain object literal (serializable as members).
- *
- * @param value - The candidate object.
- * @returns `true` for `Object.prototype`- or `null`-prototyped objects.
- */
-function isPlainObject(value: object): boolean {
-  const proto: unknown = Object.getPrototypeOf(value);
-  return proto === Object.prototype || proto === null;
 }
 
 /**

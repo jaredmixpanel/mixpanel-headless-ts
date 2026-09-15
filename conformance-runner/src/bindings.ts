@@ -120,10 +120,10 @@ import {
   PyFloat,
   UndecodableValueError,
 } from "./codecs.js";
+import type { ExpectErrorConvertible } from "./internal/guards.js";
 import { JsonNumber, type JsonValue } from "./json-value.js";
 import { registerReplaysBindings } from "./replays-bindings.js";
 import {
-  type ExpectErrorConvertible,
   ImplementationRegistry,
   type InvocationContext,
   type RunnerDeps,

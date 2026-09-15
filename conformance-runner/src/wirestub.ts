@@ -19,8 +19,8 @@
  * `expect.error.class` records.
  */
 
+import type { ExpectErrorConvertible } from "./internal/guards.js";
 import type { JsonValue } from "./json-value.js";
-import type { ExpectErrorConvertible } from "./runner.js";
 
 /**
  * Fetch-rejection `cause.code` → httpx transport class name.

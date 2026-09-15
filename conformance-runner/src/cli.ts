@@ -42,25 +42,23 @@ interface CliArgs {
 export function parseArgs(argv: readonly string[]): CliArgs {
   let report = "json";
   let filter: string | undefined;
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index] as string;
-    if (arg === "--report") {
-      index += 1;
-      const value = argv[index];
-      if (value === undefined) {
-        throw new Error("--report requires a value");
-      }
-      report = value;
-    } else if (arg === "--filter") {
-      index += 1;
-      const value = argv[index];
-      if (value === undefined) {
-        throw new Error("--filter requires a value");
-      }
-      filter = value;
+  // The flag whose value the next argument supplies.
+  let pending: "--report" | "--filter" | null = null;
+  for (const arg of argv) {
+    if (pending === "--report") {
+      report = arg;
+      pending = null;
+    } else if (pending === "--filter") {
+      filter = arg;
+      pending = null;
+    } else if (arg === "--report" || arg === "--filter") {
+      pending = arg;
     } else {
       throw new Error(`unknown argument ${JSON.stringify(arg)}`);
     }
+  }
+  if (pending !== null) {
+    throw new Error(`${pending} requires a value`);
   }
   if (report !== "json") {
     throw new Error(

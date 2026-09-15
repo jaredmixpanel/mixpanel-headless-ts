@@ -23,30 +23,10 @@
 import type { MixpanelClient } from "@mixpanel-headless/core";
 
 import { RecordingCallback } from "./codecs.js";
+import { kwargBag } from "./internal/kwargs.js";
 import type { JsonValue } from "./json-value.js";
 import type { ImplementationRegistry, InvocationContext } from "./runner.js";
 import { clientFromSession, requireWireKwarg, runWire } from "./wire-client.js";
-
-/**
- * Copy the PRESENT members of `call.input` into an options bag under
- * the same Python kwarg names (absent stays absent — R3.5).
- *
- * @param context - The invocation context.
- * @param names - The kwarg names the method accepts.
- * @returns The options bag.
- */
-function kwargBag(
-  context: InvocationContext,
-  names: readonly string[],
-): Record<string, unknown> {
-  const bag: Record<string, unknown> = {};
-  for (const name of names) {
-    if (Object.hasOwn(context.kwargs, name)) {
-      bag[name] = context.kwargs[name];
-    }
-  }
-  return bag;
-}
 
 /**
  * Read an optional `on_batch` recording stub as the `onBatch` seam.

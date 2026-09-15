@@ -44,6 +44,7 @@ import {
   RecordingCallback,
 } from "./codecs.js";
 import { parseInteractions } from "./interactions.js";
+import { isExpectErrorConvertible } from "./internal/guards.js";
 import { JsonNumber, type JsonValue } from "./json-value.js";
 import { diffRequestTraffic } from "./request-diff.js";
 import { createShims, type RunnerShims } from "./shims.js";
@@ -96,39 +97,6 @@ export interface InvocationContext {
 
 /** A bound TS entry point: invoked with the context, returns the output. */
 export type Implementation = (context: InvocationContext) => unknown;
-
-/**
- * Thrown errors that carry their own vector `expect.error` encoding.
- *
- * Ported library errors implement this so the runner can diff them
- * structurally (class/code/errors per R5.2/R5.4) — the runner never
- * parses error MESSAGES.
- */
-export interface ExpectErrorConvertible {
-  /**
-   * Encode this error as a vector `expect.error` value.
-   *
-   * @returns An object with `class` (Python exception class name) and
-   *   optionally `code`, `errors[]`, `details_contain`.
-   */
-  toExpectError: () => JsonValue;
-}
-
-/**
- * Whether a thrown value implements {@link ExpectErrorConvertible}.
- *
- * @param value - The thrown value.
- * @returns `true` when `toExpectError` is callable.
- */
-function isExpectErrorConvertible(
-  value: unknown,
-): value is ExpectErrorConvertible {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    typeof (value as { toExpectError?: unknown }).toExpectError === "function"
-  );
-}
 
 /**
  * The bindings from Python dotted api names to TS implementations.

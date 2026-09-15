@@ -11,6 +11,7 @@
  * rules apply unchanged.
  */
 
+import { boundJsonReaders } from "./internal/guards.js";
 import { JsonNumber, type JsonValue } from "./json-value.js";
 
 /** Raised when a vector's `expect.interactions` violates the schema. */
@@ -25,6 +26,11 @@ export class MalformedInteractionError extends Error {
     this.name = "MalformedInteractionError";
   }
 }
+
+/** The object/string readers, raising {@link MalformedInteractionError}. */
+const { asObject, optionalString } = boundJsonReaders(
+  (message) => new MalformedInteractionError(message),
+);
 
 /** One `body_stream` chunk (chunk boundaries are contract, design D2). */
 export interface StreamChunk {
@@ -110,55 +116,6 @@ export interface ParsedInteraction {
   readonly response: GivenResponse | TransportErrorResponse;
   /** The raw interaction object (for diff rendering). */
   readonly raw: Readonly<Record<string, JsonValue>>;
-}
-
-/**
- * Narrow a value to a plain JSON object.
- *
- * @param value - The candidate value.
- * @param context - Location for the error message.
- * @returns The object.
- * @throws MalformedInteractionError - When not a plain object.
- */
-function asObject(
-  value: JsonValue | undefined,
-  context: string,
-): Record<string, JsonValue> {
-  if (
-    typeof value !== "object" ||
-    value === null ||
-    Array.isArray(value) ||
-    value instanceof JsonNumber
-  ) {
-    throw new MalformedInteractionError(`${context}: expected a JSON object`);
-  }
-  return value;
-}
-
-/**
- * Read an optional string field.
- *
- * @param record - The containing object.
- * @param key - Field name.
- * @param context - Location for the error message.
- * @returns The string, or `undefined` when absent.
- * @throws MalformedInteractionError - When present but not a string.
- */
-function optionalString(
-  record: Record<string, JsonValue>,
-  key: string,
-  context: string,
-): string | undefined {
-  const value = record[key];
-  if (value === undefined) {
-    return undefined;
-  }
-  if (typeof value !== "string") {
-    throw new MalformedInteractionError(
-      `${context}: field ${JSON.stringify(key)} must be a string`,
-    );
-  }
-  return value;
 }
 
 /**
