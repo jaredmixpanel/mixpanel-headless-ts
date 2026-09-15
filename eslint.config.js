@@ -982,6 +982,31 @@ const config = defineConfig([
     },
   },
 
+  // Core tests: titles are English behaviour statements; the Python test
+  // name lives in a trailing `// python: test_x` comment, never in the title
+  // (D7). Per-directory so the platform trees can adopt it as they finish.
+  {
+    name: "repo/tests/english-titles",
+    files: ["packages/core/test/**/*.ts"],
+    rules: {
+      "vitest/valid-title": [
+        "error",
+        {
+          mustNotMatch: {
+            it: [
+              "^test_",
+              "Titles are English; put the Python name in a trailing // python: comment",
+            ],
+            describe: [
+              "^Test[A-Z]|^test_",
+              "Titles are English; put the Python class in a trailing // python: comment",
+            ],
+          },
+        },
+      ],
+    },
+  },
+
   // -------------------------------------------------------------------------
   // Plain JavaScript (repo scripts, this config): untyped lint
   // -------------------------------------------------------------------------
