@@ -23,6 +23,8 @@ import { fileURLToPath } from "node:url";
 
 import ts from "typescript";
 
+import { pruneImports } from "./lib/imports.mjs";
+
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const SUPPORT_DIR = join(REPO_ROOT, "packages/core/test-support");
 const TEST_DIR = join(REPO_ROOT, "packages/core/test");
@@ -230,78 +232,6 @@ function attachedStart(text, statement) {
   }
   const kept = lines.slice(0, cut).join("\n");
   return statement.getFullStart() + kept.length + (cut > 0 ? 1 : 0);
-}
-
-/**
- * Count identifier-word occurrences of `name` outside import declarations.
- *
- * @param {ts.SourceFile} source - Parsed file.
- * @param {string} name - Identifier to count.
- * @returns {number} Occurrences.
- */
-function usesOutsideImports(source, name) {
-  const text = source.getFullText();
-  let body = text;
-  for (const statement of source.statements) {
-    if (ts.isImportDeclaration(statement)) {
-      body =
-        body.slice(0, statement.getStart()) +
-        " ".repeat(statement.getEnd() - statement.getStart()) +
-        body.slice(statement.getEnd());
-    }
-  }
-  const re = new RegExp(String.raw`\b${name}\b`, "g");
-  return (body.match(re) ?? []).length;
-}
-
-/**
- * Rebuild the named-import list of every import statement, dropping the
- * specifiers no longer referenced in the file body.
- *
- * @param {string} text - Source text.
- * @param {string} fileName - For the parser.
- * @returns {string} The pruned text.
- */
-function pruneImports(text, fileName) {
-  const source = ts.createSourceFile(
-    fileName,
-    text,
-    ts.ScriptTarget.Latest,
-    true,
-  );
-  /** @type {Array<{ start: number; end: number; replacement: string }>} */
-  const edits = [];
-  for (const statement of source.statements) {
-    if (!ts.isImportDeclaration(statement)) continue;
-    const clause = statement.importClause;
-    if (!clause?.namedBindings || !ts.isNamedImports(clause.namedBindings)) {
-      continue;
-    }
-    const kept = clause.namedBindings.elements.filter(
-      (element) => usesOutsideImports(source, element.name.text) > 0,
-    );
-    if (kept.length === clause.namedBindings.elements.length) continue;
-    const start = statement.getFullStart();
-    const end = statement.getEnd();
-    if (kept.length === 0 && !clause.name) {
-      edits.push({ start, end, replacement: "" });
-      continue;
-    }
-    const typeOnly = clause.isTypeOnly ? "type " : "";
-    const names = kept.map((element) => element.getText()).join(", ");
-    const spec = statement.moduleSpecifier.getText();
-    const leading = text.slice(start, statement.getStart());
-    edits.push({
-      start,
-      end,
-      replacement: `${leading}import ${typeOnly}{ ${names} } from ${spec};`,
-    });
-  }
-  let out = text;
-  for (const edit of edits.sort((a, b) => b.start - a.start)) {
-    out = out.slice(0, edit.start) + edit.replacement + out.slice(edit.end);
-  }
-  return out;
 }
 
 /**
