@@ -112,6 +112,28 @@ These packages are not yet published to npm and APIs may change before 1.0.
 Import specifiers on this site use the names they will publish under.
 :::
 
+## LLM-optimized documentation
+
+This site is built to be read by AI assistants as well as people. Alongside the
+HTML pages it publishes:
+
+| Endpoint                                      | Size    | Use it for                                                                                   |
+| --------------------------------------------- | ------- | -------------------------------------------------------------------------------------------- |
+| <a href="./llms.txt">`llms.txt`</a>           | ~6 kB   | A structured index with a one-line description per page — discover what documentation exists |
+| <a href="./llms-full.txt">`llms-full.txt`</a> | ~3.4 MB | Every page in one file, including the generated API reference — load it whole or search it   |
+| `<page>.md`                                   | varies  | A Markdown twin of every page at the same path (`/guide/query` → `/guide/query.md`)          |
+
+Every page also carries a **Copy page** button at the top: it copies the page as
+Markdown, and its menu opens the Markdown view or hands the page straight to
+ChatGPT or Claude. The button next to it downloads the `.md` file.
+
+Two properties of the content itself matter as much as the formats. Every
+TypeScript example on this site is compiled against the packages' published
+type declarations when the site is built, so a snippet an assistant copies
+type-checks as written. And every error the library throws carries a stable,
+machine-readable `code` (see [Error handling](/guide/error-handling)), so an
+agent can branch on failures without parsing messages.
+
 ## Where to next
 
 - [Installation](/getting-started/installation) — npm, pnpm, or yarn; Node.js ≥ 22.12; ESM only.
