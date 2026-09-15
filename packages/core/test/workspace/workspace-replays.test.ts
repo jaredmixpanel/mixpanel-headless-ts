@@ -704,7 +704,7 @@ describe("fetch_replays retention threading + batching (TestFetchReplaysBatching
     const seen = new Map<string, unknown>();
     ws.fetchReplay = async (
       rid: string,
-      opts: { retention_days?: number | null } = {},
+      opts: { retention_days?: number | null },
     ): Promise<Replay> => {
       seen.set(rid, opts.retention_days);
       return makeReplay(rid);
@@ -723,7 +723,7 @@ describe("fetch_replays retention threading + batching (TestFetchReplaysBatching
     const fetchOpts: Array<Record<string, unknown>> = [];
     ws.fetchReplay = async (
       rid: string,
-      opts: Record<string, unknown> = {},
+      opts: Record<string, unknown>,
     ): Promise<Replay> => {
       fetchOpts.push(opts);
       return makeReplay(rid);
@@ -791,7 +791,7 @@ describe("replays_for_user threads retention (TestReplaysForUserThreadsRetention
     const fetchCalls: Array<Record<string, unknown>> = [];
     ws.fetchReplays = async (
       _ids: readonly string[],
-      opts: Record<string, unknown> = {},
+      opts: Record<string, unknown>,
     ): Promise<ReplayBundle> => {
       fetchCalls.push(opts);
       return new ReplayBundle({ replays: [], project_id: 12345 });

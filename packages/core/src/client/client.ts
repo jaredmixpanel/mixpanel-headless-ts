@@ -1235,8 +1235,8 @@ export function createMixpanelClient(
       // extras win on collision (`api_client.py:963-965`).
       const headers: Record<string, string> = {
         Authorization: await getAuthHeader(),
+        ...requestOptions.headers,
       };
-      Object.assign(headers, requestOptions.headers ?? {});
       return executeWithRetry(executeDeps(requestOptions.signal), {
         method,
         url,

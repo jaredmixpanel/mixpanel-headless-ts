@@ -1861,8 +1861,7 @@ export class ReplayBundle {
       // — a Phase-2-era holdover from the unported `summary_markdown`.
       // The member is implemented now and cannot raise it, so the
       // fallback branch is unreachable in both runtimes.
-      sections.push(r.summaryMarkdown());
-      sections.push("\n---\n");
+      sections.push(r.summaryMarkdown(), "\n---\n");
     }
     return sections.join("\n");
   }

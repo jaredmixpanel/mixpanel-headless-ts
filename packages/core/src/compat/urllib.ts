@@ -462,9 +462,7 @@ export function urljoin(base: string, url: string): string {
   for (const seg of segments) {
     if (seg === "..") {
       resolved.pop();
-    } else if (seg === ".") {
-      continue;
-    } else {
+    } else if (seg !== ".") {
       resolved.push(seg);
     }
   }

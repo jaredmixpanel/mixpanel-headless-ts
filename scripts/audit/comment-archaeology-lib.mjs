@@ -394,7 +394,7 @@ const ORPHAN_ANYWHERE_RE = /`:\d+|[,/;]\s*:\d+/;
 // A backticked identifier, a snake_case call, or a dotted path with at least
 // two characters per segment (so "e.g." / "i.e." do not count as symbols).
 const SYMBOL_NEARBY_RE =
-  /`[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*(?:\(\))?`|\b[A-Za-z_]\w*_\w*\(|\b[A-Za-z_]\w+\.(?!py\b|md\b|json\b|ts\b|mjs\b|js\b)[A-Za-z_]\w+\b/;
+  /`[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*(?:\(\))?`|\b[A-Za-z_][\dA-Za-z]*_\w*\(|\b[A-Za-z_]\w+\.(?!py\b|md\b|json\b|ts\b|mjs\b|js\b)[A-Za-z_]\w+\b/;
 
 function hasSymbolNearby(text) {
   return SYMBOL_NEARBY_RE.test(text);
@@ -708,7 +708,6 @@ export function rewriteSource(text, options = {}) {
         items: [c],
         lastLine: startLine,
       };
-      groups.push(current);
     } else {
       current = {
         kind: c.kind,
@@ -716,8 +715,8 @@ export function rewriteSource(text, options = {}) {
         items: [c],
         lastLine: lineNumber(c.end),
       };
-      groups.push(current);
     }
+    groups.push(current);
   }
 
   for (const g of groups) {

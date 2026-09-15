@@ -188,58 +188,55 @@ const knownModules = [
   ]),
 ].sort();
 
-const lines = [];
-lines.push("// GENERATED FILE — DO NOT EDIT.");
-lines.push("// Regenerate with: npm run generate:api-map");
-lines.push("//");
-lines.push(
+const lines = [
+  "// GENERATED FILE — DO NOT EDIT.",
+  "// Regenerate with: npm run generate:api-map",
+  "//",
   "// Maps every Python dotted call.api in the corpus api-index (plus the",
-);
-lines.push("// authored D13 gate supplement) to its TS home (design D12/D13,");
-lines.push("// naming-map §5). Inputs + sha256 provenance stamps:");
-lines.push(`//   corpus/typescript-port-api-map.json  ${apiMapJson.sha256}`);
-lines.push(`//   corpus/api-index.json                ${apiIndex.sha256}`);
-lines.push(`//   src/naming-exceptions.json           ${exceptions.sha256}`);
-lines.push(`//   src/authored-apis.json               ${authoredApis.sha256}`);
-lines.push(
+  "// authored D13 gate supplement) to its TS home (design D12/D13,",
+  "// naming-map §5). Inputs + sha256 provenance stamps:",
+  `//   corpus/typescript-port-api-map.json  ${apiMapJson.sha256}`,
+  `//   corpus/api-index.json                ${apiIndex.sha256}`,
+  `//   src/naming-exceptions.json           ${exceptions.sha256}`,
+  `//   src/authored-apis.json               ${authoredApis.sha256}`,
   'import type { ApiMapEntry, ApiMapSourceHashes } from "./api-map-types.js";',
-);
-lines.push("");
-lines.push(
+  "",
   "/** sha256 stamps of the four generation inputs (D12 provenance). */",
-);
-lines.push("export const API_MAP_SOURCE_HASHES: ApiMapSourceHashes = {");
-lines.push(`  apiMapJson: "${apiMapJson.sha256}",`);
-lines.push(`  apiIndexJson: "${apiIndex.sha256}",`);
-lines.push(`  namingExceptionsJson: "${exceptions.sha256}",`);
-lines.push(`  authoredApisJson: "${authoredApis.sha256}",`);
-lines.push("};");
-lines.push("");
-lines.push("/** Python module prefixes known to the corpus api-index or the");
-lines.push(' * authored supplement — the "module known" universe for the');
-lines.push(" * UNPORTED verdict (D12/TS-6). */");
-lines.push("export const KNOWN_PYTHON_MODULES: readonly string[] = [");
+  "export const API_MAP_SOURCE_HASHES: ApiMapSourceHashes = {",
+  `  apiMapJson: "${apiMapJson.sha256}",`,
+  `  apiIndexJson: "${apiIndex.sha256}",`,
+  `  namingExceptionsJson: "${exceptions.sha256}",`,
+  `  authoredApisJson: "${authoredApis.sha256}",`,
+  "};",
+  "",
+  "/** Python module prefixes known to the corpus api-index or the",
+  ' * authored supplement — the "module known" universe for the',
+  " * UNPORTED verdict (D12/TS-6). */",
+  "export const KNOWN_PYTHON_MODULES: readonly string[] = [",
+];
 for (const moduleName of knownModules) {
   lines.push(`  "${moduleName}",`);
 }
-lines.push("];");
-lines.push("");
-lines.push("/** Every corpus call.api -> TS home + signature shape. */");
-lines.push("export const API_MAP: Readonly<Record<string, ApiMapEntry>> = {");
+lines.push(
+  "];",
+  "",
+  "/** Every corpus call.api -> TS home + signature shape. */",
+  "export const API_MAP: Readonly<Record<string, ApiMapEntry>> = {",
+);
 for (const entry of entries) {
-  lines.push(`  "${entry.pythonApi}": {`);
-  lines.push(`    pythonApi: "${entry.pythonApi}",`);
-  lines.push(`    pythonModule: "${entry.pythonModule}",`);
-  lines.push(`    tsModule: "${entry.tsModule}",`);
-  lines.push(`    tsName: "${entry.tsName}",`);
-  lines.push(`    kind: "${entry.kind}",`);
-  lines.push(`    capability: "${entry.capability}",`);
+  lines.push(
+    `  "${entry.pythonApi}": {`,
+    `    pythonApi: "${entry.pythonApi}",`,
+    `    pythonModule: "${entry.pythonModule}",`,
+    `    tsModule: "${entry.tsModule}",`,
+    `    tsName: "${entry.tsName}",`,
+    `    kind: "${entry.kind}",`,
+    `    capability: "${entry.capability}",`,
+  );
   lines.push(`    params: ${JSON.stringify(entry.params)},`);
-  lines.push(`    kwonly: ${JSON.stringify(entry.kwonly)},`);
-  lines.push("  },");
+  lines.push(`    kwonly: ${JSON.stringify(entry.kwonly)},`, "  },");
 }
-lines.push("};");
-lines.push("");
+lines.push("};", "");
 
 writeFileSync(OUTPUT_PATH, lines.join("\n"));
 console.log(
