@@ -8,7 +8,7 @@ description: "Build typed flow path analysis against Mixpanel's Insights engine 
 Build typed flow path analysis against Mixpanel's Insights engine — define anchor events, control forward/reverse step depth, apply per-step filters, and analyze user paths inline without creating saved reports first.
 
 ::: tip Recommended
-`ws.queryFlow()` is the typed way to run flow analysis programmatically. It supports capabilities not available through the legacy `querySavedFlows()` method, including per-step filters, direction controls, multiple visualization modes, a plain `{ nodes, edges }` graph, and typed tree results.
+`ws.queryFlow()` is the typed way to run flow analysis programmatically. It supports capabilities not available through the legacy `querySavedFlows()` method, including per-step filters, direction controls, multiple visualization modes, a `FlowGraph` (`{ nodes, edges }`), and typed tree results.
 :::
 
 ## When to use `queryFlow()`
@@ -23,7 +23,7 @@ Build typed flow path analysis against Mixpanel's Insights engine — define anc
 | Direction control      | Not available                         | `forward: 3, reverse: 1`                                       |
 | Per-step direction     | Not available                         | `new FlowStep({ event: "Purchase", forward: 5 })`              |
 | Visualization modes    | Not available                         | `mode: "sankey"`, `"paths"`, or `"tree"`                       |
-| Graph output           | Not available                         | `result.graph()` — `{ nodes, edges }`                          |
+| Graph output           | Not available                         | `result.graph()` — a `FlowGraph`                               |
 | Top transitions        | Not available                         | `result.topTransitions(10)`                                    |
 | Drop-off summary       | Not available                         | `result.dropOffSummary()`                                      |
 | Tree traversal         | Not available                         | `result.trees` — recursive `FlowTreeNode`                      |
@@ -84,7 +84,7 @@ const q1 = await ws.queryFlow("Purchase", {
 Every option is documented on [`WorkspaceFlowQueryOptions`](/reference/core/interfaces/WorkspaceFlowQueryOptions).
 
 ::: info Coming from Python?
-`ws.query_flow("Purchase", forward=3, reverse=1)` becomes `ws.queryFlow("Purchase", { forward: 3, reverse: 1 })`. `result.nodes_df` / `edges_df` / `trees_df` become `toNodesRows()` / `toEdgesRows()` / `toTreesRows()`; the NetworkX `graph` property becomes the `graph()` method returning a plain `{ nodes, edges }` object; `to_anytree()` becomes `toAnytree()` returning parent-linked plain objects. See [Coming from Python](/guide/coming-from-python).
+`ws.query_flow("Purchase", forward=3, reverse=1)` becomes `ws.queryFlow("Purchase", { forward: 3, reverse: 1 })`. `result.nodes_df` / `edges_df` / `trees_df` become `toNodesRows()` / `toEdgesRows()` / `toTreesRows()`; the NetworkX `graph` property becomes the `graph()` method returning a [`FlowGraph`](/reference/core/interfaces/FlowGraph) (`{ nodes, edges }`); `to_anytree()` becomes `toAnytree()` returning parent-linked [`AnyTreeNode`](/reference/core/interfaces/AnyTreeNode) objects. See [Coming from Python](/guide/coming-from-python).
 :::
 
 ## Steps
@@ -560,7 +560,7 @@ One row per transition between nodes; `edgesRowColumns()` names the columns:
 
 ### Graph (`graph()`)
 
-`graph()` returns a plain `{ nodes, edges }` adjacency object — the same data Python hands to `networkx.DiGraph`, in the same order:
+`graph()` returns a [`FlowGraph`](/reference/core/interfaces/FlowGraph) — a plain `{ nodes, edges }` adjacency object carrying the same data Python hands to `networkx.DiGraph`, in the same order:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -586,7 +586,7 @@ for (const edge of [...g.edges].sort((a, b) => b.count - a.count).slice(0, 5)) {
 }
 ```
 
-Nodes are keyed as `"{event}@{step}"` (`id`) with `step`, `event`, `type`, `count` and `anchor_type`; edges carry `source`, `target`, `count` and `type`.
+Nodes ([`FlowGraphNode`](/reference/core/interfaces/FlowGraphNode)) are keyed as `"{event}@{step}"` (`id`) with `step`, `event`, `type`, `count` and `anchor_type`; edges ([`FlowGraphEdge`](/reference/core/interfaces/FlowGraphEdge)) carry `source`, `target`, `count` and `type`.
 
 #### What the graph unlocks
 
@@ -696,14 +696,14 @@ console.table(result.toTreesRows());
 
 `FlowTreeNode` methods:
 
-| Method        | Returns                                  | Description                                     |
-| ------------- | ---------------------------------------- | ----------------------------------------------- |
-| `allPaths()`  | `ReadonlyArray<readonly FlowTreeNode[]>` | All root-to-leaf paths through the subtree      |
-| `flatten()`   | `readonly FlowTreeNode[]`                | Preorder traversal of all nodes                 |
-| `find(event)` | `readonly FlowTreeNode[]`                | All nodes matching an event name                |
-| `render()`    | `string`                                 | Box-drawing ASCII visualization                 |
-| `toJSON()`    | `Record<string, unknown>`                | JSON-serializable recursive object              |
-| `toAnytree()` | parent-linked node                       | Convert to a tree with `parent` back-references |
+| Method        | Returns                                                 | Description                                     |
+| ------------- | ------------------------------------------------------- | ----------------------------------------------- |
+| `allPaths()`  | `ReadonlyArray<readonly FlowTreeNode[]>`                | All root-to-leaf paths through the subtree      |
+| `flatten()`   | `readonly FlowTreeNode[]`                               | Preorder traversal of all nodes                 |
+| `find(event)` | `readonly FlowTreeNode[]`                               | All nodes matching an event name                |
+| `render()`    | `string`                                                | Box-drawing ASCII visualization                 |
+| `toJSON()`    | `Record<string, unknown>`                               | JSON-serializable recursive object              |
+| `toAnytree()` | [`AnyTreeNode`](/reference/core/interfaces/AnyTreeNode) | Convert to a tree with `parent` back-references |
 
 The trees frame (`toTreesRows()` / `treesRowColumns()`) has the columns `tree_index`, `depth`, `path`, `event`, `type`, `step_number`, `total_count`, `drop_off_count`, `converted_count`.
 
@@ -772,7 +772,7 @@ The tree is uniquely suited to _branching analysis_ — understanding not just t
 
 #### Parent-linked trees (`toAnytree()`)
 
-`FlowTreeNode` is immutable and children-only — you can traverse downward, but you can't ask a node "how did I get here?" `toAnytree()` builds a parallel tree of plain objects with **parent references**, the port of Python's `to_anytree()`. Where Python returns `anytree.AnyNode` objects, the port returns plain nodes with the same eight attributes plus `parent` and `children`; `RenderTree`, `findall` and the Graphviz exporters are anytree library helpers and have no twin.
+`FlowTreeNode` is immutable and children-only — you can traverse downward, but you can't ask a node "how did I get here?" `toAnytree()` builds a parallel tree of [`AnyTreeNode`](/reference/core/interfaces/AnyTreeNode) objects with **parent references**, the port of Python's `to_anytree()`. Where Python returns `anytree.AnyNode` objects, the port returns plain `AnyTreeNode`s with the same eight attributes plus `parent` and `children`; `RenderTree`, `findall` and the Graphviz exporters are anytree library helpers and have no twin.
 
 Use `toAnytree()` on any single `FlowTreeNode`, or `result.anytree()` for the full list of converted roots:
 
@@ -780,13 +780,13 @@ Use `toAnytree()` on any single `FlowTreeNode`, or `result.anytree()` for the fu
 import { createNodeWorkspace } from "@mixpanel-headless/node";
 const ws = createNodeWorkspace();
 // ---cut---
+import type { AnyTreeNode } from "@mixpanel-headless/core";
+
 const result = await ws.queryFlow("Purchase", { mode: "tree", forward: 3 });
 const root = result.anytree()[0]; // converted root, parent === null
 
-type Linked = NonNullable<typeof root>;
-
 // Preorder walk — the equivalent of anytree's findall()
-function* walk(node: Linked): Generator<Linked> {
+function* walk(node: AnyTreeNode): Generator<AnyTreeNode> {
   yield node;
   for (const child of node.children) {
     yield* walk(child);
@@ -794,9 +794,9 @@ function* walk(node: Linked): Generator<Linked> {
 }
 
 // Root-to-node chain — the equivalent of anytree's node.path
-function pathTo(node: Linked): Linked[] {
-  const chain: Linked[] = [];
-  for (let at: Linked | null = node; at !== null; at = at.parent) {
+function pathTo(node: AnyTreeNode): AnyTreeNode[] {
+  const chain: AnyTreeNode[] = [];
+  for (let at: AnyTreeNode | null = node; at !== null; at = at.parent) {
     chain.unshift(at);
   }
   return chain;
@@ -822,7 +822,7 @@ if (root) {
 }
 ```
 
-Each linked node carries `parent`, `children`, `event`, `type`, `step_number`, `total_count`, `drop_off_count`, `converted_count`, `anchor_type` and `is_computed`. Depth is `pathTo(node).length - 1`; ancestors are `pathTo(node).slice(0, -1)`; siblings are `node.parent?.children.filter((n) => n !== node)`.
+Each `AnyTreeNode` carries `parent`, `children`, `event`, `type`, `step_number`, `total_count`, `drop_off_count`, `converted_count`, `anchor_type` and `is_computed`. Depth is `pathTo(node).length - 1`; ancestors are `pathTo(node).slice(0, -1)`; siblings are `node.parent?.children.filter((n) => n !== node)`.
 
 ### Persisting as a saved report
 
@@ -1159,4 +1159,4 @@ Values: `"start"` (session start anchor) or `"end"` (session end anchor) — the
 - [Funnel queries](/guide/query-funnels) — typed funnel conversion analysis with steps, exclusions, and conversion windows
 - [Retention queries](/guide/query-retention) — typed retention analysis with event pairs and custom buckets
 - [Live analytics](/guide/live-analytics) — legacy saved Flows report method
-- [API reference](/api/) — [`Workspace`](/reference/core/classes/Workspace), [`WorkspaceFlowQueryOptions`](/reference/core/interfaces/WorkspaceFlowQueryOptions), [`FlowStep`](/reference/core/classes/FlowStep), [`FlowTreeNode`](/reference/core/classes/FlowTreeNode), [`FlowQueryResult`](/reference/core/classes/FlowQueryResult), [`FlowNodeType`](/reference/core/type-aliases/FlowNodeType), [`FlowAnchorType`](/reference/core/type-aliases/FlowAnchorType)
+- [API reference](/api/) — [`Workspace`](/reference/core/classes/Workspace), [`WorkspaceFlowQueryOptions`](/reference/core/interfaces/WorkspaceFlowQueryOptions), [`FlowStep`](/reference/core/classes/FlowStep), [`FlowTreeNode`](/reference/core/classes/FlowTreeNode), [`FlowQueryResult`](/reference/core/classes/FlowQueryResult), [`FlowNodeType`](/reference/core/type-aliases/FlowNodeType), [`FlowAnchorType`](/reference/core/type-aliases/FlowAnchorType), [`FlowGraph`](/reference/core/interfaces/FlowGraph), [`AnyTreeNode`](/reference/core/interfaces/AnyTreeNode)
