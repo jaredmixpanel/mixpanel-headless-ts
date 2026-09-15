@@ -20,10 +20,12 @@
 import {
   type MixpanelClientOptions,
   Workspace,
+  type WorkspaceLogger,
   type WorkspaceOptions,
 } from "@mixpanel-headless/core";
 
 import { bridgeViewFromFile, loadBridgeForStartup } from "./auth/bridge.js";
+import type { StorageLogger } from "./auth/storage.js";
 import {
   createNodeAuthEffects,
   type NodeAuthEffectsOptions,
@@ -52,6 +54,34 @@ export interface NodeWorkspaceOptions extends NodeAuthEffectsOptions {
    * reader (`MP_API_BASE_URL` / `MP_APP_BASE_URL`) it wires.
    */
   readonly clientOptions?: Omit<MixpanelClientOptions, "session"> | undefined;
+}
+
+/**
+ * The facade's log seam for a node process: warnings reach stderr the way
+ * Python's unconfigured `logging` last-resort handler prints them
+ * (WARNING and above; debug/info are dropped), or route to the caller's
+ * storage logger when one was supplied.
+ *
+ * @param logger - The caller's `NodeAuthEffectsOptions.logger`, if any.
+ * @returns The `Workspace` logger.
+ */
+function nodeWorkspaceLogger(
+  logger: StorageLogger | undefined,
+): WorkspaceLogger {
+  if (logger !== undefined) {
+    return {
+      debug: (message): void => logger.debug?.(message),
+      warning: (message): void => {
+        logger.warning(message);
+      },
+    };
+  }
+  return {
+    debug: (): void => undefined,
+    warning: (message): void => {
+      process.stderr.write(`${message}\n`);
+    },
+  };
 }
 
 /**
@@ -115,6 +145,7 @@ export function createNodeWorkspace(
     },
     meCache: (accountName: string) => new MeCache({ accountName }),
     readFile: nodeReadFile,
+    logger: nodeWorkspaceLogger(options.logger),
   };
   return new Workspace(workspaceOptions);
 }
