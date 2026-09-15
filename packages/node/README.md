@@ -61,7 +61,9 @@ with a loopback callback (and a paste fallback when the callback is blocked).
 
 ## Entry point
 
-`@mixpanel-headless/node` re-exports the core public API and adds:
+`@mixpanel-headless/node` re-exports only `Workspace`, `WorkspaceOptions` and
+`MeCacheStore` from core — query vocabulary (`Filter`, `FunnelStep`, …) and the
+error classes are imported from `@mixpanel-headless/core` — and adds:
 
 - `createNodeWorkspace`, `createNodeAuthEffects`, `createNodeResolverSources`,
   `createNodeWorkspaceSources`, `createNodeEnv`, `createNodeEndpointOverrides`

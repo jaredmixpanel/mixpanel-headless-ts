@@ -53,7 +53,11 @@ export class AnnotationUser extends EntityModel<AnnotationUserInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<AnnotationUserInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "first_name", required: true, kind: "str" },
@@ -128,7 +132,11 @@ export class AnnotationTag extends EntityModel<AnnotationTagInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<AnnotationTagInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", required: true, kind: "str" },
@@ -214,7 +222,11 @@ export class Annotation extends EntityModel<AnnotationInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<AnnotationInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "project_id", required: true, kind: "int" },
@@ -302,7 +314,11 @@ export class CreateAnnotationParams extends EntityModel<CreateAnnotationParamsIn
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<CreateAnnotationParamsInit> = [
     { name: "date", required: true, kind: "str" },
     {
@@ -384,7 +400,11 @@ export class UpdateAnnotationParams extends EntityModel<UpdateAnnotationParamsIn
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<UpdateAnnotationParamsInit> = [
     {
       name: "description",
@@ -456,7 +476,11 @@ export class CreateAnnotationTagParams extends EntityModel<CreateAnnotationTagPa
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<CreateAnnotationTagParamsInit> =
     [{ name: "name", required: true, kind: "str" }];
 

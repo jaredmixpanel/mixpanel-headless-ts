@@ -30,6 +30,7 @@ export interface SchemaEnforcementMethods {
    * @param options - Optional `fields` filter + signal.
    * @returns The enforcement config dict.
    * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_schema_enforcement
    */
   getSchemaEnforcement: (

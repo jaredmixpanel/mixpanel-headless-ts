@@ -66,7 +66,11 @@ export class ProjectWebhook extends EntityModel<ProjectWebhookInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<ProjectWebhookInit> = [
     { name: "id", required: true, kind: "str" },
     { name: "name", required: true, kind: "str" },
@@ -161,7 +165,11 @@ export class CreateWebhookParams extends EntityModel<CreateWebhookParamsInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<CreateWebhookParamsInit> = [
     { name: "name", required: true, kind: "str" },
     { name: "url", required: true, kind: "str" },
@@ -242,7 +250,11 @@ export class UpdateWebhookParams extends EntityModel<UpdateWebhookParamsInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<UpdateWebhookParamsInit> = [
     { name: "name", kind: "str", nullable: true },
     { name: "url", kind: "str", nullable: true },
@@ -327,7 +339,11 @@ export class WebhookTestParams extends EntityModel<WebhookTestParamsInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<WebhookTestParamsInit> = [
     { name: "url", required: true, kind: "str" },
     { name: "name", kind: "str", nullable: true },
@@ -406,7 +422,11 @@ export class WebhookTestResult extends EntityModel<WebhookTestResultInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<WebhookTestResultInit> = [
     { name: "success", required: true, kind: "bool" },
     { name: "status_code", required: true, kind: "int" },
@@ -476,7 +496,11 @@ export class WebhookMutationResult extends EntityModel<WebhookMutationResultInit
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<WebhookMutationResultInit> = [
     { name: "id", required: true, kind: "str" },
     { name: "name", required: true, kind: "str" },

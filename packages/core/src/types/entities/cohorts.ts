@@ -81,7 +81,11 @@ export class CohortCreator extends EntityModel<CohortCreatorInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<CohortCreatorInit> = [
     { name: "id", kind: "int", nullable: true },
     { name: "name", kind: "str", nullable: true },
@@ -177,7 +181,11 @@ export class Cohort extends EntityModel<CohortInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<CohortInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", required: true, kind: "str" },
@@ -290,7 +298,11 @@ export class CreateCohortParams extends EntityModel<CreateCohortParamsInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<CreateCohortParamsInit> = [
     { name: "definition", nullable: true },
     { name: "name", required: true, kind: "str" },
@@ -392,7 +404,11 @@ export class UpdateCohortParams extends EntityModel<UpdateCohortParamsInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<UpdateCohortParamsInit> = [
     { name: "definition", nullable: true },
     { name: "name", kind: "str", nullable: true },
@@ -488,7 +504,11 @@ export class BulkUpdateCohortEntry extends EntityModel<BulkUpdateCohortEntryInit
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<BulkUpdateCohortEntryInit> = [
     { name: "definition", nullable: true },
     { name: "id", required: true, kind: "int" },

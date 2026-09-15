@@ -46,7 +46,7 @@ export const PROPERTY_OPERATOR_MAP: ReadonlyMap<string, string> = new Map([
 // `python-builtins.ts` is import-free, so the import creates no cycle.
 
 /**
- * The `Filter._operator` values {@link buildEventSelector} accepts.
+ * The `Filter._operator` values `buildEventSelector` accepts.
  *
  * These operators are emitted verbatim in the Insights bookmark filter
  * format (`filterOperator` key) — no mapping is needed because the
@@ -308,7 +308,7 @@ export class CohortCriteria {
    *   `CA1_AGGREGATION_PAIR`, `CA2_EMPTY_AGGREGATION_PROPERTY`,
    *   `CD1_FREQUENCY_PARAM_REQUIRED`, `CD2_FREQUENCY_NEGATIVE`,
    *   `CD3_TIME_CONSTRAINT_REQUIRED`, `CD10_UNSUPPORTED_FILTER_OPERATOR`
-   *   (via {@link buildEventSelector}), `CD3_WINDOW_NOT_POSITIVE`,
+   *   (via `buildEventSelector`), `CD3_WINDOW_NOT_POSITIVE`,
    *   `CD5_FROM_REQUIRES_TO`, `CD5_TO_REQUIRES_FROM`, `CD6_DATE_FORMAT`,
    *   `CD6_DATE_INVALID`, `CD6_DATE_ORDER` — first failing guard wins.
    * @see mixpanel_headless.types.CohortCriteria.did_event
@@ -571,7 +571,7 @@ export class CohortCriteria {
    * @throws {@link ParamValidationError} - `CD7_EMPTY_PROPERTY` when the
    *   property name is empty or blank.
    * @throws {@link KeyError} - When an untyped caller passes an operator
-   *   outside {@link PROPERTY_OPERATOR_MAP}, as Python's dict lookup does.
+   *   outside the property-operator table, as Python's dict lookup does.
    * @see mixpanel_headless.types.CohortCriteria.has_property
    */
   static hasProperty(

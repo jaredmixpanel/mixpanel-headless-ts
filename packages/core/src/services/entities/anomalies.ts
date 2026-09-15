@@ -35,6 +35,7 @@ export interface AnomalyMethods {
    * @returns The anomaly list.
    * @throws {@link MixpanelHeadlessError} - Missing `anomalies` key ("missing
    *   'anomalies' key in results") or an unexpected format.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_data_volume_anomalies
    */
   listDataVolumeAnomalies: (

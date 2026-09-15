@@ -668,7 +668,7 @@ export function createStreamingMethods(core: ClientCore): StreamingMethods {
   };
 }
 
-/** Options bag of {@link streamEvents} (`workspace.stream_events`). */
+/** Options bag of {@link Workspace.streamEvents} (`workspace.stream_events`). */
 export interface StreamEventsOptions {
   /** Start date inclusive (`YYYY-MM-DD`). */
   readonly from_date: string;
@@ -696,7 +696,7 @@ export interface StreamEventsOptions {
   readonly signal?: AbortSignal | undefined;
 }
 
-/** Options bag of {@link streamProfiles} (`workspace.stream_profiles`). */
+/** Options bag of {@link Workspace.streamProfiles} (`workspace.stream_profiles`). */
 export interface StreamProfilesOptions extends ExportProfilesOptions {
   /**
    * Return the raw Mixpanel format instead of the normalized shape.

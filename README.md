@@ -356,8 +356,7 @@ The classic query endpoints are also available directly: `segmentation`, `funnel
 `querySavedReport`, and `querySavedFlows`.
 
 ```typescript
-const seg = await ws.segmentation({
-  event: "Purchase",
+const seg = await ws.segmentation("Purchase", {
   from_date: "2026-01-01",
   to_date: "2026-01-31",
   on: "country",
@@ -583,16 +582,16 @@ The Node package ships ready-made management namespaces backed by
 ```typescript
 import { accounts, session, targets } from "@mixpanel-headless/node";
 
-await accounts.list(); // all configured accounts
+accounts.list(); // all configured accounts (synchronous: config file only)
 await accounts.test(); // probe /me for the active account
-await accounts.use("staging"); // switch the active account
+accounts.use("staging"); // switch the active account
 await accounts.token(); // valid bearer token (auto-refreshed)
 
-await session.show(); // resolved account/project/workspace
-await session.use({ project: "67890" }); // repin the active project
+session.show(); // resolved account/project/workspace
+session.use({ project: "67890" }); // repin the active project
 
-await targets.add("prod", { account: "team", project: "12345" });
-await targets.use("prod"); // apply all three axes atomically
+targets.add("prod", { account: "team", project: "12345" });
+targets.use("prod"); // apply all three axes atomically
 ```
 
 Workspaces can also pin axes per-instance, without touching the persisted session:

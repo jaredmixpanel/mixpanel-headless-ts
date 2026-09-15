@@ -54,7 +54,7 @@ export interface ProbeClient {
    * @param path - Request path (relative to the client's base URL).
    * @param opts - Headers + per-request timeout in seconds (the Python
    *   spelling of the unit; the millisecond conversion lives inside
-   *   {@link probeClientFromFetch} at the transport call).
+   *   `probeClientFromFetch` at the transport call).
    * @returns The buffered response.
    */
   get: (
@@ -463,7 +463,7 @@ export interface ProbeRegionForCredentialOptions {
  *
  * Under an `apiBaseUrl` override (Python PR #235) the walk collapses to
  * one probe at the override base and the returned region is the region
- * hint (when valid) or `us` — see {@link overrideProbeOrder}.
+ * hint (when valid) or `us` — see `overrideProbeOrder`.
  *
  * @param options - Credential material + seams (see the field docs).
  * @returns The first region whose `/me` returned 200 (under an

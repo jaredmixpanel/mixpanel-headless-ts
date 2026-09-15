@@ -54,7 +54,11 @@ export class SchemaEntry extends EntityModel<SchemaEntryInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<SchemaEntryInit> = [
     {
       name: "entity_type",
@@ -142,7 +146,11 @@ export class BulkCreateSchemasParams extends EntityModel<BulkCreateSchemasParams
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<BulkCreateSchemasParamsInit> = [
     {
       name: "entries",
@@ -225,7 +233,11 @@ export class BulkCreateSchemasResponse extends EntityModel<BulkCreateSchemasResp
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<BulkCreateSchemasResponseInit> =
     [
       { name: "added", required: true, kind: "int" },
@@ -300,7 +312,11 @@ export class BulkPatchResult extends EntityModel<BulkPatchResultInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<BulkPatchResultInit> = [
     {
       name: "entity_type",
@@ -376,7 +392,11 @@ export class DeleteSchemasResponse extends EntityModel<DeleteSchemasResponseInit
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<DeleteSchemasResponseInit> = [
     {
       name: "delete_count",
@@ -468,7 +488,11 @@ export class SchemaEnforcementConfig extends EntityModel<SchemaEnforcementConfig
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<SchemaEnforcementConfigInit> = [
     { name: "id", kind: "int", nullable: true },
     {
@@ -617,7 +641,11 @@ export class InitSchemaEnforcementParams extends EntityModel<InitSchemaEnforceme
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<InitSchemaEnforcementParamsInit> =
     [
       {
@@ -692,7 +720,11 @@ export class UpdateSchemaEnforcementParams extends EntityModel<UpdateSchemaEnfor
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<UpdateSchemaEnforcementParamsInit> =
     [
       {
@@ -792,7 +824,11 @@ export class ReplaceSchemaEnforcementParams extends EntityModel<ReplaceSchemaEnf
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<ReplaceSchemaEnforcementParamsInit> =
     [
       {
@@ -919,7 +955,11 @@ export class AuditViolation extends EntityModel<AuditViolationInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<AuditViolationInit> = [
     { name: "violation", required: true, kind: "str" },
     { name: "name", required: true, kind: "str" },
@@ -1012,7 +1052,11 @@ export class AuditResponse extends EntityModel<AuditResponseInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<AuditResponseInit> = [
     {
       name: "violations",
@@ -1122,7 +1166,11 @@ export class DataVolumeAnomaly extends EntityModel<DataVolumeAnomalyInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<DataVolumeAnomalyInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "timestamp", kind: "str", nullable: true },
@@ -1305,7 +1353,11 @@ export class UpdateAnomalyParams extends EntityModel<UpdateAnomalyParamsInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<UpdateAnomalyParamsInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "status", required: true, kind: "str" },
@@ -1378,7 +1430,11 @@ export class BulkAnomalyEntry extends EntityModel<BulkAnomalyEntryInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<BulkAnomalyEntryInit> = [
     { name: "id", required: true, kind: "int" },
     {
@@ -1453,7 +1509,11 @@ export class BulkUpdateAnomalyParams extends EntityModel<BulkUpdateAnomalyParams
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<BulkUpdateAnomalyParamsInit> = [
     {
       name: "anomalies",
@@ -1549,7 +1609,11 @@ export class EventDeletionRequest extends EntityModel<EventDeletionRequestInit> 
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<EventDeletionRequestInit> = [
     { name: "id", required: true, kind: "int" },
     {
@@ -1691,7 +1755,11 @@ export class CreateDeletionRequestParams extends EntityModel<CreateDeletionReque
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<CreateDeletionRequestParamsInit> =
     [
       {
@@ -1790,7 +1858,11 @@ export class PreviewDeletionFiltersParams extends EntityModel<PreviewDeletionFil
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<PreviewDeletionFiltersParamsInit> =
     [
       {

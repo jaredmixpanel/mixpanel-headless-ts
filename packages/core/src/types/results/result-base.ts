@@ -13,19 +13,16 @@
  * payloads decode to an iso-carrying object and `$type: float` payloads
  * to a spelling-carrying object (the runner's `PyDatetime` / `PyFloat`),
  * which this module cannot import (the runner depends on core, never the
- * reverse). Nothing here is part of the public package surface.
- *
- * @internal
+ * reverse). Only the `Row` alias is part of the public package
+ * surface; the decoders and row helpers are not.
  */
 
 import { ResponseValidationError } from "../../errors.js";
 import { describeValue } from "../entities/decode-utils.js";
 
 /**
- * One pre-pandas row exactly as Python builds it before
- * `pd.DataFrame(rows)`.
- *
- * @internal
+ * One result row as `toRows()` returns it: a plain object keyed by
+ * column name, exactly the row Python builds before `pd.DataFrame(rows)`.
  */
 export type Row = Record<string, unknown>;
 

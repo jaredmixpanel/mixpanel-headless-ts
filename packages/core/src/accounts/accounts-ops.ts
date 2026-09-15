@@ -320,7 +320,7 @@ export function accountsList(effects: AuthEffects): AccountSummary[] {
 }
 
 /**
- * Options bag of {@link accountsAdd}; keys mirror the
+ * Options bag of {@link AccountsNamespace.add}; keys mirror the
  * Python keyword-only parameters.
  */
 export interface AccountsAddOptions {
@@ -543,7 +543,7 @@ async function deriveAccountNameForCredential(
 }
 
 /**
- * Options bag of {@link accountsUpdate}; keys mirror the Python
+ * Options bag of {@link AccountsNamespace.update}; keys mirror the Python
  * keyword-only parameters. An absent field stays untouched.
  */
 export interface AccountsUpdateOptions {
@@ -778,7 +778,7 @@ export async function accountsTest(
 }
 
 /**
- * Options bag of {@link accountsLogin}; keys mirror the
+ * Options bag of {@link AccountsNamespace.login}; keys mirror the
  * Python keyword-only parameters.
  */
 export interface AccountsLoginOptions {
@@ -927,7 +927,7 @@ export async function accountsToken(
 }
 
 /**
- * Options bag of {@link accountsExportBridge}; keys mirror the
+ * Options bag of {@link AccountsNamespace.exportBridge}; keys mirror the
  * Python keyword-only parameters.
  */
 export interface ExportBridgeOptions {

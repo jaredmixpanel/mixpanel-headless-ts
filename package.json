@@ -45,7 +45,7 @@
     "smoke:browser": "node scripts/browser-smoke.mjs",
     "version": "changeset version",
     "release": "changeset publish",
-    "check": "npm run typecheck && npm run pack:check && npm run knip && npm run lint && npm run fmt:check && npm run audit:comments -- --summary && npm run vendor:drift && npm run test:coverage && npm run smoke:browser",
+    "check": "npm run typecheck && npm run pack:check && npm run knip && npm run lint && npm run docs:api:check && npm run fmt:check && npm run audit:comments -- --summary && npm run vendor:drift && npm run test:coverage && npm run smoke:browser",
     "sync:corpus": "bash scripts/sync-corpus.sh",
     "conformance": "node scripts/run-conformance.mjs",
     "oracle": "node scripts/run-oracle.mjs",
