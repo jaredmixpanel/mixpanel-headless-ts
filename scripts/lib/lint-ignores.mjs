@@ -59,6 +59,15 @@ export const LOCAL_PATHS = Object.freeze([
   { path: "node_modules/", why: "Dependencies." },
   { path: "dist/", why: "Build output (tsc -b, browser bundle)." },
   { path: "coverage/", why: "vitest coverage output." },
+  {
+    path: "docs/reference/",
+    why: "TypeDoc output (npm run docs:api), regenerated per docs build; git-ignored.",
+  },
+  { path: "docs/.vitepress/dist/", why: "VitePress build output." },
+  {
+    path: "docs/.vitepress/cache/",
+    why: "Vite dev/build cache for the docs site.",
+  },
   { path: ".notes/", why: "Agent scratch notes (git-ignored)." },
   {
     path: ".claude/",

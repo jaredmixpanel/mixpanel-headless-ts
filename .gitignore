@@ -1,6 +1,10 @@
 node_modules/
 dist/
 coverage/
+# Documentation site: generated API reference and VitePress output/cache.
+docs/reference/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
 *.tsbuildinfo
 .eslintcache
 .vitest/
