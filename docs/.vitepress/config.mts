@@ -12,6 +12,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
+import githubDark from "@shikijs/themes/github-dark";
+import githubLight from "@shikijs/themes/github-light";
 import { transformerTwoslash } from "@shikijs/vitepress-twoslash";
 import { createFileSystemTypesCache } from "@shikijs/vitepress-twoslash/cache-fs";
 import ts from "typescript";
@@ -48,6 +50,53 @@ type VitePlugins = NonNullable<NonNullable<UserConfig["vite"]>["plugins"]>;
 const SIDEBAR_FILE = fileURLToPath(
   new URL("../reference/typedoc-sidebar.json", import.meta.url),
 );
+
+// --- Code themes ---------------------------------------------------------
+
+/** The brand-relevant part of a Shiki theme (theme/shiki-mixpanel-*.json). */
+interface ShikiOverrides {
+  name: string;
+  displayName: string;
+  type: "light" | "dark";
+  colors: Record<string, string>;
+  tokenColors: Array<{
+    scope: string[];
+    settings: { foreground: string; fontStyle?: string };
+  }>;
+}
+
+/**
+ * Build a code theme from a GitHub base plus the Mixpanel token colours.
+ *
+ * The overrides come last in `tokenColors`, so for equal-specificity scopes
+ * they win over the base rules; everything the palette does not name keeps
+ * the GitHub colour.
+ *
+ * @param github - The GitHub theme to extend.
+ * @param file - The override file name under `theme/`.
+ * @returns The merged theme registration.
+ */
+function mixpanelTheme(
+  github: typeof githubLight,
+  file: string,
+): typeof githubLight {
+  const overrides = JSON.parse(
+    readFileSync(
+      fileURLToPath(new URL(`theme/${file}`, import.meta.url)),
+      "utf8",
+    ),
+  ) as ShikiOverrides;
+  return {
+    ...github,
+    name: overrides.name,
+    displayName: overrides.displayName,
+    type: overrides.type,
+    colors: { ...github.colors, ...overrides.colors },
+    tokenColors: [...(github.tokenColors ?? []), ...overrides.tokenColors],
+  };
+}
+
+// --- Sidebar -------------------------------------------------------------
 
 /**
  * Read the sidebar typedoc-vitepress-theme generated with the reference pages.
@@ -132,8 +181,33 @@ export default defineConfig({
   srcExclude: ["history/**"],
   cleanUrls: true,
   lastUpdated: true,
+  // Only when the origin is known (CI): a sitemap needs absolute URLs.
+  ...(origin === undefined
+    ? {}
+    : { sitemap: { hostname: `${origin}${base}` } }),
+  head: [
+    ["meta", { property: "og:type", content: "website" }],
+    [
+      "meta",
+      { property: "og:title", content: "Mixpanel Headless for TypeScript" },
+    ],
+    [
+      "meta",
+      {
+        property: "og:description",
+        content:
+          "Typed Mixpanel analytics queries, schema discovery, entity management, streaming extraction, and session replay analysis for Node.js and browsers.",
+      },
+    ],
+    ["meta", { property: "og:image", content: `${origin ?? ""}${base}og.png` }],
+    ["meta", { name: "twitter:card", content: "summary_large_image" }],
+  ],
 
   markdown: {
+    theme: {
+      light: mixpanelTheme(githubLight, "shiki-mixpanel-light.json"),
+      dark: mixpanelTheme(githubDark, "shiki-mixpanel-dark.json"),
+    },
     codeTransformers: [
       transformerTwoslash({
         // Twoslash results keyed by snippet hash, under the git-ignored Vite
@@ -211,7 +285,21 @@ export default defineConfig({
     ],
     sidebar: [gettingStarted, guide, reference, architecture],
     outline: [2, 3],
-    search: { provider: "local" },
+    search: {
+      provider: "local",
+      options: {
+        // The 807 generated reference pages made the MiniSearch index 5.7 MB
+        // (fetched on first search focus). The prose stays searchable; the
+        // reference has its own sidebar tree and the API overview page.
+        _render(src, env, md) {
+          if (env.relativePath.startsWith("reference/")) {
+            return "";
+          }
+          const html = md.render(src, env);
+          return env.frontmatter?.["search"] === false ? "" : html;
+        },
+      },
+    },
     socialLinks: [{ icon: "github", link: REPO_URL }],
     footer: {
       message: "Released under the Apache-2.0 License.",
