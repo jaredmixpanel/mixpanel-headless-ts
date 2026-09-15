@@ -61,6 +61,18 @@ export function defined<T>(value: T | null | undefined, what: string): T {
 }
 
 /**
+ * The Python `str(exc)` twin for a caught value: an `Error`'s message,
+ * anything else stringified — the text every `f"...: {exc}"` port
+ * interpolates.
+ *
+ * @param exc - The caught value.
+ * @returns Its message text.
+ */
+export function exceptionMessage(exc: unknown): string {
+  return exc instanceof Error ? exc.message : String(exc);
+}
+
+/**
  * Coerce a caught value to an `Error` so it can be re-thrown or stored
  * where an `Error` is required (Python can only raise `BaseException`;
  * JS can throw anything). Errors pass through untouched; anything else

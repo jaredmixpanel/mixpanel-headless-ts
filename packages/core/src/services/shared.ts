@@ -107,20 +107,3 @@ export function pythonTypeNameOf(value: unknown): string {
 export function passthrough<T>(value: unknown): T {
   return value as T;
 }
-
-/**
- * Read a mapping member the way Python's `dict.get(key, default)` does
- * — absent keys yield the default, an explicit `null` yields `null`.
- *
- * @param data - The mapping.
- * @param key - The key to read.
- * @param fallback - Python's default.
- * @returns The member or the fallback.
- */
-export function dictGet(
-  data: Readonly<Record<string, unknown>>,
-  key: string,
-  fallback: unknown,
-): unknown {
-  return Object.hasOwn(data, key) ? data[key] : fallback;
-}

@@ -44,6 +44,7 @@ import {
   RuntimeError as PyRuntimeError,
   ValueError as PyValueError,
 } from "../compat/python-builtins.js";
+import { dateTodayIso } from "../compat/python-dates.js";
 import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
 import { ParamValidationError, ValidationError } from "../errors.js";
 import { CohortDefinition } from "../types/query-params/cohort.js";
@@ -51,7 +52,6 @@ import { Filter } from "../types/query-params/filter.js";
 import { isCohortFilter } from "./user-builders.js";
 import {
   asciiDigitsToInt,
-  defaultToday,
   errorCollector,
   isValidDate,
   matchesDateRe,
@@ -137,7 +137,7 @@ function matchesActionRe(action: string): boolean {
 }
 
 // =============================================================================
-// Calendar comparison for rule U8 (the `date.today()` seam is `defaultToday`)
+// Calendar comparison for rule U8 (the `date.today()` seam is `dateTodayIso`)
 // =============================================================================
 
 /**
@@ -773,7 +773,7 @@ function resolveUserArgs(options: ValidateUserArgsOptions): ResolvedUserArgs {
     parallel: options.parallel ?? false,
     workers: options.workers ?? 5,
     includeAllUsers: options.include_all_users ?? false,
-    today: options.today ?? defaultToday,
+    today: options.today ?? dateTodayIso,
   };
 }
 

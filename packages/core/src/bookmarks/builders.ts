@@ -42,8 +42,8 @@ import {
   pythonTypeName,
   setOwn,
 } from "../compat/index.js";
+import { dateTodayIso } from "../compat/python-dates.js";
 import { ParamTypeError, ParamValidationError } from "../errors.js";
-import { defaultToday } from "../query/validation-shared.js";
 import type { QueryTimeUnit } from "../types/literals.js";
 // `sanitizeRawCohort` and `isPyIntOrBool` are module-level `@internal`
 // exports that the query-params barrel deliberately does not re-export
@@ -194,7 +194,7 @@ export function buildTimeSection(options: {
       window: { unit: "day", value: options.last },
     };
   } else {
-    const today = options.today ?? defaultToday;
+    const today = options.today ?? dateTodayIso;
     const effectiveTo = options.to_date ?? today();
     timeEntry = {
       dateRangeType: "between",

@@ -33,6 +33,7 @@ import {
 } from "../../client/lossless-json.js";
 import { cpSlice, pythonStr, pythonStrOf } from "../../compat/index.js";
 import { MixpanelHeadlessError } from "../../errors.js";
+import { exceptionMessage } from "../../invariant.js";
 import { pythonTypeNameOf, scopedPath } from "../shared.js";
 import {
   expectListResult,
@@ -366,9 +367,7 @@ async function uploadToSignedUrl(
       // classification set mirrors the R2.10 adapter guards; no
       // bare catch.
       throw new MixpanelHeadlessError(
-        `Upload to signed URL failed: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        `Upload to signed URL failed: ${exceptionMessage(error)}`,
         "UPLOAD_ERROR",
         { url },
         { cause: error },

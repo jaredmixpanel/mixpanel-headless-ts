@@ -61,9 +61,11 @@ import {
   PkceChallenge,
   postTokenRequest,
 } from "@mixpanel-headless/core";
-import { requireOAuthBaseUrl } from "@mixpanel-headless/core/internal";
+import {
+  exceptionMessage,
+  requireOAuthBaseUrl,
+} from "@mixpanel-headless/core/internal";
 
-import { errorMessage } from "../errors.js";
 import {
   CALLBACK_PORTS,
   startCallbackServer,
@@ -525,7 +527,7 @@ export class OAuthFlow {
       } catch (error) {
         abort.abort();
         throw new OAuthError(
-          `Could not open browser for authorization: ${errorMessage(error)}`,
+          `Could not open browser for authorization: ${exceptionMessage(error)}`,
           "OAUTH_BROWSER_ERROR",
           { authorize_url: authorizeUrl },
           { cause: error },
@@ -567,7 +569,7 @@ export class OAuthFlow {
         throw firstError;
       }
       throw new OAuthError(
-        `Callback / paste error: ${errorMessage(firstError)}`,
+        `Callback / paste error: ${exceptionMessage(firstError)}`,
         "OAUTH_TOKEN_ERROR",
         {},
         { cause: firstError },

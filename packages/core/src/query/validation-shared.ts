@@ -40,7 +40,6 @@ import {
   pythonStrip,
   pythonTypeName,
   sortedByCodepoint,
-  zfill,
 } from "../compat/index.js";
 import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
 import { ValidationError } from "../errors.js";
@@ -314,26 +313,6 @@ export function asciiDigitsToInt(digits: string): number {
     value = value * 10 + (digits.charCodeAt(i) - 0x30);
   }
   return value;
-}
-
-/**
- * Today's LOCAL calendar date rendered `YYYY-MM-DD` — the default
- * behaviour of Python's `date.today()` (`.isoformat()`), used as the
- * library default of every clock seam (`validateUserArgs` rule U8,
- * `buildTimeSection`'s from-only branch).
- *
- * Watchlist #5: the clock is READ here and immediately rendered; no
- * date string is ever PARSED through `Date` — grammar checking stays a
- * pure calendar computation ({@link matchesDateRe} + {@link isValidDate}).
- *
- * @returns Today's date as `YYYY-MM-DD`.
- */
-export function defaultToday(): string {
-  const now = new Date();
-  return (
-    `${zfill(String(now.getFullYear()), 4)}-` +
-    `${zfill(String(now.getMonth() + 1), 2)}-${zfill(String(now.getDate()), 2)}`
-  );
 }
 
 /**

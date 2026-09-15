@@ -201,6 +201,25 @@ export function toNativeJson(
   value: unknown,
   options: ToNativeJsonOptions = {},
 ): unknown {
+  return toNativeJsonValue(value, options);
+}
+
+/**
+ * {@link toNativeJson} for a row the caller has already established to
+ * be an object: the record-typed twin the service parsers use so each
+ * site does not repeat the same assertion.
+ *
+ * @param value - A lossless object row.
+ * @returns The native record.
+ */
+export function toNativeRecord(value: JsonValue): Record<string, unknown> {
+  return toNativeJson(value) as Record<string, unknown>;
+}
+
+function toNativeJsonValue(
+  value: unknown,
+  options: ToNativeJsonOptions,
+): unknown {
   if (value instanceof JsonNumber) {
     if (
       options.unsafeIntegers === "bigint" &&

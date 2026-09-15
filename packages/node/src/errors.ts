@@ -6,17 +6,7 @@
  */
 
 import { ConfigError } from "@mixpanel-headless/core";
-
-/**
- * The Python `str(exc)` twin for a caught value: an `Error`'s message,
- * anything else stringified.
- *
- * @param exc - The caught value.
- * @returns Its message text.
- */
-export function errorMessage(exc: unknown): string {
-  return exc instanceof Error ? exc.message : String(exc);
-}
+import { exceptionMessage } from "@mixpanel-headless/core/internal";
 
 /**
  * Wrap a caught failure into a `ConfigError` reading `${prefix}: ${str(exc)}`
@@ -32,7 +22,7 @@ export function wrapAsConfigError(
   exc: unknown,
   details: Readonly<Record<string, unknown>> | null = null,
 ): ConfigError {
-  return new ConfigError(`${prefix}: ${errorMessage(exc)}`, details, {
+  return new ConfigError(`${prefix}: ${exceptionMessage(exc)}`, details, {
     cause: exc,
   });
 }

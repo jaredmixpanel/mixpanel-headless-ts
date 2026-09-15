@@ -37,6 +37,7 @@ import {
   OAuthError,
   ParamTypeError,
 } from "../errors.js";
+import { exceptionMessage } from "../invariant.js";
 import { Secret } from "../secret.js";
 import {
   type AccountSummary,
@@ -274,7 +275,7 @@ export function buildTestFailureResult(
     const details = exc.details;
     errorDetails = Object.keys(details).length > 0 ? { ...details } : null;
   }
-  const rendered = exc instanceof Error ? exc.message : String(exc);
+  const rendered = exceptionMessage(exc);
   return new AccountTestResult({
     account_name: accountName,
     ok: false,
@@ -734,7 +735,7 @@ export async function accountsLogin(
   try {
     meResp = await fetchMe(effects, account, { tokenResolver: bearer });
   } catch (error) {
-    const rendered = error instanceof Error ? error.message : String(error);
+    const rendered = exceptionMessage(error);
     throw new OAuthError(
       `Login succeeded but \`/me\` probe failed: ${rendered}`,
       "OAUTH_TOKEN_ERROR",

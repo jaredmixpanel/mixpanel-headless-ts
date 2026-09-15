@@ -36,8 +36,9 @@ import {
   Secret,
   sortedByCodepoint,
 } from "@mixpanel-headless/core";
+import { exceptionMessage } from "@mixpanel-headless/core/internal";
 
-import { errorMessage, wrapAsConfigError } from "../errors.js";
+import { wrapAsConfigError } from "../errors.js";
 import {
   atomicWriteBytes,
   CredentialPathError,
@@ -304,7 +305,7 @@ function readBrowserTokens(name: string): OAuthTokens {
       throw error;
     }
     throw new OAuthError(
-      `Could not read OAuth tokens for account '${name}' from ${path}: ${errorMessage(error)}`,
+      `Could not read OAuth tokens for account '${name}' from ${path}: ${exceptionMessage(error)}`,
       "OAUTH_TOKEN_ERROR",
       { account_name: name, path },
       { cause: error },
@@ -333,7 +334,7 @@ function readBrowserTokens(name: string): OAuthTokens {
       throw error;
     }
     throw new OAuthError(
-      `Could not read OAuth tokens for account '${name}' from ${path}: ${errorMessage(error)}`,
+      `Could not read OAuth tokens for account '${name}' from ${path}: ${exceptionMessage(error)}`,
       "OAUTH_TOKEN_ERROR",
       { account_name: name, path },
       { cause: error },

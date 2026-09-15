@@ -21,9 +21,10 @@ export {
 } from "./services/replays.js";
 export type { EventsInput } from "./workspace-query-params.js";
 
-// ── Client plumbing ─────────────────────────────────────────────────────
+// ── Client plumbing, invariants ─────────────────────────────────────────
 export { iterJsonlLines } from "./client/jsonl.js";
 export { paginateAll } from "./client/pagination.js";
+export { exceptionMessage } from "./invariant.js";
 
 // ── Error-code registry (generated) ─────────────────────────────────────
 export {

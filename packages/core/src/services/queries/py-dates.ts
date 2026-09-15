@@ -21,6 +21,7 @@
  */
 
 import { pythonInt } from "../../compat/index.js";
+import { isLeapYear } from "../../compat/python-dates.js";
 
 /** A parsed civil date. */
 export interface CivilDate {
@@ -43,17 +44,6 @@ const YMD_PATTERN = /^(\p{Nd}{1,4})-(\p{Nd}{1,2})-(\p{Nd}{1,2})$/u;
 
 /** Days per month in a non-leap year (index 1..12). */
 const MONTH_DAYS = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-
-/**
- * Whether a proleptic-Gregorian year is a leap year (CPython
- * `calendar.isleap`).
- *
- * @param year - The year.
- * @returns `true` for leap years.
- */
-export function isLeapYear(year: number): boolean {
-  return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
-}
 
 /**
  * Parse a `%Y-%m-%d` date exactly as `datetime.strptime` accepts it

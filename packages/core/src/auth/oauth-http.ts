@@ -29,6 +29,7 @@ import { createRequestExecutor, urlEncodePairs } from "../client/transport.js";
 import { cpLength } from "../compat/codepoint.js";
 import { isPythonValue, pythonStr } from "../compat/python-str.js";
 import { MixpanelHeadlessError, OAuthError } from "../errors.js";
+import { exceptionMessage } from "../invariant.js";
 import { DEFAULT_SCOPE, OAUTH_BASE_URLS } from "./oauth-constants.js";
 import {
   type OAuthClientInfo,
@@ -481,9 +482,7 @@ export async function registerClient(
     clientId = pythonStr(rawClientId);
   } catch (error) {
     throw new OAuthError(
-      `Invalid registration response: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
+      `Invalid registration response: ${exceptionMessage(error)}`,
       "OAUTH_REGISTRATION_ERROR",
       {
         region,

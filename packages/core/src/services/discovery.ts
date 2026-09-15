@@ -34,7 +34,11 @@
  */
 
 import type { MixpanelClient } from "../client/client.js";
-import { type JsonValue, toNativeJson } from "../client/json-value.js";
+import {
+  type JsonValue,
+  toNativeJson,
+  toNativeRecord,
+} from "../client/json-value.js";
 import { LosslessJsonError, parseLossless } from "../client/lossless-json.js";
 import {
   codepoints,
@@ -44,7 +48,9 @@ import {
 } from "../compat/codepoint.js";
 import { pythonRepr, pythonStrOf } from "../compat/index.js";
 import { KeyError, ValueError } from "../compat/python-builtins.js";
+import { isLeapYear } from "../compat/python-dates.js";
 import { isPythonDict, setOwn } from "../compat/python-dict.js";
+import { dictGet } from "../compat/python-values.js";
 import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
 import { EventNotFoundError, QueryError } from "../errors.js";
 import type { BookmarkType, CustomPropertyType } from "../types/literals.js";
@@ -61,8 +67,7 @@ import {
   TopEvent,
 } from "../types/results/discovery.js";
 import { pyTruthy } from "../types/results/result-base.js";
-import { isLeapYear } from "./queries/py-dates.js";
-import { dictGet, passthrough } from "./shared.js";
+import { passthrough } from "./shared.js";
 
 /**
  * The `warnings.warn(..., UserWarning)` side channel as an injected
@@ -1286,19 +1291,6 @@ export function isoUtc(when: Date): string {
   const millis = iso.slice(20, 23);
   const head = iso.slice(0, 19);
   return millis === "000" ? `${head}+00:00` : `${head}.${millis}000+00:00`;
-}
-
-/**
- * Convert one wire row to Python's `json.loads` product.
- *
- * TODO(Ω): the typed twin of {@link toNativeJson} — `workspace.ts` carries
- * an `unknown`-typed copy; home both as one export in `client/json-value.ts`.
- *
- * @param value - The lossless row.
- * @returns The native record.
- */
-function toNativeRecord(value: JsonValue): Record<string, unknown> {
-  return toNativeJson(value) as Record<string, unknown>;
 }
 
 /**

@@ -40,9 +40,10 @@ import {
   parseLossless,
   toNativeJson,
 } from "@mixpanel-headless/core";
+import { exceptionMessage } from "@mixpanel-headless/core/internal";
 
 import { accountDir, type StorageLogger } from "./auth/storage.js";
-import { errorMessage, wrapAsConfigError } from "./errors.js";
+import { wrapAsConfigError } from "./errors.js";
 import {
   atomicWriteBytes,
   CredentialPathError,
@@ -189,7 +190,7 @@ export class MeCache implements MeCacheStore {
         throw error;
       }
       this.#logger.debug?.(
-        `Corrupted cache file me.json: ${errorMessage(error)}`,
+        `Corrupted cache file me.json: ${exceptionMessage(error)}`,
       );
       return null;
     }

@@ -40,7 +40,7 @@ import { AttributeError, ValueError } from "../compat/python-builtins.js";
 import { isPythonDict, setOwn } from "../compat/python-dict.js";
 import { pythonInt } from "../compat/python-int.js";
 import { pythonRepr, pythonStr } from "../compat/python-str.js";
-import { pythonTypeName } from "../compat/python-values.js";
+import { dictGet, pythonTypeName } from "../compat/python-values.js";
 import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
 import { QueryError } from "../errors.js";
 import { defined } from "../invariant.js";
@@ -71,7 +71,7 @@ import {
 } from "../types/results/query-engine.js";
 import { pyTruthy } from "../types/results/result-base.js";
 import type { WarningSink } from "./discovery.js";
-import { dictGet, passthrough, pythonTypeNameOf } from "./shared.js";
+import { passthrough, pythonTypeNameOf } from "./shared.js";
 
 /** Bookmark types `query_saved_report` normalizes (`live_query.py:1626`). */
 export type SavedReportBookmarkType =

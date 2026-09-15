@@ -135,10 +135,11 @@ export function compareCodepoints(a: string, b: string): number {
 
 /**
  * JS default string order — UTF-16 code units, i.e. what `a < b` does.
- * The counterpart of {@link compareCodepoints} for sort sites that keep
- * the engine's native order (they differ only where a surrogate pair
- * meets a BMP character above U+D7FF); consolidating those sites onto
- * one comparator is a Phase 6 item (CLEANUP-PLAN.md §10.8).
+ * The counterpart of {@link compareCodepoints} for the sort sites that
+ * deliberately keep the engine's native order (`sortedKeys`, the
+ * `compareRows` tie-break); they differ only where a surrogate pair
+ * meets a BMP character above U+D7FF. Naming the comparator at those
+ * sites keeps the choice visible instead of an implicit `.sort()`.
  *
  * @param a - Left operand.
  * @param b - Right operand.
