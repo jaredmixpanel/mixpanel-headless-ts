@@ -8,7 +8,6 @@
  * branches on status: the wire client owns all of that.
  */
 
-import { type JsonValue, toNativeJson } from "../client/json-value.js";
 import { MixpanelHeadlessError, ParamValidationError } from "../errors.js";
 
 /**
@@ -33,33 +32,6 @@ export function requireResponse(raw: unknown, member: string): unknown {
     );
   }
   return raw;
-}
-
-/**
- * `json.loads`-native view of a client payload — the Phase-2 models
- * validate against native values, not the lossless `JsonValue` tree
- * (the `client.ts:878` `list_workspaces` precedent).
- *
- * @param raw - The lossless payload.
- * @returns The native-valued tree.
- */
-export function native(raw: unknown): unknown {
-  return toNativeJson(raw as JsonValue);
-}
-
-/**
- * {@link native} for payloads carrying int64 ids: an integer token whose
- * exact value is not a safe integer becomes a `bigint` instead of a
- * rounded double. Used by the members that build a `LookupTable`
- * (its `id` is a negative int64 such as `-8644926364725811123`); the
- * model's `"int64"` field kind then keeps the `bigint` and `toJSON()`
- * emits it as-is.
- *
- * @param raw - The lossless payload.
- * @returns The native-valued tree, unsafe integers as `bigint`.
- */
-export function nativeInt64(raw: unknown): unknown {
-  return toNativeJson(raw as JsonValue, { unsafeIntegers: "bigint" });
 }
 
 /**

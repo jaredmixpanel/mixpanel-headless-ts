@@ -15,6 +15,7 @@ import type { Account } from "../auth/account.js";
 import type { Session } from "../auth/session.js";
 import type { JsonValue } from "../client/json-value.js";
 import { compareCodepoints } from "../compat/codepoint.js";
+import { pythonRepr } from "../compat/python-str.js";
 import {
   BusinessContextValidationError,
   ConfigError,
@@ -240,21 +241,10 @@ export type BusinessContextLevel = "organization" | "project";
 export function validateBusinessContextLevel(level: string): void {
   if (level !== "organization" && level !== "project") {
     throw new ParamValidationError(
-      `level must be 'organization' or 'project', got ${pyRepr(level)}`,
+      `level must be 'organization' or 'project', got ${pythonRepr(level)}`,
       "WS2_INVALID_LEVEL",
     );
   }
-}
-
-/**
- * Python's `repr()` of a plain string, for the WS2 message.
- *
- * @param value - The string.
- * @returns The single-quoted spelling.
- * @internal
- */
-function pyRepr(value: string): string {
-  return `'${value}'`;
 }
 
 /** The facade slice the business-context members read. */
@@ -272,13 +262,16 @@ export interface BusinessContextHost {
   };
   /** The session's project id (`self._session.project.id`). */
   readonly projectId: string;
-  /** The lazily-created MeService (`self._me_svc`). */
-  readonly meService: MeService;
+  /**
+   * The lazily-created MeService (`self._me_svc`) — a thunk, so the
+   * service is created only where Python touches the attribute.
+   */
+  readonly meService: () => MeService;
   /**
    * The MeService ONLY IF already created (`self._me_service`, which
    * `_cached_organization_id` reads without constructing one).
    */
-  readonly meServiceIfCreated: MeService | null;
+  readonly meServiceIfCreated: () => MeService | null;
 }
 
 /** Keyword-only arguments of the scope-carrying business-context members. */
@@ -306,7 +299,7 @@ export async function resolveOrganizationId(
   if (explicit !== null) {
     return explicit;
   }
-  const me = await host.meService.fetch();
+  const me = await host.meService().fetch();
   const projectInfo = me.projects.get(host.projectId);
   if (projectInfo !== undefined) {
     return projectInfo.organization_id;
@@ -318,8 +311,8 @@ export async function resolveOrganizationId(
   const available = [...me.organizations.keys()].sort(compareCodepoints);
   throw new WorkspaceScopeError(
     `Cannot auto-resolve organization for project ` +
-      `${pyRepr(host.projectId)}. Pass organization_id explicitly. ` +
-      `Available organizations: [${available.map((org) => pyRepr(org)).join(", ")}]`,
+      `${pythonRepr(host.projectId)}. Pass organization_id explicitly. ` +
+      `Available organizations: [${available.map((org) => pythonRepr(org)).join(", ")}]`,
     "ORGANIZATION_AMBIGUOUS",
     {
       project_id: host.projectId,
@@ -338,7 +331,7 @@ export async function resolveOrganizationId(
 export async function cachedOrganizationId(
   host: BusinessContextHost,
 ): Promise<number | null> {
-  const service = host.meServiceIfCreated;
+  const service = host.meServiceIfCreated();
   if (service === null) {
     return null;
   }
@@ -374,7 +367,7 @@ export function requireStrField(
 ): string {
   if (!Object.hasOwn(raw, key)) {
     throw new MixpanelHeadlessError(
-      `Unexpected response from ${method}: missing required field ${pyRepr(key)}`,
+      `Unexpected response from ${method}: missing required field ${pythonRepr(key)}`,
       "UNKNOWN_ERROR",
       { missing_field: key, response: raw },
     );
@@ -382,7 +375,7 @@ export function requireStrField(
   const value = raw[key];
   if (typeof value !== "string") {
     throw new MixpanelHeadlessError(
-      `Unexpected response from ${method}: field ${pyRepr(key)} ` +
+      `Unexpected response from ${method}: field ${pythonRepr(key)} ` +
         `is ${pyTypeName(value)}, expected str`,
       "UNKNOWN_ERROR",
       { field: key, response: raw },

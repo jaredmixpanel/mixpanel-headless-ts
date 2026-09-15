@@ -62,7 +62,7 @@ describe("parseLossless", () => {
     >;
     expect(Object.getPrototypeOf(value)).toBe(Object.prototype);
     expect(Object.keys(value)).toStrictEqual(["__proto__", "b"]);
-    const native = toNativeJson(value as never) as Record<string, unknown>;
+    const native = toNativeJson(value) as Record<string, unknown>;
     expect(Object.getPrototypeOf(native)).toBe(Object.prototype);
     expect(JSON.stringify(native)).toBe('{"__proto__":{"a":1},"b":2}');
   });
@@ -212,7 +212,7 @@ describe("parseLossless ordered entries (B8-MAPFIX)", () => {
     const parsed = parseLossless(
       '{"outer": {"42": {"x": 1}, "7": {"x": 2}}}',
     ) as Record<string, unknown>;
-    const native = toNativeJson(parsed as never) as Record<
+    const native = toNativeJson(parsed) as Record<
       string,
       Record<string, unknown>
     >;

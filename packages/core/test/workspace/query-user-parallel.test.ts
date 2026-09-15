@@ -436,6 +436,21 @@ describe("TestParallelFailedPageHandling", () => {
     ).toBe(true);
   });
 
+  it("a failed page with no logger injected still resolves (default logger is a no-op)", async () => {
+    const mock = mockWorkspaceClient();
+    mock.setPageHandler(
+      pageSideEffectFactory(200, 100, "sess_parallel", new Set([1])),
+    );
+
+    const result = await workspaceFactory(mock).queryUser({
+      mode: "profiles",
+      parallel: true,
+      limit: 100_000,
+    });
+
+    expect(result.meta["failed_pages"]).toStrictEqual([1]);
+  });
+
   it("failed_pages is empty when every page succeeds", async () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(200, 100));

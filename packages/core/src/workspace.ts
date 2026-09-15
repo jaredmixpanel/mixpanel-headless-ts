@@ -17,67 +17,18 @@
  */
 
 import type { Account } from "./auth/account.js";
-import { type ResolverSources, resolveSession } from "./auth/resolver.js";
+import { resolveSession } from "./auth/resolver.js";
 import type { Project, Session, WorkspaceRef } from "./auth/session.js";
-import {
-  createMixpanelClient,
-  type MixpanelClient,
-  type MixpanelClientOptions,
-} from "./client/client.js";
-import { jsonValuePythonStr } from "./client/internals.js";
-import { type JsonValue, toNativeJson } from "./client/json-value.js";
+import { createMixpanelClient, type MixpanelClient } from "./client/client.js";
 import type { MeResponse } from "./client/me.js";
-import { validateResponseModel } from "./client/response-validation.js";
-import { KeyError } from "./compat/python-builtins.js";
-import { pythonInt, pythonIntCoerce } from "./compat/python-int.js";
-import { pythonRepr } from "./compat/python-str.js";
-import { zfill } from "./compat/zfill.js";
+import { pythonInt } from "./compat/python-int.js";
+import { MixpanelHeadlessError } from "./errors.js";
+import { generateSlug } from "./report-links.js";
+import { DiscoveryService, type WarningSink } from "./services/discovery.js";
 import {
-  AuthenticationError,
-  BookmarkValidationError,
-  MixpanelHeadlessError,
-  ParamValidationError,
-  QueryError,
-  RateLimitError,
-  ReportLinkNotFoundError,
-  ReportLinkScopeMismatchError,
-  ServerError,
-  ShortLinkResolutionError,
-  UnsupportedReportLinkError,
-  WorkspaceScopeError,
-} from "./errors.js";
-import { toError } from "./invariant.js";
-import { transformProfile } from "./query/transforms.js";
-import { RrwebAnalyzer } from "./replays/rrweb-analyzer.js";
-import {
-  BOOKMARK_HASH_FOR_TYPE,
-  buildBookmarkUrl,
-  buildSlugUrl,
-  generateSlug,
-  type ParsedReportLink,
-  parsedReportLink,
-  parseReportLink,
-  SLUG_APP_FOR_TYPE,
-} from "./report-links.js";
-import {
-  type DiscoveryLogger,
-  DiscoveryService,
-  isoUtc,
-  type WarningSink,
-} from "./services/discovery.js";
-import {
-  type FlowMode,
   type LiveActivityFeedOptions,
-  type LiveEventCountsOptions,
-  type LiveFrequencyOptions,
-  type LiveFunnelOptions,
-  type LiveNumericOptions,
-  type LivePropertyCountsOptions,
   type LiveQuerySavedReportOptions,
   LiveQueryService,
-  type LiveRetentionOptions,
-  type LiveSegmentationNumericOptions,
-  type LiveSegmentationOptions,
 } from "./services/live-query.js";
 import {
   inMemoryMeCache,
@@ -90,7 +41,7 @@ import {
   streamProfiles as streamProfilesVeneer,
   type StreamProfilesOptions,
 } from "./services/queries/streaming.js";
-import { replayNotFoundError, ReplaysService } from "./services/replays.js";
+import { ReplaysService } from "./services/replays.js";
 import type {
   AlertCount,
   AlertHistoryResponse,
@@ -108,13 +59,12 @@ import type {
   CreateAnnotationTagParams,
   UpdateAnnotationParams,
 } from "./types/entities/annotations.js";
-import {
-  type Bookmark,
-  type BookmarkHistoryResponse,
-  BookmarkUrl,
-  type BulkUpdateBookmarkEntry,
-  type CreateBookmarkParams,
-  type UpdateBookmarkParams,
+import type {
+  Bookmark,
+  BookmarkHistoryResponse,
+  BulkUpdateBookmarkEntry,
+  CreateBookmarkParams,
+  UpdateBookmarkParams,
 } from "./types/entities/bookmarks.js";
 import type {
   BusinessContext,
@@ -206,31 +156,19 @@ import type {
   WebhookTestParams,
   WebhookTestResult,
 } from "./types/entities/webhooks.js";
-import type {
-  BookmarkType,
-  EntityType,
-  ReportLinkType,
-} from "./types/literals.js";
-import type { CohortDefinition } from "./types/query-params/cohort.js";
-import type { Filter } from "./types/query-params/filter.js";
+import type { BookmarkType, EntityType } from "./types/literals.js";
 import type { FlowStep } from "./types/query-params/flow.js";
-import type {
-  Exclusion,
-  FunnelStep,
-  HoldingConstant,
-} from "./types/query-params/funnel.js";
-import type { TimeComparison } from "./types/query-params/metric.js";
+import type { FunnelStep } from "./types/query-params/funnel.js";
 import type { RetentionEvent } from "./types/query-params/retention.js";
-import {
+import type {
   ReportLink,
-  type ReportLinkQueryResult,
+  ReportLinkQueryResult,
   ResolvedReport,
 } from "./types/report-links.js";
 import type {
   BookmarkInfo,
   FunnelInfo,
   LexiconSchema,
-  ProfilePageResult,
   SavedCohort,
   SchemaGraphResult,
   SubPropertyInfo,
@@ -250,1021 +188,184 @@ import type {
   SavedReportResult,
   SegmentationResult,
 } from "./types/results/live-query.js";
-import {
+import type {
   FlowQueryResult,
   FunnelQueryResult,
   QueryResult,
   RetentionQueryResult,
   UserQueryResult,
 } from "./types/results/query-engine.js";
-import {
+import type {
   Replay,
   ReplayBundle,
-  type ReplayEvent,
-  type ReplaySummary,
-  type SignedReplay,
+  ReplayEvent,
+  ReplaySummary,
+  SignedReplay,
 } from "./types/results/replays.js";
-import {
-  bulkDeleteAlerts as bulkDeleteAlertsMember,
-  createAlert as createAlertMember,
-  createAnnotation as createAnnotationMember,
-  createAnnotationTag as createAnnotationTagMember,
-  createWebhook as createWebhookMember,
-  deleteAlert as deleteAlertMember,
-  deleteAnnotation as deleteAnnotationMember,
-  deleteWebhook as deleteWebhookMember,
-  getAlert as getAlertMember,
-  getAlertCount as getAlertCountMember,
-  getAlertHistory as getAlertHistoryMember,
-  getAlertScreenshotUrl as getAlertScreenshotUrlMember,
-  getAnnotation as getAnnotationMember,
-  listAlerts as listAlertsMember,
-  listAnnotations as listAnnotationsMember,
-  listAnnotationTags as listAnnotationTagsMember,
-  listWebhooks as listWebhooksMember,
-  testAlert as testAlertMember,
-  testWebhook as testWebhookMember,
-  updateAlert as updateAlertMember,
-  updateAnnotation as updateAnnotationMember,
-  updateWebhook as updateWebhookMember,
-  validateAlertsForBookmark as validateAlertsForBookmarkMember,
-  type WorkspaceGetAlertCountOptions,
-  type WorkspaceGetAlertHistoryOptions,
-  type WorkspaceListAlertsOptions,
-  type WorkspaceListAnnotationsOptions,
+import type {
+  WorkspaceGetAlertCountOptions,
+  WorkspaceGetAlertHistoryOptions,
+  WorkspaceListAlertsOptions,
+  WorkspaceListAnnotationsOptions,
 } from "./workspace-members/annotations-webhooks-alerts.js";
-import {
-  bookmarkLinkedDashboardIds as bookmarkLinkedDashboardIdsMember,
-  bulkDeleteBookmarks as bulkDeleteBookmarksMember,
-  bulkDeleteCohorts as bulkDeleteCohortsMember,
-  bulkUpdateBookmarks as bulkUpdateBookmarksMember,
-  bulkUpdateCohorts as bulkUpdateCohortsMember,
-  createBookmark as createBookmarkMember,
-  createCohort as createCohortMember,
-  deleteBookmark as deleteBookmarkMember,
-  deleteCohort as deleteCohortMember,
-  getBookmark as getBookmarkMember,
-  getBookmarkHistory as getBookmarkHistoryMember,
-  getCohort as getCohortMember,
-  listBookmarksV2 as listBookmarksV2Member,
-  listCohortsFull as listCohortsFullMember,
-  updateBookmark as updateBookmarkMember,
-  updateCohort as updateCohortMember,
-  validateBookmarkParamsSchema,
-  type WorkspaceGetBookmarkHistoryOptions,
-  type WorkspaceListBookmarksV2Options,
-  type WorkspaceListCohortsFullOptions,
+import * as annotationsWebhooksAlerts from "./workspace-members/annotations-webhooks-alerts.js";
+import type {
+  WorkspaceGetBookmarkHistoryOptions,
+  WorkspaceListBookmarksV2Options,
+  WorkspaceListCohortsFullOptions,
 } from "./workspace-members/bookmarks-cohorts.js";
-import {
-  addReportToDashboard as addReportToDashboardMember,
-  bulkDeleteDashboards as bulkDeleteDashboardsMember,
-  createBlueprint as createBlueprintMember,
-  createDashboard as createDashboardMember,
-  createRcaDashboard as createRcaDashboardMember,
-  deleteDashboard as deleteDashboardMember,
-  favoriteDashboard as favoriteDashboardMember,
-  finalizeBlueprint as finalizeBlueprintMember,
-  getBlueprintConfig as getBlueprintConfigMember,
-  getBookmarkDashboardIds as getBookmarkDashboardIdsMember,
-  getDashboard as getDashboardMember,
-  getDashboardErf as getDashboardErfMember,
-  listBlueprintTemplates as listBlueprintTemplatesMember,
-  listDashboards as listDashboardsMember,
-  pinDashboard as pinDashboardMember,
-  removeReportFromDashboard as removeReportFromDashboardMember,
-  unfavoriteDashboard as unfavoriteDashboardMember,
-  unpinDashboard as unpinDashboardMember,
-  updateBlueprintCohorts as updateBlueprintCohortsMember,
-  updateDashboard as updateDashboardMember,
-  updateReportLink as updateReportLinkMember,
-  updateTextCard as updateTextCardMember,
-  type WorkspaceListBlueprintTemplatesOptions,
-  type WorkspaceListDashboardsOptions,
+import * as bookmarksCohorts from "./workspace-members/bookmarks-cohorts.js";
+import type {
+  WorkspaceListBlueprintTemplatesOptions,
+  WorkspaceListDashboardsOptions,
 } from "./workspace-members/dashboards.js";
-import {
-  archiveExperiment as archiveExperimentMember,
-  archiveFeatureFlag as archiveFeatureFlagMember,
-  concludeExperiment as concludeExperimentMember,
-  createExperiment as createExperimentMember,
-  createFeatureFlag as createFeatureFlagMember,
-  decideExperiment as decideExperimentMember,
-  deleteExperiment as deleteExperimentMember,
-  deleteFeatureFlag as deleteFeatureFlagMember,
-  duplicateExperiment as duplicateExperimentMember,
-  duplicateFeatureFlag as duplicateFeatureFlagMember,
-  getExperiment as getExperimentMember,
-  getFeatureFlag as getFeatureFlagMember,
-  getFlagHistory as getFlagHistoryMember,
-  getFlagLimits as getFlagLimitsMember,
-  launchExperiment as launchExperimentMember,
-  listErfExperiments as listErfExperimentsMember,
-  listExperiments as listExperimentsMember,
-  listFeatureFlags as listFeatureFlagsMember,
-  restoreExperiment as restoreExperimentMember,
-  restoreFeatureFlag as restoreFeatureFlagMember,
-  setFlagTestUsers as setFlagTestUsersMember,
-  updateExperiment as updateExperimentMember,
-  updateFeatureFlag as updateFeatureFlagMember,
-  type WorkspaceConcludeExperimentOptions,
-  type WorkspaceGetFlagHistoryOptions,
-  type WorkspaceListExperimentsOptions,
-  type WorkspaceListFeatureFlagsOptions,
+import * as dashboards from "./workspace-members/dashboards.js";
+import type {
+  WorkspaceConcludeExperimentOptions,
+  WorkspaceGetFlagHistoryOptions,
+  WorkspaceListExperimentsOptions,
+  WorkspaceListFeatureFlagsOptions,
 } from "./workspace-members/flags-experiments.js";
+import * as flagsExperiments from "./workspace-members/flags-experiments.js";
+import * as governanceData from "./workspace-members/governance-data.js";
 import {
-  createCustomEvent as createCustomEventMember,
-  createCustomProperty as createCustomPropertyMember,
-  createDropFilter as createDropFilterMember,
   defaultMonotonic,
-  deleteCustomEvent as deleteCustomEventMember,
-  deleteCustomProperty as deleteCustomPropertyMember,
-  deleteDropFilter as deleteDropFilterMember,
-  deleteLookupTables as deleteLookupTablesMember,
-  downloadLookupTable as downloadLookupTableMember,
-  getCustomProperty as getCustomPropertyMember,
-  getDropFilterLimits as getDropFilterLimitsMember,
-  getLookupDownloadUrl as getLookupDownloadUrlMember,
-  getLookupUploadStatus as getLookupUploadStatusMember,
-  getLookupUploadUrl as getLookupUploadUrlMember,
-  listCustomEvents as listCustomEventsMember,
-  listCustomProperties as listCustomPropertiesMember,
-  listDropFilters as listDropFiltersMember,
-  listLookupTables as listLookupTablesMember,
   type LookupUploadSeams,
-  markLookupTableReady as markLookupTableReadyMember,
   unportedReadFile,
-  updateCustomEvent as updateCustomEventMember,
-  updateCustomProperty as updateCustomPropertyMember,
-  updateDropFilter as updateDropFilterMember,
-  updateLookupTable as updateLookupTableMember,
-  uploadLookupTable as uploadLookupTableMember,
-  validateCustomProperty as validateCustomPropertyMember,
   type WorkspaceDownloadLookupTableOptions,
   type WorkspaceListLookupTablesOptions,
   type WorkspaceUploadLookupTableOptions,
 } from "./workspace-members/governance-data.js";
-import {
-  bulkUpdateEventDefinitions as bulkUpdateEventDefinitionsMember,
-  bulkUpdatePropertyDefinitions as bulkUpdatePropertyDefinitionsMember,
-  createLexiconTag as createLexiconTagMember,
-  deleteEventDefinition as deleteEventDefinitionMember,
-  deleteLexiconTag as deleteLexiconTagMember,
-  exportLexicon as exportLexiconMember,
-  getEventDefinitions as getEventDefinitionsMember,
-  getEventHistory as getEventHistoryMember,
-  getPropertyDefinitions as getPropertyDefinitionsMember,
-  getPropertyHistory as getPropertyHistoryMember,
-  getTrackingMetadata as getTrackingMetadataMember,
-  listLexiconTags as listLexiconTagsMember,
-  updateEventDefinition as updateEventDefinitionMember,
-  updateLexiconTag as updateLexiconTagMember,
-  updatePropertyDefinition as updatePropertyDefinitionMember,
-  type WorkspaceExportLexiconOptions,
-  type WorkspaceGetEventDefinitionsOptions,
-  type WorkspaceGetPropertyDefinitionsOptions,
+import type {
+  WorkspaceExportLexiconOptions,
+  WorkspaceGetEventDefinitionsOptions,
+  WorkspaceGetPropertyDefinitionsOptions,
 } from "./workspace-members/lexicon-tracking.js";
+import * as lexiconTracking from "./workspace-members/lexicon-tracking.js";
+import * as lifecycle from "./workspace-members/lifecycle.js";
 import {
   type BusinessContextHost,
   type BusinessContextScopeOptions,
-  getBusinessContext as getBusinessContextMember,
-  getBusinessContextChain as getBusinessContextChainMember,
   guardTargetExclusivity,
   mergeResolverSeams,
   noProjectError,
   type ResolverSeams,
-  setBusinessContext as setBusinessContextMember,
 } from "./workspace-members/lifecycle.js";
 import {
-  bulkUpdateAnomalies as bulkUpdateAnomaliesMember,
-  cancelDeletionRequest as cancelDeletionRequestMember,
-  createDeletionRequest as createDeletionRequestMember,
-  createSchema as createSchemaMember,
-  createSchemasBulk as createSchemasBulkMember,
-  deleteSchemaEnforcement as deleteSchemaEnforcementMember,
-  deleteSchemas as deleteSchemasMember,
-  getSchemaEnforcement as getSchemaEnforcementMember,
-  initSchemaEnforcement as initSchemaEnforcementMember,
-  listDataVolumeAnomalies as listDataVolumeAnomaliesMember,
-  listDeletionRequests as listDeletionRequestsMember,
-  listSchemaRegistry as listSchemaRegistryMember,
-  previewDeletionFilters as previewDeletionFiltersMember,
-  replaceSchemaEnforcement as replaceSchemaEnforcementMember,
-  runAudit as runAuditMember,
-  runAuditEventsOnly as runAuditEventsOnlyMember,
-  updateAnomaly as updateAnomalyMember,
-  updateSchema as updateSchemaMember,
-  updateSchemaEnforcement as updateSchemaEnforcementMember,
-  updateSchemasBulk as updateSchemasBulkMember,
-  type WorkspaceDeleteSchemasOptions,
-  type WorkspaceGetSchemaEnforcementOptions,
-  type WorkspaceListDataVolumeAnomaliesOptions,
-  type WorkspaceListSchemaRegistryOptions,
+  type ReportLinkParamsInput,
+  type ResolvedWorkspaceLogger,
+  resolveWorkspaceLogger,
+  type WorkspaceCreateReportLinkOptions,
+  type WorkspaceEventCountsOptions,
+  type WorkspaceEventsForReplayOptions,
+  type WorkspaceEventsOptions,
+  type WorkspaceFetchReplayOptions,
+  type WorkspaceFetchReplaysOptions,
+  type WorkspaceFlowQueryOptions,
+  type WorkspaceFrequencyOptions,
+  type WorkspaceFunnelOptions,
+  type WorkspaceFunnelQueryOptions,
+  type WorkspaceLexiconSchemasOptions,
+  type WorkspaceListReplaysOptions,
+  type WorkspaceMeOptions,
+  type WorkspaceNumericOptions,
+  type WorkspaceOptions,
+  type WorkspaceProjectsOptions,
+  type WorkspacePropertyCountsOptions,
+  type WorkspacePropertyValuesOptions,
+  type WorkspaceQueryOptions,
+  type WorkspaceQueryReportLinkOptions,
+  type WorkspaceReplaysForUserOptions,
+  type WorkspaceRetentionOptions,
+  type WorkspaceRetentionQueryOptions,
+  type WorkspaceRunFlowParamsOptions,
+  type WorkspaceRunParamsOptions,
+  type WorkspaceRunUserParamsOptions,
+  type WorkspaceSavedReportLinkOptions,
+  type WorkspaceSchemaGraphOptions,
+  type WorkspaceSegmentationNumericOptions,
+  type WorkspaceSegmentationOptions,
+  type WorkspaceSignReplayOptions,
+  type WorkspaceStreamReplayOptions,
+  type WorkspaceSubpropertiesOptions,
+  type WorkspaceTopEventsOptions,
+  type WorkspaceUseOptions,
+  type WorkspaceUserQueryOptions,
+  type WorkspaceWorkspacesOptions,
+} from "./workspace-members/options.js";
+import * as replayMethods from "./workspace-members/replay-methods.js";
+import * as reportLinkMethods from "./workspace-members/report-link-methods.js";
+import type {
+  WorkspaceDeleteSchemasOptions,
+  WorkspaceGetSchemaEnforcementOptions,
+  WorkspaceListDataVolumeAnomaliesOptions,
+  WorkspaceListSchemaRegistryOptions,
 } from "./workspace-members/schemas-audit.js";
+import * as schemasAudit from "./workspace-members/schemas-audit.js";
 import { requireEntityId, requireInt64Id } from "./workspace-members/shared.js";
+import * as userQueryEngine from "./workspace-members/user-query-engine.js";
 import {
-  buildPageKwargs,
-  buildStatsKwargs,
   type EventsInput,
-  type FilterWhereInput,
   flowModeFromParams,
-  type GroupByInput,
   type ParamsDict,
   resolveAndBuildFlowParams,
   resolveAndBuildFunnelParams,
   resolveAndBuildParams,
   resolveAndBuildRetentionParams,
   resolveAndBuildUserParams,
-  type TodayFn,
-  type WhereInput,
 } from "./workspace-query-params.js";
 
+export { validateBookmarkParamsSchema } from "./workspace-members/bookmarks-cohorts.js";
+export { NOOP_LOGGER } from "./workspace-members/options.js";
+// TODO(Ω): shim — checkEventPropertiesCount lives in replay-methods.ts.
+export { checkEventPropertiesCount } from "./workspace-members/replay-methods.js";
+// TODO(Ω): shim — the option types live in ./workspace-members/options.ts;
+// repoint the barrel and delete this re-export.
 export type { MeCacheStore, MeService } from "./services/me.js";
 export type {
-  WorkspaceGetAlertCountOptions,
-  WorkspaceGetAlertHistoryOptions,
-  WorkspaceListAlertsOptions,
-  WorkspaceListAnnotationsOptions,
-} from "./workspace-members/annotations-webhooks-alerts.js";
-export type {
-  WorkspaceGetBookmarkHistoryOptions,
-  WorkspaceListBookmarksV2Options,
-  WorkspaceListCohortsFullOptions,
-} from "./workspace-members/bookmarks-cohorts.js";
-export { validateBookmarkParamsSchema } from "./workspace-members/bookmarks-cohorts.js";
-export type {
-  WorkspaceListBlueprintTemplatesOptions,
-  WorkspaceListDashboardsOptions,
-} from "./workspace-members/dashboards.js";
-export type {
-  WorkspaceConcludeExperimentOptions,
-  WorkspaceGetFlagHistoryOptions,
-  WorkspaceListExperimentsOptions,
-  WorkspaceListFeatureFlagsOptions,
-} from "./workspace-members/flags-experiments.js";
-export type {
-  LookupUploadSeams,
-  WorkspaceDownloadLookupTableOptions,
-  WorkspaceListLookupTablesOptions,
-  WorkspaceUploadLookupTableOptions,
-} from "./workspace-members/governance-data.js";
-export type {
-  WorkspaceExportLexiconOptions,
-  WorkspaceGetEventDefinitionsOptions,
-  WorkspaceGetPropertyDefinitionsOptions,
-} from "./workspace-members/lexicon-tracking.js";
-export type {
-  BusinessContextLevel,
-  BusinessContextScopeOptions,
-  ResolveProjectAxisArgs,
-  ResolverSeams,
-  ResolveSessionArgs,
-} from "./workspace-members/lifecycle.js";
-export type {
-  WorkspaceDeleteSchemasOptions,
-  WorkspaceGetSchemaEnforcementOptions,
-  WorkspaceListDataVolumeAnomaliesOptions,
-  WorkspaceListSchemaRegistryOptions,
-} from "./workspace-members/schemas-audit.js";
+  ReportLinkParamsInput,
+  WorkspaceCreateReportLinkOptions,
+  WorkspaceEventCountsOptions,
+  WorkspaceEventsForReplayOptions,
+  WorkspaceEventsOptions,
+  WorkspaceFetchReplayOptions,
+  WorkspaceFetchReplaysOptions,
+  WorkspaceFlowQueryOptions,
+  WorkspaceFrequencyOptions,
+  WorkspaceFunnelOptions,
+  WorkspaceFunnelQueryOptions,
+  WorkspaceLexiconSchemasOptions,
+  WorkspaceListReplaysOptions,
+  WorkspaceLogger,
+  WorkspaceMeOptions,
+  WorkspaceNumericOptions,
+  WorkspaceOptions,
+  WorkspaceProjectsOptions,
+  WorkspacePropertyCountsOptions,
+  WorkspacePropertyValuesOptions,
+  WorkspaceQueryOptions,
+  WorkspaceQueryReportLinkOptions,
+  WorkspaceReplaysForUserOptions,
+  WorkspaceRetentionOptions,
+  WorkspaceRetentionQueryOptions,
+  WorkspaceRunFlowParamsOptions,
+  WorkspaceRunParamsOptions,
+  WorkspaceRunUserParamsOptions,
+  WorkspaceSavedReportLinkOptions,
+  WorkspaceSchemaGraphOptions,
+  WorkspaceSegmentationNumericOptions,
+  WorkspaceSegmentationOptions,
+  WorkspaceSignReplayOptions,
+  WorkspaceStreamReplayOptions,
+  WorkspaceSubpropertiesOptions,
+  WorkspaceTopEventsOptions,
+  WorkspaceUseOptions,
+  WorkspaceUserQueryOptions,
+  WorkspaceWorkspacesOptions,
+} from "./workspace-members/options.js";
 
-/** Options bag of the {@link Workspace} constructor. */
-export interface WorkspaceOptions {
-  /**
-   * A pre-built RESOLVED session — the full resolver bypass
-   * (`Workspace(session=…)`, `workspace.py:473-474`). When absent, the
-   * B7 resolver axes ({@link account} / {@link project} /
-   * {@link workspace} / {@link target}) resolve through
-   * `resolveSession(...)` over {@link sources}.
-   */
-  readonly session?: Session | undefined;
-  /** Named account from config (resolver axis, `workspace.py:427`). */
-  readonly account?: string | null | undefined;
-  /** Project ID override (resolver axis, digit string). */
-  readonly project?: string | null | undefined;
-  /** Workspace ID override (resolver axis, positive int). */
-  readonly workspace?: number | null | undefined;
-  /**
-   * Apply all three axes from `[targets.NAME]`. Mutually exclusive
-   * with `account`/`project`/`workspace`
-   * (`WS1_TARGET_MUTUALLY_EXCLUSIVE`, `workspace.py:455-465`).
-   */
-  readonly target?: string | null | undefined;
-  /**
-   * The injected resolver sources used when no {@link session} is
-   * given (R9.4 — Python builds `ConfigManager()` / `load_bridge()`
-   * inline; B8's node wiring supplies the on-disk defaults). Required
-   * for resolver-path construction in `packages/core`.
-   */
-  readonly sources?: ResolverSources | undefined;
-  /**
-   * Injected wire client — the test/replay seam mirroring Python's
-   * `_api_client` kwarg (`workspace.py:424-432`; conformance twin
-   * `conformance/runner/targets.py:316-328`). When absent the
-   * constructor builds one from {@link clientOptions}.
-   */
-  readonly client?: MixpanelClient | undefined;
-  /**
-   * Extra options for the client the constructor builds when no
-   * {@link client} is injected (transport, sleep/RNG/clock seams).
-   */
-  readonly clientOptions?: Omit<MixpanelClientOptions, "session"> | undefined;
-  /** `warnings.warn` sink threaded into the discovery service (R9.5). */
-  readonly warn?: WarningSink | undefined;
-  /** Debug-log sink threaded into the discovery service (R9.5). */
-  readonly logger?: WorkspaceLogger | undefined;
-  /**
-   * Slug minter for {@link Workspace.createReportLink} (the
-   * `generate_slug` seam Python tests patch; R6.3). Defaults to the
-   * CSPRNG-backed `generateSlug()`.
-   */
-  readonly generateSlug?: (() => string) | undefined;
-  /**
-   * The W1-D1 resolution seams `use()` consumes. Absent members take
-   * the `UNPORTED_RESOLVER_SEAM` defaults until B7 lands
-   * (`workspace-members/lifecycle.ts`).
-   */
-  readonly seams?: Partial<ResolverSeams> | undefined;
-  /**
-   * The `/me` cache store handed to every {@link MeService} this
-   * facade builds (Python `MeCache(account_name=…)`,
-   * `workspace.py:874-876`). Absent → a per-account IN-MEMORY store;
-   * B8-N2 injects the on-disk twin from `packages/node`.
-   */
-  readonly meCache?: ((accountName: string) => MeCacheStore) | undefined;
-  /**
-   * `Path(file_path).read_bytes()` for {@link Workspace.uploadLookupTable}
-   * (`workspace.py:8044`) — B6-W7 decision W7-D1. `packages/core` is
-   * runtime-agnostic, so the byte source is injected; the default
-   * throws `UNPORTED_FILE_READ_SEAM` until B8 wires `node:fs` in
-   * `packages/node`.
-   */
-  readonly readFile?: ((path: string) => Promise<Uint8Array>) | undefined;
-  /**
-   * `time.monotonic()` in SECONDS, used by the
-   * {@link Workspace.uploadLookupTable} poll deadline
-   * (`workspace.py:8099`) — B6-W7 decision W7-D2. Default:
-   * `Date.now() / 1000`.
-   */
-  readonly monotonic?: (() => number) | undefined;
-}
-
-/** Keyword-only arguments of {@link Workspace.use} (`workspace.py:552-560`). */
-export interface WorkspaceUseOptions {
-  /** Replacement account name. */
-  readonly account?: string | null | undefined;
-  /** Replacement project ID. */
-  readonly project?: string | null | undefined;
-  /** Replacement workspace ID. */
-  readonly workspace?: number | null | undefined;
-  /** Apply this target's three axes atomically. */
-  readonly target?: string | null | undefined;
-  /** Also write the new state to `[active]`. Default `false`. */
-  readonly persist?: boolean | undefined;
-}
-
-/** Keyword-only arguments of {@link Workspace.me}. */
-export interface WorkspaceMeOptions {
-  /** Bypass the cache and call the API. Default `false`. */
-  readonly force_refresh?: boolean | undefined;
-}
-
-/** Keyword-only arguments of {@link Workspace.projects}. */
-export interface WorkspaceProjectsOptions {
-  /** Bypass the `/me` caches and refetch. Default `false`. */
-  readonly refresh?: boolean | undefined;
-}
-
-/** Keyword-only arguments of {@link Workspace.workspaces}. */
-export interface WorkspaceWorkspacesOptions {
-  /** Project to list workspaces for. Defaults to the current project. */
-  readonly project_id?: string | null | undefined;
-  /** Bypass the `/me` caches and refetch. Default `false`. */
-  readonly refresh?: boolean | undefined;
-}
-
-/**
- * Debug/warning log seam of the facade (R9.5 — `core` never touches
- * `console`). Extends the S1 {@link DiscoveryLogger} so an existing
- * `{debug}` sink keeps working; `warning` backs the two
- * `logger.warning` sites of the parallel query-user path
- * (`workspace.py:10143`, `:10178`).
- */
-export interface WorkspaceLogger extends DiscoveryLogger {
-  /**
-   * Record a warning message.
-   *
-   * @param message - The formatted text (never vector-compared).
-   */
-  warning?: (message: string) => void;
-  /**
-   * Record an informational message — added at B6-W7 for the single
-   * `logger.info` site of the lookup-table upload orchestrator
-   * (`workspace.py:8062-8066`).
-   *
-   * @param message - The formatted text (never vector-compared).
-   */
-  info?: (message: string) => void;
-}
-
-/** Options bag of {@link Workspace.events}. */
-export interface WorkspaceEventsOptions {
-  /** Maximum events to return (client default: 5000). */
-  readonly limit?: number | null | undefined;
-  /** `YYYY-MM-DD` lower bound (client default: `2000-01-01`). */
-  readonly from_date?: string | null | undefined;
-  /** `YYYY-MM-DD` upper bound (client default: today). */
-  readonly to_date?: string | null | undefined;
-}
-
-/** Options bag of {@link Workspace.propertyValues}. */
-export interface WorkspacePropertyValuesOptions {
-  /** Optional event to filter by. */
-  readonly event?: string | null | undefined;
-  /** Maximum number of values to return (default 100). */
-  readonly limit?: number | undefined;
-}
-
-/** Options bag of {@link Workspace.subproperties}. */
-export interface WorkspaceSubpropertiesOptions {
-  /** Optional event name to scope the sample. */
-  readonly event?: string | null | undefined;
-  /** Number of raw values to sample (default 50). */
-  readonly sample_size?: number | undefined;
-}
-
-/** Options bag of {@link Workspace.topEvents}. */
-export interface WorkspaceTopEventsOptions {
-  /** Counting method (default `"general"`). */
-  readonly type?: "general" | "average" | "unique" | undefined;
-  /** Maximum number of events to return. */
-  readonly limit?: number | null | undefined;
-}
-
-/** Options bag of {@link Workspace.lexiconSchemas}. */
-export interface WorkspaceLexiconSchemasOptions {
-  /** Optional filter by type (`"event"` / `"profile"`). */
-  readonly entity_type?: EntityType | null | undefined;
-}
-
-/** Options bag of {@link Workspace.schemaGraph}. */
-export interface WorkspaceSchemaGraphOptions {
-  /** Request the property-level `densityLocal`. */
-  readonly include_density?: boolean | undefined;
-  /** Also gather user properties (default `true`). */
-  readonly include_user_properties?: boolean | undefined;
-  /** Bypass the cache and re-fetch. */
-  readonly force_refresh?: boolean | undefined;
-}
-
-// ---------------------------------------------------------------------------
-// B5-S3 option bags (`workspace.py:10679-11292`)
-// ---------------------------------------------------------------------------
-
-/** Keyword-only arguments of {@link Workspace.listReplays}. */
-export interface WorkspaceListReplaysOptions {
-  /** Mixpanel user identifier. Mutually exclusive with `replay_ids`. */
-  readonly distinct_id?: string | null | undefined;
-  /** Explicit replay IDs to hydrate. Mutually exclusive with above. */
-  readonly replay_ids?: readonly string[] | null | undefined;
-  /** ISO date (`YYYY-MM-DD`). Required with `distinct_id`. */
-  readonly from_date?: string | null | undefined;
-  /** ISO date (`YYYY-MM-DD`). Required with `distinct_id`. */
-  readonly to_date?: string | null | undefined;
-  /** Maximum summaries to return. Default 100. */
-  readonly limit?: number | undefined;
-}
-
-/**
- * Keyword-only arguments shared by {@link Workspace.eventsForReplay}
- * and {@link Workspace.eventsForReplays}.
- */
-export interface WorkspaceEventsForReplayOptions {
-  /** Up to 5 additional event properties to include as group keys. */
-  readonly event_properties?: readonly string[] | null | undefined;
-  /** ISO date (`YYYY-MM-DD`) lower bound for the events scan. */
-  readonly from_date?: string | null | undefined;
-  /** ISO date (`YYYY-MM-DD`) upper bound; paired with `from_date`. */
-  readonly to_date?: string | null | undefined;
-}
-
-/**
- * Keyword-only arguments of {@link Workspace.signReplay} /
- * {@link Workspace.signReplays}.
- */
-export interface WorkspaceSignReplayOptions {
-  /** `"prod"` (default) or `"dev"`. */
-  readonly env?: "prod" | "dev" | undefined;
-}
-
-/** Keyword-only arguments of {@link Workspace.fetchReplay}. */
-export interface WorkspaceFetchReplayOptions {
-  /** Optional user id to stamp on the returned `Replay`. */
-  readonly distinct_id?: string | null | undefined;
-  /** `"prod"` (default) or `"dev"`. */
-  readonly env?: "prod" | "dev" | undefined;
-  /** 1, 7, 30, or 90. Auto-discovered when absent. */
-  readonly retention_days?: number | null | undefined;
-  /** Hard upper bound on the CDN file walk. Default 500. */
-  readonly max_files?: number | undefined;
-  /** Follow with an events query and populate `mixpanel_events`. */
-  readonly include_mixpanel_events?: boolean | undefined;
-  /** Up to 5 extra properties for the Mixpanel join query. */
-  readonly event_properties?: readonly string[] | null | undefined;
-  /** Parallel batch size for CDN fetches. Default 50. */
-  readonly cdn_concurrency?: number | undefined;
-}
-
-/** Keyword-only arguments of {@link Workspace.streamReplay}. */
-export interface WorkspaceStreamReplayOptions {
-  /** `"prod"` (default) or `"dev"`. */
-  readonly env?: "prod" | "dev" | undefined;
-  /** 1, 7, 30, or 90. Auto-discovered when absent. */
-  readonly retention_days?: number | null | undefined;
-  /** Hard upper bound on the CDN file walk. Default 500. */
-  readonly max_files?: number | undefined;
-  /** Re-sign once on a mid-walk 403. Default `true`. */
-  readonly re_sign_on_expiry?: boolean | undefined;
-  /** Parallel batch size for CDN fetches. Default 50. */
-  readonly cdn_concurrency?: number | undefined;
-}
-
-/** Keyword-only arguments of {@link Workspace.fetchReplays}. */
-export interface WorkspaceFetchReplaysOptions {
-  /** `"prod"` (default) or `"dev"`. */
-  readonly env?: "prod" | "dev" | undefined;
-  /** Per-replay CDN bound. Default 500. */
-  readonly max_files?: number | undefined;
-  /** Join Mixpanel events (ONE batched query across all replays). */
-  readonly include_mixpanel_events?: boolean | undefined;
-  /** Up to 5 properties for the join. */
-  readonly event_properties?: readonly string[] | null | undefined;
-  /** Replay-level parallelism. Default 4. */
-  readonly concurrency?: number | undefined;
-  /** Per-replay CDN parallelism. Default 50. */
-  readonly cdn_concurrency?: number | undefined;
-  /** `{replay_id: retention_days}` so each fetch skips discovery. */
-  readonly retention_by_id?:
-    ReadonlyMap<string, number> | Readonly<Record<string, number>> | undefined;
-  /** `{replay_id: distinct_id}` stamped on each fetched `Replay`. */
-  readonly distinct_id_by_id?:
-    ReadonlyMap<string, string> | Readonly<Record<string, string>> | undefined;
-}
-
-/** Keyword-only arguments of {@link Workspace.replaysForUser}. */
-export interface WorkspaceReplaysForUserOptions {
-  /** ISO date (`YYYY-MM-DD`). */
-  readonly from_date: string;
-  /** ISO date (`YYYY-MM-DD`). */
-  readonly to_date: string;
-  /** Maximum replays to fetch. Default 20 (byte-heavy per replay). */
-  readonly limit?: number | undefined;
-  /** Default `true` for this convenience method. */
-  readonly include_mixpanel_events?: boolean | undefined;
-  /** Up to 5 properties for the Mixpanel join. */
-  readonly event_properties?: readonly string[] | null | undefined;
-}
-
-// ---------------------------------------------------------------------------
-// B5-S2 option bags (`workspace.py:1583-4463` + `:9722-10256`)
-// ---------------------------------------------------------------------------
-
-/** Keyword-only arguments of {@link Workspace.segmentation}. */
-export interface WorkspaceSegmentationOptions extends LiveSegmentationOptions {
-  /** Start date (`YYYY-MM-DD`). */
-  readonly from_date: string;
-  /** End date (`YYYY-MM-DD`). */
-  readonly to_date: string;
-}
-
-/** Keyword-only arguments of {@link Workspace.funnel}. */
-export interface WorkspaceFunnelOptions extends LiveFunnelOptions {
-  /** Start date (`YYYY-MM-DD`). */
-  readonly from_date: string;
-  /** End date (`YYYY-MM-DD`). */
-  readonly to_date: string;
-}
-
-/** Keyword-only arguments of {@link Workspace.retention}. */
-export interface WorkspaceRetentionOptions extends LiveRetentionOptions {
-  /** Event that defines cohort entry. */
-  readonly born_event: string;
-  /** Event that defines return. */
-  readonly return_event: string;
-  /** Start date (`YYYY-MM-DD`). */
-  readonly from_date: string;
-  /** End date (`YYYY-MM-DD`). */
-  readonly to_date: string;
-}
-
-/** Keyword-only arguments of {@link Workspace.eventCounts}. */
-export interface WorkspaceEventCountsOptions extends LiveEventCountsOptions {
-  /** Start date (`YYYY-MM-DD`). */
-  readonly from_date: string;
-  /** End date (`YYYY-MM-DD`). */
-  readonly to_date: string;
-}
-
-/** Keyword-only arguments of {@link Workspace.propertyCounts}. */
-export interface WorkspacePropertyCountsOptions extends LivePropertyCountsOptions {
-  /** Start date (`YYYY-MM-DD`). */
-  readonly from_date: string;
-  /** End date (`YYYY-MM-DD`). */
-  readonly to_date: string;
-}
-
-/** Keyword-only arguments of {@link Workspace.frequency}. */
-export interface WorkspaceFrequencyOptions extends LiveFrequencyOptions {
-  /** Start date (`YYYY-MM-DD`). */
-  readonly from_date: string;
-  /** End date (`YYYY-MM-DD`). */
-  readonly to_date: string;
-}
-
-/** Keyword-only arguments of {@link Workspace.segmentationNumeric}. */
-export interface WorkspaceSegmentationNumericOptions extends LiveSegmentationNumericOptions {
-  /** Start date (`YYYY-MM-DD`). */
-  readonly from_date: string;
-  /** End date (`YYYY-MM-DD`). */
-  readonly to_date: string;
-  /** Numeric property expression. */
-  readonly on: string;
-}
-
-/** Keyword-only arguments of the sum/average numeric members. */
-export interface WorkspaceNumericOptions extends LiveNumericOptions {
-  /** Start date (`YYYY-MM-DD`). */
-  readonly from_date: string;
-  /** End date (`YYYY-MM-DD`). */
-  readonly to_date: string;
-  /** Numeric property expression. */
-  readonly on: string;
-}
-
-/**
- * Keyword-only arguments shared by {@link Workspace.query} and
- * {@link Workspace.buildParams} (`workspace.py:2285-2340`).
- */
-export interface WorkspaceQueryOptions {
-  /** Start date (`YYYY-MM-DD`). Overrides `last` when set. */
-  readonly from_date?: string | null | undefined;
-  /** End date (`YYYY-MM-DD`). Requires `from_date`. */
-  readonly to_date?: string | null | undefined;
-  /** Relative time range in days. Default `30`. */
-  readonly last?: number | undefined;
-  /** Time aggregation unit. Default `"day"`. */
-  readonly unit?: string | undefined;
-  /** Aggregation function for plain-string events. Default `"total"`. */
-  readonly math?: string | undefined;
-  /** Property name for property-based math. */
-  readonly math_property?: unknown;
-  /** Per-user pre-aggregation. */
-  readonly per_user?: string | null | undefined;
-  /** Custom percentile value (required when `math="percentile"`). */
-  readonly percentile_value?: number | null | undefined;
-  /** Breakdown specification. */
-  readonly group_by?: GroupByInput;
-  /** Filter conditions. */
-  readonly where?: WhereInput;
-  /** Formula expression referencing events by position (A, B, C…). */
-  readonly formula?: string | null | undefined;
-  /** Display label for the formula result. */
-  readonly formula_label?: string | null | undefined;
-  /** Rolling window size in periods. */
-  readonly rolling?: number | null | undefined;
-  /** Cumulative analysis mode. Default `false`. */
-  readonly cumulative?: boolean | undefined;
-  /** Result shape. Default `"timeseries"`. */
-  readonly mode?: string | undefined;
-  /** Optional period-over-period comparison. */
-  readonly time_comparison?: TimeComparison | null | undefined;
-  /** Optional data group ID. */
-  readonly data_group_id?: number | null | undefined;
-  /**
-   * Segments to return, 1 to 50000. Default `null` keeps the 3000 the
-   * Mixpanel UI uses. Raise it for a high-cardinality breakdown, and
-   * check `result.meta["is_segmentation_limit_hit"]` to see whether the
-   * answer was still truncated. Ignored by {@link Workspace.buildParams}
-   * (an execution setting the params do not store).
-   */
-  readonly limit?: number | null | undefined;
-  /** Clock seam threaded into the time-section builder. */
-  readonly today?: TodayFn | undefined;
-}
-
-/**
- * Keyword-only arguments shared by {@link Workspace.queryFunnel} and
- * {@link Workspace.buildFunnelParams} (`workspace.py:3064-3125`).
- */
-export interface WorkspaceFunnelQueryOptions {
-  /** Conversion window size. Default `14`. */
-  readonly conversion_window?: number | undefined;
-  /** Conversion window unit. Default `"day"`. */
-  readonly conversion_window_unit?: string | undefined;
-  /** Funnel step ordering mode. Default `"loose"`. */
-  readonly order?: string | undefined;
-  /** Start date (`YYYY-MM-DD`). */
-  readonly from_date?: string | null | undefined;
-  /** End date (`YYYY-MM-DD`). */
-  readonly to_date?: string | null | undefined;
-  /** Relative time range in days. Default `30`. */
-  readonly last?: number | undefined;
-  /** Time aggregation unit. Default `"day"`. */
-  readonly unit?: string | undefined;
-  /** Aggregation function. Default `"conversion_rate_unique"`. */
-  readonly math?: string | undefined;
-  /** Numeric property for property aggregation. */
-  readonly math_property?: string | null | undefined;
-  /** Breakdown specification. */
-  readonly group_by?: GroupByInput;
-  /** Filter conditions. */
-  readonly where?: FilterWhereInput;
-  /** Events to exclude. */
-  readonly exclusions?: ReadonlyArray<string | Exclusion> | null | undefined;
-  /** Properties to hold constant. */
-  readonly holding_constant?:
-    | string
-    | HoldingConstant
-    | ReadonlyArray<string | HoldingConstant>
-    | null
-    | undefined;
-  /** Display mode. Default `"steps"`. */
-  readonly mode?: string | undefined;
-  /** Funnel reentry mode. */
-  readonly reentry_mode?: string | null | undefined;
-  /** Optional period-over-period comparison. */
-  readonly time_comparison?: TimeComparison | null | undefined;
-  /** Optional data group ID. */
-  readonly data_group_id?: number | null | undefined;
-  /**
-   * Segments to return, 1 to 50000. Default `null` keeps the 3000 the
-   * Mixpanel UI uses. Ignored by {@link Workspace.buildFunnelParams}.
-   */
-  readonly limit?: number | null | undefined;
-  /** Clock seam. */
-  readonly today?: TodayFn | undefined;
-}
-
-/**
- * Keyword-only arguments shared by {@link Workspace.queryFlow} and
- * {@link Workspace.buildFlowParams} (`workspace.py:3852-3877`).
- */
-export interface WorkspaceFlowQueryOptions {
-  /** Default forward step count. Default `3`. */
-  readonly forward?: number | undefined;
-  /** Default reverse step count. Default `0`. */
-  readonly reverse?: number | undefined;
-  /** Start date (`YYYY-MM-DD`). */
-  readonly from_date?: string | null | undefined;
-  /** End date (`YYYY-MM-DD`). */
-  readonly to_date?: string | null | undefined;
-  /** Relative time range in days. Default `30`. */
-  readonly last?: number | undefined;
-  /** Conversion window size. Default `7`. */
-  readonly conversion_window?: number | undefined;
-  /** Conversion window unit. Default `"day"`. */
-  readonly conversion_window_unit?: string | undefined;
-  /** Counting method. Default `"unique"`. */
-  readonly count_type?: string | undefined;
-  /** Number of top paths. Default `3`. */
-  readonly cardinality?: number | undefined;
-  /** Merge consecutive repeated events. Default `false`. */
-  readonly collapse_repeated?: boolean | undefined;
-  /** Events to hide from the visualization. */
-  readonly hidden_events?: readonly string[] | null | undefined;
-  /** Display mode. Default `"sankey"`. */
-  readonly mode?: string | undefined;
-  /** Filter conditions. */
-  readonly where?: FilterWhereInput;
-  /** Optional data group ID. */
-  readonly data_group_id?: number | null | undefined;
-  /** Segment (breakdown) specification. */
-  readonly segments?: GroupByInput;
-  /** Event names to exclude from flow paths. */
-  readonly exclusions?: readonly string[] | null | undefined;
-  /** Clock seam for the `to_date` default. */
-  readonly today?: TodayFn | undefined;
-}
-
-/**
- * Keyword-only arguments shared by {@link Workspace.queryRetention} and
- * {@link Workspace.buildRetentionParams} (`workspace.py:4225-4249`).
- */
-export interface WorkspaceRetentionQueryOptions {
-  /** Retention period unit. Default `"week"`. */
-  readonly retention_unit?: string | undefined;
-  /** Retention alignment mode. Default `"birth"`. */
-  readonly alignment?: string | undefined;
-  /** Custom bucket sizes. */
-  readonly bucket_sizes?: readonly number[] | null | undefined;
-  /** Start date (`YYYY-MM-DD`). */
-  readonly from_date?: string | null | undefined;
-  /** End date (`YYYY-MM-DD`). */
-  readonly to_date?: string | null | undefined;
-  /** Relative time range in days. Default `30`. */
-  readonly last?: number | undefined;
-  /** Time aggregation unit. Default `"day"`. */
-  readonly unit?: string | undefined;
-  /** Aggregation function. Default `"retention_rate"`. */
-  readonly math?: string | undefined;
-  /** Breakdown specification. */
-  readonly group_by?: GroupByInput;
-  /** Filter conditions. */
-  readonly where?: FilterWhereInput;
-  /** Display mode. Default `"curve"`. */
-  readonly mode?: string | undefined;
-  /** Retention unbounded mode. */
-  readonly unbounded_mode?: string | null | undefined;
-  /** Cumulative retention counting. Default `false`. */
-  readonly retention_cumulative?: boolean | undefined;
-  /** Optional period-over-period comparison. */
-  readonly time_comparison?: TimeComparison | null | undefined;
-  /** Optional data group ID. */
-  readonly data_group_id?: number | null | undefined;
-  /**
-   * Segments to return, 1 to 50000. Default `null` keeps the 3000 the
-   * Mixpanel UI uses. Ignored by {@link Workspace.buildRetentionParams}.
-   */
-  readonly limit?: number | null | undefined;
-  /** Clock seam. */
-  readonly today?: TodayFn | undefined;
-}
-
-/**
- * Keyword-only arguments shared by {@link Workspace.queryUser} and
- * {@link Workspace.buildUserParams} (`workspace.py:9722-9745`).
- *
- * Python's `build_user_params` orders `limit` after `segment_by` while
- * `query_user` puts it after `sort_order` (packet Caution 8) — the
- * NAMES are identical, and TS options bags are order-free, so one
- * interface serves both.
- */
-export interface WorkspaceUserQueryOptions {
-  /** Profile filter (single, list, raw selector, or `null`). */
-  readonly where?: Filter | readonly Filter[] | string | null | undefined;
-  /** Cohort membership filter. */
-  readonly cohort?: number | CohortDefinition | null | undefined;
-  /** Output properties to include. */
-  readonly properties?: readonly string[] | null | undefined;
-  /** Property name to sort by. */
-  readonly sort_by?: string | null | undefined;
-  /** Sort direction. Default `"descending"`. */
-  readonly sort_order?: string | undefined;
-  /** Maximum profiles to return. Default `1`; `null` fetches all. */
-  readonly limit?: number | null | undefined;
-  /** Full-text search term. */
-  readonly search?: string | null | undefined;
-  /** Single distinct-ID lookup. */
-  readonly distinct_id?: string | null | undefined;
-  /** Batch distinct-ID lookup. */
-  readonly distinct_ids?: readonly string[] | null | undefined;
-  /** Group-profile scope. */
-  readonly group_id?: string | null | undefined;
-  /** Point-in-time query (ISO date text or Unix timestamp). */
-  readonly as_of?: string | number | null | undefined;
-  /** Output mode. Default `"aggregate"`. */
-  readonly mode?: string | undefined;
-  /** Aggregation function. Default `"count"`. */
-  readonly aggregate?: string | undefined;
-  /** Property to aggregate on. */
-  readonly aggregate_property?: string | null | undefined;
-  /** Percentile value (0-100 exclusive). */
-  readonly percentile?: number | null | undefined;
-  /** Cohort IDs for segmented aggregation. */
-  readonly segment_by?: readonly number[] | null | undefined;
-  /** Enable concurrent page fetching. Default `false`. */
-  readonly parallel?: boolean | undefined;
-  /** Maximum concurrent workers. Default `5`. */
-  readonly workers?: number | undefined;
-  /** Include non-members in cohort query results. Default `false`. */
-  readonly include_all_users?: boolean | undefined;
-  /** Clock seam for the U8 `as_of` future check. */
-  readonly today?: TodayFn | undefined;
-}
-
-/**
- * Keyword-only arguments of {@link Workspace.runParams},
- * {@link Workspace.runFunnelParams} and
- * {@link Workspace.runRetentionParams} (`workspace.py:2518-2523`,
- * `:3340-3345`, `:4584-4589`).
- */
-export interface WorkspaceRunParamsOptions {
-  /**
-   * Segments to return, 1 to 50000. Default `null` keeps the 3000 the
-   * Mixpanel UI uses.
-   */
-  readonly limit?: number | null | undefined;
-  /**
-   * Optional data view to run under. Wins over the pinned session
-   * workspace.
-   */
-  readonly workspace_id?: number | null | undefined;
-}
-
-/**
- * Keyword-only arguments of {@link Workspace.runFlowParams}
- * (`workspace.py:4170-4175`).
- */
-export interface WorkspaceRunFlowParamsOptions {
-  /**
-   * Flow chart mode. `null` / `undefined` (default) derives it from the
-   * params: `flows_merge_type` (`"tree"`, `"list"` for paths, `"graph"`
-   * for sankey) when present, else `chartType` (`"top-paths"` or
-   * `"paths"` for paths, `"tree"`, anything else sankey). Params from
-   * {@link Workspace.buildFlowParams} always resolve to the mode they
-   * were built with. Pass a value to override.
-   */
-  readonly mode?: FlowMode | null | undefined;
-  /**
-   * Optional data view to run under. Wins over the pinned session
-   * workspace.
-   */
-  readonly workspace_id?: number | null | undefined;
-}
-
-/**
- * Keyword-only arguments of {@link Workspace.runUserParams}
- * (`workspace.py:10141-10148`) — the execution settings
- * {@link Workspace.buildUserParams} does not store, with the same
- * defaults as {@link Workspace.queryUser}.
- */
-export interface WorkspaceRunUserParamsOptions {
-  /**
-   * Maximum profiles to return in profiles mode. `null` fetches all
-   * matching profiles. Ignored in aggregate mode. Default `1`.
-   */
-  readonly limit?: number | null | undefined;
-  /**
-   * Fetch profile pages concurrently. Ignored when `limit` is `1` or
-   * in aggregate mode. Default `false`.
-   */
-  readonly parallel?: boolean | undefined;
-  /** Maximum concurrent workers for parallel fetching. Default `5`. */
-  readonly workers?: number | undefined;
-}
-
-/**
- * `create_report_link` accepts raw bookmark params or a typed result
- * from `query` / `queryFunnel` / `queryRetention` / `queryFlow` (a typed
- * result supplies both the params and the report type).
- */
-export type ReportLinkParamsInput =
-  | Readonly<Record<string, unknown>>
-  | QueryResult
-  | FunnelQueryResult
-  | RetentionQueryResult
-  | FlowQueryResult;
-
-/** Options bag of {@link Workspace.createReportLink} (Python kw-only). */
-export interface WorkspaceCreateReportLinkOptions {
-  /**
-   * `insights`, `funnels`, `retention`, or `flows`. Defaults to
-   * `insights` for a dict; inferred from a typed result. An explicit
-   * value that contradicts the inferred one is rejected.
-   */
-  readonly report_type?: ReportLinkType | null | undefined;
-  /** Optional name stored with the record. */
-  readonly name?: string | undefined;
-  /** Optional description stored with the record. */
-  readonly description?: string | undefined;
-  /**
-   * Workspace for the `/view/{wid}` URL segment. Defaults to the pinned
-   * session workspace, then `resolveWorkspaceId()`; if nothing resolves
-   * the URL is project-only.
-   */
-  readonly workspace_id?: number | null | undefined;
-  /** Optional saved-report reference to store. */
-  readonly bookmark_id?: number | null | undefined;
-  /**
-   * Run the client-side bookmark schema check before the POST
-   * (default). `false` sends the params as given.
-   */
-  readonly validate?: boolean | undefined;
-}
-
-/** Options bag of {@link Workspace.queryReportLink} (Python kw-only). */
-export interface WorkspaceQueryReportLinkOptions {
-  /**
-   * Flows chart mode. When `null` it is derived from
-   * `params["chartType"]` if that is `sankey`, `paths`, or `tree`, else
-   * `sankey`. Ignored for other report types.
-   */
-  readonly mode?: "sankey" | "paths" | "tree" | null | undefined;
-}
-
-/** Options bag of {@link Workspace.savedReportLink} (Python kw-only). */
-export interface WorkspaceSavedReportLinkOptions {
-  /**
-   * `insights` (default), `funnels`, `retention`, `flows`, or
-   * `launch-analysis`. The singular `funnel` that
-   * `SavedReportResult.report_type` reports is accepted and normalized
-   * to `funnels`.
-   */
-  readonly report_type?: BookmarkType | "funnel" | undefined;
-  /**
-   * Workspace for the `/view/{wid}` segment. Defaults to the pinned
-   * session workspace; when none is pinned the segment is omitted.
-   * `resolveWorkspaceId()` is never called here.
-   */
-  readonly workspace_id?: number | null | undefined;
-}
+/** `last` default of the four query builders (`Workspace.query(last=30)`). */
+const DEFAULT_QUERY_LAST_DAYS = 30;
 
 /**
  * Main facade for Mixpanel operations — TS port of
@@ -1331,8 +432,8 @@ export class Workspace {
   /** `warnings.warn` sink handed to the discovery service. */
   readonly #warn: WarningSink | undefined;
 
-  /** Debug-log sink handed to the discovery service. */
-  readonly #logger: WorkspaceLogger | undefined;
+  /** The log seam; {@link NOOP_LOGGER} unless the host injected one. */
+  readonly #logger: ResolvedWorkspaceLogger;
   /** The `generate_slug` seam (045-report-links). */
   readonly #generateSlug: () => string;
 
@@ -1401,7 +502,7 @@ export class Workspace {
     this.#seams = mergeResolverSeams(options.seams);
     this.#meCacheFactory = options.meCache ?? inMemoryMeCache;
     this.#warn = options.warn;
-    this.#logger = options.logger;
+    this.#logger = resolveWorkspaceLogger(options.logger);
     this.#generateSlug = options.generateSlug ?? ((): string => generateSlug());
     // B6-W7 seams (W7 owns these two lines).
     this.#readFile = options.readFile ?? unportedReadFile;
@@ -1449,7 +550,7 @@ export class Workspace {
     if (this.#discovery === null) {
       this.#discovery = new DiscoveryService(this.client, {
         ...(this.#warn === undefined ? {} : { warn: this.#warn }),
-        ...(this.#logger === undefined ? {} : { logger: this.#logger }),
+        logger: this.#logger,
       });
     }
     return this.#discovery;
@@ -1969,7 +1070,7 @@ export class Workspace {
       events,
       from_date: options.from_date ?? null,
       to_date: options.to_date ?? null,
-      last: options.last ?? 30,
+      last: options.last ?? DEFAULT_QUERY_LAST_DAYS,
       unit: options.unit ?? "day",
       math: options.math ?? "total",
       math_property: options.math_property ?? null,
@@ -2083,7 +1184,7 @@ export class Workspace {
       math_property: options.math_property ?? null,
       from_date: options.from_date ?? null,
       to_date: options.to_date ?? null,
-      last: options.last ?? 30,
+      last: options.last ?? DEFAULT_QUERY_LAST_DAYS,
       unit: options.unit ?? "day",
       group_by: options.group_by ?? null,
       where: options.where ?? null,
@@ -2192,7 +1293,7 @@ export class Workspace {
       reverse: options.reverse ?? 0,
       from_date: options.from_date ?? null,
       to_date: options.to_date ?? null,
-      last: options.last ?? 30,
+      last: options.last ?? DEFAULT_QUERY_LAST_DAYS,
       conversion_window: options.conversion_window ?? 7,
       conversion_window_unit: options.conversion_window_unit ?? "day",
       count_type: options.count_type ?? "unique",
@@ -2316,7 +1417,7 @@ export class Workspace {
       math: options.math ?? "retention_rate",
       from_date: options.from_date ?? null,
       to_date: options.to_date ?? null,
-      last: options.last ?? 30,
+      last: options.last ?? DEFAULT_QUERY_LAST_DAYS,
       unit: options.unit ?? "day",
       group_by: options.group_by ?? null,
       where: options.where ?? null,
@@ -2354,7 +1455,8 @@ export class Workspace {
   ): Promise<UserQueryResult> {
     const limit = options.limit === undefined ? 1 : options.limit;
     const parallel = options.parallel ?? false;
-    const workers = options.workers ?? 5;
+    const workers =
+      options.workers ?? userQueryEngine.DEFAULT_USER_QUERY_WORKERS;
     const params = this.#resolveUserParams(options);
 
     return this.runUserParams(params, { limit, parallel, workers });
@@ -2392,55 +1494,11 @@ export class Workspace {
     params: ParamsDict,
     options: WorkspaceRunUserParamsOptions = {},
   ): Promise<UserQueryResult> {
-    const limit = options.limit === undefined ? 1 : options.limit;
-    const parallel = options.parallel ?? false;
-    const workers = options.workers ?? 5;
-
-    if (Object.hasOwn(params, "action")) {
-      const [
-        aggregateData,
-        aggregateTotal,
-        aggregateComputedAt,
-        aggregateMeta,
-      ] = await this.#executeUserAggregate(params);
-      return new UserQueryResult({
-        computed_at: aggregateComputedAt,
-        total: aggregateTotal,
-        profiles: [],
-        params,
-        meta: aggregateMeta,
-        mode: "aggregate",
-        aggregate_data: aggregateData,
-      });
-    }
-
-    // Profiles mode — choose sequential or parallel
-    let profiles: Array<Record<string, unknown>>;
-    let total: number;
-    let computedAt: string;
-    let meta: Record<string, unknown>;
-    if (parallel && limit !== 1) {
-      [profiles, total, computedAt, meta] =
-        await this.#executeUserQueryParallel(params, limit, workers);
-    } else {
-      if (parallel && limit === 1) {
-        this.#logger?.debug(
-          "parallel=True ignored: limit=1 uses sequential path",
-        );
-      }
-      [profiles, total, computedAt, meta] =
-        await this.#executeUserQuerySequential(params, limit);
-    }
-
-    return new UserQueryResult({
-      computed_at: computedAt,
-      total,
-      profiles,
+    return userQueryEngine.runUserParams(
+      this.#userQueryHost(),
       params,
-      meta,
-      mode: "profiles",
-      aggregate_data: null,
-    });
+      options,
+    );
   }
 
   /**
@@ -2483,313 +1541,19 @@ export class Workspace {
       segment_by: options.segment_by ?? null,
       limit: options.limit === undefined ? 1 : options.limit,
       parallel: options.parallel ?? false,
-      workers: options.workers ?? 5,
+      workers: options.workers ?? userQueryEngine.DEFAULT_USER_QUERY_WORKERS,
       include_all_users: options.include_all_users ?? false,
       ...(options.today === undefined ? {} : { today: options.today }),
     });
   }
 
   /**
-   * Execute a user profile query with sequential page fetching
-   * (`_execute_user_query_sequential`, `workspace.py:9629-9720`).
+   * The facade slice the user-query engines read.
    *
-   * @param params - Engage params from the resolver.
-   * @param limit - Maximum profiles to collect (`null` = all).
-   * @returns `[profiles, total, computed_at, meta]`.
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Wire failures.
+   * @returns The host view over this facade.
    */
-  async #executeUserQuerySequential(
-    params: ParamsDict,
-    limit: number | null,
-  ): Promise<[Array<Record<string, unknown>>, number, string, ParamsDict]> {
-    // Reuse buildPageKwargs for params→kwargs translation; pass the
-    // limit server-side for efficient fetching. `total` is
-    // `len(profiles)` — the count in THIS response, not the API's
-    // population total (use mode="aggregate" for that).
-    const apiKwargs = buildPageKwargs(params);
-    apiKwargs["limit"] = limit;
-
-    let result = await this.#exportPage(0, apiKwargs);
-    let profiles: Array<Record<string, unknown>> = result.profiles.map((p) =>
-      transformProfile(p),
-    );
-    const sessionId = result.session_id;
-    let pagesFetched = 1;
-
-    // Check if we already have enough
-    if (limit !== null && profiles.length >= limit) {
-      profiles = profiles.slice(0, limit);
-    } else if (result.has_more && result.profiles.length > 0) {
-      // Paginate for more (guard: stop if a page returns no profiles)
-      let currentPage = 0;
-      while (result.has_more) {
-        if (limit !== null && profiles.length >= limit) {
-          break;
-        }
-        currentPage += 1;
-        result = await this.#exportPage(currentPage, {
-          ...apiKwargs,
-          session_id: sessionId,
-        });
-        if (result.profiles.length === 0) {
-          break;
-        }
-        for (const p of result.profiles) {
-          profiles.push(transformProfile(p));
-        }
-        pagesFetched += 1;
-      }
-
-      // Python `profiles[:None]` returns everything (limit=None case).
-      profiles = limit === null ? profiles : profiles.slice(0, limit);
-    }
-
-    const computedAt = isoUtc(this.client.core.now());
-    const meta: ParamsDict = {
-      session_id: sessionId,
-      pages_fetched: pagesFetched,
-      parallel: false,
-    };
-
-    return [profiles, profiles.length, computedAt, meta];
-  }
-
-  /**
-   * Execute an aggregate query via the Engage stats endpoint
-   * (`_execute_user_aggregate`, `workspace.py:10002-10064`).
-   *
-   * @param params - Engage params from the resolver.
-   * @returns `[aggregate_data, total, computed_at, meta]`.
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Wire failures.
-   */
-  async #executeUserAggregate(
-    params: ParamsDict,
-  ): Promise<
-    [
-      Readonly<Record<string, unknown>> | number | null,
-      number,
-      string,
-      ParamsDict,
-    ]
-  > {
-    // The kwargs block is the exported `buildStatsKwargs` (R7.2 split
-    // of the `self`-free half, `workspace.py:10027-10046`).
-    const statsKwargs = buildStatsKwargs(params);
-
-    const response = (await this.client.engageStats(statsKwargs)) as unknown;
-    const body = toNativeRecord(response);
-
-    const aggregateData = Object.hasOwn(body, "results")
-      ? body["results"]
-      : undefined;
-    const computedAt = Object.hasOwn(body, "computed_at")
-      ? (body["computed_at"] as string)
-      : isoUtc(this.client.core.now());
-    let total: number;
-    if (typeof aggregateData === "number") {
-      // Python: `int(aggregate_data)` — truncation toward zero.
-      total = params["action"] === "count()" ? Math.trunc(aggregateData) : 0;
-    } else {
-      total = 0;
-    }
-
-    const action = Object.hasOwn(params, "action")
-      ? params["action"]
-      : "count()";
-    const segmented = Object.hasOwn(params, "segment_by_cohorts");
-    const meta: ParamsDict = { action, segmented };
-
-    return [
-      (aggregateData ?? null) as
-        Readonly<Record<string, unknown>> | number | null,
-      total,
-      computedAt,
-      meta,
-    ];
-  }
-
-  /**
-   * Fetch profiles with concurrent page retrieval
-   * (`_execute_user_query_parallel`, `workspace.py:10069-10207`).
-   *
-   * Page 0 is fetched first for metadata, then pages `1..n-1` run under
-   * a bounded scheduler with the SAME worker cap Python's
-   * `ThreadPoolExecutor(max_workers=min(workers, 5))` applies. Results
-   * are re-ordered by page number, failed pages are recorded rather
-   * than aborting, and the four CODED wire errors abort the whole
-   * query (Python cancels the queued futures and re-raises; the TS twin
-   * stops scheduling and lets the in-flight pages settle, exactly as
-   * `ThreadPoolExecutor.__exit__` does).
-   *
-   * @param params - Engage params from the resolver.
-   * @param limit - Maximum profiles to return (`null` = all).
-   * @param workers - Requested worker count (capped at 5).
-   * @returns `[profiles, total, computed_at, meta]`.
-   * @throws AuthenticationError | RateLimitError | ServerError |
-   *   QueryError - Propagated from any page.
-   */
-  async #executeUserQueryParallel(
-    params: ParamsDict,
-    limit: number | null,
-    workers: number,
-  ): Promise<[Array<Record<string, unknown>>, number, string, ParamsDict]> {
-    const cappedWorkers = Math.min(workers, 5);
-    const pageKwargs = buildPageKwargs(params);
-
-    // Page 0: get metadata
-    const page0 = await this.#exportPage(0, pageKwargs);
-    const total = page0.total;
-    // Python `page0.page_size or 1000` — 0/None fall back.
-    const pageSize = page0.page_size || 1000;
-    const sessionId = page0.session_id;
-    const computedAt = isoUtc(this.client.core.now());
-
-    let allProfiles: Array<Record<string, unknown>> = page0.profiles.map((p) =>
-      transformProfile(p),
-    );
-
-    let pagesNeeded: number;
-    if (limit === null) {
-      pagesNeeded = Math.ceil(total / pageSize);
-    } else {
-      // Cap by total to avoid fetching empty pages when limit > total
-      const effective = total > 0 ? Math.min(limit, total) : limit;
-      pagesNeeded = Math.ceil(effective / pageSize);
-    }
-
-    // Single page — skip parallel overhead
-    if (pagesNeeded <= 1 || !page0.has_more) {
-      allProfiles = limit === null ? allProfiles : allProfiles.slice(0, limit);
-      return [
-        allProfiles,
-        allProfiles.length,
-        computedAt,
-        {
-          session_id: sessionId,
-          pages_fetched: 1,
-          failed_pages: [],
-          parallel: true,
-          workers: cappedWorkers,
-        },
-      ];
-    }
-
-    if (pagesNeeded > 48) {
-      this.#logger?.warning?.(
-        `Fetching ${pagesNeeded} pages may trigger rate limiting ` +
-          "(engage API allows ~60 queries/hour).",
-      );
-    }
-
-    const failedPages: number[] = [];
-    const pageResults = new Map<number, Array<Record<string, unknown>>>();
-
-    /**
-     * Fetch and normalize a single page (`_fetch_page`, `:10152`).
-     *
-     * @param pageNum - The page index.
-     * @returns The page number and its normalized profiles.
-     */
-    const fetchPage = async (
-      pageNum: number,
-    ): Promise<[number, Array<Record<string, unknown>>]> => {
-      const result = await this.#exportPage(pageNum, {
-        ...pageKwargs,
-        session_id: sessionId,
-      });
-      return [pageNum, result.profiles.map((p) => transformProfile(p))];
-    };
-
-    // Bounded-concurrency scheduler: the TS twin of
-    // `ThreadPoolExecutor(max_workers=capped)` + `as_completed`.
-    let next = 1;
-    // Boxed rather than a bare `let`: the workers assign it inside a
-    // closure, which TS's flow analysis does not track for a local.
-    const abort: {
-      error:
-        AuthenticationError | RateLimitError | ServerError | QueryError | null;
-    } = { error: null };
-    const runWorker = async (): Promise<void> => {
-      for (;;) {
-        if (abort.error !== null) {
-          return;
-        }
-        const pageNum = next;
-        if (pageNum >= pagesNeeded) {
-          return;
-        }
-        next += 1;
-        try {
-          const [pnum, profiles] = await fetchPage(pageNum);
-          pageResults.set(pnum, profiles);
-        } catch (error) {
-          if (
-            error instanceof AuthenticationError ||
-            error instanceof RateLimitError ||
-            error instanceof ServerError ||
-            error instanceof QueryError
-          ) {
-            // Python cancels the queued futures and re-raises out of
-            // the `with` block (running futures still finish).
-            abort.error = error;
-            return;
-          }
-          this.#logger?.warning?.(
-            `Failed to fetch page ${pageNum} (${
-              error instanceof Error ? error.constructor.name : typeof error
-            }: ${String(error)}), continuing with partial results`,
-          );
-          failedPages.push(pageNum);
-        }
-      }
-    };
-
-    await Promise.all(
-      Array.from({ length: Math.min(cappedWorkers, pagesNeeded - 1) }, () =>
-        runWorker(),
-      ),
-    );
-    if (abort.error !== null) {
-      throw abort.error;
-    }
-
-    for (const [, profiles] of [...pageResults].sort((a, b) => a[0] - b[0])) {
-      allProfiles.push(...profiles);
-    }
-
-    allProfiles = limit === null ? allProfiles : allProfiles.slice(0, limit);
-
-    return [
-      allProfiles,
-      allProfiles.length,
-      computedAt,
-      {
-        session_id: sessionId,
-        pages_fetched: pagesNeeded - failedPages.length,
-        failed_pages: [...failedPages].sort((a, b) => a - b),
-        parallel: true,
-        workers: cappedWorkers,
-      },
-    ];
-  }
-
-  /**
-   * `api_client.export_profiles_page(page=..., **kwargs)` with the
-   * dynamic kwargs bag the two engines build.
-   *
-   * @param page - Zero-based page index.
-   * @param kwargs - The dynamic options bag.
-   * @returns The page result.
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Wire failures.
-   */
-  async #exportPage(
-    page: number,
-    kwargs: Readonly<Record<string, unknown>>,
-  ): Promise<ProfilePageResult> {
-    return this.client.exportProfilesPage(page, kwargs);
+  #userQueryHost(): userQueryEngine.UserQueryHost {
+    return { client: this.client, logger: this.#logger };
   }
 
   /**
@@ -3039,7 +1803,7 @@ export class Workspace {
           options: Readonly<Record<string, unknown>>,
         ) => this.query(events, options),
         ...(this.#warn === undefined ? {} : { warn: this.#warn }),
-        ...(this.#logger === undefined ? {} : { logger: this.#logger }),
+        logger: this.#logger,
       });
     }
     return this.#replays;
@@ -3054,6 +1818,29 @@ export class Workspace {
    */
   set replaysService(service: ReplaysService) {
     this.#replays = service;
+  }
+
+  /**
+   * The facade slice the replay members read; the service and the
+   * project id stay lazy (thunks) so they resolve where Python reads them.
+   *
+   * @returns The host view over this facade.
+   */
+  #replayHost(): replayMethods.ReplayHost {
+    return {
+      client: this.client,
+      logger: this.#logger,
+      replaysService: () => this.replaysService,
+      projectId: () => this.#projectId(),
+      listReplays: (options) => this.listReplays(options),
+      eventsForReplay: (replayId, options) =>
+        this.eventsForReplay(replayId, options),
+      eventsForReplays: (replayIds, options) =>
+        this.eventsForReplays(replayIds, options),
+      fetchReplay: (replayId, options) => this.fetchReplay(replayId, options),
+      fetchReplays: (replayIds, options) =>
+        this.fetchReplays(replayIds, options),
+    };
   }
 
   /**
@@ -3073,42 +1860,7 @@ export class Workspace {
   async listReplays(
     options: WorkspaceListReplaysOptions = {},
   ): Promise<ReplaySummary[]> {
-    const distinctId = options.distinct_id ?? null;
-    const replayIds = options.replay_ids ?? null;
-    const fromDate = options.from_date ?? null;
-    const toDate = options.to_date ?? null;
-    const limit = options.limit ?? 100;
-
-    // Guard order is SOURCE order (`workspace.py:10730-10744`); Python's
-    // `not replay_ids` is falsiness, so an EMPTY list trips WR4.
-    const hasReplayIds = replayIds !== null && replayIds.length > 0;
-    if (distinctId === null && !hasReplayIds) {
-      throw new ParamValidationError(
-        "list_replays requires exactly one of distinct_id or replay_ids.",
-        "WR4_REPLAY_SELECTOR_REQUIRED",
-      );
-    }
-    if (distinctId !== null && hasReplayIds) {
-      throw new ParamValidationError(
-        "list_replays requires exactly one of distinct_id or " +
-          "replay_ids; both were given.",
-        "WR4_REPLAY_SELECTOR_REQUIRED",
-      );
-    }
-    if (distinctId !== null && (fromDate === null || toDate === null)) {
-      throw new ParamValidationError(
-        "list_replays(distinct_id=...) requires from_date and to_date.",
-        "WR5_DATE_RANGE_REQUIRED",
-      );
-    }
-
-    return this.replaysService.discover({
-      distinctId,
-      replayIds,
-      fromDate,
-      toDate,
-      limit,
-    });
+    return replayMethods.listReplays(this.#replayHost(), options);
   }
 
   /**
@@ -3126,13 +1878,7 @@ export class Workspace {
     replayId: string,
     options: WorkspaceEventsForReplayOptions = {},
   ): Promise<ReplayEvent[]> {
-    checkEventPropertiesCount(options.event_properties ?? null);
-    const bundle = await this.replaysService.eventsFor([replayId], {
-      eventProperties: options.event_properties ?? null,
-      fromDate: options.from_date ?? null,
-      toDate: options.to_date ?? null,
-    });
-    return bundle.get(replayId) ?? [];
+    return replayMethods.eventsForReplay(this.#replayHost(), replayId, options);
   }
 
   /**
@@ -3151,12 +1897,11 @@ export class Workspace {
     replayIds: readonly string[],
     options: WorkspaceEventsForReplayOptions = {},
   ): Promise<Map<string, ReplayEvent[]>> {
-    checkEventPropertiesCount(options.event_properties ?? null);
-    return this.replaysService.eventsFor(replayIds, {
-      eventProperties: options.event_properties ?? null,
-      fromDate: options.from_date ?? null,
-      toDate: options.to_date ?? null,
-    });
+    return replayMethods.eventsForReplays(
+      this.#replayHost(),
+      replayIds,
+      options,
+    );
   }
 
   /**
@@ -3174,11 +1919,7 @@ export class Workspace {
     replayId: string,
     options: WorkspaceSignReplayOptions = {},
   ): Promise<SignedReplay> {
-    const signed = await this.replaysService.sign(
-      [replayId],
-      options.env ?? "prod",
-    );
-    return signed[0] as SignedReplay;
+    return replayMethods.signReplay(this.#replayHost(), replayId, options);
   }
 
   /**
@@ -3195,7 +1936,7 @@ export class Workspace {
     replayIds: readonly string[],
     options: WorkspaceSignReplayOptions = {},
   ): Promise<SignedReplay[]> {
-    return this.replaysService.sign(replayIds, options.env ?? "prod");
+    return replayMethods.signReplays(this.#replayHost(), replayIds, options);
   }
 
   /**
@@ -3224,69 +1965,7 @@ export class Workspace {
     replayId: string,
     options: WorkspaceFetchReplayOptions = {},
   ): Promise<Replay> {
-    checkEventPropertiesCount(options.event_properties ?? null);
-    const env = options.env ?? "prod";
-    const resolvedRetention = await this.#resolveRetention(
-      replayId,
-      options.retention_days ?? null,
-    );
-    const signed = (await this.replaysService.sign([replayId], env))[0];
-    const rrwebEvents = await this.replaysService.fetchFiles(
-      signed as SignedReplay,
-      {
-        retentionDays: resolvedRetention,
-        maxFiles: options.max_files ?? 500,
-        concurrency: options.cdn_concurrency ?? 50,
-      },
-    );
-    if (rrwebEvents.length === 0) {
-      throw replayNotFoundError(replayId, {
-        retentionDays: resolvedRetention,
-        cdnUrlPrefix: (signed as SignedReplay).url,
-      });
-    }
-
-    // Derive the window from min/max rather than first/last:
-    // `walkCdnAsync` yields in (file-number, in-file timestamp) order
-    // with no global merge, so indexing [0]/[-1] would drift if CDN
-    // files ever overlap in time.
-    // Python `int(ev["timestamp"])` (`workspace.py:10946`) — a
-    // SUBSCRIPT, so a missing key is a KeyError, not the int() ladder's
-    // TypeError (B5-ARB FID-F5).
-    const eventTimestamps = rrwebEvents.map((ev) => {
-      if (!Object.hasOwn(ev, "timestamp")) {
-        throw new KeyError("timestamp");
-      }
-      return pythonIntCoerce(ev["timestamp"]);
-    });
-    const startTime = Math.min(...eventTimestamps);
-    const endTime = Math.max(...eventTimestamps);
-
-    let mixpanelEvents: ReplayEvent[] = [];
-    if (options.include_mixpanel_events === true) {
-      // Scope the events scan to the replay's own day(s).
-      const winFrom = utcYmdFromEpochMs(startTime);
-      const winTo = utcYmdFromEpochMs(endTime);
-      mixpanelEvents = await this.eventsForReplay(replayId, {
-        event_properties: options.event_properties ?? null,
-        from_date: winFrom,
-        to_date: winTo,
-      });
-    }
-
-    // Run the rrweb analyzer to populate actions.
-    const analyzerResult = new RrwebAnalyzer().analyze(rrwebEvents);
-    return new Replay({
-      replay_id: replayId,
-      distinct_id: options.distinct_id ?? null,
-      project_id: this.#projectId(),
-      start_time: startTime,
-      end_time: endTime,
-      retention_days: resolvedRetention,
-      rrweb_events: rrwebEvents,
-      actions: [...analyzerResult.actions],
-      mixpanel_events: mixpanelEvents,
-    });
+    return replayMethods.fetchReplay(this.#replayHost(), replayId, options);
   }
 
   /**
@@ -3312,19 +1991,7 @@ export class Workspace {
     replayId: string,
     options: WorkspaceStreamReplayOptions = {},
   ): AsyncGenerator<Readonly<Record<string, unknown>>, void, undefined> {
-    const resolvedRetention = await this.#resolveRetention(
-      replayId,
-      options.retention_days ?? null,
-    );
-    const signed = (
-      await this.replaysService.sign([replayId], options.env ?? "prod")
-    )[0];
-    yield* this.replaysService.walkCdnAsync(signed as SignedReplay, {
-      retentionDays: resolvedRetention,
-      maxFiles: options.max_files ?? 500,
-      concurrency: options.cdn_concurrency ?? 50,
-      reSignOnExpiry: options.re_sign_on_expiry ?? true,
-    });
+    yield* replayMethods.streamReplay(this.#replayHost(), replayId, options);
   }
 
   /**
@@ -3357,101 +2024,7 @@ export class Workspace {
     replayIds: readonly string[],
     options: WorkspaceFetchReplaysOptions = {},
   ): Promise<ReplayBundle> {
-    checkEventPropertiesCount(options.event_properties ?? null);
-    const retentionMap = options.retention_by_id ?? new Map<string, number>();
-    const distinctMap = options.distinct_id_by_id ?? new Map<string, string>();
-    const concurrency = Math.max(1, options.concurrency ?? 4);
-
-    // Events are joined ONCE after assembly (below), not per replay — so
-    // each fetch runs with include_mixpanel_events=false here regardless
-    // of the caller's flag.
-    const results = new Map<number, Replay>();
-    const failures: Array<[string, Error]> = [];
-    let cursor = 0;
-    const worker = async (): Promise<void> => {
-      for (;;) {
-        const index = cursor;
-        cursor += 1;
-        if (index >= replayIds.length) {
-          return;
-        }
-        const rid = replayIds[index] as string;
-        try {
-          results.set(
-            index,
-            await this.fetchReplay(rid, {
-              distinct_id: mapGet(distinctMap, rid) ?? null,
-              env: options.env ?? "prod",
-              retention_days: mapGet(retentionMap, rid) ?? null,
-              max_files: options.max_files ?? 500,
-              include_mixpanel_events: false,
-              cdn_concurrency: options.cdn_concurrency ?? 50,
-            }),
-          );
-        } catch (error) {
-          // One replay's CDN stall, 404, or parse error must not sink
-          // the whole bundle. Log it and keep the successful replays;
-          // only an all-fail batch raises.
-          this.#logger?.warning?.(
-            `fetch_replays: skipping replay ${rid} — ` +
-              `${error instanceof Error ? error.name : typeof error}: ${String(error)}`,
-          );
-          failures.push([rid, toError(error)]);
-        }
-      }
-    };
-    await Promise.all(
-      Array.from({ length: Math.min(concurrency, replayIds.length) }, () =>
-        worker(),
-      ),
-    );
-    const firstFailure = failures[0];
-    if (results.size === 0 && firstFailure !== undefined) {
-      // Every replay failed — surface the first underlying error rather
-      // than a generic wrapper, preserving its type for callers that
-      // branch on it. Python's `failures[0]` is completion-ordered
-      // (`as_completed`); the port keeps INPUT order, which is the
-      // deterministic reading of the same rule (recorded in
-      // `B5-S3-notes.md` §2).
-      throw firstFailure[1];
-    }
-    let ordered = [...results]
-      .sort((a, b) => a[0] - b[0])
-      .map(([, replay]) => replay);
-
-    // Join Mixpanel events in ONE query across all replays (the
-    // per-replay alternative fans out N queries and exhausts the
-    // Insights rate limit). The combined window spans the earliest
-    // start to the latest end.
-    if (options.include_mixpanel_events === true && ordered.length > 0) {
-      const winFrom = utcYmdFromEpochMs(
-        Math.min(...ordered.map((r) => r.start_time)),
-      );
-      const winTo = utcYmdFromEpochMs(
-        Math.max(...ordered.map((r) => r.end_time)),
-      );
-      const eventsByReplay = await this.eventsForReplays(
-        ordered.map((r) => r.replay_id),
-        {
-          event_properties: options.event_properties ?? null,
-          from_date: winFrom,
-          to_date: winTo,
-        },
-      );
-      ordered = ordered.map((r) =>
-        eventsByReplay.has(r.replay_id)
-          ? replaceReplayEvents(
-              r,
-              eventsByReplay.get(r.replay_id) as ReplayEvent[],
-            )
-          : r,
-      );
-    }
-    return new ReplayBundle({
-      replays: ordered,
-      computed_at: isoUtc(this.client.core.now()),
-      project_id: this.#projectId(),
-    });
+    return replayMethods.fetchReplays(this.#replayHost(), replayIds, options);
   }
 
   /**
@@ -3473,35 +2046,10 @@ export class Workspace {
     distinctId: string,
     options: WorkspaceReplaysForUserOptions,
   ): Promise<ReplayBundle> {
-    checkEventPropertiesCount(options.event_properties ?? null);
-    const summaries = await this.listReplays({
-      distinct_id: distinctId,
-      from_date: options.from_date,
-      to_date: options.to_date,
-      limit: options.limit ?? 20,
-    });
-    if (summaries.length === 0) {
-      return new ReplayBundle({
-        replays: [],
-        computed_at: isoUtc(this.client.core.now()),
-        project_id: this.#projectId(),
-      });
-    }
-    return this.fetchReplays(
-      summaries.map((s) => s.replay_id),
-      {
-        include_mixpanel_events: options.include_mixpanel_events ?? true,
-        event_properties: options.event_properties ?? null,
-        // We already discovered each replay's retention above — pass it
-        // through so fetchReplay skips re-discovering it per replay.
-        retention_by_id: new Map(
-          summaries.map((s) => [s.replay_id, s.retention_days]),
-        ),
-        // Every replay was discovered for this user — stamp it.
-        distinct_id_by_id: new Map(
-          summaries.map((s) => [s.replay_id, distinctId]),
-        ),
-      },
+    return replayMethods.replaysForUser(
+      this.#replayHost(),
+      distinctId,
+      options,
     );
   }
 
@@ -3515,33 +2063,8 @@ export class Workspace {
    * @throws SessionReplayAccessError - Sensitive-data flag set.
    */
   async analyzeReplay(replayId: string): Promise<string> {
-    return (await this.fetchReplay(replayId)).summaryMarkdown();
+    return replayMethods.analyzeReplay(this.#replayHost(), replayId);
   }
-
-  /**
-   * Resolve a replay's retention window, discovering it when `null`
-   * (`_resolve_retention`, `workspace.py:11275-11292`).
-   *
-   * @param replayId - The replay to look up.
-   * @param retentionDays - Caller-provided value; pass-through when
-   *   set.
-   * @returns One of 1, 7, 30, or 90. Defaults to 30 when discovery
-   *   returns no summary (the warning already fired in `discover`).
-   */
-  async #resolveRetention(
-    replayId: string,
-    retentionDays: number | null,
-  ): Promise<number> {
-    if (retentionDays !== null) {
-      return retentionDays;
-    }
-    const summaries = await this.listReplays({ replay_ids: [replayId] });
-    if (summaries.length > 0) {
-      return (summaries[0] as ReplaySummary).retention_days;
-    }
-    return 30;
-  }
-
   // === B6 members land below in W1–W7 sections (append-only) ===
 
   // === B6-W1 lifecycle / workspace-management / me / business-context
@@ -3753,7 +2276,7 @@ export class Workspace {
   async getBusinessContext(
     options: BusinessContextScopeOptions = {},
   ): Promise<BusinessContext> {
-    return getBusinessContextMember(this.#businessContextHost(), options);
+    return lifecycle.getBusinessContext(this.#businessContextHost(), options);
   }
 
   /**
@@ -3771,7 +2294,7 @@ export class Workspace {
     content: string,
     options: BusinessContextScopeOptions = {},
   ): Promise<BusinessContext> {
-    return setBusinessContextMember(
+    return lifecycle.setBusinessContext(
       this.#businessContextHost(),
       content,
       options,
@@ -3804,7 +2327,7 @@ export class Workspace {
    *   `project_context`.
    */
   async getBusinessContextChain(): Promise<BusinessContextChain> {
-    return getBusinessContextChainMember(this.#businessContextHost());
+    return lifecycle.getBusinessContextChain(this.#businessContextHost());
   }
 
   /**
@@ -3814,17 +2337,11 @@ export class Workspace {
    * @internal
    */
   #businessContextHost(): BusinessContextHost {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias, unicorn/no-this-assignment -- the object-literal getters below need the facade's `this`, not the literal's
-    const facade = this;
     return {
-      client: facade.client,
-      projectId: facade.#session.project.id,
-      get meService(): MeService {
-        return facade.meService;
-      },
-      get meServiceIfCreated(): MeService | null {
-        return facade.meServiceIfCreated;
-      },
+      client: this.client,
+      projectId: this.#session.project.id,
+      meService: () => this.meService,
+      meServiceIfCreated: () => this.meServiceIfCreated,
     };
   }
 
@@ -3850,7 +2367,7 @@ export class Workspace {
   async listDashboards(
     options: WorkspaceListDashboardsOptions = {},
   ): Promise<Dashboard[]> {
-    return listDashboardsMember(this.client, options);
+    return dashboards.listDashboards(this.client, options);
   }
 
   /**
@@ -3863,7 +2380,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async createDashboard(params: CreateDashboardParams): Promise<Dashboard> {
-    return createDashboardMember(this.client, params);
+    return dashboards.createDashboard(this.client, params);
   }
 
   /**
@@ -3879,7 +2396,7 @@ export class Workspace {
    */
   async getDashboard(dashboardId: number): Promise<Dashboard> {
     requireEntityId("dashboard_id", dashboardId);
-    return getDashboardMember(this.client, dashboardId);
+    return dashboards.getDashboard(this.client, dashboardId);
   }
 
   /**
@@ -3899,7 +2416,7 @@ export class Workspace {
     params: UpdateDashboardParams,
   ): Promise<Dashboard> {
     requireEntityId("dashboard_id", dashboardId);
-    return updateDashboardMember(this.client, dashboardId, params);
+    return dashboards.updateDashboard(this.client, dashboardId, params);
   }
 
   /**
@@ -3915,7 +2432,7 @@ export class Workspace {
    */
   async deleteDashboard(dashboardId: number): Promise<void> {
     requireEntityId("dashboard_id", dashboardId);
-    return deleteDashboardMember(this.client, dashboardId);
+    return dashboards.deleteDashboard(this.client, dashboardId);
   }
 
   /**
@@ -3926,7 +2443,7 @@ export class Workspace {
    * @returns Nothing.
    */
   async bulkDeleteDashboards(ids: readonly number[]): Promise<void> {
-    return bulkDeleteDashboardsMember(this.client, ids);
+    return dashboards.bulkDeleteDashboards(this.client, ids);
   }
 
   /**
@@ -3940,7 +2457,7 @@ export class Workspace {
    */
   async favoriteDashboard(dashboardId: number): Promise<void> {
     requireEntityId("dashboard_id", dashboardId);
-    return favoriteDashboardMember(this.client, dashboardId);
+    return dashboards.favoriteDashboard(this.client, dashboardId);
   }
 
   /**
@@ -3954,7 +2471,7 @@ export class Workspace {
    */
   async unfavoriteDashboard(dashboardId: number): Promise<void> {
     requireEntityId("dashboard_id", dashboardId);
-    return unfavoriteDashboardMember(this.client, dashboardId);
+    return dashboards.unfavoriteDashboard(this.client, dashboardId);
   }
 
   /**
@@ -3967,7 +2484,7 @@ export class Workspace {
    */
   async pinDashboard(dashboardId: number): Promise<void> {
     requireEntityId("dashboard_id", dashboardId);
-    return pinDashboardMember(this.client, dashboardId);
+    return dashboards.pinDashboard(this.client, dashboardId);
   }
 
   /**
@@ -3981,7 +2498,7 @@ export class Workspace {
    */
   async unpinDashboard(dashboardId: number): Promise<void> {
     requireEntityId("dashboard_id", dashboardId);
-    return unpinDashboardMember(this.client, dashboardId);
+    return dashboards.unpinDashboard(this.client, dashboardId);
   }
 
   /**
@@ -4001,7 +2518,7 @@ export class Workspace {
   ): Promise<Dashboard> {
     requireEntityId("dashboard_id", dashboardId);
     requireEntityId("bookmark_id", bookmarkId);
-    return removeReportFromDashboardMember(
+    return dashboards.removeReportFromDashboard(
       this.client,
       dashboardId,
       bookmarkId,
@@ -4027,7 +2544,11 @@ export class Workspace {
   ): Promise<Dashboard> {
     requireEntityId("dashboard_id", dashboardId);
     requireEntityId("bookmark_id", bookmarkId);
-    return addReportToDashboardMember(this.client, dashboardId, bookmarkId);
+    return dashboards.addReportToDashboard(
+      this.client,
+      dashboardId,
+      bookmarkId,
+    );
   }
 
   /**
@@ -4041,7 +2562,7 @@ export class Workspace {
   async listBlueprintTemplates(
     options: WorkspaceListBlueprintTemplatesOptions = {},
   ): Promise<BlueprintTemplate[]> {
-    return listBlueprintTemplatesMember(this.client, options);
+    return dashboards.listBlueprintTemplates(this.client, options);
   }
 
   /**
@@ -4054,7 +2575,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async createBlueprint(templateType: string): Promise<Dashboard> {
-    return createBlueprintMember(this.client, templateType);
+    return dashboards.createBlueprint(this.client, templateType);
   }
 
   /**
@@ -4070,7 +2591,7 @@ export class Workspace {
    */
   async getBlueprintConfig(dashboardId: number): Promise<BlueprintConfig> {
     requireEntityId("dashboard_id", dashboardId);
-    return getBlueprintConfigMember(this.client, dashboardId);
+    return dashboards.getBlueprintConfig(this.client, dashboardId);
   }
 
   /**
@@ -4083,7 +2604,7 @@ export class Workspace {
   async updateBlueprintCohorts(
     cohorts: ReadonlyArray<Record<string, unknown>>,
   ): Promise<void> {
-    return updateBlueprintCohortsMember(this.client, cohorts);
+    return dashboards.updateBlueprintCohorts(this.client, cohorts);
   }
 
   /**
@@ -4096,7 +2617,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async finalizeBlueprint(params: BlueprintFinishParams): Promise<Dashboard> {
-    return finalizeBlueprintMember(this.client, params);
+    return dashboards.finalizeBlueprint(this.client, params);
   }
 
   /**
@@ -4111,7 +2632,7 @@ export class Workspace {
   async createRcaDashboard(
     params: CreateRcaDashboardParams,
   ): Promise<Dashboard> {
-    return createRcaDashboardMember(this.client, params);
+    return dashboards.createRcaDashboard(this.client, params);
   }
 
   /**
@@ -4125,7 +2646,7 @@ export class Workspace {
    */
   async getBookmarkDashboardIds(bookmarkId: number): Promise<number[]> {
     requireEntityId("bookmark_id", bookmarkId);
-    return getBookmarkDashboardIdsMember(this.client, bookmarkId);
+    return dashboards.getBookmarkDashboardIds(this.client, bookmarkId);
   }
 
   /**
@@ -4139,7 +2660,7 @@ export class Workspace {
    */
   async getDashboardErf(dashboardId: number): Promise<Record<string, unknown>> {
     requireEntityId("dashboard_id", dashboardId);
-    return getDashboardErfMember(this.client, dashboardId);
+    return dashboards.getDashboardErf(this.client, dashboardId);
   }
 
   /**
@@ -4160,7 +2681,7 @@ export class Workspace {
   ): Promise<void> {
     requireEntityId("dashboard_id", dashboardId);
     requireEntityId("report_link_id", reportLinkId);
-    return updateReportLinkMember(
+    return dashboards.updateReportLink(
       this.client,
       dashboardId,
       reportLinkId,
@@ -4186,7 +2707,12 @@ export class Workspace {
   ): Promise<void> {
     requireEntityId("dashboard_id", dashboardId);
     requireEntityId("text_card_id", textCardId);
-    return updateTextCardMember(this.client, dashboardId, textCardId, params);
+    return dashboards.updateTextCard(
+      this.client,
+      dashboardId,
+      textCardId,
+      params,
+    );
   }
 
   // === B6-W3 bookmark/report + cohort members (W3 owns; append-only) ===
@@ -4211,7 +2737,7 @@ export class Workspace {
   async listBookmarksV2(
     options: WorkspaceListBookmarksV2Options = {},
   ): Promise<Bookmark[]> {
-    return listBookmarksV2Member(this.client, options);
+    return bookmarksCohorts.listBookmarksV2(this.client, options);
   }
 
   /**
@@ -4228,7 +2754,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async createBookmark(params: CreateBookmarkParams): Promise<Bookmark> {
-    return createBookmarkMember(
+    return bookmarksCohorts.createBookmark(
       this.client,
       params,
       (dashboardId, bookmarkId) =>
@@ -4250,7 +2776,7 @@ export class Workspace {
    */
   async getBookmark(bookmarkId: number): Promise<Bookmark> {
     requireEntityId("bookmark_id", bookmarkId);
-    return getBookmarkMember(this.client, bookmarkId);
+    return bookmarksCohorts.getBookmark(this.client, bookmarkId);
   }
 
   /**
@@ -4272,7 +2798,12 @@ export class Workspace {
     params: UpdateBookmarkParams,
   ): Promise<Bookmark> {
     requireEntityId("bookmark_id", bookmarkId);
-    return updateBookmarkMember(this.client, bookmarkId, params, this.#logger);
+    return bookmarksCohorts.updateBookmark(
+      this.client,
+      bookmarkId,
+      params,
+      this.#logger,
+    );
   }
 
   /**
@@ -4287,7 +2818,7 @@ export class Workspace {
    */
   async deleteBookmark(bookmarkId: number): Promise<void> {
     requireEntityId("bookmark_id", bookmarkId);
-    return deleteBookmarkMember(this.client, bookmarkId);
+    return bookmarksCohorts.deleteBookmark(this.client, bookmarkId);
   }
 
   /**
@@ -4298,7 +2829,7 @@ export class Workspace {
    * @returns Nothing.
    */
   async bulkDeleteBookmarks(ids: readonly number[]): Promise<void> {
-    return bulkDeleteBookmarksMember(this.client, ids);
+    return bookmarksCohorts.bulkDeleteBookmarks(this.client, ids);
   }
 
   /**
@@ -4311,7 +2842,7 @@ export class Workspace {
   async bulkUpdateBookmarks(
     entries: readonly BulkUpdateBookmarkEntry[],
   ): Promise<void> {
-    return bulkUpdateBookmarksMember(this.client, entries);
+    return bookmarksCohorts.bulkUpdateBookmarks(this.client, entries);
   }
 
   /**
@@ -4325,7 +2856,7 @@ export class Workspace {
    */
   async bookmarkLinkedDashboardIds(bookmarkId: number): Promise<number[]> {
     requireEntityId("bookmark_id", bookmarkId);
-    return bookmarkLinkedDashboardIdsMember(this.client, bookmarkId);
+    return bookmarksCohorts.bookmarkLinkedDashboardIds(this.client, bookmarkId);
   }
 
   /**
@@ -4344,7 +2875,11 @@ export class Workspace {
     options: WorkspaceGetBookmarkHistoryOptions = {},
   ): Promise<BookmarkHistoryResponse> {
     requireEntityId("bookmark_id", bookmarkId);
-    return getBookmarkHistoryMember(this.client, bookmarkId, options);
+    return bookmarksCohorts.getBookmarkHistory(
+      this.client,
+      bookmarkId,
+      options,
+    );
   }
 
   /**
@@ -4358,7 +2893,7 @@ export class Workspace {
   async listCohortsFull(
     options: WorkspaceListCohortsFullOptions = {},
   ): Promise<Cohort[]> {
-    return listCohortsFullMember(this.client, options);
+    return bookmarksCohorts.listCohortsFull(this.client, options);
   }
 
   /**
@@ -4374,7 +2909,7 @@ export class Workspace {
    */
   async getCohort(cohortId: number): Promise<Cohort> {
     requireEntityId("cohort_id", cohortId);
-    return getCohortMember(this.client, cohortId);
+    return bookmarksCohorts.getCohort(this.client, cohortId);
   }
 
   /**
@@ -4386,7 +2921,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async createCohort(params: CreateCohortParams): Promise<Cohort> {
-    return createCohortMember(this.client, params);
+    return bookmarksCohorts.createCohort(this.client, params);
   }
 
   /**
@@ -4406,7 +2941,7 @@ export class Workspace {
     params: UpdateCohortParams,
   ): Promise<Cohort> {
     requireEntityId("cohort_id", cohortId);
-    return updateCohortMember(this.client, cohortId, params);
+    return bookmarksCohorts.updateCohort(this.client, cohortId, params);
   }
 
   /**
@@ -4419,7 +2954,7 @@ export class Workspace {
    */
   async deleteCohort(cohortId: number): Promise<void> {
     requireEntityId("cohort_id", cohortId);
-    return deleteCohortMember(this.client, cohortId);
+    return bookmarksCohorts.deleteCohort(this.client, cohortId);
   }
 
   /**
@@ -4430,7 +2965,7 @@ export class Workspace {
    * @returns Nothing.
    */
   async bulkDeleteCohorts(ids: readonly number[]): Promise<void> {
-    return bulkDeleteCohortsMember(this.client, ids);
+    return bookmarksCohorts.bulkDeleteCohorts(this.client, ids);
   }
 
   /**
@@ -4443,7 +2978,7 @@ export class Workspace {
   async bulkUpdateCohorts(
     entries: readonly BulkUpdateCohortEntry[],
   ): Promise<void> {
-    return bulkUpdateCohortsMember(this.client, entries);
+    return bookmarksCohorts.bulkUpdateCohorts(this.client, entries);
   }
 
   // === B6-W4 feature-flag + experiment members (W4 owns; append-only) ===
@@ -4468,7 +3003,7 @@ export class Workspace {
   async listFeatureFlags(
     options: WorkspaceListFeatureFlagsOptions = {},
   ): Promise<FeatureFlag[]> {
-    return listFeatureFlagsMember(this.client, options);
+    return flagsExperiments.listFeatureFlags(this.client, options);
   }
 
   /**
@@ -4489,7 +3024,7 @@ export class Workspace {
   async createFeatureFlag(
     params: CreateFeatureFlagParams,
   ): Promise<FeatureFlag> {
-    return createFeatureFlagMember(this.client, params);
+    return flagsExperiments.createFeatureFlag(this.client, params);
   }
 
   /**
@@ -4502,7 +3037,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async getFeatureFlag(flagId: string): Promise<FeatureFlag> {
-    return getFeatureFlagMember(this.client, flagId);
+    return flagsExperiments.getFeatureFlag(this.client, flagId);
   }
 
   /**
@@ -4519,7 +3054,7 @@ export class Workspace {
     flagId: string,
     params: UpdateFeatureFlagParams,
   ): Promise<FeatureFlag> {
-    return updateFeatureFlagMember(this.client, flagId, params);
+    return flagsExperiments.updateFeatureFlag(this.client, flagId, params);
   }
 
   /**
@@ -4532,7 +3067,7 @@ export class Workspace {
    *   failures.
    */
   async deleteFeatureFlag(flagId: string): Promise<void> {
-    return deleteFeatureFlagMember(this.client, flagId);
+    return flagsExperiments.deleteFeatureFlag(this.client, flagId);
   }
 
   /**
@@ -4543,7 +3078,7 @@ export class Workspace {
    * @returns Nothing.
    */
   async archiveFeatureFlag(flagId: string): Promise<void> {
-    return archiveFeatureFlagMember(this.client, flagId);
+    return flagsExperiments.archiveFeatureFlag(this.client, flagId);
   }
 
   /**
@@ -4555,7 +3090,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async restoreFeatureFlag(flagId: string): Promise<FeatureFlag> {
-    return restoreFeatureFlagMember(this.client, flagId);
+    return flagsExperiments.restoreFeatureFlag(this.client, flagId);
   }
 
   /**
@@ -4567,7 +3102,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async duplicateFeatureFlag(flagId: string): Promise<FeatureFlag> {
-    return duplicateFeatureFlagMember(this.client, flagId);
+    return flagsExperiments.duplicateFeatureFlag(this.client, flagId);
   }
 
   /**
@@ -4582,7 +3117,7 @@ export class Workspace {
     flagId: string,
     params: SetTestUsersParams,
   ): Promise<void> {
-    return setFlagTestUsersMember(this.client, flagId, params);
+    return flagsExperiments.setFlagTestUsers(this.client, flagId, params);
   }
 
   /**
@@ -4598,7 +3133,7 @@ export class Workspace {
     flagId: string,
     options: WorkspaceGetFlagHistoryOptions = {},
   ): Promise<FlagHistoryResponse> {
-    return getFlagHistoryMember(this.client, flagId, options);
+    return flagsExperiments.getFlagHistory(this.client, flagId, options);
   }
 
   /**
@@ -4609,7 +3144,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async getFlagLimits(): Promise<FlagLimitsResponse> {
-    return getFlagLimitsMember(this.client);
+    return flagsExperiments.getFlagLimits(this.client);
   }
 
   /**
@@ -4623,7 +3158,7 @@ export class Workspace {
   async listExperiments(
     options: WorkspaceListExperimentsOptions = {},
   ): Promise<Experiment[]> {
-    return listExperimentsMember(this.client, options);
+    return flagsExperiments.listExperiments(this.client, options);
   }
 
   /**
@@ -4636,7 +3171,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async createExperiment(params: CreateExperimentParams): Promise<Experiment> {
-    return createExperimentMember(this.client, params);
+    return flagsExperiments.createExperiment(this.client, params);
   }
 
   /**
@@ -4649,7 +3184,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async getExperiment(experimentId: string): Promise<Experiment> {
-    return getExperimentMember(this.client, experimentId);
+    return flagsExperiments.getExperiment(this.client, experimentId);
   }
 
   /**
@@ -4666,7 +3201,7 @@ export class Workspace {
     experimentId: string,
     params: UpdateExperimentParams,
   ): Promise<Experiment> {
-    return updateExperimentMember(this.client, experimentId, params);
+    return flagsExperiments.updateExperiment(this.client, experimentId, params);
   }
 
   /**
@@ -4677,7 +3212,7 @@ export class Workspace {
    * @returns Nothing.
    */
   async deleteExperiment(experimentId: string): Promise<void> {
-    return deleteExperimentMember(this.client, experimentId);
+    return flagsExperiments.deleteExperiment(this.client, experimentId);
   }
 
   /**
@@ -4689,7 +3224,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async launchExperiment(experimentId: string): Promise<Experiment> {
-    return launchExperimentMember(this.client, experimentId);
+    return flagsExperiments.launchExperiment(this.client, experimentId);
   }
 
   /**
@@ -4706,7 +3241,11 @@ export class Workspace {
     experimentId: string,
     options: WorkspaceConcludeExperimentOptions = {},
   ): Promise<Experiment> {
-    return concludeExperimentMember(this.client, experimentId, options);
+    return flagsExperiments.concludeExperiment(
+      this.client,
+      experimentId,
+      options,
+    );
   }
 
   /**
@@ -4722,7 +3261,7 @@ export class Workspace {
     experimentId: string,
     params: ExperimentDecideParams,
   ): Promise<Experiment> {
-    return decideExperimentMember(this.client, experimentId, params);
+    return flagsExperiments.decideExperiment(this.client, experimentId, params);
   }
 
   /**
@@ -4733,7 +3272,7 @@ export class Workspace {
    * @returns Nothing.
    */
   async archiveExperiment(experimentId: string): Promise<void> {
-    return archiveExperimentMember(this.client, experimentId);
+    return flagsExperiments.archiveExperiment(this.client, experimentId);
   }
 
   /**
@@ -4745,7 +3284,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async restoreExperiment(experimentId: string): Promise<Experiment> {
-    return restoreExperimentMember(this.client, experimentId);
+    return flagsExperiments.restoreExperiment(this.client, experimentId);
   }
 
   /**
@@ -4762,7 +3301,11 @@ export class Workspace {
     experimentId: string,
     params: DuplicateExperimentParams,
   ): Promise<Experiment> {
-    return duplicateExperimentMember(this.client, experimentId, params);
+    return flagsExperiments.duplicateExperiment(
+      this.client,
+      experimentId,
+      params,
+    );
   }
 
   /**
@@ -4772,7 +3315,7 @@ export class Workspace {
    * @returns The ERF experiment dicts, verbatim.
    */
   async listErfExperiments(): Promise<Array<Record<string, unknown>>> {
-    return listErfExperimentsMember(this.client);
+    return flagsExperiments.listErfExperiments(this.client);
   }
 
   // === B6-W5 annotation + webhook + alert members (W5 owns; append-only) ===
@@ -4798,7 +3341,7 @@ export class Workspace {
   async listAnnotations(
     options: WorkspaceListAnnotationsOptions = {},
   ): Promise<Annotation[]> {
-    return listAnnotationsMember(this.client, options);
+    return annotationsWebhooksAlerts.listAnnotations(this.client, options);
   }
 
   /**
@@ -4820,7 +3363,7 @@ export class Workspace {
    * ```
    */
   async createAnnotation(params: CreateAnnotationParams): Promise<Annotation> {
-    return createAnnotationMember(this.client, params);
+    return annotationsWebhooksAlerts.createAnnotation(this.client, params);
   }
 
   /**
@@ -4835,7 +3378,7 @@ export class Workspace {
    */
   async getAnnotation(annotationId: number): Promise<Annotation> {
     requireEntityId("annotation_id", annotationId);
-    return getAnnotationMember(this.client, annotationId);
+    return annotationsWebhooksAlerts.getAnnotation(this.client, annotationId);
   }
 
   /**
@@ -4854,7 +3397,11 @@ export class Workspace {
     params: UpdateAnnotationParams,
   ): Promise<Annotation> {
     requireEntityId("annotation_id", annotationId);
-    return updateAnnotationMember(this.client, annotationId, params);
+    return annotationsWebhooksAlerts.updateAnnotation(
+      this.client,
+      annotationId,
+      params,
+    );
   }
 
   /**
@@ -4870,7 +3417,10 @@ export class Workspace {
    */
   async deleteAnnotation(annotationId: number): Promise<void> {
     requireEntityId("annotation_id", annotationId);
-    return deleteAnnotationMember(this.client, annotationId);
+    return annotationsWebhooksAlerts.deleteAnnotation(
+      this.client,
+      annotationId,
+    );
   }
 
   /**
@@ -4881,7 +3431,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async listAnnotationTags(): Promise<AnnotationTag[]> {
-    return listAnnotationTagsMember(this.client);
+    return annotationsWebhooksAlerts.listAnnotationTags(this.client);
   }
 
   /**
@@ -4895,7 +3445,7 @@ export class Workspace {
   async createAnnotationTag(
     params: CreateAnnotationTagParams,
   ): Promise<AnnotationTag> {
-    return createAnnotationTagMember(this.client, params);
+    return annotationsWebhooksAlerts.createAnnotationTag(this.client, params);
   }
 
   /**
@@ -4912,7 +3462,7 @@ export class Workspace {
    * ```
    */
   async listWebhooks(): Promise<ProjectWebhook[]> {
-    return listWebhooksMember(this.client);
+    return annotationsWebhooksAlerts.listWebhooks(this.client);
   }
 
   /**
@@ -4926,7 +3476,7 @@ export class Workspace {
   async createWebhook(
     params: CreateWebhookParams,
   ): Promise<WebhookMutationResult> {
-    return createWebhookMember(this.client, params);
+    return annotationsWebhooksAlerts.createWebhook(this.client, params);
   }
 
   /**
@@ -4942,7 +3492,11 @@ export class Workspace {
     webhookId: string,
     params: UpdateWebhookParams,
   ): Promise<WebhookMutationResult> {
-    return updateWebhookMember(this.client, webhookId, params);
+    return annotationsWebhooksAlerts.updateWebhook(
+      this.client,
+      webhookId,
+      params,
+    );
   }
 
   /**
@@ -4954,7 +3508,7 @@ export class Workspace {
    *   failures.
    */
   async deleteWebhook(webhookId: string): Promise<void> {
-    return deleteWebhookMember(this.client, webhookId);
+    return annotationsWebhooksAlerts.deleteWebhook(this.client, webhookId);
   }
 
   /**
@@ -4966,7 +3520,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async testWebhook(params: WebhookTestParams): Promise<WebhookTestResult> {
-    return testWebhookMember(this.client, params);
+    return annotationsWebhooksAlerts.testWebhook(this.client, params);
   }
 
   /**
@@ -4987,7 +3541,7 @@ export class Workspace {
   async listAlerts(
     options: WorkspaceListAlertsOptions = {},
   ): Promise<CustomAlert[]> {
-    return listAlertsMember(this.client, options);
+    return annotationsWebhooksAlerts.listAlerts(this.client, options);
   }
 
   /**
@@ -4999,7 +3553,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async createAlert(params: CreateAlertParams): Promise<CustomAlert> {
-    return createAlertMember(this.client, params);
+    return annotationsWebhooksAlerts.createAlert(this.client, params);
   }
 
   /**
@@ -5014,7 +3568,7 @@ export class Workspace {
    */
   async getAlert(alertId: number): Promise<CustomAlert> {
     requireEntityId("alert_id", alertId);
-    return getAlertMember(this.client, alertId);
+    return annotationsWebhooksAlerts.getAlert(this.client, alertId);
   }
 
   /**
@@ -5033,7 +3587,7 @@ export class Workspace {
     params: UpdateAlertParams,
   ): Promise<CustomAlert> {
     requireEntityId("alert_id", alertId);
-    return updateAlertMember(this.client, alertId, params);
+    return annotationsWebhooksAlerts.updateAlert(this.client, alertId, params);
   }
 
   /**
@@ -5049,7 +3603,7 @@ export class Workspace {
    */
   async deleteAlert(alertId: number): Promise<void> {
     requireEntityId("alert_id", alertId);
-    return deleteAlertMember(this.client, alertId);
+    return annotationsWebhooksAlerts.deleteAlert(this.client, alertId);
   }
 
   /**
@@ -5062,7 +3616,7 @@ export class Workspace {
    *   failures.
    */
   async bulkDeleteAlerts(ids: readonly number[]): Promise<void> {
-    return bulkDeleteAlertsMember(this.client, ids);
+    return annotationsWebhooksAlerts.bulkDeleteAlerts(this.client, ids);
   }
 
   /**
@@ -5076,7 +3630,7 @@ export class Workspace {
   async getAlertCount(
     options: WorkspaceGetAlertCountOptions = {},
   ): Promise<AlertCount> {
-    return getAlertCountMember(this.client, options);
+    return annotationsWebhooksAlerts.getAlertCount(this.client, options);
   }
 
   /**
@@ -5096,7 +3650,11 @@ export class Workspace {
     options: WorkspaceGetAlertHistoryOptions = {},
   ): Promise<AlertHistoryResponse> {
     requireEntityId("alert_id", alertId);
-    return getAlertHistoryMember(this.client, alertId, options);
+    return annotationsWebhooksAlerts.getAlertHistory(
+      this.client,
+      alertId,
+      options,
+    );
   }
 
   /**
@@ -5111,7 +3669,7 @@ export class Workspace {
    *   failures.
    */
   async testAlert(params: CreateAlertParams): Promise<Record<string, unknown>> {
-    return testAlertMember(this.client, params);
+    return annotationsWebhooksAlerts.testAlert(this.client, params);
   }
 
   /**
@@ -5125,7 +3683,7 @@ export class Workspace {
   async getAlertScreenshotUrl(
     gcsKey: string,
   ): Promise<AlertScreenshotResponse> {
-    return getAlertScreenshotUrlMember(this.client, gcsKey);
+    return annotationsWebhooksAlerts.getAlertScreenshotUrl(this.client, gcsKey);
   }
 
   /**
@@ -5139,7 +3697,10 @@ export class Workspace {
   async validateAlertsForBookmark(
     params: ValidateAlertsForBookmarkParams,
   ): Promise<ValidateAlertsForBookmarkResponse> {
-    return validateAlertsForBookmarkMember(this.client, params);
+    return annotationsWebhooksAlerts.validateAlertsForBookmark(
+      this.client,
+      params,
+    );
   }
 
   // === B6-W6 lexicon + tracking/history members (W6 owns; append-only) ===
@@ -5167,7 +3728,7 @@ export class Workspace {
   async getEventDefinitions(
     options: WorkspaceGetEventDefinitionsOptions,
   ): Promise<EventDefinition[]> {
-    return getEventDefinitionsMember(this.client, options);
+    return lexiconTracking.getEventDefinitions(this.client, options);
   }
 
   /**
@@ -5191,7 +3752,11 @@ export class Workspace {
     eventName: string,
     params: UpdateEventDefinitionParams,
   ): Promise<EventDefinition> {
-    return updateEventDefinitionMember(this.client, eventName, params);
+    return lexiconTracking.updateEventDefinition(
+      this.client,
+      eventName,
+      params,
+    );
   }
 
   /**
@@ -5204,7 +3769,7 @@ export class Workspace {
    *   failures.
    */
   async deleteEventDefinition(eventName: string): Promise<void> {
-    return deleteEventDefinitionMember(this.client, eventName);
+    return lexiconTracking.deleteEventDefinition(this.client, eventName);
   }
 
   /**
@@ -5219,7 +3784,7 @@ export class Workspace {
   async bulkUpdateEventDefinitions(
     params: BulkUpdateEventsParams,
   ): Promise<EventDefinition[]> {
-    return bulkUpdateEventDefinitionsMember(this.client, params);
+    return lexiconTracking.bulkUpdateEventDefinitions(this.client, params);
   }
 
   /**
@@ -5241,7 +3806,7 @@ export class Workspace {
   async getPropertyDefinitions(
     options: WorkspaceGetPropertyDefinitionsOptions,
   ): Promise<PropertyDefinition[]> {
-    return getPropertyDefinitionsMember(this.client, options);
+    return lexiconTracking.getPropertyDefinitions(this.client, options);
   }
 
   /**
@@ -5259,7 +3824,11 @@ export class Workspace {
     propertyName: string,
     params: UpdatePropertyDefinitionParams,
   ): Promise<PropertyDefinition> {
-    return updatePropertyDefinitionMember(this.client, propertyName, params);
+    return lexiconTracking.updatePropertyDefinition(
+      this.client,
+      propertyName,
+      params,
+    );
   }
 
   /**
@@ -5276,7 +3845,7 @@ export class Workspace {
   async bulkUpdatePropertyDefinitions(
     params: BulkUpdatePropertiesParams,
   ): Promise<PropertyDefinition[]> {
-    return bulkUpdatePropertyDefinitionsMember(this.client, params);
+    return lexiconTracking.bulkUpdatePropertyDefinitions(this.client, params);
   }
 
   /**
@@ -5292,7 +3861,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async listLexiconTags(): Promise<LexiconTag[]> {
-    return listLexiconTagsMember(this.client);
+    return lexiconTracking.listLexiconTags(this.client);
   }
 
   /**
@@ -5304,7 +3873,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async createLexiconTag(params: CreateTagParams): Promise<LexiconTag> {
-    return createLexiconTagMember(this.client, params);
+    return lexiconTracking.createLexiconTag(this.client, params);
   }
 
   /**
@@ -5323,7 +3892,7 @@ export class Workspace {
     params: UpdateTagParams,
   ): Promise<LexiconTag> {
     requireEntityId("tag_id", tagId);
-    return updateLexiconTagMember(this.client, tagId, params);
+    return lexiconTracking.updateLexiconTag(this.client, tagId, params);
   }
 
   /**
@@ -5336,7 +3905,7 @@ export class Workspace {
    *   failures.
    */
   async deleteLexiconTag(tagName: string): Promise<void> {
-    return deleteLexiconTagMember(this.client, tagName);
+    return lexiconTracking.deleteLexiconTag(this.client, tagName);
   }
 
   /**
@@ -5351,7 +3920,7 @@ export class Workspace {
   async getTrackingMetadata(
     eventName: string,
   ): Promise<Record<string, unknown>> {
-    return getTrackingMetadataMember(this.client, eventName);
+    return lexiconTracking.getTrackingMetadata(this.client, eventName);
   }
 
   /**
@@ -5367,7 +3936,7 @@ export class Workspace {
   async getEventHistory(
     eventName: string,
   ): Promise<Array<Record<string, unknown>>> {
-    return getEventHistoryMember(this.client, eventName);
+    return lexiconTracking.getEventHistory(this.client, eventName);
   }
 
   /**
@@ -5385,7 +3954,11 @@ export class Workspace {
     propertyName: string,
     entityType: string,
   ): Promise<Array<Record<string, unknown>>> {
-    return getPropertyHistoryMember(this.client, propertyName, entityType);
+    return lexiconTracking.getPropertyHistory(
+      this.client,
+      propertyName,
+      entityType,
+    );
   }
 
   /**
@@ -5407,7 +3980,7 @@ export class Workspace {
   async exportLexicon(
     options: WorkspaceExportLexiconOptions = {},
   ): Promise<Record<string, unknown>> {
-    return exportLexiconMember(this.client, options);
+    return lexiconTracking.exportLexicon(this.client, options);
   }
 
   // === B6-W7 drop-filter / custom-property / lookup-table /
@@ -5447,7 +4020,7 @@ export class Workspace {
    * ```
    */
   async listDropFilters(): Promise<DropFilter[]> {
-    return listDropFiltersMember(this.client);
+    return governanceData.listDropFilters(this.client);
   }
 
   /**
@@ -5470,7 +4043,7 @@ export class Workspace {
   async createDropFilter(
     params: CreateDropFilterParams,
   ): Promise<DropFilter[]> {
-    return createDropFilterMember(this.client, params);
+    return governanceData.createDropFilter(this.client, params);
   }
 
   /**
@@ -5484,7 +4057,7 @@ export class Workspace {
   async updateDropFilter(
     params: UpdateDropFilterParams,
   ): Promise<DropFilter[]> {
-    return updateDropFilterMember(this.client, params);
+    return governanceData.updateDropFilter(this.client, params);
   }
 
   /**
@@ -5499,7 +4072,7 @@ export class Workspace {
    */
   async deleteDropFilter(dropFilterId: number): Promise<DropFilter[]> {
     requireEntityId("drop_filter_id", dropFilterId);
-    return deleteDropFilterMember(this.client, dropFilterId);
+    return governanceData.deleteDropFilter(this.client, dropFilterId);
   }
 
   /**
@@ -5510,7 +4083,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async getDropFilterLimits(): Promise<DropFilterLimitsResponse> {
-    return getDropFilterLimitsMember(this.client);
+    return governanceData.getDropFilterLimits(this.client);
   }
 
   /**
@@ -5528,7 +4101,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async listCustomProperties(): Promise<CustomProperty[]> {
-    return listCustomPropertiesMember(this.client);
+    return governanceData.listCustomProperties(this.client);
   }
 
   /**
@@ -5543,7 +4116,7 @@ export class Workspace {
   async createCustomProperty(
     params: CreateCustomPropertyParams,
   ): Promise<CustomProperty> {
-    return createCustomPropertyMember(this.client, params);
+    return governanceData.createCustomProperty(this.client, params);
   }
 
   /**
@@ -5555,7 +4128,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async getCustomProperty(propertyId: string): Promise<CustomProperty> {
-    return getCustomPropertyMember(this.client, propertyId);
+    return governanceData.getCustomProperty(this.client, propertyId);
   }
 
   /**
@@ -5571,7 +4144,7 @@ export class Workspace {
     propertyId: string,
     params: UpdateCustomPropertyParams,
   ): Promise<CustomProperty> {
-    return updateCustomPropertyMember(this.client, propertyId, params);
+    return governanceData.updateCustomProperty(this.client, propertyId, params);
   }
 
   /**
@@ -5584,7 +4157,7 @@ export class Workspace {
    *   failures.
    */
   async deleteCustomProperty(propertyId: string): Promise<void> {
-    return deleteCustomPropertyMember(this.client, propertyId);
+    return governanceData.deleteCustomProperty(this.client, propertyId);
   }
 
   /**
@@ -5599,7 +4172,7 @@ export class Workspace {
   async validateCustomProperty(
     params: CreateCustomPropertyParams,
   ): Promise<Record<string, unknown>> {
-    return validateCustomPropertyMember(this.client, params);
+    return governanceData.validateCustomProperty(this.client, params);
   }
 
   /**
@@ -5618,7 +4191,7 @@ export class Workspace {
   async listLookupTables(
     options: WorkspaceListLookupTablesOptions = {},
   ): Promise<LookupTable[]> {
-    return listLookupTablesMember(this.client, options);
+    return governanceData.listLookupTables(this.client, options);
   }
 
   /**
@@ -5657,7 +4230,7 @@ export class Workspace {
     params: UploadLookupTableParams,
     options: WorkspaceUploadLookupTableOptions = {},
   ): Promise<LookupTable> {
-    return uploadLookupTableMember(
+    return governanceData.uploadLookupTable(
       this.client,
       params,
       options,
@@ -5678,7 +4251,7 @@ export class Workspace {
   async markLookupTableReady(
     params: MarkLookupTableReadyParams,
   ): Promise<LookupTable> {
-    return markLookupTableReadyMember(this.client, params);
+    return governanceData.markLookupTableReady(this.client, params);
   }
 
   /**
@@ -5693,7 +4266,7 @@ export class Workspace {
   async getLookupUploadUrl(
     contentType = "text/csv",
   ): Promise<LookupTableUploadUrl> {
-    return getLookupUploadUrlMember(this.client, contentType);
+    return governanceData.getLookupUploadUrl(this.client, contentType);
   }
 
   /**
@@ -5709,7 +4282,7 @@ export class Workspace {
   async getLookupUploadStatus(
     uploadId: string,
   ): Promise<Record<string, unknown>> {
-    return getLookupUploadStatusMember(this.client, uploadId);
+    return governanceData.getLookupUploadStatus(this.client, uploadId);
   }
 
   /**
@@ -5733,7 +4306,7 @@ export class Workspace {
     params: UpdateLookupTableParams,
   ): Promise<LookupTable> {
     requireInt64Id("data_group_id", dataGroupId);
-    return updateLookupTableMember(this.client, dataGroupId, params);
+    return governanceData.updateLookupTable(this.client, dataGroupId, params);
   }
 
   /**
@@ -5756,7 +4329,7 @@ export class Workspace {
     for (const dataGroupId of dataGroupIds) {
       requireInt64Id("data_group_ids", dataGroupId);
     }
-    return deleteLookupTablesMember(this.client, dataGroupIds);
+    return governanceData.deleteLookupTables(this.client, dataGroupIds);
   }
 
   /**
@@ -5782,7 +4355,11 @@ export class Workspace {
     options: WorkspaceDownloadLookupTableOptions = {},
   ): Promise<Uint8Array> {
     requireInt64Id("data_group_id", dataGroupId);
-    return downloadLookupTableMember(this.client, dataGroupId, options);
+    return governanceData.downloadLookupTable(
+      this.client,
+      dataGroupId,
+      options,
+    );
   }
 
   /**
@@ -5802,7 +4379,7 @@ export class Workspace {
    */
   async getLookupDownloadUrl(dataGroupId: number | bigint): Promise<string> {
     requireInt64Id("data_group_id", dataGroupId);
-    return getLookupDownloadUrlMember(this.client, dataGroupId);
+    return governanceData.getLookupDownloadUrl(this.client, dataGroupId);
   }
 
   /**
@@ -5830,7 +4407,7 @@ export class Workspace {
   async createCustomEvent(
     params: CreateCustomEventParams,
   ): Promise<CustomEvent> {
-    return createCustomEventMember(this.client, params);
+    return governanceData.createCustomEvent(this.client, params);
   }
 
   /**
@@ -5841,7 +4418,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async listCustomEvents(): Promise<EventDefinition[]> {
-    return listCustomEventsMember(this.client);
+    return governanceData.listCustomEvents(this.client);
   }
 
   /**
@@ -5868,7 +4445,7 @@ export class Workspace {
     params: UpdateEventDefinitionParams,
   ): Promise<EventDefinition> {
     requireEntityId("custom_event_id", customEventId);
-    return updateCustomEventMember(this.client, customEventId, params);
+    return governanceData.updateCustomEvent(this.client, customEventId, params);
   }
 
   /**
@@ -5888,7 +4465,7 @@ export class Workspace {
    */
   async deleteCustomEvent(customEventId: number): Promise<void> {
     requireEntityId("custom_event_id", customEventId);
-    return deleteCustomEventMember(this.client, customEventId);
+    return governanceData.deleteCustomEvent(this.client, customEventId);
   }
 
   // === B6-W8 schema-registry / schema-enforcement / audit / anomaly /
@@ -5915,7 +4492,7 @@ export class Workspace {
   async listSchemaRegistry(
     options: WorkspaceListSchemaRegistryOptions = {},
   ): Promise<SchemaEntry[]> {
-    return listSchemaRegistryMember(this.client, options);
+    return schemasAudit.listSchemaRegistry(this.client, options);
   }
 
   /**
@@ -5940,7 +4517,12 @@ export class Workspace {
     entityName: string,
     schemaJson: Readonly<Record<string, unknown>>,
   ): Promise<Record<string, unknown>> {
-    return createSchemaMember(this.client, entityType, entityName, schemaJson);
+    return schemasAudit.createSchema(
+      this.client,
+      entityType,
+      entityName,
+      schemaJson,
+    );
   }
 
   /**
@@ -5957,7 +4539,7 @@ export class Workspace {
   async createSchemasBulk(
     params: BulkCreateSchemasParams,
   ): Promise<BulkCreateSchemasResponse> {
-    return createSchemasBulkMember(this.client, params);
+    return schemasAudit.createSchemasBulk(this.client, params);
   }
 
   /**
@@ -5976,7 +4558,12 @@ export class Workspace {
     entityName: string,
     schemaJson: Readonly<Record<string, unknown>>,
   ): Promise<Record<string, unknown>> {
-    return updateSchemaMember(this.client, entityType, entityName, schemaJson);
+    return schemasAudit.updateSchema(
+      this.client,
+      entityType,
+      entityName,
+      schemaJson,
+    );
   }
 
   /**
@@ -5990,7 +4577,7 @@ export class Workspace {
   async updateSchemasBulk(
     params: BulkCreateSchemasParams,
   ): Promise<BulkPatchResult[]> {
-    return updateSchemasBulkMember(this.client, params);
+    return schemasAudit.updateSchemasBulk(this.client, params);
   }
 
   /**
@@ -6017,7 +4604,7 @@ export class Workspace {
   async deleteSchemas(
     options: WorkspaceDeleteSchemasOptions = {},
   ): Promise<DeleteSchemasResponse> {
-    return deleteSchemasMember(this.client, options);
+    return schemasAudit.deleteSchemas(this.client, options);
   }
 
   /**
@@ -6032,7 +4619,7 @@ export class Workspace {
   async getSchemaEnforcement(
     options: WorkspaceGetSchemaEnforcementOptions = {},
   ): Promise<SchemaEnforcementConfig> {
-    return getSchemaEnforcementMember(this.client, options);
+    return schemasAudit.getSchemaEnforcement(this.client, options);
   }
 
   /**
@@ -6046,7 +4633,7 @@ export class Workspace {
   async initSchemaEnforcement(
     params: InitSchemaEnforcementParams,
   ): Promise<Record<string, unknown>> {
-    return initSchemaEnforcementMember(this.client, params);
+    return schemasAudit.initSchemaEnforcement(this.client, params);
   }
 
   /**
@@ -6060,7 +4647,7 @@ export class Workspace {
   async updateSchemaEnforcement(
     params: UpdateSchemaEnforcementParams,
   ): Promise<Record<string, unknown>> {
-    return updateSchemaEnforcementMember(this.client, params);
+    return schemasAudit.updateSchemaEnforcement(this.client, params);
   }
 
   /**
@@ -6074,7 +4661,7 @@ export class Workspace {
   async replaceSchemaEnforcement(
     params: ReplaceSchemaEnforcementParams,
   ): Promise<Record<string, unknown>> {
-    return replaceSchemaEnforcementMember(this.client, params);
+    return schemasAudit.replaceSchemaEnforcement(this.client, params);
   }
 
   /**
@@ -6085,7 +4672,7 @@ export class Workspace {
    * @throws QueryError - No enforcement configured (404).
    */
   async deleteSchemaEnforcement(): Promise<Record<string, unknown>> {
-    return deleteSchemaEnforcementMember(this.client);
+    return schemasAudit.deleteSchemaEnforcement(this.client);
   }
 
   /**
@@ -6105,7 +4692,7 @@ export class Workspace {
    * ```
    */
   async runAudit(): Promise<AuditResponse> {
-    return runAuditMember(this.client);
+    return schemasAudit.runAudit(this.client);
   }
 
   /**
@@ -6118,7 +4705,7 @@ export class Workspace {
    * @throws QueryError - No schemas defined (400).
    */
   async runAuditEventsOnly(): Promise<AuditResponse> {
-    return runAuditEventsOnlyMember(this.client);
+    return schemasAudit.runAuditEventsOnly(this.client);
   }
 
   /**
@@ -6139,7 +4726,7 @@ export class Workspace {
   async listDataVolumeAnomalies(
     options: WorkspaceListDataVolumeAnomaliesOptions = {},
   ): Promise<DataVolumeAnomaly[]> {
-    return listDataVolumeAnomaliesMember(this.client, options);
+    return schemasAudit.listDataVolumeAnomalies(this.client, options);
   }
 
   /**
@@ -6153,7 +4740,7 @@ export class Workspace {
   async updateAnomaly(
     params: UpdateAnomalyParams,
   ): Promise<Record<string, unknown>> {
-    return updateAnomalyMember(this.client, params);
+    return schemasAudit.updateAnomaly(this.client, params);
   }
 
   /**
@@ -6167,7 +4754,7 @@ export class Workspace {
   async bulkUpdateAnomalies(
     params: BulkUpdateAnomalyParams,
   ): Promise<Record<string, unknown>> {
-    return bulkUpdateAnomaliesMember(this.client, params);
+    return schemasAudit.bulkUpdateAnomalies(this.client, params);
   }
 
   /**
@@ -6178,7 +4765,7 @@ export class Workspace {
    * @throws ResponseValidationError - Malformed payload.
    */
   async listDeletionRequests(): Promise<EventDeletionRequest[]> {
-    return listDeletionRequestsMember(this.client);
+    return schemasAudit.listDeletionRequests(this.client);
   }
 
   /**
@@ -6194,7 +4781,7 @@ export class Workspace {
   async createDeletionRequest(
     params: CreateDeletionRequestParams,
   ): Promise<EventDeletionRequest[]> {
-    return createDeletionRequestMember(this.client, params);
+    return schemasAudit.createDeletionRequest(this.client, params);
   }
 
   /**
@@ -6212,7 +4799,7 @@ export class Workspace {
     requestId: number,
   ): Promise<EventDeletionRequest[]> {
     requireEntityId("request_id", requestId);
-    return cancelDeletionRequestMember(this.client, requestId);
+    return schemasAudit.cancelDeletionRequest(this.client, requestId);
   }
 
   /**
@@ -6229,42 +4816,32 @@ export class Workspace {
   async previewDeletionFilters(
     params: PreviewDeletionFiltersParams,
   ): Promise<Array<Record<string, unknown>>> {
-    return previewDeletionFiltersMember(this.client, params);
+    return schemasAudit.previewDeletionFilters(this.client, params);
   }
 
   // === 045 report links (Python PR #223 twin; `workspace.py` REPORT
   // LINKS section, AIE-561/562) ===
 
   /**
-   * Choose the workspace id a created report link embeds
-   * (`_report_link_workspace_id`): explicit, else the pinned session
-   * workspace, else `resolveWorkspaceId()`, else `null` (project-only).
+   * The facade slice the report-link members read; session, project id
+   * and the live-query service stay lazy (thunks) so they resolve where
+   * Python reads them, and the public members are dispatched through the
+   * instance.
    *
-   * @param explicit - Caller-supplied workspace id, or `null`.
-   * @returns The workspace id to embed, or `null`.
+   * @returns The host view over this facade.
    */
-  async #reportLinkWorkspaceId(
-    explicit: number | null,
-  ): Promise<number | null> {
-    if (explicit !== null) {
-      return explicit;
-    }
-    const pinned = this.#session.workspace ?? null;
-    if (pinned !== null) {
-      return pinned.id;
-    }
-    try {
-      return await this.resolveWorkspaceId();
-    } catch (error) {
-      if (!(error instanceof WorkspaceScopeError)) {
-        throw error;
-      }
-      this.#logger?.debug(
-        `report link: no workspace resolved for project ` +
-          `${this.#session.project.id}; emitting project-only URL`,
-      );
-      return null;
-    }
+  #reportLinkHost(): reportLinkMethods.ReportLinkHost {
+    return {
+      client: this.client,
+      logger: this.#logger,
+      session: () => this.#session,
+      projectId: () => this.#projectId(),
+      generateSlug: () => this.#generateSlug(),
+      liveQueryService: () => this.liveQueryService,
+      resolveWorkspaceId: () => this.resolveWorkspaceId(),
+      getBookmark: (bookmarkId) => this.getBookmark(bookmarkId),
+      resolveReportLink: (link) => this.resolveReportLink(link),
+    };
   }
 
   /**
@@ -6309,198 +4886,11 @@ export class Workspace {
     params: ReportLinkParamsInput,
     options: WorkspaceCreateReportLinkOptions = {},
   ): Promise<ReportLink> {
-    const { rawParams, reportType: resolvedType } = reportLinkInputs(
+    return reportLinkMethods.createReportLink(
+      this.#reportLinkHost(),
       params,
-      options.report_type ?? null,
+      options,
     );
-    const name = options.name ?? "";
-    const description = options.description ?? "";
-    const bookmarkId = options.bookmark_id ?? null;
-
-    if (options.validate ?? true) {
-      const schemaErrors = validateBookmarkParamsSchema(
-        rawParams,
-        resolvedType,
-      );
-      if (schemaErrors.some((e) => e.severity === "error")) {
-        throw new BookmarkValidationError(schemaErrors);
-      }
-      for (const w of schemaErrors) {
-        if (w.severity === "warning") {
-          this.#logger?.warning?.(
-            `create_report_link validation warning: ${w.message} [${w.code}]`,
-          );
-        }
-      }
-    }
-
-    const slug = this.#generateSlug();
-    const wid = await this.#reportLinkWorkspaceId(options.workspace_id ?? null);
-    const projectId = this.#projectId();
-    // Build the URL before the POST so every local input guard (RL1,
-    // RL3, RL6) fires before a record exists on the server.
-    const url = buildSlugUrl({
-      region: this.#session.account.region,
-      project_id: projectId,
-      slug,
-      report_type: resolvedType,
-      workspace_id: wid,
-    });
-
-    const body: Record<string, unknown> = {
-      slug,
-      type: resolvedType,
-      params: rawParams,
-    };
-    // Python `if name:` / `if description:` — empty strings stay absent.
-    if (name !== "") {
-      body["name"] = name;
-    }
-    if (description !== "") {
-      body["description"] = description;
-    }
-    if (bookmarkId !== null) {
-      body["bookmark_id"] = bookmarkId;
-    }
-
-    const response = await this.client.createBookmarkUrl(body);
-    const created = Object.hasOwn(response, "created_at")
-      ? response["created_at"]
-      : undefined;
-
-    let createdAt: string | null = null;
-    if (created !== undefined && created !== null) {
-      createdAt =
-        typeof created === "string" ? created : jsonValuePythonStr(created);
-    }
-    return new ReportLink({
-      url,
-      slug,
-      report_type: resolvedType,
-      project_id: projectId,
-      workspace_id: wid,
-      name,
-      description,
-      bookmark_id: bookmarkId,
-      created_at: createdAt,
-    });
-  }
-
-  /**
-   * Reject a link whose region, project, or workspace differs from the
-   * session (`_check_report_link_scope`). Runs before the record fetch.
-   * For a shortlink the region check runs before the redirect GET and
-   * the project and workspace checks run on the expanded target, after
-   * it. A bare slug carries none of the three values and so skips every
-   * check. The workspace check applies only when the session has a
-   * pinned workspace **and** the link names one.
-   *
-   * @param parsed - The parsed link (or a {@link ResolvedReport}
-   *   projected onto one by {@link queryReportLink}).
-   * @throws ReportLinkScopeMismatchError - `REPORT_LINK_REGION_MISMATCH`,
-   *   `REPORT_LINK_PROJECT_MISMATCH`, or `REPORT_LINK_WORKSPACE_MISMATCH`.
-   */
-  #checkReportLinkScope(parsed: ParsedReportLink): void {
-    const sessionRegion = this.#session.account.region;
-    if (parsed.region !== null && parsed.region !== sessionRegion) {
-      throw new ReportLinkScopeMismatchError(
-        `Report link is on the ${parsed.region} region but the active ` +
-          `account is on ${sessionRegion}.`,
-        {
-          code: "REPORT_LINK_REGION_MISMATCH",
-          details: {
-            ...reportLinkDetails(parsed),
-            link_region: parsed.region,
-            session_region: sessionRegion,
-            hint:
-              `Switch to an account on the ${parsed.region} region with ` +
-              `ws.use(account="<name>") (CLI: mp --account <name> ...) ` +
-              `and retry.`,
-          },
-        },
-      );
-    }
-    const sessionProject = this.#projectId();
-    if (parsed.project_id !== null && parsed.project_id !== sessionProject) {
-      throw new ReportLinkScopeMismatchError(
-        `Report link belongs to project ${String(parsed.project_id)} but the ` +
-          `active session is project ${String(sessionProject)}.`,
-        {
-          code: "REPORT_LINK_PROJECT_MISMATCH",
-          details: {
-            ...reportLinkDetails(parsed),
-            link_project_id: parsed.project_id,
-            session_project_id: sessionProject,
-            hint:
-              `Switch with ws.use(project="${String(parsed.project_id)}") ` +
-              `(CLI: mp --project ${String(parsed.project_id)} ...) and retry.`,
-          },
-        },
-      );
-    }
-    const pinned = this.#session.workspace ?? null;
-    if (
-      pinned !== null &&
-      parsed.workspace_id !== null &&
-      parsed.workspace_id !== pinned.id
-    ) {
-      throw new ReportLinkScopeMismatchError(
-        `Report link belongs to workspace ${String(parsed.workspace_id)} but the ` +
-          `active session is pinned to workspace ${String(pinned.id)}.`,
-        {
-          code: "REPORT_LINK_WORKSPACE_MISMATCH",
-          details: {
-            ...reportLinkDetails(parsed),
-            link_workspace_id: parsed.workspace_id,
-            session_workspace_id: pinned.id,
-            hint:
-              `Switch with ws.use(workspace=${String(parsed.workspace_id)}) ` +
-              `(CLI: mp --workspace ${String(parsed.workspace_id)} ...) and retry.`,
-          },
-        },
-      );
-    }
-  }
-
-  /**
-   * Follow a shortlink once and parse its target (`_expand_short_link`).
-   *
-   * @param parsed - A parsed link with `kind === "short_link"`.
-   * @returns `[parsedTarget, expandedUrl]`.
-   * @throws ReportLinkScopeMismatchError - `REPORT_LINK_REGION_MISMATCH`
-   *   when the shortlink host is on another region (before the GET).
-   * @throws ShortLinkResolutionError - `SHORT_LINK_CHAIN` when the target
-   *   is another shortlink, plus the transport codes from
-   *   {@link MixpanelClient.resolveShortLink}.
-   * @throws ReportLinkParseError - The expanded target is not a
-   *   recognizable Mixpanel report link.
-   * @throws AuthenticationError - The server redirected to the login page.
-   */
-  async #expandShortLink(
-    parsed: ParsedReportLink,
-  ): Promise<[ParsedReportLink, string]> {
-    const shortCode = parsed.short_code as string;
-    // The shortlink host names a region; a mismatch is knowable before
-    // the redirect GET, so check it first (FR-020: no HTTP call on
-    // mismatch).
-    this.#checkReportLinkScope(parsed);
-    const target = await this.client.resolveShortLink(shortCode);
-    const parsedTarget = parseReportLink(target);
-    if (parsedTarget.kind === "short_link") {
-      throw new ShortLinkResolutionError(
-        `Shortlink /s/${shortCode} redirects to another shortlink ` +
-          `(${target}). mixpanel-headless follows one redirect only.`,
-        {
-          code: "SHORT_LINK_CHAIN",
-          details: {
-            ...reportLinkDetails(parsed),
-            target,
-            hint: "Resolve the target shortlink directly.",
-          },
-        },
-      );
-    }
-    return [parsedTarget, target];
   }
 
   /**
@@ -6550,160 +4940,7 @@ export class Workspace {
    * ```
    */
   async resolveReportLink(link: string): Promise<ResolvedReport> {
-    let parsed = parseReportLink(link);
-    let expandedUrl: string | null = null;
-    if (parsed.kind === "short_link") {
-      [parsed, expandedUrl] = await this.#expandShortLink(parsed);
-    }
-
-    rejectUnsupportedReportLink(parsed);
-    this.#checkReportLinkScope(parsed);
-
-    const region = this.#session.account.region;
-    const projectId = this.#projectId();
-    const pinned = this.#session.workspace ?? null;
-    const workspaceId = parsed.workspace_id ?? pinned?.id ?? null;
-
-    if (parsed.kind === "slug") {
-      const raw = await this.client.getBookmarkUrl(parsed.slug as string);
-      const record = validateResponseModel(BookmarkUrl, toNativeJson(raw), {
-        endpoint: "get_bookmark_url",
-      });
-      const embedded = record.bookmark;
-      // The server accepts four slug types today. If it ever returns
-      // another, keep the record resolvable and fall back to the app
-      // the URL was opened under (or insights for a bare slug) rather
-      // than raising RL1 from the builder.
-      let slugUrlType = record.bookmark_type;
-      if (!SLUG_APP_FOR_TYPE.has(slugUrlType)) {
-        const hintType = parsed.report_type_hint;
-        slugUrlType =
-          hintType !== null && SLUG_APP_FOR_TYPE.has(hintType)
-            ? hintType
-            : "insights";
-        this.#logger?.warning?.(
-          `slug ${record.slug} has unknown report type ` +
-            `${pythonRepr(record.bookmark_type)}; the canonical URL uses ` +
-            `the ${SLUG_APP_FOR_TYPE.get(slugUrlType) as string} app and may ` +
-            `not open it correctly`,
-        );
-      }
-      return new ResolvedReport({
-        source: "slug",
-        report_type: record.bookmark_type,
-        params: { ...record.params },
-        project_id: projectId,
-        workspace_id: workspaceId,
-        region,
-        url: buildSlugUrl({
-          region,
-          project_id: projectId,
-          slug: record.slug,
-          report_type: slugUrlType,
-          workspace_id: workspaceId,
-        }),
-        input: link,
-        expanded_url: expandedUrl,
-        slug: record.slug,
-        bookmark_id: embedded === null ? record.bookmark_id : embedded.id,
-        bookmark: embedded,
-        name: record.name,
-        description: record.description,
-        overrides: record.overrides,
-      });
-    }
-
-    // `parsed.kind === "bookmark"` (every other kind was rejected above).
-    const bookmarkId = parsed.bookmark_id as number;
-    let bookmark: Bookmark;
-    try {
-      bookmark = await this.getBookmark(bookmarkId);
-    } catch (error) {
-      if (error instanceof QueryError && error.statusCode === 404) {
-        // get_bookmark is workspace-scoped when a workspace is pinned,
-        // so a report in a sibling workspace of the same project also
-        // 404s. Say so, instead of "not in this project".
-        if (pinned !== null) {
-          throw new ReportLinkNotFoundError(
-            `No saved report found with id ${String(bookmarkId)} in ` +
-              `project ${String(projectId)} (${region}) under the pinned ` +
-              `workspace ${String(pinned.id)}.`,
-            {
-              code: "REPORT_LINK_BOOKMARK_NOT_FOUND",
-              details: {
-                ...reportLinkDetails(parsed),
-                session_workspace_id: pinned.id,
-                hint:
-                  "The saved report may live in another workspace " +
-                  "of this project. Switch with " +
-                  "ws.use(workspace=<id>) (CLI: mp --workspace " +
-                  "<id> ...) or unpin the workspace and retry.",
-              },
-              cause: error,
-            },
-          );
-        }
-        throw new ReportLinkNotFoundError(
-          `No saved report found with id ${String(bookmarkId)} in ` +
-            `project ${String(projectId)} (${region}).`,
-          {
-            code: "REPORT_LINK_BOOKMARK_NOT_FOUND",
-            details: {
-              ...reportLinkDetails(parsed),
-              hint:
-                "Check the saved report id, or switch to the project " +
-                "and region that own it (ws.use(project=...); CLI: " +
-                "mp --project ...) and retry.",
-            },
-            cause: error,
-          },
-        );
-      }
-      throw error;
-    }
-    if (parsed.overrides_jsurl !== null) {
-      this.#logger?.warning?.(
-        `ignoring URL overrides ${pythonRepr(parsed.overrides_jsurl)}; ` +
-          `running the saved report's base params`,
-      );
-    }
-    const reportType = bookmark.bookmark_type;
-    let urlType = reportType;
-    if (!BOOKMARK_HASH_FOR_TYPE.has(urlType)) {
-      // Python `parsed.report_type_hint or "insights"` (truthiness).
-      urlType =
-        parsed.report_type_hint !== null && parsed.report_type_hint !== ""
-          ? parsed.report_type_hint
-          : "insights";
-      this.#logger?.warning?.(
-        `saved report ${String(bookmark.id)} has unknown report type ` +
-          `${pythonRepr(reportType)}; the canonical URL uses the ` +
-          `${String(parsed.app)} app and may not open it correctly`,
-      );
-    }
-    return new ResolvedReport({
-      source: "bookmark",
-      report_type: reportType,
-      params: { ...bookmark.params },
-      project_id: projectId,
-      workspace_id: workspaceId,
-      region,
-      url: buildBookmarkUrl({
-        region,
-        project_id: projectId,
-        bookmark_id: bookmark.id,
-        report_type: urlType,
-        workspace_id: workspaceId,
-      }),
-      input: link,
-      expanded_url: expandedUrl,
-      slug: null,
-      bookmark_id: bookmark.id,
-      bookmark,
-      name: bookmark.name,
-      description: bookmark.description,
-      overrides: null,
-    });
+    return reportLinkMethods.resolveReportLink(this.#reportLinkHost(), link);
   }
 
   /**
@@ -6750,72 +4987,10 @@ export class Workspace {
     link: string | ResolvedReport,
     options: WorkspaceQueryReportLinkOptions = {},
   ): Promise<ReportLinkQueryResult> {
-    let resolved: ResolvedReport;
-    if (typeof link === "string") {
-      resolved = await this.resolveReportLink(link);
-    } else {
-      resolved = link;
-      // A ResolvedReport records the scope it was resolved in. If the
-      // caller kept it across `use({project})` or handed it to another
-      // Workspace, refuse rather than run its params against an
-      // unrelated project (same rule as resolveReportLink).
-      this.#checkReportLinkScope(
-        parsedReportLink({
-          kind: resolved.source,
-          raw: resolved.input,
-          region: resolved.region,
-          project_id: resolved.project_id,
-          workspace_id: resolved.workspace_id,
-          slug: resolved.slug,
-          bookmark_id: resolved.bookmark_id,
-        }),
-      );
-    }
-    const projectId = this.#projectId();
-    const service = this.liveQueryService;
-    const reportType = resolved.report_type;
-    // The report records the scope it was resolved in; run under
-    // exactly that scope. The pin is never injected here, so a pin that
-    // was cleared or set since resolve time cannot change the data view.
-    const scope = {
-      workspace_id: resolved.workspace_id,
-      inject_workspace_id: false,
-    };
-    if (reportType === "insights") {
-      return service.query(resolved.params, projectId, scope);
-    }
-    if (reportType === "funnels") {
-      return service.queryFunnel(resolved.params, projectId, scope);
-    }
-    if (reportType === "retention") {
-      return service.queryRetention(resolved.params, projectId, scope);
-    }
-    if (reportType === "flows") {
-      const mode = options.mode ?? null;
-      let derived: string = mode ?? "sankey";
-      if (mode === null) {
-        const chartType = Object.hasOwn(resolved.params, "chartType")
-          ? resolved.params["chartType"]
-          : undefined;
-        if (
-          chartType === "sankey" ||
-          chartType === "paths" ||
-          chartType === "tree"
-        ) {
-          derived = chartType;
-        }
-      }
-      return service.queryFlow(resolved.params, projectId, derived, scope);
-    }
-    throw new UnsupportedReportLinkError(
-      `Report type ${pythonRepr(reportType)} cannot be run through mixpanel-headless.`,
-      {
-        code: "UNSUPPORTED_REPORT_TYPE",
-        details: {
-          report_type: reportType,
-          hint: "Supported types are insights, funnels, retention, and flows.",
-        },
-      },
+    return reportLinkMethods.queryReportLink(
+      this.#reportLinkHost(),
+      link,
+      options,
     );
   }
 
@@ -6845,86 +5020,12 @@ export class Workspace {
     bookmarkId: number,
     options: WorkspaceSavedReportLinkOptions = {},
   ): string {
-    requireEntityId("bookmark_id", bookmarkId);
-    const reportType = options.report_type ?? "insights";
-    const normalized = reportType === "funnel" ? "funnels" : reportType;
-    const pinned = this.#session.workspace ?? null;
-    const explicit = options.workspace_id ?? null;
-    const wid = explicit ?? pinned?.id ?? null;
-    return buildBookmarkUrl({
-      region: this.#session.account.region,
-      project_id: this.#projectId(),
-      bookmark_id: bookmarkId,
-      report_type: normalized,
-      workspace_id: wid,
-    });
-  }
-}
-
-/**
- * Raise a coded error when `event_properties` exceeds the Insights cap
- * (`_check_event_properties_count`, `workspace.py:303-324`).
- *
- * Mixpanel's Insights API caps group-by at 5 properties; the
- * session-replay surfaces all pass through to that endpoint.
- *
- * @param eventProperties - Caller-supplied list (or `null`).
- * @throws ParamValidationError - Code `WR1_TOO_MANY_EVENT_PROPERTIES`.
- */
-export function checkEventPropertiesCount(
-  eventProperties: readonly string[] | null,
-): void {
-  if (eventProperties !== null && eventProperties.length > 5) {
-    throw new ParamValidationError(
-      `events_for_replay accepts at most 5 event_properties ` +
-        `(Insights group-by limit). Got ${String(eventProperties.length)}: ${pythonRepr(
-          eventProperties,
-        )}`,
-      "WR1_TOO_MANY_EVENT_PROPERTIES",
+    return reportLinkMethods.savedReportLink(
+      this.#reportLinkHost(),
+      bookmarkId,
+      options,
     );
   }
-}
-
-/**
- * `datetime.fromtimestamp(ms / 1000, timezone.utc).strftime("%Y-%m-%d")`
- * — the two window-derivation sites in `fetch_replay` / `fetch_replays`
- * (`workspace.py:10958-10963`, `:11205-11210`).
- *
- * @param epochMs - Unix milliseconds.
- * @returns The `YYYY-MM-DD` UTC date.
- */
-function utcYmdFromEpochMs(epochMs: number): string {
-  const date = new Date(epochMs);
-  return [
-    zfill(String(date.getUTCFullYear()), 4),
-    zfill(String(date.getUTCMonth() + 1), 2),
-    zfill(String(date.getUTCDate()), 2),
-  ].join("-");
-}
-
-/**
- * `dataclasses.replace(replay, mixpanel_events=...)` — the one
- * `replace()` site in `fetch_replays` (`workspace.py:11178-11182`).
- *
- * @param replay - The replay to copy.
- * @param mixpanelEvents - The events to attach.
- * @returns A new `Replay` with the events attached.
- */
-function replaceReplayEvents(
-  replay: Replay,
-  mixpanelEvents: readonly ReplayEvent[],
-): Replay {
-  return new Replay({
-    replay_id: replay.replay_id,
-    distinct_id: replay.distinct_id,
-    project_id: replay.project_id,
-    start_time: replay.start_time,
-    end_time: replay.end_time,
-    retention_days: replay.retention_days,
-    rrweb_events: replay.rrweb_events,
-    actions: replay.actions,
-    mixpanel_events: mixpanelEvents,
-  });
 }
 
 /**
@@ -6942,156 +5043,4 @@ function asPromise<T>(compute: () => T): Promise<T> {
   return new Promise((resolve) => {
     resolve(compute());
   });
-}
-
-/**
- * `Mapping.get(key)` over the optional retention / distinct-id maps,
- * which callers may hand in as a `Map` OR a plain record.
- *
- * @param source - The map or record.
- * @param key - The replay id.
- * @returns The value, or `undefined`.
- */
-function mapGet<T>(
-  source: ReadonlyMap<string, T> | Readonly<Record<string, T>>,
-  key: string,
-): T | undefined {
-  if (source instanceof Map) {
-    // Declared type, not the `instanceof` intersection (whose `Map<any,
-    // any>` half would make `get` return `any`).
-    const map: ReadonlyMap<string, T> = source;
-    return map.get(key);
-  }
-  const record = source as Readonly<Record<string, T>>;
-  return Object.hasOwn(record, key) ? record[key] : undefined;
-}
-
-/**
- * Convert a B4 client response to the native tree Python's
- * `json.loads` produces (the engage-stats body is read with plain
- * `dict.get` in Python).
- *
- * @param value - The lossless response tree.
- * @returns The native-valued record.
- */
-function toNativeRecord(value: unknown): Record<string, unknown> {
-  return toNativeJson(value as JsonValue) as Record<string, unknown>;
-}
-
-// ---------------------------------------------------------------------------
-// 045 report-link helpers (Python `Workspace` staticmethods, PR #223).
-// ---------------------------------------------------------------------------
-
-/**
- * Split a `createReportLink` input into raw params and a type
- * (`_report_link_inputs`). A dict with no type is `insights`.
- *
- * @param params - A raw params dict or a typed query result.
- * @param reportType - Caller-supplied type, or `null` to infer.
- * @returns The raw params and the resolved type.
- * @throws ParamValidationError - `RL4_REPORT_TYPE_CONFLICT` when an
- *   explicit type contradicts the type inferred from a typed result.
- */
-function reportLinkInputs(
-  params: ReportLinkParamsInput,
-  reportType: ReportLinkType | null,
-): { rawParams: Record<string, unknown>; reportType: ReportLinkType } {
-  let inferred: ReportLinkType;
-  let resultClass: string;
-  if (params instanceof QueryResult) {
-    inferred = "insights";
-    resultClass = "QueryResult";
-  } else if (params instanceof FunnelQueryResult) {
-    inferred = "funnels";
-    resultClass = "FunnelQueryResult";
-  } else if (params instanceof RetentionQueryResult) {
-    inferred = "retention";
-    resultClass = "RetentionQueryResult";
-  } else if (params instanceof FlowQueryResult) {
-    inferred = "flows";
-    resultClass = "FlowQueryResult";
-  } else {
-    return {
-      rawParams: params,
-      reportType: reportType ?? "insights",
-    };
-  }
-  if (reportType !== null && reportType !== inferred) {
-    throw new ParamValidationError(
-      `report_type=${pythonRepr(reportType)} contradicts the ` +
-        `${resultClass} result, which is ${pythonRepr(inferred)}. ` +
-        `Omit report_type or pass a plain params dict.`,
-      "RL4_REPORT_TYPE_CONFLICT",
-      { given: reportType, inferred, result_class: resultClass },
-    );
-  }
-  return { rawParams: { ...params.params }, reportType: inferred };
-}
-
-/**
- * Collect the parsed link fields that are set, for error `details`
- * (`_report_link_details`).
- *
- * @param parsed - The parsed link.
- * @returns `kind` plus every non-`null` id field.
- */
-function reportLinkDetails(parsed: ParsedReportLink): Record<string, unknown> {
-  const details: Record<string, unknown> = { kind: parsed.kind };
-  const fields = [
-    "region",
-    "project_id",
-    "workspace_id",
-    "slug",
-    "bookmark_id",
-    "dashboard_id",
-    "short_code",
-  ] as const;
-  for (const name of fields) {
-    const value = parsed[name];
-    if (value !== null) {
-      details[name] = value;
-    }
-  }
-  return details;
-}
-
-/**
- * Throw for link kinds that headless recognizes but cannot resolve
- * (`_reject_unsupported_report_link`).
- *
- * @param parsed - The parsed link.
- * @throws UnsupportedReportLinkError - `UNSUPPORTED_DASHBOARD_LINK` or
- *   `UNSUPPORTED_LEGACY_HASH`.
- */
-function rejectUnsupportedReportLink(parsed: ParsedReportLink): void {
-  if (parsed.kind === "dashboard") {
-    const did = String(parsed.dashboard_id);
-    throw new UnsupportedReportLinkError(
-      `This link points at dashboard ${did}, not at a single report.`,
-      {
-        code: "UNSUPPORTED_DASHBOARD_LINK",
-        details: {
-          ...reportLinkDetails(parsed),
-          hint:
-            `Use ws.get_dashboard(${did}) (CLI: mp dashboards get ${did}) ` +
-            `to list its reports, then resolve one report link.`,
-        },
-      },
-    );
-  }
-  if (parsed.kind === "legacy_jsurl") {
-    throw new UnsupportedReportLinkError(
-      "This link uses the legacy JSURL hash format, which " +
-        "mixpanel-headless cannot decode.",
-      {
-        code: "UNSUPPORTED_LEGACY_HASH",
-        details: {
-          ...reportLinkDetails(parsed),
-          hint:
-            "Open it in a browser (the app re-mints a shareable link " +
-            "on load) and copy the new URL.",
-        },
-      },
-    );
-  }
 }

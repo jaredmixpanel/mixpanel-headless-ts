@@ -33,7 +33,8 @@ import type { Account } from "../../src/auth/account.js";
 import type { Session } from "../../src/auth/session.js";
 import { ConfigError, MixpanelHeadlessError } from "../../src/errors.js";
 import { Secret } from "../../src/secret.js";
-import { type ResolverSeams, Workspace } from "../../src/workspace.js";
+import { Workspace } from "../../src/workspace.js";
+import type { ResolverSeams } from "../../src/workspace-members/lifecycle.js";
 import {
   type CannedResponse,
   createMockClient,

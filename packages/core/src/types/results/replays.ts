@@ -59,6 +59,17 @@ export {
   type SignedReplayFields,
 } from "./replay-models.js";
 
+/**
+ * One replay `fetch_replays` skipped — TS-only. Python's `ReplayBundle`
+ * has no such field: its `fetch_replays` only logs the skipped id.
+ */
+export interface ReplayFetchFailure {
+  /** The replay that was skipped. */
+  readonly replay_id: string;
+  /** Why it was skipped (`ReplayNotFoundError`, a CDN stall, a parse error, …). */
+  readonly error: Error;
+}
+
 /** Declared fields of {@link ReplayBundle} (Python field order). */
 export interface ReplayBundleFields {
   /** Replays in the bundle. Default: `[]`. */
@@ -67,6 +78,11 @@ export interface ReplayBundleFields {
   readonly computed_at?: string;
   /** Owning project ID (`0` when unset). Default: `0`. */
   readonly project_id?: number;
+  /**
+   * Replays `fetch_replays` skipped (TS-only, additive; see
+   * {@link ReplayBundle.failures}). Default: `[]`.
+   */
+  readonly failures?: readonly ReplayFetchFailure[] | undefined;
   /** Codec-visible DataFrame cache slots — always `null` in TS. */
   readonly _df_cache?: null | undefined;
   /** Codec-visible sessions-frame cache slot — always `null` in TS. */
@@ -119,6 +135,13 @@ export class ReplayBundle {
   readonly _elements_df_cache: null = null;
 
   /**
+   * Backing store of {@link failures}. A private field so the codec's
+   * `Object.entries` walk (and `toJSON()`) never see it: the encoded
+   * shape of every bundle stays byte-identical to Python's.
+   */
+  readonly #failures: readonly ReplayFetchFailure[];
+
+  /**
    * Create a replay bundle (guard fires exactly as Python's
    * `__post_init__`).
    *
@@ -132,6 +155,7 @@ export class ReplayBundle {
     this.replays = fields.replays ?? [];
     this.computed_at = fields.computed_at ?? "";
     this.project_id = fields.project_id ?? 0;
+    this.#failures = fields.failures ?? [];
     // RB1_PROJECT_ID_MISMATCH: all replays must match a set project_id.
     if (
       this.project_id &&
@@ -146,6 +170,24 @@ export class ReplayBundle {
         "RB1_PROJECT_ID_MISMATCH",
       );
     }
+  }
+
+  /**
+   * The replays `fetch_replays` skipped under its per-replay failure
+   * isolation, in input order — so a partial bundle is never silently
+   * short. Empty for bundles built any other way, and NOT carried over by
+   * the derived-bundle members (`filter`, `head`, `sample`).
+   *
+   * Divergence: Python only logs the skipped ids (`fetch_replays`
+   * `logger.warning`); the structured record is TS-only, following the
+   * `failed_pages` meta precedent of the parallel user query. A prototype
+   * getter, not an own property, so `toJSON()` / the conformance codec
+   * do not see it.
+   *
+   * @returns The skipped replays with their errors.
+   */
+  get failures(): readonly ReplayFetchFailure[] {
+    return this.#failures;
   }
 
   /**

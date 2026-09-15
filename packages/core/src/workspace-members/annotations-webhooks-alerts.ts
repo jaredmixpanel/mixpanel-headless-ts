@@ -54,6 +54,7 @@
  */
 
 import type { MixpanelClient } from "../client/client.js";
+import { toNativeJson } from "../client/json-value.js";
 import {
   validateResponseModel,
   validateResponseModels,
@@ -83,7 +84,6 @@ import {
   type WebhookTestParams,
   WebhookTestResult,
 } from "../types/entities/webhooks.js";
-import { native } from "./shared.js";
 
 // ---------------------------------------------------------------------------
 // Options bags (R3.3/R3.8 — keyword-only tails; keys keep the Python
@@ -153,7 +153,7 @@ export async function listAnnotations(
   });
   return validateResponseModels(
     Annotation,
-    raw.map((item) => native(item)),
+    raw.map((item) => toNativeJson(item)),
     {
       endpoint: "list_annotations",
     },
@@ -175,7 +175,7 @@ export async function createAnnotation(
   params: CreateAnnotationParams,
 ): Promise<Annotation> {
   const raw = await client.createAnnotation(params.modelDumpExcludeNone());
-  return validateResponseModel(Annotation, native(raw), {
+  return validateResponseModel(Annotation, toNativeJson(raw), {
     endpoint: "create_annotation",
   });
 }
@@ -194,7 +194,7 @@ export async function getAnnotation(
   annotationId: number,
 ): Promise<Annotation> {
   const raw = await client.getAnnotation(annotationId);
-  return validateResponseModel(Annotation, native(raw), {
+  return validateResponseModel(Annotation, toNativeJson(raw), {
     endpoint: "get_annotation",
   });
 }
@@ -218,7 +218,7 @@ export async function updateAnnotation(
     annotationId,
     params.modelDumpExcludeNone(),
   );
-  return validateResponseModel(Annotation, native(raw), {
+  return validateResponseModel(Annotation, toNativeJson(raw), {
     endpoint: "update_annotation",
   });
 }
@@ -254,7 +254,7 @@ export async function listAnnotationTags(
   const raw = await client.listAnnotationTags();
   return validateResponseModels(
     AnnotationTag,
-    raw.map((item) => native(item)),
+    raw.map((item) => toNativeJson(item)),
     {
       endpoint: "list_annotation_tags",
     },
@@ -275,7 +275,7 @@ export async function createAnnotationTag(
   params: CreateAnnotationTagParams,
 ): Promise<AnnotationTag> {
   const raw = await client.createAnnotationTag(params.modelDumpExcludeNone());
-  return validateResponseModel(AnnotationTag, native(raw), {
+  return validateResponseModel(AnnotationTag, toNativeJson(raw), {
     endpoint: "create_annotation_tag",
   });
 }
@@ -298,7 +298,7 @@ export async function listWebhooks(
   const raw = await client.listWebhooks();
   return validateResponseModels(
     ProjectWebhook,
-    raw.map((item) => native(item)),
+    raw.map((item) => toNativeJson(item)),
     {
       endpoint: "list_webhooks",
     },
@@ -319,7 +319,7 @@ export async function createWebhook(
   params: CreateWebhookParams,
 ): Promise<WebhookMutationResult> {
   const raw = await client.createWebhook(params.modelDumpExcludeNone());
-  return validateResponseModel(WebhookMutationResult, native(raw), {
+  return validateResponseModel(WebhookMutationResult, toNativeJson(raw), {
     endpoint: "create_webhook",
   });
 }
@@ -343,7 +343,7 @@ export async function updateWebhook(
     webhookId,
     params.modelDumpExcludeNone(),
   );
-  return validateResponseModel(WebhookMutationResult, native(raw), {
+  return validateResponseModel(WebhookMutationResult, toNativeJson(raw), {
     endpoint: "update_webhook",
   });
 }
@@ -378,7 +378,7 @@ export async function testWebhook(
   params: WebhookTestParams,
 ): Promise<WebhookTestResult> {
   const raw = await client.testWebhook(params.modelDumpExcludeNone());
-  return validateResponseModel(WebhookTestResult, native(raw), {
+  return validateResponseModel(WebhookTestResult, toNativeJson(raw), {
     endpoint: "test_webhook",
   });
 }
@@ -408,7 +408,7 @@ export async function listAlerts(
   });
   return validateResponseModels(
     CustomAlert,
-    raw.map((item) => native(item)),
+    raw.map((item) => toNativeJson(item)),
     {
       endpoint: "list_alerts",
     },
@@ -429,7 +429,7 @@ export async function createAlert(
   params: CreateAlertParams,
 ): Promise<CustomAlert> {
   const raw = await client.createAlert(params.modelDumpExcludeNone());
-  return validateResponseModel(CustomAlert, native(raw), {
+  return validateResponseModel(CustomAlert, toNativeJson(raw), {
     endpoint: "create_alert",
   });
 }
@@ -448,7 +448,7 @@ export async function getAlert(
   alertId: number,
 ): Promise<CustomAlert> {
   const raw = await client.getAlert(alertId);
-  return validateResponseModel(CustomAlert, native(raw), {
+  return validateResponseModel(CustomAlert, toNativeJson(raw), {
     endpoint: "get_alert",
   });
 }
@@ -469,7 +469,7 @@ export async function updateAlert(
   params: UpdateAlertParams,
 ): Promise<CustomAlert> {
   const raw = await client.updateAlert(alertId, params.modelDumpExcludeNone());
-  return validateResponseModel(CustomAlert, native(raw), {
+  return validateResponseModel(CustomAlert, toNativeJson(raw), {
     endpoint: "update_alert",
   });
 }
@@ -523,7 +523,7 @@ export async function getAlertCount(
   const raw = await client.getAlertCount({
     alert_type: options.alert_type ?? null,
   });
-  return validateResponseModel(AlertCount, native(raw), {
+  return validateResponseModel(AlertCount, toNativeJson(raw), {
     endpoint: "get_alert_count",
   });
 }
@@ -549,7 +549,7 @@ export async function getAlertHistory(
     next_cursor: options.next_cursor ?? null,
     previous_cursor: options.previous_cursor ?? null,
   });
-  return validateResponseModel(AlertHistoryResponse, native(raw), {
+  return validateResponseModel(AlertHistoryResponse, toNativeJson(raw), {
     endpoint: "get_alert_history",
   });
 }
@@ -571,7 +571,7 @@ export async function testAlert(
   params: CreateAlertParams,
 ): Promise<Record<string, unknown>> {
   const raw = await client.testAlert(params.modelDumpExcludeNone());
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
 /**
@@ -588,7 +588,7 @@ export async function getAlertScreenshotUrl(
   gcsKey: string,
 ): Promise<AlertScreenshotResponse> {
   const raw = await client.getAlertScreenshotUrl(gcsKey);
-  return validateResponseModel(AlertScreenshotResponse, native(raw), {
+  return validateResponseModel(AlertScreenshotResponse, toNativeJson(raw), {
     endpoint: "get_alert_screenshot_url",
   });
 }
@@ -609,7 +609,11 @@ export async function validateAlertsForBookmark(
   const raw = await client.validateAlertsForBookmark(
     params.modelDumpExcludeNone(),
   );
-  return validateResponseModel(ValidateAlertsForBookmarkResponse, native(raw), {
-    endpoint: "validate_alerts_for_bookmark",
-  });
+  return validateResponseModel(
+    ValidateAlertsForBookmarkResponse,
+    toNativeJson(raw),
+    {
+      endpoint: "validate_alerts_for_bookmark",
+    },
+  );
 }

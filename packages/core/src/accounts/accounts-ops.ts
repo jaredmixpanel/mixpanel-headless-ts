@@ -28,7 +28,7 @@ import type {
 } from "../auth/account.js";
 import type { Session } from "../auth/session.js";
 import { createMixpanelClient } from "../client/client.js";
-import { type JsonValue, toNativeJson } from "../client/json-value.js";
+import { toNativeJson } from "../client/json-value.js";
 import { type MeProjectInfo, MeResponse } from "../client/me.js";
 import { endpointOverridesFromEnv } from "../client/url.js";
 import {
@@ -662,7 +662,7 @@ export async function accountsTest(
     }
     let meResp: MeResponse;
     try {
-      meResp = MeResponse.fromDict(toNativeJson(meRaw as JsonValue));
+      meResp = MeResponse.fromDict(toNativeJson(meRaw));
     } catch (error) {
       return buildTestFailureResult(
         summary.name,
