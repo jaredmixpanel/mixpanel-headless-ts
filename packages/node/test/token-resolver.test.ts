@@ -503,12 +503,11 @@ describe("oauth_browser session with no tokens on disk", () => {
   // python: test_042_edge_cases.py
   it("raises OAUTH_TOKEN_ERROR through the real resolver when no tokens exist", async () => {
     // python: test_session_to_credentials_oauth_browser_missing_tokens_raises
-    // The B7 translation drove this through an injected fake resolver;
-    // this re-take materializes the bearer through the REAL
-    // OnDiskTokenResolver over an isolated HOME with no tokens on disk
-    // (the Python client's `current_auth_header` eager-probe twin is
-    // the resolver call itself — the session auth header is built
-    // per-request from `getBrowserToken`, R2.9).
+    // The core suite drives this through an injected fake resolver; this
+    // one materializes the bearer through the real OnDiskTokenResolver
+    // over an isolated HOME with no tokens on disk (the Python client's
+    // `current_auth_header` eager-probe twin is the resolver call itself —
+    // the session auth header is built per request from `getBrowserToken`).
     const resolver = new OnDiskTokenResolver();
     await expect(resolver.getBrowserToken("me", "us")).rejects.toMatchObject({
       code: "OAUTH_TOKEN_ERROR",
@@ -528,10 +527,9 @@ describe("oauth_browser session with no tokens on disk", () => {
   });
 });
 
-// B8-ARB-A SEM-F6 family ripple (b8-reviewA-resolution.md): Python's
-// symlink-probe catch is `except OSError` (`token_resolver.py`)
+// Python's symlink-probe catch is `except OSError` (`token_resolver.py`)
 // — errno-bearing lstat failures wrap into the coded OAuthError exactly
-// like the symlink refusal; pre-fix TS rethrew them uncoded.
+// like the symlink refusal.
 describe("symlink-probe errno wrapping", () => {
   it.skipIf(!POSIX || process.getuid?.() === 0)(
     "unreadable accounts dir at the probe wraps into OAUTH_TOKEN_ERROR",
@@ -555,11 +553,10 @@ describe("symlink-probe errno wrapping", () => {
   );
 });
 
-// B8-ARB-B F1 (b8-reviewB-resolution.md): the per-account read path is
-// `OAuthTokens.model_validate_json` in Python
-// — Pydantic-LAX, so numeric epoch-seconds `expires_at` (and its
-// numeric-string spelling) is ACCEPTED and converted to an aware UTC
-// datetime (live probe: 1893456000 → 2030-01-01T00:00:00+00:00). The
+// The per-account read path is `OAuthTokens.model_validate_json` in
+// Python — pydantic-lax, so numeric epoch-seconds `expires_at` (and its
+// numeric-string spelling) is accepted and converted to an aware UTC
+// datetime (probe: 1893456000 → 2030-01-01T00:00:00+00:00). The
 // TS twin routes the same lax mirror (`coerceLaxExpiresAt`) before
 // `parseOAuthTokens`.
 describe("lax expires_at at the resolver read", () => {

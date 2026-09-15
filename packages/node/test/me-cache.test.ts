@@ -218,8 +218,8 @@ describe("MeCache concurrent writers", () => {
         caught = error as ConfigError;
       }
       expect(caught).toBeInstanceOf(ConfigError);
-      // The PII rationale raise names the 0o700 requirement
-      // (me.py:563-575 — packet §7 caution 12).
+      // The PII rationale raise names the 0o700 requirement, as in
+      // `MeCache._ensure_dir`.
       expect(caught?.message).toContain("0o700");
     },
   );
@@ -302,10 +302,9 @@ describe("ordered organizations re-hydration", () => {
   });
 });
 
-// B8-ARB-A SEM-F2c (b8-reviewA-resolution.md): Python `MeCache.get`
-// catches `(json.JSONDecodeError, OSError)` + CredentialPathError only
-// (`me.py:505-515`) — an invalid-UTF-8 cache file raises
-// UnicodeDecodeError RAW (live CPython probe in the resolution). The
+// Python `MeCache.get` catches `(json.JSONDecodeError, OSError)` +
+// CredentialPathError only — an invalid-UTF-8 cache file raises
+// UnicodeDecodeError raw (CPython probe). The
 // TS twin is the TextDecoder fatal-mode TypeError, which must
 // propagate rather than degrade to the corrupt-file `null`.
 describe("decode error class", () => {

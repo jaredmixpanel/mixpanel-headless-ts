@@ -53,7 +53,7 @@ describe("createNodeEnv", () => {
 
   it("returns raw values — empty string stays the CALLER's problem", () => {
     // Falsiness is owned by the resolver core (resolver.ts); the bag
-    // never coerces (packet §2.1 env-wiring row).
+    // never coerces.
     const env = createNodeEnv();
     vi.stubEnv("MP_REGION", "");
     expect(env.MP_REGION).toBe("");

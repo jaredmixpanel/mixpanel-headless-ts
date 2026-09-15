@@ -28,7 +28,7 @@ const ARTIFACT_PATH = resolve(
   "conformance-runner/corpus/contract/error-codes.json",
 );
 
-/** Parsed shape of error-codes.json (P2-1 generator output). */
+/** Parsed shape of error-codes.json (Python generator output). */
 interface ErrorCodesArtifact {
   readonly generated_from: string;
   readonly exception_classes: Readonly<Record<string, string | null>>;

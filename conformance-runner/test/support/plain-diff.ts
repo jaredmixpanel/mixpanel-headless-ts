@@ -1,7 +1,6 @@
 /**
- * Shared golden-diff helper for the C8(b) tests (P2-6 result goldens
- * pioneered the algorithm inline; P2-7 factors it here for the entity
- * goldens — P2-8 may re-home the result-golden copy).
+ * Shared golden-diff helper for the result-shape and entity-model golden
+ * tests.
  *
  * Diffs a re-encoded TS field walk against the ORIGINAL raw vector
  * payload subtree. Structure and key sets must match exactly; numbers

@@ -64,7 +64,7 @@ const PACKAGE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
  */
 const DECODE_GAP: ReadonlySet<string> = new Set(["callback"]);
 
-/** Parsed shape of the P2-1 tag-universe contract artifact. */
+/** Parsed shape of the tag-universe contract artifact. */
 interface TagUniverse {
   readonly built_in_tags: readonly string[];
   readonly rich_tags: readonly string[];
@@ -266,7 +266,7 @@ function assertRealInstance(entry: TaggedNode, decoded: unknown): void {
       expect(decoded, where).toBeInstanceOf(FrequencyFilter);
       break;
     }
-    // P2-6 replay-family tags.
+    // Replay-family tags.
     case "UserAction": {
       expect(decoded, where).toBeInstanceOf(UserAction);
       break;
@@ -280,7 +280,7 @@ function assertRealInstance(entry: TaggedNode, decoded: unknown): void {
       break;
     }
     default: {
-      // P2-7 entity-model tags: the class is exported from the
+      // Entity-model tags: the class is exported from the
       // entities barrel under EXACTLY the tag name — probe against the
       // real class (independent of the codec's own `matches`, so a
       // lazily registered echo codec cannot satisfy this).
@@ -301,7 +301,7 @@ function assertRealInstance(entry: TaggedNode, decoded: unknown): void {
 describe("codec round-trip sweep", () => {
   it("finds tagged payloads to exercise (sweep is not vacuous)", () => {
     expect(roundTrippable.length).toBeGreaterThan(0);
-    // The two P2-4 behavioral targets are exercised, per the corpus
+    // The two behavioural targets are exercised, per the corpus
     // tag-universe counts (SecretStr 20, OAuthTokens 7 at pin time).
     expect(tally.get("SecretStr") ?? 0).toBeGreaterThanOrEqual(1);
     expect(tally.get("OAuthTokens") ?? 0).toBeGreaterThanOrEqual(1);
@@ -326,10 +326,10 @@ describe("codec round-trip sweep", () => {
   });
 
   it("every registered rich tag was exercised at least once", async () => {
-    // Registered rich tags = the full contract table (P2-4 OAuthTokens +
-    // the P2-5a query-param family + the early cohort shells). Built-ins
-    // are exempt ('date' has zero corpus occurrences by design —
-    // registered but unexercised, phase2-design inventory).
+    // Registered rich tags = the full contract table (OAuthTokens + the
+    // query-param family + the early cohort shells). Built-ins are exempt
+    // ('date' has zero corpus occurrences by design — registered but
+    // unexercised).
     const { CONTRACT_TAG_CODECS } = await import("../src/vector-codecs.js");
     for (const tag of CONTRACT_TAG_CODECS.keys()) {
       expect(tally.get(tag) ?? 0, `tag ${tag}`).toBeGreaterThanOrEqual(1);
@@ -352,7 +352,7 @@ describe("codec round-trip sweep", () => {
     // A codec that stored the payload and echoed it back would satisfy
     // the round-trip; the instanceof probes above plus this negative
     // probe (decode of a mutated payload must FAIL, not echo) close the
-    // hole for the P2-4 tag.
+    // hole for the OAuthTokens tag.
     const sample = roundTrippable.find((entry) => entry.tag === "OAuthTokens");
     if (sample === undefined) {
       throw new Error("no OAuthTokens vector payload found in the corpus");

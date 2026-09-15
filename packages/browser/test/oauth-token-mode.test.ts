@@ -103,12 +103,12 @@ describe("createBrowserWorkspace", () => {
     expect(capture.headers["authorization"]).toBe("Bearer tok-123");
   });
 
-  // B9-ARB-A SEM-F1 (b9-reviewA-resolution.md): the "static token
+  // The "static token
   // unresolvable" condition matches the Python twin's code + details
   // (`OnDiskTokenResolver.get_static_token`, token_resolver.py
   // → OAUTH_TOKEN_ERROR {account_name, env_var}) so the condition is
   // uniform across runtimes; the MESSAGE stays browser-explanatory
-  // (env reading is node-only, R9.4 — out of contract per R5.4).
+  // (env reading is node-only; messages are out of contract).
   it("a hand-built token_env account refuses with OAUTH_TOKEN_ERROR {account_name, env_var}", async () => {
     const transport = fakeTransport(() => ({ status: 200, json: [] }));
     const session = parseSession(

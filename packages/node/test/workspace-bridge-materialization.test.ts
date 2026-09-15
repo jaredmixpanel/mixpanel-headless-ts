@@ -173,13 +173,13 @@ describe("bridge token materialization", () => {
   });
 });
 
-// B8-ARB-A SEM-F1 (b8-reviewA-resolution.md): the `workspace.py:476-513`
-// startup sequence must be reachable from a SHIPPED node composition —
+// The `Workspace.__init__` bridge-materialization startup sequence must
+// be reachable from a shipped node composition —
 // not only by hand-calling `loadBridgeForStartup()` as the class above
 // does. `createNodeWorkspaceSources()` is that composition (facade
 // construction); `createNodeResolverSources()` stays PURE (in-session
 // `use()` re-resolution must never clobber tokens refreshed mid-session
-// with a stale bridge payload — B8-N2-notes.md disclosure #1).
+// with a stale bridge payload).
 describe("default node workspace composition materializes bridge tokens", () => {
   /** Write a fresh oauth_browser bridge and point MP_AUTH_FILE at it. */
   function seedBridge(accountName: string): string {

@@ -63,8 +63,8 @@ describe("ensureBrowserClientRegistered", () => {
     expect(info.redirect_uri).toBe(REDIRECT_URI);
     expect(info.scope).toBe(DEFAULT_SCOPE);
 
-    // Persisted under the region key in the R11.9 pydantic-JSON shape
-    // (`Z` suffix — client_{region}.json twin, §2.1).
+    // Persisted under the region key in the pydantic-JSON shape (`Z`
+    // suffix — the client_{region}.json twin).
     const raw = store.get(CREDENTIAL_KEYS.clientInfo("us"));
     expect(raw).not.toBeNull();
     const payload = JSON.parse(raw!) as Record<string, unknown>;
@@ -143,21 +143,18 @@ describe("ensureBrowserClientRegistered", () => {
     ["unknown region", "uk"],
     ["uppercase region", "US"],
     ["empty region", ""],
-  ])(
-    "raises OAUTH_REGISTRATION_ERROR for %s (`client_registration.py:97-103`)",
-    async (_label, region) => {
-      const transport = registrationTransport();
-      await expect(
-        ensureBrowserClientRegistered({
-          fetch: transport.fetch,
-          region,
-          redirectUri: REDIRECT_URI,
-          store: new InMemoryCredentialStore(),
-        }),
-      ).rejects.toMatchObject({ code: "OAUTH_REGISTRATION_ERROR" });
-      expect(transport.captures).toHaveLength(0);
-    },
-  );
+  ])("raises OAUTH_REGISTRATION_ERROR for %s", async (_label, region) => {
+    const transport = registrationTransport();
+    await expect(
+      ensureBrowserClientRegistered({
+        fetch: transport.fetch,
+        region,
+        redirectUri: REDIRECT_URI,
+        store: new InMemoryCredentialStore(),
+      }),
+    ).rejects.toMatchObject({ code: "OAUTH_REGISTRATION_ERROR" });
+    expect(transport.captures).toHaveLength(0);
+  });
 
   it("maps 429 to OAUTH_REGISTRATION_ERROR with the retry_after detail", async () => {
     const transport = bodyCapturingTransport(

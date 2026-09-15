@@ -610,11 +610,9 @@ describe("OAuthStorage concurrent access", () => {
   });
 });
 
-// B8-ARB-B F1 + F2 locks (b8-reviewB-resolution.md): the legacy-world
-// read path already carried the pydantic-lax epoch mirror (B8-N2
-// decision 3), but not the numeric-STRING spelling nor speedate's
-// seconds/milliseconds watershed (|v| > 2e10 → ms) — all live-probed
-// against CPython/pydantic in the resolution. Writers: Python
+// Pydantic-lax reads: the storage read path accepts numeric epochs, their
+// numeric-string spelling and speedate's seconds/milliseconds watershed
+// (|v| > 2e10 → ms), all probed against CPython/pydantic. Writers: Python
 // `save_tokens` renders `datetime.isoformat()` (`+00:00`);
 // `save_client_info` renders pydantic JSON mode (`Z`).
 describe("OAuthStorage lax datetime reads and writer datetime shapes", () => {

@@ -255,14 +255,14 @@ describe("OAuthStorage symlink rejection", () => {
     },
   );
 
-  // PYTHON-ONLY (fd-flag hardening dropped, plan §4.2 / packet §2.1):
+  // Python-only (fd-flag hardening is not ported):
   // test_check_and_fix_permissions_uses_fchmod_not_chmod — the
   // Path.chmod-patch probe asserts the fchmod-on-fd mechanism itself.
   // The lstat-substituted TS repair path IS Path.chmod-shaped by
   // design; the observable repair behavior is locked in
   // auth-storage.test.ts (TestOAuthStorageSecurityHardening).
   //
-  // PYTHON-ONLY: test_windows_skip_does_not_crash — probes a
+  // Python-only: test_windows_skip_does_not_crash — probes a
   // `delattr(os, "O_NOFOLLOW")` shim; the TS twin's Windows no-op keys
   // on `process.platform` and has no removable attribute to probe.
 });

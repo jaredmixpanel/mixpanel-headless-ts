@@ -307,13 +307,8 @@ describe("oracle.call: compat surface", () => {
 
 describe("oracle.call: scope, skips, and protocol errors", () => {
   it("answers UNPORTED for mapped apis outside the compat surface", async () => {
-    // Exemplar re-anchored at each bind wave to a still-unported mapped
-    // api: user_builders.filter_to_selector went live at B3-BIND,
-    // workspace.build_params at B5-BIND, workspace.me at B6-BIND,
-    // region_probe.probe_region at B7-A2, oauth_flow.refresh_tokens at
-    // B8-N2 (the LAST corpus name). Re-anchored to the NON-CORPUS
-    // module-known oauth_flow.build_authorize_url; the B8 gate
-    // completes the retirement (b8-packets.md §5.3, b6-packets.md §12.5).
+    // Every corpus api is ported, so the exemplar is the non-corpus
+    // module-known oauth_flow.build_authorize_url.
     const result = await call(
       makeServer(),
       "oauth_flow.build_authorize_url",
@@ -329,12 +324,8 @@ describe("oracle.call: scope, skips, and protocol errors", () => {
     // Unported apis carry rich tags whose PAYLOADS may be malformed
     // (this one lacks every Filter field); scope must be checked FIRST
     // or every such probe would crash the harness with -32602 instead
-    // of counting as a skip. (Exemplar re-anchored at B3-BIND —
-    // segfilter.build_segfilter_entry went live — at B5-BIND:
-    // build_params went live — at B6-BIND: workspace.me went live —
-    // at B7-A2: region_probe.probe_region went live — and at B8-N2:
-    // oauth_flow.refresh_tokens went live; now the NON-CORPUS
-    // module-known oauth_flow.build_authorize_url.)
+    // of counting as a skip. (The exemplar is the non-corpus module-known
+    // oauth_flow.build_authorize_url.)
     const result = await call(makeServer(), "oauth_flow.build_authorize_url", {
       where: { $type: "Filter", field: "x" },
     });
@@ -425,8 +416,8 @@ describe("oracle.call: scope, skips, and protocol errors", () => {
 
   it("answers -32000 when the output fails canonicalization", async () => {
     // A lone-surrogate input arrives via a JSON escape; python_str's
-    // OUTPUT then carries the surrogate, which the D6 encoder rejects —
-    // a protocol-level error, never a hang or crash (design D14).
+    // output then carries the surrogate, which the canonical encoder
+    // rejects — a protocol-level error, never a hang or crash.
     const line = `{"jsonrpc": "2.0", "id": 1, "method": "oracle.call", "params": ${String.raw`{"api": "compat.python_str", "input": {"value": "\ud800"}}}`}`;
     const envelope = await serveLine(makeServer(), line);
     expect(envelope.error?.code).toBe(JSONRPC_INTERNAL_ERROR);

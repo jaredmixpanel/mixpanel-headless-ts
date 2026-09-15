@@ -96,19 +96,17 @@ describe("PkceChallenge", () => {
   });
 
   it("matches the RFC 7636 Appendix B vector", async () => {
-    // Not in the Python suite; the packet mandates the vector in
-    // Layer-3 (runtime-independent; the ONLY lock that catches a
-    // wrong-alphabet base64 encode — b9-packets.md §1.2 watchlist).
+    // Not in the Python suite: the only lock that catches a wrong-alphabet
+    // base64 encode.
     await expect(
       PkceChallenge.challengeFor("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"),
     ).resolves.toBe("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
   });
 
   it("rejects with coded OAUTH_CONFIG_ERROR when crypto.subtle is missing", async () => {
-    // b9-reviewB-threat.md F7: in an insecure browser context
-    // (http:// non-localhost) `crypto.getRandomValues` exists but
-    // `crypto.subtle` is undefined — the flow used to die with a bare
-    // uncoded TypeError, contrary to R5.
+    // In an insecure browser context (http:// non-localhost)
+    // `crypto.getRandomValues` exists but `crypto.subtle` is undefined —
+    // the flow must not die with a bare uncoded TypeError.
     const original = crypto;
     vi.stubGlobal("crypto", {
       getRandomValues: original.getRandomValues.bind(original),

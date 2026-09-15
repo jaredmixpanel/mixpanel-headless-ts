@@ -49,7 +49,7 @@ interface CoverageRow {
   readonly authored_fixture: string | null;
 }
 
-/** Parsed shape of the P2-1 model-coverage artifact. */
+/** Parsed shape of the model-coverage artifact. */
 interface ModelCoverage {
   readonly models: Readonly<Record<string, CoverageRow>>;
 }
@@ -139,8 +139,7 @@ const workspaceRefHandler: GoldenHandler = {
 };
 
 /**
- * The hand-maintained model -> handler table (reviewed in the P2-10
- * mini-audit). Keys must equal the artifact's `entity_golden` set —
+ * The hand-maintained model -> handler table. Keys must equal the artifact's `entity_golden` set —
  * both directions are asserted below.
  */
 const HANDLERS: Readonly<Record<string, GoldenHandler>> = {

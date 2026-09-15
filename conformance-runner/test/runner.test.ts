@@ -68,8 +68,8 @@ function makeVector(overrides: {
  * Build deps with stub bindings over a FRESH (empty) implementation
  * registry — synthetic stub tests must stay independent of the REAL
  * port-batch bindings, which grow every batch and would otherwise
- * collide on the corpus api names the stubs borrow (first hit: the
- * B4-C1 `api_client.set_workspace_id` binding). The contract codecs are
+ * collide on the corpus api names the stubs borrow (for example
+ * `api_client.set_workspace_id`). The contract codecs are
  * still registered so decode behavior matches production.
  *
  * @param bind - Api-name → stub pairs to register.
@@ -129,19 +129,11 @@ describe("runVector — api gating", () => {
   });
 
   it("returns UNPORTED for a mapped name with no bound implementation", async () => {
-    // Probe name must be a mapped-but-unbound api: C1 used
-    // api_client.activity_feed (bound at B4-C2), C2 used
-    // api_client.list_dashboards (bound at B4-C3), C5 left
-    // pagination.paginate_all (bound at B4-C6), then
-    // workspace.list_dashboards (bound at B6-BIND — every workspace
-    // name is now bound), then region_probe.probe_region (bound at
-    // B7-A2), then oauth_flow.refresh_tokens (bound at B8-N2 — the
-    // LAST corpus name). TERMINAL RE-ANCHOR (B8 gate, b8-packets.md
-    // §5.3a, b6-packets.md:1033): the shipped table has zero pending
-    // entries, so the probe keeps the NON-CORPUS module-known name
-    // oauth_flow.build_authorize_url AND injects a synthetic pending
-    // table through the `RunnerDeps.batchStatuses` seam — the pattern
-    // is fully detached from corpus/shipped-table state.
+    // Every corpus api name is bound and the shipped batch table has zero
+    // pending entries, so the probe uses the non-corpus module-known name
+    // oauth_flow.build_authorize_url and injects a synthetic pending table
+    // through the `RunnerDeps.batchStatuses` seam — detached from
+    // corpus/shipped-table state.
     const vector = makeVector({
       api: "oauth_flow.build_authorize_url",
       kind: "wire",
@@ -156,16 +148,10 @@ describe("runVector — api gating", () => {
   });
 
   it("gates on setup apis too (pending unbound setup entry → UNPORTED)", async () => {
-    // Post-B4-flip the setup probe must come from a still-pending batch
-    // (`api_client.set_workspace_id` is done+bound now). `workspace.me`
-    // played the P3-1 † carried-vector shape until the B6 gate flipped
-    // the whole `workspace.` prefix to done; `region_probe.probe_region`
-    // held the anchor until B7-A2 bound it; `oauth_flow.refresh_tokens`
-    // until B8-N2 bound it. TERMINAL RE-ANCHOR (B8 gate, b8-packets.md
-    // §5.3a): the NON-CORPUS module-known
-    // `oauth_flow.build_authorize_url` stays the setup probe, with a
-    // synthetic pending table injected via `batchStatuses` — the
-    // shipped table is terminal (zero pending entries).
+    // The setup probe must come from a pending batch; with the shipped
+    // table terminal (zero pending entries) the non-corpus module-known
+    // `oauth_flow.build_authorize_url` is the setup probe, with a synthetic
+    // pending table injected via `batchStatuses`.
     const vector = makeVector({
       api: "api_client.activity_feed",
       kind: "wire",
@@ -529,8 +515,7 @@ describe("runVector — wire kind", () => {
     // earlier test calls may have raised under pytest.raises at record
     // time too (e.g. a recorded 400 on a get_event_properties setup).
     // Their request sides stay diffed via interactions[]; the vector
-    // proceeds to the measured call (adjusted at B4-C2 to mirror the
-    // Python semantics; previously locked FAIL_ERROR).
+    // proceeds to the measured call, mirroring the Python executor.
     const vector = makeVector({
       kind: "wire",
       api: "api_client.get_events",

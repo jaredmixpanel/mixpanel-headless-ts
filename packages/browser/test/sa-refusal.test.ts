@@ -126,9 +126,8 @@ describe("session switching on a browser-built facade", () => {
   it("Workspace.use({account}) cannot fetch a config service account: resolver seams stay unported in the browser", async () => {
     // The browser factory passes NO sources/seams: `use(account=...)`
     // re-resolution hits the UNPORTED_RESOLVER_SEAM defaults and can
-    // never produce a service account (b9-packets.md §2.3 row 4
-    // rationale; the guarded path above covers the explicit in-memory
-    // replacement).
+    // never produce a service account (the guarded path above covers the
+    // explicit in-memory replacement).
     const transport = fakeTransport(() => ({ status: 200, json: {} }));
     const ws = createBrowserWorkspace({
       token: "tok-123",
@@ -143,9 +142,8 @@ describe("session switching on a browser-built facade", () => {
 });
 
 describe("clients derived via withProject keep the service-account guard", () => {
-  // Pair-B blind review (b9-reviewB-threat.md F1 / b9-reviewB-e2e.md F1,
-  // both reproduced by the arbiter): `withProject` returns a fresh core
-  // client, so without recursion the §2.3 path-4 guard is bypassed and
+  // `withProject` returns a fresh core client, so without recursion the
+  // session-switching guard is bypassed and
   // `derived.use({account: SA})` builds a Basic header in the browser
   // build. The guard must wrap every derived client too.
   it("derived.use({account: SA}) is refused; no Basic header ever reaches the wire", async () => {
@@ -196,8 +194,7 @@ describe("clients derived via withProject keep the service-account guard", () =>
 });
 
 describe("no raw Workspace constructor in the browser entry", () => {
-  // Pair-B blind review (b9-reviewB-threat.md F2, reproduced): a VALUE
-  // re-export of core `Workspace` let `new Workspace({session: SA})`
+  // A value re-export of core `Workspace` let `new Workspace({session: SA})`
   // bypass both the SA gate and the export-refusing fetch wrap. The
   // entry now re-exports `Workspace` as a TYPE only — annotations keep
   // working; construction must go through the gated factories.

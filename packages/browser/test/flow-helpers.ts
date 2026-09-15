@@ -24,7 +24,7 @@ export interface BodyCapturingTransport {
 }
 
 /**
- * Build a body-capturing canned transport over the R2.4 fetch seam.
+ * Build a body-capturing canned transport over the injected-fetch seam.
  *
  * @param handler - Receives each captured request; returns (or throws)
  *   the canned outcome.

@@ -82,7 +82,7 @@ describe("beginLogin", () => {
     expect(url.searchParams.get("code_challenge")).toMatch(
       /^[A-Za-z0-9_-]{43}$/,
     );
-    // Scope intentionally omitted (`flow.py:625-627` — contract, §3.3).
+    // Scope intentionally omitted, as in `OAuthFlow._build_authorize_url`.
     expect(url.searchParams.has("scope")).toBe(false);
     // Only the DCR POST hit the network — the library NEVER navigates.
     expect(transport.captures).toHaveLength(1);
@@ -94,17 +94,14 @@ describe("beginLogin", () => {
   it.each([
     ["eu", "https://eu.mixpanel.com/oauth/authorize/"],
     ["in", "https://in.mixpanel.com/oauth/authorize/"],
-  ] as const)(
-    "uses the %s region authorize host (test_auth_flow.py:759 twin)",
-    async (region, prefix) => {
-      const store = new InMemoryCredentialStore();
-      const result = await begin(store, cannedIdp(), region);
-      expect(result.authorizeUrl.startsWith(prefix)).toBe(true);
-    },
-  );
+  ] as const)("uses the %s region authorize host", async (region, prefix) => {
+    const store = new InMemoryCredentialStore();
+    const result = await begin(store, cannedIdp(), region);
+    expect(result.authorizeUrl.startsWith(prefix)).toBe(true);
+  });
 
   it.each([["uk"], ["US"], [""]])(
-    "rejects region %j with OAUTH_CONFIG_ERROR (test_auth_flow.py:984 twins)",
+    "rejects region %j with OAUTH_CONFIG_ERROR",
     async (region) => {
       const transport = cannedIdp();
       const error = await beginLogin({
@@ -128,7 +125,7 @@ describe("beginLogin", () => {
     const raw = store.get(CREDENTIAL_KEYS.pendingLogin("us"));
     expect(raw).not.toBeNull();
     const pending = JSON.parse(raw!) as Record<string, unknown>;
-    // Fixed, non-numeric key set in insertion order (§7 caution 7).
+    // Fixed, non-numeric key set in insertion order.
     expect(Object.keys(pending)).toStrictEqual([
       "state",
       "verifier",
@@ -140,8 +137,7 @@ describe("beginLogin", () => {
     expect(pending["verifier"]).toMatch(/^[A-Za-z0-9_-]{86}$/);
     expect(pending["client_id"]).toBe("dcr-client-123");
     expect(pending["redirect_uri"]).toBe(REDIRECT_URI);
-    // tokens-twin formatter: `+00:00`, never `Z` (§3.2 pending-record
-    // spec; R11.9).
+    // tokens.json formatter: `+00:00`, never `Z`.
     expect(pending["created_at"]).toBe("2026-01-15T10:30:00+00:00");
   });
 
@@ -151,12 +147,11 @@ describe("beginLogin", () => {
     ["javascript:alert(1)"],
     ["http://app.example.com/oauth/callback"],
   ])(
-    "FB-4 (pair-B): rejects untrusted redirectUri %j with OAUTH_CONFIG_ERROR before any network",
+    "rejects untrusted redirectUri %j with OAUTH_CONFIG_ERROR before any network",
     async (redirectUri) => {
-      // b9-reviewB-threat.md F4: the redirect URI must be an absolute
-      // https URL (http only for loopback, RFC 8252 §7.3 — the
-      // `flow.py:54-58` localhost posture); it must never be derived
-      // from user input (the D2 spike proved DCR registers arbitrary
+      // The redirect URI must be an absolute https URL (http only for
+      // loopback, RFC 8252 §7.3 — the Python localhost posture); it must
+      // never be derived from user input (DCR registers arbitrary
       // third-party https origins).
       const transport = cannedIdp();
       await expect(
@@ -174,22 +169,19 @@ describe("beginLogin", () => {
   it.each([
     ["http://localhost:3000/oauth/callback"],
     ["http://127.0.0.1:19284/callback"],
-  ])(
-    "FB-4 (pair-B): loopback http redirect URIs stay allowed (%s)",
-    async (redirectUri) => {
-      const transport = cannedIdp();
-      const result = await beginLogin({
-        region: "us",
-        redirectUri,
-        store: new InMemoryCredentialStore(),
-        fetch: transport.fetch,
-        now: () => FROZEN_NOW_MS,
-      });
-      expect(
-        new URL(result.authorizeUrl).searchParams.get("redirect_uri"),
-      ).toBe(redirectUri);
-    },
-  );
+  ])("loopback http redirect URIs stay allowed (%s)", async (redirectUri) => {
+    const transport = cannedIdp();
+    const result = await beginLogin({
+      region: "us",
+      redirectUri,
+      store: new InMemoryCredentialStore(),
+      fetch: transport.fetch,
+      now: () => FROZEN_NOW_MS,
+    });
+    expect(new URL(result.authorizeUrl).searchParams.get("redirect_uri")).toBe(
+      redirectUri,
+    );
+  });
 
   it("generates a 43-char base64url state, fresh per call (`token_urlsafe(32)` shape)", async () => {
     const store = new InMemoryCredentialStore();
@@ -372,8 +364,7 @@ describe("completeLogin", () => {
 
   describe("review hardening: fragments, pending-record lifetime, concurrent completion", () => {
     it("accepts location.href with a hash-router fragment (code-first ordering)", async () => {
-      // b9-reviewB-threat.md F8 / b9-reviewB-e2e.md F4: the shared core
-      // parser folds the fragment into the last query value (CPython
+      // The shared core parser folds the fragment into the last query value (CPython
       // parse_qs parity); the browser adapter must strip the fragment
       // BEFORE delegating, because its documented input is location.href.
       const store = new InMemoryCredentialStore();
@@ -408,8 +399,7 @@ describe("completeLogin", () => {
     });
 
     it("refuses and consumes a pending record older than the default 30-minute lifetime", async () => {
-      // b9-reviewB-threat.md F5 / b9-reviewB-e2e.md F6: created_at was
-      // written but never read — no TTL.
+      // created_at must be read back as a TTL, not merely written.
       const store = new InMemoryCredentialStore();
       const transport = cannedIdp();
       const { state } = await begin(store, transport);
@@ -463,9 +453,9 @@ describe("completeLogin", () => {
     });
 
     it("two concurrent completeLogin calls with the same returnUrl share one exchange (React StrictMode)", async () => {
-      // b9-reviewB-e2e.md F2: load→parse→delete spans awaits, so both
-      // concurrent calls redeemed the code (2 token POSTs; one rejects
-      // against a single-use-code IdP).
+      // load→parse→delete spans awaits, so without sharing both concurrent
+      // calls would redeem the code (2 token POSTs; one rejects against a
+      // single-use-code IdP).
       const store = new InMemoryCredentialStore();
       const transport = cannedIdp();
       const { state } = await begin(store, transport);
@@ -578,7 +568,7 @@ describe("completeLogin", () => {
       expect((error as OAuthError).code).toBe("OAUTH_TOKEN_ERROR");
     });
 
-    it("wraps a 400 invalid_grant in OAUTH_TOKEN_ERROR (exchange stays generic — caution 6)", async () => {
+    it("wraps a 400 invalid_grant in OAUTH_TOKEN_ERROR (exchange stays generic)", async () => {
       const error = await completeAgainst(() =>
         jsonResponse(400, {
           error: "invalid_grant",

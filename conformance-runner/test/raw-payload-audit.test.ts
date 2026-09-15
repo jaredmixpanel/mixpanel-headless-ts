@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-/** The audited directory (the Phase-2 contract layer). */
+/** The audited directory (the contract layer). */
 const TYPES_DIR = resolve(
   dirname(fileURLToPath(import.meta.url)),
   "../../packages/core/src/types",

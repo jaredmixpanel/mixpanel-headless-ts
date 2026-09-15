@@ -40,8 +40,8 @@ describe("createShims", () => {
   });
 
   it("virtual sleep terminates monotonic-deadline poll loops deterministically", async () => {
-    // Mirror of the lookup-table poll pattern (workspace.py:7857-7860,
-    // design D1.4): deadline = monotonic() + max_poll_seconds; the loop
+    // Mirror of the lookup-table poll pattern in
+    // `Workspace.upload_lookup_table`: deadline = monotonic() + max_poll_seconds; the loop
     // must run a machine-independent number of iterations.
     const shims = createShims(RECORD_EPOCH);
     const deadline = shims.monotonic() + 0.05;

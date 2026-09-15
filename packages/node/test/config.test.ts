@@ -189,8 +189,8 @@ describe("ConfigManager.addAccount", () => {
     } catch (error_) {
       error = error_;
     }
-    // PLAIN ConfigError / CONFIG_ERROR (`config.py`) — never
-    // AccountExistsError (B7-ARB-B B-E2E-F1).
+    // Plain ConfigError / CONFIG_ERROR as in `config.py` — never
+    // AccountExistsError.
     expect(error).toBeInstanceOf(ConfigError);
     expect((error as ConfigError).code).toBe("CONFIG_ERROR");
     expect((error as ConfigError).name).toBe("ConfigError");
@@ -579,8 +579,8 @@ describe("ConfigManager.removeAccount", () => {
 
 describe("ConfigManager loading the fixture configs", () => {
   // python: TestFixtureLoad
-  // Fixture TOML carried VERBATIM from tests/fixtures/configs/ (packet
-  // §0.4 — read-side locks over the exact Python bytes).
+  // Fixture TOML carried verbatim from the Python tests/fixtures/configs/
+  // — read-side locks over the exact Python bytes.
   function loadFixture(name: string): ConfigManager {
     const src = new URL(`fixtures/configs/${name}`, import.meta.url);
     const dir = makeTempDir(cleanups);
@@ -824,11 +824,9 @@ describe("parent directory mode on write", () => {
   );
 });
 
-// B8-ARB-A SEM-F6 (b8-reviewA-resolution.md): Python `_read_raw` wraps
-// ANY OSError from the symlink probe into ConfigError
-// (`config.py` `except OSError`); the pre-fix TS `readRaw`
-// rethrew errno-bearing probe failures uncoded (only
-// CredentialPathError was wrapped).
+// Python `_read_raw` wraps any OSError from the symlink probe into
+// ConfigError (`except OSError`); `readRaw` must not rethrow errno-bearing
+// probe failures uncoded.
 describe("ConfigManager symlink-probe errno wrapping", () => {
   it.skipIf(!POSIX || process.getuid?.() === 0)(
     "config under an unreadable parent dir raises ConfigError, not a raw errno error",
@@ -846,10 +844,9 @@ describe("ConfigManager symlink-probe errno wrapping", () => {
     },
   );
 
-  // SEM-F2 family ripple (arbiter-caught): Python `_read_raw` catches
-  // `(tomllib.TOMLDecodeError, OSError)` only (`config.py:186-189`) —
-  // an invalid-UTF-8 config file raises UnicodeDecodeError RAW (live
-  // CPython probe in the resolution). The TS twin (TextDecoder
+  // Python `_read_raw` catches `(tomllib.TOMLDecodeError, OSError)` only —
+  // an invalid-UTF-8 config file raises UnicodeDecodeError raw (CPython
+  // probe). The TS twin (TextDecoder
   // fatal-mode TypeError) must propagate — it carries the string code
   // ERR_ENCODING_INVALID_ENCODED_DATA, so a code-only OSError-twin
   // predicate would have wrapped it into ConfigError.

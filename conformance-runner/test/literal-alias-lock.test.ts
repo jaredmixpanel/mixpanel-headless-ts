@@ -23,13 +23,13 @@ const ARTIFACT_PATH = resolve(
   "conformance-runner/corpus/contract/literal-aliases.json",
 );
 
-/** One enum entry of literal-aliases.json (P2-1 generator output). */
+/** One enum entry of literal-aliases.json (Python generator output). */
 interface EnumArtifactEntry {
   readonly kind: "str" | "int";
   readonly members: Readonly<Record<string, string | number>>;
 }
 
-/** Parsed shape of literal-aliases.json (P2-1 generator output). */
+/** Parsed shape of literal-aliases.json (Python generator output). */
 interface LiteralAliasesArtifact {
   readonly generated_from: string;
   readonly literal_aliases: Readonly<Record<string, readonly string[]>>;

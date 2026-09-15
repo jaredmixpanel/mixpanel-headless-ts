@@ -57,10 +57,9 @@ interface GoldenEntry {
 }
 
 /**
- * The hand-maintained api → result-class table (phase2-design C8b).
- * Every result-class api with `expect.result` wire vectors in the
+ * The hand-maintained api → result-class table. Every result-class api with `expect.result` wire vectors in the
  * snapshot appears here; classes without any such vectors are locked
- * by translated construction tests instead (C8b empty-case goldens).
+ * by translated construction tests instead.
  */
 const GOLDEN_TABLE: readonly GoldenEntry[] = [
   {

@@ -127,8 +127,7 @@ describe("LocalStorageCredentialStore", () => {
   });
 
   it("the adapter JSDoc carries a security warning covering XSS, origin scope and persistence", () => {
-    // R9.3: "documented localStorage adapter with security warning".
-    // §2.1: the warning must state that localStorage is origin-scoped,
+    // The warning must state that localStorage is origin-scoped,
     // XSS-readable, survives logout unless deleted, that bearer tokens
     // are readable by any script on the origin, and that the in-memory
     // default is the recommended posture (re-login on reload).
@@ -142,7 +141,7 @@ describe("LocalStorageCredentialStore", () => {
   });
 
   it("the warning names every persisted payload family and the bulk-clear helper", () => {
-    // b9-reviewB-threat.md F6: the store also persists the PKCE
+    // The store also persists the PKCE
     // verifier + CSRF state (pending login) and the DCR registration —
     // the warning must say so, and the logout instruction must point
     // at a supported enumeration (CREDENTIAL_KEYS.all).
@@ -167,9 +166,9 @@ describe("LocalStorageCredentialStore", () => {
   });
 
   it("backend failures re-throw as coded OAUTH_CONFIG_ERROR, never a bare DOMException", () => {
-    // b9-reviewB-e2e.md F5: Safari-private/quota failures escaped as
-    // uncoded DOMExceptions, inconsistent with R5 and with the
-    // constructor's own OAUTH_CONFIG_ERROR posture.
+    // Safari-private/quota failures must not escape as uncoded
+    // DOMExceptions, inconsistent with the constructor's own
+    // OAUTH_CONFIG_ERROR posture.
     class QuotaExceededError extends Error {
       override readonly name = "QuotaExceededError";
     }

@@ -112,7 +112,7 @@ describe("the guard wraps whatever fetch the caller injected", () => {
   });
 });
 
-// ── AIE-926 (PR #11 follow-up): the verdict derives from the EFFECTIVE
+// ── The verdict derives from the effective
 // endpoint table per request. `endpointOverrides.apiBaseUrl` re-homes
 // the export family at `{apiBaseUrl}/api/2.0` — a user-controlled host
 // (normally a CORS-capable proxy), which is exactly where browser export

@@ -50,9 +50,7 @@ describe("main", () => {
       expect(code).toBe(0);
       expect(report.failed).toBe(0);
       expect(report.failures).toStrictEqual([]);
-      // B8-gate terminal checkpoint (b8-packets.md §5.3c — the Risk-8
-      // "UNPORTED must FAIL after flip" assert's terminal form): with
-      // the corpus closed, NO vector may report UNPORTED at all.
+      // With every module ported, no vector may report UNPORTED at all.
       expect(report.skipped_unported).toBe(0);
       expect(report.total).toBeGreaterThan(2000);
       expect(report.passed).toBe(report.total);

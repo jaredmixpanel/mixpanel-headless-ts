@@ -46,8 +46,8 @@ afterEach(() => {
 });
 
 /**
- * Point every on-disk world at tmp dirs (the real-home guard
- * discipline, packet §7 caution 3) and build the real bag.
+ * Point every on-disk world at tmp dirs (never the real home directory)
+ * and build the real bag.
  *
  * @param extra - Additional bag options (seams).
  * @returns The bag plus the tmp config path.
@@ -212,7 +212,7 @@ describe("seam-closure sweep over the real bag", () => {
     expect(await seams.envWorkspaceId()).toBeNull();
 
     // The constant itself stays committed in core — every name above
-    // maps to a real member (owner map, packet §4.4).
+    // maps to a real member.
     expect([...UNPORTED_AUTH_SEAMS].sort()).toStrictEqual(
       [
         "persistActive",

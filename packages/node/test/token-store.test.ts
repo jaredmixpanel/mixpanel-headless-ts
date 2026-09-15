@@ -61,7 +61,7 @@ describe("TokenStore (node implementation)", () => {
       unknown
     >;
     // token_payload_bytes shape (token.py): refresh omitted
-    // only when null; secrets REVEALED on disk (CRED-F3 write site).
+    // only when null; secrets revealed on disk (the designated write site).
     expect(payload["access_token"]).toBe("acc-1");
     expect(payload["refresh_token"]).toBe("ref-1");
     expect(String(payload["access_token"])).not.toContain("*");
@@ -130,9 +130,8 @@ describe("TokenStore (node implementation)", () => {
   });
 });
 
-// B8-ARB-B F1 consistency lock (b8-reviewB-resolution.md):
-// `readTokens` has no direct Python twin (B8-N2 disclosure 4) but reads
-// the SAME per-account tokens.json the OnDiskTokenResolver serves — it
+// `readTokens` has no direct Python twin but reads the same per-account
+// tokens.json the OnDiskTokenResolver serves — it
 // takes the same pydantic-lax expires_at mirror so the two readers of
 // one file can never disagree.
 describe("readTokens lax expires_at", () => {

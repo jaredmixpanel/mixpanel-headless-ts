@@ -146,7 +146,7 @@ describe("OAuthFlow.refreshTokens", () => {
     expect(body).toContain("grant_type=refresh_token");
     expect(body).toContain("refresh_token=old-refresh");
     expect(body).toContain("client_id=cid");
-    // Body is form-encoded IN INSERTION ORDER (packet §3.2 item 1).
+    // Body is form-encoded in insertion order.
     expect(body).toBe(
       "grant_type=refresh_token&refresh_token=old-refresh&client_id=cid",
     );
@@ -200,18 +200,16 @@ describe("OAuthFlow.refreshTokens", () => {
     await expect(flow.refreshTokens(tokens, "cid")).rejects.toMatchObject({
       code: "OAUTH_REFRESH_ERROR",
     });
-    // The refusal fires BEFORE any request (packet §3.2 item 2).
+    // The refusal fires before any request.
     expect(captured).toHaveLength(0);
   });
 
   it("redacts token material when required fields are missing", async () => {
     // python: test_refresh_missing_fields_error_redacts_token_material
-    // TestTokenPayloadRedaction refresh member (Python FIX-2;
-    // fix-of-record docs/history/phase3/bug-reports/
-    // python-oauth-error-details-token-payload.md; exchange members in
-    // `oauth-flow-login.test.ts`, header-cited split). Also
-    // vector-locked: auth/oauth_flow.refresh_tokens/...-
-    // testtokenpayloadredaction-... pins the exact response_data string.
+    // TestTokenPayloadRedaction refresh member (exchange members in
+    // `oauth-flow-login.test.ts`). Also vector-locked:
+    // auth/oauth_flow.refresh_tokens/...-testtokenpayloadredaction-... pins
+    // the exact response_data string.
     const { fetchImpl } = mockTransport(() =>
       jsonResponse(200, {
         access_token: "SECRET_AT",
@@ -261,14 +259,14 @@ describe("OAuthFlow.refreshTokens", () => {
     }
     expect(caught).toBeInstanceOf(OAuthError);
     expect(caught?.code).toBe("OAUTH_REFRESH_ERROR");
-    // ARB-B F-B3: fixed placeholder, never a verbatim rendering — the
-    // value itself can be the credential.
+    // Fixed placeholder, never a verbatim rendering — the value itself can
+    // be the credential.
     expect(caught?.details["response_data"]).toBe("<redacted non-object body>");
   });
 
   it("never embeds a non-JSON 200 body; keeps only content type and length", async () => {
     // python: test_refresh_non_json_200_body_not_embedded
-    // ARB-B F-B1: a 200 body that fails JSON parsing can still BE the
+    // A 200 body that fails JSON parsing can still be the
     // token payload (valid token JSON + trailing proxy garbage). It is
     // never embedded — only content-type and code-point length survive
     // (Python twin: TestTokenPayloadRedaction::

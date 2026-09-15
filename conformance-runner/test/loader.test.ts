@@ -85,7 +85,7 @@ function makeMiniCorpus(options?: {
  * Write one authored bundle (`authored/bundle.jsonl`) into a mini corpus.
  *
  * Every vector line carries `origin: "authored"` so the bundle stays
- * outside the manifest `counts.total` reconciliation (design D13/D3.1).
+ * outside the manifest `counts.total` reconciliation.
  *
  * @param dir - The corpus directory returned by makeMiniCorpus.
  * @param header - `$bundle` header fields merged over the declared count
@@ -126,7 +126,7 @@ describe("loadCorpus on the committed snapshot", () => {
 
   /**
    * Extracted (record-pipeline) vectors only: manifest counts cover the
-   * extraction, not the hand-authored D13/D3.1 additions.
+   * extraction, not the hand-authored additions.
    */
   const extracted = corpus.vectors.filter(
     (vector) => vector.origin !== "authored",

@@ -245,7 +245,7 @@ describe("browser entry — identity helpers (core re-exports)", () => {
     // same posture `packages/core/test/bookmarks/infer-type.test.ts`
     // takes. The builders are pure, so the mocked client is never
     // called. `Workspace` is path-imported from core because the browser
-    // barrel exports it TYPE-only (FB-2) — that gate is unaffected here.
+    // barrel exports it type-only — that gate is unaffected here.
     const entry = browserEntry as unknown as Record<string, unknown>;
     const infer = entry["inferBookmarkType"] as (value: unknown) => unknown;
     const ws = new Workspace({

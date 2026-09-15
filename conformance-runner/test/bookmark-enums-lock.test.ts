@@ -70,10 +70,10 @@ describe("bookmark-enum lock", () => {
   });
 
   it("membership checks work through .has() as consumers will call them", () => {
-    // Spot checks mirroring the C10 consumer note (B2/B3 validators).
+    // Spot checks mirroring how the validators consume the tables.
     expect(VALID_CHART_TYPES.has("funnel-steps")).toBe(true);
     expect(VALID_CHART_TYPES.has("not-a-chart")).toBe(false);
-    // Prototype-pollution honesty (the R4.8 rationale): Python `in`
+    // Prototype-pollution honesty (why these are Sets): Python `in`
     // returns False for "constructor"; so must .has().
     expect(VALID_CHART_TYPES.has("constructor")).toBe(false);
     expect(MAX_CONVERSION_WINDOW.get("day")).toBe(367);

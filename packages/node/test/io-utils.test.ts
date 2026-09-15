@@ -96,15 +96,14 @@ describe("atomicWriteBytes", () => {
       const dir = makeTempDir(cleanups);
       const target = join(dir, "config.toml");
       // Python raises bare ValueError; the TS twin is the existing
-      // ParamValidationError / VALIDATION_ERROR (R5 codes-not-messages,
-      // packet §2.2 — no new code minted).
+      // ParamValidationError / VALIDATION_ERROR (no new code minted).
       expect(() =>
         atomicWriteBytes(target, utf8("x"), { mode: badMode }),
       ).toThrow(ParamValidationError);
       expect(() =>
         atomicWriteBytes(target, utf8("x"), { mode: badMode }),
       ).toThrow(/group\/world access/);
-      // The guard fires BEFORE any FS touch (caution #11).
+      // The guard fires before any filesystem touch.
       expect(readdirSync(dir)).toStrictEqual([]);
     },
   );
@@ -172,11 +171,11 @@ describe("atomicWriteBytes", () => {
   it("fails with EEXIST on a tmp-name collision and leaves the target and the foreign tmp alone", () => {
     // python: test_excl_collision_does_not_touch_target
     // Python pre-places `<name>.tmp.<pid>.<tid>`. The TS tmp name embeds
-    // pid + a monotonically increasing per-process counter (packet §2.2
-    // substitution: JS has no OS thread id in the main thread), so the
+    // pid + a monotonically increasing per-process counter (JS has no OS
+    // thread id in the main thread), so the
     // test learns the counter from a delegating spy, then pre-places the
     // NEXT tmp path. On EEXIST the pre-existing (foreign) tmp survives —
-    // only our own cleanup path unlinks (caution #10).
+    // only our own cleanup path unlinks.
     const dir = makeTempDir(cleanups);
     const target = join(dir, "config.toml");
     writeFileSync(target, "original");
@@ -274,7 +273,7 @@ describe("atomicWriteBytes resilience under simulated failures", () => {
     // Python runs two OS threads; JS is single-threaded in the main
     // thread, so the port asserts the collision-avoidance MECHANISM:
     // consecutive writes to the same target pick distinct tmp paths
-    // (pid+counter), both succeed, and no tmp leaks (packet §2.2).
+    // (pid+counter), both succeed, and no tmp leaks.
     const dir = makeTempDir(cleanups);
     const target = join(dir, "config.toml");
     const seen: string[] = [];
@@ -297,10 +296,10 @@ describe("CredentialPathError", () => {
   // python: TestCredentialPathError
   it("is a MixpanelHeadlessError", () => {
     // python: test_is_mixpanel_headless_error_subclass
-    // Re-expression of test_is_oserror_subclass (:327), header-cited:
-    // Python call sites catch `OSError`; the TS call sites catch the
-    // coded MixpanelHeadlessError lineage instead (packet §2.2 —
-    // symlink-attack rejections must never escape the domain wrappers).
+    // Re-expression of test_is_oserror_subclass: Python call sites catch
+    // `OSError`; the TS call sites catch the coded MixpanelHeadlessError
+    // lineage instead (symlink-attack rejections must never escape the
+    // domain wrappers).
     expect(
       new CredentialPathError(40, "symlink rejected", "/tmp/foo"),
     ).toBeInstanceOf(MixpanelHeadlessError);
@@ -312,7 +311,7 @@ describe("CredentialPathError", () => {
     expect(exc.errno).toBe(40);
     expect(exc.filename).toBe("/tmp/foo");
     expect(String(exc)).toContain("symlink rejected");
-    // The OSError lineage rides in `details` (packet §2.2).
+    // The OSError lineage rides in `details`.
     expect(exc.details["errno"]).toBe(40);
     expect(exc.details["filename"]).toBe("/tmp/foo");
   });
@@ -446,8 +445,8 @@ describe("readCredentialBytes", () => {
 
 describe("readCredentialBytes non-regular file rejection", () => {
   // python: TestNonRegularFileRejection
-  // SPLIT disposition (packet §2.3): FIFO / character-device cases are
-  // PYTHON-ONLY (node:fs has no mkfifo/mknod; the lstat-based port
+  // FIFO / character-device cases are Python-only (node:fs has no
+  // mkfifo/mknod; the lstat-based port
   // rejects non-regular files BEFORE any open, so the hang threat the
   // Python O_NONBLOCK machinery addresses cannot occur). The stat-based
   // refusal branch is locked via a directory at the credential path.

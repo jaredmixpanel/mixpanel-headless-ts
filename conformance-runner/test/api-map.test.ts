@@ -69,7 +69,7 @@ const authoredApis = JSON.parse(authoredApisInput.text) as {
   entries: Record<string, ApiIndexEntry>;
   known_modules: readonly string[];
 };
-/** The full mapping universe: api-index + the authored D13 supplement. */
+/** The full mapping universe: api-index + the authored-apis supplement. */
 const universe: Record<string, ApiIndexEntry> = {
   ...apiIndex,
   ...authoredApis.entries,
@@ -207,7 +207,7 @@ describe("full-corpus api resolution", () => {
     // or UNPORTED (authored vectors referencing apis the recorded-vector
     // api-index does not carry — workspace parse targets,
     // api_client._iter_jsonl_lines, rrweb_analyzer.analyze — stay in the
-    // known-module UNPORTED bucket until their port batches land, R10.5).
+    // known-module UNPORTED bucket until they are ported).
     expect(
       (statuses.get("mapped") ?? 0) + (statuses.get("unported") ?? 0),
     ).toBe(apis.size);

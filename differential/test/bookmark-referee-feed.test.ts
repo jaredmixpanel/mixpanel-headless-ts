@@ -40,8 +40,7 @@ const FEED_SLOTS: ReadonlyMap<string, (output: unknown) => JsonObject> =
 
 /**
  * Apis whose output IS a full `InsightsBookmarkParams` payload, fed as-is
- * with no skeleton wrap (B5 gate, b5-packets.md §7.4 / the D15b
- * routing-table "as-is" row).
+ * with no skeleton wrap (the referee routing table's "as-is" row).
  */
 const FULL_PAYLOAD_APIS: ReadonlySet<string> = new Set([
   "workspace.build_params",
@@ -114,12 +113,8 @@ describe("referee feed — insights-shaped builder outputs", () => {
     const total = fed.length + skippedErrorVectors.length;
     const inCorpus = corpus.vectors.filter((v) => isFedApi(v.api)).length;
     expect(total).toBe(inCorpus);
-    // 99 builder-fragment vectors (98 B3 + the FIX-1
-    // `test_no_custom_property_nesting` addition) + the 127 B5
-    // `workspace.build_params` full payloads (115 + the 10
-    // `test_workspace_report_links` seam hits from Python PR #223,
-    // corpus re-sync 2026-09-03, + the 2 `test_query_limit` `run_params`
-    // seam hits from Python PR #225, corpus re-pin 2026-09-14 @ 0dde506).
+    // 99 builder-fragment vectors + the 127 `workspace.build_params` full
+    // payloads at the current corpus pin.
     expect(fed.length).toBeGreaterThanOrEqual(200);
     expect(perApi.get("workspace.build_params")).toBe(127);
   });
@@ -151,8 +146,7 @@ describe("referee feed — insights-shaped builder outputs", () => {
       if (verdict.valid) continue;
       unexpectedRejects.push(`${vector.id}: ${verdict.errors.join("; ")}`);
     }
-    // The R10.7 dataGroupId disclosure pins retired with the four-bug
-    // batch re-pin — ANY reject is a new finding and blocks.
+    // No standing disclosures — any reject is a new finding and blocks.
     expect(unexpectedRejects, unexpectedRejects.join("\n")).toStrictEqual([]);
   });
 });

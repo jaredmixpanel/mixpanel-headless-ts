@@ -178,7 +178,7 @@ describe("encodeExpectValue at the output boundary", () => {
       iso: "2026-01-15T12:00:00",
     });
     // Encode reads the REVEALED value via reveal(), never toJSON()'s
-    // mask (phase2-design C7 — mask-vs-mask comparisons are vacuous).
+    // mask (mask-vs-mask comparisons are vacuous).
     expect(encodeExpectValue(new Secret("s"))).toStrictEqual({
       $type: "SecretStr",
       value: "s",
@@ -198,12 +198,11 @@ describe("encodeExpectValue at the output boundary", () => {
 describe("GroupBy contract codec float-carrier buckets", () => {
   // Python `GroupBy(bucket_min=0.0, bucket_max=100.0)` is constructible
   // (0.0 >= 100.0 is False) and records with `$type: float` children
-  // (P2-5a integral-float tagging). Decoding those children as PyFloat
-  // CARRIERS into the constructor is wrong twice over: JS `>=` on two
-  // carrier objects string-compares "[object Object]" (guard V18 fires
-  // where CPython's float comparison passes — the B2-BIND fuzz crash),
-  // and the validator's numeric bucket comparisons need the numeric
-  // value (B2-M1 carrier table: GroupBy.bucket_* → unwrap). The codec
+  // (integral-float tagging). Decoding those children as PyFloat carriers
+  // into the constructor is wrong twice over: JS `>=` on two carrier
+  // objects string-compares "[object Object]" (the guard fires where
+  // CPython's float comparison passes — a fuzz-found crash), and the
+  // validator's numeric bucket comparisons need the numeric value. The codec
   // therefore unwraps bucket carriers to native numbers at decode,
   // mirroring the SignedReplay `signed_at` precedent.
   it("decodes $type float bucket fields to native numbers", () => {
@@ -241,11 +240,9 @@ describe("GroupBy contract codec float-carrier buckets", () => {
     ).toThrow(UndecodableValueError);
   });
 
-  // B2 gate remediation (RUN.md 2026-08-15 B2-attempt-1 divergence,
-  // repro 2026-08-16-codec-roundtrip.json): the decode-side unwrap
-  // above must be paired with an ENCODE-side re-tag for exactly the
-  // fields that ARRIVED as float carriers — Python's GroupBy buckets
-  // are `int | float | None` (types.py:8367-8373), so `18` (int) must
+  // The decode-side unwrap above must be paired with an encode-side re-tag
+  // for exactly the fields that arrived as float carriers — Python's
+  // GroupBy buckets are `int | float | None`, so `18` (int) must
   // re-encode raw while `18.0` (float) must re-encode as the carrier.
   // The SignedReplay unconditional integral re-tag is wrong here; the
   // codec keeps decode-time float-ness memory instead (WeakMap).

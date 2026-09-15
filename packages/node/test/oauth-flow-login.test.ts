@@ -460,20 +460,17 @@ describe("OAuthFlow.exchangeCode", () => {
         (error_: unknown) => error_,
       );
     expect(error).toBeInstanceOf(OAuthError);
-    // `invalid_grant` maps to REVOKED only for the refresh operation
-    // (packet §7 caution 6) — exchange keeps the generic code.
+    // `invalid_grant` maps to REVOKED only for the refresh operation —
+    // exchange keeps the generic code.
     expect((error as OAuthError).code).toBe("OAUTH_TOKEN_ERROR");
   });
 });
 
 describe("token payload redaction on exchange", () => {
   // python: test_auth_flow.py::TestTokenPayloadRedaction
-  // Twin of the Python FIX-2 suite (fix-of-record:
-  // docs/history/phase3/bug-reports/python-oauth-error-details-token-payload.md):
-  // a malformed-200 token response must not leak token material into
+  // A malformed-200 token response must not leak token material into
   // OAuthError details. The refresh member lives in
-  // `oauth-flow-refresh.test.ts` (header-cited split, same as the
-  // network-error classes).
+  // `oauth-flow-refresh.test.ts`, like the network-error classes.
 
   /** Build an OAuthFlow whose token endpoint 200s with `payload`. */
   function flowWithPayload(payload: Record<string, unknown>): OAuthFlow {
@@ -510,8 +507,8 @@ describe("token payload redaction on exchange", () => {
 
   it("keeps safe primitive fields visible and redacts unknown-key values", async () => {
     // python: test_safe_fields_stay_visible
-    // ARB-B F-B2/E-1 flip: unknown-key VALUES are now redacted (the old
-    // deny-list kept `hint` verbatim); key names stay visible.
+    // Unknown-key values are redacted (a deny-list would keep `hint`
+    // verbatim); key names stay visible.
     const flow = flowWithPayload({
       access_token: "SECRET_AT",
       scope: "projects analysis",
@@ -562,10 +559,8 @@ describe("token payload redaction on exchange", () => {
     "redacts nested and non-canonical token material ($id)",
     async ({ payload, secret, visibleKey }) => {
       // python: test_nested_and_non_canonical_token_material_redacted
-      // ARB-B F-B2/E-1: envelope / non-canonical shapes leak nothing —
-      // allowlist redaction closes every value channel (Python twin:
-      // TestTokenPayloadRedaction::
-      // test_nested_and_non_canonical_token_material_redacted).
+      // Envelope / non-canonical shapes leak nothing — allowlist redaction
+      // closes every value channel.
       const flow = flowWithPayload(payload);
       const error = await flow
         .exchangeCode("c", "v", "cid", "http://localhost:19284/callback")
@@ -610,8 +605,8 @@ describe("token payload redaction on exchange", () => {
 
   it("redacts a container value under a safe key", async () => {
     // python: test_safe_key_with_container_value_redacted
-    // ARB-B F-B2: only PRIMITIVE values survive under safe keys — a dict
-    // smuggled under `scope` must not carry token material through.
+    // Only primitive values survive under safe keys — a dict smuggled
+    // under `scope` must not carry token material through.
     const flow = flowWithPayload({
       scope: { access_token: "SECRET_SC" },
     });
@@ -633,9 +628,9 @@ describe("token payload redaction on exchange", () => {
 
   it("never embeds a non-JSON 200 body; keeps only content type and length", async () => {
     // python: test_exchange_non_json_200_body_not_embedded
-    // ARB-B F-B1: a truncated token payload fails JSON parsing but still
-    // contains live bearer material — never embedded; only content-type
-    // and code-point length survive.
+    // A truncated token payload fails JSON parsing but still contains live
+    // bearer material — never embedded; only content-type and code-point
+    // length survive.
     const body = '{"access_token": "SECRET_TRUNC", "refr';
     const { fetchImpl } = mockTransport(
       () =>
@@ -663,15 +658,10 @@ describe("token payload redaction on exchange", () => {
     expect(exc.details["body_length"]).toBe(cpLength(body));
   });
 
-  // ARB-A F1 (pair-A fidelity review): the Python bug-(d) redaction fix
-  // initially crashed with an uncoded AttributeError on non-dict 200
-  // JSON bodies while this side already guarded with `isPlainRecord`.
-  // Python now mirrors the guard; ARB-B F-B3 hardened the shared
-  // behavior: `response_data` is a fixed placeholder, never a verbatim
-  // rendering — a bare JSON string body IS the credential when an IdP
-  // returns the token as a naked string (Python twin:
-  // TestTokenPayloadRedaction::
-  // test_exchange_non_dict_200_body_raises_oauth_error).
+  // Non-object 200 JSON bodies are guarded with `isPlainRecord` on both
+  // sides, and `response_data` is a fixed placeholder, never a verbatim
+  // rendering — a bare JSON string body is the credential when an IdP
+  // returns the token as a naked string.
   it.each([
     { id: "list", body: [1, 2] as unknown },
     { id: "str", body: "SECRET_BARE_STRING" },
@@ -738,14 +728,13 @@ describe("OAuthFlow region URLs", () => {
 
 describe("OAuthFlow.exchangeCode network errors", () => {
   // python: test_auth_flow.py::TestOAuthFlowNetworkErrors
-  // The refresh/timeout members live in `oauth-flow-refresh.test.ts`
-  // (N2 — header-cited split, b8-packets.md §4.3 row 4).
+  // The refresh/timeout members live in `oauth-flow-refresh.test.ts`.
 
   it("wraps a transport timeout into OAUTH_TOKEN_ERROR", async () => {
     // python: test_exchange_code_timeout
-    // The `httpx.TimeoutException` twin (N2 convention): a rejected
-    // fetch with a DOMException the R2.10 adapter maps to
-    // MixpanelHttpError, which the flow wraps into OAuthError.
+    // The `httpx.TimeoutException` twin: a rejected fetch with a
+    // DOMException the request adapter maps to MixpanelHttpError, which
+    // the flow wraps into OAuthError.
     const fetchImpl = ((): Promise<Response> =>
       Promise.reject(
         new DOMException("test timeout", "TimeoutError"),
@@ -765,8 +754,8 @@ describe("OAuthFlow.exchangeCode network errors", () => {
 
   it("wraps a connection failure into OAUTH_TOKEN_ERROR", async () => {
     // python: test_exchange_code_connection_error
-    // The `httpx.ConnectError` twin: undici surfaces connection
-    // failures as TypeError, mapped by the R2.10 adapter.
+    // The `httpx.ConnectError` twin: undici surfaces connection failures
+    // as TypeError, mapped by the request adapter.
     const fetchImpl = ((): Promise<Response> =>
       Promise.reject(new TypeError("test connection error"))) as typeof fetch;
     const storage = new OAuthStorage({ storageDir: makeTempDir(cleanups) });

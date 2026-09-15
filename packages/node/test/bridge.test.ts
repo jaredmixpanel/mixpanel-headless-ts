@@ -455,7 +455,7 @@ describe("bridge file edge cases", () => {
   });
 
   it("parseBridgeFile rejects an extra top-level key", () => {
-    // BridgeFile `extra="forbid"` — packet §3.2 item 9.
+    // BridgeFile is `extra="forbid"` in Python.
     const payload = {
       version: 2,
       account: {
@@ -471,22 +471,19 @@ describe("bridge file edge cases", () => {
   });
 });
 
-// B8-ARB-A pair-A semantics minors (b8-reviewA-resolution.md) — error
-// CLASS and byte-format locks aligning degenerate corners to the
-// Python behavior arbiter:
-// - SEM-F2b: an invalid-UTF-8 bridge file propagates the decode error
-//   RAW (`bridge.py` catches only OSError + JSONDecodeError; the
-//   CPython probe raises UnicodeDecodeError — the TS twin is the
-//   TextDecoder fatal-mode TypeError).
-// - SEM-F3: invalid export pins propagate the model's
-//   ParamValidationError RAW (`bridge.py` builds `BridgeFile`
-//   with no try/except — pydantic ValidationError escapes unwrapped;
-//   the docstring's ConfigError claim is wrong in Python itself).
-// - SEM-F4: `serializeBridge` sorts keys by CODEPOINT
-//   (`json.dumps(sort_keys=True)`, `bridge.py` — R11.5).
-// - SEM-F6 family: an errno-bearing lstat failure at the symlink probe
-//   wraps into ConfigError exactly as Python's `except OSError`
-//   (`bridge.py`).
+// Error-class and byte-format corners, each aligned to the observed
+// Python behaviour:
+// - an invalid-UTF-8 bridge file propagates the decode error raw
+//   (`bridge.py` catches only OSError + JSONDecodeError; CPython raises
+//   UnicodeDecodeError — the TS twin is the TextDecoder fatal-mode
+//   TypeError);
+// - invalid export pins propagate the model's ParamValidationError raw
+//   (`bridge.py` builds `BridgeFile` with no try/except — pydantic
+//   ValidationError escapes unwrapped; the docstring's ConfigError claim
+//   is wrong in Python itself);
+// - `serializeBridge` sorts keys by codepoint (`json.dumps(sort_keys=True)`);
+// - an errno-bearing lstat failure at the symlink probe wraps into
+//   ConfigError exactly as Python's `except OSError`.
 describe("bridge error classes and byte format", () => {
   it.skipIf(!POSIX)(
     "an invalid-UTF-8 bridge file raises the raw decode TypeError, not ConfigError",
@@ -556,11 +553,10 @@ describe("bridge error classes and byte format", () => {
   );
 });
 
-// B8-ARB-A SEM-F2/F6 family ripple at `_read_browser_tokens`
-// (`bridge.py` — arbiter-caught, same clauses as loadBridge):
-// probe `except OSError` wraps errno failures into the coded
-// OAuthError; the read catch is `(OSError, json.JSONDecodeError)` so
-// the UnicodeDecodeError twin propagates RAW.
+// `_read_browser_tokens` has the same clauses as loadBridge: the probe's
+// `except OSError` wraps errno failures into the coded OAuthError; the
+// read catch is `(OSError, json.JSONDecodeError)` so the
+// UnicodeDecodeError twin propagates raw.
 describe("readBrowserTokens error classes", () => {
   it.skipIf(!POSIX)(
     "invalid-UTF-8 per-account tokens.json raises the RAW decode TypeError",
@@ -614,20 +610,17 @@ describe("readBrowserTokens error classes", () => {
   );
 });
 
-// B8-ARB-B F1 + F2 locks (b8-reviewB-resolution.md).
+// `BridgeFile.tokens` is a Pydantic model in Python — lax, so a numeric
+// epoch-seconds `expires_at` in a v2 bridge is accepted (probe:
+// OAuthTokens.model_validate({... 1893456000 ...}) →
+// 2030-01-01T00:00:00+00:00). The TS parse routes the shared lax mirror
+// before `parseOAuthTokens`.
 //
-// F1: `BridgeFile.tokens` is a Pydantic model in Python — LAX, so a
-// numeric epoch-seconds `expires_at` in a v2 bridge is ACCEPTED (live
-// probe: OAuthTokens.model_validate({... 1893456000 ...}) →
-// 2030-01-01T00:00:00+00:00). The TS parse routes the shared lax
-// mirror before `parseOAuthTokens`.
-//
-// F2: Python's `_serialize_bridge` renders datetimes through Pydantic's
-// JSON mode (`bridge.py` `model_dump(mode="json")`) which spells
-// UTC instants with a `Z` suffix (live probe recorded in the
-// resolution); the tokens.json writers render through
-// `datetime.isoformat()` (`+00:00`). The TS writers re-render the
-// stored ISO text through the matching formatter instead of echoing it.
+// Python's `_serialize_bridge` renders datetimes through Pydantic's JSON
+// mode (`model_dump(mode="json")`), which spells UTC instants with a `Z`
+// suffix; the tokens.json writers render through `datetime.isoformat()`
+// (`+00:00`). The TS writers re-render the stored ISO text through the
+// matching formatter instead of echoing it.
 describe("bridge epoch acceptance and writer datetime shapes", () => {
   function browserBridgePayload(expiresAt: unknown): Record<string, unknown> {
     return {
