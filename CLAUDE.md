@@ -37,7 +37,10 @@ the packages themselves run on >= 22.12. Install with `npm ci` (lockfile-exact).
   tarball), knip, eslint, `prettier --check`, full vitest run (including the
   corpus replay and `tests/package-consumption.test.ts`, which packs and
   installs the three tarballs — `MP_SKIP_PACK_TEST=1` skips it locally),
-  browser-bundle smoke. Run before committing.
+  browser-bundle smoke. The vitest step is `test:coverage` (vitest with
+  coverage on): global v8 thresholds over `packages/*/src`, generated tables
+  and pure barrels excluded, lcov + json-summary written to `coverage/`. Run
+  before committing.
 - `npm run build` / `npm run typecheck` — both `tsc -b`: builds the three
   packages into their `dist/` (gitignored) and type-checks every test, rig and
   script project. `npm run clean` = `tsc -b --clean`. After toggling a flag in

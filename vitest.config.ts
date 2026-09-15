@@ -25,6 +25,39 @@ export default defineConfig({
   },
   test: {
     exclude: EXCLUDE,
+    // `vitest run --coverage` (npm run test:coverage). Measured over the
+    // library sources only; generated tables and pure re-export barrels
+    // carry no logic and would only dilute the numbers. Output goes to
+    // `coverage/` (git-ignored): lcov for tooling, json-summary for the
+    // per-package breakdown, text-summary for the terminal.
+    coverage: {
+      provider: "v8",
+      include: ["packages/*/src/**/*.ts"],
+      exclude: [
+        "**/*.gen.ts",
+        "**/*.d.ts",
+        "packages/core/src/**/index.ts",
+        "packages/core/src/internal.ts",
+        "packages/core/src/query/validation.ts",
+        "packages/browser/src/index.ts",
+      ],
+      excludeAfterRemap: true,
+      reporter: ["text-summary", "lcov", "json-summary"],
+      reportsDirectory: "coverage",
+      // Ratchet floor: each value is the measured whole-suite number minus
+      // two points, rounded down (measurements in the commit that set it).
+      // Global, not per file — the gate asks "did the suite regress", not
+      // "is every module at 88 %". Raise by hand after coverage work lands;
+      // `autoUpdate` stays off so the floor never moves silently.
+      thresholds: {
+        lines: 88,
+        statements: 88,
+        functions: 90,
+        branches: 82,
+        perFile: false,
+        autoUpdate: false,
+      },
+    },
     // Project names are the `--project` handles (`vitest run --project core`,
     // `--project '!corpus'`). Every project runs under Node: core and browser
     // tests import no Node built-ins (the eslint purity boundary, not a DOM
