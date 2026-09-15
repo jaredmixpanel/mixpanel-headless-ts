@@ -1,34 +1,23 @@
 /**
- * Browser `CredentialStore` implementations (b9-packets.md §2.1;
- * contract arbiter R9.3 — the core interface lives in
- * `packages/core/src/auth/credential-store.ts`).
+ * Browser `CredentialStore` implementations over the core interface
+ * (`packages/core/src/auth/credential-store.ts`) — the browser
+ * counterpart of Python's on-disk `OAuthStorage`.
  *
- * - {@link InMemoryCredentialStore} is the DEFAULT (R9.3 "default
- *   in-memory"): credentials live for the page's lifetime and vanish
- *   on reload — the recommended posture (re-login on reload).
- * - {@link LocalStorageCredentialStore} is the documented opt-in
- *   adapter. SECURITY WARNING (R9.3 REQUIREMENT — read before using):
- *   `localStorage` is synchronous, ORIGIN-scoped, and XSS-readable.
- *   The store persists THREE payload families per region (pair-B FB-9
- *   breadth fix): the bearer/refresh tokens, the PENDING-LOGIN record
- *   (PKCE code verifier + CSRF state), and the DCR client
- *   registration. Every one of them is readable by any script running
- *   on the origin (a single XSS hole exfiltrates them), and the data
- *   survives logout and browser restarts unless `delete`d explicitly —
- *   on logout delete every key in `CREDENTIAL_KEYS.all(region)` for
- *   each region used. Prefer the in-memory default and re-login on
- *   reload; opt into localStorage only when the origin's
- *   script-injection surface is controlled and token lifetimes are
- *   short.
+ * {@link InMemoryCredentialStore} is the default: credentials live for
+ * the page's lifetime and vanish on reload, so the recommended posture
+ * is re-login on reload. {@link LocalStorageCredentialStore} is the
+ * opt-in adapter; read its security warning before using it.
+ *
+ * @see mixpanel_headless._internal.auth.storage
  */
 
 import { type CredentialStore, OAuthError } from "@mixpanel-headless/core";
 
 /**
  * Structural view of the Web `Storage` API — the injection seam of
- * {@link LocalStorageCredentialStore} (§0.4: the adapter touches
- * storage ONLY via this injected parameter, so the module graph stays
- * jsdom-free and testable under plain vitest/node).
+ * {@link LocalStorageCredentialStore}. The adapter touches storage only
+ * through this injected parameter, so the module graph stays jsdom-free
+ * and testable under plain vitest/node.
  */
 export interface StorageLike {
   /**
@@ -56,10 +45,9 @@ export interface StorageLike {
 }
 
 /**
- * The default in-memory {@link CredentialStore} (R9.3 "default
- * in-memory"): a `Map<string, string>` scoped to this object.
- * Credentials never touch durable storage; a page reload drops them
- * (the caller re-runs login).
+ * The default in-memory {@link CredentialStore}: a `Map<string, string>`
+ * scoped to this object. Credentials never touch durable storage; a
+ * page reload drops them (the caller re-runs login).
  *
  * @example
  * ```typescript
@@ -102,8 +90,8 @@ export class InMemoryCredentialStore implements CredentialStore {
   }
 
   /**
-   * Drop every stored value (convenience extra allowed by §2.1 —
-   * e.g. a logout that wipes all regions at once).
+   * Drop every stored value — a convenience beyond the core interface,
+   * e.g. for a logout that wipes all regions at once.
    */
   clear(): void {
     this.#values.clear();
@@ -111,26 +99,25 @@ export class InMemoryCredentialStore implements CredentialStore {
 }
 
 /**
- * The documented `localStorage` adapter (R9.3 "documented localStorage
- * adapter with security warning").
+ * The opt-in `localStorage` adapter.
  *
- * SECURITY WARNING (R9.3 REQUIREMENT): `localStorage` is a
- * synchronous, origin-scoped store that is READABLE BY ANY SCRIPT on
- * the origin — an XSS vulnerability anywhere on the page exfiltrates
- * EVERYTHING kept here: the bearer/refresh tokens, the pending-login
- * record (PKCE code VERIFIER + CSRF state — live login material until
- * its FB-5 lifetime expires it), and the DCR client registration
- * (pair-B FB-9: all three payload families, not just tokens). Data
- * also survives logout and browser restarts unless `delete`d
- * explicitly — on logout, delete every key in
- * `CREDENTIAL_KEYS.all(region)` for each region used. The in-memory
- * default ({@link InMemoryCredentialStore}) is the recommended
- * posture, with re-login on reload; use this adapter only as a
- * deliberate, documented trade-off.
+ * Security warning: `localStorage` is a synchronous, origin-scoped
+ * store that is readable by any script on the origin — an XSS
+ * vulnerability anywhere on the page exfiltrates everything kept here.
+ * That is three payload families per region, not just tokens: the
+ * bearer/refresh tokens, the pending-login record (PKCE code verifier
+ * plus CSRF state — live login material until its lifetime expires
+ * it), and the DCR client registration. Data also survives logout and
+ * browser restarts unless deleted explicitly — on logout, delete every
+ * key in `CREDENTIAL_KEYS.all(region)` for each region used. The
+ * in-memory default ({@link InMemoryCredentialStore}) is the
+ * recommended posture, with re-login on reload; use this adapter only
+ * when the origin's script-injection surface is controlled and token
+ * lifetimes are short.
  *
- * Backend failures (quota exhaustion, Safari-private storage, …)
- * re-throw as coded `OAUTH_CONFIG_ERROR` with the original exception
- * as `cause` (pair-B FB-11 — R5: coded, never a bare `DOMException`).
+ * Backend failures (quota exhaustion, Safari private-mode storage, …)
+ * re-throw as coded `OAUTH_CONFIG_ERROR` with the original exception as
+ * `cause`, so callers key on a code and never see a bare `DOMException`.
  *
  * @example
  * ```typescript
@@ -149,7 +136,7 @@ export class LocalStorageCredentialStore implements CredentialStore {
    *
    * @param storage - `Storage`-shaped backend; defaults to
    *   `globalThis.localStorage`.
-   * @throws OAuthError - `OAUTH_CONFIG_ERROR` when no storage was
+   * @throws {@link OAuthError} `OAUTH_CONFIG_ERROR` when no storage was
    *   injected and `globalThis.localStorage` does not exist (running
    *   under a non-browser runtime without injection).
    */
@@ -170,15 +157,15 @@ export class LocalStorageCredentialStore implements CredentialStore {
 
   /**
    * Run a storage operation, re-throwing backend failures as the coded
-   * `OAUTH_CONFIG_ERROR` (pair-B FB-11: quota exhaustion / private
-   * mode escaped as uncoded `DOMException`s; R5 demands a code, and
-   * the constructor already codes storage-unavailability the same
-   * way).
+   * `OAUTH_CONFIG_ERROR`. Quota exhaustion and private-mode storage
+   * surface as uncoded `DOMException`s; every library error carries a
+   * code, and the constructor already codes storage-unavailability the
+   * same way.
    *
    * @param operation - Human label for the message (out of contract).
    * @param run - The raw storage call.
    * @returns The operation result.
-   * @throws OAuthError - `OAUTH_CONFIG_ERROR` with the backend
+   * @throws {@link OAuthError} `OAUTH_CONFIG_ERROR` with the backend
    *   exception as `cause`.
    */
   #guarded<T>(operation: string, run: () => T): T {
@@ -201,7 +188,7 @@ export class LocalStorageCredentialStore implements CredentialStore {
    *
    * @param key - Namespaced key.
    * @returns The stored string, or `null` when absent.
-   * @throws OAuthError - `OAUTH_CONFIG_ERROR` on backend failure.
+   * @throws {@link OAuthError} `OAUTH_CONFIG_ERROR` on backend failure.
    */
   get(key: string): string | null {
     return this.#guarded("read", () => this.#storage.getItem(key));
@@ -212,7 +199,7 @@ export class LocalStorageCredentialStore implements CredentialStore {
    *
    * @param key - Namespaced key.
    * @param value - Opaque serialized payload.
-   * @throws OAuthError - `OAUTH_CONFIG_ERROR` on backend failure.
+   * @throws {@link OAuthError} `OAUTH_CONFIG_ERROR` on backend failure.
    */
   set(key: string, value: string): void {
     this.#guarded("write", () => {
@@ -224,7 +211,7 @@ export class LocalStorageCredentialStore implements CredentialStore {
    * Remove the value stored under `key` (no-op when absent).
    *
    * @param key - Namespaced key.
-   * @throws OAuthError - `OAUTH_CONFIG_ERROR` on backend failure.
+   * @throws {@link OAuthError} `OAUTH_CONFIG_ERROR` on backend failure.
    */
   delete(key: string): void {
     this.#guarded("delete", () => {
