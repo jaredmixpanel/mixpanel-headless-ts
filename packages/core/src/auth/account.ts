@@ -41,8 +41,8 @@ export type WorkspaceId = number;
 export type TargetName = string;
 
 /**
- * Produces bearer tokens for OAuth accounts (the Python `TokenResolver`
- * Protocol).
+ * Resolve bearer tokens for OAuth accounts (the Python `TokenResolver`
+ * protocol).
  *
  * Token refresh does I/O, so both methods are async; refresh already
  * happens at per-request resolution time, so the async signature
@@ -167,8 +167,17 @@ const PROJECT_ID_PATTERN = /^\p{Nd}+$/u;
  * @param model - Model name for error messages.
  * @param options - Parse options carrying the boundary kind.
  * @returns The same value, typed as a string-keyed record.
- * @throws ParamValidationError | ResponseValidationError - When `raw` is
+ * @throws {@link ParamValidationError} - When `raw` is
  *   not a plain object.
+ * @throws {@link ResponseValidationError} - The same condition at the
+ *   default `'response'` boundary.
+ * @example
+ * ```typescript
+ * const payload = requireRecord({ type: "oauth_browser" }, "Account", {});
+ * // payload["type"] === "oauth_browser"
+ * requireRecord([], "Account", { boundary: "param" });
+ * // throws ParamValidationError
+ * ```
  */
 export function requireRecord(
   raw: unknown,
@@ -188,8 +197,21 @@ export function requireRecord(
  * @param known - The declared field names (discriminator included).
  * @param model - Model name for error messages.
  * @param options - Parse options carrying the boundary kind.
- * @throws ParamValidationError | ResponseValidationError - When any key
+ * @throws {@link ParamValidationError} - When any key
  *   outside `known` is present.
+ * @throws {@link ResponseValidationError} - The same condition at the
+ *   default `'response'` boundary.
+ * @example
+ * ```typescript
+ * forbidExtraKeys(
+ *   { account: "team", project: "1" },
+ *   new Set(["account"]),
+ *   "ActiveSession",
+ *   {},
+ * );
+ * // throws ResponseValidationError:
+ * //   "ActiveSession rejects unknown fields: project"
+ * ```
  */
 export function forbidExtraKeys(
   payload: Readonly<Record<string, unknown>>,
@@ -217,8 +239,10 @@ export function forbidExtraKeys(
  * @returns The validated base fields; `default_project` is present only
  *   when the key was present in the payload (absent and `null` are
  *   distinct).
- * @throws ParamValidationError | ResponseValidationError - On any
+ * @throws {@link ParamValidationError} - On any
  *   constraint violation.
+ * @throws {@link ResponseValidationError} - The same condition at the
+ *   default `'response'` boundary.
  */
 function parseAccountBase(
   payload: Readonly<Record<string, unknown>>,
@@ -285,8 +309,10 @@ function parseAccountBase(
  * @param options - Parse options carrying the boundary kind.
  * @returns The wrapped secret, `null` for an explicit null, or
  *   `undefined` when the key is absent.
- * @throws ParamValidationError | ResponseValidationError - When present
+ * @throws {@link ParamValidationError} - When present
  *   but neither string nor `Secret` nor null.
+ * @throws {@link ResponseValidationError} - The same condition at the
+ *   default `'response'` boundary.
  */
 function readSecretField(
   payload: Readonly<Record<string, unknown>>,
@@ -357,8 +383,9 @@ const OAUTH_TOKEN_FIELDS: ReadonlySet<string> = new Set([
  * @param raw - The raw payload (config block, bridge entry, vector value).
  * @param options - Error-boundary selection (defaults to `'response'`).
  * @returns The narrowed account variant.
- * @throws ParamValidationError - Any violation at the `'param'` boundary.
- * @throws ResponseValidationError - Any violation at the default
+ * @throws {@link ParamValidationError} - Any violation at the `'param'`
+ *   boundary.
+ * @throws {@link ResponseValidationError} - Any violation at the default
  *   `'response'` boundary.
  * @example
  * ```typescript
@@ -473,6 +500,11 @@ export function parseAccount(
  *
  * @param text - The text to encode (Python `str.encode()` is UTF-8).
  * @returns The base64 rendering.
+ * @example
+ * ```typescript
+ * base64EncodeUtf8("sa.user:hunter2");
+ * // "c2EudXNlcjpodW50ZXIy"
+ * ```
  */
 export function base64EncodeUtf8(text: string): string {
   const bytes = new TextEncoder().encode(text);
@@ -488,6 +520,8 @@ export interface AccountAuthHeaderOptions {
   /**
    * Resolver for OAuth accounts. Ignored for `service_account` (signature
    * parity with Python); required for the two OAuth variants.
+   *
+   * @defaultValue `null`
    */
   readonly tokenResolver?: TokenResolver | null | undefined;
 }
@@ -503,11 +537,11 @@ export interface AccountAuthHeaderOptions {
  * @param account - The account to authenticate as.
  * @param options - Carries the {@link TokenResolver} for OAuth variants.
  * @returns The header value (`Basic ...` or `Bearer ...`).
- * @throws ParamTypeError - When an OAuth variant is given no resolver
+ * @throws {@link ParamTypeError} - When an OAuth variant is given no resolver
  *   (Python raises `TypeError`; `ParamTypeError` is its coded twin —
  *   message text is out of contract).
- * @throws MixpanelHeadlessError - Never in practice: the `never` default
- *   arm guards against an un-narrowed 4th variant at runtime.
+ * @throws {@link MixpanelHeadlessError} - Never in practice: the `never`
+ *   default arm guards against an un-narrowed 4th variant at runtime.
  * @example
  * ```typescript
  * const header = await accountAuthHeader(serviceAccount, {});
@@ -556,14 +590,25 @@ export async function accountAuthHeader(
 }
 
 /**
- * Whether the account survives across restarts without refresh (port of
- * the per-variant `is_long_lived` methods).
+ * Report whether the account survives across restarts without a refresh
+ * (the per-variant `is_long_lived` methods as one free function).
  *
  * @param account - The account to inspect.
  * @returns `true` for `service_account` (credentials never expire) and
  *   `oauth_browser` (refresh-token re-issuance); `false` for
  *   `oauth_token` (caller controls rotation, no refresh path).
- * @throws MixpanelHeadlessError - Never in practice (`never` default arm).
+ * @throws {@link MixpanelHeadlessError} - Never in practice (`never`
+ *   default arm).
+ * @example
+ * ```typescript
+ * isLongLived({
+ *   type: "oauth_token",
+ *   name: "ci",
+ *   region: "us",
+ *   token_env: "MP_TOKEN",
+ * });
+ * // false — the caller rotates the bearer; no refresh path
+ * ```
  * @see mixpanel_headless._internal.auth.account.ServiceAccount.is_long_lived
  */
 export function isLongLived(account: Account): boolean {

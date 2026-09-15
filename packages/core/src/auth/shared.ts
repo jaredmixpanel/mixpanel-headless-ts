@@ -10,24 +10,34 @@ import { ParamValidationError, ResponseValidationError } from "../errors.js";
 export interface ParseAccountOptions {
   /**
    * Error boundary: `'param'` throws {@link ParamValidationError}
-   * (`VALIDATION_ERROR`); `'response'` (default — the config/vector-decode
-   * seam) throws {@link ResponseValidationError}
+   * (`VALIDATION_ERROR`) for caller-supplied input; `'response'` — the
+   * config / vector-decode seam — throws {@link ResponseValidationError}
    * (`RESPONSE_VALIDATION_ERROR`). Mirrors the shared `coerce.ts`
    * convention.
+   *
+   * @defaultValue `"response"`
    */
   readonly boundary?: "param" | "response" | undefined;
 }
 
 /**
- * Throw the boundary-appropriate parse error (the generic validation
- * codes; no auth-specific codes exist).
+ * Throw the parse error for the boundary named in `options` (the generic
+ * validation codes; no auth-specific codes exist).
  *
  * @param message - Human-readable description (out of contract).
  * @param options - Parse options carrying the boundary kind.
  * @param details - Optional structured error data (snake_case keys).
- * @returns Never returns.
- * @throws ParamValidationError - When `options.boundary === 'param'`.
- * @throws ResponseValidationError - Otherwise (default boundary).
+ * @throws {@link ParamValidationError} - When `options.boundary` is
+ *   `'param'`.
+ * @throws {@link ResponseValidationError} - Otherwise (the default
+ *   boundary).
+ * @example
+ * ```typescript
+ * parseFail("Account.name must be a string", { boundary: "param" }, {
+ *   field: "name",
+ * });
+ * // throws ParamValidationError with code VALIDATION_ERROR
+ * ```
  */
 export function parseFail(
   message: string,

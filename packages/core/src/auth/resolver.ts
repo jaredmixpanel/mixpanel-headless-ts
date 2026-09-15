@@ -59,7 +59,7 @@ export interface ResolverConfigSource {
    *
    * @param name - Account name.
    * @returns The account record.
-   * @throws ConfigError - Coded error on an unknown name
+   * @throws {@link ConfigError} - Coded error on an unknown name
    *   (`AccountNotFoundError` in the ConfigManager implementation).
    */
   getAccount: (name: string) => Account;
@@ -76,7 +76,7 @@ export interface ResolverConfigSource {
    *
    * @param name - Target name.
    * @returns The target record.
-   * @throws ConfigError - Coded error on an unknown name.
+   * @throws {@link ConfigError} - Coded error on an unknown name.
    */
   getTarget: (name: string) => Target;
 
@@ -115,15 +115,29 @@ export interface ResolverSources {
 
 /** The per-axis explicit overrides (Python keyword-only parameters). */
 export interface ResolveSessionOptions {
-  /** Explicit account name (e.g. from `--account NAME`). */
+  /**
+   * Explicit account name (e.g. from `--account NAME`).
+   *
+   * @defaultValue `null`
+   */
   readonly account?: string | null | undefined;
-  /** Explicit project ID (e.g. from `--project ID`). */
+  /**
+   * Explicit project ID (e.g. from `--project ID`).
+   *
+   * @defaultValue `null`
+   */
   readonly project?: string | null | undefined;
-  /** Explicit workspace ID (e.g. from `--workspace ID`). */
+  /**
+   * Explicit workspace ID (e.g. from `--workspace ID`).
+   *
+   * @defaultValue `null`
+   */
   readonly workspace?: number | null | undefined;
   /**
    * Named target whose three axes apply (mutually exclusive with
-   * `account`/`project`/`workspace`).
+   * `account` / `project` / `workspace`).
+   *
+   * @defaultValue `null`
    */
   readonly target?: string | null | undefined;
 }
@@ -142,7 +156,7 @@ const VALID_REGIONS: ReadonlySet<string> = new Set(REGION_VALUES);
  *
  * @param env - The env bag.
  * @returns The region value when set, or `null` when absent/empty.
- * @throws ConfigError - `MP_REGION` set to a value outside the allowed
+ * @throws {@link ConfigError} - `MP_REGION` set to a value outside the allowed
  *   set — surfaced loudly (silently dropping an invalid region would
  *   route requests to the wrong data residency); details
  *   `{env_var: "MP_REGION", value}`.
@@ -174,7 +188,7 @@ function envRegion(env: ResolverEnv): Region | null {
  * @param env - The env bag.
  * @returns A synthesized service account, or `null` if any quad member
  *   is missing.
- * @throws ConfigError - Invalid `MP_REGION` (via {@link envRegion}).
+ * @throws {@link ConfigError} - Invalid `MP_REGION` (via {@link envRegion}).
  */
 function envAccountFromServiceQuad(env: ResolverEnv): Account | null {
   const username = env.MP_USERNAME;
@@ -217,7 +231,7 @@ function envAccountFromServiceQuad(env: ResolverEnv): Account | null {
  * @param env - The env bag.
  * @returns A synthesized oauth-token account, or `null` if any
  *   required env var is missing.
- * @throws ConfigError - Invalid `MP_REGION` (via {@link envRegion}).
+ * @throws {@link ConfigError} - Invalid `MP_REGION` (via {@link envRegion}).
  */
 function envAccountFromOAuthToken(env: ResolverEnv): Account | null {
   const token = env.MP_OAUTH_TOKEN;
@@ -268,8 +282,19 @@ export interface ResolveAccountAxisArgs {
  *
  * @param args - The axis inputs.
  * @returns The resolved account, or `null` if no source produced one.
- * @throws ConfigError - Invalid `MP_REGION`; unknown account names
+ * @throws {@link ConfigError} - Invalid `MP_REGION`; unknown account names
  *   (propagated from the config source).
+ * @example
+ * ```typescript
+ * const account = resolveAccountAxis({
+ *   explicit: "team",
+ *   target_account_name: null,
+ *   bridge: null,
+ *   config,
+ *   env: { MP_OAUTH_TOKEN: "t", MP_PROJECT_ID: "1", MP_REGION: "us" },
+ * });
+ * // account?.type === "oauth_token" — env outranks the explicit name
+ * ```
  * @see mixpanel_headless._internal.auth.resolver.resolve_account_axis
  */
 export function resolveAccountAxis(
@@ -328,8 +353,19 @@ export interface ResolveProjectAxisArgs {
  *
  * @param args - The axis inputs.
  * @returns Project ID (digit string), or `null` if no source resolves.
- * @throws ConfigError - `MP_PROJECT_ID` set but not a digit string;
+ * @throws {@link ConfigError} - `MP_PROJECT_ID` set but not a digit string;
  *   details `{env_var: "MP_PROJECT_ID", value}`.
+ * @example
+ * ```typescript
+ * resolveProjectAxis({
+ *   explicit: "222",
+ *   target_project: null,
+ *   bridge: null,
+ *   account: null,
+ *   env: { MP_PROJECT_ID: "111" },
+ * });
+ * // "111" — env outranks the explicit parameter
+ * ```
  * @see mixpanel_headless._internal.auth.resolver.resolve_project_axis
  */
 export function resolveProjectAxis(
@@ -377,8 +413,15 @@ export function resolveProjectAxis(
  * @param env - The env bag.
  * @returns Parsed positive integer, or `null` if the env var is
  *   unset/empty.
- * @throws ConfigError - `MP_WORKSPACE_ID` set but not a positive
+ * @throws {@link ConfigError} - `MP_WORKSPACE_ID` set but not a positive
  *   integer; details `{env_var: "MP_WORKSPACE_ID", value}`.
+ * @example
+ * ```typescript
+ * envWorkspaceId({ MP_WORKSPACE_ID: " 4_2 " });
+ * // 42 — the CPython int() grammar
+ * envWorkspaceId({});
+ * // null
+ * ```
  * @see mixpanel_headless._internal.auth.resolver.env_workspace_id
  */
 export function envWorkspaceId(env: ResolverEnv): number | null {
@@ -429,7 +472,7 @@ interface ResolveWorkspaceAxisArgs {
  *
  * @param args - The axis inputs.
  * @returns Workspace ID, or `null` (lazy-resolve later).
- * @throws ConfigError - Malformed `MP_WORKSPACE_ID` (via
+ * @throws {@link ConfigError} - Malformed `MP_WORKSPACE_ID` (via
  *   {@link envWorkspaceId}).
  */
 function resolveWorkspaceAxis(args: ResolveWorkspaceAxisArgs): number | null {
@@ -548,11 +591,11 @@ function formatNoProjectError(account: Account | null = null): string {
  * @param sources - The injected env / config / bridge sources.
  * @returns A session with account, project, optional workspace, and
  *   any custom headers attached.
- * @throws ParamValidationError - `target` combined with any axis kwarg
+ * @throws {@link ParamValidationError} - `target` combined with any axis kwarg
  *   (code `WS1_TARGET_MUTUALLY_EXCLUSIVE`, the same code the
  *   `Workspace` facade uses for this guard; Python raises a bare
  *   `ValueError`).
- * @throws ConfigError - An axis cannot be resolved or refers to an
+ * @throws {@link ConfigError} - An axis cannot be resolved or refers to an
  *   unknown account / target; invalid env values.
  * @example
  * ```typescript

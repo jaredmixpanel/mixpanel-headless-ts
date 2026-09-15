@@ -31,9 +31,11 @@ const TZ_AWARE_SUFFIX = /(?:[Zz]|[+-]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)$/;
  * @param iso - The candidate ISO-8601 datetime text.
  * @param options - Parse options carrying the boundary kind.
  * @returns The same string when timezone-aware.
- * @throws ParamValidationError | ResponseValidationError - When the text
+ * @throws {@link ParamValidationError} - When the text
  *   carries no timezone suffix (a naive datetime would compare unsafely
  *   against the aware clock and silently bypass the expiry check).
+ * @throws {@link ResponseValidationError} - The same condition at the
+ *   default `'response'` boundary.
  */
 function requireTzAware(iso: string, options: ParseAccountOptions): string {
   if (!TZ_AWARE_SUFFIX.test(iso)) {
@@ -49,13 +51,20 @@ function requireTzAware(iso: string, options: ParseAccountOptions): string {
 }
 
 /**
- * Render an epoch instant the way Python
- * `datetime.now(timezone.utc).isoformat()` does (the `refresh_tokens`
- * wire vectors lock this text): offset is always `+00:00` (never `Z`);
- * no fractional digits when the microsecond field is 0, else exactly 6.
+ * Render an epoch instant as Python `datetime.now(timezone.utc).isoformat()`
+ * text: the offset is always `+00:00` (never `Z`) and fractional digits
+ * appear only when the microsecond field is non-zero, then exactly six
+ * (the `refresh_tokens` wire vectors lock this text).
  *
  * @param epochMs - Epoch milliseconds (may carry sub-second precision).
- * @returns The Python-isoformat text, e.g. `"2026-01-15T13:00:00+00:00"`.
+ * @returns The Python-isoformat text.
+ * @example
+ * ```typescript
+ * pythonUtcIsoformat(Date.UTC(2026, 0, 15, 13, 0, 0));
+ * // "2026-01-15T13:00:00+00:00"
+ * pythonUtcIsoformat(Date.UTC(2026, 0, 15, 13, 0, 0, 500));
+ * // "2026-01-15T13:00:00.500000+00:00"
+ * ```
  */
 export function pythonUtcIsoformat(epochMs: number): string {
   let seconds = Math.floor(epochMs / 1000);
@@ -84,7 +93,11 @@ export function pythonUtcIsoformat(epochMs: number): string {
  * ambient clock.
  */
 export interface TokenClockOptions {
-  /** Epoch-milliseconds clock (default `Date.now`). */
+  /**
+   * Epoch-milliseconds clock.
+   *
+   * @defaultValue `Date.now`
+   */
   readonly now?: (() => number) | undefined;
 }
 
@@ -92,7 +105,11 @@ export interface TokenClockOptions {
 export interface OAuthTokensFields {
   /** The OAuth access token. */
   readonly access_token: Secret;
-  /** The OAuth refresh token, if provided. */
+  /**
+   * The OAuth refresh token, if provided.
+   *
+   * @defaultValue `null`
+   */
   readonly refresh_token?: Secret | null | undefined;
   /** Timezone-aware ISO-8601 expiry instant. */
   readonly expires_at: string;
@@ -149,12 +166,14 @@ export class OAuthTokens {
   readonly token_type: string;
 
   /**
-   * Construct a token set (validators fire exactly as Pydantic's do).
+   * Construct a token set; the timezone validator fires exactly as
+   * Pydantic's does.
    *
    * @param fields - The declared field values; `refresh_token` may be
    *   omitted (normalizes to `null`, matching Python's `None` default).
-   * @throws ParamValidationError | ResponseValidationError - When
-   *   `expires_at` is naive (no timezone suffix).
+   * @throws {@link ResponseValidationError} - When `expires_at` is naive
+   *   (no timezone suffix); the constructor always uses the default
+   *   boundary.
    */
   constructor(fields: OAuthTokensFields) {
     this.access_token = fields.access_token;
@@ -191,16 +210,24 @@ export class OAuthTokens {
    * whole second; the `refresh_tokens` wire vectors lock the text).
    *
    * @param data - Raw JSON response from the token endpoint. Must carry
-   *   `access_token`, `expires_in`, `scope`, and `token_type`; may carry
-   *   `refresh_token`.
+   *   `access_token`, `expires_in` and `token_type`; may carry `scope`
+   *   (defaults to empty) and `refresh_token`.
    * @param options - Optional injected clock (default: ambient
    *   `Date.now`; the conformance binding freezes it at the record
    *   epoch).
    * @returns A new token set.
-   * @throws ParamValidationError - When required keys are missing or
+   * @throws {@link ParamValidationError} - When required keys are missing or
    *   `expires_in` is not an integer (Python raises
    *   `KeyError`/`ValueError`; the coded twin is the closest TS analog —
    *   message text is out of contract).
+   * @example
+   * ```typescript
+   * const tokens = OAuthTokens.fromTokenResponse(
+   *   { access_token: "abc", expires_in: 3600, token_type: "Bearer" },
+   *   { now: () => Date.UTC(2026, 0, 15, 12, 0, 0) },
+   * );
+   * // tokens.expires_at === "2026-01-15T13:00:00+00:00"
+   * ```
    * @see mixpanel_headless._internal.auth.token.OAuthTokens.from_token_response
    */
   static fromTokenResponse(
@@ -247,8 +274,10 @@ export class OAuthTokens {
  * @param field - Field name for error details.
  * @param options - Parse options carrying the boundary kind.
  * @returns The wrapped secret.
- * @throws ParamValidationError | ResponseValidationError - When neither
+ * @throws {@link ParamValidationError} - When neither
  *   string nor `Secret`.
+ * @throws {@link ResponseValidationError} - The same condition at the
+ *   default `'response'` boundary.
  */
 function requireSecret(
   value: unknown,
@@ -274,8 +303,10 @@ function requireSecret(
  * @param field - Field name.
  * @param options - Parse options carrying the boundary kind.
  * @returns The string value.
- * @throws ParamValidationError | ResponseValidationError - When absent
+ * @throws {@link ParamValidationError} - When absent
  *   or not a string.
+ * @throws {@link ResponseValidationError} - The same condition at the
+ *   default `'response'` boundary.
  */
 function requireString(
   payload: Readonly<Record<string, unknown>>,
@@ -298,8 +329,20 @@ function requireString(
  *   or `Secret`; `expires_at` as ISO-8601 text).
  * @param options - Error-boundary selection (defaults to `'response'`).
  * @returns The parsed token set.
- * @throws ParamValidationError | ResponseValidationError - On missing /
+ * @throws {@link ParamValidationError} - On missing /
  *   malformed fields or a naive `expires_at`.
+ * @throws {@link ResponseValidationError} - The same condition at the
+ *   default `'response'` boundary.
+ * @example
+ * ```typescript
+ * const tokens = parseOAuthTokens({
+ *   access_token: "abc",
+ *   expires_at: "2026-01-15T13:00:00+00:00",
+ *   scope: "projects",
+ *   token_type: "Bearer",
+ * });
+ * // tokens.refresh_token === null; tokens.access_token.reveal() === "abc"
+ * ```
  */
 export function parseOAuthTokens(
   raw: unknown,
@@ -361,8 +404,21 @@ export interface OAuthClientInfo {
  * @param raw - The raw payload.
  * @param options - Error-boundary selection (defaults to `'response'`).
  * @returns The parsed client info.
- * @throws ParamValidationError | ResponseValidationError - On missing /
+ * @throws {@link ParamValidationError} - On missing /
  *   non-string fields.
+ * @throws {@link ResponseValidationError} - The same condition at the
+ *   default `'response'` boundary.
+ * @example
+ * ```typescript
+ * const info = parseOAuthClientInfo({
+ *   client_id: "cid",
+ *   region: "us",
+ *   redirect_uri: "http://localhost:19284/callback",
+ *   scope: "projects analysis",
+ *   created_at: "2026-01-15T12:00:00+00:00",
+ * });
+ * // info.region === "us"
+ * ```
  */
 export function parseOAuthClientInfo(
   raw: unknown,

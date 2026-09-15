@@ -113,12 +113,13 @@ function redactTokenPayload(data: unknown): string {
  * @returns The full authorization URL.
  * @example
  * ```typescript
- * const url = buildAuthorizeUrl(OAUTH_BASE_URLS["us"], {
+ * const url = buildAuthorizeUrl("https://mixpanel.com/oauth/", {
  *   clientId: "cid",
  *   redirectUri: "https://app.example.com/cb",
  *   challenge: "chal",
  *   state: "st",
  * });
+ * // "https://mixpanel.com/oauth/authorize/?response_type=code&client_id=cid…"
  * ```
  * @see mixpanel_headless._internal.auth.flow.OAuthFlow._build_authorize_url
  */
@@ -148,12 +149,17 @@ export interface PostTokenRequestContext {
   readonly operation: string;
   /** OAuthError code to use on failure. */
   readonly errorCode: string;
-  /** Optional account name embedded in recovery hints. */
+  /**
+   * Account name embedded in recovery hints and revoked-token details.
+   *
+   * @defaultValue `null`
+   */
   readonly accountName?: string | null | undefined;
   /**
    * Epoch-ms clock seam threaded into `fromTokenResponse` so tests and
-   * the conformance binding never read the ambient clock. Default
-   * `Date.now`.
+   * the conformance binding never read the ambient clock.
+   *
+   * @defaultValue `Date.now`
    */
   readonly now?: (() => number) | undefined;
 }
@@ -186,10 +192,20 @@ export interface PostTokenRequestContext {
  * @param formData - Form-encoded body (insertion order preserved).
  * @param context - Operation name, error code, optional account/clock.
  * @returns Parsed tokens from the endpoint response.
- * @throws OAuthError - Every branch of the corpus-locked classifier
+ * @throws {@link OAuthError} - Every branch of the corpus-locked classifier
  *   (transport failure, non-200 incl. the `invalid_grant`→
  *   `OAUTH_REFRESH_REVOKED` refresh-only mapping, non-JSON body,
  *   missing required fields).
+ * @example
+ * ```typescript
+ * const tokens = await postTokenRequest(
+ *   fetch,
+ *   "https://mixpanel.com/oauth/",
+ *   { grant_type: "refresh_token", refresh_token: "r1", client_id: "cid" },
+ *   { operation: "Token refresh", errorCode: "OAUTH_TOKEN_ERROR" },
+ * );
+ * // tokens.access_token.reveal()
+ * ```
  * @see mixpanel_headless._internal.auth.flow.OAuthFlow._post_token_request
  */
 // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
@@ -332,9 +348,11 @@ export async function postTokenRequest(
 /** Options bag of {@link registerClient}. */
 export interface RegisterClientOptions {
   /**
-   * Epoch-ms clock for the `created_at` stamp (Python reads the
-   * ambient `datetime.now(timezone.utc)`; the optional seam only adds
-   * determinism for tests/harness — default ambient).
+   * Epoch-ms clock for the `created_at` stamp (Python reads the ambient
+   * `datetime.now(timezone.utc)`; the seam only adds determinism for
+   * tests and the harness).
+   *
+   * @defaultValue `Date.now`
    */
   readonly now?: (() => number) | undefined;
 }
@@ -352,14 +370,13 @@ export interface RegisterClientOptions {
  * @param redirectUri - The OAuth redirect URI to register.
  * @param options - Optional clock seam.
  * @returns The freshly registered client info (not persisted here).
- * @throws OAuthError - `OAUTH_REGISTRATION_ERROR` on unknown region,
+ * @throws {@link OAuthError} - `OAUTH_REGISTRATION_ERROR` on unknown region,
  *   network failure, 429 rate limit, non-2xx status, or a malformed
  *   response body.
  * @example
  * ```typescript
- * const info = await registerClient(fetch, "us",
- *   "https://app.example.com/cb");
- * // info.client_id
+ * const info = await registerClient(fetch, "us", "https://app.example.com/cb");
+ * // info.client_id; info.created_at === "2026-…+00:00"
  * ```
  * @see mixpanel_headless._internal.auth.client_registration.ensure_client_registered
  */

@@ -105,6 +105,8 @@ export class PkceChallenge {
    * base64url (no padding) for the challenge.
    *
    * @returns A new {@link PkceChallenge} with both fields set.
+   * @throws {@link OAuthError} - When `crypto.subtle` is unavailable
+   *   (propagated from {@link PkceChallenge.challengeFor}).
    * @example
    * ```typescript
    * const pkce = await PkceChallenge.generate();
@@ -123,17 +125,25 @@ export class PkceChallenge {
   }
 
   /**
-   * Compute the S256 challenge for a given verifier —
-   * `BASE64URL(SHA256(ASCII(verifier)))`, RFC 7636 §4.2 (the inline
-   * hash in Python's `generate`, factored out so the RFC 7636
-   * Appendix B test vector exercises exactly this code path).
+   * Compute the S256 challenge for a verifier —
+   * `BASE64URL(SHA256(ASCII(verifier)))`, RFC 7636 §4.2 (the inline hash
+   * in Python's `generate`, factored out so the RFC 7636 Appendix B test
+   * vector exercises exactly this code path).
    *
-   * The verifier is ASCII by construction (base64url alphabet ⊂
-   * ASCII), so `TextEncoder` UTF-8 output equals Python's
+   * @remarks
+   * The verifier is ASCII by construction (the base64url alphabet is a
+   * subset of ASCII), so `TextEncoder` UTF-8 output equals Python's
    * `verifier.encode("ascii")`.
-   *
    * @param verifier - The code verifier text (ASCII).
    * @returns The base64url-encoded challenge (no padding).
+   * @throws {@link OAuthError} - Code `OAUTH_CONFIG_ERROR` when
+   *   `crypto.subtle` is unavailable (an insecure browser context).
+   * @example
+   * ```typescript
+   * const verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
+   * await PkceChallenge.challengeFor(verifier);
+   * // "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM" (RFC 7636 Appendix B)
+   * ```
    */
   static async challengeFor(verifier: string): Promise<string> {
     // In an insecure browser context (any http:// origin other than

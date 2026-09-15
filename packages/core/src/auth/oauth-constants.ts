@@ -17,14 +17,19 @@ export const OAUTH_BASE_URLS: Readonly<Record<string, string>> = {
 };
 
 /**
- * Validate a region against {@link OAUTH_BASE_URLS} and return its base
- * URL — the `OAuthFlow.__init__` gate shared by the Node flow
- * constructor and the browser redirect flow (same code, same message
- * shape).
+ * Return the OAuth base URL for a region, rejecting unknown regions — the
+ * `OAuthFlow.__init__` gate shared by the Node flow constructor and the
+ * browser redirect flow (same code, same message shape).
  *
- * @param region - The caller-supplied region.
- * @returns The region's OAuth base URL (trailing slash).
- * @throws OAuthError - `OAUTH_CONFIG_ERROR` for unknown regions.
+ * @param region - The caller-supplied region (`us`, `eu` or `in`).
+ * @returns The region's OAuth base URL, trailing slash included.
+ * @throws {@link OAuthError} - Code `OAUTH_CONFIG_ERROR` for an unknown
+ *   region.
+ * @example
+ * ```typescript
+ * requireOAuthBaseUrl("eu");
+ * // "https://eu.mixpanel.com/oauth/"
+ * ```
  * @see mixpanel_headless._internal.auth.flow.OAuthFlow
  */
 export function requireOAuthBaseUrl(region: string): string {

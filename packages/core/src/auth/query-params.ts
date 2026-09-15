@@ -13,17 +13,22 @@
  */
 
 /**
- * CPython `urllib.parse.unquote` twin (string variant,
- * `errors="replace"`): percent-decodes `%XX` runs as UTF-8 byte
- * sequences, leaves malformed escapes (`%zz`, trailing `%`) literal.
+ * Percent-decode `%XX` runs as UTF-8 byte sequences, leaving malformed
+ * escapes (`%zz`, a trailing `%`) literal — the CPython
+ * `urllib.parse.unquote` string variant with `errors="replace"`.
  *
+ * @remarks
  * WHATWG `TextDecoder` (non-fatal) and CPython `errors="replace"` can
- * emit different U+FFFD counts for some malformed multi-byte runs —
- * out of contract (garbage-in inputs only; nothing in the corpus or
- * the Python suite observes the difference).
- *
+ * emit different U+FFFD counts for some malformed multi-byte runs; out
+ * of contract (garbage-in inputs only; nothing in the corpus or the
+ * Python suite observes the difference).
  * @param text - The percent-encoded text.
  * @returns The decoded text.
+ * @example
+ * ```typescript
+ * pythonUnquote("caf%C3%A9%20au%20lait%zz");
+ * // "café au lait%zz"
+ * ```
  */
 export function pythonUnquote(text: string): string {
   if (!text.includes("%")) {

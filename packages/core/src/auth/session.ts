@@ -134,8 +134,10 @@ function coerceOptions(
  * @param field - Field name.
  * @param options - Parse options carrying the boundary kind.
  * @returns The string, `null`, or `undefined` when absent.
- * @throws ParamValidationError | ResponseValidationError - When present
+ * @throws {@link ParamValidationError} - When present
  *   but not a string.
+ * @throws {@link ResponseValidationError} - The same condition at the
+ *   default `'response'` boundary.
  */
 function readOptionalString(
   payload: Readonly<Record<string, unknown>>,
@@ -166,8 +168,15 @@ const PROJECT_ID_PATTERN = /^\p{Nd}+$/u;
  * @param raw - The raw payload.
  * @param options - Error-boundary selection (defaults to `'response'`).
  * @returns The parsed project; unknown keys are dropped.
- * @throws ParamValidationError | ResponseValidationError - On a missing /
+ * @throws {@link ParamValidationError} - On a missing /
  *   malformed `id` or wrongly typed optional field.
+ * @throws {@link ResponseValidationError} - The same condition at the
+ *   default `'response'` boundary.
+ * @example
+ * ```typescript
+ * parseProject({ id: "12345", name: "Demo", extra: true });
+ * // { id: "12345", name: "Demo" } — unknown keys dropped
+ * ```
  */
 export function parseProject(
   raw: unknown,
@@ -208,8 +217,15 @@ export function parseProject(
  * @param raw - The raw payload.
  * @param options - Error-boundary selection (defaults to `'response'`).
  * @returns The parsed workspace reference; unknown keys are dropped.
- * @throws ParamValidationError | ResponseValidationError - On a missing /
+ * @throws {@link ParamValidationError} - On a missing /
  *   non-positive `id` or wrongly typed optional field.
+ * @throws {@link ResponseValidationError} - The same condition at the
+ *   default `'response'` boundary.
+ * @example
+ * ```typescript
+ * parseWorkspaceRef({ id: 42, is_default: true });
+ * // { id: 42, is_default: true }
+ * ```
  */
 export function parseWorkspaceRef(
   raw: unknown,
@@ -248,8 +264,10 @@ export function parseWorkspaceRef(
  *
  * @param session - The candidate (account, project, workspace) tuple.
  * @param options - Error-boundary selection.
- * @throws ParamValidationError | ResponseValidationError - When
+ * @throws {@link ParamValidationError} - When
  *   `workspace.project_id` is set and differs from `project.id`.
+ * @throws {@link ResponseValidationError} - The same condition at the
+ *   default `'response'` boundary.
  */
 function checkWorkspaceProjectCoupling(
   session: Pick<Session, "project" | "workspace">,
@@ -292,8 +310,18 @@ function checkWorkspaceProjectCoupling(
  * @param raw - The raw payload.
  * @param options - Error-boundary selection (defaults to `'response'`).
  * @returns The parsed session.
- * @throws ParamValidationError | ResponseValidationError - On any nested
+ * @throws {@link ParamValidationError} - On any nested
  *   parse failure, a `null` `headers`, or a workspace-project mismatch.
+ * @throws {@link ResponseValidationError} - The same condition at the
+ *   default `'response'` boundary.
+ * @example
+ * ```typescript
+ * const session = parseSession({
+ *   account: { type: "oauth_browser", name: "team", region: "us" },
+ *   project: { id: "12345" },
+ * });
+ * // session.workspace === undefined; session.headers.size === 0
+ * ```
  */
 export function parseSession(
   raw: unknown,
@@ -340,8 +368,13 @@ export function parseSession(
  * @param options - Carries the `TokenResolver` (required for OAuth
  *   accounts, ignored for `service_account` — exactly Python's rule).
  * @returns The header value (`Basic ...` or `Bearer ...`).
- * @throws ParamTypeError - When the account is an OAuth variant and no
+ * @throws {@link ParamTypeError} - When the account is an OAuth variant and no
  *   resolver was provided (Python raises `TypeError`).
+ * @example
+ * ```typescript
+ * const header = await sessionAuthHeader(session, { tokenResolver });
+ * // "Bearer …" for OAuth accounts, "Basic …" for service accounts
+ * ```
  * @see mixpanel_headless._internal.auth.session.Session.auth_header
  */
 export async function sessionAuthHeader(
@@ -393,6 +426,11 @@ export interface SessionReplaceUpdate {
  *   presence for `workspace`/`headers`, `!= null` for
  *   `account`/`project` — mirroring Python's `is not None` checks).
  * @returns A new session instance.
+ * @example
+ * ```typescript
+ * const next = sessionReplace(session, { workspace: null });
+ * // next.workspace === null (cleared); next.account === session.account
+ * ```
  * @see mixpanel_headless._internal.auth.session.Session.replace
  */
 export function sessionReplace(
@@ -433,8 +471,17 @@ const ACTIVE_SESSION_FIELDS: ReadonlySet<string> = new Set([
  * @param raw - The raw payload.
  * @param options - Error-boundary selection (defaults to `'response'`).
  * @returns The parsed active-session block.
- * @throws ParamValidationError | ResponseValidationError - On unknown
+ * @throws {@link ParamValidationError} - On unknown
  *   keys (including `project`) or wrongly typed fields.
+ * @throws {@link ResponseValidationError} - The same condition at the
+ *   default `'response'` boundary.
+ * @example
+ * ```typescript
+ * parseActiveSession({ account: "team", workspace: 42 });
+ * // { account: "team", workspace: 42 }
+ * parseActiveSession({ project: "1" });
+ * // throws ResponseValidationError — `[active]` has no project field
+ * ```
  */
 export function parseActiveSession(
   raw: unknown,
