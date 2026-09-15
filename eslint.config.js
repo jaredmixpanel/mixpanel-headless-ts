@@ -309,6 +309,7 @@ const config = defineConfig([
         mode: "typescript",
         tagNamePreference: {
           // TSDoc spellings.
+          default: "defaultValue",
           return: "returns",
           arg: "param",
           argument: "param",
