@@ -44,7 +44,7 @@ the lefthook hooks (eslint + prettier at commit, typecheck + `test:fast` at push
 - `npm run build` / `typecheck` — both `tsc -b` (packages into gitignored
   `dist/`, every project checked); after toggling a flag in
   `tsconfig.lib.json`, run `npx tsc -b --force` once.
-- `npm run lint` — `eslint . --max-warnings 0` (typed, ~30 s); every rule is
+- `npm run lint` — `eslint . --max-warnings 0` under a 4 GB heap (typed, ~30 s); every rule is
   `error` or `off` with a reason, never `warn`. Ignore list once in `scripts/lib/lint-ignores.mjs`
   (`tests/ignore-lists.test.ts` syncs `.prettierignore`). `npm run knip`; `npm run fmt` / `fmt:check`.
 - `npm test` — all vitest projects (`core`, `node`, `browser`, `rig`, `corpus`,

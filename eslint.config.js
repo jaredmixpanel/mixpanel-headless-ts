@@ -884,6 +884,12 @@ const config = defineConfig([
   {
     name: "repo/boundary/docs-site",
     files: DOCS_SITE_FILES,
+    // Untyped on purpose: a typed program for these few files pulls in
+    // TypeScript's own declarations plus the vitepress/vue/vite graph (about
+    // 1.1 GB on top of the repo's lint run), which pushes `eslint .` past the
+    // roughly 2 GB default heap of an 8 GB CI runner. `tsc -b` type-checks
+    // them through the root project references instead.
+    extends: [tseslint.configs.disableTypeChecked],
     rules: {
       "no-restricted-imports": restrictedImports({
         ownPackage: null,

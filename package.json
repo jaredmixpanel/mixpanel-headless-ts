@@ -31,7 +31,7 @@
     "typecheck": "tsc -b",
     "pack:check": "publint --strict packages/core && publint --strict packages/node && publint --strict packages/browser && attw --pack packages/core --profile esm-only && attw --pack packages/node --profile esm-only && attw --pack packages/browser --profile esm-only",
     "knip": "knip",
-    "lint": "eslint . --max-warnings 0",
+    "lint": "node --max-old-space-size=4096 node_modules/eslint/bin/eslint.js . --max-warnings 0",
     "fmt": "prettier --write .",
     "fmt:check": "prettier --check .",
     "test": "vitest run",
