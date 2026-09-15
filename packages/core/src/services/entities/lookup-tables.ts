@@ -31,9 +31,9 @@ import {
   LosslessJsonError,
   parseLossless,
 } from "../../client/lossless-json.js";
-import { maybeScopedPath } from "../../client/scope.js";
 import { cpSlice, pythonStr } from "../../compat/index.js";
 import { MixpanelHeadlessError } from "../../errors.js";
+import { scopedPath } from "../shared.js";
 import {
   expectListResult,
   expectRecordResult,
@@ -223,14 +223,6 @@ export interface LookupTableMethods {
     signal?: AbortSignal,
   ) => Promise<string>;
 }
-/** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
-function scopedPath(core: ClientCore, domainPath: string): string {
-  return maybeScopedPath(domainPath, {
-    projectId: core.projectId(),
-    workspaceId: core.workspaceId(),
-  });
-}
-
 async function registerLookupTable(
   core: ClientCore,
   formData: Record<string, string>,

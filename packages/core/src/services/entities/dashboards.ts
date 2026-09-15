@@ -15,8 +15,8 @@ import { appRequest } from "../../client/app-request.js";
 import type { ClientCore } from "../../client/core.js";
 import { bindFirst, isPlainRecord } from "../../client/internals.js";
 import type { JsonValue } from "../../client/json-value.js";
-import { maybeScopedPath } from "../../client/scope.js";
 import { MixpanelHeadlessError } from "../../errors.js";
+import { scopedPath } from "../shared.js";
 import {
   expectListResult,
   expectRecordResult,
@@ -338,14 +338,6 @@ export interface DashboardMethods {
     signal?: AbortSignal,
   ) => Promise<void>;
 }
-/** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
-function scopedPath(core: ClientCore, domainPath: string): string {
-  return maybeScopedPath(domainPath, {
-    projectId: core.projectId(),
-    workspaceId: core.workspaceId(),
-  });
-}
-
 async function listDashboards(
   core: ClientCore,
   options: ListDashboardsOptions = {},

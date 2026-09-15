@@ -21,6 +21,7 @@ import { isPlainRecord } from "../../client/internals.js";
 import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
 import { MixpanelHeadlessError } from "../../errors.js";
+import { dictGet } from "../shared.js";
 import {
   expectListResult,
   expectRecordResult,
@@ -67,7 +68,7 @@ export interface DeleteSchemasOptions {
  *   only to ABSENT keys), or the fallback.
  * @throws TypeError - Non-record body (the AttributeError analog).
  */
-function dictGet(
+function resultDictGet(
   result: JsonValue,
   key: string,
   fallback: JsonValue,
@@ -80,7 +81,7 @@ function dictGet(
       `'${pythonTypeNameOf(result)}' object has no attribute 'get'`,
     );
   }
-  return Object.hasOwn(result, key) ? (result[key] as JsonValue) : fallback;
+  return dictGet(result, key, fallback) as JsonValue;
 }
 
 /** The C5 schema method surface (mixed into `MixpanelClient`). */
@@ -236,7 +237,7 @@ export function createSchemaMethods(core: ClientCore): SchemaMethods {
       // `result.get("results", [])` — note the source's debug-log set
       // comprehension iterates the product; its failure modes on
       // non-list results are not replicated (R9.5 — log-only effect).
-      return dictGet(result, "results", []);
+      return resultDictGet(result, "results", []);
     },
 
     getSchema: async (
@@ -255,7 +256,7 @@ export function createSchemaMethods(core: ClientCore): SchemaMethods {
       });
       // Single-schema format is {status: "ok", results: <schemaJson>};
       // normalize to the list-response shape (`:3386-3392`).
-      const schemaJson = dictGet(result, "results", result);
+      const schemaJson = resultDictGet(result, "results", result);
       return { entityType, name, schemaJson };
     },
 

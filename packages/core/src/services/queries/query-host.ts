@@ -23,6 +23,7 @@ import type { JsonValue } from "../../client/json-value.js";
 import { pythonInt, pythonJsonDumps } from "../../compat/index.js";
 import { ValueError } from "../../compat/python-builtins.js";
 import { QueryError } from "../../errors.js";
+import { isSet, truthyList, truthyStr } from "../shared.js";
 import {
   addDays,
   type CivilDate,
@@ -125,21 +126,6 @@ export function buildActivityFeedDateRange(
     return { type: "between", from: formatYmd(windowStart), to: toDate };
   }
   return { type: "relative_after", window: { unit: "day", value: 30 } };
-}
-
-/** Python truthiness for optional string params (`if where:` guards). */
-function truthyStr(value: string | null | undefined): value is string {
-  return value !== undefined && value !== null && value !== "";
-}
-
-/** Python truthiness for optional list params (`if events:` guards). */
-function truthyList(value: readonly unknown[] | null | undefined): boolean {
-  return value !== undefined && value !== null && value.length > 0;
-}
-
-/** Absent-or-None check (`is not None` guards). */
-function isSet<T>(value: T | null | undefined): value is T {
-  return value !== undefined && value !== null;
 }
 
 /** Options bag of {@link QueryHostMethods.getEvents}. */

@@ -61,6 +61,7 @@ import {
   TopEvent,
 } from "../types/results/discovery.js";
 import { pyTruthy } from "../types/results/result-base.js";
+import { dictGet, passthrough } from "./shared.js";
 
 /**
  * The `warnings.warn(..., UserWarning)` side channel as an injected
@@ -113,23 +114,6 @@ const MAX_SAMPLE_VALUES = 5;
 // ---------------------------------------------------------------------------
 
 /**
- * Read a mapping member the way Python's `dict.get(key, default)` does
- * — absent keys yield the default, an explicit `null` yields `null`.
- *
- * @param data - The mapping.
- * @param key - The key to read.
- * @param fallback - Python's default.
- * @returns The member or the fallback.
- */
-function dictGet(
-  data: Readonly<Record<string, unknown>>,
-  key: string,
-  fallback: unknown,
-): unknown {
-  return Object.hasOwn(data, key) ? data[key] : fallback;
-}
-
-/**
  * Read a REQUIRED mapping member the way Python's `d[key]` does.
  *
  * @param data - The mapping.
@@ -147,22 +131,6 @@ function dictIndex(
     throw new KeyError(key);
   }
   return data[key];
-}
-
-/**
- * Hand an unvalidated API value to a Phase-2 result field.
- *
- * The Python parsers below are pure passthroughs — they never validate
- * — so re-typing here (rather than running a Phase-2 `expect*` guard)
- * is what keeps the TS behaviour identical: a malformed row builds a
- * malformed result object in both languages instead of raising in one.
- *
- * @param value - The raw API value.
- * @returns The same value at the declared field type.
- */
-// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- a deliberate cast-in-disguise: T is inferred from the declared field type at each call site (see the docstring)
-function passthrough<T>(value: unknown): T {
-  return value as T;
 }
 
 /**
