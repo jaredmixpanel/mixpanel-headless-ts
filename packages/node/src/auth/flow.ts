@@ -471,6 +471,13 @@ export class OAuthFlow {
       );
     }
 
+    // `localhost` on purpose, not RFC 8252 §7.3's loopback literal
+    // (`127.0.0.1`): Mixpanel's redirect_uri allow-list is
+    // `http://localhost:<port>/`, DCR registrations are keyed on this
+    // exact string, and Python pins it (test_redirect_uri_uses_localhost).
+    // The server binds 127.0.0.1 only; nothing listens on ::1, so an
+    // IPv6-first browser gets a refused connect and falls back at once —
+    // no stall (CLEANUP-PLAN 8.4: verified, kept).
     const redirectUri = `http://localhost:${boundPort}/callback`;
 
     // Step 3: ensure client registration (`flow.py:282-288`).
