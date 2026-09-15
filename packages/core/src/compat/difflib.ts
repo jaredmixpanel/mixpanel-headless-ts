@@ -8,7 +8,6 @@
  * implemented verbatim — it only activates when the query string is
  * >= 200 codepoints, irrelevant at enum sizes but kept for faithfulness.
  *
- * @module compat/difflib
  * @internal
  */
 

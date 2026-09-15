@@ -158,7 +158,7 @@ export interface AnnotationInit {
   readonly id: number;
   /** Project ID. */
   readonly project_id: number;
-  /** Annotation date (``%Y-%m-%d %H:%M:%S`` format). */
+  /** Annotation date (`%Y-%m-%d %H:%M:%S` format). */
   readonly date: string;
   /** Annotation text. */
   readonly description: string;
@@ -203,7 +203,7 @@ export class Annotation extends EntityModel<AnnotationInit> {
   declare readonly id: number;
   /** Project ID. */
   declare readonly project_id: number;
-  /** Annotation date (``%Y-%m-%d %H:%M:%S`` format). */
+  /** Annotation date (`%Y-%m-%d %H:%M:%S` format). */
   declare readonly date: string;
   /** Annotation text. */
   declare readonly description: string;
@@ -241,7 +241,7 @@ export class Annotation extends EntityModel<AnnotationInit> {
  * defaults; `undefined` counts as absent.
  */
 export interface CreateAnnotationParamsInit {
-  /** Date string in ``%Y-%m-%d %H:%M:%S`` format. */
+  /** Date string in `%Y-%m-%d %H:%M:%S` format. */
   readonly date: string;
   /** Annotation text (max 512 characters). */
   readonly description: string;
@@ -282,7 +282,7 @@ export class CreateAnnotationParams extends EntityModel<CreateAnnotationParamsIn
     { name: "user_id", kind: "int", nullable: true },
   ];
 
-  /** Date string in ``%Y-%m-%d %H:%M:%S`` format. */
+  /** Date string in `%Y-%m-%d %H:%M:%S` format. */
   declare readonly date: string;
   /** Annotation text (max 512 characters). */
   declare readonly description: string;

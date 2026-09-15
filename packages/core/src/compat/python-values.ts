@@ -11,7 +11,6 @@
  * therefore could not be imported from low-level modules without an
  * evaluation cycle. This module imports only compat leaves.
  *
- * @module compat/python-values
  * @internal
  */
 

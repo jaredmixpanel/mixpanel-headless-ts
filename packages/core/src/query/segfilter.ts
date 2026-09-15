@@ -37,7 +37,6 @@
  * `workspace.py` → flow step filters (B5-S2
  * `build_flow_params`/`query_flow`).
  *
- * @module query/segfilter
  * @internal
  */
 

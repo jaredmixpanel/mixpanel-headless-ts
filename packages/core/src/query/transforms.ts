@@ -38,7 +38,6 @@
  * exported from the package barrel. Importers: `stream_events` /
  * `stream_profiles` and the `query_user` result paths.
  *
- * @module query/transforms
  * @internal
  */
 

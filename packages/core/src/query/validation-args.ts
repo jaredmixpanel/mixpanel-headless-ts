@@ -20,7 +20,6 @@
  * `group_by`) so the B5 facade can forward raw user input — the
  * validators ARE the type police.
  *
- * @module validation-args
  * @internal
  */
 

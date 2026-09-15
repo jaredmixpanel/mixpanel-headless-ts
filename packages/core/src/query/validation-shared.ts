@@ -24,7 +24,6 @@
  *   (`compat/difflib.ts`) — candidates from `sortedByCodepoint(valid)`,
  *   n=3, cutoff=0.5, `heapq.nlargest` tie order.
  *
- * @module validation-shared
  * @internal
  */
 

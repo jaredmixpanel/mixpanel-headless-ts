@@ -39,7 +39,6 @@
  * :2846/:2860/:2873/:2981/:2995), locked by
  * `test/query/validation-unhashable.test.ts`.
  *
- * @module query/validation-bookmark
  * @internal
  */
 
@@ -409,7 +408,7 @@ export function validateBookmark(
   const bookmarkType = options.bookmark_type ?? "insights";
   const errors: ValidationError[] = [];
 
-  // B1: Required top-level field: sections
+  // rule B1: Required top-level field: sections
   if (!hasKey(params, "sections")) {
     errors.push(
       new ValidationError(
@@ -420,7 +419,7 @@ export function validateBookmark(
     );
   }
 
-  // B2: Required top-level field: displayOptions
+  // rule B2: Required top-level field: displayOptions
   if (!hasKey(params, "displayOptions")) {
     errors.push(
       new ValidationError(
@@ -448,7 +447,7 @@ export function validateBookmark(
     return errors;
   }
 
-  // B3: Required sections field: show
+  // rule B3: Required sections field: show
   const show = dictGet(sections, "show");
   if (isNone(show)) {
     errors.push(
@@ -459,7 +458,7 @@ export function validateBookmark(
       ),
     );
   } else if (!Array.isArray(show) || show.length === 0) {
-    // B4: show must be non-empty list
+    // rule B4: show must be non-empty list
     errors.push(
       new ValidationError(
         "sections.show",
@@ -529,7 +528,7 @@ function validateCohortBehavior(
 ): ValidationError[] {
   const errors: ValidationError[] = [];
 
-  // B22: Cohort behavior requires positive int id (for saved cohorts)
+  // rule B22: Cohort behavior requires positive int id (for saved cohorts)
   const cohortId = dictGet(behavior, "id");
   if (
     !isNone(cohortId) &&
@@ -554,7 +553,7 @@ function validateCohortBehavior(
       ),
     );
   }
-  // B23: Cohort behavior resourceType must be "cohorts"
+  // rule B23: Cohort behavior resourceType must be "cohorts"
   const cohortRt = dictGet(behavior, "resourceType");
   if (!isNone(cohortRt) && cohortRt !== "cohorts") {
     errors.push(
@@ -580,7 +579,7 @@ function validateCohortBehavior(
 function validateBehavior(behavior: Dict, path: string): ValidationError[] {
   const errors: ValidationError[] = [];
 
-  // B7: Validate behavior.type (Python hashes in `not in`, :2483)
+  // rule B7: Validate behavior.type (Python hashes in `not in`, :2483)
   const btype = dictGet(behavior, "type");
   errors.push(
     ...enumKeyErrors(btype, {
@@ -592,7 +591,7 @@ function validateBehavior(behavior: Dict, path: string): ValidationError[] {
     }),
   );
 
-  // B8: Event behaviors need a name
+  // rule B8: Event behaviors need a name
   if (btype === "event" || btype === "simple" || btype === "custom-event") {
     const value = hasKey(behavior, "value") ? behavior["value"] : {};
     const hasName =
@@ -614,7 +613,7 @@ function validateBehavior(behavior: Dict, path: string): ValidationError[] {
     errors.push(...validateCohortBehavior(behavior, `${path}.behavior`));
   }
 
-  // B19: Validate filtersDeterminer
+  // rule B19: Validate filtersDeterminer
   errors.push(
     ...enumKeyErrors(dictGet(behavior, "filtersDeterminer"), {
       path: `${path}.behavior.filtersDeterminer`,
@@ -676,7 +675,7 @@ function validateShowClause(
   // Multi-metric show clause: requires behavior
   const behavior = dictGet(clause, "behavior");
   if (isNone(behavior)) {
-    // B6: Missing behavior
+    // rule B6: Missing behavior
     return [
       new ValidationError(
         path,
@@ -702,7 +701,7 @@ function validateShowClause(
   if (isDict(measurement)) {
     errors.push(...validateMeasurement(measurement, path, bookmarkType));
 
-    // B24: Cohort behavior math must be "unique"
+    // rule B24: Cohort behavior math must be "unique"
     if (dictGet(behavior, "type") === "cohort") {
       const mMath = dictGet(measurement, "math");
       if (!isNone(mMath) && mMath !== "unique") {
@@ -740,7 +739,7 @@ function validateMeasurement(
   const errors: ValidationError[] = [];
   const path = `${showPath}.measurement`;
 
-  // B9: Validate math type (context-dependent for funnel/retention;
+  // rule B9: Validate math type (context-dependent for funnel/retention;
   // Python hashes in `not in`, :2618)
   const math = dictGet(measurement, "math");
   let validMath: ReadonlySet<string>;
@@ -760,7 +759,7 @@ function validateMeasurement(
     }),
   );
 
-  // B10: Math requiring property
+  // rule B10: Math requiring property
   if (
     typeof math === "string" &&
     MATH_REQUIRING_PROPERTY.has(math) &&
@@ -782,7 +781,7 @@ function validateMeasurement(
     );
   }
 
-  // B11: Validate perUserAggregation
+  // rule B11: Validate perUserAggregation
   errors.push(
     ...enumKeyErrors(dictGet(measurement, "perUserAggregation"), {
       path: `${path}.perUserAggregation`,
@@ -828,7 +827,7 @@ function validateMeasurement(
 function validateDisplayOptions(display: Dict): ValidationError[] {
   const errors: ValidationError[] = [];
 
-  // B5: chartType is required and must be valid
+  // rule B5: chartType is required and must be valid
   const chartType = dictGet(display, "chartType");
   requireHashable(chartType); // R10.7: Python hashes in `not in`
   if (isNone(chartType)) {
@@ -889,7 +888,7 @@ function validateTimeClause(clause: unknown, index: number): ValidationError[] {
     return errors;
   }
 
-  // B12: Validate unit (Python hashes in `not in`, :2754)
+  // rule B12: Validate unit (Python hashes in `not in`, :2754)
   errors.push(
     ...enumKeyErrors(dictGet(clause, "unit"), {
       path: `${path}.unit`,
@@ -899,7 +898,7 @@ function validateTimeClause(clause: unknown, index: number): ValidationError[] {
     }),
   );
 
-  // B13: Validate dateRangeType
+  // rule B13: Validate dateRangeType
   const drt = dictGet(clause, "dateRangeType");
   requireHashable(drt); // R10.7: Python hashes in `not in`
   if (
@@ -933,7 +932,7 @@ function validateFilterPropertyId(
 ): ValidationError[] {
   const errors: ValidationError[] = [];
 
-  // B18: Must have property identification (value/propertyName or custom property)
+  // rule B18: Must have property identification (value/propertyName or custom property)
   // Python `or` chain over truthiness (watchlist #6).
   const hasPropertyId =
     pythonTruthy(dictGet(clause, "value")) ||
@@ -1020,7 +1019,7 @@ function validateCohortFilterValue(
 function validateFilterValue(fv: unknown, path: string): ValidationError[] {
   const errors: ValidationError[] = [];
 
-  // B20: Validate filterValue is non-empty when present
+  // rule B20: Validate filterValue is non-empty when present
   if (Array.isArray(fv) && fv.length === 0) {
     errors.push(
       new ValidationError(
@@ -1031,7 +1030,7 @@ function validateFilterValue(fv: unknown, path: string): ValidationError[] {
     );
   }
 
-  // B21: Validate filterValue list length
+  // rule B21: Validate filterValue list length
   if (Array.isArray(fv) && fv.length > MAX_FILTER_VALUES) {
     errors.push(
       new ValidationError(
@@ -1168,7 +1167,7 @@ function validateGroupClause(
     }),
   );
 
-  // B26: Cohort group entry must have non-empty cohorts array
+  // rule B26: Cohort group entry must have non-empty cohorts array
   const cohorts = dictGet(clause, "cohorts");
   if (!isNone(cohorts) && (!Array.isArray(cohorts) || cohorts.length === 0)) {
     errors.push(

@@ -577,13 +577,13 @@ export interface ComposedPropertyValueInit {
   readonly type?: string | null | undefined;
   /** Type cast instruction. */
   readonly type_cast?: string | null | undefined;
-  /** Resource type. Uses singular form (event, user, groupprofile) from the Mixpanel API composed property schema — distinct from ``CustomPropertyResourceType`` which uses plural form. */
+  /** Resource type. Uses singular form (event, user, groupprofile) from the Mixpanel API composed property schema — distinct from `CustomPropertyResourceType` which uses plural form. */
   readonly resource_type: string;
-  /** Property name in the project (e.g. ``"deal_name"``). */
+  /** Property name in the project (e.g. `"deal_name"`). */
   readonly value?: string | null | undefined;
-  /** Human-readable label for the property (e.g. ``"Deal Name"``). */
+  /** Human-readable label for the property (e.g. `"Deal Name"`). */
   readonly label?: string | null | undefined;
-  /** Default property type hint (e.g. ``"string"``, ``"number"``). */
+  /** Default property type hint (e.g. `"string"`, `"number"`). */
   readonly property_default_type?:
     "string" | "number" | "boolean" | "datetime" | null | undefined;
   /** Behavior specification. */
@@ -645,13 +645,13 @@ export class ComposedPropertyValue extends EntityModel<ComposedPropertyValueInit
   declare readonly type: string | null;
   /** Type cast instruction. */
   declare readonly type_cast: string | null;
-  /** Resource type. Uses singular form (event, user, groupprofile) from the Mixpanel API composed property schema — distinct from ``CustomPropertyResourceType`` which uses plural form. */
+  /** Resource type. Uses singular form (event, user, groupprofile) from the Mixpanel API composed property schema — distinct from `CustomPropertyResourceType` which uses plural form. */
   declare readonly resource_type: string;
-  /** Property name in the project (e.g. ``"deal_name"``). */
+  /** Property name in the project (e.g. `"deal_name"`). */
   declare readonly value: string | null;
-  /** Human-readable label for the property (e.g. ``"Deal Name"``). */
+  /** Human-readable label for the property (e.g. `"Deal Name"`). */
   declare readonly label: string | null;
-  /** Default property type hint (e.g. ``"string"``, ``"number"``). */
+  /** Default property type hint (e.g. `"string"`, `"number"`). */
   declare readonly property_default_type:
     "string" | "number" | "boolean" | "datetime" | null;
   /** Behavior specification. */

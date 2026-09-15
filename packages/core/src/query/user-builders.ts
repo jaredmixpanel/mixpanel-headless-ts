@@ -58,7 +58,6 @@
  * (`extract_cohort_filter`/`filters_to_selector` → `query_user`, B5-S2)
  * and `user_validators.py` (B2, `_is_cohort_filter` only).
  *
- * @module user-builders
  * @internal
  */
 

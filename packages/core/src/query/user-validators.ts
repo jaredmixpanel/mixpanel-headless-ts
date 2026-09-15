@@ -26,7 +26,6 @@
  * (`json.loads` accepts `NaN`/`Infinity`/`-Infinity` — B0 arbiter F1),
  * never bare `JSON.parse`.
  *
- * @module user-validators
  * @internal
  */
 

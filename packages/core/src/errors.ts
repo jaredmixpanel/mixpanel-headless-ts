@@ -1380,11 +1380,11 @@ export class SessionReplayError extends APIError {
  * lacks access (bulk-sign endpoint 403).
  */
 export class SessionReplayAccessError extends SessionReplayError {
-  /** @inheritDoc */
+  /** Error code this class reports by default. */
   protected static override readonly defaultCode: string =
     "SESSION_REPLAY_ACCESS_ERROR";
 
-  /** @inheritDoc */
+  /** HTTP status this class reports by default. */
   protected static override readonly defaultStatus: number = 403;
 }
 
@@ -1392,10 +1392,10 @@ export class SessionReplayAccessError extends SessionReplayError {
  * Signed CDN URL passed to a fetch has expired (5-minute TTL).
  */
 export class SignedURLExpiredError extends SessionReplayError {
-  /** @inheritDoc */
+  /** Error code this class reports by default. */
   protected static override readonly defaultCode: string = "SIGNED_URL_EXPIRED";
 
-  /** @inheritDoc */
+  /** HTTP status this class reports by default. */
   protected static override readonly defaultStatus: number = 403;
 }
 
@@ -1403,10 +1403,10 @@ export class SignedURLExpiredError extends SessionReplayError {
  * No CDN bytes found for a requested replay (404 on the first file).
  */
 export class ReplayNotFoundError extends SessionReplayError {
-  /** @inheritDoc */
+  /** Error code this class reports by default. */
   protected static override readonly defaultCode: string = "REPLAY_NOT_FOUND";
 
-  /** @inheritDoc */
+  /** HTTP status this class reports by default. */
   protected static override readonly defaultStatus: number = 404;
 }
 
@@ -1416,11 +1416,11 @@ export class ReplayNotFoundError extends SessionReplayError {
  * failed, the format simply isn't supported yet.
  */
 export class UnsupportedReplayFormatError extends SessionReplayError {
-  /** @inheritDoc */
+  /** Error code this class reports by default. */
   protected static override readonly defaultCode: string =
     "UNSUPPORTED_REPLAY_FORMAT";
 
-  /** @inheritDoc */
+  /** HTTP status this class reports by default. */
   protected static override readonly defaultStatus: number = 501;
 }
 
@@ -1498,7 +1498,7 @@ export class ReportLinkError extends MixpanelHeadlessError {
  * is total: this is the only exception it throws for any input string.
  */
 export class ReportLinkParseError extends ReportLinkError {
-  /** @inheritDoc */
+  /** Error code this class reports by default. */
   protected static override readonly defaultCode: string =
     "REPORT_LINK_UNPARSEABLE";
 }
@@ -1512,7 +1512,7 @@ export class ReportLinkParseError extends ReportLinkError {
  * `launch-analysis` passed to `queryReportLink`).
  */
 export class UnsupportedReportLinkError extends ReportLinkError {
-  /** @inheritDoc */
+  /** Error code this class reports by default. */
   protected static override readonly defaultCode: string =
     "UNSUPPORTED_REPORT_LINK";
 }
@@ -1526,7 +1526,7 @@ export class UnsupportedReportLinkError extends ReportLinkError {
  * a slug often means the caller is on the wrong project.
  */
 export class ReportLinkNotFoundError extends ReportLinkError {
-  /** @inheritDoc */
+  /** Error code this class reports by default. */
   protected static override readonly defaultCode: string =
     "REPORT_LINK_NOT_FOUND";
 }
@@ -1543,7 +1543,7 @@ export class ReportLinkNotFoundError extends ReportLinkError {
  * because the target is not known before it.
  */
 export class ReportLinkScopeMismatchError extends ReportLinkError {
-  /** @inheritDoc */
+  /** Error code this class reports by default. */
   protected static override readonly defaultCode: string =
     "REPORT_LINK_SCOPE_MISMATCH";
 }
@@ -1557,7 +1557,7 @@ export class ReportLinkScopeMismatchError extends ReportLinkError {
  * target is another shortlink; headless follows one redirect only).
  */
 export class ShortLinkResolutionError extends ReportLinkError {
-  /** @inheritDoc */
+  /** Error code this class reports by default. */
   protected static override readonly defaultCode: string =
     "SHORT_LINK_RESOLUTION_ERROR";
 }

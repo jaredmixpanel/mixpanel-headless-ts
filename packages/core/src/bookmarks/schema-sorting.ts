@@ -56,7 +56,6 @@
  * (`throwaway/b3-k1/probe-{schema,grammar,detail,order,bool}.py`,
  * CPython + pydantic pin, run 2026-08-15).
  *
- * @module bookmarks/schema-sorting
  * @internal
  */
 

@@ -29,27 +29,27 @@ import {
 export interface AccountSummaryInit {
   /** Local config name (matches the TOML block key). */
   readonly name: string;
-  /** Discriminator value of the underlying ``Account`` variant. */
+  /** Discriminator value of the underlying `Account` variant. */
   readonly type: "service_account" | "oauth_browser" | "oauth_token";
-  /** Mixpanel region — ``us``, ``eu``, or ``in``. */
+  /** Mixpanel region — `us`, `eu`, or `in`. */
   readonly region: "us" | "eu" | "in";
-  /** Result of the most recent ``mp account test`` (or ``"untested"``). */
+  /** Result of the most recent `mp account test` (or `"untested"`). */
   readonly status?:
     "ok" | "needs_login" | "needs_token" | "untested" | undefined;
-  /** ``True`` if ``[active].account == name``. */
+  /** `True` if `[active].account == name`. */
   readonly is_active?: boolean | undefined;
   /** Names of targets that reference this account. */
   readonly referenced_by_targets?: readonly string[] | undefined;
-  /** Authenticated user email, populated by ``login_unified()`` from ``/me``. Persisted in the per-account ``MeCache`` (not in ``config.toml``), so it survives across processes once login has run. ``None`` when the account was added via ``mp account add`` (no ``/me`` round-trip) or when ``/me`` did not return a ``user_email``. */
+  /** Authenticated user email, populated by `login_unified()` from `/me`. Persisted in the per-account `MeCache` (not in `config.toml`), so it survives across processes once login has run. `None` when the account was added via `mp account add` (no `/me` round-trip) or when `/me` did not return a `user_email`. */
   readonly user_email?: string | null | undefined;
-  /** Project ID resolved at login time. Mirror of the persisted ``default_project`` for convenience — exposed on ``AccountSummary`` so the ``mp login`` success line can render ``Logged in as ... → ... · {project_name}`` without a second ``ConfigManager`` round-trip. ``None`` when no default project is set. */
+  /** Project ID resolved at login time. Mirror of the persisted `default_project` for convenience — exposed on `AccountSummary` so the `mp login` success line can render `Logged in as ... → ... · {project_name}` without a second `ConfigManager` round-trip. `None` when no default project is set. */
   readonly project_id?: string | null | undefined;
-  /** Human-readable project name from ``/me`` for the resolved project. Populated alongside ``project_id`` by ``login_unified()``. ``None`` when no project is configured or the project is not in ``/me``. */
+  /** Human-readable project name from `/me` for the resolved project. Populated alongside `project_id` by `login_unified()`. `None` when no project is configured or the project is not in `/me`. */
   readonly project_name?: string | null | undefined;
 }
 
 /**
- * Read-only summary of a configured account for ``mp account list``.
+ * Read-only summary of a configured account for `mp account list`.
  *
  * Mirror of Python `mixpanel_headless.types.AccountSummary` (types.py;
  * model_config: frozen=True, extra='ignore').
@@ -84,21 +84,21 @@ export class AccountSummary extends EntityModel<AccountSummaryInit> {
 
   /** Local config name (matches the TOML block key). */
   declare readonly name: string;
-  /** Discriminator value of the underlying ``Account`` variant. */
+  /** Discriminator value of the underlying `Account` variant. */
   declare readonly type: "service_account" | "oauth_browser" | "oauth_token";
-  /** Mixpanel region — ``us``, ``eu``, or ``in``. */
+  /** Mixpanel region — `us`, `eu`, or `in`. */
   declare readonly region: "us" | "eu" | "in";
-  /** Result of the most recent ``mp account test`` (or ``"untested"``). */
+  /** Result of the most recent `mp account test` (or `"untested"`). */
   declare readonly status: "ok" | "needs_login" | "needs_token" | "untested";
-  /** ``True`` if ``[active].account == name``. */
+  /** `True` if `[active].account == name`. */
   declare readonly is_active: boolean;
   /** Names of targets that reference this account. */
   declare readonly referenced_by_targets: readonly string[];
-  /** Authenticated user email, populated by ``login_unified()`` from ``/me``. Persisted in the per-account ``MeCache`` (not in ``config.toml``), so it survives across processes once login has run. ``None`` when the account was added via ``mp account add`` (no ``/me`` round-trip) or when ``/me`` did not return a ``user_email``. */
+  /** Authenticated user email, populated by `login_unified()` from `/me`. Persisted in the per-account `MeCache` (not in `config.toml`), so it survives across processes once login has run. `None` when the account was added via `mp account add` (no `/me` round-trip) or when `/me` did not return a `user_email`. */
   declare readonly user_email: string | null;
-  /** Project ID resolved at login time. Mirror of the persisted ``default_project`` for convenience — exposed on ``AccountSummary`` so the ``mp login`` success line can render ``Logged in as ... → ... · {project_name}`` without a second ``ConfigManager`` round-trip. ``None`` when no default project is set. */
+  /** Project ID resolved at login time. Mirror of the persisted `default_project` for convenience — exposed on `AccountSummary` so the `mp login` success line can render `Logged in as ... → ... · {project_name}` without a second `ConfigManager` round-trip. `None` when no default project is set. */
   declare readonly project_id: string | null;
-  /** Human-readable project name from ``/me`` for the resolved project. Populated alongside ``project_id`` by ``login_unified()``. ``None`` when no project is configured or the project is not in ``/me``. */
+  /** Human-readable project name from `/me` for the resolved project. Populated alongside `project_id` by `login_unified()`. `None` when no project is configured or the project is not in `/me`. */
   declare readonly project_name: string | null;
 
   /**
@@ -132,22 +132,22 @@ export class AccountSummary extends EntityModel<AccountSummaryInit> {
 export interface AccountTestResultInit {
   /** Account that was tested. */
   readonly account_name: string;
-  /** ``True`` if the ``/me`` request succeeded with valid credentials. */
+  /** `True` if the `/me` request succeeded with valid credentials. */
   readonly ok: boolean;
-  /** Authenticated principal identity, when ``ok`` is ``True``. */
+  /** Authenticated principal identity, when `ok` is `True`. */
   readonly user?: Readonly<Record<string, unknown>> | null | undefined;
-  /** Number of projects the account can read from ``/me``. */
+  /** Number of projects the account can read from `/me`. */
   readonly accessible_project_count?: number | null | undefined;
-  /** Human-readable failure reason when ``ok`` is ``False``. */
+  /** Human-readable failure reason when `ok` is `False`. */
   readonly error?: string | null | undefined;
-  /** Machine-readable error code (only set when the cause was a ``MixpanelHeadlessError``). */
+  /** Machine-readable error code (only set when the cause was a `MixpanelHeadlessError`). */
   readonly error_code?: string | null | undefined;
-  /** Structured ``details`` payload from the underlying ``MixpanelHeadlessError``, if any. */
+  /** Structured `details` payload from the underlying `MixpanelHeadlessError`, if any. */
   readonly error_details?: Readonly<Record<string, unknown>> | null | undefined;
 }
 
 /**
- * Outcome of ``mp account test NAME`` — captures the ``/me`` probe.
+ * Outcome of `mp account test NAME` — captures the `/me` probe.
  *
  * Mirror of Python `mixpanel_headless.types.AccountTestResult` (types.py;
  * model_config: frozen=True, extra='ignore').
@@ -172,17 +172,17 @@ export class AccountTestResult extends EntityModel<AccountTestResultInit> {
 
   /** Account that was tested. */
   declare readonly account_name: string;
-  /** ``True`` if the ``/me`` request succeeded with valid credentials. */
+  /** `True` if the `/me` request succeeded with valid credentials. */
   declare readonly ok: boolean;
-  /** Authenticated principal identity, when ``ok`` is ``True``. */
+  /** Authenticated principal identity, when `ok` is `True`. */
   declare readonly user: Readonly<Record<string, unknown>> | null;
-  /** Number of projects the account can read from ``/me``. */
+  /** Number of projects the account can read from `/me`. */
   declare readonly accessible_project_count: number | null;
-  /** Human-readable failure reason when ``ok`` is ``False``. */
+  /** Human-readable failure reason when `ok` is `False`. */
   declare readonly error: string | null;
-  /** Machine-readable error code (only set when the cause was a ``MixpanelHeadlessError``). */
+  /** Machine-readable error code (only set when the cause was a `MixpanelHeadlessError`). */
   declare readonly error_code: string | null;
-  /** Structured ``details`` payload from the underlying ``MixpanelHeadlessError``, if any. */
+  /** Structured `details` payload from the underlying `MixpanelHeadlessError`, if any. */
   declare readonly error_details: Readonly<Record<string, unknown>> | null;
 
   /**
@@ -242,12 +242,12 @@ export interface TargetInit {
   readonly account: AccountName;
   /** Numeric project ID (Mixpanel's wire format). */
   readonly project: ProjectId;
-  /** Optional workspace ID (must be a positive integer when set); ``None`` defers to lazy resolution. Mirrors ``WorkspaceRef.id``'s ``PositiveInt`` constraint so bad values fail at construction rather than corrupting downstream config. */
+  /** Optional workspace ID (must be a positive integer when set); `None` defers to lazy resolution. Mirrors `WorkspaceRef.id`'s `PositiveInt` constraint so bad values fail at construction rather than corrupting downstream config. */
   readonly workspace?: WorkspaceId | null | undefined;
 }
 
 /**
- * A saved (account, project, workspace?) triple persisted in ``[targets.NAME]``.
+ * A saved (account, project, workspace?) triple persisted in `[targets.NAME]`.
  *
  * Mirror of Python `mixpanel_headless.types.Target` (types.py;
  * model_config: frozen=True, extra='forbid').
@@ -293,7 +293,7 @@ export class Target extends EntityModel<TargetInit> {
   declare readonly account: AccountName;
   /** Numeric project ID (Mixpanel's wire format). */
   declare readonly project: ProjectId;
-  /** Optional workspace ID (must be a positive integer when set); ``None`` defers to lazy resolution. Mirrors ``WorkspaceRef.id``'s ``PositiveInt`` constraint so bad values fail at construction rather than corrupting downstream config. */
+  /** Optional workspace ID (must be a positive integer when set); `None` defers to lazy resolution. Mirrors `WorkspaceRef.id`'s `PositiveInt` constraint so bad values fail at construction rather than corrupting downstream config. */
   declare readonly workspace: WorkspaceId | null;
 
   /**
@@ -327,18 +327,18 @@ export class Target extends EntityModel<TargetInit> {
 export interface OAuthLoginResultInit {
   /** Account that was authenticated. */
   readonly account_name: string;
-  /** Authenticated principal identity from the post-login ``/me`` probe. */
+  /** Authenticated principal identity from the post-login `/me` probe. */
   readonly user?: Readonly<Record<string, unknown>> | null | undefined;
   /** Access-token expiry (UTC) from the token endpoint response. */
   readonly expires_at?: string | null | undefined;
-  /** Where the tokens were persisted (``~/.mp/accounts/{name}/tokens.json``). */
+  /** Where the tokens were persisted (`~/.mp/accounts/{name}/tokens.json`). */
   readonly tokens_path: string;
-  /** Where the DCR client info was persisted (``~/.mp/accounts/{name}/client.json``). */
+  /** Where the DCR client info was persisted (`~/.mp/accounts/{name}/client.json`). */
   readonly client_path: string;
 }
 
 /**
- * Outcome of ``mp.accounts.login(name)`` — captures the PKCE flow result.
+ * Outcome of `mp.accounts.login(name)` — captures the PKCE flow result.
  *
  * Mirror of Python `mixpanel_headless.types.OAuthLoginResult` (types.py;
  * model_config: frozen=True, extra='ignore').
@@ -361,13 +361,13 @@ export class OAuthLoginResult extends EntityModel<OAuthLoginResultInit> {
 
   /** Account that was authenticated. */
   declare readonly account_name: string;
-  /** Authenticated principal identity from the post-login ``/me`` probe. */
+  /** Authenticated principal identity from the post-login `/me` probe. */
   declare readonly user: Readonly<Record<string, unknown>> | null;
   /** Access-token expiry (UTC) from the token endpoint response. */
   declare readonly expires_at: string | null;
-  /** Where the tokens were persisted (``~/.mp/accounts/{name}/tokens.json``). */
+  /** Where the tokens were persisted (`~/.mp/accounts/{name}/tokens.json`). */
   declare readonly tokens_path: string;
-  /** Where the DCR client info was persisted (``~/.mp/accounts/{name}/client.json``). */
+  /** Where the DCR client info was persisted (`~/.mp/accounts/{name}/client.json`). */
   declare readonly client_path: string;
 
   /**

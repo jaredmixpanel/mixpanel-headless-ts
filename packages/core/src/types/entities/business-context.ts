@@ -35,9 +35,9 @@ export interface BusinessContextInit {
   readonly level: "organization" | "project";
   /** Markdown content. Empty string when no context is set. */
   readonly content: string;
-  /** Owning organization ID (set when ``level="organization"``). */
+  /** Owning organization ID (set when `level="organization"`). */
   readonly organization_id?: number | null | undefined;
-  /** Owning project ID (set when ``level="project"``). */
+  /** Owning project ID (set when `level="project"`). */
   readonly project_id?: string | null | undefined;
 }
 
@@ -87,9 +87,9 @@ export class BusinessContext extends EntityModel<BusinessContextInit> {
   declare readonly level: "organization" | "project";
   /** Markdown content. Empty string when no context is set. */
   declare readonly content: string;
-  /** Owning organization ID (set when ``level="organization"``). */
+  /** Owning organization ID (set when `level="organization"`). */
   declare readonly organization_id: number | null;
-  /** Owning project ID (set when ``level="project"``). */
+  /** Owning project ID (set when `level="project"`). */
   declare readonly project_id: string | null;
 
   /**
@@ -140,9 +140,9 @@ export class BusinessContext extends EntityModel<BusinessContextInit> {
  * defaults; `undefined` counts as absent.
  */
 export interface BusinessContextChainInit {
-  /** Organization-level context (``level="organization"``). */
+  /** Organization-level context (`level="organization"`). */
   readonly organization: BusinessContext | Readonly<Record<string, unknown>>;
-  /** Project-level context (``level="project"``). */
+  /** Project-level context (`level="project"`). */
   readonly project: BusinessContext | Readonly<Record<string, unknown>>;
 }
 
@@ -165,9 +165,9 @@ export class BusinessContextChain extends EntityModel<BusinessContextChainInit> 
     { name: "project", required: true, nested: () => BusinessContext },
   ];
 
-  /** Organization-level context (``level="organization"``). */
+  /** Organization-level context (`level="organization"`). */
   declare readonly organization: BusinessContext;
-  /** Project-level context (``level="project"``). */
+  /** Project-level context (`level="project"`). */
   declare readonly project: BusinessContext;
 
   /**

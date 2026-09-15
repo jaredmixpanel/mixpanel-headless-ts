@@ -269,9 +269,9 @@ export class Dashboard extends EntityModel<DashboardInit> {
  * defaults; `undefined` counts as absent.
  */
 export interface DashboardRowContentInit {
-  /** Type of content: ``"text"`` for text cards, ``"report"`` for reports. */
+  /** Type of content: `"text"` for text cards, `"report"` for reports. */
   readonly content_type: "text" | "report";
-  /** Content parameters. Shape depends on ``content_type``. */
+  /** Content parameters. Shape depends on `content_type`. */
   readonly content_params: Readonly<Record<string, unknown>>;
 }
 
@@ -294,9 +294,9 @@ export class DashboardRowContent extends EntityModel<DashboardRowContentInit> {
     { name: "content_params", required: true },
   ];
 
-  /** Type of content: ``"text"`` for text cards, ``"report"`` for reports. */
+  /** Type of content: `"text"` for text cards, `"report"` for reports. */
   declare readonly content_type: "text" | "report";
-  /** Content parameters. Shape depends on ``content_type``. */
+  /** Content parameters. Shape depends on `content_type`. */
   declare readonly content_params: Readonly<Record<string, unknown>>;
 
   /**
@@ -708,7 +708,7 @@ export class BlueprintConfig extends EntityModel<BlueprintConfigInit> {
  * defaults; `undefined` counts as absent.
  */
 export interface BlueprintCardInit {
-  /** Card type (serialized as ``"type"``). */
+  /** Card type (serialized as `"type"`). */
   readonly card_type: string;
   /** Text card ID, if applicable. */
   readonly text_card_id?: number | null | undefined;
@@ -751,7 +751,7 @@ export class BlueprintCard extends EntityModel<BlueprintCardInit> {
     { name: "params", nullable: true },
   ];
 
-  /** Card type (serialized as ``"type"``). */
+  /** Card type (serialized as `"type"`). */
   declare readonly card_type: string;
   /** Text card ID, if applicable. */
   declare readonly text_card_id: number | null;
@@ -859,7 +859,7 @@ export class BlueprintFinishParams extends EntityModel<BlueprintFinishParamsInit
  * defaults; `undefined` counts as absent.
  */
 export interface RcaSourceDataInit {
-  /** Source type (serialized as ``"type"``). */
+  /** Source type (serialized as `"type"`). */
   readonly source_type: string;
   /** Date string. */
   readonly date?: string | null | undefined;
@@ -893,7 +893,7 @@ export class RcaSourceData extends EntityModel<RcaSourceDataInit> {
     { name: "metric_source", kind: "bool", nullable: true },
   ];
 
-  /** Source type (serialized as ``"type"``). */
+  /** Source type (serialized as `"type"`). */
   declare readonly source_type: string;
   /** Date string. */
   declare readonly date: string | null;
@@ -990,7 +990,7 @@ export class CreateRcaDashboardParams extends EntityModel<CreateRcaDashboardPara
  * defaults; `undefined` counts as absent.
  */
 export interface UpdateReportLinkParamsInit {
-  /** Link type (serialized as ``"type"``). */
+  /** Link type (serialized as `"type"`). */
   readonly link_type: string;
 }
 
@@ -1018,7 +1018,7 @@ export class UpdateReportLinkParams extends EntityModel<UpdateReportLinkParamsIn
     },
   ];
 
-  /** Link type (serialized as ``"type"``). */
+  /** Link type (serialized as `"type"`). */
   declare readonly link_type: string;
 
   /**

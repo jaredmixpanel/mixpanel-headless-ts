@@ -18,7 +18,6 @@
  * exported from the package barrel. Its only importer is
  * `services/live_query.py`'s segmentation family.
  *
- * @module query/expressions
  * @internal
  */
 

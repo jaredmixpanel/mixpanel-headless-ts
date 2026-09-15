@@ -32,7 +32,6 @@
  *   (`options.today`) exactly as the B2-V2 `today` precedent, and the
  *   conformance binding passes `context.shims.today`.
  *
- * @module bookmarks/builders
  * @internal
  */
 

@@ -53,7 +53,6 @@
  * 5. **`Literal[0..8]` uses Python equality** — `True` matches `1`,
  *    `1.0` matches `1`, `"1"` does not (probe `lit-int/*`).
  *
- * @module bookmarks/schema
  * @internal
  */
 

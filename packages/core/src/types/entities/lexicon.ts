@@ -178,13 +178,13 @@ export interface PropertyDefinitionInit {
   readonly id?: number | null | undefined;
   /** Property name. */
   readonly name: string;
-  /** Property resource type as the API returns it, e.g. ``Event`` / ``User`` (capitalized, matching the write contract). */
+  /** Property resource type as the API returns it, e.g. `Event` / `User` (capitalized, matching the write contract). */
   readonly resource_type?: string | null | undefined;
-  /** Human-readable name (Lexicon ``displayName``). */
+  /** Human-readable name (Lexicon `displayName`). */
   readonly display_name?: string | null | undefined;
   /** Property description. */
   readonly description?: string | null | undefined;
-  /** Example value shown in the Lexicon (``exampleValue``). */
+  /** Example value shown in the Lexicon (`exampleValue`). */
   readonly example_value?: string | null | undefined;
   /** Whether hidden from UI. */
   readonly hidden?: boolean | null | undefined;
@@ -254,13 +254,13 @@ export class PropertyDefinition extends EntityModel<PropertyDefinitionInit> {
   declare readonly id: number | null;
   /** Property name. */
   declare readonly name: string;
-  /** Property resource type as the API returns it, e.g. ``Event`` / ``User`` (capitalized, matching the write contract). */
+  /** Property resource type as the API returns it, e.g. `Event` / `User` (capitalized, matching the write contract). */
   declare readonly resource_type: string | null;
-  /** Human-readable name (Lexicon ``displayName``). */
+  /** Human-readable name (Lexicon `displayName`). */
   declare readonly display_name: string | null;
   /** Property description. */
   declare readonly description: string | null;
-  /** Example value shown in the Lexicon (``exampleValue``). */
+  /** Example value shown in the Lexicon (`exampleValue`). */
   declare readonly example_value: string | null;
   /** Whether hidden from UI. */
   declare readonly hidden: boolean | null;
@@ -312,7 +312,7 @@ export interface UpdateEventDefinitionParamsInit {
   readonly verified?: boolean | null | undefined;
   /** Tag names to assign. */
   readonly tags?: readonly string[] | null | undefined;
-  /** Human-readable name (sent as ``displayName``). */
+  /** Human-readable name (sent as `displayName`). */
   readonly display_name?: string | null | undefined;
   /** Event description. */
   readonly description?: string | null | undefined;
@@ -359,7 +359,7 @@ export class UpdateEventDefinitionParams extends EntityModel<UpdateEventDefiniti
   declare readonly verified: boolean | null;
   /** Tag names to assign. */
   declare readonly tags: readonly string[] | null;
-  /** Human-readable name (sent as ``displayName``). */
+  /** Human-readable name (sent as `displayName`). */
   declare readonly display_name: string | null;
   /** Event description. */
   declare readonly description: string | null;
@@ -403,13 +403,13 @@ export interface UpdatePropertyDefinitionParamsInit {
   readonly merged?: boolean | null | undefined;
   /** PII flag. */
   readonly sensitive?: boolean | null | undefined;
-  /** Human-readable name (sent as ``displayName``). */
+  /** Human-readable name (sent as `displayName`). */
   readonly display_name?: string | null | undefined;
   /** Property description. */
   readonly description?: string | null | undefined;
-  /** Example value (sent as ``exampleValue``). */
+  /** Example value (sent as `exampleValue`). */
   readonly example_value?: string | null | undefined;
-  /** Resource type, constrained to the capitalized forms the data-definitions API accepts. Sent verbatim as ``resourceType`` to disambiguate a user property from an event property of the same name. */
+  /** Resource type, constrained to the capitalized forms the data-definitions API accepts. Sent verbatim as `resourceType` to disambiguate a user property from an event property of the same name. */
   readonly resource_type?: "Event" | "User" | null | undefined;
 }
 
@@ -465,13 +465,13 @@ export class UpdatePropertyDefinitionParams extends EntityModel<UpdatePropertyDe
   declare readonly merged: boolean | null;
   /** PII flag. */
   declare readonly sensitive: boolean | null;
-  /** Human-readable name (sent as ``displayName``). */
+  /** Human-readable name (sent as `displayName`). */
   declare readonly display_name: string | null;
   /** Property description. */
   declare readonly description: string | null;
-  /** Example value (sent as ``exampleValue``). */
+  /** Example value (sent as `exampleValue`). */
   declare readonly example_value: string | null;
-  /** Resource type, constrained to the capitalized forms the data-definitions API accepts. Sent verbatim as ``resourceType`` to disambiguate a user property from an event property of the same name. */
+  /** Resource type, constrained to the capitalized forms the data-definitions API accepts. Sent verbatim as `resourceType` to disambiguate a user property from an event property of the same name. */
   declare readonly resource_type: "Event" | "User" | null;
 
   /**
@@ -519,7 +519,7 @@ export interface BulkEventUpdateInit {
   readonly verified?: boolean | null | undefined;
   /** Tag names. */
   readonly tags?: readonly string[] | null | undefined;
-  /** Human-readable name. Always emitted as ``displayName`` via an explicit serialization alias (rather than a model-wide ``alias_generator``) so the established ``team_contacts`` wire shape stays snake_case. Accepts either ``display_name`` or ``displayName`` on input, so a camelCase payload echoed by ``lexicon events get`` round-trips instead of silently dropping the field. (``contacts`` / ``team_contacts`` remain snake_case on input and the wire by design.) */
+  /** Human-readable name. Always emitted as `displayName` via an explicit serialization alias (rather than a model-wide `alias_generator`) so the established `team_contacts` wire shape stays snake_case. Accepts either `display_name` or `displayName` on input, so a camelCase payload echoed by `lexicon events get` round-trips instead of silently dropping the field. (`contacts` / `team_contacts` remain snake_case on input and the wire by design.) */
   readonly display_name?: string | null | undefined;
   /** Contact emails. */
   readonly contacts?: readonly string[] | null | undefined;
@@ -574,7 +574,7 @@ export class BulkEventUpdate extends EntityModel<BulkEventUpdateInit> {
   declare readonly verified: boolean | null;
   /** Tag names. */
   declare readonly tags: readonly string[] | null;
-  /** Human-readable name. Always emitted as ``displayName`` via an explicit serialization alias (rather than a model-wide ``alias_generator``) so the established ``team_contacts`` wire shape stays snake_case. Accepts either ``display_name`` or ``displayName`` on input, so a camelCase payload echoed by ``lexicon events get`` round-trips instead of silently dropping the field. (``contacts`` / ``team_contacts`` remain snake_case on input and the wire by design.) */
+  /** Human-readable name. Always emitted as `displayName` via an explicit serialization alias (rather than a model-wide `alias_generator`) so the established `team_contacts` wire shape stays snake_case. Accepts either `display_name` or `displayName` on input, so a camelCase payload echoed by `lexicon events get` round-trips instead of silently dropping the field. (`contacts` / `team_contacts` remain snake_case on input and the wire by design.) */
   declare readonly display_name: string | null;
   /** Contact emails. */
   declare readonly contacts: readonly string[] | null;
@@ -673,7 +673,7 @@ export class BulkUpdateEventsParams extends EntityModel<BulkUpdateEventsParamsIn
 export interface BulkPropertyUpdateInit {
   /** Property name. */
   readonly name: string;
-  /** Resource type (``Event`` / ``User``); sent verbatim as ``resourceType`` to disambiguate a user property from an event property of the same name. Constrained to the capitalized forms the data-definitions API accepts. */
+  /** Resource type (`Event` / `User`); sent verbatim as `resourceType` to disambiguate a user property from an event property of the same name. Constrained to the capitalized forms the data-definitions API accepts. */
   readonly resource_type: "Event" | "User";
   /** Property ID. */
   readonly id?: number | null | undefined;
@@ -683,9 +683,9 @@ export interface BulkPropertyUpdateInit {
   readonly dropped?: boolean | null | undefined;
   /** PII flag. */
   readonly sensitive?: boolean | null | undefined;
-  /** Human-readable name (sent as ``displayName``). */
+  /** Human-readable name (sent as `displayName`). */
   readonly display_name?: string | null | undefined;
-  /** Example value (sent as ``exampleValue``). */
+  /** Example value (sent as `exampleValue`). */
   readonly example_value?: string | null | undefined;
   /** Data group identifier. */
   readonly data_group_id?: string | null | undefined;
@@ -743,7 +743,7 @@ export class BulkPropertyUpdate extends EntityModel<BulkPropertyUpdateInit> {
 
   /** Property name. */
   declare readonly name: string;
-  /** Resource type (``Event`` / ``User``); sent verbatim as ``resourceType`` to disambiguate a user property from an event property of the same name. Constrained to the capitalized forms the data-definitions API accepts. */
+  /** Resource type (`Event` / `User`); sent verbatim as `resourceType` to disambiguate a user property from an event property of the same name. Constrained to the capitalized forms the data-definitions API accepts. */
   declare readonly resource_type: "Event" | "User";
   /** Property ID. */
   declare readonly id: number | null;
@@ -753,9 +753,9 @@ export class BulkPropertyUpdate extends EntityModel<BulkPropertyUpdateInit> {
   declare readonly dropped: boolean | null;
   /** PII flag. */
   declare readonly sensitive: boolean | null;
-  /** Human-readable name (sent as ``displayName``). */
+  /** Human-readable name (sent as `displayName`). */
   declare readonly display_name: string | null;
-  /** Example value (sent as ``exampleValue``). */
+  /** Example value (sent as `exampleValue`). */
   declare readonly example_value: string | null;
   /** Data group identifier. */
   declare readonly data_group_id: string | null;

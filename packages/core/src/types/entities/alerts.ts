@@ -423,7 +423,7 @@ export interface CreateAlertParamsInit {
   readonly name: string;
   /** Trigger condition JSON. */
   readonly condition: Readonly<Record<string, unknown>>;
-  /** Check frequency in seconds. See ``AlertFrequencyPreset`` for common values. */
+  /** Check frequency in seconds. See `AlertFrequencyPreset` for common values. */
   readonly frequency: number;
   /** Start paused or active. */
   readonly paused: boolean;
@@ -474,7 +474,7 @@ export class CreateAlertParams extends EntityModel<CreateAlertParamsInit> {
   declare readonly name: string;
   /** Trigger condition JSON. */
   declare readonly condition: Readonly<Record<string, unknown>>;
-  /** Check frequency in seconds. See ``AlertFrequencyPreset`` for common values. */
+  /** Check frequency in seconds. See `AlertFrequencyPreset` for common values. */
   declare readonly frequency: number;
   /** Start paused or active. */
   declare readonly paused: boolean;

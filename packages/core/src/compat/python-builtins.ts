@@ -25,7 +25,6 @@
  * Message text is out of contract; the strings below copy
  * CPython's wording for debuggability only.
  *
- * @module compat/python-builtins
  * @internal
  */
 

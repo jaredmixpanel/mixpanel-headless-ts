@@ -112,7 +112,7 @@ export interface BookmarkInit {
   readonly project_id?: number | null | undefined;
   /** Bookmark name. */
   readonly name: string;
-  /** Report type (aliased from ``"type"``). */
+  /** Report type (aliased from `"type"`). */
   readonly bookmark_type: string;
   /** Bookmark description. */
   readonly description?: string | null | undefined;
@@ -222,7 +222,7 @@ export class Bookmark extends EntityModel<BookmarkInit> {
   declare readonly project_id: number | null;
   /** Bookmark name. */
   declare readonly name: string;
-  /** Report type (aliased from ``"type"``). */
+  /** Report type (aliased from `"type"`). */
   declare readonly bookmark_type: string;
   /** Bookmark description. */
   declare readonly description: string | null;
@@ -304,7 +304,7 @@ export class Bookmark extends EntityModel<BookmarkInit> {
 export interface CreateBookmarkParamsInit {
   /** Bookmark name (required). */
   readonly name: string;
-  /** Report type (required, serialized as ``"type"``). Pydantic-validated against the canonical set on construction — typos like ``"insightz"`` are rejected before any API call. */
+  /** Report type (required, serialized as `"type"`). Pydantic-validated against the canonical set on construction — typos like `"insightz"` are rejected before any API call. */
   readonly bookmark_type:
     "insights" | "funnels" | "retention" | "flows" | "user";
   /** Query parameters (required). */
@@ -354,7 +354,7 @@ export class CreateBookmarkParams extends EntityModel<CreateBookmarkParamsInit> 
 
   /** Bookmark name (required). */
   declare readonly name: string;
-  /** Report type (required, serialized as ``"type"``). Pydantic-validated against the canonical set on construction — typos like ``"insightz"`` are rejected before any API call. */
+  /** Report type (required, serialized as `"type"`). Pydantic-validated against the canonical set on construction — typos like `"insightz"` are rejected before any API call. */
   declare readonly bookmark_type:
     "insights" | "funnels" | "retention" | "flows" | "user";
   /** Query parameters (required). */
@@ -712,7 +712,7 @@ export class BookmarkHistoryResponse extends EntityModel<BookmarkHistoryResponse
 export interface BookmarkUrlInit {
   /** The 12-character slug. */
   readonly slug: string;
-  /** Report type (aliased from ``"type"``). */
+  /** Report type (aliased from `"type"`). */
   readonly bookmark_type: string;
   /** The raw query parameters stored under the slug (default `{}`). */
   readonly params?: Readonly<Record<string, unknown>> | undefined;
@@ -777,7 +777,7 @@ export class BookmarkUrl extends EntityModel<BookmarkUrlInit> {
 
   /** The 12-character slug. */
   declare readonly slug: string;
-  /** Report type (aliased from ``"type"``). */
+  /** Report type (aliased from `"type"`). */
   declare readonly bookmark_type: string;
   /** The raw query parameters stored under the slug. */
   declare readonly params: Readonly<Record<string, unknown>>;
