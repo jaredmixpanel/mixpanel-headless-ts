@@ -28,7 +28,24 @@
  */
 
 // --- Facade — `Workspace` and its per-method option types ---
+export type { DiscoveryLogger, WarningSink } from "./services/discovery.js";
+export type {
+  CountingType,
+  DayWeekMonth,
+  LiveActivityFeedOptions,
+  LiveQuerySavedReportOptions,
+} from "./services/live-query.js";
+export type {
+  FlowMode,
+  SavedReportBookmarkType,
+} from "./services/live-query-transforms.js";
 export type { MeCacheStore } from "./services/me.js";
+export type {
+  ExportEventsOptions,
+  ExportProfilesOptions,
+  StreamEventsOptions,
+  StreamProfilesOptions,
+} from "./services/queries/streaming.js";
 export { Workspace } from "./workspace.js";
 export type {
   WorkspaceGetAlertCountOptions,
@@ -66,6 +83,9 @@ export type {
 export type {
   BusinessContextLevel,
   BusinessContextScopeOptions,
+  ResolveProjectAxisArgs,
+  ResolverSeams,
+  ResolveSessionArgs,
 } from "./workspace-members/lifecycle.js";
 export {
   NOOP_LOGGER,
@@ -116,11 +136,19 @@ export type {
   WorkspaceListDataVolumeAnomaliesOptions,
   WorkspaceListSchemaRegistryOptions,
 } from "./workspace-members/schemas-audit.js";
+export type {
+  EventsInput,
+  FilterWhereInput,
+  GroupByInput,
+  ParamsDict,
+  TodayFn,
+  WhereInput,
+} from "./workspace-query-params.js";
 
 // --- Client — factory, option types, JSON model, endpoints, /me models ---
+export type { RandomSource } from "./client/backoff.js";
 export {
   type ClientAppRequestOptions,
-  type ClientCore,
   type ClientRequestOptions,
   type ClientUseOptions,
   createMixpanelClient,
@@ -135,10 +163,12 @@ export {
   getEntryPoint,
   setEntryPoint,
 } from "./client/headers.js";
+export type { RetryLogger } from "./client/internals.js";
 export {
   JsonNumber,
   type JsonValue,
   toNativeJson,
+  type ToNativeJsonOptions,
 } from "./client/json-value.js";
 export {
   LosslessJsonError,
@@ -176,6 +206,11 @@ export {
   coerceStr,
   resolveWithDefault,
 } from "./coerce.js";
+export {
+  KeyError,
+  OverflowError,
+  ValueError,
+} from "./compat/python-builtins.js";
 export {
   AccountExistsError,
   AccountInUseError,
@@ -448,6 +483,7 @@ export {
   UpdateTagParams,
   type UpdateTagParamsInit,
 } from "./types/entities/lexicon.js";
+export type { ModelDumpOptions } from "./types/entities/model-base.js";
 export {
   AuditResponse,
   type AuditResponseInit,
@@ -502,7 +538,11 @@ export {
 } from "./types/entities/webhooks.js";
 
 // --- Result models ---
-export { UserAction, type UserActionFields } from "./replays/user-action.js";
+export {
+  type ReplayActionLabel,
+  UserAction,
+  type UserActionFields,
+} from "./replays/user-action.js";
 export {
   ReportLink,
   type ReportLinkFields,
@@ -527,6 +567,10 @@ export {
   type ProfilePageResultFields,
   SavedCohort,
   type SavedCohortFields,
+  type SchemaGraph,
+  type SchemaGraphEdge,
+  type SchemaGraphNode,
+  type SchemaGraphNodeKind,
   SchemaGraphResult,
   type SchemaGraphResultFields,
   SubPropertyInfo,
@@ -534,7 +578,13 @@ export {
   TopEvent,
   type TopEventFields,
 } from "./types/results/discovery.js";
+export type {
+  FlowGraph,
+  FlowGraphEdge,
+  FlowGraphNode,
+} from "./types/results/flow-graph.js";
 export {
+  type AnyTreeNode,
   FlowTreeNode,
   type FlowTreeNodeFields,
 } from "./types/results/flow-tree.js";
@@ -598,6 +648,7 @@ export {
   type ReplayBundleFields,
   type ReplayFetchFailure,
 } from "./types/results/replays.js";
+export type { Row } from "./types/results/result-base.js";
 export type {
   FlowEdge,
   FlowStepNode,
@@ -622,6 +673,7 @@ export {
   Filter,
   type FilterFields,
   type FilterValue,
+  type FilterValueInput,
   InlineCustomProperty,
   ListItemGroupMode,
   PropertyInput,
@@ -747,7 +799,7 @@ export {
   type TimeUnit,
 } from "./types/literals.js";
 
-// ── Auth — accounts, sessions, tokens, OAuth primitives, resolver, region probe
+// --- Auth — accounts, sessions, tokens, OAuth primitives, resolver, region probe ---
 export {
   type Account,
   accountAuthHeader,
@@ -820,6 +872,15 @@ export {
 } from "./auth/token.js";
 
 // --- Accounts — the injectable effects contract and namespace factories ---
+export type {
+  AccountsAddOptions,
+  AccountsLoginOptions,
+  AccountsUpdateOptions,
+  ExportBridgeOptions,
+  ProgressFactory,
+  ProgressHandle,
+  ProjectPicker,
+} from "./accounts/accounts-ops.js";
 export {
   type AddAccountParams,
   type AddTargetOptions,
@@ -854,7 +915,7 @@ export {
   type TargetsNamespace,
 } from "./accounts/targets-namespace.js";
 
-// --- Public members of `query/`, `replays/`, `bookmarks/` ---
+// --- Query, replays, bookmarks — the public members of those subtrees ---
 export { inferBookmarkType } from "./bookmarks/infer-type.js";
 export {
   validateBookmark,

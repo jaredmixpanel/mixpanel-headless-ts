@@ -13,7 +13,11 @@ import { type OAuthClientInfo, registerClient } from "@mixpanel-headless/core";
 
 import type { OAuthStorage } from "./storage.js";
 
-/** Options bag of {@link ensureClientRegistered} (the Python params). */
+/**
+ * Options bag of the client-registration seam
+ * ({@link OAuthFlowOptions.registerClient}); the Python
+ * `ensure_client_registered` params.
+ */
 export interface EnsureClientRegisteredOptions {
   /** Injected fetch (the `http_client` seam). */
   readonly fetchImpl: typeof fetch;

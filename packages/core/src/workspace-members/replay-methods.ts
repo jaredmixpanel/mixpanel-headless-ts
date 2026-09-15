@@ -307,7 +307,7 @@ export async function signReplays(
  * event-loop caveat (`asyncio.run` cannot run inside a running loop) has
  * no TS twin — this member is `async` and composes naturally; the Python
  * docstring's guidance to drive `walk_cdn_async` directly maps to
- * {@link ReplaysService.walkCdnAsync}, which is public here too.
+ * `ReplaysService.walkCdnAsync` on `@mixpanel-headless/core/internal`.
  * @param host - The facade slice.
  * @param replayId - The replay to fetch.
  * @param options - Retention / bounds / concurrency / join knobs.

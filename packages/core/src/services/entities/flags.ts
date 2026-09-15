@@ -61,6 +61,7 @@ export interface FlagMethods {
    *   (429).
    * @throws {@link QueryError} - Other 4xx responses (400/403/404/422).
    * @throws {@link ServerError} - Server-side errors (5xx).
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_feature_flags
    */
   listFeatureFlags: (options?: ListFeatureFlagsOptions) => Promise<JsonValue[]>;
@@ -180,6 +181,7 @@ export interface FlagMethods {
    * @param options - params + signal.
    * @returns The history dict (`events` + `count`).
    * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_flag_history
    */
   getFlagHistory: (

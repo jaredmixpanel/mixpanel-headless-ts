@@ -108,7 +108,11 @@ export class FeatureFlag extends EntityModel<FeatureFlagInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<FeatureFlagInit> = [
     { name: "id", required: true, kind: "str" },
     { name: "project_id", required: true, kind: "int" },
@@ -274,7 +278,11 @@ export class CreateFeatureFlagParams extends EntityModel<CreateFeatureFlagParams
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<CreateFeatureFlagParamsInit> = [
     { name: "name", required: true, kind: "str" },
     { name: "key", required: true, kind: "str" },
@@ -404,7 +412,11 @@ export class UpdateFeatureFlagParams extends EntityModel<UpdateFeatureFlagParams
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<UpdateFeatureFlagParamsInit> = [
     { name: "name", required: true, kind: "str" },
     { name: "key", required: true, kind: "str" },
@@ -496,7 +508,11 @@ export class SetTestUsersParams extends EntityModel<SetTestUsersParamsInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<SetTestUsersParamsInit> = [
     { name: "users", required: true },
   ];
@@ -557,7 +573,11 @@ export class FlagHistoryParams extends EntityModel<FlagHistoryParamsInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<FlagHistoryParamsInit> = [
     { name: "page", kind: "str", nullable: true },
     { name: "page_size", kind: "int", nullable: true },
@@ -624,7 +644,11 @@ export class FlagHistoryResponse extends EntityModel<FlagHistoryResponseInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<FlagHistoryResponseInit> = [
     { name: "events", required: true },
     { name: "count", required: true, kind: "int" },
@@ -697,7 +721,11 @@ export class FlagLimitsResponse extends EntityModel<FlagLimitsResponseInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<FlagLimitsResponseInit> = [
     { name: "limit", required: true, kind: "int" },
     { name: "is_trial", required: true, kind: "bool" },

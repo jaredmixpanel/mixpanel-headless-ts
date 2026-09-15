@@ -424,6 +424,7 @@ export interface QueryHostMethods {
    * @throws {@link ServerError} - 5xx after the retry budget.
    * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
    *   failure or another non-2xx status.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_events
    */
   getEvents: (options?: GetEventsOptions) => Promise<string[]>;
@@ -459,6 +460,7 @@ export interface QueryHostMethods {
    * @throws {@link ServerError} - 5xx after the retry budget.
    * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
    *   failure or another non-2xx status.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_property_values
    */
   getPropertyValues: (
@@ -507,6 +509,7 @@ export interface QueryHostMethods {
    * @throws {@link ServerError} - 5xx after the retry budget.
    * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
    *   failure or another non-2xx status.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_top_events
    */
   getTopEvents: (options?: GetTopEventsOptions) => Promise<JsonValue>;
@@ -525,6 +528,7 @@ export interface QueryHostMethods {
    * @throws {@link ServerError} - 5xx after the retry budget.
    * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
    *   failure or another non-2xx status.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.event_counts
    */
   eventCounts: (
@@ -550,6 +554,7 @@ export interface QueryHostMethods {
    * @throws {@link ServerError} - 5xx after the retry budget.
    * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
    *   failure or another non-2xx status.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.property_counts
    */
   propertyCounts: (
@@ -575,6 +580,7 @@ export interface QueryHostMethods {
    * @throws {@link ServerError} - 5xx after the retry budget.
    * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
    *   failure or another non-2xx status.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.segmentation
    */
   segmentation: (
@@ -599,6 +605,7 @@ export interface QueryHostMethods {
    * @throws {@link ServerError} - 5xx after the retry budget.
    * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
    *   failure or another non-2xx status.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.funnel
    */
   funnel: (
@@ -627,6 +634,7 @@ export interface QueryHostMethods {
    * @throws {@link ServerError} - 5xx after the retry budget.
    * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
    *   failure or another non-2xx status.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.retention
    */
   retention: (
@@ -653,6 +661,7 @@ export interface QueryHostMethods {
    * @throws {@link ServerError} - 5xx after the retry budget.
    * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
    *   failure or another non-2xx status.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.activity_feed
    */
   activityFeed: (
@@ -674,6 +683,7 @@ export interface QueryHostMethods {
    * @throws {@link ServerError} - 5xx after the retry budget.
    * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
    *   failure or another non-2xx status.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.query_saved_report
    */
   querySavedReport: (
@@ -715,6 +725,7 @@ export interface QueryHostMethods {
    * @throws {@link ServerError} - 5xx after the retry budget.
    * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
    *   failure or another non-2xx status.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.insights_query
    */
   insightsQuery: (
@@ -755,6 +766,7 @@ export interface QueryHostMethods {
    * @throws {@link ServerError} - 5xx after the retry budget.
    * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
    *   failure or another non-2xx status.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.arb_funnels_query
    */
   arbFunnelsQuery: (
@@ -777,6 +789,7 @@ export interface QueryHostMethods {
    * @throws {@link ServerError} - 5xx after the retry budget.
    * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
    *   failure or another non-2xx status.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.frequency
    */
   frequency: (
@@ -802,6 +815,7 @@ export interface QueryHostMethods {
    * @throws {@link ServerError} - 5xx after the retry budget.
    * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
    *   failure or another non-2xx status.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.segmentation_numeric
    */
   segmentationNumeric: (
@@ -827,6 +841,7 @@ export interface QueryHostMethods {
    * @throws {@link ServerError} - 5xx after the retry budget.
    * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
    *   failure or another non-2xx status.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.segmentation_sum
    */
   segmentationSum: (
@@ -852,6 +867,7 @@ export interface QueryHostMethods {
    * @throws {@link ServerError} - 5xx after the retry budget.
    * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
    *   failure or another non-2xx status.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.segmentation_average
    */
   segmentationAverage: (

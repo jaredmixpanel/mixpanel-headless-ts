@@ -7,7 +7,7 @@
  *
  * `FlowQueryResult` (`query-engine.ts`) delegates to these; keeping the
  * walkers here leaves the result class to its field/decoder surface.
- * `networkx.DiGraph` has no vendored TS library, so {@link buildFlowGraph}
+ * `networkx.DiGraph` has no vendored TS library, so `buildFlowGraph`
  * emits the adjacency data Python hands to `add_node` / `add_edge`, in
  * the same order and with the same per-key defaults.
  */
@@ -71,8 +71,8 @@ export function safeInt(value: unknown, default_ = 0): number {
   return default_;
 }
 
-/** One node of the {@link buildFlowGraph} adjacency object. */
-interface FlowGraphNode {
+/** One node of the `buildFlowGraph` adjacency object. */
+export interface FlowGraphNode {
   /** `"{event}@{step}"` — Python's networkx node key. */
   readonly id: string;
   /** Zero-based step index. */
@@ -87,8 +87,8 @@ interface FlowGraphNode {
   readonly anchor_type: unknown;
 }
 
-/** One edge of the {@link buildFlowGraph} adjacency object. */
-interface FlowGraphEdge {
+/** One edge of the `buildFlowGraph` adjacency object. */
+export interface FlowGraphEdge {
   /** Source node id. */
   readonly source: string;
   /** Target node id (`"{event}@{targetStep}"`). */
@@ -100,7 +100,7 @@ interface FlowGraphEdge {
 }
 
 /**
- * The plain adjacency object {@link buildFlowGraph} emits — the
+ * The plain adjacency object `buildFlowGraph` emits — the
  * stand-in for `networkx.DiGraph`.
  */
 export interface FlowGraph {

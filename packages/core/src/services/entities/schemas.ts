@@ -88,6 +88,7 @@ export interface SchemaMethods {
    *   (429).
    * @throws {@link QueryError} - Other 4xx responses (400/403/404/422).
    * @throws {@link ServerError} - Server-side errors (5xx).
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_schemas
    */
   getSchemas: (options?: GetSchemasOptions) => Promise<JsonValue>;
@@ -115,6 +116,7 @@ export interface SchemaMethods {
    * @param options - Optional `entity_type` filter + signal.
    * @returns The entry list verbatim.
    * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_schema_registry
    */
   listSchemaRegistry: (
@@ -192,6 +194,7 @@ export interface SchemaMethods {
    * @returns Dict with the `deleteCount` field.
    * @throws {@link MixpanelHeadlessError} - `entity_name` without `entity_type`
    *   (guard raised before any request), or a non-dict response.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_schemas
    */
   deleteSchemas: (

@@ -127,6 +127,7 @@ same script on Node 22 and 24. Run it before every commit.
 | Package correctness | `npm run pack:check` (`publint --strict`, `attw --pack --profile esm-only`) | Each package's `npm pack` tarball has a coherent `exports` map, ships its types, and resolves correctly for ESM consumers.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | Dead code           | `npm run knip`                                                              | No unused files, dependencies, exports or types (`exports` / `types` at error level; an interface or type alias used only in its own module's exported signatures is exempt, because declaration emit needs it exported). Not `--strict` — `knip.jsonc` says why.                                                                                                                                                                                                                                                                                                                                                                                            |
 | Lint                | `npm run lint` (`eslint . --max-warnings 0`)                                | Typed, exhaustive lint; every rule is `error` or `off` with a reason, never `warn` (asserted when the config loads). Covers the purity boundary, import ordering, per-file size caps, the naming convention, the jsdoc/tsdoc content rules (every exported symbol documented, `@example` on classes and exported functions, `@throws` on deliberate throws) and the English-title rule for tests.                                                                                                                                                                                                                                                            |
+| API reference       | `npm run docs:api:check` (`typedoc --emit none --treatWarningsAsErrors`)    | The three public barrels convert under TypeDoc with `notExported`, `invalidLink`, `notDocumented` and `rewrittenLink` on and zero warnings: every type a public signature names is exported, every `{@link}` resolves, nothing exported is undocumented. Writes nothing (`docs:api` is the emitting twin).                                                                                                                                                                                                                                                                                                                                                   |
 | Format              | `npm run fmt:check`                                                         | Prettier owns all formatting (`npm run fmt` to apply). Generated and vendored paths are excluded through the one list in `scripts/lib/lint-ignores.mjs`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | Comment archaeology | `npm run audit:comments -- --summary`                                       | No comment or test title carries a port-process identifier (batch/task ids, `foo.py:123` citations, shard/packet vocabulary); any hit is exit 1.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | Vendor integrity    | `npm run vendor:drift`                                                      | Every file under `vendor/mixpanel-contracts/` matches the sha256 in its `PROVENANCE.json`; with `ANALYTICS_ROOT` set it also byte-diffs each file against the analytics checkout.                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -299,6 +300,21 @@ each documenting its `src/index.ts` only; `@mixpanel-headless/core/internal`
 is not documented). Node and browser re-export core symbols; those re-exports
 are treated as external (`externalPattern` covers `packages/*/dist`), so each
 package documents only its own symbols and links across to core's pages.
+`scripts/lib/typedoc-link-fallbacks.mjs` (registered in `typedoc.json`)
+resolves the two link shapes TypeDoc cannot on its own because TypeScript
+parses `@throws {@link X}` without a link node: a bare `{@link ConfigError}`
+in node or browser docs resolves to core's one export of that name, and
+`{@link TypeError}` and other JS builtins resolve to MDN through
+typedoc-plugin-mdn-links. Neither the TSDoc grammar the linter enforces nor
+TypeDoc's accepts the other's cross-package or global-scope spelling, so the
+sources keep the plain `{@link Name}` form.
+Two sibling plugins shape the core reference: `typedoc-barrel-groups.mjs`
+groups and orders it by the `// --- … ---` sections of
+`packages/core/src/index.ts` (so a new section divider is also a new
+reference group), and `typedoc-python-see-links.mjs` links every
+`@see mixpanel_headless.…` tag to the Python site (its directive table
+mirrors the Python repo's `docs/api/*.md`; refresh it when those pages
+change).
 
 | Path                                                                                       | What it is                                                                                                                                                                 |
 | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -330,8 +346,9 @@ Commands (all root npm scripts; `scripts/README.md` lists them too):
 - `npm run docs:api` regenerates the reference; `npm run docs:api:check`
   validates it without writing (`--emit none --treatWarningsAsErrors`, with
   `notExported`, `invalidLink`, `notDocumented` and `rewrittenLink` on).
-  The check joins `npm run check` once its warning count reaches zero; until
-  then `docs:api` still emits with warnings so the site builds.
+  The check runs in `npm run check` right after `lint`; `docs:api` itself
+  still emits with warnings, so a docblock regression never blocks a site
+  build, only the gate.
 
 Writing a page:
 

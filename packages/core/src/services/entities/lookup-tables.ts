@@ -65,6 +65,7 @@ export interface LookupTableMethods {
    * @param options - Optional `data_group_id` filter + signal.
    * @returns The table list verbatim.
    * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_lookup_tables
    */
   listLookupTables: (options?: ListLookupTablesOptions) => Promise<JsonValue[]>;
@@ -190,6 +191,7 @@ export interface LookupTableMethods {
    * @throws {@link AuthenticationError} - Invalid or expired credentials (401).
    * @throws {@link QueryError} - Other 4xx responses (400/403/404/422).
    * @throws {@link ServerError} - Server-side errors (5xx).
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.download_lookup_table
    */
   downloadLookupTable: (

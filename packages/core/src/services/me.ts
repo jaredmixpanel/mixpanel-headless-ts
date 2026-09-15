@@ -24,7 +24,7 @@ import { pythonInt } from "../compat/python-int.js";
 import { AuthenticationError, ConfigError, QueryError } from "../errors.js";
 
 /**
- * Cache seam behind {@link MeService}: Python's `MeCache` reduced to the
+ * Cache seam behind `MeService`: Python's `MeCache` reduced to the
  * three operations the service calls (`get`, `put`, `invalidate`) plus
  * the account name the 401 / 403 messages embed.
  *
@@ -61,7 +61,7 @@ export interface MeCacheStore {
 }
 
 /**
- * The client slice {@link MeService} consumes (`api_client.me()`).
+ * The client slice `MeService` consumes (`api_client.me()`).
  */
 export interface MeClient {
   /**
@@ -74,7 +74,7 @@ export interface MeClient {
   me: () => Promise<Record<string, JsonValue>>;
 }
 
-/** Options bag of the {@link MeService} constructor (Python kw-only). */
+/** Options bag of the `MeService` constructor (Python kw-only). */
 export interface MeServiceOptions {
   /**
    * Account-type discriminator picking the 403 → `ConfigError` wording:

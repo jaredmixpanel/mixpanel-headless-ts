@@ -12,16 +12,15 @@
 
 // --- Facade / services internals ---
 export type { ReplayEnv } from "./services/entities/replays-signing.js";
-export type { LiveActivityFeedOptions } from "./services/live-query.js";
 export {
   type DiscoverOptions,
   type EventsForOptions,
   ReplaysService,
   type WalkCdnOptions,
 } from "./services/replays.js";
-export type { EventsInput } from "./workspace-query-params.js";
 
 // --- Client plumbing, invariants ---
+export type { ClientCore } from "./client/core.js";
 export { iterJsonlLines } from "./client/jsonl.js";
 export { paginateAll } from "./client/pagination.js";
 export { exceptionMessage } from "./invariant.js";
@@ -62,7 +61,6 @@ export { parseQs, pythonUnquote } from "./auth/query-params.js";
 export { probeClientFromFetch } from "./auth/region-probe.js";
 
 // --- Query validators, transforms, builders ---
-export { ValueError } from "./compat/python-builtins.js";
 export { normalizeOnExpression } from "./query/expressions.js";
 export { buildSegfilterEntry } from "./query/segfilter.js";
 export { transformEvent, transformProfile } from "./query/transforms.js";

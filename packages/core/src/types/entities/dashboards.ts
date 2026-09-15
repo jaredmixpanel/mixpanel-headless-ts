@@ -126,7 +126,11 @@ export class Dashboard extends EntityModel<DashboardInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<DashboardInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "title", required: true, kind: "str" },
@@ -307,7 +311,11 @@ export class DashboardRowContent extends EntityModel<DashboardRowContentInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<DashboardRowContentInit> = [
     { name: "content_type", required: true, check: oneOf(["text", "report"]) },
     { name: "content_params", required: true },
@@ -373,7 +381,11 @@ export class DashboardRow extends EntityModel<DashboardRowInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<DashboardRowInit> = [
     {
       name: "contents",
@@ -459,7 +471,11 @@ export class CreateDashboardParams extends EntityModel<CreateDashboardParamsInit
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<CreateDashboardParamsInit> = [
     { name: "title", required: true, kind: "str" },
     { name: "description", kind: "str", nullable: true },
@@ -563,7 +579,11 @@ export class UpdateDashboardParams extends EntityModel<UpdateDashboardParamsInit
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<UpdateDashboardParamsInit> = [
     { name: "title", kind: "str", nullable: true },
     { name: "description", kind: "str", nullable: true },
@@ -656,7 +676,11 @@ export class BlueprintTemplate extends EntityModel<BlueprintTemplateInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<BlueprintTemplateInit> = [
     { name: "title_key", required: true, kind: "str" },
     { name: "description_key", required: true, kind: "str" },
@@ -726,7 +750,11 @@ export class BlueprintConfig extends EntityModel<BlueprintConfigInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<BlueprintConfigInit> = [
     { name: "variables", required: true },
   ];
@@ -798,7 +826,11 @@ export class BlueprintCard extends EntityModel<BlueprintCardInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<BlueprintCardInit> = [
     {
       name: "card_type",
@@ -885,7 +917,11 @@ export class BlueprintFinishParams extends EntityModel<BlueprintFinishParamsInit
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<BlueprintFinishParamsInit> = [
     { name: "dashboard_id", required: true, kind: "int" },
     {
@@ -959,7 +995,11 @@ export class RcaSourceData extends EntityModel<RcaSourceDataInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<RcaSourceDataInit> = [
     {
       name: "source_type",
@@ -1035,7 +1075,11 @@ export class CreateRcaDashboardParams extends EntityModel<CreateRcaDashboardPara
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<CreateRcaDashboardParamsInit> = [
     { name: "rca_source_id", required: true, kind: "int" },
     { name: "rca_source_data", required: true, nested: () => RcaSourceData },
@@ -1099,7 +1143,11 @@ export class UpdateReportLinkParams extends EntityModel<UpdateReportLinkParamsIn
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<UpdateReportLinkParamsInit> = [
     {
       name: "link_type",
@@ -1164,7 +1212,11 @@ export class UpdateTextCardParams extends EntityModel<UpdateTextCardParamsInit> 
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<UpdateTextCardParamsInit> = [
     { name: "markdown", kind: "str", nullable: true },
   ];

@@ -184,7 +184,7 @@ action.description; // 'Clicked button "Sign in"'
 action.metadata; // analyzer extras
 ```
 
-`ReplayActionLabel` is the closed set of labels the analyzer emits: `"click"`, `"input"`, `"scroll"`, `"navigate"`, `"select"`, `"console_error"`, `"viewport_resize"`, `"touch_start"`, `"media_interaction"`.
+[`ReplayActionLabel`](/reference/core/type-aliases/ReplayActionLabel) is the closed set of labels the analyzer emits: `"click"`, `"input"`, `"scroll"`, `"navigate"`, `"select"`, `"console_error"`, `"viewport_resize"`, `"touch_start"`, `"media_interaction"`.
 
 ## The Action Timeline
 

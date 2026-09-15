@@ -49,7 +49,11 @@ export class ExperimentCreator extends EntityModel<ExperimentCreatorInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<ExperimentCreatorInit> = [
     { name: "id", kind: "int", nullable: true },
     { name: "first_name", kind: "str", nullable: true },
@@ -166,7 +170,11 @@ export class Experiment extends EntityModel<ExperimentInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<ExperimentInit> = [
     { name: "id", required: true, kind: "str" },
     { name: "name", required: true, kind: "str" },
@@ -310,7 +318,11 @@ export class CreateExperimentParams extends EntityModel<CreateExperimentParamsIn
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<CreateExperimentParamsInit> = [
     { name: "name", required: true, kind: "str" },
     { name: "description", kind: "str", nullable: true },
@@ -411,7 +423,11 @@ export class UpdateExperimentParams extends EntityModel<UpdateExperimentParamsIn
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<UpdateExperimentParamsInit> = [
     { name: "name", kind: "str", nullable: true },
     { name: "description", kind: "str", nullable: true },
@@ -512,7 +528,11 @@ export class ExperimentConcludeParams extends EntityModel<ExperimentConcludePara
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<ExperimentConcludeParamsInit> = [
     { name: "end_date", kind: "str", nullable: true },
   ];
@@ -580,7 +600,11 @@ export class ExperimentDecideParams extends EntityModel<ExperimentDecideParamsIn
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<ExperimentDecideParamsInit> = [
     { name: "success", required: true, kind: "bool" },
     { name: "variant", kind: "str", nullable: true },
@@ -647,7 +671,11 @@ export class DuplicateExperimentParams extends EntityModel<DuplicateExperimentPa
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<DuplicateExperimentParamsInit> =
     [{ name: "name", required: true, kind: "str" }];
 
