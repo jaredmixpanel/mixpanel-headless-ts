@@ -2,8 +2,9 @@
  * Shared plumbing for the Pydantic entity/param model ports
  * (phase2-design C5, packet P2-7).
  *
- * Each of the 125 exported Pydantic models becomes a hand-written TS
- * class extending {@link EntityModel}. The base implements the exact
+ * Every exported Pydantic model (124 classes across `types/entities/`
+ * and `client/me.ts`) becomes a hand-written TS class extending
+ * {@link EntityModel}. The base implements the exact
  * behavioral mirror of the Python model boundary that Phase 2 locks:
  *
  * - **Construction** (`new Model(fields)`): required-field checks,
@@ -19,7 +20,7 @@
  *   every declared field under its PYTHON attribute name, `null` for
  *   Python `None`, datetimes as iso text, computed fields appended
  *   (the shape entity wire vectors record under `expect.result`).
- * - **`toVectorPayload`** (`@internal`) — same walk but `$type`-tagged
+ * - **`toVectorPayload`** (rig-facing) — same walk but `$type`-tagged
  *   datetime leaves, byte-matching the recorded payloads for the C8(b)
  *   golden diff.
  *
@@ -36,9 +37,11 @@
  * C4) and every Phase-2 construction site is a vector-decode/golden
  * seam; Phase-3 param seams may re-wrap.
  *
- * @internal Everything here is plumbing for the entity classes, the
- * C8 golden tests, and the conformance codecs — none of it is part of
- * the public package surface.
+ * The base class and the spec types are reachable from every public
+ * entity class and so form part of the published declarations; the
+ * decode helpers (`prepareInit`, `oneOf`, the module-private walkers)
+ * are plumbing for the entity classes, the golden tests and the
+ * conformance codecs only.
  */
 
 import { orderedEntries } from "../../client/json-value.js";
@@ -70,8 +73,6 @@ export { cpLength as codepointLength } from "../../compat/codepoint.js";
  * exact value is a safe integer and as a `bigint` otherwise. Reserved
  * for Python `int` fields whose live values exceed
  * `Number.MAX_SAFE_INTEGER` (lookup-table `data_group_id`s).
- *
- * @internal
  */
 export type EntityFieldKind = "int" | "int64" | "str" | "bool" | "float";
 
@@ -450,8 +451,6 @@ export abstract class EntityModel<F extends object = never> {
    * the instance (mirroring `__pydantic_extra__`) but EXCLUDED from
    * `toJSON()`/`toVectorPayload()` — the recorder walks `model_fields`
    * only, so extras never appear in vector payloads.
-   *
-   * @internal
    */
   readonly __extras: Readonly<Record<string, unknown>>;
 
@@ -566,7 +565,6 @@ export abstract class EntityModel<F extends object = never> {
    * `{$type: "datetime", iso}` exactly as the recorder emits them.
    *
    * @returns The vector-payload shape (C8b golden diff input).
-   * @internal
    */
   toVectorPayload(): Record<string, unknown> {
     return this.walk("vector");
