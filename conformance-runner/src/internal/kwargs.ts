@@ -142,3 +142,42 @@ export function requireFetch(context: InvocationContext): typeof fetch {
   }
   return context.fetch;
 }
+
+/**
+ * Read a required kwarg and forward it under the type the library
+ * entry point declares, WITHOUT checking it.
+ *
+ * This is the typed twin of Python calling the real function with the
+ * recorded kwargs: a value the corpus recorded as deliberately wrong
+ * (an unknown `quantifier`, a bogus `operator`) must reach the library
+ * so ITS guard raises — a binding-side check would turn a recorded
+ * `ValidationError` into a rig `TypeError`. Use {@link kwarg} instead
+ * wherever the binding itself interprets the value.
+ *
+ * @param context - The invocation context.
+ * @param name - The Python kwarg name.
+ * @returns The value, typed as the callee's parameter.
+ * @throws Error - When the kwarg is missing from `call.input`.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- T is the callee's parameter type the call site names explicitly; the pass-through is unchecked by design (see doc)
+export function kwargAs<T>(context: InvocationContext, name: string): T {
+  return requireKwarg(context, name) as T;
+}
+
+/**
+ * {@link kwargAs} for an optional kwarg: absent stays `undefined` so
+ * the TS default applies exactly like the Python kwonly default.
+ *
+ * @param context - The invocation context.
+ * @param name - The Python kwarg name.
+ * @returns The value typed as the callee's parameter, or `undefined`.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- T is the callee's parameter type the call site names explicitly; the pass-through is unchecked by design (see doc)
+export function optionalKwargAs<T>(
+  context: InvocationContext,
+  name: string,
+): T | undefined {
+  return Object.hasOwn(context.kwargs, name)
+    ? (context.kwargs[name] as T)
+    : undefined;
+}
