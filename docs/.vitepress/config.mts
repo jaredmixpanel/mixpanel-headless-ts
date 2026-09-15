@@ -304,6 +304,9 @@ export default defineConfig({
   },
 
   themeConfig: {
+    // The header shows the short name; the full name stays in `title` for
+    // the browser tab, Open Graph and llms.txt.
+    siteTitle: "Mixpanel Headless",
     nav: [
       { text: "Guide", link: "/getting-started/installation" },
       { text: "Reference", link: "/api/" },
