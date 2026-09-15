@@ -25,7 +25,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type OAuthClientInfo, OAuthError } from "@mixpanel-headless/core";
 
 import { CallbackResult } from "../src/auth/callback-server.js";
-import { OAuthFlow, parsePastedRedirect } from "../src/auth/flow.js";
+import {
+  browserLaunchArgv,
+  OAuthFlow,
+  parsePastedRedirect,
+} from "../src/auth/flow.js";
 import { OAuthStorage } from "../src/auth/storage.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
@@ -222,6 +226,42 @@ describe("TestOAuthFlowLogin (test_auth_flow.py:88)", () => {
     expect(err).toContain("Open this URL in your browser");
     // Authorize URL is for the configured region's OAuth host.
     expect(err).toContain("https://");
+  });
+});
+
+// TS-only (no Python twin: CPython's `webbrowser` owns the launch).
+// The default `openBrowser` seam's argv per platform — CLEANUP-PLAN 8.1.
+describe("browser launch argv (CLEANUP-PLAN 8.1)", () => {
+  // Every `&`, `%` and `=` an authorize URL carries, in one string.
+  const url =
+    "https://mixpanel.com/oauth/authorize/?response_type=code&client_id=abc" +
+    "&redirect_uri=http%3A%2F%2Flocalhost%3A19284%2Fcallback&state=s%2Bt" +
+    "&code_challenge=c_h-a~l.l&code_challenge_method=S256";
+
+  it("win32 launches via rundll32 ShellExecute, never cmd.exe, URL as one verbatim argv element", () => {
+    const { command, args } = browserLaunchArgv("win32", url);
+    expect(command).toBe("rundll32");
+    expect(args).toEqual(["url.dll,FileProtocolHandler", url]);
+    expect(command).not.toBe("cmd");
+    expect(args).not.toContain("start");
+    // The URL survives intact as exactly one element (cmd.exe would
+    // have split it at each `&` and expanded `%`).
+    expect(args.filter((arg) => arg === url)).toHaveLength(1);
+    expect(args.some((arg) => arg.includes("&") && arg !== url)).toBe(false);
+  });
+
+  it.each([
+    ["darwin", "open"],
+    ["linux", "xdg-open"],
+  ] as const)("%s uses `%s <url>`", (platform, command) => {
+    expect(browserLaunchArgv(platform, url)).toEqual({
+      command,
+      args: [url],
+    });
+  });
+
+  it("other POSIX platforms fall back to xdg-open", () => {
+    expect(browserLaunchArgv("freebsd", url).command).toBe("xdg-open");
   });
 });
 
