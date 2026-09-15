@@ -1,0 +1,121 @@
+# Documentation site for mixpanel-headless-ts (CONTRIBUTING.md,
+# "Documentation").
+#
+# `npm run docs:build` (package.json) is the source of truth for what a docs
+# build is: `tsc -b`, TypeDoc into docs/reference/, then VitePress, which
+# compiles every ```ts twoslash block against the built declarations and fails
+# on a dead link or a type error. This workflow only adds what an npm script
+# cannot: the Pages artifact and deployment, and a reviewable artifact on pull
+# requests.
+#
+# Supply-chain rules for this file: SHA-pin every action (Dependabot bumps the
+# SHA and the trailing `# vX.Y.Z` comment together), least-privilege token per
+# job, and no secrets — the build never talks to Mixpanel.
+#
+# Deployment needs GitHub Pages enabled on the repository (Settings → Pages →
+# Source "GitHub Actions"). On a private repository that requires a paid plan;
+# until it is enabled the `build` job still runs on every push and PR and the
+# site is downloadable as an artifact, while `deploy` fails at
+# actions/deploy-pages.
+name: docs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  # A newer push to the same ref supersedes a running build; a deployment in
+  # flight is never cancelled.
+  cancel-in-progress: false
+
+env:
+  npm_config_fund: "false"
+  npm_config_audit: "false"
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history: VitePress reads each page's last commit date for
+          # its "Last updated" footer.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install (lockfile-exact)
+        run: npm ci
+
+      # The project page lives under `/<repo>/`; a custom domain later means
+      # dropping these two variables, not editing the config.
+      - name: Resolve site base
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          echo "DOCS_BASE=/${REPOSITORY#*/}/" >> "$GITHUB_ENV"
+          echo "DOCS_ORIGIN=https://${REPOSITORY%%/*}.github.io" >> "$GITHUB_ENV"
+
+      - name: Build site
+        run: npm run docs:build
+
+      - name: Configure Pages
+        # Only needed for the metadata Pages deployments read; skipped on PRs
+        # so a fork or a repository without Pages still builds.
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+      - name: Upload site (pull request)
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: docs-site
+          path: docs/.vitepress/dist
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload site (Pages)
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: docs/.vitepress/dist
+
+  deploy:
+    name: deploy
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      # Every URL the deployed llms.txt lists must resolve on the live site.
+      - name: Check llms.txt
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: npx --yes llms-txt-check "${PAGE_URL%/}/llms.txt"
