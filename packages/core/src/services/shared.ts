@@ -7,6 +7,8 @@
  *
  * Wire-shape guards specific to the entity CRUD factories
  * (`expectRecordResult`, `joinIds`, …) stay in `entities/shared.ts`.
+ *
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.maybe_scoped_path
  */
 
 import type { ClientCore } from "../client/core.js";
@@ -14,7 +16,7 @@ import { JsonNumber } from "../client/json-value.js";
 import { maybeScopedPath } from "../client/scope.js";
 
 /**
- * `self.maybe_scoped_path(...)` over the client's CURRENT pin — read at
+ * `self.maybe_scoped_path(...)` over the client's current pin — read at
  * call time, so a `use()` swap re-scopes the next request.
  *
  * @param core - The shared client internals seam.

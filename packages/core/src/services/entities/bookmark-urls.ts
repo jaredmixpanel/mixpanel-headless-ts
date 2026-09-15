@@ -1,22 +1,13 @@
 /**
- * Report-link wire methods — TS port of the 045-report-links range of
- * `MixpanelAPIClient` (`api_client.py`, Python PR #223):
- * `create_bookmark_url`, `get_bookmark_url` (the unsaved-report slug
- * records under `/projects/{pid}/bookmark-urls/`) and
- * `resolve_short_link` (the one-hop `https://{host}/s/{code}` expansion).
+ * Report-link wire methods: `create_bookmark_url` / `get_bookmark_url`
+ * (unsaved-report slug records under `/projects/{pid}/bookmark-urls/`,
+ * always project-scoped) ride `appRequest`; `resolve_short_link` expands
+ * `https://{host}/s/{code}` in one hop and deliberately bypasses
+ * `executeWithRetry` and `handleResponse`, which both treat a 3xx as an
+ * error, driving the injected `RequestExecutor` directly (it requests
+ * with `redirect: 'manual'`) under the same 429 backoff.
  *
- * `createBookmarkUrl` / `getBookmarkUrl` route through B0 `appRequest`
- * (R10.8). `resolveShortLink` deliberately bypasses `executeWithRetry`
- * and `handleResponse` — both treat a 3xx as an error — and drives the
- * injected {@link RequestExecutor} directly with the same 429 backoff
- * trio; the executor already requests with `redirect: 'manual'` (R2.11),
- * so a 3xx surfaces with its `Location` header intact.
- *
- * Browser caveat (documented, not a divergence the port can close): a
- * browser `fetch` with `redirect: 'manual'` yields an opaque-redirect
- * response (status 0, no headers) for a 3xx, so shortlinks that redirect
- * with a header resolve only on Node/undici; the 200-with-script form
- * works everywhere.
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.resolve_short_link
  */
 
 import { appRequest } from "../../client/app-request.js";
@@ -47,10 +38,10 @@ import { webHost } from "../../report-links.js";
 import { expectRecordResult } from "./shared.js";
 
 /**
- * 045-report-links: the shortlink view returns 200 HTML instead of a
- * 3xx when the target URL is longer than ~2048 chars. The body then
- * carries the target as a JSON-quoted string assigned to
- * `window.location.href` (`_SHORT_LINK_HREF_RE`).
+ * The shortlink view returns 200 HTML instead of a 3xx when the target
+ * URL is longer than ~2048 characters. The body then carries the target
+ * as a JSON-quoted string assigned to `window.location.href` (Python
+ * `_SHORT_LINK_HREF_RE`).
  */
 const SHORT_LINK_HREF_RE = /window\.location\.href\s*=\s*("(?:[^"\\]|\\.)*")/u;
 
@@ -63,7 +54,7 @@ const SHORT_LINK_REDIRECT_STATUSES: ReadonlySet<number> = new Set([
 const SHORT_LINK_HINT =
   "Open the shortlink in a browser and copy the full URL.";
 
-/** The report-link method surface (mixed into `MixpanelClient`). */
+/** Report-link methods mixed into `MixpanelClient`. */
 export interface BookmarkUrlMethods {
   /**
    * Store an unsaved report under a client-minted slug
@@ -201,7 +192,7 @@ async function getShortLink(
         timeoutSeconds: DEFAULT_APP_TIMEOUT_S,
       });
     } catch (error) {
-      // R2.10: `except httpx.HTTPError` → the instanceof filter.
+      // `except httpx.HTTPError` → the instanceof filter.
       if (!(error instanceof MixpanelHttpError)) {
         throw error;
       }
@@ -230,7 +221,7 @@ async function getShortLink(
       `Rate limited, retrying in ${waitSeconds.toFixed(1)} seconds ` +
         `(attempt ${String(attempt + 1)}/${String(deps.maxRetries)})`,
     );
-    // R2.12: the ONE seconds→milliseconds conversion point.
+    // The one seconds→milliseconds conversion point.
     await deps.sleep(waitSeconds * 1000);
   }
   // Unreachable (the loop always returns or throws) — mirror Python's
@@ -321,6 +312,10 @@ async function resolveShortLink(
     region,
   };
 
+  // Divergence: a browser `fetch` with `redirect: "manual"` answers a 3xx
+  // with an opaque redirect (status 0, no headers), so header-redirect
+  // shortlinks resolve only on Node; the 200-with-script form works
+  // everywhere.
   if (SHORT_LINK_REDIRECT_STATUSES.has(status)) {
     const location = response.header("Location") ?? "";
     if (location === "") {
@@ -411,7 +406,7 @@ async function resolveShortLink(
 /**
  * Build the report-link wire methods over the shared client core.
  *
- * @param core - The B4 client internals seam.
+ * @param core - The shared client internals seam.
  * @returns The three methods.
  */
 export function createBookmarkUrlMethods(core: ClientCore): BookmarkUrlMethods {

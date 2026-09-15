@@ -1,21 +1,14 @@
 /**
- * Lookup-table wire methods (App API + external GCS) — Phase-3 packet
- * B4-C5 port of the `MixpanelAPIClient` lookup-tables range
- * (`api_client.py`).
+ * Lookup-table wire methods on the App API and on external GCS. Three
+ * transport shapes coexist: the JSON CRUD rides `appRequest` over
+ * `maybe_scoped_path`; `register_lookup_table` (aliased by
+ * `mark_lookup_table_ready`) and `download_lookup_table` are direct
+ * transport requests with hand-built headers, `handleResponse` on non-2xx
+ * and no retry loop; `upload_to_signed_url` PUTs raw CSV bytes to a signed
+ * GCS URL with no Mixpanel auth and no header merge, because a merged
+ * custom header would break the GCS signature.
  *
- * Three wire paths coexist, ported verbatim:
- * - the JSON CRUD (list/upload-url/upload-status/update/delete/
- *   download-url) rides B0 `appRequest` over `maybe_scoped_path`;
- * - `register_lookup_table`/`mark_lookup_table_ready` (`:7683-7776`)
- *   and `download_lookup_table` (`:7874-7935`) are the B0 R10.8
- *   ownership call sites `:7720`/`:7923`: DIRECT transport requests
- *   that build headers via B0 `requestHeaders` with an explicit
- *   Authorization extra and route non-2xx through `handleResponse`
- *   manually, bypassing `_execute_with_retry` — no retry loop;
- * - `upload_to_signed_url` (`:7625-7681`) PUTs raw CSV bytes to an
- *   EXTERNAL signed URL with a fresh client: NO Mixpanel auth header,
- *   NO header merge (a merged custom header would break the GCS
- *   signature), its own `httpx.HTTPError → UPLOAD_ERROR` mapping.
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_lookup_tables
  */
 
 import { appRequest } from "../../client/app-request.js";
@@ -64,11 +57,11 @@ export interface DownloadLookupTableOptions {
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The C5 lookup-table method surface (mixed into `MixpanelClient`). */
+/** Lookup-table methods mixed into `MixpanelClient`. */
 export interface LookupTableMethods {
   /**
-   * List lookup tables (`list_lookup_tables`,
-   * `api_client.py` — GET `data-definitions/lookup-tables/`).
+   * List lookup tables (`list_lookup_tables` — GET
+   * `data-definitions/lookup-tables/`).
    *
    * @param options - Optional `data_group_id` filter + signal.
    * @returns The table list verbatim.
@@ -77,7 +70,7 @@ export interface LookupTableMethods {
   listLookupTables: (options?: ListLookupTablesOptions) => Promise<JsonValue[]>;
 
   /**
-   * Get a signed upload URL (`get_lookup_upload_url`, `:7584-7623` —
+   * Get a signed upload URL (`get_lookup_upload_url` —
    * GET `.../upload-url/` with the `content-type` param; validates the
    * `url`/`path`/`key` fields).
    *
@@ -93,9 +86,9 @@ export interface LookupTableMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * PUT CSV bytes to an external signed URL (`upload_to_signed_url`,
-   * `:7625-7681` — no Mixpanel auth, no default headers, fresh
-   * transport; transport failures and non-2xx map to `UPLOAD_ERROR`).
+   * PUT CSV bytes to an external signed URL (`upload_to_signed_url` — no
+   * Mixpanel auth, no default headers, fresh transport; transport failures and
+   * non-2xx map to `UPLOAD_ERROR`).
    *
    * @param url - The signed upload URL.
    * @param csvBytes - Raw CSV content.
@@ -112,8 +105,8 @@ export interface LookupTableMethods {
   ) => Promise<void>;
 
   /**
-   * Register a lookup table (`register_lookup_table`, `:7683-7746` —
-   * direct POST with a FORM body and the manual `handleResponse`
+   * Register a lookup table (`register_lookup_table` —
+   * direct POST with a form body and the manual `handleResponse`
    * error route; no retry loop).
    *
    * @param formData - Form fields (name, path, key, ...).
@@ -130,7 +123,7 @@ export interface LookupTableMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Mark an upload ready (`mark_lookup_table_ready`, `:7748-7776` —
+   * Mark an upload ready (`mark_lookup_table_ready` —
    * delegates to {@link registerLookupTable} verbatim).
    *
    * @param formData - Form fields including the ready flag.
@@ -144,7 +137,7 @@ export interface LookupTableMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get upload status (`get_lookup_upload_status`, `:7778-7809` — GET
+   * Get upload status (`get_lookup_upload_status` — GET
    * `.../upload-status/` with the `upload-id` param).
    *
    * @param uploadId - Upload ID.
@@ -158,7 +151,7 @@ export interface LookupTableMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update table metadata (`update_lookup_table`, `:7811-7848` —
+   * Update table metadata (`update_lookup_table` —
    * PATCH with `{**body, "data-group-id": id}`).
    *
    * @param dataGroupId - Data group ID (signed int64; a `bigint` beyond
@@ -175,7 +168,7 @@ export interface LookupTableMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete lookup tables (`delete_lookup_tables`, `:7850-7872` —
+   * Delete lookup tables (`delete_lookup_tables` —
    * DELETE with `{"data-group-ids": [...]}`).
    *
    * @param dataGroupIds - Data group IDs to delete (signed int64s; a
@@ -189,9 +182,8 @@ export interface LookupTableMethods {
   ) => Promise<void>;
 
   /**
-   * Download table data as CSV bytes (`download_lookup_table`,
-   * `:7874-7935` — direct GET, `handleResponse` on ≥ 400, raw bytes
-   * on success).
+   * Download table data as CSV bytes (`download_lookup_table` — direct GET,
+   * `handleResponse` on ≥ 400, raw bytes on success).
    *
    * @param dataGroupId - Data group ID (signed int64; a `bigint` beyond
    *   2^53 is spelled exactly into the `data-group-id` query param).
@@ -206,10 +198,9 @@ export interface LookupTableMethods {
   ) => Promise<Uint8Array>;
 
   /**
-   * Get a signed download URL (`get_lookup_download_url`,
-   * `:7937-7982` — GET `.../download-url/`; extracts `url` or
-   * `download_url` from a dict result, passes a string result
-   * through).
+   * Get a signed download URL (`get_lookup_download_url` — GET
+   * `.../download-url/`; extracts `url` or `download_url` from a dict result,
+   * passes a string result through).
    *
    * @param dataGroupId - Data group ID (signed int64; a `bigint` beyond
    *   2^53 is spelled exactly into the `data-group-id` query param).
@@ -245,7 +236,7 @@ async function registerLookupTable(
   );
   let text: string;
   try {
-    // Buffered read under the request-timeout clock (B4-ARB W-F2).
+    // Buffered read under the request-timeout clock.
     text = await response.text();
   } finally {
     release();
@@ -268,11 +259,12 @@ async function registerLookupTable(
   }
   let body: JsonValue;
   try {
-    // Python `response.json()` — json.loads on wire data (GATE-R5).
+    // Python `response.json()`: the lossless parser keeps `18.0` and
+    // integers beyond 2^53 intact.
     body = parseLossless(text, { pythonConstants: true });
   } catch (error) {
     if (!(error instanceof LosslessJsonError)) {
-      throw error; // RangeError etc. propagates (B0-ARB F3).
+      throw error; // RangeError etc. propagates.
     }
     throw new MixpanelHeadlessError(
       `register_lookup_table returned non-JSON response ` +
@@ -338,10 +330,9 @@ async function uploadToSignedUrl(
   csvBytes: Uint8Array,
   signal?: AbortSignal,
 ): Promise<void> {
-  // Fresh-request semantics (`:7647-7657`): the injected fetch IS
-  // the transport analog, but the request carries ONLY the
-  // Content-Type header — no auth, no 4-layer merge (a stray
-  // header breaks GCS signature validation).
+  // Fresh-client semantics: the injected fetch is the transport analog,
+  // but the request carries only the Content-Type header — no auth, no
+  // four-layer merge (a stray header breaks GCS signature validation).
   const fetchImpl = core.http().fetchImpl;
   let response: Response;
   try {
@@ -354,18 +345,17 @@ async function uploadToSignedUrl(
     });
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw error; // R6.7 cancellation passthrough.
+      throw error; // Caller cancellation passes through untouched.
     }
     if (
       error instanceof MixpanelHttpError ||
       error instanceof TypeError ||
       error instanceof DOMException
     ) {
-      // The `except httpx.HTTPError` arm (`:7664-7669`) — this
-      // call site maps transport failures straight to
-      // UPLOAD_ERROR (not the retry loop's HTTP_ERROR). The
-      // classification set mirrors the R2.10 adapter guards; no
-      // bare catch.
+      // The `except httpx.HTTPError` arm: this call site maps transport
+      // failures straight to UPLOAD_ERROR (not the retry loop's
+      // HTTP_ERROR). The classification set mirrors the transport
+      // adapter's own guards; no bare catch.
       throw new MixpanelHeadlessError(
         `Upload to signed URL failed: ${exceptionMessage(error)}`,
         "UPLOAD_ERROR",
@@ -466,10 +456,10 @@ async function downloadLookupTable(
     options.signal,
   );
   try {
-    // Buffered read under the request-timeout clock (B4-ARB W-F2).
+    // Buffered read under the request-timeout clock.
     if (response.status >= 400) {
       const text = await response.text();
-      // Delegate error handling (`:7926-7934`).
+      // Delegate error handling to the shared mapping.
       handleResponse(
         {
           status: response.status,
@@ -528,7 +518,7 @@ async function getLookupDownloadUrl(
 }
 
 /**
- * Build the C5 lookup-table methods over the C1 core seam.
+ * Build the lookup-table methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.

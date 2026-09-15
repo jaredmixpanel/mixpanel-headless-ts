@@ -1,11 +1,11 @@
 /**
- * Engage wire methods — Phase-3 packet B4-C2 port of
- * `MixpanelAPIClient.engage_stats` and
- * `export_profiles_page` (`:2111-2249`).
+ * Engage wire methods: `engageStats` and `exportProfilesPage`, the two
+ * `/engage` POSTs outside the streaming export. Both go through
+ * `core.requestQueryHost` (the `_request` twin), which owns project-id
+ * and workspace-pin injection, retries and `query_origin`; nothing here
+ * re-derives them.
  *
- * Both POST through the C1 `_request` twin (`core.requestQueryHost`) to
- * the engage base (a Query-host URL — project-id/workspace-pin
- * injection and `query_origin` live in the shared core, R10.8).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.engage_stats
  */
 
 import type { ClientCore } from "../../client/core.js";
@@ -74,11 +74,10 @@ export interface ExportProfilesPageOptions {
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The C2 engage method surface (mixed into `MixpanelClient`). */
+/** The engage method surface (mixed into `MixpanelClient`). */
 export interface EngageMethods {
   /**
-   * Aggregate statistics from the Engage API (`engage_stats`,
-   * `api_client.py`).
+   * Aggregate statistics from the Engage API (`MixpanelAPIClient.engage_stats`).
    *
    * @param options - where/action/cohort/segment/group/timestamp knobs.
    * @returns The raw response dict.
@@ -89,8 +88,7 @@ export interface EngageMethods {
   engageStats: (options?: EngageStatsOptions) => Promise<JsonValue>;
 
   /**
-   * Fetch a single page of profiles (`export_profiles_page`,
-   * `api_client.py`).
+   * Fetch a single page of profiles (`MixpanelAPIClient.export_profiles_page`).
    *
    * @param page - Zero-based page index.
    * @param options - session/filter/sort/search/limit knobs.
@@ -137,7 +135,7 @@ function toCount(value: JsonValue): number {
 }
 
 /**
- * Build the C2 engage methods over the C1 core seam.
+ * Build the engage methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
@@ -154,8 +152,7 @@ export function createEngageMethods(core: ClientCore): EngageMethods {
         action: options.action ?? "count()",
       };
       if (truthyStr(options.where)) {
-        // The stats endpoint accepts "selector", not "where"
-        // (`api_client.py`).
+        // The stats endpoint accepts "selector", not "where".
         params["selector"] = options.where;
       }
       if (truthyStr(options.filter_by_cohort)) {
@@ -173,8 +170,7 @@ export function createEngageMethods(core: ClientCore): EngageMethods {
         params["as_of_timestamp"] = options.as_of_timestamp;
       }
       if (truthyStr(options.filter_by_cohort)) {
-        // Sent explicitly because the API defaults to True
-        // (`api_client.py:2326-2328`).
+        // Sent explicitly because the API defaults to True.
         params["include_all_users"] = options.include_all_users ?? false;
       }
       const response = await core.requestQueryHost("POST", url, {
@@ -209,8 +205,7 @@ export function createEngageMethods(core: ClientCore): EngageMethods {
       if (truthyStr(options.where)) {
         params["where"] = options.where;
       }
-      // filter_by_cohort takes precedence over cohort_id
-      // (`api_client.py`).
+      // filter_by_cohort takes precedence over cohort_id.
       if (truthyStr(options.filter_by_cohort)) {
         params["filter_by_cohort"] = options.filter_by_cohort;
       } else if (truthyStr(options.cohort_id)) {
@@ -232,7 +227,7 @@ export function createEngageMethods(core: ClientCore): EngageMethods {
       if (isSet(options.as_of_timestamp)) {
         params["as_of_timestamp"] = options.as_of_timestamp;
       }
-      // Sent when either cohort filter is set (`api_client.py`).
+      // Sent when either cohort filter is set.
       if (truthyStr(options.cohort_id) || truthyStr(options.filter_by_cohort)) {
         params["include_all_users"] = options.include_all_users ?? false;
       }
@@ -259,9 +254,9 @@ export function createEngageMethods(core: ClientCore): EngageMethods {
         signal: options.signal,
       });
       if (!isPlainRecord(response)) {
-        // Python `response.get(...)` on a non-dict raises AttributeError
-        // — replicate the failure class shape (R10.7-adjacent; no vector
-        // or Layer-3 lock reaches this arm).
+        // Python `response.get(...)` on a non-dict raises AttributeError;
+        // the closest JS class stands in (no recorded vector reaches
+        // this arm).
         throw new TypeError(
           `'${pythonTypeNameOf(response)}' object has no attribute 'get'`,
         );

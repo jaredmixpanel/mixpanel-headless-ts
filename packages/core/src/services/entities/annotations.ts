@@ -1,13 +1,11 @@
 /**
- * Annotation CRUD + tag wire methods (App API) — Phase-3 packet B4-C4
- * port of the `MixpanelAPIClient` annotations range
- * (`api_client.py`).
+ * Annotation CRUD and tag wire methods on the App API (`annotations/`,
+ * workspace-scoped through `maybe_scoped_path`). List filters spell the
+ * camelCase wire params (`fromDate`, `toDate`) from snake_case options
+ * and `,`-join integer tag ids; results come back verbatim after
+ * Python's isinstance guard.
  *
- * All methods route through B0 `appRequest` over `maybe_scoped_path`
- * (R10.8). List filters spell camelCase wire params (`fromDate`,
- * `toDate`) from snake_case kwargs and `,`-join integer tag IDs.
- * Results are returned verbatim after the source's isinstance guard
- * (Caution #11).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_annotations
  */
 
 import { appRequest } from "../../client/app-request.js";
@@ -34,22 +32,21 @@ export interface ListAnnotationsOptions {
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The C4 annotation method surface (mixed into `MixpanelClient`). */
+/** Annotation methods mixed into `MixpanelClient`. */
 export interface AnnotationMethods {
   /**
-   * List timeline annotations (`list_annotations`,
-   * `api_client.py` — GET `annotations/`).
+   * List timeline annotations (`list_annotations` — GET `annotations/`).
    *
    * @param options - from_date/to_date/tags filters + signal.
    * @returns The annotation list verbatim.
    * @throws MixpanelHeadlessError - Non-list response.
    * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Per the B0 `appRequest` contract.
+   *   ServerError - Per the `appRequest` contract.
    */
   listAnnotations: (options?: ListAnnotationsOptions) => Promise<JsonValue[]>;
 
   /**
-   * Create an annotation (`create_annotation`, `:5722-5755` — POST
+   * Create an annotation (`create_annotation` — POST
    * `annotations/`).
    *
    * @param body - Annotation data (date, description, ...).
@@ -63,7 +60,7 @@ export interface AnnotationMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get an annotation by ID (`get_annotation`, `:5757-5788`).
+   * Get an annotation by ID (`get_annotation`).
    *
    * @param annotationId - Annotation ID.
    * @param signal - Optional cancellation signal.
@@ -76,7 +73,7 @@ export interface AnnotationMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update an annotation (`update_annotation`, `:5790-5824` — PATCH).
+   * Update an annotation (`update_annotation` — PATCH).
    *
    * @param annotationId - Annotation ID.
    * @param body - Fields to update.
@@ -91,7 +88,7 @@ export interface AnnotationMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete an annotation (`delete_annotation`, `:5826-5851`).
+   * Delete an annotation (`delete_annotation`).
    *
    * @param annotationId - Annotation ID.
    * @param signal - Optional cancellation signal.
@@ -103,7 +100,7 @@ export interface AnnotationMethods {
   ) => Promise<void>;
 
   /**
-   * List annotation tags (`list_annotation_tags`, `:5853-5881` — GET
+   * List annotation tags (`list_annotation_tags` — GET
    * `annotations/tags/`).
    *
    * @param signal - Optional cancellation signal.
@@ -113,7 +110,7 @@ export interface AnnotationMethods {
   listAnnotationTags: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
-   * Create an annotation tag (`create_annotation_tag`, `:5883-5914` —
+   * Create an annotation tag (`create_annotation_tag` —
    * POST `annotations/tags/`).
    *
    * @param body - Tag data (name).
@@ -128,13 +125,13 @@ export interface AnnotationMethods {
 }
 
 /**
- * Build the C4 annotation methods over the C1 core seam.
+ * Build the annotation methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
  */
 export function createAnnotationMethods(core: ClientCore): AnnotationMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
+  /** `maybe_scoped_path` over the pin current at call time. */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),

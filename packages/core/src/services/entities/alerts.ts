@@ -1,14 +1,12 @@
 /**
- * Custom-alert CRUD + operations wire methods (App API) — Phase-3
- * packet B4-C4 port of the `MixpanelAPIClient` alerts range
- * (`api_client.py`).
+ * Custom-alert CRUD and operations wire methods on the App API
+ * (`alerts/custom/`, workspace-scoped through `maybe_scoped_path`).
+ * `get_alert_history` is the one raw-envelope call and re-shapes the
+ * envelope into `{results, pagination}` with Python's exact branch
+ * ladder; everything else returns the envelope product verbatim after
+ * Python's isinstance guard.
  *
- * All methods route through B0 `appRequest` over `maybe_scoped_path`
- * (R10.8). `get_alert_history` is the one `_raw=True` consumer in the
- * shard — it re-shapes the raw envelope into
- * `{results, pagination}` per the source's exact branch ladder
- * (`:6352-6371`). Everything else returns the envelope product
- * verbatim after the source's isinstance guard (Caution #11).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_alerts
  */
 
 import { appRequest } from "../../client/app-request.js";
@@ -31,7 +29,7 @@ export interface ListAlertsOptions {
   readonly bookmark_id?: number | null | undefined;
   /**
    * If true, list alerts for all users (`is not None` gate — an
-   * explicit `false` IS sent, as `"false"`; `str(x).lower()` twin).
+   * explicit `false` is sent, as `"false"`; `str(x).lower()` twin).
    */
   readonly skip_user_filter?: boolean | null | undefined;
   /** Optional cancellation signal. */
@@ -58,22 +56,22 @@ export interface GetAlertHistoryOptions {
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The C4 alert method surface (mixed into `MixpanelClient`). */
+/** Alert methods mixed into `MixpanelClient`. */
 export interface AlertMethods {
   /**
-   * List custom alerts (`list_alerts`, `api_client.py` —
+   * List custom alerts (`list_alerts` —
    * GET `alerts/custom/`).
    *
    * @param options - bookmark_id/skip_user_filter filters + signal.
    * @returns The alert list verbatim.
    * @throws MixpanelHeadlessError - Non-list response.
    * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Per the B0 `appRequest` contract.
+   *   ServerError - Per the `appRequest` contract.
    */
   listAlerts: (options?: ListAlertsOptions) => Promise<JsonValue[]>;
 
   /**
-   * Create a custom alert (`create_alert`, `:6122-6153` — POST
+   * Create a custom alert (`create_alert` — POST
    * `alerts/custom/`).
    *
    * @param body - Alert creation parameters.
@@ -87,7 +85,7 @@ export interface AlertMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get a custom alert by ID (`get_alert`, `:6155-6186`).
+   * Get a custom alert by ID (`get_alert`).
    *
    * @param alertId - Alert ID (integer).
    * @param signal - Optional cancellation signal.
@@ -100,7 +98,7 @@ export interface AlertMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update a custom alert (`update_alert`, `:6188-6220` — PATCH).
+   * Update a custom alert (`update_alert` — PATCH).
    *
    * @param alertId - Alert ID (integer).
    * @param body - Fields to update.
@@ -115,7 +113,7 @@ export interface AlertMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete a custom alert (`delete_alert`, `:6222-6244`).
+   * Delete a custom alert (`delete_alert`).
    *
    * @param alertId - Alert ID (integer).
    * @param signal - Optional cancellation signal.
@@ -124,7 +122,7 @@ export interface AlertMethods {
   deleteAlert: (alertId: number, signal?: AbortSignal) => Promise<void>;
 
   /**
-   * Bulk-delete custom alerts (`bulk_delete_alerts`, `:6246-6268` —
+   * Bulk-delete custom alerts (`bulk_delete_alerts` —
    * POST `alerts/custom/bulk-delete/` with `{alert_ids}`).
    *
    * @param ids - Alert IDs to delete.
@@ -137,7 +135,7 @@ export interface AlertMethods {
   ) => Promise<void>;
 
   /**
-   * Get alert count and limits (`get_alert_count`, `:6270-6304` — GET
+   * Get alert count and limits (`get_alert_count` — GET
    * `alerts/custom/alert-count/`).
    *
    * @param options - alert_type filter + signal.
@@ -149,7 +147,7 @@ export interface AlertMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get alert trigger history (`get_alert_history`, `:6306-6371` —
+   * Get alert trigger history (`get_alert_history` —
    * GET `alerts/custom/{id}/history/` with `_raw=True`, then the
    * source's exact `{results, pagination}` re-shape ladder).
    *
@@ -164,7 +162,7 @@ export interface AlertMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Send a test alert notification (`test_alert`, `:6373-6404` — POST
+   * Send a test alert notification (`test_alert` — POST
    * `alerts/custom/test/`).
    *
    * @param body - Alert parameters for the test.
@@ -178,9 +176,8 @@ export interface AlertMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get a signed screenshot URL (`get_alert_screenshot_url`,
-   * `:6406-6437` — GET `alerts/custom/screenshot/` with the
-   * ALWAYS-present `gcs_key` param).
+   * Get a signed screenshot URL (`get_alert_screenshot_url` — GET
+   * `alerts/custom/screenshot/` with the always-present `gcs_key` param).
    *
    * @param gcsKey - GCS object key for the screenshot.
    * @param signal - Optional cancellation signal.
@@ -194,7 +191,7 @@ export interface AlertMethods {
 
   /**
    * Validate alerts against a bookmark
-   * (`validate_alerts_for_bookmark`, `:6439-6474` — POST
+   * (`validate_alerts_for_bookmark` — POST
    * `alerts/custom/validate-alerts-for-bookmark/`).
    *
    * @param body - Validation parameters.
@@ -209,14 +206,14 @@ export interface AlertMethods {
 }
 
 /**
- * Build the C4 alert methods over the C1 core seam.
+ * Build the alert methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
  */
 // eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function createAlertMethods(core: ClientCore): AlertMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
+  /** `maybe_scoped_path` over the pin current at call time. */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),
@@ -236,8 +233,8 @@ export function createAlertMethods(core: ClientCore): AlertMethods {
         options.skip_user_filter !== undefined &&
         options.skip_user_filter !== null
       ) {
-        // `str(skip_user_filter).lower()` — `str(True)` is `"True"`
-        // (R11.7: pythonStr, never String(...)).
+        // `str(skip_user_filter).lower()` — `str(True)` is `"True"`, so
+        // `pythonStr`, never `String(...)`.
         params["skip_user_filter"] = pythonStr(
           options.skip_user_filter,
         ).toLowerCase();
@@ -342,7 +339,7 @@ export function createAlertMethods(core: ClientCore): AlertMethods {
         path,
         { params: paramsOrNone(params), raw: true },
       );
-      // The source's exact branch ladder (`api_client.py`).
+      // Python's exact branch ladder.
       if (isPlainRecord(result)) {
         if (!Object.hasOwn(result, "results")) {
           throw new MixpanelHeadlessError(

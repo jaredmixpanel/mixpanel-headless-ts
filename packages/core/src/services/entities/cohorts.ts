@@ -1,11 +1,10 @@
 /**
- * Cohort CRUD wire methods (App API) — Phase-3 packet B4-C3 port of the
- * `MixpanelAPIClient` cohorts range.
+ * Cohort CRUD wire methods on the App API (`cohorts`, workspace-scoped
+ * through `maybe_scoped_path`). Every method returns the envelope product
+ * verbatim after Python's isinstance guard — no `Cohort` model shaping
+ * here; the request bodies are already-flattened dicts.
  *
- * All methods route through B0 `appRequest` over `maybe_scoped_path`
- * and return the envelope product verbatim after the source's
- * isinstance guard (Caution #11 — no `Cohort` model shaping; the
- * recorded request bodies are already-flattened dicts).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_cohorts_app
  */
 
 import { appRequest } from "../../client/app-request.js";
@@ -30,22 +29,21 @@ export interface ListCohortsAppOptions {
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The C3 cohort method surface (mixed into `MixpanelClient`). */
+/** Cohort methods mixed into `MixpanelClient`. */
 export interface CohortMethods {
   /**
-   * List cohorts via the App API (`list_cohorts_app`,
-   * `api_client.py`).
+   * List cohorts via the App API (`list_cohorts_app`).
    *
    * @param options - data_group_id/ids filters + signal.
    * @returns The cohort list verbatim.
    * @throws MixpanelHeadlessError - Non-list response.
    * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Per the B0 `appRequest` contract.
+   *   ServerError - Per the `appRequest` contract.
    */
   listCohortsApp: (options?: ListCohortsAppOptions) => Promise<JsonValue[]>;
 
   /**
-   * Get a cohort by ID (`get_cohort`, `:4777-4805`).
+   * Get a cohort by ID (`get_cohort`).
    *
    * @param cohortId - The cohort identifier.
    * @param signal - Optional cancellation signal.
@@ -58,7 +56,7 @@ export interface CohortMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Create a cohort (`create_cohort`, `:4807-4835`).
+   * Create a cohort (`create_cohort`).
    *
    * @param body - Cohort definition payload.
    * @param signal - Optional cancellation signal.
@@ -71,7 +69,7 @@ export interface CohortMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update a cohort (`update_cohort`, `:4837-4866`; PATCH).
+   * Update a cohort (`update_cohort`; PATCH).
    *
    * @param cohortId - The cohort identifier.
    * @param body - Fields to update.
@@ -86,7 +84,7 @@ export interface CohortMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete a cohort (`delete_cohort`, `:4868-4887`).
+   * Delete a cohort (`delete_cohort`).
    *
    * @param cohortId - The cohort identifier.
    * @param signal - Optional cancellation signal.
@@ -95,7 +93,7 @@ export interface CohortMethods {
   deleteCohort: (cohortId: number, signal?: AbortSignal) => Promise<void>;
 
   /**
-   * Bulk-delete cohorts (`bulk_delete_cohorts`, `:4889-4908` — POST
+   * Bulk-delete cohorts (`bulk_delete_cohorts` — POST
    * `cohorts/bulk-delete` with `{cohort_ids}`).
    *
    * @param ids - Cohort IDs to delete.
@@ -108,7 +106,7 @@ export interface CohortMethods {
   ) => Promise<void>;
 
   /**
-   * Bulk-update cohorts (`bulk_update_cohorts`, `:4910-4932` — POST
+   * Bulk-update cohorts (`bulk_update_cohorts` — POST
    * `cohorts/bulk-update` with `{cohorts}`).
    *
    * @param entries - Update dicts, each with `id` + fields.
@@ -122,13 +120,13 @@ export interface CohortMethods {
 }
 
 /**
- * Build the C3 cohort methods over the C1 core seam.
+ * Build the cohort methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
  */
 export function createCohortMethods(core: ClientCore): CohortMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
+  /** `maybe_scoped_path` over the pin current at call time. */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),

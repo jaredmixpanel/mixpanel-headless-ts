@@ -1,13 +1,11 @@
 /**
- * Schema-enforcement wire methods (App API) — Phase-3 packet B4-C5
- * port of the `MixpanelAPIClient` enforcement range
- * (`api_client.py`).
+ * Schema-enforcement wire methods on the App API: one endpoint
+ * (`data-definitions/schema/`, workspace-scoped through
+ * `maybe_scoped_path`), five verbs. Unlike the other deletes in this
+ * directory, `delete_schema_enforcement` takes no arguments and still
+ * returns a dict.
  *
- * One endpoint (`data-definitions/schema/`), five verbs, all through
- * B0 `appRequest` over `maybe_scoped_path`; NOTE
- * `delete_schema_enforcement` takes NO arguments and still returns a
- * dict (unlike C5's void deletes — Behavior spine, "watch
- * delete_schemas vs delete_schema_enforcement").
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_schema_enforcement
  */
 
 import { appRequest } from "../../client/app-request.js";
@@ -24,11 +22,11 @@ export interface GetSchemaEnforcementOptions {
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The C5 schema-enforcement method surface (mixed into `MixpanelClient`). */
+/** Schema-enforcement methods mixed into `MixpanelClient`. */
 export interface SchemaEnforcementMethods {
   /**
-   * Get enforcement configuration (`get_schema_enforcement`,
-   * `api_client.py` — GET `data-definitions/schema/`).
+   * Get enforcement configuration (`get_schema_enforcement` — GET
+   * `data-definitions/schema/`).
    *
    * @param options - Optional `fields` filter + signal.
    * @returns The enforcement config dict.
@@ -39,7 +37,7 @@ export interface SchemaEnforcementMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Initialize enforcement (`init_schema_enforcement`, `:8208-8242` —
+   * Initialize enforcement (`init_schema_enforcement` —
    * POST).
    *
    * @param body - Init payload.
@@ -53,8 +51,7 @@ export interface SchemaEnforcementMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Partially update enforcement (`update_schema_enforcement`,
-   * `:8244-8278` — PATCH).
+   * Partially update enforcement (`update_schema_enforcement` — PATCH).
    *
    * @param body - Partial update payload.
    * @param signal - Optional cancellation signal.
@@ -67,8 +64,7 @@ export interface SchemaEnforcementMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Fully replace enforcement (`replace_schema_enforcement`,
-   * `:8280-8312` — PUT).
+   * Fully replace enforcement (`replace_schema_enforcement` — PUT).
    *
    * @param body - Complete replacement payload.
    * @param signal - Optional cancellation signal.
@@ -81,8 +77,8 @@ export interface SchemaEnforcementMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete enforcement configuration (`delete_schema_enforcement`,
-   * `:8314-8339` — DELETE, no arguments, dict return).
+   * Delete enforcement configuration (`delete_schema_enforcement` — DELETE, no
+   * arguments, dict return).
    *
    * @param signal - Optional cancellation signal.
    * @returns The raw response dict.
@@ -94,7 +90,7 @@ export interface SchemaEnforcementMethods {
 }
 
 /**
- * Build the C5 schema-enforcement methods over the C1 core seam.
+ * Build the schema-enforcement methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
@@ -102,7 +98,7 @@ export interface SchemaEnforcementMethods {
 export function createSchemaEnforcementMethods(
   core: ClientCore,
 ): SchemaEnforcementMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
+  /** `maybe_scoped_path` over the pin current at call time. */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),

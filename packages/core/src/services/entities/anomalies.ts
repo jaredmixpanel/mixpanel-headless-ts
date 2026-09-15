@@ -1,11 +1,11 @@
 /**
- * Data-volume-anomaly wire methods (App API) — Phase-3 packet B4-C5
- * port of the `MixpanelAPIClient` anomalies range
- * (`api_client.py`).
+ * Data-volume-anomaly wire methods on the App API
+ * (`data-definitions/data-volume-anomalies/`, workspace-scoped through
+ * `maybe_scoped_path`). The list call is a raw-envelope request that
+ * digs `results.anomalies` out with Python's exact fall-through ladder;
+ * the two updates are plain PATCH dict-returns.
  *
- * `list_data_volume_anomalies` uses `_raw=True` and digs
- * `results.anomalies` out of the envelope with the source's exact
- * fall-through ladder; the update pair are plain PATCH dict-returns.
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_data_volume_anomalies
  */
 
 import { appRequest } from "../../client/app-request.js";
@@ -24,11 +24,10 @@ export interface ListDataVolumeAnomaliesOptions {
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The C5 anomaly method surface (mixed into `MixpanelClient`). */
+/** Anomaly methods mixed into `MixpanelClient`. */
 export interface AnomalyMethods {
   /**
-   * List data-volume anomalies (`list_data_volume_anomalies`,
-   * `api_client.py` — GET
+   * List data-volume anomalies (`list_data_volume_anomalies` — GET
    * `data-definitions/data-volume-anomalies/` with `_raw=True`;
    * extracts `results.anomalies`).
    *
@@ -42,7 +41,7 @@ export interface AnomalyMethods {
   ) => Promise<JsonValue[]>;
 
   /**
-   * Update one anomaly's status (`update_anomaly`, `:8469-8502` —
+   * Update one anomaly's status (`update_anomaly` —
    * PATCH).
    *
    * @param body - Update payload (id, status, anomalyClass).
@@ -56,8 +55,8 @@ export interface AnomalyMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Bulk-update anomaly statuses (`bulk_update_anomalies`,
-   * `:8504-8538` — PATCH `.../data-volume-anomalies/bulk/`).
+   * Bulk-update anomaly statuses (`bulk_update_anomalies` — PATCH
+   * `.../data-volume-anomalies/bulk/`).
    *
    * @param body - Bulk update payload.
    * @param signal - Optional cancellation signal.
@@ -71,13 +70,13 @@ export interface AnomalyMethods {
 }
 
 /**
- * Build the C5 anomaly methods over the C1 core seam.
+ * Build the anomaly methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
  */
 export function createAnomalyMethods(core: ClientCore): AnomalyMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
+  /** `maybe_scoped_path` over the pin current at call time. */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),
@@ -98,8 +97,8 @@ export function createAnomalyMethods(core: ClientCore): AnomalyMethods {
           raw: true,
         },
       );
-      // Response: {"status":"ok","results":{"anomalies":[...]}} —
-      // ladder ported verbatim (`:8454-8467`).
+      // Response: {"status":"ok","results":{"anomalies":[...]}} — the
+      // ladder mirrors Python branch for branch.
       if (isPlainRecord(result)) {
         const results = Object.hasOwn(result, "results")
           ? (result["results"] as JsonValue)

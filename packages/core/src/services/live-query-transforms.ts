@@ -1,33 +1,14 @@
 /**
- * Live-query response transforms — TS port of the module-level
- * functions of `mixpanel_headless/_internal/services/live_query.py`
- * (`:51-674` head block and `:1567-2042` tail block) for Phase-3 batch
- * B5, shard S2 (`docs/history/phase3/design/b5-packets.md` §3).
+ * Live-query response transforms: the module-level functions that turn raw
+ * `/segmentation`, `/funnels`, `/retention`, insights, flows and
+ * activity-feed bodies into typed results (the service class lives in
+ * `live-query.ts`). The arithmetic is transcribed statement for statement
+ * because the corpus pins it byte-exactly (step 0 converts at the literal
+ * `1.0`; an all-zero cohort yields `0.0`, never NaN), and every dict read
+ * goes through the CPython-shaped helpers below so a non-mapping raises
+ * the class Python raises, where Python raises it.
  *
- * The service class itself lives in the sibling `live-query.ts`
- * (R7.2 split — the Python file is 2,042 lines).
- *
- * These transforms are the **S10/S11 smoke-patch surface**: the packet
- * (§9 Caution 1) requires byte-fidelity on the conversion math, so the
- * division guards below are transcribed statement-for-statement:
- *
- * - step 0 conversion rate is the literal `1.0`; step N is
- *   `count / prev_count` guarded by `prev_count > 0`, else `0.0`
- *   (`live_query.py`);
- * - the overall rate is `steps[-1].count / steps[0].count` guarded by
- *   `steps[0].count > 0`, else `0.0` (`:145-147`);
- * - retention is `count / size` guarded by `size > 0`, else `0.0`
- *   (`:196`) — an all-zero cohort yields an all-`0.0` row, never NaN.
- *
- * Port-wide conventions applied here:
- *
- * - R11.5 — every `sorted(...)` over strings is code-point ordered
- *   ({@link sortedByCodepoint} / {@link compareCodepoints}).
- * - R11.6 — `key[:10]` is a CODE-POINT slice ({@link cpSlice}).
- * - R11.7 — `int(...)` coercions route through {@link pythonInt}.
- * - R9.5 — the one `warnings.warn` site is an injected sink
- *   ({@link WarningSink}), never `console`.
- * - Watchlist #13 — `isinstance(x, dict)` is {@link isPythonDict}.
+ * @see mixpanel_headless._internal.services.live_query
  */
 
 import {
@@ -80,10 +61,7 @@ export type SavedReportBookmarkType =
 /** Flow visualization modes (`_transform_flow_result` `mode`). */
 export type FlowMode = "sankey" | "paths" | "tree";
 
-// ---------------------------------------------------------------------------
-// Small CPython-shaped helpers (module-local, mirroring the precedent in
-// `query/transforms.ts:104`, `services/discovery.ts:117`)
-// ---------------------------------------------------------------------------
+// --- CPython-shaped helpers ---
 
 /**
  * Narrow an unknown to the `Record` shape Python's `dict` methods need.
@@ -103,12 +81,11 @@ function asRecord(value: unknown): Readonly<Record<string, unknown>> {
  *
  * CPython raises `AttributeError` the moment attribute lookup for the
  * mapping method fails on a non-mapping (`None.items()`,
- * `"str".get(...)`). JS would either throw the WRONG class
- * (`Object.values(null)` -> `TypeError`) or silently succeed
- * (`Object.hasOwn("str", "first")` -> `false`), so the check is
- * explicit. Watchlist #13: the mapping test is {@link isPythonDict}.
- *
- * Found by the B5-S2 R10.9 differential harness (rows T1/T2).
+ * `"str".get(...)`). JS would either throw the wrong class
+ * (`Object.values(null)` → `TypeError`) or silently succeed
+ * (`Object.hasOwn("str", "first")` → `false`), so the check is
+ * explicit; the mapping test is {@link isPythonDict}. Found by the
+ * differential oracle.
  *
  * @param value - The candidate mapping.
  * @param attr - The mapping method Python was about to look up.
@@ -132,9 +109,8 @@ export function pyMapping(
  *
  * Python raises `AttributeError` at the nested read when the member is
  * not a dict (`None.get(...)`, `"str".get(...)`), so the helper guards
- * with {@link pyMapping} — the B5-ARB FID-F2 remediation
- * (`b5-review-resolution.md`); the pre-fix `Object.hasOwn` read
- * silently returned `false` for str/list/number receivers.
+ * with {@link pyMapping}; a plain `Object.hasOwn` read would silently
+ * return `false` for str/list/number receivers.
  *
  * @param data - The mapping.
  * @param key - The key to read.
@@ -169,9 +145,9 @@ function firstPyTruthy(
 }
 
 /**
- * CPython's binary `+` over the JSON value domain
- * (`existing + count`, `live_query.py` — B5-ARB FID-F1: the raw
- * values are stored and the coercion happens AT the operator site).
+ * CPython's binary `+` over the JSON value domain (`existing + count`
+ * in `_transform_funnel`: raw values are stored and coerced at the
+ * operator site).
  *
  * @param a - The left operand.
  * @param b - The right operand.
@@ -200,13 +176,13 @@ function pyAdd(a: unknown, b: unknown): unknown {
 }
 
 /**
- * CPython's `value > 0` (the division guards, `live_query.py`,
- * `:145`, `:196` — B5-ARB FID-F1: evaluated on the RAW stored value).
+ * CPython's `value > 0` (the division guards, evaluated on the raw
+ * stored value).
  *
  * @param value - The left operand.
  * @returns The comparison result (`bool` compares as an int).
- * @throws TypeError - CPython's `'>' not supported between instances
- *   of '<T>' and 'int'` for every non-numeric operand.
+ * @throws TypeError - CPython's "not supported between instances"
+ *   message for every non-numeric operand.
  */
 function pyGtZero(value: unknown): boolean {
   if (typeof value === "number") {
@@ -222,8 +198,8 @@ function pyGtZero(value: unknown): boolean {
 
 /**
  * CPython's true division `a / b` (`count / prev_count`,
- * `count / size` — B5-ARB FID-F1; every call site is guarded by
- * {@link pyGtZero}, so the denominator is a positive number here).
+ * `count / size`; every call site is guarded by {@link pyGtZero}, so
+ * the denominator is a positive number here).
  *
  * @param a - The numerator.
  * @param b - The denominator.
@@ -243,15 +219,15 @@ function pyDiv(a: unknown, b: unknown): number {
 }
 
 /**
- * CPython's `key in container` for a string key (B5-ARB FID-F2:
- * `"steps" in date_data`, `live_query.py` — a str container is a
- * SUBSTRING test, a list is a membership test, everything else raises).
+ * CPython's `key in container` for a string key
+ * (`"steps" in date_data`): a str container is a substring test, a
+ * list is a membership test, everything else raises.
  *
  * @param key - The string key.
  * @param container - The candidate container.
  * @returns The membership result.
- * @throws TypeError - CPython 3.14's `argument of type '<T>' is not a
- *   container or iterable` for non-container operands.
+ * @throws TypeError - CPython 3.14's "is not a container or iterable"
+ *   message for non-container operands.
  */
 function pyIn(key: string, container: unknown): boolean {
   if (isPythonDict(container)) {
@@ -269,9 +245,9 @@ function pyIn(key: string, container: unknown): boolean {
 }
 
 /**
- * CPython's `for x in value` over the JSON value domain (B5-ARB
- * FID-F2: a dict iterates its KEYS, a str its characters, a list its
- * members; everything else raises).
+ * CPython's `for x in value` over the JSON value domain (a dict
+ * iterates its keys, a str its code points, a list its members;
+ * everything else raises).
  *
  * @param value - The iterable candidate.
  * @returns The items Python's `for` would visit, in order.
@@ -295,8 +271,8 @@ function pyIter(value: unknown): readonly unknown[] {
  *
  * Python's `sum` starts at the int `0` and uses `+`, so a non-numeric
  * member raises `TypeError`. JS `+` would silently concatenate, so the
- * type is checked first (watchlist: never let JS coercion invent a
- * result Python refuses to produce).
+ * type is checked first: JS coercion must never invent a result Python
+ * refuses to produce.
  *
  * @param values - The values to add.
  * @returns The sum.
@@ -334,9 +310,9 @@ function pyNumber(value: unknown): number {
 
 /**
  * The lazy count stream of `_transform_segmentation`'s `sum(...)`
- * generator (`live_query.py` — B5-ARB FID-F2: each
- * `.values()` lookup raises `AttributeError` only when the generator
- * REACHES it, interleaved with the `+` coercions `pySum` applies).
+ * generator: each `.values()` lookup raises `AttributeError` only when
+ * the generator reaches it, interleaved with the `+` coercions `pySum`
+ * applies.
  *
  * @param values - The `data.values` member.
  * @yields Every per-segment count, in Python's iteration order.
@@ -350,7 +326,7 @@ function* segmentationCounts(values: unknown): Generator {
 
 /**
  * Matches step names like `"1. Signup"` and captures (index, event)
- * (`_STEP_PREFIX_RE`, `live_query.py`).
+ * (`_STEP_PREFIX_RE`).
  *
  * Two Python-`re` fidelity details are spelled out rather than reusing
  * the JS shorthand classes: `\d` in a Python `str` pattern matches every
@@ -358,8 +334,8 @@ function* segmentationCounts(values: unknown): Generator {
  * 29 code points `str.isspace()` reports. Python's `$` additionally
  * matches just before a single trailing newline, which the optional
  * `\n` reproduces. The capture group is `[^\n]` rather than `.`
- * because Python's `.` excludes ONLY `\n` while JS `.` also excludes
- * `\r`, U+2028 and U+2029 (B5-ARB FID-F4).
+ * because Python's `.` excludes only `\n` while JS `.` also excludes
+ * `\r`, U+2028 and U+2029.
  */
 const STEP_PREFIX_RE = new RegExp(
   String.raw`^(\p{Nd}+)\.[${[...PYTHON_STR_WHITESPACE]
@@ -374,8 +350,7 @@ const STEP_PREFIX_RE = new RegExp(
 
 /**
  * Extract steps from one date's funnel data, handling the regular and
- * the segmented response formats (`_extract_steps_from_date_data`,
- * `live_query.py`).
+ * the segmented response formats (`_extract_steps_from_date_data`).
  *
  * API response formats:
  * - without `on`: `{"steps": [step1, step2, ...]}`
@@ -387,9 +362,9 @@ const STEP_PREFIX_RE = new RegExp(
  */
 export function extractStepsFromDateData(dateData: unknown): unknown[] {
   // Non-segmented format: data has "steps" key. Python's `in` is a
-  // SUBSTRING test on a str member and a membership test on a list —
+  // substring test on a str member and a membership test on a list —
   // and the `.get(...)` that follows raises `AttributeError` on both
-  // (B5-ARB FID-F2, CPython-probed).
+  // (probed against CPython).
   if (pyIn("steps", dateData)) {
     const steps = dictGet(pyMapping(dateData, "get"), "steps", []);
     return Array.isArray(steps) ? steps : [];
@@ -411,7 +386,7 @@ export function extractStepsFromDateData(dateData: unknown): unknown[] {
 
 /**
  * Transform a raw `/funnels` response into a {@link FunnelResult}
- * (`_transform_funnel`, `live_query.py`).
+ * (`_transform_funnel`).
  *
  * Aggregates step counts across every date, then recomputes conversion
  * rates: step 0 is `1.0`, step N is `count[N] / count[N-1]` (guarded),
@@ -432,19 +407,18 @@ export function transformFunnel(
   toDate: string,
 ): FunnelResult {
   // `raw.get("data", {})` then `data.values()` — a non-mapping `data`
-  // member is an `AttributeError` in CPython, not a `TypeError`
-  // (R10.9 row T1; attr name corrected to `values` at B5-ARB).
+  // member is an `AttributeError` in CPython, not a `TypeError`.
   const data = pyMapping(dictGet(raw, "data", {}), "values");
 
   // Aggregate steps across all dates: step_idx -> (event, total_count).
-  // B5-ARB FID-F1: counts are stored RAW — Python coerces only at the
-  // `+` aggregation site (`existing + count`, `live_query.py`).
+  // Counts are stored raw — Python coerces only at the `+` aggregation
+  // site (`existing + count`).
   const aggregatedCounts = new Map<number, [unknown, unknown]>();
 
   for (const dateData of Object.values(data)) {
     const stepsData = extractStepsFromDateData(dateData);
     for (const [idx, stepRaw] of stepsData.entries()) {
-      // `step.get(...)` — a non-dict step raises in CPython (FID-F2).
+      // `step.get(...)` — a non-dict step raises in CPython.
       const step = pyMapping(stepRaw, "get");
       const event = dictGet(
         step,
@@ -462,8 +436,8 @@ export function transformFunnel(
   }
 
   // Build the step list with recalculated conversion rates. The `> 0`
-  // guards and `/` divisions run on the RAW values, raising CPython's
-  // operator TypeErrors exactly where Python does (FID-F1).
+  // guards and `/` divisions run on the raw values, raising CPython's
+  // operator TypeErrors exactly where Python does.
   const steps: FunnelResultStep[] = [];
   let prevCount: unknown = 0;
   const orderedSteps = [...aggregatedCounts].sort((a, b) => a[0] - b[0]);
@@ -512,7 +486,7 @@ export function transformFunnel(
 
 /**
  * Transform a raw `/retention` response into a {@link RetentionResult}
- * (`_transform_retention`, `live_query.py`).
+ * (`_transform_retention`).
  *
  * `retention[i] = counts[i] / cohort_size`, guarded by `size > 0` — a
  * zero-size cohort yields `0.0` for every period (never a division by
@@ -540,12 +514,12 @@ export function transformRetention(
   // Sort by date for consistent ordering
   for (const date of sortedByCodepoint(Object.keys(raw))) {
     // `cohort_data.get("first", 0)` — a non-mapping cohort value is an
-    // `AttributeError` in CPython (`live_query.py`; R10.9 row T2).
+    // `AttributeError` in CPython.
     const cohortData = pyMapping(raw[date], "get");
-    // B5-ARB FID-F1: `size` is stored RAW; Python compares/divides only
-    // inside the per-count comprehension (`live_query.py`), so an
-    // empty `counts` never touches it. Iteration is Python `for` —
-    // a dict iterates keys, a str its characters (FID-F2).
+    // `size` is stored raw; Python compares/divides only inside the
+    // per-count comprehension, so an empty `counts` never touches it.
+    // Iteration is Python `for` — a dict iterates keys, a str its
+    // code points.
     const size = dictGet(cohortData, "first", 0);
     const counts = dictGet(cohortData, "counts", []);
 
@@ -573,8 +547,7 @@ export function transformRetention(
 
 /**
  * Transform a raw `/segmentation` response into a
- * {@link SegmentationResult} (`_transform_segmentation`,
- * `live_query.py`).
+ * {@link SegmentationResult} (`_transform_segmentation`).
  *
  * @param raw - Raw API response.
  * @param event - Event name that was queried.
@@ -594,14 +567,14 @@ export function transformSegmentation(
   on: string | null,
 ): SegmentationResult {
   // `raw.get("data", {}).get("values", {})` — non-dict members raise
-  // `AttributeError` in CPython (B5-ARB FID-F2).
+  // `AttributeError` in CPython.
   const data = dictGetRecord(raw, "data");
   const values = dictGet(data, "values", {});
 
-  // Calculate total by summing all counts. The generator is LAZY in
+  // Calculate total by summing all counts. The generator is lazy in
   // Python: `sum(count for segment_values in values.values() for count
   // in segment_values.values())` — a bad count in an early segment
-  // raises the `+` TypeError BEFORE a later segment's `.values()`
+  // raises the `+` TypeError before a later segment's `.values()`
   // AttributeError is reached, so the TS twin iterates lazily too.
   const total = pySum(segmentationCounts(values));
 
@@ -622,7 +595,7 @@ export function transformSegmentation(
 
 /**
  * Transform a raw insights-query response into a {@link QueryResult}
- * (`_transform_query_result`, `live_query.py`).
+ * (`_transform_query_result`).
  *
  * @param raw - Raw API response from the insights query.
  * @param bookmarkParams - The bookmark params dict sent to the API.
@@ -673,8 +646,7 @@ export function transformQueryResult(
 // ---------------------------------------------------------------------------
 
 /**
- * Sort key of a funnel step name (`_step_sort_key`,
- * `live_query.py`): the numeric prefix, then the raw name.
+ * Sort key of a funnel step name (`_step_sort_key`): the numeric prefix, then the raw name.
  *
  * @param name - The step name (e.g. `"10. Purchase"`).
  * @returns The `(index, name)` tuple, with `2**31` for unprefixed names
@@ -687,8 +659,7 @@ function stepSortKey(name: string): [number, string] {
 
 /**
  * Pivot the metric-keyed insights funnel series into a flat list of
- * step dicts (`_extract_funnel_steps_from_series`,
- * `live_query.py`).
+ * step dicts (`_extract_funnel_steps_from_series`).
  *
  * @param series - Raw series data from the insights API response.
  * @param warn - Sink for the unrecognized-format `UserWarning`.
@@ -797,7 +768,7 @@ export function extractFunnelStepsFromSeries(
 
   /**
    * Read a metric value for a step, unwrapping the `"all"` segment
-   * (`_get_val`, `live_query.py`).
+   * (`_get_val`).
    *
    * @param metric - The metric name.
    * @param stepName - The step key.
@@ -806,7 +777,7 @@ export function extractFunnelStepsFromSeries(
   const getVal = (metric: string, stepName: string): unknown => {
     const metricData = dictGet(funnelData, metric, {});
     // `metric_data.get(step_name, {})` — a non-dict metric member
-    // raises `AttributeError` in CPython (B5-ARB FID-F2).
+    // raises `AttributeError` in CPython.
     const stepData = dictGet(pyMapping(metricData, "get"), stepName, {});
     if (isPythonDict(stepData)) {
       return dictGet(asRecord(stepData), "all", 0);
@@ -838,8 +809,7 @@ export function extractFunnelStepsFromSeries(
 
 /**
  * Transform a raw insights funnel response into a
- * {@link FunnelQueryResult} (`_transform_funnel_result`,
- * `live_query.py`).
+ * {@link FunnelQueryResult} (`_transform_funnel_result`).
  *
  * @param raw - Raw API response from the insights query.
  * @param bookmarkParams - The bookmark params dict sent to the API.
@@ -887,15 +857,14 @@ export function transformFunnelResult(
 
 // ---------------------------------------------------------------------------
 // `_normalize_cohort_date` / `_extract_cohorts_and_average`
-// (`live_query.py`)
 // ---------------------------------------------------------------------------
 
 /**
  * Normalize an ISO-timestamp cohort key to `YYYY-MM-DD`
- * (`_normalize_cohort_date`, `live_query.py`).
+ * (`_normalize_cohort_date`).
  *
- * The slice is CODE-POINT based — Python's `key[:10]` counts
- * code points, not UTF-16 units.
+ * The slice is code-point based — Python's `key[:10]` counts code
+ * points, not UTF-16 units.
  *
  * @param key - Cohort date key from the API response.
  * @returns The normalized date string.
@@ -906,7 +875,7 @@ function normalizeCohortDate(key: string): string {
 
 /**
  * Split a cohort data dict into date-keyed cohorts and `$average`
- * (`_extract_cohorts_and_average`, `live_query.py`).
+ * (`_extract_cohorts_and_average`).
  *
  * @param data - Cohort data dict (date keys + optional `$average`).
  * @returns The `[cohorts, average]` pair.
@@ -932,8 +901,7 @@ function extractCohortsAndAverage(
 
 /**
  * Transform a raw insights retention response into a
- * {@link RetentionQueryResult} (`_transform_retention_result`,
- * `live_query.py`).
+ * {@link RetentionQueryResult} (`_transform_retention_result`).
  *
  * Unwraps the single metric-name key, then splits `$overall` and the
  * named segments when the query was segmented.
@@ -1057,13 +1025,12 @@ export function transformRetentionResult(
 }
 
 // ---------------------------------------------------------------------------
-// Phase 008 transforms (`live_query.py`)
+// Activity feed, saved reports, flows, frequency and numeric transforms
 // ---------------------------------------------------------------------------
 
 /**
  * Transform a raw activity-feed response into an
- * {@link ActivityFeedResult} (`_transform_activity_feed`,
- * `live_query.py`).
+ * {@link ActivityFeedResult} (`_transform_activity_feed`).
  *
  * @param raw - Raw API response.
  * @param distinctIds - Queried user identifiers.
@@ -1082,7 +1049,7 @@ export function transformActivityFeed(
 ): ActivityFeedResult {
   // `raw.get("results", {}).get(...)` — non-dict members raise
   // `AttributeError` in CPython; `for event_data in raw_events` is
-  // Python iteration (a dict iterates KEYS — B5-ARB FID-F2).
+  // Python iteration (a dict iterates keys).
   const results = dictGetRecord(raw, "results");
   const rawEvents = dictGet(results, "events", []);
   const sentinelEvent = dictGet(results, "sentinel_event", undefined);
@@ -1127,8 +1094,7 @@ export function transformActivityFeed(
 
 /**
  * Transform a raw saved-report response into a
- * {@link SavedReportResult} (`_transform_saved_report`,
- * `live_query.py`).
+ * {@link SavedReportResult} (`_transform_saved_report`).
  *
  * Normalizes the four endpoint shapes (insights / funnels / retention /
  * flows) into the one result type, inventing the synthetic
@@ -1165,9 +1131,9 @@ export function transformSavedReport(
     }
     case "funnels": {
       // {computed_at, data: {date: {steps}}, meta}. Python tests
-      // truthiness FIRST (`sorted(data.keys()) if data else []`), so a
-      // FALSY non-dict `data` short-circuits while a truthy one raises
-      // `AttributeError` at `.keys()` (B5-ARB FID-F2).
+      // truthiness first (`sorted(data.keys()) if data else []`), so a
+      // falsy non-dict `data` short-circuits while a truthy one raises
+      // `AttributeError` at `.keys()`.
       computedAt = dictGet(raw, "computed_at", "");
       const data = dictGet(raw, "data", {});
       const dateKeys = pyTruthy(data)
@@ -1228,8 +1194,7 @@ export function transformSavedReport(
 
 /**
  * Transform a raw `arb_funnels` flow response into a
- * {@link FlowQueryResult} (`_transform_flow_result`,
- * `live_query.py`).
+ * {@link FlowQueryResult} (`_transform_flow_result`).
  *
  * @param raw - Raw API response from the arb_funnels query.
  * @param bookmarkParams - The bookmark params dict sent to the API.
@@ -1288,14 +1253,14 @@ export function transformFlowResult(
   const trees: FlowTreeNode[] = [];
   if (mode === "tree") {
     // Python: `for tree_dict in raw.get("trees", [])` then
-    // `tree_dict.get("root", {})` — the root VALUE is read raw; a
-    // truthy non-dict raises inside `_parse_tree_node` (B5-ARB FID-F2).
+    // `tree_dict.get("root", {})` — the root value is read raw; a
+    // truthy non-dict raises inside `_parse_tree_node`.
     for (const treeRaw of pyIter(dictGet(raw, "trees", []))) {
       const rootDict = dictGet(pyMapping(treeRaw, "get"), "root", {});
       if (pyTruthy(rootDict)) {
         const parsedRoot = parseTreeNode(rootDict);
         // The API returns a virtual root with `step=null`; the real
-        // anchors are its children. A root WITH an event (test
+        // anchors are its children. A root with an event (test
         // fixtures) is kept as-is.
         if (pyTruthy(parsedRoot.event)) {
           trees.push(parsedRoot);
@@ -1325,7 +1290,7 @@ export function transformFlowResult(
 
 /**
  * Parse a recursive raw dict into a {@link FlowTreeNode}
- * (`_parse_tree_node`, `live_query.py`).
+ * (`_parse_tree_node`).
  *
  * Accepts both the live API's camelCase field names and the test
  * fixtures' snake_case twins.
@@ -1334,10 +1299,10 @@ export function transformFlowResult(
  * @returns The parsed node, children first.
  */
 export function parseTreeNode(raw: unknown): FlowTreeNode {
-  // `raw.get("step") or {}` — a non-dict node raises at the `.get`
-  // (B5-ARB FID-F2). The `step` value itself stays RAW here: Python
-  // parses `children` FIRST and only then reads `step.get(...)`, so a
-  // bad child raises before a bad step does.
+  // `raw.get("step") or {}` — a non-dict node raises at the `.get`.
+  // The `step` value itself stays raw here: Python parses `children`
+  // first and only then reads `step.get(...)`, so a bad child raises
+  // before a bad step does.
   const rawMap = pyMapping(raw, "get");
   const stepRaw = dictGet(rawMap, "step", null);
   const stepVal: unknown = pyTruthy(stepRaw) ? stepRaw : {};
@@ -1409,7 +1374,7 @@ export function parseTreeNode(raw: unknown): FlowTreeNode {
 
 /**
  * Transform a raw saved-flows response into a {@link FlowsResult}
- * (`_transform_flows`, `live_query.py`).
+ * (`_transform_flows`).
  *
  * @param raw - Raw API response.
  * @param bookmarkId - Saved flows report identifier.
@@ -1433,7 +1398,7 @@ export function transformFlows(
 
 /**
  * Transform a raw frequency response into a {@link FrequencyResult}
- * (`_transform_frequency`, `live_query.py`).
+ * (`_transform_frequency`).
  *
  * @param raw - Raw API response.
  * @param event - Filtered event name (or `null`).
@@ -1464,8 +1429,7 @@ export function transformFrequency(
 
 /**
  * Transform a raw numeric-bucket response into a
- * {@link NumericBucketResult} (`_transform_numeric_bucket`,
- * `live_query.py`).
+ * {@link NumericBucketResult} (`_transform_numeric_bucket`).
  *
  * @param raw - Raw API response.
  * @param event - Event name queried.
@@ -1499,7 +1463,7 @@ export function transformNumericBucket(
 
 /**
  * Transform a raw sum response into a {@link NumericSumResult}
- * (`_transform_numeric_sum`, `live_query.py`).
+ * (`_transform_numeric_sum`).
  *
  * @param raw - Raw API response.
  * @param event - Event name queried.
@@ -1534,8 +1498,7 @@ export function transformNumericSum(
 
 /**
  * Transform a raw average response into a
- * {@link NumericAverageResult} (`_transform_numeric_average`,
- * `live_query.py`).
+ * {@link NumericAverageResult} (`_transform_numeric_average`).
  *
  * @param raw - Raw API response.
  * @param event - Event name queried.

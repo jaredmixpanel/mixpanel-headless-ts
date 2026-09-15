@@ -1,23 +1,18 @@
 /**
- * Date arithmetic helpers for the B4-C2 query-host methods — twins of
- * the CPython `datetime.strptime(value, "%Y-%m-%d")` /
- * `date.isoformat()` / `timedelta(days=n)` calls the Python client
- * makes (`api_client.py:196-249` activity-feed dates, `:2399-2424`
- * `get_events` date defaulting, `:2954-2967` `query_saved_report`
- * funnel windows).
+ * Civil-date arithmetic for the query-host methods that default or widen
+ * date windows: twins of the `datetime.strptime(value, "%Y-%m-%d")`,
+ * `date.isoformat()` and `timedelta(days=n)` calls in `get_events`,
+ * `query_saved_report` and the activity-feed date helpers. The integer
+ * math is Hinnant's `civil_from_days` / `days_from_civil`, the same
+ * conversions CPython's `datetime` ordinals perform, valid over years
+ * 1..9999.
  *
- * Proleptic-Gregorian civil arithmetic (Hinnant's `civil_from_days` /
- * `days_from_civil`) — the same integer math CPython's `datetime`
- * ordinal conversions perform; valid over the full Python date range
- * (years 1..9999).
+ * Divergence: Python's `date.today()` / `datetime.now()` read the host's
+ * local calendar; these helpers read the injected clock in UTC (the
+ * conformance runners replay under a UTC-frozen clock), so a default
+ * window can differ from CPython by one day near local midnight.
  *
- * Clock note (TODO(port) disclosure, R10.3): Python's `date.today()` /
- * `datetime.now()` read the LOCAL calendar; both conformance runners
- * replay under a UTC-frozen clock shim (design D1.4/D12 — the runner's
- * `shims.today()` is documented "UTC, matching the frozen epoch"), so
- * these helpers derive the calendar date from the injected `now()` in
- * UTC. At real runtime a host west/east of UTC can differ from CPython
- * near local midnight — disclosed, out of vector reach.
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_events
  */
 
 import { pythonInt } from "../../compat/index.js";
@@ -35,10 +30,10 @@ export interface CivilDate {
 
 /**
  * `%Y-%m-%d` digit runs, CPython `_strptime` grammar: `\d{1,4}` year,
- * `\d{1,2}` month/day where `\d` is UNICODE `Nd` (Python compiles its
+ * `\d{1,2}` month/day where `\d` is Unicode `Nd` (Python compiles its
  * strptime regexes without `re.ASCII`); the whole string must match.
- * `\p{Nd}` + `pythonInt` reproduce that exactly (R11.7 — no bare
- * `parseInt`, no ASCII-only `\d`).
+ * `\p{Nd}` plus `pythonInt` reproduce that exactly; a bare `parseInt` or
+ * an ASCII-only `\d` would not.
  */
 const YMD_PATTERN = /^(\p{Nd}{1,4})-(\p{Nd}{1,2})-(\p{Nd}{1,2})$/u;
 
@@ -130,8 +125,9 @@ export function formatYmd(date: CivilDate): string {
 }
 
 /**
- * The calendar date of an instant, read in UTC (see the module-header
- * clock note) — the `date.today()` / `datetime.now().strftime` seam.
+ * The calendar date of an instant, read in UTC (see the divergence note
+ * in the module header) — the `date.today()` / `datetime.now().strftime`
+ * seam.
  *
  * @param now - The injected clock's current instant.
  * @returns The civil date.

@@ -1,46 +1,15 @@
 /**
- * ReplaysService — TS port of
- * `mixpanel_headless/_internal/services/replays.py` (971 lines, whole
- * file) for Phase-3 batch B5, shard S3
- * (`docs/history/phase3/design/b5-packets.md` §5).
+ * Session-replay pipeline: discover replays through an Insights query,
+ * sign them through the client, then walk the signed CDN files in
+ * parallel batches and yield raw rrweb events. Owned by `Workspace`, not
+ * part of the public API; the service stays pure bytes — the rrweb
+ * analyzer runs a layer above. Signing and the sensitive-data 403
+ * mapping live in the client (`signReplays`, `handleResponse`); CDN GETs
+ * share the client's injected fetch seam and {@link rawFetch}, so
+ * transport-error normalization and the timeout shape are not
+ * re-derived here.
  *
- * Orchestrates the discovery → sign → fetch pipeline against the
- * Mixpanel App API and the signed CDN. Owned by `Workspace`; not part
- * of the public API. The service stays PURE BYTES — the rrweb analyzer
- * runs a layer above, in `Workspace.fetchReplay`.
- *
- * Port-wide conventions applied here:
- *
- * - R10.8 — signing is the ALREADY-PORTED B4 client method
- *   (`signReplays`, `services/entities/replays-signing.ts`); the 403
- *   `SESSION_RECORDING_SENSITIVE_DATA` mapping lives in B0
- *   `handleResponse`. Nothing is re-assembled or re-handled here.
- * - GATE-R5 / B0-1 F1 — the CDN 200 body parses through
- *   {@link parseLossless} with `pythonConstants: true` (CPython
- *   `json.loads` accepts `NaN` / `Infinity` / `-Infinity`), never
- *   `response.json()` or a bare `JSON.parse`.
- * - R2.4 — CDN GETs go through the SAME injected fetch seam as the
- *   wire client (`client.core.http().fetchImpl` by default; the
- *   `fetchImpl` option is the `_async_transport` twin), via
- *   {@link rawFetch} so `httpx.HTTPError` normalization and
- *   the D-B4ARB-1 timeout scope are shared, not re-derived.
- * - R6.4 (packet §5) — batch bounds, issue order, the 403 re-sign-once
- *   rule, the 404 sentinel, the once-only mobile check, and the
- *   per-file `sorted(events, key=int(timestamp))` yield are
- *   byte-identical to Python.
- * - R6.6 — {@link ReplaysService.walkCdnAsync} is a true async
- *   generator yielding ITEM-BY-ITEM; nothing buffers except
- *   {@link ReplaysService.fetchFiles}, which is Python's buffered
- *   wrapper.
- * - R11.7 / packet §9 Caution #3 — `int(e.get("timestamp", 0))` routes
- *   through {@link pythonIntCoerce} (CPython truncates floats toward
- *   zero and parses strings with the CPython grammar).
- * - R9.5 — the `warnings.warn` side channel and the logger are
- *   injected seams; `core` never touches `console`.
- * - §0.4 determinism — `time.time()` at `replays.py` routes
- *   through the injected `now` seam.
- * - packet §9 Caution #4 — `_build_expired_error(signed)` takes the
- *   ORIGINAL handle even after a re-sign.
+ * @see mixpanel_headless._internal.services.replays.ReplaysService
  */
 
 import type { MixpanelClient } from "../client/client.js";
@@ -70,34 +39,31 @@ import type { WarningSink } from "./discovery.js";
 type Dict = Readonly<Record<string, unknown>>;
 
 /**
- * Allowed retention windows — surfaced as a sentinel so the
- * discover-time warning path can default a missing
- * `$mp_replay_retention_period` (`_DEFAULT_RETENTION_DAYS`,
- * `replays.py`).
+ * Retention window assumed when a replay lacks
+ * `$mp_replay_retention_period` (`_DEFAULT_RETENTION_DAYS`).
  */
 const DEFAULT_RETENTION_DAYS = 30;
 
 /**
  * Lookback for {@link ReplaysService.eventsFor} when the caller doesn't
- * pass an explicit window (`_EVENTS_DEFAULT_LOOKBACK_DAYS`,
- * `replays.py`). 90 = the maximum replay retention window.
+ * pass an explicit window (`_EVENTS_DEFAULT_LOOKBACK_DAYS`). 90 = the maximum replay retention window.
  */
 const EVENTS_DEFAULT_LOOKBACK_DAYS = 90;
 
 /**
- * Per-request CDN timeout in SECONDS (`_CDN_TIMEOUT`,
- * `replays.py` — httpx `connect=10, read=30, write=10, pool=30`).
+ * Per-request CDN timeout in seconds (`_CDN_TIMEOUT`: httpx
+ * `connect=10, read=30, write=10, pool=30`).
  *
- * fetch has no per-operation timeout primitive, so the port arms ONE
- * clock at the largest per-operation budget — the sanctioned
- * D-B4ARB-1 scope (`b4-review-resolution.md` §W-F2), identical to how
- * the B4 client bounds its own requests.
+ * `fetch` has no per-operation timeout primitive, so the port arms one
+ * clock at the largest per-operation budget until the headers arrive,
+ * exactly as the wire client bounds its own requests; the streamed body
+ * is not clock-bounded (see PORTING.md).
  */
 const CDN_TIMEOUT_SECONDS = 30;
 
 /**
  * Heuristic: does this look like an rrweb web-recording event?
- * (`_looks_like_rrweb`, `replays.py`).
+ * (`_looks_like_rrweb`).
  *
  * rrweb event shape always includes at minimum `type` (int
  * discriminator), `data` (dict), and `timestamp` (int ms). Mobile
@@ -112,7 +78,7 @@ function looksLikeRrweb(event: unknown): boolean {
     return false;
   }
   // Python `"k" in dict` is an own-key membership test — `Object.hasOwn`,
-  // never the prototype-walking `in` (watchlist: prototype pollution).
+  // never the prototype-walking `in`, which would see inherited keys.
   return (
     Object.hasOwn(event, "type") &&
     Object.hasOwn(event, "data") &&
@@ -122,7 +88,7 @@ function looksLikeRrweb(event: unknown): boolean {
 
 /**
  * Build the canonical `ReplayNotFoundError` for an absent replay
- * (`replay_not_found_error`, `replays.py`).
+ * (`replay_not_found_error`).
  *
  * Two call sites surface the same "no replay on the CDN" condition —
  * the walker's first-file 404, and `Workspace.fetchReplay` when the
@@ -155,8 +121,8 @@ export function replayNotFoundError(
 
 /**
  * The `Workspace.query` seam the service issues Insights queries
- * through (Python's `query_fn` DI kwarg, `replays.py`) — a
- * bound facade method, so the service never imports `Workspace`.
+ * through (Python's `query_fn` constructor kwarg) — a bound facade
+ * method, so the service never imports `Workspace`.
  */
 export type ReplayQueryFn = (
   events: string,
@@ -185,22 +151,19 @@ export interface ReplaysServiceOptions {
   /** Optional logger; never receives `query_string` at any level. */
   readonly logger?: ReplaysLogger | undefined;
   /**
-   * Injected fetch for CDN GETs — the `_async_transport` twin
-   * (`replays.py`). Defaults to the client's own fetch seam.
+   * Injected fetch for CDN GETs — the `_async_transport` twin. Defaults
+   * to the client's own fetch seam.
    */
   readonly fetchImpl?: typeof fetch | undefined;
   /** `warnings.warn` sink for the missing-retention path. */
   readonly warn?: WarningSink | undefined;
-  /**
-   * Clock seam backing `time.time()` at `replays.py`
-   * (packet §0.4). Returns unix SECONDS as a float.
-   */
+  /** Clock seam backing Python's `time.time()`; unix seconds as a float. */
   readonly now?: (() => number) | undefined;
 }
 
 /** Options of {@link ReplaysService.fetchFiles} / `walkCdnAsync`. */
 export interface WalkCdnOptions {
-  /** 1, 7, 30, or 90 — drives the file-name suffix per FR-013. */
+  /** 1, 7, 30, or 90 — the CDN file-name suffix (`NNNN-{days}.json`). */
   readonly retentionDays: number;
   /** Hard upper bound on the walk (default 500). */
   readonly maxFiles?: number | undefined;
@@ -238,24 +201,28 @@ export interface EventsForOptions {
 type FetchOutcome = readonly [number, readonly Dict[] | null];
 
 /**
- * Orchestrator for the session-replay pipeline (`ReplaysService`,
- * `replays.py`).
+ * Orchestrator for the session-replay pipeline. Sits between
+ * `Workspace` and the wire client; owns the async CDN walker that pulls
+ * raw rrweb bytes.
  *
- * Sits between `Workspace` and the wire client; owns the async CDN
- * walker that pulls raw rrweb bytes.
+ * @see mixpanel_headless._internal.services.replays.ReplaysService
  */
 export class ReplaysService {
   /** The bound API client used for signing and Insights calls. */
   readonly api: MixpanelClient;
 
-  /** The bound `Workspace.query`, or `null`. @internal */
+  /**
+   * The bound `Workspace.query`, or `null`.
+   *
+   * @internal
+   */
   readonly queryFn: ReplayQueryFn | null;
 
   /**
-   * Debug sink; never receives `query_string` (FR-009). Python's
-   * `self._logger` is likewise ASSIGNED but never
-   * emitted to — it is part of the documented DI surface, not a live
-   * call site, and the port keeps it observable for the same reason.
+   * Debug sink; never receives `query_string`. Python's `self._logger`
+   * is likewise assigned but never emitted to — it is part of the
+   * documented injection surface, not a live call site, and the port
+   * keeps it observable for the same reason.
    */
   readonly logger: ReplaysLogger | undefined;
 
@@ -269,7 +236,7 @@ export class ReplaysService {
   readonly #now: () => number;
 
   /**
-   * Initialize the service (`__init__`, `replays.py`).
+   * Initialize the service.
    *
    * @param apiClient - Authenticated Mixpanel client.
    * @param options - The DI bag (`queryFn` / `logger` / `fetchImpl` /
@@ -283,22 +250,20 @@ export class ReplaysService {
     this.#warn =
       options.warn ??
       ((): void => {
-        // No sink injected: warnings are dropped (CLEANUP-PLAN.md §12 8.8).
+        // No sink injected: warnings are dropped.
       });
     this.#now = options.now ?? ((): number => Date.now() / 1000);
   }
 
-  // =========================================================================
-  // Sign
-  // =========================================================================
+  // --- Sign ---
 
   /**
-   * Sign one or more replay IDs for CDN access (`sign`,
-   * `replays.py`).
+   * Sign one or more replay IDs for CDN access (`sign`).
    *
-   * Captures `signed_at` BEFORE issuing the request so callers' expiry
-   * arithmetic is conservative. Delegates raw signing to the B4 client
-   * method, which handles the 403 → `SessionReplayAccessError` mapping.
+   * Captures `signed_at` before issuing the request so callers' expiry
+   * arithmetic is conservative. Delegates raw signing to the client's
+   * `signReplays`, which handles the 403 → `SessionReplayAccessError`
+   * mapping.
    *
    * @param replayIds - Replay IDs to sign, in any order.
    * @param env - `"prod"` (default) or `"dev"`.
@@ -325,13 +290,11 @@ export class ReplaysService {
     });
   }
 
-  // =========================================================================
-  // Fetch / walk
-  // =========================================================================
+  // --- Fetch / walk ---
 
   /**
    * Buffered parallel fetch of all CDN files for a replay
-   * (`fetch_files`, `replays.py`).
+   * (`fetch_files`).
    *
    * @param signed - Signed CDN access handle from {@link sign}.
    * @param options - Retention / bounds / concurrency / re-sign policy.
@@ -356,11 +319,11 @@ export class ReplaysService {
 
   /**
    * Streaming parallel walk of CDN files; yields rrweb events lazily
-   * (`walk_cdn_async`, `replays.py`).
+   * (`walk_cdn_async`).
    *
-   * Algorithm (FR-011/012/014/015):
+   * Algorithm:
    * 1. Fetch files `[N, N+concurrency)` in parallel.
-   * 2. If any 403 hits and `reSignOnExpiry`, re-sign ONCE and retry the
+   * 2. If any 403 hits and `reSignOnExpiry`, re-sign once and retry the
    *    whole batch; otherwise raise `SignedURLExpiredError`.
    * 3. Walk the batch in file-number order. File 0 returning 404 raises
    *    `ReplayNotFoundError`; any subsequent 404 terminates the walk
@@ -465,12 +428,13 @@ export class ReplaysService {
           }
         }
         // Python `sorted(events, key=lambda e: int(e.get("timestamp", 0)))`
-        // — STABLE, and the key is the CPython `int()` ladder
-        // (Caution #3). Decorate-sort-undecorate (B5-ARB FID-F3):
-        // Python computes the key for EVERY element — including
-        // single-element files a JS comparator would never visit —
-        // and `.get`'s default applies only when the key is ABSENT
-        // (an explicit `null` raises `int(None)`'s `TypeError`).
+        // — stable, and the key is the CPython `int()` ladder
+        // (`pythonIntCoerce`: floats truncate toward zero, strings parse
+        // with the CPython grammar). Decorate-sort-undecorate because
+        // Python computes the key for every element — including
+        // single-element files a JS comparator would never visit — and
+        // `.get`'s default applies only when the key is absent (an
+        // explicit `null` raises `int(None)`'s `TypeError`).
         const ordered = events
           .map((event) => ({
             event,
@@ -494,12 +458,12 @@ export class ReplaysService {
 
   /**
    * Issue parallel CDN GETs for a batch of file numbers
-   * (`_fetch_batch`, `replays.py`).
+   * (`_fetch_batch`).
    *
-   * R6.4: the promise array is built EAGERLY in file-number order, so
-   * every request fires synchronously before the first await — the
-   * `asyncio.gather` task-order twin, and the reason a positional
-   * `VectorFetch` serves deterministically.
+   * The promise array is built eagerly in file-number order, so every
+   * request fires synchronously before the first await — the
+   * `asyncio.gather` task-order twin, which is what lets the conformance
+   * rig serve positional fetch responses deterministically.
    *
    * @param signed - The active signed handle (may be re-signed).
    * @param fileNums - File numbers to fetch, in order.
@@ -516,9 +480,9 @@ export class ReplaysService {
   }
 
   /**
-   * Fetch a single CDN file (`_fetch_one`, `replays.py`).
+   * Fetch a single CDN file (`_fetch_one`).
    *
-   * URL pattern per FR-013:
+   * URL pattern:
    * `{signed.url}{file_num:04d}-{retention_days}.json?{query_string}`.
    *
    * @param signed - Signed access handle providing url + credential.
@@ -527,15 +491,16 @@ export class ReplaysService {
    * @returns `(status, events)` — the decoded list for 200s, `null` for
    *   404 and 403.
    * @throws MixpanelHeadlessError - `CDN_FETCH_ERROR` on transport
-   *   failure (credential SCRUBBED), `CDN_INVALID_RESPONSE` on a
-   *   non-JSON 200 body, `CDN_UNEXPECTED_STATUS` otherwise.
+   *   failure (credential scrubbed from the message),
+   *   `CDN_INVALID_RESPONSE` on a non-JSON 200 body,
+   *   `CDN_UNEXPECTED_STATUS` otherwise.
    */
   async #fetchOne(
     signed: SignedReplay,
     fileNum: number,
     retentionDays: number,
   ): Promise<FetchOutcome> {
-    // NB: query_string is a bearer credential — never log this URL.
+    // query_string is a bearer credential — never log this URL.
     const url = `${signed.url}${zfill(String(fileNum), 4)}-${String(retentionDays)}.json?${signed.query_string}`;
     const label = zfill(String(fileNum), 4);
     let response: Response;
@@ -554,18 +519,17 @@ export class ReplaysService {
       release = raw.release;
     } catch (error) {
       if (!(error instanceof MixpanelHttpError)) {
-        // Cancellation (R6.7 `AbortError`) passes through unchanged —
-        // it is not an `httpx.HTTPError` on the Python side either.
+        // Cancellation (`AbortError`) passes through unchanged — it is
+        // not an `httpx.HTTPError` on the Python side either.
         throw error;
       }
       // `str(exc)` can embed the request URL, and our URL carries the
       // signed query_string bearer credential. Scrub it before it lands
-      // in an exception message or log (`replays.py`).
+      // in an exception message or log, as Python does.
       const safe = error.message.replaceAll(signed.query_string, "<redacted>");
-      // Python raises with NO details (`raise ... from exc`,
-      // `replays.py`) — the cause threads through ErrorOptions,
-      // never the details bag (B5-BIND fix: `{cause}` in details leaked
-      // into the recorded `details_contain` twin).
+      // Python raises with no details (`raise ... from exc`) — the cause
+      // threads through ErrorOptions, never the details bag, which the
+      // recorded `details_contain` assertions would otherwise see.
       throw new MixpanelHeadlessError(
         `CDN fetch failed for file ${label}: ${safe}`,
         "CDN_FETCH_ERROR",
@@ -578,6 +542,9 @@ export class ReplaysService {
       if (response.status === 200) {
         const text = await response.text();
         let payload: unknown;
+        // CPython `json.loads` accepts `NaN` / `Infinity` / `-Infinity`,
+        // so the body parses with Python constants enabled, never through
+        // `response.json()`.
         try {
           payload = toNativeJson(
             parseLossless(text, { pythonConstants: true }),
@@ -586,8 +553,8 @@ export class ReplaysService {
           if (!(error instanceof LosslessJsonError)) {
             throw error;
           }
-          // Python: `raise ... from exc` with NO details
-          // (`replays.py`) — cause via ErrorOptions (B5-BIND fix).
+          // Python: `raise ... from exc` with no details — cause via
+          // ErrorOptions, never the details bag.
           throw new MixpanelHeadlessError(
             `CDN file ${label} returned non-JSON: ${error.message}`,
             "CDN_INVALID_RESPONSE",
@@ -595,8 +562,8 @@ export class ReplaysService {
             { cause: error },
           );
         }
-        // A 200 dict/scalar is an EMPTY file, not an error
-        // (`replays.py`, packet §9 Caution #5).
+        // A 200 dict/scalar body is an empty file, not an error, as in
+        // Python.
         const events = Array.isArray(payload) ? (payload as Dict[]) : [];
         return [200, events];
       }
@@ -625,10 +592,11 @@ export class ReplaysService {
 
   /**
    * Construct a canonical `SignedURLExpiredError` for `signed`
-   * (`_build_expired_error`, `replays.py`).
+   * (`_build_expired_error`).
    *
    * @param signed - The signed handle whose URL expired — always the
-   *   ORIGINAL, even after a re-sign (packet §9 Caution #4).
+   *   original handle, even after a re-sign, so `signed_at` /
+   *   `expired_at` describe the URL that actually expired.
    * @returns The error with the catalog message and the
    *   `replay_id` / `signed_at` / `expired_at` details.
    */
@@ -648,13 +616,10 @@ export class ReplaysService {
     );
   }
 
-  // =========================================================================
-  // Discovery + events
-  // =========================================================================
+  // --- Discovery + events ---
 
   /**
-   * Discover replays for a user or hydrate explicit IDs (`discover`,
-   * `replays.py`).
+   * Discover replays for a user or hydrate explicit IDs (`discover`).
    *
    * Issues exactly one Insights query against `$mp_session_record`
    * grouped on `$mp_replay_id` and `$mp_replay_retention_period`, then
@@ -666,9 +631,9 @@ export class ReplaysService {
    *   optional window, and the `limit`.
    * @returns `ReplaySummary` rows, possibly empty.
    * @throws MixpanelHeadlessError - Code `REPLAYS_QUERY_FN_REQUIRED`
-   *   when the service was constructed without a `queryFn` (Python
-   *   raises the uncoded `RuntimeError`; the code is the port's
-   *   discriminator, R5.4).
+   *   when the service was constructed without a `queryFn`. Divergence:
+   *   Python raises a bare `RuntimeError`; the code is the port's
+   *   discriminator.
    */
   async discover(options: DiscoverOptions = {}): Promise<ReplaySummary[]> {
     if (this.queryFn === null) {
@@ -705,7 +670,7 @@ export class ReplaysService {
 
     // math="min" on the event $time property returns the earliest event
     // timestamp per (replay, retention) segment as a single compact
-    // leaf. The leaf is unix SECONDS; `toUnixMs` up-converts it. Note
+    // leaf. The leaf is unix seconds; `toUnixMs` up-converts it. Note
     // the property is "$time" (the reserved event-time property); plain
     // "time" silently returns an empty series.
     const result = await this.queryFn("$mp_session_record", {
@@ -727,7 +692,7 @@ export class ReplaysService {
 
   /**
    * Collapse a min-time Insights `series` into `ReplaySummary` rows
-   * (`_parse_summaries`, `replays.py`).
+   * (`_parse_summaries`).
    *
    * Walks the raw nested dict the Insights API returns rather than the
    * lossy `.df` projection: the series nests in group order with an
@@ -796,7 +761,7 @@ export class ReplaysService {
 
   /**
    * Pull `(retentionDays, minTime)` from a replay's retention subtree
-   * (`_extract_retention_and_time`, `replays.py`).
+   * (`_extract_retention_and_time`).
    *
    * Returns the first standard retention window in `{1, 7, 30, 90}`
    * with its min-time leaf. When none is present, defaults to 30 days,
@@ -842,7 +807,7 @@ export class ReplaysService {
 
   /**
    * Mixpanel events for a list of replays in one round-trip
-   * (`events_for`, `replays.py`).
+   * (`events_for`).
    *
    * Queries the `$all_events` wildcard grouped on `$time` /
    * `$event_name` / `$mp_replay_id` (+ any caller-supplied
@@ -937,7 +902,7 @@ export class ReplaysService {
     }
 
     // Match upstream's deterministic time-ordered output per replay
-    // (Python `list.sort` is STABLE; so is `Array.prototype.sort`).
+    // (Python `list.sort` is stable; so is `Array.prototype.sort`).
     for (const events of out.values()) {
       events.sort((a, b) => a.event_time - b.event_time);
     }
@@ -946,13 +911,11 @@ export class ReplaysService {
   }
 }
 
-// ===========================================================================
-// Module-level series helpers (`replays.py`)
-// ===========================================================================
+// --- Series helpers ---
 
 /**
  * Return the first dict-valued metric node of an Insights `series`
- * (`_first_metric_node`, `replays.py`).
+ * (`_first_metric_node`).
  *
  * @param series - The `result.series` value (expected `dict`).
  * @returns The replay-level dict, or `null`.
@@ -971,7 +934,7 @@ function firstMetricNode(series: unknown): Dict | null {
 
 /**
  * Extract the scalar from a series leaf — `{"all": v}` → `v`
- * (`_leaf_value`, `replays.py`).
+ * (`_leaf_value`).
  *
  * @param leaf - A series leaf node, normally `{"all": value}`.
  * @returns The `"all"` value for dict leaves; the leaf itself
@@ -986,7 +949,7 @@ function leafValue(leaf: unknown): unknown {
 
 /**
  * Flatten a nested Insights `series` into one row dict per leaf
- * (`_flatten_series`, `replays.py`).
+ * (`_flatten_series`).
  *
  * @param series - The `result.series` nested dict.
  * @param groupBy - Group-by property names in request order.
@@ -1010,7 +973,7 @@ function flattenSeries(
 
 /**
  * Recursively collect leaf rows from a nested series node
- * (`_walk_series`, `replays.py`).
+ * (`_walk_series`).
  *
  * @param node - The current sub-dict.
  * @param groupBy - Group-by property names (the nesting order).
@@ -1041,22 +1004,18 @@ function walkSeries(
 }
 
 /**
- * Coerce a Mixpanel `$time` value to unix MILLISECONDS (`_to_unix_ms`,
- * `replays.py` in the current-HEAD numbering).
+ * Coerce a Mixpanel `$time` value to unix milliseconds (`_to_unix_ms`).
  *
  * Mixpanel's `$time` comes back as an ISO-8601 string, a pandas
  * Timestamp, or a unix seconds/ms int depending on the response shape.
  * Returns `0` when the value can't be parsed — callers treat that as
  * "skip this row".
  *
- * TODO(port): Python's final branch is `pd.Timestamp(value)`, whose
- * accepted grammar is far wider than ISO-8601 (`"now"`, `"3 Jan 2026"`,
- * numpy datetimes, …). The REACHABLE domain here is the Insights
- * `$time` group key, which is always a second-precision ISO-8601
- * string, so this port implements ISO-8601 only and returns `0`
- * (Python's unparseable fallback) for everything else. Widening it
- * would need a pandas date-parser port, which no vector or Layer-3
- * assert reaches.
+ * Divergence: Python's final branch is `pd.Timestamp(value)`, whose
+ * grammar is far wider than ISO-8601 (`"now"`, `"3 Jan 2026"`, …); the
+ * port accepts ISO-8601 and unix seconds/ms only and returns `0` for
+ * anything else. The reachable domain is the Insights `$time` group
+ * key, always a second-precision ISO-8601 string.
  *
  * @param value - Raw cell from the result series.
  * @returns Unix milliseconds, or `0` when uninterpretable.
@@ -1084,26 +1043,25 @@ function toUnixMs(value: unknown): number {
 }
 
 /**
- * Coerce a Mixpanel `$time` value to unix SECONDS (`_to_unix_seconds`,
- * `replays.py`).
+ * Coerce a Mixpanel `$time` value to unix seconds (`_to_unix_seconds`).
  *
  * @param value - Raw cell from the result series.
  * @returns Unix seconds, or `0` when uninterpretable.
  */
 function toUnixSeconds(value: unknown): number {
   const ms = toUnixMs(value);
-  // Python `ms // 1000` is FLOOR division; `ms > 0` guards the branch.
+  // Python `ms // 1000` is floor division; `ms > 0` guards the branch.
   return ms > 0 ? Math.floor(ms / 1000) : 0;
 }
 
 /**
  * Parse an ISO-8601 datetime the way `pd.Timestamp(str)` does for the
- * reachable `$time` domain: a NAIVE timestamp is UTC (pandas' `.value`
+ * reachable `$time` domain: a naive timestamp is UTC (pandas' `.value`
  * is epoch nanoseconds with no zone applied), an explicit offset is
  * honoured.
  *
- * `Date.parse` is NOT a drop-in: per ES2016 it reads a date-TIME form
- * without an offset as LOCAL time, which would shift every naive
+ * `Date.parse` is not a drop-in: per ES2016 it reads a date-time form
+ * without an offset as local time, which would shift every naive
  * Insights key by the host's zone.
  *
  * @param text - The candidate timestamp string.

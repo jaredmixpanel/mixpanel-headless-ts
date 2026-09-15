@@ -1,15 +1,13 @@
 /**
- * Experiment CRUD/lifecycle wire methods (App API) — Phase-3 packet
- * B4-C4 port of the `MixpanelAPIClient` experiments range
- * (`api_client.py`).
+ * Experiment CRUD and lifecycle wire methods on the App API
+ * (`experiments/`, workspace-scoped through `maybe_scoped_path`). Path
+ * shapes are mirrored exactly: collection endpoints keep their trailing
+ * slash (`experiments/`, `experiments/erf/`), item and lifecycle
+ * endpoints do not (`experiments/{id}`, `.../launch`,
+ * `.../force_conclude`, `.../decide`, `.../archive`, `.../duplicate`).
+ * Results come back verbatim after Python's isinstance guard.
  *
- * All methods route through B0 `appRequest` over `maybe_scoped_path`
- * (R10.8). Path subtleties locked by Layer-3 + the recorded vectors:
- * collection endpoints keep their trailing slash (`experiments/`,
- * `experiments/erf/`), item/lifecycle endpoints do NOT
- * (`experiments/{id}`, `.../launch`, `.../force_conclude`,
- * `.../decide`, `.../archive`, `.../duplicate`). Results are returned
- * verbatim after the source's isinstance guard (Caution #11).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_experiments
  */
 
 import { appRequest } from "../../client/app-request.js";
@@ -30,22 +28,22 @@ export interface ListExperimentsOptions {
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The C4 experiment method surface (mixed into `MixpanelClient`). */
+/** Experiment methods mixed into `MixpanelClient`. */
 export interface ExperimentMethods {
   /**
-   * List experiments (`list_experiments`, `api_client.py` —
+   * List experiments (`list_experiments` —
    * GET `experiments/`).
    *
    * @param options - include_archived + signal.
    * @returns The experiment list verbatim.
    * @throws MixpanelHeadlessError - Non-list response.
    * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Per the B0 `appRequest` contract.
+   *   ServerError - Per the `appRequest` contract.
    */
   listExperiments: (options?: ListExperimentsOptions) => Promise<JsonValue[]>;
 
   /**
-   * Create an experiment (`create_experiment`, `:5315-5346` — POST
+   * Create an experiment (`create_experiment` — POST
    * `experiments/`).
    *
    * @param body - Experiment creation payload (`name` required).
@@ -59,7 +57,7 @@ export interface ExperimentMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get an experiment by ID (`get_experiment`, `:5348-5379` — no
+   * Get an experiment by ID (`get_experiment` — no
    * trailing slash).
    *
    * @param experimentId - Experiment UUID.
@@ -73,7 +71,7 @@ export interface ExperimentMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update an experiment (`update_experiment`, `:5381-5415` — PATCH,
+   * Update an experiment (`update_experiment` — PATCH,
    * no trailing slash).
    *
    * @param experimentId - Experiment UUID.
@@ -89,7 +87,7 @@ export interface ExperimentMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete an experiment (`delete_experiment`, `:5417-5439`).
+   * Delete an experiment (`delete_experiment`).
    *
    * @param experimentId - Experiment UUID.
    * @param signal - Optional cancellation signal.
@@ -101,8 +99,8 @@ export interface ExperimentMethods {
   ) => Promise<void>;
 
   /**
-   * Launch an experiment (`launch_experiment`, `:5441-5472` — PUT
-   * `experiments/{id}/launch`, NO body).
+   * Launch an experiment (`launch_experiment` — PUT
+   * `experiments/{id}/launch`, no body).
    *
    * @param experimentId - Experiment UUID.
    * @param signal - Optional cancellation signal.
@@ -115,8 +113,8 @@ export interface ExperimentMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Conclude an experiment (`conclude_experiment`, `:5474-5509` — PUT
-   * `experiments/{id}/force_conclude`; ALWAYS sends a JSON body,
+   * Conclude an experiment (`conclude_experiment` — PUT
+   * `experiments/{id}/force_conclude`; always sends a JSON body,
    * `body or {}`).
    *
    * @param experimentId - Experiment UUID.
@@ -132,8 +130,8 @@ export interface ExperimentMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Record an experiment decision (`decide_experiment`, `:5511-5545`
-   * — PATCH `experiments/{id}/decide`).
+   * Record an experiment decision (`decide_experiment` — PATCH
+   * `experiments/{id}/decide`).
    *
    * @param experimentId - Experiment UUID.
    * @param body - Decision payload (`success` required).
@@ -148,7 +146,7 @@ export interface ExperimentMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Archive an experiment (`archive_experiment`, `:5547-5569` — POST
+   * Archive an experiment (`archive_experiment` — POST
    * `experiments/{id}/archive`).
    *
    * @param experimentId - Experiment UUID.
@@ -161,8 +159,8 @@ export interface ExperimentMethods {
   ) => Promise<void>;
 
   /**
-   * Restore an archived experiment (`restore_experiment`,
-   * `:5571-5602` — DELETE `experiments/{id}/archive`).
+   * Restore an archived experiment (`restore_experiment` — DELETE
+   * `experiments/{id}/archive`).
    *
    * @param experimentId - Experiment UUID.
    * @param signal - Optional cancellation signal.
@@ -175,8 +173,8 @@ export interface ExperimentMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Duplicate an experiment (`duplicate_experiment`, `:5604-5638` —
-   * POST `experiments/{id}/duplicate`; body sent ONLY when truthy,
+   * Duplicate an experiment (`duplicate_experiment` —
+   * POST `experiments/{id}/duplicate`; body sent only when truthy,
    * `json_body=body if body else None`).
    *
    * @param experimentId - Experiment UUID.
@@ -192,8 +190,8 @@ export interface ExperimentMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * List experiments in ERF format (`list_erf_experiments`,
-   * `:5640-5668` — GET `experiments/erf/`).
+   * List experiments in ERF format (`list_erf_experiments` — GET
+   * `experiments/erf/`).
    *
    * @param signal - Optional cancellation signal.
    * @returns The ERF experiment list verbatim.
@@ -203,14 +201,14 @@ export interface ExperimentMethods {
 }
 
 /**
- * Build the C4 experiment methods over the C1 core seam.
+ * Build the experiment methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
  */
 // eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function createExperimentMethods(core: ClientCore): ExperimentMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
+  /** `maybe_scoped_path` over the pin current at call time. */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),
@@ -333,7 +331,7 @@ export function createExperimentMethods(core: ClientCore): ExperimentMethods {
     ): Promise<Record<string, JsonValue>> => {
       const path = scopedPath(`experiments/${experimentId}/duplicate`);
       // `json_body=body if body else None` — Python truthiness: None
-      // AND `{}` both send NO body.
+      // and `{}` both send no body.
       const result = await appRequest(core.appDeps(signal), "POST", path, {
         jsonBody: truthyRecord(body) ? body : null,
       });

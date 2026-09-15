@@ -1,16 +1,13 @@
 /**
- * Query-host wire methods — Phase-3 packet B4-C2 port of the
- * `MixpanelAPIClient` discovery/query surface (`api_client.py`
- * `:2342-2546` discovery, `:2547-2641` counts, `:2642-2794`
- * segmentation/funnel/retention, `:2800-3293` phase-008 + saved
- * reports + inline queries).
+ * Query-host wire methods: the discovery, counts, segmentation, funnel,
+ * retention, activity-feed, saved-report and inline-query calls of
+ * `MixpanelAPIClient`. Every method delegates to `core.requestQueryHost`
+ * (the `_request` twin), which owns project-id injection, the
+ * explicit-only workspace pin, retry/backoff and `query_origin`; nothing
+ * here re-derives them. Results are the parsed bodies verbatim — result
+ * shaping lives in `services/live-query.ts`.
  *
- * Every method delegates to the C1 `_request` twin
- * (`core.requestQueryHost`) — project-id injection, explicit-only
- * workspace-pin injection, retry/backoff, and `query_origin` all live
- * THERE (B0 `executeWithRetry`); nothing here re-derives them (R10.8,
- * packet Caution "no query_origin double-injection"). Results are the
- * parsed bodies verbatim — result shaping is B5 (Caution #11).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient
  */
 
 import type { ClientCore } from "../../client/core.js";
@@ -32,24 +29,19 @@ import {
   parseYmd,
 } from "./py-dates.js";
 
-/**
- * Server-side ceiling on the `/events/names` `limit` parameter
- * (`api_client.py`).
- */
+/** Server-side ceiling on the `/events/names` `limit` parameter. */
 const EVENTS_NAMES_MAX_LIMIT = 5000;
 
-/**
- * Widest `from_date` the server accepts.
- */
+/** Widest `from_date` the server accepts. */
 const EVENTS_NAMES_WIDE_FROM_DATE = "2000-01-01";
 
 /**
- * The `re.search(r"exceeds\s+(\d+)\s+days", ...)` twin
- * (`api_client.py`). Python compiles `\s`/`\d` in Unicode mode:
- * `\s` is the CPython str-pattern whitespace class (spelled out below —
- * NOTE it includes `\x1c-\x1f` and `\x85` which JS `\s` lacks, and
- * EXCLUDES U+FEFF which JS `\s` contains), `\d` is `\p{Nd}` (R11.7:
- * no bare `\s`/`\d` grammars in ported code).
+ * The `re.search(r"exceeds\s+(\d+)\s+days", ...)` twin of `get_events`.
+ * Python compiles `\s` / `\d` in Unicode mode: `\s` is the CPython
+ * str-pattern whitespace class (spelled out below — it includes
+ * `\x1c-\x1f` and `\x85`, which JS `\s` lacks, and excludes U+FEFF,
+ * which JS `\s` contains) and `\d` is `\p{Nd}`; the bare JS classes
+ * would accept a different set.
  */
 const PY_WS = String.raw`[\t\n\v\f\r\x1c-\x1f \x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]`;
 const DATE_GATE_PATTERN = new RegExp(
@@ -118,7 +110,7 @@ export function buildActivityFeedDateRange(
     const windowStart = addDays(parsedTo, -30);
     if (windowStart === null) {
       // Python: OverflowError from `parsed_to - timedelta(days=30)` —
-      // re-raised as QueryError (`api_client.py`).
+      // re-raised as QueryError.
       throw new QueryError(
         `to_date ${JSON.stringify(toDate)} is too early to compute a 30-day window`,
       );
@@ -246,7 +238,7 @@ export interface ActivityFeedOptions {
   readonly exclude_events?: readonly string[] | null | undefined;
   /** Pagination cursor from a prior call. */
   readonly sentinel_event?: Record<string, unknown> | null | undefined;
-  /** Days (<= 30) bounding each page's scan window. */
+  /** Days (at most 30) bounding each page's scan window. */
   readonly paging_window?: number | null | undefined;
   /** Full-text search string. */
   readonly search?: string | null | undefined;
@@ -260,9 +252,8 @@ export interface ActivityFeedOptions {
 }
 
 /**
- * Keyword options of the two inline query methods
- * (`insights_query` / `arb_funnels_query`, 045-report-links): an
- * explicit data view plus the pin opt-out (Python kw-only, R3.8).
+ * Keyword options of the two inline query methods (`insights_query` /
+ * `arb_funnels_query`): an explicit data view plus the pin opt-out.
  */
 export interface InlineQueryOptions {
   /**
@@ -339,11 +330,10 @@ export interface SegmentationNumericOptions {
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The C2 query-host method surface (mixed into `MixpanelClient`). */
+/** The query-host method surface (mixed into `MixpanelClient`). */
 export interface QueryHostMethods {
   /**
-   * List event names in the project (`get_events`,
-   * `api_client.py`) with widest-window defaults and the
+   * List event names in the project (`MixpanelAPIClient.get_events`) with widest-window defaults and the
    * one-shot 403 "Date range exceeds N days" retry.
    *
    * @param options - Optional limit/date overrides.
@@ -356,8 +346,7 @@ export interface QueryHostMethods {
   getEvents: (options?: GetEventsOptions) => Promise<string[]>;
 
   /**
-   * List properties for a specific event (`get_event_properties`,
-   * `api_client.py`).
+   * List properties for a specific event (`MixpanelAPIClient.get_event_properties`).
    *
    * @param event - Event name.
    * @param signal - Optional cancellation signal.
@@ -370,8 +359,7 @@ export interface QueryHostMethods {
   ) => Promise<string[]>;
 
   /**
-   * List sample values for a property (`get_property_values`,
-   * `api_client.py`).
+   * List sample values for a property (`MixpanelAPIClient.get_property_values`).
    *
    * @param propertyName - Property name.
    * @param options - Optional event scope and limit.
@@ -384,7 +372,7 @@ export interface QueryHostMethods {
   ) => Promise<string[]>;
 
   /**
-   * List saved funnels (`list_funnels`, `api_client.py`).
+   * List saved funnels (`MixpanelAPIClient.list_funnels`).
    *
    * @param signal - Optional cancellation signal.
    * @returns Funnel dicts, or `[]` for a non-list response.
@@ -393,8 +381,7 @@ export interface QueryHostMethods {
   listFunnels: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
-   * List saved cohorts via POST (`list_cohorts`,
-   * `api_client.py`).
+   * List saved cohorts via POST (`MixpanelAPIClient.list_cohorts`).
    *
    * @param signal - Optional cancellation signal.
    * @returns Cohort dicts, or `[]` for a non-list response.
@@ -403,7 +390,7 @@ export interface QueryHostMethods {
   listCohorts: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
-   * Today's top events (`get_top_events`, `api_client.py`).
+   * Today's top events (`MixpanelAPIClient.get_top_events`).
    *
    * @param options - Counting type and limit.
    * @returns The response dict, or `{events: [], type}` for a non-dict.
@@ -412,8 +399,7 @@ export interface QueryHostMethods {
   getTopEvents: (options?: GetTopEventsOptions) => Promise<JsonValue>;
 
   /**
-   * Aggregate counts for multiple events (`event_counts`,
-   * `api_client.py`).
+   * Aggregate counts for multiple events (`MixpanelAPIClient.event_counts`).
    *
    * @param events - Event names (JSON-encoded on the wire).
    * @param fromDate - Start date.
@@ -431,8 +417,7 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Aggregate counts by property values (`property_counts`,
-   * `api_client.py`).
+   * Aggregate counts by property values (`MixpanelAPIClient.property_counts`).
    *
    * @param event - Event name.
    * @param propertyName - Property to segment by.
@@ -452,8 +437,7 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Run a segmentation query (`segmentation`,
-   * `api_client.py`).
+   * Run a segmentation query (`MixpanelAPIClient.segmentation`).
    *
    * @param event - Event name to segment.
    * @param fromDate - Start date.
@@ -471,7 +455,7 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Run a funnel query (`funnel`, `api_client.py`).
+   * Run a funnel query (`MixpanelAPIClient.funnel`).
    *
    * @param funnelId - Funnel identifier.
    * @param fromDate - Start date.
@@ -489,7 +473,7 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Run a retention query (`retention`, `api_client.py:2738-2794`).
+   * Run a retention query (`MixpanelAPIClient.retention`).
    * `unit` and `interval` are mutually exclusive on the wire: `interval`
    * is sent only when != 1, otherwise `unit`.
    *
@@ -512,8 +496,7 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Query the activity feed via stream/bookmark (`activity_feed`,
-   * `api_client.py`). Resolves the workspace id (pin or
+   * Query the activity feed via stream/bookmark (`MixpanelAPIClient.activity_feed`). Resolves the workspace id (pin or
    * auto-discovery) into the request body.
    *
    * @param distinctIds - User identifiers to query.
@@ -529,8 +512,7 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Query a saved report by bookmark type (`query_saved_report`,
-   * `api_client.py`).
+   * Query a saved report by bookmark type (`MixpanelAPIClient.query_saved_report`).
    *
    * @param bookmarkId - Saved report identifier.
    * @param options - bookmark_type and the funnel date window.
@@ -544,9 +526,9 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * List saved reports (LEGACY query-side listing — `list_bookmarks`,
-   * `api_client.py`; the App-API twin `list_bookmarks_v2` is
-   * shard C3).
+   * List saved reports (`MixpanelAPIClient.list_bookmarks`, the legacy
+   * query-side listing; the App-API twin is
+   * `BookmarkMethods.listBookmarksV2`).
    *
    * @param bookmarkType - Optional report-type filter.
    * @param signal - Optional cancellation signal.
@@ -560,12 +542,11 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Execute an inline insights query via POST (`insights_query`,
-   * `api_client.py`). The body carries `project_id` itself —
+   * Execute an inline insights query via POST (`MixpanelAPIClient.insights_query`). The body carries `project_id` itself —
    * no query-param injection.
    *
    * @param body - Request body (bookmark params + project_id).
-   * @param signal - Optional cancellation signal.
+   * @param options - Data view, pin opt-out and cancellation signal.
    * @returns The raw response.
    * @throws AuthenticationError | QueryError | RateLimitError - Per the
    *   retry core.
@@ -576,8 +557,7 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Query a saved flows report (`query_saved_flows`,
-   * `api_client.py`).
+   * Query a saved flows report (`MixpanelAPIClient.query_saved_flows`).
    *
    * @param bookmarkId - Saved flows report identifier.
    * @param signal - Optional cancellation signal.
@@ -591,12 +571,12 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Execute an inline flow/funnel query (`arb_funnels_query`,
-   * `api_client.py` — index-absent, ported for the B5
-   * LiveQueryService `query_flow` path; Layer-3-locked only).
+   * Execute an inline flow/funnel query
+   * (`MixpanelAPIClient.arb_funnels_query`, the request path of
+   * `LiveQueryService.queryFlow`; not corpus-locked).
    *
    * @param body - Request body (bookmark + project_id + query_type).
-   * @param signal - Optional cancellation signal.
+   * @param options - Data view, pin opt-out and cancellation signal.
    * @returns The raw response.
    * @throws AuthenticationError | QueryError | RateLimitError - Per the
    *   retry core.
@@ -607,8 +587,7 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Event frequency distribution (`frequency`,
-   * `api_client.py`).
+   * Event frequency distribution (`MixpanelAPIClient.frequency`).
    *
    * @param fromDate - Start date.
    * @param toDate - End date.
@@ -628,8 +607,7 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Events bucketed by numeric property ranges (`segmentation_numeric`,
-   * `api_client.py`).
+   * Events bucketed by numeric property ranges (`MixpanelAPIClient.segmentation_numeric`).
    *
    * @param event - Event name.
    * @param fromDate - Start date.
@@ -649,8 +627,7 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Sum of numeric property values (`segmentation_sum`,
-   * `api_client.py`).
+   * Sum of numeric property values (`MixpanelAPIClient.segmentation_sum`).
    *
    * @param event - Event name.
    * @param fromDate - Start date.
@@ -670,8 +647,7 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Average of numeric property values (`segmentation_average`,
-   * `api_client.py`).
+   * Average of numeric property values (`MixpanelAPIClient.segmentation_average`).
    *
    * @param event - Event name.
    * @param fromDate - Start date.
@@ -692,12 +668,12 @@ export interface QueryHostMethods {
 }
 
 /**
- * The slice of the assembled client the C2 factory needs beyond
+ * The slice of the assembled client the factory needs beyond
  * {@link ClientCore} (`activity_feed` calls `resolve_workspace_id`).
  */
 export interface QueryHostClientDeps {
   /**
-   * Resolve the workspace ID (pin → cache → discovery), exactly the C1
+   * Resolve the workspace ID (pin → cache → discovery), exactly the
    * client method.
    *
    * @returns The resolved workspace id.
@@ -713,7 +689,7 @@ async function getEvents(
   const toDate = options.to_date;
   const url = core.buildUrl("query", "/events/names");
   // Capture today once so the initial to_date and the retry's
-  // from_date can't diverge across midnight (`api_client.py`).
+  // from_date can't diverge across midnight.
   const today = civilFromInstantUtc(core.now());
   const resolvedFrom = fromDate ?? EVENTS_NAMES_WIDE_FROM_DATE;
   const resolvedTo = toDate ?? formatYmd(today);
@@ -744,8 +720,9 @@ async function getEvents(
     const allowedDays = pythonInt(match[1] as string);
     const retryFrom = addDays(today, -allowedDays);
     if (retryFrom === null) {
-      // Python would raise OverflowError from the date subtraction —
-      // out of reach for real gate values; propagate the original.
+      // Divergence: Python raises `OverflowError` from the date
+      // subtraction; the port re-throws the original error. Out of
+      // reach for real gate values.
       throw error;
     }
     params["from_date"] = formatYmd(retryFrom);
@@ -852,9 +829,9 @@ async function querySavedReport(
       } else if (fromDate === null && toDate !== null) {
         const parsedTo = parseYmd(toDate);
         if (parsedTo === null) {
-          // Python: `datetime.strptime` raises a BARE ValueError that
-          // propagates uncaught (`api_client.py`) — port the same
-          // class, CPython's message shape (out of contract, R5.4).
+          // Python: `datetime.strptime` raises a bare ValueError that
+          // propagates uncaught — port the same class; the message text
+          // is out of contract.
           throw new ValueError(
             `time data '${toDate}' does not match format '%Y-%m-%d'`,
           );
@@ -872,7 +849,7 @@ async function querySavedReport(
         const now = core.now();
         const nowCivil = civilFromInstantUtc(now);
         // Python: `min(computed_to, datetime.now())` — midnight of the
-        // derived date vs the live instant; the CALENDAR comparison is
+        // derived date vs the live instant; the calendar comparison is
         // what survives strftime, so compare civil dates.
         toDate = earlierYmd(formatYmd(computedTo), formatYmd(nowCivil));
       }
@@ -958,7 +935,7 @@ async function listCohorts(
   core: ClientCore,
   signal?: AbortSignal,
 ): Promise<JsonValue[]> {
-  // POST for a read is unusual but per API spec (`api_client.py`).
+  // POST for a read is unusual but per API spec.
   const url = core.buildUrl("query", "/cohorts/list");
   const response = await core.requestQueryHost("POST", url, { signal });
   return Array.isArray(response) ? response : [];
@@ -1115,8 +1092,7 @@ async function retention(
     retention_type: options.retention_type ?? "birth",
     interval_count: options.interval_count ?? 8,
   };
-  // The API rejects `unit` and `interval` together
-  // (`api_client.py`).
+  // The API rejects `unit` and `interval` together.
   if (interval === 1) {
     params["unit"] = options.unit ?? "day";
   } else {
@@ -1303,9 +1279,8 @@ async function segmentationAverage(
 }
 
 /**
- * Build the C2 query-host methods over the C1 core seam (R2.9 factory
- * half; spread into `createMixpanelClient` at the documented merge
- * point).
+ * Build the query-host methods over the shared client core;
+ * `createMixpanelClient` spreads the bag into the assembled client.
  *
  * @param core - The shared client internals seam.
  * @param client - The client-method slice (workspace resolution).

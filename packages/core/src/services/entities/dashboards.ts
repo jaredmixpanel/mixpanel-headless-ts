@@ -1,14 +1,12 @@
 /**
- * Dashboard CRUD wire methods — Phase-3 packet B4-C3 port of
- * `MixpanelAPIClient` dashboards + blueprints/RCA + dashboard-adjacent
- * ranges (`api_client.py`).
+ * Dashboard CRUD wire methods on the App API, plus blueprints, RCA
+ * dashboards and the dashboard-adjacent calls (`dashboards`,
+ * workspace-scoped through `maybe_scoped_path` against the pin current
+ * at call time). Every method returns the envelope product verbatim
+ * after Python's isinstance guard; `Dashboard` model shaping belongs to
+ * the `Workspace` facade.
  *
- * Every method routes through B0 `appRequest` (per-request auth via the
- * C1 `appDeps` seam — R2.9/R10.8) over a `maybe_scoped_path` (B0
- * `scope.ts` against the client's CURRENT pin state). Methods return the
- * envelope product verbatim after the source's isinstance guard — no
- * result pre-shaping (Caution #11; `Dashboard` models are B6 facade
- * work).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_dashboards
  */
 
 import { appRequest } from "../../client/app-request.js";
@@ -40,21 +38,21 @@ export interface ListBlueprintTemplatesOptions {
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The C3 dashboard method surface (mixed into `MixpanelClient`). */
+/** Dashboard methods mixed into `MixpanelClient`. */
 export interface DashboardMethods {
   /**
-   * List dashboards (`list_dashboards`, `api_client.py`).
+   * List dashboards (`list_dashboards`).
    *
    * @param options - Optional `ids` filter + signal.
    * @returns The dashboard list verbatim.
    * @throws MixpanelHeadlessError - Non-list response.
    * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Per the B0 `appRequest` contract.
+   *   ServerError - Per the `appRequest` contract.
    */
   listDashboards: (options?: ListDashboardsOptions) => Promise<JsonValue[]>;
 
   /**
-   * Create a dashboard (`create_dashboard`, `:3689-3722`).
+   * Create a dashboard (`create_dashboard`).
    *
    * @param body - Creation payload (raw dict, verbatim).
    * @param signal - Optional cancellation signal.
@@ -67,7 +65,7 @@ export interface DashboardMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get a dashboard by ID (`get_dashboard`, `:3724-3757`).
+   * Get a dashboard by ID (`get_dashboard`).
    *
    * @param dashboardId - The dashboard identifier.
    * @param signal - Optional cancellation signal.
@@ -80,7 +78,7 @@ export interface DashboardMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update a dashboard (`update_dashboard`, `:3759-3795`; PATCH).
+   * Update a dashboard (`update_dashboard`; PATCH).
    *
    * @param dashboardId - The dashboard identifier.
    * @param body - Partial update payload.
@@ -95,7 +93,7 @@ export interface DashboardMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete a dashboard (`delete_dashboard`, `:3797-3822`).
+   * Delete a dashboard (`delete_dashboard`).
    *
    * @param dashboardId - The dashboard identifier.
    * @param signal - Optional cancellation signal.
@@ -104,7 +102,7 @@ export interface DashboardMethods {
   deleteDashboard: (dashboardId: number, signal?: AbortSignal) => Promise<void>;
 
   /**
-   * Bulk-delete dashboards (`bulk_delete_dashboards`, `:3824-3849` —
+   * Bulk-delete dashboards (`bulk_delete_dashboards` —
    * POST `dashboards/bulk-delete` with `{dashboard_ids}`).
    *
    * @param ids - Dashboard IDs to delete.
@@ -117,7 +115,7 @@ export interface DashboardMethods {
   ) => Promise<void>;
 
   /**
-   * Favorite a dashboard (`favorite_dashboard`, `:3851-3876`).
+   * Favorite a dashboard (`favorite_dashboard`).
    *
    * @param dashboardId - The dashboard identifier.
    * @param signal - Optional cancellation signal.
@@ -129,7 +127,7 @@ export interface DashboardMethods {
   ) => Promise<void>;
 
   /**
-   * Unfavorite a dashboard (`unfavorite_dashboard`, `:3878-3903`).
+   * Unfavorite a dashboard (`unfavorite_dashboard`).
    *
    * @param dashboardId - The dashboard identifier.
    * @param signal - Optional cancellation signal.
@@ -141,7 +139,7 @@ export interface DashboardMethods {
   ) => Promise<void>;
 
   /**
-   * Pin a dashboard (`pin_dashboard`, `:3905-3930`).
+   * Pin a dashboard (`pin_dashboard`).
    *
    * @param dashboardId - The dashboard identifier.
    * @param signal - Optional cancellation signal.
@@ -150,7 +148,7 @@ export interface DashboardMethods {
   pinDashboard: (dashboardId: number, signal?: AbortSignal) => Promise<void>;
 
   /**
-   * Unpin a dashboard (`unpin_dashboard`, `:3932-3957`).
+   * Unpin a dashboard (`unpin_dashboard`).
    *
    * @param dashboardId - The dashboard identifier.
    * @param signal - Optional cancellation signal.
@@ -159,8 +157,8 @@ export interface DashboardMethods {
   unpinDashboard: (dashboardId: number, signal?: AbortSignal) => Promise<void>;
 
   /**
-   * Remove a report from a dashboard (`remove_report_from_dashboard`,
-   * `:3959-4001` — PATCH with a `delete` content action).
+   * Remove a report from a dashboard (`remove_report_from_dashboard` — PATCH
+   * with a `delete` content action).
    *
    * @param dashboardId - The dashboard identifier.
    * @param bookmarkId - The report/bookmark to remove.
@@ -176,8 +174,8 @@ export interface DashboardMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Add a report to a dashboard (`add_report_to_dashboard`,
-   * `:4003-4045` — PATCH with a `create` content action).
+   * Add a report to a dashboard (`add_report_to_dashboard` — PATCH with a
+   * `create` content action).
    *
    * @param dashboardId - The dashboard identifier.
    * @param bookmarkId - The source bookmark to clone onto it.
@@ -192,10 +190,9 @@ export interface DashboardMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * List blueprint templates (`list_blueprint_templates`,
-   * `:4047-4105` — GET `dashboards/blueprints-all`; a
-   * `{templates: {name: data}}` envelope flattens to a list with each
-   * `name` merged in, non-dict entries skipped).
+   * List blueprint templates (`list_blueprint_templates` — GET
+   * `dashboards/blueprints-all`; a `{templates: {name: data}}` envelope
+   * flattens to a list with each `name` merged in, non-dict entries skipped).
    *
    * @param options - `include_reports` + signal.
    * @returns The template list.
@@ -206,8 +203,7 @@ export interface DashboardMethods {
   ) => Promise<JsonValue[]>;
 
   /**
-   * Create a dashboard from a blueprint (`create_blueprint`,
-   * `:4107-4143`).
+   * Create a dashboard from a blueprint (`create_blueprint`).
    *
    * @param templateType - The blueprint template type identifier.
    * @param signal - Optional cancellation signal.
@@ -220,8 +216,7 @@ export interface DashboardMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get a dashboard's blueprint config (`get_blueprint_config`,
-   * `:4145-4178`).
+   * Get a dashboard's blueprint config (`get_blueprint_config`).
    *
    * @param dashboardId - The dashboard identifier.
    * @param signal - Optional cancellation signal.
@@ -234,8 +229,8 @@ export interface DashboardMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update blueprint cohort mappings (`update_blueprint_cohorts`,
-   * `:4180-4208` — PUT with `{cohorts}`).
+   * Update blueprint cohort mappings (`update_blueprint_cohorts` — PUT with
+   * `{cohorts}`).
    *
    * @param cohorts - Cohort mapping dicts.
    * @param signal - Optional cancellation signal.
@@ -247,8 +242,7 @@ export interface DashboardMethods {
   ) => Promise<void>;
 
   /**
-   * Finalize a blueprint dashboard (`finalize_blueprint`,
-   * `:4210-4243`).
+   * Finalize a blueprint dashboard (`finalize_blueprint`).
    *
    * @param body - Finalization payload.
    * @param signal - Optional cancellation signal.
@@ -261,7 +255,7 @@ export interface DashboardMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Create an RCA dashboard (`create_rca_dashboard`, `:4245-4282`).
+   * Create an RCA dashboard (`create_rca_dashboard`).
    *
    * @param body - RCA creation payload.
    * @param signal - Optional cancellation signal.
@@ -274,8 +268,7 @@ export interface DashboardMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Dashboard IDs containing a bookmark (`get_bookmark_dashboard_ids`,
-   * `:4284-4318` — GET
+   * Dashboard IDs containing a bookmark (`get_bookmark_dashboard_ids` — GET
    * `dashboards/bookmarks/{id}/dashboard-ids`).
    *
    * @param bookmarkId - The bookmark identifier.
@@ -289,7 +282,7 @@ export interface DashboardMethods {
   ) => Promise<JsonValue[]>;
 
   /**
-   * ERF data for a dashboard (`get_dashboard_erf`, `:4320-4353`).
+   * ERF data for a dashboard (`get_dashboard_erf`).
    *
    * @param dashboardId - The dashboard identifier.
    * @param signal - Optional cancellation signal.
@@ -302,8 +295,7 @@ export interface DashboardMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update a dashboard report link (`update_report_link`,
-   * `:4355-4387` — PATCH
+   * Update a dashboard report link (`update_report_link` — PATCH
    * `dashboards/{id}/report-links/{report_link_id}`).
    *
    * @param dashboardId - The dashboard identifier.
@@ -320,7 +312,7 @@ export interface DashboardMethods {
   ) => Promise<void>;
 
   /**
-   * Update a dashboard text card (`update_text_card`, `:4389-4421` —
+   * Update a dashboard text card (`update_text_card` —
    * PATCH `dashboards/{id}/text-cards/{text_card_id}`).
    *
    * @param dashboardId - The dashboard identifier.
@@ -494,8 +486,7 @@ async function listBlueprintTemplates(
   const result = await appRequest(core.appDeps(options.signal), "GET", path, {
     params: paramsOrNone(params),
   });
-  // The blueprints-all endpoint returns {"templates": {name: data}}
-  // (`api_client.py`).
+  // The blueprints-all endpoint returns {"templates": {name: data}}.
   if (isPlainRecord(result) && Object.hasOwn(result, "templates")) {
     const templates = result["templates"] as JsonValue;
     if (isPlainRecord(templates)) {
@@ -636,7 +627,7 @@ async function updateTextCard(
 }
 
 /**
- * Build the C3 dashboard methods over the C1 core seam.
+ * Build the dashboard methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.

@@ -1,13 +1,12 @@
 /**
- * Bookmark (saved report) CRUD wire methods — Phase-3 packet B4-C3 port
- * of the `MixpanelAPIClient` bookmarks-v2 range
- * (`api_client.py`).
+ * Bookmark (saved report) CRUD wire methods on the App API (`bookmarks`,
+ * workspace-scoped through `maybe_scoped_path`). The v2 wire markers are
+ * mirrored exactly: list and get send `v=2` as a query param (the string
+ * `"2"`), create and update merge `"v": 2` (the integer) into the JSON
+ * body. `get_bookmark_history` is the one raw-envelope call and re-shapes
+ * the envelope branch for branch as Python does.
  *
- * All methods route through B0 `appRequest` over `maybe_scoped_path`
- * (R10.8). The v2 wire markers port verbatim: list/get send `v=2` as a
- * query param (STRING `"2"`); create/update merge `"v": 2` (INT) into
- * the JSON body. `get_bookmark_history` is the one `_raw=True` call in
- * the shard — it re-shapes the raw envelope exactly per the source.
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_bookmarks_v2
  */
 
 import { appRequest } from "../../client/app-request.js";
@@ -45,23 +44,22 @@ export interface GetBookmarkHistoryOptions {
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The C3 bookmark method surface (mixed into `MixpanelClient`). */
+/** Bookmark methods mixed into `MixpanelClient`. */
 export interface BookmarkMethods {
   /**
-   * List bookmarks via the App API (`list_bookmarks_v2`,
-   * `api_client.py`). Unwraps the v2
+   * List bookmarks via the App API (`list_bookmarks_v2`). Unwraps the v2
    * `{"results": {"results": [...]}}` envelope.
    *
    * @param options - Type/ids filters + signal.
    * @returns The bookmark list verbatim.
    * @throws MixpanelHeadlessError - Neither a list nor a v2 envelope.
    * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Per the B0 `appRequest` contract.
+   *   ServerError - Per the `appRequest` contract.
    */
   listBookmarksV2: (options?: ListBookmarksV2Options) => Promise<JsonValue[]>;
 
   /**
-   * Create a bookmark (`create_bookmark`, `:4479-4513` — the body
+   * Create a bookmark (`create_bookmark` — the body
    * gains `"v": 2`).
    *
    * @param body - Creation payload.
@@ -75,7 +73,7 @@ export interface BookmarkMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get a bookmark by ID (`get_bookmark`, `:4515-4543` — sends
+   * Get a bookmark by ID (`get_bookmark` — sends
    * `v=2`).
    *
    * @param bookmarkId - The bookmark identifier.
@@ -89,7 +87,7 @@ export interface BookmarkMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update a bookmark (`update_bookmark`, `:4545-4575` — PATCH; the
+   * Update a bookmark (`update_bookmark` — PATCH; the
    * body gains `"v": 2`).
    *
    * @param bookmarkId - The bookmark identifier.
@@ -105,7 +103,7 @@ export interface BookmarkMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete a bookmark (`delete_bookmark`, `:4577-4596`).
+   * Delete a bookmark (`delete_bookmark`).
    *
    * @param bookmarkId - The bookmark identifier.
    * @param signal - Optional cancellation signal.
@@ -114,7 +112,7 @@ export interface BookmarkMethods {
   deleteBookmark: (bookmarkId: number, signal?: AbortSignal) => Promise<void>;
 
   /**
-   * Bulk-delete bookmarks (`bulk_delete_bookmarks`, `:4598-4617` —
+   * Bulk-delete bookmarks (`bulk_delete_bookmarks` —
    * POST `bookmarks/bulk-delete` with `{bookmark_ids}`).
    *
    * @param ids - Bookmark IDs to delete.
@@ -127,7 +125,7 @@ export interface BookmarkMethods {
   ) => Promise<void>;
 
   /**
-   * Bulk-update bookmarks (`bulk_update_bookmarks`, `:4619-4640` —
+   * Bulk-update bookmarks (`bulk_update_bookmarks` —
    * POST `bookmarks/bulk-update` with `{bookmarks}`).
    *
    * @param entries - Update dicts, each with `id` + fields.
@@ -141,7 +139,7 @@ export interface BookmarkMethods {
 
   /**
    * Dashboard IDs linked to a bookmark
-   * (`bookmark_linked_dashboard_ids`, `:4642-4670` — GET
+   * (`bookmark_linked_dashboard_ids` — GET
    * `bookmarks/{id}/linked-dashboard-ids`).
    *
    * @param bookmarkId - The bookmark identifier.
@@ -155,9 +153,9 @@ export interface BookmarkMethods {
   ) => Promise<JsonValue[]>;
 
   /**
-   * Change history for a bookmark (`get_bookmark_history`,
-   * `:4672-4730` — `_raw=True`, then the source's envelope re-shape:
-   * always a dict with `results` + `pagination` keys).
+   * Change history for a bookmark (`get_bookmark_history` — `_raw=True`, then
+   * the source's envelope re-shape: always a dict with `results` + `pagination`
+   * keys).
    *
    * @param bookmarkId - The bookmark identifier.
    * @param options - Cursor/page-size + signal.
@@ -171,14 +169,14 @@ export interface BookmarkMethods {
 }
 
 /**
- * Build the C3 bookmark methods over the C1 core seam.
+ * Build the bookmark methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
  */
 // eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function createBookmarkMethods(core: ClientCore): BookmarkMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
+  /** `maybe_scoped_path` over the pin current at call time. */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),
@@ -206,8 +204,7 @@ export function createBookmarkMethods(core: ClientCore): BookmarkMethods {
         },
       );
       // v2 envelope: {"results": {"results": [...]}} — after the
-      // appRequest unwrap the method may still see one more layer
-      // (`api_client.py`).
+      // appRequest unwrap the method may still see one more layer.
       if (isPlainRecord(result) && Object.hasOwn(result, "results")) {
         const inner = result["results"] as JsonValue;
         if (Array.isArray(inner)) {
@@ -228,8 +225,8 @@ export function createBookmarkMethods(core: ClientCore): BookmarkMethods {
       signal?: AbortSignal,
     ): Promise<Record<string, JsonValue>> => {
       const path = scopedPath("bookmarks");
-      // `{**body, "v": 2}` — the INT marker, spelled after the caller's
-      // keys (JS spread preserves the same string-key ordering).
+      // `{**body, "v": 2}` — the integer marker, spelled after the
+      // caller's keys (JS spread preserves the same string-key ordering).
       const bodyV2 = { ...body, v: 2 };
       const result = await appRequest(core.appDeps(signal), "POST", path, {
         jsonBody: bodyV2,
@@ -308,7 +305,7 @@ export function createBookmarkMethods(core: ClientCore): BookmarkMethods {
         params["cursor"] = options.cursor;
       }
       if (options.page_size !== undefined && options.page_size !== null) {
-        // `str(page_size)` (R11.7: pythonStr, never String()).
+        // `str(page_size)` — `pythonStr`, never `String()`.
         params["page_size"] = pythonStr(options.page_size);
       }
       const result = await appRequest(
@@ -323,15 +320,15 @@ export function createBookmarkMethods(core: ClientCore): BookmarkMethods {
       if (isPlainRecord(result)) {
         // The raw response is {"status": "ok", "results": <inner>}.
         // <inner> may be the history dict {"results": [...],
-        // "pagination": {...}} or already a list (`:4710-4724`).
+        // "pagination": {...}} or already a list.
         const inner = Object.hasOwn(result, "results")
           ? (result["results"] as JsonValue)
           : result;
         if (isPlainRecord(inner) && Object.hasOwn(inner, "results")) {
           // inner is {"results": [...], "pagination": {...}} — as-is,
-          // defaulting an absent pagination to None (the source
-          // MUTATES inner; a fresh spread is observationally the same
-          // dict content).
+          // defaulting an absent pagination to None (Python mutates
+          // `inner` in place; a fresh spread yields the same dict
+          // content).
           if (!Object.hasOwn(inner, "pagination")) {
             return { ...inner, pagination: null };
           }

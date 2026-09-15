@@ -1,12 +1,10 @@
 /**
- * Webhook CRUD + connectivity-test wire methods (App API) — Phase-3
- * packet B4-C4 port of the `MixpanelAPIClient` webhooks range
- * (`api_client.py`).
+ * Webhook CRUD and connectivity-test wire methods on the App API
+ * (`webhooks/`, workspace-scoped through `maybe_scoped_path`). Webhook
+ * ids are UUID strings, unlike the integer ids on annotations and
+ * alerts; results come back verbatim after Python's isinstance guard.
  *
- * All methods route through B0 `appRequest` over `maybe_scoped_path`
- * (R10.8). Webhook IDs are UUID STRINGS (R3-family — unlike the int
- * IDs on annotations/alerts). Results are returned verbatim after the
- * source's isinstance guard (Caution #11).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_webhooks
  */
 
 import { appRequest } from "../../client/app-request.js";
@@ -15,22 +13,22 @@ import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
 import { expectListResult, expectRecordResult } from "./shared.js";
 
-/** The C4 webhook method surface (mixed into `MixpanelClient`). */
+/** Webhook methods mixed into `MixpanelClient`. */
 export interface WebhookMethods {
   /**
-   * List webhooks (`list_webhooks`, `api_client.py` — GET
+   * List webhooks (`list_webhooks` — GET
    * `webhooks/`).
    *
    * @param signal - Optional cancellation signal.
    * @returns The webhook list verbatim.
    * @throws MixpanelHeadlessError - Non-list response.
    * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Per the B0 `appRequest` contract.
+   *   ServerError - Per the `appRequest` contract.
    */
   listWebhooks: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
-   * Create a webhook (`create_webhook`, `:5950-5981` — POST
+   * Create a webhook (`create_webhook` — POST
    * `webhooks/`).
    *
    * @param body - Webhook creation parameters (name, url, ...).
@@ -44,7 +42,7 @@ export interface WebhookMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update a webhook (`update_webhook`, `:5983-6015` — PATCH
+   * Update a webhook (`update_webhook` — PATCH
    * `webhooks/{id}/`).
    *
    * @param webhookId - Webhook UUID string.
@@ -60,7 +58,7 @@ export interface WebhookMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete a webhook (`delete_webhook`, `:6017-6039`).
+   * Delete a webhook (`delete_webhook`).
    *
    * @param webhookId - Webhook UUID string.
    * @param signal - Optional cancellation signal.
@@ -69,7 +67,7 @@ export interface WebhookMethods {
   deleteWebhook: (webhookId: string, signal?: AbortSignal) => Promise<void>;
 
   /**
-   * Test webhook connectivity (`test_webhook`, `:6041-6072` — POST
+   * Test webhook connectivity (`test_webhook` — POST
    * `webhooks/test/`).
    *
    * @param body - Webhook test parameters.
@@ -84,13 +82,13 @@ export interface WebhookMethods {
 }
 
 /**
- * Build the C4 webhook methods over the C1 core seam.
+ * Build the webhook methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
  */
 export function createWebhookMethods(core: ClientCore): WebhookMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
+  /** `maybe_scoped_path` over the pin current at call time. */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),

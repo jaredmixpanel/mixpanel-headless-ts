@@ -1,14 +1,13 @@
 /**
- * Shared helpers for the B4-C3..C5 entity-CRUD wire factories — the
- * response-shape guards every `MixpanelAPIClient` CRUD method applies
- * (`if not isinstance(result, dict/list): raise MixpanelHeadlessError`)
- * plus the Python-truthiness and `",".join(str(i) ...)` twins.
+ * Helpers shared by the entity wire factories: the response-shape guards
+ * every `MixpanelAPIClient` CRUD method applies
+ * (`if not isinstance(result, dict/list): raise MixpanelHeadlessError`),
+ * Python-truthiness twins for optional params and bodies, `",".join(...)`
+ * id spelling, and `urllib.parse.quote` path-segment encoding.
+ * `isPlainRecord` is the right dict test here — parsed wire values carry
+ * no class instances or float carriers — so `isPythonDict` is not used.
  *
- * R10.8: nothing here re-implements a B0 internal — `isPlainRecord` is
- * the B0 "JSON object body" predicate (the right twin for
- * `isinstance(parsed_wire_value, dict)` — watchlist #13 note: the wire
- * domain carries no PyFloat carriers or class instances, so the
- * client-internal predicate applies, not `isPythonDict`).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient
  */
 
 import { isPlainRecord } from "../../client/internals.js";
@@ -19,7 +18,7 @@ import { pythonTypeNameOf } from "../shared.js";
 
 /**
  * Enforce the `isinstance(result, dict)` guard shared by every
- * dict-returning CRUD method (e.g. `api_client.py`).
+ * dict-returning CRUD method.
  *
  * @param result - The `app_request` product.
  * @param methodName - The Python method name for the message.
@@ -42,7 +41,7 @@ export function expectRecordResult(
 
 /**
  * Enforce the `isinstance(result, list)` guard shared by every
- * list-returning CRUD method (e.g. `api_client.py`).
+ * list-returning CRUD method.
  *
  * @param result - The `app_request` product.
  * @param methodName - The Python method name for the message.
@@ -63,9 +62,8 @@ export function expectListResult(
 }
 
 /**
- * Python truthiness for optional dicts (`if body:` — B4-C4
- * `duplicate_experiment`, `api_client.py`): `None` and `{}` are
- * both falsy.
+ * Python truthiness for optional dicts (`if body:` in
+ * `duplicate_experiment`): `None` and `{}` are both falsy.
  *
  * @param value - The optional dict.
  * @returns Whether Python would take the branch.
@@ -77,8 +75,8 @@ export function truthyRecord(
 }
 
 /**
- * The `",".join(str(i) for i in ids)` twin (R11.7: `pythonStr`, never
- * `String(...)` — `str(True)` is `"True"`, `str(1.5)` is `"1.5"`).
+ * The `",".join(str(i) for i in ids)` twin. Spelled with `pythonStr`,
+ * never `String(...)`: `str(True)` is `"True"` and `str(1.5)` is `"1.5"`.
  *
  * @param ids - The id list.
  * @returns The comma-joined spelling.
@@ -89,7 +87,7 @@ export function joinIds(ids: ReadonlyArray<number | bigint>): string {
 
 /**
  * Pass a params dict only when non-empty (`params=params if params
- * else None` — every C3 list method).
+ * else None`, as every list method does).
  *
  * @param params - The accumulated params.
  * @returns The params, or `undefined` for the Python `None`.
@@ -100,22 +98,21 @@ export function paramsOrNone(
   return Object.keys(params).length > 0 ? params : undefined;
 }
 
-/** Characters `urllib.parse.quote` never escapes (ALWAYS_SAFE set). */
+/** Characters `urllib.parse.quote` never escapes (CPython's `_ALWAYS_SAFE`). */
 const QUOTE_SAFE = new Set(
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-~",
 );
 
 /**
  * Percent-encode a path segment exactly like `urllib.parse.quote(s,
- * safe="")`: ALPHA / DIGIT / `_.-~` pass through, EVERYTHING else —
- * including `/` (the default safe char, suppressed here) and space
- * (`%20`, unlike `quote_plus`'s `+`) — is `%XX` uppercase-hex over the
- * UTF-8 bytes (B4-C5 schemas/lexicon path segments,
- * `api_client.py:3426`/`:3469-3470`/`:7080`/`:7118`).
+ * safe="")`: ASCII letters, digits and `_.-~` pass through; everything
+ * else — including `/` (the default safe character, suppressed here) and
+ * space (`%20`, unlike `quote_plus`'s `+`) — becomes uppercase-hex `%XX`
+ * over the UTF-8 bytes. Used for the schema and Lexicon path segments.
  *
- * `encodeURIComponent` is NOT equivalent (it passes `!'()*`, which
- * Python escapes) — R11.7 twin discipline, the `quotePlus` precedent
- * (`client/transport.ts:36-67`).
+ * `encodeURIComponent` is not equivalent: it passes `!'()*`, which
+ * Python escapes. The same reasoning gives `client/transport.ts` its own
+ * `quotePlus`.
  *
  * @param text - The path segment to encode.
  * @returns The encoded segment.
@@ -135,10 +132,9 @@ export function pythonQuote(text: string): string {
 }
 
 /**
- * Python truthiness over a parsed wire value (`if url:` on a
- * `dict.get` product — B4-C5 `get_lookup_download_url`,
- * `api_client.py`): `None`/`False`/`0`/`0.0`/`""`/`[]`/`{}`
- * are falsy; every other JSON product is truthy.
+ * Python truthiness over a parsed wire value (`if url:` on a `dict.get`
+ * product in `get_lookup_download_url`): `None`/`False`/`0`/`0.0`/`""`/
+ * `[]`/`{}` are falsy; every other JSON product is truthy.
  *
  * @param value - The parsed value (or `undefined` for an absent key,
  *   the Python `dict.get` default-`None` arm).
