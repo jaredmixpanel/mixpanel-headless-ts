@@ -1,11 +1,7 @@
-// Batch-status table + verdict-path wiring (phase2-design C7 item 4,
-// packet P2-8, R10.5/D12).
-//
-// Two semantics under test:
-// 1. `'pending'` batch + unbound api → `UNPORTED` (counted, never
-//    failing — the pre-P2-8 behavior).
-// 2. `'done'` batch + unbound api → `FAIL_ERROR` (a straggler in a
-//    declared-complete batch must fail loudly, never silently skip).
+// The batch-status table (`src/batch-status.ts`) and its verdict wiring in
+// `runVector`: an unbound api in a `pending` batch replays as `UNPORTED`, an
+// unbound api in a `done` batch is a straggler and fails as `FAIL_ERROR`.
+// Rig-only; no Python suite is mirrored.
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -34,7 +30,7 @@ const PACKAGE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const RECORD_EPOCH = "2026-01-15T12:00:00Z";
 
 /**
- * Build runner deps with NOTHING bound (bare registries).
+ * Build runner deps with nothing bound (bare registries).
  *
  * The production `createRunnerDeps` binds every ported entry point, so
  * exercising the unbound gate for a done batch requires an empty
@@ -78,18 +74,16 @@ function vectorFor(
 }
 
 describe("batchStatusFor — table lookup", () => {
-  it("resolves done prefixes (the Phase-1 gate slice + Phase-2 types.*)", () => {
+  it("resolves the compat, wirestub and types prefixes as done", () => {
     expect(batchStatusFor("types.Filter.on")).toBe("done");
     expect(batchStatusFor("types.CohortDefinition.to_dict")).toBe("done");
     expect(batchStatusFor("compat.python_str")).toBe("done");
     expect(batchStatusFor("wirestub.wire_get")).toBe("done");
   });
 
-  it("resolves pending entries via a SYNTHETIC table (terminal re-anchor)", () => {
-    // B8-gate retirement (b8-packets.md §5.3a / b6-packets.md §12.5):
-    // the shipped table has ZERO pending entries, so pending-lookup
-    // logic keeps coverage through a fictional-prefix fixture table
-    // pinned to `pending` INSIDE THE TEST — never in the shipped table.
+  it("resolves pending entries of an injected table", () => {
+    // The shipped table has no pending entries, so the pending branch is
+    // covered through a fictional prefix pinned inside the test.
     const table: ReadonlyMap<string, BatchStatus> = new Map([
       ["synthetic_batch.", "pending"],
       ["types.", "done"],
@@ -132,10 +126,9 @@ describe("batchStatusFor — table lookup", () => {
 
   it("covers every api name in the corpus snapshot itself (measured + setup)", () => {
     // The api-index is emitted from recorded vectors and the authored
-    // supplement from the D13 gate — but the verdict path sees the
-    // CORPUS, so the table must cover every api the loader yields
-    // (e.g. `rrweb_analyzer.*` rides in the snapshot without an
-    // api-index row).
+    // supplement is hand-written, but the verdict path sees the corpus, so
+    // the table must cover every api the loader yields (e.g.
+    // `rrweb_analyzer.*` rides in the snapshot without an api-index row).
     const config = loadCorpusConfig(PACKAGE_DIR);
     const corpus = loadCorpus(
       resolve(PACKAGE_DIR, config.vectorsPath),
@@ -156,24 +149,20 @@ describe("batchStatusFor — table lookup", () => {
     expect([...orphans]).toStrictEqual([]);
   });
 
-  it("types.* is declared done (the P2-8 flip)", () => {
+  it("declares types.* done", () => {
     expect(BATCH_STATUS.get("types.")).toBe("done");
   });
 
-  it("validation.* + user_validators.* are declared done (the B2 gate flip)", () => {
-    // Playbook P3-5 §4: the B2 gate flips exactly these two prefixes;
-    // stragglers under them must FAIL, never skip (Risk #8).
+  it("declares validation.* and user_validators.* done", () => {
     expect(BATCH_STATUS.get("validation.")).toBe("done");
     expect(BATCH_STATUS.get("user_validators.")).toBe("done");
     expect(batchStatusFor("validation.validate_bookmark")).toBe("done");
     expect(batchStatusFor("user_validators.validate_user_args")).toBe("done");
   });
 
-  it("the six B3 builder prefixes are declared done (the B3 gate flip)", () => {
-    // Playbook P3-5 §4: the B3 gate flips exactly these six prefixes
-    // (bookmark_schema. is count-neutral — zero corpus vectors; packet
-    // b3-packets.md §Batch-status); stragglers under them must FAIL,
-    // never skip (Risk #8).
+  it("declares the six builder prefixes done", () => {
+    // `bookmark_schema.` carries zero corpus vectors; it is listed so the
+    // two oracle-probed schema apis are covered by the table.
     expect(BATCH_STATUS.get("bookmark_builders.")).toBe("done");
     expect(BATCH_STATUS.get("segfilter.")).toBe("done");
     expect(BATCH_STATUS.get("user_builders.")).toBe("done");
@@ -190,12 +179,9 @@ describe("batchStatusFor — table lookup", () => {
     );
   });
 
-  it("api_client.* + pagination.* are declared done (the B4 gate flip)", () => {
-    // Playbook P3-5 §4: the B4 gate flips exactly these two prefixes
-    // (single flip at the gate; bound names already replayed while
-    // pending); stragglers under them must FAIL, never skip (Risk #8).
-    // The B0-era exact-name entry `api_client._iter_jsonl_lines` stays
-    // as a shadowed-but-consistent longer prefix (b4-packets flip spec).
+  it("declares api_client.* and pagination.* done", () => {
+    // The exact-name entry `api_client._iter_jsonl_lines` is a longer
+    // prefix shadowed by `api_client.`; both read done.
     expect(BATCH_STATUS.get("api_client.")).toBe("done");
     expect(BATCH_STATUS.get("pagination.")).toBe("done");
     expect(BATCH_STATUS.get("api_client._iter_jsonl_lines")).toBe("done");
@@ -204,11 +190,7 @@ describe("batchStatusFor — table lookup", () => {
     expect(batchStatusFor("pagination.paginate_all")).toBe("done");
   });
 
-  it("replays-family prefixes are declared done (the B5 gate flip)", () => {
-    // Playbook P3-5 §4: the B5 gate flipped the three replays-family
-    // prefixes (the 44 B5 exact-name `workspace.<member>` entries it
-    // also flipped collapsed into the single `workspace.` prefix at
-    // the B6 gate — next test).
+  it("declares the three replays-family prefixes done", () => {
     expect(BATCH_STATUS.get("replays.")).toBe("done");
     expect(BATCH_STATUS.get("replay_labels.")).toBe("done");
     expect(BATCH_STATUS.get("rrweb_analyzer.")).toBe("done");
@@ -217,19 +199,14 @@ describe("batchStatusFor — table lookup", () => {
     expect(batchStatusFor("rrweb_analyzer.analyze")).toBe("done");
   });
 
-  it("workspace.* is a single collapsed done prefix (the B6 gate flip)", () => {
-    // Playbook P3-5 §4 B6-gate rule / b6-packets.md §12.1: the 44 B5
-    // exact-name entries, the `workspace.list_bookmarks_v2` pending
-    // override, and the `workspace.` pending row all COLLAPSED to one
-    // `workspace.` → done entry — longest-prefix keeps every B5 name's
-    // state equivalent, and the override removal is the B5-gate
-    // forward note landing here.
+  it("covers the whole facade with the single workspace. prefix", () => {
+    // No per-member `workspace.<name>` rows remain: every facade member
+    // resolves through the one prefix.
     expect(BATCH_STATUS.get("workspace.")).toBe("done");
     expect(BATCH_STATUS.get("workspace.list_bookmarks_v2")).toBeUndefined();
     expect(BATCH_STATUS.get("workspace.list_bookmarks")).toBeUndefined();
     expect(BATCH_STATUS.get("workspace.build_params")).toBeUndefined();
-    // Representative names across B5 + B6 members all resolve done via
-    // the single prefix.
+    // Representative members all resolve done via the single prefix.
     expect(batchStatusFor("workspace.build_params")).toBe("done");
     expect(batchStatusFor("workspace.list_bookmarks")).toBe("done");
     expect(batchStatusFor("workspace.list_bookmarks_v2")).toBe("done");
@@ -243,21 +220,12 @@ describe("batchStatusFor — table lookup", () => {
     expect(workspaceEntries).toStrictEqual(["workspace."]);
   });
 
-  it("region_probe.* is declared done (the B7 gate flip)", () => {
-    // Playbook P3-5 §4 B7 row / b7-packets.md §4.1: the B7 gate flips
-    // exactly this one prefix (14 vectors, all
-    // `region_probe.probe_region`, bound at B7-A2); stragglers under
-    // it must FAIL, never skip (Risk #8).
+  it("declares region_probe.* done", () => {
     expect(BATCH_STATUS.get("region_probe.")).toBe("done");
     expect(batchStatusFor("region_probe.probe_region")).toBe("done");
   });
 
-  it("oauth_flow.* is declared done and the table is TERMINAL (the B8 gate flip)", () => {
-    // Playbook P3-5 §4 B8 row / b8-packets.md §5.1: the B8 gate flips
-    // the LAST pending prefix (7 vectors, all
-    // `oauth_flow.refresh_tokens`, bound at B8-N2 and passing while
-    // pending). Terminal assertions per the §5.3b re-anchor:
-    // zero pending entries remain in the shipped table.
+  it("declares oauth_flow.* done and ships no pending entry at all", () => {
     expect(BATCH_STATUS.get("oauth_flow.")).toBe("done");
     expect(batchStatusFor("oauth_flow.refresh_tokens")).toBe("done");
     const pendingEntries = [...BATCH_STATUS]
@@ -266,10 +234,8 @@ describe("batchStatusFor — table lookup", () => {
     expect(pendingEntries).toStrictEqual([]);
   });
 
-  it("every corpus api name (measured + setup) resolves done (terminal state)", () => {
-    // b8-packets.md §5.3b: with the corpus closed, no api the loader
-    // yields may resolve `pending` — a pending resolution would mean a
-    // silently skippable vector (Risk #8's terminal form).
+  it("resolves every corpus api name (measured + setup) as done", () => {
+    // A pending resolution would mean a silently skippable vector.
     const config = loadCorpusConfig(PACKAGE_DIR);
     const corpus = loadCorpus(
       resolve(PACKAGE_DIR, config.vectorsPath),
@@ -292,14 +258,12 @@ describe("batchStatusFor — table lookup", () => {
 });
 
 describe("runVector — batch-status verdict wiring", () => {
-  it("pending batch + unbound api → UNPORTED (counted, never failing)", async () => {
-    // Terminal re-anchor (b8-packets.md §5.3a): the shipped table has
-    // no pending entries left, so the UNPORTED code path is exercised
-    // with a SYNTHETIC pending table injected via the
-    // `RunnerDeps.batchStatuses` seam over a mapped-but-unbound api
-    // name (`oauth_flow.build_authorize_url` — module-known, never a
-    // corpus name; the batch-status logic test's arbitrary-name seam
-    // precedent). The fictional table lives only inside this test.
+  it("replays an unbound api of a pending batch as UNPORTED", async () => {
+    // The shipped table has no pending entries, so the UNPORTED path is
+    // exercised with a synthetic pending table injected through the
+    // `RunnerDeps.batchStatuses` seam over a mapped-but-unbound api name
+    // (`oauth_flow.build_authorize_url` is module-known, never a corpus
+    // name).
     const deps: RunnerDeps = {
       ...bareDeps(),
       batchStatuses: new Map<string, BatchStatus>([["oauth_flow.", "pending"]]),
@@ -312,14 +276,14 @@ describe("runVector — batch-status verdict wiring", () => {
     expect(result.diff).toBeUndefined();
   });
 
-  it("done batch + unbound api → FAIL_ERROR (straggler, no silent skip)", async () => {
+  it("fails an unbound api of a done batch as FAIL_ERROR", async () => {
     const result = await runVector(vectorFor("types.Filter.on"), bareDeps());
     expect(result.verdict).toBe("FAIL_ERROR");
     expect(result.diff).toContain("types.Filter.on");
     expect(result.diff).toContain("declared done");
   });
 
-  it("done batch + unbound SETUP api → FAIL_ERROR too", async () => {
+  it("fails an unbound setup api of a done batch as FAIL_ERROR too", async () => {
     const deps = bareDeps();
     deps.implementations.register("api_client.activity_feed", () => null);
     const result = await runVector(
@@ -330,7 +294,7 @@ describe("runVector — batch-status verdict wiring", () => {
     expect(result.diff).toContain("types.Filter.on");
   });
 
-  it("UNMAPPED_API still fails fast ahead of the batch gate", async () => {
+  it("reports UNMAPPED_API ahead of the batch gate", async () => {
     const result = await runVector(vectorFor("mystery.call"), bareDeps());
     expect(result.verdict).toBe("UNMAPPED_API");
   });
