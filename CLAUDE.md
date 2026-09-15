@@ -37,7 +37,10 @@ the packages themselves run on >= 22.12. Install with `npm ci` (lockfile-exact).
   tarball), knip, eslint, `prettier --check`, full vitest run (including the
   corpus replay and `tests/package-consumption.test.ts`, which packs and
   installs the three tarballs — `MP_SKIP_PACK_TEST=1` skips it locally),
-  browser-bundle smoke. Run before committing.
+  browser-bundle smoke. The vitest step is `test:coverage` (vitest with
+  coverage on): global v8 thresholds over `packages/*/src`, generated tables
+  and pure barrels excluded, lcov + json-summary written to `coverage/`. Run
+  before committing.
 - `npm run build` / `npm run typecheck` — both `tsc -b`: builds the three
   packages into their `dist/` (gitignored) and type-checks every test, rig and
   script project. `npm run clean` = `tsc -b --clean`. After toggling a flag in
@@ -51,9 +54,12 @@ the packages themselves run on >= 22.12. Install with `npm ci` (lockfile-exact).
   `scripts/lib/lint-ignores.mjs` (`tests/ignore-lists.test.ts` syncs `.prettierignore`).
 - `npm run knip` (unused exports/types are warnings until the un-export sweep);
   `npm run fmt` / `fmt:check` — Prettier owns formatting.
-- `npm test` — vitest across all workspaces. One file:
-  `npx vitest run conformance-runner/test/runner.test.ts`; one workspace:
-  `npx vitest run packages/node`.
+- `npm test` — vitest across all workspaces (CI parity, corpus included).
+  `vitest.config.ts` defines one project per tree (`core`, `node`, `browser`,
+  `rig`, `corpus`, `differential`, `repo`): `npm run test:fast` = everything
+  but the corpus replay, `npm run test:corpus` = only it, one workspace:
+  `npx vitest run --project node`, one file:
+  `npx vitest run conformance-runner/test/runner.test.ts`.
 - `npm run conformance -- --report json [--filter "compat/"]` — corpus replay
   CLI (filter = vector-id substring). Run it after any change under
   `packages/core/src` and confirm 0 `FAIL_*`.
@@ -62,8 +68,11 @@ the packages themselves run on >= 22.12. Install with `npm ci` (lockfile-exact).
 - `npm run sync:corpus` (`MP_PYTHON_REPO`, `MP_RIG_BRANCH`) — re-snapshot the
   corpus; `npm run vendor:drift` (`ANALYTICS_ROOT`) — vendored-contract
   integrity; `npm run audit:comments` — comment-archaeology scan.
-- Generators: `npm run generate:all` (error-codes, api-map, bridge-allowlist),
-  `npm run generate:compat-tables` (the three CPython-pinned tables, needs `uv`).
+- Generators: `npm run generate:all` (error-codes, api-map, bridge-allowlist);
+  `npm run generate:compat-tables` (the three compat tables) and
+  `npm run generate:canonical-fixtures` run their Python generators through
+  `uv run --python <pin>` — the pin is `scripts/compat-python.pin.json`, and
+  the generators refuse any other interpreter.
 
 ## Layout (npm workspaces)
 
@@ -118,8 +127,12 @@ Regenerate instead (full table with inputs and freshness tests in CONTRIBUTING.m
 - `packages/core/src/errors-codes.gen.ts` ← `npm run generate:error-codes` (byte-exact test)
 - `conformance-runner/bridge-allowlist.gen.json` ← `npm run generate:bridge-allowlist` (byte-exact test)
 - `packages/core/src/compat/{non-printable,decimal-digits,whitespace}.gen.ts` ←
-  `npm run generate:compat-tables` (no freshness test yet; parity tests only)
-- `packages/core/test/compat/fixtures/canonical-fixtures.json` ← `scripts/generate-canonical-fixtures.py` + `npm run fmt`
+  `npm run generate:compat-tables` (provenance test
+  `tests/generated-tables-provenance.test.ts`: interpreter pin, generator
+  sha256, header counts; parity tests cover the bodies)
+- `packages/core/test/compat/fixtures/canonical-fixtures.json` ←
+  `npm run generate:canonical-fixtures` (generator + Prettier; the same
+  provenance test also pins it to the corpus `sourceCommit`)
 - `vendor/**` — vendored verbatim with sha256 provenance (`PROVENANCE.json`); re-vendor, don't patch.
 
 ## Conventions

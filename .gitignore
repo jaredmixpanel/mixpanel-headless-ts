@@ -10,3 +10,6 @@ coverage/
 
 # macOS noise
 .DS_Store
+
+# Python bytecode from the scripts/ generators (they import gen_provenance.py).
+__pycache__/

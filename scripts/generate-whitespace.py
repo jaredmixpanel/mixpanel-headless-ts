@@ -17,11 +17,13 @@ reference implementation is the oracle):
 Pinning both keeps ``pythonStrip``/``pythonInt``/``pythonFloat`` whitespace
 decisions independent of the JS engine's Unicode database version.
 
-Usage (any CPython matching the port's pinned target):
-    uv run --no-project python scripts/generate-whitespace.py
+Usage (the pinned CPython only — see scripts/compat-python.pin.json):
+    npm run generate:compat-tables
 
 Re-run + commit when the port's target CPython (and thus its Unicode
-database) is upgraded; the provenance header records both versions.
+database) is upgraded; the provenance header records both versions and
+the sha256 of this script (checked by
+tests/generated-tables-provenance.test.ts).
 """
 
 from __future__ import annotations
@@ -29,6 +31,8 @@ from __future__ import annotations
 import sys
 import unicodedata
 from pathlib import Path
+
+from gen_provenance import generator_sha256, require_pinned_interpreter
 
 OUT_PATH = (
     Path(__file__).resolve().parents[1]
@@ -76,6 +80,7 @@ def main() -> int:
     Returns:
         Process exit code (0 on success).
     """
+    require_pinned_interpreter()
     str_ws, numeric_ws = build_tables()
     # Sanity locks (CPython 3.14.6 / Unicode 16 facts the port relies on):
     assert set(numeric_ws) == set(str_ws) - {0x1C, 0x1D, 0x1E, 0x1F}
@@ -88,6 +93,7 @@ def main() -> int:
         f"// Provenance: CPython {py_version}, Unicode database "
         f"{unicodedata.unidata_version}, "
         f"{len(str_ws)} str / {len(numeric_ws)} numeric codepoints.",
+        f"// Generator sha256: {generator_sha256(__file__)} (scripts/generate-whitespace.py).",
         "//",
         "// Two pinned whitespace sets (NOT equal, and neither equals the JS",
         "// String.prototype.trim() set — Python strips U+001C..U+001F which",

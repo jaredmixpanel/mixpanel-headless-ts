@@ -1,0 +1,20 @@
+// Type-level tests (`test/**/*.test-d.ts`), checked by vitest's typecheck
+// step (vitest.config.ts, project `core`). Includes `src/` directly instead
+// of referencing the library project so the assertions always see the
+// TypeScript under test, never a stale `dist/` — the same rule the runtime
+// alias table enforces. `tsc -b` also covers these files via tsconfig.test.json.
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "lib": [
+      "es2023",
+      "dom",
+      "dom.iterable",
+      "dom.asynciterable",
+      "esnext.disposable"
+    ],
+    "types": []
+  },
+  "include": ["src", "test/**/*.test-d.ts"]
+}

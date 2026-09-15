@@ -2,6 +2,7 @@
 // Source: scripts/generate-whitespace.py (CPython is the oracle).
 // Regenerate with: npm run generate:compat-tables
 // Provenance: CPython 3.14.6, Unicode database 16.0.0, 29 str / 25 numeric codepoints.
+// Generator sha256: a0c7dab585eed551ccee94d0bcf86a4f4fe88f02f5891ce0a302e29e41cb54bf (scripts/generate-whitespace.py).
 //
 // Two pinned whitespace sets (NOT equal, and neither equals the JS
 // String.prototype.trim() set — Python strips U+001C..U+001F which

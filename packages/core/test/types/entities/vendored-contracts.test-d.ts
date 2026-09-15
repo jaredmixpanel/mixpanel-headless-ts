@@ -1,7 +1,8 @@
 /**
- * Compile-only vendored cross-checks (phase2-design C5 item 2, packet
- * P2-7). NOT executed by vitest (no `.test.ts` suffix) — `tsc` alone
- * enforces every assertion here.
+ * Compile-only vendored cross-checks. Bare type aliases rather than
+ * `it` blocks, so the file is excluded from vitest's typecheck suite list
+ * (vitest.config.ts) — `tsc` alone (`tsc -b`, and the typecheck run's
+ * own compile) enforces every assertion here.
  *
  * The hand-written entity models mirror the PYTHON models (R4.1
  * through R10.6 / E4: Python is the arbiter); the byte-frozen

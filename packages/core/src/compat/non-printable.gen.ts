@@ -2,6 +2,7 @@
 // Source: scripts/generate-non-printable.py (CPython unicodedata is the oracle).
 // Regenerate with: npm run generate:compat-tables
 // Provenance: CPython 3.14.6, Unicode database 16.0.0, 737 ranges.
+// Generator sha256: 910620afd7f65b31487331fb896ad2cbafc3b994fac1b5451002833f33fcca10 (scripts/generate-non-printable.py).
 //
 // The inclusive [start, end] codepoint ranges CPython str.isprintable()
 // reports as NON-printable (categories Cc, Cf, Cs, Co, Cn, Zl, Zp, Zs,
