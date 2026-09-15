@@ -24,10 +24,8 @@ import { jsonValuePythonStr } from "./client/internals.js";
 import { toNativeJson } from "./client/json-value.js";
 import type { MeResponse } from "./client/me.js";
 import { validateResponseModel } from "./client/response-validation.js";
-import { KeyError } from "./compat/python-builtins.js";
-import { pythonInt, pythonIntCoerce } from "./compat/python-int.js";
+import { pythonInt } from "./compat/python-int.js";
 import { pythonRepr } from "./compat/python-str.js";
-import { zfill } from "./compat/zfill.js";
 import {
   BookmarkValidationError,
   MixpanelHeadlessError,
@@ -39,8 +37,6 @@ import {
   UnsupportedReportLinkError,
   WorkspaceScopeError,
 } from "./errors.js";
-import { toError } from "./invariant.js";
-import { RrwebAnalyzer } from "./replays/rrweb-analyzer.js";
 import {
   BOOKMARK_HASH_FOR_TYPE,
   buildBookmarkUrl,
@@ -51,11 +47,7 @@ import {
   parseReportLink,
   SLUG_APP_FOR_TYPE,
 } from "./report-links.js";
-import {
-  DiscoveryService,
-  isoUtc,
-  type WarningSink,
-} from "./services/discovery.js";
+import { DiscoveryService, type WarningSink } from "./services/discovery.js";
 import {
   type LiveActivityFeedOptions,
   type LiveQuerySavedReportOptions,
@@ -72,7 +64,7 @@ import {
   streamProfiles as streamProfilesVeneer,
   type StreamProfilesOptions,
 } from "./services/queries/streaming.js";
-import { replayNotFoundError, ReplaysService } from "./services/replays.js";
+import { ReplaysService } from "./services/replays.js";
 import type {
   AlertCount,
   AlertHistoryResponse,
@@ -231,12 +223,12 @@ import {
   RetentionQueryResult,
   type UserQueryResult,
 } from "./types/results/query-engine.js";
-import {
+import type {
   Replay,
   ReplayBundle,
-  type ReplayEvent,
-  type ReplaySummary,
-  type SignedReplay,
+  ReplayEvent,
+  ReplaySummary,
+  SignedReplay,
 } from "./types/results/replays.js";
 import type {
   WorkspaceGetAlertCountOptions,
@@ -330,6 +322,7 @@ import {
   type WorkspaceUserQueryOptions,
   type WorkspaceWorkspacesOptions,
 } from "./workspace-members/options.js";
+import * as replayMethods from "./workspace-members/replay-methods.js";
 import type {
   WorkspaceDeleteSchemasOptions,
   WorkspaceGetSchemaEnforcementOptions,
@@ -352,6 +345,8 @@ import {
 
 export { validateBookmarkParamsSchema } from "./workspace-members/bookmarks-cohorts.js";
 export { NOOP_LOGGER } from "./workspace-members/options.js";
+// TODO(Ω): shim — checkEventPropertiesCount lives in replay-methods.ts.
+export { checkEventPropertiesCount } from "./workspace-members/replay-methods.js";
 // TODO(Ω): shim — the option types live in ./workspace-members/options.ts;
 // repoint the barrel and delete this re-export.
 export type { MeCacheStore, MeService } from "./services/me.js";
@@ -1851,6 +1846,29 @@ export class Workspace {
   }
 
   /**
+   * The facade slice the replay members read; the service and the
+   * project id stay lazy (thunks) so they resolve where Python reads them.
+   *
+   * @returns The host view over this facade.
+   */
+  #replayHost(): replayMethods.ReplayHost {
+    return {
+      client: this.client,
+      logger: this.#logger,
+      replaysService: () => this.replaysService,
+      projectId: () => this.#projectId(),
+      listReplays: (options) => this.listReplays(options),
+      eventsForReplay: (replayId, options) =>
+        this.eventsForReplay(replayId, options),
+      eventsForReplays: (replayIds, options) =>
+        this.eventsForReplays(replayIds, options),
+      fetchReplay: (replayId, options) => this.fetchReplay(replayId, options),
+      fetchReplays: (replayIds, options) =>
+        this.fetchReplays(replayIds, options),
+    };
+  }
+
+  /**
    * List replays for a user, or hydrate summaries for explicit IDs
    * (`list_replays`, `workspace.py:10679-10755`).
    *
@@ -1867,42 +1885,7 @@ export class Workspace {
   async listReplays(
     options: WorkspaceListReplaysOptions = {},
   ): Promise<ReplaySummary[]> {
-    const distinctId = options.distinct_id ?? null;
-    const replayIds = options.replay_ids ?? null;
-    const fromDate = options.from_date ?? null;
-    const toDate = options.to_date ?? null;
-    const limit = options.limit ?? 100;
-
-    // Guard order is SOURCE order (`workspace.py:10730-10744`); Python's
-    // `not replay_ids` is falsiness, so an EMPTY list trips WR4.
-    const hasReplayIds = replayIds !== null && replayIds.length > 0;
-    if (distinctId === null && !hasReplayIds) {
-      throw new ParamValidationError(
-        "list_replays requires exactly one of distinct_id or replay_ids.",
-        "WR4_REPLAY_SELECTOR_REQUIRED",
-      );
-    }
-    if (distinctId !== null && hasReplayIds) {
-      throw new ParamValidationError(
-        "list_replays requires exactly one of distinct_id or " +
-          "replay_ids; both were given.",
-        "WR4_REPLAY_SELECTOR_REQUIRED",
-      );
-    }
-    if (distinctId !== null && (fromDate === null || toDate === null)) {
-      throw new ParamValidationError(
-        "list_replays(distinct_id=...) requires from_date and to_date.",
-        "WR5_DATE_RANGE_REQUIRED",
-      );
-    }
-
-    return this.replaysService.discover({
-      distinctId,
-      replayIds,
-      fromDate,
-      toDate,
-      limit,
-    });
+    return replayMethods.listReplays(this.#replayHost(), options);
   }
 
   /**
@@ -1920,13 +1903,7 @@ export class Workspace {
     replayId: string,
     options: WorkspaceEventsForReplayOptions = {},
   ): Promise<ReplayEvent[]> {
-    checkEventPropertiesCount(options.event_properties ?? null);
-    const bundle = await this.replaysService.eventsFor([replayId], {
-      eventProperties: options.event_properties ?? null,
-      fromDate: options.from_date ?? null,
-      toDate: options.to_date ?? null,
-    });
-    return bundle.get(replayId) ?? [];
+    return replayMethods.eventsForReplay(this.#replayHost(), replayId, options);
   }
 
   /**
@@ -1945,12 +1922,11 @@ export class Workspace {
     replayIds: readonly string[],
     options: WorkspaceEventsForReplayOptions = {},
   ): Promise<Map<string, ReplayEvent[]>> {
-    checkEventPropertiesCount(options.event_properties ?? null);
-    return this.replaysService.eventsFor(replayIds, {
-      eventProperties: options.event_properties ?? null,
-      fromDate: options.from_date ?? null,
-      toDate: options.to_date ?? null,
-    });
+    return replayMethods.eventsForReplays(
+      this.#replayHost(),
+      replayIds,
+      options,
+    );
   }
 
   /**
@@ -1968,11 +1944,7 @@ export class Workspace {
     replayId: string,
     options: WorkspaceSignReplayOptions = {},
   ): Promise<SignedReplay> {
-    const signed = await this.replaysService.sign(
-      [replayId],
-      options.env ?? "prod",
-    );
-    return signed[0] as SignedReplay;
+    return replayMethods.signReplay(this.#replayHost(), replayId, options);
   }
 
   /**
@@ -1989,7 +1961,7 @@ export class Workspace {
     replayIds: readonly string[],
     options: WorkspaceSignReplayOptions = {},
   ): Promise<SignedReplay[]> {
-    return this.replaysService.sign(replayIds, options.env ?? "prod");
+    return replayMethods.signReplays(this.#replayHost(), replayIds, options);
   }
 
   /**
@@ -2018,69 +1990,7 @@ export class Workspace {
     replayId: string,
     options: WorkspaceFetchReplayOptions = {},
   ): Promise<Replay> {
-    checkEventPropertiesCount(options.event_properties ?? null);
-    const env = options.env ?? "prod";
-    const resolvedRetention = await this.#resolveRetention(
-      replayId,
-      options.retention_days ?? null,
-    );
-    const signed = (await this.replaysService.sign([replayId], env))[0];
-    const rrwebEvents = await this.replaysService.fetchFiles(
-      signed as SignedReplay,
-      {
-        retentionDays: resolvedRetention,
-        maxFiles: options.max_files ?? 500,
-        concurrency: options.cdn_concurrency ?? 50,
-      },
-    );
-    if (rrwebEvents.length === 0) {
-      throw replayNotFoundError(replayId, {
-        retentionDays: resolvedRetention,
-        cdnUrlPrefix: (signed as SignedReplay).url,
-      });
-    }
-
-    // Derive the window from min/max rather than first/last:
-    // `walkCdnAsync` yields in (file-number, in-file timestamp) order
-    // with no global merge, so indexing [0]/[-1] would drift if CDN
-    // files ever overlap in time.
-    // Python `int(ev["timestamp"])` (`workspace.py:10946`) — a
-    // SUBSCRIPT, so a missing key is a KeyError, not the int() ladder's
-    // TypeError (B5-ARB FID-F5).
-    const eventTimestamps = rrwebEvents.map((ev) => {
-      if (!Object.hasOwn(ev, "timestamp")) {
-        throw new KeyError("timestamp");
-      }
-      return pythonIntCoerce(ev["timestamp"]);
-    });
-    const startTime = Math.min(...eventTimestamps);
-    const endTime = Math.max(...eventTimestamps);
-
-    let mixpanelEvents: ReplayEvent[] = [];
-    if (options.include_mixpanel_events === true) {
-      // Scope the events scan to the replay's own day(s).
-      const winFrom = utcYmdFromEpochMs(startTime);
-      const winTo = utcYmdFromEpochMs(endTime);
-      mixpanelEvents = await this.eventsForReplay(replayId, {
-        event_properties: options.event_properties ?? null,
-        from_date: winFrom,
-        to_date: winTo,
-      });
-    }
-
-    // Run the rrweb analyzer to populate actions.
-    const analyzerResult = new RrwebAnalyzer().analyze(rrwebEvents);
-    return new Replay({
-      replay_id: replayId,
-      distinct_id: options.distinct_id ?? null,
-      project_id: this.#projectId(),
-      start_time: startTime,
-      end_time: endTime,
-      retention_days: resolvedRetention,
-      rrweb_events: rrwebEvents,
-      actions: [...analyzerResult.actions],
-      mixpanel_events: mixpanelEvents,
-    });
+    return replayMethods.fetchReplay(this.#replayHost(), replayId, options);
   }
 
   /**
@@ -2106,19 +2016,7 @@ export class Workspace {
     replayId: string,
     options: WorkspaceStreamReplayOptions = {},
   ): AsyncGenerator<Readonly<Record<string, unknown>>, void, undefined> {
-    const resolvedRetention = await this.#resolveRetention(
-      replayId,
-      options.retention_days ?? null,
-    );
-    const signed = (
-      await this.replaysService.sign([replayId], options.env ?? "prod")
-    )[0];
-    yield* this.replaysService.walkCdnAsync(signed as SignedReplay, {
-      retentionDays: resolvedRetention,
-      maxFiles: options.max_files ?? 500,
-      concurrency: options.cdn_concurrency ?? 50,
-      reSignOnExpiry: options.re_sign_on_expiry ?? true,
-    });
+    yield* replayMethods.streamReplay(this.#replayHost(), replayId, options);
   }
 
   /**
@@ -2151,101 +2049,7 @@ export class Workspace {
     replayIds: readonly string[],
     options: WorkspaceFetchReplaysOptions = {},
   ): Promise<ReplayBundle> {
-    checkEventPropertiesCount(options.event_properties ?? null);
-    const retentionMap = options.retention_by_id ?? new Map<string, number>();
-    const distinctMap = options.distinct_id_by_id ?? new Map<string, string>();
-    const concurrency = Math.max(1, options.concurrency ?? 4);
-
-    // Events are joined ONCE after assembly (below), not per replay — so
-    // each fetch runs with include_mixpanel_events=false here regardless
-    // of the caller's flag.
-    const results = new Map<number, Replay>();
-    const failures: Array<[string, Error]> = [];
-    let cursor = 0;
-    const worker = async (): Promise<void> => {
-      for (;;) {
-        const index = cursor;
-        cursor += 1;
-        if (index >= replayIds.length) {
-          return;
-        }
-        const rid = replayIds[index] as string;
-        try {
-          results.set(
-            index,
-            await this.fetchReplay(rid, {
-              distinct_id: mapGet(distinctMap, rid) ?? null,
-              env: options.env ?? "prod",
-              retention_days: mapGet(retentionMap, rid) ?? null,
-              max_files: options.max_files ?? 500,
-              include_mixpanel_events: false,
-              cdn_concurrency: options.cdn_concurrency ?? 50,
-            }),
-          );
-        } catch (error) {
-          // One replay's CDN stall, 404, or parse error must not sink
-          // the whole bundle. Log it and keep the successful replays;
-          // only an all-fail batch raises.
-          this.#logger.warning(
-            `fetch_replays: skipping replay ${rid} — ` +
-              `${error instanceof Error ? error.name : typeof error}: ${String(error)}`,
-          );
-          failures.push([rid, toError(error)]);
-        }
-      }
-    };
-    await Promise.all(
-      Array.from({ length: Math.min(concurrency, replayIds.length) }, () =>
-        worker(),
-      ),
-    );
-    const firstFailure = failures[0];
-    if (results.size === 0 && firstFailure !== undefined) {
-      // Every replay failed — surface the first underlying error rather
-      // than a generic wrapper, preserving its type for callers that
-      // branch on it. Python's `failures[0]` is completion-ordered
-      // (`as_completed`); the port keeps INPUT order, which is the
-      // deterministic reading of the same rule (recorded in
-      // `B5-S3-notes.md` §2).
-      throw firstFailure[1];
-    }
-    let ordered = [...results]
-      .sort((a, b) => a[0] - b[0])
-      .map(([, replay]) => replay);
-
-    // Join Mixpanel events in ONE query across all replays (the
-    // per-replay alternative fans out N queries and exhausts the
-    // Insights rate limit). The combined window spans the earliest
-    // start to the latest end.
-    if (options.include_mixpanel_events === true && ordered.length > 0) {
-      const winFrom = utcYmdFromEpochMs(
-        Math.min(...ordered.map((r) => r.start_time)),
-      );
-      const winTo = utcYmdFromEpochMs(
-        Math.max(...ordered.map((r) => r.end_time)),
-      );
-      const eventsByReplay = await this.eventsForReplays(
-        ordered.map((r) => r.replay_id),
-        {
-          event_properties: options.event_properties ?? null,
-          from_date: winFrom,
-          to_date: winTo,
-        },
-      );
-      ordered = ordered.map((r) =>
-        eventsByReplay.has(r.replay_id)
-          ? replaceReplayEvents(
-              r,
-              eventsByReplay.get(r.replay_id) as ReplayEvent[],
-            )
-          : r,
-      );
-    }
-    return new ReplayBundle({
-      replays: ordered,
-      computed_at: isoUtc(this.client.core.now()),
-      project_id: this.#projectId(),
-    });
+    return replayMethods.fetchReplays(this.#replayHost(), replayIds, options);
   }
 
   /**
@@ -2267,35 +2071,10 @@ export class Workspace {
     distinctId: string,
     options: WorkspaceReplaysForUserOptions,
   ): Promise<ReplayBundle> {
-    checkEventPropertiesCount(options.event_properties ?? null);
-    const summaries = await this.listReplays({
-      distinct_id: distinctId,
-      from_date: options.from_date,
-      to_date: options.to_date,
-      limit: options.limit ?? 20,
-    });
-    if (summaries.length === 0) {
-      return new ReplayBundle({
-        replays: [],
-        computed_at: isoUtc(this.client.core.now()),
-        project_id: this.#projectId(),
-      });
-    }
-    return this.fetchReplays(
-      summaries.map((s) => s.replay_id),
-      {
-        include_mixpanel_events: options.include_mixpanel_events ?? true,
-        event_properties: options.event_properties ?? null,
-        // We already discovered each replay's retention above — pass it
-        // through so fetchReplay skips re-discovering it per replay.
-        retention_by_id: new Map(
-          summaries.map((s) => [s.replay_id, s.retention_days]),
-        ),
-        // Every replay was discovered for this user — stamp it.
-        distinct_id_by_id: new Map(
-          summaries.map((s) => [s.replay_id, distinctId]),
-        ),
-      },
+    return replayMethods.replaysForUser(
+      this.#replayHost(),
+      distinctId,
+      options,
     );
   }
 
@@ -2309,33 +2088,8 @@ export class Workspace {
    * @throws SessionReplayAccessError - Sensitive-data flag set.
    */
   async analyzeReplay(replayId: string): Promise<string> {
-    return (await this.fetchReplay(replayId)).summaryMarkdown();
+    return replayMethods.analyzeReplay(this.#replayHost(), replayId);
   }
-
-  /**
-   * Resolve a replay's retention window, discovering it when `null`
-   * (`_resolve_retention`, `workspace.py:11275-11292`).
-   *
-   * @param replayId - The replay to look up.
-   * @param retentionDays - Caller-provided value; pass-through when
-   *   set.
-   * @returns One of 1, 7, 30, or 90. Defaults to 30 when discovery
-   *   returns no summary (the warning already fired in `discover`).
-   */
-  async #resolveRetention(
-    replayId: string,
-    retentionDays: number | null,
-  ): Promise<number> {
-    if (retentionDays !== null) {
-      return retentionDays;
-    }
-    const summaries = await this.listReplays({ replay_ids: [replayId] });
-    if (summaries.length > 0) {
-      return (summaries[0] as ReplaySummary).retention_days;
-    }
-    return 30;
-  }
-
   // === B6 members land below in W1–W7 sections (append-only) ===
 
   // === B6-W1 lifecycle / workspace-management / me / business-context
@@ -5726,72 +5480,6 @@ export class Workspace {
 }
 
 /**
- * Raise a coded error when `event_properties` exceeds the Insights cap
- * (`_check_event_properties_count`, `workspace.py:303-324`).
- *
- * Mixpanel's Insights API caps group-by at 5 properties; the
- * session-replay surfaces all pass through to that endpoint.
- *
- * @param eventProperties - Caller-supplied list (or `null`).
- * @throws ParamValidationError - Code `WR1_TOO_MANY_EVENT_PROPERTIES`.
- */
-export function checkEventPropertiesCount(
-  eventProperties: readonly string[] | null,
-): void {
-  if (eventProperties !== null && eventProperties.length > 5) {
-    throw new ParamValidationError(
-      `events_for_replay accepts at most 5 event_properties ` +
-        `(Insights group-by limit). Got ${String(eventProperties.length)}: ${pythonRepr(
-          eventProperties,
-        )}`,
-      "WR1_TOO_MANY_EVENT_PROPERTIES",
-    );
-  }
-}
-
-/**
- * `datetime.fromtimestamp(ms / 1000, timezone.utc).strftime("%Y-%m-%d")`
- * — the two window-derivation sites in `fetch_replay` / `fetch_replays`
- * (`workspace.py:10958-10963`, `:11205-11210`).
- *
- * @param epochMs - Unix milliseconds.
- * @returns The `YYYY-MM-DD` UTC date.
- */
-function utcYmdFromEpochMs(epochMs: number): string {
-  const date = new Date(epochMs);
-  return [
-    zfill(String(date.getUTCFullYear()), 4),
-    zfill(String(date.getUTCMonth() + 1), 2),
-    zfill(String(date.getUTCDate()), 2),
-  ].join("-");
-}
-
-/**
- * `dataclasses.replace(replay, mixpanel_events=...)` — the one
- * `replace()` site in `fetch_replays` (`workspace.py:11178-11182`).
- *
- * @param replay - The replay to copy.
- * @param mixpanelEvents - The events to attach.
- * @returns A new `Replay` with the events attached.
- */
-function replaceReplayEvents(
-  replay: Replay,
-  mixpanelEvents: readonly ReplayEvent[],
-): Replay {
-  return new Replay({
-    replay_id: replay.replay_id,
-    distinct_id: replay.distinct_id,
-    project_id: replay.project_id,
-    start_time: replay.start_time,
-    end_time: replay.end_time,
-    retention_days: replay.retention_days,
-    rrweb_events: replay.rrweb_events,
-    actions: replay.actions,
-    mixpanel_events: mixpanelEvents,
-  });
-}
-
-/**
  * Run a synchronous builder and hand back its result as a Promise — or its
  * throw as a rejection — exactly as the `async` wrapper it replaces did.
  * The `build*Params` members are synchronous in Python; the TS surface
@@ -5806,28 +5494,6 @@ function asPromise<T>(compute: () => T): Promise<T> {
   return new Promise((resolve) => {
     resolve(compute());
   });
-}
-
-/**
- * `Mapping.get(key)` over the optional retention / distinct-id maps,
- * which callers may hand in as a `Map` OR a plain record.
- *
- * @param source - The map or record.
- * @param key - The replay id.
- * @returns The value, or `undefined`.
- */
-function mapGet<T>(
-  source: ReadonlyMap<string, T> | Readonly<Record<string, T>>,
-  key: string,
-): T | undefined {
-  if (source instanceof Map) {
-    // Declared type, not the `instanceof` intersection (whose `Map<any,
-    // any>` half would make `get` return `any`).
-    const map: ReadonlyMap<string, T> = source;
-    return map.get(key);
-  }
-  const record = source as Readonly<Record<string, T>>;
-  return Object.hasOwn(record, key) ? record[key] : undefined;
 }
 
 // ---------------------------------------------------------------------------
