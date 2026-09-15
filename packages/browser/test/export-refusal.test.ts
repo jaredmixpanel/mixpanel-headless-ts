@@ -11,16 +11,17 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  ENDPOINTS,
   type EndpointOverrides,
   type EndpointOverridesSource,
+  ENDPOINTS,
 } from "@mixpanel-headless/core";
+
 import {
   BROWSER_EXPORT_UNSUPPORTED,
   BrowserUnsupportedError,
   createBrowserWorkspace,
 } from "../src/index.js";
-import { fakeTransport, type FakeTransport } from "./helpers.js";
+import { type FakeTransport, fakeTransport } from "./helpers.js";
 
 /**
  * Build a workspace over a canned transport.
@@ -392,7 +393,7 @@ describe("AIE-926 — the export guard evaluates the EFFECTIVE endpoint table", 
     await ws.client.request("GET", "not a url at all");
     // The core appends its `query_origin` marker; the guard itself
     // neither rejected nor rewrote either input.
-    expect(seen.map((s) => String(s).split("?")[0])).toEqual([
+    expect(seen.map((s) => String(s).split("?", 1)[0])).toEqual([
       "/api/2.0/export",
       "not a url at all",
     ]);

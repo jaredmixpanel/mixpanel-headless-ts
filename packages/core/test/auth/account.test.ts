@@ -4,12 +4,13 @@
 // name pattern/length, default_project digits-only, exactly-one-of
 // token/token_env, discriminator dispatch.
 import { describe, expect, it } from "vitest";
+
 import {
+  type Account,
   accountAuthHeader,
   isLongLived,
-  parseAccount,
-  type Account,
   type OAuthTokenAccount,
+  parseAccount,
   type TokenResolver,
 } from "../../src/auth/account.js";
 import {
@@ -188,8 +189,8 @@ describe("parseAccount — Pydantic invariants (coded guards)", () => {
     let caught: unknown;
     try {
       parseAccount({ ...SA_PAYLOAD, name: "" }, { boundary: "param" });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect((caught as ParamValidationError).code).toBe("VALIDATION_ERROR");
   });
@@ -198,8 +199,8 @@ describe("parseAccount — Pydantic invariants (coded guards)", () => {
     let caught: unknown;
     try {
       parseAccount({ ...SA_PAYLOAD, extra_key: true });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ResponseValidationError);
     expect((caught as ResponseValidationError).code).toBe(
@@ -290,12 +291,15 @@ describe("accountAuthHeader / isLongLived (exhaustive free functions)", () => {
      */
     function discriminate(account: Account): string {
       switch (account.type) {
-        case "service_account":
+        case "service_account": {
           return account.type;
-        case "oauth_browser":
+        }
+        case "oauth_browser": {
           return account.type;
-        case "oauth_token":
+        }
+        case "oauth_token": {
           return account.type;
+        }
         default: {
           const exhaustive: never = account;
           return exhaustive;

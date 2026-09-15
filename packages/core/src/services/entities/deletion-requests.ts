@@ -26,7 +26,7 @@ export interface DeletionRequestMethods {
    * @returns The request list verbatim.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  listDeletionRequests(signal?: AbortSignal): Promise<JsonValue[]>;
+  listDeletionRequests: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
    * Create a deletion request (`create_deletion_request`,
@@ -37,10 +37,10 @@ export interface DeletionRequestMethods {
    * @returns All deletion requests after creation.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  createDeletionRequest(
+  createDeletionRequest: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<JsonValue[]>;
+  ) => Promise<JsonValue[]>;
 
   /**
    * Cancel a pending deletion request (`cancel_deletion_request`,
@@ -52,10 +52,10 @@ export interface DeletionRequestMethods {
    * @returns All deletion requests after cancellation.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  cancelDeletionRequest(
+  cancelDeletionRequest: (
     requestId: number,
     signal?: AbortSignal,
-  ): Promise<JsonValue[]>;
+  ) => Promise<JsonValue[]>;
 
   /**
    * Preview deletion filters (`preview_deletion_filters`,
@@ -66,10 +66,10 @@ export interface DeletionRequestMethods {
    * @returns The expanded/normalized filter list.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  previewDeletionFilters(
+  previewDeletionFilters: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<JsonValue[]>;
+  ) => Promise<JsonValue[]>;
 }
 
 /**

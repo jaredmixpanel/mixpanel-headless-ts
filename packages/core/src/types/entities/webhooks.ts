@@ -8,13 +8,13 @@
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
+import type { WebhookAuthType } from "../enums.js";
 import {
+  type EntityFieldSpec,
   EntityModel,
   oneOf,
   prepareInit,
-  type EntityFieldSpec,
 } from "./model-base.js";
-import { WebhookAuthType } from "../enums.js";
 
 /**
  * Constructor input for {@link ProjectWebhook} — absent keys take the Python

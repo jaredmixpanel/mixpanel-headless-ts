@@ -9,9 +9,9 @@
  */
 
 import {
+  type EntityFieldSpec,
   EntityModel,
   prepareInit,
-  type EntityFieldSpec,
 } from "./model-base.js";
 
 /**
@@ -143,7 +143,7 @@ export class BulkCreateSchemasParams extends EntityModel {
   ];
 
   /** Schema entries to create. */
-  declare readonly entries: ReadonlyArray<SchemaEntry>;
+  declare readonly entries: readonly SchemaEntry[];
   /** If true, delete all existing schemas of entity_type before inserting. */
   declare readonly truncate: boolean | null;
   /** Entity type for all entries (only "event" supported for batch). */
@@ -411,7 +411,7 @@ export interface SchemaEnforcementConfigInit {
   /** Enforcement action: "Warn and Accept", "Warn and Hide", "Warn and Drop". */
   readonly rule_event?: string | null | undefined;
   /** Notification recipients. */
-  readonly notification_emails?: ReadonlyArray<string> | null | undefined;
+  readonly notification_emails?: readonly string[] | null | undefined;
   /** Event enforcement rules. */
   readonly events?:
     ReadonlyArray<Readonly<Record<string, unknown>>> | null | undefined;
@@ -519,7 +519,7 @@ export class SchemaEnforcementConfig extends EntityModel {
   /** Enforcement action: "Warn and Accept", "Warn and Hide", "Warn and Drop". */
   declare readonly rule_event: string | null;
   /** Notification recipients. */
-  declare readonly notification_emails: ReadonlyArray<string> | null;
+  declare readonly notification_emails: readonly string[] | null;
   /** Event enforcement rules. */
   declare readonly events: ReadonlyArray<
     Readonly<Record<string, unknown>>
@@ -647,14 +647,14 @@ export class InitSchemaEnforcementParams extends EntityModel {
  */
 export interface UpdateSchemaEnforcementParamsInit {
   /** Updated notification recipients. */
-  readonly notification_emails?: ReadonlyArray<string> | null | undefined;
+  readonly notification_emails?: readonly string[] | null | undefined;
   /** Updated enforcement action. */
   readonly rule_event?: string | null | undefined;
   /** Updated event list. */
-  readonly events?: ReadonlyArray<string> | null | undefined;
+  readonly events?: readonly string[] | null | undefined;
   /** Updated property map. */
   readonly properties?:
-    Readonly<Record<string, ReadonlyArray<string>>> | null | undefined;
+    Readonly<Record<string, readonly string[]>> | null | undefined;
 }
 
 /**
@@ -690,14 +690,14 @@ export class UpdateSchemaEnforcementParams extends EntityModel {
   ];
 
   /** Updated notification recipients. */
-  declare readonly notification_emails: ReadonlyArray<string> | null;
+  declare readonly notification_emails: readonly string[] | null;
   /** Updated enforcement action. */
   declare readonly rule_event: string | null;
   /** Updated event list. */
-  declare readonly events: ReadonlyArray<string> | null;
+  declare readonly events: readonly string[] | null;
   /** Updated property map. */
   declare readonly properties: Readonly<
-    Record<string, ReadonlyArray<string>>
+    Record<string, readonly string[]>
   > | null;
 
   /**
@@ -746,7 +746,7 @@ export interface ReplaceSchemaEnforcementParamsInit {
   /** Enforcement action. */
   readonly rule_event: string;
   /** Notification recipients. */
-  readonly notification_emails: ReadonlyArray<string>;
+  readonly notification_emails: readonly string[];
   /** Schema definition ID. */
   readonly schema_id?: number | null | undefined;
 }
@@ -814,7 +814,7 @@ export class ReplaceSchemaEnforcementParams extends EntityModel {
   /** Enforcement action. */
   declare readonly rule_event: string;
   /** Notification recipients. */
-  declare readonly notification_emails: ReadonlyArray<string>;
+  declare readonly notification_emails: readonly string[];
   /** Schema definition ID. */
   declare readonly schema_id: number | null;
 
@@ -988,7 +988,7 @@ export class AuditResponse extends EntityModel {
   ];
 
   /** List of audit violations. */
-  declare readonly violations: ReadonlyArray<AuditViolation>;
+  declare readonly violations: readonly AuditViolation[];
   /** Timestamp of audit computation. */
   declare readonly computed_at: string;
 
@@ -1416,7 +1416,7 @@ export class BulkUpdateAnomalyParams extends EntityModel {
   ];
 
   /** Anomalies to update. */
-  declare readonly anomalies: ReadonlyArray<BulkAnomalyEntry>;
+  declare readonly anomalies: readonly BulkAnomalyEntry[];
   /** New status for all. */
   declare readonly status: string;
 

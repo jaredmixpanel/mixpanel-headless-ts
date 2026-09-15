@@ -25,26 +25,27 @@
 //   plain params dict exactly as Python does.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import type { ValidationError } from "../../src/errors.js";
+
 import {
   BookmarkValidationError,
   ParamValidationError,
+  type ValidationError,
 } from "../../src/errors.js";
 import { validateBookmark } from "../../src/query/validation-bookmark.js";
+import {
+  CohortBreakdown,
+  CohortCriteria,
+  CohortDefinition,
+} from "../../src/types/query-params/cohort.js";
 import {
   CustomPropertyRef,
   Filter,
   InlineCustomProperty,
   PropertyInput,
 } from "../../src/types/query-params/filter.js";
-import {
-  CohortBreakdown,
-  CohortCriteria,
-  CohortDefinition,
-} from "../../src/types/query-params/cohort.js";
 import { FunnelStep } from "../../src/types/query-params/funnel.js";
 import { Metric } from "../../src/types/query-params/metric.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   mockWorkspaceClient,
   TEST_SESSION,

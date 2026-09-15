@@ -12,13 +12,15 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
+
 import {
   BOOKMARK_ENUM_TABLES,
   BOOKMARK_ENUMS_SOURCE_MODULE,
+  bookmarkEnumTablesSnapshot,
   MAX_CONVERSION_WINDOW,
   VALID_CHART_TYPES,
-  bookmarkEnumTablesSnapshot,
 } from "@mixpanel-headless/core/internal";
 
 /** The repo root (this file lives in conformance-runner/test). */

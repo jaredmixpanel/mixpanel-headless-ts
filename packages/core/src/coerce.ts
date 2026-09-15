@@ -87,15 +87,19 @@ function describe(value: unknown): string {
     return "null";
   }
   switch (typeof value) {
-    case "string":
+    case "string": {
       return JSON.stringify(value);
+    }
     case "number":
-    case "boolean":
+    case "boolean": {
       return String(value);
-    case "undefined":
+    }
+    case "undefined": {
       return "undefined";
-    default:
+    }
+    default: {
       return Array.isArray(value) ? "array" : typeof value;
+    }
   }
 }
 
@@ -136,7 +140,7 @@ export function coerceInt(value: unknown, options: CoerceOptions = {}): number {
   if (typeof value === "string") {
     const trimmed = value.trim();
     if (INT_STRING.test(trimmed)) {
-      const integerPart = trimmed.split(".")[0] ?? trimmed;
+      const integerPart = trimmed.split(".", 1)[0] ?? trimmed;
       return Number(integerPart.replace(/_/g, ""));
     }
   }
@@ -198,7 +202,7 @@ export function coerceInt64(
   if (typeof value === "string") {
     const trimmed = value.trim();
     if (INT_STRING.test(trimmed)) {
-      const integerPart = trimmed.split(".")[0] ?? trimmed;
+      const integerPart = trimmed.split(".", 1)[0] ?? trimmed;
       return narrowInt64(BigInt(integerPart.replace(/_/g, "")));
     }
     fail("int", value, options);

@@ -28,21 +28,22 @@
  *   translated here.
  */
 
-import { describe, it, expect } from "vitest";
-import {
-  CohortCriteria,
-  CohortDefinition,
-  Filter,
-} from "../../src/types/index.js";
+import { describe, expect, it } from "vitest";
+
 import {
   ParamValidationError,
   type ValidationError,
 } from "../../src/errors.js";
 import {
   validateUserArgs,
-  validateUserParams,
   type ValidateUserArgsOptions,
+  validateUserParams,
 } from "../../src/query/user-validators.js";
+import {
+  CohortCriteria,
+  CohortDefinition,
+  Filter,
+} from "../../src/types/index.js";
 
 // =============================================================================
 // Helpers (port of the Python module helpers, :30-76)
@@ -455,7 +456,10 @@ describe("TestValidateUserArgsBasic", () => {
   });
 
   it("test_u5_whitespace_only_sort_by", () => {
-    const errors = validateUserArgs({ sort_by: "   ", mode: "profiles" });
+    const errors = validateUserArgs({
+      sort_by: " ".repeat(3),
+      mode: "profiles",
+    });
     expect(hasCode(errors, "U5")).toBe(true);
   });
 

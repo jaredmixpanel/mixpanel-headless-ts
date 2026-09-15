@@ -23,20 +23,20 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  type Account,
   ConfigError,
+  type OAuthBrowserAccount,
   OAuthError,
+  type OAuthTokenAccount,
   ParamValidationError,
   Secret,
+  type ServiceAccount,
 } from "@mixpanel-headless/core";
-import type {
-  Account,
-  OAuthBrowserAccount,
-  OAuthTokenAccount,
-  ServiceAccount,
-} from "@mixpanel-headless/core";
+
 import {
   createNodeBridgeEffects,
   exportBridge,
@@ -50,7 +50,7 @@ import { makeTempDir, scrubMpEnv } from "./helpers.js";
 const POSIX = process.platform !== "win32";
 const itPosix = POSIX ? it : it.skip;
 
-const cleanups: (() => void)[] = [];
+const cleanups: Array<() => void> = [];
 let restoreEnv: () => void = () => undefined;
 let savedHome: string | undefined;
 let savedCwd = "";
@@ -433,8 +433,8 @@ describe("TestBridgeEdgeCases (test_042_edge_cases.py:394 — inbound b6-packets
     let caught: ConfigError | null = null;
     try {
       loadBridge();
-    } catch (exc) {
-      caught = exc as ConfigError;
+    } catch (error) {
+      caught = error as ConfigError;
     }
     expect(caught).toBeInstanceOf(ConfigError);
     expect(caught?.message).toContain(bridgePath);
@@ -484,8 +484,8 @@ describe("B8-ARB-A SEM-F2b/F3/F4/F6 error-class + byte-format locks", () => {
       let caught: unknown = null;
       try {
         loadBridge();
-      } catch (exc) {
-        caught = exc;
+      } catch (error) {
+        caught = error;
       }
       expect(caught).toBeInstanceOf(TypeError);
       expect(caught).not.toBeInstanceOf(ConfigError);
@@ -497,8 +497,8 @@ describe("B8-ARB-A SEM-F2b/F3/F4/F6 error-class + byte-format locks", () => {
     let caught: unknown = null;
     try {
       exportBridge(teamSa(), { to: out, project: "abc" });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ParamValidationError);
     expect(caught).not.toBeInstanceOf(ConfigError);
@@ -565,8 +565,8 @@ describe("B8-ARB-A readBrowserTokens error-class locks (bridge.py:221-242)", () 
       let caught: unknown = null;
       try {
         exportBridge(account, { to: out });
-      } catch (exc) {
-        caught = exc;
+      } catch (error) {
+        caught = error;
       }
       expect(caught).toBeInstanceOf(TypeError);
       expect(caught).not.toBeInstanceOf(OAuthError);
@@ -591,8 +591,8 @@ describe("B8-ARB-A readBrowserTokens error-class locks (bridge.py:221-242)", () 
       let caught: unknown = null;
       try {
         exportBridge(account, { to: out });
-      } catch (exc) {
-        caught = exc;
+      } catch (error) {
+        caught = error;
       }
       expect(caught).toBeInstanceOf(OAuthError);
       expect((caught as OAuthError).code).toBe("OAUTH_TOKEN_ERROR");

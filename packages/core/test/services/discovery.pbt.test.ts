@@ -29,6 +29,8 @@
 
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
+import { sortedByCodepoint } from "../../src/compat/index.js";
 import {
   inferSubproperties,
   parseBookmarkInfo,
@@ -38,7 +40,6 @@ import {
   type WarningSink,
 } from "../../src/services/discovery.js";
 import { BOOKMARK_TYPE_VALUES } from "../../src/types/literals.js";
-import { sortedByCodepoint } from "../../src/compat/index.js";
 
 // =============================================================================
 // Strategies (test_discovery_pbt.py:32-285)
@@ -205,10 +206,7 @@ const lexiconSchemaInputArb: fc.Arbitrary<Record<string, unknown>> = fc
     if (description !== undefined) {
       schemaJson["description"] = description;
     }
-    const properties: Record<string, unknown> = {};
-    for (const [key, value] of propEntries) {
-      properties[key] = value;
-    }
+    const properties: Record<string, unknown> = Object.fromEntries(propEntries);
     schemaJson["properties"] = properties;
     if (metadata !== undefined) {
       schemaJson["metadata"] = metadata;
@@ -435,8 +433,8 @@ describe("TestParseLexiconSchemaProperties", () => {
           (schemaJson["properties"] ?? {}) as Record<string, unknown>,
         ).length;
         expect(
-          Object.keys(parseLexiconSchema(data).schema_json.properties).length,
-        ).toBe(expected);
+          Object.keys(parseLexiconSchema(data).schema_json.properties),
+        ).toHaveLength(expected);
       }),
       { numRuns: 100 },
     );

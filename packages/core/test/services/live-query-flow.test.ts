@@ -21,14 +21,15 @@
 //   verbatim against the same stub so the class stays complete (A-F2).
 
 import { describe, expect, it } from "vitest";
+
+import type { MixpanelClient } from "../../src/client/client.js";
+import type { JsonValue } from "../../src/client/json-value.js";
 import { LiveQueryService } from "../../src/services/live-query.js";
 import {
   parseTreeNode,
   transformFlowResult,
 } from "../../src/services/live-query-transforms.js";
 import { FlowQueryResult } from "../../src/types/results/query-engine.js";
-import type { MixpanelClient } from "../../src/client/client.js";
-import type { JsonValue } from "../../src/client/json-value.js";
 
 // ===========================================================================
 // Fixtures (test_live_query_flow.py:22-79)
@@ -41,7 +42,7 @@ interface MockApiClient {
   /** Every `arbFunnelsQuery` body, in call order. */
   readonly arbFunnelsCalls: Array<Record<string, unknown>>;
   /** Set the value the next `arbFunnelsQuery` resolves with. */
-  setReturnValue(value: unknown): void;
+  setReturnValue: (value: unknown) => void;
 }
 
 /**
@@ -208,7 +209,7 @@ describe("TestArbFunnelsQuery", () => {
       unknown
     >;
 
-    expect(mock.arbFunnelsCalls.length).toBe(1);
+    expect(mock.arbFunnelsCalls).toHaveLength(1);
     expect(mock.arbFunnelsCalls[0]).toEqual(body);
     expect(Object.hasOwn(result, "computed_at")).toBe(true);
   });
@@ -245,9 +246,9 @@ describe("TestTransformFlowResult", () => {
 
     expect(result).toBeInstanceOf(FlowQueryResult);
     expect(result.computed_at).toBe("2025-01-15T10:00:00");
-    expect(result.steps.length).toBe(2);
+    expect(result.steps).toHaveLength(2);
     expect(result.steps[0]!["event"]).toBe("Login");
-    expect(result.breakdowns.length).toBe(1);
+    expect(result.breakdowns).toHaveLength(1);
     expect(result.overall_conversion_rate).toBe(0.3);
     expect(result.mode).toBe("sankey");
     expect(result.meta).toEqual({ sampling_factor: 1.0 });
@@ -260,7 +261,7 @@ describe("TestTransformFlowResult", () => {
     const result = transformFlowResult(raw, bookmark, "paths");
 
     expect(result).toBeInstanceOf(FlowQueryResult);
-    expect(result.flows.length).toBe(2);
+    expect(result.flows).toHaveLength(2);
     expect(result.flows[0]!["path"]).toEqual(["Login", "Purchase"]);
     expect(result.overall_conversion_rate).toBe(0.5);
     expect(result.mode).toBe("paths");
@@ -298,7 +299,7 @@ describe("TestQueryFlow", () => {
 
     const result = await live.queryFlow(bookmark, 12345, "sankey");
 
-    expect(mock.arbFunnelsCalls.length).toBe(1);
+    expect(mock.arbFunnelsCalls).toHaveLength(1);
     const body = mock.arbFunnelsCalls[0]!;
     expect(body["bookmark"]).toEqual(bookmark);
     expect(body["project_id"]).toBe(12345);
@@ -350,10 +351,10 @@ describe("TestParseTreeNode", () => {
   it("builds recursive children", () => {
     const node = parseTreeNode(sampleTreeRoot());
 
-    expect(node.children.length).toBe(2);
+    expect(node.children).toHaveLength(2);
     expect(node.children[0]!.event).toBe("Search");
     expect(node.children[0]!.total_count).toBe(80);
-    expect(node.children[0]!.children.length).toBe(1);
+    expect(node.children[0]!.children).toHaveLength(1);
     expect(node.children[0]!.children[0]!.event).toBe("Purchase");
   });
 
@@ -415,7 +416,7 @@ describe("TestTransformFlowResultTree", () => {
 
     expect(result).toBeInstanceOf(FlowQueryResult);
     expect(result.mode).toBe("tree");
-    expect(result.trees.length).toBe(1);
+    expect(result.trees).toHaveLength(1);
     expect(result.trees[0]!.event).toBe("Login");
     expect(result.trees[0]!.total_count).toBe(100);
   });
@@ -465,7 +466,7 @@ describe("TestQueryFlowTree", () => {
 
     expect(result).toBeInstanceOf(FlowQueryResult);
     expect(result.mode).toBe("tree");
-    expect(result.trees.length).toBe(1);
+    expect(result.trees).toHaveLength(1);
     expect(result.trees[0]!.event).toBe("Login");
   });
 });

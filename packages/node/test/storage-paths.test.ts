@@ -26,22 +26,24 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { ParamValidationError } from "@mixpanel-headless/core";
+
 import {
-  OAuthStorage,
   accountDir,
   ensureAccountDir,
-  storageRoot,
+  OAuthStorage,
   type StorageLogger,
+  storageRoot,
 } from "../src/auth/storage.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const POSIX = process.platform !== "win32";
 const itPosix = POSIX ? it : it.skip;
 
-const cleanups: (() => void)[] = [];
+const cleanups: Array<() => void> = [];
 let restoreEnv: () => void = () => undefined;
 let savedHome: string | undefined;
 

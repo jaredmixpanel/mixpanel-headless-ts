@@ -22,14 +22,14 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { OAuthError } from "@mixpanel-headless/core";
+import { type OAuthClientInfo, OAuthError } from "@mixpanel-headless/core";
+
 import { CallbackResult } from "../src/auth/callback-server.js";
 import { OAuthFlow, parsePastedRedirect } from "../src/auth/flow.js";
-import type { OAuthClientInfo } from "@mixpanel-headless/core";
 import { OAuthStorage } from "../src/auth/storage.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
-const cleanups: (() => void)[] = [];
+const cleanups: Array<() => void> = [];
 let restoreEnv: () => void = () => undefined;
 
 beforeEach(() => {
@@ -412,7 +412,7 @@ describe("TestOAuthFlowTokenExchange (test_auth_flow.py:385)", () => {
       .exchangeCode("bad-code", "v", "cid", "http://localhost:19284/callback")
       .then(
         () => null,
-        (exc: unknown) => exc,
+        (error_: unknown) => error_,
       );
     expect(error).toBeInstanceOf(OAuthError);
     // `invalid_grant` maps to REVOKED only for the refresh operation
@@ -445,7 +445,7 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
       .exchangeCode("c", "v", "cid", "http://localhost:19284/callback")
       .then(
         () => null,
-        (exc: unknown) => exc,
+        (error_: unknown) => error_,
       );
     expect(error).toBeInstanceOf(OAuthError);
     const exc = error as OAuthError;
@@ -474,7 +474,7 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
       .exchangeCode("c", "v", "cid", "http://localhost:19284/callback")
       .then(
         () => null,
-        (exc: unknown) => exc,
+        (error_: unknown) => error_,
       );
     expect(error).toBeInstanceOf(OAuthError);
     const responseData = String((error as OAuthError).details["response_data"]);
@@ -525,7 +525,7 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
         .exchangeCode("c", "v", "cid", "http://localhost:19284/callback")
         .then(
           () => null,
-          (exc: unknown) => exc,
+          (error_: unknown) => error_,
         );
       expect(error).toBeInstanceOf(OAuthError);
       const exc = error as OAuthError;
@@ -553,7 +553,7 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
       .exchangeCode("c", "v", "cid", "http://localhost:19284/callback")
       .then(
         () => null,
-        (exc: unknown) => exc,
+        (error_: unknown) => error_,
       );
     expect(error).toBeInstanceOf(OAuthError);
     expect((error as OAuthError).details["response_data"]).toBe(
@@ -571,7 +571,7 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
       .exchangeCode("c", "v", "cid", "http://localhost:19284/callback")
       .then(
         () => null,
-        (exc: unknown) => exc,
+        (error_: unknown) => error_,
       );
     expect(error).toBeInstanceOf(OAuthError);
     const exc = error as OAuthError;
@@ -601,7 +601,7 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
       .exchangeCode("c", "v", "cid", "http://localhost:19284/callback")
       .then(
         () => null,
-        (exc: unknown) => exc,
+        (error_: unknown) => error_,
       );
     expect(error).toBeInstanceOf(OAuthError);
     const exc = error as OAuthError;
@@ -638,7 +638,7 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
         .exchangeCode("c", "v", "cid", "http://localhost:19284/callback")
         .then(
           () => null,
-          (exc: unknown) => exc,
+          (error_: unknown) => error_,
         );
       expect(error).toBeInstanceOf(OAuthError);
       const exc = error as OAuthError;
@@ -702,7 +702,7 @@ describe("TestOAuthFlowNetworkErrors — exchange-op members (test_auth_flow.py:
       .exchangeCode("c", "v", "cid", "http://localhost:19284/callback")
       .then(
         () => null,
-        (exc: unknown) => exc,
+        (error_: unknown) => error_,
       );
     expect(error).toBeInstanceOf(OAuthError);
     expect((error as OAuthError).code).toBe("OAUTH_TOKEN_ERROR");
@@ -720,7 +720,7 @@ describe("TestOAuthFlowNetworkErrors — exchange-op members (test_auth_flow.py:
       .exchangeCode("c", "v", "cid", "http://localhost:19284/callback")
       .then(
         () => null,
-        (exc: unknown) => exc,
+        (error_: unknown) => error_,
       );
     expect(error).toBeInstanceOf(OAuthError);
     expect((error as OAuthError).code).toBe("OAUTH_TOKEN_ERROR");
@@ -741,7 +741,7 @@ describe("TestOAuthFlowNetworkErrors — exchange-op members (test_auth_flow.py:
       .exchangeCode("c", "v", "cid", "http://localhost:19284/callback")
       .then(
         () => null,
-        (exc: unknown) => exc,
+        (error_: unknown) => error_,
       );
     expect(error).toBeInstanceOf(OAuthError);
     expect((error as OAuthError).code).toBe("OAUTH_TOKEN_ERROR");
@@ -758,7 +758,7 @@ describe("TestOAuthFlowNetworkErrors — exchange-op members (test_auth_flow.py:
       .exchangeCode("c", "v", "cid", "http://localhost:19284/callback")
       .then(
         () => null,
-        (exc: unknown) => exc,
+        (error_: unknown) => error_,
       );
     expect(error).toBeInstanceOf(OAuthError);
     expect((error as OAuthError).code).toBe("OAUTH_TOKEN_ERROR");

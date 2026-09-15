@@ -9,7 +9,9 @@
 // and flips the compat vectors to live PASS assertions.
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
+
 import { createRunnerDeps } from "../src/bindings.js";
 import { loadCorpus, loadCorpusConfig } from "../src/loader.js";
 import { runVector, vectorCapability } from "../src/runner.js";

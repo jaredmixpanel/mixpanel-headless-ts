@@ -16,14 +16,15 @@
 // order (`me.py:869-915`).
 
 import { describe, expect, it } from "vitest";
-import { parseLossless } from "../../src/client/lossless-json.js";
-import { toNativeJson, type JsonValue } from "../../src/client/json-value.js";
-import { MeOrgInfo, MeResponse, MeWorkspaceInfo } from "../../src/client/me.js";
+
 import { defaultAccountName } from "../../src/accounts/naming.js";
+import { type JsonValue, toNativeJson } from "../../src/client/json-value.js";
+import { parseLossless } from "../../src/client/lossless-json.js";
+import { MeOrgInfo, MeResponse, MeWorkspaceInfo } from "../../src/client/me.js";
 import {
-  MeService,
   inMemoryMeCache,
   type MeClient,
+  MeService,
 } from "../../src/services/me.js";
 
 /**

@@ -12,6 +12,7 @@
 // the resolution document. ADDITIVE — substitutes for no Python file.
 
 import { describe, expect, it } from "vitest";
+
 import { RrwebAnalyzer } from "../../src/replays/rrweb-analyzer.js";
 
 /** The int(None) ladder message CPython raises (probe-verified). */

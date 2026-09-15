@@ -99,7 +99,7 @@ const NUMBER_TOKEN = /-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/y;
 /** Matches a JSON string token at a given position (sticky). */
 const STRING_TOKEN =
   // eslint-disable-next-line no-control-regex -- RFC 8259 forbids raw control chars in strings; the class is intentional
-  /"(?:[^"\\\u0000-\u001f]|\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4}))*"/y;
+  /"(?:[^"\\\u0000-\u001F]|\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4}))*"/y;
 
 /**
  * Parse one JSON document into the ordered lossless model.
@@ -108,7 +108,6 @@ const STRING_TOKEN =
  * @returns The parsed {@link RawValue}; objects keep member order,
  *   numbers keep their verbatim tokens.
  * @throws RawJsonError - On any syntax error or trailing content.
- *
  * @example
  * ```typescript
  * const value = parseRawJson('{"1": 18.0, "0": null}') as RawObject;
@@ -176,23 +175,30 @@ class RawParser {
     }
     const ch = this.text[this.pos];
     switch (ch) {
-      case "{":
+      case "{": {
         return this.parseObject();
-      case "[":
+      }
+      case "[": {
         return this.parseArray();
-      case '"':
+      }
+      case '"': {
         return this.parseString();
-      case "t":
+      }
+      case "t": {
         this.expectLiteral("true");
         return true;
-      case "f":
+      }
+      case "f": {
         this.expectLiteral("false");
         return false;
-      case "n":
+      }
+      case "n": {
         this.expectLiteral("null");
         return null;
-      default:
+      }
+      default: {
         return this.parseNumber();
+      }
     }
   }
 
@@ -453,23 +459,46 @@ function serializeAsciiString(value: string): string {
   for (let index = 0; index < value.length; index += 1) {
     const code = value.charCodeAt(index);
     const ch = value[index] as string;
-    if (ch === '"' || ch === "\\") {
-      out += `\\${ch}`;
-    } else if (ch === "\b") {
-      out += "\\b";
-    } else if (ch === "\f") {
-      out += "\\f";
-    } else if (ch === "\n") {
-      out += "\\n";
-    } else if (ch === "\r") {
-      out += "\\r";
-    } else if (ch === "\t") {
-      out += "\\t";
-    } else if (code < 0x20 || code >= 0x7f) {
-      out += `\\u${code.toString(16).padStart(4, "0")}`;
-    } else {
-      out += ch;
+    switch (ch) {
+      case '"':
+      case "\\": {
+        out += `\\${ch}`;
+
+        break;
+      }
+      case "\b": {
+        out += String.raw`\b`;
+
+        break;
+      }
+      case "\f": {
+        out += String.raw`\f`;
+
+        break;
+      }
+      case "\n": {
+        out += String.raw`\n`;
+
+        break;
+      }
+      case "\r": {
+        out += String.raw`\r`;
+
+        break;
+      }
+      case "\t": {
+        out += String.raw`\t`;
+
+        break;
+      }
+      default: {
+        if (code < 0x20 || code >= 0x7f) {
+          out += String.raw`\u${code.toString(16).padStart(4, "0")}`;
+        } else {
+          out += ch;
+        }
+      }
     }
   }
-  return out + '"';
+  return `${out}"`;
 }

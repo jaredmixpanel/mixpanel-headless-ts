@@ -10,14 +10,15 @@
 // barrel so a missing line can never again hide behind "the symbol
 // exists somewhere".
 import { describe, expect, it } from "vitest";
+
 import {
   CORE_PACKAGE_NAME,
-  Workspace,
-  validateBookmark,
-  validateBookmarkParamsSchema,
   defaultLabelFn,
   selectorLabelFn,
   urlNormalizer,
+  validateBookmark,
+  validateBookmarkParamsSchema,
+  Workspace,
 } from "../src/index.js";
 
 describe("@mixpanel-headless/core package skeleton", () => {

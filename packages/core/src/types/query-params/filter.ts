@@ -24,8 +24,8 @@ import { pythonRepr, pythonStrip } from "../../compat/index.js";
 import { ParamTypeError, ParamValidationError } from "../../errors.js";
 import { ValueError } from "../../query/python-builtins.js";
 import {
-  FILTER_OPERATOR_VALUES,
   type CustomPropertyType,
+  FILTER_OPERATOR_VALUES,
   type FilterDateUnit,
   type FilterOperator,
   type FilterOperatorInput,
@@ -36,7 +36,7 @@ import {
 // cohort filters. Both modules only USE the other's bindings inside
 // function bodies (never during module evaluation), which ESM live
 // bindings resolve safely.
-import { sanitizeRawCohort, type CohortDefinition } from "./cohort.js";
+import { type CohortDefinition, sanitizeRawCohort } from "./cohort.js";
 import {
   isPyIntOrBool,
   isRealCalendarDate,
@@ -149,7 +149,6 @@ export class InlineCustomProperty {
    *   each entry becomes a `type="number"` {@link PropertyInput}.
    * @returns InlineCustomProperty with all-numeric inputs and
    *   `property_type="number"`.
-   *
    * @example
    * ```typescript
    * const icp = InlineCustomProperty.numeric("A * B", { A: "price", B: "quantity" });

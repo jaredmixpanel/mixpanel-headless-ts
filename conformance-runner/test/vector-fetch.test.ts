@@ -3,11 +3,12 @@
 // native rejection, body_stream chunk-boundary preservation (design
 // D2/D7/D12).
 import { describe, expect, it } from "vitest";
+
 import { parseInteractions } from "../src/interactions.js";
 import { parseLossless } from "../src/lossless-json.js";
 import {
-  VectorFetchSequenceError,
   createVectorFetch,
+  VectorFetchSequenceError,
 } from "../src/vector-fetch.js";
 
 /**
@@ -147,8 +148,8 @@ describe("createVectorFetch — transport errors", () => {
     let thrown: unknown;
     try {
       await harness.fetch("https://mixpanel.com/flaky");
-    } catch (cause) {
-      thrown = cause;
+    } catch (error) {
+      thrown = error;
     }
     expect(thrown).toBeInstanceOf(TypeError);
     expect((thrown as TypeError).message).toBe("fetch failed");
@@ -163,12 +164,12 @@ describe("createVectorFetch — transport errors", () => {
 describe("createVectorFetch — response bodies", () => {
   it("rebuilds body_stream into a ReadableStream preserving chunk boundaries", async () => {
     const harness = createVectorFetch(
-      interactionsOf(`[
+      interactionsOf(String.raw`[
         {"request": {"method": "GET", "path": "/export"},
          "response": {"status": 200,
                       "body_stream": [
-                        {"encoding": "utf8", "data": "{\\"line\\": 1}\\n{\\"li"},
-                        {"encoding": "utf8", "data": "ne\\": 2}\\n"},
+                        {"encoding": "utf8", "data": "{\"line\": 1}\n{\"li"},
+                        {"encoding": "utf8", "data": "ne\": 2}\n"},
                         {"encoding": "base64", "data": "eyJsaW5lIjogM30K"}
                       ]}}
       ]`),

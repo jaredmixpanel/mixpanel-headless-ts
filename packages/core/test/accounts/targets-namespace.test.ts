@@ -7,12 +7,13 @@
 // `ResponseValidationError`.
 
 import { describe, expect, it } from "vitest";
+
 import { createAccountsNamespace } from "../../src/accounts/namespace.js";
 import { createTargetsNamespace } from "../../src/accounts/targets-namespace.js";
 import { ConfigError, ResponseValidationError } from "../../src/errors.js";
 import { Secret } from "../../src/secret.js";
 import { Target } from "../../src/types/entities/accounts.js";
-import { makeEffects, type EffectsBundle } from "./fake-auth-effects.js";
+import { type EffectsBundle, makeEffects } from "./fake-auth-effects.js";
 
 /** The `cm` fixture (one SA account named `x`). */
 async function seeded(): Promise<EffectsBundle> {

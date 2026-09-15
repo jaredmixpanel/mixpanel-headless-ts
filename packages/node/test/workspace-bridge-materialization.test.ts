@@ -29,25 +29,27 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { Workspace } from "@mixpanel-headless/core";
+
 import {
-  loadBridgeForStartup,
   bridgeViewFromFile,
+  loadBridgeForStartup,
 } from "../src/auth/bridge.js";
+import { OnDiskTokenResolver } from "../src/auth/token-resolver.js";
 import {
   createNodeResolverSources,
   createNodeWorkspaceSources,
 } from "../src/auth-effects.js";
 import { createNodeConfigSource } from "../src/config-writes.js";
 import { createNodeEnv } from "../src/env.js";
-import { OnDiskTokenResolver } from "../src/auth/token-resolver.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const POSIX = process.platform !== "win32";
 
-const cleanups: (() => void)[] = [];
+const cleanups: Array<() => void> = [];
 let restoreEnv: () => void = () => undefined;
 let savedHome: string | undefined;
 let home = "";

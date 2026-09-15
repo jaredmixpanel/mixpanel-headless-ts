@@ -27,17 +27,17 @@
 import { pythonInt } from "../compat/python-int.js";
 import { pythonRepr } from "../compat/python-str.js";
 import { ConfigError, ParamValidationError } from "../errors.js";
-import { Target } from "../types/entities/accounts.js";
+import type { Target } from "../types/entities/accounts.js";
 import {
-  REGION_VALUES,
-  parseAccount,
   type Account,
+  parseAccount,
   type Region,
+  REGION_VALUES,
 } from "./account.js";
 import {
+  type ActiveSession,
   parseProject,
   parseWorkspaceRef,
-  type ActiveSession,
   type Project,
   type Session,
   type WorkspaceRef,
@@ -74,14 +74,14 @@ export interface ResolverConfigSource {
    * @throws ConfigError - Coded error on an unknown name
    *   (`AccountNotFoundError` in the ConfigManager implementation).
    */
-  getAccount(name: string): Account;
+  getAccount: (name: string) => Account;
 
   /**
    * Read the persisted `[active]` block.
    *
    * @returns The active session (may be empty).
    */
-  getActive(): ActiveSession;
+  getActive: () => ActiveSession;
 
   /**
    * Load a named target.
@@ -90,14 +90,14 @@ export interface ResolverConfigSource {
    * @returns The target record.
    * @throws ConfigError - Coded error on an unknown name.
    */
-  getTarget(name: string): Target;
+  getTarget: (name: string) => Target;
 
   /**
    * Read `[settings].custom_header`.
    *
    * @returns The single `(name, value)` entry, or `null` when unset.
    */
-  getCustomHeader(): readonly [string, string] | null;
+  getCustomHeader: () => readonly [string, string] | null;
 }
 
 /**
@@ -409,11 +409,11 @@ export function envWorkspaceId(env: ResolverEnv): number | null {
   let parsed: number;
   try {
     parsed = pythonInt(envVal);
-  } catch (exc) {
+  } catch (error) {
     throw new ConfigError(
       `MP_WORKSPACE_ID=${pythonRepr(envVal)} is not a positive integer.`,
       { env_var: "MP_WORKSPACE_ID", value: envVal },
-      { cause: exc },
+      { cause: error },
     );
   }
   if (parsed <= 0) {
@@ -577,7 +577,6 @@ export function formatNoProjectError(account: Account | null = null): string {
  *   Caution #14).
  * @throws ConfigError - An axis cannot be resolved or refers to an
  *   unknown account / target; invalid env values.
- *
  * @example
  * ```typescript
  * const session = resolveSession(
@@ -647,11 +646,11 @@ export function resolveSession(
   let projectObj: Project;
   try {
     projectObj = parseProject({ id: projectId });
-  } catch (exc) {
+  } catch (error) {
     throw new ConfigError(
       `Invalid project ID: ${pythonRepr(projectId)}. Must match \`^\\d+$\`.`,
       null,
-      { cause: exc },
+      { cause: error },
     );
   }
 
@@ -666,11 +665,11 @@ export function resolveSession(
   if (workspaceId !== null) {
     try {
       workspaceObj = parseWorkspaceRef({ id: workspaceId });
-    } catch (exc) {
+    } catch (error) {
       throw new ConfigError(
         `Invalid workspace ID: ${String(workspaceId)}. Must be > 0.`,
         null,
-        { cause: exc },
+        { cause: error },
       );
     }
   }

@@ -30,16 +30,19 @@
  * - Watchlist #13 — `isinstance(x, dict)` is {@link isPythonDict}.
  */
 
-import { compareCodepoints, sortedByCodepoint } from "../compat/codepoint.js";
-import { cpSlice } from "../compat/codepoint.js";
+import {
+  compareCodepoints,
+  cpSlice,
+  sortedByCodepoint,
+} from "../compat/codepoint.js";
 import { pythonInt } from "../compat/python-int.js";
 import { pythonRepr, pythonStr } from "../compat/python-str.js";
 import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
 import { QueryError } from "../errors.js";
-import { isPythonDict, pythonTypeName } from "../query/validation-shared.js";
 import { AttributeError, ValueError } from "../query/python-builtins.js";
 import { fromTimestampUtcIso, timestampNumber } from "../query/transforms.js";
-import type { CountType, HourDayUnit, TimeUnit } from "../types/literals.js";
+import { isPythonDict, pythonTypeName } from "../query/validation-shared.js";
+import type { HourDayUnit, TimeUnit } from "../types/literals.js";
 import {
   ActivityFeedResult,
   CohortInfo,
@@ -262,7 +265,7 @@ function pyIn(key: string, container: unknown): boolean {
     return container.includes(key);
   }
   if (Array.isArray(container)) {
-    return container.some((element) => element === key);
+    return container.includes(key);
   }
   throw new TypeError(
     `argument of type '${pythonTypeNameOf(container)}' is not a container or iterable`,
@@ -343,7 +346,7 @@ function pyNumber(value: unknown): number {
  * @yields Every per-segment count, in Python's iteration order.
  * @throws AttributeError - When `values` or a segment is not a dict.
  */
-function* segmentationCounts(values: unknown): Generator<unknown> {
+function* segmentationCounts(values: unknown): Generator {
   for (const segmentValues of Object.values(pyMapping(values, "values"))) {
     yield* Object.values(pyMapping(segmentValues, "values"));
   }
@@ -363,9 +366,9 @@ function* segmentationCounts(values: unknown): Generator<unknown> {
  * `\r`, U+2028 and U+2029 (B5-ARB FID-F4).
  */
 const STEP_PREFIX_RE = new RegExp(
-  `^(\\p{Nd}+)\\.[${[...PYTHON_STR_WHITESPACE]
-    .map((cp) => `\\u{${cp.toString(16)}}`)
-    .join("")}]*([^\\n]+)(?:\\n)?$`,
+  String.raw`^(\p{Nd}+)\.[${[...PYTHON_STR_WHITESPACE]
+    .map((cp) => String.raw`\u{${cp.toString(16)}}`)
+    .join("")}]*([^\n]+)(?:\n)?$`,
   "u",
 );
 
@@ -454,10 +457,10 @@ export function transformFunnel(
       );
       const count = dictGet(step, "count", 0);
       const existingEntry = aggregatedCounts.get(idx);
-      if (existingEntry !== undefined) {
-        aggregatedCounts.set(idx, [event, pyAdd(existingEntry[1], count)]);
-      } else {
+      if (existingEntry === undefined) {
         aggregatedCounts.set(idx, [event, count]);
+      } else {
+        aggregatedCounts.set(idx, [event, pyAdd(existingEntry[1], count)]);
       }
     }
   }
@@ -691,9 +694,9 @@ function stepSortKey(name: string): [number, string] {
 export function extractFunnelStepsFromSeries(
   series: unknown,
   warn: WarningSink,
-): Record<string, unknown>[] {
+): Array<Record<string, unknown>> {
   if (Array.isArray(series)) {
-    return series as Record<string, unknown>[];
+    return series as Array<Record<string, unknown>>;
   }
 
   if (!isPythonDict(series)) {
@@ -706,7 +709,7 @@ export function extractFunnelStepsFromSeries(
   if (Object.hasOwn(seriesDict, "steps")) {
     const steps = seriesDict["steps"];
     if (Array.isArray(steps)) {
-      return steps as Record<string, unknown>[];
+      return steps as Array<Record<string, unknown>>;
     }
   }
 
@@ -716,11 +719,11 @@ export function extractFunnelStepsFromSeries(
     if (isPythonDict(overall) && Object.hasOwn(asRecord(overall), "steps")) {
       const overallSteps = asRecord(overall)["steps"];
       if (Array.isArray(overallSteps)) {
-        return overallSteps as Record<string, unknown>[];
+        return overallSteps as Array<Record<string, unknown>>;
       }
     }
     if (Array.isArray(overall)) {
-      return overall as Record<string, unknown>[];
+      return overall as Array<Record<string, unknown>>;
     }
   }
 
@@ -781,10 +784,10 @@ export function extractFunnelStepsFromSeries(
 
   // Step names are like "1. Signup" — sort by numeric prefix so that
   // "10." follows "2." (a lexicographic sort would not).
-  const stepNames = [...Object.keys(asRecord(countData))].sort((a, b) => {
+  const stepNames = Object.keys(asRecord(countData)).sort((a, b) => {
     const [ai, an] = stepSortKey(a);
     const [bi, bn] = stepSortKey(b);
-    return ai !== bi ? ai - bi : compareCodepoints(an, bn);
+    return ai === bi ? compareCodepoints(an, bn) : ai - bi;
   });
 
   /**
@@ -803,11 +806,11 @@ export function extractFunnelStepsFromSeries(
     if (isPythonDict(stepData)) {
       return dictGet(asRecord(stepData), "all", 0);
     }
-    return stepData !== null ? stepData : 0;
+    return stepData === null ? 0 : stepData;
   };
 
   // Build step dicts
-  const result: Record<string, unknown>[] = [];
+  const result: Array<Record<string, unknown>> = [];
   for (const stepName of stepNames) {
     const match = STEP_PREFIX_RE.exec(stepName);
     const event = match ? match[2]! : stepName;
@@ -1175,55 +1178,69 @@ export function transformSavedReport(
   let headers: unknown;
   let series: unknown;
 
-  if (bookmarkType === "insights") {
-    // {computed_at, date_range: {from_date, to_date}, headers, series}
-    computedAt = dictGet(raw, "computed_at", "");
-    const dateRange = dictGetRecord(raw, "date_range");
-    fromDate = dictGet(dateRange, "from_date", "");
-    toDate = dictGet(dateRange, "to_date", "");
-    headers = dictGet(raw, "headers", []);
-    series = dictGet(raw, "series", {});
-  } else if (bookmarkType === "funnels") {
-    // {computed_at, data: {date: {steps}}, meta}. Python tests
-    // truthiness FIRST (`sorted(data.keys()) if data else []`), so a
-    // FALSY non-dict `data` short-circuits while a truthy one raises
-    // `AttributeError` at `.keys()` (B5-ARB FID-F2).
-    computedAt = dictGet(raw, "computed_at", "");
-    const data = dictGet(raw, "data", {});
-    const dateKeys = pyTruthy(data)
-      ? sortedByCodepoint(Object.keys(pyMapping(data, "keys")))
-      : [];
-    fromDate = dateKeys.length > 0 ? dateKeys[0] : "";
-    toDate = dateKeys.length > 0 ? dateKeys[dateKeys.length - 1] : "";
-    headers = ["$funnel"]; // Synthetic header for type detection
-    series = data;
-  } else if (bookmarkType === "retention") {
-    // {date: {first, counts, rates}} — the whole response is the data
-    computedAt = ""; // Not provided by retention API
-    const dateKeys = pyTruthy(raw) ? sortedByCodepoint(Object.keys(raw)) : [];
-    fromDate = dateKeys.length > 0 ? dateKeys[0] : "";
-    toDate = dateKeys.length > 0 ? dateKeys[dateKeys.length - 1] : "";
-    headers = ["$retention"]; // Synthetic header for type detection
-    series = raw; // Entire response is the data
-  } else if (bookmarkType === "flows") {
-    // {computed_at, steps, breakdowns, overallConversionRate, metadata}
-    computedAt = dictGet(raw, "computed_at", "");
-    fromDate = ""; // Not provided by flows API
-    toDate = "";
-    headers = ["$flows"]; // Synthetic header for type detection
-    series = {
-      steps: dictGet(raw, "steps", []),
-      breakdowns: dictGet(raw, "breakdowns", []),
-      overallConversionRate: dictGet(raw, "overallConversionRate", 0.0),
-    };
-  } else {
-    // Fallback to insights behavior
-    computedAt = dictGet(raw, "computed_at", "");
-    const dateRange = dictGetRecord(raw, "date_range");
-    fromDate = dictGet(dateRange, "from_date", "");
-    toDate = dictGet(dateRange, "to_date", "");
-    headers = dictGet(raw, "headers", []);
-    series = dictGet(raw, "series", {});
+  switch (bookmarkType) {
+    case "insights": {
+      // {computed_at, date_range: {from_date, to_date}, headers, series}
+      computedAt = dictGet(raw, "computed_at", "");
+      const dateRange = dictGetRecord(raw, "date_range");
+      fromDate = dictGet(dateRange, "from_date", "");
+      toDate = dictGet(dateRange, "to_date", "");
+      headers = dictGet(raw, "headers", []);
+      series = dictGet(raw, "series", {});
+
+      break;
+    }
+    case "funnels": {
+      // {computed_at, data: {date: {steps}}, meta}. Python tests
+      // truthiness FIRST (`sorted(data.keys()) if data else []`), so a
+      // FALSY non-dict `data` short-circuits while a truthy one raises
+      // `AttributeError` at `.keys()` (B5-ARB FID-F2).
+      computedAt = dictGet(raw, "computed_at", "");
+      const data = dictGet(raw, "data", {});
+      const dateKeys = pyTruthy(data)
+        ? sortedByCodepoint(Object.keys(pyMapping(data, "keys")))
+        : [];
+      fromDate = dateKeys.length > 0 ? dateKeys[0] : "";
+      toDate = dateKeys.length > 0 ? dateKeys[dateKeys.length - 1] : "";
+      headers = ["$funnel"]; // Synthetic header for type detection
+      series = data;
+
+      break;
+    }
+    case "retention": {
+      // {date: {first, counts, rates}} — the whole response is the data
+      computedAt = ""; // Not provided by retention API
+      const dateKeys = pyTruthy(raw) ? sortedByCodepoint(Object.keys(raw)) : [];
+      fromDate = dateKeys.length > 0 ? dateKeys[0] : "";
+      toDate = dateKeys.length > 0 ? dateKeys[dateKeys.length - 1] : "";
+      headers = ["$retention"]; // Synthetic header for type detection
+      series = raw; // Entire response is the data
+
+      break;
+    }
+    case "flows": {
+      // {computed_at, steps, breakdowns, overallConversionRate, metadata}
+      computedAt = dictGet(raw, "computed_at", "");
+      fromDate = ""; // Not provided by flows API
+      toDate = "";
+      headers = ["$flows"]; // Synthetic header for type detection
+      series = {
+        steps: dictGet(raw, "steps", []),
+        breakdowns: dictGet(raw, "breakdowns", []),
+        overallConversionRate: dictGet(raw, "overallConversionRate", 0.0),
+      };
+
+      break;
+    }
+    default: {
+      // Fallback to insights behavior
+      computedAt = dictGet(raw, "computed_at", "");
+      const dateRange = dictGetRecord(raw, "date_range");
+      fromDate = dictGet(dateRange, "from_date", "");
+      toDate = dictGet(dateRange, "to_date", "");
+      headers = dictGet(raw, "headers", []);
+      series = dictGet(raw, "series", {});
+    }
   }
 
   return new SavedReportResult({
@@ -1277,7 +1294,7 @@ export function transformFlowResult(
     mode !== "tree" &&
     !Object.hasOwn(raw, "steps") &&
     !Object.hasOwn(raw, "flows") &&
-    !rawKeys.some((key) => expectedKeys.has(key))
+    rawKeys.every((key) => !expectedKeys.has(key))
   ) {
     throw new QueryError(
       "Flow query returned unexpected response shape " +
@@ -1575,4 +1592,5 @@ export function transformNumericAverage(
 }
 
 /** Re-export so callers can name the count type without a second import. */
-export type { CountType };
+
+export { type CountType } from "../types/literals.js";

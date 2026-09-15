@@ -4,8 +4,9 @@
 // context/phase3/notes/B0-notes.md (Python repo).
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { MixpanelHeadlessError } from "../../src/errors.js";
+
 import { pythonInt } from "../../src/compat/python-int.js";
+import { MixpanelHeadlessError } from "../../src/errors.js";
 
 /**
  * Assert `pythonInt` rejects `text` with the given machine code.
@@ -95,19 +96,19 @@ describe("pythonInt — surrounding whitespace (CPython numeric set)", () => {
   });
 
   it("strips non-ASCII Unicode whitespace (NEL, NBSP, EM SPACE, IDEOGRAPHIC)", () => {
-    expect(pythonInt("\u008542\u00a0")).toBe(42);
+    expect(pythonInt("\u008542\u00A0")).toBe(42);
     expect(pythonInt("\u200342\u3000")).toBe(42);
   });
 
   it("rejects U+001C..U+001F (isspace-true but numeric-parse-rejected)", () => {
     // CPython probe 2026-08-15: int('\x1c42\x1f') raises ValueError even
     // though '\x1c'.isspace() is True — Py_ISSPACE excludes 1C..1F.
-    expectRejects("\x1c42\x1f");
-    expectRejects("\x1d7");
+    expectRejects("\x1C42\x1F");
+    expectRejects("\x1D7");
   });
 
   it("rejects U+FEFF (JS trims the BOM; Python never does)", () => {
-    expectRejects("\ufeff42");
+    expectRejects("\uFEFF42");
   });
 
   it("rejects interior whitespace", () => {
@@ -174,7 +175,7 @@ describe("pythonInt — properties (fast-check)", () => {
       "\t",
       "\n",
       "\u0085",
-      "\u00a0",
+      "\u00A0",
       "\u2003",
       "\u3000",
     );

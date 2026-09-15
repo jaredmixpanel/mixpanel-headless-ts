@@ -15,13 +15,15 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
+
 import {
-  errorsModule as errors,
   CODED_GUARD_REGISTRY,
   CODED_GUARD_TWIN_CODES,
   DEFAULT_ERROR_CODES,
   ERROR_CODES_GENERATED_FROM,
+  errorsModule as errors,
   EXCEPTION_CLASS_PARENTS,
 } from "@mixpanel-headless/core/internal";
 

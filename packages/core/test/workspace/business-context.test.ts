@@ -19,27 +19,28 @@
 // contract.
 
 import { describe, expect, it, vi } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
+import { MeOrgInfo, MeProjectInfo, MeResponse } from "../../src/client/me.js";
 import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-  type FakeTransport,
-} from "../../test-support/client-test-helpers.js";
-import {
-  MixpanelHeadlessError,
   BusinessContextValidationError,
+  MixpanelHeadlessError,
   QueryError,
   WorkspaceScopeError,
 } from "../../src/errors.js";
+import type { MeService } from "../../src/services/me.js";
 import {
   BUSINESS_CONTEXT_MAX_CHARS,
   BusinessContext,
   BusinessContextChain,
 } from "../../src/types/entities/business-context.js";
-import { MeOrgInfo, MeProjectInfo, MeResponse } from "../../src/client/me.js";
-import type { MeService } from "../../src/services/me.js";
+import { Workspace } from "../../src/workspace.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  type FakeTransport,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** The `_session()` helper (:54-61) — project 12345, us, oauth token. */
 const SESSION = makeSession({
@@ -167,7 +168,7 @@ describe("TestGetBusinessContextProject (:146)", () => {
     await expect(
       ws.getBusinessContext({ level: "org" as "organization" }),
     ).rejects.toMatchObject({ code: "WS2_INVALID_LEVEL" });
-    expect(transport.captures.length).toBe(0);
+    expect(transport.captures).toHaveLength(0);
   });
 
   it("a response without `content` raises MixpanelHeadlessError", async () => {
@@ -213,14 +214,14 @@ describe("TestSetBusinessContextProject (:230)", () => {
     try {
       await ws.setBusinessContext("x".repeat(BUSINESS_CONTEXT_MAX_CHARS + 1));
       expect.unreachable("oversize content must throw");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(BusinessContextValidationError);
-      const err = exc as BusinessContextValidationError;
-      expect(err.details["length"]).toBe(BUSINESS_CONTEXT_MAX_CHARS + 1);
+    } catch (error) {
+      expect(error).toBeInstanceOf(BusinessContextValidationError);
+      const err = error as BusinessContextValidationError;
+      expect(err.details).toHaveLength(BUSINESS_CONTEXT_MAX_CHARS + 1);
       expect(err.details["max"]).toBe(BUSINESS_CONTEXT_MAX_CHARS);
       expect(err.code).toBe("BUSINESS_CONTEXT_TOO_LONG");
     }
-    expect(transport.captures.length).toBe(0);
+    expect(transport.captures).toHaveLength(0);
   });
 
   it("exactly 50,000 chars passes client-side validation", async () => {
@@ -259,7 +260,7 @@ describe("TestSetBusinessContextProject (:230)", () => {
     await expect(
       ws.setBusinessContext("x", { level: "oops" as "organization" }),
     ).rejects.toMatchObject({ code: "WS2_INVALID_LEVEL" });
-    expect(transport.captures.length).toBe(0);
+    expect(transport.captures).toHaveLength(0);
   });
 });
 
@@ -352,14 +353,14 @@ describe("TestGetBusinessContextOrganization (:350)", () => {
     try {
       await ws.getBusinessContext({ level: "organization" });
       expect.unreachable("ambiguous org must throw");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(WorkspaceScopeError);
-      const err = exc as WorkspaceScopeError;
+    } catch (error) {
+      expect(error).toBeInstanceOf(WorkspaceScopeError);
+      const err = error as WorkspaceScopeError;
       expect(err.code).toBe("ORGANIZATION_AMBIGUOUS");
       expect(err.details["project_id"]).toBe("12345");
       expect(err.details["available_organizations"]).toEqual(["1", "2"]);
     }
-    expect(transport.captures.length).toBe(0);
+    expect(transport.captures).toHaveLength(0);
   });
 });
 

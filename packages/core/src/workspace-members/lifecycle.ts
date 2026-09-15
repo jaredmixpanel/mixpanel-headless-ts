@@ -14,17 +14,21 @@
 import type { Account } from "../auth/account.js";
 import type { Session } from "../auth/session.js";
 import type { JsonValue } from "../client/json-value.js";
-import { MixpanelHeadlessError, ParamValidationError } from "../errors.js";
-import { ConfigError, WorkspaceScopeError } from "../errors.js";
 import { compareCodepoints } from "../compat/codepoint.js";
-import { codepointLength } from "../types/entities/model-base.js";
+import {
+  BusinessContextValidationError,
+  ConfigError,
+  MixpanelHeadlessError,
+  ParamValidationError,
+  WorkspaceScopeError,
+} from "../errors.js";
+import type { MeService } from "../services/me.js";
 import {
   BUSINESS_CONTEXT_MAX_CHARS,
   BusinessContext,
   BusinessContextChain,
 } from "../types/entities/business-context.js";
-import { BusinessContextValidationError } from "../errors.js";
-import type { MeService } from "../services/me.js";
+import { codepointLength } from "../types/entities/model-base.js";
 
 // ---------------------------------------------------------------------------
 // W1-D1 — the resolver seams (B7 replaces the defaults).
@@ -66,7 +70,7 @@ export interface ResolverSeams {
    * @param args - The target name.
    * @returns The resolved session.
    */
-  resolveSession(args: ResolveSessionArgs): Promise<Session>;
+  resolveSession: (args: ResolveSessionArgs) => Promise<Session>;
 
   /**
    * Load a named account from configuration.
@@ -74,7 +78,7 @@ export interface ResolverSeams {
    * @param name - The account name.
    * @returns The account record.
    */
-  getAccount(name: string): Promise<Account>;
+  getAccount: (name: string) => Promise<Account>;
 
   /**
    * Re-resolve the project axis for an account swap.
@@ -82,14 +86,14 @@ export interface ResolverSeams {
    * @param args - Explicit / target / account inputs.
    * @returns The project ID, or `null` when nothing resolves.
    */
-  resolveProjectAxis(args: ResolveProjectAxisArgs): Promise<string | null>;
+  resolveProjectAxis: (args: ResolveProjectAxisArgs) => Promise<string | null>;
 
   /**
    * Read and validate `MP_WORKSPACE_ID`.
    *
    * @returns The workspace ID, or `null` when unset.
    */
-  envWorkspaceId(): number | null | Promise<number | null>;
+  envWorkspaceId: () => number | null | Promise<number | null>;
 
   /**
    * Persist the session's axes to the `[active]` block in one
@@ -98,7 +102,7 @@ export interface ResolverSeams {
    * @param session - The post-swap session.
    * @returns Nothing.
    */
-  persistActive(session: Session): void | Promise<void>;
+  persistActive: (session: Session) => void | Promise<void>;
 }
 
 /**
@@ -130,7 +134,6 @@ function unportedSeam(name: string): () => never {
  * `UNPORTED_RESOLVER_SEAM` (B7 outbound deferral, `b6-packets.md` §13).
  *
  * @returns The throwing defaults.
- *
  * @example
  * ```typescript
  * const seams = { ...defaultResolverSeams(), getAccount: myLoader };
@@ -258,14 +261,14 @@ function pyRepr(value: string): string {
 export interface BusinessContextHost {
   /** The bound wire client's business-context methods. */
   readonly client: {
-    getBusinessContext(options?: {
+    getBusinessContext: (options?: {
       readonly organization_id?: number | null | undefined;
-    }): Promise<Record<string, JsonValue>>;
-    setBusinessContext(
+    }) => Promise<Record<string, JsonValue>>;
+    setBusinessContext: (
       content: string,
       options?: { readonly organization_id?: number | null | undefined },
-    ): Promise<Record<string, JsonValue>>;
-    getBusinessContextChain(): Promise<Record<string, JsonValue>>;
+    ) => Promise<Record<string, JsonValue>>;
+    getBusinessContextChain: () => Promise<Record<string, JsonValue>>;
   };
   /** The session's project id (`self._session.project.id`). */
   readonly projectId: string;
@@ -404,14 +407,18 @@ function pyTypeName(value: unknown): string {
     return "list";
   }
   switch (typeof value) {
-    case "boolean":
+    case "boolean": {
       return "bool";
-    case "number":
+    }
+    case "number": {
       return Number.isInteger(value) ? "int" : "float";
-    case "string":
+    }
+    case "string": {
       return "str";
-    default:
+    }
+    default: {
       return "dict";
+    }
   }
 }
 

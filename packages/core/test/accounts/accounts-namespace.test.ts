@@ -29,6 +29,7 @@
 //   public members (module `__all__` has no TS runtime analog).
 
 import { describe, expect, it } from "vitest";
+
 import { createAccountsNamespace } from "../../src/accounts/namespace.js";
 import { OAuthTokens } from "../../src/auth/token.js";
 import {
@@ -205,8 +206,8 @@ describe("TestAdd (test_accounts_namespace.py:46)", () => {
     let caught: unknown = null;
     try {
       await accounts.add("team", { type: "oauth_browser", region: "us" });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ConfigError);
     const err = caught as ConfigError;
@@ -250,8 +251,8 @@ describe("TestAdd (test_accounts_namespace.py:46)", () => {
         username: "u",
         secret: new Secret("s"),
       });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ConfigError);
     const message = (caught as ConfigError).message;
@@ -272,8 +273,8 @@ describe("TestAdd (test_accounts_namespace.py:46)", () => {
         region: null,
         token: new Secret("ey.x"),
       });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ConfigError);
     expect((caught as ConfigError).message).toMatch(/region/);
@@ -839,8 +840,8 @@ describe("B7-ARB-A SEM-F1 falsiness locks (b7-reviewA-resolution.md)", () => {
     let caught: unknown = null;
     try {
       await accounts.exportBridge({ to: "/fake/bridge.json", account: "" });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ConfigError);
     expect((caught as ConfigError).message).toBe(
@@ -860,7 +861,7 @@ describe("B7-ARB-A SEM-F1 falsiness locks (b7-reviewA-resolution.md)", () => {
 // or dropped-header regression there now fails here.
 describe("B8-ARB-A ASR-F1 custom-header export composition lock (test_bridge_export.py:274)", () => {
   it("[settings].custom_header propagates into the exported headers bag through the orchestration", async () => {
-    const exportedHeaders: (Readonly<Record<string, string>> | null)[] = [];
+    const exportedHeaders: Array<Readonly<Record<string, string>> | null> = [];
     const { effects, config } = makeEffects({
       bridge: {
         load: () => null,
@@ -881,7 +882,7 @@ describe("B8-ARB-A ASR-F1 custom-header export composition lock (test_bridge_exp
   });
 
   it("no custom header configured → the exported headers bag stays null (anti-vacuity companion)", async () => {
-    const exportedHeaders: (Readonly<Record<string, string>> | null)[] = [];
+    const exportedHeaders: Array<Readonly<Record<string, string>> | null> = [];
     const { effects } = makeEffects({
       bridge: {
         load: () => null,

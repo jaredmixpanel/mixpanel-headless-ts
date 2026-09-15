@@ -22,7 +22,8 @@
 
 import { createServer, type Server, type ServerResponse } from "node:http";
 
-import { OAuthError, CallbackResult } from "@mixpanel-headless/core";
+import { CallbackResult, OAuthError } from "@mixpanel-headless/core";
+
 import { parseQs } from "./query-params.js";
 
 /** Ports to attempt binding to, in order (`callback_server.py:32`). */
@@ -79,7 +80,6 @@ function htmlEscape(text: string): string {
 // parser's return type and is node:*-free; hoist note recorded in
 // B9-R2-notes.md). Re-exported here so every existing import path
 // holds (class body verbatim; the untouched B8 suites prove it).
-export { CallbackResult };
 
 /** Options bag of {@link startCallbackServer} (`callback_server.py:79-83`). */
 export interface StartCallbackServerOptions {
@@ -253,7 +253,6 @@ function bindServer(port: number): Promise<Server> {
  * @throws OAuthError - All ports busy or the exact port unavailable
  *   (`OAUTH_PORT_ERROR`), timeout (`OAUTH_TIMEOUT`), provider error /
  *   missing params / state mismatch (`OAUTH_TOKEN_ERROR`).
- *
  * @example
  * ```typescript
  * const [result, port] = await startCallbackServer({ state: "s" });
@@ -269,21 +268,7 @@ export async function startCallbackServer(
   let server: Server | null = null;
   let boundPort = 0;
 
-  if (exactPort !== null) {
-    // Bind to the exact requested port — no scanning.
-    try {
-      server = await bindServer(exactPort);
-      boundPort = exactPort;
-    } catch (exc) {
-      throw new OAuthError(
-        `OAuth callback port ${exactPort} is no longer available. ` +
-          "Another process may have claimed it. Please try again.",
-        "OAUTH_PORT_ERROR",
-        { port: exactPort },
-        { cause: exc },
-      );
-    }
-  } else {
+  if (exactPort === null) {
     for (const candidate of CALLBACK_PORTS) {
       try {
         server = await bindServer(candidate);
@@ -292,6 +277,20 @@ export async function startCallbackServer(
       } catch {
         continue;
       }
+    }
+  } else {
+    // Bind to the exact requested port — no scanning.
+    try {
+      server = await bindServer(exactPort);
+      boundPort = exactPort;
+    } catch (error) {
+      throw new OAuthError(
+        `OAuth callback port ${exactPort} is no longer available. ` +
+          "Another process may have claimed it. Please try again.",
+        "OAUTH_PORT_ERROR",
+        { port: exactPort },
+        { cause: error },
+      );
     }
   }
 
@@ -315,10 +314,12 @@ export async function startCallbackServer(
   const settled = await new Promise<Settled>((resolve) => {
     let done = false;
     const finish = (value: Settled): void => {
-      if (!done) {
-        done = true;
-        resolve(value);
+      if (done) {
+        return;
       }
+
+      done = true;
+      resolve(value);
     };
     const timer = setTimeout(() => {
       finish({ kind: "timeout" });
@@ -387,3 +388,5 @@ export async function startCallbackServer(
     { timeout_seconds: timeoutSeconds },
   );
 }
+
+export { CallbackResult } from "@mixpanel-headless/core";

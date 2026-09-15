@@ -43,6 +43,7 @@
  */
 
 import { pythonFloatStr, zfill } from "../compat/index.js";
+import { OverflowError, ValueError } from "./python-builtins.js";
 import {
   floatCarrierValue,
   isFloatCarrier,
@@ -51,7 +52,6 @@ import {
   pythonTypeName,
   requireHashable,
 } from "./validation-shared.js";
-import { OverflowError, ValueError } from "./python-builtins.js";
 
 /** A normalized event / profile dict — twin of `dict[str, Any]`. */
 export type TransformedRecord = Record<string, unknown>;
@@ -206,8 +206,8 @@ function pythonDictCopy(value: unknown): Record<string, unknown> {
     throw new TypeError(`'${pythonTypeName(value)}' object is not iterable`);
   }
   const out: Record<string, unknown> = {};
-  for (let index = 0; index < elements.length; index += 1) {
-    const pair = pythonIterableElements(elements[index]);
+  for (const [index, element] of elements.entries()) {
+    const pair = pythonIterableElements(element);
     if (pair === null) {
       throw new TypeError(
         `cannot convert dictionary update sequence element #${String(index)} to a sequence`,
@@ -290,7 +290,6 @@ function civilFromDays(days: number): [number, number, number] {
  *   timestamps whose year falls outside 1..9999.
  * @throws OverflowError - For infinities and magnitudes at or beyond
  *   the platform `time_t` range.
- *
  * @example
  * ```typescript
  * fromTimestampUtcIso(0); // "1970-01-01T00:00:00+00:00"
@@ -411,7 +410,6 @@ export function timestampNumber(value: unknown): number {
  *   `time` is neither int nor float.
  * @throws ValueError - When `time` is `NaN` or out of `datetime` range.
  * @throws OverflowError - When `time` is infinite or beyond `time_t`.
- *
  * @example
  * ```typescript
  * transformEvent({
@@ -480,7 +478,6 @@ function defaultUuid(): string {
  * @returns Transformed profile dict with `distinct_id`, `last_seen` and
  *   `properties` keys.
  * @throws TypeError - When `$properties` is present but not a dict.
- *
  * @example
  * ```typescript
  * transformProfile({

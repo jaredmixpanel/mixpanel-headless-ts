@@ -17,6 +17,14 @@
 // - `TestCustomEventExports` is a P2-7 entity-surface concern, not
 //   ported here.
 import { describe, expect, it } from "vitest";
+
+import {
+  FunnelInfo,
+  ProfilePageResult,
+  SavedCohort,
+  SubPropertyInfo,
+  TopEvent,
+} from "../../../src/types/results/discovery.js";
 import {
   CohortInfo,
   EventCountsResult,
@@ -26,13 +34,6 @@ import {
   RetentionResult,
   SegmentationResult,
 } from "../../../src/types/results/live-query.js";
-import {
-  FunnelInfo,
-  ProfilePageResult,
-  SavedCohort,
-  SubPropertyInfo,
-  TopEvent,
-} from "../../../src/types/results/discovery.js";
 
 describe("SegmentationResult (TestSegmentationResult)", () => {
   it("test_basic_creation", () => {

@@ -9,18 +9,23 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
+
 import {
   BATCH_STATUS,
-  batchStatusFor,
   type BatchStatus,
+  batchStatusFor,
 } from "../src/batch-status.js";
-import { parseLossless } from "../src/lossless-json.js";
 import { CodecRegistry } from "../src/codecs.js";
 import type { JsonValue } from "../src/json-value.js";
 import { loadCorpus, loadCorpusConfig } from "../src/loader.js";
-import type { RunnerDeps } from "../src/runner.js";
-import { ImplementationRegistry, runVector } from "../src/runner.js";
+import { parseLossless } from "../src/lossless-json.js";
+import {
+  ImplementationRegistry,
+  type RunnerDeps,
+  runVector,
+} from "../src/runner.js";
 import type { ConformanceVector } from "../src/vector-types.js";
 
 /** The conformance-runner package root. */
@@ -119,8 +124,8 @@ describe("batchStatusFor — table lookup", () => {
       readFileSync(resolve(PACKAGE_DIR, "src/authored-apis.json"), "utf8"),
     ) as { entries: Record<string, unknown> };
     const apis = [...Object.keys(index), ...Object.keys(authored.entries)];
-    const orphans = apis.filter(
-      (api) => ![...BATCH_STATUS.keys()].some((p) => api.startsWith(p)),
+    const orphans = apis.filter((api) =>
+      [...BATCH_STATUS.keys()].every((p) => !api.startsWith(p)),
     );
     expect(orphans).toEqual([]);
   });
@@ -143,7 +148,7 @@ describe("batchStatusFor — table lookup", () => {
         ...vector.setup.map((entry) => entry.api),
         vector.api,
       ]) {
-        if (![...BATCH_STATUS.keys()].some((p) => api.startsWith(p))) {
+        if ([...BATCH_STATUS.keys()].every((p) => !api.startsWith(p))) {
           orphans.add(api);
         }
       }
@@ -255,7 +260,7 @@ describe("batchStatusFor — table lookup", () => {
     // zero pending entries remain in the shipped table.
     expect(BATCH_STATUS.get("oauth_flow.")).toBe("done");
     expect(batchStatusFor("oauth_flow.refresh_tokens")).toBe("done");
-    const pendingEntries = [...BATCH_STATUS.entries()]
+    const pendingEntries = [...BATCH_STATUS]
       .filter(([, status]) => status === "pending")
       .map(([prefix]) => prefix);
     expect(pendingEntries).toEqual([]);

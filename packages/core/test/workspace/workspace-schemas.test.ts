@@ -22,14 +22,7 @@
 // `endpoint=` strings, and the `RESPONSE_VALIDATION_ERROR` seam.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-  type FakeTransport,
-} from "../../test-support/client-test-helpers.js";
+
 import type { MixpanelClient } from "../../src/client/client.js";
 import {
   MixpanelHeadlessError,
@@ -42,6 +35,7 @@ import {
   DeleteSchemasResponse,
   SchemaEntry,
 } from "../../src/types/entities/schemas.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   createSchema as createSchemaMember,
   createSchemasBulk as createSchemasBulkMember,
@@ -50,6 +44,13 @@ import {
   updateSchema as updateSchemaMember,
   updateSchemasBulk as updateSchemasBulkMember,
 } from "../../src/workspace-members/schemas-audit.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  type FakeTransport,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** A canned-response handler (the `httpx.MockTransport` handler twin). */
 type Handler = (request: CapturedFetchRequest) => CannedResponse;

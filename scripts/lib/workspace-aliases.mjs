@@ -51,7 +51,7 @@ export function esbuildAliases() {
  */
 export function vitestAliases() {
   return WORKSPACE_ALIASES.map(([specifier, sourcePath]) => ({
-    find: new RegExp(`^${specifier.replaceAll("/", "\\/")}$`),
+    find: new RegExp(`^${specifier.replaceAll("/", String.raw`\/`)}$`),
     replacement: sourcePath,
   }));
 }

@@ -13,6 +13,7 @@
 //   `instanceof` check on the same class.
 
 import { describe, expect, it } from "vitest";
+
 import type { MixpanelClient } from "../../src/client/client.js";
 import type { JsonValue } from "../../src/client/json-value.js";
 import { DiscoveryService } from "../../src/services/discovery.js";
@@ -22,7 +23,7 @@ import { BookmarkInfo } from "../../src/types/results/discovery.js";
 interface BookmarkStub {
   readonly service: DiscoveryService;
   readonly calls: Array<string | null>;
-  setResponse(value: JsonValue): void;
+  setResponse: (value: JsonValue) => void;
 }
 
 /**

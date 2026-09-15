@@ -55,21 +55,21 @@ import {
 } from "../client/response-validation.js";
 import { pythonStr, type PythonValue } from "../compat/index.js";
 import {
-  FeatureFlag,
-  FlagHistoryResponse,
-  FlagLimitsResponse,
-  type CreateFeatureFlagParams,
-  type SetTestUsersParams,
-  type UpdateFeatureFlagParams,
-} from "../types/entities/feature-flags.js";
-import {
-  Experiment,
   type CreateExperimentParams,
   type DuplicateExperimentParams,
+  Experiment,
   type ExperimentConcludeParams,
   type ExperimentDecideParams,
   type UpdateExperimentParams,
 } from "../types/entities/experiments.js";
+import {
+  type CreateFeatureFlagParams,
+  FeatureFlag,
+  FlagHistoryResponse,
+  FlagLimitsResponse,
+  type SetTestUsersParams,
+  type UpdateFeatureFlagParams,
+} from "../types/entities/feature-flags.js";
 import { native, requireResponse } from "./shared.js";
 
 /** Options bag of `Workspace.listFeatureFlags` (keyword-only in Python). */
@@ -505,7 +505,7 @@ export async function concludeExperiment(
 ): Promise<Experiment> {
   const params = options.params ?? null;
   const body: Record<string, unknown> =
-    params !== null ? params.modelDumpExcludeNone() : {};
+    params === null ? {} : params.modelDumpExcludeNone();
   const raw = await client.concludeExperiment(experimentId, body);
   return validateResponseModel(Experiment, native(raw), {
     endpoint: "conclude_experiment",

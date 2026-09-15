@@ -1,8 +1,12 @@
 // Unit tests for the naming-map §3 mechanical transform and §4 exception
 // resolution (src/naming.ts, task TS-4).
 import { describe, expect, it } from "vitest";
-import type { NamingExceptionRow } from "../src/naming.js";
-import { resolveTsApiName, snakeToCamel } from "../src/naming.js";
+
+import {
+  type NamingExceptionRow,
+  resolveTsApiName,
+  snakeToCamel,
+} from "../src/naming.js";
 
 describe("snakeToCamel (naming-map §3)", () => {
   it("camelizes multi-segment names", () => {

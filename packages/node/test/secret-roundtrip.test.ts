@@ -14,17 +14,19 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+
 import { afterEach, describe, expect, it } from "vitest";
 
-import type {
-  OAuthTokenAccount,
-  ServiceAccount,
+import {
+  type OAuthTokenAccount,
+  Secret,
+  type ServiceAccount,
 } from "@mixpanel-headless/core";
-import { Secret } from "@mixpanel-headless/core";
+
 import { createNodeConfigSource } from "../src/config-writes.js";
 import { makeTempDir } from "./helpers.js";
 
-const cleanups: (() => void)[] = [];
+const cleanups: Array<() => void> = [];
 afterEach(() => {
   while (cleanups.length > 0) {
     cleanups.pop()?.();

@@ -4,6 +4,7 @@
 // query-result.test.ts; frozen-immutability tests not ported
 // (compile-time `readonly`).
 import { describe, expect, it } from "vitest";
+
 import { FunnelQueryResult } from "../../../src/types/results/query-engine.js";
 
 const SAMPLE_STEPS_DATA = [

@@ -53,18 +53,19 @@
  */
 
 import {
+  buildAuthorizeUrl,
   CREDENTIAL_KEYS,
   type CredentialStore,
   OAUTH_BASE_URLS,
-  buildAuthorizeUrl,
-  postTokenRequest,
-  PkceChallenge,
-  parsePastedRedirect,
-  pythonUtcIsoformat,
-  type OAuthTokens,
   OAuthError,
+  type OAuthTokens,
+  parsePastedRedirect,
+  PkceChallenge,
+  postTokenRequest,
+  pythonUtcIsoformat,
 } from "@mixpanel-headless/core";
 import { base64UrlEncodeBytes } from "@mixpanel-headless/core/internal";
+
 import { BROWSER_NO_PENDING_LOGIN, BrowserUnsupportedError } from "./errors.js";
 import { ensureBrowserClientRegistered } from "./registration.js";
 import { serializeTokensPayload } from "./token-serialization.js";
@@ -180,16 +181,21 @@ interface PendingLoginRecord {
 function requireBaseUrl(region: string): string {
   if (!Object.hasOwn(OAUTH_BASE_URLS, region)) {
     throw new OAuthError(
-      `Unknown region: ${JSON.stringify(region)}. Must be one of: ` +
-        `${Object.keys(OAUTH_BASE_URLS).sort().join(", ")}`,
+      `Unknown region: ${JSON.stringify(region)}. Must be one of: ${Object.keys(
+        OAUTH_BASE_URLS,
+      )
+        .sort()
+        .join(", ")}`,
       "OAUTH_CONFIG_ERROR",
     );
   }
   return OAUTH_BASE_URLS[region] as string;
 }
 
-/** Loopback hostnames for which plain `http:` redirect URIs are legal
- * (RFC 8252 §7.3; the `flow.py:54-58` localhost posture). */
+/**
+ * Loopback hostnames for which plain `http:` redirect URIs are legal
+ * (RFC 8252 §7.3; the `flow.py:54-58` localhost posture).
+ */
 const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 /**
@@ -211,14 +217,14 @@ function validateRedirectUri(redirectUri: string): void {
   let parsed: URL;
   try {
     parsed = new URL(redirectUri);
-  } catch (cause) {
+  } catch (error) {
     throw new OAuthError(
       `redirectUri is not an absolute URL: ${JSON.stringify(redirectUri)}. ` +
         "Pass your app's full return URL (a compile-time constant, " +
         "never user input).",
       "OAUTH_CONFIG_ERROR",
       { field: "redirectUri" },
-      { cause },
+      { cause: error },
     );
   }
   const loopback = LOOPBACK_HOSTNAMES.has(parsed.hostname);
@@ -270,7 +276,6 @@ function generateState(): string {
  * @returns The authorize URL (caller navigates) + state.
  * @throws OAuthError - `OAUTH_CONFIG_ERROR` (bad region / bad
  *   redirect URI — FB-4) or `OAUTH_REGISTRATION_ERROR` (DCR failure).
- *
  * @example
  * ```typescript
  * // A store that survives the redirect (FB-7):
@@ -440,7 +445,6 @@ const inFlightCompletions = new WeakMap<
  * @throws BrowserUnsupportedError - `BROWSER_NO_PENDING_LOGIN` when no
  *   pending record exists (replay / expired tab) or the record is
  *   older than the FB-5 lifetime.
- *
  * @example
  * ```typescript
  * // On the redirect return page (fragment-safe — FB-8):

@@ -9,16 +9,17 @@
 // - `monkeypatch.setenv` becomes an env-bag literal in the sources.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { parseAccount, type Account } from "../../src/auth/account.js";
-import type { ActiveSession } from "../../src/auth/session.js";
+
+import { type Account, parseAccount } from "../../src/auth/account.js";
 import {
-  resolveSession,
   type ResolverConfigSource,
   type ResolverEnv,
   type ResolverSources,
+  resolveSession,
 } from "../../src/auth/resolver.js";
-import { Target } from "../../src/types/entities/accounts.js";
+import type { ActiveSession } from "../../src/auth/session.js";
 import { AccountNotFoundError, ConfigError } from "../../src/errors.js";
+import type { Target } from "../../src/types/entities/accounts.js";
 
 /** Characters of the Python `_NAME_ALPHABET`. */
 const NAME_ALPHABET =

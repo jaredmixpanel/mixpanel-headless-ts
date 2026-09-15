@@ -69,12 +69,12 @@ import {
   validateResponseModels,
 } from "../client/response-validation.js";
 import {
-  EventDefinition,
-  LexiconTag,
-  PropertyDefinition,
   type BulkUpdateEventsParams,
   type BulkUpdatePropertiesParams,
   type CreateTagParams,
+  EventDefinition,
+  LexiconTag,
+  PropertyDefinition,
   type UpdateEventDefinitionParams,
   type UpdatePropertyDefinitionParams,
   type UpdateTagParams,

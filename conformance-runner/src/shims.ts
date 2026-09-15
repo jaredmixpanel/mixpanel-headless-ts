@@ -33,21 +33,21 @@ export interface RunnerShims {
    *
    * @returns A `Date` at the record epoch plus all virtually slept time.
    */
-  now(): Date;
+  now: () => Date;
 
   /**
    * The current virtual calendar date.
    *
    * @returns An ISO `YYYY-MM-DD` string (UTC, matching the frozen epoch).
    */
-  today(): string;
+  today: () => string;
 
   /**
    * The next deterministic UUID.
    *
    * @returns `00000000-0000-4000-8000-{seq:012d}` with `seq` starting at 0.
    */
-  uuid(): string;
+  uuid: () => string;
 
   /**
    * Virtually sleep: advance the frozen clock and resolve immediately.
@@ -55,7 +55,7 @@ export interface RunnerShims {
    * @param seconds - The requested sleep duration in seconds.
    * @returns A promise that resolves on the next microtask.
    */
-  sleep(seconds: number): Promise<void>;
+  sleep: (seconds: number) => Promise<void>;
 
   /**
    * The virtual monotonic clock (frozen; advanced only by {@link sleep}).
@@ -63,7 +63,7 @@ export interface RunnerShims {
    * @returns Seconds elapsed on the virtual monotonic clock since the
    *   shims were created.
    */
-  monotonic(): number;
+  monotonic: () => number;
 }
 
 /**
@@ -74,7 +74,6 @@ export interface RunnerShims {
  * @returns A {@link RunnerShims} with the clock frozen at `recordEpoch`,
  *   the UUID counter at 0, and zero virtual elapsed time.
  * @throws Error - If `recordEpoch` is not a parseable ISO-8601 instant.
- *
  * @example
  * ```typescript
  * const shims = createShims("2026-01-15T12:00:00Z");

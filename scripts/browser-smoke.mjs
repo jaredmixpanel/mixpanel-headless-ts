@@ -16,10 +16,11 @@
 //
 // Wired into `npm run check`.
 import { build } from "esbuild";
+
 import {
+  buildBrowserBundles,
   GLOBAL_NAME,
   IIFE_FILE,
-  buildBrowserBundles,
   iifeGlobalKeys,
 } from "./build-browser-bundle.mjs";
 import { esbuildAliases } from "./lib/workspace-aliases.mjs";
@@ -77,10 +78,10 @@ try {
   console.log(
     `browser-bundle smoke OK: ${entryPoints.join(" + ")} bundled for browser (${bytes} bytes)`,
   );
-} catch (err) {
+} catch (error) {
   fail(
     "browser-bundle smoke FAILED: core/browser do not bundle for the browser platform.",
-    err,
+    error,
   );
 }
 
@@ -91,17 +92,20 @@ try {
   // committed build's problem, not the smoke's. `write: false` keeps the
   // gate from touching dist/.
   bundles = await buildBrowserBundles({ allowDirty: true, write: false });
-} catch (err) {
-  fail("browser-bundle smoke FAILED: the vendoring recipe did not build.", err);
+} catch (error) {
+  fail(
+    "browser-bundle smoke FAILED: the vendoring recipe did not build.",
+    error,
+  );
 }
 
 let exported;
 try {
   exported = iifeGlobalKeys(bundles.iifeText);
-} catch (err) {
+} catch (error) {
   fail(
     `browser-bundle smoke FAILED: ${IIFE_FILE} did not install the \`${GLOBAL_NAME}\` global.`,
-    err,
+    error,
   );
 }
 

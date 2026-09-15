@@ -28,55 +28,55 @@
 
 import type {
   BlueprintFinishParams,
-  CreateDashboardParams,
-  CreateRcaDashboardParams,
-  UpdateDashboardParams,
-  UpdateReportLinkParams,
-  UpdateTextCardParams,
-  BulkUpdateBookmarkEntry,
-  CreateBookmarkParams,
-  UpdateBookmarkParams,
-  BulkUpdateCohortEntry,
-  CreateCohortParams,
-  UpdateCohortParams,
-  CreateFeatureFlagParams,
-  SetTestUsersParams,
-  UpdateFeatureFlagParams,
-  CreateExperimentParams,
-  DuplicateExperimentParams,
-  ExperimentDecideParams,
-  UpdateExperimentParams,
-  CreateAnnotationParams,
-  CreateAnnotationTagParams,
-  UpdateAnnotationParams,
-  CreateWebhookParams,
-  UpdateWebhookParams,
-  WebhookTestParams,
-  CreateAlertParams,
-  UpdateAlertParams,
-  ValidateAlertsForBookmarkParams,
-  BulkUpdateEventsParams,
-  BulkUpdatePropertiesParams,
-  CreateTagParams,
-  UpdateEventDefinitionParams,
-  UpdatePropertyDefinitionParams,
-  UpdateTagParams,
-  CreateCustomEventParams,
-  CreateCustomPropertyParams,
-  CreateDropFilterParams,
-  MarkLookupTableReadyParams,
-  UpdateCustomPropertyParams,
-  UpdateDropFilterParams,
-  UpdateLookupTableParams,
-  UploadLookupTableParams,
   BulkCreateSchemasParams,
   BulkUpdateAnomalyParams,
+  BulkUpdateBookmarkEntry,
+  BulkUpdateCohortEntry,
+  BulkUpdateEventsParams,
+  BulkUpdatePropertiesParams,
+  CreateAlertParams,
+  CreateAnnotationParams,
+  CreateAnnotationTagParams,
+  CreateBookmarkParams,
+  CreateCohortParams,
+  CreateCustomEventParams,
+  CreateCustomPropertyParams,
+  CreateDashboardParams,
   CreateDeletionRequestParams,
+  CreateDropFilterParams,
+  CreateExperimentParams,
+  CreateFeatureFlagParams,
+  CreateRcaDashboardParams,
+  CreateTagParams,
+  CreateWebhookParams,
+  DuplicateExperimentParams,
+  ExperimentDecideParams,
   InitSchemaEnforcementParams,
+  MarkLookupTableReadyParams,
   PreviewDeletionFiltersParams,
   ReplaceSchemaEnforcementParams,
+  SetTestUsersParams,
+  UpdateAlertParams,
+  UpdateAnnotationParams,
   UpdateAnomalyParams,
+  UpdateBookmarkParams,
+  UpdateCohortParams,
+  UpdateCustomPropertyParams,
+  UpdateDashboardParams,
+  UpdateDropFilterParams,
+  UpdateEventDefinitionParams,
+  UpdateExperimentParams,
+  UpdateFeatureFlagParams,
+  UpdateLookupTableParams,
+  UpdatePropertyDefinitionParams,
+  UpdateReportLinkParams,
   UpdateSchemaEnforcementParams,
+  UpdateTagParams,
+  UpdateTextCardParams,
+  UpdateWebhookParams,
+  UploadLookupTableParams,
+  ValidateAlertsForBookmarkParams,
+  WebhookTestParams,
   Workspace,
   WorkspaceConcludeExperimentOptions,
   WorkspaceDeleteSchemasOptions,
@@ -103,7 +103,8 @@ import type {
   WorkspaceUploadLookupTableOptions,
 } from "@mixpanel-headless/core";
 import { EntityModel } from "@mixpanel-headless/core/internal";
-import { PyFloat, type CodecRegistry } from "./codecs.js";
+
+import { type CodecRegistry, PyFloat } from "./codecs.js";
 import type { JsonValue } from "./json-value.js";
 import type { ImplementationRegistry, InvocationContext } from "./runner.js";
 import { requireWireKwarg } from "./wire-client.js";
@@ -208,10 +209,10 @@ function twinPyFloatsInPlace(value: unknown, seen: Set<object>): void {
   if (Array.isArray(value)) {
     for (let index = 0; index < value.length; index += 1) {
       const replaced = twin(value[index]);
-      if (replaced !== value[index]) {
-        value[index] = replaced;
-      } else {
+      if (replaced === value[index]) {
         twinPyFloatsInPlace(value[index], seen);
+      } else {
+        value[index] = replaced;
       }
     }
     return;
@@ -221,10 +222,10 @@ function twinPyFloatsInPlace(value: unknown, seen: Set<object>): void {
     for (const key of Object.keys(record)) {
       const member: unknown = record[key];
       const replaced = twin(member);
-      if (replaced !== member) {
-        record[key] = replaced;
-      } else {
+      if (replaced === member) {
         twinPyFloatsInPlace(member, seen);
+      } else {
+        record[key] = replaced;
       }
     }
   }

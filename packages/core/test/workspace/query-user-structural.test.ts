@@ -34,15 +34,16 @@
 //   would show NaN, and the present values.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
 import { UserQueryResult } from "../../src/types/results/query-engine.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   makePageResult,
   makeProfilesBatch,
   makeRawProfile,
+  type MockWorkspaceClient,
   mockWorkspaceClient,
   TEST_SESSION,
-  type MockWorkspaceClient,
 } from "../../test-support/workspace-test-helpers.js";
 
 /**
@@ -92,7 +93,7 @@ describe("TestParallelPageOrderingPreserved", () => {
     result.profiles.forEach((profile, i) => {
       expect(profile["distinct_id"]).toBe(`user_${`${i}`.padStart(3, "0")}`);
     });
-    expect(callOrder.length).toBe(numPages);
+    expect(callOrder).toHaveLength(numPages);
   });
 });
 
@@ -117,9 +118,9 @@ describe("TestParallelLimit1FallsBackToSequential", () => {
     });
 
     expect(result.meta["parallel"]).toBe(false);
-    expect(result.profiles.length).toBe(1);
+    expect(result.profiles).toHaveLength(1);
     // Only one API call should have been made
-    expect(mock.exportPageCalls.length).toBe(1);
+    expect(mock.exportPageCalls).toHaveLength(1);
   });
 });
 
@@ -143,7 +144,7 @@ describe("TestParallelPageSizeZeroFallback", () => {
     });
 
     // Should not divide by zero
-    expect(result.profiles.length).toBe(5);
+    expect(result.profiles).toHaveLength(5);
   });
 });
 
@@ -168,7 +169,7 @@ describe("TestParallelPageSizeNoneFallback", () => {
     });
 
     // Should not crash
-    expect(result.profiles.length).toBe(3);
+    expect(result.profiles).toHaveLength(3);
   });
 });
 

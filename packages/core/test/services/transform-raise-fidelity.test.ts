@@ -18,26 +18,27 @@
 //   CPython `float(str)` (R11.7 — `pythonFloat`, never `Number()`).
 
 import { describe, expect, it } from "vitest";
-import {
-  transformFunnel,
-  transformRetention,
-  transformSegmentation,
-  transformQueryResult,
-  transformActivityFeed,
-  transformFlowResult,
-  transformSavedReport,
-  transformNumericBucket,
-  parseTreeNode,
-  extractStepsFromDateData,
-  extractFunnelStepsFromSeries,
-} from "../../src/services/live-query-transforms.js";
+
 import { AttributeError } from "../../src/query/python-builtins.js";
-import { FunnelQueryResult } from "../../src/types/results/query-engine.js";
 import { LiveQueryService } from "../../src/services/live-query.js";
 import {
+  extractFunnelStepsFromSeries,
+  extractStepsFromDateData,
+  parseTreeNode,
+  transformActivityFeed,
+  transformFlowResult,
+  transformFunnel,
+  transformNumericBucket,
+  transformQueryResult,
+  transformRetention,
+  transformSavedReport,
+  transformSegmentation,
+} from "../../src/services/live-query-transforms.js";
+import { FunnelQueryResult } from "../../src/types/results/query-engine.js";
+import {
+  type CannedResponse,
   createMockClient,
   makeSession,
-  type CannedResponse,
 } from "../../test-support/client-test-helpers.js";
 
 /** Silent warning sink for the funnel-series transform. */
@@ -488,22 +489,28 @@ describe("FID-F2: LiveQueryService dataValues (event_counts/property_counts)", (
 // ---------------------------------------------------------------------------
 
 describe("FID-F4: STEP_PREFIX_RE dot semantics", () => {
-  it("matches step names containing \\r (CPython: event='a\\rb')", () => {
-    // CPython: _STEP_PREFIX_RE.match('1. a\rb').group(2) == 'a\rb'
-    const steps = extractFunnelStepsFromSeries(
-      { F: { count: { "1. a\rb": { all: 7 } } } },
-      noWarn,
-    );
-    expect(steps.map((s) => s["event"])).toEqual(["a\rb"]);
-  });
+  it(
+    String.raw`matches step names containing \r (CPython: event='a\rb')`,
+    () => {
+      // CPython: _STEP_PREFIX_RE.match('1. a\rb').group(2) == 'a\rb'
+      const steps = extractFunnelStepsFromSeries(
+        { F: { count: { "1. a\rb": { all: 7 } } } },
+        noWarn,
+      );
+      expect(steps.map((s) => s["event"])).toEqual(["a\rb"]);
+    },
+  );
 
-  it("matches step names containing U+2028 (CPython: event='a\\u2028b')", () => {
-    const steps = extractFunnelStepsFromSeries(
-      { F: { count: { "1. a b": { all: 7 } } } },
-      noWarn,
-    );
-    expect(steps.map((s) => s["event"])).toEqual(["a b"]);
-  });
+  it(
+    String.raw`matches step names containing U+2028 (CPython: event='a\u2028b')`,
+    () => {
+      const steps = extractFunnelStepsFromSeries(
+        { F: { count: { "1. a b": { all: 7 } } } },
+        noWarn,
+      );
+      expect(steps.map((s) => s["event"])).toEqual(["a b"]);
+    },
+  );
 
   it("still refuses \\n inside the captured name (Python `.`)", () => {
     // CPython: no match -> the whole name is the event, sort key 2**31

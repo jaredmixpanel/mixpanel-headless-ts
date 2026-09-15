@@ -18,8 +18,8 @@
  * redirect-returned URL grammar is identical in both runtimes.
  */
 
-import { OAuthError } from "../errors.js";
 import { pythonStrip } from "../compat/python-strip.js";
+import { OAuthError } from "../errors.js";
 import { parseQs } from "./query-params.js";
 
 /**
@@ -66,7 +66,6 @@ export class CallbackResult {
  *   `error=` param (`OAUTH_AUTH_DENIED`), missing `code`/`state`
  *   (`OAUTH_PASTE_ERROR`), or state mismatch
  *   (`OAUTH_STATE_MISMATCH`).
- *
  * @example
  * ```typescript
  * const result = parsePastedRedirect(
@@ -90,15 +89,16 @@ export function parsePastedRedirect(
   // Strip everything up to and including the first `?` so both the
   // full URL form and the bare query-string form parse the same way.
   const questionMark = text.indexOf("?");
-  const queryPart = questionMark !== -1 ? text.slice(questionMark + 1) : text;
+  const queryPart = questionMark === -1 ? text : text.slice(questionMark + 1);
   const params = parseQs(queryPart);
   const errorList = params.get("error");
   if (errorList !== undefined) {
     const err = errorList[0] as string;
     const desc = params.get("error_description")?.[0] ?? "";
     throw new OAuthError(
-      `OAuth provider returned an error: ${err}` +
-        (desc !== "" ? ` — ${desc}` : ""),
+      `OAuth provider returned an error: ${err}${
+        desc === "" ? "" : ` — ${desc}`
+      }`,
       "OAUTH_AUTH_DENIED",
     );
   }

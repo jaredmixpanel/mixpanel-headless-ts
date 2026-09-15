@@ -53,7 +53,7 @@ export interface DashboardMethods {
    * @throws AuthenticationError | RateLimitError | QueryError |
    *   ServerError - Per the B0 `appRequest` contract.
    */
-  listDashboards(options?: ListDashboardsOptions): Promise<JsonValue[]>;
+  listDashboards: (options?: ListDashboardsOptions) => Promise<JsonValue[]>;
 
   /**
    * Create a dashboard (`create_dashboard`, `:3689-3722`).
@@ -63,10 +63,10 @@ export interface DashboardMethods {
    * @returns The created dashboard dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  createDashboard(
+  createDashboard: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Get a dashboard by ID (`get_dashboard`, `:3724-3757`).
@@ -76,10 +76,10 @@ export interface DashboardMethods {
    * @returns The dashboard dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  getDashboard(
+  getDashboard: (
     dashboardId: number,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Update a dashboard (`update_dashboard`, `:3759-3795`; PATCH).
@@ -90,11 +90,11 @@ export interface DashboardMethods {
    * @returns The updated dashboard dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  updateDashboard(
+  updateDashboard: (
     dashboardId: number,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Delete a dashboard (`delete_dashboard`, `:3797-3822`).
@@ -103,7 +103,7 @@ export interface DashboardMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing (the Python method discards the envelope).
    */
-  deleteDashboard(dashboardId: number, signal?: AbortSignal): Promise<void>;
+  deleteDashboard: (dashboardId: number, signal?: AbortSignal) => Promise<void>;
 
   /**
    * Bulk-delete dashboards (`bulk_delete_dashboards`, `:3824-3849` —
@@ -113,10 +113,10 @@ export interface DashboardMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  bulkDeleteDashboards(
+  bulkDeleteDashboards: (
     ids: readonly number[],
     signal?: AbortSignal,
-  ): Promise<void>;
+  ) => Promise<void>;
 
   /**
    * Favorite a dashboard (`favorite_dashboard`, `:3851-3876`).
@@ -125,7 +125,10 @@ export interface DashboardMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  favoriteDashboard(dashboardId: number, signal?: AbortSignal): Promise<void>;
+  favoriteDashboard: (
+    dashboardId: number,
+    signal?: AbortSignal,
+  ) => Promise<void>;
 
   /**
    * Unfavorite a dashboard (`unfavorite_dashboard`, `:3878-3903`).
@@ -134,7 +137,10 @@ export interface DashboardMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  unfavoriteDashboard(dashboardId: number, signal?: AbortSignal): Promise<void>;
+  unfavoriteDashboard: (
+    dashboardId: number,
+    signal?: AbortSignal,
+  ) => Promise<void>;
 
   /**
    * Pin a dashboard (`pin_dashboard`, `:3905-3930`).
@@ -143,7 +149,7 @@ export interface DashboardMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  pinDashboard(dashboardId: number, signal?: AbortSignal): Promise<void>;
+  pinDashboard: (dashboardId: number, signal?: AbortSignal) => Promise<void>;
 
   /**
    * Unpin a dashboard (`unpin_dashboard`, `:3932-3957`).
@@ -152,7 +158,7 @@ export interface DashboardMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  unpinDashboard(dashboardId: number, signal?: AbortSignal): Promise<void>;
+  unpinDashboard: (dashboardId: number, signal?: AbortSignal) => Promise<void>;
 
   /**
    * Remove a report from a dashboard (`remove_report_from_dashboard`,
@@ -165,11 +171,11 @@ export interface DashboardMethods {
    *   `{status: "ok"}` — still a dict, exactly like Python).
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  removeReportFromDashboard(
+  removeReportFromDashboard: (
     dashboardId: number,
     bookmarkId: number,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Add a report to a dashboard (`add_report_to_dashboard`,
@@ -181,11 +187,11 @@ export interface DashboardMethods {
    * @returns The updated dashboard dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  addReportToDashboard(
+  addReportToDashboard: (
     dashboardId: number,
     bookmarkId: number,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * List blueprint templates (`list_blueprint_templates`,
@@ -197,9 +203,9 @@ export interface DashboardMethods {
    * @returns The template list.
    * @throws MixpanelHeadlessError - Unrecognized response shape.
    */
-  listBlueprintTemplates(
+  listBlueprintTemplates: (
     options?: ListBlueprintTemplatesOptions,
-  ): Promise<JsonValue[]>;
+  ) => Promise<JsonValue[]>;
 
   /**
    * Create a dashboard from a blueprint (`create_blueprint`,
@@ -210,10 +216,10 @@ export interface DashboardMethods {
    * @returns The created dashboard dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  createBlueprint(
+  createBlueprint: (
     templateType: string,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Get a dashboard's blueprint config (`get_blueprint_config`,
@@ -224,10 +230,10 @@ export interface DashboardMethods {
    * @returns The config dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  getBlueprintConfig(
+  getBlueprintConfig: (
     dashboardId: number,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Update blueprint cohort mappings (`update_blueprint_cohorts`,
@@ -237,10 +243,10 @@ export interface DashboardMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  updateBlueprintCohorts(
+  updateBlueprintCohorts: (
     cohorts: ReadonlyArray<Record<string, unknown>>,
     signal?: AbortSignal,
-  ): Promise<void>;
+  ) => Promise<void>;
 
   /**
    * Finalize a blueprint dashboard (`finalize_blueprint`,
@@ -251,10 +257,10 @@ export interface DashboardMethods {
    * @returns The finalized dashboard dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  finalizeBlueprint(
+  finalizeBlueprint: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Create an RCA dashboard (`create_rca_dashboard`, `:4245-4282`).
@@ -264,10 +270,10 @@ export interface DashboardMethods {
    * @returns The created dashboard dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  createRcaDashboard(
+  createRcaDashboard: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Dashboard IDs containing a bookmark (`get_bookmark_dashboard_ids`,
@@ -279,10 +285,10 @@ export interface DashboardMethods {
    * @returns The ID list verbatim.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  getBookmarkDashboardIds(
+  getBookmarkDashboardIds: (
     bookmarkId: number,
     signal?: AbortSignal,
-  ): Promise<JsonValue[]>;
+  ) => Promise<JsonValue[]>;
 
   /**
    * ERF data for a dashboard (`get_dashboard_erf`, `:4320-4353`).
@@ -292,10 +298,10 @@ export interface DashboardMethods {
    * @returns The ERF dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  getDashboardErf(
+  getDashboardErf: (
     dashboardId: number,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Update a dashboard report link (`update_report_link`,
@@ -308,12 +314,12 @@ export interface DashboardMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  updateReportLink(
+  updateReportLink: (
     dashboardId: number,
     reportLinkId: number,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<void>;
+  ) => Promise<void>;
 
   /**
    * Update a dashboard text card (`update_text_card`, `:4389-4421` —
@@ -325,12 +331,12 @@ export interface DashboardMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  updateTextCard(
+  updateTextCard: (
     dashboardId: number,
     textCardId: number,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<void>;
+  ) => Promise<void>;
 }
 
 /**

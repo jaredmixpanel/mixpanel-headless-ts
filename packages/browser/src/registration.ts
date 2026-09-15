@@ -23,10 +23,11 @@
 import {
   CREDENTIAL_KEYS,
   type CredentialStore,
-  registerClient,
-  parseOAuthClientInfo,
   type OAuthClientInfo,
+  parseOAuthClientInfo,
+  registerClient,
 } from "@mixpanel-headless/core";
+
 import { serializeClientInfoPayload } from "./token-serialization.js";
 
 /** Options bag of {@link ensureBrowserClientRegistered}. */
@@ -56,7 +57,6 @@ export interface EnsureBrowserClientRegisteredOptions {
  * @throws OAuthError - `OAUTH_REGISTRATION_ERROR` on unknown region,
  *   network failure, 429 rate limit, non-2xx status, or a malformed
  *   response body (all via core `registerClient`).
- *
  * @example
  * ```typescript
  * const info = await ensureBrowserClientRegistered({

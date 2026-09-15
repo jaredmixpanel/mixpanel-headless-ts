@@ -7,8 +7,9 @@
 // suite locks the coercion LADDER around it.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { MixpanelHeadlessError } from "../../src/errors.js";
+
 import { pythonFloatCoerce } from "../../src/compat/python-float-coerce.js";
+import { MixpanelHeadlessError } from "../../src/errors.js";
 import { OverflowError } from "../../src/query/python-builtins.js";
 
 describe("pythonFloatCoerce — number and bool arms (CPython float(x))", () => {

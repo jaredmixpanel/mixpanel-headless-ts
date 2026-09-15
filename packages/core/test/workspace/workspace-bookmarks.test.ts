@@ -30,17 +30,18 @@
 // - `try/finally: ws.close()` is kept (B6-W1 ported `close()`).
 
 import { describe, expect, it, vi } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import {
-  createMockClient,
-  makeSession,
-} from "../../test-support/client-test-helpers.js";
+
+import type { LiveQuerySavedReportOptions } from "../../src/services/live-query.js";
 import { BookmarkInfo } from "../../src/types/results/discovery.js";
 import {
   FlowsResult,
   SavedReportResult,
 } from "../../src/types/results/live-query.js";
-import type { LiveQuerySavedReportOptions } from "../../src/services/live-query.js";
+import { Workspace } from "../../src/workspace.js";
+import {
+  createMockClient,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** The `_TEST_SESSION` twin (`test_workspace_bookmarks.py:22-31`). */
 const TEST_SESSION = makeSession({

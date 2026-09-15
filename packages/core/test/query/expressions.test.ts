@@ -74,20 +74,20 @@ describe("normalizeOnExpression", () => {
   // Category 5: Special character escaping
 
   it.each([
-    ['my"property', 'properties["my\\"property"]'],
-    ['"quoted"', 'properties["\\"quoted\\""]'],
-    ['a"b"c', 'properties["a\\"b\\"c"]'],
-    ['say "hello"', 'properties["say \\"hello\\""]'],
+    ['my"property', String.raw`properties["my\"property"]`],
+    ['"quoted"', String.raw`properties["\"quoted\""]`],
+    ['a"b"c', String.raw`properties["a\"b\"c"]`],
+    ['say "hello"', String.raw`properties["say \"hello\""]`],
   ])("escapes double quotes in %s", (nameWithQuotes, expected) => {
     expect(normalizeOnExpression(nameWithQuotes)).toBe(expected);
   });
 
   it("handles a backslash before a quote", () => {
     // Python source literal: `'path\\to\\"file'` == path\to\"file
-    const result = normalizeOnExpression('path\\to\\"file');
+    const result = normalizeOnExpression(String.raw`path\to\"file`);
     // Python expectation literal: `'properties["path\\\\to\\\\\\"file"]'`
     // == properties["path\\to\\\"file"]
-    expect(result).toBe('properties["path\\\\to\\\\\\"file"]');
+    expect(result).toBe(String.raw`properties["path\\to\\\"file"]`);
   });
 
   // Category 4: Idempotency

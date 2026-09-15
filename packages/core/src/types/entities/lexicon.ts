@@ -9,10 +9,10 @@
  */
 
 import {
+  type EntityFieldSpec,
   EntityModel,
   oneOf,
   prepareInit,
-  type EntityFieldSpec,
 } from "./model-base.js";
 
 /**
@@ -37,7 +37,7 @@ export interface EventDefinitionInit {
   /** Whether verified by governance team. */
   readonly verified?: boolean | null | undefined;
   /** Assigned tag names. */
-  readonly tags?: ReadonlyArray<string> | null | undefined;
+  readonly tags?: readonly string[] | null | undefined;
   /** Links to custom event. */
   readonly custom_event_id?: number | null | undefined;
   /** ISO 8601 timestamp. */
@@ -45,7 +45,7 @@ export interface EventDefinitionInit {
   /** Event status. */
   readonly status?: string | null | undefined;
   /** Tracking platforms. */
-  readonly platforms?: ReadonlyArray<string> | null | undefined;
+  readonly platforms?: readonly string[] | null | undefined;
   /** ISO 8601 creation timestamp. */
   readonly created_utc?: string | null | undefined;
   /** ISO 8601 modification timestamp. */
@@ -131,7 +131,7 @@ export class EventDefinition extends EntityModel {
   /** Whether verified by governance team. */
   declare readonly verified: boolean | null;
   /** Assigned tag names. */
-  declare readonly tags: ReadonlyArray<string> | null;
+  declare readonly tags: readonly string[] | null;
   /** Links to custom event. */
   declare readonly custom_event_id: number | null;
   /** ISO 8601 timestamp. */
@@ -139,7 +139,7 @@ export class EventDefinition extends EntityModel {
   /** Event status. */
   declare readonly status: string | null;
   /** Tracking platforms. */
-  declare readonly platforms: ReadonlyArray<string> | null;
+  declare readonly platforms: readonly string[] | null;
   /** ISO 8601 creation timestamp. */
   declare readonly created_utc: string | null;
   /** ISO 8601 modification timestamp. */
@@ -321,7 +321,7 @@ export interface UpdateEventDefinitionParamsInit {
   /** Whether verified. */
   readonly verified?: boolean | null | undefined;
   /** Tag names to assign. */
-  readonly tags?: ReadonlyArray<string> | null | undefined;
+  readonly tags?: readonly string[] | null | undefined;
   /** Human-readable name (sent as ``displayName``). */
   readonly display_name?: string | null | undefined;
   /** Event description. */
@@ -367,7 +367,7 @@ export class UpdateEventDefinitionParams extends EntityModel {
   /** Whether verified. */
   declare readonly verified: boolean | null;
   /** Tag names to assign. */
-  declare readonly tags: ReadonlyArray<string> | null;
+  declare readonly tags: readonly string[] | null;
   /** Human-readable name (sent as ``displayName``). */
   declare readonly display_name: string | null;
   /** Event description. */
@@ -538,13 +538,13 @@ export interface BulkEventUpdateInit {
   /** Whether verified. */
   readonly verified?: boolean | null | undefined;
   /** Tag names. */
-  readonly tags?: ReadonlyArray<string> | null | undefined;
+  readonly tags?: readonly string[] | null | undefined;
   /** Human-readable name. Always emitted as ``displayName`` via an explicit serialization alias (rather than a model-wide ``alias_generator``) so the established ``team_contacts`` wire shape stays snake_case. Accepts either ``display_name`` or ``displayName`` on input, so a camelCase payload echoed by ``lexicon events get`` round-trips instead of silently dropping the field. (``contacts`` / ``team_contacts`` remain snake_case on input and the wire by design.) */
   readonly display_name?: string | null | undefined;
   /** Contact emails. */
-  readonly contacts?: ReadonlyArray<string> | null | undefined;
+  readonly contacts?: readonly string[] | null | undefined;
   /** Team contact emails. */
-  readonly team_contacts?: ReadonlyArray<string> | null | undefined;
+  readonly team_contacts?: readonly string[] | null | undefined;
 }
 
 /**
@@ -593,13 +593,13 @@ export class BulkEventUpdate extends EntityModel {
   /** Whether verified. */
   declare readonly verified: boolean | null;
   /** Tag names. */
-  declare readonly tags: ReadonlyArray<string> | null;
+  declare readonly tags: readonly string[] | null;
   /** Human-readable name. Always emitted as ``displayName`` via an explicit serialization alias (rather than a model-wide ``alias_generator``) so the established ``team_contacts`` wire shape stays snake_case. Accepts either ``display_name`` or ``displayName`` on input, so a camelCase payload echoed by ``lexicon events get`` round-trips instead of silently dropping the field. (``contacts`` / ``team_contacts`` remain snake_case on input and the wire by design.) */
   declare readonly display_name: string | null;
   /** Contact emails. */
-  declare readonly contacts: ReadonlyArray<string> | null;
+  declare readonly contacts: readonly string[] | null;
   /** Team contact emails. */
-  declare readonly team_contacts: ReadonlyArray<string> | null;
+  declare readonly team_contacts: readonly string[] | null;
 
   /**
    * Construct a validated BulkEventUpdate (Pydantic-construction mirror).
@@ -665,7 +665,7 @@ export class BulkUpdateEventsParams extends EntityModel {
   ];
 
   /** List of event update entries. */
-  declare readonly events: ReadonlyArray<BulkEventUpdate>;
+  declare readonly events: readonly BulkEventUpdate[];
 
   /**
    * Construct a validated BulkUpdateEventsParams (Pydantic-construction mirror).
@@ -857,7 +857,7 @@ export class BulkUpdatePropertiesParams extends EntityModel {
   ];
 
   /** List of property update entries. */
-  declare readonly properties: ReadonlyArray<BulkPropertyUpdate>;
+  declare readonly properties: readonly BulkPropertyUpdate[];
 
   /**
    * Construct a validated BulkUpdatePropertiesParams (Pydantic-construction mirror).

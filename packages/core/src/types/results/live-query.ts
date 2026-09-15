@@ -26,6 +26,7 @@ import type {
   TimeUnit,
 } from "../literals.js";
 import {
+  decodeFail,
   expectArray,
   expectFloat,
   expectInt,
@@ -36,7 +37,6 @@ import {
   expectRecordArray,
   expectStr,
   expectStrArray,
-  decodeFail,
   firstOccurrenceColumns,
   floatValue,
   isPlainRecord,

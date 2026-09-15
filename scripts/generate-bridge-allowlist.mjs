@@ -613,7 +613,7 @@ for (const route of routes.values()) {
     }
     if (
       consent.verb.includes(rules.consent.countPlaceholder) &&
-      !apis.every((api) => isBulkMethod(api.tsMethod))
+      apis.some((api) => !isBulkMethod(api.tsMethod))
     ) {
       problems.push(
         `consent verb for ${route.method} ${route.family} ${route.template} uses ${rules.consent.countPlaceholder} but the route is reachable by non-bulk method(s) ${apis
@@ -640,14 +640,14 @@ for (const route of routes.values()) {
     row.aliases = aliases;
   }
   const denied = denyRuleFor(route.method, route.family, route.template);
-  if (denied !== undefined) {
+  if (denied === undefined) {
+    rows.push(row);
+  } else {
     // Out of `rows` — the matcher must never admit it — but still emitted,
     // so the handler can name what it refused and the coverage test can see
     // that the api is accounted for rather than missing.
     row.denyReason = denied.reason;
     deniedRoutes.push(row);
-  } else {
-    rows.push(row);
   }
 }
 

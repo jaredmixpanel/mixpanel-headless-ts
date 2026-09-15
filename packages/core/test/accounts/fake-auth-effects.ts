@@ -4,14 +4,6 @@
 // suites' tmp-`$HOME` fixtures re-express over injected fakes (packet
 // §3.4 header rule; Caution #19: `~/.mp` is NEVER touched by tests).
 
-import type { Account, Region, TokenResolver } from "../../src/auth/account.js";
-import { parseAccount } from "../../src/auth/account.js";
-import type { ActiveSession, Session } from "../../src/auth/session.js";
-import type { OAuthTokens } from "../../src/auth/token.js";
-import type {
-  BridgeView,
-  ResolverConfigSource,
-} from "../../src/auth/resolver.js";
 import type {
   AddAccountParams,
   AddTargetOptions,
@@ -21,6 +13,18 @@ import type {
   SetActiveUpdate,
   UpdateAccountFields,
 } from "../../src/accounts/auth-effects.js";
+import {
+  type Account,
+  parseAccount,
+  type Region,
+  type TokenResolver,
+} from "../../src/auth/account.js";
+import type {
+  BridgeView,
+  ResolverConfigSource,
+} from "../../src/auth/resolver.js";
+import type { ActiveSession, Session } from "../../src/auth/session.js";
+import type { OAuthTokens } from "../../src/auth/token.js";
 import type { MeResponse } from "../../src/client/me.js";
 import {
   AccountInUseError,
@@ -112,7 +116,7 @@ export function fakeConfig(): FakeConfig {
   };
 
   const referencedBy = (name: string): string[] =>
-    [...state.targets.entries()]
+    [...state.targets]
       .filter(([, block]) => block.account === name)
       .map(([tname]) => tname)
       .sort();
@@ -200,14 +204,14 @@ export function fakeConfig(): FakeConfig {
       let account: Account;
       try {
         account = parseAccount(raw);
-      } catch (exc) {
+      } catch (error) {
         // ConfigManager wraps ValidationError in ConfigError.
-        const rendered = exc instanceof Error ? exc.message : String(exc);
+        const rendered = error instanceof Error ? error.message : String(error);
         throw new ConfigError(
           `Invalid account fields for '${name}': ${rendered}`,
           null,
           {
-            cause: exc,
+            cause: error,
           },
         );
       }
@@ -268,13 +272,13 @@ export function fakeConfig(): FakeConfig {
       let account: Account;
       try {
         account = parseAccount(raw);
-      } catch (exc) {
-        const rendered = exc instanceof Error ? exc.message : String(exc);
+      } catch (error) {
+        const rendered = error instanceof Error ? error.message : String(error);
         throw new ConfigError(
           `Invalid account fields for '${name}': ${rendered}`,
           null,
           {
-            cause: exc,
+            cause: error,
           },
         );
       }
@@ -323,8 +327,8 @@ export function fakeConfig(): FakeConfig {
       }
       if (account !== null || workspace !== null) {
         setActive({
-          ...(account !== null ? { account } : {}),
-          ...(workspace !== null ? { workspace } : {}),
+          ...(account === null ? {} : { account }),
+          ...(workspace === null ? {} : { workspace }),
         });
       }
       if (clearWorkspace) {
@@ -385,13 +389,13 @@ export function fakeConfig(): FakeConfig {
           project: options.project,
           workspace: options.workspace ?? null,
         });
-      } catch (exc) {
-        const rendered = exc instanceof Error ? exc.message : String(exc);
+      } catch (error) {
+        const rendered = error instanceof Error ? error.message : String(error);
         throw new ConfigError(
           `Invalid target fields for '${name}': ${rendered}`,
           null,
           {
-            cause: exc,
+            cause: error,
           },
         );
       }
@@ -546,7 +550,7 @@ export function makeEffects(options: MakeEffectsOptions = {}): EffectsBundle {
   const meCachePuts = new Map<string, MeResponse>();
   const narrations: string[] = [];
   const persisted: Session[] = [];
-  const envBag: Record<string, string> = { ...(options.env ?? {}) };
+  const envBag: Record<string, string> = { ...options.env };
 
   const envRead = (name: string): string | undefined => envBag[name];
 

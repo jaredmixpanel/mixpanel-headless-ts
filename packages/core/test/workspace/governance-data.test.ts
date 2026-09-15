@@ -44,14 +44,7 @@
 // (which client method, with which arguments).
 
 import { describe, expect, it } from "vitest";
-import { Workspace, type WorkspaceOptions } from "../../src/workspace.js";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-  type FakeTransport,
-} from "../../test-support/client-test-helpers.js";
+
 import type { MixpanelClient } from "../../src/client/client.js";
 import {
   AuthenticationError,
@@ -82,11 +75,19 @@ import {
   UpdateEventDefinitionParams,
 } from "../../src/types/entities/lexicon.js";
 import { CustomPropertyResourceType } from "../../src/types/enums.js";
+import { Workspace, type WorkspaceOptions } from "../../src/workspace.js";
 import {
   listCustomProperties as listCustomPropertiesMember,
-  uploadLookupTable as uploadLookupTableMember,
   type LookupUploadSeams,
+  uploadLookupTable as uploadLookupTableMember,
 } from "../../src/workspace-members/governance-data.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  type FakeTransport,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** A canned-response handler (the `httpx.MockTransport` handler twin). */
 type Handler = (request: CapturedFetchRequest) => CannedResponse;
@@ -123,7 +124,7 @@ function makeWorkspace(
   const { client, transport } = createMockClient(
     CLIENT_SESSION,
     handler,
-    sleep !== undefined ? { sleep } : {},
+    sleep === undefined ? {} : { sleep },
   );
   return {
     ws: new Workspace({ session: FACADE_SESSION, client, ...options }),
@@ -1027,7 +1028,7 @@ describe("ADDITIVE: CreateCustomEventParams.toFormBody", () => {
     });
     expect(params.toFormBody()).toEqual({
       name: "\u{1D4B3}",
-      alternatives: '[{"event": "\\ud835\\udcb3"}]',
+      alternatives: String.raw`[{"event": "\ud835\udcb3"}]`,
     });
   });
 });
@@ -1050,7 +1051,7 @@ describe("ADDITIVE: upload_lookup_table seams and poll arms", () => {
    */
   function uploadStub(
     registerResult: unknown,
-    statuses: readonly Record<string, unknown>[] = [],
+    statuses: ReadonlyArray<Record<string, unknown>> = [],
     calls: unknown[][] = [],
   ): MixpanelClient {
     let poll = 0;
@@ -1166,12 +1167,12 @@ describe("ADDITIVE: upload_lookup_table seams and poll arms", () => {
       { ...seams(clock.monotonic), sleep: clock.sleep },
     ).then(
       () => null,
-      (exc: unknown) => exc,
+      (error_: unknown) => error_,
     );
 
     expect(error).toBeInstanceOf(ResponseValidationError);
     const details = (error as ResponseValidationError).details as {
-      errors: readonly { type: string; input: unknown }[];
+      errors: ReadonlyArray<{ type: string; input: unknown }>;
     };
     expect(details.errors[0]?.type).toBe("model_type");
     expect(details.errors[0]?.input).toEqual(["oops"]);
@@ -1416,8 +1417,8 @@ describe("ADDITIVE: lossless int64 lookup-table ids", () => {
   async function caught(thunk: () => unknown): Promise<unknown> {
     try {
       await thunk();
-    } catch (exc) {
-      return exc;
+    } catch (error) {
+      return error;
     }
     return undefined;
   }

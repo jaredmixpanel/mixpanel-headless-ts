@@ -29,7 +29,6 @@ const EXPONENTIAL_FORM = /^(\d)(?:\.(\d+))?e([+-]\d+)$/;
  *   notation with a signed, two-digit zero-padded exponent. Non-finite
  *   values render as `"inf"`, `"-inf"` and `"nan"`; negative zero renders
  *   sign-preserving as `"-0.0"`.
- *
  * @example
  * ```typescript
  * pythonFloatStr(18.0); // "18.0"  (JS String(18.0) is "18")

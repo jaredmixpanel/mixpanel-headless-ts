@@ -27,7 +27,7 @@ export interface FlagPathDeps {
    * @param domainPath - Domain-relative path.
    * @returns `/projects/{pid}/workspaces/{wid}/{domainPath}`.
    */
-  requireScopedPath(domainPath: string): Promise<string>;
+  requireScopedPath: (domainPath: string) => Promise<string>;
 }
 
 /** Options bag of {@link FlagMethods.listFeatureFlags}. */
@@ -59,7 +59,7 @@ export interface FlagMethods {
    * @throws AuthenticationError | RateLimitError | QueryError |
    *   ServerError - Per the B0 `appRequest` contract.
    */
-  listFeatureFlags(options?: ListFeatureFlagsOptions): Promise<JsonValue[]>;
+  listFeatureFlags: (options?: ListFeatureFlagsOptions) => Promise<JsonValue[]>;
 
   /**
    * Create a feature flag (`create_feature_flag`, `:4975-5005` — POST
@@ -70,10 +70,10 @@ export interface FlagMethods {
    * @returns The created flag dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  createFeatureFlag(
+  createFeatureFlag: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Get a feature flag by ID (`get_feature_flag`, `:5007-5037`).
@@ -83,10 +83,10 @@ export interface FlagMethods {
    * @returns The flag dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  getFeatureFlag(
+  getFeatureFlag: (
     flagId: string,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Update a feature flag (`update_feature_flag`, `:5039-5070` — PUT,
@@ -98,11 +98,11 @@ export interface FlagMethods {
    * @returns The updated flag dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  updateFeatureFlag(
+  updateFeatureFlag: (
     flagId: string,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Delete a feature flag (`delete_feature_flag`, `:5072-5093`).
@@ -111,7 +111,7 @@ export interface FlagMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  deleteFeatureFlag(flagId: string, signal?: AbortSignal): Promise<void>;
+  deleteFeatureFlag: (flagId: string, signal?: AbortSignal) => Promise<void>;
 
   /**
    * Archive a feature flag (`archive_feature_flag`, `:5095-5116` —
@@ -121,7 +121,7 @@ export interface FlagMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  archiveFeatureFlag(flagId: string, signal?: AbortSignal): Promise<void>;
+  archiveFeatureFlag: (flagId: string, signal?: AbortSignal) => Promise<void>;
 
   /**
    * Restore an archived feature flag (`restore_feature_flag`,
@@ -132,10 +132,10 @@ export interface FlagMethods {
    * @returns The restored flag dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  restoreFeatureFlag(
+  restoreFeatureFlag: (
     flagId: string,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Duplicate a feature flag (`duplicate_feature_flag`, `:5150-5180` —
@@ -146,10 +146,10 @@ export interface FlagMethods {
    * @returns The duplicate flag dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  duplicateFeatureFlag(
+  duplicateFeatureFlag: (
     flagId: string,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Set test-user variant overrides (`set_flag_test_users`,
@@ -160,11 +160,11 @@ export interface FlagMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  setFlagTestUsers(
+  setFlagTestUsers: (
     flagId: string,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<void>;
+  ) => Promise<void>;
 
   /**
    * Get flag change history (`get_flag_history`, `:5206-5239` — GET
@@ -175,10 +175,10 @@ export interface FlagMethods {
    * @returns The history dict (`events` + `count`).
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  getFlagHistory(
+  getFlagHistory: (
     flagId: string,
     options?: GetFlagHistoryOptions,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Get account-level flag limits (`get_flag_limits`, `:5241-5271` —
@@ -189,7 +189,7 @@ export interface FlagMethods {
    * @returns The limits dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  getFlagLimits(signal?: AbortSignal): Promise<Record<string, JsonValue>>;
+  getFlagLimits: (signal?: AbortSignal) => Promise<Record<string, JsonValue>>;
 }
 
 /**

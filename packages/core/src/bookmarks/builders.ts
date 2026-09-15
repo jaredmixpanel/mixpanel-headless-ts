@@ -39,13 +39,6 @@
 import { pythonRepr } from "../compat/index.js";
 import { ParamTypeError, ParamValidationError } from "../errors.js";
 import { isPythonDict, pythonTypeName } from "../query/validation-shared.js";
-import type { QueryTimeUnit } from "../types/literals.js";
-// `sanitizeRawCohort` and `isPyIntOrBool` are module-level `@internal`
-// exports that the query-params barrel deliberately does not re-export
-// (see `types/query-params/index.ts`); import them by name from their
-// owning modules — never re-derive (R10.8).
-import { sanitizeRawCohort } from "../types/query-params/cohort.js";
-import { isPyIntOrBool } from "../types/query-params/guards.js";
 import {
   CohortBreakdown,
   CustomPropertyRef,
@@ -54,9 +47,16 @@ import {
   FrequencyFilter,
   GroupBy,
   InlineCustomProperty,
-  PropertyInput,
+  type PropertyInput,
   type TimeComparison,
 } from "../types/index.js";
+import type { QueryTimeUnit } from "../types/literals.js";
+// `sanitizeRawCohort` and `isPyIntOrBool` are module-level `@internal`
+// exports that the query-params barrel deliberately does not re-export
+// (see `types/query-params/index.ts`); import them by name from their
+// owning modules — never re-derive (R10.8).
+import { sanitizeRawCohort } from "../types/query-params/cohort.js";
+import { isPyIntOrBool } from "../types/query-params/guards.js";
 
 /**
  * A bookmark JSON fragment — the ported twin of Python's
@@ -144,13 +144,11 @@ function defaultToday(): string {
  *   `PropertyInput` objects.
  * @returns Dict mapping each letter to a dict with `value`, `type` and
  *   `resourceType` keys.
- *
  * @example
  * ```typescript
  * buildComposedProperties({ A: new PropertyInput({ name: "price", type: "number" }) });
  * // { A: { value: "price", type: "number", resourceType: "event" } }
  * ```
- *
  * @internal Module-private in Python (`_`-prefixed); exported for
  *   in-package use only.
  */
@@ -182,7 +180,6 @@ export function buildComposedProperties(
  *   `today` clock seam (defaults to the real local clock; the
  *   conformance binding passes `context.shims.today`).
  * @returns Single-element array holding one time-entry dict.
- *
  * @example
  * ```typescript
  * buildTimeSection({ from_date: "2025-01-01", to_date: "2025-01-31", last: 30, unit: "day" });
@@ -197,19 +194,19 @@ export function buildTimeSection(options: {
   readonly today?: () => string;
 }): BookmarkFragment[] {
   let timeEntry: BookmarkFragment;
-  if (options.from_date !== null) {
-    const today = options.today ?? defaultToday;
-    const effectiveTo = options.to_date !== null ? options.to_date : today();
-    timeEntry = {
-      dateRangeType: "between",
-      unit: options.unit,
-      value: [options.from_date, effectiveTo],
-    };
-  } else {
+  if (options.from_date === null) {
     timeEntry = {
       dateRangeType: "in the last",
       unit: options.unit,
       window: { unit: "day", value: options.last },
+    };
+  } else {
+    const today = options.today ?? defaultToday;
+    const effectiveTo = options.to_date === null ? today() : options.to_date;
+    timeEntry = {
+      dateRangeType: "between",
+      unit: options.unit,
+      value: [options.from_date, effectiveTo],
     };
   }
   return [timeEntry];
@@ -226,7 +223,6 @@ export function buildTimeSection(options: {
  * @param options - Keyword-only bag: `from_date`, `to_date`, `last`.
  * @returns Date-range dict — `{type: "between", from_date, to_date}`
  *   when BOTH dates are set, otherwise the relative shape.
- *
  * @example
  * ```typescript
  * buildDateRange({ from_date: null, to_date: null, last: 30 });
@@ -268,7 +264,6 @@ export function buildDateRange(options: {
  *
  * @param where - Filter specification (`null`, one filter, or a list).
  * @returns Array of filter-entry dicts (possibly empty).
- *
  * @example
  * ```typescript
  * buildFilterSection(Filter.equals("country", "US"));
@@ -283,8 +278,8 @@ export function buildFilterSection(
     return [];
   }
   // Python: `list(where) if isinstance(where, (list, tuple)) else [where]`.
-  const filtersList: ReadonlyArray<FilterSectionElement> = Array.isArray(where)
-    ? (where as ReadonlyArray<FilterSectionElement>)
+  const filtersList: readonly FilterSectionElement[] = Array.isArray(where)
+    ? (where as readonly FilterSectionElement[])
     : [where as FilterSectionElement];
   const result: BookmarkFragment[] = [];
   for (const f of filtersList) {
@@ -360,7 +355,6 @@ export function patchCustomPropertyFiltersForTransform(
  * @returns Array of group-entry dicts (possibly empty).
  * @throws ParamTypeError - `BB1_GROUP_BY_ELEMENT_TYPE` when an element
  *   is none of the four accepted shapes.
- *
  * @example
  * ```typescript
  * buildGroupSection(new CohortBreakdown({ cohort: 123, name: "Power Users" }));
@@ -398,12 +392,14 @@ export function buildGroupSection(
         propertyDefaultType: "string",
       });
       continue;
-    } else if (g instanceof FrequencyBreakdown) {
+    }
+    if (g instanceof FrequencyBreakdown) {
       groupSection.push(
         buildFrequencyGroupEntry(g, { data_group_id: dataGroupId }),
       );
       continue;
-    } else if (g instanceof GroupBy) {
+    }
+    if (g instanceof GroupBy) {
       const prop = g.property;
       if (prop instanceof CustomPropertyRef) {
         groupEntry = {
@@ -421,7 +417,7 @@ export function buildGroupSection(
         };
       } else if (prop instanceof InlineCustomProperty) {
         const effectiveType =
-          prop.property_type !== null ? prop.property_type : g.property_type;
+          prop.property_type === null ? g.property_type : prop.property_type;
         const composed = buildComposedProperties(prop.inputs);
         groupEntry = {
           customProperty: {
@@ -443,7 +439,15 @@ export function buildGroupSection(
           unit: null,
           isHidden: false,
         };
-      } else if (g._list_item_mode !== null) {
+      } else if (g._list_item_mode === null) {
+        groupEntry = {
+          value: prop,
+          propertyName: prop,
+          resourceType: "events",
+          propertyType: g.property_type,
+          propertyDefaultType: g.property_type,
+        };
+      } else {
         // resourceType is hardcoded "events" and propertyType is
         // hardcoded "object": GroupBy.list_item is event-only — the
         // Mixpanel UI does not support list-of-object breakdowns for
@@ -467,14 +471,6 @@ export function buildGroupSection(
             propertyType: mode.sub_type,
           },
         };
-      } else {
-        groupEntry = {
-          value: prop,
-          propertyName: prop,
-          resourceType: "events",
-          propertyType: g.property_type,
-          propertyDefaultType: g.property_type,
-        };
       }
       // Conditional-insert block (`:383-390`, R4.11): `min` / `max`
       // land only when non-null.
@@ -495,9 +491,10 @@ export function buildGroupSection(
       );
     } else {
       throw new ParamTypeError(
-        "group_by elements must be str, GroupBy, CohortBreakdown, " +
-          `or FrequencyBreakdown, got ${pythonTypeName(g)}: ` +
-          reprForMessage(g),
+        `group_by elements must be str, GroupBy, CohortBreakdown, ` +
+          `or FrequencyBreakdown, got ${pythonTypeName(g)}: ${reprForMessage(
+            g,
+          )}`,
         "BB1_GROUP_BY_ELEMENT_TYPE",
       );
     }
@@ -530,13 +527,11 @@ export function buildGroupSection(
  *   `context/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md`).
  * @returns Group-entry dict carrying a `cohorts` array of one or two
  *   entries depending on `include_negated`.
- *
  * @example
  * ```typescript
  * buildCohortGroupEntry(new CohortBreakdown({ cohort: 123, name: "PU" }));
  * // { value: ["PU", "Not In PU"], cohorts: [...], … }
  * ```
- *
  * @internal Module-private in Python (`_`-prefixed).
  */
 export function buildCohortGroupEntry(
@@ -551,7 +546,7 @@ export function buildCohortGroupEntry(
   const name = cb.name || "";
 
   const baseCohort: BookmarkFragment = {
-    name: name,
+    name,
     negated: false,
     data_group_id: dgid,
   };
@@ -585,7 +580,7 @@ export function buildCohortGroupEntry(
     dataGroupId: dgid,
     propertyType: null,
     typeCast: null,
-    cohorts: cohorts,
+    cohorts,
     isHidden: false,
   };
 }
@@ -608,7 +603,6 @@ export function buildCohortGroupEntry(
  *   add `customProperty` + `dataset` and OVERRIDE
  *   `filterType`/`defaultType`/`resourceType` from the inline
  *   property; plain-string properties add `value`.
- *
  * @example
  * ```typescript
  * buildFilterEntry(Filter.equals("country", "US"));
@@ -634,7 +628,7 @@ export function buildFilterEntry(f: Filter): BookmarkFragment {
     entry["dataset"] = "$mixpanel";
   } else if (prop instanceof InlineCustomProperty) {
     const effectiveType =
-      prop.property_type !== null ? prop.property_type : f._property_type;
+      prop.property_type === null ? f._property_type : prop.property_type;
     entry["customProperty"] = {
       displayFormula: prop.formula,
       composedProperties: buildComposedProperties(prop.inputs),
@@ -679,7 +673,6 @@ export function buildFilterEntry(f: Filter): BookmarkFragment {
  *   (`filterOperator: "true"`, `filterValue: true` — JSON `true`,
  *   R10.12's boolean cousin — `filterType: "object"`,
  *   `filterJoinType: "list"`).
- *
  * @internal Module-private in Python (`_`-prefixed).
  */
 export function buildListContainsEntry(f: Filter): BookmarkFragment {
@@ -727,7 +720,6 @@ export function buildListContainsEntry(f: Filter): BookmarkFragment {
  *   `filters` is empty.
  * @throws ParamTypeError - `BB3_FLOW_PROPERTY_FILTER_TYPE` when a
  *   filter's property is not a plain string.
- *
  * @example
  * ```typescript
  * buildFlowPropertyFilter([Filter.equals("country", "US")]);
@@ -769,7 +761,7 @@ export function buildFlowPropertyFilter(
 
   return {
     operator: "and",
-    children: children,
+    children,
   };
 }
 
@@ -795,7 +787,6 @@ export function buildFlowPropertyFilter(
  *   non-cohort filter), `BB5_FLOW_MULTIPLE_COHORT_FILTERS` (more than
  *   one), `BB6_COHORT_VALUE_NOT_LIST` / `BB7_COHORT_VALUE_NOT_DICT` /
  *   `BB8_COHORT_KEY_MISSING` (a malformed internal `_value`).
- *
  * @example
  * ```typescript
  * buildFlowCohortFilter(Filter.inCohort(123, "PU"));
@@ -899,7 +890,6 @@ export function buildFlowCohortFilter(
  * @returns Group-entry dict with `behaviorType` nested inside
  *   `behavior`, `event` as a `{label, value}` object, and bucket
  *   configuration under `customBucket` with camelCase keys.
- *
  * @example
  * ```typescript
  * buildFrequencyGroupEntry(new FrequencyBreakdown({ event: "Purchase" }));
@@ -917,7 +907,7 @@ export function buildFrequencyGroupEntry(
   // int-typed parameter at emission (`bookmark_builders.py:793-795`
   // post-FIX-1).
   const dgid = dataGroupId === null ? null : String(dataGroupId);
-  const displayLabel = fb.label !== null ? fb.label : `${fb.event} Frequency`;
+  const displayLabel = fb.label === null ? `${fb.event} Frequency` : fb.label;
   return {
     dataset: "$mixpanel",
     behavior: {
@@ -970,7 +960,6 @@ export function buildFrequencyGroupEntry(
  *   `event` as `{label, value}`, `filters`, `filtersOperator`),
  *   `filterType` / `defaultType` (`"number"`), `filterOperator`,
  *   `filterValue`, `propertyObjectKey`, and `value`.
- *
  * @example
  * ```typescript
  * buildFrequencyFilterEntry(new FrequencyFilter({ event: "Login", value: 5 }));
@@ -1002,14 +991,14 @@ export function buildFrequencyFilterEntry(
   if (ff.event_filters !== null) {
     behavior["filters"] = ff.event_filters.map((f) => buildFilterEntry(f));
   }
-  const displayLabel = ff.label !== null ? ff.label : `${ff.event} Frequency`;
+  const displayLabel = ff.label === null ? `${ff.event} Frequency` : ff.label;
   return {
     dataset: "$mixpanel",
     resourceType: "people",
     profileType: null,
     search: "",
     dataGroupId: null,
-    behavior: behavior,
+    behavior,
     filterType: "number",
     defaultType: "number",
     filterOperator: ff.operator,
@@ -1035,7 +1024,6 @@ export function buildFrequencyFilterEntry(
  * @param tc - A validated `TimeComparison` instance.
  * @returns Dict with `type` and `value`, both strings.
  * @throws Error - Only on the two unreachable-by-contract branches.
- *
  * @example
  * ```typescript
  * buildTimeComparison(TimeComparison.relative("month"));
@@ -1064,5 +1052,5 @@ export function buildTimeComparison(tc: TimeComparison): {
     }
     value = tc.date;
   }
-  return { type: tc.type, value: value };
+  return { type: tc.type, value };
 }

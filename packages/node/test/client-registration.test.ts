@@ -11,11 +11,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { OAuthError } from "@mixpanel-headless/core";
+
 import { ensureClientRegistered } from "../src/auth/client-registration.js";
 import { OAuthStorage } from "../src/auth/storage.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
-const cleanups: (() => void)[] = [];
+const cleanups: Array<() => void> = [];
 let restoreEnv: () => void = () => undefined;
 
 beforeEach(() => {
@@ -216,7 +217,7 @@ describe("TestEnsureClientRegistered (test_auth_registration.py:68)", () => {
       storage: tmpStorage(),
     }).then(
       () => null,
-      (exc: unknown) => exc,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(OAuthError);
     expect((error as OAuthError).code).toBe("OAUTH_REGISTRATION_ERROR");
@@ -298,7 +299,7 @@ describe("TestEnsureClientRegisteredRobustness (test_auth_registration.py:371)",
       storage: tmpStorage(),
     }).then(
       () => null,
-      (exc: unknown) => exc,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(OAuthError);
     expect((error as OAuthError).code).toBe("OAUTH_REGISTRATION_ERROR");
@@ -320,7 +321,7 @@ describe("TestEnsureClientRegisteredRobustness (test_auth_registration.py:371)",
       storage: tmpStorage(),
     }).then(
       () => null,
-      (exc: unknown) => exc,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(OAuthError);
     expect((error as OAuthError).code).toBe("OAUTH_REGISTRATION_ERROR");
@@ -340,7 +341,7 @@ describe("TestEnsureClientRegisteredRegionValidation (test_auth_registration.py:
       storage: tmpStorage(),
     }).then(
       () => null,
-      (exc: unknown) => exc,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(OAuthError);
     expect((error as OAuthError).code).toBe("OAUTH_REGISTRATION_ERROR");

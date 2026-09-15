@@ -143,7 +143,6 @@ export function knownTransportErrorClass(httpxClass: string): boolean {
  *   with the table's name/message and a `code` property — the shape the
  *   library's fetch adapter must classify itself (R2.10).
  * @throws UnknownTransportErrorClass - When the class is not in the table.
- *
  * @example
  * ```typescript
  * const rejection = createTransportRejection("ConnectError");

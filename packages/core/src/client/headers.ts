@@ -19,7 +19,8 @@
  * supplies the real `process.env` reader.
  */
 
-/** Value sent as the `query_origin` parameter on Query API calls.
+/**
+ * Value sent as the `query_origin` parameter on Query API calls.
  *
  * Lets downstream consumers attribute analytics traffic to this library.
  * Byte-identical to Python (`client_metadata.py:13`) — the value is
@@ -78,7 +79,6 @@ export function getEntryPoint(): EntryPoint {
  * immediately, exactly as in Python.
  *
  * @returns The User-Agent header value.
- *
  * @example
  * ```typescript
  * getUserAgent();
@@ -96,13 +96,13 @@ export function getUserAgent(): string {
  */
 export interface RequestHeadersDeps {
   /** Layer-1 User-Agent source (defaults to {@link getUserAgent} in B4). */
-  getUserAgent(): string;
+  getUserAgent: () => string;
   /**
    * Layer-2 env pair provider — the `MP_CUSTOM_HEADER_NAME` /
    * `MP_CUSTOM_HEADER_VALUE` values, re-read per call. Absent/empty
    * members disable the layer (Python: `if custom_name and custom_value`).
    */
-  getCustomHeaderEnv(): {
+  getCustomHeaderEnv: () => {
     readonly name?: string | undefined;
     readonly value?: string | undefined;
   };

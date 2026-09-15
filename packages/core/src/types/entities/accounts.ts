@@ -8,19 +8,19 @@
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
-import {
-  EntityModel,
-  modelFail,
-  oneOf,
-  prepareInit,
-  type EntityFieldSpec,
-} from "./model-base.js";
 import type {
   AccountName,
   ProjectId,
   TargetName,
   WorkspaceId,
 } from "../../auth/account.js";
+import {
+  type EntityFieldSpec,
+  EntityModel,
+  modelFail,
+  oneOf,
+  prepareInit,
+} from "./model-base.js";
 
 /**
  * Constructor input for {@link AccountSummary} — absent keys take the Python
@@ -39,7 +39,7 @@ export interface AccountSummaryInit {
   /** ``True`` if ``[active].account == name``. */
   readonly is_active?: boolean | undefined;
   /** Names of targets that reference this account. */
-  readonly referenced_by_targets?: ReadonlyArray<string> | undefined;
+  readonly referenced_by_targets?: readonly string[] | undefined;
   /** Authenticated user email, populated by ``login_unified()`` from ``/me``. Persisted in the per-account ``MeCache`` (not in ``config.toml``), so it survives across processes once login has run. ``None`` when the account was added via ``mp account add`` (no ``/me`` round-trip) or when ``/me`` did not return a ``user_email``. */
   readonly user_email?: string | null | undefined;
   /** Project ID resolved at login time. Mirror of the persisted ``default_project`` for convenience — exposed on ``AccountSummary`` so the ``mp login`` success line can render ``Logged in as ... → ... · {project_name}`` without a second ``ConfigManager`` round-trip. ``None`` when no default project is set. */
@@ -93,7 +93,7 @@ export class AccountSummary extends EntityModel {
   /** ``True`` if ``[active].account == name``. */
   declare readonly is_active: boolean;
   /** Names of targets that reference this account. */
-  declare readonly referenced_by_targets: ReadonlyArray<string>;
+  declare readonly referenced_by_targets: readonly string[];
   /** Authenticated user email, populated by ``login_unified()`` from ``/me``. Persisted in the per-account ``MeCache`` (not in ``config.toml``), so it survives across processes once login has run. ``None`` when the account was added via ``mp account add`` (no ``/me`` round-trip) or when ``/me`` did not return a ``user_email``. */
   declare readonly user_email: string | null;
   /** Project ID resolved at login time. Mirror of the persisted ``default_project`` for convenience — exposed on ``AccountSummary`` so the ``mp login`` success line can render ``Logged in as ... → ... · {project_name}`` without a second ``ConfigManager`` round-trip. ``None`` when no default project is set. */

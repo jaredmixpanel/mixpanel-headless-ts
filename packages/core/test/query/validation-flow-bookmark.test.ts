@@ -14,7 +14,8 @@
  * R10.2: assertion-for-assertion.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+
 import type { ValidationError } from "../../src/errors.js";
 import { validateFlowBookmark } from "../../src/query/validation-bookmark.js";
 
@@ -95,7 +96,7 @@ describe("TestValidateFlowBookmarkFLB1", () => {
   it("test_flb1_error_path_is_steps", () => {
     const errors = validateFlowBookmark(validFlowBookmark({ steps: [] }));
     const flb1Errors = withCode(errors, "FLB1_EMPTY_STEPS");
-    expect(flb1Errors.length).toBe(1);
+    expect(flb1Errors).toHaveLength(1);
     expect(flb1Errors[0]!.path).toBe("steps");
   });
 });
@@ -114,7 +115,9 @@ describe("TestValidateFlowBookmarkFLB2", () => {
 
   it("test_whitespace_only_event_returns_flb2_error", () => {
     const errors = validateFlowBookmark(
-      validFlowBookmark({ steps: [{ event: "   ", forward: 3, reverse: 0 }] }),
+      validFlowBookmark({
+        steps: [{ event: " ".repeat(3), forward: 3, reverse: 0 }],
+      }),
     );
     expect(errors.some((e) => e.code === "FLB2_EMPTY_STEP_EVENT")).toBe(true);
   });
@@ -141,7 +144,7 @@ describe("TestValidateFlowBookmarkFLB2", () => {
       }),
     );
     const flb2Errors = withCode(errors, "FLB2_EMPTY_STEP_EVENT");
-    expect(flb2Errors.length).toBe(1);
+    expect(flb2Errors).toHaveLength(1);
     expect(flb2Errors[0]!.path).toBe("steps[1].event");
   });
 });
@@ -184,7 +187,7 @@ describe("TestValidateFlowBookmarkFLB3", () => {
       validFlowBookmark({ count_type: "uniqe" }),
     );
     const flb3Errors = withCode(errors, "FLB3_INVALID_COUNT_TYPE");
-    expect(flb3Errors.length).toBe(1);
+    expect(flb3Errors).toHaveLength(1);
     expect(flb3Errors[0]!.suggestion).not.toBeNull();
     expect(flb3Errors[0]!.suggestion).toContain("unique");
   });
@@ -194,7 +197,7 @@ describe("TestValidateFlowBookmarkFLB3", () => {
       validFlowBookmark({ count_type: "bad" }),
     );
     const flb3Errors = withCode(errors, "FLB3_INVALID_COUNT_TYPE");
-    expect(flb3Errors.length).toBe(1);
+    expect(flb3Errors).toHaveLength(1);
     expect(flb3Errors[0]!.path).toBe("count_type");
   });
 });
@@ -237,7 +240,7 @@ describe("TestValidateFlowBookmarkFLB4", () => {
       validFlowBookmark({ chartType: "sanke" }),
     );
     const flb4Errors = withCode(errors, "FLB4_INVALID_CHART_TYPE");
-    expect(flb4Errors.length).toBe(1);
+    expect(flb4Errors).toHaveLength(1);
     expect(flb4Errors[0]!.suggestion).not.toBeNull();
     expect(flb4Errors[0]!.suggestion).toContain("sankey");
   });
@@ -247,7 +250,7 @@ describe("TestValidateFlowBookmarkFLB4", () => {
       validFlowBookmark({ chartType: "bad" }),
     );
     const flb4Errors = withCode(errors, "FLB4_INVALID_CHART_TYPE");
-    expect(flb4Errors.length).toBe(1);
+    expect(flb4Errors).toHaveLength(1);
     expect(flb4Errors[0]!.path).toBe("chartType");
   });
 });
@@ -274,7 +277,7 @@ describe("TestValidateFlowBookmarkFLB5", () => {
     delete params["date_range"];
     const errors = validateFlowBookmark(params);
     const flb5Errors = withCode(errors, "FLB5_MISSING_DATE_RANGE");
-    expect(flb5Errors.length).toBe(1);
+    expect(flb5Errors).toHaveLength(1);
     expect(flb5Errors[0]!.path).toBe("date_range");
   });
 });
@@ -309,7 +312,7 @@ describe("TestValidateFlowBookmarkFLB6", () => {
   it("test_flb6_error_path_is_version", () => {
     const errors = validateFlowBookmark(validFlowBookmark({ version: 1 }));
     const flb6Errors = withCode(errors, "FLB6_INVALID_VERSION");
-    expect(flb6Errors.length).toBe(1);
+    expect(flb6Errors).toHaveLength(1);
     expect(flb6Errors[0]!.path).toBe("version");
   });
 });

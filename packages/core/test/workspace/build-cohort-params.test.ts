@@ -25,24 +25,25 @@
 // message and `.code`.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
+import { buildFlowCohortFilter } from "../../src/bookmarks/builders.js";
 import {
   BookmarkValidationError,
   ParamValidationError,
 } from "../../src/errors.js";
-import { buildFlowCohortFilter } from "../../src/bookmarks/builders.js";
-import { Filter } from "../../src/types/query-params/filter.js";
 import {
   CohortBreakdown,
   CohortCriteria,
   CohortDefinition,
 } from "../../src/types/query-params/cohort.js";
+import { Filter } from "../../src/types/query-params/filter.js";
 import { GroupBy } from "../../src/types/query-params/group-by.js";
 import {
   CohortMetric,
   Formula,
   Metric,
 } from "../../src/types/query-params/metric.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   mockWorkspaceClient,
   TEST_SESSION,
@@ -151,7 +152,7 @@ describe("TestBuildFilterEntryCohort", () => {
       Record<string, unknown>
     >;
     expect(Array.isArray(fv)).toBe(true);
-    expect(fv.length).toBe(1);
+    expect(fv).toHaveLength(1);
     const cohort = fv[0]!["cohort"] as Record<string, unknown>;
     expect(cohort["id"]).toBe(123);
     expect(cohort["name"]).toBe("Power Users");
@@ -199,7 +200,7 @@ describe("TestBuildFilterSectionMixed", () => {
     const result = await makeWs().buildParams("Login", {
       where: [Filter.inCohort(123, "PU"), Filter.equals("country", "US")],
     });
-    expect(section(result, "filter").length).toBe(2);
+    expect(section(result, "filter")).toHaveLength(2);
   });
 
   it("both the cohort and property filters appear", async () => {
@@ -258,7 +259,7 @@ describe("TestBuildFlowCohortFilter", () => {
     expect(Object.hasOwn(result, "filter_by_event")).toBe(true);
     const fbe = result["filter_by_event"] as Record<string, unknown>;
     expect(fbe["operator"]).toBe("and");
-    expect((fbe["children"] as unknown[]).length).toBe(1);
+    expect(fbe["children"] as unknown[]).toHaveLength(1);
   });
 });
 
@@ -292,7 +293,7 @@ describe("TestBuildGroupSectionCohort", () => {
     const cohorts = section(result, "group")[0]!["cohorts"] as Array<
       Record<string, unknown>
     >;
-    expect(cohorts.length).toBe(2);
+    expect(cohorts).toHaveLength(2);
     expect(cohorts[0]!["negated"]).toBe(false);
     expect(cohorts[1]!["negated"]).toBe(true);
   });
@@ -308,7 +309,7 @@ describe("TestBuildGroupSectionCohort", () => {
     const cohorts = section(result, "group")[0]!["cohorts"] as Array<
       Record<string, unknown>
     >;
-    expect(cohorts.length).toBe(1);
+    expect(cohorts).toHaveLength(1);
     expect(cohorts[0]!["negated"]).toBe(false);
   });
 
@@ -355,7 +356,7 @@ describe("TestBuildGroupSectionMixed", () => {
     const result = await makeWs().buildParams("Login", {
       group_by: [new CohortBreakdown({ cohort: 123, name: "PU" }), "country"],
     });
-    expect(section(result, "group").length).toBe(2);
+    expect(section(result, "group")).toHaveLength(2);
   });
 
   it("a CohortBreakdown plus a GroupBy produces two group entries", async () => {
@@ -365,7 +366,7 @@ describe("TestBuildGroupSectionMixed", () => {
         new GroupBy({ property: "platform" }),
       ],
     });
-    expect(section(result, "group").length).toBe(2);
+    expect(section(result, "group")).toHaveLength(2);
   });
 });
 
@@ -553,7 +554,7 @@ describe("TestBuildParamsCohortMetricMixed", () => {
       new CohortMetric({ cohort: 123, name: "Power Users" }),
       new Metric({ event: "Login" }),
     ]);
-    expect(section(result, "show").length).toBe(2);
+    expect(section(result, "show")).toHaveLength(2);
   });
 
   it("a CohortMetric and a string event produce two show entries", async () => {
@@ -561,7 +562,7 @@ describe("TestBuildParamsCohortMetricMixed", () => {
       new CohortMetric({ cohort: 123, name: "PU" }),
       "Login",
     ]);
-    expect(section(result, "show").length).toBe(2);
+    expect(section(result, "show")).toHaveLength(2);
   });
 
   it("a CohortMetric and a Formula work together", async () => {
@@ -677,7 +678,7 @@ describe("TestQueryFlowCohortFilter", () => {
     expect(Object.hasOwn(result, "filter_by_event")).toBe(true);
     const fbe = result["filter_by_event"] as Record<string, unknown>;
     expect(fbe["operator"]).toBe("and");
-    expect((fbe["children"] as unknown[]).length).toBe(1);
+    expect(fbe["children"] as unknown[]).toHaveLength(1);
   });
 
   it("multiple cohort filters raise", async () => {
@@ -741,9 +742,9 @@ describe("TestCodedFlowCohortFilterCodes", () => {
     try {
       fn();
       expect.unreachable(`expected ParamValidationError ${code}`);
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(ParamValidationError);
-      expect((exc as ParamValidationError).code).toBe(code);
+    } catch (error) {
+      expect(error).toBeInstanceOf(ParamValidationError);
+      expect((error as ParamValidationError).code).toBe(code);
     }
   }
 
@@ -794,9 +795,9 @@ describe("TestCodedFlowCohortFilterCodes", () => {
         where: [Filter.inCohort(123, "A"), Filter.inCohort(456, "B")],
       });
       expect.unreachable("expected ParamValidationError BB5");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(ParamValidationError);
-      expect((exc as ParamValidationError).code).toBe(
+    } catch (error) {
+      expect(error).toBeInstanceOf(ParamValidationError);
+      expect((error as ParamValidationError).code).toBe(
         "BB5_FLOW_MULTIPLE_COHORT_FILTERS",
       );
     }
@@ -836,9 +837,9 @@ describe("TestCodedFlowCohortFilterCodes", () => {
     try {
       buildFlowCohortFilter(Filter.equals("country", "US"));
       expect.unreachable("expected ParamValidationError");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(ParamValidationError);
-      expect((exc as ParamValidationError).code).toBe(
+    } catch (error) {
+      expect(error).toBeInstanceOf(ParamValidationError);
+      expect((error as ParamValidationError).code).toBe(
         "BB4_FLOW_COHORT_FILTER_TYPE",
       );
     }

@@ -19,9 +19,9 @@
 import {
   envWorkspaceId,
   resolveProjectAxis,
+  type ResolverSources,
   resolveSession,
 } from "../auth/resolver.js";
-import type { ResolverSources } from "../auth/resolver.js";
 import type { Session } from "../auth/session.js";
 import type { ResolverSeams } from "../workspace-members/lifecycle.js";
 import type { AuthEffects, ConfigWrites } from "./auth-effects.js";
@@ -58,7 +58,6 @@ export function resolverSourcesFromEffects(
  * @param effects - The effect bag.
  * @returns The five seams (four REAL; `persistActive` routed to the
  *   still-stubbed effect member).
- *
  * @example
  * ```typescript
  * const ws = new Workspace({
@@ -114,8 +113,8 @@ export function persistActiveToConfig(
   config.applySession({
     account: session.account.name,
     project: session.project.id,
-    ...(workspace !== null
-      ? { workspace: workspace.id }
-      : { clear_workspace: true }),
+    ...(workspace === null
+      ? { clear_workspace: true }
+      : { workspace: workspace.id }),
   });
 }

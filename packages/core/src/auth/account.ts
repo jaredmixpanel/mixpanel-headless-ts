@@ -36,13 +36,9 @@ import {
 import { Secret } from "../secret.js";
 import {
   ACCOUNT_TYPE_VALUES,
-  REGION_VALUES,
-  type AccountType,
   type Region,
+  REGION_VALUES,
 } from "../types/literals.js";
-
-export { ACCOUNT_TYPE_VALUES, REGION_VALUES };
-export type { AccountType, Region };
 
 // ── Phantom-typed identifiers (Python NewType) ──────────────────────────
 //
@@ -79,7 +75,7 @@ export interface TokenResolver {
    * @param region - Mixpanel region (used by some implementations).
    * @returns The current access token (no `Bearer` prefix).
    */
-  getBrowserToken(name: string, region: Region): Promise<string>;
+  getBrowserToken: (name: string, region: Region) => Promise<string>;
 
   /**
    * Return the static bearer for an {@link OAuthTokenAccount}.
@@ -87,7 +83,7 @@ export interface TokenResolver {
    * @param account - The account whose `token` / `token_env` to resolve.
    * @returns The bearer token (no `Bearer` prefix).
    */
-  getStaticToken(account: OAuthTokenAccount): Promise<string>;
+  getStaticToken: (account: OAuthTokenAccount) => Promise<string>;
 }
 
 /**
@@ -418,7 +414,6 @@ const OAUTH_TOKEN_FIELDS: ReadonlySet<string> = new Set([
  * @throws ParamValidationError - Any violation at the `'param'` boundary.
  * @throws ResponseValidationError - Any violation at the default
  *   `'response'` boundary.
- *
  * @example
  * ```typescript
  * const account = parseAccount({
@@ -447,7 +442,7 @@ export function parseAccount(
       );
       const base = parseAccountBase(payload, options);
       const username = payload["username"];
-      if (typeof username !== "string" || username.length < 1) {
+      if (typeof username !== "string" || username.length === 0) {
         parseFail(
           "ServiceAccount.username must be a non-empty string",
           options,
@@ -507,18 +502,19 @@ export function parseAccount(
       return {
         type: "oauth_token",
         ...base,
-        ...(token !== undefined ? { token } : {}),
-        ...(tokenEnvRaw !== undefined
-          ? { token_env: tokenEnvRaw as string | null }
-          : {}),
+        ...(token === undefined ? {} : { token }),
+        ...(tokenEnvRaw === undefined
+          ? {}
+          : { token_env: tokenEnvRaw as string | null }),
       };
     }
-    default:
+    default: {
       parseFail(
         "Account.type must be one of service_account, oauth_browser, oauth_token",
         options,
         { field: "type", allowed: ACCOUNT_TYPE_VALUES },
       );
+    }
   }
 }
 
@@ -568,7 +564,6 @@ export interface AccountAuthHeaderOptions {
  *   message text out of contract, R5.4).
  * @throws MixpanelHeadlessError - Never in practice: the `never` default
  *   arm guards against an un-narrowed 4th variant at runtime.
- *
  * @example
  * ```typescript
  * const header = await accountAuthHeader(serviceAccount, {});
@@ -627,12 +622,15 @@ export async function accountAuthHeader(
  */
 export function isLongLived(account: Account): boolean {
   switch (account.type) {
-    case "service_account":
+    case "service_account": {
       return true;
-    case "oauth_browser":
+    }
+    case "oauth_browser": {
       return true;
-    case "oauth_token":
+    }
+    case "oauth_token": {
       return false;
+    }
     default: {
       const exhaustive: never = account;
       throw new MixpanelHeadlessError(
@@ -641,3 +639,10 @@ export function isLongLived(account: Account): boolean {
     }
   }
 }
+
+export {
+  ACCOUNT_TYPE_VALUES,
+  type AccountType,
+  type Region,
+  REGION_VALUES,
+} from "../types/literals.js";

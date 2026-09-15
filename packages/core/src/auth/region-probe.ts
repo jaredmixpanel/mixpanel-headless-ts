@@ -36,30 +36,30 @@
  * in `core`.
  */
 
-import { cpSlice } from "../compat/codepoint.js";
-import { pythonRepr } from "../compat/python-str.js";
 import { MixpanelHttpError } from "../client/internals.js";
 import { createRequestExecutor } from "../client/transport.js";
 import {
   API_BASE_URL_ENV,
   APP_BASE_URL_ENV,
   appPathPrefix,
+  endpointBase,
+  type EndpointOverrides,
   endpointOverridesFromEnv,
   endpointOverridesProvider,
-  endpointBase,
+  type EndpointOverridesSource,
   hasApiBaseUrlOverride,
   normalizeBaseUrlOverride,
-  type EndpointOverrides,
-  type EndpointOverridesSource,
 } from "../client/url.js";
+import { cpSlice } from "../compat/codepoint.js";
+import { pythonRepr } from "../compat/python-str.js";
 import {
   ConfigError,
+  type RegionProbeAttempt,
   RegionProbeError,
   RegionProbeNetworkError,
-  type RegionProbeAttempt,
 } from "../errors.js";
 import type { Secret } from "../secret.js";
-import { base64EncodeUtf8, type AccountType, type Region } from "./account.js";
+import { type AccountType, base64EncodeUtf8, type Region } from "./account.js";
 
 /** One probe response as the probe consumes it (httpx `Response` slice). */
 export interface ProbeResponse {
@@ -83,16 +83,16 @@ export interface ProbeClient {
    *   {@link probeClientFromFetch} at the transport call).
    * @returns The buffered response.
    */
-  get(
+  get: (
     path: string,
     opts: {
       headers: Readonly<Record<string, string>>;
       timeoutSeconds: number;
     },
-  ): Promise<ProbeResponse>;
+  ) => Promise<ProbeResponse>;
 
   /** Release the client (Python `httpx.Client.close`). */
-  close(): void;
+  close: () => void;
 }
 
 /** Builds a {@link ProbeClient} bound to a region's API base URL. */
@@ -203,7 +203,6 @@ export interface ProbeRegionOptions {
  *   `attempts: []`, packet Caution #9).
  * @throws RegionProbeError - Every region failed with at least one
  *   HTTP (non-network) rejection.
- *
  * @example
  * ```typescript
  * const result = await probeRegion(factory, {
@@ -229,15 +228,15 @@ export async function probeRegion(
       let response: ProbeResponse;
       try {
         response = await client.get(ME_PATH, { headers, timeoutSeconds });
-      } catch (exc) {
-        if (exc instanceof MixpanelHttpError) {
+      } catch (error) {
+        if (error instanceof MixpanelHttpError) {
           // Network-layer failure: DNS, TLS, connect refused, etc.
           // Recorded as status 0 so callers can render it consistently
           // with HTTP failures in the same table (:152-157).
-          failureAttempts.push([region, 0, renderTransportFailure(exc)]);
+          failureAttempts.push([region, 0, renderTransportFailure(error)]);
           continue;
         }
-        throw exc;
+        throw error;
       }
       if (response.status === 200) {
         successAttempts.push([region, 200]);
@@ -335,7 +334,6 @@ export function probeClientFromFetch(
  * @param appUrl - The App API base URL for a region (live or overridden).
  * @returns The base URL to bind the probe client to, without a trailing
  *   slash.
- *
  * @example
  * ```typescript
  * probeBaseUrl("https://mixpanel.com/api/app");
@@ -375,7 +373,6 @@ const VALID_REGIONS: readonly Region[] = ["us", "eu", "in"];
  * @param requestedRegion - The `MP_REGION` hint (raw; may be anything).
  * @returns A one-element order when `apiBaseUrl` is set; `null`
  *   otherwise (callers then use `probeRegion`'s default order).
- *
  * @example
  * ```typescript
  * overrideProbeOrder({ apiBaseUrl: "http://127.0.0.1:8080" }, "eu");
@@ -408,7 +405,6 @@ export function overrideProbeOrder(
  *   legacy line). With `apiBaseUrl` set: a line naming the single probe
  *   base. With only `appBaseUrl` set: a line saying regions are still
  *   walked, at the App override base.
- *
  * @example
  * ```typescript
  * overrideProbeNarration({ appBaseUrl: "http://app.internal:9000" });
@@ -486,7 +482,6 @@ export interface ProbeRegionForCredentialOptions {
  *   no region accepts the credential.
  * @throws RegionProbeNetworkError - Propagated from {@link probeRegion}
  *   when every probe failed at the network layer.
- *
  * @example
  * ```typescript
  * const region = await probeRegionForCredential({
@@ -521,7 +516,11 @@ export async function probeRegionForCredential(
     let bearer: string;
     if (token !== null) {
       bearer = token.reveal();
-    } else if (token_env !== null) {
+    } else if (token_env === null) {
+      throw new ConfigError(
+        "oauth_token region probe requires `token` or `token_env`.",
+      );
+    } else {
       bearer = getEnv(token_env) ?? "";
       if (bearer === "") {
         // Python `if not bearer` — unset AND empty both reject
@@ -530,10 +529,6 @@ export async function probeRegionForCredential(
           `--token-env ${pythonRepr(token_env)} is unset; cannot probe region.`,
         );
       }
-    } else {
-      throw new ConfigError(
-        "oauth_token region probe requires `token` or `token_env`.",
-      );
     }
     headers = { Authorization: `Bearer ${bearer}` };
   } else {

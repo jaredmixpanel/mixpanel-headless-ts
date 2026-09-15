@@ -6,21 +6,22 @@
 // exercised here too.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import {
-  MixpanelHeadlessError,
+  type MixpanelHeadlessError,
   ParamValidationError,
 } from "../../../src/errors.js";
 import {
   CohortCriteria,
   CohortDefinition,
 } from "../../../src/types/query-params/cohort.js";
+import { MATH_REQUIRING_PROPERTY } from "../../../src/types/query-params/guards.js";
 import {
   CohortMetric,
   Formula,
   Metric,
   TimeComparison,
 } from "../../../src/types/query-params/metric.js";
-import { MATH_REQUIRING_PROPERTY } from "../../../src/types/query-params/guards.js";
 
 /**
  * Assert a thunk throws the exact guard `{class, code}` pair.
@@ -32,8 +33,8 @@ function expectGuard(thunk: () => unknown, code: string): void {
   let thrown: unknown;
   try {
     thunk();
-  } catch (cause) {
-    thrown = cause;
+  } catch (error) {
+    thrown = error;
   }
   expect(thrown, `expected ${code}`).toBeInstanceOf(ParamValidationError);
   expect((thrown as MixpanelHeadlessError).code).toBe(code);
@@ -63,7 +64,7 @@ function inlineDefinition(): CohortDefinition {
 
 describe("Metric guards (source order)", () => {
   it("EV1_EMPTY_EVENT on empty/blank events", () => {
-    for (const event of ["a\x00b", "a\x07b", "a\x1fb", "a\x7fb"]) {
+    for (const event of ["a\x00b", "a\x07b", "a\x1Fb", "a\x7Fb"]) {
       expectGuard(() => new Metric({ event }), "EV2_CONTROL_CHAR_EVENT");
     }
   });
@@ -164,7 +165,7 @@ describe("Metric guards (source order)", () => {
 
 describe("Formula guards", () => {
   it("FM1_EMPTY_EXPRESSION on empty/blank expressions", () => {
-    for (const expression of ["", "   "]) {
+    for (const expression of ["", " ".repeat(3)]) {
       expectGuard(() => new Formula({ expression }), "FM1_EMPTY_EXPRESSION");
     }
   });
@@ -189,7 +190,7 @@ describe("CohortMetric guards (source order)", () => {
   });
 
   it("CM2_COHORT_NAME_EMPTY on blank provided names", () => {
-    for (const name of ["", "   ", "  \t "]) {
+    for (const name of ["", " ".repeat(3), "  \t "]) {
       expectGuard(
         () => new CohortMetric({ cohort: 5, name }),
         "CM2_COHORT_NAME_EMPTY",
@@ -371,10 +372,10 @@ describe("C9 guard-totality property (fast-check #4)", () => {
           try {
             new TimeComparison({ type: type as "relative" });
             return false;
-          } catch (cause) {
+          } catch (error) {
             return (
-              cause instanceof ParamValidationError &&
-              cause.code === "TC0_INVALID_TYPE"
+              error instanceof ParamValidationError &&
+              error.code === "TC0_INVALID_TYPE"
             );
           }
         },

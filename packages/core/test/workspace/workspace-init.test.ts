@@ -19,23 +19,24 @@
 // real seams) is in the B7 section at the bottom.
 
 import { describe, expect, it, vi } from "vitest";
+
+import { createAccountsNamespace } from "../../src/accounts/namespace.js";
+import {
+  resolverSeamsFromEffects,
+  resolverSourcesFromEffects,
+} from "../../src/accounts/resolver-seams.js";
+import { createTargetsNamespace } from "../../src/accounts/targets-namespace.js";
+import type { Account } from "../../src/auth/account.js";
+import { ParamValidationError } from "../../src/errors.js";
+import { Secret } from "../../src/secret.js";
 import { Workspace } from "../../src/workspace.js";
 import {
   createMockClient,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
-import type { Account } from "../../src/auth/account.js";
-import { ParamValidationError } from "../../src/errors.js";
-import { Secret } from "../../src/secret.js";
-import { createAccountsNamespace } from "../../src/accounts/namespace.js";
-import { createTargetsNamespace } from "../../src/accounts/targets-namespace.js";
 import {
-  resolverSeamsFromEffects,
-  resolverSourcesFromEffects,
-} from "../../src/accounts/resolver-seams.js";
-import {
-  makeEffects,
   type EffectsBundle,
+  makeEffects,
 } from "../accounts/fake-auth-effects.js";
 
 describe("TestSessionBypass (test_workspace_init.py:115)", () => {
@@ -279,8 +280,8 @@ describe("TestCodedWorkspaceGuardCodes — B7 constructor rows (test_workspace.p
       // No sources on purpose: the guard must fire BEFORE the
       // resolution branch would notice they are missing.
       new Workspace({ target: "ecom", account: "team" });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ParamValidationError);
     expect((caught as ParamValidationError).code).toBe(
@@ -292,8 +293,8 @@ describe("TestCodedWorkspaceGuardCodes — B7 constructor rows (test_workspace.p
     let caught: unknown = null;
     try {
       new Workspace({ target: "ecom", workspace: 123 });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ParamValidationError);
     expect((caught as ParamValidationError).code).toBe(
@@ -307,8 +308,8 @@ describe("TestCodedWorkspaceGuardCodes — B7 constructor rows (test_workspace.p
     let caught: unknown = null;
     try {
       new Workspace({ target: "ecom", project: "99" });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(Error);
     expect(caught).toBeInstanceOf(ParamValidationError);

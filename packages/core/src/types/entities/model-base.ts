@@ -41,6 +41,7 @@
  * the public package surface.
  */
 
+import { orderedEntries } from "../../client/json-value.js";
 import {
   coerceBool,
   coerceFloat,
@@ -49,7 +50,6 @@ import {
   coerceStr,
 } from "../../coerce.js";
 import { isPythonDict } from "../../compat/python-dict.js";
-import { orderedEntries } from "../../client/json-value.js";
 import { ResponseValidationError } from "../../errors.js";
 
 /**
@@ -292,16 +292,21 @@ function coerceScalar(
 ): unknown {
   try {
     switch (kind) {
-      case "int":
+      case "int": {
         return coerceInt(value, { kind: "response", field: path });
-      case "int64":
+      }
+      case "int64": {
         return coerceInt64(value, { kind: "response", field: path });
-      case "str":
+      }
+      case "str": {
         return coerceStr(value, { kind: "response", field: path });
-      case "bool":
+      }
+      case "bool": {
         return coerceBool(value, { kind: "response", field: path });
-      case "float":
+      }
+      case "float": {
         return coerceFloat(value, { kind: "response", field: path });
+      }
     }
   } catch (error) {
     if (error instanceof ResponseValidationError) {
@@ -596,7 +601,6 @@ export abstract class EntityModel {
    *
    * @param options - `byAlias` mirrors pydantic's `by_alias=True`.
    * @returns The exclude-none mapping.
-   *
    * @example
    * ```typescript
    * new BusinessContext({ level: "project", content: "" })
@@ -629,7 +633,6 @@ export abstract class EntityModel {
    *
    * @param options - `byAlias` mirrors pydantic's `by_alias=True`.
    * @returns The dump mapping.
-   *
    * @example
    * ```typescript
    * new UpdateAnomalyParams({ id: 1, status: "open", anomaly_class: "Event" })
@@ -724,7 +727,7 @@ export abstract class EntityModel {
  * @internal
  */
 export function oneOf(
-  values: readonly (string | number)[],
+  values: ReadonlyArray<string | number>,
 ): (value: unknown, path: string) => void {
   const allowed = new Set<unknown>(values);
   return (value, path) => {

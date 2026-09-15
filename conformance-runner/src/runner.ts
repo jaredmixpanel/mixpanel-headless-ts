@@ -28,20 +28,25 @@
  */
 
 import { resolveApi } from "./api-map.js";
-import { BATCH_STATUS, batchStatusFor } from "./batch-status.js";
-import type { BatchStatus } from "./batch-status.js";
+import {
+  BATCH_STATUS,
+  type BatchStatus,
+  batchStatusFor,
+} from "./batch-status.js";
 import {
   CanonicalizationError,
   canonicalize,
   canonicalizeError,
 } from "./canonical.js";
-import type { CodecRegistry } from "./codecs.js";
-import { RecordingCallback, encodeExpectValue } from "./codecs.js";
+import {
+  type CodecRegistry,
+  encodeExpectValue,
+  RecordingCallback,
+} from "./codecs.js";
 import { parseInteractions } from "./interactions.js";
 import { JsonNumber, type JsonValue } from "./json-value.js";
 import { diffRequestTraffic } from "./request-diff.js";
-import type { RunnerShims } from "./shims.js";
-import { createShims } from "./shims.js";
+import { createShims, type RunnerShims } from "./shims.js";
 import { createVectorFetch } from "./vector-fetch.js";
 import type { ConformanceVector, Corpus } from "./vector-types.js";
 import type { VectorResult, Verdict } from "./verdicts.js";
@@ -108,7 +113,7 @@ export interface ExpectErrorConvertible {
    * @returns An object with `class` (Python exception class name) and
    *   optionally `code`, `errors[]`, `details_contain`.
    */
-  toExpectError(): JsonValue;
+  toExpectError: () => JsonValue;
 }
 
 /**
@@ -232,7 +237,7 @@ function roundUnsafeIntegers(value: JsonValue): {
     let found = false;
     const rounded = value.map((item) => {
       const result = roundUnsafeIntegers(item);
-      found = found || result.found;
+      found ||= result.found;
       return result.rounded;
     });
     return { rounded, found };
@@ -242,7 +247,7 @@ function roundUnsafeIntegers(value: JsonValue): {
     const rounded: Record<string, JsonValue> = {};
     for (const [key, item] of Object.entries(value)) {
       const result = roundUnsafeIntegers(item);
-      found = found || result.found;
+      found ||= result.found;
       rounded[key] = result.rounded;
     }
     return { rounded, found };
@@ -418,7 +423,6 @@ function gateApis(
  * @returns The vector result; never throws — infrastructure failures
  *   (codec gaps, malformed interactions, canonicalization violations)
  *   surface as `FAIL_ERROR` with a `runner:`-prefixed diff.
- *
  * @example
  * ```typescript
  * const result = await runVector(vector, deps);
@@ -440,17 +444,17 @@ export async function runVector(
       id: vector.id,
       capability,
       verdict: gated.verdict,
-      ...(gated.diff !== undefined ? { diff: gated.diff } : {}),
+      ...(gated.diff === undefined ? {} : { diff: gated.diff }),
     };
   }
   try {
     return await replayVector(vector, capability, deps);
-  } catch (cause) {
+  } catch (error) {
     return {
       id: vector.id,
       capability,
       verdict: "FAIL_ERROR",
-      diff: `runner: ${String(cause)}`,
+      diff: `runner: ${String(error)}`,
     };
   }
 }
@@ -486,16 +490,16 @@ async function replayVector(
     kwargs,
     rawInput,
     shims,
-    ...(harness !== undefined ? { fetch: harness.fetch } : {}),
-    ...(vector.call["session"] !== undefined
-      ? { session: vector.call["session"] }
-      : {}),
-    ...(vector.call["workspace_session"] !== undefined
-      ? { workspaceSession: vector.call["workspace_session"] }
-      : {}),
-    ...(vector.call["client_options"] !== undefined
-      ? { clientOptions: vector.call["client_options"] }
-      : {}),
+    ...(harness === undefined ? {} : { fetch: harness.fetch }),
+    ...(vector.call["session"] === undefined
+      ? {}
+      : { session: vector.call["session"] }),
+    ...(vector.call["workspace_session"] === undefined
+      ? {}
+      : { workspaceSession: vector.call["workspace_session"] }),
+    ...(vector.call["client_options"] === undefined
+      ? {}
+      : { clientOptions: vector.call["client_options"] }),
     state,
   });
 
@@ -520,7 +524,7 @@ async function replayVector(
         id: vector.id,
         capability,
         verdict: gated.verdict,
-        ...(gated.diff !== undefined ? { diff: gated.diff } : {}),
+        ...(gated.diff === undefined ? {} : { diff: gated.diff }),
       };
     }
     const kwargs = deps.codecs.decodeInputKwargs(entry.input);
@@ -547,8 +551,8 @@ async function replayVector(
     returned = await implementation(
       contextFor(vector.api, kwargs, vector.input),
     );
-  } catch (cause) {
-    thrown = cause;
+  } catch (error) {
+    thrown = error;
     didThrow = true;
   }
 
@@ -601,14 +605,14 @@ async function replayVector(
           returned,
           vector.expect[expectedValueKey] as JsonValue,
         );
-      } catch (cause) {
-        if (cause instanceof CanonicalizationError) {
+      } catch (error) {
+        if (error instanceof CanonicalizationError) {
           return fail(
             "FAIL_OUTPUT",
-            `output not canonicalizable: ${cause.message}`,
+            `output not canonicalizable: ${error.message}`,
           );
         }
-        throw cause;
+        throw error;
       }
       if (valueDiff !== null) {
         return fail(valueDiff.verdict, valueDiff.diff);
@@ -636,7 +640,6 @@ async function replayVector(
  * @param filter - Optional id filter: vectors whose id includes this
  *   substring are replayed (mirror of the Python CLI's `--filter`).
  * @returns Per-vector results in corpus order.
- *
  * @example
  * ```typescript
  * const results = await runCorpus(corpus, deps, "compat/");

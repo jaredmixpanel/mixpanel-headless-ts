@@ -9,10 +9,11 @@
 // surface — the TS export is locked by the package barrel + P2-10
 // coverage map). Python tuple children translate to readonly arrays.
 import { describe, expect, it } from "vitest";
+
 import {
   FlowQueryResult,
-  FlowTreeNode,
   type FlowQueryResultFields,
+  FlowTreeNode,
 } from "../../../src/types/results/query-engine.js";
 
 /** Build the 3-level sample tree (Python `_sample_tree`). */
@@ -264,9 +265,9 @@ describe("FlowTreeNode.all_paths (TestFlowTreeNodeAllPaths)", () => {
       (p) => p[p.length - 1]?.event === "Purchase",
     );
     expect(purchase_paths).toHaveLength(2);
-    const search_purchase = purchase_paths.filter(
+    const search_purchase = purchase_paths.find(
       (p) => p[1]?.event === "Search",
-    )[0];
+    );
     expect(search_purchase?.[0]?.total_count).toBe(1000); // Login
     expect(search_purchase?.[1]?.total_count).toBe(600); // Search
     expect(search_purchase?.[2]?.total_count).toBe(400); // Purchase

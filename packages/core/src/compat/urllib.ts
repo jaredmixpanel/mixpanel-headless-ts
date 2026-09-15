@@ -148,7 +148,7 @@ function splitNetloc(url: string, start: number): [string, string] {
   let delim = url.length;
   for (const c of "/?#") {
     const found = url.indexOf(c, start);
-    if (found >= 0) {
+    if (found !== -1) {
       delim = Math.min(delim, found);
     }
   }
@@ -169,7 +169,7 @@ function checkBracketedHost(hostname: string): void {
     // `_check_bracketed_host` skips the `ipaddress` check for these.
     return;
   }
-  const zoneless = hostname.split("%")[0] as string;
+  const zoneless = hostname.split("%", 1)[0] as string;
   if (!isIpv6Literal(zoneless)) {
     throw new UrlSplitError(
       `'${hostname}' does not appear to be an IPv6 address`,
@@ -189,7 +189,7 @@ function isIpv6Literal(text: string): boolean {
     return false;
   }
   const doubleColon = text.indexOf("::");
-  if (doubleColon !== -1 && text.indexOf("::", doubleColon + 1) !== -1) {
+  if (doubleColon !== -1 && text.includes("::", doubleColon + 1)) {
     return false;
   }
   const countGroups = (part: string): number | null => {
@@ -239,11 +239,7 @@ function checkNetloc(netloc: string): void {
   if (netloc === "" || isAscii(netloc)) {
     return;
   }
-  const n = netloc
-    .replaceAll("@", "")
-    .replaceAll(":", "")
-    .replaceAll("#", "")
-    .replaceAll("?", "");
+  const n = netloc.replaceAll(/[@:#?]/g, "");
   const netloc2 = n.normalize("NFKC");
   if (n === netloc2) {
     return;
@@ -268,13 +264,13 @@ function hostnameOf(netloc: string): string | null {
   const hostinfo = at === -1 ? netloc : netloc.slice(at + 1);
   let hostname: string;
   const open = hostinfo.indexOf("[");
-  if (open !== -1) {
+  if (open === -1) {
+    const colon = hostinfo.indexOf(":");
+    hostname = colon === -1 ? hostinfo : hostinfo.slice(0, colon);
+  } else {
     const bracketed = hostinfo.slice(open + 1);
     const close = bracketed.indexOf("]");
     hostname = close === -1 ? bracketed : bracketed.slice(0, close);
-  } else {
-    const colon = hostinfo.indexOf(":");
-    hostname = colon === -1 ? hostinfo : hostinfo.slice(0, colon);
   }
   if (hostname === "") {
     return null;
@@ -425,7 +421,7 @@ export function urljoin(base: string, url: string): string {
   const b = urlsplit(base);
   const u = urlsplit(url);
   // `urlparse(url, bscheme)`: a scheme-less url inherits the base scheme.
-  const scheme = u.scheme !== "" ? u.scheme : b.scheme;
+  const scheme = u.scheme === "" ? b.scheme : u.scheme;
   if (scheme !== b.scheme || !USES_RELATIVE.has(scheme)) {
     return url;
   }
@@ -480,7 +476,7 @@ export function urljoin(base: string, url: string): string {
   return urlunsplit({
     scheme,
     netloc,
-    path: joinedPath !== "" ? joinedPath : "/",
+    path: joinedPath === "" ? "/" : joinedPath,
     query,
     fragment,
   });

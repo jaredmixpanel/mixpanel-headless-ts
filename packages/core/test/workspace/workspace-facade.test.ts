@@ -44,27 +44,19 @@
 // which had to drop it (`workspace-test-helpers.ts:6-10`).
 
 import { describe, expect, it, vi } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-} from "../../test-support/client-test-helpers.js";
-import type { MixpanelClient } from "../../src/client/client.js";
-import { ParamValidationError } from "../../src/errors.js";
-import { validateLimit } from "../../src/services/queries/streaming.js";
-import { validateBusinessContextLevel } from "../../src/workspace-members/lifecycle.js";
-import {
-  MeProjectInfo,
-  MeWorkspaceInfo,
-  MeResponse,
-} from "../../src/client/me.js";
-import { MeService, inMemoryMeCache } from "../../src/services/me.js";
-import { Secret } from "../../src/secret.js";
+
 import { createAccountsNamespace } from "../../src/accounts/namespace.js";
 import { resolverSeamsFromEffects } from "../../src/accounts/resolver-seams.js";
-import { makeEffects } from "../accounts/fake-auth-effects.js";
+import type { MixpanelClient } from "../../src/client/client.js";
+import {
+  MeProjectInfo,
+  MeResponse,
+  MeWorkspaceInfo,
+} from "../../src/client/me.js";
+import { ParamValidationError } from "../../src/errors.js";
+import { Secret } from "../../src/secret.js";
+import { inMemoryMeCache, MeService } from "../../src/services/me.js";
+import { validateLimit } from "../../src/services/queries/streaming.js";
 import {
   ActivityFeedResult,
   EventCountsResult,
@@ -77,6 +69,15 @@ import {
   RetentionResult,
   SegmentationResult,
 } from "../../src/types/results/live-query.js";
+import { Workspace } from "../../src/workspace.js";
+import { validateBusinessContextLevel } from "../../src/workspace-members/lifecycle.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
+import { makeEffects } from "../accounts/fake-auth-effects.js";
 
 /** The `_TEST_SESSION` twin (`test_workspace.py:38-46`). */
 const TEST_SESSION = makeSession({
@@ -549,9 +550,9 @@ describe("TestCodedWorkspaceGuardCodes (test_workspace.py:919)", () => {
     try {
       validateLimit(0);
       expect.unreachable("validateLimit(0) must throw");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(ParamValidationError);
-      expect((exc as ParamValidationError).code).toBe("WR2_LIMIT_TOO_SMALL");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ParamValidationError);
+      expect((error as ParamValidationError).code).toBe("WR2_LIMIT_TOO_SMALL");
     }
   });
 
@@ -566,9 +567,9 @@ describe("TestCodedWorkspaceGuardCodes (test_workspace.py:919)", () => {
         void _event;
       }
       expect.unreachable("stream must throw");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(ParamValidationError);
-      expect((exc as ParamValidationError).code).toBe("WR2_LIMIT_TOO_SMALL");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ParamValidationError);
+      expect((error as ParamValidationError).code).toBe("WR2_LIMIT_TOO_SMALL");
     }
     await ws.close();
   });
@@ -577,8 +578,8 @@ describe("TestCodedWorkspaceGuardCodes (test_workspace.py:919)", () => {
     try {
       validateLimit(100_001);
       expect.unreachable("validateLimit(100001) must throw");
-    } catch (exc) {
-      expect((exc as ParamValidationError).code).toBe("WR3_LIMIT_TOO_LARGE");
+    } catch (error) {
+      expect((error as ParamValidationError).code).toBe("WR3_LIMIT_TOO_LARGE");
     }
   });
 
@@ -593,8 +594,8 @@ describe("TestCodedWorkspaceGuardCodes (test_workspace.py:919)", () => {
         void _event;
       }
       expect.unreachable("stream must throw");
-    } catch (exc) {
-      expect((exc as ParamValidationError).code).toBe("WR3_LIMIT_TOO_LARGE");
+    } catch (error) {
+      expect((error as ParamValidationError).code).toBe("WR3_LIMIT_TOO_LARGE");
     }
     await ws.close();
   });
@@ -619,9 +620,9 @@ describe("TestCodedWorkspaceGuardCodes (test_workspace.py:919)", () => {
     try {
       validateBusinessContextLevel("org");
       expect.unreachable("validateBusinessContextLevel('org') must throw");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(ParamValidationError);
-      expect((exc as ParamValidationError).code).toBe("WS2_INVALID_LEVEL");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ParamValidationError);
+      expect((error as ParamValidationError).code).toBe("WS2_INVALID_LEVEL");
     }
   });
 

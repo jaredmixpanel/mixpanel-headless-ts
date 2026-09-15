@@ -19,20 +19,21 @@
 // `{class, code}` assertions (message TEXT is out of contract, R5.4 —
 // the code is the stronger, recorded contract).
 import { afterEach, describe, expect, it, vi } from "vitest";
+
 import {
-  MixpanelHeadlessError,
+  type MixpanelHeadlessError,
   ParamValidationError,
 } from "../../../src/errors.js";
 import {
   Replay,
   ReplayBundle,
   ReplayEvent,
-  ReplaySummary,
-  SignedReplay,
-  UserAction,
   type ReplayEventFields,
+  ReplaySummary,
   type ReplaySummaryFields,
+  SignedReplay,
   type SignedReplayFields,
+  UserAction,
 } from "../../../src/types/results/replays.js";
 
 /**
@@ -45,8 +46,8 @@ function expectGuard(thunk: () => unknown, code: string): void {
   let thrown: unknown;
   try {
     thunk();
-  } catch (cause) {
-    thrown = cause;
+  } catch (error) {
+    thrown = error;
   }
   expect(thrown, `expected ${code}`).toBeInstanceOf(ParamValidationError);
   expect((thrown as MixpanelHeadlessError).code).toBe(code);
@@ -722,9 +723,9 @@ describe("ReplayBundle projections (TestReplayBundleProjections)", () => {
       expect(b.sessionsRowColumns()).toContain(col);
     }
     // r-2 has 3 clicks; r-3 has 1 error.
-    const r2_row = rows.filter((row) => row["replay_id"] === "r-2")[0];
+    const r2_row = rows.find((row) => row["replay_id"] === "r-2");
     expect(r2_row?.["n_clicks"]).toBe(3);
-    const r3_row = rows.filter((row) => row["replay_id"] === "r-3")[0];
+    const r3_row = rows.find((row) => row["replay_id"] === "r-3");
     expect(r3_row?.["n_errors"]).toBe(1);
   });
 

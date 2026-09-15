@@ -16,87 +16,69 @@
  */
 
 import {
+  BookmarkValidationError,
+  CohortBreakdown,
+  CohortCriteria,
+  CohortDefinition,
+  CohortMetric,
   cpLength,
   cpSlice,
+  type DidEventOptions,
+  type DidNotDoEventOptions,
+  Exclusion,
+  type ExclusionFields,
+  Filter,
+  type FilterFields,
+  FlowStep,
+  type FlowStepFields,
+  Formula,
+  FrequencyBreakdown,
+  type FrequencyBreakdownFields,
+  FrequencyFilter,
+  type FrequencyFilterFields,
+  FunnelStep,
+  type FunnelStepFields,
+  GroupBy,
+  type GroupByFields,
+  type HasPropertyOperator,
+  type HasPropertyType,
+  HoldingConstant,
+  type HoldingConstantFields,
+  ListItemGroupMode,
+  Metric,
+  type MetricFields,
+  MixpanelHeadlessError,
+  type PropertySpec,
   pythonFloat,
   pythonFloatCoerce,
   pythonFloatStr,
   pythonInt,
   pythonStr,
   pythonStrip,
-  sortedByCodepoint,
-  zfill,
   type PythonValue,
-  BookmarkValidationError,
-  MixpanelHeadlessError,
-  ValidationError,
-  CohortBreakdown,
-  CohortCriteria,
-  CohortDefinition,
-  type DidEventOptions,
-  type DidNotDoEventOptions,
-  type HasPropertyOperator,
-  type HasPropertyType,
-  Filter,
-  ListItemGroupMode,
-  type FilterFields,
-  type PropertySpec,
-  FlowStep,
-  type FlowStepFields,
-  FrequencyBreakdown,
-  FrequencyFilter,
-  type FrequencyBreakdownFields,
-  type FrequencyFilterFields,
-  Exclusion,
-  FunnelStep,
-  HoldingConstant,
-  type ExclusionFields,
-  type FunnelStepFields,
-  type HoldingConstantFields,
-  GroupBy,
-  type GroupByFields,
-  CohortMetric,
-  Formula,
-  Metric,
-  TimeComparison,
-  type MetricFields,
-  RetentionEvent,
-  type RetentionEventFields,
   Replay,
   ReplayBundle,
-  ReplayEvent,
-  ReplaySummary,
-  SignedReplay,
-  UserAction,
   type ReplayBundleFields,
+  ReplayEvent,
   type ReplayEventFields,
   type ReplayFields,
+  ReplaySummary,
   type ReplaySummaryFields,
+  RetentionEvent,
+  type RetentionEventFields,
+  SignedReplay,
   type SignedReplayFields,
+  sortedByCodepoint,
+  TimeComparison,
+  UserAction,
   type UserActionFields,
   validateBookmark,
   type ValidateBookmarkOptions,
+  ValidationError,
+  zfill,
 } from "@mixpanel-headless/core";
 import {
-  iterJsonlLines,
-  sanitizeRawCohort,
-  validateFlowArgs,
-  validateFlowBookmark,
-  validateFunnelArgs,
-  validateGroupByArgs,
-  validateQueryArgs,
-  validateRetentionArgs,
-  validateSortingBlock,
-  validateTimeArgs,
-  validateUserArgs,
-  validateUserParams,
-  type ValidateFlowArgsOptions,
-  type ValidateFunnelArgsOptions,
-  type ValidateGroupByArgsOptions,
-  type ValidateQueryArgsOptions,
-  type ValidateRetentionArgsOptions,
-  type ValidateTimeArgsOptions,
-  type ValidateUserArgsOptions,
+  BOOKMARK_MODEL_HANDLES,
   buildDateRange,
   buildFilterEntry,
   buildFilterSection,
@@ -104,34 +86,54 @@ import {
   buildFlowPropertyFilter,
   buildFrequencyFilterEntry,
   buildGroupSection,
-  buildTimeSection,
-  BOOKMARK_MODEL_HANDLES,
-  getRootModelForBookmarkType,
-  validateWithPydantic,
-  normalizeOnExpression,
-  ValueError,
   buildSegfilterEntry,
+  buildTimeSection,
+  extractCohortFilter,
+  filtersToSelector,
+  filterToSelector,
+  getRootModelForBookmarkType,
+  iterJsonlLines,
+  normalizeOnExpression,
+  sanitizeRawCohort,
   transformEvent,
   transformProfile,
-  extractCohortFilter,
-  filterToSelector,
-  filtersToSelector,
+  validateFlowArgs,
+  type ValidateFlowArgsOptions,
+  validateFlowBookmark,
+  validateFunnelArgs,
+  type ValidateFunnelArgsOptions,
+  validateGroupByArgs,
+  type ValidateGroupByArgsOptions,
+  validateQueryArgs,
+  type ValidateQueryArgsOptions,
+  validateRetentionArgs,
+  type ValidateRetentionArgsOptions,
+  validateSortingBlock,
+  validateTimeArgs,
+  type ValidateTimeArgsOptions,
+  validateUserArgs,
+  type ValidateUserArgsOptions,
+  validateUserParams,
+  validateWithPydantic,
+  ValueError,
 } from "@mixpanel-headless/core/internal";
-import { CONTRACT_TAG_CODECS } from "./vector-codecs.js";
+
 import {
   CodecRegistry,
   PyDatetime,
   PyFloat,
   UndecodableValueError,
 } from "./codecs.js";
-import type { JsonValue } from "./json-value.js";
-import { JsonNumber } from "./json-value.js";
-import type {
-  ExpectErrorConvertible,
-  InvocationContext,
-  RunnerDeps,
+import { JsonNumber, type JsonValue } from "./json-value.js";
+import { registerReplaysBindings } from "./replays-bindings.js";
+import {
+  type ExpectErrorConvertible,
+  ImplementationRegistry,
+  type InvocationContext,
+  type RunnerDeps,
 } from "./runner.js";
-import { ImplementationRegistry } from "./runner.js";
+import { CONTRACT_TAG_CODECS } from "./vector-codecs.js";
+import { registerAuthWireBindings } from "./wire-auth.js";
 import { registerApiClientCoreBindings } from "./wire-client.js";
 import { registerEntityWireBindings } from "./wire-entities.js";
 import { registerGovernanceWireBindings } from "./wire-governance.js";
@@ -140,8 +142,6 @@ import { registerPaginationBindings } from "./wire-pagination.js";
 import { registerQueryWireBindings } from "./wire-queries.js";
 import { registerWorkspaceBindings } from "./wire-workspace.js";
 import { registerWorkspaceEntityBindings } from "./wire-workspace-entities.js";
-import { registerReplaysBindings } from "./replays-bindings.js";
-import { registerAuthWireBindings } from "./wire-auth.js";
 import { WireStubClient, type WireStubRequestOptions } from "./wirestub.js";
 
 /**
@@ -274,11 +274,11 @@ function requireStringKwarg(context: InvocationContext, name: string): string {
 function guardCompat<T>(invoke: () => T): T {
   try {
     return invoke();
-  } catch (cause) {
-    if (cause instanceof MixpanelHeadlessError) {
-      throw new CoreLibraryError(cause);
+  } catch (error) {
+    if (error instanceof MixpanelHeadlessError) {
+      throw new CoreLibraryError(error);
     }
-    throw cause;
+    throw error;
   }
 }
 
@@ -464,9 +464,9 @@ function registerWireStubBindings(
   });
   implementations.register("wirestub.request_sequence", async (context) => {
     const client = new WireStubClient({ fetch: requireFetch(context) });
-    const requests = requireKwarg(context, "requests") as readonly Readonly<
-      Record<string, unknown>
-    >[];
+    const requests = requireKwarg(context, "requests") as ReadonlyArray<
+      Readonly<Record<string, unknown>>
+    >;
     return client.requestSequence(
       requests.map((entry) => ({
         method: entry["method"] as string,
@@ -550,11 +550,11 @@ export class CoreLibraryError extends Error implements ExpectErrorConvertible {
 function runGuarded(codecs: CodecRegistry, invoke: () => unknown): JsonValue {
   try {
     return codecs.encodeValue(invoke());
-  } catch (cause) {
-    if (cause instanceof MixpanelHeadlessError) {
-      throw new CoreLibraryError(cause);
+  } catch (error) {
+    if (error instanceof MixpanelHeadlessError) {
+      throw new CoreLibraryError(error);
     }
-    throw cause;
+    throw error;
   }
 }
 
@@ -569,9 +569,9 @@ function resourceTypeBag(context: InvocationContext): {
   readonly resource_type?: "events" | "people";
 } {
   const value = context.kwargs["resource_type"];
-  return value !== undefined
-    ? { resource_type: value as "events" | "people" }
-    : {};
+  return value === undefined
+    ? {}
+    : { resource_type: value as "events" | "people" };
 }
 
 /**
@@ -708,9 +708,9 @@ function registerQueryParamBindings(
       requireKwarg(context, "property") as string,
       itemFilters,
       {
-        ...(quantifier !== undefined
-          ? { quantifier: quantifier as "any" | "all" }
-          : {}),
+        ...(quantifier === undefined
+          ? {}
+          : { quantifier: quantifier as "any" | "all" }),
         ...resourceTypeBag(context),
         equals: equals as Readonly<Record<string, string | readonly string[]>>,
       },
@@ -792,12 +792,12 @@ function registerQueryParamBindings(
       requireKwarg(context, "value") as
         string | number | boolean | readonly string[],
       {
-        ...(operator !== undefined
-          ? { operator: operator as HasPropertyOperator }
-          : {}),
-        ...(propertyType !== undefined
-          ? { property_type: propertyType as HasPropertyType }
-          : {}),
+        ...(operator === undefined
+          ? {}
+          : { operator: operator as HasPropertyOperator }),
+        ...(propertyType === undefined
+          ? {}
+          : { property_type: propertyType as HasPropertyType }),
       },
     );
   });
@@ -1182,9 +1182,9 @@ function registerValidatorBindings(
   bindValidator("validation.validate_bookmark", (context) => {
     const bookmarkType = context.kwargs["bookmark_type"];
     const options: ValidateBookmarkOptions =
-      bookmarkType !== undefined
-        ? { bookmark_type: bookmarkType as string }
-        : {};
+      bookmarkType === undefined
+        ? {}
+        : { bookmark_type: bookmarkType as string };
     return validateBookmark(requireParamsDict(context), options);
   });
   bindValidator("validation.validate_flow_bookmark", (context) =>
@@ -1489,7 +1489,7 @@ function registerBuilderBindings(
           return validateWithPydantic(
             handle.validate,
             requireKwarg(context, "value"),
-            prefix !== undefined ? { path_prefix: prefix as string } : {},
+            prefix === undefined ? {} : { path_prefix: prefix as string },
           );
         }),
       ),
@@ -1517,9 +1517,9 @@ export function registerContractCodecs(codecs: CodecRegistry): void {
           return codec.decode(payload, (value) =>
             decodeField(value as JsonValue),
           );
-        } catch (cause) {
+        } catch (error) {
           throw new UndecodableValueError(
-            `could not reconstruct ${tag} from vector fields: ${String(cause)}`,
+            `could not reconstruct ${tag} from vector fields: ${String(error)}`,
           );
         }
       },
@@ -1541,7 +1541,6 @@ export function registerContractCodecs(codecs: CodecRegistry): void {
  * @param recordEpoch - The frozen record instant (corpus config /
  *   manifest `record_epoch`).
  * @returns Fresh {@link RunnerDeps} carrying all registered bindings.
- *
  * @example
  * ```typescript
  * const deps = createRunnerDeps("2026-01-15T12:00:00Z");

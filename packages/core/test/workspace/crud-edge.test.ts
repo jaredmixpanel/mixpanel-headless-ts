@@ -24,14 +24,7 @@
 // dropped.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-  type FakeTransport,
-} from "../../test-support/client-test-helpers.js";
+
 import { ResponseValidationError } from "../../src/errors.js";
 import {
   BulkUpdateBookmarkEntry,
@@ -41,9 +34,6 @@ import {
   BulkUpdateCohortEntry,
   CreateCohortParams,
 } from "../../src/types/entities/cohorts.js";
-import { CreateCustomEventParams } from "../../src/types/entities/data-governance.js";
-import { CreateTagParams } from "../../src/types/entities/lexicon.js";
-import { CreateWebhookParams } from "../../src/types/entities/webhooks.js";
 import {
   BlueprintCard,
   BlueprintFinishParams,
@@ -53,6 +43,17 @@ import {
   UpdateDashboardParams,
   UpdateReportLinkParams,
 } from "../../src/types/entities/dashboards.js";
+import { CreateCustomEventParams } from "../../src/types/entities/data-governance.js";
+import { CreateTagParams } from "../../src/types/entities/lexicon.js";
+import { CreateWebhookParams } from "../../src/types/entities/webhooks.js";
+import { Workspace } from "../../src/workspace.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  type FakeTransport,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 import { MINIMAL_FUNNEL_PARAMS } from "./bookmark-fixtures.js";
 
 /** A canned-response handler (the `httpx.MockTransport` handler twin). */
@@ -133,7 +134,7 @@ function ok(results: unknown): CannedResponse {
 async function assertCoded(call: Promise<unknown>): Promise<void> {
   const error = await call.then(
     () => null,
-    (exc: unknown) => exc,
+    (error_: unknown) => error_,
   );
   expect(error).toBeInstanceOf(ResponseValidationError);
   expect((error as ResponseValidationError).code).toBe(

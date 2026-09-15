@@ -34,16 +34,16 @@ import {
   MixpanelHeadlessError,
   ParamValidationError,
 } from "../../src/errors.js";
-import { Filter } from "../../src/types/index.js";
-import { filterUnchecked } from "../../src/types/query-params/filter.js";
 import {
-  RESOURCE_TYPE_MAP,
   buildDatetimeFilter,
   buildNumberFilter,
   buildSegfilterEntry,
   buildStringFilter,
   convertDateFormat,
+  RESOURCE_TYPE_MAP,
 } from "../../src/query/segfilter.js";
+import { Filter } from "../../src/types/index.js";
+import { filterUnchecked } from "../../src/types/query-params/filter.js";
 
 /** Narrow the `filter` sub-dict of a segfilter entry for assertions. */
 function filterOf(entry: Record<string, unknown>): Record<string, unknown> {
@@ -518,8 +518,8 @@ describe("segfilter edge cases", () => {
     try {
       buildSegfilterEntry(f);
       expect.unreachable("expected SG1");
-    } catch (exc) {
-      expect((exc as ParamValidationError).code).toBe(
+    } catch (error) {
+      expect((error as ParamValidationError).code).toBe(
         "SG1_UNKNOWN_STRING_OPERATOR",
       );
     }
@@ -538,8 +538,8 @@ describe("segfilter edge cases", () => {
     try {
       buildSegfilterEntry(f);
       expect.unreachable("expected SG2");
-    } catch (exc) {
-      expect((exc as ParamValidationError).code).toBe(
+    } catch (error) {
+      expect((error as ParamValidationError).code).toBe(
         "SG2_UNKNOWN_NUMBER_OPERATOR",
       );
     }
@@ -558,8 +558,8 @@ describe("segfilter edge cases", () => {
     try {
       buildSegfilterEntry(f);
       expect.unreachable("expected SG3");
-    } catch (exc) {
-      expect((exc as ParamValidationError).code).toBe(
+    } catch (error) {
+      expect((error as ParamValidationError).code).toBe(
         "SG3_UNKNOWN_DATETIME_OPERATOR",
       );
     }
@@ -578,8 +578,8 @@ describe("segfilter edge cases", () => {
     try {
       buildSegfilterEntry(f);
       expect.unreachable("expected SG4");
-    } catch (exc) {
-      expect((exc as ParamValidationError).code).toBe(
+    } catch (error) {
+      expect((error as ParamValidationError).code).toBe(
         "SG4_UNSUPPORTED_PROPERTY_TYPE",
       );
     }
@@ -622,9 +622,9 @@ describe("coded segfilter guards", () => {
       try {
         buildStringFilter(operator, "y");
         expect.unreachable("expected SG1");
-      } catch (exc) {
-        expect(exc).toBeInstanceOf(ParamValidationError);
-        expect((exc as ParamValidationError).code).toBe(
+      } catch (error) {
+        expect(error).toBeInstanceOf(ParamValidationError);
+        expect((error as ParamValidationError).code).toBe(
           "SG1_UNKNOWN_STRING_OPERATOR",
         );
       }
@@ -636,9 +636,9 @@ describe("coded segfilter guards", () => {
     try {
       buildSegfilterEntry(f);
       expect.unreachable("expected SG1");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(ParamValidationError);
-      expect((exc as ParamValidationError).code).toBe(
+    } catch (error) {
+      expect(error).toBeInstanceOf(ParamValidationError);
+      expect((error as ParamValidationError).code).toBe(
         "SG1_UNKNOWN_STRING_OPERATOR",
       );
     }
@@ -650,9 +650,9 @@ describe("coded segfilter guards", () => {
       try {
         buildNumberFilter(operator, 1);
         expect.unreachable("expected SG2");
-      } catch (exc) {
-        expect(exc).toBeInstanceOf(ParamValidationError);
-        expect((exc as ParamValidationError).code).toBe(
+      } catch (error) {
+        expect(error).toBeInstanceOf(ParamValidationError);
+        expect((error as ParamValidationError).code).toBe(
           "SG2_UNKNOWN_NUMBER_OPERATOR",
         );
       }
@@ -664,9 +664,9 @@ describe("coded segfilter guards", () => {
     try {
       buildSegfilterEntry(f);
       expect.unreachable("expected SG2");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(ParamValidationError);
-      expect((exc as ParamValidationError).code).toBe(
+    } catch (error) {
+      expect(error).toBeInstanceOf(ParamValidationError);
+      expect((error as ParamValidationError).code).toBe(
         "SG2_UNKNOWN_NUMBER_OPERATOR",
       );
     }
@@ -678,9 +678,9 @@ describe("coded segfilter guards", () => {
       try {
         buildDatetimeFilter(operator, "2026-01-01", null);
         expect.unreachable("expected SG3");
-      } catch (exc) {
-        expect(exc).toBeInstanceOf(ParamValidationError);
-        expect((exc as ParamValidationError).code).toBe(
+      } catch (error) {
+        expect(error).toBeInstanceOf(ParamValidationError);
+        expect((error as ParamValidationError).code).toBe(
           "SG3_UNKNOWN_DATETIME_OPERATOR",
         );
       }
@@ -692,9 +692,9 @@ describe("coded segfilter guards", () => {
     try {
       buildSegfilterEntry(f);
       expect.unreachable("expected SG3");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(ParamValidationError);
-      expect((exc as ParamValidationError).code).toBe(
+    } catch (error) {
+      expect(error).toBeInstanceOf(ParamValidationError);
+      expect((error as ParamValidationError).code).toBe(
         "SG3_UNKNOWN_DATETIME_OPERATOR",
       );
     }
@@ -707,9 +707,9 @@ describe("coded segfilter guards", () => {
       try {
         buildSegfilterEntry(f);
         expect.unreachable("expected SG4");
-      } catch (exc) {
-        expect(exc).toBeInstanceOf(ParamValidationError);
-        expect((exc as ParamValidationError).code).toBe(
+      } catch (error) {
+        expect(error).toBeInstanceOf(ParamValidationError);
+        expect((error as ParamValidationError).code).toBe(
           "SG4_UNSUPPORTED_PROPERTY_TYPE",
         );
       }
@@ -724,10 +724,10 @@ describe("coded segfilter guards", () => {
     try {
       buildSegfilterEntry(f);
       expect.unreachable("expected SG4");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(MixpanelHeadlessError);
-      expect(exc).toBeInstanceOf(ParamValidationError);
-      expect((exc as ParamValidationError).code).toBe(
+    } catch (error) {
+      expect(error).toBeInstanceOf(MixpanelHeadlessError);
+      expect(error).toBeInstanceOf(ParamValidationError);
+      expect((error as ParamValidationError).code).toBe(
         "SG4_UNSUPPORTED_PROPERTY_TYPE",
       );
     }

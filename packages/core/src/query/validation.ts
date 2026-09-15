@@ -22,22 +22,21 @@
 
 export {
   validateFlowArgs,
-  validateFunnelArgs,
-  validateGroupByArgs,
-  validateQueryArgs,
-  validateRetentionArgs,
-  validateTimeArgs,
   type ValidateFlowArgsOptions,
+  validateFunnelArgs,
   type ValidateFunnelArgsOptions,
+  validateGroupByArgs,
   type ValidateGroupByArgsOptions,
+  validateQueryArgs,
   type ValidateQueryArgsOptions,
+  validateRetentionArgs,
   type ValidateRetentionArgsOptions,
+  validateTimeArgs,
   type ValidateTimeArgsOptions,
 } from "./validation-args.js";
-
 export {
   validateBookmark,
+  type ValidateBookmarkOptions,
   validateFlowBookmark,
   validateSortingBlock,
-  type ValidateBookmarkOptions,
 } from "./validation-bookmark.js";

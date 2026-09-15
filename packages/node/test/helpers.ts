@@ -6,8 +6,8 @@
 // is NEVER touched by tests.
 
 import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
 import * as os from "node:os";
+import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
 
 /**
@@ -16,7 +16,7 @@ import { join, resolve, sep } from "node:path";
  * @param cleanups - Array collecting cleanup thunks (run in afterEach).
  * @returns Absolute path of the fresh temp directory.
  */
-export function makeTempDir(cleanups: (() => void)[]): string {
+export function makeTempDir(cleanups: Array<() => void>): string {
   const dir = mkdtempSync(join(tmpdir(), "mp-b8n1-"));
   assertNotUnderHome(dir);
   cleanups.push(() => {
@@ -50,13 +50,15 @@ export function assertNotUnderHome(path: string): void {
 export function scrubMpEnv(): () => void {
   const saved = new Map<string, string>();
   for (const key of Object.keys(process.env)) {
-    if (key.startsWith("MP_")) {
-      const value = process.env[key];
-      if (value !== undefined) {
-        saved.set(key, value);
-      }
-      delete process.env[key];
+    if (!key.startsWith("MP_")) {
+      continue;
     }
+
+    const value = process.env[key];
+    if (value !== undefined) {
+      saved.set(key, value);
+    }
+    delete process.env[key];
   }
   return () => {
     for (const key of Object.keys(process.env)) {

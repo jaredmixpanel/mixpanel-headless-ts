@@ -9,6 +9,7 @@
  */
 
 import { paginateAll } from "@mixpanel-headless/core/internal";
+
 import type { JsonValue } from "./json-value.js";
 import type { ImplementationRegistry, InvocationContext } from "./runner.js";
 import { clientFromSession, requireWireKwarg, runWire } from "./wire-client.js";

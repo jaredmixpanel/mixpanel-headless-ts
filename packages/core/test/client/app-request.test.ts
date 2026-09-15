@@ -16,6 +16,19 @@
 // is Python-only; errors.ts docstring covers it — the class+code
 // assertions are preserved).
 import { describe, expect, it } from "vitest";
+
+import {
+  appRequest,
+  type AppRequestDeps,
+} from "../../src/client/app-request.js";
+import { getUserAgent, requestHeaders } from "../../src/client/headers.js";
+import {
+  MixpanelHttpError,
+  type TransportRequestOptions,
+  type WireResponse,
+} from "../../src/client/internals.js";
+import { JsonNumber } from "../../src/client/json-value.js";
+import { ENDPOINTS, type Region } from "../../src/client/url.js";
 import {
   AuthenticationError,
   MixpanelHeadlessError,
@@ -24,19 +37,6 @@ import {
   RateLimitError,
   ServerError,
 } from "../../src/errors.js";
-import {
-  appRequest,
-  type AppRequestDeps,
-} from "../../src/client/app-request.js";
-import {
-  MixpanelHttpError,
-  type TransportRequestOptions,
-  type WireResponse,
-} from "../../src/client/internals.js";
-import { getUserAgent, requestHeaders } from "../../src/client/headers.js";
-import { ENDPOINTS } from "../../src/client/url.js";
-import { JsonNumber } from "../../src/client/json-value.js";
-import type { Region } from "../../src/client/url.js";
 
 /**
  * Build a canned WireResponse.
@@ -78,7 +78,7 @@ interface Harness {
  * @returns The recorded harness.
  */
 function harness(
-  script: readonly (WireResponse | Error)[],
+  script: ReadonlyArray<WireResponse | Error>,
   options: {
     maxRetries?: number;
     authHeader?: string;
@@ -161,7 +161,7 @@ describe("TestAppRequest", () => {
       maxRetries: 1,
     });
     const error = await appRequest(h.deps, "GET", "/dashboards").catch(
-      (e: unknown) => e,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(RateLimitError);
     expect((error as RateLimitError).projectId).toBe("12345");
@@ -174,13 +174,13 @@ describe("TestAppRequest", () => {
       maxRetries: -1,
     });
     const error = await appRequest(h.deps, "GET", "/dashboards").catch(
-      (e: unknown) => e,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(RateLimitError);
     expect((error as RateLimitError).projectId).toBe("12345");
     expect((error as RateLimitError).retryAfter).toBeNull();
     expect((error as RateLimitError).responseBody).toBeNull();
-    expect(h.calls.length).toBe(0);
+    expect(h.calls).toHaveLength(0);
   });
 
   it("test_unwraps_results_field", async () => {
@@ -221,7 +221,7 @@ describe("TestAppRequest", () => {
       h.deps,
       "GET",
       "/projects/12345/dashboards/999",
-    ).catch((e: unknown) => e);
+    ).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(QueryError);
     expect((error as QueryError).statusCode).toBe(404);
   });
@@ -234,7 +234,7 @@ describe("TestAppRequest", () => {
       h.deps,
       "GET",
       "/projects/12345/dashboards",
-    ).catch((e: unknown) => e);
+    ).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(QueryError);
     expect((error as QueryError).statusCode).toBe(422);
   });
@@ -329,7 +329,7 @@ describe("TestAppRequestFormBody", () => {
       "/projects/12345/custom_events/",
       { formBody: { name: "X", alternatives: "[]" } },
     );
-    expect(h.calls.length).toBe(2); // one retry then success
+    expect(h.calls).toHaveLength(2); // one retry then success
     expect(result).toEqual({ id: new JsonNumber("1") });
   });
 
@@ -340,7 +340,7 @@ describe("TestAppRequestFormBody", () => {
       "POST",
       "/projects/12345/custom_events/",
       { formBody: { name: "X", alternatives: "[]" } },
-    ).catch((e: unknown) => e);
+    ).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(MixpanelHeadlessError);
     expect((error as MixpanelHeadlessError).code).toBe("HTTP_ERROR");
   });
@@ -352,9 +352,9 @@ describe("TestAppRequestFormBody", () => {
       "POST",
       "/projects/12345/custom_events/",
       { jsonBody: { a: 1 }, formBody: { b: "2" } },
-    ).catch((e: unknown) => e);
+    ).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(ParamValidationError);
-    expect(h.calls.length).toBe(0); // guard fires pre-transport
+    expect(h.calls).toHaveLength(0); // guard fires pre-transport
   });
 });
 
@@ -364,7 +364,7 @@ describe("TestCodedAppRequestCodes", () => {
     const error = await appRequest(h.deps, "POST", "/projects/12345/x", {
       jsonBody: {},
       formBody: {},
-    }).catch((e: unknown) => e);
+    }).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(ParamValidationError);
     expect((error as ParamValidationError).code).toBe(
       "AC1_BODY_MUTUALLY_EXCLUSIVE",
@@ -376,7 +376,7 @@ describe("TestCodedAppRequestCodes", () => {
     const error = await appRequest(h.deps, "PUT", "/projects/12345/x", {
       jsonBody: { a: 1 },
       formBody: { b: "2" },
-    }).catch((e: unknown) => e);
+    }).catch((error_: unknown) => error_);
     expect((error as ParamValidationError).code).toBe(
       "AC1_BODY_MUTUALLY_EXCLUSIVE",
     );
@@ -427,7 +427,7 @@ describe("TestErrorContextSymmetry (app_request half)", () => {
         params: { workspace_id: "77" },
         jsonBody: { title: "x" },
       },
-    ).catch((e: unknown) => e)) as QueryError;
+    ).catch((error_: unknown) => error_)) as QueryError;
     expect(error).toBeInstanceOf(QueryError);
     expect(error.requestParams).toEqual({ workspace_id: "77" });
     expect(error.requestBody).toEqual({ title: "x" });
@@ -442,7 +442,7 @@ describe("TestErrorContextSymmetry (app_request half)", () => {
       {
         params: { workspace_id: "77" },
       },
-    ).catch((e: unknown) => e)) as RateLimitError;
+    ).catch((error_: unknown) => error_)) as RateLimitError;
     expect(error).toBeInstanceOf(RateLimitError);
     expect(error.requestParams).toEqual({ workspace_id: "77" });
     expect(error.projectId).toBe("12345");
@@ -457,7 +457,7 @@ describe("TestErrorContextSymmetry (app_request half)", () => {
       {
         params: { workspace_id: "77" },
       },
-    ).catch((e: unknown) => e)) as MixpanelHeadlessError;
+    ).catch((error_: unknown) => error_)) as MixpanelHeadlessError;
     expect(error.details["request_params"]).toEqual({ workspace_id: "77" });
   });
 });
@@ -489,7 +489,7 @@ describe("app_request 422 with non-JSON body", () => {
   it("truncates the text body at 500 codepoints into response_body", async () => {
     const h = harness([res(422, "x".repeat(600))]);
     const error = (await appRequest(h.deps, "GET", "/d").catch(
-      (e: unknown) => e,
+      (error_: unknown) => error_,
     )) as QueryError;
     expect(error).toBeInstanceOf(QueryError);
     expect(error.responseBody).toBe("x".repeat(500));
@@ -507,7 +507,7 @@ describe("app_request 422 body-parse fidelity (arbiter fixes F1/F3)", () => {
   it("422 body with a non-finite member keeps DICT shape and error message", async () => {
     const h = harness([res(422, '{"error": "bad field", "v": Infinity}')]);
     const error = (await appRequest(h.deps, "GET", "/d").catch(
-      (e: unknown) => e,
+      (error_: unknown) => error_,
     )) as QueryError;
     expect(error).toBeInstanceOf(QueryError);
     expect(error.statusCode).toBe(422);
@@ -520,7 +520,7 @@ describe("app_request 422 body-parse fidelity (arbiter fixes F1/F3)", () => {
   it("parser stack overflow on a 422 body PROPAGATES (RecursionError analog)", async () => {
     const h = harness([res(422, "[".repeat(1_000_000))]);
     const error = await appRequest(h.deps, "GET", "/d").catch(
-      (e: unknown) => e,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(RangeError);
   });

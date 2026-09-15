@@ -20,16 +20,17 @@
  *   input, which is what the property is guarding (statelessness).
  */
 
-import { describe, it, expect } from "vitest";
 import fc from "fast-check";
+import { describe, expect, it } from "vitest";
+
 import {
   DISPLAY_OPTIONS_MODEL,
   FLOWS_BOOKMARK_PARAMS_MODEL,
   FLOWS_BOOKMARK_STEP_MODEL,
+  getRootModelForBookmarkType,
   INSIGHTS_BOOKMARK_PARAMS_MODEL,
   PARTIAL_UPDATE_SUB_MODELS,
   SECTIONS_MODEL,
-  getRootModelForBookmarkType,
 } from "../../src/bookmarks/schema.js";
 import {
   SORT_BY_COLUMNS_CONFIG_MODEL,
@@ -249,7 +250,7 @@ const safeExtraFieldNames = fc
  * Port of `_INSIGHTS_LEGACY_FIELDS` (`:100-133`) — the 32 documented
  * `Ignore[T]` fields with type-correct values.
  */
-const INSIGHTS_LEGACY_FIELDS: readonly (readonly [string, unknown])[] = [
+const INSIGHTS_LEGACY_FIELDS: ReadonlyArray<readonly [string, unknown]> = [
   ["alignment", "any-json-value"],
   ["anchor_position", 1],
   ["anchorPosition", 1],

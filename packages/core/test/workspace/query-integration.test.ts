@@ -22,19 +22,20 @@
 //   no request, asserted through the fake transport's empty capture log.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
 import { QueryError } from "../../src/errors.js";
 import { Filter } from "../../src/types/query-params/filter.js";
 import { Formula, Metric } from "../../src/types/query-params/metric.js";
 import { QueryResult } from "../../src/types/results/query-engine.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   createMockClient,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 import {
+  type MockWorkspaceClient,
   mockWorkspaceClient,
   TEST_SESSION,
-  type MockWorkspaceClient,
 } from "../../test-support/workspace-test-helpers.js";
 
 /**
@@ -171,7 +172,7 @@ describe("TestQueryTimeseries", () => {
   it("the timeseries frame has 3 rows and date/event/count columns", async () => {
     const { ws } = wsWith(TIMESERIES_RESPONSE);
     const result = await ws.query("Login");
-    expect(result.toRows().length).toBe(3);
+    expect(result.toRows()).toHaveLength(3);
     expect(result.rowColumns()).toEqual(["date", "event", "count"]);
   });
 
@@ -208,7 +209,7 @@ describe("TestQueryNonExistentEvent", () => {
     const { ws } = wsWith(EMPTY_RESPONSE);
     const result = await ws.query("NonExistentEvent");
     expect(result).toBeInstanceOf(QueryResult);
-    expect(result.toRows().length).toBe(0);
+    expect(result.toRows()).toHaveLength(0);
   });
 
   it("an empty result still has computed_at", async () => {
@@ -228,7 +229,7 @@ describe("TestMultiEventIntegration", () => {
     const result = await ws.query(["Signup", "Login", "Purchase"], {
       math: "unique",
     });
-    expect(result.toRows().length).toBe(3);
+    expect(result.toRows()).toHaveLength(3);
     const events = new Set(result.toRows().map((r) => r["event"]));
     expect(events.size).toBe(3);
   });
@@ -249,7 +250,7 @@ describe("TestFormulaIntegration", () => {
       { formula: "(B / A) * 100", formula_label: "Conversion Rate" },
     );
     expect(Object.hasOwn(result.series, "Conversion Rate")).toBe(true);
-    expect(result.toRows().length).toBe(2);
+    expect(result.toRows()).toHaveLength(2);
   });
 });
 
@@ -261,7 +262,7 @@ describe("TestTotalModeIntegration", () => {
   it("total mode returns a single row per metric", async () => {
     const { ws } = wsWith(TOTAL_RESPONSE);
     const result = await ws.query("Login", { math: "unique", mode: "total" });
-    expect(result.toRows().length).toBe(1);
+    expect(result.toRows()).toHaveLength(1);
     expect(result.rowColumns()).toEqual(["event", "count"]);
     expect(result.toRows()[0]!["count"]).toBe(3551);
   });
@@ -331,7 +332,7 @@ describe("TestFormulaInListIntegration", () => {
     ]);
 
     const show = showOf(result.params);
-    expect(show.length).toBe(3);
+    expect(show).toHaveLength(3);
     expect((show[0]!["behavior"] as Record<string, unknown>)["name"]).toBe(
       "Signup",
     );
@@ -382,7 +383,7 @@ describe("TestBuildParamsNoApiCall", () => {
   it("build_params returns params without calling the client", async () => {
     const { ws, mock } = wsWith(TIMESERIES_RESPONSE);
     const result = await ws.buildParams("Login");
-    expect(mock.insightsCalls.length).toBe(0);
+    expect(mock.insightsCalls).toHaveLength(0);
     expect(typeof result).toBe("object");
   });
 
@@ -399,6 +400,6 @@ describe("TestBuildParamsNoApiCall", () => {
     const result = await workspace.buildParams("Login");
 
     expect(Object.hasOwn(result, "sections")).toBe(true);
-    expect(transport.captures.length).toBe(0);
+    expect(transport.captures).toHaveLength(0);
   });
 });

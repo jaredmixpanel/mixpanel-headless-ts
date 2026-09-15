@@ -14,9 +14,10 @@
 //   `parseAccount(payload)` (the discriminated-union re-validation
 //   escape hatch).
 import { describe, expect, it } from "vitest";
+
 import {
-  parseAccount,
   type OAuthTokenAccount,
+  parseAccount,
 } from "../../src/auth/account.js";
 import { ResponseValidationError } from "../../src/errors.js";
 import { Secret } from "../../src/secret.js";
@@ -30,7 +31,7 @@ describe("TestAccountNameBoundaries", () => {
       username: "u",
       secret: "s",
     });
-    expect(sa.name.length).toBe(64);
+    expect(sa.name).toHaveLength(64);
   });
 
   it("test_account_name_65_chars_fails", () => {
@@ -51,7 +52,7 @@ describe("TestAccountNameBoundaries", () => {
     ["team/slash"], // slash
     ["team\nnewline"], // newline
     ["team\x00null"], // null byte
-    ["team\x7fdel"], // DEL char
+    ["team\x7Fdel"], // DEL char
     ["teaméaccent"], // accented char
     ["team😀emoji"], // emoji
     ["team\ttab"], // tab
@@ -83,7 +84,7 @@ describe("TestOAuthTokenValidatorUnderCopy", () => {
     const bad: OAuthTokenAccount = { ...original, token_env: "MY_ENV" };
     // Both fields are now set — the XOR validator never re-fired.
     expect(bad.token).not.toBeNull();
-    expect(bad.token).not.toBeUndefined();
+    expect(bad.token).toBeDefined();
     expect(bad.token_env).toBe("MY_ENV");
   });
 

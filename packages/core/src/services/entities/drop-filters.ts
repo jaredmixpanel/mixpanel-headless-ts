@@ -26,7 +26,7 @@ export interface DropFilterMethods {
    * @returns The filter list verbatim.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  listDropFilters(signal?: AbortSignal): Promise<JsonValue[]>;
+  listDropFilters: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
    * Create a drop filter (`create_drop_filter`, `:7208-7241` — POST;
@@ -37,10 +37,10 @@ export interface DropFilterMethods {
    * @returns All drop filters after creation.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  createDropFilter(
+  createDropFilter: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<JsonValue[]>;
+  ) => Promise<JsonValue[]>;
 
   /**
    * Update a drop filter (`update_drop_filter`, `:7243-7276` — PATCH;
@@ -51,10 +51,10 @@ export interface DropFilterMethods {
    * @returns All drop filters after the update.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  updateDropFilter(
+  updateDropFilter: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<JsonValue[]>;
+  ) => Promise<JsonValue[]>;
 
   /**
    * Delete a drop filter by ID (`delete_drop_filter`, `:7278-7309` —
@@ -65,10 +65,10 @@ export interface DropFilterMethods {
    * @returns All drop filters after deletion.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  deleteDropFilter(
+  deleteDropFilter: (
     dropFilterId: number,
     signal?: AbortSignal,
-  ): Promise<JsonValue[]>;
+  ) => Promise<JsonValue[]>;
 
   /**
    * Get drop-filter usage limits (`get_drop_filter_limits`,
@@ -78,7 +78,9 @@ export interface DropFilterMethods {
    * @returns The limits dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  getDropFilterLimits(signal?: AbortSignal): Promise<Record<string, JsonValue>>;
+  getDropFilterLimits: (
+    signal?: AbortSignal,
+  ) => Promise<Record<string, JsonValue>>;
 }
 
 /**

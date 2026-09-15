@@ -15,8 +15,9 @@
  * defined by the JSON tree shape itself.
  */
 
-import { pythonFloatStr, pythonRepr, pythonStr } from "@mixpanel-headless/core";
 import { JsonNumber } from "@mixpanel-headless/conformance-runner";
+import { pythonFloatStr, pythonRepr, pythonStr } from "@mixpanel-headless/core";
+
 import { RawObject, type RawValue } from "./raw-json.js";
 
 /**
@@ -28,7 +29,6 @@ import { RawObject, type RawValue } from "./raw-json.js";
  * @param value - The UNDECODED argument value (verbatim number tokens,
  *   ordered object members).
  * @returns The CPython `str()` rendering.
- *
  * @example
  * ```typescript
  * pythonStrRaw(parseRawJson("[18.0, 2]")); // "[18.0, 2]"

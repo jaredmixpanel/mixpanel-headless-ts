@@ -14,11 +14,12 @@
 
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import { createMixpanelClient } from "../../src/client/client.js";
 import {
+  type EndpointKind,
   ENDPOINTS,
   endpointsFor,
-  type EndpointKind,
   type Region,
 } from "../../src/client/url.js";
 import { makeSession } from "../../test-support/client-test-helpers.js";

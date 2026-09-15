@@ -28,18 +28,19 @@
 //   translate.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
+import { sortedByCodepoint } from "../../src/compat/codepoint.js";
 import { BookmarkValidationError } from "../../src/errors.js";
 import { filterUnchecked } from "../../src/types/query-params/filter.js";
+import type { ProfilePageResult } from "../../src/types/results/discovery.js";
 import { UserQueryResult } from "../../src/types/results/query-engine.js";
-import { ProfilePageResult } from "../../src/types/results/discovery.js";
-import { sortedByCodepoint } from "../../src/compat/codepoint.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   makePageResult,
   makeRawProfile,
+  type MockWorkspaceClient,
   mockWorkspaceClient,
   TEST_SESSION,
-  type MockWorkspaceClient,
 } from "../../test-support/workspace-test-helpers.js";
 
 /**
@@ -119,7 +120,7 @@ describe("TestQueryUserDefaultLimit", () => {
 
     expect(result).toBeInstanceOf(UserQueryResult);
     expect(result.mode).toBe("profiles");
-    expect(result.profiles.length).toBe(1);
+    expect(result.profiles).toHaveLength(1);
     expect(result.profiles[0]!["distinct_id"]).toBe("user_001");
   });
 
@@ -148,7 +149,7 @@ describe("TestQueryUserDefaultLimit", () => {
 
     await workspaceFactory(mock).queryUser({ mode: "profiles" });
 
-    expect(mock.exportPageCalls.length).toBe(1);
+    expect(mock.exportPageCalls).toHaveLength(1);
   });
 });
 
@@ -172,7 +173,7 @@ describe("TestQueryUserExplicitLimit", () => {
       limit: 2,
     });
 
-    expect(result.profiles.length).toBe(2);
+    expect(result.profiles).toHaveLength(2);
   });
 
   it("paginates across multiple pages", async () => {
@@ -206,8 +207,8 @@ describe("TestQueryUserExplicitLimit", () => {
       limit: 3,
     });
 
-    expect(result.profiles.length).toBe(3);
-    expect(mock.exportPageCalls.length).toBe(3);
+    expect(result.profiles).toHaveLength(3);
+    expect(mock.exportPageCalls).toHaveLength(3);
   });
 
   it("stops paginating once the limit is met", async () => {
@@ -227,9 +228,9 @@ describe("TestQueryUserExplicitLimit", () => {
       limit: 2,
     });
 
-    expect(result.profiles.length).toBe(2);
+    expect(result.profiles).toHaveLength(2);
     // Should not fetch page 1 since the limit is already met
-    expect(mock.exportPageCalls.length).toBe(1);
+    expect(mock.exportPageCalls).toHaveLength(1);
   });
 
   it("a huge limit fetches all pages until has_more is false", async () => {
@@ -256,8 +257,8 @@ describe("TestQueryUserExplicitLimit", () => {
       limit: 100_000,
     });
 
-    expect(result.profiles.length).toBe(2);
-    expect(mock.exportPageCalls.length).toBe(2);
+    expect(result.profiles).toHaveLength(2);
+    expect(mock.exportPageCalls).toHaveLength(2);
   });
 });
 
@@ -350,7 +351,7 @@ describe("TestQueryUserSorting", () => {
     });
 
     expect(mock.exportPageCalls[0]!.options["sort_key"]).toBe(
-      'properties["weird\\"prop"]',
+      String.raw`properties["weird\"prop"]`,
     );
   });
 
@@ -360,11 +361,11 @@ describe("TestQueryUserSorting", () => {
 
     await workspaceFactory(mock).queryUser({
       mode: "profiles",
-      sort_by: "back\\slash",
+      sort_by: String.raw`back\slash`,
     });
 
     expect(mock.exportPageCalls[0]!.options["sort_key"]).toBe(
-      'properties["back\\\\slash"]',
+      String.raw`properties["back\\slash"]`,
     );
   });
 });
@@ -416,9 +417,9 @@ describe("TestQueryUserDistinctId", () => {
       distinct_id: "user_target",
     });
 
-    expect(result.profiles.length).toBe(1);
+    expect(result.profiles).toHaveLength(1);
     expect(result.profiles[0]!["distinct_id"]).toBe("user_target");
-    expect(mock.exportPageCalls.length).toBe(1);
+    expect(mock.exportPageCalls).toHaveLength(1);
   });
 });
 
@@ -439,7 +440,7 @@ describe("TestQueryUserDistinctIds", () => {
       limit: 100_000,
     });
 
-    expect(result.profiles.length).toBe(2);
+    expect(result.profiles).toHaveLength(2);
     const ids = result.profiles.map((p) => p["distinct_id"]);
     expect(ids).toContain("user_001");
     expect(ids).toContain("user_002");
@@ -648,7 +649,7 @@ describe("TestQueryUserDataFrame", () => {
       limit: 2,
     });
 
-    expect(result.toRows().length).toBe(2);
+    expect(result.toRows()).toHaveLength(2);
   });
 });
 
@@ -672,9 +673,9 @@ describe("TestQueryUserEmptyResult", () => {
 
     const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
 
-    expect(result.profiles.length).toBe(0);
+    expect(result.profiles).toHaveLength(0);
     expect(result.total).toBe(0);
-    expect(result.toRows().length).toBe(0);
+    expect(result.toRows()).toHaveLength(0);
   });
 
   it("the empty frame still has distinct_id and last_seen columns", async () => {
@@ -879,7 +880,7 @@ describe("TestQueryUserAggregatePropertyEscaping", () => {
     });
 
     expect(mock.engageStatsCalls[0]!["action"]).toBe(
-      'extremes(properties["has\\"quote"])',
+      String.raw`extremes(properties["has\"quote"])`,
     );
   });
 });

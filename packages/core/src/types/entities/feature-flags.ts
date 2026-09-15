@@ -8,17 +8,17 @@
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
-import {
-  EntityModel,
-  oneOf,
-  prepareInit,
-  type EntityFieldSpec,
-} from "./model-base.js";
-import {
+import type {
   FeatureFlagStatus,
   FlagContractStatus,
   ServingMethod,
 } from "../enums.js";
+import {
+  type EntityFieldSpec,
+  EntityModel,
+  oneOf,
+  prepareInit,
+} from "./model-base.js";
 
 /**
  * Constructor input for {@link FeatureFlag} — absent keys take the Python
@@ -38,7 +38,7 @@ export interface FeatureFlagInit {
   /** Current lifecycle status. */
   readonly status?: FeatureFlagStatus | undefined;
   /** Tags for organization. */
-  readonly tags?: ReadonlyArray<string> | undefined;
+  readonly tags?: readonly string[] | undefined;
   /** Linked experiment ID if flag backs an experiment. */
   readonly experiment_id?: string | null | undefined;
   /** Flag context identifier. */
@@ -149,7 +149,7 @@ export class FeatureFlag extends EntityModel {
   /** Current lifecycle status. */
   declare readonly status: FeatureFlagStatus;
   /** Tags for organization. */
-  declare readonly tags: ReadonlyArray<string>;
+  declare readonly tags: readonly string[];
   /** Linked experiment ID if flag backs an experiment. */
   declare readonly experiment_id: string | null;
   /** Flag context identifier. */
@@ -233,7 +233,7 @@ export interface CreateFeatureFlagParamsInit {
   /** Initial status (defaults to disabled). */
   readonly status?: FeatureFlagStatus | null | undefined;
   /** Tags for organization (required by API, defaults to empty list). */
-  readonly tags?: ReadonlyArray<string> | undefined;
+  readonly tags?: readonly string[] | undefined;
   /** Flag context identifier (required by API). */
   readonly context?: string | undefined;
   /** How flag values are delivered (required by API). */
@@ -305,7 +305,7 @@ export class CreateFeatureFlagParams extends EntityModel {
   /** Initial status (defaults to disabled). */
   declare readonly status: FeatureFlagStatus | null;
   /** Tags for organization (required by API, defaults to empty list). */
-  declare readonly tags: ReadonlyArray<string>;
+  declare readonly tags: readonly string[];
   /** Flag context identifier (required by API). */
   declare readonly context: string;
   /** How flag values are delivered (required by API). */
@@ -361,7 +361,7 @@ export interface UpdateFeatureFlagParamsInit {
   /** Optional description. */
   readonly description?: string | null | undefined;
   /** Tags for organization (required by API, defaults to empty list). */
-  readonly tags?: ReadonlyArray<string> | undefined;
+  readonly tags?: readonly string[] | undefined;
   /** Flag context identifier (required by API). */
   readonly context?: string | undefined;
   /** How flag values are delivered (required by API). */
@@ -412,7 +412,7 @@ export class UpdateFeatureFlagParams extends EntityModel {
   /** Optional description. */
   declare readonly description: string | null;
   /** Tags for organization (required by API, defaults to empty list). */
-  declare readonly tags: ReadonlyArray<string>;
+  declare readonly tags: readonly string[];
   /** Flag context identifier (required by API). */
   declare readonly context: string;
   /** How flag values are delivered (required by API). */
@@ -579,7 +579,7 @@ export class FlagHistoryParams extends EntityModel {
  */
 export interface FlagHistoryResponseInit {
   /** Array of event arrays. */
-  readonly events: ReadonlyArray<ReadonlyArray<unknown>>;
+  readonly events: ReadonlyArray<readonly unknown[]>;
   /** Total number of events. */
   readonly count: number;
 }
@@ -604,7 +604,7 @@ export class FlagHistoryResponse extends EntityModel {
   ];
 
   /** Array of event arrays. */
-  declare readonly events: ReadonlyArray<ReadonlyArray<unknown>>;
+  declare readonly events: ReadonlyArray<readonly unknown[]>;
   /** Total number of events. */
   declare readonly count: number;
 

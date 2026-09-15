@@ -17,7 +17,7 @@
  * tokens are barred from vector files).
  */
 
-import { JsonNumber, attachKeyOrder, type JsonValue } from "./json-value.js";
+import { attachKeyOrder, JsonNumber, type JsonValue } from "./json-value.js";
 
 /** Error raised for malformed JSON input, with a character offset. */
 export class LosslessJsonError extends Error {
@@ -43,7 +43,7 @@ const NUMBER_TOKEN = /-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/y;
 /** Matches a JSON string token at a given position (sticky). */
 const STRING_TOKEN =
   // eslint-disable-next-line no-control-regex -- RFC 8259 forbids raw control chars in strings; the class is intentional
-  /"(?:[^"\\\u0000-\u001f]|\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4}))*"/y;
+  /"(?:[^"\\\u0000-\u001F]|\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4}))*"/y;
 
 /** Options of {@link parseLossless}. */
 export interface ParseLosslessOptions {
@@ -66,7 +66,6 @@ export interface ParseLosslessOptions {
  * @returns The parsed value; finite numbers are {@link JsonNumber}
  *   instances (non-finite constants, when enabled, are native numbers).
  * @throws LosslessJsonError - On any syntax error or trailing content.
- *
  * @example
  * ```typescript
  * const value = parseLossless('{"a": 18.0}');
@@ -142,36 +141,44 @@ class Parser {
     }
     const ch = this.text[this.pos];
     switch (ch) {
-      case "{":
+      case "{": {
         return this.parseObject();
-      case "[":
+      }
+      case "[": {
         return this.parseArray();
-      case '"':
+      }
+      case '"': {
         return this.parseString();
-      case "t":
+      }
+      case "t": {
         this.expectLiteral("true");
         return true;
-      case "f":
+      }
+      case "f": {
         this.expectLiteral("false");
         return false;
-      case "n":
+      }
+      case "n": {
         this.expectLiteral("null");
         return null;
+      }
       // json.loads non-finite constants (arbiter fix F1) — exact case,
       // sign only on Infinity, exactly CPython's scanner constants.
-      case "N":
+      case "N": {
         if (this.pythonConstants) {
           this.expectLiteral("NaN");
           return Number.NaN;
         }
         return this.parseNumber();
-      case "I":
+      }
+      case "I": {
         if (this.pythonConstants) {
           this.expectLiteral("Infinity");
           return Number.POSITIVE_INFINITY;
         }
         return this.parseNumber();
-      case "-":
+      }
+      case "-": {
         if (
           this.pythonConstants &&
           this.text.startsWith("-Infinity", this.pos)
@@ -180,8 +187,10 @@ class Parser {
           return Number.NEGATIVE_INFINITY;
         }
         return this.parseNumber();
-      default:
+      }
+      default: {
         return this.parseNumber();
+      }
     }
   }
 
@@ -216,9 +225,9 @@ class Parser {
    * @returns The parsed object (duplicate keys: last wins).
    * @throws LosslessJsonError - On malformed input.
    */
-  private parseObject(): { [key: string]: JsonValue } {
+  private parseObject(): Record<string, JsonValue> {
     this.pos += 1; // consume '{'
-    const result: { [key: string]: JsonValue } = {};
+    const result: Record<string, JsonValue> = {};
     const sourceOrder: string[] = [];
     this.skipWhitespace();
     if (this.text[this.pos] === "}") {
@@ -263,12 +272,12 @@ class Parser {
    * @param sourceOrder - Keys in first-occurrence source order.
    */
   private attachOrderIfNeeded(
-    result: { [key: string]: JsonValue },
+    result: Record<string, JsonValue>,
     sourceOrder: readonly string[],
   ): void {
     const enumerated = Object.keys(result);
-    for (let i = 0; i < enumerated.length; i += 1) {
-      if (enumerated[i] !== sourceOrder[i]) {
+    for (const [i, element] of enumerated.entries()) {
+      if (element !== sourceOrder[i]) {
         attachKeyOrder(result, sourceOrder);
         return;
       }

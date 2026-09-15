@@ -466,10 +466,12 @@ export function firstOccurrenceColumns(
   const columns: string[] = [];
   for (const row of rows) {
     for (const key of Object.keys(row)) {
-      if (!seen.has(key)) {
-        seen.add(key);
-        columns.push(key);
+      if (seen.has(key)) {
+        continue;
       }
+
+      seen.add(key);
+      columns.push(key);
     }
   }
   return columns;

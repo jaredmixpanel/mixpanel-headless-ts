@@ -89,7 +89,6 @@ const CANONICAL_STYLE: JsonDumpsStyle = {
  *   (`Object of type X is not JSON serializable`; there is deliberately no
  *   `default=str` fallback), for non-finite numbers, and for numbers past
  *   `Number.MAX_SAFE_INTEGER`.
- *
  * @example
  * ```typescript
  * pythonJsonDumpsCanonical({ b: 1, a: [1, 2] });

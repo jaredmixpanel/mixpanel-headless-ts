@@ -14,6 +14,7 @@
  */
 
 import type { MixpanelClient } from "@mixpanel-headless/core";
+
 import type { JsonValue } from "./json-value.js";
 import type { ImplementationRegistry, InvocationContext } from "./runner.js";
 import { clientFromSession, requireWireKwarg, runWire } from "./wire-client.js";

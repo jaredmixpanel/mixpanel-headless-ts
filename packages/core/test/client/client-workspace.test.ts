@@ -18,6 +18,7 @@
 // Entry-point substitutions as in client-core.test.ts; MagicMock
 // resolvers translate to counting closures.
 import { describe, expect, it } from "vitest";
+
 import {
   AuthenticationError,
   MixpanelHeadlessError,
@@ -29,10 +30,10 @@ import {
 } from "../../src/errors.js";
 import { PublicWorkspace } from "../../src/types/entities/common.js";
 import {
-  createMockClient,
-  makeSession,
   type CannedResponse,
   type CapturedFetchRequest,
+  createMockClient,
+  makeSession,
 } from "../../test-support/client-test-helpers.js";
 
 /** oauth_credentials fixture (test_app_api_client.py:40-42). */
@@ -193,8 +194,8 @@ describe("TestResolveWorkspaceId", () => {
     let thrown: unknown;
     try {
       await client.resolveWorkspaceId();
-    } catch (cause) {
-      thrown = cause;
+    } catch (error) {
+      thrown = error;
     }
     expect(thrown).toBeInstanceOf(WorkspaceScopeError);
     expect((thrown as WorkspaceScopeError).code).toBe("NO_WORKSPACES");
@@ -235,7 +236,7 @@ describe("TestListWorkspaces", () => {
       },
     }));
     const workspaces = await client.listWorkspaces();
-    expect(workspaces.length).toBe(2);
+    expect(workspaces).toHaveLength(2);
     expect(workspaces[0]).toBeInstanceOf(PublicWorkspace);
     expect(workspaces[0]?.id).toBe(1);
     expect(workspaces[0]?.name).toBe("Default");
@@ -336,8 +337,8 @@ describe("TestListWorkspacesEdgeCases", () => {
     let thrown: unknown;
     try {
       await client.listWorkspaces();
-    } catch (cause) {
-      thrown = cause;
+    } catch (error) {
+      thrown = error;
     }
     expect(thrown).toBeInstanceOf(MixpanelHeadlessError);
     expect(String(thrown)).toContain("Unexpected response format");
@@ -351,8 +352,8 @@ describe("TestListWorkspacesEdgeCases", () => {
     let thrown: unknown;
     try {
       await client.listWorkspaces();
-    } catch (cause) {
-      thrown = cause;
+    } catch (error) {
+      thrown = error;
     }
     expect(thrown).toBeInstanceOf(ResponseValidationError);
     expect((thrown as ResponseValidationError).code).toBe(
@@ -368,8 +369,8 @@ describe("TestListWorkspacesEdgeCases", () => {
     let thrown: unknown;
     try {
       await client.listWorkspaces();
-    } catch (cause) {
-      thrown = cause;
+    } catch (error) {
+      thrown = error;
     }
     expect(thrown).toBeInstanceOf(ResponseValidationError);
     expect((thrown as ResponseValidationError).code).toBe(
@@ -566,7 +567,7 @@ describe("TestResolveWorkspaceIdWithResolver", () => {
     });
     expect(await client.resolveWorkspaceId()).toBe(7);
     expect(await client.resolveWorkspaceId()).toBe(7);
-    expect(calls.filter((p) => p.includes("metadata/index")).length).toBe(1);
+    expect(calls.filter((p) => p.includes("metadata/index"))).toHaveLength(1);
   });
 
   it("test_maybe_scoped_path_stays_project_scoped_without_workspace", () => {

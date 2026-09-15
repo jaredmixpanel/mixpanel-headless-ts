@@ -25,7 +25,7 @@ export interface CustomPropertyMethods {
    * @returns The property list verbatim.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  listCustomProperties(signal?: AbortSignal): Promise<JsonValue[]>;
+  listCustomProperties: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
    * Create a custom property (`create_custom_property`, `:7375-7409`
@@ -36,10 +36,10 @@ export interface CustomPropertyMethods {
    * @returns The created property dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  createCustomProperty(
+  createCustomProperty: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Get a custom property (`get_custom_property`, `:7411-7442` — GET
@@ -50,10 +50,10 @@ export interface CustomPropertyMethods {
    * @returns The property dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  getCustomProperty(
+  getCustomProperty: (
     propertyId: string,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Replace a custom property (`update_custom_property`, `:7444-7480`
@@ -65,11 +65,11 @@ export interface CustomPropertyMethods {
    * @returns The updated property dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  updateCustomProperty(
+  updateCustomProperty: (
     propertyId: string,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Delete a custom property (`delete_custom_property`, `:7482-7504`).
@@ -78,7 +78,10 @@ export interface CustomPropertyMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  deleteCustomProperty(propertyId: string, signal?: AbortSignal): Promise<void>;
+  deleteCustomProperty: (
+    propertyId: string,
+    signal?: AbortSignal,
+  ) => Promise<void>;
 
   /**
    * Validate a custom-property expression (`validate_custom_property`,
@@ -89,10 +92,10 @@ export interface CustomPropertyMethods {
    * @returns The validation result dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  validateCustomProperty(
+  validateCustomProperty: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 }
 
 /**

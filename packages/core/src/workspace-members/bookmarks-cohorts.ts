@@ -31,19 +31,22 @@
  * validators unchanged.
  */
 
+import {
+  getRootModelForBookmarkType,
+  PARTIAL_UPDATE_SUB_MODELS,
+} from "../bookmarks/schema.js";
+import { validateWithPydantic } from "../bookmarks/schema-sorting.js";
 import type { MixpanelClient } from "../client/client.js";
 import {
   validateResponseModel,
   validateResponseModels,
 } from "../client/response-validation.js";
 import {
-  getRootModelForBookmarkType,
-  PARTIAL_UPDATE_SUB_MODELS,
-} from "../bookmarks/schema.js";
-import { validateWithPydantic } from "../bookmarks/schema-sorting.js";
+  BookmarkValidationError,
+  MixpanelHeadlessError,
+  type ValidationError,
+} from "../errors.js";
 import { validateSortingBlock } from "../query/validation-bookmark.js";
-import { BookmarkValidationError, MixpanelHeadlessError } from "../errors.js";
-import type { ValidationError } from "../errors.js";
 import {
   Bookmark,
   BookmarkHistoryResponse,
@@ -52,8 +55,8 @@ import {
   type UpdateBookmarkParams,
 } from "../types/entities/bookmarks.js";
 import {
-  Cohort,
   type BulkUpdateCohortEntry,
+  Cohort,
   type CreateCohortParams,
   type UpdateCohortParams,
 } from "../types/entities/cohorts.js";
@@ -66,7 +69,7 @@ export interface BookmarkWarningLogger {
    *
    * @param message - The formatted text (never vector-compared).
    */
-  warning?(message: string): void;
+  warning?: (message: string) => void;
 }
 
 /** Options bag of `Workspace.listBookmarksV2` (both keys keyword-only). */

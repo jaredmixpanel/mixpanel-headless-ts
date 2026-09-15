@@ -26,14 +26,7 @@
 // `:6596`, `:6674`).
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-  type FakeTransport,
-} from "../../test-support/client-test-helpers.js";
+
 import type { MixpanelClient } from "../../src/client/client.js";
 import {
   Annotation,
@@ -42,6 +35,7 @@ import {
   CreateAnnotationTagParams,
   UpdateAnnotationParams,
 } from "../../src/types/entities/annotations.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   createAnnotation as createAnnotationMember,
   createAnnotationTag as createAnnotationTagMember,
@@ -51,6 +45,13 @@ import {
   listAnnotationTags as listAnnotationTagsMember,
   updateAnnotation as updateAnnotationMember,
 } from "../../src/workspace-members/annotations-webhooks-alerts.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  type FakeTransport,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** A canned-response handler (the `httpx.MockTransport` handler twin). */
 type Handler = (request: CapturedFetchRequest) => CannedResponse;

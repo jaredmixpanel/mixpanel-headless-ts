@@ -30,19 +30,12 @@
 // lands with the code (overlap recorded in `B6-W2-notes.md`).
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-  type FakeTransport,
-} from "../../test-support/client-test-helpers.js";
+
+import type { MixpanelClient } from "../../src/client/client.js";
 import {
   MixpanelHeadlessError,
   ResponseValidationError,
 } from "../../src/errors.js";
-import type { MixpanelClient } from "../../src/client/client.js";
 import {
   BlueprintCard,
   BlueprintConfig,
@@ -56,6 +49,7 @@ import {
   UpdateReportLinkParams,
   UpdateTextCardParams,
 } from "../../src/types/entities/dashboards.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   createBlueprint as createBlueprintMember,
   createDashboard as createDashboardMember,
@@ -65,6 +59,13 @@ import {
   getDashboard as getDashboardMember,
   updateDashboard as updateDashboardMember,
 } from "../../src/workspace-members/dashboards.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  type FakeTransport,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /**
  * The OAuth session the mock client is built over
@@ -820,7 +821,7 @@ describe("ADDITIVE: response-validation codes", () => {
       .createDashboard(new CreateDashboardParams({ title: "X" }))
       .then(
         () => null,
-        (caught: unknown) => caught,
+        (error_: unknown) => error_,
       );
 
     expect(error).toBeInstanceOf(ResponseValidationError);

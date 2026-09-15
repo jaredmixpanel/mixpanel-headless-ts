@@ -13,14 +13,18 @@
  * R10.2: assertion-for-assertion. R5.3/R5.4: codes are the contract.
  */
 
-import { describe, it, expect } from "vitest";
-import { GroupBy, Metric } from "../../src/types/index.js";
-import { ParamValidationError, ValidationError } from "../../src/errors.js";
-import { _suggest } from "../../src/query/validation-shared.js";
+import { describe, expect, it } from "vitest";
+
+import {
+  ParamValidationError,
+  type ValidationError,
+} from "../../src/errors.js";
 import {
   validateQueryArgs,
   type ValidateQueryArgsOptions,
 } from "../../src/query/validation-args.js";
+import { _suggest } from "../../src/query/validation-shared.js";
+import { GroupBy, Metric } from "../../src/types/index.js";
 
 // =============================================================================
 // Helpers (test_validation.py:26-41)

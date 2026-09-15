@@ -28,8 +28,7 @@
 //   B5-S2 closure of the Phase-2 anytree TODO(port)).
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import { buildFlowParams } from "../../src/workspace-query-params.js";
+
 import { Filter } from "../../src/types/query-params/filter.js";
 import { FlowStep } from "../../src/types/query-params/flow.js";
 import { GroupBy } from "../../src/types/query-params/group-by.js";
@@ -37,10 +36,12 @@ import {
   FlowQueryResult,
   FlowTreeNode,
 } from "../../src/types/results/query-engine.js";
+import { Workspace } from "../../src/workspace.js";
+import { buildFlowParams } from "../../src/workspace-query-params.js";
 import {
+  type MockWorkspaceClient,
   mockWorkspaceClient,
   TEST_SESSION,
-  type MockWorkspaceClient,
 } from "../../test-support/workspace-test-helpers.js";
 
 /**
@@ -222,7 +223,7 @@ describe("TestBuildFlowParamsFilters", () => {
     const pf = stepsOf(params)[0]!["property_filter_params_list"] as Array<
       Record<string, unknown>
     >;
-    expect(pf.length).toBe(1);
+    expect(pf).toHaveLength(1);
     const property = pf[0]!["property"] as Record<string, unknown>;
     expect(property["name"]).toBe("amount");
     expect(Object.hasOwn(pf[0]!, "filter")).toBe(true);
@@ -276,7 +277,7 @@ describe("TestWorkspaceFlowPublicMethods", () => {
 
     expect(result).toBeInstanceOf(FlowQueryResult);
     expect(result.computed_at).toBe("2025-01-15T10:00:00");
-    expect(mock.arbFunnelsCalls.length).toBe(1);
+    expect(mock.arbFunnelsCalls).toHaveLength(1);
     const body = mock.arbFunnelsCalls[0]!;
     expect(body["project_id"]).toBe(12345);
     expect(body["query_type"]).toBe("flows_sankey"); // mode="sankey"
@@ -292,7 +293,7 @@ describe("TestWorkspaceFlowPublicMethods", () => {
     expect(Object.hasOwn(params, "date_range")).toBe(true);
     expect(Object.hasOwn(params, "chartType")).toBe(true);
     expect(params["version"]).toBe(2);
-    expect(mock.arbFunnelsCalls.length).toBe(0);
+    expect(mock.arbFunnelsCalls).toHaveLength(0);
   });
 
   it("query_flow accepts a FlowStep directly", async () => {
@@ -311,7 +312,7 @@ describe("TestWorkspaceFlowPublicMethods", () => {
     );
 
     expect(result).toBeInstanceOf(FlowQueryResult);
-    expect(mock.arbFunnelsCalls.length).toBe(1);
+    expect(mock.arbFunnelsCalls).toHaveLength(1);
   });
 
   it("query_flow accepts a list of event names", async () => {
@@ -343,7 +344,7 @@ describe("TestMultiStepNormalization", () => {
   it("a list of strings produces N steps with the defaults", async () => {
     const params = await makeWs().buildFlowParams(["A", "B"]);
     const steps = stepsOf(params);
-    expect(steps.length).toBe(2);
+    expect(steps).toHaveLength(2);
     expect(steps[0]!["event"]).toBe("A");
     expect(steps[1]!["event"]).toBe("B");
     // Top-level defaults: forward=3, reverse=0
@@ -359,7 +360,7 @@ describe("TestMultiStepNormalization", () => {
       new FlowStep({ event: "B", reverse: 2 }),
     ]);
     const steps = stepsOf(params);
-    expect(steps.length).toBe(2);
+    expect(steps).toHaveLength(2);
     expect(steps[0]!["event"]).toBe("A");
     expect(steps[0]!["forward"]).toBe(3);
     expect(steps[1]!["event"]).toBe("B");
@@ -372,7 +373,7 @@ describe("TestMultiStepNormalization", () => {
       new FlowStep({ event: "B", forward: 1 }),
     ]);
     const steps = stepsOf(params);
-    expect(steps.length).toBe(2);
+    expect(steps).toHaveLength(2);
     expect(steps[0]!["event"]).toBe("A");
     expect(steps[0]!["forward"]).toBe(3);
     expect(steps[0]!["reverse"]).toBe(0);
@@ -383,7 +384,7 @@ describe("TestMultiStepNormalization", () => {
   it("a single string wraps into a one-element list", async () => {
     const params = await makeWs().buildFlowParams("Purchase");
     const steps = stepsOf(params);
-    expect(steps.length).toBe(1);
+    expect(steps).toHaveLength(1);
     expect(steps[0]!["event"]).toBe("Purchase");
   });
 
@@ -392,7 +393,7 @@ describe("TestMultiStepNormalization", () => {
       new FlowStep({ event: "A", forward: 3 }),
     );
     const steps = stepsOf(params);
-    expect(steps.length).toBe(1);
+    expect(steps).toHaveLength(1);
     expect(steps[0]!["event"]).toBe("A");
     expect(steps[0]!["forward"]).toBe(3);
   });
@@ -571,7 +572,7 @@ describe("TestQueryFlowTreeIntegration", () => {
 
     expect(result).toBeInstanceOf(FlowQueryResult);
     expect(result.mode).toBe("tree");
-    expect(result.trees.length).toBe(1);
+    expect(result.trees).toHaveLength(1);
 
     const root = result.trees[0]!;
     expect(root).toBeInstanceOf(FlowTreeNode);
@@ -580,27 +581,27 @@ describe("TestQueryFlowTreeIntegration", () => {
     expect(root.drop_off_count).toBe(20);
     expect(root.converted_count).toBe(80);
 
-    expect(root.children.length).toBe(1);
+    expect(root.children).toHaveLength(1);
     expect(root.children[0]!.event).toBe("Search");
     expect(root.children[0]!.total_count).toBe(80);
 
     // Frame rows work
     const rows = result.toRows();
-    expect(rows.length).toBe(root.node_count);
+    expect(rows).toHaveLength(root.node_count);
     expect(result.rowColumns()).toContain("path");
     expect(rows.map((r) => r["path"])).toContain("Login > Search");
 
     // toJSON is serializable
     const d = result.toJSON();
     const trees = d["trees"] as Array<Record<string, unknown>>;
-    expect(trees.length).toBe(1);
+    expect(trees).toHaveLength(1);
     expect(trees[0]!["event"]).toBe("Login");
 
     // The anytree view works (B5-S2 closure of the Phase-2 TODO)
     const atRoots = result.anytree();
-    expect(atRoots.length).toBe(1);
+    expect(atRoots).toHaveLength(1);
     expect(atRoots[0]!.event).toBe("Login");
-    expect(atRoots[0]!.children.length).toBe(1);
+    expect(atRoots[0]!.children).toHaveLength(1);
     // The parent back-reference anytree provides
     expect(atRoots[0]!.children[0]!.parent).toBe(atRoots[0]);
   });
@@ -661,7 +662,7 @@ describe("TestFlowSegments", () => {
     expect(Object.hasOwn(params, "segments")).toBe(true);
     const segments = params["segments"] as Array<Record<string, unknown>>;
     expect(Array.isArray(segments)).toBe(true);
-    expect(segments.length).toBe(1);
+    expect(segments).toHaveLength(1);
     expect(segments[0]!["value"]).toBe("country");
   });
 
@@ -670,7 +671,7 @@ describe("TestFlowSegments", () => {
       segments: "country",
     });
     expect(Object.hasOwn(params, "segments")).toBe(true);
-    expect((params["segments"] as unknown[]).length).toBe(1);
+    expect(params["segments"] as unknown[]).toHaveLength(1);
   });
 
   it("a list of GroupBy produces multiple segments", async () => {
@@ -680,7 +681,7 @@ describe("TestFlowSegments", () => {
         new GroupBy({ property: "platform" }),
       ],
     });
-    expect((params["segments"] as unknown[]).length).toBe(2);
+    expect(params["segments"] as unknown[]).toHaveLength(2);
   });
 
   it("no segments omits the key", async () => {
@@ -727,7 +728,7 @@ describe("TestFlowPropertyFilters", () => {
     const fbe = params["filter_by_event"] as Record<string, unknown>;
     expect(fbe["operator"]).toBe("and");
     const children = fbe["children"] as Array<Record<string, unknown>>;
-    expect(children.length).toBe(1);
+    expect(children).toHaveLength(1);
     expect(children[0]!["filterOperator"]).toBe("equals");
     expect(children[0]!["propertyName"]).toBe("country");
     expect(children[0]!["filterValue"]).toEqual(["US"]);
@@ -738,7 +739,7 @@ describe("TestFlowPropertyFilters", () => {
       where: [Filter.equals("country", "US"), Filter.greaterThan("age", 18)],
     });
     const fbe = params["filter_by_event"] as Record<string, unknown>;
-    expect((fbe["children"] as unknown[]).length).toBe(2);
+    expect(fbe["children"] as unknown[]).toHaveLength(2);
   });
 
   it("a cohort filter still produces filter_by_cohort", async () => {

@@ -18,14 +18,15 @@
 //   fields of `QueryError` (`errors.ts:837`).
 
 import { describe, expect, it } from "vitest";
+
+import { QueryError } from "../../src/errors.js";
+import { AttributeError } from "../../src/query/python-builtins.js";
 import {
   extractFunnelStepsFromSeries,
   transformFunnel,
   transformFunnelResult,
   transformRetention,
 } from "../../src/services/live-query-transforms.js";
-import { QueryError } from "../../src/errors.js";
-import { AttributeError } from "../../src/query/python-builtins.js";
 import { FunnelQueryResult } from "../../src/types/results/query-engine.js";
 
 // ===========================================================================
@@ -150,7 +151,7 @@ describe("TestExtractFunnelStepsFromSeries", () => {
 
     const result = extractFunnelStepsFromSeries(series, sink.warn);
 
-    expect(sink.messages.length).toBe(1);
+    expect(sink.messages).toHaveLength(1);
     expect(sink.messages[0]).toContain("unrecognized format");
     expect(result).toEqual([]);
   });
@@ -181,7 +182,7 @@ describe("TestExtractFunnelStepsFromSeries", () => {
 
     const result = extractFunnelStepsFromSeries(series, noWarn);
 
-    expect(result.length).toBe(2);
+    expect(result).toHaveLength(2);
     expect(result[0]!["event"]).toBe("Signup");
     expect(result[0]!["count"]).toBe(1000);
     expect(result[0]!["step_conv_ratio"]).toBe(1.0);
@@ -200,7 +201,7 @@ describe("TestExtractFunnelStepsFromSeries", () => {
 
     const result = extractFunnelStepsFromSeries(series, noWarn);
 
-    expect(result.length).toBe(11);
+    expect(result).toHaveLength(11);
     // Step 10 should come after step 9, not after step 1
     expect(result[0]!["event"]).toBe("Step1");
     expect(result[8]!["event"]).toBe("Step9");
@@ -230,7 +231,7 @@ describe("TestExtractFunnelStepsFromSeries", () => {
 
     const result = extractFunnelStepsFromSeries(series, noWarn);
 
-    expect(result.length).toBe(2);
+    expect(result).toHaveLength(2);
     expect(result[0]!["event"]).toBe("Signup");
     expect(result[0]!["count"]).toBe(500);
   });
@@ -246,7 +247,7 @@ describe("TestExtractFunnelStepsFromSeries", () => {
 
     const result = extractFunnelStepsFromSeries(series, noWarn);
 
-    expect(result.length).toBe(2);
+    expect(result).toHaveLength(2);
     expect(result[0]!["step_conv_ratio"]).toBe(0);
     expect(result[0]!["overall_conv_ratio"]).toBe(0);
     expect(result[0]!["avg_time"]).toBe(0);
@@ -260,7 +261,7 @@ describe("TestExtractFunnelStepsFromSeries", () => {
 
     const result = extractFunnelStepsFromSeries(series, noWarn);
 
-    expect(result.length).toBe(2);
+    expect(result).toHaveLength(2);
     // Without a numeric prefix, sorted by the fallback key
     const events = result.map((s) => s["event"]);
     expect(events).toContain("Signup");
@@ -274,7 +275,7 @@ describe("TestExtractFunnelStepsFromSeries", () => {
 
     const result = extractFunnelStepsFromSeries(series, noWarn);
 
-    expect(result.length).toBe(2);
+    expect(result).toHaveLength(2);
     expect(result[0]!["count"]).toBe(1000);
     expect(result[1]!["count"]).toBe(120);
   });
@@ -296,7 +297,7 @@ describe("TestExtractFunnelStepsFromSeries", () => {
 
     const result = extractFunnelStepsFromSeries(series, noWarn);
 
-    expect(result.length).toBe(2);
+    expect(result).toHaveLength(2);
     expect(result[0]!["event"]).toBe("Signup");
   });
 });
@@ -349,7 +350,7 @@ describe("TestTransformFunnelResult", () => {
       noWarn,
     );
     expect(result.steps_data).toEqual(SAMPLE_STEPS);
-    expect(result.steps_data.length).toBe(2);
+    expect(result.steps_data).toHaveLength(2);
     expect(result.steps_data[0]!["event"]).toBe("Signup");
     expect(result.steps_data[1]!["event"]).toBe("Purchase");
   });
@@ -393,9 +394,9 @@ describe("TestTransformFunnelResult", () => {
     try {
       transformFunnelResult(errorResponse, BOOKMARK_PARAMS, noWarn);
       expect.unreachable("expected QueryError");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(QueryError);
-      expect((exc as QueryError).statusCode).toBe(200);
+    } catch (error) {
+      expect(error).toBeInstanceOf(QueryError);
+      expect((error as QueryError).statusCode).toBe(200);
     }
   });
 
@@ -404,8 +405,8 @@ describe("TestTransformFunnelResult", () => {
     try {
       transformFunnelResult(errorResponse, BOOKMARK_PARAMS, noWarn);
       expect.unreachable("expected QueryError");
-    } catch (exc) {
-      expect((exc as QueryError).responseBody).toEqual(errorResponse);
+    } catch (error) {
+      expect((error as QueryError).responseBody).toEqual(errorResponse);
     }
   });
 
@@ -415,8 +416,8 @@ describe("TestTransformFunnelResult", () => {
     try {
       transformFunnelResult(errorResponse, params, noWarn);
       expect.unreachable("expected QueryError");
-    } catch (exc) {
-      expect((exc as QueryError).requestBody).toEqual(params);
+    } catch (error) {
+      expect((error as QueryError).requestBody).toEqual(params);
     }
   });
 

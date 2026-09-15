@@ -37,19 +37,20 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 import {
-  parseOAuthClientInfo,
-  OAuthTokens,
-  type OAuthClientInfo,
   isPythonDict,
+  MixpanelHeadlessError,
+  type OAuthClientInfo,
+  OAuthTokens,
+  ParamValidationError,
+  parseOAuthClientInfo,
   pythonStr,
   type PythonValue,
-  MixpanelHeadlessError,
-  ParamValidationError,
   Secret,
 } from "@mixpanel-headless/core";
+
 import {
-  CredentialPathError,
   atomicWriteBytes,
+  CredentialPathError,
   readCredentialText,
   rejectIfSymlink,
 } from "../io-utils.js";
@@ -70,14 +71,14 @@ export interface StorageLogger {
    *
    * @param message - The formatted warning text.
    */
-  warning(message: string): void;
+  warning: (message: string) => void;
 
   /**
    * DEBUG-level line (cache-expiry chatter — `logger.debug` sites).
    *
    * @param message - The formatted debug text.
    */
-  debug?(message: string): void;
+  debug?: (message: string) => void;
 }
 
 /** The silent default logger. */
@@ -322,14 +323,14 @@ export class OAuthStorage {
   #readFile(path: string): Record<string, unknown> | null {
     try {
       rejectIfSymlink(path);
-    } catch (exc) {
-      if (exc instanceof CredentialPathError) {
+    } catch (error) {
+      if (error instanceof CredentialPathError) {
         this.#logger.warning(
-          `Refusing to read credential file ${path}: ${exc.message}`,
+          `Refusing to read credential file ${path}: ${error.message}`,
         );
         return null;
       }
-      throw exc;
+      throw error;
     }
     if (!existsSync(path)) {
       return null;
@@ -338,12 +339,12 @@ export class OAuthStorage {
     let parsed: unknown;
     try {
       parsed = JSON.parse(readCredentialText(path));
-    } catch (exc) {
-      if (exc instanceof CredentialPathError) {
+    } catch (error) {
+      if (error instanceof CredentialPathError) {
         // Symlink or lax mode rejected by the read helper — WARNING,
         // not the lower-severity corrupt-JSON path (`storage.py:408`).
         this.#logger.warning(
-          `Refusing to read credential file ${path}: ${exc.message}`,
+          `Refusing to read credential file ${path}: ${error.message}`,
         );
         return null;
       }
@@ -354,8 +355,8 @@ export class OAuthStorage {
       // OSError (errno error, e.g. EACCES on a root-owned file)
       // PROPAGATES rather than reading a permission problem as "no
       // tokens" — B8-ARB-A SEM-F2a (`b8-reviewA-resolution.md`).
-      if (!(exc instanceof SyntaxError || exc instanceof TypeError)) {
-        throw exc;
+      if (!(error instanceof SyntaxError || error instanceof TypeError)) {
+        throw error;
       }
       this.#logger.warning(
         `Corrupted or invalid JSON in ${path} — ignoring file.`,
@@ -458,15 +459,18 @@ export class OAuthStorage {
         scope: pythonStr(data["scope"] as PythonValue),
         token_type: pythonStr(data["token_type"] as PythonValue),
       });
-    } catch (exc) {
-      if (exc instanceof MixpanelHeadlessError || exc instanceof TypeError) {
+    } catch (error) {
+      if (
+        error instanceof MixpanelHeadlessError ||
+        error instanceof TypeError
+      ) {
         this.#logger.warning(
           `Failed to parse tokens from tokens_${region}.json: ` +
-            `${exc.message} — ignoring file.`,
+            `${error.message} — ignoring file.`,
         );
         return null;
       }
-      throw exc;
+      throw error;
     }
   }
 
@@ -518,15 +522,15 @@ export class OAuthStorage {
         };
       }
       return parseOAuthClientInfo(payload);
-    } catch (exc) {
-      if (exc instanceof MixpanelHeadlessError) {
+    } catch (error) {
+      if (error instanceof MixpanelHeadlessError) {
         this.#logger.warning(
           `Failed to parse client info from client_${region}.json: ` +
-            `${exc.message} — ignoring file.`,
+            `${error.message} — ignoring file.`,
         );
         return null;
       }
-      throw exc;
+      throw error;
     }
   }
 
@@ -572,10 +576,12 @@ export class OAuthStorage {
     }
     let count = 0;
     for (const name of readdirSync(this.#storageDir)) {
-      if (name.startsWith("me_") && name.endsWith(".json")) {
-        unlinkSync(join(this.#storageDir, name));
-        count += 1;
+      if (!(name.startsWith("me_") && name.endsWith(".json"))) {
+        continue;
       }
+
+      unlinkSync(join(this.#storageDir, name));
+      count += 1;
     }
     return count;
   }

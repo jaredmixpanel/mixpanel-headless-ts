@@ -30,7 +30,7 @@ export interface TargetsNamespace {
    *
    * @returns Sorted target records.
    */
-  list(): Target[];
+  list: () => Target[];
 
   /**
    * Add a new target block (`add`, `targets.py:34-57`).
@@ -41,7 +41,7 @@ export interface TargetsNamespace {
    * @throws ConfigError - Duplicate name, missing account, or
    *   validation failure.
    */
-  add(name: string, options: TargetsAddOptions): Target;
+  add: (name: string, options: TargetsAddOptions) => Target;
 
   /**
    * Remove a target block (`remove`, `targets.py:60-69`).
@@ -49,7 +49,7 @@ export interface TargetsNamespace {
    * @param name - Target to remove.
    * @throws ConfigError - Target does not exist.
    */
-  remove(name: string): void;
+  remove: (name: string) => void;
 
   /**
    * Apply the target — write all three axes to `[active]` atomically
@@ -60,7 +60,7 @@ export interface TargetsNamespace {
    * @throws ConfigError - Target does not exist OR its referenced
    *   account is gone.
    */
-  use(name: string): void;
+  use: (name: string) => void;
 
   /**
    * Return the named target (`show`, `targets.py:84-96`).
@@ -69,7 +69,7 @@ export interface TargetsNamespace {
    * @returns The target record.
    * @throws ConfigError - Target does not exist.
    */
-  show(name: string): Target;
+  show: (name: string) => Target;
 }
 
 /**
@@ -77,7 +77,6 @@ export interface TargetsNamespace {
  *
  * @param effects - The injected effects (config writes).
  * @returns The namespace object.
- *
  * @example
  * ```typescript
  * const targets = createTargetsNamespace(effects);

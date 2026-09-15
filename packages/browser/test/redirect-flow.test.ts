@@ -19,18 +19,19 @@
 import { describe, expect, it } from "vitest";
 
 import { OAuthError } from "@mixpanel-headless/core";
+
 import { InMemoryCredentialStore } from "../src/credential-store.js";
 import {
   beginLogin,
   completeLogin,
-  CREDENTIAL_KEYS,
   createBrowserWorkspaceFromStore,
+  CREDENTIAL_KEYS,
 } from "../src/index.js";
 import {
+  type BodyCapturingTransport,
   bodyCapturingTransport,
   jsonResponse,
   makeTokenResponse,
-  type BodyCapturingTransport,
 } from "./flow-helpers.js";
 
 const REDIRECT_URI = "https://app.example.com/oauth/callback";
@@ -125,7 +126,7 @@ describe("beginLogin", () => {
         fetch: transport.fetch,
       }).then(
         () => null,
-        (exc: unknown) => exc,
+        (error_: unknown) => error_,
       );
       expect(error).toBeInstanceOf(OAuthError);
       expect((error as OAuthError).code).toBe("OAUTH_CONFIG_ERROR");
@@ -558,7 +559,7 @@ describe("completeLogin", () => {
         now: () => FROZEN_NOW_MS,
       }).then(
         () => null,
-        (exc: unknown) => exc,
+        (error: unknown) => error,
       );
     }
 

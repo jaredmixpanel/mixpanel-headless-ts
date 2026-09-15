@@ -23,7 +23,7 @@ import { ParamValidationError } from "../../errors.js";
  * @internal
  */
 // eslint-disable-next-line no-control-regex
-export const CONTROL_CHAR_RE: RegExp = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
+export const CONTROL_CHAR_RE: RegExp = /[\x00-\x08\v\f\x0E-\x1F\x7F]/;
 
 /**
  * Math types that require a measurement property — mirror of
@@ -57,7 +57,6 @@ export const MATH_REQUIRING_PROPERTY: ReadonlySet<string> = new Set([
  *
  * @param value - The candidate value.
  * @returns True when the Python twin would see an `int`.
- *
  * @internal
  */
 export function isPyInt(value: unknown): value is number | bigint {
@@ -81,7 +80,6 @@ export function isPyInt(value: unknown): value is number | bigint {
  *
  * @param value - The candidate value.
  * @returns True when Python's `isinstance(value, int)` would hold.
- *
  * @internal
  */
 export function isPyIntOrBool(
@@ -98,7 +96,6 @@ export function isPyIntOrBool(
  * @param className - Name of the containing class (for error messages).
  * @throws ParamValidationError - `EV1_EMPTY_EVENT` when empty/blank,
  *   `EV2_CONTROL_CHAR_EVENT` when control characters are present.
- *
  * @internal
  */
 export function validateEventName(event: string, className: string): void {
@@ -137,7 +134,6 @@ export function validateEventName(event: string, className: string): void {
  * @throws ParamValidationError - `{family}1_COHORT_ID_NOT_POSITIVE` when
  *   the cohort ID is not positive, `{family}2_COHORT_NAME_EMPTY` when the
  *   name is empty/blank while provided.
- *
  * @internal
  */
 export function validateCohortArgs(
@@ -178,7 +174,6 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
  *
  * @param dateStr - A string already matching `YYYY-MM-DD`.
  * @returns True when the date exists on the calendar.
- *
  * @internal
  */
 export function isRealCalendarDate(dateStr: string): boolean {
@@ -212,7 +207,6 @@ export function isRealCalendarDate(dateStr: string): boolean {
  *
  * @param dateStr - The candidate string.
  * @returns True on a format match.
- *
  * @internal
  */
 export function matchesDateFormat(dateStr: string): boolean {

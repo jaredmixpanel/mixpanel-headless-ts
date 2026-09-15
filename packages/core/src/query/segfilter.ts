@@ -44,12 +44,12 @@
 import { pythonRepr, sortedByCodepoint, zfill } from "../compat/index.js";
 import { ParamValidationError } from "../errors.js";
 import type { Filter } from "../types/index.js";
+import { AttributeError, ValueError } from "./python-builtins.js";
 import {
   pythonIterableElements,
   pythonStrValue,
   pythonTypeName,
 } from "./validation-shared.js";
-import { AttributeError, ValueError } from "./python-builtins.js";
 
 /** A segfilter JSON fragment — twin of Python's `dict[str, Any]`. */
 export type SegfilterFragment = Record<string, unknown>;
@@ -195,7 +195,6 @@ function pythonIterate(value: unknown): unknown[] {
  * @throws ValueError - When the string does not split into exactly
  *   three `-`-separated parts (Python's tuple-unpack failure;
  *   watchlist #1).
- *
  * @example
  * ```typescript
  * convertDateFormat("2026-01-15"); // "01/15/2026"
@@ -390,7 +389,6 @@ export function buildDatetimeFilter(
  * @throws ParamValidationError - `SG4_UNSUPPORTED_PROPERTY_TYPE` when
  *   the filter's property type is not recognized, or `SG1`/`SG2`/`SG3`
  *   from the type-specific builders.
- *
  * @example
  * ```typescript
  * const entry = buildSegfilterEntry(Filter.equals("country", "US"));
@@ -404,20 +402,34 @@ export function buildSegfilterEntry(f: Filter): SegfilterFragment {
   const source = RESOURCE_TYPE_MAP.get(f._resource_type) ?? f._resource_type;
 
   let filterDict: SegfilterFragment;
-  if (propType === "string") {
-    filterDict = buildStringFilter(f._operator, f._value);
-  } else if (propType === "number") {
-    filterDict = buildNumberFilter(f._operator, f._value);
-  } else if (propType === "boolean") {
-    filterDict = buildBooleanFilter(f._operator);
-  } else if (propType === "datetime") {
-    filterDict = buildDatetimeFilter(f._operator, f._value, f._date_unit);
-  } else {
-    throw new ParamValidationError(
-      `Unsupported property type '${propType}'. ` +
-        `Supported types: string, number, boolean, datetime`,
-      "SG4_UNSUPPORTED_PROPERTY_TYPE",
-    );
+  switch (propType) {
+    case "string": {
+      filterDict = buildStringFilter(f._operator, f._value);
+
+      break;
+    }
+    case "number": {
+      filterDict = buildNumberFilter(f._operator, f._value);
+
+      break;
+    }
+    case "boolean": {
+      filterDict = buildBooleanFilter(f._operator);
+
+      break;
+    }
+    case "datetime": {
+      filterDict = buildDatetimeFilter(f._operator, f._value, f._date_unit);
+
+      break;
+    }
+    default: {
+      throw new ParamValidationError(
+        `Unsupported property type '${propType}'. ` +
+          `Supported types: string, number, boolean, datetime`,
+        "SG4_UNSUPPORTED_PROPERTY_TYPE",
+      );
+    }
   }
 
   return {

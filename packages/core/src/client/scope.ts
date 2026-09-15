@@ -33,7 +33,6 @@ export interface PathScope {
  * @param scope - The client's `{projectId, workspaceId}` state.
  * @returns `/workspaces/{wid}/{domainPath}` when a workspace is set,
  *   otherwise `/projects/{pid}/{domainPath}`.
- *
  * @example
  * ```typescript
  * maybeScopedPath("dashboards", { projectId: "12345", workspaceId: null });

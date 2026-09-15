@@ -16,6 +16,7 @@
 // `ensureHttpOpen()` + `close()`. Every assertion is otherwise
 // preserved 1:1 (R10.2).
 import { describe, expect, it } from "vitest";
+
 import type {
   OAuthBrowserAccount,
   OAuthTokenAccount,

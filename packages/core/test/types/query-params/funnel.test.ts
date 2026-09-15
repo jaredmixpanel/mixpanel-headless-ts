@@ -10,8 +10,9 @@
 // compile-time equivalent.)
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import {
-  MixpanelHeadlessError,
+  type MixpanelHeadlessError,
   ParamValidationError,
 } from "../../../src/errors.js";
 import { Filter } from "../../../src/types/query-params/filter.js";
@@ -31,8 +32,8 @@ function expectGuard(thunk: () => unknown, code: string): void {
   let thrown: unknown;
   try {
     thunk();
-  } catch (cause) {
-    thrown = cause;
+  } catch (error) {
+    thrown = error;
   }
   expect(thrown, `expected ${code}`).toBeInstanceOf(ParamValidationError);
   expect((thrown as MixpanelHeadlessError).code).toBe(code);
@@ -85,7 +86,7 @@ describe("FunnelStep construction", () => {
   });
 
   it("coexists with plain strings in a steps list", () => {
-    const steps: readonly (FunnelStep | string)[] = [
+    const steps: ReadonlyArray<FunnelStep | string> = [
       "Signup",
       new FunnelStep({ event: "Add to Cart" }),
       "Purchase",
@@ -99,13 +100,13 @@ describe("FunnelStep construction", () => {
 
 describe("FunnelStep guards (P2-1 coverage-closure cases)", () => {
   it("EV1_EMPTY_EVENT on empty/blank events", () => {
-    for (const event of ["", "   "]) {
+    for (const event of ["", " ".repeat(3)]) {
       expectGuard(() => new FunnelStep({ event }), "EV1_EMPTY_EVENT");
     }
   });
 
   it("EV2_CONTROL_CHAR_EVENT on control characters", () => {
-    for (const event of ["a\x00b", "a\x7fb"]) {
+    for (const event of ["a\x00b", "a\x7Fb"]) {
       expectGuard(() => new FunnelStep({ event }), "EV2_CONTROL_CHAR_EVENT");
     }
   });
@@ -152,7 +153,7 @@ describe("Exclusion construction", () => {
 
 describe("Exclusion guards (source order)", () => {
   it("EV1_EMPTY_EVENT / EV2_CONTROL_CHAR_EVENT via the shared guard", () => {
-    for (const event of ["", "  ", "   "]) {
+    for (const event of ["", "  ", " ".repeat(3)]) {
       expectGuard(() => new Exclusion({ event }), "EV1_EMPTY_EVENT");
     }
     expectGuard(
@@ -214,7 +215,7 @@ describe("HoldingConstant construction + guards", () => {
   });
 
   it("HC1_EMPTY_PROPERTY on empty/blank properties", () => {
-    for (const property of ["", "   "]) {
+    for (const property of ["", " ".repeat(3)]) {
       expectGuard(
         () => new HoldingConstant({ property }),
         "HC1_EMPTY_PROPERTY",
@@ -235,11 +236,11 @@ describe("C9 guard-totality property (fast-check #4)", () => {
           try {
             new FunnelStep({ event });
             return false;
-          } catch (cause) {
+          } catch (error) {
             return (
-              cause instanceof ParamValidationError &&
-              (cause.code === "EV1_EMPTY_EVENT" ||
-                cause.code === "EV2_CONTROL_CHAR_EVENT")
+              error instanceof ParamValidationError &&
+              (error.code === "EV1_EMPTY_EVENT" ||
+                error.code === "EV2_CONTROL_CHAR_EVENT")
             );
           }
         },
@@ -253,10 +254,10 @@ describe("C9 guard-totality property (fast-check #4)", () => {
         try {
           new Exclusion({ event: "Bounce", from_step: fromStep });
           return false;
-        } catch (cause) {
+        } catch (error) {
           return (
-            cause instanceof ParamValidationError &&
-            cause.code === "EX1_FROM_STEP_NEGATIVE"
+            error instanceof ParamValidationError &&
+            error.code === "EX1_FROM_STEP_NEGATIVE"
           );
         }
       }),

@@ -31,7 +31,6 @@
 
 import type { MixpanelClient } from "../client/client.js";
 import { isPlainRecord } from "../client/internals.js";
-import { native, requireResponse } from "./shared.js";
 import {
   validateResponseModel,
   validateResponseModels,
@@ -40,15 +39,16 @@ import { pythonRepr, type PythonValue } from "../compat/python-str.js";
 import { MixpanelHeadlessError } from "../errors.js";
 import {
   BlueprintConfig,
-  BlueprintTemplate,
-  Dashboard,
   type BlueprintFinishParams,
+  BlueprintTemplate,
   type CreateDashboardParams,
   type CreateRcaDashboardParams,
+  Dashboard,
   type UpdateDashboardParams,
   type UpdateReportLinkParams,
   type UpdateTextCardParams,
 } from "../types/entities/dashboards.js";
+import { native, requireResponse } from "./shared.js";
 
 /** Options bag of `Workspace.listDashboards` (`ids` is keyword-only). */
 export interface WorkspaceListDashboardsOptions {
@@ -293,8 +293,9 @@ export async function addReportToDashboard(
   if (!isPlainRecord(raw) || !Object.hasOwn(raw, "id")) {
     throw new MixpanelHeadlessError(
       `Unexpected response from add_report_to_dashboard: ` +
-        `expected dashboard dict with 'id', got ` +
-        `${pythonRepr(native(raw) as PythonValue)}`,
+        `expected dashboard dict with 'id', got ${pythonRepr(
+          native(raw) as PythonValue,
+        )}`,
     );
   }
   return validateResponseModel(Dashboard, native(raw), {

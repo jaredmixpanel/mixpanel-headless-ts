@@ -8,16 +8,16 @@
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
+import { pythonJsonDumps, pythonStrip } from "../../compat/index.js";
+import type { CustomPropertyResourceType } from "../enums.js";
 import {
-  EntityModel,
   codepointLength,
+  type EntityFieldSpec,
+  EntityModel,
   modelFail,
   oneOf,
   prepareInit,
-  type EntityFieldSpec,
 } from "./model-base.js";
-import { pythonJsonDumps, pythonStrip } from "../../compat/index.js";
-import { CustomPropertyResourceType } from "../enums.js";
 
 /**
  * Constructor input for {@link CustomEventAlternative} — absent keys take the Python
@@ -50,7 +50,7 @@ export class CustomEventAlternative extends EntityModel {
       check: (value, path) => {
         if (typeof value === "string" && codepointLength(value) < 1)
           modelFail(path, "min_length 1");
-        if (Array.isArray(value) && value.length < 1)
+        if (Array.isArray(value) && value.length === 0)
           modelFail(path, "min_length 1");
       },
     },
@@ -136,7 +136,7 @@ export class CustomEvent extends EntityModel {
   /** Display name shown in the Mixpanel UI and queries. */
   declare readonly name: string;
   /** Underlying events aliased by this custom event. */
-  declare readonly alternatives: ReadonlyArray<CustomEventAlternative>;
+  declare readonly alternatives: readonly CustomEventAlternative[];
 
   /**
    * Construct a validated CustomEvent (Pydantic-construction mirror).
@@ -172,7 +172,7 @@ export interface CreateCustomEventParamsInit {
   /** Display name for the custom event (must be non-empty). */
   readonly name: string;
   /** Underlying event names to alias (must be non-empty). */
-  readonly alternatives: ReadonlyArray<string>;
+  readonly alternatives: readonly string[];
 }
 
 /**
@@ -197,7 +197,7 @@ export class CreateCustomEventParams extends EntityModel {
       check: (value, path) => {
         if (typeof value === "string" && codepointLength(value) < 1)
           modelFail(path, "min_length 1");
-        if (Array.isArray(value) && value.length < 1)
+        if (Array.isArray(value) && value.length === 0)
           modelFail(path, "min_length 1");
       },
     },
@@ -208,7 +208,7 @@ export class CreateCustomEventParams extends EntityModel {
       // field validator: no empty/whitespace-only entries, no
       // duplicates.
       check: (value, path) => {
-        if (!Array.isArray(value) || value.length < 1) {
+        if (!Array.isArray(value) || value.length === 0) {
           modelFail(path, "min_length 1");
         }
         for (const item of value) {
@@ -229,7 +229,7 @@ export class CreateCustomEventParams extends EntityModel {
   /** Display name for the custom event (must be non-empty). */
   declare readonly name: string;
   /** Underlying event names to alias (must be non-empty). */
-  declare readonly alternatives: ReadonlyArray<string>;
+  declare readonly alternatives: readonly string[];
 
   /**
    * Construct a validated CreateCustomEventParams (Pydantic-construction mirror).
@@ -276,7 +276,6 @@ export class CreateCustomEventParams extends EntityModel {
    *
    * @returns A record with two string fields: `name` (the display
    *   name) and `alternatives` (the JSON-encoded event list).
-   *
    * @example
    * ```typescript
    * new CreateCustomEventParams({
@@ -307,7 +306,7 @@ export interface DropFilterInit {
   /** Event name to filter. */
   readonly event_name: string;
   /** Filter condition JSON. */
-  readonly filters?: ReadonlyArray<unknown> | null | undefined;
+  readonly filters?: readonly unknown[] | null | undefined;
   /** Whether the filter is active. */
   readonly active?: boolean | null | undefined;
   /** Human-readable name. */
@@ -356,7 +355,7 @@ export class DropFilter extends EntityModel {
   /** Event name to filter. */
   declare readonly event_name: string;
   /** Filter condition JSON. */
-  declare readonly filters: ReadonlyArray<unknown> | null;
+  declare readonly filters: readonly unknown[] | null;
   /** Whether the filter is active. */
   declare readonly active: boolean | null;
   /** Human-readable name. */

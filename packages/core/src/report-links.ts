@@ -22,7 +22,7 @@
 
 import { pythonRepr } from "./compat/python-str.js";
 import { pythonStrip } from "./compat/python-strip.js";
-import { UrlSplitError, urlsplit } from "./compat/urllib.js";
+import { urlsplit, UrlSplitError } from "./compat/urllib.js";
 import { ParamValidationError, ReportLinkParseError } from "./errors.js";
 import type { Region } from "./types/literals.js";
 
@@ -114,7 +114,7 @@ const ASCII_DIGITS_RE = /^[0-9]+$/u;
 const SCHEME_RE = /^https?:\/\//iu;
 
 /** A percent-encoded `#`. The only escape the parser decodes. */
-const PERCENT_HASH_RE = /%23/giu;
+const PERCENT_HASH_RE = /%23/gu;
 
 /** Shortlink code after `/s/`. */
 const SHORT_CODE_RE = /^[0-9A-Za-z_-]+$/u;
@@ -156,18 +156,24 @@ export interface ParsedReportLink {
   readonly project_id: number | null;
   /** From `/view/{wid}/`. */
   readonly workspace_id: number | null;
-  /** The app path segment (`insights`, `funnels`, `retention`, `flows`,
-   * `impact`, `boards`). */
+  /**
+   * The app path segment (`insights`, `funnels`, `retention`, `flows`,
+   * `impact`, `boards`).
+   */
   readonly app: string | null;
-  /** `APP_TO_REPORT_TYPE[app]`. The server-stored type is authoritative;
-   * this is a hint only. */
+  /**
+   * `APP_TO_REPORT_TYPE[app]`. The server-stored type is authoritative;
+   * this is a hint only.
+   */
   readonly report_type_hint: string | null;
   /** Set when `kind === "slug"`. */
   readonly slug: string | null;
   /** Set when `kind === "bookmark"`. */
   readonly bookmark_id: number | null;
-  /** Set for `boards#id=` links, kept when an `edited-bookmark` slug is
-   * also present. */
+  /**
+   * Set for `boards#id=` links, kept when an `edited-bookmark` slug is
+   * also present.
+   */
   readonly dashboard_id: number | null;
   /** Set when `kind === "short_link"`. */
   readonly short_code: string | null;
@@ -276,7 +282,6 @@ export interface GenerateSlugOptions {
  *
  * @param options - Optional injected chooser.
  * @returns A slug for which {@link isSlug} is true.
- *
  * @example
  * ```typescript
  * generateSlug({ choice: (alphabet) => alphabet[0] });
@@ -383,7 +388,6 @@ export interface BuildSlugUrlArgs {
  * @throws ParamValidationError - `RL3_UNKNOWN_REGION`,
  *   `RL1_UNKNOWN_REPORT_TYPE`, `RL2_INVALID_SLUG`, or `RL6_INVALID_ID`
  *   (a zero or negative project or workspace id).
- *
  * @example
  * ```typescript
  * buildSlugUrl({
@@ -430,7 +434,6 @@ export interface BuildBookmarkUrlArgs {
  * @throws ParamValidationError - `RL3_UNKNOWN_REGION`,
  *   `RL1_UNKNOWN_REPORT_TYPE`, or `RL6_INVALID_ID` (a zero or negative
  *   project, workspace, or bookmark id).
- *
  * @example
  * ```typescript
  * buildBookmarkUrl({
@@ -481,11 +484,13 @@ function unparseable(raw: string): ReportLinkParseError {
 function startsWithKnownHost(value: string): boolean {
   const lowered = value.toLowerCase();
   for (const host of HOST_TO_REGION.keys()) {
-    if (lowered.startsWith(host)) {
-      const rest = lowered.slice(host.length);
-      if (rest === "" || "/:#?".includes(rest[0] as string)) {
-        return true;
-      }
+    if (!lowered.startsWith(host)) {
+      continue;
+    }
+
+    const rest = lowered.slice(host.length);
+    if (rest === "" || "/:#?".includes(rest[0] as string)) {
+      return true;
     }
   }
   return false;
@@ -561,7 +566,7 @@ function parsePath(segments: readonly string[]): ParsedPath {
   return {
     short_code: null,
     project_id: Number(pidS),
-    workspace_id: widS !== null ? Number(widS) : null,
+    workspace_id: widS === null ? null : Number(widS),
     app,
   };
 }
@@ -627,7 +632,6 @@ function trimFragment(fragment: string): string {
  * @throws ReportLinkParseError - With code `REPORT_LINK_UNPARSEABLE`,
  *   `REPORT_LINK_NOT_MIXPANEL_HOST`, `REPORT_LINK_UNRECOGNIZED_PATH`,
  *   `REPORT_LINK_UNRECOGNIZED_HASH`, or `REPORT_LINK_EMPTY_HASH`.
- *
  * @example
  * ```typescript
  * const parsed = parseReportLink(
@@ -662,11 +666,11 @@ export function parseReportLink(value: string): ParsedReportLink {
   let parts;
   try {
     parts = urlsplit(normalized);
-  } catch (cause) {
-    if (cause instanceof UrlSplitError) {
+  } catch (error) {
+    if (error instanceof UrlSplitError) {
       throw unparseable(raw);
     }
-    throw cause;
+    throw error;
   }
   const host = parts.hostname;
   if (host === null || host === "") {

@@ -9,12 +9,12 @@
  */
 
 import {
-  EntityModel,
   codepointLength,
+  type EntityFieldSpec,
+  EntityModel,
   modelFail,
   oneOf,
   prepareInit,
-  type EntityFieldSpec,
 } from "./model-base.js";
 
 /**
@@ -983,7 +983,7 @@ export class AlertValidation extends EntityModel {
  */
 export interface ValidateAlertsForBookmarkParamsInit {
   /** Alert IDs to validate (must not be empty). */
-  readonly alert_ids: ReadonlyArray<number>;
+  readonly alert_ids: readonly number[];
   /** Bookmark type to validate against. */
   readonly bookmark_type: "insights" | "funnels";
   /** Bookmark params JSON. */
@@ -1011,7 +1011,7 @@ export class ValidateAlertsForBookmarkParams extends EntityModel {
       check: (value, path) => {
         if (typeof value === "string" && codepointLength(value) < 1)
           modelFail(path, "min_length 1");
-        if (Array.isArray(value) && value.length < 1)
+        if (Array.isArray(value) && value.length === 0)
           modelFail(path, "min_length 1");
       },
     },
@@ -1024,7 +1024,7 @@ export class ValidateAlertsForBookmarkParams extends EntityModel {
   ];
 
   /** Alert IDs to validate (must not be empty). */
-  declare readonly alert_ids: ReadonlyArray<number>;
+  declare readonly alert_ids: readonly number[];
   /** Bookmark type to validate against. */
   declare readonly bookmark_type: "insights" | "funnels";
   /** Bookmark params JSON. */
@@ -1100,7 +1100,7 @@ export class ValidateAlertsForBookmarkResponse extends EntityModel {
   ];
 
   /** Per-alert validation results. */
-  declare readonly alert_validations: ReadonlyArray<AlertValidation>;
+  declare readonly alert_validations: readonly AlertValidation[];
   /** Count of invalid alerts. */
   declare readonly invalid_count: number;
 

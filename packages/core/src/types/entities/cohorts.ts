@@ -9,10 +9,10 @@
  */
 
 import {
-  EntityModel,
-  prepareInit,
   type EntityFieldSpec,
+  EntityModel,
   type ModelDumpOptions,
+  prepareInit,
 } from "./model-base.js";
 
 /**
@@ -142,15 +142,15 @@ export interface CohortInit {
   readonly created_by?:
     CohortCreator | Readonly<Record<string, unknown>> | null | undefined;
   /** IDs of entities referencing this cohort. */
-  readonly referenced_by?: ReadonlyArray<number> | null | undefined;
+  readonly referenced_by?: readonly number[] | null | undefined;
   /** Whether the cohort is verified. */
   readonly verified?: boolean | undefined;
   /** Last queried timestamp string. */
   readonly last_queried?: string | null | undefined;
   /** IDs of entities directly referencing this cohort. */
-  readonly referenced_directly_by?: ReadonlyArray<number> | undefined;
+  readonly referenced_directly_by?: readonly number[] | undefined;
   /** Active integration IDs. */
-  readonly active_integrations?: ReadonlyArray<number> | undefined;
+  readonly active_integrations?: readonly number[] | undefined;
 }
 
 /**
@@ -203,15 +203,15 @@ export class Cohort extends EntityModel {
   /** Creator information. */
   declare readonly created_by: CohortCreator | null;
   /** IDs of entities referencing this cohort. */
-  declare readonly referenced_by: ReadonlyArray<number> | null;
+  declare readonly referenced_by: readonly number[] | null;
   /** Whether the cohort is verified. */
   declare readonly verified: boolean;
   /** Last queried timestamp string. */
   declare readonly last_queried: string | null;
   /** IDs of entities directly referencing this cohort. */
-  declare readonly referenced_directly_by: ReadonlyArray<number>;
+  declare readonly referenced_directly_by: readonly number[];
   /** Active integration IDs. */
-  declare readonly active_integrations: ReadonlyArray<number>;
+  declare readonly active_integrations: readonly number[];
 
   /**
    * Construct a validated Cohort (Pydantic-construction mirror).

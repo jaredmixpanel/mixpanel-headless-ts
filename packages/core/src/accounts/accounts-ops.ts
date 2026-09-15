@@ -28,9 +28,9 @@ import type {
 } from "../auth/account.js";
 import type { Session } from "../auth/session.js";
 import { createMixpanelClient } from "../client/client.js";
+import { type JsonValue, toNativeJson } from "../client/json-value.js";
+import { type MeProjectInfo, MeResponse } from "../client/me.js";
 import { endpointOverridesFromEnv } from "../client/url.js";
-import { toNativeJson, type JsonValue } from "../client/json-value.js";
-import { MeResponse, type MeProjectInfo } from "../client/me.js";
 import {
   ConfigError,
   MixpanelHeadlessError,
@@ -39,7 +39,7 @@ import {
 } from "../errors.js";
 import { Secret } from "../secret.js";
 import {
-  AccountSummary,
+  type AccountSummary,
   AccountTestResult,
   OAuthLoginResult,
 } from "../types/entities/accounts.js";
@@ -66,7 +66,7 @@ export type ProjectPicker = (
  */
 export interface ProgressHandle {
   /** Close the progress indicator (the CM `__exit__` twin). */
-  end(): void;
+  end: () => void;
 }
 
 /**
@@ -181,7 +181,6 @@ const DOMAIN_TO_REGION: Readonly<Record<string, Region>> = {
  *   normalized to the canonical query-host form.
  * @returns `"us"` / `"eu"` / `"in"` for recognized hosts, `null`
  *   otherwise (callers skip the cross-check rather than misclassify).
- *
  * @example
  * ```typescript
  * domainToRegion("eu.mixpanel.com");            // "eu"
@@ -244,7 +243,7 @@ export function assertProjectRegionMatches(
   throw new ConfigError(
     `Region mismatch.\n\n` +
       `You authenticated against the ${authRegion} cluster, but project ` +
-      `${chosenProject} (${String(projInfo.name)}) lives in the ` +
+      `${chosenProject} (${projInfo.name}) lives in the ` +
       `${projectRegion} cluster (${domain}).\n\n` +
       `Re-run with the correct region:\n` +
       `    mp login --region ${projectRegion}`,
@@ -456,7 +455,11 @@ export async function deriveAccountNameForCredential(
           args.token instanceof Secret ? args.token : new Secret(args.token),
         default_project: placeholderProject,
       };
-    } else if (args.token_env !== null) {
+    } else if (args.token_env === null) {
+      throw new ConfigError(
+        "oauth_token requires `token` or `token_env` to derive a name.",
+      );
+    } else {
       tempAccount = {
         type: "oauth_token",
         name: placeholderName,
@@ -464,10 +467,6 @@ export async function deriveAccountNameForCredential(
         token_env: args.token_env,
         default_project: placeholderProject,
       };
-    } else {
-      throw new ConfigError(
-        "oauth_token requires `token` or `token_env` to derive a name.",
-      );
     }
   } else {
     // Control-flow invariant (`accounts.py:580-583`, pragma no cover):
@@ -608,34 +607,34 @@ export async function accountsTest(
   let summary: AccountSummary;
   try {
     summary = accountsShow(effects, name);
-  } catch (exc) {
-    if (exc instanceof ConfigError) {
+  } catch (error) {
+    if (error instanceof ConfigError) {
       return new AccountTestResult({
         // Python `name or "(none)"` (`accounts.py:727`) — the empty
         // string ALSO defaults (falsy-`or`, not nullish;
         // `b7-reviewA-resolution.md` SEM-F1).
         account_name: name !== null && name !== "" ? name : "(none)",
         ok: false,
-        error: exc.message,
+        error: error.message,
       });
     }
-    throw exc;
+    throw error;
   }
 
   let account: Account;
   try {
     account = effects.config.getAccount(summary.name);
-  } catch (exc) {
+  } catch (error) {
     // Pragma-no-cover twin (`accounts.py:733`) — show() already
     // validated existence.
-    if (exc instanceof ConfigError) {
+    if (error instanceof ConfigError) {
       return new AccountTestResult({
         account_name: summary.name,
         ok: false,
-        error: exc.message,
+        error: error.message,
       });
     }
-    throw exc;
+    throw error;
   }
 
   const placeholderProject = account.default_project ?? "0";
@@ -657,18 +656,18 @@ export async function accountsTest(
     let meRaw: unknown;
     try {
       meRaw = await client.me();
-    } catch (exc) {
+    } catch (error) {
       // Broad catch — capture every failure mode (`accounts.py:755`).
-      return buildTestFailureResult(summary.name, "/me probe failed", exc);
+      return buildTestFailureResult(summary.name, "/me probe failed", error);
     }
     let meResp: MeResponse;
     try {
       meResp = MeResponse.fromDict(toNativeJson(meRaw as JsonValue));
-    } catch (exc) {
+    } catch (error) {
       return buildTestFailureResult(
         summary.name,
         "/me response could not be parsed",
-        exc,
+        error,
       );
     }
     let user: Readonly<Record<string, unknown>> | null = null;
@@ -734,13 +733,13 @@ export async function accountsLogin(
   let meResp: MeResponse;
   try {
     meResp = await fetchMe(effects, account, { tokenResolver: bearer });
-  } catch (exc) {
-    const rendered = exc instanceof Error ? exc.message : String(exc);
+  } catch (error) {
+    const rendered = error instanceof Error ? error.message : String(error);
     throw new OAuthError(
       `Login succeeded but \`/me\` probe failed: ${rendered}`,
       "OAUTH_TOKEN_ERROR",
       { account_name: name, region: account.region },
-      { cause: exc },
+      { cause: error },
     );
   }
   if (meResp.user_id !== null && meResp.user_email !== null) {
@@ -854,7 +853,7 @@ export async function accountsExportBridge(
   }
   const account = effects.config.getAccount(name);
   const header = effects.config.getCustomHeader();
-  const headers = header !== null ? { [header[0]]: header[1] } : null;
+  const headers = header === null ? null : { [header[0]]: header[1] };
   return effects.bridge.export({
     account,
     to: options.to,

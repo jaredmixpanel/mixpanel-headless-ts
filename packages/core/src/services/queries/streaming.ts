@@ -16,7 +16,6 @@
  * signal-aware sleep built by the C1 closures (`core.executeDeps`).
  */
 
-import { cpSlice, pythonJsonDumps } from "../../compat/index.js";
 import {
   calculateBackoff,
   parseRetryAfter,
@@ -28,17 +27,18 @@ import {
   isPlainRecord,
   MixpanelHttpError,
 } from "../../client/internals.js";
-import { iterJsonlLines } from "../../client/jsonl.js";
 import {
   JsonNumber,
-  toNativeJson,
   type JsonValue,
+  toNativeJson,
 } from "../../client/json-value.js";
+import { iterJsonlLines } from "../../client/jsonl.js";
 import {
   LosslessJsonError,
   parseLossless,
 } from "../../client/lossless-json.js";
 import { normalizedAbortError } from "../../client/transport.js";
+import { cpSlice, pythonJsonDumps } from "../../compat/index.js";
 import {
   AuthenticationError,
   MixpanelHeadlessError,
@@ -88,7 +88,7 @@ export interface ExportProfilesOptions {
   /** Group type identifier (group profiles instead of users). */
   readonly group_id?: string | null | undefined;
   /** Behavioral filters (mutually exclusive with `cohort_id`). */
-  readonly behaviors?: ReadonlyArray<unknown> | string | null | undefined;
+  readonly behaviors?: readonly unknown[] | string | null | undefined;
   /** Unix timestamp for point-in-time query (must be in the past). */
   readonly as_of_timestamp?: number | null | undefined;
   /** Include all users and mark cohort membership. */
@@ -117,11 +117,11 @@ export interface StreamingMethods {
    *   NOTE: unlike the buffered paths, a 5xx here retries and then
    *   surfaces as `HTTP_ERROR`, exactly like Python).
    */
-  exportEvents(
+  exportEvents: (
     fromDate: string,
     toDate: string,
     options?: ExportEventsOptions,
-  ): AsyncGenerator<JsonValue, void, undefined>;
+  ) => AsyncGenerator<JsonValue, void, undefined>;
 
   /**
    * Stream profiles from the Engage API (`export_profiles`,
@@ -138,9 +138,9 @@ export interface StreamingMethods {
    * @throws AuthenticationError | RateLimitError | ServerError - Per
    *   the retry core.
    */
-  exportProfiles(
+  exportProfiles: (
     options?: ExportProfilesOptions,
-  ): AsyncGenerator<JsonValue, void, undefined>;
+  ) => AsyncGenerator<JsonValue, void, undefined>;
 }
 
 /**
@@ -213,19 +213,19 @@ async function* guardedByteSource(
     for await (const chunk of bodyByteSource(body)) {
       yield chunk;
     }
-  } catch (cause) {
+  } catch (error) {
     if (signal?.aborted === true) {
       throw normalizedAbortError(signal.reason);
     }
-    if (cause instanceof DOMException && cause.name === "AbortError") {
-      throw cause;
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error;
     }
-    if (cause instanceof MixpanelHttpError) {
-      throw cause;
+    if (error instanceof MixpanelHttpError) {
+      throw error;
     }
     throw new MixpanelHttpError(
-      `transport body read failure: ${String(cause)}`,
-      { cause },
+      `transport body read failure: ${String(error)}`,
+      { cause: error },
     );
   }
 }
@@ -418,13 +418,13 @@ export function createStreamingMethods(core: ClientCore): StreamingMethods {
           let responseBody: JsonValue | null;
           try {
             responseBody = parseLossless(bodyText, { pythonConstants: true });
-          } catch (cause) {
-            if (!(cause instanceof LosslessJsonError)) {
-              throw cause;
+          } catch (error) {
+            if (!(error instanceof LosslessJsonError)) {
+              throw error;
             }
             // Python: `body.decode()[:500] if body else None` (codepoint
             // slice, R11.6).
-            responseBody = bodyText !== "" ? cpSlice(bodyText, 0, 500) : null;
+            responseBody = bodyText === "" ? null : cpSlice(bodyText, 0, 500);
           }
           throw new QueryError(errorMessage(responseBody, "Unknown error"), {
             statusCode: response.status,
@@ -446,9 +446,9 @@ export function createStreamingMethods(core: ClientCore): StreamingMethods {
           let event: JsonValue;
           try {
             event = parseLossless(line, { pythonConstants: true });
-          } catch (cause) {
-            if (!(cause instanceof LosslessJsonError)) {
-              throw cause;
+          } catch (error) {
+            if (!(error instanceof LosslessJsonError)) {
+              throw error;
             }
             // Python logs a warning and skips the malformed line
             // (`api_client.py:1936-1937`); log text is out of contract.
@@ -464,18 +464,18 @@ export function createStreamingMethods(core: ClientCore): StreamingMethods {
           onBatch(batchCount);
         }
         return; // Success, exit retry loop.
-      } catch (cause) {
+      } catch (error) {
         // `except httpx.HTTPError` — the transport-error class filter
         // (R2.10); library errors and AbortError pass through.
-        if (!(cause instanceof MixpanelHttpError)) {
-          throw cause;
+        if (!(error instanceof MixpanelHttpError)) {
+          throw error;
         }
         if (attempt >= core.maxRetries) {
           throw new MixpanelHeadlessError(
-            `HTTP error during export: ${cause.message}`,
+            `HTTP error during export: ${error.message}`,
             "HTTP_ERROR",
-            { error: cause.message },
-            { cause },
+            { error: error.message },
+            { cause: error },
           );
         }
         await sleep(calculateBackoff(attempt, core.random) * 1000);
@@ -664,8 +664,10 @@ export interface StreamEventsOptions {
   readonly limit?: number | null | undefined;
   /** Return raw Mixpanel format instead of the normalized shape. */
   readonly raw?: boolean | undefined;
-  /** `$insert_id` generator seam for the normalized shape (defaults to
-   * `crypto.randomUUID` inside `transformEvent`). */
+  /**
+   * `$insert_id` generator seam for the normalized shape (defaults to
+   * `crypto.randomUUID` inside `transformEvent`).
+   */
   readonly uuid?: (() => string) | undefined;
   /** Optional cancellation signal (R6.7). */
   readonly signal?: AbortSignal | undefined;
@@ -680,15 +682,15 @@ export interface StreamProfilesOptions extends ExportProfilesOptions {
 /** The client slice the facade wrappers consume. */
 export interface StreamingClient {
   /** See {@link StreamingMethods.exportEvents}. */
-  exportEvents(
+  exportEvents: (
     fromDate: string,
     toDate: string,
     options?: ExportEventsOptions,
-  ): AsyncGenerator<JsonValue, void, undefined>;
+  ) => AsyncGenerator<JsonValue, void, undefined>;
   /** See {@link StreamingMethods.exportProfiles}. */
-  exportProfiles(
+  exportProfiles: (
     options?: ExportProfilesOptions,
-  ): AsyncGenerator<JsonValue, void, undefined>;
+  ) => AsyncGenerator<JsonValue, void, undefined>;
 }
 
 /**
@@ -724,7 +726,7 @@ export async function* streamEvents(
   for await (const event of iterator) {
     yield transformEvent(
       toNativeJson(event) as Record<string, unknown>,
-      options.uuid !== undefined ? { uuid: options.uuid } : undefined,
+      options.uuid === undefined ? undefined : { uuid: options.uuid },
     );
   }
 }

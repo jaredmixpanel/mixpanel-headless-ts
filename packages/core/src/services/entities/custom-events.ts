@@ -13,10 +13,10 @@
 
 import { appRequest } from "../../client/app-request.js";
 import type { ClientCore } from "../../client/client.js";
-import type { JsonValue } from "../../client/json-value.js";
 import { isPlainRecord, jsonValuePythonStr } from "../../client/internals.js";
-import { MixpanelHeadlessError } from "../../errors.js";
+import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
+import { MixpanelHeadlessError } from "../../errors.js";
 import {
   expectListResult,
   expectRecordResult,
@@ -39,10 +39,10 @@ export interface CustomEventMethods {
    * @throws QueryError - Validation errors (400/422; the form body
    *   rides in `details.request_body`).
    */
-  createCustomEvent(
+  createCustomEvent: (
     body: Record<string, string>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * List custom events (`list_custom_events`, `:8038-8066` — GET
@@ -53,7 +53,7 @@ export interface CustomEventMethods {
    * @returns The custom-event definition list.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  listCustomEvents(signal?: AbortSignal): Promise<JsonValue[]>;
+  listCustomEvents: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
    * Update a custom event's lexicon entry (`update_custom_event`,
@@ -68,11 +68,11 @@ export interface CustomEventMethods {
    * @throws MixpanelHeadlessError - Non-dict response, or the echoed
    *   id differs from the requested one (`UPDATE_TARGET_MISMATCH`).
    */
-  updateCustomEvent(
+  updateCustomEvent: (
     customEventId: number,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Delete a custom event (`delete_custom_event`, `:8133-8164` —
@@ -83,7 +83,10 @@ export interface CustomEventMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  deleteCustomEvent(customEventId: number, signal?: AbortSignal): Promise<void>;
+  deleteCustomEvent: (
+    customEventId: number,
+    signal?: AbortSignal,
+  ) => Promise<void>;
 }
 
 /**

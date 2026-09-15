@@ -18,17 +18,18 @@
 //   ordering lock.
 
 import { describe, expect, it } from "vitest";
+
+import type { ProgressFactory } from "../../src/accounts/accounts-ops.js";
 import { createAccountsNamespace } from "../../src/accounts/namespace.js";
 import { createSessionNamespace } from "../../src/accounts/session-namespace.js";
-import type { ProgressFactory } from "../../src/accounts/accounts-ops.js";
-import { ConfigError, InvalidArgumentError } from "../../src/errors.js";
 import { OAuthTokens } from "../../src/auth/token.js";
+import { ConfigError, InvalidArgumentError } from "../../src/errors.js";
 import { Secret } from "../../src/secret.js";
 import {
+  type EffectsBundle,
   makeEffects,
   meFetch,
   setEnv,
-  type EffectsBundle,
 } from "./fake-auth-effects.js";
 
 /** A tracking progress factory (the `_make_tracking_progress` twin). */
@@ -223,8 +224,8 @@ describe("TestLoginUnifiedFlagValidation (test_accounts_namespace.py:1228)", () 
         service_account: true,
         token_env: "MY_TOKEN",
       });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(InvalidArgumentError);
     expect((caught as InvalidArgumentError).violation).toBe(
@@ -242,8 +243,8 @@ describe("TestLoginUnifiedFlagValidation (test_accounts_namespace.py:1228)", () 
     let caught: unknown = null;
     try {
       await accounts.loginUnified({ service_account: true, no_browser: true });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(InvalidArgumentError);
     expect((caught as InvalidArgumentError).violation).toBe(
@@ -264,8 +265,8 @@ describe("TestLoginUnifiedFlagValidation (test_accounts_namespace.py:1228)", () 
         token_env: "MY_TOKEN",
         secret_stdin: true,
       });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(InvalidArgumentError);
     expect((caught as InvalidArgumentError).violation).toBe(
@@ -286,8 +287,8 @@ describe("TestLoginUnifiedFlagValidation (test_accounts_namespace.py:1228)", () 
         service_account: true,
         account_type: "oauth_token",
       });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(InvalidArgumentError);
     expect((caught as InvalidArgumentError).violation).toBe(
@@ -465,7 +466,7 @@ describe("TestLoginUnifiedPickerSortOrder (test_accounts_namespace.py:1544)", ()
       region: "us",
       name: "acct",
       project_picker: (_me, sortedProjects) => {
-        captured.push(sortedProjects.map(([, info]) => String(info.name)));
+        captured.push(sortedProjects.map(([, info]) => info.name));
         return (sortedProjects[0] as readonly [string, unknown])[0];
       },
     });
@@ -505,7 +506,7 @@ describe("TestLoginUnifiedPickerSortOrder (test_accounts_namespace.py:1544)", ()
       region: "us",
       name: "acct",
       project_picker: (_me, sortedProjects) => {
-        captured.push(sortedProjects.map(([, info]) => String(info.name)));
+        captured.push(sortedProjects.map(([, info]) => info.name));
         return (sortedProjects[0] as readonly [string, unknown])[0];
       },
     });
@@ -527,8 +528,8 @@ describe("B7-ARB-A resolution locks (b7-reviewA-resolution.md SEM-F1/SEM-F2)", (
     let caught: unknown = null;
     try {
       await accounts.loginUnified({ token_env: "" });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     // NOT the `Env var '' is unset` collection error — the bearer read
     // falls back to MP_OAUTH_TOKEN (`token_env or "MP_OAUTH_TOKEN"`),
@@ -576,8 +577,8 @@ describe("B7-ARB-A resolution locks (b7-reviewA-resolution.md SEM-F1/SEM-F2)", (
     let caught: unknown = null;
     try {
       await accounts.loginUnified({ name: "personal" });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ConfigError);
     expect((caught as ConfigError).message).toContain("already exists");

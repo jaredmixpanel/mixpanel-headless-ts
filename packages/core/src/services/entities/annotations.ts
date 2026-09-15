@@ -47,7 +47,7 @@ export interface AnnotationMethods {
    * @throws AuthenticationError | RateLimitError | QueryError |
    *   ServerError - Per the B0 `appRequest` contract.
    */
-  listAnnotations(options?: ListAnnotationsOptions): Promise<JsonValue[]>;
+  listAnnotations: (options?: ListAnnotationsOptions) => Promise<JsonValue[]>;
 
   /**
    * Create an annotation (`create_annotation`, `:5722-5755` — POST
@@ -58,10 +58,10 @@ export interface AnnotationMethods {
    * @returns The created annotation dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  createAnnotation(
+  createAnnotation: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Get an annotation by ID (`get_annotation`, `:5757-5788`).
@@ -71,10 +71,10 @@ export interface AnnotationMethods {
    * @returns The annotation dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  getAnnotation(
+  getAnnotation: (
     annotationId: number,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Update an annotation (`update_annotation`, `:5790-5824` — PATCH).
@@ -85,11 +85,11 @@ export interface AnnotationMethods {
    * @returns The updated annotation dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  updateAnnotation(
+  updateAnnotation: (
     annotationId: number,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Delete an annotation (`delete_annotation`, `:5826-5851`).
@@ -98,7 +98,10 @@ export interface AnnotationMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  deleteAnnotation(annotationId: number, signal?: AbortSignal): Promise<void>;
+  deleteAnnotation: (
+    annotationId: number,
+    signal?: AbortSignal,
+  ) => Promise<void>;
 
   /**
    * List annotation tags (`list_annotation_tags`, `:5853-5881` — GET
@@ -108,7 +111,7 @@ export interface AnnotationMethods {
    * @returns The tag list verbatim.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  listAnnotationTags(signal?: AbortSignal): Promise<JsonValue[]>;
+  listAnnotationTags: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
    * Create an annotation tag (`create_annotation_tag`, `:5883-5914` —
@@ -119,10 +122,10 @@ export interface AnnotationMethods {
    * @returns The created tag dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  createAnnotationTag(
+  createAnnotationTag: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 }
 
 /**

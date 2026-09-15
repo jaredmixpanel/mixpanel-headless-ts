@@ -20,6 +20,7 @@ import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
+
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -246,8 +247,8 @@ describe("browser bundle recipe", () => {
     let failure: string | undefined;
     try {
       runBuild(out);
-    } catch (err) {
-      failure = err instanceof Error ? String(err.message) : String(err);
+    } catch (error) {
+      failure = error instanceof Error ? error.message : String(error);
     }
 
     if (treeIsDirty) {

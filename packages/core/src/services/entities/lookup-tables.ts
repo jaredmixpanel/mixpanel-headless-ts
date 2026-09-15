@@ -20,23 +20,23 @@
 
 import { appRequest } from "../../client/app-request.js";
 import type { ClientCore } from "../../client/client.js";
-import type { JsonValue } from "../../client/json-value.js";
 import {
   handleResponse,
   isPlainRecord,
   MixpanelHttpError,
 } from "../../client/internals.js";
+import type { JsonValue } from "../../client/json-value.js";
 import {
   LosslessJsonError,
   parseLossless,
 } from "../../client/lossless-json.js";
-import { MixpanelHeadlessError } from "../../errors.js";
 import { maybeScopedPath } from "../../client/scope.js";
 import { cpSlice, pythonStr } from "../../compat/index.js";
+import { MixpanelHeadlessError } from "../../errors.js";
 import {
+  expectListResult,
   expectRecordResult,
   jsonTruthy,
-  expectListResult,
   paramsOrNone,
   pythonTypeNameOf,
 } from "./shared.js";
@@ -73,7 +73,7 @@ export interface LookupTableMethods {
    * @returns The table list verbatim.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  listLookupTables(options?: ListLookupTablesOptions): Promise<JsonValue[]>;
+  listLookupTables: (options?: ListLookupTablesOptions) => Promise<JsonValue[]>;
 
   /**
    * Get a signed upload URL (`get_lookup_upload_url`, `:7584-7623` —
@@ -86,10 +86,10 @@ export interface LookupTableMethods {
    * @throws MixpanelHeadlessError - Non-dict response, or a required
    *   field missing (`MISSING_FIELD`).
    */
-  getLookupUploadUrl(
+  getLookupUploadUrl: (
     contentType?: string,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * PUT CSV bytes to an external signed URL (`upload_to_signed_url`,
@@ -104,11 +104,11 @@ export interface LookupTableMethods {
    *   failure (`{url}` details) or status ≥ 300
    *   (`{status_code, url}` details).
    */
-  uploadToSignedUrl(
+  uploadToSignedUrl: (
     url: string,
     csvBytes: Uint8Array,
     signal?: AbortSignal,
-  ): Promise<void>;
+  ) => Promise<void>;
 
   /**
    * Register a lookup table (`register_lookup_table`, `:7683-7746` —
@@ -123,10 +123,10 @@ export interface LookupTableMethods {
    *   (`INVALID_RESPONSE`) or non-dict result; the `handleResponse`
    *   family on non-2xx.
    */
-  registerLookupTable(
+  registerLookupTable: (
     formData: Record<string, string>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Mark an upload ready (`mark_lookup_table_ready`, `:7748-7776` —
@@ -137,10 +137,10 @@ export interface LookupTableMethods {
    * @returns The table status dict.
    * @throws MixpanelHeadlessError - As {@link registerLookupTable}.
    */
-  markLookupTableReady(
+  markLookupTableReady: (
     formData: Record<string, string>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Get upload status (`get_lookup_upload_status`, `:7778-7809` — GET
@@ -151,10 +151,10 @@ export interface LookupTableMethods {
    * @returns The status dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  getLookupUploadStatus(
+  getLookupUploadStatus: (
     uploadId: string,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Update table metadata (`update_lookup_table`, `:7811-7848` —
@@ -167,11 +167,11 @@ export interface LookupTableMethods {
    * @returns The updated table dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  updateLookupTable(
+  updateLookupTable: (
     dataGroupId: number | bigint,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Delete lookup tables (`delete_lookup_tables`, `:7850-7872` —
@@ -182,10 +182,10 @@ export interface LookupTableMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  deleteLookupTables(
-    dataGroupIds: readonly (number | bigint)[],
+  deleteLookupTables: (
+    dataGroupIds: ReadonlyArray<number | bigint>,
     signal?: AbortSignal,
-  ): Promise<void>;
+  ) => Promise<void>;
 
   /**
    * Download table data as CSV bytes (`download_lookup_table`,
@@ -199,10 +199,10 @@ export interface LookupTableMethods {
    * @throws AuthenticationError | QueryError | ServerError - Per the
    *   `handleResponse` mapping on non-2xx.
    */
-  downloadLookupTable(
+  downloadLookupTable: (
     dataGroupId: number | bigint,
     options?: DownloadLookupTableOptions,
-  ): Promise<Uint8Array>;
+  ) => Promise<Uint8Array>;
 
   /**
    * Get a signed download URL (`get_lookup_download_url`,
@@ -217,10 +217,10 @@ export interface LookupTableMethods {
    * @throws MixpanelHeadlessError - No URL in a dict response
    *   (`MISSING_URL`), or a non-dict/non-string response.
    */
-  getLookupDownloadUrl(
+  getLookupDownloadUrl: (
     dataGroupId: number | bigint,
     signal?: AbortSignal,
-  ): Promise<string>;
+  ) => Promise<string>;
 }
 
 /**
@@ -283,16 +283,16 @@ export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
     try {
       // Python `response.json()` — json.loads on wire data (GATE-R5).
       body = parseLossless(text, { pythonConstants: true });
-    } catch (cause) {
-      if (!(cause instanceof LosslessJsonError)) {
-        throw cause; // RangeError etc. propagates (B0-ARB F3).
+    } catch (error) {
+      if (!(error instanceof LosslessJsonError)) {
+        throw error; // RangeError etc. propagates (B0-ARB F3).
       }
       throw new MixpanelHeadlessError(
         `register_lookup_table returned non-JSON response ` +
           `(status ${response.status}): ${cpSlice(text, 0, 500)}`,
         "INVALID_RESPONSE",
         null,
-        { cause },
+        { cause: error },
       );
     }
     let unwrapped: JsonValue = body;
@@ -369,16 +369,16 @@ export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
           headers: { "Content-Type": "text/csv" },
           body: csvBytes as BodyInit,
           redirect: "manual",
-          ...(signal !== undefined ? { signal } : {}),
+          ...(signal === undefined ? {} : { signal }),
         });
-      } catch (cause) {
-        if (cause instanceof DOMException && cause.name === "AbortError") {
-          throw cause; // R6.7 cancellation passthrough.
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          throw error; // R6.7 cancellation passthrough.
         }
         if (
-          cause instanceof MixpanelHttpError ||
-          cause instanceof TypeError ||
-          cause instanceof DOMException
+          error instanceof MixpanelHttpError ||
+          error instanceof TypeError ||
+          error instanceof DOMException
         ) {
           // The `except httpx.HTTPError` arm (`:7664-7669`) — this
           // call site maps transport failures straight to
@@ -387,14 +387,14 @@ export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
           // bare catch.
           throw new MixpanelHeadlessError(
             `Upload to signed URL failed: ${
-              cause instanceof Error ? cause.message : String(cause)
+              error instanceof Error ? error.message : String(error)
             }`,
             "UPLOAD_ERROR",
             { url },
-            { cause },
+            { cause: error },
           );
         }
-        throw cause;
+        throw error;
       }
       if (response.status >= 300) {
         const text = await response.text();
@@ -442,7 +442,7 @@ export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
     },
 
     deleteLookupTables: async (
-      dataGroupIds: readonly (number | bigint)[],
+      dataGroupIds: ReadonlyArray<number | bigint>,
       signal?: AbortSignal,
     ): Promise<void> => {
       const path = scopedPath("data-definitions/lookup-tables/");

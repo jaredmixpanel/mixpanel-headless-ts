@@ -18,6 +18,7 @@
 //   observable.
 
 import { describe, expect, it } from "vitest";
+
 import {
   overrideProbeNarration,
   overrideProbeOrder,
@@ -71,9 +72,9 @@ async function runWithSpy(
           }
         : {}),
     });
-  } catch (exc) {
-    if (!(exc instanceof RegionProbeError)) {
-      throw exc;
+  } catch (error) {
+    if (!(error instanceof RegionProbeError)) {
+      throw error;
     }
   }
   return { urls, region };

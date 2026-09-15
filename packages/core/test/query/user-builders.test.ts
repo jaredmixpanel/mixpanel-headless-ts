@@ -58,26 +58,26 @@
  *   silent narrowing, B2 ASSERT-F1).
  */
 
-import { describe, expect, it } from "vitest";
 import fc from "fast-check";
+import { describe, expect, it } from "vitest";
 
 import {
   MixpanelHeadlessError,
   ParamValidationError,
 } from "../../src/errors.js";
 import {
+  extractCohortFilter,
+  filtersToSelector,
+  filterToSelector,
+  formatValue,
+} from "../../src/query/user-builders.js";
+import {
   CohortCriteria,
   CohortDefinition,
   Filter,
+  type FilterFields,
 } from "../../src/types/index.js";
 import { filterUnchecked } from "../../src/types/query-params/filter.js";
-import type { FilterFields } from "../../src/types/index.js";
-import {
-  extractCohortFilter,
-  filterToSelector,
-  filtersToSelector,
-  formatValue,
-} from "../../src/query/user-builders.js";
 
 /**
  * Build a Filter straight from its fields — the twin of Python's
@@ -329,11 +329,13 @@ describe("filterToSelector edge cases (TestFilterToSelectorEdgeCases)", () => {
   });
 
   it("value with backslash is handled", () => {
-    const result = filterToSelector(Filter.contains("path", "C:\\Users"));
-
-    expect(result.includes("C:\\") || result.includes("C:\\\\Users")).toBe(
-      true,
+    const result = filterToSelector(
+      Filter.contains("path", String.raw`C:\Users`),
     );
+
+    expect(
+      result.includes("C:\\") || result.includes(String.raw`C:\\Users`),
+    ).toBe(true);
   });
 
   it("empty string value", () => {
@@ -519,12 +521,16 @@ describe("extractCohortFilter (TestExtractCohortFilter)", () => {
 describe("filterToSelector property escaping (TestFilterToSelectorPropertyEscaping)", () => {
   it("property name containing a double quote is escaped", () => {
     const f = Filter.equals('weird"prop', "val");
-    expect(filterToSelector(f)).toBe('properties["weird\\"prop"] == "val"');
+    expect(filterToSelector(f)).toBe(
+      String.raw`properties["weird\"prop"] == "val"`,
+    );
   });
 
   it("property name containing a backslash is escaped", () => {
-    const f = Filter.equals("back\\slash", "val");
-    expect(filterToSelector(f)).toBe('properties["back\\\\slash"] == "val"');
+    const f = Filter.equals(String.raw`back\slash`, "val");
+    expect(filterToSelector(f)).toBe(
+      String.raw`properties["back\\slash"] == "val"`,
+    );
   });
 });
 
@@ -823,34 +829,34 @@ describe("formatValue special characters (TestPbtFormatValueSpecialChars)", () =
 
 describe("formatValue / propRef escape ALL occurrences (NEW)", () => {
   it("formatValue escapes every backslash", () => {
-    expect(formatValue("a\\b\\c")).toBe('"a\\\\b\\\\c"');
+    expect(formatValue(String.raw`a\b\c`)).toBe(String.raw`"a\\b\\c"`);
   });
 
   it("formatValue escapes every double quote", () => {
-    expect(formatValue('a"b"c')).toBe('"a\\"b\\"c"');
+    expect(formatValue('a"b"c')).toBe(String.raw`"a\"b\"c"`);
   });
 
   it("formatValue escapes backslashes BEFORE quotes", () => {
     // Input:  \"   (backslash, quote)
     // Python: '\\' -> '\\\\' first, then '"' -> '\\"'  =>  \\\"
-    expect(formatValue('\\"')).toBe('"\\\\\\""');
+    expect(formatValue(String.raw`\"`)).toBe(String.raw`"\\\""`);
   });
 
   it("formatValue handles a trailing backslash", () => {
-    expect(formatValue("a\\")).toBe('"a\\\\"');
+    expect(formatValue("a\\")).toBe(String.raw`"a\\"`);
   });
 
   it("propRef escapes every backslash and quote in the property name", () => {
-    const f = Filter.equals('a\\b"c\\d"e', "v");
+    const f = Filter.equals(String.raw`a\b"c\d"e`, "v");
     expect(filterToSelector(f)).toBe(
-      'properties["a\\\\b\\"c\\\\d\\"e"] == "v"',
+      String.raw`properties["a\\b\"c\\d\"e"] == "v"`,
     );
   });
 
   it("a selector-injection value stays inert", () => {
     const f = Filter.contains("p", 'properties["x"] == "y" or ');
     expect(filterToSelector(f)).toBe(
-      '"properties[\\"x\\"] == \\"y\\" or " in properties["p"]',
+      String.raw`"properties[\"x\"] == \"y\" or " in properties["p"]`,
     );
   });
 });
@@ -861,7 +867,9 @@ describe("formatValue escaping round-trips (NEW, PBT)", () => {
       fc.property(fc.string({ maxLength: 60, unit: "binary" }), (s) => {
         const result = formatValue(s);
         const inner = result.slice(1, -1);
-        const unescaped = inner.replaceAll('\\"', '"').replaceAll("\\\\", "\\");
+        const unescaped = inner
+          .replaceAll(String.raw`\"`, '"')
+          .replaceAll("\\\\", "\\");
 
         expect(unescaped).toBe(s);
       }),

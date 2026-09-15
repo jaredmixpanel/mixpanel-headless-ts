@@ -13,20 +13,25 @@
 // both are B8-N2 modules; those properties translate at B8 against the
 // real MeService.
 import fc from "fast-check";
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+
 import { selectWorkspaceId, type WorkspaceView } from "../../src/client/me.js";
 
 const GLOBAL_WORKSPACE_NAME = "All Project Data";
 
-/** Unset-or-bool: an unset flag (null) must be distinguishable from
- * false — the ladder treats them differently. */
+/**
+ * Unset-or-bool: an unset flag (null) must be distinguishable from
+ * false — the ladder treats them differently.
+ */
 const triState = fc.constantFrom<boolean | null>(null, true, false);
 
 /** Short free-form names (Hypothesis `st.text(min_size=1, max_size=8)`). */
 const shortText = fc.string({ unit: "binary", minLength: 1, maxLength: 8 });
 
-/** The `_views` strategy (:82-95): 1-6 views, unique ids, names biased
- * toward the global-view name. */
+/**
+ * The `_views` strategy (:82-95): 1-6 views, unique ids, names biased
+ * toward the global-view name.
+ */
 const viewsArb: fc.Arbitrary<WorkspaceView[]> = fc
   .uniqueArray(fc.integer({ min: 1, max: 10_000 }), {
     minLength: 1,
@@ -49,8 +54,10 @@ const viewsArb: fc.Arbitrary<WorkspaceView[]> = fc
     ),
   );
 
-/** `_views_no_global_with_apd` (:98-140): no `is_global === true`
- * anywhere; exactly one view (random position) named APD. */
+/**
+ * `_views_no_global_with_apd` (:98-140): no `is_global === true`
+ * anywhere; exactly one view (random position) named APD.
+ */
 const viewsNoGlobalWithApd: fc.Arbitrary<WorkspaceView[]> = fc
   .uniqueArray(fc.integer({ min: 1, max: 10_000 }), {
     minLength: 1,

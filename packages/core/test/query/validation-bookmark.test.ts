@@ -26,7 +26,8 @@
  * R10.2: assertion-for-assertion.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+
 import type { ValidationError } from "../../src/errors.js";
 import { validateBookmark } from "../../src/query/validation-bookmark.js";
 
@@ -180,7 +181,7 @@ describe("TestValidateBookmarkLayer2", () => {
     bm.displayOptions["chartType"] = "barchart";
     const errors = validateBookmark(bm);
     const chartErrors = withCode(errors, "B5_INVALID_CHART_TYPE");
-    expect(chartErrors.length).toBe(1);
+    expect(chartErrors).toHaveLength(1);
     expect(chartErrors[0]!.suggestion).not.toBeNull();
     expect(chartErrors[0]!.suggestion).toContain("bar");
   });
@@ -204,7 +205,7 @@ describe("TestValidateBookmarkLayer2", () => {
     (bm.sections.show[0]!["measurement"] as Dict)["math"] = "totl";
     const errors = validateBookmark(bm);
     const mathErrors = withCode(errors, "B9_INVALID_MATH");
-    expect(mathErrors.length).toBe(1);
+    expect(mathErrors).toHaveLength(1);
     expect(mathErrors[0]!.suggestion).not.toBeNull();
     expect(mathErrors[0]!.suggestion).toContain("total");
   });
@@ -214,7 +215,7 @@ describe("TestValidateBookmarkLayer2", () => {
     (bm.sections.show[0]!["measurement"] as Dict)["math"] = "average";
     const errors = validateBookmark(bm);
     const propErrors = withCode(errors, "B10_MATH_MISSING_PROPERTY");
-    expect(propErrors.length).toBe(1);
+    expect(propErrors).toHaveLength(1);
     expect(propErrors[0]!.severity).toBe("warning");
     expect(propErrors[0]!.fix).not.toBeNull();
   });
@@ -252,7 +253,7 @@ describe("TestValidateBookmarkLayer2", () => {
     ];
     const errors = validateBookmark(bm);
     const opErrors = withCode(errors, "B15_INVALID_FILTER_OPERATOR");
-    expect(opErrors.length).toBe(1);
+    expect(opErrors).toHaveLength(1);
     expect(opErrors[0]!.severity).toBe("warning");
   });
 
@@ -282,9 +283,9 @@ describe("TestValidateBookmarkLayer2", () => {
       const errors = validateBookmark(bm);
       const opErrors = withCode(errors, "B15_INVALID_FILTER_OPERATOR");
       expect(
-        opErrors.length,
+        opErrors,
         `Operator '${op}' should be valid but got B15 warning`,
-      ).toBe(0);
+      ).toHaveLength(0);
     }
   });
 
@@ -419,9 +420,9 @@ describe("TestValidateMeasurementFunnelContext", () => {
       const errors = validateBookmark(bm, { bookmark_type: "funnels" });
       const mathErrors = withCode(errors, "B9_INVALID_MATH");
       expect(
-        mathErrors.length,
+        mathErrors,
         `math='${mathType}' should be invalid for funnels`,
-      ).toBe(1);
+      ).toHaveLength(1);
     }
   });
 
@@ -438,9 +439,9 @@ describe("TestValidateMeasurementFunnelContext", () => {
       const errors = validateBookmark(bm, { bookmark_type: "insights" });
       const mathErrors = withCode(errors, "B9_INVALID_MATH");
       expect(
-        mathErrors.length,
+        mathErrors,
         `math='${mathType}' should be invalid for insights`,
-      ).toBe(1);
+      ).toHaveLength(1);
     }
   });
 
@@ -448,7 +449,7 @@ describe("TestValidateMeasurementFunnelContext", () => {
     const bm = minimalFunnelBookmark("conversion_rate_uniqu");
     const errors = validateBookmark(bm, { bookmark_type: "funnels" });
     const mathErrors = withCode(errors, "B9_INVALID_MATH");
-    expect(mathErrors.length).toBe(1);
+    expect(mathErrors).toHaveLength(1);
     expect(mathErrors[0]!.suggestion).not.toBeNull();
     expect(mathErrors[0]!.suggestion).toContain("conversion_rate_unique");
   });
@@ -507,7 +508,7 @@ describe("TestValidateSortingBlock", () => {
     bm["sorting"] = { bar: { sortBy: "totally bogus", colSortAttrs: [] } };
     const errors = validateBookmark(bm);
     const s1 = withCode(errors, "S1_INVALID_SORT_BY");
-    expect(s1.length).toBe(1);
+    expect(s1).toHaveLength(1);
     expect(s1[0]!.path).toBe("sorting.bar.sortBy");
   });
 
@@ -522,7 +523,7 @@ describe("TestValidateSortingBlock", () => {
     };
     const errors = validateBookmark(bm);
     const extra = withCode(errors, "S3_UNKNOWN_FIELD");
-    expect(extra.length).toBe(1);
+    expect(extra).toHaveLength(1);
     expect(extra[0]!.path).toBe("sorting.bar.segmentation");
   });
 
@@ -531,7 +532,7 @@ describe("TestValidateSortingBlock", () => {
     bm["sorting"] = { bar: { sortBy: "value" } };
     const errors = validateBookmark(bm);
     const missing = withCode(errors, "S2_MISSING_COL_SORT_ATTRS");
-    expect(missing.length).toBe(1);
+    expect(missing).toHaveLength(1);
     expect(missing[0]!.path).toBe("sorting.bar.colSortAttrs");
   });
 
@@ -551,11 +552,11 @@ describe("TestValidateSortingBlock", () => {
     };
     const errors = validateBookmark(bm);
     const missing = withCode(errors, "S2_MISSING_COL_SORT_ATTRS");
-    expect(missing.length).toBe(2);
+    expect(missing).toHaveLength(2);
     const extraSegs = errors.filter(
       (e) => e.code === "S3_UNKNOWN_FIELD" && e.path.endsWith(".segmentation"),
     );
-    expect(extraSegs.length).toBe(2);
+    expect(extraSegs).toHaveLength(2);
   });
 
   it("test_sorting_unknown_chart_type_warning", () => {
@@ -563,7 +564,7 @@ describe("TestValidateSortingBlock", () => {
     bm["sorting"] = { barz: { sortBy: "column", colSortAttrs: [] } };
     const errors = validateBookmark(bm);
     const unknown = withCode(errors, "S4_UNKNOWN_CHART_TYPE");
-    expect(unknown.length).toBe(1);
+    expect(unknown).toHaveLength(1);
     expect(unknown[0]!.severity).toBe("warning");
     expect(unknown[0]!.suggestion).not.toBeNull();
     expect(unknown[0]!.suggestion).toContain("bar");
@@ -574,7 +575,7 @@ describe("TestValidateSortingBlock", () => {
     bm["sorting"] = { bar: "asc" };
     const errors = validateBookmark(bm);
     const typeErr = withCode(errors, "S5_NOT_A_DICT");
-    expect(typeErr.length).toBe(1);
+    expect(typeErr).toHaveLength(1);
     expect(typeErr[0]!.path).toBe("sorting.bar");
   });
 
@@ -583,7 +584,7 @@ describe("TestValidateSortingBlock", () => {
     bm["sorting"] = ["asc"];
     const errors = validateBookmark(bm);
     const typeErr = withCode(errors, "S5_NOT_A_DICT");
-    expect(typeErr.length).toBe(1);
+    expect(typeErr).toHaveLength(1);
     expect(typeErr[0]!.path).toBe("sorting");
   });
 
@@ -599,7 +600,7 @@ describe("TestValidateSortingBlock", () => {
     };
     const errors = validateBookmark(bm);
     const orderErr = withCode(errors, "S6_INVALID_SORT_ORDER");
-    expect(orderErr.length).toBe(1);
+    expect(orderErr).toHaveLength(1);
   });
 
   it("test_sorting_col_sort_attrs_must_be_list", () => {
@@ -607,7 +608,7 @@ describe("TestValidateSortingBlock", () => {
     bm["sorting"] = { bar: { sortBy: "column", colSortAttrs: {} } };
     const errors = validateBookmark(bm);
     const notAList = withCode(errors, "S7_NOT_A_LIST");
-    expect(notAList.length).toBe(1);
+    expect(notAList).toHaveLength(1);
     expect(notAList[0]!.path).toBe("sorting.bar.colSortAttrs");
   });
 
@@ -664,7 +665,7 @@ describe("TestValidateSortingBlock", () => {
     bm["sorting"] = { line: { sortBy: "column" } };
     const errors = validateBookmark(bm);
     const missing = withCode(errors, "S2_MISSING_COL_SORT_ATTRS");
-    expect(missing.length).toBe(1);
+    expect(missing).toHaveLength(1);
     expect(missing[0]!.path).toBe("sorting.line.colSortAttrs");
   });
 
@@ -673,7 +674,7 @@ describe("TestValidateSortingBlock", () => {
     bm["sorting"] = { line: { sortBy: "totally bogus", sortOrder: "asc" } };
     const errors = validateBookmark(bm);
     const s1 = withCode(errors, "S1_INVALID_SORT_BY");
-    expect(s1.length).toBe(1);
+    expect(s1).toHaveLength(1);
     expect(s1[0]!.path).toBe("sorting.line.sortBy");
   });
 
@@ -682,7 +683,7 @@ describe("TestValidateSortingBlock", () => {
     bm["sorting"] = { bar: { sortBy: "label", colSortAttrs: [] } };
     const errors = validateBookmark(bm);
     const s1 = withCode(errors, "S1_INVALID_SORT_BY");
-    expect(s1.length).toBe(1);
+    expect(s1).toHaveLength(1);
     expect(s1[0]!.path).toBe("sorting.bar.sortBy");
   });
 
@@ -696,7 +697,7 @@ describe("TestValidateSortingBlock", () => {
     };
     const errors = validateBookmark(bm);
     const missing = withCode(errors, "S8_MISSING_SORT_BY");
-    expect(missing.length).toBe(1);
+    expect(missing).toHaveLength(1);
     expect(missing[0]!.path).toBe("sorting.bar.colSortAttrs[0].sortBy");
   });
 
@@ -710,7 +711,7 @@ describe("TestValidateSortingBlock", () => {
     };
     const errors = validateBookmark(bm);
     const s1 = withCode(errors, "S1_INVALID_SORT_BY");
-    expect(s1.length).toBe(1);
+    expect(s1).toHaveLength(1);
     expect(s1[0]!.path).toBe("sorting.bar.colSortAttrs[0].sortBy");
   });
 
@@ -724,7 +725,7 @@ describe("TestValidateSortingBlock", () => {
     };
     const errors = validateBookmark(bm);
     const s1 = withCode(errors, "S1_INVALID_SORT_BY");
-    expect(s1.length).toBe(1);
+    expect(s1).toHaveLength(1);
     expect(s1[0]!.path).toBe("sorting.bar.colSortAttrs[0].sortBy");
   });
 
@@ -738,7 +739,7 @@ describe("TestValidateSortingBlock", () => {
     };
     const errors = validateBookmark(bm);
     const missing = withCode(errors, "S9_MISSING_SORT_ORDER");
-    expect(missing.length).toBe(1);
+    expect(missing).toHaveLength(1);
     expect(missing[0]!.path).toBe("sorting.bar.colSortAttrs[0].sortOrder");
   });
 
@@ -770,7 +771,7 @@ describe("TestValidateSortingBlock", () => {
     };
     const errors = validateBookmark(bm);
     const s6 = withCode(errors, "S6_INVALID_SORT_ORDER");
-    expect(s6.length).toBe(1);
+    expect(s6).toHaveLength(1);
     expect(s6[0]!.path).toBe("sorting.bar.sortOrder");
   });
 
@@ -779,7 +780,7 @@ describe("TestValidateSortingBlock", () => {
     bm["sorting"] = { bar: { sortBy: [], colSortAttrs: [] } };
     const errors = validateBookmark(bm);
     const s1 = withCode(errors, "S1_INVALID_SORT_BY");
-    expect(s1.length).toBe(1);
+    expect(s1).toHaveLength(1);
     expect(s1[0]!.path).toBe("sorting.bar.sortBy");
   });
 
@@ -788,7 +789,7 @@ describe("TestValidateSortingBlock", () => {
     bm["sorting"] = { bar: { sortBy: "column", colSortAttrs: null } };
     const errors = validateBookmark(bm);
     const s7 = withCode(errors, "S7_NOT_A_LIST");
-    expect(s7.length).toBe(1);
+    expect(s7).toHaveLength(1);
     expect(s7[0]!.path).toBe("sorting.bar.colSortAttrs");
   });
 
@@ -797,7 +798,7 @@ describe("TestValidateSortingBlock", () => {
     bm["sorting"] = { line: { sortBy: "label" } };
     const errors = validateBookmark(bm);
     const s9 = withCode(errors, "S9_MISSING_SORT_ORDER");
-    expect(s9.length).toBe(1);
+    expect(s9).toHaveLength(1);
     expect(s9[0]!.path).toBe("sorting.line.sortOrder");
   });
 
@@ -808,7 +809,7 @@ describe("TestValidateSortingBlock", () => {
     };
     const errors = validateBookmark(bm);
     const s3 = withCode(errors, "S3_UNKNOWN_FIELD");
-    expect(s3.length).toBe(1);
+    expect(s3).toHaveLength(1);
     expect(s3[0]!.path).toBe("sorting.line.segmentation");
   });
 
@@ -819,7 +820,7 @@ describe("TestValidateSortingBlock", () => {
     };
     const errors = validateBookmark(bm);
     const s3 = withCode(errors, "S3_UNKNOWN_FIELD");
-    expect(s3.length).toBe(1);
+    expect(s3).toHaveLength(1);
     expect(s3[0]!.path).toBe("sorting.line.colSortAttrs");
   });
 

@@ -21,10 +21,11 @@
  */
 
 import type { MixpanelClient } from "@mixpanel-headless/core";
+
 import { RecordingCallback } from "./codecs.js";
+import type { JsonValue } from "./json-value.js";
 import type { ImplementationRegistry, InvocationContext } from "./runner.js";
 import { clientFromSession, requireWireKwarg, runWire } from "./wire-client.js";
-import type { JsonValue } from "./json-value.js";
 
 /**
  * Copy the PRESENT members of `call.input` into an options bag under

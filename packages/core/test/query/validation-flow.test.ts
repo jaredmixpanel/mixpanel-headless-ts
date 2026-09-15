@@ -11,13 +11,14 @@
  * verbatim (Cautions §6).
  */
 
-import { describe, it, expect } from "vitest";
-import { TimeComparison } from "../../src/types/index.js";
+import { describe, expect, it } from "vitest";
+
 import type { ValidationError } from "../../src/errors.js";
 import {
   validateFlowArgs,
   type ValidateFlowArgsOptions,
 } from "../../src/query/validation-args.js";
+import { TimeComparison } from "../../src/types/index.js";
 
 // =============================================================================
 // Helpers (test_validation_flow.py:43-110)
@@ -98,7 +99,7 @@ describe("TestValidateFlowFL2", () => {
   });
 
   it("test_whitespace_only_event_name_returns_fl2_error", () => {
-    const errors = validateFlowArgs(validFlowArgs({ steps: ["   "] }));
+    const errors = validateFlowArgs(validFlowArgs({ steps: [" ".repeat(3)] }));
     expect(errors.some((e) => e.code === "FL2_EMPTY_STEP_EVENT")).toBe(true);
   });
 
@@ -124,14 +125,14 @@ describe("TestValidateFlowFL2", () => {
   });
 
   it("test_invisible_only_event_name_returns_fl2_invisible_error", () => {
-    const errors = validateFlowArgs(validFlowArgs({ steps: ["\u200b"] }));
+    const errors = validateFlowArgs(validFlowArgs({ steps: ["\u200B"] }));
     expect(errors.some((e) => e.code === "FL2_INVISIBLE_STEP_EVENT")).toBe(
       true,
     );
   });
 
   it("test_zero_width_joiner_only_returns_fl2_invisible_error", () => {
-    const errors = validateFlowArgs(validFlowArgs({ steps: ["\u200d\u200d"] }));
+    const errors = validateFlowArgs(validFlowArgs({ steps: ["\u200D\u200D"] }));
     expect(errors.some((e) => e.code === "FL2_INVISIBLE_STEP_EVENT")).toBe(
       true,
     );
@@ -155,7 +156,9 @@ describe("TestValidateFlowFL2", () => {
   });
 
   it("test_multiple_invalid_steps_report_all", () => {
-    const errors = validateFlowArgs(validFlowArgs({ steps: ["", "   "] }));
+    const errors = validateFlowArgs(
+      validFlowArgs({ steps: ["", " ".repeat(3)] }),
+    );
     expect(
       errors.filter((e) => e.code === "FL2_EMPTY_STEP_EVENT"),
     ).toHaveLength(2);

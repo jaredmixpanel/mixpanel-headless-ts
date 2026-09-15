@@ -17,6 +17,7 @@
 // core WebCrypto path).
 
 import { createHash } from "node:crypto";
+
 import { describe, expect, it, vi } from "vitest";
 
 import { PkceChallenge } from "../src/auth/pkce.js";
@@ -112,7 +113,7 @@ describe("TestPkceChallenge (test_auth_pkce.py:25)", () => {
     // (http:// non-localhost) `crypto.getRandomValues` exists but
     // `crypto.subtle` is undefined — the flow used to die with a bare
     // uncoded TypeError, contrary to R5.
-    const original = globalThis.crypto;
+    const original = crypto;
     vi.stubGlobal("crypto", {
       getRandomValues: original.getRandomValues.bind(original),
     });

@@ -22,7 +22,7 @@
  * class supplied. Mechanical parameterization, not a behavior change.
  */
 
-import { MixpanelHttpError, isPlainRecord } from "../client/internals.js";
+import { isPlainRecord, MixpanelHttpError } from "../client/internals.js";
 import { toNativeJson } from "../client/json-value.js";
 import { parseLossless } from "../client/lossless-json.js";
 import { createRequestExecutor, urlEncodePairs } from "../client/transport.js";
@@ -30,9 +30,9 @@ import { pythonStr } from "../compat/python-str.js";
 import { MixpanelHeadlessError, OAuthError } from "../errors.js";
 import { DEFAULT_SCOPE, OAUTH_BASE_URLS } from "./oauth-constants.js";
 import {
+  type OAuthClientInfo,
   OAuthTokens,
   pythonUtcIsoformat,
-  type OAuthClientInfo,
 } from "./token.js";
 
 /**
@@ -122,7 +122,6 @@ function redactTokenPayload(data: unknown): string {
  * @param baseUrl - The region OAuth base URL (trailing slash).
  * @param args - client id / redirect URI / challenge / state.
  * @returns The full authorization URL.
- *
  * @example
  * ```typescript
  * const url = buildAuthorizeUrl(OAUTH_BASE_URLS["us"], {
@@ -222,7 +221,7 @@ export async function postTokenRequest(
   let response: {
     status: number;
     text: string;
-    header(name: string): string | null;
+    header: (name: string) => string | null;
   };
   try {
     response = await execute({
@@ -234,17 +233,17 @@ export async function postTokenRequest(
       headers: {},
       timeoutSeconds: DEFAULT_TIMEOUT_SECONDS,
     });
-  } catch (exc) {
-    if (!(exc instanceof MixpanelHttpError)) {
-      throw exc;
+  } catch (error) {
+    if (!(error instanceof MixpanelHttpError)) {
+      throw error;
     }
     // Transport failure (`flow.py:535-540`) — vector
     // `test_refresh_tokens_timeout` locks `details_contain.url`.
     throw new OAuthError(
-      `${operation} request failed: ${exc.message}`,
+      `${operation} request failed: ${error.message}`,
       errorCode,
       { url: tokenUrl },
-      { cause: exc },
+      { cause: error },
     );
   }
 
@@ -302,20 +301,21 @@ export async function postTokenRequest(
   let data: unknown;
   try {
     data = toNativeJson(parseLossless(response.text));
-  } catch (exc) {
+  } catch (error) {
     // Never embed the body: a 200 that fails JSON parsing can still BE
     // the token payload (truncated JSON, trailing proxy garbage) —
     // ARB-B F-B1. body_length counts code points (`Array.from`),
     // matching the Python twin's `len(response.text)`.
     throw new OAuthError(
-      `${operation} returned non-JSON response: ` +
-        `${response.header("content-type") ?? "unknown"}`,
+      `${operation} returned non-JSON response: ${
+        response.header("content-type") ?? "unknown"
+      }`,
       errorCode,
       {
         content_type: response.header("content-type") ?? "unknown",
         body_length: Array.from(response.text).length,
       },
-      { cause: exc },
+      { cause: error },
     );
   }
 
@@ -327,9 +327,9 @@ export async function postTokenRequest(
       );
     }
     return OAuthTokens.fromTokenResponse(data, { now });
-  } catch (exc) {
-    if (!(exc instanceof MixpanelHeadlessError)) {
-      throw exc;
+  } catch (error) {
+    if (!(error instanceof MixpanelHeadlessError)) {
+      throw error;
     }
     // Redact before embedding: `data` is a live (if malformed) token
     // payload — see the Security section of the function JSDoc.
@@ -338,10 +338,10 @@ export async function postTokenRequest(
     // the coded OAuthError) and allowlist-redacts object bodies
     // (ARB-B F-B2/E-1), mirroring `flow.py::_redact_token_payload`.
     throw new OAuthError(
-      `${operation} response missing required fields: ${exc.message}`,
+      `${operation} response missing required fields: ${error.message}`,
       errorCode,
       { response_data: redactTokenPayload(data) },
-      { cause: exc },
+      { cause: error },
     );
   }
 }
@@ -376,7 +376,6 @@ export interface RegisterClientOptions {
  * @throws OAuthError - `OAUTH_REGISTRATION_ERROR` on unknown region,
  *   network failure, 429 rate limit, non-2xx status, or a malformed
  *   response body.
- *
  * @example
  * ```typescript
  * const info = await registerClient(fetch, "us",
@@ -393,8 +392,11 @@ export async function registerClient(
   // Register new client (`client_registration.py:96-104`).
   if (!Object.hasOwn(OAUTH_BASE_URLS, region)) {
     throw new OAuthError(
-      `Unknown region: ${JSON.stringify(region)}. Must be one of: ` +
-        `${Object.keys(OAUTH_BASE_URLS).sort().join(", ")}`,
+      `Unknown region: ${JSON.stringify(region)}. Must be one of: ${Object.keys(
+        OAUTH_BASE_URLS,
+      )
+        .sort()
+        .join(", ")}`,
       "OAUTH_REGISTRATION_ERROR",
     );
   }
@@ -415,7 +417,7 @@ export async function registerClient(
   let response: {
     status: number;
     text: string;
-    header(name: string): string | null;
+    header: (name: string) => string | null;
   };
   try {
     response = await execute({
@@ -427,15 +429,15 @@ export async function registerClient(
       headers: {},
       timeoutSeconds: DEFAULT_TIMEOUT_SECONDS,
     });
-  } catch (exc) {
-    if (!(exc instanceof MixpanelHttpError)) {
-      throw exc;
+  } catch (error) {
+    if (!(error instanceof MixpanelHttpError)) {
+      throw error;
     }
     throw new OAuthError(
-      `Client registration request failed: ${exc.message}`,
+      `Client registration request failed: ${error.message}`,
       "OAUTH_REGISTRATION_ERROR",
       { region, url: registerUrl },
-      { cause: exc },
+      { cause: error },
     );
   }
 
@@ -454,8 +456,9 @@ export async function registerClient(
   // httpx `is_success` = 2xx (`client_registration.py:134-144`).
   if (response.status < 200 || response.status >= 300) {
     throw new OAuthError(
-      `Client registration failed with status ${response.status}: ` +
-        `${response.text}`,
+      `Client registration failed with status ${response.status}: ${
+        response.text
+      }`,
       "OAUTH_REGISTRATION_ERROR",
       {
         region,
@@ -473,20 +476,21 @@ export async function registerClient(
       throw new Error("'client_id'");
     }
     clientId = pythonStr(data["client_id"] as never);
-  } catch (exc) {
+  } catch (error) {
     throw new OAuthError(
-      `Invalid registration response: ` +
-        `${exc instanceof Error ? exc.message : String(exc)}`,
+      `Invalid registration response: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
       "OAUTH_REGISTRATION_ERROR",
       {
         region,
         response_body: response.text,
       },
-      { cause: exc },
+      { cause: error },
     );
   }
 
-  const nowMs = options.now !== undefined ? options.now() : Date.now();
+  const nowMs = options.now === undefined ? Date.now() : options.now();
   return {
     client_id: clientId,
     region,

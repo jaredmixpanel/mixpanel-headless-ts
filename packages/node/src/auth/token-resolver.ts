@@ -24,29 +24,27 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-import type {
-  OAuthTokenAccount,
-  Region,
-  TokenResolver,
-  OAuthClientInfo,
-} from "@mixpanel-headless/core";
 import {
-  OAuthTokens,
-  parseOAuthTokens,
   isPythonDict,
   MixpanelHeadlessError,
+  type OAuthClientInfo,
   OAuthError,
+  type OAuthTokenAccount,
+  OAuthTokens,
+  parseOAuthTokens,
+  type Region,
+  type TokenResolver,
 } from "@mixpanel-headless/core";
+
 import {
   atomicWriteBytes,
   isErrnoError,
   readCredentialBytes,
   rejectIfSymlink,
 } from "../io-utils.js";
-import { coerceLaxExpiresAt } from "./pydantic-datetime.js";
 import { OAuthFlow } from "./flow.js";
-import { OAuthStorage } from "./storage.js";
-import { accountDir } from "./storage.js";
+import { coerceLaxExpiresAt } from "./pydantic-datetime.js";
+import { accountDir, OAuthStorage } from "./storage.js";
 import { tokenPayloadBytes } from "./token-payload.js";
 
 /**
@@ -138,7 +136,7 @@ export class OnDiskTokenResolver implements TokenResolver {
         const flow = new OAuthFlow({
           region: args.region,
           storage: new OAuthStorage(),
-          ...(fetchImpl !== undefined ? { fetchImpl } : {}),
+          ...(fetchImpl === undefined ? {} : { fetchImpl }),
           now: this.#now,
         });
         return flow.refreshTokens(args.tokens, args.clientId, {
@@ -166,21 +164,21 @@ export class OnDiskTokenResolver implements TokenResolver {
     // the attack signal, not masquerade as ENOENT).
     try {
       rejectIfSymlink(path);
-    } catch (exc) {
+    } catch (error) {
       // Python wraps ANY OSError from the probe
       // (`token_resolver.py:104-111` `except OSError`) — errno-bearing
       // lstat failures included (B8-ARB-A SEM-F6 family,
       // `b8-reviewA-resolution.md`).
-      if (!(exc instanceof MixpanelHeadlessError) && !isErrnoError(exc)) {
-        throw exc;
+      if (!(error instanceof MixpanelHeadlessError) && !isErrnoError(error)) {
+        throw error;
       }
-      const rendered = exc instanceof Error ? exc.message : String(exc);
+      const rendered = error instanceof Error ? error.message : String(error);
       throw new OAuthError(
         `OAuth tokens path is a symlink at ${path}: ${rendered}. ` +
           `Remove the symlink and re-run \`mp account login ${name}\`.`,
         "OAUTH_TOKEN_ERROR",
         { account_name: name, path },
-        { cause: exc },
+        { cause: error },
       );
     }
     if (!existsSync(path)) {
@@ -194,13 +192,14 @@ export class OnDiskTokenResolver implements TokenResolver {
     let raw: Uint8Array;
     try {
       raw = readCredentialBytes(path);
-    } catch (exc) {
+    } catch (error) {
       throw new OAuthError(
-        `Could not read OAuth tokens for account '${name}' from ${path}: ` +
-          `${exc instanceof Error ? exc.message : String(exc)}`,
+        `Could not read OAuth tokens for account '${name}' from ${path}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
         "OAUTH_TOKEN_ERROR",
         { account_name: name, path },
-        { cause: exc },
+        { cause: error },
       );
     }
 
@@ -226,7 +225,7 @@ export class OnDiskTokenResolver implements TokenResolver {
           "VALIDATION_ERROR",
         );
       }
-    } catch (exc) {
+    } catch (error) {
       throw new OAuthError(
         `OAuth tokens for account '${name}' at ${path} are malformed ` +
           `or missing required fields. Re-run \`mp account login ${name}\`.`,
@@ -234,9 +233,10 @@ export class OnDiskTokenResolver implements TokenResolver {
         {
           account_name: name,
           path,
-          validation_error: exc instanceof Error ? exc.message : String(exc),
+          validation_error:
+            error instanceof Error ? error.message : String(error),
         },
-        { cause: exc },
+        { cause: error },
       );
     }
 
@@ -314,7 +314,7 @@ export class OnDiskTokenResolver implements TokenResolver {
    */
   async getStaticToken(account: OAuthTokenAccount): Promise<string> {
     if (account.token !== null && account.token !== undefined) {
-      return Promise.resolve(account.token.reveal());
+      return account.token.reveal();
     }
     const envName = account.token_env;
     if (envName === null || envName === undefined) {
@@ -336,6 +336,6 @@ export class OnDiskTokenResolver implements TokenResolver {
         { account_name: account.name, env_var: envName },
       );
     }
-    return Promise.resolve(value);
+    return value;
   }
 }

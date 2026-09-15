@@ -13,7 +13,9 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
+
 import {
   API_MAP,
   API_MAP_SOURCE_HASHES,
@@ -21,8 +23,7 @@ import {
 } from "../src/api-map.gen.js";
 import { resolveApi } from "../src/api-map.js";
 import { loadCorpus, loadCorpusConfig } from "../src/loader.js";
-import type { NamingExceptionRow } from "../src/naming.js";
-import { resolveTsApiName } from "../src/naming.js";
+import { type NamingExceptionRow, resolveTsApiName } from "../src/naming.js";
 
 /** The conformance-runner package root. */
 const PACKAGE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -137,7 +138,7 @@ describe("api-map.gen.ts freshness and parity (D12)", () => {
   it("KNOWN_PYTHON_MODULES is the sorted prefix set of the full universe", () => {
     const prefixes = [
       ...new Set([
-        ...Object.keys(universe).map((api) => api.split(".")[0] as string),
+        ...Object.keys(universe).map((api) => api.split(".", 1)[0] as string),
         ...authoredApis.known_modules,
       ]),
     ].sort();

@@ -53,16 +53,16 @@ import { createInterface } from "node:readline";
 
 import {
   buildAuthorizeUrl,
-  postTokenRequest,
-  parsePastedRedirect,
-  OAuthTokens,
-  pythonUtcIsoformat,
+  type OAuthClientInfo,
   OAuthError,
+  type OAuthTokens,
+  parsePastedRedirect,
+  postTokenRequest,
 } from "@mixpanel-headless/core";
-import type { OAuthClientInfo } from "@mixpanel-headless/core";
+
 import {
   CALLBACK_PORTS,
-  CallbackResult,
+  type CallbackResult,
   startCallbackServer,
   type StartCallbackServerOptions,
 } from "./callback-server.js";
@@ -164,7 +164,6 @@ export interface RefreshTokensOptions {
 // import path holds; the untouched B8 suites (`TestParsePastedRedirect`
 // rows in `oauth-flow-login.test.ts`) are the zero-behavior-change
 // proof.
-export { parsePastedRedirect };
 
 /**
  * Probe {@link CALLBACK_PORTS} for one that is not currently in use
@@ -318,8 +317,11 @@ export class OAuthFlow {
     const region = options.region ?? "us";
     if (!Object.hasOwn(OAUTH_BASE_URLS, region)) {
       throw new OAuthError(
-        `Unknown region: ${JSON.stringify(region)}. Must be one of: ` +
-          `${Object.keys(OAUTH_BASE_URLS).sort().join(", ")}`,
+        `Unknown region: ${JSON.stringify(region)}. Must be one of: ${Object.keys(
+          OAUTH_BASE_URLS,
+        )
+          .sort()
+          .join(", ")}`,
         "OAUTH_CONFIG_ERROR",
       );
     }
@@ -401,7 +403,6 @@ export class OAuthFlow {
    *   (`OAUTH_PORT_ERROR`), registration, browser launch
    *   (`OAUTH_BROWSER_ERROR`), callback/paste errors, timeout
    *   (`OAUTH_TIMEOUT`), or token exchange (`OAUTH_TOKEN_ERROR`).
-   *
    * @example
    * ```typescript
    * const flow = new OAuthFlow({ region: "us" });
@@ -481,8 +482,8 @@ export class OAuthFlow {
       void this.#readStdinLine(abort.signal).then((line) => {
         try {
           resolveResult(parsePastedRedirect(line, { expectedState: state }));
-        } catch (exc) {
-          recordError(exc);
+        } catch (error) {
+          recordError(error);
         }
       }, recordError);
     }
@@ -494,14 +495,15 @@ export class OAuthFlow {
     if (openBrowser) {
       try {
         await this.#openBrowser(authorizeUrl);
-      } catch (exc) {
+      } catch (error) {
         abort.abort();
         throw new OAuthError(
-          `Could not open browser for authorization: ` +
-            `${exc instanceof Error ? exc.message : String(exc)}`,
+          `Could not open browser for authorization: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
           "OAUTH_BROWSER_ERROR",
           { authorize_url: authorizeUrl },
-          { cause: exc },
+          { cause: error },
         );
       }
     } else {
@@ -540,8 +542,9 @@ export class OAuthFlow {
         throw firstError;
       }
       throw new OAuthError(
-        `Callback / paste error: ` +
-          `${firstError instanceof Error ? firstError.message : String(firstError)}`,
+        `Callback / paste error: ${
+          firstError instanceof Error ? firstError.message : String(firstError)
+        }`,
         "OAUTH_TOKEN_ERROR",
         {},
         { cause: firstError },
@@ -581,7 +584,6 @@ export class OAuthFlow {
    * @throws OAuthError - The exchange fails (`OAUTH_TOKEN_ERROR` on
    *   every classifier branch — `invalid_grant` stays generic for the
    *   exchange operation, packet §7 caution 6).
-   *
    * @example
    * ```typescript
    * const tokens = await flow.exchangeCode(
@@ -717,4 +719,8 @@ export class OAuthFlow {
  * Re-export of the Python-isoformat renderer for the R10.9 harness and
  * the N3 login half (single mechanism — packet §0.3.2).
  */
-export { pythonUtcIsoformat };
+
+export {
+  parsePastedRedirect,
+  pythonUtcIsoformat,
+} from "@mixpanel-headless/core";

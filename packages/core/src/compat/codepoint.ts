@@ -16,7 +16,6 @@
  *
  * @param text - The string to measure.
  * @returns The code-point count (surrogate pairs count once).
- *
  * @example
  * ```typescript
  * cpLength("𝒳"); // 1  ("𝒳".length is 2)
@@ -67,7 +66,6 @@ function normalizeBound(index: number, length: number): number {
  * @param end - Exclusive end (Python `None` -> omit / `undefined`).
  * @returns The sliced string.
  * @throws TypeError - When a bound is a non-integer number.
- *
  * @example
  * ```typescript
  * cpSlice("a𝒳b", 0, 2); // "a𝒳"  (UTF-16 slice would cut the pair)
@@ -126,7 +124,6 @@ export function compareCodepoints(a: string, b: string): number {
  *
  * @param values - The strings to sort; not mutated.
  * @returns A new array in Python `sorted()` order.
- *
  * @example
  * ```typescript
  * sortedByCodepoint(["😀", "｡"]); // ["｡", "😀"]  (JS sort inverts this)

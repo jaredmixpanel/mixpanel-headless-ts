@@ -2,8 +2,9 @@
 // translated from tests/unit/test_query_types.py /
 // test_bookmark_builders.py guard cases plus Risk #1 guard-order probes.
 import { describe, expect, it } from "vitest";
+
 import {
-  MixpanelHeadlessError,
+  type MixpanelHeadlessError,
   ParamValidationError,
 } from "../../../src/errors.js";
 import {
@@ -22,8 +23,8 @@ function expectGuard(thunk: () => unknown, code: string): void {
   let thrown: unknown;
   try {
     thunk();
-  } catch (cause) {
-    thrown = cause;
+  } catch (error) {
+    thrown = error;
   }
   expect(thrown, `expected ${code}`).toBeInstanceOf(ParamValidationError);
   expect((thrown as MixpanelHeadlessError).code).toBe(code);
@@ -31,7 +32,7 @@ function expectGuard(thunk: () => unknown, code: string): void {
 
 describe("GroupBy guards (__post_init__ parity, source order)", () => {
   it("GB1_EMPTY_PROPERTY on blank string properties", () => {
-    for (const property of ["", "   "]) {
+    for (const property of ["", " ".repeat(3)]) {
       expectGuard(() => new GroupBy({ property }), "GB1_EMPTY_PROPERTY");
     }
   });
@@ -170,6 +171,6 @@ describe("GroupBy construction", () => {
   });
 
   it("listItem propagates the LG1 guard from ListItemGroupMode", () => {
-    expectGuard(() => GroupBy.listItem("cart", "   "), "LG1_EMPTY_SUB");
+    expectGuard(() => GroupBy.listItem("cart", " ".repeat(3)), "LG1_EMPTY_SUB");
   });
 });

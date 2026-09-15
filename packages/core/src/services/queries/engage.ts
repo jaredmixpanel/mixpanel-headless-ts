@@ -8,11 +8,11 @@
  * injection and `query_origin` live in the shared core, R10.8).
  */
 
-import { pythonJsonDumps } from "../../compat/index.js";
-import { QueryError } from "../../errors.js";
 import type { ClientCore } from "../../client/client.js";
 import { isPlainRecord, jsonValuePythonStr } from "../../client/internals.js";
 import { JsonNumber, type JsonValue } from "../../client/json-value.js";
+import { pythonJsonDumps } from "../../compat/index.js";
+import { QueryError } from "../../errors.js";
 import { ProfilePageResult } from "../../types/results/index.js";
 
 /** Options bag of {@link EngageMethods.engageStats}. */
@@ -85,7 +85,7 @@ export interface EngageMethods {
    *   the Python `str()` of the body), or API rejections.
    * @throws AuthenticationError | RateLimitError - Per the retry core.
    */
-  engageStats(options?: EngageStatsOptions): Promise<JsonValue>;
+  engageStats: (options?: EngageStatsOptions) => Promise<JsonValue>;
 
   /**
    * Fetch a single page of profiles (`export_profiles_page`,
@@ -97,10 +97,10 @@ export interface EngageMethods {
    * @throws AuthenticationError | RateLimitError | QueryError |
    *   ServerError - Per the retry core.
    */
-  exportProfilesPage(
+  exportProfilesPage: (
     page: number,
     options?: ExportProfilesPageOptions,
-  ): Promise<ProfilePageResult>;
+  ) => Promise<ProfilePageResult>;
 }
 
 /** Python truthiness for optional strings. */

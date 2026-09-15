@@ -24,26 +24,28 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
-  OAuthError,
-  Secret,
-  OAuthTokens,
   type OAuthClientInfo,
+  OAuthError,
+  type OAuthTokenAccount,
+  OAuthTokens,
+  Secret,
 } from "@mixpanel-headless/core";
-import type { OAuthTokenAccount } from "@mixpanel-headless/core";
-import {
-  OnDiskTokenResolver,
-  accountTokensPath,
-} from "../src/auth/token-resolver.js";
+
 import { OAuthStorage } from "../src/auth/storage.js";
+import {
+  accountTokensPath,
+  OnDiskTokenResolver,
+} from "../src/auth/token-resolver.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const POSIX = process.platform !== "win32";
 const itPosix = POSIX ? it : it.skip;
 
-const cleanups: (() => void)[] = [];
+const cleanups: Array<() => void> = [];
 let restoreEnv: () => void = () => undefined;
 let savedHome: string | undefined;
 let home = "";
@@ -467,7 +469,7 @@ describe("TestTokenResolverMalformed (test_042_edge_cases.py:240 — inbound b6-
     }
     const resolver = new OnDiskTokenResolver();
     await expect(resolver.getBrowserToken("x", "us")).rejects.toThrow(
-      new RegExp(p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+      new RegExp(p.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)),
     );
   });
 
@@ -541,8 +543,8 @@ describe("B8-ARB-A SEM-F6 probe errno-wrap lock (token_resolver.py:104-111)", ()
       let caught: unknown = null;
       try {
         await resolver.getBrowserToken("me", "us");
-      } catch (exc) {
-        caught = exc;
+      } catch (error) {
+        caught = error;
       }
       expect(caught).toBeInstanceOf(OAuthError);
       expect((caught as OAuthError).code).toBe("OAUTH_TOKEN_ERROR");

@@ -19,12 +19,13 @@
 // different byte sequence.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import { pythonJsonDumps } from "../../src/compat/python-json-dumps.js";
 import { pythonJsonDumpsCanonical } from "../../src/compat/python-json-dumps-canonical.js";
 import fixtureTable from "./fixtures/canonical-fixtures.json" with { type: "json" };
 
 describe("pythonJsonDumpsCanonical — CPython oracle table", () => {
-  const oracle: [string, unknown, string][] = [
+  const oracle: Array<[string, unknown, string]> = [
     [
       "sorts nested object keys and uses compact separators",
       { b: { z: 1, a: [1, 2, { k: null }] }, a: true },
@@ -36,17 +37,17 @@ describe("pythonJsonDumpsCanonical — CPython oracle table", () => {
       // and the astral char's high surrogate (0xD83D) is below 0xFF5E.
       // CPython compares code POINTS, so U+FF5E precedes U+1F600.
       "sorts astral-plane keys by code point, not UTF-16 code unit",
-      { "\u{ff5e}": 1, "\u{1f600}": 2, a: 3, Z: 4 },
-      '{"Z":4,"a":3,"\\uff5e":1,"\\ud83d\\ude00":2}',
+      { "\u{FF5E}": 1, "\u{1F600}": 2, a: 3, Z: 4 },
+      String.raw`{"Z":4,"a":3,"\uff5e":1,"\ud83d\ude00":2}`,
     ],
     [
       "escapes control characters, non-ASCII and astral chars (ensure_ascii)",
       {
-        ctl: "\t\n\u{22}\u{5c}\u{1}",
-        nonascii: "caf\u{e9}",
-        astral: "\u{1d4b3}\u{1f600}",
+        ctl: "\t\n\u{22}\u{5C}\u{1}",
+        nonascii: "caf\u{E9}",
+        astral: "\u{1D4B3}\u{1F600}",
       },
-      '{"astral":"\\ud835\\udcb3\\ud83d\\ude00","ctl":"\\t\\n\\"\\\\\\u0001","nonascii":"caf\\u00e9"}',
+      String.raw`{"astral":"\ud835\udcb3\ud83d\ude00","ctl":"\t\n\"\\\u0001","nonascii":"caf\u00e9"}`,
     ],
     [
       "spells integers as bare digits and floats through pythonFloatStr",
@@ -293,7 +294,7 @@ describe("pythonJsonDumpsCanonical — CPython fixture parity (spec §6.1)", () 
     // `ensure_ascii=True` in one assertion: the identity's bytes are pure
     // printable ASCII, so no transport can renormalize them.
     for (const fixture of fixtures) {
-      expect(fixture.canonical).toMatch(/^[\x20-\x7e]*$/);
+      expect(fixture.canonical).toMatch(/^[\x20-\x7E]*$/);
     }
   });
 });
@@ -366,7 +367,7 @@ describe("pythonJsonDumpsCanonical — properties (spec §6.4)", () => {
   it("emits only printable ASCII", () => {
     fc.assert(
       fc.property(jsonValue, (value) => {
-        expect(pythonJsonDumpsCanonical(value)).toMatch(/^[\x20-\x7e]*$/);
+        expect(pythonJsonDumpsCanonical(value)).toMatch(/^[\x20-\x7E]*$/);
       }),
     );
   });

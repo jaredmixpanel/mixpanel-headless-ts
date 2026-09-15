@@ -36,11 +36,11 @@ export interface ReplaysSigningMethods {
    *   by B0 `handleResponse`).
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  signReplays(
+  signReplays: (
     replayIds: readonly string[],
     env?: ReplayEnv,
     signal?: AbortSignal,
-  ): Promise<JsonValue[]>;
+  ) => Promise<JsonValue[]>;
 }
 
 /**

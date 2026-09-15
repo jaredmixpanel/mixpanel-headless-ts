@@ -24,9 +24,11 @@ import type {
 } from "../types/entities/accounts.js";
 import {
   accountsAdd,
+  type AccountsAddOptions,
   accountsExportBridge,
   accountsList,
   accountsLogin,
+  type AccountsLoginOptions,
   accountsLogout,
   accountsRemove,
   accountsRemoveBridge,
@@ -34,10 +36,8 @@ import {
   accountsTest,
   accountsToken,
   accountsUpdate,
-  accountsUse,
-  type AccountsAddOptions,
-  type AccountsLoginOptions,
   type AccountsUpdateOptions,
+  accountsUse,
   type ExportBridgeOptions,
 } from "./accounts-ops.js";
 import type { AuthEffects } from "./auth-effects.js";
@@ -53,7 +53,7 @@ export interface AccountsNamespace {
    *
    * @returns Sorted-by-name summaries.
    */
-  list(): AccountSummary[];
+  list: () => AccountSummary[];
 
   /**
    * Add a new account (`add`).
@@ -62,10 +62,10 @@ export interface AccountsNamespace {
    * @param options - Typed credential fields.
    * @returns The new summary.
    */
-  add(
+  add: (
     name: string | null,
     options: AccountsAddOptions,
-  ): Promise<AccountSummary>;
+  ) => Promise<AccountSummary>;
 
   /**
    * Update fields on an existing account (`update`).
@@ -74,7 +74,7 @@ export interface AccountsNamespace {
    * @param options - Fields to rewrite.
    * @returns The updated summary.
    */
-  update(name: string, options?: AccountsUpdateOptions): AccountSummary;
+  update: (name: string, options?: AccountsUpdateOptions) => AccountSummary;
 
   /**
    * Remove an account (`remove`).
@@ -83,14 +83,14 @@ export interface AccountsNamespace {
    * @param options - `force` removes despite target references.
    * @returns Orphaned target names.
    */
-  remove(name: string, options?: { readonly force?: boolean }): string[];
+  remove: (name: string, options?: { readonly force?: boolean }) => string[];
 
   /**
    * Switch the active account, clearing the workspace pin (`use`).
    *
    * @param name - Account to make active.
    */
-  use(name: string): void;
+  use: (name: string) => void;
 
   /**
    * Return the named (or active) account summary (`show`).
@@ -98,7 +98,7 @@ export interface AccountsNamespace {
    * @param name - Account name; omitted means the active account.
    * @returns The summary.
    */
-  show(name?: string | null): AccountSummary;
+  show: (name?: string | null) => AccountSummary;
 
   /**
    * Probe `/me` and report the structured outcome (`test`).
@@ -106,7 +106,7 @@ export interface AccountsNamespace {
    * @param name - Account to test; omitted means the active account.
    * @returns The probe result (never throws).
    */
-  test(name?: string | null): Promise<AccountTestResult>;
+  test: (name?: string | null) => Promise<AccountTestResult>;
 
   /**
    * Run the OAuth browser flow (`login`).
@@ -115,17 +115,17 @@ export interface AccountsNamespace {
    * @param options - `open_browser` toggle.
    * @returns The login result.
    */
-  login(
+  login: (
     name: string,
     options?: AccountsLoginOptions,
-  ): Promise<OAuthLoginResult>;
+  ) => Promise<OAuthLoginResult>;
 
   /**
    * Remove the on-disk OAuth tokens (`logout`).
    *
    * @param name - Account name.
    */
-  logout(name: string): void;
+  logout: (name: string) => void;
 
   /**
    * Return the current bearer for an OAuth account (`token`).
@@ -133,7 +133,7 @@ export interface AccountsNamespace {
    * @param name - Account name; omitted means the active account.
    * @returns The bearer, or `null` for `service_account`.
    */
-  token(name?: string | null): Promise<string | null>;
+  token: (name?: string | null) => Promise<string | null>;
 
   /**
    * Export a v2 bridge file (`export_bridge`).
@@ -141,7 +141,7 @@ export interface AccountsNamespace {
    * @param options - Destination + optional account / pins.
    * @returns The path written.
    */
-  exportBridge(options: ExportBridgeOptions): Promise<string>;
+  exportBridge: (options: ExportBridgeOptions) => Promise<string>;
 
   /**
    * Remove the v2 bridge file (`remove_bridge`).
@@ -149,7 +149,7 @@ export interface AccountsNamespace {
    * @param options - `at` overrides the default search path.
    * @returns `true` if a file was deleted.
    */
-  removeBridge(options?: { readonly at?: string | null }): boolean;
+  removeBridge: (options?: { readonly at?: string | null }) => boolean;
 
   /**
    * Add and activate an account in one orchestrated call
@@ -158,7 +158,7 @@ export interface AccountsNamespace {
    * @param options - The orchestrator flags.
    * @returns The new/refreshed summary with `/me`-derived fields.
    */
-  loginUnified(options?: LoginUnifiedOptions): Promise<AccountSummary>;
+  loginUnified: (options?: LoginUnifiedOptions) => Promise<AccountSummary>;
 }
 
 /**
@@ -166,7 +166,6 @@ export interface AccountsNamespace {
  *
  * @param effects - The injected effects.
  * @returns The namespace object.
- *
  * @example
  * ```typescript
  * const accounts = createAccountsNamespace(effects);

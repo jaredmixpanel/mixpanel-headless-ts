@@ -33,28 +33,29 @@
 //   `raise ... from exc`).
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
 import {
-  BookmarkValidationError,
+  type BookmarkValidationError,
   ParamValidationError,
 } from "../../src/errors.js";
 import {
   RuntimeError as PyRuntimeError,
   ValueError as PyValueError,
 } from "../../src/query/python-builtins.js";
-import { Filter } from "../../src/types/query-params/filter.js";
 import {
   CohortCriteria,
   CohortDefinition,
 } from "../../src/types/query-params/cohort.js";
-import { UserQueryResult } from "../../src/types/results/query-engine.js";
+import { Filter } from "../../src/types/query-params/filter.js";
 import type { ProfilePageResult } from "../../src/types/results/discovery.js";
+import { UserQueryResult } from "../../src/types/results/query-engine.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   makePageResult,
   makeRawProfile,
+  type MockWorkspaceClient,
   mockWorkspaceClient,
   TEST_SESSION,
-  type MockWorkspaceClient,
 } from "../../test-support/workspace-test-helpers.js";
 
 /**
@@ -235,7 +236,7 @@ describe("TestBehavioralFilteringAnyOf", () => {
     const fbc = parseCohortParam(mock);
     const rawCohort = fbc["raw_cohort"] as Record<string, unknown>;
     const selector = rawCohort["selector"] as Record<string, unknown>;
-    expect((selector["children"] as unknown[]).length).toBe(2);
+    expect(selector["children"] as unknown[]).toHaveLength(2);
   });
 
   it("any_of uses raw_cohort, not id", async () => {
@@ -381,8 +382,8 @@ describe("TestBehavioralFilteringCohortPlusInCohortError", () => {
         limit: 1,
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U2");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U2");
     }
   });
 
@@ -399,8 +400,8 @@ describe("TestBehavioralFilteringCohortPlusInCohortError", () => {
         limit: 1,
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U2");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U2");
     }
   });
 
@@ -414,11 +415,11 @@ describe("TestBehavioralFilteringCohortPlusInCohortError", () => {
         limit: 1,
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      const u2 = (exc as BookmarkValidationError).errors.filter(
+    } catch (error) {
+      const u2 = (error as BookmarkValidationError).errors.filter(
         (e) => e.code === "U2",
       );
-      expect(u2.length).toBe(1);
+      expect(u2).toHaveLength(1);
       expect(u2[0]!.message.toLowerCase()).toContain("mutually exclusive");
     }
   });
@@ -442,8 +443,8 @@ describe("TestBehavioralFilteringCohortSerializationError", () => {
     try {
       await ws.queryUser({ mode: "profiles", cohort: brokenCohort, limit: 1 });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U24");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U24");
     }
   });
 
@@ -459,11 +460,11 @@ describe("TestBehavioralFilteringCohortSerializationError", () => {
     try {
       await ws.queryUser({ mode: "profiles", cohort: brokenCohort, limit: 1 });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      const u24 = (exc as BookmarkValidationError).errors.filter(
+    } catch (error) {
+      const u24 = (error as BookmarkValidationError).errors.filter(
         (e) => e.code === "U24",
       );
-      expect(u24.length).toBe(1);
+      expect(u24).toHaveLength(1);
       expect(u24[0]!.message).toContain("bad selector node");
     }
   });
@@ -515,7 +516,7 @@ describe("TestCrossEngineDistinctIds", () => {
       limit: 100_000,
     });
 
-    expect(result2.profiles.length).toBe(2);
+    expect(result2.profiles).toHaveLength(2);
     expect(result2.distinct_ids).toEqual(ids);
   });
 
@@ -547,7 +548,7 @@ describe("TestCrossEngineDistinctIds", () => {
       limit: 2,
     });
 
-    expect(result.distinct_ids.length).toBe(result.profiles.length);
+    expect(result.distinct_ids).toHaveLength(result.profiles.length);
   });
 });
 
@@ -603,7 +604,7 @@ describe("TestCrossEngineDataFrameComposition", () => {
 
     // `df["revenue"].describe()` — count / min / max
     const revenues = result.toRows().map((r) => r["revenue"] as number);
-    expect(revenues.length).toBe(3);
+    expect(revenues).toHaveLength(3);
     expect(Math.min(...revenues)).toBe(0.0);
     expect(Math.max(...revenues)).toBe(500.0);
   });
@@ -639,7 +640,7 @@ describe("TestCrossEngineDataFrameComposition", () => {
         converted: externalById.get(r["distinct_id"] as string),
       }));
 
-    expect(merged.length).toBe(2);
+    expect(merged).toHaveLength(2);
     expect(Object.hasOwn(merged[0]!, "converted")).toBe(true);
     expect(
       merged.find((r) => r["distinct_id"] === "user_001")!["converted"],
@@ -662,7 +663,7 @@ describe("TestCrossEngineDataFrameComposition", () => {
     });
 
     const premiumUsers = result.toRows().filter((r) => r["plan"] === "premium");
-    expect(premiumUsers.length).toBe(1);
+    expect(premiumUsers).toHaveLength(1);
     expect(premiumUsers[0]!["distinct_id"]).toBe("user_001");
   });
 
@@ -692,7 +693,7 @@ describe("TestCrossEngineFilterConsistency", () => {
     });
 
     expect(result).toBeInstanceOf(UserQueryResult);
-    expect(result.profiles.length).toBe(1);
+    expect(result.profiles).toHaveLength(1);
   });
 
   it("a Filter list is accepted by query_user", async () => {
@@ -774,7 +775,7 @@ describe("TestCrossEngineCohortIdFromFunnel", () => {
     });
 
     expect(result).toBeInstanceOf(UserQueryResult);
-    expect(result.profiles.length).toBe(2);
+    expect(result.profiles).toHaveLength(2);
     expect(parseCohortParam(mock)).toEqual({ id: 42 });
   });
 
@@ -795,7 +796,7 @@ describe("TestCrossEngineCohortIdFromFunnel", () => {
     });
 
     const ids = result.distinct_ids;
-    expect(ids.length).toBe(2);
+    expect(ids).toHaveLength(2);
     expect(ids).toContain("user_001");
     expect(ids).toContain("user_003");
   });
@@ -817,7 +818,7 @@ describe("TestCrossEngineCohortIdFromFunnel", () => {
     });
 
     const rows = result.toRows();
-    expect(rows.length).toBe(2);
+    expect(rows).toHaveLength(2);
     const totalRevenue = rows.reduce(
       (sum, r) => sum + (r["revenue"] as number),
       0,
@@ -855,10 +856,10 @@ describe("TestUFilterWrapPreservation", () => {
     try {
       await ws.buildUserParams({ where: [bad] });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toEqual(["U_FILTER"]);
+    } catch (error) {
+      expect(codesOf(error)).toEqual(["U_FILTER"]);
       // The chained cause is the converted coded guard error itself.
-      const cause = (exc as { cause?: unknown }).cause;
+      const cause = (error as { cause?: unknown }).cause;
       expect(cause).toBeInstanceOf(ParamValidationError);
       expect((cause as ParamValidationError).code).toBe(
         "ES11_BETWEEN_LOWER_NOT_NUMBER",

@@ -21,14 +21,7 @@
 // `conclude_experiment` `body or {}` branch (`:6300`).
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-  type FakeTransport,
-} from "../../test-support/client-test-helpers.js";
+
 import type { MixpanelClient } from "../../src/client/client.js";
 import {
   CreateExperimentParams,
@@ -39,12 +32,20 @@ import {
   UpdateExperimentParams,
 } from "../../src/types/entities/experiments.js";
 import { ExperimentStatus } from "../../src/types/enums.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   concludeExperiment as concludeExperimentMember,
   createExperiment as createExperimentMember,
   getExperiment as getExperimentMember,
   updateExperiment as updateExperimentMember,
 } from "../../src/workspace-members/flags-experiments.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  type FakeTransport,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** A canned-response handler (the `httpx.MockTransport` handler twin). */
 type Handler = (request: CapturedFetchRequest) => CannedResponse;

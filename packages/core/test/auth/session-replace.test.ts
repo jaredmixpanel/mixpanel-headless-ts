@@ -7,10 +7,11 @@
 // OMITTED preserves) translates to `sessionReplace`'s key-presence
 // semantics (`Object.hasOwn` — `auth/session.ts:393-424`).
 import { describe, expect, it } from "vitest";
+
 import { parseAccount } from "../../src/auth/account.js";
 import {
-  sessionReplace,
   type Session,
+  sessionReplace,
   type WorkspaceRef,
 } from "../../src/auth/session.js";
 
@@ -48,12 +49,12 @@ describe("TestSessionReplaceSentinel", () => {
 
   it("test_headers_empty_dict_clears", () => {
     const s2 = sessionReplace(baseSession(), { headers: new Map() });
-    expect([...s2.headers.entries()]).toEqual([]);
+    expect([...s2.headers]).toEqual([]);
   });
 
   it("test_headers_omitted_preserves", () => {
     const s2 = sessionReplace(baseSession(), {});
-    expect([...s2.headers.entries()]).toEqual([["X-Custom", "value"]]);
+    expect([...s2.headers]).toEqual([["X-Custom", "value"]]);
   });
 
   it("test_three_call_chain_distinguishes_clear_from_preserve", () => {

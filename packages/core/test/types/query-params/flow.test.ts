@@ -7,8 +7,9 @@
 // compile-time equivalent.)
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import {
-  MixpanelHeadlessError,
+  type MixpanelHeadlessError,
   ParamValidationError,
 } from "../../../src/errors.js";
 import { Filter } from "../../../src/types/query-params/filter.js";
@@ -24,8 +25,8 @@ function expectGuard(thunk: () => unknown, code: string): void {
   let thrown: unknown;
   try {
     thunk();
-  } catch (cause) {
-    thrown = cause;
+  } catch (error) {
+    thrown = error;
   }
   expect(thrown, `expected ${code}`).toBeInstanceOf(ParamValidationError);
   expect((thrown as MixpanelHeadlessError).code).toBe(code);
@@ -100,7 +101,7 @@ describe("FlowStep construction", () => {
 
 describe("FlowStep guards (source order)", () => {
   it("EV1_EMPTY_EVENT / EV2_CONTROL_CHAR_EVENT via the shared guard", () => {
-    for (const event of ["", "   "]) {
+    for (const event of ["", " ".repeat(3)]) {
       expectGuard(() => new FlowStep({ event }), "EV1_EMPTY_EVENT");
     }
     expectGuard(
@@ -186,10 +187,10 @@ describe("C9 guard-totality property (fast-check #4)", () => {
           try {
             new FlowStep({ event: "Login", forward });
             return false;
-          } catch (cause) {
+          } catch (error) {
             return (
-              cause instanceof ParamValidationError &&
-              cause.code === "FL3_FORWARD_RANGE"
+              error instanceof ParamValidationError &&
+              error.code === "FL3_FORWARD_RANGE"
             );
           }
         },

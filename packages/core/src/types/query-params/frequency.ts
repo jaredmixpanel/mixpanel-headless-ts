@@ -17,9 +17,9 @@
  * builder will reproduce the server-500 shape unchanged. DO NOT FIX.
  */
 
+import { VALID_FREQUENCY_FILTER_OPERATORS } from "../../bookmarks/enums.js";
 import { pythonStrip } from "../../compat/index.js";
 import { ParamValidationError } from "../../errors.js";
-import { VALID_FREQUENCY_FILTER_OPERATORS } from "../../bookmarks/enums.js";
 import type { FrequencyFilterOperator } from "../literals.js";
 import type { Filter } from "./filter.js";
 
@@ -219,10 +219,11 @@ export class FrequencyFilter {
     const hasUnit = this.date_range_unit !== null;
     if (hasValue !== hasUnit) {
       throw new ParamValidationError(
-        "FrequencyFilter.date_range_value and date_range_unit must " +
-          "both be set or both be None; got date_range_value=" +
-          `${String(this.date_range_value)}, date_range_unit=` +
-          `${String(this.date_range_unit)}`,
+        `FrequencyFilter.date_range_value and date_range_unit must ` +
+          `both be set or both be None; got date_range_value=` +
+          `${String(this.date_range_value)}, date_range_unit=${String(
+            this.date_range_unit,
+          )}`,
         "FF4_DATE_RANGE_PAIR",
       );
     }

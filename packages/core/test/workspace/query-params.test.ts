@@ -32,21 +32,22 @@
 //   describe Python's behaviour TODAY and are NOT "fixed".
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import { ParamTypeError } from "../../src/errors.js";
+
 import { buildFilterEntry } from "../../src/bookmarks/builders.js";
+import { ParamTypeError } from "../../src/errors.js";
+import { Filter } from "../../src/types/query-params/filter.js";
+import {
+  FrequencyBreakdown,
+  FrequencyFilter,
+} from "../../src/types/query-params/frequency.js";
+import { GroupBy } from "../../src/types/query-params/group-by.js";
+import { Formula, Metric } from "../../src/types/query-params/metric.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   buildQueryParams,
   type BuildQueryParamsOptions,
   type ParamsDict,
 } from "../../src/workspace-query-params.js";
-import { Filter } from "../../src/types/query-params/filter.js";
-import { GroupBy } from "../../src/types/query-params/group-by.js";
-import {
-  FrequencyBreakdown,
-  FrequencyFilter,
-} from "../../src/types/query-params/frequency.js";
-import { Formula, Metric } from "../../src/types/query-params/metric.js";
 import {
   mockWorkspaceClient,
   TEST_SESSION,
@@ -133,7 +134,7 @@ describe("TestBasicParams", () => {
   it("a single event string produces one show entry", () => {
     const params = build();
     const show = section(params, "show");
-    expect(show.length).toBe(1);
+    expect(show).toHaveLength(1);
     expect(behaviorOf(params)["name"]).toBe("Login");
   });
 
@@ -158,7 +159,7 @@ describe("TestBasicParams", () => {
     expect(time["dateRangeType"]).toBe("between");
     const value = time["value"] as unknown[];
     expect(value[0]).toBe("2024-01-01");
-    expect(value.length).toBe(2);
+    expect(value).toHaveLength(2);
   });
 
   it("the unit parameter maps into the time section", () => {
@@ -268,7 +269,7 @@ describe("TestFilterParams", () => {
       events: ["Purchase"],
       where: [Filter.equals("country", "US"), Filter.greaterThan("amount", 10)],
     });
-    expect(section(params, "filter").length).toBe(2);
+    expect(section(params, "filter")).toHaveLength(2);
   });
 
   it("where=null produces an empty filter section", () => {
@@ -287,12 +288,12 @@ describe("TestFilterParams", () => {
       mode: "total",
     });
     const filters = section(params, "filter");
-    expect(filters.length).toBe(1);
+    expect(filters).toHaveLength(1);
     const f = filters[0]!;
     expect(f["filterType"]).toBe("object");
     expect(f["filterJoinType"]).toBe("list");
     expect(f["listQuantifier"]).toBe("any");
-    expect((f["listItemFilters"] as unknown[]).length).toBe(2);
+    expect(f["listItemFilters"] as unknown[]).toHaveLength(2);
   });
 });
 
@@ -336,7 +337,7 @@ describe("TestGroupParams", () => {
 
   it("a list group_by produces multiple entries", () => {
     const params = build({ group_by: ["platform", "country"] });
-    expect(section(params, "group").length).toBe(2);
+    expect(section(params, "group")).toHaveLength(2);
   });
 
   it("GroupBy.list_item threads through end-to-end", () => {
@@ -364,7 +365,7 @@ describe("TestMultiEventParams", () => {
       math: "unique",
     });
     const show = section(params, "show");
-    expect(show.length).toBe(3);
+    expect(show).toHaveLength(3);
     const events = show.map(
       (e) => (e["behavior"] as Record<string, unknown>)["name"],
     );
@@ -412,7 +413,7 @@ describe("TestFormulaParams", () => {
     });
     const show = section(params, "show");
     // 2 metrics + 1 formula = 3 show entries
-    expect(show.length).toBe(3);
+    expect(show).toHaveLength(3);
     expect(show[2]!["type"]).toBe("formula");
     expect(show[2]!["definition"]).toBe("(B / A) * 100");
     expect(show[2]!["name"]).toBe("Conversion Rate");
@@ -494,11 +495,11 @@ describe("TestPerMetricFilters", () => {
       ],
     });
     const show = section(params, "show");
-    expect(show.length).toBe(1);
+    expect(show).toHaveLength(1);
     const behavior = behaviorOf(params);
     expect(Object.hasOwn(behavior, "filters")).toBe(true);
     const filters = behavior["filters"] as Array<Record<string, unknown>>;
-    expect(filters.length).toBe(1);
+    expect(filters).toHaveLength(1);
     expect(filters[0]!["value"]).toBe("country");
     expect(filters[0]!["filterValue"]).toEqual(["US"]);
     expect(filters[0]!["filterOperator"]).toBe("equals");
@@ -516,13 +517,13 @@ describe("TestPerMetricFilters", () => {
     });
 
     const globalFilters = section(params, "filter");
-    expect(globalFilters.length).toBe(1);
+    expect(globalFilters).toHaveLength(1);
     expect(globalFilters[0]!["value"]).toBe("age");
 
     const perMetric = behaviorOf(params)["filters"] as Array<
       Record<string, unknown>
     >;
-    expect(perMetric.length).toBe(1);
+    expect(perMetric).toHaveLength(1);
     expect(perMetric[0]!["value"]).toBe("country");
   });
 });
@@ -536,9 +537,9 @@ describe("TestGroupByTypeError", () => {
     try {
       build({ group_by: [42] as never });
       expect.unreachable("expected ParamTypeError");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(ParamTypeError);
-      expect((exc as ParamTypeError).message).toContain(
+    } catch (error) {
+      expect(error).toBeInstanceOf(ParamTypeError);
+      expect((error as ParamTypeError).message).toContain(
         "group_by elements must be str, GroupBy, CohortBreakdown, or FrequencyBreakdown",
       );
     }
@@ -587,7 +588,7 @@ describe("TestFormulaObjectParams", () => {
       formulas: [new Formula({ expression: "(B / A) * 100", label: "Conv %" })],
     });
     const show = section(params, "show");
-    expect(show.length).toBe(3);
+    expect(show).toHaveLength(3);
     expect(show[2]!["type"]).toBe("formula");
     expect(show[2]!["definition"]).toBe("(B / A) * 100");
     expect(show[2]!["name"]).toBe("Conv %");
@@ -612,7 +613,7 @@ describe("TestFormulaObjectParams", () => {
       ],
     });
     const show = section(params, "show");
-    expect(show.length).toBe(4); // 2 metrics + 2 formulas
+    expect(show).toHaveLength(4); // 2 metrics + 2 formulas
     expect(show[2]!["definition"]).toBe("A + B");
     expect(show[3]!["definition"]).toBe("A / B");
   });
@@ -750,7 +751,7 @@ describe("TestMultiFormulaParams", () => {
     const formulas = section(params, "show").filter(
       (e) => e["type"] === "formula",
     );
-    expect(formulas.length).toBe(2);
+    expect(formulas).toHaveLength(2);
     expect(formulas[0]!["definition"]).toBe("B / A");
     expect(formulas[0]!["name"]).toBe("Conv Rate");
     expect(formulas[1]!["definition"]).toBe("A + B");
@@ -780,8 +781,8 @@ describe("TestMultiFormulaParams", () => {
       new Formula({ expression: "(A + B + C) / 3", label: "Avg" }),
     ]);
     const show = section(params, "show");
-    expect(show.length).toBe(6); // 3 metrics + 3 formulas
-    expect(show.filter((e) => e["type"] === "formula").length).toBe(3);
+    expect(show).toHaveLength(6); // 3 metrics + 3 formulas
+    expect(show.filter((e) => e["type"] === "formula")).toHaveLength(3);
   });
 });
 
@@ -934,7 +935,7 @@ describe("TestFrequencyBreakdownInBuildParams", () => {
       group_by: new FrequencyBreakdown({ event: "Purchase" }),
     });
     const group = section(params, "group");
-    expect(group.length).toBe(1);
+    expect(group).toHaveLength(1);
     expect(group[0]!["resourceType"]).toBe("people");
     const behavior = group[0]!["behavior"] as Record<string, unknown>;
     expect(behavior["behaviorType"]).toBe("$frequency");
@@ -959,7 +960,7 @@ describe("TestFrequencyBreakdownInBuildParams", () => {
       group_by: ["country", new FrequencyBreakdown({ event: "Purchase" })],
     });
     const group = section(params, "group");
-    expect(group.length).toBe(2);
+    expect(group).toHaveLength(2);
     expect(group[0]!["value"]).toBe("country");
     const behavior = group[1]!["behavior"] as Record<string, unknown>;
     expect(behavior["behaviorType"]).toBe("$frequency");
@@ -970,7 +971,7 @@ describe("TestFrequencyBreakdownInBuildParams", () => {
       group_by: new GroupBy({ property: "country" }),
     });
     const group = section(params, "group");
-    expect(group.length).toBe(1);
+    expect(group).toHaveLength(1);
     expect(group[0]!["value"]).toBe("country");
   });
 });
@@ -985,7 +986,7 @@ describe("TestFrequencyFilterInBuildParams", () => {
       where: new FrequencyFilter({ event: "Login", value: 5 }),
     });
     const filt = section(params, "filter");
-    expect(filt.length).toBe(1);
+    expect(filt).toHaveLength(1);
     expect(filt[0]!["resourceType"]).toBe("people");
     expect(
       (filt[0]!["behavior"] as Record<string, unknown>)["behaviorType"],
@@ -1000,7 +1001,7 @@ describe("TestFrequencyFilterInBuildParams", () => {
       ],
     });
     const filt = section(params, "filter");
-    expect(filt.length).toBe(2);
+    expect(filt).toHaveLength(2);
     expect(filt[0]!["value"]).toBe("country");
     expect(
       (filt[1]!["behavior"] as Record<string, unknown>)["behaviorType"],
@@ -1012,7 +1013,7 @@ describe("TestFrequencyFilterInBuildParams", () => {
       where: Filter.equals("country", "US"),
     });
     const filt = section(params, "filter");
-    expect(filt.length).toBe(1);
+    expect(filt).toHaveLength(1);
     expect(filt[0]!["value"]).toBe("country");
   });
 });

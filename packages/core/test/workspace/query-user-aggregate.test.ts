@@ -29,13 +29,14 @@
 // - `result.df` asserts become `toRows()` / `rowColumns()` (C6).
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
 import { BookmarkValidationError } from "../../src/errors.js";
 import { UserQueryResult } from "../../src/types/results/query-engine.js";
+import { Workspace } from "../../src/workspace.js";
 import {
+  type MockWorkspaceClient,
   mockWorkspaceClient,
   TEST_SESSION,
-  type MockWorkspaceClient,
 } from "../../test-support/workspace-test-helpers.js";
 
 /**
@@ -121,7 +122,7 @@ describe("TestAggregateCount", () => {
       aggregate: "count",
     });
 
-    expect(mock.engageStatsCalls.length).toBe(1);
+    expect(mock.engageStatsCalls).toHaveLength(1);
     expect(mock.engageStatsCalls[0]!["action"]).toBe("count()");
   });
 
@@ -135,7 +136,7 @@ describe("TestAggregateCount", () => {
       where: 'properties["plan"] == "premium"',
     });
 
-    expect(mock.engageStatsCalls.length).toBe(1);
+    expect(mock.engageStatsCalls).toHaveLength(1);
   });
 
   it("includes a computed_at timestamp", async () => {
@@ -331,7 +332,7 @@ describe("TestAggregateSegmented", () => {
       segment_by: [100, 200, 300],
     });
 
-    expect(result.toRows().length).toBe(3);
+    expect(result.toRows()).toHaveLength(3);
   });
 
   it("serializes segment_by cohort IDs for engage_stats", async () => {
@@ -344,7 +345,7 @@ describe("TestAggregateSegmented", () => {
       segment_by: [123, 456],
     });
 
-    expect(mock.engageStatsCalls.length).toBe(1);
+    expect(mock.engageStatsCalls).toHaveLength(1);
   });
 
   it("returns an empty profiles list", async () => {
@@ -373,9 +374,9 @@ describe("TestValidationU14AggregatePropertyRequired", () => {
       try {
         await ws.queryUser({ mode: "aggregate", aggregate: aggFunc });
         expect.unreachable("expected BookmarkValidationError");
-      } catch (exc) {
-        expect(exc).toBeInstanceOf(BookmarkValidationError);
-        expect(codesOf(exc)).toContain("U14");
+      } catch (error) {
+        expect(error).toBeInstanceOf(BookmarkValidationError);
+        expect(codesOf(error)).toContain("U14");
       }
     });
   }
@@ -385,11 +386,11 @@ describe("TestValidationU14AggregatePropertyRequired", () => {
     try {
       await ws.queryUser({ mode: "aggregate", aggregate: "extremes" });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      const u14 = (exc as BookmarkValidationError).errors.filter(
+    } catch (error) {
+      const u14 = (error as BookmarkValidationError).errors.filter(
         (e) => e.code === "U14",
       );
-      expect(u14.length).toBe(1);
+      expect(u14).toHaveLength(1);
       expect(u14[0]!.message).toContain("aggregate_property");
     }
   });
@@ -409,8 +410,8 @@ describe("TestValidationU15AggregatePropertyProhibited", () => {
         aggregate_property: "revenue",
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U15");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U15");
     }
   });
 
@@ -423,11 +424,11 @@ describe("TestValidationU15AggregatePropertyProhibited", () => {
         aggregate_property: "ltv",
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      const u15 = (exc as BookmarkValidationError).errors.filter(
+    } catch (error) {
+      const u15 = (error as BookmarkValidationError).errors.filter(
         (e) => e.code === "U15",
       );
-      expect(u15.length).toBe(1);
+      expect(u15).toHaveLength(1);
       expect(u15[0]!.message.toLowerCase()).toContain("count");
     }
   });
@@ -443,8 +444,8 @@ describe("TestValidationU16SegmentByRequiresAggregate", () => {
     try {
       await ws.queryUser({ mode: "profiles", segment_by: [123] });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U16");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U16");
     }
   });
 
@@ -476,8 +477,8 @@ describe("TestValidationU18ParallelProfilesOnly", () => {
         parallel: true,
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U18");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U18");
     }
   });
 });
@@ -492,8 +493,8 @@ describe("TestValidationU19SortByProfilesOnly", () => {
         sort_by: "$last_seen",
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U19");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U19");
     }
   });
 });
@@ -508,8 +509,8 @@ describe("TestValidationU20SearchProfilesOnly", () => {
         search: "alice",
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U20");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U20");
     }
   });
 });
@@ -524,8 +525,8 @@ describe("TestValidationU21DistinctIdProfilesOnly", () => {
         distinct_id: "user_001",
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U21");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U21");
     }
   });
 
@@ -538,8 +539,8 @@ describe("TestValidationU21DistinctIdProfilesOnly", () => {
         distinct_ids: ["user_001", "user_002"],
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U21");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U21");
     }
   });
 });
@@ -554,8 +555,8 @@ describe("TestValidationU22PropertiesProfilesOnly", () => {
         properties: ["$email", "plan"],
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U22");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U22");
     }
   });
 });
@@ -576,8 +577,8 @@ describe("TestValidationMultipleErrors", () => {
         properties: ["$email"],
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      const codes = new Set(codesOf(exc));
+    } catch (error) {
+      const codes = new Set(codesOf(error));
       // Should report U19 (sort_by), U20 (search), U22 (properties)
       expect(codes.has("U19")).toBe(true);
       expect(codes.has("U20")).toBe(true);
@@ -595,8 +596,8 @@ describe("TestValidationMultipleErrors", () => {
         search: "bob", // U20
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      const codes = new Set(codesOf(exc));
+    } catch (error) {
+      const codes = new Set(codesOf(error));
       expect(codes.has("U14")).toBe(true);
       expect(codes.has("U20")).toBe(true);
     }
@@ -705,11 +706,11 @@ describe("TestEngageStatsCallParameters", () => {
         as_of: 1704067200,
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U30");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U30");
     }
     // engage_stats should never be called
-    expect(mock.engageStatsCalls.length).toBe(0);
+    expect(mock.engageStatsCalls).toHaveLength(0);
   });
 
   it("include_all_users is forwarded when a cohort is set", async () => {
@@ -790,7 +791,7 @@ describe("TestAggregateResultMetadata", () => {
       aggregate: "count",
     });
 
-    expect(result.toRows().length).toBe(1);
+    expect(result.toRows()).toHaveLength(1);
     expect(result.rowColumns()).toContain("value");
   });
 });

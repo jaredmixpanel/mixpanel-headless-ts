@@ -76,7 +76,7 @@ export interface VectorFetchHarness {
    *
    * @returns Slot indices still unconsumed after the measured call.
    */
-  unservedSlots(): number[];
+  unservedSlots: () => number[];
 }
 
 /** HTTP statuses whose `Response` must carry a null body. */
@@ -260,7 +260,6 @@ async function captureRequest(
  * @returns The {@link VectorFetchHarness}: an injectable `fetch`, the
  *   capture log, and the violation log the runner turns into
  *   `FAIL_REQUEST`.
- *
  * @example
  * ```typescript
  * const harness = createVectorFetch(parseInteractions(raw, id));
@@ -303,8 +302,8 @@ export function createVectorFetch(
       captured.path,
       paramsToJson(captured.params),
     );
-    for (let index = 0; index < interactions.length; index += 1) {
-      const slot = interactions[index] as ParsedInteraction;
+    for (const [index, interaction] of interactions.entries()) {
+      const slot = interaction as ParsedInteraction;
       if (consumed[index] === true || slot.unorderedGroup !== group) {
         continue;
       }

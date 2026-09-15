@@ -23,22 +23,23 @@
 //   paths surface here as the fake's thrown `AccountNotFoundError` /
 //   `ConfigError` (the coded twins config.py already uses).
 import { describe, expect, it } from "vitest";
-import { parseAccount, type Account } from "../../src/auth/account.js";
-import type { ActiveSession } from "../../src/auth/session.js";
+
+import { type Account, parseAccount } from "../../src/auth/account.js";
 import {
-  envWorkspaceId,
-  resolveSession,
   type BridgeView,
+  envWorkspaceId,
   type ResolverConfigSource,
   type ResolverEnv,
   type ResolverSources,
+  resolveSession,
 } from "../../src/auth/resolver.js";
-import { Target } from "../../src/types/entities/accounts.js";
+import type { ActiveSession } from "../../src/auth/session.js";
 import {
   AccountNotFoundError,
   ConfigError,
   ParamValidationError,
 } from "../../src/errors.js";
+import { Target } from "../../src/types/entities/accounts.js";
 
 // ---- fixtures --------------------------------------------------------
 
@@ -330,7 +331,7 @@ describe("TestTargetMutualExclusion", () => {
         name: "ecom",
         account: "team",
         project: "3018488",
-        ...(workspace !== undefined ? { workspace } : {}),
+        ...(workspace === undefined ? {} : { workspace }),
       }),
     );
   }

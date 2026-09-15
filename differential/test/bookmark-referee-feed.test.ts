@@ -47,18 +47,19 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
-  createRunnerDeps,
   canonicalize,
+  type ConformanceVector,
+  createRunnerDeps,
+  createShims,
+  type JsonValue,
   loadCorpus,
   loadCorpusConfig,
-  createShims,
 } from "@mixpanel-headless/conformance-runner";
-import type {
-  JsonValue,
-  ConformanceVector,
-} from "@mixpanel-headless/conformance-runner";
-import { KNOWN_VALID_INSIGHTS_PAYLOAD } from "../referees/bookmark-schema/known-payloads.js";
-import type { JsonObject } from "../referees/bookmark-schema/known-payloads.js";
+
+import {
+  type JsonObject,
+  KNOWN_VALID_INSIGHTS_PAYLOAD,
+} from "../referees/bookmark-schema/known-payloads.js";
 import { refereeBookmarkPayload } from "../referees/bookmark-schema/referee.js";
 
 /** How each fed api's output lands inside the `sections` object. */

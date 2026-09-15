@@ -21,12 +21,12 @@
  * to convert to float"`; `float("1e400")` → `inf` (string parse
  * saturates, int conversion raises).
  */
-import { isPythonDict } from "./python-dict.js";
-import { pythonFloat } from "./python-float.js";
 // Import-free leaf module (its only exports are the minted builtin
 // twins), so this compat module may import it without a layering cycle;
 // the OverflowError twin exists ONCE there (R10.8).
 import { OverflowError } from "../query/python-builtins.js";
+import { isPythonDict } from "./python-dict.js";
+import { pythonFloat } from "./python-float.js";
 
 /**
  * Whether a value is the rig's `$type: float` spelling wrapper (the
@@ -72,7 +72,6 @@ function isSpellingWrapper(value: object): value is { spelling: string } {
  *   large to convert to float).
  * @throws MixpanelHeadlessError - Code `PY_FLOAT_INVALID_LITERAL` from
  *   the string arm.
- *
  * @example
  * ```typescript
  * pythonFloatCoerce(true); // 1.0

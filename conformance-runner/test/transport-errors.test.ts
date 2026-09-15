@@ -1,10 +1,11 @@
 // transport-errors table tests (src/transport-errors.ts, task TS-5):
 // native-fetch rejection shape (TypeError + cause) per design D12/R2.10.
 import { describe, expect, it } from "vitest";
+
 import {
-  UnknownTransportErrorClass,
   createTransportRejection,
   knownTransportErrorClass,
+  UnknownTransportErrorClass,
 } from "../src/transport-errors.js";
 
 describe("createTransportRejection", () => {

@@ -32,23 +32,24 @@
 //   Recorded in `B5-S1-notes.md` §2.
 
 import { describe, expect, it } from "vitest";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-} from "../../test-support/client-test-helpers.js";
-import {
-  DiscoveryService,
-  inferScalarType,
-  type WarningSink,
-} from "../../src/services/discovery.js";
+
 import {
   AuthenticationError,
   EventNotFoundError,
   QueryError,
 } from "../../src/errors.js";
 import { ValueError } from "../../src/query/python-builtins.js";
+import {
+  DiscoveryService,
+  inferScalarType,
+  type WarningSink,
+} from "../../src/services/discovery.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** A canned-response handler (the httpx.MockTransport handler twin). */
 type Handler = (request: CapturedFetchRequest) => CannedResponse;
@@ -220,7 +221,7 @@ describe("TestListProperties", () => {
       () => {
         throw new Error("expected EventNotFoundError");
       },
-      (caught: unknown) => caught,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(EventNotFoundError);
     // Should have case-insensitive match as suggestion
@@ -845,9 +846,7 @@ describe("TestListSubproperties", () => {
     const discovery = discoveryFactory(valuesHandler(values));
     const subs = await discovery.listSubproperties("cart", { event: "X" });
     expect(subs.map((s) => s.name)).toEqual(["Brand"]);
-    expect(new Set(subs[0]?.sample_values ?? [])).toEqual(
-      new Set(["nike", "puma"]),
-    );
+    expect(new Set(subs[0]?.sample_values)).toEqual(new Set(["nike", "puma"]));
   });
 
   it("warns and keeps the scalar form for mixed scalar/dict shapes", async () => {
@@ -863,9 +862,7 @@ describe("TestListSubproperties", () => {
     const subs = await discovery.listSubproperties("cart", { event: "X" });
     const byName = new Map(subs.map((s) => [s.name, s]));
     expect(byName.get("X")?.type).toBe("number"); // scalar form retained
-    expect(new Set(byName.get("X")?.sample_values ?? [])).toEqual(
-      new Set([1, 3]),
-    );
+    expect(new Set(byName.get("X")?.sample_values)).toEqual(new Set([1, 3]));
     expect(captured.some((m) => m.includes("scalar and nested-object"))).toBe(
       true,
     );

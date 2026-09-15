@@ -12,14 +12,15 @@
 // `set_workspace_id` is gone by design (T050 / FR-038).
 
 import { describe, expect, it } from "vitest";
+
+import { PublicWorkspace } from "../../src/types/entities/common.js";
 import { Workspace } from "../../src/workspace.js";
 import {
-  createMockClient,
-  makeSession,
   type CannedResponse,
   type CapturedFetchRequest,
+  createMockClient,
+  makeSession,
 } from "../../test-support/client-test-helpers.js";
-import { PublicWorkspace } from "../../src/types/entities/common.js";
 
 /** The `_TEST_SESSION` twin (`test_workspace_oauth.py:34-43`). */
 const TEST_SESSION = makeSession({

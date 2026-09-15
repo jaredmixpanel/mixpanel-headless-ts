@@ -28,18 +28,19 @@
 
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import {
   buildFilterSection,
   buildGroupSection,
   buildTimeSection,
 } from "../../src/bookmarks/builders.js";
+import { Filter } from "../../src/types/query-params/filter.js";
+import { GroupBy } from "../../src/types/query-params/group-by.js";
 import {
   buildQueryParams,
   type BuildQueryParamsOptions,
   type ParamsDict,
 } from "../../src/workspace-query-params.js";
-import { Filter } from "../../src/types/query-params/filter.js";
-import { GroupBy } from "../../src/types/query-params/group-by.js";
 
 // ===========================================================================
 // Strategies (test file :44-56)

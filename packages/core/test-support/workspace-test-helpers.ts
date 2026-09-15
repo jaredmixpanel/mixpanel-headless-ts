@@ -9,9 +9,9 @@
 // needs releasing (R6.2), so the translations DROP the `finally` and
 // record the omission here rather than in every file.
 
+import type { Session } from "../src/auth/session.js";
 import type { MixpanelClient } from "../src/client/client.js";
 import type { JsonValue } from "../src/client/json-value.js";
-import type { Session } from "../src/auth/session.js";
 import { Secret } from "../src/secret.js";
 import { ProfilePageResult } from "../src/types/results/discovery.js";
 import type { WorkspaceLogger } from "../src/workspace.js";
@@ -60,21 +60,25 @@ export interface MockWorkspaceClient {
   readonly insightsCalls: Array<Record<string, unknown>>;
   /** Every `arbFunnelsQuery` body, in order. */
   readonly arbFunnelsCalls: Array<Record<string, unknown>>;
-  /** Every `insightsQuery` options bag (Python's `workspace_id` /
+  /**
+   * Every `insightsQuery` options bag (Python's `workspace_id` /
    * `inject_workspace_id` kwargs), in order — parallel to
-   * {@link insightsCalls}. */
+   * {@link insightsCalls}.
+   */
   readonly insightsOptions: Array<Record<string, unknown> | undefined>;
-  /** Every `arbFunnelsQuery` options bag, in order — parallel to
-   * {@link arbFunnelsCalls}. */
+  /**
+   * Every `arbFunnelsQuery` options bag, in order — parallel to
+   * {@link arbFunnelsCalls}.
+   */
   readonly arbFunnelsOptions: Array<Record<string, unknown> | undefined>;
   /** Install the `export_profiles_page` behaviour. */
-  setPageHandler(handler: PageHandler): void;
+  setPageHandler: (handler: PageHandler) => void;
   /** Install a fixed `engage_stats` response. */
-  setEngageStats(value: unknown): void;
+  setEngageStats: (value: unknown) => void;
   /** Install a fixed `insights_query` response. */
-  setInsightsResponse(value: unknown): void;
+  setInsightsResponse: (value: unknown) => void;
   /** Install a fixed `arb_funnels_query` response. */
-  setArbFunnelsResponse(value: unknown): void;
+  setArbFunnelsResponse: (value: unknown) => void;
 }
 
 /**
@@ -125,8 +129,8 @@ export function mockWorkspaceClient(
       exportPageCalls.push({ page, options });
       try {
         return Promise.resolve(pageHandler(page, options));
-      } catch (exc) {
-        return Promise.reject(exc as Error);
+      } catch (error) {
+        return Promise.reject(error as Error);
       }
     },
     engageStats: (

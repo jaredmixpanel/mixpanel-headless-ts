@@ -27,26 +27,27 @@
 // injected sleep seam. Deferred-to-B4 tests are listed in
 // context/phase3/notes/B0-notes.md (deviation 3).
 import { describe, expect, it } from "vitest";
+
+import { QUERY_ORIGIN } from "../../src/client/headers.js";
 import {
+  errorMessage,
+  executeWithRetry,
+  handleResponse,
+  MixpanelHttpError,
+  type RetryExecutorDeps,
+  type TransportRequestOptions,
+  type WireResponse,
+} from "../../src/client/internals.js";
+import { JsonNumber } from "../../src/client/json-value.js";
+import {
+  APIError,
   AuthenticationError,
   MixpanelHeadlessError,
   QueryError,
   RateLimitError,
   ServerError,
   SessionReplayAccessError,
-  APIError,
 } from "../../src/errors.js";
-import {
-  MixpanelHttpError,
-  errorMessage,
-  executeWithRetry,
-  handleResponse,
-  type RetryExecutorDeps,
-  type TransportRequestOptions,
-  type WireResponse,
-} from "../../src/client/internals.js";
-import { QUERY_ORIGIN } from "../../src/client/headers.js";
-import { JsonNumber } from "../../src/client/json-value.js";
 
 /**
  * Build a canned WireResponse.
@@ -88,7 +89,7 @@ interface Harness {
  * @returns The recorded harness.
  */
 function harness(
-  script: readonly (WireResponse | Error)[],
+  script: ReadonlyArray<WireResponse | Error>,
   options: { maxRetries?: number; projectId?: string } = {},
 ): Harness {
   const calls: TransportRequestOptions[] = [];
@@ -143,12 +144,12 @@ async function run(
   return executeWithRetry(h.deps, {
     method: args.method ?? "GET",
     url: args.url ?? "https://mixpanel.com/api/query/events/names",
-    ...(args.params !== undefined ? { params: args.params } : {}),
-    ...(args.jsonData !== undefined ? { jsonData: args.jsonData } : {}),
+    ...(args.params === undefined ? {} : { params: args.params }),
+    ...(args.jsonData === undefined ? {} : { jsonData: args.jsonData }),
     headers: args.headers ?? { Authorization: "Basic dGVzdA==" },
-    ...(args.timeoutSeconds !== undefined
-      ? { timeoutSeconds: args.timeoutSeconds }
-      : {}),
+    ...(args.timeoutSeconds === undefined
+      ? {}
+      : { timeoutSeconds: args.timeoutSeconds }),
   });
 }
 
@@ -159,14 +160,14 @@ describe("TestRateLimiting", () => {
       res(200, ["event1"]),
     ]);
     const result = await run(h);
-    expect(h.calls.length).toBe(2);
+    expect(h.calls).toHaveLength(2);
     expect(result).toEqual(["event1"]);
   });
 
   it("test_exponential_backoff_without_retry_after", async () => {
     const h = harness([res(429), res(200, ["event1"])], { maxRetries: 2 });
     const result = await run(h);
-    expect(h.calls.length).toBe(2);
+    expect(h.calls).toHaveLength(2);
     expect(result).toEqual(["event1"]);
     // Fallback path: backoff for attempt 0 = 1s (zero-jitter RNG), in ms
     // at the sleep seam (R2.12).
@@ -177,7 +178,7 @@ describe("TestRateLimiting", () => {
     const h = harness([res(429, "", { "Retry-After": "0" })], {
       maxRetries: 1,
     });
-    const error = await run(h).catch((e: unknown) => e);
+    const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(RateLimitError);
     expect((error as RateLimitError).retryAfter).toBe(0);
     // Carries the active project_id for the rate-limit lead-collection form.
@@ -189,13 +190,13 @@ describe("TestRateLimiting", () => {
     // type-checker-satisfying fallthrough raise fires — locking its
     // project_id wiring (and its reduced constructor shape, FF4).
     const h = harness([res(200, {})], { maxRetries: -1 });
-    const error = await run(h).catch((e: unknown) => e);
+    const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(RateLimitError);
     expect((error as RateLimitError).projectId).toBe("12345");
     // FF4: the fallthrough omits retry_after/status_code/response_body.
     expect((error as RateLimitError).retryAfter).toBeNull();
     expect((error as RateLimitError).responseBody).toBeNull();
-    expect(h.calls.length).toBe(0);
+    expect(h.calls).toHaveLength(0);
   });
 
   it("test_successful_response_after_retry", async () => {
@@ -208,7 +209,7 @@ describe("TestRateLimiting", () => {
       { maxRetries: 3 },
     );
     const result = await run(h, { method: "POST" });
-    expect(h.calls.length).toBe(3);
+    expect(h.calls).toHaveLength(3);
     expect(result).toEqual({ data: "success" });
   });
 });
@@ -259,7 +260,7 @@ describe("TestPublicRequest (B0-observable subset)", () => {
 
   it("test_request_handles_400", async () => {
     const h = harness([res(400, { error: "Bad request" })]);
-    const error = await run(h).catch((e: unknown) => e);
+    const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(QueryError);
     expect(String(error)).toContain("Bad request");
   });
@@ -270,7 +271,7 @@ describe("TestPublicRequest (B0-observable subset)", () => {
       res(200, { success: true }),
     ]);
     const result = await run(h);
-    expect(h.calls.length).toBe(2);
+    expect(h.calls).toHaveLength(2);
     expect(result).toEqual({ success: true });
   });
 
@@ -278,7 +279,7 @@ describe("TestPublicRequest (B0-observable subset)", () => {
     const h = harness([res(429, "", { "Retry-After": "0" })], {
       maxRetries: 1,
     });
-    const error = await run(h).catch((e: unknown) => e);
+    const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(RateLimitError);
     expect((error as RateLimitError).retryAfter).toBe(0);
   });
@@ -287,21 +288,21 @@ describe("TestPublicRequest (B0-observable subset)", () => {
 describe("TestErrorHandling", () => {
   it("test_query_error_on_400", async () => {
     const h = harness([res(400, { error: "Invalid query" })]);
-    const error = await run(h).catch((e: unknown) => e);
+    const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(QueryError);
     expect(String(error)).toContain("Invalid query");
   });
 
   it("test_query_error_on_400_with_plain_text", async () => {
     const h = harness([res(400, "Bad request: missing required field")]);
-    const error = await run(h).catch((e: unknown) => e);
+    const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(QueryError);
     expect(String(error)).toContain("Bad request: missing required field");
   });
 
   it("test_query_error_on_412_preserves_body", async () => {
     const h = harness([res(412, { error: "Precondition failed" })]);
-    const error = await run(h).catch((e: unknown) => e);
+    const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(QueryError);
     expect((error as QueryError).statusCode).toBe(412);
     expect(String(error)).toContain("Precondition failed");
@@ -314,7 +315,7 @@ describe("TestErrorHandling", () => {
 describe("TestServerErrors", () => {
   it("test_server_error_with_dict_body", async () => {
     const h = harness([res(500, { error: "Internal database error" })]);
-    const error = await run(h).catch((e: unknown) => e);
+    const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(ServerError);
     expect(String(error)).toContain("Internal database error");
     expect((error as ServerError).statusCode).toBe(500);
@@ -322,7 +323,7 @@ describe("TestServerErrors", () => {
 
   it("test_server_error_with_string_body", async () => {
     const h = harness([res(503, "Service temporarily unavailable")]);
-    const error = await run(h).catch((e: unknown) => e);
+    const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(ServerError);
     expect(String(error)).toContain("Service temporarily unavailable");
     expect((error as ServerError).statusCode).toBe(503);
@@ -330,7 +331,7 @@ describe("TestServerErrors", () => {
 
   it("test_server_error_with_empty_body", async () => {
     const h = harness([res(502, "")]);
-    const error = await run(h).catch((e: unknown) => e);
+    const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(ServerError);
     expect(String(error)).toContain("Server error: 502");
   });
@@ -372,7 +373,7 @@ describe("TestRetryAfterHardening (execute_with_retry half)", () => {
     const h = harness([res(429, "", { "Retry-After": "-5" })], {
       maxRetries: 0,
     });
-    const error = await run(h).catch((e: unknown) => e);
+    const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(RateLimitError);
     expect((error as RateLimitError).retryAfter).toBeNull();
     expect(String(error)).not.toContain("Retry after");
@@ -383,55 +384,69 @@ describe("TestRetryAfterHardening (execute_with_retry half)", () => {
     const h = harness([res(429, "", { "Retry-After": "3600" })], {
       maxRetries: 0,
     });
-    const error = await run(h).catch((e: unknown) => e);
+    const error = await run(h).catch((error_: unknown) => error_);
     expect((error as RateLimitError).retryAfter).toBe(3600);
   });
 });
 
 describe("TestBlankErrorBodyFallbacks", () => {
   it("test_400_with_blank_text_body", async () => {
-    const h = harness([res(400, "   ")]);
-    const error = (await run(h).catch((e: unknown) => e)) as QueryError;
+    const h = harness([res(400, " ".repeat(3))]);
+    const error = (await run(h).catch(
+      (error_: unknown) => error_,
+    )) as QueryError;
     expect(error).toBeInstanceOf(QueryError);
     expect(error.message.trim()).toBe("Unknown error");
   });
 
   it("test_400_with_blank_error_field", async () => {
     const h = harness([res(400, { error: "" })]);
-    const error = (await run(h).catch((e: unknown) => e)) as QueryError;
+    const error = (await run(h).catch(
+      (error_: unknown) => error_,
+    )) as QueryError;
     expect(error.message).toBe("Unknown error");
   });
 
   it("test_403_with_blank_error_field", async () => {
     const h = harness([res(403, { error: "" })]);
-    const error = (await run(h).catch((e: unknown) => e)) as QueryError;
+    const error = (await run(h).catch(
+      (error_: unknown) => error_,
+    )) as QueryError;
     expect(error).toBeInstanceOf(QueryError);
     expect(error.message).toBe("Permission denied");
   });
 
   it("test_404_with_blank_error_field", async () => {
     const h = harness([res(404, { error: "" })]);
-    const error = (await run(h).catch((e: unknown) => e)) as QueryError;
+    const error = (await run(h).catch(
+      (error_: unknown) => error_,
+    )) as QueryError;
     expect(error.message).toBe("Resource not found");
   });
 
   it("test_generic_4xx_with_blank_error_field", async () => {
     const h = harness([res(412, { error: "" })]);
-    const error = (await run(h).catch((e: unknown) => e)) as QueryError;
+    const error = (await run(h).catch(
+      (error_: unknown) => error_,
+    )) as QueryError;
     expect(error.message).toBe("Request failed");
   });
 
   it("test_400_with_structured_error_value", async () => {
     // A non-string `error` value is stringified, never leaked as a dict.
     const h = harness([res(400, { error: { code: "BAD_SEGMENT" } })]);
-    const error = (await run(h).catch((e: unknown) => e)) as QueryError;
+    const error = (await run(h).catch(
+      (error_: unknown) => error_,
+    )) as QueryError;
     expect(typeof error.message).toBe("string");
     expect(error.message).toContain("BAD_SEGMENT");
   });
 
   it("test_500_with_blank_error_field", async () => {
     const h = harness([res(500, { error: "" })]);
-    const error = (await run(h).catch((e: unknown) => e)) as ServerError;
+    const error = (await run(h).catch(
+      (error_: unknown) => error_,
+    )) as ServerError;
     expect(error).toBeInstanceOf(ServerError);
     expect(error.message).toBe("Server error: 500");
   });
@@ -439,7 +454,9 @@ describe("TestBlankErrorBodyFallbacks", () => {
   it("test_400_message_preserved_when_present", async () => {
     // A usable message passes through untouched (no stripping).
     const h = harness([res(400, { error: " boom " })]);
-    const error = (await run(h).catch((e: unknown) => e)) as QueryError;
+    const error = (await run(h).catch(
+      (error_: unknown) => error_,
+    )) as QueryError;
     expect(error.message).toBe(" boom ");
   });
 });
@@ -451,7 +468,7 @@ describe("TestErrorContextSymmetry (execute_with_retry half)", () => {
       method: "POST",
       url: "https://mixpanel.com/api/app/test",
       jsonData: { name: "dash" },
-    }).catch((e: unknown) => e)) as AuthenticationError;
+    }).catch((error_: unknown) => error_)) as AuthenticationError;
     expect(error).toBeInstanceOf(AuthenticationError);
     expect(error.requestBody).toEqual({ name: "dash" });
     expect(error.details["request_body"]).toEqual({ name: "dash" });
@@ -469,7 +486,7 @@ describe("TestSensitiveDataMapping (403 branch — R10.8 founding example)", () 
   it("test_403_with_flag_raises_session_replay_access_error", async () => {
     const h = harness([res(403, flagBody)]);
     const error = (await run(h).catch(
-      (e: unknown) => e,
+      (error_: unknown) => error_,
     )) as SessionReplayAccessError;
     expect(error).toBeInstanceOf(SessionReplayAccessError);
     expect(error.statusCode).toBe(403);
@@ -481,7 +498,7 @@ describe("TestSensitiveDataMapping (403 branch — R10.8 founding example)", () 
 
   it("test_403_without_flag_passes_through_to_query_error", async () => {
     const h = harness([res(403, { error: "Permission denied" })]);
-    const error = await run(h).catch((e: unknown) => e);
+    const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(QueryError);
     expect(error).not.toBeInstanceOf(SessionReplayAccessError);
     expect((error as QueryError).statusCode).toBe(403);
@@ -491,7 +508,7 @@ describe("TestSensitiveDataMapping (403 branch — R10.8 founding example)", () 
     const h = harness([
       res(403, "SESSION_RECORDING_SENSITIVE_DATA is enabled"),
     ]);
-    const error = await run(h).catch((e: unknown) => e);
+    const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(SessionReplayAccessError);
   });
 });
@@ -508,13 +525,13 @@ describe("TestSensitiveData403BodyShapes (bug (c) fix)", () => {
     // element-membership retired (test_api_client_sign_replays.py::
     // TestSensitiveData403BodyShapes list-exact + list-substring twins).
     const h1 = harness([res(403, ["SESSION_RECORDING_SENSITIVE_DATA"])]);
-    expect(await run(h1).catch((e: unknown) => e)).toBeInstanceOf(
+    expect(await run(h1).catch((error_: unknown) => error_)).toBeInstanceOf(
       SessionReplayAccessError,
     );
     const h2 = harness([
       res(403, ["error: SESSION_RECORDING_SENSITIVE_DATA is set"]),
     ]);
-    const error = await run(h2).catch((e: unknown) => e);
+    const error = await run(h2).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(SessionReplayAccessError);
   });
 
@@ -524,7 +541,9 @@ describe("TestSensitiveData403BodyShapes (bug (c) fix)", () => {
     // context/phase3/bug-reports/python-handle-response-403-typeerror.md).
     for (const raw of ["42", "1.5", "true"]) {
       const h = harness([res(403, raw)]);
-      const error = (await run(h).catch((e: unknown) => e)) as QueryError;
+      const error = (await run(h).catch(
+        (error_: unknown) => error_,
+      )) as QueryError;
       expect(error).toBeInstanceOf(QueryError);
       expect(error).not.toBeInstanceOf(SessionReplayAccessError);
       expect(error.statusCode).toBe(403);
@@ -536,7 +555,9 @@ describe("TestSensitiveData403BodyShapes (bug (c) fix)", () => {
     // (TestSensitiveData403BodyShapes falsy-scalar twins: 0/false/null).
     for (const raw of ["0", "false", "null"]) {
       const h = harness([res(403, raw)]);
-      const error = (await run(h).catch((e: unknown) => e)) as QueryError;
+      const error = (await run(h).catch(
+        (error_: unknown) => error_,
+      )) as QueryError;
       expect(error).toBeInstanceOf(QueryError);
       expect(error.message).toBe("Permission denied");
     }
@@ -549,7 +570,7 @@ describe("TestSensitiveData403BodyShapes (bug (c) fix)", () => {
       res(403, JSON.stringify("SESSION_RECORDING_SENSITIVE_DATA denied")),
     ]);
     const error = (await run(h).catch(
-      (e: unknown) => e,
+      (error_: unknown) => error_,
     )) as SessionReplayAccessError;
     expect(error).toBeInstanceOf(SessionReplayAccessError);
     expect(error.statusCode).toBe(403);
@@ -569,7 +590,7 @@ describe("TestOtherHttpErrors", () => {
 
   it("test_non_replay_403_is_not_session_replay_access_error", async () => {
     const h = harness([res(403, { error: "Generic permission denied" })]);
-    const error = await run(h).catch((e: unknown) => e);
+    const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(APIError);
     expect(error).not.toBeInstanceOf(SessionReplayAccessError);
   });
@@ -584,7 +605,7 @@ describe("_handle_response fallthrough tail (FF3)", () => {
     // wraps it as HTTP_ERROR.
     const h = harness([res(302, { status: "ok" }, { Location: "https://x" })]);
     const error = (await run(h).catch(
-      (e: unknown) => e,
+      (error_: unknown) => error_,
     )) as MixpanelHeadlessError;
     expect(error).toBeInstanceOf(MixpanelHeadlessError);
     expect(error.code).toBe("HTTP_ERROR");
@@ -619,7 +640,7 @@ describe("_handle_response fallthrough tail (FF3)", () => {
   it("(iii) 2xx non-JSON raises INVALID_RESPONSE", async () => {
     const h = harness([res(200, "<html>not json</html>")]);
     const error = (await run(h).catch(
-      (e: unknown) => e,
+      (error_: unknown) => error_,
     )) as MixpanelHeadlessError;
     expect(error).toBeInstanceOf(MixpanelHeadlessError);
     expect(error.code).toBe("INVALID_RESPONSE");
@@ -628,7 +649,7 @@ describe("_handle_response fallthrough tail (FF3)", () => {
   it("(iii) 2xx EMPTY body raises INVALID_RESPONSE", async () => {
     const h = harness([res(200, "")]);
     const error = (await run(h).catch(
-      (e: unknown) => e,
+      (error_: unknown) => error_,
     )) as MixpanelHeadlessError;
     expect(error.code).toBe("INVALID_RESPONSE");
   });
@@ -638,7 +659,7 @@ describe("_execute_with_retry transport-error wrapping (R2.10)", () => {
   it("MixpanelHttpError wraps as HTTP_ERROR with request context details", async () => {
     const h = harness([new MixpanelHttpError("connection refused")]);
     const error = (await run(h).catch(
-      (e: unknown) => e,
+      (error_: unknown) => error_,
     )) as MixpanelHeadlessError;
     expect(error).toBeInstanceOf(MixpanelHeadlessError);
     expect(error).not.toBeInstanceOf(APIError);
@@ -656,13 +677,15 @@ describe("_execute_with_retry transport-error wrapping (R2.10)", () => {
   it("non-transport errors pass through unwrapped (R2.10 idiom)", async () => {
     const boom = new RangeError("not a transport failure");
     const h = harness([boom]);
-    const error = await run(h).catch((e: unknown) => e);
+    const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBe(boom);
   });
 
   it("library errors thrown by _handle_response are NOT re-wrapped", async () => {
     const h = harness([res(400, { error: "bad" })]);
-    const error = (await run(h).catch((e: unknown) => e)) as QueryError;
+    const error = (await run(h).catch(
+      (error_: unknown) => error_,
+    )) as QueryError;
     expect(error).toBeInstanceOf(QueryError);
     expect(error.code).not.toBe("HTTP_ERROR");
   });
@@ -692,14 +715,17 @@ describe("errorMessage (FF6)", () => {
   it("string body truncates at 200 CODEPOINTS (R11.6, never splits pairs)", () => {
     const body = "𝒳".repeat(300); // non-BMP: 2 UTF-16 units each
     const message = errorMessage(body, "Default");
-    expect([...message].length).toBe(200);
+    expect([...message]).toHaveLength(200);
     expect(message).toBe("𝒳".repeat(200));
   });
 
-  it("blank-after-PYTHON-strip falls back to default (\\x1c is stripped)", () => {
-    expect(errorMessage("\x1c \x1f", "Default")).toBe("Default");
-    expect(errorMessage({ error: "  " }, "Default")).toBe("Default");
-  });
+  it(
+    String.raw`blank-after-PYTHON-strip falls back to default (\x1c is stripped)`,
+    () => {
+      expect(errorMessage("\x1C \x1F", "Default")).toBe("Default");
+      expect(errorMessage({ error: "  " }, "Default")).toBe("Default");
+    },
+  );
 
   it("null / non-dict-non-str bodies → default", () => {
     expect(errorMessage(null, "Default")).toBe("Default");
@@ -731,7 +757,9 @@ describe("json.loads non-finite body tokens (arbiter fix F1)", () => {
     // Python: response_body is the dict and _error_message reads `error`;
     // pre-fix TS degraded to the truncated-string body + [:200] message.
     const h = harness([res(400, '{"error": "boom", "extra": NaN}')]);
-    const error = (await run(h).catch((e: unknown) => e)) as QueryError;
+    const error = (await run(h).catch(
+      (error_: unknown) => error_,
+    )) as QueryError;
     expect(error).toBeInstanceOf(QueryError);
     expect(error.message).toBe("boom");
     const body = error.responseBody as { error: string; extra: number };
@@ -744,7 +772,9 @@ describe("json.loads non-finite body tokens (arbiter fix F1)", () => {
     // → "Infinity" (allow_nan default) → no flag → QueryError. The
     // jsonDumpsLike twin renders the JsonNumber token verbatim.
     const h = harness([res(403, "Infinity")]);
-    const error = (await run(h).catch((e: unknown) => e)) as QueryError;
+    const error = (await run(h).catch(
+      (error_: unknown) => error_,
+    )) as QueryError;
     expect(error).toBeInstanceOf(QueryError);
     expect(error.message).toBe("Permission denied");
   });
@@ -757,12 +787,16 @@ describe("JSONDecodeError-analog catch scope (arbiter fix F3/A2)", () => {
   const deep = "[".repeat(1_000_000);
 
   it("parser stack overflow on a 2xx body PROPAGATES (never INVALID_RESPONSE)", async () => {
-    const error = await run(harness([res(200, deep)])).catch((e: unknown) => e);
+    const error = await run(harness([res(200, deep)])).catch(
+      (error_: unknown) => error_,
+    );
     expect(error).toBeInstanceOf(RangeError);
   });
 
   it("parser stack overflow on an error-status body PROPAGATES (never body-as-text)", async () => {
-    const error = await run(harness([res(400, deep)])).catch((e: unknown) => e);
+    const error = await run(harness([res(400, deep)])).catch(
+      (error_: unknown) => error_,
+    );
     expect(error).toBeInstanceOf(RangeError);
   });
 });
@@ -787,8 +821,8 @@ describe("handleResponse direct", () => {
         handleResponse(res(404, { error: "Not found" }), {
           projectId: "12345",
         });
-      } catch (e) {
-        return e as QueryError;
+      } catch (error) {
+        return error as QueryError;
       }
       return null;
     })();

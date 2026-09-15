@@ -37,14 +37,7 @@
 // (`:7491-7499`).
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-  type FakeTransport,
-} from "../../test-support/client-test-helpers.js";
+
 import type { MixpanelClient } from "../../src/client/client.js";
 import {
   BulkEventUpdate,
@@ -59,6 +52,7 @@ import {
   UpdatePropertyDefinitionParams,
   UpdateTagParams,
 } from "../../src/types/entities/lexicon.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   bulkUpdateEventDefinitions as bulkUpdateEventDefinitionsMember,
   bulkUpdatePropertyDefinitions as bulkUpdatePropertyDefinitionsMember,
@@ -76,6 +70,13 @@ import {
   updateLexiconTag as updateLexiconTagMember,
   updatePropertyDefinition as updatePropertyDefinitionMember,
 } from "../../src/workspace-members/lexicon-tracking.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  type FakeTransport,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** A canned-response handler (the `httpx.MockTransport` handler twin). */
 type Handler = (request: CapturedFetchRequest) => CannedResponse;

@@ -66,12 +66,16 @@ import {
   ParamValidationError,
   ValidationError,
 } from "./errors.js";
+import { ValueError } from "./query/python-builtins.js";
 import { buildSegfilterEntry } from "./query/segfilter.js";
 import {
   extractCohortFilter,
   filtersToSelector,
 } from "./query/user-builders.js";
-import { ValueError } from "./query/python-builtins.js";
+import {
+  validateUserArgs,
+  validateUserParams,
+} from "./query/user-validators.js";
 import {
   validateFlowArgs,
   validateFunnelArgs,
@@ -85,13 +89,12 @@ import {
 import {
   _scanCustomProperties,
   containsControlChars,
+  isPythonDict,
+  pythonTypeName,
 } from "./query/validation-shared.js";
+import type { FlowMode } from "./services/live-query-transforms.js";
 import {
-  validateUserArgs,
-  validateUserParams,
-} from "./query/user-validators.js";
-import {
-  CohortBreakdown,
+  type CohortBreakdown,
   CohortDefinition,
   sanitizeRawCohort,
 } from "./types/query-params/cohort.js";
@@ -102,7 +105,7 @@ import {
 } from "./types/query-params/filter.js";
 import { FlowStep } from "./types/query-params/flow.js";
 import {
-  FrequencyBreakdown,
+  type FrequencyBreakdown,
   FrequencyFilter,
 } from "./types/query-params/frequency.js";
 import {
@@ -110,17 +113,15 @@ import {
   FunnelStep,
   HoldingConstant,
 } from "./types/query-params/funnel.js";
-import { GroupBy } from "./types/query-params/group-by.js";
+import type { GroupBy } from "./types/query-params/group-by.js";
 import { isPyInt } from "./types/query-params/guards.js";
-import type { FlowMode } from "./services/live-query-transforms.js";
 import {
   CohortMetric,
   Formula,
   Metric,
-  TimeComparison,
+  type TimeComparison,
 } from "./types/query-params/metric.js";
 import { RetentionEvent } from "./types/query-params/retention.js";
-import { isPythonDict, pythonTypeName } from "./query/validation-shared.js";
 
 /** Any JSON-ish dict the bookmark builders emit or consume. */
 export type ParamsDict = Record<string, unknown>;
@@ -290,7 +291,6 @@ const FLOW_CHART_TYPE_TO_MODE: ReadonlyMap<string, FlowMode> = new Map([
  *
  * @param params - Flow bookmark params, normally from `buildFlowParams`.
  * @returns `"sankey"`, `"paths"`, or `"tree"`.
- *
  * @example
  * ```typescript
  * flowModeFromParams({ chartType: "sankey", flows_merge_type: "tree" }); // "tree"
@@ -544,7 +544,7 @@ export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
     to_date,
     last,
     unit: unit as never,
-    ...(options.today !== undefined ? { today: options.today } : {}),
+    ...(options.today === undefined ? {} : { today: options.today }),
   });
 
   // --- Build sections.filter[] ---
@@ -754,12 +754,12 @@ export function resolveAndBuildParams(
   }
 
   let resolvedFormulas: readonly Formula[];
-  if (formula !== null) {
+  if (formula === null) {
+    resolvedFormulas = formulasFromList;
+  } else {
     resolvedFormulas = [
       new Formula({ expression: formula, label: formula_label ?? null }),
     ];
-  } else {
-    resolvedFormulas = formulasFromList;
   }
 
   // Layer 1: Argument validation
@@ -804,7 +804,7 @@ export function resolveAndBuildParams(
     mode,
     time_comparison,
     data_group_id,
-    ...(options.today !== undefined ? { today: options.today } : {}),
+    ...(options.today === undefined ? {} : { today: options.today }),
   });
 
   // Layer 2: Bookmark structure validation
@@ -924,7 +924,7 @@ export function buildFunnelParams(
   for (const ex of exclusions) {
     // Step range — API uses 1-indexed, Exclusion uses 0-indexed
     const apiFrom = ex.from_step + 1;
-    const apiTo = ex.to_step !== null ? ex.to_step + 1 : steps.length;
+    const apiTo = ex.to_step === null ? steps.length : ex.to_step + 1;
     exclusionsList.push({
       event: ex.event,
       steps: { from: apiFrom, to: apiTo },
@@ -974,7 +974,7 @@ export function buildFunnelParams(
     to_date,
     last,
     unit: unit as never,
-    ...(options.today !== undefined ? { today: options.today } : {}),
+    ...(options.today === undefined ? {} : { today: options.today }),
   });
   const filterSection = patchCustomPropertyFiltersForTransform(
     buildFilterSection(where),
@@ -1154,7 +1154,7 @@ export function resolveAndBuildFunnelParams(
     reentry_mode,
     time_comparison,
     data_group_id,
-    ...(options.today !== undefined ? { today: options.today } : {}),
+    ...(options.today === undefined ? {} : { today: options.today }),
   });
 
   // Layer 2: Bookmark structure validation
@@ -1292,7 +1292,7 @@ export function buildRetentionParams(
     to_date,
     last,
     unit: unit as never,
-    ...(options.today !== undefined ? { today: options.today } : {}),
+    ...(options.today === undefined ? {} : { today: options.today }),
   });
   const filterSection = patchCustomPropertyFiltersForTransform(
     buildFilterSection(where),
@@ -1423,8 +1423,8 @@ export function buildFlowParams(options: BuildFlowParamsOptions): ParamsDict {
       // Python `step.label or step.event` — an empty label falls back.
       step_label:
         step.label !== null && step.label !== "" ? step.label : step.event,
-      forward: step.forward !== null ? step.forward : 0,
-      reverse: step.reverse !== null ? step.reverse : 0,
+      forward: step.forward === null ? 0 : step.forward,
+      reverse: step.reverse === null ? 0 : step.reverse,
       bool_op: step.filters_combinator === "any" ? "or" : "and",
       property_filter_params_list: (step.filters ?? []).map((f) =>
         buildSegfilterEntry(f),
@@ -1589,8 +1589,8 @@ export function resolveAndBuildFlowParams(
     (s) =>
       new FlowStep({
         event: s.event,
-        forward: s.forward !== null ? s.forward : forward,
-        reverse: s.reverse !== null ? s.reverse : reverse,
+        forward: s.forward === null ? forward : s.forward,
+        reverse: s.reverse === null ? reverse : s.reverse,
         label: s.label,
         filters: s.filters,
         filters_combinator: s.filters_combinator,
@@ -1894,7 +1894,7 @@ export function resolveAndBuildRetentionParams(
     retention_cumulative,
     time_comparison,
     data_group_id,
-    ...(options.today !== undefined ? { today: options.today } : {}),
+    ...(options.today === undefined ? {} : { today: options.today }),
   });
 
   // Layer 2: Bookmark structure validation
@@ -2037,7 +2037,7 @@ export function resolveAndBuildUserParams(
     parallel,
     workers,
     include_all_users,
-    ...(options.today !== undefined ? { today: options.today } : {}),
+    ...(options.today === undefined ? {} : { today: options.today }),
   });
   const errorSeverity = argErrors.filter((e) => e.severity === "error");
   if (errorSeverity.length > 0) {
@@ -2060,7 +2060,7 @@ export function resolveAndBuildUserParams(
       let selector: string;
       try {
         selector = filtersToSelector(remaining);
-      } catch (exc) {
+      } catch (error) {
         // Python's `except ValueError` here catches BOTH the builtin and
         // `ParamValidationError`, which dual-inherits `ValueError`
         // (`exceptions.py:97`). The converted ES* guards inside
@@ -2071,15 +2071,18 @@ export function resolveAndBuildUserParams(
         // ValueError` reachability is a Python-side concern only",
         // `errors.ts:11-14`) does NOT hold at this one site, so the
         // catch names both classes explicitly.
-        if (exc instanceof ValueError || exc instanceof ParamValidationError) {
+        if (
+          error instanceof ValueError ||
+          error instanceof ParamValidationError
+        ) {
           const wrapped = new BookmarkValidationError([
-            new ValidationError("where", exc.message, "U_FILTER"),
+            new ValidationError("where", error.message, "U_FILTER"),
           ]);
           // Python's `raise ... from exc`.
-          (wrapped as { cause?: unknown }).cause = exc;
+          (wrapped as { cause?: unknown }).cause = error;
           throw wrapped;
         }
-        throw exc;
+        throw error;
       }
       if (selector !== "") {
         params["where"] = selector;
@@ -2159,7 +2162,9 @@ export function resolveAndBuildUserParams(
 
   // --- sort_by → sort_key ---
   if (sort_by !== null && sort_by !== undefined) {
-    const escapedSort = sort_by.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+    const escapedSort = sort_by
+      .replaceAll("\\", "\\\\")
+      .replaceAll('"', String.raw`\"`);
     params["sort_key"] = `properties["${escapedSort}"]`;
     params["sort_order"] = sort_order;
   }
@@ -2206,7 +2211,9 @@ export function resolveAndBuildUserParams(
     } else {
       const escapedAggProp =
         aggregate_property !== null && aggregate_property !== undefined
-          ? aggregate_property.replaceAll("\\", "\\\\").replaceAll('"', '\\"')
+          ? aggregate_property
+              .replaceAll("\\", "\\\\")
+              .replaceAll('"', String.raw`\"`)
           : "";
       if (aggregate === "percentile") {
         action = `percentile(properties["${escapedAggProp}"], ${pythonNumberText(

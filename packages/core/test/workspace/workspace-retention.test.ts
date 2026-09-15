@@ -13,14 +13,15 @@
 // `ParamValidationError`).
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
 import { Filter } from "../../src/types/query-params/filter.js";
 import { RetentionEvent } from "../../src/types/query-params/retention.js";
 import { RetentionQueryResult } from "../../src/types/results/query-engine.js";
+import { Workspace } from "../../src/workspace.js";
 import {
+  type MockWorkspaceClient,
   mockWorkspaceClient,
   TEST_SESSION,
-  type MockWorkspaceClient,
 } from "../../test-support/workspace-test-helpers.js";
 
 /**
@@ -66,7 +67,7 @@ describe("TestQueryRetentionIntegration", () => {
     const { ws, mock } = retentionWs();
     await ws.queryRetention("Signup", "Login");
 
-    expect(mock.insightsCalls.length).toBe(1);
+    expect(mock.insightsCalls).toHaveLength(1);
     const body = mock.insightsCalls[0]!;
     expect(Object.hasOwn(body, "bookmark")).toBe(true);
     expect(Object.hasOwn(body, "project_id")).toBe(true);
@@ -162,7 +163,7 @@ describe("TestBuildRetentionParams", () => {
   it("makes no API call", async () => {
     const mock = mockWorkspaceClient();
     await workspaceFactory(mock).buildRetentionParams("Signup", "Login");
-    expect(mock.insightsCalls.length).toBe(0);
+    expect(mock.insightsCalls).toHaveLength(0);
   });
 
   it("matches the bookmark query_retention sends", async () => {
@@ -186,6 +187,6 @@ describe("TestQueryRetentionValidationIntegration", () => {
     await expect(
       workspaceFactory(mock).queryRetention("", "Login"),
     ).rejects.toThrow(/RetentionEvent\.event must be a non-empty/);
-    expect(mock.insightsCalls.length).toBe(0);
+    expect(mock.insightsCalls).toHaveLength(0);
   });
 });

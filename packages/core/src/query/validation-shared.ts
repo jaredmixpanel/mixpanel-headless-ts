@@ -31,17 +31,7 @@
  * @internal
  */
 
-import { ValidationError } from "../errors.js";
-import {
-  CustomPropertyRef,
-  InlineCustomProperty,
-  Filter,
-  FrequencyFilter,
-  FunnelStep,
-  GroupBy,
-  Metric,
-} from "../types/index.js";
-import type { FlowStep, RetentionEvent } from "../types/index.js";
+import { DECIMAL_DIGIT_RUNS } from "../compat/decimal-digits.gen.js";
 import {
   cpLength,
   isPythonDict,
@@ -50,11 +40,22 @@ import {
   pythonRepr,
   pythonStr,
   pythonStrip,
-  sortedByCodepoint,
   type PythonValue,
+  sortedByCodepoint,
 } from "../compat/index.js";
 import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
-import { DECIMAL_DIGIT_RUNS } from "../compat/decimal-digits.gen.js";
+import { ValidationError } from "../errors.js";
+import {
+  CustomPropertyRef,
+  Filter,
+  type FlowStep,
+  FrequencyFilter,
+  FunnelStep,
+  GroupBy,
+  InlineCustomProperty,
+  Metric,
+  type RetentionEvent,
+} from "../types/index.js";
 
 // =============================================================================
 // Module constants (validation.py:91-92, 338-366, 1162-1176, 1484-1495)
@@ -306,7 +307,6 @@ export function isPythonInt(value: unknown): boolean {
 // modules (`types/entities/model-base.ts`) can import it without an
 // evaluation cycle. Re-exported here so every existing consumer's
 // import path keeps working.
-export { isPythonDict };
 
 /**
  * Reproduce CPython's hashing failure for `x in frozenset` membership
@@ -681,8 +681,9 @@ class SequenceMatcher {
   private fullbcount: Map<string, number> | null = null;
 
   /** Cached matching blocks for the current (a, b) pair. */
-  private matchingBlocks:
-    readonly (readonly [number, number, number])[] | null = null;
+  private matchingBlocks: ReadonlyArray<
+    readonly [number, number, number]
+  > | null = null;
 
   /**
    * Set the first sequence (the candidate string).
@@ -799,14 +800,16 @@ class SequenceMatcher {
    *
    * @returns The merged, sorted matching blocks.
    */
-  private getMatchingBlocks(): readonly (readonly [number, number, number])[] {
+  private getMatchingBlocks(): ReadonlyArray<
+    readonly [number, number, number]
+  > {
     if (this.matchingBlocks !== null) {
       return this.matchingBlocks;
     }
     const la = this.a.length;
     const lb = this.b.length;
-    const queue: [number, number, number, number][] = [[0, la, 0, lb]];
-    const blocks: [number, number, number][] = [];
+    const queue: Array<[number, number, number, number]> = [[0, la, 0, lb]];
+    const blocks: Array<[number, number, number]> = [];
     while (queue.length > 0) {
       const [alo, ahi, blo, bhi] = queue.pop() as [
         number,
@@ -829,7 +832,7 @@ class SequenceMatcher {
     let i1 = 0;
     let j1 = 0;
     let k1 = 0;
-    const nonAdjacent: (readonly [number, number, number])[] = [];
+    const nonAdjacent: Array<readonly [number, number, number]> = [];
     for (const [i2, j2, k2] of blocks) {
       if (i1 + k1 === i2 && j1 + k1 === j2) {
         k1 += k2;
@@ -952,7 +955,7 @@ export function getCloseMatches(
   if (!(cutoff >= 0.0 && cutoff <= 1.0)) {
     throw new RangeError(`cutoff must be in [0.0, 1.0]: ${String(cutoff)}`);
   }
-  const result: [number, string][] = [];
+  const result: Array<[number, string]> = [];
   const s = new SequenceMatcher();
   s.setSeq2(word);
   for (const x of possibilities) {
@@ -1199,8 +1202,8 @@ export function _scanFiltersForCustomProperties(
   basePath: string,
 ): ValidationError[] {
   const errors: ValidationError[] = [];
-  for (let i = 0; i < filters.length; i++) {
-    const f = filters[i] as Filter;
+  for (const [i, filter] of filters.entries()) {
+    const f = filter as Filter;
     if (
       f._property instanceof CustomPropertyRef ||
       f._property instanceof InlineCustomProperty
@@ -1307,33 +1310,33 @@ export function _scanCustomProperties(
 
   // Scan events (Metric.property AND Metric.filters)
   if (events !== null && events !== undefined) {
-    for (let idx = 0; idx < events.length; idx++) {
-      const item = events[idx];
-      if (item instanceof Metric) {
-        if (
-          item.property instanceof CustomPropertyRef ||
-          item.property instanceof InlineCustomProperty
-        ) {
-          errors.push(
-            ..._validateCustomProperty(item.property, `events[${String(idx)}]`),
-          );
-        }
-        if (item.filters !== null && item.filters.length > 0) {
-          errors.push(
-            ..._scanFiltersForCustomProperties(
-              item.filters,
-              `events[${String(idx)}]`,
-            ),
-          );
-        }
+    for (const [idx, item] of events.entries()) {
+      if (!(item instanceof Metric)) {
+        continue;
+      }
+
+      if (
+        item.property instanceof CustomPropertyRef ||
+        item.property instanceof InlineCustomProperty
+      ) {
+        errors.push(
+          ..._validateCustomProperty(item.property, `events[${String(idx)}]`),
+        );
+      }
+      if (item.filters !== null && item.filters.length > 0) {
+        errors.push(
+          ..._scanFiltersForCustomProperties(
+            item.filters,
+            `events[${String(idx)}]`,
+          ),
+        );
       }
     }
   }
 
   // Scan funnel steps (FunnelStep.filters) — instanceof-gated in source
   if (funnel_steps !== null && funnel_steps !== undefined) {
-    for (let idx = 0; idx < funnel_steps.length; idx++) {
-      const step = funnel_steps[idx];
+    for (const [idx, step] of funnel_steps.entries()) {
       if (
         step instanceof FunnelStep &&
         step.filters !== null &&
@@ -1351,8 +1354,8 @@ export function _scanCustomProperties(
 
   // Scan flow steps (FlowStep.filters)
   if (flow_steps !== null && flow_steps !== undefined) {
-    for (let idx = 0; idx < flow_steps.length; idx++) {
-      const fstep = flow_steps[idx] as FlowStep;
+    for (const [idx, flow_step] of flow_steps.entries()) {
+      const fstep = flow_step as FlowStep;
       if (fstep.filters !== null && fstep.filters.length > 0) {
         errors.push(
           ..._scanFiltersForCustomProperties(
@@ -1367,8 +1370,8 @@ export function _scanCustomProperties(
   // Scan retention events (RetentionEvent.filters)
   // retention_events is always [born_event, return_event]
   if (retention_events !== null && retention_events !== undefined) {
-    for (let idx = 0; idx < retention_events.length; idx++) {
-      const rev = retention_events[idx] as RetentionEvent;
+    for (const [idx, retention_event] of retention_events.entries()) {
+      const rev = retention_event as RetentionEvent;
       if (rev.filters !== null && rev.filters.length > 0) {
         const label = idx === 0 ? "born_event" : "return_event";
         errors.push(..._scanFiltersForCustomProperties(rev.filters, label));
@@ -1378,3 +1381,5 @@ export function _scanCustomProperties(
 
   return errors;
 }
+
+export { isPythonDict } from "../compat/index.js";

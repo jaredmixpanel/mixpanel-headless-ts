@@ -9,13 +9,14 @@
 import { describe, expect, it } from "vitest";
 
 import { OAuthError } from "@mixpanel-headless/core";
+
 import { InMemoryCredentialStore } from "../src/credential-store.js";
 import { beginLogin, completeLogin, CREDENTIAL_KEYS } from "../src/index.js";
 import {
+  type BodyCapturingTransport,
   bodyCapturingTransport,
   jsonResponse,
   makeTokenResponse,
-  type BodyCapturingTransport,
 } from "./flow-helpers.js";
 
 const REDIRECT_URI = "https://app.example.com/oauth/callback";
@@ -130,7 +131,7 @@ describe("redirect-flow attacks", () => {
       fetch: transport.fetch,
     }).then(
       () => null,
-      (exc: unknown) => exc,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(OAuthError);
     expect((error as OAuthError).code).toBe("OAUTH_AUTH_DENIED");
@@ -139,7 +140,7 @@ describe("redirect-flow attacks", () => {
   });
 
   it.each([
-    ["empty return", "   "],
+    ["empty return", " ".repeat(3)],
     ["garbage", "not a url at all"],
     ["missing code", "state=XYZ"],
     ["missing state", "code=ABC"],

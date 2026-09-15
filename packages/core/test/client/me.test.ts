@@ -12,6 +12,7 @@
 // `model_extra` → `modelExtra`; `model_dump_json`/`model_validate_json`
 // → `JSON.stringify(toJSON())` + `fromDict(JSON.parse(...))`.
 import { describe, expect, it } from "vitest";
+
 import {
   MeOrgInfo,
   MeProjectInfo,

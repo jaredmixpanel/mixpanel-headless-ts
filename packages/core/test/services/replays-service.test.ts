@@ -30,21 +30,22 @@
 // - `service.fetch_files(...)` is sync in Python (it drives
 //   `asyncio.run`); the port is `async` (R6.1) and every call awaits.
 import { describe, expect, it } from "vitest";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-} from "../../test-support/client-test-helpers.js";
+
 import {
   MixpanelHeadlessError,
   ReplayNotFoundError,
   SignedURLExpiredError,
   UnsupportedReplayFormatError,
 } from "../../src/errors.js";
-import { ReplaysService } from "../../src/services/replays.js";
 import type { WarningSink } from "../../src/services/discovery.js";
+import { ReplaysService } from "../../src/services/replays.js";
 import { SignedReplay } from "../../src/types/results/replays.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** A canned-response handler (the httpx.MockTransport handler twin). */
 type Handler = (request: CapturedFetchRequest) => CannedResponse;
@@ -171,7 +172,7 @@ function makeCdnHandler(
   options: {
     fileContents?: ReadonlyMap<
       number,
-      readonly Record<string, unknown>[] | null
+      ReadonlyArray<Record<string, unknown>> | null
     >;
     files403?: ReadonlySet<number>;
     callLog?: number[];
@@ -243,7 +244,7 @@ describe("buffered fetch concatenates + sorts (TestFetchFilesHappyPath)", () => 
   it("test_returns_timestamp_sorted_events", async () => {
     const fileContents = new Map<
       number,
-      readonly Record<string, unknown>[] | null
+      ReadonlyArray<Record<string, unknown>> | null
     >([
       [0, [rrwebEvent(20), rrwebEvent(10)]],
       [1, [rrwebEvent(40), rrwebEvent(30)]],
@@ -267,7 +268,7 @@ describe("buffered fetch concatenates + sorts (TestFetchFilesHappyPath)", () => 
     const callLog: number[] = [];
     const fileContents = new Map<
       number,
-      readonly Record<string, unknown>[] | null
+      ReadonlyArray<Record<string, unknown>> | null
     >([
       [0, [rrwebEvent(10)]],
       [1, [rrwebEvent(20)]],
@@ -290,7 +291,7 @@ describe("buffered fetch concatenates + sorts (TestFetchFilesHappyPath)", () => 
   it("test_respects_max_files_bound", async () => {
     const fileContents = new Map<
       number,
-      readonly Record<string, unknown>[] | null
+      ReadonlyArray<Record<string, unknown>> | null
     >();
     for (let n = 0; n < 200; n += 1) {
       fileContents.set(n, [rrwebEvent(n * 10)]);
@@ -326,8 +327,8 @@ describe("404 termination semantics (TestFetchFilesTermination)", () => {
         maxFiles: 500,
         concurrency: 50,
       });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ReplayNotFoundError);
     const exc = caught as ReplayNotFoundError;
@@ -339,7 +340,7 @@ describe("404 termination semantics (TestFetchFilesTermination)", () => {
   it("test_mid_walk_404_terminates_cleanly", async () => {
     const fileContents = new Map<
       number,
-      readonly Record<string, unknown>[] | null
+      ReadonlyArray<Record<string, unknown>> | null
     >([
       [0, [rrwebEvent(10)]],
       [1, [rrwebEvent(20)]],
@@ -421,8 +422,8 @@ describe("403 re-sign retry (TestFetchFiles403Retry)", () => {
         concurrency: 50,
         reSignOnExpiry: false,
       });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(SignedURLExpiredError);
     const exc = caught as SignedURLExpiredError;
@@ -454,8 +455,8 @@ describe("credential redaction on transport errors (TestFetchFilesCredentialReda
         maxFiles: 500,
         concurrency: 50,
       });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(MixpanelHeadlessError);
     const message = (caught as MixpanelHeadlessError).message;
@@ -472,7 +473,7 @@ describe("mobile-replay detection (TestMobileReplayDetection)", () => {
   it("test_non_rrweb_first_event_raises_unsupported_format", async () => {
     const fileContents = new Map<
       number,
-      readonly Record<string, unknown>[] | null
+      ReadonlyArray<Record<string, unknown>> | null
     >([
       [0, [{ mobile_event: "tap", ts: 1716810000 }]],
       [1, null],
@@ -489,8 +490,8 @@ describe("mobile-replay detection (TestMobileReplayDetection)", () => {
         maxFiles: 500,
         concurrency: 50,
       });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(UnsupportedReplayFormatError);
     const exc = caught as UnsupportedReplayFormatError;
@@ -515,8 +516,8 @@ describe("discover without query_fn (TestDiscoverNoQueryFn)", () => {
         fromDate: "2026-05-20",
         toDate: "2026-05-27",
       });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(MixpanelHeadlessError);
     expect((caught as MixpanelHeadlessError).code).toBe(
@@ -847,7 +848,7 @@ describe("FID-F3: walker per-file sort key null vs absent timestamps", () => {
   it("an explicit null timestamp in a single-event file raises TypeError", async () => {
     const fileContents = new Map<
       number,
-      readonly Record<string, unknown>[] | null
+      ReadonlyArray<Record<string, unknown>> | null
     >([
       [0, [{ type: 3, data: {}, timestamp: null }]],
       [1, null],
@@ -871,7 +872,7 @@ describe("FID-F3: walker per-file sort key null vs absent timestamps", () => {
   it("an absent timestamp key defaults to 0 and sorts first", async () => {
     const fileContents = new Map<
       number,
-      readonly Record<string, unknown>[] | null
+      ReadonlyArray<Record<string, unknown>> | null
     >([
       [0, [rrwebEvent(20), { type: 3, data: {} }]],
       [1, null],

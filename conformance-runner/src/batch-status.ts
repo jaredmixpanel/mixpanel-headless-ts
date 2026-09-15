@@ -153,7 +153,6 @@ export const BATCH_STATUS: ReadonlyMap<string, BatchStatus> = new Map<
  *   injectable for tests).
  * @returns The status of the longest matching prefix, or `'pending'`
  *   when no prefix matches.
- *
  * @example
  * ```typescript
  * batchStatusFor("types.Filter.on");
@@ -169,10 +168,12 @@ export function batchStatusFor(
   let bestLength = -1;
   let best: BatchStatus = "pending";
   for (const [prefix, status] of statuses) {
-    if (api.startsWith(prefix) && prefix.length > bestLength) {
-      bestLength = prefix.length;
-      best = status;
+    if (!(api.startsWith(prefix) && prefix.length > bestLength)) {
+      continue;
     }
+
+    bestLength = prefix.length;
+    best = status;
   }
   return best;
 }

@@ -20,20 +20,20 @@
 // - Hypothesis profile sizes come from `tests/conftest.py`; the default
 //   `max_examples=100` is fast-check's default `numRuns`, kept implicit.
 
-import { describe, expect, it } from "vitest";
 import fc from "fast-check";
+import { describe, expect, it } from "vitest";
 
 import { ParamValidationError, ReportLinkParseError } from "../src/errors.js";
 import {
   BOOKMARK_HASH_FOR_TYPE,
-  SLUG_ALPHABET,
-  SLUG_APP_FOR_TYPE,
   buildBookmarkUrl,
   buildSlugUrl,
   generateSlug,
   isSlug,
-  parseReportLink,
   type ParsedReportLink,
+  parseReportLink,
+  SLUG_ALPHABET,
+  SLUG_APP_FOR_TYPE,
 } from "../src/report-links.js";
 
 const SERVER_ALPHABET =
@@ -95,19 +95,23 @@ function partition(text: string, sep: string): [string, string, string] {
 function decorate(url: string, variant: Variant): string {
   const [head, , fragment] = partition(url, "#");
   switch (variant) {
-    case "trailing_slash":
+    case "trailing_slash": {
       return `${head}/#${fragment}`;
-    case "query":
+    }
+    case "query": {
       return `${head}?utm=x#${fragment}`;
+    }
     case "upper_host": {
       const [scheme, , rest] = partition(url, "://");
       const [host, , tail] = partition(rest, "/");
       return `${scheme}://${host.toUpperCase()}/${tail}`;
     }
-    case "no_scheme":
+    case "no_scheme": {
       return url.split("://", 2)[1] as string;
-    case "percent_hash":
+    }
+    case "percent_hash": {
       return `${head}%23${fragment}`;
+    }
   }
 }
 
@@ -369,22 +373,27 @@ describe("TestDecorationInvariance", () => {
  */
 function assertKindFields(parsed: ParsedReportLink): void {
   switch (parsed.kind) {
-    case "slug":
+    case "slug": {
       expect(parsed.slug).not.toBeNull();
       expect(isSlug(parsed.slug as string)).toBe(true);
       break;
-    case "bookmark":
+    }
+    case "bookmark": {
       expect(parsed.bookmark_id).not.toBeNull();
       break;
-    case "short_link":
+    }
+    case "short_link": {
       expect(parsed.short_code).not.toBeNull();
       expect(parsed.region).not.toBeNull();
       break;
-    case "dashboard":
+    }
+    case "dashboard": {
       expect(parsed.dashboard_id).not.toBeNull();
       break;
-    default:
+    }
+    default: {
       expect(parsed.kind).toBe("legacy_jsurl");
+    }
   }
 }
 

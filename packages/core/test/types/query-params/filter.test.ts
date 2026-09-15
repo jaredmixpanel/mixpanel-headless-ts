@@ -6,6 +6,8 @@
 // totality property.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
+import { buildFilterEntry } from "../../../src/bookmarks/builders.js";
 import {
   CODED_GUARD_REGISTRY,
   CODED_GUARD_TWIN_CODES,
@@ -13,18 +15,17 @@ import {
   ParamTypeError,
   ParamValidationError,
 } from "../../../src/errors.js";
-import { buildFilterEntry } from "../../../src/bookmarks/builders.js";
 import { ValueError } from "../../../src/query/python-builtins.js";
 import { FILTER_OPERATOR_VALUES } from "../../../src/types/literals.js";
 import {
   CustomPropertyRef,
-  FILTER_OPERATOR_ALIASES,
   Filter,
+  FILTER_OPERATOR_ALIASES,
+  type FilterFields,
   filterUnchecked,
   InlineCustomProperty,
   ListItemGroupMode,
   PropertyInput,
-  type FilterFields,
 } from "../../../src/types/query-params/filter.js";
 
 /** Every code a P2-5a guard may legally raise (C9 property #4 domain). */
@@ -48,8 +49,8 @@ function expectGuard(
   let thrown: unknown;
   try {
     thunk();
-  } catch (cause) {
-    thrown = cause;
+  } catch (error) {
+    thrown = error;
   }
   expect(thrown, `expected ${code}`).toBeInstanceOf(cls);
   expect((thrown as MixpanelHeadlessError).code).toBe(code);
@@ -280,7 +281,7 @@ describe("Filter cohort factories", () => {
   });
 
   it("CF2_COHORT_NAME_EMPTY on blank provided names", () => {
-    for (const name of ["", "   "]) {
+    for (const name of ["", " ".repeat(3)]) {
       expectGuard(
         () => Filter.inCohort(123, name),
         ParamValidationError,
@@ -291,7 +292,7 @@ describe("Filter cohort factories", () => {
 
   it("guard order: non-positive id wins over blank name", () => {
     expectGuard(
-      () => Filter.inCohort(0, "   "),
+      () => Filter.inCohort(0, " ".repeat(3)),
       ParamValidationError,
       "CF1_COHORT_ID_NOT_POSITIVE",
     );
@@ -340,7 +341,7 @@ describe("Filter.listContains", () => {
   });
 
   it("LC5_EMPTY_KWARG_KEY on blank equals keys", () => {
-    for (const key of ["", "   "]) {
+    for (const key of ["", " ".repeat(3)]) {
       expectGuard(
         () => Filter.listContains("cart", [], { equals: { [key]: "nike" } }),
         ParamValidationError,
@@ -495,7 +496,7 @@ describe("property-spec helper types", () => {
 
 describe("ListItemGroupMode guards", () => {
   it("LG1_EMPTY_SUB on blank sub", () => {
-    for (const sub of ["", "   "]) {
+    for (const sub of ["", " ".repeat(3)]) {
       expectGuard(
         () => new ListItemGroupMode({ sub, sub_type: "string" }),
         ParamValidationError,
@@ -534,11 +535,11 @@ describe("C9 guard-totality property (fast-check #4)", () => {
         try {
           Filter.inTheLast("created", quantity, "day");
           return false;
-        } catch (cause) {
+        } catch (error) {
           return (
-            cause instanceof ParamValidationError &&
-            cause.code === "FD1_QUANTITY_NOT_POSITIVE" &&
-            LEGAL_CODES.has(cause.code)
+            error instanceof ParamValidationError &&
+            error.code === "FD1_QUANTITY_NOT_POSITIVE" &&
+            LEGAL_CODES.has(error.code)
           );
         }
       }),
@@ -556,10 +557,10 @@ describe("C9 guard-totality property (fast-check #4)", () => {
               equals: { Brand: "nike" },
             });
             return false;
-          } catch (cause) {
+          } catch (error) {
             return (
-              cause instanceof ParamValidationError &&
-              cause.code === "LC4_INVALID_QUANTIFIER"
+              error instanceof ParamValidationError &&
+              error.code === "LC4_INVALID_QUANTIFIER"
             );
           }
         },
@@ -654,10 +655,10 @@ function direct(
 function valueErrorMessage(thunk: () => unknown): string {
   try {
     thunk();
-  } catch (exc) {
-    expect(exc).toBeInstanceOf(ValueError);
-    expect(exc).not.toBeInstanceOf(ParamValidationError);
-    return (exc as Error).message;
+  } catch (error) {
+    expect(error).toBeInstanceOf(ValueError);
+    expect(error).not.toBeInstanceOf(ParamValidationError);
+    return (error as Error).message;
   }
   return expect.unreachable("expected ValueError") as never;
 }
@@ -854,10 +855,10 @@ describe("Filter direct construction (PR #236 operator validation)", () => {
     try {
       direct("gold", "bigger_than", 10, "number");
       expect.unreachable("expected ValueError");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(ValueError);
-      expect(exc).not.toBeInstanceOf(MixpanelHeadlessError);
-      expect((exc as { code?: unknown }).code).toBeUndefined();
+    } catch (error) {
+      expect(error).toBeInstanceOf(ValueError);
+      expect(error).not.toBeInstanceOf(MixpanelHeadlessError);
+      expect((error as { code?: unknown }).code).toBeUndefined();
     }
   });
 

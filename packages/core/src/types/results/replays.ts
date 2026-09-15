@@ -1065,7 +1065,7 @@ export class Replay {
    * The main `.df` contract — Python's `df` property returns
    * `actions_df`.
    *
-   * @returns {@link toActionsRows}.
+   * @returns.
    */
   toRows(): readonly Row[] {
     return this.toActionsRows();
@@ -1074,7 +1074,7 @@ export class Replay {
   /**
    * Column contract of the main `.df` frame.
    *
-   * @returns {@link actionsRowColumns}.
+   * @returns.
    */
   rowColumns(): readonly string[] {
     return this.actionsRowColumns();
@@ -1548,7 +1548,7 @@ export class ReplayBundle {
    * The main `.df` contract — Python's `df` property returns
    * `sessions_df`.
    *
-   * @returns {@link toSessionsRows}.
+   * @returns.
    */
   toRows(): readonly Row[] {
     return this.toSessionsRows();
@@ -1557,7 +1557,7 @@ export class ReplayBundle {
   /**
    * Column contract of the main `.df` frame.
    *
-   * @returns {@link sessionsRowColumns}.
+   * @returns.
    */
   rowColumns(): readonly string[] {
     return this.sessionsRowColumns();
@@ -1608,23 +1608,23 @@ export class ReplayBundle {
       }
       if (
         contains_url !== null &&
-        !r.actions.some(
+        r.actions.every(
           (a) =>
-            a.action === "navigate" && (a.url ?? "").includes(contains_url),
+            !(a.action === "navigate" && (a.url ?? "").includes(contains_url)),
         )
       ) {
         return false;
       }
       if (
         has_event !== null &&
-        !r.mixpanel_events.some((e) => e.event_name === has_event)
+        r.mixpanel_events.every((e) => e.event_name !== has_event)
       ) {
         return false;
       }
       if (min_duration_s !== null && r.duration_seconds < min_duration_s) {
         return false;
       }
-      return !(max_duration_s !== null && r.duration_seconds > max_duration_s);
+      return max_duration_s === null || !(r.duration_seconds > max_duration_s);
     };
     return this.filter(ok);
   }
@@ -1698,7 +1698,7 @@ export class ReplayBundle {
       // SKIPS NaN; the column is never null in this projection.
       entry.replays.add(row["replay_id"]);
     }
-    return [...groups.entries()]
+    return [...groups]
       .sort((a, b) => compareCodepoints(a[0], b[0]))
       .map(([, entry]) => ({
         target_desc: entry.target_desc,

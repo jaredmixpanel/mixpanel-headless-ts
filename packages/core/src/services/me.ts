@@ -16,17 +16,17 @@
  * the cheap, cache-only arm of that contract.
  */
 
+import type { AccountType } from "../auth/account.js";
+import { type JsonValue, toNativeJson } from "../client/json-value.js";
 import {
+  type MeProjectInfo,
   MeResponse,
+  type MeWorkspaceInfo,
   selectWorkspaceId,
   workspaceViewFromMeWorkspace,
-  type MeProjectInfo,
-  type MeWorkspaceInfo,
 } from "../client/me.js";
-import { toNativeJson, type JsonValue } from "../client/json-value.js";
 import { compareCodepoints } from "../compat/codepoint.js";
 import { pythonInt } from "../compat/python-int.js";
-import type { AccountType } from "../auth/account.js";
 import { AuthenticationError, ConfigError, QueryError } from "../errors.js";
 
 /**
@@ -47,7 +47,7 @@ export interface MeCacheStore {
    *
    * @returns The cached response, or `null` on a miss/expiry.
    */
-  get(): MeResponse | null | Promise<MeResponse | null>;
+  get: () => MeResponse | null | Promise<MeResponse | null>;
 
   /**
    * Store a response.
@@ -55,14 +55,14 @@ export interface MeCacheStore {
    * @param response - The response to cache.
    * @returns Nothing (a promise for asynchronous stores).
    */
-  put(response: MeResponse): void | Promise<void>;
+  put: (response: MeResponse) => void | Promise<void>;
 
   /**
    * Drop the cached response.
    *
    * @returns Nothing (a promise for asynchronous stores).
    */
-  invalidate(): void | Promise<void>;
+  invalidate: () => void | Promise<void>;
 }
 
 /**
@@ -76,7 +76,7 @@ export interface MeClient {
    * @throws AuthenticationError - 401.
    * @throws QueryError - Any other non-2xx.
    */
-  me(): Promise<Record<string, JsonValue>>;
+  me: () => Promise<Record<string, JsonValue>>;
 }
 
 /** Options bag of the {@link MeService} constructor (Python kw-only). */
@@ -109,7 +109,6 @@ export interface MeListWorkspacesOptions {
  *
  * @param accountName - Account the cache is scoped to.
  * @returns A process-local store.
- *
  * @example
  * ```typescript
  * const cache = inMemoryMeCache("personal");
@@ -243,17 +242,17 @@ export class MeService {
     let raw: Record<string, JsonValue>;
     try {
       raw = await this.#client.me();
-    } catch (exc) {
-      if (exc instanceof AuthenticationError) {
+    } catch (error) {
+      if (error instanceof AuthenticationError) {
         throw new ConfigError(
           `Credentials for account '${accountName}' are invalid (401). ` +
             `Run \`mp account test ${accountName}\` to confirm; if it's an ` +
             `oauth_browser account, run \`mp account login ${accountName}\`.`,
           { status_code: 401, account_name: accountName },
-          { cause: exc },
+          { cause: error },
         );
       }
-      if (exc instanceof QueryError && exc.statusCode === 403) {
+      if (error instanceof QueryError && error.statusCode === 403) {
         const message =
           this.#accountType === "service_account"
             ? // Error catalog E-10 — wording locked by
@@ -270,10 +269,10 @@ export class MeService {
         throw new ConfigError(
           message,
           { status_code: 403, account_name: accountName },
-          { cause: exc },
+          { cause: error },
         );
       }
-      throw exc;
+      throw error;
     }
 
     // The wire tree carries lossless numbers; Python validates the
@@ -295,7 +294,7 @@ export class MeService {
    */
   async listProjects(): Promise<Array<[string, MeProjectInfo]>> {
     const me = await this.fetch();
-    const items: Array<[string, MeProjectInfo]> = [...me.projects.entries()];
+    const items: Array<[string, MeProjectInfo]> = [...me.projects];
     items.sort((a, b) =>
       compareCodepoints(a[1].name.toLowerCase(), b[1].name.toLowerCase()),
     );

@@ -20,18 +20,19 @@
 //   midnight between the two calls.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import { flowModeFromParams } from "../../src/workspace-query-params.js";
+
+import type { ProfilePageResult } from "../../src/types/results/discovery.js";
 import {
   FlowQueryResult,
   UserQueryResult,
 } from "../../src/types/results/query-engine.js";
-import type { ProfilePageResult } from "../../src/types/results/discovery.js";
+import { Workspace } from "../../src/workspace.js";
+import { flowModeFromParams } from "../../src/workspace-query-params.js";
 import {
   makePageResult,
+  type MockWorkspaceClient,
   mockWorkspaceClient,
   TEST_SESSION,
-  type MockWorkspaceClient,
 } from "../../test-support/workspace-test-helpers.js";
 
 // ===========================================================================

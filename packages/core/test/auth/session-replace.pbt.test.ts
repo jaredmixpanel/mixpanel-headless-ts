@@ -21,17 +21,18 @@
 //   unicode units in fast-check 4).
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import {
-  parseAccount,
   type Account,
+  parseAccount,
   type TokenResolver,
 } from "../../src/auth/account.js";
 import {
   parseSession,
-  sessionAuthHeader,
-  sessionReplace,
   type Project,
   type Session,
+  sessionAuthHeader,
+  sessionReplace,
   type WorkspaceRef,
 } from "../../src/auth/session.js";
 import { Secret } from "../../src/secret.js";

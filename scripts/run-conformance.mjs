@@ -5,10 +5,12 @@
 // runs from TypeScript source (workspace aliases map `@mixpanel-headless/*`
 // to `src/`, never to a possibly stale `dist/`). Invoked via
 // `npm run conformance -- --report json`.
-import { build } from "esbuild";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+
+import { build } from "esbuild";
+
 import { esbuildAliases } from "./lib/workspace-aliases.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");

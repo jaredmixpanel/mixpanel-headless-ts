@@ -13,20 +13,21 @@
  * (`test_config.py`'s asserts lock that layer).
  */
 
-import type {
-  AddAccountParams,
-  AddTargetOptions,
-  ApplySessionUpdate,
-  ConfigWrites,
-  SetActiveUpdate,
-  UpdateAccountFields,
-  Account,
-  ResolverConfigSource,
-  ActiveSession,
-  AccountSummary,
-  Target,
+import {
+  type Account,
+  type AccountSummary,
+  type ActiveSession,
+  type AddAccountParams,
+  type AddTargetOptions,
+  type ApplySessionUpdate,
+  type ConfigWrites,
+  isPythonDict,
+  type ResolverConfigSource,
+  type SetActiveUpdate,
+  type Target,
+  type UpdateAccountFields,
 } from "@mixpanel-headless/core";
-import { isPythonDict } from "@mixpanel-headless/core";
+
 import { ConfigManager } from "./config.js";
 
 /** Options of {@link createNodeConfigSource} (packet §2.4). */
@@ -51,7 +52,6 @@ export type NodeConfigSource = ResolverConfigSource &
  *
  * @param options - Optional config path override.
  * @returns The adapter bound to one {@link ConfigManager}.
- *
  * @example
  * ```typescript
  * const config = createNodeConfigSource({ configPath: "/tmp/x/config.toml" });

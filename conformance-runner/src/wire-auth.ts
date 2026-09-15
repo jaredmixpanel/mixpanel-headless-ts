@@ -33,18 +33,19 @@
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { Region } from "@mixpanel-headless/core";
 import {
-  probeRegion,
   type ClientFactory,
-  OAuthTokens,
   MixpanelHeadlessError,
+  OAuthTokens,
+  probeRegion,
+  type Region,
 } from "@mixpanel-headless/core";
 import { probeClientFromFetch } from "@mixpanel-headless/core/internal";
 import { OAuthFlow, OAuthStorage } from "@mixpanel-headless/node";
+
 import { PyDatetime, RecordingCallback } from "./codecs.js";
 import type { ImplementationRegistry, InvocationContext } from "./runner.js";
-import { WireCoreError, runWire } from "./wire-client.js";
+import { runWire, WireCoreError } from "./wire-client.js";
 
 /** The Python fixture's placeholder base URL (all 14 vectors). */
 const PROBE_SCHEME_HOST = "https://test.invalid";
@@ -131,11 +132,11 @@ export function registerAuthWireBindings(
           scope: result.scope,
           token_type: result.token_type,
         };
-      } catch (cause) {
-        if (cause instanceof MixpanelHeadlessError) {
-          throw new WireCoreError(cause);
+      } catch (error) {
+        if (error instanceof MixpanelHeadlessError) {
+          throw new WireCoreError(error);
         }
-        throw cause;
+        throw error;
       }
     },
   );

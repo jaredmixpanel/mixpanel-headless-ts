@@ -6,13 +6,14 @@
 
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createNodeEnv } from "../src/env.js";
 import { nodeReadFile } from "../src/fs-seams.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
-const cleanups: (() => void)[] = [];
+const cleanups: Array<() => void> = [];
 let restoreEnv: () => void = () => {};
 beforeEach(() => {
   restoreEnv = scrubMpEnv();
@@ -77,8 +78,8 @@ describe("nodeReadFile (W7-D1)", () => {
     let error: unknown;
     try {
       await nodeReadFile(join(dir, "missing.csv"));
-    } catch (exc) {
-      error = exc;
+    } catch (error_) {
+      error = error_;
     }
     expect((error as NodeJS.ErrnoException).code).toBe("ENOENT");
   });

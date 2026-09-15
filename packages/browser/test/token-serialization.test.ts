@@ -15,12 +15,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  type OAuthClientInfo,
   OAuthTokens,
   parseOAuthClientInfo,
   parseOAuthTokens,
-  type OAuthClientInfo,
   Secret,
 } from "@mixpanel-headless/core";
+
 import {
   serializeClientInfoPayload,
   serializeTokensPayload,

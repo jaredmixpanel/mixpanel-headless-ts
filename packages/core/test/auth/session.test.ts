@@ -4,15 +4,16 @@
 // Session IGNORE extras (frozen only); ActiveSession is extra='forbid'
 // and rejects `project` by name.
 import { describe, expect, it } from "vitest";
-import { type TokenResolver } from "../../src/auth/account.js";
+
+import type { TokenResolver } from "../../src/auth/account.js";
 import {
   parseActiveSession,
   parseProject,
   parseSession,
   parseWorkspaceRef,
+  type Session,
   sessionAuthHeader,
   sessionReplace,
-  type Session,
 } from "../../src/auth/session.js";
 import {
   ParamTypeError,

@@ -167,14 +167,13 @@ function validateCohortDate(dateStr: string): void {
  * @throws ParamValidationError - `CD10_UNSUPPORTED_FILTER_OPERATOR` when
  *   a filter uses an operator outside
  *   {@link FILTER_TO_SELECTOR_SUPPORTED}.
- *
  * @internal Exported for the translated tests only.
  */
 export function buildEventSelector(
   filters: Filter | readonly Filter[],
 ): Record<string, unknown> {
   const filterList = filters instanceof Filter ? [filters] : filters;
-  const children: Record<string, unknown>[] = [];
+  const children: Array<Record<string, unknown>> = [];
   for (const f of filterList) {
     // CD10_UNSUPPORTED_FILTER_OPERATOR: only the natively-understood
     // bookmark filter operators are accepted.
@@ -198,7 +197,7 @@ export function buildEventSelector(
       node["dataset"] = "$mixpanel";
     } else if (prop instanceof InlineCustomProperty) {
       const effectiveType =
-        prop.property_type !== null ? prop.property_type : f._property_type;
+        prop.property_type === null ? f._property_type : prop.property_type;
       const composedProperties: Record<string, unknown> = {};
       for (const [letter, pi] of Object.entries(prop.inputs)) {
         composedProperties[letter] = {
@@ -403,7 +402,7 @@ export class CohortCriteria {
     ];
     const setFreqs = freqParams.filter(
       ([, value]) => value !== null,
-    ) as readonly (readonly [string, number])[];
+    ) as ReadonlyArray<readonly [string, number]>;
     if (setFreqs.length !== 1) {
       throw new ParamValidationError(
         "exactly one of at_least, at_most, exactly must be set",
@@ -437,7 +436,7 @@ export class CohortCriteria {
     ];
     const setRolling = rollingParams.filter(
       ([, value]) => value !== null,
-    ) as readonly (readonly [string, number])[];
+    ) as ReadonlyArray<readonly [string, number]>;
     const hasDateRange = fromDate !== null || toDate !== null;
 
     if (setRolling.length === 0 && !hasDateRange) {
@@ -765,7 +764,6 @@ export class CohortCriteria {
  *
  * @param raw - Output of `CohortDefinition.toDict()`.
  * @returns Sanitized deep copy safe for API submission.
- *
  * @remarks Not part of the public package surface — exported from this
  * module for the conformance binding and translated tests only.
  */
@@ -881,7 +879,6 @@ export class CohortDefinition {
    *
    * @returns Object with `selector` expression tree and `behaviors` map
    *   (deep copies — mutating the output never corrupts the criteria).
-   *
    * @example
    * ```typescript
    * const cohort = CohortDefinition.allOf(

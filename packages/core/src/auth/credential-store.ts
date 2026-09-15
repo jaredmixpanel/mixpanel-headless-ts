@@ -41,7 +41,7 @@ export interface CredentialStore {
    *   the `load_client_info` cache-check shape,
    *   `client_registration.py:92-93`).
    */
-  get(key: string): Promise<string | null> | string | null;
+  get: (key: string) => Promise<string | null> | string | null;
 
   /**
    * Store `value` under `key`, overwriting any prior value.
@@ -49,14 +49,14 @@ export interface CredentialStore {
    * @param key - Namespaced key.
    * @param value - Opaque serialized payload.
    */
-  set(key: string, value: string): Promise<void> | void;
+  set: (key: string, value: string) => Promise<void> | void;
 
   /**
    * Remove the value stored under `key` (no-op when absent).
    *
    * @param key - Namespaced key.
    */
-  delete(key: string): Promise<void> | void;
+  delete: (key: string) => Promise<void> | void;
 }
 
 /**

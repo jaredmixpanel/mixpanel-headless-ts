@@ -8,6 +8,8 @@
 // int/float, the JSON-mode / R4.12 posture).
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
+import { JsonNumber } from "../src/client/json-value.js";
 import {
   coerceBool,
   coerceFloat,
@@ -16,7 +18,6 @@ import {
   coerceStr,
   resolveWithDefault,
 } from "../src/coerce.js";
-import { JsonNumber } from "../src/client/json-value.js";
 import {
   ParamValidationError,
   ResponseValidationError,
@@ -66,9 +67,9 @@ describe("coerceInt", () => {
     try {
       coerceInt("nope", { kind: "param", field: "project_id" });
       expect.unreachable();
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(ParamValidationError);
-      const err = exc as ParamValidationError;
+    } catch (error) {
+      expect(error).toBeInstanceOf(ParamValidationError);
+      const err = error as ParamValidationError;
       expect(err.code).toBe("VALIDATION_ERROR");
       expect(err.details["field"]).toBe("project_id");
     }

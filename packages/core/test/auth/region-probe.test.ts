@@ -24,15 +24,16 @@
 // No assertion dropped; the network-error body assert keeps Python's own
 // loosened OR form (`test_region_probe.py:167`).
 import { describe, expect, it } from "vitest";
+
+import type { Region } from "../../src/auth/account.js";
 import {
   probeBaseUrl,
+  type ProbeClient,
   probeRegion,
   probeRegionForCredential,
-  type ProbeClient,
   type ProbeResponse,
   type RegionProbeResult,
 } from "../../src/auth/region-probe.js";
-import type { Region } from "../../src/auth/account.js";
 import { MixpanelHttpError } from "../../src/client/internals.js";
 import {
   ConfigError,
@@ -332,7 +333,7 @@ describe("TestProbeRegionTimeout", () => {
 
 describe("TestProbeRegionSendsHeaders", () => {
   it("test_authorization_header_forwarded", async () => {
-    const captured: (string | undefined)[] = [];
+    const captured: Array<string | undefined> = [];
     const captureHandler: Handler = (got) => {
       captured.push(got.headers["Authorization"]);
       return { status: 200, text: '{"user_id": 1}' };

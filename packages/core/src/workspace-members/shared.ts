@@ -8,7 +8,7 @@
  * branches on status: the wire client owns all of that.
  */
 
-import { toNativeJson, type JsonValue } from "../client/json-value.js";
+import { type JsonValue, toNativeJson } from "../client/json-value.js";
 import { MixpanelHeadlessError, ParamValidationError } from "../errors.js";
 
 /**
@@ -89,12 +89,15 @@ function describeReceived(value: unknown): string {
           : undefined;
       return `object (${ctor ?? "null prototype"})`;
     }
-    case "function":
+    case "function": {
       return "function";
-    case "string":
+    }
+    case "string": {
       return `string "${value.slice(0, 40)}"`;
-    default:
+    }
+    default: {
       return `${typeof value} ${String(value).slice(0, 40)}`;
+    }
   }
 }
 

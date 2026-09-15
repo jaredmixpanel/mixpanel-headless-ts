@@ -11,8 +11,8 @@
  * naming-map §4).
  */
 
-import type { ApiMapEntry } from "./api-map-types.js";
 import { API_MAP, KNOWN_PYTHON_MODULES } from "./api-map.gen.js";
+import type { ApiMapEntry } from "./api-map-types.js";
 
 /** Successful resolution: the generated map carries the name. */
 export interface MappedApi {
@@ -48,7 +48,6 @@ const KNOWN_MODULE_SET: ReadonlySet<string> = new Set(KNOWN_PYTHON_MODULES);
  * @param pythonApi - The name exactly as the vector carries it, e.g.
  *   `workspace.build_funnel_params`.
  * @returns The three-way {@link ApiResolution}; never throws.
- *
  * @example
  * ```typescript
  * resolveApi("segfilter.build_segfilter_entry");

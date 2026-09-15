@@ -5,13 +5,14 @@
 // events incl. the form-body + envelope-peeling + echo-mismatch
 // branches, and the error-path classes).
 import { describe, expect, it } from "vitest";
-import { MixpanelHeadlessError, QueryError } from "../../src/errors.js";
+
+import type { Session } from "../../src/auth/session.js";
 import { toNativeJson } from "../../src/client/json-value.js";
+import { MixpanelHeadlessError, QueryError } from "../../src/errors.js";
 import {
   createMockClient,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
-import type { Session } from "../../src/auth/session.js";
 
 /** The `oauth_credentials` fixture twin (:30-33). */
 function oauthCredentials(): Session {
@@ -30,7 +31,7 @@ function parseBody(bodyText: string): unknown {
 /** `urllib.parse.parse_qs` analog over a form-encoded body. */
 function parseQs(bodyText: string): Record<string, string[]> {
   const out: Record<string, string[]> = {};
-  for (const [key, value] of new URLSearchParams(bodyText).entries()) {
+  for (const [key, value] of new URLSearchParams(bodyText)) {
     (out[key] ??= []).push(value);
   }
   return out;
@@ -1102,7 +1103,7 @@ describe("TestCreateCustomEvent", () => {
     ) as Record<string, unknown>;
     const req = captured[0];
     expect(req?.method).toBe("POST");
-    expect(req?.url.split("?")[0]?.endsWith("/custom_events/")).toBe(true);
+    expect(req?.url.split("?", 1)[0]?.endsWith("/custom_events/")).toBe(true);
     expect(
       req?.contentType.startsWith("application/x-www-form-urlencoded"),
     ).toBe(true);

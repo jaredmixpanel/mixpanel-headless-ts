@@ -21,25 +21,27 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
 import {
-  parseAccount,
   type Account,
-  OAuthTokens,
-  parseOAuthTokens,
-  sortedByCodepoint,
+  type BridgeEffects,
+  type BridgeView,
+  ConfigError,
   isPythonDict,
+  MixpanelHeadlessError,
+  OAuthError,
+  OAuthTokens,
+  ParamValidationError,
+  parseAccount,
+  parseOAuthTokens,
   pythonInt,
   pythonStr,
   type PythonValue,
-  ConfigError,
-  MixpanelHeadlessError,
-  OAuthError,
-  ParamValidationError,
   Secret,
+  sortedByCodepoint,
 } from "@mixpanel-headless/core";
-import type { BridgeView, BridgeEffects } from "@mixpanel-headless/core";
+
 import {
-  CredentialPathError,
   atomicWriteBytes,
+  CredentialPathError,
   isErrnoError,
   readCredentialText,
   rejectIfSymlink,
@@ -231,15 +233,15 @@ export function loadBridge(path?: string | null): BridgeFile | null {
     // (B8-ARB-A SEM-F6 family, `b8-reviewA-resolution.md`).
     try {
       rejectIfSymlink(candidate);
-    } catch (exc) {
-      if (!(exc instanceof MixpanelHeadlessError) && !isErrnoError(exc)) {
-        throw exc;
+    } catch (error) {
+      if (!(error instanceof MixpanelHeadlessError) && !isErrnoError(error)) {
+        throw error;
       }
-      const rendered = exc instanceof Error ? exc.message : String(exc);
+      const rendered = error instanceof Error ? error.message : String(error);
       throw new ConfigError(
         `Could not read bridge file at ${candidate}: ${rendered}`,
         { path: candidate },
-        { cause: exc },
+        { cause: error },
       );
     }
     if (!existsSync(candidate)) {
@@ -248,35 +250,36 @@ export function loadBridge(path?: string | null): BridgeFile | null {
     let payload: unknown;
     try {
       payload = JSON.parse(readCredentialText(candidate));
-    } catch (exc) {
+    } catch (error) {
       // Python wraps `(OSError, json.JSONDecodeError)` only
       // (`bridge.py:181`); a UnicodeDecodeError escapes RAW — the TS
       // twin (TextDecoder fatal-mode TypeError) propagates unchanged
       // (B8-ARB-A SEM-F2b, live CPython probe in the resolution).
       if (
-        !(exc instanceof CredentialPathError) &&
-        !(exc instanceof SyntaxError) &&
-        !isErrnoError(exc)
+        !(error instanceof CredentialPathError) &&
+        !(error instanceof SyntaxError) &&
+        !isErrnoError(error)
       ) {
-        throw exc;
+        throw error;
       }
       throw new ConfigError(
-        `Could not read bridge file at ${candidate}: ` +
-          `${exc instanceof Error ? exc.message : String(exc)}`,
+        `Could not read bridge file at ${candidate}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
         { path: candidate },
-        { cause: exc },
+        { cause: error },
       );
     }
     try {
       return parseBridgeFile(payload);
-    } catch (exc) {
-      if (!(exc instanceof MixpanelHeadlessError)) {
-        throw exc;
+    } catch (error) {
+      if (!(error instanceof MixpanelHeadlessError)) {
+        throw error;
       }
       throw new ConfigError(
-        `Invalid bridge file at ${candidate}: ${exc.message}`,
+        `Invalid bridge file at ${candidate}: ${error.message}`,
         { path: candidate },
-        { cause: exc },
+        { cause: error },
       );
     }
   }
@@ -299,17 +302,18 @@ function readBrowserTokens(name: string): OAuthTokens {
   // (B8-ARB-A SEM-F6 family, `b8-reviewA-resolution.md`).
   try {
     rejectIfSymlink(path);
-  } catch (exc) {
-    if (!(exc instanceof MixpanelHeadlessError) && !isErrnoError(exc)) {
-      throw exc;
+  } catch (error) {
+    if (!(error instanceof MixpanelHeadlessError) && !isErrnoError(error)) {
+      throw error;
     }
-    const rendered = exc instanceof Error ? exc.message : String(exc);
+    const rendered = error instanceof Error ? error.message : String(error);
     throw new OAuthError(
-      `Could not read OAuth tokens for account '${name}' from ${path}: ` +
-        `${rendered}`,
+      `Could not read OAuth tokens for account '${name}' from ${path}: ${
+        rendered
+      }`,
       "OAUTH_TOKEN_ERROR",
       { account_name: name, path },
-      { cause: exc },
+      { cause: error },
     );
   }
   if (!existsSync(path)) {
@@ -323,23 +327,24 @@ function readBrowserTokens(name: string): OAuthTokens {
   let payload: unknown;
   try {
     payload = JSON.parse(readCredentialText(path));
-  } catch (exc) {
+  } catch (error) {
     // Python wraps `(OSError, json.JSONDecodeError)` only
     // (`bridge.py:235-242`); the UnicodeDecodeError twin (TextDecoder
     // fatal-mode TypeError) propagates RAW (B8-ARB-A SEM-F2 family).
     if (
-      !(exc instanceof CredentialPathError) &&
-      !(exc instanceof SyntaxError) &&
-      !isErrnoError(exc)
+      !(error instanceof CredentialPathError) &&
+      !(error instanceof SyntaxError) &&
+      !isErrnoError(error)
     ) {
-      throw exc;
+      throw error;
     }
     throw new OAuthError(
-      `Could not read OAuth tokens for account '${name}' from ${path}: ` +
-        `${exc instanceof Error ? exc.message : String(exc)}`,
+      `Could not read OAuth tokens for account '${name}' from ${path}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
       "OAUTH_TOKEN_ERROR",
       { account_name: name, path },
-      { cause: exc },
+      { cause: error },
     );
   }
   const record = isPythonDict(payload) ? payload : {};

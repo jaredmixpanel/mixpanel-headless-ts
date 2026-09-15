@@ -8,12 +8,13 @@
 // `context/phase3/design/b0-review-assertions.md`; the C5 R10.9
 // harness re-exercises that matrix through the REAL method.
 import { describe, expect, it } from "vitest";
+
+import type { Session } from "../../src/auth/session.js";
 import { toNativeJson } from "../../src/client/json-value.js";
 import {
   createMockClient,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
-import type { Session } from "../../src/auth/session.js";
 
 /** The `us_credentials` fixture twin (:29-37 — service account, US). */
 function usCredentials(): Session {

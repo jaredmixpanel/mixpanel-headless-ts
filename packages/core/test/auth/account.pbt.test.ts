@@ -5,12 +5,13 @@
 // default arm is unreachable.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import {
+  type Account,
   ACCOUNT_TYPE_VALUES,
+  type AccountType,
   isLongLived,
   parseAccount,
-  type Account,
-  type AccountType,
 } from "../../src/auth/account.js";
 import { ResponseValidationError } from "../../src/errors.js";
 
@@ -86,15 +87,18 @@ describe("fast-check #2 — Account union exhaustiveness", () => {
         const account = parseAccount(payload);
         const visited: AccountType[] = [];
         switch (account.type) {
-          case "service_account":
+          case "service_account": {
             visited.push(account.type);
             break;
-          case "oauth_browser":
+          }
+          case "oauth_browser": {
             visited.push(account.type);
             break;
-          case "oauth_token":
+          }
+          case "oauth_token": {
             visited.push(account.type);
             break;
+          }
           default: {
             const exhaustive: never = account;
             throw new Error(

@@ -15,6 +15,7 @@
 // decompresses before calling in) — so the gzip authored vector is
 // locked by vector replay, not re-tested here.
 import { describe, expect, it } from "vitest";
+
 import { iterJsonlLines } from "../../src/client/jsonl.js";
 
 const encoder = new TextEncoder();
@@ -26,7 +27,7 @@ const encoder = new TextEncoder();
  * @returns An async iterable yielding each chunk once.
  */
 async function* chunkSource(
-  chunks: readonly (string | Uint8Array)[],
+  chunks: ReadonlyArray<string | Uint8Array>,
 ): AsyncIterable<Uint8Array> {
   for (const chunk of chunks) {
     yield typeof chunk === "string" ? encoder.encode(chunk) : chunk;
@@ -40,7 +41,7 @@ async function* chunkSource(
  * @returns The reassembled lines.
  */
 async function lines(
-  chunks: readonly (string | Uint8Array)[],
+  chunks: ReadonlyArray<string | Uint8Array>,
 ): Promise<string[]> {
   const out: string[] = [];
   for await (const line of iterJsonlLines(chunkSource(chunks))) {
@@ -94,11 +95,14 @@ describe("iterJsonlLines", () => {
     expect(await lines([""])).toEqual([]);
   });
 
-  it("strips with the PYTHON whitespace set (\\x1c-\\x1f are stripped)", async () => {
-    // Python str.strip() strips \x1c-\x1f; JS String#trim does not
-    // (pythonStrip, R11.3/B0-1 item 4). A line that is ONLY \x1c skips.
-    expect(await lines(["\x1c\n", "a\x1c\n"])).toEqual(["a"]);
-  });
+  it(
+    String.raw`strips with the PYTHON whitespace set (\x1c-\x1f are stripped)`,
+    async () => {
+      // Python str.strip() strips \x1c-\x1f; JS String#trim does not
+      // (pythonStrip, R11.3/B0-1 item 4). A line that is ONLY \x1c skips.
+      expect(await lines(["\x1C\n", "a\x1C\n"])).toEqual(["a"]);
+    },
+  );
 
   it("yields a BOM-only line verbatim (Python utf-8 codec keeps U+FEFF)", async () => {
     // WHATWG decoders strip a leading BOM by default; Python's "utf-8"
@@ -107,7 +111,7 @@ describe("iterJsonlLines", () => {
     // (2026-08-15-api_client-_iter_jsonl_lines: b"\xef\xbb\xbf\n" yields
     // ["\ufeff"], never []).
     expect(await lines([new Uint8Array([0xef, 0xbb, 0xbf, 0x0a])])).toEqual([
-      "\ufeff",
+      "\uFEFF",
     ]);
   });
 

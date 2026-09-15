@@ -46,7 +46,7 @@ export async function runOracle(): Promise<void> {
  */
 function writeLine(response: string): Promise<void> {
   return new Promise((resolvePromise, rejectPromise) => {
-    process.stdout.write(response + "\n", (error) => {
+    process.stdout.write(`${response}\n`, (error) => {
       if (error) {
         rejectPromise(error);
       } else {

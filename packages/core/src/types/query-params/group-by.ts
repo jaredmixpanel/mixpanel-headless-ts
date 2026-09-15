@@ -145,7 +145,6 @@ export class GroupBy {
    * @throws ParamValidationError - `LG1_EMPTY_SUB`/`LG2_INVALID_SUB_TYPE`
    *   via the `ListItemGroupMode` constructor, or any `GroupBy`
    *   constructor guard.
-   *
    * @example
    * ```typescript
    * const g = GroupBy.listItem("cart", "Brand");

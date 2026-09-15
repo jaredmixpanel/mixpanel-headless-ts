@@ -3,8 +3,12 @@
 // bare String() would emit "true"/"null"). Every expected value below was
 // produced by CPython str()/repr() (the oracle) on 2026-08-14.
 import { describe, expect, it } from "vitest";
-import { pythonRepr, pythonStr } from "../../src/compat/python-str.js";
-import type { PythonValue } from "../../src/compat/python-str.js";
+
+import {
+  pythonRepr,
+  pythonStr,
+  type PythonValue,
+} from "../../src/compat/python-str.js";
 
 describe("pythonStr — D13 case list", () => {
   it('renders True/False capitalized: str(True) -> "True"', () => {
@@ -68,50 +72,50 @@ describe("pythonRepr — CPython string repr rules", () => {
   });
 
   it("escapes the single quote when BOTH quote kinds appear", () => {
-    expect(pythonRepr("both ' and \"")).toBe("'both \\' and \"'");
+    expect(pythonRepr("both ' and \"")).toBe(String.raw`'both \' and "'`);
   });
 
   it("escapes backslash, tab, newline, carriage return", () => {
-    expect(pythonRepr("back\\slash")).toBe("'back\\\\slash'");
-    expect(pythonRepr("tab\tnewline\n")).toBe("'tab\\tnewline\\n'");
-    expect(pythonRepr("\r")).toBe("'\\r'");
+    expect(pythonRepr(String.raw`back\slash`)).toBe(String.raw`'back\\slash'`);
+    expect(pythonRepr("tab\tnewline\n")).toBe(String.raw`'tab\tnewline\n'`);
+    expect(pythonRepr("\r")).toBe(String.raw`'\r'`);
   });
 
-  it("escapes non-printable characters below U+0100 as \\xXX", () => {
-    expect(pythonRepr("null\x00char")).toBe("'null\\x00char'");
-    expect(pythonRepr("\x1b[0m")).toBe("'\\x1b[0m'");
-    expect(pythonRepr("\x7f")).toBe("'\\x7f'");
-    expect(pythonRepr("\x85")).toBe("'\\x85'");
-    expect(pythonRepr("nb\xa0space")).toBe("'nb\\xa0space'");
-    expect(pythonRepr("\xad")).toBe("'\\xad'");
+  it(String.raw`escapes non-printable characters below U+0100 as \xXX`, () => {
+    expect(pythonRepr("null\x00char")).toBe(String.raw`'null\x00char'`);
+    expect(pythonRepr("\x1B[0m")).toBe(String.raw`'\x1b[0m'`);
+    expect(pythonRepr("\x7F")).toBe(String.raw`'\x7f'`);
+    expect(pythonRepr("\x85")).toBe(String.raw`'\x85'`);
+    expect(pythonRepr("nb\xA0space")).toBe(String.raw`'nb\xa0space'`);
+    expect(pythonRepr("\xAD")).toBe(String.raw`'\xad'`);
   });
 
-  it("escapes non-printable BMP characters as \\uXXXX", () => {
-    expect(pythonRepr("​")).toBe("'\\u200b'");
-    expect(pythonRepr(" ")).toBe("'\\u2028'");
+  it(String.raw`escapes non-printable BMP characters as \uXXXX`, () => {
+    expect(pythonRepr("​")).toBe(String.raw`'\u200b'`);
+    expect(pythonRepr(" ")).toBe(String.raw`'\u2028'`);
   });
 
-  it("escapes non-printable astral characters as \\UXXXXXXXX", () => {
-    expect(pythonRepr("\u{e0001}")).toBe("'\\U000e0001'");
+  it(String.raw`escapes non-printable astral characters as \UXXXXXXXX`, () => {
+    expect(pythonRepr("\u{E0001}")).toBe(String.raw`'\U000e0001'`);
   });
 
   it("classifies printability by the pinned CPython table, not the JS engine", () => {
     // TS-7 differential finding: U+323B0 is assigned in V8's Unicode 17
     // database (printable there) but Cn in the target CPython 3.14 /
     // Unicode 16 — CPython escapes it, so the port must too.
-    expect(pythonRepr("\u{323b0}")).toBe("'\\U000323b0'");
+    expect(pythonRepr("\u{323B0}")).toBe(String.raw`'\U000323b0'`);
     // Neighbouring U+323AF (CJK Ext H) is assigned in Unicode 16: verbatim.
-    expect(pythonRepr("\u{323af}")).toBe("'\u{323af}'");
+    expect(pythonRepr("\u{323AF}")).toBe("'\u{323AF}'");
   });
 
   it("keeps printable non-BMP characters verbatim (R10.9 non-BMP edge)", () => {
     expect(pythonRepr("😀")).toBe("'😀'");
-    expect(pythonRepr("\u{1d7d8}")).toBe("'\u{1d7d8}'");
-    expect(pythonRepr("mixed😀\x01end")).toBe("'mixed😀\\x01end'");
+    expect(pythonRepr("\u{1D7D8}")).toBe("'\u{1D7D8}'");
+    expect(pythonRepr("mixed😀\x01end")).toBe(String.raw`'mixed😀\x01end'`);
   });
 
   it("escapes lone surrogates (illegal in vectors, but never mangled)", () => {
-    expect(pythonRepr("\ud800")).toBe("'\\ud800'");
+    expect(pythonRepr("\uD800")).toBe(String.raw`'\ud800'`);
   });
 
   it("reprs booleans, None and numbers like the top-level forms", () => {
@@ -125,7 +129,7 @@ describe("pythonRepr — CPython string repr rules", () => {
     const list: PythonValue[] = [];
     list.push(list);
     expect(pythonRepr(list)).toBe("[[...]]");
-    const dict: { [key: string]: PythonValue } = {};
+    const dict: Record<string, PythonValue> = {};
     dict["x"] = dict;
     expect(pythonRepr(dict)).toBe("{'x': {...}}");
   });

@@ -1,6 +1,7 @@
 // Shim tests (src/shims.ts, task TS-5): frozen clock, deterministic UUID
 // stream, and VIRTUAL sleep semantics per design D1.4/D12.
 import { describe, expect, it } from "vitest";
+
 import { createShims } from "../src/shims.js";
 
 const RECORD_EPOCH = "2026-01-15T12:00:00Z";

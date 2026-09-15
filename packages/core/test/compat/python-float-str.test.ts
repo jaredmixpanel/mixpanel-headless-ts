@@ -6,10 +6,11 @@
 // fixed notation (semantic-trap watchlist item 3).
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import { pythonFloatStr } from "../../src/compat/python-float-str.js";
 
 describe("pythonFloatStr — D13 case list + CPython oracle table", () => {
-  const oracle: [number, string][] = [
+  const oracle: Array<[number, string]> = [
     // Integral floats keep ".0" (str(18.0) == "18.0"; JS String gives "18").
     [18.0, "18.0"],
     [-18.0, "-18.0"],
@@ -106,7 +107,7 @@ function referenceFloatStr(value: number): string {
 describe("pythonFloatStr — fast-check properties", () => {
   const finiteDoubles = fc.double({ noNaN: true, noDefaultInfinity: true });
   // R10.9 mandatory edge set (float-relevant members) + window boundaries.
-  const edgeExamples: [number][] = [
+  const edgeExamples: Array<[number]> = [
     [18.0],
     [1.5],
     [-0.0],

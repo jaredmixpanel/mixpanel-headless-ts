@@ -43,7 +43,7 @@ export interface CohortMethods {
    * @throws AuthenticationError | RateLimitError | QueryError |
    *   ServerError - Per the B0 `appRequest` contract.
    */
-  listCohortsApp(options?: ListCohortsAppOptions): Promise<JsonValue[]>;
+  listCohortsApp: (options?: ListCohortsAppOptions) => Promise<JsonValue[]>;
 
   /**
    * Get a cohort by ID (`get_cohort`, `:4777-4805`).
@@ -53,10 +53,10 @@ export interface CohortMethods {
    * @returns The cohort dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  getCohort(
+  getCohort: (
     cohortId: number,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Create a cohort (`create_cohort`, `:4807-4835`).
@@ -66,10 +66,10 @@ export interface CohortMethods {
    * @returns The created cohort dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  createCohort(
+  createCohort: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Update a cohort (`update_cohort`, `:4837-4866`; PATCH).
@@ -80,11 +80,11 @@ export interface CohortMethods {
    * @returns The updated cohort dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  updateCohort(
+  updateCohort: (
     cohortId: number,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Delete a cohort (`delete_cohort`, `:4868-4887`).
@@ -93,7 +93,7 @@ export interface CohortMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  deleteCohort(cohortId: number, signal?: AbortSignal): Promise<void>;
+  deleteCohort: (cohortId: number, signal?: AbortSignal) => Promise<void>;
 
   /**
    * Bulk-delete cohorts (`bulk_delete_cohorts`, `:4889-4908` — POST
@@ -103,10 +103,10 @@ export interface CohortMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  bulkDeleteCohorts(
+  bulkDeleteCohorts: (
     ids: readonly number[],
     signal?: AbortSignal,
-  ): Promise<void>;
+  ) => Promise<void>;
 
   /**
    * Bulk-update cohorts (`bulk_update_cohorts`, `:4910-4932` — POST
@@ -116,10 +116,10 @@ export interface CohortMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  bulkUpdateCohorts(
+  bulkUpdateCohorts: (
     entries: ReadonlyArray<Record<string, unknown>>,
     signal?: AbortSignal,
-  ): Promise<void>;
+  ) => Promise<void>;
 }
 
 /**

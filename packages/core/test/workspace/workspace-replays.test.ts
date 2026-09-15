@@ -38,14 +38,8 @@
 //   the instance; `call.kwargs[...]` → the recorded options bag.
 // - Every member is `async` in the port (R6.1), so every call awaits.
 import { describe, expect, it } from "vitest";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-} from "../../test-support/client-test-helpers.js";
+
 import { ParamValidationError, ReplayNotFoundError } from "../../src/errors.js";
-import { checkEventPropertiesCount, Workspace } from "../../src/workspace.js";
 import { ReplaysService } from "../../src/services/replays.js";
 import {
   Replay,
@@ -54,6 +48,13 @@ import {
   ReplaySummary,
   SignedReplay,
 } from "../../src/types/results/replays.js";
+import { checkEventPropertiesCount, Workspace } from "../../src/workspace.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** One recorded stub-service call. */
 interface ServiceCall {
@@ -212,8 +213,8 @@ async function expectGuard(
   let caught: unknown;
   try {
     await thunk();
-  } catch (exc) {
-    caught = exc;
+  } catch (error) {
+    caught = error;
   }
   expect(caught).toBeInstanceOf(ParamValidationError);
   expect((caught as ParamValidationError).code).toBe(code);
@@ -239,8 +240,8 @@ describe("list_replays argument validation (TestListReplaysValidation)", () => {
     let caught: unknown;
     try {
       await ws.listReplays({ distinct_id: "u-1", replay_ids: ["r-1"] });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ParamValidationError);
     expect((caught as ParamValidationError).message).toContain(
@@ -665,8 +666,8 @@ describe("fetch_replays per-replay isolation (TestFetchReplaysResilience)", () =
     let caught: unknown;
     try {
       await ws.fetchReplays(["r-1", "r-2"]);
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ReplayNotFoundError);
   });
@@ -825,8 +826,8 @@ describe("coded replay guards (TestCodedReplayGuardCodes)", () => {
     let caught: unknown;
     try {
       checkEventPropertiesCount(["a", "b", "c", "d", "e", "f"]);
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ParamValidationError);
     expect((caught as ParamValidationError).code).toBe(
@@ -917,8 +918,8 @@ describe("coded replay guards (TestCodedReplayGuardCodes)", () => {
     let caught: unknown;
     try {
       await ws.listReplays();
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ParamValidationError);
     expect((caught as ParamValidationError).code).toBe(
@@ -945,7 +946,7 @@ describe("FID-F5: fetch_replay window derivation missing-timestamp class", () =>
     const caught = await ws
       .fetchReplay("r-1", { retention_days: 30 })
       .then(() => null)
-      .catch((e: unknown) => e);
+      .catch((error: unknown) => error);
     expect(caught).toBeInstanceOf(Error);
     expect((caught as Error).name).toBe("KeyError");
   });

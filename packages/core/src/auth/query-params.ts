@@ -39,10 +39,12 @@ export function pythonUnquote(text: string): string {
   let pending: number[] = [];
   const decoder = new TextDecoder("utf-8", { fatal: false });
   const flush = (): void => {
-    if (pending.length > 0) {
-      result += decoder.decode(Uint8Array.from(pending));
-      pending = [];
+    if (pending.length === 0) {
+      return;
     }
+
+    result += decoder.decode(Uint8Array.from(pending));
+    pending = [];
   };
   for (let i = 1; i < parts.length; i += 1) {
     const part = parts[i] ?? "";
@@ -70,7 +72,6 @@ export function pythonUnquote(text: string): string {
  *
  * @param query - The raw query-string text (no leading `?`).
  * @returns Name → ordered value list (only non-empty lists appear).
- *
  * @example
  * ```typescript
  * parseQs("code=ABC&state=XYZ");
@@ -96,10 +97,10 @@ export function parseQs(query: string): Map<string, string[]> {
     const name = pythonUnquote(field.slice(0, eq).replaceAll("+", " "));
     const value = pythonUnquote(rawValue.replaceAll("+", " "));
     const existing = out.get(name);
-    if (existing !== undefined) {
-      existing.push(value);
-    } else {
+    if (existing === undefined) {
       out.set(name, [value]);
+    } else {
+      existing.push(value);
     }
   }
   return out;

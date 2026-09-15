@@ -13,15 +13,15 @@
  * `toJSON` field walks.
  */
 
-import { isPythonDict } from "../query/validation-shared.js";
 import { pythonInt } from "../compat/index.js";
 import { MixpanelHeadlessError } from "../errors.js";
+import { isPythonDict } from "../query/validation-shared.js";
+import type { PublicWorkspace } from "../types/entities/common.js";
 import {
+  type EntityFieldSpec,
   EntityModel,
   prepareInit,
-  type EntityFieldSpec,
 } from "../types/entities/model-base.js";
-import type { PublicWorkspace } from "../types/entities/common.js";
 import { JsonNumber } from "./json-value.js";
 
 /**
@@ -562,13 +562,13 @@ function metadataWorkspaceId(wid: unknown): number | null {
   if (typeof wid === "string") {
     try {
       return pythonInt(wid);
-    } catch (e) {
+    } catch (error) {
       // Python catches (TypeError, ValueError) around `int(wid)`; the
       // coded pythonInt failures are the ValueError analogs.
-      if (e instanceof MixpanelHeadlessError) {
+      if (error instanceof MixpanelHeadlessError) {
         return null;
       }
-      throw e;
+      throw error;
     }
   }
   return null;
@@ -627,7 +627,6 @@ export function workspaceViewFromMetadataEntry(
  *
  * @param views - Candidate views, already filtered to one project.
  * @returns The selected workspace id, or `null` when `views` is empty.
- *
  * @example
  * ```typescript
  * selectWorkspaceId([

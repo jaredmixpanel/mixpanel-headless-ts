@@ -111,16 +111,16 @@ function parseRetryAfterSeconds(raw: string | null): number | null {
   let seconds: number;
   try {
     seconds = pythonFloat(raw);
-  } catch (cause) {
+  } catch (error) {
     // The ValueError-analog only (B0-ARB F3 discipline: typed guard,
     // never a bare catch).
     if (
-      cause instanceof MixpanelHeadlessError &&
-      cause.code === "PY_FLOAT_INVALID_LITERAL"
+      error instanceof MixpanelHeadlessError &&
+      error.code === "PY_FLOAT_INVALID_LITERAL"
     ) {
       return null;
     }
-    throw cause;
+    throw error;
   }
   if (!Number.isFinite(seconds) || seconds < 0) {
     return null;
@@ -188,16 +188,20 @@ function cursorParamValue(cursor: JsonValue): unknown {
   return cursor;
 }
 
-/** The client slice {@link paginateAll} consumes (Python takes the
+/**
+ * The client slice {@link paginateAll} consumes (Python takes the
  * whole `MixpanelAPIClient`; the TS paginator reaches the same
- * internals through the C1 {@link ClientCore} seam). */
+ * internals through the C1 {@link ClientCore} seam).
+ */
 export interface PaginationClient {
   /** @internal The shared client-internals seam (B4-C1). */
   readonly core: ClientCore;
 }
 
-/** Keyword options of {@link paginateAll} (Python kw-only args + the
- * TS seams). */
+/**
+ * Keyword options of {@link paginateAll} (Python kw-only args + the
+ * TS seams).
+ */
 export interface PaginateAllOptions {
   /** Optional additional query parameters for each request. */
   readonly params?: Readonly<Record<string, string>> | null | undefined;
@@ -237,7 +241,6 @@ export interface PaginateAllOptions {
  *   statuses, unfollowed 3xx included), or `INVALID_RESPONSE` (non-JSON
  *   body, or a `results` field that is neither a list nor null).
  * @throws DOMException - Name `AbortError` on cancellation (R6.7).
- *
  * @example
  * ```typescript
  * const client = createMixpanelClient({ session });
@@ -321,17 +324,17 @@ export async function* paginateAll(
           // API's ~120s server deadline instead.
           timeoutSeconds: core.defaultTimeoutSeconds(url),
         });
-      } catch (cause) {
+      } catch (error) {
         // `except httpx.HTTPError` — the transport-error class filter
         // (R2.10: no bare catch; AbortError and library errors pass).
-        if (!(cause instanceof MixpanelHttpError)) {
-          throw cause;
+        if (!(error instanceof MixpanelHttpError)) {
+          throw error;
         }
         throw new MixpanelHeadlessError(
-          `Network error during pagination: ${cause.message}`,
+          `Network error during pagination: ${error.message}`,
           "NETWORK_ERROR",
-          { path, error: cause.message },
-          { cause },
+          { path, error: error.message },
+          { cause: error },
         );
       }
 
@@ -421,7 +424,7 @@ export async function* paginateAll(
     let data: JsonValue;
     try {
       data = parseLossless(response.text, { pythonConstants: true });
-    } catch (cause) {
+    } catch (error) {
       // Python catches broad `except Exception` at THIS site
       // (pagination.py:246-254) — unlike the `except json.JSONDecodeError`
       // sites B0-ARB F3 ruled on — so EVERY parse failure (a RangeError
@@ -435,7 +438,7 @@ export async function* paginateAll(
         // Python's details use `.get` WITHOUT the "unknown" default —
         // the key is present with None/null when the header is absent.
         { content_type: contentType },
-        { cause },
+        { cause: error },
       );
     }
 
@@ -459,8 +462,9 @@ export async function* paginateAll(
         // yield keys — corrupt output dressed up as success.
         const typeName = pythonJsonTypeName(rawResults);
         throw new MixpanelHeadlessError(
-          `Malformed paginated response: 'results' must be a list, got ` +
-            typeName,
+          `Malformed paginated response: 'results' must be a list, got ${
+            typeName
+          }`,
           "INVALID_RESPONSE",
           { path, results_type: typeName },
         );

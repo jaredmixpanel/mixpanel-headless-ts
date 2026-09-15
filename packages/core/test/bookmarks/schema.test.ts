@@ -24,21 +24,16 @@
  * (`throwaway/b3-k1/probe-*.py`, run 2026-08-15).
  */
 
-import { describe, it, expect } from "vitest";
-import { ResponseValidationError } from "../../src/errors.js";
+import { describe, expect, it } from "vitest";
+
 import {
-  DEFAULT_CODE_MAP,
-  FLAT_LABEL_SORT_CONFIG_MODEL,
-  FLAT_VALUE_SORT_CONFIG_MODEL,
-  INSIGHTS_BOOKMARK_SORT_CONFIG_MODEL,
-  SORT_BY_COLUMNS_CONFIG_MODEL,
-  SORT_BY_VALUE_CONFIG_MODEL,
-  defaultCodeMapper,
-  locToJsonPath,
-  sortingCodeMapper,
-  validateWithPydantic,
-} from "../../src/bookmarks/schema-sorting.js";
-import type { PydanticErrorEntry } from "../../src/bookmarks/schema-sorting.js";
+  VALID_CHART_TYPES,
+  VALID_FILTERS_DETERMINER,
+  VALID_MATH_TYPES,
+  VALID_METRIC_TYPES,
+  VALID_RESOURCE_TYPES,
+  VALID_TIME_UNITS,
+} from "../../src/bookmarks/enums.js";
 import {
   BEHAVIOR_MEASUREMENT_MODEL,
   CHART_TYPE_LITERAL_VALUES,
@@ -53,13 +48,19 @@ import {
   TIME_UNIT_LITERAL_VALUES,
 } from "../../src/bookmarks/schema.js";
 import {
-  VALID_CHART_TYPES,
-  VALID_FILTERS_DETERMINER,
-  VALID_MATH_TYPES,
-  VALID_METRIC_TYPES,
-  VALID_RESOURCE_TYPES,
-  VALID_TIME_UNITS,
-} from "../../src/bookmarks/enums.js";
+  DEFAULT_CODE_MAP,
+  defaultCodeMapper,
+  FLAT_LABEL_SORT_CONFIG_MODEL,
+  FLAT_VALUE_SORT_CONFIG_MODEL,
+  INSIGHTS_BOOKMARK_SORT_CONFIG_MODEL,
+  locToJsonPath,
+  type PydanticErrorEntry,
+  SORT_BY_COLUMNS_CONFIG_MODEL,
+  SORT_BY_VALUE_CONFIG_MODEL,
+  sortingCodeMapper,
+  validateWithPydantic,
+} from "../../src/bookmarks/schema-sorting.js";
+import { ResponseValidationError } from "../../src/errors.js";
 import { CreateBookmarkParams } from "../../src/types/entities/bookmarks.js";
 
 /**
@@ -416,11 +417,9 @@ describe("TestPydanticAdapter", () => {
 // =============================================================================
 
 describe("TestEnumParity", () => {
-  const cases: readonly (readonly [
-    string,
-    readonly string[],
-    ReadonlySet<string>,
-  ])[] = [
+  const cases: ReadonlyArray<
+    readonly [string, readonly string[], ReadonlySet<string>]
+  > = [
     ["MathTypeLiteral", MATH_TYPE_LITERAL_VALUES, VALID_MATH_TYPES],
     ["ChartTypeLiteral", CHART_TYPE_LITERAL_VALUES, VALID_CHART_TYPES],
     ["MetricTypeLiteral", METRIC_TYPE_LITERAL_VALUES, VALID_METRIC_TYPES],

@@ -22,14 +22,7 @@
 // `./bookmark-fixtures.ts` (same constants, verbatim).
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-  type FakeTransport,
-} from "../../test-support/client-test-helpers.js";
+
 import {
   BookmarkValidationError,
   MixpanelHeadlessError,
@@ -47,14 +40,22 @@ import {
   CreateCohortParams,
   UpdateCohortParams,
 } from "../../src/types/entities/cohorts.js";
+import { Workspace } from "../../src/workspace.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  type FakeTransport,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
+import {
+  type LogCollector,
+  logCollector,
+} from "../../test-support/workspace-test-helpers.js";
 import {
   MINIMAL_FUNNEL_PARAMS,
   MINIMAL_INSIGHTS_PARAMS,
 } from "./bookmark-fixtures.js";
-import {
-  logCollector,
-  type LogCollector,
-} from "../../test-support/workspace-test-helpers.js";
 
 /** A canned-response handler (the `httpx.MockTransport` handler twin). */
 type Handler = (request: CapturedFetchRequest) => CannedResponse;
@@ -91,7 +92,7 @@ function makeWorkspace(
     ws: new Workspace({
       session: FACADE_SESSION,
       client,
-      ...(logger !== undefined ? { logger } : {}),
+      ...(logger === undefined ? {} : { logger }),
     }),
     transport,
   };
@@ -367,7 +368,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
 
     const error = await ws.createBookmark(params).then(
       () => null,
-      (exc: unknown) => exc,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(BookmarkValidationError);
     const codes = new Set(
@@ -406,7 +407,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
 
     const error = await ws.updateBookmark(1, params).then(
       () => null,
-      (exc: unknown) => exc,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(BookmarkValidationError);
     const codes = new Set(

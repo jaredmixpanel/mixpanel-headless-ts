@@ -10,6 +10,7 @@
 // `resolve_workspace_id` do network discovery and are B4-C1 scope
 // (playbook B0-2 table note) — their tests translate there.
 import { describe, expect, it } from "vitest";
+
 import { maybeScopedPath } from "../../src/client/scope.js";
 
 describe("TestWorkspaceScoping (maybe_scoped_path half)", () => {

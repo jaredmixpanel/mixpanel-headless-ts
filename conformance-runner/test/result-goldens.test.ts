@@ -23,9 +23,10 @@
 // check against the per-class declared to_dict key list.
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
+
 import {
-  ResponseValidationError,
   ActivityFeedResult,
   FlowsResult,
   FrequencyResult,
@@ -33,10 +34,12 @@ import {
   NumericAverageResult,
   NumericBucketResult,
   NumericSumResult,
+  ProfilePageResult,
+  ResponseValidationError,
   RetentionResult,
   SavedReportResult,
-  ProfilePageResult,
 } from "@mixpanel-headless/core";
+
 import { createRunnerDeps } from "../src/bindings.js";
 import { JsonNumber, type JsonValue } from "../src/json-value.js";
 import { loadCorpus, loadCorpusConfig } from "../src/loader.js";
@@ -54,8 +57,8 @@ const deps = createRunnerDeps(config.recordEpoch);
 
 /** A golden-locked result instance's shared surface. */
 interface GoldenInstance {
-  toVectorPayload(): Record<string, unknown>;
-  toJSON(): Record<string, unknown>;
+  toVectorPayload: () => Record<string, unknown>;
+  toJSON: () => Record<string, unknown>;
 }
 
 /** One row of the api → result-class golden table. */
@@ -154,9 +157,9 @@ const GOLDEN_TABLE: readonly GoldenEntry[] = [
       "unit",
       "results",
       // Python to_dict adds computed_at ONLY when non-None.
-      ...((instance as NumericSumResult).computed_at !== null
-        ? ["computed_at"]
-        : []),
+      ...((instance as NumericSumResult).computed_at === null
+        ? []
+        : ["computed_at"]),
     ],
   },
   {
@@ -270,7 +273,7 @@ function diffPlain(actual: unknown, expected: JsonValue, path: string): void {
   if (Array.isArray(expected)) {
     expect(Array.isArray(actual), path).toBe(true);
     const actualArray = actual as readonly unknown[];
-    expect(actualArray.length, path).toBe(expected.length);
+    expect(actualArray, path).toHaveLength(expected.length);
     expected.forEach((item, index) => {
       diffPlain(actualArray[index], item, `${path}[${String(index)}]`);
     });

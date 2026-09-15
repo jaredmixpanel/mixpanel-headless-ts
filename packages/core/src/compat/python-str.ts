@@ -47,7 +47,6 @@ export type PythonValue =
  * @returns The CPython `str()` rendering.
  * @throws TypeError - When the value (or a nested member) is `undefined`
  *   or otherwise outside the {@link PythonValue} domain.
- *
  * @example
  * ```typescript
  * pythonStr(true); // "True"
@@ -82,7 +81,6 @@ export function pythonStr(value: PythonValue): string {
  * @returns The CPython `repr()` rendering.
  * @throws TypeError - When the value (or a nested member) is `undefined`
  *   or otherwise outside the {@link PythonValue} domain.
- *
  * @example
  * ```typescript
  * pythonRepr("it's"); // "\"it's\""
@@ -163,18 +161,35 @@ function reprString(value: string): string {
   const quote = value.includes("'") && !value.includes('"') ? '"' : "'";
   let body = "";
   for (const character of value) {
-    if (character === "\\" || character === quote) {
-      body += `\\${character}`;
-    } else if (character === "\t") {
-      body += "\\t";
-    } else if (character === "\n") {
-      body += "\\n";
-    } else if (character === "\r") {
-      body += "\\r";
-    } else if (isPythonNonPrintable(character.codePointAt(0) ?? 0)) {
-      body += escapeCodepoint(character.codePointAt(0) ?? 0);
-    } else {
-      body += character;
+    switch (character) {
+      case "\\":
+      case quote: {
+        body += `\\${character}`;
+
+        break;
+      }
+      case "\t": {
+        body += String.raw`\t`;
+
+        break;
+      }
+      case "\n": {
+        body += String.raw`\n`;
+
+        break;
+      }
+      case "\r": {
+        body += String.raw`\r`;
+
+        break;
+      }
+      default: {
+        if (isPythonNonPrintable(character.codePointAt(0) ?? 0)) {
+          body += escapeCodepoint(character.codePointAt(0) ?? 0);
+        } else {
+          body += character;
+        }
+      }
     }
   }
   return quote + body + quote;
@@ -189,10 +204,10 @@ function reprString(value: string): string {
  */
 function escapeCodepoint(codepoint: number): string {
   if (codepoint < 0x100) {
-    return `\\x${codepoint.toString(16).padStart(2, "0")}`;
+    return String.raw`\x${codepoint.toString(16).padStart(2, "0")}`;
   }
   if (codepoint < 0x10000) {
-    return `\\u${codepoint.toString(16).padStart(4, "0")}`;
+    return String.raw`\u${codepoint.toString(16).padStart(4, "0")}`;
   }
-  return `\\U${codepoint.toString(16).padStart(8, "0")}`;
+  return String.raw`\U${codepoint.toString(16).padStart(8, "0")}`;
 }

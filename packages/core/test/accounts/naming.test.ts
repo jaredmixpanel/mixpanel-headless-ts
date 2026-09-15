@@ -8,8 +8,9 @@
 // post-fold ASCII invariant that makes `.slice` a safe truncation.
 
 import { describe, expect, it } from "vitest";
-import { MeResponse } from "../../src/client/me.js";
+
 import { defaultAccountName, slugify } from "../../src/accounts/naming.js";
+import { MeResponse } from "../../src/client/me.js";
 
 /** `_me_with_org` (`test_naming.py:93-97`). */
 function meWithOrg(orgId: string, name: string): MeResponse {

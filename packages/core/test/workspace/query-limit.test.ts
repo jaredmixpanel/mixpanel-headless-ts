@@ -24,23 +24,24 @@
 //   cannot straddle midnight between the two calls.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
+import { ValueError } from "../../src/query/python-builtins.js";
 import {
   DEFAULT_SEGMENTATION_LIMIT,
   LiveQueryService,
   MAX_SEGMENTATION_LIMIT,
   queryLimits,
 } from "../../src/services/live-query.js";
-import { ValueError } from "../../src/query/python-builtins.js";
 import {
   FunnelQueryResult,
   QueryResult,
   RetentionQueryResult,
 } from "../../src/types/results/query-engine.js";
+import { Workspace } from "../../src/workspace.js";
 import {
+  type MockWorkspaceClient,
   mockWorkspaceClient,
   TEST_SESSION,
-  type MockWorkspaceClient,
 } from "../../test-support/workspace-test-helpers.js";
 
 // ===========================================================================

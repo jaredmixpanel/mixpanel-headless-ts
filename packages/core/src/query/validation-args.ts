@@ -22,19 +22,9 @@
  * @internal
  */
 
-import { ValidationError } from "../errors.js";
 import {
-  CohortBreakdown,
-  CohortDefinition,
-  CohortMetric,
-  Exclusion,
-  Formula,
-  FunnelStep,
-  GroupBy,
-  HoldingConstant,
-  Metric,
-} from "../types/index.js";
-import {
+  _MAX_FUNNEL_STEPS,
+  _MAX_HOLDING_CONSTANT,
   MATH_NO_PER_USER,
   MATH_PROPERTY_OPTIONAL,
   MATH_REQUIRING_PROPERTY,
@@ -47,26 +37,36 @@ import {
   VALID_RETENTION_ALIGNMENT,
   VALID_RETENTION_UNBOUNDED_MODES,
   VALID_RETENTION_UNITS,
-  _MAX_FUNNEL_STEPS,
-  _MAX_HOLDING_CONSTANT,
 } from "../bookmarks/enums.js";
 import { pythonRepr, pythonStrip, sortedByCodepoint } from "../compat/index.js";
+import { ValidationError } from "../errors.js";
 import {
+  CohortBreakdown,
+  CohortDefinition,
+  CohortMetric,
+  type Exclusion,
+  Formula,
+  FunnelStep,
+  GroupBy,
+  HoldingConstant,
+  Metric,
+} from "../types/index.js";
+import {
+  _enumError,
   _FLOW_MAX_WINDOW,
   _FORMULA_POSITION_RE,
+  _isFinite,
+  _isValidDate,
   _MAX_FLOW_CARDINALITY,
   _MAX_FLOW_STEPS_DIRECTION,
   _MAX_LAST_DAYS,
   _MAX_RETENTION_BUCKETS,
   _MAX_ROLLING,
+  _scanCustomProperties,
   _SESSION_MATH,
+  _suggest,
   _VALID_RETENTION_MATH_PUBLIC,
   _VALID_RETENTION_MODES,
-  _enumError,
-  _isFinite,
-  _isValidDate,
-  _scanCustomProperties,
-  _suggest,
   _validateDataGroupId,
   codepointGreater,
   containsControlChars,
@@ -104,7 +104,6 @@ export interface ValidateTimeArgsOptions {
  * @param options - Time range parameters.
  * @returns List of validation errors; empty means all time arguments
  *   are valid.
- *
  * @example
  * ```typescript
  * const errors = validateTimeArgs({
@@ -253,7 +252,6 @@ export interface ValidateGroupByArgsOptions {
  * @param options - Breakdown specification bag.
  * @returns List of validation errors; empty means all group-by
  *   arguments are valid.
- *
  * @example
  * ```typescript
  * const errors = validateGroupByArgs({
@@ -287,7 +285,7 @@ export function validateGroupByArgs(
       const gpath = groups.length > 1 ? `group_by[${String(i)}]` : "group_by";
 
       // V24: Bucket values must be finite (not NaN or Inf)
-      const bucketFields: readonly (readonly [string, number | null])[] = [
+      const bucketFields: ReadonlyArray<readonly [string, number | null]> = [
         ["bucket_size", g.bucket_size],
         ["bucket_min", g.bucket_min],
         ["bucket_max", g.bucket_max],
@@ -412,7 +410,6 @@ export interface ValidateFunnelArgsOptions {
  * @param options - Funnel query arguments.
  * @returns List of validation errors; empty means all arguments are
  *   valid.
- *
  * @example
  * ```typescript
  * const errors = validateFunnelArgs({
@@ -474,8 +471,7 @@ export function validateFunnelArgs(
   }
 
   // F2: Each step event must be non-empty string, no control/invisible chars
-  for (let i = 0; i < steps.length; i++) {
-    const step = steps[i];
+  for (const [i, step] of steps.entries()) {
     const event: unknown = step instanceof FunnelStep ? step.event : step;
     if (typeof event !== "string" || pythonStrip(event) === "") {
       errors.push(
@@ -639,8 +635,8 @@ export function validateFunnelArgs(
 
   // F4: Non-empty exclusion event names and step range validation
   if (exclusions !== null) {
-    for (let i = 0; i < exclusions.length; i++) {
-      const ex = exclusions[i] as Exclusion;
+    for (const [i, exclusion] of exclusions.entries()) {
+      const ex = exclusion as Exclusion;
       if (ex.event === "" || pythonStrip(ex.event) === "") {
         errors.push(
           new ValidationError(
@@ -709,8 +705,7 @@ export function validateFunnelArgs(
   // F8: Holding constant validation
   if (holding_constant !== null) {
     // F8b: Each holding constant property must be a non-empty string
-    for (let i = 0; i < holding_constant.length; i++) {
-      const hc = holding_constant[i];
+    for (const [i, hc] of holding_constant.entries()) {
       const prop: unknown = hc instanceof HoldingConstant ? hc.property : hc;
       if (typeof prop !== "string" || pythonStrip(prop) === "") {
         errors.push(
@@ -753,8 +748,9 @@ export function validateFunnelArgs(
     errors.push(
       new ValidationError(
         "reentry_mode",
-        `Invalid reentry_mode '${reentry_mode}'; valid values: ` +
-          `${pythonListRepr(sortedByCodepoint([...VALID_FUNNEL_REENTRY_MODES]))}`,
+        `Invalid reentry_mode '${reentry_mode}'; valid values: ${pythonListRepr(
+          sortedByCodepoint([...VALID_FUNNEL_REENTRY_MODES]),
+        )}`,
         "F12_INVALID_REENTRY_MODE",
         "error",
         suggestion,
@@ -811,7 +807,6 @@ export interface ValidateRetentionArgsOptions {
  * @param options - Retention query arguments.
  * @returns List of validation errors; empty means all arguments are
  *   valid.
- *
  * @example
  * ```typescript
  * const errors = validateRetentionArgs({
@@ -918,8 +913,7 @@ export function validateRetentionArgs(
   // R5: bucket_sizes values must be positive integers
   let allValidInts = true;
   if (bucket_sizes !== null) {
-    for (let i = 0; i < bucket_sizes.length; i++) {
-      const val = bucket_sizes[i];
+    for (const [i, val] of bucket_sizes.entries()) {
       if (isPythonFloat(val)) {
         allValidInts = false;
         errors.push(
@@ -1092,8 +1086,9 @@ export function validateRetentionArgs(
     errors.push(
       new ValidationError(
         "unbounded_mode",
-        `Invalid unbounded_mode '${unbounded_mode}'; valid values: ` +
-          `${pythonListRepr(sortedByCodepoint([...VALID_RETENTION_UNBOUNDED_MODES]))}`,
+        `Invalid unbounded_mode '${unbounded_mode}'; valid values: ${pythonListRepr(
+          sortedByCodepoint([...VALID_RETENTION_UNBOUNDED_MODES]),
+        )}`,
         "R13_INVALID_UNBOUNDED_MODE",
         "error",
         suggestion,
@@ -1147,7 +1142,6 @@ export interface ValidateFlowArgsOptions {
  * @param options - Flow query arguments.
  * @returns List of validation errors; empty means all arguments are
  *   valid.
- *
  * @example
  * ```typescript
  * const errors = validateFlowArgs({
@@ -1205,8 +1199,7 @@ export function validateFlowArgs(
   }
 
   // FL2: Each step event must be non-empty string, no control/invisible chars
-  for (let i = 0; i < steps.length; i++) {
-    const event = steps[i];
+  for (const [i, event] of steps.entries()) {
     if (typeof event !== "string" || pythonStrip(event) === "") {
       errors.push(
         new ValidationError(
@@ -1422,7 +1415,6 @@ export interface ValidateQueryArgsOptions {
  * @param options - Insights query arguments.
  * @returns List of validation errors; empty means all arguments are
  *   valid.
- *
  * @example
  * ```typescript
  * const errors = validateQueryArgs({
@@ -1477,8 +1469,7 @@ export function validateQueryArgs(
   }
 
   // V17/V21/V22: Event validation — type, empty, control chars, invisible
-  for (let idx = 0; idx < events.length; idx++) {
-    const item = events[idx];
+  for (const [idx, item] of events.entries()) {
     const epath = `events[${String(idx)}]`;
 
     // V21: Type guard — must be str, Metric, or CohortMetric
@@ -1663,7 +1654,7 @@ export function validateQueryArgs(
       const fpath = resolved.length > 1 ? `formula[${String(fi)}]` : "formula";
 
       // V16: Formula must contain at least one position letter
-      const positions = new Set(expr.match(_FORMULA_POSITION_RE) ?? []);
+      const positions = new Set(expr.match(_FORMULA_POSITION_RE));
       if (positions.size === 0) {
         errors.push(
           new ValidationError(
@@ -1740,90 +1731,90 @@ export function validateQueryArgs(
   errors.push(..._scanCustomProperties({ group_by, where: null, events }));
 
   // V13-V14: Per-Metric validation
-  for (let idx = 0; idx < events.length; idx++) {
-    const item = events[idx];
-    if (item instanceof Metric) {
-      const mpath = `events[${String(idx)}]`;
-      const mMath = item.math;
-      const mProp = item.property;
-      const mPerUser = item.per_user;
+  for (const [idx, item] of events.entries()) {
+    if (!(item instanceof Metric)) {
+      continue;
+    }
 
-      if (MATH_REQUIRING_PROPERTY.has(mMath) && mProp === null) {
-        errors.push(
-          new ValidationError(
-            mpath,
-            `Metric('${item.event}'): math='${mMath}' ` +
-              `requires property to be set`,
-            "V13_METRIC_MATH_PROPERTY",
-          ),
-        );
-      }
+    const mpath = `events[${String(idx)}]`;
+    const mMath = item.math;
+    const mProp = item.property;
+    const mPerUser = item.per_user;
 
-      if (
-        !MATH_REQUIRING_PROPERTY.has(mMath) &&
-        !MATH_PROPERTY_OPTIONAL.has(mMath) &&
-        mProp !== null
-      ) {
-        const valid = sortedByCodepoint([
-          ...new Set([...MATH_REQUIRING_PROPERTY, ...MATH_PROPERTY_OPTIONAL]),
-        ]);
-        errors.push(
-          new ValidationError(
-            mpath,
-            `Metric('${item.event}'): property is only valid with ` +
-              `property-based math types ` +
-              `(${valid.join(", ")}), not '${mMath}'`,
-            "V14_METRIC_REJECTS_PROPERTY",
-          ),
-        );
-      }
+    if (MATH_REQUIRING_PROPERTY.has(mMath) && mProp === null) {
+      errors.push(
+        new ValidationError(
+          mpath,
+          `Metric('${item.event}'): math='${mMath}' ` +
+            `requires property to be set`,
+          "V13_METRIC_MATH_PROPERTY",
+        ),
+      );
+    }
 
-      // V27: Per-Metric histogram requires per_user
-      if (mMath === "histogram" && mPerUser === null) {
-        errors.push(
-          new ValidationError(
-            mpath,
-            `Metric('${item.event}'): math='histogram' ` +
-              `requires per_user to be set ` +
-              `(e.g. per_user='total')`,
-            "V27_HISTOGRAM_REQUIRES_PER_USER",
-          ),
-        );
-      }
+    if (
+      !MATH_REQUIRING_PROPERTY.has(mMath) &&
+      !MATH_PROPERTY_OPTIONAL.has(mMath) &&
+      mProp !== null
+    ) {
+      const valid = sortedByCodepoint([
+        ...new Set([...MATH_REQUIRING_PROPERTY, ...MATH_PROPERTY_OPTIONAL]),
+      ]);
+      errors.push(
+        new ValidationError(
+          mpath,
+          `Metric('${item.event}'): property is only valid with ` +
+            `property-based math types ` +
+            `(${valid.join(", ")}), not '${mMath}'`,
+          "V14_METRIC_REJECTS_PROPERTY",
+        ),
+      );
+    }
 
-      // V26: Per-Metric percentile requires percentile_value
-      if (mMath === "percentile" && item.percentile_value === null) {
-        errors.push(
-          new ValidationError(
-            mpath,
-            `Metric('${item.event}'): math='percentile' ` +
-              `requires percentile_value to be set`,
-            "V26_PERCENTILE_REQUIRES_VALUE",
-          ),
-        );
-      }
+    // V27: Per-Metric histogram requires per_user
+    if (mMath === "histogram" && mPerUser === null) {
+      errors.push(
+        new ValidationError(
+          mpath,
+          `Metric('${item.event}'): math='histogram' ` +
+            `requires per_user to be set ` +
+            `(e.g. per_user='total')`,
+          "V27_HISTOGRAM_REQUIRES_PER_USER",
+        ),
+      );
+    }
 
-      if (mPerUser !== null && MATH_NO_PER_USER.has(mMath)) {
-        errors.push(
-          new ValidationError(
-            mpath,
-            `Metric('${item.event}'): per_user is incompatible ` +
-              `with math='${mMath}'`,
-            "V3_PER_USER_INCOMPATIBLE",
-          ),
-        );
-      }
+    // V26: Per-Metric percentile requires percentile_value
+    if (mMath === "percentile" && item.percentile_value === null) {
+      errors.push(
+        new ValidationError(
+          mpath,
+          `Metric('${item.event}'): math='percentile' ` +
+            `requires percentile_value to be set`,
+          "V26_PERCENTILE_REQUIRES_VALUE",
+        ),
+      );
+    }
 
-      if (mPerUser !== null && mProp === null) {
-        errors.push(
-          new ValidationError(
-            mpath,
-            `Metric('${item.event}'): per_user requires ` +
-              `property to be set`,
-            "V3B_PER_USER_REQUIRES_PROPERTY",
-          ),
-        );
-      }
+    if (mPerUser !== null && MATH_NO_PER_USER.has(mMath)) {
+      errors.push(
+        new ValidationError(
+          mpath,
+          `Metric('${item.event}'): per_user is incompatible ` +
+            `with math='${mMath}'`,
+          "V3_PER_USER_INCOMPATIBLE",
+        ),
+      );
+    }
+
+    if (mPerUser !== null && mProp === null) {
+      errors.push(
+        new ValidationError(
+          mpath,
+          `Metric('${item.event}'): per_user requires property to be set`,
+          "V3B_PER_USER_REQUIRES_PROPERTY",
+        ),
+      );
     }
   }
 

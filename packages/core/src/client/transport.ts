@@ -178,8 +178,10 @@ function isAbortRejection(cause: unknown): boolean {
   return cause instanceof DOMException && cause.name === "AbortError";
 }
 
-/** Everything the raw fetch step produces (C2's streaming path consumes
- * the `Response`; the {@link RequestExecutor} view reads the text). */
+/**
+ * Everything the raw fetch step produces (C2's streaming path consumes
+ * the `Response`; the {@link RequestExecutor} view reads the text).
+ */
 export interface RawFetchResult {
   /** The platform `Response` (body unread). */
   readonly response: Response;
@@ -278,10 +280,12 @@ export async function rawFetch(
     (timer as unknown as { unref?: () => void }).unref?.();
   }
   const stopTimeout = (): void => {
-    if (timer !== null) {
-      clearTimeout(timer);
-      timer = null;
+    if (timer === null) {
+      return;
     }
+
+    clearTimeout(timer);
+    timer = null;
   };
   const release = (): void => {
     stopTimeout();
@@ -292,18 +296,18 @@ export async function rawFetch(
     response = await fetchImpl(url, {
       method: options.method,
       headers,
-      ...(body !== null ? { body } : {}),
+      ...(body === null ? {} : { body }),
       redirect: "manual",
       signal: controller.signal,
     });
-  } catch (cause) {
+  } catch (error) {
     release();
     if (signal?.aborted === true) {
       // R6.7 / W-F3: caller cancellation wins and ALWAYS exits as a
       // DOMException named AbortError, whatever the abort reason was.
       throw normalizedAbortError(signal.reason);
     }
-    if (cause instanceof TypeError || cause instanceof DOMException) {
+    if (error instanceof TypeError || error instanceof DOMException) {
       // R2.10: the adapter owns the fetch TypeError / DOMException /
       // UND_ERR_* mapping — the B0 retry loops catch MixpanelHttpError
       // (the `httpx.HTTPError` analog) and wrap it as HTTP_ERROR.
@@ -315,14 +319,14 @@ export async function rawFetch(
       // wrapper text is useless, so the underlying cause's message wins
       // when present — that is where undici (and the conformance
       // harness) carry the real failure description.
-      const inner: unknown = (cause as { cause?: unknown }).cause;
+      const inner: unknown = (error as { cause?: unknown }).cause;
       const description =
         inner instanceof Error && inner.message !== ""
           ? inner.message
-          : cause.message;
-      throw new MixpanelHttpError(description, { cause });
+          : error.message;
+      throw new MixpanelHttpError(description, { cause: error });
     }
-    throw cause;
+    throw error;
   }
   return { response, stopTimeout, release };
 }
@@ -350,25 +354,25 @@ export function createRequestExecutor(
     let text: string;
     try {
       text = await response.text();
-    } catch (cause) {
+    } catch (error) {
       if (signal?.aborted === true) {
         // R6.7 / W-F3: caller cancellation always exits as AbortError.
         throw normalizedAbortError(signal.reason);
       }
-      if (isAbortRejection(cause)) {
+      if (isAbortRejection(error)) {
         // Not caller-initiated: the request-timeout clock fired during
         // the body read (httpx.ReadTimeout analog).
         throw new MixpanelHttpError(
           `Request timed out after ${options.timeoutSeconds} seconds`,
-          { cause },
+          { cause: error },
         );
       }
       // Body-read failures are transport errors in httpx too
       // (`httpx.ReadError` while consuming the stream).
       throw new MixpanelHttpError(
-        `transport body read failure: ${String(cause)}`,
+        `transport body read failure: ${String(error)}`,
         {
-          cause,
+          cause: error,
         },
       );
     } finally {

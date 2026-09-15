@@ -12,10 +12,11 @@
 // asserted). The FlowStep suites of this file were translated by
 // P2-5c.
 import { describe, expect, it } from "vitest";
+
 import {
   FlowQueryResult,
-  safeInt,
   type FlowQueryResultFields,
+  safeInt,
 } from "../../../src/types/results/query-engine.js";
 
 /** Build a default-valid FlowQueryResult (Python `_make_result`). */
@@ -424,17 +425,20 @@ describe("safeInt string branch = CPython int(str) grammar (B0-gate RUN.md 2026-
 
   it("accepts CPython numeric-whitespace surround incl. U+0085/NBSP", () => {
     // CPython probe (python-int.test.ts:98 precedent): int("\u008542\u00a0") == 42.
-    expect(safeInt("\u008542\u00a0")).toBe(42);
+    expect(safeInt("\u008542\u00A0")).toBe(42);
   });
 
-  it("rejects U+FEFF surround (JS \\s matches the BOM; CPython int() raises)", () => {
-    expect(safeInt("\ufeff42")).toBe(0);
-    expect(safeInt("42\ufeff")).toBe(0);
-  });
+  it(
+    String.raw`rejects U+FEFF surround (JS \s matches the BOM; CPython int() raises)`,
+    () => {
+      expect(safeInt("\uFEFF42")).toBe(0);
+      expect(safeInt("42\uFEFF")).toBe(0);
+    },
+  );
 
   it("rejects U+001C..1F surround (str.isspace() true but Py_ISSPACE false)", () => {
     // CPython probe (python-int.test.ts:103-105): int('\x1c42\x1f') raises.
-    expect(safeInt("\x1c42\x1f")).toBe(0);
+    expect(safeInt("\x1C42\x1F")).toBe(0);
   });
 
   it("magnitude beyond 2^53-1 maps to the default (R4.5 policy; playbook Discrepancy #6 pattern — CPython returns the exact big int, JS number cannot)", () => {

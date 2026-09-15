@@ -219,25 +219,25 @@ function parseRequest(value: JsonValue, context: string): ExpectedRequest {
   );
   return {
     method,
-    ...(schemeHost !== undefined ? { schemeHost } : {}),
+    ...(schemeHost === undefined ? {} : { schemeHost }),
     path,
-    ...(params !== undefined
-      ? { params: asObject(params, `${context}.request.params`) }
-      : {}),
+    ...(params === undefined
+      ? {}
+      : { params: asObject(params, `${context}.request.params`) }),
     ...(Object.hasOwn(record, "json_body")
       ? { jsonBody: record["json_body"] as JsonValue }
       : {}),
     hasJsonBody: Object.hasOwn(record, "json_body"),
-    ...(bodyText !== undefined ? { bodyText } : {}),
-    ...(bodyBase64 !== undefined ? { bodyBase64 } : {}),
-    ...(headersContain !== undefined
-      ? {
+    ...(bodyText === undefined ? {} : { bodyText }),
+    ...(bodyBase64 === undefined ? {} : { bodyBase64 }),
+    ...(headersContain === undefined
+      ? {}
+      : {
           headersContain: asObject(
             headersContain,
             `${context}.request.headers_contain`,
           ),
-        }
-      : {}),
+        }),
     headersNodeOnly: stringArray(record, "headers_node_only", context),
     headersAbsent: stringArray(record, "headers_absent", context),
     paramsAbsent: stringArray(record, "params_absent", context),
@@ -267,7 +267,7 @@ function parseResponse(
     return {
       type: "transport_error",
       httpxClass: transportError,
-      ...(message !== undefined ? { message } : {}),
+      ...(message === undefined ? {} : { message }),
     };
   }
   const status = record["status"];
@@ -330,9 +330,9 @@ function parseResponse(
       ? { body: record["body"] as JsonValue }
       : {}),
     hasBody: Object.hasOwn(record, "body"),
-    ...(bodyText !== undefined ? { bodyText } : {}),
-    ...(bodyBase64 !== undefined ? { bodyBase64 } : {}),
-    ...(bodyStream !== undefined ? { bodyStream } : {}),
+    ...(bodyText === undefined ? {} : { bodyText }),
+    ...(bodyBase64 === undefined ? {} : { bodyBase64 }),
+    ...(bodyStream === undefined ? {} : { bodyStream }),
   };
 }
 
@@ -344,7 +344,6 @@ function parseResponse(
  * @param vectorId - The vector id, for error messages.
  * @returns The parsed interactions in recorded order (empty when absent).
  * @throws MalformedInteractionError - On any schema-shape violation.
- *
  * @example
  * ```typescript
  * const parsed = parseInteractions(vector.expect["interactions"], vector.id);
@@ -378,7 +377,7 @@ export function parseInteractions(
     }
     return {
       index,
-      ...(unorderedGroup !== undefined ? { unorderedGroup } : {}),
+      ...(unorderedGroup === undefined ? {} : { unorderedGroup }),
       request: parseRequest(record["request"] as JsonValue, context),
       response: parseResponse(record["response"] as JsonValue, context),
       raw: record,

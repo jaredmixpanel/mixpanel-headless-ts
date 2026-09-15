@@ -32,21 +32,23 @@ import { chmodSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-import type { MeCacheEffects, MeCacheStore } from "@mixpanel-headless/core";
 import {
-  MeResponse,
-  toNativeJson,
-  parseLossless,
   ConfigError,
+  type MeCacheEffects,
+  type MeCacheStore,
+  MeResponse,
   MixpanelHeadlessError,
+  parseLossless,
+  toNativeJson,
 } from "@mixpanel-headless/core";
+
+import { accountDir, type StorageLogger } from "./auth/storage.js";
 import {
-  CredentialPathError,
   atomicWriteBytes,
+  CredentialPathError,
   readCredentialText,
   rejectIfSymlink,
 } from "./io-utils.js";
-import { accountDir, type StorageLogger } from "./auth/storage.js";
 
 /** Cache TTL default in seconds (`me.py:225`). */
 const DEFAULT_TTL_SECONDS = 86_400;
@@ -154,14 +156,14 @@ export class MeCache implements MeCacheStore {
     const path = this.cachePath();
     try {
       rejectIfSymlink(path);
-    } catch (exc) {
-      if (exc instanceof CredentialPathError) {
+    } catch (error) {
+      if (error instanceof CredentialPathError) {
         this.#logger.warning(
-          `Refusing to read /me cache at ${path}: ${exc.message}`,
+          `Refusing to read /me cache at ${path}: ${error.message}`,
         );
         return null;
       }
-      throw exc;
+      throw error;
     }
     if (!existsSync(path)) {
       return null;
@@ -170,12 +172,12 @@ export class MeCache implements MeCacheStore {
     let data: unknown;
     try {
       data = toNativeJson(parseLossless(readCredentialText(path)));
-    } catch (exc) {
-      if (exc instanceof CredentialPathError) {
+    } catch (error) {
+      if (error instanceof CredentialPathError) {
         // Structural rejection — WARNING, louder than the corrupt-file
         // debug path (`me.py:506-513`).
         this.#logger.warning(
-          `Refusing to read /me cache at ${path}: ${exc.message}`,
+          `Refusing to read /me cache at ${path}: ${error.message}`,
         );
         return null;
       }
@@ -183,11 +185,11 @@ export class MeCache implements MeCacheStore {
       // (`me.py:514`) — a UnicodeDecodeError escapes RAW. The TS twin
       // (TextDecoder fatal-mode TypeError) propagates unchanged
       // (B8-ARB-A SEM-F2c, live CPython probe in the resolution).
-      if (exc instanceof TypeError) {
-        throw exc;
+      if (error instanceof TypeError) {
+        throw error;
       }
       this.#logger.debug?.(
-        `Corrupted cache file me.json: ${exc instanceof Error ? exc.message : String(exc)}`,
+        `Corrupted cache file me.json: ${error instanceof Error ? error.message : String(error)}`,
       );
       return null;
     }
@@ -208,15 +210,15 @@ export class MeCache implements MeCacheStore {
 
     try {
       return MeResponse.fromDict(data);
-    } catch (exc) {
-      if (!(exc instanceof MixpanelHeadlessError)) {
-        throw exc;
+    } catch (error) {
+      if (!(error instanceof MixpanelHeadlessError)) {
+        throw error;
       }
       // Schema drift on disk — WARN, unlink, deterministic refetch
       // (`me.py:530-544`).
       this.#logger.warning(
         `Cached /me response in me.json no longer matches the model ` +
-          `(schema drift). Invalidating: ${exc.message}`,
+          `(schema drift). Invalidating: ${error.message}`,
       );
       rmSync(path, { force: true });
       return null;
@@ -237,12 +239,13 @@ export class MeCache implements MeCacheStore {
     mkdirSync(this.#cacheDir, { recursive: true });
     try {
       this.#chmod(this.#cacheDir, 0o700);
-    } catch (exc) {
+    } catch (error) {
       throw new ConfigError(
-        `Cannot enforce 0o700 on cache directory ${this.#cacheDir}: ` +
-          `${exc instanceof Error ? exc.message : String(exc)}`,
+        `Cannot enforce 0o700 on cache directory ${this.#cacheDir}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
         { path: this.#cacheDir },
-        { cause: exc },
+        { cause: error },
       );
     }
 
@@ -334,7 +337,7 @@ function stringifyOrdered(value: unknown, depth: number): string {
   const pad = "  ".repeat(depth + 1);
   const close = "  ".repeat(depth);
   if (value instanceof Map) {
-    const entries = [...(value as Map<string, unknown>).entries()];
+    const entries = [...(value as Map<string, unknown>)];
     if (entries.length === 0) {
       return "{}";
     }
@@ -381,8 +384,8 @@ export function createNodeMeCacheEffects(
       const cache = new MeCache({
         accountName,
         storageDir: accountDir(accountName),
-        ...(options.now !== undefined ? { now: options.now } : {}),
-        ...(options.logger !== undefined ? { logger: options.logger } : {}),
+        ...(options.now === undefined ? {} : { now: options.now }),
+        ...(options.logger === undefined ? {} : { logger: options.logger }),
       });
       cache.put(me);
     },

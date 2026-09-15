@@ -33,25 +33,26 @@
 //   `test_skip_user_properties`.
 
 import { describe, expect, it } from "vitest";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-} from "../../test-support/client-test-helpers.js";
+
 import type { MixpanelClient } from "../../src/client/client.js";
 import type { JsonValue } from "../../src/client/json-value.js";
 import { MixpanelHeadlessError } from "../../src/errors.js";
+import {
+  type DiscoveryLogger,
+  DiscoveryService,
+} from "../../src/services/discovery.js";
 import { canonicalResourceType } from "../../src/services/entities/lexicon.js";
 import {
-  DiscoveryService,
-  type DiscoveryLogger,
-} from "../../src/services/discovery.js";
-import {
-  SchemaGraphResult,
   type SchemaGraph,
+  SchemaGraphResult,
 } from "../../src/types/results/discovery.js";
 import { Workspace } from "../../src/workspace.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** A canned-response handler (the httpx.MockTransport handler twin). */
 type Handler = (request: CapturedFetchRequest) => CannedResponse;
@@ -379,7 +380,7 @@ describe("TestApiClientPerEventProperties", () => {
     let seenUrl = "";
     let seenParams: Record<string, string> = {};
     const client = mockClient((request) => {
-      seenUrl = request.url.split("?")[0] ?? "";
+      seenUrl = request.url.split("?", 1)[0] ?? "";
       seenParams = { ...request.params };
       return {
         status: 200,

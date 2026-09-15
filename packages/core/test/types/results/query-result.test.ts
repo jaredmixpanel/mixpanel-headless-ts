@@ -11,6 +11,7 @@
 // `toBe`; the frozen-dataclass immutability test is not ported
 // (compile-time `readonly`).
 import { describe, expect, it } from "vitest";
+
 import { QueryResult } from "../../../src/types/results/query-engine.js";
 
 describe("QueryResult construction (TestQueryResultConstruction)", () => {
@@ -328,10 +329,10 @@ describe("QueryResult.df segmented (TestQueryResultSegmentedDataFrame)", () => {
     });
     const rows = qr.toRows();
     expect(rows).toHaveLength(4);
-    const login_us = rows.filter(
+    const login_us = rows.find(
       (row) => row["event"] === "Login [Total]" && row["segment"] === "US",
     );
-    expect(login_us[0]?.["count"]).toBe(300);
+    expect(login_us?.["count"]).toBe(300);
   });
 });
 

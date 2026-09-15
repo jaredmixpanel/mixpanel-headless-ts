@@ -26,9 +26,7 @@ import {
  * digits follow the same underscore rule.
  */
 const FLOAT_GRAMMAR = new RegExp(
-  `^[${ASCII_NUMERIC_WHITESPACE}]*[+-]?` +
-    `(?:${DIGIT_GROUP}(?:\\.(?:${DIGIT_GROUP})?)?|\\.${DIGIT_GROUP})` +
-    `(?:[eE][+-]?${DIGIT_GROUP})?` +
+  `^[${ASCII_NUMERIC_WHITESPACE}]*[+-]?${String.raw`(?:${DIGIT_GROUP}(?:\.(?:${DIGIT_GROUP})?)?|\.${DIGIT_GROUP})`}(?:[eE][+-]?${DIGIT_GROUP})?` +
     `[${ASCII_NUMERIC_WHITESPACE}]*$`,
 );
 
@@ -49,7 +47,6 @@ const SPECIAL_GRAMMAR = new RegExp(
  * @throws MixpanelHeadlessError - Code `PY_FLOAT_INVALID_LITERAL` when
  *   the input is not a valid CPython float literal.
  * @throws TypeError - When `text` is not a string.
- *
  * @example
  * ```typescript
  * pythonFloat("1_0.5"); // 10.5

@@ -24,13 +24,16 @@
  */
 
 import fc from "fast-check";
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+
 import {
   MATH_PROPERTY_OPTIONAL,
   MATH_REQUIRING_PROPERTY,
   VALID_MATH_FUNNELS,
   VALID_MATH_INSIGHTS,
 } from "../../src/bookmarks/enums.js";
+import { pythonStrip } from "../../src/compat/index.js";
+import type { ValidationError } from "../../src/errors.js";
 import {
   validateFlowArgs,
   validateFunnelArgs,
@@ -38,8 +41,6 @@ import {
   validateRetentionArgs,
   validateTimeArgs,
 } from "../../src/query/validation-args.js";
-import { pythonStrip } from "../../src/compat/index.js";
-import type { ValidationError } from "../../src/errors.js";
 import type {
   ConversionWindowUnit,
   FunnelMathType,
@@ -100,22 +101,22 @@ const TIME_ERROR_CODES: ReadonlySet<string> = new Set([
 /** Port of `_CONTROL_CHARS` (:67-72) — `_CONTROL_CHAR_RE`'s domain. */
 const CONTROL_CHARS: readonly string[] = [
   ...Array.from({ length: 0x09 }, (_unused, c) => String.fromCharCode(c)),
-  "\x0b",
-  "\x0c",
+  "\x0B",
+  "\x0C",
   ...Array.from({ length: 0x20 - 0x0e }, (_unused, i) =>
     String.fromCharCode(0x0e + i),
   ),
-  "\x7f",
+  "\x7F",
 ];
 
 /** Port of `_INVISIBLE_CHARS` (:75). */
 const INVISIBLE_CHARS: readonly string[] = [
   " ",
-  "\u200b",
-  "\u200c",
-  "\u200d",
-  "\ufeff",
-  "\u00ad",
+  "\u200B",
+  "\u200C",
+  "\u200D",
+  "\uFEFF",
+  "\u00AD",
   "\u2060",
 ];
 

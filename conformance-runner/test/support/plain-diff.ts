@@ -11,6 +11,7 @@
  * sweep).
  */
 import { expect } from "vitest";
+
 import { JsonNumber, type JsonValue } from "../../src/json-value.js";
 
 /**
@@ -90,7 +91,7 @@ export function diffPlainPayload(
   if (Array.isArray(expected)) {
     expect(Array.isArray(actual), path).toBe(true);
     const actualArray = actual as readonly unknown[];
-    expect(actualArray.length, path).toBe(expected.length);
+    expect(actualArray, path).toHaveLength(expected.length);
     expected.forEach((item, index) => {
       diffPlainPayload(actualArray[index], item, `${path}[${String(index)}]`);
     });

@@ -10,6 +10,7 @@
 //   have no JS analog (phase2-design C3): the conformance key is class
 //   name + code, asserted via the registry test and the chains below.
 import { describe, expect, it } from "vitest";
+
 import {
   AccountExistsError,
   AccountInUseError,
@@ -653,7 +654,7 @@ describe("session-replay errors", () => {
 
 describe("class-name correctness (name === constructor.name)", () => {
   it("every instance reports its own class name", () => {
-    const samples: [Error, string][] = [
+    const samples: Array<[Error, string]> = [
       [new MixpanelHeadlessError("m"), "MixpanelHeadlessError"],
       [new AuthenticationError(), "AuthenticationError"],
       [

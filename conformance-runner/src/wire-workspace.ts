@@ -37,27 +37,32 @@
  */
 
 import {
-  createMixpanelClient,
-  type MixpanelClient,
-  JsonNumber as CoreJsonNumber,
-  pythonFloatStr,
-  Workspace,
+  type BookmarkType,
   type BusinessContextScopeOptions,
-  type WorkspaceMeOptions,
-  type WorkspaceProjectsOptions,
-  type WorkspaceUseOptions,
-  type WorkspaceWorkspacesOptions,
-  type WorkspaceEventsOptions,
+  createMixpanelClient,
+  type EntityType,
+  type FlowStep,
+  type FunnelStep,
+  JsonNumber as CoreJsonNumber,
+  type MixpanelClient,
+  MixpanelHeadlessError,
+  pythonFloatStr,
+  type RetentionEvent,
+  Workspace,
   type WorkspaceEventCountsOptions,
+  type WorkspaceEventsForReplayOptions,
+  type WorkspaceEventsOptions,
   type WorkspaceFetchReplayOptions,
   type WorkspaceFetchReplaysOptions,
   type WorkspaceFlowQueryOptions,
   type WorkspaceFrequencyOptions,
   type WorkspaceFunnelOptions,
   type WorkspaceFunnelQueryOptions,
-  type WorkspaceEventsForReplayOptions,
+  type WorkspaceLexiconSchemasOptions,
   type WorkspaceListReplaysOptions,
+  type WorkspaceMeOptions,
   type WorkspaceNumericOptions,
+  type WorkspaceProjectsOptions,
   type WorkspacePropertyCountsOptions,
   type WorkspacePropertyValuesOptions,
   type WorkspaceQueryOptions,
@@ -71,24 +76,17 @@ import {
   type WorkspaceStreamReplayOptions,
   type WorkspaceSubpropertiesOptions,
   type WorkspaceTopEventsOptions,
+  type WorkspaceUseOptions,
   type WorkspaceUserQueryOptions,
-  type WorkspaceLexiconSchemasOptions,
-  MixpanelHeadlessError,
+  type WorkspaceWorkspacesOptions,
 } from "@mixpanel-headless/core";
-import { CONTRACT_TAG_CODECS } from "./vector-codecs.js";
 import type {
   EventsInput,
   LiveActivityFeedOptions,
 } from "@mixpanel-headless/core/internal";
-import type {
-  FunnelStep,
-  FlowStep,
-  RetentionEvent,
-  BookmarkType,
-  EntityType,
-} from "@mixpanel-headless/core";
+
 import {
-  CodecRegistry,
+  type CodecRegistry,
   PyDate,
   PyDatetime,
   PyFloat,
@@ -96,11 +94,12 @@ import {
 } from "./codecs.js";
 import { JsonNumber, type JsonValue } from "./json-value.js";
 import type { ImplementationRegistry, InvocationContext } from "./runner.js";
+import { CONTRACT_TAG_CODECS } from "./vector-codecs.js";
 import { createVectorFetch } from "./vector-fetch.js";
 import {
   buildReplaySession,
-  clientFromSession,
   CLIENT_STATE_KEY,
+  clientFromSession,
   requireWireKwarg,
   WireCoreError,
 } from "./wire-client.js";
@@ -297,7 +296,7 @@ export function encodeFacadeValue(
   }
   if (value instanceof Map) {
     const out: Record<string, JsonValue> = {};
-    for (const [key, member] of value.entries()) {
+    for (const [key, member] of value) {
       out[String(key)] = encodeFacadeValue(codecs, member);
     }
     return out;
@@ -319,9 +318,9 @@ export function encodeFacadeValue(
     }
     try {
       return stripRichTags(codecs.encodeValue(value));
-    } catch (cause) {
-      if (!(cause instanceof UnencodableValueError)) {
-        throw cause;
+    } catch (error) {
+      if (!(error instanceof UnencodableValueError)) {
+        throw error;
       }
     }
     const withJson = value as { toJSON?: () => unknown };
@@ -330,9 +329,7 @@ export function encodeFacadeValue(
     }
   }
   throw new Error(
-    `wire-workspace: no expect encoding for ${String(
-      typeof value === "object" ? value.constructor.name : typeof value,
-    )}`,
+    `wire-workspace: no expect encoding for ${typeof value === "object" ? value.constructor.name : typeof value}`,
   );
 }
 
@@ -361,16 +358,18 @@ function floatToken(value: JsonValue): JsonValue {
  */
 function tagFloatMember(tree: JsonValue, key: string): void {
   if (
-    typeof tree === "object" &&
-    tree !== null &&
-    !Array.isArray(tree) &&
-    !(tree instanceof JsonNumber)
+    typeof tree !== "object" ||
+    tree === null ||
+    Array.isArray(tree) ||
+    tree instanceof JsonNumber
   ) {
-    const record = tree as Record<string, JsonValue>;
-    const value = record[key];
-    if (value !== undefined) {
-      record[key] = floatToken(value);
-    }
+    return;
+  }
+
+  const record = tree as Record<string, JsonValue>;
+  const value = record[key];
+  if (value !== undefined) {
+    record[key] = floatToken(value);
   }
 }
 
@@ -406,22 +405,24 @@ function arrayMember(tree: JsonValue, key: string): JsonValue[] {
  */
 function tagFloatDictValues(tree: JsonValue, key: string): void {
   if (
-    typeof tree === "object" &&
-    tree !== null &&
-    !Array.isArray(tree) &&
-    !(tree instanceof JsonNumber)
+    typeof tree !== "object" ||
+    tree === null ||
+    Array.isArray(tree) ||
+    tree instanceof JsonNumber
   ) {
-    const member = (tree as Record<string, JsonValue>)[key];
-    if (
-      typeof member === "object" &&
-      member !== null &&
-      !Array.isArray(member) &&
-      !(member instanceof JsonNumber)
-    ) {
-      const record = member as Record<string, JsonValue>;
-      for (const [inner, memberValue] of Object.entries(record)) {
-        record[inner] = floatToken(memberValue);
-      }
+    return;
+  }
+
+  const member = (tree as Record<string, JsonValue>)[key];
+  if (
+    typeof member === "object" &&
+    member !== null &&
+    !Array.isArray(member) &&
+    !(member instanceof JsonNumber)
+  ) {
+    const record = member as Record<string, JsonValue>;
+    for (const [inner, memberValue] of Object.entries(record)) {
+      record[inner] = floatToken(memberValue);
     }
   }
 }
@@ -445,11 +446,11 @@ export async function runFacade(
 ): Promise<JsonValue> {
   try {
     return encodeFacadeValue(codecs, await invoke());
-  } catch (cause) {
-    if (cause instanceof MixpanelHeadlessError) {
-      throw new WireCoreError(cause);
+  } catch (error) {
+    if (error instanceof MixpanelHeadlessError) {
+      throw new WireCoreError(error);
     }
-    throw cause;
+    throw error;
   }
 }
 
@@ -544,16 +545,18 @@ export function registerWorkspaceBindings(
     // (rate division, `live_query.py:159-221` — `0.0` stays `0.0`).
     for (const cohort of arrayMember(encoded, "cohorts")) {
       if (
-        typeof cohort === "object" &&
-        cohort !== null &&
-        !Array.isArray(cohort) &&
-        !(cohort instanceof JsonNumber)
+        typeof cohort !== "object" ||
+        cohort === null ||
+        Array.isArray(cohort) ||
+        cohort instanceof JsonNumber
       ) {
-        const record = cohort as Record<string, JsonValue>;
-        const rates = record["retention"];
-        if (Array.isArray(rates)) {
-          record["retention"] = rates.map((rate) => floatToken(rate));
-        }
+        continue;
+      }
+
+      const record = cohort as Record<string, JsonValue>;
+      const rates = record["retention"];
+      if (Array.isArray(rates)) {
+        record["retention"] = rates.map((rate) => floatToken(rate));
       }
     }
     return encoded;

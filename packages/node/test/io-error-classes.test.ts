@@ -18,7 +18,8 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { Secret, OAuthTokens } from "@mixpanel-headless/core";
+import { OAuthTokens, Secret } from "@mixpanel-headless/core";
+
 import { OAuthStorage } from "../src/auth/storage.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
@@ -34,12 +35,12 @@ vi.mock("../src/io-utils.js", async (importOriginal) => {
     ): string => {
       if (trigger.active) {
         const err = new Error(
-          `EACCES: permission denied, open '${String(args[0])}'`,
+          `EACCES: permission denied, open '${args[0]}'`,
         ) as NodeJS.ErrnoException;
         err.code = "EACCES";
         err.errno = -13;
         err.syscall = "open";
-        err.path = String(args[0]);
+        err.path = args[0];
         throw err;
       }
       return actual.readCredentialText(...args);
@@ -47,7 +48,7 @@ vi.mock("../src/io-utils.js", async (importOriginal) => {
   };
 });
 
-const cleanups: (() => void)[] = [];
+const cleanups: Array<() => void> = [];
 let restoreEnv: () => void = () => undefined;
 
 beforeEach(() => {
@@ -82,8 +83,8 @@ describe("B8-ARB-A SEM-F2a: storage read-path errno errors propagate", () => {
     let caught: unknown = null;
     try {
       storage.loadTokens("us");
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect((caught as NodeJS.ErrnoException | null)?.code).toBe("EACCES");
   });
@@ -102,8 +103,8 @@ describe("B8-ARB-A SEM-F2a: storage read-path errno errors propagate", () => {
     let caught: unknown = null;
     try {
       storage.loadClientInfo("us");
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect((caught as NodeJS.ErrnoException | null)?.code).toBe("EACCES");
   });

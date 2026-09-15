@@ -11,13 +11,14 @@
  * verbatim (Cautions §6 — they pin the difflib port).
  */
 
-import { describe, it, expect } from "vitest";
-import { GroupBy } from "../../src/types/index.js";
+import { describe, expect, it } from "vitest";
+
 import type { ValidationError } from "../../src/errors.js";
 import {
   validateRetentionArgs,
   type ValidateRetentionArgsOptions,
 } from "../../src/query/validation-args.js";
+import { GroupBy } from "../../src/types/index.js";
 
 // =============================================================================
 // Helpers (test_validation_retention.py:39-78)
@@ -83,7 +84,7 @@ describe("TestValidateRetentionR1", () => {
 
   it("test_whitespace_only_born_event_returns_r1_error", () => {
     const errors = validateRetentionArgs(
-      validRetentionArgs({ born_event: "   " }),
+      validRetentionArgs({ born_event: " ".repeat(3) }),
     );
     expect(errors.some((e) => e.code === "R1_EMPTY_BORN_EVENT")).toBe(true);
   });
@@ -115,14 +116,14 @@ describe("TestValidateRetentionR1", () => {
 
   it("test_invisible_only_born_event_returns_r1_invisible_error", () => {
     const errors = validateRetentionArgs(
-      validRetentionArgs({ born_event: "\u200b" }),
+      validRetentionArgs({ born_event: "\u200B" }),
     );
     expect(errors.some((e) => e.code === "R1_INVISIBLE_BORN_EVENT")).toBe(true);
   });
 
   it("test_zero_width_joiner_only_returns_r1_invisible_error", () => {
     const errors = validateRetentionArgs(
-      validRetentionArgs({ born_event: "\u200d\u200d" }),
+      validRetentionArgs({ born_event: "\u200D\u200D" }),
     );
     expect(errors.some((e) => e.code === "R1_INVISIBLE_BORN_EVENT")).toBe(true);
   });
@@ -175,7 +176,7 @@ describe("TestValidateRetentionR2", () => {
 
   it("test_whitespace_only_return_event_returns_r2_error", () => {
     const errors = validateRetentionArgs(
-      validRetentionArgs({ return_event: "   " }),
+      validRetentionArgs({ return_event: " ".repeat(3) }),
     );
     expect(errors.some((e) => e.code === "R2_EMPTY_RETURN_EVENT")).toBe(true);
   });
@@ -198,7 +199,7 @@ describe("TestValidateRetentionR2", () => {
 
   it("test_escape_char_in_return_event_returns_r2_control_error", () => {
     const errors = validateRetentionArgs(
-      validRetentionArgs({ return_event: "Log\u001bin" }),
+      validRetentionArgs({ return_event: "Log\u001Bin" }),
     );
     expect(errors.some((e) => e.code === "R2_CONTROL_CHAR_RETURN_EVENT")).toBe(
       true,
@@ -207,7 +208,7 @@ describe("TestValidateRetentionR2", () => {
 
   it("test_invisible_only_return_event_returns_r2_invisible_error", () => {
     const errors = validateRetentionArgs(
-      validRetentionArgs({ return_event: "\u200b" }),
+      validRetentionArgs({ return_event: "\u200B" }),
     );
     expect(errors.some((e) => e.code === "R2_INVISIBLE_RETURN_EVENT")).toBe(
       true,
@@ -216,7 +217,7 @@ describe("TestValidateRetentionR2", () => {
 
   it("test_zero_width_non_joiner_only_returns_r2_invisible_error", () => {
     const errors = validateRetentionArgs(
-      validRetentionArgs({ return_event: "\u200c\u200c" }),
+      validRetentionArgs({ return_event: "\u200C\u200C" }),
     );
     expect(errors.some((e) => e.code === "R2_INVISIBLE_RETURN_EVENT")).toBe(
       true,
@@ -855,7 +856,7 @@ describe("TestValidateRetentionR12", () => {
 
   it("test_whitespace_only_group_by_returns_r12_error", () => {
     const errors = validateRetentionArgs(
-      validRetentionArgs({ group_by: "   " }),
+      validRetentionArgs({ group_by: " ".repeat(3) }),
     );
     expect(errors.some((e) => e.code === "R12_EMPTY_GROUP_BY")).toBe(true);
   });

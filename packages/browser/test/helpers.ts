@@ -50,10 +50,7 @@ export function fakeTransport(
   ): Promise<Response> => {
     const request = new Request(input, init);
     const url = new URL(request.url);
-    const params: Record<string, string> = {};
-    for (const [key, value] of url.searchParams.entries()) {
-      params[key] = value;
-    }
+    const params: Record<string, string> = Object.fromEntries(url.searchParams);
     const headers: Record<string, string> = {};
     for (const [key, value] of request.headers.entries()) {
       headers[key.toLowerCase()] = value;
@@ -78,9 +75,9 @@ export function fakeTransport(
 export interface FakeStorage {
   /** The injectable Storage-shaped object. */
   readonly storage: {
-    getItem(key: string): string | null;
-    setItem(key: string, value: string): void;
-    removeItem(key: string): void;
+    getItem: (key: string) => string | null;
+    setItem: (key: string, value: string) => void;
+    removeItem: (key: string) => void;
   };
   /** The backing map, for direct assertions. */
   readonly map: Map<string, string>;

@@ -9,14 +9,15 @@
 //   over the injected token store (`tokenStore.written`).
 
 import { describe, expect, it } from "vitest";
+
 import { createAccountsNamespace } from "../../src/accounts/namespace.js";
 import { OAuthTokens } from "../../src/auth/token.js";
 import { ConfigError } from "../../src/errors.js";
 import { Secret } from "../../src/secret.js";
 import {
   makeEffects,
-  meFetch,
   type MakeEffectsOptions,
+  meFetch,
 } from "./fake-auth-effects.js";
 
 /** The `_stub_pkce_flow` twin. */
@@ -60,8 +61,8 @@ describe("TestLoginRegionMismatch (test_login_region_check.py:84)", () => {
     let caught: unknown = null;
     try {
       await accounts.login("personal");
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ConfigError);
     const message = (caught as ConfigError).message;

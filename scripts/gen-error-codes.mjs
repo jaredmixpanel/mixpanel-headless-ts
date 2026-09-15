@@ -13,6 +13,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import prettier from "prettier";
 
 /** Repo root (this script lives in scripts/). */
@@ -33,7 +34,7 @@ export const OUTPUT_PATH = resolve(
 /**
  * Render the errors-codes.gen.ts module text from the parsed artifact.
  *
- * @param {object} artifact Parsed error-codes.json content.
+ * @param {object} artifact - Parsed error-codes.json content.
  * @returns {Promise<string>} Prettier-formatted TypeScript source text.
  */
 export async function renderErrorCodesModule(artifact) {

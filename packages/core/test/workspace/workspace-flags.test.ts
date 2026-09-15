@@ -25,14 +25,7 @@
 // the shard) — get direct member-function tests.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-  type FakeTransport,
-} from "../../test-support/client-test-helpers.js";
+
 import type { MixpanelClient } from "../../src/client/client.js";
 import {
   CreateFeatureFlagParams,
@@ -47,12 +40,20 @@ import {
   FlagContractStatus,
   ServingMethod,
 } from "../../src/types/enums.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   createFeatureFlag as createFeatureFlagMember,
   getFeatureFlag as getFeatureFlagMember,
   getFlagHistory as getFlagHistoryMember,
   updateFeatureFlag as updateFeatureFlagMember,
 } from "../../src/workspace-members/flags-experiments.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  type FakeTransport,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** A canned-response handler (the `httpx.MockTransport` handler twin). */
 type Handler = (request: CapturedFetchRequest) => CannedResponse;

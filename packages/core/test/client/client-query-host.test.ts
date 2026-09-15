@@ -13,16 +13,17 @@
 // `date.today()`-derived params are deterministic; assertion content
 // (param values, retry from_date arithmetic) is preserved (R10.2).
 import { describe, expect, it } from "vitest";
+
+import { toNativeJson } from "../../src/client/json-value.js";
 import {
   AuthenticationError,
   QueryError,
   RateLimitError,
 } from "../../src/errors.js";
-import { toNativeJson } from "../../src/client/json-value.js";
 import {
+  type CannedResponse,
   createMockClient,
   makeSession,
-  type CannedResponse,
 } from "../../test-support/client-test-helpers.js";
 
 /** A frozen instant for the date-defaulting tests (UTC noon). */
@@ -90,7 +91,7 @@ describe("TestDiscovery", () => {
     expect(capturedParams["limit"]).toBe("5000");
     expect(capturedParams["from_date"]).toBe("2000-01-01");
     expect(Object.hasOwn(capturedParams, "to_date")).toBe(true);
-    expect((capturedParams["to_date"] as string).length).toBe(10);
+    expect(capturedParams["to_date"] as string).toHaveLength(10);
   });
 
   it("test_get_events_caller_overrides", async () => {
@@ -511,8 +512,8 @@ describe("TestActivityFeed (request contract)", () => {
         include_events: ["A"],
         exclude_events: ["B"],
       });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(QueryError);
     expect((caught as QueryError).requestParams).toEqual({
@@ -836,8 +837,8 @@ describe("TestPhase008ErrorHandling", () => {
     let caught: unknown;
     try {
       await client.activityFeed(["user_123"]);
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(AuthenticationError);
     expect((caught as Error).message.toLowerCase()).toContain("credentials");
@@ -852,8 +853,8 @@ describe("TestPhase008ErrorHandling", () => {
     let caught: unknown;
     try {
       await client.activityFeed(["user_123"]);
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(QueryError);
     expect((caught as Error).message).toContain("Invalid query");
@@ -867,8 +868,8 @@ describe("TestPhase008ErrorHandling", () => {
     let caught: unknown;
     try {
       await client.activityFeed(["user_123"]);
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(RateLimitError);
     expect((caught as RateLimitError).retryAfter).toBe(0);
@@ -899,8 +900,8 @@ describe("TestPhase008ErrorHandling", () => {
         "2024-01-31",
         'properties["amount"]',
       );
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(QueryError);
     expect((caught as Error).message).toContain("Invalid property expression");
@@ -918,8 +919,8 @@ describe("TestPhase008ErrorHandling", () => {
         "2024-01-31",
         'properties["amount"]',
       );
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(RateLimitError);
     expect((caught as RateLimitError).retryAfter).toBe(0);
@@ -950,8 +951,8 @@ describe("TestPhase008ErrorHandling", () => {
         "2024-01-31",
         'properties["amount"]',
       );
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(QueryError);
     expect((caught as Error).message).toContain("Invalid event name");
@@ -969,8 +970,8 @@ describe("TestPhase008ErrorHandling", () => {
         "2024-01-31",
         'properties["amount"]',
       );
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(RateLimitError);
     expect((caught as RateLimitError).retryAfter).toBe(0);
@@ -991,8 +992,8 @@ describe("TestPhase008ErrorHandling", () => {
     let caught: unknown;
     try {
       await client.frequency("2024-01-01", "2024-01-31", "day", "hour");
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(QueryError);
     expect((caught as Error).message).toContain("Invalid date range");
@@ -1005,8 +1006,8 @@ describe("TestPhase008ErrorHandling", () => {
     let caught: unknown;
     try {
       await client.frequency("2024-01-01", "2024-01-31", "day", "hour");
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(RateLimitError);
     expect((caught as RateLimitError).retryAfter).toBe(0);
@@ -1037,8 +1038,8 @@ describe("TestPhase008ErrorHandling", () => {
         "2024-01-31",
         'properties["amount"]',
       );
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(QueryError);
     expect((caught as Error).message).toContain("Property not found");
@@ -1056,8 +1057,8 @@ describe("TestPhase008ErrorHandling", () => {
         "2024-01-31",
         'properties["amount"]',
       );
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(RateLimitError);
     expect((caught as RateLimitError).retryAfter).toBe(0);
@@ -1078,8 +1079,8 @@ describe("TestPhase008ErrorHandling", () => {
     let caught: unknown;
     try {
       await client.querySavedReport(99999999);
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(QueryError);
     expect((caught as Error).message).toContain("Invalid bookmark_id");
@@ -1092,8 +1093,8 @@ describe("TestPhase008ErrorHandling", () => {
     let caught: unknown;
     try {
       await client.querySavedReport(12345678);
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(RateLimitError);
     expect((caught as RateLimitError).retryAfter).toBe(0);

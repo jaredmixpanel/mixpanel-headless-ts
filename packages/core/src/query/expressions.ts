@@ -48,7 +48,6 @@ const FILTER_EXPR_ACCESSORS: readonly string[] = [
  * @returns The normalized expression. Bare names are wrapped in
  *   `properties["…"]` with `\` and `"` escaped; existing expressions
  *   are returned as-is.
- *
  * @example
  * ```typescript
  * normalizeOnExpression("Source"); // 'properties["Source"]'
@@ -65,6 +64,6 @@ export function normalizeOnExpression(on: string): string {
   // Escape backslashes first, then double quotes, to produce valid
   // syntax. Order matters: escaping quotes first would double-escape
   // the backslash (`expressions.py:49-51`).
-  const escaped = on.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+  const escaped = on.replaceAll("\\", "\\\\").replaceAll('"', String.raw`\"`);
   return `properties["${escaped}"]`;
 }

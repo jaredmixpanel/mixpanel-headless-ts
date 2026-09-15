@@ -19,6 +19,7 @@
 // probe lock in `test/compat/python-random.test.ts`; the assert here is
 // the Python one (same seed → same sample).
 import { describe, expect, it } from "vitest";
+
 import {
   longPauses,
   rageClicks,
@@ -203,8 +204,8 @@ describe("bundle aggregation methods (TestReplayBundleAggregations)", () => {
       computed_at: "t",
       project_id: 12345,
     });
-    const out = b.topClicks().filter((row) => row["target_desc"] === "btn");
-    expect(out[0]?.["count"]).toBe(1);
+    const out = b.topClicks().find((row) => row["target_desc"] === "btn");
+    expect(out?.["count"]).toBe(1);
   });
 
   it("test_rage_clicks", () => {
@@ -278,7 +279,7 @@ describe("module-level aggregators (TestAggregatorFunctions)", () => {
   });
 
   it("test_top_clicks_module", () => {
-    expect(topClicks(sampleBundle())[0]?.["target_desc"]).toBe("button.signin");
+    expect(topClicks(sampleBundle())[0]?.target_desc).toBe("button.signin");
   });
 });
 
@@ -287,7 +288,7 @@ describe("elements frame — the Phase-2 deferrals (TestReplayBundleProjections)
     const rows = sampleBundle().toElementsRows();
     if (rows.length > 0) {
       expect(sampleBundle().elementsRowColumns()).toContain("n_clicks");
-      const row = rows.filter((r) => r["target_desc"] === "button.signin")[0];
+      const row = rows.find((r) => r["target_desc"] === "button.signin");
       // 1 click from r1 + 3 from r2 = 4
       expect(row?.["n_clicks"]).toBe(4);
     }

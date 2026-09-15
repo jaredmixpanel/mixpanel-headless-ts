@@ -17,16 +17,18 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { Secret, OAuthTokens } from "@mixpanel-headless/core";
-import { createNodeTokenStore } from "../src/auth/token-store.js";
+import { OAuthTokens, Secret } from "@mixpanel-headless/core";
+
 import { accountDir } from "../src/auth/storage.js";
+import { createNodeTokenStore } from "../src/auth/token-store.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const POSIX = process.platform !== "win32";
 
-const cleanups: (() => void)[] = [];
+const cleanups: Array<() => void> = [];
 let restoreEnv: () => void = () => undefined;
 let root = "";
 

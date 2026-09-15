@@ -15,9 +15,9 @@
 //   use (R2.9 — construction itself succeeds, as Python's does).
 
 import { describe, expect, it } from "vitest";
+
 import type { Account } from "../../src/auth/account.js";
-import type { Session } from "../../src/auth/session.js";
-import { sessionAuthHeader } from "../../src/auth/session.js";
+import { type Session, sessionAuthHeader } from "../../src/auth/session.js";
 import { OAuthError } from "../../src/errors.js";
 import { Secret } from "../../src/secret.js";
 

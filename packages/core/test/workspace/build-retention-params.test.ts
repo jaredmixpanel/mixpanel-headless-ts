@@ -12,9 +12,10 @@
 // TestDataGroupIdRetention :434).
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
 import { Filter } from "../../src/types/query-params/filter.js";
 import { RetentionEvent } from "../../src/types/query-params/retention.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   mockWorkspaceClient,
   TEST_SESSION,
@@ -72,7 +73,7 @@ describe("TestBuildRetentionParamsDefaults", () => {
 
   it("behaviors has exactly 2 entries", async () => {
     const result = await makeWs().buildRetentionParams("Signup", "Login");
-    expect(behaviorsOf(result).length).toBe(2);
+    expect(behaviorsOf(result)).toHaveLength(2);
   });
 
   it("behavior names match the born and return events", async () => {

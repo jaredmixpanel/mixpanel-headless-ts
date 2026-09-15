@@ -23,14 +23,14 @@
  */
 
 import {
-  accountAuthHeader,
   type Account,
+  accountAuthHeader,
   type TokenResolver,
 } from "../auth/account.js";
 import {
-  sessionReplace,
   type Project,
   type Session,
+  sessionReplace,
   type WorkspaceRef,
 } from "../auth/session.js";
 import {
@@ -38,27 +38,90 @@ import {
   QueryError,
   WorkspaceScopeError,
 } from "../errors.js";
-import { PublicWorkspace } from "../types/entities/common.js";
-import { appRequest, type AppRequestDeps } from "./app-request.js";
-import type { RandomSource } from "./backoff.js";
-import { getUserAgent, requestHeaders } from "./headers.js";
 import {
-  executeWithRetry,
-  isPlainRecord,
-  type RequestExecutor,
-  type RetryExecutorDeps,
-  type RetryLogger,
-} from "./internals.js";
-import { toNativeJson, type JsonValue } from "./json-value.js";
+  type AlertMethods,
+  createAlertMethods,
+} from "../services/entities/alerts.js";
 import {
-  selectWorkspaceId,
-  workspaceViewFromMetadataEntry,
-  workspaceViewFromPublic,
-  type WorkspaceResolver,
-  type WorkspaceView,
-} from "./me.js";
-import { validateResponseModels } from "./response-validation.js";
-import { maybeScopedPath } from "./scope.js";
+  type AnnotationMethods,
+  createAnnotationMethods,
+} from "../services/entities/annotations.js";
+import {
+  type AnomalyMethods,
+  createAnomalyMethods,
+} from "../services/entities/anomalies.js";
+import {
+  type AuditMethods,
+  createAuditMethods,
+} from "../services/entities/audit.js";
+import {
+  type BookmarkUrlMethods,
+  createBookmarkUrlMethods,
+} from "../services/entities/bookmark-urls.js";
+import {
+  type BookmarkMethods,
+  createBookmarkMethods,
+} from "../services/entities/bookmarks.js";
+import {
+  type BusinessContextMethods,
+  createBusinessContextMethods,
+} from "../services/entities/business-context.js";
+import {
+  type CohortMethods,
+  createCohortMethods,
+} from "../services/entities/cohorts.js";
+import {
+  createCustomEventMethods,
+  type CustomEventMethods,
+} from "../services/entities/custom-events.js";
+import {
+  createCustomPropertyMethods,
+  type CustomPropertyMethods,
+} from "../services/entities/custom-properties.js";
+import {
+  createDashboardMethods,
+  type DashboardMethods,
+} from "../services/entities/dashboards.js";
+import {
+  createDeletionRequestMethods,
+  type DeletionRequestMethods,
+} from "../services/entities/deletion-requests.js";
+import {
+  createDropFilterMethods,
+  type DropFilterMethods,
+} from "../services/entities/drop-filters.js";
+import {
+  createExperimentMethods,
+  type ExperimentMethods,
+} from "../services/entities/experiments.js";
+import {
+  createFlagMethods,
+  type FlagMethods,
+} from "../services/entities/flags.js";
+import {
+  createLexiconMethods,
+  type LexiconMethods,
+} from "../services/entities/lexicon.js";
+import {
+  createLookupTableMethods,
+  type LookupTableMethods,
+} from "../services/entities/lookup-tables.js";
+import {
+  createReplaysSigningMethods,
+  type ReplaysSigningMethods,
+} from "../services/entities/replays-signing.js";
+import {
+  createSchemaEnforcementMethods,
+  type SchemaEnforcementMethods,
+} from "../services/entities/schema-enforcement.js";
+import {
+  createSchemaMethods,
+  type SchemaMethods,
+} from "../services/entities/schemas.js";
+import {
+  createWebhookMethods,
+  type WebhookMethods,
+} from "../services/entities/webhooks.js";
 import {
   createEngageMethods,
   type EngageMethods,
@@ -71,90 +134,27 @@ import {
   createStreamingMethods,
   type StreamingMethods,
 } from "../services/queries/streaming.js";
+import { PublicWorkspace } from "../types/entities/common.js";
+import { appRequest, type AppRequestDeps } from "./app-request.js";
+import type { RandomSource } from "./backoff.js";
+import { getUserAgent, requestHeaders } from "./headers.js";
 import {
-  createDashboardMethods,
-  type DashboardMethods,
-} from "../services/entities/dashboards.js";
+  executeWithRetry,
+  isPlainRecord,
+  type RequestExecutor,
+  type RetryExecutorDeps,
+  type RetryLogger,
+} from "./internals.js";
+import { type JsonValue, toNativeJson } from "./json-value.js";
 import {
-  createBookmarkMethods,
-  type BookmarkMethods,
-} from "../services/entities/bookmarks.js";
-import {
-  createBookmarkUrlMethods,
-  type BookmarkUrlMethods,
-} from "../services/entities/bookmark-urls.js";
-import {
-  createCohortMethods,
-  type CohortMethods,
-} from "../services/entities/cohorts.js";
-import {
-  createFlagMethods,
-  type FlagMethods,
-} from "../services/entities/flags.js";
-import {
-  createExperimentMethods,
-  type ExperimentMethods,
-} from "../services/entities/experiments.js";
-import {
-  createAnnotationMethods,
-  type AnnotationMethods,
-} from "../services/entities/annotations.js";
-import {
-  createWebhookMethods,
-  type WebhookMethods,
-} from "../services/entities/webhooks.js";
-import {
-  createAlertMethods,
-  type AlertMethods,
-} from "../services/entities/alerts.js";
-import {
-  createSchemaMethods,
-  type SchemaMethods,
-} from "../services/entities/schemas.js";
-import {
-  createLexiconMethods,
-  type LexiconMethods,
-} from "../services/entities/lexicon.js";
-import {
-  createDropFilterMethods,
-  type DropFilterMethods,
-} from "../services/entities/drop-filters.js";
-import {
-  createCustomPropertyMethods,
-  type CustomPropertyMethods,
-} from "../services/entities/custom-properties.js";
-import {
-  createLookupTableMethods,
-  type LookupTableMethods,
-} from "../services/entities/lookup-tables.js";
-import {
-  createCustomEventMethods,
-  type CustomEventMethods,
-} from "../services/entities/custom-events.js";
-import {
-  createSchemaEnforcementMethods,
-  type SchemaEnforcementMethods,
-} from "../services/entities/schema-enforcement.js";
-import {
-  createAuditMethods,
-  type AuditMethods,
-} from "../services/entities/audit.js";
-import {
-  createAnomalyMethods,
-  type AnomalyMethods,
-} from "../services/entities/anomalies.js";
-import {
-  createDeletionRequestMethods,
-  type DeletionRequestMethods,
-} from "../services/entities/deletion-requests.js";
-import {
-  createBusinessContextMethods,
-  type BusinessContextMethods,
-} from "../services/entities/business-context.js";
-import {
-  createReplaysSigningMethods,
-  type ReplaysSigningMethods,
-} from "../services/entities/replays-signing.js";
+  selectWorkspaceId,
+  type WorkspaceResolver,
+  type WorkspaceView,
+  workspaceViewFromMetadataEntry,
+  workspaceViewFromPublic,
+} from "./me.js";
+import { validateResponseModels } from "./response-validation.js";
+import { maybeScopedPath } from "./scope.js";
 import {
   createRequestExecutor,
   normalizedAbortError,
@@ -166,13 +166,13 @@ import {
   buildUrl,
   DEFAULT_APP_TIMEOUT_S,
   DEFAULT_QUERY_TIMEOUT_S,
-  endpointOverridesProvider,
-  endpointsFor,
-  WORKSPACE_SCOPED_FAMILIES,
   type EndpointKind,
   type EndpointOverrides,
+  endpointOverridesProvider,
   type EndpointOverridesSource,
+  endpointsFor,
   type Region,
+  WORKSPACE_SCOPED_FAMILIES,
 } from "./url.js";
 
 /**
@@ -183,15 +183,19 @@ import {
  */
 const FALLBACK_HTTP_STATUSES: ReadonlySet<number> = new Set([403, 404]);
 
-/** The env-pair provider seam for header layer 2 (R9.4: `core` never
- * reads `process.env`; the node package wires the real env source). */
+/**
+ * The env-pair provider seam for header layer 2 (R9.4: `core` never
+ * reads `process.env`; the node package wires the real env source).
+ */
 export type CustomHeaderEnvSource = () => {
   readonly name?: string | undefined;
   readonly value?: string | undefined;
 };
 
-/** Constructor options (Python `MixpanelAPIClient.__init__` kwargs +
- * the TS determinism seams). */
+/**
+ * Constructor options (Python `MixpanelAPIClient.__init__` kwargs +
+ * the TS determinism seams).
+ */
 export interface MixpanelClientOptions {
   /** Resolved Session (account + project + optional workspace). */
   readonly session: Session;
@@ -206,13 +210,17 @@ export interface MixpanelClientOptions {
   readonly timeoutSeconds?: number | null | undefined;
   /** Request timeout for export operations (Python default 600). */
   readonly exportTimeoutSeconds?: number | undefined;
-  /** Maximum retry attempts for rate-limited requests (Python default 3,
-   * `api_client.py:312`). */
+  /**
+   * Maximum retry attempts for rate-limited requests (Python default 3,
+   * `api_client.py:312`).
+   */
   readonly maxRetries?: number | undefined;
-  /** Token resolver for OAuth accounts. Python defaults to the on-disk
+  /**
+   * Token resolver for OAuth accounts. Python defaults to the on-disk
    * resolver; in `core` the default is NONE (the node package supplies
    * it — R9.1/R9.4), and OAuth auth-header resolution without one
-   * throws the Phase-2 `ParamTypeError`. */
+   * throws the Phase-2 `ParamTypeError`.
+   */
   readonly tokenResolver?: TokenResolver | null | undefined;
   /** Injectable transport (R2.4; the TS analog of `_transport`). */
   readonly fetch?: typeof fetch | undefined;
@@ -267,8 +275,10 @@ export interface ClientAppRequestOptions {
   readonly signal?: AbortSignal | undefined;
 }
 
-/** Options of the internal query-host request path (Python `_request`
- * kwargs; R2.8 — public but `@internal`). */
+/**
+ * Options of the internal query-host request path (Python `_request`
+ * kwargs; R2.8 — public but `@internal`).
+ */
 export interface QueryHostRequestOptions {
   /** Query parameters (MUTATED with injections, like Python). */
   readonly params?: Record<string, unknown> | null | undefined;
@@ -280,8 +290,10 @@ export interface QueryHostRequestOptions {
   readonly timeoutSeconds?: number | null | undefined;
   /** Auto-add `project_id` to query params (Python default True). */
   readonly injectProjectId?: boolean | undefined;
-  /** Inject the pinned `workspace_id` on Query-host requests (Python
-   * default True; explicit opt-out forces a project-scoped query). */
+  /**
+   * Inject the pinned `workspace_id` on Query-host requests (Python
+   * default True; explicit opt-out forces a project-scoped query).
+   */
   readonly injectWorkspaceId?: boolean | undefined;
   /** Optional cancellation signal (R6.7). */
   readonly signal?: AbortSignal | undefined;
@@ -315,8 +327,10 @@ export interface HttpHandle {
  * published API docs.
  */
 export interface ClientCore {
-  /** The explicit constructor timeout, or `null` for the route-aware
-   * defaults (Python `self._timeout: float | None`). */
+  /**
+   * The explicit constructor timeout, or `null` for the route-aware
+   * defaults (Python `self._timeout: float | None`).
+   */
   readonly timeoutSeconds: number | null;
   /**
    * Resolve the read timeout for a request to `url` — TS port of
@@ -329,7 +343,7 @@ export interface ClientCore {
    * @param url - The full request URL.
    * @returns The timeout in seconds for the request.
    */
-  defaultTimeoutSeconds(url: string): number;
+  defaultTimeoutSeconds: (url: string) => number;
   /** Export-operation timeout in seconds (`self._export_timeout`). */
   readonly exportTimeoutSeconds: number;
   /** Maximum 429 retries (`self._max_retries`). */
@@ -346,27 +360,27 @@ export interface ClientCore {
   readonly logger: RetryLogger | undefined;
 
   /** @returns The current Session. */
-  session(): Session;
+  session: () => Session;
   /** @returns The bound project id (`session.project.id`). */
-  projectId(): string;
+  projectId: () => string;
   /** @returns The bound region (`session.account.region`). */
-  region(): Region;
+  region: () => Region;
   /** @returns The explicit workspace pin, or `null`. */
-  workspaceId(): number | null;
+  workspaceId: () => number | null;
   /**
    * The CURRENT override bag (the per-request provider's value —
    * `endpointOverrides` option, PR #235).
    *
    * @returns The override bag (frozen empty bag when none).
    */
-  endpointOverrides(): EndpointOverrides;
+  endpointOverrides: () => EndpointOverrides;
   /**
    * The family → base-URL table for the current session's region under
    * the current overrides (`_endpoints_for(region)`, PR #235).
    *
    * @returns The resolved table (the live object when nothing is overridden).
    */
-  endpoints(): ReadonlyMap<EndpointKind, string>;
+  endpoints: () => ReadonlyMap<EndpointKind, string>;
   /**
    * Build the full URL for an API family + path (B0 `url.ts` by name).
    *
@@ -374,7 +388,7 @@ export interface ClientCore {
    * @param path - The endpoint path.
    * @returns The full URL.
    */
-  buildUrl(kind: EndpointKind, path: string): string;
+  buildUrl: (kind: EndpointKind, path: string) => string;
   /**
    * Resolve the Authorization header PER REQUEST (`_get_auth_header`,
    * `api_client.py:388-416`): service accounts return the cached Basic
@@ -382,7 +396,7 @@ export interface ClientCore {
    *
    * @returns The header value.
    */
-  getAuthHeader(): Promise<string>;
+  getAuthHeader: () => Promise<string>;
   /**
    * The B0 4-layer header merge, pre-bound to the CURRENT session
    * (`headers.ts` `requestHeaders` by name — never re-merged).
@@ -390,17 +404,17 @@ export interface ClientCore {
    * @param extra - Per-call headers.
    * @returns The merged header set.
    */
-  requestHeaders(extra: Record<string, string>): Record<string, string>;
+  requestHeaders: (extra: Record<string, string>) => Record<string, string>;
   /**
    * The lazily-initialized pool token (`_ensure_client`).
    *
    * @returns The handle (created on first use).
    */
-  http(): HttpHandle;
+  http: () => HttpHandle;
   /** @returns Whether the handle currently exists (close-state peek). */
-  isHttpOpen(): boolean;
+  isHttpOpen: () => boolean;
   /** Drop the pool token (`close()` body). */
-  closeHttp(): void;
+  closeHttp: () => void;
   /**
    * Build per-call `executeWithRetry` deps with the signal curried into
    * the transport and sleep closures (R6.7 points 2 and 3).
@@ -408,14 +422,14 @@ export interface ClientCore {
    * @param signal - Optional cancellation signal.
    * @returns The deps.
    */
-  executeDeps(signal?: AbortSignal): RetryExecutorDeps;
+  executeDeps: (signal?: AbortSignal) => RetryExecutorDeps;
   /**
    * Build per-call `appRequest` deps (same signal currying).
    *
    * @param signal - Optional cancellation signal.
    * @returns The deps.
    */
-  appDeps(signal?: AbortSignal): AppRequestDeps;
+  appDeps: (signal?: AbortSignal) => AppRequestDeps;
   /**
    * Issue one raw (non-buffered) request through the adapter — the
    * streaming/export seam for B4-C2 and the paginator's raw-transport
@@ -425,10 +439,10 @@ export interface ClientCore {
    * @param signal - Optional cancellation signal.
    * @returns The raw response wrapper.
    */
-  rawRequest(
+  rawRequest: (
     options: Parameters<RequestExecutor>[0],
     signal?: AbortSignal,
-  ): Promise<RawFetchResult>;
+  ) => Promise<RawFetchResult>;
   /**
    * The query-host request path (`_request`, `api_client.py:822-920`):
    * project-id injection + explicit-only workspace-pin injection, then
@@ -439,11 +453,11 @@ export interface ClientCore {
    * @param options - Params/body/injection flags.
    * @returns Parsed lossless JSON response.
    */
-  requestQueryHost(
+  requestQueryHost: (
     method: string,
     url: string,
     options?: QueryHostRequestOptions,
-  ): Promise<JsonValue>;
+  ) => Promise<JsonValue>;
 }
 
 /**
@@ -502,7 +516,7 @@ export interface MixpanelClient
    *
    * @returns The header value (`Basic ...` or `Bearer ...`).
    */
-  currentAuthHeader(): Promise<string>;
+  currentAuthHeader: () => Promise<string>;
 
   /**
    * Install a `/me`-backed workspace resolver for auto-discovery
@@ -510,7 +524,7 @@ export interface MixpanelClient
    *
    * @param resolver - The resolver, or `null` to clear.
    */
-  setWorkspaceResolver(resolver: WorkspaceResolver | null): void;
+  setWorkspaceResolver: (resolver: WorkspaceResolver | null) => void;
 
   /**
    * Make an authenticated request to any Mixpanel API endpoint — the
@@ -529,11 +543,11 @@ export interface MixpanelClient
    * @throws MixpanelHeadlessError - Network/connection errors
    *   (`HTTP_ERROR`).
    */
-  request(
+  request: (
     method: string,
     url: string,
     options?: ClientRequestOptions,
-  ): Promise<JsonValue>;
+  ) => Promise<JsonValue>;
 
   /**
    * Make an authenticated App API request (`app_request` — the B0
@@ -549,26 +563,25 @@ export interface MixpanelClient
    * @throws AuthenticationError | RateLimitError | QueryError |
    *   ServerError | MixpanelHeadlessError - Per the B0 contract.
    */
-  appRequest(
+  appRequest: (
     method: string,
     path: string,
     options?: ClientAppRequestOptions,
-  ): Promise<JsonValue>;
+  ) => Promise<JsonValue>;
 
   /**
    * @internal The query-host request path (`_request`). See
    * {@link ClientCore.requestQueryHost}.
-   *
    * @param method - HTTP method.
    * @param url - Full URL.
    * @param options - Params/body/injection flags.
    * @returns Parsed lossless JSON response.
    */
-  requestQueryHost(
+  requestQueryHost: (
     method: string,
     url: string,
     options?: QueryHostRequestOptions,
-  ): Promise<JsonValue>;
+  ) => Promise<JsonValue>;
 
   /**
    * Swap one or more session axes in place, preserving the HTTP
@@ -585,7 +598,7 @@ export interface MixpanelClient
    * @throws OAuthError | ParamTypeError - New-account auth probe
    *   failures (state unchanged).
    */
-  use(options?: ClientUseOptions): Promise<void>;
+  use: (options?: ClientUseOptions) => Promise<void>;
 
   /**
    * Return the workspace for the current session, lazy-resolving once
@@ -594,7 +607,7 @@ export interface MixpanelClient
    * @returns The session's WorkspaceRef (cached per session lifetime).
    * @throws WorkspaceScopeError - No accessible workspaces.
    */
-  resolveWorkspace(): Promise<WorkspaceRef>;
+  resolveWorkspace: () => Promise<WorkspaceRef>;
 
   /**
    * Set or clear the explicit workspace ID for scoped requests
@@ -603,7 +616,7 @@ export interface MixpanelClient
    *
    * @param workspaceId - Workspace ID to pin, or `null` to clear.
    */
-  setWorkspaceId(workspaceId: number | null): void;
+  setWorkspaceId: (workspaceId: number | null) => void;
 
   /**
    * Resolve the workspace ID for scoped requests
@@ -618,7 +631,7 @@ export interface MixpanelClient
    *   QueryError | MixpanelHeadlessError - Non-403/404 discovery
    *   failures propagate rather than masking as "no workspace".
    */
-  resolveWorkspaceId(): Promise<number>;
+  resolveWorkspaceId: () => Promise<number>;
 
   /**
    * Fetch the projects metadata index (`projects_metadata_index`,
@@ -627,15 +640,14 @@ export interface MixpanelClient
    * @returns The metadata payload keyed by project ID, or `{}` when the
    *   response is not a mapping.
    */
-  projectsMetadataIndex(): Promise<Record<string, JsonValue>>;
+  projectsMetadataIndex: () => Promise<Record<string, JsonValue>>;
 
   /**
    * @internal Resolve a workspace ID from the metadata index
    * (`_resolve_workspace_from_metadata`, `api_client.py:1564-1635`).
-   *
    * @returns The chosen id, or `null` when the index can't answer.
    */
-  resolveWorkspaceFromMetadata(): Promise<number | null>;
+  resolveWorkspaceFromMetadata: () => Promise<number | null>;
 
   /**
    * Build an optionally workspace-scoped API path
@@ -645,7 +657,7 @@ export interface MixpanelClient
    * @returns `/workspaces/{wid}/{path}` when pinned, else
    *   `/projects/{pid}/{path}`.
    */
-  maybeScopedPath(domainPath: string): string;
+  maybeScopedPath: (domainPath: string) => string;
 
   /**
    * Build a workspace-scoped API path, auto-discovering if needed
@@ -655,7 +667,7 @@ export interface MixpanelClient
    * @returns `/projects/{pid}/workspaces/{wid}/{domainPath}`.
    * @throws WorkspaceScopeError - No workspaces found for the project.
    */
-  requireScopedPath(domainPath: string): Promise<string>;
+  requireScopedPath: (domainPath: string) => Promise<string>;
 
   /**
    * Create a new client for a different project, sharing the transport
@@ -665,7 +677,10 @@ export interface MixpanelClient
    * @param workspaceId - Optional workspace ID within the new project.
    * @returns A new client bound to `projectId`.
    */
-  withProject(projectId: string, workspaceId?: number | null): MixpanelClient;
+  withProject: (
+    projectId: string,
+    workspaceId?: number | null,
+  ) => MixpanelClient;
 
   /**
    * Call `GET /api/app/me` (`me`, `api_client.py:1743-1769`). Not
@@ -674,7 +689,7 @@ export interface MixpanelClient
    * @returns The raw `/me` payload (a non-mapping result is wrapped as
    *   `{results: ...}`).
    */
-  me(): Promise<Record<string, JsonValue>>;
+  me: () => Promise<Record<string, JsonValue>>;
 
   /**
    * List public workspaces for the current project (`list_workspaces`,
@@ -685,31 +700,30 @@ export interface MixpanelClient
    *   validation (`RESPONSE_VALIDATION_ERROR`).
    * @throws MixpanelHeadlessError - Non-list response payload.
    */
-  listWorkspaces(): Promise<PublicWorkspace[]>;
+  listWorkspaces: () => Promise<PublicWorkspace[]>;
 
   /**
    * @internal Force pool-token creation (`_ensure_client` /
    * `__enter__`); Layer-3 lifecycle tests peek via
    * {@link isHttpOpen}/{@link httpHandle}.
    */
-  ensureHttpOpen(): void;
+  ensureHttpOpen: () => void;
 
   /** @internal @returns Whether the pool token exists (`_client is not None`). */
-  isHttpOpen(): boolean;
+  isHttpOpen: () => boolean;
 
   /**
    * @internal The pool token, lazily created (`_http` property — the
    * R6.2 identity the transport-preservation tests compare).
-   *
    * @returns The handle.
    */
-  httpHandle(): HttpHandle;
+  httpHandle: () => HttpHandle;
 
   /** Close the HTTP client and release resources (`close`). */
-  close(): Promise<void>;
+  close: () => Promise<void>;
 
   /** R6.2: `async with` ports as `await using` / explicit `close()`. */
-  [Symbol.asyncDispose](): Promise<void>;
+  [Symbol.asyncDispose]: () => Promise<void>;
 }
 
 /** Default sleep seam: real timers, milliseconds (R2.12/R6.3). */
@@ -749,9 +763,9 @@ function signalAwareSleep(
           signal.removeEventListener("abort", onAbort);
           resolve();
         },
-        (cause: unknown) => {
+        (error: unknown) => {
           signal.removeEventListener("abort", onAbort);
-          reject(cause instanceof Error ? cause : new Error(String(cause)));
+          reject(error instanceof Error ? error : new Error(String(error)));
         },
       );
     });
@@ -763,7 +777,6 @@ function signalAwareSleep(
  *
  * @param options - Session + seams (see {@link MixpanelClientOptions}).
  * @returns The assembled client.
- *
  * @example
  * ```typescript
  * const client = createMixpanelClient({ session, fetch: harness.fetch });
@@ -855,10 +868,9 @@ export function createMixpanelClient(
   const coreRequestHeaders = (
     extra: Record<string, string>,
   ): Record<string, string> => {
-    const sessionHeaders: Record<string, string> = {};
-    for (const [name, value] of session.headers) {
-      sessionHeaders[name] = value;
-    }
+    const sessionHeaders: Record<string, string> = Object.fromEntries(
+      session.headers,
+    );
     return requestHeaders(
       { getUserAgent, getCustomHeaderEnv, sessionHeaders },
       extra,
@@ -906,17 +918,17 @@ export function createMixpanelClient(
     // live table (engage sits under the query prefix) and correct under
     // split overrides.
     const family = apiFamilyFor(url, currentEndpoints());
+    // Explicit-only pin injection (`api_client.py:893-902`): a
+    // caller-supplied workspace_id always wins (setdefault), and no
+    // pin means nothing is injected — never an auto-resolution.
     if (
       callOptions.injectWorkspaceId !== false &&
       family !== null &&
-      WORKSPACE_SCOPED_FAMILIES.has(family)
+      WORKSPACE_SCOPED_FAMILIES.has(family) &&
+      workspaceId !== null &&
+      !Object.hasOwn(params, "workspace_id")
     ) {
-      // Explicit-only pin injection (`api_client.py:893-902`): a
-      // caller-supplied workspace_id always wins (setdefault), and no
-      // pin means nothing is injected — never an auto-resolution.
-      if (workspaceId !== null && !Object.hasOwn(params, "workspace_id")) {
-        params["workspace_id"] = workspaceId;
-      }
+      params["workspace_id"] = workspaceId;
     }
     return executeWithRetry(executeDeps(callOptions.signal), {
       method,
@@ -997,21 +1009,21 @@ export function createMixpanelClient(
   };
 
   const resolveWorkspaceFromMetadata = async (): Promise<number | null> => {
-    const pid = String(session.project.id);
+    const pid = session.project.id;
     let index: Record<string, JsonValue>;
     try {
       index = await projectsMetadataIndex();
-    } catch (exc) {
+    } catch (error) {
       // 403/404 = index genuinely unavailable for this credential — a
       // clean "this source can't answer". Auth / rate-limit / server /
       // network errors propagate (`api_client.py:1590-1604`).
       if (
-        exc instanceof QueryError &&
-        FALLBACK_HTTP_STATUSES.has(exc.statusCode)
+        error instanceof QueryError &&
+        FALLBACK_HTTP_STATUSES.has(error.statusCode)
       ) {
         return null;
       }
-      throw exc;
+      throw error;
     }
     const entry = Object.hasOwn(index, pid) ? index[pid] : undefined;
     if (entry === undefined || !isPlainRecord(entry)) {
@@ -1043,7 +1055,7 @@ export function createMixpanelClient(
     if (cachedWorkspaceId !== null) {
       return cachedWorkspaceId;
     }
-    const pid = String(session.project.id);
+    const pid = session.project.id;
     if (meResolver !== null) {
       const resolved = await meResolver(pid);
       if (resolved !== null) {
@@ -1054,16 +1066,16 @@ export function createMixpanelClient(
     let publicWorkspaces: PublicWorkspace[];
     try {
       publicWorkspaces = await listWorkspaces();
-    } catch (exc) {
+    } catch (error) {
       // A 403/404 means this credential can't read /workspaces/public —
       // fall through to the metadata index (`api_client.py:1483-1498`).
       if (
-        exc instanceof QueryError &&
-        FALLBACK_HTTP_STATUSES.has(exc.statusCode)
+        error instanceof QueryError &&
+        FALLBACK_HTTP_STATUSES.has(error.statusCode)
       ) {
         publicWorkspaces = [];
       } else {
-        throw exc;
+        throw error;
       }
     }
     const publicId = selectWorkspaceId(
@@ -1108,7 +1120,7 @@ export function createMixpanelClient(
     const ref: WorkspaceRef = {
       id: chosen.id,
       name: chosen.name,
-      is_default: Boolean(chosen.is_default),
+      is_default: chosen.is_default,
     };
     resolvedWorkspace = ref;
     cachedWorkspaceId = ref.id;

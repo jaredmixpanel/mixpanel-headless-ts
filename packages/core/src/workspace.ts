@@ -16,18 +16,21 @@
  * `_replays_service` accessor (`workspace.py:1012-1033`) that S3 needs.
  */
 
-import type { Session } from "./auth/session.js";
-import { resolveSession, type ResolverSources } from "./auth/resolver.js";
+import type { Account } from "./auth/account.js";
+import { type ResolverSources, resolveSession } from "./auth/resolver.js";
+import type { Project, Session, WorkspaceRef } from "./auth/session.js";
 import {
   createMixpanelClient,
   type MixpanelClient,
   type MixpanelClientOptions,
 } from "./client/client.js";
-import { toNativeJson, type JsonValue } from "./client/json-value.js";
+import { jsonValuePythonStr } from "./client/internals.js";
+import { type JsonValue, toNativeJson } from "./client/json-value.js";
+import type { MeResponse } from "./client/me.js";
+import { validateResponseModel } from "./client/response-validation.js";
 import { pythonInt, pythonIntCoerce } from "./compat/python-int.js";
 import { pythonRepr, type PythonValue } from "./compat/python-str.js";
 import { zfill } from "./compat/zfill.js";
-import { RrwebAnalyzer } from "./replays/rrweb-analyzer.js";
 import {
   AuthenticationError,
   BookmarkValidationError,
@@ -42,36 +45,26 @@ import {
   UnsupportedReportLinkError,
   WorkspaceScopeError,
 } from "./errors.js";
-import { validateResponseModel } from "./client/response-validation.js";
-import { jsonValuePythonStr } from "./client/internals.js";
+import { KeyError } from "./query/python-builtins.js";
+import { transformProfile } from "./query/transforms.js";
+import { RrwebAnalyzer } from "./replays/rrweb-analyzer.js";
 import {
   BOOKMARK_HASH_FOR_TYPE,
-  SLUG_APP_FOR_TYPE,
   buildBookmarkUrl,
   buildSlugUrl,
   generateSlug,
-  parseReportLink,
-  parsedReportLink,
   type ParsedReportLink,
+  parsedReportLink,
+  parseReportLink,
+  SLUG_APP_FOR_TYPE,
 } from "./report-links.js";
-import { validateBookmarkParamsSchema } from "./workspace-members/bookmarks-cohorts.js";
-import { requireEntityId, requireInt64Id } from "./workspace-members/shared.js";
 import {
-  ReportLink,
-  ResolvedReport,
-  type ReportLinkQueryResult,
-} from "./types/report-links.js";
-import { BookmarkUrl } from "./types/entities/bookmarks.js";
-import { KeyError } from "./query/python-builtins.js";
-import { transformProfile } from "./query/transforms.js";
-import {
+  type DiscoveryLogger,
   DiscoveryService,
   isoUtc,
-  type DiscoveryLogger,
   type WarningSink,
 } from "./services/discovery.js";
 import {
-  LiveQueryService,
   type FlowMode,
   type LiveActivityFeedOptions,
   type LiveEventCountsOptions,
@@ -80,133 +73,196 @@ import {
   type LiveNumericOptions,
   type LivePropertyCountsOptions,
   type LiveQuerySavedReportOptions,
+  LiveQueryService,
   type LiveRetentionOptions,
   type LiveSegmentationNumericOptions,
   type LiveSegmentationOptions,
 } from "./services/live-query.js";
-import { ReplaysService, replayNotFoundError } from "./services/replays.js";
 import {
-  MeService,
   inMemoryMeCache,
   type MeCacheStore,
+  MeService,
 } from "./services/me.js";
 import {
   streamEvents as streamEventsVeneer,
-  streamProfiles as streamProfilesVeneer,
   type StreamEventsOptions,
+  streamProfiles as streamProfilesVeneer,
   type StreamProfilesOptions,
 } from "./services/queries/streaming.js";
+import { replayNotFoundError, ReplaysService } from "./services/replays.js";
+import type {
+  AlertCount,
+  AlertHistoryResponse,
+  AlertScreenshotResponse,
+  CreateAlertParams,
+  CustomAlert,
+  UpdateAlertParams,
+  ValidateAlertsForBookmarkParams,
+  ValidateAlertsForBookmarkResponse,
+} from "./types/entities/alerts.js";
+import type {
+  Annotation,
+  AnnotationTag,
+  CreateAnnotationParams,
+  CreateAnnotationTagParams,
+  UpdateAnnotationParams,
+} from "./types/entities/annotations.js";
 import {
-  getBusinessContext as getBusinessContextMember,
-  getBusinessContextChain as getBusinessContextChainMember,
-  guardTargetExclusivity,
-  mergeResolverSeams,
-  noProjectError,
-  setBusinessContext as setBusinessContextMember,
-  type BusinessContextHost,
-  type BusinessContextScopeOptions,
-  type ResolverSeams,
-} from "./workspace-members/lifecycle.js";
-export type {
-  BusinessContextLevel,
-  BusinessContextScopeOptions,
-  ResolveProjectAxisArgs,
-  ResolveSessionArgs,
-  ResolverSeams,
-} from "./workspace-members/lifecycle.js";
-export type { MeCacheStore, MeService } from "./services/me.js";
+  type Bookmark,
+  type BookmarkHistoryResponse,
+  BookmarkUrl,
+  type BulkUpdateBookmarkEntry,
+  type CreateBookmarkParams,
+  type UpdateBookmarkParams,
+} from "./types/entities/bookmarks.js";
+import type {
+  BusinessContext,
+  BusinessContextChain,
+} from "./types/entities/business-context.js";
+import type {
+  BulkUpdateCohortEntry,
+  Cohort,
+  CreateCohortParams,
+  UpdateCohortParams,
+} from "./types/entities/cohorts.js";
+import type { PublicWorkspace } from "./types/entities/common.js";
+import type {
+  BlueprintConfig,
+  BlueprintFinishParams,
+  BlueprintTemplate,
+  CreateDashboardParams,
+  CreateRcaDashboardParams,
+  Dashboard,
+  UpdateDashboardParams,
+  UpdateReportLinkParams,
+  UpdateTextCardParams,
+} from "./types/entities/dashboards.js";
+import type {
+  CreateCustomEventParams,
+  CreateCustomPropertyParams,
+  CreateDropFilterParams,
+  CustomEvent,
+  CustomProperty,
+  DropFilter,
+  DropFilterLimitsResponse,
+  LookupTable,
+  LookupTableUploadUrl,
+  MarkLookupTableReadyParams,
+  UpdateCustomPropertyParams,
+  UpdateDropFilterParams,
+  UpdateLookupTableParams,
+  UploadLookupTableParams,
+} from "./types/entities/data-governance.js";
+import type {
+  CreateExperimentParams,
+  DuplicateExperimentParams,
+  Experiment,
+  ExperimentDecideParams,
+  UpdateExperimentParams,
+} from "./types/entities/experiments.js";
+import type {
+  CreateFeatureFlagParams,
+  FeatureFlag,
+  FlagHistoryResponse,
+  FlagLimitsResponse,
+  SetTestUsersParams,
+  UpdateFeatureFlagParams,
+} from "./types/entities/feature-flags.js";
+import type {
+  BulkUpdateEventsParams,
+  BulkUpdatePropertiesParams,
+  CreateTagParams,
+  EventDefinition,
+  LexiconTag,
+  PropertyDefinition,
+  UpdateEventDefinitionParams,
+  UpdatePropertyDefinitionParams,
+  UpdateTagParams,
+} from "./types/entities/lexicon.js";
+import type {
+  AuditResponse,
+  BulkCreateSchemasParams,
+  BulkCreateSchemasResponse,
+  BulkPatchResult,
+  BulkUpdateAnomalyParams,
+  CreateDeletionRequestParams,
+  DataVolumeAnomaly,
+  DeleteSchemasResponse,
+  EventDeletionRequest,
+  InitSchemaEnforcementParams,
+  PreviewDeletionFiltersParams,
+  ReplaceSchemaEnforcementParams,
+  SchemaEnforcementConfig,
+  SchemaEntry,
+  UpdateAnomalyParams,
+  UpdateSchemaEnforcementParams,
+} from "./types/entities/schemas.js";
+import type {
+  CreateWebhookParams,
+  ProjectWebhook,
+  UpdateWebhookParams,
+  WebhookMutationResult,
+  WebhookTestParams,
+  WebhookTestResult,
+} from "./types/entities/webhooks.js";
+import type {
+  BookmarkType,
+  EntityType,
+  ReportLinkType,
+} from "./types/literals.js";
+import type { CohortDefinition } from "./types/query-params/cohort.js";
+import type { Filter } from "./types/query-params/filter.js";
+import type { FlowStep } from "./types/query-params/flow.js";
+import type {
+  Exclusion,
+  FunnelStep,
+  HoldingConstant,
+} from "./types/query-params/funnel.js";
+import type { TimeComparison } from "./types/query-params/metric.js";
+import type { RetentionEvent } from "./types/query-params/retention.js";
 import {
-  addReportToDashboard as addReportToDashboardMember,
-  bulkDeleteDashboards as bulkDeleteDashboardsMember,
-  createBlueprint as createBlueprintMember,
-  createDashboard as createDashboardMember,
-  createRcaDashboard as createRcaDashboardMember,
-  deleteDashboard as deleteDashboardMember,
-  favoriteDashboard as favoriteDashboardMember,
-  finalizeBlueprint as finalizeBlueprintMember,
-  getBlueprintConfig as getBlueprintConfigMember,
-  getBookmarkDashboardIds as getBookmarkDashboardIdsMember,
-  getDashboard as getDashboardMember,
-  getDashboardErf as getDashboardErfMember,
-  listBlueprintTemplates as listBlueprintTemplatesMember,
-  listDashboards as listDashboardsMember,
-  pinDashboard as pinDashboardMember,
-  removeReportFromDashboard as removeReportFromDashboardMember,
-  unfavoriteDashboard as unfavoriteDashboardMember,
-  unpinDashboard as unpinDashboardMember,
-  updateBlueprintCohorts as updateBlueprintCohortsMember,
-  updateDashboard as updateDashboardMember,
-  updateReportLink as updateReportLinkMember,
-  updateTextCard as updateTextCardMember,
-  type WorkspaceListBlueprintTemplatesOptions,
-  type WorkspaceListDashboardsOptions,
-} from "./workspace-members/dashboards.js";
-export type {
-  WorkspaceListBlueprintTemplatesOptions,
-  WorkspaceListDashboardsOptions,
-} from "./workspace-members/dashboards.js";
+  ReportLink,
+  type ReportLinkQueryResult,
+  ResolvedReport,
+} from "./types/report-links.js";
+import type {
+  BookmarkInfo,
+  FunnelInfo,
+  LexiconSchema,
+  ProfilePageResult,
+  SavedCohort,
+  SchemaGraphResult,
+  SubPropertyInfo,
+  TopEvent,
+} from "./types/results/discovery.js";
+import type {
+  ActivityFeedResult,
+  EventCountsResult,
+  FlowsResult,
+  FrequencyResult,
+  FunnelResult,
+  NumericAverageResult,
+  NumericBucketResult,
+  NumericSumResult,
+  PropertyCountsResult,
+  RetentionResult,
+  SavedReportResult,
+  SegmentationResult,
+} from "./types/results/live-query.js";
 import {
-  bookmarkLinkedDashboardIds as bookmarkLinkedDashboardIdsMember,
-  bulkDeleteBookmarks as bulkDeleteBookmarksMember,
-  bulkDeleteCohorts as bulkDeleteCohortsMember,
-  bulkUpdateBookmarks as bulkUpdateBookmarksMember,
-  bulkUpdateCohorts as bulkUpdateCohortsMember,
-  createBookmark as createBookmarkMember,
-  createCohort as createCohortMember,
-  deleteBookmark as deleteBookmarkMember,
-  deleteCohort as deleteCohortMember,
-  getBookmark as getBookmarkMember,
-  getBookmarkHistory as getBookmarkHistoryMember,
-  getCohort as getCohortMember,
-  listBookmarksV2 as listBookmarksV2Member,
-  listCohortsFull as listCohortsFullMember,
-  updateBookmark as updateBookmarkMember,
-  updateCohort as updateCohortMember,
-  type WorkspaceGetBookmarkHistoryOptions,
-  type WorkspaceListBookmarksV2Options,
-  type WorkspaceListCohortsFullOptions,
-} from "./workspace-members/bookmarks-cohorts.js";
-export type {
-  WorkspaceGetBookmarkHistoryOptions,
-  WorkspaceListBookmarksV2Options,
-  WorkspaceListCohortsFullOptions,
-} from "./workspace-members/bookmarks-cohorts.js";
-export { validateBookmarkParamsSchema } from "./workspace-members/bookmarks-cohorts.js";
+  FlowQueryResult,
+  FunnelQueryResult,
+  QueryResult,
+  RetentionQueryResult,
+  UserQueryResult,
+} from "./types/results/query-engine.js";
 import {
-  archiveExperiment as archiveExperimentMember,
-  archiveFeatureFlag as archiveFeatureFlagMember,
-  concludeExperiment as concludeExperimentMember,
-  createExperiment as createExperimentMember,
-  createFeatureFlag as createFeatureFlagMember,
-  decideExperiment as decideExperimentMember,
-  deleteExperiment as deleteExperimentMember,
-  deleteFeatureFlag as deleteFeatureFlagMember,
-  duplicateExperiment as duplicateExperimentMember,
-  duplicateFeatureFlag as duplicateFeatureFlagMember,
-  getExperiment as getExperimentMember,
-  getFeatureFlag as getFeatureFlagMember,
-  getFlagHistory as getFlagHistoryMember,
-  getFlagLimits as getFlagLimitsMember,
-  launchExperiment as launchExperimentMember,
-  listErfExperiments as listErfExperimentsMember,
-  listExperiments as listExperimentsMember,
-  listFeatureFlags as listFeatureFlagsMember,
-  restoreExperiment as restoreExperimentMember,
-  restoreFeatureFlag as restoreFeatureFlagMember,
-  setFlagTestUsers as setFlagTestUsersMember,
-  updateExperiment as updateExperimentMember,
-  updateFeatureFlag as updateFeatureFlagMember,
-  type WorkspaceConcludeExperimentOptions,
-  type WorkspaceGetFlagHistoryOptions,
-  type WorkspaceListExperimentsOptions,
-  type WorkspaceListFeatureFlagsOptions,
-} from "./workspace-members/flags-experiments.js";
-export type {
-  WorkspaceConcludeExperimentOptions,
-  WorkspaceGetFlagHistoryOptions,
-  WorkspaceListExperimentsOptions,
-  WorkspaceListFeatureFlagsOptions,
-} from "./workspace-members/flags-experiments.js";
+  Replay,
+  ReplayBundle,
+  type ReplayEvent,
+  type ReplaySummary,
+  type SignedReplay,
+} from "./types/results/replays.js";
 import {
   bulkDeleteAlerts as bulkDeleteAlertsMember,
   createAlert as createAlertMember,
@@ -236,12 +292,115 @@ import {
   type WorkspaceListAlertsOptions,
   type WorkspaceListAnnotationsOptions,
 } from "./workspace-members/annotations-webhooks-alerts.js";
-export type {
-  WorkspaceGetAlertCountOptions,
-  WorkspaceGetAlertHistoryOptions,
-  WorkspaceListAlertsOptions,
-  WorkspaceListAnnotationsOptions,
-} from "./workspace-members/annotations-webhooks-alerts.js";
+import {
+  bookmarkLinkedDashboardIds as bookmarkLinkedDashboardIdsMember,
+  bulkDeleteBookmarks as bulkDeleteBookmarksMember,
+  bulkDeleteCohorts as bulkDeleteCohortsMember,
+  bulkUpdateBookmarks as bulkUpdateBookmarksMember,
+  bulkUpdateCohorts as bulkUpdateCohortsMember,
+  createBookmark as createBookmarkMember,
+  createCohort as createCohortMember,
+  deleteBookmark as deleteBookmarkMember,
+  deleteCohort as deleteCohortMember,
+  getBookmark as getBookmarkMember,
+  getBookmarkHistory as getBookmarkHistoryMember,
+  getCohort as getCohortMember,
+  listBookmarksV2 as listBookmarksV2Member,
+  listCohortsFull as listCohortsFullMember,
+  updateBookmark as updateBookmarkMember,
+  updateCohort as updateCohortMember,
+  validateBookmarkParamsSchema,
+  type WorkspaceGetBookmarkHistoryOptions,
+  type WorkspaceListBookmarksV2Options,
+  type WorkspaceListCohortsFullOptions,
+} from "./workspace-members/bookmarks-cohorts.js";
+import {
+  addReportToDashboard as addReportToDashboardMember,
+  bulkDeleteDashboards as bulkDeleteDashboardsMember,
+  createBlueprint as createBlueprintMember,
+  createDashboard as createDashboardMember,
+  createRcaDashboard as createRcaDashboardMember,
+  deleteDashboard as deleteDashboardMember,
+  favoriteDashboard as favoriteDashboardMember,
+  finalizeBlueprint as finalizeBlueprintMember,
+  getBlueprintConfig as getBlueprintConfigMember,
+  getBookmarkDashboardIds as getBookmarkDashboardIdsMember,
+  getDashboard as getDashboardMember,
+  getDashboardErf as getDashboardErfMember,
+  listBlueprintTemplates as listBlueprintTemplatesMember,
+  listDashboards as listDashboardsMember,
+  pinDashboard as pinDashboardMember,
+  removeReportFromDashboard as removeReportFromDashboardMember,
+  unfavoriteDashboard as unfavoriteDashboardMember,
+  unpinDashboard as unpinDashboardMember,
+  updateBlueprintCohorts as updateBlueprintCohortsMember,
+  updateDashboard as updateDashboardMember,
+  updateReportLink as updateReportLinkMember,
+  updateTextCard as updateTextCardMember,
+  type WorkspaceListBlueprintTemplatesOptions,
+  type WorkspaceListDashboardsOptions,
+} from "./workspace-members/dashboards.js";
+import {
+  archiveExperiment as archiveExperimentMember,
+  archiveFeatureFlag as archiveFeatureFlagMember,
+  concludeExperiment as concludeExperimentMember,
+  createExperiment as createExperimentMember,
+  createFeatureFlag as createFeatureFlagMember,
+  decideExperiment as decideExperimentMember,
+  deleteExperiment as deleteExperimentMember,
+  deleteFeatureFlag as deleteFeatureFlagMember,
+  duplicateExperiment as duplicateExperimentMember,
+  duplicateFeatureFlag as duplicateFeatureFlagMember,
+  getExperiment as getExperimentMember,
+  getFeatureFlag as getFeatureFlagMember,
+  getFlagHistory as getFlagHistoryMember,
+  getFlagLimits as getFlagLimitsMember,
+  launchExperiment as launchExperimentMember,
+  listErfExperiments as listErfExperimentsMember,
+  listExperiments as listExperimentsMember,
+  listFeatureFlags as listFeatureFlagsMember,
+  restoreExperiment as restoreExperimentMember,
+  restoreFeatureFlag as restoreFeatureFlagMember,
+  setFlagTestUsers as setFlagTestUsersMember,
+  updateExperiment as updateExperimentMember,
+  updateFeatureFlag as updateFeatureFlagMember,
+  type WorkspaceConcludeExperimentOptions,
+  type WorkspaceGetFlagHistoryOptions,
+  type WorkspaceListExperimentsOptions,
+  type WorkspaceListFeatureFlagsOptions,
+} from "./workspace-members/flags-experiments.js";
+import {
+  createCustomEvent as createCustomEventMember,
+  createCustomProperty as createCustomPropertyMember,
+  createDropFilter as createDropFilterMember,
+  defaultMonotonic,
+  deleteCustomEvent as deleteCustomEventMember,
+  deleteCustomProperty as deleteCustomPropertyMember,
+  deleteDropFilter as deleteDropFilterMember,
+  deleteLookupTables as deleteLookupTablesMember,
+  downloadLookupTable as downloadLookupTableMember,
+  getCustomProperty as getCustomPropertyMember,
+  getDropFilterLimits as getDropFilterLimitsMember,
+  getLookupDownloadUrl as getLookupDownloadUrlMember,
+  getLookupUploadStatus as getLookupUploadStatusMember,
+  getLookupUploadUrl as getLookupUploadUrlMember,
+  listCustomEvents as listCustomEventsMember,
+  listCustomProperties as listCustomPropertiesMember,
+  listDropFilters as listDropFiltersMember,
+  listLookupTables as listLookupTablesMember,
+  type LookupUploadSeams,
+  markLookupTableReady as markLookupTableReadyMember,
+  unportedReadFile,
+  updateCustomEvent as updateCustomEventMember,
+  updateCustomProperty as updateCustomPropertyMember,
+  updateDropFilter as updateDropFilterMember,
+  updateLookupTable as updateLookupTableMember,
+  uploadLookupTable as uploadLookupTableMember,
+  validateCustomProperty as validateCustomPropertyMember,
+  type WorkspaceDownloadLookupTableOptions,
+  type WorkspaceListLookupTablesOptions,
+  type WorkspaceUploadLookupTableOptions,
+} from "./workspace-members/governance-data.js";
 import {
   bulkUpdateEventDefinitions as bulkUpdateEventDefinitionsMember,
   bulkUpdatePropertyDefinitions as bulkUpdatePropertyDefinitionsMember,
@@ -262,49 +421,17 @@ import {
   type WorkspaceGetEventDefinitionsOptions,
   type WorkspaceGetPropertyDefinitionsOptions,
 } from "./workspace-members/lexicon-tracking.js";
-export type {
-  WorkspaceExportLexiconOptions,
-  WorkspaceGetEventDefinitionsOptions,
-  WorkspaceGetPropertyDefinitionsOptions,
-} from "./workspace-members/lexicon-tracking.js";
 import {
-  createCustomEvent as createCustomEventMember,
-  createCustomProperty as createCustomPropertyMember,
-  createDropFilter as createDropFilterMember,
-  defaultMonotonic,
-  deleteCustomEvent as deleteCustomEventMember,
-  deleteCustomProperty as deleteCustomPropertyMember,
-  deleteDropFilter as deleteDropFilterMember,
-  deleteLookupTables as deleteLookupTablesMember,
-  downloadLookupTable as downloadLookupTableMember,
-  getCustomProperty as getCustomPropertyMember,
-  getDropFilterLimits as getDropFilterLimitsMember,
-  getLookupDownloadUrl as getLookupDownloadUrlMember,
-  getLookupUploadStatus as getLookupUploadStatusMember,
-  getLookupUploadUrl as getLookupUploadUrlMember,
-  listCustomEvents as listCustomEventsMember,
-  listCustomProperties as listCustomPropertiesMember,
-  listDropFilters as listDropFiltersMember,
-  listLookupTables as listLookupTablesMember,
-  markLookupTableReady as markLookupTableReadyMember,
-  unportedReadFile,
-  updateCustomEvent as updateCustomEventMember,
-  updateCustomProperty as updateCustomPropertyMember,
-  updateDropFilter as updateDropFilterMember,
-  updateLookupTable as updateLookupTableMember,
-  uploadLookupTable as uploadLookupTableMember,
-  validateCustomProperty as validateCustomPropertyMember,
-  type LookupUploadSeams,
-  type WorkspaceDownloadLookupTableOptions,
-  type WorkspaceListLookupTablesOptions,
-  type WorkspaceUploadLookupTableOptions,
-} from "./workspace-members/governance-data.js";
-export type {
-  LookupUploadSeams,
-  WorkspaceDownloadLookupTableOptions,
-  WorkspaceListLookupTablesOptions,
-  WorkspaceUploadLookupTableOptions,
-} from "./workspace-members/governance-data.js";
+  type BusinessContextHost,
+  type BusinessContextScopeOptions,
+  getBusinessContext as getBusinessContextMember,
+  getBusinessContextChain as getBusinessContextChainMember,
+  guardTargetExclusivity,
+  mergeResolverSeams,
+  noProjectError,
+  type ResolverSeams,
+  setBusinessContext as setBusinessContextMember,
+} from "./workspace-members/lifecycle.js";
 import {
   bulkUpdateAnomalies as bulkUpdateAnomaliesMember,
   cancelDeletionRequest as cancelDeletionRequestMember,
@@ -331,198 +458,71 @@ import {
   type WorkspaceListDataVolumeAnomaliesOptions,
   type WorkspaceListSchemaRegistryOptions,
 } from "./workspace-members/schemas-audit.js";
+import { requireEntityId, requireInt64Id } from "./workspace-members/shared.js";
+import {
+  buildPageKwargs,
+  buildStatsKwargs,
+  type EventsInput,
+  type FilterWhereInput,
+  flowModeFromParams,
+  type GroupByInput,
+  type ParamsDict,
+  resolveAndBuildFlowParams,
+  resolveAndBuildFunnelParams,
+  resolveAndBuildParams,
+  resolveAndBuildRetentionParams,
+  resolveAndBuildUserParams,
+  type TodayFn,
+  type WhereInput,
+} from "./workspace-query-params.js";
+
+export type { MeCacheStore, MeService } from "./services/me.js";
+export type {
+  WorkspaceGetAlertCountOptions,
+  WorkspaceGetAlertHistoryOptions,
+  WorkspaceListAlertsOptions,
+  WorkspaceListAnnotationsOptions,
+} from "./workspace-members/annotations-webhooks-alerts.js";
+export type {
+  WorkspaceGetBookmarkHistoryOptions,
+  WorkspaceListBookmarksV2Options,
+  WorkspaceListCohortsFullOptions,
+} from "./workspace-members/bookmarks-cohorts.js";
+export { validateBookmarkParamsSchema } from "./workspace-members/bookmarks-cohorts.js";
+export type {
+  WorkspaceListBlueprintTemplatesOptions,
+  WorkspaceListDashboardsOptions,
+} from "./workspace-members/dashboards.js";
+export type {
+  WorkspaceConcludeExperimentOptions,
+  WorkspaceGetFlagHistoryOptions,
+  WorkspaceListExperimentsOptions,
+  WorkspaceListFeatureFlagsOptions,
+} from "./workspace-members/flags-experiments.js";
+export type {
+  LookupUploadSeams,
+  WorkspaceDownloadLookupTableOptions,
+  WorkspaceListLookupTablesOptions,
+  WorkspaceUploadLookupTableOptions,
+} from "./workspace-members/governance-data.js";
+export type {
+  WorkspaceExportLexiconOptions,
+  WorkspaceGetEventDefinitionsOptions,
+  WorkspaceGetPropertyDefinitionsOptions,
+} from "./workspace-members/lexicon-tracking.js";
+export type {
+  BusinessContextLevel,
+  BusinessContextScopeOptions,
+  ResolveProjectAxisArgs,
+  ResolverSeams,
+  ResolveSessionArgs,
+} from "./workspace-members/lifecycle.js";
 export type {
   WorkspaceDeleteSchemasOptions,
   WorkspaceGetSchemaEnforcementOptions,
   WorkspaceListDataVolumeAnomaliesOptions,
   WorkspaceListSchemaRegistryOptions,
 } from "./workspace-members/schemas-audit.js";
-import type {
-  AuditResponse,
-  BulkCreateSchemasParams,
-  BulkCreateSchemasResponse,
-  BulkPatchResult,
-  BulkUpdateAnomalyParams,
-  CreateDeletionRequestParams,
-  DataVolumeAnomaly,
-  DeleteSchemasResponse,
-  EventDeletionRequest,
-  InitSchemaEnforcementParams,
-  PreviewDeletionFiltersParams,
-  ReplaceSchemaEnforcementParams,
-  SchemaEnforcementConfig,
-  SchemaEntry,
-  UpdateAnomalyParams,
-  UpdateSchemaEnforcementParams,
-} from "./types/entities/schemas.js";
-import type {
-  CreateCustomEventParams,
-  CreateCustomPropertyParams,
-  CreateDropFilterParams,
-  CustomEvent,
-  CustomProperty,
-  DropFilter,
-  DropFilterLimitsResponse,
-  LookupTable,
-  LookupTableUploadUrl,
-  MarkLookupTableReadyParams,
-  UpdateCustomPropertyParams,
-  UpdateDropFilterParams,
-  UpdateLookupTableParams,
-  UploadLookupTableParams,
-} from "./types/entities/data-governance.js";
-import type {
-  BulkUpdateEventsParams,
-  BulkUpdatePropertiesParams,
-  CreateTagParams,
-  EventDefinition,
-  LexiconTag,
-  PropertyDefinition,
-  UpdateEventDefinitionParams,
-  UpdatePropertyDefinitionParams,
-  UpdateTagParams,
-} from "./types/entities/lexicon.js";
-import type {
-  Annotation,
-  AnnotationTag,
-  CreateAnnotationParams,
-  CreateAnnotationTagParams,
-  UpdateAnnotationParams,
-} from "./types/entities/annotations.js";
-import type {
-  CreateWebhookParams,
-  ProjectWebhook,
-  UpdateWebhookParams,
-  WebhookMutationResult,
-  WebhookTestParams,
-  WebhookTestResult,
-} from "./types/entities/webhooks.js";
-import type {
-  AlertCount,
-  AlertHistoryResponse,
-  AlertScreenshotResponse,
-  CreateAlertParams,
-  CustomAlert,
-  UpdateAlertParams,
-  ValidateAlertsForBookmarkParams,
-  ValidateAlertsForBookmarkResponse,
-} from "./types/entities/alerts.js";
-import type {
-  CreateFeatureFlagParams,
-  FeatureFlag,
-  FlagHistoryResponse,
-  FlagLimitsResponse,
-  SetTestUsersParams,
-  UpdateFeatureFlagParams,
-} from "./types/entities/feature-flags.js";
-import type {
-  CreateExperimentParams,
-  DuplicateExperimentParams,
-  Experiment,
-  ExperimentDecideParams,
-  UpdateExperimentParams,
-} from "./types/entities/experiments.js";
-import type {
-  Bookmark,
-  BookmarkHistoryResponse,
-  BulkUpdateBookmarkEntry,
-  CreateBookmarkParams,
-  UpdateBookmarkParams,
-} from "./types/entities/bookmarks.js";
-import type {
-  BulkUpdateCohortEntry,
-  Cohort,
-  CreateCohortParams,
-  UpdateCohortParams,
-} from "./types/entities/cohorts.js";
-import type {
-  BlueprintConfig,
-  BlueprintFinishParams,
-  BlueprintTemplate,
-  CreateDashboardParams,
-  CreateRcaDashboardParams,
-  Dashboard,
-  UpdateDashboardParams,
-  UpdateReportLinkParams,
-  UpdateTextCardParams,
-} from "./types/entities/dashboards.js";
-import type { Account } from "./auth/account.js";
-import type { Project, WorkspaceRef } from "./auth/session.js";
-import type {
-  BusinessContext,
-  BusinessContextChain,
-} from "./types/entities/business-context.js";
-import type { PublicWorkspace } from "./types/entities/common.js";
-import type { MeResponse } from "./client/me.js";
-import type {
-  BookmarkType,
-  EntityType,
-  ReportLinkType,
-} from "./types/literals.js";
-import type { CohortDefinition } from "./types/query-params/cohort.js";
-import type { Filter } from "./types/query-params/filter.js";
-import type { FlowStep } from "./types/query-params/flow.js";
-import type {
-  Exclusion,
-  FunnelStep,
-  HoldingConstant,
-} from "./types/query-params/funnel.js";
-import type { TimeComparison } from "./types/query-params/metric.js";
-import type { RetentionEvent } from "./types/query-params/retention.js";
-import type {
-  BookmarkInfo,
-  FunnelInfo,
-  LexiconSchema,
-  ProfilePageResult,
-  SavedCohort,
-  SchemaGraphResult,
-  SubPropertyInfo,
-  TopEvent,
-} from "./types/results/discovery.js";
-import type {
-  ActivityFeedResult,
-  EventCountsResult,
-  FlowsResult,
-  FrequencyResult,
-  FunnelResult,
-  NumericAverageResult,
-  NumericBucketResult,
-  NumericSumResult,
-  PropertyCountsResult,
-  RetentionResult,
-  SavedReportResult,
-  SegmentationResult,
-} from "./types/results/live-query.js";
-import {
-  Replay,
-  ReplayBundle,
-  type ReplayEvent,
-  type ReplaySummary,
-  type SignedReplay,
-} from "./types/results/replays.js";
-import {
-  FlowQueryResult,
-  FunnelQueryResult,
-  QueryResult,
-  RetentionQueryResult,
-  UserQueryResult,
-} from "./types/results/query-engine.js";
-import {
-  buildPageKwargs,
-  buildStatsKwargs,
-  flowModeFromParams,
-  resolveAndBuildFlowParams,
-  resolveAndBuildFunnelParams,
-  resolveAndBuildParams,
-  resolveAndBuildRetentionParams,
-  resolveAndBuildUserParams,
-  type EventsInput,
-  type FilterWhereInput,
-  type GroupByInput,
-  type ParamsDict,
-  type TodayFn,
-  type WhereInput,
-} from "./workspace-query-params.js";
 
 /** Options bag of the {@link Workspace} constructor. */
 export interface WorkspaceOptions {
@@ -652,7 +652,7 @@ export interface WorkspaceLogger extends DiscoveryLogger {
    *
    * @param message - The formatted text (never vector-compared).
    */
-  warning?(message: string): void;
+  warning?: (message: string) => void;
   /**
    * Record an informational message — added at B6-W7 for the single
    * `logger.info` site of the lookup-table upload orchestrator
@@ -660,7 +660,7 @@ export interface WorkspaceLogger extends DiscoveryLogger {
    *
    * @param message - The formatted text (never vector-compared).
    */
-  info?(message: string): void;
+  info?: (message: string) => void;
 }
 
 /** Options bag of {@link Workspace.events}. */
@@ -936,11 +936,13 @@ export interface WorkspaceQueryOptions {
   readonly time_comparison?: TimeComparison | null | undefined;
   /** Optional data group ID. */
   readonly data_group_id?: number | null | undefined;
-  /** Segments to return, 1 to 50000. Default `null` keeps the 3000 the
+  /**
+   * Segments to return, 1 to 50000. Default `null` keeps the 3000 the
    * Mixpanel UI uses. Raise it for a high-cardinality breakdown, and
    * check `result.meta["is_segmentation_limit_hit"]` to see whether the
    * answer was still truncated. Ignored by {@link Workspace.buildParams}
-   * (an execution setting the params do not store). */
+   * (an execution setting the params do not store).
+   */
   readonly limit?: number | null | undefined;
   /** Clock seam threaded into the time-section builder. */
   readonly today?: TodayFn | undefined;
@@ -990,8 +992,10 @@ export interface WorkspaceFunnelQueryOptions {
   readonly time_comparison?: TimeComparison | null | undefined;
   /** Optional data group ID. */
   readonly data_group_id?: number | null | undefined;
-  /** Segments to return, 1 to 50000. Default `null` keeps the 3000 the
-   * Mixpanel UI uses. Ignored by {@link Workspace.buildFunnelParams}. */
+  /**
+   * Segments to return, 1 to 50000. Default `null` keeps the 3000 the
+   * Mixpanel UI uses. Ignored by {@link Workspace.buildFunnelParams}.
+   */
   readonly limit?: number | null | undefined;
   /** Clock seam. */
   readonly today?: TodayFn | undefined;
@@ -1073,8 +1077,10 @@ export interface WorkspaceRetentionQueryOptions {
   readonly time_comparison?: TimeComparison | null | undefined;
   /** Optional data group ID. */
   readonly data_group_id?: number | null | undefined;
-  /** Segments to return, 1 to 50000. Default `null` keeps the 3000 the
-   * Mixpanel UI uses. Ignored by {@link Workspace.buildRetentionParams}. */
+  /**
+   * Segments to return, 1 to 50000. Default `null` keeps the 3000 the
+   * Mixpanel UI uses. Ignored by {@link Workspace.buildRetentionParams}.
+   */
   readonly limit?: number | null | undefined;
   /** Clock seam. */
   readonly today?: TodayFn | undefined;
@@ -1139,11 +1145,15 @@ export interface WorkspaceUserQueryOptions {
  * `:3340-3345`, `:4584-4589`).
  */
 export interface WorkspaceRunParamsOptions {
-  /** Segments to return, 1 to 50000. Default `null` keeps the 3000 the
-   * Mixpanel UI uses. */
+  /**
+   * Segments to return, 1 to 50000. Default `null` keeps the 3000 the
+   * Mixpanel UI uses.
+   */
   readonly limit?: number | null | undefined;
-  /** Optional data view to run under. Wins over the pinned session
-   * workspace. */
+  /**
+   * Optional data view to run under. Wins over the pinned session
+   * workspace.
+   */
   readonly workspace_id?: number | null | undefined;
 }
 
@@ -1152,15 +1162,19 @@ export interface WorkspaceRunParamsOptions {
  * (`workspace.py:4170-4175`).
  */
 export interface WorkspaceRunFlowParamsOptions {
-  /** Flow chart mode. `null` / `undefined` (default) derives it from the
+  /**
+   * Flow chart mode. `null` / `undefined` (default) derives it from the
    * params: `flows_merge_type` (`"tree"`, `"list"` for paths, `"graph"`
    * for sankey) when present, else `chartType` (`"top-paths"` or
    * `"paths"` for paths, `"tree"`, anything else sankey). Params from
    * {@link Workspace.buildFlowParams} always resolve to the mode they
-   * were built with. Pass a value to override. */
+   * were built with. Pass a value to override.
+   */
   readonly mode?: FlowMode | null | undefined;
-  /** Optional data view to run under. Wins over the pinned session
-   * workspace. */
+  /**
+   * Optional data view to run under. Wins over the pinned session
+   * workspace.
+   */
   readonly workspace_id?: number | null | undefined;
 }
 
@@ -1171,11 +1185,15 @@ export interface WorkspaceRunFlowParamsOptions {
  * defaults as {@link Workspace.queryUser}.
  */
 export interface WorkspaceRunUserParamsOptions {
-  /** Maximum profiles to return in profiles mode. `null` fetches all
-   * matching profiles. Ignored in aggregate mode. Default `1`. */
+  /**
+   * Maximum profiles to return in profiles mode. `null` fetches all
+   * matching profiles. Ignored in aggregate mode. Default `1`.
+   */
   readonly limit?: number | null | undefined;
-  /** Fetch profile pages concurrently. Ignored when `limit` is `1` or
-   * in aggregate mode. Default `false`. */
+  /**
+   * Fetch profile pages concurrently. Ignored when `limit` is `1` or
+   * in aggregate mode. Default `false`.
+   */
   readonly parallel?: boolean | undefined;
   /** Maximum concurrent workers for parallel fetching. Default `5`. */
   readonly workers?: number | undefined;
@@ -1213,8 +1231,10 @@ export interface WorkspaceCreateReportLinkOptions {
   readonly workspace_id?: number | null | undefined;
   /** Optional saved-report reference to store. */
   readonly bookmark_id?: number | null | undefined;
-  /** Run the client-side bookmark schema check before the POST
-   * (default). `false` sends the params as given. */
+  /**
+   * Run the client-side bookmark schema check before the POST
+   * (default). `false` sends the params as given.
+   */
   readonly validate?: boolean | undefined;
 }
 
@@ -1334,9 +1354,7 @@ export class Workspace {
     // branch (`workspace.py:455-465` — packet §14 Caution 4 order).
     guardTargetExclusivity(options);
     let session: Session;
-    if (options.session !== undefined) {
-      session = options.session;
-    } else {
+    if (options.session === undefined) {
       // B7-A1: the resolver constructor kwargs (`workspace.py:427-430`)
       // resolve through `resolveSession(...)` over injected sources
       // (R9.4). The bridge-token materialization side effect
@@ -1368,13 +1386,15 @@ export class Workspace {
         },
         sources,
       );
+    } else {
+      session = options.session;
     }
     this.#session = session;
     this.client =
       options.client ??
       createMixpanelClient({
         session,
-        ...(options.clientOptions ?? {}),
+        ...options.clientOptions,
       });
     this.#accountName = session.account.name;
     this.#seams = mergeResolverSeams(options.seams);
@@ -1427,8 +1447,8 @@ export class Workspace {
   get discoveryService(): DiscoveryService {
     if (this.#discovery === null) {
       this.#discovery = new DiscoveryService(this.client, {
-        ...(this.#warn !== undefined ? { warn: this.#warn } : {}),
-        ...(this.#logger !== undefined ? { logger: this.#logger } : {}),
+        ...(this.#warn === undefined ? {} : { warn: this.#warn }),
+        ...(this.#logger === undefined ? {} : { logger: this.#logger }),
       });
     }
     return this.#discovery;
@@ -1455,7 +1475,6 @@ export class Workspace {
    *   B7 seams are unimplemented (the `target=` / `account=` /
    *   `persist=true` branches).
    * @throws ConfigError - `account=` swap resolves no project axis.
-   *
    * @example
    * ```typescript
    * for (const project of await ws.projects()) {
@@ -1482,7 +1501,10 @@ export class Workspace {
       newAccount = resolved.account;
       newProject = resolved.project;
       newWorkspace = resolved.workspace ?? null;
-    } else if (account !== null) {
+    } else if (account === null) {
+      newProject = project === null ? null : { id: project };
+      newWorkspace = workspace === null ? null : { id: workspace };
+    } else {
       // Explicit account swap (FR-033): the project re-resolves against
       // the NEW account; the workspace axis is cleared unless supplied
       // explicitly or by MP_WORKSPACE_ID.
@@ -1496,15 +1518,12 @@ export class Workspace {
         throw noProjectError(newAccount);
       }
       newProject = { id: projectId };
-      if (workspace !== null) {
-        newWorkspace = { id: workspace };
-      } else {
+      if (workspace === null) {
         const envWs = await this.#seams.envWorkspaceId();
-        newWorkspace = envWs !== null ? { id: envWs } : null;
+        newWorkspace = envWs === null ? null : { id: envWs };
+      } else {
+        newWorkspace = { id: workspace };
       }
-    } else {
-      newProject = project !== null ? { id: project } : null;
-      newWorkspace = workspace !== null ? { id: workspace } : null;
     }
 
     await this.client.use({
@@ -1572,7 +1591,7 @@ export class Workspace {
   get liveQueryService(): LiveQueryService {
     if (this.#liveQuery === null) {
       this.#liveQuery = new LiveQueryService(this.client, {
-        ...(this.#warn !== undefined ? { warn: this.#warn } : {}),
+        ...(this.#warn === undefined ? {} : { warn: this.#warn }),
       });
     }
     return this.#liveQuery;
@@ -1868,7 +1887,6 @@ export class Workspace {
    * @throws BookmarkValidationError - Argument or bookmark validation.
    * @throws AuthenticationError | QueryError | RateLimitError - Wire
    *   failures.
-   *
    * @example
    * ```typescript
    * const result = await ws.query("Login", { math: "unique", last: 7 });
@@ -1900,7 +1918,6 @@ export class Workspace {
    * @throws ValueError - `limit` is not an integer from 1 to 50000.
    * @throws AuthenticationError | QueryError | RateLimitError - Wire
    *   failures.
-   *
    * @example
    * ```typescript
    * const params = await ws.buildParams("Login", { group_by: "$city", last: 7 });
@@ -1966,7 +1983,7 @@ export class Workspace {
       mode: options.mode ?? "timeseries",
       time_comparison: options.time_comparison ?? null,
       data_group_id: options.data_group_id ?? null,
-      ...(options.today !== undefined ? { today: options.today } : {}),
+      ...(options.today === undefined ? {} : { today: options.today }),
     });
   }
 
@@ -2011,7 +2028,6 @@ export class Workspace {
    * @throws ValueError - `limit` is not an integer from 1 to 50000.
    * @throws AuthenticationError | QueryError | RateLimitError - Wire
    *   failures.
-   *
    * @example
    * ```typescript
    * const params = await ws.buildFunnelParams(["Signup", "Purchase"]);
@@ -2076,7 +2092,7 @@ export class Workspace {
       reentry_mode: options.reentry_mode ?? null,
       time_comparison: options.time_comparison ?? null,
       data_group_id: options.data_group_id ?? null,
-      ...(options.today !== undefined ? { today: options.today } : {}),
+      ...(options.today === undefined ? {} : { today: options.today }),
     });
   }
 
@@ -2122,7 +2138,6 @@ export class Workspace {
    * @returns Steps, flows, breakdowns and metadata.
    * @throws AuthenticationError | QueryError | RateLimitError - Wire
    *   failures.
-   *
    * @example
    * ```typescript
    * const params = await ws.buildFlowParams("Login", { mode: "tree", last: 7 });
@@ -2188,7 +2203,7 @@ export class Workspace {
       data_group_id: options.data_group_id ?? null,
       segments: options.segments ?? null,
       exclusions: options.exclusions ?? null,
-      ...(options.today !== undefined ? { today: options.today } : {}),
+      ...(options.today === undefined ? {} : { today: options.today }),
     });
   }
 
@@ -2239,7 +2254,6 @@ export class Workspace {
    * @throws ValueError - `limit` is not an integer from 1 to 50000.
    * @throws AuthenticationError | QueryError | RateLimitError - Wire
    *   failures.
-   *
    * @example
    * ```typescript
    * const params = await ws.buildRetentionParams("Signup", "Login");
@@ -2308,7 +2322,7 @@ export class Workspace {
       retention_cumulative: options.retention_cumulative ?? false,
       time_comparison: options.time_comparison ?? null,
       data_group_id: options.data_group_id ?? null,
-      ...(options.today !== undefined ? { today: options.today } : {}),
+      ...(options.today === undefined ? {} : { today: options.today }),
     });
   }
 
@@ -2361,7 +2375,6 @@ export class Workspace {
    * @returns Profiles/aggregate payload with metadata.
    * @throws AuthenticationError | QueryError | RateLimitError |
    *   ServerError - Wire failures.
-   *
    * @example
    * ```typescript
    * const params = await ws.buildUserParams({
@@ -2465,7 +2478,7 @@ export class Workspace {
       parallel: options.parallel ?? false,
       workers: options.workers ?? 5,
       include_all_users: options.include_all_users ?? false,
-      ...(options.today !== undefined ? { today: options.today } : {}),
+      ...(options.today === undefined ? {} : { today: options.today }),
     });
   }
 
@@ -2708,22 +2721,22 @@ export class Workspace {
         try {
           const [pnum, profiles] = await fetchPage(pageNum);
           pageResults.set(pnum, profiles);
-        } catch (exc) {
+        } catch (error) {
           if (
-            exc instanceof AuthenticationError ||
-            exc instanceof RateLimitError ||
-            exc instanceof ServerError ||
-            exc instanceof QueryError
+            error instanceof AuthenticationError ||
+            error instanceof RateLimitError ||
+            error instanceof ServerError ||
+            error instanceof QueryError
           ) {
             // Python cancels the queued futures and re-raises out of
             // the `with` block (running futures still finish).
-            aborted = exc;
+            aborted = error;
             return;
           }
           this.#logger?.warning?.(
             `Failed to fetch page ${pageNum} (${
-              exc instanceof Error ? exc.constructor.name : typeof exc
-            }: ${String(exc)}), continuing with partial results`,
+              error instanceof Error ? error.constructor.name : typeof error
+            }: ${String(error)}), continuing with partial results`,
           );
           failedPages.push(pageNum);
         }
@@ -2855,7 +2868,6 @@ export class Workspace {
    *
    * Emits the injected {@link WarningSink} (Python `UserWarning`) for
    * mixed scalar types, mixed scalar/nested shapes, and all-null keys.
-   *
    * @example
    * ```typescript
    * for (const sp of await ws.subproperties("cart", { event: "Cart Viewed" })) {
@@ -2917,7 +2929,7 @@ export class Workspace {
   ): Promise<TopEvent[]> {
     return this.discoveryService.listTopEvents({
       type: options.type ?? "general",
-      ...(options.limit !== undefined ? { limit: options.limit } : {}),
+      ...(options.limit === undefined ? {} : { limit: options.limit }),
     });
   }
 
@@ -2982,7 +2994,6 @@ export class Workspace {
    * @param options - Density / user-property / refresh switches.
    * @returns The schema graph, with row views and `toGraph()`.
    * @throws AuthenticationError - Credentials rejected.
-   *
    * @example
    * ```typescript
    * const schema = await ws.schemaGraph();
@@ -3023,8 +3034,8 @@ export class Workspace {
           events: string,
           options: Readonly<Record<string, unknown>>,
         ) => this.query(events, options as WorkspaceQueryOptions),
-        ...(this.#warn !== undefined ? { warn: this.#warn } : {}),
-        ...(this.#logger !== undefined ? { logger: this.#logger } : {}),
+        ...(this.#warn === undefined ? {} : { warn: this.#warn }),
+        ...(this.#logger === undefined ? {} : { logger: this.#logger }),
       });
     }
     return this.#replays;
@@ -3373,15 +3384,15 @@ export class Workspace {
               cdn_concurrency: options.cdn_concurrency ?? 50,
             }),
           );
-        } catch (exc) {
+        } catch (error) {
           // One replay's CDN stall, 404, or parse error must not sink
           // the whole bundle. Log it and keep the successful replays;
           // only an all-fail batch raises.
           this.#logger?.warning?.(
             `fetch_replays: skipping replay ${rid} — ` +
-              `${exc instanceof Error ? exc.name : typeof exc}: ${String(exc)}`,
+              `${error instanceof Error ? error.name : typeof error}: ${String(error)}`,
           );
-          failures.push([rid, exc]);
+          failures.push([rid, error]);
         }
       }
     };
@@ -3399,7 +3410,7 @@ export class Workspace {
       // `B5-S3-notes.md` §2).
       throw failures[0]?.[1];
     }
-    let ordered = [...results.entries()]
+    let ordered = [...results]
       .sort((a, b) => a[0] - b[0])
       .map(([, replay]) => replay);
 
@@ -3644,7 +3655,6 @@ export class Workspace {
    * @param options - `refresh` bypasses the `/me` caches first.
    * @returns Projects sorted by name.
    * @throws ConfigError - Credentials lack `/me` access.
-   *
    * @example
    * ```typescript
    * for (const project of await ws.projects()) {
@@ -3825,7 +3835,6 @@ export class Workspace {
    *   (`RESPONSE_VALIDATION_ERROR`).
    * @throws AuthenticationError | QueryError | ServerError - Wire
    *   failures.
-   *
    * @example
    * ```typescript
    * for (const d of await ws.listDashboards()) {
@@ -4187,7 +4196,6 @@ export class Workspace {
    *   (`RESPONSE_VALIDATION_ERROR`).
    * @throws AuthenticationError | QueryError | ServerError - Wire
    *   failures.
-   *
    * @example
    * ```typescript
    * for (const r of await ws.listBookmarksV2({ bookmark_type: "funnels" })) {
@@ -4445,7 +4453,6 @@ export class Workspace {
    *   (`RESPONSE_VALIDATION_ERROR`).
    * @throws AuthenticationError | QueryError | ServerError - Wire
    *   failures.
-   *
    * @example
    * ```typescript
    * for (const f of await ws.listFeatureFlags()) {
@@ -4467,7 +4474,6 @@ export class Workspace {
    * @returns The newly created `FeatureFlag`.
    * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
    * @throws ResponseValidationError - Malformed payload.
-   *
    * @example
    * ```typescript
    * const flag = await ws.createFeatureFlag(
@@ -4777,7 +4783,6 @@ export class Workspace {
    *   (`RESPONSE_VALIDATION_ERROR`).
    * @throws AuthenticationError | QueryError | ServerError - Wire
    *   failures.
-   *
    * @example
    * ```typescript
    * for (const ann of await ws.listAnnotations({ from_date: "2026-01-01" })) {
@@ -4799,7 +4804,6 @@ export class Workspace {
    *   required).
    * @returns The created `Annotation`.
    * @throws ResponseValidationError - Malformed payload.
-   *
    * @example
    * ```typescript
    * const ann = await ws.createAnnotation(
@@ -4895,7 +4899,6 @@ export class Workspace {
    *
    * @returns The `ProjectWebhook` models, in response order.
    * @throws ResponseValidationError - Malformed payload.
-   *
    * @example
    * ```typescript
    * for (const wh of await ws.listWebhooks()) {
@@ -4969,7 +4972,6 @@ export class Workspace {
    *   in Python).
    * @returns The `CustomAlert` models, in response order.
    * @throws ResponseValidationError - Malformed payload.
-   *
    * @example
    * ```typescript
    * for (const alert of await ws.listAlerts()) {
@@ -5147,7 +5149,6 @@ export class Workspace {
    *   (`RESPONSE_VALIDATION_ERROR`).
    * @throws AuthenticationError | QueryError | ServerError - Wire
    *   failures.
-   *
    * @example
    * ```typescript
    * const defs = await ws.getEventDefinitions({
@@ -5173,7 +5174,6 @@ export class Workspace {
    *   verified, tags, display_name, description).
    * @returns The updated `EventDefinition`.
    * @throws ResponseValidationError - Malformed payload.
-   *
    * @example
    * ```typescript
    * const definition = await ws.updateEventDefinition(
@@ -5225,7 +5225,6 @@ export class Workspace {
    *   `resource_type` filter, both keyword-only in Python.
    * @returns The `PropertyDefinition` models, in response order.
    * @throws ResponseValidationError - Malformed payload.
-   *
    * @example
    * ```typescript
    * const defs = await ws.getPropertyDefinitions({
@@ -5393,7 +5392,6 @@ export class Workspace {
    * @returns The opaque export record.
    * @throws AuthenticationError | QueryError | ServerError - Wire
    *   failures.
-   *
    * @example
    * ```typescript
    * const exported = await ws.exportLexicon({
@@ -5436,7 +5434,6 @@ export class Workspace {
    *   (`RESPONSE_VALIDATION_ERROR`).
    * @throws AuthenticationError | QueryError | ServerError - Wire
    *   failures.
-   *
    * @example
    * ```typescript
    * for (const filter of await ws.listDropFilters()) {
@@ -5455,7 +5452,6 @@ export class Workspace {
    * @param params - Drop filter creation parameters.
    * @returns The FULL list of `DropFilter` models after creation.
    * @throws ResponseValidationError - Malformed payload.
-   *
    * @example
    * ```typescript
    * const filters = await ws.createDropFilter(
@@ -5609,7 +5605,6 @@ export class Workspace {
    *   Python).
    * @returns The `LookupTable` models, in response order.
    * @throws ResponseValidationError - Malformed payload.
-   *
    * @example
    * ```typescript
    * const tables = await ws.listLookupTables({ data_group_id: 5 });
@@ -5643,7 +5638,6 @@ export class Workspace {
    *   `UPLOAD_NOT_FOUND` / `UPLOAD_TIMEOUT` / `INVALID_RESPONSE` from
    *   the async poll.
    * @throws ResponseValidationError - Malformed payload.
-   *
    * @example
    * ```typescript
    * const table = await ws.uploadLookupTable(
@@ -5752,7 +5746,7 @@ export class Workspace {
    *   network-free guard, before any request.
    */
   async deleteLookupTables(
-    dataGroupIds: readonly (number | bigint)[],
+    dataGroupIds: ReadonlyArray<number | bigint>,
   ): Promise<void> {
     for (const dataGroupId of dataGroupIds) {
       requireInt64Id("data_group_ids", dataGroupId);
@@ -5818,7 +5812,6 @@ export class Workspace {
    *   non-empty, duplicate-free `alternatives` list).
    * @returns The created `CustomEvent` (server-assigned `id`).
    * @throws ResponseValidationError - Malformed payload.
-   *
    * @example
    * ```typescript
    * const ce = await ws.createCustomEvent(
@@ -5907,7 +5900,6 @@ export class Workspace {
    *   (`RESPONSE_VALIDATION_ERROR`).
    * @throws AuthenticationError | RateLimitError | QueryError |
    *   ServerError - Wire failures.
-   *
    * @example
    * ```typescript
    * for (const entry of await ws.listSchemaRegistry({ entity_type: "event" })) {
@@ -5931,7 +5923,6 @@ export class Workspace {
    * @returns The created schema, verbatim.
    * @throws AuthenticationError | QueryError | RateLimitError |
    *   ServerError - Wire failures.
-   *
    * @example
    * ```typescript
    * await ws.createSchema("event", "Purchase", {
@@ -6009,7 +6000,6 @@ export class Workspace {
    * @throws MixpanelHeadlessError - `entity_name` given without
    *   `entity_type` (raised before any request).
    * @throws ResponseValidationError - Malformed payload.
-   *
    * @example
    * ```typescript
    * const resp = await ws.deleteSchemas({
@@ -6101,7 +6091,6 @@ export class Workspace {
    * @throws MixpanelHeadlessError - Unexpected audit-response shape.
    * @throws ResponseValidationError - A malformed violation entry.
    * @throws QueryError - No schemas defined (400).
-   *
    * @example
    * ```typescript
    * const audit = await ws.runAudit();
@@ -6135,7 +6124,6 @@ export class Workspace {
    *   event_id, …).
    * @returns The `DataVolumeAnomaly` models, in response order.
    * @throws ResponseValidationError - Malformed payload.
-   *
    * @example
    * ```typescript
    * const anomalies = await ws.listDataVolumeAnomalies({
@@ -6262,9 +6250,9 @@ export class Workspace {
     }
     try {
       return await this.resolveWorkspaceId();
-    } catch (exc) {
-      if (!(exc instanceof WorkspaceScopeError)) {
-        throw exc;
+    } catch (error) {
+      if (!(error instanceof WorkspaceScopeError)) {
+        throw error;
       }
       this.#logger?.debug(
         `report link: no workspace resolved for project ` +
@@ -6301,7 +6289,6 @@ export class Workspace {
    * @throws QueryError - The server rejected the record (400/422).
    * @throws RateLimitError - Rate limit exceeded (429).
    * @throws ServerError - Server-side errors (5xx).
-   *
    * @example
    * ```typescript
    * const result = await ws.query(Metric.total("Login"), { last: 7 });
@@ -6547,7 +6534,6 @@ export class Workspace {
    *   server returned does not match the expected shape.
    * @throws MixpanelHeadlessError - A transport failure (`HTTP_ERROR`)
    *   or a response that is not a JSON object.
-   *
    * @example
    * ```typescript
    * const r = await ws.resolveReportLink(
@@ -6572,11 +6558,11 @@ export class Workspace {
     const projectId = this.#projectId();
     const pinned = this.#session.workspace ?? null;
     const workspaceId =
-      parsed.workspace_id !== null
-        ? parsed.workspace_id
-        : pinned !== null
-          ? pinned.id
-          : null;
+      parsed.workspace_id === null
+        ? pinned === null
+          ? null
+          : pinned.id
+        : parsed.workspace_id;
 
     if (parsed.kind === "slug") {
       const raw = await this.client.getBookmarkUrl(parsed.slug as string);
@@ -6619,7 +6605,7 @@ export class Workspace {
         input: link,
         expanded_url: expandedUrl,
         slug: record.slug,
-        bookmark_id: embedded !== null ? embedded.id : record.bookmark_id,
+        bookmark_id: embedded === null ? record.bookmark_id : embedded.id,
         bookmark: embedded,
         name: record.name,
         description: record.description,
@@ -6632,8 +6618,8 @@ export class Workspace {
     let bookmark: Bookmark;
     try {
       bookmark = await this.getBookmark(bookmarkId);
-    } catch (exc) {
-      if (exc instanceof QueryError && exc.statusCode === 404) {
+    } catch (error) {
+      if (error instanceof QueryError && error.statusCode === 404) {
         // get_bookmark is workspace-scoped when a workspace is pinned,
         // so a report in a sibling workspace of the same project also
         // 404s. Say so, instead of "not in this project".
@@ -6653,7 +6639,7 @@ export class Workspace {
                   "ws.use(workspace=<id>) (CLI: mp --workspace " +
                   "<id> ...) or unpin the workspace and retry.",
               },
-              cause: exc,
+              cause: error,
             },
           );
         }
@@ -6669,11 +6655,11 @@ export class Workspace {
                 "and region that own it (ws.use(project=...); CLI: " +
                 "mp --project ...) and retry.",
             },
-            cause: exc,
+            cause: error,
           },
         );
       }
-      throw exc;
+      throw error;
     }
     if (parsed.overrides_jsurl !== null) {
       this.#logger?.warning?.(
@@ -6698,7 +6684,7 @@ export class Workspace {
     return new ResolvedReport({
       source: "bookmark",
       report_type: reportType,
-      params: { ...(bookmark.params ?? {}) },
+      params: { ...bookmark.params },
       project_id: projectId,
       workspace_id: workspaceId,
       region,
@@ -6750,7 +6736,6 @@ export class Workspace {
    * @throws AuthenticationError - Invalid credentials.
    * @throws RateLimitError - Rate limit exceeded.
    * @throws ServerError - Server-side errors.
-   *
    * @example
    * ```typescript
    * const rows = (await ws.queryReportLink("EBrV5bW2u9Mw")).toRows();
@@ -6848,7 +6833,6 @@ export class Workspace {
    * @throws ParamValidationError - `RL1_UNKNOWN_REPORT_TYPE`,
    *   `RL3_UNKNOWN_REGION`, or `RL6_INVALID_ID` (a zero or negative
    *   `bookmark_id` or `workspace_id`).
-   *
    * @example
    * ```typescript
    * ws.savedReportLink(123, { report_type: "funnels" });
@@ -6867,7 +6851,7 @@ export class Workspace {
     const pinned = this.#session.workspace ?? null;
     const explicit = options.workspace_id ?? null;
     const wid =
-      explicit !== null ? explicit : pinned !== null ? pinned.id : null;
+      explicit === null ? (pinned === null ? null : pinned.id) : explicit;
     return buildBookmarkUrl({
       region: this.#session.account.region,
       project_id: this.#projectId(),
@@ -6894,8 +6878,9 @@ export function checkEventPropertiesCount(
   if (eventProperties !== null && eventProperties.length > 5) {
     throw new ParamValidationError(
       `events_for_replay accepts at most 5 event_properties ` +
-        `(Insights group-by limit). Got ${String(eventProperties.length)}: ` +
-        `${pythonRepr(eventProperties as unknown as PythonValue)}`,
+        `(Insights group-by limit). Got ${String(eventProperties.length)}: ${pythonRepr(
+          eventProperties as unknown as PythonValue,
+        )}`,
       "WR1_TOO_MANY_EVENT_PROPERTIES",
     );
   }

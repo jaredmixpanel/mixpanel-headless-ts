@@ -5,32 +5,33 @@
 // (R3.4 explicit ports), lax coercion, nested reconstruction — plus
 // the five hand-ported Python validators.
 import { describe, expect, it } from "vitest";
+
 import { ResponseValidationError } from "../../../src/errors.js";
 import {
   AccountTestResult,
   Target,
 } from "../../../src/types/entities/accounts.js";
+import { CreateAnnotationParams } from "../../../src/types/entities/annotations.js";
 import {
   BUSINESS_CONTEXT_MAX_CHARS,
   BusinessContext,
 } from "../../../src/types/entities/business-context.js";
+import { CursorPagination } from "../../../src/types/entities/common.js";
+import { Dashboard } from "../../../src/types/entities/dashboards.js";
 import {
   CreateCustomEventParams,
   CreateCustomPropertyParams,
   CustomProperty,
 } from "../../../src/types/entities/data-governance.js";
-import { CreateAnnotationParams } from "../../../src/types/entities/annotations.js";
-import { Dashboard } from "../../../src/types/entities/dashboards.js";
-import { CursorPagination } from "../../../src/types/entities/common.js";
+import {
+  BulkEventUpdate,
+  EventDefinition,
+} from "../../../src/types/entities/lexicon.js";
 import {
   BulkCreateSchemasParams,
   EventDeletionRequest,
   SchemaEntry,
 } from "../../../src/types/entities/schemas.js";
-import {
-  BulkEventUpdate,
-  EventDefinition,
-} from "../../../src/types/entities/lexicon.js";
 
 describe("EntityModel construction semantics", () => {
   it("fires defaults ONLY on absent keys; explicit null stays null", () => {

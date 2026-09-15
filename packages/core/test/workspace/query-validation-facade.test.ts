@@ -33,17 +33,18 @@
 //   swapping in a response; nothing observes the pre-swap client).
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
 import {
   BookmarkValidationError,
   ParamValidationError,
 } from "../../src/errors.js";
 import { GroupBy } from "../../src/types/query-params/group-by.js";
 import { Formula, Metric } from "../../src/types/query-params/metric.js";
+import { Workspace } from "../../src/workspace.js";
 import {
+  type MockWorkspaceClient,
   mockWorkspaceClient,
   TEST_SESSION,
-  type MockWorkspaceClient,
 } from "../../test-support/workspace-test-helpers.js";
 
 /** An empty-but-valid insights response (the Python mock's shape). */
@@ -254,7 +255,7 @@ describe("TestPerMetricValidation", () => {
       new Metric({ event: "Purchase", math: "total", property: "amount" }),
     );
 
-    expect(mock.insightsCalls.length).toBe(1);
+    expect(mock.insightsCalls).toHaveLength(1);
   });
 
   it("per-Metric per_user is incompatible with DAU", async () => {
@@ -408,7 +409,7 @@ describe("TestGroupByValidation", () => {
       }),
     });
 
-    expect(mock.insightsCalls.length).toBe(1);
+    expect(mock.insightsCalls).toHaveLength(1);
   });
 
   it("bucket_size without bucket_min/bucket_max is rejected", async () => {
@@ -452,8 +453,8 @@ describe("TestEmptyEventsValidation", () => {
     // is not a valid insights body, so the transform raises).
     try {
       await makeWs().query(["Login"]);
-    } catch (exc) {
-      expect(String(exc)).not.toContain("At least one event is required");
+    } catch (error) {
+      expect(String(error)).not.toContain("At least one event is required");
     }
   });
 });

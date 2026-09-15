@@ -130,8 +130,8 @@ describe("bool <: int — ctor guards fire CB1/CM1/CF1 for false (arbiter F1 swe
     let thrown: unknown;
     try {
       new CohortBreakdown({ cohort: FALSE_COHORT });
-    } catch (cause) {
-      thrown = cause;
+    } catch (error) {
+      thrown = error;
     }
     expect(thrown).toBeInstanceOf(ParamValidationError);
     expect((thrown as ParamValidationError).code).toBe(
@@ -148,8 +148,8 @@ describe("bool <: int — ctor guards fire CB1/CM1/CF1 for false (arbiter F1 swe
     let thrown: unknown;
     try {
       new CohortMetric({ cohort: FALSE_COHORT });
-    } catch (cause) {
-      thrown = cause;
+    } catch (error) {
+      thrown = error;
     }
     expect(thrown).toBeInstanceOf(ParamValidationError);
     expect((thrown as ParamValidationError).code).toBe(
@@ -191,8 +191,8 @@ describe("bool <: int — Filter.inCohort saved-id branch (arbiter F1 sweep)", (
     let thrown: unknown;
     try {
       Filter.inCohort(FALSE_COHORT);
-    } catch (cause) {
-      thrown = cause;
+    } catch (error) {
+      thrown = error;
     }
     expect(thrown).toBeInstanceOf(ParamValidationError);
     expect((thrown as ParamValidationError).code).toBe(

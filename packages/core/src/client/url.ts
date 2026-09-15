@@ -13,8 +13,6 @@
 import { invariant } from "../invariant.js";
 import type { Region } from "../types/literals.js";
 
-export type { Region };
-
 /**
  * The API families the region table routes (Python `ENDPOINTS[region]`
  * keys): the Query host, the export/data host, the Engage profile host,
@@ -138,7 +136,6 @@ const NO_OVERRIDES: EndpointOverrides = Object.freeze({});
  *
  * @param value - The raw override value.
  * @returns The normalised base, or `""` when unset.
- *
  * @example
  * ```typescript
  * normalizeBaseUrlOverride("http://127.0.0.1:8080/"); // "http://127.0.0.1:8080"
@@ -231,7 +228,6 @@ function liveEndpoints(region: Region): ReadonlyMap<EndpointKind, string> {
  *   table applies. The live table is never mutated.
  * @throws MixpanelError - `region` is not a table key (only reachable
  *   when no override applies, matching Python's `KeyError`).
- *
  * @example
  * ```typescript
  * endpointsFor("eu", { apiBaseUrl: "http://devbox:8080" }).get("export");
@@ -248,13 +244,13 @@ export function endpointsFor(
     return liveEndpoints(region);
   }
   let table: Map<EndpointKind, string>;
-  if (apiBase !== "") {
+  if (apiBase === "") {
+    table = new Map<EndpointKind, string>(liveEndpoints(region));
+  } else {
     table = new Map<EndpointKind, string>();
     for (const [family, prefix] of OVERRIDE_PATH_PREFIXES) {
       table.set(family, `${apiBase}${prefix}`);
     }
-  } else {
-    table = new Map<EndpointKind, string>(liveEndpoints(region));
   }
   if (appBase !== "") {
     table.set("app", `${appBase}${appPathPrefix()}`);
@@ -289,7 +285,6 @@ export function appPathPrefix(): string {
  *   {@link endpointsFor}.
  * @returns The matching family, or `null` when no base is a prefix of
  *   `url` (for example a foreign host passed to `request`).
- *
  * @example
  * ```typescript
  * apiFamilyFor("https://mixpanel.com/api/query/engage/", endpointsFor("us"));
@@ -305,10 +300,12 @@ export function apiFamilyFor(
   let best: EndpointKind | null = null;
   let bestLen = -1;
   for (const [family, base] of endpoints) {
-    if (base.length > bestLen && url.startsWith(base)) {
-      best = family;
-      bestLen = base.length;
+    if (!(base.length > bestLen && url.startsWith(base))) {
+      continue;
     }
+
+    best = family;
+    bestLen = base.length;
   }
   return best;
 }
@@ -377,7 +374,6 @@ export function endpointBase(
  * @param overrides - Alternate-host overrides (PR #235); the client
  *   threads its per-request provider's value here.
  * @returns Full URL for the endpoint.
- *
  * @example
  * ```typescript
  * buildUrl("us", "query", "/segmentation");
@@ -397,3 +393,5 @@ export function buildUrl(
   const normalized = path.startsWith("/") ? path : `/${path}`;
   return `${base}${normalized}`;
 }
+
+export { type Region } from "../types/literals.js";

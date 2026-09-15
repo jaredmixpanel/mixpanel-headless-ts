@@ -55,7 +55,6 @@ const NON_SLUG_CHARS = /[^a-z0-9]+/g;
  *   input characters survived normalization (e.g. for `"---"`) —
  *   callers MUST handle that case (typically via the `org-{org_id}`
  *   fallback in {@link defaultAccountName}).
- *
  * @example
  * ```typescript
  * slugify("Acme Corp");        // "acme-corp"
@@ -120,7 +119,6 @@ export function slugify(value: string | null | undefined): string {
  * @param existing - Set of already-taken local account names. Treated
  *   as immutable; never modified.
  * @returns A unique account name matching `^[a-zA-Z0-9_-]{1,64}$`.
- *
  * @example
  * ```typescript
  * // me.organizations == {"100": {id: 100, name: "Acme Corp"}}

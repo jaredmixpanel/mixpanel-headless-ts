@@ -49,7 +49,6 @@ export interface TsApiName {
  * @param name - The snake_case identifier.
  * @returns The camelCase spelling.
  * @throws Error - If the name is empty or contains an empty segment.
- *
  * @example
  * ```typescript
  * snakeToCamel("build_funnel_params");
@@ -67,7 +66,7 @@ export function snakeToCamel(name: string): string {
     );
   }
   const segments = source.split("_");
-  if (segments.some((segment) => segment === "")) {
+  if (segments.includes("")) {
     throw new Error(
       `unexpected empty segment in identifier: ${JSON.stringify(name)} (naming-map §3)`,
     );

@@ -20,24 +20,25 @@
 //   the TS drain consumes until the PAGINATION_LIMIT raise at page 51,
 //   which is the same observable.
 import { describe, expect, it } from "vitest";
+
+import type { Session } from "../../src/auth/session.js";
+import { type JsonValue, toNativeJson } from "../../src/client/json-value.js";
+import {
+  MAX_RATE_LIMIT_RETRIES,
+  paginateAll,
+  PAGINATION_BACKOFF_MAX_SECONDS,
+} from "../../src/client/pagination.js";
 import {
   AuthenticationError,
   MixpanelHeadlessError,
   RateLimitError,
   ServerError,
 } from "../../src/errors.js";
-import { toNativeJson, type JsonValue } from "../../src/client/json-value.js";
 import {
-  MAX_RATE_LIMIT_RETRIES,
-  PAGINATION_BACKOFF_MAX_SECONDS,
-  paginateAll,
-} from "../../src/client/pagination.js";
-import type { Session } from "../../src/auth/session.js";
-import {
-  createMockClient,
-  makeSession,
   type CannedResponse,
   type CapturedFetchRequest,
+  createMockClient,
+  makeSession,
 } from "../../test-support/client-test-helpers.js";
 
 /** The `oauth_credentials` fixture (test_pagination.py:36-39). */
@@ -328,8 +329,8 @@ describe("TestPaginateAllRobustness", () => {
     let raised: unknown = null;
     try {
       await drain(paginateAll(client, "/projects/12345/items"));
-    } catch (cause) {
-      raised = cause;
+    } catch (error_) {
+      raised = error_;
     }
     expect(raised).toBeInstanceOf(MixpanelHeadlessError);
     const error = raised as MixpanelHeadlessError;
@@ -487,8 +488,8 @@ describe("TestPaginateAllMalformedResults", () => {
       let raised: unknown = null;
       try {
         await drain(paginateAll(client, "/projects/12345/items"));
-      } catch (cause) {
-        raised = cause;
+      } catch (error_) {
+        raised = error_;
       }
       expect(raised).toBeInstanceOf(MixpanelHeadlessError);
       const error = raised as MixpanelHeadlessError;
@@ -520,9 +521,9 @@ async function runRateLimitedPagination(
         return {
           status: 429,
           json: { error: "rate_limited" },
-          ...(retryAfter !== null
-            ? { headers: { "Retry-After": retryAfter } }
-            : {}),
+          ...(retryAfter === null
+            ? {}
+            : { headers: { "Retry-After": retryAfter } }),
         };
       }
       return {
@@ -538,8 +539,8 @@ async function runRateLimitedPagination(
   const raised: unknown[] = [];
   try {
     await drain(paginateAll(client, "/projects/12345/items"));
-  } catch (cause) {
-    raised.push(cause);
+  } catch (error) {
+    raised.push(error);
   }
   return { durations: sleeps, raised };
 }

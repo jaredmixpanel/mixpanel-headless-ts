@@ -1361,7 +1361,7 @@ export class SchemaGraphResult {
    * The main `.df` contract — Python's `df` property returns
    * `relationships_df`.
    *
-   * @returns {@link toRelationshipsRows}.
+   * @returns.
    */
   toRows(): readonly Row[] {
     return this.toRelationshipsRows();
@@ -1370,7 +1370,7 @@ export class SchemaGraphResult {
   /**
    * Column contract of the main `.df` frame.
    *
-   * @returns {@link relationshipsRowColumns}.
+   * @returns.
    */
   rowColumns(): readonly string[] {
     return this.relationshipsRowColumns();
@@ -1439,7 +1439,6 @@ export class SchemaGraphResult {
    *
    * @returns The adjacency object. Empty when there are no events or
    *   properties.
-   *
    * @example
    * ```typescript
    * const graph = (await ws.schemaGraph()).toGraph();

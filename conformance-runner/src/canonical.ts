@@ -81,7 +81,6 @@ const PLAIN_CONTEXT: Context = { operand: "no", operandActive: false };
  * @returns The canonical UTF-8 JSON string.
  * @throws CanonicalizationError - On `NaN`/`Infinity`, lone surrogates,
  *   float-token overflow, `undefined` array elements, or non-JSON values.
- *
  * @example
  * ```typescript
  * canonicalize({ b: new JsonNumber("18.0"), a: null });
@@ -105,7 +104,6 @@ export function canonicalize(value: JsonValue): string {
  *   `code`, `errors`, `details_contain`, ...).
  * @returns The canonical JSON string of the stripped value.
  * @throws CanonicalizationError - Propagated from {@link canonicalize}.
- *
  * @example
  * ```typescript
  * canonicalizeError({ class: "E", message: "gone", errors: [] });
@@ -130,7 +128,7 @@ function stripAdvisoryKeys(value: JsonValue): JsonValue {
   if (!isPlainObject(value)) {
     return value;
   }
-  const top: { [key: string]: JsonValue } = {};
+  const top: Record<string, JsonValue> = {};
   for (const [key, member] of Object.entries(value)) {
     if ((ADVISORY_KEYS as readonly string[]).includes(key)) {
       continue;
@@ -143,7 +141,7 @@ function stripAdvisoryKeys(value: JsonValue): JsonValue {
       if (!isPlainObject(element)) {
         return element;
       }
-      const stripped: { [key: string]: JsonValue } = {};
+      const stripped: Record<string, JsonValue> = {};
       for (const [key, member] of Object.entries(element)) {
         if ((ADVISORY_KEYS as readonly string[]).includes(key)) {
           continue;
@@ -242,7 +240,7 @@ function serializeArray(value: JsonValue[], context: Context): string {
  * @throws CanonicalizationError - Propagated from member serialization.
  */
 function serializeObject(
-  value: { [key: string]: JsonValue },
+  value: Record<string, JsonValue>,
   context: Context,
 ): string {
   const qualifies =
@@ -336,7 +334,6 @@ const JS_PLAIN_INTEGRAL_LIMIT = 1e16;
  *
  * @param value - A finite double reached via a float position.
  * @returns Canonical float text.
- *
  * @example
  * ```typescript
  * renderCanonicalFloat(18); // "18.0"
@@ -374,7 +371,6 @@ export function renderCanonicalFloat(value: number): string {
  * @param value - The operand-position string.
  * @returns The normalized string, or `value` verbatim when unparseable
  *   or non-finite.
- *
  * @example
  * ```typescript
  * normalizeNumericString("18.0"); // "18"
@@ -397,9 +393,9 @@ export function normalizeNumericString(value: string): string {
  * `float(str)` before parsing.
  */
 const PYTHON_WHITESPACE =
-  "\t\n\u000b\f\r\u001c\u001d\u001e\u001f \u0085\u00a0\u1680" +
-  "\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a" +
-  "\u2028\u2029\u202f\u205f\u3000";
+  "\t\n\u000B\f\r\u001C\u001D\u001E\u001F \u0085\u00A0\u1680" +
+  "\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A" +
+  "\u2028\u2029\u202F\u205F\u3000";
 
 /** Matches Python-strippable whitespace at both ends of a string. */
 const PYTHON_TRIM = new RegExp(
@@ -508,7 +504,7 @@ function compareCodePoints(a: string, b: string): number {
  * @returns `true` for non-null, non-array objects whose prototype is
  *   `Object.prototype` or `null` (JSON object shape).
  */
-function isPlainObject(value: unknown): value is { [key: string]: JsonValue } {
+function isPlainObject(value: unknown): value is Record<string, JsonValue> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return false;
   }
@@ -538,8 +534,8 @@ function isPlainObject(value: unknown): value is { [key: string]: JsonValue } {
  *   string nor a `{"pattern": ...}` object (malformed vector).
  */
 export function headersMatch(
-  headersContain: { [key: string]: JsonValue },
-  actualHeaders: { [key: string]: string },
+  headersContain: Record<string, JsonValue>,
+  actualHeaders: Record<string, string>,
 ): boolean {
   const actualLower = new Map<string, string>();
   for (const [key, member] of Object.entries(actualHeaders)) {
@@ -591,8 +587,8 @@ export function headersMatch(
 export function canonicalizeInteractions(interactions: JsonValue[]): string {
   const result: JsonValue[] = [...interactions];
   const groups = new Map<string, number[]>();
-  for (let position = 0; position < interactions.length; position += 1) {
-    const interaction = interactions[position] as JsonValue;
+  for (const [position, interaction_] of interactions.entries()) {
+    const interaction = interaction_ as JsonValue;
     if (!isPlainObject(interaction)) {
       continue;
     }
@@ -675,5 +671,5 @@ function describe(value: unknown): string {
     proto && "constructor" in proto
       ? ((proto.constructor as { name?: string }).name ?? typeof value)
       : typeof value;
-  return String(name);
+  return name;
 }

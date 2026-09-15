@@ -13,14 +13,15 @@
  */
 
 import fc from "fast-check";
-import { describe, it, expect } from "vitest";
-import { GroupBy } from "../../src/types/index.js";
+import { describe, expect, it } from "vitest";
+
 import { ParamValidationError } from "../../src/errors.js";
 import {
   validateGroupByArgs,
   validateQueryArgs,
   validateTimeArgs,
 } from "../../src/query/validation-args.js";
+import { GroupBy } from "../../src/types/index.js";
 
 // =============================================================================
 // Strategies (test_query_validation_pbt.py:26-84)

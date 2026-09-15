@@ -13,18 +13,18 @@
  * parsed bodies verbatim — result shaping is B5 (Caution #11).
  */
 
-import { pythonInt, pythonJsonDumps } from "../../compat/index.js";
-import { QueryError } from "../../errors.js";
 import type { ClientCore } from "../../client/client.js";
 import { isPlainRecord, jsonValuePythonStr } from "../../client/internals.js";
 import type { JsonValue } from "../../client/json-value.js";
+import { pythonInt, pythonJsonDumps } from "../../compat/index.js";
+import { QueryError } from "../../errors.js";
 import { ValueError } from "../../query/python-builtins.js";
 import {
   addDays,
+  type CivilDate,
   civilFromInstantUtc,
   formatYmd,
   parseYmd,
-  type CivilDate,
 } from "./py-dates.js";
 
 /**
@@ -46,10 +46,9 @@ export const EVENTS_NAMES_WIDE_FROM_DATE = "2000-01-01";
  * EXCLUDES U+FEFF which JS `\s` contains), `\d` is `\p{Nd}` (R11.7:
  * no bare `\s`/`\d` grammars in ported code).
  */
-const PY_WS =
-  "[\\t\\n\\v\\f\\r\\x1c-\\x1f \\x85\\xa0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000]";
+const PY_WS = String.raw`[\t\n\v\f\r\x1c-\x1f \x85\xa0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]`;
 const DATE_GATE_PATTERN = new RegExp(
-  `exceeds${PY_WS}+(\\p{Nd}+)${PY_WS}+days`,
+  String.raw`exceeds${PY_WS}+(\p{Nd}+)${PY_WS}+days`,
   "u",
 );
 
@@ -87,7 +86,6 @@ function parseFeedDate(value: string, field: string): CivilDate {
  * @throws QueryError - When either supplied date is invalid, or when
  *   `toDate` is too early to compute a 30-day window (the Python
  *   `OverflowError` arm).
- *
  * @example
  * ```typescript
  * buildActivityFeedDateRange("2026-05-01", "2026-06-01");
@@ -365,7 +363,7 @@ export interface QueryHostMethods {
    * @throws RateLimitError | ServerError | MixpanelHeadlessError - Per
    *   the shared retry core.
    */
-  getEvents(options?: GetEventsOptions): Promise<string[]>;
+  getEvents: (options?: GetEventsOptions) => Promise<string[]>;
 
   /**
    * List properties for a specific event (`get_event_properties`,
@@ -376,7 +374,10 @@ export interface QueryHostMethods {
    * @returns Property name strings (dict keys of the response).
    * @throws AuthenticationError | QueryError - Per the retry core.
    */
-  getEventProperties(event: string, signal?: AbortSignal): Promise<string[]>;
+  getEventProperties: (
+    event: string,
+    signal?: AbortSignal,
+  ) => Promise<string[]>;
 
   /**
    * List sample values for a property (`get_property_values`,
@@ -387,10 +388,10 @@ export interface QueryHostMethods {
    * @returns Property value strings (`str(v)` casts preserved).
    * @throws AuthenticationError - Invalid credentials.
    */
-  getPropertyValues(
+  getPropertyValues: (
     propertyName: string,
     options?: GetPropertyValuesOptions,
-  ): Promise<string[]>;
+  ) => Promise<string[]>;
 
   /**
    * List saved funnels (`list_funnels`, `api_client.py:2482-2496`).
@@ -399,7 +400,7 @@ export interface QueryHostMethods {
    * @returns Funnel dicts, or `[]` for a non-list response.
    * @throws AuthenticationError | RateLimitError - Per the retry core.
    */
-  listFunnels(signal?: AbortSignal): Promise<JsonValue[]>;
+  listFunnels: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
    * List saved cohorts via POST (`list_cohorts`,
@@ -409,7 +410,7 @@ export interface QueryHostMethods {
    * @returns Cohort dicts, or `[]` for a non-list response.
    * @throws AuthenticationError | RateLimitError - Per the retry core.
    */
-  listCohorts(signal?: AbortSignal): Promise<JsonValue[]>;
+  listCohorts: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
    * Today's top events (`get_top_events`, `api_client.py:2517-2545`).
@@ -418,7 +419,7 @@ export interface QueryHostMethods {
    * @returns The response dict, or `{events: [], type}` for a non-dict.
    * @throws AuthenticationError | RateLimitError - Per the retry core.
    */
-  getTopEvents(options?: GetTopEventsOptions): Promise<JsonValue>;
+  getTopEvents: (options?: GetTopEventsOptions) => Promise<JsonValue>;
 
   /**
    * Aggregate counts for multiple events (`event_counts`,
@@ -432,12 +433,12 @@ export interface QueryHostMethods {
    * @throws AuthenticationError | QueryError | RateLimitError - Per the
    *   retry core.
    */
-  eventCounts(
+  eventCounts: (
     events: readonly string[],
     fromDate: string,
     toDate: string,
     options?: EventCountsOptions,
-  ): Promise<JsonValue>;
+  ) => Promise<JsonValue>;
 
   /**
    * Aggregate counts by property values (`property_counts`,
@@ -452,13 +453,13 @@ export interface QueryHostMethods {
    * @throws AuthenticationError | QueryError | RateLimitError - Per the
    *   retry core.
    */
-  propertyCounts(
+  propertyCounts: (
     event: string,
     propertyName: string,
     fromDate: string,
     toDate: string,
     options?: PropertyCountsOptions,
-  ): Promise<JsonValue>;
+  ) => Promise<JsonValue>;
 
   /**
    * Run a segmentation query (`segmentation`,
@@ -472,12 +473,12 @@ export interface QueryHostMethods {
    * @throws AuthenticationError | QueryError | RateLimitError - Per the
    *   retry core.
    */
-  segmentation(
+  segmentation: (
     event: string,
     fromDate: string,
     toDate: string,
     options?: SegmentationOptions,
-  ): Promise<JsonValue>;
+  ) => Promise<JsonValue>;
 
   /**
    * Run a funnel query (`funnel`, `api_client.py:2687-2736`).
@@ -490,12 +491,12 @@ export interface QueryHostMethods {
    * @throws AuthenticationError | QueryError | RateLimitError - Per the
    *   retry core.
    */
-  funnel(
+  funnel: (
     funnelId: number,
     fromDate: string,
     toDate: string,
     options?: FunnelOptions,
-  ): Promise<JsonValue>;
+  ) => Promise<JsonValue>;
 
   /**
    * Run a retention query (`retention`, `api_client.py:2738-2794`).
@@ -512,13 +513,13 @@ export interface QueryHostMethods {
    * @throws AuthenticationError | QueryError | RateLimitError - Per the
    *   retry core.
    */
-  retention(
+  retention: (
     bornEvent: string,
     event: string,
     fromDate: string,
     toDate: string,
     options?: RetentionOptions,
-  ): Promise<JsonValue>;
+  ) => Promise<JsonValue>;
 
   /**
    * Query the activity feed via stream/bookmark (`activity_feed`,
@@ -532,10 +533,10 @@ export interface QueryHostMethods {
    *   without search, malformed dates, or API rejections.
    * @throws AuthenticationError | RateLimitError - Per the retry core.
    */
-  activityFeed(
+  activityFeed: (
     distinctIds: readonly string[],
     options?: ActivityFeedOptions,
-  ): Promise<JsonValue>;
+  ) => Promise<JsonValue>;
 
   /**
    * Query a saved report by bookmark type (`query_saved_report`,
@@ -547,10 +548,10 @@ export interface QueryHostMethods {
    * @throws AuthenticationError | QueryError | RateLimitError - Per the
    *   retry core.
    */
-  querySavedReport(
+  querySavedReport: (
     bookmarkId: number,
     options?: QuerySavedReportOptions,
-  ): Promise<JsonValue>;
+  ) => Promise<JsonValue>;
 
   /**
    * List saved reports (LEGACY query-side listing — `list_bookmarks`,
@@ -563,10 +564,10 @@ export interface QueryHostMethods {
    * @throws AuthenticationError | QueryError | RateLimitError - Per the
    *   retry core.
    */
-  listBookmarks(
+  listBookmarks: (
     bookmarkType?: string | null,
     signal?: AbortSignal,
-  ): Promise<JsonValue>;
+  ) => Promise<JsonValue>;
 
   /**
    * Execute an inline insights query via POST (`insights_query`,
@@ -579,10 +580,10 @@ export interface QueryHostMethods {
    * @throws AuthenticationError | QueryError | RateLimitError - Per the
    *   retry core.
    */
-  insightsQuery(
+  insightsQuery: (
     body: Record<string, unknown>,
     options?: InlineQueryOptions,
-  ): Promise<JsonValue>;
+  ) => Promise<JsonValue>;
 
   /**
    * Query a saved flows report (`query_saved_flows`,
@@ -594,7 +595,10 @@ export interface QueryHostMethods {
    * @throws AuthenticationError | QueryError | RateLimitError - Per the
    *   retry core.
    */
-  querySavedFlows(bookmarkId: number, signal?: AbortSignal): Promise<JsonValue>;
+  querySavedFlows: (
+    bookmarkId: number,
+    signal?: AbortSignal,
+  ) => Promise<JsonValue>;
 
   /**
    * Execute an inline flow/funnel query (`arb_funnels_query`,
@@ -607,10 +611,10 @@ export interface QueryHostMethods {
    * @throws AuthenticationError | QueryError | RateLimitError - Per the
    *   retry core.
    */
-  arbFunnelsQuery(
+  arbFunnelsQuery: (
     body: Record<string, unknown>,
     options?: InlineQueryOptions,
-  ): Promise<JsonValue>;
+  ) => Promise<JsonValue>;
 
   /**
    * Event frequency distribution (`frequency`,
@@ -625,13 +629,13 @@ export interface QueryHostMethods {
    * @throws AuthenticationError | QueryError | RateLimitError - Per the
    *   retry core.
    */
-  frequency(
+  frequency: (
     fromDate: string,
     toDate: string,
     unit: string,
     addictionUnit: string,
     options?: FrequencyOptions,
-  ): Promise<JsonValue>;
+  ) => Promise<JsonValue>;
 
   /**
    * Events bucketed by numeric property ranges (`segmentation_numeric`,
@@ -646,13 +650,13 @@ export interface QueryHostMethods {
    * @throws AuthenticationError | QueryError | RateLimitError - Per the
    *   retry core.
    */
-  segmentationNumeric(
+  segmentationNumeric: (
     event: string,
     fromDate: string,
     toDate: string,
     on: string,
     options?: SegmentationNumericOptions,
-  ): Promise<JsonValue>;
+  ) => Promise<JsonValue>;
 
   /**
    * Sum of numeric property values (`segmentation_sum`,
@@ -667,13 +671,13 @@ export interface QueryHostMethods {
    * @throws AuthenticationError | QueryError | RateLimitError - Per the
    *   retry core.
    */
-  segmentationSum(
+  segmentationSum: (
     event: string,
     fromDate: string,
     toDate: string,
     on: string,
     options?: SegmentationNumericOptions,
-  ): Promise<JsonValue>;
+  ) => Promise<JsonValue>;
 
   /**
    * Average of numeric property values (`segmentation_average`,
@@ -688,17 +692,19 @@ export interface QueryHostMethods {
    * @throws AuthenticationError | QueryError | RateLimitError - Per the
    *   retry core.
    */
-  segmentationAverage(
+  segmentationAverage: (
     event: string,
     fromDate: string,
     toDate: string,
     on: string,
     options?: SegmentationNumericOptions,
-  ): Promise<JsonValue>;
+  ) => Promise<JsonValue>;
 }
 
-/** The slice of the assembled client the C2 factory needs beyond
- * {@link ClientCore} (`activity_feed` calls `resolve_workspace_id`). */
+/**
+ * The slice of the assembled client the C2 factory needs beyond
+ * {@link ClientCore} (`activity_feed` calls `resolve_workspace_id`).
+ */
 export interface QueryHostClientDeps {
   /**
    * Resolve the workspace ID (pin → cache → discovery), exactly the C1
@@ -706,7 +712,7 @@ export interface QueryHostClientDeps {
    *
    * @returns The resolved workspace id.
    */
-  resolveWorkspaceId(): Promise<number>;
+  resolveWorkspaceId: () => Promise<number>;
 }
 
 /**
@@ -750,24 +756,24 @@ export function createQueryHostMethods(
         params,
         signal: options.signal,
       });
-    } catch (exc) {
-      if (!(exc instanceof QueryError)) {
-        throw exc;
+    } catch (error) {
+      if (!(error instanceof QueryError)) {
+        throw error;
       }
-      const match = DATE_GATE_PATTERN.exec(exc.message);
+      const match = DATE_GATE_PATTERN.exec(error.message);
       if (
         match === null ||
         (fromDate !== undefined && fromDate !== null) ||
-        exc.statusCode !== 403
+        error.statusCode !== 403
       ) {
-        throw exc;
+        throw error;
       }
       const allowedDays = Number(pythonInt(match[1] as string));
       const retryFrom = addDays(today, -allowedDays);
       if (retryFrom === null) {
         // Python would raise OverflowError from the date subtraction —
         // out of reach for real gate values; propagate the original.
-        throw exc;
+        throw error;
       }
       params["from_date"] = formatYmd(retryFrom);
       response = await core.requestQueryHost("GET", url, {
@@ -857,59 +863,70 @@ export function createQueryHostMethods(
     const bookmarkType = options.bookmark_type ?? "insights";
     let url: string;
     let params: Record<string, unknown>;
-    if (bookmarkType === "funnels") {
-      url = core.buildUrl("query", "/funnels");
-      let fromDate = options.from_date ?? null;
-      let toDate = options.to_date ?? null;
-      if (fromDate === null && toDate === null) {
-        const now = civilFromInstantUtc(core.now());
-        toDate = formatYmd(now);
-        const monthAgo = addDays(now, -30);
-        fromDate = formatYmd(monthAgo ?? now);
-      } else if (fromDate === null && toDate !== null) {
-        const parsedTo = parseYmd(toDate);
-        if (parsedTo === null) {
-          // Python: `datetime.strptime` raises a BARE ValueError that
-          // propagates uncaught (`api_client.py:2960`) — port the same
-          // class, CPython's message shape (out of contract, R5.4).
-          throw new ValueError(
-            `time data '${toDate}' does not match format '%Y-%m-%d'`,
-          );
+    switch (bookmarkType) {
+      case "funnels": {
+        url = core.buildUrl("query", "/funnels");
+        let fromDate = options.from_date ?? null;
+        let toDate = options.to_date ?? null;
+        if (fromDate === null && toDate === null) {
+          const now = civilFromInstantUtc(core.now());
+          toDate = formatYmd(now);
+          const monthAgo = addDays(now, -30);
+          fromDate = formatYmd(monthAgo ?? now);
+        } else if (fromDate === null && toDate !== null) {
+          const parsedTo = parseYmd(toDate);
+          if (parsedTo === null) {
+            // Python: `datetime.strptime` raises a BARE ValueError that
+            // propagates uncaught (`api_client.py:2960`) — port the same
+            // class, CPython's message shape (out of contract, R5.4).
+            throw new ValueError(
+              `time data '${toDate}' does not match format '%Y-%m-%d'`,
+            );
+          }
+          const derived = addDays(parsedTo, -30);
+          fromDate = formatYmd(derived ?? parsedTo);
+        } else if (toDate === null && fromDate !== null) {
+          const parsedFrom = parseYmd(fromDate);
+          if (parsedFrom === null) {
+            throw new ValueError(
+              `time data '${fromDate}' does not match format '%Y-%m-%d'`,
+            );
+          }
+          const computedTo = addDays(parsedFrom, 30) ?? parsedFrom;
+          const now = core.now();
+          const nowCivil = civilFromInstantUtc(now);
+          // Python: `min(computed_to, datetime.now())` — midnight of the
+          // derived date vs the live instant; the CALENDAR comparison is
+          // what survives strftime, so compare civil dates.
+          const computedIso = formatYmd(computedTo);
+          const nowIso = formatYmd(nowCivil);
+          toDate = computedIso <= nowIso ? computedIso : nowIso;
         }
-        const derived = addDays(parsedTo, -30);
-        fromDate = formatYmd(derived ?? parsedTo);
-      } else if (toDate === null && fromDate !== null) {
-        const parsedFrom = parseYmd(fromDate);
-        if (parsedFrom === null) {
-          throw new ValueError(
-            `time data '${fromDate}' does not match format '%Y-%m-%d'`,
-          );
-        }
-        const computedTo = addDays(parsedFrom, 30) ?? parsedFrom;
-        const now = core.now();
-        const nowCivil = civilFromInstantUtc(now);
-        // Python: `min(computed_to, datetime.now())` — midnight of the
-        // derived date vs the live instant; the CALENDAR comparison is
-        // what survives strftime, so compare civil dates.
-        const computedIso = formatYmd(computedTo);
-        const nowIso = formatYmd(nowCivil);
-        toDate = computedIso <= nowIso ? computedIso : nowIso;
+        params = {
+          funnel_id: bookmarkId,
+          from_date: fromDate,
+          to_date: toDate,
+        };
+
+        break;
       }
-      params = {
-        funnel_id: bookmarkId,
-        from_date: fromDate,
-        to_date: toDate,
-      };
-    } else if (bookmarkType === "retention") {
-      url = core.buildUrl("query", "/retention");
-      params = { bookmark_id: bookmarkId };
-    } else if (bookmarkType === "flows") {
-      url = core.buildUrl("query", "/arb_funnels");
-      params = { bookmark_id: bookmarkId, query_type: "flows_sankey" };
-    } else {
-      // "insights" and the unreachable-fallthrough arm share one shape.
-      url = core.buildUrl("query", "/insights");
-      params = { bookmark_id: bookmarkId };
+      case "retention": {
+        url = core.buildUrl("query", "/retention");
+        params = { bookmark_id: bookmarkId };
+
+        break;
+      }
+      case "flows": {
+        url = core.buildUrl("query", "/arb_funnels");
+        params = { bookmark_id: bookmarkId, query_type: "flows_sankey" };
+
+        break;
+      }
+      default: {
+        // "insights" and the unreachable-fallthrough arm share one shape.
+        url = core.buildUrl("query", "/insights");
+        params = { bookmark_id: bookmarkId };
+      }
     }
     return core.requestQueryHost("GET", url, {
       params,
@@ -1115,10 +1132,10 @@ export function createQueryHostMethods(
       };
       // The API rejects `unit` and `interval` together
       // (`api_client.py:2783-2788`).
-      if (interval !== 1) {
-        params["interval"] = interval;
-      } else {
+      if (interval === 1) {
         params["unit"] = options.unit ?? "day";
+      } else {
+        params["interval"] = interval;
       }
       if (truthyStr(options.born_where)) {
         params["born_where"] = options.born_where;

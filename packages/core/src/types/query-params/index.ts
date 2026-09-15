@@ -20,26 +20,26 @@ export {
 export {
   CustomPropertyRef,
   Filter,
+  type FilterFields,
+  type FilterValue,
   InlineCustomProperty,
   ListItemGroupMode,
   PropertyInput,
-  type FilterFields,
-  type FilterValue,
   type PropertySpec,
 } from "./filter.js";
 export { FlowStep, type FlowStepFields } from "./flow.js";
 export {
   FrequencyBreakdown,
-  FrequencyFilter,
   type FrequencyBreakdownFields,
+  FrequencyFilter,
   type FrequencyFilterFields,
 } from "./frequency.js";
 export {
   Exclusion,
-  FunnelStep,
-  HoldingConstant,
   type ExclusionFields,
+  FunnelStep,
   type FunnelStepFields,
+  HoldingConstant,
   type HoldingConstantFields,
 } from "./funnel.js";
 export { GroupBy, type GroupByFields } from "./group-by.js";
@@ -47,7 +47,7 @@ export {
   CohortMetric,
   Formula,
   Metric,
-  TimeComparison,
   type MetricFields,
+  TimeComparison,
 } from "./metric.js";
 export { RetentionEvent, type RetentionEventFields } from "./retention.js";

@@ -24,15 +24,10 @@
 //   `query/python-builtins.ts` `ValueError` twin.
 
 import { describe, expect, it } from "vitest";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-} from "../../test-support/client-test-helpers.js";
-import { LiveQueryService } from "../../src/services/live-query.js";
+
 import { AuthenticationError, QueryError } from "../../src/errors.js";
 import { ValueError } from "../../src/query/python-builtins.js";
+import { LiveQueryService } from "../../src/services/live-query.js";
 import {
   ActivityFeedResult,
   FrequencyResult,
@@ -42,6 +37,12 @@ import {
   SavedReportResult,
   UserEvent,
 } from "../../src/types/results/live-query.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** A canned-response handler (the httpx.MockTransport handler twin). */
 type Handler = (request: CapturedFetchRequest) => CannedResponse;
@@ -96,7 +97,7 @@ describe("TestActivityFeedService", () => {
 
     expect(result).toBeInstanceOf(ActivityFeedResult);
     expect(result.distinct_ids).toEqual(["user_123"]);
-    expect(result.events.length).toBe(2);
+    expect(result.events).toHaveLength(2);
   });
 
   it("converts Unix timestamps to datetimes", async () => {
@@ -112,7 +113,7 @@ describe("TestActivityFeedService", () => {
     }));
     const result = await live.activityFeed(["user_123"]);
 
-    expect(result.events.length).toBe(1);
+    expect(result.events).toHaveLength(1);
     expect(result.events[0]).toBeInstanceOf(UserEvent);
     // Python asserts year/month/day == 2024/1/1 on the datetime; the TS
     // field is the preserved isoformat text of that same instant.
@@ -159,7 +160,7 @@ describe("TestActivityFeedService", () => {
     }));
     const result = await live.activityFeed(["user_123"]);
 
-    expect(result.toRows().length).toBe(2);
+    expect(result.toRows()).toHaveLength(2);
     expect(result.rowColumns()).toContain("event");
     expect(result.rowColumns()).toContain("time");
   });
@@ -242,7 +243,7 @@ describe("TestNumericSumService", () => {
       'properties["amount"]',
     );
 
-    expect(result.toRows().length).toBe(2);
+    expect(result.toRows()).toHaveLength(2);
     expect(result.rowColumns()).toContain("date");
     expect(result.rowColumns()).toContain("sum");
   });
@@ -335,7 +336,7 @@ describe("TestFrequencyService", () => {
     }));
     const result = await live.frequency("2024-01-01", "2024-01-02");
 
-    expect(result.toRows().length).toBe(2);
+    expect(result.toRows()).toHaveLength(2);
     expect(result.rowColumns()).toContain("date");
   });
 });
@@ -467,7 +468,7 @@ describe("TestQuerySavedReportService", () => {
     expect(result.rowColumns()).toContain("event");
     expect(result.rowColumns()).toContain("date");
     expect(result.rowColumns()).toContain("count");
-    expect(result.toRows().length).toBe(4); // 2 events x 2 dates
+    expect(result.toRows()).toHaveLength(4); // 2 events x 2 dates
   });
 });
 

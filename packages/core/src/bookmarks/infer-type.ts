@@ -95,7 +95,6 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
  *   `buildRetentionParams` or `buildFlowParams`, or as received on the
  *   wire in a query body's `bookmark` member.
  * @returns The report type, or `null` when the shape does not determine one.
- *
  * @example
  * ```typescript
  * inferBookmarkType(await ws.buildFunnelParams(["Signup", "Purchase"]));

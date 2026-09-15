@@ -31,9 +31,9 @@
  */
 
 import {
-  pythonUtcIsoformat,
   type OAuthClientInfo,
   type OAuthTokens,
+  pythonUtcIsoformat,
 } from "@mixpanel-headless/core";
 
 /** UTC-instant suffix grammar accepted by the closed-loop renderers. */
@@ -90,7 +90,6 @@ function clientInfoDatetimeText(text: string): string {
  *
  * @param tokens - The tokens to serialize.
  * @returns JSON text (2-space indent, matching the node writer bytes).
- *
  * @example
  * ```typescript
  * await store.set(CREDENTIAL_KEYS.tokens("us"), serializeTokensPayload(tokens));

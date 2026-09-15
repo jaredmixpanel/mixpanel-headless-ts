@@ -47,7 +47,6 @@ const BASE64URL_ALPHABET =
  *
  * @param bytes - The bytes to encode.
  * @returns Base64url text, `=`-padding stripped.
- *
  * @example
  * ```typescript
  * base64UrlEncodeBytes(new Uint8Array([0xff, 0xef]));
@@ -121,7 +120,6 @@ export class PkceChallenge {
    * ASCII verifier encoded as base64url (no padding) for the challenge.
    *
    * @returns A new {@link PkceChallenge} with both fields set.
-   *
    * @example
    * ```typescript
    * const pkce = await PkceChallenge.generate();

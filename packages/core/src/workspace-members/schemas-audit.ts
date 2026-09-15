@@ -75,9 +75,9 @@
  * vector exercises it.
  */
 
+import type { MixpanelClient } from "../client/client.js";
 import { isPlainRecord } from "../client/internals.js";
 import type { JsonValue } from "../client/json-value.js";
-import type { MixpanelClient } from "../client/client.js";
 import {
   validateResponseModel,
   validateResponseModels,
@@ -87,19 +87,19 @@ import { pythonTypeNameOf } from "../services/entities/shared.js";
 import {
   AuditResponse,
   AuditViolation,
+  type BulkCreateSchemasParams,
   BulkCreateSchemasResponse,
   BulkPatchResult,
+  type BulkUpdateAnomalyParams,
+  type CreateDeletionRequestParams,
   DataVolumeAnomaly,
   DeleteSchemasResponse,
   EventDeletionRequest,
-  SchemaEntry,
-  SchemaEnforcementConfig,
-  type BulkCreateSchemasParams,
-  type BulkUpdateAnomalyParams,
-  type CreateDeletionRequestParams,
   type InitSchemaEnforcementParams,
   type PreviewDeletionFiltersParams,
   type ReplaceSchemaEnforcementParams,
+  SchemaEnforcementConfig,
+  SchemaEntry,
   type UpdateAnomalyParams,
   type UpdateSchemaEnforcementParams,
 } from "../types/entities/schemas.js";

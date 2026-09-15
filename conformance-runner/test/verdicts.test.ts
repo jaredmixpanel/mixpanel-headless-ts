@@ -1,8 +1,12 @@
 // Verdict/report tests (src/verdicts.ts, task TS-5): D12 report shape and
 // failure classification.
 import { describe, expect, it } from "vitest";
-import type { VectorResult } from "../src/verdicts.js";
-import { isFailingVerdict, summarizeResults } from "../src/verdicts.js";
+
+import {
+  isFailingVerdict,
+  summarizeResults,
+  type VectorResult,
+} from "../src/verdicts.js";
 
 describe("isFailingVerdict", () => {
   it("classifies the taxonomy per design D12", () => {

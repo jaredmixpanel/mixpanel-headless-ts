@@ -10,16 +10,18 @@
 // (the `time.sleep(0.3)` "give the server time to bind" twin).
 
 import { createServer, type Server } from "node:net";
+
 import { afterEach, describe, expect, it } from "vitest";
 
 import { OAuthError } from "@mixpanel-headless/core";
+
 import {
   CALLBACK_PORTS,
   CallbackResult,
   startCallbackServer,
 } from "../src/auth/callback-server.js";
 
-const cleanups: (() => void)[] = [];
+const cleanups: Array<() => void> = [];
 
 afterEach(() => {
   while (cleanups.length > 0) {
@@ -59,8 +61,8 @@ async function getWithRetry(url: string): Promise<Response> {
   for (let attempt = 0; attempt < 100; attempt += 1) {
     try {
       return await fetch(url);
-    } catch (exc) {
-      lastError = exc;
+    } catch (error) {
+      lastError = error;
       await new Promise((resolve) => setTimeout(resolve, 20));
     }
   }
@@ -121,7 +123,7 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
     });
     const settled = serverPromise.then(
       () => null,
-      (exc: unknown) => exc,
+      (error_: unknown) => error_,
     );
 
     await getWithRetry(
@@ -140,7 +142,7 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
     });
     const settled = serverPromise.then(
       () => null,
-      (exc: unknown) => exc,
+      (error_: unknown) => error_,
     );
 
     await getWithRetry(
@@ -161,7 +163,7 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
 
     const error = await serverPromise.then(
       () => null,
-      (exc: unknown) => exc,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(OAuthError);
     expect((error as OAuthError).code).toBe("OAUTH_TIMEOUT");
@@ -193,7 +195,7 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
       timeoutSeconds: 5,
     }).then(
       () => null,
-      (exc: unknown) => exc,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(OAuthError);
     expect((error as OAuthError).code).toBe("OAUTH_PORT_ERROR");
@@ -224,7 +226,7 @@ describe("TestCallbackHtmlSecurity (test_auth_callback.py:281)", () => {
     const serverPromise = startCallbackServer({ state, timeoutSeconds: 10 });
     const settled = serverPromise.then(
       () => null,
-      (exc: unknown) => exc,
+      (error: unknown) => error,
     );
 
     const resp = await getWithRetry(
@@ -248,7 +250,7 @@ describe("TestCallbackHtmlSecurity (test_auth_callback.py:281)", () => {
     });
     const settled = serverPromise.then(
       () => null,
-      (exc: unknown) => exc,
+      (error: unknown) => error,
     );
 
     const xssPayload = encodeURIComponent('<script>alert("xss")</script>');

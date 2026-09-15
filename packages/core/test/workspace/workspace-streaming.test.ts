@@ -19,10 +19,11 @@
 // `event_time.tzinfo == timezone.utc` to the trailing `+00:00`.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import { makeSession } from "../../test-support/client-test-helpers.js";
+
 import type { MixpanelClient } from "../../src/client/client.js";
 import type { JsonValue } from "../../src/client/json-value.js";
+import { Workspace } from "../../src/workspace.js";
+import { makeSession } from "../../test-support/client-test-helpers.js";
 
 /** The `_TEST_SESSION` twin (`test_workspace_streaming.py:21-29`). */
 const TEST_SESSION = makeSession({
@@ -44,8 +45,10 @@ interface StubClient {
   readonly client: MixpanelClient;
   readonly exportEventsCalls: ExportEventsCall[];
   readonly exportProfilesCalls: Array<Record<string, unknown>>;
-  setEvents(source: () => AsyncGenerator<JsonValue, void, undefined>): void;
-  setProfiles(source: () => AsyncGenerator<JsonValue, void, undefined>): void;
+  setEvents: (source: () => AsyncGenerator<JsonValue, void, undefined>) => void;
+  setProfiles: (
+    source: () => AsyncGenerator<JsonValue, void, undefined>,
+  ) => void;
 }
 
 /**
@@ -188,14 +191,14 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
       ws.streamEvents({ from_date: "2024-01-15", to_date: "2024-01-15" }),
     )) as Rec[];
 
-    expect(events.length).toBe(2);
+    expect(events).toHaveLength(2);
     expect(events[0]?.["event_name"]).toBe("PageView");
     expect(events[0]?.["distinct_id"]).toBe("user_1");
     expect(typeof events[0]?.["event_time"]).toBe("string");
     expect((events[0]?.["properties"] as Rec)["page"]).toBe("/home");
     expect(events[1]?.["event_name"]).toBe("Click");
     expect(events[1]?.["distinct_id"]).toBe("user_2");
-    expect(stub.exportEventsCalls.length).toBe(1);
+    expect(stub.exportEventsCalls).toHaveLength(1);
     await ws.close();
   });
 
@@ -214,7 +217,7 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
       }),
     )) as Rec[];
 
-    expect(events.length).toBe(1);
+    expect(events).toHaveLength(1);
     expect(events[0]?.["event_name"]).toBe("Purchase");
     expect(stub.exportEventsCalls).toEqual([
       {
@@ -247,7 +250,7 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
       }),
     )) as Rec[];
 
-    expect(events.length).toBe(1);
+    expect(events).toHaveLength(1);
     expect((events[0]?.["properties"] as Rec)["country"]).toBe("US");
     expect(stub.exportEventsCalls[0]?.options["where"]).toBe(whereClause);
     await ws.close();
@@ -269,7 +272,7 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
       }),
     )) as Rec[];
 
-    expect(events.length).toBe(2);
+    expect(events).toHaveLength(2);
     expect(events[0]?.["event"]).toBe("PageView");
     expect(Object.hasOwn(events[0] as Rec, "properties")).toBe(true);
     const props = events[0]?.["properties"] as Rec;
@@ -294,7 +297,7 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
       }),
     )) as Rec[];
 
-    expect(events.length).toBe(1);
+    expect(events).toHaveLength(1);
     const event = events[0] as Rec;
     expect(event["event_name"]).toBe("Purchase");
     expect(event["distinct_id"]).toBe("user_123");
@@ -377,7 +380,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
 
     const profiles = (await drain(ws.streamProfiles())) as Rec[];
 
-    expect(profiles.length).toBe(2);
+    expect(profiles).toHaveLength(2);
     expect(profiles[0]?.["distinct_id"]).toBe("user_1");
     expect(profiles[0]?.["last_seen"]).toBe("2024-01-15T10:00:00");
     expect((profiles[0]?.["properties"] as Rec)["name"]).toBe("Alice");
@@ -401,7 +404,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
       ws.streamProfiles({ where: whereClause }),
     )) as Rec[];
 
-    expect(profiles.length).toBe(1);
+    expect(profiles).toHaveLength(1);
     expect((profiles[0]?.["properties"] as Rec)["plan"]).toBe("premium");
     expect(stub.exportProfilesCalls).toEqual([{ where: whereClause }]);
     await ws.close();
@@ -418,7 +421,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
       ws.streamProfiles({ cohort_id: "cohort_12345" }),
     );
 
-    expect(profiles.length).toBe(1);
+    expect(profiles).toHaveLength(1);
     expect(stub.exportProfilesCalls).toEqual([{ cohort_id: "cohort_12345" }]);
     await ws.close();
   });
@@ -434,7 +437,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
       ws.streamProfiles({ output_properties: ["$email", "$name", "plan"] }),
     );
 
-    expect(profiles.length).toBe(1);
+    expect(profiles).toHaveLength(1);
     expect(stub.exportProfilesCalls).toEqual([
       { output_properties: ["$email", "$name", "plan"] },
     ]);
@@ -477,7 +480,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
 
     const profiles = (await drain(ws.streamProfiles({ raw: true }))) as Rec[];
 
-    expect(profiles.length).toBe(2);
+    expect(profiles).toHaveLength(2);
     expect(profiles[0]?.["$distinct_id"]).toBe("user_1");
     expect(Object.hasOwn(profiles[0] as Rec, "$properties")).toBe(true);
     const first = profiles[0]?.["$properties"] as Rec;
@@ -499,7 +502,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
 
     const profiles = (await drain(ws.streamProfiles({ raw: false }))) as Rec[];
 
-    expect(profiles.length).toBe(1);
+    expect(profiles).toHaveLength(1);
     const profile = profiles[0] as Rec;
     expect(profile["distinct_id"]).toBe("user_abc");
     expect(profile["last_seen"]).toBe("2024-01-15T14:30:00");

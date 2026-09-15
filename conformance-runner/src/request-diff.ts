@@ -26,8 +26,7 @@ import { canonicalize, headersMatch } from "./canonical.js";
 import type { ParsedInteraction } from "./interactions.js";
 import type { JsonValue } from "./json-value.js";
 import { parseLossless } from "./lossless-json.js";
-import type { CapturedRequest } from "./vector-fetch.js";
-import { paramsToJson } from "./vector-fetch.js";
+import { type CapturedRequest, paramsToJson } from "./vector-fetch.js";
 
 /**
  * Encode bytes as base64 text (local helper; mirror of the codec's).
@@ -95,7 +94,7 @@ function diffOneRequest(
     }
   }
   if (expected.headersContain !== undefined) {
-    const mutableHeaders: { [key: string]: string } = { ...captured.headers };
+    const mutableHeaders: Record<string, string> = { ...captured.headers };
     for (const [name, value] of Object.entries(expected.headersContain)) {
       if (!headersMatch({ [name]: value }, mutableHeaders)) {
         problems.push(
@@ -135,8 +134,8 @@ function diffBody(
     let actualBody: JsonValue;
     try {
       actualBody = parseLossless(new TextDecoder().decode(captured.bodyBytes));
-    } catch (cause) {
-      return [`${label}: body is not valid JSON (${String(cause)})`];
+    } catch (error) {
+      return [`${label}: body is not valid JSON (${String(error)})`];
     }
     const actualCanonical = canonicalize(actualBody);
     const expectedCanonical = canonicalize(expected.jsonBody ?? null);
@@ -179,7 +178,6 @@ function diffBody(
  * @param servingViolations - Sequence violations from the fetch harness.
  * @param unservedSlots - Interaction indices never requested.
  * @returns All divergence strings; empty means the request side matches.
- *
  * @example
  * ```typescript
  * const problems = diffRequestTraffic(

@@ -1,6 +1,7 @@
 // CLI tests (src/cli.ts, task TS-5): argument parsing and a full-corpus
 // smoke run of main() (design D12 reporting CLI).
 import { describe, expect, it, vi } from "vitest";
+
 import { main, parseArgs } from "../src/cli.js";
 
 describe("parseArgs", () => {

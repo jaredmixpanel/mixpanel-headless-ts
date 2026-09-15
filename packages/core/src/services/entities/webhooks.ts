@@ -27,7 +27,7 @@ export interface WebhookMethods {
    * @throws AuthenticationError | RateLimitError | QueryError |
    *   ServerError - Per the B0 `appRequest` contract.
    */
-  listWebhooks(signal?: AbortSignal): Promise<JsonValue[]>;
+  listWebhooks: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
    * Create a webhook (`create_webhook`, `:5950-5981` — POST
@@ -38,10 +38,10 @@ export interface WebhookMethods {
    * @returns The mutation result dict (id + name).
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  createWebhook(
+  createWebhook: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Update a webhook (`update_webhook`, `:5983-6015` — PATCH
@@ -53,11 +53,11 @@ export interface WebhookMethods {
    * @returns The mutation result dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  updateWebhook(
+  updateWebhook: (
     webhookId: string,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Delete a webhook (`delete_webhook`, `:6017-6039`).
@@ -66,7 +66,7 @@ export interface WebhookMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  deleteWebhook(webhookId: string, signal?: AbortSignal): Promise<void>;
+  deleteWebhook: (webhookId: string, signal?: AbortSignal) => Promise<void>;
 
   /**
    * Test webhook connectivity (`test_webhook`, `:6041-6072` — POST
@@ -77,10 +77,10 @@ export interface WebhookMethods {
    * @returns The test result dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  testWebhook(
+  testWebhook: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 }
 
 /**

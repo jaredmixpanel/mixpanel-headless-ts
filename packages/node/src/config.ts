@@ -36,40 +36,37 @@
  * a `Secret` instance never reaches the TOML serializer.
  */
 
-import { existsSync } from "node:fs";
-import { chmodSync, mkdirSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { TomlError, parse, stringify } from "smol-toml";
+import { parse, stringify, TomlError } from "smol-toml";
 
 import {
-  parseAccount,
   type Account,
-  type Region,
-  parseActiveSession,
-  type ActiveSession,
-  isPythonDict,
   AccountInUseError,
-  ConfigError,
-  ParamValidationError,
-  Secret,
   AccountSummary,
+  type ActiveSession,
+  type AddAccountParams,
+  type AddTargetOptions,
+  type ApplySessionUpdate,
+  ConfigError,
+  isPythonDict,
+  ParamValidationError,
+  parseAccount,
+  parseActiveSession,
+  Secret,
   Target,
+  type UpdateAccountFields,
 } from "@mixpanel-headless/core";
-import type {
-  AddAccountParams,
-  AddTargetOptions,
-  ApplySessionUpdate,
-  UpdateAccountFields,
-} from "@mixpanel-headless/core";
+
 import {
-  CredentialPathError,
   atomicWriteBytes,
+  type AtomicWriteOptions,
+  CredentialPathError,
   isErrnoError,
   readCredentialText,
   rejectIfSymlink,
-  type AtomicWriteOptions,
 } from "./io-utils.js";
 
 /** The raw parsed TOML document a transaction mutates in place. */
@@ -173,13 +170,13 @@ function accountFromBlock(
 ): Account {
   try {
     return parseAccount({ name, ...block });
-  } catch (exc) {
-    const rendered = exc instanceof Error ? exc.message : String(exc);
+  } catch (error) {
+    const rendered = error instanceof Error ? error.message : String(error);
     throw new ConfigError(
       `Invalid [accounts.${name}] block: ${rendered}`,
       null,
       {
-        cause: exc,
+        cause: error,
       },
     );
   }
@@ -312,10 +309,10 @@ export class ConfigManager {
     const envPath = process.env["MP_CONFIG_PATH"];
     if (options.configPath !== undefined) {
       this.#path = options.configPath;
-    } else if (envPath !== undefined) {
-      this.#path = envPath;
-    } else {
+    } else if (envPath === undefined) {
       this.#path = defaultConfigPath();
+    } else {
+      this.#path = envPath;
     }
     this.#writeBytes =
       options.writeBytes ??
@@ -345,20 +342,20 @@ export class ConfigManager {
   readRaw(): RawConfig {
     try {
       rejectIfSymlink(this.#path);
-    } catch (exc) {
+    } catch (error) {
       // Python wraps ANY OSError from the probe (`config.py:180-183`),
       // so errno-bearing lstat failures (e.g. EACCES on an unreadable
       // parent) code up exactly like the symlink refusal — B8-ARB-A
       // SEM-F6 (`b8-reviewA-resolution.md`).
-      if (exc instanceof CredentialPathError || isErrnoError(exc)) {
-        const rendered = exc instanceof Error ? exc.message : String(exc);
+      if (error instanceof CredentialPathError || isErrnoError(error)) {
+        const rendered = error instanceof Error ? error.message : String(error);
         throw new ConfigError(
           `Could not parse config at ${this.#path}: ${rendered}`,
           null,
-          { cause: exc },
+          { cause: error },
         );
       }
-      throw exc;
+      throw error;
     }
     if (!existsSync(this.#path)) {
       return {};
@@ -366,31 +363,31 @@ export class ConfigManager {
     let text: string;
     try {
       text = readCredentialText(this.#path);
-    } catch (exc) {
+    } catch (error) {
       // The Python boundary catches OSError (CredentialPathError is an
       // OSError there); decode errors (UnicodeDecodeError twin
       // TypeError) propagate unchanged.
-      if (exc instanceof CredentialPathError || isErrnoError(exc)) {
-        const rendered = exc instanceof Error ? exc.message : String(exc);
+      if (error instanceof CredentialPathError || isErrnoError(error)) {
+        const rendered = error instanceof Error ? error.message : String(error);
         throw new ConfigError(
           `Could not parse config at ${this.#path}: ${rendered}`,
           null,
-          { cause: exc },
+          { cause: error },
         );
       }
-      throw exc;
+      throw error;
     }
     try {
       return parse(text);
-    } catch (exc) {
-      if (exc instanceof TomlError) {
+    } catch (error) {
+      if (error instanceof TomlError) {
         throw new ConfigError(
-          `Could not parse config at ${this.#path}: ${exc.message}`,
+          `Could not parse config at ${this.#path}: ${error.message}`,
           null,
-          { cause: exc },
+          { cause: error },
         );
       }
-      throw exc;
+      throw error;
     }
   }
 
@@ -582,22 +579,22 @@ export class ConfigManager {
       }
       delete block["token"];
       delete block["token_env"];
-      if (token !== null) {
-        block["token"] = credentialText(token);
-      } else {
+      if (token === null) {
         block["token_env"] = tokenEnv;
+      } else {
+        block["token"] = credentialText(token);
       }
     }
 
     let account: Account;
     try {
       account = parseAccount({ name, ...block });
-    } catch (exc) {
-      const rendered = exc instanceof Error ? exc.message : String(exc);
+    } catch (error) {
+      const rendered = error instanceof Error ? error.message : String(error);
       throw new ConfigError(
         `Invalid account fields for '${name}': ${rendered}`,
         null,
-        { cause: exc },
+        { cause: error },
       );
     }
     accountsBlock[name] = accountToBlock(account);
@@ -641,41 +638,52 @@ export class ConfigManager {
     if (defaultProject !== null) {
       block["default_project"] = defaultProject;
     }
-    if (params.type === "service_account") {
-      if (username === null || secret === null) {
-        throw new ConfigError(
-          "ServiceAccount requires `username` and `secret`.",
-        );
+    switch (params.type) {
+      case "service_account": {
+        if (username === null || secret === null) {
+          throw new ConfigError(
+            "ServiceAccount requires `username` and `secret`.",
+          );
+        }
+        block["username"] = username;
+        block["secret"] = credentialText(secret);
+
+        break;
       }
-      block["username"] = username;
-      block["secret"] = credentialText(secret);
-    } else if (params.type === "oauth_browser") {
-      // default_project is optional; populated by `mp account login`.
-    } else if (params.type === "oauth_token") {
-      if ((token === null) === (tokenEnv === null)) {
-        throw new ConfigError(
-          "OAuthTokenAccount requires exactly one of `token` or `token_env`.",
-        );
+      case "oauth_browser": {
+        // default_project is optional; populated by `mp account login`.
+
+        break;
       }
-      if (token !== null) {
-        block["token"] = credentialText(token);
-      } else {
-        block["token_env"] = tokenEnv;
+      case "oauth_token": {
+        if ((token === null) === (tokenEnv === null)) {
+          throw new ConfigError(
+            "OAuthTokenAccount requires exactly one of `token` or `token_env`.",
+          );
+        }
+        if (token === null) {
+          block["token_env"] = tokenEnv;
+        } else {
+          block["token"] = credentialText(token);
+        }
+
+        break;
       }
-    } else {
-      // Literal exhaustiveness twin (`config.py:478-479`).
-      throw new ConfigError(`Unknown account type: '${String(params.type)}'`);
+      default: {
+        // Literal exhaustiveness twin (`config.py:478-479`).
+        throw new ConfigError(`Unknown account type: '${String(params.type)}'`);
+      }
     }
 
     let account: Account;
     try {
       account = parseAccount({ name, ...block });
-    } catch (exc) {
-      const rendered = exc instanceof Error ? exc.message : String(exc);
+    } catch (error) {
+      const rendered = error instanceof Error ? error.message : String(error);
       throw new ConfigError(
         `Invalid account fields for '${name}': ${rendered}`,
         null,
-        { cause: exc },
+        { cause: error },
       );
     }
 
@@ -837,10 +845,10 @@ export class ConfigManager {
     const activeBlock = blockAt(raw, "active");
     try {
       return parseActiveSession(activeBlock);
-    } catch (exc) {
-      const rendered = exc instanceof Error ? exc.message : String(exc);
+    } catch (error) {
+      const rendered = error instanceof Error ? error.message : String(error);
       throw new ConfigError(`Invalid [active] block: ${rendered}`, null, {
-        cause: exc,
+        cause: error,
       });
     }
   }
@@ -902,8 +910,8 @@ export class ConfigManager {
     this.transaction((raw) => {
       if (account !== null || workspace !== null) {
         ConfigManager.applySetActive(raw, {
-          ...(account !== null ? { account } : {}),
-          ...(workspace !== null ? { workspace } : {}),
+          ...(account === null ? {} : { account }),
+          ...(workspace === null ? {} : { workspace }),
         });
       }
       if (clearWorkspace) {
@@ -912,7 +920,7 @@ export class ConfigManager {
       if (project !== null) {
         const activeBlock = blockAt(raw, "active");
         const targetAccount =
-          account !== null ? account : activeBlock["account"];
+          account === null ? activeBlock["account"] : account;
         if (typeof targetAccount !== "string") {
           throw new ConfigError(
             "Cannot set project: no active account. " +
@@ -982,12 +990,12 @@ export class ConfigManager {
   ): Target {
     try {
       return Target.fromDict({ name, ...block });
-    } catch (exc) {
-      const rendered = exc instanceof Error ? exc.message : String(exc);
+    } catch (error) {
+      const rendered = error instanceof Error ? error.message : String(error);
       throw new ConfigError(
         `Invalid [targets.${name}] block: ${rendered}`,
         null,
-        { cause: exc },
+        { cause: error },
       );
     }
   }
@@ -1023,12 +1031,12 @@ export class ConfigManager {
           project: options.project,
           workspace: options.workspace ?? null,
         });
-      } catch (exc) {
-        const rendered = exc instanceof Error ? exc.message : String(exc);
+      } catch (error) {
+        const rendered = error instanceof Error ? error.message : String(error);
         throw new ConfigError(
           `Invalid target fields for '${name}': ${rendered}`,
           null,
-          { cause: exc },
+          { cause: error },
         );
       }
       const block: Record<string, unknown> = {
@@ -1171,4 +1179,5 @@ export class ConfigManager {
 }
 
 /** Re-export the region type for adapter convenience. */
-export type { Region };
+
+export { type Region } from "@mixpanel-headless/core";

@@ -2,18 +2,20 @@
 // task TS-4). The table must stay in lockstep with
 // conformance/record/codecs.py in the Python repo.
 import { describe, expect, it } from "vitest";
+
+import { GroupBy } from "@mixpanel-headless/core";
+
+import { registerContractCodecs } from "../src/bindings.js";
 import {
   CodecRegistry,
+  encodeExpectValue,
   PyDate,
   PyDatetime,
   RecordingCallback,
   Secret,
   UndecodableValueError,
   UnencodableValueError,
-  encodeExpectValue,
 } from "../src/codecs.js";
-import { GroupBy } from "@mixpanel-headless/core";
-import { registerContractCodecs } from "../src/bindings.js";
 import { JsonNumber } from "../src/json-value.js";
 import { parseLossless } from "../src/lossless-json.js";
 

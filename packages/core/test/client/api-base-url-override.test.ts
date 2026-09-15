@@ -30,29 +30,30 @@
 // the conformance corpus.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { createMixpanelClient } from "../../src/client/client.js";
 import type {
   RequestExecutor,
   TransportRequestOptions,
 } from "../../src/client/internals.js";
-import { createMixpanelClient } from "../../src/client/client.js";
 import {
+  apiFamilyFor,
   DEFAULT_APP_TIMEOUT_S,
   DEFAULT_QUERY_TIMEOUT_S,
-  ENDPOINTS,
-  apiFamilyFor,
-  endpointsFor,
   type EndpointKind,
   type EndpointOverrides,
+  ENDPOINTS,
+  endpointsFor,
   type Region,
 } from "../../src/client/url.js";
 import { Workspace } from "../../src/workspace.js";
 import {
+  type CannedResponse,
+  type CapturedFetchRequest,
   createMockClient,
   fakeTransport,
   makeSession,
   staticTokenResolver,
-  type CannedResponse,
-  type CapturedFetchRequest,
 } from "../../test-support/client-test-helpers.js";
 
 /** The per-request `extensions["timeout"]["read"]` capture log. */

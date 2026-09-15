@@ -24,24 +24,24 @@
  */
 
 import type { MixpanelClient } from "../client/client.js";
-import { toNativeJson, type JsonValue } from "../client/json-value.js";
+import { type JsonValue, toNativeJson } from "../client/json-value.js";
+import { pythonRepr } from "../compat/python-str.js";
 import { normalizeOnExpression } from "../query/expressions.js";
 import { ValueError } from "../query/python-builtins.js";
-import { pythonRepr } from "../compat/python-str.js";
 import type { CountType, HourDayUnit, TimeUnit } from "../types/literals.js";
 import {
-  ActivityFeedResult,
+  type ActivityFeedResult,
   EventCountsResult,
-  FlowsResult,
-  FrequencyResult,
-  FunnelResult,
-  NumericAverageResult,
-  NumericBucketResult,
-  NumericSumResult,
+  type FlowsResult,
+  type FrequencyResult,
+  type FunnelResult,
+  type NumericAverageResult,
+  type NumericBucketResult,
+  type NumericSumResult,
   PropertyCountsResult,
-  RetentionResult,
-  SavedReportResult,
-  SegmentationResult,
+  type RetentionResult,
+  type SavedReportResult,
+  type SegmentationResult,
 } from "../types/results/live-query.js";
 import type {
   FlowQueryResult,
@@ -52,6 +52,7 @@ import type {
 import type { WarningSink } from "./discovery.js";
 import {
   pyMapping,
+  type SavedReportBookmarkType,
   transformActivityFeed,
   transformFlowResult,
   transformFlows,
@@ -66,8 +67,6 @@ import {
   transformRetentionResult,
   transformSavedReport,
   transformSegmentation,
-  type FlowMode,
-  type SavedReportBookmarkType,
 } from "./live-query-transforms.js";
 
 /** Counting methods the multi-event/property endpoints accept. */
@@ -246,8 +245,10 @@ function dataValues(
 export interface InlineQueryScope {
   /** Optional data view to run under. */
   readonly workspace_id?: number | null | undefined;
-  /** `true` (default) lets the pinned session workspace apply when
-   * `workspace_id` is `null`; `false` runs project-wide instead. */
+  /**
+   * `true` (default) lets the pinned session workspace apply when
+   * `workspace_id` is `null`; `false` runs project-wide instead.
+   */
   readonly inject_workspace_id?: boolean | undefined;
 }
 
@@ -322,7 +323,6 @@ function reprLimit(value: unknown): string {
  * @throws ValueError - `limit` is not an integer, or is outside 1 to
  *   {@link MAX_SEGMENTATION_LIMIT}. Raised before any HTTP call, so a bad
  *   limit never costs a request against the project's rate budget.
- *
  * @example
  * ```typescript
  * queryLimits(null); // { limit: 3000 }
@@ -359,8 +359,10 @@ export function queryLimits(limit: number | bigint | null | undefined): {
  * on `query` / `query_funnel` / `query_retention`).
  */
 export interface InlineQueryScopeWithLimit extends InlineQueryScope {
-  /** Segments to return, 1 to {@link MAX_SEGMENTATION_LIMIT}. `null` /
-   * `undefined` keeps {@link DEFAULT_SEGMENTATION_LIMIT}. */
+  /**
+   * Segments to return, 1 to {@link MAX_SEGMENTATION_LIMIT}. `null` /
+   * `undefined` keeps {@link DEFAULT_SEGMENTATION_LIMIT}.
+   */
   readonly limit?: number | bigint | null | undefined;
 }
 
@@ -976,4 +978,7 @@ export class LiveQueryService {
   }
 }
 
-export type { FlowMode, SavedReportBookmarkType };
+export {
+  type FlowMode,
+  type SavedReportBookmarkType,
+} from "./live-query-transforms.js";

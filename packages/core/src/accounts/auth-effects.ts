@@ -162,7 +162,7 @@ export interface ConfigWrites {
    *   `accounts.py:1689`; B7-ARB-B B-E2E-F1), missing/incompatible
    *   fields, or validation failure.
    */
-  addAccount(name: string, params: AddAccountParams): void;
+  addAccount: (name: string, params: AddAccountParams) => void;
 
   /**
    * Update fields on an existing account in place
@@ -173,7 +173,7 @@ export interface ConfigWrites {
    * @throws ConfigError - Missing account, type-incompatible field, or
    *   validation failure.
    */
-  updateAccount(name: string, fields: UpdateAccountFields): void;
+  updateAccount: (name: string, fields: UpdateAccountFields) => void;
 
   /**
    * Remove an account (`config.py:652-692`), clearing `[active]` when
@@ -185,7 +185,10 @@ export interface ConfigWrites {
    * @throws ConfigError - Missing account.
    * @throws AccountInUseError - Referenced and `force` not set.
    */
-  removeAccount(name: string, options?: { readonly force?: boolean }): string[];
+  removeAccount: (
+    name: string,
+    options?: { readonly force?: boolean },
+  ) => string[];
 
   /**
    * List account summaries sorted by name (`config.py:494-532`), with
@@ -193,7 +196,7 @@ export interface ConfigWrites {
    *
    * @returns The summaries.
    */
-  listAccounts(): AccountSummary[];
+  listAccounts: () => AccountSummary[];
 
   /**
    * Update `[active]` axes in one transaction (see
@@ -202,7 +205,7 @@ export interface ConfigWrites {
    * @param update - The axes to touch.
    * @throws ConfigError - Unknown account or validation failure.
    */
-  setActive(update: SetActiveUpdate): void;
+  setActive: (update: SetActiveUpdate) => void;
 
   /**
    * Atomically apply per-axis session updates
@@ -212,7 +215,7 @@ export interface ConfigWrites {
    * @throws ConfigError - Unknown account, or `project` with no
    *   resolvable account.
    */
-  applySession(update: ApplySessionUpdate): void;
+  applySession: (update: ApplySessionUpdate) => void;
 
   /**
    * Apply a target: `[active]` replaced wholesale + the target
@@ -222,7 +225,7 @@ export interface ConfigWrites {
    * @param name - Target to apply.
    * @throws ConfigError - Unknown target OR its account is gone.
    */
-  applyTarget(name: string): void;
+  applyTarget: (name: string) => void;
 
   /**
    * Add a target block (`config.py:887-934`).
@@ -234,7 +237,7 @@ export interface ConfigWrites {
    *   validation failure (Target model errors are WRAPPED in
    *   ConfigError as `config.py:915-920` does).
    */
-  addTarget(name: string, options: AddTargetOptions): Target;
+  addTarget: (name: string, options: AddTargetOptions) => Target;
 
   /**
    * Remove a target block (`config.py:936-949`).
@@ -242,14 +245,14 @@ export interface ConfigWrites {
    * @param name - Target to remove.
    * @throws ConfigError - Unknown target.
    */
-  removeTarget(name: string): void;
+  removeTarget: (name: string) => void;
 
   /**
    * List targets sorted by name (`config.py:837-860`).
    *
    * @returns The targets.
    */
-  listTargets(): Target[];
+  listTargets: () => Target[];
 }
 
 /**
@@ -262,7 +265,7 @@ export interface BridgeEffects {
    *
    * @returns The resolver view of the bridge, or `null`.
    */
-  load(): BridgeView | null;
+  load: () => BridgeView | null;
 
   /**
    * Write a v2 bridge file (0o600) for the given account.
@@ -272,14 +275,14 @@ export interface BridgeEffects {
    * @throws ConfigError - `BridgeFile` validation failure.
    * @throws OAuthError - `oauth_browser` account with no tokens.
    */
-  export(options: {
+  export: (options: {
     readonly account: Account;
     readonly to: string;
     readonly project: string | null;
     readonly workspace: number | null;
     readonly headers: Readonly<Record<string, string>> | null;
     readonly tokenResolver: TokenResolver;
-  }): string | Promise<string>;
+  }) => string | Promise<string>;
 
   /**
    * Remove the bridge file at `at` (or the default search paths).
@@ -287,7 +290,7 @@ export interface BridgeEffects {
    * @param at - Explicit path, or `null` for the default chain.
    * @returns `true` if a file was deleted.
    */
-  remove(at: string | null): boolean;
+  remove: (at: string | null) => boolean;
 }
 
 /**
@@ -309,7 +312,7 @@ export interface TokenStore {
    * @param name - Account name.
    * @returns The tokens, or `null` when none exist.
    */
-  readTokens(name: string): OAuthTokens | null;
+  readTokens: (name: string) => OAuthTokens | null;
 
   /**
    * Persist tokens atomically at the per-account path (mode 0o600).
@@ -318,7 +321,7 @@ export interface TokenStore {
    * @param tokens - The tokens to write.
    * @returns The path written.
    */
-  writeTokens(name: string, tokens: OAuthTokens): string;
+  writeTokens: (name: string, tokens: OAuthTokens) => string;
 
   /**
    * Delete the persisted tokens if present (`logout`,
@@ -326,7 +329,7 @@ export interface TokenStore {
    *
    * @param name - Account name.
    */
-  removeTokens(name: string): void;
+  removeTokens: (name: string) => void;
 
   /**
    * Remove the whole per-account directory, warning (never raising) on
@@ -334,7 +337,7 @@ export interface TokenStore {
    *
    * @param name - Account name.
    */
-  removeAccountDir(name: string): void;
+  removeAccountDir: (name: string) => void;
 
   /**
    * Where the DCR client info for `region` lives
@@ -343,7 +346,7 @@ export interface TokenStore {
    * @param region - Mixpanel region.
    * @returns Absolute path (may not exist yet).
    */
-  clientInfoPath(region: Region): string;
+  clientInfoPath: (region: Region) => string;
 
   /**
    * Whether ANY per-account state exists for `name` — the
@@ -357,7 +360,7 @@ export interface TokenStore {
    * @returns `true` when the per-account directory (or fake state)
    *   exists.
    */
-  accountDirExists(name: string): boolean;
+  accountDirExists: (name: string) => boolean;
 }
 
 /**
@@ -375,10 +378,10 @@ export interface OAuthFlowEffects {
    * @returns The freshly minted tokens (NOT persisted).
    * @throws OAuthError - Any leg of the flow fails.
    */
-  login(
+  login: (
     region: Region,
     options: { readonly openBrowser: boolean },
-  ): Promise<OAuthTokens>;
+  ) => Promise<OAuthTokens>;
 }
 
 /**
@@ -394,7 +397,7 @@ export interface MeCacheEffects {
    * @param me - The parsed response.
    * @returns Nothing (a promise for asynchronous stores).
    */
-  put(accountName: string, me: MeResponse): void | Promise<void>;
+  put: (accountName: string, me: MeResponse) => void | Promise<void>;
 }
 
 /**
@@ -417,7 +420,7 @@ export interface AuthEffects {
      * @param name - Variable name.
      * @returns The raw value, or `undefined` when unset.
      */
-    get(name: string): string | undefined;
+    get: (name: string) => string | undefined;
   };
   /** Per-account token/artifact store (B8-N2). */
   readonly tokenStore: TokenStore;
@@ -439,7 +442,7 @@ export interface AuthEffects {
    * @param session - The post-swap session.
    * @returns Nothing (a promise for asynchronous stores).
    */
-  persistActive(session: Session): void | Promise<void>;
+  persistActive: (session: Session) => void | Promise<void>;
   /**
    * Read a secret from stdin (`read_capped_secret_from_stdin`,
    * `io_utils.py` — the `secret_stdin=True` paths,
@@ -449,7 +452,7 @@ export interface AuthEffects {
    *
    * @returns The secret text.
    */
-  readSecretStdin(): string;
+  readSecretStdin: () => string;
   /**
    * Single-line progress narration (`_narrate`, `accounts.py:132-148`
    * — a stderr write in Python). Packet-gap ADDITION (disclosed):
@@ -459,7 +462,7 @@ export interface AuthEffects {
    *
    * @param msg - Single-line message (no trailing newline).
    */
-  narrate(msg: string): void;
+  narrate: (msg: string) => void;
   /** The injected fetch every probe/client runs over (R2.4 — CORE, no stub). */
   readonly fetchImpl: typeof fetch;
   /**
@@ -467,7 +470,7 @@ export interface AuthEffects {
    *
    * @returns The current time.
    */
-  now(): number;
+  now: () => number;
 }
 
 /**
@@ -517,7 +520,6 @@ function unportedAuthSeam(name: string): (...args: unknown[]) => never {
  * (CORE members per packet §3.2 — no stub).
  *
  * @returns The stubbed bag.
- *
  * @example
  * ```typescript
  * const effects = { ...defaultAuthEffects(), config: myFakeConfig };

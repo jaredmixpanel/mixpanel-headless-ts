@@ -11,7 +11,9 @@
 // `JSON.parse` would collapse `18.0` to `18` and fail the float-token cases
 // by design).
 import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
+
 import {
   CanonicalizationError,
   canonicalize,
@@ -34,9 +36,9 @@ interface SelftestCase {
   /** Expected canonical string (value/error/interactions kinds). */
   readonly canonical?: string;
   /** Expected-header object (headers kind). */
-  readonly headers_contain?: { [key: string]: JsonValue };
+  readonly headers_contain?: Record<string, JsonValue>;
   /** Actual-header map (headers kind). */
-  readonly actual_headers?: { [key: string]: string };
+  readonly actual_headers?: Record<string, string>;
   /** Expected match verdict (headers kind). */
   readonly matches?: boolean;
   /** Non-finite double spelling (reject kind without input_json). */
@@ -54,7 +56,7 @@ interface SelftestDocument {
 }
 
 /** Non-finite doubles constructible only via the `special` field. */
-const SPECIAL_FLOATS: { readonly [name: string]: number } = {
+const SPECIAL_FLOATS: Readonly<Record<string, number>> = {
   nan: Number.NaN,
   infinity: Number.POSITIVE_INFINITY,
   negative_infinity: Number.NEGATIVE_INFINITY,
@@ -80,7 +82,7 @@ function required<K extends keyof SelftestCase>(
   const value = testCase[field];
   if (value === undefined) {
     throw new Error(
-      `selftest case ${testCase.id} is missing required field ${String(field)}`,
+      `selftest case ${testCase.id} is missing required field ${field}`,
     );
   }
   return value;
@@ -129,17 +131,18 @@ describe(`canonical-selftest.json (${DOCUMENT.cases.length} cases from ${SELFTES
         }
         case "reject": {
           const value =
-            testCase.special !== undefined
-              ? SPECIAL_FLOATS[testCase.special]
-              : parseLossless(required(testCase, "input_json"));
+            testCase.special === undefined
+              ? parseLossless(required(testCase, "input_json"))
+              : SPECIAL_FLOATS[testCase.special];
           expect(value).toBeDefined();
           expect(() => canonicalize(value as JsonValue)).toThrow(
             CanonicalizationError,
           );
           break;
         }
-        default:
+        default: {
           throw new Error(`unknown selftest case kind ${testCase.kind}`);
+        }
       }
     });
   }

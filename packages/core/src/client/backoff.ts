@@ -15,8 +15,8 @@
  * jitter. Conformance bindings inject `random: () => 0`.
  */
 
-import { MixpanelHeadlessError } from "../errors.js";
 import { pythonInt } from "../compat/index.js";
+import { MixpanelHeadlessError } from "../errors.js";
 
 /**
  * Exponential-backoff bounds shared by {@link calculateBackoff} and the
@@ -42,7 +42,7 @@ export interface HeaderCarrier {
    * @param name - Header name.
    * @returns The header value, or `null` when absent.
    */
-  header(name: string): string | null;
+  header: (name: string) => string | null;
 }
 
 /**
@@ -133,14 +133,14 @@ export function parseRetryAfter(response: HeaderCarrier): number | null {
     let parsed: number;
     try {
       parsed = pythonInt(retryAfter);
-    } catch (cause) {
+    } catch (error) {
       // Python: `except ValueError: return None`. pythonInt's coded
       // errors (PY_INT_INVALID_LITERAL / PY_INT_UNSAFE_INTEGER) are the
       // ValueError analog; anything else is a programming error.
-      if (cause instanceof MixpanelHeadlessError) {
+      if (error instanceof MixpanelHeadlessError) {
         return null;
       }
-      throw cause;
+      throw error;
     }
     if (parsed >= 0) {
       return parsed;

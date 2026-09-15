@@ -20,14 +20,15 @@
 // - `assert isinstance(params, dict)` becomes an object/non-null check.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import { BookmarkValidationError } from "../../src/errors.js";
-import { Filter } from "../../src/types/query-params/filter.js";
+
+import type { BookmarkValidationError } from "../../src/errors.js";
 import {
   CohortCriteria,
   CohortDefinition,
   sanitizeRawCohort,
 } from "../../src/types/query-params/cohort.js";
+import { Filter } from "../../src/types/query-params/filter.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   mockWorkspaceClient,
   TEST_SESSION,
@@ -451,8 +452,8 @@ describe("TestValidationErrors", () => {
         distinct_ids: ["user_2"],
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U1");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U1");
     }
   });
 
@@ -463,8 +464,8 @@ describe("TestValidationErrors", () => {
         where: Filter.inCohort(456),
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U2");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U2");
     }
   });
 
@@ -472,8 +473,8 @@ describe("TestValidationErrors", () => {
     try {
       await makeWs().buildUserParams({ sort_by: "" });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U5");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U5");
     }
   });
 
@@ -481,8 +482,8 @@ describe("TestValidationErrors", () => {
     try {
       await makeWs().buildUserParams({ as_of: "not-a-date" });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U6");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U6");
     }
   });
 
@@ -490,8 +491,8 @@ describe("TestValidationErrors", () => {
     try {
       await makeWs().buildUserParams({ include_all_users: true });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U7");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U7");
     }
   });
 
@@ -499,8 +500,8 @@ describe("TestValidationErrors", () => {
     try {
       await makeWs().buildUserParams({ where: Filter.notInCohort(123) });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U12");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U12");
     }
   });
 
@@ -510,8 +511,8 @@ describe("TestValidationErrors", () => {
         where: [Filter.inCohort(100), Filter.inCohort(200)],
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U13");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U13");
     }
   });
 
@@ -519,8 +520,8 @@ describe("TestValidationErrors", () => {
     try {
       await makeWs().buildUserParams({ distinct_ids: [] });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U4");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U4");
     }
   });
 
@@ -533,8 +534,8 @@ describe("TestValidationErrors", () => {
         include_all_users: true,
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      const codes = codesOf(exc);
+    } catch (error) {
+      const codes = codesOf(error);
       expect(codes).toContain("U1");
       expect(codes).toContain("U5");
       expect(codes).toContain("U7");
@@ -587,8 +588,8 @@ describe("TestAggregateModeParams", () => {
         aggregate: "extremes",
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U14");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U14");
     }
   });
 
@@ -600,8 +601,8 @@ describe("TestAggregateModeParams", () => {
         aggregate_property: "ltv",
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U15");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U15");
     }
   });
 
@@ -617,8 +618,8 @@ describe("TestAggregateModeParams", () => {
     try {
       await makeWs().buildUserParams({ mode: "profiles", segment_by: [123] });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U16");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U16");
     }
   });
 });
@@ -632,8 +633,8 @@ describe("TestModeSpecificValidation", () => {
     try {
       await makeWs().buildUserParams({ mode: "aggregate", sort_by: "ltv" });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U19");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U19");
     }
   });
 
@@ -641,8 +642,8 @@ describe("TestModeSpecificValidation", () => {
     try {
       await makeWs().buildUserParams({ mode: "aggregate", search: "alice" });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U20");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U20");
     }
   });
 
@@ -653,8 +654,8 @@ describe("TestModeSpecificValidation", () => {
         distinct_id: "user_1",
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U21");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U21");
     }
   });
 
@@ -665,8 +666,8 @@ describe("TestModeSpecificValidation", () => {
         properties: ["$email"],
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U22");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U22");
     }
   });
 });

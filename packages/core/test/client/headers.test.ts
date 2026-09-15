@@ -11,12 +11,13 @@
 // the injected `getCustomHeaderEnv` provider (B0-notes decision 10 —
 // core reads no env, R9.1/R9.4).
 import { describe, expect, it } from "vitest";
+
 import {
-  QUERY_ORIGIN,
   getUserAgent,
+  QUERY_ORIGIN,
   requestHeaders,
-  setEntryPoint,
   type RequestHeadersDeps,
+  setEntryPoint,
 } from "../../src/client/headers.js";
 
 /**

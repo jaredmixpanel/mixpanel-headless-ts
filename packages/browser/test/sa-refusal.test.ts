@@ -10,17 +10,17 @@
 
 import { describe, expect, it } from "vitest";
 
+import { Secret, type Session } from "@mixpanel-headless/core";
+
 import * as browserEntry from "../src/index.js";
-import type { Session } from "@mixpanel-headless/core";
-import { Secret } from "@mixpanel-headless/core";
 import {
   BROWSER_SERVICE_ACCOUNT_REFUSED,
+  type BrowserSessionOptions,
   BrowserUnsupportedError,
-  CREDENTIAL_KEYS,
-  InMemoryCredentialStore,
   createBrowserWorkspace,
   createBrowserWorkspaceFromStore,
-  type BrowserSessionOptions,
+  CREDENTIAL_KEYS,
+  InMemoryCredentialStore,
 } from "../src/index.js";
 import { fakeTransport } from "./helpers.js";
 

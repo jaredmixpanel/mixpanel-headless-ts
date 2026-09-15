@@ -10,10 +10,10 @@
 
 import { appRequest } from "../../client/app-request.js";
 import type { ClientCore } from "../../client/client.js";
-import type { JsonValue } from "../../client/json-value.js";
 import { isPlainRecord } from "../../client/internals.js";
-import { MixpanelHeadlessError } from "../../errors.js";
+import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
+import { MixpanelHeadlessError } from "../../errors.js";
 import { expectRecordResult } from "./shared.js";
 
 /** Options bag of {@link AnomalyMethods.listDataVolumeAnomalies}. */
@@ -37,9 +37,9 @@ export interface AnomalyMethods {
    * @throws MixpanelHeadlessError - Missing `anomalies` key
    *   ("missing 'anomalies' key in results") or an unexpected format.
    */
-  listDataVolumeAnomalies(
+  listDataVolumeAnomalies: (
     options?: ListDataVolumeAnomaliesOptions,
-  ): Promise<JsonValue[]>;
+  ) => Promise<JsonValue[]>;
 
   /**
    * Update one anomaly's status (`update_anomaly`, `:8469-8502` —
@@ -50,10 +50,10 @@ export interface AnomalyMethods {
    * @returns The raw response dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  updateAnomaly(
+  updateAnomaly: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Bulk-update anomaly statuses (`bulk_update_anomalies`,
@@ -64,10 +64,10 @@ export interface AnomalyMethods {
    * @returns The raw response dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  bulkUpdateAnomalies(
+  bulkUpdateAnomalies: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 }
 
 /**

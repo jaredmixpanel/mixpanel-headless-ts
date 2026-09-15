@@ -6,8 +6,9 @@
 // immutability tests have no TS runtime analog — `readonly` is the
 // compile-time equivalent.)
 import { describe, expect, it } from "vitest";
+
 import {
-  MixpanelHeadlessError,
+  type MixpanelHeadlessError,
   ParamValidationError,
 } from "../../../src/errors.js";
 import { Filter } from "../../../src/types/query-params/filter.js";
@@ -23,8 +24,8 @@ function expectGuard(thunk: () => unknown, code: string): void {
   let thrown: unknown;
   try {
     thunk();
-  } catch (cause) {
-    thrown = cause;
+  } catch (error) {
+    thrown = error;
   }
   expect(thrown, `expected ${code}`).toBeInstanceOf(ParamValidationError);
   expect((thrown as MixpanelHeadlessError).code).toBe(code);
@@ -63,13 +64,13 @@ describe("RetentionEvent construction", () => {
 
 describe("RetentionEvent guards (P2-1 coverage-closure cases)", () => {
   it("EV1_EMPTY_EVENT on empty/blank events", () => {
-    for (const event of ["", "   "]) {
+    for (const event of ["", " ".repeat(3)]) {
       expectGuard(() => new RetentionEvent({ event }), "EV1_EMPTY_EVENT");
     }
   });
 
   it("EV2_CONTROL_CHAR_EVENT on control characters", () => {
-    for (const event of ["a\x00b", "a\x7fb"]) {
+    for (const event of ["a\x00b", "a\x7Fb"]) {
       expectGuard(
         () => new RetentionEvent({ event }),
         "EV2_CONTROL_CHAR_EVENT",

@@ -239,7 +239,7 @@ export class PythonRandom {
     for (let i = 0; i < words; i += 1) {
       let r = this.genrandUint32();
       if (remaining < 32) {
-        r = r >>> (32 - remaining);
+        r >>>= 32 - remaining;
       }
       result |= BigInt(r >>> 0) << BigInt(32 * i);
       remaining -= 32;
@@ -295,7 +295,7 @@ export function pythonSample<T>(
     );
   }
   const rng = new PythonRandom(seed, entropy);
-  const result: T[] = new Array<T>(k);
+  const result: T[] = Array.from({ length: k });
   let setsize = 21; // size of a small set minus size of an empty list
   if (k > 5) {
     // `setsize += 4 ** ceil(log(k * 3, 4))`

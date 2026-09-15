@@ -8,6 +8,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ParamValidationError } from "@mixpanel-headless/core";
+
 import {
   coerceLaxExpiresAt,
   pydanticJsonDatetimeText,
@@ -15,7 +16,7 @@ import {
 } from "../src/auth/pydantic-datetime.js";
 
 describe("coerceLaxExpiresAt — speedate lax mirror (probe table)", () => {
-  const ACCEPT: readonly [unknown, string][] = [
+  const ACCEPT: ReadonlyArray<[unknown, string]> = [
     [1_893_456_000, "2030-01-01T00:00:00+00:00"],
     [1_893_456_000.5, "2030-01-01T00:00:00.500000+00:00"],
     ["1893456000", "2030-01-01T00:00:00+00:00"],
@@ -67,7 +68,7 @@ describe("coerceLaxExpiresAt — speedate lax mirror (probe table)", () => {
 });
 
 describe("writer formatters — pydantic-JSON (Z) vs datetime.isoformat (+00:00)", () => {
-  const CASES: readonly [string, string, string][] = [
+  const CASES: ReadonlyArray<[string, string, string]> = [
     // [input, pydantic-JSON form, isoformat form]
     [
       "2030-01-01T00:00:00+00:00",

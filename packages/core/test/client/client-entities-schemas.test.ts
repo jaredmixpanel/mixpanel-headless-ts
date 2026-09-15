@@ -3,13 +3,14 @@
 // list/create/create-bulk/update/update-bulk/delete + percent-encoding
 // + duplicate-entry edge cases).
 import { describe, expect, it } from "vitest";
-import { MixpanelHeadlessError } from "../../src/errors.js";
+
+import type { Session } from "../../src/auth/session.js";
 import { toNativeJson } from "../../src/client/json-value.js";
+import { MixpanelHeadlessError } from "../../src/errors.js";
 import {
   createMockClient,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
-import type { Session } from "../../src/auth/session.js";
 
 /** The `oauth_credentials` fixture twin (test_api_client_schemas.py:31-38). */
 function oauthCredentials(): Session {
@@ -81,7 +82,7 @@ describe("TestListSchemaRegistry", () => {
       return { status: 200, json: { status: "ok", results: [] } };
     });
     await client.listSchemaRegistry();
-    const path = capturedUrls[0]?.split("?")[0] ?? "";
+    const path = capturedUrls[0]?.split("?", 1)[0] ?? "";
     expect(path.replace(/\/+$/, "").endsWith("schemas")).toBe(true);
   });
 
@@ -183,7 +184,8 @@ describe("TestCreateSchema", () => {
     expect(decodeURIComponent(url)).toContain("User Sign Up / Login");
     // The raw URL should NOT contain literal spaces or unencoded
     // slashes in the name.
-    const pathAfterSchemas = url.split("/schemas/")[1]?.split("?")[0] ?? "";
+    const pathAfterSchemas =
+      url.split("/schemas/", 2)[1]?.split("?", 1)[0] ?? "";
     expect(pathAfterSchemas).not.toContain(" ");
   });
 
@@ -355,7 +357,7 @@ describe("TestCreateSchemasBulk", () => {
       };
     });
     await client.createSchemasBulk({ entries: [], truncate: false });
-    const path = capturedUrls[0]?.split("?")[0] ?? "";
+    const path = capturedUrls[0]?.split("?", 1)[0] ?? "";
     expect(path.replace(/\/+$/, "").endsWith("schemas")).toBe(true);
   });
 
@@ -554,7 +556,7 @@ describe("TestUpdateSchemasBulk", () => {
       return { status: 200, json: { status: "ok", results: [] } };
     });
     await client.updateSchemasBulk({ entries: [] });
-    const path = capturedUrls[0]?.split("?")[0] ?? "";
+    const path = capturedUrls[0]?.split("?", 1)[0] ?? "";
     expect(path.replace(/\/+$/, "").endsWith("schemas")).toBe(true);
   });
 
@@ -642,7 +644,7 @@ describe("TestDeleteSchemas", () => {
       };
     });
     await client.deleteSchemas();
-    const path = capturedUrls[0]?.split("?")[0] ?? "";
+    const path = capturedUrls[0]?.split("?", 1)[0] ?? "";
     expect(path.replace(/\/+$/, "").endsWith("schemas")).toBe(true);
   });
 

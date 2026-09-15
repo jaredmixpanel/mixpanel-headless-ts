@@ -26,14 +26,18 @@
 // client-core.test.ts / client-request.test.ts headers) or belong to
 // other shards (C3+: CRUD suites).
 import { describe, expect, it } from "vitest";
-import { RateLimitError } from "../../src/errors.js";
-import { JsonNumber, toNativeJson } from "../../src/client/json-value.js";
-import type { JsonValue } from "../../src/client/json-value.js";
+
 import {
-  createMockClient,
-  makeSession,
+  type JsonNumber,
+  type JsonValue,
+  toNativeJson,
+} from "../../src/client/json-value.js";
+import { RateLimitError } from "../../src/errors.js";
+import {
   type CannedResponse,
   type CapturedFetchRequest,
+  createMockClient,
+  makeSession,
 } from "../../test-support/client-test-helpers.js";
 
 /** Drain an async generator into an array (the `list(...)` analog). */
@@ -269,8 +273,8 @@ describe("TestRetryStateResetRegression", () => {
     let caught: unknown;
     try {
       await drain(client.exportEvents("2024-01-01", "2024-01-31"));
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(RateLimitError);
     expect((caught as RateLimitError).projectId).toBe("12345");

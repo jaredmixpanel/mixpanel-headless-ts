@@ -9,10 +9,10 @@
  */
 
 import {
+  type EntityFieldSpec,
   EntityModel,
   oneOf,
   prepareInit,
-  type EntityFieldSpec,
 } from "./model-base.js";
 
 /**
@@ -57,9 +57,9 @@ export interface DashboardInit {
   /** Email of the last modifier. */
   readonly last_modified_by_email?: string | null | undefined;
   /** Dashboard-level filters. */
-  readonly filters?: ReadonlyArray<unknown> | null | undefined;
+  readonly filters?: readonly unknown[] | null | undefined;
   /** Dashboard-level breakdowns. */
-  readonly breakdowns?: ReadonlyArray<unknown> | null | undefined;
+  readonly breakdowns?: readonly unknown[] | null | undefined;
   /** Dashboard-level time filter. */
   readonly time_filter?: unknown | null | undefined;
   /** How the dashboard was generated. */
@@ -67,7 +67,7 @@ export interface DashboardInit {
   /** Parent dashboard ID for nested dashboards. */
   readonly parent_dashboard_id?: number | null | undefined;
   /** Child dashboard references. */
-  readonly child_dashboards?: ReadonlyArray<unknown> | null | undefined;
+  readonly child_dashboards?: readonly unknown[] | null | undefined;
   /** Permission: can update basic fields. */
   readonly can_update_basic?: boolean | undefined;
   /** Permission: can share. */
@@ -89,7 +89,7 @@ export interface DashboardInit {
   /** Creator identifier string. */
   readonly creator?: string | null | undefined;
   /** Ancestor dashboard references. */
-  readonly ancestors?: ReadonlyArray<unknown> | undefined;
+  readonly ancestors?: readonly unknown[] | undefined;
   /** Dashboard layout data. */
   readonly layout?: unknown | null | undefined;
   /** Dashboard contents data. */
@@ -196,9 +196,9 @@ export class Dashboard extends EntityModel {
   /** Email of the last modifier. */
   declare readonly last_modified_by_email: string | null;
   /** Dashboard-level filters. */
-  declare readonly filters: ReadonlyArray<unknown> | null;
+  declare readonly filters: readonly unknown[] | null;
   /** Dashboard-level breakdowns. */
-  declare readonly breakdowns: ReadonlyArray<unknown> | null;
+  declare readonly breakdowns: readonly unknown[] | null;
   /** Dashboard-level time filter. */
   declare readonly time_filter: unknown | null;
   /** How the dashboard was generated. */
@@ -206,7 +206,7 @@ export class Dashboard extends EntityModel {
   /** Parent dashboard ID for nested dashboards. */
   declare readonly parent_dashboard_id: number | null;
   /** Child dashboard references. */
-  declare readonly child_dashboards: ReadonlyArray<unknown> | null;
+  declare readonly child_dashboards: readonly unknown[] | null;
   /** Permission: can update basic fields. */
   declare readonly can_update_basic: boolean;
   /** Permission: can share. */
@@ -228,7 +228,7 @@ export class Dashboard extends EntityModel {
   /** Creator identifier string. */
   declare readonly creator: string | null;
   /** Ancestor dashboard references. */
-  declare readonly ancestors: ReadonlyArray<unknown>;
+  declare readonly ancestors: readonly unknown[];
   /** Dashboard layout data. */
   declare readonly layout: unknown | null;
   /** Dashboard contents data. */
@@ -368,7 +368,7 @@ export class DashboardRow extends EntityModel {
   ];
 
   /** Content items in this row (max 4). */
-  declare readonly contents: ReadonlyArray<DashboardRowContent>;
+  declare readonly contents: readonly DashboardRowContent[];
 
   /**
    * Construct a validated DashboardRow (Pydantic-construction mirror).
@@ -410,9 +410,9 @@ export interface CreateDashboardParamsInit {
   /** Whether the dashboard should have restricted access. */
   readonly is_restricted?: boolean | null | undefined;
   /** Dashboard-level filters. */
-  readonly filters?: ReadonlyArray<unknown> | null | undefined;
+  readonly filters?: readonly unknown[] | null | undefined;
   /** Dashboard-level breakdowns. */
-  readonly breakdowns?: ReadonlyArray<unknown> | null | undefined;
+  readonly breakdowns?: readonly unknown[] | null | undefined;
   /** Dashboard-level time filter. */
   readonly time_filter?: unknown | null | undefined;
   /** ID of dashboard to duplicate. */
@@ -464,15 +464,15 @@ export class CreateDashboardParams extends EntityModel {
   /** Whether the dashboard should have restricted access. */
   declare readonly is_restricted: boolean | null;
   /** Dashboard-level filters. */
-  declare readonly filters: ReadonlyArray<unknown> | null;
+  declare readonly filters: readonly unknown[] | null;
   /** Dashboard-level breakdowns. */
-  declare readonly breakdowns: ReadonlyArray<unknown> | null;
+  declare readonly breakdowns: readonly unknown[] | null;
   /** Dashboard-level time filter. */
   declare readonly time_filter: unknown | null;
   /** ID of dashboard to duplicate. */
   declare readonly duplicate: number | null;
   /** Initial content rows with layout. Each row has 1-4 content items. */
-  declare readonly rows: ReadonlyArray<DashboardRow> | null;
+  declare readonly rows: readonly DashboardRow[] | null;
 
   /**
    * Construct a validated CreateDashboardParams (Pydantic-construction mirror).
@@ -520,9 +520,9 @@ export interface UpdateDashboardParamsInit {
   /** New restriction setting. */
   readonly is_restricted?: boolean | null | undefined;
   /** New dashboard-level filters. */
-  readonly filters?: ReadonlyArray<unknown> | null | undefined;
+  readonly filters?: readonly unknown[] | null | undefined;
   /** New dashboard-level breakdowns. */
-  readonly breakdowns?: ReadonlyArray<unknown> | null | undefined;
+  readonly breakdowns?: readonly unknown[] | null | undefined;
   /** New dashboard-level time filter. */
   readonly time_filter?: unknown | null | undefined;
   /** New dashboard layout data. */
@@ -566,9 +566,9 @@ export class UpdateDashboardParams extends EntityModel {
   /** New restriction setting. */
   declare readonly is_restricted: boolean | null;
   /** New dashboard-level filters. */
-  declare readonly filters: ReadonlyArray<unknown> | null;
+  declare readonly filters: readonly unknown[] | null;
   /** New dashboard-level breakdowns. */
-  declare readonly breakdowns: ReadonlyArray<unknown> | null;
+  declare readonly breakdowns: readonly unknown[] | null;
   /** New dashboard-level time filter. */
   declare readonly time_filter: unknown | null;
   /** New dashboard layout data. */
@@ -871,7 +871,7 @@ export class BlueprintFinishParams extends EntityModel {
   /** ID of the blueprint dashboard to finalize. */
   declare readonly dashboard_id: number;
   /** List of cards to include. */
-  declare readonly cards: ReadonlyArray<BlueprintCard>;
+  declare readonly cards: readonly BlueprintCard[];
 
   /**
    * Construct a validated BlueprintFinishParams (Pydantic-construction mirror).

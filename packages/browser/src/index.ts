@@ -17,18 +17,18 @@ export const BROWSER_PACKAGE_NAME = "@mixpanel-headless/browser";
 
 // ── Browser implementations (B9-R1) ────────────────────────────────────
 export {
+  browserSession,
+  type BrowserSessionOptions,
+  type BrowserWorkspaceFromStoreOptions,
+  type BrowserWorkspaceOptions,
+  createBrowserWorkspace,
+  createBrowserWorkspaceFromStore,
+} from "./client.js";
+export {
   InMemoryCredentialStore,
   LocalStorageCredentialStore,
   type StorageLike,
 } from "./credential-store.js";
-export {
-  browserSession,
-  createBrowserWorkspace,
-  createBrowserWorkspaceFromStore,
-  type BrowserSessionOptions,
-  type BrowserWorkspaceFromStoreOptions,
-  type BrowserWorkspaceOptions,
-} from "./client.js";
 export {
   BROWSER_EXPORT_UNSUPPORTED,
   BROWSER_NO_PENDING_LOGIN,
@@ -43,11 +43,11 @@ export {
 // ── Redirect PKCE flow (B9-R2, b9-packets.md §3.2) ─────────────────────
 export {
   beginLogin,
-  completeLogin,
-  DEFAULT_MAX_PENDING_AGE_MS,
   type BeginLoginOptions,
   type BeginLoginResult,
+  completeLogin,
   type CompleteLoginOptions,
+  DEFAULT_MAX_PENDING_AGE_MS,
 } from "./redirect-flow.js";
 export {
   ensureBrowserClientRegistered,
@@ -55,15 +55,15 @@ export {
 } from "./registration.js";
 
 // ── Core re-exports (the surface a browser consumer needs — §2.5) ─────
-export { CREDENTIAL_KEYS, type CredentialStore } from "@mixpanel-headless/core";
-export { PkceChallenge } from "@mixpanel-headless/core";
 export type { Account, Region } from "@mixpanel-headless/core";
 export type { Session } from "@mixpanel-headless/core";
+export { CREDENTIAL_KEYS, type CredentialStore } from "@mixpanel-headless/core";
+export { PkceChallenge } from "@mixpanel-headless/core";
 export {
+  type OAuthClientInfo,
   OAuthTokens,
   parseOAuthClientInfo,
   parseOAuthTokens,
-  type OAuthClientInfo,
 } from "@mixpanel-headless/core";
 // TYPE-ONLY re-export (pair-B FB-2, b9-reviewB-threat.md F2): a VALUE
 // export let `new Workspace({session})` accept a service-account
@@ -75,54 +75,54 @@ export type { Workspace } from "@mixpanel-headless/core";
 // Listed by name: `export *` from another package would forward whatever
 // core adds later without this barrel's review.
 export {
-  APIError,
   AccountExistsError,
   AccountInUseError,
   AccountNotFoundError,
+  APIError,
+  type APIErrorOptions,
   AuthenticationError,
+  type AuthenticationErrorOptions,
   BookmarkValidationError,
   BusinessContextValidationError,
   ConfigError,
   DateRangeTooLargeError,
+  type ErrorDict,
   EventNotFoundError,
   InvalidArgumentError,
+  type InvalidArgumentErrorOptions,
+  type InvalidArgumentViolation,
   MixpanelHeadlessError,
   OAuthError,
   ParamTypeError,
   ParamValidationError,
   ProjectNotFoundError,
   QueryError,
+  type QueryErrorOptions,
   RateLimitError,
+  type RateLimitErrorOptions,
+  type RegionProbeAttempt,
   RegionProbeError,
+  type RegionProbeErrorOptions,
   RegionProbeNetworkError,
   ReplayNotFoundError,
   ReportLinkError,
+  type ReportLinkErrorOptions,
   ReportLinkNotFoundError,
   ReportLinkParseError,
   ReportLinkScopeMismatchError,
   ResponseValidationError,
   ServerError,
+  type ServerErrorOptions,
   SessionReplayAccessError,
   SessionReplayError,
+  type SessionReplayErrorOptions,
   ShortLinkResolutionError,
   SignedURLExpiredError,
   UnsupportedReplayFormatError,
   UnsupportedReportLinkError,
   ValidationError,
-  WorkspaceScopeError,
-  type APIErrorOptions,
-  type AuthenticationErrorOptions,
-  type ErrorDict,
-  type InvalidArgumentErrorOptions,
-  type InvalidArgumentViolation,
-  type QueryErrorOptions,
-  type RateLimitErrorOptions,
-  type RegionProbeAttempt,
-  type RegionProbeErrorOptions,
-  type ReportLinkErrorOptions,
-  type ServerErrorOptions,
-  type SessionReplayErrorOptions,
   type ValidationSeverity,
+  WorkspaceScopeError,
 } from "@mixpanel-headless/core";
 
 // ── Query vocabulary (core re-exports) ────────────────────────────────
@@ -163,45 +163,45 @@ export {
   CohortDefinition,
   CohortMetric,
   CustomPropertyRef,
-  Exclusion,
-  Filter,
-  FlowStep,
-  Formula,
-  FrequencyBreakdown,
-  FrequencyFilter,
-  FunnelStep,
-  GroupBy,
-  HoldingConstant,
-  InlineCustomProperty,
-  ListItemGroupMode,
-  Metric,
-  PropertyInput,
-  RetentionEvent,
-  TimeComparison,
   type DidEventOptions,
   type DidNotDoEventOptions,
+  Exclusion,
   type ExclusionFields,
+  Filter,
   type FilterFields,
   type FilterValue,
+  FlowStep,
   type FlowStepFields,
+  Formula,
+  FrequencyBreakdown,
   type FrequencyBreakdownFields,
+  FrequencyFilter,
   type FrequencyFilterFields,
+  FunnelStep,
   type FunnelStepFields,
+  GroupBy,
   type GroupByFields,
   type HasPropertyOperator,
   type HasPropertyType,
+  HoldingConstant,
   type HoldingConstantFields,
+  InlineCustomProperty,
+  ListItemGroupMode,
+  Metric,
   type MetricFields,
+  PropertyInput,
   type PropertySpec,
+  RetentionEvent,
   type RetentionEventFields,
+  TimeComparison,
 } from "@mixpanel-headless/core";
 // The ONE public member of core's `query/` subtree (core barrel
 // comment: Python `__all__` entry `validate_bookmark`) — pages
 // pre-flight the params they assemble before spending a lease call.
 // The rest of `query/` mirrors Python `_internal` and is NOT reached
 // into from here.
-export { validateBookmark } from "@mixpanel-headless/core";
 export type { ValidateBookmarkOptions } from "@mixpanel-headless/core";
+export { validateBookmark } from "@mixpanel-headless/core";
 
 // ── Entity params exposed for v1 write scopes ─────────────────────────
 // Annotations is the ONE grantable write class in v1 (heads spec 05

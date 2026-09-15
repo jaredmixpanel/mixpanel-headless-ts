@@ -9,7 +9,8 @@
  */
 
 import fc from "fast-check";
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+
 import {
   VALID_CHART_TYPES,
   VALID_FILTER_OPERATORS,

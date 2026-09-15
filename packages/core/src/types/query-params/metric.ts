@@ -129,14 +129,15 @@ export class Metric {
       );
     }
     // MT2_INVALID_SEGMENT_METHOD: segment_method must be valid if set.
-    if (this.segment_method !== null) {
-      if (!["all", "first"].includes(this.segment_method as string)) {
-        throw new ParamValidationError(
-          "Metric segment_method must be one of ['all', 'first'], " +
-            `got ${JSON.stringify(this.segment_method)}`,
-          "MT2_INVALID_SEGMENT_METHOD",
-        );
-      }
+    if (
+      this.segment_method !== null &&
+      !["all", "first"].includes(this.segment_method as string)
+    ) {
+      throw new ParamValidationError(
+        "Metric segment_method must be one of ['all', 'first'], " +
+          `got ${JSON.stringify(this.segment_method)}`,
+        "MT2_INVALID_SEGMENT_METHOD",
+      );
     }
   }
 }
@@ -329,8 +330,9 @@ export class TimeComparison {
       // TC3B_DATE_INVALID: date must be a real calendar date.
       if (!isRealCalendarDate(this.date)) {
         throw new ParamValidationError(
-          "TimeComparison date is not a valid calendar date: " +
-            JSON.stringify(this.date),
+          `TimeComparison date is not a valid calendar date: ${JSON.stringify(
+            this.date,
+          )}`,
           "TC3B_DATE_INVALID",
         );
       }

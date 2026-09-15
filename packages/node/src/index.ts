@@ -22,17 +22,19 @@
  * themselves via {@link createNodeAuthEffects} and the core factories.
  */
 
-import type { AuthEffects, AccountSummary } from "@mixpanel-headless/core";
 import {
+  type AccountsNamespace,
+  type AccountSummary,
+  type AuthEffects,
+  createAccountsNamespace,
+  createSessionNamespace,
+  createTargetsNamespace,
   loginUnified as coreLoginUnified,
   type LoginUnifiedOptions,
-  createAccountsNamespace,
-  type AccountsNamespace,
-  createSessionNamespace,
   type SessionNamespace,
-  createTargetsNamespace,
   type TargetsNamespace,
 } from "@mixpanel-headless/core";
+
 import { createNodeAuthEffects } from "./auth-effects.js";
 
 /** Package name constant exercised by the skeleton smoke test. */
@@ -72,6 +74,32 @@ export { Workspace, type WorkspaceOptions } from "@mixpanel-headless/core";
 // callback-server OAuth flow, on-disk token storage, the Cowork bridge
 // file trio, the on-disk /me cache and the credential-path error.
 export {
+  type BridgeFile,
+  defaultBridgeSearchPaths,
+  exportBridge,
+  type ExportBridgeOptions,
+  loadBridge,
+  parseBridgeFile,
+  removeBridge,
+  type RemoveBridgeOptions,
+} from "./auth/bridge.js";
+export {
+  findAvailablePort,
+  type LoginOptions,
+  OAuthFlow,
+  type OAuthFlowOptions,
+  type RefreshTokensOptions,
+} from "./auth/flow.js";
+export {
+  accountDir,
+  accountsRoot,
+  ensureAccountDir,
+  OAuthStorage,
+  type OAuthStorageOptions,
+  type StorageLogger,
+  storageRoot,
+} from "./auth/storage.js";
+export {
   ConfigManager,
   type ConfigManagerOptions,
   type ConfigWriteBytes,
@@ -80,40 +108,14 @@ export {
   type ManagerSetActive,
   type RawConfig,
 } from "./config.js";
+export { CredentialPathError } from "./io-utils.js";
 export {
-  OAuthFlow,
-  findAvailablePort,
-  type LoginOptions,
-  type OAuthFlowOptions,
-  type RefreshTokensOptions,
-} from "./auth/flow.js";
-export {
-  OAuthStorage,
-  accountDir,
-  accountsRoot,
-  ensureAccountDir,
-  storageRoot,
-  type OAuthStorageOptions,
-  type StorageLogger,
-} from "./auth/storage.js";
-export {
-  defaultBridgeSearchPaths,
-  exportBridge,
-  loadBridge,
-  parseBridgeFile,
-  removeBridge,
-  type BridgeFile,
-  type ExportBridgeOptions,
-  type RemoveBridgeOptions,
-} from "./auth/bridge.js";
-export {
-  MeCache,
   createNodeMeCacheEffects,
+  MeCache,
   type MeCacheLogger,
   type MeCacheOptions,
 } from "./me-cache.js";
 export type { MeCacheStore } from "@mixpanel-headless/core";
-export { CredentialPathError } from "./io-utils.js";
 
 /**
  * A fresh default bag (call-time env reads — module header).
@@ -310,7 +312,6 @@ export const targets: TargetsNamespace = {
  * @returns The new/refreshed account's summary.
  * @throws ConfigError | AccountExistsError | OAuthError |
  *   InvalidArgumentError - Per the core orchestrator's catalog.
- *
  * @example
  * ```typescript
  * import { loginUnified } from "@mixpanel-headless/node";

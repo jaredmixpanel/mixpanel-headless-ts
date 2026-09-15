@@ -17,11 +17,11 @@
 
 import { appRequest } from "../../client/app-request.js";
 import type { ClientCore } from "../../client/client.js";
-import type { JsonValue } from "../../client/json-value.js";
 import { isPlainRecord } from "../../client/internals.js";
-import { MixpanelHeadlessError } from "../../errors.js";
+import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
 import { pythonJsonDumps } from "../../compat/index.js";
+import { MixpanelHeadlessError } from "../../errors.js";
 import {
   expectListResult,
   expectRecordResult,
@@ -55,8 +55,10 @@ export function canonicalResourceType(resourceType: string): string {
   return RESOURCE_TYPE_CANONICAL[resourceType.toLowerCase()] ?? resourceType;
 }
 
-/** Options bag of {@link LexiconMethods.listPropertyDefinitions}
- * (Python kw-only params with their source defaults). */
+/**
+ * Options bag of {@link LexiconMethods.listPropertyDefinitions}
+ * (Python kw-only params with their source defaults).
+ */
 export interface ListPropertyDefinitionsOptions {
   /** Property family — "Event" or "User" (default "Event"). */
   readonly resource_type?: string | undefined;
@@ -95,10 +97,10 @@ export interface LexiconMethods {
    * @returns The definition list verbatim.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  getEventDefinitions(
+  getEventDefinitions: (
     names: readonly string[],
     signal?: AbortSignal,
-  ): Promise<JsonValue[]>;
+  ) => Promise<JsonValue[]>;
 
   /**
    * List ALL event definitions (`list_event_definitions`,
@@ -108,7 +110,7 @@ export interface LexiconMethods {
    * @returns The definition list verbatim.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  listEventDefinitions(signal?: AbortSignal): Promise<JsonValue[]>;
+  listEventDefinitions: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
    * Update an event definition (`update_event_definition`,
@@ -121,11 +123,11 @@ export interface LexiconMethods {
    * @returns The updated definition dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  updateEventDefinition(
+  updateEventDefinition: (
     name: string,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Delete an event definition (`delete_event_definition`,
@@ -135,7 +137,7 @@ export interface LexiconMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  deleteEventDefinition(name: string, signal?: AbortSignal): Promise<void>;
+  deleteEventDefinition: (name: string, signal?: AbortSignal) => Promise<void>;
 
   /**
    * Bulk-update event definitions (`bulk_update_event_definitions`,
@@ -146,10 +148,10 @@ export interface LexiconMethods {
    * @returns The updated definition list.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  bulkUpdateEventDefinitions(
+  bulkUpdateEventDefinitions: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<JsonValue[]>;
+  ) => Promise<JsonValue[]>;
 
   /**
    * Get property definitions by name (`get_property_definitions`,
@@ -162,11 +164,11 @@ export interface LexiconMethods {
    * @returns The definition list verbatim.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  getPropertyDefinitions(
+  getPropertyDefinitions: (
     names: readonly string[],
     resourceType?: string | null,
     signal?: AbortSignal,
-  ): Promise<JsonValue[]>;
+  ) => Promise<JsonValue[]>;
 
   /**
    * List all property definitions (`list_property_definitions`,
@@ -178,9 +180,9 @@ export interface LexiconMethods {
    * @returns The definition list verbatim.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  listPropertyDefinitions(
+  listPropertyDefinitions: (
     options?: ListPropertyDefinitionsOptions,
-  ): Promise<JsonValue[]>;
+  ) => Promise<JsonValue[]>;
 
   /**
    * List every event with the properties observed on it
@@ -202,7 +204,7 @@ export interface LexiconMethods {
    * @throws MixpanelHeadlessError - Non-list `results` payload (plus
    *   the wire-contract errors of the query-host path).
    */
-  listPerEventProperties(signal?: AbortSignal): Promise<JsonValue[]>;
+  listPerEventProperties: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
    * Update a property definition (`update_property_definition`,
@@ -215,11 +217,11 @@ export interface LexiconMethods {
    * @returns The updated definition dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  updatePropertyDefinition(
+  updatePropertyDefinition: (
     name: string,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Bulk-update property definitions
@@ -231,10 +233,10 @@ export interface LexiconMethods {
    * @returns The updated definition list.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  bulkUpdatePropertyDefinitions(
+  bulkUpdatePropertyDefinitions: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<JsonValue[]>;
+  ) => Promise<JsonValue[]>;
 
   /**
    * List Lexicon tags (`list_lexicon_tags`, `:6901-6929` — GET
@@ -244,7 +246,7 @@ export interface LexiconMethods {
    * @returns The tag list verbatim.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  listLexiconTags(signal?: AbortSignal): Promise<JsonValue[]>;
+  listLexiconTags: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
    * Create a Lexicon tag (`create_lexicon_tag`, `:6931-6962` — POST
@@ -255,10 +257,10 @@ export interface LexiconMethods {
    * @returns The created tag dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  createLexiconTag(
+  createLexiconTag: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Update a Lexicon tag (`update_lexicon_tag`, `:6964-6996` — PATCH
@@ -270,11 +272,11 @@ export interface LexiconMethods {
    * @returns The updated tag dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  updateLexiconTag(
+  updateLexiconTag: (
     tagId: number,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Delete a Lexicon tag BY NAME (`delete_lexicon_tag`, `:6998-7020`
@@ -285,7 +287,7 @@ export interface LexiconMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  deleteLexiconTag(name: string, signal?: AbortSignal): Promise<void>;
+  deleteLexiconTag: (name: string, signal?: AbortSignal) => Promise<void>;
 
   /**
    * Get tracking metadata for an event (`get_tracking_metadata`,
@@ -297,10 +299,10 @@ export interface LexiconMethods {
    * @returns The metadata dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  getTrackingMetadata(
+  getTrackingMetadata: (
     eventName: string,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Get event definition change history (`get_event_history`,
@@ -311,10 +313,10 @@ export interface LexiconMethods {
    * @returns The history entry list.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  getEventHistory(
+  getEventHistory: (
     eventName: string,
     signal?: AbortSignal,
-  ): Promise<JsonValue[]>;
+  ) => Promise<JsonValue[]>;
 
   /**
    * Get property definition change history (`get_property_history`,
@@ -327,11 +329,11 @@ export interface LexiconMethods {
    * @returns The history entry list.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  getPropertyHistory(
+  getPropertyHistory: (
     propertyName: string,
     entityType: string,
     signal?: AbortSignal,
-  ): Promise<JsonValue[]>;
+  ) => Promise<JsonValue[]>;
 
   /**
    * Export Lexicon data definitions (`export_lexicon`, `:7128-7172` —
@@ -345,10 +347,10 @@ export interface LexiconMethods {
    * @returns The export dict (or the pending wrapper).
    * @throws MixpanelHeadlessError - Non-dict, non-string response.
    */
-  exportLexicon(
+  exportLexicon: (
     exportTypes?: readonly string[] | null,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 }
 
 /**
@@ -499,7 +501,7 @@ export function createLexiconMethods(core: ClientCore): LexiconMethods {
       propertyDefinitions({
         names,
         resourceType: resourceType ?? null,
-        ...(signal !== undefined ? { signal } : {}),
+        ...(signal === undefined ? {} : { signal }),
       }),
 
     listPropertyDefinitions: (
@@ -511,7 +513,7 @@ export function createLexiconMethods(core: ClientCore): LexiconMethods {
         includeDensity: options.include_density ?? false,
         includeCustom: options.include_custom ?? true,
         includeZeroCounts: options.include_zero_counts ?? true,
-        ...(options.signal !== undefined ? { signal: options.signal } : {}),
+        ...(options.signal === undefined ? {} : { signal: options.signal }),
       }),
 
     listPerEventProperties: async (
@@ -521,7 +523,7 @@ export function createLexiconMethods(core: ClientCore): LexiconMethods {
       const result = await core.requestQueryHost("GET", url, {
         params: { fetch_per_event_properties: "true" },
         timeoutSeconds: core.exportTimeoutSeconds,
-        ...(signal !== undefined ? { signal } : {}),
+        ...(signal === undefined ? {} : { signal }),
       });
       // Python `result.get("results") if isinstance(result, dict) else
       // result` — a missing key reads as None (`.get` default).

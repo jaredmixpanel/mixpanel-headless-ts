@@ -33,15 +33,15 @@
  *   `core` never touches `console`.
  */
 
-import { toNativeJson, type JsonValue } from "../client/json-value.js";
 import type { MixpanelClient } from "../client/client.js";
-import { parseLossless, LosslessJsonError } from "../client/lossless-json.js";
+import { type JsonValue, toNativeJson } from "../client/json-value.js";
+import { LosslessJsonError, parseLossless } from "../client/lossless-json.js";
 import { compareCodepoints, sortedByCodepoint } from "../compat/codepoint.js";
 import { pythonStr, type PythonValue } from "../compat/index.js";
+import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
 import { EventNotFoundError, QueryError } from "../errors.js";
 import { KeyError, ValueError } from "../query/python-builtins.js";
 import { isPythonDict } from "../query/validation-shared.js";
-import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
 import type { BookmarkType, CustomPropertyType } from "../types/literals.js";
 import {
   BookmarkInfo,
@@ -76,7 +76,7 @@ export interface DiscoveryLogger {
    *
    * @param message - The formatted text (never vector-compared).
    */
-  debug(message: string): void;
+  debug: (message: string) => void;
 }
 
 /** Construction options of {@link DiscoveryService}. */
@@ -680,18 +680,35 @@ function pyReprStr(text: string): string {
   const quote = text.includes("'") && !text.includes('"') ? '"' : "'";
   let body = "";
   for (const ch of text) {
-    if (ch === "\\") {
-      body += "\\\\";
-    } else if (ch === quote) {
-      body += `\\${ch}`;
-    } else if (ch === "\n") {
-      body += "\\n";
-    } else if (ch === "\r") {
-      body += "\\r";
-    } else if (ch === "\t") {
-      body += "\\t";
-    } else {
-      body += ch;
+    switch (ch) {
+      case "\\": {
+        body += "\\\\";
+
+        break;
+      }
+      case quote: {
+        body += `\\${ch}`;
+
+        break;
+      }
+      case "\n": {
+        body += String.raw`\n`;
+
+        break;
+      }
+      case "\r": {
+        body += String.raw`\r`;
+
+        break;
+      }
+      case "\t": {
+        body += String.raw`\t`;
+
+        break;
+      }
+      default: {
+        body += ch;
+      }
     }
   }
   return `${quote}${body}${quote}`;
@@ -797,15 +814,17 @@ function invertPerEventProperties(
       ? rawProperties
       : [];
     for (const prop of properties) {
-      if (isPythonDict(prop) && pyTruthy(prop["name"])) {
-        const key = pyStr(prop["name"]);
-        let attached = propertyToEvents.get(key);
-        if (attached === undefined) {
-          attached = [];
-          propertyToEvents.set(key, attached);
-        }
-        attached.push(pyStr(eventName));
+      if (!(isPythonDict(prop) && pyTruthy(prop["name"]))) {
+        continue;
       }
+
+      const key = pyStr(prop["name"]);
+      let attached = propertyToEvents.get(key);
+      if (attached === undefined) {
+        attached = [];
+        propertyToEvents.set(key, attached);
+      }
+      attached.push(pyStr(eventName));
     }
   }
   return propertyToEvents;
@@ -904,9 +923,9 @@ export class DiscoveryService {
       return [...(cached as string[])];
     }
     const result = await this.apiClient.getEvents({
-      ...(limit !== null ? { limit } : {}),
-      ...(fromDate !== null ? { from_date: fromDate } : {}),
-      ...(toDate !== null ? { to_date: toDate } : {}),
+      ...(limit === null ? {} : { limit }),
+      ...(fromDate === null ? {} : { from_date: fromDate }),
+      ...(toDate === null ? {} : { to_date: toDate }),
     });
     const sortedResult = sortedByCodepoint(result);
     this.cache.set(key, sortedResult);
@@ -1019,7 +1038,7 @@ export class DiscoveryService {
     options: ListSubpropertiesOptions = {},
   ): Promise<SubPropertyInfo[]> {
     const raw = await this.listPropertyValues(propertyName, {
-      ...(options.event !== undefined ? { event: options.event } : {}),
+      ...(options.event === undefined ? {} : { event: options.event }),
       limit: options.sample_size ?? 50,
     });
     return inferSubproperties(raw, this.#warn);

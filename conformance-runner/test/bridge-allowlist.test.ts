@@ -31,6 +31,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
 
 /** The conformance-runner package root. */
@@ -69,7 +70,7 @@ interface AllowlistRow {
   readonly paramNames: readonly string[];
   readonly access: "read" | "write";
   readonly pin: PinKind;
-  readonly pinSources: readonly ("path" | "query" | "body")[];
+  readonly pinSources: ReadonlyArray<"path" | "query" | "body">;
   readonly writeClass?: string;
   readonly consentVerb?: string;
   readonly tsMethod: string;

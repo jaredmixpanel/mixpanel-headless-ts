@@ -15,11 +15,12 @@
 // - `getattr(service, method)` parametrization → `it.each` over the three
 //   method names, dispatched through a typed switch.
 import { describe, expect, it } from "vitest";
+
 import type { MixpanelClient } from "../../src/client/client.js";
 import type { JsonValue } from "../../src/client/json-value.js";
 import {
-  LiveQueryService,
   type InlineQueryScope,
+  LiveQueryService,
 } from "../../src/services/live-query.js";
 
 const INSIGHTS_RAW: JsonValue = {
@@ -97,12 +98,15 @@ function callInsightsMethod(
 ): Promise<unknown> {
   const params = { sections: {} };
   switch (method) {
-    case "query":
+    case "query": {
       return service.query(params, 12345, scope);
-    case "queryFunnel":
+    }
+    case "queryFunnel": {
       return service.queryFunnel(params, 12345, scope);
-    case "queryRetention":
+    }
+    case "queryRetention": {
       return service.queryRetention(params, 12345, scope);
+    }
   }
 }
 

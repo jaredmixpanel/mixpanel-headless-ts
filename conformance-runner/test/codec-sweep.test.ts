@@ -17,36 +17,39 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
+
+import * as entityClasses from "@mixpanel-headless/core";
 import {
-  OAuthTokens,
-  Secret,
   CohortBreakdown,
   CohortCriteria,
   CohortDefinition,
+  CohortMetric,
   CustomPropertyRef,
+  Exclusion,
   Filter,
-  InlineCustomProperty,
-  ListItemGroupMode,
-  PropertyInput,
   FlowStep,
+  Formula,
   FrequencyBreakdown,
   FrequencyFilter,
-  Exclusion,
   FunnelStep,
-  HoldingConstant,
   GroupBy,
-  CohortMetric,
-  Formula,
+  HoldingConstant,
+  InlineCustomProperty,
+  ListItemGroupMode,
   Metric,
-  TimeComparison,
-  RetentionEvent,
+  OAuthTokens,
+  PropertyInput,
   Replay,
+  RetentionEvent,
+  Secret,
   SignedReplay,
+  TimeComparison,
   UserAction,
 } from "@mixpanel-headless/core";
-import * as entityClasses from "@mixpanel-headless/core";
 import { EntityModel } from "@mixpanel-headless/core/internal";
+
 import { createRunnerDeps } from "../src/bindings.js";
 import { canonicalize } from "../src/canonical.js";
 import {
@@ -166,97 +169,126 @@ function assertRealInstance(entry: TaggedNode, decoded: unknown): void {
       expect((decoded as Secret).reveal(), where).toBe(entry.node["value"]);
       break;
     }
-    case "OAuthTokens":
+    case "OAuthTokens": {
       expect(decoded, where).toBeInstanceOf(OAuthTokens);
       break;
-    case "datetime":
+    }
+    case "datetime": {
       expect(decoded, where).toBeInstanceOf(PyDatetime);
       break;
-    case "date":
+    }
+    case "date": {
       expect(decoded, where).toBeInstanceOf(PyDate);
       break;
-    case "float":
+    }
+    case "float": {
       expect(decoded, where).toBeInstanceOf(PyFloat);
       break;
-    case "bytes":
+    }
+    case "bytes": {
       expect(decoded, where).toBeInstanceOf(Uint8Array);
       break;
-    case "callback":
+    }
+    case "callback": {
       expect(decoded, where).toBeInstanceOf(RecordingCallback);
       break;
+    }
     // P2-5a rich tags (+ the early cohort shells).
-    case "Filter":
+    case "Filter": {
       expect(decoded, where).toBeInstanceOf(Filter);
       break;
-    case "ListItemGroupMode":
+    }
+    case "ListItemGroupMode": {
       expect(decoded, where).toBeInstanceOf(ListItemGroupMode);
       break;
-    case "PropertyInput":
+    }
+    case "PropertyInput": {
       expect(decoded, where).toBeInstanceOf(PropertyInput);
       break;
-    case "CustomPropertyRef":
+    }
+    case "CustomPropertyRef": {
       expect(decoded, where).toBeInstanceOf(CustomPropertyRef);
       break;
-    case "InlineCustomProperty":
+    }
+    case "InlineCustomProperty": {
       expect(decoded, where).toBeInstanceOf(InlineCustomProperty);
       break;
-    case "GroupBy":
+    }
+    case "GroupBy": {
       expect(decoded, where).toBeInstanceOf(GroupBy);
       break;
-    case "Metric":
+    }
+    case "Metric": {
       expect(decoded, where).toBeInstanceOf(Metric);
       break;
-    case "CohortMetric":
+    }
+    case "CohortMetric": {
       expect(decoded, where).toBeInstanceOf(CohortMetric);
       break;
-    case "Formula":
+    }
+    case "Formula": {
       expect(decoded, where).toBeInstanceOf(Formula);
       break;
-    case "TimeComparison":
+    }
+    case "TimeComparison": {
       expect(decoded, where).toBeInstanceOf(TimeComparison);
       break;
-    case "CohortCriteria":
+    }
+    case "CohortCriteria": {
       expect(decoded, where).toBeInstanceOf(CohortCriteria);
       break;
-    case "CohortDefinition":
+    }
+    case "CohortDefinition": {
       expect(decoded, where).toBeInstanceOf(CohortDefinition);
       break;
+    }
     // P2-5b cohort-family addition.
-    case "CohortBreakdown":
+    case "CohortBreakdown": {
       expect(decoded, where).toBeInstanceOf(CohortBreakdown);
       break;
+    }
     // P2-5c funnel/retention/flow/frequency family.
-    case "FunnelStep":
+    case "FunnelStep": {
       expect(decoded, where).toBeInstanceOf(FunnelStep);
       break;
-    case "Exclusion":
+    }
+    case "Exclusion": {
       expect(decoded, where).toBeInstanceOf(Exclusion);
       break;
-    case "HoldingConstant":
+    }
+    case "HoldingConstant": {
       expect(decoded, where).toBeInstanceOf(HoldingConstant);
       break;
-    case "RetentionEvent":
+    }
+    case "RetentionEvent": {
       expect(decoded, where).toBeInstanceOf(RetentionEvent);
       break;
-    case "FlowStep":
+    }
+    case "FlowStep": {
       expect(decoded, where).toBeInstanceOf(FlowStep);
       break;
-    case "FrequencyBreakdown":
+    }
+    case "FrequencyBreakdown": {
       expect(decoded, where).toBeInstanceOf(FrequencyBreakdown);
       break;
-    case "FrequencyFilter":
+    }
+    case "FrequencyFilter": {
       expect(decoded, where).toBeInstanceOf(FrequencyFilter);
       break;
+    }
     // P2-6 replay-family tags.
-    case "UserAction":
+    case "UserAction": {
       expect(decoded, where).toBeInstanceOf(UserAction);
       break;
-    case "Replay":
+    }
+    case "Replay": {
       expect(decoded, where).toBeInstanceOf(Replay);
       break;
-    case "SignedReplay":
+    }
+    case "SignedReplay": {
       expect(decoded, where).toBeInstanceOf(SignedReplay);
       break;
+    }
     default: {
       // P2-7 entity-model tags: the class is exported from the
       // entities barrel under EXACTLY the tag name — probe against the

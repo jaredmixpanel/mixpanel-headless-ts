@@ -18,13 +18,14 @@
 //   directly.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
 import type { BookmarkValidationError } from "../../src/errors.js";
 import { FunnelQueryResult } from "../../src/types/results/query-engine.js";
+import { Workspace } from "../../src/workspace.js";
 import {
+  type MockWorkspaceClient,
   mockWorkspaceClient,
   TEST_SESSION,
-  type MockWorkspaceClient,
 } from "../../test-support/workspace-test-helpers.js";
 
 /**
@@ -80,10 +81,10 @@ describe("TestQueryFunnelValidation", () => {
     try {
       await workspaceFactory(mock).queryFunnel(["A"]);
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("F1_MIN_STEPS");
+    } catch (error) {
+      expect(codesOf(error)).toContain("F1_MIN_STEPS");
     }
-    expect(mock.insightsCalls.length).toBe(0);
+    expect(mock.insightsCalls).toHaveLength(0);
   });
 
   it("an empty event name is caught at FunnelStep construction", async () => {
@@ -91,7 +92,7 @@ describe("TestQueryFunnelValidation", () => {
     await expect(
       workspaceFactory(mock).queryFunnel(["Signup", ""]),
     ).rejects.toThrow(/FunnelStep\.event must be a non-empty/);
-    expect(mock.insightsCalls.length).toBe(0);
+    expect(mock.insightsCalls).toHaveLength(0);
   });
 
   it("a negative conversion_window raises F3", async () => {
@@ -101,10 +102,10 @@ describe("TestQueryFunnelValidation", () => {
         conversion_window: -1,
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("F3_CONVERSION_WINDOW_POSITIVE");
+    } catch (error) {
+      expect(codesOf(error)).toContain("F3_CONVERSION_WINDOW_POSITIVE");
     }
-    expect(mock.insightsCalls.length).toBe(0);
+    expect(mock.insightsCalls).toHaveLength(0);
   });
 
   it("an invalid math type raises B9_INVALID_MATH at Layer 2", async () => {
@@ -114,10 +115,10 @@ describe("TestQueryFunnelValidation", () => {
         math: "invalid_math",
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("B9_INVALID_MATH");
+    } catch (error) {
+      expect(codesOf(error)).toContain("B9_INVALID_MATH");
     }
-    expect(mock.insightsCalls.length).toBe(0);
+    expect(mock.insightsCalls).toHaveLength(0);
   });
 
   it("an empty event is caught before validation runs", async () => {
@@ -125,7 +126,7 @@ describe("TestQueryFunnelValidation", () => {
     await expect(
       workspaceFactory(mock).queryFunnel([""], { conversion_window: 0 }),
     ).rejects.toThrow(/FunnelStep\.event must be a non-empty/);
-    expect(mock.insightsCalls.length).toBe(0);
+    expect(mock.insightsCalls).toHaveLength(0);
   });
 
   it("multiple validation errors are collected into one error", async () => {
@@ -136,14 +137,14 @@ describe("TestQueryFunnelValidation", () => {
         from_date: "bad-date", // V8: invalid format
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      const err = exc as BookmarkValidationError;
+    } catch (error) {
+      const err = error as BookmarkValidationError;
       const codes = new Set(codesOf(err));
       expect(codes.has("F1_MIN_STEPS")).toBe(true); // only 1 step
       expect(codes.has("F3_CONVERSION_WINDOW_POSITIVE")).toBe(true);
       expect(err.errorCount).toBeGreaterThanOrEqual(2);
     }
-    expect(mock.insightsCalls.length).toBe(0);
+    expect(mock.insightsCalls).toHaveLength(0);
   });
 });
 
@@ -163,7 +164,7 @@ describe("TestQueryFunnelExecution", () => {
     const { ws, mock } = funnelWs();
     await ws.queryFunnel(["Signup", "Purchase"]);
 
-    expect(mock.insightsCalls.length).toBe(1);
+    expect(mock.insightsCalls).toHaveLength(1);
     const body = mock.insightsCalls[0]!;
     expect(Object.hasOwn(body, "bookmark")).toBe(true);
     expect(Object.hasOwn(body, "project_id")).toBe(true);
@@ -204,7 +205,7 @@ describe("TestQueryFunnelExecution", () => {
     const { ws } = funnelWs();
     const result = await ws.queryFunnel(["Signup", "Purchase"]);
 
-    expect(result.steps_data.length).toBe(2);
+    expect(result.steps_data).toHaveLength(2);
 
     const step1 = result.steps_data[0]!;
     expect(step1["event"]).toBe("Signup");
@@ -264,7 +265,7 @@ describe("TestBuildFunnelParamsVsQueryFunnel", () => {
   it("makes no API call", async () => {
     const mock = mockWorkspaceClient();
     await workspaceFactory(mock).buildFunnelParams(["Signup", "Purchase"]);
-    expect(mock.insightsCalls.length).toBe(0);
+    expect(mock.insightsCalls).toHaveLength(0);
   });
 
   it("raises BookmarkValidationError for invalid inputs", async () => {
@@ -272,10 +273,10 @@ describe("TestBuildFunnelParamsVsQueryFunnel", () => {
     try {
       await workspaceFactory(mock).buildFunnelParams(["A"]);
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("F1_MIN_STEPS");
+    } catch (error) {
+      expect(codesOf(error)).toContain("F1_MIN_STEPS");
     }
-    expect(mock.insightsCalls.length).toBe(0);
+    expect(mock.insightsCalls).toHaveLength(0);
   });
 
   it("the result has sections and displayOptions", async () => {

@@ -17,6 +17,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
 
 /** The audited directory (the Phase-2 contract layer). */

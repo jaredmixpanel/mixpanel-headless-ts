@@ -10,15 +10,15 @@ import type {
   OAuthTokenAccount,
   TokenResolver,
 } from "../src/auth/account.js";
-import type { Region } from "../src/client/url.js";
 import type { Session } from "../src/auth/session.js";
-import { Secret } from "../src/secret.js";
-import { OAuthError } from "../src/errors.js";
 import {
   createMixpanelClient,
   type MixpanelClient,
   type MixpanelClientOptions,
 } from "../src/client/client.js";
+import type { Region } from "../src/client/url.js";
+import { OAuthError } from "../src/errors.js";
+import { Secret } from "../src/secret.js";
 
 /** Kwargs of the `make_session` mirror (defaults match conftest.py). */
 export interface MakeSessionOptions {
@@ -138,10 +138,7 @@ export function fakeTransport(
   ): Promise<Response> => {
     const request = new Request(input, init);
     const url = new URL(request.url);
-    const params: Record<string, string> = {};
-    for (const [key, value] of url.searchParams.entries()) {
-      params[key] = value;
-    }
+    const params: Record<string, string> = Object.fromEntries(url.searchParams);
     const headers: Record<string, string> = {};
     for (const [key, value] of request.headers.entries()) {
       headers[key.toLowerCase()] = value;

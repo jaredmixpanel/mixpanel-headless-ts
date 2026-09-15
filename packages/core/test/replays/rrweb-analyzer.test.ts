@@ -21,14 +21,15 @@
 // code, so the substring IS the only available discriminator (R5.4's
 // "code over message" has no code to prefer here).
 import { describe, expect, it } from "vitest";
+
 import { ValueError } from "../../src/query/python-builtins.js";
+import { selectorLabelFn } from "../../src/replays/replay-labels.js";
 import {
+  analyzeEvents,
   DOMTracker,
   MarkdownReporter,
   RrwebAnalyzer,
-  analyzeEvents,
 } from "../../src/replays/rrweb-analyzer.js";
-import { selectorLabelFn } from "../../src/replays/replay-labels.js";
 import type { UserAction } from "../../src/types/results/replays.js";
 
 type Dict = Record<string, unknown>;

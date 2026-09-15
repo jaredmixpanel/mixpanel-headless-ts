@@ -24,11 +24,12 @@
 // one-line delta.
 
 import { describe, expect, it } from "vitest";
+
 import { Workspace } from "../../src/workspace.js";
 import {
+  type CannedResponse,
   createMockClient,
   makeSession,
-  type CannedResponse,
 } from "../../test-support/client-test-helpers.js";
 
 describe("workspace facade scoping (session-pinned half)", () => {
@@ -45,7 +46,7 @@ describe("workspace facade scoping (session-pinned half)", () => {
 
     await ws.events();
 
-    expect(transport.captures.length).toBe(1);
+    expect(transport.captures).toHaveLength(1);
     expect(transport.captures[0]!.params["workspace_id"]).toBe("4242");
   });
 
@@ -56,7 +57,7 @@ describe("workspace facade scoping (session-pinned half)", () => {
 
     await ws.events();
 
-    expect(transport.captures.length).toBe(1);
+    expect(transport.captures).toHaveLength(1);
     expect(Object.hasOwn(transport.captures[0]!.params, "workspace_id")).toBe(
       false,
     );
@@ -78,7 +79,7 @@ describe("TestWorkspaceFacadeScoping (test_query_workspace_scoping.py:379)", () 
     await ws.events();
     await ws.close();
 
-    expect(transport.captures.length).toBe(1);
+    expect(transport.captures).toHaveLength(1);
     expect(transport.captures[0]!.params["workspace_id"]).toBe("4242");
   });
 });
@@ -92,13 +93,13 @@ describe("TestDiscoveryCacheAcrossUse (test_query_workspace_scoping.py:401)", ()
     await ws.events();
     await ws.events();
     // Cache hit: the repeat call must NOT issue a second request.
-    expect(transport.captures.length).toBe(1);
+    expect(transport.captures).toHaveLength(1);
 
     await ws.use({ workspace: 4242 });
     await ws.events();
     await ws.close();
 
     // The swap discarded the cache, so a fresh request went out.
-    expect(transport.captures.length).toBe(2);
+    expect(transport.captures).toHaveLength(2);
   });
 });

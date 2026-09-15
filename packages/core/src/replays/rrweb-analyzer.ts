@@ -40,13 +40,13 @@
 
 import { cpLength, cpSlice } from "../compat/codepoint.js";
 import { pythonIntCoerce } from "../compat/python-int.js";
-import { pythonStrip } from "../compat/python-strip.js";
 import { pythonStr, type PythonValue } from "../compat/python-str.js";
+import { pythonStrip } from "../compat/python-strip.js";
 import { ValueError } from "../query/python-builtins.js";
 import { isPythonDict } from "../query/validation-shared.js";
 import {
-  UserAction,
   type ReplayActionLabel,
+  UserAction,
 } from "../types/results/replays.js";
 
 /** Any JSON-shaped mapping the analyzer reads off the event stream. */
@@ -158,13 +158,13 @@ export interface AnalyzerLogger {
    *
    * @param message - The formatted text (never vector-compared).
    */
-  debug?(message: string): void;
+  debug?: (message: string) => void;
   /**
    * Record an info message (the two `analyze` / `analyze_events` sites).
    *
    * @param message - The formatted text (never vector-compared).
    */
-  info?(message: string): void;
+  info?: (message: string) => void;
 }
 
 // =============================================================================
@@ -543,10 +543,7 @@ export class DOMTracker {
     if (selectors === undefined || selectors.size === 0) {
       return new Map();
     }
-    const out = new Map<string, string>();
-    for (const [k, v] of selectors) {
-      out.set(String(k), String(v));
-    }
+    const out = new Map<string, string>(selectors);
     return out;
   }
 
@@ -701,12 +698,11 @@ export class DOMTracker {
       }
 
       const parentRecord = this.nodes.get(parentId);
-      if (parentRecord !== undefined) {
-        parentId = parentRecord.parent_id;
-        depth += 1;
-      } else {
+      if (parentRecord === undefined) {
         break;
       }
+      parentId = parentRecord.parent_id;
+      depth += 1;
     }
 
     return null;
@@ -863,14 +859,28 @@ export class EventAnalyzer {
     const rawData = event["data"];
     const data: Dict = isPythonDict(rawData) ? rawData : {};
 
-    if (eventType === EventType.META) {
-      this.#processMeta(timestamp, data);
-    } else if (eventType === EventType.FULL_SNAPSHOT) {
-      this.#processFullSnapshot(data);
-    } else if (eventType === EventType.INCREMENTAL_SNAPSHOT) {
-      this.#processIncrementalSnapshot(timestamp, data);
-    } else if (eventType === EventType.PLUGIN) {
-      this.#processPluginEvent(timestamp, data);
+    switch (eventType) {
+      case EventType.META: {
+        this.#processMeta(timestamp, data);
+
+        break;
+      }
+      case EventType.FULL_SNAPSHOT: {
+        this.#processFullSnapshot(data);
+
+        break;
+      }
+      case EventType.INCREMENTAL_SNAPSHOT: {
+        this.#processIncrementalSnapshot(timestamp, data);
+
+        break;
+      }
+      case EventType.PLUGIN: {
+        this.#processPluginEvent(timestamp, data);
+
+        break;
+      }
+      // No default
     }
   }
 
@@ -916,16 +926,33 @@ export class EventAnalyzer {
    */
   #processIncrementalSnapshot(timestamp: number, data: Dict): void {
     const source = data["source"];
-    if (source === IncrementalSource.MUTATION) {
-      this.#processMutation(data);
-    } else if (source === IncrementalSource.MOUSE_INTERACTION) {
-      this.#processMouseInteraction(timestamp, data);
-    } else if (source === IncrementalSource.SCROLL) {
-      this.#processScroll(timestamp);
-    } else if (source === IncrementalSource.INPUT) {
-      this.#processInput(timestamp, data);
-    } else if (source === IncrementalSource.SELECTION) {
-      this.#processSelection(timestamp, data);
+    switch (source) {
+      case IncrementalSource.MUTATION: {
+        this.#processMutation(data);
+
+        break;
+      }
+      case IncrementalSource.MOUSE_INTERACTION: {
+        this.#processMouseInteraction(timestamp, data);
+
+        break;
+      }
+      case IncrementalSource.SCROLL: {
+        this.#processScroll(timestamp);
+
+        break;
+      }
+      case IncrementalSource.INPUT: {
+        this.#processInput(timestamp, data);
+
+        break;
+      }
+      case IncrementalSource.SELECTION: {
+        this.#processSelection(timestamp, data);
+
+        break;
+      }
+      // No default
     }
   }
 
@@ -1310,7 +1337,7 @@ export class RrwebAnalyzer {
    * @returns The action list, markdown timeline, page visits, and
    *   console errors. Empty on empty input.
    */
-  analyze(events: ReadonlyArray<Dict>): AnalyzerResult {
+  analyze(events: readonly Dict[]): AnalyzerResult {
     if (events.length === 0) {
       return { actions: [], markdown_summary: "", pages: [], errors: [] };
     }
@@ -1362,7 +1389,7 @@ export class RrwebAnalyzer {
  * @throws ValueError - `rrwebEvents` is empty or not a list.
  */
 export function analyzeEvents(
-  rrwebEvents: ReadonlyArray<Dict>,
+  rrwebEvents: readonly Dict[],
   logger?: AnalyzerLogger,
 ): string {
   // Guard order is SOURCE order: the emptiness check runs FIRST, so a

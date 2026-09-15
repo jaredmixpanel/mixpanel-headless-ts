@@ -12,10 +12,10 @@
 
 import { appRequest } from "../../client/app-request.js";
 import type { ClientCore } from "../../client/client.js";
-import type { JsonValue } from "../../client/json-value.js";
 import { isPlainRecord } from "../../client/internals.js";
-import { MixpanelHeadlessError } from "../../errors.js";
+import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
+import { MixpanelHeadlessError } from "../../errors.js";
 import { pythonTypeNameOf } from "./shared.js";
 
 /** The C5 audit method surface (mixed into `MixpanelClient`). */
@@ -29,7 +29,7 @@ export interface AuditMethods {
    * @throws MixpanelHeadlessError - Non-list `results` member, or an
    *   unexpected response format.
    */
-  runAudit(signal?: AbortSignal): Promise<JsonValue[]>;
+  runAudit: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
    * Run an events-only audit (`run_audit_events_only`, `:8383-8416` —
@@ -40,7 +40,7 @@ export interface AuditMethods {
    * @throws MixpanelHeadlessError - Non-list `results` member, or an
    *   unexpected response format.
    */
-  runAuditEventsOnly(signal?: AbortSignal): Promise<JsonValue[]>;
+  runAuditEventsOnly: (signal?: AbortSignal) => Promise<JsonValue[]>;
 }
 
 /**

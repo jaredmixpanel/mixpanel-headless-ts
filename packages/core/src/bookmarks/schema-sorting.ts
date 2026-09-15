@@ -86,7 +86,7 @@ export interface PydanticErrorEntry {
   /** Pydantic error `type` string, e.g. `"missing"`, `"literal_error"`. */
   readonly type: string;
   /** Location tuple: field names, list indices and discriminator Tags. */
-  readonly loc: readonly (string | number)[];
+  readonly loc: ReadonlyArray<string | number>;
   /** Human-readable message (display-only, R5.4). */
   readonly msg: string;
 }
@@ -98,7 +98,7 @@ export interface PydanticErrorEntry {
  */
 export type CodeMapper = (
   errType: string,
-  loc: readonly (string | number)[],
+  loc: ReadonlyArray<string | number>,
 ) => string;
 
 // =============================================================================
@@ -149,7 +149,7 @@ export function defaultCodeMapper(
   errType: string,
   // The `CodeMapper` protocol requires the parameter (Python `_loc`).
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _loc: readonly (string | number)[],
+  _loc: ReadonlyArray<string | number>,
 ): string {
   return DEFAULT_CODE_MAP.get(errType) ?? "VALIDATION_ERROR";
 }
@@ -167,7 +167,7 @@ export function defaultCodeMapper(
  */
 export function sortingCodeMapper(
   errType: string,
-  loc: readonly (string | number)[],
+  loc: ReadonlyArray<string | number>,
 ): string {
   const last = loc.length > 0 ? loc[loc.length - 1] : null;
   if (errType === "missing") {
@@ -235,7 +235,7 @@ export const DISCRIMINATOR_TAGS: ReadonlySet<string> = new Set([
  * @returns A dotted JSONPath string.
  */
 export function locToJsonPath(
-  loc: readonly (string | number)[],
+  loc: ReadonlyArray<string | number>,
   prefix: string,
 ): string {
   const parts: string[] = [];
@@ -676,11 +676,10 @@ const FLAT_VALUE_SORT_CONFIG: ModelSpec = {
  * @returns The `Tag` name of the selected variant.
  */
 function flatSortDiscriminator(value: unknown): string {
-  const sortBy = isPlainObject(value)
-    ? Object.hasOwn(value, "sortBy")
+  const sortBy =
+    isPlainObject(value) && Object.hasOwn(value, "sortBy")
       ? value["sortBy"]
-      : undefined
-    : undefined;
+      : undefined;
   if (sortBy === "label") {
     return "FlatLabelSortConfig";
   }
@@ -750,11 +749,10 @@ const SORT_BY_VALUE_CONFIG: ModelSpec = {
  * @returns The `Tag` name of the selected variant.
  */
 function sortConfigDiscriminator(value: unknown): string {
-  const sortBy = isPlainObject(value)
-    ? Object.hasOwn(value, "sortBy")
+  const sortBy =
+    isPlainObject(value) && Object.hasOwn(value, "sortBy")
       ? value["sortBy"]
-      : undefined
-    : undefined;
+      : undefined;
   if (sortBy === "column") {
     return "SortByColumnsConfig";
   }
@@ -946,15 +944,16 @@ export const INSIGHTS_BOOKMARK_SORT_CONFIG: ModelSpec = {
 export function validateFieldValue(
   value: unknown,
   type: FieldType,
-  loc: readonly (string | number)[],
+  loc: ReadonlyArray<string | number>,
   out: PydanticErrorEntry[],
 ): void {
   switch (type.kind) {
-    case "json":
+    case "json": {
       // `JsonValue` / `Any` / `Ignore[JsonValue]` — accepted at parse
       // time, never reported (probe `sections/behavior-ignore-filter-junk`,
       // `jsonvalue/*`: dicts, lists, scalars, NaN and Infinity all pass).
       return;
+    }
     case "literal": {
       if (typeof value === "string" && type.values.includes(value)) {
         return;
@@ -978,7 +977,7 @@ export function validateFieldValue(
       out.push({
         type: "literal_error",
         loc,
-        msg: literalMessage(type.values.map((v) => String(v))),
+        msg: literalMessage(type.values.map(String)),
       });
       return;
     }
@@ -1138,8 +1137,8 @@ export function validateFieldValue(
         });
         return;
       }
-      for (const key of Object.keys(value)) {
-        validateFieldValue(value[key], type.value, [...loc, key], out);
+      for (const [key, value_] of Object.entries(value)) {
+        validateFieldValue(value_, type.value, [...loc, key], out);
       }
       return;
     }
@@ -1176,12 +1175,14 @@ export function validateFieldValue(
       });
       return;
     }
-    case "model":
+    case "model": {
       validateModel(value, type.model(), loc, out);
       return;
-    case "union":
+    }
+    case "union": {
       validateUnion(value, type.union, loc, out);
       return;
+    }
     case "plainUnion": {
       // pydantic smart union: the first member that validates wins and
       // silences everything; when none does, EVERY member's errors are
@@ -1236,7 +1237,7 @@ function literalMessage(quoted: readonly string[]): string {
 export function validateUnion(
   value: unknown,
   union: UnionSpec,
-  loc: readonly (string | number)[],
+  loc: ReadonlyArray<string | number>,
   out: PydanticErrorEntry[],
 ): void {
   const tag = union.discriminate(value);
@@ -1270,7 +1271,7 @@ export function validateUnion(
 export function validateModel(
   value: unknown,
   model: ModelSpec,
-  loc: readonly (string | number)[],
+  loc: ReadonlyArray<string | number>,
   out: PydanticErrorEntry[],
 ): void {
   if (!isPlainObject(value)) {

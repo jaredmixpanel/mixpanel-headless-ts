@@ -23,13 +23,13 @@
 
 import { describe, expect, it } from "vitest";
 
+import { validateUserParams } from "../../src/query/user-validators.js";
 import {
   validateBookmark,
   validateFlowBookmark,
   validateQueryArgs,
   validateSortingBlock,
 } from "../../src/query/validation.js";
-import { validateUserParams } from "../../src/query/user-validators.js";
 import { CohortMetric, Filter } from "../../src/types/index.js";
 
 /**
@@ -82,8 +82,8 @@ function bm(over: Record<string, unknown> = {}): Record<string, unknown> {
  * @returns The comparable triples, emission order preserved.
  */
 function triples(
-  errors: readonly { path: string; code: string; severity: string }[],
-): { path: string; code: string; severity: string }[] {
+  errors: ReadonlyArray<{ path: string; code: string; severity: string }>,
+): Array<{ path: string; code: string; severity: string }> {
   return errors.map((e) => ({
     path: e.path,
     code: e.code,

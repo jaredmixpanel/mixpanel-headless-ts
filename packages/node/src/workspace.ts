@@ -17,13 +17,17 @@
  * failed on the first OAuth query with `TokenResolver is required`.
  */
 
-import { Workspace, type WorkspaceOptions } from "@mixpanel-headless/core";
-import type { MixpanelClientOptions } from "@mixpanel-headless/core";
+import {
+  type MixpanelClientOptions,
+  Workspace,
+  type WorkspaceOptions,
+} from "@mixpanel-headless/core";
+
+import { bridgeViewFromFile, loadBridgeForStartup } from "./auth/bridge.js";
 import {
   createNodeAuthEffects,
   type NodeAuthEffectsOptions,
 } from "./auth-effects.js";
-import { bridgeViewFromFile, loadBridgeForStartup } from "./auth/bridge.js";
 import { createNodeEndpointOverrides } from "./env.js";
 import { nodeReadFile } from "./fs-seams.js";
 import { MeCache } from "./me-cache.js";
@@ -61,7 +65,6 @@ export interface NodeWorkspaceOptions extends NodeAuthEffectsOptions {
  * @returns The constructed facade.
  * @throws ConfigError - No resolvable account, or a malformed config /
  *   bridge file.
- *
  * @example
  * ```typescript
  * import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -74,17 +77,17 @@ export function createNodeWorkspace(
   options: NodeWorkspaceOptions = {},
 ): Workspace {
   const effectsOptions: NodeAuthEffectsOptions = {
-    ...(options.configPath !== undefined
-      ? { configPath: options.configPath }
-      : {}),
-    ...(options.fetchImpl !== undefined
-      ? { fetchImpl: options.fetchImpl }
-      : {}),
-    ...(options.now !== undefined ? { now: options.now } : {}),
-    ...(options.logger !== undefined ? { logger: options.logger } : {}),
-    ...(options.flowSeams !== undefined
-      ? { flowSeams: options.flowSeams }
-      : {}),
+    ...(options.configPath === undefined
+      ? {}
+      : { configPath: options.configPath }),
+    ...(options.fetchImpl === undefined
+      ? {}
+      : { fetchImpl: options.fetchImpl }),
+    ...(options.now === undefined ? {} : { now: options.now }),
+    ...(options.logger === undefined ? {} : { logger: options.logger }),
+    ...(options.flowSeams === undefined
+      ? {}
+      : { flowSeams: options.flowSeams }),
   };
   const effects = createNodeAuthEffects(effectsOptions);
   // Startup bridge load WITH the token-materialization side effect
@@ -92,12 +95,12 @@ export function createNodeWorkspace(
   const bridge = loadBridgeForStartup();
 
   const workspaceOptions: WorkspaceOptions = {
-    ...(options.account !== undefined ? { account: options.account } : {}),
-    ...(options.project !== undefined ? { project: options.project } : {}),
-    ...(options.workspace !== undefined
-      ? { workspace: options.workspace }
-      : {}),
-    ...(options.target !== undefined ? { target: options.target } : {}),
+    ...(options.account === undefined ? {} : { account: options.account }),
+    ...(options.project === undefined ? {} : { project: options.project }),
+    ...(options.workspace === undefined
+      ? {}
+      : { workspace: options.workspace }),
+    ...(options.target === undefined ? {} : { target: options.target }),
     sources: {
       env: effects.env,
       config: effects.config,

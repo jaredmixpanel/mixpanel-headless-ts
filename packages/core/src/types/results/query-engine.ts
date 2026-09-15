@@ -69,14 +69,14 @@ export function safeInt(value: unknown, default_ = 0): number {
     // an IMPRECISE number there, which was no more faithful).
     try {
       return pythonInt(value);
-    } catch (cause) {
+    } catch (error) {
       // Guarded catch (b0-review-resolution F3/A2 pattern): only the
       // coded parse rejections are the ValueError analog; anything
       // else propagates.
-      if (cause instanceof MixpanelHeadlessError) {
+      if (error instanceof MixpanelHeadlessError) {
         return default_;
       }
-      throw cause;
+      throw error;
     }
   }
   return default_;
@@ -1002,7 +1002,6 @@ export class FlowTreeNode {
    * no twin.
    *
    * @returns The root of the parallel tree (`parent === null`).
-   *
    * @example
    * ```typescript
    * const at = root.toAnytree();
@@ -1153,7 +1152,7 @@ export class FlowTreeNode {
     } else {
       const connector = _is_last ? "└── " : "├── ";
       line = `${_prefix}${connector}${this.event} (${String(this.total_count)})\n`;
-      child_prefix = _prefix + (_is_last ? "    " : "│   ");
+      child_prefix = _prefix + (_is_last ? " ".repeat(4) : "│   ");
     }
     this.children.forEach((child, i) => {
       const is_last_child = i === this.children.length - 1;
@@ -1378,7 +1377,6 @@ export class FlowQueryResult {
    *
    * @returns The `{nodes, edges}` adjacency object (empty arrays when
    *   `steps` is empty).
-   *
    * @example
    * ```typescript
    * const g = result.graph();

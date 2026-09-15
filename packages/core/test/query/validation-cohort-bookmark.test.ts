@@ -13,7 +13,8 @@
  * R10.2: assertion-for-assertion.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+
 import type { ValidationError } from "../../src/errors.js";
 import { validateBookmark } from "../../src/query/validation-bookmark.js";
 

@@ -20,22 +20,24 @@
 import { existsSync, rmSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 
-import type { TokenStore, Region } from "@mixpanel-headless/core";
 import {
-  parseOAuthTokens,
-  type OAuthTokens,
   isPythonDict,
+  type OAuthTokens,
+  parseOAuthTokens,
+  type Region,
+  type TokenStore,
 } from "@mixpanel-headless/core";
+
 import { atomicWriteBytes, readCredentialText } from "../io-utils.js";
 import { coerceLaxExpiresAt } from "./pydantic-datetime.js";
 import {
-  OAuthStorage,
   accountDir,
   ensureAccountDir,
+  OAuthStorage,
   type StorageLogger,
 } from "./storage.js";
-import { accountTokensPath } from "./token-resolver.js";
 import { tokenPayloadBytes } from "./token-payload.js";
+import { accountTokensPath } from "./token-resolver.js";
 
 /** Options bag of {@link createNodeTokenStore}. */
 export interface NodeTokenStoreOptions {
@@ -72,10 +74,10 @@ export function createNodeTokenStore(
           };
         }
         return parseOAuthTokens(parsed, { boundary: "param" });
-      } catch (exc) {
+      } catch (error) {
         logger.warning(
           `Failed to read tokens for account '${name}' from ${path}: ` +
-            `${exc instanceof Error ? exc.message : String(exc)} — ignoring.`,
+            `${error instanceof Error ? error.message : String(error)} — ignoring.`,
         );
         return null;
       }
@@ -101,10 +103,10 @@ export function createNodeTokenStore(
       }
       try {
         rmSync(dir, { recursive: true });
-      } catch (exc) {
+      } catch (error) {
         logger.warning(
           `Failed to clean up ${dir} containing OAuth tokens: ` +
-            `${exc instanceof Error ? exc.message : String(exc)}. ` +
+            `${error instanceof Error ? error.message : String(error)}. ` +
             `Run \`rm -rf ${dir}\` manually to remove them.`,
         );
       }

@@ -33,7 +33,6 @@ import { pythonStrip } from "../compat/index.js";
  * @returns Async generator of complete lines, stripped of surrounding
  *   whitespace (Python `str.strip()` set); empty lines are skipped. The
  *   final line is flushed even without a trailing newline.
- *
  * @example
  * ```typescript
  * // NOTE for B4-C2 (GATE-VERDICT R5): library streaming code parses

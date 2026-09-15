@@ -30,14 +30,7 @@
 // everywhere else).
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-  type FakeTransport,
-} from "../../test-support/client-test-helpers.js";
+
 import type { MixpanelClient } from "../../src/client/client.js";
 import { MixpanelHeadlessError } from "../../src/errors.js";
 import {
@@ -55,6 +48,7 @@ import {
   UpdateAnomalyParams,
   UpdateSchemaEnforcementParams,
 } from "../../src/types/entities/schemas.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   bulkUpdateAnomalies as bulkUpdateAnomaliesMember,
   cancelDeletionRequest as cancelDeletionRequestMember,
@@ -71,6 +65,13 @@ import {
   updateAnomaly as updateAnomalyMember,
   updateSchemaEnforcement as updateSchemaEnforcementMember,
 } from "../../src/workspace-members/schemas-audit.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  type FakeTransport,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** A canned-response handler (the `httpx.MockTransport` handler twin). */
 type Handler = (request: CapturedFetchRequest) => CannedResponse;

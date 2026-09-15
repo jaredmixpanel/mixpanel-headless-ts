@@ -14,22 +14,23 @@
 //   `CM5_INLINE_COHORT_METRIC` code.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import { Filter } from "../../src/types/query-params/filter.js";
+
 import {
   CohortBreakdown,
   CohortCriteria,
   CohortDefinition,
 } from "../../src/types/query-params/cohort.js";
+import { Filter } from "../../src/types/query-params/filter.js";
 import {
   CohortMetric,
   Formula,
   Metric,
 } from "../../src/types/query-params/metric.js";
+import { Workspace } from "../../src/workspace.js";
 import {
+  type MockWorkspaceClient,
   mockWorkspaceClient,
   TEST_SESSION,
-  type MockWorkspaceClient,
 } from "../../test-support/workspace-test-helpers.js";
 
 /**
@@ -98,7 +99,7 @@ describe("TestQueryFlowWhere", () => {
     expect(Object.hasOwn(result, "filter_by_event")).toBe(true);
     const fbe = result["filter_by_event"] as Record<string, unknown>;
     expect(fbe["operator"]).toBe("and");
-    expect((fbe["children"] as unknown[]).length).toBe(1);
+    expect(fbe["children"] as unknown[]).toHaveLength(1);
   });
 
   it("mixed cohort + property filters produce both keys", async () => {
@@ -112,7 +113,7 @@ describe("TestQueryFlowWhere", () => {
     const fbc = result["filter_by_cohort"] as Record<string, unknown>;
     expect(fbc["name"]).toBe("PU");
     const fbe = result["filter_by_event"] as Record<string, unknown>;
-    expect((fbe["children"] as unknown[]).length).toBe(1);
+    expect(fbe["children"] as unknown[]).toHaveLength(1);
   });
 
   it("no where= produces no filter_by_cohort key", async () => {
@@ -127,8 +128,8 @@ describe("TestQueryFlowWhere", () => {
     await workspaceFactory(mock).buildFlowParams("Login", {
       where: Filter.inCohort(123),
     });
-    expect(mock.arbFunnelsCalls.length).toBe(0);
-    expect(mock.insightsCalls.length).toBe(0);
+    expect(mock.arbFunnelsCalls).toHaveLength(0);
+    expect(mock.insightsCalls).toHaveLength(0);
   });
 });
 
@@ -167,7 +168,7 @@ describe("TestResolveAndBuildParamsCohortMetric", () => {
       new CohortMetric({ cohort: 123, name: "PU" }),
       "Login",
     ]);
-    expect(section(result, "show").length).toBe(2);
+    expect(section(result, "show")).toHaveLength(2);
   });
 
   it("a CohortMetric in a sequence with a Metric is accepted", async () => {
@@ -175,7 +176,7 @@ describe("TestResolveAndBuildParamsCohortMetric", () => {
       new CohortMetric({ cohort: 123, name: "PU" }),
       new Metric({ event: "Login", math: "unique" }),
     ]);
-    expect(section(result, "show").length).toBe(2);
+    expect(section(result, "show")).toHaveLength(2);
   });
 
   it("a CohortMetric with a Formula in the sequence is accepted", async () => {
@@ -192,7 +193,7 @@ describe("TestResolveAndBuildParamsCohortMetric", () => {
     await workspaceFactory(mock).buildParams(
       new CohortMetric({ cohort: 123, name: "PU" }),
     );
-    expect(mock.insightsCalls.length).toBe(0);
+    expect(mock.insightsCalls).toHaveLength(0);
   });
 
   it("CM5: an inline CohortDefinition raises at construction", () => {

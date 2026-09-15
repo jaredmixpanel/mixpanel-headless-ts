@@ -8,8 +8,9 @@
 // the CreateCohortParams CRUD-integration tests belong to P2-7.)
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import {
-  MixpanelHeadlessError,
+  type MixpanelHeadlessError,
   ParamValidationError,
 } from "../../../src/errors.js";
 import {
@@ -33,15 +34,15 @@ function expectGuard(thunk: () => unknown, code: string): void {
   let thrown: unknown;
   try {
     thunk();
-  } catch (cause) {
-    thrown = cause;
+  } catch (error) {
+    thrown = error;
   }
   expect(thrown, `expected ${code}`).toBeInstanceOf(ParamValidationError);
   expect((thrown as MixpanelHeadlessError).code).toBe(code);
 }
 
 /** Read a nested plain-object path from a serialized cohort payload. */
-function at(value: unknown, ...path: (string | number)[]): unknown {
+function at(value: unknown, ...path: Array<string | number>): unknown {
   let cursor: unknown = value;
   for (const key of path) {
     cursor = (cursor as Record<string | number, unknown>)[key];
@@ -173,7 +174,7 @@ describe("CohortCriteria.didEvent shapes", () => {
     });
     const selector = at(c._behavior, "count", "event_selector", "selector");
     expect(at(selector, "operator")).toBe("and");
-    const children = at(selector, "children") as Record<string, unknown>[];
+    const children = at(selector, "children") as Array<Record<string, unknown>>;
     expect(children).toHaveLength(2);
     expect(children[0]?.["value"]).toBe("plan");
     expect(children[0]?.["filterOperator"]).toBe("equals");
@@ -281,7 +282,11 @@ describe("CohortCriteria.didEvent guards (source order)", () => {
       "CD4_EMPTY_EVENT",
     );
     expectGuard(
-      () => CohortCriteria.didEvent("   ", { at_least: 1, within_days: 30 }),
+      () =>
+        CohortCriteria.didEvent(" ".repeat(3), {
+          at_least: 1,
+          within_days: 30,
+        }),
       "CD4_EMPTY_EVENT",
     );
   });
@@ -370,7 +375,7 @@ describe("CohortCriteria.didEvent guards (source order)", () => {
       () =>
         CohortCriteria.didEvent("Purchase", {
           aggregation: "average",
-          aggregation_property: "   ",
+          aggregation_property: " ".repeat(3),
           at_least: 50,
           within_days: 30,
         }),
@@ -519,12 +524,12 @@ describe("CohortCriteria.hasProperty / propertyIsSet / propertyIsNotSet", () => 
       "CD7_EMPTY_PROPERTY",
     );
     expectGuard(
-      () => CohortCriteria.hasProperty("   ", "value"),
+      () => CohortCriteria.hasProperty(" ".repeat(3), "value"),
       "CD7_EMPTY_PROPERTY",
     );
     expectGuard(() => CohortCriteria.propertyIsSet(""), "CD7_EMPTY_PROPERTY");
     expectGuard(
-      () => CohortCriteria.propertyIsNotSet("   "),
+      () => CohortCriteria.propertyIsNotSet(" ".repeat(3)),
       "CD7_EMPTY_PROPERTY",
     );
   });
@@ -625,10 +630,9 @@ describe("CohortDefinition composition + toDict", () => {
     expect(at(result, "selector", "operator")).toBe("and");
     const behaviors = result["behaviors"] as Record<string, unknown>;
     expect(Object.keys(behaviors)).toEqual(["bhvr_0", "bhvr_1"]);
-    const children = at(result, "selector", "children") as Record<
-      string,
-      unknown
-    >[];
+    const children = at(result, "selector", "children") as Array<
+      Record<string, unknown>
+    >;
     expect(new Set(children.map((child) => child["value"]))).toEqual(
       new Set(Object.keys(behaviors)),
     );
@@ -653,10 +657,9 @@ describe("CohortDefinition composition + toDict", () => {
     );
     const result = nested.toDict();
     expect(at(result, "selector", "operator")).toBe("or");
-    const children = at(result, "selector", "children") as Record<
-      string,
-      unknown
-    >[];
+    const children = at(result, "selector", "children") as Array<
+      Record<string, unknown>
+    >;
     expect(children).toHaveLength(2);
     expect(children[0]?.["operator"]).toBe("and");
     expect(children[0]?.["children"]).toHaveLength(2);
@@ -717,10 +720,9 @@ describe("CohortDefinition composition + toDict", () => {
     );
     const result = d.toDict();
     expect(Object.keys(result["behaviors"] as object)).toHaveLength(1);
-    const children = at(result, "selector", "children") as Record<
-      string,
-      unknown
-    >[];
+    const children = at(result, "selector", "children") as Array<
+      Record<string, unknown>
+    >;
     expect(children).toHaveLength(3);
     expect(children[0]?.["property"]).toBe("user");
     expect(children[1]?.["property"]).toBe("behaviors");
@@ -932,7 +934,7 @@ describe("buildEventSelector edge behavior", () => {
       Filter.between("p", 1, 2),
     ];
     const tree = buildEventSelector(filters);
-    const children = tree["children"] as Record<string, unknown>[];
+    const children = tree["children"] as Array<Record<string, unknown>>;
     expect(children.map((child) => child["filterOperator"])).toEqual([
       "equals",
       "does not equal",
@@ -962,10 +964,10 @@ describe("C9 guard-totality property (fast-check #4)", () => {
         try {
           make(property);
           return false;
-        } catch (cause) {
+        } catch (error) {
           return (
-            cause instanceof ParamValidationError &&
-            cause.code === "CD7_EMPTY_PROPERTY"
+            error instanceof ParamValidationError &&
+            error.code === "CD7_EMPTY_PROPERTY"
           );
         }
       }),
@@ -985,10 +987,10 @@ describe("C9 guard-totality property (fast-check #4)", () => {
               CohortCriteria.inCohort(cohortId);
             }
             return false;
-          } catch (cause) {
+          } catch (error) {
             return (
-              cause instanceof ParamValidationError &&
-              cause.code === "CD8_COHORT_ID_NOT_POSITIVE"
+              error instanceof ParamValidationError &&
+              error.code === "CD8_COHORT_ID_NOT_POSITIVE"
             );
           }
         },
@@ -1030,8 +1032,8 @@ describe("CohortCriteria.hasProperty unknown-operator parity (P2-9 gate finding)
       CohortCriteria.hasProperty("plan", "premium", {
         operator: "junk" as never,
       });
-    } catch (cause) {
-      thrown = cause;
+    } catch (error) {
+      thrown = error;
     }
     expect(thrown).toBeInstanceOf(Error);
     expect((thrown as Error).name).toBe("KeyError");
@@ -1043,8 +1045,8 @@ describe("CohortCriteria.hasProperty unknown-operator parity (P2-9 gate finding)
     let thrown: unknown;
     try {
       CohortCriteria.hasProperty("", "premium", { operator: "junk" as never });
-    } catch (cause) {
-      thrown = cause;
+    } catch (error) {
+      thrown = error;
     }
     expect((thrown as { code?: string }).code).toBe("CD7_EMPTY_PROPERTY");
   });

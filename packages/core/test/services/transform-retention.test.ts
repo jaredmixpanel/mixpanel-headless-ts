@@ -20,10 +20,11 @@
 //   the expected `["Android", "iOS"]` order holds ("A" < "i").
 
 import { describe, expect, it } from "vitest";
-import { transformRetentionResult } from "../../src/services/live-query-transforms.js";
-import { QueryError } from "../../src/errors.js";
-import { RetentionQueryResult } from "../../src/types/results/query-engine.js";
+
 import { sortedByCodepoint } from "../../src/compat/codepoint.js";
+import { QueryError } from "../../src/errors.js";
+import { transformRetentionResult } from "../../src/services/live-query-transforms.js";
+import { RetentionQueryResult } from "../../src/types/results/query-engine.js";
 
 // ===========================================================================
 // Shared fixtures (test_transform_retention.py:13-52)
@@ -92,7 +93,7 @@ describe("TestTransformRetentionBasic", () => {
     const result = transformRetentionResult(mockResponse(), BOOKMARK_PARAMS);
     expect(Object.hasOwn(result.cohorts, "2025-01-01")).toBe(true);
     expect(Object.hasOwn(result.cohorts, "2025-01-02")).toBe(true);
-    expect(Object.keys(result.cohorts).length).toBe(2);
+    expect(Object.keys(result.cohorts)).toHaveLength(2);
   });
 
   it("each cohort entry contains first, counts and rates", () => {
@@ -146,9 +147,9 @@ describe("TestTransformRetentionErrors", () => {
     try {
       transformRetentionResult(errorResponse, BOOKMARK_PARAMS);
       expect.unreachable("expected QueryError");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(QueryError);
-      expect((exc as QueryError).statusCode).toBe(200);
+    } catch (error) {
+      expect(error).toBeInstanceOf(QueryError);
+      expect((error as QueryError).statusCode).toBe(200);
     }
   });
 
@@ -157,8 +158,8 @@ describe("TestTransformRetentionErrors", () => {
     try {
       transformRetentionResult(errorResponse, BOOKMARK_PARAMS);
       expect.unreachable("expected QueryError");
-    } catch (exc) {
-      expect((exc as QueryError).responseBody).toEqual(errorResponse);
+    } catch (error) {
+      expect((error as QueryError).responseBody).toEqual(errorResponse);
     }
   });
 
@@ -170,8 +171,8 @@ describe("TestTransformRetentionErrors", () => {
     try {
       transformRetentionResult(errorResponse, params);
       expect.unreachable("expected QueryError");
-    } catch (exc) {
-      expect((exc as QueryError).requestBody).toEqual(params);
+    } catch (error) {
+      expect((error as QueryError).requestBody).toEqual(params);
     }
   });
 
@@ -477,7 +478,7 @@ describe("TestTransformRetentionDateNormalization", () => {
 describe("TestTransformRetentionFormatVariations", () => {
   it("direct cohort dict format is parsed correctly", () => {
     const result = transformRetentionResult(mockResponse(), BOOKMARK_PARAMS);
-    expect(Object.keys(result.cohorts).length).toBe(2);
+    expect(Object.keys(result.cohorts)).toHaveLength(2);
   });
 
   it("missing date_range produces empty from_date/to_date", () => {
@@ -512,7 +513,7 @@ describe("TestTransformRetentionFormatVariations", () => {
     });
     const result = transformRetentionResult(raw, BOOKMARK_PARAMS);
     expect(result.average).toEqual({});
-    expect(Object.keys(result.cohorts).length).toBe(1);
+    expect(Object.keys(result.cohorts)).toHaveLength(1);
   });
 
   it("single cohort date in series is handled correctly", () => {
@@ -525,7 +526,7 @@ describe("TestTransformRetentionFormatVariations", () => {
       },
     });
     const result = transformRetentionResult(raw, BOOKMARK_PARAMS);
-    expect(Object.keys(result.cohorts).length).toBe(1);
+    expect(Object.keys(result.cohorts)).toHaveLength(1);
     expect(Object.hasOwn(result.cohorts, "2025-01-01")).toBe(true);
   });
 

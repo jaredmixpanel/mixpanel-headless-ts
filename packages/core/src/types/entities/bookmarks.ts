@@ -8,14 +8,14 @@
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
+import { isPythonDict } from "../../compat/python-dict.js";
 import {
+  type EntityFieldSpec,
   EntityModel,
   modelFail,
   oneOf,
   prepareInit,
-  type EntityFieldSpec,
 } from "./model-base.js";
-import { isPythonDict } from "../../compat/python-dict.js";
 
 /**
  * Constructor input for {@link BookmarkMetadata} — absent keys take the Python
@@ -27,7 +27,7 @@ export interface BookmarkMetadataInit {
   /** Whether comparison is enabled. */
   readonly compare_enabled?: boolean | null | undefined;
   /** Comparison filter settings. */
-  readonly compare_filters?: ReadonlyArray<unknown> | null | undefined;
+  readonly compare_filters?: readonly unknown[] | null | undefined;
   /** Retention calculation method. */
   readonly retention_calculation_type?: string | null | undefined;
   /** Associated event name. */
@@ -67,7 +67,7 @@ export class BookmarkMetadata extends EntityModel {
   /** Whether comparison is enabled. */
   declare readonly compare_enabled: boolean | null;
   /** Comparison filter settings. */
-  declare readonly compare_filters: ReadonlyArray<unknown> | null;
+  declare readonly compare_filters: readonly unknown[] | null;
   /** Retention calculation method. */
   declare readonly retention_calculation_type: string | null;
   /** Associated event name. */
@@ -674,7 +674,7 @@ export class BookmarkHistoryPagination extends EntityModel {
  */
 export interface BookmarkHistoryResponseInit {
   /** List of history entries. */
-  readonly results?: ReadonlyArray<unknown> | undefined;
+  readonly results?: readonly unknown[] | undefined;
   /** Pagination metadata. */
   readonly pagination?:
     | BookmarkHistoryPagination
@@ -707,7 +707,7 @@ export class BookmarkHistoryResponse extends EntityModel {
   ];
 
   /** List of history entries. */
-  declare readonly results: ReadonlyArray<unknown>;
+  declare readonly results: readonly unknown[];
   /** Pagination metadata. */
   declare readonly pagination: BookmarkHistoryPagination | null;
 

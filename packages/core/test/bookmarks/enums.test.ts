@@ -20,7 +20,8 @@
  * the runtime half of that assertion is the type check.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+
 import {
   MATH_NO_PER_USER,
   MATH_PROPERTY_OPTIONAL,

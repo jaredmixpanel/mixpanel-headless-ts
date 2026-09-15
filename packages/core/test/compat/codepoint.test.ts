@@ -3,6 +3,7 @@
 // on 2026-08-15.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import {
   cpLength,
   cpSlice,
@@ -17,7 +18,7 @@ describe("cpLength — Python len(str) counts codepoints (R11.6)", () => {
 
   it("counts non-BMP characters once (JS .length counts twice)", () => {
     expect(cpLength("𝒳")).toBe(1);
-    expect("𝒳".length).toBe(2); // the JS contrast
+    expect("𝒳").toHaveLength(2); // the JS contrast
     expect(cpLength("a𝒳b😀")).toBe(4);
   });
 });

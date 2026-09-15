@@ -42,9 +42,10 @@
 //   dropped (see `workspace-test-helpers.ts` header).
 
 import { describe, expect, it } from "vitest";
+
+import type { Session } from "../../src/auth/session.js";
 import type { MixpanelClient } from "../../src/client/client.js";
 import type { JsonValue } from "../../src/client/json-value.js";
-import type { Session } from "../../src/auth/session.js";
 import {
   BookmarkValidationError,
   ParamValidationError,
@@ -57,10 +58,13 @@ import {
   UnsupportedReportLinkError,
   WorkspaceScopeError,
 } from "../../src/errors.js";
-import { FunnelStep } from "../../src/types/query-params/funnel.js";
-import { ReportLink, ResolvedReport } from "../../src/types/report-links.js";
-import type { ResolvedReportFields } from "../../src/types/report-links.js";
 import type { BookmarkType, ReportLinkType } from "../../src/types/literals.js";
+import { FunnelStep } from "../../src/types/query-params/funnel.js";
+import {
+  ReportLink,
+  ResolvedReport,
+  type ResolvedReportFields,
+} from "../../src/types/report-links.js";
 import {
   FlowQueryResult,
   FunnelQueryResult,
@@ -69,9 +73,9 @@ import {
 } from "../../src/types/results/query-engine.js";
 import { Workspace } from "../../src/workspace.js";
 import {
+  type LogCollector,
   logCollector,
   TEST_SESSION,
-  type LogCollector,
 } from "../../test-support/workspace-test-helpers.js";
 
 const SLUG = "EBrV5bW2u9Mw";
@@ -114,21 +118,21 @@ interface MockApiClient {
   /** Every network-facing method name called, in order (`method_calls`). */
   readonly methodCalls: string[];
   /** `create_bookmark_url.side_effect`. */
-  setCreateBookmarkUrl(
+  setCreateBookmarkUrl: (
     handler: (body: Record<string, unknown>) => Record<string, unknown>,
-  ): void;
+  ) => void;
   /** `get_bookmark_url.return_value` / `.side_effect`. */
-  setGetBookmarkUrl(handler: (slug: string) => unknown): void;
+  setGetBookmarkUrl: (handler: (slug: string) => unknown) => void;
   /** `get_bookmark.return_value` / `.side_effect`. */
-  setGetBookmark(handler: (id: number) => unknown): void;
+  setGetBookmark: (handler: (id: number) => unknown) => void;
   /** `resolve_short_link.return_value` / `.side_effect`. */
-  setResolveShortLink(handler: (code: string) => string): void;
+  setResolveShortLink: (handler: (code: string) => string) => void;
   /** `resolve_workspace_id.return_value` / `.side_effect`. */
-  setResolveWorkspaceId(handler: () => number): void;
+  setResolveWorkspaceId: (handler: () => number) => void;
   /** Fixed raw `insights_query` response. */
-  setInsightsResponse(value: unknown): void;
+  setInsightsResponse: (value: unknown) => void;
   /** Fixed raw `arb_funnels_query` response. */
-  setArbFunnelsResponse(value: unknown): void;
+  setArbFunnelsResponse: (value: unknown) => void;
 }
 
 /**
@@ -177,8 +181,8 @@ function mockApiClient(): MockApiClient {
     methodCalls.push(name);
     try {
       return Promise.resolve(fn());
-    } catch (exc) {
-      return Promise.reject(exc as Error);
+    } catch (error) {
+      return Promise.reject(error as Error);
     }
   };
 
@@ -309,9 +313,9 @@ function makeWorkspace(
     session: options.session ?? TEST_SESSION,
     client: mock.client,
     logger: log,
-    ...(options.generateSlug !== undefined
-      ? { generateSlug: options.generateSlug }
-      : {}),
+    ...(options.generateSlug === undefined
+      ? {}
+      : { generateSlug: options.generateSlug }),
   });
   return { ws, mock, log };
 }
@@ -354,8 +358,8 @@ async function raises<T extends Error>(
   let caught: unknown = null;
   try {
     await promise;
-  } catch (exc) {
-    caught = exc;
+  } catch (error) {
+    caught = error;
   }
   expect(caught).toBeInstanceOf(cls);
   return caught as T;
@@ -383,7 +387,7 @@ describe("TestCreateReportLinkFromDict (test_workspace_report_links.py:129)", ()
     const body = postedBody(mock);
     expect(body["type"]).toBe("insights");
     expect(body["params"]).toEqual(params);
-    expect((body["slug"] as string).length).toBe(12);
+    expect(body["slug"] as string).toHaveLength(12);
     expect(link).toBeInstanceOf(ReportLink);
     expect(link.report_type).toBe("insights");
     expect(link.slug).toBe(body["slug"]);
@@ -1558,8 +1562,8 @@ describe("TestSavedReportLink (test_workspace_report_links.py:1250)", () => {
       ws.savedReportLink(123, {
         report_type: "boards" as unknown as BookmarkType,
       });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
 
     expect(caught).toBeInstanceOf(ParamValidationError);

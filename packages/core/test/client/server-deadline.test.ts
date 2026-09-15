@@ -19,23 +19,24 @@
 // otherwise preserved 1:1 (R10.2).
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { createMixpanelClient } from "../../src/client/client.js";
 import type {
   RequestExecutor,
   TransportRequestOptions,
 } from "../../src/client/internals.js";
-import { createMixpanelClient } from "../../src/client/client.js";
 import { paginateAll } from "../../src/client/pagination.js";
 import {
   APP_API_SERVER_DEADLINE_S,
   DEFAULT_APP_TIMEOUT_S,
   DEFAULT_QUERY_TIMEOUT_S,
-  QUERY_API_SERVER_DEADLINE_S,
   endpointBase,
+  QUERY_API_SERVER_DEADLINE_S,
 } from "../../src/client/url.js";
 import {
+  type CannedResponse,
   createMockClient,
   makeSession,
-  type CannedResponse,
 } from "../../test-support/client-test-helpers.js";
 
 /** The per-request `extensions["timeout"]["read"]` capture log. */
@@ -142,7 +143,7 @@ describe("TestPaginateAll (server-deadline half)", () => {
     )) {
       void item;
     }
-    expect(capturedTimeouts[0]).not.toBeUndefined();
+    expect(capturedTimeouts[0]).toBeDefined();
     expect(capturedTimeouts[0]).toBe(DEFAULT_APP_TIMEOUT_S);
   });
 });

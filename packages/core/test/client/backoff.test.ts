@@ -8,6 +8,7 @@
 // free functions with the RNG injected (playbook: jitter behind an
 // injectable RNG; conformance/tests inject a fixed source).
 import { describe, expect, it } from "vitest";
+
 import {
   calculateBackoff,
   parseRetryAfter,
@@ -21,7 +22,7 @@ import {
  * @returns A response-like carrier with case-insensitive lookup.
  */
 function response(retryAfter?: string): {
-  header(name: string): string | null;
+  header: (name: string) => string | null;
 } {
   return {
     header(name: string): string | null {

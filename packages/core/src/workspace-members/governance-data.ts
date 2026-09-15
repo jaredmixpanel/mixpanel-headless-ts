@@ -107,15 +107,15 @@ import {
 } from "../compat/index.js";
 import { MixpanelHeadlessError, QueryError } from "../errors.js";
 import {
+  type CreateCustomEventParams,
+  type CreateCustomPropertyParams,
+  type CreateDropFilterParams,
   CustomEvent,
   CustomProperty,
   DropFilter,
   DropFilterLimitsResponse,
   LookupTable,
   LookupTableUploadUrl,
-  type CreateCustomEventParams,
-  type CreateCustomPropertyParams,
-  type CreateDropFilterParams,
   type MarkLookupTableReadyParams,
   type UpdateCustomPropertyParams,
   type UpdateDropFilterParams,
@@ -178,13 +178,13 @@ export interface LookupUploadSeams {
    * @param path - The local CSV path.
    * @returns The file bytes.
    */
-  readFile(path: string): Promise<Uint8Array>;
+  readFile: (path: string) => Promise<Uint8Array>;
   /**
    * `time.monotonic()` in SECONDS (`workspace.py:8099`, `:8101`).
    *
    * @returns Elapsed seconds from an arbitrary origin.
    */
-  monotonic(): number;
+  monotonic: () => number;
   /**
    * `time.sleep(poll_interval)` (`workspace.py:8102`) — MILLISECONDS
    * (R2.12); the caller converts.
@@ -192,7 +192,7 @@ export interface LookupUploadSeams {
    * @param ms - Milliseconds to wait.
    * @returns Resolves when the wait elapses.
    */
-  sleep(ms: number): Promise<void>;
+  sleep: (ms: number) => Promise<void>;
 }
 
 /** The optional log sink of the upload orchestrator (`logging` twin). */
@@ -203,14 +203,14 @@ export interface LookupUploadLogger {
    *
    * @param message - The formatted text (never vector-compared).
    */
-  info?(message: string): void;
+  info?: (message: string) => void;
   /**
    * `logger.debug(...)` — the per-poll status trace
    * (`workspace.py:8132-8136`).
    *
    * @param message - The formatted text (never vector-compared).
    */
-  debug?(message: string): void;
+  debug?: (message: string) => void;
 }
 
 /**
@@ -370,16 +370,16 @@ export async function listCustomProperties(
   let rawList: readonly unknown[];
   try {
     rawList = await client.listCustomProperties();
-  } catch (exc) {
-    if (!(exc instanceof QueryError)) {
-      throw exc;
+  } catch (error) {
+    if (!(error instanceof QueryError)) {
+      throw error;
     }
     // `details.get("response_body", {})` — the key is ABSENT (not
     // `null`) when the body was `None` (R4.11 detail-bag mirror), so
     // the `{}` default fires exactly where Python's does. Watchlist
     // #13: `isinstance(body, dict)` is `isPlainRecord`, never a bare
     // `typeof === "object"`.
-    const details = exc.details;
+    const details = error.details;
     const body = isPlainRecord(details) ? (details["response_body"] ?? {}) : {};
     if (isPlainRecord(body) && body["field"] === "displayFormula") {
       throw new QueryError(
@@ -389,16 +389,16 @@ export async function listCustomProperties(
           "get_custom_property(id) to retrieve individual " +
           "properties, or contact Mixpanel support.",
         {
-          statusCode: exc.statusCode,
-          responseBody: exc.responseBody,
-          requestMethod: exc.requestMethod,
-          requestUrl: exc.requestUrl,
-          requestParams: exc.requestParams,
-          cause: exc,
+          statusCode: error.statusCode,
+          responseBody: error.responseBody,
+          requestMethod: error.requestMethod,
+          requestUrl: error.requestUrl,
+          requestParams: error.requestParams,
+          cause: error,
         },
       );
     }
-    throw exc;
+    throw error;
   }
   return validateResponseModels(CustomProperty, rawList.map(native), {
     endpoint: "list_custom_properties",
@@ -591,8 +591,9 @@ async function pollLookupUpload(
     if (uploadStatus === "FAILURE" || uploadStatus === "REVOKED") {
       throw new MixpanelHeadlessError(
         `Lookup table upload failed with status ` +
-          `'${pythonStr(uploadStatus as PythonValue)}': ` +
-          `${pythonStr(status as PythonValue)}`,
+          `'${pythonStr(uploadStatus as PythonValue)}': ${pythonStr(
+            status as PythonValue,
+          )}`,
         "UPLOAD_FAILED",
         { upload_id: uploadId, status },
       );
@@ -651,7 +652,7 @@ export async function uploadLookupTable(
   params: UploadLookupTableParams,
   options: WorkspaceUploadLookupTableOptions | undefined = {},
   seams: LookupUploadSeams,
-  logger?: LookupUploadLogger | undefined,
+  logger?: LookupUploadLogger,
 ): Promise<LookupTable> {
   const pollInterval = options.poll_interval ?? 2.0;
   const maxPollSeconds = options.max_poll_seconds ?? 300.0;
@@ -821,7 +822,7 @@ export async function updateLookupTable(
  */
 export async function deleteLookupTables(
   client: MixpanelClient,
-  dataGroupIds: readonly (number | bigint)[],
+  dataGroupIds: ReadonlyArray<number | bigint>,
 ): Promise<void> {
   await client.deleteLookupTables(dataGroupIds);
 }

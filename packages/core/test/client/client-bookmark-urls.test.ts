@@ -19,6 +19,7 @@
 // - `caplog` → an injected `logger` (`MixpanelClientOptions.logger`)
 //   capturing every warning line.
 import { describe, expect, it } from "vitest";
+
 import type { Session } from "../../src/auth/session.js";
 import {
   APIError,
@@ -31,10 +32,10 @@ import {
   ShortLinkResolutionError,
 } from "../../src/errors.js";
 import {
-  createMockClient,
-  makeSession,
   type CannedResponse,
   type CapturedFetchRequest,
+  createMockClient,
+  makeSession,
 } from "../../test-support/client-test-helpers.js";
 
 const SLUG = "EBrV5bW2u9Mw";
@@ -190,7 +191,7 @@ describe("TestCreateBookmarkUrl", () => {
       .createBookmarkUrl({ slug: SLUG, type: "insights", params: {} })
       .then(
         () => null,
-        (e: unknown) => e,
+        (error: unknown) => error,
       );
     // `match="create_bookmark_url"` is message text (R5.4) — the lock is
     // the class: a plain MixpanelHeadlessError, not an APIError.
@@ -209,7 +210,7 @@ describe("TestCreateBookmarkUrlErrors", () => {
       .createBookmarkUrl({ slug: SLUG, type: "insights", params: PARAMS })
       .then(
         () => null,
-        (e: unknown) => e,
+        (error: unknown) => error,
       );
     expect(thrown).toBeInstanceOf(QueryError);
     const exc = thrown as QueryError;
@@ -287,7 +288,7 @@ describe("TestGetBookmarkUrl", () => {
     }));
     const thrown = await client.getBookmarkUrl(SLUG).then(
       () => null,
-      (e: unknown) => e,
+      (error: unknown) => error,
     );
     expect(thrown).toBeInstanceOf(ReportLinkNotFoundError);
     const exc = thrown as ReportLinkNotFoundError;
@@ -317,7 +318,7 @@ describe("TestGetBookmarkUrl", () => {
     }));
     const thrown = await client.getBookmarkUrl(SLUG).then(
       () => null,
-      (e: unknown) => e,
+      (error: unknown) => error,
     );
     expect(thrown).toBeInstanceOf(QueryError);
     expect((thrown as QueryError).statusCode).toBe(403);
@@ -330,7 +331,7 @@ describe("TestGetBookmarkUrl", () => {
     }));
     const thrown = await client.getBookmarkUrl(SLUG).then(
       () => null,
-      (e: unknown) => e,
+      (error: unknown) => error,
     );
     // `match="get_bookmark_url"` is message text (R5.4) — see above.
     expect(thrown).toBeInstanceOf(MixpanelHeadlessError);
@@ -365,7 +366,7 @@ function shortLinkClient(
 async function rejectionOf(promise: Promise<unknown>): Promise<unknown> {
   return promise.then(
     () => null,
-    (e: unknown) => e,
+    (error: unknown) => error,
   );
 }
 
@@ -430,7 +431,7 @@ describe("TestResolveShortLink", () => {
   });
 
   it("test_200_html_with_location_script", async () => {
-    const escaped = TARGET.replaceAll("/", "\\/");
+    const escaped = TARGET.replaceAll("/", String.raw`\/`);
     const body =
       "<html><head><script>\n" +
       `  window.location.href = "${escaped}";\n` +
@@ -560,8 +561,7 @@ describe("TestResolveShortLink", () => {
   });
 
   it("test_200_script_with_non_json_escape_is_unexpected_response", async () => {
-    const body =
-      'window.location.href = "https://mixpanel.com/project/3\\x3f";';
+    const body = String.raw`window.location.href = "https://mixpanel.com/project/3\x3f";`;
     const { client } = shortLinkClient(testCredentials(), () => ({
       status: 200,
       text: body,

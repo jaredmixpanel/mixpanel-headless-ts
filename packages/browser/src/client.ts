@@ -20,24 +20,25 @@
  */
 
 import {
-  parseAccount,
-  type OAuthTokenAccount,
-  type TokenResolver,
+  type ClientUseOptions,
+  createMixpanelClient,
   CREDENTIAL_KEYS,
   type CredentialStore,
-  parseSession,
-  type Session,
-  parseOAuthTokens,
-  type OAuthTokens,
-  createMixpanelClient,
-  type ClientUseOptions,
+  type EndpointKind,
+  ENDPOINTS,
   type MixpanelClient,
   type MixpanelClientOptions,
-  ENDPOINTS,
-  type EndpointKind,
   OAuthError,
+  type OAuthTokenAccount,
+  type OAuthTokens,
+  parseAccount,
+  parseOAuthTokens,
+  parseSession,
+  type Session,
+  type TokenResolver,
   Workspace,
 } from "@mixpanel-headless/core";
+
 import { InMemoryCredentialStore } from "./credential-store.js";
 import {
   BROWSER_EXPORT_UNSUPPORTED,
@@ -85,8 +86,10 @@ export interface BrowserWorkspaceFromStoreOptions {
   readonly accountName?: string;
   /** Injectable transport (R2.4 seam); default `globalThis.fetch`. */
   readonly fetch?: typeof fetch;
-  /** Epoch-ms clock seam for the token-expiry gate (tests freeze it —
-   * b9-packets.md §7 caution 5). Default `Date.now`. */
+  /**
+   * Epoch-ms clock seam for the token-expiry gate (tests freeze it —
+   * b9-packets.md §7 caution 5). Default `Date.now`.
+   */
   readonly now?: () => number;
   /** Extra core-client options. */
   readonly clientOptions?: Omit<MixpanelClientOptions, "session">;
@@ -193,12 +196,12 @@ async function readStoredTokens(
   let decoded: unknown;
   try {
     decoded = JSON.parse(raw);
-  } catch (cause) {
+  } catch (error) {
     throw new OAuthError(
       `Persisted tokens for region '${region}' are not valid JSON.`,
       "OAUTH_TOKEN_ERROR",
       { region },
-      { cause },
+      { cause: error },
     );
   }
   if (
@@ -480,7 +483,6 @@ function assembleWorkspace(
  * @param options - Token, project, region, optional workspace/name.
  * @returns The resolved session.
  * @throws ParamValidationError - Invalid region / projectId / name.
- *
  * @example
  * ```typescript
  * const session = browserSession({
@@ -504,9 +506,9 @@ export function browserSession(options: BrowserSessionOptions): Session {
     {
       account,
       project: { id: options.projectId },
-      ...(options.workspaceId !== undefined
-        ? { workspace: { id: options.workspaceId } }
-        : {}),
+      ...(options.workspaceId === undefined
+        ? {}
+        : { workspace: { id: options.workspaceId } }),
     },
     { boundary: "param" },
   );
@@ -523,7 +525,6 @@ export function browserSession(options: BrowserSessionOptions): Session {
  * @throws BrowserUnsupportedError - `BROWSER_SERVICE_ACCOUNT_REFUSED`
  *   when a pre-built `session` carries a service account (§2.3 path 1).
  * @throws ParamValidationError - Invalid region / projectId.
- *
  * @example
  * ```typescript
  * const ws = createBrowserWorkspace({
@@ -581,9 +582,9 @@ export async function createBrowserWorkspaceFromStore(
     {
       account,
       project: { id: options.projectId },
-      ...(options.workspaceId !== undefined
-        ? { workspace: { id: options.workspaceId } }
-        : {}),
+      ...(options.workspaceId === undefined
+        ? {}
+        : { workspace: { id: options.workspaceId } }),
     },
     { boundary: "param" },
   );
@@ -591,10 +592,10 @@ export async function createBrowserWorkspaceFromStore(
     session,
     {
       store: options.store,
-      ...(options.fetch !== undefined ? { fetch: options.fetch } : {}),
-      ...(options.clientOptions !== undefined
-        ? { clientOptions: options.clientOptions }
-        : {}),
+      ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
+      ...(options.clientOptions === undefined
+        ? {}
+        : { clientOptions: options.clientOptions }),
     },
     options.now,
   );

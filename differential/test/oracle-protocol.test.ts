@@ -6,23 +6,24 @@
 // dict-key ordering, which only this side can get wrong.
 import { describe, expect, it } from "vitest";
 
+import { JsonNumber } from "@mixpanel-headless/conformance-runner";
+
+import {
+  parseRawJson,
+  RawObject,
+  serializeAsciiJson,
+  toJsonValue,
+} from "../oracle/raw-json.js";
 import {
   JSONRPC_INTERNAL_ERROR,
   JSONRPC_INVALID_PARAMS,
   JSONRPC_INVALID_REQUEST,
   JSONRPC_METHOD_NOT_FOUND,
   JSONRPC_PARSE_ERROR,
+  type OracleIdentity,
   OracleServer,
   PROTOCOL_VERSION,
-  type OracleIdentity,
 } from "../oracle/server.js";
-import {
-  RawObject,
-  parseRawJson,
-  serializeAsciiJson,
-  toJsonValue,
-} from "../oracle/raw-json.js";
-import { JsonNumber } from "@mixpanel-headless/conformance-runner";
 
 /** Fixed identity injected in every test (no filesystem dependence). */
 const TEST_IDENTITY: OracleIdentity = {
@@ -156,7 +157,7 @@ describe("oracle.info / oracle.shutdown / framing", () => {
         jsonrpc: "2.0",
         id: 5,
         method: "oracle.call",
-        params: { api: "compat.python_str", input: { value: "\u{1f40d}" } },
+        params: { api: "compat.python_str", input: { value: "\u{1F40D}" } },
       }),
     );
     expect(line).not.toBeNull();
@@ -165,7 +166,7 @@ describe("oracle.info / oracle.shutdown / framing", () => {
       true,
     );
     const envelope = JSON.parse(line as string) as Envelope;
-    expect(envelope.result?.["output"]).toBe("\u{1f40d}");
+    expect(envelope.result?.["output"]).toBe("\u{1F40D}");
   });
 
   it("echoes string ids verbatim and preserves integer id tokens", async () => {
@@ -279,8 +280,8 @@ describe("oracle.call: compat surface", () => {
       },
     );
     expect(
-      await call(server, "compat.zfill", { value: "\u{1f40d}", width: 3 }),
-    ).toEqual({ ok: true, output: "00\u{1f40d}" });
+      await call(server, "compat.zfill", { value: "\u{1F40D}", width: 3 }),
+    ).toEqual({ ok: true, output: "00\u{1F40D}" });
   });
 
   it("returns thrown library errors as bare-class DATA (R5.4)", async () => {
@@ -413,9 +414,7 @@ describe("oracle.call: scope, skips, and protocol errors", () => {
     // A lone-surrogate input arrives via a JSON escape; python_str's
     // OUTPUT then carries the surrogate, which the D6 encoder rejects —
     // a protocol-level error, never a hang or crash (design D14).
-    const line =
-      '{"jsonrpc": "2.0", "id": 1, "method": "oracle.call", "params": ' +
-      '{"api": "compat.python_str", "input": {"value": "\\ud800"}}}';
+    const line = `{"jsonrpc": "2.0", "id": 1, "method": "oracle.call", "params": ${String.raw`{"api": "compat.python_str", "input": {"value": "\ud800"}}}`}`;
     const envelope = await serveLine(makeServer(), line);
     expect(envelope.error?.code).toBe(JSONRPC_INTERNAL_ERROR);
   });
@@ -441,14 +440,14 @@ describe("raw-json: ordered lossless model", () => {
 
   it("serializes ASCII-safe lines with lone surrogates escaped", async () => {
     const text = serializeAsciiJson({
-      astral: "\u{1f40d}",
-      lone: "\ud800",
+      astral: "\u{1F40D}",
+      lone: "\uD800",
       token: new JsonNumber("18.0"),
       big: 123456789012345678901n,
     });
     expect([...text].every((ch) => ch.charCodeAt(0) < 128)).toBe(true);
-    expect(text).toContain("\\ud83d\\udc0d");
-    expect(text).toContain("\\ud800");
+    expect(text).toContain(String.raw`\ud83d\udc0d`);
+    expect(text).toContain(String.raw`\ud800`);
     expect(text).toContain("18.0");
     expect(text).toContain("123456789012345678901");
   });
@@ -458,7 +457,9 @@ describe("raw-json: ordered lossless model", () => {
       "unexpected trailing content",
     );
     expect(() => parseRawJson('{"a": 01}')).toThrow("at offset");
-    expect(() => parseRawJson('"\\x00"')).toThrow("malformed string token");
+    expect(() => parseRawJson(String.raw`"\x00"`)).toThrow(
+      "malformed string token",
+    );
   });
 });
 

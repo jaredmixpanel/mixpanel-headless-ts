@@ -11,10 +11,11 @@
  * R10.2: assertion-for-assertion.
  */
 
-import { describe, it, expect } from "vitest";
-import { CohortBreakdown, GroupBy } from "../../src/types/index.js";
+import { describe, expect, it } from "vitest";
+
 import type { ValidationError } from "../../src/errors.js";
 import { validateRetentionArgs } from "../../src/query/validation-args.js";
+import { CohortBreakdown, GroupBy } from "../../src/types/index.js";
 
 /**
  * Extract error codes — port of the module helper `_codes(errors)`.

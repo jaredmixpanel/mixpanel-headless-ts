@@ -90,7 +90,6 @@ export function isFailingVerdict(verdict: Verdict): boolean {
  *
  * @param results - All vector results, in replay order.
  * @returns The aggregate report.
- *
  * @example
  * ```typescript
  * summarizeResults([{ id: "a", capability: "compat", verdict: "PASS" }]);

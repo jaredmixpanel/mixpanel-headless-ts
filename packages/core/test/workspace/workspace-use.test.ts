@@ -21,27 +21,28 @@
 // does (`Workspace(account="team", project="3713224")`).
 
 import { describe, expect, it, vi } from "vitest";
-import { Workspace, type ResolverSeams } from "../../src/workspace.js";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-} from "../../test-support/client-test-helpers.js";
-import type { Account } from "../../src/auth/account.js";
-import type { Session } from "../../src/auth/session.js";
-import { Secret } from "../../src/secret.js";
-import { MixpanelHeadlessError, ConfigError } from "../../src/errors.js";
+
 import { createAccountsNamespace } from "../../src/accounts/namespace.js";
-import { createTargetsNamespace } from "../../src/accounts/targets-namespace.js";
 import {
   persistActiveToConfig,
   resolverSeamsFromEffects,
   resolverSourcesFromEffects,
 } from "../../src/accounts/resolver-seams.js";
+import { createTargetsNamespace } from "../../src/accounts/targets-namespace.js";
+import type { Account } from "../../src/auth/account.js";
+import type { Session } from "../../src/auth/session.js";
+import { ConfigError, MixpanelHeadlessError } from "../../src/errors.js";
+import { Secret } from "../../src/secret.js";
+import { type ResolverSeams, Workspace } from "../../src/workspace.js";
 import {
+  type CannedResponse,
+  createMockClient,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
+import {
+  type EffectsBundle,
   makeEffects,
   setEnv,
-  type EffectsBundle,
 } from "../accounts/fake-auth-effects.js";
 
 /** The `team` account of the `two_accounts` fixture (:33-54). */
@@ -78,7 +79,7 @@ function makeWorkspace(seams?: Partial<ResolverSeams>): {
   const ws = new Workspace({
     session: TEAM_SESSION,
     client,
-    ...(seams !== undefined ? { seams } : {}),
+    ...(seams === undefined ? {} : { seams }),
   });
   return { ws, client };
 }
@@ -426,8 +427,8 @@ describe("TestUseAccount (test_workspace_use.py:89) — real seams", () => {
       () => {
         throw new Error("expected ConfigError");
       },
-      (exc: unknown) => {
-        expect(exc).toBeInstanceOf(ConfigError);
+      (error: unknown) => {
+        expect(error).toBeInstanceOf(ConfigError);
       },
     );
   });
@@ -530,9 +531,9 @@ describe("TestUseAccountWorkspaceEnvValidation (test_workspace_use.py:384) — r
       () => {
         throw new Error("expected ConfigError");
       },
-      (exc: unknown) => {
-        expect(exc).toBeInstanceOf(ConfigError);
-        expect((exc as ConfigError).message).toContain("MP_WORKSPACE_ID");
+      (error: unknown) => {
+        expect(error).toBeInstanceOf(ConfigError);
+        expect((error as ConfigError).message).toContain("MP_WORKSPACE_ID");
       },
     );
   });
@@ -546,9 +547,9 @@ describe("TestUseAccountWorkspaceEnvValidation (test_workspace_use.py:384) — r
       () => {
         throw new Error("expected ConfigError");
       },
-      (exc: unknown) => {
-        expect(exc).toBeInstanceOf(ConfigError);
-        expect((exc as ConfigError).message).toContain("MP_WORKSPACE_ID");
+      (error: unknown) => {
+        expect(error).toBeInstanceOf(ConfigError);
+        expect((error as ConfigError).message).toContain("MP_WORKSPACE_ID");
       },
     );
   });

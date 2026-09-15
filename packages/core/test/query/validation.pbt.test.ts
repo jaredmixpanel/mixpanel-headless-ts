@@ -20,19 +20,20 @@
  */
 
 import fc from "fast-check";
-import { describe, it, expect } from "vitest";
-import {
-  CustomPropertyRef,
-  InlineCustomProperty,
-  PropertyInput,
-} from "../../src/types/index.js";
+import { describe, expect, it } from "vitest";
+
+import { pythonStrip, sortedByCodepoint } from "../../src/compat/index.js";
+import { validateTimeArgs } from "../../src/query/validation-args.js";
 import {
   _suggest,
   _validateCustomProperty,
   containsControlChars,
 } from "../../src/query/validation-shared.js";
-import { validateTimeArgs } from "../../src/query/validation-args.js";
-import { pythonStrip, sortedByCodepoint } from "../../src/compat/index.js";
+import {
+  CustomPropertyRef,
+  InlineCustomProperty,
+  PropertyInput,
+} from "../../src/types/index.js";
 
 // =============================================================================
 // Strategies (test_validation_pbt.py:34-72)
@@ -58,8 +59,9 @@ const validDateStrsArb: fc.Arbitrary<string> = fc
   )
   .map(
     ([y, m, d]) =>
-      `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-` +
-      `${String(d).padStart(2, "0")}`,
+      `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(
+        d,
+      ).padStart(2, "0")}`,
   );
 
 /**
@@ -74,7 +76,7 @@ const validDateStrsArb: fc.Arbitrary<string> = fc
  * Python-side R10.9 fuzz strategies (`_B2_NON_BMP` edges).
  */
 const LN_ALPHABET =
-  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" + "éΩж中٤Ⅻ𝒳";
+  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789éΩж中٤Ⅻ𝒳";
 
 /**
  * Build an arbitrary string from an explicit alphabet.
@@ -249,7 +251,7 @@ describe("TestContainsControlChars", () => {
     // Representative L/N/P/Z/S alphabet with the control set excluded
     // (see the file-header fidelity note).
     const cleanAlphabet = [
-      ...`${LN_ALPHABET}.,;:!?-_()[]{}'"/@# +<=>|~$^\u00a0\u2003€é中`,
+      ...`${LN_ALPHABET}.,;:!?-_()[]{}'"/@# +<=>|~$^\u00A0\u2003€é中`,
       "\u{1F600}",
     ];
     fc.assert(
@@ -391,7 +393,10 @@ describe("TestInlineCustomPropertyValidation", () => {
           keys.forEach((k, i) => {
             inputs[k] = new PropertyInput({ name: names[i] as string });
           });
-          const prop = new InlineCustomProperty({ formula: "   ", inputs });
+          const prop = new InlineCustomProperty({
+            formula: " ".repeat(3),
+            inputs,
+          });
           const errors = _validateCustomProperty(prop, "test");
           const codes = new Set(errors.map((e) => e.code));
           expect(

@@ -66,7 +66,7 @@ function snakeToCamel(name) {
     );
   }
   const segments = source.split("_");
-  if (segments.some((segment) => segment === "")) {
+  if (segments.includes("")) {
     throw new Error(
       `unexpected empty segment in identifier: ${JSON.stringify(name)}`,
     );
@@ -183,7 +183,7 @@ if (errors.length > 0) {
 
 const knownModules = [
   ...new Set([
-    ...entries.map((e) => e.pythonApi.split(".")[0]),
+    ...entries.map((e) => e.pythonApi.split(".", 1)[0]),
     ...authoredApis.json.known_modules,
   ]),
 ].sort();

@@ -14,8 +14,8 @@
  * from explicit `reveal()` calls, never via `JSON.stringify(tokens)`.
  */
 
-import type { OAuthTokens } from "@mixpanel-headless/core";
-import { pythonJsonDumps } from "@mixpanel-headless/core";
+import { type OAuthTokens, pythonJsonDumps } from "@mixpanel-headless/core";
+
 import { pythonIsoformatDatetimeText } from "./pydantic-datetime.js";
 
 /**

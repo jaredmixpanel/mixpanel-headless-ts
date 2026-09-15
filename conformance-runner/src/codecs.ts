@@ -22,9 +22,8 @@
  */
 
 import { pythonFloatStr, Secret } from "@mixpanel-headless/core";
-import { JsonNumber, type JsonValue } from "./json-value.js";
 
-export { Secret };
+import { JsonNumber, type JsonValue } from "./json-value.js";
 
 /** Raised when a vector value cannot be decoded back to a TS value. */
 export class UndecodableValueError extends Error {
@@ -202,7 +201,7 @@ export interface RichTagEncoder {
    * @param value - A live TS value produced by decode or the library.
    * @returns True when {@link RichTagEncoder.encode} can serialize it.
    */
-  matches(value: unknown): boolean;
+  matches: (value: unknown) => boolean;
 
   /**
    * Serialize the instance back to its tagged vector-JSON shape
@@ -214,7 +213,10 @@ export interface RichTagEncoder {
    * @param encodeChild - Recursive encoder for nested field values.
    * @returns The tagged object.
    */
-  encode(value: unknown, encodeChild: (value: unknown) => JsonValue): JsonValue;
+  encode: (
+    value: unknown,
+    encodeChild: (value: unknown) => JsonValue,
+  ) => JsonValue;
 }
 
 /** Matches a lone (unpaired) UTF-16 surrogate anywhere in a string. */
@@ -253,9 +255,9 @@ function decodeBase64(data: string): Uint8Array {
       bytes[i] = binary.charCodeAt(i);
     }
     return bytes;
-  } catch (cause) {
+  } catch (error) {
     throw new UndecodableValueError(
-      `malformed base64 in $type bytes payload: ${String(cause)}`,
+      `malformed base64 in $type bytes payload: ${String(error)}`,
     );
   }
 }
@@ -395,7 +397,6 @@ export class CodecRegistry {
    * @returns The decoded TS value.
    * @throws UndecodableValueError - If any nested tag is unknown or its
    *   payload malformed.
-   *
    * @example
    * ```typescript
    * const registry = new CodecRegistry();
@@ -459,15 +460,18 @@ export class CodecRegistry {
     payload: Readonly<Record<string, JsonValue>>,
   ): unknown {
     switch (tag) {
-      case "datetime":
+      case "datetime": {
         return new PyDatetime(requireTagString(payload, "iso", tag));
-      case "date":
+      }
+      case "date": {
         return new PyDate(requireTagString(payload, "iso", tag));
-      case "SecretStr":
+      }
+      case "SecretStr": {
         // The REAL core Secret (R4.6), not a runner placeholder — the
         // C8(a) sweep asserts the round-trip preserves the REVEALED
         // value (phase2-design C7 / arbiter V4 respec).
         return new Secret(requireTagString(payload, "value", tag));
+      }
       case "bytes": {
         if (payload["encoding"] !== "base64") {
           throw new UndecodableValueError(
@@ -476,10 +480,12 @@ export class CodecRegistry {
         }
         return decodeBase64(requireTagString(payload, "data", tag));
       }
-      case "callback":
+      case "callback": {
         return new RecordingCallback(requireTagString(payload, "name", tag));
-      case "float":
+      }
+      case "float": {
         return new PyFloat(requireTagString(payload, "value", tag));
+      }
       default: {
         const decoder = this.decoders.get(tag);
         if (decoder === undefined) {
@@ -596,3 +602,5 @@ export function encodeExpectValue(
     `no encoding for ${typeof value === "object" ? value.constructor.name || "object" : typeof value} in output position`,
   );
 }
+
+export { Secret } from "@mixpanel-headless/core";

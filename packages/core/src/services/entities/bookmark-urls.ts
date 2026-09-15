@@ -23,8 +23,8 @@ import { appRequest } from "../../client/app-request.js";
 import { parseRetryAfter, retryWaitSeconds } from "../../client/backoff.js";
 import type { ClientCore } from "../../client/client.js";
 import {
-  MixpanelHttpError,
   errorMessage,
+  MixpanelHttpError,
   parseBody,
   type WireResponse,
 } from "../../client/internals.js";
@@ -83,10 +83,10 @@ export interface BookmarkUrlMethods {
    * @throws ServerError - Server-side errors (5xx).
    * @throws MixpanelHeadlessError - The response was not a dict.
    */
-  createBookmarkUrl(
+  createBookmarkUrl: (
     body: Readonly<Record<string, unknown>>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Fetch the unsaved-report record stored under a slug
@@ -107,10 +107,10 @@ export interface BookmarkUrlMethods {
    * @throws ServerError - Server-side errors (5xx).
    * @throws MixpanelHeadlessError - The response was not a dict.
    */
-  getBookmarkUrl(
+  getBookmarkUrl: (
     slug: string,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Expand a `https://{host}/s/{code}` shortlink to its target URL
@@ -135,7 +135,7 @@ export interface BookmarkUrlMethods {
    *   other status.
    * @throws MixpanelHeadlessError - `HTTP_ERROR` on a transport failure.
    */
-  resolveShortLink(code: string, signal?: AbortSignal): Promise<string>;
+  resolveShortLink: (code: string, signal?: AbortSignal) => Promise<string>;
 }
 
 /**
@@ -205,16 +205,16 @@ export function createBookmarkUrlMethods(core: ClientCore): BookmarkUrlMethods {
           headers,
           timeoutSeconds: DEFAULT_APP_TIMEOUT_S,
         });
-      } catch (e) {
+      } catch (error) {
         // R2.10: `except httpx.HTTPError` → the instanceof filter.
-        if (!(e instanceof MixpanelHttpError)) {
-          throw e;
+        if (!(error instanceof MixpanelHttpError)) {
+          throw error;
         }
         throw new MixpanelHeadlessError(
-          `HTTP error: ${e.message}`,
+          `HTTP error: ${error.message}`,
           "HTTP_ERROR",
-          { error: e.message, request_method: "GET", request_url: url },
-          { cause: e },
+          { error: error.message, request_method: "GET", request_url: url },
+          { cause: error },
         );
       }
       if (response.status !== 429) {
@@ -278,8 +278,8 @@ export function createBookmarkUrlMethods(core: ClientCore): BookmarkUrlMethods {
           "GET",
           `/projects/${core.projectId()}/bookmark-urls/${slug}/`,
         );
-      } catch (exc) {
-        if (exc instanceof QueryError && exc.statusCode === 404) {
+      } catch (error) {
+        if (error instanceof QueryError && error.statusCode === 404) {
           const projectId = pythonInt(core.projectId());
           const region = core.region();
           throw new ReportLinkNotFoundError(
@@ -298,11 +298,11 @@ export function createBookmarkUrlMethods(core: ClientCore): BookmarkUrlMethods {
                   "link (ws.use(project=...); CLI: mp --project ... " +
                   "or mp --account ...) and retry.",
               },
-              cause: exc,
+              cause: error,
             },
           );
         }
-        throw exc;
+        throw error;
       }
       return expectRecordResult(result, "get_bookmark_url");
     },
@@ -345,10 +345,10 @@ export function createBookmarkUrlMethods(core: ClientCore): BookmarkUrlMethods {
         if (match !== null) {
           try {
             decoded = JSON.parse(match[1] as string);
-          } catch (cause) {
+          } catch (error) {
             // Python: `except json.JSONDecodeError` — the SyntaxError analog.
-            if (!(cause instanceof SyntaxError)) {
-              throw cause;
+            if (!(error instanceof SyntaxError)) {
+              throw error;
             }
             decoded = null;
           }

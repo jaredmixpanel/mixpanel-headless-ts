@@ -2,12 +2,13 @@
 // Source: tests/unit/test_api_client_webhooks.py (ALL classes — webhook
 // CRUD list/create/update/delete + test connectivity).
 import { describe, expect, it } from "vitest";
+
+import type { Session } from "../../src/auth/session.js";
 import { toNativeJson } from "../../src/client/json-value.js";
 import {
   createMockClient,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
-import type { Session } from "../../src/auth/session.js";
 
 /** The `oauth_credentials` fixture twin (test_api_client_webhooks.py:27-30). */
 function oauthCredentials(): Session {

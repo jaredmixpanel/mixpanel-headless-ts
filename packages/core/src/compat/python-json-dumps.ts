@@ -42,12 +42,12 @@ import { pythonFloatStr } from "./python-float-str.js";
 
 /** CPython short escapes for the control characters that have them. */
 const SHORT_ESCAPES: ReadonlyMap<number, string> = new Map([
-  [0x08, "\\b"],
-  [0x09, "\\t"],
-  [0x0a, "\\n"],
-  [0x0c, "\\f"],
-  [0x0d, "\\r"],
-  [0x22, '\\"'],
+  [0x08, String.raw`\b`],
+  [0x09, String.raw`\t`],
+  [0x0a, String.raw`\n`],
+  [0x0c, String.raw`\f`],
+  [0x0d, String.raw`\r`],
+  [0x22, String.raw`\"`],
   [0x5c, "\\\\"],
 ]);
 
@@ -69,7 +69,7 @@ function encodeStringAscii(text: string): string {
     } else if (unit >= 0x20 && unit <= 0x7e) {
       out += text[i];
     } else {
-      out += `\\u${unit.toString(16).padStart(4, "0")}`;
+      out += String.raw`\u${unit.toString(16).padStart(4, "0")}`;
     }
   }
   return `${out}"`;
@@ -133,7 +133,6 @@ const DEFAULT_STYLE: JsonDumpsStyle = {
  * @param style - Separator/ordering knobs; see {@link JsonDumpsStyle}.
  * @returns The CPython-spelled JSON text.
  * @throws TypeError - For values Python's encoder rejects.
- *
  * @internal Consumed by `python-json-dumps-canonical.ts`.
  */
 export function dumpsStyled(value: unknown, style: JsonDumpsStyle): string {
@@ -218,7 +217,6 @@ export function dumpsStyled(value: unknown, style: JsonDumpsStyle): string {
  * @returns The CPython-spelled JSON text.
  * @throws TypeError - For values Python's encoder rejects
  *   (`Object of type X is not JSON serializable`).
- *
  * @example
  * ```typescript
  * pythonJsonDumps(["Purchase", "View"]);

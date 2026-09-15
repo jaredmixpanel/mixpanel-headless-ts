@@ -32,7 +32,7 @@ export interface SessionNamespace {
    * @returns The active session; project lives on the active account
    *   as `default_project`, not here.
    */
-  show(): ActiveSession;
+  show: () => ActiveSession;
 
   /**
    * Update one or more axes in the persisted config (`use`,
@@ -48,7 +48,7 @@ export interface SessionNamespace {
    * @throws ConfigError - Unknown account/target, or `project` with no
    *   active account.
    */
-  use(options?: SessionUseOptions): void;
+  use: (options?: SessionUseOptions) => void;
 }
 
 /**
@@ -56,7 +56,6 @@ export interface SessionNamespace {
  *
  * @param effects - The injected effects (config writes).
  * @returns The namespace object.
- *
  * @example
  * ```typescript
  * const session = createSessionNamespace(effects);

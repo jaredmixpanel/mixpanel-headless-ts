@@ -14,13 +14,14 @@
 //   `SavedReportResult`.
 
 import { describe, expect, it } from "vitest";
+
+import type { MixpanelClient } from "../../src/client/client.js";
+import type { JsonValue } from "../../src/client/json-value.js";
 import { LiveQueryService } from "../../src/services/live-query.js";
 import {
   FlowsResult,
   SavedReportResult,
 } from "../../src/types/results/live-query.js";
-import type { MixpanelClient } from "../../src/client/client.js";
-import type { JsonValue } from "../../src/client/json-value.js";
 
 /** One recorded `querySavedReport` call. */
 interface SavedReportCall {
@@ -39,7 +40,7 @@ interface MockApiClient {
   /** Every `querySavedReport` call, in call order. */
   readonly savedReportCalls: SavedReportCall[];
   /** Set the value the next stub call resolves with. */
-  setReturnValue(value: unknown): void;
+  setReturnValue: (value: unknown) => void;
 }
 
 /**
@@ -109,7 +110,7 @@ describe("TestQueryFlows", () => {
       12345,
     );
 
-    expect(result.steps.length).toBe(3);
+    expect(result.steps).toHaveLength(3);
     expect(result.steps[0]!["event"]).toBe("Page View");
     expect(result.steps[2]!["count"]).toBe(250);
   });
@@ -130,7 +131,7 @@ describe("TestQueryFlows", () => {
       12345,
     );
 
-    expect(result.breakdowns.length).toBe(2);
+    expect(result.breakdowns).toHaveLength(2);
     expect(result.breakdowns[0]!["path"]).toBe("Page View -> Add to Cart");
   });
 
@@ -397,7 +398,7 @@ describe("TestQuerySavedReportNormalization", () => {
       bookmark_type: "insights",
     });
 
-    expect(mock.savedReportCalls.length).toBe(1);
+    expect(mock.savedReportCalls).toHaveLength(1);
     expect(mock.savedReportCalls[0]).toEqual({
       bookmarkId: 12345,
       options: {
@@ -418,7 +419,7 @@ describe("TestQuerySavedReportNormalization", () => {
       to_date: "2024-06-30",
     });
 
-    expect(mock.savedReportCalls.length).toBe(1);
+    expect(mock.savedReportCalls).toHaveLength(1);
     expect(mock.savedReportCalls[0]).toEqual({
       bookmarkId: 12345,
       options: {

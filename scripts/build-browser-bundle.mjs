@@ -33,7 +33,9 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
 import { gzipSync } from "node:zlib";
+
 import { build, version as esbuildVersion } from "esbuild";
+
 import { esbuildAliases } from "./lib/workspace-aliases.mjs";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -89,7 +91,7 @@ export const IMPURITY_NEEDLES = [
   "`node:",
 ];
 
-/** @param {string} text @returns {string[]} needles actually found */
+/** @param {string} text - @returns {string[]} needles actually found */
 export function scanNodeReferences(text) {
   return IMPURITY_NEEDLES.filter((needle) => text.includes(needle));
 }
@@ -280,9 +282,9 @@ if (isCli) {
         `  ${a.name.padEnd(22)} ${kb(a.size).padStart(9)} min · ${kb(a.gzipSize).padStart(9)} gzip · ${a.sha256.slice(0, 16)}`,
       );
     }
-  } catch (err) {
+  } catch (error) {
     console.error(
-      `build-browser-bundle FAILED: ${err instanceof Error ? err.message : String(err)}`,
+      `build-browser-bundle FAILED: ${error instanceof Error ? error.message : String(error)}`,
     );
     process.exit(1);
   }

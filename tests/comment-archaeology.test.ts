@@ -16,6 +16,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+
 import { afterAll, describe, expect, it } from "vitest";
 
 import {
@@ -147,7 +148,7 @@ describe("extraction", () => {
       "/** doc */",
       "const a = '// not a comment'; /* block */",
       "const b = `/* also not */ ${a} // nope`;",
-      "const r = /\\/\\/ regex/;",
+      String.raw`const r = /\/\/ regex/;`,
       "function f() {",
       "  // inside empty block",
       "}",
@@ -419,8 +420,8 @@ describe("CLI", () => {
         stdio: ["ignore", "pipe", "pipe"],
       });
       return { code: 0, stdout };
-    } catch (err) {
-      const e = err as { status: number; stdout: string };
+    } catch (error) {
+      const e = error as { status: number; stdout: string };
       return { code: e.status, stdout: e.stdout };
     }
   };
@@ -469,7 +470,7 @@ describe("CLI", () => {
       total: number;
       byToken: Record<string, number>;
       byDirectory: Record<string, number>;
-      files: { file: string; hits: unknown[] }[];
+      files: Array<{ file: string; hits: unknown[] }>;
     };
     expect(json.total).toBe(3);
     expect(json.byToken["requirement-id"]).toBe(1);

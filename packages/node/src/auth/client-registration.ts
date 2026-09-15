@@ -20,13 +20,12 @@
  * proof.
  */
 
-import { registerClient, DEFAULT_SCOPE } from "@mixpanel-headless/core";
-import type { OAuthClientInfo } from "@mixpanel-headless/core";
+import { type OAuthClientInfo, registerClient } from "@mixpanel-headless/core";
+
 import type { OAuthStorage } from "./storage.js";
 
 // Re-export preserving the B8 import path (`DEFAULT_SCOPE`'s TS home
 // until the B9-R2 hoist).
-export { DEFAULT_SCOPE };
 
 /** Options bag of {@link ensureClientRegistered} (the Python params). */
 export interface EnsureClientRegisteredOptions {
@@ -62,7 +61,6 @@ export interface EnsureClientRegisteredOptions {
  * @throws OAuthError - `OAUTH_REGISTRATION_ERROR` on unknown region,
  *   network failure, 429 rate limit, non-2xx status, or a malformed
  *   response body.
- *
  * @example
  * ```typescript
  * const info = await ensureClientRegistered({
@@ -100,3 +98,5 @@ export async function ensureClientRegistered(
 
   return clientInfo;
 }
+
+export { DEFAULT_SCOPE } from "@mixpanel-headless/core";

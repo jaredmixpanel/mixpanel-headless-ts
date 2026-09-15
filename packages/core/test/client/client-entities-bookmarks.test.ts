@@ -9,13 +9,14 @@
 // injected frozen clock (B4-C2 precedent, D12 seam); the assertion
 // content (30-day arithmetic, today cap) is preserved (R10.2).
 import { describe, expect, it } from "vitest";
-import { AuthenticationError, QueryError } from "../../src/errors.js";
+
+import type { Session } from "../../src/auth/session.js";
 import { toNativeJson } from "../../src/client/json-value.js";
+import { AuthenticationError, QueryError } from "../../src/errors.js";
 import {
   createMockClient,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
-import type { Session } from "../../src/auth/session.js";
 
 /** The `test_credentials` fixture twin (test_api_client_bookmarks.py:21-29). */
 function testCredentials(): Session {
@@ -190,7 +191,9 @@ describe("TestListBookmarksErrors", () => {
       status: 403,
       json: { error: "Permission denied" },
     }));
-    const err: unknown = await client.listBookmarks().catch((e: unknown) => e);
+    const err: unknown = await client
+      .listBookmarks()
+      .catch((error: unknown) => error);
     expect(err).toBeInstanceOf(QueryError);
     expect(String(err)).toContain("Permission denied");
   });
@@ -202,7 +205,7 @@ describe("TestListBookmarksErrors", () => {
     }));
     const err: unknown = await client
       .listBookmarks("invalid")
-      .catch((e: unknown) => e);
+      .catch((error: unknown) => error);
     expect(err).toBeInstanceOf(QueryError);
     expect(String(err)).toContain("Invalid type parameter");
   });
@@ -270,7 +273,7 @@ describe("TestQueryFlows", () => {
     }));
     const err: unknown = await client
       .querySavedFlows(99999)
-      .catch((e: unknown) => e);
+      .catch((error: unknown) => error);
     expect(err).toBeInstanceOf(QueryError);
     expect(String(err)).toContain("Bookmark not found");
   });

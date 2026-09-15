@@ -34,9 +34,9 @@ export interface SchemaEnforcementMethods {
    * @returns The enforcement config dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  getSchemaEnforcement(
+  getSchemaEnforcement: (
     options?: GetSchemaEnforcementOptions,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Initialize enforcement (`init_schema_enforcement`, `:8208-8242` —
@@ -47,10 +47,10 @@ export interface SchemaEnforcementMethods {
    * @returns The raw response dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  initSchemaEnforcement(
+  initSchemaEnforcement: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Partially update enforcement (`update_schema_enforcement`,
@@ -61,10 +61,10 @@ export interface SchemaEnforcementMethods {
    * @returns The raw response dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  updateSchemaEnforcement(
+  updateSchemaEnforcement: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Fully replace enforcement (`replace_schema_enforcement`,
@@ -75,10 +75,10 @@ export interface SchemaEnforcementMethods {
    * @returns The raw response dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  replaceSchemaEnforcement(
+  replaceSchemaEnforcement: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Delete enforcement configuration (`delete_schema_enforcement`,
@@ -88,9 +88,9 @@ export interface SchemaEnforcementMethods {
    * @returns The raw response dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  deleteSchemaEnforcement(
+  deleteSchemaEnforcement: (
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 }
 
 /**

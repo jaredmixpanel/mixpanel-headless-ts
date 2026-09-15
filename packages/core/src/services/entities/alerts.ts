@@ -70,7 +70,7 @@ export interface AlertMethods {
    * @throws AuthenticationError | RateLimitError | QueryError |
    *   ServerError - Per the B0 `appRequest` contract.
    */
-  listAlerts(options?: ListAlertsOptions): Promise<JsonValue[]>;
+  listAlerts: (options?: ListAlertsOptions) => Promise<JsonValue[]>;
 
   /**
    * Create a custom alert (`create_alert`, `:6122-6153` — POST
@@ -81,10 +81,10 @@ export interface AlertMethods {
    * @returns The created alert dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  createAlert(
+  createAlert: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Get a custom alert by ID (`get_alert`, `:6155-6186`).
@@ -94,10 +94,10 @@ export interface AlertMethods {
    * @returns The alert dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  getAlert(
+  getAlert: (
     alertId: number,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Update a custom alert (`update_alert`, `:6188-6220` — PATCH).
@@ -108,11 +108,11 @@ export interface AlertMethods {
    * @returns The updated alert dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  updateAlert(
+  updateAlert: (
     alertId: number,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Delete a custom alert (`delete_alert`, `:6222-6244`).
@@ -121,7 +121,7 @@ export interface AlertMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  deleteAlert(alertId: number, signal?: AbortSignal): Promise<void>;
+  deleteAlert: (alertId: number, signal?: AbortSignal) => Promise<void>;
 
   /**
    * Bulk-delete custom alerts (`bulk_delete_alerts`, `:6246-6268` —
@@ -131,7 +131,10 @@ export interface AlertMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  bulkDeleteAlerts(ids: readonly number[], signal?: AbortSignal): Promise<void>;
+  bulkDeleteAlerts: (
+    ids: readonly number[],
+    signal?: AbortSignal,
+  ) => Promise<void>;
 
   /**
    * Get alert count and limits (`get_alert_count`, `:6270-6304` — GET
@@ -141,9 +144,9 @@ export interface AlertMethods {
    * @returns The count dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  getAlertCount(
+  getAlertCount: (
     options?: GetAlertCountOptions,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Get alert trigger history (`get_alert_history`, `:6306-6371` —
@@ -155,10 +158,10 @@ export interface AlertMethods {
    * @returns A dict with `results` list and `pagination` metadata.
    * @throws MixpanelHeadlessError - Missing/malformed `results` shape.
    */
-  getAlertHistory(
+  getAlertHistory: (
     alertId: number,
     options?: GetAlertHistoryOptions,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Send a test alert notification (`test_alert`, `:6373-6404` — POST
@@ -169,10 +172,10 @@ export interface AlertMethods {
    * @returns The test result dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  testAlert(
+  testAlert: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Get a signed screenshot URL (`get_alert_screenshot_url`,
@@ -184,10 +187,10 @@ export interface AlertMethods {
    * @returns The dict with `signed_url`.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  getAlertScreenshotUrl(
+  getAlertScreenshotUrl: (
     gcsKey: string,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Validate alerts against a bookmark
@@ -199,10 +202,10 @@ export interface AlertMethods {
    * @returns The validation result dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  validateAlertsForBookmark(
+  validateAlertsForBookmark: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 }
 
 /**

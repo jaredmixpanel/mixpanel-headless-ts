@@ -14,9 +14,9 @@
 export type { ReplayEnv } from "./services/entities/replays-signing.js";
 export type { LiveActivityFeedOptions } from "./services/live-query.js";
 export {
-  ReplaysService,
   type DiscoverOptions,
   type EventsForOptions,
+  ReplaysService,
   type WalkCdnOptions,
 } from "./services/replays.js";
 export type { EventsInput } from "./workspace-query-params.js";
@@ -61,26 +61,26 @@ export { buildSegfilterEntry } from "./query/segfilter.js";
 export { transformEvent, transformProfile } from "./query/transforms.js";
 export {
   extractCohortFilter,
-  filterToSelector,
   filtersToSelector,
+  filterToSelector,
 } from "./query/user-builders.js";
 export {
   validateUserArgs,
-  validateUserParams,
   type ValidateUserArgsOptions,
+  validateUserParams,
 } from "./query/user-validators.js";
 export {
   validateFlowArgs,
-  validateFunnelArgs,
-  validateGroupByArgs,
-  validateQueryArgs,
-  validateRetentionArgs,
-  validateTimeArgs,
   type ValidateFlowArgsOptions,
+  validateFunnelArgs,
   type ValidateFunnelArgsOptions,
+  validateGroupByArgs,
   type ValidateGroupByArgsOptions,
+  validateQueryArgs,
   type ValidateQueryArgsOptions,
+  validateRetentionArgs,
   type ValidateRetentionArgsOptions,
+  validateTimeArgs,
   type ValidateTimeArgsOptions,
 } from "./query/validation-args.js";
 export {
@@ -100,17 +100,17 @@ export {
   buildTimeSection,
 } from "./bookmarks/builders.js";
 export {
-  BOOKMARK_ENUMS_SOURCE_MODULE,
   BOOKMARK_ENUM_TABLES,
+  BOOKMARK_ENUMS_SOURCE_MODULE,
+  bookmarkEnumTablesSnapshot,
   MAX_CONVERSION_WINDOW,
   VALID_CHART_TYPES,
-  bookmarkEnumTablesSnapshot,
 } from "./bookmarks/enums.js";
-export { validateWithPydantic } from "./bookmarks/schema-sorting.js";
 export {
   BOOKMARK_MODEL_HANDLES,
   getRootModelForBookmarkType,
 } from "./bookmarks/schema.js";
+export { validateWithPydantic } from "./bookmarks/schema-sorting.js";
 
 // ── Replays internals ───────────────────────────────────────────────────
 export { RrwebAnalyzer } from "./replays/rrweb-analyzer.js";

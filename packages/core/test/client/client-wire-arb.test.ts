@@ -19,9 +19,10 @@
 // (W-F4, the pagination `except Exception` scope, is locked in
 // pagination.test.ts alongside the other INVALID_RESPONSE tests.)
 import { describe, expect, it } from "vitest";
+
 import { createMixpanelClient } from "../../src/client/client.js";
-import { MixpanelHeadlessError } from "../../src/errors.js";
 import type { JsonValue } from "../../src/client/json-value.js";
+import { MixpanelHeadlessError } from "../../src/errors.js";
 import {
   createMockClient,
   makeSession,
@@ -186,8 +187,8 @@ describe("W-F1: mid-stream body failures retry inside the httpx.HTTPError scope"
     let caught: unknown;
     try {
       await drain(client.exportEvents("2024-01-01", "2024-01-31"));
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(MixpanelHeadlessError);
     expect((caught as MixpanelHeadlessError).code).toBe("HTTP_ERROR");
@@ -208,8 +209,8 @@ describe("W-F2: request timeouts are enforced at the adapter", () => {
     let caught: unknown;
     try {
       await client.request("GET", "https://mixpanel.com/api/app/test");
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(MixpanelHeadlessError);
     expect((caught as MixpanelHeadlessError).code).toBe("HTTP_ERROR");
@@ -226,8 +227,8 @@ describe("W-F2: request timeouts are enforced at the adapter", () => {
     let caught: unknown;
     try {
       await drain(client.exportEvents("2024-01-01", "2024-01-31"));
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(MixpanelHeadlessError);
     expect((caught as MixpanelHeadlessError).code).toBe("HTTP_ERROR");
@@ -265,8 +266,8 @@ describe("W-F3: custom abort reasons exit the request point as AbortError", () =
       await client.request("GET", "https://mixpanel.com/api/app/test", {
         signal: controller.signal,
       });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(DOMException);
     expect((caught as DOMException).name).toBe("AbortError");

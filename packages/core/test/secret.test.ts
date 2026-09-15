@@ -4,6 +4,7 @@
 // and `reveal()` returns s exactly.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import { Secret } from "../src/secret.js";
 
 /** Pydantic's exact redaction literal (ten asterisks). */

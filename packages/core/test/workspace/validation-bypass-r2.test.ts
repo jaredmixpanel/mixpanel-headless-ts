@@ -12,7 +12,7 @@
 // doubles the B20b guard rejects.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
 import { BookmarkValidationError } from "../../src/errors.js";
 import {
   CustomPropertyRef,
@@ -23,6 +23,7 @@ import {
 import { FlowStep } from "../../src/types/query-params/flow.js";
 import { Metric } from "../../src/types/query-params/metric.js";
 import { RetentionEvent } from "../../src/types/query-params/retention.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   mockWorkspaceClient,
   TEST_SESSION,

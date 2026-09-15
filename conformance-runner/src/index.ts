@@ -7,8 +7,8 @@
 /** Package name constant exercised by the skeleton smoke test. */
 export const RUNNER_PACKAGE_NAME = "@mixpanel-headless/conformance-runner";
 
-export * from "./api-map-types.js";
 export * from "./api-map.js";
+export type * from "./api-map-types.js";
 export * from "./batch-status.js";
 export * from "./bindings.js";
 export * from "./canonical.js";
@@ -22,11 +22,11 @@ export * from "./request-diff.js";
 export * from "./runner.js";
 export * from "./shims.js";
 export * from "./transport-errors.js";
-export * from "./vector-fetch.js";
-export * from "./vector-types.js";
-export * from "./verdicts.js";
 export {
   CONTRACT_TAG_CODECS,
-  ENTITY_TAG_CODECS,
   type ContractTagCodec,
+  ENTITY_TAG_CODECS,
 } from "./vector-codecs.js";
+export * from "./vector-fetch.js";
+export type * from "./vector-types.js";
+export * from "./verdicts.js";

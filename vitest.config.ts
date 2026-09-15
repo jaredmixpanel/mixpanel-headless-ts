@@ -1,5 +1,6 @@
 // Root Vitest configuration: discovers tests in every workspace package.
 import { defineConfig } from "vitest/config";
+
 import { vitestAliases } from "./scripts/lib/workspace-aliases.mjs";
 
 export default defineConfig({

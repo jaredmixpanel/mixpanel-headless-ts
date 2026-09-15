@@ -16,16 +16,17 @@
 //
 // Entry-point substitutions as in client-core.test.ts.
 import { describe, expect, it } from "vitest";
+
+import { JsonNumber } from "../../src/client/json-value.js";
 import {
   AuthenticationError,
   QueryError,
   RateLimitError,
 } from "../../src/errors.js";
-import { JsonNumber } from "../../src/client/json-value.js";
 import {
+  type CapturedFetchRequest,
   createMockClient,
   makeSession,
-  type CapturedFetchRequest,
 } from "../../test-support/client-test-helpers.js";
 
 describe("TestPublicRequest", () => {
@@ -159,8 +160,8 @@ describe("TestPublicRequest", () => {
     let thrown: unknown;
     try {
       await client.request("GET", "https://mixpanel.com/api/app/test");
-    } catch (cause) {
-      thrown = cause;
+    } catch (error) {
+      thrown = error;
     }
     expect(thrown).toBeInstanceOf(QueryError);
     expect(String(thrown)).toContain("Bad request");
@@ -192,8 +193,8 @@ describe("TestPublicRequest", () => {
     let thrown: unknown;
     try {
       await client.request("GET", "https://mixpanel.com/api/app/test");
-    } catch (cause) {
-      thrown = cause;
+    } catch (error) {
+      thrown = error;
     }
     expect(thrown).toBeInstanceOf(RateLimitError);
     expect((thrown as RateLimitError).retryAfter).toBe(0);

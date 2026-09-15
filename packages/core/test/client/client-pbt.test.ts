@@ -17,10 +17,12 @@
 // filters translate via `pythonStrip` (R11.7).
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import {
   BACKOFF_MAX_SECONDS,
   calculateBackoff,
 } from "../../src/client/backoff.js";
+import { createMixpanelClient } from "../../src/client/client.js";
 import { iterJsonlLines } from "../../src/client/jsonl.js";
 import {
   buildUrl,
@@ -28,7 +30,6 @@ import {
   type Region,
 } from "../../src/client/url.js";
 import { pythonStrip } from "../../src/compat/index.js";
-import { createMixpanelClient } from "../../src/client/client.js";
 import { makeSession } from "../../test-support/client-test-helpers.js";
 
 /** Decode a base64 payload to UTF-8 text (the tests' b64decode+decode). */
@@ -41,9 +42,11 @@ function decodeBase64Utf8(encoded: string): string {
   return new TextDecoder().decode(bytes);
 }
 
-/** Header-safe text: no NUL, no lone surrogates (`unit: "binary"` is
+/**
+ * Header-safe text: no NUL, no lone surrogates (`unit: "binary"` is
  * code-point based), non-blank after Python strip — the `usernames` /
- * `secrets` strategy shape (:45-64). */
+ * `secrets` strategy shape (:45-64).
+ */
 const credentialText = fc
   .string({ unit: "binary", minLength: 1, maxLength: 100 })
   .filter((s) => !s.includes("\x00"))
@@ -255,9 +258,11 @@ describe("TestUrlBuildProperties", () => {
 // jsonl splitter (the core bug the Python module fixed).
 // ---------------------------------------------------------------------------
 
-/** `json_line_content` alphabet (:514-528): L/N/P/S categories plus
+/**
+ * `json_line_content` alphabet (:514-528): L/N/P/S categories plus
  * '{}[]":, ', minus newlines — mirrored with non-ASCII members (§ ± 𝒳)
- * per the strategy-shape rule. */
+ * per the strategy-shape rule.
+ */
 const LINE_ALPHABET = [
   ..."abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
   ..."!#$%&'()*+-./;<=>?@\\^_`|~",

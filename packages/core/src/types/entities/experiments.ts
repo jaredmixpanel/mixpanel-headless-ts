@@ -8,13 +8,13 @@
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
+import type { ExperimentStatus } from "../enums.js";
 import {
+  type EntityFieldSpec,
   EntityModel,
   oneOf,
   prepareInit,
-  type EntityFieldSpec,
 } from "./model-base.js";
-import { ExperimentStatus } from "../enums.js";
 
 /**
  * Constructor input for {@link ExperimentCreator} — absent keys take the Python
@@ -102,16 +102,10 @@ export interface ExperimentInit {
   readonly status?: ExperimentStatus | null | undefined;
   /** Variant configuration (list from API, may also be dict). */
   readonly variants?:
-    | ReadonlyArray<unknown>
-    | Readonly<Record<string, unknown>>
-    | null
-    | undefined;
+    readonly unknown[] | Readonly<Record<string, unknown>> | null | undefined;
   /** Success metrics (list from API, may also be dict). */
   readonly metrics?:
-    | ReadonlyArray<unknown>
-    | Readonly<Record<string, unknown>>
-    | null
-    | undefined;
+    readonly unknown[] | Readonly<Record<string, unknown>> | null | undefined;
   /** Experiment settings. */
   readonly settings?: Readonly<Record<string, unknown>> | null | undefined;
   /** Cached exposure data. */
@@ -137,7 +131,7 @@ export interface ExperimentInit {
   /** Date experiment was pinned. */
   readonly pinned_date?: string | null | undefined;
   /** Tags for organization. */
-  readonly tags?: ReadonlyArray<string> | null | undefined;
+  readonly tags?: readonly string[] | null | undefined;
   /** Permission: can current user edit. */
   readonly can_edit?: boolean | null | undefined;
   /** Last modifier's user ID. */
@@ -204,10 +198,10 @@ export class Experiment extends EntityModel {
   declare readonly status: ExperimentStatus | null;
   /** Variant configuration (list from API, may also be dict). */
   declare readonly variants:
-    ReadonlyArray<unknown> | Readonly<Record<string, unknown>> | null;
+    readonly unknown[] | Readonly<Record<string, unknown>> | null;
   /** Success metrics (list from API, may also be dict). */
   declare readonly metrics:
-    ReadonlyArray<unknown> | Readonly<Record<string, unknown>> | null;
+    readonly unknown[] | Readonly<Record<string, unknown>> | null;
   /** Experiment settings. */
   declare readonly settings: Readonly<Record<string, unknown>> | null;
   /** Cached exposure data. */
@@ -231,7 +225,7 @@ export class Experiment extends EntityModel {
   /** Date experiment was pinned. */
   declare readonly pinned_date: string | null;
   /** Tags for organization. */
-  declare readonly tags: ReadonlyArray<string> | null;
+  declare readonly tags: readonly string[] | null;
   /** Permission: can current user edit. */
   declare readonly can_edit: boolean | null;
   /** Last modifier's user ID. */
@@ -367,16 +361,10 @@ export interface UpdateExperimentParamsInit {
   readonly hypothesis?: string | null | undefined;
   /** Updated variant config (list or dict). */
   readonly variants?:
-    | ReadonlyArray<unknown>
-    | Readonly<Record<string, unknown>>
-    | null
-    | undefined;
+    readonly unknown[] | Readonly<Record<string, unknown>> | null | undefined;
   /** Updated metrics (list or dict). */
   readonly metrics?:
-    | ReadonlyArray<unknown>
-    | Readonly<Record<string, unknown>>
-    | null
-    | undefined;
+    readonly unknown[] | Readonly<Record<string, unknown>> | null | undefined;
   /** Updated settings. */
   readonly settings?: Readonly<Record<string, unknown>> | null | undefined;
   /** Updated start date. */
@@ -384,7 +372,7 @@ export interface UpdateExperimentParamsInit {
   /** Updated end date. */
   readonly end_date?: string | null | undefined;
   /** Updated tags. */
-  readonly tags?: ReadonlyArray<string> | null | undefined;
+  readonly tags?: readonly string[] | null | undefined;
   /** Updated exposures cache. */
   readonly exposures_cache?:
     Readonly<Record<string, unknown>> | null | undefined;
@@ -438,10 +426,10 @@ export class UpdateExperimentParams extends EntityModel {
   declare readonly hypothesis: string | null;
   /** Updated variant config (list or dict). */
   declare readonly variants:
-    ReadonlyArray<unknown> | Readonly<Record<string, unknown>> | null;
+    readonly unknown[] | Readonly<Record<string, unknown>> | null;
   /** Updated metrics (list or dict). */
   declare readonly metrics:
-    ReadonlyArray<unknown> | Readonly<Record<string, unknown>> | null;
+    readonly unknown[] | Readonly<Record<string, unknown>> | null;
   /** Updated settings. */
   declare readonly settings: Readonly<Record<string, unknown>> | null;
   /** Updated start date. */
@@ -449,7 +437,7 @@ export class UpdateExperimentParams extends EntityModel {
   /** Updated end date. */
   declare readonly end_date: string | null;
   /** Updated tags. */
-  declare readonly tags: ReadonlyArray<string> | null;
+  declare readonly tags: readonly string[] | null;
   /** Updated exposures cache. */
   declare readonly exposures_cache: Readonly<Record<string, unknown>> | null;
   /** Updated results cache. */

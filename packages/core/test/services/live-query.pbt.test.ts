@@ -24,11 +24,12 @@
 
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
+import { sortedByCodepoint } from "../../src/compat/index.js";
 import {
   transformFunnel,
   transformRetention,
 } from "../../src/services/live-query-transforms.js";
-import { sortedByCodepoint } from "../../src/compat/index.js";
 import type { TimeUnit } from "../../src/types/literals.js";
 
 // ===========================================================================
@@ -368,7 +369,7 @@ describe("TestTransformRetentionProperties", () => {
             unit,
           );
 
-          expect(result.cohorts.length).toBe(1);
+          expect(result.cohorts).toHaveLength(1);
           for (const retentionValue of result.cohorts[0]!.retention) {
             expect(retentionValue).toBe(0.0);
           }
@@ -413,7 +414,7 @@ describe("TestTransformRetentionProperties", () => {
             unit,
           );
 
-          expect(result.cohorts.length).toBe(1);
+          expect(result.cohorts).toHaveLength(1);
           const cohort = result.cohorts[0]!;
           counts.forEach((count, i) => {
             const expected = count / cohortSize;

@@ -25,8 +25,8 @@
  * the deterministic twin used across this repo's PBT files.
  */
 
-import { describe, expect, it } from "vitest";
 import fc from "fast-check";
+import { describe, expect, it } from "vitest";
 
 import { normalizeOnExpression } from "../../src/query/expressions.js";
 
@@ -36,7 +36,7 @@ const ACCESSORS = ['properties["', 'user["', 'event["'] as const;
 /** Twin of `bare_property_names`. */
 const barePropertyNames = fc
   .string({ minLength: 1, unit: "binary" })
-  .filter((s) => !ACCESSORS.some((accessor) => s.includes(accessor)));
+  .filter((s) => ACCESSORS.every((accessor) => !s.includes(accessor)));
 
 /** Twin of `valid_expressions`. */
 const validExpressions = fc.constantFrom(
@@ -62,7 +62,9 @@ describe("normalizeOnExpression properties (PBT)", () => {
         expect(result.endsWith('"]')).toBe(true);
 
         const inner = result.slice('properties["'.length, -'"]'.length);
-        const unescaped = inner.replaceAll('\\"', '"').replaceAll("\\\\", "\\");
+        const unescaped = inner
+          .replaceAll(String.raw`\"`, '"')
+          .replaceAll("\\\\", "\\");
         expect(unescaped).toBe(name);
       }),
       RUNS,
@@ -110,7 +112,9 @@ describe("normalizeOnExpression properties (PBT)", () => {
         expect(result.endsWith('"]')).toBe(true);
 
         const inner = result.slice('properties["'.length, -'"]'.length);
-        const unescaped = inner.replaceAll('\\"', '"').replaceAll("\\\\", "\\");
+        const unescaped = inner
+          .replaceAll(String.raw`\"`, '"')
+          .replaceAll("\\\\", "\\");
         expect(unescaped).toBe(name);
       }),
       RUNS,
@@ -127,7 +131,7 @@ describe("normalizeOnExpression properties (PBT)", () => {
 
           // Python: `if accessor in name: return` — a silently skipped
           // example.
-          fc.pre(!ACCESSORS.some((accessor) => name.includes(accessor)));
+          fc.pre(ACCESSORS.every((accessor) => !name.includes(accessor)));
 
           const result = normalizeOnExpression(name);
 
@@ -135,7 +139,7 @@ describe("normalizeOnExpression properties (PBT)", () => {
           expect(result.endsWith('"]')).toBe(true);
           const inner = result.slice('properties["'.length, -'"]'.length);
           const unescaped = inner
-            .replaceAll('\\"', '"')
+            .replaceAll(String.raw`\"`, '"')
             .replaceAll("\\\\", "\\");
           expect(unescaped).toBe(name);
         },

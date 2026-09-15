@@ -9,9 +9,9 @@
  */
 
 import {
+  type EntityFieldSpec,
   EntityModel,
   prepareInit,
-  type EntityFieldSpec,
 } from "./model-base.js";
 
 /**
@@ -195,7 +195,7 @@ export interface PaginatedResponseInit<T> {
   /** Response status (typically "ok"). */
   readonly status: string;
   /** Page of results. */
-  readonly results: ReadonlyArray<T>;
+  readonly results: readonly T[];
   /** Pagination metadata, or None for single-page responses. */
   readonly pagination?:
     CursorPagination | Readonly<Record<string, unknown>> | null | undefined;
@@ -228,7 +228,7 @@ export class PaginatedResponse<T = unknown> extends EntityModel {
   /** Response status (typically "ok"). */
   declare readonly status: string;
   /** Page of results. */
-  declare readonly results: ReadonlyArray<T>;
+  declare readonly results: readonly T[];
   /** Pagination metadata, or None for single-page responses. */
   declare readonly pagination: CursorPagination | null;
 
@@ -255,7 +255,7 @@ export class PaginatedResponse<T = unknown> extends EntityModel {
    *   the class doc).
    * @throws ResponseValidationError - On shape violations.
    */
-  static fromDict(raw: unknown): PaginatedResponse<unknown> {
+  static fromDict(raw: unknown): PaginatedResponse {
     return new PaginatedResponse(
       prepareInit(
         PaginatedResponse,

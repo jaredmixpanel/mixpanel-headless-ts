@@ -4,7 +4,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { afterEach, describe, expect, it } from "vitest";
+
 import { JsonNumber } from "../src/json-value.js";
 import {
   CorpusIntegrityError,
@@ -74,7 +76,7 @@ function makeMiniCorpus(options?: {
     );
   }
   mkdirSync(join(dir, "filters"), { recursive: true });
-  writeFileSync(join(dir, "filters", "test_a.jsonl"), lines.join("\n") + "\n");
+  writeFileSync(join(dir, "filters", "test_a.jsonl"), `${lines.join("\n")}\n`);
   return dir;
 }
 
@@ -110,7 +112,7 @@ function addAuthoredBundle(
     );
   }
   mkdirSync(join(dir, "authored"), { recursive: true });
-  writeFileSync(join(dir, "authored", "bundle.jsonl"), lines.join("\n") + "\n");
+  writeFileSync(join(dir, "authored", "bundle.jsonl"), `${lines.join("\n")}\n`);
 }
 
 describe("loadCorpus on the committed snapshot (TS-4 done criterion)", () => {
@@ -131,7 +133,7 @@ describe("loadCorpus on the committed snapshot (TS-4 done criterion)", () => {
 
   it("enumerates the full snapshot and matches the manifest total", () => {
     expect(corpus.manifest.sourceCommit).toBe(config.sourceCommit);
-    expect(extracted.length).toBe(corpus.manifest.total);
+    expect(extracted).toHaveLength(corpus.manifest.total);
     expect(corpus.vectors.length).toBeGreaterThanOrEqual(extracted.length);
     expect(corpus.vectors.length).toBeGreaterThanOrEqual(2500);
     expect(corpus.bundles.length).toBeGreaterThanOrEqual(100);
@@ -150,8 +152,8 @@ describe("loadCorpus on the committed snapshot (TS-4 done criterion)", () => {
     for (const vector of extracted) {
       byKind.set(vector.kind, (byKind.get(vector.kind) ?? 0) + 1);
     }
-    const counts = corpus.manifest.raw["counts"] as { [key: string]: unknown };
-    const manifestByKind = counts["by_kind"] as { [key: string]: JsonNumber };
+    const counts = corpus.manifest.raw["counts"] as Record<string, unknown>;
+    const manifestByKind = counts["by_kind"] as Record<string, JsonNumber>;
     for (const [kind, declared] of Object.entries(manifestByKind)) {
       expect(byKind.get(kind) ?? 0).toBe(declared.toNumber());
     }

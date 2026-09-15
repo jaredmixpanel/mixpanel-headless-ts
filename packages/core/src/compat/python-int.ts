@@ -59,7 +59,6 @@ function invalidLiteral(text: string): MixpanelHeadlessError {
  *   input is not a valid CPython base-10 integer literal; code
  *   `PY_INT_UNSAFE_INTEGER` when the parsed magnitude exceeds 2^53 − 1.
  * @throws TypeError - When `text` is not a string.
- *
  * @example
  * ```typescript
  * pythonInt("  1_5  "); // 15
@@ -113,7 +112,6 @@ export function pythonInt(text: string): number {
  *   `OverflowError` / `ValueError`; both are non-`TypeError` value
  *   failures and the code is the contract, R5.4).
  * @throws TypeError - For a non-coercible type.
- *
  * @example
  * ```typescript
  * pythonIntCoerce(18.9); // 18

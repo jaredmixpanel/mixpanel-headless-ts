@@ -22,33 +22,35 @@
 // and the real-server e2e runs in the R10.9 harness, throwaway/b8-n3,
 // to keep fixed-port binds out of the parallel vitest workers).
 
+import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  UNPORTED_AUTH_SEAMS,
   createAccountsNamespace,
   createSessionNamespace,
   createTargetsNamespace,
-  OAuthTokens,
   MeResponse,
+  type OAuthTokenAccount,
+  OAuthTokens,
   Secret,
+  type Session,
+  UNPORTED_AUTH_SEAMS,
   Workspace,
 } from "@mixpanel-headless/core";
 import { resolverSeamsFromEffects } from "@mixpanel-headless/core/internal";
-import type { OAuthTokenAccount, Session } from "@mixpanel-headless/core";
+
 import {
+  type CannedResponse,
   createMockClient,
   makeSession,
-  type CannedResponse,
 } from "../../core/test-support/client-test-helpers.js";
 import { CallbackResult } from "../src/auth/callback-server.js";
 import { createNodeAuthEffects } from "../src/auth-effects.js";
 import { ConfigManager } from "../src/config.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
-import { join } from "node:path";
-
-const cleanups: (() => void)[] = [];
+const cleanups: Array<() => void> = [];
 let restoreEnv: () => void = () => undefined;
 
 beforeEach(() => {

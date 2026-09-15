@@ -13,9 +13,11 @@
 
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { Workspace } from "@mixpanel-headless/core";
+
 import {
   createNodeWorkspace,
   createNodeWorkspaceSources,
@@ -24,7 +26,7 @@ import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const POSIX = process.platform !== "win32";
 
-const cleanups: (() => void)[] = [];
+const cleanups: Array<() => void> = [];
 let restoreEnv: () => void = () => undefined;
 let savedHome: string | undefined;
 let home = "";
@@ -97,9 +99,9 @@ function seedOAuthAccount(): void {
 /** Capturing 204 fetch — the `delete_cohort` wire shape (status-only). */
 function capturingFetch(): {
   fetchImpl: typeof fetch;
-  seen: { url: string; auth: string | null }[];
+  seen: Array<{ url: string; auth: string | null }>;
 } {
-  const seen: { url: string; auth: string | null }[] = [];
+  const seen: Array<{ url: string; auth: string | null }> = [];
   const fetchImpl = (async (
     input: RequestInfo | URL,
     init?: RequestInit,

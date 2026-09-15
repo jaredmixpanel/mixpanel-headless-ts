@@ -44,9 +44,9 @@
  */
 
 import type { MixpanelClient } from "../client/client.js";
+import { MixpanelHttpError } from "../client/internals.js";
 import { toNativeJson } from "../client/json-value.js";
 import { LosslessJsonError, parseLossless } from "../client/lossless-json.js";
-import { MixpanelHttpError } from "../client/internals.js";
 import { rawFetch } from "../client/transport.js";
 import { pythonIntCoerce } from "../compat/python-int.js";
 import { zfill } from "../compat/zfill.js";
@@ -169,7 +169,7 @@ export interface ReplaysLogger {
    *
    * @param message - The formatted text (never vector-compared).
    */
-  debug?(message: string): void;
+  debug?: (message: string) => void;
 }
 
 /** Construction options of {@link ReplaysService}. */
@@ -421,8 +421,8 @@ export class ReplaysService {
       // end-of-replay sentinel; a 404 on file 0 means the replay simply
       // doesn't exist on the CDN.
       let terminateAt = results.length;
-      for (let i = 0; i < results.length; i += 1) {
-        const [status] = results[i] as FetchOutcome;
+      for (const [i, result] of results.entries()) {
+        const [status] = result as FetchOutcome;
         if (status === 404) {
           if (fileNum + i === 0) {
             throw replayNotFoundError(signed.replay_id, {
@@ -546,16 +546,16 @@ export class ReplaysService {
       });
       response = raw.response;
       release = raw.release;
-    } catch (exc) {
-      if (!(exc instanceof MixpanelHttpError)) {
+    } catch (error) {
+      if (!(error instanceof MixpanelHttpError)) {
         // Cancellation (R6.7 `AbortError`) passes through unchanged —
         // it is not an `httpx.HTTPError` on the Python side either.
-        throw exc;
+        throw error;
       }
       // `str(exc)` can embed the request URL, and our URL carries the
       // signed query_string bearer credential. Scrub it before it lands
       // in an exception message or log (`replays.py:455-467`).
-      const safe = exc.message.replaceAll(signed.query_string, "<redacted>");
+      const safe = error.message.replaceAll(signed.query_string, "<redacted>");
       // Python raises with NO details (`raise ... from exc`,
       // `replays.py:457-460`) — the cause threads through ErrorOptions,
       // never the details bag (B5-BIND fix: `{cause}` in details leaked
@@ -564,7 +564,7 @@ export class ReplaysService {
         `CDN fetch failed for file ${label}: ${safe}`,
         "CDN_FETCH_ERROR",
         null,
-        { cause: exc },
+        { cause: error },
       );
     }
 
@@ -576,17 +576,17 @@ export class ReplaysService {
           payload = toNativeJson(
             parseLossless(text, { pythonConstants: true }),
           );
-        } catch (exc) {
-          if (!(exc instanceof LosslessJsonError)) {
-            throw exc;
+        } catch (error) {
+          if (!(error instanceof LosslessJsonError)) {
+            throw error;
           }
           // Python: `raise ... from exc` with NO details
           // (`replays.py:465-469`) — cause via ErrorOptions (B5-BIND fix).
           throw new MixpanelHeadlessError(
-            `CDN file ${label} returned non-JSON: ${exc.message}`,
+            `CDN file ${label} returned non-JSON: ${error.message}`,
             "CDN_INVALID_RESPONSE",
             null,
-            { cause: exc },
+            { cause: error },
           );
         }
         // A 200 dict/scalar is an EMPTY file, not an error
@@ -598,8 +598,9 @@ export class ReplaysService {
         return [response.status, null];
       }
       throw new MixpanelHeadlessError(
-        `CDN file ${label} returned unexpected status ` +
-          `${String(response.status)}`,
+        `CDN file ${label} returned unexpected status ${String(
+          response.status,
+        )}`,
         "CDN_UNEXPECTED_STATUS",
       );
     } finally {
@@ -750,7 +751,7 @@ export class ReplaysService {
       if (replayId === "$overall") {
         continue;
       }
-      const replayIdStr = String(replayId);
+      const replayIdStr = replayId;
       if (replayIdStr === "" || seen.has(replayIdStr)) {
         continue;
       }
@@ -1147,11 +1148,11 @@ function pythonReprStr(text: string): string {
   const quote = useDouble ? '"' : "'";
   let body = text.replaceAll("\\", "\\\\");
   if (!useDouble) {
-    body = body.replaceAll("'", "\\'");
+    body = body.replaceAll("'", String.raw`\'`);
   }
   body = body
-    .replaceAll("\n", "\\n")
-    .replaceAll("\r", "\\r")
-    .replaceAll("\t", "\\t");
+    .replaceAll("\n", String.raw`\n`)
+    .replaceAll("\r", String.raw`\r`)
+    .replaceAll("\t", String.raw`\t`);
   return `${quote}${body}${quote}`;
 }

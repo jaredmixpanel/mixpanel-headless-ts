@@ -24,12 +24,7 @@
 //   as in `discovery.test.ts`.
 
 import { describe, expect, it } from "vitest";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-} from "../../test-support/client-test-helpers.js";
+
 import { ENDPOINTS } from "../../src/client/url.js";
 import { AuthenticationError, QueryError } from "../../src/errors.js";
 import {
@@ -45,6 +40,12 @@ import {
   LexiconProperty,
   LexiconSchema,
 } from "../../src/types/results/discovery.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** A canned-response handler (the httpx.MockTransport handler twin). */
 type Handler = (request: CapturedFetchRequest) => CannedResponse;

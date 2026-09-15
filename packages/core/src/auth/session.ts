@@ -28,15 +28,15 @@ import {
   ResponseValidationError,
 } from "../errors.js";
 import {
-  accountAuthHeader,
-  parseAccount,
-  requireRecord,
-  forbidExtraKeys,
   type Account,
+  accountAuthHeader,
   type AccountAuthHeaderOptions,
   type AccountName,
+  forbidExtraKeys,
+  parseAccount,
   type ParseAccountOptions,
   type ProjectId,
+  requireRecord,
   type WorkspaceId,
 } from "./account.js";
 
@@ -222,11 +222,11 @@ export function parseProject(
   }
   return {
     id,
-    ...(name !== undefined ? { name } : {}),
-    ...(organizationId !== undefined
-      ? { organization_id: organizationId }
-      : {}),
-    ...(timezone !== undefined ? { timezone } : {}),
+    ...(name === undefined ? {} : { name }),
+    ...(organizationId === undefined
+      ? {}
+      : { organization_id: organizationId }),
+    ...(timezone === undefined ? {} : { timezone }),
   };
 }
 
@@ -266,9 +266,9 @@ export function parseWorkspaceRef(
   }
   return {
     id,
-    ...(name !== undefined ? { name } : {}),
-    ...(isDefault !== undefined ? { is_default: isDefault } : {}),
-    ...(projectId !== undefined ? { project_id: projectId } : {}),
+    ...(name === undefined ? {} : { name }),
+    ...(isDefault === undefined ? {} : { is_default: isDefault }),
+    ...(projectId === undefined ? {} : { project_id: projectId }),
   };
 }
 
@@ -339,9 +339,7 @@ export function parseSession(
     workspace = value === null ? null : parseWorkspaceRef(value, options);
   }
   let headers: ReadonlyMap<string, string>;
-  if (!Object.hasOwn(payload, "headers")) {
-    headers = new Map();
-  } else {
+  if (Object.hasOwn(payload, "headers")) {
     const value = payload["headers"];
     if (value instanceof Map) {
       headers = value as ReadonlyMap<string, string>;
@@ -353,11 +351,13 @@ export function parseSession(
       }
       headers = entries;
     }
+  } else {
+    headers = new Map();
   }
   const session: Session = {
     account,
     project,
-    ...(workspace !== undefined ? { workspace } : {}),
+    ...(workspace === undefined ? {} : { workspace }),
     headers,
   };
   checkWorkspaceProjectCoupling(session, options);
@@ -447,7 +447,7 @@ export function sessionReplace(
   return {
     account,
     project,
-    ...(workspace !== undefined ? { workspace } : {}),
+    ...(workspace === undefined ? {} : { workspace }),
     headers,
   };
 }
@@ -489,7 +489,7 @@ export function parseActiveSession(
         : coerceInt(value, coerceOptions(options, "workspace"));
   }
   return {
-    ...(account !== undefined ? { account } : {}),
-    ...(workspace !== undefined ? { workspace } : {}),
+    ...(account === undefined ? {} : { account }),
+    ...(workspace === undefined ? {} : { workspace }),
   };
 }

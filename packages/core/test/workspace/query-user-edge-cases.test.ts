@@ -22,16 +22,12 @@
 // - `.df` asserts become `toRows()` / `rowColumns()` (C6).
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import {
-  BookmarkValidationError,
-  ParamValidationError,
-} from "../../src/errors.js";
+
 import { LosslessJsonError } from "../../src/client/lossless-json.js";
 import {
-  buildPageKwargs,
-  buildStatsKwargs,
-} from "../../src/workspace-query-params.js";
+  type BookmarkValidationError,
+  ParamValidationError,
+} from "../../src/errors.js";
 import { filterToSelector } from "../../src/query/user-builders.js";
 import {
   validateUserArgs,
@@ -42,13 +38,18 @@ import {
   filterUnchecked,
 } from "../../src/types/query-params/filter.js";
 import { UserQueryResult } from "../../src/types/results/query-engine.js";
+import { Workspace } from "../../src/workspace.js";
+import {
+  buildPageKwargs,
+  buildStatsKwargs,
+} from "../../src/workspace-query-params.js";
 import {
   makePageResult,
   makeProfilesBatch,
   makeRawProfile,
+  type MockWorkspaceClient,
   mockWorkspaceClient,
   TEST_SESSION,
-  type MockWorkspaceClient,
 } from "../../test-support/workspace-test-helpers.js";
 
 /**
@@ -117,7 +118,7 @@ describe("TestTier1DataCorruption", () => {
 
     // After $-stripping, both map to "email" — only one column survives
     const emailCols = result.rowColumns().filter((c) => c === "email");
-    expect(emailCols.length).toBe(1);
+    expect(emailCols).toHaveLength(1);
     // Document which value wins (last-write-wins in the property loop)
     const emailValue = result.toRows()[0]!["email"];
     expect(["builtin@x.com", "custom@x.com"]).toContain(emailValue);
@@ -150,7 +151,7 @@ describe("TestTier1DataCorruption", () => {
     });
 
     // Total equals len(profiles), not the API total
-    expect(result.profiles.length).toBe(300);
+    expect(result.profiles).toHaveLength(300);
     expect(result.total).toBe(result.profiles.length);
     expect(result.meta["failed_pages"]).toEqual([2, 3]);
   });
@@ -181,7 +182,7 @@ describe("TestTier1DataCorruption", () => {
       limit: 100_000,
     });
 
-    expect(result.profiles.length).toBe(100);
+    expect(result.profiles).toHaveLength(100);
     expect(result.total).toBe(result.profiles.length);
     expect(result.meta["failed_pages"]).toEqual([1, 2, 3, 4]);
   });
@@ -255,8 +256,8 @@ describe("TestTier1DataCorruption", () => {
       limit: 1000,
     });
 
-    expect(mock.exportPageCalls.length).toBe(1);
-    expect(result.profiles.length).toBe(1000);
+    expect(mock.exportPageCalls).toHaveLength(1);
+    expect(result.profiles).toHaveLength(1000);
   });
 
   it("T1.08: parallel workers use session_id=null when page 0 has none", async () => {
@@ -281,7 +282,7 @@ describe("TestTier1DataCorruption", () => {
       limit: 100_000,
     });
 
-    expect(result.profiles.length).toBe(total);
+    expect(result.profiles).toHaveLength(total);
     expect(result.meta["session_id"]).toBeNull();
     for (const call of mock.exportPageCalls.slice(1)) {
       expect(call.options["session_id"] ?? null).toBeNull();
@@ -308,8 +309,8 @@ describe("TestTier2CrashPaths", () => {
     try {
       await ws.buildUserParams({ where: malformedFilter });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U_COHORT");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U_COHORT");
     }
   });
 
@@ -399,7 +400,7 @@ describe("TestTier3ValidationGaps", () => {
       mode: "profiles",
       sort_by: 'foo"bar',
     });
-    expect(params["sort_key"]).toBe('properties["foo\\"bar"]');
+    expect(params["sort_key"]).toBe(String.raw`properties["foo\"bar"]`);
   });
 
   it("T3.02: a close bracket in sort_by is escaped", async () => {
@@ -407,7 +408,7 @@ describe("TestTier3ValidationGaps", () => {
       mode: "profiles",
       sort_by: '"]',
     });
-    expect(params["sort_key"]).toBe('properties["\\"]"]');
+    expect(params["sort_key"]).toBe(String.raw`properties["\"]"]`);
   });
 
   it("T3.03: an empty where list produces no 'where' param", async () => {
@@ -431,7 +432,7 @@ describe("TestTier3ValidationGaps", () => {
 
   it("T3.05: UP2 is dead code for a JSON-string filter_by_cohort", () => {
     const errors = validateUserParams({ filter_by_cohort: '{"id": 42}' });
-    expect(errors.filter((e) => e.code === "UP2").length).toBe(0);
+    expect(errors.filter((e) => e.code === "UP2")).toHaveLength(0);
   });
 
   it("T3.06: include_all_users with an in_cohort filter is accepted", async () => {
@@ -460,15 +461,15 @@ describe("TestTier3ValidationGaps", () => {
 
   it("T3.09: UP4 rejects a malformed action string", () => {
     const errors = validateUserParams({ action: "extremes(None)" });
-    expect(errors.filter((e) => e.code === "UP4").length).toBe(1);
+    expect(errors.filter((e) => e.code === "UP4")).toHaveLength(1);
   });
 
   it("T3.10: workers=6 triggers U23", async () => {
     try {
       await makeWs().buildUserParams({ workers: 6 });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U23");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U23");
     }
   });
 

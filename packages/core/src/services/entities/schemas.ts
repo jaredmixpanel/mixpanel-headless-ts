@@ -17,10 +17,10 @@
 
 import { appRequest } from "../../client/app-request.js";
 import type { ClientCore } from "../../client/client.js";
-import type { JsonValue } from "../../client/json-value.js";
 import { isPlainRecord } from "../../client/internals.js";
-import { MixpanelHeadlessError } from "../../errors.js";
+import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
+import { MixpanelHeadlessError } from "../../errors.js";
 import {
   expectListResult,
   expectRecordResult,
@@ -95,7 +95,7 @@ export interface SchemaMethods {
    * @throws AuthenticationError | RateLimitError | QueryError |
    *   ServerError - Per the B0 `executeWithRetry` contract.
    */
-  getSchemas(options?: GetSchemasOptions): Promise<JsonValue>;
+  getSchemas: (options?: GetSchemasOptions) => Promise<JsonValue>;
 
   /**
    * Get a single Lexicon schema (`get_schema`, `:3345-3392` — GET
@@ -108,11 +108,11 @@ export interface SchemaMethods {
    * @returns The normalized schema record.
    * @throws QueryError - Schema not found (404 → QueryError mapping).
    */
-  getSchema(
+  getSchema: (
     entityType: string,
     name: string,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * List schema-registry entries (`list_schema_registry`,
@@ -122,7 +122,9 @@ export interface SchemaMethods {
    * @returns The entry list verbatim.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  listSchemaRegistry(options?: ListSchemaRegistryOptions): Promise<JsonValue[]>;
+  listSchemaRegistry: (
+    options?: ListSchemaRegistryOptions,
+  ) => Promise<JsonValue[]>;
 
   /**
    * Create one schema (`create_schema`, `:3437-3478` — POST
@@ -135,12 +137,12 @@ export interface SchemaMethods {
    * @returns The created schema dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  createSchema(
+  createSchema: (
     entityType: string,
     entityName: string,
     schemaJson: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Bulk-create schemas (`create_schemas_bulk`, `:3480-3515` — POST
@@ -151,10 +153,10 @@ export interface SchemaMethods {
    * @returns Dict with `added`/`deleted` counts.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  createSchemasBulk(
+  createSchemasBulk: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Update one schema (`update_schema`, `:3517-3558` — PATCH
@@ -167,12 +169,12 @@ export interface SchemaMethods {
    * @returns The updated schema dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  updateSchema(
+  updateSchema: (
     entityType: string,
     entityName: string,
     schemaJson: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Bulk-update schemas (`update_schemas_bulk`, `:3560-3592` — PATCH
@@ -183,10 +185,10 @@ export interface SchemaMethods {
    * @returns Per-entry result list.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  updateSchemasBulk(
+  updateSchemasBulk: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<JsonValue[]>;
+  ) => Promise<JsonValue[]>;
 
   /**
    * Delete schemas by type and/or name (`delete_schemas`,
@@ -198,9 +200,9 @@ export interface SchemaMethods {
    *   `entity_type` (guard raised before any request), or a non-dict
    *   response.
    */
-  deleteSchemas(
+  deleteSchemas: (
     options?: DeleteSchemasOptions,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 }
 
 /**
@@ -229,7 +231,7 @@ export function createSchemaMethods(core: ClientCore): SchemaMethods {
       const url = core.buildUrl("app", path);
       const result = await core.requestQueryHost("GET", url, {
         injectProjectId: false,
-        ...(options.signal !== undefined ? { signal: options.signal } : {}),
+        ...(options.signal === undefined ? {} : { signal: options.signal }),
       });
       // `result.get("results", [])` — note the source's debug-log set
       // comprehension iterates the product; its failure modes on
@@ -249,7 +251,7 @@ export function createSchemaMethods(core: ClientCore): SchemaMethods {
       const result = await core.requestQueryHost("GET", url, {
         params: { entity_name: name },
         injectProjectId: false,
-        ...(signal !== undefined ? { signal } : {}),
+        ...(signal === undefined ? {} : { signal }),
       });
       // Single-schema format is {status: "ok", results: <schemaJson>};
       // normalize to the list-response shape (`:3386-3392`).

@@ -37,10 +37,10 @@ import {
   accountsLogin,
   accountsShow,
   accountsUse,
-  fetchMe,
-  freshBrowserBearer,
   assertProjectRegionMatches,
   FETCH_ME_PROGRESS_MESSAGE,
+  fetchMe,
+  freshBrowserBearer,
   type ProgressFactory,
   type ProgressHandle,
   type ProjectPicker,
@@ -163,7 +163,7 @@ export function resolveProjectForLogin(
           info.domain !== null && info.domain !== ""
             ? info.domain
             : "(no domain)";
-        return `  - ${pid} : ${String(info.name)} (${domain})`;
+        return `  - ${pid} : ${info.name} (${domain})`;
       })
       .join("\n");
     throw new ConfigError(
@@ -190,7 +190,7 @@ export function resolveProjectForLogin(
           info.domain !== null && info.domain !== ""
             ? info.domain
             : "(no domain)";
-        return `  - ${pid} : ${String(info.name)} (${domain})`;
+        return `  - ${pid} : ${info.name} (${domain})`;
       })
       .join("\n");
     throw new ConfigError(
@@ -207,15 +207,15 @@ export function resolveProjectForLogin(
     // (`org.name.lower()` via the tuple key) — unreachable in practice
     // (/me org names are strings); the TS twin folds null to "".
     const orgName =
-      org !== undefined
-        ? (org.name ?? "")
-        : `~org ${String(info.organization_id)}`;
+      org === undefined
+        ? `~org ${String(info.organization_id)}`
+        : (org.name ?? "");
     return [orgName.toLowerCase(), (info.name ?? "").toLowerCase()];
   };
   // Stable sort over insertion-order entries: picker-list tie order
   // for case-folded (org, name) collisions now matches Python's
   // `sorted(...)` stability over dict order (B8-MAPFIX).
-  const sortedProjects = [...projects.entries()]
+  const sortedProjects = [...projects]
     .map(([pid, info]) => [pid, info] as const)
     .sort((a, b) => {
       const [aOrg, aName] = sortKey(a[1]);
@@ -371,9 +371,9 @@ export async function loginUnified(
   if (name !== null) {
     try {
       existing = effects.config.getAccount(name);
-    } catch (exc) {
-      if (!(exc instanceof ConfigError)) {
-        throw exc;
+    } catch (error) {
+      if (!(error instanceof ConfigError)) {
+        throw error;
       }
       existing = null;
     }
@@ -520,10 +520,10 @@ async function loginUnifiedRelogin(
     let envName: string;
     if (args.token_env !== null) {
       envName = args.token_env;
-    } else if (existingTokenEnv !== null) {
-      envName = existingTokenEnv;
-    } else {
+    } else if (existingTokenEnv === null) {
       envName = "MP_OAUTH_TOKEN";
+    } else {
+      envName = existingTokenEnv;
     }
     const bearer = effects.env.get(envName);
     if (bearer === undefined || bearer === "") {
@@ -534,10 +534,10 @@ async function loginUnifiedRelogin(
     }
     if (args.token_env !== null) {
       effects.config.updateAccount(name, { token_env: args.token_env });
-    } else if (existingTokenEnv !== null) {
-      effects.config.updateAccount(name, { token_env: existingTokenEnv });
-    } else {
+    } else if (existingTokenEnv === null) {
       effects.config.updateAccount(name, { token: new Secret(bearer) });
+    } else {
+      effects.config.updateAccount(name, { token_env: existingTokenEnv });
     }
   }
 
@@ -615,7 +615,7 @@ async function loginUnifiedNewBrowser(
     effects.config.listAccounts().map((summary) => summary.name),
   );
   const finalName =
-    args.name !== null ? args.name : defaultAccountName(meResp, existingNames);
+    args.name === null ? defaultAccountName(meResp, existingNames) : args.name;
   if (existingNames.has(finalName)) {
     throw new AccountExistsError(finalName);
   }
@@ -654,9 +654,9 @@ async function loginUnifiedNewBrowser(
     });
     await effects.meCache.put(finalName, meResp);
     return summaryWithMe(summary, meResp, chosenProject);
-  } catch (exc) {
+  } catch (error) {
     effects.tokenStore.removeAccountDir(finalName);
-    throw exc;
+    throw error;
   }
 }
 
@@ -729,19 +729,17 @@ async function loginUnifiedNewCredential(
           `bearer in NAME, or set ${envName} in the environment.`,
       );
     }
-    if (args.token_env !== null) {
-      resolvedTokenEnv = args.token_env;
-    } else {
+    if (args.token_env === null) {
       token = new Secret(bearer);
+    } else {
+      resolvedTokenEnv = args.token_env;
     }
   }
 
   // Region resolution — probe when omitted (`accounts.py:1828-1843`,
   // via the A2 `probeRegionForCredential`).
   let resolvedRegion: Region;
-  if (args.region !== null) {
-    resolvedRegion = args.region;
-  } else {
+  if (args.region === null) {
     resolvedRegion = await probeRegionForCredential({
       account_type: args.detected_type,
       username,
@@ -754,6 +752,8 @@ async function loginUnifiedNewCredential(
       getEnv: (envVar: string): string | undefined => effects.env.get(envVar),
       fetchImpl: effects.fetchImpl,
     });
+  } else {
+    resolvedRegion = args.region;
   }
 
   // /me lookup via a temporary credentialed account
@@ -769,12 +769,12 @@ async function loginUnifiedNewCredential(
       secret: secret ?? new Secret(""),
       default_project: "0",
     };
-  } else if (token !== null) {
+  } else if (token === null) {
     tempAccount = {
       type: "oauth_token",
       name: placeholderName,
       region: resolvedRegion,
-      token,
+      token_env: resolvedTokenEnv ?? "MP_OAUTH_TOKEN",
       default_project: "0",
     };
   } else {
@@ -782,7 +782,7 @@ async function loginUnifiedNewCredential(
       type: "oauth_token",
       name: placeholderName,
       region: resolvedRegion,
-      token_env: resolvedTokenEnv ?? "MP_OAUTH_TOKEN",
+      token,
       default_project: "0",
     };
   }

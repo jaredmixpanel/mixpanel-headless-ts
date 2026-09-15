@@ -12,6 +12,7 @@
 // and `_df_cache`-population suites are not ported (no runtime cache
 // in TS — phase2-design C6 "no caching needed").
 import { describe, expect, it } from "vitest";
+
 import {
   UserQueryResult,
   type UserQueryResultFields,
@@ -366,8 +367,8 @@ describe("UserQueryResult.df segmented (TestUserQueryResultSegmentedAggregateDf)
     expect(new Set(rows.map((row) => row["segment"]))).toEqual(
       new Set(["cohort_123", "cohort_456"]),
     );
-    const row_123 = rows.filter((row) => row["segment"] === "cohort_123");
-    expect(row_123[0]?.["value"]).toBe(42);
+    const row_123 = rows.find((row) => row["segment"] === "cohort_123");
+    expect(row_123?.["value"]).toBe(42);
   });
 
   it("test_segmented_single_segment", () => {

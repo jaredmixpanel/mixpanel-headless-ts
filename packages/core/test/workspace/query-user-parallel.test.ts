@@ -28,7 +28,7 @@
 //   `workers=2`.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
 import {
   AuthenticationError,
   BookmarkValidationError,
@@ -37,15 +37,16 @@ import {
   ServerError,
 } from "../../src/errors.js";
 import { UserQueryResult } from "../../src/types/results/query-engine.js";
+import { Workspace } from "../../src/workspace.js";
 import {
+  type LogCollector,
   logCollector,
   makePageResult,
   makeProfilesBatch,
+  type MockWorkspaceClient,
   mockWorkspaceClient,
   pageSideEffectFactory,
   TEST_SESSION,
-  type LogCollector,
-  type MockWorkspaceClient,
 } from "../../test-support/workspace-test-helpers.js";
 
 /**
@@ -97,9 +98,9 @@ describe("TestParallelSinglePageSkip", () => {
     });
 
     expect(result).toBeInstanceOf(UserQueryResult);
-    expect(result.profiles.length).toBe(3);
+    expect(result.profiles).toHaveLength(3);
     // Only page 0 should be fetched — no parallel pages dispatched
-    expect(mock.exportPageCalls.length).toBe(1);
+    expect(mock.exportPageCalls).toHaveLength(1);
   });
 
   it("meta reports pages_fetched=1 for a single page", async () => {
@@ -160,7 +161,7 @@ describe("TestParallelMultiPageFetch", () => {
       limit: 100_000,
     });
 
-    expect(result.profiles.length).toBe(250);
+    expect(result.profiles).toHaveLength(250);
     expect(result.total).toBe(250);
   });
 
@@ -174,7 +175,7 @@ describe("TestParallelMultiPageFetch", () => {
       limit: 250,
     });
 
-    expect(mock.exportPageCalls.length).toBe(Math.ceil(250 / 100)); // 3
+    expect(mock.exportPageCalls).toHaveLength(Math.ceil(250 / 100)); // 3
   });
 
   it("meta indicates parallel mode", async () => {
@@ -281,7 +282,7 @@ describe("TestParallelLimitAwareDispatch", () => {
       limit: 150,
     });
 
-    expect(mock.exportPageCalls.length).toBe(Math.ceil(150 / 100)); // 2
+    expect(mock.exportPageCalls).toHaveLength(Math.ceil(150 / 100)); // 2
   });
 
   it("truncates the result to exactly the limit", async () => {
@@ -294,7 +295,7 @@ describe("TestParallelLimitAwareDispatch", () => {
       limit: 150,
     });
 
-    expect(result.profiles.length).toBe(150);
+    expect(result.profiles).toHaveLength(150);
   });
 
   it("total equals len(profiles), not the API's full count", async () => {
@@ -322,8 +323,8 @@ describe("TestParallelLimitAwareDispatch", () => {
     });
 
     // ceil(1000/1000) = 1, so only page 0
-    expect(mock.exportPageCalls.length).toBe(1);
-    expect(result.profiles.length).toBe(1000);
+    expect(mock.exportPageCalls).toHaveLength(1);
+    expect(result.profiles).toHaveLength(1000);
   });
 
   it("limit = page_size + 1 requires two pages", async () => {
@@ -337,8 +338,8 @@ describe("TestParallelLimitAwareDispatch", () => {
     });
 
     // ceil(1001/1000) = 2
-    expect(mock.exportPageCalls.length).toBe(2);
-    expect(result.profiles.length).toBe(1001);
+    expect(mock.exportPageCalls).toHaveLength(2);
+    expect(result.profiles).toHaveLength(1001);
   });
 
   it("limit = total fetches all pages", async () => {
@@ -351,8 +352,8 @@ describe("TestParallelLimitAwareDispatch", () => {
       limit: 350,
     });
 
-    expect(mock.exportPageCalls.length).toBe(Math.ceil(350 / 100)); // 4
-    expect(result.profiles.length).toBe(350);
+    expect(mock.exportPageCalls).toHaveLength(Math.ceil(350 / 100)); // 4
+    expect(result.profiles).toHaveLength(350);
   });
 });
 
@@ -374,7 +375,7 @@ describe("TestParallelFailedPageHandling", () => {
     });
 
     // Pages 0 and 2 succeed (200 profiles); page 1's 100 are missing
-    expect(result.profiles.length).toBe(200);
+    expect(result.profiles).toHaveLength(200);
   });
 
   it("records the failed page number in meta", async () => {
@@ -445,7 +446,7 @@ describe("TestParallelFailedPageHandling", () => {
     });
 
     const failed = (result.meta["failed_pages"] ?? []) as readonly number[];
-    expect(failed.length).toBe(0);
+    expect(failed).toHaveLength(0);
   });
 
   it("total equals len(profiles) despite failed pages", async () => {
@@ -479,9 +480,9 @@ describe("TestParallelWorkerCap", () => {
         limit: 100_000,
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(BookmarkValidationError);
-      expect(codesOf(exc)).toContain("U23");
+    } catch (error) {
+      expect(error).toBeInstanceOf(BookmarkValidationError);
+      expect(codesOf(error)).toContain("U23");
     }
   });
 
@@ -495,8 +496,8 @@ describe("TestParallelWorkerCap", () => {
         limit: 100_000,
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U23");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U23");
     }
   });
 
@@ -510,8 +511,8 @@ describe("TestParallelWorkerCap", () => {
         limit: 100_000,
       });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(codesOf(exc)).toContain("U23");
+    } catch (error) {
+      expect(codesOf(error)).toContain("U23");
     }
   });
 
@@ -583,7 +584,7 @@ describe("TestParallelRateLimitWarning", () => {
     const rateWarnings = log.warnings.filter(
       (msg) => msg.toLowerCase().includes("rate") || msg.includes("48"),
     );
-    expect(rateWarnings.length).toBe(0);
+    expect(rateWarnings).toHaveLength(0);
   });
 
   it("a limit that reduces pages below the threshold emits no warning", async () => {
@@ -601,7 +602,7 @@ describe("TestParallelRateLimitWarning", () => {
     const rateWarnings = log.warnings.filter(
       (msg) => msg.toLowerCase().includes("rate") || msg.includes("48"),
     );
-    expect(rateWarnings.length).toBe(0);
+    expect(rateWarnings).toHaveLength(0);
   });
 });
 
@@ -615,9 +616,9 @@ describe("TestParallelAggregateValidation", () => {
     try {
       await ws.queryUser({ parallel: true, mode: "aggregate" });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(BookmarkValidationError);
-      expect(codesOf(exc)).toContain("U18");
+    } catch (error) {
+      expect(error).toBeInstanceOf(BookmarkValidationError);
+      expect(codesOf(error)).toContain("U18");
     }
   });
 
@@ -626,11 +627,11 @@ describe("TestParallelAggregateValidation", () => {
     try {
       await ws.queryUser({ parallel: true, mode: "aggregate" });
       expect.unreachable("expected BookmarkValidationError");
-    } catch (exc) {
-      const u18 = (exc as BookmarkValidationError).errors.filter(
+    } catch (error) {
+      const u18 = (error as BookmarkValidationError).errors.filter(
         (e) => e.code === "U18",
       );
-      expect(u18.length).toBe(1);
+      expect(u18).toHaveLength(1);
       expect(u18[0]!.message.toLowerCase()).toContain("profiles");
     }
   });
@@ -666,7 +667,7 @@ describe("TestParallelEarlyExitOnLimit", () => {
       limit: 250,
     });
 
-    expect(result.profiles.length).toBe(250);
+    expect(result.profiles).toHaveLength(250);
   });
 
   it("a limit smaller than page_size needs only page 0", async () => {
@@ -680,8 +681,8 @@ describe("TestParallelEarlyExitOnLimit", () => {
     });
 
     // ceil(50/1000) = 1, only page 0
-    expect(mock.exportPageCalls.length).toBe(1);
-    expect(result.profiles.length).toBe(50);
+    expect(mock.exportPageCalls).toHaveLength(1);
+    expect(result.profiles).toHaveLength(50);
   });
 
   it("the default limit=1 with parallel returns exactly one profile", async () => {
@@ -695,8 +696,8 @@ describe("TestParallelEarlyExitOnLimit", () => {
       parallel: true,
     });
 
-    expect(result.profiles.length).toBe(1);
-    expect(mock.exportPageCalls.length).toBe(1);
+    expect(result.profiles).toHaveLength(1);
+    expect(mock.exportPageCalls).toHaveLength(1);
   });
 
   it("a limit requiring a partial last page truncates correctly", async () => {
@@ -709,9 +710,9 @@ describe("TestParallelEarlyExitOnLimit", () => {
       limit: 350,
     });
 
-    expect(result.profiles.length).toBe(350);
+    expect(result.profiles).toHaveLength(350);
     // ceil(350/100) = 4 pages
-    expect(mock.exportPageCalls.length).toBe(Math.ceil(350 / 100));
+    expect(mock.exportPageCalls).toHaveLength(Math.ceil(350 / 100));
   });
 
   it("a limit above total returns all available profiles", async () => {
@@ -724,7 +725,7 @@ describe("TestParallelEarlyExitOnLimit", () => {
       limit: 500,
     });
 
-    expect(result.profiles.length).toBe(150);
+    expect(result.profiles).toHaveLength(150);
     expect(result.total).toBe(150);
   });
 });
@@ -787,7 +788,7 @@ describe("TestParallelResultStructure", () => {
       limit: 100_000,
     });
 
-    expect(result.toRows().length).toBe(250);
+    expect(result.toRows()).toHaveLength(250);
   });
 
   it("distinct_ids matches the profile distinct_id values", async () => {

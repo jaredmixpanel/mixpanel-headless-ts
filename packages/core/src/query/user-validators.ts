@@ -31,15 +31,15 @@
  */
 
 import { LosslessJsonError, parseLossless } from "../client/lossless-json.js";
-import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
 import { DECIMAL_DIGIT_RUNS } from "../compat/decimal-digits.gen.js";
 import { pythonRepr, pythonStrip, zfill } from "../compat/index.js";
+import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
 import { ParamValidationError, ValidationError } from "../errors.js";
+import { CohortDefinition, Filter } from "../types/index.js";
 import {
   RuntimeError as PyRuntimeError,
   ValueError as PyValueError,
 } from "./python-builtins.js";
-import { CohortDefinition, Filter } from "../types/index.js";
 import { isCohortFilter, isPythonDict } from "./user-builders.js";
 import {
   _isValidDate,
@@ -60,8 +60,8 @@ import {
  */
 function classEscape(cp: number): string {
   return cp <= 0xffff
-    ? `\\u${zfill(cp.toString(16), 4)}`
-    : `\\u{${cp.toString(16)}}`;
+    ? String.raw`\u${zfill(cp.toString(16), 4)}`
+    : String.raw`\u{${cp.toString(16)}}`;
 }
 
 /**
@@ -107,12 +107,7 @@ const PY_DIGIT_CLASS = DECIMAL_DIGIT_RUNS.map(([start, , length]) =>
  * matching Python's per-codepoint `str` semantics (R11.6).
  */
 const _ACTION_RE = new RegExp(
-  "^(" +
-    "count\\(\\)" +
-    '|extremes\\(properties\\["[^\\n]+"\\]\\)' +
-    `|percentile\\(properties\\["[^\\n]+"\\],[${PY_SPACE_CLASS}]*[${PY_DIGIT_CLASS}.]+\\)` +
-    '|numeric_summary\\(properties\\["[^\\n]+"\\]\\)' +
-    ")$",
+  `^(${String.raw`count\(\)`}${String.raw`|extremes\(properties\["[^\n]+"\]\)`}${String.raw`|percentile\(properties\["[^\n]+"\],[${PY_SPACE_CLASS}]*[${PY_DIGIT_CLASS}.]+\)`}${String.raw`|numeric_summary\(properties\["[^\n]+"\]\)`})$`,
   "u",
 );
 
@@ -147,8 +142,7 @@ function defaultToday(): string {
   const now = new Date();
   return (
     `${zfill(`${now.getFullYear()}`, 4)}-` +
-    `${zfill(`${now.getMonth() + 1}`, 2)}-` +
-    `${zfill(`${now.getDate()}`, 2)}`
+    `${zfill(`${now.getMonth() + 1}`, 2)}-${zfill(`${now.getDate()}`, 2)}`
   );
 }
 
@@ -315,7 +309,6 @@ export interface ValidateUserArgsOptions {
  *   all", so an explicit `null` is NOT the same as omitting it.
  * @returns List of `ValidationError` objects; an empty list means all
  *   arguments are valid.
- *
  * @example
  * ```typescript
  * const errors = validateUserArgs({
@@ -375,8 +368,7 @@ export function validateUserArgs(
   }
 
   // U0: where list items must be Filter instances
-  for (let i = 0; i < rawFilters.length; i++) {
-    const item = rawFilters[i];
+  for (const [i, item] of rawFilters.entries()) {
     if (!(item instanceof Filter)) {
       errors.push(
         new ValidationError(
@@ -487,8 +479,8 @@ export function validateUserArgs(
   // U9: Enforced at runtime in _resolve_and_build_user_params (type guard)
 
   // U10: Filter property names must be non-empty
-  for (let i = 0; i < validFilters.length; i++) {
-    const f = validFilters[i] as Filter;
+  for (const [i, validFilter] of validFilters.entries()) {
+    const f = validFilter as Filter;
     if (typeof f._property === "string" && pythonStrip(f._property) === "") {
       errors.push(
         new ValidationError(
@@ -501,8 +493,8 @@ export function validateUserArgs(
   }
 
   // U25: Filter property must be a string for engage queries
-  for (let i = 0; i < validFilters.length; i++) {
-    const f = validFilters[i] as Filter;
+  for (const [i, validFilter] of validFilters.entries()) {
+    const f = validFilter as Filter;
     if (!isCohortFilter(f) && typeof f._property !== "string") {
       errors.push(
         new ValidationError(
@@ -528,8 +520,8 @@ export function validateUserArgs(
 
   // U11: properties items must be non-empty strings
   if (properties !== null) {
-    for (let i = 0; i < properties.length; i++) {
-      const prop = properties[i] as string;
+    for (const [i, property] of properties.entries()) {
+      const prop = property as string;
       if (pythonStrip(prop) === "") {
         errors.push(
           new ValidationError(
@@ -543,8 +535,8 @@ export function validateUserArgs(
   }
 
   // U12: Filter.not_in_cohort() not supported
-  for (let i = 0; i < validFilters.length; i++) {
-    const f = validFilters[i] as Filter;
+  for (const [i, validFilter] of validFilters.entries()) {
+    const f = validFilter as Filter;
     if (isCohortFilter(f) && f._operator === "does not contain") {
       errors.push(
         new ValidationError(
@@ -613,8 +605,8 @@ export function validateUserArgs(
 
   // U17: segment_by IDs must be positive integers
   if (segmentBy !== null) {
-    for (let i = 0; i < segmentBy.length; i++) {
-      const sid = segmentBy[i] as number;
+    for (const [i, element] of segmentBy.entries()) {
+      const sid = element as number;
       if (sid <= 0) {
         errors.push(
           new ValidationError(
@@ -751,7 +743,7 @@ export function validateUserArgs(
   if (cohort instanceof CohortDefinition) {
     try {
       cohort.toDict();
-    } catch (exc) {
+    } catch (error) {
       // Python catches `(ValueError, TypeError, RuntimeError)`, so the
       // TS catch names all three arms plus the dual-inheriting
       // `ParamValidationError` (`exceptions.py:97`): `ValueError` /
@@ -769,17 +761,17 @@ export function validateUserArgs(
       // `ValueError("bad selector node")` and pins U24 for both, so the
       // narrowing was Layer-3-visible.
       if (!(
-        exc instanceof ParamValidationError ||
-        exc instanceof TypeError ||
-        exc instanceof PyValueError ||
-        exc instanceof PyRuntimeError
+        error instanceof ParamValidationError ||
+        error instanceof TypeError ||
+        error instanceof PyValueError ||
+        error instanceof PyRuntimeError
       )) {
-        throw exc;
+        throw error;
       }
       errors.push(
         new ValidationError(
           "cohort",
-          `CohortDefinition.to_dict() failed: ${exc.message}`,
+          `CohortDefinition.to_dict() failed: ${error.message}`,
           "U24",
         ),
       );
@@ -828,7 +820,6 @@ function pythonReprLoose(value: unknown): string {
  * @param params - Engage API params dict to validate.
  * @returns List of `ValidationError` objects; an empty list means all
  *   params are valid.
- *
  * @example
  * ```typescript
  * const errors = validateUserParams({ sort_order: "invalid" });
@@ -863,16 +854,16 @@ export function validateUserParams(
       try {
         // GATE-R5 / B0 arbiter F1: `json.loads` accepts NaN/Infinity.
         fbc = parseLossless(fbc, { pythonConstants: true });
-      } catch (exc) {
+      } catch (error) {
         // B0 arbiter F3: only the JSONDecodeError analog is caught; a
         // parser RangeError propagates like Python's RecursionError.
-        if (!(exc instanceof LosslessJsonError)) {
-          throw exc;
+        if (!(error instanceof LosslessJsonError)) {
+          throw error;
         }
         errors.push(
           new ValidationError(
             "filter_by_cohort",
-            `filter_by_cohort is not valid JSON: ${exc.message}`,
+            `filter_by_cohort is not valid JSON: ${error.message}`,
             "UP2",
           ),
         );
@@ -901,11 +892,11 @@ export function validateUserParams(
     if (typeof opVal === "string") {
       try {
         opVal = parseLossless(opVal, { pythonConstants: true });
-      } catch (exc) {
+      } catch (error) {
         // Python: `contextlib.suppress(json.JSONDecodeError)` — the
         // undecodable string is simply kept (and is not a list).
-        if (!(exc instanceof LosslessJsonError)) {
-          throw exc;
+        if (!(error instanceof LosslessJsonError)) {
+          throw error;
         }
       }
     }

@@ -22,21 +22,23 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  type OAuthClientInfo,
+  OAuthTokens,
   ParamValidationError,
   Secret,
-  OAuthTokens,
-  type OAuthClientInfo,
 } from "@mixpanel-headless/core";
+
 import { OAuthStorage } from "../src/auth/storage.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const POSIX = process.platform !== "win32";
 const itPosix = POSIX ? it : it.skip;
 
-const cleanups: (() => void)[] = [];
+const cleanups: Array<() => void> = [];
 let restoreEnv: () => void = () => undefined;
 
 beforeEach(() => {
@@ -537,7 +539,7 @@ describe("TestOAuthStorageConcurrency (test_auth_storage.py:748)", () => {
 
   it("test_concurrent_read_during_write", async () => {
     const storage = new OAuthStorage({ storageDir: makeTempDir(cleanups) });
-    const readResults: (OAuthTokens | null)[] = [];
+    const readResults: Array<OAuthTokens | null> = [];
     const writer = (async (): Promise<void> => {
       for (let i = 0; i < 20; i += 1) {
         storage.saveTokens(makeTokens({ accessToken: `write_${i}` }), "us");

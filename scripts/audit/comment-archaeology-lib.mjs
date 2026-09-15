@@ -506,8 +506,7 @@ export function fixOwnershipMarker(line) {
   }
   label = label.replace(/\([^()]*\)/g, " ");
   for (const hit of findBannedTokens(label).reverse()) {
-    label =
-      label.slice(0, hit.index) + " " + label.slice(hit.index + hit.length);
+    label = `${label.slice(0, hit.index)} ${label.slice(hit.index + hit.length)}`;
   }
   label = label
     .replace(/\s+/g, " ")
@@ -635,11 +634,9 @@ function tidyEmptied(records, kind, originals) {
   const kept = records.filter(
     (r, i) =>
       r.line !== null &&
-      !(
-        r.line !== originals[i] &&
-        isBlankContent(r.line, kind) &&
-        !isBlankContent(originals[i], kind)
-      ),
+      (r.line === originals[i] ||
+        !isBlankContent(r.line, kind) ||
+        isBlankContent(originals[i], kind)),
   );
   const out = [];
   for (const rec of kept) {
@@ -748,8 +745,8 @@ export function rewriteSource(text, options = {}) {
             ? ""
             : keptLines.join("\n") + (hasNewline ? "\n" : "");
         const changes = [];
-        for (let i = 0; i < records.length; i++) {
-          const after = kept.includes(records[i]) ? records[i].line : null;
+        for (const [i, record] of records.entries()) {
+          const after = kept.includes(record) ? record.line : null;
           if (after !== originals[i]) {
             changes.push({
               line: lineNumber(g.items[i].pos),
@@ -812,8 +809,8 @@ export function rewriteSource(text, options = {}) {
     const contentLeft = kept.some((r) => !isBlankContent(r.line, c.kind));
     const baseLine = lineNumber(c.pos);
     const changes = [];
-    for (let i = 0; i < records.length; i++) {
-      const after = kept.includes(records[i]) ? records[i].line : null;
+    for (const [i, record] of records.entries()) {
+      const after = kept.includes(record) ? record.line : null;
       if (after !== originals[i]) {
         changes.push({ line: baseLine + i, before: originals[i], after });
       }

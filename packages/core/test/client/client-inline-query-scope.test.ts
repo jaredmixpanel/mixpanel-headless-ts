@@ -15,10 +15,11 @@
 // - `request.url.params.get("workspace_id")` → `request.params["workspace_id"]`
 //   (string-valued, like httpx `QueryParams`).
 import { describe, expect, it } from "vitest";
+
 import {
+  type CapturedFetchRequest,
   createMockClient,
   makeSession,
-  type CapturedFetchRequest,
 } from "../../test-support/client-test-helpers.js";
 
 const PINNED_WORKSPACE_ID = 777;

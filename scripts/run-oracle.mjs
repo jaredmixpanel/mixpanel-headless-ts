@@ -7,10 +7,12 @@
 //   --right "node /abs/path/to/scripts/run-oracle.mjs"
 // esbuild diagnostics go to stderr, which the protocol reserves for
 // free-form logs, so bundling noise can never corrupt the line framing.
-import { build } from "esbuild";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+
+import { build } from "esbuild";
+
 import { esbuildAliases } from "./lib/workspace-aliases.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");

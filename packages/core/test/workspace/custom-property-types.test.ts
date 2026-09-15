@@ -30,7 +30,7 @@
 // R10.2 completeness than a partial exclusion.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
 import { BookmarkValidationError } from "../../src/errors.js";
 import {
   CustomPropertyRef,
@@ -40,6 +40,7 @@ import {
 } from "../../src/types/query-params/filter.js";
 import { GroupBy } from "../../src/types/query-params/group-by.js";
 import { Metric } from "../../src/types/query-params/metric.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   mockWorkspaceClient,
   TEST_SESSION,
@@ -119,7 +120,7 @@ describe("TestInlineCustomProperty", () => {
       inputs: { A: new PropertyInput({ name: "price" }) },
     });
     expect(icp.formula).toBe("A");
-    expect(Object.keys(icp.inputs).length).toBe(1);
+    expect(Object.keys(icp.inputs)).toHaveLength(1);
     expect(icp.inputs["A"]!.name).toBe("price");
     expect(icp.property_type).toBeNull();
     expect(icp.resource_type).toBe("events");
@@ -136,7 +137,7 @@ describe("TestInlineCustomProperty", () => {
       resource_type: "people",
     });
     expect(icp.formula).toBe("A * B");
-    expect(Object.keys(icp.inputs).length).toBe(2);
+    expect(Object.keys(icp.inputs)).toHaveLength(2);
     expect(icp.property_type).toBe("number");
     expect(icp.resource_type).toBe("people");
   });
@@ -153,7 +154,7 @@ describe("TestInlineCustomPropertyNumeric", () => {
       B: "quantity",
     });
     expect(icp.formula).toBe("A * B");
-    expect(Object.keys(icp.inputs).length).toBe(2);
+    expect(Object.keys(icp.inputs)).toHaveLength(2);
     expect(icp.inputs["A"]!.name).toBe("price");
     expect(icp.inputs["A"]!.type).toBe("number");
     expect(icp.inputs["A"]!.resource_type).toBe("event");
@@ -166,7 +167,7 @@ describe("TestInlineCustomPropertyNumeric", () => {
   it("works with a single input", () => {
     const icp = InlineCustomProperty.numeric("A", { A: "revenue" });
     expect(icp.formula).toBe("A");
-    expect(Object.keys(icp.inputs).length).toBe(1);
+    expect(Object.keys(icp.inputs)).toHaveLength(1);
     expect(icp.inputs["A"]!.name).toBe("revenue");
     expect(icp.inputs["A"]!.type).toBe("number");
     expect(icp.property_type).toBe("number");
@@ -320,7 +321,7 @@ describe("TestCustomPropertyValidationCP2", () => {
 
   it("a whitespace-only formula raises", async () => {
     const icp = new InlineCustomProperty({
-      formula: "   ",
+      formula: " ".repeat(3),
       inputs: { A: new PropertyInput({ name: "price" }) },
     });
     await expect(

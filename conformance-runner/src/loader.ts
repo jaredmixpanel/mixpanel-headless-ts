@@ -19,11 +19,10 @@
  *   or hand-edited snapshot must never silently skew a conformance run.
  */
 
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
-import type { JsonValue } from "./json-value.js";
-import { JsonNumber } from "./json-value.js";
+import { JsonNumber, type JsonValue } from "./json-value.js";
 import { parseLossless } from "./lossless-json.js";
 import type {
   BundleInfo,
@@ -233,9 +232,9 @@ function loadManifest(
   let text: string;
   try {
     text = readFileSync(manifestPath, "utf8");
-  } catch (cause) {
+  } catch (error) {
     throw new CorpusIntegrityError(
-      `corpus manifest not found at ${manifestPath} (run scripts/sync-corpus.sh): ${String(cause)}`,
+      `corpus manifest not found at ${manifestPath} (run scripts/sync-corpus.sh): ${String(error)}`,
     );
   }
   const raw = asObject(parseLossless(text), "manifest.json");
@@ -327,7 +326,7 @@ function toVector(
     id,
     kind: kind as VectorKind,
     ...(typeof capability === "string" ? { capability } : {}),
-    ...(origin !== undefined ? { origin: origin as VectorOrigin } : {}),
+    ...(origin === undefined ? {} : { origin: origin as VectorOrigin }),
     ...(typeof sourceTest === "string" ? { sourceTest } : {}),
     api,
     input,
@@ -349,7 +348,6 @@ function toVector(
  *   pin mismatch, malformed bundle header, header/vector count mismatch,
  *   bundle commit drift, duplicate vector ids, malformed vector lines, or
  *   a manifest total that disagrees with the loaded vector count.
- *
  * @example
  * ```typescript
  * const config = loadCorpusConfig(packageDir);
@@ -394,7 +392,7 @@ export function loadCorpus(
     // headers, which carry `generator`/`source_root` provenance instead),
     // so only extracted bundles are held to the manifest-commit equality
     // (D12 drift protection).
-    const isAuthored = bundlePath.split(/[/\\]/)[0] === "authored";
+    const isAuthored = bundlePath.split(/[/\\]/, 1)[0] === "authored";
     const bundleCommit = isAuthored
       ? optionalString(header, "source_commit", `${bundlePath} $bundle`)
       : requireString(header, "source_commit", `${bundlePath} $bundle`);
@@ -419,8 +417,8 @@ export function loadCorpus(
       : requireString(header, "source_file", `${bundlePath} $bundle`);
     bundles.push({
       path: bundlePath,
-      ...(bundleCommit !== undefined ? { sourceCommit: bundleCommit } : {}),
-      ...(sourceFile !== undefined ? { sourceFile } : {}),
+      ...(bundleCommit === undefined ? {} : { sourceCommit: bundleCommit }),
+      ...(sourceFile === undefined ? {} : { sourceFile }),
       count: declaredCount,
     });
     for (const [index, line] of vectorLines.entries()) {

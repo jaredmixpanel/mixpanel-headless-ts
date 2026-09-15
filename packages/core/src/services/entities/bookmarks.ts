@@ -15,8 +15,8 @@ import type { ClientCore } from "../../client/client.js";
 import { isPlainRecord } from "../../client/internals.js";
 import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
-import { MixpanelHeadlessError } from "../../errors.js";
 import { pythonStr } from "../../compat/python-str.js";
+import { MixpanelHeadlessError } from "../../errors.js";
 import {
   expectListResult,
   expectRecordResult,
@@ -60,7 +60,7 @@ export interface BookmarkMethods {
    * @throws AuthenticationError | RateLimitError | QueryError |
    *   ServerError - Per the B0 `appRequest` contract.
    */
-  listBookmarksV2(options?: ListBookmarksV2Options): Promise<JsonValue[]>;
+  listBookmarksV2: (options?: ListBookmarksV2Options) => Promise<JsonValue[]>;
 
   /**
    * Create a bookmark (`create_bookmark`, `:4479-4513` — the body
@@ -71,10 +71,10 @@ export interface BookmarkMethods {
    * @returns The created bookmark dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  createBookmark(
+  createBookmark: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Get a bookmark by ID (`get_bookmark`, `:4515-4543` — sends
@@ -85,10 +85,10 @@ export interface BookmarkMethods {
    * @returns The bookmark dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  getBookmark(
+  getBookmark: (
     bookmarkId: number,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Update a bookmark (`update_bookmark`, `:4545-4575` — PATCH; the
@@ -100,11 +100,11 @@ export interface BookmarkMethods {
    * @returns The updated bookmark dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  updateBookmark(
+  updateBookmark: (
     bookmarkId: number,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Delete a bookmark (`delete_bookmark`, `:4577-4596`).
@@ -113,7 +113,7 @@ export interface BookmarkMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  deleteBookmark(bookmarkId: number, signal?: AbortSignal): Promise<void>;
+  deleteBookmark: (bookmarkId: number, signal?: AbortSignal) => Promise<void>;
 
   /**
    * Bulk-delete bookmarks (`bulk_delete_bookmarks`, `:4598-4617` —
@@ -123,10 +123,10 @@ export interface BookmarkMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  bulkDeleteBookmarks(
+  bulkDeleteBookmarks: (
     ids: readonly number[],
     signal?: AbortSignal,
-  ): Promise<void>;
+  ) => Promise<void>;
 
   /**
    * Bulk-update bookmarks (`bulk_update_bookmarks`, `:4619-4640` —
@@ -136,10 +136,10 @@ export interface BookmarkMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  bulkUpdateBookmarks(
+  bulkUpdateBookmarks: (
     entries: ReadonlyArray<Record<string, unknown>>,
     signal?: AbortSignal,
-  ): Promise<void>;
+  ) => Promise<void>;
 
   /**
    * Dashboard IDs linked to a bookmark
@@ -151,10 +151,10 @@ export interface BookmarkMethods {
    * @returns The ID list verbatim.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  bookmarkLinkedDashboardIds(
+  bookmarkLinkedDashboardIds: (
     bookmarkId: number,
     signal?: AbortSignal,
-  ): Promise<JsonValue[]>;
+  ) => Promise<JsonValue[]>;
 
   /**
    * Change history for a bookmark (`get_bookmark_history`,
@@ -166,10 +166,10 @@ export interface BookmarkMethods {
    * @returns `{results, pagination}` per the source's shaping.
    * @throws MixpanelHeadlessError - Non-dict, non-list raw response.
    */
-  getBookmarkHistory(
+  getBookmarkHistory: (
     bookmarkId: number,
     options?: GetBookmarkHistoryOptions,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 }
 
 /**

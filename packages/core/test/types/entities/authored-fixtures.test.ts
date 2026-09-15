@@ -17,6 +17,7 @@
 // are locked by their P2-4 parse-factory suites instead
 // (`packages/core/test/auth/*.test.ts`) and are not repeated here.
 import { describe, expect, it } from "vitest";
+
 import { ResponseValidationError } from "../../../src/errors.js";
 import * as entities from "../../../src/types/entities/index.js";
 import {

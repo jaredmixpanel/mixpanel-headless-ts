@@ -15,22 +15,23 @@
 // calls (the `httpx.MockTransport` twin records every request).
 
 import { describe, expect, it } from "vitest";
+
+import {
+  CODED_GUARD_REGISTRY,
+  ParamValidationError,
+} from "../../src/errors.js";
+import { UpdateAnnotationParams } from "../../src/types/entities/annotations.js";
 import { Workspace } from "../../src/workspace.js";
 import {
   requireEntityId,
   requireInt64Id,
 } from "../../src/workspace-members/shared.js";
 import {
-  CODED_GUARD_REGISTRY,
-  ParamValidationError,
-} from "../../src/errors.js";
-import {
-  createMockClient,
-  makeSession,
   type CannedResponse,
   type CapturedFetchRequest,
+  createMockClient,
+  makeSession,
 } from "../../test-support/client-test-helpers.js";
-import { UpdateAnnotationParams } from "../../src/types/entities/annotations.js";
 
 /** The OAuth session the mock client is built over. */
 const CLIENT_SESSION = makeSession({
@@ -75,8 +76,8 @@ function makeWorkspace(): { ws: Workspace; calls: CapturedFetchRequest[] } {
 async function caught(thunk: () => unknown): Promise<unknown> {
   try {
     await thunk();
-  } catch (exc) {
-    return exc;
+  } catch (error) {
+    return error;
   }
   return undefined;
 }
@@ -117,8 +118,8 @@ describe("requireEntityId", () => {
     let error: unknown;
     try {
       requireEntityId("annotation_id", value);
-    } catch (exc) {
-      error = exc;
+    } catch (error_) {
+      error = error_;
     }
     expect(error).toBeInstanceOf(ParamValidationError);
     const coded = error as ParamValidationError;
@@ -134,8 +135,8 @@ describe("requireEntityId", () => {
     const objErr = (() => {
       try {
         requireEntityId("bookmark_id", secretish);
-      } catch (exc) {
-        return exc as ParamValidationError;
+      } catch (error) {
+        return error as ParamValidationError;
       }
       return undefined;
     })();
@@ -144,8 +145,8 @@ describe("requireEntityId", () => {
     const strErr = (() => {
       try {
         requireEntityId("bookmark_id", long);
-      } catch (exc) {
-        return exc as ParamValidationError;
+      } catch (error) {
+        return error as ParamValidationError;
       }
       return undefined;
     })();
@@ -196,8 +197,8 @@ describe("requireInt64Id", () => {
     let error: unknown;
     try {
       requireInt64Id("data_group_id", value);
-    } catch (exc) {
-      error = exc;
+    } catch (error_) {
+      error = error_;
     }
     expect(error).toBeInstanceOf(ParamValidationError);
     const coded = error as ParamValidationError;
@@ -224,8 +225,8 @@ describe("requireInt64Id", () => {
       let error: unknown;
       try {
         requireInt64Id("data_group_id", value);
-      } catch (exc) {
-        error = exc;
+      } catch (error_) {
+        error = error_;
       }
       expect(error).toBeInstanceOf(ParamValidationError);
       const coded = error as ParamValidationError;

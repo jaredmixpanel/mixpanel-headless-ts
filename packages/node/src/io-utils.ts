@@ -45,10 +45,10 @@ import { constants as osConstants } from "node:os";
 import { basename, dirname, join } from "node:path";
 
 import {
-  pythonStrip,
   ConfigError,
   MixpanelHeadlessError,
   ParamValidationError,
+  pythonStrip,
 } from "@mixpanel-headless/core";
 
 /**
@@ -153,26 +153,26 @@ export function isErrnoError(exc: unknown): exc is NodeJS.ErrnoException {
  */
 export interface AtomicWriteFsOps {
   /** `os.open` twin (flags include `O_WRONLY|O_CREAT|O_EXCL`). */
-  openSync(path: string, flags: number, mode: number): number;
+  openSync: (path: string, flags: number, mode: number) => number;
   /** `os.fchmod` twin. */
-  fchmodSync(fd: number, mode: number): void;
+  fchmodSync: (fd: number, mode: number) => void;
   /**
    * `os.write` twin — may short-write; the caller loops.
    *
    * @returns Bytes written from `data[offset…offset+length)`.
    */
-  writeSync(
+  writeSync: (
     fd: number,
     data: Uint8Array,
     offset: number,
     length: number,
-  ): number;
+  ) => number;
   /** `os.close` twin. */
-  closeSync(fd: number): void;
+  closeSync: (fd: number) => void;
   /** `os.replace` twin (POSIX-atomic same-filesystem rename). */
-  renameSync(from: string, to: string): void;
+  renameSync: (from: string, to: string) => void;
   /** `Path.unlink(missing_ok=True)` twin (caller suppresses ENOENT). */
-  unlinkSync(path: string): void;
+  unlinkSync: (path: string) => void;
 }
 
 /** The real node:fs implementations. */
@@ -241,7 +241,7 @@ export function atomicWriteBytes(
   options: AtomicWriteOptions = {},
 ): void {
   const mode = options.mode ?? 0o600;
-  const ops: AtomicWriteFsOps = { ...REAL_FS_OPS, ...(options.fsOps ?? {}) };
+  const ops: AtomicWriteFsOps = { ...REAL_FS_OPS, ...options.fsOps };
   if ((mode & 0o077) !== 0) {
     throw new ParamValidationError(
       `atomic_write_bytes mode must not grant group/world access; got ${octal(mode)}`,
@@ -276,16 +276,16 @@ export function atomicWriteBytes(
       ops.closeSync(fd);
     }
     ops.renameSync(tmpPath, path);
-  } catch (exc) {
+  } catch (error) {
     try {
       ops.unlinkSync(tmpPath);
-    } catch (unlinkExc) {
+    } catch (error_) {
       // `Path.unlink(missing_ok=True)` — only ENOENT is suppressed.
-      if ((unlinkExc as NodeJS.ErrnoException).code !== "ENOENT") {
-        throw unlinkExc;
+      if ((error_ as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw error_;
       }
     }
-    throw exc;
+    throw error;
   }
 }
 
@@ -430,15 +430,15 @@ function defaultStdinReadSync(buffer: Uint8Array): number {
   for (;;) {
     try {
       return readSync(0, buffer, 0, buffer.length, null);
-    } catch (exc) {
-      const code = (exc as NodeJS.ErrnoException).code;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
       if (code === "EAGAIN") {
         continue;
       }
       if (code === "EOF") {
         return 0;
       }
-      throw exc;
+      throw error;
     }
   }
 }

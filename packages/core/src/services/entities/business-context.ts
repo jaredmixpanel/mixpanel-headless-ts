@@ -34,9 +34,9 @@ export interface BusinessContextMethods {
    * @returns `{content: "<markdown>"}` (empty string when unset).
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  getBusinessContext(
+  getBusinessContext: (
     options?: BusinessContextScopeOptions,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Replace business context (`set_business_context`, `:8737-8793` —
@@ -47,10 +47,10 @@ export interface BusinessContextMethods {
    * @returns `{content: "<saved markdown>"}` echoed by the server.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  setBusinessContext(
+  setBusinessContext: (
     content: string,
     options?: BusinessContextScopeOptions,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Fetch org + project context together (`get_business_context_chain`,
@@ -60,9 +60,9 @@ export interface BusinessContextMethods {
    * @returns `{org_context, project_context}`.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  getBusinessContextChain(
+  getBusinessContextChain: (
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 }
 
 /**

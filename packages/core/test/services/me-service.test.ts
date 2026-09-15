@@ -18,19 +18,20 @@
 // survives without disk.
 
 import { describe, expect, it, vi } from "vitest";
-import {
-  MeService,
-  inMemoryMeCache,
-  type MeCacheStore,
-  type MeClient,
-} from "../../src/services/me.js";
+
+import type { JsonValue } from "../../src/client/json-value.js";
 import { MeResponse, MeWorkspaceInfo } from "../../src/client/me.js";
 import {
   AuthenticationError,
   ConfigError,
   QueryError,
 } from "../../src/errors.js";
-import type { JsonValue } from "../../src/client/json-value.js";
+import {
+  inMemoryMeCache,
+  type MeCacheStore,
+  type MeClient,
+  MeService,
+} from "../../src/services/me.js";
 
 /** The `_make_me_response_dict()` twin (`test_me.py:412-456`). */
 function meResponseDict(): Record<string, JsonValue> {
@@ -118,7 +119,7 @@ describe("MeService.fetch (test_me.py:487-532)", () => {
 
     const result = await service.fetch();
 
-    expect(calls.length).toBe(1);
+    expect(calls).toHaveLength(1);
     expect(result.user_id).toBe(42);
     expect(result.user_email).toBe("test@example.com");
   });
@@ -129,7 +130,7 @@ describe("MeService.fetch (test_me.py:487-532)", () => {
     await service.fetch();
     await service.fetch();
 
-    expect(calls.length).toBe(1);
+    expect(calls).toHaveLength(1);
   });
 
   it("force_refresh bypasses every cache", async () => {
@@ -138,7 +139,7 @@ describe("MeService.fetch (test_me.py:487-532)", () => {
     await service.fetch();
     await service.fetch({ force_refresh: true });
 
-    expect(calls.length).toBe(2);
+    expect(calls).toHaveLength(2);
   });
 
   it("a second service reads the shared store instead of the API", async () => {
@@ -146,12 +147,12 @@ describe("MeService.fetch (test_me.py:487-532)", () => {
     const { client, calls } = mockApi();
     const first = new MeService(client, cache, "us");
     await first.fetch();
-    expect(calls.length).toBe(1);
+    expect(calls).toHaveLength(1);
 
     const second = new MeService(client, cache, "us");
     const result = await second.fetch();
 
-    expect(calls.length).toBe(1);
+    expect(calls).toHaveLength(1);
     expect(result.user_id).toBe(42);
   });
 
@@ -169,7 +170,7 @@ describe("MeService.fetch (test_me.py:487-532)", () => {
     const { service, calls } = makeService();
 
     expect(await service.peek()).toBeNull();
-    expect(calls.length).toBe(0);
+    expect(calls).toHaveLength(0);
   });
 });
 
@@ -185,9 +186,9 @@ describe("MeService.fetch error handling (test_me.py:534-597)", () => {
     try {
       await service.fetch();
       expect.unreachable("401 must raise");
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(ConfigError);
-      const err = exc as ConfigError;
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConfigError);
+      const err = error as ConfigError;
       expect(err.message).toMatch(/invalid \(401\)/);
       expect(err.message).toContain("mp account login");
       expect(err.details["status_code"]).toBe(401);
@@ -207,8 +208,8 @@ describe("MeService.fetch error handling (test_me.py:534-597)", () => {
     try {
       await service.fetch();
       expect.unreachable("403 must raise");
-    } catch (exc) {
-      const err = exc as ConfigError;
+    } catch (error) {
+      const err = error as ConfigError;
       expect(err.message).toBe(
         "Service account 'personal' is missing the `user_details` scope.\n\n" +
           "Re-mint the SA in Mixpanel Settings → Service Accounts with " +
@@ -231,8 +232,8 @@ describe("MeService.fetch error handling (test_me.py:534-597)", () => {
     try {
       await service.fetch();
       expect.unreachable("403 must raise");
-    } catch (exc) {
-      const err = exc as ConfigError;
+    } catch (error) {
+      const err = error as ConfigError;
       expect(err.message).toMatch(/lacks \/me permission/);
       expect(err.message).toContain("--project");
       expect(err.details["status_code"]).toBe(403);
@@ -255,7 +256,7 @@ describe("MeService.listProjects / findProject (test_me.py:601-630)", () => {
 
     const projects = await service.listProjects();
 
-    expect(projects.length).toBe(2);
+    expect(projects).toHaveLength(2);
     expect(projects[0]?.[0]).toBe("3713224");
     expect(projects[0]?.[1].name).toBe("AI Demo");
     expect(projects[1]?.[0]).toBe("3018488");
@@ -267,7 +268,7 @@ describe("MeService.listProjects / findProject (test_me.py:601-630)", () => {
 
     await service.listProjects();
 
-    expect(calls.length).toBe(1);
+    expect(calls).toHaveLength(1);
   });
 
   it("finds an existing project by id", async () => {
@@ -287,7 +288,7 @@ describe("MeService.listWorkspaces (test_me.py:633-658)", () => {
   it("lists every workspace across projects", async () => {
     const { service } = makeService();
 
-    expect((await service.listWorkspaces()).length).toBe(3);
+    expect(await service.listWorkspaces()).toHaveLength(3);
   });
 
   it("filters by project id", async () => {
@@ -297,7 +298,7 @@ describe("MeService.listWorkspaces (test_me.py:633-658)", () => {
       project_id: "3713224",
     });
 
-    expect(workspaces.length).toBe(2);
+    expect(workspaces).toHaveLength(2);
     expect(new Set(workspaces.map((ws) => ws.name))).toEqual(
       new Set(["Default", "Staging"]),
     );
@@ -365,7 +366,7 @@ describe("MeService.resolveWorkspace (me.py:869-915) — the dagger path", () =>
     const { service, calls } = makeService();
 
     expect(await service.resolveWorkspace("3713224")).toBeNull();
-    expect(calls.length).toBe(0);
+    expect(calls).toHaveLength(0);
   });
 
   it("selects from the warm cache without a network call", async () => {
@@ -375,7 +376,7 @@ describe("MeService.resolveWorkspace (me.py:869-915) — the dagger path", () =>
     const resolved = await service.resolveWorkspace("3713224");
 
     expect(resolved).toBe(3448413);
-    expect(calls.length).toBe(1);
+    expect(calls).toHaveLength(1);
   });
 
   it("returns null for a non-numeric project id", async () => {

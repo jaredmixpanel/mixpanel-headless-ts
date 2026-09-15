@@ -25,7 +25,6 @@ import { NON_PRINTABLE_RANGES } from "./non-printable.gen.js";
  * @param codepoint - The Unicode codepoint (0 to 0x10FFFF; lone
  *   surrogates are valid inputs and classify as `Cs`, non-printable).
  * @returns `true` when CPython would escape the codepoint in `repr()`.
- *
  * @example
  * ```typescript
  * isPythonNonPrintable(0x41); // false ("A")

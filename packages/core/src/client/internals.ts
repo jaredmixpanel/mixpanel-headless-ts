@@ -17,8 +17,13 @@
  * httpx (which raises on 3xx instead of silently following).
  */
 
-import { cpSlice, pythonInt, pythonStr, pythonStrip } from "../compat/index.js";
-import type { PythonValue } from "../compat/index.js";
+import {
+  cpSlice,
+  pythonInt,
+  pythonStr,
+  pythonStrip,
+  type PythonValue,
+} from "../compat/index.js";
 import {
   AuthenticationError,
   MixpanelHeadlessError,
@@ -29,8 +34,8 @@ import {
 } from "../errors.js";
 import {
   parseRetryAfter,
-  retryWaitSeconds,
   type RandomSource,
+  retryWaitSeconds,
 } from "./backoff.js";
 import { QUERY_ORIGIN } from "./headers.js";
 import { JsonNumber, type JsonValue } from "./json-value.js";
@@ -63,7 +68,7 @@ export class MixpanelHttpError extends Error {
   ) {
     super(
       message,
-      options.cause !== undefined ? { cause: options.cause } : undefined,
+      options.cause === undefined ? undefined : { cause: options.cause },
     );
     this.name = "MixpanelHttpError";
     this.status = options.status ?? null;
@@ -82,7 +87,7 @@ export interface WireResponse {
    * @param name - Header name.
    * @returns The value, or `null` when absent.
    */
-  header(name: string): string | null;
+  header: (name: string) => string | null;
 }
 
 /** One outbound request as the injected executor receives it. */
@@ -121,7 +126,7 @@ export interface RetryLogger {
    *
    * @param message - The formatted warning text.
    */
-  warning(message: string): void;
+  warning: (message: string) => void;
 }
 
 /** Request context threaded into error constructors. */
@@ -152,7 +157,7 @@ export interface ResponseContext {
  */
 export function isPlainRecord(
   value: unknown,
-): value is { [key: string]: JsonValue } {
+): value is Record<string, JsonValue> {
   return (
     typeof value === "object" &&
     value !== null &&
@@ -235,7 +240,7 @@ function toPythonValue(value: JsonValue): PythonValue {
     return value.map(toPythonValue);
   }
   if (isPlainRecord(value)) {
-    const out: { [key: string]: PythonValue } = {};
+    const out: Record<string, PythonValue> = {};
     for (const [key, member] of Object.entries(value)) {
       out[key] = toPythonValue(member);
     }
@@ -282,7 +287,7 @@ export function errorMessage(
     return defaultMessage;
   }
   // Python `text.strip()` uses the CPython whitespace set (R11.3 dep).
-  return pythonStrip(text) !== "" ? text : defaultMessage;
+  return pythonStrip(text) === "" ? defaultMessage : text;
 }
 
 /**
@@ -300,14 +305,14 @@ export function errorMessage(
 function parseBody(text: string): JsonValue | null {
   try {
     return parseLossless(text, { pythonConstants: true });
-  } catch (e) {
+  } catch (error) {
     // Python catches `json.JSONDecodeError` ONLY — anything else (the
     // RecursionError analog) propagates.
-    if (!(e instanceof LosslessJsonError)) {
-      throw e;
+    if (!(error instanceof LosslessJsonError)) {
+      throw error;
     }
     // Python: `response.text[:500] if response.text else None`.
-    return text !== "" ? cpSlice(text, 0, 500) : null;
+    return text === "" ? null : cpSlice(text, 0, 500);
   }
 }
 
@@ -474,7 +479,7 @@ export function handleResponse(
   }
   if (response.status >= 500) {
     throw new ServerError(
-      "Server error: " + errorMessage(responseBody, String(response.status)),
+      `Server error: ${errorMessage(responseBody, String(response.status))}`,
       {
         statusCode: response.status,
         responseBody,
@@ -501,16 +506,16 @@ export function handleResponse(
   // scope — anything else propagates, arbiter fix F3/A2).
   try {
     return parseLossless(response.text, { pythonConstants: true });
-  } catch (cause) {
-    if (!(cause instanceof LosslessJsonError)) {
-      throw cause;
+  } catch (error) {
+    if (!(error instanceof LosslessJsonError)) {
+      throw error;
     }
     throw new MixpanelHeadlessError(
       `Non-JSON response from ${requestMethod} ${requestUrl} ` +
         `(status ${response.status}): ${cpSlice(response.text, 0, 500)}`,
       "INVALID_RESPONSE",
       null,
-      { cause },
+      { cause: error },
     );
   }
 }
@@ -520,7 +525,7 @@ export interface RetryExecutorDeps {
   /** Transport seam (see {@link RequestExecutor} contract). */
   readonly request: RequestExecutor;
   /** Sleep seam in MILLISECONDS (R2.12/R6.3; fake-timer friendly). */
-  sleep(ms: number): Promise<void>;
+  sleep: (ms: number) => Promise<void>;
   /** Uniform-[0,1) RNG for backoff jitter (injectable, Discrepancy #1). */
   readonly random: RandomSource;
   /** Maximum retry attempts for rate-limited requests (Python default 3). */
@@ -535,7 +540,7 @@ export interface RetryExecutorDeps {
    * @param url - The full request URL.
    * @returns The timeout in seconds.
    */
-  defaultTimeoutSeconds(url: string): number;
+  defaultTimeoutSeconds: (url: string) => number;
   /**
    * The B0-owned 4-layer header merge, pre-bound to the session
    * (`headers.ts` `requestHeaders`; B4-C1 imports it by name).
@@ -543,7 +548,7 @@ export interface RetryExecutorDeps {
    * @param extra - Per-call headers (Authorization etc.).
    * @returns The merged header set.
    */
-  requestHeaders(extra: Record<string, string>): Record<string, string>;
+  requestHeaders: (extra: Record<string, string>) => Record<string, string>;
   /** Bound project id (`session.project.id`). */
   readonly projectId: string;
   /** Optional retry-warning logger (R9.5; never vector-compared). */
@@ -556,8 +561,10 @@ export interface ExecuteWithRetryArgs {
   readonly method: string;
   /** Full URL to request. */
   readonly url: string;
-  /** Optional query parameters — MUTATED with `query_origin` exactly as
-   * Python mutates the caller's dict (B0-notes decision 6). */
+  /**
+   * Optional query parameters — MUTATED with `query_origin` exactly as
+   * Python mutates the caller's dict (B0-notes decision 6).
+   */
   readonly params?: Record<string, unknown> | null | undefined;
   /** Optional JSON request body. */
   readonly jsonData?: Record<string, unknown> | null | undefined;
@@ -664,22 +671,22 @@ export async function executeWithRetry(
         requestBody,
         projectId: deps.projectId,
       });
-    } catch (e) {
+    } catch (error) {
       // R2.10: `except httpx.HTTPError` ports as the instanceof filter —
       // library errors (QueryError, RateLimitError, ...) pass through.
-      if (!(e instanceof MixpanelHttpError)) {
-        throw e;
+      if (!(error instanceof MixpanelHttpError)) {
+        throw error;
       }
       throw new MixpanelHeadlessError(
-        `HTTP error: ${e.message}`,
+        `HTTP error: ${error.message}`,
         "HTTP_ERROR",
         {
-          error: e.message,
+          error: error.message,
           request_method: args.method,
           request_url: args.url,
           request_params: params,
         },
-        { cause: e },
+        { cause: error },
       );
     }
   }

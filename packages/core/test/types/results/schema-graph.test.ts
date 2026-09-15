@@ -10,6 +10,7 @@
 // B4/B5/B6). Frame-identity caching translates to repeated-call
 // determinism.
 import { describe, expect, it } from "vitest";
+
 import { SchemaGraphResult } from "../../../src/types/results/discovery.js";
 
 /** Build the small sample result (Python `_sample_result`). */

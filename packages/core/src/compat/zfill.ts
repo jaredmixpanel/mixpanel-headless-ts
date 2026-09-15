@@ -25,7 +25,6 @@
  *   leading sign preserved in front of the padding.
  * @throws TypeError - When `width` is not an integer (CPython raises
  *   `TypeError` for non-`int` widths).
- *
  * @example
  * ```typescript
  * zfill("-1", 3); // "-01"

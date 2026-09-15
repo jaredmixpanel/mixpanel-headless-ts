@@ -10,11 +10,12 @@
 // Hand-writing params would test the classifier against a fiction; the
 // point is that it reads what `buildParams` et al. actually emit.
 import { describe, expect, it } from "vitest";
+
 import { inferBookmarkType } from "../../src/bookmarks/infer-type.js";
-import { Workspace } from "../../src/workspace.js";
+import { FlowStep } from "../../src/types/query-params/flow.js";
 import { Metric } from "../../src/types/query-params/metric.js";
 import { RetentionEvent } from "../../src/types/query-params/retention.js";
-import { FlowStep } from "../../src/types/query-params/flow.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   mockWorkspaceClient,
   TEST_SESSION,
@@ -34,11 +35,13 @@ function makeWs(): Workspace {
 }
 
 describe("inferBookmarkType — real builder output", () => {
-  const cases: [
-    string,
-    "insights" | "funnels" | "retention" | "flows",
-    () => Promise<unknown>,
-  ][] = [
+  const cases: Array<
+    [
+      string,
+      "insights" | "funnels" | "retention" | "flows",
+      () => Promise<unknown>,
+    ]
+  > = [
     [
       "buildParams, single event",
       "insights",
@@ -127,7 +130,7 @@ describe("inferBookmarkType — real builder output", () => {
 });
 
 describe("inferBookmarkType — returns null rather than guessing", () => {
-  const ambiguous: [string, unknown][] = [
+  const ambiguous: Array<[string, unknown]> = [
     ["null", null],
     ["undefined", undefined],
     ["a string", "insights"],

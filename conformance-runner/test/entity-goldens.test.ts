@@ -26,19 +26,22 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
+
+import * as entities from "@mixpanel-headless/core";
 import {
-  ResponseValidationError,
   parseWorkspaceRef,
+  ResponseValidationError,
   type WorkspaceRef,
 } from "@mixpanel-headless/core";
-import * as entities from "@mixpanel-headless/core";
 import {
   EntityModel,
   type EntityModelStatics,
 } from "@mixpanel-headless/core/internal";
+
 import { createRunnerDeps } from "../src/bindings.js";
-import { type JsonValue } from "../src/json-value.js";
+import type { JsonValue } from "../src/json-value.js";
 import { loadCorpus, loadCorpusConfig } from "../src/loader.js";
 import { diffPlainPayload } from "./support/plain-diff.js";
 

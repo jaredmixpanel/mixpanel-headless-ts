@@ -15,25 +15,26 @@
 
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
+import { type Account, parseAccount } from "../../src/auth/account.js";
 import {
+  type BridgeView,
   envWorkspaceId,
   resolveAccountAxis,
   resolveProjectAxis,
-  resolveSession,
-  type BridgeView,
   type ResolverConfigSource,
   type ResolverEnv,
   type ResolverSources,
+  resolveSession,
 } from "../../src/auth/resolver.js";
-import { parseAccount, type Account } from "../../src/auth/account.js";
 import type { ActiveSession } from "../../src/auth/session.js";
-import { Target } from "../../src/types/entities/accounts.js";
 import {
   AccountNotFoundError,
   ConfigError,
   MixpanelHeadlessError,
   ParamValidationError,
 } from "../../src/errors.js";
+import { Target } from "../../src/types/entities/accounts.js";
 
 /**
  * Run a thunk, capture the thrown error's class + code.
@@ -127,9 +128,9 @@ function sa(name: string, defaultProject?: string): Account {
     region: "us",
     username: "u",
     secret: "s",
-    ...(defaultProject !== undefined
-      ? { default_project: defaultProject }
-      : {}),
+    ...(defaultProject === undefined
+      ? {}
+      : { default_project: defaultProject }),
   });
 }
 

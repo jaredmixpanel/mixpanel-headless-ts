@@ -3,6 +3,7 @@
 // 2026-08-15, recorded in context/phase3/notes/B0-notes.md).
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import { pythonStrip } from "../../src/compat/python-strip.js";
 import { PYTHON_STR_WHITESPACE } from "../../src/compat/whitespace.gen.js";
 
@@ -12,24 +13,24 @@ describe("pythonStrip — CPython str.strip() semantics", () => {
   });
 
   it("strips U+001C..U+001F (Python-only: JS trim() keeps them)", () => {
-    expect(pythonStrip("\u001chi\u001f")).toBe("hi");
-    expect("\u001chi\u001f".trim()).toBe("\u001chi\u001f"); // the JS contrast
+    expect(pythonStrip("\u001Chi\u001F")).toBe("hi");
+    expect("\u001Chi\u001F".trim()).toBe("\u001Chi\u001F"); // the JS contrast
   });
 
   it("keeps U+FEFF (JS-only trim member: Python str.strip() keeps the BOM)", () => {
-    expect(pythonStrip("\ufeffhi\ufeff")).toBe("\ufeffhi\ufeff");
-    expect("\ufeffhi\ufeff".trim()).toBe("hi"); // the JS contrast
+    expect(pythonStrip("\uFEFFhi\uFEFF")).toBe("\uFEFFhi\uFEFF");
+    expect("\uFEFFhi\uFEFF".trim()).toBe("hi"); // the JS contrast
   });
 
   it("strips NBSP and the non-ASCII Unicode space block", () => {
-    expect(pythonStrip("\u00a0hi\u00a0")).toBe("hi");
+    expect(pythonStrip("\u00A0hi\u00A0")).toBe("hi");
     expect(pythonStrip("\u2000\u2003hi\u3000")).toBe("hi");
     expect(pythonStrip("hi\u0085\u2028")).toBe("hi");
   });
 
   it("returns the empty string for empty and all-whitespace input", () => {
     expect(pythonStrip("")).toBe("");
-    expect(pythonStrip(" \t\u3000\u001c")).toBe("");
+    expect(pythonStrip(" \t\u3000\u001C")).toBe("");
   });
 
   it("leaves interior whitespace untouched", () => {

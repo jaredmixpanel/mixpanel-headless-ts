@@ -22,8 +22,7 @@
  *   short.
  */
 
-import type { CredentialStore } from "@mixpanel-headless/core";
-import { OAuthError } from "@mixpanel-headless/core";
+import { type CredentialStore, OAuthError } from "@mixpanel-headless/core";
 
 /**
  * Structural view of the Web `Storage` API — the injection seam of
@@ -38,7 +37,7 @@ export interface StorageLike {
    * @param key - Storage key.
    * @returns The stored string, or `null` when absent.
    */
-  getItem(key: string): string | null;
+  getItem: (key: string) => string | null;
 
   /**
    * Write an item.
@@ -46,14 +45,14 @@ export interface StorageLike {
    * @param key - Storage key.
    * @param value - Value to store.
    */
-  setItem(key: string, value: string): void;
+  setItem: (key: string, value: string) => void;
 
   /**
    * Remove an item.
    *
    * @param key - Storage key.
    */
-  removeItem(key: string): void;
+  removeItem: (key: string) => void;
 }
 
 /**
@@ -185,14 +184,14 @@ export class LocalStorageCredentialStore implements CredentialStore {
   #guarded<T>(operation: string, run: () => T): T {
     try {
       return run();
-    } catch (cause) {
+    } catch (error) {
       throw new OAuthError(
         `localStorage ${operation} failed (quota exhausted or storage ` +
           "unavailable — e.g. private browsing). The credential was NOT " +
           "persisted; choose a different CredentialStore or free space.",
         "OAUTH_CONFIG_ERROR",
         { seam: "localStorage", operation },
-        { cause },
+        { cause: error },
       );
     }
   }

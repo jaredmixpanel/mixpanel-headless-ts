@@ -30,14 +30,14 @@ import {
 } from "../errors.js";
 import {
   parseRetryAfter,
-  retryWaitSeconds,
   type RandomSource,
+  retryWaitSeconds,
 } from "./backoff.js";
 import {
-  MixpanelHttpError,
   errorMessage,
   handleResponse,
   isPlainRecord,
+  MixpanelHttpError,
   parseBody,
   type RequestExecutor,
   type RetryLogger,
@@ -52,7 +52,7 @@ export interface AppRequestDeps {
   /** Transport seam (R2.10/R2.11 contract — see `internals.ts`). */
   readonly request: RequestExecutor;
   /** Sleep seam in MILLISECONDS (R2.12/R6.3). */
-  sleep(ms: number): Promise<void>;
+  sleep: (ms: number) => Promise<void>;
   /** Uniform-[0,1) RNG for backoff jitter. */
   readonly random: RandomSource;
   /** Maximum retry attempts for rate-limited requests (Python default 3). */
@@ -65,14 +65,14 @@ export interface AppRequestDeps {
    * @param url - The full request URL.
    * @returns The timeout in seconds.
    */
-  defaultTimeoutSeconds(url: string): number;
+  defaultTimeoutSeconds: (url: string) => number;
   /**
    * The B0-owned 4-layer header merge, pre-bound to the session.
    *
    * @param extra - Per-call headers (Authorization etc.).
    * @returns The merged header set.
    */
-  requestHeaders(extra: Record<string, string>): Record<string, string>;
+  requestHeaders: (extra: Record<string, string>) => Record<string, string>;
   /** Bound project id (`session.project.id`). */
   readonly projectId: string;
   /** Data-residency region (`session.account.region`). */
@@ -90,7 +90,7 @@ export interface AppRequestDeps {
    *
    * @returns The Authorization header value.
    */
-  getAuthHeader(): string | Promise<string>;
+  getAuthHeader: () => string | Promise<string>;
   /** Optional retry-warning logger (R9.5). */
   readonly logger?: RetryLogger | undefined;
 }
@@ -142,7 +142,6 @@ export interface AppRequestOptions {
  * @throws ServerError - Server-side errors (5xx).
  * @throws MixpanelHeadlessError - Network/connection errors
  *   (`HTTP_ERROR`, R2.10).
- *
  * @example
  * ```typescript
  * const dashboards = await appRequest(deps, "GET", "/projects/12345/dashboards");
@@ -182,7 +181,7 @@ export async function appRequest(
   }
 
   const requestBody: Record<string, unknown> | null =
-    formBody !== null ? formBody : jsonBody;
+    formBody === null ? jsonBody : formBody;
 
   for (let attempt = 0; attempt <= deps.maxRetries; attempt += 1) {
     try {
@@ -190,7 +189,7 @@ export async function appRequest(
         method,
         url,
         params: requestParams,
-        jsonBody: formBody !== null ? null : jsonBody,
+        jsonBody: formBody === null ? jsonBody : null,
         formBody,
         headers,
         timeoutSeconds: deps.defaultTimeoutSeconds(url),
@@ -238,12 +237,12 @@ export async function appRequest(
         let errBody: JsonValue | null;
         try {
           errBody = parseLossless(response.text, { pythonConstants: true });
-        } catch (e) {
-          if (!(e instanceof LosslessJsonError)) {
-            throw e;
+        } catch (error) {
+          if (!(error instanceof LosslessJsonError)) {
+            throw error;
           }
           errBody =
-            response.text !== "" ? cpSlice(response.text, 0, 500) : null;
+            response.text === "" ? null : cpSlice(response.text, 0, 500);
         }
         throw new QueryError(errorMessage(errBody, "Unprocessable entity"), {
           statusCode: 422,
@@ -274,21 +273,21 @@ export async function appRequest(
         return result["results"] ?? null;
       }
       return result;
-    } catch (e) {
+    } catch (error) {
       // R2.10: `except httpx.HTTPError` → the instanceof filter.
-      if (!(e instanceof MixpanelHttpError)) {
-        throw e;
+      if (!(error instanceof MixpanelHttpError)) {
+        throw error;
       }
       throw new MixpanelHeadlessError(
-        `HTTP error: ${e.message}`,
+        `HTTP error: ${error.message}`,
         "HTTP_ERROR",
         {
-          error: e.message,
+          error: error.message,
           request_method: method,
           request_url: url,
           request_params: requestParams,
         },
-        { cause: e },
+        { cause: error },
       );
     }
   }

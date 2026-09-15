@@ -11,11 +11,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ParamValidationError,
   parseAccount,
   parseSession,
   type Session,
-  ParamValidationError,
 } from "@mixpanel-headless/core";
+
 import {
   browserSession,
   createBrowserWorkspace,

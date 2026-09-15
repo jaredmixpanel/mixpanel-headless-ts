@@ -83,7 +83,6 @@ import {
 // this file's consumers: plain object — prototype `Object.prototype`
 // or `null`). Re-exported here so `user-validators.ts` and the B3-K4
 // grower keep their established import site.
-export { isPythonDict };
 
 /**
  * Python `isinstance(value, (str, int, float))` for the equals /
@@ -179,18 +178,18 @@ function selectorRepr(value: unknown): string {
  * @returns Formatted string suitable for embedding in a selector.
  * @throws TypeError - When the value is outside the `pythonStr` domain
  *   (out-of-annotation input only).
- *
  * @example
  * ```typescript
  * formatValue('say "hi"'); // '"say \\"hi\\""'
  * formatValue(18); // "18"
  * ```
- *
  * @internal
  */
 export function formatValue(value: unknown): string {
   if (typeof value === "string") {
-    const escaped = value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+    const escaped = value
+      .replaceAll("\\", "\\\\")
+      .replaceAll('"', String.raw`\"`);
     return `"${escaped}"`;
   }
   return pythonStrValue(value);
@@ -211,7 +210,6 @@ export function formatValue(value: unknown): string {
  *   filter's property is not a plain string (a `CustomPropertyRef` /
  *   `InlineCustomProperty` reaches this branch — custom properties are
  *   unsupported in `query_user()` filters).
- *
  * @internal
  */
 export function propRef(f: Filter): string {
@@ -224,7 +222,9 @@ export function propRef(f: Filter): string {
       "ES1_PROPERTY_NOT_STRING",
     );
   }
-  const escaped = property.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+  const escaped = property
+    .replaceAll("\\", "\\\\")
+    .replaceAll('"', String.raw`\"`);
   return `properties["${escaped}"]`;
 }
 
@@ -244,7 +244,6 @@ export function propRef(f: Filter): string {
  *
  * @param f - Filter to test.
  * @returns True when the filter's `_value` is a non-empty list of dicts.
- *
  * @example
  * ```typescript
  * isCohortFilter(Filter.inCohort(123)); // true
@@ -272,7 +271,6 @@ export function isCohortFilter(f: Filter): boolean {
  *   property is not a string; `ES2`–`ES12` when the value has the wrong
  *   shape for the operator; `ES13_UNSUPPORTED_OPERATOR` for any
  *   operator this translation does not handle.
- *
  * @example
  * ```typescript
  * filterToSelector(Filter.equals("plan", "premium"));
@@ -445,7 +443,6 @@ export function filterToSelector(f: Filter): string {
  * @throws ParamValidationError - Propagated from
  *   {@link filterToSelector} for the FIRST invalid Filter in list order
  *   (`ES1`–`ES13`).
- *
  * @example
  * ```typescript
  * filtersToSelector([Filter.equals("plan", "premium"), Filter.isSet("email")]);
@@ -462,10 +459,7 @@ export function filtersToSelector(filters: readonly Filter[]): string {
   // raise and later elements are never translated. A `.map().join()`
   // would translate every element before joining and could surface a
   // LATER element's error first — the loop preserves error order.
-  const parts: string[] = [];
-  for (const f of filters) {
-    parts.push(filterToSelector(f));
-  }
+  const parts: string[] = Array.from(filters, (f) => filterToSelector(f));
   return parts.join(" and ");
 }
 
@@ -486,7 +480,6 @@ export function filtersToSelector(filters: readonly Filter[]): string {
  * @param filters - Filters, possibly containing a cohort filter.
  * @returns A 2-tuple `[remaining, cohortOrNull]` — Python's
  *   `tuple[list[Filter], Filter | None]`.
- *
  * @example
  * ```typescript
  * const [remaining, cohort] = extractCohortFilter([
@@ -515,3 +508,5 @@ export function extractCohortFilter(
   }
   return [remaining, cohort];
 }
+
+export { isPythonDict } from "./validation-shared.js";

@@ -23,13 +23,14 @@
 // - Message-TEXT assertions (`"source='slug'" in str(exc)`) are not
 //   carried (R5.4); class, `.code` and `.details` are.
 import { describe, expect, it } from "vitest";
+
 import { ParamValidationError } from "../../src/errors.js";
 import { Bookmark, BookmarkUrl } from "../../src/types/entities/bookmarks.js";
 import { REPORT_LINK_TYPE_VALUES } from "../../src/types/literals.js";
 import {
   ReportLink,
-  ResolvedReport,
   type ReportLinkQueryResult,
+  ResolvedReport,
   type ResolvedReportFields,
 } from "../../src/types/report-links.js";
 import type {
@@ -320,8 +321,8 @@ describe("TestResolvedReport", () => {
     let caught: unknown;
     try {
       new ResolvedReport({ ...fields(null), slug: null });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ParamValidationError);
     const exc = caught as ParamValidationError;
@@ -333,8 +334,8 @@ describe("TestResolvedReport", () => {
     let caught: unknown;
     try {
       new ResolvedReport({ ...fields(null), source: "bookmark", slug: null });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ParamValidationError);
     const exc = caught as ParamValidationError;

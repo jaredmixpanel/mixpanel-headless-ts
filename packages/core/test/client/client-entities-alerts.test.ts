@@ -3,12 +3,13 @@
 // CRUD list/create/get/update/delete/bulk_delete + operations
 // count/history/test/screenshot/validate).
 import { describe, expect, it } from "vitest";
+
+import type { Session } from "../../src/auth/session.js";
 import { toNativeJson } from "../../src/client/json-value.js";
 import {
   createMockClient,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
-import type { Session } from "../../src/auth/session.js";
 
 /** The `oauth_credentials` fixture twin (test_api_client_alerts.py:27-30). */
 function oauthCredentials(): Session {

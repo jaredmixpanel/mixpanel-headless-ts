@@ -1,6 +1,7 @@
 // Unit tests for the lossless JSON parser (D6 rule 3 / D12 hard
 // requirement): raw number tokens must survive loading verbatim.
 import { describe, expect, it } from "vitest";
+
 import {
   JsonNumber,
   orderedEntries,
@@ -14,9 +15,10 @@ import {
 
 describe("parseLossless", () => {
   it("captures number tokens verbatim", () => {
-    const value = parseLossless('{"a": 18.0, "b": 18, "c": 1e-7}') as {
-      [key: string]: JsonNumber;
-    };
+    const value = parseLossless('{"a": 18.0, "b": 18, "c": 1e-7}') as Record<
+      string,
+      JsonNumber
+    >;
     expect(value["a"]).toBeInstanceOf(JsonNumber);
     expect(value["a"]?.raw).toBe("18.0");
     expect(value["b"]?.raw).toBe("18");
@@ -40,15 +42,16 @@ describe("parseLossless", () => {
 
   it("parses nested structures, literals and escapes", () => {
     const value = parseLossless(
-      '[null, true, false, "a\\nb\\u00e9", {"k": []}]',
+      String.raw`[null, true, false, "a\nb\u00e9", {"k": []}]`,
     );
     expect(value).toEqual([null, true, false, "a\nbé", { k: [] }]);
   });
 
   it("applies last-wins semantics to duplicate keys", () => {
-    const value = parseLossless('{"a": 1, "a": 2}') as {
-      [key: string]: JsonNumber;
-    };
+    const value = parseLossless('{"a": 1, "a": 2}') as Record<
+      string,
+      JsonNumber
+    >;
     expect(value["a"]?.raw).toBe("2");
   });
 
@@ -116,9 +119,10 @@ describe("parseLossless pythonConstants (json.loads non-finite tokens)", () => {
   });
 
   it("still parses ordinary numbers as JsonNumber tokens under the flag", () => {
-    const value = parseLossless('{"a": 18.0, "b": -2}', opts) as {
-      [key: string]: JsonNumber;
-    };
+    const value = parseLossless('{"a": 18.0, "b": -2}', opts) as Record<
+      string,
+      JsonNumber
+    >;
     expect(value["a"]).toBeInstanceOf(JsonNumber);
     expect(value["a"]?.raw).toBe("18.0");
     expect(value["b"]?.raw).toBe("-2");
@@ -215,12 +219,10 @@ describe("parseLossless ordered entries (B8-MAPFIX)", () => {
 // ADDITIVE: the int64 opt-out of the R4.5 double-rounding narrowing —
 // the carrier for lookup-table ids beyond 2^53.
 describe("toNativeJson unsafeIntegers", () => {
-  const TEXT =
-    '{"big": -8644926364725811123, "safe": 7, "edge": 9007199254740991, ' +
-    '"first_unsafe": 9007199254740992, "float": 42.0, "list": [1, 2 ** 0]}'.replace(
-      "2 ** 0",
-      "-9007199254740993",
-    );
+  const TEXT = `{"big": -8644926364725811123, "safe": 7, "edge": 9007199254740991, ${'"first_unsafe": 9007199254740992, "float": 42.0, "list": [1, 2 ** 0]}'.replace(
+    "2 ** 0",
+    "-9007199254740993",
+  )}`;
 
   it("rounds by default (the documented R4.5 narrowing)", () => {
     const native = toNativeJson(parseLossless(TEXT)) as Record<string, unknown>;

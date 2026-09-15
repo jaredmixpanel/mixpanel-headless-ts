@@ -10,9 +10,10 @@
 // cancellation behavior is Layer-3's job per the packet's
 // expectation-shape note).
 import { describe, expect, it } from "vitest";
+
 import { createMixpanelClient } from "../../src/client/client.js";
-import { ParamValidationError } from "../../src/errors.js";
 import type { JsonValue } from "../../src/client/json-value.js";
+import { ParamValidationError } from "../../src/errors.js";
 import {
   streamEvents,
   streamProfiles,
@@ -192,8 +193,8 @@ describe("retry timing in the export 429 loop", () => {
       )) {
         void event; // unreachable
       }
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(DOMException);
     expect((caught as DOMException).name).toBe("AbortError");
@@ -255,8 +256,8 @@ describe("stream_events / stream_profiles facade wrappers", () => {
       let caught: unknown;
       try {
         await iterator.next();
-      } catch (exc) {
-        caught = exc;
+      } catch (error) {
+        caught = error;
       }
       expect(caught).toBeInstanceOf(ParamValidationError);
       expect((caught as ParamValidationError).code).toBe(code);

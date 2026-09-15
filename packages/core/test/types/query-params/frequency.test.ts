@@ -9,17 +9,18 @@
 // the compile-time equivalent, and dataclass `==` is Python-only.)
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import { VALID_FREQUENCY_FILTER_OPERATORS } from "../../../src/bookmarks/enums.js";
 import {
-  MixpanelHeadlessError,
+  type MixpanelHeadlessError,
   ParamValidationError,
 } from "../../../src/errors.js";
+import type { FrequencyFilterOperator } from "../../../src/types/literals.js";
 import { Filter } from "../../../src/types/query-params/filter.js";
 import {
   FrequencyBreakdown,
   FrequencyFilter,
 } from "../../../src/types/query-params/frequency.js";
-import type { FrequencyFilterOperator } from "../../../src/types/literals.js";
 
 /**
  * Assert a thunk throws the exact guard `{class, code}` pair.
@@ -31,8 +32,8 @@ function expectGuard(thunk: () => unknown, code: string): void {
   let thrown: unknown;
   try {
     thunk();
-  } catch (cause) {
-    thrown = cause;
+  } catch (error) {
+    thrown = error;
   }
   expect(thrown, `expected ${code}`).toBeInstanceOf(ParamValidationError);
   expect((thrown as MixpanelHeadlessError).code).toBe(code);
@@ -66,7 +67,7 @@ describe("FrequencyBreakdown construction", () => {
 
 describe("FrequencyBreakdown guards (source order: FB1, FB2, FB4, FB3)", () => {
   it("FB1_EMPTY_EVENT on empty/blank events", () => {
-    for (const event of ["", "   "]) {
+    for (const event of ["", " ".repeat(3)]) {
       expectGuard(() => new FrequencyBreakdown({ event }), "FB1_EMPTY_EVENT");
     }
   });
@@ -190,7 +191,7 @@ describe("FrequencyFilter construction", () => {
 
 describe("FrequencyFilter guards (rules FF1-FF5, source order)", () => {
   it("FF1_EMPTY_EVENT on empty/blank events", () => {
-    for (const event of ["", "   "]) {
+    for (const event of ["", " ".repeat(3)]) {
       expectGuard(
         () => new FrequencyFilter({ event, value: 5 }),
         "FF1_EMPTY_EVENT",
@@ -332,10 +333,10 @@ describe("C9 guard-totality property (fast-check #4)", () => {
               operator: operator as FrequencyFilterOperator,
             });
             return false;
-          } catch (cause) {
+          } catch (error) {
             return (
-              cause instanceof ParamValidationError &&
-              cause.code === "FF2_INVALID_OPERATOR"
+              error instanceof ParamValidationError &&
+              error.code === "FF2_INVALID_OPERATOR"
             );
           }
         },
@@ -351,10 +352,10 @@ describe("C9 guard-totality property (fast-check #4)", () => {
           try {
             new FrequencyFilter({ event: "Login", value });
             return false;
-          } catch (cause) {
+          } catch (error) {
             return (
-              cause instanceof ParamValidationError &&
-              cause.code === "FF3_VALUE_NEGATIVE"
+              error instanceof ParamValidationError &&
+              error.code === "FF3_VALUE_NEGATIVE"
             );
           }
         },

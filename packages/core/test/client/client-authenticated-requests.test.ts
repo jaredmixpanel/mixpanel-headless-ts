@@ -21,11 +21,12 @@
 // telemetry, never vector-byte-locked). Every other assertion is
 // preserved 1:1 (R10.2).
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
 import { createMixpanelClient } from "../../src/client/client.js";
 import {
+  type EntryPoint,
   getEntryPoint,
   setEntryPoint,
-  type EntryPoint,
 } from "../../src/client/headers.js";
 import { AuthenticationError } from "../../src/errors.js";
 import {
@@ -84,8 +85,8 @@ describe("TestAuthenticatedRequests", () => {
     let raised: unknown = null;
     try {
       await client.getEvents();
-    } catch (cause) {
-      raised = cause;
+    } catch (error) {
+      raised = error;
     }
     expect(raised).toBeInstanceOf(AuthenticationError);
     expect(String(raised).toLowerCase()).toContain("credentials");
@@ -99,8 +100,8 @@ describe("TestAuthenticatedRequests", () => {
     let raised: unknown = null;
     try {
       await client.getEvents();
-    } catch (cause) {
-      raised = cause;
+    } catch (error) {
+      raised = error;
     }
     expect(raised).toBeInstanceOf(AuthenticationError);
     const errorStr = String(raised);

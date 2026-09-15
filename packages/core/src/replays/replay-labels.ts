@@ -50,7 +50,6 @@ const NUMERIC_OR_HEX = /^([0-9]+|[0-9a-f]{8,}|[0-9a-fA-F-]{8,})$/;
  * @param url - A URL, absolute or relative.
  * @returns The normalized path template — e.g.
  *   `/users/12345/profile?ref=x` → `/users/:id/profile`.
- *
  * @example
  * ```ts
  * urlNormalizer("/users/12345/profile?ref=x");
@@ -72,14 +71,13 @@ export function urlNormalizer(url: string): string {
     const scheme = url.slice(0, schemeAt);
     const after = url.slice(schemeAt + 3);
     const slashAt = after.indexOf("/");
-    if (slashAt !== -1) {
-      const host = after.slice(0, slashAt);
-      const path = after.slice(slashAt + 1);
-      hostPrefix = `${scheme}://${host}`;
-      rest = `/${path}`;
-    } else {
+    if (slashAt === -1) {
       return `${scheme}://${after}`;
     }
+    const host = after.slice(0, slashAt);
+    const path = after.slice(slashAt + 1);
+    hostPrefix = `${scheme}://${host}`;
+    rest = `/${path}`;
   }
   // Drop the query string.
   const queryAt = rest.indexOf("?");
@@ -104,7 +102,6 @@ export function urlNormalizer(url: string): string {
  *
  * @param action - A `UserAction` from a replay's analyzer output.
  * @returns The activity label string.
- *
  * @example
  * ```ts
  * defaultLabelFn(action);
@@ -135,7 +132,6 @@ export function defaultLabelFn(action: UserAction): string {
  * @param attr - The metadata key to consult. Default `"data-testid"`.
  * @returns A `(UserAction) => string` suitable as a `labelFn` override
  *   for `ReplayBundle.findPattern`.
- *
  * @example
  * ```ts
  * const labelFn = selectorLabelFn("data-testid");

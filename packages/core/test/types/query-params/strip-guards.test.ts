@@ -15,11 +15,13 @@
 // 8707, 8720, 8953, 8392, 9532, 9644, 4921, and _safe_int (:10548 —
 // covered in flow-query-result.test.ts).
 import { describe, expect, it } from "vitest";
+
 import {
-  MixpanelHeadlessError,
+  type MixpanelHeadlessError,
   ParamValidationError,
   ResponseValidationError,
 } from "../../../src/errors.js";
+import { CreateCustomEventParams } from "../../../src/types/entities/data-governance.js";
 import { CohortCriteria } from "../../../src/types/query-params/cohort.js";
 import {
   Filter,
@@ -37,7 +39,6 @@ import {
 } from "../../../src/types/query-params/guards.js";
 import { Formula } from "../../../src/types/query-params/metric.js";
 import { RetentionEvent } from "../../../src/types/query-params/retention.js";
-import { CreateCustomEventParams } from "../../../src/types/entities/data-governance.js";
 
 /**
  * Python-blank / JS-trim-nonblank strings: each is `""` under CPython
@@ -46,15 +47,15 @@ import { CreateCustomEventParams } from "../../../src/types/entities/data-govern
  */
 const PY_ONLY_BLANKS = [
   "\u0085",
-  "\x1c",
-  "\x1d",
-  "\x1e",
-  "\x1f",
+  "\x1C",
+  "\x1D",
+  "\x1E",
+  "\x1F",
   " \t\u0085\n",
 ];
 
 /** JS-blank / Python-nonblank string (the inverse direction). */
-const BOM = "\ufeff";
+const BOM = "\uFEFF";
 
 /**
  * Assert a thunk throws the exact guard `{class, code}` pair.
@@ -66,8 +67,8 @@ function expectGuard(thunk: () => unknown, code: string): void {
   let thrown: unknown;
   try {
     thunk();
-  } catch (cause) {
-    thrown = cause;
+  } catch (error) {
+    thrown = error;
   }
   expect(thrown, `expected ${code}`).toBeInstanceOf(ParamValidationError);
   expect((thrown as MixpanelHeadlessError).code).toBe(code);
@@ -85,7 +86,7 @@ describe("pythonStrip emptiness guards (RUN.md 2026-08-15 divergence class)", ()
   it("EV1 precedes EV2 for control-char blanks (Python guard order)", () => {
     // U+001C..1F are BOTH in CONTROL_CHAR_RE and Python-blank; Python
     // raises EV1 because the strip-emptiness guard runs first.
-    expectGuard(() => validateEventName("\x1c", "X"), "EV1_EMPTY_EVENT");
+    expectGuard(() => validateEventName("\x1C", "X"), "EV1_EMPTY_EVENT");
   });
 
   it("validateEventName accepts a U+FEFF-only event (Python keeps the BOM)", () => {

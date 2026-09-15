@@ -11,18 +11,19 @@
  * kept verbatim (Cautions §6 — they pin the difflib port).
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+
+import type { ValidationError } from "../../src/errors.js";
+import {
+  validateFunnelArgs,
+  type ValidateFunnelArgsOptions,
+} from "../../src/query/validation-args.js";
 import {
   Exclusion,
   FunnelStep,
   GroupBy,
   HoldingConstant,
 } from "../../src/types/index.js";
-import type { ValidationError } from "../../src/errors.js";
-import {
-  validateFunnelArgs,
-  type ValidateFunnelArgsOptions,
-} from "../../src/query/validation-args.js";
 
 // =============================================================================
 // Helpers (test_validation_funnel.py:32-68)
@@ -283,7 +284,7 @@ describe("TestValidateFunnelArgsF4", () => {
   });
 
   it("test_whitespace_exclusion_event_raises_at_construction", () => {
-    expect(() => new Exclusion({ event: "   " })).toThrow(
+    expect(() => new Exclusion({ event: " ".repeat(3) })).toThrow(
       /Exclusion\.event must be a non-empty string/,
     );
   });
@@ -1021,7 +1022,7 @@ describe("TestValidateFunnelArgsF2ControlChars", () => {
 
   it("test_zero_width_space_only_returns_invisible_error", () => {
     const errors = validateFunnelArgs(
-      validFunnelArgs({ steps: ["\u200b", "C"] }),
+      validFunnelArgs({ steps: ["\u200B", "C"] }),
     );
     expect(codes(errors)).toContain("F2_INVISIBLE_STEP_EVENT");
   });
@@ -1309,7 +1310,7 @@ describe("TestF8bHoldingConstantPropertyValidation", () => {
   });
 
   it("test_whitespace_only_property_raises_at_construction", () => {
-    expect(() => new HoldingConstant({ property: "   " })).toThrow(
+    expect(() => new HoldingConstant({ property: " ".repeat(3) })).toThrow(
       /HoldingConstant\.property must be a non-empty string/,
     );
   });

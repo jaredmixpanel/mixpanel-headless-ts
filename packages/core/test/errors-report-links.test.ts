@@ -22,6 +22,7 @@
 // - `issubclass` checks translate to prototype-chain checks
 //   (`Sub.prototype instanceof Base`).
 import { describe, expect, it } from "vitest";
+
 import {
   APIError,
   CODED_GUARD_REGISTRY,
@@ -56,8 +57,8 @@ const LEAF_CLASSES: ReadonlyArray<[string, ReportLinkErrorClass]> = [
 function capture(fn: () => unknown): unknown {
   try {
     fn();
-  } catch (exc) {
-    return exc;
+  } catch (error) {
+    return error;
   }
   throw new Error("expected the callable to throw");
 }

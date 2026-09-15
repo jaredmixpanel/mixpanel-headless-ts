@@ -42,7 +42,7 @@ export interface ExperimentMethods {
    * @throws AuthenticationError | RateLimitError | QueryError |
    *   ServerError - Per the B0 `appRequest` contract.
    */
-  listExperiments(options?: ListExperimentsOptions): Promise<JsonValue[]>;
+  listExperiments: (options?: ListExperimentsOptions) => Promise<JsonValue[]>;
 
   /**
    * Create an experiment (`create_experiment`, `:5315-5346` — POST
@@ -53,10 +53,10 @@ export interface ExperimentMethods {
    * @returns The created experiment dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  createExperiment(
+  createExperiment: (
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Get an experiment by ID (`get_experiment`, `:5348-5379` — no
@@ -67,10 +67,10 @@ export interface ExperimentMethods {
    * @returns The experiment dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  getExperiment(
+  getExperiment: (
     experimentId: string,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Update an experiment (`update_experiment`, `:5381-5415` — PATCH,
@@ -82,11 +82,11 @@ export interface ExperimentMethods {
    * @returns The updated experiment dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  updateExperiment(
+  updateExperiment: (
     experimentId: string,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Delete an experiment (`delete_experiment`, `:5417-5439`).
@@ -95,7 +95,10 @@ export interface ExperimentMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  deleteExperiment(experimentId: string, signal?: AbortSignal): Promise<void>;
+  deleteExperiment: (
+    experimentId: string,
+    signal?: AbortSignal,
+  ) => Promise<void>;
 
   /**
    * Launch an experiment (`launch_experiment`, `:5441-5472` — PUT
@@ -106,10 +109,10 @@ export interface ExperimentMethods {
    * @returns The launched experiment dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  launchExperiment(
+  launchExperiment: (
     experimentId: string,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Conclude an experiment (`conclude_experiment`, `:5474-5509` — PUT
@@ -122,11 +125,11 @@ export interface ExperimentMethods {
    * @returns The concluded experiment dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  concludeExperiment(
+  concludeExperiment: (
     experimentId: string,
     body?: Record<string, unknown> | null,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Record an experiment decision (`decide_experiment`, `:5511-5545`
@@ -138,11 +141,11 @@ export interface ExperimentMethods {
    * @returns The decided experiment dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  decideExperiment(
+  decideExperiment: (
     experimentId: string,
     body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Archive an experiment (`archive_experiment`, `:5547-5569` — POST
@@ -152,7 +155,10 @@ export interface ExperimentMethods {
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
    */
-  archiveExperiment(experimentId: string, signal?: AbortSignal): Promise<void>;
+  archiveExperiment: (
+    experimentId: string,
+    signal?: AbortSignal,
+  ) => Promise<void>;
 
   /**
    * Restore an archived experiment (`restore_experiment`,
@@ -163,10 +169,10 @@ export interface ExperimentMethods {
    * @returns The restored experiment dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  restoreExperiment(
+  restoreExperiment: (
     experimentId: string,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * Duplicate an experiment (`duplicate_experiment`, `:5604-5638` —
@@ -179,11 +185,11 @@ export interface ExperimentMethods {
    * @returns The duplicated experiment dict.
    * @throws MixpanelHeadlessError - Non-dict response.
    */
-  duplicateExperiment(
+  duplicateExperiment: (
     experimentId: string,
     body?: Record<string, unknown> | null,
     signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>>;
+  ) => Promise<Record<string, JsonValue>>;
 
   /**
    * List experiments in ERF format (`list_erf_experiments`,
@@ -193,7 +199,7 @@ export interface ExperimentMethods {
    * @returns The ERF experiment list verbatim.
    * @throws MixpanelHeadlessError - Non-list response.
    */
-  listErfExperiments(signal?: AbortSignal): Promise<JsonValue[]>;
+  listErfExperiments: (signal?: AbortSignal) => Promise<JsonValue[]>;
 }
 
 /**

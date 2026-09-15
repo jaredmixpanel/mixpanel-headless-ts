@@ -7,12 +7,13 @@
 // (`WS1_TARGET_MUTUALLY_EXCLUSIVE`, packet Caution #14).
 
 import { describe, expect, it } from "vitest";
+
 import { createAccountsNamespace } from "../../src/accounts/namespace.js";
 import { createSessionNamespace } from "../../src/accounts/session-namespace.js";
 import { createTargetsNamespace } from "../../src/accounts/targets-namespace.js";
 import { ParamValidationError } from "../../src/errors.js";
 import { Secret } from "../../src/secret.js";
-import { makeEffects, type EffectsBundle } from "./fake-auth-effects.js";
+import { type EffectsBundle, makeEffects } from "./fake-auth-effects.js";
 
 /** The `seeded` fixture (one SA account named `x`). */
 async function seeded(): Promise<EffectsBundle> {
@@ -115,8 +116,8 @@ describe("TestUse (test_session_namespace.py:59)", () => {
     let caught: unknown = null;
     try {
       session.use({ target: "ecom", account: "x" });
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect((caught as ParamValidationError).code).toBe(
       "WS1_TARGET_MUTUALLY_EXCLUSIVE",

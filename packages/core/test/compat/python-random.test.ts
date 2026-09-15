@@ -8,6 +8,7 @@
 // CPython evidence the packet mandates in place of a
 // sanctioned-deviation filing for `ReplayBundle.sample`.
 import { describe, expect, it } from "vitest";
+
 import { PythonRandom, pythonSample } from "../../src/compat/python-random.js";
 import probe from "./python-random-probe.json" with { type: "json" };
 
@@ -29,7 +30,7 @@ describe("PythonRandom.getrandbits matches CPython", () => {
     (_i, testCase) => {
       const rng = new PythonRandom(testCase.seed);
       const got = testCase.values.map(() => rng.getrandbits(testCase.k));
-      expect(got).toEqual(testCase.values.map((v) => BigInt(v)));
+      expect(got).toEqual(testCase.values.map(BigInt));
     },
   );
 });

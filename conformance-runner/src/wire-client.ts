@@ -21,21 +21,23 @@
  */
 
 import {
-  createMixpanelClient,
-  type MixpanelClient,
-  JsonNumber as CoreJsonNumber,
-  parseAccount,
   type Account,
-  type OAuthTokenAccount,
-  type TokenResolver,
   BookmarkValidationError,
+  createMixpanelClient,
+  JsonNumber as CoreJsonNumber,
+  type MixpanelClient,
   MixpanelHeadlessError,
+  type OAuthTokenAccount,
+  parseAccount,
+  type Session,
+  type TokenResolver,
+  type WorkspaceRef,
 } from "@mixpanel-headless/core";
-import type { WorkspaceRef, Session } from "@mixpanel-headless/core";
+
 import {
+  encodeExpectValue,
   UndecodableValueError,
   UnencodableValueError,
-  encodeExpectValue,
 } from "./codecs.js";
 import { JsonNumber, type JsonValue } from "./json-value.js";
 import type {
@@ -135,35 +137,47 @@ export function buildReplaySession(raw: JsonValue): {
       : {};
   let account: Account;
   let browserToken: string | null = null;
-  if (type === "service_account") {
-    account = parseAccount({
-      type,
-      name,
-      region,
-      username: String(sessionScalar(encoded["username"])),
-      secret: String(sessionScalar(encoded["secret"])),
-      ...projectBag,
-    });
-  } else if (type === "oauth_token") {
-    if (!Object.hasOwn(encoded, "token")) {
-      throw new Error(
-        "oauth_token session without a token is unreplayable " +
-          "(the recorder adopts resolver-observed bearers, D5.2)",
-      );
+  switch (type) {
+    case "service_account": {
+      account = parseAccount({
+        type,
+        name,
+        region,
+        username: String(sessionScalar(encoded["username"])),
+        secret: String(sessionScalar(encoded["secret"])),
+        ...projectBag,
+      });
+
+      break;
     }
-    account = parseAccount({
-      type,
-      name,
-      region,
-      token: String(sessionScalar(encoded["token"])),
-      ...projectBag,
-    });
-  } else if (type === "oauth_browser") {
-    account = parseAccount({ type, name, region });
-    const token = sessionScalar(encoded["token"]);
-    browserToken = token === undefined || token === null ? null : String(token);
-  } else {
-    throw new Error(`unknown session type ${JSON.stringify(type)}`);
+    case "oauth_token": {
+      if (!Object.hasOwn(encoded, "token")) {
+        throw new Error(
+          "oauth_token session without a token is unreplayable " +
+            "(the recorder adopts resolver-observed bearers, D5.2)",
+        );
+      }
+      account = parseAccount({
+        type,
+        name,
+        region,
+        token: String(sessionScalar(encoded["token"])),
+        ...projectBag,
+      });
+
+      break;
+    }
+    case "oauth_browser": {
+      account = parseAccount({ type, name, region });
+      const token = sessionScalar(encoded["token"]);
+      browserToken =
+        token === undefined || token === null ? null : String(token);
+
+      break;
+    }
+    default: {
+      throw new Error(`unknown session type ${JSON.stringify(type)}`);
+    }
   }
   const workspaceId = sessionScalar(encoded["workspace_id"]);
   const workspace: WorkspaceRef | null =
@@ -179,7 +193,7 @@ export function buildReplaySession(raw: JsonValue): {
     !(rawHeaders instanceof JsonNumber)
   ) {
     for (const [key, value] of Object.entries(rawHeaders)) {
-      headers.set(String(key), String(sessionScalar(value)));
+      headers.set(key, String(sessionScalar(value)));
     }
   }
   return {
@@ -272,7 +286,7 @@ export function clientFromSession(context: InvocationContext): MixpanelClient {
     random: () => 0,
     now: (): Date => context.shims.now(),
     tokenResolver: replayTokenResolver(browserToken),
-    ...(maxRetries !== undefined ? { maxRetries } : {}),
+    ...(maxRetries === undefined ? {} : { maxRetries }),
   });
   context.state.set(CLIENT_STATE_KEY, client);
   return client;
@@ -380,14 +394,14 @@ export class WireCoreError extends Error implements ExpectErrorConvertible {
       }
       try {
         details[key] = encodeExpectValue(coreToVectorJson(value));
-      } catch (cause) {
+      } catch (error) {
         if (
-          cause instanceof UnencodableValueError ||
-          cause instanceof UndecodableValueError
+          error instanceof UnencodableValueError ||
+          error instanceof UndecodableValueError
         ) {
           continue;
         }
-        throw cause;
+        throw error;
       }
     }
     if (Object.keys(details).length > 0) {
@@ -412,11 +426,11 @@ export async function runWire(
 ): Promise<JsonValue> {
   try {
     return coreToVectorJson(await invoke());
-  } catch (cause) {
-    if (cause instanceof MixpanelHeadlessError) {
-      throw new WireCoreError(cause);
+  } catch (error) {
+    if (error instanceof MixpanelHeadlessError) {
+      throw new WireCoreError(error);
     }
-    throw cause;
+    throw error;
   }
 }
 
@@ -487,14 +501,14 @@ export function registerApiClientCoreBindings(
         requireWireKwarg(context, "method") as string,
         requireWireKwarg(context, "path") as string,
         {
-          ...(params !== undefined
-            ? { params: params as Record<string, string> }
-            : {}),
-          ...(jsonBody !== undefined ? { jsonBody } : {}),
-          ...(formBody !== undefined
-            ? { formBody: formBody as Record<string, string> }
-            : {}),
-          ...(raw !== undefined ? { raw: raw as boolean } : {}),
+          ...(params === undefined
+            ? {}
+            : { params: params as Record<string, string> }),
+          ...(jsonBody === undefined ? {} : { jsonBody }),
+          ...(formBody === undefined
+            ? {}
+            : { formBody: formBody as Record<string, string> }),
+          ...(raw === undefined ? {} : { raw: raw as boolean }),
         },
       ),
     );
@@ -511,11 +525,11 @@ export function registerApiClientCoreBindings(
         requireWireKwarg(context, "method") as string,
         requireWireKwarg(context, "url") as string,
         {
-          ...(params !== undefined ? { params } : {}),
-          ...(jsonBody !== undefined ? { jsonBody } : {}),
-          ...(headers !== undefined
-            ? { headers: headers as Record<string, string> }
-            : {}),
+          ...(params === undefined ? {} : { params }),
+          ...(jsonBody === undefined ? {} : { jsonBody }),
+          ...(headers === undefined
+            ? {}
+            : { headers: headers as Record<string, string> }),
           ...(typeof timeout === "number" ? { timeoutSeconds: timeout } : {}),
         },
       ),

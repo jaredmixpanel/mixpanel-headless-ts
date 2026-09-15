@@ -44,29 +44,31 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
-  MixpanelHeadlessError,
   ConfigError,
+  MixpanelHeadlessError,
   ParamValidationError,
 } from "@mixpanel-headless/core";
+
 import {
-  MAX_CREDENTIAL_BYTES,
-  SECRET_STDIN_MAX_BYTES,
-  CredentialPathError,
   atomicWriteBytes,
+  type AtomicWriteFsOps,
+  CredentialPathError,
+  MAX_CREDENTIAL_BYTES,
   readCappedSecretFromStdin,
   readCredentialBytes,
   readCredentialText,
   rejectIfSymlink,
-  type AtomicWriteFsOps,
+  SECRET_STDIN_MAX_BYTES,
 } from "../src/io-utils.js";
 import { makeTempDir } from "./helpers.js";
 
 const POSIX = process.platform !== "win32";
 
-const cleanups: (() => void)[] = [];
+const cleanups: Array<() => void> = [];
 afterEach(() => {
   while (cleanups.length > 0) {
     cleanups.pop()?.();
@@ -216,8 +218,8 @@ describe("TestAtomicWriteBytes", () => {
     let error: unknown;
     try {
       atomicWriteBytes(target, utf8("new"));
-    } catch (exc) {
-      error = exc;
+    } catch (error_) {
+      error = error_;
     }
     expect((error as NodeJS.ErrnoException).code).toBe("EEXIST");
     expect(readFileSync(target, "utf8")).toBe("original");
@@ -229,7 +231,7 @@ describe("TestAtomicWriteBytes", () => {
     const dir = makeTempDir(cleanups);
     const target = join(dir, "empty.toml");
     atomicWriteBytes(target, new Uint8Array(0));
-    expect(readFileSync(target).length).toBe(0);
+    expect(readFileSync(target)).toHaveLength(0);
   });
 
   it("test_missing_parent_directory_raises", () => {
@@ -238,8 +240,8 @@ describe("TestAtomicWriteBytes", () => {
     let error: unknown;
     try {
       atomicWriteBytes(target, utf8("x"));
-    } catch (exc) {
-      error = exc;
+    } catch (error_) {
+      error = error_;
     }
     expect((error as NodeJS.ErrnoException).code).toBe("ENOENT");
     expect(readdirSync(dir)).toEqual([]);
@@ -339,7 +341,7 @@ describe("TestReadCredentialBytes", () => {
   it("test_reads_empty_file", () => {
     const dir = makeTempDir(cleanups);
     const target = writeOwnerOnly(join(dir, "empty"), "");
-    expect(readCredentialBytes(target).length).toBe(0);
+    expect(readCredentialBytes(target)).toHaveLength(0);
   });
 
   it.skipIf(!POSIX)("test_rejects_symlink_to_attacker_file", () => {
@@ -399,8 +401,8 @@ describe("TestReadCredentialBytes", () => {
     let error: unknown;
     try {
       readCredentialBytes(join(dir, "does-not-exist.json"));
-    } catch (exc) {
-      error = exc;
+    } catch (error_) {
+      error = error_;
     }
     // ENOENT (the FileNotFoundError twin), NOT CredentialPathError.
     expect((error as NodeJS.ErrnoException).code).toBe("ENOENT");
@@ -508,7 +510,7 @@ describe("TestSizeCap", () => {
       join(dir, "creds"),
       new Uint8Array(MAX_CREDENTIAL_BYTES).fill(0x41),
     );
-    expect(readCredentialBytes(target).length).toBe(MAX_CREDENTIAL_BYTES);
+    expect(readCredentialBytes(target)).toHaveLength(MAX_CREDENTIAL_BYTES);
   });
 
   it.skipIf(!POSIX)("test_rejects_over_cap", () => {
@@ -555,7 +557,7 @@ describe("TestReadCappedSecretFromStdin", () => {
     const readSync = stubStdin(
       new Uint8Array(SECRET_STDIN_MAX_BYTES).fill(0x41),
     );
-    expect(readCappedSecretFromStdin({ readSync }).length).toBe(
+    expect(readCappedSecretFromStdin({ readSync })).toHaveLength(
       SECRET_STDIN_MAX_BYTES,
     );
   });
@@ -567,8 +569,8 @@ describe("TestReadCappedSecretFromStdin", () => {
     let error: unknown;
     try {
       readCappedSecretFromStdin({ readSync });
-    } catch (exc) {
-      error = exc;
+    } catch (error_) {
+      error = error_;
     }
     expect(error).toBeInstanceOf(ConfigError);
     expect((error as ConfigError).message).toContain(
@@ -582,8 +584,8 @@ describe("TestReadCappedSecretFromStdin", () => {
     let error: unknown;
     try {
       readCappedSecretFromStdin({ readSync });
-    } catch (exc) {
-      error = exc;
+    } catch (error_) {
+      error = error_;
     }
     expect(error).toBeInstanceOf(ConfigError);
     expect((error as ConfigError).message.toLowerCase()).toContain("empty");

@@ -14,21 +14,23 @@
  */
 
 import {
-  ReplaysService,
-  type DiscoverOptions,
-  type EventsForOptions,
-  type WalkCdnOptions,
-  RrwebAnalyzer,
-} from "@mixpanel-headless/core/internal";
-import {
   defaultLabelFn,
-  selectorLabelFn,
-  urlNormalizer,
   MixpanelHeadlessError,
   pythonFloatStr,
+  selectorLabelFn,
+  type SignedReplay,
+  urlNormalizer,
+  type UserAction,
 } from "@mixpanel-headless/core";
-import type { SignedReplay, UserAction } from "@mixpanel-headless/core";
-import { PyFloat, type CodecRegistry } from "./codecs.js";
+import {
+  type DiscoverOptions,
+  type EventsForOptions,
+  ReplaysService,
+  RrwebAnalyzer,
+  type WalkCdnOptions,
+} from "@mixpanel-headless/core/internal";
+
+import { type CodecRegistry, PyFloat } from "./codecs.js";
 import { JsonNumber, type JsonValue } from "./json-value.js";
 import type { ImplementationRegistry, InvocationContext } from "./runner.js";
 import { requireWireKwarg, WireCoreError } from "./wire-client.js";
@@ -118,11 +120,11 @@ async function runReplays(
 ): Promise<JsonValue> {
   try {
     return encodeFacadeValue(codecs, await invoke());
-  } catch (cause) {
-    if (cause instanceof MixpanelHeadlessError) {
-      throw new ReplaysWireError(cause);
+  } catch (error) {
+    if (error instanceof MixpanelHeadlessError) {
+      throw new ReplaysWireError(error);
     }
-    throw cause;
+    throw error;
   }
 }
 
@@ -140,11 +142,11 @@ function walkOptions(context: InvocationContext): WalkCdnOptions {
   const reSign = context.kwargs["re_sign_on_expiry"];
   return {
     retentionDays: requireWireKwarg(context, "retention_days") as number,
-    ...(maxFiles !== undefined ? { maxFiles: maxFiles as number } : {}),
-    ...(concurrency !== undefined
-      ? { concurrency: concurrency as number }
-      : {}),
-    ...(reSign !== undefined ? { reSignOnExpiry: reSign as boolean } : {}),
+    ...(maxFiles === undefined ? {} : { maxFiles: maxFiles as number }),
+    ...(concurrency === undefined
+      ? {}
+      : { concurrency: concurrency as number }),
+    ...(reSign === undefined ? {} : { reSignOnExpiry: reSign as boolean }),
   };
 }
 
@@ -167,7 +169,7 @@ export function registerReplaysBindings(
     return runReplays(codecs, () =>
       service.sign(
         requireWireKwarg(context, "replay_ids") as readonly string[],
-        ...(env !== undefined ? [env as "prod" | "dev"] : []),
+        ...(env === undefined ? [] : [env as "prod" | "dev"]),
       ),
     );
   });
@@ -206,17 +208,17 @@ export function registerReplaysBindings(
     const toDate = context.kwargs["to_date"];
     const limit = context.kwargs["limit"];
     const options: DiscoverOptions = {
-      ...(distinctId !== undefined
-        ? { distinctId: distinctId as string | null }
-        : {}),
-      ...(replayIds !== undefined
-        ? { replayIds: replayIds as readonly string[] | null }
-        : {}),
-      ...(fromDate !== undefined
-        ? { fromDate: fromDate as string | null }
-        : {}),
-      ...(toDate !== undefined ? { toDate: toDate as string | null } : {}),
-      ...(limit !== undefined ? { limit: limit as number } : {}),
+      ...(distinctId === undefined
+        ? {}
+        : { distinctId: distinctId as string | null }),
+      ...(replayIds === undefined
+        ? {}
+        : { replayIds: replayIds as readonly string[] | null }),
+      ...(fromDate === undefined
+        ? {}
+        : { fromDate: fromDate as string | null }),
+      ...(toDate === undefined ? {} : { toDate: toDate as string | null }),
+      ...(limit === undefined ? {} : { limit: limit as number }),
     };
     // targets.py::make_replays_service binds NO query_fn — `discover`
     // replays the RuntimeError-twin branch unless a future recorder
@@ -230,13 +232,13 @@ export function registerReplaysBindings(
     const fromDate = context.kwargs["from_date"];
     const toDate = context.kwargs["to_date"];
     const options: EventsForOptions = {
-      ...(eventProperties !== undefined
-        ? { eventProperties: eventProperties as readonly string[] | null }
-        : {}),
-      ...(fromDate !== undefined
-        ? { fromDate: fromDate as string | null }
-        : {}),
-      ...(toDate !== undefined ? { toDate: toDate as string | null } : {}),
+      ...(eventProperties === undefined
+        ? {}
+        : { eventProperties: eventProperties as readonly string[] | null }),
+      ...(fromDate === undefined
+        ? {}
+        : { fromDate: fromDate as string | null }),
+      ...(toDate === undefined ? {} : { toDate: toDate as string | null }),
     };
     return runReplays(codecs, () =>
       service.eventsFor(
@@ -336,10 +338,10 @@ function unwrapCarriersDeep(value: unknown): unknown {
 function runBuilder<T>(invoke: () => T): T {
   try {
     return invoke();
-  } catch (cause) {
-    if (cause instanceof MixpanelHeadlessError) {
-      throw new WireCoreError(cause);
+  } catch (error) {
+    if (error instanceof MixpanelHeadlessError) {
+      throw new WireCoreError(error);
     }
-    throw cause;
+    throw error;
   }
 }

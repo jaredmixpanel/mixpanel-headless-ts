@@ -46,7 +46,7 @@ export interface PydanticStyleError {
   /** The pydantic error type tag (e.g. `"missing"`, `"int_parsing"`). */
   readonly type: string;
   /** Location tuple — the field path from the model root. */
-  readonly loc: readonly (string | number)[];
+  readonly loc: ReadonlyArray<string | number>;
   /** Human-readable message (pydantic wording). */
   readonly msg: string;
   /** The offending input (the whole payload for `missing`). */
@@ -73,7 +73,7 @@ export interface ResponseModelClass<
 function classifyKindError(
   kind: EntityFieldKind,
   value: unknown,
-  loc: readonly (string | number)[],
+  loc: ReadonlyArray<string | number>,
 ): PydanticStyleError | null {
   const attempt = (fn: () => unknown): boolean => {
     try {
@@ -175,45 +175,50 @@ function classifyKindError(
  */
 function nullNotAllowedError(
   kind: EntityFieldKind | undefined,
-  loc: readonly (string | number)[],
+  loc: ReadonlyArray<string | number>,
 ): PydanticStyleError {
   switch (kind) {
     case "int":
-    case "int64":
+    case "int64": {
       return {
         type: "int_type",
         loc,
         msg: "Input should be a valid integer",
         input: null,
       };
-    case "str":
+    }
+    case "str": {
       return {
         type: "string_type",
         loc,
         msg: "Input should be a valid string",
         input: null,
       };
-    case "bool":
+    }
+    case "bool": {
       return {
         type: "bool_type",
         loc,
         msg: "Input should be a valid boolean",
         input: null,
       };
-    case "float":
+    }
+    case "float": {
       return {
         type: "float_type",
         loc,
         msg: "Input should be a valid number",
         input: null,
       };
-    default:
+    }
+    default: {
       return {
         type: "model_type",
         loc,
         msg: "Input should be a valid dictionary or instance",
         input: null,
       };
+    }
   }
 }
 
@@ -333,7 +338,6 @@ function collectModelErrors(
  *   model (code `RESPONSE_VALIDATION_ERROR`); the pydantic-style error
  *   list is carried in `details.errors` and the model name in
  *   `details.model`.
- *
  * @example
  * ```typescript
  * const ws = validateResponseModel(PublicWorkspace, raw, {
@@ -364,8 +368,8 @@ export function validateResponseModel<T extends EntityModel>(
   }
   try {
     return model.fromDict(payload);
-  } catch (cause) {
-    if (cause instanceof ResponseValidationError) {
+  } catch (error) {
+    if (error instanceof ResponseValidationError) {
       // A failure the collector's spec walk did not classify (nested
       // model / constraint checks). Wrap with the module's message and
       // details shape; the underlying error rides on `cause`.
@@ -373,10 +377,10 @@ export function validateResponseModel<T extends EntityModel>(
         `${options.endpoint}: API response failed ${model.modelName} validation`,
         "RESPONSE_VALIDATION_ERROR",
         { model: model.modelName, errors: [] },
-        { cause },
+        { cause: error },
       );
     }
-    throw cause;
+    throw error;
   }
 }
 
@@ -397,9 +401,8 @@ export function validateResponseModels<T extends EntityModel>(
   payloads: Iterable<unknown>,
   options: { readonly endpoint: string },
 ): T[] {
-  const out: T[] = [];
-  for (const payload of payloads) {
-    out.push(validateResponseModel(model, payload, options));
-  }
+  const out: T[] = Array.from(payloads, (payload) =>
+    validateResponseModel(model, payload, options),
+  );
   return out;
 }

@@ -21,8 +21,9 @@ import {
   createMixpanelClient,
   ENDPOINTS,
   Secret,
+  type Session,
 } from "@mixpanel-headless/core";
-import type { Session } from "@mixpanel-headless/core";
+
 import {
   createNodeEndpointOverrides,
   createNodeEnv,
@@ -32,7 +33,7 @@ import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const BASE = "http://127.0.0.1:8080";
 
-const cleanups: (() => void)[] = [];
+const cleanups: Array<() => void> = [];
 let restoreEnv: () => void = () => undefined;
 let savedHome: string | undefined;
 

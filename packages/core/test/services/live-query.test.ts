@@ -23,16 +23,17 @@
 //   (R7.2 split of the 2,042-line Python module).
 
 import { describe, expect, it } from "vitest";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-  type FakeTransport,
-} from "../../test-support/client-test-helpers.js";
+
+import { AuthenticationError, QueryError } from "../../src/errors.js";
 import { LiveQueryService } from "../../src/services/live-query.js";
 import { extractStepsFromDateData } from "../../src/services/live-query-transforms.js";
-import { AuthenticationError, QueryError } from "../../src/errors.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  type FakeTransport,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** A canned-response handler (the httpx.MockTransport handler twin). */
 type Handler = (request: CapturedFetchRequest) => CannedResponse;
@@ -268,7 +269,7 @@ describe("TestFunnel", () => {
     expect(result.funnel_id).toBe(12345);
     expect(result.from_date).toBe("2024-01-01");
     expect(result.to_date).toBe("2024-01-01");
-    expect(result.steps.length).toBe(3);
+    expect(result.steps).toHaveLength(3);
     expect(result.steps[0]!.event).toBe("App Open");
     expect(result.steps[0]!.count).toBe(1000);
     expect(result.steps[1]!.event).toBe("Sign Up");
@@ -482,7 +483,7 @@ describe("TestRetention", () => {
     expect(result.from_date).toBe("2024-01-01");
     expect(result.to_date).toBe("2024-01-02");
     expect(result.unit).toBe("day");
-    expect(result.cohorts.length).toBe(2);
+    expect(result.cohorts).toHaveLength(2);
   });
 
   it("calculates retention percentages from counts", async () => {
@@ -524,7 +525,7 @@ describe("TestRetention", () => {
     expect(urlStr.includes("born_where=") || urlStr.includes("where=")).toBe(
       true,
     );
-    expect(result.cohorts.length).toBe(1);
+    expect(result.cohorts).toHaveLength(1);
   });
 
   it("passes interval parameters to the API", async () => {
@@ -546,7 +547,7 @@ describe("TestRetention", () => {
     expect(urlStr).toContain("interval_count=");
     // When interval != 1, unit should NOT be included
     expect(urlStr).not.toContain("unit=");
-    expect(result.cohorts[0]!.retention.length).toBe(5);
+    expect(result.cohorts[0]!.retention).toHaveLength(5);
   });
 
   it("handles empty results", async () => {
@@ -670,7 +671,7 @@ describe("TestEventCounts", () => {
     expect(columns).toContain("date");
     expect(columns).toContain("event");
     expect(columns).toContain("count");
-    expect(result.toRows().length).toBe(4); // 2 events x 2 dates
+    expect(result.toRows()).toHaveLength(4); // 2 events x 2 dates
   });
 
   it("handles empty results", async () => {
@@ -681,7 +682,7 @@ describe("TestEventCounts", () => {
     const result = await live.eventCounts([], "2024-01-01", "2024-01-01");
 
     expect(result.series).toEqual({});
-    expect(result.toRows().length).toBe(0);
+    expect(result.toRows()).toHaveLength(0);
   });
 
   it("propagates AuthenticationError from the API", async () => {
@@ -823,7 +824,7 @@ describe("TestPropertyCounts", () => {
     expect(columns).toContain("date");
     expect(columns).toContain("value");
     expect(columns).toContain("count");
-    expect(result.toRows().length).toBe(4); // 2 values x 2 dates
+    expect(result.toRows()).toHaveLength(4); // 2 values x 2 dates
   });
 
   it("handles empty results", async () => {
@@ -839,7 +840,7 @@ describe("TestPropertyCounts", () => {
     );
 
     expect(result.series).toEqual({});
-    expect(result.toRows().length).toBe(0);
+    expect(result.toRows()).toHaveLength(0);
   });
 
   it("propagates QueryError for invalid params", async () => {

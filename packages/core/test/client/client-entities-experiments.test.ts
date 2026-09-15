@@ -3,13 +3,14 @@
 // experiment CRUD, lifecycle launch/conclude/decide, management
 // archive/restore/duplicate, ERF listing, 400/404 error paths).
 import { describe, expect, it } from "vitest";
-import { APIError } from "../../src/errors.js";
+
+import type { Session } from "../../src/auth/session.js";
 import { toNativeJson } from "../../src/client/json-value.js";
+import { APIError } from "../../src/errors.js";
 import {
   createMockClient,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
-import type { Session } from "../../src/auth/session.js";
 
 /** The `oauth_credentials` fixture twin (test_api_client_experiments.py:32-35). */
 function oauthCredentials(): Session {
@@ -107,7 +108,7 @@ describe("TestCreateExperiment", () => {
     });
     await client.createExperiment({ name: "X" });
     // The URL should end with experiments/ (trailing slash).
-    const path = (capturedUrls[0] ?? "").split("?")[0] ?? "";
+    const path = (capturedUrls[0] ?? "").split("?", 1)[0] ?? "";
     expect(path.endsWith("experiments/")).toBe(true);
   });
 });

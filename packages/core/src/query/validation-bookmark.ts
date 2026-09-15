@@ -43,8 +43,8 @@
  * @internal
  */
 
-import { pythonStrip } from "../compat/index.js";
 import {
+  MATH_REQUIRING_PROPERTY,
   VALID_CHART_TYPES,
   VALID_FILTER_OPERATORS,
   VALID_FILTERS_DETERMINER,
@@ -58,13 +58,13 @@ import {
   VALID_PROPERTY_TYPES,
   VALID_RESOURCE_TYPES,
   VALID_TIME_UNITS,
-  MATH_REQUIRING_PROPERTY,
 } from "../bookmarks/enums.js";
 import {
   sortingCodeMapper,
   validateInsightsBookmarkSortConfig,
   validateWithPydantic,
 } from "../bookmarks/schema-sorting.js";
+import { pythonStrip } from "../compat/index.js";
 import { ValidationError } from "../errors.js";
 import {
   _enumError,
@@ -237,7 +237,6 @@ function pythonIntValue(value: unknown): number {
  *   keys). Loosely typed on purpose (R4.9/R10.10): the B5 facade
  *   forwards raw user input here.
  * @returns List of validation errors. Empty means the bookmark is valid.
- *
  * @example
  * ```ts
  * const errors = validateFlowBookmark({
@@ -270,17 +269,19 @@ export function validateFlowBookmark(params: Dict): ValidationError[] {
   } else {
     // FLB2: Each step event must be non-empty
     steps.forEach((step, i) => {
-      if (isDict(step)) {
-        const event = dictGet(step, "event");
-        if (typeof event !== "string" || pythonStrip(event).length === 0) {
-          errors.push(
-            new ValidationError(
-              `steps[${String(i)}].event`,
-              "Step event name must be a non-empty string",
-              "FLB2_EMPTY_STEP_EVENT",
-            ),
-          );
-        }
+      if (!isDict(step)) {
+        return;
+      }
+
+      const event = dictGet(step, "event");
+      if (typeof event !== "string" || pythonStrip(event).length === 0) {
+        errors.push(
+          new ValidationError(
+            `steps[${String(i)}].event`,
+            "Step event name must be a non-empty string",
+            "FLB2_EMPTY_STEP_EVENT",
+          ),
+        );
       }
     });
   }
@@ -379,7 +380,6 @@ export interface ValidateBookmarkOptions {
  * @param options - `bookmark_type` context (kwonly in Python).
  * @returns List of validation errors. Empty means the bookmark is
  *   valid. Callers decide whether to raise `BookmarkValidationError`.
- *
  * @example
  * ```ts
  * const errors = validateBookmark(myParams);
@@ -1246,7 +1246,9 @@ export function validateSortingBlock(sorting: unknown): ValidationError[] {
   const errors: ValidationError[] = [];
   const known: Dict = {};
   for (const [chartType, config] of Object.entries(sorting)) {
-    if (!VALID_CHART_TYPES.has(chartType)) {
+    if (VALID_CHART_TYPES.has(chartType)) {
+      known[chartType] = config;
+    } else {
       errors.push(
         _enumError(
           `sorting.${chartType}`,
@@ -1257,8 +1259,6 @@ export function validateSortingBlock(sorting: unknown): ValidationError[] {
           "warning",
         ),
       );
-    } else {
-      known[chartType] = config;
     }
   }
 

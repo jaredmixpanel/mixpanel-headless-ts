@@ -11,10 +11,10 @@
  * client-internal predicate applies, not `isPythonDict`).
  */
 
-import { pythonStr, type PythonValue } from "../../compat/python-str.js";
-import { MixpanelHeadlessError } from "../../errors.js";
 import { isPlainRecord } from "../../client/internals.js";
 import { JsonNumber, type JsonValue } from "../../client/json-value.js";
+import { pythonStr, type PythonValue } from "../../compat/python-str.js";
+import { MixpanelHeadlessError } from "../../errors.js";
 
 /**
  * Python `type(x).__name__` over a parsed wire value (message text
@@ -136,7 +136,7 @@ export function truthyRecord(
  * @param ids - The id list.
  * @returns The comma-joined spelling.
  */
-export function joinIds(ids: readonly (number | bigint)[]): string {
+export function joinIds(ids: ReadonlyArray<number | bigint>): string {
   return ids.map((id) => pythonStr(id as PythonValue)).join(",");
 }
 

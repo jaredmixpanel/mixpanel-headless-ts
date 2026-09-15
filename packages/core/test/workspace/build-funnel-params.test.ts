@@ -17,7 +17,7 @@
 // only wire path from `build_funnel_params` would be `insights_query`).
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
 import { BookmarkValidationError } from "../../src/errors.js";
 import { Filter } from "../../src/types/query-params/filter.js";
 import {
@@ -25,10 +25,11 @@ import {
   FunnelStep,
   HoldingConstant,
 } from "../../src/types/query-params/funnel.js";
+import { Workspace } from "../../src/workspace.js";
 import {
+  type MockWorkspaceClient,
   mockWorkspaceClient,
   TEST_SESSION,
-  type MockWorkspaceClient,
 } from "../../test-support/workspace-test-helpers.js";
 
 /**
@@ -86,7 +87,7 @@ describe("TestBuildFunnelParamsDefaults", () => {
 
   it("behaviors has one entry per step", async () => {
     const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
-    expect(behaviorsOf(result).length).toBe(2);
+    expect(behaviorsOf(result)).toHaveLength(2);
   });
 
   it("behavior names match the step events", async () => {
@@ -153,7 +154,7 @@ describe("TestBuildFunnelParamsDefaults", () => {
       "Purchase",
     ]);
     const behaviors = behaviorsOf(result);
-    expect(behaviors.length).toBe(3);
+    expect(behaviors).toHaveLength(3);
     expect(behaviors[0]!["name"]).toBe("Signup");
     expect(behaviors[1]!["name"]).toBe("Add to Cart");
     expect(behaviors[2]!["name"]).toBe("Purchase");
@@ -165,7 +166,7 @@ describe("TestBuildFunnelParamsDefaults", () => {
       new FunnelStep({ event: "Purchase" }),
     ]);
     const behaviors = behaviorsOf(result);
-    expect(behaviors.length).toBe(2);
+    expect(behaviors).toHaveLength(2);
     expect(behaviors[0]!["name"]).toBe("Signup");
     expect(behaviors[1]!["name"]).toBe("Purchase");
   });
@@ -344,7 +345,7 @@ describe("TestBuildFunnelParamsPublicMethod", () => {
   it("makes no API call", async () => {
     const mock = mockWorkspaceClient();
     await makeWs(mock).buildFunnelParams(["Signup", "Purchase"]);
-    expect(mock.insightsCalls.length).toBe(0);
+    expect(mock.insightsCalls).toHaveLength(0);
   });
 
   it("a single-step funnel raises BookmarkValidationError", async () => {
@@ -369,7 +370,7 @@ describe("TestBuildFunnelParamsPublicMethod", () => {
 
   it("sections.show contains exactly one entry", async () => {
     const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
-    expect((section(result, "show") as unknown[]).length).toBe(1);
+    expect(section(result, "show") as unknown[]).toHaveLength(1);
   });
 
   it("the show entry has behavior and measurement keys", async () => {
@@ -536,7 +537,7 @@ describe("TestBuildFunnelParamsMixedSteps", () => {
 
   it("a mixed list produces the right number of behaviors", async () => {
     const result = await makeWs().buildFunnelParams(mixedSteps());
-    expect(behaviorsOf(result).length).toBe(2);
+    expect(behaviorsOf(result)).toHaveLength(2);
   });
 
   it("the string step has empty filters", async () => {
@@ -701,7 +702,7 @@ describe("TestBuildFunnelParamsHoldingConstant", () => {
     const agg = behaviorOf(result)["aggregateBy"] as Array<
       Record<string, unknown>
     >;
-    expect(agg.length).toBe(2);
+    expect(agg).toHaveLength(2);
     expect(agg[0]!["value"]).toBe("platform");
     expect(agg[1]!["value"]).toBe("plan_tier");
   });

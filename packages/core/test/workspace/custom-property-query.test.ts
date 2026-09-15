@@ -22,7 +22,7 @@
 // class defers to B6 with the facade member it tests.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
+
 import {
   CustomPropertyRef,
   Filter,
@@ -30,6 +30,7 @@ import {
 } from "../../src/types/query-params/filter.js";
 import { GroupBy } from "../../src/types/query-params/group-by.js";
 import { Metric } from "../../src/types/query-params/metric.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   mockWorkspaceClient,
   TEST_SESSION,
@@ -77,7 +78,7 @@ describe("TestGroupByCustomPropertyE2E", () => {
     });
 
     const group = section(params, "group");
-    expect(group.length).toBe(1);
+    expect(group).toHaveLength(1);
     expect(group[0]!["customPropertyId"]).toBe(42);
   });
 
@@ -88,7 +89,7 @@ describe("TestGroupByCustomPropertyE2E", () => {
     });
 
     const group = section(params, "group");
-    expect(group.length).toBe(1);
+    expect(group).toHaveLength(1);
     expect(Object.hasOwn(group[0]!, "customProperty")).toBe(true);
     const cp = group[0]!["customProperty"] as Record<string, unknown>;
     expect(cp["displayFormula"]).toBe("A * B");
@@ -103,7 +104,7 @@ describe("TestGroupByCustomPropertyE2E", () => {
     });
 
     const group = section(params, "group");
-    expect(group.length).toBe(1);
+    expect(group).toHaveLength(1);
     expect(group[0]!["customPropertyId"]).toBe(42);
   });
 
@@ -116,7 +117,7 @@ describe("TestGroupByCustomPropertyE2E", () => {
     });
 
     const group = section(params, "group");
-    expect(group.length).toBe(1);
+    expect(group).toHaveLength(1);
     expect(group[0]!["customPropertyId"]).toBe(42);
   });
 });
@@ -132,7 +133,7 @@ describe("TestFilterCustomPropertyE2E", () => {
     });
 
     const filters = section(params, "filter");
-    expect(filters.length).toBe(1);
+    expect(filters).toHaveLength(1);
     expect(filters[0]!["customPropertyId"]).toBe(42);
     expect(Object.hasOwn(filters[0]!, "value")).toBe(false);
   });
@@ -144,7 +145,7 @@ describe("TestFilterCustomPropertyE2E", () => {
     });
 
     const filters = section(params, "filter");
-    expect(filters.length).toBe(1);
+    expect(filters).toHaveLength(1);
     expect(Object.hasOwn(filters[0]!, "customProperty")).toBe(true);
     const cp = filters[0]!["customProperty"] as Record<string, unknown>;
     expect(cp["displayFormula"]).toBe("A * B");
@@ -286,7 +287,7 @@ describe("TestMeasurementPropertyBuilder", () => {
     expect(prop["customPropertyId"]).toBe(42);
     expect(prop["resourceType"]).toBe("events");
     // name present for server compat
-    expect(prop["name"]).not.toBeUndefined();
+    expect(prop["name"]).toBeDefined();
     expect(prop["name"]).not.toBeNull();
   });
 
@@ -304,7 +305,7 @@ describe("TestMeasurementPropertyBuilder", () => {
     expect(cp["displayFormula"]).toBe("A * B");
     expect(prop["resourceType"]).toBe("events");
     // name present for server compat
-    expect(prop["name"]).not.toBeUndefined();
+    expect(prop["name"]).toBeDefined();
     expect(prop["name"]).not.toBeNull();
   });
 

@@ -35,37 +35,36 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  resolveApi,
-  createRunnerDeps,
   canonicalize,
   canonicalizeError,
-  UndecodableValueError,
+  CONTRACT_TAG_CODECS,
+  createRunnerDeps,
+  createShims,
   encodeExpectValue,
+  type InvocationContext,
   JsonNumber,
   type JsonValue,
-  createShims,
-  CONTRACT_TAG_CODECS,
-} from "@mixpanel-headless/conformance-runner";
-import type {
-  InvocationContext,
-  RunnerDeps,
+  resolveApi,
+  type RunnerDeps,
+  UndecodableValueError,
 } from "@mixpanel-headless/conformance-runner";
 import {
   pythonFloatStr,
-  zfill,
   ReplayBundle,
-  ReplayEvent,
-  ReplaySummary,
   type ReplayBundleFields,
+  ReplayEvent,
   type ReplayEventFields,
+  ReplaySummary,
   type ReplaySummaryFields,
+  zfill,
 } from "@mixpanel-headless/core";
+
 import { pythonStrRaw } from "./python-str-raw.js";
 import {
+  parseRawJson,
   RawObject,
   type RawValue,
   type SerializableValue,
-  parseRawJson,
   serializeAsciiJson,
   toJsonValue,
 } from "./raw-json.js";
@@ -320,9 +319,9 @@ function registerOracleReplayCodecs(codecs: RunnerDeps["codecs"]): void {
         }
         try {
           return new cls(bag as never);
-        } catch (cause) {
+        } catch (error) {
           throw new UndecodableValueError(
-            `could not reconstruct ${tag} from vector fields: ${String(cause)}`,
+            `could not reconstruct ${tag} from vector fields: ${String(error)}`,
           );
         }
       },
@@ -438,7 +437,7 @@ function readJsonString(path: string, key: string): string {
  */
 function isExpectErrorConvertible(
   value: unknown,
-): value is { toExpectError(): JsonValue } {
+): value is { toExpectError: () => JsonValue } {
   return (
     typeof value === "object" &&
     value !== null &&
@@ -543,14 +542,14 @@ export class OracleServer {
     let result: SerializableValue;
     try {
       result = await this.dispatch(method, request.get("params"));
-    } catch (thrown) {
-      if (thrown instanceof OracleProtocolError) {
+    } catch (error) {
+      if (error instanceof OracleProtocolError) {
         return this.encodeResponse(requestId, {
-          error: [thrown.code, thrown.message],
+          error: [error.code, error.message],
         });
       }
-      const name = thrown instanceof Error ? thrown.name : typeof thrown;
-      const detail = thrown instanceof Error ? thrown.message : String(thrown);
+      const name = error instanceof Error ? error.name : typeof error;
+      const detail = error instanceof Error ? error.message : String(error);
       return this.encodeResponse(requestId, {
         error: [
           JSONRPC_INTERNAL_ERROR,
@@ -725,14 +724,14 @@ export class OracleServer {
     let kwargs: Record<string, unknown>;
     try {
       kwargs = this.deps.codecs.decodeInputKwargs(inputJson);
-    } catch (thrown) {
-      if (thrown instanceof UndecodableValueError) {
+    } catch (error) {
+      if (error instanceof UndecodableValueError) {
         throw new OracleProtocolError(
           JSONRPC_INVALID_PARAMS,
-          `input decode failed: ${thrown.message}`,
+          `input decode failed: ${error.message}`,
         );
       }
-      throw thrown;
+      throw error;
     }
     const context: InvocationContext = {
       api,
@@ -751,8 +750,8 @@ export class OracleServer {
     let returned: unknown;
     try {
       returned = await implementation(context);
-    } catch (thrown) {
-      return { ok: false, error: this.errorPayload(thrown) };
+    } catch (error) {
+      return { ok: false, error: this.errorPayload(error) };
     }
     let output: JsonValue;
     try {
@@ -762,10 +761,10 @@ export class OracleServer {
       // (built-in non-float tags stay).
       output = toExpectEncoding(this.deps.codecs.encodeValue(returned));
       canonicalize(output);
-    } catch (thrown) {
+    } catch (error) {
       throw new OracleProtocolError(
         JSONRPC_INTERNAL_ERROR,
-        `output encode/canonicalization failed: ${String(thrown)}`,
+        `output encode/canonicalization failed: ${String(error)}`,
       );
     }
     return { ok: true, output };
@@ -806,20 +805,20 @@ export class OracleServer {
       decoded = this.deps.codecs.decodeValue(
         tagIntegralFloatTokens(toJsonValue(raw)),
       );
-    } catch (thrown) {
+    } catch (error) {
       throw new OracleProtocolError(
         JSONRPC_INVALID_PARAMS,
-        `value decode failed: ${String(thrown)}`,
+        `value decode failed: ${String(error)}`,
       );
     }
     let output: JsonValue;
     try {
       output = toInputEncoding(this.deps.codecs.encodeValue(decoded), false);
       canonicalize(output);
-    } catch (thrown) {
+    } catch (error) {
       throw new OracleProtocolError(
         JSONRPC_INTERNAL_ERROR,
-        `round-trip encode/canonicalization failed: ${String(thrown)}`,
+        `round-trip encode/canonicalization failed: ${String(error)}`,
       );
     }
     return { ok: true, output };
@@ -841,20 +840,20 @@ export class OracleServer {
     let returned: unknown;
     try {
       returned = this.invokeCompat(api, rawInput);
-    } catch (thrown) {
-      if (thrown instanceof OracleProtocolError) {
-        throw thrown;
+    } catch (error) {
+      if (error instanceof OracleProtocolError) {
+        throw error;
       }
-      return { ok: false, error: this.errorPayload(thrown) };
+      return { ok: false, error: this.errorPayload(error) };
     }
     let output: JsonValue;
     try {
       output = encodeExpectValue(returned);
       canonicalize(output);
-    } catch (thrown) {
+    } catch (error) {
       throw new OracleProtocolError(
         JSONRPC_INTERNAL_ERROR,
-        `output encode/canonicalization failed: ${String(thrown)}`,
+        `output encode/canonicalization failed: ${String(error)}`,
       );
     }
     return { ok: true, output };
@@ -918,14 +917,14 @@ export class OracleServer {
       for (const [name, value] of rawInput.entries) {
         decoded[name] = this.deps.codecs.decodeValue(toJsonValue(value));
       }
-    } catch (thrown) {
-      if (thrown instanceof UndecodableValueError) {
+    } catch (error) {
+      if (error instanceof UndecodableValueError) {
         throw new OracleProtocolError(
           JSONRPC_INVALID_PARAMS,
-          `input decode failed: ${thrown.message}`,
+          `input decode failed: ${error.message}`,
         );
       }
-      throw thrown;
+      throw error;
     }
     return decoded;
   }

@@ -13,10 +13,10 @@
  * (`resolver.ts` owns the `=== ""` rungs; watchlist #6).
  */
 
-import type { ResolverEnv } from "@mixpanel-headless/core";
 import {
-  endpointOverridesFromEnv,
   type EndpointOverrides,
+  endpointOverridesFromEnv,
+  type ResolverEnv,
 } from "@mixpanel-headless/core";
 
 /** The full env surface the auth effects consume (`AuthEffects.env`). */
@@ -29,7 +29,7 @@ export type NodeEnv = ResolverEnv & {
    * @param name - Variable name.
    * @returns The raw value, or `undefined` when unset.
    */
-  get(name: string): string | undefined;
+  get: (name: string) => string | undefined;
 };
 
 /**
@@ -37,7 +37,6 @@ export type NodeEnv = ResolverEnv & {
  *
  * @returns A bag whose six `MP_*` getters and generic `get` all read
  *   `process.env` at call time.
- *
  * @example
  * ```typescript
  * const env = createNodeEnv();
@@ -89,7 +88,6 @@ export function createNodeEnv(): NodeEnv {
  * it yourself when building a core client by hand.
  *
  * @returns A per-call provider for `MixpanelClientOptions.endpointOverrides`.
- *
  * @example
  * ```typescript
  * process.env.MP_API_BASE_URL = "http://127.0.0.1:8080/";

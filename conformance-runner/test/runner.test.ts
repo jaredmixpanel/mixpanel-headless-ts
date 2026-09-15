@@ -6,12 +6,17 @@
 // path; the stubs themselves are replay-pipeline test doubles in the D13
 // wirestub spirit.
 import { describe, expect, it } from "vitest";
+
 import { createRunnerDeps, registerContractCodecs } from "../src/bindings.js";
-import { CodecRegistry, RecordingCallback } from "../src/codecs.js";
+import { CodecRegistry, type RecordingCallback } from "../src/codecs.js";
 import type { JsonValue } from "../src/json-value.js";
 import { parseLossless } from "../src/lossless-json.js";
-import type { InvocationContext, RunnerDeps } from "../src/runner.js";
-import { ImplementationRegistry, runVector } from "../src/runner.js";
+import {
+  ImplementationRegistry,
+  type InvocationContext,
+  type RunnerDeps,
+  runVector,
+} from "../src/runner.js";
 import type { ConformanceVector } from "../src/vector-types.js";
 
 const RECORD_EPOCH = "2026-01-15T12:00:00Z";
@@ -37,7 +42,7 @@ function makeVector(overrides: {
   kind?: ConformanceVector["kind"];
   api?: string;
   input?: string;
-  setup?: { api: string; input: string }[];
+  setup?: Array<{ api: string; input: string }>;
   call?: string;
   expect: string;
 }): ConformanceVector {
@@ -562,16 +567,16 @@ describe("runVector — wire kind", () => {
         const fetchImpl = ctx.fetch as typeof fetch;
         try {
           await fetchImpl("https://mixpanel.com/flaky");
-        } catch (cause) {
+        } catch (error) {
           // The stub port classifies the NATIVE TypeError itself — the
           // seam must not hand it a pre-mapped library error.
-          if (cause instanceof TypeError) {
+          if (error instanceof TypeError) {
             throw new StubConformanceError({
               class: "MixpanelConnectionError",
               code: "CONNECTION_ERROR",
             });
           }
-          throw cause;
+          throw error;
         }
         return null;
       },

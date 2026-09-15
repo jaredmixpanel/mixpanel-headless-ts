@@ -3,13 +3,14 @@
 // schema enforcement :60-350, audit :351-594, anomalies :595-856,
 // deletion requests :857-1097).
 import { describe, expect, it } from "vitest";
-import { MixpanelHeadlessError } from "../../src/errors.js";
+
+import type { Session } from "../../src/auth/session.js";
 import { toNativeJson } from "../../src/client/json-value.js";
+import { MixpanelHeadlessError } from "../../src/errors.js";
 import {
   createMockClient,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
-import type { Session } from "../../src/auth/session.js";
 
 /** The `oauth_credentials` fixture twin. */
 function oauthCredentials(): Session {

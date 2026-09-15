@@ -16,14 +16,7 @@
 // `:6830`) that the wire suite above cannot observe.
 
 import { describe, expect, it } from "vitest";
-import { Workspace } from "../../src/workspace.js";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-  type FakeTransport,
-} from "../../test-support/client-test-helpers.js";
+
 import type { MixpanelClient } from "../../src/client/client.js";
 import {
   CreateWebhookParams,
@@ -34,6 +27,7 @@ import {
   WebhookTestResult,
 } from "../../src/types/entities/webhooks.js";
 import { WebhookAuthType } from "../../src/types/enums.js";
+import { Workspace } from "../../src/workspace.js";
 import {
   createWebhook as createWebhookMember,
   deleteWebhook as deleteWebhookMember,
@@ -41,6 +35,13 @@ import {
   testWebhook as testWebhookMember,
   updateWebhook as updateWebhookMember,
 } from "../../src/workspace-members/annotations-webhooks-alerts.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  type FakeTransport,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** A canned-response handler (the `httpx.MockTransport` handler twin). */
 type Handler = (request: CapturedFetchRequest) => CannedResponse;

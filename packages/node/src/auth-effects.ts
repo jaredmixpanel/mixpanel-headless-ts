@@ -23,15 +23,16 @@
 
 import type {
   AuthEffects,
+  OAuthTokens,
   Region,
   ResolverSources,
   Session,
-  OAuthTokens,
 } from "@mixpanel-headless/core";
 import {
   persistActiveToConfig,
   resolverSourcesFromEffects,
 } from "@mixpanel-headless/core/internal";
+
 import {
   bridgeViewFromFile,
   createNodeBridgeEffects,
@@ -39,8 +40,8 @@ import {
 } from "./auth/bridge.js";
 import { OAuthFlow, type OAuthFlowOptions } from "./auth/flow.js";
 import type { StorageLogger } from "./auth/storage.js";
-import { createNodeTokenStore } from "./auth/token-store.js";
 import { OnDiskTokenResolver } from "./auth/token-resolver.js";
+import { createNodeTokenStore } from "./auth/token-store.js";
 import { createNodeConfigSource } from "./config-writes.js";
 import { createNodeEnv } from "./env.js";
 import { readCappedSecretFromStdin, type StdinReadSync } from "./io-utils.js";
@@ -89,7 +90,6 @@ export interface NodeAuthEffectsOptions {
  *
  * @param options - Optional config path / fetch / clock / log seams.
  * @returns The bag — every `UNPORTED_AUTH_SEAMS` member real.
- *
  * @example
  * ```typescript
  * const effects = createNodeAuthEffects();
@@ -106,16 +106,16 @@ export function createNodeAuthEffects(
   const flowSeams = options.flowSeams ?? {};
 
   const config = createNodeConfigSource(
-    options.configPath !== undefined ? { configPath: options.configPath } : {},
+    options.configPath === undefined ? {} : { configPath: options.configPath },
   );
 
   return {
     config,
     env: createNodeEnv(),
-    tokenStore: createNodeTokenStore(logger !== undefined ? { logger } : {}),
+    tokenStore: createNodeTokenStore(logger === undefined ? {} : { logger }),
     tokenResolver: new OnDiskTokenResolver({
       fetchImpl,
-      ...(now !== undefined ? { now } : {}),
+      ...(now === undefined ? {} : { now }),
     }),
     oauthFlow: {
       /**
@@ -138,14 +138,14 @@ export function createNodeAuthEffects(
         new OAuthFlow({
           region,
           fetchImpl,
-          ...(now !== undefined ? { now } : {}),
+          ...(now === undefined ? {} : { now }),
           ...flowSeams,
         }).login({ persist: false, openBrowser: loginOptions.openBrowser }),
     },
     bridge: createNodeBridgeEffects(),
     meCache: createNodeMeCacheEffects({
-      ...(now !== undefined ? { now } : {}),
-      ...(logger !== undefined ? { logger } : {}),
+      ...(now === undefined ? {} : { now }),
+      ...(logger === undefined ? {} : { logger }),
     }),
     /**
      * Persist a session's axes to `[active]` in ONE `applySession`
@@ -167,9 +167,9 @@ export function createNodeAuthEffects(
      */
     readSecretStdin: (): string =>
       readCappedSecretFromStdin(
-        options.stdinReadSync !== undefined
-          ? { readSync: options.stdinReadSync }
-          : {},
+        options.stdinReadSync === undefined
+          ? {}
+          : { readSync: options.stdinReadSync },
       ),
     /**
      * Single-line progress narration (`_narrate`,
@@ -197,7 +197,6 @@ export function createNodeAuthEffects(
  * @param options - Optional bag seams (see
  *   {@link NodeAuthEffectsOptions}).
  * @returns The injected-source bag for `resolveSession(...)`.
- *
  * @example
  * ```typescript
  * const session = resolveSession({}, createNodeResolverSources());
@@ -235,7 +234,6 @@ export function createNodeResolverSources(
  * (workspace.ts), which composes sources + tokenResolver + MeCache +
  * readFile; use this factory directly only when injecting a custom
  * resolver via `clientOptions`.
- *
  * @example
  * ```typescript
  * const ws = new Workspace({

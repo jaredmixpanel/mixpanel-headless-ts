@@ -7,14 +7,15 @@
 // prescribes the AbortSignal contract these tests pin: all four
 // points, every exit normalized to `DOMException(..., 'AbortError')`).
 import { describe, expect, it } from "vitest";
+
 import { createMixpanelClient } from "../../src/client/client.js";
-import { paginateAll } from "../../src/client/pagination.js";
 import { toNativeJson } from "../../src/client/json-value.js";
+import { paginateAll } from "../../src/client/pagination.js";
 import {
+  type CannedResponse,
   createMockClient,
   makeSession,
   staticTokenResolver,
-  type CannedResponse,
 } from "../../test-support/client-test-helpers.js";
 
 /** One canned page body with the given ids and cursor. */
@@ -93,8 +94,8 @@ describe("PaginationAsyncBehavior", () => {
     let raised: unknown = null;
     try {
       await walk.next();
-    } catch (cause) {
-      raised = cause;
+    } catch (error) {
+      raised = error;
     }
     expect(isAbortError(raised)).toBe(true);
     expect(transport.captures).toHaveLength(1);
@@ -132,8 +133,8 @@ describe("PaginationAsyncBehavior", () => {
       )) {
         void item;
       }
-    } catch (cause) {
-      raised = cause;
+    } catch (error) {
+      raised = error;
     }
     expect(isAbortError(raised)).toBe(true);
     // Exactly one 429 request, one sleep entered — the abort landed in

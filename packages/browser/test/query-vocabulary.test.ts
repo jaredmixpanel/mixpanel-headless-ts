@@ -22,18 +22,19 @@
 
 import { describe, expect, it } from "vitest";
 
-import * as browserEntry from "../src/index.js";
-import { queryParamsModule as coreQueryParams } from "@mixpanel-headless/core/internal";
 import {
   CreateAnnotationParams as coreCreateAnnotationParams,
   inferBookmarkType as coreInferBookmarkType,
   pythonJsonDumpsCanonical as corePythonJsonDumpsCanonical,
   Workspace,
 } from "@mixpanel-headless/core";
+import { queryParamsModule as coreQueryParams } from "@mixpanel-headless/core/internal";
+
 import {
   mockWorkspaceClient,
   TEST_SESSION,
 } from "../../core/test-support/workspace-test-helpers.js";
+import * as browserEntry from "../src/index.js";
 import {
   CohortBreakdown,
   CohortCriteria,

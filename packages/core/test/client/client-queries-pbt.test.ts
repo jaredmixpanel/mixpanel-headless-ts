@@ -8,12 +8,13 @@
 // → fc.option.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { buildActivityFeedDateRange } from "../../src/services/queries/query-host.js";
+
 import {
   civilFromDays,
   daysFromCivil,
   formatYmd,
 } from "../../src/services/queries/py-dates.js";
+import { buildActivityFeedDateRange } from "../../src/services/queries/query-host.js";
 
 /** Day numbers of 2000-01-01 and 2100-12-31 since the epoch. */
 const MIN_DAY = daysFromCivil({ year: 2000, month: 1, day: 1 });
@@ -43,7 +44,12 @@ describe("TestActivityFeedDateRange", () => {
           });
         } else if (fromDate !== null) {
           expect(result).toEqual({ type: "since", from: fromDate });
-        } else if (toDate !== null) {
+        } else if (toDate === null) {
+          expect(result).toEqual({
+            type: "relative_after",
+            window: { unit: "day", value: 30 },
+          });
+        } else {
           expect(result["type"]).toBe("between");
           expect(result["to"]).toBe(toDate);
           // `end - start == timedelta(days=30)` via the same civil math.
@@ -51,11 +57,6 @@ describe("TestActivityFeedDateRange", () => {
           const startDays = daysFromCivil(civilOf(start));
           const endDays = daysFromCivil(civilOf(toDate));
           expect(endDays - startDays).toBe(30);
-        } else {
-          expect(result).toEqual({
-            type: "relative_after",
-            window: { unit: "day", value: 30 },
-          });
         }
       }),
       { numRuns: 200 },
@@ -65,7 +66,7 @@ describe("TestActivityFeedDateRange", () => {
 
 /** Parse a known-good ISO date back to a civil date. */
 function civilOf(iso: string): { year: number; month: number; day: number } {
-  const [y, m, d] = iso.split("-");
+  const [y, m, d] = iso.split("-", 3);
   return {
     year: Number(y),
     month: Number(m),

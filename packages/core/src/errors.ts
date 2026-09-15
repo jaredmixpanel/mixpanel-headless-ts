@@ -73,7 +73,7 @@ export class MixpanelHeadlessError extends Error {
     super(message, options);
     this.name = this.constructor.name;
     this._code = code;
-    this._details = { ...(details ?? {}) };
+    this._details = { ...details };
   }
 
   /** Machine-readable error code. */
@@ -284,7 +284,7 @@ export class APIError extends MixpanelHeadlessError {
       message,
       options.code ?? "API_ERROR",
       details,
-      options.cause !== undefined ? { cause: options.cause } : undefined,
+      options.cause === undefined ? undefined : { cause: options.cause },
     );
     this.#statusCode = statusCode;
     this.#responseBody = responseBody;
@@ -510,7 +510,7 @@ export class InvalidArgumentError extends ConfigError {
     const detectedAuthType = options.detectedAuthType ?? null;
     if (!VALID_VIOLATIONS.includes(violation)) {
       throw new ParamValidationError(
-        `Invalid violation '${String(violation)}'; must be one of ${VALID_VIOLATIONS.join(", ")}.`,
+        `Invalid violation '${violation}'; must be one of ${VALID_VIOLATIONS.join(", ")}.`,
       );
     }
     // Mirror Python's conditional insert: key absent when None (R4.11).
@@ -1071,7 +1071,7 @@ export class RegionProbeError extends OAuthError {
    *
    * @returns Dictionary with keys `code`, `message`, `details`, `attempts`.
    */
-  override toDict(): ErrorDict & { attempts: (string | number)[][] } {
+  override toDict(): ErrorDict & { attempts: Array<Array<string | number>> } {
     return {
       ...super.toDict(),
       attempts: this.#attempts.map((a) => [...a]),
@@ -1510,7 +1510,7 @@ export class ReportLinkError extends MixpanelHeadlessError {
       message,
       options.code ?? ctor.defaultCode,
       options.details ?? null,
-      options.cause !== undefined ? { cause: options.cause } : undefined,
+      options.cause === undefined ? undefined : { cause: options.cause },
     );
   }
 }

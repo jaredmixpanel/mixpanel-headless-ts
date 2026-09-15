@@ -65,19 +65,45 @@ function parseArgs(argv) {
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === "--report") opts.mode = "report";
-    else if (a === "--summary") opts.mode = "summary";
-    else if (a === "--fix") opts.mode = "fix";
-    else if (a === "--dry-run") opts.dryRun = true;
-    else if (a === "--json") {
-      if (i + 1 >= argv.length) usage("--json needs a path");
-      opts.json = resolve(argv[++i]);
-    } else if (a === "--root") {
-      if (i + 1 >= argv.length) usage("--root needs a directory");
-      opts.root = resolve(argv[++i]);
-    } else if (a === "--help" || a === "-h") usage();
-    else if (a.startsWith("-")) usage(`unknown option ${a}`);
-    else opts.paths.push(resolve(a));
+    switch (a) {
+      case "--report": {
+        opts.mode = "report";
+        break;
+      }
+      case "--summary": {
+        opts.mode = "summary";
+        break;
+      }
+      case "--fix": {
+        opts.mode = "fix";
+        break;
+      }
+      case "--dry-run": {
+        opts.dryRun = true;
+        break;
+      }
+      case "--json": {
+        if (i + 1 >= argv.length) usage("--json needs a path");
+        opts.json = resolve(argv[++i]);
+
+        break;
+      }
+      case "--root": {
+        if (i + 1 >= argv.length) usage("--root needs a directory");
+        opts.root = resolve(argv[++i]);
+
+        break;
+      }
+      case "--help":
+      case "-h": {
+        usage();
+        break;
+      }
+      default: {
+        if (a.startsWith("-")) usage(`unknown option ${a}`);
+        else opts.paths.push(resolve(a));
+      }
+    }
   }
   if (opts.dryRun && opts.mode !== "fix")
     usage("--dry-run only applies to --fix");
@@ -167,7 +193,7 @@ function collectFiles(opts) {
   // Files under a skipped directory can still arrive via explicit paths.
   return unique.filter((f) => {
     const rel = relative(opts.root, f).split(sep);
-    return !rel.some((seg) => SKIP_DIRS.has(seg));
+    return rel.every((seg) => !SKIP_DIRS.has(seg));
   });
 }
 

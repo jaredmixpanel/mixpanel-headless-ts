@@ -67,7 +67,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       `unsupported --report format ${JSON.stringify(report)} (only "json")`,
     );
   }
-  return { report, ...(filter !== undefined ? { filter } : {}) };
+  return { report, ...(filter === undefined ? {} : { filter }) };
 }
 
 /**
@@ -75,7 +75,6 @@ export function parseArgs(argv: readonly string[]): CliArgs {
  *
  * @param argv - Arguments after the executable.
  * @returns The process exit code (0 = no failing verdicts).
- *
  * @example
  * ```typescript
  * const code = await main(["--report", "json"]);
@@ -85,8 +84,8 @@ export async function main(argv: readonly string[]): Promise<number> {
   let args: CliArgs;
   try {
     args = parseArgs(argv);
-  } catch (cause) {
-    process.stderr.write(`conformance: ${String(cause)}\n`);
+  } catch (error) {
+    process.stderr.write(`conformance: ${String(error)}\n`);
     return 2;
   }
   // The bundled CLI lives at <package>/dist/cli.mjs and the source at

@@ -3,6 +3,7 @@
 // oracle) on 2026-08-14; see the docstring of `zfill` for the semantics.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+
 import { zfill } from "../../src/compat/zfill.js";
 
 describe("zfill — D13 case list", () => {
@@ -90,7 +91,7 @@ function referenceZfill(value: string, width: number): string {
 
 describe("zfill — fast-check properties", () => {
   const widthArb = fc.integer({ min: -5, max: 60 });
-  const stringArbs: readonly [string, fc.Arbitrary<string>][] = [
+  const stringArbs: ReadonlyArray<[string, fc.Arbitrary<string>]> = [
     ["ascii-ish strings", fc.string()],
     [
       "full-unicode strings (non-BMP included)",
@@ -98,7 +99,7 @@ describe("zfill — fast-check properties", () => {
     ],
   ];
 
-  const edgeExamples: [string, number][] = [
+  const edgeExamples: Array<[string, number]> = [
     ["-1", 3],
     ["5", 3],
     ["+7", 3],
@@ -123,7 +124,7 @@ describe("zfill — fast-check properties", () => {
       fc.assert(
         fc.property(stringArb, widthArb, (value, width) => {
           const inputLength = [...value].length;
-          expect([...zfill(value, width)].length).toBe(
+          expect([...zfill(value, width)]).toHaveLength(
             Math.max(inputLength, width),
           );
         }),

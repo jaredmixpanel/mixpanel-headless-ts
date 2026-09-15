@@ -9,17 +9,18 @@
 // `client.app_request`), so it lives here with its siblings rather than
 // in the B0 suite (same source file, one home — R10.2).
 import { describe, expect, it } from "vitest";
+
+import type { Session } from "../../src/auth/session.js";
+import { toNativeJson } from "../../src/client/json-value.js";
 import {
   AuthenticationError,
   MixpanelHeadlessError,
   QueryError,
 } from "../../src/errors.js";
-import { toNativeJson } from "../../src/client/json-value.js";
 import {
   createMockClient,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
-import type { Session } from "../../src/auth/session.js";
 
 /** The `oauth_credentials` fixture twin (test_api_client_crud_edge.py:36-38). */
 function oauthCredentials(): Session {
@@ -149,7 +150,9 @@ describe("TestListMethodResponseHandling", () => {
       status: 200,
       json: { status: "ok", results: "unexpected" },
     }));
-    const err: unknown = await client.listDashboards().catch((e: unknown) => e);
+    const err: unknown = await client
+      .listDashboards()
+      .catch((error: unknown) => error);
     expect(err).toBeInstanceOf(MixpanelHeadlessError);
     expect((err as Error).message).toContain("expected list");
   });
@@ -217,7 +220,7 @@ describe("TestResponseTypeValidation", () => {
     }));
     const err: unknown = await client
       .createDashboard({ title: "X" })
-      .catch((e: unknown) => e);
+      .catch((error: unknown) => error);
     expect(err).toBeInstanceOf(MixpanelHeadlessError);
     expect((err as Error).message).toContain("expected dict");
   });
@@ -227,7 +230,9 @@ describe("TestResponseTypeValidation", () => {
       status: 200,
       json: { status: "ok", results: [1, 2] },
     }));
-    const err: unknown = await client.getBookmark(42).catch((e: unknown) => e);
+    const err: unknown = await client
+      .getBookmark(42)
+      .catch((error: unknown) => error);
     expect(err).toBeInstanceOf(MixpanelHeadlessError);
     expect((err as Error).message).toContain("expected dict");
   });
@@ -239,7 +244,7 @@ describe("TestResponseTypeValidation", () => {
     }));
     const err: unknown = await client
       .bookmarkLinkedDashboardIds(42)
-      .catch((e: unknown) => e);
+      .catch((error: unknown) => error);
     expect(err).toBeInstanceOf(MixpanelHeadlessError);
     expect((err as Error).message).toContain("expected list");
   });

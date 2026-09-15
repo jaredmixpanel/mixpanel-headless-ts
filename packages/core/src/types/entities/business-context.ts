@@ -9,12 +9,12 @@
  */
 
 import {
-  EntityModel,
   codepointLength,
-  oneOf,
-  prepareInit,
   type ComputedFieldSpec,
   type EntityFieldSpec,
+  EntityModel,
+  oneOf,
+  prepareInit,
 } from "./model-base.js";
 
 /**

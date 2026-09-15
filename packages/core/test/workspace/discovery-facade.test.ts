@@ -16,14 +16,8 @@
 // corpus-mirror precedent, `B3-K2-notes.md:125-128`).
 
 import { describe, expect, it } from "vitest";
-import {
-  createMockClient,
-  makeSession,
-  type CannedResponse,
-  type CapturedFetchRequest,
-} from "../../test-support/client-test-helpers.js";
+
 import type { MixpanelClient } from "../../src/client/client.js";
-import { Workspace } from "../../src/workspace.js";
 import {
   BookmarkInfo,
   FunnelInfo,
@@ -33,6 +27,13 @@ import {
   SubPropertyInfo,
   TopEvent,
 } from "../../src/types/results/discovery.js";
+import { Workspace } from "../../src/workspace.js";
+import {
+  type CannedResponse,
+  type CapturedFetchRequest,
+  createMockClient,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** A canned-response handler (the httpx.MockTransport handler twin). */
 type Handler = (request: CapturedFetchRequest) => CannedResponse;
@@ -47,7 +48,7 @@ function workspaceWith(
     ws: new Workspace({
       session: makeSession(),
       client,
-      ...(extra.warn !== undefined ? { warn: extra.warn } : {}),
+      ...(extra.warn === undefined ? {} : { warn: extra.warn }),
     }),
     client,
   };

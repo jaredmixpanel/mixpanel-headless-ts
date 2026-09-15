@@ -14,16 +14,18 @@
 
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { resolveSession, Secret } from "@mixpanel-headless/core";
+
 import { createNodeBridgeEffects } from "../src/auth/bridge.js";
 import { ConfigManager } from "../src/config.js";
 import { createNodeConfigSource } from "../src/config-writes.js";
 import { createNodeEnv } from "../src/env.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
-const cleanups: (() => void)[] = [];
+const cleanups: Array<() => void> = [];
 let restoreEnv: () => void = () => {};
 
 beforeEach(() => {
@@ -67,7 +69,7 @@ describe("TestSettingsHeaderAttachment", () => {
       {},
       { env: createNodeEnv(), config, bridge: null },
     );
-    expect([...session.headers.entries()]).toEqual([["X-Foo", "bar"]]);
+    expect([...session.headers]).toEqual([["X-Foo", "bar"]]);
   });
 
   it("test_no_setting_header_means_empty_dict", () => {

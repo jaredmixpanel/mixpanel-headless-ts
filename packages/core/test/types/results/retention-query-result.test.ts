@@ -7,6 +7,7 @@
 // is P2-3 alias surface. Immutability suites not ported (compile-time
 // `readonly`).
 import { describe, expect, it } from "vitest";
+
 import {
   RetentionQueryResult,
   type RetentionQueryResultFields,

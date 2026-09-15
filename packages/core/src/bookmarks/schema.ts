@@ -57,18 +57,16 @@
  * @internal
  */
 
-import {
-  INSIGHTS_BOOKMARK_SORT_CONFIG,
-  SORT_ORDER_LITERAL,
-  modelHandle,
-} from "./schema-sorting.js";
-import type {
-  FieldType,
-  ModelSpec,
-  RootModelHandle,
-  UnionSpec,
-} from "./schema-sorting.js";
 import { isPythonDict } from "../query/validation-shared.js";
+import {
+  type FieldType,
+  INSIGHTS_BOOKMARK_SORT_CONFIG,
+  modelHandle,
+  type ModelSpec,
+  type RootModelHandle,
+  SORT_ORDER_LITERAL,
+  type UnionSpec,
+} from "./schema-sorting.js";
 
 // =============================================================================
 // Non-sorting literal aliases (bookmark_schema.py:695-835)

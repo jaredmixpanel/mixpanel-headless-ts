@@ -6,8 +6,10 @@
 // workspace_id=100 (feature flags use require_scoped_path, which needs
 // a workspace ID; the pin avoids mocking the workspace list endpoint).
 import { describe, expect, it } from "vitest";
-import { toNativeJson } from "../../src/client/json-value.js";
+
+import type { Session } from "../../src/auth/session.js";
 import type { MixpanelClient } from "../../src/client/client.js";
+import { toNativeJson } from "../../src/client/json-value.js";
 import {
   type CannedResponse,
   type CapturedFetchRequest,
@@ -15,7 +17,6 @@ import {
   type FakeTransport,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
-import type { Session } from "../../src/auth/session.js";
 
 /** The `oauth_credentials` fixture twin (test_api_client_flags.py:28-31). */
 function oauthCredentials(): Session {

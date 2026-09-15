@@ -7,7 +7,8 @@
 // B4-C1). The us/eu/in Session fixtures reduce to their region literal —
 // every assertion value is preserved verbatim.
 import { describe, expect, it } from "vitest";
-import { ENDPOINTS, buildUrl } from "../../src/client/url.js";
+
+import { buildUrl, ENDPOINTS } from "../../src/client/url.js";
 
 describe("TestEndpoints", () => {
   it("test_us_endpoints_defined", () => {

@@ -9,11 +9,11 @@
  */
 
 import {
-  EntityModel,
   codepointLength,
+  type EntityFieldSpec,
+  EntityModel,
   modelFail,
   prepareInit,
-  type EntityFieldSpec,
 } from "./model-base.js";
 
 /**
@@ -220,7 +220,7 @@ export class Annotation extends EntityModel {
   /** Creator user info. */
   declare readonly user: AnnotationUser | null;
   /** Associated tags. */
-  declare readonly tags: ReadonlyArray<AnnotationTag>;
+  declare readonly tags: readonly AnnotationTag[];
 
   /**
    * Construct a validated Annotation (Pydantic-construction mirror).
@@ -258,7 +258,7 @@ export interface CreateAnnotationParamsInit {
   /** Annotation text (max 512 characters). */
   readonly description: string;
   /** Tag IDs to associate. */
-  readonly tags?: ReadonlyArray<number> | null | undefined;
+  readonly tags?: readonly number[] | null | undefined;
   /** Creator user ID. */
   readonly user_id?: number | null | undefined;
 }
@@ -299,7 +299,7 @@ export class CreateAnnotationParams extends EntityModel {
   /** Annotation text (max 512 characters). */
   declare readonly description: string;
   /** Tag IDs to associate. */
-  declare readonly tags: ReadonlyArray<number> | null;
+  declare readonly tags: readonly number[] | null;
   /** Creator user ID. */
   declare readonly user_id: number | null;
 
@@ -343,7 +343,7 @@ export interface UpdateAnnotationParamsInit {
   /** New description (max 512 characters). */
   readonly description?: string | null | undefined;
   /** New tag IDs. */
-  readonly tags?: ReadonlyArray<number> | null | undefined;
+  readonly tags?: readonly number[] | null | undefined;
 }
 
 /**
@@ -378,7 +378,7 @@ export class UpdateAnnotationParams extends EntityModel {
   /** New description (max 512 characters). */
   declare readonly description: string | null;
   /** New tag IDs. */
-  declare readonly tags: ReadonlyArray<number> | null;
+  declare readonly tags: readonly number[] | null;
 
   /**
    * Construct a validated UpdateAnnotationParams (Pydantic-construction mirror).

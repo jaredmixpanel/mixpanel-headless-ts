@@ -8,12 +8,13 @@
 // frozen-dataclass suites not ported (compile-time `readonly`);
 // `TestTypeAliases` is P2-3 surface (locked by the C8d alias tests).
 import { describe, expect, it } from "vitest";
+
 import type { BookmarkType } from "../../../src/types/literals.js";
+import { BookmarkInfo } from "../../../src/types/results/discovery.js";
 import {
   FlowsResult,
   SavedReportResult,
 } from "../../../src/types/results/live-query.js";
-import { BookmarkInfo } from "../../../src/types/results/discovery.js";
 
 describe("SavedReportResult (TestSavedReportResult)", () => {
   it("test_create_insights_report", () => {

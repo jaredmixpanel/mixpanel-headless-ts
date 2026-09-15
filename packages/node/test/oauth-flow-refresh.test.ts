@@ -17,17 +17,18 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
-  OAuthError,
-  Secret,
-  OAuthTokens,
   type OAuthClientInfo,
+  OAuthError,
+  OAuthTokens,
+  Secret,
 } from "@mixpanel-headless/core";
+
 import { OAuthFlow } from "../src/auth/flow.js";
 import { OAUTH_BASE_URLS } from "../src/auth/oauth-constants.js";
 import { OAuthStorage } from "../src/auth/storage.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
-const cleanups: (() => void)[] = [];
+const cleanups: Array<() => void> = [];
 let restoreEnv: () => void = () => undefined;
 
 beforeEach(() => {
@@ -172,8 +173,8 @@ describe("TestOAuthFlowRefresh (test_auth_flow.py:490)", () => {
     let caught: OAuthError | null = null;
     try {
       await flow.refreshTokens(tokens, "cid", { accountName: "personal" });
-    } catch (exc) {
-      caught = exc as OAuthError;
+    } catch (error) {
+      caught = error as OAuthError;
     }
     expect(caught).toBeInstanceOf(OAuthError);
     expect(caught?.code).toBe("OAUTH_REFRESH_REVOKED");
@@ -227,8 +228,8 @@ describe("TestOAuthFlowRefresh (test_auth_flow.py:490)", () => {
     let caught: OAuthError | null = null;
     try {
       await flow.refreshTokens(expiredTokens(), "cid");
-    } catch (exc) {
-      caught = exc as OAuthError;
+    } catch (error) {
+      caught = error as OAuthError;
     }
     expect(caught).toBeInstanceOf(OAuthError);
     expect(caught?.code).toBe("OAUTH_REFRESH_ERROR");
@@ -258,8 +259,8 @@ describe("TestOAuthFlowRefresh (test_auth_flow.py:490)", () => {
     let caught: OAuthError | null = null;
     try {
       await flow.refreshTokens(expiredTokens(), "cid");
-    } catch (exc) {
-      caught = exc as OAuthError;
+    } catch (error) {
+      caught = error as OAuthError;
     }
     expect(caught).toBeInstanceOf(OAuthError);
     expect(caught?.code).toBe("OAUTH_REFRESH_ERROR");
@@ -287,8 +288,8 @@ describe("TestOAuthFlowRefresh (test_auth_flow.py:490)", () => {
     let caught: OAuthError | null = null;
     try {
       await flow.refreshTokens(expiredTokens(), "cid");
-    } catch (exc) {
-      caught = exc as OAuthError;
+    } catch (error) {
+      caught = error as OAuthError;
     }
     expect(caught).toBeInstanceOf(OAuthError);
     expect(caught?.code).toBe("OAUTH_REFRESH_ERROR");
@@ -398,8 +399,8 @@ describe("TestOAuthFlowNetworkErrors — refresh member (test_auth_flow.py:945; 
     let caught: OAuthError | null = null;
     try {
       await flow.refreshTokens(expiredTokens(), "cid");
-    } catch (exc) {
-      caught = exc as OAuthError;
+    } catch (error) {
+      caught = error as OAuthError;
     }
     expect(caught).toBeInstanceOf(OAuthError);
     expect(caught?.code).toBe("OAUTH_REFRESH_ERROR");
@@ -415,8 +416,8 @@ describe("TestOAuthFlowRegionValidation (test_auth_flow.py:984)", () => {
     let caught: OAuthError | null = null;
     try {
       new OAuthFlow({ region: "uk", storage });
-    } catch (exc) {
-      caught = exc as OAuthError;
+    } catch (error) {
+      caught = error as OAuthError;
     }
     expect(caught).toBeInstanceOf(OAuthError);
     expect(caught?.code).toBe("OAUTH_CONFIG_ERROR");
@@ -428,8 +429,8 @@ describe("TestOAuthFlowRegionValidation (test_auth_flow.py:984)", () => {
     expect(() => new OAuthFlow({ region: "US", storage })).toThrow(OAuthError);
     try {
       new OAuthFlow({ region: "US", storage });
-    } catch (exc) {
-      expect((exc as OAuthError).code).toBe("OAUTH_CONFIG_ERROR");
+    } catch (error) {
+      expect((error as OAuthError).code).toBe("OAUTH_CONFIG_ERROR");
     }
   });
 
@@ -438,8 +439,8 @@ describe("TestOAuthFlowRegionValidation (test_auth_flow.py:984)", () => {
     try {
       new OAuthFlow({ region: "", storage });
       expect.unreachable("empty region must raise");
-    } catch (exc) {
-      expect((exc as OAuthError).code).toBe("OAUTH_CONFIG_ERROR");
+    } catch (error) {
+      expect((error as OAuthError).code).toBe("OAUTH_CONFIG_ERROR");
     }
   });
 

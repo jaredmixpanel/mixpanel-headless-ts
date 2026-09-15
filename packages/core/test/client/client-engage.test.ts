@@ -18,13 +18,14 @@
 // ParamValidationError (Python dual-inherits ValueError; TS keys on
 // class + code, R5.2 — see errors.ts ParamValidationError JSDoc).
 import { describe, expect, it } from "vitest";
-import { ParamValidationError, QueryError } from "../../src/errors.js";
+
 import { toNativeJson } from "../../src/client/json-value.js";
+import { ParamValidationError, QueryError } from "../../src/errors.js";
 import { ProfilePageResult } from "../../src/types/results/index.js";
 import {
+  type CannedResponse,
   createMockClient,
   makeSession,
-  type CannedResponse,
 } from "../../test-support/client-test-helpers.js";
 
 /** Drain an async generator into an array (`list(...)`). */
@@ -169,8 +170,8 @@ describe("TestEngageParameterValidation", () => {
           distinct_ids: ["user_456", "user_789"],
         }),
       );
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ParamValidationError);
     const message = (caught as Error).message.toLowerCase();
@@ -188,8 +189,8 @@ describe("TestEngageParameterValidation", () => {
           cohort_id: "cohort_123",
         }),
       );
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ParamValidationError);
     const message = (caught as Error).message.toLowerCase();
@@ -202,8 +203,8 @@ describe("TestEngageParameterValidation", () => {
     let caught: unknown;
     try {
       await drain(client.exportProfiles({ include_all_users: true }));
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ParamValidationError);
     const message = (caught as Error).message.toLowerCase();
@@ -251,8 +252,8 @@ describe("TestEngageParameterEdgeCases", () => {
           behaviors: "Purchase" as unknown as readonly unknown[],
         }),
       );
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ParamValidationError);
     expect((caught as Error).message.toLowerCase()).toContain("behaviors");
@@ -264,8 +265,8 @@ describe("TestEngageParameterEdgeCases", () => {
     let caught: unknown;
     try {
       await drain(client.exportProfiles({ as_of_timestamp: futureTimestamp }));
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ParamValidationError);
     const message = (caught as Error).message.toLowerCase();
@@ -681,8 +682,8 @@ describe("TestCodedExportProfilesCodes", () => {
     let caught: unknown;
     try {
       await drain(run());
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ParamValidationError);
     expect((caught as ParamValidationError).code).toBe(code);
@@ -797,8 +798,8 @@ describe("TestCodedExportProfilesCodes", () => {
     let caught: unknown;
     try {
       await drain(makeClient().exportProfiles({ include_all_users: true }));
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(ParamValidationError);
     expect((caught as ParamValidationError).code).toBe(
@@ -1046,8 +1047,8 @@ describe("TestEngageStats", () => {
     let caught: unknown;
     try {
       await client.engageStats();
-    } catch (exc) {
-      caught = exc;
+    } catch (error) {
+      caught = error;
     }
     expect(caught).toBeInstanceOf(QueryError);
     expect((caught as Error).message).toContain("unexpected response type");

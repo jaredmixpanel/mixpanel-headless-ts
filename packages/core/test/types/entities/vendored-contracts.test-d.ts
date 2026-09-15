@@ -27,6 +27,12 @@
  */
 
 import type {
+  WebhookCreatePayload,
+  WebhookItem,
+  WebhookTestPayload,
+  WebhookUpdatePayload,
+} from "../../../../../vendor/mixpanel-contracts/iron/common/types/schema4api/webapp/project_webhooks/types.js";
+import type {
   CreateCustomAlertRequest,
   CursorPaginationResponse as AlertsCursorPaginationResponse,
   CustomAlert as VendoredCustomAlert,
@@ -34,18 +40,12 @@ import type {
   UpdateCustomAlertRequest,
   ValidateAlertsForBookmarkRequest,
 } from "../../../../../vendor/mixpanel-contracts/webapp/app_api/projects/alerts/custom/types.js";
-import type {
-  WebhookCreatePayload,
-  WebhookItem,
-  WebhookTestPayload,
-  WebhookUpdatePayload,
-} from "../../../../../vendor/mixpanel-contracts/iron/common/types/schema4api/webapp/project_webhooks/types.js";
+import type { EventDropFiltersLimitResults } from "../../../../../vendor/mixpanel-contracts/webapp/app_api/projects/data_definitions/types.js";
+import type { ExperimentCreatePayload } from "../../../../../vendor/mixpanel-contracts/webapp/app_api/projects/experiments/types.js";
 import type {
   FeatureFlagApiPayload,
   FeatureFlagLimitsResults,
 } from "../../../../../vendor/mixpanel-contracts/webapp/app_api/projects/feature_flags/types.js";
-import type { ExperimentCreatePayload } from "../../../../../vendor/mixpanel-contracts/webapp/app_api/projects/experiments/types.js";
-import type { EventDropFiltersLimitResults } from "../../../../../vendor/mixpanel-contracts/webapp/app_api/projects/data_definitions/types.js";
 import type {
   AlertCount,
   CreateAlertParamsInit,
@@ -53,19 +53,19 @@ import type {
   UpdateAlertParamsInit,
   ValidateAlertsForBookmarkParamsInit,
 } from "../../../src/types/entities/alerts.js";
+import type { CursorPaginationInit } from "../../../src/types/entities/common.js";
+import type { DropFilterLimitsResponseInit } from "../../../src/types/entities/data-governance.js";
+import type { CreateExperimentParamsInit } from "../../../src/types/entities/experiments.js";
+import type {
+  CreateFeatureFlagParamsInit,
+  FlagLimitsResponseInit,
+} from "../../../src/types/entities/feature-flags.js";
 import type {
   CreateWebhookParamsInit,
   ProjectWebhookInit,
   UpdateWebhookParamsInit,
   WebhookTestParamsInit,
 } from "../../../src/types/entities/webhooks.js";
-import type {
-  CreateFeatureFlagParamsInit,
-  FlagLimitsResponseInit,
-} from "../../../src/types/entities/feature-flags.js";
-import type { CreateExperimentParamsInit } from "../../../src/types/entities/experiments.js";
-import type { DropFilterLimitsResponseInit } from "../../../src/types/entities/data-governance.js";
-import type { CursorPaginationInit } from "../../../src/types/entities/common.js";
 
 /** Compile-time truth assertion. */
 type Expect<T extends true> = T;

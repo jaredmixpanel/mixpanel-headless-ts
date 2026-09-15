@@ -13,7 +13,6 @@
 // locally; CI runs it via `npm run check`. Requires `npm run build`
 // (`tsc -b`) to have emitted `packages/*/dist`, which `check` does first.
 
-import { build } from "esbuild";
 import { execFileSync } from "node:child_process";
 import {
   existsSync,
@@ -27,6 +26,8 @@ import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
+
+import { build } from "esbuild";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");

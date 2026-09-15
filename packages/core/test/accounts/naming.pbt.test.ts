@@ -13,8 +13,9 @@
 
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { MeResponse } from "../../src/client/me.js";
+
 import { defaultAccountName, slugify } from "../../src/accounts/naming.js";
+import { MeResponse } from "../../src/client/me.js";
 
 /** Category test for the Python `whitelist_categories=("L","N","P","Z")`. */
 function inCategories(cp: number): boolean {

@@ -12,13 +12,14 @@
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_SCOPE, OAuthError } from "@mixpanel-headless/core";
+
 import { InMemoryCredentialStore } from "../src/credential-store.js";
-import { ensureBrowserClientRegistered } from "../src/registration.js";
 import { CREDENTIAL_KEYS } from "../src/index.js";
+import { ensureBrowserClientRegistered } from "../src/registration.js";
 import {
+  type BodyCapturingTransport,
   bodyCapturingTransport,
   jsonResponse,
-  type BodyCapturingTransport,
 } from "./flow-helpers.js";
 
 const REDIRECT_URI = "https://app.example.com/oauth/callback";
@@ -179,7 +180,7 @@ describe("ensureBrowserClientRegistered", () => {
       store: new InMemoryCredentialStore(),
     }).then(
       () => null,
-      (exc: unknown) => exc,
+      (error_: unknown) => error_,
     );
     expect(error).toBeInstanceOf(OAuthError);
     expect((error as OAuthError).code).toBe("OAUTH_REGISTRATION_ERROR");

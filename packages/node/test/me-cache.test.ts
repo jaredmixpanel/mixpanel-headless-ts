@@ -18,16 +18,18 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { ConfigError, MeResponse } from "@mixpanel-headless/core";
+
 import { MeCache, type MeCacheLogger } from "../src/me-cache.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const POSIX = process.platform !== "win32";
 const itPosix = POSIX ? it : it.skip;
 
-const cleanups: (() => void)[] = [];
+const cleanups: Array<() => void> = [];
 let restoreEnv: () => void = () => undefined;
 let savedHome: string | undefined;
 
@@ -213,8 +215,8 @@ describe("TestMeCacheConcurrency (test_me.py:331)", () => {
     let caught: ConfigError | null = null;
     try {
       cache.put(resp);
-    } catch (exc) {
-      caught = exc as ConfigError;
+    } catch (error) {
+      caught = error as ConfigError;
     }
     expect(caught).toBeInstanceOf(ConfigError);
     // The PII rationale raise names the 0o700 requirement

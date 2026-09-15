@@ -1,6 +1,7 @@
 // invariant() tests (R6.8): throws the hierarchy base on violation,
 // narrows the condition type on success.
 import { describe, expect, it } from "vitest";
+
 import { MixpanelHeadlessError } from "../src/errors.js";
 import { invariant } from "../src/invariant.js";
 
@@ -18,9 +19,9 @@ describe("invariant", () => {
     try {
       invariant(condition, "the invariant text");
       expect.unreachable();
-    } catch (exc) {
-      expect(exc).toBeInstanceOf(MixpanelHeadlessError);
-      const err = exc as MixpanelHeadlessError;
+    } catch (error) {
+      expect(error).toBeInstanceOf(MixpanelHeadlessError);
+      const err = error as MixpanelHeadlessError;
       expect(err.code).toBe("UNKNOWN_ERROR");
       expect(err.message).toBe("the invariant text");
     }

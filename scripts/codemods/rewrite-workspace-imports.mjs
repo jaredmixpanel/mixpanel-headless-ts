@@ -20,6 +20,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import ts from "typescript";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -182,7 +183,7 @@ for (const file of scanFiles) {
         ts.isNamespaceImport(clause.namedBindings)
       ) {
         manual.push(
-          `${relFile}:${sf.getLineAndCharacterOfPosition(stmt.getStart()).line + 1} ${stmt.getText().split("\n")[0]}`,
+          `${relFile}:${sf.getLineAndCharacterOfPosition(stmt.getStart()).line + 1} ${stmt.getText().split("\n", 1)[0]}`,
         );
         fileBlocked = true;
         continue;
@@ -192,7 +193,7 @@ for (const file of scanFiles) {
     } else {
       if (!stmt.exportClause || !ts.isNamedExports(stmt.exportClause)) {
         manual.push(
-          `${relFile}:${sf.getLineAndCharacterOfPosition(stmt.getStart()).line + 1} ${stmt.getText().split("\n")[0]}`,
+          `${relFile}:${sf.getLineAndCharacterOfPosition(stmt.getStart()).line + 1} ${stmt.getText().split("\n", 1)[0]}`,
         );
         fileBlocked = true;
         continue;
@@ -235,11 +236,11 @@ for (const file of scanFiles) {
     const keyword = isImport ? "import" : "export";
     const typeKw = statementTypeOnly ? " type" : "";
     const lines = [];
-    if (groups.public.length)
+    if (groups.public.length > 0)
       lines.push(
         `${keyword}${typeKw} { ${groups.public.join(", ")} } from "${target.specifier}";`,
       );
-    if (groups.internal.length)
+    if (groups.internal.length > 0)
       lines.push(
         `${keyword}${typeKw} { ${groups.internal.join(", ")} } from "${target.internalSpecifier}";`,
       );
@@ -324,18 +325,22 @@ function mergeDuplicateImports(fileName, text) {
 
 // ── report ─────────────────────────────────────────────────────────────
 const uniq = (xs) => [...new Set(xs)].sort();
-if (unresolved.length) {
+if (unresolved.length > 0) {
   console.error(
     `UNRESOLVED (${uniq(unresolved).length}) — not on the public or internal barrel:`,
   );
   for (const u of uniq(unresolved)) console.error(`  ${u}`);
 }
-if (manual.length) {
+if (manual.length > 0) {
   console.error(`MANUAL (${manual.length}) — namespace import / export *:`);
   for (const m of manual) console.error(`  ${m}`);
 }
 console.log(
   `${CHECK ? "would rewrite" : "rewrote"} ${rewrittenStatements} statement(s) in ${changedFiles} file(s)`,
 );
-if (unresolved.length || manual.length || (CHECK && rewrittenStatements > 0))
+if (
+  unresolved.length > 0 ||
+  manual.length > 0 ||
+  (CHECK && rewrittenStatements > 0)
+)
   process.exitCode = 1;

@@ -188,10 +188,10 @@ export class WireStubClient {
       response = await this.fetchImpl(url.href, {
         method,
         headers,
-        ...(body !== undefined ? { body } : {}),
+        ...(body === undefined ? {} : { body }),
       });
-    } catch (cause) {
-      classifyRejection(cause);
+    } catch (error) {
+      classifyRejection(error);
     }
     const contentType = response.headers.get("content-type") ?? "";
     const parsed: unknown = contentType.toLowerCase().includes("json")
@@ -215,11 +215,11 @@ export class WireStubClient {
    *   request.
    */
   async requestSequence(
-    requests: readonly {
+    requests: ReadonlyArray<{
       readonly method: string;
       readonly path: string;
       readonly options?: WireStubRequestOptions;
-    }[],
+    }>,
   ): Promise<WireStubResult[]> {
     const results: WireStubResult[] = [];
     for (const entry of requests) {
@@ -256,8 +256,8 @@ export class WireStubClient {
         method,
         headers: new Headers(options.headers ?? {}),
       });
-    } catch (cause) {
-      classifyRejection(cause);
+    } catch (error) {
+      classifyRejection(error);
     }
     if (response.body === null) {
       return [];

@@ -25,27 +25,27 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  UrlSplitError,
   urljoin,
   urlsplit,
+  UrlSplitError,
   urlunsplit,
 } from "../src/compat/urllib.js";
 import { ParamValidationError, ReportLinkParseError } from "../src/errors.js";
 import {
   APP_TO_REPORT_TYPE,
   BOOKMARK_HASH_FOR_TYPE,
+  buildBookmarkUrl,
+  buildSlugUrl,
+  generateSlug,
+  isSlug,
+  type ParsedReportLink,
+  parseReportLink,
   SLUG_ALPHABET,
   SLUG_APP_FOR_TYPE,
   SLUG_LENGTH,
   SLUG_RE,
   WEB_HOSTS,
-  buildBookmarkUrl,
-  buildSlugUrl,
-  generateSlug,
-  isSlug,
-  parseReportLink,
   webHost,
-  type ParsedReportLink,
 } from "../src/report-links.js";
 import {
   BOOKMARK_TYPE_VALUES,
@@ -55,7 +55,7 @@ import {
 const SLUG = "EBrV5bW2u9Mw";
 
 /** Every field name of `ParsedReportLink`, for the "is a parsed link" check. */
-const PARSED_FIELDS: readonly (keyof ParsedReportLink)[] = [
+const PARSED_FIELDS: ReadonlyArray<keyof ParsedReportLink> = [
   "kind",
   "raw",
   "host",
@@ -235,229 +235,230 @@ describe("TestGenerateSlug", () => {
 
 // --- url-grammar.md §5 parse table --------------------------------------------
 
-const PARSE_ROWS: readonly (readonly [string, Partial<ParsedReportLink>])[] = [
+const PARSE_ROWS: ReadonlyArray<readonly [string, Partial<ParsedReportLink>]> =
   [
-    SLUG,
-    {
-      kind: "slug",
-      slug: SLUG,
-      host: null,
-      region: null,
-      project_id: null,
-      workspace_id: null,
-    },
-  ],
-  [`  ${SLUG}  `, { kind: "slug", slug: SLUG, raw: SLUG }],
-  [
-    "https://mixpanel.com/s/AbC123",
-    {
-      kind: "short_link",
-      short_code: "AbC123",
-      region: "us",
-      host: "mixpanel.com",
-    },
-  ],
-  [
-    "https://eu.mixpanel.com/s/AbC123",
-    { kind: "short_link", short_code: "AbC123", region: "eu" },
-  ],
-  [
-    `https://eu.mixpanel.com/project/3/view/75/app/insights#${SLUG}`,
-    {
-      kind: "slug",
-      region: "eu",
-      project_id: 3,
-      workspace_id: 75,
-      app: "insights",
-      report_type_hint: "insights",
-      slug: SLUG,
-    },
-  ],
-  [
-    `https://mixpanel.com/project/3/app/insights/#${SLUG}`,
-    { kind: "slug", project_id: 3, workspace_id: null, slug: SLUG },
-  ],
-  [
-    "https://mixpanel.com/project/3/app/insights#report/123",
-    {
-      kind: "bookmark",
-      bookmark_id: 123,
-      report_type_hint: "insights",
-      title_segment: null,
-      overrides_jsurl: null,
-    },
-  ],
-  [
-    "https://mixpanel.com/project/3/app/insights#report/123/weekly-actives",
-    {
-      kind: "bookmark",
-      bookmark_id: 123,
-      title_segment: "weekly-actives",
-      overrides_jsurl: null,
-    },
-  ],
-  [
-    "https://mixpanel.com/project/3/app/insights#report/123/weekly-actives/~(a~1)",
-    {
-      kind: "bookmark",
-      bookmark_id: 123,
-      title_segment: "weekly-actives",
-      overrides_jsurl: "~(a~1)",
-    },
-  ],
-  [
-    "https://mixpanel.com/project/3/app/insights#report/123/~(a~1)",
-    {
-      kind: "bookmark",
-      bookmark_id: 123,
-      title_segment: null,
-      overrides_jsurl: "~(a~1)",
-    },
-  ],
-  [
-    "https://mixpanel.com/project/3/app/funnels#view/456",
-    {
-      kind: "bookmark",
-      bookmark_id: 456,
-      report_type_hint: "funnels",
-      app: "funnels",
-    },
-  ],
-  [
-    "https://mixpanel.com/project/3/app/retention#report/7",
-    { kind: "bookmark", bookmark_id: 7, report_type_hint: "retention" },
-  ],
-  [
-    "https://mixpanel.com/project/3/app/flows#report/8",
-    { kind: "bookmark", bookmark_id: 8, report_type_hint: "flows" },
-  ],
-  [
-    "https://mixpanel.com/project/3/app/insights#segmentation-report/9",
-    { kind: "bookmark", bookmark_id: 9, report_type_hint: "insights" },
-  ],
-  [
-    "https://mixpanel.com/project/3/app/impact#report/10",
-    {
-      kind: "bookmark",
-      bookmark_id: 10,
-      report_type_hint: "launch-analysis",
-      app: "impact",
-    },
-  ],
-  [
-    "https://mixpanel.com/report/3/insights#report/123",
-    {
-      kind: "bookmark",
-      project_id: 3,
-      workspace_id: null,
-      bookmark_id: 123,
-      app: "insights",
-    },
-  ],
-  [
-    "https://mixpanel.com/report/3/view/75/insights#report/123",
-    { kind: "bookmark", project_id: 3, workspace_id: 75, bookmark_id: 123 },
-  ],
-  [
-    `in.mixpanel.com/project/3/app/insights#${SLUG}`,
-    { kind: "slug", region: "in", host: "in.mixpanel.com", slug: SLUG },
-  ],
-  [
-    `HTTPS://MIXPANEL.COM/project/3/app/insights#${SLUG}`,
-    { kind: "slug", host: "mixpanel.com", region: "us", slug: SLUG },
-  ],
-  [
-    `https://mixpanel.com:443/project/3/app/insights#${SLUG}`,
-    { kind: "slug", host: "mixpanel.com", project_id: 3, slug: SLUG },
-  ],
-  [
-    `https://mixpanel.com/project/3/app/insights?utm=x#${SLUG}`,
-    { kind: "slug", project_id: 3, slug: SLUG },
-  ],
-  [
-    `https://mixpanel.com/project/3/app/insights%23${SLUG}`,
-    { kind: "slug", project_id: 3, slug: SLUG },
-  ],
-  [
-    `https://mixpanel.org/project/3/app/insights#${SLUG}`,
-    { kind: "slug", region: "us", host: "mixpanel.org", slug: SLUG },
-  ],
-  [
-    "https://mixpanel.com/project/3/app/boards#id=555",
-    {
-      kind: "dashboard",
-      dashboard_id: 555,
-      host: "mixpanel.com",
-      region: "us",
-      project_id: 3,
-      workspace_id: null,
-      app: "boards",
-      report_type_hint: null,
-      slug: null,
-    },
-  ],
-  [
-    "https://eu.mixpanel.com/project/3/view/75/app/boards#id=555",
-    {
-      kind: "dashboard",
-      dashboard_id: 555,
-      host: "eu.mixpanel.com",
-      region: "eu",
-      project_id: 3,
-      workspace_id: 75,
-      app: "boards",
-    },
-  ],
-  [
-    `https://in.mixpanel.com/project/3/view/75/app/boards#id=555&edited-bookmark=${SLUG}`,
-    {
-      kind: "slug",
-      slug: SLUG,
-      dashboard_id: 555,
-      host: "in.mixpanel.com",
-      region: "in",
-      project_id: 3,
-      workspace_id: 75,
-      app: "boards",
-      report_type_hint: null,
-    },
-  ],
-  [
-    "https://eu.mixpanel.com/project/3/view/75/app/funnels#~(x)",
-    {
-      kind: "legacy_jsurl",
-      host: "eu.mixpanel.com",
-      region: "eu",
-      project_id: 3,
-      workspace_id: 75,
-      app: "funnels",
-      report_type_hint: "funnels",
-      slug: null,
-      bookmark_id: null,
-      dashboard_id: null,
-    },
-  ],
-  [
-    `https://mixpanel.com/project/3/app/boards#id=555&edited-bookmark=${SLUG}`,
-    { kind: "slug", slug: SLUG, dashboard_id: 555 },
-  ],
-  [
-    "https://mixpanel.com/project/3/app/insights#~(sections~(...))",
-    {
-      kind: "legacy_jsurl",
-      host: "mixpanel.com",
-      region: "us",
-      project_id: 3,
-      workspace_id: null,
-      app: "insights",
-      report_type_hint: "insights",
-      slug: null,
-      bookmark_id: null,
-    },
-  ],
-];
+    [
+      SLUG,
+      {
+        kind: "slug",
+        slug: SLUG,
+        host: null,
+        region: null,
+        project_id: null,
+        workspace_id: null,
+      },
+    ],
+    [`  ${SLUG}  `, { kind: "slug", slug: SLUG, raw: SLUG }],
+    [
+      "https://mixpanel.com/s/AbC123",
+      {
+        kind: "short_link",
+        short_code: "AbC123",
+        region: "us",
+        host: "mixpanel.com",
+      },
+    ],
+    [
+      "https://eu.mixpanel.com/s/AbC123",
+      { kind: "short_link", short_code: "AbC123", region: "eu" },
+    ],
+    [
+      `https://eu.mixpanel.com/project/3/view/75/app/insights#${SLUG}`,
+      {
+        kind: "slug",
+        region: "eu",
+        project_id: 3,
+        workspace_id: 75,
+        app: "insights",
+        report_type_hint: "insights",
+        slug: SLUG,
+      },
+    ],
+    [
+      `https://mixpanel.com/project/3/app/insights/#${SLUG}`,
+      { kind: "slug", project_id: 3, workspace_id: null, slug: SLUG },
+    ],
+    [
+      "https://mixpanel.com/project/3/app/insights#report/123",
+      {
+        kind: "bookmark",
+        bookmark_id: 123,
+        report_type_hint: "insights",
+        title_segment: null,
+        overrides_jsurl: null,
+      },
+    ],
+    [
+      "https://mixpanel.com/project/3/app/insights#report/123/weekly-actives",
+      {
+        kind: "bookmark",
+        bookmark_id: 123,
+        title_segment: "weekly-actives",
+        overrides_jsurl: null,
+      },
+    ],
+    [
+      "https://mixpanel.com/project/3/app/insights#report/123/weekly-actives/~(a~1)",
+      {
+        kind: "bookmark",
+        bookmark_id: 123,
+        title_segment: "weekly-actives",
+        overrides_jsurl: "~(a~1)",
+      },
+    ],
+    [
+      "https://mixpanel.com/project/3/app/insights#report/123/~(a~1)",
+      {
+        kind: "bookmark",
+        bookmark_id: 123,
+        title_segment: null,
+        overrides_jsurl: "~(a~1)",
+      },
+    ],
+    [
+      "https://mixpanel.com/project/3/app/funnels#view/456",
+      {
+        kind: "bookmark",
+        bookmark_id: 456,
+        report_type_hint: "funnels",
+        app: "funnels",
+      },
+    ],
+    [
+      "https://mixpanel.com/project/3/app/retention#report/7",
+      { kind: "bookmark", bookmark_id: 7, report_type_hint: "retention" },
+    ],
+    [
+      "https://mixpanel.com/project/3/app/flows#report/8",
+      { kind: "bookmark", bookmark_id: 8, report_type_hint: "flows" },
+    ],
+    [
+      "https://mixpanel.com/project/3/app/insights#segmentation-report/9",
+      { kind: "bookmark", bookmark_id: 9, report_type_hint: "insights" },
+    ],
+    [
+      "https://mixpanel.com/project/3/app/impact#report/10",
+      {
+        kind: "bookmark",
+        bookmark_id: 10,
+        report_type_hint: "launch-analysis",
+        app: "impact",
+      },
+    ],
+    [
+      "https://mixpanel.com/report/3/insights#report/123",
+      {
+        kind: "bookmark",
+        project_id: 3,
+        workspace_id: null,
+        bookmark_id: 123,
+        app: "insights",
+      },
+    ],
+    [
+      "https://mixpanel.com/report/3/view/75/insights#report/123",
+      { kind: "bookmark", project_id: 3, workspace_id: 75, bookmark_id: 123 },
+    ],
+    [
+      `in.mixpanel.com/project/3/app/insights#${SLUG}`,
+      { kind: "slug", region: "in", host: "in.mixpanel.com", slug: SLUG },
+    ],
+    [
+      `HTTPS://MIXPANEL.COM/project/3/app/insights#${SLUG}`,
+      { kind: "slug", host: "mixpanel.com", region: "us", slug: SLUG },
+    ],
+    [
+      `https://mixpanel.com:443/project/3/app/insights#${SLUG}`,
+      { kind: "slug", host: "mixpanel.com", project_id: 3, slug: SLUG },
+    ],
+    [
+      `https://mixpanel.com/project/3/app/insights?utm=x#${SLUG}`,
+      { kind: "slug", project_id: 3, slug: SLUG },
+    ],
+    [
+      `https://mixpanel.com/project/3/app/insights%23${SLUG}`,
+      { kind: "slug", project_id: 3, slug: SLUG },
+    ],
+    [
+      `https://mixpanel.org/project/3/app/insights#${SLUG}`,
+      { kind: "slug", region: "us", host: "mixpanel.org", slug: SLUG },
+    ],
+    [
+      "https://mixpanel.com/project/3/app/boards#id=555",
+      {
+        kind: "dashboard",
+        dashboard_id: 555,
+        host: "mixpanel.com",
+        region: "us",
+        project_id: 3,
+        workspace_id: null,
+        app: "boards",
+        report_type_hint: null,
+        slug: null,
+      },
+    ],
+    [
+      "https://eu.mixpanel.com/project/3/view/75/app/boards#id=555",
+      {
+        kind: "dashboard",
+        dashboard_id: 555,
+        host: "eu.mixpanel.com",
+        region: "eu",
+        project_id: 3,
+        workspace_id: 75,
+        app: "boards",
+      },
+    ],
+    [
+      `https://in.mixpanel.com/project/3/view/75/app/boards#id=555&edited-bookmark=${SLUG}`,
+      {
+        kind: "slug",
+        slug: SLUG,
+        dashboard_id: 555,
+        host: "in.mixpanel.com",
+        region: "in",
+        project_id: 3,
+        workspace_id: 75,
+        app: "boards",
+        report_type_hint: null,
+      },
+    ],
+    [
+      "https://eu.mixpanel.com/project/3/view/75/app/funnels#~(x)",
+      {
+        kind: "legacy_jsurl",
+        host: "eu.mixpanel.com",
+        region: "eu",
+        project_id: 3,
+        workspace_id: 75,
+        app: "funnels",
+        report_type_hint: "funnels",
+        slug: null,
+        bookmark_id: null,
+        dashboard_id: null,
+      },
+    ],
+    [
+      `https://mixpanel.com/project/3/app/boards#id=555&edited-bookmark=${SLUG}`,
+      { kind: "slug", slug: SLUG, dashboard_id: 555 },
+    ],
+    [
+      "https://mixpanel.com/project/3/app/insights#~(sections~(...))",
+      {
+        kind: "legacy_jsurl",
+        host: "mixpanel.com",
+        region: "us",
+        project_id: 3,
+        workspace_id: null,
+        app: "insights",
+        report_type_hint: "insights",
+        slug: null,
+        bookmark_id: null,
+      },
+    ],
+  ];
 
-const ERROR_ROWS: readonly (readonly [string, string])[] = [
+const ERROR_ROWS: ReadonlyArray<readonly [string, string]> = [
   ["https://mixpanel.com/project/3/app/insights", "REPORT_LINK_EMPTY_HASH"],
   ["https://mixpanel.com/project/3/app/insights#", "REPORT_LINK_EMPTY_HASH"],
   [
@@ -489,7 +490,7 @@ describe("TestParseTable", () => {
   it.each(PARSE_ROWS)("test_row[%j]", (value, expected) => {
     const parsed = parseReportLink(value);
     expectParsedReportLink(parsed);
-    for (const name of Object.keys(expected) as (keyof ParsedReportLink)[]) {
+    for (const name of Object.keys(expected) as Array<keyof ParsedReportLink>) {
       expect(parsed[name], name).toBe(expected[name]);
     }
     if (!("raw" in expected)) {

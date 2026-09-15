@@ -25,15 +25,16 @@
 // (`metaEvent`/`fullSnapshotEvent`/`interactionEvent`) produce strictly
 // simpler streams than the two fixtures above, so nothing was extracted.
 import { describe, expect, it } from "vitest";
+
+import {
+  analyzeEvents,
+  RrwebAnalyzer,
+} from "../../src/replays/rrweb-analyzer.js";
+import sampleEvents from "./fixtures/sample-replay-001.json" with { type: "json" };
+import syntheticMixed001 from "./fixtures/synthetic-mixed-001.input.json" with { type: "json" };
 import emptyStreamGolden from "./goldens/empty-stream.golden.json" with { type: "json" };
 import sampleGolden from "./goldens/sample-replay-001.golden.json" with { type: "json" };
 import syntheticGolden from "./goldens/synthetic-mixed-001.golden.json" with { type: "json" };
-import sampleEvents from "./fixtures/sample-replay-001.json" with { type: "json" };
-import syntheticMixed001 from "./fixtures/synthetic-mixed-001.input.json" with { type: "json" };
-import {
-  RrwebAnalyzer,
-  analyzeEvents,
-} from "../../src/replays/rrweb-analyzer.js";
 
 /** The frozen golden shape the Python generator writes. */
 interface Golden {

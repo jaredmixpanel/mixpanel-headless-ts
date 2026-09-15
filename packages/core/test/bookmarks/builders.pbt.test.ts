@@ -33,8 +33,8 @@
  * - `@settings(max_examples=50)` → `fc.assert(..., { numRuns: 50 })`.
  */
 
-import { describe, it, expect } from "vitest";
 import fc from "fast-check";
+import { describe, expect, it } from "vitest";
 
 import {
   buildFilterEntry,
@@ -52,11 +52,11 @@ import { Filter, GroupBy } from "../../src/types/index.js";
  * needed (Python relies on the same category property).
  */
 const propertyNames = fc.stringMatching(
-  /^[A-Za-z0-9éЖ中٩\u{1d4b3}\u{1d7ce}]{1,30}$/u,
+  /^[A-Za-z0-9éЖ中٩\u{1D4B3}\u{1D7CE}]{1,30}$/u,
 );
 
 /** Twin of `_subprop_names` — letters only, 1..10 chars. */
-const subpropNames = fc.stringMatching(/^[A-Za-zéЖ中\u{1d4b3}]{1,10}$/u);
+const subpropNames = fc.stringMatching(/^[A-Za-zéЖ中\u{1D4B3}]{1,10}$/u);
 
 /** Twin of `st.text(min_size=1, max_size=20)` for kwarg VALUES. */
 const kwargValues = fc.string({
@@ -79,7 +79,7 @@ describe("Filter.listContains round-trip invariants (PBT)", () => {
           // fc.dictionary can shrink below minKeys when keys collide;
           // Python's st.dictionaries cannot, so re-establish the
           // precondition rather than weakening the assertions.
-          fc.pre(Object.keys(pairs).length >= 1);
+          fc.pre(Object.keys(pairs).length > 0);
           const f = Filter.listContains(prop, [], {
             quantifier,
             equals: pairs,

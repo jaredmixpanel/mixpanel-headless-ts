@@ -21,7 +21,6 @@ import { PYTHON_STR_WHITESPACE } from "./whitespace.gen.js";
  * @returns The substring with every leading/trailing codepoint in the
  *   pinned `str.isspace()` table removed. Never splits a surrogate pair
  *   (whitespace is BMP-only, and scanning is codepoint-based).
- *
  * @example
  * ```typescript
  * pythonStrip("\u001chi\u001f"); // "hi"  (JS trim() keeps U+001C/U+001F)

@@ -126,8 +126,10 @@ export class ReportLink {
 export interface ResolvedReportFields {
   /** Which record type was fetched: `slug` or `bookmark`. */
   readonly source: "slug" | "bookmark";
-  /** Server `type` for a slug, `Bookmark.bookmark_type` for a bookmark.
-   * May be `launch-analysis`, which cannot be run. */
+  /**
+   * Server `type` for a slug, `Bookmark.bookmark_type` for a bookmark.
+   * May be `launch-analysis`, which cannot be run.
+   */
   readonly report_type: string;
   /** The raw parameters. Never merged with `overrides`. */
   readonly params: Readonly<Record<string, unknown>>;
@@ -147,8 +149,10 @@ export interface ResolvedReportFields {
   readonly slug?: string | null | undefined;
   /** Set for a bookmark link. */
   readonly bookmark_id?: number | null | undefined;
-  /** Set for a bookmark link, or for a slug record with an embedded
-   * bookmark. */
+  /**
+   * Set for a bookmark link, or for a slug record with an embedded
+   * bookmark.
+   */
   readonly bookmark?: Bookmark | null | undefined;
   /** Record name when present. */
   readonly name?: string | null | undefined;
@@ -198,8 +202,10 @@ export class ResolvedReport {
   readonly slug: string | null;
   /** Set for a bookmark link. */
   readonly bookmark_id: number | null;
-  /** Set for a bookmark link, or for a slug record with an embedded
-   * bookmark. */
+  /**
+   * Set for a bookmark link, or for a slug record with an embedded
+   * bookmark.
+   */
   readonly bookmark: Bookmark | null;
   /** Record name when present. */
   readonly name: string | null;
@@ -272,9 +278,9 @@ export class ResolvedReport {
       slug: this.slug,
       bookmark_id: this.bookmark_id,
       bookmark:
-        this.bookmark !== null
-          ? this.bookmark.modelDump({ byAlias: true })
-          : null,
+        this.bookmark === null
+          ? null
+          : this.bookmark.modelDump({ byAlias: true }),
       name: this.name,
       description: this.description,
       overrides: this.overrides,

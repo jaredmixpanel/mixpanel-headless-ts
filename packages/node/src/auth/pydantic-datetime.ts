@@ -40,8 +40,8 @@
  */
 
 import {
-  pythonUtcIsoformat,
   ParamValidationError,
+  pythonUtcIsoformat,
 } from "@mixpanel-headless/core";
 
 /** The speedate seconds→milliseconds watershed (`|v|` strictly above). */

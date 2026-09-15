@@ -19,26 +19,26 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
   AccountInUseError,
+  AccountSummary,
   ConfigError,
+  type OAuthTokenAccount,
   ParamValidationError,
   Secret,
-  AccountSummary,
+  type ServiceAccount,
 } from "@mixpanel-headless/core";
-import type {
-  OAuthTokenAccount,
-  ServiceAccount,
-} from "@mixpanel-headless/core";
+
 import { ConfigManager } from "../src/config.js";
 import { atomicWriteBytes } from "../src/io-utils.js";
 import { makeTempDir } from "./helpers.js";
 
 const POSIX = process.platform !== "win32";
 
-const cleanups: (() => void)[] = [];
+const cleanups: Array<() => void> = [];
 afterEach(() => {
   while (cleanups.length > 0) {
     cleanups.pop()?.();
@@ -60,7 +60,7 @@ function addSa(
   cm.addAccount(name, {
     type: "service_account",
     region: "us",
-    ...(defaultProject !== null ? { default_project: defaultProject } : {}),
+    ...(defaultProject === null ? {} : { default_project: defaultProject }),
     username: "u",
     secret: new Secret("s"),
   });
@@ -180,8 +180,8 @@ describe("TestAddAccount", () => {
     let error: unknown;
     try {
       cm.addAccount("x", { type: "oauth_browser", region: "us" });
-    } catch (exc) {
-      error = exc;
+    } catch (error_) {
+      error = error_;
     }
     // PLAIN ConfigError / CONFIG_ERROR (`config.py:446`) — never
     // AccountExistsError (B7-ARB-B B-E2E-F1).
@@ -758,8 +758,8 @@ describe("B8-ARB-A SEM-F6 probe errno-wrap lock", () => {
       let caught: unknown = null;
       try {
         cm.listAccounts();
-      } catch (exc) {
-        caught = exc;
+      } catch (error) {
+        caught = error;
       }
       expect(caught).toBeInstanceOf(TypeError);
       expect(caught).not.toBeInstanceOf(ConfigError);
