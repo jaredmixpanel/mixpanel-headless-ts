@@ -164,6 +164,13 @@ Each has a generator and a byte-exact freshness test; regenerate instead of edit
   `as const` objects + literal unions), `verbatimModuleSyntax`, NodeNext modules,
   target/lib `es2023`. Library builds additionally require `isolatedDeclarations`
   (every exported binding needs an explicit type unless trivially inferable).
+- Naming (D1): identifiers, private members and constructor/config option
+  bags are camelCase; snake_case only for names that mirror Python or the wire
+  (entity/result/param fields, bookmark params, error `details`, on-disk
+  records) and for query-option bags that mirror Python keyword arguments 1:1.
+  Object-literal keys are unconstrained. Enforced by `namingConvention()` in
+  `eslint.config.js` (snake_case scopes are listed there by file) and
+  `tests/naming-config-bags.test.ts`; README "Naming" is the user-facing rule.
 - Task-scoped scratch notes go in `.notes/` (see `.notes/ts5-scratch.md` for the
   pattern); durable run records go in `GATE.md` / `RUN.md`.
 - Environment overrides for scripts: `MP_PYTHON_REPO` (Python checkout path),

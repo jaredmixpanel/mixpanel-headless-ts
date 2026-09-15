@@ -752,6 +752,23 @@ each other (run records: [`conformance-runner/GATE.md`](conformance-runner/GATE.
 [`differential/oracle/RUN.md`](differential/oracle/RUN.md)). Even Python-specific rendering quirks (float formatting, `str()` semantics)
 are reproduced so results match byte-for-byte across languages.
 
+### Naming
+
+The rule behind the table: **identifiers are camelCase, data is spelled the way
+Python spells it.** Methods, classes, functions, constants and every
+constructor/config option bag (`new Workspace({ tokenResolver })`,
+`MixpanelClientOptions`, `OAuthFlowOptions`, browser store options) are
+camelCase. snake_case is kept exactly where a name mirrors Python or the wire:
+query-option bags that map 1:1 onto a Python method's keyword arguments
+(`ws.query("Login", { from_date, to_date })`), entity/result/param fields
+(`funnel.overall_conversion_rate`), bookmark params, error `details`, and
+on-disk records (`default_project`, `token_env`). TypeScript-only additions
+to a snake_case bag (`signal`, `onBatch`, `maxPages`) stay camelCase. The
+split lets Python code and guides transliterate mechanically while everything
+that is "just JavaScript" reads like JavaScript; `eslint.config.js` enforces it
+(`namingConvention`) and `tests/naming-config-bags.test.ts` locks the config
+bags.
+
 ## Requirements
 
 - **Node.js ≥ 22.12** to _use_ `@mixpanel-headless/node`; any evergreen browser
