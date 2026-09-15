@@ -406,6 +406,54 @@ function reconstructNested(
 }
 
 /**
+ * The per-class decode index: the alias-to-attribute map `fromDict`
+ * resolves input keys through, the computed-field names it drops, and
+ * the declared-name set the constructor uses to spot extras.
+ */
+interface ClassIndex {
+  readonly keyToField: ReadonlyMap<string, string>;
+  readonly computed: ReadonlySet<string>;
+  readonly known: ReadonlySet<string>;
+}
+
+/**
+ * {@link ClassIndex} per concrete class, built on first use. The specs
+ * are `static readonly` and never change after module load, so the
+ * index is derived once instead of on every decode/construction; a
+ * WeakMap keyed by the class keeps it off the public statics and lets
+ * ad-hoc test classes be collected.
+ */
+const CLASS_INDEX = new WeakMap<EntityModelStatics, ClassIndex>();
+
+/**
+ * Look up (or build and memoise) the decode index of one class.
+ *
+ * @param cls - The entity-model statics.
+ * @returns The class's index.
+ */
+function classIndex(cls: EntityModelStatics): ClassIndex {
+  const cached = CLASS_INDEX.get(cls);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const keyToField = new Map<string, string>();
+  const known = new Set<string>();
+  for (const spec of cls.fieldSpecs) {
+    known.add(spec.name);
+    if (spec.nameAccepted !== false) {
+      keyToField.set(spec.name, spec.name);
+    }
+    for (const alias of spec.aliases ?? []) {
+      keyToField.set(alias, spec.name);
+    }
+  }
+  const computed = new Set((cls.computedSpecs ?? []).map((c) => c.name));
+  const index: ClassIndex = { keyToField, computed, known };
+  CLASS_INDEX.set(cls, index);
+  return index;
+}
+
+/**
  * Resolve a raw input mapping to a canonical field bag: alias keys map
  * to attribute names, computed-field keys are dropped, and unknown keys
  * follow the class `extra` policy. This is the `fromDict` half —
@@ -431,16 +479,7 @@ export function prepareInit<F extends object>(
   if (!isPlainObject(raw)) {
     return modelFail(cls.modelName, "expected a mapping payload");
   }
-  const keyToField = new Map<string, string>();
-  for (const spec of cls.fieldSpecs) {
-    if (spec.nameAccepted !== false) {
-      keyToField.set(spec.name, spec.name);
-    }
-    for (const alias of spec.aliases ?? []) {
-      keyToField.set(alias, spec.name);
-    }
-  }
-  const computed = new Set((cls.computedSpecs ?? []).map((c) => c.name));
+  const { keyToField, computed } = classIndex(cls);
   const bag: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(raw)) {
     if (key === "$type" || computed.has(key)) {
@@ -503,7 +542,7 @@ export abstract class EntityModel<F extends object = never> {
     // type (no index signature), so this widening is the one place the
     // typed bag meets the spec-driven walk.
     const bag = fields as Readonly<Record<string, unknown>>;
-    const known = new Set<string>(cls.fieldSpecs.map((spec) => spec.name));
+    const { known } = classIndex(cls);
     const extras: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(bag)) {
       if (known.has(key) || value === undefined) {
