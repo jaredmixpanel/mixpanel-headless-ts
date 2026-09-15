@@ -90,7 +90,7 @@ export function isBindingRef(arg: CallArg): arg is BindingRef {
  * @param depth - Current indentation depth (nesting level).
  * @returns The literal text, without a trailing newline.
  */
-export function printArg(arg: CallArg, depth = 0): string {
+function printArg(arg: CallArg, depth = 0): string {
   if (isBindingRef(arg)) {
     return arg.$binding;
   }

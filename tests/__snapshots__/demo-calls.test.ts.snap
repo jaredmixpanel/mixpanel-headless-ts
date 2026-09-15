@@ -1,0 +1,51 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`rendered blocks > match their snapshots 1`] = `
+{
+  "event names": "const names = await ws.events();",
+  "funnel, three steps, default window": "const funnel = await ws.queryFunnel(["Signup", "Note Saved", "Note Shared"], {
+  last: 30,
+});",
+  "funnel, two steps, 7-day window": "const funnel = await ws.queryFunnel(["Signup", "Note Saved"], {
+  conversion_window: 7,
+  last: 7,
+});",
+  "properties": "const props = await ws.properties("Note Saved");",
+  "property values": "const values = await ws.propertyValues("platform", {
+  event: "Note Saved",
+  limit: 20,
+});",
+  "report link": "const link = await ws.createReportLink(result, {
+  name: "Playground: Note Saved, last 30 days",
+});",
+  "retention, daily": "const retention = await ws.queryRetention("Signup", "App Opened", {
+  retention_unit: "day",
+  last: 7,
+});",
+  "retention, weekly": "const retention = await ws.queryRetention("Signup", "Note Saved", {
+  retention_unit: "week",
+  last: 30,
+});",
+  "top events": "const top = await ws.topEvents({
+  limit: 10,
+});",
+  "trend with a quoted-key property": "const result = await ws.query("App Opened", {
+  math: "total",
+  last: 30,
+  group_by: "$browser",
+});",
+  "trend, dau, 90 days, broken down": "const result = await ws.query("Note Saved", {
+  math: "dau",
+  last: 90,
+  group_by: "platform",
+});",
+  "trend, total, 30 days": "const result = await ws.query("Note Saved", {
+  math: "total",
+  last: 30,
+});",
+  "trend, unique, 7 days": "const result = await ws.query("Note Saved", {
+  math: "unique",
+  last: 7,
+});",
+}
+`;

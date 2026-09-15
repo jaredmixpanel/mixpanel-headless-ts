@@ -80,6 +80,3 @@ export type DemoState =
       readonly error: DemoError;
       readonly retry: ErrorRetry;
     };
-
-/** `sessionStorage` key holding the region between "Sign in" and the callback. */
-export const REGION_STORAGE_KEY = "mp-demo.region";

@@ -66,7 +66,7 @@ export interface RetentionSpec {
 export type QuerySpec = TrendSpec | FunnelSpec | RetentionSpec;
 
 /** The `const` name each engine's result is bound to in the rendered code. */
-export const BINDING_BY_KIND = {
+const BINDING_BY_KIND = {
   trend: "result",
   funnel: "funnel",
   retention: "retention",
