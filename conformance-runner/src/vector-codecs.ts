@@ -259,6 +259,27 @@ interface DataclassCodecSpec {
 }
 
 /**
+ * Hand a decoded field bag to a dataclass constructor as its typed field
+ * bag — the `Cls(**fields)` replay of the codec rows.
+ *
+ * Deliberately unchecked, like the kwargs twin in `internal/kwargs.ts`:
+ * the constructor's own guards must fire on a malformed bag exactly
+ * where Python's `__post_init__` does, so no shape check belongs here —
+ * the call site names the field type and this is the ONE cast.
+ *
+ * @param bag - The decoded (child-decoded) field bag.
+ * @returns The same bag typed as the constructor's field bag.
+ * @example
+ * ```typescript
+ * new Metric(fieldsFromBag<MetricFields>(bag));
+ * ```
+ */
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- F is the destination field type the call site names explicitly; nothing in the signature can constrain it (see doc)
+export function fieldsFromBag<F>(bag: Readonly<Record<string, unknown>>): F {
+  return bag as unknown as F;
+}
+
+/**
  * Build a {@link ContractTagCodec} from a dataclass spec — the TS twin
  * of Python's generic dataclass codec path: unknown payload fields are
  * rejected, absent fields fall back to the constructor defaults,
@@ -378,7 +399,9 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
       required: ["sub", "sub_type"],
       construct: (bag) =>
         new ListItemGroupMode(
-          bag as unknown as ConstructorParameters<typeof ListItemGroupMode>[0],
+          fieldsFromBag<ConstructorParameters<typeof ListItemGroupMode>[0]>(
+            bag,
+          ),
         ),
       matches: (value) => value instanceof ListItemGroupMode,
     },
@@ -390,7 +413,7 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
       required: ["name"],
       construct: (bag) =>
         new PropertyInput(
-          bag as unknown as ConstructorParameters<typeof PropertyInput>[0],
+          fieldsFromBag<ConstructorParameters<typeof PropertyInput>[0]>(bag),
         ),
       matches: (value) => value instanceof PropertyInput,
     },
@@ -402,9 +425,9 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
       required: ["formula", "inputs"],
       construct: (bag) =>
         new InlineCustomProperty(
-          bag as unknown as ConstructorParameters<
-            typeof InlineCustomProperty
-          >[0],
+          fieldsFromBag<ConstructorParameters<typeof InlineCustomProperty>[0]>(
+            bag,
+          ),
         ),
       matches: (value) => value instanceof InlineCustomProperty,
     },
@@ -416,7 +439,9 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
       required: ["id"],
       construct: (bag) =>
         new CustomPropertyRef(
-          bag as unknown as ConstructorParameters<typeof CustomPropertyRef>[0],
+          fieldsFromBag<ConstructorParameters<typeof CustomPropertyRef>[0]>(
+            bag,
+          ),
         ),
       matches: (value) => value instanceof CustomPropertyRef,
     },
@@ -435,7 +460,7 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
         "segment_method",
       ],
       required: ["event"],
-      construct: (bag) => new Metric(bag as unknown as MetricFields),
+      construct: (bag) => new Metric(fieldsFromBag<MetricFields>(bag)),
       matches: (value) => value instanceof Metric,
     },
   ],
@@ -446,7 +471,7 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
       required: ["cohort"],
       construct: (bag) =>
         new CohortMetric(
-          bag as unknown as ConstructorParameters<typeof CohortMetric>[0],
+          fieldsFromBag<ConstructorParameters<typeof CohortMetric>[0]>(bag),
         ),
       matches: (value) => value instanceof CohortMetric,
     },
@@ -457,7 +482,9 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
       fields: ["expression", "label"],
       required: ["expression"],
       construct: (bag) =>
-        new Formula(bag as unknown as ConstructorParameters<typeof Formula>[0]),
+        new Formula(
+          fieldsFromBag<ConstructorParameters<typeof Formula>[0]>(bag),
+        ),
       matches: (value) => value instanceof Formula,
     },
   ],
@@ -468,7 +495,7 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
       required: ["type"],
       construct: (bag) =>
         new TimeComparison(
-          bag as unknown as ConstructorParameters<typeof TimeComparison>[0],
+          fieldsFromBag<ConstructorParameters<typeof TimeComparison>[0]>(bag),
         ),
       matches: (value) => value instanceof TimeComparison,
     },
@@ -480,7 +507,7 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
       required: ["_selector_node", "_behavior_key", "_behavior"],
       construct: (bag) =>
         new CohortCriteria(
-          bag as unknown as ConstructorParameters<typeof CohortCriteria>[0],
+          fieldsFromBag<ConstructorParameters<typeof CohortCriteria>[0]>(bag),
         ),
       matches: (value) => value instanceof CohortCriteria,
     },
@@ -493,7 +520,7 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
       required: ["cohort"],
       construct: (bag) =>
         new CohortBreakdown(
-          bag as unknown as ConstructorParameters<typeof CohortBreakdown>[0],
+          fieldsFromBag<ConstructorParameters<typeof CohortBreakdown>[0]>(bag),
         ),
       matches: (value) => value instanceof CohortBreakdown,
     },
@@ -504,7 +531,7 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
     {
       fields: ["event", "label", "filters", "filters_combinator", "order"],
       required: ["event"],
-      construct: (bag) => new FunnelStep(bag as unknown as FunnelStepFields),
+      construct: (bag) => new FunnelStep(fieldsFromBag<FunnelStepFields>(bag)),
       matches: (value) => value instanceof FunnelStep,
     },
   ],
@@ -513,7 +540,7 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
     {
       fields: ["event", "from_step", "to_step"],
       required: ["event"],
-      construct: (bag) => new Exclusion(bag as unknown as ExclusionFields),
+      construct: (bag) => new Exclusion(fieldsFromBag<ExclusionFields>(bag)),
       matches: (value) => value instanceof Exclusion,
     },
   ],
@@ -523,7 +550,7 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
       fields: ["property", "resource_type"],
       required: ["property"],
       construct: (bag) =>
-        new HoldingConstant(bag as unknown as HoldingConstantFields),
+        new HoldingConstant(fieldsFromBag<HoldingConstantFields>(bag)),
       matches: (value) => value instanceof HoldingConstant,
     },
   ],
@@ -533,7 +560,7 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
       fields: ["event", "filters", "filters_combinator"],
       required: ["event"],
       construct: (bag) =>
-        new RetentionEvent(bag as unknown as RetentionEventFields),
+        new RetentionEvent(fieldsFromBag<RetentionEventFields>(bag)),
       matches: (value) => value instanceof RetentionEvent,
     },
   ],
@@ -550,7 +577,7 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
         "session_event",
       ],
       required: ["event"],
-      construct: (bag) => new FlowStep(bag as unknown as FlowStepFields),
+      construct: (bag) => new FlowStep(fieldsFromBag<FlowStepFields>(bag)),
       matches: (value) => value instanceof FlowStep,
     },
   ],
@@ -560,7 +587,7 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
       fields: ["event", "bucket_size", "bucket_min", "bucket_max", "label"],
       required: ["event"],
       construct: (bag) =>
-        new FrequencyBreakdown(bag as unknown as FrequencyBreakdownFields),
+        new FrequencyBreakdown(fieldsFromBag<FrequencyBreakdownFields>(bag)),
       matches: (value) => value instanceof FrequencyBreakdown,
     },
   ],
@@ -578,7 +605,7 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
       ],
       required: ["event", "value"],
       construct: (bag) =>
-        new FrequencyFilter(bag as unknown as FrequencyFilterFields),
+        new FrequencyFilter(fieldsFromBag<FrequencyFilterFields>(bag)),
       matches: (value) => value instanceof FrequencyFilter,
     },
   ],
@@ -647,7 +674,7 @@ const GROUP_BY_SPEC: DataclassCodecSpec = {
         floatFields.add(field);
       }
     }
-    const instance = new GroupBy(unwrapped as unknown as GroupByFields);
+    const instance = new GroupBy(fieldsFromBag<GroupByFields>(unwrapped));
     if (floatFields.size > 0) {
       GROUP_BY_FLOAT_BUCKETS.set(instance, floatFields);
     }
@@ -735,7 +762,7 @@ const signedReplayCodec: ContractTagCodec = {
     if (isFloatCarrier(signedAt)) {
       bag["signed_at"] = Number(signedAt.spelling);
     }
-    return new SignedReplay(bag as unknown as SignedReplayFields);
+    return new SignedReplay(fieldsFromBag<SignedReplayFields>(bag));
   },
   matches: (value) => value instanceof SignedReplay,
   encode: (instance, encodeChild) => {
@@ -778,7 +805,7 @@ const REPLAY_DATACLASS_CODECS: ReadonlyArray<
         "description",
       ],
       required: ["timestamp", "action", "target_node_id", "target_desc", "url"],
-      construct: (bag) => new UserAction(bag as unknown as UserActionFields),
+      construct: (bag) => new UserAction(fieldsFromBag<UserActionFields>(bag)),
       matches: (value) => value instanceof UserAction,
     },
   ],
@@ -823,7 +850,7 @@ const REPLAY_DATACLASS_CODECS: ReadonlyArray<
             item instanceof ReplayEvent ? item : ReplayEvent.fromDict(item),
           );
         }
-        return new Replay(coerced as unknown as ReplayFields);
+        return new Replay(fieldsFromBag<ReplayFields>(coerced));
       },
       matches: (value) => value instanceof Replay,
     },

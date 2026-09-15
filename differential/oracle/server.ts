@@ -41,6 +41,7 @@ import {
   createRunnerDeps,
   createShims,
   encodeExpectValue,
+  fieldsFromBag,
   type InvocationContext,
   isExpectErrorConvertible,
   JsonNumber,
@@ -313,7 +314,7 @@ function registerOracleReplayCodecs(codecs: RunnerDeps["codecs"]): void {
           }
         }
         try {
-          return new cls(bag as never);
+          return new cls(fieldsFromBag(bag));
         } catch (error) {
           throw new UndecodableValueError(
             `could not reconstruct ${tag} from vector fields: ${String(error)}`,

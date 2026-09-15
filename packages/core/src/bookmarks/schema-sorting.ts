@@ -146,8 +146,7 @@ export const DEFAULT_CODE_MAP: ReadonlyMap<string, string> = new Map([
  */
 export function defaultCodeMapper(
   errType: string,
-  // The `CodeMapper` protocol requires the parameter (Python `_loc`).
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- the `CodeMapper` protocol fixes the arity (Python `_loc`)
   _loc: ReadonlyArray<string | number>,
 ): string {
   return DEFAULT_CODE_MAP.get(errType) ?? "VALIDATION_ERROR";

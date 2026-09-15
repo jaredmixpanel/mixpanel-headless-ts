@@ -27,6 +27,7 @@ export {
   CONTRACT_TAG_CODECS,
   type ContractTagCodec,
   ENTITY_TAG_CODECS,
+  fieldsFromBag,
 } from "./vector-codecs.js";
 export * from "./vector-fetch.js";
 export type * from "./vector-types.js";
