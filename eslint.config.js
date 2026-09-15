@@ -3,20 +3,12 @@
 //
 // Every rule is either enforced (`error`) or `off` with a one-line reason;
 // nothing is ever `warn` (a load-time assertion at the bottom guarantees
-// that). Rules whose fixes are still being hand-applied are configured in
-// full in the main blocks and parked `off` inside the delimited "Phase 4
-// lane" blocks near the end — landing a lane means deleting its block. To
-// see a lane's errors before it lands, drop its block for one run:
-//
-//     MP_LINT_UNPARK=L2 npx eslint packages/core/src      # one lane
-//     MP_LINT_UNPARK=all npx eslint . -f json              # everything
+// that).
 //
 // Purity boundary: packages/core is isomorphic and packages/browser is
 // browser-only. Neither may import Node built-ins (`node:*`, `fs`, `path`,
 // `os`) or `undici`, nor touch the `process` global. Enforced here and by the
 // browser-bundle smoke (scripts/browser-smoke.mjs) wired into `npm run check`.
-
-import process from "node:process";
 
 import js from "@eslint/js";
 import vitest from "@vitest/eslint-plugin";
@@ -257,33 +249,6 @@ function namingConvention({ snakeCaseProperties = false } = {}) {
         : {}),
     },
   ];
-}
-
-// ---------------------------------------------------------------------------
-// Lane blocks (hand-fix categories still being applied)
-// ---------------------------------------------------------------------------
-
-const UNPARKED = new Set(
-  (process.env["MP_LINT_UNPARK"] ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean),
-);
-
-/**
- * Wrap a parked lane block: an ordinary config entry unless the lane is
- * unparked through `MP_LINT_UNPARK`, in which case it contributes nothing and
- * the rules it switched off become live.
- *
- * @param {string} id - Lane identifier (`"L5"`, …).
- * @param {object} config - The config entry that parks the lane's rules.
- * @returns {object[]} Zero or one config entries.
- */
-function lane(id, config) {
-  if (UNPARKED.has("all") || UNPARKED.has(id)) {
-    return [];
-  }
-  return [{ name: `phase4-lane-${id}`, ...config }];
 }
 
 const config = defineConfig([
@@ -588,7 +553,7 @@ const config = defineConfig([
       // test block re-enables it (tests may use `!`).
       "@typescript-eslint/non-nullable-type-assertion-style": "off",
 
-      // --- typescript-eslint: hand-fix categories (parked in lanes) -------
+      // --- typescript-eslint: rules configured beyond the presets ----------
       "@typescript-eslint/restrict-template-expressions": [
         "error",
         {
@@ -977,8 +942,28 @@ const config = defineConfig([
         // `*.test-d.ts` = vitest typecheck files (type-level tests).
         { pattern: String.raw`\.test(-d)?\.ts$` },
       ],
-      // Default options only: rejecting `test_` prefixes is Phase 5.4 (D7).
-      "vitest/valid-title": "error",
+      // Titles are English behaviour statements; the Python test name lives
+      // in a trailing `// python: test_x` comment, never in the title
+      // (CONTRIBUTING "Tests").
+      "vitest/valid-title": [
+        "error",
+        {
+          mustNotMatch: {
+            it: [
+              "^test_",
+              "State the behaviour in English; keep the Python name in a `// python:` comment",
+            ],
+            test: [
+              "^test_",
+              "State the behaviour in English; keep the Python name in a `// python:` comment",
+            ],
+            describe: [
+              String.raw`^Test[A-Z]|^test_|\.py:\d`,
+              "Name the unit under test; keep the Python class in a `// python:` comment",
+            ],
+          },
+        },
+      ],
       // vitest's `expect(actual, message)` form.
       "vitest/valid-expect": ["error", { maxArgs: 2 }],
       // `fc.assert`: fast-check properties that return booleans assert
@@ -1020,40 +1005,6 @@ const config = defineConfig([
     },
   },
 
-  // Test titles are English behaviour statements in every test tree; the
-  // Python test name lives in a trailing `// python: test_x` comment, never in
-  // the title (CONTRIBUTING "Tests").
-  {
-    name: "repo/tests/english-titles",
-    files: [
-      "packages/*/test/**/*.test.ts",
-      "conformance-runner/test/**/*.test.ts",
-      "differential/test/**/*.test.ts",
-      "tests/**/*.test.ts",
-    ],
-    rules: {
-      "vitest/valid-title": [
-        "error",
-        {
-          mustNotMatch: {
-            it: [
-              "^test_",
-              "State the behaviour in English; keep the Python name in a `// python:` comment",
-            ],
-            test: [
-              "^test_",
-              "State the behaviour in English; keep the Python name in a `// python:` comment",
-            ],
-            describe: [
-              String.raw`^Test[A-Z]|^test_|\.py:\d`,
-              "Name the unit under test; keep the Python class in a `// python:` comment",
-            ],
-          },
-        },
-      ],
-    },
-  },
-
   // -------------------------------------------------------------------------
   // Plain JavaScript (repo scripts, this config): untyped lint
   // -------------------------------------------------------------------------
@@ -1087,34 +1038,6 @@ const config = defineConfig([
       "unicorn/no-process-exit": "off",
     },
   },
-
-  // -------------------------------------------------------------------------
-  // Phase 4 lanes — hand-fix categories parked until each lane lands.
-  // Each block lists the rules it owns and sets them `off`; the full rule
-  // configuration lives above, so landing a lane is "delete the block".
-  // -------------------------------------------------------------------------
-
-  // --- Phase 4 lane L5: jsdoc/tsdoc content — pending; lands at the end of Phase 5 (its acceptance criteria) ---
-  ...lane("L5", {
-    rules: {
-      "jsdoc/require-jsdoc": "off",
-      "jsdoc/require-description": "off",
-      "jsdoc/require-throws": "off",
-      "jsdoc/require-example": "off",
-      "jsdoc/require-param": "off",
-      "jsdoc/require-param-description": "off",
-      "jsdoc/require-returns": "off",
-      "jsdoc/require-returns-description": "off",
-      "jsdoc/require-returns-check": "off",
-      "jsdoc/require-yields": "off",
-      "jsdoc/check-param-names": "off",
-      "jsdoc/check-tag-names": "off",
-      "jsdoc/empty-tags": "off",
-      "jsdoc/valid-types": "off",
-      "jsdoc/escape-inline-tags": "off",
-      "tsdoc/syntax": "off",
-    },
-  }),
 
   // Prettier owns formatting: last, so it switches off every stylistic rule
   // the presets above may have enabled.

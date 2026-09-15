@@ -27,7 +27,7 @@ const INSPECT_CUSTOM: unique symbol = Symbol.for("nodejs.util.inspect.custom");
  * `toString()`/`toJSON()`/inspect all render `'**********'`; the raw value
  * is available only via {@link reveal}. No runtime freeze is applied.
  *
- * Example:
+ * @example
  * ```ts
  * const s = new Secret("hunter2");
  * String(s);          // "**********"

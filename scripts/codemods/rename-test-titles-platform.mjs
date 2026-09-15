@@ -26,10 +26,21 @@ if (!mappingPath) {
 }
 const mapping = JSON.parse(readFileSync(mappingPath, "utf8"));
 
-/** Escape a literal for use inside a RegExp. */
+/**
+ * Escape a literal for use inside a RegExp.
+ *
+ * @param {string} s - Literal text.
+ * @returns {string} The escaped pattern.
+ */
 const escapeRe = (s) => s.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 
-/** Derive the `// python:` payload from an old title, or null. */
+/**
+ * Derive the `// python:` payload from an old title.
+ *
+ * @param {string} oldTitle - The title before renaming.
+ * @returns {string | null} `test_x`, `TestFoo` or `file.py::TestFoo`; null
+ *   when the title carries no Python identifier.
+ */
 function pythonIdentifier(oldTitle) {
   const test = /^(test_[A-Za-z0-9_]+)/.exec(oldTitle);
   if (test) return test[1];

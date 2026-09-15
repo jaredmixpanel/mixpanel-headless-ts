@@ -193,6 +193,11 @@ export type ParsedReportLinkInit = Pick<ParsedReportLink, "kind" | "raw"> &
  *
  * @param init - `kind` + `raw` plus any set fields.
  * @returns The frozen parsed link.
+ * @example
+ * ```ts
+ * const link = parsedReportLink({ kind: "slug", raw: url, slug: "aB3_-xYz09Qw" });
+ * link.bookmark_id; // null (dataclass default)
+ * ```
  */
 export function parsedReportLink(init: ParsedReportLinkInit): ParsedReportLink {
   return Object.freeze({
@@ -224,6 +229,10 @@ export function parsedReportLink(init: ParsedReportLinkInit): ParsedReportLink {
  * @returns The host, for example `eu.mixpanel.com`.
  * @throws ParamValidationError - `RL3_UNKNOWN_REGION` when the region is
  *   not in {@link WEB_HOSTS}.
+ * @example
+ * ```ts
+ * webHost("eu"); // "eu.mixpanel.com"
+ * ```
  */
 export function webHost(region: string): string {
   const host = WEB_HOSTS.get(region);
@@ -242,6 +251,11 @@ export function webHost(region: string): string {
  *
  * @param value - Any string.
  * @returns `true` for exactly 12 characters from `[0-9A-Za-z_-]`.
+ * @example
+ * ```ts
+ * isSlug("aB3_-xYz09Qw"); // true
+ * isSlug("too-short"); // false
+ * ```
  */
 export function isSlug(value: string): boolean {
   return SLUG_RE.test(value);

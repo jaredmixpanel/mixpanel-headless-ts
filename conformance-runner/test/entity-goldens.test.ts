@@ -139,7 +139,7 @@ const workspaceRefHandler: GoldenHandler = {
 };
 
 /**
- * The hand-maintained model -> handler table. Keys must equal the artifact's `entity_golden` set —
+ * The hand-maintained model → handler table. Keys must equal the artifact's `entity_golden` set —
  * both directions are asserted below.
  */
 const HANDLERS: Readonly<Record<string, GoldenHandler>> = {

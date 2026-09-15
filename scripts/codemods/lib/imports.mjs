@@ -5,7 +5,7 @@ import ts from "typescript";
 
 /**
  * Count references to `name` outside import declarations — identifier nodes
- * only, so a name that survives just in prose (comments, `{@link}` tags)
+ * only, so a name that survives just in prose (comments, `@link` tags)
  * counts as unused, matching tsc's `noUnusedLocals`.
  *
  * @param {ts.SourceFile} source - Parsed file.

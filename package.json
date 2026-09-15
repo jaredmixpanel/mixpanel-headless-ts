@@ -43,7 +43,7 @@
     "vendor:drift": "bash scripts/check-vendor-drift.sh",
     "build:browser": "node scripts/build-browser-bundle.mjs",
     "smoke:browser": "node scripts/browser-smoke.mjs",
-    "check": "npm run typecheck && npm run pack:check && npm run knip && npm run lint && npm run fmt:check && npm run test:coverage && npm run smoke:browser",
+    "check": "npm run typecheck && npm run pack:check && npm run knip && npm run lint && npm run fmt:check && npm run audit:comments -- --summary && npm run vendor:drift && npm run test:coverage && npm run smoke:browser",
     "sync:corpus": "bash scripts/sync-corpus.sh",
     "conformance": "node scripts/run-conformance.mjs",
     "oracle": "node scripts/run-oracle.mjs",

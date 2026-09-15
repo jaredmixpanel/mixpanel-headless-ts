@@ -55,7 +55,6 @@ export interface CoerceOptions {
  * @param expected - Human label of the expected type (message only).
  * @param value - The rejected value (repr'd into the message only).
  * @param options - Coercion options (boundary kind + field name).
- * @returns Never returns.
  * @throws ParamValidationError - When `options.kind === 'param'`.
  * @throws ResponseValidationError - Otherwise (default boundary).
  */
@@ -81,6 +80,8 @@ function fail(expected: string, value: unknown, options: CoerceOptions): never {
  *
  * @param value - Any value.
  * @returns A short human-readable description.
+ * @throws TypeError - On a `typeof` result outside the ECMAScript set
+ *   (unreachable; keeps the switch exhaustive).
  */
 function describe(value: unknown): string {
   if (value === null) {
@@ -136,6 +137,13 @@ const FLOAT_SPECIAL = /^[+-]?(?:inf|infinity|nan)$/i;
  * @throws ParamValidationError - Invalid input at the `'param'` boundary.
  * @throws ResponseValidationError - Invalid input at the `'response'`
  *   boundary (default).
+ * @example
+ * ```ts
+ * coerceInt("42"); // 42
+ * coerceInt(" 1_000 "); // 1000
+ * coerceInt(1.5); // throws ResponseValidationError
+ * coerceInt(true, { kind: "param" }); // throws ParamValidationError
+ * ```
  */
 export function coerceInt(value: unknown, options: CoerceOptions = {}): number {
   if (typeof value === "boolean") {
@@ -195,6 +203,11 @@ function narrowInt64(exact: bigint): number | bigint {
  * @throws ParamValidationError - Invalid input at the `'param'` boundary.
  * @throws ResponseValidationError - Invalid input at the `'response'`
  *   boundary (default).
+ * @example
+ * ```ts
+ * coerceInt64(42n); // 42 (a number once it is safe)
+ * coerceInt64("-8644926364725811123"); // -8644926364725811123n
+ * ```
  */
 export function coerceInt64(
   value: unknown,
@@ -233,6 +246,12 @@ export function coerceInt64(
  * @throws ParamValidationError - Invalid input at the `'param'` boundary.
  * @throws ResponseValidationError - Invalid input at the `'response'`
  *   boundary (default).
+ * @example
+ * ```ts
+ * coerceFloat("1e3"); // 1000
+ * coerceFloat("-inf"); // -Infinity
+ * coerceFloat(true); // throws ResponseValidationError
+ * ```
  */
 export function coerceFloat(
   value: unknown,
@@ -272,6 +291,11 @@ export function coerceFloat(
  * @throws ParamValidationError - Invalid input at the `'param'` boundary.
  * @throws ResponseValidationError - Invalid input at the `'response'`
  *   boundary (default).
+ * @example
+ * ```ts
+ * coerceStr("abc"); // "abc"
+ * coerceStr(42); // throws ResponseValidationError (no int → str coercion)
+ * ```
  */
 export function coerceStr(value: unknown, options: CoerceOptions = {}): string {
   if (typeof value === "string") {
@@ -313,6 +337,12 @@ const FALSE_STRINGS: ReadonlySet<string> = new Set([
  * @throws ParamValidationError - Invalid input at the `'param'` boundary.
  * @throws ResponseValidationError - Invalid input at the `'response'`
  *   boundary (default).
+ * @example
+ * ```ts
+ * coerceBool("yes"); // true
+ * coerceBool("off"); // false
+ * coerceBool("maybe"); // throws ResponseValidationError
+ * ```
  */
 export function coerceBool(
   value: unknown,
@@ -350,17 +380,16 @@ export function coerceBool(
  * accept or reject — Pydantic treats explicit `None` on a non-optional
  * field as a validation error, never as "use the default".
  *
- * Example:
- * ```ts
- * resolveWithDefault({}, "tags", () => []);            // [] (factory fired)
- * resolveWithDefault({ tags: null }, "tags", () => []); // null (no default)
- * ```
- *
  * @param raw - The raw decoded object.
  * @param key - The field key to look up.
  * @param defaultFactory - Factory producing the default value.
  * @returns The present value (verbatim) or the factory product when the
  *   key is absent.
+ * @example
+ * ```ts
+ * resolveWithDefault({}, "tags", () => []); // [] (factory fired)
+ * resolveWithDefault({ tags: null }, "tags", () => []); // null (no default)
+ * ```
  */
 export function resolveWithDefault(
   raw: Readonly<Record<string, unknown>>,

@@ -4,10 +4,10 @@
 // (docs/history/cleanup-plan-2026-09.md §9.4, decision D7).
 //
 //   it("test_rejects_empty_name", () => {        →  it("rejects empty name", () => { // python: test_rejects_empty_name
-//   describe("TestPkceChallenge (test_auth_pkce.py:25)", …)
+//   describe("TestPkceChallenge (<name>.py:<n>)", …)
 //                                                →  describe("Pkce challenge", …) // python: TestPkceChallenge
 //   describe("UserEvent (TestUserEvent)", …)     →  describe("UserEvent", …) // python: TestUserEvent
-//   it("slugify is idempotent (:45)", …)         →  it("slugify is idempotent", …)
+//   it("slugify is idempotent (:<n>)", …)        →  it("slugify is idempotent", …)
 //
 // The rename is deterministic and purely lexical: snake_case words become
 // space-separated words, CamelCase class names are split into words with the
@@ -15,7 +15,7 @@
 // codes such as `f1` / `up4` / `r5c` keep their upper-case letters. Where the
 // mechanical text misleads, the reviewer edits the title afterwards — the
 // `// python:` comment is the stable link back to the Python suite either
-// way. Titles that merely cite a Python line (`(file.py:NN)`, `(:NN)`) lose
+// way. Titles that merely cite a Python line (`(<name>.py:<n>)`, `(:<n>)`) lose
 // the citation. Template-literal titles and titles that already read as
 // English are left alone; a `test_x()` mention of a method named `test_x`
 // (a leading identifier followed by `(`) is not a Python test name and is
