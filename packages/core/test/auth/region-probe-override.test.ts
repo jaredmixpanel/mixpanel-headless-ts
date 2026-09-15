@@ -43,7 +43,7 @@ async function runWithSpy(
   const status = options.status ?? 200;
   const urls: string[] = [];
   const recordingFetch: typeof fetch = (input) => {
-    urls.push(String(input));
+    urls.push(input instanceof Request ? input.url : String(input));
     return Promise.resolve(
       new Response(status === 200 ? '{"user_id": 1}' : "nope", { status }),
     );
@@ -184,7 +184,7 @@ describe("TestRegionProbeUnderApiBaseUrlOverride", () => {
   it("test_narration_names_api_base_url_only", async () => {
     const first = (
       await narrationLines({ MP_API_BASE_URL: "http://127.0.0.1:8080" })
-    )[0] as string;
+    )[0]!;
     expect(first).toContain("http://127.0.0.1:8080");
     expect(first).toContain("MP_API_BASE_URL");
     expect(first).not.toContain("MP_APP_BASE_URL");
@@ -193,7 +193,7 @@ describe("TestRegionProbeUnderApiBaseUrlOverride", () => {
   it("test_narration_names_app_base_url_only", async () => {
     const first = (
       await narrationLines({ MP_APP_BASE_URL: "http://app.internal:9000" })
-    )[0] as string;
+    )[0]!;
     expect(first).toContain("http://app.internal:9000");
     expect(first).toContain("MP_APP_BASE_URL");
     expect(first).not.toContain("MP_API_BASE_URL");
@@ -205,7 +205,7 @@ describe("TestRegionProbeUnderApiBaseUrlOverride", () => {
         MP_API_BASE_URL: "http://127.0.0.1:8080",
         MP_APP_BASE_URL: "http://app.internal:9000",
       })
-    )[0] as string;
+    )[0]!;
     expect(first).toContain("http://app.internal:9000");
     expect(first).toContain("MP_API_BASE_URL");
     expect(first).toContain("MP_APP_BASE_URL");

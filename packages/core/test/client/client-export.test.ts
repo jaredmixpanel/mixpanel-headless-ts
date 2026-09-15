@@ -210,7 +210,7 @@ describe("TestRetryStateResetRegression", () => {
       batchCountsPerAttempt.push([...currentAttemptCounts]);
     }
     expect(batchCountsPerAttempt.length).toBeGreaterThanOrEqual(1);
-    const lastAttemptCounts = batchCountsPerAttempt.at(-1) as number[];
+    const lastAttemptCounts = batchCountsPerAttempt.at(-1)!;
     expect(lastAttemptCounts).toContain(1000);
     expect(lastAttemptCounts).toContain(1500);
   });
@@ -316,7 +316,7 @@ describe("TestNonQueryHostsUnaffected (C1 hand-off)", () => {
     const events = await drain(client.exportEvents("2024-01-01", "2024-01-31"));
     expect(events).toHaveLength(1);
     expect(captured).toHaveLength(1);
-    const request = captured[0] as CapturedFetchRequest;
+    const request = captured[0]!;
     expect(new URL(request.url).host).toBe("data.mixpanel.com");
     expect(Object.hasOwn(request.params, "workspace_id")).toBe(false);
   });

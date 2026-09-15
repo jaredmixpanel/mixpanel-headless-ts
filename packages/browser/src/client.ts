@@ -274,14 +274,12 @@ let liveExportOriginSet: ReadonlySet<string> | null = null;
  * @returns The set of live export origins.
  */
 function liveExportOrigins(): ReadonlySet<string> {
-  if (liveExportOriginSet === null) {
-    liveExportOriginSet = new Set<string>(
-      [...ENDPOINTS.values()].flatMap((table) => {
-        const base = table.get("export");
-        return base === undefined ? [] : [new URL(base).origin];
-      }),
-    );
-  }
+  liveExportOriginSet ??= new Set<string>(
+    [...ENDPOINTS.values()].flatMap((table) => {
+      const base = table.get("export");
+      return base === undefined ? [] : [new URL(base).origin];
+    }),
+  );
   return liveExportOriginSet;
 }
 
@@ -389,7 +387,7 @@ function guardBrowserFetch(
     }
     return inner(input, init);
   };
-  return guarded as typeof fetch;
+  return guarded;
 }
 
 /**

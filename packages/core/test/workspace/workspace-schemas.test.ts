@@ -92,14 +92,14 @@ function makeWorkspace(handler: Handler): {
  * @param entityType - Entity type ("event", "custom_event", "profile").
  * @param name - Entity name.
  * @param schemaDefinition - JSON Schema definition (Python default).
- * @param version - Schema version, or `undefined` to omit the key.
+ * @param version - Schema version, or `null` to omit the key.
  * @returns The payload record.
  */
 function schemaEntryJson(
   entityType = "event",
   name = "Purchase",
   schemaDefinition?: Record<string, unknown>,
-  version: string | undefined = "2025-01-15",
+  version: string | null = "2025-01-15",
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {
     entityType,
@@ -109,7 +109,7 @@ function schemaEntryJson(
       required: ["amount"],
     },
   };
-  if (version !== undefined) {
+  if (version !== null) {
     result["version"] = version;
   }
   return result;

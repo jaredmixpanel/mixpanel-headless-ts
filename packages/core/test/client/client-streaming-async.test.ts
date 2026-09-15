@@ -29,7 +29,7 @@ function chunkedFetch(
   options: { status?: number; delayMs?: number } = {},
 ): typeof fetch {
   const encoder = new TextEncoder();
-  return (async (
+  return async (
     _input: string | URL | Request,
     init?: RequestInit,
   ): Promise<Response> => {
@@ -43,7 +43,7 @@ function chunkedFetch(
           controller.close();
           return;
         }
-        const next = chunks[0] as string;
+        const next = chunks[0]!;
         (chunks as string[]).shift();
         if (options.delayMs !== undefined) {
           // A real await point BETWEEN chunks — the consumer must
@@ -57,7 +57,7 @@ function chunkedFetch(
       },
     });
     return new Response(body, { status: options.status ?? 200 });
-  }) as typeof fetch;
+  };
 }
 
 /** Assemble a client over an arbitrary fetch with recorded sleeps. */
@@ -235,7 +235,7 @@ describe("stream_events / stream_profiles facade wrappers", () => {
       out.push(event as Record<string, unknown>);
     }
     expect(out).toHaveLength(1);
-    const transformed = out[0] as Record<string, unknown>;
+    const transformed = out[0]!;
     expect(transformed["event_name"]).toBe("Sign Up");
     expect(transformed["distinct_id"]).toBe("u1");
     expect(transformed["insert_id"]).toBe("fixed-uuid");

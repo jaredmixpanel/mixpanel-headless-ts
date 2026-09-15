@@ -66,10 +66,7 @@ export class FunnelStep {
     this.event = fields.event;
     this.label = fields.label ?? null;
     this.filters = fields.filters ?? null;
-    this.filters_combinator =
-      fields.filters_combinator === undefined
-        ? "all"
-        : fields.filters_combinator;
+    this.filters_combinator = fields.filters_combinator ?? "all";
     this.order = fields.order ?? null;
     // EV1_EMPTY_EVENT / EV2_CONTROL_CHAR_EVENT: shared event-name guard.
     validateEventName(this.event, "FunnelStep");
@@ -116,7 +113,7 @@ export class Exclusion {
    */
   constructor(fields: ExclusionFields) {
     this.event = fields.event;
-    this.from_step = fields.from_step === undefined ? 0 : fields.from_step;
+    this.from_step = fields.from_step ?? 0;
     this.to_step = fields.to_step ?? null;
     // EV1_EMPTY_EVENT / EV2_CONTROL_CHAR_EVENT: shared event-name guard.
     validateEventName(this.event, "Exclusion");
@@ -174,8 +171,7 @@ export class HoldingConstant {
    */
   constructor(fields: HoldingConstantFields) {
     this.property = fields.property;
-    this.resource_type =
-      fields.resource_type === undefined ? "events" : fields.resource_type;
+    this.resource_type = fields.resource_type ?? "events";
     // HC1_EMPTY_PROPERTY: property must be a non-empty string.
     if (!this.property || !pythonStrip(this.property)) {
       throw new ParamValidationError(

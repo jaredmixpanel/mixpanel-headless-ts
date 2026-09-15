@@ -93,6 +93,122 @@ export function pythonRepr(value: PythonValue): string {
 }
 
 /**
+ * Type guard for the {@link PythonValue} domain: `true` exactly when
+ * {@link pythonStr} / {@link pythonRepr} render `value` without throwing —
+ * JSON primitives, `null`, `bigint`, arrays and plain objects (members
+ * checked recursively; a self-referencing container still qualifies,
+ * since the renderers emit CPython's `[...]` / `{...}` markers for it).
+ *
+ * @param value - The value to classify.
+ * @returns Whether `value` lies in the {@link PythonValue} domain.
+ * @example
+ * ```typescript
+ * isPythonValue({ a: [1, null] }); // true
+ * isPythonValue(new Map()); // false (not a plain object)
+ * isPythonValue(undefined); // false (undefined means ABSENT)
+ * ```
+ */
+export function isPythonValue(value: unknown): value is PythonValue {
+  return inPythonDomain(value, new Set());
+}
+
+/**
+ * Recursive worker for {@link isPythonValue}.
+ *
+ * @param value - Current value to classify.
+ * @param active - Containers on the recursion stack (a revisit is fine:
+ *   the renderers handle self-reference).
+ * @returns Whether `value` lies in the {@link PythonValue} domain.
+ */
+function inPythonDomain(value: unknown, active: Set<object>): boolean {
+  switch (typeof value) {
+    case "string":
+    case "number":
+    case "bigint":
+    case "boolean": {
+      return true;
+    }
+    case "object": {
+      if (value === null) {
+        return true;
+      }
+      if (active.has(value)) {
+        return true;
+      }
+      const proto: unknown = Object.getPrototypeOf(value);
+      if (
+        !Array.isArray(value) &&
+        proto !== Object.prototype &&
+        proto !== null
+      ) {
+        return false;
+      }
+      active.add(value);
+      const members: unknown[] = Array.isArray(value)
+        ? value
+        : Object.values(value);
+      const ok = members.every((member) => inPythonDomain(member, active));
+      active.delete(value);
+      return ok;
+    }
+    default: {
+      return false;
+    }
+  }
+}
+
+/**
+ * Python `str()` of a value typed `unknown` — the f-string / `str(x)` twin
+ * for sites that receive JSON-decoded data through an `unknown`
+ * annotation (token responses, query rows, rrweb attributes).
+ *
+ * In-domain values render exactly like {@link pythonStr}. Anything outside
+ * the {@link PythonValue} domain — `undefined`, class instances, `Map`s,
+ * functions, symbols: shapes JSON cannot produce, so the Python twin never
+ * met them — renders as a `<TypeName>` placeholder instead of JS's
+ * `[object Object]`, and never throws.
+ *
+ * @param value - The value to stringify.
+ * @returns The CPython `str()` rendering, or a `<TypeName>` placeholder.
+ * @example
+ * ```typescript
+ * pythonStrOf("scope"); // "scope"
+ * pythonStrOf({ x: 1 }); // "{'x': 1}"
+ * pythonStrOf(true); // "True"
+ * pythonStrOf(new Map()); // "<Map>"
+ * pythonStrOf(undefined); // "<undefined>"
+ * ```
+ */
+export function pythonStrOf(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (isPythonValue(value)) {
+    return reprValue(value, new Set());
+  }
+  return `<${looseTypeName(value)}>`;
+}
+
+/**
+ * Placeholder type name for {@link pythonStrOf}'s out-of-domain branch:
+ * the constructor name for objects, `typeof` for everything else.
+ *
+ * @param value - An out-of-domain value.
+ * @returns A short type label.
+ */
+function looseTypeName(value: unknown): string {
+  if (typeof value !== "object" || value === null) {
+    return typeof value;
+  }
+  const proto: unknown = Object.getPrototypeOf(value);
+  const name =
+    proto !== null && typeof proto === "object"
+      ? (proto as { constructor?: { name?: unknown } }).constructor?.name
+      : undefined;
+  return typeof name === "string" && name !== "" ? name : "object";
+}
+
+/**
  * Recursive worker for {@link pythonRepr} carrying the active-container
  * set used to detect self-reference.
  *

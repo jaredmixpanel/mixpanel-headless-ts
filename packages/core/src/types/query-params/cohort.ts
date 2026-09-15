@@ -196,8 +196,7 @@ export function buildEventSelector(
       node["customPropertyId"] = prop.id;
       node["dataset"] = "$mixpanel";
     } else if (prop instanceof InlineCustomProperty) {
-      const effectiveType =
-        prop.property_type === null ? f._property_type : prop.property_type;
+      const effectiveType = prop.property_type ?? f._property_type;
       const composedProperties: Record<string, unknown> = {};
       for (const [letter, pi] of Object.entries(prop.inputs)) {
         composedProperties[letter] = {
@@ -956,8 +955,7 @@ export class CohortBreakdown {
   }) {
     this.cohort = fields.cohort;
     this.name = fields.name ?? null;
-    this.include_negated =
-      fields.include_negated === undefined ? true : fields.include_negated;
+    this.include_negated = fields.include_negated ?? true;
     // CB1_COHORT_ID_NOT_POSITIVE / CB2_COHORT_NAME_EMPTY: shared guard.
     validateCohortArgs(this.cohort, this.name, "CB");
   }

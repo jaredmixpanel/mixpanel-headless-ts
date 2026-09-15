@@ -156,8 +156,7 @@ export class PkceChallenge {
     // UNDEFINED — fail with a coded error (R5) instead of a bare
     // TypeError. Browser-environmental branch with no Python twin
     // (hashlib is always available); R9.3 arbitrated.
-    const subtle = (globalThis.crypto as Crypto | undefined)?.subtle as
-      SubtleCrypto | undefined;
+    const subtle = (globalThis.crypto as Crypto | undefined)?.subtle;
     if (subtle === undefined) {
       throw new OAuthError(
         "WebCrypto SubtleCrypto is unavailable — PKCE requires a secure " +

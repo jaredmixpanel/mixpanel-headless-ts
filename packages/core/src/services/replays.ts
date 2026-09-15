@@ -49,6 +49,7 @@ import { toNativeJson } from "../client/json-value.js";
 import { LosslessJsonError, parseLossless } from "../client/lossless-json.js";
 import { rawFetch } from "../client/transport.js";
 import { pythonIntCoerce } from "../compat/python-int.js";
+import { pythonStrOf } from "../compat/python-str.js";
 import { zfill } from "../compat/zfill.js";
 import {
   MixpanelHeadlessError,
@@ -422,7 +423,7 @@ export class ReplaysService {
       // doesn't exist on the CDN.
       let terminateAt = results.length;
       for (const [i, result] of results.entries()) {
-        const [status] = result as FetchOutcome;
+        const [status] = result;
         if (status === 404) {
           if (fileNum + i === 0) {
             throw replayNotFoundError(signed.replay_id, {
@@ -810,9 +811,7 @@ export class ReplaysService {
       if (key === "$overall") {
         continue;
       }
-      if (fallbackKey === null) {
-        fallbackKey = key;
-      }
+      fallbackKey ??= key;
       let window: number;
       try {
         window = pythonIntCoerce(key);
@@ -904,12 +903,12 @@ export class ReplaysService {
       if (replayId === undefined || replayId === null) {
         continue;
       }
-      const replayIdStr = String(replayId);
+      const replayIdStr = pythonStrOf(replayId);
       const eventTime = toUnixSeconds(row["$time"]);
       if (eventTime <= 0) {
         continue;
       }
-      const eventName = String(row["$event_name"] ?? "(unknown)");
+      const eventName = pythonStrOf(row["$event_name"] ?? "(unknown)");
       let properties: Record<string, unknown> | null = null;
       if (eventProperties !== null && eventProperties.length > 0) {
         properties = {};
@@ -1073,7 +1072,7 @@ export function toUnixMs(value: unknown): number {
   }
   if (typeof value === "string") {
     const ms = parseIsoToMs(value);
-    return ms === null ? 0 : ms;
+    return ms ?? 0;
   }
   return 0;
 }

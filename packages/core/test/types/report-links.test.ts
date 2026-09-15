@@ -205,6 +205,7 @@ describe("TestReportLink", () => {
   it("test_str_is_url", () => {
     const link = build();
     expect(String(link)).toBe(link.url);
+    // eslint-disable-next-line unicorn/no-useless-template-literals, @typescript-eslint/restrict-template-expressions -- test_str_is_url exercises template-literal rendering of a ReportLink
     expect(`${link}`).toBe(link.url);
   });
 

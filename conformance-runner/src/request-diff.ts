@@ -78,7 +78,7 @@ function diffOneRequest(
   const actualParams = paramsToJson(captured.params);
   const recordedParams: JsonValue =
     expected.params !== undefined && Object.keys(expected.params).length > 0
-      ? (expected.params as JsonValue)
+      ? expected.params
       : null;
   const actualParamsCanonical = canonicalize(actualParams);
   if (actualParamsCanonical !== canonicalize(recordedParams)) {

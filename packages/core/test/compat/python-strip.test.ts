@@ -59,12 +59,10 @@ describe("pythonStrip — properties (fast-check)", () => {
         expect(pythonStrip(stripped)).toBe(stripped);
         expect(s.includes(stripped)).toBe(true);
         if (stripped.length > 0) {
-          const first = stripped.codePointAt(0) as number;
-          const last = [...stripped].at(-1) as string;
+          const first = stripped.codePointAt(0)!;
+          const last = [...stripped].at(-1)!;
           expect(PYTHON_STR_WHITESPACE.has(first)).toBe(false);
-          expect(PYTHON_STR_WHITESPACE.has(last.codePointAt(0) as number)).toBe(
-            false,
-          );
+          expect(PYTHON_STR_WHITESPACE.has(last.codePointAt(0)!)).toBe(false);
         }
       }),
     );

@@ -111,7 +111,7 @@ interface GoldenHandler {
 function modelHandler(cls: EntityModelStatics): GoldenHandler {
   return {
     fromDict: (raw) => cls.fromDict(raw),
-    cls: cls as unknown as new (...args: never[]) => unknown,
+    cls,
     extraPolicy: cls.extraPolicy,
     toVectorPayload: (instance) => (instance as EntityModel).toVectorPayload(),
     toJSON: (instance) => (instance as EntityModel).toJSON(),
@@ -236,7 +236,7 @@ describe("model-coverage accounting (P2-7 done-criterion)", () => {
       }
       expect(typeof row.authored_fixture, name).toBe("string");
       expect(
-        existsSync(resolve(repoRoot, row.authored_fixture as string)),
+        existsSync(resolve(repoRoot, row.authored_fixture!)),
         `${name} -> ${String(row.authored_fixture)}`,
       ).toBe(true);
     }

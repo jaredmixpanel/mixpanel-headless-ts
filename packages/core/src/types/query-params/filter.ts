@@ -81,15 +81,17 @@ export class PropertyInput {
     // #3: `{ property: "x" }` typo) previously crashed lazily inside
     // `pythonStrip` at first use. Missing-field check only — Python
     // dataclasses do not type-check values, so neither does this.
-    if (fields === undefined || fields.name === undefined) {
+    // Widened on purpose (an `as`, since a typed `const` would narrow
+    // straight back): the guard exists for callers outside the type.
+    const raw = fields as { readonly name?: string } | undefined;
+    if (raw?.name === undefined) {
       throw new TypeError(
         "PropertyInput.__init__() missing 1 required positional argument: 'name'",
       );
     }
     this.name = fields.name;
-    this.type = fields.type === undefined ? "string" : fields.type;
-    this.resource_type =
-      fields.resource_type === undefined ? "event" : fields.resource_type;
+    this.type = fields.type ?? "string";
+    this.resource_type = fields.resource_type ?? "event";
   }
 }
 
@@ -136,8 +138,7 @@ export class InlineCustomProperty {
     this.formula = fields.formula;
     this.inputs = fields.inputs;
     this.property_type = fields.property_type ?? null;
-    this.resource_type =
-      fields.resource_type === undefined ? "events" : fields.resource_type;
+    this.resource_type = fields.resource_type ?? "events";
   }
 
   /**
@@ -237,11 +238,7 @@ export class ListItemGroupMode {
       );
     }
     // LG2_INVALID_SUB_TYPE: sub_type must be a known scalar type.
-    if (
-      !["string", "number", "boolean", "datetime"].includes(
-        this.sub_type as string,
-      )
-    ) {
+    if (!["string", "number", "boolean", "datetime"].includes(this.sub_type)) {
       throw new ParamValidationError(
         "ListItemGroupMode.sub_type must be one of " +
           "'string'/'number'/'boolean'/'datetime', " +
@@ -554,10 +551,8 @@ export class Filter {
    */
   constructor(fields: FilterFields) {
     this._property = fields._property;
-    this._property_type =
-      fields._property_type === undefined ? "string" : fields._property_type;
-    this._resource_type =
-      fields._resource_type === undefined ? "events" : fields._resource_type;
+    this._property_type = fields._property_type ?? "string";
+    this._resource_type = fields._resource_type ?? "events";
     this._date_unit = fields._date_unit ?? null;
     this._list_item_filters = fields._list_item_filters ?? null;
     this._list_item_quantifier = fields._list_item_quantifier ?? null;
@@ -1062,9 +1057,7 @@ export class Filter {
       // as Python does (`_sanitize_raw_cohort(cohort.to_dict())`).
       // Stub closed by P2-9: the differential gate surfaced the
       // leftover TODO(port, P2-5b) throw on this branch.
-      cohortEntry["raw_cohort"] = sanitizeRawCohort(
-        (cohort as CohortDefinition).toDict(),
-      );
+      cohortEntry["raw_cohort"] = sanitizeRawCohort(cohort.toDict());
     }
 
     const value: ReadonlyArray<Readonly<Record<string, unknown>>> = [
@@ -1418,7 +1411,8 @@ export class Filter {
       > | null;
     },
   ): Filter {
-    const quantifier = options?.quantifier ?? "any";
+    // `string` on purpose: LC4 below is a runtime guard for untyped callers.
+    const quantifier: string = options?.quantifier ?? "any";
     const resourceType = options?.resource_type ?? "events";
     const equalsEntries = Object.entries(options?.equals ?? {});
     // LC3_MIXED_ARGS: positional inner filters XOR keyword shorthand.

@@ -210,7 +210,7 @@ describe("TestAtomicWriteBytes", () => {
         },
       },
     });
-    const probeTmp = seen[0] as string;
+    const probeTmp = seen[0]!;
     const counter = Number(probeTmp.split(".").pop());
     const staleTmp = join(dir, `config.toml.tmp.${process.pid}.${counter + 1}`);
     writeFileSync(staleTmp, "stale");

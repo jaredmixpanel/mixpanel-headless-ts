@@ -445,7 +445,14 @@ const config = defineConfig([
       "@typescript-eslint/consistent-indexed-object-style": ["error", "record"],
       "@typescript-eslint/no-unnecessary-type-assertion": "error",
       "@typescript-eslint/no-unnecessary-template-expression": "error",
-      "@typescript-eslint/no-confusing-void-expression": "error",
+      // Arrow shorthands returning void (`expect(() => f()).toThrow()`,
+      // `(...args) => ns.use(...args)` forwarders) are the idiom here — 49
+      // sites, all stylistic; the option keeps the rule's real catches
+      // (`const x = voidCall()`, `return voidCall()` in a non-arrow).
+      "@typescript-eslint/no-confusing-void-expression": [
+        "error",
+        { ignoreArrowShorthand: true },
+      ],
       "@typescript-eslint/prefer-optional-chain": "error",
       // Its fix (`x as T` → `x!`) is exactly what `no-non-null-assertion`
       // forbids in source, where narrowing helpers are wanted instead; the
@@ -871,44 +878,6 @@ const config = defineConfig([
   // Each block lists the rules it owns and sets them `off`; the full rule
   // configuration lives above, so landing a lane is "delete the block".
   // -------------------------------------------------------------------------
-
-  // --- Phase 4 lane L1: stringification — pending; delete this block when the lane lands ---
-  ...lane("L1", {
-    rules: {
-      "@typescript-eslint/no-base-to-string": "off",
-      "@typescript-eslint/restrict-template-expressions": "off",
-      "@typescript-eslint/restrict-plus-operands": "off",
-      "@typescript-eslint/no-unnecessary-type-conversion": "off",
-      "@typescript-eslint/no-unnecessary-template-expression": "off",
-      "unicorn/no-useless-template-literals": "off",
-      "unicorn/no-incorrect-template-string-interpolation": "off",
-    },
-  }),
-
-  // --- Phase 4 lane L2: unnecessary conditions / types — pending; delete this block when the lane lands ---
-  ...lane("L2", {
-    // no-unnecessary-type-assertion's fixer leaves the cast's type import
-    // unused and no-confusing-void-expression's breaks `(): unknown =>`
-    // arrows, so both are applied in this lane (`MP_LINT_UNPARK=L2
-    // eslint --fix`) with the fallout fixed by hand, not mechanically.
-    rules: {
-      "@typescript-eslint/no-unnecessary-condition": "off",
-      "@typescript-eslint/prefer-nullish-coalescing": "off",
-      "@typescript-eslint/no-redundant-type-constituents": "off",
-      "@typescript-eslint/no-unnecessary-type-parameters": "off",
-      "@typescript-eslint/prefer-optional-chain": "off",
-      "@typescript-eslint/no-unnecessary-type-assertion": "off",
-      "@typescript-eslint/no-confusing-void-expression": "off",
-      "@typescript-eslint/prefer-find": "off",
-      // Its fixer (`x as T` → `x!`) produces `a?.b!`, which
-      // no-non-null-asserted-optional-chain then rejects — apply by hand.
-      "@typescript-eslint/non-nullable-type-assertion-style": "off",
-      "unicorn/prefer-else-if": "off",
-      "unicorn/prefer-logical-operator-over-ternary": "off",
-      "unicorn/prefer-minimal-ternary": "off",
-      "unicorn/no-duplicate-if-branches": "off",
-    },
-  }),
 
   // --- Phase 4 lane L3: exhaustiveness, throw/async hygiene, misc — pending; delete this block when the lane lands ---
   ...lane("L3", {

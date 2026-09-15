@@ -100,9 +100,7 @@ export class BookmarkMetadata extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): BookmarkMetadata {
-    return new BookmarkMetadata(
-      prepareInit(BookmarkMetadata, raw) as unknown as BookmarkMetadataInit,
-    );
+    return new BookmarkMetadata(prepareInit(BookmarkMetadata, raw));
   }
 }
 
@@ -495,12 +493,7 @@ export class UpdateBookmarkParams extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): UpdateBookmarkParams {
-    return new UpdateBookmarkParams(
-      prepareInit(
-        UpdateBookmarkParams,
-        raw,
-      ) as unknown as UpdateBookmarkParamsInit,
-    );
+    return new UpdateBookmarkParams(prepareInit(UpdateBookmarkParams, raw));
   }
 }
 
@@ -660,10 +653,7 @@ export class BookmarkHistoryPagination extends EntityModel {
    */
   static fromDict(raw: unknown): BookmarkHistoryPagination {
     return new BookmarkHistoryPagination(
-      prepareInit(
-        BookmarkHistoryPagination,
-        raw,
-      ) as unknown as BookmarkHistoryPaginationInit,
+      prepareInit(BookmarkHistoryPagination, raw),
     );
   }
 }
@@ -735,10 +725,7 @@ export class BookmarkHistoryResponse extends EntityModel {
    */
   static fromDict(raw: unknown): BookmarkHistoryResponse {
     return new BookmarkHistoryResponse(
-      prepareInit(
-        BookmarkHistoryResponse,
-        raw,
-      ) as unknown as BookmarkHistoryResponseInit,
+      prepareInit(BookmarkHistoryResponse, raw),
     );
   }
 }

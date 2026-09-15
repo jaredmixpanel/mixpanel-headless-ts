@@ -160,26 +160,21 @@ describe("loadCorpus on the committed snapshot (TS-4 done criterion)", () => {
   });
 
   it("preserves raw number tokens (lossless loading, D6 rule 3)", () => {
-    let sawToken = false;
-    const scan = (value: unknown): void => {
-      if (sawToken) {
-        return;
-      }
+    const containsToken = (value: unknown): boolean => {
       if (value instanceof JsonNumber) {
-        sawToken = true;
-      } else if (Array.isArray(value)) {
-        value.forEach(scan);
-      } else if (typeof value === "object" && value !== null) {
-        Object.values(value).forEach(scan);
+        return true;
       }
+      if (Array.isArray(value)) {
+        return value.some((item) => containsToken(item));
+      }
+      if (typeof value === "object" && value !== null) {
+        return Object.values(value).some((item) => containsToken(item));
+      }
+      return false;
     };
-    for (const vector of corpus.vectors) {
-      scan(vector.call);
-      scan(vector.expect);
-      if (sawToken) {
-        break;
-      }
-    }
+    const sawToken = corpus.vectors.some(
+      (vector) => containsToken(vector.call) || containsToken(vector.expect),
+    );
     expect(sawToken).toBe(true);
   });
 });

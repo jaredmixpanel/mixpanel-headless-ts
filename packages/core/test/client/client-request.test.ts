@@ -289,7 +289,7 @@ describe("TestAppRequestFormBody (B4-C1 deferral slice)", () => {
     await client.appRequest("POST", "/projects/12345/custom_events/", {
       formBody: { name: "X", alternatives: '[{"event": "Y"}]' },
     });
-    const request = captured[0] as CapturedFetchRequest;
+    const request = captured[0]!;
     expect(request.method).toBe("POST");
     expect(
       request.headers["content-type"]?.startsWith(

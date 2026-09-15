@@ -54,10 +54,7 @@ export class RetentionEvent {
   constructor(fields: RetentionEventFields) {
     this.event = fields.event;
     this.filters = fields.filters ?? null;
-    this.filters_combinator =
-      fields.filters_combinator === undefined
-        ? "all"
-        : fields.filters_combinator;
+    this.filters_combinator = fields.filters_combinator ?? "all";
     // EV1_EMPTY_EVENT / EV2_CONTROL_CHAR_EVENT: shared event-name guard.
     validateEventName(this.event, "RetentionEvent");
   }

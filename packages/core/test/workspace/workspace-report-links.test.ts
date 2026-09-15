@@ -182,7 +182,7 @@ function mockApiClient(): MockApiClient {
     try {
       return Promise.resolve(fn());
     } catch (error) {
-      return Promise.reject(error as Error);
+      return Promise.reject(error);
     }
   };
 
@@ -370,7 +370,7 @@ function detailsOf(exc: {
   details: Readonly<Record<string, unknown>> | null;
 }): Readonly<Record<string, unknown>> {
   expect(exc.details).not.toBeNull();
-  return exc.details as Readonly<Record<string, unknown>>;
+  return exc.details!;
 }
 
 // =============================================================================

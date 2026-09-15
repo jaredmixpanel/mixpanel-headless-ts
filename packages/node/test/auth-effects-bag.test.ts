@@ -246,10 +246,10 @@ describe("§4.4 seam-closure sweep — zero UNPORTED throws over the real bag", 
   it("oauthFlow.login runs the REAL flow (injected flowSeams, fake DCR/exchange fetch)", async () => {
     const { effects: baseEffects } = tmpBag();
     void baseEffects;
-    const storageDir = process.env["MP_OAUTH_STORAGE_DIR"] as string;
+    const storageDir = process.env["MP_OAUTH_STORAGE_DIR"]!;
     const openedUrls: string[] = [];
     const fetchImpl = ((input: RequestInfo | URL): Promise<Response> => {
-      const url = String(input);
+      const url = input instanceof Request ? input.url : String(input);
       if (url.endsWith("/oauth/mcp/register/")) {
         return Promise.resolve(
           new Response(JSON.stringify({ client_id: "sweep-client" }), {

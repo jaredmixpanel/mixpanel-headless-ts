@@ -738,12 +738,8 @@ export function createQueryHostMethods(
     // Capture today once so the initial to_date and the retry's
     // from_date can't diverge across midnight (`api_client.py:2399`).
     const today = civilFromInstantUtc(core.now());
-    const resolvedFrom =
-      fromDate !== undefined && fromDate !== null
-        ? fromDate
-        : EVENTS_NAMES_WIDE_FROM_DATE;
-    const resolvedTo =
-      toDate !== undefined && toDate !== null ? toDate : formatYmd(today);
+    const resolvedFrom = fromDate ?? EVENTS_NAMES_WIDE_FROM_DATE;
+    const resolvedTo = toDate ?? formatYmd(today);
     const params: Record<string, unknown> = {
       type: "general",
       limit,
@@ -768,7 +764,7 @@ export function createQueryHostMethods(
       ) {
         throw error;
       }
-      const allowedDays = Number(pythonInt(match[1] as string));
+      const allowedDays = pythonInt(match[1] as string);
       const retryFrom = addDays(today, -allowedDays);
       if (retryFrom === null) {
         // Python would raise OverflowError from the date subtraction —
@@ -798,17 +794,17 @@ export function createQueryHostMethods(
         "include_events and exclude_events are mutually exclusive",
         {
           requestParams: {
-            include_events: includeEvents as unknown,
-            exclude_events: excludeEvents as unknown,
-          } as Record<string, unknown>,
+            include_events: includeEvents,
+            exclude_events: excludeEvents,
+          },
         },
       );
     }
     if (isSet(options.search_properties) && !isSet(options.search)) {
       throw new QueryError("search_properties requires a search string", {
         requestParams: {
-          search_properties: options.search_properties as unknown,
-        } as Record<string, unknown>,
+          search_properties: options.search_properties,
+        },
       });
     }
     const url = core.buildUrl("query", "/stream/bookmark");

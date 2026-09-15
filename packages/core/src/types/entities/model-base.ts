@@ -239,7 +239,7 @@ export function requireIsoText(value: unknown, path: string): string {
     typeof value === "object" &&
     value !== null &&
     "iso" in value &&
-    typeof (value as { iso: unknown }).iso === "string"
+    typeof value.iso === "string"
   ) {
     return (value as { iso: string }).iso;
   }
@@ -476,8 +476,7 @@ export abstract class EntityModel {
       }
       if (cls.extraPolicy === "forbid") {
         modelFail(cls.modelName, `unknown field ${JSON.stringify(key)}`);
-      }
-      if (cls.extraPolicy === "allow") {
+      } else if (cls.extraPolicy === "allow") {
         extras[key] = value;
       }
     }

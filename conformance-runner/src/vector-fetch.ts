@@ -303,7 +303,7 @@ export function createVectorFetch(
       paramsToJson(captured.params),
     );
     for (const [index, interaction] of interactions.entries()) {
-      const slot = interaction as ParsedInteraction;
+      const slot = interaction;
       if (consumed[index] === true || slot.unorderedGroup !== group) {
         continue;
       }

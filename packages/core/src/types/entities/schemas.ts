@@ -565,10 +565,7 @@ export class SchemaEnforcementConfig extends EntityModel {
    */
   static fromDict(raw: unknown): SchemaEnforcementConfig {
     return new SchemaEnforcementConfig(
-      prepareInit(
-        SchemaEnforcementConfig,
-        raw,
-      ) as unknown as SchemaEnforcementConfigInit,
+      prepareInit(SchemaEnforcementConfig, raw),
     );
   }
 }
@@ -724,10 +721,7 @@ export class UpdateSchemaEnforcementParams extends EntityModel {
    */
   static fromDict(raw: unknown): UpdateSchemaEnforcementParams {
     return new UpdateSchemaEnforcementParams(
-      prepareInit(
-        UpdateSchemaEnforcementParams,
-        raw,
-      ) as unknown as UpdateSchemaEnforcementParamsInit,
+      prepareInit(UpdateSchemaEnforcementParams, raw),
     );
   }
 }

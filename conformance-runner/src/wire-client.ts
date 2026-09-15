@@ -92,11 +92,19 @@ function requireWireFetch(context: InvocationContext): typeof fetch {
  * {@link JsonNumber} tokens).
  *
  * @param value - The raw member.
- * @returns The native value.
+ * @returns The native scalar.
+ * @throws Error - When the member is a container (session scalars are
+ *   strings/numbers by construction, so `String()` of one is never
+ *   `[object Object]`).
  */
-function sessionScalar(value: JsonValue | undefined): unknown {
+function sessionScalar(
+  value: JsonValue | undefined,
+): string | number | bigint | boolean | null | undefined {
   if (value instanceof JsonNumber) {
     return value.toNumber();
+  }
+  if (typeof value === "object" && value !== null) {
+    throw new Error("call.session member is not a scalar");
   }
   return value;
 }
@@ -338,7 +346,7 @@ export function coreToVectorJson(value: unknown): JsonValue {
     return out;
   }
   throw new UnencodableValueError(
-    `unencodable wire output member: ${String(value)}`,
+    `unencodable wire output member of type ${typeof value}`,
   );
 }
 

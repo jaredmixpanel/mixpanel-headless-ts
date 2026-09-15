@@ -173,7 +173,7 @@ describe("TestSuggestInvariants", () => {
     fc.assert(
       fc.property(validSetsArb, (valid) => {
         // Python: `value = sorted(valid)[0]` — codepoint sort (R11.5).
-        const value = sortedByCodepoint([...valid])[0] as string;
+        const value = sortedByCodepoint([...valid])[0]!;
         const result = _suggest(value, valid);
         expect(
           result,
@@ -369,7 +369,7 @@ describe("TestInlineCustomPropertyValidation", () => {
         (formula, keys, names) => {
           const inputs: Record<string, PropertyInput> = {};
           keys.forEach((k, i) => {
-            inputs[k] = new PropertyInput({ name: names[i] as string });
+            inputs[k] = new PropertyInput({ name: names[i]! });
           });
           const prop = new InlineCustomProperty({ formula, inputs });
           const errors = _validateCustomProperty(prop, "test");
@@ -391,7 +391,7 @@ describe("TestInlineCustomPropertyValidation", () => {
         (keys, names) => {
           const inputs: Record<string, PropertyInput> = {};
           keys.forEach((k, i) => {
-            inputs[k] = new PropertyInput({ name: names[i] as string });
+            inputs[k] = new PropertyInput({ name: names[i]! });
           });
           const prop = new InlineCustomProperty({
             formula: " ".repeat(3),

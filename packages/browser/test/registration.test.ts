@@ -73,7 +73,7 @@ describe("ensureBrowserClientRegistered", () => {
     // (`Z` suffix — client_{region}.json twin, §2.1).
     const raw = await store.get(CREDENTIAL_KEYS.clientInfo("us"));
     expect(raw).not.toBeNull();
-    const payload = JSON.parse(raw as string) as Record<string, unknown>;
+    const payload = JSON.parse(raw!) as Record<string, unknown>;
     expect(payload["client_id"]).toBe("dcr-client-123");
     expect(payload["created_at"]).toBe("2026-01-15T10:30:00Z");
   });

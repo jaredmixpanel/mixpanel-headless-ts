@@ -304,7 +304,7 @@ export function fakeConfig(): FakeConfig {
     },
     listAccounts: (): AccountSummary[] =>
       [...state.accounts.keys()].sort().map((name) => {
-        const account = state.accounts.get(name) as Account;
+        const account = state.accounts.get(name)!;
         return new AccountSummary({
           name: account.name,
           type: account.type,
@@ -486,7 +486,7 @@ export function meFetch(
   payload: Record<string, unknown> | (() => Record<string, unknown>),
   status = 200,
 ): typeof fetch {
-  return (async (): Promise<Response> => {
+  return async (): Promise<Response> => {
     const body = typeof payload === "function" ? payload() : payload;
     // The app-API envelope: `appRequest` unwraps `results` (matching
     // Python's `api_client.me()`, which the monkeypatched `_fake_me`
@@ -499,7 +499,7 @@ export function meFetch(
       status,
       headers: { "content-type": "application/json" },
     });
-  }) as typeof fetch;
+  };
 }
 
 /** Options of {@link makeEffects}. */
@@ -651,9 +651,9 @@ export function makeEffects(options: MakeEffectsOptions = {}): EffectsBundle {
     },
     fetchImpl:
       options.fetchImpl ??
-      ((async (): Promise<Response> => {
+      (async (): Promise<Response> => {
         throw new TypeError("fetch failed (no fetchImpl stubbed)");
-      }) as typeof fetch),
+      }),
     now: (): number => Date.now(),
   };
 

@@ -100,7 +100,7 @@ function mockTransport(respond: () => Response): {
     init?: RequestInit,
   ): Promise<Response> => {
     captured.push({
-      url: String(input),
+      url: input instanceof Request ? input.url : String(input),
       method: init?.method ?? "GET",
       body: typeof init?.body === "string" ? init.body : "",
     });
@@ -528,28 +528,25 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
   it.each([
     {
       id: "nested-envelope",
-      payload: { result: { access_token: "SECRET_NEST" } } as Record<
-        string,
-        unknown
-      >,
+      payload: { result: { access_token: "SECRET_NEST" } },
       secret: "SECRET_NEST",
       visibleKey: "result",
     },
     {
       id: "list-value",
-      payload: { tokens: ["SECRET_L1"] } as Record<string, unknown>,
+      payload: { tokens: ["SECRET_L1"] },
       secret: "SECRET_L1",
       visibleKey: "tokens",
     },
     {
       id: "non-canonical-key",
-      payload: { client_secret: "SECRET_CS" } as Record<string, unknown>,
+      payload: { client_secret: "SECRET_CS" },
       secret: "SECRET_CS",
       visibleKey: "client_secret",
     },
     {
       id: "case-variant-key",
-      payload: { Access_Token: "SECRET_UPPER" } as Record<string, unknown>,
+      payload: { Access_Token: "SECRET_UPPER" },
       secret: "SECRET_UPPER",
       visibleKey: "Access_Token",
     },
@@ -665,9 +662,9 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
   // test_exchange_non_dict_200_body_raises_oauth_error).
   it.each([
     { id: "list", body: [1, 2] as unknown },
-    { id: "str", body: "SECRET_BARE_STRING" as unknown },
-    { id: "int", body: 42 as unknown },
-    { id: "null", body: null as unknown },
+    { id: "str", body: "SECRET_BARE_STRING" },
+    { id: "int", body: 42 },
+    { id: "null", body: null },
   ])(
     "test_exchange_non_dict_200_body_raises_oauth_error[$id]",
     async ({ body }) => {

@@ -150,7 +150,7 @@ describe("TestAppRequest", () => {
   it("test_builds_correct_url", async () => {
     const h = harness([res(200, { status: "ok", results: [] })]);
     await appRequest(h.deps, "GET", "/projects/12345/dashboards");
-    const expectedBase = ENDPOINTS.get("us")?.get("app");
+    const expectedBase = ENDPOINTS.get("us")!.get("app")!;
     expect(
       h.calls[0]?.url.startsWith(`${expectedBase}/projects/12345/dashboards`),
     ).toBe(true);

@@ -222,7 +222,7 @@ export function floatValue(value: unknown): number | undefined {
     typeof value === "object" &&
     value !== null &&
     "spelling" in value &&
-    typeof (value as { spelling: unknown }).spelling === "string"
+    typeof value.spelling === "string"
   ) {
     return Number((value as { spelling: string }).spelling);
   }
@@ -413,7 +413,7 @@ export function expectIsoText(
     typeof value === "object" &&
     value !== null &&
     "iso" in value &&
-    typeof (value as { iso: unknown }).iso === "string"
+    typeof value.iso === "string"
   ) {
     return (value as { iso: string }).iso;
   }

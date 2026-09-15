@@ -38,10 +38,7 @@ import { pythonFloat } from "./python-float.js";
  * @returns `true` for an object carrying a string `spelling`.
  */
 function isSpellingWrapper(value: object): value is { spelling: string } {
-  return (
-    "spelling" in value &&
-    typeof (value as { spelling: unknown }).spelling === "string"
-  );
+  return "spelling" in value && typeof value.spelling === "string";
 }
 
 /**
@@ -126,6 +123,6 @@ export function pythonFloatCoerce(value: unknown): number {
   }
   throw new TypeError(
     "float() argument must be a string or a real number, not " +
-      `'${(value as object).constructor?.name ?? "object"}'`,
+      `'${(value as { constructor?: { name?: string } }).constructor?.name ?? "object"}'`,
   );
 }

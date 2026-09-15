@@ -621,9 +621,7 @@ export class UpdateAlertParams extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): UpdateAlertParams {
-    return new UpdateAlertParams(
-      prepareInit(UpdateAlertParams, raw) as unknown as UpdateAlertParamsInit,
-    );
+    return new UpdateAlertParams(prepareInit(UpdateAlertParams, raw));
   }
 }
 
@@ -756,12 +754,7 @@ export class AlertHistoryPagination extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): AlertHistoryPagination {
-    return new AlertHistoryPagination(
-      prepareInit(
-        AlertHistoryPagination,
-        raw,
-      ) as unknown as AlertHistoryPaginationInit,
-    );
+    return new AlertHistoryPagination(prepareInit(AlertHistoryPagination, raw));
   }
 }
 
@@ -832,12 +825,7 @@ export class AlertHistoryResponse extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): AlertHistoryResponse {
-    return new AlertHistoryResponse(
-      prepareInit(
-        AlertHistoryResponse,
-        raw,
-      ) as unknown as AlertHistoryResponseInit,
-    );
+    return new AlertHistoryResponse(prepareInit(AlertHistoryResponse, raw));
   }
 }
 
@@ -1128,10 +1116,7 @@ export class ValidateAlertsForBookmarkResponse extends EntityModel {
    */
   static fromDict(raw: unknown): ValidateAlertsForBookmarkResponse {
     return new ValidateAlertsForBookmarkResponse(
-      prepareInit(
-        ValidateAlertsForBookmarkResponse,
-        raw,
-      ) as unknown as ValidateAlertsForBookmarkResponseInit,
+      prepareInit(ValidateAlertsForBookmarkResponse, raw),
     );
   }
 }

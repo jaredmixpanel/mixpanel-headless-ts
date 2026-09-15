@@ -418,7 +418,7 @@ describe("bridge-allowlist pinning and route shape (spec 01 §5.2, §5.5)", () =
       const depth = rootDepth.get(row.family);
       if (depth === undefined) continue;
       const head = row.template.split("/")[depth];
-      if (head !== undefined && head.startsWith("{")) {
+      if (head?.startsWith("{")) {
         wildcards.push(`${row.method} ${row.family} ${row.template}`);
       }
     }

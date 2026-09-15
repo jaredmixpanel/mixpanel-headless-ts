@@ -205,12 +205,12 @@ describe("TestIsSlug", () => {
 
 describe("TestGenerateSlug", () => {
   it("test_deterministic_with_injected_choice", () => {
-    expect(generateSlug({ choice: (alphabet) => alphabet[0] as string })).toBe(
+    expect(generateSlug({ choice: (alphabet) => alphabet[0]! })).toBe(
       "1".repeat(12),
     );
     expect(
       generateSlug({
-        choice: (alphabet) => alphabet[alphabet.length - 1] as string,
+        choice: (alphabet) => alphabet[alphabet.length - 1]!,
       }),
     ).toBe("z".repeat(12));
   });

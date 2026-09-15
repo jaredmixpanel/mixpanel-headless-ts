@@ -554,13 +554,13 @@ function parsePath(segments: readonly string[]): ParsedPath {
   } else {
     return NO_PATH;
   }
-  if (pidS === null || !ASCII_DIGITS_RE.test(pidS)) {
+  if (!ASCII_DIGITS_RE.test(pidS)) {
     return NO_PATH;
   }
   if (widS !== null && !ASCII_DIGITS_RE.test(widS)) {
     return NO_PATH;
   }
-  if (app === null || !KNOWN_APPS.has(app)) {
+  if (!KNOWN_APPS.has(app)) {
     return NO_PATH;
   }
   return {

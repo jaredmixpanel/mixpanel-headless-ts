@@ -131,13 +131,13 @@ describe("sortedByCodepoint — Python sorted() string order (R11.5)", () => {
 
   it("output is pairwise ordered under codepoint comparison (fast-check)", () => {
     const cpKey = (s: string): readonly number[] =>
-      [...s].map((c) => c.codePointAt(0) as number);
+      [...s].map((c) => c.codePointAt(0)!);
     const lessOrEqual = (a: string, b: string): boolean => {
       const ka = cpKey(a);
       const kb = cpKey(b);
       for (let i = 0; i < Math.min(ka.length, kb.length); i += 1) {
-        const da = ka[i] as number;
-        const db = kb[i] as number;
+        const da = ka[i]!;
+        const db = kb[i]!;
         if (da !== db) {
           return da < db;
         }
@@ -148,9 +148,7 @@ describe("sortedByCodepoint — Python sorted() string order (R11.5)", () => {
       fc.property(fc.array(fc.string({ unit: "binary" })), (values) => {
         const result = sortedByCodepoint(values);
         for (let i = 1; i < result.length; i += 1) {
-          expect(
-            lessOrEqual(result[i - 1] as string, result[i] as string),
-          ).toBe(true);
+          expect(lessOrEqual(result[i - 1]!, result[i]!)).toBe(true);
         }
       }),
     );

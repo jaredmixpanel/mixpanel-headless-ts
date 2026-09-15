@@ -41,11 +41,7 @@ import {
   validateRetentionArgs,
   validateTimeArgs,
 } from "../../src/query/validation-args.js";
-import type {
-  ConversionWindowUnit,
-  FunnelMathType,
-  MathType,
-} from "../../src/types/literals.js";
+import type { ConversionWindowUnit } from "../../src/types/literals.js";
 
 // =============================================================================
 // Strategies (test_delegation_equivalence_pbt.py:31-95)
@@ -277,7 +273,7 @@ describe("TestMathPropertyMatrix (test_delegation_equivalence_pbt.py:204)", () =
         const codes = codesOf(
           validateQueryArgs({
             events: ["TestEvent"],
-            math: math as MathType,
+            math,
             math_property: mathProperty,
             per_user: null,
             from_date: null,
@@ -326,7 +322,7 @@ describe("TestMathPropertyMatrix (test_delegation_equivalence_pbt.py:204)", () =
             steps: ["Signup", "Purchase"],
             conversion_window: cw,
             conversion_window_unit: cwUnit,
-            math: math as FunnelMathType,
+            math,
             math_property: mathProperty,
             exclusions: null,
             holding_constant: null,

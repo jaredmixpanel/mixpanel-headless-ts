@@ -186,7 +186,7 @@ function bodyByteSource(
       /* empty body */
     })();
   }
-  return body as unknown as AsyncIterable<Uint8Array>;
+  return body;
 }
 
 /**
@@ -491,10 +491,7 @@ export function createStreamingMethods(core: ClientCore): StreamingMethods {
     options: ExportProfilesOptions = {},
   ): AsyncGenerator<JsonValue, void, undefined> {
     const distinctId = options.distinct_id ?? null;
-    let distinctIds =
-      options.distinct_ids !== undefined && options.distinct_ids !== null
-        ? options.distinct_ids
-        : null;
+    let distinctIds = options.distinct_ids ?? null;
     const behaviors = options.behaviors ?? null;
     const cohortId = options.cohort_id ?? null;
     const includeAllUsers = options.include_all_users ?? false;

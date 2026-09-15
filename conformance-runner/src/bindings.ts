@@ -23,8 +23,6 @@ import {
   CohortMetric,
   cpLength,
   cpSlice,
-  type DidEventOptions,
-  type DidNotDoEventOptions,
   Exclusion,
   type ExclusionFields,
   Filter,
@@ -58,7 +56,6 @@ import {
   type PythonValue,
   Replay,
   ReplayBundle,
-  type ReplayBundleFields,
   ReplayEvent,
   type ReplayEventFields,
   type ReplayFields,
@@ -112,7 +109,6 @@ import {
   validateTimeArgs,
   type ValidateTimeArgsOptions,
   validateUserArgs,
-  type ValidateUserArgsOptions,
   validateUserParams,
   validateWithPydantic,
   ValueError,
@@ -434,7 +430,7 @@ function registerClientInternalsBindings(
           Uint8Array,
           Uint8Array
         >,
-      ) as unknown as AsyncIterable<Uint8Array>;
+      );
     }
     const lines: string[] = [];
     for await (const line of iterJsonlLines(source)) {
@@ -772,7 +768,7 @@ function registerQueryParamBindings(
     );
     return CohortCriteria.didEvent(
       requireKwarg(context, "event") as string,
-      options as DidEventOptions,
+      options,
     );
   });
   bind("types.CohortCriteria.did_not_do_event", (context) => {
@@ -781,7 +777,7 @@ function registerQueryParamBindings(
     );
     return CohortCriteria.didNotDoEvent(
       requireKwarg(context, "event") as string,
-      options as DidNotDoEventOptions,
+      options,
     );
   });
   bind("types.CohortCriteria.has_property", (context) => {
@@ -921,7 +917,7 @@ function registerQueryParamBindings(
       typeof signed_at === "object" &&
       signed_at !== null &&
       "toNumber" in signed_at &&
-      typeof (signed_at as { toNumber: unknown }).toNumber === "function"
+      typeof signed_at.toNumber === "function"
     ) {
       kwargs["signed_at"] = (
         signed_at as { toNumber: () => number }
@@ -942,11 +938,7 @@ function registerQueryParamBindings(
     "types.Replay",
     (context) => new Replay(context.kwargs as unknown as ReplayFields),
   );
-  bind(
-    "types.ReplayBundle",
-    (context) =>
-      new ReplayBundle(context.kwargs as unknown as ReplayBundleFields),
-  );
+  bind("types.ReplayBundle", (context) => new ReplayBundle(context.kwargs));
 }
 
 // ---------------------------------------------------------------------------
@@ -1213,7 +1205,7 @@ function registerValidatorBindings(
     // record epoch (b2-packets.md §V2 trap 2b) — the binding injects the
     // shims' date; the library defaults to the real clock.
     options["today"] = (): string => context.shims.today();
-    return validateUserArgs(options as ValidateUserArgsOptions);
+    return validateUserArgs(options);
   });
   bindValidator("user_validators.validate_user_params", (context) =>
     validateUserParams(requireParamsDict(context)),
@@ -1279,7 +1271,7 @@ function toBuilderExpectOutput(value: JsonValue): JsonValue {
       ) {
         continue;
       }
-      out[key] = toBuilderExpectOutput(member as JsonValue);
+      out[key] = toBuilderExpectOutput(member);
     }
     return out;
   }

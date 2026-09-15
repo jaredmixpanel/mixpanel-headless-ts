@@ -30,6 +30,7 @@ function pureRenders(secret: Secret): string[] {
   }
   return [
     String(secret),
+    // eslint-disable-next-line unicorn/no-useless-template-literals, @typescript-eslint/restrict-template-expressions -- the test exercises template-literal rendering of a Secret
     `${secret}`,
     secret.toString(),
     inspectFn.call(secret),

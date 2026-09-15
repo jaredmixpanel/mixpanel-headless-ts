@@ -79,9 +79,7 @@ export class ExperimentCreator extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): ExperimentCreator {
-    return new ExperimentCreator(
-      prepareInit(ExperimentCreator, raw) as unknown as ExperimentCreatorInit,
-    );
+    return new ExperimentCreator(prepareInit(ExperimentCreator, raw));
   }
 }
 
@@ -470,12 +468,7 @@ export class UpdateExperimentParams extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): UpdateExperimentParams {
-    return new UpdateExperimentParams(
-      prepareInit(
-        UpdateExperimentParams,
-        raw,
-      ) as unknown as UpdateExperimentParamsInit,
-    );
+    return new UpdateExperimentParams(prepareInit(UpdateExperimentParams, raw));
   }
 }
 
@@ -533,10 +526,7 @@ export class ExperimentConcludeParams extends EntityModel {
    */
   static fromDict(raw: unknown): ExperimentConcludeParams {
     return new ExperimentConcludeParams(
-      prepareInit(
-        ExperimentConcludeParams,
-        raw,
-      ) as unknown as ExperimentConcludeParamsInit,
+      prepareInit(ExperimentConcludeParams, raw),
     );
   }
 }

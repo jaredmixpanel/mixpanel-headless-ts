@@ -130,7 +130,7 @@ export function mockWorkspaceClient(
       try {
         return Promise.resolve(pageHandler(page, options));
       } catch (error) {
-        return Promise.reject(error as Error);
+        return Promise.reject(error);
       }
     },
     engageStats: (
@@ -242,7 +242,7 @@ export function makeProfilesBatch(
   for (let i = 0; i < count; i += 1) {
     out.push(
       makeRawProfile(
-        `user_${`${startIndex + i}`.padStart(3, "0")}`,
+        `user_${String(startIndex + i).padStart(3, "0")}`,
         undefined,
         {
           plan: "free",

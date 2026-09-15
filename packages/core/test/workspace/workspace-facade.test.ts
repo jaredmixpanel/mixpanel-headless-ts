@@ -483,7 +483,7 @@ describe("TestWorkspacesMethod (test_workspace.py:808)", () => {
         is_default: false,
       }),
     ]);
-    stubMeService(ws, { listWorkspaces } as unknown as Partial<MeService>);
+    stubMeService(ws, { listWorkspaces });
 
     const result = await ws.workspaces();
 
@@ -498,7 +498,7 @@ describe("TestWorkspacesMethod (test_workspace.py:808)", () => {
   it("workspaces({project_id}) passes the override through", async () => {
     const { ws } = makeWorkspace();
     const listWorkspaces = vi.fn().mockResolvedValue([]);
-    stubMeService(ws, { listWorkspaces } as unknown as Partial<MeService>);
+    stubMeService(ws, { listWorkspaces });
 
     await ws.workspaces({ project_id: "9999999" });
 
@@ -520,7 +520,7 @@ describe("TestProjectsMethod (test_workspace.py:861)", () => {
       ],
       ["200", new MeProjectInfo({ name: "Beta", organization_id: 43 })],
     ]);
-    stubMeService(ws, { listProjects } as unknown as Partial<MeService>);
+    stubMeService(ws, { listProjects });
 
     const result = await ws.projects();
 
@@ -537,7 +537,7 @@ describe("TestProjectsMethod (test_workspace.py:861)", () => {
     const { ws } = makeWorkspace();
     const fetch = vi.fn().mockResolvedValue(new MeResponse());
     const listProjects = vi.fn().mockResolvedValue([]);
-    stubMeService(ws, { fetch, listProjects } as unknown as Partial<MeService>);
+    stubMeService(ws, { fetch, listProjects });
 
     await ws.projects({ refresh: true });
 

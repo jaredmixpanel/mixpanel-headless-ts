@@ -139,7 +139,7 @@ function slowChunkFetch(
 ): typeof fetch {
   const encoder = new TextEncoder();
   const remaining = [...chunks];
-  return (async (): Promise<Response> => {
+  return async (): Promise<Response> => {
     const body = new ReadableStream<Uint8Array>({
       async pull(controller): Promise<void> {
         if (remaining.length === 0) {
@@ -147,14 +147,14 @@ function slowChunkFetch(
           return;
         }
         await new Promise((resolve) => setTimeout(resolve, delayMs));
-        controller.enqueue(encoder.encode(remaining.shift() as string));
+        controller.enqueue(encoder.encode(remaining.shift()));
         if (remaining.length === 0) {
           controller.close();
         }
       },
     });
     return new Response(body, { status: 200 });
-  }) as typeof fetch;
+  };
 }
 
 describe("W-F1: mid-stream body failures retry inside the httpx.HTTPError scope", () => {

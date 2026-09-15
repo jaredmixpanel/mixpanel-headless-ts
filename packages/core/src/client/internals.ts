@@ -511,7 +511,7 @@ export function handleResponse(
       throw error;
     }
     throw new MixpanelHeadlessError(
-      `Non-JSON response from ${requestMethod} ${requestUrl} ` +
+      `Non-JSON response from ${requestMethod ?? "<unknown>"} ${requestUrl ?? "<unknown>"} ` +
         `(status ${response.status}): ${cpSlice(response.text, 0, 500)}`,
       "INVALID_RESPONSE",
       null,

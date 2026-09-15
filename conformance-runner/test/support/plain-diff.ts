@@ -43,7 +43,7 @@ function unwrapFloat(value: unknown): unknown {
     typeof value === "object" &&
     value !== null &&
     "spelling" in value &&
-    typeof (value as { spelling: unknown }).spelling === "string"
+    typeof value.spelling === "string"
   ) {
     return Number((value as { spelling: string }).spelling);
   }

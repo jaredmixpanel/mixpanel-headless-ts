@@ -42,7 +42,7 @@
  * @internal
  */
 
-import { pythonFloatStr, zfill } from "../compat/index.js";
+import { pythonFloatStr, pythonStrOf, zfill } from "../compat/index.js";
 import { OverflowError, ValueError } from "./python-builtins.js";
 import {
   floatCarrierValue,
@@ -167,10 +167,13 @@ function dictKeyText(key: unknown): string {
   if (isFloatCarrier(key)) {
     return pythonFloatStr(floatCarrierValue(key));
   }
-  if (typeof key === "number" && !Number.isInteger(key)) {
-    return pythonFloatStr(key);
+  if (typeof key === "number") {
+    return Number.isInteger(key) ? String(key) : pythonFloatStr(key);
   }
-  return String(key);
+  if (typeof key === "boolean" || typeof key === "bigint") {
+    return String(key);
+  }
+  return pythonStrOf(key);
 }
 
 /**

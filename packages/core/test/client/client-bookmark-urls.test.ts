@@ -101,9 +101,7 @@ describe("TestCreateBookmarkUrl", () => {
 
     expect(seen).toHaveLength(1);
     expect(seen[0]?.method).toBe("POST");
-    expect(pathOf(seen[0] as CapturedFetchRequest)).toBe(
-      "/api/app/projects/12345/bookmark-urls/",
-    );
+    expect(pathOf(seen[0]!)).toBe("/api/app/projects/12345/bookmark-urls/");
   });
 
   it("test_body_carries_required_and_optional_keys", async () => {
@@ -262,7 +260,7 @@ describe("TestGetBookmarkUrl", () => {
 
     expect(seen).toHaveLength(1);
     expect(seen[0]?.method).toBe("GET");
-    expect(pathOf(seen[0] as CapturedFetchRequest)).toBe(
+    expect(pathOf(seen[0]!)).toBe(
       `/api/app/projects/12345/bookmark-urls/${SLUG}/`,
     );
     expect(result["slug"]).toBe(SLUG);
@@ -511,9 +509,8 @@ describe("TestResolveShortLink", () => {
       { status: 429, headers: { "Retry-After": "2" } },
       { status: 302, headers: { Location: TARGET } },
     ];
-    const { client, sleeps } = createMockClient(
-      testCredentials(),
-      () => responses.shift() as CannedResponse,
+    const { client, sleeps } = createMockClient(testCredentials(), () =>
+      responses.shift()!,
     );
     const target = await client.resolveShortLink(CODE);
 
@@ -674,8 +671,8 @@ describe("TestResolveShortLink", () => {
     );
     await client.resolveShortLink(CODE);
 
-    const authValue = seen[0]?.headers["authorization"] as string;
-    const secret = authValue.split(" ", 2)[1] as string;
+    const authValue = seen[0]!.headers["authorization"]!;
+    const secret = authValue.split(" ", 2)[1]!;
     for (const text of records) {
       expect(text.includes(authValue)).toBe(false);
       expect(text.includes(secret)).toBe(false);

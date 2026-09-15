@@ -223,9 +223,7 @@ const TITLE_CALLEES = new Set(["describe", "it", "test"]);
 function rootIdentifier(expr) {
   let e = expr;
   for (;;) {
-    if (ts.isPropertyAccessExpression(e)) {
-      e = e.expression;
-    } else if (ts.isCallExpression(e)) {
+    if (ts.isPropertyAccessExpression(e) || ts.isCallExpression(e)) {
       e = e.expression;
     } else {
       break;

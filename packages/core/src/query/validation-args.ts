@@ -518,7 +518,7 @@ export function validateFunnelArgs(
         "F3_CONVERSION_WINDOW_TYPE",
       ),
     );
-  } else if ((conversion_window as number) <= 0) {
+  } else if (conversion_window <= 0) {
     errors.push(
       new ValidationError(
         "conversion_window",
@@ -532,14 +532,14 @@ export function validateFunnelArgs(
   if (
     validWindow &&
     MAX_CONVERSION_WINDOW.has(conversion_window_unit) &&
-    (conversion_window as number) > 0
+    conversion_window > 0
   ) {
     const maxVal = MAX_CONVERSION_WINDOW.get(conversion_window_unit) as number;
-    if ((conversion_window as number) > maxVal) {
+    if (conversion_window > maxVal) {
       errors.push(
         new ValidationError(
           "conversion_window",
-          `conversion_window=${pythonNumberStr(conversion_window as number)} ` +
+          `conversion_window=${pythonNumberStr(conversion_window)} ` +
             `exceeds maximum of ${String(maxVal)} for unit ` +
             `'${conversion_window_unit}'`,
           "F3_CONVERSION_WINDOW_MAX",
@@ -562,7 +562,7 @@ export function validateFunnelArgs(
   }
 
   if (validWindow) {
-    const window = conversion_window as number;
+    const window = conversion_window;
     // F7b: Minimum conversion window per unit (second requires >=2)
     if (conversion_window_unit === "second" && window > 0 && window < 2) {
       errors.push(
@@ -636,7 +636,7 @@ export function validateFunnelArgs(
   // F4: Non-empty exclusion event names and step range validation
   if (exclusions !== null) {
     for (const [i, exclusion] of exclusions.entries()) {
-      const ex = exclusion as Exclusion;
+      const ex = exclusion;
       if (ex.event === "" || pythonStrip(ex.event) === "") {
         errors.push(
           new ValidationError(
@@ -923,11 +923,7 @@ export function validateRetentionArgs(
             "R5_BUCKET_SIZES_INTEGER",
           ),
         );
-      } else if (
-        !isPythonInt(val) ||
-        typeof val === "boolean" ||
-        (val as number) <= 0
-      ) {
+      } else if (!isPythonInt(val) || typeof val === "boolean" || val <= 0) {
         allValidInts = false;
         errors.push(
           new ValidationError(

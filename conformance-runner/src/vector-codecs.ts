@@ -187,7 +187,7 @@ function requireIsoText(value: unknown, field: string): string {
     typeof value === "object" &&
     value !== null &&
     "iso" in value &&
-    typeof (value as { iso: unknown }).iso === "string"
+    typeof value.iso === "string"
   ) {
     return (value as { iso: string }).iso;
   }
@@ -672,7 +672,7 @@ const GROUP_BY_SPEC: DataclassCodecSpec = {
         typeof value === "object" &&
         value !== null &&
         "spelling" in value &&
-        typeof (value as { spelling: unknown }).spelling === "string"
+        typeof value.spelling === "string"
       ) {
         // R11.7 rig-internal exemption: the spelling is the rig's
         // canonical PyFloat token (constructor-validated), same as
@@ -717,7 +717,7 @@ const groupByCodec: ContractTagCodec = {
   matches: groupByBaseCodec.matches,
   encode: (instance, encodeChild) => {
     const groupBy = instance as GroupBy;
-    const record = instance as unknown as Readonly<Record<string, unknown>>;
+    const record = instance as Readonly<Record<string, unknown>>;
     const floatFields = GROUP_BY_FLOAT_BUCKETS.get(groupBy) ?? NO_FLOAT_BUCKETS;
     const out: Record<string, unknown> = { $type: "GroupBy" };
     for (const field of GROUP_BY_SPEC.fields) {
@@ -770,7 +770,7 @@ const signedReplayCodec: ContractTagCodec = {
       typeof signed_at === "object" &&
       signed_at !== null &&
       "spelling" in signed_at &&
-      typeof (signed_at as { spelling: unknown }).spelling === "string"
+      typeof signed_at.spelling === "string"
     ) {
       bag["signed_at"] = Number((signed_at as { spelling: string }).spelling);
     }

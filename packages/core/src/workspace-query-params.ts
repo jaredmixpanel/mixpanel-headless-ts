@@ -162,9 +162,9 @@ export type TodayFn = () => string;
  */
 function defaultToday(): string {
   const now = new Date();
-  const year = `${now.getFullYear()}`.padStart(4, "0");
-  const month = `${now.getMonth() + 1}`.padStart(2, "0");
-  const day = `${now.getDate()}`.padStart(2, "0");
+  const year = String(now.getFullYear()).padStart(4, "0");
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
@@ -486,13 +486,13 @@ export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
         measurement["property"] = { name: itemProp, resourceType: "events" };
       }
     }
-    if (itemPerUser !== null && itemPerUser !== undefined) {
+    if (itemPerUser !== null) {
       measurement["perUserAggregation"] = itemPerUser;
     }
-    if (itemPercentile !== null && itemPercentile !== undefined) {
+    if (itemPercentile !== null) {
       measurement["percentile"] = itemPercentile;
     }
-    if (itemSegmentMethod !== null && itemSegmentMethod !== undefined) {
+    if (itemSegmentMethod !== null) {
       measurement["segmentMethod"] = itemSegmentMethod;
     }
 
@@ -558,14 +558,14 @@ export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
     chartType: INSIGHTS_CHART_TYPE.get(mode) ?? "line",
     analysis: "linear",
   };
-  if (rolling !== null && rolling !== undefined) {
+  if (rolling !== null) {
     displayOptions["analysis"] = "rolling";
     displayOptions["rollingWindowSize"] = rolling;
   } else if (cumulative) {
     displayOptions["analysis"] = "cumulative";
   }
 
-  if (time_comparison !== null && time_comparison !== undefined) {
+  if (time_comparison !== null) {
     displayOptions["timeComparison"] = buildTimeComparison(time_comparison);
   }
 
@@ -576,7 +576,7 @@ export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
     filter: filterSection,
     group: groupSection,
   };
-  if (data_group_id !== null && data_group_id !== undefined) {
+  if (data_group_id !== null) {
     // Contract: the Sections model has no `dataGroupId` key — the
     // sections-level spelling is `globalDataGroupId: string | null`
     // (`workspace.py` insights/funnel/retention sites post-FIX-1;
@@ -715,10 +715,11 @@ export function resolveAndBuildParams(
   // Normalize events to a sequence, separating Formula objects
   let eventsList: Array<string | Metric | CohortMetric>;
   let formulasFromList: Formula[];
-  if (typeof events === "string") {
-    eventsList = [events];
-    formulasFromList = [];
-  } else if (events instanceof Metric || events instanceof CohortMetric) {
+  if (
+    typeof events === "string" ||
+    events instanceof Metric ||
+    events instanceof CohortMetric
+  ) {
     eventsList = [events];
     formulasFromList = [];
   } else if (events instanceof Formula) {
@@ -949,7 +950,7 @@ export function buildFunnelParams(
     aggregateBy,
     filter: [],
   };
-  if (reentry_mode !== null && reentry_mode !== undefined) {
+  if (reentry_mode !== null) {
     behavior["funnelReentryMode"] = reentry_mode;
   }
 
@@ -957,9 +958,7 @@ export function buildFunnelParams(
   const measurement: ParamsDict = {
     math,
     property:
-      math_property !== null &&
-      math_property !== undefined &&
-      math_property !== ""
+      math_property !== null && math_property !== ""
         ? { name: math_property, type: "number", resourceType: "events" }
         : null,
     stepIndex: null,
@@ -984,7 +983,7 @@ export function buildFunnelParams(
   const displayOptions: ParamsDict = {
     chartType: FUNNEL_CHART_TYPE.get(mode) ?? "funnel-steps",
   };
-  if (time_comparison !== null && time_comparison !== undefined) {
+  if (time_comparison !== null) {
     displayOptions["timeComparison"] = buildTimeComparison(time_comparison);
   }
 
@@ -995,7 +994,7 @@ export function buildFunnelParams(
     group: groupSection,
     formula: [],
   };
-  if (data_group_id !== null && data_group_id !== undefined) {
+  if (data_group_id !== null) {
     // Contract: the Sections model has no `dataGroupId` key — the
     // sections-level spelling is `globalDataGroupId: string | null`
     // (`workspace.py` insights/funnel/retention sites post-FIX-1;
@@ -1093,7 +1092,7 @@ export function resolveAndBuildFunnelParams(
 
   // Normalize exclusions: str → Exclusion
   let normalizedExclusions: Exclusion[] = [];
-  if (exclusions !== null && exclusions !== undefined) {
+  if (exclusions !== null) {
     normalizedExclusions = [...exclusions].map((e) =>
       typeof e === "string" ? new Exclusion({ event: e }) : e,
     );
@@ -1101,7 +1100,7 @@ export function resolveAndBuildFunnelParams(
 
   // Normalize holding_constant: str → HoldingConstant
   let normalizedHc: HoldingConstant[] = [];
-  if (holding_constant !== null && holding_constant !== undefined) {
+  if (holding_constant !== null) {
     const hcList: ReadonlyArray<string | HoldingConstant> =
       typeof holding_constant === "string" ||
       holding_constant instanceof HoldingConstant
@@ -1129,7 +1128,7 @@ export function resolveAndBuildFunnelParams(
     data_group_id,
   });
   // CP1-CP6: Custom property validation for where filters
-  argErrors.push(..._scanCustomProperties({ where: where as never }));
+  argErrors.push(..._scanCustomProperties({ where }));
   if (anyError(argErrors)) {
     throw new BookmarkValidationError(argErrors);
   }
@@ -1273,7 +1272,7 @@ export function buildRetentionParams(
       bucket_sizes !== null && bucket_sizes.length > 0 ? [...bucket_sizes] : [],
     filter: [],
   };
-  if (unbounded_mode !== null && unbounded_mode !== undefined) {
+  if (unbounded_mode !== null) {
     behavior["retentionUnboundedMode"] = unbounded_mode;
   }
 
@@ -1302,7 +1301,7 @@ export function buildRetentionParams(
   const displayOptions: ParamsDict = {
     chartType: RETENTION_CHART_TYPE.get(mode) ?? "retention-curve",
   };
-  if (time_comparison !== null && time_comparison !== undefined) {
+  if (time_comparison !== null) {
     displayOptions["timeComparison"] = buildTimeComparison(time_comparison);
   }
 
@@ -1313,7 +1312,7 @@ export function buildRetentionParams(
     group: groupSection,
     formula: [],
   };
-  if (data_group_id !== null && data_group_id !== undefined) {
+  if (data_group_id !== null) {
     // Contract: the Sections model has no `dataGroupId` key — the
     // sections-level spelling is `globalDataGroupId: string | null`
     // (`workspace.py` insights/funnel/retention sites post-FIX-1;
@@ -1423,8 +1422,8 @@ export function buildFlowParams(options: BuildFlowParamsOptions): ParamsDict {
       // Python `step.label or step.event` — an empty label falls back.
       step_label:
         step.label !== null && step.label !== "" ? step.label : step.event,
-      forward: step.forward === null ? 0 : step.forward,
-      reverse: step.reverse === null ? 0 : step.reverse,
+      forward: step.forward ?? 0,
+      reverse: step.reverse ?? 0,
       bool_op: step.filters_combinator === "any" ? "or" : "and",
       property_filter_params_list: (step.filters ?? []).map((f) =>
         buildSegfilterEntry(f),
@@ -1455,16 +1454,15 @@ export function buildFlowParams(options: BuildFlowParamsOptions): ParamsDict {
     // Python `hidden_events or []` — an empty list also falls back.
     hidden_events:
       hidden_events !== null && hidden_events.length > 0 ? hidden_events : [],
-    exclusions:
-      exclusions !== null && exclusions !== undefined ? exclusions : [],
+    exclusions: exclusions ?? [],
   };
 
-  if (data_group_id !== null && data_group_id !== undefined) {
+  if (data_group_id !== null) {
     params["data_group_id"] = data_group_id;
   }
 
   // Add filters if present — route cohort vs property filters
-  if (where !== null && where !== undefined) {
+  if (where !== null) {
     const filterList: readonly Filter[] = Array.isArray(where)
       ? (where as readonly Filter[])
       : [where as Filter];
@@ -1486,7 +1484,7 @@ export function buildFlowParams(options: BuildFlowParamsOptions): ParamsDict {
   }
 
   // Add segments if present
-  if (segments !== null && segments !== undefined) {
+  if (segments !== null) {
     params["segments"] = buildGroupSection(segments);
   }
 
@@ -1589,8 +1587,8 @@ export function resolveAndBuildFlowParams(
     (s) =>
       new FlowStep({
         event: s.event,
-        forward: s.forward === null ? forward : s.forward,
-        reverse: s.reverse === null ? reverse : s.reverse,
+        forward: s.forward ?? forward,
+        reverse: s.reverse ?? reverse,
         label: s.label,
         filters: s.filters,
         filters_combinator: s.filters_combinator,
@@ -1624,12 +1622,15 @@ export function resolveAndBuildFlowParams(
     stepErrors.push(...checkStepDirection(s.forward, "forward", spath));
     stepErrors.push(...checkStepDirection(s.reverse, "reverse", spath));
     // Per-step filters_combinator must be "all" or "any"
-    if (s.filters_combinator !== "all" && s.filters_combinator !== "any") {
+    // Runtime guard for untyped callers (the type already says
+    // "all" | "any"; Python raises for anything else).
+    const combinator: string = s.filters_combinator;
+    if (combinator !== "all" && combinator !== "any") {
       stepErrors.push(
         new ValidationError(
           `${spath}.filters_combinator`,
           "filters_combinator must be 'all' or 'any' " +
-            `(got ${pythonRepr(s.filters_combinator as never)})`,
+            `(got ${pythonRepr(combinator)})`,
           "FL_INVALID_FILTERS_COMBINATOR",
         ),
       );
@@ -1657,7 +1658,7 @@ export function resolveAndBuildFlowParams(
   }
 
   // hidden_events type validation
-  if (hidden_events !== null && hidden_events !== undefined) {
+  if (hidden_events !== null) {
     for (const [i, he] of hidden_events.entries()) {
       if (typeof he !== "string") {
         stepErrors.push(
@@ -1705,7 +1706,7 @@ export function resolveAndBuildFlowParams(
   argErrors.push(
     ..._scanCustomProperties({
       flow_steps: steps,
-      where: where as never,
+      where,
     }),
   );
   if (anyError(argErrors)) {
@@ -1867,7 +1868,7 @@ export function resolveAndBuildRetentionParams(
   // CP1-CP6: Custom property validation for where and event filters
   argErrors.push(
     ..._scanCustomProperties({
-      where: where as never,
+      where,
       retention_events: [normBorn, normReturn],
     }),
   );
@@ -2091,7 +2092,7 @@ export function resolveAndBuildUserParams(
   }
 
   // --- cohort handling ---
-  if (cohort !== null && cohort !== undefined) {
+  if (cohort !== null) {
     if (typeof cohort === "number") {
       params["filter_by_cohort"] = pythonJsonDumps({ id: cohort });
     } else if (cohort instanceof CohortDefinition) {
@@ -2156,12 +2157,12 @@ export function resolveAndBuildUserParams(
   }
 
   // --- properties → output_properties ---
-  if (properties !== null && properties !== undefined) {
+  if (properties !== null) {
     params["output_properties"] = pythonJsonDumps([...properties]);
   }
 
   // --- sort_by → sort_key ---
-  if (sort_by !== null && sort_by !== undefined) {
+  if (sort_by !== null) {
     const escapedSort = sort_by
       .replaceAll("\\", "\\\\")
       .replaceAll('"', String.raw`\"`);
@@ -2170,7 +2171,7 @@ export function resolveAndBuildUserParams(
   }
 
   // --- as_of → as_of_timestamp ---
-  if (as_of !== null && as_of !== undefined) {
+  if (as_of !== null) {
     if (typeof as_of === "string") {
       params["as_of_timestamp"] = timegmFromIsoDate(as_of);
     } else if (typeof as_of === "number") {
@@ -2179,22 +2180,22 @@ export function resolveAndBuildUserParams(
   }
 
   // --- distinct_id ---
-  if (distinct_id !== null && distinct_id !== undefined) {
+  if (distinct_id !== null) {
     params["distinct_id"] = distinct_id;
   }
 
   // --- distinct_ids ---
-  if (distinct_ids !== null && distinct_ids !== undefined) {
+  if (distinct_ids !== null) {
     params["distinct_ids"] = pythonJsonDumps([...distinct_ids]);
   }
 
   // --- group_id → data_group_id ---
-  if (group_id !== null && group_id !== undefined) {
+  if (group_id !== null) {
     params["data_group_id"] = group_id;
   }
 
   // --- search ---
-  if (search !== null && search !== undefined) {
+  if (search !== null) {
     params["search"] = search;
   }
 
@@ -2210,11 +2211,11 @@ export function resolveAndBuildUserParams(
       action = "count()";
     } else {
       const escapedAggProp =
-        aggregate_property !== null && aggregate_property !== undefined
-          ? aggregate_property
+        aggregate_property === null
+          ? ""
+          : aggregate_property
               .replaceAll("\\", "\\\\")
-              .replaceAll('"', String.raw`\"`)
-          : "";
+              .replaceAll('"', String.raw`\"`);
       if (aggregate === "percentile") {
         action = `percentile(properties["${escapedAggProp}"], ${pythonNumberText(
           percentile,
@@ -2224,7 +2225,7 @@ export function resolveAndBuildUserParams(
       }
     }
     params["action"] = action;
-    if (segment_by !== null && segment_by !== undefined) {
+    if (segment_by !== null) {
       const segMap: Record<string, boolean> = {};
       for (const sid of segment_by) {
         segMap[pythonNumberText(sid)] = true;

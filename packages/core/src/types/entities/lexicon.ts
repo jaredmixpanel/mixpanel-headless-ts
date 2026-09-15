@@ -397,10 +397,7 @@ export class UpdateEventDefinitionParams extends EntityModel {
    */
   static fromDict(raw: unknown): UpdateEventDefinitionParams {
     return new UpdateEventDefinitionParams(
-      prepareInit(
-        UpdateEventDefinitionParams,
-        raw,
-      ) as unknown as UpdateEventDefinitionParamsInit,
+      prepareInit(UpdateEventDefinitionParams, raw),
     );
   }
 }
@@ -512,10 +509,7 @@ export class UpdatePropertyDefinitionParams extends EntityModel {
    */
   static fromDict(raw: unknown): UpdatePropertyDefinitionParams {
     return new UpdatePropertyDefinitionParams(
-      prepareInit(
-        UpdatePropertyDefinitionParams,
-        raw,
-      ) as unknown as UpdatePropertyDefinitionParamsInit,
+      prepareInit(UpdatePropertyDefinitionParams, raw),
     );
   }
 }
@@ -624,9 +618,7 @@ export class BulkEventUpdate extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): BulkEventUpdate {
-    return new BulkEventUpdate(
-      prepareInit(BulkEventUpdate, raw) as unknown as BulkEventUpdateInit,
-    );
+    return new BulkEventUpdate(prepareInit(BulkEventUpdate, raw));
   }
 }
 
@@ -1064,8 +1056,6 @@ export class UpdateTagParams extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): UpdateTagParams {
-    return new UpdateTagParams(
-      prepareInit(UpdateTagParams, raw) as unknown as UpdateTagParamsInit,
-    );
+    return new UpdateTagParams(prepareInit(UpdateTagParams, raw));
   }
 }

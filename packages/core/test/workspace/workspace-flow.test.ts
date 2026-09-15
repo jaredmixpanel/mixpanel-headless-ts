@@ -465,6 +465,22 @@ describe("TestPerStepDirectionValidation", () => {
     ).rejects.toThrow(/forward or reverse must be > 0/);
   });
 
+  it("an out-of-union filters_combinator is still rejected at runtime (8.11 guard retained)", async () => {
+    // The type says "all" | "any"; the guard exists for untyped callers
+    // (Python raises for anything else) and must survive the lint sweep.
+    await expect(
+      makeWs().buildFlowParams(
+        new FlowStep({
+          event: "Login",
+          forward: 3,
+          filters_combinator: "xor" as never,
+        }),
+      ),
+    ).rejects.toThrow(
+      /filters_combinator must be 'all' or 'any' \(got 'xor'\)/,
+    );
+  });
+
   it("mixed per-step overrides pass when one direction is > 0", async () => {
     const params = await makeWs().buildFlowParams(
       [

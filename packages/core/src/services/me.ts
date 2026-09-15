@@ -279,7 +279,7 @@ export class MeService {
     // PLAIN `json.loads` output (`me.py:762`), so normalize first —
     // the same `toNativeJson(...)` step every B4 model site performs
     // (`client.ts:879`).
-    const response = MeResponse.fromDict(toNativeJson(raw as JsonValue));
+    const response = MeResponse.fromDict(toNativeJson(raw));
     await this.#cache.put(response);
     this.#cachedResponse = response;
     return response;

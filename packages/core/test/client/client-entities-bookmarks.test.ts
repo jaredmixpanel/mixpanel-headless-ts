@@ -160,7 +160,7 @@ describe("TestListBookmarks", () => {
       string,
       Array<Record<string, unknown>>
     >;
-    const bookmark = result["results"]?.[0] as Record<string, unknown>;
+    const bookmark = result["results"]![0]!;
     expect(bookmark["id"]).toBe(63877017);
     expect(bookmark["name"]).toBe("Monthly Recurring Revenue");
     expect(bookmark["type"]).toBe("insights");

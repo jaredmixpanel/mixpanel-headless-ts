@@ -19,7 +19,12 @@ export { pythonInt, pythonIntCoerce } from "./python-int.js";
 export { pythonJsonDumps } from "./python-json-dumps.js";
 export { pythonJsonDumpsCanonical } from "./python-json-dumps-canonical.js";
 export type { PythonValue } from "./python-str.js";
-export { pythonRepr, pythonStr } from "./python-str.js";
+export {
+  isPythonValue,
+  pythonRepr,
+  pythonStr,
+  pythonStrOf,
+} from "./python-str.js";
 export { pythonStrip } from "./python-strip.js";
 export type { SplitResult } from "./urllib.js";
 export { urljoin, urlsplit, UrlSplitError, urlunsplit } from "./urllib.js";

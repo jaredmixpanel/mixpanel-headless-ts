@@ -68,9 +68,9 @@ export function parseYmd(value: string): CivilDate | null {
   if (match === null) {
     return null;
   }
-  const year = Number(pythonInt(match[1] as string));
-  const month = Number(pythonInt(match[2] as string));
-  const day = Number(pythonInt(match[3] as string));
+  const year = pythonInt(match[1] as string);
+  const month = pythonInt(match[2] as string);
+  const day = pythonInt(match[3] as string);
   if (year < 1 || month < 1 || month > 12 || day < 1) {
     return null;
   }

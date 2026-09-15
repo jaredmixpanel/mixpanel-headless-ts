@@ -503,9 +503,7 @@ export function parseAccount(
         type: "oauth_token",
         ...base,
         ...(token === undefined ? {} : { token }),
-        ...(tokenEnvRaw === undefined
-          ? {}
-          : { token_env: tokenEnvRaw as string | null }),
+        ...(tokenEnvRaw === undefined ? {} : { token_env: tokenEnvRaw }),
       };
     }
     default: {

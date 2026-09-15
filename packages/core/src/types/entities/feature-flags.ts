@@ -567,9 +567,7 @@ export class FlagHistoryParams extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): FlagHistoryParams {
-    return new FlagHistoryParams(
-      prepareInit(FlagHistoryParams, raw) as unknown as FlagHistoryParamsInit,
-    );
+    return new FlagHistoryParams(prepareInit(FlagHistoryParams, raw));
   }
 }
 

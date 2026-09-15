@@ -429,9 +429,7 @@ describe("TestParseLexiconSchemaProperties", () => {
     fc.assert(
       fc.property(lexiconSchemaInputArb, (data) => {
         const schemaJson = data["schemaJson"] as Record<string, unknown>;
-        const expected = Object.keys(
-          (schemaJson["properties"] ?? {}) as Record<string, unknown>,
-        ).length;
+        const expected = Object.keys(schemaJson["properties"] ?? {}).length;
         expect(
           Object.keys(parseLexiconSchema(data).schema_json.properties),
         ).toHaveLength(expected);

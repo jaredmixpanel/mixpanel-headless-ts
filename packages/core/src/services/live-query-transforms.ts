@@ -107,6 +107,7 @@ function dictGet(
  * @param value - The raw API value.
  * @returns The same value at the declared field type.
  */
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- a deliberate cast-in-disguise: T is inferred from the declared field type at each call site (see the docstring)
 function passthrough<T>(value: unknown): T {
   return value as T;
 }
@@ -914,14 +915,9 @@ export function extractCohortsAndAverage(
   const cohorts: Record<string, Record<string, unknown>> = {};
   for (const [key, value] of Object.entries(data)) {
     if (key === "$average") {
-      average = isPythonDict(value)
-        ? (asRecord(value) as Record<string, unknown>)
-        : {};
+      average = isPythonDict(value) ? asRecord(value) : {};
     } else if (isPythonDict(value)) {
-      cohorts[normalizeCohortDate(key)] = asRecord(value) as Record<
-        string,
-        unknown
-      >;
+      cohorts[normalizeCohortDate(key)] = asRecord(value);
     }
   }
   return [cohorts, average];

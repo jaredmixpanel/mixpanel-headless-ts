@@ -403,12 +403,7 @@ export class UpdateAnnotationParams extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): UpdateAnnotationParams {
-    return new UpdateAnnotationParams(
-      prepareInit(
-        UpdateAnnotationParams,
-        raw,
-      ) as unknown as UpdateAnnotationParamsInit,
-    );
+    return new UpdateAnnotationParams(prepareInit(UpdateAnnotationParams, raw));
   }
 }
 

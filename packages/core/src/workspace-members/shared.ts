@@ -95,8 +95,14 @@ function describeReceived(value: unknown): string {
     case "string": {
       return `string "${value.slice(0, 40)}"`;
     }
-    default: {
+    case "number":
+    case "bigint":
+    case "boolean":
+    case "symbol": {
       return `${typeof value} ${String(value).slice(0, 40)}`;
+    }
+    default: {
+      return typeof value;
     }
   }
 }

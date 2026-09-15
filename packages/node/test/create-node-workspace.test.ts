@@ -107,7 +107,10 @@ function capturingFetch(): {
     init?: RequestInit,
   ): Promise<Response> => {
     const headers = new Headers(init?.headers);
-    seen.push({ url: String(input), auth: headers.get("authorization") });
+    seen.push({
+      url: input instanceof Request ? input.url : String(input),
+      auth: headers.get("authorization"),
+    });
     return new Response(null, { status: 204 });
   }) as typeof fetch;
   return { fetchImpl, seen };

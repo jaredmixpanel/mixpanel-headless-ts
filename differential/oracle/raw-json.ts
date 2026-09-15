@@ -307,7 +307,7 @@ class RawParser {
   private parseString(): string {
     STRING_TOKEN.lastIndex = this.pos;
     const match = STRING_TOKEN.exec(this.text);
-    if (match === null || match.index !== this.pos) {
+    if (match?.index !== this.pos) {
       throw new RawJsonError("malformed string token", this.pos);
     }
     this.pos = STRING_TOKEN.lastIndex;
@@ -323,7 +323,7 @@ class RawParser {
   private parseNumber(): JsonNumber {
     NUMBER_TOKEN.lastIndex = this.pos;
     const match = NUMBER_TOKEN.exec(this.text);
-    if (match === null || match.index !== this.pos) {
+    if (match?.index !== this.pos) {
       throw new RawJsonError("malformed number token", this.pos);
     }
     this.pos = NUMBER_TOKEN.lastIndex;

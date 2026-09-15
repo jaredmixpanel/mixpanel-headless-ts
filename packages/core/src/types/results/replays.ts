@@ -369,9 +369,11 @@ export class SignedReplay {
       );
     }
     // SR3_INVALID_ENV: env must be 'prod' or 'dev'.
-    if (this.env !== "prod" && this.env !== "dev") {
+    // `string` on purpose: SR3 is a runtime guard for untyped callers.
+    const env: string = this.env;
+    if (env !== "prod" && env !== "dev") {
       throw new ParamValidationError(
-        `env must be 'prod' or 'dev'; got ${JSON.stringify(this.env as string)}`,
+        `env must be 'prod' or 'dev'; got ${JSON.stringify(env)}`,
         "SR3_INVALID_ENV",
       );
     }

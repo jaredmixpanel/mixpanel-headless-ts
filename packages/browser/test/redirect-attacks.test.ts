@@ -111,7 +111,7 @@ describe("redirect-flow attacks", () => {
 
   it("treats a corrupted pending record as BROWSER_NO_PENDING_LOGIN (documented twin-less branch)", async () => {
     const { store, transport, state } = await preparedLogin();
-    await store.set(CREDENTIAL_KEYS.pendingLogin("us"), "{not json");
+    store.set(CREDENTIAL_KEYS.pendingLogin("us"), "{not json");
     await expect(
       completeLogin({
         region: "us",

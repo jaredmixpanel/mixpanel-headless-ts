@@ -53,7 +53,7 @@ import {
   validateResponseModel,
   validateResponseModels,
 } from "../client/response-validation.js";
-import { pythonStr, type PythonValue } from "../compat/index.js";
+import { pythonStr } from "../compat/index.js";
 import {
   type CreateExperimentParams,
   type DuplicateExperimentParams,
@@ -322,7 +322,7 @@ export async function getFlagHistory(
   }
   if (pageSize !== null) {
     // `str(page_size)` (`:6058`) — R11.7 forbids bare `String()`.
-    queryParams["page_size"] = pythonStr(pageSize as PythonValue);
+    queryParams["page_size"] = pythonStr(pageSize);
   }
   // `params=query_params if query_params else None` (`:6060`) — an
   // EMPTY dict is falsy in Python, so it collapses to `None`.

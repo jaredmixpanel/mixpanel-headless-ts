@@ -600,10 +600,8 @@ function validateShowClause(
         ),
       );
     }
-  }
-
-  // B22-B23: Cohort behavior validation
-  if (btype === "cohort") {
+  } else if (btype === "cohort") {
+    // B22-B23: Cohort behavior validation
     // B22: Cohort behavior requires positive int id (for saved cohorts)
     const cohortId = dictGet(behavior, "id");
     if (
@@ -981,7 +979,7 @@ function validateFilterClause(
   const cpId = dictGet(clause, "customPropertyId");
   if (
     !isNone(cpId) &&
-    (typeof cpId === "boolean" || !isPythonInt(cpId) || (cpId as number) <= 0)
+    (typeof cpId === "boolean" || !isPythonInt(cpId) || cpId <= 0)
   ) {
     errors.push(
       new ValidationError(

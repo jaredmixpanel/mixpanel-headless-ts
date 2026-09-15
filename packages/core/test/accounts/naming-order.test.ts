@@ -37,7 +37,7 @@ import {
  * @returns The parsed response.
  */
 function meFromWireText(body: string): MeResponse {
-  return MeResponse.fromDict(toNativeJson(parseLossless(body) as JsonValue));
+  return MeResponse.fromDict(toNativeJson(parseLossless(body)));
 }
 
 describe("org-ordering ratification lock (user-ratifications.md:14-22)", () => {

@@ -156,7 +156,7 @@ export async function fetchMe(
     // Same `toNativeJson` step every model site performs on wire JSON
     // (lossless-number tokens → native values; `services/me.ts:283`).
     const raw = await client.me();
-    return MeResponse.fromDict(toNativeJson(raw as JsonValue));
+    return MeResponse.fromDict(toNativeJson(raw));
   } finally {
     await client.close();
   }

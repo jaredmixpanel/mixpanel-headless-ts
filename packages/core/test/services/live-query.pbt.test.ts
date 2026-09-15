@@ -44,9 +44,9 @@ const dateStrings: fc.Arbitrary<string> = fc
     noInvalidDate: true,
   })
   .map((d) => {
-    const year = `${d.getUTCFullYear()}`.padStart(4, "0");
-    const month = `${d.getUTCMonth() + 1}`.padStart(2, "0");
-    const day = `${d.getUTCDate()}`.padStart(2, "0");
+    const year = String(d.getUTCFullYear()).padStart(4, "0");
+    const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(d.getUTCDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   });
 

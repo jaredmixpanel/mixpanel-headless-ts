@@ -45,7 +45,7 @@ export interface DashboardInit {
   /** Date the dashboard was pinned, if any. */
   readonly pinned_date?: string | null | undefined;
   /** Layout version metadata. */
-  readonly layout_version?: unknown | null | undefined;
+  readonly layout_version?: unknown;
   /** Number of unique viewers. */
   readonly unique_view_count?: number | null | undefined;
   /** Total view count. */
@@ -61,7 +61,7 @@ export interface DashboardInit {
   /** Dashboard-level breakdowns. */
   readonly breakdowns?: readonly unknown[] | null | undefined;
   /** Dashboard-level time filter. */
-  readonly time_filter?: unknown | null | undefined;
+  readonly time_filter?: unknown;
   /** How the dashboard was generated. */
   readonly generation_type?: string | null | undefined;
   /** Parent dashboard ID for nested dashboards. */
@@ -91,13 +91,13 @@ export interface DashboardInit {
   /** Ancestor dashboard references. */
   readonly ancestors?: readonly unknown[] | undefined;
   /** Dashboard layout data. */
-  readonly layout?: unknown | null | undefined;
+  readonly layout?: unknown;
   /** Dashboard contents data. */
-  readonly contents?: unknown | null | undefined;
+  readonly contents?: unknown;
   /** Number of active public links. */
   readonly num_active_public_links?: number | null | undefined;
   /** New content data. */
-  readonly new_content?: unknown | null | undefined;
+  readonly new_content?: unknown;
   /** Template type if created from a template. */
   readonly template_type?: string | null | undefined;
 }
@@ -184,7 +184,7 @@ export class Dashboard extends EntityModel {
   /** Date the dashboard was pinned, if any. */
   declare readonly pinned_date: string | null;
   /** Layout version metadata. */
-  declare readonly layout_version: unknown | null;
+  declare readonly layout_version: unknown;
   /** Number of unique viewers. */
   declare readonly unique_view_count: number | null;
   /** Total view count. */
@@ -200,7 +200,7 @@ export class Dashboard extends EntityModel {
   /** Dashboard-level breakdowns. */
   declare readonly breakdowns: readonly unknown[] | null;
   /** Dashboard-level time filter. */
-  declare readonly time_filter: unknown | null;
+  declare readonly time_filter: unknown;
   /** How the dashboard was generated. */
   declare readonly generation_type: string | null;
   /** Parent dashboard ID for nested dashboards. */
@@ -230,13 +230,13 @@ export class Dashboard extends EntityModel {
   /** Ancestor dashboard references. */
   declare readonly ancestors: readonly unknown[];
   /** Dashboard layout data. */
-  declare readonly layout: unknown | null;
+  declare readonly layout: unknown;
   /** Dashboard contents data. */
-  declare readonly contents: unknown | null;
+  declare readonly contents: unknown;
   /** Number of active public links. */
   declare readonly num_active_public_links: number | null;
   /** New content data. */
-  declare readonly new_content: unknown | null;
+  declare readonly new_content: unknown;
   /** Template type if created from a template. */
   declare readonly template_type: string | null;
 
@@ -414,7 +414,7 @@ export interface CreateDashboardParamsInit {
   /** Dashboard-level breakdowns. */
   readonly breakdowns?: readonly unknown[] | null | undefined;
   /** Dashboard-level time filter. */
-  readonly time_filter?: unknown | null | undefined;
+  readonly time_filter?: unknown;
   /** ID of dashboard to duplicate. */
   readonly duplicate?: number | null | undefined;
   /** Initial content rows with layout. Each row has 1-4 content items. */
@@ -468,7 +468,7 @@ export class CreateDashboardParams extends EntityModel {
   /** Dashboard-level breakdowns. */
   declare readonly breakdowns: readonly unknown[] | null;
   /** Dashboard-level time filter. */
-  declare readonly time_filter: unknown | null;
+  declare readonly time_filter: unknown;
   /** ID of dashboard to duplicate. */
   declare readonly duplicate: number | null;
   /** Initial content rows with layout. Each row has 1-4 content items. */
@@ -524,11 +524,11 @@ export interface UpdateDashboardParamsInit {
   /** New dashboard-level breakdowns. */
   readonly breakdowns?: readonly unknown[] | null | undefined;
   /** New dashboard-level time filter. */
-  readonly time_filter?: unknown | null | undefined;
+  readonly time_filter?: unknown;
   /** New dashboard layout data. */
-  readonly layout?: unknown | null | undefined;
+  readonly layout?: unknown;
   /** New dashboard content data. */
-  readonly content?: unknown | null | undefined;
+  readonly content?: unknown;
 }
 
 /**
@@ -570,11 +570,11 @@ export class UpdateDashboardParams extends EntityModel {
   /** New dashboard-level breakdowns. */
   declare readonly breakdowns: readonly unknown[] | null;
   /** New dashboard-level time filter. */
-  declare readonly time_filter: unknown | null;
+  declare readonly time_filter: unknown;
   /** New dashboard layout data. */
-  declare readonly layout: unknown | null;
+  declare readonly layout: unknown;
   /** New dashboard content data. */
-  declare readonly content: unknown | null;
+  declare readonly content: unknown;
 
   /**
    * Construct a validated UpdateDashboardParams (Pydantic-construction mirror).
@@ -599,12 +599,7 @@ export class UpdateDashboardParams extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): UpdateDashboardParams {
-    return new UpdateDashboardParams(
-      prepareInit(
-        UpdateDashboardParams,
-        raw,
-      ) as unknown as UpdateDashboardParamsInit,
-    );
+    return new UpdateDashboardParams(prepareInit(UpdateDashboardParams, raw));
   }
 }
 
@@ -1168,11 +1163,6 @@ export class UpdateTextCardParams extends EntityModel {
    * @throws ResponseValidationError - On shape violations.
    */
   static fromDict(raw: unknown): UpdateTextCardParams {
-    return new UpdateTextCardParams(
-      prepareInit(
-        UpdateTextCardParams,
-        raw,
-      ) as unknown as UpdateTextCardParamsInit,
-    );
+    return new UpdateTextCardParams(prepareInit(UpdateTextCardParams, raw));
   }
 }

@@ -352,11 +352,11 @@ export function coerceBool(
  * @returns The present value (verbatim) or the factory product when the
  *   key is absent.
  */
-export function resolveWithDefault<T>(
+export function resolveWithDefault(
   raw: Readonly<Record<string, unknown>>,
   key: string,
-  defaultFactory: () => T,
-): unknown | T {
+  defaultFactory: () => unknown,
+): unknown {
   if (!Object.hasOwn(raw, key)) {
     return defaultFactory();
   }

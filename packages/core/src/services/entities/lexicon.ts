@@ -651,10 +651,7 @@ export function createLexiconMethods(core: ClientCore): LexiconMethods {
         "All Events and Properties",
         "All User Profile Properties",
       ];
-      const typesToExport =
-        exportTypes !== undefined && exportTypes !== null
-          ? exportTypes
-          : defaultTypes;
+      const typesToExport = exportTypes ?? defaultTypes;
       const params = { export_type: pythonJsonDumps([...typesToExport]) };
       const result = await appRequest(core.appDeps(signal), "GET", path, {
         params,

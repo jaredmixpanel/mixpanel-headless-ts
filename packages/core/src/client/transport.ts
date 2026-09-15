@@ -27,7 +27,7 @@
  *   int64 ids beyond 2^53 ({@link stringifyJsonBody}).
  */
 
-import { pythonFloatStr } from "../compat/index.js";
+import { pythonFloatStr, pythonStrOf } from "../compat/index.js";
 import {
   MixpanelHttpError,
   type RequestExecutor,
@@ -96,7 +96,10 @@ export function primitiveParamValue(value: unknown): string {
   if (typeof value === "number") {
     return Number.isInteger(value) ? String(value) : pythonFloatStr(value);
   }
-  return String(value);
+  // `urlencode` → `str(value)` for everything else (typed callers never
+  // pass containers; a stray one renders as Python would, not as
+  // `[object Object]`).
+  return pythonStrOf(value);
 }
 
 /**
