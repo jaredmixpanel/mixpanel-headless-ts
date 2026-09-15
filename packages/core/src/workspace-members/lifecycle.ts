@@ -31,13 +31,13 @@ import {
 // --- Resolver seams ---
 
 /** Arguments of the {@link ResolverSeams.resolveSession} seam. */
-interface ResolveSessionArgs {
+export interface ResolveSessionArgs {
   /** The `[targets.NAME]` cursor to apply (all three axes). */
   readonly target: string;
 }
 
 /** Arguments of the {@link ResolverSeams.resolveProjectAxis} seam. */
-interface ResolveProjectAxisArgs {
+export interface ResolveProjectAxisArgs {
   /** The explicit `project=` kwarg, when supplied. */
   readonly explicit: string | null;
   /** The target's project, when the call came from a target. */

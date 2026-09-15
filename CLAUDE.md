@@ -34,8 +34,9 @@ the lefthook hooks (eslint + prettier at commit, typecheck + `test:fast` at push
 
 - `npm run check` — **the repo gate**, in order: `tsc -b` (also the build),
   `pack:check` (publint + attw per tarball), knip (exports/types at error
-  level), eslint, `prettier --check`, `audit:comments -- --summary` (0 process
-  identifiers in comments/titles), `vendor:drift` (sha256 integrity; byte-diff
+  level), eslint, `docs:api:check` (TypeDoc over the three public barrels,
+  warnings as errors), `prettier --check`, `audit:comments -- --summary` (0
+  process identifiers in comments/titles), `vendor:drift` (sha256 integrity; byte-diff
   only with `ANALYTICS_ROOT`), `test:coverage` (every vitest project incl. the
   corpus replay, the `*.test-d.ts` type tests and the pack-and-install test —
   `MP_SKIP_PACK_TEST=1` skips that locally; global v8 floors 88/88/90/82),

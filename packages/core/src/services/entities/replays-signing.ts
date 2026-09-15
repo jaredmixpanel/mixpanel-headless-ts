@@ -31,6 +31,7 @@ export interface ReplaysSigningMethods {
    * @throws {@link SessionReplayAccessError} - The sensitive-data 403 (mapped by
    *   `handleResponse`).
    * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.sign_replays
    */
   signReplays: (

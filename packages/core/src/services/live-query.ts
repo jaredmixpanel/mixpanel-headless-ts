@@ -58,10 +58,10 @@ import {
 } from "./live-query-transforms.js";
 
 /** Counting methods the multi-event/property endpoints accept. */
-type CountingType = "general" | "unique" | "average";
+export type CountingType = "general" | "unique" | "average";
 
 /** Day/week/month unit of the multi-event/property endpoints. */
-type DayWeekMonth = "day" | "week" | "month";
+export type DayWeekMonth = "day" | "week" | "month";
 
 /** Construction options of {@link LiveQueryService}. */
 export interface LiveQueryServiceOptions {
@@ -192,7 +192,7 @@ export interface LivePropertyCountsOptions {
   readonly limit?: number | null | undefined;
 }
 
-/** Options bag of {@link LiveQueryService.activityFeed}. */
+/** Options bag of {@link Workspace.activityFeed}. */
 export interface LiveActivityFeedOptions {
   /**
    * Start date (`YYYY-MM-DD`).
@@ -257,7 +257,7 @@ export interface LiveActivityFeedOptions {
   readonly use_custom_events?: boolean | undefined;
 }
 
-/** Options bag of {@link LiveQueryService.querySavedReport}. */
+/** Options bag of {@link Workspace.querySavedReport}. */
 export interface LiveQuerySavedReportOptions {
   /**
    * Bookmark type routing the query.

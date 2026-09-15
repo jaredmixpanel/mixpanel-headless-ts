@@ -66,7 +66,11 @@ export class PublicWorkspace extends EntityModel<PublicWorkspaceInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<PublicWorkspaceInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", required: true, kind: "str" },
@@ -159,7 +163,11 @@ export class CursorPagination extends EntityModel<CursorPaginationInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<CursorPaginationInit> = [
     { name: "page_size", required: true, kind: "int" },
     { name: "next_cursor", kind: "str", nullable: true },
@@ -239,7 +247,11 @@ export class PaginatedResponse<T = unknown> extends EntityModel<
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<PaginatedResponseInit<unknown>> =
     [
       { name: "status", required: true, kind: "str" },
