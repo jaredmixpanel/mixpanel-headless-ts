@@ -48,7 +48,7 @@ export type EntityFieldKind = "int" | "int64" | "str" | "bool" | "float";
 export interface ModelDumpOptions {
   /**
    * Pydantic `by_alias=True`: emit each declared field under its
-   * serialization alias ({@link EntityFieldSpec.wire}) when one is
+   * serialization alias (the field spec's `wire` name) when one is
    * configured. Threads into nested models, exactly as pydantic does.
    *
    * @defaultValue `false`
@@ -581,7 +581,7 @@ export abstract class EntityModel<F extends object = never> {
    * `byAlias` mirrors the facade's `model_dump(by_alias=True)` sites
    * (`finalize_blueprint`, `create_rca_dashboard`, `update_report_link`,
    * …): each declared field is emitted under its
-   * {@link EntityFieldSpec.wire} serialization key when one is
+   * `wire` serialization key when one is
    * configured, recursively (pydantic threads `by_alias` into nested
    * models). Extras and computed fields have no alias and keep their
    * own key.

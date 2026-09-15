@@ -32,7 +32,7 @@
  * are bound so the oracle's mechanical `call` probe can reach them.
  */
 
-import { Filter, FrequencyFilter } from "@mixpanel-headless/core";
+import { Filter, FrequencyFilter, ValueError } from "@mixpanel-headless/core";
 import {
   BOOKMARK_MODEL_HANDLES,
   buildDateRange,
@@ -52,7 +52,6 @@ import {
   transformEvent,
   transformProfile,
   validateWithPydantic,
-  ValueError,
 } from "@mixpanel-headless/core/internal";
 
 import { type CodecRegistry, PyDatetime } from "../codecs.js";

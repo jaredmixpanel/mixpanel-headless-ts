@@ -1013,7 +1013,7 @@ export class FlowQueryResult {
 
   /**
    * Build the directed flow graph — Python's `graph` property — as the
-   * plain `{nodes, edges}` adjacency object {@link buildFlowGraph}
+   * plain `{nodes, edges}` adjacency object `buildFlowGraph`
    * emits in place of `networkx.DiGraph`.
    *
    * @remarks

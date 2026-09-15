@@ -1,6 +1,6 @@
 /**
  * `/me` response models and workspace-selection logic: the response
- * models, {@link WorkspaceView}, {@link selectWorkspaceId} and the
+ * models, {@link WorkspaceView}, `selectWorkspaceId` and the
  * {@link WorkspaceResolver} interface the client consumes. The `MeCache`
  * and `MeService` halves of the Python module are ported elsewhere
  * (`services/me.ts`, the platform cache stores). The models reuse the
@@ -500,7 +500,7 @@ export class MeResponse extends EntityModel<MeResponseInit> {
  * A normalized view over the differently-shaped sources a workspace can
  * be resolved from (the cached `/me` response, `/workspaces/public`, and
  * the projects metadata index) so they all share one selection rule
- * ({@link selectWorkspaceId}).
+ * (`selectWorkspaceId`).
  * @see mixpanel_headless._internal.me.WorkspaceView
  */
 export interface WorkspaceView {

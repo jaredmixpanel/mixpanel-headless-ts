@@ -284,7 +284,7 @@ export class ListItemGroupMode {
 }
 
 /**
- * Value shape of {@link Filter._value}, which varies by operator; mirrors
+ * Value shape of `Filter._value`, which varies by operator; mirrors
  * the Python union `str | int | float | list[str] | list[int | float]`
  * `| list[dict[str, Any]] | None`.
  */
@@ -304,7 +304,7 @@ export type FilterValue =
  * runtime, so `Filter("flag", "equals", True, "boolean")` is legal there;
  * this alias is the typed TS spelling of that call.
  */
-type FilterValueInput = FilterValue | boolean | readonly boolean[];
+export type FilterValueInput = FilterValue | boolean | readonly boolean[];
 
 /** Declared constructor fields of {@link Filter} (Python field order). */
 export interface FilterFields {
@@ -492,7 +492,7 @@ function booleanFilterValue(value: unknown): boolean | null {
  * constructor normalizes to the wire spelling so both paths serialize
  * identically. Anything else throws `ValueError` at construction instead
  * of surfacing as an HTTP 400 from the query API. The conformance codec
- * bypasses the constructor via {@link filterUnchecked}, exactly as
+ * bypasses the constructor via `filterUnchecked`, exactly as
  * Python's `_filter_unchecked` does.
  *
  * @example
@@ -591,7 +591,7 @@ export class Filter {
    * source order:
    *
    * 1. `_operator` must be a string; a factory-method spelling in
-   *    {@link FILTER_OPERATOR_ALIASES} (`"greater_than"`, `"is_set"`, ...)
+   *    `FILTER_OPERATOR_ALIASES` (`"greater_than"`, `"is_set"`, ...)
    *    is rewritten to the wire operator that factory emits, and the
    *    result must be a `FilterOperator` member.
    * 2. The effective property type is derived the same way

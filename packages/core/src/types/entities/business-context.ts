@@ -113,7 +113,7 @@ export class BusinessContext extends EntityModel<BusinessContextInit> {
    * Whether no context is set at this scope.
    *
    * @remarks Twin of the Python `@computed_field` `is_empty`: emitted
-   * by `toJSON()` through {@link computedSpecs} and also exposed as an
+   * by `toJSON()` through `computedSpecs` and also exposed as an
    * accessor because callers read it as a property.
    * @returns `true` when `content` is the empty string.
    */

@@ -141,7 +141,7 @@ export const CustomPropertyResourceType = {
 export type CustomPropertyResourceType =
   (typeof CustomPropertyResourceType)[keyof typeof CustomPropertyResourceType];
 
-/** One entry of the {@link ENUM_TABLES} serialization view. */
+/** One entry of the `ENUM_TABLES` serialization view. */
 export interface EnumTableEntry {
   /** `'str'` for the string enums, `'int'` for the IntEnum port. */
   readonly kind: "str" | "int";
