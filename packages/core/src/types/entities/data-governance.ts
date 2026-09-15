@@ -1,11 +1,13 @@
 /**
  * Data-governance families: custom events/properties, drop filters, lookup tables.
  *
- * Hand-written ports of the Pydantic entity models (phase2-design C5,
- * packet P2-7): the PYTHON models are the source of record; vendored
+ * Hand-written ports of the Pydantic models in Python's `types.py`:
+ * the Python classes are the source of record and the vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling; optionality follows
- * R3.9/R4.10 via the model-base materialization rules.
+ * keep their Python spelling; required-ness, defaults, nullability and
+ * lax coercion follow each class's `fieldSpecs` (see `model-base.ts`).
+ *
+ * @see mixpanel_headless.types
  */
 
 import { cpLength } from "../../compat/codepoint.js";
@@ -31,8 +33,15 @@ export interface CustomEventAlternativeInit {
 /**
  * An underlying event aliased by a custom event.
  *
- * Mirror of Python `mixpanel_headless.types.CustomEventAlternative` (types.py;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const customEventAlternative = CustomEventAlternative.fromDict({
+ *   event: "Signup",
+ * });
+ * customEventAlternative.event; // "Signup"
+ * ```
+ * @see mixpanel_headless.types.CustomEventAlternative
  */
 export class CustomEventAlternative extends EntityModel<CustomEventAlternativeInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -63,7 +72,7 @@ export class CustomEventAlternative extends EntityModel<CustomEventAlternativeIn
    * Construct a validated CustomEventAlternative (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CustomEventAlternativeInit) {
@@ -76,7 +85,7 @@ export class CustomEventAlternative extends EntityModel<CustomEventAlternativeIn
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): CustomEventAlternative {
     return new CustomEventAlternative(prepareInit(CustomEventAlternative, raw));
@@ -101,8 +110,13 @@ export interface CustomEventInit {
 /**
  * A Mixpanel custom event composed of one or more underlying events.
  *
- * Mirror of Python `mixpanel_headless.types.CustomEvent` (types.py;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const customEvent = CustomEvent.fromDict({ id: 42, name: "Any purchase" });
+ * customEvent.id; // 42
+ * ```
+ * @see mixpanel_headless.types.CustomEvent
  */
 export class CustomEvent extends EntityModel<CustomEventInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -134,7 +148,7 @@ export class CustomEvent extends EntityModel<CustomEventInit> {
    * Construct a validated CustomEvent (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CustomEventInit) {
@@ -147,7 +161,7 @@ export class CustomEvent extends EntityModel<CustomEventInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): CustomEvent {
     return new CustomEvent(prepareInit(CustomEvent, raw));
@@ -168,8 +182,16 @@ export interface CreateCustomEventParamsInit {
 /**
  * Parameters for creating a custom event.
  *
- * Mirror of Python `mixpanel_headless.types.CreateCustomEventParams` (types.py;
- * model_config: frozen=True, extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new CreateCustomEventParams({
+ *   name: "Any purchase",
+ *   alternatives: ["Purchase", "Subscribe"],
+ * });
+ * params.name; // "Any purchase"
+ * ```
+ * @see mixpanel_headless.types.CreateCustomEventParams
  */
 export class CreateCustomEventParams extends EntityModel<CreateCustomEventParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -225,7 +247,7 @@ export class CreateCustomEventParams extends EntityModel<CreateCustomEventParams
    * Construct a validated CreateCustomEventParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CreateCustomEventParamsInit) {
@@ -238,7 +260,7 @@ export class CreateCustomEventParams extends EntityModel<CreateCustomEventParams
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): CreateCustomEventParams {
     return new CreateCustomEventParams(
@@ -247,16 +269,15 @@ export class CreateCustomEventParams extends EntityModel<CreateCustomEventParams
   }
 
   /**
-   * Serialize to the form-encoded body the Mixpanel API expects
-   * (Python `to_form_body`, `types.py` — ported at B6-W7,
-   * decision W7-D3: the Python MODEL owns this serializer, so its twin
-   * lands here rather than in the facade member module).
+   * Serialize to the form-encoded body the Mixpanel API expects.
    *
-   * `alternatives` is a CPython `json.dumps` of `[{"event": name}, …]`
-   * — DEFAULT arguments, i.e. a space after every colon/comma and
-   * `ensure_ascii=True`. {@link pythonJsonDumps} is that twin (R10.8:
-   * never re-derive the dumper, and never `JSON.stringify`, whose
-   * separators and non-ASCII handling both differ).
+   * The Python model owns this serializer (`to_form_body`), so its twin
+   * lives on the model rather than in the facade member. `alternatives`
+   * is a CPython `json.dumps` of `[{"event": name}, …]` with default
+   * arguments — a space after every colon and comma, and
+   * `ensure_ascii=True`. {@link pythonJsonDumps} is that twin; never
+   * substitute `JSON.stringify`, whose separators and non-ASCII
+   * handling both differ.
    *
    * @returns A record with two string fields: `name` (the display
    *   name) and `alternatives` (the JSON-encoded event list).
@@ -302,8 +323,17 @@ export interface DropFilterInit {
 /**
  * A drop filter for discarding events at ingestion.
  *
- * Mirror of Python `mixpanel_headless.types.DropFilter` (types.py;
- * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const dropFilter = DropFilter.fromDict({
+ *   id: 42,
+ *   event_name: "Signup",
+ *   active: true,
+ * });
+ * dropFilter.id; // 42
+ * ```
+ * @see mixpanel_headless.types.DropFilter
  */
 export class DropFilter extends EntityModel<DropFilterInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -351,7 +381,7 @@ export class DropFilter extends EntityModel<DropFilterInit> {
    * Construct a validated DropFilter (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: DropFilterInit) {
@@ -364,7 +394,7 @@ export class DropFilter extends EntityModel<DropFilterInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): DropFilter {
     return new DropFilter(prepareInit(DropFilter, raw));
@@ -385,8 +415,16 @@ export interface CreateDropFilterParamsInit {
 /**
  * Parameters for creating a drop filter.
  *
- * Mirror of Python `mixpanel_headless.types.CreateDropFilterParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new CreateDropFilterParams({
+ *   event_name: "Signup",
+ *   filters: [],
+ * });
+ * params.event_name; // "Signup"
+ * ```
+ * @see mixpanel_headless.types.CreateDropFilterParams
  */
 export class CreateDropFilterParams extends EntityModel<CreateDropFilterParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -398,13 +436,11 @@ export class CreateDropFilterParams extends EntityModel<CreateDropFilterParamsIn
   /** Declared fields in Python `model_fields` order. */
   static readonly fieldSpecs: EntityFieldSpecs<CreateDropFilterParamsInit> = [
     { name: "event_name", required: true, kind: "str" },
-    // Python `filters: Any` (`types.py`) — REQUIRED but nullable:
-    // a bare `Any` annotation admits `None` in pydantic v2 (probe
-    // 2026-08-16: `CreateDropFilterParams(event_name="e",
-    // filters=None)` validates and `exclude_none` then drops the key,
-    // while omitting the key raises). `nullable: true` added at B6-W7,
-    // the field's first consumer; it is the ONLY bare required `Any`
-    // in the Python model set (grep-verified).
+    // Python `filters: Any` is required but nullable: a bare `Any`
+    // annotation admits `None` in pydantic v2 (`CreateDropFilterParams(
+    // event_name="e", filters=None)` validates and `exclude_none` then
+    // drops the key, while omitting the key raises). It is the only
+    // bare required `Any` in the Python model set.
     { name: "filters", required: true, nullable: true },
   ];
 
@@ -417,7 +453,7 @@ export class CreateDropFilterParams extends EntityModel<CreateDropFilterParamsIn
    * Construct a validated CreateDropFilterParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CreateDropFilterParamsInit) {
@@ -430,7 +466,7 @@ export class CreateDropFilterParams extends EntityModel<CreateDropFilterParamsIn
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): CreateDropFilterParams {
     return new CreateDropFilterParams(prepareInit(CreateDropFilterParams, raw));
@@ -455,8 +491,13 @@ export interface UpdateDropFilterParamsInit {
 /**
  * Parameters for updating a drop filter.
  *
- * Mirror of Python `mixpanel_headless.types.UpdateDropFilterParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new UpdateDropFilterParams({ id: 42, event_name: "Signup" });
+ * params.id; // 42
+ * ```
+ * @see mixpanel_headless.types.UpdateDropFilterParams
  */
 export class UpdateDropFilterParams extends EntityModel<UpdateDropFilterParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -486,7 +527,7 @@ export class UpdateDropFilterParams extends EntityModel<UpdateDropFilterParamsIn
    * Construct a validated UpdateDropFilterParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: UpdateDropFilterParamsInit) {
@@ -499,7 +540,7 @@ export class UpdateDropFilterParams extends EntityModel<UpdateDropFilterParamsIn
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): UpdateDropFilterParams {
     return new UpdateDropFilterParams(prepareInit(UpdateDropFilterParams, raw));
@@ -518,8 +559,15 @@ export interface DropFilterLimitsResponseInit {
 /**
  * Response model for drop filter limits.
  *
- * Mirror of Python `mixpanel_headless.types.DropFilterLimitsResponse` (types.py;
- * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const dropFilterLimitsResponse = DropFilterLimitsResponse.fromDict({
+ *   filter_limit: 10,
+ * });
+ * dropFilterLimitsResponse.filter_limit; // 10
+ * ```
+ * @see mixpanel_headless.types.DropFilterLimitsResponse
  */
 export class DropFilterLimitsResponse extends EntityModel<DropFilterLimitsResponseInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -546,7 +594,7 @@ export class DropFilterLimitsResponse extends EntityModel<DropFilterLimitsRespon
    * Construct a validated DropFilterLimitsResponse (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: DropFilterLimitsResponseInit) {
@@ -559,7 +607,7 @@ export class DropFilterLimitsResponse extends EntityModel<DropFilterLimitsRespon
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): DropFilterLimitsResponse {
     return new DropFilterLimitsResponse(
@@ -595,8 +643,16 @@ export interface ComposedPropertyValueInit {
 /**
  * A composed property reference within a custom property formula.
  *
- * Mirror of Python `mixpanel_headless.types.ComposedPropertyValue` (types.py;
- * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const composedPropertyValue = ComposedPropertyValue.fromDict({
+ *   resource_type: "Event",
+ *   type: "example",
+ * });
+ * composedPropertyValue.resource_type; // "Event"
+ * ```
+ * @see mixpanel_headless.types.ComposedPropertyValue
  */
 export class ComposedPropertyValue extends EntityModel<ComposedPropertyValueInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -663,7 +719,7 @@ export class ComposedPropertyValue extends EntityModel<ComposedPropertyValueInit
    * Construct a validated ComposedPropertyValue (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: ComposedPropertyValueInit) {
@@ -676,7 +732,7 @@ export class ComposedPropertyValue extends EntityModel<ComposedPropertyValueInit
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): ComposedPropertyValue {
     return new ComposedPropertyValue(prepareInit(ComposedPropertyValue, raw));
@@ -727,8 +783,18 @@ export interface CustomPropertyInit {
 /**
  * A Mixpanel custom property (computed/formula property).
  *
- * Mirror of Python `mixpanel_headless.types.CustomProperty` (types.py;
- * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const customProperty = CustomProperty.fromDict({
+ *   custom_property_id: 77,
+ *   name: "Plan tier",
+ *   resource_type: "events",
+ *   description: "Weekly overview",
+ * });
+ * customProperty.custom_property_id; // 77
+ * ```
+ * @see mixpanel_headless.types.CustomProperty
  */
 export class CustomProperty extends EntityModel<CustomPropertyInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -842,7 +908,7 @@ export class CustomProperty extends EntityModel<CustomPropertyInit> {
    * Construct a validated CustomProperty (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CustomPropertyInit) {
@@ -855,7 +921,7 @@ export class CustomProperty extends EntityModel<CustomPropertyInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): CustomProperty {
     return new CustomProperty(prepareInit(CustomProperty, raw));
@@ -903,8 +969,18 @@ export interface CreateCustomPropertyParamsInit {
 /**
  * Parameters for creating a custom property.
  *
- * Mirror of Python `mixpanel_headless.types.CreateCustomPropertyParams` (types.py;
- * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const params = new CreateCustomPropertyParams({
+ *   name: "Plan tier",
+ *   resource_type: "events",
+ *   display_formula: "upper(A)",
+ *   composed_properties: { A: { resource_type: "events", value: "plan" } },
+ * });
+ * params.name; // "Plan tier"
+ * ```
+ * @see mixpanel_headless.types.CreateCustomPropertyParams
  */
 export class CreateCustomPropertyParams extends EntityModel<CreateCustomPropertyParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -1008,7 +1084,7 @@ export class CreateCustomPropertyParams extends EntityModel<CreateCustomProperty
    * Construct a validated CreateCustomPropertyParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CreateCustomPropertyParamsInit) {
@@ -1021,7 +1097,7 @@ export class CreateCustomPropertyParams extends EntityModel<CreateCustomProperty
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): CreateCustomPropertyParams {
     return new CreateCustomPropertyParams(
@@ -1037,7 +1113,7 @@ export class CreateCustomPropertyParams extends EntityModel<CreateCustomProperty
    * `display_formula`/`behavior` must be set — in Python's check
    * order.
    *
-   * @throws ResponseValidationError - On any violated rule.
+   * @throws {@link ResponseValidationError} - On any violated rule.
    */
   protected override afterValidate(): void {
     if (this.display_formula !== null && this.behavior !== null) {
@@ -1097,8 +1173,13 @@ export interface UpdateCustomPropertyParamsInit {
 /**
  * Parameters for updating a custom property (PUT — full replacement).
  *
- * Mirror of Python `mixpanel_headless.types.UpdateCustomPropertyParams` (types.py;
- * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const params = new UpdateCustomPropertyParams({ name: "Example" });
+ * params.name; // "Example"
+ * ```
+ * @see mixpanel_headless.types.UpdateCustomPropertyParams
  */
 export class UpdateCustomPropertyParams extends EntityModel<UpdateCustomPropertyParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -1162,7 +1243,7 @@ export class UpdateCustomPropertyParams extends EntityModel<UpdateCustomProperty
    * Construct a validated UpdateCustomPropertyParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: UpdateCustomPropertyParamsInit) {
@@ -1175,7 +1256,7 @@ export class UpdateCustomPropertyParams extends EntityModel<UpdateCustomProperty
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): UpdateCustomPropertyParams {
     return new UpdateCustomPropertyParams(
@@ -1212,8 +1293,17 @@ export interface LookupTableInit {
 /**
  * A Mixpanel lookup table.
  *
- * Mirror of Python `mixpanel_headless.types.LookupTable` (types.py;
- * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const lookupTable = LookupTable.fromDict({
+ *   id: 42,
+ *   name: "plans",
+ *   token: "example",
+ * });
+ * lookupTable.id; // 42
+ * ```
+ * @see mixpanel_headless.types.LookupTable
  */
 export class LookupTable extends EntityModel<LookupTableInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -1273,7 +1363,7 @@ export class LookupTable extends EntityModel<LookupTableInit> {
    * Construct a validated LookupTable (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: LookupTableInit) {
@@ -1286,7 +1376,7 @@ export class LookupTable extends EntityModel<LookupTableInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): LookupTable {
     return new LookupTable(prepareInit(LookupTable, raw));
@@ -1312,8 +1402,16 @@ export interface UploadLookupTableParamsInit {
 /**
  * Parameters for uploading a lookup table CSV.
  *
- * Mirror of Python `mixpanel_headless.types.UploadLookupTableParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new UploadLookupTableParams({
+ *   name: "plans",
+ *   file_path: "./plans.csv",
+ * });
+ * params.name; // "plans"
+ * ```
+ * @see mixpanel_headless.types.UploadLookupTableParams
  */
 export class UploadLookupTableParams extends EntityModel<UploadLookupTableParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -1353,7 +1451,7 @@ export class UploadLookupTableParams extends EntityModel<UploadLookupTableParams
    * Construct a validated UploadLookupTableParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: UploadLookupTableParamsInit) {
@@ -1366,7 +1464,7 @@ export class UploadLookupTableParams extends EntityModel<UploadLookupTableParams
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): UploadLookupTableParams {
     return new UploadLookupTableParams(
@@ -1394,8 +1492,16 @@ export interface MarkLookupTableReadyParamsInit {
 /**
  * Parameters for marking a lookup table as ready.
  *
- * Mirror of Python `mixpanel_headless.types.MarkLookupTableReadyParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new MarkLookupTableReadyParams({
+ *   name: "plans",
+ *   key: "plan_id",
+ * });
+ * params.name; // "plans"
+ * ```
+ * @see mixpanel_headless.types.MarkLookupTableReadyParams
  */
 export class MarkLookupTableReadyParams extends EntityModel<MarkLookupTableReadyParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -1423,7 +1529,7 @@ export class MarkLookupTableReadyParams extends EntityModel<MarkLookupTableReady
    * Construct a validated MarkLookupTableReadyParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: MarkLookupTableReadyParamsInit) {
@@ -1436,7 +1542,7 @@ export class MarkLookupTableReadyParams extends EntityModel<MarkLookupTableReady
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): MarkLookupTableReadyParams {
     return new MarkLookupTableReadyParams(
@@ -1461,8 +1567,17 @@ export interface LookupTableUploadUrlInit {
 /**
  * Response model for lookup table upload URL request.
  *
- * Mirror of Python `mixpanel_headless.types.LookupTableUploadUrl` (types.py;
- * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`; `fromDict` also accepts the camelCase aliases (`alias_generator=to_camel`).
+ * @example
+ * ```ts
+ * const lookupTableUploadUrl = LookupTableUploadUrl.fromDict({
+ *   url: "https://example.com/hooks/mixpanel",
+ *   path: "uploads/plans.csv",
+ *   key: "plan_id",
+ * });
+ * lookupTableUploadUrl.url; // "https://example.com/hooks/mixpanel"
+ * ```
+ * @see mixpanel_headless.types.LookupTableUploadUrl
  */
 export class LookupTableUploadUrl extends EntityModel<LookupTableUploadUrlInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -1489,7 +1604,7 @@ export class LookupTableUploadUrl extends EntityModel<LookupTableUploadUrlInit> 
    * Construct a validated LookupTableUploadUrl (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: LookupTableUploadUrlInit) {
@@ -1502,7 +1617,7 @@ export class LookupTableUploadUrl extends EntityModel<LookupTableUploadUrlInit> 
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): LookupTableUploadUrl {
     return new LookupTableUploadUrl(prepareInit(LookupTableUploadUrl, raw));
@@ -1521,8 +1636,13 @@ export interface UpdateLookupTableParamsInit {
 /**
  * Parameters for updating a lookup table.
  *
- * Mirror of Python `mixpanel_headless.types.UpdateLookupTableParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new UpdateLookupTableParams({ name: "Example" });
+ * params.name; // "Example"
+ * ```
+ * @see mixpanel_headless.types.UpdateLookupTableParams
  */
 export class UpdateLookupTableParams extends EntityModel<UpdateLookupTableParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -1543,7 +1663,7 @@ export class UpdateLookupTableParams extends EntityModel<UpdateLookupTableParams
    * Construct a validated UpdateLookupTableParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: UpdateLookupTableParamsInit) {
@@ -1556,7 +1676,7 @@ export class UpdateLookupTableParams extends EntityModel<UpdateLookupTableParams
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): UpdateLookupTableParams {
     return new UpdateLookupTableParams(

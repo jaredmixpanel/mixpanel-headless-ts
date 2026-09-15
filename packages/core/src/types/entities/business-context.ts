@@ -1,11 +1,13 @@
 /**
  * Business-context models + BUSINESS_CONTEXT_MAX_CHARS.
  *
- * Hand-written ports of the Pydantic entity models (phase2-design C5,
- * packet P2-7): the PYTHON models are the source of record; vendored
+ * Hand-written ports of the Pydantic models in Python's `types.py`:
+ * the Python classes are the source of record and the vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling; optionality follows
- * R3.9/R4.10 via the model-base materialization rules.
+ * keep their Python spelling; required-ness, defaults, nullability and
+ * lax coercion follow each class's `fieldSpecs` (see `model-base.ts`).
+ *
+ * @see mixpanel_headless.types
  */
 
 import { cpLength } from "../../compat/codepoint.js";
@@ -18,11 +20,12 @@ import {
 } from "./model-base.js";
 
 /**
- * Maximum characters accepted for business-context content (mirror of
- * Python `mixpanel_headless.BUSINESS_CONTEXT_MAX_CHARS`). The write
- * path (`Workspace.set_business_context`, Phase 3 B6) enforces it and
- * raises `BusinessContextValidationError` beyond it; compare
- * {@link BusinessContext} `character_count` against this for headroom.
+ * Maximum number of codepoints accepted for business-context content.
+ * The write path (`Workspace.setBusinessContext`) enforces it and raises
+ * {@link BusinessContextValidationError} beyond it; compare
+ * {@link BusinessContext.character_count} against this for headroom.
+ *
+ * @see mixpanel_headless.BUSINESS_CONTEXT_MAX_CHARS
  */
 export const BUSINESS_CONTEXT_MAX_CHARS = 50_000;
 
@@ -44,8 +47,16 @@ export interface BusinessContextInit {
 /**
  * Business context content at a single scope.
  *
- * Mirror of Python `mixpanel_headless.types.BusinessContext` (types.py;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const businessContext = BusinessContext.fromDict({
+ *   level: "organization",
+ *   content: "Quarterly goals",
+ * });
+ * businessContext.level; // "organization"
+ * ```
+ * @see mixpanel_headless.types.BusinessContext
  */
 export class BusinessContext extends EntityModel<BusinessContextInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -93,19 +104,22 @@ export class BusinessContext extends EntityModel<BusinessContextInit> {
   declare readonly project_id: string | null;
 
   /**
-   * Whether no context is set at this scope (Python `@computed_field`
-   * `is_empty`) — the ACCESSOR twin of the {@link computedSpecs}
-   * entry, added by B6-W1 because callers read it as a property
-   * (`test_workspace_business_context.py:166`), not only through
-   * `toJSON()`.
+   * Whether no context is set at this scope.
+   *
+   * @remarks Twin of the Python `@computed_field` `is_empty`: emitted
+   * by `toJSON()` through {@link computedSpecs} and also exposed as an
+   * accessor because callers read it as a property.
+   * @returns `true` when `content` is the empty string.
    */
   get is_empty(): boolean {
     return this.content === "";
   }
 
   /**
-   * Content length in CODEPOINTS (Python `@computed_field`
-   * `character_count`); see {@link is_empty} for the accessor note.
+   * Content length in Unicode codepoints (the Python `@computed_field`
+   * `character_count`; JS `.length` would count UTF-16 units instead).
+   *
+   * @returns The codepoint count of `content`.
    */
   get character_count(): number {
     return cpLength(this.content);
@@ -115,7 +129,7 @@ export class BusinessContext extends EntityModel<BusinessContextInit> {
    * Construct a validated BusinessContext (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BusinessContextInit) {
@@ -128,7 +142,7 @@ export class BusinessContext extends EntityModel<BusinessContextInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): BusinessContext {
     return new BusinessContext(prepareInit(BusinessContext, raw));
@@ -149,8 +163,16 @@ export interface BusinessContextChainInit {
 /**
  * Both organization and project business context returned together.
  *
- * Mirror of Python `mixpanel_headless.types.BusinessContextChain` (types.py;
- * model_config: frozen=True, extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const businessContextChain = BusinessContextChain.fromDict({
+ *   organization: { level: "organization", content: "Quarterly goals" },
+ *   project: { level: "organization", content: "Quarterly goals" },
+ * });
+ * businessContextChain.organization; // { level: "organization", … }
+ * ```
+ * @see mixpanel_headless.types.BusinessContextChain
  */
 export class BusinessContextChain extends EntityModel<BusinessContextChainInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -174,7 +196,7 @@ export class BusinessContextChain extends EntityModel<BusinessContextChainInit> 
    * Construct a validated BusinessContextChain (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BusinessContextChainInit) {
@@ -187,7 +209,7 @@ export class BusinessContextChain extends EntityModel<BusinessContextChainInit> 
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): BusinessContextChain {
     return new BusinessContextChain(prepareInit(BusinessContextChain, raw));

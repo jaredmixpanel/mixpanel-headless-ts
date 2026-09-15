@@ -1,11 +1,13 @@
 /**
  * Cohort family + cohort CRUD params.
  *
- * Hand-written ports of the Pydantic entity models (phase2-design C5,
- * packet P2-7): the PYTHON models are the source of record; vendored
+ * Hand-written ports of the Pydantic models in Python's `types.py`:
+ * the Python classes are the source of record and the vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling; optionality follows
- * R3.9/R4.10 via the model-base materialization rules.
+ * keep their Python spelling; required-ness, defaults, nullability and
+ * lax coercion follow each class's `fieldSpecs` (see `model-base.ts`).
+ *
+ * @see mixpanel_headless.types
  */
 
 import {
@@ -16,18 +18,18 @@ import {
 } from "./model-base.js";
 
 /**
- * `_DefinitionFlatteningModel.model_dump`: pop
- * `definition` out of the dump and, when TRUTHY, merge its keys into
+ * Pop `definition` out of a dump and, when truthy, merge its keys into
  * the top level.
  *
- * Added at B6-W3 — the three cohort param models inherit the override
- * in Python, so it belongs on the models here too (the facade must not
- * re-derive it, R10.8). Falsy definitions (`{}`) are dropped entirely,
- * exactly as `if definition:` does; the merged keys land AFTER the
- * declared fields, mirroring `dict.update()` insertion order.
+ * The three cohort param models inherit this override in Python, so it
+ * belongs on the models here too rather than in the facade. Falsy
+ * definitions (`{}`) are dropped entirely, exactly as `if definition:`
+ * does; the merged keys land after the declared fields, mirroring
+ * `dict.update()` insertion order.
  *
  * @param dumped - The plain `exclude_none` dump.
  * @returns The dump with `definition` flattened.
+ * @see mixpanel_headless.types._DefinitionFlatteningModel.model_dump
  */
 function flattenDefinition(
   dumped: Record<string, unknown>,
@@ -64,8 +66,13 @@ export interface CohortCreatorInit {
 /**
  * Creator information for a cohort.
  *
- * Mirror of Python `mixpanel_headless.types.CohortCreator` (types.py;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const cohortCreator = CohortCreator.fromDict({ id: 42 });
+ * cohortCreator.id; // 42
+ * ```
+ * @see mixpanel_headless.types.CohortCreator
  */
 export class CohortCreator extends EntityModel<CohortCreatorInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -92,7 +99,7 @@ export class CohortCreator extends EntityModel<CohortCreatorInit> {
    * Construct a validated CohortCreator (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CohortCreatorInit) {
@@ -105,7 +112,7 @@ export class CohortCreator extends EntityModel<CohortCreatorInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): CohortCreator {
     return new CohortCreator(prepareInit(CohortCreator, raw));
@@ -151,8 +158,17 @@ export interface CohortInit {
 /**
  * A Mixpanel cohort as returned by the App API.
  *
- * Mirror of Python `mixpanel_headless.types.Cohort` (types.py;
- * model_config: frozen=True, extra='allow').
+ * @remarks Pydantic `extra='allow'`: unknown keys are kept on `__extras`.
+ * @example
+ * ```ts
+ * const cohort = Cohort.fromDict({
+ *   id: 42,
+ *   name: "Power users",
+ *   description: "Weekly overview",
+ * });
+ * cohort.id; // 42
+ * ```
+ * @see mixpanel_headless.types.Cohort
  */
 export class Cohort extends EntityModel<CohortInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -212,7 +228,7 @@ export class Cohort extends EntityModel<CohortInit> {
    * Construct a validated Cohort (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CohortInit) {
@@ -225,7 +241,7 @@ export class Cohort extends EntityModel<CohortInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): Cohort {
     return new Cohort(prepareInit(Cohort, raw));
@@ -256,8 +272,16 @@ export interface CreateCohortParamsInit {
 /**
  * Parameters for creating a new cohort.
  *
- * Mirror of Python `mixpanel_headless.types.CreateCohortParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new CreateCohortParams({
+ *   name: "Power users",
+ *   description: "Weekly overview",
+ * });
+ * params.name; // "Power users"
+ * ```
+ * @see mixpanel_headless.types.CreateCohortParams
  */
 export class CreateCohortParams extends EntityModel<CreateCohortParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -296,7 +320,7 @@ export class CreateCohortParams extends EntityModel<CreateCohortParamsInit> {
    * Construct a validated CreateCohortParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: CreateCohortParamsInit) {
@@ -304,16 +328,8 @@ export class CreateCohortParams extends EntityModel<CreateCohortParamsInit> {
   }
 
   /**
-   * Strict decode from a raw mapping (accepts the Pydantic
-   * validation-alias set; `$type`/computed keys are dropped).
-   *
-   * @param raw - The raw payload.
-   * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
-   */
-  /**
    * `model_dump(exclude_none=True)` with `definition` flattened into
-   * the top level (`_DefinitionFlatteningModel`, `types.py`).
+   * the top level, as Python's `_DefinitionFlatteningModel` does.
    *
    * @param options - Pydantic dump flags (`by_alias`).
    * @returns The flattened payload.
@@ -324,6 +340,14 @@ export class CreateCohortParams extends EntityModel<CreateCohortParamsInit> {
     return flattenDefinition(super.modelDumpExcludeNone(options));
   }
 
+  /**
+   * Strict decode from a raw mapping (accepts the Pydantic
+   * validation-alias set; `$type`/computed keys are dropped).
+   *
+   * @param raw - The raw payload.
+   * @returns The reconstructed instance.
+   * @throws {@link ResponseValidationError} - On shape violations.
+   */
   static fromDict(raw: unknown): CreateCohortParams {
     return new CreateCohortParams(prepareInit(CreateCohortParams, raw));
   }
@@ -353,8 +377,13 @@ export interface UpdateCohortParamsInit {
 /**
  * Parameters for updating an existing cohort.
  *
- * Mirror of Python `mixpanel_headless.types.UpdateCohortParams` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new UpdateCohortParams({ name: "Example" });
+ * params.name; // "Example"
+ * ```
+ * @see mixpanel_headless.types.UpdateCohortParams
  */
 export class UpdateCohortParams extends EntityModel<UpdateCohortParamsInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -393,7 +422,7 @@ export class UpdateCohortParams extends EntityModel<UpdateCohortParamsInit> {
    * Construct a validated UpdateCohortParams (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: UpdateCohortParamsInit) {
@@ -401,16 +430,8 @@ export class UpdateCohortParams extends EntityModel<UpdateCohortParamsInit> {
   }
 
   /**
-   * Strict decode from a raw mapping (accepts the Pydantic
-   * validation-alias set; `$type`/computed keys are dropped).
-   *
-   * @param raw - The raw payload.
-   * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
-   */
-  /**
    * `model_dump(exclude_none=True)` with `definition` flattened into
-   * the top level (`_DefinitionFlatteningModel`, `types.py`).
+   * the top level, as Python's `_DefinitionFlatteningModel` does.
    *
    * @param options - Pydantic dump flags (`by_alias`).
    * @returns The flattened payload.
@@ -421,6 +442,14 @@ export class UpdateCohortParams extends EntityModel<UpdateCohortParamsInit> {
     return flattenDefinition(super.modelDumpExcludeNone(options));
   }
 
+  /**
+   * Strict decode from a raw mapping (accepts the Pydantic
+   * validation-alias set; `$type`/computed keys are dropped).
+   *
+   * @param raw - The raw payload.
+   * @returns The reconstructed instance.
+   * @throws {@link ResponseValidationError} - On shape violations.
+   */
   static fromDict(raw: unknown): UpdateCohortParams {
     return new UpdateCohortParams(prepareInit(UpdateCohortParams, raw));
   }
@@ -444,8 +473,13 @@ export interface BulkUpdateCohortEntryInit {
 /**
  * Entry for bulk-updating cohorts.
  *
- * Mirror of Python `mixpanel_headless.types.BulkUpdateCohortEntry` (types.py;
- * model_config: extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const params = new BulkUpdateCohortEntry({ id: 42, name: "Example" });
+ * params.id; // 42
+ * ```
+ * @see mixpanel_headless.types.BulkUpdateCohortEntry
  */
 export class BulkUpdateCohortEntry extends EntityModel<BulkUpdateCohortEntryInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -475,7 +509,7 @@ export class BulkUpdateCohortEntry extends EntityModel<BulkUpdateCohortEntryInit
    * Construct a validated BulkUpdateCohortEntry (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: BulkUpdateCohortEntryInit) {
@@ -483,16 +517,8 @@ export class BulkUpdateCohortEntry extends EntityModel<BulkUpdateCohortEntryInit
   }
 
   /**
-   * Strict decode from a raw mapping (accepts the Pydantic
-   * validation-alias set; `$type`/computed keys are dropped).
-   *
-   * @param raw - The raw payload.
-   * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
-   */
-  /**
    * `model_dump(exclude_none=True)` with `definition` flattened into
-   * the top level (`_DefinitionFlatteningModel`, `types.py`).
+   * the top level, as Python's `_DefinitionFlatteningModel` does.
    *
    * @param options - Pydantic dump flags (`by_alias`).
    * @returns The flattened payload.
@@ -503,6 +529,14 @@ export class BulkUpdateCohortEntry extends EntityModel<BulkUpdateCohortEntryInit
     return flattenDefinition(super.modelDumpExcludeNone(options));
   }
 
+  /**
+   * Strict decode from a raw mapping (accepts the Pydantic
+   * validation-alias set; `$type`/computed keys are dropped).
+   *
+   * @param raw - The raw payload.
+   * @returns The reconstructed instance.
+   * @throws {@link ResponseValidationError} - On shape violations.
+   */
   static fromDict(raw: unknown): BulkUpdateCohortEntry {
     return new BulkUpdateCohortEntry(prepareInit(BulkUpdateCohortEntry, raw));
   }

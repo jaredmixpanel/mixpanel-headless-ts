@@ -1,47 +1,15 @@
 /**
- * Shared plumbing for the Pydantic entity/param model ports
- * (phase2-design C5, packet P2-7).
+ * Base class and field-spec contract shared by every entity-model port.
  *
- * Every exported Pydantic model (124 classes across `types/entities/`
- * and `client/me.ts`) becomes a hand-written TS class extending
- * {@link EntityModel}. The base implements the exact
- * behavioral mirror of the Python model boundary that Phase 2 locks:
+ * Each Pydantic model becomes a hand-written class extending
+ * {@link EntityModel}; the base owns the Python model boundary —
+ * required/default/nullable checks, lax scalar coercion, nested-model
+ * reconstruction, the per-class `extra` policy, the validation-alias
+ * set `fromDict` accepts, and the serializers. Validation failures
+ * throw {@link ResponseValidationError}. `prepareInit` and `oneOf` are
+ * plumbing for the entity classes and the rig codecs.
  *
- * - **Construction** (`new Model(fields)`): required-field checks,
- *   defaults fired only on ABSENT keys (`default_factory` rule, R4.12),
- *   Pydantic-lax scalar coercion via `coerce.ts`, nested-model
- *   reconstruction, and the per-class `extra` policy
- *   (`ignore`/`allow`/`forbid`) exactly as `model_config` declares it.
- * - **`fromDict`** (strict decode seam): accepts the Pydantic
- *   validation-alias set per field (explicit `AliasChoices` /
- *   `alias_generator=to_camel` + `populate_by_name` ports — never a
- *   generic camelizer, R3.4) and routes through the constructor.
- * - **`toJSON`** — the recorder's `tagged_models=False` field walk:
- *   every declared field under its PYTHON attribute name, `null` for
- *   Python `None`, datetimes as iso text, computed fields appended
- *   (the shape entity wire vectors record under `expect.result`).
- * - **`toVectorPayload`** (rig-facing) — same walk but `$type`-tagged
- *   datetime leaves, byte-matching the recorded payloads for the C8(b)
- *   golden diff.
- *
- * Wire SERIALIZATION aliases (Pydantic `serialization_alias` /
- * `to_camel` output spelling) are carried on every {@link EntityFieldSpec}
- * as `wire` but are NOT consumed in Phase 2: request-body serialization
- * of the `*Params` models is a named C8 deferral locked by the Phase-3
- * B4/B6 wire vectors, and the entity clients that consume `wire` land
- * there.
- *
- * Validation failures throw {@link ResponseValidationError}: Pydantic
- * model-construction failures are the generic
- * `VALIDATION_ERROR`/`RESPONSE_VALIDATION_ERROR` boundary (R5.5, design
- * C4) and every Phase-2 construction site is a vector-decode/golden
- * seam; Phase-3 param seams may re-wrap.
- *
- * The base class and the spec types are reachable from every public
- * entity class and so form part of the published declarations; the
- * decode helpers (`prepareInit`, `oneOf`, the module-private walkers)
- * are plumbing for the entity classes, the golden tests and the
- * conformance codecs only.
+ * @see mixpanel_headless.types
  */
 
 import { orderedEntries } from "../../client/json-value.js";
@@ -73,14 +41,17 @@ export { modelFail } from "./decode-utils.js";
 export type EntityFieldKind = "int" | "int64" | "str" | "bool" | "float";
 
 /**
- * Options of {@link EntityModel.modelDumpExcludeNone} — the pydantic
- * `model_dump(...)` flags the B6 facade members pass.
+ * Options of {@link EntityModel.modelDumpExcludeNone} and
+ * {@link EntityModel.modelDump} — the pydantic `model_dump(...)` flags
+ * the facade members pass.
  */
 export interface ModelDumpOptions {
   /**
    * Pydantic `by_alias=True`: emit each declared field under its
    * serialization alias ({@link EntityFieldSpec.wire}) when one is
    * configured. Threads into nested models, exactly as pydantic does.
+   *
+   * @defaultValue `false`
    */
   readonly byAlias?: boolean;
 }
@@ -94,18 +65,18 @@ export interface ModelDumpOptions {
  * class-agnostic view the rig and the response validator walk.
  */
 export interface EntityFieldSpec<K extends string = string> {
-  /** The Python attribute name (exact spelling — R3.6/R7.6). */
+  /** The Python attribute name, spelled exactly as in Python. */
   readonly name: K;
   /** True when the Python field has no default (`is_required()`). */
   readonly required?: boolean;
   /**
-   * Default THUNK for absent keys. Fires ONLY on absence — an explicit
-   * `null` stays `null` (R4.10/R4.12 `default_factory` rule). Omitted
+   * Default thunk for absent keys. Fires only on absence — an explicit
+   * `null` stays `null`, as with pydantic's `default_factory`. Omitted
    * for optional fields whose Python default is `None`.
    */
   readonly default?: () => unknown;
   /**
-   * Accepted input keys BESIDES `name` (the Pydantic validation-alias
+   * Accepted input keys besides `name` (the Pydantic validation-alias
    * set: `AliasChoices` members, `to_camel` spellings). `name` itself
    * is accepted whenever Python does (`populate_by_name=True` or no
    * alias configured); classes with alias-only fields list every
@@ -113,34 +84,37 @@ export interface EntityFieldSpec<K extends string = string> {
    */
   readonly aliases?: readonly string[];
   /**
-   * False when Pydantic would REJECT the attribute name as an input
-   * key (alias configured without `populate_by_name`). No Phase-2
-   * model needs this today; present for spec completeness.
+   * False when Pydantic would reject the attribute name as an input
+   * key (alias configured without `populate_by_name`). No model needs
+   * this today; present for spec completeness.
+   *
+   * @defaultValue `true`
    */
   readonly nameAccepted?: boolean;
   /**
    * The wire serialization key (Pydantic `serialization_alias` /
-   * generator output). Recorded for the Phase-3 B6 request-body
-   * serializers; unused in Phase 2 (see module doc).
+   * `to_camel` output), applied by the `byAlias` dumps
+   * ({@link ModelDumpOptions.byAlias}).
    */
   readonly wire?: string;
   /** Lax scalar coercion kind for non-null values. */
   readonly kind?: EntityFieldKind;
   /**
    * True when the Python annotation admits `None` (`T | None`). An
-   * explicit `null` for a NON-nullable field is rejected exactly as
+   * explicit `null` for a non-nullable field is rejected exactly as
    * Pydantic rejects `None` there.
    */
   readonly nullable?: boolean;
   /**
    * True for Python `datetime` fields: values decode to preserved
-   * iso-8601 TEXT (accepting the runner's duck-typed `iso`-carrying
+   * iso-8601 text (accepting the runner's duck-typed `iso`-carrying
    * wrapper or a raw string) and re-tag as `$type: datetime` in
    * `toVectorPayload()`.
    */
   readonly datetime?: boolean;
   /**
-   * Nested entity-model class (LAZY thunk — forward/cross-file refs).
+   * Nested entity-model class (a lazy thunk, so forward and cross-file
+   * references work).
    * Plain-object values reconstruct via the class `fromDict`; existing
    * instances pass through.
    */
@@ -148,9 +122,8 @@ export interface EntityFieldSpec<K extends string = string> {
   /**
    * Container shape for `nested` (absent = single nested value).
    *
-   * `"ordered-dict"` (B8-MAPFIX, user ratification
-   * `user-ratifications.md:14-22`) reconstructs into an
-   * insertion-order-preserving `ReadonlyMap<string, Model>`:
+   * `"ordered-dict"` reconstructs into an insertion-order-preserving
+   * `ReadonlyMap<string, Model>`:
    * plain-object input reads the lossless layer's key-order sidecar
    * (`orderedEntries`), and `Map` input keeps its own order — the
    * Python-`dict`-order mirror for fields whose integer-like keys a
@@ -166,7 +139,7 @@ export interface EntityFieldSpec<K extends string = string> {
   /**
    * Field-constraint port (Pydantic `Field(min_length=...)` etc.).
    * Throws {@link ResponseValidationError} on violation. String
-   * lengths are CODEPOINT-counted.
+   * lengths are counted in codepoints.
    */
   readonly check?: (value: unknown, path: string) => void;
 }
@@ -185,7 +158,7 @@ export type EntityFieldSpecs<F extends object> = ReadonlyArray<
 /**
  * One Pydantic `@computed_field` port: appended to `toJSON()` /
  * `toVectorPayload()` output after the declared fields (the recorder
- * includes computed fields in expect position only), and DROPPED from
+ * includes computed fields in expect position only), and dropped from
  * `fromDict` input (they never reach a constructor at decode time).
  */
 export interface ComputedFieldSpec {
@@ -221,13 +194,14 @@ export interface EntityModelStatics<F extends object = never> {
 }
 
 /**
- * Apply one field's lax scalar coercion (R4.12 response-lax tables).
+ * Apply one field's lax scalar coercion (the pydantic lax tables in
+ * `coerce.ts`).
  *
  * @param kind - The declared scalar kind.
  * @param value - The non-null input value.
  * @param path - `Model.field` location threaded into coerce errors.
  * @returns The coerced scalar.
- * @throws ResponseValidationError - On uncoercible input (re-wrapped
+ * @throws {@link ResponseValidationError} - On uncoercible input (re-wrapped
  *   from the coerce module's error).
  * @internal
  */
@@ -274,7 +248,7 @@ function coerceScalar(
  *   plain objects decode via the nested class `fromDict`).
  * @param path - `Model.field` location for errors.
  * @returns The reconstructed value.
- * @throws ResponseValidationError - On shape mismatches.
+ * @throws {@link ResponseValidationError} - On shape mismatches.
  * @internal
  */
 function reconstructNested(
@@ -386,7 +360,7 @@ function classIndex(cls: EntityModelStatics): ClassIndex {
  * constructors receive attribute-name bags directly.
  *
  * The result is typed as the class's constructor bag `F` because the
- * constructor is the validator: this function only canonicalises KEYS,
+ * constructor is the validator: this function only canonicalises keys,
  * and every value it forwards is checked (required, nullable, coerced,
  * reconstructed) by the constructor it feeds — the one place the
  * unvalidated-to-typed assertion lives.
@@ -394,8 +368,17 @@ function classIndex(cls: EntityModelStatics): ClassIndex {
  * @param cls - The entity-model statics.
  * @param raw - The raw payload.
  * @returns The canonical bag ready for the constructor.
- * @throws ResponseValidationError - When `raw` is not a plain object,
+ * @throws {@link ResponseValidationError} - When `raw` is not a plain object,
  *   an alias collides, or an unknown key hits `extra='forbid'`.
+ * @example
+ * ```ts
+ * const init = prepareInit(EventDefinition, {
+ *   id: 1,
+ *   name: "Signup",
+ *   displayName: "Sign up", // camelCase alias → `display_name`
+ * });
+ * new EventDefinition(init).display_name; // "Sign up"
+ * ```
  * @internal
  */
 export function prepareInit<F extends object>(
@@ -440,11 +423,21 @@ export function prepareInit<F extends object>(
  * model instances).
  *
  * @remarks Concrete entity classes are public; the base is plumbing.
+ * Instances are not frozen at runtime — the Python models are
+ * `frozen=True`, the TS classes are read-only at the type level only.
+ * @example
+ * ```ts
+ * const params = new CreateTagParams({ name: "core" });
+ * params.toJSON(); // { name: "core" }
+ * params.modelDumpExcludeNone(); // { name: "core" }
+ * const tag = LexiconTag.fromDict({ id: 7, name: "core" });
+ * tag.id; // 7
+ * ```
  */
 export abstract class EntityModel<F extends object = never> {
   /**
    * Pydantic `extra='allow'` spillover: unknown input keys retained on
-   * the instance (mirroring `__pydantic_extra__`) but EXCLUDED from
+   * the instance (mirroring `__pydantic_extra__`) but excluded from
    * `toJSON()`/`toVectorPayload()` — the recorder walks `model_fields`
    * only, so extras never appear in vector payloads.
    */
@@ -456,8 +449,8 @@ export abstract class EntityModel<F extends object = never> {
    * @param cls - The concrete class statics (field specs, extra
    *   policy).
    * @param fields - Attribute-name-keyed input values (from a caller
-   *   or `prepareInit`). `undefined` values count as ABSENT.
-   * @throws ResponseValidationError - On missing required fields,
+   *   or `prepareInit`). `undefined` values count as absent.
+   * @throws {@link ResponseValidationError} - On missing required fields,
    *   unknown keys under `extra='forbid'`, failed coercion, nested
    *   reconstruction failures, or constraint violations.
    */
@@ -487,7 +480,7 @@ export abstract class EntityModel<F extends object = never> {
         if (spec.required === true) {
           modelFail(path, "field required");
         }
-        // Defaults fire ONLY on absence; Python `None` defaults land
+        // Defaults fire only on absence; Python `None` defaults land
         // as `null` (the attribute always materializes, like Pydantic).
         out[spec.name] = spec.default === undefined ? null : spec.default();
         continue;
@@ -526,7 +519,7 @@ export abstract class EntityModel<F extends object = never> {
    * Pydantic `model_validator(mode="after")` port hook — subclasses
    * with a Python after-validator override this; the base is a no-op.
    *
-   * @throws ResponseValidationError - Subclasses throw on violations.
+   * @throws {@link ResponseValidationError} - Subclasses throw on violations.
    */
   protected afterValidate(): void {
     // Default: no model-level validator.
@@ -545,7 +538,7 @@ export abstract class EntityModel<F extends object = never> {
   /**
    * Serialize the recorder's `tagged_models=False` field walk: every
    * declared field under its Python attribute name (`null` for
-   * `None`), nested models recursing, datetimes as ISO TEXT, computed
+   * `None`), nested models recursing, datetimes as ISO text, computed
    * fields appended after the declared walk.
    *
    * @returns The plain to-dict shape entity vectors record under
@@ -560,7 +553,7 @@ export abstract class EntityModel<F extends object = never> {
    * {@link toJSON} except datetime fields re-tag as
    * `{$type: "datetime", iso}` exactly as the recorder emits them.
    *
-   * @returns The vector-payload shape (C8b golden diff input).
+   * @returns The vector-payload shape the rig's golden diff compares.
    */
   toVectorPayload(): Record<string, unknown> {
     return this.walk("vector");
@@ -569,29 +562,27 @@ export abstract class EntityModel<F extends object = never> {
   /**
    * Pydantic `model_dump(exclude_none=True)` — the request-body dump
    * every entity-CRUD facade member performs on its params model
-   * (e.g. `create_dashboard`, `workspace.py`; `create_cohort`,
-   * `:5643`). W1-D4: ONE implementation for all of B6 — a
-   * shard re-deriving it is a review finding.
+   * (`create_dashboard`, `create_cohort`, …). One implementation for
+   * every model; facade members never re-derive it.
    *
-   * Semantics measured against pydantic v2 (2026-08-16):
+   * Semantics measured against pydantic v2:
    *
-   * - declared fields, EXTRAS and computed fields all take part;
-   * - any of them whose value is `None`/absent is DROPPED;
+   * - declared fields, extras and computed fields all take part;
+   * - any of them whose value is `None`/absent is dropped;
    * - nested models recurse (their own `None` fields drop too);
    * - lists map element-wise (no element is dropped);
-   * - plain dict values KEEP their `None`s — `exclude_none` reaches
+   * - plain dict values keep their `None`s — `exclude_none` reaches
    *   model fields, not mapping entries;
    * - datetimes render as ISO text, exactly as {@link toJSON} does.
    *
-   * {@link toJSON} is NOT a substitute: it keeps `None` as `null`, and
-   * absent-vs-null is vector-observable.
+   * {@link toJSON} is not a substitute: it keeps `None` as `null`, and
+   * absent-vs-null is observable in the recorded vectors.
    *
-   * B6-W2 extension (`b6-packets.md` §4; 21 `by_alias=True` dump sites
-   * in `workspace.py`, e.g. `finalize_blueprint` :4985,
-   * `create_rca_dashboard` :5022, `update_report_link` :5109): passing
-   * `byAlias` emits each declared field under its
+   * `byAlias` mirrors the facade's `model_dump(by_alias=True)` sites
+   * (`finalize_blueprint`, `create_rca_dashboard`, `update_report_link`,
+   * …): each declared field is emitted under its
    * {@link EntityFieldSpec.wire} serialization key when one is
-   * configured, RECURSIVELY (pydantic threads `by_alias` into nested
+   * configured, recursively (pydantic threads `by_alias` into nested
    * models). Extras and computed fields have no alias and keep their
    * own key.
    *
@@ -611,21 +602,19 @@ export abstract class EntityModel<F extends object = never> {
   }
 
   /**
-   * Pydantic `model_dump()` — the PLAIN request-body dump, keeping
-   * `None` values as `null`. B6-W8 (`b6-packets.md` §10) added it for
-   * the two facade sites that dump WITHOUT `exclude_none`:
-   * `update_anomaly` and
-   * `bulk_update_anomalies` (`:9198`), both
-   * `params.model_dump(by_alias=True)`.
+   * Pydantic `model_dump()` — the plain request-body dump, keeping
+   * `None` values as `null`. Used by the two facade sites that dump
+   * without `exclude_none` (`update_anomaly` and
+   * `bulk_update_anomalies`, both `params.model_dump(by_alias=True)`).
    *
    * Same walk as {@link modelDumpExcludeNone} — declared fields,
    * extras and computed fields, nested models recursing, `byAlias`
    * threading into nested models — except that nothing is dropped:
    * a `None` field emits `null` under its key.
    *
-   * {@link toJSON} is NOT a substitute: it walks `model_fields` only
+   * {@link toJSON} is not a substitute: it walks `model_fields` only
    * (no extras) and never applies serialization aliases, because it
-   * mirrors the RECORDER's payload shape rather than pydantic's dump.
+   * mirrors the recorder's payload shape rather than pydantic's dump.
    *
    * @param options - `byAlias` mirrors pydantic's `by_alias=True`.
    * @returns The dump mapping.
@@ -720,6 +709,12 @@ export abstract class EntityModel<F extends object = never> {
  *
  * @param values - The allowed member values.
  * @returns A field `check` thunk.
+ * @example
+ * ```ts
+ * const check = oneOf(["insights", "funnels"]);
+ * check("insights", "Params.kind"); // passes
+ * check("flows", "Params.kind"); // throws ResponseValidationError
+ * ```
  * @internal
  */
 export function oneOf(
@@ -736,7 +731,7 @@ export function oneOf(
 
 /**
  * Serialize one value for {@link EntityModel.modelDumpExcludeNone} /
- * {@link EntityModel.modelDump} (nested models recurse with the SAME
+ * {@link EntityModel.modelDump} (nested models recurse with the same
  * exclusion setting, exactly as pydantic threads `exclude_none`; lists
  * map element-wise; plain dicts keep their `None` values; scalars pass
  * through).
@@ -787,21 +782,18 @@ function dumpValue(
     }
     return out;
   }
-  // Non-record instances pass through BY REFERENCE — pydantic v2
+  // Non-record instances pass through by reference — pydantic v2
   // `model_dump` keeps arbitrary objects inside `dict[str, Any]`
-  // fields by identity (measured 2026-08-16: `out['d']['k'] is c` for
-  // a custom-class member, with and without `exclude_none`). The
-  // previous clone-anything walk stripped class behavior (e.g. a
-  // `Uint8Array` decomposed into index keys) — B6-BIND fidelity fix.
+  // fields by identity (`out['d']['k'] is c` for a custom-class member,
+  // with and without `exclude_none`). A clone-anything walk would strip
+  // class behaviour (a `Uint8Array` decomposes into index keys).
   return value;
 }
 
-// The dump walk's dict discrimination is `isPythonDict` (imported from
-// the leaf `compat/python-dict.ts`): class instances are NOT plain —
-// they pass through {@link dumpValue} by reference, mirroring
-// pydantic's identity passthrough. The BIND commit's local
-// `isPlainRecordValue` twin was removed at the B6 arbiter pass
-// (`b6-review-resolution.md` Finding D — watchlist #13, import-only).
+// The dump walk's dict discrimination is `isPythonDict` (from the leaf
+// `compat/python-dict.ts`): class instances are not plain — they pass
+// through `dumpValue` by reference, mirroring pydantic's identity
+// passthrough.
 
 /**
  * Serialize one field value for {@link EntityModel.toJSON} /
@@ -819,7 +811,7 @@ function serializeValue(value: unknown, mode: "json" | "vector"): unknown {
   if (value instanceof Map) {
     // Ordered-dict container fields serialize back to a plain record —
     // the recorder shape. A plain JS object cannot represent
-    // out-of-order integer-like keys, so THIS is the one boundary
+    // out-of-order integer-like keys, so this is the one boundary
     // where key order narrows to JS enumeration order; the in-memory
     // Map keeps the Python order for every consumer.
     const out: Record<string, unknown> = {};

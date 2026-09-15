@@ -1,11 +1,13 @@
 /**
  * Account-surface models (summaries, test results, targets, OAuth login results).
  *
- * Hand-written ports of the Pydantic entity models (phase2-design C5,
- * packet P2-7): the PYTHON models are the source of record; vendored
+ * Hand-written ports of the Pydantic models in Python's `types.py`:
+ * the Python classes are the source of record and the vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling; optionality follows
- * R3.9/R4.10 via the model-base materialization rules.
+ * keep their Python spelling; required-ness, defaults, nullability and
+ * lax coercion follow each class's `fieldSpecs` (see `model-base.ts`).
+ *
+ * @see mixpanel_headless.types
  */
 
 import type {
@@ -40,19 +42,29 @@ export interface AccountSummaryInit {
   readonly is_active?: boolean | undefined;
   /** Names of targets that reference this account. */
   readonly referenced_by_targets?: readonly string[] | undefined;
-  /** Authenticated user email, populated by `login_unified()` from `/me`. Persisted in the per-account `MeCache` (not in `config.toml`), so it survives across processes once login has run. `None` when the account was added via `mp account add` (no `/me` round-trip) or when `/me` did not return a `user_email`. */
+  /** Authenticated user email, populated by `login_unified()` from `/me`. Persisted in the per-account `MeCache` (not in `config.toml`), so it survives across processes once login has run. `null` when the account was added via `mp account add` (no `/me` round-trip) or when `/me` did not return a `user_email`. */
   readonly user_email?: string | null | undefined;
-  /** Project ID resolved at login time. Mirror of the persisted `default_project` for convenience — exposed on `AccountSummary` so the `mp login` success line can render `Logged in as ... → ... · {project_name}` without a second `ConfigManager` round-trip. `None` when no default project is set. */
+  /** Project ID resolved at login time. Mirror of the persisted `default_project` for convenience — exposed on `AccountSummary` so the `mp login` success line can render `Logged in as ... → ... · {project_name}` without a second `ConfigManager` round-trip. `null` when no default project is set. */
   readonly project_id?: string | null | undefined;
-  /** Human-readable project name from `/me` for the resolved project. Populated alongside `project_id` by `login_unified()`. `None` when no project is configured or the project is not in `/me`. */
+  /** Human-readable project name from `/me` for the resolved project. Populated alongside `project_id` by `login_unified()`. `null` when no project is configured or the project is not in `/me`. */
   readonly project_name?: string | null | undefined;
 }
 
 /**
  * Read-only summary of a configured account for `mp account list`.
  *
- * Mirror of Python `mixpanel_headless.types.AccountSummary` (types.py;
- * model_config: frozen=True, extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const accountSummary = AccountSummary.fromDict({
+ *   name: "work",
+ *   type: "service_account",
+ *   region: "us",
+ *   is_active: true,
+ * });
+ * accountSummary.name; // "work"
+ * ```
+ * @see mixpanel_headless.types.AccountSummary
  */
 export class AccountSummary extends EntityModel<AccountSummaryInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -94,18 +106,18 @@ export class AccountSummary extends EntityModel<AccountSummaryInit> {
   declare readonly is_active: boolean;
   /** Names of targets that reference this account. */
   declare readonly referenced_by_targets: readonly string[];
-  /** Authenticated user email, populated by `login_unified()` from `/me`. Persisted in the per-account `MeCache` (not in `config.toml`), so it survives across processes once login has run. `None` when the account was added via `mp account add` (no `/me` round-trip) or when `/me` did not return a `user_email`. */
+  /** Authenticated user email, populated by `login_unified()` from `/me`. Persisted in the per-account `MeCache` (not in `config.toml`), so it survives across processes once login has run. `null` when the account was added via `mp account add` (no `/me` round-trip) or when `/me` did not return a `user_email`. */
   declare readonly user_email: string | null;
-  /** Project ID resolved at login time. Mirror of the persisted `default_project` for convenience — exposed on `AccountSummary` so the `mp login` success line can render `Logged in as ... → ... · {project_name}` without a second `ConfigManager` round-trip. `None` when no default project is set. */
+  /** Project ID resolved at login time. Mirror of the persisted `default_project` for convenience — exposed on `AccountSummary` so the `mp login` success line can render `Logged in as ... → ... · {project_name}` without a second `ConfigManager` round-trip. `null` when no default project is set. */
   declare readonly project_id: string | null;
-  /** Human-readable project name from `/me` for the resolved project. Populated alongside `project_id` by `login_unified()`. `None` when no project is configured or the project is not in `/me`. */
+  /** Human-readable project name from `/me` for the resolved project. Populated alongside `project_id` by `login_unified()`. `null` when no project is configured or the project is not in `/me`. */
   declare readonly project_name: string | null;
 
   /**
    * Construct a validated AccountSummary (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: AccountSummaryInit) {
@@ -118,7 +130,7 @@ export class AccountSummary extends EntityModel<AccountSummaryInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): AccountSummary {
     return new AccountSummary(prepareInit(AccountSummary, raw));
@@ -149,8 +161,16 @@ export interface AccountTestResultInit {
 /**
  * Outcome of `mp account test NAME` — captures the `/me` probe.
  *
- * Mirror of Python `mixpanel_headless.types.AccountTestResult` (types.py;
- * model_config: frozen=True, extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const accountTestResult = AccountTestResult.fromDict({
+ *   account_name: "work",
+ *   ok: true,
+ * });
+ * accountTestResult.account_name; // "work"
+ * ```
+ * @see mixpanel_headless.types.AccountTestResult
  */
 export class AccountTestResult extends EntityModel<AccountTestResultInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -189,7 +209,7 @@ export class AccountTestResult extends EntityModel<AccountTestResultInit> {
    * Construct a validated AccountTestResult (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: AccountTestResultInit) {
@@ -202,7 +222,7 @@ export class AccountTestResult extends EntityModel<AccountTestResultInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): AccountTestResult {
     return new AccountTestResult(prepareInit(AccountTestResult, raw));
@@ -213,7 +233,7 @@ export class AccountTestResult extends EntityModel<AccountTestResultInit> {
    * `_ok_iff_no_error`: enforce `ok=True` ⟺ `error is None`, and
    * confine `error_code`/`error_details` to the failure arm.
    *
-   * @throws ResponseValidationError - When `ok`/`error` disagree.
+   * @throws {@link ResponseValidationError} - When `ok`/`error` disagree.
    */
   protected override afterValidate(): void {
     if (this.ok && this.error !== null) {
@@ -242,15 +262,24 @@ export interface TargetInit {
   readonly account: AccountName;
   /** Numeric project ID (Mixpanel's wire format). */
   readonly project: ProjectId;
-  /** Optional workspace ID (must be a positive integer when set); `None` defers to lazy resolution. Mirrors `WorkspaceRef.id`'s `PositiveInt` constraint so bad values fail at construction rather than corrupting downstream config. */
+  /** Optional workspace ID (must be a positive integer when set); `null` defers to lazy resolution. Mirrors `WorkspaceRef.id`'s `PositiveInt` constraint so bad values fail at construction rather than corrupting downstream config. */
   readonly workspace?: WorkspaceId | null | undefined;
 }
 
 /**
  * A saved (account, project, workspace?) triple persisted in `[targets.NAME]`.
  *
- * Mirror of Python `mixpanel_headless.types.Target` (types.py;
- * model_config: frozen=True, extra='forbid').
+ * @remarks Pydantic `extra='forbid'`: unknown keys are rejected.
+ * @example
+ * ```ts
+ * const target = Target.fromDict({
+ *   name: "prod",
+ *   account: "work",
+ *   project: "123456",
+ * });
+ * target.name; // "prod"
+ * ```
+ * @see mixpanel_headless.types.Target
  */
 export class Target extends EntityModel<TargetInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -293,14 +322,14 @@ export class Target extends EntityModel<TargetInit> {
   declare readonly account: AccountName;
   /** Numeric project ID (Mixpanel's wire format). */
   declare readonly project: ProjectId;
-  /** Optional workspace ID (must be a positive integer when set); `None` defers to lazy resolution. Mirrors `WorkspaceRef.id`'s `PositiveInt` constraint so bad values fail at construction rather than corrupting downstream config. */
+  /** Optional workspace ID (must be a positive integer when set); `null` defers to lazy resolution. Mirrors `WorkspaceRef.id`'s `PositiveInt` constraint so bad values fail at construction rather than corrupting downstream config. */
   declare readonly workspace: WorkspaceId | null;
 
   /**
    * Construct a validated Target (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: TargetInit) {
@@ -313,7 +342,7 @@ export class Target extends EntityModel<TargetInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): Target {
     return new Target(prepareInit(Target, raw));
@@ -340,8 +369,17 @@ export interface OAuthLoginResultInit {
 /**
  * Outcome of `mp.accounts.login(name)` — captures the PKCE flow result.
  *
- * Mirror of Python `mixpanel_headless.types.OAuthLoginResult` (types.py;
- * model_config: frozen=True, extra='ignore').
+ * @remarks Pydantic `extra='ignore'`: unknown keys are dropped.
+ * @example
+ * ```ts
+ * const oAuthLoginResult = OAuthLoginResult.fromDict({
+ *   account_name: "work",
+ *   tokens_path: "~/.mp/accounts/work/tokens.json",
+ *   client_path: "~/.mp/accounts/work/client.json",
+ * });
+ * oAuthLoginResult.account_name; // "work"
+ * ```
+ * @see mixpanel_headless.types.OAuthLoginResult
  */
 export class OAuthLoginResult extends EntityModel<OAuthLoginResultInit> {
   /** The Python model name (and `$type` tag where recorded). */
@@ -374,7 +412,7 @@ export class OAuthLoginResult extends EntityModel<OAuthLoginResultInit> {
    * Construct a validated OAuthLoginResult (Pydantic-construction mirror).
    *
    * @param fields - Field values keyed by Python attribute name.
-   * @throws ResponseValidationError - On missing/invalid fields per
+   * @throws {@link ResponseValidationError} - On missing/invalid fields per
    *   the Python model's validation.
    */
   constructor(fields: OAuthLoginResultInit) {
@@ -387,7 +425,7 @@ export class OAuthLoginResult extends EntityModel<OAuthLoginResultInit> {
    *
    * @param raw - The raw payload.
    * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On shape violations.
+   * @throws {@link ResponseValidationError} - On shape violations.
    */
   static fromDict(raw: unknown): OAuthLoginResult {
     return new OAuthLoginResult(prepareInit(OAuthLoginResult, raw));
