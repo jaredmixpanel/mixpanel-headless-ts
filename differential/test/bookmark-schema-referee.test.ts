@@ -21,7 +21,7 @@ describe("vendored bookmark.json schema", () => {
     const schema = loadBookmarkSchema();
     expect(schema["title"]).toBe("InsightsBookmarkParams");
     expect(schema["additionalProperties"]).toBe(false);
-    expect(schema["required"]).toEqual(["displayOptions", "sections"]);
+    expect(schema["required"]).toStrictEqual(["displayOptions", "sections"]);
   });
 
   it("compiles under Ajv2020 strict:false despite 11 tsType keywords", () => {
@@ -35,7 +35,7 @@ describe("vendored bookmark.json schema", () => {
 describe("referee verdicts on the recon known-payload triple", () => {
   it("accepts the minimal valid insights payload", () => {
     const verdict = refereeBookmarkPayload(KNOWN_VALID_INSIGHTS_PAYLOAD);
-    expect(verdict.errors).toEqual([]);
+    expect(verdict.errors).toStrictEqual([]);
     expect(verdict.valid).toBe(true);
   });
 

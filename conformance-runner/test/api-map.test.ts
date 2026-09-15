@@ -104,7 +104,9 @@ describe("api-map.gen.ts freshness and parity (D12)", () => {
   });
 
   it("covers exactly the api-index + authored-supplement universe", () => {
-    expect(Object.keys(API_MAP).sort()).toEqual(Object.keys(universe).sort());
+    expect(Object.keys(API_MAP).sort()).toStrictEqual(
+      Object.keys(universe).sort(),
+    );
   });
 
   it("authored supplement never shadows an api-index entry (stale guard)", () => {
@@ -120,7 +122,7 @@ describe("api-map.gen.ts freshness and parity (D12)", () => {
       expect(
         { tsModule: entry.tsModule, tsName: entry.tsName },
         pythonApi,
-      ).toEqual(recomputed);
+      ).toStrictEqual(recomputed);
     }
   });
 
@@ -130,8 +132,8 @@ describe("api-map.gen.ts freshness and parity (D12)", () => {
       expect(entry.kind, pythonApi).toBe(indexEntry.kind);
       expect(entry.capability, pythonApi).toBe(indexEntry.capability);
       expect(entry.pythonModule, pythonApi).toBe(indexEntry.module);
-      expect(entry.params, pythonApi).toEqual(indexEntry.params);
-      expect(entry.kwonly, pythonApi).toEqual(indexEntry.kwonly);
+      expect(entry.params, pythonApi).toStrictEqual(indexEntry.params);
+      expect(entry.kwonly, pythonApi).toStrictEqual(indexEntry.kwonly);
     }
   });
 
@@ -142,7 +144,7 @@ describe("api-map.gen.ts freshness and parity (D12)", () => {
         ...authoredApis.known_modules,
       ]),
     ].sort();
-    expect([...KNOWN_PYTHON_MODULES]).toEqual(prefixes);
+    expect([...KNOWN_PYTHON_MODULES]).toStrictEqual(prefixes);
   });
 });
 
@@ -154,8 +156,8 @@ describe("workspace member authority (D12 input 1)", () => {
       }
       const member = workspaceMembers.get(pythonApi.slice("workspace.".length));
       expect(member, pythonApi).toBeDefined();
-      expect(member?.params, pythonApi).toEqual(indexEntry.params);
-      expect(member?.kwonly, pythonApi).toEqual(indexEntry.kwonly);
+      expect(member?.params, pythonApi).toStrictEqual(indexEntry.params);
+      expect(member?.kwonly, pythonApi).toStrictEqual(indexEntry.kwonly);
     }
   });
 });
@@ -163,23 +165,22 @@ describe("workspace member authority (D12 input 1)", () => {
 describe("resolveApi verdict buckets (D12)", () => {
   it("maps names present in the generated map", () => {
     const resolution = resolveApi("workspace.build_funnel_params");
-    expect(resolution.status).toBe("mapped");
-    if (resolution.status === "mapped") {
-      expect(resolution.entry.tsModule).toBe("core/workspace");
-      expect(resolution.entry.tsName).toBe("buildFunnelParams");
-    }
+    expect(resolution).toMatchObject({
+      status: "mapped",
+      entry: { tsModule: "core/workspace", tsName: "buildFunnelParams" },
+    });
   });
 
   it("classifies unmapped names in known modules as UNPORTED", () => {
-    expect(resolveApi("api_client.some_future_method")).toEqual({
+    expect(resolveApi("api_client.some_future_method")).toStrictEqual({
       status: "unported",
       module: "api_client",
     });
   });
 
   it("classifies names in no source as UNMAPPED (fail-fast bucket)", () => {
-    expect(resolveApi("mystery.call")).toEqual({ status: "unmapped" });
-    expect(resolveApi("nodots")).toEqual({ status: "unmapped" });
+    expect(resolveApi("mystery.call")).toStrictEqual({ status: "unmapped" });
+    expect(resolveApi("nodots")).toStrictEqual({ status: "unmapped" });
   });
 });
 

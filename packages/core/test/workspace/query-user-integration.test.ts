@@ -50,6 +50,7 @@ import { Filter } from "../../src/types/query-params/filter.js";
 import type { ProfilePageResult } from "../../src/types/results/discovery.js";
 import { UserQueryResult } from "../../src/types/results/query-engine.js";
 import { Workspace } from "../../src/workspace.js";
+import { expectRejects } from "../../test-support/raises.js";
 import {
   makePageResult,
   makeRawProfile,
@@ -276,7 +277,7 @@ describe("TestBehavioralFilteringSavedCohort", () => {
     expect(
       mock.exportPageCalls[0]!.options["filter_by_cohort"] ?? null,
     ).not.toBeNull();
-    expect(parseCohortParam(mock)).toEqual({ id: 12345 });
+    expect(parseCohortParam(mock)).toStrictEqual({ id: 12345 });
   });
 
   it("an integer cohort has no raw_cohort key", async () => {
@@ -374,17 +375,16 @@ describe("TestBehavioralFilteringCombinedCohortAndWhere", () => {
 describe("TestBehavioralFilteringCohortPlusInCohortError", () => {
   it("cohort param + Filter.in_cohort raises U2", async () => {
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({
+    const error = await expectRejects(
+      ws.queryUser({
         mode: "profiles",
         cohort: 12345,
         where: Filter.inCohort(67890),
         limit: 1,
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U2");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U2");
   });
 
   it("CohortDefinition + Filter.in_cohort raises U2", async () => {
@@ -392,36 +392,34 @@ describe("TestBehavioralFilteringCohortPlusInCohortError", () => {
       CohortCriteria.didEvent("Purchase", { at_least: 1, within_days: 30 }),
     );
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({
+    const error = await expectRejects(
+      ws.queryUser({
         mode: "profiles",
         cohort,
         where: Filter.inCohort(67890),
         limit: 1,
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U2");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U2");
   });
 
   it("the U2 message mentions mutual exclusivity", async () => {
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({
+    const error = await expectRejects(
+      ws.queryUser({
         mode: "profiles",
         cohort: 12345,
         where: Filter.inCohort(67890),
         limit: 1,
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      const u2 = (error as BookmarkValidationError).errors.filter(
-        (e) => e.code === "U2",
-      );
-      expect(u2).toHaveLength(1);
-      expect(u2[0]!.message.toLowerCase()).toContain("mutually exclusive");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    const u2 = (error as BookmarkValidationError).errors.filter(
+      (e) => e.code === "U2",
+    );
+    expect(u2).toHaveLength(1);
+    expect(u2[0]!.message.toLowerCase()).toContain("mutually exclusive");
   });
 });
 
@@ -440,12 +438,11 @@ describe("TestBehavioralFilteringCohortSerializationError", () => {
     };
 
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({ mode: "profiles", cohort: brokenCohort, limit: 1 });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U24");
-    }
+    const error = await expectRejects(
+      ws.queryUser({ mode: "profiles", cohort: brokenCohort, limit: 1 }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U24");
   });
 
   it("the U24 message includes the underlying exception text", async () => {
@@ -457,16 +454,15 @@ describe("TestBehavioralFilteringCohortSerializationError", () => {
     };
 
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({ mode: "profiles", cohort: brokenCohort, limit: 1 });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      const u24 = (error as BookmarkValidationError).errors.filter(
-        (e) => e.code === "U24",
-      );
-      expect(u24).toHaveLength(1);
-      expect(u24[0]!.message).toContain("bad selector node");
-    }
+    const error = await expectRejects(
+      ws.queryUser({ mode: "profiles", cohort: brokenCohort, limit: 1 }),
+      "expected BookmarkValidationError",
+    );
+    const u24 = (error as BookmarkValidationError).errors.filter(
+      (e) => e.code === "U24",
+    );
+    expect(u24).toHaveLength(1);
+    expect(u24[0]!.message).toContain("bad selector node");
   });
 });
 
@@ -493,7 +489,7 @@ describe("TestCrossEngineDistinctIds", () => {
     const ids = result.distinct_ids;
     expect(Array.isArray(ids)).toBe(true);
     expect(ids.every((i) => typeof i === "string")).toBe(true);
-    expect(ids).toEqual(["user_001", "user_002", "user_003"]);
+    expect(ids).toStrictEqual(["user_001", "user_002", "user_003"]);
   });
 
   it("distinct_ids can drive a subsequent query", async () => {
@@ -517,7 +513,7 @@ describe("TestCrossEngineDistinctIds", () => {
     });
 
     expect(result2.profiles).toHaveLength(2);
-    expect(result2.distinct_ids).toEqual(ids);
+    expect(result2.distinct_ids).toStrictEqual(ids);
   });
 
   it("an empty result yields an empty distinct_ids list", async () => {
@@ -529,7 +525,7 @@ describe("TestCrossEngineDistinctIds", () => {
 
     const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
 
-    expect(result.distinct_ids).toEqual([]);
+    expect(result.distinct_ids).toStrictEqual([]);
     expect(Array.isArray(result.distinct_ids)).toBe(true);
   });
 
@@ -776,7 +772,7 @@ describe("TestCrossEngineCohortIdFromFunnel", () => {
 
     expect(result).toBeInstanceOf(UserQueryResult);
     expect(result.profiles).toHaveLength(2);
-    expect(parseCohortParam(mock)).toEqual({ id: 42 });
+    expect(parseCohortParam(mock)).toStrictEqual({ id: 42 });
   });
 
   it("the cohort-filtered result has composable distinct_ids", async () => {
@@ -853,17 +849,16 @@ describe("TestUFilterWrapPreservation", () => {
     });
 
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.buildUserParams({ where: [bad] });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toEqual(["U_FILTER"]);
-      // The chained cause is the converted coded guard error itself.
-      const cause = (error as { cause?: unknown }).cause;
-      expect(cause).toBeInstanceOf(ParamValidationError);
-      expect((cause as ParamValidationError).code).toBe(
-        "ES11_BETWEEN_LOWER_NOT_NUMBER",
-      );
-    }
+    const error = await expectRejects(
+      ws.buildUserParams({ where: [bad] }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toStrictEqual(["U_FILTER"]);
+    // The chained cause is the converted coded guard error itself.
+    const cause = (error as { cause?: unknown }).cause;
+    expect(cause).toBeInstanceOf(ParamValidationError);
+    expect((cause as ParamValidationError).code).toBe(
+      "ES11_BETWEEN_LOWER_NOT_NUMBER",
+    );
   });
 });

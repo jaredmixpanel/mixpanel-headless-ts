@@ -201,7 +201,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
   it("list_dashboards() returns empty list when no dashboards exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
 
-    expect(await ws.listDashboards()).toEqual([]);
+    await expect(ws.listDashboards()).resolves.toStrictEqual([]);
   });
 
   it("list_dashboards(ids=[1, 2]) passes filter to API", async () => {
@@ -229,7 +229,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
     expect(dashboard.id).toBe(10);
     expect(dashboard.title).toBe("New Dashboard");
     // `model_dump(exclude_none=True)` (`workspace.py:4564`).
-    expect(bodyOf(transport)).toEqual({ title: "New Dashboard" });
+    expect(bodyOf(transport)).toStrictEqual({ title: "New Dashboard" });
   });
 
   it("create_dashboard() sends description when provided", async () => {
@@ -248,7 +248,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
     );
 
     expect(dashboard.description).toBe("A test dashboard");
-    expect(bodyOf(transport)).toEqual({
+    expect(bodyOf(transport)).toStrictEqual({
       title: "Described",
       description: "A test dashboard",
     });
@@ -276,7 +276,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
     expect(dashboard).toBeInstanceOf(Dashboard);
     expect(dashboard.id).toBe(1);
     expect(dashboard.title).toBe("My Dashboard");
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "GET /api/app/projects/12345/dashboards/1",
     ]);
   });
@@ -308,10 +308,10 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
 
     expect(dashboard).toBeInstanceOf(Dashboard);
     expect(dashboard.title).toBe("Updated Title");
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "PATCH /api/app/projects/12345/dashboards/1",
     ]);
-    expect(bodyOf(transport)).toEqual({ title: "Updated Title" });
+    expect(bodyOf(transport)).toStrictEqual({ title: "Updated Title" });
   });
 
   it("update_dashboard() can update description", async () => {
@@ -344,7 +344,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
     const { ws, transport } = makeWorkspace(() => ({ status: 204 }));
 
     await expect(ws.deleteDashboard(1)).resolves.toBeUndefined();
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "DELETE /api/app/projects/12345/dashboards/1",
     ]);
   });
@@ -359,7 +359,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
     const { ws, transport } = makeWorkspace(() => ({ status: 204 }));
 
     await expect(ws.bulkDeleteDashboards([1, 2])).resolves.toBeUndefined();
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "POST /api/app/projects/12345/dashboards/bulk-delete",
     ]);
   });
@@ -381,7 +381,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
 
     const dashboards = await ws.listDashboards();
 
-    expect(dashboards.map((d) => d.id)).toEqual([3, 1, 2]);
+    expect(dashboards.map((d) => d.id)).toStrictEqual([3, 1, 2]);
   });
 
   it("create_dashboard() supports duplicate parameter", async () => {
@@ -394,7 +394,10 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
     );
 
     expect(dashboard.id).toBe(20);
-    expect(bodyOf(transport)).toEqual({ title: "Copy of Dash", duplicate: 5 });
+    expect(bodyOf(transport)).toStrictEqual({
+      title: "Copy of Dash",
+      duplicate: 5,
+    });
   });
 
   it("get_dashboard() result has correct boolean field types", async () => {
@@ -415,7 +418,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
     await ws.bulkDeleteDashboards([10, 20, 30]);
 
     expect(transport.captures).toHaveLength(1);
-    expect(bodyOf(transport)).toEqual({ dashboard_ids: [10, 20, 30] });
+    expect(bodyOf(transport)).toStrictEqual({ dashboard_ids: [10, 20, 30] });
   });
 });
 
@@ -431,7 +434,7 @@ describe("TestWorkspaceBlueprintCohorts (:1763)", () => {
       { placeholder: "new_users", cohort_id: 42 },
     ]);
 
-    expect(bodyOf(transport)).toEqual({
+    expect(bodyOf(transport)).toStrictEqual({
       cohorts: [{ placeholder: "new_users", cohort_id: 42 }],
     });
   });
@@ -452,7 +455,7 @@ describe("TestRemoveReportFromDashboard (:1785)", () => {
     expect(result).toBeInstanceOf(Dashboard);
     expect(result.title).toBe("Updated Dashboard");
     expect(transport.captures).toHaveLength(1); // Single PATCH request
-    expect(bodyOf(transport)).toEqual({
+    expect(bodyOf(transport)).toStrictEqual({
       content: { action: "delete", content_type: "report", content_id: 42 },
     });
   });
@@ -473,7 +476,7 @@ describe("TestAddReportToDashboard (:1812)", () => {
     expect(result).toBeInstanceOf(Dashboard);
     expect(result.title).toBe("Updated Dashboard");
     expect(transport.captures).toHaveLength(1); // Single PATCH request
-    expect(bodyOf(transport)).toEqual({
+    expect(bodyOf(transport)).toStrictEqual({
       content: {
         action: "create",
         content_type: "report",
@@ -516,7 +519,7 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
     const { ws, transport } = makeWorkspace(() => ({ status: 204 }));
 
     await expect(ws.favoriteDashboard(7)).resolves.toBeUndefined();
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "POST /api/app/projects/12345/dashboards/7/favorites",
     ]);
   });
@@ -525,7 +528,7 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
     const { ws, transport } = makeWorkspace(() => ({ status: 204 }));
 
     await expect(ws.unfavoriteDashboard(7)).resolves.toBeUndefined();
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "DELETE /api/app/projects/12345/dashboards/7/favorites",
     ]);
   });
@@ -534,7 +537,7 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
     const { ws, transport } = makeWorkspace(() => ({ status: 204 }));
 
     await expect(ws.pinDashboard(7)).resolves.toBeUndefined();
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "POST /api/app/projects/12345/dashboards/7/pin",
     ]);
   });
@@ -543,7 +546,7 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
     const { ws, transport } = makeWorkspace(() => ({ status: 204 }));
 
     await expect(ws.unpinDashboard(7)).resolves.toBeUndefined();
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "DELETE /api/app/projects/12345/dashboards/7/pin",
     ]);
   });
@@ -578,9 +581,9 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
   it("list_blueprint_templates(include_reports=True) forwards the flag", async () => {
     const { ws, transport } = makeWorkspace(() => ok({ templates: {} }));
 
-    expect(await ws.listBlueprintTemplates({ include_reports: true })).toEqual(
-      [],
-    );
+    await expect(
+      ws.listBlueprintTemplates({ include_reports: true }),
+    ).resolves.toStrictEqual([]);
     expect(transport.captures[0]?.params["include_reports"]).toBe("true");
   });
 
@@ -593,10 +596,10 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
 
     expect(dashboard).toBeInstanceOf(Dashboard);
     expect(dashboard.id).toBe(31);
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "POST /api/app/projects/12345/dashboards/blueprints",
     ]);
-    expect(bodyOf(transport)).toEqual({ template_type: "company_kpis" });
+    expect(bodyOf(transport)).toStrictEqual({ template_type: "company_kpis" });
   });
 
   it("get_blueprint_config() returns a BlueprintConfig", async () => {
@@ -607,8 +610,8 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
     const config = await ws.getBlueprintConfig(12345);
 
     expect(config).toBeInstanceOf(BlueprintConfig);
-    expect(config.variables).toEqual({ metric: "signups" });
-    expect(seenOf(transport)).toEqual([
+    expect(config.variables).toStrictEqual({ metric: "signups" });
+    expect(seenOf(transport)).toStrictEqual([
       "GET /api/app/projects/12345/dashboards/12345/blueprint-config",
     ]);
   });
@@ -616,8 +619,10 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
   it("get_bookmark_dashboard_ids() returns the ID list verbatim", async () => {
     const { ws, transport } = makeWorkspace(() => ok([4, 5, 6]));
 
-    expect(await ws.getBookmarkDashboardIds(42)).toEqual([4, 5, 6]);
-    expect(seenOf(transport)).toEqual([
+    await expect(ws.getBookmarkDashboardIds(42)).resolves.toStrictEqual([
+      4, 5, 6,
+    ]);
+    expect(seenOf(transport)).toStrictEqual([
       "GET /api/app/projects/12345/dashboards/bookmarks/42/dashboard-ids",
     ]);
   });
@@ -627,8 +632,10 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
       ok({ metrics: { views: 3 } }),
     );
 
-    expect(await ws.getDashboardErf(12345)).toEqual({ metrics: { views: 3 } });
-    expect(seenOf(transport)).toEqual([
+    await expect(ws.getDashboardErf(12345)).resolves.toStrictEqual({
+      metrics: { views: 3 },
+    });
+    expect(seenOf(transport)).toStrictEqual([
       "GET /api/app/projects/12345/dashboards/12345/erf",
     ]);
   });
@@ -643,14 +650,14 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
         new UpdateTextCardParams({ markdown: "# Hello" }),
       ),
     ).resolves.toBeUndefined();
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "PATCH /api/app/projects/12345/dashboards/12345/text-cards/99",
     ]);
-    expect(bodyOf(transport)).toEqual({ markdown: "# Hello" });
+    expect(bodyOf(transport)).toStrictEqual({ markdown: "# Hello" });
     // `exclude_none=True` — an unset `markdown` sends `{}`.
     const empty = makeWorkspace(() => ({ status: 204 }));
     await empty.ws.updateTextCard(1, 2, new UpdateTextCardParams({}));
-    expect(bodyOf(empty.transport)).toEqual({});
+    expect(bodyOf(empty.transport)).toStrictEqual({});
   });
 });
 
@@ -672,10 +679,10 @@ describe("ADDITIVE: by_alias request bodies", () => {
     );
 
     expect(dashboard).toBeInstanceOf(Dashboard);
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "POST /api/app/projects/12345/dashboards/blueprints/finish",
     ]);
-    expect(bodyOf(transport)).toEqual({
+    expect(bodyOf(transport)).toStrictEqual({
       dashboard_id: 1,
       cards: [{ type: "report", bookmark_id: 42 }],
     });
@@ -692,10 +699,10 @@ describe("ADDITIVE: by_alias request bodies", () => {
     );
 
     expect(dashboard).toBeInstanceOf(Dashboard);
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "POST /api/app/projects/12345/dashboards/rca",
     ]);
-    expect(bodyOf(transport)).toEqual({
+    expect(bodyOf(transport)).toStrictEqual({
       rca_source_id: 42,
       rca_source_data: { type: "anomaly" },
     });
@@ -711,10 +718,10 @@ describe("ADDITIVE: by_alias request bodies", () => {
         new UpdateReportLinkParams({ link_type: "embedded" }),
       ),
     ).resolves.toBeUndefined();
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "PATCH /api/app/projects/12345/dashboards/1/report-links/42",
     ]);
-    expect(bodyOf(transport)).toEqual({ type: "embedded" });
+    expect(bodyOf(transport)).toStrictEqual({ type: "embedded" });
   });
 });
 
@@ -825,7 +832,7 @@ describe("ADDITIVE: response-validation codes", () => {
       );
 
     expect(error).toBeInstanceOf(ResponseValidationError);
-    expect((error as ResponseValidationError).details["errors"]).toEqual([
+    expect((error as ResponseValidationError).details["errors"]).toStrictEqual([
       { type: "missing", loc: ["id"], msg: "Field required", input: {} },
       { type: "missing", loc: ["title"], msg: "Field required", input: {} },
     ]);

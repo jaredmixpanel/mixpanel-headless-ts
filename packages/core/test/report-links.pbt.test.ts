@@ -333,7 +333,7 @@ describe("TestDecorationInvariance", () => {
           const base = parseReportLink(url);
           const decorated = decorate(url, variant);
           const got = parseReportLink(decorated);
-          expect({ ...got, raw: base.raw }).toEqual(base);
+          expect({ ...got, raw: base.raw }).toStrictEqual(base);
         },
       ),
     );
@@ -358,7 +358,7 @@ describe("TestDecorationInvariance", () => {
           });
           const base = parseReportLink(url);
           const got = parseReportLink(decorate(url, variant));
-          expect({ ...got, raw: base.raw }).toEqual(base);
+          expect({ ...got, raw: base.raw }).toStrictEqual(base);
         },
       ),
     );
@@ -420,11 +420,16 @@ describe("TestTotality", () => {
         (host, path, fragment) => {
           const value = `https://${host}/${path}#${fragment}`;
           const result = parseTotal(value);
-          if (result instanceof ReportLinkParseError) {
-            expect(result.code.startsWith("REPORT_LINK_")).toBe(true);
-            return;
+          // A parse error carries a REPORT_LINK_* code; a parsed link has
+          // consistent kind fields (asserted by the helper).
+          const code =
+            result instanceof ReportLinkParseError
+              ? result.code
+              : "REPORT_LINK_";
+          expect(code.startsWith("REPORT_LINK_")).toBe(true);
+          if (!(result instanceof ReportLinkParseError)) {
+            assertKindFields(result);
           }
-          assertKindFields(result);
         },
       ),
     );
@@ -450,7 +455,7 @@ describe("TestTotality", () => {
             parsed.region,
             parsed.project_id,
             parsed.workspace_id,
-          ]).toEqual([null, null, null, null]);
+          ]).toStrictEqual([null, null, null, null]);
         },
       ),
     );

@@ -252,7 +252,7 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
     );
     expect(error).toBeInstanceOf(OAuthError);
     expect((error as OAuthError).code).toBe("OAUTH_PORT_ERROR");
-    expect((error as OAuthError).details).toEqual({
+    expect((error as OAuthError).details).toStrictEqual({
       ports: [...CALLBACK_PORTS],
     });
   });

@@ -99,12 +99,12 @@ describe("FlowQueryResult construction (TestFlowQueryResultConstruction)", () =>
   it("test_construct_with_defaults", () => {
     const r = makeResult();
     expect(r.computed_at).toBe("2025-01-15T10:00:00");
-    expect(r.steps).toEqual([]);
-    expect(r.flows).toEqual([]);
-    expect(r.breakdowns).toEqual([]);
+    expect(r.steps).toStrictEqual([]);
+    expect(r.flows).toStrictEqual([]);
+    expect(r.breakdowns).toStrictEqual([]);
     expect(r.overall_conversion_rate).toBe(0.0);
-    expect(r.params).toEqual({});
-    expect(r.meta).toEqual({});
+    expect(r.params).toStrictEqual({});
+    expect(r.meta).toStrictEqual({});
     expect(r.mode).toBe("sankey");
   });
 
@@ -134,11 +134,11 @@ describe("FlowQueryResult construction (TestFlowQueryResultConstruction)", () =>
   });
 
   it("test_steps_default_empty_list", () => {
-    expect(new FlowQueryResult({ computed_at: "" }).steps).toEqual([]);
+    expect(new FlowQueryResult({ computed_at: "" }).steps).toStrictEqual([]);
   });
 
   it("test_flows_default_empty_list", () => {
-    expect(new FlowQueryResult({ computed_at: "" }).flows).toEqual([]);
+    expect(new FlowQueryResult({ computed_at: "" }).flows).toStrictEqual([]);
   });
 });
 
@@ -162,14 +162,16 @@ describe("FlowQueryResult.to_dict (TestFlowQueryResultToDict)", () => {
   it("test_to_dict_values_match_fields", () => {
     const r = makeResult();
     const d = r.toJSON();
-    expect(d["computed_at"]).toEqual(r.computed_at);
-    expect(d["steps"]).toEqual(r.steps);
-    expect(d["flows"]).toEqual(r.flows);
-    expect(d["breakdowns"]).toEqual(r.breakdowns);
-    expect(d["overall_conversion_rate"]).toEqual(r.overall_conversion_rate);
-    expect(d["params"]).toEqual(r.params);
-    expect(d["meta"]).toEqual(r.meta);
-    expect(d["mode"]).toEqual(r.mode);
+    expect(d["computed_at"]).toStrictEqual(r.computed_at);
+    expect(d["steps"]).toStrictEqual(r.steps);
+    expect(d["flows"]).toStrictEqual(r.flows);
+    expect(d["breakdowns"]).toStrictEqual(r.breakdowns);
+    expect(d["overall_conversion_rate"]).toStrictEqual(
+      r.overall_conversion_rate,
+    );
+    expect(d["params"]).toStrictEqual(r.params);
+    expect(d["meta"]).toStrictEqual(r.meta);
+    expect(d["mode"]).toStrictEqual(r.mode);
   });
 
   it("test_to_dict_with_populated_data", () => {
@@ -205,7 +207,7 @@ describe("FlowQueryResult.nodes_df (TestFlowQueryResultNodesDf)", () => {
 
   it("test_nodes_df_columns", () => {
     const r = makeResult({ steps: sampleSankeySteps() });
-    expect(r.nodesRowColumns()).toEqual(expected_cols);
+    expect(r.nodesRowColumns()).toStrictEqual(expected_cols);
   });
 
   it("test_nodes_df_row_count", () => {
@@ -216,13 +218,13 @@ describe("FlowQueryResult.nodes_df (TestFlowQueryResultNodesDf)", () => {
   it("test_nodes_df_empty_steps", () => {
     const r = makeResult({ steps: [] });
     expect(r.toNodesRows()).toHaveLength(0);
-    expect(r.nodesRowColumns()).toEqual(expected_cols);
+    expect(r.nodesRowColumns()).toStrictEqual(expected_cols);
   });
 
   it("test_nodes_df_total_count_parsed_as_int", () => {
     const r = makeResult({ steps: sampleSankeySteps() });
     const counts = r.toNodesRows().map((row) => row["count"]);
-    expect(counts).toEqual([100, 80]);
+    expect(counts).toStrictEqual([100, 80]);
     for (const count of counts) {
       expect(Number.isInteger(count)).toBe(true);
     }
@@ -230,7 +232,7 @@ describe("FlowQueryResult.nodes_df (TestFlowQueryResultNodesDf)", () => {
 
   it("test_nodes_df_cached (determinism)", () => {
     const r = makeResult({ steps: sampleSankeySteps() });
-    expect(r.toNodesRows()).toEqual(r.toNodesRows());
+    expect(r.toNodesRows()).toStrictEqual(r.toNodesRows());
   });
 });
 
@@ -246,7 +248,7 @@ describe("FlowQueryResult.edges_df (TestFlowQueryResultEdgesDf)", () => {
 
   it("test_edges_df_columns", () => {
     const r = makeResult({ steps: sampleSankeySteps() });
-    expect(r.edgesRowColumns()).toEqual(expected_cols);
+    expect(r.edgesRowColumns()).toStrictEqual(expected_cols);
   });
 
   it("test_edges_df_row_count", () => {
@@ -258,7 +260,7 @@ describe("FlowQueryResult.edges_df (TestFlowQueryResultEdgesDf)", () => {
   it("test_edges_df_empty_steps", () => {
     const r = makeResult({ steps: [] });
     expect(r.toEdgesRows()).toHaveLength(0);
-    expect(r.edgesRowColumns()).toEqual(expected_cols);
+    expect(r.edgesRowColumns()).toStrictEqual(expected_cols);
   });
 
   it("test_edges_df_count_parsed_as_int", () => {
@@ -270,15 +272,15 @@ describe("FlowQueryResult.edges_df (TestFlowQueryResultEdgesDf)", () => {
 
   it("test_edges_df_cached (determinism)", () => {
     const r = makeResult({ steps: sampleSankeySteps() });
-    expect(r.toEdgesRows()).toEqual(r.toEdgesRows());
+    expect(r.toEdgesRows()).toStrictEqual(r.toEdgesRows());
   });
 });
 
 describe("FlowQueryResult.df mode-aware (TestFlowQueryResultDfModeAware)", () => {
   it("test_df_sankey_returns_nodes_df", () => {
     const r = makeResult({ mode: "sankey", steps: sampleSankeySteps() });
-    expect(r.toRows()).toEqual(r.toNodesRows());
-    expect(r.rowColumns()).toEqual(r.nodesRowColumns());
+    expect(r.toRows()).toStrictEqual(r.toNodesRows());
+    expect(r.rowColumns()).toStrictEqual(r.nodesRowColumns());
   });
 
   it("test_df_paths_returns_paths_dataframe", () => {
@@ -313,7 +315,7 @@ describe("FlowQueryResult.top_transitions (TestFlowQueryResultTopTransitions)", 
       steps: sampleSankeySteps(),
     }).topTransitions();
     const counts = transitions.map((t) => t[2]);
-    expect(counts).toEqual([...counts].sort((a, b) => b - a));
+    expect(counts).toStrictEqual([...counts].sort((a, b) => b - a));
   });
 
   it("test_respects_n_limit", () => {
@@ -324,7 +326,7 @@ describe("FlowQueryResult.top_transitions (TestFlowQueryResultTopTransitions)", 
   });
 
   it("test_empty_edges_returns_empty_list", () => {
-    expect(makeResult({ steps: [] }).topTransitions()).toEqual([]);
+    expect(makeResult({ steps: [] }).topTransitions()).toStrictEqual([]);
   });
 
   it("test_default_n_is_10", () => {
@@ -361,7 +363,7 @@ describe("FlowQueryResult.drop_off_summary (TestFlowQueryResultDropOffSummary)",
   });
 
   it("test_empty_steps_returns_empty_dict", () => {
-    expect(makeResult({ steps: [] }).dropOffSummary()).toEqual({});
+    expect(makeResult({ steps: [] }).dropOffSummary()).toStrictEqual({});
   });
 });
 
@@ -428,13 +430,10 @@ describe("safeInt string branch = CPython int(str) grammar (B0-gate RUN.md 2026-
     expect(safeInt("\u008542\u00A0")).toBe(42);
   });
 
-  it(
-    String.raw`rejects U+FEFF surround (JS \s matches the BOM; CPython int() raises)`,
-    () => {
-      expect(safeInt("\uFEFF42")).toBe(0);
-      expect(safeInt("42\uFEFF")).toBe(0);
-    },
-  );
+  it("rejects U+FEFF surround (the JS whitespace class matches the BOM; CPython int() raises)", () => {
+    expect(safeInt("\uFEFF42")).toBe(0);
+    expect(safeInt("42\uFEFF")).toBe(0);
+  });
 
   it("rejects U+001C..1F surround (str.isspace() true but Py_ISSPACE false)", () => {
     // CPython probe (python-int.test.ts:103-105): int('\x1c42\x1f') raises.

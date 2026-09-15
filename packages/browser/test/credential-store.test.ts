@@ -27,6 +27,9 @@ describe("CREDENTIAL_KEYS (b9-packets.md §2.1 — the namespace table)", () => 
 });
 
 // ONE shared contract suite over both implementations (§2.6 row 1).
+/* eslint-disable vitest/prefer-expect-resolves -- `CredentialStore.get`
+   returns a MaybePromise (the in-memory store answers synchronously), so
+   `expect(await …)` is the correct form; `.resolves` would throw on it. */
 describe.each<[string, () => CredentialStore]>([
   [
     "InMemoryCredentialStore",
@@ -94,6 +97,7 @@ describe.each<[string, () => CredentialStore]>([
     expect(await store.get("mp.tokens.us")).toBe("");
   });
 });
+/* eslint-enable vitest/prefer-expect-resolves */
 
 describe("LocalStorageCredentialStore specifics (§2.1 / §2.6)", () => {
   it("uses ONLY the injected StorageLike — no global touch", async () => {
@@ -101,7 +105,7 @@ describe("LocalStorageCredentialStore specifics (§2.1 / §2.6)", () => {
     const store = new LocalStorageCredentialStore(storage);
     store.set("mp.tokens.us", "injected");
     expect(map.get("mp.tokens.us")).toBe("injected");
-    expect(await store.get("mp.tokens.us")).toBe("injected");
+    expect(store.get("mp.tokens.us")).toBe("injected");
     store.delete("mp.tokens.us");
     expect(map.has("mp.tokens.us")).toBe(false);
   });
@@ -154,12 +158,12 @@ describe("LocalStorageCredentialStore specifics (§2.1 / §2.6)", () => {
   });
 
   it("FB-9 (pair-B): CREDENTIAL_KEYS.all(region) enumerates every key family for a region", () => {
-    expect(CREDENTIAL_KEYS.all("us")).toEqual([
+    expect(CREDENTIAL_KEYS.all("us")).toStrictEqual([
       "mp.tokens.us",
       "mp.oauth_client.us",
       "mp.pending_login.us",
     ]);
-    expect(CREDENTIAL_KEYS.all("eu")).toEqual([
+    expect(CREDENTIAL_KEYS.all("eu")).toStrictEqual([
       CREDENTIAL_KEYS.tokens("eu"),
       CREDENTIAL_KEYS.clientInfo("eu"),
       CREDENTIAL_KEYS.pendingLogin("eu"),

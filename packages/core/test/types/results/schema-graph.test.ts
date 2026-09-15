@@ -33,7 +33,7 @@ function sampleResult(): SchemaGraphResult {
 describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
   it("test_events_df_shape", () => {
     const result = sampleResult();
-    expect(result.eventsRowColumns()).toEqual([
+    expect(result.eventsRowColumns()).toStrictEqual([
       "name",
       "display_name",
       "description",
@@ -60,7 +60,7 @@ describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
 
   it("test_relationships_df_is_edge_list", () => {
     const result = sampleResult();
-    expect(result.relationshipsRowColumns()).toEqual([
+    expect(result.relationshipsRowColumns()).toStrictEqual([
       "event",
       "property",
       "density_local",
@@ -74,16 +74,16 @@ describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
 
   it("test_df_is_relationships", () => {
     const result = sampleResult();
-    expect(result.toRows()).toEqual(result.toRelationshipsRows());
-    expect(result.rowColumns()).toEqual(result.relationshipsRowColumns());
+    expect(result.toRows()).toStrictEqual(result.toRelationshipsRows());
+    expect(result.rowColumns()).toStrictEqual(result.relationshipsRowColumns());
   });
 
   it("test_convenience_accessors", () => {
     const result = sampleResult();
-    expect(result.propertiesForEvent("Purchase")).toEqual(["amount"]);
-    expect(result.eventsForProperty("amount")).toEqual(["Purchase"]);
-    expect(result.orphanProperties()).toEqual(["orphan"]);
-    expect(result.propertiesForEvent("missing")).toEqual([]);
+    expect(result.propertiesForEvent("Purchase")).toStrictEqual(["amount"]);
+    expect(result.eventsForProperty("amount")).toStrictEqual(["Purchase"]);
+    expect(result.orphanProperties()).toStrictEqual(["orphan"]);
+    expect(result.propertiesForEvent("missing")).toStrictEqual([]);
   });
 
   it("test_orphan_properties_skips_nameless", () => {
@@ -91,13 +91,13 @@ describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
       computed_at: "t",
       properties: [{ events: [] }, { name: "real", events: [] }],
     });
-    expect(result.orphanProperties()).toEqual(["real"]);
+    expect(result.orphanProperties()).toStrictEqual(["real"]);
   });
 
   it("test_empty_result_has_typed_empty_frames", () => {
     const result = new SchemaGraphResult({ computed_at: "t" });
     expect(result.toEventsRows()).toHaveLength(0);
-    expect(result.relationshipsRowColumns()).toEqual([
+    expect(result.relationshipsRowColumns()).toStrictEqual([
       "event",
       "property",
       "density_local",
@@ -106,16 +106,18 @@ describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
 
   it("test_to_dict_round_trips_fields", () => {
     const d = sampleResult().toJSON();
-    expect(d["event_to_properties"]).toEqual({ Purchase: ["amount"] });
+    expect(d["event_to_properties"]).toStrictEqual({ Purchase: ["amount"] });
     expect(d["include_density"]).toBe(true);
     expect(Object.hasOwn(d, "user_properties")).toBe(true);
   });
 
   it("test_dataframes_are_cached (determinism)", () => {
     const result = sampleResult();
-    expect(result.toEventsRows()).toEqual(result.toEventsRows());
-    expect(result.toPropertiesRows()).toEqual(result.toPropertiesRows());
-    expect(result.toRelationshipsRows()).toEqual(result.toRelationshipsRows());
+    expect(result.toEventsRows()).toStrictEqual(result.toEventsRows());
+    expect(result.toPropertiesRows()).toStrictEqual(result.toPropertiesRows());
+    expect(result.toRelationshipsRows()).toStrictEqual(
+      result.toRelationshipsRows(),
+    );
   });
 
   it("test_density_local_none_when_density_not_requested", () => {
@@ -139,10 +141,10 @@ describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
       ],
     });
     // Only the well-formed {"name": "Purchase"} entry survives.
-    expect(result.toRelationshipsRows().map((row) => row["event"])).toEqual([
-      "Purchase",
-    ]);
-    expect(result.property_to_events["amount"]).toEqual(["Purchase"]);
+    expect(
+      result.toRelationshipsRows().map((row) => row["event"]),
+    ).toStrictEqual(["Purchase"]);
+    expect(result.property_to_events["amount"]).toStrictEqual(["Purchase"]);
   });
 
   it("test_relationships_df_skips_nameless_property", () => {
@@ -153,13 +155,13 @@ describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
         { name: "amount", events: [{ name: "Purchase" }] },
       ],
     });
-    expect(result.toRelationshipsRows().map((row) => row["property"])).toEqual([
-      "amount",
-    ]);
+    expect(
+      result.toRelationshipsRows().map((row) => row["property"]),
+    ).toStrictEqual(["amount"]);
   });
 
   it("test_events_for_property_unknown_returns_empty", () => {
-    expect(sampleResult().eventsForProperty("missing")).toEqual([]);
+    expect(sampleResult().eventsForProperty("missing")).toStrictEqual([]);
   });
 
   it("test_property_without_events_key", () => {
@@ -168,8 +170,8 @@ describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
       properties: [{ name: "amount" }],
     });
     expect(result.toRelationshipsRows()).toHaveLength(0);
-    expect(result.property_to_events).toEqual({ amount: [] });
-    expect(result.orphanProperties()).toEqual(["amount"]);
+    expect(result.property_to_events).toStrictEqual({ amount: [] });
+    expect(result.orphanProperties()).toStrictEqual(["amount"]);
   });
 
   it("test_maps_derived_from_properties", () => {
@@ -178,12 +180,12 @@ describe("SchemaGraphResult (TestSchemaGraphResult)", () => {
       events: [{ name: "Purchase" }, { name: "Login" }],
       properties: [{ name: "amount", events: [{ name: "Purchase" }] }],
     });
-    expect(result.event_to_properties).toEqual({
+    expect(result.event_to_properties).toStrictEqual({
       Purchase: ["amount"],
       Login: [],
     });
-    expect(result.property_to_events).toEqual({ amount: ["Purchase"] });
-    expect(result.propertiesForEvent("Login")).toEqual([]);
+    expect(result.property_to_events).toStrictEqual({ amount: ["Purchase"] });
+    expect(result.propertiesForEvent("Login")).toStrictEqual([]);
   });
 
   it("test_meta_records_drop_counts", () => {

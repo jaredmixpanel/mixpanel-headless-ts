@@ -138,9 +138,11 @@ function lastBody(mock: MockWorkspaceClient): Record<string, unknown> {
 
 describe("TestQueryLimitsValidator", () => {
   it("none yields the default", () => {
-    expect(queryLimits(null)).toEqual({ limit: DEFAULT_SEGMENTATION_LIMIT });
+    expect(queryLimits(null)).toStrictEqual({
+      limit: DEFAULT_SEGMENTATION_LIMIT,
+    });
     // TS-only: an omitted option arrives as `undefined` — same default.
-    expect(queryLimits(undefined)).toEqual({
+    expect(queryLimits(undefined)).toStrictEqual({
       limit: DEFAULT_SEGMENTATION_LIMIT,
     });
   });
@@ -148,7 +150,7 @@ describe("TestQueryLimitsValidator", () => {
   it.each([1, 3000, 49_999, MAX_SEGMENTATION_LIMIT])(
     "accepts values in range: %s",
     (limit) => {
-      expect(queryLimits(limit)).toEqual({ limit });
+      expect(queryLimits(limit)).toStrictEqual({ limit });
     },
   );
 
@@ -190,7 +192,7 @@ describe("TestQueryLimitsValidator", () => {
   });
 
   it("narrows an in-band bigint to a JSON number", () => {
-    expect(queryLimits(42n)).toEqual({ limit: 42 });
+    expect(queryLimits(42n)).toStrictEqual({ limit: 42 });
     expect(() => queryLimits(50_001n)).toThrow(LIMIT_ERROR);
   });
 });
@@ -327,7 +329,7 @@ describe("TestWorkspaceLimitPassthrough", () => {
       today: TODAY,
     });
     const without = await ws.buildParams("Login", { today: TODAY });
-    expect(withLimit).toEqual(without);
+    expect(withLimit).toStrictEqual(without);
     expect(JSON.stringify(withLimit)).not.toContain("50000");
   });
 });
@@ -346,9 +348,9 @@ describe("TestRunParams", () => {
 
     expect(result).toBeInstanceOf(QueryResult);
     const body = lastBody(mock);
-    expect(body["bookmark"]).toEqual(params);
+    expect(body["bookmark"]).toStrictEqual(params);
     expect(body["project_id"]).toBe(12345);
-    expect(body["queryLimits"]).toEqual({ limit: 3000 });
+    expect(body["queryLimits"]).toStrictEqual({ limit: 3000 });
   });
 
   it("run_params matches query", async () => {
@@ -364,7 +366,7 @@ describe("TestRunParams", () => {
     );
     const roundTrip = lastBody(mock);
 
-    expect(roundTrip).toEqual(direct);
+    expect(roundTrip).toStrictEqual(direct);
   });
 
   it("run_params forwards limit", async () => {
@@ -392,7 +394,7 @@ describe("TestRunParams", () => {
 
     expect(result).toBeInstanceOf(FunnelQueryResult);
     expect(sentLimit(mock)).toBe(7000);
-    expect(lastBody(mock)["bookmark"]).toEqual(params);
+    expect(lastBody(mock)["bookmark"]).toStrictEqual(params);
   });
 
   it("run_retention_params returns a retention result", async () => {
@@ -404,7 +406,7 @@ describe("TestRunParams", () => {
 
     expect(result).toBeInstanceOf(RetentionQueryResult);
     expect(sentLimit(mock)).toBe(7000);
-    expect(lastBody(mock)["bookmark"]).toEqual(params);
+    expect(lastBody(mock)["bookmark"]).toStrictEqual(params);
   });
 
   it.each(["runParams", "runFunnelParams", "runRetentionParams"] as const)(

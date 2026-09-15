@@ -53,7 +53,7 @@ describe("TestTimeRangeValidation", () => {
       cumulative: false,
       group_by: null,
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_valid_date_range_passes", () => {
@@ -70,7 +70,7 @@ describe("TestTimeRangeValidation", () => {
       cumulative: false,
       group_by: null,
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_valid_last_passes", () => {
@@ -87,7 +87,7 @@ describe("TestTimeRangeValidation", () => {
       cumulative: false,
       group_by: null,
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 });
 
@@ -110,7 +110,7 @@ describe("TestAggregationValidation", () => {
       cumulative: false,
       group_by: null,
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_valid_per_user_with_property", () => {
@@ -127,7 +127,7 @@ describe("TestAggregationValidation", () => {
       cumulative: false,
       group_by: null,
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_per_user_without_property_raises", () => {
@@ -188,7 +188,7 @@ describe("TestFormulaValidation", () => {
       cumulative: false,
       group_by: null,
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 });
 
@@ -297,7 +297,7 @@ describe("TestValidateTimeArgs", () => {
       to_date: "2024-01-31",
       last: 30,
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_valid_last_only", () => {
@@ -306,7 +306,7 @@ describe("TestValidateTimeArgs", () => {
       to_date: null,
       last: 30,
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 });
 
@@ -399,12 +399,12 @@ describe("TestValidateGroupByArgs", () => {
 
   it("test_valid_none_group_by", () => {
     const errors = validateGroupByArgs({ group_by: null });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_valid_string_group_by", () => {
     const errors = validateGroupByArgs({ group_by: "country" });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_valid_group_by_with_buckets", () => {
@@ -417,6 +417,6 @@ describe("TestValidateGroupByArgs", () => {
         bucket_max: 500,
       }),
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 });

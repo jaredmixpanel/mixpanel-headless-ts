@@ -190,14 +190,19 @@ describe("pythonFloat — properties (fast-check)", () => {
   it("throws only MixpanelHeadlessError PY_FLOAT_INVALID_LITERAL on rejection", () => {
     fc.assert(
       fc.property(fc.string(), (text) => {
+        let error: unknown = null;
         try {
           pythonFloat(text);
-        } catch (error) {
-          expect(error).toBeInstanceOf(MixpanelHeadlessError);
-          expect((error as MixpanelHeadlessError).code).toBe(
-            "PY_FLOAT_INVALID_LITERAL",
-          );
+        } catch (error_) {
+          error = error_;
         }
+        // Accepted literals are covered by the round-trip properties;
+        // this one constrains rejections only.
+        fc.pre(error !== null);
+        expect(error).toBeInstanceOf(MixpanelHeadlessError);
+        expect((error as MixpanelHeadlessError).code).toBe(
+          "PY_FLOAT_INVALID_LITERAL",
+        );
       }),
     );
   });

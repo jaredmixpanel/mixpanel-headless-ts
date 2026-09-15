@@ -101,11 +101,9 @@ describe("TestPkceChallenge (test_auth_pkce.py:25)", () => {
     // Not in the Python suite; the packet mandates the vector in
     // Layer-3 (runtime-independent; the ONLY lock that catches a
     // wrong-alphabet base64 encode — b9-packets.md §1.2 watchlist).
-    expect(
-      await PkceChallenge.challengeFor(
-        "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
-      ),
-    ).toBe("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
+    await expect(
+      PkceChallenge.challengeFor("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"),
+    ).resolves.toBe("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
   });
 
   it("FB-10 (pair-B, b9-reviewB-resolution.md): missing crypto.subtle rejects with coded OAUTH_CONFIG_ERROR", async () => {

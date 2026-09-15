@@ -138,7 +138,7 @@ describe("TestDeleteEventDefinition", () => {
     });
     await client.deleteEventDefinition("Signup");
     expect(captured[0]?.[0]).toBe("DELETE");
-    expect(captured[0]?.[1]).toEqual({ name: "Signup" });
+    expect(captured[0]?.[1]).toStrictEqual({ name: "Signup" });
   });
 
   it("test_uses_maybe_scoped_path", async () => {
@@ -409,7 +409,7 @@ describe("TestDeleteLexiconTag", () => {
     });
     await client.deleteLexiconTag("old-tag");
     expect(captured[0]?.[0]).toBe("POST");
-    expect(captured[0]?.[1]).toEqual({ delete: true, name: "old-tag" });
+    expect(captured[0]?.[1]).toStrictEqual({ delete: true, name: "old-tag" });
   });
 
   it("test_uses_maybe_scoped_path", async () => {
@@ -842,7 +842,7 @@ describe("TestDeleteDropFilter", () => {
     });
     const result = toNativeJson(await client.deleteDropFilter(1)) as unknown[];
     expect(captured[0]?.[0]).toBe("DELETE");
-    expect(captured[0]?.[1]).toEqual({ id: 1 });
+    expect(captured[0]?.[1]).toStrictEqual({ id: 1 });
     expect(result).toHaveLength(1);
   });
 
@@ -1108,8 +1108,8 @@ describe("TestCreateCustomEvent", () => {
       req?.contentType.startsWith("application/x-www-form-urlencoded"),
     ).toBe(true);
     const body = parseQs(req?.bodyText ?? "");
-    expect(body["name"]).toEqual(["Page View"]);
-    expect(JSON.parse(body["alternatives"]?.[0] ?? "")).toEqual([
+    expect(body["name"]).toStrictEqual(["Page View"]);
+    expect(JSON.parse(body["alternatives"]?.[0] ?? "")).toStrictEqual([
       { event: "Home" },
     ]);
     expect(result["id"]).toBe(99);
@@ -1124,7 +1124,7 @@ describe("TestCreateCustomEvent", () => {
     const result = toNativeJson(
       await client.createCustomEvent({ name: "X", alternatives: "[]" }),
     );
-    expect(result).toEqual({ id: 1, name: "X", alternatives: [] });
+    expect(result).toStrictEqual({ id: 1, name: "X", alternatives: [] });
   });
 
   it("test_unwraps_results_then_custom_event_envelope", async () => {
@@ -1195,7 +1195,7 @@ describe("TestCreateCustomEvent", () => {
     expect(caught).toBeInstanceOf(QueryError);
     // Form-body callers should still get the form payload echoed in
     // the exception so debugging the rejected request is possible.
-    expect((caught as QueryError).details["request_body"]).toEqual({
+    expect((caught as QueryError).details["request_body"]).toStrictEqual({
       name: "X",
       alternatives: '[{"event": "Unknown"}]',
     });
@@ -1490,7 +1490,7 @@ describe("TestDeleteLookupTables", () => {
     });
     await client.deleteLookupTables([1, 2, 3]);
     expect(captured[0]?.[0]).toBe("DELETE");
-    expect(captured[0]?.[1]).toEqual({ "data-group-ids": [1, 2, 3] });
+    expect(captured[0]?.[1]).toStrictEqual({ "data-group-ids": [1, 2, 3] });
   });
 
   it("test_uses_maybe_scoped_path", async () => {
@@ -1602,7 +1602,7 @@ describe("TestExportLexiconAsyncStringResponse", () => {
       json: { status: "ok", results: "Export in progress" },
     }));
     const result = toNativeJson(await client.exportLexicon());
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       status: "pending",
       message: "Export in progress",
     });

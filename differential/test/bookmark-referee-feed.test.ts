@@ -190,6 +190,6 @@ describe("referee (a) feed — insights-shaped B3 builder outputs", () => {
     }
     // The R10.7 dataGroupId disclosure pins retired with the four-bug
     // batch re-pin — ANY reject is a new finding and blocks.
-    expect(unexpectedRejects, unexpectedRejects.join("\n")).toEqual([]);
+    expect(unexpectedRejects, unexpectedRejects.join("\n")).toStrictEqual([]);
   });
 });

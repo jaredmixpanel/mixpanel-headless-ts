@@ -41,7 +41,6 @@ import {
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const POSIX = process.platform !== "win32";
-const itPosix = POSIX ? it : it.skip;
 
 const cleanups: Array<() => void> = [];
 let restoreEnv: () => void = () => undefined;
@@ -167,7 +166,7 @@ describe("TestAccountDirHonorsStorageRoot (test_storage.py:107)", () => {
 });
 
 describe("TestEnsureAccountDir (test_storage.py:126)", () => {
-  itPosix("test_creates_with_mode_0o700", () => {
+  it.skipIf(!POSIX)("test_creates_with_mode_0o700", () => {
     const tmp = makeTempDir(cleanups);
     process.env["MP_OAUTH_STORAGE_DIR"] = tmp;
     const path = ensureAccountDir("foo");
@@ -192,7 +191,7 @@ describe("TestEnsureAccountDir (test_storage.py:126)", () => {
 });
 
 describe("TestOAuthStorageSymlinkRejection (test_storage.py:158)", () => {
-  itPosix("test_read_symlinked_tokens_returns_none_and_warns", () => {
+  it.skipIf(!POSIX)("test_read_symlinked_tokens_returns_none_and_warns", () => {
     const tmp = makeTempDir(cleanups);
     process.env["MP_OAUTH_STORAGE_DIR"] = tmp;
     const attacker = join(tmp, "attacker.json");
@@ -215,7 +214,7 @@ describe("TestOAuthStorageSymlinkRejection (test_storage.py:158)", () => {
     ).toBe(true);
   });
 
-  itPosix(
+  it.skipIf(!POSIX)(
     "test_check_and_fix_permissions_does_not_chmod_through_symlink",
     () => {
       const tmp = makeTempDir(cleanups);
@@ -236,7 +235,7 @@ describe("TestOAuthStorageSymlinkRejection (test_storage.py:158)", () => {
     },
   );
 
-  itPosix("test_dangling_symlink_returns_none_and_warns", () => {
+  it.skipIf(!POSIX)("test_dangling_symlink_returns_none_and_warns", () => {
     const tmp = makeTempDir(cleanups);
     process.env["MP_OAUTH_STORAGE_DIR"] = tmp;
     const { logger, lines } = recordingLogger();

@@ -164,7 +164,7 @@ describe("TestRunFlowParams", () => {
 
     expect(result).toBeInstanceOf(FlowQueryResult);
     const body = flowBody(mock);
-    expect(body["bookmark"]).toEqual(params);
+    expect(body["bookmark"]).toStrictEqual(params);
     expect(body["project_id"]).toBe(12345);
     expect(body["query_type"]).toBe("flows_sankey");
   });
@@ -182,7 +182,7 @@ describe("TestRunFlowParams", () => {
     );
     const roundTrip = flowBody(mock);
 
-    expect(roundTrip).toEqual(direct);
+    expect(roundTrip).toStrictEqual(direct);
   });
 
   it("derives paths mode from chart_type", async () => {
@@ -227,7 +227,7 @@ describe("TestRunFlowParams", () => {
       );
       const roundTrip = flowBody(mock);
 
-      expect(roundTrip).toEqual(direct);
+      expect(roundTrip).toStrictEqual(direct);
     },
   );
 
@@ -293,7 +293,7 @@ describe("TestRunUserParams", () => {
     expect(result).toBeInstanceOf(UserQueryResult);
     expect(result.mode).toBe("aggregate");
     expect(result.total).toBe(42);
-    expect(result.params).toEqual(params);
+    expect(result.params).toStrictEqual(params);
     expect(mock.engageStatsCalls).toHaveLength(1);
     expect(mock.exportPageCalls).toHaveLength(0);
   });
@@ -311,7 +311,7 @@ describe("TestRunUserParams", () => {
     );
     const roundTrip = mock.engageStatsCalls.at(-1);
 
-    expect(roundTrip).toEqual(direct);
+    expect(roundTrip).toStrictEqual(direct);
   });
 
   it("profile params route to export", async () => {
@@ -325,7 +325,7 @@ describe("TestRunUserParams", () => {
 
     expect(result.mode).toBe("profiles");
     expect(result.profiles).toHaveLength(1);
-    expect(result.params).toEqual(params);
+    expect(result.params).toStrictEqual(params);
     expect(mock.engageStatsCalls).toHaveLength(0);
   });
 
@@ -354,7 +354,7 @@ describe("TestRunUserParams", () => {
     );
     const roundTrip = mock.exportPageCalls.at(-1);
 
-    expect(roundTrip).toEqual(direct);
+    expect(roundTrip).toStrictEqual(direct);
   });
 
   it("parallel path is used when requested", async () => {

@@ -80,9 +80,9 @@ describe("FunnelStep construction", () => {
     expect(new FunnelStep({ event: "Checkout", order: "any" }).order).toBe(
       "any",
     );
-    expect(new FunnelStep({ event: "Signup", filters: [] }).filters).toEqual(
-      [],
-    );
+    expect(
+      new FunnelStep({ event: "Signup", filters: [] }).filters,
+    ).toStrictEqual([]);
   });
 
   it("coexists with plain strings in a steps list", () => {

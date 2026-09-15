@@ -251,7 +251,7 @@ describe("Replay convenience (TestReplayConvenience)", () => {
     ];
     const out = buildReplay({ rrweb_events: unsorted }).toRrwebPlayerJson();
     const timestamps = out.map((e) => e["timestamp"] as number);
-    expect(timestamps).toEqual([...timestamps].sort((a, b) => a - b));
+    expect(timestamps).toStrictEqual([...timestamps].sort((a, b) => a - b));
   });
 
   it("test_page_path", () => {
@@ -273,7 +273,7 @@ describe("Replay convenience (TestReplayConvenience)", () => {
         metadata: {},
       }),
     ];
-    expect(buildReplay({ actions }).pagePath()).toEqual([
+    expect(buildReplay({ actions }).pagePath()).toStrictEqual([
       "https://app.example.com/login",
       "https://app.example.com/dashboard",
     ]);
@@ -304,7 +304,7 @@ describe("Replay events frame (TestReplayEventsDataFrame)", () => {
 
 describe("Replay actions default empty (TestReplayActionsDefaultEmpty)", () => {
   it("test_actions_default_empty", () => {
-    expect(buildReplay().actions).toEqual([]);
+    expect(buildReplay().actions).toStrictEqual([]);
   });
 
   it("test_actions_df_empty_with_schema", () => {
@@ -325,8 +325,8 @@ describe("Replay actions default empty (TestReplayActionsDefaultEmpty)", () => {
 
   it("test_df_default_is_actions_df", () => {
     const r = buildReplay();
-    expect(r.toRows()).toEqual(r.toActionsRows());
-    expect(r.rowColumns()).toEqual(r.actionsRowColumns());
+    expect(r.toRows()).toStrictEqual(r.toActionsRows());
+    expect(r.rowColumns()).toStrictEqual(r.actionsRowColumns());
   });
 });
 
@@ -464,7 +464,7 @@ describe("ReplaySummary frame (TestReplaySummaryDataFrame)", () => {
 
   it("test_df_cached (determinism)", () => {
     const s = buildSummary();
-    expect(s.toRows()).toEqual(s.toRows());
+    expect(s.toRows()).toStrictEqual(s.toRows());
   });
 });
 
@@ -489,7 +489,7 @@ describe("ReplayEvent construction (TestReplayEventConstruction)", () => {
     expect(e.replay_id).toBe("r-19221");
     expect(e.event_name).toBe("Login");
     expect(e.event_time).toBe(1716810000);
-    expect(e.properties).toEqual({ $browser: "Chrome", plan: "pro" });
+    expect(e.properties).toStrictEqual({ $browser: "Chrome", plan: "pro" });
   });
 
   it("test_properties_none_allowed", () => {
@@ -738,8 +738,8 @@ describe("ReplayBundle projections (TestReplayBundleProjections)", () => {
 
   it("test_default_df_is_sessions", () => {
     const b = sampleBundle();
-    expect(b.toRows()).toEqual(b.toSessionsRows());
-    expect(b.rowColumns()).toEqual(b.sessionsRowColumns());
+    expect(b.toRows()).toStrictEqual(b.toSessionsRows());
+    expect(b.rowColumns()).toStrictEqual(b.sessionsRowColumns());
   });
 });
 
@@ -751,7 +751,7 @@ describe("ReplayBundle filters (TestReplayBundleFilters)", () => {
   it("test_filter_predicate", () => {
     const b = sampleBundle();
     const out = b.filter((r) => r.replay_id === "r-1");
-    expect(out.replays.map((r) => r.replay_id)).toEqual(["r-1"]);
+    expect(out.replays.map((r) => r.replay_id)).toStrictEqual(["r-1"]);
     // Original is unchanged (immutability).
     expect(b.replays).toHaveLength(3);
   });

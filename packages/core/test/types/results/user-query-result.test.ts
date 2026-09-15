@@ -77,9 +77,9 @@ describe("UserQueryResult construction (TestUserQueryResultConstruction)", () =>
     const r = makeResult();
     expect(r.computed_at).toBe("2025-01-15T10:00:00");
     expect(r.total).toBe(0);
-    expect(r.profiles).toEqual([]);
-    expect(r.params).toEqual({});
-    expect(r.meta).toEqual({});
+    expect(r.profiles).toStrictEqual([]);
+    expect(r.params).toStrictEqual({});
+    expect(r.meta).toStrictEqual({});
     expect(r.mode).toBe("profiles");
     expect(r.aggregate_data).toBeNull();
   });
@@ -94,7 +94,7 @@ describe("UserQueryResult construction (TestUserQueryResultConstruction)", () =>
     expect(r.mode).toBe("aggregate");
     expect(r.total).toBe(5000);
     expect(r.aggregate_data).toBe(5000);
-    expect(r.profiles).toEqual([]);
+    expect(r.profiles).toStrictEqual([]);
   });
 
   it("test_construct_with_profiles", () => {
@@ -173,7 +173,7 @@ describe("UserQueryResult.df profiles mode (TestUserQueryResultProfilesDf)", () 
       total: 2,
     }).rowColumns();
     const property_cols = cols.slice(2);
-    expect(property_cols).toEqual(
+    expect(property_cols).toStrictEqual(
       [...property_cols].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
     );
   });
@@ -187,7 +187,7 @@ describe("UserQueryResult.df profiles mode (TestUserQueryResultProfilesDf)", () 
 
   it("test_df_distinct_id_values", () => {
     const rows = makeResult({ profiles: sampleProfiles(), total: 2 }).toRows();
-    expect(rows.map((row) => row["distinct_id"])).toEqual([
+    expect(rows.map((row) => row["distinct_id"])).toStrictEqual([
       "user_001",
       "user_002",
     ]);
@@ -195,7 +195,7 @@ describe("UserQueryResult.df profiles mode (TestUserQueryResultProfilesDf)", () 
 
   it("test_df_last_seen_values", () => {
     const rows = makeResult({ profiles: sampleProfiles(), total: 2 }).toRows();
-    expect(rows.map((row) => row["last_seen"])).toEqual([
+    expect(rows.map((row) => row["last_seen"])).toStrictEqual([
       "2025-01-14T08:30:00",
       "2025-01-13T12:00:00",
     ]);
@@ -232,7 +232,7 @@ describe("UserQueryResult.df profiles mode (TestUserQueryResultProfilesDf)", () 
     ];
     const r = makeResult({ profiles, total: 1 });
     expect(r.toRows()).toHaveLength(1);
-    expect(r.rowColumns()).toEqual(["distinct_id", "last_seen"]);
+    expect(r.rowColumns()).toStrictEqual(["distinct_id", "last_seen"]);
   });
 
   it("test_df_all_dollar_prefixed_properties", () => {
@@ -245,7 +245,7 @@ describe("UserQueryResult.df profiles mode (TestUserQueryResultProfilesDf)", () 
     ];
     const cols = makeResult({ profiles, total: 1 }).rowColumns();
     // After stripping $: app_version, browser, os — alphabetical.
-    expect(cols.slice(2)).toEqual(["app_version", "browser", "os"]);
+    expect(cols.slice(2)).toStrictEqual(["app_version", "browser", "os"]);
   });
 
   it("test_df_mixed_types_in_properties", () => {
@@ -290,7 +290,7 @@ describe("UserQueryResult.df aggregate mode (TestUserQueryResultAggregateDf)", (
       total: 5000,
       meta: { action: "count()" },
     });
-    expect(r.rowColumns()).toEqual(["metric", "value"]);
+    expect(r.rowColumns()).toStrictEqual(["metric", "value"]);
   });
 
   it("test_aggregate_count_df_single_row", () => {
@@ -343,7 +343,7 @@ describe("UserQueryResult.df segmented (TestUserQueryResultSegmentedAggregateDf)
       total: 120,
       meta: { action: "count()", segmented: true },
     });
-    expect(r.rowColumns()).toEqual(["segment", "value"]);
+    expect(r.rowColumns()).toStrictEqual(["segment", "value"]);
   });
 
   it("test_segmented_df_row_count", () => {
@@ -364,7 +364,7 @@ describe("UserQueryResult.df segmented (TestUserQueryResultSegmentedAggregateDf)
       meta: { action: "count()", segmented: true },
     });
     const rows = r.toRows();
-    expect(new Set(rows.map((row) => row["segment"]))).toEqual(
+    expect(new Set(rows.map((row) => row["segment"]))).toStrictEqual(
       new Set(["cohort_123", "cohort_456"]),
     );
     const row_123 = rows.find((row) => row["segment"] === "cohort_123");
@@ -395,7 +395,7 @@ describe("UserQueryResult.df aggregate None (TestUserQueryResultAggregateNoneDf)
 describe("UserQueryResult.df caching (TestUserQueryResultDfCaching, determinism)", () => {
   it("test_df_cached_profiles_mode", () => {
     const r = makeResult({ profiles: sampleProfiles(), total: 2 });
-    expect(r.toRows()).toEqual(r.toRows());
+    expect(r.toRows()).toStrictEqual(r.toRows());
   });
 
   it("test_df_cached_aggregate_mode", () => {
@@ -404,12 +404,12 @@ describe("UserQueryResult.df caching (TestUserQueryResultDfCaching, determinism)
       aggregate_data: 100,
       total: 100,
     });
-    expect(r.toRows()).toEqual(r.toRows());
+    expect(r.toRows()).toStrictEqual(r.toRows());
   });
 
   it("test_df_cached_empty_profiles", () => {
     const r = makeResult({ profiles: [], total: 0 });
-    expect(r.toRows()).toEqual(r.toRows());
+    expect(r.toRows()).toStrictEqual(r.toRows());
   });
 
   it("codec-visible _df_cache slot is always null in TS", () => {
@@ -422,17 +422,19 @@ describe("UserQueryResult.distinct_ids (TestUserQueryResultDistinctIds)", () => 
   it("test_distinct_ids_from_profiles", () => {
     expect(
       makeResult({ profiles: sampleProfiles(), total: 2 }).distinct_ids,
-    ).toEqual(["user_001", "user_002"]);
+    ).toStrictEqual(["user_001", "user_002"]);
   });
 
   it("test_distinct_ids_single_profile", () => {
     expect(
       makeResult({ profiles: singleProfile(), total: 1 }).distinct_ids,
-    ).toEqual(["user_solo"]);
+    ).toStrictEqual(["user_solo"]);
   });
 
   it("test_distinct_ids_empty_profiles", () => {
-    expect(makeResult({ profiles: [], total: 0 }).distinct_ids).toEqual([]);
+    expect(makeResult({ profiles: [], total: 0 }).distinct_ids).toStrictEqual(
+      [],
+    );
   });
 
   it("test_distinct_ids_aggregate_mode_returns_empty", () => {
@@ -442,7 +444,7 @@ describe("UserQueryResult.distinct_ids (TestUserQueryResultDistinctIds)", () => 
       total: 100,
       profiles: [],
     });
-    expect(r.distinct_ids).toEqual([]);
+    expect(r.distinct_ids).toStrictEqual([]);
   });
 
   it("test_distinct_ids_returns_list_type", () => {
@@ -459,7 +461,7 @@ describe("UserQueryResult.distinct_ids (TestUserQueryResultDistinctIds)", () => 
       { distinct_id: "a_user", last_seen: "", properties: {} },
       { distinct_id: "m_user", last_seen: "", properties: {} },
     ];
-    expect(makeResult({ profiles, total: 3 }).distinct_ids).toEqual([
+    expect(makeResult({ profiles, total: 3 }).distinct_ids).toStrictEqual([
       "z_user",
       "a_user",
       "m_user",
@@ -545,7 +547,7 @@ describe("UserQueryResult mode-aware (TestUserQueryResultModeAware)", () => {
     expect(
       makeResult({ mode: "aggregate", aggregate_data: 100, total: 100 })
         .distinct_ids,
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
   it("test_profiles_mode_distinct_ids_populated", () => {
@@ -616,7 +618,10 @@ describe("UserQueryResult.to_dict (TestUserQueryResultToDict)", () => {
       aggregate_data: { cohort_123: 42, cohort_456: 78 },
       total: 120,
     }).toJSON();
-    expect(d["aggregate_data"]).toEqual({ cohort_123: 42, cohort_456: 78 });
+    expect(d["aggregate_data"]).toStrictEqual({
+      cohort_123: 42,
+      cohort_456: 78,
+    });
   });
 
   it("test_to_dict_is_json_serializable", () => {
@@ -649,7 +654,7 @@ describe("UserQueryResult.to_dict (TestUserQueryResultToDict)", () => {
   it("test_to_dict_empty_result", () => {
     const d = makeResult().toJSON();
     expect(d["total"]).toBe(0);
-    expect(d["profiles"]).toEqual([]);
+    expect(d["profiles"]).toStrictEqual([]);
     expect(d["aggregate_data"]).toBeNull();
   });
 });
@@ -673,7 +678,7 @@ describe("UserQueryResult.to_table_dict (TestUserQueryResultToTableDict, toRows 
   });
 
   it("test_to_table_dict_empty", () => {
-    expect(makeResult({ profiles: [], total: 0 }).toRows()).toEqual([]);
+    expect(makeResult({ profiles: [], total: 0 }).toRows()).toStrictEqual([]);
   });
 });
 
@@ -744,10 +749,9 @@ describe("UserQueryResult edge cases (TestUserQueryResultEdgeCases)", () => {
         properties: { tags: ["vip", "beta"], plan: "premium" },
       },
     ];
-    expect(makeResult({ profiles, total: 1 }).toRows()[0]?.["tags"]).toEqual([
-      "vip",
-      "beta",
-    ]);
+    expect(
+      makeResult({ profiles, total: 1 }).toRows()[0]?.["tags"],
+    ).toStrictEqual(["vip", "beta"]);
   });
 
   it("test_many_profiles_column_consistency", () => {

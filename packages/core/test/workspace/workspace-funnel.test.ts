@@ -22,6 +22,7 @@ import { describe, expect, it } from "vitest";
 import type { BookmarkValidationError } from "../../src/errors.js";
 import { FunnelQueryResult } from "../../src/types/results/query-engine.js";
 import { Workspace } from "../../src/workspace.js";
+import { expectRejects } from "../../test-support/raises.js";
 import {
   type MockWorkspaceClient,
   mockWorkspaceClient,
@@ -78,12 +79,11 @@ function codesOf(exc: unknown): string[] {
 describe("TestQueryFunnelValidation", () => {
   it("a single-step funnel raises F1_MIN_STEPS", async () => {
     const mock = mockWorkspaceClient();
-    try {
-      await workspaceFactory(mock).queryFunnel(["A"]);
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("F1_MIN_STEPS");
-    }
+    const error = await expectRejects(
+      workspaceFactory(mock).queryFunnel(["A"]),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("F1_MIN_STEPS");
     expect(mock.insightsCalls).toHaveLength(0);
   });
 
@@ -97,27 +97,25 @@ describe("TestQueryFunnelValidation", () => {
 
   it("a negative conversion_window raises F3", async () => {
     const mock = mockWorkspaceClient();
-    try {
-      await workspaceFactory(mock).queryFunnel(["A", "B"], {
+    const error = await expectRejects(
+      workspaceFactory(mock).queryFunnel(["A", "B"], {
         conversion_window: -1,
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("F3_CONVERSION_WINDOW_POSITIVE");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("F3_CONVERSION_WINDOW_POSITIVE");
     expect(mock.insightsCalls).toHaveLength(0);
   });
 
   it("an invalid math type raises B9_INVALID_MATH at Layer 2", async () => {
     const mock = mockWorkspaceClient();
-    try {
-      await workspaceFactory(mock).queryFunnel(["A", "B"], {
+    const error = await expectRejects(
+      workspaceFactory(mock).queryFunnel(["A", "B"], {
         math: "invalid_math",
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("B9_INVALID_MATH");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("B9_INVALID_MATH");
     expect(mock.insightsCalls).toHaveLength(0);
   });
 
@@ -131,19 +129,18 @@ describe("TestQueryFunnelValidation", () => {
 
   it("multiple validation errors are collected into one error", async () => {
     const mock = mockWorkspaceClient();
-    try {
-      await workspaceFactory(mock).queryFunnel(["ValidEvent"], {
+    const error = await expectRejects(
+      workspaceFactory(mock).queryFunnel(["ValidEvent"], {
         conversion_window: 0, // F3: must be positive
         from_date: "bad-date", // V8: invalid format
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      const err = error as BookmarkValidationError;
-      const codes = new Set(codesOf(err));
-      expect(codes.has("F1_MIN_STEPS")).toBe(true); // only 1 step
-      expect(codes.has("F3_CONVERSION_WINDOW_POSITIVE")).toBe(true);
-      expect(err.errorCount).toBeGreaterThanOrEqual(2);
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    const err = error as BookmarkValidationError;
+    const codes = new Set(codesOf(err));
+    expect(codes.has("F1_MIN_STEPS")).toBe(true); // only 1 step
+    expect(codes.has("F3_CONVERSION_WINDOW_POSITIVE")).toBe(true);
+    expect(err.errorCount).toBeGreaterThanOrEqual(2);
     expect(mock.insightsCalls).toHaveLength(0);
   });
 });
@@ -170,7 +167,7 @@ describe("TestQueryFunnelExecution", () => {
     expect(Object.hasOwn(body, "project_id")).toBe(true);
     expect(Object.hasOwn(body, "queryLimits")).toBe(true);
     expect(body["project_id"]).toBe(12345);
-    expect(body["queryLimits"]).toEqual({ limit: 3000 });
+    expect(body["queryLimits"]).toStrictEqual({ limit: 3000 });
   });
 
   it("the bookmark carries sections and displayOptions", async () => {
@@ -198,7 +195,7 @@ describe("TestQueryFunnelExecution", () => {
     expect(result.computed_at).toBe("2025-01-15T12:00:00");
     expect(result.from_date).toBe("2025-01-01");
     expect(result.to_date).toBe("2025-01-31");
-    expect(result.meta).toEqual({ sampling_factor: 1.0 });
+    expect(result.meta).toStrictEqual({ sampling_factor: 1.0 });
   });
 
   it("steps_data carries the step-level information", async () => {
@@ -259,7 +256,7 @@ describe("TestBuildFunnelParamsVsQueryFunnel", () => {
     await ws.queryFunnel(["Signup", "Purchase"]);
     const queryParams = mock.insightsCalls[0]!["bookmark"];
 
-    expect(builtParams).toEqual(queryParams);
+    expect(builtParams).toStrictEqual(queryParams);
   });
 
   it("makes no API call", async () => {
@@ -270,12 +267,11 @@ describe("TestBuildFunnelParamsVsQueryFunnel", () => {
 
   it("raises BookmarkValidationError for invalid inputs", async () => {
     const mock = mockWorkspaceClient();
-    try {
-      await workspaceFactory(mock).buildFunnelParams(["A"]);
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("F1_MIN_STEPS");
-    }
+    const error = await expectRejects(
+      workspaceFactory(mock).buildFunnelParams(["A"]),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("F1_MIN_STEPS");
     expect(mock.insightsCalls).toHaveLength(0);
   });
 

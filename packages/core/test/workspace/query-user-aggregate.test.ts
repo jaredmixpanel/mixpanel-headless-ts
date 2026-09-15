@@ -33,6 +33,7 @@ import { describe, expect, it } from "vitest";
 import { BookmarkValidationError } from "../../src/errors.js";
 import { UserQueryResult } from "../../src/types/results/query-engine.js";
 import { Workspace } from "../../src/workspace.js";
+import { expectRejects } from "../../test-support/raises.js";
 import {
   type MockWorkspaceClient,
   mockWorkspaceClient,
@@ -98,7 +99,7 @@ describe("TestAggregateCount", () => {
       aggregate: "count",
     });
 
-    expect(result.profiles).toEqual([]);
+    expect(result.profiles).toStrictEqual([]);
   });
 
   it("aggregate_data stores the raw scalar", async () => {
@@ -170,7 +171,7 @@ describe("TestAggregateWithProperty", () => {
     });
 
     expect(typeof result.aggregate_data).toBe("object");
-    expect(result.aggregate_data).toEqual(extremesResult);
+    expect(result.aggregate_data).toStrictEqual(extremesResult);
     expect(result.value).toBeNull(); // dict results have no scalar value
     expect(mock.engageStatsCalls[0]!["action"]).toBe(
       'extremes(properties["revenue"])',
@@ -193,7 +194,7 @@ describe("TestAggregateWithProperty", () => {
       aggregate_property: "ltv",
     });
 
-    expect(result.aggregate_data).toEqual(summaryResult);
+    expect(result.aggregate_data).toStrictEqual(summaryResult);
     expect(result.value).toBeNull();
     expect(mock.engageStatsCalls[0]!["action"]).toBe(
       'numeric_summary(properties["ltv"])',
@@ -212,7 +213,7 @@ describe("TestAggregateWithProperty", () => {
       percentile: 50,
     });
 
-    expect(result.aggregate_data).toEqual(percentileResult);
+    expect(result.aggregate_data).toStrictEqual(percentileResult);
     expect(result.value).toBeNull();
     expect(mock.engageStatsCalls[0]!["action"]).toBe(
       'percentile(properties["age"], 50)',
@@ -290,7 +291,7 @@ describe("TestAggregateSegmented", () => {
     });
 
     expect(typeof result.aggregate_data).toBe("object");
-    expect(result.aggregate_data).toEqual(segmented);
+    expect(result.aggregate_data).toStrictEqual(segmented);
   });
 
   it("result.value is null for segmented results", async () => {
@@ -359,7 +360,7 @@ describe("TestAggregateSegmented", () => {
       segment_by: [123],
     });
 
-    expect(result.profiles).toEqual([]);
+    expect(result.profiles).toStrictEqual([]);
   });
 });
 
@@ -371,28 +372,26 @@ describe("TestValidationU14AggregatePropertyRequired", () => {
   for (const aggFunc of ["extremes", "percentile", "numeric_summary"]) {
     it(`non-count aggregate '${aggFunc}' without a property raises U14`, async () => {
       const ws = workspaceFactory(mockWorkspaceClient());
-      try {
-        await ws.queryUser({ mode: "aggregate", aggregate: aggFunc });
-        expect.unreachable("expected BookmarkValidationError");
-      } catch (error) {
-        expect(error).toBeInstanceOf(BookmarkValidationError);
-        expect(codesOf(error)).toContain("U14");
-      }
+      const error = await expectRejects(
+        ws.queryUser({ mode: "aggregate", aggregate: aggFunc }),
+        "expected BookmarkValidationError",
+      );
+      expect(error).toBeInstanceOf(BookmarkValidationError);
+      expect(codesOf(error)).toContain("U14");
     });
   }
 
   it("the U14 message mentions aggregate_property", async () => {
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({ mode: "aggregate", aggregate: "extremes" });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      const u14 = (error as BookmarkValidationError).errors.filter(
-        (e) => e.code === "U14",
-      );
-      expect(u14).toHaveLength(1);
-      expect(u14[0]!.message).toContain("aggregate_property");
-    }
+    const error = await expectRejects(
+      ws.queryUser({ mode: "aggregate", aggregate: "extremes" }),
+      "expected BookmarkValidationError",
+    );
+    const u14 = (error as BookmarkValidationError).errors.filter(
+      (e) => e.code === "U14",
+    );
+    expect(u14).toHaveLength(1);
+    expect(u14[0]!.message).toContain("aggregate_property");
   });
 });
 
@@ -403,34 +402,32 @@ describe("TestValidationU14AggregatePropertyRequired", () => {
 describe("TestValidationU15AggregatePropertyProhibited", () => {
   it("count with aggregate_property raises U15", async () => {
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({
+    const error = await expectRejects(
+      ws.queryUser({
         mode: "aggregate",
         aggregate: "count",
         aggregate_property: "revenue",
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U15");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U15");
   });
 
   it("the U15 message mentions count", async () => {
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({
+    const error = await expectRejects(
+      ws.queryUser({
         mode: "aggregate",
         aggregate: "count",
         aggregate_property: "ltv",
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      const u15 = (error as BookmarkValidationError).errors.filter(
-        (e) => e.code === "U15",
-      );
-      expect(u15).toHaveLength(1);
-      expect(u15[0]!.message.toLowerCase()).toContain("count");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    const u15 = (error as BookmarkValidationError).errors.filter(
+      (e) => e.code === "U15",
+    );
+    expect(u15).toHaveLength(1);
+    expect(u15[0]!.message.toLowerCase()).toContain("count");
   });
 });
 
@@ -441,12 +438,11 @@ describe("TestValidationU15AggregatePropertyProhibited", () => {
 describe("TestValidationU16SegmentByRequiresAggregate", () => {
   it("segment_by with mode='profiles' raises U16", async () => {
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({ mode: "profiles", segment_by: [123] });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U16");
-    }
+    const error = await expectRejects(
+      ws.queryUser({ mode: "profiles", segment_by: [123] }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U16");
   });
 
   it("segment_by with mode='aggregate' does not raise U16", async () => {
@@ -470,94 +466,88 @@ describe("TestValidationU16SegmentByRequiresAggregate", () => {
 describe("TestValidationU18ParallelProfilesOnly", () => {
   it("parallel=true with mode='aggregate' raises U18", async () => {
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({
+    const error = await expectRejects(
+      ws.queryUser({
         mode: "aggregate",
         aggregate: "count",
         parallel: true,
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U18");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U18");
   });
 });
 
 describe("TestValidationU19SortByProfilesOnly", () => {
   it("sort_by with mode='aggregate' raises U19", async () => {
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({
+    const error = await expectRejects(
+      ws.queryUser({
         mode: "aggregate",
         aggregate: "count",
         sort_by: "$last_seen",
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U19");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U19");
   });
 });
 
 describe("TestValidationU20SearchProfilesOnly", () => {
   it("search with mode='aggregate' raises U20", async () => {
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({
+    const error = await expectRejects(
+      ws.queryUser({
         mode: "aggregate",
         aggregate: "count",
         search: "alice",
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U20");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U20");
   });
 });
 
 describe("TestValidationU21DistinctIdProfilesOnly", () => {
   it("distinct_id with mode='aggregate' raises U21", async () => {
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({
+    const error = await expectRejects(
+      ws.queryUser({
         mode: "aggregate",
         aggregate: "count",
         distinct_id: "user_001",
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U21");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U21");
   });
 
   it("distinct_ids with mode='aggregate' raises U21", async () => {
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({
+    const error = await expectRejects(
+      ws.queryUser({
         mode: "aggregate",
         aggregate: "count",
         distinct_ids: ["user_001", "user_002"],
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U21");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U21");
   });
 });
 
 describe("TestValidationU22PropertiesProfilesOnly", () => {
   it("properties with mode='aggregate' raises U22", async () => {
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({
+    const error = await expectRejects(
+      ws.queryUser({
         mode: "aggregate",
         aggregate: "count",
         properties: ["$email", "plan"],
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U22");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U22");
   });
 });
 
@@ -568,39 +558,37 @@ describe("TestValidationU22PropertiesProfilesOnly", () => {
 describe("TestValidationMultipleErrors", () => {
   it("multiple profile-only params produce multiple errors", async () => {
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({
+    const error = await expectRejects(
+      ws.queryUser({
         mode: "aggregate",
         aggregate: "count",
         sort_by: "$last_seen",
         search: "alice",
         properties: ["$email"],
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      const codes = new Set(codesOf(error));
-      // Should report U19 (sort_by), U20 (search), U22 (properties)
-      expect(codes.has("U19")).toBe(true);
-      expect(codes.has("U20")).toBe(true);
-      expect(codes.has("U22")).toBe(true);
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    const codes = new Set(codesOf(error));
+    // Should report U19 (sort_by), U20 (search), U22 (properties)
+    expect(codes.has("U19")).toBe(true);
+    expect(codes.has("U20")).toBe(true);
+    expect(codes.has("U22")).toBe(true);
   });
 
   it("a missing property AND invalid profile params are all reported", async () => {
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({
+    const error = await expectRejects(
+      ws.queryUser({
         mode: "aggregate",
         aggregate: "extremes",
         // Missing aggregate_property (U14)
         search: "bob", // U20
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      const codes = new Set(codesOf(error));
-      expect(codes.has("U14")).toBe(true);
-      expect(codes.has("U20")).toBe(true);
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    const codes = new Set(codesOf(error));
+    expect(codes.has("U14")).toBe(true);
+    expect(codes.has("U20")).toBe(true);
   });
 });
 
@@ -699,16 +687,15 @@ describe("TestEngageStatsCallParameters", () => {
   it("as_of in aggregate mode is rejected by validation (U30)", async () => {
     const mock = mockWorkspaceClient();
     const ws = workspaceFactory(mock);
-    try {
-      await ws.queryUser({
+    const error = await expectRejects(
+      ws.queryUser({
         mode: "aggregate",
         aggregate: "count",
         as_of: 1704067200,
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U30");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U30");
     // engage_stats should never be called
     expect(mock.engageStatsCalls).toHaveLength(0);
   });
@@ -767,7 +754,7 @@ describe("TestAggregateResultMetadata", () => {
       aggregate: "count",
     });
 
-    expect(result.distinct_ids).toEqual([]);
+    expect(result.distinct_ids).toStrictEqual([]);
   });
 
   it("count total reflects the count result", async () => {

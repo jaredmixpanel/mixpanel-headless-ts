@@ -82,22 +82,22 @@ function exportSaQuad(region = "us"): void {
 describe("createNodeEndpointOverrides", () => {
   it("reads MP_API_BASE_URL / MP_APP_BASE_URL at call time (raw values)", () => {
     const provider = createNodeEndpointOverrides();
-    expect(provider()).toEqual({
+    expect(provider()).toStrictEqual({
       apiBaseUrl: undefined,
       appBaseUrl: undefined,
     });
     process.env["MP_API_BASE_URL"] = `${BASE}/`;
-    expect(provider()).toEqual({
+    expect(provider()).toStrictEqual({
       apiBaseUrl: `${BASE}/`,
       appBaseUrl: undefined,
     });
     process.env["MP_APP_BASE_URL"] = "http://app.internal:9000";
-    expect(provider()).toEqual({
+    expect(provider()).toStrictEqual({
       apiBaseUrl: `${BASE}/`,
       appBaseUrl: "http://app.internal:9000",
     });
     delete process.env["MP_API_BASE_URL"];
-    expect(provider()).toEqual({
+    expect(provider()).toStrictEqual({
       apiBaseUrl: undefined,
       appBaseUrl: "http://app.internal:9000",
     });
@@ -127,7 +127,7 @@ describe("createNodeEndpointOverrides", () => {
     });
     for (const suffix of ["", "/", "//", "///"]) {
       process.env["MP_API_BASE_URL"] = `${BASE}${suffix}`;
-      expect(Object.fromEntries(client.core.endpoints())).toEqual({
+      expect(Object.fromEntries(client.core.endpoints())).toStrictEqual({
         query: `${BASE}/api/query`,
         export: `${BASE}/api/2.0`,
         engage: `${BASE}/api/query/engage`,
@@ -192,8 +192,8 @@ describe("createNodeWorkspace inherits the override (env_workspace twin)", () =>
     });
     // Region resolved from env is `eu`; the URL is region-independent.
     expect(ws.session.account.region).toBe("eu");
-    expect(await ws.events()).toEqual(["Login"]);
-    expect(urls).toEqual([`${BASE}/api/query/events/names`]);
+    await expect(ws.events()).resolves.toStrictEqual(["Login"]);
+    expect(urls).toStrictEqual([`${BASE}/api/query/events/names`]);
     // Flip mid-life: the same facade follows the current value.
     // (`ws.events()` is cached by the discovery service — go through the
     // wire client so a second request is actually issued.)

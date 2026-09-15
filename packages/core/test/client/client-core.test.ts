@@ -169,7 +169,7 @@ describe("TestAuthHeader", () => {
       expect(second).toBe("Bearer tok-2");
       expect(calls).toBe(2);
       // current_auth_header (public) routes through the same path.
-      expect(await client.currentAuthHeader()).toBe("Bearer tok-3");
+      await expect(client.currentAuthHeader()).resolves.toBe("Bearer tok-3");
       expect(calls).toBe(3);
     } finally {
       await client.close();
@@ -260,7 +260,7 @@ describe("TestUse", () => {
   it("test_use_workspace", async () => {
     const client = createMixpanelClient({ session: sessionTeam() });
     await client.use({ workspace: 42 });
-    expect(client.session.workspace).toEqual({ id: 42 });
+    expect(client.session.workspace).toStrictEqual({ id: 42 });
   });
 
   it("test_use_project", async () => {
@@ -273,7 +273,7 @@ describe("TestUse", () => {
     const client = createMixpanelClient({ session: sessionTeam() });
     const before = await client.currentAuthHeader();
     await client.use({ account: sessionOther().account });
-    expect(await client.currentAuthHeader()).not.toBe(before);
+    await expect(client.currentAuthHeader()).resolves.not.toBe(before);
     expect(client.session.account.name).toBe("other");
   });
 });
@@ -368,7 +368,7 @@ describe("TestUseOAuthAtomicity", () => {
 
     // Atomicity: the prior session and auth header survive.
     expect(client.session).toBe(priorSession);
-    expect(await client.currentAuthHeader()).toBe(priorHeader);
+    await expect(client.currentAuthHeader()).resolves.toBe(priorHeader);
   });
 
   it("test_use_to_oauth_token_account_without_token_raises", async () => {
@@ -454,7 +454,7 @@ describe("TestAppRequestUsesFreshAuthHeader", () => {
     await client.close();
 
     // Each app_request resolved a fresh bearer — no caching.
-    expect(capturedHeaders).toEqual([
+    expect(capturedHeaders).toStrictEqual([
       "Bearer refreshed-token-1",
       "Bearer refreshed-token-2",
     ]);
@@ -491,7 +491,7 @@ describe("TestAppRequestUsesFreshAuthHeader", () => {
     );
     await client.appRequest("GET", "/projects/3713224/dashboards");
     await client.close();
-    expect(capturedHeaders).toEqual(["Bearer ci-bearer"]);
+    expect(capturedHeaders).toStrictEqual(["Bearer ci-bearer"]);
   });
 });
 

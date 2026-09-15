@@ -83,7 +83,7 @@ describe("pythonRepr — CPython string repr rules", () => {
     expect(pythonRepr("\r")).toBe(String.raw`'\r'`);
   });
 
-  it(String.raw`escapes non-printable characters below U+0100 as \xXX`, () => {
+  it("escapes non-printable characters below U+0100 as 2-digit hex escapes", () => {
     expect(pythonRepr("null\x00char")).toBe(String.raw`'null\x00char'`);
     expect(pythonRepr("\x1B[0m")).toBe(String.raw`'\x1b[0m'`);
     expect(pythonRepr("\x7F")).toBe(String.raw`'\x7f'`);
@@ -92,12 +92,12 @@ describe("pythonRepr — CPython string repr rules", () => {
     expect(pythonRepr("\xAD")).toBe(String.raw`'\xad'`);
   });
 
-  it(String.raw`escapes non-printable BMP characters as \uXXXX`, () => {
+  it("escapes non-printable BMP characters as 4-digit unicode escapes", () => {
     expect(pythonRepr("​")).toBe(String.raw`'\u200b'`);
     expect(pythonRepr(" ")).toBe(String.raw`'\u2028'`);
   });
 
-  it(String.raw`escapes non-printable astral characters as \UXXXXXXXX`, () => {
+  it("escapes non-printable astral characters as 8-digit unicode escapes", () => {
     expect(pythonRepr("\u{E0001}")).toBe(String.raw`'\U000e0001'`);
   });
 

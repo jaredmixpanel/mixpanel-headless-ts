@@ -214,7 +214,7 @@ describe("account axis — 2^6 exhaustive presence bitmap vs firstPresent", () =
       expect(
         resolved === null ? null : resolved.name,
         `account-axis mask=${String(mask)}`,
-      ).toEqual(winner);
+      ).toStrictEqual(winner);
     }
   });
 });
@@ -256,7 +256,9 @@ describe("project axis — 2^4 bitmap × 3 account states vs firstPresent", () =
           account,
           env: envP ? { MP_PROJECT_ID: "111111" } : {},
         });
-        expect(resolved, `project-axis mask=${String(mask)}`).toEqual(winner);
+        expect(resolved, `project-axis mask=${String(mask)}`).toStrictEqual(
+          winner,
+        );
       }
     },
   );
@@ -317,7 +319,7 @@ describe("workspace axis — 2^5 exhaustive via the full resolveSession", () => 
       expect(
         session.workspace?.id ?? null,
         `workspace-axis mask=${String(mask)}`,
-      ).toEqual(winner);
+      ).toStrictEqual(winner);
     }
   });
 });
@@ -352,7 +354,7 @@ describe("cross-axis rule locks the exhaustive tables lean on", () => {
       outcomeOf(() =>
         resolveSession({ account: "team" }, src({ MP_REGION: "mars" }, config)),
       ),
-    ).toEqual({ cls: "ConfigError", code: "CONFIG_ERROR" });
+    ).toStrictEqual({ cls: "ConfigError", code: "CONFIG_ERROR" });
   });
 
   it("empty-string env for EVERY var falls through, never errors", () => {
@@ -366,7 +368,10 @@ describe("cross-axis rule locks the exhaustive tables lean on", () => {
       MP_WORKSPACE_ID: "",
     };
     const session = resolveSession({}, src(allEmpty, config));
-    expect([session.account.name, session.project.id]).toEqual(["team", "1"]);
+    expect([session.account.name, session.project.id]).toStrictEqual([
+      "team",
+      "1",
+    ]);
   });
 
   it("a partial SA quad falls through silently, each member missing", () => {
@@ -410,10 +415,10 @@ describe("cross-axis rule locks the exhaustive tables lean on", () => {
         },
       },
     );
-    expect([merged.headers.get("X-H"), merged.headers.get("X-B")]).toEqual([
-      "bridge",
-      "only",
-    ]);
+    expect([
+      merged.headers.get("X-H"),
+      merged.headers.get("X-B"),
+    ]).toStrictEqual(["bridge", "only"]);
   });
 });
 
@@ -603,7 +608,7 @@ describe("full-chain fuzz — resolveSession vs the mini-model", () => {
             actual = { error: String(error) };
           }
         }
-        expect(actual).toEqual(expected);
+        expect(actual).toStrictEqual(expected);
       }),
       { seed: 20260816, numRuns: 600 },
     );

@@ -14,6 +14,7 @@ import {
   ParamValidationError,
   parseAccount,
   parseSession,
+  ResponseValidationError,
   type Session,
 } from "@mixpanel-headless/core";
 
@@ -36,9 +37,11 @@ describe("browserSession (§2.2) — real parseAccount/parseSession output", () 
     expect(session.account.type).toBe("oauth_token");
     expect(session.account.name).toBe("browser");
     expect(session.account.region).toBe("us");
-    if (session.account.type === "oauth_token") {
-      expect(session.account.token?.reveal()).toBe("tok-123");
-    }
+    const token =
+      session.account.type === "oauth_token"
+        ? session.account.token?.reveal()
+        : undefined;
+    expect(token).toBe("tok-123");
     expect(session.project.id).toBe("12345");
     expect(session.workspace ?? null).toBeNull();
     expect(session.headers.size).toBe(0);
@@ -54,7 +57,7 @@ describe("browserSession (§2.2) — real parseAccount/parseSession output", () 
     });
     expect(session.account.name).toBe("ci-bot");
     expect(session.account.region).toBe("eu");
-    expect(session.workspace).toEqual({ id: 789 });
+    expect(session.workspace).toStrictEqual({ id: 789 });
   });
 
   it("rejects a non-digit projectId at the param boundary", () => {
@@ -256,6 +259,6 @@ describe("createBrowserWorkspaceFromStore (§2.2) — PKCE-persisted tokens path
         store,
         fetch: fakeTransport(() => ({ status: 200, json: [] })).fetch,
       }),
-    ).rejects.toThrow();
+    ).rejects.toThrow(ResponseValidationError);
   });
 });

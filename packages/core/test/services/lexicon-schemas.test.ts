@@ -96,11 +96,11 @@ describe("TestParseLexiconMetadata", () => {
     expect(result).not.toBeNull();
     expect(result?.source).toBe("api");
     expect(result?.display_name).toBe("Purchase Event");
-    expect(result?.tags).toEqual(["core", "monetization"]);
+    expect(result?.tags).toStrictEqual(["core", "monetization"]);
     expect(result?.hidden).toBe(false);
     expect(result?.dropped).toBe(false);
-    expect(result?.contacts).toEqual(["owner@example.com"]);
-    expect(result?.team_contacts).toEqual(["analytics"]);
+    expect(result?.contacts).toStrictEqual(["owner@example.com"]);
+    expect(result?.team_contacts).toStrictEqual(["analytics"]);
   });
 
   it("uses defaults for missing fields", () => {
@@ -110,11 +110,11 @@ describe("TestParseLexiconMetadata", () => {
     expect(result).not.toBeNull();
     expect(result?.source).toBeNull();
     expect(result?.display_name).toBe("Test");
-    expect(result?.tags).toEqual([]);
+    expect(result?.tags).toStrictEqual([]);
     expect(result?.hidden).toBe(false);
     expect(result?.dropped).toBe(false);
-    expect(result?.contacts).toEqual([]);
-    expect(result?.team_contacts).toEqual([]);
+    expect(result?.contacts).toStrictEqual([]);
+    expect(result?.team_contacts).toStrictEqual([]);
   });
 
   it("returns null for a null input", () => {
@@ -183,13 +183,13 @@ describe("TestParseLexiconDefinition", () => {
     });
     expect(result.metadata).not.toBeNull();
     expect(result.metadata?.display_name).toBe("Purchase");
-    expect(result.metadata?.tags).toEqual(["core"]);
+    expect(result.metadata?.tags).toStrictEqual(["core"]);
   });
 
   it("parses an empty definition", () => {
     const result = parseLexiconDefinition({});
     expect(result.description).toBeNull();
-    expect(result.properties).toEqual({});
+    expect(result.properties).toStrictEqual({});
     expect(result.metadata).toBeNull();
   });
 });
@@ -232,7 +232,7 @@ describe("TestLexiconMetadata", () => {
       contacts: ["test@example.com"],
       team_contacts: ["analytics"],
     });
-    expect(metadata.toJSON()).toEqual({
+    expect(metadata.toJSON()).toStrictEqual({
       source: "api",
       display_name: "Test Event",
       tags: ["core"],
@@ -251,7 +251,7 @@ describe("TestLexiconProperty", () => {
       description: null,
       metadata: null,
     });
-    expect(prop.toJSON()).toEqual({ type: "boolean" });
+    expect(prop.toJSON()).toStrictEqual({ type: "boolean" });
   });
 
   it("includes the description when present", () => {
@@ -260,7 +260,7 @@ describe("TestLexiconProperty", () => {
       description: "User's country",
       metadata: null,
     });
-    expect(prop.toJSON()).toEqual({
+    expect(prop.toJSON()).toStrictEqual({
       type: "string",
       description: "User's country",
     });
@@ -279,7 +279,7 @@ describe("TestLexiconDefinition", () => {
       properties: { amount: prop },
       metadata: null,
     });
-    expect(definition.toJSON()).toEqual({
+    expect(definition.toJSON()).toStrictEqual({
       description: "Purchase event",
       properties: { amount: { type: "number", description: "Amount" } },
     });
@@ -298,7 +298,7 @@ describe("TestLexiconSchema", () => {
       name: "Test Event",
       schema_json: definition,
     });
-    expect(schema.toJSON()).toEqual({
+    expect(schema.toJSON()).toStrictEqual({
       entity_type: "event",
       name: "Test Event",
       schema_json: { description: "Test event", properties: {} },
@@ -343,7 +343,7 @@ describe("TestAPIClientGetSchemas", () => {
       status: 200,
       json: { results: [] },
     }));
-    expect(await client.getSchemas()).toEqual([]);
+    await expect(client.getSchemas()).resolves.toStrictEqual([]);
   });
 });
 
@@ -358,7 +358,7 @@ describe("TestAPIClientGetSchema", () => {
     const schema = await client.getSchema("event", "Purchase");
     expect(schema["entityType"]).toBe("event");
     expect(schema["name"]).toBe("Purchase");
-    expect(schema["schemaJson"]).toEqual({ properties: {} });
+    expect(schema["schemaJson"]).toStrictEqual({ properties: {} });
   });
 
   it("passes entity_name as a query param", async () => {

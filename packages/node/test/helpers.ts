@@ -5,10 +5,12 @@
 // no resolved path is under `os.homedir()` before any write. `~/.mp`
 // is NEVER touched by tests.
 
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, statSync } from "node:fs";
 import * as os from "node:os";
 import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
+
+import { expect } from "vitest";
 
 /**
  * Create a temp directory for one test and register cleanup.
@@ -70,4 +72,19 @@ export function scrubMpEnv(): () => void {
       process.env[key] = value;
     }
   };
+}
+
+/**
+ * Assert POSIX permission bits (`mode & 0o7777`). A no-op on Windows,
+ * where the bits are not meaningful — so callers stay unconditional
+ * (`vitest/no-conditional-expect`).
+ *
+ * @param path - The file or directory to stat.
+ * @param mode - The expected permission bits.
+ */
+export function expectPosixMode(path: string, mode: number): void {
+  if (process.platform === "win32") {
+    return;
+  }
+  expect(statSync(path).mode & 0o7777).toBe(mode);
 }

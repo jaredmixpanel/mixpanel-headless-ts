@@ -79,14 +79,14 @@ describe("@mixpanel-headless/core public surface", () => {
         symbol.getJsDocTags(checker).some((tag) => tag.name === "internal"),
       )
       .map(([name]) => name);
-    expect(tagged).toEqual([]);
+    expect(tagged).toStrictEqual([]);
   });
 
   it("keeps the public and internal barrels disjoint", () => {
     const both = [...publicExports.keys()].filter((name) =>
       internalExports.has(name),
     );
-    expect(both).toEqual([]);
+    expect(both).toStrictEqual([]);
   });
 
   it("lists the public surface explicitly (no `export *`)", () => {

@@ -65,7 +65,7 @@ describe("C8(d) literal-alias lock", () => {
   it("TS registry keys exactly the artifact's alias names", () => {
     const artifactNames = Object.keys(artifact.literal_aliases).sort();
     const tsNames = [...LITERAL_ALIAS_VALUES.keys()].sort();
-    expect(tsNames).toEqual(artifactNames);
+    expect(tsNames).toStrictEqual(artifactNames);
   });
 
   it("every alias's member set equals the artifact's", () => {
@@ -76,9 +76,10 @@ describe("C8(d) literal-alias lock", () => {
       expect(tsMembers, `alias ${name} missing from literals.ts`).toBeDefined();
       // Sorted-array comparison = set equality once the no-duplicates
       // invariant (below) holds on both sides.
-      expect([...(tsMembers ?? [])].sort(), `alias ${name} drifted`).toEqual(
-        [...artifactMembers].sort(),
-      );
+      expect(
+        [...(tsMembers ?? [])].sort(),
+        `alias ${name} drifted`,
+      ).toStrictEqual([...artifactMembers].sort());
     }
   });
 
@@ -100,7 +101,7 @@ describe("C8(d) enum-class lock", () => {
   it("TS enum tables key exactly the artifact's enum class names", () => {
     const artifactNames = Object.keys(artifact.enums).sort();
     const tsNames = [...ENUM_TABLES.keys()].sort();
-    expect(tsNames).toEqual(artifactNames);
+    expect(tsNames).toStrictEqual(artifactNames);
   });
 
   it("every enum's kind and member record equal the artifact's", () => {
@@ -110,7 +111,7 @@ describe("C8(d) enum-class lock", () => {
       expect(tsEntry?.kind, `enum ${name} kind drifted`).toBe(entry.kind);
       // toEqual on plain objects is key-order-insensitive: exact
       // member-name set plus exact values.
-      expect(tsEntry?.members, `enum ${name} members drifted`).toEqual(
+      expect(tsEntry?.members, `enum ${name} members drifted`).toStrictEqual(
         entry.members,
       );
     }
@@ -128,7 +129,7 @@ describe("C8(d) enum-class lock", () => {
   });
 
   it("newtypes section matches the C2 list (compile-time-only on TS side)", () => {
-    expect(artifact.newtypes).toEqual({
+    expect(artifact.newtypes).toStrictEqual({
       AccountName: "str",
       ProjectId: "str",
       TargetName: "str",

@@ -44,17 +44,17 @@ describe("TestSessionReplaceSentinel", () => {
   it("test_workspace_omitted_preserves", () => {
     const base = baseSession();
     const s2 = sessionReplace(base, {});
-    expect(s2.workspace).toEqual(base.workspace);
+    expect(s2.workspace).toStrictEqual(base.workspace);
   });
 
   it("test_headers_empty_dict_clears", () => {
     const s2 = sessionReplace(baseSession(), { headers: new Map() });
-    expect([...s2.headers]).toEqual([]);
+    expect([...s2.headers]).toStrictEqual([]);
   });
 
   it("test_headers_omitted_preserves", () => {
     const s2 = sessionReplace(baseSession(), {});
-    expect([...s2.headers]).toEqual([["X-Custom", "value"]]);
+    expect([...s2.headers]).toStrictEqual([["X-Custom", "value"]]);
   });
 
   it("test_three_call_chain_distinguishes_clear_from_preserve", () => {
@@ -64,7 +64,7 @@ describe("TestSessionReplaceSentinel", () => {
     const sPreserved = sessionReplace(base, {});
     const sSwapped = sessionReplace(base, { workspace: swapped });
     expect(sCleared.workspace).toBeNull();
-    expect(sPreserved.workspace).toEqual(base.workspace);
+    expect(sPreserved.workspace).toStrictEqual(base.workspace);
     expect(sSwapped.workspace).not.toBeNull();
     expect(sSwapped.workspace?.id).toBe(99);
   });

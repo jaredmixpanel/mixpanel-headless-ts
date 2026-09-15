@@ -123,15 +123,25 @@ describe("pythonFloatStr — fast-check properties", () => {
     [1.7976931348623157e308],
   ];
 
+  /**
+   * The reference rendering: signed zero spelled out, else the sign plus
+   * the slow reference of the magnitude.
+   *
+   * @param x - A finite double.
+   * @returns The expected `str(x)` text.
+   */
+  function expectedFloatStr(x: number): string {
+    if (x === 0) {
+      return Object.is(x, -0) ? "-0.0" : "0.0";
+    }
+    const sign = x < 0 ? "-" : "";
+    return sign + referenceFloatStr(Math.abs(x));
+  }
+
   it("matches the slow String(x)-based reference for all finite doubles", () => {
     fc.assert(
       fc.property(finiteDoubles, (x) => {
-        if (x === 0) {
-          expect(pythonFloatStr(x)).toBe(Object.is(x, -0) ? "-0.0" : "0.0");
-          return;
-        }
-        const sign = x < 0 ? "-" : "";
-        expect(pythonFloatStr(x)).toBe(sign + referenceFloatStr(Math.abs(x)));
+        expect(pythonFloatStr(x)).toBe(expectedFloatStr(x));
       }),
       { examples: edgeExamples },
     );

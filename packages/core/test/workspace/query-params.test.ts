@@ -48,6 +48,7 @@ import {
   type BuildQueryParamsOptions,
   type ParamsDict,
 } from "../../src/workspace-query-params.js";
+import { expectThrows } from "../../test-support/raises.js";
 import {
   mockWorkspaceClient,
   TEST_SESSION,
@@ -150,7 +151,7 @@ describe("TestBasicParams", () => {
     const params = build({ from_date: "2024-01-01", to_date: "2024-01-31" });
     const time = section(params, "time")[0]!;
     expect(time["dateRangeType"]).toBe("between");
-    expect(time["value"]).toEqual(["2024-01-01", "2024-01-31"]);
+    expect(time["value"]).toStrictEqual(["2024-01-01", "2024-01-31"]);
   });
 
   it("from_date alone still produces a two-element 'between'", () => {
@@ -245,7 +246,7 @@ describe("TestFilterParams", () => {
     const f = section(params, "filter")[0]!;
     expect(f["value"]).toBe("country");
     expect(f["filterOperator"]).toBe("equals");
-    expect(f["filterValue"]).toEqual(["US"]);
+    expect(f["filterValue"]).toStrictEqual(["US"]);
     expect(f["filterType"]).toBe("string");
   });
 
@@ -273,7 +274,7 @@ describe("TestFilterParams", () => {
   });
 
   it("where=null produces an empty filter section", () => {
-    expect(section(build(), "filter")).toEqual([]);
+    expect(section(build(), "filter")).toStrictEqual([]);
   });
 
   it("Filter.list_contains threads through end-to-end", () => {
@@ -369,7 +370,7 @@ describe("TestMultiEventParams", () => {
     const events = show.map(
       (e) => (e["behavior"] as Record<string, unknown>)["name"],
     );
-    expect(events).toEqual(["Signup", "Login", "Purchase"]);
+    expect(events).toStrictEqual(["Signup", "Login", "Purchase"]);
   });
 
   it("a list of Metrics carries per-event math", () => {
@@ -501,7 +502,7 @@ describe("TestPerMetricFilters", () => {
     const filters = behavior["filters"] as Array<Record<string, unknown>>;
     expect(filters).toHaveLength(1);
     expect(filters[0]!["value"]).toBe("country");
-    expect(filters[0]!["filterValue"]).toEqual(["US"]);
+    expect(filters[0]!["filterValue"]).toStrictEqual(["US"]);
     expect(filters[0]!["filterOperator"]).toBe("equals");
   });
 
@@ -534,15 +535,14 @@ describe("TestPerMetricFilters", () => {
 
 describe("TestGroupByTypeError", () => {
   it("a non-str, non-GroupBy element raises", () => {
-    try {
-      build({ group_by: [42] as never });
-      expect.unreachable("expected ParamTypeError");
-    } catch (error) {
-      expect(error).toBeInstanceOf(ParamTypeError);
-      expect((error as ParamTypeError).message).toContain(
-        "group_by elements must be str, GroupBy, CohortBreakdown, or FrequencyBreakdown",
-      );
-    }
+    const error = expectThrows(
+      () => build({ group_by: [42] as never }),
+      "expected ParamTypeError",
+    );
+    expect(error).toBeInstanceOf(ParamTypeError);
+    expect((error as ParamTypeError).message).toContain(
+      "group_by elements must be str, GroupBy, CohortBreakdown, or FrequencyBreakdown",
+    );
   });
 });
 
@@ -669,7 +669,7 @@ describe("TestBuildParams", () => {
       unit: "day",
     });
     const internalResult = build({ math: "unique", last: 7 });
-    expect(buildResult).toEqual(internalResult);
+    expect(buildResult).toStrictEqual(internalResult);
   });
 });
 
@@ -697,7 +697,7 @@ describe("TestDateFilterParams", () => {
     const entry = buildFilterEntry(
       Filter.dateBetween("created", "2024-01-01", "2024-06-30"),
     );
-    expect(entry["filterValue"]).toEqual(["2024-01-01", "2024-06-30"]);
+    expect(entry["filterValue"]).toStrictEqual(["2024-01-01", "2024-06-30"]);
     expect(entry["filterOperator"]).toBe("was between");
     expect(Object.hasOwn(entry, "filterDateUnit")).toBe(false);
   });
@@ -939,7 +939,7 @@ describe("TestFrequencyBreakdownInBuildParams", () => {
     expect(group[0]!["resourceType"]).toBe("people");
     const behavior = group[0]!["behavior"] as Record<string, unknown>;
     expect(behavior["behaviorType"]).toBe("$frequency");
-    expect(behavior["event"]).toEqual({
+    expect(behavior["event"]).toStrictEqual({
       label: "Purchase",
       value: "Purchase",
     });

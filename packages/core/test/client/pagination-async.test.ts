@@ -72,9 +72,9 @@ describe("PaginationAsyncBehavior", () => {
       items.push(toNativeJson(item));
       requestsAtYield.push(requestCount);
     }
-    expect(items).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
+    expect(items).toStrictEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
     // Page N+1 is not requested until page N's item was yielded.
-    expect(requestsAtYield).toEqual([1, 2, 3]);
+    expect(requestsAtYield).toStrictEqual([1, 2, 3]);
   });
 
   it("abort between pages rejects with a normalized AbortError", async () => {
@@ -87,7 +87,7 @@ describe("PaginationAsyncBehavior", () => {
       signal: controller.signal,
     });
     const first = await walk.next();
-    expect(toNativeJson(first.value ?? null)).toEqual({ id: 1 });
+    expect(toNativeJson(first.value ?? null)).toStrictEqual({ id: 1 });
     // Abort while parked between pages (R6.7 point 1) — the next pull
     // must reject BEFORE issuing another request.
     controller.abort();

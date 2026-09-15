@@ -28,6 +28,32 @@ const feedDates = fc
 /** `optional_feed_dates` — None | feed_dates. */
 const optionalFeedDates = fc.option(feedDates, { nil: null });
 
+/**
+ * The arm `buildActivityFeedDateRange` must select for the given bounds
+ * (the Python test's four branches, expressed as data).
+ *
+ * @param fromDate - Optional lower bound.
+ * @param toDate - Optional upper bound.
+ * @returns The expected date-range object.
+ */
+function expectedDateRange(
+  fromDate: string | null,
+  toDate: string | null,
+): Record<string, unknown> {
+  if (fromDate !== null && toDate !== null) {
+    return { type: "between", from: fromDate, to: toDate };
+  }
+  if (fromDate !== null) {
+    return { type: "since", from: fromDate };
+  }
+  if (toDate === null) {
+    return { type: "relative_after", window: { unit: "day", value: 30 } };
+  }
+  // `end - start == timedelta(days=30)` via the same civil math.
+  const start = formatYmd(civilFromDays(daysFromCivil(civilOf(toDate)) - 30));
+  return { type: "between", from: start, to: toDate };
+}
+
 describe("TestActivityFeedDateRange", () => {
   it("test_returns_known_type_and_correct_arm", () => {
     fc.assert(
@@ -36,28 +62,7 @@ describe("TestActivityFeedDateRange", () => {
         expect(["between", "since", "relative_after"]).toContain(
           result["type"],
         );
-        if (fromDate !== null && toDate !== null) {
-          expect(result).toEqual({
-            type: "between",
-            from: fromDate,
-            to: toDate,
-          });
-        } else if (fromDate !== null) {
-          expect(result).toEqual({ type: "since", from: fromDate });
-        } else if (toDate === null) {
-          expect(result).toEqual({
-            type: "relative_after",
-            window: { unit: "day", value: 30 },
-          });
-        } else {
-          expect(result["type"]).toBe("between");
-          expect(result["to"]).toBe(toDate);
-          // `end - start == timedelta(days=30)` via the same civil math.
-          const start = result["from"] as string;
-          const startDays = daysFromCivil(civilOf(start));
-          const endDays = daysFromCivil(civilOf(toDate));
-          expect(endDays - startDays).toBe(30);
-        }
+        expect(result).toStrictEqual(expectedDateRange(fromDate, toDate));
       }),
       { numRuns: 200 },
     );

@@ -158,8 +158,8 @@ describe("browser entry — the re-exports are the core values themselves", () =
       }
       if (entry[name] !== value) notIdentical.push(name);
     }
-    expect(missing).toEqual([]);
-    expect(notIdentical).toEqual([]);
+    expect(missing).toStrictEqual([]);
+    expect(notIdentical).toStrictEqual([]);
   });
 
   it("carries no transport: no builder exposes a fetch/transport seam", () => {

@@ -25,6 +25,7 @@ import { sortedByCodepoint } from "../../src/compat/codepoint.js";
 import { QueryError } from "../../src/errors.js";
 import { transformRetentionResult } from "../../src/services/live-query-transforms.js";
 import { RetentionQueryResult } from "../../src/types/results/query-engine.js";
+import { expectThrows } from "../../test-support/raises.js";
 
 // ===========================================================================
 // Shared fixtures (test_transform_retention.py:13-52)
@@ -100,15 +101,15 @@ describe("TestTransformRetentionBasic", () => {
     const result = transformRetentionResult(mockResponse(), BOOKMARK_PARAMS);
     const cohort = result.cohorts["2025-01-01"]!;
     expect(cohort["first"]).toBe(100);
-    expect(cohort["counts"]).toEqual([100, 50, 25]);
-    expect(cohort["rates"]).toEqual([1.0, 0.5, 0.25]);
+    expect(cohort["counts"]).toStrictEqual([100, 50, 25]);
+    expect(cohort["rates"]).toStrictEqual([1.0, 0.5, 0.25]);
   });
 
   it("average is extracted from series['$average']", () => {
     const result = transformRetentionResult(mockResponse(), BOOKMARK_PARAMS);
     expect(result.average["first"]).toBe(90);
-    expect(result.average["counts"]).toEqual([90, 45, 22]);
-    expect(result.average["rates"]).toEqual([1.0, 0.5, 0.244]);
+    expect(result.average["counts"]).toStrictEqual([90, 45, 22]);
+    expect(result.average["rates"]).toStrictEqual([1.0, 0.5, 0.244]);
   });
 
   it("$average does not appear in the cohorts dict", () => {
@@ -118,12 +119,12 @@ describe("TestTransformRetentionBasic", () => {
 
   it("params preserves the bookmark_params argument", () => {
     const result = transformRetentionResult(mockResponse(), BOOKMARK_PARAMS);
-    expect(result.params).toEqual(BOOKMARK_PARAMS);
+    expect(result.params).toStrictEqual(BOOKMARK_PARAMS);
   });
 
   it("meta is extracted from raw['meta']", () => {
     const result = transformRetentionResult(mockResponse(), BOOKMARK_PARAMS);
-    expect(result.meta).toEqual({ sampling_factor: 1.0 });
+    expect(result.meta).toStrictEqual({ sampling_factor: 1.0 });
   });
 });
 
@@ -144,23 +145,21 @@ describe("TestTransformRetentionErrors", () => {
 
   it("QueryError from an error response has statusCode 200", () => {
     const errorResponse: Record<string, unknown> = { error: "bad params" };
-    try {
-      transformRetentionResult(errorResponse, BOOKMARK_PARAMS);
-      expect.unreachable("expected QueryError");
-    } catch (error) {
-      expect(error).toBeInstanceOf(QueryError);
-      expect((error as QueryError).statusCode).toBe(200);
-    }
+    const error = expectThrows(
+      () => transformRetentionResult(errorResponse, BOOKMARK_PARAMS),
+      "expected QueryError",
+    );
+    expect(error).toBeInstanceOf(QueryError);
+    expect((error as QueryError).statusCode).toBe(200);
   });
 
   it("QueryError includes the raw response as responseBody", () => {
     const errorResponse: Record<string, unknown> = { error: "timeout" };
-    try {
-      transformRetentionResult(errorResponse, BOOKMARK_PARAMS);
-      expect.unreachable("expected QueryError");
-    } catch (error) {
-      expect((error as QueryError).responseBody).toEqual(errorResponse);
-    }
+    const error = expectThrows(
+      () => transformRetentionResult(errorResponse, BOOKMARK_PARAMS),
+      "expected QueryError",
+    );
+    expect((error as QueryError).responseBody).toStrictEqual(errorResponse);
   });
 
   it("QueryError includes bookmark_params as requestBody", () => {
@@ -168,12 +167,11 @@ describe("TestTransformRetentionErrors", () => {
     const params: Record<string, unknown> = {
       sections: { filters: "invalid" },
     };
-    try {
-      transformRetentionResult(errorResponse, params);
-      expect.unreachable("expected QueryError");
-    } catch (error) {
-      expect((error as QueryError).requestBody).toEqual(params);
-    }
+    const error = expectThrows(
+      () => transformRetentionResult(errorResponse, params),
+      "expected QueryError",
+    );
+    expect((error as QueryError).requestBody).toStrictEqual(params);
   });
 
   it("missing series raises QueryError", () => {
@@ -193,8 +191,8 @@ describe("TestTransformRetentionErrors", () => {
   it("empty series produces empty cohorts", () => {
     const raw = mockResponse({ series: {} });
     const result = transformRetentionResult(raw, BOOKMARK_PARAMS);
-    expect(result.cohorts).toEqual({});
-    expect(result.average).toEqual({});
+    expect(result.cohorts).toStrictEqual({});
+    expect(result.average).toStrictEqual({});
   });
 
   it("multiple top-level series keys raise QueryError", () => {
@@ -363,7 +361,7 @@ describe("TestTransformRetentionSegments", () => {
   it("segment names match the response keys (excluding $overall)", () => {
     const raw = mockResponse({ series: SEGMENTED_SERIES });
     const result = transformRetentionResult(raw, BOOKMARK_PARAMS);
-    expect(sortedByCodepoint(Object.keys(result.segments))).toEqual([
+    expect(sortedByCodepoint(Object.keys(result.segments))).toStrictEqual([
       "Android",
       "iOS",
     ]);
@@ -375,8 +373,8 @@ describe("TestTransformRetentionSegments", () => {
 
     const iosCohort = result.segments["iOS"]!["2025-01-01"]!;
     expect(iosCohort["first"]).toBe(120);
-    expect(iosCohort["counts"]).toEqual([120, 60]);
-    expect(iosCohort["rates"]).toEqual([1.0, 0.5]);
+    expect(iosCohort["counts"]).toStrictEqual([120, 60]);
+    expect(iosCohort["rates"]).toStrictEqual([1.0, 0.5]);
   });
 
   it("$average within each segment goes to segment_averages", () => {
@@ -389,8 +387,8 @@ describe("TestTransformRetentionSegments", () => {
 
   it("unsegmented response has an empty segments dict", () => {
     const result = transformRetentionResult(mockResponse(), BOOKMARK_PARAMS);
-    expect(result.segments).toEqual({});
-    expect(result.segment_averages).toEqual({});
+    expect(result.segments).toStrictEqual({});
+    expect(result.segment_averages).toStrictEqual({});
   });
 
   it("$overall with no named segments has empty segments", () => {
@@ -404,8 +402,8 @@ describe("TestTransformRetentionSegments", () => {
       },
     });
     const result = transformRetentionResult(raw, BOOKMARK_PARAMS);
-    expect(result.segments).toEqual({});
-    expect(result.segment_averages).toEqual({});
+    expect(result.segments).toStrictEqual({});
+    expect(result.segment_averages).toStrictEqual({});
   });
 });
 
@@ -493,7 +491,7 @@ describe("TestTransformRetentionFormatVariations", () => {
     const raw = mockResponse();
     delete raw["meta"];
     const result = transformRetentionResult(raw, BOOKMARK_PARAMS);
-    expect(result.meta).toEqual({});
+    expect(result.meta).toStrictEqual({});
   });
 
   it("missing computed_at produces an empty string", () => {
@@ -512,7 +510,7 @@ describe("TestTransformRetentionFormatVariations", () => {
       },
     });
     const result = transformRetentionResult(raw, BOOKMARK_PARAMS);
-    expect(result.average).toEqual({});
+    expect(result.average).toStrictEqual({});
     expect(Object.keys(result.cohorts)).toHaveLength(1);
   });
 
@@ -533,7 +531,7 @@ describe("TestTransformRetentionFormatVariations", () => {
   it("empty dict inside the metric wrapper produces empty cohorts", () => {
     const raw = mockResponse({ series: { "Signup and then Login": {} } });
     const result = transformRetentionResult(raw, BOOKMARK_PARAMS);
-    expect(result.cohorts).toEqual({});
-    expect(result.average).toEqual({});
+    expect(result.cohorts).toStrictEqual({});
+    expect(result.average).toStrictEqual({});
   });
 });

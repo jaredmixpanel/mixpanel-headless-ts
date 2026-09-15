@@ -40,10 +40,9 @@ import {
   accountTokensPath,
   OnDiskTokenResolver,
 } from "../src/auth/token-resolver.js";
-import { makeTempDir, scrubMpEnv } from "./helpers.js";
+import { expectPosixMode, makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const POSIX = process.platform !== "win32";
-const itPosix = POSIX ? it : it.skip;
 
 const cleanups: Array<() => void> = [];
 let restoreEnv: () => void = () => undefined;
@@ -287,9 +286,7 @@ describe("TestBrowserTokenRefresh (test_token_resolver.py:214)", () => {
     expect(newPayload["access_token"]).toBe("brw-tok-new");
     expect(newPayload["refresh_token"]).toBe("brw-refresh-2");
     expect(newPayload["expires_at"]).toBe(newExpires);
-    if (POSIX) {
-      expect(statSync(path).mode & 0o777).toBe(0o600);
-    }
+    expectPosixMode(path, 0o600);
   });
 
   it("test_refresh_response_without_new_refresh_keeps_existing", async () => {
@@ -349,7 +346,7 @@ describe("TestPathLayout (test_token_resolver.py:368)", () => {
     expect(accountTokensPath("me")).toBe(path);
   });
 
-  itPosix("test_account_dir_permissions", () => {
+  it.skipIf(!POSIX)("test_account_dir_permissions", () => {
     writeTokensFile({ name: "me", accessToken: "x", expiresAt: isoIn(1) });
     const dir = join(home, ".mp", "accounts", "me");
     expect(statSync(dir).mode & 0o7777).toBe(0o700);
@@ -413,7 +410,7 @@ describe("TestConcurrentRefresh (test_token_resolver.py:390)", () => {
 });
 
 describe("TestSymlinkRejection (test_token_resolver.py:509)", () => {
-  itPosix("test_symlinked_tokens_raises_oautherror", async () => {
+  it.skipIf(!POSIX)("test_symlinked_tokens_raises_oautherror", async () => {
     const accountDir = join(home, ".mp", "accounts", "personal");
     mkdirSync(accountDir, { recursive: true, mode: 0o700 });
     const attacker = join(home, "attacker_tokens.json");
@@ -435,15 +432,18 @@ describe("TestSymlinkRejection (test_token_resolver.py:509)", () => {
     );
   });
 
-  itPosix("test_dangling_symlink_tokens_raises_oautherror", async () => {
-    const accountDir = join(home, ".mp", "accounts", "personal");
-    mkdirSync(accountDir, { recursive: true, mode: 0o700 });
-    symlinkSync(join(home, "missing.json"), join(accountDir, "tokens.json"));
-    const resolver = new OnDiskTokenResolver();
-    await expect(resolver.getBrowserToken("personal", "us")).rejects.toThrow(
-      /symlink/,
-    );
-  });
+  it.skipIf(!POSIX)(
+    "test_dangling_symlink_tokens_raises_oautherror",
+    async () => {
+      const accountDir = join(home, ".mp", "accounts", "personal");
+      mkdirSync(accountDir, { recursive: true, mode: 0o700 });
+      symlinkSync(join(home, "missing.json"), join(accountDir, "tokens.json"));
+      const resolver = new OnDiskTokenResolver();
+      await expect(resolver.getBrowserToken("personal", "us")).rejects.toThrow(
+        /symlink/,
+      );
+    },
+  );
 });
 
 describe("TestTokenResolverMalformed (test_042_edge_cases.py:240 — inbound b6-packets.md:1032)", () => {

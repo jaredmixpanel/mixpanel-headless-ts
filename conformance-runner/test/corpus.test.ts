@@ -39,16 +39,14 @@ for (const vector of corpus.vectors) {
 
 for (const [capability, vectors] of byCapability) {
   describe(`conformance: ${capability}`, () => {
-    for (const vector of vectors) {
-      it(vector.id, async (ctx) => {
-        const result = await runVector(vector, deps);
-        if (result.verdict === "UNPORTED") {
-          ctx.skip();
-          return;
-        }
-        expect.soft(result.diff ?? "", `verdict ${result.verdict}`).toBe("");
-        expect(result.verdict).toBe("PASS");
-      });
-    }
+    it.for(vectors)("$id", async (vector, { skip }) => {
+      const result = await runVector(vector, deps);
+      if (result.verdict === "UNPORTED") {
+        skip();
+        return;
+      }
+      expect.soft(result.diff ?? "", `verdict ${result.verdict}`).toBe("");
+      expect(result.verdict).toBe("PASS");
+    });
   });
 }

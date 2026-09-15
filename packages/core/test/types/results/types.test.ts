@@ -96,7 +96,7 @@ describe("SegmentationResult (TestSegmentationResult)", () => {
       total: 0,
       series: {},
     });
-    expect(result.toRows()).toEqual(result.toRows());
+    expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
   it("test_to_dict_serializable", () => {
@@ -171,7 +171,7 @@ describe("FunnelResult (TestFunnelResult)", () => {
       conversion_rate: 0.5,
       steps,
     });
-    expect(result.steps.map((step) => step.event)).toEqual(["A", "B"]);
+    expect(result.steps.map((step) => step.event)).toStrictEqual(["A", "B"]);
   });
 
   it("test_df_has_expected_columns", () => {
@@ -218,7 +218,7 @@ describe("FunnelResult (TestFunnelResult)", () => {
       conversion_rate: 1.0,
       steps,
     });
-    expect(result.toRows()).toEqual(result.toRows());
+    expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
   it("test_to_dict_serializable", () => {
@@ -253,7 +253,7 @@ describe("RetentionResult (TestRetentionResult)", () => {
     });
     expect(cohort.date).toBe("2024-01-01");
     expect(cohort.size).toBe(1000);
-    expect(cohort.retention).toEqual([1.0, 0.5, 0.3, 0.2]);
+    expect(cohort.retention).toStrictEqual([1.0, 0.5, 0.3, 0.2]);
   });
 
   it("test_retention_result_creation", () => {
@@ -309,7 +309,7 @@ describe("RetentionResult (TestRetentionResult)", () => {
       unit: "week",
       cohorts,
     });
-    expect(result.toRows()).toEqual(result.toRows());
+    expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
   it("test_to_dict_serializable", () => {
@@ -428,7 +428,7 @@ describe("EventCountsResult (TestEventCountsResult)", () => {
         Purchase: { "2024-01-01": 50, "2024-01-02": 75 },
       },
     });
-    expect(result.events).toEqual(["Sign Up", "Purchase"]);
+    expect(result.events).toStrictEqual(["Sign Up", "Purchase"]);
     expect(result.from_date).toBe("2024-01-01");
     expect(result.unit).toBe("day");
     expect(result.type).toBe("general");
@@ -474,7 +474,7 @@ describe("EventCountsResult (TestEventCountsResult)", () => {
       type: "general",
       series: { Test: { "2024-01-01": 100 } },
     });
-    expect(result.toRows()).toEqual(result.toRows());
+    expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
   it("test_to_dict_serializable", () => {
@@ -555,7 +555,7 @@ describe("PropertyCountsResult (TestPropertyCountsResult)", () => {
       type: "general",
       series: { US: { "2024-01-01": 100 } },
     });
-    expect(result.toRows()).toEqual(result.toRows());
+    expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
   it("test_to_dict_serializable", () => {
@@ -588,7 +588,7 @@ describe("ProfilePageResult (TestProfilePageResult)", () => {
       total: 5000,
       page_size: 1000,
     });
-    expect(result.profiles).toEqual(profiles);
+    expect(result.profiles).toStrictEqual(profiles);
     expect(result.session_id).toBe("abc123");
     expect(result.page).toBe(0);
     expect(result.has_more).toBe(true);
@@ -621,7 +621,7 @@ describe("ProfilePageResult (TestProfilePageResult)", () => {
       page_size: 1000,
     });
     const data = result.toJSON();
-    expect(data["profiles"]).toEqual(profiles);
+    expect(data["profiles"]).toStrictEqual(profiles);
     expect(data["session_id"]).toBe("session123");
     expect(data["page"]).toBe(2);
     expect(data["has_more"]).toBe(true);
@@ -742,7 +742,7 @@ describe("SubPropertyInfo (TestSubPropertyInfo)", () => {
       sample_values: ["nike", "puma"],
     });
     const result = sp.toJSON();
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       name: "Brand",
       type: "string",
       sample_values: ["nike", "puma"],
@@ -750,6 +750,6 @@ describe("SubPropertyInfo (TestSubPropertyInfo)", () => {
     // The sample_values value must be an array for JSON.
     expect(Array.isArray(result["sample_values"])).toBe(true);
     // And the result must round-trip through JSON without error.
-    expect(JSON.parse(JSON.stringify(result))).toEqual(result);
+    expect(JSON.parse(JSON.stringify(result))).toStrictEqual(result);
   });
 });

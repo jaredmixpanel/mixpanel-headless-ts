@@ -224,11 +224,12 @@ describe("§4.4 seam-closure sweep — zero UNPORTED throws over the real bag", 
     // Core seam-bag routing over the real bag (readFile is W7-D1 —
     // N1's nodeReadFile; not in the auth constant but same duty).
     const seams = resolverSeamsFromEffects(effects);
+    // eslint-disable-next-line vitest/prefer-expect-resolves -- resolver seams are MaybePromise; `.resolves` would throw on a synchronous seam
     expect(await seams.envWorkspaceId()).toBeNull();
 
     // The constant itself stays committed in core — every name above
     // maps to a real member (owner map, packet §4.4).
-    expect([...UNPORTED_AUTH_SEAMS].sort()).toEqual(
+    expect([...UNPORTED_AUTH_SEAMS].sort()).toStrictEqual(
       [
         "persistActive",
         "config.*",
@@ -399,7 +400,7 @@ describe("Bag swap-in runs — representative namespace subset (packet §4.3 las
       secret: "s2",
       default_project: "3713224",
     });
-    expect(accounts.list().map((summary) => summary.name)).toEqual([
+    expect(accounts.list().map((summary) => summary.name)).toStrictEqual([
       "other",
       "team",
     ]);

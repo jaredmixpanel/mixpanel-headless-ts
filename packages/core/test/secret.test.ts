@@ -55,9 +55,9 @@ describe("Secret", () => {
 
   it("has no own enumerable properties (spread/keys/entries leak nothing)", () => {
     const s = new Secret("value");
-    expect(Object.keys(s)).toEqual([]);
-    expect(Object.entries(s)).toEqual([]);
-    expect({ ...s }).toEqual({});
+    expect(Object.keys(s)).toStrictEqual([]);
+    expect(Object.entries(s)).toStrictEqual([]);
+    expect({ ...s }).toStrictEqual({});
   });
 
   it("property #1: Secret never leaks the wrapped value on any surface", () => {
@@ -69,10 +69,10 @@ describe("Secret", () => {
         // Containment is only meaningful when the raw value is not itself
         // a substring of the mask (design C9 carve-out: s === mask; the
         // empty string / single '*' are contained in every mask render).
-        if (raw.length > 0 && !MASK.includes(raw)) {
-          for (const rendered of pureRenders(secret)) {
-            expect(rendered).not.toContain(raw);
-          }
+        const renders =
+          raw.length > 0 && !MASK.includes(raw) ? pureRenders(secret) : [];
+        for (const rendered of renders) {
+          expect(rendered).not.toContain(raw);
         }
         // Container/enumeration surfaces: exact-shape equality (immune to
         // structural-character false positives), so the secret cannot
@@ -80,10 +80,10 @@ describe("Secret", () => {
         expect(JSON.stringify(secret)).toBe(`"${MASK}"`);
         expect(JSON.stringify({ k: secret })).toBe(`{"k":"${MASK}"}`);
         expect(JSON.stringify([secret])).toBe(`["${MASK}"]`);
-        expect(Object.keys(secret)).toEqual([]);
-        expect(Object.entries(secret)).toEqual([]);
-        expect(Object.getOwnPropertyNames(secret)).toEqual([]);
-        expect({ ...secret }).toEqual({});
+        expect(Object.keys(secret)).toStrictEqual([]);
+        expect(Object.entries(secret)).toStrictEqual([]);
+        expect(Object.getOwnPropertyNames(secret)).toStrictEqual([]);
+        expect({ ...secret }).toStrictEqual({});
         expect(String(secret)).toBe(MASK);
       }),
     );

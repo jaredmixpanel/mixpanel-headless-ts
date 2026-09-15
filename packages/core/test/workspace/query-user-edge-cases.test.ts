@@ -43,6 +43,7 @@ import {
   buildPageKwargs,
   buildStatsKwargs,
 } from "../../src/workspace-query-params.js";
+import { expectRejects } from "../../test-support/raises.js";
 import {
   makePageResult,
   makeProfilesBatch,
@@ -153,7 +154,7 @@ describe("TestTier1DataCorruption", () => {
     // Total equals len(profiles), not the API total
     expect(result.profiles).toHaveLength(300);
     expect(result.total).toBe(result.profiles.length);
-    expect(result.meta["failed_pages"]).toEqual([2, 3]);
+    expect(result.meta["failed_pages"]).toStrictEqual([2, 3]);
   });
 
   it("T1.04: when all parallel pages fail, only page 0 is returned", async () => {
@@ -184,7 +185,7 @@ describe("TestTier1DataCorruption", () => {
 
     expect(result.profiles).toHaveLength(100);
     expect(result.total).toBe(result.profiles.length);
-    expect(result.meta["failed_pages"]).toEqual([1, 2, 3, 4]);
+    expect(result.meta["failed_pages"]).toStrictEqual([1, 2, 3, 4]);
   });
 
   it("T1.05: distinct_ids yields '' for a profile without the key", () => {
@@ -198,7 +199,7 @@ describe("TestTier1DataCorruption", () => {
       mode: "profiles",
     });
 
-    expect(result.distinct_ids).toEqual([""]);
+    expect(result.distinct_ids).toStrictEqual([""]);
   });
 
   it("T1.06: empty pages with has_more=true terminate the sequential loop", async () => {
@@ -306,12 +307,11 @@ describe("TestTier2CrashPaths", () => {
     });
 
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.buildUserParams({ where: malformedFilter });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U_COHORT");
-    }
+    const error = await expectRejects(
+      ws.buildUserParams({ where: malformedFilter }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U_COHORT");
   });
 
   it("T2.02: malformed output_properties JSON raises the decode error", () => {
@@ -465,12 +465,11 @@ describe("TestTier3ValidationGaps", () => {
   });
 
   it("T3.10: workers=6 triggers U23", async () => {
-    try {
-      await makeWs().buildUserParams({ workers: 6 });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U23");
-    }
+    const error = await expectRejects(
+      makeWs().buildUserParams({ workers: 6 }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U23");
   });
 
   it("T3.11: limit=0 triggers U3", () => {

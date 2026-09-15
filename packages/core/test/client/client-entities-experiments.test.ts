@@ -62,7 +62,7 @@ describe("TestListExperiments", () => {
       json: { status: "ok", results: [] },
     }));
     const result = await client.listExperiments();
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
   });
 
   it("test_include_archived", async () => {
@@ -93,7 +93,7 @@ describe("TestCreateExperiment", () => {
       await client.createExperiment({ name: "New Experiment" }),
     ) as Record<string, unknown>;
     expect(captured[0]?.[0]).toBe("POST");
-    expect(captured[0]?.[2]).toEqual({ name: "New Experiment" });
+    expect(captured[0]?.[2]).toStrictEqual({ name: "New Experiment" });
     expect(result["id"]).toBe("new-123");
   });
 
@@ -263,7 +263,7 @@ describe("TestConcludeExperiment", () => {
       };
     });
     await client.concludeExperiment("xyz-456", { end_date: "2026-04-01" });
-    expect(capturedBodies[0]).toEqual({ end_date: "2026-04-01" });
+    expect(capturedBodies[0]).toStrictEqual({ end_date: "2026-04-01" });
   });
 
   it("test_concludes_without_params_sends_empty_body", async () => {
@@ -397,7 +397,7 @@ describe("TestDuplicateExperiment", () => {
     ) as Record<string, unknown>;
     expect(captured[0]?.[0]).toBe("POST");
     expect(captured[0]?.[1]).toContain("/experiments/xyz-456/duplicate");
-    expect(captured[0]?.[2]).toEqual({ name: "Copy of Test" });
+    expect(captured[0]?.[2]).toStrictEqual({ name: "Copy of Test" });
     expect(result["id"]).toBe("dup-789");
   });
 });

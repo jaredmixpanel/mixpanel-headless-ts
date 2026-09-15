@@ -96,7 +96,12 @@ describe("TestListEvents", () => {
       json: ["Signup", "Login", "Purchase", "Add to Cart"],
     }));
     const events = await discovery.listEvents();
-    expect(events).toEqual(["Add to Cart", "Login", "Purchase", "Signup"]);
+    expect(events).toStrictEqual([
+      "Add to Cart",
+      "Login",
+      "Purchase",
+      "Signup",
+    ]);
   });
 
   it("caches results and does not call the API on the second request", async () => {
@@ -112,7 +117,7 @@ describe("TestListEvents", () => {
     const events2 = await discovery.listEvents();
     expect(callCount).toBe(1);
 
-    expect(events1).toEqual(events2);
+    expect(events1).toStrictEqual(events2);
   });
 
   it("propagates AuthenticationError from the API client", async () => {
@@ -127,7 +132,7 @@ describe("TestListEvents", () => {
 
   it("returns an empty list when no events exist", async () => {
     const discovery = discoveryFactory(() => ({ status: 200, json: [] }));
-    expect(await discovery.listEvents()).toEqual([]);
+    await expect(discovery.listEvents()).resolves.toStrictEqual([]);
   });
 
   it("caches per (limit, from_date, to_date) triple", async () => {
@@ -175,7 +180,7 @@ describe("TestListProperties", () => {
       json: { user_id: 100, amount: 50, currency: 75 },
     }));
     const properties = await discovery.listProperties("Purchase");
-    expect(properties).toEqual(["amount", "currency", "user_id"]);
+    expect(properties).toStrictEqual(["amount", "currency", "user_id"]);
   });
 
   it("caches results per event name", async () => {
@@ -197,9 +202,9 @@ describe("TestListProperties", () => {
     const props3 = await discovery.listProperties("Signup");
     expect(callCount).toBe(2);
 
-    expect(props1).toEqual(["amount", "currency"]);
-    expect(props2).toEqual(["amount", "currency"]);
-    expect(props3).toEqual(["email", "user_id"]);
+    expect(props1).toStrictEqual(["amount", "currency"]);
+    expect(props2).toStrictEqual(["amount", "currency"]);
+    expect(props3).toStrictEqual(["email", "user_id"]);
   });
 
   it("raises EventNotFoundError with suggestions for a 400", async () => {
@@ -241,7 +246,9 @@ describe("TestListProperties", () => {
 
   it("returns an empty list when the event has no properties", async () => {
     const discovery = discoveryFactory(() => ({ status: 200, json: {} }));
-    expect(await discovery.listProperties("EmptyEvent")).toEqual([]);
+    await expect(discovery.listProperties("EmptyEvent")).resolves.toStrictEqual(
+      [],
+    );
   });
 });
 
@@ -249,7 +256,9 @@ describe("TestFindSimilarEvents", () => {
   it("finds exact case-insensitive matches first", () => {
     const discovery = discoveryFactory(successHandler);
     const events = ["Sign Up", "Login", "Purchase"];
-    expect(discovery.findSimilarEvents("sign up", events)).toEqual(["Sign Up"]);
+    expect(discovery.findSimilarEvents("sign up", events)).toStrictEqual([
+      "Sign Up",
+    ]);
   });
 
   it("finds events containing the query as a substring", () => {
@@ -298,9 +307,9 @@ describe("TestFindSimilarEvents", () => {
   it("returns an empty list when nothing matches", () => {
     const discovery = discoveryFactory(successHandler);
     const events = ["Login", "Logout", "Purchase"];
-    expect(discovery.findSimilarEvents("completely_different", events)).toEqual(
-      [],
-    );
+    expect(
+      discovery.findSimilarEvents("completely_different", events),
+    ).toStrictEqual([]);
   });
 });
 
@@ -311,12 +320,9 @@ describe("TestListPropertyValues", () => {
       json: ["US", "CA", "GB", "DE"],
     }));
     // Note: values are NOT sorted per research.md
-    expect(await discovery.listPropertyValues("country")).toEqual([
-      "US",
-      "CA",
-      "GB",
-      "DE",
-    ]);
+    await expect(
+      discovery.listPropertyValues("country"),
+    ).resolves.toStrictEqual(["US", "CA", "GB", "DE"]);
   });
 
   it("passes the event parameter to the API", async () => {
@@ -325,11 +331,11 @@ describe("TestListPropertyValues", () => {
         ? { status: 200, json: ["credit_card", "paypal"] }
         : { status: 200, json: ["all_values"] },
     );
-    expect(
-      await discovery.listPropertyValues("payment_method", {
+    await expect(
+      discovery.listPropertyValues("payment_method", {
         event: "Purchase",
       }),
-    ).toEqual(["credit_card", "paypal"]);
+    ).resolves.toStrictEqual(["credit_card", "paypal"]);
   });
 
   it("passes the limit parameter to the API", async () => {
@@ -338,9 +344,9 @@ describe("TestListPropertyValues", () => {
         ? { status: 200, json: ["v1", "v2", "v3"] }
         : { status: 200, json: ["all_values"] },
     );
-    expect(
-      await discovery.listPropertyValues("country", { limit: 10 }),
-    ).toEqual(["v1", "v2", "v3"]);
+    await expect(
+      discovery.listPropertyValues("country", { limit: 10 }),
+    ).resolves.toStrictEqual(["v1", "v2", "v3"]);
   });
 
   it("caches per (property, event, limit)", async () => {
@@ -374,15 +380,15 @@ describe("TestListPropertyValues", () => {
     });
     expect(callCount).toBe(3);
 
-    expect(values1).toEqual(["value1", "value2"]);
-    expect(values2).toEqual(["value1", "value2"]);
+    expect(values1).toStrictEqual(["value1", "value2"]);
+    expect(values2).toStrictEqual(["value1", "value2"]);
   });
 
   it("returns an empty list when no values exist", async () => {
     const discovery = discoveryFactory(() => ({ status: 200, json: [] }));
-    expect(await discovery.listPropertyValues("nonexistent_property")).toEqual(
-      [],
-    );
+    await expect(
+      discovery.listPropertyValues("nonexistent_property"),
+    ).resolves.toStrictEqual([]);
   });
 });
 
@@ -470,12 +476,12 @@ describe("TestListFunnels", () => {
     const funnels2 = await discovery.listFunnels();
     expect(callCount).toBe(1);
 
-    expect(funnels1).toEqual(funnels2);
+    expect(funnels1).toStrictEqual(funnels2);
   });
 
   it("returns an empty list when no funnels exist", async () => {
     const discovery = discoveryFactory(() => ({ status: 200, json: [] }));
-    expect(await discovery.listFunnels()).toEqual([]);
+    await expect(discovery.listFunnels()).resolves.toStrictEqual([]);
   });
 });
 
@@ -584,12 +590,12 @@ describe("TestListCohorts", () => {
     const cohorts2 = await discovery.listCohorts();
     expect(callCount).toBe(1);
 
-    expect(cohorts1).toEqual(cohorts2);
+    expect(cohorts1).toStrictEqual(cohorts2);
   });
 
   it("returns an empty list when no cohorts exist", async () => {
     const discovery = discoveryFactory(() => ({ status: 200, json: [] }));
-    expect(await discovery.listCohorts()).toEqual([]);
+    await expect(discovery.listCohorts()).resolves.toStrictEqual([]);
   });
 });
 
@@ -669,7 +675,7 @@ describe("TestListTopEvents", () => {
       status: 200,
       json: { events: [], type: "general" },
     }));
-    expect(await discovery.listTopEvents()).toEqual([]);
+    await expect(discovery.listTopEvents()).resolves.toStrictEqual([]);
   });
 });
 
@@ -699,7 +705,7 @@ describe("TestListSubproperties", () => {
     const subs = await discovery.listSubproperties("cart", {
       event: "Cart Viewed",
     });
-    expect(new Set(subs.map((s) => s.name))).toEqual(
+    expect(new Set(subs.map((s) => s.name))).toStrictEqual(
       new Set(["Brand", "Category"]),
     );
     for (const s of subs) {
@@ -765,7 +771,7 @@ describe("TestListSubproperties", () => {
     const names = (
       await discovery.listSubproperties("cart", { event: "X" })
     ).map((s) => s.name);
-    expect(names).toEqual(["A", "M", "Z"]);
+    expect(names).toStrictEqual(["A", "M", "Z"]);
   });
 
   it("caps sample_values at five distinct values", async () => {
@@ -787,7 +793,7 @@ describe("TestListSubproperties", () => {
     ];
     const discovery = discoveryFactory(valuesHandler(values));
     const subs = await discovery.listSubproperties("cart", { event: "X" });
-    expect(subs.map((s) => s.name)).toEqual(["Brand"]);
+    expect(subs.map((s) => s.name)).toStrictEqual(["Brand"]);
   });
 
   it("skips nested dict/list sub-values (scalars only)", async () => {
@@ -804,14 +810,14 @@ describe("TestListSubproperties", () => {
         (s) => s.name,
       ),
     );
-    expect(names).toEqual(new Set(["Brand"]));
+    expect(names).toStrictEqual(new Set(["Brand"]));
   });
 
   it("returns an empty list for no values", async () => {
     const discovery = discoveryFactory(valuesHandler([]));
-    expect(await discovery.listSubproperties("cart", { event: "X" })).toEqual(
-      [],
-    );
+    await expect(
+      discovery.listSubproperties("cart", { event: "X" }),
+    ).resolves.toStrictEqual([]);
   });
 
   it("treats a JSON list of dicts as one row per dict", async () => {
@@ -836,7 +842,7 @@ describe("TestListSubproperties", () => {
     const byName = new Map(subs.map((s) => [s.name, s]));
     expect(byName.get("Coupon")?.type).toBe("string");
     expect(byName.get("Coupon")?.sample_values).not.toContain(null);
-    expect(byName.get("Coupon")?.sample_values).toEqual(["FALL20"]);
+    expect(byName.get("Coupon")?.sample_values).toStrictEqual(["FALL20"]);
   });
 
   it("filters non-dict items inside a JSON list", async () => {
@@ -845,8 +851,10 @@ describe("TestListSubproperties", () => {
     ];
     const discovery = discoveryFactory(valuesHandler(values));
     const subs = await discovery.listSubproperties("cart", { event: "X" });
-    expect(subs.map((s) => s.name)).toEqual(["Brand"]);
-    expect(new Set(subs[0]?.sample_values)).toEqual(new Set(["nike", "puma"]));
+    expect(subs.map((s) => s.name)).toStrictEqual(["Brand"]);
+    expect(new Set(subs[0]?.sample_values)).toStrictEqual(
+      new Set(["nike", "puma"]),
+    );
   });
 
   it("warns and keeps the scalar form for mixed scalar/dict shapes", async () => {
@@ -862,7 +870,9 @@ describe("TestListSubproperties", () => {
     const subs = await discovery.listSubproperties("cart", { event: "X" });
     const byName = new Map(subs.map((s) => [s.name, s]));
     expect(byName.get("X")?.type).toBe("number"); // scalar form retained
-    expect(new Set(byName.get("X")?.sample_values)).toEqual(new Set([1, 3]));
+    expect(new Set(byName.get("X")?.sample_values)).toStrictEqual(
+      new Set([1, 3]),
+    );
     expect(captured.some((m) => m.includes("scalar and nested-object"))).toBe(
       true,
     );

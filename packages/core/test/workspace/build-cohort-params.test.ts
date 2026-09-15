@@ -44,6 +44,7 @@ import {
   Metric,
 } from "../../src/types/query-params/metric.js";
 import { Workspace } from "../../src/workspace.js";
+import { expectRejects, expectThrows } from "../../test-support/raises.js";
 import {
   mockWorkspaceClient,
   TEST_SESSION,
@@ -739,13 +740,12 @@ describe("TestBuildFlowCohortFilterDirect", () => {
 describe("TestCodedFlowCohortFilterCodes", () => {
   /** Assert the thrown guard carries `code`. */
   function expectCode(fn: () => unknown, code: string): void {
-    try {
-      fn();
-      expect.unreachable(`expected ParamValidationError ${code}`);
-    } catch (error) {
-      expect(error).toBeInstanceOf(ParamValidationError);
-      expect((error as ParamValidationError).code).toBe(code);
-    }
+    const error = expectThrows(
+      () => fn(),
+      `expected ParamValidationError ${code}`,
+    );
+    expect(error).toBeInstanceOf(ParamValidationError);
+    expect((error as ParamValidationError).code).toBe(code);
   }
 
   it("BB4: a non-cohort property filter", () => {
@@ -790,17 +790,16 @@ describe("TestCodedFlowCohortFilterCodes", () => {
   });
 
   it("BB5 surfaces through the build_flow_params facade seam", async () => {
-    try {
-      await makeWs().buildFlowParams("Login", {
+    const error = await expectRejects(
+      makeWs().buildFlowParams("Login", {
         where: [Filter.inCohort(123, "A"), Filter.inCohort(456, "B")],
-      });
-      expect.unreachable("expected ParamValidationError BB5");
-    } catch (error) {
-      expect(error).toBeInstanceOf(ParamValidationError);
-      expect((error as ParamValidationError).code).toBe(
-        "BB5_FLOW_MULTIPLE_COHORT_FILTERS",
-      );
-    }
+      }),
+      "expected ParamValidationError BB5",
+    );
+    expect(error).toBeInstanceOf(ParamValidationError);
+    expect((error as ParamValidationError).code).toBe(
+      "BB5_FLOW_MULTIPLE_COHORT_FILTERS",
+    );
   });
 
   for (const value of ["oops", []] as const) {
@@ -834,14 +833,13 @@ describe("TestCodedFlowCohortFilterCodes", () => {
     // Python asserts they remain catchable as bare `ValueError` (the
     // dual-inheritance); the TS conformance key is class + code (R5.2),
     // so the assertion is the class and the code.
-    try {
-      buildFlowCohortFilter(Filter.equals("country", "US"));
-      expect.unreachable("expected ParamValidationError");
-    } catch (error) {
-      expect(error).toBeInstanceOf(ParamValidationError);
-      expect((error as ParamValidationError).code).toBe(
-        "BB4_FLOW_COHORT_FILTER_TYPE",
-      );
-    }
+    const error = expectThrows(
+      () => buildFlowCohortFilter(Filter.equals("country", "US")),
+      "expected ParamValidationError",
+    );
+    expect(error).toBeInstanceOf(ParamValidationError);
+    expect((error as ParamValidationError).code).toBe(
+      "BB4_FLOW_COHORT_FILTER_TYPE",
+    );
   });
 });

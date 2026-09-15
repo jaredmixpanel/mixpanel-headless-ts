@@ -94,7 +94,7 @@ function triples(
 describe("F1: float carriers / class instances are not dicts (validateBookmark)", () => {
   it("sections=<float> reports B1, exactly like Python's non-dict sections", () => {
     const errors = validateBookmark(bm({ sections: FLOAT_5 }));
-    expect(triples(errors)).toEqual([
+    expect(triples(errors)).toStrictEqual([
       { path: "sections", code: "B1_MISSING_SECTIONS", severity: "error" },
     ]);
   });
@@ -102,7 +102,7 @@ describe("F1: float carriers / class instances are not dicts (validateBookmark)"
   it("sections.time=[<float>] reports B12 (Python: non-dict time clause)", () => {
     const params = bm();
     (params["sections"] as Record<string, unknown>)["time"] = [FLOAT_5];
-    expect(triples(validateBookmark(params))).toEqual([
+    expect(triples(validateBookmark(params))).toStrictEqual([
       {
         path: "sections.time[0]",
         code: "B12_INVALID_TIME_UNIT",
@@ -114,7 +114,7 @@ describe("F1: float carriers / class instances are not dicts (validateBookmark)"
   it("sections.group=[<float>] reports B17 (Python: non-dict group clause)", () => {
     const params = bm();
     (params["sections"] as Record<string, unknown>)["group"] = [FLOAT_5];
-    expect(triples(validateBookmark(params))).toEqual([
+    expect(triples(validateBookmark(params))).toStrictEqual([
       {
         path: "sections.group[0]",
         code: "B17_INVALID_PROPERTY_TYPE",
@@ -128,7 +128,7 @@ describe("F1: float carriers / class instances are not dicts (validateBookmark)"
     (params["sections"] as Record<string, unknown>)["filter"] = [
       Filter.equals("a", "b"),
     ];
-    expect(triples(validateBookmark(params))).toEqual([
+    expect(triples(validateBookmark(params))).toStrictEqual([
       {
         path: "sections.filter[0]",
         code: "B14_INVALID_FILTER_TYPE",
@@ -142,7 +142,7 @@ describe("F1: float carriers / class instances are not dicts (validateBookmark)"
     (params["sections"] as Record<string, unknown>)["show"] = [
       { behavior: FLOAT_5 },
     ];
-    expect(triples(validateBookmark(params))).toEqual([
+    expect(triples(validateBookmark(params))).toStrictEqual([
       {
         path: "sections.show[0].behavior",
         code: "B6_MISSING_BEHAVIOR",
@@ -152,7 +152,7 @@ describe("F1: float carriers / class instances are not dicts (validateBookmark)"
   });
 
   it("displayOptions=<float> is skipped exactly like Python's isinstance gate", () => {
-    expect(validateBookmark(bm({ displayOptions: FLOAT_5 }))).toEqual([]);
+    expect(validateBookmark(bm({ displayOptions: FLOAT_5 }))).toStrictEqual([]);
   });
 });
 
@@ -163,23 +163,23 @@ describe("F1: float carriers / class instances are not dicts (flow + sorting)", 
       date_range: {},
       version: 2,
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("sorting=<float> reports S5_NOT_A_DICT", () => {
-    expect(triples(validateSortingBlock(FLOAT_5))).toEqual([
+    expect(triples(validateSortingBlock(FLOAT_5))).toStrictEqual([
       { path: "sorting", code: "S5_NOT_A_DICT", severity: "error" },
     ]);
   });
 
   it("params.sorting=<float> reports S5_NOT_A_DICT through validateBookmark", () => {
-    expect(triples(validateBookmark(bm({ sorting: FLOAT_5 })))).toEqual([
+    expect(triples(validateBookmark(bm({ sorting: FLOAT_5 })))).toStrictEqual([
       { path: "sorting", code: "S5_NOT_A_DICT", severity: "error" },
     ]);
   });
 
   it("sorting.bar=<float> reports S5 at sorting.bar (model walk)", () => {
-    expect(triples(validateSortingBlock({ bar: FLOAT_5 }))).toEqual([
+    expect(triples(validateSortingBlock({ bar: FLOAT_5 }))).toStrictEqual([
       { path: "sorting.bar", code: "S5_NOT_A_DICT", severity: "error" },
     ]);
   });
@@ -188,7 +188,7 @@ describe("F1: float carriers / class instances are not dicts (flow + sorting)", 
     const errors = validateSortingBlock({
       table: { sortBy: "column", colSortAttrs: [FLOAT_5] },
     });
-    expect(triples(errors)).toEqual([
+    expect(triples(errors)).toStrictEqual([
       {
         path: "sorting.table.colSortAttrs[0]",
         code: "S5_NOT_A_DICT",
@@ -220,10 +220,10 @@ describe("F3: CM5 fires on CohortDefinition instances only", () => {
     const metric = new CohortMetric({
       cohort: true as unknown as number,
     });
-    expect(validateQueryArgs({ ...BASE, events: [metric] })).toEqual([]);
-    expect(validateQueryArgs({ ...BASE, events: ["Login", metric] })).toEqual(
-      [],
-    );
+    expect(validateQueryArgs({ ...BASE, events: [metric] })).toStrictEqual([]);
+    expect(
+      validateQueryArgs({ ...BASE, events: ["Login", metric] }),
+    ).toStrictEqual([]);
   });
 
   it("CohortMetric with a float-carrier cohort passes clean — Python: []", () => {
@@ -232,7 +232,7 @@ describe("F3: CM5 fires on CohortDefinition instances only", () => {
     const metric = new CohortMetric({
       cohort: FLOAT_5 as unknown as number,
     });
-    expect(validateQueryArgs({ ...BASE, events: [metric] })).toEqual([]);
+    expect(validateQueryArgs({ ...BASE, events: [metric] })).toStrictEqual([]);
   });
 });
 
@@ -244,7 +244,7 @@ describe("F1 corollary: a consumer dict carrying a 'spelling' key is a dict, not
 
   it("sections={spelling: '5.0'} is a dict missing 'show' — B3, exactly like Python", () => {
     const errors = validateBookmark(bm({ sections: { spelling: "5.0" } }));
-    expect(triples(errors)).toEqual([
+    expect(triples(errors)).toStrictEqual([
       { path: "sections", code: "B3_MISSING_SHOW", severity: "error" },
     ]);
   });
@@ -262,41 +262,41 @@ describe("F1 corollary: a consumer dict carrying a 'spelling' key is a dict, not
     (params["sections"] as Record<string, unknown>)["filter"] = [
       { value: { spelling: "hi" } },
     ];
-    expect(validateBookmark(params)).toEqual([]);
+    expect(validateBookmark(params)).toStrictEqual([]);
   });
 
   it("sorting.bar={spelling: '1.5'} walks the model as a dict (S8/S2/S3)", () => {
-    expect(triples(validateSortingBlock({ bar: { spelling: "1.5" } }))).toEqual(
-      [
-        {
-          path: "sorting.bar.sortBy",
-          code: "S8_MISSING_SORT_BY",
-          severity: "error",
-        },
-        {
-          path: "sorting.bar.colSortAttrs",
-          code: "S2_MISSING_COL_SORT_ATTRS",
-          severity: "error",
-        },
-        {
-          path: "sorting.bar.spelling",
-          code: "S3_UNKNOWN_FIELD",
-          severity: "error",
-        },
-      ],
-    );
+    expect(
+      triples(validateSortingBlock({ bar: { spelling: "1.5" } })),
+    ).toStrictEqual([
+      {
+        path: "sorting.bar.sortBy",
+        code: "S8_MISSING_SORT_BY",
+        severity: "error",
+      },
+      {
+        path: "sorting.bar.colSortAttrs",
+        code: "S2_MISSING_COL_SORT_ATTRS",
+        severity: "error",
+      },
+      {
+        path: "sorting.bar.spelling",
+        code: "S3_UNKNOWN_FIELD",
+        severity: "error",
+      },
+    ]);
   });
 
   it("filter_by_cohort={spelling: '5.0'} is a dict without id/raw_cohort — UP2", () => {
     const errors = validateUserParams({
       filter_by_cohort: { spelling: "5.0" },
     });
-    expect(triples(errors)).toEqual([
+    expect(triples(errors)).toStrictEqual([
       { path: "filter_by_cohort", code: "UP2", severity: "error" },
     ]);
   });
 
   it("filter_by_cohort=<carrier instance> is a Python float — no UP2", () => {
-    expect(validateUserParams({ filter_by_cohort: FLOAT_5 })).toEqual([]);
+    expect(validateUserParams({ filter_by_cohort: FLOAT_5 })).toStrictEqual([]);
   });
 });

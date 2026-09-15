@@ -109,24 +109,28 @@ describe("TestMathTypeCompleteness", () => {
 
   it("test_math_type_literal_subset_of_insights", () => {
     const literalValues = difference(MATH_TYPE_VALUES, USER_FACING_ALIASES);
-    expect(missingFrom(literalValues, VALID_MATH_INSIGHTS)).toEqual([]);
+    expect(missingFrom(literalValues, VALID_MATH_INSIGHTS)).toStrictEqual([]);
   });
 
   it("test_math_type_literal_subset_of_all", () => {
     const literalValues = difference(MATH_TYPE_VALUES, USER_FACING_ALIASES);
-    expect(missingFrom(literalValues, VALID_MATH_TYPES)).toEqual([]);
+    expect(missingFrom(literalValues, VALID_MATH_TYPES)).toStrictEqual([]);
   });
 
   it("test_insights_subset_of_all", () => {
-    expect(missingFrom(VALID_MATH_INSIGHTS, VALID_MATH_TYPES)).toEqual([]);
+    expect(missingFrom(VALID_MATH_INSIGHTS, VALID_MATH_TYPES)).toStrictEqual(
+      [],
+    );
   });
 
   it("test_funnels_subset_of_all", () => {
-    expect(missingFrom(VALID_MATH_FUNNELS, VALID_MATH_TYPES)).toEqual([]);
+    expect(missingFrom(VALID_MATH_FUNNELS, VALID_MATH_TYPES)).toStrictEqual([]);
   });
 
   it("test_retention_subset_of_all", () => {
-    expect(missingFrom(VALID_MATH_RETENTION, VALID_MATH_TYPES)).toEqual([]);
+    expect(missingFrom(VALID_MATH_RETENTION, VALID_MATH_TYPES)).toStrictEqual(
+      [],
+    );
   });
 
   it("test_requiring_property_subset_of_insights", () => {
@@ -135,23 +139,25 @@ describe("TestMathTypeCompleteness", () => {
         difference(MATH_REQUIRING_PROPERTY, USER_FACING_ALIASES),
         VALID_MATH_INSIGHTS,
       ),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
   it("test_property_optional_subset_of_insights", () => {
-    expect(missingFrom(MATH_PROPERTY_OPTIONAL, VALID_MATH_INSIGHTS)).toEqual(
-      [],
-    );
+    expect(
+      missingFrom(MATH_PROPERTY_OPTIONAL, VALID_MATH_INSIGHTS),
+    ).toStrictEqual([]);
   });
 
   it("test_no_per_user_subset_of_insights", () => {
-    expect(missingFrom(MATH_NO_PER_USER, VALID_MATH_INSIGHTS)).toEqual([]);
+    expect(missingFrom(MATH_NO_PER_USER, VALID_MATH_INSIGHTS)).toStrictEqual(
+      [],
+    );
   });
 
   it("test_no_overlap_requiring_and_optional", () => {
     expect(
       sorted(intersection(MATH_REQUIRING_PROPERTY, MATH_PROPERTY_OPTIONAL)),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 });
 
@@ -159,7 +165,7 @@ describe("TestPerUserAggregationCompleteness", () => {
   it("test_literal_subset_of_valid", () => {
     expect(
       missingFrom(PER_USER_AGGREGATION_VALUES, VALID_PER_USER_AGGREGATIONS),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 });
 
@@ -167,7 +173,7 @@ describe("TestPropertyTypeCompleteness", () => {
   it("test_filter_property_type_subset", () => {
     expect(
       missingFrom(FILTER_PROPERTY_TYPE_VALUES, VALID_PROPERTY_TYPES),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 });
 
@@ -193,7 +199,9 @@ describe("TestEnumCardinality", () => {
   });
 
   it("test_valid_query_time_units_size", () => {
-    expect(missingFrom(VALID_TIME_UNITS, VALID_QUERY_TIME_UNITS)).toEqual([]);
+    expect(missingFrom(VALID_TIME_UNITS, VALID_QUERY_TIME_UNITS)).toStrictEqual(
+      [],
+    );
   });
 
   it("test_valid_resource_types_size", () => {
@@ -213,11 +221,11 @@ describe("TestEnumCardinality", () => {
   });
 
   it("test_valid_filters_determiner_values", () => {
-    expect(sorted(VALID_FILTERS_DETERMINER)).toEqual(["all", "any"]);
+    expect(sorted(VALID_FILTERS_DETERMINER)).toStrictEqual(["all", "any"]);
   });
 
   it("test_valid_analysis_types_values", () => {
-    expect(sorted(VALID_ANALYSIS_TYPES)).toEqual([
+    expect(sorted(VALID_ANALYSIS_TYPES)).toStrictEqual([
       "cumulative",
       "linear",
       "logarithmic",
@@ -228,7 +236,7 @@ describe("TestEnumCardinality", () => {
 
 describe("TestNewEnumConstants", () => {
   it("test_valid_funnel_order_values", () => {
-    expect(sorted(VALID_FUNNEL_ORDER)).toEqual(["any", "loose"]);
+    expect(sorted(VALID_FUNNEL_ORDER)).toStrictEqual(["any", "loose"]);
   });
 
   it("test_valid_funnel_order_is_frozenset", () => {
@@ -236,7 +244,7 @@ describe("TestNewEnumConstants", () => {
   });
 
   it("test_valid_conversion_window_units_values", () => {
-    expect(sorted(VALID_CONVERSION_WINDOW_UNITS)).toEqual([
+    expect(sorted(VALID_CONVERSION_WINDOW_UNITS)).toStrictEqual([
       "day",
       "hour",
       "minute",
@@ -252,7 +260,11 @@ describe("TestNewEnumConstants", () => {
   });
 
   it("test_valid_retention_units_values", () => {
-    expect(sorted(VALID_RETENTION_UNITS)).toEqual(["day", "month", "week"]);
+    expect(sorted(VALID_RETENTION_UNITS)).toStrictEqual([
+      "day",
+      "month",
+      "week",
+    ]);
   });
 
   it("test_valid_retention_units_is_frozenset", () => {
@@ -260,7 +272,7 @@ describe("TestNewEnumConstants", () => {
   });
 
   it("test_valid_retention_alignment_values", () => {
-    expect(sorted(VALID_RETENTION_ALIGNMENT)).toEqual([
+    expect(sorted(VALID_RETENTION_ALIGNMENT)).toStrictEqual([
       "birth",
       "interval_start",
     ]);
@@ -271,7 +283,7 @@ describe("TestNewEnumConstants", () => {
   });
 
   it("test_valid_flows_count_types_values", () => {
-    expect(sorted(VALID_FLOWS_COUNT_TYPES)).toEqual([
+    expect(sorted(VALID_FLOWS_COUNT_TYPES)).toStrictEqual([
       "session",
       "total",
       "unique",
@@ -283,7 +295,7 @@ describe("TestNewEnumConstants", () => {
   });
 
   it("test_valid_flows_chart_types_values", () => {
-    expect(sorted(VALID_FLOWS_CHART_TYPES)).toEqual([
+    expect(sorted(VALID_FLOWS_CHART_TYPES)).toStrictEqual([
       "sankey",
       "top-paths",
       "tree",
@@ -307,7 +319,7 @@ describe("TestExtendedMathFunnels", () => {
       "conversion_rate_total",
       "conversion_rate_session",
     ];
-    expect(missingFrom(original, VALID_MATH_FUNNELS)).toEqual([]);
+    expect(missingFrom(original, VALID_MATH_FUNNELS)).toStrictEqual([]);
   });
 
   it("test_contains_property_aggregation_types", () => {
@@ -321,11 +333,11 @@ describe("TestExtendedMathFunnels", () => {
       "p90",
       "p99",
     ];
-    expect(missingFrom(propertyAgg, VALID_MATH_FUNNELS)).toEqual([]);
+    expect(missingFrom(propertyAgg, VALID_MATH_FUNNELS)).toStrictEqual([]);
   });
 
   it("test_all_expected_values", () => {
-    expect(sorted(VALID_MATH_FUNNELS)).toEqual(
+    expect(sorted(VALID_MATH_FUNNELS)).toStrictEqual(
       [
         "general",
         "unique",
@@ -349,6 +361,6 @@ describe("TestExtendedMathFunnels", () => {
   });
 
   it("test_funnels_still_subset_of_all", () => {
-    expect(missingFrom(VALID_MATH_FUNNELS, VALID_MATH_TYPES)).toEqual([]);
+    expect(missingFrom(VALID_MATH_FUNNELS, VALID_MATH_TYPES)).toStrictEqual([]);
   });
 });

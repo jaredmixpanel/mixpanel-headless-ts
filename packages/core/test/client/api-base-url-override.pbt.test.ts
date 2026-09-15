@@ -94,7 +94,7 @@ describe("test_api_base_url_override_pbt", () => {
         for (const [family, prefix] of Object.entries(PREFIXES)) {
           expected[family] = `${base}${prefix}`;
         }
-        expect(Object.fromEntries(table)).toEqual(expected);
+        expect(Object.fromEntries(table)).toStrictEqual(expected);
         for (const url of table.values()) {
           expect(url.startsWith(base)).toBe(true);
           expect(url.slice(base.length)).not.toContain("//");
@@ -130,7 +130,7 @@ describe("test_api_base_url_override_pbt", () => {
       fc.property(regions, (region) => {
         const table = endpointsFor(region, {});
         expect(table).toBe(ENDPOINTS.get(region));
-        expect(Object.fromEntries(table)).toEqual(LIVE_SNAPSHOT[region]);
+        expect(Object.fromEntries(table)).toStrictEqual(LIVE_SNAPSHOT[region]);
       }),
     );
   });
@@ -140,7 +140,7 @@ describe("test_api_base_url_override_pbt", () => {
       fc.property(baseUrls, slashRuns, regions, (base, slashes, region) => {
         endpointsFor(region, { apiBaseUrl: `${base}${slashes}` });
         endpointsFor(region, { appBaseUrl: `${base}${slashes}` });
-        expect(liveNow()).toEqual(LIVE_SNAPSHOT);
+        expect(liveNow()).toStrictEqual(LIVE_SNAPSHOT);
       }),
     );
   });

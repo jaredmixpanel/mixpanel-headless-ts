@@ -256,7 +256,7 @@ describe("bundle aggregation methods (TestReplayBundleAggregations)", () => {
       project_id: 12345,
     });
     const out = b.rageClicks({ threshold: 3, windowMs: 100 });
-    expect(new Set(out.map((row) => row["replay_id"]))).toEqual(
+    expect(new Set(out.map((row) => row["replay_id"]))).toStrictEqual(
       new Set(["r-real"]),
     );
   });
@@ -286,12 +286,11 @@ describe("module-level aggregators (TestAggregatorFunctions)", () => {
 describe("elements frame — the Phase-2 deferrals (TestReplayBundleProjections)", () => {
   it("test_elements_df", () => {
     const rows = sampleBundle().toElementsRows();
-    if (rows.length > 0) {
-      expect(sampleBundle().elementsRowColumns()).toContain("n_clicks");
-      const row = rows.find((r) => r["target_desc"] === "button.signin");
-      // 1 click from r1 + 3 from r2 = 4
-      expect(row?.["n_clicks"]).toBe(4);
-    }
+    expect(rows.length).toBeGreaterThan(0);
+    expect(sampleBundle().elementsRowColumns()).toContain("n_clicks");
+    const row = rows.find((r) => r["target_desc"] === "button.signin");
+    // 1 click from r1 + 3 from r2 = 4
+    expect(row?.["n_clicks"]).toBe(4);
   });
 
   it("test_elements_df_normalizes_urls", () => {
@@ -326,14 +325,14 @@ describe("elements frame — the Phase-2 deferrals (TestReplayBundleProjections)
 describe("error-session + sample filters — the Phase-2 deferrals (TestReplayBundleFilters)", () => {
   it("test_error_sessions", () => {
     const out = sampleBundle().errorSessions();
-    expect(out.replays.map((r) => r.replay_id)).toEqual(["r-3"]);
+    expect(out.replays.map((r) => r.replay_id)).toStrictEqual(["r-3"]);
   });
 
   it("test_sample_determinism", () => {
     const b = sampleBundle();
     const a = b.sample(2, 42).replays.map((r) => r.replay_id);
     const c = b.sample(2, 42).replays.map((r) => r.replay_id);
-    expect(a).toEqual(c);
+    expect(a).toStrictEqual(c);
     expect(a).toHaveLength(2);
   });
 });

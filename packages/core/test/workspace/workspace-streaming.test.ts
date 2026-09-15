@@ -219,7 +219,7 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
 
     expect(events).toHaveLength(1);
     expect(events[0]?.["event_name"]).toBe("Purchase");
-    expect(stub.exportEventsCalls).toEqual([
+    expect(stub.exportEventsCalls).toStrictEqual([
       {
         from_date: "2024-01-15",
         to_date: "2024-01-15",
@@ -321,7 +321,7 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
       ws.streamEvents({ from_date: "2024-01-15", to_date: "2024-01-15" }),
     );
 
-    expect(events).toEqual([]);
+    expect(events).toStrictEqual([]);
     await ws.close();
   });
 
@@ -388,7 +388,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
     expect((profiles[1]?.["properties"] as Rec)["name"]).toBe("Bob");
     // Python asserts the full kwargs bag; TS omits absent keys (R3.9)
     // so the equivalent lock is "no filter keys were invented".
-    expect(stub.exportProfilesCalls).toEqual([{}]);
+    expect(stub.exportProfilesCalls).toStrictEqual([{}]);
     await ws.close();
   });
 
@@ -406,7 +406,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
 
     expect(profiles).toHaveLength(1);
     expect((profiles[0]?.["properties"] as Rec)["plan"]).toBe("premium");
-    expect(stub.exportProfilesCalls).toEqual([{ where: whereClause }]);
+    expect(stub.exportProfilesCalls).toStrictEqual([{ where: whereClause }]);
     await ws.close();
   });
 
@@ -422,7 +422,9 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
     );
 
     expect(profiles).toHaveLength(1);
-    expect(stub.exportProfilesCalls).toEqual([{ cohort_id: "cohort_12345" }]);
+    expect(stub.exportProfilesCalls).toStrictEqual([
+      { cohort_id: "cohort_12345" },
+    ]);
     await ws.close();
   });
 
@@ -438,7 +440,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
     );
 
     expect(profiles).toHaveLength(1);
-    expect(stub.exportProfilesCalls).toEqual([
+    expect(stub.exportProfilesCalls).toStrictEqual([
       { output_properties: ["$email", "$name", "plan"] },
     ]);
     await ws.close();
@@ -460,7 +462,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
       }),
     );
 
-    expect(stub.exportProfilesCalls).toEqual([
+    expect(stub.exportProfilesCalls).toStrictEqual([
       {
         where: whereClause,
         cohort_id: "cohort_abc",
@@ -517,7 +519,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
     stub.setProfiles(async function* () {});
     const ws = makeWorkspace(stub);
 
-    expect(await drain(ws.streamProfiles())).toEqual([]);
+    await expect(drain(ws.streamProfiles())).resolves.toStrictEqual([]);
     await ws.close();
   });
 });

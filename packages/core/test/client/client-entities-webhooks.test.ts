@@ -85,7 +85,7 @@ describe("TestListWebhooks", () => {
       json: { status: "ok", results: [] },
     }));
     const result = await client.listWebhooks();
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
   });
 
   it("test_uses_get_method", async () => {

@@ -169,7 +169,7 @@ describe("TestValidateFunnelArgsF2", () => {
     );
     const f2Errors = errors.filter((e) => e.code === "F2_EMPTY_STEP_EVENT");
     expect(f2Errors).toHaveLength(2);
-    expect(new Set(f2Errors.map((e) => e.path))).toEqual(
+    expect(new Set(f2Errors.map((e) => e.path))).toStrictEqual(
       new Set(["steps[0]", "steps[1]"]),
     );
   });
@@ -638,7 +638,7 @@ describe("TestValidateFunnelArgsMultipleErrors", () => {
 
   it("test_valid_args_return_empty_error_list", () => {
     const errors = validateFunnelArgs(validFunnelArgs());
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_valid_args_with_all_fields_populated", () => {
@@ -654,7 +654,7 @@ describe("TestValidateFunnelArgsMultipleErrors", () => {
       last: 30,
       group_by: "platform",
     });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_error_count_matches_distinct_violations", () => {
@@ -796,7 +796,7 @@ describe("TestValidateFunnelArgsF7", () => {
         }),
       );
       const f7 = errors.filter((e) => e.code.startsWith("F7"));
-      expect(f7, `unit='${unit}' should be valid`).toEqual([]);
+      expect(f7, `unit='${unit}' should be valid`).toStrictEqual([]);
     }
   });
 
@@ -834,7 +834,7 @@ describe("TestValidateFunnelArgsF7", () => {
     const errors = validateFunnelArgs(
       validFunnelArgs({ conversion_window: 1, conversion_window_unit: "day" }),
     );
-    expect(errors.filter((e) => e.code.startsWith("F7"))).toEqual([]);
+    expect(errors.filter((e) => e.code.startsWith("F7"))).toStrictEqual([]);
   });
 
   it("test_f7b_error_has_suggestion", () => {
@@ -852,7 +852,7 @@ describe("TestValidateFunnelArgsF7", () => {
 
   it("test_default_unit_is_day", () => {
     const errors = validateFunnelArgs(validFunnelArgs());
-    expect(errors.filter((e) => e.code.startsWith("F7"))).toEqual([]);
+    expect(errors.filter((e) => e.code.startsWith("F7"))).toStrictEqual([]);
   });
 });
 

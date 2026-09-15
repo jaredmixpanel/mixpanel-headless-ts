@@ -141,7 +141,7 @@ describe("TestTimeSectionEquivalence", () => {
           last,
           unit: unit as never,
         });
-        expect(section(params, "time")).toEqual(direct);
+        expect(section(params, "time")).toStrictEqual(direct);
       }),
       { numRuns: 50 },
     );
@@ -159,7 +159,7 @@ describe("TestTimeSectionEquivalence", () => {
           last: 30,
           unit: unit as never,
         });
-        expect(section(params, "time")).toEqual(direct);
+        expect(section(params, "time")).toStrictEqual(direct);
       }),
       { numRuns: 50 },
     );
@@ -176,7 +176,7 @@ describe("TestFilterSectionEquivalence", () => {
       fc.property(propertyNames, propertyNames, (prop, value) => {
         const f = Filter.equals(prop, value);
         const params = build({ where: f });
-        expect(section(params, "filter")).toEqual(buildFilterSection(f));
+        expect(section(params, "filter")).toStrictEqual(buildFilterSection(f));
       }),
       { numRuns: 50 },
     );
@@ -185,8 +185,8 @@ describe("TestFilterSectionEquivalence", () => {
   it("where=null: the section is the builder's empty list", () => {
     const params = build();
     const direct = buildFilterSection(null);
-    expect(section(params, "filter")).toEqual(direct);
-    expect(direct).toEqual([]);
+    expect(section(params, "filter")).toStrictEqual(direct);
+    expect(direct).toStrictEqual([]);
   });
 });
 
@@ -199,7 +199,7 @@ describe("TestGroupSectionEquivalence", () => {
     fc.assert(
       fc.property(propertyNames, (prop) => {
         const params = build({ group_by: prop });
-        expect(section(params, "group")).toEqual(buildGroupSection(prop));
+        expect(section(params, "group")).toStrictEqual(buildGroupSection(prop));
       }),
       { numRuns: 50 },
     );
@@ -221,7 +221,7 @@ describe("TestGroupSectionEquivalence", () => {
             bucket_max: bucketMax,
           });
           const params = build({ group_by: g });
-          expect(section(params, "group")).toEqual(buildGroupSection(g));
+          expect(section(params, "group")).toStrictEqual(buildGroupSection(g));
         },
       ),
       { numRuns: 30 },

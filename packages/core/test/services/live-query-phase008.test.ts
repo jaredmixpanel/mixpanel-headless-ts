@@ -96,7 +96,7 @@ describe("TestActivityFeedService", () => {
     const result = await live.activityFeed(["user_123"]);
 
     expect(result).toBeInstanceOf(ActivityFeedResult);
-    expect(result.distinct_ids).toEqual(["user_123"]);
+    expect(result.distinct_ids).toStrictEqual(["user_123"]);
     expect(result.events).toHaveLength(2);
   });
 
@@ -182,7 +182,7 @@ describe("TestActivityFeedService", () => {
     }));
     const result = await live.activityFeed(["user_123"]);
 
-    expect(result.sentinel_event).toEqual(sentinel);
+    expect(result.sentinel_event).toStrictEqual(sentinel);
   });
 
   it("sentinel_event is null when the response omits a cursor", async () => {
@@ -447,7 +447,7 @@ describe("TestQuerySavedReportService", () => {
 
     expect(result.from_date).toBe("2024-01-01T00:00:00-08:00");
     expect(result.to_date).toBe("2024-01-07T00:00:00-08:00");
-    expect(result.headers).toEqual(["$event", "country"]);
+    expect(result.headers).toStrictEqual(["$event", "country"]);
   });
 
   it("result supports frame conversion (`.df` twin)", async () => {

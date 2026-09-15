@@ -175,7 +175,7 @@ describe("TestListBookmarks (test_workspace_bookmarks.py:61)", () => {
       listBookmarks: vi.fn().mockResolvedValue([]),
     } as never);
 
-    expect(await ws.listBookmarks()).toEqual([]);
+    await expect(ws.listBookmarks()).resolves.toStrictEqual([]);
     await ws.close();
   });
 
@@ -246,7 +246,7 @@ describe("TestQuerySavedReport (test_workspace_bookmarks.py:210)", () => {
     const result = await ws.querySavedReport(12345);
 
     expect(result.bookmark_id).toBe(12345);
-    expect(calls).toEqual([
+    expect(calls).toStrictEqual([
       {
         bookmark_id: 12345,
         bookmark_type: "insights",
@@ -331,7 +331,9 @@ describe("TestQuerySavedReport (test_workspace_bookmarks.py:210)", () => {
       ),
     } as never);
 
-    expect(await ws.querySavedReport(12345)).toBeInstanceOf(SavedReportResult);
+    await expect(ws.querySavedReport(12345)).resolves.toBeInstanceOf(
+      SavedReportResult,
+    );
     await ws.close();
   });
 
@@ -360,7 +362,7 @@ describe("TestQuerySavedReport (test_workspace_bookmarks.py:210)", () => {
 
     await ws.querySavedReport(12345, { bookmark_type: "funnels" });
 
-    expect(calls).toEqual([
+    expect(calls).toStrictEqual([
       {
         bookmark_id: 12345,
         bookmark_type: "funnels",
@@ -400,7 +402,7 @@ describe("TestQuerySavedReport (test_workspace_bookmarks.py:210)", () => {
       to_date: "2024-06-30",
     });
 
-    expect(calls).toEqual([
+    expect(calls).toStrictEqual([
       {
         bookmark_id: 12345,
         bookmark_type: "funnels",
@@ -438,7 +440,7 @@ describe("TestQuerySavedReport (test_workspace_bookmarks.py:210)", () => {
 
     expect(result).toBeInstanceOf(SavedReportResult);
     // Should default to insights
-    expect(calls).toEqual([
+    expect(calls).toStrictEqual([
       {
         bookmark_id: 12345,
         bookmark_type: "insights",
@@ -485,7 +487,9 @@ describe("TestQueryFlows (test_workspace_bookmarks.py:450)", () => {
       ),
     } as never);
 
-    expect(await ws.querySavedFlows(12345)).toBeInstanceOf(FlowsResult);
+    await expect(ws.querySavedFlows(12345)).resolves.toBeInstanceOf(
+      FlowsResult,
+    );
     await ws.close();
   });
 

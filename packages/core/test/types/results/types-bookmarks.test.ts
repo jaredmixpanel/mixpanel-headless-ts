@@ -33,7 +33,7 @@ describe("SavedReportResult (TestSavedReportResult)", () => {
     expect(result.computed_at).toBe("2024-01-15T10:30:00");
     expect(result.from_date).toBe("2024-01-01");
     expect(result.to_date).toBe("2024-01-14");
-    expect(result.headers).toEqual(["$event"]);
+    expect(result.headers).toStrictEqual(["$event"]);
   });
 
   const bare = (headers: readonly string[]): SavedReportResult =>
@@ -83,7 +83,7 @@ describe("SavedReportResult (TestSavedReportResult)", () => {
       },
     });
     expect(result.toRows()).toHaveLength(4);
-    expect(new Set(result.rowColumns())).toEqual(
+    expect(new Set(result.rowColumns())).toStrictEqual(
       new Set(["date", "event", "count"]),
     );
   });
@@ -97,13 +97,13 @@ describe("SavedReportResult (TestSavedReportResult)", () => {
       headers: [],
       series: { Event: { "2024-01-01": 100 } },
     });
-    expect(result.toRows()).toEqual(result.toRows());
+    expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
   it("test_df_property_empty_series", () => {
     const result = bare([]);
     expect(result.toRows()).toHaveLength(0);
-    expect(result.rowColumns()).toEqual(["date", "event", "count"]);
+    expect(result.rowColumns()).toStrictEqual(["date", "event", "count"]);
   });
 
   it("non-insights branch returns ONE row whose series cell is the nested dict (C6 per-class row spec)", () => {
@@ -118,8 +118,8 @@ describe("SavedReportResult (TestSavedReportResult)", () => {
       headers: ["$retention"],
       series,
     });
-    expect(result.toRows()).toEqual([{ series }]);
-    expect(result.rowColumns()).toEqual(["series"]);
+    expect(result.toRows()).toStrictEqual([{ series }]);
+    expect(result.rowColumns()).toStrictEqual(["series"]);
   });
 
   it("test_to_dict", () => {
@@ -136,8 +136,8 @@ describe("SavedReportResult (TestSavedReportResult)", () => {
     expect(d["computed_at"]).toBe("2024-01-15T10:30:00");
     expect(d["from_date"]).toBe("2024-01-01");
     expect(d["to_date"]).toBe("2024-01-14");
-    expect(d["headers"]).toEqual(["$event"]);
-    expect(d["series"]).toEqual({ Event: { "2024-01-01": 100 } });
+    expect(d["headers"]).toStrictEqual(["$event"]);
+    expect(d["series"]).toStrictEqual({ Event: { "2024-01-01": 100 } });
     expect(d["report_type"]).toBe("insights");
   });
 });
@@ -160,7 +160,7 @@ describe("FlowsResult (TestFlowsResult)", () => {
     expect(result.steps).toHaveLength(2);
     expect(result.breakdowns).toHaveLength(1);
     expect(result.overall_conversion_rate).toBe(0.5);
-    expect(result.metadata).toEqual({ version: "1.0" });
+    expect(result.metadata).toStrictEqual({ version: "1.0" });
   });
 
   it("test_df_property", () => {
@@ -188,7 +188,7 @@ describe("FlowsResult (TestFlowsResult)", () => {
       breakdowns: [],
       overall_conversion_rate: 1.0,
     });
-    expect(result.toRows()).toEqual(result.toRows());
+    expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
   it("test_df_property_empty_steps", () => {
@@ -202,7 +202,7 @@ describe("FlowsResult (TestFlowsResult)", () => {
     expect(result.toRows()).toHaveLength(0);
     // The Python empty case is a bare pd.DataFrame() — NO column list
     // (phase2-design C6 per-class row spec).
-    expect(result.rowColumns()).toEqual([]);
+    expect(result.rowColumns()).toStrictEqual([]);
   });
 
   it("test_to_dict", () => {
@@ -217,10 +217,10 @@ describe("FlowsResult (TestFlowsResult)", () => {
     const d = result.toJSON();
     expect(d["bookmark_id"]).toBe(12345);
     expect(d["computed_at"]).toBe("2024-01-15T10:30:00");
-    expect(d["steps"]).toEqual([{ step: 1, event: "Event", count: 100 }]);
-    expect(d["breakdowns"]).toEqual([{ path: "A -> B", count: 50 }]);
+    expect(d["steps"]).toStrictEqual([{ step: 1, event: "Event", count: 100 }]);
+    expect(d["breakdowns"]).toStrictEqual([{ path: "A -> B", count: 50 }]);
     expect(d["overall_conversion_rate"]).toBe(0.5);
-    expect(d["metadata"]).toEqual({ key: "value" });
+    expect(d["metadata"]).toStrictEqual({ key: "value" });
   });
 
   it("test_default_values", () => {
@@ -228,10 +228,10 @@ describe("FlowsResult (TestFlowsResult)", () => {
       bookmark_id: 1,
       computed_at: "2024-01-01T00:00:00",
     });
-    expect(result.steps).toEqual([]);
-    expect(result.breakdowns).toEqual([]);
+    expect(result.steps).toStrictEqual([]);
+    expect(result.breakdowns).toStrictEqual([]);
     expect(result.overall_conversion_rate).toBe(0.0);
-    expect(result.metadata).toEqual({});
+    expect(result.metadata).toStrictEqual({});
   });
 });
 

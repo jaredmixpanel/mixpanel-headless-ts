@@ -269,7 +269,7 @@ describe("TestMeasurementPropertyBuilder", () => {
     const params = await makeWs().buildParams(
       new Metric({ event: "Purchase", math: "average", property: "amount" }),
     );
-    expect(measurementOf(params)["property"]).toEqual({
+    expect(measurementOf(params)["property"]).toStrictEqual({
       name: "amount",
       resourceType: "events",
     });
@@ -314,7 +314,7 @@ describe("TestMeasurementPropertyBuilder", () => {
       math: "average",
       math_property: "amount",
     });
-    expect(measurementOf(params)["property"]).toEqual({
+    expect(measurementOf(params)["property"]).toStrictEqual({
       name: "amount",
       resourceType: "events",
     });

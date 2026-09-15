@@ -40,6 +40,7 @@ import {
   ParamValidationError,
 } from "../../src/errors.js";
 import { Target } from "../../src/types/entities/accounts.js";
+import { expectThrows } from "../../test-support/raises.js";
 
 // ---- fixtures --------------------------------------------------------
 
@@ -363,14 +364,12 @@ describe("TestTargetMutualExclusion", () => {
   it("target guard carries the W1 code (packet §2.2 — no second code)", () => {
     const config = cmWithActive();
     addEcom(config);
-    try {
-      resolveSession({ target: "ecom", account: "team" }, sources(config));
-      expect.unreachable();
-    } catch (error) {
-      expect((error as ParamValidationError).code).toBe(
-        "WS1_TARGET_MUTUALLY_EXCLUSIVE",
-      );
-    }
+    const error = expectThrows(() =>
+      resolveSession({ target: "ecom", account: "team" }, sources(config)),
+    );
+    expect((error as ParamValidationError).code).toBe(
+      "WS1_TARGET_MUTUALLY_EXCLUSIVE",
+    );
   });
 
   it("test_target_alone_resolves", () => {
@@ -393,9 +392,9 @@ describe("TestNoSideEffects", () => {
     const activeBefore = { ...config.active };
     const accountNamesBefore = [...config.accounts.keys()];
     resolveSession({}, bag);
-    expect(env).toEqual(envBefore);
-    expect(config.active).toEqual(activeBefore);
-    expect([...config.accounts.keys()]).toEqual(accountNamesBefore);
+    expect(env).toStrictEqual(envBefore);
+    expect(config.active).toStrictEqual(activeBefore);
+    expect([...config.accounts.keys()]).toStrictEqual(accountNamesBefore);
   });
 
   it("test_does_not_read_oauth_tokens", () => {
@@ -418,14 +417,10 @@ describe("TestNoSideEffects", () => {
 describe("TestErrorMessages", () => {
   it("test_no_account_lists_options", () => {
     // cm has accounts but no [active].account; no env vars set.
-    try {
-      resolveSession({}, sources(cm()));
-      expect.unreachable();
-    } catch (error) {
-      expect(error).toBeInstanceOf(ConfigError);
-      // Should mention every fix path (per spec FR-024).
-      expect((error as ConfigError).message.toLowerCase()).toContain("account");
-    }
+    const error = expectThrows(() => resolveSession({}, sources(cm())));
+    expect(error).toBeInstanceOf(ConfigError);
+    // Should mention every fix path (per spec FR-024).
+    expect((error as ConfigError).message.toLowerCase()).toContain("account");
   });
 });
 
@@ -622,7 +617,7 @@ describe("TestResolverEdgeCases (test_042_edge_cases.py)", () => {
   it.each(["abc", "0", "-1", "1.5"])(
     "test_workspace_id_invalid_raises_config_error[%s]",
     (badWorkspace) => {
-      try {
+      const error = expectThrows(() =>
         resolveSession(
           {},
           sources(emptyCm(), {
@@ -632,13 +627,11 @@ describe("TestResolverEdgeCases (test_042_edge_cases.py)", () => {
             MP_REGION: "us",
             MP_WORKSPACE_ID: badWorkspace,
           }),
-        );
-        expect.unreachable();
-      } catch (error) {
-        expect(error).toBeInstanceOf(ConfigError);
-        // pytest.raises(..., match="MP_WORKSPACE_ID")
-        expect((error as ConfigError).message).toContain("MP_WORKSPACE_ID");
-      }
+        ),
+      );
+      expect(error).toBeInstanceOf(ConfigError);
+      // pytest.raises(..., match="MP_WORKSPACE_ID")
+      expect((error as ConfigError).message).toContain("MP_WORKSPACE_ID");
     },
   );
 
@@ -664,32 +657,28 @@ describe("packet §2.2 byte-for-byte rules", () => {
     // Caution #2: the raise position — env-account synthesis runs
     // before the explicit-param rung and raises unconditionally.
     const config = cmWithActive();
-    try {
+    const error = expectThrows(() =>
       resolveSession(
         { account: "team" },
         sources(config, { MP_REGION: "mars" }),
-      );
-      expect.unreachable();
-    } catch (error) {
-      expect(error).toBeInstanceOf(ConfigError);
-      expect((error as ConfigError).details).toEqual({
-        env_var: "MP_REGION",
-        value: "mars",
-      });
-    }
+      ),
+    );
+    expect(error).toBeInstanceOf(ConfigError);
+    expect((error as ConfigError).details).toStrictEqual({
+      env_var: "MP_REGION",
+      value: "mars",
+    });
   });
 
   it("MP_PROJECT_ID non-digit raises with {env_var, value} details", () => {
-    try {
-      resolveSession({}, sources(cmWithActive(), { MP_PROJECT_ID: "12a" }));
-      expect.unreachable();
-    } catch (error) {
-      expect(error).toBeInstanceOf(ConfigError);
-      expect((error as ConfigError).details).toEqual({
-        env_var: "MP_PROJECT_ID",
-        value: "12a",
-      });
-    }
+    const error = expectThrows(() =>
+      resolveSession({}, sources(cmWithActive(), { MP_PROJECT_ID: "12a" })),
+    );
+    expect(error).toBeInstanceOf(ConfigError);
+    expect((error as ConfigError).details).toStrictEqual({
+      env_var: "MP_PROJECT_ID",
+      value: "12a",
+    });
   });
 
   it("empty-string env values fall through for every var (watchlist #6)", () => {
@@ -725,26 +714,20 @@ describe("packet §2.2 byte-for-byte rules", () => {
 
   it("explicit workspace 0 / negative → ConfigError 'Invalid workspace ID'", () => {
     for (const bad of [0, -1]) {
-      try {
-        resolveSession({ workspace: bad }, sources(cmWithActive()));
-        expect.unreachable();
-      } catch (error) {
-        expect(error).toBeInstanceOf(ConfigError);
-        expect((error as ConfigError).message).toContain(
-          "Invalid workspace ID",
-        );
-      }
+      const error = expectThrows(() =>
+        resolveSession({ workspace: bad }, sources(cmWithActive())),
+      );
+      expect(error).toBeInstanceOf(ConfigError);
+      expect((error as ConfigError).message).toContain("Invalid workspace ID");
     }
   });
 
   it("explicit non-digit project → ConfigError 'Invalid project ID'", () => {
-    try {
-      resolveSession({ project: "not-digits" }, sources(cmWithActive()));
-      expect.unreachable();
-    } catch (error) {
-      expect(error).toBeInstanceOf(ConfigError);
-      expect((error as ConfigError).message).toContain("Invalid project ID");
-    }
+    const error = expectThrows(() =>
+      resolveSession({ project: "not-digits" }, sources(cmWithActive())),
+    );
+    expect(error).toBeInstanceOf(ConfigError);
+    expect((error as ConfigError).message).toContain("Invalid project ID");
   });
 
   it("envWorkspaceId parses via the pythonInt twin (R11.7)", () => {

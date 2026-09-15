@@ -143,7 +143,7 @@ function withCode(
 describe("TestValidateBookmarkLayer2", () => {
   it("test_valid_bookmark_no_errors", () => {
     const errors = validateBookmark(minimalBookmark());
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_b1_missing_sections", () => {
@@ -368,7 +368,7 @@ describe("TestValidateBookmarkLayer2", () => {
         e.code.startsWith("B15") ||
         e.code.startsWith("B18"),
     );
-    expect(filterErrors).toEqual([]);
+    expect(filterErrors).toStrictEqual([]);
   });
 
   it("test_valid_group_passes", () => {
@@ -382,7 +382,7 @@ describe("TestValidateBookmarkLayer2", () => {
     ];
     const errors = validateBookmark(bm);
     const groupErrors = errors.filter((e) => e.code.startsWith("B17"));
-    expect(groupErrors).toEqual([]);
+    expect(groupErrors).toStrictEqual([]);
   });
 });
 
@@ -409,7 +409,7 @@ describe("TestValidateMeasurementFunnelContext", () => {
       expect(
         mathErrors,
         `math='${mathType}' should be valid for funnels`,
-      ).toEqual([]);
+      ).toStrictEqual([]);
     }
   });
 
@@ -463,7 +463,7 @@ describe("TestValidateSortingBlock", () => {
   it("test_sorting_omitted_no_errors", () => {
     const errors = validateBookmark(minimalBookmark());
     const sortErrors = errors.filter((e) => e.code.startsWith("S"));
-    expect(sortErrors).toEqual([]);
+    expect(sortErrors).toStrictEqual([]);
   });
 
   it("test_sorting_empty_dict_no_errors", () => {
@@ -471,7 +471,7 @@ describe("TestValidateSortingBlock", () => {
     bm["sorting"] = {};
     const errors = validateBookmark(bm);
     const sortErrors = errors.filter((e) => e.code.startsWith("S"));
-    expect(sortErrors).toEqual([]);
+    expect(sortErrors).toStrictEqual([]);
   });
 
   it("test_sorting_canonical_column_config_passes", () => {
@@ -481,7 +481,7 @@ describe("TestValidateSortingBlock", () => {
     };
     const errors = validateBookmark(bm);
     const sortErrors = errors.filter((e) => e.code.startsWith("S"));
-    expect(sortErrors).toEqual([]);
+    expect(sortErrors).toStrictEqual([]);
   });
 
   it("test_sorting_value_config_with_attrs_passes", () => {
@@ -500,7 +500,7 @@ describe("TestValidateSortingBlock", () => {
     };
     const errors = validateBookmark(bm);
     const sortErrors = errors.filter((e) => e.code.startsWith("S"));
-    expect(sortErrors).toEqual([]);
+    expect(sortErrors).toStrictEqual([]);
   });
 
   it("test_sorting_invalid_sort_by_caught", () => {
@@ -625,7 +625,7 @@ describe("TestValidateSortingBlock", () => {
     };
     const errors = validateBookmark(bm);
     const sortErrors = errors.filter((e) => e.code.startsWith("S"));
-    expect(sortErrors).toEqual([]);
+    expect(sortErrors).toStrictEqual([]);
   });
 
   it("test_sorting_lift_comparison_value_accepted", () => {
@@ -635,7 +635,7 @@ describe("TestValidateSortingBlock", () => {
     };
     const errors = validateBookmark(bm);
     const s1 = withCode(errors, "S1_INVALID_SORT_BY");
-    expect(s1).toEqual([]);
+    expect(s1).toStrictEqual([]);
   });
 
   it("test_sorting_line_flat_label_config_accepted", () => {
@@ -643,7 +643,7 @@ describe("TestValidateSortingBlock", () => {
     bm["sorting"] = { line: { sortBy: "label", sortOrder: "asc" } };
     const errors = validateBookmark(bm);
     const sortErrors = errors.filter((e) => e.code.startsWith("S"));
-    expect(sortErrors).toEqual([]);
+    expect(sortErrors).toStrictEqual([]);
   });
 
   it("test_sorting_line_flat_value_config_accepted", () => {
@@ -657,7 +657,7 @@ describe("TestValidateSortingBlock", () => {
     };
     const errors = validateBookmark(bm);
     const sortErrors = errors.filter((e) => e.code.startsWith("S"));
-    expect(sortErrors).toEqual([]);
+    expect(sortErrors).toStrictEqual([]);
   });
 
   it("test_sorting_line_column_config_still_requires_col_sort_attrs", () => {
@@ -753,7 +753,7 @@ describe("TestValidateSortingBlock", () => {
     };
     const errors = validateBookmark(bm);
     const sortErrors = errors.filter((e) => e.code.startsWith("S"));
-    expect(sortErrors).toEqual([]);
+    expect(sortErrors).toStrictEqual([]);
   });
 
   // ------------------------------------------------------------------
@@ -829,6 +829,6 @@ describe("TestValidateSortingBlock", () => {
     bm["sorting"] = { line: { sortBy: "value", colSortAttrs: [] } };
     const errors = validateBookmark(bm);
     const sortErrors = errors.filter((e) => e.code.startsWith("S"));
-    expect(sortErrors).toEqual([]);
+    expect(sortErrors).toStrictEqual([]);
   });
 });

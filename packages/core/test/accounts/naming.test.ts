@@ -68,9 +68,7 @@ describe("TestSlugify (test_naming.py:24)", () => {
       "Mixpanel 🎉",
     ]) {
       const result = slugify(value);
-      if (result !== "") {
-        expect(result).toMatch(pattern);
-      }
+      expect(result).toMatch(pattern);
     }
   });
 

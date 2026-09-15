@@ -36,7 +36,6 @@ import { OAuthStorage } from "../src/auth/storage.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const POSIX = process.platform !== "win32";
-const itPosix = POSIX ? it : it.skip;
 
 const cleanups: Array<() => void> = [];
 let restoreEnv: () => void = () => undefined;
@@ -89,7 +88,7 @@ function makeClientInfo(options?: {
 }
 
 describe("TestOAuthStorageSecurityHardening (test_auth_storage.py:87)", () => {
-  itPosix("test_directory_created_with_0o700", () => {
+  it.skipIf(!POSIX)("test_directory_created_with_0o700", () => {
     const tmp = makeTempDir(cleanups);
     const storageDir = join(tmp, "secure_oauth");
     const storage = new OAuthStorage({ storageDir });
@@ -97,7 +96,7 @@ describe("TestOAuthStorageSecurityHardening (test_auth_storage.py:87)", () => {
     expect(statSync(storageDir).mode & 0o7777).toBe(0o700);
   });
 
-  itPosix("test_files_created_with_0o600", () => {
+  it.skipIf(!POSIX)("test_files_created_with_0o600", () => {
     const tmp = makeTempDir(cleanups);
     const storage = new OAuthStorage({ storageDir: tmp });
     storage.saveTokens(makeTokens(), "us");
@@ -107,7 +106,7 @@ describe("TestOAuthStorageSecurityHardening (test_auth_storage.py:87)", () => {
     }
   });
 
-  itPosix("test_check_and_fix_permissions_repairs_directory", () => {
+  it.skipIf(!POSIX)("test_check_and_fix_permissions_repairs_directory", () => {
     const tmp = makeTempDir(cleanups);
     const storageDir = join(tmp, "fixable_oauth");
     mkdirSync(storageDir, { recursive: true });
@@ -117,15 +116,18 @@ describe("TestOAuthStorageSecurityHardening (test_auth_storage.py:87)", () => {
     expect(statSync(storageDir).mode & 0o7777).toBe(0o700);
   });
 
-  itPosix("test_check_and_fix_permissions_repairs_files_on_load", () => {
-    const tmp = makeTempDir(cleanups);
-    const storage = new OAuthStorage({ storageDir: tmp });
-    storage.saveTokens(makeTokens(), "us");
-    const tokenFile = join(tmp, "tokens_us.json");
-    chmodSync(tokenFile, 0o644);
-    storage.loadTokens("us");
-    expect(statSync(tokenFile).mode & 0o7777).toBe(0o600);
-  });
+  it.skipIf(!POSIX)(
+    "test_check_and_fix_permissions_repairs_files_on_load",
+    () => {
+      const tmp = makeTempDir(cleanups);
+      const storage = new OAuthStorage({ storageDir: tmp });
+      storage.saveTokens(makeTokens(), "us");
+      const tokenFile = join(tmp, "tokens_us.json");
+      chmodSync(tokenFile, 0o644);
+      storage.loadTokens("us");
+      expect(statSync(tokenFile).mode & 0o7777).toBe(0o600);
+    },
+  );
 
   it("test_repr_redacts_access_token", () => {
     const tokens = makeTokens();
@@ -222,7 +224,7 @@ describe("TestOAuthStorageClientInfoRoundTrip (test_auth_storage.py:249)", () =>
 });
 
 describe("TestOAuthStorageFilePermissions (test_auth_storage.py:285)", () => {
-  itPosix("test_storage_directory_has_0o700_permissions", () => {
+  it.skipIf(!POSIX)("test_storage_directory_has_0o700_permissions", () => {
     const tmp = makeTempDir(cleanups);
     const storageDir = join(tmp, "oauth_perms");
     const storage = new OAuthStorage({ storageDir });
@@ -230,14 +232,14 @@ describe("TestOAuthStorageFilePermissions (test_auth_storage.py:285)", () => {
     expect(statSync(storageDir).mode & 0o7777).toBe(0o700);
   });
 
-  itPosix("test_token_file_has_0o600_permissions", () => {
+  it.skipIf(!POSIX)("test_token_file_has_0o600_permissions", () => {
     const tmp = makeTempDir(cleanups);
     const storage = new OAuthStorage({ storageDir: tmp });
     storage.saveTokens(makeTokens(), "us");
     expect(statSync(join(tmp, "tokens_us.json")).mode & 0o7777).toBe(0o600);
   });
 
-  itPosix("test_client_info_file_has_0o600_permissions", () => {
+  it.skipIf(!POSIX)("test_client_info_file_has_0o600_permissions", () => {
     const tmp = makeTempDir(cleanups);
     const storage = new OAuthStorage({ storageDir: tmp });
     storage.saveClientInfo(makeClientInfo({ region: "eu" }));

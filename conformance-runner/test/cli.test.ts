@@ -6,11 +6,13 @@ import { main, parseArgs } from "../src/cli.js";
 
 describe("parseArgs", () => {
   it("defaults to the json report", () => {
-    expect(parseArgs([])).toEqual({ report: "json" });
+    expect(parseArgs([])).toStrictEqual({ report: "json" });
   });
 
   it("accepts --report json and --filter", () => {
-    expect(parseArgs(["--report", "json", "--filter", "compat/"])).toEqual({
+    expect(
+      parseArgs(["--report", "json", "--filter", "compat/"]),
+    ).toStrictEqual({
       report: "json",
       filter: "compat/",
     });
@@ -47,7 +49,7 @@ describe("main", () => {
       };
       expect(code).toBe(0);
       expect(report.failed).toBe(0);
-      expect(report.failures).toEqual([]);
+      expect(report.failures).toStrictEqual([]);
       // B8-gate terminal checkpoint (b8-packets.md §5.3c — the Risk-8
       // "UNPORTED must FAIL after flip" assert's terminal form): with
       // the corpus closed, NO vector may report UNPORTED at all.
@@ -65,7 +67,7 @@ describe("main", () => {
       .spyOn(process.stderr, "write")
       .mockImplementation(() => true);
     try {
-      expect(await main(["--report", "xml"])).toBe(2);
+      await expect(main(["--report", "xml"])).resolves.toBe(2);
     } finally {
       errSpy.mockRestore();
     }

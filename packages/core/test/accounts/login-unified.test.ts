@@ -372,7 +372,7 @@ describe("TestLoginUnifiedProgressHook (test_accounts_namespace.py:1358)", () =>
       progress: factory,
     });
 
-    expect(events).toEqual(["enter", "fetch", "exit"]);
+    expect(events).toStrictEqual(["enter", "fetch", "exit"]);
     expect(messages).toHaveLength(1);
     expect(messages[0]).not.toBe("");
     // No numeric duration in the message (043 cli-feedback rule).
@@ -430,7 +430,7 @@ describe("TestLoginUnifiedProgressHook (test_accounts_namespace.py:1358)", () =>
       progress: factory,
     });
 
-    expect(events).toEqual(["enter", "fetch", "exit"]);
+    expect(events).toStrictEqual(["enter", "fetch", "exit"]);
     expect(messages.length).toBeGreaterThan(0);
     expect(messages[0]).not.toBe("");
   });
@@ -472,7 +472,7 @@ describe("TestLoginUnifiedPickerSortOrder (test_accounts_namespace.py:1544)", ()
     });
 
     expect(captured.length).toBeGreaterThan(0);
-    expect(captured[0]).toEqual([
+    expect(captured[0]).toStrictEqual([
       "wolf",
       "zebra",
       "alpha",
@@ -511,7 +511,7 @@ describe("TestLoginUnifiedPickerSortOrder (test_accounts_namespace.py:1544)", ()
       },
     });
 
-    expect(captured[0]).toEqual(["acmeproj", "betaproj"]);
+    expect(captured[0]).toStrictEqual(["acmeproj", "betaproj"]);
   });
 });
 

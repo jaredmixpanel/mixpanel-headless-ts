@@ -181,7 +181,7 @@ describe("TestQueryFlows", () => {
       12345,
     );
 
-    expect(result.metadata).toEqual({ version: "2.0", custom: "value" });
+    expect(result.metadata).toStrictEqual({ version: "2.0", custom: "value" });
   });
 
   it("defaults to empty metadata when absent", async () => {
@@ -197,7 +197,7 @@ describe("TestQueryFlows", () => {
       12345,
     );
 
-    expect(result.metadata).toEqual({});
+    expect(result.metadata).toStrictEqual({});
   });
 
   it("calls the client with the bookmark id", async () => {
@@ -211,7 +211,7 @@ describe("TestQueryFlows", () => {
 
     await new LiveQueryService(mock.client).querySavedFlows(12345);
 
-    expect(mock.savedFlowsCalls).toEqual([12345]);
+    expect(mock.savedFlowsCalls).toStrictEqual([12345]);
   });
 });
 
@@ -231,8 +231,8 @@ describe("TestQuerySavedReportNormalization", () => {
     );
 
     expect(result).toBeInstanceOf(SavedReportResult);
-    expect(result.headers).toEqual(["$metric"]);
-    expect(result.series).toEqual({
+    expect(result.headers).toStrictEqual(["$metric"]);
+    expect(result.series).toStrictEqual({
       "Event A": { "2024-01-01": 100, "2024-01-02": 150 },
     });
   });
@@ -251,7 +251,7 @@ describe("TestQuerySavedReportNormalization", () => {
     );
 
     expect(result).toBeInstanceOf(SavedReportResult);
-    expect(result.headers).toEqual(["$funnel"]);
+    expect(result.headers).toStrictEqual(["$funnel"]);
     expect(result.report_type).toBe("funnel");
   });
 
@@ -290,7 +290,7 @@ describe("TestQuerySavedReportNormalization", () => {
       { bookmark_type: "funnels" },
     );
 
-    expect(result.series).toEqual(funnelData);
+    expect(result.series).toStrictEqual(funnelData);
   });
 
   it("retention responses add the $retention header", async () => {
@@ -310,7 +310,7 @@ describe("TestQuerySavedReportNormalization", () => {
     );
 
     expect(result).toBeInstanceOf(SavedReportResult);
-    expect(result.headers).toEqual(["$retention"]);
+    expect(result.headers).toStrictEqual(["$retention"]);
     expect(result.report_type).toBe("retention");
   });
 
@@ -326,7 +326,7 @@ describe("TestQuerySavedReportNormalization", () => {
       { bookmark_type: "retention" },
     );
 
-    expect(result.series).toEqual(retentionData);
+    expect(result.series).toStrictEqual(retentionData);
   });
 
   it("retention responses extract from_date/to_date from keys", async () => {
@@ -361,7 +361,7 @@ describe("TestQuerySavedReportNormalization", () => {
     );
 
     expect(result).toBeInstanceOf(SavedReportResult);
-    expect(result.headers).toEqual(["$flows"]);
+    expect(result.headers).toStrictEqual(["$flows"]);
   });
 
   it("flows responses structure the series correctly", async () => {
@@ -399,7 +399,7 @@ describe("TestQuerySavedReportNormalization", () => {
     });
 
     expect(mock.savedReportCalls).toHaveLength(1);
-    expect(mock.savedReportCalls[0]).toEqual({
+    expect(mock.savedReportCalls[0]).toStrictEqual({
       bookmarkId: 12345,
       options: {
         bookmark_type: "insights",
@@ -420,7 +420,7 @@ describe("TestQuerySavedReportNormalization", () => {
     });
 
     expect(mock.savedReportCalls).toHaveLength(1);
-    expect(mock.savedReportCalls[0]).toEqual({
+    expect(mock.savedReportCalls[0]).toStrictEqual({
       bookmarkId: 12345,
       options: {
         bookmark_type: "funnels",

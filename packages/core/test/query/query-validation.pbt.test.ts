@@ -170,7 +170,7 @@ describe("TestTimeValidationEquivalence", () => {
             standaloneCodes,
             `Mismatch for from_date=${JSON.stringify(from_date)}, ` +
               `to_date=${JSON.stringify(to_date)}, last=${String(last)}`,
-          ).toEqual(monolithicTimeCodes);
+          ).toStrictEqual(monolithicTimeCodes);
         },
       ),
       { numRuns: 100 },
@@ -237,7 +237,7 @@ describe("TestGroupByValidationEquivalence", () => {
             `Mismatch for GroupBy(${JSON.stringify(prop)}, ` +
               `type=${JSON.stringify(prop_type)}, size=${String(bucket_size)}, ` +
               `min=${String(bucket_min)}, max=${String(bucket_max)})`,
-          ).toEqual(monolithicGroupCodes);
+          ).toStrictEqual(monolithicGroupCodes);
         },
       ),
       { numRuns: 100 },
@@ -246,11 +246,11 @@ describe("TestGroupByValidationEquivalence", () => {
 
   it("test_none_groupby_no_errors", () => {
     const errors = validateGroupByArgs({ group_by: null });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_string_groupby_no_errors", () => {
     const errors = validateGroupByArgs({ group_by: "country" });
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 });

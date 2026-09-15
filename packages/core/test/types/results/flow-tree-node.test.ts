@@ -125,9 +125,9 @@ describe("FlowTreeNode construction (TestFlowTreeNodeConstruction)", () => {
     expect(node.converted_count).toBe(0);
     expect(node.anchor_type).toBe("NORMAL");
     expect(node.is_computed).toBe(false);
-    expect(node.children).toEqual([]);
-    expect(node.time_percentiles_from_start).toEqual({});
-    expect(node.time_percentiles_from_prev).toEqual({});
+    expect(node.children).toStrictEqual([]);
+    expect(node.time_percentiles_from_start).toStrictEqual({});
+    expect(node.time_percentiles_from_prev).toStrictEqual({});
   });
 
   it("test_construct_with_all_fields", () => {
@@ -158,13 +158,13 @@ describe("FlowTreeNode construction (TestFlowTreeNodeConstruction)", () => {
     expect(node.is_computed).toBe(true);
     expect(node.children).toHaveLength(1);
     expect(node.children[0]?.event).toBe("Search");
-    expect(node.time_percentiles_from_start).toEqual(tp_start);
-    expect(node.time_percentiles_from_prev).toEqual(tp_prev);
+    expect(node.time_percentiles_from_start).toStrictEqual(tp_start);
+    expect(node.time_percentiles_from_prev).toStrictEqual(tp_prev);
   });
 
   it("test_empty_children_default", () => {
     const node = leafNode();
-    expect(node.children).toEqual([]);
+    expect(node.children).toStrictEqual([]);
     expect(Array.isArray(node.children)).toBe(true);
   });
 });
@@ -255,7 +255,7 @@ describe("FlowTreeNode.all_paths (TestFlowTreeNodeAllPaths)", () => {
 
   it("test_paths_end_with_leaves", () => {
     for (const path of sampleTree().allPaths()) {
-      expect(path[path.length - 1]?.children).toEqual([]);
+      expect(path[path.length - 1]?.children).toStrictEqual([]);
     }
   });
 
@@ -288,13 +288,13 @@ describe("FlowTreeNode.find (TestFlowTreeNodeFind)", () => {
   });
 
   it("test_find_no_match", () => {
-    expect(sampleTree().find("NonExistent")).toEqual([]);
+    expect(sampleTree().find("NonExistent")).toStrictEqual([]);
   });
 
   it("test_find_preserves_node_data", () => {
     const purchases = sampleTree().find("Purchase");
     const counts = purchases.map((p) => p.total_count).sort((a, b) => a - b);
-    expect(counts).toEqual([200, 400]);
+    expect(counts).toStrictEqual([200, 400]);
   });
 });
 
@@ -322,7 +322,7 @@ describe("FlowTreeNode.flatten (TestFlowTreeNodeFlatten)", () => {
 describe("FlowTreeNode.to_dict (TestFlowTreeNodeToDict)", () => {
   it("test_leaf_to_dict_keys", () => {
     const d = leafNode().toJSON();
-    expect(new Set(Object.keys(d))).toEqual(
+    expect(new Set(Object.keys(d))).toStrictEqual(
       new Set([
         "event",
         "type",
@@ -343,7 +343,7 @@ describe("FlowTreeNode.to_dict (TestFlowTreeNodeToDict)", () => {
     const d = leafNode().toJSON();
     expect(d["event"]).toBe("Purchase");
     expect(d["total_count"]).toBe(100);
-    expect(d["children"]).toEqual([]);
+    expect(d["children"]).toStrictEqual([]);
   });
 
   it("test_recursive_to_dict", () => {
@@ -410,11 +410,11 @@ describe("FlowQueryResult tree mode (TestFlowQueryResultTreeMode)", () => {
       computed_at: "2025-01-15T10:00:00",
       mode: "tree",
     });
-    expect(r.trees).toEqual([]);
+    expect(r.trees).toStrictEqual([]);
   });
 
   it("test_df_tree_mode_columns", () => {
-    expect(makeTreeResult().rowColumns()).toEqual(expected_cols);
+    expect(makeTreeResult().rowColumns()).toStrictEqual(expected_cols);
   });
 
   it("test_df_tree_mode_row_count", () => {
@@ -433,13 +433,13 @@ describe("FlowQueryResult tree mode (TestFlowQueryResultTreeMode)", () => {
 
   it("test_df_tree_mode_cached (determinism)", () => {
     const r = makeTreeResult();
-    expect(r.toRows()).toEqual(r.toRows());
+    expect(r.toRows()).toStrictEqual(r.toRows());
   });
 
   it("test_df_tree_mode_empty_trees", () => {
     const r = makeTreeResult({ trees: [] });
     expect(r.toRows()).toHaveLength(0);
-    expect(r.rowColumns()).toEqual(expected_cols);
+    expect(r.rowColumns()).toStrictEqual(expected_cols);
   });
 
   it("test_to_dict_includes_trees", () => {
@@ -465,7 +465,7 @@ describe("FlowQueryResult tree mode (TestFlowQueryResultTreeMode)", () => {
     // df includes nodes from both trees.
     expect(r.toRows()).toHaveLength(sampleTree().node_count + tree2.node_count);
     // tree_index distinguishes them.
-    expect(new Set(r.toRows().map((row) => row["tree_index"]))).toEqual(
+    expect(new Set(r.toRows().map((row) => row["tree_index"]))).toStrictEqual(
       new Set([0, 1]),
     );
   });

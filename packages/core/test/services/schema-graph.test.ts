@@ -214,16 +214,16 @@ describe("TestSchemaGraphResult (to_graph half — Phase-2 deferral)", () => {
     expect(nodeKind(g, "Purchase")).toBe("event");
     expect(nodeKind(g, "amount")).toBe("property");
     expect(nodeKind(g, "orphan")).toBe("property");
-    expect(successors(g, "Purchase")).toEqual(["amount"]);
+    expect(successors(g, "Purchase")).toStrictEqual(["amount"]);
     expect(edgeDensity(g, "Purchase", "amount")).toBe(0.9);
     // no property->anything edges
-    expect(successors(g, "amount")).toEqual([]);
-    expect(successors(g, "orphan")).toEqual([]);
+    expect(successors(g, "amount")).toStrictEqual([]);
+    expect(successors(g, "orphan")).toStrictEqual([]);
   });
 
   it("rebuilds an identical graph on repeated calls", () => {
     const result = sampleResult();
-    expect(result.toGraph()).toEqual(result.toGraph());
+    expect(result.toGraph()).toStrictEqual(result.toGraph());
   });
 
   it("has zero nodes for an empty result", () => {
@@ -251,7 +251,7 @@ describe("TestSchemaGraphResult (to_graph half — Phase-2 deferral)", () => {
         },
       ],
     });
-    expect(successors(result.toGraph(), "Purchase")).toEqual(["amount"]);
+    expect(successors(result.toGraph(), "Purchase")).toStrictEqual(["amount"]);
   });
 
   it("seeds property-less events as graph nodes", () => {
@@ -299,7 +299,9 @@ describe("TestApiClientBulkLexicon", () => {
       status: 200,
       json: [{ name: "Purchase" }],
     }));
-    expect(await client.listEventDefinitions()).toEqual([{ name: "Purchase" }]);
+    await expect(client.listEventDefinitions()).resolves.toStrictEqual([
+      { name: "Purchase" },
+    ]);
   });
 
   it("rejects a non-list event-definitions response", async () => {
@@ -395,7 +397,7 @@ describe("TestApiClientPerEventProperties", () => {
     );
     expect(seenParams["fetch_per_event_properties"]).toBe("true");
     expect(seenParams["project_id"]).toBe("12345");
-    expect(rows).toEqual([
+    expect(rows).toStrictEqual([
       { name: "Purchase", properties: [{ name: "amount" }] },
     ]);
   });
@@ -432,11 +434,17 @@ describe("TestDiscoveryGetSchemaGraph", () => {
   it("builds the adjacency maps from the inverted per-event gather", async () => {
     const stub = defaultMockApi();
     const result = await new DiscoveryService(stub.client).getSchemaGraph();
-    expect(result.event_to_properties["Purchase"]).toEqual(["amount", "ts"]);
-    expect(result.event_to_properties["Login"]).toEqual(["ts"]);
-    expect(result.property_to_events["amount"]).toEqual(["Purchase"]);
-    expect(result.property_to_events["ts"]).toEqual(["Purchase", "Login"]);
-    expect(result.user_properties).toEqual([
+    expect(result.event_to_properties["Purchase"]).toStrictEqual([
+      "amount",
+      "ts",
+    ]);
+    expect(result.event_to_properties["Login"]).toStrictEqual(["ts"]);
+    expect(result.property_to_events["amount"]).toStrictEqual(["Purchase"]);
+    expect(result.property_to_events["ts"]).toStrictEqual([
+      "Purchase",
+      "Login",
+    ]);
+    expect(result.user_properties).toStrictEqual([
       { name: "plan", resourceType: "User" },
     ]);
     expect(result.meta["event_count"]).toBe(2);
@@ -463,8 +471,8 @@ describe("TestDiscoveryGetSchemaGraph", () => {
       { name: "NoProps" }, // no properties key -> no edges
     ];
     const result = await new DiscoveryService(stub.client).getSchemaGraph();
-    expect(result.property_to_events["amount"]).toEqual([]);
-    expect(result.property_to_events["ts"]).toEqual(["Login"]);
+    expect(result.property_to_events["amount"]).toStrictEqual([]);
+    expect(result.property_to_events["ts"]).toStrictEqual(["Login"]);
   });
 
   it("ignores per-event properties absent from the flat list", async () => {
@@ -475,7 +483,7 @@ describe("TestDiscoveryGetSchemaGraph", () => {
     ];
     const result = await new DiscoveryService(stub.client).getSchemaGraph();
     expect(Object.hasOwn(result.property_to_events, "ghost")).toBe(false);
-    expect(result.event_to_properties["Purchase"]).toEqual([]);
+    expect(result.event_to_properties["Purchase"]).toStrictEqual([]);
   });
 
   it("caches results; force_refresh re-fetches", async () => {
@@ -493,7 +501,7 @@ describe("TestDiscoveryGetSchemaGraph", () => {
     const result = await new DiscoveryService(stub.client).getSchemaGraph({
       include_user_properties: false,
     });
-    expect(result.user_properties).toEqual([]);
+    expect(result.user_properties).toStrictEqual([]);
     // only the Event resource_type call was made
     expect(stub.resourceTypes).not.toContain("User");
   });

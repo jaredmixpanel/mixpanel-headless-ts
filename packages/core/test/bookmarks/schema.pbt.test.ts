@@ -303,10 +303,10 @@ describe("TestRoundtripSoundness", () => {
         (name) => {
           const params = validMinimalInsights();
           params["name"] = name;
-          expect(validateInsights(params)).toEqual([]);
+          expect(validateInsights(params)).toStrictEqual([]);
           // The twin has no `model_dump`; re-validating the same input
           // is the statelessness half of the Python property.
-          expect(validateInsights(params)).toEqual([]);
+          expect(validateInsights(params)).toStrictEqual([]);
         },
       ),
       { numRuns: 50 },
@@ -319,7 +319,7 @@ describe("TestRoundtripSoundness", () => {
         const raw = { sortBy, colSortAttrs: [] };
         expect(
           validateWithPydantic(SORT_BY_COLUMNS_CONFIG_MODEL.validate, raw),
-        ).toEqual([]);
+        ).toStrictEqual([]);
       }),
       { numRuns: 20 },
     );
@@ -330,7 +330,7 @@ describe("TestRoundtripSoundness", () => {
       fc.property(fc.integer({ min: 0, max: 10 }), (forward) => {
         expect(
           FLOWS_BOOKMARK_STEP_MODEL.validate({ event: "Login", forward }),
-        ).toEqual([]);
+        ).toStrictEqual([]);
       }),
       { numRuns: 20 },
     );
@@ -342,13 +342,13 @@ describe("TestValidatorIdempotence", () => {
     fc.assert(
       fc.property(fc.integer({ min: 0, max: 5 }), (extraCount) => {
         const valid = validMinimalInsights();
-        expect(validateInsights(valid)).toEqual([]);
+        expect(validateInsights(valid)).toStrictEqual([]);
         const bad: Dict = { ...valid };
         for (let i = 0; i <= extraCount; i += 1) {
           bad[`definitely_unknown_${String(i)}`] = i;
         }
         expect(validateInsights(bad).length).toBeGreaterThanOrEqual(1);
-        expect(validateInsights(valid)).toEqual([]);
+        expect(validateInsights(valid)).toStrictEqual([]);
       }),
       { numRuns: 20 },
     );
@@ -524,7 +524,7 @@ describe("TestLegacyFieldTolerance", () => {
         const [fieldName, fieldValue] = field;
         const params = validMinimalInsights();
         params[fieldName] = fieldValue;
-        expect(validateInsights(params)).toEqual([]);
+        expect(validateInsights(params)).toStrictEqual([]);
       }),
       { numRuns: INSIGHTS_LEGACY_FIELDS.length },
     );
@@ -545,7 +545,7 @@ describe("TestLegacyFieldTolerance", () => {
           for (const [fieldName, fieldValue] of fields) {
             params[fieldName] = fieldValue;
           }
-          expect(validateInsights(params)).toEqual([]);
+          expect(validateInsights(params)).toStrictEqual([]);
         },
       ),
       { numRuns: 20 },
@@ -559,14 +559,14 @@ describe("TestDispatchConsistency", () => {
       fc.property(
         fc.constantFrom("insights", "funnels", "retention", "flows", "user"),
         (bt) => {
-          const m = getRootModelForBookmarkType(bt);
-          if (bt === "insights" || bt === "funnels" || bt === "retention") {
-            expect(m).toBe(INSIGHTS_BOOKMARK_PARAMS_MODEL);
-          } else if (bt === "flows") {
-            expect(m).toBe(FLOWS_BOOKMARK_PARAMS_MODEL);
-          } else {
-            expect(m).toBeNull();
-          }
+          const expected = {
+            insights: INSIGHTS_BOOKMARK_PARAMS_MODEL,
+            funnels: INSIGHTS_BOOKMARK_PARAMS_MODEL,
+            retention: INSIGHTS_BOOKMARK_PARAMS_MODEL,
+            flows: FLOWS_BOOKMARK_PARAMS_MODEL,
+            user: null,
+          }[bt];
+          expect(getRootModelForBookmarkType(bt)).toBe(expected);
         },
       ),
       { numRuns: 5 },
@@ -584,7 +584,7 @@ describe("TestDispatchConsistency", () => {
 
   it("exposes exactly the two partial-update sub-models", () => {
     // `sorting` is deliberately excluded (`bookmark_schema.py:362-369`).
-    expect([...PARTIAL_UPDATE_SUB_MODELS.keys()]).toEqual([
+    expect([...PARTIAL_UPDATE_SUB_MODELS.keys()]).toStrictEqual([
       "sections",
       "displayOptions",
     ]);
@@ -601,6 +601,6 @@ describe("TestDispatchConsistency", () => {
         FLOWS_BOOKMARK_PARAMS_MODEL.validate,
         validMinimalFlows(),
       ),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 });

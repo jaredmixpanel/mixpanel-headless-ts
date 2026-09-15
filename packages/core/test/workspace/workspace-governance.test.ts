@@ -342,7 +342,7 @@ describe("Workspace.runAudit", () => {
     const result = await ws.runAudit();
 
     expect(result).toBeInstanceOf(AuditResponse);
-    expect(result.violations).toEqual([]);
+    expect(result.violations).toStrictEqual([]);
     expect(result.computed_at).toBe("2026-01-01T12:00:00Z");
   });
 
@@ -352,7 +352,7 @@ describe("Workspace.runAudit", () => {
     const result = await ws.runAudit();
 
     expect(result).toBeInstanceOf(AuditResponse);
-    expect(result.violations).toEqual([]);
+    expect(result.violations).toStrictEqual([]);
     expect(result.computed_at).toBe("");
   });
 });
@@ -381,7 +381,7 @@ describe("Workspace.runAuditEventsOnly", () => {
     const result = await ws.runAuditEventsOnly();
 
     expect(result).toBeInstanceOf(AuditResponse);
-    expect(result.violations).toEqual([]);
+    expect(result.violations).toStrictEqual([]);
     expect(result.computed_at).toBe("");
   });
 });
@@ -412,7 +412,7 @@ describe("Workspace.listDataVolumeAnomalies", () => {
   it("returns an empty list when none exist (:538)", async () => {
     const { ws } = makeWorkspace(() => ok({ anomalies: [] }));
 
-    expect(await ws.listDataVolumeAnomalies()).toEqual([]);
+    await expect(ws.listDataVolumeAnomalies()).resolves.toStrictEqual([]);
   });
 
   it("passes query_params filters (:553)", async () => {
@@ -494,7 +494,7 @@ describe("Workspace.listDeletionRequests", () => {
   it("returns an empty list when none exist (:658)", async () => {
     const { ws } = makeWorkspace(() => ok([]));
 
-    expect(await ws.listDeletionRequests()).toEqual([]);
+    await expect(ws.listDeletionRequests()).resolves.toStrictEqual([]);
   });
 });
 
@@ -570,7 +570,7 @@ describe("Workspace.previewDeletionFilters", () => {
       }),
     );
 
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
   });
 });
 
@@ -655,7 +655,7 @@ describe("ADDITIVE: run_audit composite branches (`workspace.py:9050-9067`)", ()
     const result = await runAuditMember(client);
 
     expect(result.computed_at).toBe("");
-    expect(result.violations).toEqual([]);
+    expect(result.violations).toStrictEqual([]);
   });
 
   it("falls back to {} metadata when raw[1] is not a dict (watchlist #13)", async () => {
@@ -719,7 +719,7 @@ describe("ADDITIVE: delegation contracts", () => {
     );
     await deleteSchemaEnforcementMember(client);
 
-    expect(calls).toEqual([
+    expect(calls).toStrictEqual([
       { method: "getSchemaEnforcement", args: [{ fields: "ruleEvent" }] },
       { method: "getSchemaEnforcement", args: [{ fields: null }] },
       // `exclude_none=True` drops every unset field; `by_alias=True`
@@ -775,7 +775,7 @@ describe("ADDITIVE: delegation contracts", () => {
       }),
     );
 
-    expect(calls).toEqual([
+    expect(calls).toStrictEqual([
       {
         method: "listDataVolumeAnomalies",
         args: [{ query_params: { status: "open" } }],
@@ -824,7 +824,7 @@ describe("ADDITIVE: delegation contracts", () => {
       }),
     );
 
-    expect(calls).toEqual([
+    expect(calls).toStrictEqual([
       { method: "listDeletionRequests", args: [] },
       {
         method: "createDeletionRequest",
@@ -841,7 +841,7 @@ describe("ADDITIVE: delegation contracts", () => {
       },
     ]);
     // Opaque passthrough: no model validation, no pre-shaping.
-    expect(preview).toEqual([{ property: "country" }]);
+    expect(preview).toStrictEqual([{ property: "country" }]);
   });
 
   it("the model-validating members name their own model on a bad payload", async () => {

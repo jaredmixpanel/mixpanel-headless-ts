@@ -52,7 +52,7 @@ describe("C8(d) bookmark-enum lock", () => {
   });
 
   it("TS tables key exactly the vector's constant names", () => {
-    expect([...BOOKMARK_ENUM_TABLES.keys()].sort()).toEqual(
+    expect([...BOOKMARK_ENUM_TABLES.keys()].sort()).toStrictEqual(
       Object.keys(vector.constants).sort(),
     );
   });
@@ -60,17 +60,18 @@ describe("C8(d) bookmark-enum lock", () => {
   it("every constant's normalized snapshot equals the vector's", () => {
     const snapshot = bookmarkEnumTablesSnapshot();
     for (const [name, expected] of Object.entries(vector.constants)) {
-      expect(snapshot[name], `constant ${name} drifted`).toEqual(expected);
+      expect(snapshot[name], `constant ${name} drifted`).toStrictEqual(
+        expected,
+      );
     }
   });
 
   it("frozensets ported as ReadonlySet and the dict as ReadonlyMap (R4.8)", () => {
     for (const [name, table] of BOOKMARK_ENUM_TABLES) {
-      if (name === "MAX_CONVERSION_WINDOW") {
-        expect(table).toBeInstanceOf(Map);
-      } else {
-        expect(table, `${name} must be a Set`).toBeInstanceOf(Set);
-      }
+      const expected = name === "MAX_CONVERSION_WINDOW" ? Map : Set;
+      expect(table, `${name} must be a ${expected.name}`).toBeInstanceOf(
+        expected,
+      );
     }
   });
 

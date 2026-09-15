@@ -214,7 +214,7 @@ describe("TestUpdateSchemaEnforcement", () => {
     await client.updateSchemaEnforcement({
       notificationEmails: ["only@example.com"],
     });
-    expect(capturedBodies[0]).toEqual({
+    expect(capturedBodies[0]).toStrictEqual({
       notificationEmails: ["only@example.com"],
     });
   });
@@ -239,7 +239,7 @@ describe("TestReplaceSchemaEnforcement", () => {
     ) as Record<string, unknown>;
     expect(result["ruleEvent"]).toBe("Warn and Drop");
     expect(captured[0]?.[0]).toBe("PUT");
-    expect(captured[0]?.[1]).toEqual(fullBody);
+    expect(captured[0]?.[1]).toStrictEqual(fullBody);
   });
 
   it("test_uses_correct_path", async () => {
@@ -354,7 +354,7 @@ describe("TestRunAudit", () => {
       unknown[],
       Record<string, unknown>,
     ];
-    expect(result[0]).toEqual([]);
+    expect(result[0]).toStrictEqual([]);
     expect(result[1]["computed_at"]).toBe("2026-01-01T12:00:00Z");
   });
 
@@ -472,7 +472,7 @@ describe("TestListDataVolumeAnomalies", () => {
       json: { status: "ok", results: { anomalies: [] } },
     }));
     const result = await client.listDataVolumeAnomalies();
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
   });
 
   it("test_uses_get_method", async () => {
@@ -725,7 +725,7 @@ describe("TestCancelDeletionRequest", () => {
       return { status: 200, json: { status: "ok", results: [] } };
     });
     await client.cancelDeletionRequest(99);
-    expect(capturedBodies[0]).toEqual({ id: 99 });
+    expect(capturedBodies[0]).toStrictEqual({ id: 99 });
   });
 
   it("test_uses_correct_path", async () => {

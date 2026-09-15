@@ -41,6 +41,7 @@ import {
   type FakeTransport,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
+import { expectRejects } from "../../test-support/raises.js";
 
 /** The `_session()` helper (:54-61) — project 12345, us, oauth token. */
 const SESSION = makeSession({
@@ -136,7 +137,7 @@ describe("TestGetBusinessContextProject (:146)", () => {
     expect(ctx.content).toBe("# Project context\n\nHello.");
     expect(ctx.is_empty).toBe(false);
     expect(ctx.character_count).toBe("# Project context\n\nHello.".length);
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "GET /api/app/projects/12345/business-context",
     ]);
   });
@@ -199,7 +200,7 @@ describe("TestSetBusinessContextProject (:230)", () => {
     expect(ctx.level).toBe("project");
     expect(ctx.project_id).toBe("12345");
     expect(ctx.content).toBe("# New content");
-    expect(bodies).toEqual([
+    expect(bodies).toStrictEqual([
       [
         "PUT",
         "/api/app/projects/12345/business-context",
@@ -211,16 +212,15 @@ describe("TestSetBusinessContextProject (:230)", () => {
   it("50_001 chars rejects client-side with no HTTP call", async () => {
     const { ws, transport } = makeWorkspace(() => ok({ content: "" }));
 
-    try {
-      await ws.setBusinessContext("x".repeat(BUSINESS_CONTEXT_MAX_CHARS + 1));
-      expect.unreachable("oversize content must throw");
-    } catch (error) {
-      expect(error).toBeInstanceOf(BusinessContextValidationError);
-      const err = error as BusinessContextValidationError;
-      expect(err.details).toHaveLength(BUSINESS_CONTEXT_MAX_CHARS + 1);
-      expect(err.details["max"]).toBe(BUSINESS_CONTEXT_MAX_CHARS);
-      expect(err.code).toBe("BUSINESS_CONTEXT_TOO_LONG");
-    }
+    const error = await expectRejects(
+      ws.setBusinessContext("x".repeat(BUSINESS_CONTEXT_MAX_CHARS + 1)),
+      "oversize content must throw",
+    );
+    expect(error).toBeInstanceOf(BusinessContextValidationError);
+    const err = error as BusinessContextValidationError;
+    expect(err.details).toHaveLength(BUSINESS_CONTEXT_MAX_CHARS + 1);
+    expect(err.details["max"]).toBe(BUSINESS_CONTEXT_MAX_CHARS);
+    expect(err.code).toBe("BUSINESS_CONTEXT_TOO_LONG");
     expect(transport.captures).toHaveLength(0);
   });
 
@@ -277,7 +277,7 @@ describe("TestClearBusinessContextProject (:324)", () => {
 
     expect(ctx.level).toBe("project");
     expect(ctx.is_empty).toBe(true);
-    expect(bodies).toEqual([{ content: "" }]);
+    expect(bodies).toStrictEqual([{ content: "" }]);
   });
 });
 
@@ -305,7 +305,7 @@ describe("TestGetBusinessContextOrganization (:350)", () => {
     expect(ctx.organization_id).toBe(42);
     expect(ctx.project_id).toBeNull();
     expect(ctx.content).toBe("# Org content");
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "GET /api/app/organizations/42/business-context",
     ]);
   });
@@ -319,7 +319,7 @@ describe("TestGetBusinessContextOrganization (:350)", () => {
     const ctx = await ws.getBusinessContext({ level: "organization" });
 
     expect(ctx.organization_id).toBe(100);
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "GET /api/app/organizations/100/business-context",
     ]);
   });
@@ -335,7 +335,7 @@ describe("TestGetBusinessContextOrganization (:350)", () => {
     const ctx = await ws.getBusinessContext({ level: "organization" });
 
     expect(ctx.organization_id).toBe(77);
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "GET /api/app/organizations/77/business-context",
     ]);
   });
@@ -350,16 +350,15 @@ describe("TestGetBusinessContextOrganization (:350)", () => {
       noActiveProject: true,
     });
 
-    try {
-      await ws.getBusinessContext({ level: "organization" });
-      expect.unreachable("ambiguous org must throw");
-    } catch (error) {
-      expect(error).toBeInstanceOf(WorkspaceScopeError);
-      const err = error as WorkspaceScopeError;
-      expect(err.code).toBe("ORGANIZATION_AMBIGUOUS");
-      expect(err.details["project_id"]).toBe("12345");
-      expect(err.details["available_organizations"]).toEqual(["1", "2"]);
-    }
+    const error = await expectRejects(
+      ws.getBusinessContext({ level: "organization" }),
+      "ambiguous org must throw",
+    );
+    expect(error).toBeInstanceOf(WorkspaceScopeError);
+    const err = error as WorkspaceScopeError;
+    expect(err.code).toBe("ORGANIZATION_AMBIGUOUS");
+    expect(err.details["project_id"]).toBe("12345");
+    expect(err.details["available_organizations"]).toStrictEqual(["1", "2"]);
     expect(transport.captures).toHaveLength(0);
   });
 });
@@ -381,7 +380,7 @@ describe("TestSetBusinessContextOrganization (:446)", () => {
     expect(ctx.level).toBe("organization");
     expect(ctx.organization_id).toBe(100);
     expect(ctx.content).toBe("# Org-wide");
-    expect(seen).toEqual([
+    expect(seen).toStrictEqual([
       [
         "PUT",
         "/api/app/organizations/100/business-context",
@@ -407,7 +406,7 @@ describe("TestGetBusinessContextChain (:483)", () => {
     expect(chain.project.level).toBe("project");
     expect(chain.project.project_id).toBe("12345");
     expect(chain.project.content).toBe("# Project info");
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "GET /api/app/projects/12345/business-context/chain",
     ]);
   });
@@ -440,7 +439,7 @@ describe("TestGetBusinessContextChain (:483)", () => {
     expect(chain.organization.organization_id).toBeNull();
     expect(chain.organization.content).toBe("# Org");
     expect(chain.project.content).toBe("# Project");
-    expect(seenOf(transport)).toEqual([
+    expect(seenOf(transport)).toStrictEqual([
       "GET /api/app/projects/12345/business-context/chain",
     ]);
   });

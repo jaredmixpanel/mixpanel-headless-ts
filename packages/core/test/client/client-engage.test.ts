@@ -113,7 +113,7 @@ describe("TestProfileExport", () => {
     );
     const outputProps = capturedBody["output_properties"];
     expect(outputProps).toBeDefined();
-    expect(JSON.parse(outputProps as string)).toEqual([
+    expect(JSON.parse(outputProps as string)).toStrictEqual([
       "$email",
       "$name",
       "plan",
@@ -137,7 +137,7 @@ describe("TestProfileExport", () => {
       JSON.parse(
         (capturedBody["output_properties"] as string | undefined) ?? "[]",
       ),
-    ).toEqual(["$email"]);
+    ).toStrictEqual(["$email"]);
   });
 
   it("test_no_cohort_id_when_none", async () => {
@@ -223,7 +223,7 @@ describe("TestEngageParameterEdgeCases", () => {
       return emptyResults;
     });
     const result = await drain(client.exportProfiles({ distinct_ids: [] }));
-    expect(result).toEqual([]);
+    expect(result).toStrictEqual([]);
     expect(callCount).toBe(0);
   });
 
@@ -242,7 +242,9 @@ describe("TestEngageParameterEdgeCases", () => {
       (capturedBody["distinct_ids"] as string | undefined) ?? "[]",
     ) as string[];
     expect(sentIds).toHaveLength(3);
-    expect(new Set(sentIds)).toEqual(new Set(["user_1", "user_2", "user_3"]));
+    expect(new Set(sentIds)).toStrictEqual(
+      new Set(["user_1", "user_2", "user_3"]),
+    );
   });
 
   it("test_invalid_behaviors_expression_raises_error", async () => {
@@ -318,7 +320,7 @@ describe("TestEngageDistinctIdParameter", () => {
     const sentIds = JSON.parse(
       (capturedBody["distinct_ids"] as string | undefined) ?? "[]",
     ) as string[];
-    expect(new Set(sentIds)).toEqual(new Set(["user_1", "user_2"]));
+    expect(new Set(sentIds)).toStrictEqual(new Set(["user_1", "user_2"]));
     expect(profiles).toHaveLength(2);
   });
 
@@ -497,7 +499,7 @@ describe("TestExportProfilesPage", () => {
     const result = await client.exportProfilesPage(5, {
       session_id: "session_abc",
     });
-    expect(result.profiles).toEqual([]);
+    expect(result.profiles).toStrictEqual([]);
     expect(result.session_id).toBeNull();
     expect(result.has_more).toBe(false);
   });
@@ -600,7 +602,7 @@ describe("TestExportProfilesPage", () => {
       json: { results: [], session_id: null, total: 0, page_size: 1000 },
     }));
     const result = await client.exportProfilesPage(0);
-    expect(result.profiles).toEqual([]);
+    expect(result.profiles).toStrictEqual([]);
     expect(result.session_id).toBeNull();
     expect(result.has_more).toBe(false);
   });
@@ -919,7 +921,7 @@ describe("TestEngageStats", () => {
     const raw = capturedBody["segment_by_cohorts"];
     expect(raw).toBeDefined();
     const parsed = typeof raw === "string" ? (JSON.parse(raw) as unknown) : raw;
-    expect(parsed).toEqual({ cohort_1: true, cohort_2: false });
+    expect(parsed).toStrictEqual({ cohort_1: true, cohort_2: false });
   });
 
   it("test_segment_by_cohorts_omitted_when_none", async () => {
@@ -1223,7 +1225,7 @@ describe("TestExportProfilesPageFilterByCohort", () => {
     const raw = capturedBody["filter_by_cohort"];
     expect(raw).toBeDefined();
     const parsed = typeof raw === "string" ? (JSON.parse(raw) as unknown) : raw;
-    expect(parsed).toEqual({ id: 42 });
+    expect(parsed).toStrictEqual({ id: 42 });
   });
 
   it("test_filter_by_cohort_raw_cohort_format", async () => {
@@ -1295,6 +1297,6 @@ describe("TestExportProfilesPageFilterByCohort", () => {
     const raw = capturedBody["filter_by_cohort"];
     expect(raw).toBeDefined();
     const parsed = typeof raw === "string" ? (JSON.parse(raw) as unknown) : raw;
-    expect(parsed).toEqual({ id: 55 });
+    expect(parsed).toStrictEqual({ id: 55 });
   });
 });

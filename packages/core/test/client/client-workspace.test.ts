@@ -97,7 +97,7 @@ describe("TestWorkspaceScoping", () => {
       json: {},
     }));
     client.setWorkspaceId(789);
-    expect(await client.requireScopedPath("feature-flags")).toBe(
+    await expect(client.requireScopedPath("feature-flags")).resolves.toBe(
       "/projects/12345/workspaces/789/feature-flags",
     );
   });
@@ -112,7 +112,7 @@ describe("TestWorkspaceScoping", () => {
         ],
       },
     }));
-    expect(await client.requireScopedPath("feature-flags")).toBe(
+    await expect(client.requireScopedPath("feature-flags")).resolves.toBe(
       "/projects/12345/workspaces/100/feature-flags",
     );
   });
@@ -155,7 +155,7 @@ describe("TestResolveWorkspaceId", () => {
       json: {},
     }));
     client.setWorkspaceId(42);
-    expect(await client.resolveWorkspaceId()).toBe(42);
+    await expect(client.resolveWorkspaceId()).resolves.toBe(42);
   });
 
   it("test_auto_discovers_default_workspace", async () => {
@@ -169,7 +169,7 @@ describe("TestResolveWorkspaceId", () => {
         ],
       },
     }));
-    expect(await client.resolveWorkspaceId()).toBe(20);
+    await expect(client.resolveWorkspaceId()).resolves.toBe(20);
   });
 
   it("test_falls_back_to_first_workspace", async () => {
@@ -183,7 +183,7 @@ describe("TestResolveWorkspaceId", () => {
         ],
       },
     }));
-    expect(await client.resolveWorkspaceId()).toBe(10);
+    await expect(client.resolveWorkspaceId()).resolves.toBe(10);
   });
 
   it("test_raises_on_empty_workspaces", async () => {
@@ -278,7 +278,7 @@ describe("TestResolveWorkspace", () => {
     await client.resolveWorkspace();
     const expected =
       "https://mixpanel.com/api/app/projects/12345/workspaces/public";
-    expect(capturedUrls).toEqual([expected]);
+    expect(capturedUrls).toStrictEqual([expected]);
     expect(capturedUrls[0]?.includes("/api/app/api/app")).toBe(false);
   });
 
@@ -395,8 +395,8 @@ describe("TestResolveWorkspaceIdWithResolver", () => {
       resolverCalls += 1;
       return 4521297;
     });
-    expect(await client.resolveWorkspaceId()).toBe(4521297);
-    expect(await client.resolveWorkspaceId()).toBe(4521297);
+    await expect(client.resolveWorkspaceId()).resolves.toBe(4521297);
+    await expect(client.resolveWorkspaceId()).resolves.toBe(4521297);
     expect(resolverCalls).toBe(1);
     expect(calls.some((p) => p.includes("workspaces/public"))).toBe(false);
   });
@@ -409,7 +409,7 @@ describe("TestResolveWorkspaceIdWithResolver", () => {
       resolverCalls += 1;
       return null;
     });
-    expect(await client.resolveWorkspaceId()).toBe(4521297);
+    await expect(client.resolveWorkspaceId()).resolves.toBe(4521297);
     expect(resolverCalls).toBe(0);
   });
 
@@ -440,7 +440,7 @@ describe("TestResolveWorkspaceIdWithResolver", () => {
       return emptyResults;
     });
     client.setWorkspaceResolver(() => null);
-    expect(await client.resolveWorkspaceId()).toBe(11);
+    await expect(client.resolveWorkspaceId()).resolves.toBe(11);
   });
 
   it("test_metadata_fallback_when_public_empty", async () => {
@@ -470,7 +470,7 @@ describe("TestResolveWorkspaceIdWithResolver", () => {
       }
       return emptyResults;
     });
-    expect(await client.resolveWorkspaceId()).toBe(4521297);
+    await expect(client.resolveWorkspaceId()).resolves.toBe(4521297);
   });
 
   it("test_raises_when_nothing_resolves", async () => {
@@ -494,7 +494,7 @@ describe("TestResolveWorkspaceIdWithResolver", () => {
         ],
       },
     }));
-    expect(await client.resolveWorkspaceId()).toBe(55);
+    await expect(client.resolveWorkspaceId()).resolves.toBe(55);
   });
 
   it("test_public_403_falls_through_to_metadata", async () => {
@@ -523,7 +523,7 @@ describe("TestResolveWorkspaceIdWithResolver", () => {
       }
       return emptyResults;
     });
-    expect(await client.resolveWorkspaceId()).toBe(4521297);
+    await expect(client.resolveWorkspaceId()).resolves.toBe(4521297);
   });
 
   it("test_public_server_error_propagates", async () => {
@@ -565,8 +565,8 @@ describe("TestResolveWorkspaceIdWithResolver", () => {
       }
       return emptyResults;
     });
-    expect(await client.resolveWorkspaceId()).toBe(7);
-    expect(await client.resolveWorkspaceId()).toBe(7);
+    await expect(client.resolveWorkspaceId()).resolves.toBe(7);
+    await expect(client.resolveWorkspaceId()).resolves.toBe(7);
     expect(calls.filter((p) => p.includes("metadata/index"))).toHaveLength(1);
   });
 
@@ -584,7 +584,7 @@ describe("TestProjectsMetadataIndex", () => {
       status: 200,
       json: { results: { "4025120": { name: "demo" } } },
     }));
-    expect(await client.projectsMetadataIndex()).toEqual({
+    await expect(client.projectsMetadataIndex()).resolves.toStrictEqual({
       "4025120": { name: "demo" },
     });
   });
@@ -608,7 +608,7 @@ describe("TestProjectsMetadataIndex", () => {
         },
       };
     });
-    expect(await client.resolveWorkspaceId()).toBe(2);
+    await expect(client.resolveWorkspaceId()).resolves.toBe(2);
   });
 
   it("test_resolver_none_when_project_absent", async () => {
@@ -616,7 +616,7 @@ describe("TestProjectsMetadataIndex", () => {
       status: 200,
       json: { results: { "9999": { workspaces: {} } } },
     }));
-    expect(await client.resolveWorkspaceFromMetadata()).toBeNull();
+    await expect(client.resolveWorkspaceFromMetadata()).resolves.toBeNull();
   });
 
   it("test_resolver_none_when_workspaces_missing", async () => {
@@ -624,7 +624,7 @@ describe("TestProjectsMetadataIndex", () => {
       status: 200,
       json: { results: { "4025120": { name: "demo" } } },
     }));
-    expect(await client.resolveWorkspaceFromMetadata()).toBeNull();
+    await expect(client.resolveWorkspaceFromMetadata()).resolves.toBeNull();
   });
 
   it("test_resolver_skips_non_numeric_ids", async () => {
@@ -641,7 +641,7 @@ describe("TestProjectsMetadataIndex", () => {
         },
       },
     }));
-    expect(await client.resolveWorkspaceFromMetadata()).toBe(42);
+    await expect(client.resolveWorkspaceFromMetadata()).resolves.toBe(42);
   });
 
   it("test_resolver_propagates_server_error", async () => {
@@ -661,7 +661,7 @@ describe("TestProjectsMetadataIndex", () => {
       status: 404,
       json: { error: "not found" },
     }));
-    expect(await client.resolveWorkspaceFromMetadata()).toBeNull();
+    await expect(client.resolveWorkspaceFromMetadata()).resolves.toBeNull();
   });
 
   it("test_resolver_propagates_unexpected_query_error", async () => {
@@ -688,7 +688,7 @@ describe("TestProjectsMetadataIndex", () => {
         },
       },
     }));
-    expect(await client.resolveWorkspaceFromMetadata()).toBeNull();
+    await expect(client.resolveWorkspaceFromMetadata()).resolves.toBeNull();
   });
 
   it("test_resolver_propagates_auth_error", async () => {

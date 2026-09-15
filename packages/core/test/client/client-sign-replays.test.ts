@@ -53,7 +53,7 @@ describe("TestSignReplaysRequest", () => {
       return { status: 200, json: { results: [] } };
     });
     await client.signReplays(["r-1", "r-2"], "prod");
-    expect(captured.body).toEqual({
+    expect(captured.body).toStrictEqual({
       replays: [
         { replay_id: "r-1", replay_env: "prod" },
         { replay_id: "r-2", replay_env: "prod" },
@@ -95,7 +95,7 @@ describe("TestSignReplaysRequest", () => {
     const result = toNativeJson(
       await client.signReplays(["r-1", "r-2"], "prod"),
     );
-    expect(result).toEqual(responseResults);
+    expect(result).toStrictEqual(responseResults);
   });
 
   it("test_default_env_is_prod", async () => {

@@ -52,8 +52,8 @@ describe("CodecRegistry built-in tags (D4.4)", () => {
       data: "aGVsbG8=",
     });
     expect(bytes).toBeInstanceOf(Uint8Array);
-    expect([...(bytes as Uint8Array)]).toEqual([104, 101, 108, 108, 111]);
-    expect(encodeExpectValue(bytes)).toEqual({
+    expect([...(bytes as Uint8Array)]).toStrictEqual([104, 101, 108, 108, 111]);
+    expect(encodeExpectValue(bytes)).toStrictEqual({
       $type: "bytes",
       encoding: "base64",
       data: "aGVsbG8=",
@@ -75,7 +75,7 @@ describe("CodecRegistry built-in tags (D4.4)", () => {
     const recording = stub as RecordingCallback;
     expect(recording.name).toBe("on_batch");
     recording.fn([{ event: "Login" }], 2);
-    expect(recording.calls).toEqual([[[{ event: "Login" }], 2]]);
+    expect(recording.calls).toStrictEqual([[[{ event: "Login" }], 2]]);
   });
 
   it("throws UndecodableValueError on unknown tags (never silent)", () => {
@@ -91,7 +91,7 @@ describe("CodecRegistry built-in tags (D4.4)", () => {
     const decoded = registry.decodeValue(
       parseLossless('{"a": [1, {"b": null}], "c": "x", "d": true}'),
     );
-    expect(decoded).toEqual({ a: [1, { b: null }], c: "x", d: true });
+    expect(decoded).toStrictEqual({ a: [1, { b: null }], c: "x", d: true });
   });
 
   it("decodes number tokens: safe ints/floats to number, unsafe ints to bigint", () => {
@@ -116,7 +116,7 @@ describe("CodecRegistry registration surface", () => {
         $type: "Filter",
         prop: { $type: "date", iso: "2026-01-15" },
       }),
-    ).toEqual({ kind: "Filter", prop: new PyDate("2026-01-15") });
+    ).toStrictEqual({ kind: "Filter", prop: new PyDate("2026-01-15") });
   });
 
   it("rejects duplicate registrations and built-in shadowing", () => {
@@ -156,12 +156,12 @@ describe("encodeExpectValue (D6 rules 2/5 at the output boundary)", () => {
   });
 
   it("drops undefined object properties (absent, not null — R3.5)", () => {
-    expect(encodeExpectValue({ a: 1, b: undefined })).toEqual({ a: 1 });
+    expect(encodeExpectValue({ a: 1, b: undefined })).toStrictEqual({ a: 1 });
   });
 
   it("encodes bare and array-item undefined as null (JSON semantics)", () => {
     expect(encodeExpectValue(undefined)).toBeNull();
-    expect(encodeExpectValue([1, undefined])).toEqual([1, null]);
+    expect(encodeExpectValue([1, undefined])).toStrictEqual([1, null]);
   });
 
   it("keeps bigint and JsonNumber values intact for the canonicalizer", () => {
@@ -171,13 +171,15 @@ describe("encodeExpectValue (D6 rules 2/5 at the output boundary)", () => {
   });
 
   it("re-tags wrapper types", () => {
-    expect(encodeExpectValue(new PyDatetime("2026-01-15T12:00:00"))).toEqual({
+    expect(
+      encodeExpectValue(new PyDatetime("2026-01-15T12:00:00")),
+    ).toStrictEqual({
       $type: "datetime",
       iso: "2026-01-15T12:00:00",
     });
     // Encode reads the REVEALED value via reveal(), never toJSON()'s
     // mask (phase2-design C7 — mask-vs-mask comparisons are vacuous).
-    expect(encodeExpectValue(new Secret("s"))).toEqual({
+    expect(encodeExpectValue(new Secret("s"))).toStrictEqual({
       $type: "SecretStr",
       value: "s",
     });
@@ -258,7 +260,7 @@ describe("GroupBy contract codec float-carrier buckets (B2-BIND)", () => {
       _list_item_mode: null,
     });
     expect(decoded).toBeInstanceOf(GroupBy);
-    expect(registry.encodeValue(decoded)).toEqual({
+    expect(registry.encodeValue(decoded)).toStrictEqual({
       $type: "GroupBy",
       property: "plan",
       property_type: "string",
@@ -282,7 +284,7 @@ describe("GroupBy contract codec float-carrier buckets (B2-BIND)", () => {
       _list_item_mode: null,
     });
     expect(decoded).toBeInstanceOf(GroupBy);
-    expect(registry.encodeValue(decoded)).toEqual({
+    expect(registry.encodeValue(decoded)).toStrictEqual({
       $type: "GroupBy",
       property: "plan",
       property_type: "string",
@@ -306,7 +308,7 @@ describe("GroupBy contract codec float-carrier buckets (B2-BIND)", () => {
       _list_item_mode: null,
     });
     expect(decoded).toBeInstanceOf(GroupBy);
-    expect(registry.encodeValue(decoded)).toEqual({
+    expect(registry.encodeValue(decoded)).toStrictEqual({
       $type: "GroupBy",
       property: "revenue",
       property_type: "number",
@@ -327,7 +329,7 @@ describe("GroupBy contract codec float-carrier buckets (B2-BIND)", () => {
       property_type: "string",
       bucket_size: 18,
     });
-    expect(registry.encodeValue(groupBy)).toEqual({
+    expect(registry.encodeValue(groupBy)).toStrictEqual({
       $type: "GroupBy",
       property: "plan",
       property_type: "string",

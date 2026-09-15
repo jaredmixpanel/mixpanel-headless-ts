@@ -260,7 +260,7 @@ function diffPlain(actual: unknown, expected: JsonValue, path: string): void {
   if (isTagged(expected, "datetime")) {
     // toVectorPayload re-tags datetimes with the preserved iso text.
     const tagged = expected as Readonly<Record<string, JsonValue>>;
-    expect(actual, path).toEqual({
+    expect(actual, path).toStrictEqual({
       $type: "datetime",
       iso: tagged["iso"] as string,
     });
@@ -281,7 +281,7 @@ function diffPlain(actual: unknown, expected: JsonValue, path: string): void {
   }
   expect(typeof actual === "object" && actual !== null, path).toBe(true);
   const actualRecord = actual as Readonly<Record<string, unknown>>;
-  expect(Object.keys(actualRecord).sort(), path).toEqual(
+  expect(Object.keys(actualRecord).sort(), path).toStrictEqual(
     Object.keys(expected).sort(),
   );
   for (const [key, item] of Object.entries(expected)) {
@@ -290,52 +290,50 @@ function diffPlain(actual: unknown, expected: JsonValue, path: string): void {
 }
 
 describe("C8(b) result-shape goldens", () => {
-  for (const entry of GOLDEN_TABLE) {
+  describe.each(GOLDEN_TABLE)("$api", (entry) => {
     const vectors = corpus.vectors.filter(
       (vector) =>
         vector.call["api"] === entry.api &&
         Object.hasOwn(vector.expect, "result"),
     );
 
-    describe(entry.api, () => {
-      it("has expect.result vectors in the snapshot (table honesty)", () => {
-        expect(vectors.length).toBeGreaterThan(0);
-      });
-
-      it("round-trips every expect.result through the class", () => {
-        for (const vector of vectors) {
-          const raw = vector.expect["result"] as JsonValue;
-          const decoded = deps.codecs.decodeValue(raw);
-          const instance = entry.fromDict(decoded);
-          // Anti-vacuity: the decode product is the REAL core class.
-          expect(instance, vector.id).toBeInstanceOf(entry.cls);
-          diffPlain(instance.toVectorPayload(), raw, `${vector.id} @ result`);
-        }
-      });
-
-      it("rejects an unknown-key mutation (strict-decode probe)", () => {
-        for (const vector of vectors) {
-          const decoded = deps.codecs.decodeValue(
-            vector.expect["result"] as JsonValue,
-          ) as Readonly<Record<string, unknown>>;
-          expect(
-            () => entry.fromDict({ ...decoded, __p2_6_unknown__: true }),
-            vector.id,
-          ).toThrow(ResponseValidationError);
-        }
-      });
-
-      it("toJSON() emits exactly the declared to_dict key list", () => {
-        for (const vector of vectors) {
-          const decoded = deps.codecs.decodeValue(
-            vector.expect["result"] as JsonValue,
-          );
-          const instance = entry.fromDict(decoded);
-          expect(Object.keys(instance.toJSON()), vector.id).toEqual([
-            ...entry.expectedJsonKeys(instance),
-          ]);
-        }
-      });
+    it("has expect.result vectors in the snapshot (table honesty)", () => {
+      expect(vectors.length).toBeGreaterThan(0);
     });
-  }
+
+    it("round-trips every expect.result through the class", () => {
+      for (const vector of vectors) {
+        const raw = vector.expect["result"] as JsonValue;
+        const decoded = deps.codecs.decodeValue(raw);
+        const instance = entry.fromDict(decoded);
+        // Anti-vacuity: the decode product is the REAL core class.
+        expect(instance, vector.id).toBeInstanceOf(entry.cls);
+        diffPlain(instance.toVectorPayload(), raw, `${vector.id} @ result`);
+      }
+    });
+
+    it("rejects an unknown-key mutation (strict-decode probe)", () => {
+      for (const vector of vectors) {
+        const decoded = deps.codecs.decodeValue(
+          vector.expect["result"] as JsonValue,
+        ) as Readonly<Record<string, unknown>>;
+        expect(
+          () => entry.fromDict({ ...decoded, __p2_6_unknown__: true }),
+          vector.id,
+        ).toThrow(ResponseValidationError);
+      }
+    });
+
+    it("toJSON() emits exactly the declared to_dict key list", () => {
+      for (const vector of vectors) {
+        const decoded = deps.codecs.decodeValue(
+          vector.expect["result"] as JsonValue,
+        );
+        const instance = entry.fromDict(decoded);
+        expect(Object.keys(instance.toJSON()), vector.id).toStrictEqual([
+          ...entry.expectedJsonKeys(instance),
+        ]);
+      }
+    });
+  });
 });

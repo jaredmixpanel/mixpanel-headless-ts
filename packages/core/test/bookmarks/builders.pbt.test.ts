@@ -103,11 +103,11 @@ describe("Filter.listContains round-trip invariants (PBT)", () => {
             expect(sub["filterType"]).toBe("string");
             const subValue = sub["value"] as string;
             expect(Object.hasOwn(pairs, subValue)).toBe(true);
-            expect(sub["filterValue"]).toEqual([pairs[subValue]]);
+            expect(sub["filterValue"]).toStrictEqual([pairs[subValue]]);
           }
           // Completeness: every original kwarg shows up exactly once.
           const emittedKeys = new Set(inner.map((sub) => sub["value"]));
-          expect(emittedKeys).toEqual(new Set(Object.keys(pairs)));
+          expect(emittedKeys).toStrictEqual(new Set(Object.keys(pairs)));
         },
       ),
       { numRuns: 50 },

@@ -336,7 +336,7 @@ describe("TestIterJsonlLinesProperties", () => {
           const chunks = splitBytesAtPositions(contentBytes, splitPositions);
           const chunkedLines = await collectLinesFromChunks(chunks);
           // Output should be identical regardless of chunking.
-          expect(chunkedLines).toEqual(referenceLines);
+          expect(chunkedLines).toStrictEqual(referenceLines);
         },
       ),
       { numRuns: 100 },
@@ -350,7 +350,7 @@ describe("TestIterJsonlLinesProperties", () => {
         const contentBytes = new TextEncoder().encode(content);
         const outputLines = await collectLinesFromChunks([contentBytes]);
         // All input lines should appear in output.
-        expect(outputLines).toEqual(lines);
+        expect(outputLines).toStrictEqual(lines);
       }),
       { numRuns: 50 },
     );
@@ -381,7 +381,7 @@ describe("TestIterJsonlLinesProperties", () => {
           (byte) => new Uint8Array([byte]),
         );
         const outputLines = await collectLinesFromChunks(byteChunks);
-        expect(outputLines).toEqual(lines);
+        expect(outputLines).toStrictEqual(lines);
       }),
       { numRuns: 30 },
     );

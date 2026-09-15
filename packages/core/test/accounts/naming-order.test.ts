@@ -104,7 +104,7 @@ describe("org-ordering ratification lock (user-ratifications.md:14-22)", () => {
         `"alpha": {"id": 1, "name": "Alpha"}, ` +
         `"3": {"id": 3, "name": "Three"}}}`,
     );
-    expect([...me.organizations.keys()]).toEqual(["9", "alpha", "3"]);
+    expect([...me.organizations.keys()]).toStrictEqual(["9", "alpha", "3"]);
     expect(me.organizations.get("9")).toBeInstanceOf(MeOrgInfo);
     expect(me.organizations.get("9")?.name).toBe("Last Id First");
   });
@@ -125,10 +125,10 @@ describe("org-ordering ratification lock (user-ratifications.md:14-22)", () => {
     };
     const svc = new MeService(client, inMemoryMeCache("personal"), "us");
     await svc.fetch();
-    expect(await svc.resolveWorkspace("1")).toBe(902);
+    await expect(svc.resolveWorkspace("1")).resolves.toBe(902);
     expect(
       [...(await svc.peek())!.workspaces.values()].map((ws) => ws.id),
-    ).toEqual([902, 450]);
+    ).toStrictEqual([902, 450]);
   });
 
   it("workspaces entries reconstruct as MeWorkspaceInfo in a Map", () => {
@@ -146,7 +146,7 @@ describe("org-ordering ratification lock (user-ratifications.md:14-22)", () => {
         `"100": {"id": 100, "name": "Acme Corp"}}}`,
     );
     const dumped = me.toJSON();
-    expect(dumped["organizations"]).toEqual({
+    expect(dumped["organizations"]).toStrictEqual({
       "100": {
         id: 100,
         name: "Acme Corp",

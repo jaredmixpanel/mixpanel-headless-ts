@@ -101,8 +101,8 @@ describe("EntityModel construction semantics", () => {
       previous_cursor: null,
       dropped_key: true,
     });
-    expect(pagination.__extras).toEqual({});
-    expect(Object.keys(pagination.toJSON())).toEqual([
+    expect(pagination.__extras).toStrictEqual({});
+    expect(Object.keys(pagination.toJSON())).toStrictEqual([
       "page_size",
       "next_cursor",
       "previous_cursor",
@@ -262,7 +262,7 @@ describe("hand-ported Python validators", () => {
       ...base,
       behavior: { a: 1 },
     });
-    expect(valid.behavior).toEqual({ a: 1 });
+    expect(valid.behavior).toStrictEqual({ a: 1 });
   });
 
   it("CreateCustomEventParams: alternatives are non-empty, non-blank, unique", () => {
@@ -282,7 +282,7 @@ describe("hand-ported Python validators", () => {
       name: "e",
       alternatives: ["a", "b"],
     });
-    expect(valid.alternatives).toEqual(["a", "b"]);
+    expect(valid.alternatives).toStrictEqual(["a", "b"]);
   });
 
   it("EventDeletionRequest: filters=[] coerces to null; non-empty wraps", () => {
@@ -302,7 +302,7 @@ describe("hand-ported Python validators", () => {
       ...base,
       filters: [{ a: 1 }],
     });
-    expect(wrapped.filters).toEqual({ items: [{ a: 1 }] });
+    expect(wrapped.filters).toStrictEqual({ items: [{ a: 1 }] });
   });
 
   it("BusinessContext: computed fields appear in toJSON() and count codepoints", () => {
@@ -313,7 +313,7 @@ describe("hand-ported Python validators", () => {
     const json = context.toJSON();
     expect(json["is_empty"]).toBe(false);
     expect(json["character_count"]).toBe(1); // len('𝒳') == 1 in Python
-    expect(Object.keys(json)).toEqual([
+    expect(Object.keys(json)).toStrictEqual([
       "level",
       "content",
       "organization_id",

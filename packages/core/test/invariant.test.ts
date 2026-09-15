@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { MixpanelHeadlessError } from "../src/errors.js";
 import { invariant } from "../src/invariant.js";
+import { expectThrows } from "../test-support/raises.js";
 
 describe("invariant", () => {
   it("passes silently on truthy conditions", () => {
@@ -16,15 +17,13 @@ describe("invariant", () => {
     // Widened so the `asserts` signature does not mark the next line
     // unreachable (allowUnreachableCode: false).
     const condition = false as boolean;
-    try {
-      invariant(condition, "the invariant text");
-      expect.unreachable();
-    } catch (error) {
-      expect(error).toBeInstanceOf(MixpanelHeadlessError);
-      const err = error as MixpanelHeadlessError;
-      expect(err.code).toBe("UNKNOWN_ERROR");
-      expect(err.message).toBe("the invariant text");
-    }
+    const error = expectThrows(() =>
+      invariant(condition, "the invariant text"),
+    );
+    expect(error).toBeInstanceOf(MixpanelHeadlessError);
+    const err = error as MixpanelHeadlessError;
+    expect(err.code).toBe("UNKNOWN_ERROR");
+    expect(err.message).toBe("the invariant text");
   });
 
   it("throws on every falsy JS value", () => {

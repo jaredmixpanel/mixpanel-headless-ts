@@ -173,7 +173,7 @@ describe("TestWorkspaceFeatureFlagCRUD", () => {
 
   it("list_feature_flags() returns empty list when no flags exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listFeatureFlags()).toEqual([]);
+    await expect(ws.listFeatureFlags()).resolves.toStrictEqual([]);
   });
 
   it("list_feature_flags(include_archived=True) passes param to API", async () => {
@@ -251,7 +251,9 @@ describe("TestWorkspaceFeatureFlagCRUD", () => {
     });
     const flag = await ws.getFeatureFlag("abc-123");
 
-    expect(flag.__extras["custom_metadata"]).toEqual({ team: "platform" });
+    expect(flag.__extras["custom_metadata"]).toStrictEqual({
+      team: "platform",
+    });
   });
 
   it("update_feature_flag() returns the updated FeatureFlag", async () => {
@@ -363,7 +365,7 @@ describe("TestWorkspaceFeatureFlagOperations", () => {
     const history = await ws.getFlagHistory("abc-123");
 
     expect(history).toBeInstanceOf(FlagHistoryResponse);
-    expect(history.events).toEqual([]);
+    expect(history.events).toStrictEqual([]);
     expect(history.count).toBe(0);
   });
 
@@ -420,7 +422,7 @@ describe("ADDITIVE: get_flag_history query-param assembly", () => {
 
     expect(calls).toHaveLength(1);
     expect(calls[0]?.[0]).toBe("abc-123");
-    expect(calls[0]?.[1]).toEqual({ params: null });
+    expect(calls[0]?.[1]).toStrictEqual({ params: null });
   });
 
   it("stringifies page_size and forwards page verbatim", async () => {
@@ -435,7 +437,7 @@ describe("ADDITIVE: get_flag_history query-param assembly", () => {
       page_size: 50,
     });
 
-    expect(calls[0]?.[1]).toEqual({
+    expect(calls[0]?.[1]).toStrictEqual({
       params: { page: "cursor-2", page_size: "50" },
     });
   });
@@ -449,7 +451,7 @@ describe("ADDITIVE: get_flag_history query-param assembly", () => {
     );
     await getFlagHistoryMember(client, "abc-123", { page_size: 5 });
 
-    expect(calls[0]?.[1]).toEqual({ params: { page_size: "5" } });
+    expect(calls[0]?.[1]).toStrictEqual({ params: { page_size: "5" } });
   });
 });
 

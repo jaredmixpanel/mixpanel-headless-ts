@@ -203,14 +203,18 @@ describe("pythonInt — properties (fast-check)", () => {
   it("never returns a non-integer or unsafe number", () => {
     fc.assert(
       fc.property(fc.string(), (text) => {
-        let value: number;
+        let value: number | null = null;
+        let error: unknown = null;
         try {
           value = pythonInt(text);
-        } catch (error) {
-          expect(error).toBeInstanceOf(MixpanelHeadlessError);
-          return;
+        } catch (error_) {
+          error = error_;
         }
-        expect(Number.isSafeInteger(value)).toBe(true);
+        // Rejections must be the library error; acceptances a safe integer.
+        expect(error === null || error instanceof MixpanelHeadlessError).toBe(
+          true,
+        );
+        expect(value === null || Number.isSafeInteger(value)).toBe(true);
       }),
     );
   });

@@ -31,7 +31,7 @@ describe("FID-F3: RrwebAnalyzer.analyze null vs absent timestamps", () => {
     // CPython: analyze([{type:3, data:{source:3}}]) -> AnalyzerResult
     const analyzer = new RrwebAnalyzer();
     const result = analyzer.analyze([{ type: 3, data: { source: 3 } }]);
-    expect(result.actions).toEqual([]);
+    expect(result.actions).toStrictEqual([]);
   });
 
   it("two events with one null timestamp raise before any processing", () => {

@@ -324,6 +324,6 @@ describe("TestValidateFlowBookmarkFLB6", () => {
 describe("TestValidateFlowBookmarkDefaults", () => {
   it("test_all_defaults_pass_validation", () => {
     const errors = validateFlowBookmark(validFlowBookmark());
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 });

@@ -64,11 +64,9 @@ describe("pythonJsonDumpsCanonical — CPython oracle table", () => {
     ["renders a top-level array compactly", [1, "a", false], '[1,"a",false]'],
   ];
 
-  for (const [name, value, expected] of oracle) {
-    it(name, () => {
-      expect(pythonJsonDumpsCanonical(value)).toBe(expected);
-    });
-  }
+  it.each(oracle)("%s", (_name, value, expected) => {
+    expect(pythonJsonDumpsCanonical(value)).toBe(expected);
+  });
 
   it("spells bigints as bare digit runs (beyond IEEE-754 exactness)", () => {
     expect(pythonJsonDumpsCanonical({ n: 10n ** 22n })).toBe(
@@ -235,9 +233,9 @@ describe("pythonJsonDumpsCanonical — CPython fixture parity (spec §6.1)", () 
     "%s — sha256 of the canonical bytes matches CPython",
     async (_name, fixture) => {
       expect(fixture.sha256).toMatch(/^[0-9a-f]{64}$/);
-      expect(await sha256Hex(pythonJsonDumpsCanonical(fixture.params))).toBe(
-        fixture.sha256,
-      );
+      await expect(
+        sha256Hex(pythonJsonDumpsCanonical(fixture.params)),
+      ).resolves.toBe(fixture.sha256);
     },
   );
 
@@ -287,7 +285,9 @@ describe("pythonJsonDumpsCanonical — CPython fixture parity (spec §6.1)", () 
       max_safe_as_float: Number.MAX_SAFE_INTEGER - 1,
     };
     expect(pythonJsonDumpsCanonical(fromJs)).toBe(row.canonical);
-    expect(await sha256Hex(pythonJsonDumpsCanonical(fromJs))).toBe(row.sha256);
+    await expect(sha256Hex(pythonJsonDumpsCanonical(fromJs))).resolves.toBe(
+      row.sha256,
+    );
   });
 
   it("escapes every non-ASCII byte out of the canonical form", () => {

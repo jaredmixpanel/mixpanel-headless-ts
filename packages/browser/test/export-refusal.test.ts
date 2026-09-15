@@ -48,7 +48,7 @@ const EXPORT_ORIGINS: string[] = [...ENDPOINTS.values()].map(
 describe("§2.4 (b) — every export host is refused with BROWSER_EXPORT_UNSUPPORTED", () => {
   it("the region table yields the three known export origins", () => {
     expect(EXPORT_ORIGINS).toHaveLength(3);
-    expect(new Set(EXPORT_ORIGINS)).toEqual(
+    expect(new Set(EXPORT_ORIGINS)).toStrictEqual(
       new Set([
         "https://data.mixpanel.com",
         "https://data-eu.mixpanel.com",
@@ -188,7 +188,7 @@ describe("AIE-926 — the export guard evaluates the EFFECTIVE endpoint table", 
     expect((thrown as BrowserUnsupportedError).code).toBe(
       BROWSER_EXPORT_UNSUPPORTED,
     );
-    expect((thrown as BrowserUnsupportedError).details).toEqual({
+    expect((thrown as BrowserUnsupportedError).details).toStrictEqual({
       origin: "https://data.mixpanel.com",
     });
     expect(transport.captures).toHaveLength(0);
@@ -223,7 +223,7 @@ describe("AIE-926 — the export guard evaluates the EFFECTIVE endpoint table", 
     const url = ws.client.core.buildUrl("export", "/export");
     expect(url).toBe(`${PROXY}/api/2.0/export`);
     await ws.client.request("GET", url);
-    expect(transport.captures.map((c) => new URL(c.url).origin)).toEqual([
+    expect(transport.captures.map((c) => new URL(c.url).origin)).toStrictEqual([
       PROXY,
     ]);
   });
@@ -238,7 +238,9 @@ describe("AIE-926 — the export guard evaluates the EFFECTIVE endpoint table", 
       expect((thrown as BrowserUnsupportedError).code).toBe(
         BROWSER_EXPORT_UNSUPPORTED,
       );
-      expect((thrown as BrowserUnsupportedError).details).toEqual({ origin });
+      expect((thrown as BrowserUnsupportedError).details).toStrictEqual({
+        origin,
+      });
       expect(transport.captures).toHaveLength(0);
     },
   );
@@ -393,7 +395,7 @@ describe("AIE-926 — the export guard evaluates the EFFECTIVE endpoint table", 
     await ws.client.request("GET", "not a url at all");
     // The core appends its `query_origin` marker; the guard itself
     // neither rejected nor rewrote either input.
-    expect(seen.map((s) => String(s).split("?", 1)[0])).toEqual([
+    expect(seen.map((s) => String(s).split("?", 1)[0])).toStrictEqual([
       "/api/2.0/export",
       "not a url at all",
     ]);

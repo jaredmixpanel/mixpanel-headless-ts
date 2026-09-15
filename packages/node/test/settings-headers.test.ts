@@ -69,7 +69,7 @@ describe("TestSettingsHeaderAttachment", () => {
       {},
       { env: createNodeEnv(), config, bridge: null },
     );
-    expect([...session.headers]).toEqual([["X-Foo", "bar"]]);
+    expect([...session.headers]).toStrictEqual([["X-Foo", "bar"]]);
   });
 
   it("test_no_setting_header_means_empty_dict", () => {
@@ -92,7 +92,7 @@ describe("TestNoEnvMutation", () => {
     const before = { ...process.env };
     resolveSession({}, { env: createNodeEnv(), config, bridge: null });
     const after = { ...process.env };
-    expect(after).toEqual(before);
+    expect(after).toStrictEqual(before);
   });
 });
 
@@ -152,6 +152,6 @@ describe("TestBridgeHeaderAttachment (test_settings_headers.py:97 — B8-N2)", (
       },
     );
     const after = { ...process.env };
-    expect(after).toEqual(before);
+    expect(after).toStrictEqual(before);
   });
 });

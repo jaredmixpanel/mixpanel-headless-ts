@@ -167,7 +167,7 @@ describe("TestWorkspaceWebhookCRUD", () => {
 
   it("list_webhooks() returns empty list when no webhooks exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listWebhooks()).toEqual([]);
+    await expect(ws.listWebhooks()).resolves.toStrictEqual([]);
   });
 
   it("create_webhook() returns WebhookMutationResult", async () => {
@@ -259,7 +259,7 @@ describe("ADDITIVE: webhook member delegation contracts", () => {
   it("listWebhooks / deleteWebhook forward positionally with no options bag", async () => {
     const listCalls: unknown[][] = [];
     await listWebhooksMember(stubClient("listWebhooks", [], listCalls));
-    expect(listCalls[0]).toEqual([]);
+    expect(listCalls[0]).toStrictEqual([]);
 
     const delCalls: unknown[][] = [];
     await deleteWebhookMember(
@@ -278,7 +278,7 @@ describe("ADDITIVE: webhook member delegation contracts", () => {
     );
 
     // auth_type/username/password are None and MUST be absent (R3.5).
-    expect(calls[0]?.[0]).toEqual({ name: "H", url: "https://e.co" });
+    expect(calls[0]?.[0]).toStrictEqual({ name: "H", url: "https://e.co" });
   });
 
   it("updateWebhook forwards (webhook_id, exclude_none dump)", async () => {
@@ -291,7 +291,7 @@ describe("ADDITIVE: webhook member delegation contracts", () => {
     );
 
     expect(calls[0]?.[0]).toBe("wh-1");
-    expect(calls[0]?.[1]).toEqual({ name: "Renamed", is_enabled: false });
+    expect(calls[0]?.[1]).toStrictEqual({ name: "Renamed", is_enabled: false });
   });
 
   it("testWebhook sends the exclude_none dump (`workspace.py:6830`)", async () => {
@@ -306,6 +306,6 @@ describe("ADDITIVE: webhook member delegation contracts", () => {
       new WebhookTestParams({ url: "https://e.co" }),
     );
 
-    expect(calls[0]?.[0]).toEqual({ url: "https://e.co" });
+    expect(calls[0]?.[0]).toStrictEqual({ url: "https://e.co" });
   });
 });

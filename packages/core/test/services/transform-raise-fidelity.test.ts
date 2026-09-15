@@ -82,7 +82,7 @@ describe("FID-F1: transformFunnel stores raw counts, raises lazily", () => {
     );
     expect(
       result.steps.map((s) => [s.event, s.count, s.conversion_rate]),
-    ).toEqual([
+    ).toStrictEqual([
       ["A", 0, 1.0],
       ["B", null, 0.0],
     ]);
@@ -160,10 +160,12 @@ describe("FID-F1: transformFunnel stores raw counts, raises lazily", () => {
       "a",
       "b",
     );
-    expect(result.steps.map((s) => [s.count, s.conversion_rate])).toEqual([
-      [true, 1.0],
-      [true, 1.0],
-    ]);
+    expect(result.steps.map((s) => [s.count, s.conversion_rate])).toStrictEqual(
+      [
+        [true, 1.0],
+        [true, 1.0],
+      ],
+    );
   });
 
   it("list counts concatenate at + then raise at the overall list > int", () => {
@@ -195,7 +197,7 @@ describe("FID-F1: transformRetention stores raw size, raises lazily", () => {
       "t",
       "day",
     );
-    expect(result.cohorts.map((c) => [c.size, c.retention])).toEqual([
+    expect(result.cohorts.map((c) => [c.size, c.retention])).toStrictEqual([
       ["5", []],
     ]);
   });
@@ -210,7 +212,7 @@ describe("FID-F1: transformRetention stores raw size, raises lazily", () => {
       "t",
       "day",
     );
-    expect(result.cohorts.map((c) => [c.size, c.retention])).toEqual([
+    expect(result.cohorts.map((c) => [c.size, c.retention])).toStrictEqual([
       [null, []],
     ]);
   });
@@ -239,7 +241,7 @@ describe("FID-F1: transformRetention stores raw size, raises lazily", () => {
       "t",
       "day",
     );
-    expect(result.cohorts.map((c) => [c.size, c.retention])).toEqual([
+    expect(result.cohorts.map((c) => [c.size, c.retention])).toStrictEqual([
       [0, [0.0]],
     ]);
   });
@@ -268,7 +270,7 @@ describe("FID-F1: transformRetention stores raw size, raises lazily", () => {
       "t",
       "day",
     );
-    expect(result.cohorts.map((c) => [c.size, c.retention])).toEqual([
+    expect(result.cohorts.map((c) => [c.size, c.retention])).toStrictEqual([
       [true, [1.0]],
     ]);
   });
@@ -346,7 +348,7 @@ describe("FID-F2: extractStepsFromDateData Python `in` + .get semantics", () => 
   });
 
   it("a list WITHOUT the literal member falls through to []", () => {
-    expect(extractStepsFromDateData(["a"])).toEqual([]);
+    expect(extractStepsFromDateData(["a"])).toStrictEqual([]);
   });
 
   it("a list CONTAINING 'steps' passes membership then raises at .get", () => {
@@ -489,28 +491,22 @@ describe("FID-F2: LiveQueryService dataValues (event_counts/property_counts)", (
 // ---------------------------------------------------------------------------
 
 describe("FID-F4: STEP_PREFIX_RE dot semantics", () => {
-  it(
-    String.raw`matches step names containing \r (CPython: event='a\rb')`,
-    () => {
-      // CPython: _STEP_PREFIX_RE.match('1. a\rb').group(2) == 'a\rb'
-      const steps = extractFunnelStepsFromSeries(
-        { F: { count: { "1. a\rb": { all: 7 } } } },
-        noWarn,
-      );
-      expect(steps.map((s) => s["event"])).toEqual(["a\rb"]);
-    },
-  );
+  it("matches step names containing U+000D CR (CPython dot semantics)", () => {
+    // CPython: _STEP_PREFIX_RE.match('1. a\rb').group(2) == 'a\rb'
+    const steps = extractFunnelStepsFromSeries(
+      { F: { count: { "1. a\rb": { all: 7 } } } },
+      noWarn,
+    );
+    expect(steps.map((s) => s["event"])).toStrictEqual(["a\rb"]);
+  });
 
-  it(
-    String.raw`matches step names containing U+2028 (CPython: event='a\u2028b')`,
-    () => {
-      const steps = extractFunnelStepsFromSeries(
-        { F: { count: { "1. a b": { all: 7 } } } },
-        noWarn,
-      );
-      expect(steps.map((s) => s["event"])).toEqual(["a b"]);
-    },
-  );
+  it("matches step names containing U+2028 LINE SEPARATOR (CPython dot semantics)", () => {
+    const steps = extractFunnelStepsFromSeries(
+      { F: { count: { "1. a b": { all: 7 } } } },
+      noWarn,
+    );
+    expect(steps.map((s) => s["event"])).toStrictEqual(["a b"]);
+  });
 
   it("still refuses \\n inside the captured name (Python `.`)", () => {
     // CPython: no match -> the whole name is the event, sort key 2**31
@@ -518,7 +514,7 @@ describe("FID-F4: STEP_PREFIX_RE dot semantics", () => {
       { F: { count: { "1. a\nb": { all: 7 } } } },
       noWarn,
     );
-    expect(steps.map((s) => s["event"])).toEqual(["1. a\nb"]);
+    expect(steps.map((s) => s["event"])).toStrictEqual(["1. a\nb"]);
   });
 });
 

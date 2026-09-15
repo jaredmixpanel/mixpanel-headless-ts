@@ -322,7 +322,7 @@ describe("TestListDropFilters", () => {
 
   it("list_drop_filters() returns empty list when none exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listDropFilters()).toEqual([]);
+    await expect(ws.listDropFilters()).resolves.toStrictEqual([]);
   });
 });
 
@@ -396,7 +396,7 @@ describe("TestListCustomProperties", () => {
 
   it("list_custom_properties() returns empty list when none exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listCustomProperties()).toEqual([]);
+    await expect(ws.listCustomProperties()).resolves.toStrictEqual([]);
   });
 });
 
@@ -498,7 +498,7 @@ describe("TestCreateCustomEvent", () => {
     expect(result).toBeInstanceOf(CustomEvent);
     expect(result.id).toBe(42);
     expect(result.name).toBe("Page View");
-    expect(result.alternatives.map((a) => a.event)).toEqual([
+    expect(result.alternatives.map((a) => a.event)).toStrictEqual([
       "Home",
       "Product",
     ]);
@@ -518,7 +518,7 @@ describe("TestCreateCustomEvent", () => {
     );
 
     const body = new URLSearchParams(captured[0]?.bodyText ?? "");
-    expect(JSON.parse(body.get("alternatives") ?? "null")).toEqual([
+    expect(JSON.parse(body.get("alternatives") ?? "null")).toStrictEqual([
       { event: "A" },
       { event: "B" },
     ]);
@@ -555,7 +555,7 @@ describe("TestListCustomEvents", () => {
 
   it("list_custom_events() returns empty list when none exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listCustomEvents()).toEqual([]);
+    await expect(ws.listCustomEvents()).resolves.toStrictEqual([]);
   });
 });
 
@@ -651,7 +651,7 @@ describe("TestListLookupTables", () => {
 
   it("list_lookup_tables() returns empty list when none exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listLookupTables()).toEqual([]);
+    await expect(ws.listLookupTables()).resolves.toStrictEqual([]);
   });
 
   it("list_lookup_tables(data_group_id=5) passes param to API", async () => {
@@ -727,7 +727,7 @@ describe("TestUploadLookupTable", () => {
     expect(result.id).toBe(99);
     expect(log.requests).toBeGreaterThanOrEqual(2);
     // ADDITIVE (W7-D1): the CSV is read through the injected seam.
-    expect(paths).toEqual(["/tmp/products.csv"]);
+    expect(paths).toStrictEqual(["/tmp/products.csv"]);
   });
 
   it("upload_lookup_table() polls status for async uploads (>= 5 MB)", async () => {
@@ -977,7 +977,7 @@ describe("ADDITIVE: list_custom_properties displayFormula corruption branch", ()
         expect(err.message).toContain("invalid displayFormula");
         expect(err.statusCode).toBe(400);
         expect(err.requestMethod).toBe("GET");
-        expect(err.requestParams).toEqual({ a: 1 });
+        expect(err.requestParams).toStrictEqual({ a: 1 });
         expect(err.cause).toBe(original);
         return true;
       },
@@ -1015,7 +1015,7 @@ describe("ADDITIVE: CreateCustomEventParams.toFormBody", () => {
       name: "X",
       alternatives: ["A", "B"],
     });
-    expect(params.toFormBody()).toEqual({
+    expect(params.toFormBody()).toStrictEqual({
       name: "X",
       alternatives: '[{"event": "A"}, {"event": "B"}]',
     });
@@ -1026,7 +1026,7 @@ describe("ADDITIVE: CreateCustomEventParams.toFormBody", () => {
       name: "\u{1D4B3}",
       alternatives: ["\u{1D4B3}"],
     });
-    expect(params.toFormBody()).toEqual({
+    expect(params.toFormBody()).toStrictEqual({
       name: "\u{1D4B3}",
       alternatives: String.raw`[{"event": "\ud835\udcb3"}]`,
     });
@@ -1107,7 +1107,7 @@ describe("ADDITIVE: upload_lookup_table seams and poll arms", () => {
     );
 
     const register = calls.find((c) => c[0] === "registerLookupTable");
-    expect(register?.[1]).toEqual({
+    expect(register?.[1]).toStrictEqual({
       name: "T",
       path: "gs://bucket/path",
       key: "product_id",
@@ -1175,7 +1175,7 @@ describe("ADDITIVE: upload_lookup_table seams and poll arms", () => {
       errors: ReadonlyArray<{ type: string; input: unknown }>;
     };
     expect(details.errors[0]?.type).toBe("model_type");
-    expect(details.errors[0]?.input).toEqual(["oops"]);
+    expect(details.errors[0]?.input).toStrictEqual(["oops"]);
   });
 
   it("raises UPLOAD_NOT_FOUND on a NOTFOUND poll", async () => {
@@ -1261,7 +1261,7 @@ describe("ADDITIVE: delegation contracts", () => {
     await new Workspace({ session: FACADE_SESSION, client }).createDropFilter(
       params,
     );
-    expect(calls[0]?.[0]).toEqual({ event_name: "e", filters: { a: 1 } });
+    expect(calls[0]?.[0]).toStrictEqual({ event_name: "e", filters: { a: 1 } });
   });
 
   it("update_custom_property dumps the params with by_alias=True", async () => {
@@ -1280,7 +1280,7 @@ describe("ADDITIVE: delegation contracts", () => {
       client,
     }).updateCustomProperty("42", params);
     expect(calls[0]?.[0]).toBe("42");
-    expect(calls[0]?.[1]).toEqual({ name: "N", displayFormula: "f" });
+    expect(calls[0]?.[1]).toStrictEqual({ name: "N", displayFormula: "f" });
   });
 
   it("mark_lookup_table_ready builds the form body Python builds", async () => {
@@ -1300,7 +1300,7 @@ describe("ADDITIVE: delegation contracts", () => {
         data_group_id: 9,
       }),
     );
-    expect(calls[0]?.[0]).toEqual({
+    expect(calls[0]?.[0]).toStrictEqual({
       name: "P",
       key: "k",
       "data-group-id": "9",
@@ -1319,7 +1319,7 @@ describe("ADDITIVE: delegation contracts", () => {
       new UpdateLookupTableParams({ name: "P" }),
     );
     expect(calls[0]?.[0]).toBe(3);
-    expect(calls[0]?.[1]).toEqual({ name: "P" });
+    expect(calls[0]?.[1]).toStrictEqual({ name: "P" });
   });
 
   it("get_lookup_upload_url defaults content_type to text/csv", async () => {
@@ -1348,7 +1348,7 @@ describe("ADDITIVE: delegation contracts", () => {
       client,
     }).downloadLookupTable(4, { file_name: "f.csv", limit: 2 });
     expect(calls[0]?.[0]).toBe(4);
-    expect(calls[0]?.[1]).toEqual({ file_name: "f.csv", limit: 2 });
+    expect(calls[0]?.[1]).toStrictEqual({ file_name: "f.csv", limit: 2 });
   });
 
   it("delete_lookup_tables forwards the id list verbatim", async () => {
@@ -1357,7 +1357,7 @@ describe("ADDITIVE: delegation contracts", () => {
     await new Workspace({ session: FACADE_SESSION, client }).deleteLookupTables(
       [1, 2, 3],
     );
-    expect(calls[0]?.[0]).toEqual([1, 2, 3]);
+    expect(calls[0]?.[0]).toStrictEqual([1, 2, 3]);
   });
 
   it("validate_custom_property returns the client payload unvalidated", async () => {
@@ -1375,7 +1375,7 @@ describe("ADDITIVE: delegation contracts", () => {
         },
       }),
     );
-    expect(result).toEqual({ anything: [1, 2] });
+    expect(result).toStrictEqual({ anything: [1, 2] });
   });
 });
 

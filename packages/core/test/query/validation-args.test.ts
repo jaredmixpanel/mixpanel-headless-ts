@@ -88,7 +88,7 @@ describe("TestFuzzyMatching", () => {
 describe("TestValidateQueryArgsLayer1", () => {
   it("test_valid_args_no_errors", () => {
     const errors = validateQueryArgs(validArgs());
-    expect(errors).toEqual([]);
+    expect(errors).toStrictEqual([]);
   });
 
   it("test_v0_no_events", () => {

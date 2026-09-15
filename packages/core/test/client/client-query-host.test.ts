@@ -86,7 +86,7 @@ describe("TestDiscovery", () => {
       { now: () => FROZEN_NOW },
     );
     const events = await client.getEvents();
-    expect(events).toEqual(["event1", "event2", "event3"]);
+    expect(events).toStrictEqual(["event1", "event2", "event3"]);
     expect(capturedParams["type"]).toBe("general");
     expect(capturedParams["limit"]).toBe("5000");
     expect(capturedParams["from_date"]).toBe("2000-01-01");
@@ -105,7 +105,7 @@ describe("TestDiscovery", () => {
       from_date: "2024-01-01",
       to_date: "2024-12-31",
     });
-    expect(events).toEqual(["a", "b"]);
+    expect(events).toStrictEqual(["a", "b"]);
     expect(capturedParams["limit"]).toBe("42");
     expect(capturedParams["from_date"]).toBe("2024-01-01");
     expect(capturedParams["to_date"]).toBe("2024-12-31");
@@ -130,7 +130,7 @@ describe("TestDiscovery", () => {
       { now: () => FROZEN_NOW },
     );
     const events = await client.getEvents();
-    expect(events).toEqual(["e1"]);
+    expect(events).toStrictEqual(["e1"]);
     expect(callCount).toBe(2);
     expect(capturedFromDates[0]).toBe("2000-01-01");
     // 2026-08-15 (frozen UTC today) - 90 days = 2026-05-17.
@@ -197,7 +197,7 @@ describe("TestDiscovery", () => {
     const props = await client.getEventProperties("Purchase");
     expect(capturedPath.endsWith("/events/properties/top")).toBe(true);
     expect(capturedParams["event"]).toBe("Purchase");
-    expect(new Set(props)).toEqual(new Set(["prop1", "prop2"]));
+    expect(new Set(props)).toStrictEqual(new Set(["prop1", "prop2"]));
   });
 
   it("test_get_property_values", async () => {
@@ -209,7 +209,7 @@ describe("TestDiscovery", () => {
     const values = await client.getPropertyValues("country", { limit: 10 });
     expect(capturedParams["name"]).toBe("country");
     expect(capturedParams["limit"]).toBe("10");
-    expect(values).toEqual(["value1", "value2"]);
+    expect(values).toStrictEqual(["value1", "value2"]);
   });
 });
 
@@ -330,11 +330,11 @@ describe("TestActivityFeed (request contract)", () => {
       to_date: "2026-06-01",
     });
     const body = captured.body!;
-    expect((body["bookmark"] as Record<string, unknown>)["entries"]).toEqual(
-      [],
-    );
+    expect(
+      (body["bookmark"] as Record<string, unknown>)["entries"],
+    ).toStrictEqual([]);
     expect(body["mode"]).toBe("raw");
-    expect(body["distinct_ids"]).toEqual(["user_1"]);
+    expect(body["distinct_ids"]).toStrictEqual(["user_1"]);
     expect(body["project_id"]).toBe("12345");
     expect(body["workspace_id"]).toBe(99999);
   });
@@ -348,7 +348,7 @@ describe("TestActivityFeed (request contract)", () => {
     });
     expect(
       (captured.body?.["bookmark"] as Record<string, unknown>)["dateRange"],
-    ).toEqual({ type: "between", from: "2026-05-01", to: "2026-06-01" });
+    ).toStrictEqual({ type: "between", from: "2026-05-01", to: "2026-06-01" });
   });
 
   it("test_since_date_range_when_only_from_date", async () => {
@@ -357,7 +357,7 @@ describe("TestActivityFeed (request contract)", () => {
     await client.activityFeed(["user_1"], { from_date: "2026-05-01" });
     expect(
       (captured.body?.["bookmark"] as Record<string, unknown>)["dateRange"],
-    ).toEqual({ type: "since", from: "2026-05-01" });
+    ).toStrictEqual({ type: "since", from: "2026-05-01" });
   });
 
   it("test_defaults_to_last_30_days_when_no_dates", async () => {
@@ -366,7 +366,10 @@ describe("TestActivityFeed (request contract)", () => {
     await client.activityFeed(["user_1"]);
     expect(
       (captured.body?.["bookmark"] as Record<string, unknown>)["dateRange"],
-    ).toEqual({ type: "relative_after", window: { unit: "day", value: 30 } });
+    ).toStrictEqual({
+      type: "relative_after",
+      window: { unit: "day", value: 30 },
+    });
   });
 
   it("test_only_to_date_builds_30_day_between_window", async () => {
@@ -421,8 +424,8 @@ describe("TestActivityFeed (request contract)", () => {
     });
     const body = captured.body!;
     expect(body["limit"]).toBe(500);
-    expect(body["include_events"]).toEqual(["Sign Up", "Purchase"]);
-    expect(body["sentinel_event"]).toEqual(sentinel);
+    expect(body["include_events"]).toStrictEqual(["Sign Up", "Purchase"]);
+    expect(body["sentinel_event"]).toStrictEqual(sentinel);
     expect(body["paging_window"]).toBe(7);
   });
 
@@ -434,7 +437,7 @@ describe("TestActivityFeed (request contract)", () => {
       to_date: "2026-06-01",
       exclude_events: ["Heartbeat"],
     });
-    expect(captured.body?.["exclude_events"]).toEqual(["Heartbeat"]);
+    expect(captured.body?.["exclude_events"]).toStrictEqual(["Heartbeat"]);
   });
 
   it("test_include_and_exclude_events_together_raises", async () => {
@@ -462,7 +465,7 @@ describe("TestActivityFeed (request contract)", () => {
     });
     const body = captured.body!;
     expect(body["search"]).toBe("san francisco");
-    expect(body["search_properties"]).toEqual(searchProps);
+    expect(body["search_properties"]).toStrictEqual(searchProps);
   });
 
   it("test_use_custom_events_in_body", async () => {
@@ -516,7 +519,7 @@ describe("TestActivityFeed (request contract)", () => {
       caught = error;
     }
     expect(caught).toBeInstanceOf(QueryError);
-    expect((caught as QueryError).requestParams).toEqual({
+    expect((caught as QueryError).requestParams).toStrictEqual({
       include_events: ["A"],
       exclude_events: ["B"],
     });
@@ -541,7 +544,7 @@ describe("TestActivityFeed (phase008)", () => {
         true,
       );
       const body = parseBody(request.bodyText);
-      expect(body["distinct_ids"]).toEqual(["user_123"]);
+      expect(body["distinct_ids"]).toStrictEqual(["user_123"]);
       return {
         status: 200,
         json: {
@@ -574,7 +577,7 @@ describe("TestActivityFeed (phase008)", () => {
       const body = parseBody(request.bodyText);
       expect(
         (body["bookmark"] as Record<string, unknown>)["dateRange"],
-      ).toEqual({
+      ).toStrictEqual({
         type: "between",
         from: "2024-01-01",
         to: "2024-01-31",
@@ -594,7 +597,7 @@ describe("TestActivityFeed (phase008)", () => {
   it("test_activity_feed_multiple_users", async () => {
     const { client } = createMockClient(makeSession(), (request) => {
       const body = parseBody(request.bodyText);
-      expect(body["distinct_ids"]).toEqual(["user_123", "user_456"]);
+      expect(body["distinct_ids"]).toStrictEqual(["user_123", "user_456"]);
       return { status: 200, json: { status: "ok", results: { events: [] } } };
     });
     client.setWorkspaceId(99999);

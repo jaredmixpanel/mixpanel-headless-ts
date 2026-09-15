@@ -196,7 +196,7 @@ describe("sessionReplace (Python Session.replace parity)", () => {
     });
     expect(swapped.project.id).toBe("3018488");
     expect(swapped.account).toBe(original.account);
-    expect(swapped.workspace).toEqual({ id: 7 });
+    expect(swapped.workspace).toStrictEqual({ id: 7 });
     expect(swapped.headers.get("X-A")).toBe("1");
     expect(original.project.id).toBe("3713224");
   });
@@ -205,7 +205,7 @@ describe("sessionReplace (Python Session.replace parity)", () => {
     const cleared = sessionReplace(original, { workspace: null });
     expect(cleared.workspace).toBeNull();
     // Omitting the key preserves.
-    expect(sessionReplace(original, {}).workspace).toEqual({ id: 7 });
+    expect(sessionReplace(original, {}).workspace).toStrictEqual({ id: 7 });
   });
 
   it("clears headers with an empty map", () => {
@@ -232,7 +232,7 @@ describe("sessionReplace (Python Session.replace parity)", () => {
 
 describe("parseActiveSession (extra='forbid')", () => {
   it("parses account/workspace with both optional", () => {
-    expect(parseActiveSession({})).toEqual({});
+    expect(parseActiveSession({})).toStrictEqual({});
     const full = parseActiveSession({ account: "team", workspace: 3448414 });
     expect(full.account).toBe("team");
     expect(full.workspace).toBe(3448414);

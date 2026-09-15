@@ -172,9 +172,9 @@ describe("W-F1: mid-stream body failures retry inside the httpx.HTTPError scope"
     const events = await drain(client.exportEvents("2024-01-01", "2024-01-31"));
     // Attempt 1 yields A then dies mid-body; attempt 2 re-streams A, B —
     // the duplicate is Python's exact observable (generator re-entry).
-    expect(events.map(eventName)).toEqual(["A", "A", "B"]);
+    expect(events.map(eventName)).toStrictEqual(["A", "A", "B"]);
     expect(calls()).toBe(2);
-    expect(sleeps).toEqual([1000]); // _calculate_backoff(0), random=0.
+    expect(sleeps).toStrictEqual([1000]); // _calculate_backoff(0), random=0.
   });
 
   it("wraps an exhausted mid-stream failure as HTTP_ERROR", async () => {
@@ -249,7 +249,7 @@ describe("W-F2: request timeouts are enforced at the adapter", () => {
       exportTimeoutSeconds: 0.02,
     });
     const events = await drain(client.exportEvents("2024-01-01", "2024-01-31"));
-    expect(events.map(eventName)).toEqual(["A", "B"]);
+    expect(events.map(eventName)).toStrictEqual(["A", "B"]);
   });
 });
 
