@@ -874,7 +874,8 @@ const config = defineConfig([
       "vitest/no-disabled-tests": "error",
       "vitest/consistent-test-filename": [
         "error",
-        { pattern: String.raw`\.test\.ts$` },
+        // `*.test-d.ts` = vitest typecheck files (type-level tests).
+        { pattern: String.raw`\.test(-d)?\.ts$` },
       ],
       // Default options only: rejecting `test_` prefixes is Phase 5.4 (D7).
       "vitest/valid-title": "error",

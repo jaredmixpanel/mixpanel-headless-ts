@@ -16,8 +16,8 @@
 //   `__extras` bag on `EntityModel`; `model_dump(by_alias=True)` →
 //   `modelDump({ byAlias: true })`.
 // - Dataclass `FrozenInstanceError` → `Object.isFrozen` plus a strict-mode
-//   assignment that throws `TypeError`; the compile-time `readonly`
-//   contract is pinned with `@ts-expect-error`.
+//   write (`Object.assign`) that throws `TypeError`; the compile-time
+//   `readonly` contract is pinned in `report-links.test-d.ts`.
 // - `dataclasses.replace(...)` → re-construct from a spread of the field
 //   bag with the overridden keys.
 // - Message-TEXT assertions (`"source='slug'" in str(exc)`) are not
@@ -130,20 +130,13 @@ describe("TestBookmarkUrl", () => {
     expect(record.__extras).toStrictEqual({ future_key: 1 });
   });
 
-  // PORT-GAP: Python `BookmarkUrl` is `model_config(frozen=True)` and raises
-  // on attribute assignment; the TS `EntityModel` base never calls
+  // Python `BookmarkUrl` is `model_config(frozen=True)` and raises on
+  // attribute assignment; the TS `EntityModel` base never calls
   // `Object.freeze`, so `BookmarkUrl` instances are mutable at runtime
-  // (only the compile-time `readonly` contract holds — pinned below via
-  // `@ts-expect-error`, which `tsc` still checks on the todo body).
-  it.todo("test_frozen", () => {
-    const record = new BookmarkUrl({ slug: SLUG, bookmark_type: "insights" });
-    const assign = (): void => {
-      // @ts-expect-error -- `slug` is readonly (compile-time frozen contract).
-      record.slug = "x";
-    };
-    expect(Object.isFrozen(record)).toBe(true);
-    expect(assign).toThrow(TypeError);
-  });
+  // (PORTING.md "Runtime immutability"). Only the compile-time `readonly`
+  // contract holds — pinned in `report-links.test-d.ts`. Once `EntityModel`
+  // freezes, assert `Object.isFrozen` plus a throwing write here.
+  it.todo("test_frozen");
 
   it("test_dump_by_alias", () => {
     const record = new BookmarkUrl({ slug: SLUG, bookmark_type: "flows" });
@@ -213,12 +206,10 @@ describe("TestReportLink", () => {
 
   it("test_frozen", () => {
     const link = build();
-    const assign = (): void => {
-      // @ts-expect-error -- `slug` is readonly (compile-time frozen contract).
-      link.slug = "x";
-    };
     expect(Object.isFrozen(link)).toBe(true);
-    expect(assign).toThrow(TypeError);
+    // A strict-mode write to a frozen object throws; the compile-time
+    // `readonly` half is in report-links.test-d.ts.
+    expect(() => Object.assign(link, { slug: "x" })).toThrow(TypeError);
     expect(link.slug).toBe(SLUG);
   });
 });
@@ -315,12 +306,8 @@ describe("TestResolvedReport", () => {
 
   it("test_frozen", () => {
     const resolved = build(null);
-    const assign = (): void => {
-      // @ts-expect-error -- `params` is readonly (compile-time frozen contract).
-      resolved.params = {};
-    };
     expect(Object.isFrozen(resolved)).toBe(true);
-    expect(assign).toThrow(TypeError);
+    expect(() => Object.assign(resolved, { params: {} })).toThrow(TypeError);
     expect(resolved.params).toStrictEqual(PARAMS);
   });
 

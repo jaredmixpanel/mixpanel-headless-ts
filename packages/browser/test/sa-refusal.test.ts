@@ -15,7 +15,6 @@ import { Secret, type Session } from "@mixpanel-headless/core";
 import * as browserEntry from "../src/index.js";
 import {
   BROWSER_SERVICE_ACCOUNT_REFUSED,
-  type BrowserSessionOptions,
   BrowserUnsupportedError,
   createBrowserWorkspace,
   createBrowserWorkspaceFromStore,
@@ -70,25 +69,11 @@ describe("§2.3 path 1 — createBrowserWorkspace({session}) with an SA session"
   });
 });
 
-describe("§2.3 path 2 — browserSession cannot even EXPRESS an SA (compile-time)", () => {
-  it("BrowserSessionOptions rejects username/secret shapes (type-level fixture)", () => {
-    // Defense in depth: the RUNTIME gate for this ingress is path 1
-    // (asserted above); this fixture locks the COMPILE-TIME exclusion.
-    const saShape = {
-      username: "sa.user",
-      secret: "hunter2",
-      projectId: "12345",
-      region: "us",
-    } as const;
-    // @ts-expect-error — BrowserSessionOptions carries only `token`
-    // (an SA credential shape has no `token` and does not typecheck).
-    const options: BrowserSessionOptions = saShape;
-    expect(options).toBeDefined();
-  });
-  // §2.3 path 5 (beginLogin/completeLogin take no Account at all) is
-  // type-level too and belongs to B9-R2 — documented in the R2 module
-  // header per the packet table; no fixture here.
-});
+// §2.3 path 2 — `browserSession` cannot even EXPRESS a service account
+// (`BrowserSessionOptions` carries only `token`) — is a compile-time
+// contract and lives in session-options.test-d.ts. Path 5 (beginLogin /
+// completeLogin take no Account at all) is type-level too and is documented
+// in the redirect-flow module header; no fixture here.
 
 describe("§2.3 path 3 — createBrowserWorkspaceFromStore over a store holding SA creds", () => {
   it("refuses a persisted record whose type is service_account (out-of-band write)", async () => {

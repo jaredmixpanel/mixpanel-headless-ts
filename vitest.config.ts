@@ -14,6 +14,32 @@ const EXCLUDE = ["**/node_modules/**", "**/dist/**", "**/.claude/**"];
 /** The corpus replay is its own project (see `corpus` below). */
 const CORPUS_TEST = "conformance-runner/test/corpus.test.ts";
 
+/**
+ * Type-level tests (`*.test-d.ts`) for one package: vitest runs `tsc -p` on
+ * the package's `tsconfig.test-d.json`, which includes `src/` directly so a
+ * stale `dist/` can never satisfy an assertion. Only type-test files are
+ * reported; `tsc -b` still checks them as part of the package test project.
+ *
+ * @param pkg - Workspace directory name under `packages/`.
+ * @returns The project's `test.typecheck` block.
+ */
+function typecheck(pkg: string): {
+  enabled: true;
+  include: string[];
+  exclude: string[];
+  tsconfig: string;
+} {
+  return {
+    enabled: true,
+    include: [`packages/${pkg}/test/**/*.test-d.ts`],
+    // Compile-only cross-check against the vendored contracts: bare type
+    // aliases, no suites, so vitest would report "no test suite found". It
+    // is still type-checked (it is in the tsconfig include and in `tsc -b`).
+    exclude: ["packages/core/test/types/entities/vendored-contracts.test-d.ts"],
+    tsconfig: `packages/${pkg}/tsconfig.test-d.json`,
+  };
+}
+
 export default defineConfig({
   resolve: {
     // Bare `@mixpanel-headless/*` specifiers resolve to `src/`, not to the
@@ -67,6 +93,7 @@ export default defineConfig({
         test: {
           name: "core",
           include: ["packages/core/test/**/*.test.ts"],
+          typecheck: typecheck("core"),
         },
       },
       {
@@ -79,6 +106,7 @@ export default defineConfig({
         test: {
           name: "browser",
           include: ["packages/browser/test/**/*.test.ts"],
+          typecheck: typecheck("browser"),
         },
       },
       {
