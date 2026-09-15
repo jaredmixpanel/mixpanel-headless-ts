@@ -204,8 +204,7 @@ const RETENTION_CHART_TYPE: ReadonlyMap<string, string> = new Map([
 // ===========================================================================
 
 /**
- * Validate a per-step `forward`/`reverse` value for type and range
- * (`_check_step_direction`, `workspace.py`).
+ * Validate a per-step `forward`/`reverse` value for type and range.
  *
  * `None` means "inherit the default" and produces no finding. The type
  * check rejects `bool` explicitly (Python's `bool` is an `int`
@@ -216,6 +215,7 @@ const RETENTION_CHART_TYPE: ReadonlyMap<string, string> = new Map([
  * @param name - Field name (`"forward"` or `"reverse"`).
  * @param stepPath - Parent path for error reporting (`"steps[0]"`).
  * @returns The findings (empty when valid).
+ * @see mixpanel_headless.workspace._check_step_direction
  */
 function checkStepDirection(
   value: unknown,
@@ -282,8 +282,7 @@ const FLOW_CHART_TYPE_TO_MODE: ReadonlyMap<string, FlowMode> = new Map([
 ]);
 
 /**
- * Derive the flow chart mode from pre-built flow params
- * (`_flow_mode_from_params`, `workspace.py`).
+ * Derive the flow chart mode from pre-built flow params.
  *
  * `flows_merge_type` wins when present and recognised. `chartType` is
  * the fallback. Anything else runs as sankey.
@@ -296,6 +295,7 @@ const FLOW_CHART_TYPE_TO_MODE: ReadonlyMap<string, FlowMode> = new Map([
  * flowModeFromParams({ chartType: "top-paths" }); // "paths"
  * flowModeFromParams({}); // "sankey"
  * ```
+ * @see mixpanel_headless.workspace._flow_mode_from_params
  */
 export function flowModeFromParams(
   params: Readonly<Record<string, unknown>>,
@@ -359,11 +359,11 @@ export interface BuildQueryParamsOptions {
 }
 
 /**
- * Build the insights bookmark params dict from typed arguments
- * (`_build_query_params`, `workspace.py`).
+ * Build the insights bookmark params dict from typed arguments.
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns Bookmark params ready for the insights query API.
+ * @see mixpanel_headless.workspace.Workspace._build_query_params
  */
 // eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
@@ -637,8 +637,7 @@ export interface ResolveAndBuildParamsOptions {
 }
 
 /**
- * Normalize, validate and build insights bookmark params
- * (`_resolve_and_build_params`, `workspace.py`).
+ * Normalize, validate and build insights bookmark params.
  *
  * Shared implementation of `query` and `build_params`: type guards,
  * event/formula normalization, Layer-1 argument validation, bookmark
@@ -646,10 +645,11 @@ export interface ResolveAndBuildParamsOptions {
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The validated bookmark params dict.
- * @throws BookmarkValidationError - Any layer's blocking findings
+ * @throws {@link BookmarkValidationError} - Any layer's blocking findings
  *   (`V21_INVALID_EVENT_TYPE`, `V25_INVALID_FILTER_TYPE`,
  *   `V0_NO_EVENTS`, `V4_FORMULA_CONFLICT`, then the `V*` and `B*`
  *   sets).
+ * @see mixpanel_headless.workspace.Workspace._resolve_and_build_params
  */
 // eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function resolveAndBuildParams(
@@ -867,11 +867,11 @@ interface BuildFunnelParamsOptions {
 }
 
 /**
- * Build the funnel bookmark params dict (`_build_funnel_params`,
- * `workspace.py`).
+ * Build the funnel bookmark params dict.
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns Bookmark params ready for the insights query API.
+ * @see mixpanel_headless.workspace.Workspace._build_funnel_params
  */
 function buildFunnelParams(options: BuildFunnelParamsOptions): ParamsDict {
   const {
@@ -1057,12 +1057,12 @@ export interface ResolveAndBuildFunnelParamsOptions {
 }
 
 /**
- * Normalize, validate and build funnel bookmark params
- * (`_resolve_and_build_funnel_params`, `workspace.py`).
+ * Normalize, validate and build funnel bookmark params.
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The validated bookmark params dict.
- * @throws BookmarkValidationError - Layer-1 or Layer-2 findings.
+ * @throws {@link BookmarkValidationError} - Layer-1 or Layer-2 findings.
+ * @see mixpanel_headless.workspace.Workspace._resolve_and_build_funnel_params
  */
 export function resolveAndBuildFunnelParams(
   options: ResolveAndBuildFunnelParamsOptions,
@@ -1215,14 +1215,14 @@ interface BuildRetentionParamsOptions {
 }
 
 /**
- * Build the retention bookmark params dict
- * (`_build_retention_params`, `workspace.py`).
+ * Build the retention bookmark params dict.
  *
  * The trailing `sorting` / `columnWidths` literals are transcribed
  * verbatim — they are part of the emitted contract.
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns Bookmark params ready for the insights query API.
+ * @see mixpanel_headless.workspace.Workspace._build_retention_params
  */
 function buildRetentionParams(
   options: BuildRetentionParamsOptions,
@@ -1392,13 +1392,13 @@ export interface BuildFlowParamsOptions {
 }
 
 /**
- * Build the FLAT flow bookmark params dict (`_build_flow_params`,
- * `workspace.py`).
+ * Build the FLAT flow bookmark params dict.
  *
  * Flows use a flat dict (no `sections` / `displayOptions` wrapper).
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The flat bookmark params dict.
+ * @see mixpanel_headless.workspace.Workspace._build_flow_params
  */
 // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function buildFlowParams(options: BuildFlowParamsOptions): ParamsDict {
@@ -1541,14 +1541,14 @@ export interface ResolveAndBuildFlowParamsOptions {
 }
 
 /**
- * Normalize, validate and build flow bookmark params
- * (`_resolve_and_build_flow_params`, `workspace.py`).
+ * Normalize, validate and build flow bookmark params.
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The validated flow bookmark params dict.
- * @throws BookmarkValidationError - Layer-0.5, Layer-1 or Layer-2
+ * @throws {@link BookmarkValidationError} - Layer-0.5, Layer-1 or Layer-2
  *   findings (`FL_TYPE_*`, `FL3`/`FL4`, `FL_INVALID_*`, then the FL*
  *   argument and bookmark sets).
+ * @see mixpanel_headless.workspace.Workspace._resolve_and_build_flow_params
  */
 // eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function resolveAndBuildFlowParams(
@@ -1755,7 +1755,7 @@ export function resolveAndBuildFlowParams(
  * @param values - The candidates (never empty — `steps` always has at
  *   least one member by the time this runs).
  * @returns The maximum.
- * @throws ValueError - On an empty sequence (CPython's
+ * @throws {@link ValueError} - On an empty sequence (CPython's
  *   `max() iterable argument is empty`).
  */
 function pyMax(values: readonly number[]): number {
@@ -1817,12 +1817,12 @@ export interface ResolveAndBuildRetentionParamsOptions {
 }
 
 /**
- * Normalize, validate and build retention bookmark params
- * (`_resolve_and_build_retention_params`, `workspace.py`).
+ * Normalize, validate and build retention bookmark params.
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The validated bookmark params dict.
- * @throws BookmarkValidationError - Layer-1 or Layer-2 findings.
+ * @throws {@link BookmarkValidationError} - Layer-1 or Layer-2 findings.
+ * @see mixpanel_headless.workspace.Workspace._resolve_and_build_retention_params
  */
 export function resolveAndBuildRetentionParams(
   options: ResolveAndBuildRetentionParamsOptions,
@@ -1967,14 +1967,14 @@ export interface ResolveAndBuildUserParamsOptions {
 }
 
 /**
- * Validate arguments and build the engage API params dict
- * (`_resolve_and_build_user_params`, `workspace.py`).
+ * Validate arguments and build the engage API params dict.
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The engage params dict for `export_profiles_page`.
- * @throws BookmarkValidationError - Argument-level (U1-U28) or
+ * @throws {@link BookmarkValidationError} - Argument-level (U1-U28) or
  *   param-level (UP1-UP4) findings, plus the `U9` / `U_FILTER` /
  *   `U_COHORT` guards raised here.
+ * @see mixpanel_headless.workspace.Workspace._resolve_and_build_user_params
  */
 // eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function resolveAndBuildUserParams(
@@ -2279,7 +2279,7 @@ function pythonNumberText(value: number | null | undefined): string {
  *
  * @param value - The ISO date text.
  * @returns The Unix timestamp of midnight UTC.
- * @throws ValueError - When the text is not an ISO calendar date
+ * @throws {@link ValueError} - When the text is not an ISO calendar date
  *   (CPython's `Invalid isoformat string`).
  */
 function timegmFromIsoDate(value: string): number {
@@ -2354,8 +2354,7 @@ function daysFromCivilDate(y: number, m: number, d: number): number {
 // ===========================================================================
 
 /**
- * Extract `export_profiles_page` kwargs from the engage params dict
- * (`_build_page_kwargs`, `workspace.py`).
+ * Extract `export_profiles_page` kwargs from the engage params dict.
  *
  * The two JSON-encoded members (`output_properties`, `distinct_ids`)
  * are decoded back to lists when they arrive as strings, exactly as
@@ -2363,6 +2362,7 @@ function daysFromCivilDate(y: number, m: number, d: number): number {
  *
  * @param params - The engage params dict.
  * @returns The keyword arguments for the page call.
+ * @see mixpanel_headless.workspace.Workspace._build_page_kwargs
  */
 export function buildPageKwargs(
   params: Readonly<Record<string, unknown>>,
@@ -2426,7 +2426,7 @@ export function buildPageKwargs(
  *
  * @param params - The engage params dict.
  * @returns The keyword arguments for `engage_stats`.
- * @throws LosslessJsonError - Malformed `segment_by_cohorts` JSON
+ * @throws {@link LosslessJsonError} - Malformed `segment_by_cohorts` JSON
  *   (Python's `json.JSONDecodeError`).
  */
 export function buildStatsKwargs(
@@ -2467,7 +2467,7 @@ export function buildStatsKwargs(
  *
  * @param text - The JSON text.
  * @returns The native-valued tree.
- * @throws LosslessJsonError - On malformed JSON.
+ * @throws {@link LosslessJsonError} - On malformed JSON.
  */
 function pythonJsonLoads(text: string): unknown {
   return toNativeJson(parseLossless(text, { pythonConstants: true }));

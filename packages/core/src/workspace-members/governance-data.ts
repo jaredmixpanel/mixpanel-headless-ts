@@ -221,7 +221,7 @@ export interface LookupUploadLogger {
  * B8 pair-A arbiter, `b8-reviewA-resolution.md` ASR-F2).
  *
  * @returns Never; always throws.
- * @throws MixpanelHeadlessError - Code `UNPORTED_FILE_READ_SEAM`.
+ * @throws {@link MixpanelHeadlessError} - Code `UNPORTED_FILE_READ_SEAM`.
  */
 export function unportedReadFile(): Promise<Uint8Array> {
   return Promise.reject(
@@ -249,15 +249,15 @@ export function defaultMonotonic(): number {
 // ---------------------------------------------------------------------------
 
 /**
- * List all drop filters (`list_drop_filters`,
- * `workspace.py`).
+ * List all drop filters.
  *
  * @param client - The wire client.
  * @returns The `DropFilter` models, in response order.
- * @throws ResponseValidationError - Malformed payload
+ * @throws {@link ResponseValidationError} - Malformed payload
  *   (`RESPONSE_VALIDATION_ERROR`).
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures per the B0 contract.
+ * @see mixpanel_headless.workspace.Workspace.list_drop_filters
  */
 export async function listDropFilters(
   client: MixpanelClient,
@@ -273,14 +273,14 @@ export async function listDropFilters(
 }
 
 /**
- * Create a new drop filter (`create_drop_filter`,
- * `workspace.py`).
+ * Create a new drop filter.
  *
  * @param client - The wire client.
  * @param params - Drop filter creation parameters (dumped WITHOUT
  *   `by_alias`, `:7642`).
  * @returns The FULL post-creation list of `DropFilter` models.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.create_drop_filter
  */
 export async function createDropFilter(
   client: MixpanelClient,
@@ -297,14 +297,14 @@ export async function createDropFilter(
 }
 
 /**
- * Update a drop filter (`update_drop_filter`,
- * `workspace.py`).
+ * Update a drop filter.
  *
  * @param client - The wire client.
  * @param params - Update parameters (must include the filter ID);
  *   dumped WITHOUT `by_alias` (`:7676`).
  * @returns The FULL post-update list of `DropFilter` models.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.update_drop_filter
  */
 export async function updateDropFilter(
   client: MixpanelClient,
@@ -321,13 +321,13 @@ export async function updateDropFilter(
 }
 
 /**
- * Delete a drop filter (`delete_drop_filter`,
- * `workspace.py`).
+ * Delete a drop filter.
  *
  * @param client - The wire client.
  * @param dropFilterId - Drop filter ID (integer).
  * @returns The FULL post-delete list of remaining `DropFilter` models.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.delete_drop_filter
  */
 export async function deleteDropFilter(
   client: MixpanelClient,
@@ -344,12 +344,12 @@ export async function deleteDropFilter(
 }
 
 /**
- * Get drop filter usage limits (`get_drop_filter_limits`,
- * `workspace.py`).
+ * Get drop filter usage limits.
  *
  * @param client - The wire client.
  * @returns The `DropFilterLimitsResponse`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.get_drop_filter_limits
  */
 export async function getDropFilterLimits(
   client: MixpanelClient,
@@ -365,8 +365,7 @@ export async function getDropFilterLimits(
 // ---------------------------------------------------------------------------
 
 /**
- * List all custom properties (`list_custom_properties`,
- * `workspace.py`).
+ * List all custom properties.
  *
  * The shard's server-corruption branch: when the App API fails to
  * serialize a project whose custom property carries an invalid
@@ -377,8 +376,9 @@ export async function getDropFilterLimits(
  *
  * @param client - The wire client.
  * @returns The `CustomProperty` models, in response order.
- * @throws QueryError - The re-raised corruption error, or the original.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link QueryError} - The re-raised corruption error, or the original.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.list_custom_properties
  */
 export async function listCustomProperties(
   client: MixpanelClient,
@@ -426,14 +426,14 @@ export async function listCustomProperties(
 }
 
 /**
- * Create a new custom property (`create_custom_property`,
- * `workspace.py`).
+ * Create a new custom property.
  *
  * @param client - The wire client.
  * @param params - Creation parameters; dumped with `by_alias=True`
  *   (and Python's `mode="json"`, a no-op in the TS twin — W7-D4).
  * @returns The created `CustomProperty`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.create_custom_property
  */
 export async function createCustomProperty(
   client: MixpanelClient,
@@ -448,13 +448,13 @@ export async function createCustomProperty(
 }
 
 /**
- * Get a custom property by ID (`get_custom_property`,
- * `workspace.py`).
+ * Get a custom property by ID.
  *
  * @param client - The wire client.
  * @param propertyId - Custom property ID (string).
  * @returns The `CustomProperty`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.get_custom_property
  */
 export async function getCustomProperty(
   client: MixpanelClient,
@@ -467,15 +467,15 @@ export async function getCustomProperty(
 }
 
 /**
- * Update a custom property (`update_custom_property`,
- * `workspace.py`).
+ * Update a custom property.
  *
  * @param client - The wire client.
  * @param propertyId - Custom property ID (string).
  * @param params - Fields to update (dumped with `by_alias=True`,
  *   `:7891`).
  * @returns The updated `CustomProperty`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.update_custom_property
  */
 export async function updateCustomProperty(
   client: MixpanelClient,
@@ -492,14 +492,14 @@ export async function updateCustomProperty(
 }
 
 /**
- * Delete a custom property (`delete_custom_property`,
- * `workspace.py`).
+ * Delete a custom property.
  *
  * @param client - The wire client.
  * @param propertyId - Custom property ID (string).
  * @returns Nothing.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @see mixpanel_headless.workspace.Workspace.delete_custom_property
  */
 export async function deleteCustomProperty(
   client: MixpanelClient,
@@ -509,8 +509,7 @@ export async function deleteCustomProperty(
 }
 
 /**
- * Validate a custom property definition without creating it
- * (`validate_custom_property`, `workspace.py`).
+ * Validate a custom property definition without creating it.
  *
  * Opaque passthrough: Python returns the client dict unvalidated.
  *
@@ -518,8 +517,9 @@ export async function deleteCustomProperty(
  * @param params - Parameters to validate (dumped with `by_alias=True`
  *   and NO `mode="json"`, `:7950`).
  * @returns The raw validation result.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @see mixpanel_headless.workspace.Workspace.validate_custom_property
  */
 export async function validateCustomProperty(
   client: MixpanelClient,
@@ -536,13 +536,13 @@ export async function validateCustomProperty(
 // ---------------------------------------------------------------------------
 
 /**
- * List lookup tables (`list_lookup_tables`,
- * `workspace.py`).
+ * List lookup tables.
  *
  * @param client - The wire client.
  * @param options - Optional `data_group_id` filter (keyword-only).
  * @returns The `LookupTable` models, in response order.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.list_lookup_tables
  */
 export async function listLookupTables(
   client: MixpanelClient,
@@ -563,8 +563,7 @@ export async function listLookupTables(
 }
 
 /**
- * Poll for async lookup-table upload completion
- * (`_poll_lookup_upload`, `workspace.py`).
+ * Poll for async lookup-table upload completion.
  *
  * @param client - The wire client.
  * @param uploadId - Async upload task ID.
@@ -573,9 +572,10 @@ export async function listLookupTables(
  * @param seams - The clock/sleep seams (W7-D2).
  * @param logger - Optional debug sink.
  * @returns The result record of the completed upload.
- * @throws MixpanelHeadlessError - `INVALID_RESPONSE` (SUCCESS with a
+ * @throws {@link MixpanelHeadlessError} - `INVALID_RESPONSE` (SUCCESS with a
  *   non-dict `result`), `UPLOAD_FAILED` (FAILURE/REVOKED),
  *   `UPLOAD_NOT_FOUND` (NOTFOUND) or `UPLOAD_TIMEOUT` (deadline).
+ * @see mixpanel_headless.workspace.Workspace._poll_lookup_upload
  */
 // eslint-disable-next-line max-params -- positional parameters mirror the Python signature 1:1
 async function pollLookupUpload(
@@ -650,8 +650,7 @@ async function pollLookupUpload(
 }
 
 /**
- * Upload a CSV file as a new lookup table (`upload_lookup_table`,
- * `workspace.py`).
+ * Upload a CSV file as a new lookup table.
  *
  * The shard's orchestrator: signed URL → GCS PUT → register → (for
  * payloads ≥ 5 MB) poll until the async task completes. Every wire hop
@@ -666,9 +665,10 @@ async function pollLookupUpload(
  * @param seams - The `readFile` / clock seams (W7-D1/W7-D2).
  * @param logger - Optional log sink.
  * @returns The created `LookupTable`.
- * @throws MixpanelHeadlessError - `UNPORTED_FILE_READ_SEAM` (default
+ * @throws {@link MixpanelHeadlessError} - `UNPORTED_FILE_READ_SEAM` (default
  *   `readFile`), or any poll-loop code above.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.upload_lookup_table
  */
 export async function uploadLookupTable(
   client: MixpanelClient,
@@ -739,8 +739,7 @@ export async function uploadLookupTable(
 }
 
 /**
- * Mark a lookup table as ready after upload
- * (`mark_lookup_table_ready`, `workspace.py`).
+ * Mark a lookup table as ready after upload.
  *
  * Builds the form-data dict by hand (no model dump) exactly as Python
  * does at `:8178-8184`.
@@ -749,7 +748,8 @@ export async function uploadLookupTable(
  * @param params - Parameters (`name`, `key`, optional
  *   `data_group_id`).
  * @returns The updated `LookupTable`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.mark_lookup_table_ready
  */
 export async function markLookupTableReady(
   client: MixpanelClient,
@@ -773,14 +773,14 @@ export async function markLookupTableReady(
 }
 
 /**
- * Get a signed URL for uploading lookup table data
- * (`get_lookup_upload_url`, `workspace.py`).
+ * Get a signed URL for uploading lookup table data.
  *
  * @param client - The wire client.
  * @param contentType - MIME type of the file to upload (Python
  *   POSITIONAL with default `"text/csv"`).
  * @returns The `LookupTableUploadUrl`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.get_lookup_upload_url
  */
 export async function getLookupUploadUrl(
   client: MixpanelClient,
@@ -793,16 +793,16 @@ export async function getLookupUploadUrl(
 }
 
 /**
- * Get the processing status of a lookup table upload
- * (`get_lookup_upload_status`, `workspace.py`).
+ * Get the processing status of a lookup table upload.
  *
  * Opaque passthrough (no model validation).
  *
  * @param client - The wire client.
  * @param uploadId - Upload ID returned from the upload process.
  * @returns The raw status record.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @see mixpanel_headless.workspace.Workspace.get_lookup_upload_status
  */
 export async function getLookupUploadStatus(
   client: MixpanelClient,
@@ -813,8 +813,7 @@ export async function getLookupUploadStatus(
 }
 
 /**
- * Update a lookup table (`update_lookup_table`,
- * `workspace.py`).
+ * Update a lookup table.
  *
  * @param client - The wire client.
  * @param dataGroupId - Data group ID of the lookup table (signed int64;
@@ -822,7 +821,8 @@ export async function getLookupUploadStatus(
  * @param params - Fields to update (dumped WITHOUT `by_alias`,
  *   `:8277`).
  * @returns The updated `LookupTable`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.update_lookup_table
  */
 export async function updateLookupTable(
   client: MixpanelClient,
@@ -843,15 +843,15 @@ export async function updateLookupTable(
 }
 
 /**
- * Delete one or more lookup tables (`delete_lookup_tables`,
- * `workspace.py`).
+ * Delete one or more lookup tables.
  *
  * @param client - The wire client.
  * @param dataGroupIds - Data group IDs to delete (signed int64s;
  *   `bigint` beyond 2^53).
  * @returns Nothing.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @see mixpanel_headless.workspace.Workspace.delete_lookup_tables
  */
 export async function deleteLookupTables(
   client: MixpanelClient,
@@ -861,16 +861,16 @@ export async function deleteLookupTables(
 }
 
 /**
- * Download lookup table data as raw CSV bytes
- * (`download_lookup_table`, `workspace.py`).
+ * Download lookup table data as raw CSV bytes.
  *
  * @param client - The wire client.
  * @param dataGroupId - Data group ID of the lookup table (signed int64;
  *   `bigint` beyond 2^53).
  * @param options - Optional `file_name` / `limit` (keyword-only).
  * @returns The raw CSV bytes (Python `bytes`).
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @see mixpanel_headless.workspace.Workspace.download_lookup_table
  */
 export async function downloadLookupTable(
   client: MixpanelClient,
@@ -884,15 +884,15 @@ export async function downloadLookupTable(
 }
 
 /**
- * Get a signed download URL for a lookup table
- * (`get_lookup_download_url`, `workspace.py`).
+ * Get a signed download URL for a lookup table.
  *
  * @param client - The wire client.
  * @param dataGroupId - Data group ID of the lookup table (signed int64;
  *   `bigint` beyond 2^53).
  * @returns The signed URL string.
- * @throws MixpanelHeadlessError - `MISSING_URL` (raised by the B4
+ * @throws {@link MixpanelHeadlessError} - `MISSING_URL` (raised by the B4
  *   client when the response carries no URL).
+ * @see mixpanel_headless.workspace.Workspace.get_lookup_download_url
  */
 export async function getLookupDownloadUrl(
   client: MixpanelClient,
@@ -906,14 +906,14 @@ export async function getLookupDownloadUrl(
 // ---------------------------------------------------------------------------
 
 /**
- * Create a new custom event (`create_custom_event`,
- * `workspace.py`).
+ * Create a new custom event.
  *
  * @param client - The wire client.
  * @param params - Creation parameters, serialized by the model's own
  *   `to_form_body()` (W7-D3).
  * @returns The created `CustomEvent`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.create_custom_event
  */
 export async function createCustomEvent(
   client: MixpanelClient,
@@ -926,12 +926,12 @@ export async function createCustomEvent(
 }
 
 /**
- * List all custom events (`list_custom_events`,
- * `workspace.py`).
+ * List all custom events.
  *
  * @param client - The wire client.
  * @returns The `EventDefinition` models for custom events.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.list_custom_events
  */
 export async function listCustomEvents(
   client: MixpanelClient,
@@ -947,8 +947,7 @@ export async function listCustomEvents(
 }
 
 /**
- * Update a custom event's Lexicon entry (`update_custom_event`,
- * `workspace.py`).
+ * Update a custom event's Lexicon entry.
  *
  * Identified by `custom_event_id`, never by name — a name-only PATCH
  * makes the server fabricate an orphan lexicon entry. The
@@ -959,9 +958,10 @@ export async function listCustomEvents(
  * @param params - Fields to update (dumped with `by_alias=True`,
  *   `:8488`).
  * @returns The updated `EventDefinition`.
- * @throws MixpanelHeadlessError - `UPDATE_TARGET_MISMATCH` when the
+ * @throws {@link MixpanelHeadlessError} - `UPDATE_TARGET_MISMATCH` when the
  *   server echoes a different `customEventId`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.update_custom_event
  */
 export async function updateCustomEvent(
   client: MixpanelClient,
@@ -978,14 +978,14 @@ export async function updateCustomEvent(
 }
 
 /**
- * Delete a custom event (`delete_custom_event`,
- * `workspace.py`).
+ * Delete a custom event.
  *
  * @param client - The wire client.
  * @param customEventId - Server-assigned custom event ID.
  * @returns Nothing.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @see mixpanel_headless.workspace.Workspace.delete_custom_event
  */
 export async function deleteCustomEvent(
   client: MixpanelClient,

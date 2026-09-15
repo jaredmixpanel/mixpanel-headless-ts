@@ -67,16 +67,16 @@ export interface WorkspaceListBlueprintTemplatesOptions {
 // consumes ONE implementation; the native view is `toNativeJson` itself.
 
 /**
- * List dashboards for the current project/workspace
- * (`list_dashboards`, `workspace.py`).
+ * List dashboards for the current project/workspace.
  *
  * @param client - The wire client.
  * @param options - Optional `ids` filter.
  * @returns The `Dashboard` models, in response order.
- * @throws ResponseValidationError - Malformed payload
+ * @throws {@link ResponseValidationError} - Malformed payload
  *   (`RESPONSE_VALIDATION_ERROR`).
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures per the B0 contract.
+ * @see mixpanel_headless.workspace.Workspace.list_dashboards
  */
 export async function listDashboards(
   client: MixpanelClient,
@@ -93,14 +93,14 @@ export async function listDashboards(
 }
 
 /**
- * Create a new dashboard (`create_dashboard`,
- * `workspace.py`).
+ * Create a new dashboard.
  *
  * @param client - The wire client.
  * @param params - Dashboard creation parameters.
  * @returns The newly created `Dashboard`.
- * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.create_dashboard
  */
 export async function createDashboard(
   client: MixpanelClient,
@@ -117,14 +117,14 @@ export async function createDashboard(
 }
 
 /**
- * Get a single dashboard by ID (`get_dashboard`,
- * `workspace.py`).
+ * Get a single dashboard by ID.
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
  * @returns The `Dashboard`.
- * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.get_dashboard
  */
 export async function getDashboard(
   client: MixpanelClient,
@@ -139,15 +139,15 @@ export async function getDashboard(
 }
 
 /**
- * Update an existing dashboard (`update_dashboard`,
- * `workspace.py`).
+ * Update an existing dashboard.
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
  * @param params - Fields to update.
  * @returns The updated `Dashboard`.
- * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.update_dashboard
  */
 export async function updateDashboard(
   client: MixpanelClient,
@@ -166,11 +166,12 @@ export async function updateDashboard(
 }
 
 /**
- * Delete a dashboard (`delete_dashboard`, `workspace.py`).
+ * Delete a dashboard.
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
  * @returns Nothing.
+ * @see mixpanel_headless.workspace.Workspace.delete_dashboard
  */
 export async function deleteDashboard(
   client: MixpanelClient,
@@ -180,12 +181,12 @@ export async function deleteDashboard(
 }
 
 /**
- * Delete multiple dashboards (`bulk_delete_dashboards`,
- * `workspace.py`).
+ * Delete multiple dashboards.
  *
  * @param client - The wire client.
  * @param ids - Dashboard IDs to delete.
  * @returns Nothing.
+ * @see mixpanel_headless.workspace.Workspace.bulk_delete_dashboards
  */
 export async function bulkDeleteDashboards(
   client: MixpanelClient,
@@ -195,12 +196,12 @@ export async function bulkDeleteDashboards(
 }
 
 /**
- * Favorite a dashboard (`favorite_dashboard`,
- * `workspace.py`).
+ * Favorite a dashboard.
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
  * @returns Nothing.
+ * @see mixpanel_headless.workspace.Workspace.favorite_dashboard
  */
 export async function favoriteDashboard(
   client: MixpanelClient,
@@ -210,12 +211,12 @@ export async function favoriteDashboard(
 }
 
 /**
- * Unfavorite a dashboard (`unfavorite_dashboard`,
- * `workspace.py`).
+ * Unfavorite a dashboard.
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
  * @returns Nothing.
+ * @see mixpanel_headless.workspace.Workspace.unfavorite_dashboard
  */
 export async function unfavoriteDashboard(
   client: MixpanelClient,
@@ -225,11 +226,12 @@ export async function unfavoriteDashboard(
 }
 
 /**
- * Pin a dashboard (`pin_dashboard`, `workspace.py`).
+ * Pin a dashboard.
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
  * @returns Nothing.
+ * @see mixpanel_headless.workspace.Workspace.pin_dashboard
  */
 export async function pinDashboard(
   client: MixpanelClient,
@@ -239,11 +241,12 @@ export async function pinDashboard(
 }
 
 /**
- * Unpin a dashboard (`unpin_dashboard`, `workspace.py`).
+ * Unpin a dashboard.
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
  * @returns Nothing.
+ * @see mixpanel_headless.workspace.Workspace.unpin_dashboard
  */
 export async function unpinDashboard(
   client: MixpanelClient,
@@ -253,15 +256,15 @@ export async function unpinDashboard(
 }
 
 /**
- * Remove a report from a dashboard (`remove_report_from_dashboard`,
- * `workspace.py`) — no empty-response guard in Python: the
+ * Remove a report from a dashboard — no empty-response guard in Python: the
  * payload goes straight into validation.
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
  * @param bookmarkId - Bookmark/report identifier to remove.
  * @returns The updated `Dashboard`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.remove_report_from_dashboard
  */
 export async function removeReportFromDashboard(
   client: MixpanelClient,
@@ -275,16 +278,16 @@ export async function removeReportFromDashboard(
 }
 
 /**
- * Add a report to a dashboard (`add_report_to_dashboard`,
- * `workspace.py`).
+ * Add a report to a dashboard.
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
  * @param bookmarkId - Bookmark/report identifier to add.
  * @returns The updated `Dashboard`.
- * @throws MixpanelHeadlessError - The response is not a dashboard dict
+ * @throws {@link MixpanelHeadlessError} - The response is not a dashboard dict
  *   carrying `id` (`UNKNOWN_ERROR`).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.add_report_to_dashboard
  */
 export async function addReportToDashboard(
   client: MixpanelClient,
@@ -309,13 +312,13 @@ export async function addReportToDashboard(
 }
 
 /**
- * List available dashboard blueprint templates
- * (`list_blueprint_templates`, `workspace.py`).
+ * List available dashboard blueprint templates.
  *
  * @param client - The wire client.
  * @param options - `include_reports` (Python default `False`).
  * @returns The `BlueprintTemplate` models.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.list_blueprint_templates
  */
 export async function listBlueprintTemplates(
   client: MixpanelClient,
@@ -334,14 +337,14 @@ export async function listBlueprintTemplates(
 }
 
 /**
- * Create a dashboard from a blueprint template (`create_blueprint`,
- * `workspace.py`).
+ * Create a dashboard from a blueprint template.
  *
  * @param client - The wire client.
  * @param templateType - Blueprint template type identifier.
  * @returns The newly created `Dashboard`.
- * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.create_blueprint
  */
 export async function createBlueprint(
   client: MixpanelClient,
@@ -356,14 +359,14 @@ export async function createBlueprint(
 }
 
 /**
- * Get the blueprint configuration for a dashboard
- * (`get_blueprint_config`, `workspace.py`).
+ * Get the blueprint configuration for a dashboard.
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
  * @returns The `BlueprintConfig`.
- * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.get_blueprint_config
  */
 export async function getBlueprintConfig(
   client: MixpanelClient,
@@ -378,12 +381,12 @@ export async function getBlueprintConfig(
 }
 
 /**
- * Update cohorts for blueprint configuration
- * (`update_blueprint_cohorts`, `workspace.py`).
+ * Update cohorts for blueprint configuration.
  *
  * @param client - The wire client.
  * @param cohorts - Cohort configuration dicts.
  * @returns Nothing.
+ * @see mixpanel_headless.workspace.Workspace.update_blueprint_cohorts
  */
 export async function updateBlueprintCohorts(
   client: MixpanelClient,
@@ -393,14 +396,14 @@ export async function updateBlueprintCohorts(
 }
 
 /**
- * Finalize a blueprint dashboard with cards (`finalize_blueprint`,
- * `workspace.py`; `by_alias=True` dump at :4985).
+ * Finalize a blueprint dashboard with cards.
  *
  * @param client - The wire client.
  * @param params - Blueprint finalization parameters.
  * @returns The finalized `Dashboard`.
- * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.finalize_blueprint
  */
 export async function finalizeBlueprint(
   client: MixpanelClient,
@@ -416,15 +419,14 @@ export async function finalizeBlueprint(
 }
 
 /**
- * Create an RCA (Root Cause Analysis) dashboard
- * (`create_rca_dashboard`, `workspace.py`; `by_alias=True`
- * dump at :5022).
+ * Create an RCA (Root Cause Analysis) dashboard.
  *
  * @param client - The wire client.
  * @param params - RCA dashboard parameters.
  * @returns The newly created `Dashboard`.
- * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.create_rca_dashboard
  */
 export async function createRcaDashboard(
   client: MixpanelClient,
@@ -440,13 +442,13 @@ export async function createRcaDashboard(
 }
 
 /**
- * Dashboard IDs containing a bookmark/report
- * (`get_bookmark_dashboard_ids`, `workspace.py`) — returned
+ * Dashboard IDs containing a bookmark/report — returned
  * verbatim (Python performs no model validation here).
  *
  * @param client - The wire client.
  * @param bookmarkId - Bookmark identifier.
  * @returns The dashboard IDs.
+ * @see mixpanel_headless.workspace.Workspace.get_bookmark_dashboard_ids
  */
 export async function getBookmarkDashboardIds(
   client: MixpanelClient,
@@ -457,12 +459,12 @@ export async function getBookmarkDashboardIds(
 }
 
 /**
- * ERF data for a dashboard (`get_dashboard_erf`,
- * `workspace.py`) — returned verbatim.
+ * ERF data for a dashboard — returned verbatim.
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
  * @returns The ERF mapping.
+ * @see mixpanel_headless.workspace.Workspace.get_dashboard_erf
  */
 export async function getDashboardErf(
   client: MixpanelClient,
@@ -473,14 +475,14 @@ export async function getDashboardErf(
 }
 
 /**
- * Update a report link on a dashboard (`update_report_link`,
- * `workspace.py`; `by_alias=True` dump at :5109).
+ * Update a report link on a dashboard.
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
  * @param reportLinkId - Report link identifier.
  * @param params - Update parameters.
  * @returns Nothing.
+ * @see mixpanel_headless.workspace.Workspace.update_report_link
  */
 export async function updateReportLink(
   client: MixpanelClient,
@@ -496,8 +498,7 @@ export async function updateReportLink(
 }
 
 /**
- * Update a text card on a dashboard (`update_text_card`,
- * `workspace.py`) — plain `exclude_none` dump (NO
+ * Update a text card on a dashboard — plain `exclude_none` dump (NO
  * `by_alias`, unlike its report-link sibling).
  *
  * @param client - The wire client.
@@ -505,6 +506,7 @@ export async function updateReportLink(
  * @param textCardId - Text card identifier.
  * @param params - Update parameters.
  * @returns Nothing.
+ * @see mixpanel_headless.workspace.Workspace.update_text_card
  */
 export async function updateTextCard(
   client: MixpanelClient,

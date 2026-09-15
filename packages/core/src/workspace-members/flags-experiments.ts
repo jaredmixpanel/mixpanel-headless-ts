@@ -104,16 +104,16 @@ export interface WorkspaceConcludeExperimentOptions {
 // ---------------------------------------------------------------------------
 
 /**
- * List feature flags for the current project/workspace
- * (`list_feature_flags`, `workspace.py`).
+ * List feature flags for the current project/workspace.
  *
  * @param client - The wire client.
  * @param options - `include_archived` (keyword-only in Python).
  * @returns The `FeatureFlag` models, in response order.
- * @throws ResponseValidationError - Malformed payload
+ * @throws {@link ResponseValidationError} - Malformed payload
  *   (`RESPONSE_VALIDATION_ERROR`).
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures per the B0 contract.
+ * @see mixpanel_headless.workspace.Workspace.list_feature_flags
  */
 export async function listFeatureFlags(
   client: MixpanelClient,
@@ -132,14 +132,14 @@ export async function listFeatureFlags(
 }
 
 /**
- * Create a new feature flag (`create_feature_flag`,
- * `workspace.py`).
+ * Create a new feature flag.
  *
  * @param client - The wire client.
  * @param params - Flag creation parameters.
  * @returns The newly created `FeatureFlag`.
- * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.create_feature_flag
  */
 export async function createFeatureFlag(
   client: MixpanelClient,
@@ -156,14 +156,14 @@ export async function createFeatureFlag(
 }
 
 /**
- * Get a single feature flag by ID (`get_feature_flag`,
- * `workspace.py`).
+ * Get a single feature flag by ID.
  *
  * @param client - The wire client.
  * @param flagId - Feature flag UUID.
  * @returns The `FeatureFlag`.
- * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.get_feature_flag
  */
 export async function getFeatureFlag(
   client: MixpanelClient,
@@ -178,15 +178,15 @@ export async function getFeatureFlag(
 }
 
 /**
- * Update a feature flag, full replacement / PUT semantics
- * (`update_feature_flag`, `workspace.py`).
+ * Update a feature flag, full replacement / PUT semantics.
  *
  * @param client - The wire client.
  * @param flagId - Feature flag UUID.
  * @param params - Complete flag configuration.
  * @returns The updated `FeatureFlag`.
- * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.update_feature_flag
  */
 export async function updateFeatureFlag(
   client: MixpanelClient,
@@ -205,12 +205,12 @@ export async function updateFeatureFlag(
 }
 
 /**
- * Delete a feature flag (`delete_feature_flag`,
- * `workspace.py`).
+ * Delete a feature flag.
  *
  * @param client - The wire client.
  * @param flagId - Feature flag UUID.
  * @returns Nothing.
+ * @see mixpanel_headless.workspace.Workspace.delete_feature_flag
  */
 export async function deleteFeatureFlag(
   client: MixpanelClient,
@@ -224,12 +224,12 @@ export async function deleteFeatureFlag(
 // ---------------------------------------------------------------------------
 
 /**
- * Archive a feature flag, a soft delete (`archive_feature_flag`,
- * `workspace.py`).
+ * Archive a feature flag, a soft delete.
  *
  * @param client - The wire client.
  * @param flagId - Feature flag UUID.
  * @returns Nothing.
+ * @see mixpanel_headless.workspace.Workspace.archive_feature_flag
  */
 export async function archiveFeatureFlag(
   client: MixpanelClient,
@@ -239,13 +239,13 @@ export async function archiveFeatureFlag(
 }
 
 /**
- * Restore an archived feature flag (`restore_feature_flag`,
- * `workspace.py`) — no empty-response guard in Python.
+ * Restore an archived feature flag — no empty-response guard in Python.
  *
  * @param client - The wire client.
  * @param flagId - Feature flag UUID.
  * @returns The restored `FeatureFlag`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.restore_feature_flag
  */
 export async function restoreFeatureFlag(
   client: MixpanelClient,
@@ -258,13 +258,13 @@ export async function restoreFeatureFlag(
 }
 
 /**
- * Duplicate a feature flag (`duplicate_feature_flag`,
- * `workspace.py`) — no empty-response guard in Python.
+ * Duplicate a feature flag — no empty-response guard in Python.
  *
  * @param client - The wire client.
  * @param flagId - Feature flag UUID.
  * @returns The newly created duplicate `FeatureFlag`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.duplicate_feature_flag
  */
 export async function duplicateFeatureFlag(
   client: MixpanelClient,
@@ -281,8 +281,7 @@ export async function duplicateFeatureFlag(
 // ---------------------------------------------------------------------------
 
 /**
- * Set test-user variant overrides for a feature flag
- * (`set_flag_test_users`, `workspace.py`).
+ * Set test-user variant overrides for a feature flag.
  *
  * The one bare `model_dump()` in the shard (`:6019`) — `modelDump()`
  * is its exact pydantic twin (W8's `modelDump` JSDoc: `toJSON` is NOT
@@ -295,6 +294,7 @@ export async function duplicateFeatureFlag(
  * @param flagId - Feature flag UUID.
  * @param params - Test user mapping.
  * @returns Nothing.
+ * @see mixpanel_headless.workspace.Workspace.set_flag_test_users
  */
 export async function setFlagTestUsers(
   client: MixpanelClient,
@@ -305,14 +305,14 @@ export async function setFlagTestUsers(
 }
 
 /**
- * Get paginated change history for a feature flag
- * (`get_flag_history`, `workspace.py`).
+ * Get paginated change history for a feature flag.
  *
  * @param client - The wire client.
  * @param flagId - Feature flag UUID.
  * @param options - `page` / `page_size` (keyword-only in Python).
  * @returns The `FlagHistoryResponse` (events + count).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.get_flag_history
  */
 export async function getFlagHistory(
   client: MixpanelClient,
@@ -340,12 +340,12 @@ export async function getFlagHistory(
 }
 
 /**
- * Get account-level feature flag limits and usage
- * (`get_flag_limits`, `workspace.py`).
+ * Get account-level feature flag limits and usage.
  *
  * @param client - The wire client.
  * @returns The `FlagLimitsResponse`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.get_flag_limits
  */
 export async function getFlagLimits(
   client: MixpanelClient,
@@ -361,13 +361,13 @@ export async function getFlagLimits(
 // ---------------------------------------------------------------------------
 
 /**
- * List experiments for the current project (`list_experiments`,
- * `workspace.py`).
+ * List experiments for the current project.
  *
  * @param client - The wire client.
  * @param options - `include_archived` (keyword-only in Python).
  * @returns The `Experiment` models, in response order.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.list_experiments
  */
 export async function listExperiments(
   client: MixpanelClient,
@@ -386,14 +386,14 @@ export async function listExperiments(
 }
 
 /**
- * Create a new experiment in Draft status (`create_experiment`,
- * `workspace.py`).
+ * Create a new experiment in Draft status.
  *
  * @param client - The wire client.
  * @param params - Experiment creation parameters.
  * @returns The newly created `Experiment`.
- * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.create_experiment
  */
 export async function createExperiment(
   client: MixpanelClient,
@@ -410,14 +410,14 @@ export async function createExperiment(
 }
 
 /**
- * Get a single experiment by ID (`get_experiment`,
- * `workspace.py`).
+ * Get a single experiment by ID.
  *
  * @param client - The wire client.
  * @param experimentId - Experiment UUID.
  * @returns The `Experiment`.
- * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.get_experiment
  */
 export async function getExperiment(
   client: MixpanelClient,
@@ -432,15 +432,15 @@ export async function getExperiment(
 }
 
 /**
- * Update an experiment, PATCH semantics (`update_experiment`,
- * `workspace.py`).
+ * Update an experiment, PATCH semantics.
  *
  * @param client - The wire client.
  * @param experimentId - Experiment UUID.
  * @param params - Fields to update.
  * @returns The updated `Experiment`.
- * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.update_experiment
  */
 export async function updateExperiment(
   client: MixpanelClient,
@@ -459,12 +459,12 @@ export async function updateExperiment(
 }
 
 /**
- * Delete an experiment (`delete_experiment`,
- * `workspace.py`).
+ * Delete an experiment.
  *
  * @param client - The wire client.
  * @param experimentId - Experiment UUID.
  * @returns Nothing.
+ * @see mixpanel_headless.workspace.Workspace.delete_experiment
  */
 export async function deleteExperiment(
   client: MixpanelClient,
@@ -478,13 +478,13 @@ export async function deleteExperiment(
 // ---------------------------------------------------------------------------
 
 /**
- * Launch an experiment, Draft → Active (`launch_experiment`,
- * `workspace.py`) — no empty-response guard in Python.
+ * Launch an experiment, Draft → Active — no empty-response guard in Python.
  *
  * @param client - The wire client.
  * @param experimentId - Experiment UUID.
  * @returns The launched `Experiment` with updated status.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.launch_experiment
  */
 export async function launchExperiment(
   client: MixpanelClient,
@@ -497,15 +497,15 @@ export async function launchExperiment(
 }
 
 /**
- * Conclude an experiment, Active → Concluded (`conclude_experiment`,
- * `workspace.py`) — ALWAYS sends a JSON body, `{}` when no
+ * Conclude an experiment, Active → Concluded — ALWAYS sends a JSON body, `{}` when no
  * params are supplied (module header).
  *
  * @param client - The wire client.
  * @param experimentId - Experiment UUID.
  * @param options - `params` (keyword-only in Python).
  * @returns The concluded `Experiment`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.conclude_experiment
  */
 export async function concludeExperiment(
   client: MixpanelClient,
@@ -522,15 +522,15 @@ export async function concludeExperiment(
 }
 
 /**
- * Record the experiment decision, Concluded → Success/Fail
- * (`decide_experiment`, `workspace.py`) — no
+ * Record the experiment decision, Concluded → Success/Fail — no
  * empty-response guard in Python.
  *
  * @param client - The wire client.
  * @param experimentId - Experiment UUID.
  * @param params - Decision parameters (success, variant, message).
  * @returns The decided `Experiment` with terminal status.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.decide_experiment
  */
 export async function decideExperiment(
   client: MixpanelClient,
@@ -551,12 +551,12 @@ export async function decideExperiment(
 // ---------------------------------------------------------------------------
 
 /**
- * Archive an experiment (`archive_experiment`,
- * `workspace.py`).
+ * Archive an experiment.
  *
  * @param client - The wire client.
  * @param experimentId - Experiment UUID.
  * @returns Nothing.
+ * @see mixpanel_headless.workspace.Workspace.archive_experiment
  */
 export async function archiveExperiment(
   client: MixpanelClient,
@@ -566,13 +566,13 @@ export async function archiveExperiment(
 }
 
 /**
- * Restore an archived experiment (`restore_experiment`,
- * `workspace.py`) — no empty-response guard in Python.
+ * Restore an archived experiment — no empty-response guard in Python.
  *
  * @param client - The wire client.
  * @param experimentId - Experiment UUID.
  * @returns The restored `Experiment`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.restore_experiment
  */
 export async function restoreExperiment(
   client: MixpanelClient,
@@ -585,15 +585,15 @@ export async function restoreExperiment(
 }
 
 /**
- * Duplicate an experiment (`duplicate_experiment`,
- * `workspace.py`) — `params` is POSITIONAL and REQUIRED
+ * Duplicate an experiment — `params` is POSITIONAL and REQUIRED
  * (the API returns an empty body when duplicating without a name).
  *
  * @param client - The wire client.
  * @param experimentId - Experiment UUID.
  * @param params - Duplication parameters (`name` is required).
  * @returns The newly created duplicate `Experiment`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.duplicate_experiment
  */
 export async function duplicateExperiment(
   client: MixpanelClient,
@@ -608,12 +608,12 @@ export async function duplicateExperiment(
 }
 
 /**
- * List experiments in ERF (Experiment Results Framework) format
- * (`list_erf_experiments`, `workspace.py`) — returned
+ * List experiments in ERF (Experiment Results Framework) format — returned
  * verbatim; Python performs NO model validation here.
  *
  * @param client - The wire client.
  * @returns The ERF experiment dicts.
+ * @see mixpanel_headless.workspace.Workspace.list_erf_experiments
  */
 export async function listErfExperiments(
   client: MixpanelClient,

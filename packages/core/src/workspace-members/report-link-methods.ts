@@ -141,16 +141,16 @@ async function reportLinkWorkspaceId(
  *   `workspace_id`, `bookmark_id`, `validate`.
  * @returns A {@link ReportLink} whose `url` opens the query in the
  *   browser.
- * @throws ParamValidationError - `RL4_REPORT_TYPE_CONFLICT` on a
+ * @throws {@link ParamValidationError} - `RL4_REPORT_TYPE_CONFLICT` on a
  *   contradicting `report_type`; `RL1`/`RL3` from the URL builder;
  *   `RL6_INVALID_ID` for a zero or negative `workspace_id`. All of
  *   these fire before the POST, so no record is created for bad input.
- * @throws BookmarkValidationError - Params failed schema validation
+ * @throws {@link BookmarkValidationError} - Params failed schema validation
  *   (raised before any network call).
- * @throws AuthenticationError - Invalid credentials (401).
- * @throws QueryError - The server rejected the record (400/422).
- * @throws RateLimitError - Rate limit exceeded (429).
- * @throws ServerError - Server-side errors (5xx).
+ * @throws {@link AuthenticationError} - Invalid credentials (401).
+ * @throws {@link QueryError} - The server rejected the record (400/422).
+ * @throws {@link RateLimitError} - Rate limit exceeded (429).
+ * @throws {@link ServerError} - Server-side errors (5xx).
  * @example
  * ```typescript
  * const result = await ws.query(Metric.total("Login"), { last: 7 });
@@ -253,7 +253,7 @@ export async function createReportLink(
  * @param host - The facade slice.
  * @param parsed - The parsed link (or a {@link ResolvedReport}
  *   projected onto one by {@link queryReportLink}).
- * @throws ReportLinkScopeMismatchError - `REPORT_LINK_REGION_MISMATCH`,
+ * @throws {@link ReportLinkScopeMismatchError} - `REPORT_LINK_REGION_MISMATCH`,
  *   `REPORT_LINK_PROJECT_MISMATCH`, or `REPORT_LINK_WORKSPACE_MISMATCH`.
  */
 function checkReportLinkScope(
@@ -327,14 +327,14 @@ function checkReportLinkScope(
  * @param host - The facade slice.
  * @param parsed - A parsed link with `kind === "short_link"`.
  * @returns `[parsedTarget, expandedUrl]`.
- * @throws ReportLinkScopeMismatchError - `REPORT_LINK_REGION_MISMATCH`
+ * @throws {@link ReportLinkScopeMismatchError} - `REPORT_LINK_REGION_MISMATCH`
  *   when the shortlink host is on another region (before the GET).
- * @throws ShortLinkResolutionError - `SHORT_LINK_CHAIN` when the target
+ * @throws {@link ShortLinkResolutionError} - `SHORT_LINK_CHAIN` when the target
  *   is another shortlink, plus the transport codes from
  *   {@link MixpanelClient.resolveShortLink}.
- * @throws ReportLinkParseError - The expanded target is not a
+ * @throws {@link ReportLinkParseError} - The expanded target is not a
  *   recognizable Mixpanel report link.
- * @throws AuthenticationError - The server redirected to the login page.
+ * @throws {@link AuthenticationError} - The server redirected to the login page.
  */
 async function expandShortLink(
   host: ReportLinkHost,
@@ -382,24 +382,24 @@ async function expandShortLink(
  *   percent-encoded `#` are all tolerated.
  * @returns A {@link ResolvedReport} with `report_type`, `params`, the
  *   canonical `url`, and the saved `bookmark` when one exists.
- * @throws ReportLinkParseError - The string is not a recognizable link.
- * @throws UnsupportedReportLinkError - A dashboard link or a legacy
+ * @throws {@link ReportLinkParseError} - The string is not a recognizable link.
+ * @throws {@link UnsupportedReportLinkError} - A dashboard link or a legacy
  *   `~(...)` hash.
- * @throws ReportLinkScopeMismatchError - The link's region or project
+ * @throws {@link ReportLinkScopeMismatchError} - The link's region or project
  *   differs from the session, or its workspace differs from the pinned
  *   session workspace. The record was not fetched.
- * @throws ReportLinkNotFoundError - The slug, saved report, or
+ * @throws {@link ReportLinkNotFoundError} - The slug, saved report, or
  *   shortlink does not exist in scope.
- * @throws ShortLinkResolutionError - The shortlink target could not be
+ * @throws {@link ShortLinkResolutionError} - The shortlink target could not be
  *   extracted, or it is another shortlink.
- * @throws AuthenticationError - Invalid credentials, or the shortlink
+ * @throws {@link AuthenticationError} - Invalid credentials, or the shortlink
  *   redirected to the login page.
- * @throws RateLimitError - Rate limit exceeded (429).
- * @throws ServerError - Server-side errors (5xx).
- * @throws QueryError - Other App API rejections (400/403/422).
- * @throws ResponseValidationError - The slug or bookmark record the
+ * @throws {@link RateLimitError} - Rate limit exceeded (429).
+ * @throws {@link ServerError} - Server-side errors (5xx).
+ * @throws {@link QueryError} - Other App API rejections (400/403/422).
+ * @throws {@link ResponseValidationError} - The slug or bookmark record the
  *   server returned does not match the expected shape.
- * @throws MixpanelHeadlessError - A transport failure (`HTTP_ERROR`)
+ * @throws {@link MixpanelHeadlessError} - A transport failure (`HTTP_ERROR`)
  *   or a response that is not a JSON object.
  * @example
  * ```typescript
@@ -591,18 +591,18 @@ export async function resolveReportLink(
  * @returns `QueryResult` for insights, `FunnelQueryResult` for funnels,
  *   `RetentionQueryResult` for retention, or `FlowQueryResult` for
  *   flows.
- * @throws UnsupportedReportLinkError - `UNSUPPORTED_REPORT_TYPE` for a
+ * @throws {@link UnsupportedReportLinkError} - `UNSUPPORTED_REPORT_TYPE` for a
  *   type that cannot be run (for example `launch-analysis`).
- * @throws ReportLinkScopeMismatchError - A {@link ResolvedReport} whose
+ * @throws {@link ReportLinkScopeMismatchError} - A {@link ResolvedReport} whose
  *   recorded `region` or `project_id` differs from the active session,
  *   or whose recorded `workspace_id` differs from the pinned session
  *   workspace. Raised before any query.
- * @throws ReportLinkError - Any resolution failure when `link` is a
+ * @throws {@link ReportLinkError} - Any resolution failure when `link` is a
  *   string (see {@link resolveReportLink}).
- * @throws QueryError - The query engine rejected the params.
- * @throws AuthenticationError - Invalid credentials.
- * @throws RateLimitError - Rate limit exceeded.
- * @throws ServerError - Server-side errors.
+ * @throws {@link QueryError} - The query engine rejected the params.
+ * @throws {@link AuthenticationError} - Invalid credentials.
+ * @throws {@link RateLimitError} - Rate limit exceeded.
+ * @throws {@link ServerError} - Server-side errors.
  * @example
  * ```typescript
  * const rows = (await ws.queryReportLink("EBrV5bW2u9Mw")).toRows();
@@ -700,7 +700,7 @@ export async function queryReportLink(
  *   `resolveWorkspaceId()` is never called here).
  * @returns `https://{host}/project/{pid}[/view/{wid}]/app/{app}#{hash}`
  *   for the session region.
- * @throws ParamValidationError - `RL1_UNKNOWN_REPORT_TYPE`,
+ * @throws {@link ParamValidationError} - `RL1_UNKNOWN_REPORT_TYPE`,
  *   `RL3_UNKNOWN_REGION`, or `RL6_INVALID_ID` (a zero or negative
  *   `bookmark_id` or `workspace_id`).
  * @example
@@ -708,7 +708,7 @@ export async function queryReportLink(
  * ws.savedReportLink(123, { report_type: "funnels" });
  * // "https://mixpanel.com/project/3/app/funnels#view/123"
  * ```
- * @throws ParamValidationError - `RL6_INVALID_ID` when `bookmarkId`
+ * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `bookmarkId`
  *   is not a positive integer (network-free guard, before any request).
  */
 export function savedReportLink(
@@ -738,7 +738,7 @@ export function savedReportLink(
  * @param params - A raw params dict or a typed query result.
  * @param reportType - Caller-supplied type, or `null` to infer.
  * @returns The raw params and the resolved type.
- * @throws ParamValidationError - `RL4_REPORT_TYPE_CONFLICT` when an
+ * @throws {@link ParamValidationError} - `RL4_REPORT_TYPE_CONFLICT` when an
  *   explicit type contradicts the type inferred from a typed result.
  */
 function reportLinkInputs(
@@ -809,7 +809,7 @@ function reportLinkDetails(parsed: ParsedReportLink): Record<string, unknown> {
  * (`_reject_unsupported_report_link`).
  *
  * @param parsed - The parsed link.
- * @throws UnsupportedReportLinkError - `UNSUPPORTED_DASHBOARD_LINK` or
+ * @throws {@link UnsupportedReportLinkError} - `UNSUPPORTED_DASHBOARD_LINK` or
  *   `UNSUPPORTED_LEGACY_HASH`.
  */
 function rejectUnsupportedReportLink(parsed: ParsedReportLink): void {

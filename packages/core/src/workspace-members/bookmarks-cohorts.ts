@@ -178,7 +178,7 @@ export function validateBookmarkParamsSchema(
  * @param schemaErrors - The validator output.
  * @param member - Python member name used in the log line.
  * @param logger - The `logger.warning` sink.
- * @throws BookmarkValidationError - Any entry has severity `"error"`.
+ * @throws {@link BookmarkValidationError} - Any entry has severity `"error"`.
  */
 function gateSchemaErrors(
   schemaErrors: readonly ValidationError[],
@@ -198,16 +198,16 @@ function gateSchemaErrors(
 }
 
 /**
- * List bookmarks/reports via the App API v2 endpoint
- * (`list_bookmarks_v2`, `workspace.py`).
+ * List bookmarks/reports via the App API v2 endpoint.
  *
  * @param client - The wire client.
  * @param options - Optional `bookmark_type` / `ids` filters.
  * @returns The `Bookmark` models, in response order.
- * @throws ResponseValidationError - Malformed payload
+ * @throws {@link ResponseValidationError} - Malformed payload
  *   (`RESPONSE_VALIDATION_ERROR`).
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures per the B0 contract.
+ * @see mixpanel_headless.workspace.Workspace.list_bookmarks_v2
  */
 export async function listBookmarksV2(
   client: MixpanelClient,
@@ -227,8 +227,7 @@ export async function listBookmarksV2(
 }
 
 /**
- * Create a new bookmark (saved report) (`create_bookmark`,
- * `workspace.py`).
+ * Create a new bookmark (saved report).
  *
  * Three Python steps, in order: the `dashboard_id is None` guard, the
  * full client-side schema gate, then the create call followed by the
@@ -241,11 +240,12 @@ export async function listBookmarksV2(
  *   `add_report_to_dashboard` member (`self.` dispatch preserved).
  * @param logger - The `logger.warning` sink.
  * @returns The newly created `Bookmark`.
- * @throws MixpanelHeadlessError - `dashboard_id` missing, or an empty
+ * @throws {@link MixpanelHeadlessError} - `dashboard_id` missing, or an empty
  *   response (`UNKNOWN_ERROR`).
- * @throws BookmarkValidationError - `params.params` fails the
+ * @throws {@link BookmarkValidationError} - `params.params` fails the
  *   client-side schema mirror (raised before any API call).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.create_bookmark
  */
 export async function createBookmark(
   client: MixpanelClient,
@@ -290,14 +290,14 @@ export async function createBookmark(
 }
 
 /**
- * Get a single bookmark by ID (`get_bookmark`,
- * `workspace.py`).
+ * Get a single bookmark by ID.
  *
  * @param client - The wire client.
  * @param bookmarkId - Bookmark identifier.
  * @returns The `Bookmark`.
- * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.get_bookmark
  */
 export async function getBookmark(
   client: MixpanelClient,
@@ -312,8 +312,7 @@ export async function getBookmark(
 }
 
 /**
- * Update an existing bookmark (`update_bookmark`,
- * `workspace.py`) — partial-aware schema gate first, then a
+ * Update an existing bookmark — partial-aware schema gate first, then a
  * plain `exclude_none` dump (NO `by_alias`, unlike the create path).
  *
  * @param client - The wire client.
@@ -321,10 +320,11 @@ export async function getBookmark(
  * @param params - Fields to update.
  * @param logger - The `logger.warning` sink.
  * @returns The updated `Bookmark`.
- * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
- * @throws BookmarkValidationError - `params.params` (when supplied)
+ * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+ * @throws {@link BookmarkValidationError} - `params.params` (when supplied)
  *   fails partial-mode validation (raised before any API call).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.update_bookmark
  */
 export async function updateBookmark(
   client: MixpanelClient,
@@ -352,11 +352,12 @@ export async function updateBookmark(
 }
 
 /**
- * Delete a bookmark (`delete_bookmark`, `workspace.py`).
+ * Delete a bookmark.
  *
  * @param client - The wire client.
  * @param bookmarkId - Bookmark identifier.
  * @returns Nothing.
+ * @see mixpanel_headless.workspace.Workspace.delete_bookmark
  */
 export async function deleteBookmark(
   client: MixpanelClient,
@@ -366,12 +367,12 @@ export async function deleteBookmark(
 }
 
 /**
- * Delete multiple bookmarks (`bulk_delete_bookmarks`,
- * `workspace.py`).
+ * Delete multiple bookmarks.
  *
  * @param client - The wire client.
  * @param ids - Bookmark IDs to delete.
  * @returns Nothing.
+ * @see mixpanel_headless.workspace.Workspace.bulk_delete_bookmarks
  */
 export async function bulkDeleteBookmarks(
   client: MixpanelClient,
@@ -381,12 +382,12 @@ export async function bulkDeleteBookmarks(
 }
 
 /**
- * Update multiple bookmarks (`bulk_update_bookmarks`,
- * `workspace.py`) — each entry dumped with `exclude_none`.
+ * Update multiple bookmarks — each entry dumped with `exclude_none`.
  *
  * @param client - The wire client.
  * @param entries - Bookmark update entries.
  * @returns Nothing.
+ * @see mixpanel_headless.workspace.Workspace.bulk_update_bookmarks
  */
 export async function bulkUpdateBookmarks(
   client: MixpanelClient,
@@ -398,13 +399,13 @@ export async function bulkUpdateBookmarks(
 }
 
 /**
- * Dashboard IDs linked to a bookmark (`bookmark_linked_dashboard_ids`,
- * `workspace.py`) — returned verbatim (Python performs no
+ * Dashboard IDs linked to a bookmark — returned verbatim (Python performs no
  * model validation here).
  *
  * @param client - The wire client.
  * @param bookmarkId - Bookmark identifier.
  * @returns The dashboard IDs.
+ * @see mixpanel_headless.workspace.Workspace.bookmark_linked_dashboard_ids
  */
 export async function bookmarkLinkedDashboardIds(
   client: MixpanelClient,
@@ -415,15 +416,15 @@ export async function bookmarkLinkedDashboardIds(
 }
 
 /**
- * Change history for a bookmark (`get_bookmark_history`,
- * `workspace.py`) — no empty-response guard in Python: the
+ * Change history for a bookmark — no empty-response guard in Python: the
  * client's re-shaped envelope goes straight into validation.
  *
  * @param client - The wire client.
  * @param bookmarkId - Bookmark identifier.
  * @param options - `cursor` / `page_size` (keyword-only in Python).
  * @returns The `BookmarkHistoryResponse`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.get_bookmark_history
  */
 export async function getBookmarkHistory(
   client: MixpanelClient,
@@ -440,14 +441,14 @@ export async function getBookmarkHistory(
 }
 
 /**
- * List cohorts via the App API, full detail (`list_cohorts_full`,
- * `workspace.py`) — note the client method is
+ * List cohorts via the App API, full detail — note the client method is
  * `list_cohorts_app`, not a like-named twin.
  *
  * @param client - The wire client.
  * @param options - Optional `data_group_id` / `ids` filters.
  * @returns The `Cohort` models, in response order.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.list_cohorts_full
  */
 export async function listCohortsFull(
   client: MixpanelClient,
@@ -467,14 +468,14 @@ export async function listCohortsFull(
 }
 
 /**
- * Get a single cohort by ID (`get_cohort`,
- * `workspace.py`).
+ * Get a single cohort by ID.
  *
  * @param client - The wire client.
  * @param cohortId - Cohort identifier.
  * @returns The `Cohort`.
- * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.get_cohort
  */
 export async function getCohort(
   client: MixpanelClient,
@@ -489,15 +490,16 @@ export async function getCohort(
 }
 
 /**
- * Create a new cohort (`create_cohort`, `workspace.py`) —
+ * Create a new cohort —
  * the `definition` dict flattens into the top level at dump time
  * (`_DefinitionFlatteningModel.model_dump`, `types.py`).
  *
  * @param client - The wire client.
  * @param params - Cohort creation parameters.
  * @returns The newly created `Cohort`.
- * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.create_cohort
  */
 export async function createCohort(
   client: MixpanelClient,
@@ -512,15 +514,15 @@ export async function createCohort(
 }
 
 /**
- * Update an existing cohort (`update_cohort`,
- * `workspace.py`).
+ * Update an existing cohort.
  *
  * @param client - The wire client.
  * @param cohortId - Cohort identifier.
  * @param params - Fields to update.
  * @returns The updated `Cohort`.
- * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.update_cohort
  */
 export async function updateCohort(
   client: MixpanelClient,
@@ -539,11 +541,12 @@ export async function updateCohort(
 }
 
 /**
- * Delete a cohort (`delete_cohort`, `workspace.py`).
+ * Delete a cohort.
  *
  * @param client - The wire client.
  * @param cohortId - Cohort identifier.
  * @returns Nothing.
+ * @see mixpanel_headless.workspace.Workspace.delete_cohort
  */
 export async function deleteCohort(
   client: MixpanelClient,
@@ -553,12 +556,12 @@ export async function deleteCohort(
 }
 
 /**
- * Delete multiple cohorts (`bulk_delete_cohorts`,
- * `workspace.py`).
+ * Delete multiple cohorts.
  *
  * @param client - The wire client.
  * @param ids - Cohort IDs to delete.
  * @returns Nothing.
+ * @see mixpanel_headless.workspace.Workspace.bulk_delete_cohorts
  */
 export async function bulkDeleteCohorts(
   client: MixpanelClient,
@@ -568,13 +571,13 @@ export async function bulkDeleteCohorts(
 }
 
 /**
- * Update multiple cohorts (`bulk_update_cohorts`,
- * `workspace.py`) — each entry dumped with `exclude_none`
+ * Update multiple cohorts — each entry dumped with `exclude_none`
  * (definition flattened per entry).
  *
  * @param client - The wire client.
  * @param entries - Cohort update entries.
  * @returns Nothing.
+ * @see mixpanel_headless.workspace.Workspace.bulk_update_cohorts
  */
 export async function bulkUpdateCohorts(
   client: MixpanelClient,

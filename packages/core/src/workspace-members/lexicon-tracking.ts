@@ -127,16 +127,16 @@ export interface WorkspaceExportLexiconOptions {
 // ---------------------------------------------------------------------------
 
 /**
- * Get event definitions from Lexicon by name
- * (`get_event_definitions`, `workspace.py`).
+ * Get event definitions from Lexicon by name.
  *
  * @param client - The wire client.
  * @param options - `names` (keyword-only and required in Python).
  * @returns The `EventDefinition` models, in response order.
- * @throws ResponseValidationError - Malformed payload
+ * @throws {@link ResponseValidationError} - Malformed payload
  *   (`RESPONSE_VALIDATION_ERROR`).
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures per the B0 contract.
+ * @see mixpanel_headless.workspace.Workspace.get_event_definitions
  */
 export async function getEventDefinitions(
   client: MixpanelClient,
@@ -153,15 +153,15 @@ export async function getEventDefinitions(
 }
 
 /**
- * Update an event definition in Lexicon (`update_event_definition`,
- * `workspace.py`).
+ * Update an event definition in Lexicon.
  *
  * @param client - The wire client.
  * @param eventName - Name of the event to update.
  * @param params - Fields to update (dumped with `by_alias=True`,
  *   `:7266`).
  * @returns The updated `EventDefinition`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.update_event_definition
  */
 export async function updateEventDefinition(
   client: MixpanelClient,
@@ -178,14 +178,14 @@ export async function updateEventDefinition(
 }
 
 /**
- * Delete an event definition from Lexicon
- * (`delete_event_definition`, `workspace.py`).
+ * Delete an event definition from Lexicon.
  *
  * @param client - The wire client.
  * @param eventName - Name of the event to delete.
  * @returns Nothing.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @see mixpanel_headless.workspace.Workspace.delete_event_definition
  */
 export async function deleteEventDefinition(
   client: MixpanelClient,
@@ -195,14 +195,14 @@ export async function deleteEventDefinition(
 }
 
 /**
- * Bulk-update event definitions in Lexicon
- * (`bulk_update_event_definitions`, `workspace.py`).
+ * Bulk-update event definitions in Lexicon.
  *
  * @param client - The wire client.
  * @param params - Bulk update parameters (dumped with
  *   `by_alias=True`, recursively into each `BulkEventUpdate`).
  * @returns The updated `EventDefinition` models, in response order.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.bulk_update_event_definitions
  */
 export async function bulkUpdateEventDefinitions(
   client: MixpanelClient,
@@ -225,15 +225,15 @@ export async function bulkUpdateEventDefinitions(
 // ---------------------------------------------------------------------------
 
 /**
- * Get property definitions from Lexicon by name
- * (`get_property_definitions`, `workspace.py`).
+ * Get property definitions from Lexicon by name.
  *
  * @param client - The wire client.
  * @param options - `names` (required) and `resource_type` (default
  *   `None`, forwarded as-is — the client owns canonicalization AND the
  *   `is not None` gate).
  * @returns The `PropertyDefinition` models, in response order.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.get_property_definitions
  */
 export async function getPropertyDefinitions(
   client: MixpanelClient,
@@ -253,15 +253,15 @@ export async function getPropertyDefinitions(
 }
 
 /**
- * Update a property definition in Lexicon
- * (`update_property_definition`, `workspace.py`).
+ * Update a property definition in Lexicon.
  *
  * @param client - The wire client.
  * @param propertyName - Name of the property to update.
  * @param params - Fields to update (dumped with `by_alias=True`,
  *   `:7406`).
  * @returns The updated `PropertyDefinition`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.update_property_definition
  */
 export async function updatePropertyDefinition(
   client: MixpanelClient,
@@ -278,14 +278,14 @@ export async function updatePropertyDefinition(
 }
 
 /**
- * Bulk-update property definitions in Lexicon
- * (`bulk_update_property_definitions`, `workspace.py`).
+ * Bulk-update property definitions in Lexicon.
  *
  * @param client - The wire client.
  * @param params - Bulk update parameters (dumped with
  *   `by_alias=True`, recursively into each `BulkPropertyUpdate`).
  * @returns The updated `PropertyDefinition` models, in response order.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.bulk_update_property_definitions
  */
 export async function bulkUpdatePropertyDefinitions(
   client: MixpanelClient,
@@ -308,8 +308,7 @@ export async function bulkUpdatePropertyDefinitions(
 // ---------------------------------------------------------------------------
 
 /**
- * List all Lexicon tags (`list_lexicon_tags`,
- * `workspace.py`).
+ * List all Lexicon tags.
  *
  * The shard's ONE non-forwarding body: the list endpoint may return
  * plain tag-name STRINGS instead of `{id, name}` objects, and Python
@@ -320,7 +319,8 @@ export async function bulkUpdatePropertyDefinitions(
  *
  * @param client - The wire client.
  * @returns The `LexiconTag` models, in response order.
- * @throws ResponseValidationError - Malformed non-string entry.
+ * @throws {@link ResponseValidationError} - Malformed non-string entry.
+ * @see mixpanel_headless.workspace.Workspace.list_lexicon_tags
  */
 export async function listLexiconTags(
   client: MixpanelClient,
@@ -344,14 +344,14 @@ export async function listLexiconTags(
 }
 
 /**
- * Create a new Lexicon tag (`create_lexicon_tag`,
- * `workspace.py`).
+ * Create a new Lexicon tag.
  *
  * @param client - The wire client.
  * @param params - Tag creation parameters (name required); dumped
  *   WITHOUT `by_alias` (`:7526`).
  * @returns The created `LexiconTag`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.create_lexicon_tag
  */
 export async function createLexiconTag(
   client: MixpanelClient,
@@ -364,15 +364,15 @@ export async function createLexiconTag(
 }
 
 /**
- * Update a Lexicon tag (`update_lexicon_tag`,
- * `workspace.py`).
+ * Update a Lexicon tag.
  *
  * @param client - The wire client.
  * @param tagId - Tag ID (integer).
  * @param params - Fields to update; dumped WITHOUT `by_alias`
  *   (`:7557`).
  * @returns The updated `LexiconTag`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.update_lexicon_tag
  */
 export async function updateLexiconTag(
   client: MixpanelClient,
@@ -389,14 +389,14 @@ export async function updateLexiconTag(
 }
 
 /**
- * Delete a Lexicon tag BY NAME (`delete_lexicon_tag`,
- * `workspace.py`).
+ * Delete a Lexicon tag BY NAME.
  *
  * @param client - The wire client.
  * @param tagName - Name of the tag to delete.
  * @returns Nothing.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @see mixpanel_headless.workspace.Workspace.delete_lexicon_tag
  */
 export async function deleteLexiconTag(
   client: MixpanelClient,
@@ -410,15 +410,15 @@ export async function deleteLexiconTag(
 // ---------------------------------------------------------------------------
 
 /**
- * Get tracking metadata for an event (`get_tracking_metadata`,
- * `workspace.py`) — returned VERBATIM; Python performs no
+ * Get tracking metadata for an event — returned VERBATIM; Python performs no
  * model validation (`return client.get_tracking_metadata(...)`).
  *
  * @param client - The wire client.
  * @param eventName - Name of the event.
  * @returns The opaque metadata record.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @see mixpanel_headless.workspace.Workspace.get_tracking_metadata
  */
 export async function getTrackingMetadata(
   client: MixpanelClient,
@@ -429,14 +429,14 @@ export async function getTrackingMetadata(
 }
 
 /**
- * Get change history for an event definition (`get_event_history`,
- * `workspace.py`) — returned VERBATIM, unvalidated.
+ * Get change history for an event definition — returned VERBATIM, unvalidated.
  *
  * @param client - The wire client.
  * @param eventName - Name of the event.
  * @returns The opaque history entries, in response order.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @see mixpanel_headless.workspace.Workspace.get_event_history
  */
 export async function getEventHistory(
   client: MixpanelClient,
@@ -449,16 +449,16 @@ export async function getEventHistory(
 }
 
 /**
- * Get change history for a property definition
- * (`get_property_history`, `workspace.py`) — returned
+ * Get change history for a property definition — returned
  * VERBATIM, unvalidated.
  *
  * @param client - The wire client.
  * @param propertyName - Name of the property.
  * @param entityType - Entity type ("event", "user", "group", ...).
  * @returns The opaque history entries, in response order.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @see mixpanel_headless.workspace.Workspace.get_property_history
  */
 export async function getPropertyHistory(
   client: MixpanelClient,
@@ -472,8 +472,7 @@ export async function getPropertyHistory(
 }
 
 /**
- * Export Lexicon data definitions (`export_lexicon`,
- * `workspace.py`) — returned VERBATIM, unvalidated. The
+ * Export Lexicon data definitions — returned VERBATIM, unvalidated. The
  * client owns both the default type list and the `{status: "pending"}`
  * wrapper for the async (plain-string) response.
  *
@@ -481,8 +480,9 @@ export async function getPropertyHistory(
  * @param options - `export_types` (keyword-only in Python; `None`
  *   default forwarded as-is).
  * @returns The opaque export record.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @see mixpanel_headless.workspace.Workspace.export_lexicon
  */
 export async function exportLexicon(
   client: MixpanelClient,

@@ -84,7 +84,7 @@ type ProfilesEngineResult = [
  *   (default `false`) and `workers` (default
  *   {@link DEFAULT_USER_QUERY_WORKERS}).
  * @returns Profiles/aggregate payload with metadata.
- * @throws AuthenticationError | QueryError | RateLimitError |
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link RateLimitError} |
  *   ServerError - Wire failures.
  */
 export async function runUserParams(
@@ -152,7 +152,7 @@ export async function runUserParams(
  * @param params - Engage params from the resolver.
  * @param limit - Maximum profiles to collect (`null` = all).
  * @returns `[profiles, total, computed_at, meta]`.
- * @throws AuthenticationError | RateLimitError | QueryError |
+ * @throws {@link AuthenticationError} | {@link RateLimitError} | {@link QueryError} |
  *   ServerError - Wire failures.
  */
 async function executeUserQuerySequential(
@@ -219,7 +219,7 @@ async function executeUserQuerySequential(
  * @param host - The facade slice.
  * @param params - Engage params from the resolver.
  * @returns `[aggregate_data, total, computed_at, meta]`.
- * @throws AuthenticationError | RateLimitError | QueryError |
+ * @throws {@link AuthenticationError} | {@link RateLimitError} | {@link QueryError} |
  *   ServerError - Wire failures.
  */
 async function executeUserAggregate(
@@ -289,7 +289,7 @@ async function executeUserAggregate(
  * @param workers - Requested worker count (capped at
  *   {@link MAX_PARALLEL_WORKERS}).
  * @returns `[profiles, total, computed_at, meta]`.
- * @throws AuthenticationError | RateLimitError | ServerError |
+ * @throws {@link AuthenticationError} | {@link RateLimitError} | {@link ServerError} |
  *   QueryError - Propagated from any page.
  */
 async function executeUserQueryParallel(
@@ -446,7 +446,7 @@ async function executeUserQueryParallel(
  * @param page - Zero-based page index.
  * @param kwargs - The dynamic options bag.
  * @returns The page result.
- * @throws AuthenticationError | RateLimitError | QueryError |
+ * @throws {@link AuthenticationError} | {@link RateLimitError} | {@link QueryError} |
  *   ServerError - Wire failures.
  */
 function exportPage(

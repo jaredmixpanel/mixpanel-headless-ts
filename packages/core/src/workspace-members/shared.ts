@@ -22,7 +22,7 @@ import { MixpanelHeadlessError, ParamValidationError } from "../errors.js";
  * @param raw - The client's return value.
  * @param member - The Python member name used in the message.
  * @returns The payload, narrowed to non-nullish.
- * @throws MixpanelHeadlessError - Code `UNKNOWN_ERROR` when the payload
+ * @throws {@link MixpanelHeadlessError} - Code `UNKNOWN_ERROR` when the payload
  *   is `None` (the `exceptions.py` constructor default).
  */
 export function requireResponse(raw: unknown, member: string): unknown {
@@ -104,7 +104,7 @@ function describeReceived(value: unknown): string {
  *   message and `details.field`.
  * @param value - The received value, untrusted.
  * @returns `value`, narrowed to `number`.
- * @throws ParamValidationError - `RL6_INVALID_ID` when `value` is not a
+ * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `value` is not a
  *   finite positive integer (`0`, negatives, fractions, `NaN`,
  *   `Infinity`, numeric strings, objects, `null`, `undefined`).
  */
@@ -136,7 +136,7 @@ export function requireEntityId(field: string, value: unknown): number {
  * @param field - The Python parameter name (`data_group_id`).
  * @param value - The received value, untrusted.
  * @returns `value`, narrowed to `number | bigint`.
- * @throws ParamValidationError - `RL6_INVALID_ID` when `value` is `0`,
+ * @throws {@link ParamValidationError} - `RL6_INVALID_ID` when `value` is `0`,
  *   `0n`, a fraction, `NaN`, `Infinity`, a `number` beyond
  *   `Number.MAX_SAFE_INTEGER`, a string, an object, `null` or
  *   `undefined`.

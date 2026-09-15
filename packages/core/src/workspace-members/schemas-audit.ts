@@ -147,17 +147,17 @@ export interface WorkspaceListDataVolumeAnomaliesOptions {
 // ---------------------------------------------------------------------------
 
 /**
- * List schema-registry entries (`list_schema_registry`,
- * `workspace.py`).
+ * List schema-registry entries.
  *
  * @param client - The wire client.
  * @param options - `entity_type` filter (keyword-only in Python;
  *   forwarded as `null` when absent — the client owns the gate).
  * @returns The `SchemaEntry` models, in response order.
- * @throws ResponseValidationError - Malformed payload
+ * @throws {@link ResponseValidationError} - Malformed payload
  *   (`RESPONSE_VALIDATION_ERROR`).
- * @throws AuthenticationError | RateLimitError | QueryError |
+ * @throws {@link AuthenticationError} | {@link RateLimitError} | {@link QueryError} |
  *   ServerError - Wire failures per the B0 contract.
+ * @see mixpanel_headless.workspace.Workspace.list_schema_registry
  */
 export async function listSchemaRegistry(
   client: MixpanelClient,
@@ -176,8 +176,7 @@ export async function listSchemaRegistry(
 }
 
 /**
- * Create a single schema definition (`create_schema`,
- * `workspace.py`) — the response is returned VERBATIM.
+ * Create a single schema definition — the response is returned VERBATIM.
  *
  * @param client - The wire client.
  * @param entityType - Entity type ("event", "custom_event", "profile").
@@ -185,8 +184,9 @@ export async function listSchemaRegistry(
  * @param schemaJson - JSON Schema Draft 7 definition (no dump: the
  *   parameter is already a plain mapping).
  * @returns The created schema dict.
- * @throws AuthenticationError | QueryError | RateLimitError |
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link RateLimitError} |
  *   ServerError - Wire failures.
+ * @see mixpanel_headless.workspace.Workspace.create_schema
  */
 export async function createSchema(
   client: MixpanelClient,
@@ -199,14 +199,14 @@ export async function createSchema(
 }
 
 /**
- * Bulk-create schemas (`create_schemas_bulk`,
- * `workspace.py`).
+ * Bulk-create schemas.
  *
  * @param client - The wire client.
  * @param params - Bulk creation parameters (dumped with
  *   `exclude_none=True, by_alias=True`, `:8754`).
  * @returns The `added`/`deleted` counts.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.create_schemas_bulk
  */
 export async function createSchemasBulk(
   client: MixpanelClient,
@@ -221,15 +221,15 @@ export async function createSchemasBulk(
 }
 
 /**
- * Update a single schema definition with merge semantics
- * (`update_schema`, `workspace.py`) — response VERBATIM.
+ * Update a single schema definition with merge semantics — response VERBATIM.
  *
  * @param client - The wire client.
  * @param entityType - Entity type.
  * @param entityName - Entity name.
  * @param schemaJson - Partial JSON Schema to merge with the existing one.
  * @returns The updated schema dict.
- * @throws AuthenticationError | QueryError | ServerError - Wire failures.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire failures.
+ * @see mixpanel_headless.workspace.Workspace.update_schema
  */
 export async function updateSchema(
   client: MixpanelClient,
@@ -242,14 +242,14 @@ export async function updateSchema(
 }
 
 /**
- * Bulk-update schemas, merge semantics per entry
- * (`update_schemas_bulk`, `workspace.py`).
+ * Bulk-update schemas, merge semantics per entry.
  *
  * @param client - The wire client.
  * @param params - Bulk update parameters (dumped with
  *   `exclude_none=True, by_alias=True`, `:8824`).
  * @returns The per-entry results, in response order.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.update_schemas_bulk
  */
 export async function updateSchemasBulk(
   client: MixpanelClient,
@@ -268,16 +268,16 @@ export async function updateSchemasBulk(
 }
 
 /**
- * Delete schemas by entity type and/or name (`delete_schemas`,
- * `workspace.py`).
+ * Delete schemas by entity type and/or name.
  *
  * @param client - The wire client.
  * @param options - `entity_type` / `entity_name` filters (both
  *   keyword-only in Python).
  * @returns The `delete_count` response.
- * @throws MixpanelHeadlessError - `entity_name` without `entity_type`
+ * @throws {@link MixpanelHeadlessError} - `entity_name` without `entity_type`
  *   (code `UNKNOWN_ERROR`; raised BEFORE any request, `:8864-8868`).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.delete_schemas
  */
 export async function deleteSchemas(
   client: MixpanelClient,
@@ -305,13 +305,13 @@ export async function deleteSchemas(
 // ---------------------------------------------------------------------------
 
 /**
- * Get the current schema-enforcement configuration
- * (`get_schema_enforcement`, `workspace.py`).
+ * Get the current schema-enforcement configuration.
  *
  * @param client - The wire client.
  * @param options - `fields` filter (keyword-only in Python).
  * @returns The enforcement configuration.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.get_schema_enforcement
  */
 export async function getSchemaEnforcement(
   client: MixpanelClient,
@@ -326,14 +326,14 @@ export async function getSchemaEnforcement(
 }
 
 /**
- * Initialize schema enforcement (`init_schema_enforcement`,
- * `workspace.py`) — response VERBATIM.
+ * Initialize schema enforcement — response VERBATIM.
  *
  * @param client - The wire client.
  * @param params - Init parameters (dumped with `exclude_none=True,
  *   by_alias=True`, `:8940`).
  * @returns The raw API response.
- * @throws AuthenticationError | QueryError | ServerError - Wire failures.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire failures.
+ * @see mixpanel_headless.workspace.Workspace.init_schema_enforcement
  */
 export async function initSchemaEnforcement(
   client: MixpanelClient,
@@ -346,15 +346,15 @@ export async function initSchemaEnforcement(
 }
 
 /**
- * Partially update the enforcement configuration
- * (`update_schema_enforcement`, `workspace.py`) — response
+ * Partially update the enforcement configuration — response
  * VERBATIM.
  *
  * @param client - The wire client.
  * @param params - Partial update parameters (dumped with
  *   `exclude_none=True, by_alias=True`, `:8970`).
  * @returns The raw API response.
- * @throws AuthenticationError | QueryError | ServerError - Wire failures.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire failures.
+ * @see mixpanel_headless.workspace.Workspace.update_schema_enforcement
  */
 export async function updateSchemaEnforcement(
   client: MixpanelClient,
@@ -367,15 +367,15 @@ export async function updateSchemaEnforcement(
 }
 
 /**
- * Fully replace the enforcement configuration
- * (`replace_schema_enforcement`, `workspace.py`) — response
+ * Fully replace the enforcement configuration — response
  * VERBATIM.
  *
  * @param client - The wire client.
  * @param params - Complete replacement parameters (dumped with
  *   `exclude_none=True, by_alias=True`, `:9002`).
  * @returns The raw API response.
- * @throws AuthenticationError | QueryError | ServerError - Wire failures.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire failures.
+ * @see mixpanel_headless.workspace.Workspace.replace_schema_enforcement
  */
 export async function replaceSchemaEnforcement(
   client: MixpanelClient,
@@ -388,12 +388,12 @@ export async function replaceSchemaEnforcement(
 }
 
 /**
- * Delete the enforcement configuration (`delete_schema_enforcement`,
- * `workspace.py`) — response VERBATIM.
+ * Delete the enforcement configuration — response VERBATIM.
  *
  * @param client - The wire client.
  * @returns The raw API response.
- * @throws AuthenticationError | QueryError | ServerError - Wire failures.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire failures.
+ * @see mixpanel_headless.workspace.Workspace.delete_schema_enforcement
  */
 export async function deleteSchemaEnforcement(
   client: MixpanelClient,
@@ -419,9 +419,9 @@ export async function deleteSchemaEnforcement(
  * @param raw - The client's raw 2-element array.
  * @param endpoint - The Python member name passed as `endpoint=`.
  * @returns The assembled `AuditResponse`.
- * @throws MixpanelHeadlessError - Non-list first element (code
+ * @throws {@link MixpanelHeadlessError} - Non-list first element (code
  *   `UNKNOWN_ERROR`).
- * @throws ResponseValidationError - A malformed violation entry.
+ * @throws {@link ResponseValidationError} - A malformed violation entry.
  */
 function auditResponseFrom(
   raw: readonly JsonValue[],
@@ -463,14 +463,14 @@ function auditResponseFrom(
 }
 
 /**
- * Run a full data audit — events plus properties (`run_audit`,
- * `workspace.py`).
+ * Run a full data audit — events plus properties.
  *
  * @param client - The wire client.
  * @returns The audit response (violations + `computed_at`).
- * @throws MixpanelHeadlessError - Unexpected audit-response shape.
- * @throws ResponseValidationError - A malformed violation entry.
- * @throws AuthenticationError | QueryError | ServerError - Wire failures.
+ * @throws {@link MixpanelHeadlessError} - Unexpected audit-response shape.
+ * @throws {@link ResponseValidationError} - A malformed violation entry.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire failures.
+ * @see mixpanel_headless.workspace.Workspace.run_audit
  */
 export async function runAudit(client: MixpanelClient): Promise<AuditResponse> {
   const raw = await client.runAudit();
@@ -478,14 +478,14 @@ export async function runAudit(client: MixpanelClient): Promise<AuditResponse> {
 }
 
 /**
- * Run an events-only data audit (`run_audit_events_only`,
- * `workspace.py`).
+ * Run an events-only data audit.
  *
  * @param client - The wire client.
  * @returns The audit response (event violations only).
- * @throws MixpanelHeadlessError - Unexpected audit-response shape.
- * @throws ResponseValidationError - A malformed violation entry.
- * @throws AuthenticationError | QueryError | ServerError - Wire failures.
+ * @throws {@link MixpanelHeadlessError} - Unexpected audit-response shape.
+ * @throws {@link ResponseValidationError} - A malformed violation entry.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire failures.
+ * @see mixpanel_headless.workspace.Workspace.run_audit_events_only
  */
 export async function runAuditEventsOnly(
   client: MixpanelClient,
@@ -499,13 +499,13 @@ export async function runAuditEventsOnly(
 // ---------------------------------------------------------------------------
 
 /**
- * List detected data-volume anomalies (`list_data_volume_anomalies`,
- * `workspace.py`).
+ * List detected data-volume anomalies.
  *
  * @param client - The wire client.
  * @param options - `query_params` filters (keyword-only in Python).
  * @returns The `DataVolumeAnomaly` models, in response order.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.list_data_volume_anomalies
  */
 export async function listDataVolumeAnomalies(
   client: MixpanelClient,
@@ -524,14 +524,14 @@ export async function listDataVolumeAnomalies(
 }
 
 /**
- * Update the status of a single anomaly (`update_anomaly`,
- * `workspace.py`) — response VERBATIM.
+ * Update the status of a single anomaly — response VERBATIM.
  *
  * @param client - The wire client.
  * @param params - Update parameters (the PLAIN `model_dump(
  *   by_alias=True)` at `:9169` — `None`s are KEPT, W8-D1).
  * @returns The raw API response.
- * @throws AuthenticationError | QueryError | ServerError - Wire failures.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire failures.
+ * @see mixpanel_headless.workspace.Workspace.update_anomaly
  */
 export async function updateAnomaly(
   client: MixpanelClient,
@@ -542,14 +542,14 @@ export async function updateAnomaly(
 }
 
 /**
- * Bulk-update anomaly statuses (`bulk_update_anomalies`,
- * `workspace.py`) — response VERBATIM.
+ * Bulk-update anomaly statuses — response VERBATIM.
  *
  * @param client - The wire client.
  * @param params - Bulk update parameters (the PLAIN `model_dump(
  *   by_alias=True)` at `:9198` — `None`s are KEPT, W8-D1).
  * @returns The raw API response.
- * @throws AuthenticationError | QueryError | ServerError - Wire failures.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire failures.
+ * @see mixpanel_headless.workspace.Workspace.bulk_update_anomalies
  */
 export async function bulkUpdateAnomalies(
   client: MixpanelClient,
@@ -566,12 +566,12 @@ export async function bulkUpdateAnomalies(
 // ---------------------------------------------------------------------------
 
 /**
- * List all event deletion requests (`list_deletion_requests`,
- * `workspace.py`).
+ * List all event deletion requests.
  *
  * @param client - The wire client.
  * @returns The `EventDeletionRequest` models, in response order.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.list_deletion_requests
  */
 export async function listDeletionRequests(
   client: MixpanelClient,
@@ -587,14 +587,14 @@ export async function listDeletionRequests(
 }
 
 /**
- * Create a new event deletion request (`create_deletion_request`,
- * `workspace.py`) — the API returns the updated FULL list.
+ * Create a new event deletion request — the API returns the updated FULL list.
  *
  * @param client - The wire client.
  * @param params - Deletion parameters (dumped with
  *   `exclude_none=True, by_alias=True`, `:9262`).
  * @returns Every deletion request after creation.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.create_deletion_request
  */
 export async function createDeletionRequest(
   client: MixpanelClient,
@@ -613,14 +613,14 @@ export async function createDeletionRequest(
 }
 
 /**
- * Cancel a pending deletion request (`cancel_deletion_request`,
- * `workspace.py`) — the API returns the updated FULL list.
+ * Cancel a pending deletion request — the API returns the updated FULL list.
  *
  * @param client - The wire client.
  * @param requestId - Deletion request ID to cancel (positional in
  *   Python).
  * @returns Every deletion request after cancellation.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.cancel_deletion_request
  */
 export async function cancelDeletionRequest(
   client: MixpanelClient,
@@ -637,15 +637,15 @@ export async function cancelDeletionRequest(
 }
 
 /**
- * Preview what events a deletion filter would match
- * (`preview_deletion_filters`, `workspace.py`) — read-only,
+ * Preview what events a deletion filter would match — read-only,
  * and the list is returned VERBATIM (no model validation).
  *
  * @param client - The wire client.
  * @param params - Preview parameters (dumped with
  *   `exclude_none=True, by_alias=True`, `:9329`).
  * @returns The expanded/normalized filters.
- * @throws AuthenticationError | QueryError | ServerError - Wire failures.
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire failures.
+ * @see mixpanel_headless.workspace.Workspace.preview_deletion_filters
  */
 export async function previewDeletionFilters(
   client: MixpanelClient,

@@ -178,7 +178,7 @@ export function mergeResolverSeams(
  * resolution side effect (packet §14 Caution 4).
  *
  * @param options - The `use()` axes.
- * @throws ParamValidationError - `WS1_TARGET_MUTUALLY_EXCLUSIVE`.
+ * @throws {@link ParamValidationError} - `WS1_TARGET_MUTUALLY_EXCLUSIVE`.
  */
 export function guardTargetExclusivity(options: {
   readonly account?: string | null | undefined;
@@ -227,15 +227,15 @@ export function noProjectError(account: Account): ConfigError {
 export type BusinessContextLevel = "organization" | "project";
 
 /**
- * Reject any `level` other than the two documented literals
- * (`_validate_level`, `workspace.py`).
+ * Reject any `level` other than the two documented literals.
  *
  * Python's `Literal[...]` is erased at runtime; TypeScript's is erased
  * at compile time — a value arriving from JS (or an `as` cast) needs
  * the same explicit check.
  *
  * @param level - The caller's `level` value.
- * @throws ParamValidationError - `WS2_INVALID_LEVEL`.
+ * @throws {@link ParamValidationError} - `WS2_INVALID_LEVEL`.
+ * @see mixpanel_headless.workspace.Workspace._validate_level
  */
 export function validateBusinessContextLevel(level: string): void {
   if (level !== "organization" && level !== "project") {
@@ -282,14 +282,14 @@ export interface BusinessContextScopeOptions {
 }
 
 /**
- * Resolve the organization ID for org-scoped calls
- * (`_resolve_organization_id`, `workspace.py`).
+ * Resolve the organization ID for org-scoped calls.
  *
  * @param host - The facade slice.
  * @param explicit - The explicit `organization_id`, when supplied.
  * @returns The organization ID.
- * @throws ConfigError - `/me` cannot be fetched.
- * @throws WorkspaceScopeError - `ORGANIZATION_AMBIGUOUS`.
+ * @throws {@link ConfigError} - `/me` cannot be fetched.
+ * @throws {@link WorkspaceScopeError} - `ORGANIZATION_AMBIGUOUS`.
+ * @see mixpanel_headless.workspace.Workspace._resolve_organization_id
  */
 async function resolveOrganizationId(
   host: BusinessContextHost,
@@ -321,11 +321,11 @@ async function resolveOrganizationId(
 }
 
 /**
- * Return `organization_id` from the cached `/me`, never fetching
- * (`_cached_organization_id`, `workspace.py`).
+ * Return `organization_id` from the cached `/me`, never fetching.
  *
  * @param host - The facade slice.
  * @returns The cached organization ID, or `null` on a cold cache.
+ * @see mixpanel_headless.workspace.Workspace._cached_organization_id
  */
 async function cachedOrganizationId(
   host: BusinessContextHost,
@@ -350,14 +350,14 @@ async function cachedOrganizationId(
 }
 
 /**
- * Read a required string field from an App API response
- * (`_require_str_field`, `workspace.py`).
+ * Read a required string field from an App API response.
  *
  * @param raw - The unwrapped `results` mapping.
  * @param key - The field name.
  * @param method - Caller name, embedded in the message.
  * @returns The string value (empty string is valid).
- * @throws MixpanelHeadlessError - Key absent, or value not a string.
+ * @throws {@link MixpanelHeadlessError} - Key absent, or value not a string.
+ * @see mixpanel_headless.workspace.Workspace._require_str_field
  */
 function requireStrField(
   raw: Record<string, JsonValue>,
@@ -428,15 +428,15 @@ function pyTypeName(value: unknown): string {
 }
 
 /**
- * Read business context at the given scope (`get_business_context`,
- * `workspace.py`).
+ * Read business context at the given scope.
  *
  * @param host - The facade slice.
  * @param options - `level` / `organization_id`.
  * @returns The populated context.
- * @throws ParamValidationError - `WS2_INVALID_LEVEL`.
- * @throws WorkspaceScopeError - Org ID could not be auto-resolved.
- * @throws MixpanelHeadlessError - Response missing `content`.
+ * @throws {@link ParamValidationError} - `WS2_INVALID_LEVEL`.
+ * @throws {@link WorkspaceScopeError} - Org ID could not be auto-resolved.
+ * @throws {@link MixpanelHeadlessError} - Response missing `content`.
+ * @see mixpanel_headless.workspace.Workspace.get_business_context
  */
 export async function getBusinessContext(
   host: BusinessContextHost,
@@ -467,18 +467,18 @@ export async function getBusinessContext(
 }
 
 /**
- * Replace business context at the given scope (`set_business_context`,
- * `workspace.py`).
+ * Replace business context at the given scope.
  *
  * @param host - The facade slice.
  * @param content - The new markdown content (empty string clears).
  * @param options - `level` / `organization_id`.
  * @returns The context echoed by the server.
- * @throws ParamValidationError - `WS2_INVALID_LEVEL`.
- * @throws BusinessContextValidationError - Content over the limit
+ * @throws {@link ParamValidationError} - `WS2_INVALID_LEVEL`.
+ * @throws {@link BusinessContextValidationError} - Content over the limit
  *   (client-side, before any HTTP call).
- * @throws WorkspaceScopeError - Org ID could not be auto-resolved.
- * @throws MixpanelHeadlessError - Response missing `content`.
+ * @throws {@link WorkspaceScopeError} - Org ID could not be auto-resolved.
+ * @throws {@link MixpanelHeadlessError} - Response missing `content`.
+ * @see mixpanel_headless.workspace.Workspace.set_business_context
  */
 export async function setBusinessContext(
   host: BusinessContextHost,
@@ -519,8 +519,7 @@ export async function setBusinessContext(
 }
 
 /**
- * Read both scopes in ONE request (`get_business_context_chain`,
- * `workspace.py`).
+ * Read both scopes in ONE request.
  *
  * `organization.organization_id` is enriched from the cached `/me`
  * only when free — a cold cache leaves it `null` rather than spending
@@ -528,7 +527,8 @@ export async function setBusinessContext(
  *
  * @param host - The facade slice.
  * @returns Both contexts.
- * @throws MixpanelHeadlessError - Response missing either field.
+ * @throws {@link MixpanelHeadlessError} - Response missing either field.
+ * @see mixpanel_headless.workspace.Workspace.get_business_context_chain
  */
 export async function getBusinessContextChain(
   host: BusinessContextHost,

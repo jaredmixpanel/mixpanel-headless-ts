@@ -130,17 +130,17 @@ export interface WorkspaceGetAlertHistoryOptions {
 // ---------------------------------------------------------------------------
 
 /**
- * List timeline annotations for the project (`list_annotations`,
- * `workspace.py`).
+ * List timeline annotations for the project.
  *
  * @param client - The wire client.
  * @param options - `from_date` / `to_date` / `tags` (keyword-only in
  *   Python; dates stay STRINGS, watchlist #5).
  * @returns The `Annotation` models, in response order.
- * @throws ResponseValidationError - Malformed payload
+ * @throws {@link ResponseValidationError} - Malformed payload
  *   (`RESPONSE_VALIDATION_ERROR`).
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures per the B0 contract.
+ * @see mixpanel_headless.workspace.Workspace.list_annotations
  */
 export async function listAnnotations(
   client: MixpanelClient,
@@ -161,14 +161,14 @@ export async function listAnnotations(
 }
 
 /**
- * Create a new timeline annotation (`create_annotation`,
- * `workspace.py`).
+ * Create a new timeline annotation.
  *
  * @param client - The wire client.
  * @param params - Annotation creation parameters (date, description
  *   required).
  * @returns The created `Annotation`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.create_annotation
  */
 export async function createAnnotation(
   client: MixpanelClient,
@@ -181,13 +181,13 @@ export async function createAnnotation(
 }
 
 /**
- * Get a single annotation by ID (`get_annotation`,
- * `workspace.py`).
+ * Get a single annotation by ID.
  *
  * @param client - The wire client.
  * @param annotationId - Annotation ID.
  * @returns The `Annotation`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.get_annotation
  */
 export async function getAnnotation(
   client: MixpanelClient,
@@ -200,14 +200,14 @@ export async function getAnnotation(
 }
 
 /**
- * Update an annotation, PATCH semantics (`update_annotation`,
- * `workspace.py`).
+ * Update an annotation, PATCH semantics.
  *
  * @param client - The wire client.
  * @param annotationId - Annotation ID.
  * @param params - Fields to update (description, tags).
  * @returns The updated `Annotation`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.update_annotation
  */
 export async function updateAnnotation(
   client: MixpanelClient,
@@ -224,14 +224,14 @@ export async function updateAnnotation(
 }
 
 /**
- * Delete an annotation (`delete_annotation`,
- * `workspace.py`).
+ * Delete an annotation.
  *
  * @param client - The wire client.
  * @param annotationId - Annotation ID.
  * @returns Nothing.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @see mixpanel_headless.workspace.Workspace.delete_annotation
  */
 export async function deleteAnnotation(
   client: MixpanelClient,
@@ -241,12 +241,12 @@ export async function deleteAnnotation(
 }
 
 /**
- * List annotation tags for the project (`list_annotation_tags`,
- * `workspace.py`).
+ * List annotation tags for the project.
  *
  * @param client - The wire client.
  * @returns The `AnnotationTag` models, in response order.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.list_annotation_tags
  */
 export async function listAnnotationTags(
   client: MixpanelClient,
@@ -262,13 +262,13 @@ export async function listAnnotationTags(
 }
 
 /**
- * Create a new annotation tag (`create_annotation_tag`,
- * `workspace.py`).
+ * Create a new annotation tag.
  *
  * @param client - The wire client.
  * @param params - Tag creation parameters (name required).
  * @returns The created `AnnotationTag`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.create_annotation_tag
  */
 export async function createAnnotationTag(
   client: MixpanelClient,
@@ -285,12 +285,12 @@ export async function createAnnotationTag(
 // ---------------------------------------------------------------------------
 
 /**
- * List all webhooks for the current project (`list_webhooks`,
- * `workspace.py`).
+ * List all webhooks for the current project.
  *
  * @param client - The wire client.
  * @returns The `ProjectWebhook` models, in response order.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.list_webhooks
  */
 export async function listWebhooks(
   client: MixpanelClient,
@@ -306,13 +306,13 @@ export async function listWebhooks(
 }
 
 /**
- * Create a new webhook (`create_webhook`,
- * `workspace.py`).
+ * Create a new webhook.
  *
  * @param client - The wire client.
  * @param params - Webhook creation parameters.
  * @returns The `WebhookMutationResult` (new webhook id + name).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.create_webhook
  */
 export async function createWebhook(
   client: MixpanelClient,
@@ -325,14 +325,14 @@ export async function createWebhook(
 }
 
 /**
- * Update an existing webhook, PATCH semantics (`update_webhook`,
- * `workspace.py`).
+ * Update an existing webhook, PATCH semantics.
  *
  * @param client - The wire client.
  * @param webhookId - Webhook UUID string.
  * @param params - Fields to update.
  * @returns The `WebhookMutationResult` (updated id + name).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.update_webhook
  */
 export async function updateWebhook(
   client: MixpanelClient,
@@ -349,13 +349,14 @@ export async function updateWebhook(
 }
 
 /**
- * Delete a webhook (`delete_webhook`, `workspace.py`).
+ * Delete a webhook.
  *
  * @param client - The wire client.
  * @param webhookId - Webhook UUID string.
  * @returns Nothing.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @see mixpanel_headless.workspace.Workspace.delete_webhook
  */
 export async function deleteWebhook(
   client: MixpanelClient,
@@ -365,13 +366,13 @@ export async function deleteWebhook(
 }
 
 /**
- * Test webhook connectivity (`test_webhook`,
- * `workspace.py`).
+ * Test webhook connectivity.
  *
  * @param client - The wire client.
  * @param params - Webhook test parameters (`url` required).
  * @returns The `WebhookTestResult` (success, status_code, message).
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.test_webhook
  */
 export async function testWebhook(
   client: MixpanelClient,
@@ -388,15 +389,15 @@ export async function testWebhook(
 // ---------------------------------------------------------------------------
 
 /**
- * List custom alerts for the current project (`list_alerts`,
- * `workspace.py`).
+ * List custom alerts for the current project.
  *
  * @param client - The wire client.
  * @param options - `bookmark_id` / `skip_user_filter` (keyword-only in
  *   Python; both default `None` and are forwarded as-is — the client
  *   owns the `is not None` gate).
  * @returns The `CustomAlert` models, in response order.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.list_alerts
  */
 export async function listAlerts(
   client: MixpanelClient,
@@ -416,13 +417,13 @@ export async function listAlerts(
 }
 
 /**
- * Create a new custom alert (`create_alert`,
- * `workspace.py`).
+ * Create a new custom alert.
  *
  * @param client - The wire client.
  * @param params - Alert creation parameters.
  * @returns The created `CustomAlert`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.create_alert
  */
 export async function createAlert(
   client: MixpanelClient,
@@ -435,13 +436,13 @@ export async function createAlert(
 }
 
 /**
- * Get a single custom alert by ID (`get_alert`,
- * `workspace.py`).
+ * Get a single custom alert by ID.
  *
  * @param client - The wire client.
  * @param alertId - Alert ID (integer).
  * @returns The `CustomAlert`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.get_alert
  */
 export async function getAlert(
   client: MixpanelClient,
@@ -454,14 +455,14 @@ export async function getAlert(
 }
 
 /**
- * Update a custom alert, PATCH semantics (`update_alert`,
- * `workspace.py`).
+ * Update a custom alert, PATCH semantics.
  *
  * @param client - The wire client.
  * @param alertId - Alert ID (integer).
  * @param params - Fields to update.
  * @returns The updated `CustomAlert`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.update_alert
  */
 export async function updateAlert(
   client: MixpanelClient,
@@ -475,13 +476,14 @@ export async function updateAlert(
 }
 
 /**
- * Delete a custom alert (`delete_alert`, `workspace.py`).
+ * Delete a custom alert.
  *
  * @param client - The wire client.
  * @param alertId - Alert ID (integer).
  * @returns Nothing.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @see mixpanel_headless.workspace.Workspace.delete_alert
  */
 export async function deleteAlert(
   client: MixpanelClient,
@@ -491,14 +493,14 @@ export async function deleteAlert(
 }
 
 /**
- * Bulk-delete custom alerts (`bulk_delete_alerts`,
- * `workspace.py`).
+ * Bulk-delete custom alerts.
  *
  * @param client - The wire client.
  * @param ids - Alert IDs to delete.
  * @returns Nothing.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @see mixpanel_headless.workspace.Workspace.bulk_delete_alerts
  */
 export async function bulkDeleteAlerts(
   client: MixpanelClient,
@@ -508,13 +510,13 @@ export async function bulkDeleteAlerts(
 }
 
 /**
- * Get the project's alert count against its limit
- * (`get_alert_count`, `workspace.py`).
+ * Get the project's alert count against its limit.
  *
  * @param client - The wire client.
  * @param options - `alert_type` (keyword-only in Python).
  * @returns The `AlertCount`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.get_alert_count
  */
 export async function getAlertCount(
   client: MixpanelClient,
@@ -529,15 +531,15 @@ export async function getAlertCount(
 }
 
 /**
- * Get paginated alert trigger history (`get_alert_history`,
- * `workspace.py`).
+ * Get paginated alert trigger history.
  *
  * @param client - The wire client.
  * @param alertId - Alert ID (integer).
  * @param options - `page_size` / `next_cursor` / `previous_cursor`
  *   (keyword-only in Python).
  * @returns The `AlertHistoryResponse`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.get_alert_history
  */
 export async function getAlertHistory(
   client: MixpanelClient,
@@ -555,16 +557,16 @@ export async function getAlertHistory(
 }
 
 /**
- * Send a test alert notification (`test_alert`,
- * `workspace.py`) — returned VERBATIM; Python performs no
+ * Send a test alert notification — returned VERBATIM; Python performs no
  * model validation (`return client.test_alert(body)`, `:7119`).
  *
  * @param client - The wire client.
  * @param params - Alert parameters for the test (same shape as
  *   create).
  * @returns The opaque result record.
- * @throws AuthenticationError | QueryError | ServerError - Wire
+ * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
  *   failures.
+ * @see mixpanel_headless.workspace.Workspace.test_alert
  */
 export async function testAlert(
   client: MixpanelClient,
@@ -575,13 +577,13 @@ export async function testAlert(
 }
 
 /**
- * Get a signed URL for an alert screenshot
- * (`get_alert_screenshot_url`, `workspace.py`).
+ * Get a signed URL for an alert screenshot.
  *
  * @param client - The wire client.
  * @param gcsKey - GCS object key from the alert payload.
  * @returns The `AlertScreenshotResponse`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.get_alert_screenshot_url
  */
 export async function getAlertScreenshotUrl(
   client: MixpanelClient,
@@ -594,13 +596,13 @@ export async function getAlertScreenshotUrl(
 }
 
 /**
- * Validate alerts against a bookmark definition
- * (`validate_alerts_for_bookmark`, `workspace.py`).
+ * Validate alerts against a bookmark definition.
  *
  * @param client - The wire client.
  * @param params - Alert IDs plus the bookmark type and params.
  * @returns The `ValidateAlertsForBookmarkResponse`.
- * @throws ResponseValidationError - Malformed payload.
+ * @throws {@link ResponseValidationError} - Malformed payload.
+ * @see mixpanel_headless.workspace.Workspace.validate_alerts_for_bookmark
  */
 export async function validateAlertsForBookmark(
   client: MixpanelClient,

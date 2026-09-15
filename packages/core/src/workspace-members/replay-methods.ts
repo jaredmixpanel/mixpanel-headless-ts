@@ -118,8 +118,7 @@ const FALLBACK_RETENTION_DAYS = 30;
 const MAX_EVENT_PROPERTIES = 5;
 
 /**
- * List replays for a user, or hydrate summaries for explicit IDs
- * (`list_replays`, `workspace.py`).
+ * List replays for a user, or hydrate summaries for explicit IDs.
  *
  * Exactly one of `distinct_id` or `replay_ids` MUST be provided.
  * When `distinct_id` is set, `from_date` and `to_date` are required.
@@ -127,10 +126,11 @@ const MAX_EVENT_PROPERTIES = 5;
  * @param host - The facade slice.
  * @param options - The selector, the optional window, and the limit.
  * @returns `ReplaySummary` rows, possibly empty.
- * @throws ParamValidationError - Neither or both selectors
+ * @throws {@link ParamValidationError} - Neither or both selectors
  *   (`WR4_REPLAY_SELECTOR_REQUIRED`), or `distinct_id` without a date
  *   window (`WR5_DATE_RANGE_REQUIRED`).
- * @throws QueryError - Underlying Insights API failure.
+ * @throws {@link QueryError} - Underlying Insights API failure.
+ * @see mixpanel_headless.workspace.Workspace.list_replays
  */
 export async function listReplays(
   host: ReplayHost,
@@ -175,16 +175,16 @@ export async function listReplays(
 }
 
 /**
- * Mixpanel events that occurred during a single replay's time window
- * (`events_for_replay`, `workspace.py`).
+ * Mixpanel events that occurred during a single replay's time window.
  *
  * @param host - The facade slice.
  * @param replayId - The replay to fetch events for.
  * @param options - Extra group keys and the optional window.
  * @returns Ordered `ReplayEvent`s; empty when the window has none.
- * @throws ParamValidationError - More than 5 `event_properties`
+ * @throws {@link ParamValidationError} - More than 5 `event_properties`
  *   (`WR1_TOO_MANY_EVENT_PROPERTIES`).
- * @throws QueryError - Underlying Insights API failure.
+ * @throws {@link QueryError} - Underlying Insights API failure.
+ * @see mixpanel_headless.workspace.Workspace.events_for_replay
  */
 export async function eventsForReplay(
   host: ReplayHost,
@@ -201,17 +201,17 @@ export async function eventsForReplay(
 }
 
 /**
- * Batched version of {@link eventsForReplay} — single round-trip
- * (`events_for_replays`, `workspace.py`).
+ * Batched version of {@link eventsForReplay} — single round-trip.
  *
  * @param host - The facade slice.
  * @param replayIds - Replays to fetch events for.
  * @param options - Extra group keys and the optional window.
  * @returns `replay_id` → ordered `ReplayEvent` list (R4.8 Map);
  *   replays with no events are omitted.
- * @throws ParamValidationError - More than 5 `event_properties`
+ * @throws {@link ParamValidationError} - More than 5 `event_properties`
  *   (`WR1_TOO_MANY_EVENT_PROPERTIES`).
- * @throws QueryError - Underlying Insights API failure.
+ * @throws {@link QueryError} - Underlying Insights API failure.
+ * @see mixpanel_headless.workspace.Workspace.events_for_replays
  */
 export async function eventsForReplays(
   host: ReplayHost,
@@ -227,16 +227,16 @@ export async function eventsForReplays(
 }
 
 /**
- * Sign a single replay ID; sugar over {@link signReplays}
- * (`sign_replay`, `workspace.py`).
+ * Sign a single replay ID; sugar over {@link signReplays}.
  *
  * @param host - The facade slice.
  * @param replayId - Replay to sign.
  * @param options - `env` (`"prod"` default).
  * @returns One `SignedReplay`. `query_string` is a 5-minute bearer
  *   credential — treat it like a session token.
- * @throws SessionReplayAccessError - Sensitive-data flag set.
- * @throws QueryError | ServerError - Other 4xx / 5xx.
+ * @throws {@link SessionReplayAccessError} - Sensitive-data flag set.
+ * @throws {@link QueryError} | {@link ServerError} - Other 4xx / 5xx.
+ * @see mixpanel_headless.workspace.Workspace.sign_replay
  */
 export async function signReplay(
   host: ReplayHost,
@@ -250,15 +250,15 @@ export async function signReplay(
 }
 
 /**
- * Sign multiple replays via the bulk endpoint (`sign_replays`,
- * `workspace.py`).
+ * Sign multiple replays via the bulk endpoint.
  *
  * @param host - The facade slice.
  * @param replayIds - Replays to sign.
  * @param options - `env` (`"prod"` default).
  * @returns `SignedReplay`s in input order.
- * @throws SessionReplayAccessError - Sensitive-data flag set.
- * @throws QueryError | ServerError - Other 4xx / 5xx.
+ * @throws {@link SessionReplayAccessError} - Sensitive-data flag set.
+ * @throws {@link QueryError} | {@link ServerError} - Other 4xx / 5xx.
+ * @see mixpanel_headless.workspace.Workspace.sign_replays
  */
 export async function signReplays(
   host: ReplayHost,
@@ -271,8 +271,7 @@ export async function signReplays(
 }
 
 /**
- * Sign, fetch, and assemble a single `Replay` (`fetch_replay`,
- * `workspace.py`).
+ * Sign, fetch, and assemble a single `Replay`.
  *
  * Runs the vendored rrweb analyzer to populate `Replay.actions`; the
  * raw `rrweb_events` list is also populated for downstream tools.
@@ -287,11 +286,12 @@ export async function signReplays(
  * @param replayId - The replay to fetch.
  * @param options - Retention / bounds / concurrency / join knobs.
  * @returns A `Replay` with `rrweb_events` and `actions` populated.
- * @throws ReplayNotFoundError - First CDN file 404'd, or the walk
+ * @throws {@link ReplayNotFoundError} - First CDN file 404'd, or the walk
  *   yielded zero events.
- * @throws SessionReplayAccessError - Sensitive-data flag set.
- * @throws SignedURLExpiredError - Signed URL expired during fetch.
- * @throws ParamValidationError - More than 5 `event_properties`.
+ * @throws {@link SessionReplayAccessError} - Sensitive-data flag set.
+ * @throws {@link SignedURLExpiredError} - Signed URL expired during fetch.
+ * @throws {@link ParamValidationError} - More than 5 `event_properties`.
+ * @see mixpanel_headless.workspace.Workspace.fetch_replay
  */
 export async function fetchReplay(
   host: ReplayHost,
@@ -365,7 +365,7 @@ export async function fetchReplay(
 
 /**
  * Yield raw rrweb events one at a time, batched-parallel under the
- * hood (`stream_replay`, `workspace.py`).
+ * hood.
  *
  * R6.6 — item-level `yield*` over the service generator; nothing
  * buffers. Python's private-event-loop plumbing
@@ -378,10 +378,11 @@ export async function fetchReplay(
  * @param replayId - The replay to stream.
  * @param options - Retention / bounds / concurrency / re-sign policy.
  * @yields Raw rrweb event dicts in timestamp order.
- * @throws ReplayNotFoundError - First CDN file 404'd.
- * @throws SignedURLExpiredError - Re-sign retry exhausted or
+ * @throws {@link ReplayNotFoundError} - First CDN file 404'd.
+ * @throws {@link SignedURLExpiredError} - Re-sign retry exhausted or
  *   disabled.
- * @throws SessionReplayAccessError - Sensitive-data flag set.
+ * @throws {@link SessionReplayAccessError} - Sensitive-data flag set.
+ * @see mixpanel_headless.workspace.Workspace.stream_replay
  */
 export async function* streamReplay(
   host: ReplayHost,
@@ -407,8 +408,7 @@ export async function* streamReplay(
 }
 
 /**
- * Fetch N replays in parallel; return a `ReplayBundle`
- * (`fetch_replays`, `workspace.py`).
+ * Fetch N replays in parallel; return a `ReplayBundle`.
  *
  * Materializes each replay via {@link fetchReplay} and bundles them.
  * Outer `concurrency` parallelizes across replays; inner
@@ -429,9 +429,10 @@ export async function* streamReplay(
  *   distinct-id maps.
  * @returns A `ReplayBundle` with `replays` in INPUT order; the failed
  *   replays are omitted from `replays` and listed on `failures`.
- * @throws MixpanelHeadlessError - Only when every requested replay
+ * @throws {@link MixpanelHeadlessError} - Only when every requested replay
  *   failed; the first underlying error propagates with its type.
- * @throws ParamValidationError - More than 5 `event_properties`.
+ * @throws {@link ParamValidationError} - More than 5 `event_properties`.
+ * @see mixpanel_headless.workspace.Workspace.fetch_replays
  */
 export async function fetchReplays(
   host: ReplayHost,
@@ -546,8 +547,7 @@ export async function fetchReplays(
 }
 
 /**
- * Discovery + fetch in one call (`replays_for_user`,
- * `workspace.py`).
+ * Discovery + fetch in one call.
  *
  * Composes {@link listReplays} and {@link fetchReplays}. Defaults
  * `include_mixpanel_events` to `true` since this is the "show me what
@@ -559,7 +559,8 @@ export async function fetchReplays(
  * @param options - The required window plus the limit / join knobs.
  * @returns A `ReplayBundle`; empty when no replays exist in the
  *   window.
- * @throws ParamValidationError - More than 5 `event_properties`.
+ * @throws {@link ParamValidationError} - More than 5 `event_properties`.
+ * @see mixpanel_headless.workspace.Workspace.replays_for_user
  */
 export async function replaysForUser(
   host: ReplayHost,
@@ -600,13 +601,14 @@ export async function replaysForUser(
 
 /**
  * Sign + fetch + analyze a replay, returning only the markdown
- * timeline (`analyze_replay`, `workspace.py`).
+ * timeline.
  *
  * @param host - The facade slice.
  * @param replayId - The replay to analyze.
  * @returns The markdown timeline (`Replay.summaryMarkdown()`).
- * @throws ReplayNotFoundError - First CDN file 404'd.
- * @throws SessionReplayAccessError - Sensitive-data flag set.
+ * @throws {@link ReplayNotFoundError} - First CDN file 404'd.
+ * @throws {@link SessionReplayAccessError} - Sensitive-data flag set.
+ * @see mixpanel_headless.workspace.Workspace.analyze_replay
  */
 export async function analyzeReplay(
   host: ReplayHost,
@@ -616,8 +618,7 @@ export async function analyzeReplay(
 }
 
 /**
- * Resolve a replay's retention window, discovering it when `null`
- * (`_resolve_retention`, `workspace.py`).
+ * Resolve a replay's retention window, discovering it when `null`.
  *
  * @param host - The facade slice.
  * @param replayId - The replay to look up.
@@ -625,6 +626,7 @@ export async function analyzeReplay(
  *   set.
  * @returns One of 1, 7, 30, or 90. Defaults to 30 when discovery
  *   returns no summary (the warning already fired in `discover`).
+ * @see mixpanel_headless.workspace.Workspace._resolve_retention
  */
 async function resolveRetention(
   host: ReplayHost,
@@ -650,7 +652,7 @@ async function resolveRetention(
  * endpoint.
  *
  * @param eventProperties - Caller-supplied list (or `null`).
- * @throws ParamValidationError - Code `WR1_TOO_MANY_EVENT_PROPERTIES`.
+ * @throws {@link ParamValidationError} - Code `WR1_TOO_MANY_EVENT_PROPERTIES`.
  */
 export function checkEventPropertiesCount(
   eventProperties: readonly string[] | null,
