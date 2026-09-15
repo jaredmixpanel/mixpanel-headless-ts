@@ -89,9 +89,17 @@ export interface StartCallbackServerOptions {
   readonly timeoutSeconds?: number | undefined;
   /**
    * Specific port to bind (no scanning) — the caller already probed
-   * it. `null`/absent scans 19284-19287 in order.
+   * it. `null`/absent scans 19284-19287 in order. `0` binds an
+   * ephemeral port; the resolved tuple (and {@link onListening}) carry
+   * the port actually bound, never the requested `0`.
    */
   readonly port?: number | null | undefined;
+  /**
+   * TS-only: invoked once the socket is bound, with the port actually
+   * bound. Lets a caller that passed `port: 0` learn the port before
+   * the callback arrives (the tuple only resolves afterwards).
+   */
+  readonly onListening?: ((port: number) => void) | undefined;
   /**
    * TS-only cancellation for the losing login completer (module
    * header). On abort the server closes and the promise rejects with a
@@ -239,6 +247,40 @@ function bindServer(port: number): Promise<Server> {
 }
 
 /**
+ * The port a listening server is actually bound to (`server.address()`)
+ * — differs from the requested port when that was `0`.
+ *
+ * @param server - A listening TCP server.
+ * @returns The bound port.
+ * @throws Error - The server is not bound to a TCP address.
+ */
+function listeningPort(server: Server): number {
+  const address = server.address();
+  if (address === null || typeof address === "string") {
+    throw new Error("callback server is not bound to a TCP port");
+  }
+  return address.port;
+}
+
+/**
+ * Close the one-shot server and release its socket.
+ *
+ * @param server - The server to close.
+ * @returns A promise resolving once the listener has closed.
+ */
+function closeServer(server: Server): Promise<void> {
+  return new Promise<void>((resolve) => {
+    server.close(() => {
+      resolve();
+    });
+    // Idle (keep-alive / preconnect) sockets would stall close(); the
+    // answered request's socket carries `Connection: close` and drains
+    // on its own.
+    server.closeIdleConnections();
+  });
+}
+
+/**
  * Start a local HTTP server to receive the OAuth callback (port of
  * `start_callback_server`, `callback_server.py:79-177`).
  *
@@ -272,7 +314,7 @@ export async function startCallbackServer(
     for (const candidate of CALLBACK_PORTS) {
       try {
         server = await bindServer(candidate);
-        boundPort = candidate;
+        boundPort = listeningPort(server);
         break;
       } catch {
         continue;
@@ -282,7 +324,10 @@ export async function startCallbackServer(
     // Bind to the exact requested port — no scanning.
     try {
       server = await bindServer(exactPort);
-      boundPort = exactPort;
+      // Read the port back from the socket: `port: 0` binds an
+      // ephemeral port, and reporting the requested `0` would leave
+      // the caller unable to build the redirect URI.
+      boundPort = listeningPort(server);
     } catch (error) {
       throw new OAuthError(
         `OAuth callback port ${exactPort} is no longer available. ` +
@@ -304,6 +349,12 @@ export async function startCallbackServer(
   }
 
   const boundServer = server;
+  try {
+    options.onListening?.(boundPort);
+  } catch (error) {
+    await closeServer(boundServer);
+    throw error;
+  }
 
   // Wait for ONE request, the timeout, or abort — whichever first.
   type Settled =
@@ -358,15 +409,7 @@ export async function startCallbackServer(
     });
   });
 
-  await new Promise<void>((resolve) => {
-    boundServer.close(() => {
-      resolve();
-    });
-    // Idle (keep-alive / preconnect) sockets would stall close(); the
-    // answered request's socket carries `Connection: close` and drains
-    // on its own.
-    boundServer.closeIdleConnections();
-  });
+  await closeServer(boundServer);
 
   if (settled.kind === "aborted") {
     throw new Error("callback server aborted (losing completer cancelled)");
