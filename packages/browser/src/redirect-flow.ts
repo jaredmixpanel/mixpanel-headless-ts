@@ -56,7 +56,6 @@ import {
   buildAuthorizeUrl,
   CREDENTIAL_KEYS,
   type CredentialStore,
-  OAUTH_BASE_URLS,
   OAuthError,
   type OAuthTokens,
   parsePastedRedirect,
@@ -64,7 +63,10 @@ import {
   postTokenRequest,
   pythonUtcIsoformat,
 } from "@mixpanel-headless/core";
-import { base64UrlEncodeBytes } from "@mixpanel-headless/core/internal";
+import {
+  base64UrlEncodeBytes,
+  requireOAuthBaseUrl,
+} from "@mixpanel-headless/core/internal";
 
 import { BROWSER_NO_PENDING_LOGIN, BrowserUnsupportedError } from "./errors.js";
 import { ensureBrowserClientRegistered } from "./registration.js";
@@ -170,30 +172,6 @@ interface PendingLoginRecord {
 }
 
 /**
- * Validate the region against `OAUTH_BASE_URLS` and return its base
- * URL (`OAuthFlow.__init__` gate twin, `flow.py:160-165` — same code
- * and message shape).
- *
- * @param region - The caller-supplied region.
- * @returns The region's OAuth base URL (trailing slash).
- * @throws OAuthError - `OAUTH_CONFIG_ERROR` for unknown regions.
- */
-// TODO(Ω): delete in favour of core `requireOAuthBaseUrl` once internal.ts exports it (frozen during Phase 6).
-function requireBaseUrl(region: string): string {
-  if (!Object.hasOwn(OAUTH_BASE_URLS, region)) {
-    throw new OAuthError(
-      `Unknown region: ${JSON.stringify(region)}. Must be one of: ${Object.keys(
-        OAUTH_BASE_URLS,
-      )
-        .sort()
-        .join(", ")}`,
-      "OAUTH_CONFIG_ERROR",
-    );
-  }
-  return OAUTH_BASE_URLS[region] as string;
-}
-
-/**
  * Loopback hostnames for which plain `http:` redirect URIs are legal
  * (RFC 8252 §7.3; the `flow.py:54-58` localhost posture).
  */
@@ -293,7 +271,7 @@ export async function beginLogin(
   options: BeginLoginOptions,
 ): Promise<BeginLoginResult> {
   // 1. Region gate (`flow.py:160-165` twin) + redirect-URI gate (FB-4).
-  const baseUrl = requireBaseUrl(options.region);
+  const baseUrl = requireOAuthBaseUrl(options.region);
   validateRedirectUri(options.redirectUri);
   const now = options.now ?? Date.now;
 
@@ -459,7 +437,7 @@ const inFlightCompletions = new WeakMap<
 export async function completeLogin(
   options: CompleteLoginOptions,
 ): Promise<OAuthTokens> {
-  const baseUrl = requireBaseUrl(options.region);
+  const baseUrl = requireOAuthBaseUrl(options.region);
   const pendingKey = CREDENTIAL_KEYS.pendingLogin(options.region);
 
   // FB-6: same-realm concurrency dedup (see the registry JSDoc).
