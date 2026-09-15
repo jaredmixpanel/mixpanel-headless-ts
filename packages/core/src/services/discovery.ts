@@ -412,10 +412,10 @@ export function inferScalarType(
  * `discovery.py:237-267`).
  *
  * Each raw value may be a JSON object (one row), a JSON array of
- * objects (many rows), or anything else (skipped). Parse failures are
- * dropped silently, exactly as Python drops `TypeError`/`ValueError`
- * from `json.loads` (Python logs at debug; the log text is not
- * contract, R9.5, and no caller observes it).
+ * objects (many rows), or anything else (skipped). A value that fails to
+ * parse is skipped and reported once through `logger.debug` — the twin
+ * of Python's `_logger.debug` for the `TypeError`/`ValueError` it drops
+ * from `json.loads` (the text is not contract, R9.5).
  *
  * Parsing goes through {@link parseLossless} with `pythonConstants`
  * (packet §0.2) so `NaN`/`Infinity` bodies parse rather than raise the
@@ -423,11 +423,13 @@ export function inferScalarType(
  * `json.loads`'s native product.
  *
  * @param rawValues - Strings from the property-values endpoint.
+ * @param logger - Optional debug sink for the skipped values.
  * @returns Flat list of dict rows, order preserved.
  * @internal
  */
 export function iterDictRows(
   rawValues: readonly string[],
+  logger?: DiscoveryLogger,
 ): Array<Record<string, unknown>> {
   const rows: Array<Record<string, unknown>> = [];
   for (const raw of rawValues) {
@@ -438,6 +440,7 @@ export function iterDictRows(
       if (!(error instanceof LosslessJsonError)) {
         throw error;
       }
+      logger?.debug(`Skipping unparseable property value: ${error.message}`);
       continue;
     }
     if (isPythonDict(parsed)) {
@@ -510,14 +513,16 @@ function splitWords(text: string): string[] {
  *
  * @param rawValues - Raw strings from the property-values endpoint.
  * @param warn - The `warnings.warn` sink (R9.5).
+ * @param logger - Optional debug sink (see {@link iterDictRows}).
  * @returns Code-point-sorted subproperty infos.
  * @internal
  */
 export function inferSubproperties(
   rawValues: readonly string[],
   warn: WarningSink,
+  logger?: DiscoveryLogger,
 ): SubPropertyInfo[] {
-  const rows = iterDictRows(rawValues);
+  const rows = iterDictRows(rawValues, logger);
   if (rows.length === 0) {
     return [];
   }
@@ -807,7 +812,8 @@ export class DiscoveryService {
     this.#warn =
       options.warn ??
       ((): void => {
-        // No sink injected: warnings are dropped (CLEANUP-PLAN.md §12 8.8).
+        // No sink injected: core has no stderr, so warnings are dropped
+        // here; the node/browser entry points inject their own sink.
       });
     this.#logger = options.logger;
   }
@@ -954,7 +960,7 @@ export class DiscoveryService {
       ...(options.event === undefined ? {} : { event: options.event }),
       limit: options.sample_size ?? 50,
     });
-    return inferSubproperties(raw, this.#warn);
+    return inferSubproperties(raw, this.#warn, this.#logger);
   }
 
   /**
