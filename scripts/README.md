@@ -80,3 +80,20 @@ All are idempotent and take `--check` to report without writing; run Prettier
 `*.d.mts` files next to a module are hand-written declarations for the
 TypeScript importers (`vitest.config.ts`, tests); keep them in step with the
 module's exports.
+
+## Documentation site (npm aliases only)
+
+No script under `scripts/`; the aliases chain the tools directly. The
+layout, page conventions and the twoslash rules are in
+[`CONTRIBUTING.md`](../CONTRIBUTING.md#documentation).
+
+| npm alias        | Runs                                                        | Notes                                                                                                                                    |
+| ---------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs:api`       | `typedoc`                                                   | Reference into git-ignored `docs/reference/` (plus the sidebar JSON) from `typedoc.json`; needs `dist/` (`tsc -b`). Emits with warnings. |
+| `docs:api:check` | `typedoc --emit none --treatWarningsAsErrors`               | Validation only; exit 3 on any warning. Not in `check` until the count is zero.                                                          |
+| `docs:dev`       | `npm run build && npm run docs:api && vitepress dev docs`   | Local preview with hot reload.                                                                                                           |
+| `docs:build`     | `npm run build && npm run docs:api && vitepress build docs` | The site into `docs/.vitepress/dist/`; every `ts twoslash` block is type-checked, dead links fail. Run by `.github/workflows/docs.yml`.  |
+| `docs:preview`   | `vitepress preview docs`                                    | Serves the last build.                                                                                                                   |
+
+Environment: `DOCS_BASE` (site base path, default `/`; CI sets `/<repo>/`) and
+`DOCS_ORIGIN` (origin for absolute URLs in `llms.txt`; relative when unset).
