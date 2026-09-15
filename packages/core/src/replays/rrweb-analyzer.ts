@@ -48,6 +48,7 @@ import {
   type PythonValue,
 } from "../compat/python-str.js";
 import { pythonStrip } from "../compat/python-strip.js";
+import { defined } from "../invariant.js";
 import { type ReplayActionLabel, UserAction } from "./user-action.js";
 
 /** Any JSON-shaped mapping the analyzer reads off the event stream. */
@@ -214,6 +215,14 @@ export interface TrackedNode {
   text?: unknown;
 }
 
+/** Constructor options of {@link DOMTracker}. */
+export interface DOMTrackerOptions {
+  /** Optional debug sink for the max-nodes site (R9.5). */
+  readonly logger?: AnalyzerLogger | undefined;
+  /** Node-map cap; defaults to {@link DOMTracker.DEFAULT_MAX_NODES}. */
+  readonly maxNodes?: number | undefined;
+}
+
 /**
  * Lightweight DOM state tracker (`DOMTracker`,
  * `rrweb_analyzer.py:168-518`).
@@ -253,8 +262,11 @@ export class DOMTracker {
   /** Ancestor-traversal bound (`MAX_ANCESTOR_DEPTH`). */
   static readonly MAX_ANCESTOR_DEPTH = 3;
 
-  /** Node-map cap (`MAX_NODES`) — per-instance so tests can lower it. */
-  MAX_NODES = 50000;
+  /** Default node-map cap (Python `MAX_NODES`). */
+  static readonly DEFAULT_MAX_NODES = 50000;
+
+  /** Node-map cap of this tracker (`MAX_NODES`; a constructor option). */
+  readonly maxNodes: number;
 
   /** Ancestor-traversal bound (per-instance mirror of the class attr). */
   MAX_ANCESTOR_DEPTH: number = DOMTracker.MAX_ANCESTOR_DEPTH;
@@ -275,10 +287,11 @@ export class DOMTracker {
    * Initialize an empty node map + description cache (`__init__`,
    * `rrweb_analyzer.py:203-207`).
    *
-   * @param logger - Optional debug sink for the max-nodes site.
+   * @param options - Optional debug sink and node-map cap.
    */
-  constructor(logger?: AnalyzerLogger) {
-    this.#logger = logger;
+  constructor(options: DOMTrackerOptions = {}) {
+    this.#logger = options.logger;
+    this.maxNodes = options.maxNodes ?? DOMTracker.DEFAULT_MAX_NODES;
   }
 
   /**
@@ -312,22 +325,25 @@ export class DOMTracker {
    *   traversal.
    */
   addNode(node: Dict, parentId: number | null = null): void {
-    const queue: Array<[Dict, number | null]> = [[node, parentId]];
+    const queue: Array<readonly [Dict, number | null]> = [[node, parentId]];
 
-    while (queue.length > 0) {
-      // Python `queue.pop(0)` — FIFO breadth-first order.
-      const [currentNode, currentParentId] = queue.shift() as [
-        Dict,
-        number | null,
-      ];
-
+    // Python `queue.pop(0)` — FIFO breadth-first order. A read cursor
+    // stands in for `shift()`, which is O(n) per pop and made the walk
+    // quadratic on 50k-node snapshots.
+    let head = 0;
+    while (head < queue.length) {
+      const [currentNode, currentParentId] = defined(
+        queue[head],
+        "DOMTracker BFS queue entry",
+      );
+      head += 1;
       const rawNodeId = currentNode["id"];
       if (rawNodeId === undefined || rawNodeId === null) {
         continue;
       }
       const nodeId = rawNodeId as number;
 
-      if (!this.nodes.has(nodeId) && this.nodes.size >= this.MAX_NODES) {
+      if (!this.nodes.has(nodeId) && this.nodes.size >= this.maxNodes) {
         // Skip every new node once at the cap — and stop descending into
         // its subtree. `reachedMaxNodes` only de-dupes the log; it must
         // NOT gate the skip itself (regression locked by
@@ -1351,7 +1367,7 @@ export class RrwebAnalyzer {
       .sort((a, b) => a.key - b.key)
       .map((decorated) => decorated.event);
 
-    const domTracker = new DOMTracker(this.#logger);
+    const domTracker = new DOMTracker({ logger: this.#logger });
     const eventAnalyzer = new EventAnalyzer(domTracker);
     for (const event of sortedEvents) {
       eventAnalyzer.processEvent(event);

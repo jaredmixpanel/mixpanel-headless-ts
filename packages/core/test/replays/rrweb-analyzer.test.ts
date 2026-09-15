@@ -755,8 +755,7 @@ describe("DOMTracker direct exercises (TestDOMTrackerDirect)", () => {
   });
 
   it("test_max_nodes_warning", () => {
-    const tracker = new DOMTracker();
-    tracker.MAX_NODES = 2;
+    const tracker = new DOMTracker({ maxNodes: 2 });
     tracker.addNode(elementNode(1, "div"));
     tracker.addNode(elementNode(2, "div"));
     tracker.addNode(elementNode(3, "div"));
@@ -764,8 +763,7 @@ describe("DOMTracker direct exercises (TestDOMTrackerDirect)", () => {
   });
 
   it("test_max_nodes_caps_growth_after_trip", () => {
-    const tracker = new DOMTracker();
-    tracker.MAX_NODES = 2;
+    const tracker = new DOMTracker({ maxNodes: 2 });
     for (let nodeId = 1; nodeId < 8; nodeId += 1) {
       tracker.addNode(elementNode(nodeId, "div"));
     }
@@ -774,8 +772,7 @@ describe("DOMTracker direct exercises (TestDOMTrackerDirect)", () => {
   });
 
   it("test_max_nodes_still_updates_existing_nodes_at_cap", () => {
-    const tracker = new DOMTracker();
-    tracker.MAX_NODES = 2;
+    const tracker = new DOMTracker({ maxNodes: 2 });
     tracker.addNode(elementNode(1, "button", { attributes: { id: "first" } }));
     tracker.addNode(elementNode(2, "div"));
     tracker.addNode(elementNode(3, "div")); // trips the cap, skipped
