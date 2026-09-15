@@ -1,26 +1,13 @@
 /**
- * Exception hierarchy for `@mixpanel-headless/core` — the TS port of
- * `mixpanel_headless/exceptions.py` (phase2-design C3, rulebook R5.1/R5.2).
+ * Exception hierarchy of `@mixpanel-headless/core`: each Python exception
+ * class ports as an `Error` subclass with the same name, parent edge and
+ * machine `code`. Class name plus `code` is the conformance contract;
+ * message text is copied from Python for fidelity but never asserted. The
+ * registry constants are re-exported from the generated `errors-codes.gen.ts`.
+ * The transport-tier `MixpanelHttpError` (an `httpx.HTTPError` twin) lives
+ * outside this hierarchy, in `client/internals.ts`, next to the retry loops.
  *
- * All 28 Python exception classes port as `Error` subclasses preserving
- * names and the parent-edge set; the conformance key is class name +
- * machine `code`. Error MESSAGE text is explicitly out of contract
- * (R5.4): the human-readable strings below are copied from Python for
- * fidelity but are never asserted by vectors.
- *
- * Python's dual inheritance (`ParamValidationError(MixpanelHeadlessError,
- * ValueError)`) has no JS analog and none is needed — `except ValueError`
- * reachability is a Python-side compatibility concern only.
- *
- * The registry constants (`CODED_GUARD_REGISTRY`, `CODED_GUARD_TWIN_CODES`)
- * are re-exported from the generated `errors-codes.gen.ts` mirror of
- * `conformance-runner/corpus/contract/error-codes.json` — never hand-typed.
- *
- * The rulebook R5.1 client-tier transport class (`MixpanelHttpError`)
- * lives in `client/internals.ts` since Phase-3 B0-2 (the B0 retry loops'
- * catch clauses need it); it mirrors `httpx.HTTPError` and is deliberately
- * OUTSIDE this hierarchy. `MixpanelApiError` remains deferred to B4
- * (phase2-design C3/C8).
+ * @see mixpanel_headless.exceptions
  */
 
 import type { Region } from "./types/literals.js";
@@ -34,7 +21,7 @@ export {
 export interface ErrorDict {
   /** Machine-readable error code. */
   code: string;
-  /** Human-readable error message (out of contract, R5.4). */
+  /** Human-readable message; not part of the contract. */
   message: string;
   /** Additional structured error data (snake_case keys — wire spelling). */
   details: Record<string, unknown>;
@@ -46,6 +33,19 @@ export interface ErrorDict {
  * All library exceptions inherit from this class, allowing callers to
  * catch every library error with a single `instanceof` check, handle
  * specific subclasses, and serialize errors via {@link toDict}.
+ *
+ * @example
+ * ```ts
+ * try {
+ *   await ws.listDashboards();
+ * } catch (err) {
+ *   if (err instanceof MixpanelHeadlessError) {
+ *     console.error(err.code, err.toDict());
+ *   }
+ *   throw err;
+ * }
+ * ```
+ * @see mixpanel_headless.exceptions.MixpanelHeadlessError
  */
 export class MixpanelHeadlessError extends Error {
   /** Machine-readable error code — fixed at construction. */
@@ -54,7 +54,7 @@ export class MixpanelHeadlessError extends Error {
   /**
    * Additional structured error data. Keys entering this bag keep their
    * Python snake_case spelling — it is serialized into `toDict()` output
-   * and compared by the conformance canonicalizer (R7.6 wire exception).
+   * and compared by the conformance canonicalizer.
    * Subclasses contribute their keys through the constructor chain
    * (see {@link APIErrorOptions.details}); nothing mutates the bag after
    * construction.
@@ -64,7 +64,7 @@ export class MixpanelHeadlessError extends Error {
   /**
    * Initialize the exception.
    *
-   * @param message - Human-readable error message (out of contract, R5.4).
+   * @param message - Human-readable message; not part of the contract.
    * @param code - Machine-readable error code for programmatic handling.
    * @param details - Additional structured data about the error.
    * @param options - Standard `ErrorOptions` (`cause` threading).
@@ -85,12 +85,20 @@ export class MixpanelHeadlessError extends Error {
     this.#details = { ...details };
   }
 
-  /** Machine-readable error code. */
+  /**
+   * Machine-readable error code.
+   *
+   * @returns The code fixed at construction.
+   */
   get code(): string {
     return this.#code;
   }
 
-  /** Additional structured error data (snake_case keys). */
+  /**
+   * Additional structured error data (snake_case keys).
+   *
+   * @returns The structured data bag (snake_case keys), never mutated after construction.
+   */
   get details(): Readonly<Record<string, unknown>> {
     return this.#details;
   }
@@ -112,9 +120,7 @@ export class MixpanelHeadlessError extends Error {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Coded guard errors (E2 coding pass) — registry-coded argument guards.
-// ---------------------------------------------------------------------------
+// --- Coded guard errors ---
 
 /**
  * A builder/facade argument guard rejected a value (registry-coded).
@@ -123,23 +129,24 @@ export class MixpanelHeadlessError extends Error {
  * catchable by `except ValueError`; in TS the conformance key is class
  * name + `code`, so plain `MixpanelHeadlessError` descent suffices.
  *
- * Example:
+ * @example
  * ```ts
- * try {
- *   Filter.on("plan").inTheLast(0, "days");
- * } catch (exc) {
- *   (exc as ParamValidationError).code; // "FD1_QUANTITY_NOT_POSITIVE"
- * }
+ * const err = new ParamValidationError(
+ *   "quantity must be positive",
+ *   "FD1_QUANTITY_NOT_POSITIVE",
+ * );
+ * err.code; // "FD1_QUANTITY_NOT_POSITIVE"
+ * err instanceof MixpanelHeadlessError; // true
  * ```
+ * @see mixpanel_headless.exceptions.ParamValidationError
  */
 export class ParamValidationError extends MixpanelHeadlessError {
   /**
    * Initialize the coded guard error.
    *
-   * @param message - Human-readable error message (out of contract, R5.4).
+   * @param message - Human-readable message; not part of the contract.
    * @param code - Machine-readable registry code for the violated rule.
-   *   Defaults to the generic `VALIDATION_ERROR` (R5.5 construction-path
-   *   fallback).
+   *   Defaults to the generic `VALIDATION_ERROR`.
    * @param details - Optional structured, deterministic, codec-encodable
    *   data about the error.
    * @param options - Standard `ErrorOptions` (`cause` threading).
@@ -155,16 +162,23 @@ export class ParamValidationError extends MixpanelHeadlessError {
 }
 
 /**
- * A builder/facade argument guard rejected a value's TYPE (registry-coded).
+ * A builder/facade argument guard rejected a value's type (registry-coded).
  *
  * Python dual-inherits `TypeError`; see {@link ParamValidationError} for
  * why the TS port needs only `MixpanelHeadlessError` descent.
+ *
+ * @example
+ * ```ts
+ * const err = new ParamTypeError("name must be a string");
+ * err.code; // "VALIDATION_ERROR"
+ * ```
+ * @see mixpanel_headless.exceptions.ParamTypeError
  */
 export class ParamTypeError extends MixpanelHeadlessError {
   /**
    * Initialize the coded guard error.
    *
-   * @param message - Human-readable error message (out of contract, R5.4).
+   * @param message - Human-readable message; not part of the contract.
    * @param code - Machine-readable registry code for the violated rule.
    *   Defaults to the generic `VALIDATION_ERROR`.
    * @param details - Optional structured, deterministic, codec-encodable
@@ -187,12 +201,27 @@ export class ParamTypeError extends MixpanelHeadlessError {
  * Raised at response-parsing seams when a Mixpanel API payload does not
  * match the expected response model. The original parse error is chained
  * via the standard `cause` option (Python: `raise ... from exc`).
+ *
+ * @example
+ * ```ts
+ * try {
+ *   Dashboard.fromDict(payload);
+ * } catch (cause) {
+ *   throw new ResponseValidationError(
+ *     "Dashboard payload failed validation",
+ *     undefined,
+ *     { model: "Dashboard" },
+ *     { cause },
+ *   );
+ * }
+ * ```
+ * @see mixpanel_headless.exceptions.ResponseValidationError
  */
 export class ResponseValidationError extends MixpanelHeadlessError {
   /**
    * Initialize the response validation error.
    *
-   * @param message - Human-readable error message (out of contract, R5.4).
+   * @param message - Human-readable message; not part of the contract.
    * @param code - Machine-readable error code. Defaults to the generic
    *   `RESPONSE_VALIDATION_ERROR`.
    * @param details - Optional structured data — typically the response
@@ -210,15 +239,12 @@ export class ResponseValidationError extends MixpanelHeadlessError {
   }
 }
 
-// ---------------------------------------------------------------------------
-// API exceptions — base class for HTTP errors.
-// ---------------------------------------------------------------------------
+// --- API exceptions ---
 
 /**
- * The HTTP request/response context every {@link APIError} option bag
- * carries (Python `*`-marked keyword params, R3.8). Bag keys are
- * camelCase (pure argument bag, R3.6); the derived `details` dict keeps
- * the Python snake_case spelling.
+ * HTTP request/response context carried by every {@link APIError} option
+ * bag. Bag keys are camelCase (a constructor argument bag); the derived
+ * `details` dict keeps the Python snake_case spelling.
  */
 export interface HttpErrorContext {
   /** Raw response body (any lossless-parsed JSON value, or raw text). */
@@ -242,7 +268,7 @@ export interface APIErrorOptions extends HttpErrorContext {
   /** Machine-readable error code. */
   readonly code?: string | undefined;
   /**
-   * Subclass-specific keys appended to `details` AFTER the HTTP-context
+   * Subclass-specific keys appended to `details` after the HTTP-context
    * keys, in insertion order — the constructor-chain form of Python's
    * post-`super().__init__` `self._details[...] = ...` /
    * `self._details.update(details)`.
@@ -263,11 +289,21 @@ export interface HttpErrorOptions extends HttpErrorContext {
 /**
  * Base class for Mixpanel API HTTP errors.
  *
- * Provides structured access to HTTP request/response context. The
- * HTTP-context accessors (`statusCode`, `responseBody`, …) become fully
- * exercised only in Phase-3 B4 when a transport exists (phase2-design C8
- * deferral table); the `details` construction below mirrors Python's
- * conditional key insertion exactly (R4.11 — absent, never `undefined`).
+ * Exposes the HTTP request/response context through accessors and builds
+ * `details` the way Python does: a key is present only when its value is
+ * known, never set to `null` or `undefined`.
+ *
+ * @example
+ * ```ts
+ * const err = new APIError("Bad request", {
+ *   statusCode: 400,
+ *   requestMethod: "GET",
+ *   requestUrl: "https://mixpanel.com/api/query/segmentation",
+ * });
+ * err.details;
+ * // { status_code: 400, request_method: "GET", request_url: "https://…" }
+ * ```
+ * @see mixpanel_headless.exceptions.APIError
  */
 export class APIError extends MixpanelHeadlessError {
   readonly #statusCode: number;
@@ -280,7 +316,7 @@ export class APIError extends MixpanelHeadlessError {
   /**
    * Initialize APIError.
    *
-   * @param message - Human-readable error message (out of contract, R5.4).
+   * @param message - Human-readable message; not part of the contract.
    * @param options - Keyword-only HTTP context bag; `statusCode` required,
    *   `code` defaults to `"API_ERROR"`.
    */
@@ -293,7 +329,7 @@ export class APIError extends MixpanelHeadlessError {
     const requestBody = options.requestBody ?? null;
 
     // Mirror Python's sequential conditional inserts (`if x is not None:
-    // details[k] = x`) — keys are ABSENT when the value is None.
+    // details[k] = x`): a key is absent when the value is `null`.
     const details: Record<string, unknown> = { status_code: statusCode };
     if (responseBody !== null) {
       details["response_body"] = responseBody;
@@ -329,52 +365,83 @@ export class APIError extends MixpanelHeadlessError {
     this.#requestBody = requestBody;
   }
 
-  /** HTTP status code from the response. */
+  /**
+   * HTTP status code from the response.
+   *
+   * @returns The HTTP status code of the failed response.
+   */
   get statusCode(): number {
     return this.#statusCode;
   }
 
-  /** Raw response body (lossless-parsed JSON or raw text), or `null`. */
+  /**
+   * Raw response body (lossless-parsed JSON or raw text), or `null`.
+   *
+   * @returns The lossless-parsed JSON body or raw text, or `null` when absent.
+   */
   get responseBody(): unknown {
     return this.#responseBody;
   }
 
-  /** HTTP method used (GET, POST), or `null`. */
+  /**
+   * HTTP method used (GET, POST), or `null`.
+   *
+   * @returns The HTTP method, or `null` when unknown.
+   */
   get requestMethod(): string | null {
     return this.#requestMethod;
   }
 
-  /** Full request URL, or `null`. */
+  /**
+   * Full request URL, or `null`.
+   *
+   * @returns The full request URL, or `null` when unknown.
+   */
   get requestUrl(): string | null {
     return this.#requestUrl;
   }
 
-  /** Query parameters sent, or `null`. */
+  /**
+   * Query parameters sent, or `null`.
+   *
+   * @returns The query parameters sent, or `null`.
+   */
   get requestParams(): Readonly<Record<string, unknown>> | null {
     return this.#requestParams;
   }
 
-  /** Request body sent (for POST requests), or `null`. */
+  /**
+   * Request body sent (for POST requests), or `null`.
+   *
+   * @returns The request body sent, or `null`.
+   */
   get requestBody(): Readonly<Record<string, unknown>> | null {
     return this.#requestBody;
   }
 }
 
-// ---------------------------------------------------------------------------
-// Configuration exceptions.
-// ---------------------------------------------------------------------------
+// --- Configuration exceptions ---
 
 /**
  * Base for configuration-related errors.
  *
  * Raised when there's a problem with configuration files, environment
  * variables, or credential resolution.
+ *
+ * @example
+ * ```ts
+ * const err = new ConfigError("MP_PROJECT_ID is not set", {
+ *   variable: "MP_PROJECT_ID",
+ * });
+ * err.code; // "CONFIG_ERROR"
+ * ```
+ * @see mixpanel_headless.exceptions.ConfigError
  */
 export class ConfigError extends MixpanelHeadlessError {
   /**
    * Initialize ConfigError.
    *
-   * @param message - Human-readable error message (out of contract, R5.4).
+   * @param message - Human-readable message; not part of the contract.
    * @param details - Additional structured data.
    * @param options - Standard `ErrorOptions` (`cause` threading).
    * @param code - Machine-readable code; the subclasses pass their own,
@@ -395,6 +462,14 @@ export class ConfigError extends MixpanelHeadlessError {
  *
  * The {@link availableAccounts} accessor lists valid account names to
  * help users.
+ *
+ * @example
+ * ```ts
+ * const err = new AccountNotFoundError("staging", ["prod", "dev"]);
+ * err.message; // "Account 'staging' not found. Available accounts: 'prod', 'dev'"
+ * err.details; // { account_name: "staging", available_accounts: ["prod", "dev"] }
+ * ```
+ * @see mixpanel_headless.exceptions.AccountNotFoundError
  */
 export class AccountNotFoundError extends ConfigError {
   readonly #accountName: string;
@@ -428,12 +503,20 @@ export class AccountNotFoundError extends ConfigError {
     this.#availableAccounts = available;
   }
 
-  /** The requested account name that wasn't found. */
+  /**
+   * The requested account name that wasn't found.
+   *
+   * @returns The account name that was requested.
+   */
   get accountName(): string {
     return this.#accountName;
   }
 
-  /** List of valid account names. */
+  /**
+   * List of valid account names.
+   *
+   * @returns The configured account names, possibly empty.
+   */
   get availableAccounts(): readonly string[] {
     return this.#availableAccounts;
   }
@@ -444,6 +527,14 @@ export class AccountNotFoundError extends ConfigError {
  *
  * Includes the requested project ID and optionally a list of accessible
  * project IDs to help the user correct their selection.
+ *
+ * @example
+ * ```ts
+ * const err = new ProjectNotFoundError("123", ["456", "789"]);
+ * err.availableProjects; // ["456", "789"]
+ * err.code; // "PROJECT_NOT_FOUND"
+ * ```
+ * @see mixpanel_headless.exceptions.ProjectNotFoundError
  */
 export class ProjectNotFoundError extends ConfigError {
   readonly #projectId: string;
@@ -474,12 +565,20 @@ export class ProjectNotFoundError extends ConfigError {
     this.#availableProjects = available;
   }
 
-  /** The requested project ID that wasn't found. */
+  /**
+   * The requested project ID that wasn't found.
+   *
+   * @returns The project id that was requested.
+   */
   get projectId(): string {
     return this.#projectId;
   }
 
-  /** List of accessible project IDs. */
+  /**
+   * List of accessible project IDs.
+   *
+   * @returns The accessible project ids, possibly empty.
+   */
   get availableProjects(): readonly string[] {
     return this.#availableProjects;
   }
@@ -490,6 +589,14 @@ export class ProjectNotFoundError extends ConfigError {
  *
  * Raised when attempting to add an account with a name that's already in
  * use.
+ *
+ * @example
+ * ```ts
+ * const err = new AccountExistsError("prod");
+ * err.code; // "ACCOUNT_EXISTS"
+ * err.details; // { account_name: "prod" }
+ * ```
+ * @see mixpanel_headless.exceptions.AccountExistsError
  */
 export class AccountExistsError extends ConfigError {
   readonly #accountName: string;
@@ -509,13 +616,17 @@ export class AccountExistsError extends ConfigError {
     this.#accountName = accountName;
   }
 
-  /** The conflicting account name. */
+  /**
+   * The conflicting account name.
+   *
+   * @returns The conflicting account name.
+   */
   get accountName(): string {
     return this.#accountName;
   }
 }
 
-/** The documented flag-combination violations (043 contract). */
+/** The documented flag-combination violations. */
 export type InvalidArgumentViolation =
   "mutually_exclusive" | "no_browser_misuse" | "secret_stdin_misuse";
 
@@ -543,6 +654,16 @@ export interface InvalidArgumentErrorOptions {
  * Carries a `violation` discriminator and the resolved `detectedAuthType`
  * so JSON consumers can dispatch programmatically without parsing the
  * human message.
+ *
+ * @example
+ * ```ts
+ * const err = new InvalidArgumentError("--no-browser needs a service account", {
+ *   violation: "no_browser_misuse",
+ *   detectedAuthType: "oauth",
+ * });
+ * err.details; // { violation: "no_browser_misuse", detected_auth_type: "oauth" }
+ * ```
+ * @see mixpanel_headless.exceptions.InvalidArgumentError
  */
 export class InvalidArgumentError extends ConfigError {
   readonly #violation: InvalidArgumentViolation;
@@ -551,17 +672,18 @@ export class InvalidArgumentError extends ConfigError {
   /**
    * Initialize InvalidArgumentError.
    *
-   * @param message - Human-readable error message (out of contract, R5.4).
+   * @param message - Human-readable message; not part of the contract.
    * @param options - Keyword-only bag: `violation` (required) and
    *   `detectedAuthType`.
-   * @throws ParamValidationError - If `violation` is not one of the three
-   *   documented values (Python raises a bare `ValueError` here; the site
-   *   is uncoded/unvectored per R5.5, so the generic guard class is used).
+   * @throws {@link ParamValidationError} - when `violation` is not one of the
+   *   three documented values.
    */
   constructor(message: string, options: InvalidArgumentErrorOptions) {
     const { violation } = options;
     const detectedAuthType = options.detectedAuthType ?? null;
     if (!VALID_VIOLATIONS.includes(violation)) {
+      // Divergence: Python raises a bare ValueError here; the site has no
+      // registry code, so the port uses the generic coded guard class.
       throw new ParamValidationError(
         `Invalid violation '${violation}'; must be one of ${VALID_VIOLATIONS.join(", ")}.`,
       );
@@ -576,12 +698,20 @@ export class InvalidArgumentError extends ConfigError {
     this.#detectedAuthType = detectedAuthType;
   }
 
-  /** The kind of misuse — see {@link InvalidArgumentViolation}. */
+  /**
+   * The kind of misuse — see {@link InvalidArgumentViolation}.
+   *
+   * @returns The violation discriminator.
+   */
   get violation(): InvalidArgumentViolation {
     return this.#violation;
   }
 
-  /** The auth type the orchestrator resolved, or `null` if pre-detection. */
+  /**
+   * The auth type the orchestrator resolved, or `null` if pre-detection.
+   *
+   * @returns The resolved auth type, or `null` when detection had not run.
+   */
   get detectedAuthType(): string | null {
     return this.#detectedAuthType;
   }
@@ -591,8 +721,16 @@ export class InvalidArgumentError extends ConfigError {
  * Account is referenced by one or more targets and cannot be removed.
  *
  * The list of dependent target names is available in {@link referencedBy}
- * so callers can show a helpful error or pass `force=True` (Python side)
- * to delete the account and orphan the targets.
+ * so callers can show a helpful error or force the removal and orphan the
+ * targets.
+ *
+ * @example
+ * ```ts
+ * const err = new AccountInUseError("prod", ["default", "eu-target"]);
+ * err.referencedBy; // ["default", "eu-target"]
+ * err.code; // "ACCOUNT_IN_USE"
+ * ```
+ * @see mixpanel_headless.exceptions.AccountInUseError
  */
 export class AccountInUseError extends ConfigError {
   readonly #accountName: string;
@@ -625,20 +763,26 @@ export class AccountInUseError extends ConfigError {
     this.#referencedBy = targets;
   }
 
-  /** The account name that callers tried to remove. */
+  /**
+   * The account name that callers tried to remove.
+   *
+   * @returns The account name that was to be removed.
+   */
   get accountName(): string {
     return this.#accountName;
   }
 
-  /** Target names that reference the account. */
+  /**
+   * Target names that reference the account.
+   *
+   * @returns The names of the targets that reference the account.
+   */
   get referencedBy(): readonly string[] {
     return this.#referencedBy;
   }
 }
 
-// ---------------------------------------------------------------------------
-// Authentication exceptions.
-// ---------------------------------------------------------------------------
+// --- Authentication exceptions ---
 
 /** Options bag for {@link AuthenticationError} (fixed code `AUTH_FAILED`). */
 export type AuthenticationErrorOptions = HttpErrorOptions;
@@ -649,13 +793,26 @@ export type AuthenticationErrorOptions = HttpErrorOptions;
  * Raised when credentials are invalid, expired, or lack required
  * permissions. Inherits from {@link APIError} for full request/response
  * context.
+ *
+ * @example
+ * ```ts
+ * try {
+ *   await ws.listDashboards();
+ * } catch (err) {
+ *   if (err instanceof AuthenticationError) {
+ *     err.statusCode; // 401
+ *     err.code; // "AUTH_FAILED"
+ *   }
+ * }
+ * ```
+ * @see mixpanel_headless.exceptions.AuthenticationError
  */
 export class AuthenticationError extends APIError {
   /**
    * Initialize AuthenticationError.
    *
    * @param message - Human-readable error message (default
-   *   `"Authentication failed"`; out of contract, R5.4).
+   *   `"Authentication failed"`; not part of the contract).
    * @param options - Keyword-only HTTP context bag; `statusCode`
    *   defaults to 401.
    */
@@ -671,13 +828,11 @@ export class AuthenticationError extends APIError {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Rate-limit exceptions.
-// ---------------------------------------------------------------------------
+// --- Rate-limit exceptions ---
 
 // Rate-limit lead-collection form. Short forms.gle links can't carry
 // prefill query params, so the long-form URL is used whenever the
-// project_id is known. (Strings copied from Python; never asserted — R5.4.)
+// project_id is known. (Strings copied from Python; never asserted.)
 const RATE_LIMIT_FORM_SHORT_URL = "https://forms.gle/7Y9UcUHe69bh8EgC7";
 const RATE_LIMIT_FORM_PREFILL_BASE =
   "https://docs.google.com/forms/d/e/" +
@@ -707,7 +862,7 @@ function buildRateLimitFormUrl(projectId: string | null): string {
 
 /**
  * Options bag for {@link RateLimitError} — mirrors the Python signature,
- * which (unlike the other APIError subclasses) has NO `request_body`
+ * which (unlike the other APIError subclasses) has no `request_body`
  * parameter.
  */
 export interface RateLimitErrorOptions extends Omit<
@@ -727,6 +882,18 @@ export interface RateLimitErrorOptions extends Omit<
  *
  * The {@link retryAfter} accessor indicates when the request can be
  * retried; {@link rateLimitFormUrl} links the rate-limit-increase form.
+ *
+ * @example
+ * ```ts
+ * try {
+ *   await ws.listDashboards();
+ * } catch (err) {
+ *   if (err instanceof RateLimitError) {
+ *     console.warn(`Retry after ${err.retryAfter ?? "?"} s: ${err.rateLimitFormUrl}`);
+ *   }
+ * }
+ * ```
+ * @see mixpanel_headless.exceptions.RateLimitError
  */
 export class RateLimitError extends APIError {
   readonly #retryAfter: number | null;
@@ -736,7 +903,7 @@ export class RateLimitError extends APIError {
    * Initialize RateLimitError.
    *
    * @param message - Human-readable error message (default
-   *   `"Rate limit exceeded"`; out of contract, R5.4).
+   *   `"Rate limit exceeded"`; not part of the contract).
    * @param options - Keyword-only bag; `statusCode` defaults to 429.
    */
   constructor(
@@ -750,7 +917,7 @@ export class RateLimitError extends APIError {
       finalMessage = `${message}. Retry after ${retryAfter} seconds.`;
     }
     // Appended after the HTTP keys, exactly as Python's post-super
-    // `self._details[...] = ...` writes land (absent when None, R4.11).
+    // `self._details[...] = ...` writes land (absent when `null`).
     const extra: Record<string, unknown> = {};
     if (retryAfter !== null) {
       extra["retry_after"] = retryAfter;
@@ -772,12 +939,20 @@ export class RateLimitError extends APIError {
     this.#projectId = projectId;
   }
 
-  /** Seconds until retry is allowed, or `null` if unknown. */
+  /**
+   * Seconds until retry is allowed, or `null` if unknown.
+   *
+   * @returns Seconds to wait, or `null` when the header was absent.
+   */
   get retryAfter(): number | null {
     return this.#retryAfter;
   }
 
-  /** Mixpanel project id active when the rate limit was hit, if known. */
+  /**
+   * Mixpanel project id active when the rate limit was hit, if known.
+   *
+   * @returns The project id, or `null` when unknown.
+   */
   get projectId(): string | null {
     return this.#projectId;
   }
@@ -793,15 +968,21 @@ export class RateLimitError extends APIError {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Query exceptions.
-// ---------------------------------------------------------------------------
+// --- Query exceptions ---
 
 /**
  * Event name not found in the Mixpanel project.
  *
  * Includes suggestions for similar event names to help users correct
  * typos or case mismatches.
+ *
+ * @example
+ * ```ts
+ * const err = new EventNotFoundError("Sign Up", ["Signup", "Sign-up"]);
+ * err.message; // "Event 'Sign Up' not found. Did you mean: 'Signup', 'Sign-up'?"
+ * err.similarEvents; // ["Signup", "Sign-up"]
+ * ```
+ * @see mixpanel_headless.exceptions.EventNotFoundError
  */
 export class EventNotFoundError extends MixpanelHeadlessError {
   readonly #eventName: string;
@@ -831,12 +1012,20 @@ export class EventNotFoundError extends MixpanelHeadlessError {
     this.#similarEvents = similar;
   }
 
-  /** The event name that was not found. */
+  /**
+   * The event name that was not found.
+   *
+   * @returns The event name that was looked up.
+   */
   get eventName(): string {
     return this.#eventName;
   }
 
-  /** List of similar event names. */
+  /**
+   * List of similar event names.
+   *
+   * @returns Similar event names, possibly empty.
+   */
   get similarEvents(): readonly string[] {
     return this.#similarEvents;
   }
@@ -850,13 +1039,25 @@ export type QueryErrorOptions = HttpErrorOptions;
  *
  * Raised when an API query fails due to invalid parameters, syntax
  * errors, or other query-specific issues.
+ *
+ * @example
+ * ```ts
+ * try {
+ *   await ws.listDashboards();
+ * } catch (err) {
+ *   if (err instanceof QueryError) {
+ *     console.error(err.statusCode, err.responseBody);
+ *   }
+ * }
+ * ```
+ * @see mixpanel_headless.exceptions.QueryError
  */
 export class QueryError extends APIError {
   /**
    * Initialize QueryError.
    *
    * @param message - Human-readable error message (default
-   *   `"Query execution failed"`; out of contract, R5.4).
+   *   `"Query execution failed"`; not part of the contract).
    * @param options - Keyword-only HTTP context bag; `statusCode`
    *   defaults to 400.
    */
@@ -880,13 +1081,25 @@ export type ServerErrorOptions = HttpErrorOptions;
  *
  * Typically transient; the {@link APIError.responseBody} often carries
  * actionable information.
+ *
+ * @example
+ * ```ts
+ * try {
+ *   await ws.listDashboards();
+ * } catch (err) {
+ *   if (err instanceof ServerError) {
+ *     console.error(err.statusCode); // 500, 502, 503, …
+ *   }
+ * }
+ * ```
+ * @see mixpanel_headless.exceptions.ServerError
  */
 export class ServerError extends APIError {
   /**
    * Initialize ServerError.
    *
    * @param message - Human-readable error message (default
-   *   `"Server error"`; out of contract, R5.4).
+   *   `"Server error"`; not part of the contract).
    * @param options - Keyword-only HTTP context bag; `statusCode`
    *   defaults to 500.
    */
@@ -902,15 +1115,21 @@ export class ServerError extends APIError {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Validation exceptions.
-// ---------------------------------------------------------------------------
+// --- Validation exceptions ---
 
 /**
  * Date range exceeds the maximum allowed by the Mixpanel API.
  *
  * The Mixpanel Export API limits requests to 100 days maximum; split
  * large date ranges into smaller chunks.
+ *
+ * @example
+ * ```ts
+ * const err = new DateRangeTooLargeError("2026-01-01", "2026-06-30", 181);
+ * err.details;
+ * // { from_date: "2026-01-01", to_date: "2026-06-30", days_requested: 181, max_days: 100 }
+ * ```
+ * @see mixpanel_headless.exceptions.DateRangeTooLargeError
  */
 export class DateRangeTooLargeError extends MixpanelHeadlessError {
   readonly #fromDate: string;
@@ -919,7 +1138,7 @@ export class DateRangeTooLargeError extends MixpanelHeadlessError {
   readonly #maxDays: number;
 
   /**
-   * Initialize DateRangeTooLargeError (positional params, R3.8).
+   * Initialize DateRangeTooLargeError.
    *
    * @param fromDate - Start date that was requested.
    * @param toDate - End date that was requested.
@@ -949,30 +1168,44 @@ export class DateRangeTooLargeError extends MixpanelHeadlessError {
     this.#maxDays = maxDays;
   }
 
-  /** Start date that was requested. */
+  /**
+   * Start date that was requested.
+   *
+   * @returns The requested start date.
+   */
   get fromDate(): string {
     return this.#fromDate;
   }
 
-  /** End date that was requested. */
+  /**
+   * End date that was requested.
+   *
+   * @returns The requested end date.
+   */
   get toDate(): string {
     return this.#toDate;
   }
 
-  /** Number of days in the requested range. */
+  /**
+   * Number of days in the requested range.
+   *
+   * @returns The number of days in the requested range.
+   */
   get daysRequested(): number {
     return this.#daysRequested;
   }
 
-  /** Maximum allowed days. */
+  /**
+   * Maximum allowed days.
+   *
+   * @returns The maximum allowed number of days.
+   */
   get maxDays(): number {
     return this.#maxDays;
   }
 }
 
-// ---------------------------------------------------------------------------
-// OAuth exceptions.
-// ---------------------------------------------------------------------------
+// --- OAuth exceptions ---
 
 /**
  * OAuth authentication flow error.
@@ -982,12 +1215,19 @@ export class DateRangeTooLargeError extends MixpanelHeadlessError {
  * unavailability, and browser launch failures. Known codes:
  * `OAUTH_TOKEN_ERROR`, `OAUTH_REFRESH_ERROR`, `OAUTH_REGISTRATION_ERROR`,
  * `OAUTH_TIMEOUT`, `OAUTH_PORT_ERROR`, `OAUTH_BROWSER_ERROR`.
+ *
+ * @example
+ * ```ts
+ * const err = new OAuthError("No callback within 300 s", "OAUTH_TIMEOUT");
+ * err.code; // "OAUTH_TIMEOUT"
+ * ```
+ * @see mixpanel_headless.exceptions.OAuthError
  */
 export class OAuthError extends MixpanelHeadlessError {
   /**
    * Initialize OAuthError.
    *
-   * @param message - Human-readable error message (out of contract, R5.4).
+   * @param message - Human-readable message; not part of the contract.
    * @param code - Machine-readable error code (default
    *   `"OAUTH_TOKEN_ERROR"`).
    * @param details - Additional structured data about the error.
@@ -1026,6 +1266,18 @@ export interface RegionProbeErrorOptions {
  *
  * Carries the full attempt list for diagnostic use. See
  * {@link RegionProbeNetworkError} for the all-network-error subclass.
+ *
+ * @example
+ * ```ts
+ * const err = new RegionProbeError("No region accepted the credential", {
+ *   attempts: [
+ *     ["us", 401, "invalid token"],
+ *     ["eu", 401, "invalid token"],
+ *   ],
+ * });
+ * err.toDict().attempts; // [["us", 401, "invalid token"], ["eu", 401, "invalid token"]]
+ * ```
+ * @see mixpanel_headless.exceptions.RegionProbeError
  */
 export class RegionProbeError extends OAuthError {
   readonly #attempts: readonly RegionProbeAttempt[];
@@ -1033,7 +1285,7 @@ export class RegionProbeError extends OAuthError {
   /**
    * Initialize RegionProbeError.
    *
-   * @param message - Human-readable error message (out of contract, R5.4).
+   * @param message - Human-readable message; not part of the contract.
    * @param options - Keyword-only bag: `attempts` (required) and `code`.
    */
   constructor(message: string, options: RegionProbeErrorOptions) {
@@ -1046,7 +1298,11 @@ export class RegionProbeError extends OAuthError {
     this.#attempts = attempts;
   }
 
-  /** Ordered list of `(region, statusCode, errorBody)` tuples (a copy). */
+  /**
+   * Ordered list of `(region, statusCode, errorBody)` tuples (a copy).
+   *
+   * @returns A fresh copy of the attempt list.
+   */
   get attempts(): readonly RegionProbeAttempt[] {
     return [...this.#attempts];
   }
@@ -1069,20 +1325,32 @@ export class RegionProbeError extends OAuthError {
 }
 
 /**
- * Raised when EVERY region probe attempt failed at the network layer.
+ * Raised when every region probe attempt failed at the network layer.
  *
  * Used when all recorded attempts have `statusCode === 0` — the
  * credential was never evaluated because no region was reachable. Carries
  * the same `attempts` shape as the parent.
+ *
+ * @example
+ * ```ts
+ * const err = new RegionProbeNetworkError("No region reachable", {
+ *   attempts: [
+ *     ["us", 0, "ECONNREFUSED"],
+ *     ["eu", 0, "ECONNREFUSED"],
+ *   ],
+ * });
+ * err.code; // "OAUTH_NETWORK_UNREACHABLE"
+ * ```
+ * @see mixpanel_headless.exceptions.RegionProbeNetworkError
  */
 export class RegionProbeNetworkError extends RegionProbeError {
   /**
    * Initialize RegionProbeNetworkError.
    *
-   * @param message - Human-readable error message (out of contract, R5.4).
-   * @param options - Keyword-only bag: `attempts` — every entry must have
-   *   status `0` by construction (the probe loop only raises this
-   *   subclass when that invariant holds).
+   * @param message - Human-readable message; not part of the contract.
+   * @param options - Keyword-only bag whose `attempts` entries all have
+   *   status `0` by construction; the probe loop only raises this subclass
+   *   when that invariant holds.
    */
   constructor(
     message: string,
@@ -1101,12 +1369,23 @@ export class RegionProbeNetworkError extends RegionProbeError {
  * Raised when an auth-axis identifier cannot be resolved during App API
  * requests. Known codes: `NO_WORKSPACES`, `AMBIGUOUS_WORKSPACE`,
  * `WORKSPACE_NOT_FOUND`, `ORGANIZATION_AMBIGUOUS`.
+ *
+ * @example
+ * ```ts
+ * const err = new WorkspaceScopeError(
+ *   "Project 123 has 3 workspaces; pass workspace_id",
+ *   "AMBIGUOUS_WORKSPACE",
+ *   { workspace_ids: [1, 2, 3] },
+ * );
+ * err.code; // "AMBIGUOUS_WORKSPACE"
+ * ```
+ * @see mixpanel_headless.exceptions.WorkspaceScopeError
  */
 export class WorkspaceScopeError extends MixpanelHeadlessError {
   /**
    * Initialize WorkspaceScopeError.
    *
-   * @param message - Human-readable error message (out of contract, R5.4).
+   * @param message - Human-readable message; not part of the contract.
    * @param code - Machine-readable error code (default `"NO_WORKSPACES"`).
    * @param details - Additional structured data about the error.
    * @param options - Standard `ErrorOptions` (`cause` threading).
@@ -1121,21 +1400,29 @@ export class WorkspaceScopeError extends MixpanelHeadlessError {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Business-context validation.
-// ---------------------------------------------------------------------------
+// --- Business-context validation ---
 
 /**
  * Business-context content failed client-side validation.
  *
  * Raised when supplied content exceeds `BUSINESS_CONTEXT_MAX_CHARS`
  * (50,000 characters). The `details` dict carries `length` and `max`.
+ *
+ * @example
+ * ```ts
+ * const err = new BusinessContextValidationError(
+ *   "Business context exceeds 50,000 characters",
+ *   { length: 51234, max: 50000 },
+ * );
+ * err.code; // "BUSINESS_CONTEXT_TOO_LONG"
+ * ```
+ * @see mixpanel_headless.exceptions.BusinessContextValidationError
  */
 export class BusinessContextValidationError extends MixpanelHeadlessError {
   /**
    * Initialize BusinessContextValidationError.
    *
-   * @param message - Human-readable error message (out of contract, R5.4).
+   * @param message - Human-readable message; not part of the contract.
    * @param details - Additional structured data — typically `length` and
    *   `max`.
    * @param options - Standard `ErrorOptions` (`cause` threading).
@@ -1149,9 +1436,7 @@ export class BusinessContextValidationError extends MixpanelHeadlessError {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Bookmark validation.
-// ---------------------------------------------------------------------------
+// --- Bookmark validation ---
 
 /** Severity of a {@link ValidationError} finding. */
 export type ValidationSeverity = "error" | "warning";
@@ -1159,11 +1444,27 @@ export type ValidationSeverity = "error" | "warning";
 /**
  * A single validation issue found in query arguments or bookmark params.
  *
- * NOT an exception — Python defines this as a frozen dataclass; it ports
- * as a plain class (phase2-design C3). It rides inside
- * {@link BookmarkValidationError.errors} and oracle error payloads. There
- * is no `field` attribute — the field list mirrors `exceptions.py+`
- * exactly.
+ * Not an exception: Python defines it as a frozen dataclass and it ports as
+ * a plain class. It rides inside {@link BookmarkValidationError.errors} and
+ * oracle error payloads. There is no `field` attribute; the field list
+ * mirrors the Python dataclass exactly.
+ *
+ * @example
+ * ```ts
+ * const finding = new ValidationError(
+ *   "$.sections.show[0].math",
+ *   "Unknown math type 'avg'",
+ *   "B9_INVALID_MATH",
+ *   "error",
+ *   ["average"],
+ * );
+ * finding.toString();
+ * // "[ERROR] $.sections.show[0].math: Unknown math type 'avg' Did you mean 'average'?"
+ * finding.toDict();
+ * // { path: "$.sections.show[0].math", message: "Unknown math type 'avg'",
+ * //   code: "B9_INVALID_MATH", severity: "error", suggestion: ["average"] }
+ * ```
+ * @see mixpanel_headless.exceptions.ValidationError
  */
 export class ValidationError {
   /** JSONPath-like location of the error. */
@@ -1185,8 +1486,8 @@ export class ValidationError {
   readonly fix: Readonly<Record<string, unknown>> | null;
 
   /**
-   * Initialize a validation finding (positional params mirror the Python
-   * dataclass field order, R3.8).
+   * Initialize a validation finding (positional parameters mirror the
+   * Python dataclass field order).
    *
    * @param path - JSONPath-like location of the error.
    * @param message - Human-readable description of the issue.
@@ -1218,8 +1519,8 @@ export class ValidationError {
    * Serialize for JSON output.
    *
    * Always emits `path`, `message`, `code`, `severity`; adds `suggestion`
-   * (tuple → JSON array) and `fix` ONLY when non-null — byte-matching
-   * Python's `to_dict` (R4.11 conditional emission).
+   * (tuple → JSON array) and `fix` only when non-null — byte-matching
+   * Python's `to_dict`.
    *
    * @returns Dictionary with the non-null ValidationError fields.
    */
@@ -1240,15 +1541,15 @@ export class ValidationError {
   }
 
   /**
-   * Return the formatted error string (Python `__str__` port; display
-   * only — out of contract, R5.4).
+   * Return the formatted error string (Python `__str__`; display only,
+   * not part of the contract).
    *
    * @returns Formatted string with severity prefix, path, and message.
    */
   toString(): string {
     const prefix = this.severity === "warning" ? "WARNING" : "ERROR";
     let s = `[${prefix}] ${this.path}: ${this.message}`;
-    // Python truthiness: `if self.suggestion` is false for None AND ().
+    // Python truthiness: `if self.suggestion` is false for `None` and `()` alike.
     const first = this.suggestion?.[0];
     if (first !== undefined) {
       s += ` Did you mean '${first}'?`;
@@ -1260,8 +1561,19 @@ export class ValidationError {
 /**
  * Bookmark params failed validation.
  *
- * Contains ALL validation errors found, enabling callers to fix multiple
+ * Contains every validation error found, enabling callers to fix multiple
  * issues in a single pass.
+ *
+ * @example
+ * ```ts
+ * const err = new BookmarkValidationError([
+ *   new ValidationError("$.sections", "Missing required field: sections", "B1_MISSING_SECTIONS"),
+ * ]);
+ * err.errorCount; // 1
+ * err.warningCount; // 0
+ * err.details["error_count"]; // 1
+ * ```
+ * @see mixpanel_headless.exceptions.BookmarkValidationError
  */
 export class BookmarkValidationError extends MixpanelHeadlessError {
   readonly #errors: readonly ValidationError[];
@@ -1300,25 +1612,35 @@ export class BookmarkValidationError extends MixpanelHeadlessError {
     this.#warningCount = warningCount;
   }
 
-  /** All validation errors found (both errors and warnings). */
+  /**
+   * All validation errors found (both errors and warnings).
+   *
+   * @returns Every finding, errors and warnings alike.
+   */
   get errors(): readonly ValidationError[] {
     return this.#errors;
   }
 
-  /** Number of severity `"error"` items. */
+  /**
+   * Number of severity `"error"` items.
+   *
+   * @returns The number of findings with severity `"error"`.
+   */
   get errorCount(): number {
     return this.#errorCount;
   }
 
-  /** Number of severity `"warning"` items. */
+  /**
+   * Number of severity `"warning"` items.
+   *
+   * @returns The number of findings with severity `"warning"`.
+   */
   get warningCount(): number {
     return this.#warningCount;
   }
 }
 
-// ---------------------------------------------------------------------------
-// Session-replay exceptions (044-session-replay).
-// ---------------------------------------------------------------------------
+// --- Session-replay exceptions ---
 
 /**
  * Options bag for {@link SessionReplayError} and subclasses: the full
@@ -1342,6 +1664,16 @@ export interface SessionReplayErrorOptions extends HttpErrorContext {
  * `new.target` so the most-derived class wins, exactly like Python's
  * `self._DEFAULT_CODE`). Because this is an {@link APIError}, generic
  * `instanceof APIError` handlers continue to catch these.
+ *
+ * @example
+ * ```ts
+ * const err = new SessionReplayError("CDN fetch failed", {
+ *   statusCode: 502,
+ *   details: { replay_id: "abc-123" },
+ * });
+ * err.details; // { status_code: 502, replay_id: "abc-123" }
+ * ```
+ * @see mixpanel_headless.exceptions.SessionReplayError
  */
 export class SessionReplayError extends APIError {
   /** Default machine code when the constructor receives none. */
@@ -1353,7 +1685,7 @@ export class SessionReplayError extends APIError {
   /**
    * Initialize SessionReplayError.
    *
-   * @param message - Human-readable error message (out of contract, R5.4).
+   * @param message - Human-readable message; not part of the contract.
    * @param options - Keyword-only bag; `statusCode`/`code` default to the
    *   most-derived class's static defaults; `details` is appended to the
    *   APIError details dict after the HTTP keys, exactly where Python's
@@ -1378,6 +1710,14 @@ export class SessionReplayError extends APIError {
 /**
  * Project has SESSION_RECORDING_SENSITIVE_DATA enabled and the caller
  * lacks access (bulk-sign endpoint 403).
+ *
+ * @example
+ * ```ts
+ * const err = new SessionReplayAccessError("Replay access denied");
+ * err.code; // "SESSION_REPLAY_ACCESS_ERROR"
+ * err.statusCode; // 403
+ * ```
+ * @see mixpanel_headless.exceptions.SessionReplayAccessError
  */
 export class SessionReplayAccessError extends SessionReplayError {
   /** Error code this class reports by default. */
@@ -1390,6 +1730,14 @@ export class SessionReplayAccessError extends SessionReplayError {
 
 /**
  * Signed CDN URL passed to a fetch has expired (5-minute TTL).
+ *
+ * @example
+ * ```ts
+ * const err = new SignedURLExpiredError("Signed URL expired");
+ * err.code; // "SIGNED_URL_EXPIRED"
+ * err.statusCode; // 403
+ * ```
+ * @see mixpanel_headless.exceptions.SignedURLExpiredError
  */
 export class SignedURLExpiredError extends SessionReplayError {
   /** Error code this class reports by default. */
@@ -1401,6 +1749,16 @@ export class SignedURLExpiredError extends SessionReplayError {
 
 /**
  * No CDN bytes found for a requested replay (404 on the first file).
+ *
+ * @example
+ * ```ts
+ * const err = new ReplayNotFoundError("No replay bytes for abc-123", {
+ *   details: { replay_id: "abc-123" },
+ * });
+ * err.code; // "REPLAY_NOT_FOUND"
+ * err.statusCode; // 404
+ * ```
+ * @see mixpanel_headless.exceptions.ReplayNotFoundError
  */
 export class ReplayNotFoundError extends SessionReplayError {
   /** Error code this class reports by default. */
@@ -1414,6 +1772,14 @@ export class ReplayNotFoundError extends SessionReplayError {
  * Replay bytes are not in rrweb format (mobile or other non-web
  * recording). Default status 501 (Not Implemented): no HTTP request
  * failed, the format simply isn't supported yet.
+ *
+ * @example
+ * ```ts
+ * const err = new UnsupportedReplayFormatError("Not an rrweb recording");
+ * err.code; // "UNSUPPORTED_REPLAY_FORMAT"
+ * err.statusCode; // 501
+ * ```
+ * @see mixpanel_headless.exceptions.UnsupportedReplayFormatError
  */
 export class UnsupportedReplayFormatError extends SessionReplayError {
   /** Error code this class reports by default. */
@@ -1424,9 +1790,7 @@ export class UnsupportedReplayFormatError extends SessionReplayError {
   protected static override readonly defaultStatus: number = 501;
 }
 
-// ---------------------------------------------------------------------------
-// Report-link exceptions (045-report-links, Python PR #223).
-// ---------------------------------------------------------------------------
+// --- Report-link exceptions ---
 
 /** Options bag shared by the {@link ReportLinkError} family (Python kw-only). */
 export interface ReportLinkErrorOptions {
@@ -1443,7 +1807,7 @@ export interface ReportLinkErrorOptions {
 }
 
 /**
- * Base class for report-link failures (045-report-links).
+ * Base class for report-link failures.
  *
  * Report links are Mixpanel web URLs that open a report in the browser.
  * Most failures in this family are local — a link that does not parse,
@@ -1463,6 +1827,18 @@ export interface ReportLinkErrorOptions {
  * Subclasses override the static default code, mirroring the Python
  * `_DEFAULT_CODE` class attribute (read via `new.target` so the
  * most-derived class wins).
+ *
+ * @example
+ * ```ts
+ * try {
+ *   await ws.queryReportLink(url);
+ * } catch (err) {
+ *   if (err instanceof ReportLinkError) {
+ *     console.error(err.code, err.details["hint"]);
+ *   }
+ * }
+ * ```
+ * @see mixpanel_headless.exceptions.ReportLinkError
  */
 export class ReportLinkError extends MixpanelHeadlessError {
   /** Default machine code when the constructor receives none. */
@@ -1471,10 +1847,7 @@ export class ReportLinkError extends MixpanelHeadlessError {
   /**
    * Initialize a report-link error.
    *
-   * @param message - Human-readable error message (out of contract,
-   *   R5.4; the Python repo's
-   *   `specs/045-report-links/contracts/error-messages.md` holds the
-   *   stable wording per code).
+   * @param message - Human-readable message; not part of the contract.
    * @param options - Keyword-only bag; `code` defaults to the
    *   most-derived class's static default.
    */
@@ -1496,6 +1869,16 @@ export class ReportLinkError extends MixpanelHeadlessError {
  * `REPORT_LINK_NOT_MIXPANEL_HOST`, `REPORT_LINK_UNRECOGNIZED_PATH`,
  * `REPORT_LINK_UNRECOGNIZED_HASH`, `REPORT_LINK_EMPTY_HASH`. The parser
  * is total: this is the only exception it throws for any input string.
+ *
+ * @example
+ * ```ts
+ * const err = new ReportLinkParseError("Not a Mixpanel host", {
+ *   code: "REPORT_LINK_NOT_MIXPANEL_HOST",
+ *   details: { hint: "Expected mixpanel.com or eu.mixpanel.com" },
+ * });
+ * err.code; // "REPORT_LINK_NOT_MIXPANEL_HOST"
+ * ```
+ * @see mixpanel_headless.exceptions.ReportLinkParseError
  */
 export class ReportLinkParseError extends ReportLinkError {
   /** Error code this class reports by default. */
@@ -1510,6 +1893,16 @@ export class ReportLinkParseError extends ReportLinkError {
  * (a `~(...)` JSURL hash), `UNSUPPORTED_DASHBOARD_LINK` (a board, not a
  * single report), `UNSUPPORTED_REPORT_TYPE` (for example
  * `launch-analysis` passed to `queryReportLink`).
+ *
+ * @example
+ * ```ts
+ * const err = new UnsupportedReportLinkError("Boards cannot be queried", {
+ *   code: "UNSUPPORTED_DASHBOARD_LINK",
+ *   details: { kind: "board", hint: "Open one of the board's reports instead" },
+ * });
+ * err.code; // "UNSUPPORTED_DASHBOARD_LINK"
+ * ```
+ * @see mixpanel_headless.exceptions.UnsupportedReportLinkError
  */
 export class UnsupportedReportLinkError extends ReportLinkError {
   /** Error code this class reports by default. */
@@ -1524,6 +1917,16 @@ export class UnsupportedReportLinkError extends ReportLinkError {
  * `REPORT_LINK_BOOKMARK_NOT_FOUND`, `SHORT_LINK_NOT_FOUND`. A slug is
  * readable only in the project and region that created it, so a 404 on
  * a slug often means the caller is on the wrong project.
+ *
+ * @example
+ * ```ts
+ * const err = new ReportLinkNotFoundError("Slug not found", {
+ *   code: "REPORT_LINK_SLUG_NOT_FOUND",
+ *   details: { slug: "abc123", project_id: 123, hint: "Check the project" },
+ * });
+ * err.code; // "REPORT_LINK_SLUG_NOT_FOUND"
+ * ```
+ * @see mixpanel_headless.exceptions.ReportLinkNotFoundError
  */
 export class ReportLinkNotFoundError extends ReportLinkError {
   /** Error code this class reports by default. */
@@ -1541,6 +1944,16 @@ export class ReportLinkNotFoundError extends ReportLinkError {
  * before any HTTP call. The project and workspace checks run before the
  * record fetch; for a shortlink that is after the one redirect GET,
  * because the target is not known before it.
+ *
+ * @example
+ * ```ts
+ * const err = new ReportLinkScopeMismatchError("Link is for project 456", {
+ *   code: "REPORT_LINK_PROJECT_MISMATCH",
+ *   details: { project_id: 456, hint: "Switch to project 456" },
+ * });
+ * err.code; // "REPORT_LINK_PROJECT_MISMATCH"
+ * ```
+ * @see mixpanel_headless.exceptions.ReportLinkScopeMismatchError
  */
 export class ReportLinkScopeMismatchError extends ReportLinkError {
   /** Error code this class reports by default. */
@@ -1555,6 +1968,16 @@ export class ReportLinkScopeMismatchError extends ReportLinkError {
  * (3xx without `Location`), `SHORT_LINK_UNEXPECTED_RESPONSE` (200 body
  * without the `window.location.href` script), `SHORT_LINK_CHAIN` (the
  * target is another shortlink; headless follows one redirect only).
+ *
+ * @example
+ * ```ts
+ * const err = new ShortLinkResolutionError("Redirect had no Location", {
+ *   code: "SHORT_LINK_NO_LOCATION",
+ *   details: { short_code: "k3Fz9", hint: "The shortlink may have been deleted" },
+ * });
+ * err.code; // "SHORT_LINK_NO_LOCATION"
+ * ```
+ * @see mixpanel_headless.exceptions.ShortLinkResolutionError
  */
 export class ShortLinkResolutionError extends ReportLinkError {
   /** Error code this class reports by default. */
