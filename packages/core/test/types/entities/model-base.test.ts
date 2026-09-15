@@ -94,6 +94,22 @@ describe("EntityModel construction semantics", () => {
     expect(Object.keys(context.toJSON())).not.toContain("novel_server_key");
   });
 
+  it("keeps a JSON-derived __proto__ key as an own extra (no re-parenting)", () => {
+    // JSON.parse yields an OWN "__proto__" key, exactly like a Python
+    // dict; copying it with a plain `record[key] = value` would hit the
+    // inherited accessor and silently re-parent the extras bag instead.
+    const raw: unknown = JSON.parse(
+      '{"level":"project","content":"hi","__proto__":{"polluted":true}}',
+    );
+    const context = BusinessContext.fromDict(raw);
+    expect(Object.hasOwn(context.__extras, "__proto__")).toBe(true);
+    expect(Object.getPrototypeOf(context.__extras)).toBe(Object.prototype);
+    expect(Object.hasOwn(context.modelDump(), "__proto__")).toBe(true);
+    expect(
+      (context.modelDump() as { polluted?: unknown }).polluted,
+    ).toBeUndefined();
+  });
+
   it("extra='ignore' (Pydantic default) drops unknown keys silently", () => {
     const pagination = CursorPagination.fromDict({
       page_size: 10,

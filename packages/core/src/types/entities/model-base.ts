@@ -50,7 +50,7 @@ import {
   coerceStr,
 } from "../../coerce.js";
 import { cpLength } from "../../compat/codepoint.js";
-import { isPythonDict } from "../../compat/python-dict.js";
+import { isPythonDict, setOwn } from "../../compat/python-dict.js";
 import { ResponseValidationError } from "../../errors.js";
 
 /**
@@ -378,7 +378,7 @@ function reconstructNested(
     }
     const out: Record<string, unknown> = {};
     for (const [key, item] of Object.entries(value)) {
-      out[key] = one(item, `${path}.${key}`);
+      setOwn(out, key, one(item, `${path}.${key}`));
     }
     return out;
   }
@@ -489,7 +489,7 @@ export function prepareInit<F extends object>(
     if (field === undefined) {
       // Unknown keys flow to the constructor, which applies the
       // per-class extra policy (forbid/allow/ignore) in one place.
-      bag[key] = value;
+      setOwn(bag, key, value);
       continue;
     }
     if (Object.hasOwn(bag, field) && field !== key) {
@@ -497,7 +497,7 @@ export function prepareInit<F extends object>(
       // present; later AliasChoices entries never override earlier hits.
       continue;
     }
-    bag[field] = value;
+    setOwn(bag, field, value);
   }
   return bag as F;
 }
@@ -551,7 +551,7 @@ export abstract class EntityModel<F extends object = never> {
       if (cls.extraPolicy === "forbid") {
         modelFail(cls.modelName, `unknown field ${JSON.stringify(key)}`);
       } else if (cls.extraPolicy === "allow") {
-        extras[key] = value;
+        setOwn(extras, key, value);
       }
     }
     const out: Record<string, unknown> = {};
@@ -751,7 +751,7 @@ export abstract class EntityModel<F extends object = never> {
       if (skip(value)) {
         continue;
       }
-      out[key] = dumpValue(value, byAlias, excludeNone);
+      setOwn(out, key, dumpValue(value, byAlias, excludeNone));
     }
     for (const computed of cls.computedSpecs ?? []) {
       const value = computed.get(this);
@@ -840,8 +840,11 @@ function dumpValue(
     // reaches model fields, not mapping entries) and values recurse.
     const out: Record<string, unknown> = {};
     for (const [key, item] of value as ReadonlyMap<unknown, unknown>) {
-      out[String(key)] =
-        item === undefined ? null : dumpValue(item, byAlias, excludeNone);
+      setOwn(
+        out,
+        String(key),
+        item === undefined ? null : dumpValue(item, byAlias, excludeNone),
+      );
     }
     return out;
   }
@@ -853,8 +856,11 @@ function dumpValue(
     // (measured 2026-08-16) — only model fields are excluded.
     const out: Record<string, unknown> = {};
     for (const [key, item] of Object.entries(value)) {
-      out[key] =
-        item === undefined ? null : dumpValue(item, byAlias, excludeNone);
+      setOwn(
+        out,
+        key,
+        item === undefined ? null : dumpValue(item, byAlias, excludeNone),
+      );
     }
     return out;
   }
@@ -895,7 +901,7 @@ function serializeValue(value: unknown, mode: "json" | "vector"): unknown {
     // Map keeps the Python order for every consumer (B8-MAPFIX).
     const out: Record<string, unknown> = {};
     for (const [key, item] of value as ReadonlyMap<unknown, unknown>) {
-      out[String(key)] = serializeValue(item, mode);
+      setOwn(out, String(key), serializeValue(item, mode));
     }
     return out;
   }
@@ -905,7 +911,7 @@ function serializeValue(value: unknown, mode: "json" | "vector"): unknown {
   if (isPlainObject(value)) {
     const out: Record<string, unknown> = {};
     for (const [key, item] of Object.entries(value)) {
-      out[key] = serializeValue(item, mode);
+      setOwn(out, key, serializeValue(item, mode));
     }
     return out;
   }
