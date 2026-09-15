@@ -103,7 +103,11 @@ Each package has `tsconfig.json` (`rootDir: src`, `outDir: dist`) and
 `tsconfig.test.json` (`noEmit`, references the build). The root
 `tsconfig.json` is the solution file `tsc -b` drives. After toggling a flag in
 `tsconfig.lib.json`, run `npx tsc -b --force` once; incremental builds have
-been seen to miss `isolatedDeclarations` diagnostics.
+been seen to miss `isolatedDeclarations` diagnostics. To build from clean use
+`npm run clean` (`tsc -b --clean`), which removes `dist/` and the
+`*.tsbuildinfo` files together — deleting `dist/` by hand leaves the build info
+claiming the packages are built, and the next `tsc -b` fails the test projects
+with TS6305 instead of re-emitting.
 
 `stripInternal` is deliberately off (reasons in `tsconfig.lib.json`; the last
 trial produced 407 `tsc -b` errors, all in white-box test projects that read
