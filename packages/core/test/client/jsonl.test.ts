@@ -1,19 +1,8 @@
-// Streaming JSONL splitter unit tests — Phase-3 packet B0-2
-// (`_iter_jsonl_lines`, api_client.py).
-//
-// Translation sources (header corrected per arbiter fix A1,
-// b0-review-resolution): tests/unit/test_api_client.py::TestIterJsonlLines
-// (:2709-2877, 8 tests driving `_iter_jsonl_lines` directly — every
-// behavior is covered below: simple lines → "handles many lines within
-// one chunk"; no-trailing-newline / blank-lines-skipped / chunk-boundary /
-// mid-codepoint-split / empty-response / whitespace-only-skipped map to
-// the authored-* and named cases; utf8_content is subsumed by the
-// strictly-harder split-😀 case), PLUS the 6 authored chunk vectors in
-// conformance/vectors/authored/streaming/jsonl-chunks.jsonl (design
-// D2/D4.2 item 9), mirrored 1:1. Gzip decoding is the transport's job
-// (httpx decodes before `iter_bytes()`; the conformance binding
-// decompresses before calling in) — so the gzip authored vector is
-// locked by vector replay, not re-tested here.
+// The streaming JSONL splitter `iterJsonlLines` (chunk boundaries, blank
+// lines, CRLF, mid-codepoint splits, Python whitespace/BOM semantics).
+// Mirrors TestIterJsonlLines from tests/unit/test_api_client.py plus the
+// authored chunk vectors in conformance/vectors/authored/streaming/jsonl-chunks.jsonl.
+// Gzip decoding is the transport's job, so that vector is left to corpus replay.
 import { describe, expect, it } from "vitest";
 
 import { iterJsonlLines } from "../../src/client/jsonl.js";
@@ -99,24 +88,21 @@ describe("iterJsonlLines", () => {
 
   it("strips with the PYTHON whitespace set (U+001C–U+001F are stripped)", async () => {
     // Python str.strip() strips \x1c-\x1f; JS String#trim does not
-    // (pythonStrip, R11.3/B0-1 item 4). A line that is ONLY \x1c skips.
+    // (hence pythonStrip). A line that is ONLY \x1c skips.
     await expect(lines(["\x1C\n", "a\x1C\n"])).resolves.toStrictEqual(["a"]);
   });
 
   it("yields a BOM-only line verbatim (Python utf-8 codec keeps U+FEFF)", async () => {
     // WHATWG decoders strip a leading BOM by default; Python's "utf-8"
     // codec never does, and U+FEFF is NOT Python str.strip() whitespace —
-    // locked by the B0-2 R10.9 fuzz repro
-    // (2026-08-15-api_client-_iter_jsonl_lines: b"\xef\xbb\xbf\n" yields
-    // ["\ufeff"], never []).
+    // a differential-fuzz repro: the bytes ef bb bf 0a yield one U+FEFF line, never [].
     await expect(
       lines([new Uint8Array([0xef, 0xbb, 0xbf, 0x0a])]),
     ).resolves.toStrictEqual(["\uFEFF"]);
   });
 
   it("decodes invalid UTF-8 with replacement, never throwing", async () => {
-    // errors="replace" semantics (TextDecoder non-fatal — the packet's
-    // sanctioned mapping).
+    // errors="replace" semantics (a non-fatal TextDecoder).
     const bad = new Uint8Array([0x61, 0xff, 0x62, 0x0a]);
     await expect(lines([bad])).resolves.toStrictEqual(["a�b"]);
   });
@@ -126,7 +112,7 @@ describe("iterJsonlLines", () => {
     await expect(lines(["a", "b", "c"])).resolves.toStrictEqual(["abc"]);
   });
 
-  it("R10.9 edge lines survive verbatim (non-BMP, floats, True/None)", async () => {
+  it("fuzz-found edge lines survive verbatim (non-BMP, floats, True/None)", async () => {
     await expect(
       lines(['{"x": 18.0}\n{"y": 1.5}\n𝒳\nTrue\nNone\n']),
     ).resolves.toStrictEqual([

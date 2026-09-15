@@ -1,30 +1,9 @@
-// Layer-3 translation — Phase-3 packet B4-C2 export/streaming locks.
-// Sources:
-//
-// - tests/unit/test_api_client.py::TestEventExport — ALL.
-// - tests/unit/test_api_client.py::TestRequestEncodingRegression
-//   — the profile-export JSON-body encoding lock.
-// - tests/unit/test_api_client.py::TestRetryStateResetRegression
-//   — ALL FOUR tests + the :1551 project_id lock (the B0
-//   deviation-3 deferrals, B0-ARB carried item 6b; gate diff-checks
-//   these names).
-// - tests/unit/test_api_client.py::TestRetryAfterHardening::
-//   test_export_events_negative_retry_after_uses_backoff — the
-//   remaining deviation-3 deferral. The Python `monkeypatch.setattr(
-//   client, "_calculate_backoff", lambda _: 0.75)` pin translates to the
-//   injected-RNG-deterministic value (B0 deviation-5 precedent):
-//   `random: () => 0` makes the fallback backoff EXACTLY 1.0 s, so
-//   `recorded_sleeps == [0.75]` becomes `sleeps == [1000]` (ms seam,
-//   R2.12) — assertion content (negative Retry-After is NOT honored;
-//   exactly one backoff sleep) preserved, R10.2.
-// - tests/unit/test_query_workspace_scoping.py::TestNonQueryHostsUnaffected::
-//   test_export_stream_carries_no_workspace_id_param — the C1
-//   hand-off (B4-C1-notes.md finding 5; client-scoping.test.ts header).
-//
-// The remaining classes of test_api_client.py were translated at B0/C1
-// (internals/backoff: `b0-review-assertions.md`; construction/request:
-// client-core.test.ts / client-request.test.ts headers) or belong to
-// other shards (C3+: CRUD suites).
+// `exportEvents` / `exportProfiles`: JSONL parsing, `onBatch`, param
+// threading, retry-state reset across 429 retries, negative Retry-After
+// fallback, no `workspace_id` on the export host, lossless per-line parsing.
+// Mirrors TestEventExport, TestRequestEncodingRegression, TestRetryStateResetRegression
+// and the export cases of TestRetryAfterHardening / TestNonQueryHostsUnaffected.
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -312,14 +291,15 @@ describe("Retry after hardening (export slice)", () => {
     });
     const events = await drain(client.exportEvents("2024-01-01", "2024-01-31"));
     expect(events).toHaveLength(1);
-    // Injected-RNG substitution for the Python `_calculate_backoff`
-    // monkeypatch pin (header note): random()=0 → backoff exactly 1.0 s
-    // → ONE sleep of 1000 ms, proving Retry-After "-30" was rejected.
+    // Python pins `_calculate_backoff` to 0.75 via monkeypatch and expects
+    // `recorded_sleeps == [0.75]`; here the injected random()=0 makes the
+    // fallback backoff exactly 1.0 s → ONE sleep of 1000 ms, proving
+    // Retry-After "-30" was rejected.
     expect(sleeps).toStrictEqual([1000]);
   });
 });
 
-describe("Non query hosts unaffected (C1 hand-off)", () => {
+describe("Non query hosts unaffected (export stream)", () => {
   // python: TestNonQueryHostsUnaffected
   it("export stream carries no workspace ID param", async () => {
     // python: test_export_stream_carries_no_workspace_id_param
@@ -340,7 +320,7 @@ describe("Non query hosts unaffected (C1 hand-off)", () => {
   });
 });
 
-describe("export lossless spine (GATE-VERDICT R5)", () => {
+describe("export lossless spine", () => {
   it("parses NaN/Infinity constants and preserves float tokens per line", async () => {
     const { client } = createMockClient(makeSession(), () => ({
       status: 200,

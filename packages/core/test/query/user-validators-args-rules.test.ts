@@ -1,33 +1,8 @@
-/**
- * Layer-3 translation of `tests/test_user_validators.py`
- * (Python revision: `ts-port/phase2-contract-support` HEAD; 1,340 LOC,
- * 149 test methods — the WHOLE file, per b2-packets.md §V2
- * "Layer-3 test translation (V2)").
- *
- * R10.2 assertion-for-assertion. Notes on the translation:
- *
- * - The Python module helper `_only_code` is dead code in the Python
- *   file (defined, never called) and is therefore not translated — it
- *   carries no assertion.
- * - `date.today()` is a clock read. Python's tests build `yesterday` /
- *   `today` / `future` from the real clock, so the TS twins do the
- *   same through {@link todayIso} / {@link shiftDays} and let
- *   `validateUserArgs` use its DEFAULT clock seam. The frozen-clock
- *   path (`options.today`) is exercised by its own describe block at
- *   the bottom — that seam is what the (b′) binding feeds from
- *   `context.shims` (b2-packets.md §V2 trap 2b).
- * - `MagicMock(spec=CohortDefinition)` (U24) has no TS analog; the
- *   twin builds a real-prototype object whose `toDict` throws. Python
- *   catches `(ValueError, TypeError, RuntimeError)`; the ported
- *   `ParamValidationError` dual-inherits `ValueError`
- *   (`exceptions.py:97`), so both a `ParamValidationError` and a
- *   native `TypeError` are asserted.
- * - The 4 `validation/`-capability vectors extracted from
- *   `tests/test_query_user_edge_cases.py` replay through the corpus;
- *   that FILE is B5 Layer-3 scope (playbook B5 row) and is NOT
- *   translated here.
- */
-
+// `validateUserArgs` — translation of the `TestValidateUserArgs{AggregateRules,
+// ModeSpecific,PercentileRules,MultipleViolations,ErrorShape}` classes of
+// `tests/test_user_validators.py` plus the U0 / U7 regression classes (the
+// happy-path and basic-rule classes are in user-validators-args.test.ts).
+// Dates come from the real clock, as in Python; Python's unused `_only_code` is not carried.
 import { describe, expect, it } from "vitest";
 
 import type { ValidationError } from "../../src/errors.js";
@@ -38,9 +13,7 @@ import {
 import { Filter } from "../../src/types/index.js";
 import { codes } from "../../test-support/error-codes.js";
 
-// =============================================================================
-// Helpers (port of the Python module helpers, :30-76)
-// =============================================================================
+// --- Helpers (ports of the Python module helpers) ---
 
 /**
  * Check whether a specific error code appears in the error list.
@@ -53,9 +26,7 @@ function hasCode(errors: readonly ValidationError[], code: string): boolean {
   return errors.some((e) => e.code === code);
 }
 
-// =============================================================================
-// TestValidateUserArgsAggregateRules — Rules U14, U15, U16, U17
-// =============================================================================
+// --- TestValidateUserArgsAggregateRules — Rules U14, U15, U16, U17 ---
 
 describe("Validate user args aggregate rules", () => {
   // python: TestValidateUserArgsAggregateRules
@@ -159,9 +130,7 @@ describe("Validate user args aggregate rules", () => {
   });
 });
 
-// =============================================================================
-// TestValidateUserArgsModeSpecific — Rules U18-U22, U30
-// =============================================================================
+// --- TestValidateUserArgsModeSpecific — Rules U18-U22, U30 ---
 
 describe("Validate user args mode specific", () => {
   // python: TestValidateUserArgsModeSpecific
@@ -298,9 +267,7 @@ describe("Validate user args mode specific", () => {
   });
 });
 
-// =============================================================================
-// TestValidateUserArgsPercentileRules — Rules U26, U27, U28
-// =============================================================================
+// --- TestValidateUserArgsPercentileRules — Rules U26, U27, U28 ---
 
 describe("Validate user args percentile rules", () => {
   // python: TestValidateUserArgsPercentileRules
@@ -406,9 +373,7 @@ describe("Validate user args percentile rules", () => {
   });
 });
 
-// =============================================================================
-// TestValidateUserArgsMultipleViolations — Simultaneous error collection
-// =============================================================================
+// --- TestValidateUserArgsMultipleViolations — Simultaneous error collection ---
 
 describe("Validate user args multiple violations", () => {
   // python: TestValidateUserArgsMultipleViolations
@@ -485,9 +450,7 @@ describe("Validate user args multiple violations", () => {
   });
 });
 
-// =============================================================================
-// TestValidateUserArgsErrorShape — ValidationError structure
-// =============================================================================
+// --- TestValidateUserArgsErrorShape — ValidationError structure ---
 
 describe("Validate user args error shape", () => {
   // python: TestValidateUserArgsErrorShape
@@ -532,9 +495,7 @@ describe("Validate user args error shape", () => {
   });
 });
 
-// =============================================================================
-// PR #118 review fixes — U0 type-check and U7 false-positive
-// =============================================================================
+// --- PR #118 review fixes — U0 type-check and U7 false-positive ---
 
 describe("Validate user args where type check", () => {
   // python: TestValidateUserArgsWhereTypeCheck

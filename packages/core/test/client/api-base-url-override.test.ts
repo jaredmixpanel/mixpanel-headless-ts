@@ -1,33 +1,8 @@
-// Layer-3 translation — Python PR #235:
-// tests/unit/test_api_base_url_override.py (1,091 lines, 11 classes).
-//
-// Python drives the override through `MP_API_BASE_URL` / `MP_APP_BASE_URL`
-// in `os.environ`, read PER REQUEST by `_endpoints_for`. `packages/core`
-// never reads `process.env`, so the TS twin injects the same two
-// values through `MixpanelClientOptions.endpointOverrides` — a static bag
-// or a per-call PROVIDER (the node package wires the `process.env`
-// reader; `packages/node/test/endpoint-overrides.test.ts` covers that
-// half). Mechanism substitutions (R10.2, header-cited):
-//
-// - `monkeypatch.setenv(...)` → the `endpointOverrides` option (a
-//   mutable provider where Python flips the var mid-test).
-// - `httpx.MockTransport` recorder → `createMockClient` over the injected
-//   fetch (`client-test-helpers.ts`); `request.url.params` → the captured
-//   `params` map.
-// - `request.extensions["timeout"]["read"]` → the `timeoutSeconds` the
-//   request executor receives (the `server-deadline.test.ts` vi.mock
-//   pattern).
-// - `_endpoints_for` / `_api_family_for` / `_build_url` → `endpointsFor`
-//   / `apiFamilyFor` / `client.core.buildUrl`; dict equality → Map entry
-//   equality; `is ENDPOINTS[region]` → `toBe(ENDPOINTS.get(region))`.
-// - `TestCliInheritsOverride` (typer CliRunner) has no TS twin — there is
-//   no CLI in this port; the shared-client property it locks is covered
-//   by `TestWorkspaceFacadeHitsOverride`.
-//
-// The 31 override-SET Python tests are corpus-excluded upstream
-// (`env_base_url_override` bucket — host-dependent URLs), so this file is
-// the only lock on the override; the 4 override-UNSET vectors replay in
-// the conformance corpus.
+// The `MP_API_BASE_URL` / `MP_APP_BASE_URL` override: endpoint table
+// resolution, per-request URL building, route-aware timeouts, workspace_id
+// injection and the Workspace facade. Mirrors tests/unit/test_api_base_url_override.py;
+// core never reads `process.env`, so env vars become `endpointOverrides` (a
+// static bag or a provider). `TestCliInheritsOverride` has no twin (no CLI here).
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

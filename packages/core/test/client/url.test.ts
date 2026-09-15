@@ -1,11 +1,8 @@
-// Layer-3 translation of tests/unit/test_api_client.py::TestEndpoints
-// and ::TestBuildUrl — Phase-3 packet B0-2.
-//
-// Entry-point substitution (B0-notes decision 13): Python drives
-// `client._build_url(...)` on a Session-bound client; the TS B0 port is
-// the pure `buildUrl(region, kind, path)` (the client class arrives in
-// B4-C1). The us/eu/in Session fixtures reduce to their region literal —
-// every assertion value is preserved verbatim.
+// The regional endpoint table and `buildUrl` (query/export/engage prefixes,
+// leading-slash normalisation). Mirrors TestEndpoints and TestBuildUrl from
+// tests/unit/test_api_client.py; Python drives `client._build_url` on a
+// Session-bound client, here the pure `buildUrl(region, kind, path)` is
+// called with the fixture's region literal — every expected value is verbatim.
 import { describe, expect, it } from "vitest";
 
 import { buildUrl, ENDPOINTS } from "../../src/client/url.js";

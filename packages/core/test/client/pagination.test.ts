@@ -1,24 +1,8 @@
-// Layer-3 translation — Phase-3 packet B4-C6 pagination locks.
-// Sources:
-//
-// - tests/unit/test_pagination.py (824) — ALL: TestPaginateAll,
-//   TestPaginateAllRobustness, TestPaginateAllMalformedResults
-//   (:519), TestPaginateAllRetryAfter (:702) + the
-//   `run_rate_limited_pagination` driver.
-//
-// Translation notes (R10.2 — assertion content preserved):
-// - The Python `patch("mixpanel_headless._internal.pagination.MAX_PAGES",
-//   50)` pin translates to the injectable `maxPages` option (default
-//   10000) — an option, not a mutable module global (packet C6 §Layer-3,
-//   playbook B4 row). The limit error still fires at page N+1 with the
-//   code preserved.
-// - `patch("time.sleep")` capture translates to the injected sleep seam
-//   of `createMockClient` (ms, R2.12): Python's recorded `[30.0] * 3`
-//   seconds become `[30000, 30000, 30000]` ms — same schedule, unit
-//   moved to the seam.
-// - `itertools.islice(..., 15000)` merely bounded Python's consumption;
-//   the TS drain consumes until the PAGINATION_LIMIT raise at page 51,
-//   which is the same observable.
+// `paginateAll`: cursor following, page-size and extra params, query_origin
+// injection, malformed `results`, mid-walk 429/500/401 handling and the
+// Retry-After clamp/fallback schedule. Mirrors tests/unit/test_pagination.py
+// (all classes plus `run_rate_limited_pagination`). `patch(MAX_PAGES, 50)` is
+// the `maxPages` option; recorded `time.sleep` seconds appear as ms (`[30000] * 3`).
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "../../src/auth/session.js";
@@ -296,7 +280,7 @@ describe("Paginate all robustness", () => {
         },
       }),
     );
-    // MAX_PAGES monkeypatch → injectable maxPages option (packet C6).
+    // MAX_PAGES monkeypatch → the injectable maxPages option.
     await expect(
       drain(paginateAll(client, "/projects/12345/items", { maxPages: 50 })),
     ).rejects.toThrow(/maximum page limit/);
@@ -317,12 +301,12 @@ describe("Paginate all robustness", () => {
     ).rejects.toThrow(/Non-JSON response/);
   });
 
-  it("wraps ANY body-parse failure as INVALID_RESPONSE (W-F4)", async () => {
-    // TS-native B4-ARB lock (b4-review-wire.md F4): pagination.py:246
-    // catches broad `except Exception` — even a RecursionError from
-    // pathological nesting wraps as INVALID_RESPONSE. The TS analog is
-    // the RangeError the recursive-descent parser throws on deep
-    // nesting; it must NOT escape uncoded.
+  it("wraps ANY body-parse failure as INVALID_RESPONSE", async () => {
+    // TS-only: `mixpanel_headless._internal.pagination` catches a broad
+    // `except Exception` — even a RecursionError from pathological nesting
+    // wraps as INVALID_RESPONSE. The TS analog is the RangeError the
+    // recursive-descent parser throws on deep nesting; it must NOT escape
+    // uncoded.
     const { client } = createMockClient(
       oauthCredentials(),
       (): CannedResponse => ({

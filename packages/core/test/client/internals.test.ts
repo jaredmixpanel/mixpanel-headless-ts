@@ -1,31 +1,9 @@
-// Layer-3 translation — Phase-3 packet B0-2 `_handle_response` /
-// `_execute_with_retry` / `_error_message` locks. Sources:
-//
-// - tests/unit/test_api_client.py::TestRateLimiting
-// - tests/unit/test_api_client.py::TestErrorHandling
-// - tests/unit/test_api_client.py::TestServerErrors
-// - tests/unit/test_api_client.py::TestPublicRequest (:1575-1795, the
-//   B0-observable subset: query_origin injection, 401/400 mapping, JSON
-//   return, 429 retry/exhaustion — request() is a thin wrapper over
-//   _execute_with_retry; URL/auth plumbing asserts are B4-C1)
-// - tests/unit/test_api_client.py::TestRetryAfterHardening (:3595-3761,
-//   minus the app_request cases → app-request.test.ts and the
-//   export-stream case → B4-C2)
-// - tests/unit/test_api_client.py::TestBlankErrorBodyFallbacks
-// - tests/unit/test_api_client.py::TestErrorContextSymmetry::
-//   test_401_carries_request_body
-// - tests/unit/_internal/test_api_client_sign_replays.py::
-//   TestSensitiveDataMapping + ::TestOtherHttpErrors
-//   — the 403 SESSION_RECORDING_SENSITIVE_DATA branch is B0
-//   code (R10.8's founding example); sign_replays itself is B4.
-//
-// Entry-point substitution (B0-notes decision 13): Python drives thin B4
-// wrappers (`get_events`, `request()`, `sign_replays`) over the same
-// internals; every assertion below is preserved against
-// `executeWithRetry`/`handleResponse` directly, with httpx.MockTransport
-// replaced by an injected request executor and `recorded_sleeps` by the
-// injected sleep seam. Deferred-to-B4 tests are listed in
-// docs/history/phase3/notes/B0-notes.md (deviation 3).
+// `executeWithRetry` / `handleResponse` / `errorMessage` driven directly over
+// an injected request executor: 429 retry and Retry-After hardening, status
+// to error mapping, blank-body fallbacks, the 403 sensitive-data sniff and
+// json.loads parity of body parsing. Mirrors TestRateLimiting, TestErrorHandling,
+// TestServerErrors, TestBlankErrorBodyFallbacks, the executor-observable parts of TestPublicRequest / TestRetryAfterHardening / TestErrorContextSymmetry (tests/unit/test_api_client.py) and TestSensitiveData* / TestOtherHttpErrors (tests/unit/_internal/test_api_client_sign_replays.py).
+
 import { describe, expect, it } from "vitest";
 
 import { QUERY_ORIGIN } from "../../src/client/headers.js";
@@ -82,11 +60,11 @@ interface Harness {
 }
 
 /**
- * Build executor deps over a response script.
+ * Build executor deps over a response script. `options` overrides
+ * `maxRetries` and `projectId`.
  *
  * @param script - Responses (or thrown errors) per attempt; the last
  *   entry repeats.
- * @param options - maxRetries / projectId overrides.
  * @returns The recorded harness.
  */
 function harness(
@@ -125,10 +103,10 @@ function harness(
 
 /**
  * Run executeWithRetry with defaults mirroring `client.get_events()`'s
- * use of `_execute_with_retry` (GET + auth header).
+ * use of `_execute_with_retry` (GET + auth header); `args` overrides the
+ * method, URL, params, JSON body, headers and timeout.
  *
  * @param h - The harness.
- * @param args - Argument overrides.
  * @returns The parsed response.
  */
 async function run(
@@ -194,12 +172,12 @@ describe("Rate limiting", () => {
     // python: test_execute_with_retry_fallthrough_carries_project_id
     // max_retries below zero: the loop body never runs and the
     // type-checker-satisfying fallthrough raise fires — locking its
-    // project_id wiring (and its reduced constructor shape, FF4).
+    // project_id wiring (and its reduced constructor shape).
     const h = harness([res(200, {})], { maxRetries: -1 });
     const error = await run(h).catch((error_: unknown) => error_);
     expect(error).toBeInstanceOf(RateLimitError);
     expect((error as RateLimitError).projectId).toBe("12345");
-    // FF4: the fallthrough omits retry_after/status_code/response_body.
+    // The fallthrough omits retry_after/status_code/response_body.
     expect((error as RateLimitError).retryAfter).toBeNull();
     expect((error as RateLimitError).responseBody).toBeNull();
     expect(h.calls).toHaveLength(0);
@@ -221,7 +199,7 @@ describe("Rate limiting", () => {
   });
 });
 
-describe("Public request (B0-observable subset)", () => {
+describe("Public request (executor-observable subset)", () => {
   // python: TestPublicRequest
   it("request auto injects query origin", async () => {
     // python: test_request_auto_injects_query_origin
@@ -239,8 +217,8 @@ describe("Public request (B0-observable subset)", () => {
   });
 
   it("caller params dict is mutated in place (Python parity)", async () => {
-    // api_client.py writes query_origin into the CALLER's dict
-    // (B0-notes decision 6 — observable Python behavior, reproduced).
+    // mixpanel_headless.api_client writes query_origin into the CALLER's
+    // dict — observable Python behavior, reproduced.
     const params: Record<string, unknown> = { foo: "bar" };
     const h = harness([res(200, {})]);
     await run(h, { params });
@@ -361,7 +339,7 @@ describe("Server errors", () => {
   });
 });
 
-describe("Retry after hardening (execute_with_retry half)", () => {
+describe("Retry after hardening (executeWithRetry half)", () => {
   // python: TestRetryAfterHardening
   it("negative retry after uses backoff", async () => {
     // python: test_negative_retry_after_uses_backoff
@@ -500,7 +478,7 @@ describe("Blank error body fallbacks", () => {
   });
 });
 
-describe("Error context symmetry (execute_with_retry half)", () => {
+describe("Error context symmetry (executeWithRetry half)", () => {
   // python: TestErrorContextSymmetry
   it("401 carries request body", async () => {
     // python: test_401_carries_request_body
@@ -517,7 +495,7 @@ describe("Error context symmetry (execute_with_retry half)", () => {
   });
 });
 
-describe("Sensitive data mapping (403 branch — R10.8 founding example)", () => {
+describe("Sensitive data mapping (403 branch)", () => {
   // python: TestSensitiveDataMapping
   const flagBody = {
     error:
@@ -533,7 +511,7 @@ describe("Sensitive data mapping (403 branch — R10.8 founding example)", () =>
     )) as SessionReplayAccessError;
     expect(error).toBeInstanceOf(SessionReplayAccessError);
     expect(error.statusCode).toBe(403);
-    // Note the pythonInt coercion: project id "12345" → 12345 (FF3).
+    // Note the pythonInt coercion: project id "12345" → 12345.
     expect(error.details["project_id"]).toBe(12345);
     expect(error.details["flag"]).toBe("SESSION_RECORDING_SENSITIVE_DATA");
     expect(error.details["permission_required"]).toBe("sensitive_data_replay");
@@ -557,18 +535,14 @@ describe("Sensitive data mapping (403 branch — R10.8 founding example)", () =>
   });
 });
 
-// Twin of tests/unit/_internal/test_api_client_sign_replays.py::
-// TestSensitiveData403BodyShapes (Python FIX-2, bug (c)): the 403 sniff
-// applies uniform substring semantics across dict/list/scalar bodies —
-// the old R10.7 element-membership / TypeError twins retired with the
-// Python-first fix (fix-of-record:
-// docs/history/phase3/bug-reports/python-handle-response-403-typeerror.md).
-describe("Sensitive data 403 body shapes (bug (c) fix)", () => {
+// Twin of TestSensitiveData403BodyShapes: the 403 sniff applies uniform
+// substring semantics across dict/list/scalar bodies (Python serializes
+// every non-str body before sniffing, so no body shape can raise TypeError).
+describe("Sensitive data 403 body shapes", () => {
   // python: TestSensitiveData403BodyShapes
   it("403 LIST body: uniform SUBSTRING semantics (exact element AND substring match)", async () => {
-    // Python post-FIX-2 serializes every non-str body for the sniff —
-    // element-membership retired (test_api_client_sign_replays.py::
-    // TestSensitiveData403BodyShapes list-exact + list-substring twins).
+    // Python serializes every non-str body for the sniff, so list bodies
+    // match by substring, never by element membership.
     const h1 = harness([res(403, ["SESSION_RECORDING_SENSITIVE_DATA"])]);
     await expect(
       run(h1).catch((error_: unknown) => error_),
@@ -580,10 +554,8 @@ describe("Sensitive data 403 body shapes (bug (c) fix)", () => {
     expect(error).toBeInstanceOf(SessionReplayAccessError);
   });
 
-  it("403 truthy scalar body raises QueryError, never TypeError (bug (c) fix)", async () => {
-    // Python post-FIX-2: `json.dumps(42)` → "42" → no flag → QueryError
-    // (TestSensitiveData403BodyShapes truthy-scalar twins; fix-of-record
-    // docs/history/phase3/bug-reports/python-handle-response-403-typeerror.md).
+  it("403 truthy scalar body raises QueryError, never TypeError", async () => {
+    // Python: `json.dumps(42)` → "42" → no flag → QueryError.
     for (const raw of ["42", "1.5", "true"]) {
       const h = harness([res(403, raw)]);
       const error = (await run(h).catch(
@@ -596,8 +568,7 @@ describe("Sensitive data 403 body shapes (bug (c) fix)", () => {
   });
 
   it("403 falsy scalar body falls through to QueryError", async () => {
-    // Python post-FIX-2: json.dumps(0) → "0" → no flag → QueryError
-    // (TestSensitiveData403BodyShapes falsy-scalar twins: 0/false/null).
+    // Python: json.dumps(0) → "0" → no flag → QueryError (0/false/null).
     for (const raw of ["0", "false", "null"]) {
       const h = harness([res(403, raw)]);
       const error = (await run(h).catch(
@@ -609,8 +580,8 @@ describe("Sensitive data 403 body shapes (bug (c) fix)", () => {
   });
 
   it("403 JSON string body containing the flag raises SessionReplayAccessError", async () => {
-    // TestSensitiveData403BodyShapes string-body twin: the parsed str
-    // branch passes through UNSERIALIZED (no json.dumps quoting).
+    // The parsed str branch passes through UNSERIALIZED (no json.dumps
+    // quoting).
     const h = harness([
       res(403, JSON.stringify("SESSION_RECORDING_SENSITIVE_DATA denied")),
     ]);
@@ -645,11 +616,11 @@ describe("Other HTTP errors", () => {
   });
 });
 
-// FF3 fallthrough-tail restatement locks (playbook B0-2 checklist +
-// review-resolution R6): exact source order at api_client.py.
-describe("_handle_response fallthrough tail (FF3)", () => {
+// Fallthrough-tail locks: the exact source order of
+// mixpanel_headless.api_client._handle_response.
+describe("handleResponse fallthrough tail", () => {
   it("(i) 3xx with a JSON object body is an ERROR, never a success return", async () => {
-    // R2.11: redirect:'manual' makes 3xx reachable; raise_for_status runs
+    // redirect:'manual' makes 3xx reachable; raise_for_status runs
     // FIRST, the MixpanelHttpError normalizes, and _execute_with_retry
     // wraps it as HTTP_ERROR.
     const h = harness([res(302, { status: "ok" }, { Location: "https://x" })]);
@@ -661,7 +632,7 @@ describe("_handle_response fallthrough tail (FF3)", () => {
   });
 
   it("(ii) 2xx object/array bodies return as-is", async () => {
-    // Numbers surface as lossless JsonNumber tokens (GATE-R5).
+    // Numbers surface as lossless JsonNumber tokens.
     await expect(run(harness([res(200, { a: 1 })]))).resolves.toStrictEqual({
       a: new JsonNumber("1"),
     });
@@ -679,7 +650,7 @@ describe("_handle_response fallthrough tail (FF3)", () => {
     await expect(run(harness([res(200, '"ok"')]))).resolves.toBe("ok");
     await expect(run(harness([res(200, "true")]))).resolves.toBe(true);
     await expect(run(harness([res(200, "null")]))).resolves.toBeNull();
-    // R10.9 edge floats survive losslessly (GATE-R5 parseLossless).
+    // Fuzz-found edge floats survive losslessly (parseLossless).
     await expect(run(harness([res(200, "18.0")]))).resolves.toStrictEqual(
       new JsonNumber("18.0"),
     );
@@ -706,7 +677,7 @@ describe("_handle_response fallthrough tail (FF3)", () => {
   });
 });
 
-describe("_execute_with_retry transport-error wrapping (R2.10)", () => {
+describe("executeWithRetry transport-error wrapping", () => {
   it("MixpanelHttpError wraps as HTTP_ERROR with request context details", async () => {
     const h = harness([new MixpanelHttpError("connection refused")]);
     const error = (await run(h).catch(
@@ -725,7 +696,7 @@ describe("_execute_with_retry transport-error wrapping (R2.10)", () => {
     });
   });
 
-  it("non-transport errors pass through unwrapped (R2.10 idiom)", async () => {
+  it("non-transport errors pass through unwrapped", async () => {
     const boom = new RangeError("not a transport failure");
     const h = harness([boom]);
     const error = await run(h).catch((error_: unknown) => error_);
@@ -742,10 +713,10 @@ describe("_execute_with_retry transport-error wrapping (R2.10)", () => {
   });
 });
 
-// _error_message unit lock (api_client.py + review-resolution R11:
+// `errorMessage` unit lock (mixpanel_headless.api_client._error_message):
 // `{"error": null}` and an ABSENT error key are indistinguishable to
-// Python's `.get(...) is None` — both yield the default, never "None").
-describe("errorMessage (FF6)", () => {
+// Python's `.get(...) is None` — both yield the default, never "None".
+describe("errorMessage", () => {
   it("absent error key → default", () => {
     expect(errorMessage({ other: "x" }, "Default")).toBe("Default");
   });
@@ -763,7 +734,7 @@ describe("errorMessage (FF6)", () => {
     expect(errorMessage({ error: ["a", true] }, "Default")).toBe("['a', True]");
   });
 
-  it("string body truncates at 200 CODEPOINTS (R11.6, never splits pairs)", () => {
+  it("string body truncates at 200 CODEPOINTS (never splits pairs)", () => {
     const body = "𝒳".repeat(300); // non-BMP: 2 UTF-16 units each
     const message = errorMessage(body, "Default");
     expect(codepoints(message)).toHaveLength(200);
@@ -780,15 +751,14 @@ describe("errorMessage (FF6)", () => {
   });
 });
 
-// Arbiter fixes F1 + F3/A2 (b0-review-resolution): body parsing must
-// accept the json.loads non-finite constants exactly as every Python
-// `response.json()` site does (probed live: `json.loads('{"a": NaN}')`
-// parses; a bare `Infinity` 403 body serializes to "Infinity" for the
-// post-FIX-2 sniff), and the parse catch must mirror Python's
+// Body parsing must accept the json.loads non-finite constants exactly as
+// every Python `response.json()` site does (probed live:
+// `json.loads('{"a": NaN}')` parses; a bare `Infinity` 403 body serializes
+// to "Infinity" for the sniff), and the parse catch must mirror Python's
 // `except json.JSONDecodeError` scope — a parser stack overflow
 // (RangeError, the RecursionError analog) PROPAGATES, never degrades to
 // the body-as-text / INVALID_RESPONSE path.
-describe("json.loads non-finite body tokens (arbiter fix F1)", () => {
+describe("json.loads non-finite body tokens", () => {
   it("200 object body containing NaN/Infinity parses like json.loads", async () => {
     const h = harness([res(200, '{"a": NaN, "b": Infinity, "c": -Infinity}')]);
     const value = (await run(h)) as { a: number; b: number; c: number };
@@ -815,8 +785,8 @@ describe("json.loads non-finite body tokens (arbiter fix F1)", () => {
     expect(body.extra).toBeNaN();
   });
 
-  it("403 bare Infinity body serializes for the sniff → QueryError (bug (c) fix)", async () => {
-    // Python post-FIX-2: json.loads("Infinity") → inf, json.dumps(inf)
+  it("403 bare Infinity body serializes for the sniff → QueryError", async () => {
+    // Python: json.loads("Infinity") → inf, json.dumps(inf)
     // → "Infinity" (allow_nan default) → no flag → QueryError. The
     // jsonDumpsLike twin renders the JsonNumber token verbatim.
     const h = harness([res(403, "Infinity")]);
@@ -828,7 +798,7 @@ describe("json.loads non-finite body tokens (arbiter fix F1)", () => {
   });
 });
 
-describe("JSONDecodeError-analog catch scope (arbiter fix F3/A2)", () => {
+describe("JSONDecodeError-analog catch scope", () => {
   // ~1e6 unclosed brackets overflow the recursive-descent parser's stack
   // (the CPython twin: json.loads raises RecursionError past `except
   // json.JSONDecodeError`, so _handle_response propagates it).

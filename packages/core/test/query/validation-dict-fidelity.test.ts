@@ -1,26 +1,8 @@
-/**
- * B2 arbiter locks (b2-review-resolution.md F1/F3, 2026-08-15) for the
- * `isinstance(x, dict)` discrimination in the bookmark/sorting
- * validators and the CM5 `isinstance(item.cohort, CohortDefinition)`
- * branch spelling.
- *
- * Python's `isinstance(x, dict)` is False for floats and for core
- * class instances (`Filter`, ...). The pre-fix TS predicates
- * (`isDict` in `validation-bookmark.ts`, `isPlainObject` in
- * `bookmarks/schema-sorting.ts`) classified ANY non-array object as a
- * dict — including the rig's PyFloat carrier (`{spelling}`) and
- * reconstructed class instances — producing 11 oracle-confirmed
- * divergent output shapes (fidelity review F1, blocker). Every
- * expectation below is the oracle-py output recorded in
- * `docs/history/phase3/design/b2-review-fidelity.md` (spot scripts
- * `/tmp/b2rev_spot{,2}.py`, run 2026-08-15).
- *
- * TS-only suite: the Python Layer-3 files never place floats or
- * instances at dict positions (in-annotation `dict[str, Any]`
- * interiors the fuzz domains also skipped), so these locks have no
- * Python twin — the reference outputs are the oracle records above.
- */
-
+// Python `isinstance(x, dict)` is False for floats and for class instances
+// (`Filter`, ...), so the bookmark/sorting validators' dict predicates must
+// reject the rig's float carrier (a `{ spelling }` class instance) and
+// reconstructed instances, and CM5 must fire on `CohortDefinition` instances
+// only. TS-only suite; every expectation is a CPython transcript.
 import { describe, expect, it } from "vitest";
 
 import { validateUserParams } from "../../src/query/user-validators.js";
@@ -91,15 +73,15 @@ function triples(
   }));
 }
 
-describe("F1: float carriers / class instances are not dicts (validateBookmark)", () => {
-  it("sections=<float> reports B1, exactly like Python's non-dict sections", () => {
+describe("float carriers / class instances are not dicts (validateBookmark)", () => {
+  it("sections=<float> reports B1_MISSING_SECTIONS, exactly like Python's non-dict sections", () => {
     const errors = validateBookmark(bm({ sections: FLOAT_5 }));
     expect(triples(errors)).toStrictEqual([
       { path: "sections", code: "B1_MISSING_SECTIONS", severity: "error" },
     ]);
   });
 
-  it("sections.time=[<float>] reports B12 (Python: non-dict time clause)", () => {
+  it("sections.time=[<float>] reports B12_INVALID_TIME_UNIT (Python: non-dict time clause)", () => {
     const params = bm();
     (params["sections"] as Record<string, unknown>)["time"] = [FLOAT_5];
     expect(triples(validateBookmark(params))).toStrictEqual([
@@ -111,7 +93,7 @@ describe("F1: float carriers / class instances are not dicts (validateBookmark)"
     ]);
   });
 
-  it("sections.group=[<float>] reports B17 (Python: non-dict group clause)", () => {
+  it("sections.group=[<float>] reports B17_INVALID_PROPERTY_TYPE (Python: non-dict group clause)", () => {
     const params = bm();
     (params["sections"] as Record<string, unknown>)["group"] = [FLOAT_5];
     expect(triples(validateBookmark(params))).toStrictEqual([
@@ -123,7 +105,7 @@ describe("F1: float carriers / class instances are not dicts (validateBookmark)"
     ]);
   });
 
-  it("sections.filter=[Filter instance] reports B14 (instance is not a dict)", () => {
+  it("sections.filter=[Filter instance] reports B14_INVALID_FILTER_TYPE (instance is not a dict)", () => {
     const params = bm();
     (params["sections"] as Record<string, unknown>)["filter"] = [
       Filter.equals("a", "b"),
@@ -137,7 +119,7 @@ describe("F1: float carriers / class instances are not dicts (validateBookmark)"
     ]);
   });
 
-  it("show[0].behavior=<float> reports B6 (non-dict behavior)", () => {
+  it("show[0].behavior=<float> reports the missing-behavior error (non-dict behavior)", () => {
     const params = bm();
     (params["sections"] as Record<string, unknown>)["show"] = [
       { behavior: FLOAT_5 },
@@ -156,7 +138,7 @@ describe("F1: float carriers / class instances are not dicts (validateBookmark)"
   });
 });
 
-describe("F1: float carriers / class instances are not dicts (flow + sorting)", () => {
+describe("float carriers / class instances are not dicts (flow + sorting)", () => {
   it("flow steps=[<float>] are skipped (Python's isinstance gate)", () => {
     const errors = validateFlowBookmark({
       steps: [FLOAT_5],
@@ -198,7 +180,7 @@ describe("F1: float carriers / class instances are not dicts (flow + sorting)", 
   });
 });
 
-describe("F3: CM5 fires on CohortDefinition instances only", () => {
+describe("CM5 fires on CohortDefinition instances only", () => {
   /** The base kwargs every validateQueryArgs call in this block uses. */
   const BASE = {
     math: "total",
@@ -236,20 +218,19 @@ describe("F3: CM5 fires on CohortDefinition instances only", () => {
   });
 });
 
-describe("F1 corollary: a consumer dict carrying a 'spelling' key is a dict, not a carrier", () => {
-  // Oracle-py reference outputs recorded in b2-review-resolution.md
-  // (arbiter probe /tmp/b2arb_probe2.py, 2026-08-15): the carrier is
+describe("a consumer dict carrying a 'spelling' key is a dict, not a carrier", () => {
+  // CPython reference: the carrier is
   // a class instance in the rig domain, so a PLAIN `{"spelling": ...}`
   // object must take Python's dict paths.
 
-  it("sections={spelling: '5.0'} is a dict missing 'show' — B3, exactly like Python", () => {
+  it("sections={spelling: '5.0'} is a dict missing 'show' — B3_MISSING_SHOW, exactly like Python", () => {
     const errors = validateBookmark(bm({ sections: { spelling: "5.0" } }));
     expect(triples(errors)).toStrictEqual([
       { path: "sections", code: "B3_MISSING_SHOW", severity: "error" },
     ]);
   });
 
-  it("chartType={spelling: '2.0'} raises Python's unhashable-dict TypeError (R10.7)", () => {
+  it("chartType={spelling: '2.0'} raises Python's unhashable-dict TypeError", () => {
     expect(() =>
       validateBookmark(
         bm({ displayOptions: { chartType: { spelling: "2.0" } } }),
@@ -257,7 +238,7 @@ describe("F1 corollary: a consumer dict carrying a 'spelling' key is a dict, not
     ).toThrow(TypeError);
   });
 
-  it("filter value={spelling: 'hi'} is a truthy dict — no B18, no float-literal crash", () => {
+  it("filter value={spelling: 'hi'} is a truthy dict — no missing-property error, no float-literal crash", () => {
     const params = bm();
     (params["sections"] as Record<string, unknown>)["filter"] = [
       { value: { spelling: "hi" } },

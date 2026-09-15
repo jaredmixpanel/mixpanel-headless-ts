@@ -1,13 +1,7 @@
-/**
- * Layer-3 translation of `tests/unit/test_bookmark_validation_pbt.py`
- * (Python revision: `ts-port/phase2-contract-support` HEAD; 288 LOC,
- * translated in full per b2-packets.md §V1b).
- *
- * Hypothesis `@given` + `@settings(max_examples=100)` translates to
- * fast-check `fc.assert(fc.property(...), { numRuns: 100 })` with the
- * same strategy shapes (V1a `query-validation.pbt.test.ts` precedent).
- */
-
+// fast-check twins of `tests/unit/test_bookmark_validation_pbt.py` (all
+// classes): `validateBookmark` math-type dispatch, filter-enum and chart-type
+// consistency properties. Hypothesis `@settings(max_examples=100)` →
+// `numRuns: 100` with the same strategy shapes.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -23,9 +17,7 @@ import { validateBookmark } from "../../src/query/validation-bookmark.js";
 /** Loose dict, the TS analogue of Python's `dict[str, Any]`. */
 type Dict = Record<string, unknown>;
 
-// =============================================================================
-// Strategies (test_bookmark_validation_pbt.py)
-// =============================================================================
+// --- Strategies (test_bookmark_validation_pbt.py) ---
 
 /** Port of `_all_valid_math`. */
 const allValidMath: ReadonlySet<string> = new Set([
@@ -49,9 +41,7 @@ const invalidChartTypesArb = fc
   .string({ minLength: 1, maxLength: 30, unit: "binary" })
   .filter((s) => !VALID_CHART_TYPES.has(s));
 
-// =============================================================================
-// Helpers (test_bookmark_validation_pbt.py)
-// =============================================================================
+// --- Helpers (test_bookmark_validation_pbt.py) ---
 
 /**
  * Return a minimal valid bookmark params dict.
@@ -139,9 +129,7 @@ function bookmarkWithChartType(chartType: string): Dict {
   return bm;
 }
 
-// =============================================================================
-// Math Type Dispatch
-// =============================================================================
+// --- Math Type Dispatch ---
 
 describe("Math type dispatch", () => {
   // python: TestMathTypeDispatch
@@ -222,9 +210,7 @@ describe("Math type dispatch", () => {
   });
 });
 
-// =============================================================================
-// Filter Enum Consistency
-// =============================================================================
+// --- Filter Enum Consistency ---
 
 describe("Filter enum consistency", () => {
   // python: TestFilterEnumConsistency
@@ -265,9 +251,7 @@ describe("Filter enum consistency", () => {
   });
 });
 
-// =============================================================================
-// Chart Type Consistency
-// =============================================================================
+// --- Chart Type Consistency ---
 
 describe("Chart type consistency", () => {
   // python: TestChartTypeConsistency

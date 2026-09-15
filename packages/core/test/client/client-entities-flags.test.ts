@@ -1,10 +1,9 @@
-// Layer-3 translation — Phase-3 packet B4-C4 feature-flag locks.
-// Source: tests/unit/test_api_client_flags.py (ALL classes — flag CRUD,
-// lifecycle archive/restore/duplicate, set_test_users/history/limits).
-//
-// The Python fixture builds an oauth_token session and pre-sets
-// workspace_id=100 (feature flags use require_scoped_path, which needs
-// a workspace ID; the pin avoids mocking the workspace list endpoint).
+// Feature-flag client methods: CRUD, archive/restore/duplicate,
+// set-test-users, history and limits (paths, methods, bodies). Mirrors
+// every class of tests/unit/test_api_client_flags.py; like the Python
+// fixture, the client pre-sets workspace_id=100 because flags use
+// `requireScopedPath`, which would otherwise discover a workspace over the wire.
+
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "../../src/auth/session.js";

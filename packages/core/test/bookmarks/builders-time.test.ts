@@ -1,42 +1,7 @@
-/**
- * Layer-3 translation of the `bookmark_builders.py` test corpus
- * (Python revision: `ts-port/phase2-contract-support` HEAD).
- *
- * Sources translated here, per b3-packets.md §"Packet K2":
- *
- * | Python file | classes translated |
- * |---|---|
- * | `tests/unit/test_bookmark_builders.py` (1,396 LOC, 18 classes) | all 18 |
- * | `tests/test_custom_property_builders.py` (461 LOC) | `TestBuildComposedProperties`, `TestBuildGroupSectionCustomProperties`, `TestBuildFilterEntryCustomProperties` |
- *
- * **Deferrals (header citations, R10.1):**
- *
- * - `tests/test_custom_property_builders.py::TestMeasurementPropertyBuilder`
- *   drives `Workspace.build_params` → **B5-S2** (no implementation exists
- *   to test at B3). The packet flags this file as a playbook omission that
- *   is nonetheless IN scope for its builder-direct classes (15 measured K2
- *   vectors come from it).
- * - `tests/unit/test_bookmark_builders_pbt.py`'s three equivalence classes
- *   (`TestTimeSectionEquivalence`, `TestFilterSectionEquivalence`,
- *   `TestGroupSectionEquivalence`) assert
- *   `ws._build_query_params(...) == build_*(...)` → **B5-S2**. Only
- *   `TestListContainsRoundTrip` is builder-direct; it is translated as a
- *   fast-check property in `builders.pbt.test.ts`.
- * - `tests/test_build_cohort_params.py` and `tests/test_query_params.py`
- *   are B5-owned files (playbook B5 row); their K2 vectors replay at the
- *   B3 gate regardless (vector api gates, not test-file ownership). The
- *   `buildFlowCohortFilter` describe block below is therefore marked
- *   `// NEW` and cites the corpus vector ids it mirrors.
- *
- * R10.2: assertion-for-assertion, codes not messages. Python
- * `pytest.raises(TypeError, match=…)` pairs become
- * `toThrow(ParamTypeError)` plus an explicit `.code` assertion, since
- * `ParamTypeError`/`ParamValidationError` are the ported twins of
- * Python's `TypeError`/`ValueError` subclasses (the "stays catchable as
- * TypeError/ValueError" asserts translate to the base-class check —
- * see `errors.ts`).
- */
-
+// `buildTimeSection`, `buildDateRange` and `buildTimeComparison` from
+// `bookmarks/builders`, mirroring `TestBuildTimeSection`, `TestBuildDateRange`
+// and `TestBuildTimeComparison` of `tests/unit/test_bookmark_builders.py`.
+// The clock is injected through the `today` seam; the seam test is TS-only.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -57,9 +22,7 @@ function frozenToday(iso: string): () => string {
   return () => iso;
 }
 
-// =============================================================================
-// tests/unit/test_bookmark_builders.py::TestBuildTimeSection
-// =============================================================================
+// --- Time section (TestBuildTimeSection) ---
 
 describe("buildTimeSection", () => {
   it("absolute range from and to", () => {
@@ -138,7 +101,7 @@ describe("buildTimeSection", () => {
   });
 
   it("relative branch never reads the clock (no `today` seam needed)", () => {
-    // NEW (packet §"Clock seam"): the from-only branch is the ONLY
+    // TS-only: the from-only branch is the ONLY
     // `date.today()` read.
     const seam = (): string => {
       throw new Error("clock must not be read on the relative branch");
@@ -164,9 +127,7 @@ describe("buildTimeSection", () => {
   });
 });
 
-// =============================================================================
-// tests/unit/test_bookmark_builders.py::TestBuildDateRange
-// =============================================================================
+// --- Date range (TestBuildDateRange) ---
 
 describe("buildDateRange", () => {
   it("relative last n", () => {
@@ -195,9 +156,7 @@ describe("buildDateRange", () => {
   });
 });
 
-// =============================================================================
-// tests/unit/test_bookmark_builders.py::TestBuildTimeComparison (T015)
-// =============================================================================
+// --- Time comparison (TestBuildTimeComparison) ---
 
 describe("buildTimeComparison", () => {
   it("relative produces correct dict", () => {

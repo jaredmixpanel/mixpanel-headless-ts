@@ -1,22 +1,9 @@
-// Layer-3 translation — Phase-3 packet B4-C2 engage locks. Sources:
-//
-// - tests/unit/test_api_client.py::TestProfileExport,
-//   ::TestEngageParameterValidation (:1861),
-//   ::TestEngageParameterEdgeCases (:1942),
-//   ::TestEngageDistinctIdParameter (:2042),
-//   ::TestEngageGroupIdParameter (:2130),
-//   ::TestEngageBehaviorsParameter (:2163),
-//   ::TestEngageIncludeAllUsersParameter (:2220),
-//   ::TestExportProfilesPage (:2319),
-//   ::TestExportProfilesPagePagination (:2554),
-//   ::TestCodedExportProfilesCodes (:4124) — ALL.
-// - tests/test_api_client_engage_stats.py — ALL (TestEngageStats :81,
-//   TestExportProfilesPageNewParams :436,
-//   TestExportProfilesPageFilterByCohort :679).
-//
-// Python `pytest.raises(ValueError)` sites: the AC* guards are
-// ParamValidationError (Python dual-inherits ValueError; TS keys on
-// class + code, R5.2 — see errors.ts ParamValidationError JSDoc).
+// `exportProfilesPage`: page/session_id threading, filter params,
+// `ProfilePageResult` fields (has_more, total, page_size, num_pages), the
+// AC2–AC6 coded guards of `exportProfiles`, sort/search/limit and
+// filter_by_cohort. Mirrors TestExportProfilesPage, TestExportProfilesPagePagination,
+// TestCodedExportProfilesCodes (tests/unit/test_api_client.py) and tests/test_api_client_engage_stats.py.
+
 import { describe, expect, it } from "vitest";
 
 import { ParamValidationError } from "../../src/errors.js";
@@ -423,7 +410,7 @@ describe("Coded export profiles codes", () => {
     // python: test_ac_guards_stay_catchable_as_value_error
     // Python: bare `except ValueError` still catches the coded guard.
     // TS twin: the instance is a ParamValidationError with the code
-    // (class + code is the conformance key, R5.2).
+    // (class + code is the conformance key).
     let caught: unknown;
     try {
       await drain(makeClient().exportProfiles({ include_all_users: true }));

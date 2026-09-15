@@ -1,16 +1,8 @@
-// Layer-3 translation — Python PR #235:
-// tests/unit/test_api_base_url_override_pbt.py → fast-check.
-//
-// Properties (verbatim from the Python module docstring):
-// - For any well-formed base URL and any run of trailing slashes, every
-//   API family resolves to `base.rstrip("/") + prefix` — no double
-//   slashes, no region influence, and `_build_url` appends the
-//   normalised path after it.
-// - With the override unset, `_endpoints_for` returns the live table
-//   object and the live table is never modified by resolving an override.
-//
-// Mechanism substitution: `mock.patch.dict(os.environ, {...})` → the
-// injected `endpointOverrides` bag (R9.1: core reads no env).
+// Property tests for the API/App base-URL override: every family resolves
+// to `base.rstrip("/") + prefix`, `buildUrl` appends the normalised path, and
+// resolving an override never mutates the live endpoint table.
+// Mirrors tests/unit/test_api_base_url_override_pbt.py (fast-check for
+// Hypothesis). `mock.patch.dict(os.environ)` becomes the injected `endpointOverrides` bag.
 
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
@@ -38,7 +30,7 @@ for (const [region, table] of ENDPOINTS) {
   LIVE_SNAPSHOT[region] = Object.fromEntries(table);
 }
 
-// ── Strategies ────────────────────────────────────────────────────────
+// --- Strategies ---
 
 const regions = fc.constantFrom<Region>("us", "eu", "in");
 const apiTypes = fc.constantFrom<EndpointKind>(
@@ -81,9 +73,10 @@ function liveNow(): Record<string, Record<string, string>> {
   return out;
 }
 
-// ── Properties ────────────────────────────────────────────────────────
+// --- Properties ---
 
-describe("test_api_base_url_override_pbt", () => {
+describe("API base URL override properties", () => {
+  // python: test_api_base_url_override_pbt
   it("override table is base plus prefix", () => {
     // python: test_override_table_is_base_plus_prefix
     fc.assert(

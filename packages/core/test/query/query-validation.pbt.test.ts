@@ -1,17 +1,7 @@
-/**
- * Layer-3 translation of `tests/unit/test_query_validation_pbt.py`
- * (Python revision: `ts-port/phase2-contract-support` HEAD; 237 LOC,
- * translated in full per b2-packets.md §V1a).
- *
- * Hypothesis `@given` + `@settings(max_examples=100)` translates to
- * fast-check `fc.assert(fc.property(...), { numRuns: 100 })` with the
- * same strategy shapes (phase2 `account.pbt.test.ts` precedent).
- *
- * Verifies that `validateQueryArgs` includes the same time- and
- * group-by-related validation errors produced by `validateTimeArgs` and
- * `validateGroupByArgs` for the same inputs.
- */
-
+// fast-check twins of `tests/unit/test_query_validation_pbt.py`: `validateQueryArgs`
+// reports the same time and group-by errors as `validateTimeArgs` /
+// `validateGroupByArgs` for the same inputs. Hypothesis
+// `@settings(max_examples=100)` → `numRuns: 100` with the same strategy shapes.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -24,9 +14,7 @@ import {
 } from "../../src/query/validation-args.js";
 import { GroupBy } from "../../src/types/index.js";
 
-// =============================================================================
-// Strategies (test_query_validation_pbt.py)
-// =============================================================================
+// --- Strategies (test_query_validation_pbt.py) ---
 
 /**
  * Port of `st.from_regex(r"20[2-3][0-9]-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])")`
@@ -70,12 +58,12 @@ const lastValuesArb = fc.integer({ min: -100, max: 5000 });
  * surrogate).
  *
  * fast-check has no Unicode-category generator, so this is a NARROWED
- * stand-in (B2 arbiter fix, b2-review-resolution.md assertions-F1):
+ * stand-in:
  * ASCII letters/digits plus explicit non-ASCII category-L/N members —
  * é (Ll), Ω (Lu), ж (Ll), 中 (Lo), ٤ (Nd), Ⅻ (Nl) and the non-BMP
  * 𝒳 (U+1D4B3, Lu) — every entry strictly inside Python's L/N domain.
  * Full-Unicode cross-language behavior is additionally locked by the
- * Python-side R10.9 fuzz strategies (`_B2_NON_BMP` edges).
+ * Python-side differential-fuzz strategies (non-BMP edges).
  */
 const LN_CHARS: readonly string[] = codepoints(
   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789éΩж中٤Ⅻ𝒳",
@@ -134,9 +122,7 @@ const GROUP_ERROR_CODES: ReadonlySet<string> = new Set([
   "V24_BUCKET_NOT_FINITE",
 ]);
 
-// =============================================================================
-// Time Validation Equivalence
-// =============================================================================
+// --- Time Validation Equivalence ---
 
 describe("Time validation equivalence", () => {
   // python: TestTimeValidationEquivalence
@@ -184,9 +170,7 @@ describe("Time validation equivalence", () => {
   });
 });
 
-// =============================================================================
-// GroupBy Validation Equivalence
-// =============================================================================
+// --- GroupBy Validation Equivalence ---
 
 describe("Group by validation equivalence", () => {
   // python: TestGroupByValidationEquivalence

@@ -1,12 +1,9 @@
-// Layer-3 translation — Phase-3 packet B4-C5 sign_replays METHOD locks.
-// Source: tests/unit/_internal/test_api_client_sign_replays.py,
-// TestSignReplaysRequest ONLY. Header exclusion (packet C5
-// §Layer-3 scope): TestSensitiveDataMapping,
-// TestSensitiveData403BodyShapes (FIX-2, bug (c)), and
-// TestOtherHttpErrors lock the B0 `handleResponse` 403 branch
-// and were translated at B0 against `client/internals.ts` — see
-// `docs/history/phase3/design/b0-review-assertions.md`; the C5 R10.9
-// harness re-exercises that matrix through the REAL method.
+// `signReplays`: the bulk sign endpoint, request body shape, `replay_env`
+// threading and the raw results passthrough. Mirrors TestSignReplaysRequest
+// from tests/unit/_internal/test_api_client_sign_replays.py; the module's
+// 403 sensitive-data mapping classes drive the shared `handleResponse`
+// branch and live with the internals tests.
+
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "../../src/auth/session.js";
@@ -17,7 +14,7 @@ import {
   parseBody,
 } from "../../test-support/client-test-helpers.js";
 
-/** The `us_credentials` fixture twin (:29-37 — service account, US). */
+/** The `us_credentials` fixture twin (service account, US). */
 function usCredentials(): Session {
   return makeSession({
     username: "test_user",

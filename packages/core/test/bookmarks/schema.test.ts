@@ -1,29 +1,8 @@
-/**
- * Layer-3 translation of `tests/unit/test_bookmark_schema.py` (Python
- * revision: `ts-port/phase2-contract-support` HEAD; 574 LOC, 9
- * classes). B3-K1 owns all nine — the sorting-model classes were NOT
- * translated at B2 (that shard translated only the validator-facing
- * `validate_sorting_block` tests).
- *
- * **Structural-twin caveat (R10.2 honesty).** The TS port has no
- * pydantic: `bookmarks/schema{,-sorting}.ts` reproduces the models as
- * structural VALIDATORS, not parsers. So a Python assert of the form
- * `m = Model.model_validate(raw); assert m.sortBy == "column"` becomes
- * `expect(types(MODEL.validate(raw))).toStrictEqual([])` — the strongest
- * statement the twin can make (there is no `m` to inspect, and the
- * package's only consumer of these models,
- * `Workspace._validate_bookmark_params_schema`, reads the error stream
- * and discards the parsed object). Every `pytest.raises` assert keeps
- * its full strength: the pydantic error `type` string is asserted, not
- * merely "some error".
- *
- * The `type` strings asserted below are the twin's contract keys —
- * they are the `_DEFAULT_CODE_MAP` lookup keys — and every one is
- * pinned to the CPython pydantic probe recorded in
- * `docs/history/phase3/notes/B3-K1-notes.md` §Probe
- * (`throwaway/b3-k1/probe-*.py`, run 2026-08-15).
- */
-
+// The structural bookmark-schema validators in `bookmarks/schema{,-sorting}`
+// — translation of `tests/unit/test_bookmark_schema.py` (all nine classes).
+// The port has no pydantic: `m = Model.model_validate(raw); assert m.x == ...`
+// becomes `expect(types(MODEL.validate(raw))).toStrictEqual([])`, and every
+// `pytest.raises` asserts the pydantic error `type` string, which is the code-map key.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -84,9 +63,7 @@ function locHas(entry: PydanticErrorEntry, needle: string): boolean {
   return entry.loc.includes(needle);
 }
 
-// =============================================================================
-// Sorting models
-// =============================================================================
+// --- Sorting models ---
 
 describe("Sort by columns config", () => {
   // python: TestSortByColumnsConfig
@@ -354,9 +331,7 @@ describe("Insights bookmark sort config", () => {
   });
 });
 
-// =============================================================================
-// Adapter
-// =============================================================================
+// --- Adapter ---
 
 describe("Pydantic adapter", () => {
   // python: TestPydanticAdapter
@@ -452,9 +427,7 @@ describe("Pydantic adapter", () => {
   });
 });
 
-// =============================================================================
-// Enum parity
-// =============================================================================
+// --- Enum parity ---
 
 describe("Enum parity", () => {
   // python: TestEnumParity
@@ -484,15 +457,13 @@ describe("Enum parity", () => {
   }
 });
 
-// =============================================================================
-// CreateBookmarkParams literal tightening
-// =============================================================================
+// --- CreateBookmarkParams literal tightening ---
 
 describe("Bookmark type literal", () => {
   // python: TestBookmarkTypeLiteral
   // NOTE: the Python assert reads pydantic's `literal_error` off
   // `CreateBookmarkParams`; the TS twin of that PUBLIC type is the
-  // Phase-2 `EntityModel` port, whose `oneOf` check raises
+  // `EntityModel` port, whose `oneOf` check raises
   // `ResponseValidationError`. The assertion keeps its strength
   // (constructing with the typo must fail) against the twin's own
   // contract surface.
@@ -529,9 +500,7 @@ describe("Bookmark type literal", () => {
   });
 });
 
-// =============================================================================
-// Math / chartType tightening
-// =============================================================================
+// --- Math / chartType tightening ---
 
 describe("Math and chart type tightening", () => {
   // python: TestMathAndChartTypeTightening
@@ -594,14 +563,10 @@ describe("Flows bookmark params", () => {
   });
 });
 
-// =============================================================================
-// Probe-pinned shapes (R10.2 additions, not weakenings)
-//
-// These lock the CPython probe findings that the Python unit file never
-// exercised but that the twin's structural machinery must reproduce for
-// the R10.9 differential fuzz to stand a chance. Every expectation is a
-// verbatim transcript row from `throwaway/b3-k1/probe-*.py`.
-// =============================================================================
+// --- Probe-pinned pydantic-core shapes (TS-only additions) ---
+// CPython/pydantic behaviour the Python unit file never exercised but the
+// structural twin must reproduce for the differential fuzz to pass; every
+// expectation is a verbatim CPython transcript row.
 
 describe("probe-pinned pydantic-core shapes", () => {
   it("emits declared-field errors in declaration order, then extras in input order", () => {
@@ -720,7 +685,7 @@ describe("probe-pinned pydantic-core shapes", () => {
   });
 
   it("keeps the i64 window for float->int and float->bool coercion", () => {
-    // probe-bool2.py — R10.9 fuzz finding (seeds 99991 / 20260816):
+    // Differential-fuzz finding:
     // an INTEGRAL float inside the i64 window coerces, one at or past
     // 2**63 does not. Python `int`s have no ceiling, so the guard is
     // keyed on float-ness (PyFloat carrier), never magnitude alone.

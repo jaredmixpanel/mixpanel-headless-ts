@@ -1,25 +1,14 @@
-/**
- * Layer-3 translation of `tests/test_validation_cohort.py`
- * (Python revision: `ts-port/phase2-contract-support` HEAD; 504 LOC).
- *
- * Scope per b2-packets.md §V1a: the `validate_retention_args` class
- * (`TestRetentionCohortMixValidation`, CB3). The `validate_bookmark`
- * cohort classes (`TestCohortFilterValidation`,
- * `TestCohortGroupValidation`, `TestCohortShowValidation`,
- * `TestCohortBehaviorMissingIdentifier`, B22–B26) are B2 shard V1b.
- *
- * R10.2: assertion-for-assertion.
- */
-
+// `validateRetentionArgs` rule CB3 (no mixing `CohortBreakdown` with `GroupBy`)
+// — translation of `TestRetentionCohortMixValidation` from
+// `tests/test_validation_cohort.py`; the `validate_bookmark` cohort classes are
+// in validation-cohort-bookmark.test.ts.
 import { describe, expect, it } from "vitest";
 
 import { validateRetentionArgs } from "../../src/query/validation-args.js";
 import { CohortBreakdown, GroupBy } from "../../src/types/index.js";
 import { codes } from "../../test-support/error-codes.js";
 
-// =============================================================================
-// CB3: no mixing CohortBreakdown with GroupBy in retention (T022)
-// =============================================================================
+// --- CB3: no mixing CohortBreakdown with GroupBy in retention ---
 
 describe("Retention cohort mix validation", () => {
   // python: TestRetentionCohortMixValidation

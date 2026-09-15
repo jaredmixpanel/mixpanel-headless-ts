@@ -1,25 +1,8 @@
-/**
- * Layer-3 translation of `tests/unit/test_bookmark_enums.py` (Python
- * revision: `ts-port/phase2-contract-support` HEAD; 270 LOC, 6 classes).
- *
- * Scope per b3-packets.md §K1: all six classes
- * (`TestMathTypeCompleteness`, `TestPerUserAggregationCompleteness`,
- * `TestPropertyTypeCompleteness`, `TestEnumCardinality`,
- * `TestNewEnumConstants`, `TestExtendedMathFunnels`). The tables
- * themselves landed at P2-3 in `src/bookmarks/enums.ts`; this file is
- * the missing lock.
- *
- * R10.2: assertion-for-assertion. Python `frozenset` subset/equality
- * asserts become explicit set operations here — `<=` is
- * {@link isSubset}, `==` is {@link setEquals} — never weakened to
- * "contains some".
- *
- * The Python `isinstance(X, frozenset)` asserts (immutability intent)
- * translate to `instanceof Set` plus the compile-time `ReadonlySet`
- * annotation on the export; there is no frozen-Set primitive in JS, so
- * the runtime half of that assertion is the type check.
- */
-
+// The bookmark enum tables in `bookmarks/enums` — translation of
+// `tests/unit/test_bookmark_enums.py` (all six classes). Python `frozenset`
+// `<=` / `==` asserts become explicit `isSubset` / `setEquals` checks, never
+// "contains some"; `isinstance(X, frozenset)` becomes `instanceof Set` plus
+// the compile-time `ReadonlySet` annotation (JS has no frozen Set).
 import { describe, expect, it } from "vitest";
 
 import {

@@ -1,38 +1,8 @@
-/**
- * Layer-3 translation of the builder-direct half of
- * `tests/unit/test_bookmark_builders_pbt.py` (Python revision:
- * `ts-port/phase2-contract-support` HEAD; 394 LOC, 4 classes) —
- * fast-check twins of the Hypothesis strategies.
- *
- * **Scope (b3-packets.md §K2 "Layer-3 test translation" + R10.1).**
- * Three of the four Python classes — `TestTimeSectionEquivalence`,
- * `TestFilterSectionEquivalence`, `TestGroupSectionEquivalence` —
- * assert `ws._build_query_params(...) == build_*(...)`, i.e. they are
- * WIRING tests for the `Workspace` facade. No facade exists at B3, so
- * they defer to **B5-S2** (the `workspace.build_*params` packet) rather
- * than being weakened here; their builder halves are already covered
- * assertion-for-assertion by `builders.test.ts`.
- *
- * `TestListContainsRoundTrip` (`:354-394`) IS builder-direct and is
- * translated below.
- *
- * Strategy mirroring notes:
- * - `property_names = st.text(min_size=1, max_size=30,
- *   alphabet=st.characters(categories=("L", "N")))` → the same size
- *   window over a letter/number alphabet that INCLUDES non-ASCII and
- *   non-BMP members (B2 ASSERT-F1 precedent: an ASCII-only twin is a
- *   silent narrowing).
- * - `_subprop_names = st.text(min_size=1, max_size=10,
- *   alphabet=st.characters(categories=["L"]))` → letters only. Python
- *   passes these as `**kwargs`, so the dictionary shape is the twin of
- *   `st.dictionaries(min_size=1, max_size=5)`; the TS
- *   `Filter.listContains(..., { equals })` record is the ported
- *   calling convention for `**equals`.
- * - `st.text(min_size=1, max_size=20)` values → `fc.string` with
- *   `unit: "binary"` (full code-point domain).
- * - `@settings(max_examples=50)` → `fc.assert(..., { numRuns: 50 })`.
- */
-
+// fast-check twins of the builder-direct half of
+// `tests/unit/test_bookmark_builders_pbt.py` (`TestListContainsRoundTrip`); the
+// `*Equivalence` classes there exercise `Workspace._build_query_params` and
+// live with the workspace tests. Strategy twins: `st.text` → `fc.string({ unit:
+// "binary" })`, `**equals` → the `{ equals }` record, `max_examples=50` → `numRuns: 50`.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -115,13 +85,11 @@ describe("Filter.listContains round-trip invariants (PBT)", () => {
   });
 });
 
-// =============================================================================
-// NEW properties — invariants the packet's R10.9 spec relies on, stated
-// once here so a regression fails in vitest before it reaches the
-// differential harness.
-// =============================================================================
+// --- Builder invariants (TS-only) ---
+// Invariants the differential fuzz relies on, stated once here so a
+// regression fails in vitest before it reaches the oracle harness.
 
-describe("builder invariants (NEW)", () => {
+describe("builder invariants", () => {
   it("buildTimeSection always returns exactly one entry", () => {
     fc.assert(
       fc.property(

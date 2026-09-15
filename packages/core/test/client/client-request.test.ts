@@ -1,20 +1,9 @@
-// Layer-3 translation — Phase-3 packet B4-C1 request-path locks. Sources:
-//
-// - tests/unit/test_api_client.py::TestPublicRequest — the
-//   FULL class, through the REAL assembled client (B0 translated the
-//   observable subset against `executeWithRetry` directly and deferred
-//   the URL/auth-plumbing asserts here; internals.test.ts header).
-// - tests/unit/test_app_api_client.py — B0 deviation-3 deferrals only:
-//   ::TestAppRequest::test_uses_bearer_auth_header (:81) /
-//   ::test_uses_basic_auth_when_configured (:95) /
-//   ::test_builds_correct_url (:109) — auth headers + URL now recorded
-//   END-TO-END through the real client + Phase-2 auth model — and
-//   ::TestAppRequestFormBody::test_form_body_sent_as_form_encoded
-//   — the adapter-owned content-type/encoding assertion. The
-//   remaining classes were translated at B0 (app-request.test.ts header;
-//   `b0-review-assertions.md`).
-//
-// Entry-point substitutions as in client-core.test.ts.
+// The public `request()` path through the assembled client (auth header,
+// params, JSON body, query_origin injection, error mapping, 429 retry) and
+// the `appRequest` auth-header / URL / form-encoding wire captures. Mirrors
+// TestPublicRequest from tests/unit/test_api_client.py and the auth/URL/form
+// cases of TestAppRequest / TestAppRequestFormBody from tests/unit/test_app_api_client.py.
+
 import { describe, expect, it } from "vitest";
 
 import { JsonNumber } from "../../src/client/json-value.js";
@@ -246,12 +235,9 @@ describe("Public request", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// B0 deviation-3 deferrals: auth-header wire captures + form encoding,
-// now end-to-end through the real client (tests/unit/test_app_api_client.py).
-// ---------------------------------------------------------------------------
+// --- App request wire captures (tests/unit/test_app_api_client.py) ---
 
-describe("App request (B4-C1 deferral slice)", () => {
+describe("App request (auth header and URL)", () => {
   // python: TestAppRequest
   it("uses bearer auth header", async () => {
     // python: test_uses_bearer_auth_header
@@ -297,7 +283,7 @@ describe("App request (B4-C1 deferral slice)", () => {
   });
 });
 
-describe("App request form body (B4-C1 deferral slice)", () => {
+describe("App request form body", () => {
   // python: TestAppRequestFormBody
   it("form body sent as form encoded", async () => {
     // python: test_form_body_sent_as_form_encoded
@@ -331,10 +317,10 @@ describe("App request form body (B4-C1 deferral slice)", () => {
   });
 });
 
-// Result float-ness sanity through the real request path (lossless
-// parse — GATE-VERDICT R5): a `18.0` body member survives as a float
-// token, never the integer 18.
-describe("lossless result plumbing (GATE-R5 spot lock)", () => {
+// TS-only: result float-ness through the real request path (lossless
+// parse): a `18.0` body member survives as a float token, never the
+// integer 18.
+describe("lossless result plumbing", () => {
   it("preserves float tokens through request()", async () => {
     const { client } = createMockClient(makeSession(), () => ({
       status: 200,

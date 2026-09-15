@@ -1,20 +1,9 @@
-// Layer-3 translation — tests/unit/test_api_client_pbt.py → fast-check
-// (Phase-3 packet B4-C1; same strategy shapes). Classes:
-//
-// - ::TestAuthHeaderProperties — through the real client's
-//   per-request auth path (C1).
-// - ::TestBackoffProperties, ::TestUrlBuildProperties,
-//   ::TestIterJsonlLinesProperties (:537) — these lock B0-owned modules
-//   (`backoff.ts`, `url.ts`, `jsonl.ts`) but were NOT translated at B0
-//   (packet C1 §Layer-3: "translate them HERE against the B0 modules").
-// - ::TestActivityFeedDateRange → B4-C2 (header exclusion; the
-//   date-range builder is C2 source range).
-//
-// Strategy-shape notes: Hypothesis `st.characters(categories=...)`
-// alphabets translate to explicit alphabets carrying non-ASCII members
-// of the same categories (incl. the non-BMP 𝒳, code-point-safe
-// indexing) — the B2 arbiter M1-PBT precedent; Python `.strip()`
-// filters translate via `pythonStrip`.
+// Property tests for the client's auth header round-trip, `calculateBackoff`
+// bounds, `buildUrl` path normalisation and `iterJsonlLines` chunk
+// invariance. Mirrors tests/unit/test_api_client_pbt.py (fast-check for
+// Hypothesis; TestActivityFeedDateRange is in client-queries-pbt.test.ts).
+// Hypothesis category alphabets become explicit alphabets with non-ASCII and non-BMP members.
+
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -270,15 +259,12 @@ describe("URL build properties", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// TestIterJsonlLinesProperties — chunk-boundary invariance of the B0
-// jsonl splitter (the core bug the Python module fixed).
-// ---------------------------------------------------------------------------
+// --- Iter JSONL lines properties: chunk-boundary invariance of the splitter ---
 
 /**
- * `json_line_content` alphabet: L/N/P/S categories plus
- * '{}[]":, ', minus newlines — mirrored with non-ASCII members (§ ± 𝒳)
- * per the strategy-shape rule.
+ * `json_line_content` alphabet: L/N/P/S categories plus the JSON
+ * punctuation `{}[]":,` and space, minus newlines — mirrored with
+ * non-ASCII members (§ ± 𝒳).
  */
 const LINE_ALPHABET = [
   ...codepoints(
@@ -326,7 +312,7 @@ function splitBytesAtPositions(
   return data.length > 0 ? [data] : [new Uint8Array(0)];
 }
 
-/** `_collect_lines_from_chunks` over the B0 splitter. */
+/** `_collect_lines_from_chunks` over `iterJsonlLines`. */
 async function collectLinesFromChunks(
   chunks: readonly Uint8Array[],
 ): Promise<string[]> {

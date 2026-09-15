@@ -1,28 +1,8 @@
-/**
- * Layer-3 translation of `tests/unit/test_query_validation.py`
- * (Python revision: `ts-port/phase2-contract-support` HEAD; 827 LOC).
- *
- * Scope per b2-packets.md §V1a "Layer-3 test translation": the
- * validator-direct classes only. The classes that exercise validation
- * through `Workspace.query(...)` / `build_params(...)`
- * (`TestTimeRangeValidation` pytest.raises cases,
- * `TestAggregationValidation` pytest.raises cases,
- * `TestPerMetricValidation`, `TestFormulaValidation` raises case,
- * `TestAnalysisModeValidation`, `TestGroupByValidation`,
- * `TestEmptyEventsValidation`, `TestFormulaInListValidation`,
- * `TestBuildParamsValidation`, `TestPercentileValidation`,
- * `TestHistogramValidation`) are B5 facade scope — translated with the
- * B5 S2 shard (phase2-audit A2 style deferral).
- *
- * The `validate_query_args(...)` calls embedded inside those otherwise
- * facade-driven classes ARE validator-direct and are translated here,
- * grouped under their Python class name.
- *
- * R10.2: assertion-for-assertion. R5.3/R5.4: codes are the contract;
- * message asserts are kept only against this port's own faithfully
- * ported strings.
- */
-
+// Translation of the validator-direct classes of
+// `tests/unit/test_query_validation.py` (`validateQueryArgs`, `validateTimeArgs`,
+// `validateGroupByArgs`). Classes that validate only through `Workspace.query`
+// / `build_params` live with the workspace tests; the `validate_query_args`
+// calls embedded in them are translated here under their Python class name.
 import { describe, expect, it } from "vitest";
 
 import { ParamValidationError } from "../../src/errors.js";
@@ -33,9 +13,7 @@ import {
 } from "../../src/query/validation-args.js";
 import { GroupBy } from "../../src/types/index.js";
 
-// =============================================================================
-// T007: Time range validation rules (V7-V11) — validator-direct members
-// =============================================================================
+// --- Time range validation rules (V7-V11) — validator-direct members ---
 
 describe("Time range validation", () => {
   // python: TestTimeRangeValidation
@@ -95,9 +73,7 @@ describe("Time range validation", () => {
   });
 });
 
-// =============================================================================
-// T016: Aggregation validation rules V1-V3 — validator-direct members
-// =============================================================================
+// --- Aggregation validation rules V1-V3 — validator-direct members ---
 
 describe("Aggregation validation", () => {
   // python: TestAggregationValidation
@@ -178,9 +154,7 @@ describe("Aggregation validation", () => {
   });
 });
 
-// =============================================================================
-// T029: Formula validation V4 — validator-direct member
-// =============================================================================
+// --- Formula validation V4 — validator-direct member ---
 
 describe("Formula validation", () => {
   // python: TestFormulaValidation
@@ -203,9 +177,7 @@ describe("Formula validation", () => {
   });
 });
 
-// =============================================================================
-// Reusable validate_time_args() (US2 shared-infra) — test_query_validation.py
-// =============================================================================
+// --- Reusable validate_time_args() ---
 
 describe("Validate time args", () => {
   // python: TestValidateTimeArgs
@@ -334,9 +306,7 @@ describe("Validate time args", () => {
   });
 });
 
-// =============================================================================
-// Reusable validate_group_by_args() (US2 shared-infra) — :743
-// =============================================================================
+// --- Reusable validate_group_by_args() ---
 
 describe("Validate group by args", () => {
   // python: TestValidateGroupByArgs

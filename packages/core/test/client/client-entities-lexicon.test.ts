@@ -1,9 +1,9 @@
-// Layer-3 translation — Phase-3 packet B4-C5 data-governance locks.
-// Source: tests/unit/test_api_client_data_governance.py (ALL classes —
-// lexicon definitions/tags/metadata/history/export, custom properties,
-// drop filters, lookup tables incl. upload/download wiring, custom
-// events incl. the form-body + envelope-peeling + echo-mismatch
-// branches, and the error-path classes).
+// Lexicon client methods: event/property definitions (get/update/delete/
+// bulk update), lexicon tags, tracking metadata, event/property history and
+// export, plus the async string-response error path. Mirrors the lexicon
+// classes of tests/unit/test_api_client_data_governance.py; the module's
+// other domains live in the sibling `client-entities-*` files.
+
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "../../src/auth/session.js";
@@ -23,9 +23,7 @@ function oauthCredentials(): Session {
   });
 }
 
-// ---------------------------------------------------------------------------
-// Domain 9 — Data Definitions (US1 + US2)
-// ---------------------------------------------------------------------------
+// --- Data definitions ---
 
 describe("Get event definitions", () => {
   // python: TestGetEventDefinitions
@@ -599,9 +597,7 @@ describe("Export lexicon", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Error-Path Tests
-// ---------------------------------------------------------------------------
+// --- Error paths ---
 
 describe("Export lexicon async string response", () => {
   // python: TestExportLexiconAsyncStringResponse

@@ -1,7 +1,8 @@
-// Layer-3 translation — Phase-3 packet B4-C4 experiment locks.
-// Source: tests/unit/test_api_client_experiments.py (ALL classes —
-// experiment CRUD, lifecycle launch/conclude/decide, management
-// archive/restore/duplicate, ERF listing, 400/404 error paths).
+// Experiment client methods: CRUD, the launch/conclude/decide lifecycle
+// (including state-guard errors), archive/restore/duplicate and ERF
+// listing (paths, methods, bodies, 400/404 error paths). Mirrors every
+// class of tests/unit/test_api_client_experiments.py.
+
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "../../src/auth/session.js";

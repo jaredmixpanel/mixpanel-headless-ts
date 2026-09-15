@@ -1,20 +1,9 @@
-// Layer-3 translation — Phase-3 packet B4-C1 client-core locks. Sources:
-//
-// - tests/unit/test_api_client.py::TestClientInit,
-//   ::TestClientLifecycle (:146-168), ::TestAuthHeader (:172-278),
-//   ::TestAPIClientProperties (:1828-1856)
-// - tests/unit/test_api_client_session.py — ALL classes
-//
-// Entry-point substitutions (documented per packet C1 §Layer-3 /
-// B0-notes decision 13): httpx.MockTransport → the injected-fetch fake
-// (`client-test-helpers.ts`); `client._client`/`client._http` identity →
-// the `HttpHandle` pool token (`isHttpOpen()`/`httpHandle()` — the R6.2
-// invariant object); `client._get_auth_header()` /
-// `client.current_auth_header` → `client.currentAuthHeader()` (async
-// per R3.1: TS token resolution is I/O); `client._timeout` etc. →
-// `client.core.timeoutSeconds` etc.; Python `with client:` →
-// `ensureHttpOpen()` + `close()`. Every assertion is otherwise
-// preserved 1:1 (R10.2).
+// Client construction, lifecycle, auth-header resolution, properties and
+// `use()` session switching (transport preserved, stale workspace cleared,
+// OAuth atomicity, fresh bearer per app request). Mirrors TestClientInit,
+// TestClientLifecycle, TestAuthHeader and TestAPIClientProperties from
+// tests/unit/test_api_client.py and all of tests/unit/test_api_client_session.py.
+
 import { describe, expect, it } from "vitest";
 
 import type {
@@ -117,7 +106,7 @@ describe("Client lifecycle", () => {
       json: ["event1"],
     }));
     // `with client:` runs __enter__._ensure_client(); asyncDispose is
-    // the R6.2 exit analog.
+    // the __exit__ analog.
     client.ensureHttpOpen();
     expect(client.isHttpOpen()).toBe(true);
     await client[Symbol.asyncDispose]();
@@ -256,9 +245,7 @@ describe("API client properties", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// tests/unit/test_api_client_session.py — ALL classes.
-// ---------------------------------------------------------------------------
+// --- Session switching (tests/unit/test_api_client_session.py) ---
 
 describe("Construction", () => {
   // python: TestConstruction

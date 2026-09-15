@@ -1,22 +1,9 @@
-// Layer-3 translation — Phase-3 packet B4-C2 engage locks. Sources:
-//
-// - tests/unit/test_api_client.py::TestProfileExport,
-//   ::TestEngageParameterValidation (:1861),
-//   ::TestEngageParameterEdgeCases (:1942),
-//   ::TestEngageDistinctIdParameter (:2042),
-//   ::TestEngageGroupIdParameter (:2130),
-//   ::TestEngageBehaviorsParameter (:2163),
-//   ::TestEngageIncludeAllUsersParameter (:2220),
-//   ::TestExportProfilesPage (:2319),
-//   ::TestExportProfilesPagePagination (:2554),
-//   ::TestCodedExportProfilesCodes (:4124) — ALL.
-// - tests/test_api_client_engage_stats.py — ALL (TestEngageStats :81,
-//   TestExportProfilesPageNewParams :436,
-//   TestExportProfilesPageFilterByCohort :679).
-//
-// Python `pytest.raises(ValueError)` sites: the AC* guards are
-// ParamValidationError (Python dual-inherits ValueError; TS keys on
-// class + code, R5.2 — see errors.ts ParamValidationError JSDoc).
+// `exportProfiles` parameter handling: session_id pagination, where /
+// cohort / output_properties / distinct_id(s) / group_id / behaviors /
+// as_of_timestamp / include_all_users, mutual-exclusion guards and edge
+// cases. Mirrors TestProfileExport and the TestEngage*Parameter* classes of
+// tests/unit/test_api_client.py; `pytest.raises(ValueError)` is ParamValidationError here.
+
 import { describe, expect, it } from "vitest";
 
 import { ParamValidationError } from "../../src/errors.js";

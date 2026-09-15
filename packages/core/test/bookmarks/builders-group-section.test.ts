@@ -1,42 +1,8 @@
-/**
- * Layer-3 translation of the `bookmark_builders.py` test corpus
- * (Python revision: `ts-port/phase2-contract-support` HEAD).
- *
- * Sources translated here, per b3-packets.md §"Packet K2":
- *
- * | Python file | classes translated |
- * |---|---|
- * | `tests/unit/test_bookmark_builders.py` (1,396 LOC, 18 classes) | all 18 |
- * | `tests/test_custom_property_builders.py` (461 LOC) | `TestBuildComposedProperties`, `TestBuildGroupSectionCustomProperties`, `TestBuildFilterEntryCustomProperties` |
- *
- * **Deferrals (header citations, R10.1):**
- *
- * - `tests/test_custom_property_builders.py::TestMeasurementPropertyBuilder`
- *   drives `Workspace.build_params` → **B5-S2** (no implementation exists
- *   to test at B3). The packet flags this file as a playbook omission that
- *   is nonetheless IN scope for its builder-direct classes (15 measured K2
- *   vectors come from it).
- * - `tests/unit/test_bookmark_builders_pbt.py`'s three equivalence classes
- *   (`TestTimeSectionEquivalence`, `TestFilterSectionEquivalence`,
- *   `TestGroupSectionEquivalence`) assert
- *   `ws._build_query_params(...) == build_*(...)` → **B5-S2**. Only
- *   `TestListContainsRoundTrip` is builder-direct; it is translated as a
- *   fast-check property in `builders.pbt.test.ts`.
- * - `tests/test_build_cohort_params.py` and `tests/test_query_params.py`
- *   are B5-owned files (playbook B5 row); their K2 vectors replay at the
- *   B3 gate regardless (vector api gates, not test-file ownership). The
- *   `buildFlowCohortFilter` describe block below is therefore marked
- *   `// NEW` and cites the corpus vector ids it mirrors.
- *
- * R10.2: assertion-for-assertion, codes not messages. Python
- * `pytest.raises(TypeError, match=…)` pairs become
- * `toThrow(ParamTypeError)` plus an explicit `.code` assertion, since
- * `ParamTypeError`/`ParamValidationError` are the ported twins of
- * Python's `TypeError`/`ValueError` subclasses (the "stays catchable as
- * TypeError/ValueError" asserts translate to the base-class check —
- * see `errors.ts`).
- */
-
+// `buildGroupSection` (string / GroupBy / listItem / data_group_id / coded
+// guards) and `buildComposedProperties` from `bookmarks/builders`. Mirrors the
+// group-section classes of `tests/unit/test_bookmark_builders.py` plus
+// `TestBuildComposedProperties` and `TestBuildGroupSectionCustomProperties`
+// from `tests/test_custom_property_builders.py`; codes asserted, not messages.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -54,9 +20,7 @@ import {
 } from "../../src/types/index.js";
 import { expectThrows } from "../../test-support/raises.js";
 
-// =============================================================================
-// tests/unit/test_bookmark_builders.py::TestBuildGroupSection
-// =============================================================================
+// --- Group section (TestBuildGroupSection) ---
 
 describe("buildGroupSection", () => {
   it("none returns empty", () => {
@@ -145,9 +109,7 @@ describe("buildGroupSection", () => {
   });
 });
 
-// =============================================================================
-// tests/unit/test_bookmark_builders.py::TestBuildGroupSectionDataGroupId (T033)
-// =============================================================================
+// --- data_group_id threading (TestBuildGroupSectionDataGroupId) ---
 
 describe("buildGroupSection — data_group_id threading", () => {
   it("custom property ref group with data group id", () => {
@@ -202,9 +164,7 @@ describe("buildGroupSection — data_group_id threading", () => {
   });
 });
 
-// =============================================================================
-// tests/unit/test_bookmark_builders.py::TestGroupByListItem
-// =============================================================================
+// --- GroupBy.listItem (TestGroupByListItem) ---
 
 describe("GroupBy.listItem → buildGroupSection", () => {
   it("basic string sub emits listItemGroup", () => {
@@ -304,9 +264,7 @@ describe("GroupBy.listItem → buildGroupSection", () => {
   });
 });
 
-// =============================================================================
-// tests/unit/test_bookmark_builders.py::TestCodedGroupSectionCodes
-// =============================================================================
+// --- Coded guards (TestCodedGroupSectionCodes) ---
 
 describe("coded guards — buildGroupSection (BB1)", () => {
   it("bb1 scalar element raises coded error", () => {
@@ -341,9 +299,7 @@ describe("coded guards — buildGroupSection (BB1)", () => {
   });
 });
 
-// =============================================================================
-// tests/test_custom_property_builders.py::TestBuildComposedProperties (T006)
-// =============================================================================
+// --- Composed properties (TestBuildComposedProperties) ---
 
 describe("buildComposedProperties", () => {
   it("single input", () => {
@@ -392,9 +348,7 @@ describe("buildComposedProperties", () => {
   });
 });
 
-// =============================================================================
-// tests/test_custom_property_builders.py::TestBuildGroupSectionCustomProperties
-// =============================================================================
+// --- Custom properties (TestBuildGroupSectionCustomProperties) ---
 
 describe("buildGroupSection — custom properties", () => {
   it("T017 plain string unchanged", () => {

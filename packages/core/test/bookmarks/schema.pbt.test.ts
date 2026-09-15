@@ -1,25 +1,8 @@
-/**
- * Layer-3 translation of `tests/unit/test_bookmark_schema_pbt.py`
- * (Python revision: `ts-port/phase2-contract-support` HEAD; 387 LOC,
- * 7 classes) — fast-check twins of the Hypothesis strategies, same
- * shapes, same filters, same example budgets.
- *
- * Strategy mirroring notes:
- * - `st.text(min_size=1, max_size=50)` → `fc.string` over the same
- *   size window with `unit: "binary"` so non-BMP code points can be
- *   generated (the B2 ASSERT-F1 narrowing fix).
- * - `_safe_extra_field_names` mirrors the `a-z`, 8..20 alphabet and the
- *   `_KNOWN_FIELDS` filter; the known-field set is rebuilt here from
- *   the ported model specs, so it drifts with them exactly as the
- *   Python set drifts with `model_fields`.
- * - `TestRoundtripSoundness` asserts the twin's OBSERVABLE half only:
- *   the port has validators, not parsers, so there is no `model_dump`
- *   to round-trip (see `schema.test.ts` header). The
- *   "validate → no errors" halves translate verbatim; the
- *   "dump → re-validate" halves become a second validation of the same
- *   input, which is what the property is guarding (statelessness).
- */
-
+// fast-check twins of `tests/unit/test_bookmark_schema_pbt.py` (all seven
+// classes): same shapes, filters and example budgets. `st.text` →
+// `fc.string({ unit: "binary" })` so non-BMP code points are generated; the
+// known-field set is rebuilt from the ported model specs. The port has
+// validators, not parsers, so "dump → re-validate" halves re-validate the same input.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -595,7 +578,7 @@ describe("Dispatch consistency", () => {
   });
 
   it("returns null for unknown and empty bookmark types", () => {
-    // R10.9 `get_root_model_family` edge probe: Python's `dict.get()`
+    // `get_root_model_family` edge: Python's `dict.get()`
     // default makes "unknown" indistinguishable from the explicit
     // `"user" -> None` entry.
     for (const bt of ["", "insightz", "USER", "𝒳", "sorting"]) {
@@ -604,7 +587,7 @@ describe("Dispatch consistency", () => {
   });
 
   it("exposes exactly the two partial-update sub-models", () => {
-    // `sorting` is deliberately excluded (`bookmark_schema.py:362-369`).
+    // `sorting` is deliberately excluded (`bookmark_schema.PARTIAL_UPDATE_SUB_MODELS`).
     expect([...PARTIAL_UPDATE_SUB_MODELS.keys()]).toStrictEqual([
       "sections",
       "displayOptions",

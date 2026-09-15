@@ -1,42 +1,8 @@
-/**
- * Layer-3 translation of the `bookmark_builders.py` test corpus
- * (Python revision: `ts-port/phase2-contract-support` HEAD).
- *
- * Sources translated here, per b3-packets.md §"Packet K2":
- *
- * | Python file | classes translated |
- * |---|---|
- * | `tests/unit/test_bookmark_builders.py` (1,396 LOC, 18 classes) | all 18 |
- * | `tests/test_custom_property_builders.py` (461 LOC) | `TestBuildComposedProperties`, `TestBuildGroupSectionCustomProperties`, `TestBuildFilterEntryCustomProperties` |
- *
- * **Deferrals (header citations, R10.1):**
- *
- * - `tests/test_custom_property_builders.py::TestMeasurementPropertyBuilder`
- *   drives `Workspace.build_params` → **B5-S2** (no implementation exists
- *   to test at B3). The packet flags this file as a playbook omission that
- *   is nonetheless IN scope for its builder-direct classes (15 measured K2
- *   vectors come from it).
- * - `tests/unit/test_bookmark_builders_pbt.py`'s three equivalence classes
- *   (`TestTimeSectionEquivalence`, `TestFilterSectionEquivalence`,
- *   `TestGroupSectionEquivalence`) assert
- *   `ws._build_query_params(...) == build_*(...)` → **B5-S2**. Only
- *   `TestListContainsRoundTrip` is builder-direct; it is translated as a
- *   fast-check property in `builders.pbt.test.ts`.
- * - `tests/test_build_cohort_params.py` and `tests/test_query_params.py`
- *   are B5-owned files (playbook B5 row); their K2 vectors replay at the
- *   B3 gate regardless (vector api gates, not test-file ownership). The
- *   `buildFlowCohortFilter` describe block below is therefore marked
- *   `// NEW` and cites the corpus vector ids it mirrors.
- *
- * R10.2: assertion-for-assertion, codes not messages. Python
- * `pytest.raises(TypeError, match=…)` pairs become
- * `toThrow(ParamTypeError)` plus an explicit `.code` assertion, since
- * `ParamTypeError`/`ParamValidationError` are the ported twins of
- * Python's `TypeError`/`ValueError` subclasses (the "stays catchable as
- * TypeError/ValueError" asserts translate to the base-class check —
- * see `errors.ts`).
- */
-
+// `buildFlowCohortFilter` and the `CohortBreakdown` arm of `buildGroupSection`
+// (`buildCohortGroupEntry`) from `bookmarks/builders`. No Python class is
+// translated here: the cases mirror the corpus vectors extracted from
+// `tests/test_build_cohort_params.py` one for one, with codes asserted
+// instead of messages (`ParamValidationError` is the `ValueError` twin).
 import { describe, expect, it } from "vitest";
 
 import {
@@ -52,19 +18,13 @@ import {
 } from "../../src/types/index.js";
 import { expectThrows } from "../../test-support/raises.js";
 
-// =============================================================================
-// NEW — buildFlowCohortFilter (`bookmark_builders.py`)
-//
-// `tests/test_build_cohort_params.py` is a B5-owned Layer-3 file (packet
-// §K2 "Layer-3 test translation" defers it), but its 16
-// `build_flow_cohort_filter` vectors replay at the B3 gate. These cases
-// mirror those corpus vector ids one-for-one:
+// --- buildFlowCohortFilter ---
+// Mirrors the corpus vectors
 //   filters/bookmark_builders.build_flow_cohort_filter/
 //     test_build_cohort_params-testbuildflowcohortfilterdirect-*
 //     test_build_cohort_params-testcodedflowcohortfiltercodes-*
-// =============================================================================
 
-describe("buildFlowCohortFilter (NEW — corpus-vector mirrors)", () => {
+describe("buildFlowCohortFilter", () => {
   it("saved cohort filter", () => {
     const f = Filter.inCohort(123, "PU");
     expect(buildFlowCohortFilter(f)).toStrictEqual({
@@ -174,7 +134,7 @@ describe("buildFlowCohortFilter (NEW — corpus-vector mirrors)", () => {
     );
   });
 
-  it("BB7 — non-dict first item raises (isPythonDict, watchlist #13)", () => {
+  it("BB7 — non-dict first item raises (isPythonDict)", () => {
     for (const value of [[42], ["cohort"]]) {
       const f = new Filter({
         _property: "$cohorts",
@@ -244,12 +204,9 @@ describe("buildFlowCohortFilter (NEW — corpus-vector mirrors)", () => {
   });
 });
 
-// =============================================================================
-// NEW — buildCohortGroupEntry reached through buildGroupSection
-// (`bookmark_builders.py`)
-// =============================================================================
+// --- buildCohortGroupEntry, reached through buildGroupSection ---
 
-describe("buildGroupSection — CohortBreakdown entries (NEW)", () => {
+describe("buildGroupSection — CohortBreakdown entries", () => {
   it("saved cohort produces id + empty groups and both labels", () => {
     const entry = buildGroupSection(
       new CohortBreakdown({ cohort: 123, name: "PU" }),
@@ -287,7 +244,7 @@ describe("buildGroupSection — CohortBreakdown entries (NEW)", () => {
   });
 
   it("name=null collapses to '' in both the entry and the label", () => {
-    // `name = cb.name or ""` — falsy-OR catches None AND "" (caution 10).
+    // `name = cb.name or ""` — falsy-OR catches None AND "".
     const entry = buildGroupSection(new CohortBreakdown({ cohort: 7 }))[0]!;
     expect(entry["value"]).toStrictEqual(["", "Not In "]);
     const cohorts = entry["cohorts"] as Array<Record<string, unknown>>;
@@ -295,8 +252,8 @@ describe("buildGroupSection — CohortBreakdown entries (NEW)", () => {
   });
 
   it("the negated copy is a SHALLOW spread of the base cohort", () => {
-    // `{**base_cohort, "negated": True}` (`:453`) — `groups` is the SAME
-    // array instance in both entries (caution 14: do not deep-copy).
+    // `{**base_cohort, "negated": True}` — `groups` is the SAME array
+    // instance in both entries (do not deep-copy).
     const entry = buildGroupSection(
       new CohortBreakdown({ cohort: 123, name: "PU" }),
     )[0]!;

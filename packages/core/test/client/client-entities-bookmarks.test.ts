@@ -1,13 +1,9 @@
-// Layer-3 translation — Phase-3 packet B4-C3 assigned suite. Source:
-// tests/unit/test_api_client_bookmarks.py (ALL classes). The methods
-// under lock (`list_bookmarks` legacy, `query_saved_flows`,
-// `query_saved_report` routing) are B4-C2 client members — the packet's
-// C3 row owns this FILE (b4-packets.md §Packet C3 Layer-3 scope), so the
-// locks land here against the already-landed C2 methods.
-//
-// Date-defaulting tests replace live `datetime.now()` reads with the
-// injected frozen clock (B4-C2 precedent, D12 seam); the assertion
-// content (30-day arithmetic, today cap) is preserved.
+// Legacy `listBookmarks`, `querySavedFlows` and the `querySavedReport`
+// type routing (insights / funnels / retention / flows, including the
+// 30-day funnel date defaults and today cap). Mirrors every class of
+// tests/unit/test_api_client_bookmarks.py; live `datetime.now()` reads become
+// the injected frozen clock, the date arithmetic under assertion is unchanged.
+
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "../../src/auth/session.js";

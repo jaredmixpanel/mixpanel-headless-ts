@@ -1,6 +1,7 @@
-// Layer-3 translation — Phase-3 packet B4-C4 webhook locks.
-// Source: tests/unit/test_api_client_webhooks.py (ALL classes — webhook
-// CRUD list/create/update/delete + test connectivity).
+// Webhook client methods: list/create/update/delete and `testWebhook`
+// (paths, methods, bodies, result unwrapping). Mirrors every class of
+// tests/unit/test_api_client_webhooks.py against the mock-transport client.
+
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "../../src/auth/session.js";

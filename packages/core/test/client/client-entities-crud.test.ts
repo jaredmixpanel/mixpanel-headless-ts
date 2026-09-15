@@ -1,11 +1,9 @@
-// Layer-3 translation — Phase-3 packet B4-C3 entity-CRUD locks.
-// Source: tests/unit/test_api_client_crud.py (ALL classes —
-// dashboards/blueprints/RCA/advanced, bookmarks v2, cohorts App API).
-//
-// The Python fixture builds an oauth_token session
-// (make_session(project_id="12345", region="us",
-// oauth_token="test-oauth-token")); `with client:` context blocks are
+// Entity CRUD through the assembled client: dashboards (organisation,
+// blueprints, RCA/advanced), bookmarks v2 (CRUD, bulk ops, history) and
+// cohorts on the App API. Mirrors every class of
+// tests/unit/test_api_client_crud.py; Python's `with client:` blocks are
 // plain awaits here (the TS client needs no enter/exit around calls).
+
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "../../src/auth/session.js";

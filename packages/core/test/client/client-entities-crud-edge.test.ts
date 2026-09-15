@@ -1,13 +1,9 @@
-// Layer-3 translation — Phase-3 packet B4-C3 entity-CRUD edge locks.
-// Source: tests/unit/test_api_client_crud_edge.py (ALL classes —
-// app_request unwrapping, list-method response handling, response type
-// validation, duplicate bookmark/dashboard lookups, 204 voids, error
-// propagation, workspace-scoped paths).
-//
-// TestAppRequestUnwrapping re-locks the B0 `appRequest` envelope through
-// the C1 client method (the Python file exercises it via
-// `client.app_request`), so it lives here with its siblings rather than
-// in the B0 suite (same source file, one home — R10.2).
+// Entity-CRUD edge behaviour through the assembled client: `appRequest`
+// envelope unwrapping, list-method response handling, response type
+// validation, the duplicate bookmark-dashboard lookups, 204 voids, error
+// propagation and workspace-scoped paths. Mirrors every class of
+// tests/unit/test_api_client_crud_edge.py.
+
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "../../src/auth/session.js";

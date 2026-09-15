@@ -1,17 +1,9 @@
-// Layer-3 translation — Phase-3 packet B4-C2 query-host locks. Sources:
-//
-// - tests/unit/test_api_client.py::TestSegmentation,
-//   ::TestDiscovery (:765), ::TestFunnelAndRetention (:1119),
-//   ::TestActivityFeed (:3130) — ALL.
-// - tests/unit/test_api_client_phase008.py — ALL classes
-//   (TestActivityFeed :49, TestSegmentationSum :128,
-//   TestSegmentationAverage :182, TestFrequency :236,
-//   TestSegmentationNumeric :290, TestQuerySavedReport :347,
-//   TestPhase008ErrorHandling :398).
-//
-// Date-defaulting tests inject a FIXED `now` (the D12 clock seam) so
-// `date.today()`-derived params are deterministic; assertion content
-// (param values, retry from_date arithmetic) is preserved.
+// `activityFeed`: the `/stream/bookmark` request contract (body shape, date
+// range arms, optional params, mutual-exclusion errors) and the 401/400/429
+// error mapping shared by the query-host methods. Mirrors TestActivityFeed
+// from tests/unit/test_api_client.py and TestActivityFeed /
+// TestPhase008ErrorHandling from tests/unit/test_api_client_phase008.py.
+
 import { describe, expect, it } from "vitest";
 
 import { toNativeJson } from "../../src/client/json-value.js";
@@ -305,7 +297,7 @@ describe("Activity feed (request contract)", () => {
   });
 });
 
-describe("Activity feed (phase008)", () => {
+describe("Activity feed (response handling)", () => {
   // python: TestActivityFeed
   it("activity feed basic", async () => {
     // python: test_activity_feed_basic
@@ -381,7 +373,7 @@ describe("Activity feed (phase008)", () => {
   });
 });
 
-describe("Phase 008 error handling", () => {
+describe("Query-host error handling", () => {
   // python: TestPhase008ErrorHandling
   const auth401: CannedResponse = {
     status: 401,

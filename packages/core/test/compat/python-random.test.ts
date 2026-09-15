@@ -1,12 +1,8 @@
-// CPython `random.Random` parity lock (packet B5-S3 decision S3-D1,
-// `b5-packets.md:529-540`). The probe matrix is GENERATED — regenerate
-// from the Python repo with the snippet recorded in
-// `docs/history/phase3/notes/B5-S3-notes.md` §S3-D1 and copy
-// `conformance/goldens/rrweb/python-random-probe.json` here.
-//
-// There is no Python test file behind this suite: it is the pinned
-// CPython evidence the packet mandates in place of a
-// sanctioned-deviation filing for `ReplayBundle.sample`.
+// `PythonRandom.getrandbits` / `pythonSample` — CPython `random.Random` parity
+// (Mersenne Twister seeding, getrandbits, `sample`) behind `ReplayBundle.sample`.
+// No Python test file behind this suite: the probe matrix is generated in the
+// Python repo (`conformance/goldens/rrweb/generate.py`) and copied here as
+// `python-random-probe.json`; regenerate there, never hand-edit it.
 import { describe, expect, it } from "vitest";
 
 import { PythonRandom, pythonSample } from "../../src/compat/python-random.js";

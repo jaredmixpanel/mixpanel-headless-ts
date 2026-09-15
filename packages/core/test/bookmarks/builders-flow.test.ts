@@ -1,42 +1,7 @@
-/**
- * Layer-3 translation of the `bookmark_builders.py` test corpus
- * (Python revision: `ts-port/phase2-contract-support` HEAD).
- *
- * Sources translated here, per b3-packets.md §"Packet K2":
- *
- * | Python file | classes translated |
- * |---|---|
- * | `tests/unit/test_bookmark_builders.py` (1,396 LOC, 18 classes) | all 18 |
- * | `tests/test_custom_property_builders.py` (461 LOC) | `TestBuildComposedProperties`, `TestBuildGroupSectionCustomProperties`, `TestBuildFilterEntryCustomProperties` |
- *
- * **Deferrals (header citations, R10.1):**
- *
- * - `tests/test_custom_property_builders.py::TestMeasurementPropertyBuilder`
- *   drives `Workspace.build_params` → **B5-S2** (no implementation exists
- *   to test at B3). The packet flags this file as a playbook omission that
- *   is nonetheless IN scope for its builder-direct classes (15 measured K2
- *   vectors come from it).
- * - `tests/unit/test_bookmark_builders_pbt.py`'s three equivalence classes
- *   (`TestTimeSectionEquivalence`, `TestFilterSectionEquivalence`,
- *   `TestGroupSectionEquivalence`) assert
- *   `ws._build_query_params(...) == build_*(...)` → **B5-S2**. Only
- *   `TestListContainsRoundTrip` is builder-direct; it is translated as a
- *   fast-check property in `builders.pbt.test.ts`.
- * - `tests/test_build_cohort_params.py` and `tests/test_query_params.py`
- *   are B5-owned files (playbook B5 row); their K2 vectors replay at the
- *   B3 gate regardless (vector api gates, not test-file ownership). The
- *   `buildFlowCohortFilter` describe block below is therefore marked
- *   `// NEW` and cites the corpus vector ids it mirrors.
- *
- * R10.2: assertion-for-assertion, codes not messages. Python
- * `pytest.raises(TypeError, match=…)` pairs become
- * `toThrow(ParamTypeError)` plus an explicit `.code` assertion, since
- * `ParamTypeError`/`ParamValidationError` are the ported twins of
- * Python's `TypeError`/`ValueError` subclasses (the "stays catchable as
- * TypeError/ValueError" asserts translate to the base-class check —
- * see `errors.ts`).
- */
-
+// `buildFlowPropertyFilter` from `bookmarks/builders`, mirroring
+// `TestBuildFlowPropertyFilter` and `TestCodedFlowPropertyFilterCodes` from
+// `tests/unit/test_bookmark_builders.py`; codes are asserted instead of
+// messages. Cases without a Python twin are marked TS-only.
 import { describe, expect, it } from "vitest";
 
 import { buildFlowPropertyFilter } from "../../src/bookmarks/builders.js";
@@ -49,9 +14,7 @@ import {
 } from "../../src/types/index.js";
 import { expectThrows } from "../../test-support/raises.js";
 
-// =============================================================================
-// tests/unit/test_bookmark_builders.py::TestBuildFlowPropertyFilter (T039)
-// =============================================================================
+// --- Flow property filter (TestBuildFlowPropertyFilter) ---
 
 describe("buildFlowPropertyFilter", () => {
   it("single filter structure", () => {
@@ -112,8 +75,8 @@ describe("buildFlowPropertyFilter", () => {
     );
   });
 
-  it("drops the `value` and `defaultType` keys (`:638-640`)", () => {
-    // NEW: `entry.pop("value", None)` + `entry.pop("defaultType", None)`.
+  it("drops the `value` and `defaultType` keys", () => {
+    // TS-only: `entry.pop("value", None)` + `entry.pop("defaultType", None)`.
     const child = (
       buildFlowPropertyFilter([Filter.equals("country", "US")])[
         "children"
@@ -124,9 +87,7 @@ describe("buildFlowPropertyFilter", () => {
   });
 });
 
-// =============================================================================
-// tests/unit/test_bookmark_builders.py::TestCodedFlowPropertyFilterCodes
-// =============================================================================
+// --- Coded guards (TestCodedFlowPropertyFilterCodes) ---
 
 describe("coded guards — buildFlowPropertyFilter (BB2/BB3)", () => {
   it("bb2 empty list raises coded error", () => {

@@ -1,19 +1,7 @@
-/**
- * Layer-3 translation of the `validate_flow_bookmark` classes of
- * `tests/test_validation_flow.py` (Python revision:
- * `ts-port/phase2-contract-support` HEAD; 1,066 LOC).
- *
- * Scope per b2-packets.md §V1b: `TestValidateFlowBookmarkFLB1` (4),
- * `FLB2` (5), `FLB3` (6), `FLB4` (6), `FLB5` (3), `FLB6` (5) and
- * `TestValidateFlowBookmarkDefaults` (1) — 30 tests, the exact set
- * shard V1a deferred (`validation-flow.test.ts` header). The
- * `validate_flow_args` classes of the same source file were translated
- * by V1a; this sibling file cites the same source per the packet's
- * "or a sibling `validation-flow-bookmark.test.ts`" option.
- *
- * R10.2: assertion-for-assertion.
- */
-
+// `validateFlowBookmark` rules FLB1-FLB6 and the all-defaults case —
+// translation of the `TestValidateFlowBookmarkFLB*` and
+// `TestValidateFlowBookmarkDefaults` classes of `tests/test_validation_flow.py`
+// (the `validate_flow_args` classes are in validation-flow.test.ts).
 import { describe, expect, it } from "vitest";
 
 import type { ValidationError } from "../../src/errors.js";
@@ -60,9 +48,7 @@ function withCode(
   return errors.filter((e) => e.code === code);
 }
 
-// =============================================================================
-// T018: FLB1 — steps must be present and non-empty
-// =============================================================================
+// --- FLB1 — steps must be present and non-empty ---
 
 describe("Validate flow bookmark FLB1", () => {
   // python: TestValidateFlowBookmarkFLB1
@@ -95,9 +81,7 @@ describe("Validate flow bookmark FLB1", () => {
   });
 });
 
-// =============================================================================
-// T018: FLB2 — step event name must be non-empty
-// =============================================================================
+// --- FLB2 — step event name must be non-empty ---
 
 describe("Validate flow bookmark FLB2", () => {
   // python: TestValidateFlowBookmarkFLB2
@@ -149,9 +133,7 @@ describe("Validate flow bookmark FLB2", () => {
   });
 });
 
-// =============================================================================
-// T018: FLB3 — count_type must be valid
-// =============================================================================
+// --- FLB3 — count_type must be valid ---
 
 describe("Validate flow bookmark FLB3", () => {
   // python: TestValidateFlowBookmarkFLB3
@@ -209,9 +191,7 @@ describe("Validate flow bookmark FLB3", () => {
   });
 });
 
-// =============================================================================
-// T018: FLB4 — chartType must be valid
-// =============================================================================
+// --- FLB4 — chartType must be valid ---
 
 describe("Validate flow bookmark FLB4", () => {
   // python: TestValidateFlowBookmarkFLB4
@@ -269,9 +249,7 @@ describe("Validate flow bookmark FLB4", () => {
   });
 });
 
-// =============================================================================
-// T018: FLB5 — date_range must be present
-// =============================================================================
+// --- FLB5 — date_range must be present ---
 
 describe("Validate flow bookmark FLB5", () => {
   // python: TestValidateFlowBookmarkFLB5
@@ -300,9 +278,7 @@ describe("Validate flow bookmark FLB5", () => {
   });
 });
 
-// =============================================================================
-// T018: FLB6 — version must be 2
-// =============================================================================
+// --- FLB6 — version must be 2 ---
 
 describe("Validate flow bookmark FLB6", () => {
   // python: TestValidateFlowBookmarkFLB6
@@ -341,9 +317,7 @@ describe("Validate flow bookmark FLB6", () => {
   });
 });
 
-// =============================================================================
-// T018: All defaults pass
-// =============================================================================
+// --- All defaults pass ---
 
 describe("Validate flow bookmark defaults", () => {
   // python: TestValidateFlowBookmarkDefaults

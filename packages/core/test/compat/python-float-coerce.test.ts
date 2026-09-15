@@ -1,10 +1,8 @@
-// B6-GATE (R11.7 straggler sweep, B5-notes.md outbound ledger item 5 /
-// b5-review-resolution.md ASR-F6b): tests written FIRST from CPython
-// `float(x)` non-string semantics. Every expected value/message below was
-// produced by CPython 3.14.6 (the oracle) on 2026-08-16 — probe record in
-// docs/history/phase3/notes/B6-notes.md (Python repo). The string arm is
-// `pythonFloat` (R11.3, already locked by python-float.test.ts); this
-// suite locks the coercion LADDER around it.
+// `pythonFloatCoerce` — the CPython `float(x)` coercion ladder around the
+// string parser `pythonFloat` (locked separately in python-float.test.ts):
+// number/bool identity, the rig's `{ spelling }` float-tag wrapper, the
+// TypeError twins for None/list/dict and the OverflowError twin for huge ints.
+// No Python test file behind this suite; expected messages are CPython 3.14.6's.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -43,7 +41,7 @@ describe("pythonFloatCoerce — number and bool arms (CPython float(x))", () => 
   });
 });
 
-describe("pythonFloatCoerce — string arm delegates to pythonFloat (R11.3)", () => {
+describe("pythonFloatCoerce — string arm delegates to pythonFloat", () => {
   it("parses CPython-only spellings", () => {
     expect(pythonFloatCoerce("inf")).toBe(Infinity);
     expect(pythonFloatCoerce("1_0.5")).toBe(10.5);
@@ -77,7 +75,7 @@ describe("pythonFloatCoerce — rig float-tag wrapper arm ($type: float)", () =>
   });
 });
 
-describe("pythonFloatCoerce — CPython TypeError twins (Discrepancy #8 in-annotation raises)", () => {
+describe("pythonFloatCoerce — CPython TypeError twins", () => {
   it("raises TypeError on None exactly as CPython", () => {
     expect(() => pythonFloatCoerce(null)).toThrow(TypeError);
     expect(() => pythonFloatCoerce(null)).toThrow(
@@ -106,9 +104,8 @@ describe("pythonFloatCoerce — huge-int spellings (OverflowError twin)", () => 
   // CPython float(10**400) raises OverflowError. In the JS domain such a
   // value only appears as an integral spelling wrapper (rig transport) —
   // native doubles saturate to Infinity long before. Not fuzz-observable
-  // (the 2^53 codec policy bars huge ints from the oracle wire, R4.5) —
-  // this unit lock is the only TS-side lock, disclosed in the strategy
-  // domain note.
+  // (the 2^53 codec policy bars huge ints from the oracle wire), so
+  // this unit test is the only lock on the TS side.
   it("raises the OverflowError twin on an integer spelling beyond double range", () => {
     expect(() =>
       pythonFloatCoerce({ spelling: `1${"0".repeat(400)}` }),

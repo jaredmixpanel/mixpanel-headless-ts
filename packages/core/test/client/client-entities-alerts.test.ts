@@ -1,7 +1,8 @@
-// Layer-3 translation — Phase-3 packet B4-C4 alert locks.
-// Source: tests/unit/test_api_client_alerts.py (ALL classes — alert
-// CRUD list/create/get/update/delete/bulk_delete + operations
-// count/history/test/screenshot/validate).
+// Alert client methods: list/create/get/update/delete/bulk-delete plus the
+// count, history, test, screenshot-URL and validate-for-bookmark operations
+// (paths, methods, params, result unwrapping). Mirrors every class of
+// tests/unit/test_api_client_alerts.py against the mock-transport client.
+
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "../../src/auth/session.js";

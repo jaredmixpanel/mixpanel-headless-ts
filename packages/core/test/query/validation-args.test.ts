@@ -1,18 +1,8 @@
-/**
- * Layer-3 translation of `tests/unit/test_validation.py`
- * (Python revision: `ts-port/phase2-contract-support` HEAD; 1238 LOC).
- *
- * Scope per b2-packets.md §V1a: the `validate_query_args` classes plus
- * the shared `_suggest` class. Deferred with a design citation:
- * - `TestValidationError` / `TestBookmarkValidationError` — already
- *   ported and vector-locked in Phase 2 (`test/errors.test.ts`).
- * - `TestValidateBookmarkLayer2`, `TestValidateMeasurementFunnelContext`,
- *   `TestValidateSortingBlock` — B2 shard V1b (bookmark validators +
- *   sorting slice).
- *
- * R10.2: assertion-for-assertion. R5.3/R5.4: codes are the contract.
- */
-
+// `validateQueryArgs` (Layer 1) and the shared `suggest` helper — translation
+// of `TestValidateQueryArgsLayer1`, `TestFuzzyMatching` and
+// `TestDataGroupIdValidationInsights` from `tests/unit/test_validation.py`.
+// The `validate_bookmark` classes are in validation-bookmark.test.ts and the
+// error-class tests in errors.test.ts. Codes are the contract, not messages.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -26,9 +16,7 @@ import {
 import { suggest } from "../../src/query/validation-shared.js";
 import { GroupBy, Metric } from "../../src/types/index.js";
 
-// =============================================================================
-// Helpers (test_validation.py)
-// =============================================================================
+// --- Helpers (test_validation.py) ---
 
 /**
  * Return valid query args with optional overrides — port of the module
@@ -56,9 +44,7 @@ function validArgs(
   };
 }
 
-// =============================================================================
-// Fuzzy matching (test_validation.py)
-// =============================================================================
+// --- Fuzzy matching (test_validation.py) ---
 
 describe("Fuzzy matching", () => {
   // python: TestFuzzyMatching
@@ -78,16 +64,14 @@ describe("Fuzzy matching", () => {
   it("returns tuple", () => {
     // python: test_returns_tuple
     // Python asserts `isinstance(result, tuple)`; the TS port returns a
-    // frozen array (the closest immutable-sequence analog, R4.2).
+    // frozen array (the closest immutable-sequence analog).
     const result = suggest("averge", new Set(["average", "median"]));
     expect(result).not.toBeNull();
     expect(Array.isArray(result)).toBe(true);
   });
 });
 
-// =============================================================================
-// Layer 1: validate_query_args (test_validation.py)
-// =============================================================================
+// --- Layer 1: validate_query_args (test_validation.py) ---
 
 describe("Validate query args layer 1", () => {
   // python: TestValidateQueryArgsLayer1
@@ -326,9 +310,7 @@ describe("Validate query args layer 1", () => {
   });
 });
 
-// =============================================================================
-// T036: data_group_id validation for insights (test_validation.py)
-// =============================================================================
+// --- data_group_id validation for insights (test_validation.py) ---
 
 describe("Data group ID validation insights", () => {
   // python: TestDataGroupIdValidationInsights

@@ -1,16 +1,8 @@
-// Layer-3 translation — Phase-3 packet B4-C1 me-model locks. Sources:
-//
-// - tests/unit/test_me.py — the PURE model half: ::TestMeOrgInfo,
-//   ::TestMeProjectInfo (:71), ::TestMeWorkspaceInfo (:108),
-//   ::TestMeResponse (:149). ::TestMeCache*/:.TestMeService/
-//   ::TestMeCacheSymlinkRejection are B8-N2 (on-disk cache/service —
-//   playbook Discrepancy #5; header exclusion per packet C1 §Layer-3).
-// - tests/unit/test_workspace_resolution.py::TestSelectWorkspaceId
-//   — the shared selection ladder.
-//
-// Entry-point substitutions: `model_validate` → `fromDict`;
-// `model_extra` → `modelExtra`; `model_dump_json`/`model_validate_json`
-// → `JSON.stringify(toJSON())` + `fromDict(JSON.parse(...))`.
+// The `/me` response models (`MeOrgInfo`, `MeProjectInfo`, `MeWorkspaceInfo`,
+// `MeResponse`) and the `selectWorkspaceId` selection ladder. Mirrors the
+// pure-model classes of tests/unit/test_me.py and TestSelectWorkspaceId from
+// tests/unit/test_workspace_resolution.py; the MeCache / MeService classes
+// are the node package's. `model_validate` → `fromDict`, `model_extra` → `modelExtra`.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -152,8 +144,8 @@ describe("Me response", () => {
     expect(me.user_id).toBeNull();
     expect(me.user_email).toBeNull();
     expect(me.user_name).toBeNull();
-    // Python `== {}` on the empty dicts → empty ordered Maps in TS
-    // (B8-MAPFIX ordered-dict containers, user-ratifications.md:14-22).
+    // Python `== {}` on the empty dicts → empty ordered Maps in TS (the
+    // dict containers keep insertion order as Maps).
     expect(me.organizations).toStrictEqual(new Map());
     expect(me.projects).toStrictEqual(new Map());
     expect(me.workspaces).toStrictEqual(new Map());
@@ -226,9 +218,7 @@ describe("Me response", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// tests/unit/test_workspace_resolution.py::TestSelectWorkspaceId
-// ---------------------------------------------------------------------------
+// --- Select workspace ID (tests/unit/test_workspace_resolution.py) ---
 
 /** `_v` helper: a WorkspaceView with sensible defaults. */
 function v(overrides: Partial<WorkspaceView> & { id: number }): WorkspaceView {

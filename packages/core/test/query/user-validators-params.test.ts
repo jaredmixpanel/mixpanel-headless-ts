@@ -1,33 +1,7 @@
-/**
- * Layer-3 translation of `tests/test_user_validators.py`
- * (Python revision: `ts-port/phase2-contract-support` HEAD; 1,340 LOC,
- * 149 test methods — the WHOLE file, per b2-packets.md §V2
- * "Layer-3 test translation (V2)").
- *
- * R10.2 assertion-for-assertion. Notes on the translation:
- *
- * - The Python module helper `_only_code` is dead code in the Python
- *   file (defined, never called) and is therefore not translated — it
- *   carries no assertion.
- * - `date.today()` is a clock read. Python's tests build `yesterday` /
- *   `today` / `future` from the real clock, so the TS twins do the
- *   same through {@link todayIso} / {@link shiftDays} and let
- *   `validateUserArgs` use its DEFAULT clock seam. The frozen-clock
- *   path (`options.today`) is exercised by its own describe block at
- *   the bottom — that seam is what the (b′) binding feeds from
- *   `context.shims` (b2-packets.md §V2 trap 2b).
- * - `MagicMock(spec=CohortDefinition)` (U24) has no TS analog; the
- *   twin builds a real-prototype object whose `toDict` throws. Python
- *   catches `(ValueError, TypeError, RuntimeError)`; the ported
- *   `ParamValidationError` dual-inherits `ValueError`
- *   (`exceptions.py:97`), so both a `ParamValidationError` and a
- *   native `TypeError` are asserted.
- * - The 4 `validation/`-capability vectors extracted from
- *   `tests/test_query_user_edge_cases.py` replay through the corpus;
- *   that FILE is B5 Layer-3 scope (playbook B5 row) and is NOT
- *   translated here.
- */
-
+// `validateUserParams` (Layer 2 rules UP1-UP4) — translation of
+// `TestValidateUserParams` from `tests/test_user_validators.py`, plus a TS-only
+// block for the injected `today` clock seam (`options.today`), which the
+// conformance bindings feed from `context.shims`.
 import { describe, expect, it } from "vitest";
 
 import type { ValidationError } from "../../src/errors.js";
@@ -37,9 +11,7 @@ import {
 } from "../../src/query/user-validators.js";
 import { codes } from "../../test-support/error-codes.js";
 
-// =============================================================================
-// Helpers (port of the Python module helpers, :30-76)
-// =============================================================================
+// --- Helpers (ports of the Python module helpers) ---
 
 /**
  * Check whether a specific error code appears in the error list.
@@ -52,9 +24,7 @@ function hasCode(errors: readonly ValidationError[], code: string): boolean {
   return errors.some((e) => e.code === code);
 }
 
-// =============================================================================
-// TestValidateUserParams — Layer 2 rules UP1-UP4
-// =============================================================================
+// --- TestValidateUserParams — Layer 2 rules UP1-UP4 ---
 
 describe("Validate user params valid", () => {
   // python: TestValidateUserParamsValid
@@ -305,9 +275,7 @@ describe("Validate user params multiple violations", () => {
   });
 });
 
-// =============================================================================
-// TS-only: the `today` clock seam (b2-packets.md §V2 trap 2b)
-// =============================================================================
+// --- TS-only: the `today` clock seam ---
 
 describe("today clock seam (TS-only — no Python twin)", () => {
   /**

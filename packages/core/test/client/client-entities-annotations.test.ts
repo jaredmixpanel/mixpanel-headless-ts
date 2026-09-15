@@ -1,6 +1,8 @@
-// Layer-3 translation — Phase-3 packet B4-C4 annotation locks.
-// Source: tests/unit/test_api_client_annotations.py (ALL classes —
-// annotation CRUD + annotation tags list/create).
+// Annotation client methods: list (camelCase date params, tags filter),
+// create/get/update/delete, and annotation-tag list/create (paths, methods,
+// params, result unwrapping). Mirrors every class of
+// tests/unit/test_api_client_annotations.py against the mock-transport client.
+
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "../../src/auth/session.js";

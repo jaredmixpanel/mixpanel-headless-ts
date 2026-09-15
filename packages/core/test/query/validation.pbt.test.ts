@@ -1,24 +1,8 @@
-/**
- * Layer-3 translation of `tests/unit/test_validation_pbt.py`
- * (Python revision: `ts-port/phase2-contract-support` HEAD; 373 LOC).
- *
- * Scope per b2-packets.md §V1a: time-args + custom-property PBT (all
- * four classes in that file are V1a-owned: `TestSuggestInvariants`,
- * `TestContainsControlChars`, `TestValidateTimeArgsSoundness`,
- * `TestCustomPropertyRefValidation`,
- * `TestInlineCustomPropertyValidation`).
- *
- * Hypothesis `@settings(max_examples=100)` → fast-check `numRuns: 100`.
- *
- * Fidelity note (Cautions §4): the Python `test_clean_strings_pass`
- * strategy draws from unicode categories L/N/P/Z/S minus the control
- * set. JS has no category-based generator, so the port draws from an
- * explicit representative alphabet spanning those categories (letters,
- * digits, punctuation, separators, symbols, plus a non-BMP symbol) —
- * the property under test (no control characters ⇒ not flagged) is
- * unchanged and the alphabet is strictly inside the Python one.
- */
-
+// fast-check twins of `tests/unit/test_validation_pbt.py` (`suggest`
+// invariants, `containsControlChars`, `validateTimeArgs` soundness, custom
+// property validation); `max_examples=100` → `numRuns: 100`. Python's
+// category-based `st.characters` strategies become explicit representative
+// alphabets strictly inside the Python domain (fast-check has no category generator).
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -39,9 +23,7 @@ import {
   PropertyInput,
 } from "../../src/types/index.js";
 
-// =============================================================================
-// Strategies (test_validation_pbt.py)
-// =============================================================================
+// --- Strategies (test_validation_pbt.py) ---
 
 /** Port of `_CONTROL_CHARS` (the `_CONTROL_CHAR_RE` character set). */
 const CONTROL_CHARS: readonly string[] = [
@@ -72,12 +54,12 @@ const validDateStrsArb: fc.Arbitrary<string> = fc
  * Representative alphabet for `st.characters(categories=("L", "N"))`.
  *
  * fast-check has no Unicode-category generator, so this is a NARROWED
- * stand-in (B2 arbiter fix, b2-review-resolution.md assertions-F1):
+ * stand-in:
  * ASCII letters/digits plus explicit non-ASCII category-L/N members —
  * é (Ll), Ω (Lu), ж (Ll), 中 (Lo), ٤ (Nd), Ⅻ (Nl) and the non-BMP
  * 𝒳 (U+1D4B3, Lu) — every entry strictly inside Python's L/N domain.
  * Full-Unicode cross-language behavior is additionally locked by the
- * Python-side R10.9 fuzz strategies (`_B2_NON_BMP` edges).
+ * Python-side differential-fuzz strategies (non-BMP edges).
  */
 const LN_ALPHABET =
   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789éΩж中٤Ⅻ𝒳";
@@ -114,9 +96,9 @@ const validSetsArb: fc.Arbitrary<ReadonlySet<string>> = fc
 /**
  * Port of `query_strings = st.text(min_size=0, max_size=20)` —
  * `unit: "binary"` for Python's full-Unicode `st.text()` domain
- * (B2 arbiter fix: the pre-fix default `fc.string()` was
- * printable-ASCII only, and Layer-3 is the sole lock on `_suggest`'s
- * Unicode behavior since suggestions are advisory, R5.3).
+ * (the default `fc.string()` is printable-ASCII only, and this suite is
+ * the sole lock on `_suggest`'s Unicode behavior, since suggestions are
+ * advisory).
  */
 const queryStringsArb = fc.string({ unit: "binary", maxLength: 20 });
 
@@ -130,15 +112,13 @@ const propertyNamesArb = stringFrom(codepoints(LN_ALPHABET), 1, 30);
 
 /**
  * Port of `nonempty_formulas` (full-Unicode `st.text()` 1-100 filtered
- * on `.strip()`) — `unit: "binary"` per the arbiter fix above.
+ * on `.strip()`) — `unit: "binary"` for the same reason.
  */
 const nonemptyFormulasArb: fc.Arbitrary<string> = fc
   .string({ unit: "binary", minLength: 1, maxLength: 100 })
   .filter((s) => pythonStrip(s) !== "");
 
-// =============================================================================
-// _suggest invariants
-// =============================================================================
+// --- _suggest invariants ---
 
 describe("Suggest invariants", () => {
   // python: TestSuggestInvariants
@@ -198,9 +178,7 @@ describe("Suggest invariants", () => {
   });
 });
 
-// =============================================================================
-// contains_control_chars reference implementation
-// =============================================================================
+// --- contains_control_chars reference implementation ---
 
 /** Port of `_CONTROL_CHAR_RE_REF` — the independent reference matcher. */
 const CONTROL_CHAR_SET: ReadonlySet<string> = new Set(CONTROL_CHARS);
@@ -281,9 +259,7 @@ describe("Contains control chars", () => {
   });
 });
 
-// =============================================================================
-// validate_time_args valid-inputs soundness
-// =============================================================================
+// --- validate_time_args valid-inputs soundness ---
 
 describe("Validate time args soundness", () => {
   // python: TestValidateTimeArgsSoundness
@@ -349,9 +325,7 @@ describe("Validate time args soundness", () => {
   });
 });
 
-// =============================================================================
-// _validate_custom_property boundary behavior
-// =============================================================================
+// --- _validate_custom_property boundary behavior ---
 
 describe("Custom property ref validation", () => {
   // python: TestCustomPropertyRefValidation

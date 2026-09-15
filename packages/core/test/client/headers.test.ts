@@ -1,15 +1,8 @@
-// Layer-3 translation of tests/unit/test_settings_headers.py::
-// TestSessionHeadersOnOutboundRequests — the B0-owned
-// `_request_headers` 4-layer merge lock (playbook B0-2 FF5 row). The
-// config/bridge attachment classes of that file (TestSettingsHeaderAttachment,
-// TestBridgeHeaderAttachment, TestNoEnvMutation) stay in B8 per the playbook.
-//
-// Entry-point substitution (B0-notes decision 13): Python asserts on the
-// wire via `app_request` + MockTransport; here the merge output of
-// `requestHeaders(...)` is asserted directly, plus an appRequest-level
-// re-check lives in app-request.test.ts. Env monkeypatching translates to
-// the injected `getCustomHeaderEnv` provider (B0-notes decision 10 —
-// core reads no env, R9.1/R9.4).
+// The outbound request-header merge (`requestHeaders`: User-Agent default,
+// env custom-header pair, `Session.headers`, caller extras) plus
+// `QUERY_ORIGIN` / `getUserAgent`. Mirrors TestSessionHeadersOnOutboundRequests
+// from tests/unit/test_settings_headers.py, asserting the merge output directly
+// rather than the wire; env monkeypatching becomes the injected `getCustomHeaderEnv`.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -21,10 +14,10 @@ import {
 } from "../../src/client/headers.js";
 
 /**
- * Build merge deps mirroring the Python fixtures.
+ * Build merge deps mirroring the Python fixtures: `sessionHeaders` is the
+ * `Session.headers` layer and `env` the `MP_CUSTOM_HEADER_NAME` /
+ * `MP_CUSTOM_HEADER_VALUE` pair.
  *
- * @param sessionHeaders - The `Session.headers` layer.
- * @param env - The `MP_CUSTOM_HEADER_NAME`/`MP_CUSTOM_HEADER_VALUE` pair.
  * @returns The deps bag for `requestHeaders`.
  */
 function deps(
@@ -66,8 +59,8 @@ describe("Session headers on outbound requests", () => {
   });
 });
 
-// Merge-order locks derived from api_client.py (the docstring's
-// numbered layers) — additive unit coverage for the B0-owned module.
+// Merge-order locks derived from the numbered layers in the
+// `mixpanel_headless.api_client._request_headers` docstring — TS-only coverage.
 describe("requestHeaders layer order", () => {
   it("layer 1: User-Agent default is always present", () => {
     const headers = requestHeaders(deps({}), {});

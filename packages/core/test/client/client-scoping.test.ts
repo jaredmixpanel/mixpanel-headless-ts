@@ -1,27 +1,9 @@
-// Layer-3 translation — Phase-3 packet B4-C1: the CLIENT-SIDE classes of
-// tests/unit/test_query_workspace_scoping.py (issue #198 —
-// explicit-only workspace-pin injection on Query-host requests):
-// TestQueryHostInjectionWhenPinned, TestInjectionOptOut,
-// TestNoWorkspacePinned, TestNonQueryHostsUnaffected,
-// TestPinLifecycle.
-//
-// Header exclusions (packet C1 §Layer-3):
-// - ::TestWorkspaceFacadeScoping (:379) and ::TestDiscoveryCacheAcrossUse
-//   (:401) are facade/service tests → B5/B6.
-// - ::TestNonQueryHostsUnaffected::
-//   test_export_stream_carries_no_workspace_id_param (:300) exercises
-//   `export_events` (a C2-owned method) — DEFERRED to B4-C2 (recorded in
-//   B4-C1-notes.md; C2 must land it).
-//
-// Entry-point substitution (packet C1 boundary): Python drives the thin
-// C2 wrappers `get_events()` / `insights_query()` over `_request`; those
-// public surfaces land at B4-C2, so the pin-injection assertions here
-// drive the SAME `_request` seam (`client.requestQueryHost`) with the
-// SAME Query-host URLs — exactly the seam Python's TestInjectionOptOut
-// and test_caller_supplied_workspace_id already drive directly. C2
-// re-locks the wrappers end-to-end. All assertion content (single
-// request, URL host/path, workspace_id presence/absence/value) is
-// preserved.
+// Explicit-only workspace-pin injection on Query-host requests: pinned
+// GET/POST carry `workspace_id`, `injectWorkspaceId: false` opts out, unpinned
+// sessions trigger no discovery, App API requests are unaffected, `use()`
+// clears the pin. Mirrors the client-side classes of
+// tests/unit/test_query_workspace_scoping.py, driven through `requestQueryHost`.
+
 import { describe, expect, it } from "vitest";
 
 import { buildUrl } from "../../src/client/url.js";
@@ -83,7 +65,7 @@ describe("Query host injection when pinned", () => {
       return { status: 200, json: { headers: [], series: {} } };
     });
     // insights_query POSTs to the Query host with the payload as the
-    // JSON body (the C2 wrapper's exact `_request` call shape).
+    // JSON body (the wrapper's exact `_request` call shape).
     await client.requestQueryHost(
       "POST",
       buildUrl("us", "query", "/insights"),
@@ -193,8 +175,8 @@ describe("Non query hosts unaffected", () => {
     expect(Object.hasOwn(request.params, "workspace_id")).toBe(false);
   });
 
-  // test_export_stream_carries_no_workspace_id_param → B4-C2 (see the
-  // file header — export_events is C2-owned).
+  // test_export_stream_carries_no_workspace_id_param drives `exportEvents`
+  // and lives in client-export.test.ts.
 });
 
 describe("Pin lifecycle", () => {

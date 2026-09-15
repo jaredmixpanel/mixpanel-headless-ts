@@ -1,16 +1,8 @@
-/**
- * Layer-3 translation of `tests/test_validation_retention.py`
- * (Python revision: `ts-port/phase2-contract-support` HEAD; 1087 LOC).
- *
- * Scope per b2-packets.md §V1a: the `validate_retention_args` classes.
- * `TestValidateBookmarkRetentionB20` / `B21` /
- * `TestValidateBookmarkRetentionB9MathDispatch` drive
- * `validate_bookmark` — B2 shard V1b.
- *
- * R10.2: assertion-for-assertion. Suggestion-content asserts are kept
- * verbatim (Cautions §6 — they pin the difflib port).
- */
-
+// `validateRetentionArgs` rules R5/R5c, R10-R13, the boolean bucket_sizes
+// edge, data_group_id and multi-error collection — translation of the
+// corresponding `validate_retention_args` classes of
+// `tests/test_validation_retention.py` (R1-R9 are in validation-retention.test.ts,
+// the `validate_bookmark` classes in validation-retention-bookmark.test.ts).
 import { describe, expect, it } from "vitest";
 
 import {
@@ -19,9 +11,7 @@ import {
 } from "../../src/query/validation-args.js";
 import { codes } from "../../test-support/error-codes.js";
 
-// =============================================================================
-// Helpers (test_validation_retention.py)
-// =============================================================================
+// --- Helpers (test_validation_retention.py) ---
 
 /**
  * Build a default-valid option bag for {@link validateRetentionArgs}.
@@ -49,9 +39,7 @@ function validRetentionArgs(
   };
 }
 
-// =============================================================================
-// R5c: bucket_sizes max count
-// =============================================================================
+// --- R5c: bucket_sizes max count ---
 
 /**
  * Port of Python `list(range(start, stop))`.
@@ -68,9 +56,7 @@ function pyRange(start: number, stop: number): number[] {
   return out;
 }
 
-// =============================================================================
-// T-US5: Multi-error collection
-// =============================================================================
+// --- Multi-error collection ---
 
 describe("Validate retention multi error", () => {
   // python: TestValidateRetentionMultiError
@@ -98,9 +84,7 @@ describe("Validate retention multi error", () => {
   });
 });
 
-// =============================================================================
-// R10: mode validation
-// =============================================================================
+// --- R10: mode validation ---
 
 describe("Validate retention R10", () => {
   // python: TestValidateRetentionR10
@@ -185,9 +169,7 @@ describe("Validate retention R5c", () => {
   });
 });
 
-// =============================================================================
-// R11: unit validation for retention context
-// =============================================================================
+// --- R11: unit validation for retention context ---
 
 describe("Validate retention R11", () => {
   // python: TestValidateRetentionR11
@@ -249,9 +231,7 @@ describe("Validate retention R11", () => {
   });
 });
 
-// =============================================================================
-// R12: group_by empty string validation
-// =============================================================================
+// --- R12: group_by empty string validation ---
 
 describe("Validate retention R12", () => {
   // python: TestValidateRetentionR12
@@ -294,9 +274,7 @@ describe("Validate retention R12", () => {
   });
 });
 
-// =============================================================================
-// T010: R13 — unbounded_mode validation
-// =============================================================================
+// --- R13 — unbounded_mode validation ---
 
 describe("Validate retention R13 unbounded mode", () => {
   // python: TestValidateRetentionR13UnboundedMode
@@ -359,9 +337,7 @@ describe("Validate retention R13 unbounded mode", () => {
   });
 });
 
-// =============================================================================
-// R5: bucket_sizes boolean edge case
-// =============================================================================
+// --- R5: bucket_sizes boolean edge case ---
 
 describe("Validate retention R5 boolean", () => {
   // python: TestValidateRetentionR5Boolean
@@ -388,9 +364,7 @@ describe("Validate retention R5 boolean", () => {
   });
 });
 
-// =============================================================================
-// T036: data_group_id validation for retention
-// =============================================================================
+// --- data_group_id validation for retention ---
 
 describe("Data group ID validation retention", () => {
   // python: TestDataGroupIdValidationRetention

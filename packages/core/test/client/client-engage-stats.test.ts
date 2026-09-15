@@ -1,22 +1,9 @@
-// Layer-3 translation — Phase-3 packet B4-C2 engage locks. Sources:
-//
-// - tests/unit/test_api_client.py::TestProfileExport,
-//   ::TestEngageParameterValidation (:1861),
-//   ::TestEngageParameterEdgeCases (:1942),
-//   ::TestEngageDistinctIdParameter (:2042),
-//   ::TestEngageGroupIdParameter (:2130),
-//   ::TestEngageBehaviorsParameter (:2163),
-//   ::TestEngageIncludeAllUsersParameter (:2220),
-//   ::TestExportProfilesPage (:2319),
-//   ::TestExportProfilesPagePagination (:2554),
-//   ::TestCodedExportProfilesCodes (:4124) — ALL.
-// - tests/test_api_client_engage_stats.py — ALL (TestEngageStats :81,
-//   TestExportProfilesPageNewParams :436,
-//   TestExportProfilesPageFilterByCohort :679).
-//
-// Python `pytest.raises(ValueError)` sites: the AC* guards are
-// ParamValidationError (Python dual-inherits ValueError; TS keys on
-// class + code, R5.2 — see errors.ts ParamValidationError JSDoc).
+// `engageStats`: the `/engage/stats` POST body (project_id, action,
+// `where` sent as `selector`, cohort / group / as_of_timestamp /
+// include_all_users params) and the non-dict response error. Mirrors
+// TestEngageStats from tests/test_api_client_engage_stats.py; its
+// export-profiles-page classes live in `client-engage-pages.test.ts`.
+
 import { describe, expect, it } from "vitest";
 
 import { toNativeJson } from "../../src/client/json-value.js";

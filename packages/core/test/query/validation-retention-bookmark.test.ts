@@ -1,17 +1,8 @@
-/**
- * Layer-3 translation of the `validate_bookmark` classes of
- * `tests/test_validation_retention.py` (Python revision:
- * `ts-port/phase2-contract-support` HEAD; 1,087 LOC).
- *
- * Scope per b2-packets.md §V1b: `TestValidateBookmarkRetentionB20` (1),
- * `TestValidateBookmarkRetentionB21` (1) and
- * `TestValidateBookmarkRetentionB9MathDispatch` (2) — the four tests
- * shard V1a deferred (`validation-retention.test.ts` header). The
- * `validate_retention_args` classes of the same source file are V1a's.
- *
- * R10.2: assertion-for-assertion.
- */
-
+// `validateBookmark` in retention context — translation of
+// `TestValidateBookmarkRetentionB20`, `TestValidateBookmarkRetentionB21` and
+// `TestValidateBookmarkRetentionB9MathDispatch` from
+// `tests/test_validation_retention.py` (the `validate_retention_args` classes
+// are in validation-retention.test.ts and validation-retention-rules.test.ts).
 import { describe, expect, it } from "vitest";
 
 import { validateBookmark } from "../../src/query/validation-bookmark.js";
@@ -47,11 +38,9 @@ function retentionBookmark(math: string, filters: Dict[]): Dict {
   };
 }
 
-// =============================================================================
-// Layer 2: B20/B21 filter validation (via validate_bookmark)
-// =============================================================================
+// --- Layer 2: rule B20 / rule B21 filter validation (via validate_bookmark) ---
 
-describe("Validate bookmark retention B20", () => {
+describe("Validate bookmark retention rule B20", () => {
   // python: TestValidateBookmarkRetentionB20
   it("empty filter value list rejected", () => {
     // python: test_empty_filter_value_list_rejected
@@ -70,7 +59,7 @@ describe("Validate bookmark retention B20", () => {
   });
 });
 
-describe("Validate bookmark retention B21", () => {
+describe("Validate bookmark retention rule B21", () => {
   // python: TestValidateBookmarkRetentionB21
   it("filter value too many rejected", () => {
     // python: test_filter_value_too_many_rejected
@@ -95,11 +84,9 @@ describe("Validate bookmark retention B21", () => {
   });
 });
 
-// =============================================================================
-// Layer 2: B9 retention math dispatch
-// =============================================================================
+// --- Layer 2: rule B9 retention math dispatch ---
 
-describe("Validate bookmark retention B9 math dispatch", () => {
+describe("Validate bookmark retention rule B9 math dispatch", () => {
   // python: TestValidateBookmarkRetentionB9MathDispatch
   it("insights only math rejected for retention", () => {
     // python: test_insights_only_math_rejected_for_retention

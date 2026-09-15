@@ -1,23 +1,9 @@
-// Layer-3 translation — 045-report-links (Python PR #223). Source:
-// tests/unit/test_api_client_bookmark_urls.py (ALL classes):
-// TestCreateBookmarkUrl, TestCreateBookmarkUrlErrors, TestGetBookmarkUrl,
-// TestResolveShortLink. The methods under lock are the
-// `services/entities/bookmark-urls.ts` members mixed into
-// `createMixpanelClient`.
-//
-// Translation notes:
-// - `httpx.MockTransport(handler)` → the injected-fetch `createMockClient`
-//   analog (`client-test-helpers.ts`); `_short_link_client` (max_retries=0)
-//   → `createMockClient(..., { maxRetries: 0 })`.
-// - `patch("...time.sleep")` → the zero-delay `sleep` seam the helper
-//   installs; `sleep.assert_called_once_with(2.0)` becomes an assertion on
-//   the recorded ms sleeps (`[2000]`, R2.12 seconds→ms at the one seam).
-// - Error MESSAGE text is out of contract: `str(exc) == ...` and
-//   `"..." in str(exc)` asserts become class / `.code` / `.statusCode` /
-//   `.details` / `.responseBody` asserts on the same inputs.
-// - `httpx.ConnectError` → a fetch that rejects with a `TypeError`.
-// - `caplog` → an injected `logger` (`MixpanelClientOptions.logger`)
-//   capturing every warning line.
+// Bookmark-URL client methods: `createBookmarkUrl`, `getBookmarkUrl`,
+// `resolveShortLink` (paths, bodies, error mapping, redirect handling).
+// Mirrors tests/unit/test_api_client_bookmark_urls.py. Error message text is
+// out of contract, so `str(exc)` asserts become class / `.code` / `.details`
+// asserts; `time.sleep` seconds become the recorded ms sleeps (`[2000]`).
+
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "../../src/auth/session.js";

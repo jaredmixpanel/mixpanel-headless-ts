@@ -1,16 +1,8 @@
-/**
- * Layer-3 translation of `tests/test_validation_flow.py`
- * (Python revision: `ts-port/phase2-contract-support` HEAD; 1066 LOC).
- *
- * Scope per b2-packets.md §V1a: the `validate_flow_args` classes. The
- * `TestValidateFlowBookmarkFLB1`–`FLB6` /
- * `TestValidateFlowBookmarkDefaults` classes drive
- * `validate_flow_bookmark` — B2 shard V1b.
- *
- * R10.2: assertion-for-assertion. Suggestion-content asserts kept
- * verbatim (Cautions §6).
- */
-
+// `validateFlowArgs` rules FL1-FL10, enum / time_comparison / data_group_id
+// checks and multi-error collection — translation of the `validate_flow_args`
+// classes of `tests/test_validation_flow.py` (the `validate_flow_bookmark`
+// classes are in validation-flow-bookmark.test.ts). Suggestion-content asserts
+// are kept verbatim: they pin the difflib port.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -20,9 +12,7 @@ import {
 import { TimeComparison } from "../../src/types/index.js";
 import { codes } from "../../test-support/error-codes.js";
 
-// =============================================================================
-// Helpers (test_validation_flow.py)
-// =============================================================================
+// --- Helpers (test_validation_flow.py) ---
 
 /**
  * Build a default-valid option bag for {@link validateFlowArgs}.
@@ -48,9 +38,7 @@ function validFlowArgs(
   };
 }
 
-// =============================================================================
-// T016: FL1 — steps list must be non-empty
-// =============================================================================
+// --- FL1 — steps list must be non-empty ---
 
 describe("Validate flow FL1", () => {
   // python: TestValidateFlowFL1
@@ -83,9 +71,7 @@ describe("Validate flow FL1", () => {
   });
 });
 
-// =============================================================================
-// T016: FL2 — step event name must be non-empty, no control/invisible chars
-// =============================================================================
+// --- FL2 — step event name must be non-empty, no control/invisible chars ---
 
 describe("Validate flow FL2", () => {
   // python: TestValidateFlowFL2
@@ -171,9 +157,7 @@ describe("Validate flow FL2", () => {
   });
 });
 
-// =============================================================================
-// T016: FL3 — forward must be in range 0-5
-// =============================================================================
+// --- FL3 — forward must be in range 0-5 ---
 
 describe("Validate flow FL3", () => {
   // python: TestValidateFlowFL3
@@ -216,9 +200,7 @@ describe("Validate flow FL3", () => {
   });
 });
 
-// =============================================================================
-// T016: FL4 — reverse must be in range 0-5
-// =============================================================================
+// --- FL4 — reverse must be in range 0-5 ---
 
 describe("Validate flow FL4", () => {
   // python: TestValidateFlowFL4
@@ -255,9 +237,7 @@ describe("Validate flow FL4", () => {
   });
 });
 
-// =============================================================================
-// T016: FL5 — forward + reverse must be > 0
-// =============================================================================
+// --- FL5 — forward + reverse must be > 0 ---
 
 describe("Validate flow FL5", () => {
   // python: TestValidateFlowFL5
@@ -294,9 +274,7 @@ describe("Validate flow FL5", () => {
   });
 });
 
-// =============================================================================
-// T016: FL6 — cardinality must be in range 1-50
-// =============================================================================
+// --- FL6 — cardinality must be in range 1-50 ---
 
 describe("Validate flow FL6", () => {
   // python: TestValidateFlowFL6
@@ -345,9 +323,7 @@ describe("Validate flow FL6", () => {
   });
 });
 
-// =============================================================================
-// T016: FL7 — conversion_window must be positive
-// =============================================================================
+// --- FL7 — conversion_window must be positive ---
 
 describe("Validate flow FL7", () => {
   // python: TestValidateFlowFL7
@@ -390,9 +366,7 @@ describe("Validate flow FL7", () => {
   });
 });
 
-// =============================================================================
-// T016b: FL7b — conversion_window per-unit maximum
-// =============================================================================
+// --- FL7b — conversion_window per-unit maximum ---
 
 describe("Validate flow FL7 max", () => {
   // python: TestValidateFlowFL7Max
@@ -482,9 +456,7 @@ describe("Validate flow FL7 max", () => {
   });
 });
 
-// =============================================================================
-// T016: FL8 — time validation delegated to validate_time_args
-// =============================================================================
+// --- FL8 — time validation delegated to validate_time_args ---
 
 describe("Validate flow FL8", () => {
   // python: TestValidateFlowFL8
@@ -551,9 +523,7 @@ describe("Validate flow FL8", () => {
   });
 });
 
-// =============================================================================
-// T016: Enum validation — count_type, mode
-// =============================================================================
+// --- Enum validation — count_type, mode ---
 
 describe("Validate flow enums", () => {
   // python: TestValidateFlowEnums
@@ -640,9 +610,7 @@ describe("Validate flow enums", () => {
   });
 });
 
-// =============================================================================
-// FL9/FL10: Session count_type + conversion_window_unit constraints
-// =============================================================================
+// --- FL9/FL10: Session count_type + conversion_window_unit constraints ---
 
 describe("Validate flow FL9", () => {
   // python: TestValidateFlowFL9
@@ -737,9 +705,7 @@ describe("Validate flow window unit", () => {
   });
 });
 
-// =============================================================================
-// T016: Multi-error collection
-// =============================================================================
+// --- Multi-error collection ---
 
 describe("Validate flow multi error", () => {
   // python: TestValidateFlowMultiError
@@ -770,9 +736,7 @@ describe("Validate flow multi error", () => {
   });
 });
 
-// =============================================================================
-// T016: All defaults pass
-// =============================================================================
+// --- All defaults pass ---
 
 describe("Validate flow defaults", () => {
   // python: TestValidateFlowDefaults
@@ -783,9 +747,7 @@ describe("Validate flow defaults", () => {
   });
 });
 
-// =============================================================================
-// T016: time_comparison validation for flows
-// =============================================================================
+// --- time_comparison validation for flows ---
 
 describe("Validate flow args time comparison", () => {
   // python: TestValidateFlowArgsTimeComparison
@@ -819,9 +781,7 @@ describe("Validate flow args time comparison", () => {
   });
 });
 
-// =============================================================================
-// T036: data_group_id validation for flows
-// =============================================================================
+// --- data_group_id validation for flows ---
 
 describe("Data group ID validation flow", () => {
   // python: TestDataGroupIdValidationFlow

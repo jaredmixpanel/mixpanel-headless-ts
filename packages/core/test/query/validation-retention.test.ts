@@ -1,16 +1,8 @@
-/**
- * Layer-3 translation of `tests/test_validation_retention.py`
- * (Python revision: `ts-port/phase2-contract-support` HEAD; 1087 LOC).
- *
- * Scope per b2-packets.md §V1a: the `validate_retention_args` classes.
- * `TestValidateBookmarkRetentionB20` / `B21` /
- * `TestValidateBookmarkRetentionB9MathDispatch` drive
- * `validate_bookmark` — B2 shard V1b.
- *
- * R10.2: assertion-for-assertion. Suggestion-content asserts are kept
- * verbatim (Cautions §6 — they pin the difflib port).
- */
-
+// `validateRetentionArgs` rules R1-R9 (born/return events, enum validations
+// with fuzzy suggestions, delegation to the shared validators, bucket_sizes) —
+// translation of the corresponding `validate_retention_args` classes of
+// `tests/test_validation_retention.py` (the remaining rules are in
+// validation-retention-rules.test.ts). Suggestion-content asserts are kept verbatim.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -20,9 +12,7 @@ import {
 import { GroupBy } from "../../src/types/index.js";
 import { codes } from "../../test-support/error-codes.js";
 
-// =============================================================================
-// Helpers (test_validation_retention.py)
-// =============================================================================
+// --- Helpers (test_validation_retention.py) ---
 
 /**
  * Build a default-valid option bag for {@link validateRetentionArgs}.
@@ -60,9 +50,7 @@ const GROUP_CODES = new Set([
   "V24_BUCKET_NOT_FINITE",
 ]);
 
-// =============================================================================
-// T011: R1 — born_event must be non-empty string
-// =============================================================================
+// --- R1 — born_event must be non-empty string ---
 
 describe("Validate retention R1", () => {
   // python: TestValidateRetentionR1
@@ -163,9 +151,7 @@ describe("Validate retention R1", () => {
   });
 });
 
-// =============================================================================
-// T012: R2 — return_event must be non-empty string
-// =============================================================================
+// --- R2 — return_event must be non-empty string ---
 
 describe("Validate retention R2", () => {
   // python: TestValidateRetentionR2
@@ -270,9 +256,7 @@ describe("Validate retention R2", () => {
   });
 });
 
-// =============================================================================
-// T013: R7/R8/R9 — enum validations with fuzzy suggestion
-// =============================================================================
+// --- R7/R8/R9 — enum validations with fuzzy suggestion ---
 
 describe("Validate retention R7 R8 R9", () => {
   // python: TestValidateRetentionR7R8R9
@@ -456,9 +440,7 @@ describe("Validate retention R7 R8 R9", () => {
   });
 });
 
-// =============================================================================
-// T014: R3/R4 — delegation to shared validators
-// =============================================================================
+// --- R3/R4 — delegation to shared validators ---
 
 describe("Validate retention delegation", () => {
   // python: TestValidateRetentionDelegation
@@ -623,9 +605,7 @@ describe("Validate retention delegation", () => {
   });
 });
 
-// =============================================================================
-// T-US3: R5/R6 — bucket_sizes validation
-// =============================================================================
+// --- R5/R6 — bucket_sizes validation ---
 
 describe("Validate retention R5 R6", () => {
   // python: TestValidateRetentionR5R6

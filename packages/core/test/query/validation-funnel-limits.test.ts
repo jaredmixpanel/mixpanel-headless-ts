@@ -1,16 +1,8 @@
-/**
- * Layer-3 translation of `tests/test_validation_funnel.py`
- * (Python revision: `ts-port/phase2-contract-support` HEAD; 1373 LOC,
- * translated in full per b2-packets.md §V1a).
- *
- * R10.2: assertion-for-assertion. Python `pytest.raises(ValueError,
- * match=...)` on a dataclass `__post_init__` guard translates to
- * `expect(...).toThrow(/…/)` against the TS port's own faithfully
- * ported guard message (`ParamValidationError`, phase2 C3).
- * R5.3/R5.4: codes are the contract; suggestion-content asserts are
- * kept verbatim (Cautions §6 — they pin the difflib port).
- */
-
+// `validateFunnelArgs` limit and shape rules (F1 max, F3 max/type, F4 negative
+// and control chars, F2 control chars, F8 holding, F9 session math, F10-F12,
+// data_group_id) — translation of the corresponding classes of
+// `tests/test_validation_funnel.py` (the core F1-F7 classes are in
+// validation-funnel.test.ts). Suggestion-content asserts are kept verbatim.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -20,9 +12,7 @@ import {
 import { Exclusion, HoldingConstant } from "../../src/types/index.js";
 import { codes } from "../../test-support/error-codes.js";
 
-// =============================================================================
-// Helpers (test_validation_funnel.py)
-// =============================================================================
+// --- Helpers (test_validation_funnel.py) ---
 
 /**
  * Build a default-valid option bag for {@link validateFunnelArgs}.
@@ -49,9 +39,7 @@ function validFunnelArgs(
   };
 }
 
-// =============================================================================
-// F1 max: Maximum 100 steps (G2)
-// =============================================================================
+// --- F1 max: Maximum 100 steps (G2) ---
 
 describe("Validate funnel args F1 max", () => {
   // python: TestValidateFunnelArgsF1Max
@@ -80,9 +68,7 @@ describe("Validate funnel args F1 max", () => {
   });
 });
 
-// =============================================================================
-// F3 max: Maximum conversion window per unit (G1)
-// =============================================================================
+// --- F3 max: Maximum conversion window per unit (G1) ---
 
 describe("Validate funnel args F3 max", () => {
   // python: TestValidateFunnelArgsF3Max
@@ -167,9 +153,7 @@ describe("Validate funnel args F3 max", () => {
   });
 });
 
-// =============================================================================
-// F4 negative: Negative from_step in exclusions (G3)
-// =============================================================================
+// --- F4 negative: Negative from_step in exclusions (G3) ---
 
 describe("Validate funnel args F4 negative", () => {
   // python: TestValidateFunnelArgsF4Negative
@@ -198,9 +182,7 @@ describe("Validate funnel args F4 negative", () => {
   });
 });
 
-// =============================================================================
-// F4 control chars: Control characters in exclusion events (G7)
-// =============================================================================
+// --- F4 control chars: Control characters in exclusion events (G7) ---
 
 describe("Validate funnel args F4 control chars", () => {
   // python: TestValidateFunnelArgsF4ControlChars
@@ -220,9 +202,7 @@ describe("Validate funnel args F4 control chars", () => {
   });
 });
 
-// =============================================================================
-// F2 control chars: Control/invisible characters in step events (G8)
-// =============================================================================
+// --- F2 control chars: Control/invisible characters in step events (G8) ---
 
 describe("Validate funnel args F2 control chars", () => {
   // python: TestValidateFunnelArgsF2ControlChars
@@ -252,9 +232,7 @@ describe("Validate funnel args F2 control chars", () => {
   });
 });
 
-// =============================================================================
-// F8 max holding: Maximum 3 holding constants (G5)
-// =============================================================================
+// --- F8 max holding: Maximum 3 holding constants (G5) ---
 
 describe("Validate funnel args F8 max holding", () => {
   // python: TestValidateFunnelArgsF8MaxHolding
@@ -293,9 +271,7 @@ describe("Validate funnel args F8 max holding", () => {
   });
 });
 
-// =============================================================================
-// F9 session math: Session math/window constraints (G6)
-// =============================================================================
+// --- F9 session math: Session math/window constraints (G6) ---
 
 describe("Validate funnel args F9 session math", () => {
   // python: TestValidateFunnelArgsF9SessionMath
@@ -354,9 +330,7 @@ describe("Validate funnel args F9 session math", () => {
   });
 });
 
-// =============================================================================
-// F3 type: conversion_window must be int
-// =============================================================================
+// --- F3 type: conversion_window must be int ---
 
 describe("Validate funnel args F3 type", () => {
   // python: TestValidateFunnelArgsF3Type
@@ -387,9 +361,7 @@ describe("Validate funnel args F3 type", () => {
   });
 });
 
-// =============================================================================
-// F10: property math requires math_property
-// =============================================================================
+// --- F10: property math requires math_property ---
 
 describe("Validate funnel args F10 math property", () => {
   // python: TestValidateFunnelArgsF10MathProperty
@@ -445,9 +417,7 @@ describe("Validate funnel args F10 math property", () => {
   });
 });
 
-// =============================================================================
-// F11: non-property math rejects math_property
-// =============================================================================
+// --- F11: non-property math rejects math_property ---
 
 describe("Validate funnel args F11 math rejects property", () => {
   // python: TestValidateFunnelArgsF11MathRejectsProperty
@@ -487,9 +457,7 @@ describe("Validate funnel args F11 math rejects property", () => {
   });
 });
 
-// =============================================================================
-// T010: F12 — reentry_mode validation
-// =============================================================================
+// --- F12 — reentry_mode validation ---
 
 describe("Validate funnel args F12 reentry mode", () => {
   // python: TestValidateFunnelArgsF12ReentryMode
@@ -548,9 +516,7 @@ describe("Validate funnel args F12 reentry mode", () => {
   });
 });
 
-// =============================================================================
-// F8b: HoldingConstant property validation
-// =============================================================================
+// --- F8b: HoldingConstant property validation ---
 
 describe("F8b holding constant property validation", () => {
   // python: TestF8bHoldingConstantPropertyValidation
@@ -588,9 +554,7 @@ describe("F8b holding constant property validation", () => {
   });
 });
 
-// =============================================================================
-// T036: data_group_id validation for funnels
-// =============================================================================
+// --- data_group_id validation for funnels ---
 
 describe("Data group ID validation funnel", () => {
   // python: TestDataGroupIdValidationFunnel

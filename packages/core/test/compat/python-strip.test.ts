@@ -1,6 +1,7 @@
-// B0-1: tests written FIRST from the CPython `str.strip()`
-// whitespace table (the oracle, CPython 3.14.6 / Unicode 16.0.0 — probes
-// 2026-08-15, recorded in docs/history/phase3/notes/B0-notes.md).
+// `pythonStrip` — CPython `str.strip()` against the pinned 29-codepoint
+// whitespace table (CPython 3.14.6 / Unicode 16.0.0): strips U+001C..U+001F,
+// which JS `trim()` keeps, and keeps U+FEFF, which JS `trim()` strips.
+// No Python test file behind this suite; the fast-check properties are TS-only.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -38,7 +39,7 @@ describe("pythonStrip — CPython str.strip() semantics", () => {
     expect(pythonStrip("  a \t b  ")).toBe("a \t b");
   });
 
-  it("never splits a surrogate pair (non-BMP payload, R10.9 edge)", () => {
+  it("never splits a surrogate pair (non-BMP payload)", () => {
     expect(pythonStrip(" 𝒳 ")).toBe("𝒳");
     expect(pythonStrip("𝒳")).toBe("𝒳");
   });

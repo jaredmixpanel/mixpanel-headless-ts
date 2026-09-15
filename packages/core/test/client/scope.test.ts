@@ -1,14 +1,8 @@
-// Layer-3 translation of tests/unit/test_app_api_client.py::
-// TestWorkspaceScoping's maybe_scoped_path tests and
-// ::TestAppApiEdgeCases (:759-784) — Phase-3 packet B0-2.
-//
-// Entry-point substitution (B0-notes decision 13): Python drives
-// `client.maybe_scoped_path(...)` after `set_workspace_id(...)`; the TS
-// B0 port is the pure `maybeScopedPath(domainPath, scope)` — the mutable
-// `set_workspace_id` state lives on the B4-C1 client, which threads
-// `{projectId, workspaceId}` here. `require_scoped_path` /
-// `resolve_workspace_id` do network discovery and are B4-C1 scope
-// (playbook B0-2 table note) — their tests translate there.
+// The pure `maybeScopedPath(domainPath, scope)` (project- vs
+// workspace-scoped App API paths, including workspace id 0 and negatives).
+// Mirrors the `maybe_scoped_path` cases of TestWorkspaceScoping and
+// TestAppApiEdgeCases from tests/unit/test_app_api_client.py; Python's mutable
+// `set_workspace_id` state becomes the `{projectId, workspaceId}` scope argument.
 import { describe, expect, it } from "vitest";
 
 import { maybeScopedPath } from "../../src/client/scope.js";
@@ -44,7 +38,7 @@ describe("App API edge cases", () => {
   it("set workspace ID zero", () => {
     // python: test_set_workspace_id_zero
     // Workspace ID 0 is unusual but accepted: Python's guard is
-    // `is not None`, NOT truthiness (watchlist §8 item 6).
+    // `is not None`, NOT truthiness.
     const path = maybeScopedPath("dashboards", {
       projectId: "12345",
       workspaceId: 0,

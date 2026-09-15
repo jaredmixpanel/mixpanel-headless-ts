@@ -1,14 +1,8 @@
-// Report-type inference from bookmark params — heads spec 02 §5.3 / §10.1
-// (`mixpanel-desktop-app/docs/specs/heads/02-queryref-and-two-body-identity.md`).
-//
-// The desktop derives a QueryRef's `bookmarkType` from the wire body of a
-// bridged query, where the only thing it holds is `body.bookmark` — the
-// params object. Spec §10.1 asks headless to own that classifier so there
-// is one implementation, not two.
-//
-// **Every params object below is produced by running the real builders.**
-// Hand-writing params would test the classifier against a fiction; the
-// point is that it reads what `buildParams` et al. actually emit.
+// `inferBookmarkType` — classifies a bookmark params object into its report
+// type so the desktop's QueryRef derivation has one implementation (heads spec
+// `02-queryref-and-two-body-identity.md` §5.3 / §10.1). No Python test file.
+// Every params object here is produced by the real builders: hand-written
+// params would test the classifier against a fiction.
 import { describe, expect, it } from "vitest";
 
 import { inferBookmarkType } from "../../src/bookmarks/infer-type.js";

@@ -1,30 +1,8 @@
-/**
- * Layer-3 translation of `tests/unit/_internal/test_expressions_pbt.py`
- * (143 LOC, 1 class, 6 Hypothesis properties; Python revision:
- * `ts-port/phase2-contract-support` HEAD) — fast-check twins, per
- * `b3-packets.md` §"Packet K3".
- *
- * Strategy mirroring notes (R10.2; B2 ASSERT-F1 precedent — an
- * ASCII-only twin of `st.text()` is a silent narrowing and a finding):
- *
- * - `bare_property_names = st.text(min_size=1).filter(no accessor)` →
- *   `fc.string({ minLength: 1, unit: "binary" })` with the SAME filter
- *   predicate (`includes` on each of the three accessors). `unit:
- *   "binary"` draws the full code-point domain including non-BMP.
- * - `valid_expressions = st.sampled_from([...])` → `fc.constantFrom`
- *   over the identical five literals.
- * - `st.text()` (may be empty) → `fc.string({ unit: "binary" })`.
- * - `st.text(max_size=20)` for the quote-splice property → the same
- *   bound; the Python body `return`s early when the spliced name
- *   accidentally contains an accessor, which translates to `pre()`
- *   (fast-check's precondition — a skipped example, exactly like
- *   Python's silent early return).
- *
- * The upstream Python suite carries no `@settings(max_examples=...)`,
- * so the Hypothesis default (100 / CI 200) applies; `numRuns: 200` is
- * the deterministic twin used across this repo's PBT files.
- */
-
+// fast-check twins of `tests/unit/_internal/test_expressions_pbt.py` for
+// `normalizeOnExpression`. `st.text()` → `fc.string({ unit: "binary" })` (the
+// full code-point domain, non-BMP included) with the same accessor filter;
+// Python's silent early `return` becomes `fc.pre()`; the upstream suite sets
+// no `max_examples`, so `numRuns: 200` (the Hypothesis CI default) is used.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 

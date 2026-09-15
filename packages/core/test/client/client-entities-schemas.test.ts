@@ -1,7 +1,8 @@
-// Layer-3 translation — Phase-3 packet B4-C5 schema-registry locks.
-// Source: tests/unit/test_api_client_schemas.py (ALL classes — registry
-// list/create/create-bulk/update/update-bulk/delete + percent-encoding
-// + duplicate-entry edge cases).
+// Schema-registry client methods: list (by entity type), create /
+// create-bulk (truncate mode, duplicates), update / update-bulk, delete
+// (all / by type / by name), percent-encoded entity names and the
+// already-exists error. Mirrors every class of tests/unit/test_api_client_schemas.py.
+
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "../../src/auth/session.js";

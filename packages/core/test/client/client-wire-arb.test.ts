@@ -1,23 +1,9 @@
-// B4-ARB resolution locks (b4-review-resolution.md) — TS-native tests
-// pinning the four wire-review fixes applied at arbitration:
-//
-// - W-F1: exportEvents mid-stream body-read failures are inside the
-//   `except httpx.HTTPError` scope (api_client.py:1870-1953) — they
-//   retry, then wrap as HTTP_ERROR.
-// - W-F2: `timeoutSeconds` is ENFORCED at the fetch adapter — a hung
-//   server fails like httpx's Timeout (an httpx.HTTPError → retried →
-//   HTTP_ERROR), and the clock covers the headers phase + buffered body
-//   read; a streaming body is NOT clock-bounded after headers
-//   (deviation D-B4ARB-1: httpx read-timeouts are per-read, so a
-//   healthy long-running export must not be killed by a total clock).
-// - W-F3: a custom abort reason (controller.abort("user-stop")) exits
-//   the request point as DOMException name "AbortError" (R6.7).
-// - W-F5: export_profiles threads `session_id` into the next page's
-//   JSON body VERBATIM (api_client.py:2105 — `response.get` value, not
-//   a stringification).
-//
-// (W-F4, the pagination `except Exception` scope, is locked in
-// pagination.test.ts alongside the other INVALID_RESPONSE tests.)
+// TS-only wire-behaviour locks (no Python source test): mid-stream export
+// body failures retry inside the `httpx.HTTPError` scope, then wrap as
+// HTTP_ERROR; `timeoutSeconds` is enforced at the fetch adapter for headers and
+// buffered bodies only (httpx read-timeouts are per-read, so a healthy stream is
+// never clock-bounded); custom abort reasons exit as AbortError; `session_id` is threaded verbatim.
+
 import { describe, expect, it } from "vitest";
 
 import { createMixpanelClient } from "../../src/client/client.js";
@@ -153,7 +139,7 @@ function slowChunkFetch(
   };
 }
 
-describe("W-F1: mid-stream body failures retry inside the httpx.HTTPError scope", () => {
+describe("mid-stream body failures retry inside the httpx.HTTPError scope", () => {
   it("retries a body-read failure and re-streams (Python re-yields)", async () => {
     const line = '{"event":"A","properties":{"time":1}}\n';
     const good =
@@ -199,7 +185,7 @@ describe("W-F1: mid-stream body failures retry inside the httpx.HTTPError scope"
   });
 });
 
-describe("W-F2: request timeouts are enforced at the adapter", () => {
+describe("request timeouts are enforced at the adapter", () => {
   it("times out a hung buffered request and wraps as HTTP_ERROR", async () => {
     const { fetchImpl, calls } = hangingFetch();
     const { client } = clientOver(fetchImpl, {
@@ -237,7 +223,7 @@ describe("W-F2: request timeouts are enforced at the adapter", () => {
     );
   });
 
-  it("does NOT clock-bound a healthy streaming body (D-B4ARB-1)", async () => {
+  it("does NOT clock-bound a healthy streaming body", async () => {
     // Two chunks, each behind a 30ms real delay: total wall time far
     // exceeds the 20ms export timeout, but the clock stops at headers.
     const fetchImpl = slowChunkFetch(
@@ -253,7 +239,7 @@ describe("W-F2: request timeouts are enforced at the adapter", () => {
   });
 });
 
-describe("W-F3: custom abort reasons exit the request point as AbortError", () => {
+describe("custom abort reasons exit the request point as AbortError", () => {
   it("controller.abort('user-stop') rejects as DOMException AbortError", async () => {
     const { fetchImpl } = hangingFetch();
     const { client } = clientOver(fetchImpl, { maxRetries: 0 });
@@ -274,7 +260,7 @@ describe("W-F3: custom abort reasons exit the request point as AbortError", () =
   });
 });
 
-describe("W-F5: export_profiles threads session_id verbatim", () => {
+describe("exportProfiles threads session_id verbatim", () => {
   it("a numeric session_id round-trips as a JSON number, not a string", async () => {
     const { client, transport } = createMockClient(makeSession(), (request) => {
       const body =

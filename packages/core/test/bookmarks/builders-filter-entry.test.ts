@@ -1,42 +1,8 @@
-/**
- * Layer-3 translation of the `bookmark_builders.py` test corpus
- * (Python revision: `ts-port/phase2-contract-support` HEAD).
- *
- * Sources translated here, per b3-packets.md §"Packet K2":
- *
- * | Python file | classes translated |
- * |---|---|
- * | `tests/unit/test_bookmark_builders.py` (1,396 LOC, 18 classes) | all 18 |
- * | `tests/test_custom_property_builders.py` (461 LOC) | `TestBuildComposedProperties`, `TestBuildGroupSectionCustomProperties`, `TestBuildFilterEntryCustomProperties` |
- *
- * **Deferrals (header citations, R10.1):**
- *
- * - `tests/test_custom_property_builders.py::TestMeasurementPropertyBuilder`
- *   drives `Workspace.build_params` → **B5-S2** (no implementation exists
- *   to test at B3). The packet flags this file as a playbook omission that
- *   is nonetheless IN scope for its builder-direct classes (15 measured K2
- *   vectors come from it).
- * - `tests/unit/test_bookmark_builders_pbt.py`'s three equivalence classes
- *   (`TestTimeSectionEquivalence`, `TestFilterSectionEquivalence`,
- *   `TestGroupSectionEquivalence`) assert
- *   `ws._build_query_params(...) == build_*(...)` → **B5-S2**. Only
- *   `TestListContainsRoundTrip` is builder-direct; it is translated as a
- *   fast-check property in `builders.pbt.test.ts`.
- * - `tests/test_build_cohort_params.py` and `tests/test_query_params.py`
- *   are B5-owned files (playbook B5 row); their K2 vectors replay at the
- *   B3 gate regardless (vector api gates, not test-file ownership). The
- *   `buildFlowCohortFilter` describe block below is therefore marked
- *   `// NEW` and cites the corpus vector ids it mirrors.
- *
- * R10.2: assertion-for-assertion, codes not messages. Python
- * `pytest.raises(TypeError, match=…)` pairs become
- * `toThrow(ParamTypeError)` plus an explicit `.code` assertion, since
- * `ParamTypeError`/`ParamValidationError` are the ported twins of
- * Python's `TypeError`/`ValueError` subclasses (the "stays catchable as
- * TypeError/ValueError" asserts translate to the base-class check —
- * see `errors.ts`).
- */
-
+// `buildFilterSection`, `buildFilterEntry`, `patchCustomPropertyFiltersForTransform`
+// and the `Filter.listContains` path from `bookmarks/builders`. Mirrors the
+// filter-side classes of `tests/unit/test_bookmark_builders.py` and
+// `TestBuildFilterEntryCustomProperties` of `tests/test_custom_property_builders.py`;
+// codes are asserted instead of messages. Cases without a Python twin are TS-only.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -52,9 +18,7 @@ import {
   PropertyInput,
 } from "../../src/types/index.js";
 
-// =============================================================================
-// tests/unit/test_bookmark_builders.py::TestBuildFilterSection
-// =============================================================================
+// --- Filter section (TestBuildFilterSection) ---
 
 describe("buildFilterSection", () => {
   it("none returns empty", () => {
@@ -97,9 +61,9 @@ describe("buildFilterSection", () => {
     }
   });
 
-  it("silently skips foreign elements (no else branch, :200-204)", () => {
-    // NEW (packet §K2 range 173-205): Python has NO else clause, so a
-    // non-Filter element is DROPPED, not rejected.
+  it("silently skips foreign elements (no else branch)", () => {
+    // TS-only: Python has NO else clause, so a non-Filter element is
+    // DROPPED, not rejected.
     const result = buildFilterSection([
       Filter.equals("country", "US"),
       42 as unknown as Filter,
@@ -113,9 +77,7 @@ describe("buildFilterSection", () => {
   });
 });
 
-// =============================================================================
-// tests/unit/test_bookmark_builders.py::TestBuildFilterEntry
-// =============================================================================
+// --- Filter entry (TestBuildFilterEntry) ---
 
 describe("buildFilterEntry", () => {
   it("string filter", () => {
@@ -134,7 +96,7 @@ describe("buildFilterEntry", () => {
     expect(entry["filterType"]).toBe("number");
     expect(entry["defaultType"]).toBe("number");
     expect(entry["value"]).toBe("age");
-    // R10.12: native JSON number, never the string "18".
+    // Native JSON number, never the string "18".
     expect(entry["filterValue"]).toBe(18);
     expect(entry["filterOperator"]).toBe("is greater than");
     expect(Object.hasOwn(entry, "filterDateUnit")).toBe(false);
@@ -195,11 +157,9 @@ describe("buildFilterEntry", () => {
   });
 });
 
-// =============================================================================
-// tests/unit/test_bookmark_builders.py::TestNewFilterOperatorsInBuilder
-// =============================================================================
+// --- New filter operators (TestNewFilterOperatorsInBuilder) ---
 
-describe("buildFilterEntry — new filter operators (T030)", () => {
+describe("buildFilterEntry — new filter operators", () => {
   it("not between filter operator", () => {
     const entry = buildFilterEntry(Filter.notBetween("age", 18, 65));
     expect(entry["filterOperator"]).toBe("not between");
@@ -254,9 +214,7 @@ describe("buildFilterEntry — new filter operators (T030)", () => {
   });
 });
 
-// =============================================================================
-// tests/unit/test_bookmark_builders.py::TestPatchCustomPropertyFiltersForTransform
-// =============================================================================
+// --- Patch custom-property filters (TestPatchCustomPropertyFiltersForTransform) ---
 
 describe("patchCustomPropertyFiltersForTransform", () => {
   it("adds value to custom property ref", () => {
@@ -293,8 +251,8 @@ describe("patchCustomPropertyFiltersForTransform", () => {
     expect(patchCustomPropertyFiltersForTransform([])).toStrictEqual([]);
   });
 
-  it("mutates in place and returns the SAME array (caution 14)", () => {
-    // NEW: Python returns `filter_entries` itself; B5 consumers chain
+  it("mutates in place and returns the SAME array", () => {
+    // TS-only: Python returns `filter_entries` itself; `Workspace` chains
     // `patch_custom_property_filters_for_transform(build_filter_section(...))`
     // (`workspace.py`), so the aliasing is contract.
     const entries: Array<Record<string, unknown>> = [
@@ -305,7 +263,7 @@ describe("patchCustomPropertyFiltersForTransform", () => {
   });
 
   it("an entry whose own `value` is null is left alone (`in`, not truthiness)", () => {
-    // NEW (watchlist #7): Python's guard is `"value" not in entry`, a
+    // TS-only: Python's guard is `"value" not in entry`, a
     // KEY-PRESENCE test → `Object.hasOwn`, never `entry.value == null`.
     const entries: Array<Record<string, unknown>> = [
       { value: null, customPropertyId: 7 },
@@ -319,9 +277,7 @@ describe("patchCustomPropertyFiltersForTransform", () => {
   });
 });
 
-// =============================================================================
-// tests/unit/test_bookmark_builders.py::TestFilterListContains
-// =============================================================================
+// --- Filter.listContains (TestFilterListContains) ---
 
 describe("Filter.listContains → buildFilterEntry", () => {
   it("kwargs shorthand produces two inner equals", () => {
@@ -394,7 +350,7 @@ describe("Filter.listContains → buildFilterEntry", () => {
     expect(entry["defaultType"]).toBe("object");
     expect(entry["filterJoinType"]).toBe("list");
     expect(entry["filterOperator"]).toBe("true");
-    // R10.12's boolean cousin: JSON `true`, never the string "true".
+    // JSON `true`, never the string "true".
     expect(entry["filterValue"]).toBe(true);
   });
 
@@ -507,8 +463,8 @@ describe("Filter.listContains → buildFilterEntry", () => {
     ).toThrow(/non-empty/);
   });
 
-  it("setdefault does NOT overwrite an inner dataset (`:567`)", () => {
-    // NEW: the inner entry of a CustomPropertyRef sub-filter already
+  it("setdefault does NOT overwrite an inner dataset", () => {
+    // TS-only: the inner entry of a CustomPropertyRef sub-filter already
     // carries `dataset`; `setdefault` must leave it alone.
     const f = Filter.listContains("cart", [
       Filter.equals(new CustomPropertyRef({ id: 7 }), "nike"),
@@ -521,9 +477,7 @@ describe("Filter.listContains → buildFilterEntry", () => {
   });
 });
 
-// =============================================================================
-// tests/test_custom_property_builders.py::TestBuildFilterEntryCustomProperties
-// =============================================================================
+// --- Custom properties (TestBuildFilterEntryCustomProperties) ---
 
 describe("buildFilterEntry — custom properties", () => {
   it("T026 plain string unchanged", () => {

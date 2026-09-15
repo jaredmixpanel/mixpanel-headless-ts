@@ -1,16 +1,8 @@
-/**
- * Layer-3 translation of `tests/test_validation_funnel.py`
- * (Python revision: `ts-port/phase2-contract-support` HEAD; 1373 LOC,
- * translated in full per b2-packets.md §V1a).
- *
- * R10.2: assertion-for-assertion. Python `pytest.raises(ValueError,
- * match=...)` on a dataclass `__post_init__` guard translates to
- * `expect(...).toThrow(/…/)` against the TS port's own faithfully
- * ported guard message (`ParamValidationError`, phase2 C3).
- * R5.3/R5.4: codes are the contract; suggestion-content asserts are
- * kept verbatim (Cautions §6 — they pin the difflib port).
- */
-
+// `validateFunnelArgs` rules F1-F7, exclusion step ranges (F4b-F4d) and
+// multi-error collection — translation of the corresponding classes of
+// `tests/test_validation_funnel.py` (the limit classes are in
+// validation-funnel-limits.test.ts). `pytest.raises(ValueError, match=)` on a
+// dataclass `__post_init__` guard becomes `toThrow(/…/)` against the ported message.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -20,9 +12,7 @@ import {
 import { Exclusion, FunnelStep, GroupBy } from "../../src/types/index.js";
 import { codes } from "../../test-support/error-codes.js";
 
-// =============================================================================
-// Helpers (test_validation_funnel.py)
-// =============================================================================
+// --- Helpers (test_validation_funnel.py) ---
 
 /**
  * Build a default-valid option bag for {@link validateFunnelArgs}.
@@ -49,9 +39,7 @@ function validFunnelArgs(
   };
 }
 
-// =============================================================================
-// F6: Group-by validation (delegated to validate_group_by_args)
-// =============================================================================
+// --- F6: Group-by validation (delegated to validate_group_by_args) ---
 
 /** Group-by rule codes asserted absent by several F6 tests. */
 const GROUP_CODES = new Set([
@@ -63,9 +51,7 @@ const GROUP_CODES = new Set([
   "V24_BUCKET_NOT_FINITE",
 ]);
 
-// =============================================================================
-// F1: At least 2 steps required
-// =============================================================================
+// --- F1: At least 2 steps required ---
 
 describe("Validate funnel args F1", () => {
   // python: TestValidateFunnelArgsF1
@@ -120,9 +106,7 @@ describe("Validate funnel args F1", () => {
   });
 });
 
-// =============================================================================
-// F2: Each step event must be non-empty string
-// =============================================================================
+// --- F2: Each step event must be non-empty string ---
 
 describe("Validate funnel args F2", () => {
   // python: TestValidateFunnelArgsF2
@@ -220,9 +204,7 @@ describe("Validate funnel args F2", () => {
   });
 });
 
-// =============================================================================
-// F3: Positive conversion window
-// =============================================================================
+// --- F3: Positive conversion window ---
 
 describe("Validate funnel args F3", () => {
   // python: TestValidateFunnelArgsF3
@@ -297,9 +279,7 @@ describe("Validate funnel args F3", () => {
   });
 });
 
-// =============================================================================
-// F4: Non-empty exclusion event names
-// =============================================================================
+// --- F4: Non-empty exclusion event names ---
 
 describe("Validate funnel args F4", () => {
   // python: TestValidateFunnelArgsF4
@@ -380,9 +360,7 @@ describe("Validate funnel args F4", () => {
   });
 });
 
-// =============================================================================
-// F5: Time validation (delegated to validate_time_args)
-// =============================================================================
+// --- F5: Time validation (delegated to validate_time_args) ---
 
 describe("Validate funnel args F5", () => {
   // python: TestValidateFunnelArgsF5
@@ -592,9 +570,7 @@ describe("Validate funnel args F6", () => {
   });
 });
 
-// =============================================================================
-// Multiple errors collected
-// =============================================================================
+// --- Multiple errors collected ---
 
 describe("Validate funnel args multiple errors", () => {
   // python: TestValidateFunnelArgsMultipleErrors
@@ -722,9 +698,7 @@ describe("Validate funnel args multiple errors", () => {
   });
 });
 
-// =============================================================================
-// T040: Exclusion step range validation (F4b, F4c, F4d)
-// =============================================================================
+// --- Exclusion step range validation (F4b, F4c, F4d) ---
 
 describe("Validate funnel args exclusion ranges", () => {
   // python: TestValidateFunnelArgsExclusionRanges
@@ -826,9 +800,7 @@ describe("Validate funnel args exclusion ranges", () => {
   });
 });
 
-// =============================================================================
-// F7: conversion window unit validation
-// =============================================================================
+// --- F7: conversion window unit validation ---
 
 describe("Validate funnel args F7", () => {
   // python: TestValidateFunnelArgsF7

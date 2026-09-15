@@ -1,9 +1,9 @@
-// Layer-3 translation — Phase-3 packet B4-C5 data-governance locks.
-// Source: tests/unit/test_api_client_data_governance.py (ALL classes —
-// lexicon definitions/tags/metadata/history/export, custom properties,
-// drop filters, lookup tables incl. upload/download wiring, custom
-// events incl. the form-body + envelope-peeling + echo-mismatch
-// branches, and the error-path classes).
+// Lookup-table client methods: list, the signed-URL upload flow (upload
+// URL, upload, register, mark ready, status), update/delete, download and
+// download URL, plus the missing-keys / network-failure / non-JSON error
+// paths. Mirrors the lookup-table classes of tests/unit/test_api_client_data_governance.py;
+// the module's other domains live in the sibling `client-entities-*` files.
+
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "../../src/auth/session.js";
@@ -24,9 +24,7 @@ function oauthCredentials(): Session {
   });
 }
 
-// ---------------------------------------------------------------------------
-// Domain 12 — Lookup Tables (US6)
-// ---------------------------------------------------------------------------
+// --- Lookup tables ---
 
 describe("List lookup tables", () => {
   // python: TestListLookupTables

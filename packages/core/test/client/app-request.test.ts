@@ -1,20 +1,9 @@
-// Layer-3 translation of tests/unit/test_app_api_client.py::TestAppRequest
-// (:78-303), ::TestAppRequestFormBody (:306-403), ::TestCodedAppRequestCodes
-// (:873-929), plus the app_request halves of
-// tests/unit/test_api_client.py::TestRetryAfterHardening and
-// ::TestErrorContextSymmetry (:4027-4116), and the appRequest-level
-// re-check of tests/unit/test_settings_headers.py::
-// TestSessionHeadersOnOutboundRequests — Phase-3 packet B0-2.
-//
-// Entry-point substitution (B0-notes decision 13): httpx.MockTransport
-// becomes the injected request executor; auth resolution becomes the
-// injected per-call `getAuthHeader` seam (R2.9 — the REAL
-// accountAuthHeader wiring is B4's clientFromSession); `recorded_sleeps`
-// becomes the sleep seam. Deferred to B4 (B0-notes deviation 3): the
-// x-www-form-urlencoded content-type assertion (adapter-owned encoding)
-// and Python's `except ValueError` catchability assert (dual inheritance
-// is Python-only; errors.ts docstring covers it — the class+code
-// assertions are preserved).
+// `appRequest` over an injected request executor: auth header, URL, result
+// unwrapping, status-to-error mapping, form/JSON bodies, retry/backoff and
+// error-context symmetry. Mirrors TestAppRequest, TestAppRequestFormBody and
+// TestCodedAppRequestCodes from tests/unit/test_app_api_client.py plus the
+// app_request halves of TestRetryAfterHardening, TestErrorContextSymmetry and TestSessionHeadersOnOutboundRequests.
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -70,11 +59,11 @@ interface Harness {
 }
 
 /**
- * Build appRequest deps over a response script.
+ * Build appRequest deps over a response script. `options` overrides the
+ * auth header, region, retry count, session headers and the custom-header
+ * env pair.
  *
  * @param script - Responses (or thrown errors) per attempt; last repeats.
- * @param options - Overrides (auth header, region, retries, session
- *   headers, env pair).
  * @returns The recorded harness.
  */
 function harness(
@@ -111,7 +100,7 @@ function harness(
     // asserts request shape, not timeout routing (server-deadline.test.ts
     // owns that).
     defaultTimeoutSeconds: () => 120,
-    // The REAL B0-owned 4-layer merge, pre-bound like B4-C1 will bind it.
+    // The real 4-layer header merge, pre-bound the way the client binds it.
     requestHeaders: (extra) =>
       requestHeaders(
         {
@@ -175,7 +164,7 @@ describe("App request", () => {
   it("rate limit fallthrough carries project ID", async () => {
     // python: test_rate_limit_fallthrough_carries_project_id
     // max_retries below zero: the loop never runs — the reduced-shape
-    // fallthrough raise (api_client.py, FF4) fires.
+    // fallthrough raise in mixpanel_headless.api_client fires.
     const h = harness([res(200, { status: "ok", results: [] })], {
       maxRetries: -1,
     });
@@ -277,9 +266,9 @@ describe("App request", () => {
     expect(h.calls[0]?.params["page_size"]).toBe("50");
   });
 
-  it("NO query_origin on App-API params (packet bullet)", async () => {
-    // api_client.py: caller-supplied params only — some App
-    // API endpoints reject unknown query parameters.
+  it("sends NO query_origin on App-API params", async () => {
+    // Caller-supplied params only — some App API endpoints reject unknown
+    // query parameters.
     const h = harness([res(200, { status: "ok", results: [] })]);
     await appRequest(h.deps, "GET", "/dashboards");
     expect(h.calls[0]?.params).toStrictEqual({});
@@ -324,11 +313,11 @@ describe("App request", () => {
 
 describe("App request form body", () => {
   // python: TestAppRequestFormBody
-  it("form body sent as form encoded (B0 half: formBody threading)", async () => {
+  it("form body sent as form encoded (formBody threading)", async () => {
     // python: test_form_body_sent_as_form_encoded
-    // The wire content-type assertion is the fetch adapter's; the
-    // B0 lock: formBody reaches the transport verbatim, jsonBody stays
-    // null, and the method is preserved.
+    // The wire content-type assertion is the fetch adapter's
+    // (client-request.test.ts); the lock here: formBody reaches the
+    // transport verbatim, jsonBody stays null, and the method is preserved.
     const h = harness([res(200, { status: "ok", results: { id: 1 } })]);
     await appRequest(h.deps, "POST", "/projects/12345/custom_events/", {
       formBody: { name: "X", alternatives: '[{"event": "Y"}]' },
@@ -412,7 +401,7 @@ describe("Coded app request codes", () => {
   });
 });
 
-describe("Retry after hardening (app_request half)", () => {
+describe("Retry after hardening (appRequest half)", () => {
   // python: TestRetryAfterHardening
   it("app request negative retry after uses backoff", async () => {
     // python: test_app_request_negative_retry_after_uses_backoff
@@ -448,7 +437,7 @@ describe("Retry after hardening (app_request half)", () => {
   });
 });
 
-describe("Error context symmetry (app_request half)", () => {
+describe("Error context symmetry (appRequest half)", () => {
   // python: TestErrorContextSymmetry
   it("app request 422 carries request params", async () => {
     // python: test_app_request_422_carries_request_params
@@ -526,7 +515,7 @@ describe("Session headers on outbound requests (appRequest level)", () => {
   });
 });
 
-describe("app_request 422 with non-JSON body", () => {
+describe("appRequest 422 with non-JSON body", () => {
   it("truncates the text body at 500 codepoints into response_body", async () => {
     const h = harness([res(422, "x".repeat(600))]);
     const error = (await appRequest(h.deps, "GET", "/d").catch(
@@ -540,11 +529,10 @@ describe("app_request 422 with non-JSON body", () => {
   });
 });
 
-// Arbiter fixes F1 + F3/A2 (b0-review-resolution): the 422 body parse is
-// a `response.json()` site in Python — it
-// accepts json.loads' non-finite constants, and its catch scope is
+// The 422 body parse is a `response.json()` site in Python — it accepts
+// json.loads' non-finite constants, and its catch scope is
 // `except json.JSONDecodeError` only (a RecursionError propagates).
-describe("app_request 422 body-parse fidelity (arbiter fixes F1/F3)", () => {
+describe("appRequest 422 body-parse fidelity", () => {
   it("422 body with a non-finite member keeps DICT shape and error message", async () => {
     const h = harness([res(422, '{"error": "bad field", "v": Infinity}')]);
     const error = (await appRequest(h.deps, "GET", "/d").catch(

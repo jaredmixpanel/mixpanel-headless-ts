@@ -1,7 +1,9 @@
-// Layer-3 translation — Phase-3 packet B4-C5 governance locks.
-// Source: tests/unit/test_api_client_governance.py (ALL classes —
-// schema enforcement :60-350, audit :351-594, anomalies :595-856,
-// deletion requests :857-1097).
+// Governance client methods: schema enforcement get/init/update/replace/
+// delete, data audits, data-volume anomalies (list/update/bulk update) and
+// event deletion requests (list/create/cancel/preview) — paths, methods,
+// params, result parsing and shape errors. Mirrors every class of
+// tests/unit/test_api_client_governance.py.
+
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "../../src/auth/session.js";
@@ -71,9 +73,7 @@ function deletionRequestJson(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Domain 14 — Schema Enforcement
-// ---------------------------------------------------------------------------
+// --- Schema enforcement ---
 
 describe("Get schema enforcement", () => {
   // python: TestGetSchemaEnforcement
@@ -294,9 +294,7 @@ describe("Delete schema enforcement", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Domain 15 — Data Auditing
-// ---------------------------------------------------------------------------
+// --- Data auditing ---
 
 describe("Run audit", () => {
   // python: TestRunAudit
@@ -454,9 +452,7 @@ describe("Run audit events only", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Domain 15 — Data Volume Anomalies
-// ---------------------------------------------------------------------------
+// --- Data volume anomalies ---
 
 describe("List data volume anomalies", () => {
   // python: TestListDataVolumeAnomalies
@@ -639,9 +635,7 @@ describe("Bulk update anomalies", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Domain 15 — Event Deletion Requests
-// ---------------------------------------------------------------------------
+// --- Event deletion requests ---
 
 describe("List deletion requests", () => {
   // python: TestListDeletionRequests

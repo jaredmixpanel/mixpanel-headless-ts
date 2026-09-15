@@ -1,33 +1,8 @@
-/**
- * Layer-3 translation of `tests/test_user_validators.py`
- * (Python revision: `ts-port/phase2-contract-support` HEAD; 1,340 LOC,
- * 149 test methods — the WHOLE file, per b2-packets.md §V2
- * "Layer-3 test translation (V2)").
- *
- * R10.2 assertion-for-assertion. Notes on the translation:
- *
- * - The Python module helper `_only_code` is dead code in the Python
- *   file (defined, never called) and is therefore not translated — it
- *   carries no assertion.
- * - `date.today()` is a clock read. Python's tests build `yesterday` /
- *   `today` / `future` from the real clock, so the TS twins do the
- *   same through {@link todayIso} / {@link shiftDays} and let
- *   `validateUserArgs` use its DEFAULT clock seam. The frozen-clock
- *   path (`options.today`) is exercised by its own describe block at
- *   the bottom — that seam is what the (b′) binding feeds from
- *   `context.shims` (b2-packets.md §V2 trap 2b).
- * - `MagicMock(spec=CohortDefinition)` (U24) has no TS analog; the
- *   twin builds a real-prototype object whose `toDict` throws. Python
- *   catches `(ValueError, TypeError, RuntimeError)`; the ported
- *   `ParamValidationError` dual-inherits `ValueError`
- *   (`exceptions.py:97`), so both a `ParamValidationError` and a
- *   native `TypeError` are asserted.
- * - The 4 `validation/`-capability vectors extracted from
- *   `tests/test_query_user_edge_cases.py` replay through the corpus;
- *   that FILE is B5 Layer-3 scope (playbook B5 row) and is NOT
- *   translated here.
- */
-
+// `validateUserArgs` — translation of the `TestValidateUserArgsValid`,
+// `TestValidateUserArgsMutualExclusion`, `TestValidateUserArgsBasic` and
+// `TestValidateUserArgsCohortDependency` classes of `tests/test_user_validators.py`
+// (the rule-family classes are in user-validators-args-rules.test.ts). Dates
+// come from the real clock, as in Python; the `MagicMock(spec=CohortDefinition)` twin is an object whose `toDict` throws.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -41,9 +16,7 @@ import {
   Filter,
 } from "../../src/types/index.js";
 
-// =============================================================================
-// Helpers (port of the Python module helpers, :30-76)
-// =============================================================================
+// --- Helpers (ports of the Python module helpers) ---
 
 /**
  * Check whether a specific error code appears in the error list.
@@ -83,7 +56,7 @@ function todayIso(): string {
  * `date.today() ± timedelta(days=n)`.
  *
  * Arithmetic runs through `Date.UTC` (a numeric constructor, never the
- * string-parsing one — watchlist #5).
+ * string-parsing one).
  *
  * @param iso - Base date as `YYYY-MM-DD`.
  * @param days - Signed day offset.
@@ -91,7 +64,7 @@ function todayIso(): string {
  */
 function shiftDays(iso: string, days: number): string {
   const digits = (s: string): number => {
-    // R11.7: no `parseInt` / `Number(string)` anywhere in this tree,
+    // No `parseInt` / `Number(string)` anywhere in this tree,
     // test helpers included; the slices are `[0-9]+` by construction.
     let v = 0;
     for (let i = 0; i < s.length; i++) {
@@ -139,9 +112,7 @@ function emptyPropertyFilter(): Filter {
   });
 }
 
-// =============================================================================
-// TestValidateUserArgsValid — Happy-path tests
-// =============================================================================
+// --- TestValidateUserArgsValid — Happy-path tests ---
 
 describe("Validate user args valid", () => {
   // python: TestValidateUserArgsValid
@@ -345,9 +316,7 @@ describe("Validate user args valid", () => {
   });
 });
 
-// =============================================================================
-// TestValidateUserArgsMutualExclusion — Rules U1, U2, U9
-// =============================================================================
+// --- TestValidateUserArgsMutualExclusion — Rules U1, U2, U9 ---
 
 describe("Validate user args mutual exclusion", () => {
   // python: TestValidateUserArgsMutualExclusion
@@ -433,9 +402,7 @@ describe("Validate user args mutual exclusion", () => {
   });
 });
 
-// =============================================================================
-// TestValidateUserArgsBasic — Rules U3-U6, U8, U10, U11, U23
-// =============================================================================
+// --- TestValidateUserArgsBasic — Rules U3-U6, U8, U10, U11, U23 ---
 
 describe("Validate user args basic", () => {
   // python: TestValidateUserArgsBasic
@@ -654,9 +621,7 @@ describe("Validate user args basic", () => {
   });
 });
 
-// =============================================================================
-// TestValidateUserArgsCohortDependency — Rules U7, U12, U13, U24
-// =============================================================================
+// --- TestValidateUserArgsCohortDependency — Rules U7, U12, U13, U24 ---
 
 describe("Validate user args cohort dependency", () => {
   // python: TestValidateUserArgsCohortDependency
@@ -764,7 +729,7 @@ describe("Validate user args cohort dependency", () => {
     // python: test_u24_cohort_definition_to_dict_type_error
     // Extension of the Python test's single case: the Python catch
     // tuple is (ValueError, TypeError, RuntimeError) — the native
-    // TypeError arm is asserted here (not an R10.2 weakening; the
+    // TypeError arm is asserted here (not a weakening; the
     // Python assertion above is translated verbatim).
     const broken = Object.create(
       CohortDefinition.prototype,

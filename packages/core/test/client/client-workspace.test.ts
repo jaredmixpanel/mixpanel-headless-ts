@@ -1,21 +1,9 @@
-// Layer-3 translation — Phase-3 packet B4-C1 workspace-resolution locks.
-// Sources:
-//
-// - tests/unit/test_app_api_client.py::TestWorkspaceScoping,
-//   ::TestResolveWorkspaceId (:523-609), ::TestListWorkspaces
-//   (:612-663), ::TestResolveWorkspace (:666-749),
-//   ::TestAppApiEdgeCases (:752-784), ::TestListWorkspacesEdgeCases
-// - tests/unit/test_workspace_resolution.py::
-//   TestResolveWorkspaceIdWithResolver and
-//   ::TestProjectsMetadataIndex (:459-608). TestSelectWorkspaceId lives
-//   in me.test.ts; ::TestMeServiceResolveWorkspace is translated
-//   in `test/services/me-service.test.ts` and ::TestFacadeResolverWiring
-//   in `test/workspace/workspace-facade.test.ts` — both landed
-//   at B7-A1 (`b7-packets.md` §3.4; the original "B8"/"B6" assignments
-//   here were STALE post-W1, corrected per packet Caution #17).
-//
-// Entry-point substitutions as in client-core.test.ts; MagicMock
-// resolvers translate to counting closures.
+// Workspace resolution on the client: `maybeScopedPath` / `requireScopedPath`,
+// `resolveWorkspaceId` (explicit pin, resolver hook, public endpoint, metadata
+// index fallback, caching), `listWorkspaces` / `resolveWorkspace` and edge
+// cases. Mirrors the workspace classes of tests/unit/test_app_api_client.py and
+// the client-side classes of tests/unit/test_workspace_resolution.py; MagicMock resolvers are counting closures.
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -405,9 +393,7 @@ describe("List workspaces edge cases", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// tests/unit/test_workspace_resolution.py — the client-side classes.
-// ---------------------------------------------------------------------------
+// --- Resolver and metadata index (tests/unit/test_workspace_resolution.py) ---
 
 describe("Resolve workspace ID with resolver", () => {
   // python: TestResolveWorkspaceIdWithResolver

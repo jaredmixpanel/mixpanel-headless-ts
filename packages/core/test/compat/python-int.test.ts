@@ -1,7 +1,8 @@
-// B0-1: tests written FIRST from R11.3 semantics. Every expected
-// value below was produced by CPython 3.14.6 `int(str)` (the oracle) on
-// 2026-08-15; the parse-grammar probes are recorded in
-// docs/history/phase3/notes/B0-notes.md (Python repo).
+// `pythonInt` — CPython `int(str)` parse grammar: signs, PEP 515 underscores,
+// the numeric whitespace set, non-ASCII decimal digits, plus the TS-only
+// 2^53-1 safety bound (`PY_INT_UNSAFE_INTEGER`) the canonicalizer imposes.
+// No Python test file behind this suite; the expected values were produced
+// by CPython 3.14.6 and the fast-check properties are TS-only.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -53,7 +54,7 @@ describe("pythonInt — base grammar (CPython int(str))", () => {
     expectRejects(" ");
   });
 
-  it("rejects float forms and non-base-10 prefixes (R11.3)", () => {
+  it("rejects float forms and non-base-10 prefixes", () => {
     expectRejects("5.5");
     expectRejects("5.");
     expectRejects(".5");
@@ -101,7 +102,7 @@ describe("pythonInt — surrounding whitespace (CPython numeric set)", () => {
   });
 
   it("rejects U+001C..U+001F (isspace-true but numeric-parse-rejected)", () => {
-    // CPython probe 2026-08-15: int('\x1c42\x1f') raises ValueError even
+    // CPython: int("\x1c42\x1f") raises ValueError even
     // though '\x1c'.isspace() is True — Py_ISSPACE excludes 1C..1F.
     expectRejects("\x1C42\x1F");
     expectRejects("\x1D7");
@@ -137,12 +138,12 @@ describe("pythonInt — non-ASCII decimal digits (pinned Unicode 16 table)", () 
     expectRejects("〇");
   });
 
-  it("rejects non-BMP non-digit strings (R10.9 edge: '𝒳')", () => {
+  it("rejects non-BMP non-digit strings ('𝒳')", () => {
     expectRejects("𝒳");
   });
 });
 
-describe("pythonInt — 2^53−1 safety bound (canonicalizer policy, R4.5)", () => {
+describe("pythonInt — 2^53−1 safety bound (canonicalizer policy)", () => {
   it("accepts the exact bounds", () => {
     expect(pythonInt("9007199254740991")).toBe(9007199254740991);
     expect(pythonInt("-9007199254740991")).toBe(-9007199254740991);

@@ -1,22 +1,8 @@
-// Layer-3 translation — Python PR #215 server-deadline-aware timeout
-// locks. Sources:
-//
-// - tests/unit/test_api_client.py::TestServerDeadlineAccommodation
-//   (all six cases)
-// - tests/unit/test_pagination.py::TestPaginateAll::
-//   test_default_timeout_outlasts_app_deadline
-// - tests/unit/test_schema_graph.py::TestApiClientPerEventProperties::
-//   test_uses_export_timeout
-//
-// Entry-point substitution (B0-notes decision 13 lineage): Python's
-// httpx.MockTransport handlers read the per-request figure from
-// `request.extensions["timeout"]["read"]`. The TS transport contract
-// carries the same figure as `TransportRequestOptions.timeoutSeconds`
-// on its way into `createRequestExecutor` (the httpx-transport analog);
-// the injected-fetch fake one layer below cannot see it (rawFetch turns
-// it into an armed abort clock), so this file wraps the executor via
-// vi.mock and records each request's timeoutSeconds. Every assertion is
-// otherwise preserved 1:1 (R10.2).
+// Server-deadline-aware default timeouts: app and query defaults outlast the
+// server deadlines, explicit and per-call timeouts win, pagination and the
+// per-event-properties gather use the right figure. Mirrors
+// TestServerDeadlineAccommodation plus the deadline cases of TestPaginateAll
+// and TestApiClientPerEventProperties; `extensions["timeout"]` is read via a vi.mock of the executor.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

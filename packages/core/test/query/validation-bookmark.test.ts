@@ -1,39 +1,14 @@
-/**
- * Layer-3 translation of the `validate_bookmark` half of
- * `tests/unit/test_validation.py` (Python revision:
- * `ts-port/phase2-contract-support` HEAD; 1,238 LOC).
- *
- * Scope per b2-packets.md §V1b: `TestValidateBookmarkLayer2` (20),
- * `TestValidateMeasurementFunnelContext` (4) and
- * `TestValidateSortingBlock` (32). The `validate_query_args` classes
- * (`TestValidateQueryArgsLayer1`, `TestFuzzyMatching`,
- * `TestDataGroupIdValidationInsights`) were translated by shard V1a
- * (`validation-args.test.ts`); `TestValidationError` /
- * `TestBookmarkValidationError` landed in Phase 2 (`errors.test.ts`).
- *
- * Deferred with design citation (phase2-audit A2 style): the whole of
- * `tests/test_validation_bypass.py` and `tests/test_validation_bypass_r2.py`.
- * b2-packets.md §V1b lists their "validator-direct asserts" as V1b scope,
- * but every one of the 8 `validate_bookmark(params)` call sites first
- * builds `params` through `ws.build_params(...)` (measured 2026-08-15:
- * `test_validation_bypass.py:128,215,237,248,259,355,369` all consume a
- * facade-built dict), so the file cannot be translated before the B5-S2
- * facade lands. It moves WHOLE to B5-S2. Layer-2 coverage of those exact
- * inputs is preserved meanwhile by the 7 recorded corpus vectors in
- * `corpus/validation/test_validation_bypass.jsonl`, which replay the
- * built dicts through `validation.validate_bookmark` at (b′).
- *
- * R10.2: assertion-for-assertion.
- */
-
+// `validateBookmark` (Layer 2), `_validate_measurement` in funnel context and
+// `validateSortingBlock` — translation of `TestValidateBookmarkLayer2`,
+// `TestValidateMeasurementFunnelContext` and `TestValidateSortingBlock` from
+// `tests/unit/test_validation.py`. `tests/test_validation_bypass*.py` build
+// their params through `Workspace.build_params` and live with the workspace tests.
 import { describe, expect, it } from "vitest";
 
 import type { ValidationError } from "../../src/errors.js";
 import { validateBookmark } from "../../src/query/validation-bookmark.js";
 
-// =============================================================================
-// Helpers (ports of the module-level helpers in the Python file)
-// =============================================================================
+// --- Helpers (ports of the module-level helpers in the Python file) ---
 
 /** Loose dict, the TS analogue of Python's `dict[str, Any]`. */
 type Dict = Record<string, unknown>;
@@ -136,9 +111,7 @@ function withCode(
   return errors.filter((e) => e.code === code);
 }
 
-// =============================================================================
-// Layer 2 bookmark structure validation
-// =============================================================================
+// --- Layer 2 bookmark structure validation ---
 
 describe("Validate bookmark layer 2", () => {
   // python: TestValidateBookmarkLayer2
@@ -148,13 +121,13 @@ describe("Validate bookmark layer 2", () => {
     expect(errors).toStrictEqual([]);
   });
 
-  it("B1 missing sections", () => {
+  it("rule B1: missing sections", () => {
     // python: test_b1_missing_sections
     const errors = validateBookmark({ displayOptions: { chartType: "line" } });
     expect(errors.some((e) => e.code === "B1_MISSING_SECTIONS")).toBe(true);
   });
 
-  it("B2 missing display options", () => {
+  it("rule B2: missing display options", () => {
     // python: test_b2_missing_display_options
     const errors = validateBookmark({
       sections: { show: [{ behavior: { type: "event" } }] },
@@ -164,7 +137,7 @@ describe("Validate bookmark layer 2", () => {
     );
   });
 
-  it("B3 missing show", () => {
+  it("rule B3: missing show", () => {
     // python: test_b3_missing_show
     const errors = validateBookmark({
       sections: { time: [], filter: [] },
@@ -173,7 +146,7 @@ describe("Validate bookmark layer 2", () => {
     expect(errors.some((e) => e.code === "B3_MISSING_SHOW")).toBe(true);
   });
 
-  it("B4 show empty", () => {
+  it("rule B4: show empty", () => {
     // python: test_b4_show_empty
     const errors = validateBookmark({
       sections: { show: [] },
@@ -182,7 +155,7 @@ describe("Validate bookmark layer 2", () => {
     expect(errors.some((e) => e.code === "B4_SHOW_EMPTY")).toBe(true);
   });
 
-  it("B5 invalid chart type", () => {
+  it("rule B5: invalid chart type", () => {
     // python: test_b5_invalid_chart_type
     const bm = minimalBookmark();
     bm.displayOptions["chartType"] = "barchart";
@@ -193,7 +166,7 @@ describe("Validate bookmark layer 2", () => {
     expect(chartErrors[0]!.suggestion).toContain("bar");
   });
 
-  it("B5 missing chart type", () => {
+  it("rule B5: missing chart type", () => {
     // python: test_b5_missing_chart_type
     const bm = minimalBookmark();
     delete bm.displayOptions["chartType"];
@@ -201,7 +174,7 @@ describe("Validate bookmark layer 2", () => {
     expect(errors.some((e) => e.code === "B5_INVALID_CHART_TYPE")).toBe(true);
   });
 
-  it("B6 missing behavior", () => {
+  it("rule B6: missing behavior", () => {
     // python: test_b6_missing_behavior
     const bm = minimalBookmark();
     bm.sections.show = [{ measurement: { math: "total" } }];
@@ -209,7 +182,7 @@ describe("Validate bookmark layer 2", () => {
     expect(errors.some((e) => e.code === "B6_MISSING_BEHAVIOR")).toBe(true);
   });
 
-  it("B9 invalid math", () => {
+  it("rule B9: invalid math", () => {
     // python: test_b9_invalid_math
     const bm = minimalBookmark();
     (bm.sections.show[0]!["measurement"] as Dict)["math"] = "totl";
@@ -220,7 +193,7 @@ describe("Validate bookmark layer 2", () => {
     expect(mathErrors[0]!.suggestion).toContain("total");
   });
 
-  it("B10 math missing property", () => {
+  it("rule B10: math missing property", () => {
     // python: test_b10_math_missing_property
     const bm = minimalBookmark();
     (bm.sections.show[0]!["measurement"] as Dict)["math"] = "average";
@@ -231,7 +204,7 @@ describe("Validate bookmark layer 2", () => {
     expect(propErrors[0]!.fix).not.toBeNull();
   });
 
-  it("B12 invalid time unit", () => {
+  it("rule B12: invalid time unit", () => {
     // python: test_b12_invalid_time_unit
     const bm = minimalBookmark();
     bm.sections["time"] = [{ unit: "fortnite" }];
@@ -239,7 +212,7 @@ describe("Validate bookmark layer 2", () => {
     expect(errors.some((e) => e.code === "B12_INVALID_TIME_UNIT")).toBe(true);
   });
 
-  it("B14 invalid filter type", () => {
+  it("rule B14: invalid filter type", () => {
     // python: test_b14_invalid_filter_type
     const bm = minimalBookmark();
     bm.sections["filter"] = [
@@ -254,7 +227,7 @@ describe("Validate bookmark layer 2", () => {
     expect(errors.some((e) => e.code === "B14_INVALID_FILTER_TYPE")).toBe(true);
   });
 
-  it("B15 invalid filter operator warning", () => {
+  it("rule B15: an unknown filter operator only warns", () => {
     // python: test_b15_invalid_filter_operator_warning
     const bm = minimalBookmark();
     bm.sections["filter"] = [
@@ -271,7 +244,7 @@ describe("Validate bookmark layer 2", () => {
     expect(opErrors[0]!.severity).toBe("warning");
   });
 
-  it("B15 insights date operators valid", () => {
+  it("rule B15: insights date operators valid", () => {
     // python: test_b15_insights_date_operators_valid
     const insightsDateOps = [
       "was on",
@@ -304,7 +277,7 @@ describe("Validate bookmark layer 2", () => {
     }
   });
 
-  it("B18 missing filter property", () => {
+  it("rule B18: missing filter property", () => {
     // python: test_b18_missing_filter_property
     const bm = minimalBookmark();
     bm.sections["filter"] = [
@@ -320,7 +293,7 @@ describe("Validate bookmark layer 2", () => {
     );
   });
 
-  it("B18 custom property ID passes", () => {
+  it("rule B18: custom property ID passes", () => {
     // python: test_b18_custom_property_id_passes
     const bm = minimalBookmark();
     bm.sections["filter"] = [
@@ -338,7 +311,7 @@ describe("Validate bookmark layer 2", () => {
     );
   });
 
-  it("B18 custom property dict passes", () => {
+  it("rule B18: custom property dict passes", () => {
     // python: test_b18_custom_property_dict_passes
     const bm = minimalBookmark();
     bm.sections["filter"] = [
@@ -407,9 +380,7 @@ describe("Validate bookmark layer 2", () => {
   });
 });
 
-// =============================================================================
-// _validate_measurement with bookmark_type="funnels"
-// =============================================================================
+// --- _validate_measurement with bookmark_type="funnels" ---
 
 describe("Validate measurement funnel context", () => {
   // python: TestValidateMeasurementFunnelContext
@@ -481,9 +452,7 @@ describe("Validate measurement funnel context", () => {
   });
 });
 
-// =============================================================================
-// Layer 2: sorting block validation
-// =============================================================================
+// --- Layer 2: sorting block validation ---
 
 describe("Validate sorting block", () => {
   // python: TestValidateSortingBlock

@@ -1,12 +1,8 @@
-// Layer-3 translation of tests/unit/test_api_client.py::TestParseRetryAfter
-// and ::TestRetryWaitSeconds — the B0-2
-// retry/backoff trio unit locks (playbook B0-2 table row; loop-level
-// hardening lives in internals.test.ts / app-request.test.ts).
-//
-// Entry-point substitution (B0-notes decision 13): Python drives client
-// methods (`client._parse_retry_after(response)` etc.); the TS trio are
-// free functions with the RNG injected (playbook: jitter behind an
-// injectable RNG; conformance/tests inject a fixed source).
+// Retry-After parsing and the retry/backoff wait computation
+// (`parseRetryAfter`, `retryWaitSeconds`, `calculateBackoff`). Mirrors
+// TestParseRetryAfter and TestRetryWaitSeconds from tests/unit/test_api_client.py;
+// Python drives client methods, the TS trio are free functions with the RNG
+// injected. The `calculateBackoff` formula locks are TS-only additions.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -34,7 +30,7 @@ function response(retryAfter?: string): {
   };
 }
 
-/** Fixed RNG: kills jitter (uniform(0, x) -> 0). */
+/** Fixed RNG: kills jitter (uniform(0, x) becomes 0). */
 const zeroRandom = (): number => 0;
 
 describe("Parse retry after", () => {
@@ -63,20 +59,22 @@ describe("Parse retry after", () => {
     "1e3",
     "0x10",
     "nan",
-  ])("test_unparseable_header_returns_none(%j)", (raw) => {
+  ])("unparseable header %j is treated as absent", (raw) => {
+    // python: test_unparseable_header_returns_none
     // Non-integer header values are treated as absent (CPython int()
-    // grammar via pythonInt, R11.3).
+    // grammar via pythonInt).
     expect(parseRetryAfter(response(raw))).toBeNull();
   });
 
-  it.each(["-1", "-3600"])("test_negative_header_returns_none(%j)", (raw) => {
+  it.each(["-1", "-3600"])("negative header %j is treated as absent", (raw) => {
+    // python: test_negative_header_returns_none
     // A negative Retry-After is invalid and must not reach the sleep seam.
     expect(parseRetryAfter(response(raw))).toBeNull();
   });
 
   // CPython int() accepts underscores, surrounding whitespace, and
   // non-ASCII Nd digits — attacker-controlled input parses with the FULL
-  // Python grammar (playbook B0-1 item 1 rationale).
+  // Python grammar so the two ports agree on every header value.
   it("parses with the CPython int grammar (underscores/whitespace/Nd)", () => {
     expect(parseRetryAfter(response("1_0"))).toBe(10);
     expect(parseRetryAfter(response("  7  "))).toBe(7);
@@ -108,8 +106,9 @@ describe("Retry wait seconds", () => {
   });
 
   it.each([61, 3600, 86400, 2 ** 40])(
-    "test_huge_header_is_capped(%d)",
+    "huge header %d is capped at 60s",
     (retryAfter) => {
+      // python: test_huge_header_is_capped
       expect(retryWaitSeconds(retryAfter, 0, zeroRandom)).toBe(60.0);
     },
   );
@@ -122,10 +121,9 @@ describe("Retry wait seconds", () => {
   });
 });
 
-// calculateBackoff formula lock (api_client.py):
+// calculateBackoff formula lock (mixpanel_headless.api_client):
 // min(1.0 * 2^attempt, 60.0) + uniform(0, delay * 0.1); jitter rides the
-// FALLBACK path only (rulebook Discrepancy #1 resolution — port source
-// truth, injectable RNG).
+// FALLBACK path only, and the RNG is injectable so the tests are exact.
 describe("calculateBackoff", () => {
   it("doubles from 1s and caps at 60s (zero jitter)", () => {
     expect(calculateBackoff(0, zeroRandom)).toBe(1.0);

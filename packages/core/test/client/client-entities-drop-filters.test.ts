@@ -1,9 +1,8 @@
-// Layer-3 translation — Phase-3 packet B4-C5 data-governance locks.
-// Source: tests/unit/test_api_client_data_governance.py (ALL classes —
-// lexicon definitions/tags/metadata/history/export, custom properties,
-// drop filters, lookup tables incl. upload/download wiring, custom
-// events incl. the form-body + envelope-peeling + echo-mismatch
-// branches, and the error-path classes).
+// Drop-filter client methods: list/create/update/delete and the limits
+// lookup (methods, scoped paths, result shapes). Mirrors the drop-filter
+// classes of tests/unit/test_api_client_data_governance.py; the module's
+// other domains live in the sibling `client-entities-*` files.
+
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "../../src/auth/session.js";
@@ -23,9 +22,7 @@ function oauthCredentials(): Session {
   });
 }
 
-// ---------------------------------------------------------------------------
-// Domain 11 — Drop Filters (US5)
-// ---------------------------------------------------------------------------
+// --- Drop filters ---
 
 describe("List drop filters", () => {
   // python: TestListDropFilters

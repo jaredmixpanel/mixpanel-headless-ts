@@ -1,9 +1,9 @@
-// Layer-3 translation — Phase-3 packet B4-C5 data-governance locks.
-// Source: tests/unit/test_api_client_data_governance.py (ALL classes —
-// lexicon definitions/tags/metadata/history/export, custom properties,
-// drop filters, lookup tables incl. upload/download wiring, custom
-// events incl. the form-body + envelope-peeling + echo-mismatch
-// branches, and the error-path classes).
+// Custom-event client methods: create (form-encoded body, envelope
+// peeling, scoped paths, error mapping, 429 retry), update (id-keyed PATCH,
+// echo mismatch) and delete. Mirrors the custom-event classes of
+// tests/unit/test_api_client_data_governance.py; the module's other domains
+// live in the sibling `client-entities-*` files.
+
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "../../src/auth/session.js";
@@ -33,9 +33,7 @@ function parseQs(bodyText: string): Record<string, string[]> {
   return out;
 }
 
-// ---------------------------------------------------------------------------
-// Custom Events — create / update / delete
-// ---------------------------------------------------------------------------
+// --- Custom events: create / update / delete ---
 
 describe("Create custom event", () => {
   // python: TestCreateCustomEvent

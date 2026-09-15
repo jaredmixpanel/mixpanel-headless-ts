@@ -1,24 +1,9 @@
-// Layer-3 translation — B4-ARB resolution of the assertions-review
-// MAJOR finding (b4-review-assertions.md F1): the three
-// tests/unit/test_api_client.py classes the C1 shard dropped without an
-// exclusion header. Sources:
-//
-// - tests/unit/test_api_client.py::TestAuthenticatedRequests
-// - tests/unit/test_api_client.py::TestWithProject
-// - tests/unit/test_api_client.py::TestClientIdentificationHeaders
-//
-// Entry-point substitutions (B0-notes decision 13 + packet C1 table):
-// httpx.MockTransport → the injected-fetch fake (client-test-helpers);
-// `client._session` → `client.core.session()`; `client._timeout` /
-// `client._export_timeout` / `client._max_retries` →
-// `client.core.timeoutSeconds` / `.exportTimeoutSeconds` /
-// `.maxRetries`; `client._transport is transport` → injected-fetch
-// identity through `client.core.http().fetchImpl`; the
-// `monkeypatch.setenv(MP_CUSTOM_HEADER_*)` pair → the injected
-// `getCustomHeaderEnv` provider (R9.1 env boundary); the Python UA
-// runtime tag `python/<x.y>` → `ts` (B0-notes decision 8 — the UA is
-// telemetry, never vector-byte-locked). Every other assertion is
-// preserved 1:1.
+// Authenticated requests through the assembled client: auth header,
+// project_id param, 401 mapping, regional routing, `withProject` cloning
+// and the User-Agent / custom-header identification rules. Mirrors
+// TestAuthenticatedRequests, TestWithProject and TestClientIdentificationHeaders
+// from tests/unit/test_api_client.py; the Python UA runtime tag `python/x.y` is `ts` here.
+
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createMixpanelClient } from "../../src/client/client.js";
@@ -267,7 +252,7 @@ describe("Client identification headers", () => {
     expect(ua.startsWith("mixpanel-headless/")).toBe(true);
     expect(ua).toContain("entry=lib");
     // Python asserts `"python/" in ua`; the TS runtime tag is `ts`
-    // (B0-notes decision 8 — documented substitution).
+    // (the UA is telemetry, never vector-byte-locked).
     expect(ua).toContain("ts");
   });
 
@@ -325,7 +310,7 @@ describe("Client identification headers", () => {
   it("mp custom header can override user agent", async () => {
     // python: test_mp_custom_header_can_override_user_agent
     // `monkeypatch.setenv(MP_CUSTOM_HEADER_*)` → the injected env
-    // provider (R9.1: `core` never reads process.env).
+    // provider (`core` never reads process.env).
     const { client, transport } = createMockClient(
       makeSession(),
       () => ({ status: 200, json: ["event1"] }),

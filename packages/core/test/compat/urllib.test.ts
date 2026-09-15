@@ -1,27 +1,8 @@
-// Unit tests for the pure report-link module (045-report-links), translated
-// from tests/unit/test_report_links.py: one parametrized case per row of
-// contracts/url-grammar.md §5 (parse table) and §6 (builders), plus
-// `is_slug`, `web_host`, and `generate_slug`.
-//
-// Translation notes (documented exclusions, NOT weakened assertions):
-// - Message-TEXT assertions (`str(exc) == ...`) are deliberately not
-//   carried: error message text is out of contract (R5.4). Class, `code`,
-//   and `details` — everything the conformance canonicalizer compares —
-//   are asserted for every row.
-// - `ParsedReportLink` is a frozen plain object, so `test_frozen` asserts
-//   `Object.isFrozen` + the strict-mode `TypeError` on assignment instead
-//   of Python's `AttributeError`.
-// - `MappingProxyType` read-only tables are `ReadonlyMap`s here:
-//   `test_tables_are_read_only` asserts the type has no `set` member and
-//   the runtime value is a `Map` (the key-set/Literal agreement lives in
-//   the two `TestTableInvariants` siblings).
-// - Python `str.strip()` on the parse-table inputs is `String#trim()`
-//   (every whitespace decoration in the table is ASCII).
-// - A `compat/urllib` block is appended at the end: the parser observes
-//   the RAW CPython `urlsplit` (lower-cased host, port stripped, everything
-//   else verbatim) and `resolve_short_link` echoes `urljoin` targets, so
-//   the twins are pinned here alongside the parser they serve.
-
+// `compat/urllib` — the CPython `urlsplit` / `urlunsplit` / `urljoin` twins
+// the report-link parser rides on: raw `urlsplit` observation (lower-cased
+// scheme and hostname, port stripped, everything else verbatim), IPv6 and
+// control-character handling, and the `urljoin` targets `resolve_short_link`
+// echoes. No Python test file behind this suite; the expected values are CPython's.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -33,7 +14,7 @@ import {
 
 const SLUG = "EBrV5bW2u9Mw";
 
-// --- compat/urllib: the CPython urlsplit / urljoin twins the parser rides on --
+// --- compat/urllib ---
 
 describe("compat/urllib (CPython urlsplit / urlunsplit / urljoin twins)", () => {
   describe("urlsplit", () => {
