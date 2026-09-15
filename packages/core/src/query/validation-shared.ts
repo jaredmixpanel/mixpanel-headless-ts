@@ -361,6 +361,79 @@ export function isFiniteNumber(value: unknown): boolean {
 }
 
 // =============================================================================
+// Error accumulation
+// =============================================================================
+
+/**
+ * Append one `ValidationError` to a validator's list — the only
+ * capability a per-rule helper receives, so a rule can ADD errors but
+ * never reorder or drop earlier ones. Emission order is contract: the
+ * corpus checks the error sequence, so helpers are called in Python
+ * source order and each pushes in Python source order.
+ *
+ * The positional form builds a severity-`"error"` entry; the
+ * single-argument form appends an already-built error (the
+ * {@link enumError} rules).
+ */
+export interface PushError {
+  /**
+   * Append a new error.
+   *
+   * @param path - JSONPath-like location.
+   * @param message - Human-readable description (display-only).
+   * @param code - Machine-readable error code.
+   * @param suggestion - Fuzzy-matched alternatives, when the rule has any.
+   */
+  (
+    path: string,
+    message: string,
+    code: string,
+    suggestion?: readonly string[] | null,
+  ): void;
+  /**
+   * Append a built error.
+   *
+   * @param error - The error to append.
+   */
+  (error: ValidationError): void;
+}
+
+/** A validator's error list paired with its {@link PushError} sink. */
+export interface ErrorCollector {
+  /** The accumulated errors, in emission order. */
+  readonly errors: ValidationError[];
+  /** Appends one error with severity `"error"`. */
+  readonly push: PushError;
+}
+
+/**
+ * Create the error list a Layer-1 validator returns, seeded with any
+ * errors a delegated check already produced (the `DG1` data_group_id
+ * check runs first in every validator).
+ *
+ * @param initial - Errors to start from.
+ * @returns The list and its sink.
+ */
+export function errorCollector(
+  initial: readonly ValidationError[] = [],
+): ErrorCollector {
+  const errors = [...initial];
+  const push: PushError = (
+    pathOrError: string | ValidationError,
+    message: string = "",
+    code: string = "",
+    suggestion: readonly string[] | null = null,
+  ): void => {
+    errors.push(
+      typeof pathOrError === "string"
+        ? new ValidationError(pathOrError, message, code, "error", suggestion)
+        : pathOrError,
+    );
+  };
+  return { errors, push };
+}
+
+// =============================================================================
 // Fuzzy matching helpers (validation.py:410-464)
 // =============================================================================
 
@@ -564,6 +637,21 @@ export function validateCustomProperty(
 }
 
 /**
+ * Python `isinstance(x, (CustomPropertyRef, InlineCustomProperty))` —
+ * the gate every scan position applies before validating a property.
+ *
+ * @param value - A property position's value.
+ * @returns True for either custom-property shape.
+ */
+function isCustomProperty(
+  value: unknown,
+): value is CustomPropertyRef | InlineCustomProperty {
+  return (
+    value instanceof CustomPropertyRef || value instanceof InlineCustomProperty
+  );
+}
+
+/**
  * Scan a list of Filter objects for custom property references.
  *
  * Port of `_scan_filters_for_custom_properties`
@@ -579,15 +667,13 @@ export function scanFiltersForCustomProperties(
   basePath: string,
 ): ValidationError[] {
   const errors: ValidationError[] = [];
-  for (const [i, filter] of filters.entries()) {
-    const f = filter;
-    if (
-      f._property instanceof CustomPropertyRef ||
-      f._property instanceof InlineCustomProperty
-    ) {
-      const fpath = `${basePath}.filters[${String(i)}]`;
-      errors.push(...validateCustomProperty(f._property, fpath));
+  for (const [i, f] of filters.entries()) {
+    if (!isCustomProperty(f._property)) {
+      continue;
     }
+
+    const fpath = `${basePath}.filters[${String(i)}]`;
+    errors.push(...validateCustomProperty(f._property, fpath));
   }
   return errors;
 }
@@ -610,6 +696,175 @@ export interface ScanCustomPropertiesOptions {
   readonly flow_steps?: readonly FlowStep[] | null;
   /** Retention event pair `[born_event, return_event]`. */
   readonly retention_events?: readonly RetentionEvent[] | null;
+}
+
+/**
+ * The `group_by` position: every `GroupBy` whose property is custom.
+ *
+ * @param groupBy - Breakdown specification (non-null).
+ * @returns Errors in source order.
+ */
+function scanGroupBy(groupBy: unknown): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const groups: readonly unknown[] = Array.isArray(groupBy)
+    ? groupBy
+    : [groupBy];
+  for (let i = 0; i < groups.length; i++) {
+    const g = groups[i];
+    if (g instanceof GroupBy && isCustomProperty(g.property)) {
+      const gpath = groups.length > 1 ? `group_by[${String(i)}]` : "group_by";
+      errors.push(...validateCustomProperty(g.property, gpath));
+    }
+  }
+  return errors;
+}
+
+/**
+ * A `FrequencyFilter` in `where`: its nested `event_filters` are
+ * scanned in place of the (absent) `_property`.
+ *
+ * @param f - The frequency filter.
+ * @param index - Its position in `where`.
+ * @returns Errors in source order.
+ */
+function scanFrequencyFilter(
+  f: FrequencyFilter,
+  index: number,
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+  if (f.event_filters === null || f.event_filters.length === 0) {
+    return errors;
+  }
+  for (let fi = 0; fi < f.event_filters.length; fi++) {
+    const ef = f.event_filters[fi] as Filter;
+    if (isCustomProperty(ef._property)) {
+      const fpath = `where[${String(index)}].event_filters[${String(fi)}]`;
+      errors.push(...validateCustomProperty(ef._property, fpath));
+    }
+  }
+  return errors;
+}
+
+/**
+ * The `where` position: `Filter` properties, with `FrequencyFilter`
+ * entries descended into instead.
+ *
+ * @param where - Filter specification (non-null).
+ * @returns Errors in source order.
+ */
+function scanWhere(where: unknown): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const filters: readonly unknown[] = Array.isArray(where) ? where : [where];
+  for (let i = 0; i < filters.length; i++) {
+    const f = filters[i];
+    if (f instanceof FrequencyFilter) {
+      errors.push(...scanFrequencyFilter(f, i));
+      continue;
+    }
+    if (f instanceof Filter && isCustomProperty(f._property)) {
+      const fpath = filters.length > 1 ? `where[${String(i)}]` : "where";
+      errors.push(...validateCustomProperty(f._property, fpath));
+    }
+  }
+  return errors;
+}
+
+/**
+ * The `events` position: each `Metric`'s own property, then its filters.
+ *
+ * @param events - Event specifications.
+ * @returns Errors in source order.
+ */
+function scanEvents(events: readonly unknown[]): ValidationError[] {
+  const errors: ValidationError[] = [];
+  for (const [idx, item] of events.entries()) {
+    if (!(item instanceof Metric)) {
+      continue;
+    }
+    if (isCustomProperty(item.property)) {
+      errors.push(
+        ...validateCustomProperty(item.property, `events[${String(idx)}]`),
+      );
+    }
+    if (item.filters !== null && item.filters.length > 0) {
+      errors.push(
+        ...scanFiltersForCustomProperties(
+          item.filters,
+          `events[${String(idx)}]`,
+        ),
+      );
+    }
+  }
+  return errors;
+}
+
+/**
+ * The funnel `steps` position: `FunnelStep.filters` (instanceof-gated
+ * in source — a bare event name has no filters).
+ *
+ * @param steps - Funnel step specifications.
+ * @returns Errors in source order.
+ */
+function scanFunnelSteps(steps: readonly unknown[]): ValidationError[] {
+  const errors: ValidationError[] = [];
+  for (const [idx, step] of steps.entries()) {
+    if (
+      step instanceof FunnelStep &&
+      step.filters !== null &&
+      step.filters.length > 0
+    ) {
+      errors.push(
+        ...scanFiltersForCustomProperties(
+          step.filters,
+          `steps[${String(idx)}]`,
+        ),
+      );
+    }
+  }
+  return errors;
+}
+
+/**
+ * The flow `steps` position: `FlowStep.filters`.
+ *
+ * @param steps - Flow step specifications.
+ * @returns Errors in source order.
+ */
+function scanFlowSteps(steps: readonly FlowStep[]): ValidationError[] {
+  const errors: ValidationError[] = [];
+  for (const [idx, step] of steps.entries()) {
+    if (step.filters !== null && step.filters.length > 0) {
+      errors.push(
+        ...scanFiltersForCustomProperties(
+          step.filters,
+          `steps[${String(idx)}]`,
+        ),
+      );
+    }
+  }
+  return errors;
+}
+
+/**
+ * The retention pair `[born_event, return_event]`: each event's filters,
+ * labelled by role rather than index.
+ *
+ * @param events - The two retention events.
+ * @returns Errors in source order.
+ */
+function scanRetentionEvents(
+  events: readonly RetentionEvent[],
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+  for (const [idx, rev] of events.entries()) {
+    if (rev.filters === null || rev.filters.length === 0) {
+      continue;
+    }
+
+    const label = idx === 0 ? "born_event" : "return_event";
+    errors.push(...scanFiltersForCustomProperties(rev.filters, label));
+  }
+  return errors;
 }
 
 /**
@@ -636,124 +891,23 @@ export function scanCustomProperties(
   } = options;
   const errors: ValidationError[] = [];
 
-  // Scan group_by
   if (group_by !== null && group_by !== undefined) {
-    const groups: readonly unknown[] = Array.isArray(group_by)
-      ? group_by
-      : [group_by];
-    for (let i = 0; i < groups.length; i++) {
-      const g = groups[i];
-      if (
-        g instanceof GroupBy &&
-        (g.property instanceof CustomPropertyRef ||
-          g.property instanceof InlineCustomProperty)
-      ) {
-        const gpath = groups.length > 1 ? `group_by[${String(i)}]` : "group_by";
-        errors.push(...validateCustomProperty(g.property, gpath));
-      }
-    }
+    errors.push(...scanGroupBy(group_by));
   }
-
-  // Scan where (filters) — skip FrequencyFilter instances (no _property)
   if (where !== null && where !== undefined) {
-    const filters: readonly unknown[] = Array.isArray(where) ? where : [where];
-    for (let i = 0; i < filters.length; i++) {
-      const f = filters[i];
-      if (f instanceof FrequencyFilter) {
-        if (f.event_filters !== null && f.event_filters.length > 0) {
-          for (let fi = 0; fi < f.event_filters.length; fi++) {
-            const ef = f.event_filters[fi] as Filter;
-            if (
-              ef._property instanceof CustomPropertyRef ||
-              ef._property instanceof InlineCustomProperty
-            ) {
-              const fpath = `where[${String(i)}].event_filters[${String(fi)}]`;
-              errors.push(...validateCustomProperty(ef._property, fpath));
-            }
-          }
-        }
-        continue;
-      }
-      if (
-        f instanceof Filter &&
-        (f._property instanceof CustomPropertyRef ||
-          f._property instanceof InlineCustomProperty)
-      ) {
-        const fpath = filters.length > 1 ? `where[${String(i)}]` : "where";
-        errors.push(...validateCustomProperty(f._property, fpath));
-      }
-    }
+    errors.push(...scanWhere(where));
   }
-
-  // Scan events (Metric.property AND Metric.filters)
   if (events !== null) {
-    for (const [idx, item] of events.entries()) {
-      if (!(item instanceof Metric)) {
-        continue;
-      }
-
-      if (
-        item.property instanceof CustomPropertyRef ||
-        item.property instanceof InlineCustomProperty
-      ) {
-        errors.push(
-          ...validateCustomProperty(item.property, `events[${String(idx)}]`),
-        );
-      }
-      if (item.filters !== null && item.filters.length > 0) {
-        errors.push(
-          ...scanFiltersForCustomProperties(
-            item.filters,
-            `events[${String(idx)}]`,
-          ),
-        );
-      }
-    }
+    errors.push(...scanEvents(events));
   }
-
-  // Scan funnel steps (FunnelStep.filters) — instanceof-gated in source
   if (funnel_steps !== null) {
-    for (const [idx, step] of funnel_steps.entries()) {
-      if (
-        step instanceof FunnelStep &&
-        step.filters !== null &&
-        step.filters.length > 0
-      ) {
-        errors.push(
-          ...scanFiltersForCustomProperties(
-            step.filters,
-            `steps[${String(idx)}]`,
-          ),
-        );
-      }
-    }
+    errors.push(...scanFunnelSteps(funnel_steps));
   }
-
-  // Scan flow steps (FlowStep.filters)
   if (flow_steps !== null) {
-    for (const [idx, flowStep] of flow_steps.entries()) {
-      const fstep = flowStep;
-      if (fstep.filters !== null && fstep.filters.length > 0) {
-        errors.push(
-          ...scanFiltersForCustomProperties(
-            fstep.filters,
-            `steps[${String(idx)}]`,
-          ),
-        );
-      }
-    }
+    errors.push(...scanFlowSteps(flow_steps));
   }
-
-  // Scan retention events (RetentionEvent.filters)
-  // retention_events is always [born_event, return_event]
   if (retention_events !== null) {
-    for (const [idx, retentionEvent] of retention_events.entries()) {
-      const rev = retentionEvent;
-      if (rev.filters !== null && rev.filters.length > 0) {
-        const label = idx === 0 ? "born_event" : "return_event";
-        errors.push(...scanFiltersForCustomProperties(rev.filters, label));
-      }
-    }
+    errors.push(...scanRetentionEvents(retention_events));
   }
 
   return errors;
