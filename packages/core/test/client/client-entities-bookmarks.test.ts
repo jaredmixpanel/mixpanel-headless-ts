@@ -118,8 +118,7 @@ describe("TestListBookmarks", () => {
         status: 200,
         json: { results: [] },
       }));
-      // Should not raise
-      await client.listBookmarks(bmType);
+      await expect(client.listBookmarks(bmType)).resolves.toBeDefined();
     }
   });
 

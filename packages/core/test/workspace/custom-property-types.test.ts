@@ -429,18 +429,22 @@ describe("TestCustomPropertyValidationValid", () => {
       A: "price",
       B: "quantity",
     });
-    await makeWs().buildParams("Purchase", {
-      group_by: new GroupBy({ property: icp, property_type: "number" }),
-    });
+    await expect(
+      makeWs().buildParams("Purchase", {
+        group_by: new GroupBy({ property: icp, property_type: "number" }),
+      }),
+    ).resolves.toBeDefined();
   });
 
   it("a valid CustomPropertyRef passes", async () => {
-    await makeWs().buildParams("Purchase", {
-      group_by: new GroupBy({
-        property: new CustomPropertyRef({ id: 42 }),
-        property_type: "number",
+    await expect(
+      makeWs().buildParams("Purchase", {
+        group_by: new GroupBy({
+          property: new CustomPropertyRef({ id: 42 }),
+          property_type: "number",
+        }),
       }),
-    });
+    ).resolves.toBeDefined();
   });
 });
 

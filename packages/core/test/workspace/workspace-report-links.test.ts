@@ -351,7 +351,7 @@ function funnelParams(ws: Workspace): Promise<Record<string, unknown>> {
  * @param cls - The expected error class.
  * @returns The caught error.
  */
-async function raises<T extends Error>(
+async function expectRaises<T extends Error>(
   promise: Promise<unknown>,
   cls: new (...args: never[]) => T,
 ): Promise<T> {
@@ -550,7 +550,7 @@ describe("TestCreateReportLinkFromResults (test_workspace_report_links.py:220)",
       params: await funnelParams(ws),
     });
 
-    const exc = await raises(
+    const exc = await expectRaises(
       ws.createReportLink(result, { report_type: "insights" }),
       ParamValidationError,
     );
@@ -569,7 +569,7 @@ describe("TestCreateReportLinkValidation (test_workspace_report_links.py:310)", 
   it("test_validation_failure_raises_before_post", async () => {
     const { ws, mock } = makeWorkspace();
 
-    const exc = await raises(
+    const exc = await expectRaises(
       ws.createReportLink({ sections: { show: [] }, bogus: 1 }),
       BookmarkValidationError,
     );
@@ -842,7 +842,7 @@ describe("TestResolveSlugLinks (test_workspace_report_links.py:476)", () => {
       });
     });
 
-    const exc = await raises(
+    const exc = await expectRaises(
       ws.resolveReportLink(SLUG),
       ReportLinkNotFoundError,
     );
@@ -854,7 +854,7 @@ describe("TestResolveSlugLinks (test_workspace_report_links.py:476)", () => {
     const { ws, mock } = makeWorkspace();
     mock.setGetBookmarkUrl(() => slugRecord({ params: "nope" }));
 
-    await raises(ws.resolveReportLink(SLUG), ResponseValidationError);
+    await expectRaises(ws.resolveReportLink(SLUG), ResponseValidationError);
   });
 
   it("test_slug_record_without_slug_raises_response_validation_error", async () => {
@@ -863,7 +863,7 @@ describe("TestResolveSlugLinks (test_workspace_report_links.py:476)", () => {
     delete record["slug"];
     mock.setGetBookmarkUrl(() => record);
 
-    await raises(ws.resolveReportLink(SLUG), ResponseValidationError);
+    await expectRaises(ws.resolveReportLink(SLUG), ResponseValidationError);
   });
 
   it("test_dashboard_edited_bookmark_resolves_slug", async () => {
@@ -943,7 +943,7 @@ describe("TestResolveBookmarkLinks (test_workspace_report_links.py:631)", () => 
       throw new QueryError("Resource not found", { statusCode: 404 });
     });
 
-    const exc = await raises(
+    const exc = await expectRaises(
       ws.resolveReportLink(
         "https://mixpanel.com/project/12345/app/insights#report/123",
       ),
@@ -967,7 +967,7 @@ describe("TestResolveBookmarkLinks (test_workspace_report_links.py:631)", () => 
       throw new QueryError("Resource not found", { statusCode: 404 });
     });
 
-    const exc = await raises(
+    const exc = await expectRaises(
       ws.resolveReportLink(
         "https://mixpanel.com/project/12345/app/insights#report/123",
       ),
@@ -1015,7 +1015,7 @@ describe("TestResolveBookmarkLinks (test_workspace_report_links.py:631)", () => 
       throw new QueryError("Permission denied", { statusCode: 403 });
     });
 
-    const exc = await raises(
+    const exc = await expectRaises(
       ws.resolveReportLink(
         "https://mixpanel.com/project/12345/app/insights#report/123",
       ),
@@ -1053,7 +1053,7 @@ describe("TestResolveScopeAndUnsupported (test_workspace_report_links.py:812)", 
   it("test_project_mismatch", async () => {
     const { ws, mock } = makeWorkspace();
 
-    const exc = await raises(
+    const exc = await expectRaises(
       ws.resolveReportLink(
         `https://mixpanel.com/project/3/app/insights#${SLUG}`,
       ),
@@ -1074,7 +1074,7 @@ describe("TestResolveScopeAndUnsupported (test_workspace_report_links.py:812)", 
   it("test_region_mismatch", async () => {
     const { ws, mock } = makeWorkspace();
 
-    const exc = await raises(
+    const exc = await expectRaises(
       ws.resolveReportLink(
         `https://eu.mixpanel.com/project/12345/app/insights#${SLUG}`,
       ),
@@ -1095,7 +1095,7 @@ describe("TestResolveScopeAndUnsupported (test_workspace_report_links.py:812)", 
   it("test_region_checked_before_project", async () => {
     const { ws } = makeWorkspace();
 
-    const exc = await raises(
+    const exc = await expectRaises(
       ws.resolveReportLink(
         `https://eu.mixpanel.com/project/3/app/insights#${SLUG}`,
       ),
@@ -1108,7 +1108,7 @@ describe("TestResolveScopeAndUnsupported (test_workspace_report_links.py:812)", 
   it("test_dashboard_link_unsupported", async () => {
     const { ws, mock } = makeWorkspace();
 
-    const exc = await raises(
+    const exc = await expectRaises(
       ws.resolveReportLink(
         "https://mixpanel.com/project/12345/app/boards#id=555",
       ),
@@ -1128,7 +1128,7 @@ describe("TestResolveScopeAndUnsupported (test_workspace_report_links.py:812)", 
   it("test_legacy_hash_unsupported", async () => {
     const { ws, mock } = makeWorkspace();
 
-    const exc = await raises(
+    const exc = await expectRaises(
       ws.resolveReportLink(
         "https://mixpanel.com/project/12345/app/insights#~(sections~())",
       ),
@@ -1146,7 +1146,7 @@ describe("TestResolveScopeAndUnsupported (test_workspace_report_links.py:812)", 
   it("test_unsupported_kinds_win_over_scope_checks", async () => {
     const { ws } = makeWorkspace();
 
-    await raises(
+    await expectRaises(
       ws.resolveReportLink("https://mixpanel.com/project/3/app/boards#id=555"),
       UnsupportedReportLinkError,
     );
@@ -1155,7 +1155,10 @@ describe("TestResolveScopeAndUnsupported (test_workspace_report_links.py:812)", 
   it("test_parse_error_propagates", async () => {
     const { ws, mock } = makeWorkspace();
 
-    await raises(ws.resolveReportLink("not a link"), ReportLinkParseError);
+    await expectRaises(
+      ws.resolveReportLink("not a link"),
+      ReportLinkParseError,
+    );
 
     assertNoClientCalls(mock);
   });
@@ -1297,7 +1300,7 @@ describe("TestQueryReportLink (test_workspace_report_links.py:962)", () => {
   it("test_launch_analysis_unsupported", async () => {
     const { ws, mock } = makeWorkspace();
 
-    const exc = await raises(
+    const exc = await expectRaises(
       ws.queryReportLink(resolvedReport("launch-analysis", {})),
       UnsupportedReportLinkError,
     );
@@ -1382,7 +1385,7 @@ describe("TestResolveShortLinks (test_workspace_report_links.py:1118)", () => {
     const { ws, mock } = makeWorkspace();
     mock.setResolveShortLink(() => "https://mixpanel.com/s/XyZ");
 
-    const exc = await raises(
+    const exc = await expectRaises(
       ws.resolveReportLink(SHORT),
       ShortLinkResolutionError,
     );
@@ -1401,7 +1404,7 @@ describe("TestResolveShortLinks (test_workspace_report_links.py:1118)", () => {
       () => "https://mixpanel.com/project/12345/app/boards#id=555",
     );
 
-    const exc = await raises(
+    const exc = await expectRaises(
       ws.resolveReportLink(SHORT),
       UnsupportedReportLinkError,
     );
@@ -1416,7 +1419,7 @@ describe("TestResolveShortLinks (test_workspace_report_links.py:1118)", () => {
       () => `https://mixpanel.com/project/3/app/insights#${SLUG}`,
     );
 
-    const exc = await raises(
+    const exc = await expectRaises(
       ws.resolveReportLink(SHORT),
       ReportLinkScopeMismatchError,
     );
@@ -1429,7 +1432,7 @@ describe("TestResolveShortLinks (test_workspace_report_links.py:1118)", () => {
   it("test_short_link_region_mismatch_before_network", async () => {
     const { ws, mock } = makeWorkspace();
 
-    const exc = await raises(
+    const exc = await expectRaises(
       ws.resolveReportLink("https://eu.mixpanel.com/s/AbC123"),
       ReportLinkScopeMismatchError,
     );
@@ -1446,7 +1449,7 @@ describe("TestResolveShortLinks (test_workspace_report_links.py:1118)", () => {
       });
     });
 
-    const exc = await raises(
+    const exc = await expectRaises(
       ws.resolveReportLink(SHORT),
       ReportLinkNotFoundError,
     );
@@ -1593,7 +1596,7 @@ describe("TestQueryReportLinkScopeOnResolvedInput (test_workspace_report_links.p
       project_id: 3,
     });
 
-    const exc = await raises(
+    const exc = await expectRaises(
       ws.queryReportLink(resolved),
       ReportLinkScopeMismatchError,
     );
@@ -1612,7 +1615,7 @@ describe("TestQueryReportLinkScopeOnResolvedInput (test_workspace_report_links.p
       region: "eu",
     });
 
-    const exc = await raises(
+    const exc = await expectRaises(
       ws.queryReportLink(resolved),
       ReportLinkScopeMismatchError,
     );
@@ -1643,7 +1646,10 @@ describe("TestQueryReportLinkScopeOnResolvedInput (test_workspace_report_links.p
       mock,
     );
 
-    await raises(other.queryReportLink(resolved), ReportLinkScopeMismatchError);
+    await expectRaises(
+      other.queryReportLink(resolved),
+      ReportLinkScopeMismatchError,
+    );
 
     expect(mock.insightsCalls).toHaveLength(0);
   });
@@ -1655,7 +1661,7 @@ describe("TestCreateReportLinkValidatesBeforePost (test_workspace_report_links.p
     async (workspaceId) => {
       const { ws, mock } = makeWorkspace();
 
-      const exc = await raises(
+      const exc = await expectRaises(
         ws.createReportLink(INSIGHTS_PARAMS, {
           workspace_id: workspaceId,
           validate: false,
@@ -1713,7 +1719,7 @@ describe("TestResolveSlugWithUnknownServerType (test_workspace_report_links.py:1
     const { ws, mock } = makeWorkspace();
     mock.setGetBookmarkUrl(() => slugRecord({ type: "user" }));
 
-    const exc = await raises(
+    const exc = await expectRaises(
       ws.queryReportLink(SLUG),
       UnsupportedReportLinkError,
     );
@@ -1726,7 +1732,7 @@ describe("TestWorkspaceScope (test_workspace_report_links.py:1489)", () => {
   it("test_url_workspace_differs_from_pinned_raises_before_fetch", async () => {
     const { ws, mock } = makeWorkspace({ session: PINNED_SESSION });
 
-    const exc = await raises(
+    const exc = await expectRaises(
       ws.resolveReportLink(
         `https://mixpanel.com/project/12345/view/9/app/insights#${SLUG}`,
       ),
@@ -1771,7 +1777,7 @@ describe("TestWorkspaceScope (test_workspace_report_links.py:1489)", () => {
       workspace_id: 9,
     });
 
-    const exc = await raises(
+    const exc = await expectRaises(
       ws.queryReportLink(resolved),
       ReportLinkScopeMismatchError,
     );
@@ -1882,7 +1888,10 @@ describe("TestWorkspaceScope (test_workspace_report_links.py:1489)", () => {
       mock,
     );
 
-    await raises(wsB.queryReportLink(resolved), ReportLinkScopeMismatchError);
+    await expectRaises(
+      wsB.queryReportLink(resolved),
+      ReportLinkScopeMismatchError,
+    );
 
     expect(mock.insightsCalls).toHaveLength(0);
   });

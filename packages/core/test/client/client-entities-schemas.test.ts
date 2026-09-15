@@ -699,7 +699,7 @@ describe("TestCreateSchemaAlreadyExists", () => {
     }));
     await expect(
       client.createSchema("event", "Signup", { properties: {} }),
-    ).rejects.toThrow();
+    ).rejects.toThrow("Schema already exists for event 'Signup'");
   });
 });
 

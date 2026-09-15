@@ -27,7 +27,6 @@ import { MeCache, type MeCacheLogger } from "../src/me-cache.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const POSIX = process.platform !== "win32";
-const itPosix = POSIX ? it : it.skip;
 
 const cleanups: Array<() => void> = [];
 let restoreEnv: () => void = () => undefined;
@@ -140,7 +139,7 @@ describe("TestMeCache (test_me.py:228)", () => {
     expect(cacheB.get()?.user_id).toBe(99);
   });
 
-  itPosix("test_file_permissions", () => {
+  it.skipIf(!POSIX)("test_file_permissions", () => {
     const dir = join(makeTempDir(cleanups), "accounts", "personal");
     mkdirSync(dir, { recursive: true });
     const cache = new MeCache({ accountName: "personal", storageDir: dir });
@@ -196,7 +195,7 @@ describe("TestMeCacheConcurrency (test_me.py:331)", () => {
     expect([1, 2]).toContain(result?.user_id);
   });
 
-  itPosix("test_chmod_failure_on_dir_raises_config_error", () => {
+  it.skipIf(!POSIX)("test_chmod_failure_on_dir_raises_config_error", () => {
     const dir = join(makeTempDir(cleanups), "accounts", "personal");
     mkdirSync(dir, { recursive: true });
     const cache = new MeCache({
@@ -226,7 +225,7 @@ describe("TestMeCacheConcurrency (test_me.py:331)", () => {
 });
 
 describe("TestMeCacheSymlinkRejection (test_me.py:685)", () => {
-  itPosix("test_symlinked_cache_returns_none_and_warns", () => {
+  it.skipIf(!POSIX)("test_symlinked_cache_returns_none_and_warns", () => {
     const home = makeTempDir(cleanups);
     process.env["HOME"] = home;
     const accountDir = join(home, ".mp", "accounts", "personal");
@@ -248,24 +247,27 @@ describe("TestMeCacheSymlinkRejection (test_me.py:685)", () => {
     ).toBe(true);
   });
 
-  itPosix("test_dangling_symlink_cache_returns_none_and_warns", () => {
-    const home = makeTempDir(cleanups);
-    process.env["HOME"] = home;
-    const accountDir = join(home, ".mp", "accounts", "personal");
-    mkdirSync(accountDir, { recursive: true, mode: 0o700 });
-    symlinkSync(join(home, "missing.json"), join(accountDir, "me.json"));
+  it.skipIf(!POSIX)(
+    "test_dangling_symlink_cache_returns_none_and_warns",
+    () => {
+      const home = makeTempDir(cleanups);
+      process.env["HOME"] = home;
+      const accountDir = join(home, ".mp", "accounts", "personal");
+      mkdirSync(accountDir, { recursive: true, mode: 0o700 });
+      symlinkSync(join(home, "missing.json"), join(accountDir, "me.json"));
 
-    const { logger, lines } = recordingLogger();
-    const cache = new MeCache({ accountName: "personal", logger });
-    expect(cache.get()).toBeNull();
-    expect(
-      lines.some(
-        (line) =>
-          line.toLowerCase().includes("symlink") ||
-          line.toLowerCase().includes("refusing"),
-      ),
-    ).toBe(true);
-  });
+      const { logger, lines } = recordingLogger();
+      const cache = new MeCache({ accountName: "personal", logger });
+      expect(cache.get()).toBeNull();
+      expect(
+        lines.some(
+          (line) =>
+            line.toLowerCase().includes("symlink") ||
+            line.toLowerCase().includes("refusing"),
+        ),
+      ).toBe(true);
+    },
+  );
 });
 
 describe("Ordered-organizations re-hydration (packet §3.2 item 10 / §2.2 last bullet — N2 consumes N1's mechanism)", () => {
@@ -303,7 +305,7 @@ describe("Ordered-organizations re-hydration (packet §3.2 item 10 / §2.2 last 
 // TS twin is the TextDecoder fatal-mode TypeError, which must
 // propagate rather than degrade to the corrupt-file `null`.
 describe("B8-ARB-A SEM-F2c decode error-class lock", () => {
-  itPosix(
+  it.skipIf(!POSIX)(
     "invalid-UTF-8 me.json (0600) raises the RAW decode TypeError, not null",
     () => {
       const dir = join(makeTempDir(cleanups), "accounts", "personal");

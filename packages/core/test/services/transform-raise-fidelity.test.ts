@@ -491,28 +491,22 @@ describe("FID-F2: LiveQueryService dataValues (event_counts/property_counts)", (
 // ---------------------------------------------------------------------------
 
 describe("FID-F4: STEP_PREFIX_RE dot semantics", () => {
-  it(
-    String.raw`matches step names containing \r (CPython: event='a\rb')`,
-    () => {
-      // CPython: _STEP_PREFIX_RE.match('1. a\rb').group(2) == 'a\rb'
-      const steps = extractFunnelStepsFromSeries(
-        { F: { count: { "1. a\rb": { all: 7 } } } },
-        noWarn,
-      );
-      expect(steps.map((s) => s["event"])).toStrictEqual(["a\rb"]);
-    },
-  );
+  it("matches step names containing U+000D CR (CPython dot semantics)", () => {
+    // CPython: _STEP_PREFIX_RE.match('1. a\rb').group(2) == 'a\rb'
+    const steps = extractFunnelStepsFromSeries(
+      { F: { count: { "1. a\rb": { all: 7 } } } },
+      noWarn,
+    );
+    expect(steps.map((s) => s["event"])).toStrictEqual(["a\rb"]);
+  });
 
-  it(
-    String.raw`matches step names containing U+2028 (CPython: event='a\u2028b')`,
-    () => {
-      const steps = extractFunnelStepsFromSeries(
-        { F: { count: { "1. a b": { all: 7 } } } },
-        noWarn,
-      );
-      expect(steps.map((s) => s["event"])).toStrictEqual(["a b"]);
-    },
-  );
+  it("matches step names containing U+2028 LINE SEPARATOR (CPython dot semantics)", () => {
+    const steps = extractFunnelStepsFromSeries(
+      { F: { count: { "1. a b": { all: 7 } } } },
+      noWarn,
+    );
+    expect(steps.map((s) => s["event"])).toStrictEqual(["a b"]);
+  });
 
   it("still refuses \\n inside the captured name (Python `.`)", () => {
     // CPython: no match -> the whole name is the event, sort key 2**31

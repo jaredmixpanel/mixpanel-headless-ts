@@ -430,13 +430,10 @@ describe("safeInt string branch = CPython int(str) grammar (B0-gate RUN.md 2026-
     expect(safeInt("\u008542\u00A0")).toBe(42);
   });
 
-  it(
-    String.raw`rejects U+FEFF surround (JS \s matches the BOM; CPython int() raises)`,
-    () => {
-      expect(safeInt("\uFEFF42")).toBe(0);
-      expect(safeInt("42\uFEFF")).toBe(0);
-    },
-  );
+  it("rejects U+FEFF surround (the JS whitespace class matches the BOM; CPython int() raises)", () => {
+    expect(safeInt("\uFEFF42")).toBe(0);
+    expect(safeInt("42\uFEFF")).toBe(0);
+  });
 
   it("rejects U+001C..1F surround (str.isspace() true but Py_ISSPACE false)", () => {
     // CPython probe (python-int.test.ts:103-105): int('\x1c42\x1f') raises.

@@ -475,7 +475,14 @@ describe("TestBookmarkTypeLiteral", () => {
       "flows",
       "user",
     ] as const) {
-      new CreateBookmarkParams({ name: "X", bookmark_type: bt, params: {} });
+      expect(
+        () =>
+          new CreateBookmarkParams({
+            name: "X",
+            bookmark_type: bt,
+            params: {},
+          }),
+      ).not.toThrow();
     }
   });
 });

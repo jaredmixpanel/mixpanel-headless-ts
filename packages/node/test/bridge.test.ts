@@ -48,7 +48,6 @@ import {
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const POSIX = process.platform !== "win32";
-const itPosix = POSIX ? it : it.skip;
 
 const cleanups: Array<() => void> = [];
 let restoreEnv: () => void = () => undefined;
@@ -182,7 +181,7 @@ describe("TestExportBridgeFunctional (test_bridge_export.py:72)", () => {
     expect(raw.account["token"]).toBe("inline-bearer");
   });
 
-  itPosix("test_writes_file_with_mode_0o600", () => {
+  it.skipIf(!POSIX)("test_writes_file_with_mode_0o600", () => {
     const out = join(makeTempDir(cleanups), "bridge.json");
     exportBridge(teamSa(), { to: out });
     expect(statSync(out).mode & 0o7777).toBe(0o600);
@@ -314,7 +313,7 @@ describe("TestAccountsNamespaceWiring (test_bridge_export.py:236 — translated 
 });
 
 describe("TestBridgeSymlinkRejection (test_bridge_export.py:303)", () => {
-  itPosix("test_load_bridge_symlink_raises_configerror", () => {
+  it.skipIf(!POSIX)("test_load_bridge_symlink_raises_configerror", () => {
     const tmp = makeTempDir(cleanups);
     const attacker = join(tmp, "attacker_bridge.json");
     writeFileSync(
@@ -339,32 +338,35 @@ describe("TestBridgeSymlinkRejection (test_bridge_export.py:303)", () => {
     expect(() => loadBridge(link)).toThrow(/symlink/);
   });
 
-  itPosix("test_export_bridge_symlinked_tokens_raises_oautherror", () => {
-    const account: OAuthBrowserAccount = {
-      type: "oauth_browser",
-      name: "personal",
-      region: "us",
-    };
-    const accountDir = join(home, ".mp", "accounts", "personal");
-    mkdirSync(accountDir, { recursive: true, mode: 0o700 });
-    const attacker = join(home, "attacker_tokens.json");
-    writeFileSync(
-      attacker,
-      JSON.stringify({
-        access_token: "stolen",
-        expires_at: isoIn(1),
-        token_type: "Bearer",
-      }),
-      "utf8",
-    );
-    chmodSync(attacker, 0o600);
-    symlinkSync(attacker, join(accountDir, "tokens.json"));
-    const out = join(home, "bridge.json");
-    expect(() => exportBridge(account, { to: out })).toThrow(OAuthError);
-    expect(() => exportBridge(account, { to: out })).toThrow(/symlink/);
-  });
+  it.skipIf(!POSIX)(
+    "test_export_bridge_symlinked_tokens_raises_oautherror",
+    () => {
+      const account: OAuthBrowserAccount = {
+        type: "oauth_browser",
+        name: "personal",
+        region: "us",
+      };
+      const accountDir = join(home, ".mp", "accounts", "personal");
+      mkdirSync(accountDir, { recursive: true, mode: 0o700 });
+      const attacker = join(home, "attacker_tokens.json");
+      writeFileSync(
+        attacker,
+        JSON.stringify({
+          access_token: "stolen",
+          expires_at: isoIn(1),
+          token_type: "Bearer",
+        }),
+        "utf8",
+      );
+      chmodSync(attacker, 0o600);
+      symlinkSync(attacker, join(accountDir, "tokens.json"));
+      const out = join(home, "bridge.json");
+      expect(() => exportBridge(account, { to: out })).toThrow(OAuthError);
+      expect(() => exportBridge(account, { to: out })).toThrow(/symlink/);
+    },
+  );
 
-  itPosix("test_dangling_bridge_symlink_rejected", () => {
+  it.skipIf(!POSIX)("test_dangling_bridge_symlink_rejected", () => {
     const tmp = makeTempDir(cleanups);
     const link = join(tmp, "bridge.json");
     symlinkSync(join(tmp, "missing.json"), link);
@@ -372,7 +374,7 @@ describe("TestBridgeSymlinkRejection (test_bridge_export.py:303)", () => {
     expect(() => loadBridge(link)).toThrow(/symlink/);
   });
 
-  itPosix("test_dangling_browser_tokens_symlink_rejected", () => {
+  it.skipIf(!POSIX)("test_dangling_browser_tokens_symlink_rejected", () => {
     const account: OAuthBrowserAccount = {
       type: "oauth_browser",
       name: "personal",
@@ -476,7 +478,7 @@ describe("TestBridgeEdgeCases (test_042_edge_cases.py:394 — inbound b6-packets
 //   wraps into ConfigError exactly as Python's `except OSError`
 //   (`bridge.py:172-176`).
 describe("B8-ARB-A SEM-F2b/F3/F4/F6 error-class + byte-format locks", () => {
-  itPosix(
+  it.skipIf(!POSIX)(
     "SEM-F2b: invalid-UTF-8 bridge file (0600) raises the RAW decode TypeError, not ConfigError",
     () => {
       const bridgePath = join(makeTempDir(cleanups), "bridge.json");
@@ -550,7 +552,7 @@ describe("B8-ARB-A SEM-F2b/F3/F4/F6 error-class + byte-format locks", () => {
 // OAuthError; the read catch is `(OSError, json.JSONDecodeError)` so
 // the UnicodeDecodeError twin propagates RAW.
 describe("B8-ARB-A readBrowserTokens error-class locks (bridge.py:221-242)", () => {
-  itPosix(
+  it.skipIf(!POSIX)(
     "invalid-UTF-8 per-account tokens.json raises the RAW decode TypeError",
     () => {
       const account: OAuthBrowserAccount = {

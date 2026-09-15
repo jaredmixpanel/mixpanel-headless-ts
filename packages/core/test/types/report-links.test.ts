@@ -134,8 +134,8 @@ describe("TestBookmarkUrl", () => {
   // on attribute assignment; the TS `EntityModel` base never calls
   // `Object.freeze`, so `BookmarkUrl` instances are mutable at runtime
   // (only the compile-time `readonly` contract holds — pinned below via
-  // `@ts-expect-error`, which `tsc` still checks on a skipped body).
-  it.skip("test_frozen", () => {
+  // `@ts-expect-error`, which `tsc` still checks on the todo body).
+  it.todo("test_frozen", () => {
     const record = new BookmarkUrl({ slug: SLUG, bookmark_type: "insights" });
     // @ts-expect-error -- `slug` is readonly (compile-time frozen contract).
     const assign = (): void => void (record.slug = "x");

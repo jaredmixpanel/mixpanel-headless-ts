@@ -299,21 +299,23 @@ describe("TestVoidOperationResponses", () => {
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 204,
     }));
-    await client.deleteDashboard(1); // Should not raise
+    await expect(client.deleteDashboard(1)).resolves.toBeUndefined();
   });
 
   it("test_favorite_dashboard_204", async () => {
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 204,
     }));
-    await client.favoriteDashboard(1); // Should not raise
+    await expect(client.favoriteDashboard(1)).resolves.toBeUndefined();
   });
 
   it("test_bulk_delete_dashboards_204", async () => {
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 204,
     }));
-    await client.bulkDeleteDashboards([1, 2, 3]); // Should not raise
+    await expect(
+      client.bulkDeleteDashboards([1, 2, 3]),
+    ).resolves.toBeUndefined();
   });
 });
 

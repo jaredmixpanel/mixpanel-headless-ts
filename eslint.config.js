@@ -806,9 +806,11 @@ const config = defineConfig([
       "vitest/valid-title": "error",
       // vitest's `expect(actual, message)` form.
       "vitest/valid-expect": ["error", { maxArgs: 2 }],
+      // `fc.assert`: fast-check properties that return booleans assert
+      // through the runner, not through `expect`.
       "vitest/expect-expect": [
         "error",
-        { assertFunctionNames: ["expect", "expect*", "assert*"] },
+        { assertFunctionNames: ["expect", "expect*", "assert*", "fc.assert"] },
       ],
 
       // §8.3 relaxations.
@@ -976,22 +978,6 @@ const config = defineConfig([
       "unicorn/prefer-response-static-json": "off",
       "unicorn/prefer-type-error": "off",
       "unicorn/prefer-math-min-max": "off",
-    },
-  }),
-
-  // --- Phase 4 lane L4: tests — pending; delete this block when the lane lands ---
-  ...lane("L4", {
-    files: TEST_FILES,
-    rules: {
-      "vitest/prefer-strict-equal": "off",
-      "vitest/expect-expect": "off",
-      "vitest/no-standalone-expect": "off",
-      "vitest/valid-title": "off",
-      "vitest/no-conditional-tests": "off",
-      "vitest/require-to-throw-message": "off",
-      "vitest/no-disabled-tests": "off",
-      "vitest/prefer-hooks-on-top": "off",
-      "vitest/consistent-test-filename": "off",
     },
   }),
 
