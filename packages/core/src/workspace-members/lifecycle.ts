@@ -262,13 +262,16 @@ export interface BusinessContextHost {
   };
   /** The session's project id (`self._session.project.id`). */
   readonly projectId: string;
-  /** The lazily-created MeService (`self._me_svc`). */
-  readonly meService: MeService;
+  /**
+   * The lazily-created MeService (`self._me_svc`) — a thunk, so the
+   * service is created only where Python touches the attribute.
+   */
+  readonly meService: () => MeService;
   /**
    * The MeService ONLY IF already created (`self._me_service`, which
    * `_cached_organization_id` reads without constructing one).
    */
-  readonly meServiceIfCreated: MeService | null;
+  readonly meServiceIfCreated: () => MeService | null;
 }
 
 /** Keyword-only arguments of the scope-carrying business-context members. */
@@ -296,7 +299,7 @@ export async function resolveOrganizationId(
   if (explicit !== null) {
     return explicit;
   }
-  const me = await host.meService.fetch();
+  const me = await host.meService().fetch();
   const projectInfo = me.projects.get(host.projectId);
   if (projectInfo !== undefined) {
     return projectInfo.organization_id;
@@ -328,7 +331,7 @@ export async function resolveOrganizationId(
 export async function cachedOrganizationId(
   host: BusinessContextHost,
 ): Promise<number | null> {
-  const service = host.meServiceIfCreated;
+  const service = host.meServiceIfCreated();
   if (service === null) {
     return null;
   }

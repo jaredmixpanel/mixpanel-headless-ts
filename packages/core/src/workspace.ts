@@ -392,6 +392,9 @@ export type {
   WorkspaceWorkspacesOptions,
 } from "./workspace-members/options.js";
 
+/** `last` default of the four query builders (`Workspace.query(last=30)`). */
+const DEFAULT_QUERY_LAST_DAYS = 30;
+
 /**
  * Main facade for Mixpanel operations — TS port of
  * `workspace.Workspace` (`workspace.py:274+`).
@@ -1095,7 +1098,7 @@ export class Workspace {
       events,
       from_date: options.from_date ?? null,
       to_date: options.to_date ?? null,
-      last: options.last ?? 30,
+      last: options.last ?? DEFAULT_QUERY_LAST_DAYS,
       unit: options.unit ?? "day",
       math: options.math ?? "total",
       math_property: options.math_property ?? null,
@@ -1209,7 +1212,7 @@ export class Workspace {
       math_property: options.math_property ?? null,
       from_date: options.from_date ?? null,
       to_date: options.to_date ?? null,
-      last: options.last ?? 30,
+      last: options.last ?? DEFAULT_QUERY_LAST_DAYS,
       unit: options.unit ?? "day",
       group_by: options.group_by ?? null,
       where: options.where ?? null,
@@ -1318,7 +1321,7 @@ export class Workspace {
       reverse: options.reverse ?? 0,
       from_date: options.from_date ?? null,
       to_date: options.to_date ?? null,
-      last: options.last ?? 30,
+      last: options.last ?? DEFAULT_QUERY_LAST_DAYS,
       conversion_window: options.conversion_window ?? 7,
       conversion_window_unit: options.conversion_window_unit ?? "day",
       count_type: options.count_type ?? "unique",
@@ -1442,7 +1445,7 @@ export class Workspace {
       math: options.math ?? "retention_rate",
       from_date: options.from_date ?? null,
       to_date: options.to_date ?? null,
-      last: options.last ?? 30,
+      last: options.last ?? DEFAULT_QUERY_LAST_DAYS,
       unit: options.unit ?? "day",
       group_by: options.group_by ?? null,
       where: options.where ?? null,
@@ -2362,17 +2365,11 @@ export class Workspace {
    * @internal
    */
   #businessContextHost(): BusinessContextHost {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias, unicorn/no-this-assignment -- the object-literal getters below need the facade's `this`, not the literal's
-    const facade = this;
     return {
-      client: facade.client,
-      projectId: facade.#session.project.id,
-      get meService(): MeService {
-        return facade.meService;
-      },
-      get meServiceIfCreated(): MeService | null {
-        return facade.meServiceIfCreated;
-      },
+      client: this.client,
+      projectId: this.#session.project.id,
+      meService: () => this.meService,
+      meServiceIfCreated: () => this.meServiceIfCreated,
     };
   }
 
