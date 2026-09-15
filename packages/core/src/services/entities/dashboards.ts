@@ -13,7 +13,7 @@
 
 import { appRequest } from "../../client/app-request.js";
 import type { ClientCore } from "../../client/core.js";
-import { isPlainRecord } from "../../client/internals.js";
+import { bindFirst, isPlainRecord } from "../../client/internals.js";
 import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
 import { MixpanelHeadlessError } from "../../errors.js";
@@ -338,6 +338,312 @@ export interface DashboardMethods {
     signal?: AbortSignal,
   ) => Promise<void>;
 }
+/** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
+function scopedPath(core: ClientCore, domainPath: string): string {
+  return maybeScopedPath(domainPath, {
+    projectId: core.projectId(),
+    workspaceId: core.workspaceId(),
+  });
+}
+
+async function listDashboards(
+  core: ClientCore,
+  options: ListDashboardsOptions = {},
+): Promise<JsonValue[]> {
+  const path = scopedPath(core, "dashboards");
+  const params: Record<string, string> = {};
+  if (truthyList(options.ids)) {
+    params["ids"] = joinIds(options.ids as readonly number[]);
+  }
+  const result = await appRequest(core.appDeps(options.signal), "GET", path, {
+    params: paramsOrNone(params),
+  });
+  return expectListResult(result, "list_dashboards");
+}
+
+async function createDashboard(
+  core: ClientCore,
+  body: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(core, "dashboards");
+  const result = await appRequest(core.appDeps(signal), "POST", path, {
+    jsonBody: body,
+  });
+  return expectRecordResult(result, "create_dashboard");
+}
+
+async function getDashboard(
+  core: ClientCore,
+  dashboardId: number,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(core, `dashboards/${dashboardId}`);
+  const result = await appRequest(core.appDeps(signal), "GET", path);
+  return expectRecordResult(result, "get_dashboard");
+}
+
+async function updateDashboard(
+  core: ClientCore,
+  dashboardId: number,
+  body: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(core, `dashboards/${dashboardId}`);
+  const result = await appRequest(core.appDeps(signal), "PATCH", path, {
+    jsonBody: body,
+  });
+  return expectRecordResult(result, "update_dashboard");
+}
+
+async function deleteDashboard(
+  core: ClientCore,
+  dashboardId: number,
+  signal?: AbortSignal,
+): Promise<void> {
+  const path = scopedPath(core, `dashboards/${dashboardId}`);
+  await appRequest(core.appDeps(signal), "DELETE", path);
+}
+
+async function bulkDeleteDashboards(
+  core: ClientCore,
+  ids: readonly number[],
+  signal?: AbortSignal,
+): Promise<void> {
+  const path = scopedPath(core, "dashboards/bulk-delete");
+  await appRequest(core.appDeps(signal), "POST", path, {
+    jsonBody: { dashboard_ids: ids },
+  });
+}
+
+async function favoriteDashboard(
+  core: ClientCore,
+  dashboardId: number,
+  signal?: AbortSignal,
+): Promise<void> {
+  const path = scopedPath(core, `dashboards/${dashboardId}/favorites`);
+  await appRequest(core.appDeps(signal), "POST", path);
+}
+
+async function unfavoriteDashboard(
+  core: ClientCore,
+  dashboardId: number,
+  signal?: AbortSignal,
+): Promise<void> {
+  const path = scopedPath(core, `dashboards/${dashboardId}/favorites`);
+  await appRequest(core.appDeps(signal), "DELETE", path);
+}
+
+async function pinDashboard(
+  core: ClientCore,
+  dashboardId: number,
+  signal?: AbortSignal,
+): Promise<void> {
+  const path = scopedPath(core, `dashboards/${dashboardId}/pin`);
+  await appRequest(core.appDeps(signal), "POST", path);
+}
+
+async function unpinDashboard(
+  core: ClientCore,
+  dashboardId: number,
+  signal?: AbortSignal,
+): Promise<void> {
+  const path = scopedPath(core, `dashboards/${dashboardId}/pin`);
+  await appRequest(core.appDeps(signal), "DELETE", path);
+}
+
+async function removeReportFromDashboard(
+  core: ClientCore,
+  dashboardId: number,
+  bookmarkId: number,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(core, `dashboards/${dashboardId}`);
+  const body = {
+    content: {
+      action: "delete",
+      content_type: "report",
+      content_id: bookmarkId,
+    },
+  };
+  const result = await appRequest(core.appDeps(signal), "PATCH", path, {
+    jsonBody: body,
+  });
+  return expectRecordResult(result, "remove_report_from_dashboard");
+}
+
+async function addReportToDashboard(
+  core: ClientCore,
+  dashboardId: number,
+  bookmarkId: number,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(core, `dashboards/${dashboardId}`);
+  const body = {
+    content: {
+      action: "create",
+      content_type: "report",
+      content_params: { source_bookmark_id: bookmarkId },
+    },
+  };
+  const result = await appRequest(core.appDeps(signal), "PATCH", path, {
+    jsonBody: body,
+  });
+  return expectRecordResult(result, "add_report_to_dashboard");
+}
+
+async function listBlueprintTemplates(
+  core: ClientCore,
+  options: ListBlueprintTemplatesOptions = {},
+): Promise<JsonValue[]> {
+  const path = scopedPath(core, "dashboards/blueprints-all");
+  const params: Record<string, string> = {};
+  if (options.include_reports === true) {
+    params["include_reports"] = "true";
+  }
+  const result = await appRequest(core.appDeps(options.signal), "GET", path, {
+    params: paramsOrNone(params),
+  });
+  // The blueprints-all endpoint returns {"templates": {name: data}}
+  // (`api_client.py:4082-4099`).
+  if (isPlainRecord(result) && Object.hasOwn(result, "templates")) {
+    const templates = result["templates"] as JsonValue;
+    if (isPlainRecord(templates)) {
+      // Convert {name: data} to [{...data, "name": name}, ...];
+      // Python logs a warning for non-dict entries and skips them
+      // (the warning is not observable — skip silently here).
+      const results: JsonValue[] = [];
+      for (const [name, data] of Object.entries(templates)) {
+        if (isPlainRecord(data)) {
+          results.push({ ...data, name });
+        }
+      }
+      return results;
+    }
+    if (Array.isArray(templates)) {
+      return templates;
+    }
+  }
+  if (Array.isArray(result)) {
+    return result;
+  }
+  throw new MixpanelHeadlessError(
+    `Unexpected response from list_blueprint_templates: ` +
+      `expected templates dict, got ${pythonTypeNameOf(result)}`,
+  );
+}
+
+async function createBlueprint(
+  core: ClientCore,
+  templateType: string,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(core, "dashboards/blueprints");
+  const result = await appRequest(core.appDeps(signal), "POST", path, {
+    jsonBody: { template_type: templateType },
+  });
+  return expectRecordResult(result, "create_blueprint");
+}
+
+async function getBlueprintConfig(
+  core: ClientCore,
+  dashboardId: number,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(core, `dashboards/${dashboardId}/blueprint-config`);
+  const result = await appRequest(core.appDeps(signal), "GET", path);
+  return expectRecordResult(result, "get_blueprint_config");
+}
+
+async function updateBlueprintCohorts(
+  core: ClientCore,
+  cohorts: ReadonlyArray<Record<string, unknown>>,
+  signal?: AbortSignal,
+): Promise<void> {
+  const path = scopedPath(core, "dashboards/blueprints/cohorts");
+  await appRequest(core.appDeps(signal), "PUT", path, {
+    jsonBody: { cohorts },
+  });
+}
+
+async function finalizeBlueprint(
+  core: ClientCore,
+  body: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(core, "dashboards/blueprints/finish");
+  const result = await appRequest(core.appDeps(signal), "POST", path, {
+    jsonBody: body,
+  });
+  return expectRecordResult(result, "finalize_blueprint");
+}
+
+async function createRcaDashboard(
+  core: ClientCore,
+  body: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(core, "dashboards/rca");
+  const result = await appRequest(core.appDeps(signal), "POST", path, {
+    jsonBody: body,
+  });
+  return expectRecordResult(result, "create_rca_dashboard");
+}
+
+async function getBookmarkDashboardIds(
+  core: ClientCore,
+  bookmarkId: number,
+  signal?: AbortSignal,
+): Promise<JsonValue[]> {
+  const path = scopedPath(
+    core,
+    `dashboards/bookmarks/${bookmarkId}/dashboard-ids`,
+  );
+  const result = await appRequest(core.appDeps(signal), "GET", path);
+  return expectListResult(result, "get_bookmark_dashboard_ids");
+}
+
+async function getDashboardErf(
+  core: ClientCore,
+  dashboardId: number,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(core, `dashboards/${dashboardId}/erf`);
+  const result = await appRequest(core.appDeps(signal), "GET", path);
+  return expectRecordResult(result, "get_dashboard_erf");
+}
+
+async function updateReportLink(
+  core: ClientCore,
+  dashboardId: number,
+  reportLinkId: number,
+  body: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<void> {
+  const path = scopedPath(
+    core,
+    `dashboards/${dashboardId}/report-links/${reportLinkId}`,
+  );
+  await appRequest(core.appDeps(signal), "PATCH", path, {
+    jsonBody: body,
+  });
+}
+
+async function updateTextCard(
+  core: ClientCore,
+  dashboardId: number,
+  textCardId: number,
+  body: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<void> {
+  const path = scopedPath(
+    core,
+    `dashboards/${dashboardId}/text-cards/${textCardId}`,
+  );
+  await appRequest(core.appDeps(signal), "PATCH", path, {
+    jsonBody: body,
+  });
+}
 
 /**
  * Build the C3 dashboard methods over the C1 core seam.
@@ -346,296 +652,28 @@ export interface DashboardMethods {
  * @returns The method bag.
  */
 export function createDashboardMethods(core: ClientCore): DashboardMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
-  const scopedPath = (domainPath: string): string =>
-    maybeScopedPath(domainPath, {
-      projectId: core.projectId(),
-      workspaceId: core.workspaceId(),
-    });
-
   return {
-    listDashboards: async (
-      options: ListDashboardsOptions = {},
-    ): Promise<JsonValue[]> => {
-      const path = scopedPath("dashboards");
-      const params: Record<string, string> = {};
-      if (truthyList(options.ids)) {
-        params["ids"] = joinIds(options.ids as readonly number[]);
-      }
-      const result = await appRequest(
-        core.appDeps(options.signal),
-        "GET",
-        path,
-        {
-          params: paramsOrNone(params),
-        },
-      );
-      return expectListResult(result, "list_dashboards");
-    },
-
-    createDashboard: async (
-      body: Record<string, unknown>,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const path = scopedPath("dashboards");
-      const result = await appRequest(core.appDeps(signal), "POST", path, {
-        jsonBody: body,
-      });
-      return expectRecordResult(result, "create_dashboard");
-    },
-
-    getDashboard: async (
-      dashboardId: number,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const path = scopedPath(`dashboards/${dashboardId}`);
-      const result = await appRequest(core.appDeps(signal), "GET", path);
-      return expectRecordResult(result, "get_dashboard");
-    },
-
-    updateDashboard: async (
-      dashboardId: number,
-      body: Record<string, unknown>,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const path = scopedPath(`dashboards/${dashboardId}`);
-      const result = await appRequest(core.appDeps(signal), "PATCH", path, {
-        jsonBody: body,
-      });
-      return expectRecordResult(result, "update_dashboard");
-    },
-
-    deleteDashboard: async (
-      dashboardId: number,
-      signal?: AbortSignal,
-    ): Promise<void> => {
-      const path = scopedPath(`dashboards/${dashboardId}`);
-      await appRequest(core.appDeps(signal), "DELETE", path);
-    },
-
-    bulkDeleteDashboards: async (
-      ids: readonly number[],
-      signal?: AbortSignal,
-    ): Promise<void> => {
-      const path = scopedPath("dashboards/bulk-delete");
-      await appRequest(core.appDeps(signal), "POST", path, {
-        jsonBody: { dashboard_ids: ids },
-      });
-    },
-
-    favoriteDashboard: async (
-      dashboardId: number,
-      signal?: AbortSignal,
-    ): Promise<void> => {
-      const path = scopedPath(`dashboards/${dashboardId}/favorites`);
-      await appRequest(core.appDeps(signal), "POST", path);
-    },
-
-    unfavoriteDashboard: async (
-      dashboardId: number,
-      signal?: AbortSignal,
-    ): Promise<void> => {
-      const path = scopedPath(`dashboards/${dashboardId}/favorites`);
-      await appRequest(core.appDeps(signal), "DELETE", path);
-    },
-
-    pinDashboard: async (
-      dashboardId: number,
-      signal?: AbortSignal,
-    ): Promise<void> => {
-      const path = scopedPath(`dashboards/${dashboardId}/pin`);
-      await appRequest(core.appDeps(signal), "POST", path);
-    },
-
-    unpinDashboard: async (
-      dashboardId: number,
-      signal?: AbortSignal,
-    ): Promise<void> => {
-      const path = scopedPath(`dashboards/${dashboardId}/pin`);
-      await appRequest(core.appDeps(signal), "DELETE", path);
-    },
-
-    removeReportFromDashboard: async (
-      dashboardId: number,
-      bookmarkId: number,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const path = scopedPath(`dashboards/${dashboardId}`);
-      const body = {
-        content: {
-          action: "delete",
-          content_type: "report",
-          content_id: bookmarkId,
-        },
-      };
-      const result = await appRequest(core.appDeps(signal), "PATCH", path, {
-        jsonBody: body,
-      });
-      return expectRecordResult(result, "remove_report_from_dashboard");
-    },
-
-    addReportToDashboard: async (
-      dashboardId: number,
-      bookmarkId: number,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const path = scopedPath(`dashboards/${dashboardId}`);
-      const body = {
-        content: {
-          action: "create",
-          content_type: "report",
-          content_params: { source_bookmark_id: bookmarkId },
-        },
-      };
-      const result = await appRequest(core.appDeps(signal), "PATCH", path, {
-        jsonBody: body,
-      });
-      return expectRecordResult(result, "add_report_to_dashboard");
-    },
-
-    listBlueprintTemplates: async (
-      options: ListBlueprintTemplatesOptions = {},
-    ): Promise<JsonValue[]> => {
-      const path = scopedPath("dashboards/blueprints-all");
-      const params: Record<string, string> = {};
-      if (options.include_reports === true) {
-        params["include_reports"] = "true";
-      }
-      const result = await appRequest(
-        core.appDeps(options.signal),
-        "GET",
-        path,
-        {
-          params: paramsOrNone(params),
-        },
-      );
-      // The blueprints-all endpoint returns {"templates": {name: data}}
-      // (`api_client.py:4082-4099`).
-      if (isPlainRecord(result) && Object.hasOwn(result, "templates")) {
-        const templates = result["templates"] as JsonValue;
-        if (isPlainRecord(templates)) {
-          // Convert {name: data} to [{...data, "name": name}, ...];
-          // Python logs a warning for non-dict entries and skips them
-          // (the warning is not observable — skip silently here).
-          const results: JsonValue[] = [];
-          for (const [name, data] of Object.entries(templates)) {
-            if (isPlainRecord(data)) {
-              results.push({ ...data, name });
-            }
-          }
-          return results;
-        }
-        if (Array.isArray(templates)) {
-          return templates;
-        }
-      }
-      if (Array.isArray(result)) {
-        return result;
-      }
-      throw new MixpanelHeadlessError(
-        `Unexpected response from list_blueprint_templates: ` +
-          `expected templates dict, got ${pythonTypeNameOf(result)}`,
-      );
-    },
-
-    createBlueprint: async (
-      templateType: string,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const path = scopedPath("dashboards/blueprints");
-      const result = await appRequest(core.appDeps(signal), "POST", path, {
-        jsonBody: { template_type: templateType },
-      });
-      return expectRecordResult(result, "create_blueprint");
-    },
-
-    getBlueprintConfig: async (
-      dashboardId: number,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const path = scopedPath(`dashboards/${dashboardId}/blueprint-config`);
-      const result = await appRequest(core.appDeps(signal), "GET", path);
-      return expectRecordResult(result, "get_blueprint_config");
-    },
-
-    updateBlueprintCohorts: async (
-      cohorts: ReadonlyArray<Record<string, unknown>>,
-      signal?: AbortSignal,
-    ): Promise<void> => {
-      const path = scopedPath("dashboards/blueprints/cohorts");
-      await appRequest(core.appDeps(signal), "PUT", path, {
-        jsonBody: { cohorts },
-      });
-    },
-
-    finalizeBlueprint: async (
-      body: Record<string, unknown>,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const path = scopedPath("dashboards/blueprints/finish");
-      const result = await appRequest(core.appDeps(signal), "POST", path, {
-        jsonBody: body,
-      });
-      return expectRecordResult(result, "finalize_blueprint");
-    },
-
-    createRcaDashboard: async (
-      body: Record<string, unknown>,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const path = scopedPath("dashboards/rca");
-      const result = await appRequest(core.appDeps(signal), "POST", path, {
-        jsonBody: body,
-      });
-      return expectRecordResult(result, "create_rca_dashboard");
-    },
-
-    getBookmarkDashboardIds: async (
-      bookmarkId: number,
-      signal?: AbortSignal,
-    ): Promise<JsonValue[]> => {
-      const path = scopedPath(
-        `dashboards/bookmarks/${bookmarkId}/dashboard-ids`,
-      );
-      const result = await appRequest(core.appDeps(signal), "GET", path);
-      return expectListResult(result, "get_bookmark_dashboard_ids");
-    },
-
-    getDashboardErf: async (
-      dashboardId: number,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const path = scopedPath(`dashboards/${dashboardId}/erf`);
-      const result = await appRequest(core.appDeps(signal), "GET", path);
-      return expectRecordResult(result, "get_dashboard_erf");
-    },
-
-    updateReportLink: async (
-      dashboardId: number,
-      reportLinkId: number,
-      body: Record<string, unknown>,
-      signal?: AbortSignal,
-    ): Promise<void> => {
-      const path = scopedPath(
-        `dashboards/${dashboardId}/report-links/${reportLinkId}`,
-      );
-      await appRequest(core.appDeps(signal), "PATCH", path, {
-        jsonBody: body,
-      });
-    },
-
-    updateTextCard: async (
-      dashboardId: number,
-      textCardId: number,
-      body: Record<string, unknown>,
-      signal?: AbortSignal,
-    ): Promise<void> => {
-      const path = scopedPath(
-        `dashboards/${dashboardId}/text-cards/${textCardId}`,
-      );
-      await appRequest(core.appDeps(signal), "PATCH", path, {
-        jsonBody: body,
-      });
-    },
+    listDashboards: bindFirst(core, listDashboards),
+    createDashboard: bindFirst(core, createDashboard),
+    getDashboard: bindFirst(core, getDashboard),
+    updateDashboard: bindFirst(core, updateDashboard),
+    deleteDashboard: bindFirst(core, deleteDashboard),
+    bulkDeleteDashboards: bindFirst(core, bulkDeleteDashboards),
+    favoriteDashboard: bindFirst(core, favoriteDashboard),
+    unfavoriteDashboard: bindFirst(core, unfavoriteDashboard),
+    pinDashboard: bindFirst(core, pinDashboard),
+    unpinDashboard: bindFirst(core, unpinDashboard),
+    removeReportFromDashboard: bindFirst(core, removeReportFromDashboard),
+    addReportToDashboard: bindFirst(core, addReportToDashboard),
+    listBlueprintTemplates: bindFirst(core, listBlueprintTemplates),
+    createBlueprint: bindFirst(core, createBlueprint),
+    getBlueprintConfig: bindFirst(core, getBlueprintConfig),
+    updateBlueprintCohorts: bindFirst(core, updateBlueprintCohorts),
+    finalizeBlueprint: bindFirst(core, finalizeBlueprint),
+    createRcaDashboard: bindFirst(core, createRcaDashboard),
+    getBookmarkDashboardIds: bindFirst(core, getBookmarkDashboardIds),
+    getDashboardErf: bindFirst(core, getDashboardErf),
+    updateReportLink: bindFirst(core, updateReportLink),
+    updateTextCard: bindFirst(core, updateTextCard),
   };
 }
