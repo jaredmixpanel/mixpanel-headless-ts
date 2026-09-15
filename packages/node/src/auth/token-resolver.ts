@@ -36,6 +36,7 @@ import {
   type TokenResolver,
 } from "@mixpanel-headless/core";
 
+import { errorMessage } from "../errors.js";
 import {
   atomicWriteBytes,
   isErrnoError,
@@ -172,9 +173,8 @@ export class OnDiskTokenResolver implements TokenResolver {
       if (!(error instanceof MixpanelHeadlessError) && !isErrnoError(error)) {
         throw error;
       }
-      const rendered = error instanceof Error ? error.message : String(error);
       throw new OAuthError(
-        `OAuth tokens path is a symlink at ${path}: ${rendered}. ` +
+        `OAuth tokens path is a symlink at ${path}: ${errorMessage(error)}. ` +
           `Remove the symlink and re-run \`mp account login ${name}\`.`,
         "OAUTH_TOKEN_ERROR",
         { account_name: name, path },
@@ -194,9 +194,7 @@ export class OnDiskTokenResolver implements TokenResolver {
       raw = readCredentialBytes(path);
     } catch (error) {
       throw new OAuthError(
-        `Could not read OAuth tokens for account '${name}' from ${path}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        `Could not read OAuth tokens for account '${name}' from ${path}: ${errorMessage(error)}`,
         "OAUTH_TOKEN_ERROR",
         { account_name: name, path },
         { cause: error },
@@ -233,8 +231,7 @@ export class OnDiskTokenResolver implements TokenResolver {
         {
           account_name: name,
           path,
-          validation_error:
-            error instanceof Error ? error.message : String(error),
+          validation_error: errorMessage(error),
         },
         { cause: error },
       );

@@ -63,6 +63,7 @@ import {
   postTokenRequest,
 } from "@mixpanel-headless/core";
 
+import { errorMessage } from "../errors.js";
 import {
   CALLBACK_PORTS,
   startCallbackServer,
@@ -533,9 +534,7 @@ export class OAuthFlow {
       } catch (error) {
         abort.abort();
         throw new OAuthError(
-          `Could not open browser for authorization: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
+          `Could not open browser for authorization: ${errorMessage(error)}`,
           "OAUTH_BROWSER_ERROR",
           { authorize_url: authorizeUrl },
           { cause: error },
@@ -577,9 +576,7 @@ export class OAuthFlow {
         throw firstError;
       }
       throw new OAuthError(
-        `Callback / paste error: ${
-          firstError instanceof Error ? firstError.message : String(firstError)
-        }`,
+        `Callback / paste error: ${errorMessage(firstError)}`,
         "OAUTH_TOKEN_ERROR",
         {},
         { cause: firstError },

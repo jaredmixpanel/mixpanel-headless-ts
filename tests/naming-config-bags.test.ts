@@ -60,7 +60,7 @@ const CONFIG_BAGS: readonly Bag[] = [
   ["packages/node/src/workspace.ts", "NodeWorkspaceOptions"],
   ["packages/node/src/auth-effects.ts", "NodeAuthEffectsOptions"],
   ["packages/node/src/config-writes.ts", "NodeConfigSourceOptions"],
-  ["packages/node/src/config.ts", "ConfigManagerOptions"],
+  ["packages/node/src/config/manager.ts", "ConfigManagerOptions"],
   ["packages/node/src/me-cache.ts", "MeCacheOptions"],
   ["packages/node/src/auth/token-store.ts", "NodeTokenStoreOptions"],
   ["packages/node/src/auth/token-resolver.ts", "OnDiskTokenResolverOptions"],
