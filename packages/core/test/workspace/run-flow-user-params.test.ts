@@ -94,7 +94,7 @@ const MOCK_STATS_RESPONSE: Record<string, unknown> = {
 
 /** Three raw Engage profiles (`RAW_PROFILES`). */
 const RAW_PROFILES: Array<Record<string, unknown>> = [0, 1, 2].map((i) => ({
-  $distinct_id: `user_${`${i}`.padStart(3, "0")}`,
+  $distinct_id: `user_${String(i).padStart(3, "0")}`,
   $properties: { $last_seen: "2025-01-15" },
 }));
 

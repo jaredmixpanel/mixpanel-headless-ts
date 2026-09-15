@@ -627,7 +627,7 @@ describe("TestUnsetIsLive", () => {
       const client = createMixpanelClient({ session: makeSession({ region }) });
       for (const family of FAMILIES) {
         expect(client.core.buildUrl(family, "/x")).toBe(
-          `${LIVE_SNAPSHOT[region]?.[family]}/x`,
+          `${LIVE_SNAPSHOT[region]![family]!}/x`,
         );
       }
     }

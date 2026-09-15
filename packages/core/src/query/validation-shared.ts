@@ -289,7 +289,7 @@ export function isPythonFloat(value: unknown): boolean {
  * @param value - Candidate value.
  * @returns True when Python would classify the value as a non-bool int.
  */
-export function isPythonInt(value: unknown): boolean {
+export function isPythonInt(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value);
 }
 
@@ -1075,7 +1075,7 @@ export function _validateDataGroupId(dataGroupId: unknown): ValidationError[] {
         ),
       ];
     }
-    if ((dataGroupId as number) <= 0) {
+    if (dataGroupId <= 0) {
       return [
         new ValidationError(
           "data_group_id",

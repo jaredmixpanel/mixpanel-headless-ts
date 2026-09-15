@@ -133,7 +133,8 @@ function shiftDays(iso: string, days: number): string {
  * @returns The ISO date string.
  */
 function isoOf(year: number, month: number, day: number): string {
-  const p = (n: number, width: number): string => `${n}`.padStart(width, "0");
+  const p = (n: number, width: number): string =>
+    String(n).padStart(width, "0");
   return `${p(year, 4)}-${p(month, 2)}-${p(day, 2)}`;
 }
 

@@ -43,7 +43,7 @@ async function runWithSpy(
   const status = options.status ?? 200;
   const urls: string[] = [];
   const recordingFetch: typeof fetch = (input) => {
-    urls.push(String(input));
+    urls.push(input instanceof Request ? input.url : String(input));
     return Promise.resolve(
       new Response(status === 200 ? '{"user_id": 1}' : "nope", { status }),
     );

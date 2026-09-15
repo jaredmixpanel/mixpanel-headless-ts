@@ -141,8 +141,8 @@ function matchesActionRe(action: string): boolean {
 function defaultToday(): string {
   const now = new Date();
   return (
-    `${zfill(`${now.getFullYear()}`, 4)}-` +
-    `${zfill(`${now.getMonth() + 1}`, 2)}-${zfill(`${now.getDate()}`, 2)}`
+    `${zfill(String(now.getFullYear()), 4)}-` +
+    `${zfill(String(now.getMonth() + 1), 2)}-${zfill(String(now.getDate()), 2)}`
   );
 }
 

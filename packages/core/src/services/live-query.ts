@@ -25,7 +25,7 @@
 
 import type { MixpanelClient } from "../client/client.js";
 import { type JsonValue, toNativeJson } from "../client/json-value.js";
-import { pythonRepr } from "../compat/python-str.js";
+import { isPythonValue, pythonRepr } from "../compat/python-str.js";
 import { normalizeOnExpression } from "../query/expressions.js";
 import { ValueError } from "../query/python-builtins.js";
 import type { CountType, HourDayUnit, TimeUnit } from "../types/literals.js";
@@ -295,16 +295,10 @@ export const MAX_SEGMENTATION_LIMIT = 50_000;
  * @returns The repr text for the error message.
  */
 function reprLimit(value: unknown): string {
-  if (
-    value === null ||
-    typeof value === "number" ||
-    typeof value === "string" ||
-    typeof value === "boolean" ||
-    typeof value === "bigint"
-  ) {
+  if (isPythonValue(value)) {
     return pythonRepr(value);
   }
-  return String(value);
+  return `<${typeof value}>`;
 }
 
 /**

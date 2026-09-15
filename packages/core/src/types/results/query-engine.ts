@@ -11,7 +11,11 @@
  * `nodes_df`/`edges_df`/`trees_df`).
  */
 
-import { pythonFloatCoerce, pythonInt } from "../../compat/index.js";
+import {
+  pythonFloatCoerce,
+  pythonInt,
+  pythonStrOf,
+} from "../../compat/index.js";
 import { MixpanelHeadlessError } from "../../errors.js";
 import type {
   FlowAnchorType,
@@ -1388,7 +1392,7 @@ export class FlowQueryResult {
     const edges: FlowGraphEdge[] = [];
     this.steps.forEach((step, step_idx) => {
       for (const node of FlowQueryResult.#stepNodes(step)) {
-        const nodeId = `${String(node["event"] ?? "")}@${String(step_idx)}`;
+        const nodeId = `${pythonStrOf(node["event"] ?? "")}@${String(step_idx)}`;
         nodes.push({
           id: nodeId,
           step: step_idx,
@@ -1404,7 +1408,7 @@ export class FlowQueryResult {
           );
           edges.push({
             source: nodeId,
-            target: `${String(edge["event"] ?? "")}@${String(targetStep)}`,
+            target: `${pythonStrOf(edge["event"] ?? "")}@${String(targetStep)}`,
             count: safeInt(edge["totalCount"] ?? "0"),
             type: edge["type"] ?? "",
           });

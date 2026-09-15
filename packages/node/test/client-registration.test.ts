@@ -55,7 +55,7 @@ function mockTransport(respond: () => Response): {
     init?: RequestInit,
   ): Promise<Response> => {
     captured.push({
-      url: String(input),
+      url: input instanceof Request ? input.url : String(input),
       method: init?.method ?? "GET",
       body: typeof init?.body === "string" ? init.body : "",
     });

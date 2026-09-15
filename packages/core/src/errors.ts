@@ -23,6 +23,8 @@
  * (phase2-design C3/C8).
  */
 
+import { pythonStrOf } from "./compat/python-str.js";
+
 export {
   CODED_GUARD_REGISTRY,
   CODED_GUARD_TWIN_CODES,
@@ -531,7 +533,7 @@ export class InvalidArgumentError extends ConfigError {
   /** The auth type the orchestrator resolved, or `null` if pre-detection. */
   get detectedAuthType(): string | null {
     const value = this._details["detected_auth_type"];
-    return value !== null && value !== undefined ? String(value) : null;
+    return value !== null && value !== undefined ? pythonStrOf(value) : null;
   }
 }
 
@@ -1259,8 +1261,9 @@ export class ValidationError {
     const prefix = this.severity === "warning" ? "WARNING" : "ERROR";
     let s = `[${prefix}] ${this.path}: ${this.message}`;
     // Python truthiness: `if self.suggestion` is false for None AND ().
-    if (this.suggestion !== null && this.suggestion.length > 0) {
-      s += ` Did you mean '${this.suggestion[0]}'?`;
+    const first = this.suggestion?.[0];
+    if (first !== undefined) {
+      s += ` Did you mean '${first}'?`;
     }
     return s;
   }

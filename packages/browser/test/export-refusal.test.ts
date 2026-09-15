@@ -212,7 +212,7 @@ describe("AIE-926 — the export guard evaluates the EFFECTIVE endpoint table", 
     const ws = makeOverrideWorkspace(transport, { apiBaseUrl: PROXY });
     const exportBase = ws.client.core.endpoints().get("export");
     expect(exportBase).toBe(`${PROXY}/api/2.0`);
-    await ws.client.request("GET", `${exportBase}/export`);
+    await ws.client.request("GET", `${exportBase!}/export`);
     expect(transport.captures).toHaveLength(1);
     expect(pathOf(transport.captures[0]!.url)).toBe(`${PROXY}/api/2.0/export`);
   });

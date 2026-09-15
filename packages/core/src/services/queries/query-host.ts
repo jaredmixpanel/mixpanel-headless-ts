@@ -768,7 +768,7 @@ export function createQueryHostMethods(
       ) {
         throw error;
       }
-      const allowedDays = Number(pythonInt(match[1] as string));
+      const allowedDays = pythonInt(match[1] as string);
       const retryFrom = addDays(today, -allowedDays);
       if (retryFrom === null) {
         // Python would raise OverflowError from the date subtraction —

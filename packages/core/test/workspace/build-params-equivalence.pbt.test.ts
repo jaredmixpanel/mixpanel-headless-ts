@@ -56,7 +56,7 @@ const dateStrs: fc.Arbitrary<string> = fc
   )
   .map(
     ([decade, year, month, day]) =>
-      `20${decade}${String(year)}-${`${month}`.padStart(2, "0")}-${`${day}`.padStart(2, "0")}`,
+      `20${decade}${String(year)}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
   );
 
 /** `time_units`. */

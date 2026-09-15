@@ -872,19 +872,6 @@ const config = defineConfig([
   // configuration lives above, so landing a lane is "delete the block".
   // -------------------------------------------------------------------------
 
-  // --- Phase 4 lane L1: stringification — pending; delete this block when the lane lands ---
-  ...lane("L1", {
-    rules: {
-      "@typescript-eslint/no-base-to-string": "off",
-      "@typescript-eslint/restrict-template-expressions": "off",
-      "@typescript-eslint/restrict-plus-operands": "off",
-      "@typescript-eslint/no-unnecessary-type-conversion": "off",
-      "@typescript-eslint/no-unnecessary-template-expression": "off",
-      "unicorn/no-useless-template-literals": "off",
-      "unicorn/no-incorrect-template-string-interpolation": "off",
-    },
-  }),
-
   // --- Phase 4 lane L2: unnecessary conditions / types — pending; delete this block when the lane lands ---
   ...lane("L2", {
     // no-unnecessary-type-assertion's fixer leaves the cast's type import

@@ -69,6 +69,8 @@ const DEFAULT_ROUTE_VERBS_PATH = resolve(
   "route-verbs.json",
 );
 const OUTPUT_PATH = resolve(RUNNER_DIR, "bridge-allowlist.gen.json");
+/** Route-template placeholder for the workspace segment. */
+const WORKSPACE_PLACEHOLDER = "{workspace_id}";
 
 /** Parse `--flag=value` arguments; bare `--stdout` is a boolean. */
 function parseArgs(argv) {
@@ -685,9 +687,9 @@ for (const [tsMethod, verb] of Object.entries(verbs)) {
 // pin-less, because then the lease would have nothing to hold it to and a
 // page could reach another project's workspace.
 for (const row of rows) {
-  if (row.template.includes("{workspace_id}") && row.pin === "none") {
+  if (row.template.includes(WORKSPACE_PLACEHOLDER) && row.pin === "none") {
     problems.push(
-      `matchable route ${row.method} ${row.family} ${row.template} carries {workspace_id} but is pin-less — it must pin to its project, or to the workspace when there is no project evidence`,
+      `matchable route ${row.method} ${row.family} ${row.template} carries ${WORKSPACE_PLACEHOLDER} but is pin-less — it must pin to its project, or to the workspace when there is no project evidence`,
     );
   }
 }

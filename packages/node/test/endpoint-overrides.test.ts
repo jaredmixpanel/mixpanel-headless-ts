@@ -176,7 +176,7 @@ describe("createNodeWorkspace inherits the override (env_workspace twin)", () =>
     process.env["MP_API_BASE_URL"] = `${BASE}/`;
     const urls: string[] = [];
     const recordingFetch: typeof fetch = (input) => {
-      const url = new URL(String(input));
+      const url = new URL(input instanceof Request ? input.url : input);
       urls.push(`${url.origin}${url.pathname}`);
       return Promise.resolve(
         new Response('["Login"]', {

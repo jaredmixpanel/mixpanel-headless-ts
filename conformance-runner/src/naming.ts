@@ -74,7 +74,9 @@ export function snakeToCamel(name: string): string {
   const [head, ...rest] = segments;
   return (
     (head as string) +
-    rest.map((segment) => segment[0]?.toUpperCase() + segment.slice(1)).join("")
+    rest
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join("")
   );
 }
 

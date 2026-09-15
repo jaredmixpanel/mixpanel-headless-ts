@@ -67,7 +67,7 @@ function encodeStringAscii(text: string): string {
     if (short !== undefined) {
       out += short;
     } else if (unit >= 0x20 && unit <= 0x7e) {
-      out += text[i];
+      out += text.charAt(i);
     } else {
       out += String.raw`\u${unit.toString(16).padStart(4, "0")}`;
     }

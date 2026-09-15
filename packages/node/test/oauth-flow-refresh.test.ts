@@ -105,7 +105,7 @@ function mockTransport(respond: () => Response): {
         ([name]) => name.toLowerCase() === "content-type",
       )?.[1] ?? null;
     captured.push({
-      url: String(input),
+      url: input instanceof Request ? input.url : String(input),
       method: init?.method ?? "GET",
       body: typeof init?.body === "string" ? init.body : "",
       contentType,
@@ -158,7 +158,7 @@ describe("TestOAuthFlowRefresh (test_auth_flow.py:490)", () => {
     expect(body).toBe(
       "grant_type=refresh_token&refresh_token=old-refresh&client_id=cid",
     );
-    expect(captured[0]?.url).toBe(`${OAUTH_BASE_URLS["us"]}token/`);
+    expect(captured[0]?.url).toBe(`${OAUTH_BASE_URLS["us"]!}token/`);
     expect(captured[0]?.contentType).toBe("application/x-www-form-urlencoded");
     expect(newTokens.access_token.reveal()).toBe("access-tok-123");
   });

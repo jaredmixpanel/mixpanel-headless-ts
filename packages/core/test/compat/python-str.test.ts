@@ -5,8 +5,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isPythonValue,
   pythonRepr,
   pythonStr,
+  pythonStrOf,
   type PythonValue,
 } from "../../src/compat/python-str.js";
 
@@ -141,5 +143,52 @@ describe("pythonRepr — CPython string repr rules", () => {
     expect(() => pythonRepr(undefined as unknown as PythonValue)).toThrow(
       TypeError,
     );
+  });
+});
+
+describe("isPythonValue / pythonStrOf — the `unknown`-typed str() twin", () => {
+  it("accepts exactly the PythonValue domain", () => {
+    expect(isPythonValue("s")).toBe(true);
+    expect(isPythonValue(1.5)).toBe(true);
+    expect(isPythonValue(10n)).toBe(true);
+    expect(isPythonValue(false)).toBe(true);
+    expect(isPythonValue(null)).toBe(true);
+    expect(isPythonValue({ a: [1, null, { b: "c" }] })).toBe(true);
+    expect(isPythonValue(Object.create(null))).toBe(true);
+    expect(isPythonValue(undefined)).toBe(false);
+    expect(isPythonValue(new Map())).toBe(false);
+    expect(isPythonValue(new Date(0))).toBe(false);
+    expect(isPythonValue(() => 1)).toBe(false);
+    expect(isPythonValue(Symbol("s"))).toBe(false);
+    expect(isPythonValue([1, undefined])).toBe(false);
+    expect(isPythonValue({ a: new Map() })).toBe(false);
+  });
+
+  it("survives self-referential containers", () => {
+    const list: unknown[] = [];
+    list.push(list);
+    expect(isPythonValue(list)).toBe(true);
+    expect(pythonStrOf(list)).toBe("[[...]]");
+  });
+
+  it("renders in-domain values exactly like pythonStr", () => {
+    expect(pythonStrOf("it's")).toBe("it's");
+    expect(pythonStrOf(true)).toBe("True");
+    expect(pythonStrOf(null)).toBe("None");
+    expect(pythonStrOf(42)).toBe("42");
+    expect(pythonStrOf(1e21)).toBe(pythonStr(1e21));
+    expect(pythonStrOf({ x: 1 })).toBe("{'x': 1}");
+    expect(pythonStrOf([true, "a"])).toBe("[True, 'a']");
+  });
+
+  it("renders out-of-domain values as a <TypeName> placeholder, never [object Object]", () => {
+    expect(pythonStrOf(undefined)).toBe("<undefined>");
+    expect(pythonStrOf(new Map())).toBe("<Map>");
+    expect(pythonStrOf(new Date(0))).toBe("<Date>");
+    expect(pythonStrOf(() => 1)).toBe("<function>");
+    expect(pythonStrOf(Symbol("s"))).toBe("<symbol>");
+    class Widget {}
+    expect(pythonStrOf(new Widget())).toBe("<Widget>");
+    expect(pythonStrOf({ nested: new Map() })).toBe("<Object>");
   });
 });

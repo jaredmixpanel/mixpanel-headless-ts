@@ -133,6 +133,22 @@ describe("OAuthTokens.fromTokenResponse", () => {
     expect(tokens.isExpired()).toBe(true);
   });
 
+  it("renders non-string members as Python str() would (Phase 8.6)", () => {
+    // `token.py:145-148` does `str(data[...])`; a JSON object lands as
+    // `{'x': 1}` on both sides, never as `[object Object]`.
+    const tokens = OAuthTokens.fromTokenResponse({
+      access_token: 12345,
+      refresh_token: true,
+      expires_in: 3600,
+      scope: { x: 1 },
+      token_type: null,
+    });
+    expect(tokens.access_token.reveal()).toBe("12345");
+    expect(tokens.refresh_token?.reveal()).toBe("True");
+    expect(tokens.scope).toBe("{'x': 1}");
+    expect(tokens.token_type).toBe("None");
+  });
+
   it("rejects missing required keys and non-integer expires_in", () => {
     expect(() =>
       OAuthTokens.fromTokenResponse({ expires_in: 1, token_type: "B" }),

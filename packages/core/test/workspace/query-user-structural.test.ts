@@ -91,7 +91,7 @@ describe("TestParallelPageOrderingPreserved", () => {
     // Profiles are in page order: user_000..user_099 (page 0),
     // user_100..user_199 (page 1), etc.
     result.profiles.forEach((profile, i) => {
-      expect(profile["distinct_id"]).toBe(`user_${`${i}`.padStart(3, "0")}`);
+      expect(profile["distinct_id"]).toBe(`user_${String(i).padStart(3, "0")}`);
     });
     expect(callOrder).toHaveLength(numPages);
   });

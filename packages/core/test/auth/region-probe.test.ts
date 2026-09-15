@@ -418,7 +418,7 @@ describe("TestRegionProbeFactoryURLStripping", () => {
     // request must hit the stripped host root + /api/app/me.
     const seenUrls: string[] = [];
     const recordingFetch: typeof fetch = (input) => {
-      seenUrls.push(String(input));
+      seenUrls.push(input instanceof Request ? input.url : String(input));
       return Promise.resolve(new Response('{"user_id": 1}', { status: 200 }));
     };
     const region = await probeRegionForCredential({

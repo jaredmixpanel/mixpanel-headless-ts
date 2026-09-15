@@ -61,7 +61,7 @@ describe("TestSecretLeakage (test_042_edge_cases.py:615)", () => {
       headers: new Map<string, string>(),
     };
     expect(JSON.stringify(session)).not.toContain(SENTINEL);
-    expect(String(session.account)).not.toContain(SENTINEL);
+    expect(JSON.stringify(session.account)).not.toContain(SENTINEL);
   });
 
   it("an OAuthBrowserAccount with no tokens fails fast on header resolution", async () => {

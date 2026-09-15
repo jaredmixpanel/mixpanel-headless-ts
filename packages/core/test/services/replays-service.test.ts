@@ -443,7 +443,7 @@ describe("credential redaction on transport errors (TestFetchFilesCredentialReda
       // normalizes it to MixpanelHttpError); the message embeds the
       // credentialed URL exactly as httpx's does.
       fetchImpl: (async (input: string | URL | Request): Promise<Response> => {
-        const url = typeof input === "string" ? input : String(input);
+        const url = input instanceof Request ? input.url : String(input);
         throw new TypeError(`connection failed for ${url}`);
       }) as typeof fetch,
     });

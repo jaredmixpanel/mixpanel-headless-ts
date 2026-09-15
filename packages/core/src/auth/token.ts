@@ -15,6 +15,7 @@
  */
 
 import { coerceInt } from "../coerce.js";
+import { pythonStrOf } from "../compat/python-str.js";
 import { ParamValidationError, ResponseValidationError } from "../errors.js";
 import { Secret } from "../secret.js";
 import { type ParseAccountOptions, requireRecord } from "./account.js";
@@ -251,17 +252,19 @@ export class OAuthTokens {
     });
     const now = options.now ?? Date.now;
     const expiresAt = pythonUtcIsoformat(now() + expiresIn * 1000);
+    // `str(...)` parity (`token.py:145-148`): a non-string member renders
+    // as Python would (`{'x': 1}`), never as `[object Object]`.
     const rawRefresh = data["refresh_token"];
     const refreshToken =
       rawRefresh === undefined || rawRefresh === null
         ? null
-        : new Secret(String(rawRefresh));
+        : new Secret(pythonStrOf(rawRefresh));
     return new OAuthTokens({
-      access_token: new Secret(String(data["access_token"])),
+      access_token: new Secret(pythonStrOf(data["access_token"])),
       refresh_token: refreshToken,
       expires_at: expiresAt,
-      scope: String(data["scope"] ?? ""),
-      token_type: String(data["token_type"]),
+      scope: pythonStrOf(data["scope"] ?? ""),
+      token_type: pythonStrOf(data["token_type"]),
     });
   }
 }

@@ -40,7 +40,11 @@
 
 import { cpLength, cpSlice } from "../compat/codepoint.js";
 import { pythonIntCoerce } from "../compat/python-int.js";
-import { pythonStr, type PythonValue } from "../compat/python-str.js";
+import {
+  pythonStr,
+  pythonStrOf,
+  type PythonValue,
+} from "../compat/python-str.js";
 import { pythonStrip } from "../compat/python-strip.js";
 import { ValueError } from "../query/python-builtins.js";
 import { isPythonDict } from "../query/validation-shared.js";
@@ -608,25 +612,25 @@ export class DOMTracker {
     const alt = attrs.get("alt");
     const placeholder = attrs.get("placeholder");
     if (ariaLabel !== undefined && ariaLabel !== null) {
-      parts.push(`"${String(ariaLabel)}"`);
+      parts.push(`"${pythonStrOf(ariaLabel)}"`);
       hasMeaningfulInfo = true;
     } else if (title !== undefined && title !== null) {
-      parts.push(`"${String(title)}"`);
+      parts.push(`"${pythonStrOf(title)}"`);
       hasMeaningfulInfo = true;
     } else if (alt !== undefined && alt !== null) {
-      parts.push(`alt="${String(alt)}"`);
+      parts.push(`alt="${pythonStrOf(alt)}"`);
       hasMeaningfulInfo = true;
     } else if (pyTruthyValue(text)) {
-      parts.push(`"${String(text)}"`);
+      parts.push(`"${pythonStrOf(text)}"`);
       hasMeaningfulInfo = true;
     } else if (placeholder !== undefined && placeholder !== null) {
-      parts.push(`placeholder="${String(placeholder)}"`);
+      parts.push(`placeholder="${pythonStrOf(placeholder)}"`);
       hasMeaningfulInfo = true;
     }
 
     const href = attrs.get("href");
     if (href !== undefined && href !== null && tag === "a") {
-      const hrefStr = String(href);
+      const hrefStr = pythonStrOf(href);
       if (hrefStr.startsWith("http")) {
         const path = urlParsePath(hrefStr);
         if (path !== "" && path !== "/") {
@@ -638,13 +642,13 @@ export class DOMTracker {
 
     const id = attrs.get("id");
     if (id !== undefined && id !== null && !hasMeaningfulInfo) {
-      parts.push(`#${String(id)}`);
+      parts.push(`#${pythonStrOf(id)}`);
       hasMeaningfulInfo = true;
     }
 
     const type_ = attrs.get("type");
     if (tag === "input" && type_ !== undefined && type_ !== null) {
-      parts.push(`type=${String(type_)}`);
+      parts.push(`type=${pythonStrOf(type_)}`);
       hasMeaningfulInfo = true;
     }
 
@@ -1100,7 +1104,7 @@ export class EventAnalyzer {
       const state = pyTruthyValue(isChecked) ? "checked" : "unchecked";
       description = `Set ${nodeDesc} to ${state}`;
     } else if (pyTruthyValue(text)) {
-      description = `Entered '${String(text)}' in ${nodeDesc}`;
+      description = `Entered '${pythonStrOf(text)}' in ${nodeDesc}`;
     } else {
       description = `Modified ${nodeDesc}`;
     }
