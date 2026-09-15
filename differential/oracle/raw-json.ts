@@ -1,17 +1,17 @@
 /**
- * Order-preserving lossless JSON for the oracle bridge (design D14).
+ * Order-preserving lossless JSON for the oracle bridge.
  *
  * The oracle cannot parse request lines with the runner's `parseLossless`
  * alone: that parser stores objects as plain JS objects, and ECMAScript
  * reorders integer-like keys (`{"1": .., "0": ..}` iterates `"0"` first),
  * while Python `str(dict)` — the contract behind `compat.python_str` —
- * renders keys in INSERTION order. A bridge that silently reorders keys
+ * renders keys in insertion order. A bridge that silently reorders keys
  * would report false divergences the library never produced.
  *
  * Two parsers exist on purpose: core's `parseLossless`
- * (`client/lossless-json.ts`) is the LIBRARY's response-body parser and
+ * (`client/lossless-json.ts`) is the library's response-body parser and
  * yields the runner's plain-object `JsonValue` model; this one is the
- * oracle's request-line parser and must additionally keep member ORDER,
+ * oracle's request-line parser and must additionally keep member order,
  * which plain JS objects cannot.
  *
  * This module therefore parses request lines into a {@link RawValue} tree
@@ -19,10 +19,10 @@
  * and every number as a verbatim {@link JsonNumber} token, plus:
  *
  * - {@link toJsonValue} — the bridge into the runner's `JsonValue` model
- *   (codec decoding, D6 canonicalization);
- * - {@link serializeAsciiJson} — the D14 ASCII-safe response writer
- *   (every non-ASCII code unit, lone surrogates included, escapes as
- *   `\uXXXX`, mirroring oracle-py's `ensure_ascii=True` framing).
+ *   (codec decoding, canonicalization);
+ * - {@link serializeAsciiJson} — the ASCII-safe response writer (every
+ *   non-ASCII code unit, lone surrogates included, escapes as `\uXXXX`,
+ *   mirroring oracle-py's `ensure_ascii=True` framing).
  */
 
 import {
@@ -53,8 +53,17 @@ class RawJsonError extends Error {
  * A JSON object captured as its ordered member list.
  *
  * Duplicate keys follow `JSON.parse` / Python `json.loads` semantics:
- * the LAST occurrence's value wins, at the FIRST occurrence's position
+ * the last occurrence's value wins, at the first occurrence's position
  * (both languages update in place when rebuilding the mapping).
+ *
+ * @example
+ * ```ts
+ * const request = parseRawJson('{"jsonrpc": "2.0", "id": 1, "method": "oracle.info"}');
+ * if (request instanceof RawObject) {
+ *   request.get("method"); // "oracle.info"
+ *   request.entries.map(([key]) => key); // ["jsonrpc", "id", "method"]
+ * }
+ * ```
  */
 export class RawObject {
   /** The ordered `(key, value)` members exactly as they appeared. */
@@ -388,7 +397,7 @@ export type SerializableValue =
  * Serialize a response value as single-line, ASCII-safe JSON.
  *
  * Every code unit at or above `U+007F` — including each half of an astral
- * surrogate pair AND lone surrogates — escapes as `\uXXXX`, byte-for-byte
+ * surrogate pair and lone surrogates — escapes as `\uXXXX`, byte-for-byte
  * matching Python's `json.dumps(..., ensure_ascii=True)` framing, so no
  * strategy-generated string can produce a non-ASCII (or raw-newline) byte
  * on the bridge's stdout. `JsonNumber` emits its verbatim token; `bigint`

@@ -39,13 +39,8 @@
       "project": ["src/**/*.ts", "test/**/*.ts"],
     },
     "differential": {
-      "entry": ["oracle/main.ts", "src/index.ts"],
-      "project": [
-        "src/**/*.ts",
-        "oracle/**/*.ts",
-        "referees/**/*.ts",
-        "test/**/*.ts",
-      ],
+      "entry": ["oracle/main.ts"],
+      "project": ["oracle/**/*.ts", "referees/**/*.ts", "test/**/*.ts"],
     },
   },
 }
