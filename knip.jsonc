@@ -21,8 +21,18 @@
   "ignoreExportsUsedInFile": { "interface": true, "type": true },
   "workspaces": {
     ".": {
-      "entry": ["scripts/**/*.mjs", "tests/**/*.test.ts"],
-      "project": ["scripts/**/*.mjs", "tests/**/*.ts"],
+      "entry": [
+        "scripts/**/*.mjs",
+        "tests/**/*.test.ts",
+        // The documentation site (CONTRIBUTING.md "Documentation").
+        "docs/.vitepress/config.mts",
+        "docs/.vitepress/theme/index.ts",
+      ],
+      "project": [
+        "scripts/**/*.mjs",
+        "tests/**/*.ts",
+        "docs/.vitepress/**/*.{ts,mts,vue}",
+      ],
     },
     "packages/core": {
       // `src/index.ts` and `src/internal.ts` are inferred from `exports`.

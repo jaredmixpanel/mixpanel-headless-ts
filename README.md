@@ -776,6 +776,18 @@ everything that is "just JavaScript" reads like JavaScript. `eslint.config.js`
 enforces it (`namingConvention`) and `tests/naming-config-bags.test.ts` locks
 which bags are which.
 
+## Documentation
+
+The full guide and the generated API reference live at
+<https://jaredmixpanel.github.io/mixpanel-headless-ts/> (built by
+`.github/workflows/docs.yml` on every push; it deploys once GitHub Pages is
+enabled on the repository). Every runnable example there is type-checked
+against the built packages when the site is built. To preview it locally:
+
+```bash
+npm run docs:dev
+```
+
 ## Requirements
 
 - **Node.js ≥ 22.12** to _use_ `@mixpanel-headless/node`; any evergreen browser
