@@ -443,7 +443,7 @@ describe("TestParseLexiconSchemaProperties", () => {
     expect(Object.getPrototypeOf(properties)).toBe(Object.prototype);
     expect(
       Object.entries(properties).map(([key, prop]) => [key, prop.type]),
-    ).toEqual([
+    ).toStrictEqual([
       ["__proto__", "number"],
       ["a", "string"],
     ]);

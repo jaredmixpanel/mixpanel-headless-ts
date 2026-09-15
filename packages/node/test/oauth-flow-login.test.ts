@@ -241,7 +241,7 @@ describe("browser launch argv (CLEANUP-PLAN 8.1)", () => {
   it("win32 launches via rundll32 ShellExecute, never cmd.exe, URL as one verbatim argv element", () => {
     const { command, args } = browserLaunchArgv("win32", url);
     expect(command).toBe("rundll32");
-    expect(args).toEqual(["url.dll,FileProtocolHandler", url]);
+    expect(args).toStrictEqual(["url.dll,FileProtocolHandler", url]);
     expect(command).not.toBe("cmd");
     expect(args).not.toContain("start");
     // The URL survives intact as exactly one element (cmd.exe would
@@ -254,7 +254,7 @@ describe("browser launch argv (CLEANUP-PLAN 8.1)", () => {
     ["darwin", "open"],
     ["linux", "xdg-open"],
   ] as const)("%s uses `%s <url>`", (platform, command) => {
-    expect(browserLaunchArgv(platform, url)).toEqual({
+    expect(browserLaunchArgv(platform, url)).toStrictEqual({
       command,
       args: [url],
     });

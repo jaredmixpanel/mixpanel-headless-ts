@@ -329,7 +329,7 @@ describe("TestCallbackHtmlSecurity (test_auth_callback.py:281)", () => {
     const error = await settled;
     expect(error).toBeInstanceOf(OAuthError);
     const details = (error as OAuthError).details;
-    expect(details).toEqual({ received_state: "wrong-state" });
+    expect(details).toStrictEqual({ received_state: "wrong-state" });
     expect(details).not.toHaveProperty("expected_state");
     // The serialised form hosts log must not carry the nonce either.
     expect(JSON.stringify((error as OAuthError).toDict())).not.toContain(state);
