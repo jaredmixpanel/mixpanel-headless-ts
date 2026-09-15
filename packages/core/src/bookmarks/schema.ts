@@ -71,17 +71,19 @@ import {
 // =============================================================================
 // Non-sorting literal aliases (bookmark_schema.py:695-835)
 //
-// Exported as value tuples because `TestEnumParity` compares them
-// member-for-member against the `bookmark_enums` frozensets — the
-// Python test reads `typing.get_args(alias)`, which has no TS analogue
-// for a bare `type` alias.
+// Value tuples rather than bare `type` aliases: the model specs below
+// consume them through `lit()`, and the `TestEnumParity` port
+// (`test/bookmarks/schema.test.ts`) compares six of them
+// member-for-member against the `bookmark_enums` sets — the Python test
+// reads `typing.get_args(alias)`, which has no TS analogue for a type.
+// Those six are exported; the rest are module-private.
 // =============================================================================
 
 /** Mirrors show.py `FiltersDeterminer` (`bookmark_schema.py:695`). */
 export const FILTERS_DETERMINER_LITERAL_VALUES = ["all", "any"] as const;
 
 /** Mirrors show.py `ConversionWindowUnit` (`:698-700`). */
-export const CONVERSION_WINDOW_UNIT_LITERAL_VALUES = [
+const CONVERSION_WINDOW_UNIT_LITERAL_VALUES = [
   "second",
   "minute",
   "hour",
@@ -92,7 +94,7 @@ export const CONVERSION_WINDOW_UNIT_LITERAL_VALUES = [
 ] as const;
 
 /** Mirrors show.py `FunnelReentryModeType` (`:703`). */
-export const FUNNEL_REENTRY_MODE_LITERAL_VALUES = [
+const FUNNEL_REENTRY_MODE_LITERAL_VALUES = [
   "default",
   "basic",
   "aggressive",
@@ -100,23 +102,20 @@ export const FUNNEL_REENTRY_MODE_LITERAL_VALUES = [
 ] as const;
 
 /** Mirrors show.py `FunnelOrder` (`:706`). */
-export const FUNNEL_ORDER_LITERAL_VALUES = ["loose", "any"] as const;
+const FUNNEL_ORDER_LITERAL_VALUES = ["loose", "any"] as const;
 
 /** Mirrors show.py `RetentionType` (`:709`). */
-export const RETENTION_TYPE_LITERAL_VALUES = [
+const RETENTION_TYPE_LITERAL_VALUES = [
   "compounded",
   "birth",
   "addiction",
 ] as const;
 
 /** Mirrors show.py `RetentionAlignmentType` (`:712`). */
-export const RETENTION_ALIGNMENT_LITERAL_VALUES = [
-  "birth",
-  "interval_start",
-] as const;
+const RETENTION_ALIGNMENT_LITERAL_VALUES = ["birth", "interval_start"] as const;
 
 /** Mirrors show.py `RetentionUnboundedModeType` (`:715-717`). */
-export const RETENTION_UNBOUNDED_MODE_LITERAL_VALUES = [
+const RETENTION_UNBOUNDED_MODE_LITERAL_VALUES = [
   "none",
   "carry_back",
   "carry_forward",
@@ -124,10 +123,10 @@ export const RETENTION_UNBOUNDED_MODE_LITERAL_VALUES = [
 ] as const;
 
 /** Mirrors show.py `COUNT_USERS_ONCE_TYPE` (`:720`). */
-export const SEGMENT_METHOD_LITERAL_VALUES = ["all", "first", "last"] as const;
+const SEGMENT_METHOD_LITERAL_VALUES = ["all", "first", "last"] as const;
 
 /** Mirrors show.py `MultiAttributionType` (`:723-734`). */
-export const MULTI_ATTRIBUTION_TYPE_LITERAL_VALUES = [
+const MULTI_ATTRIBUTION_TYPE_LITERAL_VALUES = [
   "first_touch",
   "last_touch",
   "linear",
@@ -141,10 +140,10 @@ export const MULTI_ATTRIBUTION_TYPE_LITERAL_VALUES = [
 ] as const;
 
 /** Mirrors show.py `START_END_TYPE` (`:737`). */
-export const START_END_LITERAL_VALUES = ["start", "end"] as const;
+const START_END_LITERAL_VALUES = ["start", "end"] as const;
 
 /** Mirrors show.py `FiltersOperator` (`:740`). */
-export const FILTERS_OPERATOR_LITERAL_VALUES = [
+const FILTERS_OPERATOR_LITERAL_VALUES = [
   "and",
   "or",
   "or_all",
@@ -153,7 +152,7 @@ export const FILTERS_OPERATOR_LITERAL_VALUES = [
 ] as const;
 
 /** Mirrors show.py `AxisAssignment` (`:743`). */
-export const AXIS_ASSIGNMENT_LITERAL_VALUES = ["primary", "secondary"] as const;
+const AXIS_ASSIGNMENT_LITERAL_VALUES = ["primary", "secondary"] as const;
 
 /** Mirrors common/definitions.py `MetricType` (`:746-761`). */
 export const METRIC_TYPE_LITERAL_VALUES = [
@@ -244,10 +243,10 @@ export const MATH_TYPE_LITERAL_VALUES = [
 ] as const;
 
 /** Mirrors display_options.py `ChartPlotStyle` (`:1268`). */
-export const CHART_PLOT_STYLE_LITERAL_VALUES = ["standard", "stacked"] as const;
+const CHART_PLOT_STYLE_LITERAL_VALUES = ["standard", "stacked"] as const;
 
 /** Mirrors display_options.py `AnalysisType` (`:1271`). */
-export const ANALYSIS_TYPE_LITERAL_VALUES = [
+const ANALYSIS_TYPE_LITERAL_VALUES = [
   "linear",
   "logarithmic",
   "rolling",
@@ -255,13 +254,10 @@ export const ANALYSIS_TYPE_LITERAL_VALUES = [
 ] as const;
 
 /** Mirrors display_options.py `ValueRepresentationType` (`:1274`). */
-export const VALUE_REPRESENTATION_LITERAL_VALUES = [
-  "absolute",
-  "relative",
-] as const;
+const VALUE_REPRESENTATION_LITERAL_VALUES = ["absolute", "relative"] as const;
 
 /** Mirrors display_options.py `TableSummaryAggregation` (`:1277`). */
-export const TABLE_SUMMARY_AGGREGATION_LITERAL_VALUES = [
+const TABLE_SUMMARY_AGGREGATION_LITERAL_VALUES = [
   "average",
   "sum",
   "min",

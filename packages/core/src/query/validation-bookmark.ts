@@ -64,19 +64,22 @@ import {
   validateInsightsBookmarkSortConfig,
   validateWithPydantic,
 } from "../bookmarks/schema-sorting.js";
-import { pythonStrip } from "../compat/index.js";
-import { ValidationError } from "../errors.js";
 import {
-  enumError,
+  dictGet,
   floatCarrierValue,
-  isFiniteNumber,
   isFloatCarrier,
   isPythonDict,
   isPythonFloat,
   isPythonInt,
-  MAX_FILTER_VALUES,
+  pythonStrip,
   pythonStrLoose,
   requireHashable,
+} from "../compat/index.js";
+import { ValidationError } from "../errors.js";
+import {
+  enumError,
+  isFiniteNumber,
+  MAX_FILTER_VALUES,
 } from "./validation-shared.js";
 
 // =============================================================================
@@ -110,18 +113,6 @@ function isDict(value: unknown): value is Dict {
  */
 function hasKey(obj: Dict, key: string): boolean {
   return Object.hasOwn(obj, key);
-}
-
-/**
- * TS analogue of `mapping.get(key)` — `undefined` (the local stand-in
- * for Python `None`) for absent keys, never a prototype member.
- *
- * @param obj - The dict.
- * @param key - The key to read.
- * @returns The own value, or `undefined`.
- */
-function dictGet(obj: Dict, key: string): unknown {
-  return Object.hasOwn(obj, key) ? obj[key] : undefined;
 }
 
 /**
@@ -221,6 +212,48 @@ function pythonIntValue(value: unknown): number {
   return value as number;
 }
 
+/** An optional enum-valued key: where it lives, what it accepts, what to emit. */
+interface EnumKeyRule {
+  /** JSONPath-like location of the key. */
+  readonly path: string;
+  /** Human-readable field name for the message. */
+  readonly label: string;
+  /** Accepted values. */
+  readonly valid: ReadonlySet<string>;
+  /** Machine-readable error code. */
+  readonly code: string;
+  /** Severity — `"error"` unless the rule is advisory. */
+  readonly severity?: "warning";
+}
+
+/**
+ * Python's `if value is not None and value not in VALID:` over an
+ * optional key — the shape a dozen Layer-2 rules share. The value is
+ * hashed first, exactly where Python's `not in` hashes it (a list or
+ * dict raises `TypeError` there, R10.7), then a present non-member
+ * yields the {@link enumError} entry.
+ *
+ * @param value - The key's value (`undefined` when absent).
+ * @param rule - Location, accepted set and error shape.
+ * @returns Zero or one error.
+ */
+function enumKeyErrors(value: unknown, rule: EnumKeyRule): ValidationError[] {
+  requireHashable(value);
+  if (!isNone(value) && !(typeof value === "string" && rule.valid.has(value))) {
+    return [
+      enumError(
+        rule.path,
+        rule.label,
+        pythonStrLoose(value),
+        rule.valid,
+        rule.code,
+        rule.severity,
+      ),
+    ];
+  }
+  return [];
+}
+
 // =============================================================================
 // Flow bookmark validation (FLB1-FLB6) — validation.py:1772-1877
 // =============================================================================
@@ -286,41 +319,22 @@ export function validateFlowBookmark(params: Dict): ValidationError[] {
     }
   }
 
-  // FLB3: count_type validation
-  const countType = dictGet(params, "count_type");
-  requireHashable(countType); // R10.7: Python hashes in `not in` (:1832)
-  if (
-    !isNone(countType) &&
-    !(typeof countType === "string" && VALID_FLOWS_COUNT_TYPES.has(countType))
-  ) {
-    errors.push(
-      enumError(
-        "count_type",
-        "count_type",
-        pythonStrLoose(countType),
-        VALID_FLOWS_COUNT_TYPES,
-        "FLB3_INVALID_COUNT_TYPE",
-      ),
-    );
-  }
-
-  // FLB4: chartType validation
-  const chartType = dictGet(params, "chartType");
-  requireHashable(chartType); // R10.7: Python hashes in `not in` (:1845)
-  if (
-    !isNone(chartType) &&
-    !(typeof chartType === "string" && VALID_FLOWS_CHART_TYPES.has(chartType))
-  ) {
-    errors.push(
-      enumError(
-        "chartType",
-        "chartType",
-        pythonStrLoose(chartType),
-        VALID_FLOWS_CHART_TYPES,
-        "FLB4_INVALID_CHART_TYPE",
-      ),
-    );
-  }
+  // FLB3 (:1832) / FLB4 (:1845): count_type and chartType — Python
+  // hashes in `not in`
+  errors.push(
+    ...enumKeyErrors(dictGet(params, "count_type"), {
+      path: "count_type",
+      label: "count_type",
+      valid: VALID_FLOWS_COUNT_TYPES,
+      code: "FLB3_INVALID_COUNT_TYPE",
+    }),
+    ...enumKeyErrors(dictGet(params, "chartType"), {
+      path: "chartType",
+      label: "chartType",
+      valid: VALID_FLOWS_CHART_TYPES,
+      code: "FLB4_INVALID_CHART_TYPE",
+    }),
+  );
 
   // FLB5: date_range must be present
   if (!hasKey(params, "date_range")) {
@@ -502,85 +516,81 @@ export function validateBookmark(
 // =============================================================================
 
 /**
- * Validate a single `sections.show[]` entry.
+ * B22 / B22b / B23: a cohort behavior identifies a saved or inline
+ * cohort and, if it names a resourceType, names `"cohorts"`.
  *
- * Port of `_validate_show_clause` (`validation.py:2423-2586`). Handles
- * both multi-metric (behavior+measurement) and formula show clauses.
- *
- * @param clause - The show clause (expected to be a dict).
- * @param index - Index in the show array.
- * @param bookmarkType - Context for math type validation.
- * @returns List of validation errors for this clause.
+ * @param behavior - The behavior dict.
+ * @param bpath - JSONPath-like location of the behavior.
+ * @returns List of validation errors.
  */
-function validateShowClause(
-  clause: unknown,
-  index: number,
-  bookmarkType: string,
+function validateCohortBehavior(
+  behavior: Dict,
+  bpath: string,
 ): ValidationError[] {
   const errors: ValidationError[] = [];
-  const path = `sections.show[${String(index)}]`;
 
-  if (!isDict(clause)) {
-    errors.push(
-      new ValidationError(
-        path,
-        "Show clause must be a dict",
-        "B6_MISSING_BEHAVIOR",
-      ),
-    );
-    return errors;
-  }
-
-  // Formula show clause — minimal validation (only for pure formula clauses)
-  const isFormula =
-    hasKey(clause, "formula") || dictGet(clause, "type") === "formula";
-  if (isFormula && !hasKey(clause, "behavior")) {
-    return errors;
-  }
-
-  // Multi-metric show clause: requires behavior
-  const behavior = dictGet(clause, "behavior");
-  if (isNone(behavior)) {
-    // B6: Missing behavior
-    errors.push(
-      new ValidationError(
-        path,
-        "Show clause missing 'behavior'",
-        "B6_MISSING_BEHAVIOR",
-      ),
-    );
-    return errors;
-  }
-
-  if (!isDict(behavior)) {
-    errors.push(
-      new ValidationError(
-        `${path}.behavior`,
-        "'behavior' must be a dict",
-        "B6_MISSING_BEHAVIOR",
-      ),
-    );
-    return errors;
-  }
-
-  // B7: Validate behavior.type
-  const btype = dictGet(behavior, "type");
-  requireHashable(btype); // R10.7: Python hashes in `not in` (:2483)
+  // B22: Cohort behavior requires positive int id (for saved cohorts)
+  const cohortId = dictGet(behavior, "id");
   if (
-    !isNone(btype) &&
-    !(typeof btype === "string" && VALID_METRIC_TYPES.has(btype))
+    !isNone(cohortId) &&
+    (!isPythonIntWithBools(cohortId) || pythonIntValue(cohortId) <= 0)
   ) {
     errors.push(
-      enumError(
-        `${path}.behavior.type`,
-        "behavior type",
-        pythonStrLoose(btype),
-        VALID_METRIC_TYPES,
-        "B7_INVALID_BEHAVIOR_TYPE",
-        "warning",
+      new ValidationError(
+        `${bpath}.id`,
+        "Cohort behavior id must be a positive integer",
+        "B22_COHORT_BEHAVIOR_ID",
       ),
     );
   }
+  // B22b: Cohort behavior must have either id or raw_cohort
+  if (isNone(cohortId) && isNone(dictGet(behavior, "raw_cohort"))) {
+    errors.push(
+      new ValidationError(
+        bpath,
+        "Cohort behavior must have either 'id' (saved cohort) " +
+          "or 'raw_cohort' (inline definition)",
+        "B22_COHORT_MISSING_IDENTIFIER",
+      ),
+    );
+  }
+  // B23: Cohort behavior resourceType must be "cohorts"
+  const cohortRt = dictGet(behavior, "resourceType");
+  if (!isNone(cohortRt) && cohortRt !== "cohorts") {
+    errors.push(
+      new ValidationError(
+        `${bpath}.resourceType`,
+        `Cohort behavior resourceType must be 'cohorts' ` +
+          `(got '${pythonStrLoose(cohortRt)}')`,
+        "B23_COHORT_RESOURCE_TYPE",
+      ),
+    );
+  }
+
+  return errors;
+}
+
+/**
+ * B7, B8 / B22-B23, B19 and the per-metric `behavior.filters[]`.
+ *
+ * @param behavior - The behavior dict.
+ * @param path - JSONPath-like location of the show clause.
+ * @returns List of validation errors.
+ */
+function validateBehavior(behavior: Dict, path: string): ValidationError[] {
+  const errors: ValidationError[] = [];
+
+  // B7: Validate behavior.type (Python hashes in `not in`, :2483)
+  const btype = dictGet(behavior, "type");
+  errors.push(
+    ...enumKeyErrors(btype, {
+      path: `${path}.behavior.type`,
+      label: "behavior type",
+      valid: VALID_METRIC_TYPES,
+      code: "B7_INVALID_BEHAVIOR_TYPE",
+      severity: "warning",
+    }),
+  );
 
   // B8: Event behaviors need a name
   if (btype === "event" || btype === "simple" || btype === "custom-event") {
@@ -601,64 +611,19 @@ function validateShowClause(
       );
     }
   } else if (btype === "cohort") {
-    // B22-B23: Cohort behavior validation
-    // B22: Cohort behavior requires positive int id (for saved cohorts)
-    const cohortId = dictGet(behavior, "id");
-    if (
-      !isNone(cohortId) &&
-      (!isPythonIntWithBools(cohortId) || pythonIntValue(cohortId) <= 0)
-    ) {
-      errors.push(
-        new ValidationError(
-          `${path}.behavior.id`,
-          "Cohort behavior id must be a positive integer",
-          "B22_COHORT_BEHAVIOR_ID",
-        ),
-      );
-    }
-    // B22b: Cohort behavior must have either id or raw_cohort
-    if (isNone(cohortId) && isNone(dictGet(behavior, "raw_cohort"))) {
-      errors.push(
-        new ValidationError(
-          `${path}.behavior`,
-          "Cohort behavior must have either 'id' (saved cohort) " +
-            "or 'raw_cohort' (inline definition)",
-          "B22_COHORT_MISSING_IDENTIFIER",
-        ),
-      );
-    }
-    // B23: Cohort behavior resourceType must be "cohorts"
-    const cohortRt = dictGet(behavior, "resourceType");
-    if (!isNone(cohortRt) && cohortRt !== "cohorts") {
-      errors.push(
-        new ValidationError(
-          `${path}.behavior.resourceType`,
-          `Cohort behavior resourceType must be 'cohorts' ` +
-            `(got '${pythonStrLoose(cohortRt)}')`,
-          "B23_COHORT_RESOURCE_TYPE",
-        ),
-      );
-    }
+    errors.push(...validateCohortBehavior(behavior, `${path}.behavior`));
   }
 
-  // B19: Validate filtersDeterminer
-  const fd = dictGet(behavior, "filtersDeterminer");
-  requireHashable(fd); // R10.7: Python hashes in `not in` (:2549)
-  if (
-    !isNone(fd) &&
-    !(typeof fd === "string" && VALID_FILTERS_DETERMINER.has(fd))
-  ) {
-    errors.push(
-      enumError(
-        `${path}.behavior.filtersDeterminer`,
-        "filtersDeterminer",
-        pythonStrLoose(fd),
-        VALID_FILTERS_DETERMINER,
-        "B19_INVALID_FILTERS_DETERMINER",
-        "warning",
-      ),
-    );
-  }
+  // B19: Validate filtersDeterminer (:2549)
+  errors.push(
+    ...enumKeyErrors(dictGet(behavior, "filtersDeterminer"), {
+      path: `${path}.behavior.filtersDeterminer`,
+      label: "filtersDeterminer",
+      valid: VALID_FILTERS_DETERMINER,
+      code: "B19_INVALID_FILTERS_DETERMINER",
+      severity: "warning",
+    }),
+  );
 
   // Validate per-metric behavior.filters[]
   const bfilters = dictGet(behavior, "filters");
@@ -670,13 +635,75 @@ function validateShowClause(
     }
   }
 
+  return errors;
+}
+
+/**
+ * Validate a single `sections.show[]` entry.
+ *
+ * Port of `_validate_show_clause` (`validation.py:2423-2586`). Handles
+ * both multi-metric (behavior+measurement) and formula show clauses.
+ *
+ * @param clause - The show clause (expected to be a dict).
+ * @param index - Index in the show array.
+ * @param bookmarkType - Context for math type validation.
+ * @returns List of validation errors for this clause.
+ */
+function validateShowClause(
+  clause: unknown,
+  index: number,
+  bookmarkType: string,
+): ValidationError[] {
+  const path = `sections.show[${String(index)}]`;
+
+  if (!isDict(clause)) {
+    return [
+      new ValidationError(
+        path,
+        "Show clause must be a dict",
+        "B6_MISSING_BEHAVIOR",
+      ),
+    ];
+  }
+
+  // Formula show clause — minimal validation (only for pure formula clauses)
+  const isFormula =
+    hasKey(clause, "formula") || dictGet(clause, "type") === "formula";
+  if (isFormula && !hasKey(clause, "behavior")) {
+    return [];
+  }
+
+  // Multi-metric show clause: requires behavior
+  const behavior = dictGet(clause, "behavior");
+  if (isNone(behavior)) {
+    // B6: Missing behavior
+    return [
+      new ValidationError(
+        path,
+        "Show clause missing 'behavior'",
+        "B6_MISSING_BEHAVIOR",
+      ),
+    ];
+  }
+  if (!isDict(behavior)) {
+    return [
+      new ValidationError(
+        `${path}.behavior`,
+        "'behavior' must be a dict",
+        "B6_MISSING_BEHAVIOR",
+      ),
+    ];
+  }
+
+  const errors = validateBehavior(behavior, path);
+
   // Validate measurement
   const measurement = dictGet(clause, "measurement");
   if (isDict(measurement)) {
     errors.push(...validateMeasurement(measurement, path, bookmarkType));
 
     // B24: Cohort behavior math must be "unique"
-    if (btype === "cohort") {
+    if (dictGet(behavior, "type") === "cohort") {
       const mMath = dictGet(measurement, "math");
       if (!isNone(mMath) && mMath !== "unique") {
         errors.push(
@@ -713,108 +740,78 @@ function validateMeasurement(
   const errors: ValidationError[] = [];
   const path = `${showPath}.measurement`;
 
-  // B9: Validate math type (context-dependent for funnel/retention)
+  // B9: Validate math type (context-dependent for funnel/retention;
+  // Python hashes in `not in`, :2618)
   const math = dictGet(measurement, "math");
-  requireHashable(math); // R10.7: Python hashes in `not in` (:2618)
-  if (!isNone(math)) {
-    let validMath: ReadonlySet<string>;
-    if (bookmarkType === "funnels") {
-      validMath = VALID_MATH_FUNNELS;
-    } else if (bookmarkType === "retention") {
-      validMath = VALID_MATH_RETENTION;
-    } else {
-      validMath = VALID_MATH_INSIGHTS;
-    }
-    if (!(typeof math === "string" && validMath.has(math))) {
-      errors.push(
-        enumError(
-          `${path}.math`,
-          "math",
-          pythonStrLoose(math),
-          validMath,
-          "B9_INVALID_MATH",
-        ),
-      );
-    }
-
-    // B10: Math requiring property
-    if (
-      typeof math === "string" &&
-      MATH_REQUIRING_PROPERTY.has(math) &&
-      isNone(dictGet(measurement, "property"))
-    ) {
-      errors.push(
-        new ValidationError(
-          `${path}.property`,
-          `Math type '${math}' requires 'measurement.property'`,
-          "B10_MATH_MISSING_PROPERTY",
-          "warning",
-          null,
-          {
-            name: "<PROPERTY_NAME>",
-            type: "number",
-            resourceType: "events",
-          },
-        ),
-      );
-    }
+  let validMath: ReadonlySet<string>;
+  if (bookmarkType === "funnels") {
+    validMath = VALID_MATH_FUNNELS;
+  } else if (bookmarkType === "retention") {
+    validMath = VALID_MATH_RETENTION;
+  } else {
+    validMath = VALID_MATH_INSIGHTS;
   }
+  errors.push(
+    ...enumKeyErrors(math, {
+      path: `${path}.math`,
+      label: "math",
+      valid: validMath,
+      code: "B9_INVALID_MATH",
+    }),
+  );
 
-  // B11: Validate perUserAggregation
-  const perUser = dictGet(measurement, "perUserAggregation");
-  requireHashable(perUser); // R10.7: Python hashes in `not in` (:2647)
+  // B10: Math requiring property
   if (
-    !isNone(perUser) &&
-    !(typeof perUser === "string" && VALID_PER_USER_AGGREGATIONS.has(perUser))
+    typeof math === "string" &&
+    MATH_REQUIRING_PROPERTY.has(math) &&
+    isNone(dictGet(measurement, "property"))
   ) {
     errors.push(
-      enumError(
-        `${path}.perUserAggregation`,
-        "perUserAggregation",
-        pythonStrLoose(perUser),
-        VALID_PER_USER_AGGREGATIONS,
-        "B11_INVALID_PER_USER",
+      new ValidationError(
+        `${path}.property`,
+        `Math type '${math}' requires 'measurement.property'`,
+        "B10_MATH_MISSING_PROPERTY",
+        "warning",
+        null,
+        {
+          name: "<PROPERTY_NAME>",
+          type: "number",
+          resourceType: "events",
+        },
       ),
     );
   }
 
+  // B11: Validate perUserAggregation (:2647)
+  errors.push(
+    ...enumKeyErrors(dictGet(measurement, "perUserAggregation"), {
+      path: `${path}.perUserAggregation`,
+      label: "perUserAggregation",
+      valid: VALID_PER_USER_AGGREGATIONS,
+      code: "B11_INVALID_PER_USER",
+    }),
+  );
+
   // Validate measurement.property if present
   const prop = dictGet(measurement, "property");
   if (isDict(prop)) {
-    const propType = dictGet(prop, "type");
-    requireHashable(propType); // R10.7: Python hashes in `not in` (:2662)
-    if (
-      !isNone(propType) &&
-      !(typeof propType === "string" && VALID_PROPERTY_TYPES.has(propType))
-    ) {
-      errors.push(
-        enumError(
-          `${path}.property.type`,
-          "property type",
-          pythonStrLoose(propType),
-          VALID_PROPERTY_TYPES,
-          "B17_INVALID_PROPERTY_TYPE",
-          "warning",
-        ),
-      );
-    }
-    const propRt = dictGet(prop, "resourceType");
-    requireHashable(propRt); // R10.7: Python hashes in `not in` (:2674)
-    if (
-      !isNone(propRt) &&
-      !(typeof propRt === "string" && VALID_RESOURCE_TYPES.has(propRt))
-    ) {
-      errors.push(
-        enumError(
-          `${path}.property.resourceType`,
-          "resourceType",
-          pythonStrLoose(propRt),
-          VALID_RESOURCE_TYPES,
-          "B16_INVALID_RESOURCE_TYPE",
-          "warning",
-        ),
-      );
-    }
+    // B17 (:2662) / B16 (:2674)
+    errors.push(
+      ...enumKeyErrors(dictGet(prop, "type"), {
+        path: `${path}.property.type`,
+        label: "property type",
+        valid: VALID_PROPERTY_TYPES,
+        code: "B17_INVALID_PROPERTY_TYPE",
+        severity: "warning",
+      }),
+      ...enumKeyErrors(dictGet(prop, "resourceType"), {
+        path: `${path}.property.resourceType`,
+        label: "resourceType",
+        valid: VALID_RESOURCE_TYPES,
+        code: "B16_INVALID_RESOURCE_TYPE",
+        severity: "warning",
+      }),
+    );
   }
 
   return errors;
@@ -892,23 +889,15 @@ function validateTimeClause(clause: unknown, index: number): ValidationError[] {
     return errors;
   }
 
-  // B12: Validate unit
-  const unit = dictGet(clause, "unit");
-  requireHashable(unit); // R10.7: Python hashes in `not in` (:2754)
-  if (
-    !isNone(unit) &&
-    !(typeof unit === "string" && VALID_TIME_UNITS.has(unit))
-  ) {
-    errors.push(
-      enumError(
-        `${path}.unit`,
-        "time unit",
-        pythonStrLoose(unit),
-        VALID_TIME_UNITS,
-        "B12_INVALID_TIME_UNIT",
-      ),
-    );
-  }
+  // B12: Validate unit (Python hashes in `not in`, :2754)
+  errors.push(
+    ...enumKeyErrors(dictGet(clause, "unit"), {
+      path: `${path}.unit`,
+      label: "time unit",
+      valid: VALID_TIME_UNITS,
+      code: "B12_INVALID_TIME_UNIT",
+    }),
+  );
 
   // B13: Validate dateRangeType
   const drt = dictGet(clause, "dateRangeType");
@@ -931,30 +920,18 @@ function validateTimeClause(clause: unknown, index: number): ValidationError[] {
 }
 
 /**
- * Validate a single filter clause.
+ * B18 / B18B: the filter identifies a property, and a custom property
+ * id is a positive int.
  *
- * Port of `_validate_filter_clause` (`validation.py:2786-2950`).
- *
- * @param clause - The filter clause (expected to be a dict).
- * @param path - JSONPath-like location for error reporting.
- * @returns List of validation errors for this clause.
+ * @param clause - The filter clause.
+ * @param path - JSONPath-like location of the clause.
+ * @returns List of validation errors.
  */
-function validateFilterClause(
-  clause: unknown,
+function validateFilterPropertyId(
+  clause: Dict,
   path: string,
 ): ValidationError[] {
   const errors: ValidationError[] = [];
-
-  if (!isDict(clause)) {
-    errors.push(
-      new ValidationError(
-        path,
-        "Filter clause must be a dict",
-        "B14_INVALID_FILTER_TYPE",
-      ),
-    );
-    return errors;
-  }
 
   // B18: Must have property identification (value/propertyName or custom property)
   // Python `or` chain over truthiness (watchlist #6).
@@ -990,89 +967,60 @@ function validateFilterClause(
     );
   }
 
-  // B16: Validate resourceType
-  const rt = dictGet(clause, "resourceType");
-  requireHashable(rt); // R10.7: Python hashes in `not in` (:2846)
-  if (
-    !isNone(rt) &&
-    !(typeof rt === "string" && VALID_RESOURCE_TYPES.has(rt))
-  ) {
-    errors.push(
-      enumError(
-        `${path}.resourceType`,
-        "resourceType",
-        pythonStrLoose(rt),
-        VALID_RESOURCE_TYPES,
-        "B16_INVALID_RESOURCE_TYPE",
-        "warning",
-      ),
-    );
-  }
+  return errors;
+}
 
-  // B14: Validate filterType
-  const ft = dictGet(clause, "filterType");
-  requireHashable(ft); // R10.7: Python hashes in `not in` (:2860)
-  if (
-    !isNone(ft) &&
-    !(typeof ft === "string" && VALID_PROPERTY_TYPES.has(ft))
-  ) {
-    errors.push(
-      enumError(
-        `${path}.filterType`,
-        "filterType",
-        pythonStrLoose(ft),
-        VALID_PROPERTY_TYPES,
-        "B14_INVALID_FILTER_TYPE",
-      ),
-    );
-  }
-
-  // B15: Validate filterOperator
-  const fo = dictGet(clause, "filterOperator");
-  requireHashable(fo); // R10.7: Python hashes in `not in` (:2873)
-  if (
-    !isNone(fo) &&
-    !(typeof fo === "string" && VALID_FILTER_OPERATORS.has(fo))
-  ) {
-    errors.push(
-      enumError(
-        `${path}.filterOperator`,
-        "filterOperator",
-        pythonStrLoose(fo),
-        VALID_FILTER_OPERATORS,
-        "B15_INVALID_FILTER_OPERATOR",
-        "warning",
-      ),
-    );
-  }
-
-  // B25: Cohort filter must have value == "$cohorts"
+/**
+ * B25: a cohort list filter's `value` is `"$cohorts"`.
+ *
+ * @param clause - The filter clause.
+ * @param path - JSONPath-like location of the clause.
+ * @returns List of validation errors.
+ */
+function validateCohortFilterValue(
+  clause: Dict,
+  path: string,
+): ValidationError[] {
   const filterOperator = dictGet(clause, "filterOperator");
   if (
-    dictGet(clause, "filterType") === "list" &&
-    (filterOperator === "contains" || filterOperator === "does not contain")
+    dictGet(clause, "filterType") !== "list" ||
+    !(filterOperator === "contains" || filterOperator === "does not contain")
   ) {
-    const fvCohort = dictGet(clause, "filterValue");
-    if (Array.isArray(fvCohort) && fvCohort.length > 0) {
-      const first: unknown = fvCohort[0];
-      if (
-        isDict(first) &&
-        hasKey(first, "cohort") &&
-        dictGet(clause, "value") !== "$cohorts"
-      ) {
-        errors.push(
-          new ValidationError(
-            `${path}.value`,
-            "Cohort filter value must be '$cohorts'",
-            "B25_COHORT_FILTER_VALUE",
-          ),
-        );
-      }
-    }
+    return [];
   }
+  const fvCohort = dictGet(clause, "filterValue");
+  if (!Array.isArray(fvCohort) || fvCohort.length === 0) {
+    return [];
+  }
+  const first: unknown = fvCohort[0];
+  if (
+    isDict(first) &&
+    hasKey(first, "cohort") &&
+    dictGet(clause, "value") !== "$cohorts"
+  ) {
+    return [
+      new ValidationError(
+        `${path}.value`,
+        "Cohort filter value must be '$cohorts'",
+        "B25_COHORT_FILTER_VALUE",
+      ),
+    ];
+  }
+  return [];
+}
+
+/**
+ * B20 / B21 / B20B: a list `filterValue` is non-empty and bounded, and
+ * numeric values (scalar or list members) are finite.
+ *
+ * @param fv - The `filterValue`.
+ * @param path - JSONPath-like location of the clause.
+ * @returns List of validation errors.
+ */
+function validateFilterValue(fv: unknown, path: string): ValidationError[] {
+  const errors: ValidationError[] = [];
 
   // B20: Validate filterValue is non-empty when present
-  const fv = dictGet(clause, "filterValue");
   if (Array.isArray(fv) && fv.length === 0) {
     errors.push(
       new ValidationError(
@@ -1122,6 +1070,60 @@ function validateFilterClause(
 }
 
 /**
+ * Validate a single filter clause.
+ *
+ * Port of `_validate_filter_clause` (`validation.py:2786-2950`).
+ *
+ * @param clause - The filter clause (expected to be a dict).
+ * @param path - JSONPath-like location for error reporting.
+ * @returns List of validation errors for this clause.
+ */
+function validateFilterClause(
+  clause: unknown,
+  path: string,
+): ValidationError[] {
+  if (!isDict(clause)) {
+    return [
+      new ValidationError(
+        path,
+        "Filter clause must be a dict",
+        "B14_INVALID_FILTER_TYPE",
+      ),
+    ];
+  }
+
+  const errors = validateFilterPropertyId(clause, path);
+
+  // B16 (:2846) / B14 (:2860) / B15 (:2873) — Python hashes in `not in`
+  errors.push(
+    ...enumKeyErrors(dictGet(clause, "resourceType"), {
+      path: `${path}.resourceType`,
+      label: "resourceType",
+      valid: VALID_RESOURCE_TYPES,
+      code: "B16_INVALID_RESOURCE_TYPE",
+      severity: "warning",
+    }),
+    ...enumKeyErrors(dictGet(clause, "filterType"), {
+      path: `${path}.filterType`,
+      label: "filterType",
+      valid: VALID_PROPERTY_TYPES,
+      code: "B14_INVALID_FILTER_TYPE",
+    }),
+    ...enumKeyErrors(dictGet(clause, "filterOperator"), {
+      path: `${path}.filterOperator`,
+      label: "filterOperator",
+      valid: VALID_FILTER_OPERATORS,
+      code: "B15_INVALID_FILTER_OPERATOR",
+      severity: "warning",
+    }),
+    ...validateCohortFilterValue(clause, path),
+    ...validateFilterValue(dictGet(clause, "filterValue"), path),
+  );
+
+  return errors;
+}
+
+/**
  * Validate a single `sections.group[]` entry.
  *
  * Port of `_validate_group_clause` (`validation.py:2953-3018`).
@@ -1148,43 +1150,23 @@ function validateGroupClause(
     return errors;
   }
 
-  // B17: Validate propertyType
-  const pt = dictGet(clause, "propertyType");
-  requireHashable(pt); // R10.7: Python hashes in `not in` (:2981)
-  if (
-    !isNone(pt) &&
-    !(typeof pt === "string" && VALID_PROPERTY_TYPES.has(pt))
-  ) {
-    errors.push(
-      enumError(
-        `${path}.propertyType`,
-        "propertyType",
-        pythonStrLoose(pt),
-        VALID_PROPERTY_TYPES,
-        "B17_INVALID_PROPERTY_TYPE",
-        "warning",
-      ),
-    );
-  }
-
-  // B16: Validate resourceType
-  const rt = dictGet(clause, "resourceType");
-  requireHashable(rt); // R10.7: Python hashes in `not in` (:2995)
-  if (
-    !isNone(rt) &&
-    !(typeof rt === "string" && VALID_RESOURCE_TYPES.has(rt))
-  ) {
-    errors.push(
-      enumError(
-        `${path}.resourceType`,
-        "resourceType",
-        pythonStrLoose(rt),
-        VALID_RESOURCE_TYPES,
-        "B16_INVALID_RESOURCE_TYPE",
-        "warning",
-      ),
-    );
-  }
+  // B17 (:2981) / B16 (:2995) — Python hashes in `not in`
+  errors.push(
+    ...enumKeyErrors(dictGet(clause, "propertyType"), {
+      path: `${path}.propertyType`,
+      label: "propertyType",
+      valid: VALID_PROPERTY_TYPES,
+      code: "B17_INVALID_PROPERTY_TYPE",
+      severity: "warning",
+    }),
+    ...enumKeyErrors(dictGet(clause, "resourceType"), {
+      path: `${path}.resourceType`,
+      label: "resourceType",
+      valid: VALID_RESOURCE_TYPES,
+      code: "B16_INVALID_RESOURCE_TYPE",
+      severity: "warning",
+    }),
+  );
 
   // B26: Cohort group entry must have non-empty cohorts array
   const cohorts = dictGet(clause, "cohorts");

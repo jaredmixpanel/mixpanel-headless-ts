@@ -20,12 +20,12 @@
  * order below mirrors Python declaration order (contractual for
  * nothing, kept stable so diffs are readable).
  *
- * Every alias follows the mandated pattern: a plain `as const` tuple
- * (kept free of `satisfies` so declaration emit stays inferable under
- * `isolatedDeclarations`), and the `LiteralAliasCoverageProof` type at
- * the bottom of this file makes drift in either direction — a union
- * member missing from its tuple, or a tuple member outside its union —
- * a compile error.
+ * Every alias is a plain `as const` tuple — the runtime membership
+ * table, kept free of `satisfies` so declaration emit stays inferable
+ * under `isolatedDeclarations` — and a union type derived from it as
+ * `(typeof X_VALUES)[number]`, so the two cannot drift. The one
+ * exception is {@link FilterOperatorInput}, a constructor-input
+ * widening with no runtime table of its own.
  */
 
 // =============================================================================
@@ -36,7 +36,7 @@
  * Time unit for segmentation, retention, event_counts, property_counts,
  * and frequency queries.
  */
-export type TimeUnit = "day" | "week" | "month";
+export type TimeUnit = (typeof TIME_UNIT_VALUES)[number];
 
 /** Runtime membership tuple for {@link TimeUnit}. */
 export const TIME_UNIT_VALUES = ["day", "week", "month"] as const;
@@ -45,7 +45,7 @@ export const TIME_UNIT_VALUES = ["day", "week", "month"] as const;
  * Time unit for numeric aggregations (`segmentation_numeric`,
  * `segmentation_sum`, `segmentation_average`).
  */
-export type HourDayUnit = "hour" | "day";
+export type HourDayUnit = (typeof HOUR_DAY_UNIT_VALUES)[number];
 
 /** Runtime membership tuple for {@link HourDayUnit}. */
 export const HOUR_DAY_UNIT_VALUES = ["hour", "day"] as const;
@@ -54,7 +54,7 @@ export const HOUR_DAY_UNIT_VALUES = ["hour", "day"] as const;
  * Time unit for the bookmark query API (`query`, `build_params`,
  * `build_time_section`).
  */
-export type QueryTimeUnit = "hour" | "day" | "week" | "month" | "quarter";
+export type QueryTimeUnit = (typeof QUERY_TIME_UNIT_VALUES)[number];
 
 /** Runtime membership tuple for {@link QueryTimeUnit}. */
 export const QUERY_TIME_UNIT_VALUES = [
@@ -70,13 +70,13 @@ export const QUERY_TIME_UNIT_VALUES = [
 // =============================================================================
 
 /** Count/aggregation method for legacy segmentation-style queries. */
-export type CountType = "general" | "unique" | "average";
+export type CountType = (typeof COUNT_TYPE_VALUES)[number];
 
 /** Runtime membership tuple for {@link CountType}. */
 export const COUNT_TYPE_VALUES = ["general", "unique", "average"] as const;
 
 /** Counting method for flows analysis. */
-export type FlowCountType = "unique" | "total" | "session";
+export type FlowCountType = (typeof FLOW_COUNT_TYPE_VALUES)[number];
 
 /** Runtime membership tuple for {@link FlowCountType}. */
 export const FLOW_COUNT_TYPE_VALUES = ["unique", "total", "session"] as const;
@@ -94,29 +94,7 @@ export const FLOW_COUNT_TYPE_VALUES = ["unique", "total", "session"] as const;
  * aggregation. `"percentile"` maps to `custom_percentile` in bookmark
  * JSON and requires a percentile value on the metric.
  */
-export type MathType =
-  | "total"
-  | "unique"
-  | "dau"
-  | "wau"
-  | "mau"
-  | "average"
-  | "median"
-  | "min"
-  | "max"
-  | "p25"
-  | "p75"
-  | "p90"
-  | "p99"
-  | "percentile"
-  | "histogram"
-  | "cumulative_unique"
-  | "sessions"
-  | "unique_values"
-  | "most_frequent"
-  | "first_value"
-  | "multi_attribution"
-  | "numeric_summary";
+export type MathType = (typeof MATH_TYPE_VALUES)[number];
 
 /** Runtime membership tuple for {@link MathType}. */
 export const MATH_TYPE_VALUES = [
@@ -150,8 +128,7 @@ export const MATH_TYPE_VALUES = [
  * math across users. Maps to `perUserAggregation` in the bookmark
  * measurement block.
  */
-export type PerUserAggregation =
-  "unique_values" | "total" | "average" | "min" | "max";
+export type PerUserAggregation = (typeof PER_USER_AGGREGATION_VALUES)[number];
 
 /** Runtime membership tuple for {@link PerUserAggregation}. */
 export const PER_USER_AGGREGATION_VALUES = [
@@ -172,21 +149,7 @@ export const PER_USER_AGGREGATION_VALUES = [
  * internal aliases (`"general"`, `"session"`, `"conversion_rate"`) that
  * are not exposed in the public API.
  */
-export type FunnelMathType =
-  | "conversion_rate_unique"
-  | "conversion_rate_total"
-  | "conversion_rate_session"
-  | "unique"
-  | "total"
-  | "average"
-  | "median"
-  | "min"
-  | "max"
-  | "p25"
-  | "p75"
-  | "p90"
-  | "p99"
-  | "histogram";
+export type FunnelMathType = (typeof FUNNEL_MATH_TYPE_VALUES)[number];
 
 /** Runtime membership tuple for {@link FunnelMathType}. */
 export const FUNNEL_MATH_TYPE_VALUES = [
@@ -211,7 +174,7 @@ export const FUNNEL_MATH_TYPE_VALUES = [
  * the bookmark-enum table `MAX_CONVERSION_WINDOW`).
  */
 export type ConversionWindowUnit =
-  "second" | "minute" | "hour" | "day" | "week" | "month" | "session";
+  (typeof CONVERSION_WINDOW_UNIT_VALUES)[number];
 
 /** Runtime membership tuple for {@link ConversionWindowUnit}. */
 export const CONVERSION_WINDOW_UNIT_VALUES = [
@@ -228,13 +191,13 @@ export const CONVERSION_WINDOW_UNIT_VALUES = [
  * Funnel step ordering mode: `"loose"` (in order, other events allowed
  * between; default) or `"any"` (any order).
  */
-export type FunnelOrder = "loose" | "any";
+export type FunnelOrder = (typeof FUNNEL_ORDER_VALUES)[number];
 
 /** Runtime membership tuple for {@link FunnelOrder}. */
 export const FUNNEL_ORDER_VALUES = ["loose", "any"] as const;
 
 /** Display mode for funnel query results. */
-export type FunnelMode = "steps" | "trends" | "table";
+export type FunnelMode = (typeof FUNNEL_MODE_VALUES)[number];
 
 /** Runtime membership tuple for {@link FunnelMode}. */
 export const FUNNEL_MODE_VALUES = ["steps", "trends", "table"] as const;
@@ -248,13 +211,13 @@ export const FUNNEL_MODE_VALUES = ["steps", "trends", "table"] as const;
  * date (default); `"interval_start"` aligns all cohorts to the same
  * start date.
  */
-export type RetentionAlignment = "birth" | "interval_start";
+export type RetentionAlignment = (typeof RETENTION_ALIGNMENT_VALUES)[number];
 
 /** Runtime membership tuple for {@link RetentionAlignment}. */
 export const RETENTION_ALIGNMENT_VALUES = ["birth", "interval_start"] as const;
 
 /** Display mode for retention query results. */
-export type RetentionMode = "curve" | "trends" | "table";
+export type RetentionMode = (typeof RETENTION_MODE_VALUES)[number];
 
 /** Runtime membership tuple for {@link RetentionMode}. */
 export const RETENTION_MODE_VALUES = ["curve", "trends", "table"] as const;
@@ -263,8 +226,7 @@ export const RETENTION_MODE_VALUES = ["curve", "trends", "table"] as const;
  * Aggregation function for retention query metrics. Maps directly to
  * the `measurement.math` field in bookmark JSON.
  */
-export type RetentionMathType =
-  "retention_rate" | "unique" | "total" | "average";
+export type RetentionMathType = (typeof RETENTION_MATH_TYPE_VALUES)[number];
 
 /** Runtime membership tuple for {@link RetentionMathType}. */
 export const RETENTION_MATH_TYPE_VALUES = [
@@ -282,14 +244,13 @@ export const RETENTION_MATH_TYPE_VALUES = [
  * Method for counting qualifying events in segmentation: `"all"`
  * (default) or `"first"` (only the first qualifying event per user).
  */
-export type SegmentMethod = "all" | "first";
+export type SegmentMethod = (typeof SEGMENT_METHOD_VALUES)[number];
 
 /** Runtime membership tuple for {@link SegmentMethod}. */
 export const SEGMENT_METHOD_VALUES = ["all", "first"] as const;
 
 /** Re-entry mode for funnel queries (`behavior.funnelReentryMode`). */
-export type FunnelReentryMode =
-  "default" | "basic" | "aggressive" | "optimized";
+export type FunnelReentryMode = (typeof FUNNEL_REENTRY_MODE_VALUES)[number];
 
 /** Runtime membership tuple for {@link FunnelReentryMode}. */
 export const FUNNEL_REENTRY_MODE_VALUES = [
@@ -304,7 +265,7 @@ export const FUNNEL_REENTRY_MODE_VALUES = [
  * (`behavior.retentionUnboundedMode`).
  */
 export type RetentionUnboundedMode =
-  "none" | "carry_back" | "carry_forward" | "consecutive_forward";
+  (typeof RETENTION_UNBOUNDED_MODE_VALUES)[number];
 
 /** Runtime membership tuple for {@link RetentionUnboundedMode}. */
 export const RETENTION_UNBOUNDED_MODE_VALUES = [
@@ -318,7 +279,7 @@ export const RETENTION_UNBOUNDED_MODE_VALUES = [
  * Type of time comparison for query results
  * (`displayOptions.timeComparison`).
  */
-export type TimeComparisonType = "relative" | "absolute-start" | "absolute-end";
+export type TimeComparisonType = (typeof TIME_COMPARISON_TYPE_VALUES)[number];
 
 /** Runtime membership tuple for {@link TimeComparisonType}. */
 export const TIME_COMPARISON_TYPE_VALUES = [
@@ -328,7 +289,7 @@ export const TIME_COMPARISON_TYPE_VALUES = [
 ] as const;
 
 /** Time unit for period-over-period comparisons. */
-export type TimeComparisonUnit = "day" | "week" | "month" | "quarter" | "year";
+export type TimeComparisonUnit = (typeof TIME_COMPARISON_UNIT_VALUES)[number];
 
 /** Runtime membership tuple for {@link TimeComparisonUnit}. */
 export const TIME_COMPARISON_UNIT_VALUES = [
@@ -341,7 +302,7 @@ export const TIME_COMPARISON_UNIT_VALUES = [
 
 /** Aggregation type for cohort behavior criteria. */
 export type CohortAggregationType =
-  "total" | "unique" | "average" | "min" | "max" | "median";
+  (typeof COHORT_AGGREGATION_TYPE_VALUES)[number];
 
 /** Runtime membership tuple for {@link CohortAggregationType}. */
 export const COHORT_AGGREGATION_TYPE_VALUES = [
@@ -357,7 +318,7 @@ export const COHORT_AGGREGATION_TYPE_VALUES = [
  * Session anchor event type for flow queries: `"start"`
  * (`$session_start`) or `"end"` (`$session_end`).
  */
-export type FlowSessionEvent = "start" | "end";
+export type FlowSessionEvent = (typeof FLOW_SESSION_EVENT_VALUES)[number];
 
 /** Runtime membership tuple for {@link FlowSessionEvent}. */
 export const FLOW_SESSION_EVENT_VALUES = ["start", "end"] as const;
@@ -368,11 +329,7 @@ export const FLOW_SESSION_EVENT_VALUES = ["start", "end"] as const;
  * cannot represent a two-bound range.
  */
 export type FrequencyFilterOperator =
-  | "is at least"
-  | "is at most"
-  | "is greater than"
-  | "is less than"
-  | "is equal to";
+  (typeof FREQUENCY_FILTER_OPERATOR_VALUES)[number];
 
 /** Runtime membership tuple for {@link FrequencyFilterOperator}. */
 export const FREQUENCY_FILTER_OPERATOR_VALUES = [
@@ -388,7 +345,7 @@ export const FREQUENCY_FILTER_OPERATOR_VALUES = [
 // =============================================================================
 
 /** Chart type for flows visualization. */
-export type FlowChartType = "sankey" | "paths" | "tree";
+export type FlowChartType = (typeof FLOW_CHART_TYPE_VALUES)[number];
 
 /** Runtime membership tuple for {@link FlowChartType}. */
 export const FLOW_CHART_TYPE_VALUES = ["sankey", "paths", "tree"] as const;
@@ -398,7 +355,8 @@ export const FLOW_CHART_TYPE_VALUES = ["sankey", "paths", "tree"] as const;
  * {@link ConversionWindowUnit} — flows do not support second, minute,
  * or hour granularity.
  */
-export type FlowConversionWindowUnit = "day" | "week" | "month" | "session";
+export type FlowConversionWindowUnit =
+  (typeof FLOW_CONVERSION_WINDOW_UNIT_VALUES)[number];
 
 /** Runtime membership tuple for {@link FlowConversionWindowUnit}. */
 export const FLOW_CONVERSION_WINDOW_UNIT_VALUES = [
@@ -409,8 +367,7 @@ export const FLOW_CONVERSION_WINDOW_UNIT_VALUES = [
 ] as const;
 
 /** Node type in a flow tree response. */
-export type FlowNodeType =
-  "ANCHOR" | "NORMAL" | "DROPOFF" | "PRUNED" | "FORWARD" | "REVERSE";
+export type FlowNodeType = (typeof FLOW_NODE_TYPE_VALUES)[number];
 
 /** Runtime membership tuple for {@link FlowNodeType}. */
 export const FLOW_NODE_TYPE_VALUES = [
@@ -423,7 +380,7 @@ export const FLOW_NODE_TYPE_VALUES = [
 ] as const;
 
 /** Anchor type in a flow tree response. */
-export type FlowAnchorType = "NORMAL" | "RELATIVE_REVERSE" | "RELATIVE_FORWARD";
+export type FlowAnchorType = (typeof FLOW_ANCHOR_TYPE_VALUES)[number];
 
 /** Runtime membership tuple for {@link FlowAnchorType}. */
 export const FLOW_ANCHOR_TYPE_VALUES = [
@@ -437,7 +394,7 @@ export const FLOW_ANCHOR_TYPE_VALUES = [
 // =============================================================================
 
 /** Display mode for insights query results. */
-export type InsightsMode = "timeseries" | "total" | "table";
+export type InsightsMode = (typeof INSIGHTS_MODE_VALUES)[number];
 
 /** Runtime membership tuple for {@link InsightsMode}. */
 export const INSIGHTS_MODE_VALUES = ["timeseries", "total", "table"] as const;
@@ -451,8 +408,7 @@ export const INSIGHTS_MODE_VALUES = ["timeseries", "total", "table"] as const;
  * `"list"` for API compatibility and `"object"` for
  * `Filter.list_contains` sub-property filtering.
  */
-export type FilterPropertyType =
-  "string" | "number" | "boolean" | "datetime" | "list" | "object";
+export type FilterPropertyType = (typeof FILTER_PROPERTY_TYPE_VALUES)[number];
 
 /** Runtime membership tuple for {@link FilterPropertyType}. */
 export const FILTER_PROPERTY_TYPE_VALUES = [
@@ -470,7 +426,7 @@ export const FILTER_PROPERTY_TYPE_VALUES = [
  * property output types); also reused by `SubPropertyInfo` and
  * `GroupBy.list_item`.
  */
-export type CustomPropertyType = "string" | "number" | "boolean" | "datetime";
+export type CustomPropertyType = (typeof CUSTOM_PROPERTY_TYPE_VALUES)[number];
 
 /** Runtime membership tuple for {@link CustomPropertyType}. */
 export const CUSTOM_PROPERTY_TYPE_VALUES = [
@@ -484,33 +440,7 @@ export const CUSTOM_PROPERTY_TYPE_VALUES = [
  * All recognized values of `Filter._operator`. Centralized so
  * additions/removals stay in lockstep with the bookmark wire format.
  */
-export type FilterOperator =
-  | "contains"
-  | "does not contain"
-  | "does not equal"
-  | "ends with"
-  | "equals"
-  | "false"
-  | "is at least"
-  | "is at most"
-  | "is between"
-  | "is greater than"
-  | "is less than"
-  | "is not set"
-  | "is set"
-  | "list_contains"
-  | "not between"
-  | "starts with"
-  | "true"
-  | "was before"
-  | "was between"
-  | "was in the"
-  | "was in the next"
-  | "was not between"
-  | "was not in the"
-  | "was not on"
-  | "was on"
-  | "was since";
+export type FilterOperator = (typeof FILTER_OPERATOR_VALUES)[number];
 
 /** Runtime membership tuple for {@link FilterOperator}. */
 export const FILTER_OPERATOR_VALUES = [
@@ -591,7 +521,7 @@ export type FilterOperatorInput =
  * Time unit for relative date filters (`Filter.in_the_last` /
  * `Filter.not_in_the_last`). Maps to `filterDateUnit` in bookmark JSON.
  */
-export type FilterDateUnit = "hour" | "day" | "week" | "month";
+export type FilterDateUnit = (typeof FILTER_DATE_UNIT_VALUES)[number];
 
 /** Runtime membership tuple for {@link FilterDateUnit}. */
 export const FILTER_DATE_UNIT_VALUES = [
@@ -605,7 +535,7 @@ export const FILTER_DATE_UNIT_VALUES = [
  * How multiple filters combine: `"all"` (AND logic, default) or
  * `"any"` (OR logic).
  */
-export type FiltersCombinator = "all" | "any";
+export type FiltersCombinator = (typeof FILTERS_COMBINATOR_VALUES)[number];
 
 /** Runtime membership tuple for {@link FiltersCombinator}. */
 export const FILTERS_COMBINATOR_VALUES = ["all", "any"] as const;
@@ -620,8 +550,7 @@ export const FILTERS_COMBINATOR_VALUES = ["all", "any"] as const;
  * literal union, not a TS enum — the Python source defines it as a
  * `Literal` alias.
  */
-export type BookmarkType =
-  "insights" | "funnels" | "retention" | "flows" | "launch-analysis";
+export type BookmarkType = (typeof BOOKMARK_TYPE_VALUES)[number];
 
 /** Runtime membership tuple for {@link BookmarkType}. */
 export const BOOKMARK_TYPE_VALUES = [
@@ -638,7 +567,7 @@ export const BOOKMARK_TYPE_VALUES = [
  * {@link BookmarkType} for saved-report URLs but cannot be stored as an
  * unsaved-report slug record.
  */
-export type ReportLinkType = "insights" | "funnels" | "retention" | "flows";
+export type ReportLinkType = (typeof REPORT_LINK_TYPE_VALUES)[number];
 
 /** Runtime membership tuple for {@link ReportLinkType}. */
 export const REPORT_LINK_TYPE_VALUES = [
@@ -652,7 +581,7 @@ export const REPORT_LINK_TYPE_VALUES = [
  * Report type detected from saved report query results (derived from
  * the headers array in the API response).
  */
-export type SavedReportType = "insights" | "retention" | "funnel" | "flows";
+export type SavedReportType = (typeof SAVED_REPORT_TYPE_VALUES)[number];
 
 /** Runtime membership tuple for {@link SavedReportType}. */
 export const SAVED_REPORT_TYPE_VALUES = [
@@ -667,7 +596,7 @@ export const SAVED_REPORT_TYPE_VALUES = [
  * may return additional entity types in responses, which are accepted
  * but not supported as input filters.
  */
-export type EntityType = "event" | "profile";
+export type EntityType = (typeof ENTITY_TYPE_VALUES)[number];
 
 /** Runtime membership tuple for {@link EntityType}. */
 export const ENTITY_TYPE_VALUES = ["event", "profile"] as const;
@@ -677,13 +606,13 @@ export const ENTITY_TYPE_VALUES = ["event", "profile"] as const;
 // =============================================================================
 
 /** Mixpanel data-residency region. */
-export type Region = "us" | "eu" | "in";
+export type Region = (typeof REGION_VALUES)[number];
 
 /** Runtime membership tuple for {@link Region}. */
 export const REGION_VALUES = ["us", "eu", "in"] as const;
 
 /** Discriminant values of the `Account` union (C4). */
-export type AccountType = "service_account" | "oauth_browser" | "oauth_token";
+export type AccountType = (typeof ACCOUNT_TYPE_VALUES)[number];
 
 /** Runtime membership tuple for {@link AccountType}. */
 export const ACCOUNT_TYPE_VALUES = [
@@ -693,7 +622,7 @@ export const ACCOUNT_TYPE_VALUES = [
 ] as const;
 
 // =============================================================================
-// Lock-test registry + compile-time coverage proof
+// Lock-test registry
 // =============================================================================
 
 /**
@@ -743,70 +672,3 @@ export const LITERAL_ALIAS_VALUES: ReadonlyMap<string, readonly string[]> =
     ["Region", REGION_VALUES],
     ["AccountType", ACCOUNT_TYPE_VALUES],
   ]);
-
-/**
- * Accepts only a tuple whose every position is `never`; used by
- * {@link LiteralAliasCoverageProof} to turn union⇄tuple drift into a
- * compile error at the exact offending position.
- */
-type AssertAllNever<T extends readonly never[]> = T;
-
-/**
- * Symmetric difference between a literal union and a runtime tuple's
- * element type: `never` iff the two agree exactly. A union member
- * missing from the tuple, or a tuple member (misspelled or extra)
- * outside the union, both surface here.
- */
-type Drift<Union, Tuple extends readonly unknown[]> =
-  Exclude<Union, Tuple[number]> | Exclude<Tuple[number], Union>;
-
-/**
- * Compile-time coverage proof (phase2-design C2): for every alias,
- * `Drift<Union, typeof *_VALUES>` must be `never`. Either direction
- * of drift fails the `AssertAllNever` constraint here (the tuples
- * carry no `satisfies` clause — see the module doc).
- *
- * @internal
- */
-export type LiteralAliasCoverageProof = AssertAllNever<
-  [
-    Drift<TimeUnit, typeof TIME_UNIT_VALUES>,
-    Drift<HourDayUnit, typeof HOUR_DAY_UNIT_VALUES>,
-    Drift<QueryTimeUnit, typeof QUERY_TIME_UNIT_VALUES>,
-    Drift<CountType, typeof COUNT_TYPE_VALUES>,
-    Drift<FlowCountType, typeof FLOW_COUNT_TYPE_VALUES>,
-    Drift<MathType, typeof MATH_TYPE_VALUES>,
-    Drift<PerUserAggregation, typeof PER_USER_AGGREGATION_VALUES>,
-    Drift<FunnelMathType, typeof FUNNEL_MATH_TYPE_VALUES>,
-    Drift<ConversionWindowUnit, typeof CONVERSION_WINDOW_UNIT_VALUES>,
-    Drift<FunnelOrder, typeof FUNNEL_ORDER_VALUES>,
-    Drift<FunnelMode, typeof FUNNEL_MODE_VALUES>,
-    Drift<RetentionAlignment, typeof RETENTION_ALIGNMENT_VALUES>,
-    Drift<RetentionMode, typeof RETENTION_MODE_VALUES>,
-    Drift<RetentionMathType, typeof RETENTION_MATH_TYPE_VALUES>,
-    Drift<SegmentMethod, typeof SEGMENT_METHOD_VALUES>,
-    Drift<FunnelReentryMode, typeof FUNNEL_REENTRY_MODE_VALUES>,
-    Drift<RetentionUnboundedMode, typeof RETENTION_UNBOUNDED_MODE_VALUES>,
-    Drift<TimeComparisonType, typeof TIME_COMPARISON_TYPE_VALUES>,
-    Drift<TimeComparisonUnit, typeof TIME_COMPARISON_UNIT_VALUES>,
-    Drift<CohortAggregationType, typeof COHORT_AGGREGATION_TYPE_VALUES>,
-    Drift<FlowSessionEvent, typeof FLOW_SESSION_EVENT_VALUES>,
-    Drift<FrequencyFilterOperator, typeof FREQUENCY_FILTER_OPERATOR_VALUES>,
-    Drift<FlowChartType, typeof FLOW_CHART_TYPE_VALUES>,
-    Drift<FlowConversionWindowUnit, typeof FLOW_CONVERSION_WINDOW_UNIT_VALUES>,
-    Drift<FlowNodeType, typeof FLOW_NODE_TYPE_VALUES>,
-    Drift<FlowAnchorType, typeof FLOW_ANCHOR_TYPE_VALUES>,
-    Drift<InsightsMode, typeof INSIGHTS_MODE_VALUES>,
-    Drift<FilterPropertyType, typeof FILTER_PROPERTY_TYPE_VALUES>,
-    Drift<CustomPropertyType, typeof CUSTOM_PROPERTY_TYPE_VALUES>,
-    Drift<FilterOperator, typeof FILTER_OPERATOR_VALUES>,
-    Drift<FilterDateUnit, typeof FILTER_DATE_UNIT_VALUES>,
-    Drift<FiltersCombinator, typeof FILTERS_COMBINATOR_VALUES>,
-    Drift<BookmarkType, typeof BOOKMARK_TYPE_VALUES>,
-    Drift<ReportLinkType, typeof REPORT_LINK_TYPE_VALUES>,
-    Drift<SavedReportType, typeof SAVED_REPORT_TYPE_VALUES>,
-    Drift<EntityType, typeof ENTITY_TYPE_VALUES>,
-    Drift<Region, typeof REGION_VALUES>,
-    Drift<AccountType, typeof ACCOUNT_TYPE_VALUES>,
-  ]
->;

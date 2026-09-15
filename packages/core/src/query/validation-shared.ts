@@ -16,16 +16,13 @@
  *   `str.isspace()` set), never a JS `\s` class.
  * - §8: Python `float` values reach TS either as non-integral /
  *   non-finite JS numbers or as the conformance rig's PyFloat carrier
- *   duck-shape `{ spelling: string }` (precedent:
- *   `conformance-runner/src/vector-codecs.ts` SignedReplay decode); {@link isPythonFloat}
- *   and {@link isFiniteNumber} classify both spellings.
+ *   duck-shape `{ spelling: string }`; `compat/python-values.ts`
+ *   (`isFloatCarrier`, `isPythonFloat`) and {@link isFiniteNumber}
+ *   classify both spellings.
  * - §9 (R11.6): `len(str)` bounds count codepoints via `cpLength`.
- * - §6: `_suggest` is a faithful `difflib.get_close_matches` port —
- *   SequenceMatcher `ratio()` with the `real_quick_ratio`/`quick_ratio`
- *   pre-filters, candidates from `sortedByCodepoint(valid)`, n=3,
- *   cutoff=0.5, `heapq.nlargest` tie order. Autojunk is implemented
- *   verbatim (it only activates when the query string is >= 200
- *   codepoints — irrelevant at enum sizes but kept for faithfulness).
+ * - §6: {@link suggest} is a faithful `difflib.get_close_matches` port
+ *   (`compat/difflib.ts`) — candidates from `sortedByCodepoint(valid)`,
+ *   n=3, cutoff=0.5, `heapq.nlargest` tie order.
  *
  * @module validation-shared
  * @internal
@@ -35,28 +32,29 @@ import { DECIMAL_DIGIT_RUNS } from "../compat/decimal-digits.gen.js";
 import {
   codepoints,
   cpLength,
-  isPythonDict,
-  pythonFloat,
-  pythonFloatStr,
+  getCloseMatches,
+  isFloatCarrier,
+  isPythonInt,
+  pythonListRepr,
   pythonRepr,
-  pythonStr,
   pythonStrip,
-  type PythonValue,
+  pythonTypeName,
   sortedByCodepoint,
+  zfill,
 } from "../compat/index.js";
 import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
 import { ValidationError } from "../errors.js";
 import {
   CustomPropertyRef,
   Filter,
-  type FlowStep,
-  FrequencyFilter,
-  FunnelStep,
-  GroupBy,
   InlineCustomProperty,
-  Metric,
-  type RetentionEvent,
-} from "../types/index.js";
+} from "../types/query-params/filter.js";
+import type { FlowStep } from "../types/query-params/flow.js";
+import { FrequencyFilter } from "../types/query-params/frequency.js";
+import { FunnelStep } from "../types/query-params/funnel.js";
+import { GroupBy } from "../types/query-params/group-by.js";
+import { Metric } from "../types/query-params/metric.js";
+import type { RetentionEvent } from "../types/query-params/retention.js";
 
 // =============================================================================
 // Module constants (validation.py:91-92, 338-366, 1162-1176, 1484-1495)
@@ -167,291 +165,6 @@ export const FLOW_MAX_WINDOW: ReadonlyMap<string, number> = new Map([
   ["week", 52],
   ["day", 366],
 ]);
-
-// =============================================================================
-// Python value-classification helpers (Caution §8)
-// =============================================================================
-
-/**
- * Duck-type check for the conformance rig's PyFloat carrier — a
- * non-number object with a string `spelling` field, produced when a
- * Python float (integral spelling like `18.0`, or the non-finite
- * spellings `Infinity`/`-Infinity`/`NaN`) rides a decoded kwargs bag.
- *
- * Precedent: the SignedReplay codec unwrap in
- * `conformance-runner/src/vector-codecs.ts` (b2-packets.md Caution §8). Recognizing
- * the shape here lets `isinstance(x, float)` branches (e.g. retention
- * R5_BUCKET_SIZES_INTEGER) classify carriers exactly where Python
- * classifies floats, without any binding-side unwrapping.
- *
- * B2 arbiter tightening (b2-review-resolution.md F1, 2026-08-15): the
- * rig's carrier is a CLASS instance (`conformance-runner/src/codecs.ts`
- * `PyFloat` — its single construction site), never a plain object, so
- * the duck check additionally rejects {@link isPythonDict} values. A
- * consumer dict `{"spelling": "..."}` is a Python dict, not a float —
- * the pre-fix shape test crashed `pythonTruthy` on `{"spelling": "hi"}`
- * (PY_FLOAT_INVALID_LITERAL) where Python returns `bool(dict)`.
- *
- * @param value - Candidate value.
- * @returns True when `value` carries the PyFloat duck-shape.
- */
-export function isFloatCarrier(
-  value: unknown,
-): value is { readonly spelling: string } {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    !Array.isArray(value) &&
-    !isPythonDict(value) &&
-    "spelling" in value &&
-    typeof value.spelling === "string"
-  );
-}
-
-/**
- * Numeric value of a PyFloat carrier, for the branches that compare a
- * float NUMERICALLY rather than by type (B2 shard V1b: FLB6's
- * `version != 2`, B18's `bool(value)`, the sorting mirror's `int` fields).
- *
- * The spelling is CPython `repr(float)` output produced by the rig's
- * codec, so it is parsed with `pythonFloat` — the R11.3 grammar — never
- * with `Number()`/`parseFloat` (R11.7 / Caution §3).
- *
- * @param carrier - A value that satisfied {@link isFloatCarrier}.
- * @returns The double the carrier stands for (`Infinity` / `NaN`
- *   included).
- * @throws MixpanelHeadlessError - Code `PY_FLOAT_INVALID_LITERAL` when
- *   the spelling is not a CPython float literal (unreachable for
- *   codec-produced carriers).
- */
-export function floatCarrierValue(carrier: {
-  readonly spelling: string;
-}): number {
-  return pythonFloat(carrier.spelling);
-}
-
-/**
- * Python `str(value)` for a value that may be a PyFloat carrier — the
- * ONE implementation of the "stringify an operand whose float-ness the
- * rig preserved" pattern (R10.8).
- *
- * `pythonStr` already matches CPython for strings, bools, `None`,
- * containers and non-integral numbers. The one gap JS cannot close on
- * its own is int-vs-float-ness of an INTEGRAL value; where the
- * conformance rig preserves it ({@link isFloatCarrier}), the carrier's
- * CPython `repr` spelling is used, so `18.0` renders `"18.0"` and not
- * `"18"`.
- *
- * Ported call sites (both are `str(x)` landing in OUTPUT, so
- * `String(...)` is forbidden — `String(true)` is `"true"`, Python's is
- * `"True"`, watchlist #8):
- *
- * - `segfilter.py:187,189,249` — the number/datetime operand positions
- *   (B3-K3; the R10.11 canonicalizer rescue applies only to the numeric
- *   ones, so non-numeric operands must already be Python-spelled).
- * - `query/user_builders.py:42` — `_format_value`'s non-string branch
- *   (B3-K4; the `selector_str` codec compares VERBATIM, no rescue at
- *   all).
- *
- * @param value - The value to stringify.
- * @returns The CPython `str()` rendering.
- * @throws TypeError - When the value is outside the `pythonStr` domain
- *   (class instances, `undefined`) — out-of-annotation input only.
- */
-export function pythonStrValue(value: unknown): string {
-  if (isFloatCarrier(value)) {
-    return pythonFloatStr(floatCarrierValue(value));
-  }
-  return pythonStr(value as PythonValue);
-}
-
-/**
- * TS analog of Python `isinstance(value, float)`.
- *
- * A JS number is a Python float when it is non-integral or non-finite
- * (integral finite JS numbers are Python ints in the ported value
- * domain); a PyFloat carrier ({@link isFloatCarrier}) is always a
- * float.
- *
- * @param value - Candidate value.
- * @returns True when Python would classify the value as a `float`.
- */
-export function isPythonFloat(value: unknown): boolean {
-  if (typeof value === "number") {
-    return !Number.isInteger(value);
-  }
-  return isFloatCarrier(value);
-}
-
-/**
- * TS analog of Python `isinstance(value, int) and not isinstance(value,
- * bool)` — the bool-before-int guard order from Caution §8.
- *
- * @param value - Candidate value.
- * @returns True when Python would classify the value as a non-bool int.
- */
-export function isPythonInt(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value);
-}
-
-/**
- * Display-only `type(x).__name__` analog for ported message text
- * (out of contract, R5.4).
- *
- * @param value - The value whose Python type name to approximate.
- * @returns The Python type name Python would print for the
- *   equivalent value.
- */
-// `isinstance(value, dict)` discrimination (B2 arbiter fix F1) — the
-// implementation MOVED to the leaf `compat/python-dict.ts` at the B6
-// arbiter pass (`b6-review-resolution.md` Finding D) so low-level
-// modules (`types/entities/model-base.ts`) can import it without an
-// evaluation cycle. Re-exported here so every existing consumer's
-// import path keeps working.
-
-/**
- * Reproduce CPython's hashing failure for `x in frozenset` membership
- * tests (R10.7 bug-compatibility; B2-M2 finding 2 adjudicated at the
- * B2-BIND differential fuzz — repro
- * `2026-08-15-validation-validate_bookmark.json`).
- *
- * Python hashes the candidate: a `list`/`dict` value raises
- * `TypeError: cannot use 'list' as a set element (unhashable type: …)`
- * instead of yielding the enum error. In the ported value domain the
- * unhashable inputs are exactly JSON arrays and plain dicts; every
- * other decoded value (string, number, bool, null, PyFloat carrier —
- * a Python float — and reconstructed core instances, which hash by
- * identity in Python) is hashable and falls through to the membership
- * test. Callers gate on the same condition Python does (the site's
- * `is not None` short-circuit); a `null`/`undefined` value is a no-op
- * here anyway.
- *
- * @param value - The membership-test candidate.
- * @throws TypeError - When Python's `hash(value)` would raise.
- */
-export function requireHashable(value: unknown): void {
-  if (Array.isArray(value)) {
-    throw new TypeError(
-      "cannot use 'list' as a set element (unhashable type: 'list')",
-    );
-  }
-  if (isPythonDict(value)) {
-    throw new TypeError(
-      "cannot use 'dict' as a set element (unhashable type: 'dict')",
-    );
-  }
-}
-
-/**
- * Elements CPython's iteration protocol would yield, or `null` when the
- * value is not iterable.
- *
- * Strings yield CODE POINTS (never UTF-16 units), lists yield their
- * elements and dicts yield their KEYS. Ported once here (R10.8) because
- * two B3-K3 modules need it: `segfilter`'s range comprehensions
- * (`[str(v) for v in value]`, `segfilter.py:187,247`) and `transforms`'
- * `dict(properties)` copy (`transforms.py:60,123`). Callers decide what
- * a `null` means — CPython's message differs per site — so this helper
- * never throws.
- *
- * @param value - The value being iterated.
- * @returns The drawn elements in order, or `null` for a non-iterable.
- */
-export function pythonIterableElements(value: unknown): unknown[] | null {
-  if (typeof value === "string") {
-    return codepoints(value);
-  }
-  if (Array.isArray(value)) {
-    return [...(value as unknown[])];
-  }
-  if (isPythonDict(value)) {
-    return Object.keys(value);
-  }
-  return null;
-}
-
-export function pythonTypeName(value: unknown): string {
-  if (value === null || value === undefined) {
-    return "NoneType";
-  }
-  if (typeof value === "boolean") {
-    return "bool";
-  }
-  if (typeof value === "number") {
-    return Number.isInteger(value) ? "int" : "float";
-  }
-  if (isFloatCarrier(value)) {
-    return "float";
-  }
-  if (typeof value === "string") {
-    return "str";
-  }
-  if (Array.isArray(value)) {
-    return "list";
-  }
-  if (typeof value === "object") {
-    return value.constructor.name;
-  }
-  return typeof value;
-}
-
-/**
- * Render a list of strings as a Python `list` repr (display-only
- * message helper for the `{sorted(...)}` f-string interpolations).
- *
- * @param items - The (already ordered) list members.
- * @returns Python-style list repr, e.g. `['birth', 'interval_start']`.
- */
-export function pythonListRepr(items: readonly string[]): string {
-  return `[${items.map((item) => pythonRepr(item)).join(", ")}]`;
-}
-
-/**
- * Render a number the way a Python f-string would (display-only, R5.4).
- *
- * JS cannot distinguish `18` from `18.0`, so this delegates to
- * {@link pythonRepr}'s documented number caveat: safe integers render
- * as Python `int`, everything else (including `nan` / `inf`) via
- * `pythonFloatStr`. `null` renders as `None`.
- *
- * @param value - The number (or `null`) to render.
- * @returns The Python `str()` rendering.
- */
-export function pythonNumberStr(value: number | null): string {
-  if (value === null) {
-    return "None";
-  }
-  return pythonRepr(value);
-}
-
-/**
- * `str(value)` for the loosely-typed enum arguments that Python passes
- * through `str(...)` before fuzzy matching (`validation.py:1409`
- * `str(mode)`, `:1421` `str(unit)`).
- *
- * Only the shapes those call sites can actually receive are modelled:
- * strings pass through, `None` renders `"None"`, and anything else
- * falls back to {@link pythonTypeName} (a display-only approximation —
- * out of contract per R5.4).
- *
- * @param value - Candidate enum value.
- * @returns The Python `str()` rendering.
- */
-export function pythonStrLoose(value: unknown): string {
-  if (typeof value === "string") {
-    return value;
-  }
-  if (value === null || value === undefined) {
-    return "None";
-  }
-  if (typeof value === "boolean") {
-    return value ? "True" : "False";
-  }
-  if (typeof value === "number") {
-    return pythonRepr(value);
-  }
-  return `<${pythonTypeName(value)}>`;
-}
 
 // =============================================================================
 // Character / date / finiteness helpers (validation.py:346-402)
@@ -595,7 +308,7 @@ export function isValidDate(dateStr: string): boolean {
  * @param digits - ASCII digit string.
  * @returns The base-10 integer value.
  */
-function asciiDigitsToInt(digits: string): number {
+export function asciiDigitsToInt(digits: string): number {
   let value = 0;
   for (let i = 0; i < digits.length; i++) {
     value = value * 10 + (digits.charCodeAt(i) - 0x30);
@@ -604,26 +317,23 @@ function asciiDigitsToInt(digits: string): number {
 }
 
 /**
- * Python-`str` codepoint-wise `a > b` comparison (R11.5 — JS `>` on
- * strings compares UTF-16 units, which diverges for non-BMP vs
- * U+E000..U+FFFF mixes).
+ * Today's LOCAL calendar date rendered `YYYY-MM-DD` — the default
+ * behaviour of Python's `date.today()` (`.isoformat()`), used as the
+ * library default of every clock seam (`validateUserArgs` rule U8,
+ * `buildTimeSection`'s from-only branch).
  *
- * @param a - Left operand.
- * @param b - Right operand.
- * @returns True when Python would evaluate `a > b`.
+ * Watchlist #5: the clock is READ here and immediately rendered; no
+ * date string is ever PARSED through `Date` — grammar checking stays a
+ * pure calendar computation ({@link matchesDateRe} + {@link isValidDate}).
+ *
+ * @returns Today's date as `YYYY-MM-DD`.
  */
-export function codepointGreater(a: string, b: string): boolean {
-  const as = codepoints(a);
-  const bs = codepoints(b);
-  const n = Math.min(as.length, bs.length);
-  for (let i = 0; i < n; i++) {
-    const ca = (as[i] as string).codePointAt(0) as number;
-    const cb = (bs[i] as string).codePointAt(0) as number;
-    if (ca !== cb) {
-      return ca > cb;
-    }
-  }
-  return as.length > bs.length;
+export function defaultToday(): string {
+  const now = new Date();
+  return (
+    `${zfill(String(now.getFullYear()), 4)}-` +
+    `${zfill(String(now.getMonth() + 1), 2)}-${zfill(String(now.getDate()), 2)}`
+  );
 }
 
 /**
@@ -651,337 +361,76 @@ export function isFiniteNumber(value: unknown): boolean {
 }
 
 // =============================================================================
-// difflib.get_close_matches port (Caution §6)
+// Error accumulation
 // =============================================================================
 
 /**
- * Faithful port of `difflib.SequenceMatcher` restricted to the
- * surface `get_close_matches` uses (`isjunk=None`, `autojunk=True`):
- * `set_seq1`/`set_seq2`, `find_longest_match`, `get_matching_blocks`,
- * `ratio`, `quick_ratio`, `real_quick_ratio`. Sequences are codepoint
- * arrays (Python `str` indexing is by codepoint, R11.6).
+ * Append one `ValidationError` to a validator's list — the only
+ * capability a per-rule helper receives, so a rule can ADD errors but
+ * never reorder or drop earlier ones. Emission order is contract: the
+ * corpus checks the error sequence, so helpers are called in Python
+ * source order and each pushes in Python source order.
  *
- * Reference: CPython 3.14 `Lib/difflib.py`.
- *
- * @internal
+ * The positional form builds a severity-`"error"` entry; the
+ * single-argument form appends an already-built error (the
+ * {@link enumError} rules).
  */
-class SequenceMatcher {
-  /** Sequence 1 (the candidate) as codepoints. */
-  private a: readonly string[] = [];
-
-  /** Sequence 2 (the query word) as codepoints. */
-  private b: readonly string[] = [];
-
-  /** Element → ascending indices in `b` (popular entries removed). */
-  private b2j = new Map<string, number[]>();
-
-  /** Autojunk "popular" elements excluded from `b2j`. */
-  private bpopular = new Set<string>();
-
-  /** Element → occurrence count over the FULL `b` (for quick_ratio). */
-  private fullbcount: Map<string, number> | null = null;
-
-  /** Cached matching blocks for the current (a, b) pair. */
-  private matchingBlocks: ReadonlyArray<
-    readonly [number, number, number]
-  > | null = null;
-
+export interface PushError {
   /**
-   * Set the first sequence (the candidate string).
+   * Append a new error.
    *
-   * @param a - Candidate string.
+   * @param path - JSONPath-like location.
+   * @param message - Human-readable description (display-only).
+   * @param code - Machine-readable error code.
+   * @param suggestion - Fuzzy-matched alternatives, when the rule has any.
    */
-  setSeq1(a: string): void {
-    this.a = codepoints(a);
-    this.matchingBlocks = null;
-  }
-
+  (
+    path: string,
+    message: string,
+    code: string,
+    suggestion?: readonly string[] | null,
+  ): void;
   /**
-   * Set the second sequence (the query word) and chain its index map
-   * (`__chain_b`), applying the autojunk rule verbatim: when
-   * `len(b) >= 200`, elements occurring more than `len(b)//100 + 1`
-   * times are "popular" and dropped from `b2j`.
+   * Append a built error.
    *
-   * @param b - Query string.
+   * @param error - The error to append.
    */
-  setSeq2(b: string): void {
-    this.b = codepoints(b);
-    this.matchingBlocks = null;
-    this.fullbcount = null;
-    const b2j = new Map<string, number[]>();
-    for (let i = 0; i < this.b.length; i++) {
-      const elt = this.b[i] as string;
-      const indices = b2j.get(elt);
-      if (indices === undefined) {
-        b2j.set(elt, [i]);
-      } else {
-        indices.push(i);
-      }
-    }
-    this.bpopular = new Set();
-    const n = this.b.length;
-    if (n >= 200) {
-      const ntest = Math.floor(n / 100) + 1;
-      for (const [elt, idxs] of b2j) {
-        if (idxs.length > ntest) {
-          this.bpopular.add(elt);
-        }
-      }
-      for (const elt of this.bpopular) {
-        b2j.delete(elt);
-      }
-    }
-    this.b2j = b2j;
-  }
+  (error: ValidationError): void;
+}
 
-  /**
-   * Find the longest matching block in `a[alo:ahi]` / `b[blo:bhi]` —
-   * verbatim port of `find_longest_match` (with `bjunk` empty, the
-   * junk-extension loops reduce to no-ops and are omitted; the
-   * non-junk extension loops are kept).
-   *
-   * @param alo - Start index in `a`.
-   * @param ahi - End index (exclusive) in `a`.
-   * @param blo - Start index in `b`.
-   * @param bhi - End index (exclusive) in `b`.
-   * @returns `[besti, bestj, bestsize]`.
-   */
-  private findLongestMatch(
-    alo: number,
-    ahi: number,
-    blo: number,
-    bhi: number,
-  ): readonly [number, number, number] {
-    const { a, b, b2j } = this;
-    let besti = alo;
-    let bestj = blo;
-    let bestsize = 0;
-    let j2len = new Map<number, number>();
-    for (let i = alo; i < ahi; i++) {
-      const newj2len = new Map<number, number>();
-      const indices = b2j.get(a[i] as string);
-      if (indices !== undefined) {
-        for (const j of indices) {
-          if (j < blo) {
-            continue;
-          }
-          if (j >= bhi) {
-            break;
-          }
-          const k = (j2len.get(j - 1) ?? 0) + 1;
-          newj2len.set(j, k);
-          if (k > bestsize) {
-            besti = i - k + 1;
-            bestj = j - k + 1;
-            bestsize = k;
-          }
-        }
-      }
-      j2len = newj2len;
-    }
-    while (besti > alo && bestj > blo && a[besti - 1] === b[bestj - 1]) {
-      besti -= 1;
-      bestj -= 1;
-      bestsize += 1;
-    }
-    while (
-      besti + bestsize < ahi &&
-      bestj + bestsize < bhi &&
-      a[besti + bestsize] === b[bestj + bestsize]
-    ) {
-      bestsize += 1;
-    }
-    return [besti, bestj, bestsize];
-  }
-
-  /**
-   * Compute (and cache) the matching blocks — verbatim port of the
-   * iterative-queue `get_matching_blocks`, including the
-   * adjacent-block merge and the terminating `(la, lb, 0)` sentinel.
-   *
-   * @returns The merged, sorted matching blocks.
-   */
-  private getMatchingBlocks(): ReadonlyArray<
-    readonly [number, number, number]
-  > {
-    if (this.matchingBlocks !== null) {
-      return this.matchingBlocks;
-    }
-    const la = this.a.length;
-    const lb = this.b.length;
-    const queue: Array<[number, number, number, number]> = [[0, la, 0, lb]];
-    const blocks: Array<[number, number, number]> = [];
-    while (queue.length > 0) {
-      const [alo, ahi, blo, bhi] = queue.pop() as [
-        number,
-        number,
-        number,
-        number,
-      ];
-      const [i, j, k] = this.findLongestMatch(alo, ahi, blo, bhi);
-      if (k > 0) {
-        blocks.push([i, j, k]);
-        if (alo < i && blo < j) {
-          queue.push([alo, i, blo, j]);
-        }
-        if (i + k < ahi && j + k < bhi) {
-          queue.push([i + k, ahi, j + k, bhi]);
-        }
-      }
-    }
-    blocks.sort((x, y) => x[0] - y[0] || x[1] - y[1] || x[2] - y[2]);
-    let i1 = 0;
-    let j1 = 0;
-    let k1 = 0;
-    const nonAdjacent: Array<readonly [number, number, number]> = [];
-    for (const [i2, j2, k2] of blocks) {
-      if (i1 + k1 === i2 && j1 + k1 === j2) {
-        k1 += k2;
-      } else {
-        if (k1 > 0) {
-          nonAdjacent.push([i1, j1, k1]);
-        }
-        i1 = i2;
-        j1 = j2;
-        k1 = k2;
-      }
-    }
-    if (k1 > 0) {
-      nonAdjacent.push([i1, j1, k1]);
-    }
-    nonAdjacent.push([la, lb, 0]);
-    this.matchingBlocks = nonAdjacent;
-    return nonAdjacent;
-  }
-
-  /**
-   * `_calculate_ratio(matches, length)` — `2.0*M/T`, or 1.0 for two
-   * empty sequences.
-   *
-   * @param matches - Matched element count.
-   * @param length - `len(a) + len(b)`.
-   * @returns The similarity ratio.
-   */
-  private static calculateRatio(matches: number, length: number): number {
-    if (length > 0) {
-      return (2.0 * matches) / length;
-    }
-    return 1.0;
-  }
-
-  /**
-   * Exact similarity ratio over the matching blocks.
-   *
-   * @returns `2.0*M/T` where M sums the matched block sizes.
-   */
-  ratio(): number {
-    let matches = 0;
-    for (const block of this.getMatchingBlocks()) {
-      matches += block[2];
-    }
-    return SequenceMatcher.calculateRatio(
-      matches,
-      this.a.length + this.b.length,
-    );
-  }
-
-  /**
-   * Upper bound on {@link ratio} from element multisets (verbatim
-   * `quick_ratio`, including the `avail` bookkeeping).
-   *
-   * @returns The quick upper bound.
-   */
-  quickRatio(): number {
-    if (this.fullbcount === null) {
-      const counts = new Map<string, number>();
-      for (const elt of this.b) {
-        counts.set(elt, (counts.get(elt) ?? 0) + 1);
-      }
-      this.fullbcount = counts;
-    }
-    const fullbcount = this.fullbcount;
-    const avail = new Map<string, number>();
-    let matches = 0;
-    for (const elt of this.a) {
-      const numb = avail.has(elt)
-        ? (avail.get(elt) as number)
-        : (fullbcount.get(elt) ?? 0);
-      avail.set(elt, numb - 1);
-      if (numb > 0) {
-        matches += 1;
-      }
-    }
-    return SequenceMatcher.calculateRatio(
-      matches,
-      this.a.length + this.b.length,
-    );
-  }
-
-  /**
-   * Fastest upper bound on {@link ratio} from lengths alone.
-   *
-   * @returns `2*min(la, lb) / (la + lb)`.
-   */
-  realQuickRatio(): number {
-    const la = this.a.length;
-    const lb = this.b.length;
-    return SequenceMatcher.calculateRatio(Math.min(la, lb), la + lb);
-  }
+/** A validator's error list paired with its {@link PushError} sink. */
+export interface ErrorCollector {
+  /** The accumulated errors, in emission order. */
+  readonly errors: ValidationError[];
+  /** Appends one error with severity `"error"`. */
+  readonly push: PushError;
 }
 
 /**
- * Faithful port of `difflib.get_close_matches(word, possibilities,
- * n, cutoff)` (CPython 3.14), including the `heapq.nlargest` result
- * order: descending `(ratio, candidate)` tuple comparison — ratio
- * first, then candidate string descending by codepoint on ties.
+ * Create the error list a Layer-1 validator returns, seeded with any
+ * errors a delegated check already produced (the `DG1` data_group_id
+ * check runs first in every validator).
  *
- * @param word - The query word.
- * @param possibilities - Candidate strings, in the caller's order.
- * @param n - Maximum number of close matches (must be > 0).
- * @param cutoff - Similarity threshold in [0, 1].
- * @returns The best (at most `n`) matches, best first.
- * @throws RangeError - When `n <= 0` or `cutoff` is outside [0, 1]
- *   (Python raises `ValueError`; RangeError is the TS analog and no
- *   caller in this module can trigger it).
+ * @param initial - Errors to start from.
+ * @returns The list and its sink.
  */
-export function getCloseMatches(
-  word: string,
-  possibilities: readonly string[],
-  n = 3,
-  cutoff = 0.6,
-): string[] {
-  if (!(n > 0)) {
-    throw new RangeError(`n must be > 0: ${String(n)}`);
-  }
-  if (!(cutoff >= 0.0 && cutoff <= 1.0)) {
-    throw new RangeError(`cutoff must be in [0.0, 1.0]: ${String(cutoff)}`);
-  }
-  const result: Array<[number, string]> = [];
-  const s = new SequenceMatcher();
-  s.setSeq2(word);
-  for (const x of possibilities) {
-    s.setSeq1(x);
-    if (
-      s.realQuickRatio() >= cutoff &&
-      s.quickRatio() >= cutoff &&
-      s.ratio() >= cutoff
-    ) {
-      result.push([s.ratio(), x]);
-    }
-  }
-  // heapq.nlargest(n, result) == sorted(result, reverse=True)[:n];
-  // tuple comparison breaks ratio ties by candidate string, and
-  // Python string comparison is codepoint-wise.
-  result.sort((p, q) => {
-    if (p[0] !== q[0]) {
-      return q[0] - p[0];
-    }
-    if (p[1] === q[1]) {
-      return 0;
-    }
-    return codepointGreater(q[1], p[1]) ? 1 : -1;
-  });
-  return result.slice(0, n).map(([, x]) => x);
+export function errorCollector(
+  initial: readonly ValidationError[] = [],
+): ErrorCollector {
+  const errors = [...initial];
+  const push: PushError = (
+    pathOrError: string | ValidationError,
+    message: string = "",
+    code: string = "",
+    suggestion: readonly string[] | null = null,
+  ): void => {
+    errors.push(
+      typeof pathOrError === "string"
+        ? new ValidationError(pathOrError, message, code, "error", suggestion)
+        : pathOrError,
+    );
+  };
+  return { errors, push };
 }
 
 // =============================================================================
@@ -1188,6 +637,21 @@ export function validateCustomProperty(
 }
 
 /**
+ * Python `isinstance(x, (CustomPropertyRef, InlineCustomProperty))` —
+ * the gate every scan position applies before validating a property.
+ *
+ * @param value - A property position's value.
+ * @returns True for either custom-property shape.
+ */
+function isCustomProperty(
+  value: unknown,
+): value is CustomPropertyRef | InlineCustomProperty {
+  return (
+    value instanceof CustomPropertyRef || value instanceof InlineCustomProperty
+  );
+}
+
+/**
  * Scan a list of Filter objects for custom property references.
  *
  * Port of `_scan_filters_for_custom_properties`
@@ -1203,15 +667,13 @@ export function scanFiltersForCustomProperties(
   basePath: string,
 ): ValidationError[] {
   const errors: ValidationError[] = [];
-  for (const [i, filter] of filters.entries()) {
-    const f = filter;
-    if (
-      f._property instanceof CustomPropertyRef ||
-      f._property instanceof InlineCustomProperty
-    ) {
-      const fpath = `${basePath}.filters[${String(i)}]`;
-      errors.push(...validateCustomProperty(f._property, fpath));
+  for (const [i, f] of filters.entries()) {
+    if (!isCustomProperty(f._property)) {
+      continue;
     }
+
+    const fpath = `${basePath}.filters[${String(i)}]`;
+    errors.push(...validateCustomProperty(f._property, fpath));
   }
   return errors;
 }
@@ -1234,6 +696,175 @@ export interface ScanCustomPropertiesOptions {
   readonly flow_steps?: readonly FlowStep[] | null;
   /** Retention event pair `[born_event, return_event]`. */
   readonly retention_events?: readonly RetentionEvent[] | null;
+}
+
+/**
+ * The `group_by` position: every `GroupBy` whose property is custom.
+ *
+ * @param groupBy - Breakdown specification (non-null).
+ * @returns Errors in source order.
+ */
+function scanGroupBy(groupBy: unknown): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const groups: readonly unknown[] = Array.isArray(groupBy)
+    ? groupBy
+    : [groupBy];
+  for (let i = 0; i < groups.length; i++) {
+    const g = groups[i];
+    if (g instanceof GroupBy && isCustomProperty(g.property)) {
+      const gpath = groups.length > 1 ? `group_by[${String(i)}]` : "group_by";
+      errors.push(...validateCustomProperty(g.property, gpath));
+    }
+  }
+  return errors;
+}
+
+/**
+ * A `FrequencyFilter` in `where`: its nested `event_filters` are
+ * scanned in place of the (absent) `_property`.
+ *
+ * @param f - The frequency filter.
+ * @param index - Its position in `where`.
+ * @returns Errors in source order.
+ */
+function scanFrequencyFilter(
+  f: FrequencyFilter,
+  index: number,
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+  if (f.event_filters === null || f.event_filters.length === 0) {
+    return errors;
+  }
+  for (let fi = 0; fi < f.event_filters.length; fi++) {
+    const ef = f.event_filters[fi] as Filter;
+    if (isCustomProperty(ef._property)) {
+      const fpath = `where[${String(index)}].event_filters[${String(fi)}]`;
+      errors.push(...validateCustomProperty(ef._property, fpath));
+    }
+  }
+  return errors;
+}
+
+/**
+ * The `where` position: `Filter` properties, with `FrequencyFilter`
+ * entries descended into instead.
+ *
+ * @param where - Filter specification (non-null).
+ * @returns Errors in source order.
+ */
+function scanWhere(where: unknown): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const filters: readonly unknown[] = Array.isArray(where) ? where : [where];
+  for (let i = 0; i < filters.length; i++) {
+    const f = filters[i];
+    if (f instanceof FrequencyFilter) {
+      errors.push(...scanFrequencyFilter(f, i));
+      continue;
+    }
+    if (f instanceof Filter && isCustomProperty(f._property)) {
+      const fpath = filters.length > 1 ? `where[${String(i)}]` : "where";
+      errors.push(...validateCustomProperty(f._property, fpath));
+    }
+  }
+  return errors;
+}
+
+/**
+ * The `events` position: each `Metric`'s own property, then its filters.
+ *
+ * @param events - Event specifications.
+ * @returns Errors in source order.
+ */
+function scanEvents(events: readonly unknown[]): ValidationError[] {
+  const errors: ValidationError[] = [];
+  for (const [idx, item] of events.entries()) {
+    if (!(item instanceof Metric)) {
+      continue;
+    }
+    if (isCustomProperty(item.property)) {
+      errors.push(
+        ...validateCustomProperty(item.property, `events[${String(idx)}]`),
+      );
+    }
+    if (item.filters !== null && item.filters.length > 0) {
+      errors.push(
+        ...scanFiltersForCustomProperties(
+          item.filters,
+          `events[${String(idx)}]`,
+        ),
+      );
+    }
+  }
+  return errors;
+}
+
+/**
+ * The funnel `steps` position: `FunnelStep.filters` (instanceof-gated
+ * in source — a bare event name has no filters).
+ *
+ * @param steps - Funnel step specifications.
+ * @returns Errors in source order.
+ */
+function scanFunnelSteps(steps: readonly unknown[]): ValidationError[] {
+  const errors: ValidationError[] = [];
+  for (const [idx, step] of steps.entries()) {
+    if (
+      step instanceof FunnelStep &&
+      step.filters !== null &&
+      step.filters.length > 0
+    ) {
+      errors.push(
+        ...scanFiltersForCustomProperties(
+          step.filters,
+          `steps[${String(idx)}]`,
+        ),
+      );
+    }
+  }
+  return errors;
+}
+
+/**
+ * The flow `steps` position: `FlowStep.filters`.
+ *
+ * @param steps - Flow step specifications.
+ * @returns Errors in source order.
+ */
+function scanFlowSteps(steps: readonly FlowStep[]): ValidationError[] {
+  const errors: ValidationError[] = [];
+  for (const [idx, step] of steps.entries()) {
+    if (step.filters !== null && step.filters.length > 0) {
+      errors.push(
+        ...scanFiltersForCustomProperties(
+          step.filters,
+          `steps[${String(idx)}]`,
+        ),
+      );
+    }
+  }
+  return errors;
+}
+
+/**
+ * The retention pair `[born_event, return_event]`: each event's filters,
+ * labelled by role rather than index.
+ *
+ * @param events - The two retention events.
+ * @returns Errors in source order.
+ */
+function scanRetentionEvents(
+  events: readonly RetentionEvent[],
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+  for (const [idx, rev] of events.entries()) {
+    if (rev.filters === null || rev.filters.length === 0) {
+      continue;
+    }
+
+    const label = idx === 0 ? "born_event" : "return_event";
+    errors.push(...scanFiltersForCustomProperties(rev.filters, label));
+  }
+  return errors;
 }
 
 /**
@@ -1260,127 +891,41 @@ export function scanCustomProperties(
   } = options;
   const errors: ValidationError[] = [];
 
-  // Scan group_by
   if (group_by !== null && group_by !== undefined) {
-    const groups: readonly unknown[] = Array.isArray(group_by)
-      ? group_by
-      : [group_by];
-    for (let i = 0; i < groups.length; i++) {
-      const g = groups[i];
-      if (
-        g instanceof GroupBy &&
-        (g.property instanceof CustomPropertyRef ||
-          g.property instanceof InlineCustomProperty)
-      ) {
-        const gpath = groups.length > 1 ? `group_by[${String(i)}]` : "group_by";
-        errors.push(...validateCustomProperty(g.property, gpath));
-      }
-    }
+    errors.push(...scanGroupBy(group_by));
   }
-
-  // Scan where (filters) — skip FrequencyFilter instances (no _property)
   if (where !== null && where !== undefined) {
-    const filters: readonly unknown[] = Array.isArray(where) ? where : [where];
-    for (let i = 0; i < filters.length; i++) {
-      const f = filters[i];
-      if (f instanceof FrequencyFilter) {
-        if (f.event_filters !== null && f.event_filters.length > 0) {
-          for (let fi = 0; fi < f.event_filters.length; fi++) {
-            const ef = f.event_filters[fi] as Filter;
-            if (
-              ef._property instanceof CustomPropertyRef ||
-              ef._property instanceof InlineCustomProperty
-            ) {
-              const fpath = `where[${String(i)}].event_filters[${String(fi)}]`;
-              errors.push(...validateCustomProperty(ef._property, fpath));
-            }
-          }
-        }
-        continue;
-      }
-      if (
-        f instanceof Filter &&
-        (f._property instanceof CustomPropertyRef ||
-          f._property instanceof InlineCustomProperty)
-      ) {
-        const fpath = filters.length > 1 ? `where[${String(i)}]` : "where";
-        errors.push(...validateCustomProperty(f._property, fpath));
-      }
-    }
+    errors.push(...scanWhere(where));
   }
-
-  // Scan events (Metric.property AND Metric.filters)
   if (events !== null) {
-    for (const [idx, item] of events.entries()) {
-      if (!(item instanceof Metric)) {
-        continue;
-      }
-
-      if (
-        item.property instanceof CustomPropertyRef ||
-        item.property instanceof InlineCustomProperty
-      ) {
-        errors.push(
-          ...validateCustomProperty(item.property, `events[${String(idx)}]`),
-        );
-      }
-      if (item.filters !== null && item.filters.length > 0) {
-        errors.push(
-          ...scanFiltersForCustomProperties(
-            item.filters,
-            `events[${String(idx)}]`,
-          ),
-        );
-      }
-    }
+    errors.push(...scanEvents(events));
   }
-
-  // Scan funnel steps (FunnelStep.filters) — instanceof-gated in source
   if (funnel_steps !== null) {
-    for (const [idx, step] of funnel_steps.entries()) {
-      if (
-        step instanceof FunnelStep &&
-        step.filters !== null &&
-        step.filters.length > 0
-      ) {
-        errors.push(
-          ...scanFiltersForCustomProperties(
-            step.filters,
-            `steps[${String(idx)}]`,
-          ),
-        );
-      }
-    }
+    errors.push(...scanFunnelSteps(funnel_steps));
   }
-
-  // Scan flow steps (FlowStep.filters)
   if (flow_steps !== null) {
-    for (const [idx, flowStep] of flow_steps.entries()) {
-      const fstep = flowStep;
-      if (fstep.filters !== null && fstep.filters.length > 0) {
-        errors.push(
-          ...scanFiltersForCustomProperties(
-            fstep.filters,
-            `steps[${String(idx)}]`,
-          ),
-        );
-      }
-    }
+    errors.push(...scanFlowSteps(flow_steps));
   }
-
-  // Scan retention events (RetentionEvent.filters)
-  // retention_events is always [born_event, return_event]
   if (retention_events !== null) {
-    for (const [idx, retentionEvent] of retention_events.entries()) {
-      const rev = retentionEvent;
-      if (rev.filters !== null && rev.filters.length > 0) {
-        const label = idx === 0 ? "born_event" : "return_event";
-        errors.push(...scanFiltersForCustomProperties(rev.filters, label));
-      }
-    }
+    errors.push(...scanRetentionEvents(retention_events));
   }
 
   return errors;
 }
 
-export { isPythonDict } from "../compat/index.js";
+// TODO(Ω): shim — these helpers moved to `compat/python-values.ts`; the
+// re-export keeps foreign importers resolving until the sweep repoints them.
+export {
+  codepointGreater,
+  floatCarrierValue,
+  isFloatCarrier,
+  isPythonFloat,
+  isPythonInt,
+  pythonIterableElements,
+  pythonListRepr,
+  pythonNumberStr,
+  pythonStrLoose,
+  pythonStrValue,
+  pythonTypeName,
+  requireHashable,
+} from "../compat/python-values.js";

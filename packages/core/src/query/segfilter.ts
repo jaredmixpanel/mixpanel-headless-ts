@@ -41,15 +41,17 @@
  * @internal
  */
 
-import { pythonRepr, sortedByCodepoint, zfill } from "../compat/index.js";
-import { AttributeError, ValueError } from "../compat/python-builtins.js";
-import { ParamValidationError } from "../errors.js";
-import type { Filter } from "../types/index.js";
 import {
   pythonIterableElements,
+  pythonRepr,
   pythonStrValue,
   pythonTypeName,
-} from "./validation-shared.js";
+  sortedByCodepoint,
+  zfill,
+} from "../compat/index.js";
+import { AttributeError, ValueError } from "../compat/python-builtins.js";
+import { ParamValidationError } from "../errors.js";
+import type { Filter } from "../types/query-params/filter.js";
 
 /** A segfilter JSON fragment — twin of Python's `dict[str, Any]`. */
 export type SegfilterFragment = Record<string, unknown>;

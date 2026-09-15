@@ -13,6 +13,7 @@ export {
   cpSlice,
   sortedByCodepoint,
 } from "./codepoint.js";
+export { getCloseMatches } from "./difflib.js";
 export {
   AttributeError,
   KeyError,
@@ -35,6 +36,21 @@ export {
   pythonStrOf,
 } from "./python-str.js";
 export { pythonStrip } from "./python-strip.js";
+export {
+  codepointGreater,
+  dictGet,
+  floatCarrierValue,
+  isFloatCarrier,
+  isPythonFloat,
+  isPythonInt,
+  pythonIterableElements,
+  pythonListRepr,
+  pythonNumberStr,
+  pythonStrLoose,
+  pythonStrValue,
+  pythonTypeName,
+  requireHashable,
+} from "./python-values.js";
 export type { SplitResult } from "./urllib.js";
 export { urljoin, urlsplit, UrlSplitError, urlunsplit } from "./urllib.js";
 export { zfill } from "./zfill.js";

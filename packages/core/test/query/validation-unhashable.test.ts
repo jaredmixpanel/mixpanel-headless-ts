@@ -27,7 +27,7 @@ import { describe, expect, it } from "vitest";
 import {
   validateBookmark,
   validateFlowBookmark,
-} from "../../src/query/validation.js";
+} from "../../src/query/validation-bookmark.js";
 
 /** A poison value Python cannot hash (JSON array → Python list). */
 const LIST: readonly never[] = [];
