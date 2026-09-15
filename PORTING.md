@@ -127,6 +127,10 @@ marked `// Divergence:` at the site.
 - Closed in favour of bug-compatibility: `x in frozenset` with a list/dict
   raises `TypeError` in Python; the port raises at the same sixteen sites —
   `requireHashable` (`query/validation-shared.ts`).
+- A response body nested deeper than the call stack allows raises a bare
+  `RangeError` from the recursive-descent lossless parser; CPython's
+  `json.loads` raises `RecursionError`. Both are uncoded and both always
+  raise — `parseLossless` (`client/lossless-json.ts`).
 - Out-of-annotation scalars (a value that violates a validator's declared
   type): CPython raises, the port returns. Unspecified by the contract.
 
@@ -135,7 +139,9 @@ marked `// Divergence:` at the site.
 - httpx timeouts are per-read; `fetch` has none, so the port arms one wall
   clock for headers plus a buffered body. Streaming bodies are not
   clock-bounded after headers — `rawFetch` / `RawFetchResult.stopTimeout`
-  (`client/transport.ts`); the same shape for replay CDN fetches —
+  (`client/transport.ts`), which is what the Export API stream relies on
+  (`services/queries/streaming.ts`: `timeoutSeconds` bounds the headers, not
+  the JSONL body); the same shape for replay CDN fetches —
   `CDN_TIMEOUT_SECONDS` (`services/replays.ts`).
 - The lookup-upload poll deadline rides `Date.now()` by default; Python uses
   `time.monotonic()`. Node may inject a monotonic source —
@@ -206,6 +212,10 @@ marked `// Divergence:` at the site.
 
 ### Wire and encoding
 
+- The User-Agent is `mixpanel-headless/<version> (entry=<lib|cli>; ts)`;
+  Python's runtime tag is `python/<x.y>`. Telemetry identification only —
+  vectors assert headers as subsets, so no vector byte-locks it —
+  `getUserAgent` (`client/headers.ts`).
 - A UTF-8 BOM is kept, matching Python's `utf-8` codec; a BOM-only JSONL line
   is yielded, not skipped; undecodable bytes become U+FFFD like
   `errors="replace"` — `iterJsonlLines` (`client/jsonl.ts`).

@@ -17,7 +17,7 @@ in [`conformance-runner/GATE.md`](../../conformance-runner/GATE.md) and
 
 The repository's 2026-09 cleanup plan is archived here too:
 [`cleanup-plan-2026-09.md`](cleanup-plan-2026-09.md). It was executed on branch
-`cleanup/2026-09` in September 2026 (243 commits over `main`); at the end of
+`cleanup/2026-09` in September 2026 (244 commits over `main`); at the end of
 that branch the gate stood at 305 test files / 11,339 tests (+1 todo),
 coverage 90.68 % lines / 90.67 % statements / 93.55 % functions / 84.89 %
 branches over `packages/*/src`, the conformance corpus at 3,453 / 3,453 passed
