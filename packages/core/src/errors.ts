@@ -23,7 +23,7 @@
  * (phase2-design C3/C8).
  */
 
-import { pythonStrOf } from "./compat/python-str.js";
+import type { Region } from "./types/literals.js";
 
 export {
   CODED_GUARD_REGISTRY,
@@ -48,15 +48,18 @@ export interface ErrorDict {
  * specific subclasses, and serialize errors via {@link toDict}.
  */
 export class MixpanelHeadlessError extends Error {
-  /** Machine-readable error code (subclasses may override post-super). */
-  protected _code: string;
+  /** Machine-readable error code — fixed at construction. */
+  readonly #code: string;
 
   /**
    * Additional structured error data. Keys entering this bag keep their
    * Python snake_case spelling — it is serialized into `toDict()` output
    * and compared by the conformance canonicalizer (R7.6 wire exception).
+   * Subclasses contribute their keys through the constructor chain
+   * (see {@link APIErrorOptions.details}); nothing mutates the bag after
+   * construction.
    */
-  protected readonly _details: Record<string, unknown>;
+  readonly #details: Record<string, unknown>;
 
   /**
    * Initialize the exception.
@@ -74,18 +77,18 @@ export class MixpanelHeadlessError extends Error {
   ) {
     super(message, options);
     this.name = this.constructor.name;
-    this._code = code;
-    this._details = { ...details };
+    this.#code = code;
+    this.#details = { ...details };
   }
 
   /** Machine-readable error code. */
   get code(): string {
-    return this._code;
+    return this.#code;
   }
 
   /** Additional structured error data (snake_case keys). */
   get details(): Readonly<Record<string, unknown>> {
-    return this._details;
+    return this.#details;
   }
 
   /**
@@ -98,9 +101,9 @@ export class MixpanelHeadlessError extends Error {
    */
   toDict(): ErrorDict {
     return {
-      code: this._code,
+      code: this.#code,
       message: this.message,
-      details: this._details,
+      details: this.#details,
     };
   }
 }
@@ -208,13 +211,12 @@ export class ResponseValidationError extends MixpanelHeadlessError {
 // ---------------------------------------------------------------------------
 
 /**
- * Keyword-only options bag for {@link APIError} (Python `*`-marked params,
- * R3.8). Bag keys are camelCase (pure argument bag, R3.6); the derived
- * `details` dict keeps the Python snake_case spelling.
+ * The HTTP request/response context every {@link APIError} option bag
+ * carries (Python `*`-marked keyword params, R3.8). Bag keys are
+ * camelCase (pure argument bag, R3.6); the derived `details` dict keeps
+ * the Python snake_case spelling.
  */
-export interface APIErrorOptions {
-  /** HTTP status code from the response. */
-  readonly statusCode: number;
+export interface HttpErrorContext {
   /** Raw response body (any lossless-parsed JSON value, or raw text). */
   readonly responseBody?: unknown;
   /** HTTP method used (GET, POST). */
@@ -225,10 +227,33 @@ export interface APIErrorOptions {
   readonly requestParams?: Readonly<Record<string, unknown>> | null | undefined;
   /** Request body sent (for POST requests). */
   readonly requestBody?: Readonly<Record<string, unknown>> | null | undefined;
-  /** Machine-readable error code. */
-  readonly code?: string | undefined;
   /** Underlying cause, threaded to `Error#cause`. */
   readonly cause?: unknown;
+}
+
+/** Keyword-only options bag for {@link APIError}. */
+export interface APIErrorOptions extends HttpErrorContext {
+  /** HTTP status code from the response. */
+  readonly statusCode: number;
+  /** Machine-readable error code. */
+  readonly code?: string | undefined;
+  /**
+   * Subclass-specific keys appended to `details` AFTER the HTTP-context
+   * keys, in insertion order — the constructor-chain form of Python's
+   * post-`super().__init__` `self._details[...] = ...` /
+   * `self._details.update(details)`.
+   */
+  readonly details?: Readonly<Record<string, unknown>> | null | undefined;
+}
+
+/**
+ * Options bag of the fixed-code {@link APIError} subclasses: the HTTP
+ * context plus an optional `statusCode` that falls back to the
+ * subclass's default status.
+ */
+export interface HttpErrorOptions extends HttpErrorContext {
+  /** HTTP status code; defaults to the subclass's status. */
+  readonly statusCode?: number | undefined;
 }
 
 /**
@@ -280,6 +305,10 @@ export class APIError extends MixpanelHeadlessError {
     }
     if (requestBody !== null) {
       details["request_body"] = requestBody;
+    }
+    const extra = options.details ?? null;
+    if (extra !== null) {
+      Object.assign(details, extra);
     }
 
     super(
@@ -344,13 +373,16 @@ export class ConfigError extends MixpanelHeadlessError {
    * @param message - Human-readable error message (out of contract, R5.4).
    * @param details - Additional structured data.
    * @param options - Standard `ErrorOptions` (`cause` threading).
+   * @param code - Machine-readable code; the subclasses pass their own,
+   *   direct callers keep the `"CONFIG_ERROR"` default.
    */
   constructor(
     message: string,
     details?: Readonly<Record<string, unknown>> | null,
     options?: ErrorOptions,
+    code: string = "CONFIG_ERROR",
   ) {
-    super(message, "CONFIG_ERROR", details, options);
+    super(message, code, details, options);
   }
 }
 
@@ -361,6 +393,9 @@ export class ConfigError extends MixpanelHeadlessError {
  * help users.
  */
 export class AccountNotFoundError extends ConfigError {
+  readonly #accountName: string;
+  readonly #availableAccounts: readonly string[];
+
   /**
    * Initialize AccountNotFoundError.
    *
@@ -371,7 +406,7 @@ export class AccountNotFoundError extends ConfigError {
     accountName: string,
     availableAccounts?: readonly string[] | null,
   ) {
-    const available = availableAccounts ?? [];
+    const available = [...(availableAccounts ?? [])];
     let message: string;
     if (available.length > 0) {
       const availableStr = available.map((a) => `'${a}'`).join(", ");
@@ -379,23 +414,24 @@ export class AccountNotFoundError extends ConfigError {
     } else {
       message = `Account '${accountName}' not found. No accounts configured.`;
     }
-    super(message, {
-      account_name: accountName,
-      available_accounts: [...available],
-    });
-    this._code = "ACCOUNT_NOT_FOUND";
+    super(
+      message,
+      { account_name: accountName, available_accounts: available },
+      undefined,
+      "ACCOUNT_NOT_FOUND",
+    );
+    this.#accountName = accountName;
+    this.#availableAccounts = available;
   }
 
   /** The requested account name that wasn't found. */
   get accountName(): string {
-    const value = this._details["account_name"];
-    return typeof value === "string" ? value : "";
+    return this.#accountName;
   }
 
   /** List of valid account names. */
   get availableAccounts(): readonly string[] {
-    const value = this._details["available_accounts"];
-    return Array.isArray(value) ? (value as readonly string[]) : [];
+    return this.#availableAccounts;
   }
 }
 
@@ -406,6 +442,9 @@ export class AccountNotFoundError extends ConfigError {
  * project IDs to help the user correct their selection.
  */
 export class ProjectNotFoundError extends ConfigError {
+  readonly #projectId: string;
+  readonly #availableProjects: readonly string[];
+
   /**
    * Initialize ProjectNotFoundError.
    *
@@ -413,7 +452,7 @@ export class ProjectNotFoundError extends ConfigError {
    * @param availableProjects - List of accessible project IDs for suggestions.
    */
   constructor(projectId: string, availableProjects?: readonly string[] | null) {
-    const available = availableProjects ?? [];
+    const available = [...(availableProjects ?? [])];
     let message: string;
     if (available.length > 0) {
       const availableStr = available.map((p) => `'${p}'`).join(", ");
@@ -421,23 +460,24 @@ export class ProjectNotFoundError extends ConfigError {
     } else {
       message = `Project '${projectId}' not found. No accessible projects discovered.`;
     }
-    super(message, {
-      project_id: projectId,
-      available_projects: [...available],
-    });
-    this._code = "PROJECT_NOT_FOUND";
+    super(
+      message,
+      { project_id: projectId, available_projects: available },
+      undefined,
+      "PROJECT_NOT_FOUND",
+    );
+    this.#projectId = projectId;
+    this.#availableProjects = available;
   }
 
   /** The requested project ID that wasn't found. */
   get projectId(): string {
-    const value = this._details["project_id"];
-    return typeof value === "string" ? value : "";
+    return this.#projectId;
   }
 
   /** List of accessible project IDs. */
   get availableProjects(): readonly string[] {
-    const value = this._details["available_projects"];
-    return Array.isArray(value) ? (value as readonly string[]) : [];
+    return this.#availableProjects;
   }
 }
 
@@ -448,22 +488,26 @@ export class ProjectNotFoundError extends ConfigError {
  * use.
  */
 export class AccountExistsError extends ConfigError {
+  readonly #accountName: string;
+
   /**
    * Initialize AccountExistsError.
    *
    * @param accountName - The conflicting account name.
    */
   constructor(accountName: string) {
-    super(`Account '${accountName}' already exists.`, {
-      account_name: accountName,
-    });
-    this._code = "ACCOUNT_EXISTS";
+    super(
+      `Account '${accountName}' already exists.`,
+      { account_name: accountName },
+      undefined,
+      "ACCOUNT_EXISTS",
+    );
+    this.#accountName = accountName;
   }
 
   /** The conflicting account name. */
   get accountName(): string {
-    const value = this._details["account_name"];
-    return typeof value === "string" ? value : "";
+    return this.#accountName;
   }
 }
 
@@ -497,6 +541,9 @@ export interface InvalidArgumentErrorOptions {
  * human message.
  */
 export class InvalidArgumentError extends ConfigError {
+  readonly #violation: InvalidArgumentViolation;
+  readonly #detectedAuthType: string | null;
+
   /**
    * Initialize InvalidArgumentError.
    *
@@ -520,20 +567,19 @@ export class InvalidArgumentError extends ConfigError {
     if (detectedAuthType !== null) {
       details["detected_auth_type"] = detectedAuthType;
     }
-    super(message, details);
-    this._code = "INVALID_ARGUMENT";
+    super(message, details, undefined, "INVALID_ARGUMENT");
+    this.#violation = violation;
+    this.#detectedAuthType = detectedAuthType;
   }
 
   /** The kind of misuse — see {@link InvalidArgumentViolation}. */
-  get violation(): string {
-    const value = this._details["violation"];
-    return typeof value === "string" ? value : "";
+  get violation(): InvalidArgumentViolation {
+    return this.#violation;
   }
 
   /** The auth type the orchestrator resolved, or `null` if pre-detection. */
   get detectedAuthType(): string | null {
-    const value = this._details["detected_auth_type"];
-    return value !== null && value !== undefined ? pythonStrOf(value) : null;
+    return this.#detectedAuthType;
   }
 }
 
@@ -545,6 +591,9 @@ export class InvalidArgumentError extends ConfigError {
  * to delete the account and orphan the targets.
  */
 export class AccountInUseError extends ConfigError {
+  readonly #accountName: string;
+  readonly #referencedBy: readonly string[];
+
   /**
    * Initialize AccountInUseError.
    *
@@ -552,7 +601,7 @@ export class AccountInUseError extends ConfigError {
    * @param referencedBy - Names of targets that reference the account.
    */
   constructor(accountName: string, referencedBy?: readonly string[] | null) {
-    const targets = referencedBy ?? [];
+    const targets = [...(referencedBy ?? [])];
     let message: string;
     if (targets.length > 0) {
       const targetStr = targets.map((t) => `'${t}'`).join(", ");
@@ -562,23 +611,24 @@ export class AccountInUseError extends ConfigError {
     } else {
       message = `Account '${accountName}' is in use. Pass \`force=True\` to remove.`;
     }
-    super(message, {
-      account_name: accountName,
-      referenced_by: [...targets],
-    });
-    this._code = "ACCOUNT_IN_USE";
+    super(
+      message,
+      { account_name: accountName, referenced_by: targets },
+      undefined,
+      "ACCOUNT_IN_USE",
+    );
+    this.#accountName = accountName;
+    this.#referencedBy = targets;
   }
 
   /** The account name that callers tried to remove. */
   get accountName(): string {
-    const value = this._details["account_name"];
-    return typeof value === "string" ? value : "";
+    return this.#accountName;
   }
 
   /** Target names that reference the account. */
   get referencedBy(): readonly string[] {
-    const value = this._details["referenced_by"];
-    return Array.isArray(value) ? (value as readonly string[]) : [];
+    return this.#referencedBy;
   }
 }
 
@@ -587,22 +637,7 @@ export class AccountInUseError extends ConfigError {
 // ---------------------------------------------------------------------------
 
 /** Options bag for {@link AuthenticationError} (fixed code `AUTH_FAILED`). */
-export interface AuthenticationErrorOptions {
-  /** HTTP status code (default 401). */
-  readonly statusCode?: number | undefined;
-  /** Raw response body. */
-  readonly responseBody?: unknown;
-  /** HTTP method used. */
-  readonly requestMethod?: string | null | undefined;
-  /** Full request URL. */
-  readonly requestUrl?: string | null | undefined;
-  /** Query parameters sent. */
-  readonly requestParams?: Readonly<Record<string, unknown>> | null | undefined;
-  /** Request body sent (for POST/PATCH requests). */
-  readonly requestBody?: Readonly<Record<string, unknown>> | null | undefined;
-  /** Underlying cause, threaded to `Error#cause`. */
-  readonly cause?: unknown;
-}
+export type AuthenticationErrorOptions = HttpErrorOptions;
 
 /**
  * Authentication with the Mixpanel API failed (HTTP 401).
@@ -625,14 +660,9 @@ export class AuthenticationError extends APIError {
     options: AuthenticationErrorOptions = {},
   ) {
     super(message, {
+      ...options,
       statusCode: options.statusCode ?? 401,
-      responseBody: options.responseBody ?? null,
-      requestMethod: options.requestMethod ?? null,
-      requestUrl: options.requestUrl ?? null,
-      requestParams: options.requestParams ?? null,
-      requestBody: options.requestBody ?? null,
       code: "AUTH_FAILED",
-      cause: options.cause,
     });
   }
 }
@@ -676,23 +706,16 @@ function buildRateLimitFormUrl(projectId: string | null): string {
  * which (unlike the other APIError subclasses) has NO `request_body`
  * parameter.
  */
-export interface RateLimitErrorOptions {
+export interface RateLimitErrorOptions extends Omit<
+  HttpErrorContext,
+  "requestBody"
+> {
   /** Seconds until retry is allowed (from the Retry-After header). */
   readonly retryAfter?: number | null | undefined;
   /** HTTP status code (default 429). */
   readonly statusCode?: number | undefined;
-  /** Raw response body. */
-  readonly responseBody?: unknown;
-  /** HTTP method used. */
-  readonly requestMethod?: string | null | undefined;
-  /** Full request URL. */
-  readonly requestUrl?: string | null | undefined;
-  /** Query parameters sent. */
-  readonly requestParams?: Readonly<Record<string, unknown>> | null | undefined;
   /** Mixpanel project id active when the limit was hit, if known. */
   readonly projectId?: string | null | undefined;
-  /** Underlying cause, threaded to `Error#cause`. */
-  readonly cause?: unknown;
 }
 
 /**
@@ -722,6 +745,15 @@ export class RateLimitError extends APIError {
     if (retryAfter !== null) {
       finalMessage = `${message}. Retry after ${retryAfter} seconds.`;
     }
+    // Appended after the HTTP keys, exactly as Python's post-super
+    // `self._details[...] = ...` writes land (absent when None, R4.11).
+    const extra: Record<string, unknown> = {};
+    if (retryAfter !== null) {
+      extra["retry_after"] = retryAfter;
+    }
+    if (projectId !== null) {
+      extra["project_id"] = projectId;
+    }
     super(finalMessage, {
       statusCode: options.statusCode ?? 429,
       responseBody: options.responseBody ?? null,
@@ -730,16 +762,10 @@ export class RateLimitError extends APIError {
       requestParams: options.requestParams ?? null,
       code: "RATE_LIMITED",
       cause: options.cause,
+      details: extra,
     });
     this.#retryAfter = retryAfter;
     this.#projectId = projectId;
-    // Post-super detail merges, exactly as Python appends them.
-    if (retryAfter !== null) {
-      this._details["retry_after"] = retryAfter;
-    }
-    if (projectId !== null) {
-      this._details["project_id"] = projectId;
-    }
   }
 
   /** Seconds until retry is allowed, or `null` if unknown. */
@@ -813,22 +839,7 @@ export class EventNotFoundError extends MixpanelHeadlessError {
 }
 
 /** Options bag for {@link QueryError} (fixed code `QUERY_FAILED`). */
-export interface QueryErrorOptions {
-  /** HTTP status code (default 400). */
-  readonly statusCode?: number | undefined;
-  /** Raw response body with error details. */
-  readonly responseBody?: unknown;
-  /** HTTP method used. */
-  readonly requestMethod?: string | null | undefined;
-  /** Full request URL. */
-  readonly requestUrl?: string | null | undefined;
-  /** Query parameters sent. */
-  readonly requestParams?: Readonly<Record<string, unknown>> | null | undefined;
-  /** Request body sent (for POST). */
-  readonly requestBody?: Readonly<Record<string, unknown>> | null | undefined;
-  /** Underlying cause, threaded to `Error#cause`. */
-  readonly cause?: unknown;
-}
+export type QueryErrorOptions = HttpErrorOptions;
 
 /**
  * Query execution failed (HTTP 400 or query-specific error).
@@ -850,35 +861,15 @@ export class QueryError extends APIError {
     options: QueryErrorOptions = {},
   ) {
     super(message, {
+      ...options,
       statusCode: options.statusCode ?? 400,
-      responseBody: options.responseBody ?? null,
-      requestMethod: options.requestMethod ?? null,
-      requestUrl: options.requestUrl ?? null,
-      requestParams: options.requestParams ?? null,
-      requestBody: options.requestBody ?? null,
       code: "QUERY_FAILED",
-      cause: options.cause,
     });
   }
 }
 
 /** Options bag for {@link ServerError} (fixed code `SERVER_ERROR`). */
-export interface ServerErrorOptions {
-  /** HTTP status code (default 500). */
-  readonly statusCode?: number | undefined;
-  /** Raw response body with error details. */
-  readonly responseBody?: unknown;
-  /** HTTP method used. */
-  readonly requestMethod?: string | null | undefined;
-  /** Full request URL. */
-  readonly requestUrl?: string | null | undefined;
-  /** Query parameters sent. */
-  readonly requestParams?: Readonly<Record<string, unknown>> | null | undefined;
-  /** Request body sent (for POST). */
-  readonly requestBody?: Readonly<Record<string, unknown>> | null | undefined;
-  /** Underlying cause, threaded to `Error#cause`. */
-  readonly cause?: unknown;
-}
+export type ServerErrorOptions = HttpErrorOptions;
 
 /**
  * Mixpanel server error (HTTP 5xx).
@@ -900,14 +891,9 @@ export class ServerError extends APIError {
     options: ServerErrorOptions = {},
   ) {
     super(message, {
+      ...options,
       statusCode: options.statusCode ?? 500,
-      responseBody: options.responseBody ?? null,
-      requestMethod: options.requestMethod ?? null,
-      requestUrl: options.requestUrl ?? null,
-      requestParams: options.requestParams ?? null,
-      requestBody: options.requestBody ?? null,
       code: "SERVER_ERROR",
-      cause: options.cause,
     });
   }
 }
@@ -1014,14 +1000,11 @@ export class OAuthError extends MixpanelHeadlessError {
 }
 
 /**
- * One region-probe attempt: `[region, statusCode, errorBody]`.
- *
- * `region` is typed `string` in Phase 2; the `Region` literal union lands
- * with the P2-4 auth model (`auth/account.ts`) and may tighten this alias
- * there. A status code of `0` indicates the request never reached the
- * server (network error).
+ * One region-probe attempt: `[region, statusCode, errorBody]`. A status
+ * code of `0` indicates the request never reached the server (network
+ * error).
  */
-export type RegionProbeAttempt = readonly [string, number, string];
+export type RegionProbeAttempt = readonly [Region, number, string];
 
 /** Keyword-only options bag for {@link RegionProbeError} (R3.8). */
 export interface RegionProbeErrorOptions {
@@ -1337,25 +1320,13 @@ export class BookmarkValidationError extends MixpanelHeadlessError {
  * APIError context (all optional — status/code fall back to per-class
  * defaults) plus a replay-specific `details` dict merged on top.
  */
-export interface SessionReplayErrorOptions {
-  /** Replay-specific structured context (merged into `details`). */
+export interface SessionReplayErrorOptions extends HttpErrorContext {
+  /** Replay-specific structured context (appended to `details`). */
   readonly details?: Readonly<Record<string, unknown>> | null | undefined;
   /** HTTP status; defaults to the subclass's default status. */
   readonly statusCode?: number | null | undefined;
-  /** Raw response body for debugging. */
-  readonly responseBody?: unknown;
-  /** HTTP method (GET, POST, …). */
-  readonly requestMethod?: string | null | undefined;
-  /** Full request URL. */
-  readonly requestUrl?: string | null | undefined;
-  /** Query parameters sent on the failing request. */
-  readonly requestParams?: Readonly<Record<string, unknown>> | null | undefined;
-  /** Request body sent on the failing request. */
-  readonly requestBody?: Readonly<Record<string, unknown>> | null | undefined;
   /** Machine-readable code; defaults to the subclass's default code. */
   readonly code?: string | null | undefined;
-  /** Underlying cause, threaded to `Error#cause`. */
-  readonly cause?: unknown;
 }
 
 /**
@@ -1379,9 +1350,9 @@ export class SessionReplayError extends APIError {
    *
    * @param message - Human-readable error message (out of contract, R5.4).
    * @param options - Keyword-only bag; `statusCode`/`code` default to the
-   *   most-derived class's static defaults; `details` is merged into the
-   *   APIError details dict AFTER construction, exactly as Python's
-   *   `self._details.update(details)` does.
+   *   most-derived class's static defaults; `details` is appended to the
+   *   APIError details dict after the HTTP keys, exactly where Python's
+   *   `self._details.update(details)` lands them.
    */
   constructor(message: string, options: SessionReplayErrorOptions = {}) {
     const ctor = new.target;
@@ -1394,13 +1365,8 @@ export class SessionReplayError extends APIError {
       requestBody: options.requestBody ?? null,
       code: options.code ?? ctor.defaultCode,
       cause: options.cause,
+      details: options.details ?? null,
     });
-    const extra = options.details ?? null;
-    // Python: `if details: self._details.update(details)` — empty dict is
-    // falsy in Python, and merging an empty object is a no-op anyway.
-    if (extra !== null) {
-      Object.assign(this._details, extra);
-    }
   }
 }
 
