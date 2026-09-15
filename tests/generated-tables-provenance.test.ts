@@ -1,20 +1,9 @@
-// Provenance check for the four CPython-generated artefacts (the three
-// compat tables under packages/core/src/compat/*.gen.ts and the canonical
-// json.dumps fixture table). Byte-exact regeneration needs the pinned
-// interpreter through `uv` and stays manual (`npm run generate:compat-tables`,
-// `npm run generate:canonical-fixtures`), so instead of re-running the
-// generators this test pins what each header records:
-//
-// - the CPython / Unicode versions equal scripts/compat-python.pin.json
-//   (a table emitted by another interpreter carries another Unicode
-//   database and is wrong even when it looks plausible);
-// - the embedded generator sha256 equals the current bytes of the
-//   generator script (an edited generator whose output was not re-emitted);
-// - the counts the header claims equal what the body contains (a hand edit
-//   to a generated file);
-// - the fixture table's corpus pin equals corpus.config.json (a corpus
-//   re-pin without a fixture refresh — the sample is drawn from the corpus);
-// - the npm scripts select exactly the pinned interpreter.
+// Provenance of the four CPython-generated artefacts (the compat tables and
+// the canonical json.dumps fixtures). Regeneration is manual, so this pins
+// what each header records: interpreter/Unicode versions against
+// scripts/compat-python.pin.json, the generator sha256, the header counts
+// against the body, the fixture corpus pin, and the npm scripts' interpreter.
+
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";

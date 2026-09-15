@@ -1,5 +1,6 @@
-// Unit tests for the naming-map §3 mechanical transform and §4 exception
-// resolution (src/naming.ts, task TS-4).
+// Naming (src/naming.ts): the mechanical snake→camel transform and the
+// exception resolution.
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -8,7 +9,7 @@ import {
   snakeToCamel,
 } from "../src/naming.js";
 
-describe("snakeToCamel (naming-map §3)", () => {
+describe("snakeToCamel", () => {
   it("camelizes multi-segment names", () => {
     expect(snakeToCamel("build_funnel_params")).toBe("buildFunnelParams");
   });
@@ -28,7 +29,7 @@ describe("snakeToCamel (naming-map §3)", () => {
     expect(snakeToCamel("data_group_id")).toBe("dataGroupId");
   });
 
-  it("drops a single leading underscore (R7.6 module-privates)", () => {
+  it("drops a single leading underscore (module-private names)", () => {
     expect(snakeToCamel("_sanitize_raw_cohort")).toBe("sanitizeRawCohort");
     expect(snakeToCamel("_iter_jsonl_lines")).toBe("iterJsonlLines");
   });
@@ -42,7 +43,7 @@ describe("snakeToCamel (naming-map §3)", () => {
   });
 });
 
-describe("resolveTsApiName (naming-map §4-§5)", () => {
+describe("resolveTsApiName", () => {
   /** Minimal exceptions table exercising each resolution path. */
   const ROWS: readonly NamingExceptionRow[] = [
     {

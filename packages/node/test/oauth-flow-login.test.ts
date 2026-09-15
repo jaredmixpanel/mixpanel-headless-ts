@@ -1,26 +1,10 @@
-// Layer-3 translation of the LOGIN classes of
-// `tests/unit/test_auth_flow.py` (b8-packets.md §4.3 row 4):
-// `TestOAuthFlowLogin`, `TestParsePastedRedirect`,
-// `TestOAuthFlowPasteFallback`, `TestOAuthFlowTokenExchange`
-// (:385), the EXCHANGE members of `TestTokenPayloadRedaction` (FIX-2,
-// bug (d) — refresh member split into `oauth-flow-refresh.test.ts`),
-// `TestOAuthFlowRegionUrls`, and the EXCHANGE-op
-// members of `TestOAuthFlowNetworkErrors` (:802 — the refresh/timeout
-// members were N2's, header-cited split in
-// `oauth-flow-refresh.test.ts`).
-//
-// Python's `@patch("...flow.webbrowser")` / `flow.start_callback_server`
-// / `flow.ensure_client_registered` module monkeypatches translate to
-// the injected `OAuthFlowOptions` seams (`openBrowser`,
-// `startCallbackServer`, `registerClient` — packet §4.2 "browser
-// opening is an injected effect"). `findAvailablePort` is additionally
-// stubbed to `19284` here: Python probes real ports in these tests,
-// but the probe result is never asserted, and the fixed stub keeps
-// this file free of port contention with the REAL binds in
-// `callback-server.test.ts` running in a parallel worker (disclosed in
-// the shard notes).
+// OAuthFlow login, pasted-redirect parsing, code exchange and payload
+// redaction. Mirrors the login/exchange classes of tests/unit/test_auth_flow.py
+// (the refresh classes live in oauth-flow-refresh.test.ts); the module
+// monkeypatches translate to the injected `OAuthFlowOptions` seams, and
+// `findAvailablePort` is stubbed so no real port is bound here.
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   CallbackResult,
@@ -35,14 +19,13 @@ import { OAuthStorage } from "../src/auth/storage.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const cleanups: Array<() => void> = [];
-let restoreEnv: () => void = () => undefined;
 
 beforeEach(() => {
-  restoreEnv = scrubMpEnv();
+  scrubMpEnv();
 });
 
 afterEach(() => {
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }
@@ -179,8 +162,10 @@ function makeLoginSeams(options?: {
   return { seams, openedUrls, stderrText };
 }
 
-describe("TestOAuthFlowLogin (test_auth_flow.py:88)", () => {
-  it("test_full_login_sequence", async () => {
+describe("OAuthFlow.login", () => {
+  // python: test_auth_flow.py::TestOAuthFlowLogin
+  it("completes the login sequence and returns both tokens", async () => {
+    // python: test_full_login_sequence
     const { seams, openedUrls } = makeLoginSeams();
     const { fetchImpl } = mockTransport(() =>
       jsonResponse(200, makeTokenResponse()),
@@ -196,7 +181,8 @@ describe("TestOAuthFlowLogin (test_auth_flow.py:88)", () => {
     expect(openedUrls).toHaveLength(1);
   });
 
-  it("test_handles_missing_refresh_token", async () => {
+  it("returns a null refresh token when the response omits one", async () => {
+    // python: test_handles_missing_refresh_token
     const { seams } = makeLoginSeams({ callbackCode: "code1" });
     const { fetchImpl } = mockTransport(() =>
       jsonResponse(200, makeTokenResponse({ refreshToken: null })),
@@ -210,7 +196,8 @@ describe("TestOAuthFlowLogin (test_auth_flow.py:88)", () => {
     expect(tokens.refresh_token).toBeNull();
   });
 
-  it("test_open_browser_false_skips_webbrowser_and_prints_url", async () => {
+  it("openBrowser: false prints the authorize URL to stderr instead of launching", async () => {
+    // python: test_open_browser_false_skips_webbrowser_and_prints_url
     const { seams, openedUrls, stderrText } = makeLoginSeams({
       callbackCode: "code1",
     });
@@ -232,7 +219,7 @@ describe("TestOAuthFlowLogin (test_auth_flow.py:88)", () => {
 
 // TS-only (no Python twin: CPython's `webbrowser` owns the launch).
 // The default `openBrowser` seam's argv per platform — CLEANUP-PLAN 8.1.
-describe("browser launch argv (CLEANUP-PLAN 8.1)", () => {
+describe("browser launch argv", () => {
   // Every `&`, `%` and `=` an authorize URL carries, in one string.
   const url =
     "https://mixpanel.com/oauth/authorize/?response_type=code&client_id=abc" +
@@ -266,8 +253,10 @@ describe("browser launch argv (CLEANUP-PLAN 8.1)", () => {
   });
 });
 
-describe("TestParsePastedRedirect (test_auth_flow.py:215)", () => {
-  it("test_full_redirect_url", () => {
+describe("parsePastedRedirect", () => {
+  // python: test_auth_flow.py::TestParsePastedRedirect
+  it("parses code and state from a full redirect URL", () => {
+    // python: test_full_redirect_url
     const result = parsePastedRedirect(
       "http://localhost:19284/callback?code=ABC&state=XYZ",
       { expectedState: "XYZ" },
@@ -276,21 +265,24 @@ describe("TestParsePastedRedirect (test_auth_flow.py:215)", () => {
     expect(result.state).toBe("XYZ");
   });
 
-  it("test_query_string_only", () => {
+  it("parses a bare query string", () => {
+    // python: test_query_string_only
     const result = parsePastedRedirect("code=ABC&state=XYZ", {
       expectedState: "XYZ",
     });
     expect(result.code).toBe("ABC");
   });
 
-  it("test_query_string_with_leading_question_mark", () => {
+  it("parses a query string with a leading question mark", () => {
+    // python: test_query_string_with_leading_question_mark
     const result = parsePastedRedirect("?code=ABC&state=XYZ", {
       expectedState: "XYZ",
     });
     expect(result.code).toBe("ABC");
   });
 
-  it("test_whitespace_is_stripped", () => {
+  it("strips surrounding whitespace", () => {
+    // python: test_whitespace_is_stripped
     const result = parsePastedRedirect(
       "  http://localhost:19284/callback?code=ABC&state=XYZ\n",
       { expectedState: "XYZ" },
@@ -298,13 +290,15 @@ describe("TestParsePastedRedirect (test_auth_flow.py:215)", () => {
     expect(result.code).toBe("ABC");
   });
 
-  it("test_empty_paste_raises", () => {
+  it("rejects an empty paste", () => {
+    // python: test_empty_paste_raises
     expect(() =>
       parsePastedRedirect("   \n", { expectedState: "XYZ" }),
     ).toThrow(/Empty paste/);
   });
 
-  it("test_state_mismatch_raises", () => {
+  it("rejects a state mismatch", () => {
+    // python: test_state_mismatch_raises
     // CSRF: without this check a hostile party could trick the user
     // into pasting an attacker-generated code.
     expect(() =>
@@ -312,19 +306,22 @@ describe("TestParsePastedRedirect (test_auth_flow.py:215)", () => {
     ).toThrow(/State mismatch/);
   });
 
-  it("test_missing_code_raises", () => {
+  it("rejects a paste without code", () => {
+    // python: test_missing_code_raises
     expect(() =>
       parsePastedRedirect("state=XYZ", { expectedState: "XYZ" }),
     ).toThrow(/missing `code` or `state`/);
   });
 
-  it("test_missing_state_raises", () => {
+  it("rejects a paste without state", () => {
+    // python: test_missing_state_raises
     expect(() =>
       parsePastedRedirect("code=ABC", { expectedState: "XYZ" }),
     ).toThrow(/missing `code` or `state`/);
   });
 
-  it("test_oauth_error_param_surfaces", () => {
+  it("surfaces the provider's error parameter", () => {
+    // python: test_oauth_error_param_surfaces
     expect(() =>
       parsePastedRedirect(
         "http://localhost:19284/callback?error=access_denied&state=XYZ",
@@ -333,7 +330,8 @@ describe("TestParsePastedRedirect (test_auth_flow.py:215)", () => {
     ).toThrow(/access_denied/);
   });
 
-  it("test_oauth_error_with_description_includes_description", () => {
+  it("includes the provider's error_description", () => {
+    // python: test_oauth_error_with_description_includes_description
     expect(() =>
       parsePastedRedirect(
         "?error=access_denied&error_description=user+cancelled&state=XYZ",
@@ -343,8 +341,10 @@ describe("TestParsePastedRedirect (test_auth_flow.py:215)", () => {
   });
 });
 
-describe("TestOAuthFlowPasteFallback (test_auth_flow.py:286)", () => {
-  it("test_paste_fallback_succeeds_when_callback_blocked", async () => {
+describe("OAuthFlow.login paste fallback", () => {
+  // python: test_auth_flow.py::TestOAuthFlowPasteFallback
+  it("completes through the pasted redirect when the callback server never answers", async () => {
+    // python: test_paste_fallback_succeeds_when_callback_blocked
     // The callback server blocks past the test's lifetime; the paste
     // path is the only one that completes — proves the race resolves
     // on whichever completer wins. State is recovered from the
@@ -390,8 +390,10 @@ describe("TestOAuthFlowPasteFallback (test_auth_flow.py:286)", () => {
   });
 });
 
-describe("TestOAuthFlowTokenExchange (test_auth_flow.py:385)", () => {
-  it("test_exchange_posts_correct_form_params", async () => {
+describe("OAuthFlow.exchangeCode", () => {
+  // python: test_auth_flow.py::TestOAuthFlowTokenExchange
+  it("posts the authorization_code grant as form params", async () => {
+    // python: test_exchange_posts_correct_form_params
     const { fetchImpl, captured } = mockTransport(() =>
       jsonResponse(200, makeTokenResponse()),
     );
@@ -415,7 +417,8 @@ describe("TestOAuthFlowTokenExchange (test_auth_flow.py:385)", () => {
     expect(body).toContain("redirect_uri=");
   });
 
-  it("test_exchange_uses_correct_url_for_region", async () => {
+  it("posts to the token endpoint of the configured region", async () => {
+    // python: test_exchange_uses_correct_url_for_region
     for (const [region, expectedHost] of [
       ["us", "mixpanel.com"],
       ["eu", "eu.mixpanel.com"],
@@ -439,7 +442,8 @@ describe("TestOAuthFlowTokenExchange (test_auth_flow.py:385)", () => {
     }
   });
 
-  it("test_exchange_error_raises_oauth_error", async () => {
+  it("raises OAUTH_TOKEN_ERROR on an error response", async () => {
+    // python: test_exchange_error_raises_oauth_error
     const { fetchImpl } = mockTransport(() =>
       jsonResponse(400, {
         error: "invalid_grant",
@@ -456,19 +460,17 @@ describe("TestOAuthFlowTokenExchange (test_auth_flow.py:385)", () => {
         (error_: unknown) => error_,
       );
     expect(error).toBeInstanceOf(OAuthError);
-    // `invalid_grant` maps to REVOKED only for the refresh operation
-    // (packet §7 caution 6) — exchange keeps the generic code.
+    // `invalid_grant` maps to REVOKED only for the refresh operation —
+    // exchange keeps the generic code.
     expect((error as OAuthError).code).toBe("OAUTH_TOKEN_ERROR");
   });
 });
 
-describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::TestTokenPayloadRedaction)", () => {
-  // Twin of the Python FIX-2 suite (fix-of-record:
-  // docs/history/phase3/bug-reports/python-oauth-error-details-token-payload.md):
-  // a malformed-200 token response must not leak token material into
+describe("token payload redaction on exchange", () => {
+  // python: test_auth_flow.py::TestTokenPayloadRedaction
+  // A malformed-200 token response must not leak token material into
   // OAuthError details. The refresh member lives in
-  // `oauth-flow-refresh.test.ts` (header-cited split, same as the
-  // network-error classes).
+  // `oauth-flow-refresh.test.ts`, like the network-error classes.
 
   /** Build an OAuthFlow whose token endpoint 200s with `payload`. */
   function flowWithPayload(payload: Record<string, unknown>): OAuthFlow {
@@ -477,7 +479,8 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
     return new OAuthFlow({ region: "us", storage, fetchImpl });
   }
 
-  it("test_exchange_missing_fields_error_redacts_token_material", async () => {
+  it("redacts token values but keeps field names when required fields are missing", async () => {
+    // python: test_exchange_missing_fields_error_redacts_token_material
     const flow = flowWithPayload({
       access_token: "SECRET_AT",
       refresh_token: "SECRET_RT",
@@ -502,9 +505,10 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
     expect(responseData).toContain("<redacted>");
   });
 
-  it("test_safe_fields_stay_visible", async () => {
-    // ARB-B F-B2/E-1 flip: unknown-key VALUES are now redacted (the old
-    // deny-list kept `hint` verbatim); key names stay visible.
+  it("keeps safe primitive fields visible and redacts unknown-key values", async () => {
+    // python: test_safe_fields_stay_visible
+    // Unknown-key values are redacted (a deny-list would keep `hint`
+    // verbatim); key names stay visible.
     const flow = flowWithPayload({
       access_token: "SECRET_AT",
       scope: "projects analysis",
@@ -552,12 +556,11 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
       visibleKey: "Access_Token",
     },
   ])(
-    "test_nested_and_non_canonical_token_material_redacted[$id]",
+    "redacts nested and non-canonical token material ($id)",
     async ({ payload, secret, visibleKey }) => {
-      // ARB-B F-B2/E-1: envelope / non-canonical shapes leak nothing —
-      // allowlist redaction closes every value channel (Python twin:
-      // TestTokenPayloadRedaction::
-      // test_nested_and_non_canonical_token_material_redacted).
+      // python: test_nested_and_non_canonical_token_material_redacted
+      // Envelope / non-canonical shapes leak nothing — allowlist redaction
+      // closes every value channel.
       const flow = flowWithPayload(payload);
       const error = await flow
         .exchangeCode("c", "v", "cid", "http://localhost:19284/callback")
@@ -579,7 +582,8 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
     },
   );
 
-  it("test_safe_primitive_values_byte_exact", async () => {
+  it("renders kept primitive values byte-identical to Python str()", async () => {
+    // python: test_safe_primitive_values_byte_exact
     // Locks pythonStr rendering of kept int/str values byte-identical to
     // the Python twin's `str()` output.
     const flow = flowWithPayload({
@@ -599,9 +603,10 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
     );
   });
 
-  it("test_safe_key_with_container_value_redacted", async () => {
-    // ARB-B F-B2: only PRIMITIVE values survive under safe keys — a dict
-    // smuggled under `scope` must not carry token material through.
+  it("redacts a container value under a safe key", async () => {
+    // python: test_safe_key_with_container_value_redacted
+    // Only primitive values survive under safe keys — a dict smuggled
+    // under `scope` must not carry token material through.
     const flow = flowWithPayload({
       scope: { access_token: "SECRET_SC" },
     });
@@ -621,10 +626,11 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
     );
   });
 
-  it("test_exchange_non_json_200_body_not_embedded", async () => {
-    // ARB-B F-B1: a truncated token payload fails JSON parsing but still
-    // contains live bearer material — never embedded; only content-type
-    // and code-point length survive.
+  it("never embeds a non-JSON 200 body; keeps only content type and length", async () => {
+    // python: test_exchange_non_json_200_body_not_embedded
+    // A truncated token payload fails JSON parsing but still contains live
+    // bearer material — never embedded; only content-type and code-point
+    // length survive.
     const body = '{"access_token": "SECRET_TRUNC", "refr';
     const { fetchImpl } = mockTransport(
       () =>
@@ -652,23 +658,19 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
     expect(exc.details["body_length"]).toBe(cpLength(body));
   });
 
-  // ARB-A F1 (pair-A fidelity review): the Python bug-(d) redaction fix
-  // initially crashed with an uncoded AttributeError on non-dict 200
-  // JSON bodies while this side already guarded with `isPlainRecord`.
-  // Python now mirrors the guard; ARB-B F-B3 hardened the shared
-  // behavior: `response_data` is a fixed placeholder, never a verbatim
-  // rendering — a bare JSON string body IS the credential when an IdP
-  // returns the token as a naked string (Python twin:
-  // TestTokenPayloadRedaction::
-  // test_exchange_non_dict_200_body_raises_oauth_error).
+  // Non-object 200 JSON bodies are guarded with `isPlainRecord` on both
+  // sides, and `response_data` is a fixed placeholder, never a verbatim
+  // rendering — a bare JSON string body is the credential when an IdP
+  // returns the token as a naked string.
   it.each([
     { id: "list", body: [1, 2] as unknown },
     { id: "str", body: "SECRET_BARE_STRING" },
     { id: "int", body: 42 },
     { id: "null", body: null },
   ])(
-    "test_exchange_non_dict_200_body_raises_oauth_error[$id]",
+    "raises OAuthError with a fixed placeholder for a non-object 200 body ($id)",
     async ({ body }) => {
+      // python: test_exchange_non_dict_200_body_raises_oauth_error
       const { fetchImpl } = mockTransport(() => jsonResponse(200, body));
       const storage = new OAuthStorage({ storageDir: makeTempDir(cleanups) });
       const flow = new OAuthFlow({ region: "us", storage, fetchImpl });
@@ -690,7 +692,8 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
     },
   );
 
-  it("test_success_path_unchanged", async () => {
+  it("still returns tokens on a well-formed response", async () => {
+    // python: test_success_path_unchanged
     const flow = flowWithPayload(makeTokenResponse());
     const tokens = await flow.exchangeCode(
       "c",
@@ -702,8 +705,10 @@ describe("TestTokenPayloadRedaction — exchange members (test_auth_flow.py::Tes
   });
 });
 
-describe("TestOAuthFlowRegionUrls (test_auth_flow.py:759)", () => {
-  it("test_eu_region_authorize_url", async () => {
+describe("OAuthFlow region URLs", () => {
+  // python: test_auth_flow.py::TestOAuthFlowRegionUrls
+  it("opens the eu.mixpanel.com authorize URL for region eu", async () => {
+    // python: test_eu_region_authorize_url
     const { seams, openedUrls } = makeLoginSeams({
       clientInfo: makeClientInfo({ region: "eu" }),
       callbackCode: "c",
@@ -721,14 +726,15 @@ describe("TestOAuthFlowRegionUrls (test_auth_flow.py:759)", () => {
   });
 });
 
-describe("TestOAuthFlowNetworkErrors — exchange-op members (test_auth_flow.py:802)", () => {
-  // The refresh/timeout members live in `oauth-flow-refresh.test.ts`
-  // (N2 — header-cited split, b8-packets.md §4.3 row 4).
+describe("OAuthFlow.exchangeCode network errors", () => {
+  // python: test_auth_flow.py::TestOAuthFlowNetworkErrors
+  // The refresh/timeout members live in `oauth-flow-refresh.test.ts`.
 
-  it("test_exchange_code_timeout", async () => {
-    // The `httpx.TimeoutException` twin (N2 convention): a rejected
-    // fetch with a DOMException the R2.10 adapter maps to
-    // MixpanelHttpError, which the flow wraps into OAuthError.
+  it("wraps a transport timeout into OAUTH_TOKEN_ERROR", async () => {
+    // python: test_exchange_code_timeout
+    // The `httpx.TimeoutException` twin: a rejected fetch with a
+    // DOMException the request adapter maps to MixpanelHttpError, which
+    // the flow wraps into OAuthError.
     const fetchImpl = ((): Promise<Response> =>
       Promise.reject(
         new DOMException("test timeout", "TimeoutError"),
@@ -746,9 +752,10 @@ describe("TestOAuthFlowNetworkErrors — exchange-op members (test_auth_flow.py:
     expect((error as OAuthError).code).toBe("OAUTH_TOKEN_ERROR");
   });
 
-  it("test_exchange_code_connection_error", async () => {
-    // The `httpx.ConnectError` twin: undici surfaces connection
-    // failures as TypeError, mapped by the R2.10 adapter.
+  it("wraps a connection failure into OAUTH_TOKEN_ERROR", async () => {
+    // python: test_exchange_code_connection_error
+    // The `httpx.ConnectError` twin: undici surfaces connection failures
+    // as TypeError, mapped by the request adapter.
     const fetchImpl = ((): Promise<Response> =>
       Promise.reject(new TypeError("test connection error"))) as typeof fetch;
     const storage = new OAuthStorage({ storageDir: makeTempDir(cleanups) });
@@ -764,7 +771,8 @@ describe("TestOAuthFlowNetworkErrors — exchange-op members (test_auth_flow.py:
     expect((error as OAuthError).code).toBe("OAUTH_TOKEN_ERROR");
   });
 
-  it("test_exchange_code_non_json_response", async () => {
+  it("wraps a non-JSON response into OAUTH_TOKEN_ERROR", async () => {
+    // python: test_exchange_code_non_json_response
     const { fetchImpl } = mockTransport(
       () =>
         new Response("<html>error</html>", {
@@ -785,7 +793,8 @@ describe("TestOAuthFlowNetworkErrors — exchange-op members (test_auth_flow.py:
     expect((error as OAuthError).code).toBe("OAUTH_TOKEN_ERROR");
   });
 
-  it("test_exchange_code_missing_access_token_in_response", async () => {
+  it("wraps a response without access_token into OAUTH_TOKEN_ERROR", async () => {
+    // python: test_exchange_code_missing_access_token_in_response
     const { fetchImpl } = mockTransport(() =>
       jsonResponse(200, { scope: "x" }),
     );

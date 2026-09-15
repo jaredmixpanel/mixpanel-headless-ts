@@ -1,17 +1,8 @@
-// Layer-3 translation of `tests/unit/test_bridge_export.py` (395 lines,
-// 19 tests; ALL 4 classes — b8-packets.md §3.3 row 4) plus the inbound
-// `test_042_edge_cases.py::TestBridgeEdgeCases` (:394,
-// `b6-packets.md:1032`).
-//
-// SPLIT (header-cited per §3.3 row 4): `TestAccountsNamespaceWiring`
-// exercises the Python `mp.accounts` namespace over the on-disk
-// world; the ready-made node namespaces land at B8-N3 (bag assembly).
-// N2 translates those four tests against `createNodeBridgeEffects()` /
-// the ConfigManager-backed custom-header source DIRECTLY; N3's swap-in
-// run re-covers the namespace wiring.
-//
-// The Python `_isolated_home` autouse fixture translates to the
-// HOME/MP_CONFIG_PATH/MP_AUTH_FILE save-scrub in beforeEach.
+// exportBridge / removeBridge / loadBridge / parseBridgeFile and the node
+// BridgeEffects. Mirrors tests/unit/test_bridge_export.py plus
+// test_042_edge_cases.py::TestBridgeEdgeCases over an isolated HOME.
+// Additive: error-class and byte-format corners (raw decode errors,
+// codepoint key order, errno wrapping) and lax epoch acceptance.
 
 import {
   chmodSync,
@@ -24,7 +15,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   ConfigError,
@@ -49,29 +40,21 @@ import { makeTempDir, scrubMpEnv } from "./helpers.js";
 const POSIX = process.platform !== "win32";
 
 const cleanups: Array<() => void> = [];
-let restoreEnv: () => void = () => undefined;
-let savedHome: string | undefined;
 let savedCwd = "";
 let home = "";
 
 beforeEach(() => {
-  restoreEnv = scrubMpEnv();
-  savedHome = process.env["HOME"];
+  scrubMpEnv();
   savedCwd = process.cwd();
   home = makeTempDir(cleanups);
-  process.env["HOME"] = home;
-  process.env["MP_CONFIG_PATH"] = join(home, ".mp", "config.toml");
-  delete process.env["MP_AUTH_FILE"];
+  vi.stubEnv("HOME", home);
+  vi.stubEnv("MP_CONFIG_PATH", join(home, ".mp", "config.toml"));
+  vi.stubEnv("MP_AUTH_FILE", undefined);
 });
 
 afterEach(() => {
   process.chdir(savedCwd);
-  if (savedHome === undefined) {
-    delete process.env["HOME"];
-  } else {
-    process.env["HOME"] = savedHome;
-  }
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }
@@ -117,8 +100,10 @@ function seedBrowserTokens(name: string): void {
   }
 }
 
-describe("TestExportBridgeFunctional (test_bridge_export.py:72)", () => {
-  it("test_service_account_writes_v2_schema", () => {
+describe("exportBridge", () => {
+  // python: test_bridge_export.py::TestExportBridgeFunctional
+  it("writes a v2 bridge for a service account with no tokens", () => {
+    // python: test_service_account_writes_v2_schema
     const out = join(makeTempDir(cleanups), "bridge.json");
     const result = exportBridge(teamSa(), { to: out });
     expect(result).toBe(out);
@@ -131,7 +116,8 @@ describe("TestExportBridgeFunctional (test_bridge_export.py:72)", () => {
     expect(bridge?.tokens).toBeNull(); // SAs don't carry OAuth tokens
   });
 
-  it("test_oauth_browser_embeds_tokens_from_disk", () => {
+  it("embeds the on-disk tokens for an oauth_browser account", () => {
+    // python: test_oauth_browser_embeds_tokens_from_disk
     const account: OAuthBrowserAccount = {
       type: "oauth_browser",
       name: "personal",
@@ -146,7 +132,8 @@ describe("TestExportBridgeFunctional (test_bridge_export.py:72)", () => {
     expect(bridge?.tokens?.refresh_token?.reveal()).toBe("ref-personal");
   });
 
-  it("test_oauth_browser_without_tokens_raises_oauth_error", () => {
+  it("raises OAuthError and writes nothing when an oauth_browser account has no tokens", () => {
+    // python: test_oauth_browser_without_tokens_raises_oauth_error
     const account: OAuthBrowserAccount = {
       type: "oauth_browser",
       name: "ghost",
@@ -158,7 +145,8 @@ describe("TestExportBridgeFunctional (test_bridge_export.py:72)", () => {
     expect(existsSync(out)).toBe(false);
   });
 
-  it("test_oauth_token_inline_embedded", () => {
+  it("embeds an inline oauth_token secret raw", () => {
+    // python: test_oauth_token_inline_embedded
     const account: OAuthTokenAccount = {
       type: "oauth_token",
       name: "ci",
@@ -180,13 +168,15 @@ describe("TestExportBridgeFunctional (test_bridge_export.py:72)", () => {
     expect(raw.account["token"]).toBe("inline-bearer");
   });
 
-  it.skipIf(!POSIX)("test_writes_file_with_mode_0o600", () => {
+  it.skipIf(!POSIX)("writes the bridge file 0o600", () => {
+    // python: test_writes_file_with_mode_0o600
     const out = join(makeTempDir(cleanups), "bridge.json");
     exportBridge(teamSa(), { to: out });
     expect(statSync(out).mode & 0o7777).toBe(0o600);
   });
 
-  it("test_creates_parent_dir_with_mode_0o700", () => {
+  it("creates missing parent directories", () => {
+    // python: test_creates_parent_dir_with_mode_0o700
     const tmp = makeTempDir(cleanups);
     const nested = join(tmp, "subdir1", "subdir2");
     const out = join(nested, "bridge.json");
@@ -195,7 +185,8 @@ describe("TestExportBridgeFunctional (test_bridge_export.py:72)", () => {
     expect(statSync(nested).isDirectory()).toBe(true);
   });
 
-  it("test_project_workspace_headers_round_trip", () => {
+  it("round-trips project, workspace and headers", () => {
+    // python: test_project_workspace_headers_round_trip
     const out = join(makeTempDir(cleanups), "bridge.json");
     exportBridge(teamSa(), {
       to: out,
@@ -211,7 +202,8 @@ describe("TestExportBridgeFunctional (test_bridge_export.py:72)", () => {
     });
   });
 
-  it("test_idempotent_overwrite_at_same_path", () => {
+  it("writes identical bytes when re-exported to the same path", () => {
+    // python: test_idempotent_overwrite_at_same_path
     const out = join(makeTempDir(cleanups), "bridge.json");
     exportBridge(teamSa(), { to: out });
     const first = readFileSync(out);
@@ -221,30 +213,36 @@ describe("TestExportBridgeFunctional (test_bridge_export.py:72)", () => {
   });
 });
 
-describe("TestRemoveBridgeFunctional (test_bridge_export.py:210)", () => {
-  it("test_removes_existing_bridge", () => {
+describe("removeBridge", () => {
+  // python: test_bridge_export.py::TestRemoveBridgeFunctional
+  it("removes an existing bridge and returns true", () => {
+    // python: test_removes_existing_bridge
     const target = join(makeTempDir(cleanups), "bridge.json");
     writeFileSync(target, "{}", "utf8");
     expect(removeBridge({ at: target })).toBe(true);
     expect(existsSync(target)).toBe(false);
   });
 
-  it("test_returns_false_when_absent", () => {
+  it("returns false when the bridge is absent", () => {
+    // python: test_returns_false_when_absent
     const target = join(makeTempDir(cleanups), "nope.json");
     expect(removeBridge({ at: target })).toBe(false);
   });
 
-  it("test_default_path_uses_search_order", () => {
+  it("resolves the default path through MP_AUTH_FILE", () => {
+    // python: test_default_path_uses_search_order
     const target = join(makeTempDir(cleanups), "auth.json");
     writeFileSync(target, "{}", "utf8");
-    process.env["MP_AUTH_FILE"] = target;
+    vi.stubEnv("MP_AUTH_FILE", target);
     expect(removeBridge()).toBe(true);
     expect(existsSync(target)).toBe(false);
   });
 });
 
-describe("TestAccountsNamespaceWiring (test_bridge_export.py:236 — translated against BridgeEffects directly; N3's bag swap-in re-covers the namespaces, §3.3 split)", () => {
-  it("test_export_bridge_via_bridge_effects", () => {
+describe("BridgeEffects wiring", () => {
+  // python: test_bridge_export.py::TestAccountsNamespaceWiring
+  it("export writes a bridge through the effects bag", () => {
+    // python: test_export_bridge_via_bridge_effects
     const effects = createNodeBridgeEffects();
     const out = join(makeTempDir(cleanups), "bridge.json");
     const result = effects.export({
@@ -263,7 +261,8 @@ describe("TestAccountsNamespaceWiring (test_bridge_export.py:236 — translated 
     expect(bridge?.account.name).toBe("team");
   });
 
-  it("test_export_bridge_attaches_custom_headers", async () => {
+  it("export lands a supplied headers map in the bridge verbatim", async () => {
+    // python: test_export_bridge_attaches_custom_headers
     // The `[settings].custom_header` propagation is the CALLER's
     // composition in Python (`accounts.export_bridge` reads the config
     // and passes `headers=`); the effect-level lock is that a supplied
@@ -285,7 +284,8 @@ describe("TestAccountsNamespaceWiring (test_bridge_export.py:236 — translated 
     expect(bridge?.headers).toStrictEqual({ "X-Mixpanel-Cluster": "cell-3" });
   });
 
-  it("test_remove_bridge_via_bridge_effects", () => {
+  it("remove deletes the bridge through the effects bag", () => {
+    // python: test_remove_bridge_via_bridge_effects
     const effects = createNodeBridgeEffects();
     const target = join(makeTempDir(cleanups), "bridge.json");
     writeFileSync(target, "{}", "utf8");
@@ -293,14 +293,15 @@ describe("TestAccountsNamespaceWiring (test_bridge_export.py:236 — translated 
     expect(existsSync(target)).toBe(false);
   });
 
-  it("test_load_bridge_via_bridge_effects_returns_view", () => {
+  it("load returns a BridgeView from MP_AUTH_FILE", () => {
+    // python: test_load_bridge_via_bridge_effects_returns_view
     const out = join(makeTempDir(cleanups), "bridge.json");
     exportBridge(teamSa(), {
       to: out,
       project: "3018488",
       headers: { "X-H": "v" },
     });
-    process.env["MP_AUTH_FILE"] = out;
+    vi.stubEnv("MP_AUTH_FILE", out);
     const effects = createNodeBridgeEffects();
     const view = effects.load();
     expect(view).not.toBeNull();
@@ -311,8 +312,10 @@ describe("TestAccountsNamespaceWiring (test_bridge_export.py:236 — translated 
   });
 });
 
-describe("TestBridgeSymlinkRejection (test_bridge_export.py:303)", () => {
-  it.skipIf(!POSIX)("test_load_bridge_symlink_raises_configerror", () => {
+describe("bridge symlink rejection", () => {
+  // python: test_bridge_export.py::TestBridgeSymlinkRejection
+  it.skipIf(!POSIX)("loadBridge rejects a symlinked bridge file", () => {
+    // python: test_load_bridge_symlink_raises_configerror
     const tmp = makeTempDir(cleanups);
     const attacker = join(tmp, "attacker_bridge.json");
     writeFileSync(
@@ -337,43 +340,8 @@ describe("TestBridgeSymlinkRejection (test_bridge_export.py:303)", () => {
     expect(() => loadBridge(link)).toThrow(/symlink/);
   });
 
-  it.skipIf(!POSIX)(
-    "test_export_bridge_symlinked_tokens_raises_oautherror",
-    () => {
-      const account: OAuthBrowserAccount = {
-        type: "oauth_browser",
-        name: "personal",
-        region: "us",
-      };
-      const accountDir = join(home, ".mp", "accounts", "personal");
-      mkdirSync(accountDir, { recursive: true, mode: 0o700 });
-      const attacker = join(home, "attacker_tokens.json");
-      writeFileSync(
-        attacker,
-        JSON.stringify({
-          access_token: "stolen",
-          expires_at: isoIn(1),
-          token_type: "Bearer",
-        }),
-        "utf8",
-      );
-      chmodSync(attacker, 0o600);
-      symlinkSync(attacker, join(accountDir, "tokens.json"));
-      const out = join(home, "bridge.json");
-      expect(() => exportBridge(account, { to: out })).toThrow(OAuthError);
-      expect(() => exportBridge(account, { to: out })).toThrow(/symlink/);
-    },
-  );
-
-  it.skipIf(!POSIX)("test_dangling_bridge_symlink_rejected", () => {
-    const tmp = makeTempDir(cleanups);
-    const link = join(tmp, "bridge.json");
-    symlinkSync(join(tmp, "missing.json"), link);
-    expect(() => loadBridge(link)).toThrow(ConfigError);
-    expect(() => loadBridge(link)).toThrow(/symlink/);
-  });
-
-  it.skipIf(!POSIX)("test_dangling_browser_tokens_symlink_rejected", () => {
+  it.skipIf(!POSIX)("exportBridge rejects a symlinked tokens.json", () => {
+    // python: test_export_bridge_symlinked_tokens_raises_oautherror
     const account: OAuthBrowserAccount = {
       type: "oauth_browser",
       name: "personal",
@@ -381,14 +349,54 @@ describe("TestBridgeSymlinkRejection (test_bridge_export.py:303)", () => {
     };
     const accountDir = join(home, ".mp", "accounts", "personal");
     mkdirSync(accountDir, { recursive: true, mode: 0o700 });
-    symlinkSync(join(home, "missing.json"), join(accountDir, "tokens.json"));
+    const attacker = join(home, "attacker_tokens.json");
+    writeFileSync(
+      attacker,
+      JSON.stringify({
+        access_token: "stolen",
+        expires_at: isoIn(1),
+        token_type: "Bearer",
+      }),
+      "utf8",
+    );
+    chmodSync(attacker, 0o600);
+    symlinkSync(attacker, join(accountDir, "tokens.json"));
     const out = join(home, "bridge.json");
+    expect(() => exportBridge(account, { to: out })).toThrow(OAuthError);
     expect(() => exportBridge(account, { to: out })).toThrow(/symlink/);
   });
+
+  it.skipIf(!POSIX)("loadBridge rejects a dangling bridge symlink", () => {
+    // python: test_dangling_bridge_symlink_rejected
+    const tmp = makeTempDir(cleanups);
+    const link = join(tmp, "bridge.json");
+    symlinkSync(join(tmp, "missing.json"), link);
+    expect(() => loadBridge(link)).toThrow(ConfigError);
+    expect(() => loadBridge(link)).toThrow(/symlink/);
+  });
+
+  it.skipIf(!POSIX)(
+    "exportBridge rejects a dangling tokens.json symlink",
+    () => {
+      // python: test_dangling_browser_tokens_symlink_rejected
+      const account: OAuthBrowserAccount = {
+        type: "oauth_browser",
+        name: "personal",
+        region: "us",
+      };
+      const accountDir = join(home, ".mp", "accounts", "personal");
+      mkdirSync(accountDir, { recursive: true, mode: 0o700 });
+      symlinkSync(join(home, "missing.json"), join(accountDir, "tokens.json"));
+      const out = join(home, "bridge.json");
+      expect(() => exportBridge(account, { to: out })).toThrow(/symlink/);
+    },
+  );
 });
 
-describe("TestBridgeEdgeCases (test_042_edge_cases.py:394 — inbound b6-packets.md:1032)", () => {
-  it("test_oauth_browser_without_tokens_rejected", () => {
+describe("bridge file edge cases", () => {
+  // python: test_042_edge_cases.py::TestBridgeEdgeCases
+  it("parseBridgeFile rejects an oauth_browser bridge without tokens", () => {
+    // python: test_oauth_browser_without_tokens_rejected
     const payload = {
       version: 2,
       account: {
@@ -402,8 +410,9 @@ describe("TestBridgeEdgeCases (test_042_edge_cases.py:394 — inbound b6-packets
   });
 
   it.each([[1], [3], ["2"]])(
-    "test_version_mismatch_rejected[%s]",
+    "parseBridgeFile rejects version %s",
     (badVersion) => {
+      // python: test_version_mismatch_rejected
       const payload = {
         version: badVersion,
         account: {
@@ -418,21 +427,23 @@ describe("TestBridgeEdgeCases (test_042_edge_cases.py:394 — inbound b6-packets
     },
   );
 
-  it("test_load_bridge_returns_none_for_missing_path", () => {
-    process.env["MP_AUTH_FILE"] = join(home, "nonexistent.json");
+  it("loadBridge returns null when MP_AUTH_FILE points at a missing file", () => {
+    // python: test_load_bridge_returns_none_for_missing_path
+    vi.stubEnv("MP_AUTH_FILE", join(home, "nonexistent.json"));
     // Cwd default search would find a stray mixpanel_auth.json;
     // isolate cwd too (the Python `monkeypatch.chdir` twin).
     process.chdir(home);
     expect(loadBridge()).toBeNull();
   });
 
-  it("test_load_bridge_malformed_json_raises_with_path", () => {
+  it("loadBridge raises ConfigError naming the path for malformed JSON", () => {
+    // python: test_load_bridge_malformed_json_raises_with_path
     const bridgePath = join(makeTempDir(cleanups), "bridge.json");
     writeFileSync(bridgePath, '{"version": 2', "utf8"); // truncated
     if (POSIX) {
       chmodSync(bridgePath, 0o600);
     }
-    process.env["MP_AUTH_FILE"] = bridgePath;
+    vi.stubEnv("MP_AUTH_FILE", bridgePath);
     let caught: ConfigError | null = null;
     try {
       loadBridge();
@@ -443,8 +454,8 @@ describe("TestBridgeEdgeCases (test_042_edge_cases.py:394 — inbound b6-packets
     expect(caught?.message).toContain(bridgePath);
   });
 
-  it("extra top-level key rejected (extra='forbid')", () => {
-    // BridgeFile `extra="forbid"` — packet §3.2 item 9.
+  it("parseBridgeFile rejects an extra top-level key", () => {
+    // BridgeFile is `extra="forbid"` in Python.
     const payload = {
       version: 2,
       account: {
@@ -460,30 +471,27 @@ describe("TestBridgeEdgeCases (test_042_edge_cases.py:394 — inbound b6-packets
   });
 });
 
-// B8-ARB-A pair-A semantics minors (b8-reviewA-resolution.md) — error
-// CLASS and byte-format locks aligning degenerate corners to the
-// Python behavior arbiter:
-// - SEM-F2b: an invalid-UTF-8 bridge file propagates the decode error
-//   RAW (`bridge.py` catches only OSError + JSONDecodeError; the
-//   CPython probe raises UnicodeDecodeError — the TS twin is the
-//   TextDecoder fatal-mode TypeError).
-// - SEM-F3: invalid export pins propagate the model's
-//   ParamValidationError RAW (`bridge.py` builds `BridgeFile`
-//   with no try/except — pydantic ValidationError escapes unwrapped;
-//   the docstring's ConfigError claim is wrong in Python itself).
-// - SEM-F4: `serializeBridge` sorts keys by CODEPOINT
-//   (`json.dumps(sort_keys=True)`, `bridge.py` — R11.5).
-// - SEM-F6 family: an errno-bearing lstat failure at the symlink probe
-//   wraps into ConfigError exactly as Python's `except OSError`
-//   (`bridge.py`).
-describe("B8-ARB-A SEM-F2b/F3/F4/F6 error-class + byte-format locks", () => {
+// Error-class and byte-format corners, each aligned to the observed
+// Python behaviour:
+// - an invalid-UTF-8 bridge file propagates the decode error raw
+//   (`bridge.py` catches only OSError + JSONDecodeError; CPython raises
+//   UnicodeDecodeError — the TS twin is the TextDecoder fatal-mode
+//   TypeError);
+// - invalid export pins propagate the model's ParamValidationError raw
+//   (`bridge.py` builds `BridgeFile` with no try/except — pydantic
+//   ValidationError escapes unwrapped; the docstring's ConfigError claim
+//   is wrong in Python itself);
+// - `serializeBridge` sorts keys by codepoint (`json.dumps(sort_keys=True)`);
+// - an errno-bearing lstat failure at the symlink probe wraps into
+//   ConfigError exactly as Python's `except OSError`.
+describe("bridge error classes and byte format", () => {
   it.skipIf(!POSIX)(
-    "SEM-F2b: invalid-UTF-8 bridge file (0600) raises the RAW decode TypeError, not ConfigError",
+    "an invalid-UTF-8 bridge file raises the raw decode TypeError, not ConfigError",
     () => {
       const bridgePath = join(makeTempDir(cleanups), "bridge.json");
       writeFileSync(bridgePath, Buffer.from([0xff, 0xfe, 0x7b, 0x7d]));
       chmodSync(bridgePath, 0o600);
-      process.env["MP_AUTH_FILE"] = bridgePath;
+      vi.stubEnv("MP_AUTH_FILE", bridgePath);
       let caught: unknown = null;
       try {
         loadBridge();
@@ -495,7 +503,7 @@ describe("B8-ARB-A SEM-F2b/F3/F4/F6 error-class + byte-format locks", () => {
     },
   );
 
-  it('SEM-F3: exportBridge(project="abc") propagates ParamValidationError raw', () => {
+  it('exportBridge with project "abc" propagates ParamValidationError and writes nothing', () => {
     const out = join(makeTempDir(cleanups), "bridge.json");
     let caught: unknown = null;
     try {
@@ -508,7 +516,7 @@ describe("B8-ARB-A SEM-F2b/F3/F4/F6 error-class + byte-format locks", () => {
     expect(existsSync(out)).toBe(false);
   });
 
-  it("SEM-F3: exportBridge(workspace=0) propagates ParamValidationError raw", () => {
+  it("exportBridge with workspace 0 propagates ParamValidationError and writes nothing", () => {
     const out = join(makeTempDir(cleanups), "bridge.json");
     expect(() => exportBridge(teamSa(), { to: out, workspace: 0 })).toThrow(
       ParamValidationError,
@@ -516,7 +524,7 @@ describe("B8-ARB-A SEM-F2b/F3/F4/F6 error-class + byte-format locks", () => {
     expect(existsSync(out)).toBe(false);
   });
 
-  it("SEM-F4: serialized headers keys sort by codepoint (non-BMP after U+FF61, matching json.dumps sort_keys)", () => {
+  it("serialises header keys in codepoint order like json.dumps sort_keys", () => {
     // UTF-16 code units order "😀" (surrogate 0xD83D…) BEFORE "｡"
     // (0xFF61); Python codepoint order is the reverse. CPython:
     // json.dumps({"😀":1,"｡":2}, sort_keys=True) → {"｡": 2, "😀": 1}.
@@ -531,7 +539,7 @@ describe("B8-ARB-A SEM-F2b/F3/F4/F6 error-class + byte-format locks", () => {
   });
 
   it.skipIf(!POSIX || process.getuid?.() === 0)(
-    "SEM-F6 family: unreadable parent dir at the probe wraps into ConfigError (bridge.py:172-176 `except OSError`)",
+    "an unreadable parent directory at the symlink probe wraps into ConfigError",
     () => {
       const locked = join(makeTempDir(cleanups), "locked");
       mkdirSync(locked);
@@ -545,12 +553,11 @@ describe("B8-ARB-A SEM-F2b/F3/F4/F6 error-class + byte-format locks", () => {
   );
 });
 
-// B8-ARB-A SEM-F2/F6 family ripple at `_read_browser_tokens`
-// (`bridge.py` — arbiter-caught, same clauses as loadBridge):
-// probe `except OSError` wraps errno failures into the coded
-// OAuthError; the read catch is `(OSError, json.JSONDecodeError)` so
-// the UnicodeDecodeError twin propagates RAW.
-describe("B8-ARB-A readBrowserTokens error-class locks (bridge.py:221-242)", () => {
+// `_read_browser_tokens` has the same clauses as loadBridge: the probe's
+// `except OSError` wraps errno failures into the coded OAuthError; the
+// read catch is `(OSError, json.JSONDecodeError)` so the
+// UnicodeDecodeError twin propagates raw.
+describe("readBrowserTokens error classes", () => {
   it.skipIf(!POSIX)(
     "invalid-UTF-8 per-account tokens.json raises the RAW decode TypeError",
     () => {
@@ -603,21 +610,18 @@ describe("B8-ARB-A readBrowserTokens error-class locks (bridge.py:221-242)", () 
   );
 });
 
-// B8-ARB-B F1 + F2 locks (b8-reviewB-resolution.md).
+// `BridgeFile.tokens` is a Pydantic model in Python — lax, so a numeric
+// epoch-seconds `expires_at` in a v2 bridge is accepted (probe:
+// OAuthTokens.model_validate({... 1893456000 ...}) →
+// 2030-01-01T00:00:00+00:00). The TS parse routes the shared lax mirror
+// before `parseOAuthTokens`.
 //
-// F1: `BridgeFile.tokens` is a Pydantic model in Python — LAX, so a
-// numeric epoch-seconds `expires_at` in a v2 bridge is ACCEPTED (live
-// probe: OAuthTokens.model_validate({... 1893456000 ...}) →
-// 2030-01-01T00:00:00+00:00). The TS parse routes the shared lax
-// mirror before `parseOAuthTokens`.
-//
-// F2: Python's `_serialize_bridge` renders datetimes through Pydantic's
-// JSON mode (`bridge.py` `model_dump(mode="json")`) which spells
-// UTC instants with a `Z` suffix (live probe recorded in the
-// resolution); the tokens.json writers render through
-// `datetime.isoformat()` (`+00:00`). The TS writers re-render the
-// stored ISO text through the matching formatter instead of echoing it.
-describe("B8-ARB-B F1/F2 bridge epoch acceptance + writer datetime shapes", () => {
+// Python's `_serialize_bridge` renders datetimes through Pydantic's JSON
+// mode (`model_dump(mode="json")`), which spells UTC instants with a `Z`
+// suffix; the tokens.json writers render through `datetime.isoformat()`
+// (`+00:00`). The TS writers re-render the stored ISO text through the
+// matching formatter instead of echoing it.
+describe("bridge epoch acceptance and writer datetime shapes", () => {
   function browserBridgePayload(expiresAt: unknown): Record<string, unknown> {
     return {
       version: 2,
@@ -632,23 +636,23 @@ describe("B8-ARB-B F1/F2 bridge epoch acceptance + writer datetime shapes", () =
     };
   }
 
-  it("F1: numeric epoch-seconds tokens.expires_at parses (pydantic lax twin)", () => {
+  it("parses a numeric epoch-seconds tokens.expires_at", () => {
     const bridge = parseBridgeFile(browserBridgePayload(1_893_456_000));
     expect(bridge.tokens?.expires_at).toBe("2030-01-01T00:00:00+00:00");
   });
 
-  it("F1: numeric-string epoch tokens.expires_at parses", () => {
+  it("parses a numeric-string epoch tokens.expires_at", () => {
     const bridge = parseBridgeFile(browserBridgePayload("1893456000"));
     expect(bridge.tokens?.expires_at).toBe("2030-01-01T00:00:00+00:00");
   });
 
-  it("F1 sibling: tz-suffixed but non-instant expires_at rejects (pydantic rejects month 99)", () => {
+  it("rejects a tz-suffixed expires_at that is not a real instant", () => {
     expect(() =>
       parseBridgeFile(browserBridgePayload("2030-99-99T00:00:00+00:00")),
     ).toThrow(ParamValidationError);
   });
 
-  it("F2: exported bridge renders tokens.expires_at in pydantic-JSON Z form", () => {
+  it("renders tokens.expires_at with a Z suffix in the exported bridge", () => {
     const account: OAuthBrowserAccount = {
       type: "oauth_browser",
       name: "personal",
@@ -686,7 +690,7 @@ describe("B8-ARB-B F1/F2 bridge epoch acceptance + writer datetime shapes", () =
     const bridge = parseBridgeFile(
       browserBridgePayload("2030-01-01T00:00:00Z"),
     );
-    process.env["MP_OAUTH_STORAGE_DIR"] = join(home, ".mp");
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", join(home, ".mp"));
     const written = materializeBridgeTokens(bridge);
     expect(written).not.toBeNull();
     const text = readFileSync(written!, "utf8");

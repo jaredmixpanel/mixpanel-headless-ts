@@ -1,10 +1,7 @@
-// Layer-3 adversarial suite for the browser redirect flow
-// (b9-packets.md §3.4 NEW browser-contract suites — no Python twin for
-// the pending-record branches; R9.3 / plan §4.3 are the contract
-// arbiters. The parser semantics themselves are Python-twinned:
-// `_parse_pasted_redirect`, `flow.py`, codes verbatim —
-// OAUTH_PASTE_ERROR / OAUTH_AUTH_DENIED / OAUTH_STATE_MISMATCH).
-// R5: every assertion keys on the error CODE.
+// Adversarial cases for the browser redirect flow. Parser semantics mirror
+// `_parse_pasted_redirect` in mixpanel_headless._internal.auth.flow (codes
+// OAUTH_PASTE_ERROR / OAUTH_AUTH_DENIED / OAUTH_STATE_MISMATCH); the
+// pending-record branches are browser-only. Assertions key on the code.
 
 import { describe, expect, it } from "vitest";
 
@@ -122,7 +119,7 @@ describe("redirect-flow attacks", () => {
     ).rejects.toMatchObject({ code: "BROWSER_NO_PENDING_LOGIN" });
   });
 
-  it("surfaces provider error params as OAUTH_AUTH_DENIED with error_description appended (`flow.py:98`)", async () => {
+  it("surfaces provider error params as OAUTH_AUTH_DENIED with error_description appended", async () => {
     const { store, transport } = await preparedLogin();
     const error = await completeLogin({
       region: "us",
@@ -159,7 +156,7 @@ describe("redirect-flow attacks", () => {
     },
   );
 
-  it("does NOT resurrect the state after a failed exchange — replay needs a fresh beginLogin (§6 R2-3)", async () => {
+  it("does not resurrect the state after a failed exchange; a replay needs a fresh beginLogin", async () => {
     const store = new InMemoryCredentialStore();
     const beginTransport = cannedIdp();
     const { state } = await beginLogin({

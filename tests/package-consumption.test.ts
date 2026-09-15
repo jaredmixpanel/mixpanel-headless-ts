@@ -1,17 +1,8 @@
-// Consumption gate (docs/history/cleanup-plan-2026-09.md §7.5): the three packages are consumed the
-// way a user would — `npm pack` each workspace, `npm install` the tarballs
-// into a scratch project, then
-//
-//   1. Node: `import { Workspace } from "@mixpanel-headless/node"` through
-//      the package `exports` and the tarball-installed core dependency;
-//   2. bundler: esbuild resolves `@mixpanel-headless/browser` from that
-//      scratch node_modules into a self-contained IIFE, which is then
-//      evaluated in a `vm` context with NO Node globals and must construct
-//      a browser Workspace (`createBrowserWorkspace`).
-//
-// Slow-ish (a pack + install ≈ 10 s) — `MP_SKIP_PACK_TEST=1` skips it
-// locally; CI runs it via `npm run check`. Requires `npm run build`
-// (`tsc -b`) to have emitted `packages/*/dist`, which `check` does first.
+// Consumption gate: `npm pack` each workspace, install the tarballs into a
+// scratch project, then import `@mixpanel-headless/node` through the package
+// `exports` and bundle `@mixpanel-headless/browser` with esbuild into an
+// IIFE evaluated with no Node globals. ~10 s; `MP_SKIP_PACK_TEST=1` skips it
+// locally, and it needs `npm run build` to have emitted `dist/`.
 
 import { execFileSync } from "node:child_process";
 import {

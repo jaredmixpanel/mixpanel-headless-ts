@@ -1,5 +1,5 @@
-// CLI tests (src/cli.ts, task TS-5): argument parsing and a full-corpus
-// smoke run of main() (design D12 reporting CLI).
+// CLI (src/cli.ts): argument parsing and a full-corpus smoke run of main().
+
 import { describe, expect, it, vi } from "vitest";
 
 import { main, parseArgs } from "../src/cli.js";
@@ -27,7 +27,7 @@ describe("parseArgs", () => {
 });
 
 describe("main", () => {
-  it("replays the committed snapshot: full corpus green — zero failures, ZERO UNPORTED (B8 gate terminal checkpoint)", async () => {
+  it("replays the committed snapshot with zero failures and zero UNPORTED", async () => {
     const stdout: string[] = [];
     const outSpy = vi
       .spyOn(process.stdout, "write")
@@ -50,9 +50,7 @@ describe("main", () => {
       expect(code).toBe(0);
       expect(report.failed).toBe(0);
       expect(report.failures).toStrictEqual([]);
-      // B8-gate terminal checkpoint (b8-packets.md §5.3c — the Risk-8
-      // "UNPORTED must FAIL after flip" assert's terminal form): with
-      // the corpus closed, NO vector may report UNPORTED at all.
+      // With every module ported, no vector may report UNPORTED at all.
       expect(report.skipped_unported).toBe(0);
       expect(report.total).toBeGreaterThan(2000);
       expect(report.passed).toBe(report.total);

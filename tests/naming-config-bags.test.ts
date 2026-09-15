@@ -1,22 +1,8 @@
-// Option-bag casing (CLEANUP-PLAN §3 D1; Phase 4 lane L6).
-//
-// The rule: constructor/config option bags — options a constructor or factory
-// consumes to configure behaviour — are camelCase; option bags that mirror a
-// Python method's keyword arguments 1:1 keep snake_case. ESLint enforces
-// camelCase for declared properties outside the snake_case contract scopes in
-// eslint.config.js, but those scopes are granted by *file*, and several files
-// hold both kinds of bag (`workspace-members/options.ts`, `accounts-ops.ts`, `region-probe.ts`,
-// `errors.ts`). This test states the per-interface rule directly:
-//
-//   1. every listed config bag exists where listed, is exported, and has only
-//      camelCase members;
-//   2. every listed query bag still exists and still has at least one
-//      snake_case member — so the classification cannot rot silently when a
-//      bag is moved, renamed or converted.
-//
-// Purely syntactic (one `createSourceFile` per module): no program, no module
-// resolution, so a stale `dist/` can never shadow the source under test.
-// Lives under tests/ because it needs `node:fs`/`node:path`.
+// Option-bag casing (the D1 naming rule): constructor/config option bags are
+// camelCase; bags mirroring a Python method's keyword arguments keep
+// snake_case. ESLint grants snake_case scopes per file, so for files holding
+// both kinds this test states the per-interface rule syntactically (no
+// program, so a stale dist/ cannot shadow the source). Needs node:fs.
 
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";

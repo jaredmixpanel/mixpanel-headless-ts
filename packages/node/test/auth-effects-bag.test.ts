@@ -1,26 +1,8 @@
-// B8-N3 effects-bag assembly locks (b8-packets.md §4.1 row 5, §4.2
-// "Bag assembly", §4.4 seam-closure checklist):
-//
-// 1. The MECHANICAL SWEEP — instantiate `createNodeAuthEffects()`
-//    against tmp-dir state and invoke every seam name from core's
-//    `UNPORTED_AUTH_SEAMS` constant: zero `UNPORTED_AUTH_SEAM` /
-//    `UNPORTED_RESOLVER_SEAM` / `UNPORTED_FILE_READ_SEAM` throws
-//    remain. (The constant and `unportedAuthSeam` STAY in core — they
-//    document the core-alone posture; what B8 removes is every
-//    default-only gap in the node package.)
-// 2. The `test_workspace_use.py::TestPersist` twins re-run over
-//    `resolverSeamsFromEffects(createNodeAuthEffects(...))` in a
-//    tmp-dir config (packet §4.2 last bullet — the B7-deferred
-//    persistence swap-in).
-// 3. A representative namespace swap-in subset (accounts / session /
-//    targets over the REAL bag — the §4.3 "Bag swap-in runs" row; the
-//    full fake-backed suites remain the primary form in core).
-//
-// The `oauthFlow.login` sweep run drives the REAL `OAuthFlow.login`
-// over injected `flowSeams` (fake DCR fetch + fake callback server —
-// the real localhost server is locked by `callback-server.test.ts`,
-// and the real-server e2e runs in the R10.9 harness, throwaway/b8-n3,
-// to keep fixed-port binds out of the parallel vitest workers).
+// The real node auth-effects bag (`createNodeAuthEffects`): a seam-closure
+// sweep over every name in core's `UNPORTED_AUTH_SEAMS`, the
+// test_workspace_use.py::TestPersist twins over the real bag, and a
+// representative accounts/session/targets namespace subset. The
+// `oauthFlow.login` run drives the real OAuthFlow over injected seams.
 
 import { join } from "node:path";
 
@@ -51,22 +33,21 @@ import { ConfigManager } from "../src/config.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const cleanups: Array<() => void> = [];
-let restoreEnv: () => void = () => undefined;
 
 beforeEach(() => {
-  restoreEnv = scrubMpEnv();
+  scrubMpEnv();
 });
 
 afterEach(() => {
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }
 });
 
 /**
- * Point every on-disk world at tmp dirs (the real-home guard
- * discipline, packet §7 caution 3) and build the real bag.
+ * Point every on-disk world at tmp dirs (never the real home directory)
+ * and build the real bag.
  *
  * @param extra - Additional bag options (seams).
  * @returns The bag plus the tmp config path.
@@ -84,9 +65,9 @@ function tmpBag(
   const configDir = makeTempDir(cleanups);
   const bridgeDir = makeTempDir(cleanups);
   const configPath = join(configDir, "config.toml");
-  process.env["MP_OAUTH_STORAGE_DIR"] = storageDir;
-  process.env["MP_AUTH_FILE"] = join(bridgeDir, "auth.json");
-  process.env["MP_CONFIG_PATH"] = configPath;
+  vi.stubEnv("MP_OAUTH_STORAGE_DIR", storageDir);
+  vi.stubEnv("MP_AUTH_FILE", join(bridgeDir, "auth.json"));
+  vi.stubEnv("MP_CONFIG_PATH", configPath);
   return {
     effects: createNodeAuthEffects({ configPath, ...extra }),
     configPath,
@@ -104,7 +85,7 @@ function sampleTokens(): OAuthTokens {
   });
 }
 
-describe("§4.4 seam-closure sweep — zero UNPORTED throws over the real bag", () => {
+describe("seam-closure sweep over the real bag", () => {
   it("covers every UNPORTED_AUTH_SEAMS name against tmp-dir state", async () => {
     // Injected stdin reader: one canned secret then EOF (a REAL fd-0
     // read would block forever on the worker's quiet stdin pipe).
@@ -144,10 +125,10 @@ describe("§4.4 seam-closure sweep — zero UNPORTED throws over the real bag", 
     expect(effects.config.getCustomHeader()).toBeNull();
 
     // env (owner N1) — call-time process.env reads.
-    process.env["MP_REGION"] = "eu";
+    vi.stubEnv("MP_REGION", "eu");
     expect(effects.env.MP_REGION).toBe("eu");
     expect(effects.env.get("MP_REGION")).toBe("eu");
-    delete process.env["MP_REGION"];
+    vi.stubEnv("MP_REGION", undefined);
 
     // tokenStore.* (owner N2).
     expect(effects.tokenStore.readTokens("team")).toBeNull();
@@ -231,7 +212,7 @@ describe("§4.4 seam-closure sweep — zero UNPORTED throws over the real bag", 
     expect(await seams.envWorkspaceId()).toBeNull();
 
     // The constant itself stays committed in core — every name above
-    // maps to a real member (owner map, packet §4.4).
+    // maps to a real member.
     expect([...UNPORTED_AUTH_SEAMS].sort()).toStrictEqual(
       [
         "persistActive",
@@ -305,7 +286,8 @@ describe("§4.4 seam-closure sweep — zero UNPORTED throws over the real bag", 
   });
 });
 
-describe("TestPersist (test_workspace_use.py:190) — REAL node bag swap-in (packet §4.2)", () => {
+describe("Workspace.use persistence over the real node bag", () => {
+  // python: test_workspace_use.py::TestPersist
   /**
    * Two accounts in a REAL tmp config + a Workspace over the real
    * resolver seams (the `twoAccountsBundle` twin over disk).
@@ -377,8 +359,8 @@ describe("TestPersist (test_workspace_use.py:190) — REAL node bag swap-in (pac
   });
 });
 
-describe("Bag swap-in runs — representative namespace subset (packet §4.3 last row)", () => {
-  it("accounts add/list/use + FR-045 promotion over the real bag", async () => {
+describe("namespace swap-in over the real bag", () => {
+  it("accounts add/list/use and first-account promotion over the real bag", async () => {
     const { effects } = tmpBag();
     const accounts = createAccountsNamespace(effects);
 

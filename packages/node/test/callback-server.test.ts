@@ -1,17 +1,8 @@
-// Layer-3 translation of `tests/unit/test_auth_callback.py`
-// (b8-packets.md §4.3 row 3): `TestCallbackResult`,
-// `TestStartCallbackServer`, `TestCallbackHtmlSecurity` —
-// all 12 tests. Real 127.0.0.1 binds (packet §7 caution 17 — a local
-// bind, not network). Python binds the fixed ports throughout; here
-// only the two port-SCAN cases do (they occupy 19284… first and assert
-// fallback / exhaustion — the scan is the behaviour under test). Every
-// other case binds `port: 0` and reads the bound port back through the
-// TS-only `onListening` seam (plan 7.4), so parallel vitest workers and
-// a developer's own `mp login` cannot collide with this suite.
-//
-// Python's background-thread + `httpx.get` fixture translates to the
-// returned promise + a global-`fetch` GET with a short bind-retry loop
-// (the `time.sleep(0.3)` "give the server time to bind" twin).
+// startCallbackServer and CallbackResult over real 127.0.0.1 binds. Mirrors
+// tests/unit/test_auth_callback.py; only the two port-scan cases bind the
+// fixed ports (the scan is what they test), every other case binds port 0
+// and reads the bound port back. Additive: ephemeral-port reporting, stray
+// GET handling and the received_state-only error details.
 
 import { createServer, type Server } from "node:net";
 
@@ -108,14 +99,17 @@ async function startEphemeral(options: {
   return { serverPromise, port };
 }
 
-describe("TestCallbackResult (test_auth_callback.py:33)", () => {
-  it("test_fields_accessible", () => {
+describe("CallbackResult", () => {
+  // python: test_auth_callback.py::TestCallbackResult
+  it("exposes code and state", () => {
+    // python: test_fields_accessible
     const result = new CallbackResult({ code: "abc123", state: "xyz789" });
     expect(result.code).toBe("abc123");
     expect(result.state).toBe("xyz789");
   });
 
-  it("test_frozen", () => {
+  it("is frozen", () => {
+    // python: test_frozen
     // Python `FrozenInstanceError` (an AttributeError) -> assignment to
     // a frozen instance throws TypeError in strict-mode ESM.
     const result = new CallbackResult({ code: "abc", state: "def" });
@@ -125,8 +119,10 @@ describe("TestCallbackResult (test_auth_callback.py:33)", () => {
   });
 });
 
-describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
-  it("test_returns_code_and_state_from_query_params", async () => {
+describe("startCallbackServer", () => {
+  // python: test_auth_callback.py::TestStartCallbackServer
+  it("resolves with the code and state from the query string", async () => {
+    // python: test_returns_code_and_state_from_query_params
     const state = "test-state-123";
     const { serverPromise, port } = await startEphemeral({ state });
 
@@ -141,7 +137,7 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
     expect(resp.status).toBe(200);
   });
 
-  it("port 0 binds an ephemeral port and reports the bound port, not 0 (plan 7.4)", async () => {
+  it("port 0 binds an ephemeral port and reports the bound port, not 0", async () => {
     const state = "ephemeral-port";
     const { serverPromise, port } = await startEphemeral({ state });
     expect(port).not.toBe(0);
@@ -155,7 +151,8 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
     expect(boundPort).toBe(port);
   });
 
-  it("test_html_response_sent_to_browser", async () => {
+  it("answers the browser with an HTML success page", async () => {
+    // python: test_html_response_sent_to_browser
     const state = "html-test";
     const { serverPromise, port } = await startEphemeral({ state });
 
@@ -169,7 +166,8 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
     expect(text.includes("success") || text.includes("authorized")).toBe(true);
   });
 
-  it("test_state_mismatch_raises_oauth_error", async () => {
+  it("rejects with OAuthError on a state mismatch", async () => {
+    // python: test_state_mismatch_raises_oauth_error
     const { serverPromise, port } = await startEphemeral({
       state: "expected-state",
     });
@@ -187,7 +185,8 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
     expect(String(error).toLowerCase()).toContain("state");
   });
 
-  it("test_error_param_raises_oauth_error", async () => {
+  it("rejects with OAuthError when the provider sends error=", async () => {
+    // python: test_error_param_raises_oauth_error
     const { serverPromise, port } = await startEphemeral({
       state: "error-test",
     });
@@ -206,7 +205,8 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
     expect(String(error)).toContain("access_denied");
   });
 
-  it("test_timeout_raises_oauth_error", async () => {
+  it("rejects with OAUTH_TIMEOUT when no callback arrives", async () => {
+    // python: test_timeout_raises_oauth_error
     const serverPromise = startCallbackServer({
       state: "timeout-test",
       timeoutSeconds: 0.5,
@@ -221,7 +221,8 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
     expect((error as OAuthError).code).toBe("OAUTH_TIMEOUT");
   });
 
-  it("test_tries_next_port_when_first_is_busy", async () => {
+  it("falls back to the next port when the first is busy", async () => {
+    // python: test_tries_next_port_when_first_is_busy
     await occupyPort(19284);
 
     const state = "port-fallback";
@@ -237,7 +238,8 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
     expect(cbResult.code).toBe("fallback-code");
   });
 
-  it("test_all_ports_busy_raises_oauth_error", async () => {
+  it("rejects with OAUTH_PORT_ERROR listing the ports when all are busy", async () => {
+    // python: test_all_ports_busy_raises_oauth_error
     for (const port of [19284, 19285, 19286, 19287]) {
       await occupyPort(port);
     }
@@ -256,7 +258,7 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
     });
   });
 
-  it("answers 404 to a stray GET without consuming the one-shot, then accepts /callback (CLEANUP-PLAN 8.2)", async () => {
+  it("answers 404 to a stray GET without consuming the one-shot, then accepts /callback", async () => {
     const state = "stray-get";
     const { serverPromise, port } = await startEphemeral({ state });
 
@@ -274,7 +276,8 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
     expect(boundPort).toBe(port);
   });
 
-  it("test_redirect_uri_uses_localhost", async () => {
+  it("serves the callback at localhost while binding 127.0.0.1", async () => {
+    // python: test_redirect_uri_uses_localhost
     // OAuth providers require consistent redirect URIs: `localhost` in
     // the redirect URI while binding 127.0.0.1.
     const state = "localhost-test";
@@ -290,8 +293,10 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
   });
 });
 
-describe("TestCallbackHtmlSecurity (test_auth_callback.py:281)", () => {
-  it("test_state_mismatch_does_not_leak_expected_state", async () => {
+describe("callback HTML security", () => {
+  // python: test_auth_callback.py::TestCallbackHtmlSecurity
+  it("keeps the expected state out of the mismatch page", async () => {
+    // python: test_state_mismatch_does_not_leak_expected_state
     const state = "secret-csrf-state-12345";
     const { serverPromise, port } = await startEphemeral({ state });
     const settled = serverPromise.then(
@@ -313,7 +318,7 @@ describe("TestCallbackHtmlSecurity (test_auth_callback.py:281)", () => {
     ).toBe(true);
   });
 
-  it("state mismatch error details carry received_state but never expected_state (CLEANUP-PLAN 8.3)", async () => {
+  it("state mismatch error details carry received_state but never expected_state", async () => {
     const state = "secret-csrf-state-67890";
     const { serverPromise, port } = await startEphemeral({ state });
     const settled = serverPromise.then(
@@ -336,7 +341,8 @@ describe("TestCallbackHtmlSecurity (test_auth_callback.py:281)", () => {
     );
   });
 
-  it("test_provider_error_description_is_html_escaped", async () => {
+  it("HTML-escapes the provider's error_description", async () => {
+    // python: test_provider_error_description_is_html_escaped
     const { serverPromise, port } = await startEphemeral({
       state: "escape-test",
     });

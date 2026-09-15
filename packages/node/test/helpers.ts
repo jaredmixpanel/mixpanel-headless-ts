@@ -1,16 +1,13 @@
-// B8-N1 shared FS-test helpers — the Python-suite real-home guard
-// discipline (b8-packets.md §7 caution 3; `b7-packets.md` §6.19
-// precedent): every test builds under `fs.mkdtempSync(os.tmpdir())`,
-// points modules there via explicit paths / env overrides, and asserts
-// no resolved path is under `os.homedir()` before any write. `~/.mp`
-// is NEVER touched by tests.
+// Shared node test helpers: every test builds under a fresh tmp dir, points
+// modules there through explicit paths or stubbed env, and refuses any path
+// under the real home directory. `~/.mp` is never touched by tests.
 
 import { mkdtempSync, rmSync, statSync } from "node:fs";
 import * as os from "node:os";
 import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
 
-import { expect } from "vitest";
+import { expect, vi } from "vitest";
 
 /**
  * Create a temp directory for one test and register cleanup.
@@ -44,32 +41,17 @@ function assertNotUnderHome(path: string): void {
 }
 
 /**
- * Snapshot-and-scrub every `MP_*` env var (the Python conftest scrub
- * twin) so node env wiring reads only what the test sets.
- *
- * @returns A restore thunk (call in afterEach).
+ * Remove every `MP_*` variable from the environment through `vi.stubEnv`,
+ * so the node env wiring reads only what the test sets. The Python
+ * suite's conftest scrub twin; `vi.unstubAllEnvs()` in `afterEach`
+ * restores the originals.
  */
-export function scrubMpEnv(): () => void {
-  const saved = new Map<string, string>();
-  for (const [key, value] of Object.entries(process.env)) {
-    if (!key.startsWith("MP_")) {
-      continue;
+export function scrubMpEnv(): void {
+  for (const key of Object.keys(process.env)) {
+    if (key.startsWith("MP_")) {
+      vi.stubEnv(key, undefined);
     }
-    if (value !== undefined) {
-      saved.set(key, value);
-    }
-    Reflect.deleteProperty(process.env, key);
   }
-  return () => {
-    for (const key of Object.keys(process.env)) {
-      if (key.startsWith("MP_")) {
-        Reflect.deleteProperty(process.env, key);
-      }
-    }
-    for (const [key, value] of saved) {
-      process.env[key] = value;
-    }
-  };
 }
 
 /**

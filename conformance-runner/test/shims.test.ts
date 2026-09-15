@@ -1,5 +1,6 @@
-// Shim tests (src/shims.ts, task TS-5): frozen clock, deterministic UUID
-// stream, and VIRTUAL sleep semantics per design D1.4/D12.
+// Shims (src/shims.ts): frozen clock, deterministic UUID stream and virtual
+// sleep semantics.
+
 import { describe, expect, it } from "vitest";
 
 import { createShims } from "../src/shims.js";
@@ -39,8 +40,8 @@ describe("createShims", () => {
   });
 
   it("virtual sleep terminates monotonic-deadline poll loops deterministically", async () => {
-    // Mirror of the lookup-table poll pattern (workspace.py:7857-7860,
-    // design D1.4): deadline = monotonic() + max_poll_seconds; the loop
+    // Mirror of the lookup-table poll pattern in
+    // `Workspace.upload_lookup_table`: deadline = monotonic() + max_poll_seconds; the loop
     // must run a machine-independent number of iterations.
     const shims = createShims(RECORD_EPOCH);
     const deadline = shims.monotonic() + 0.05;

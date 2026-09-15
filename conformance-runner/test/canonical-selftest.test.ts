@@ -1,15 +1,8 @@
-// Selftest-driven suite for the D6 canonicalizer (design D6/D12, TS-3).
-//
-// Iterates every case in the shared `canonical-selftest.json` — the
-// cross-language contract artifact authored by Python task PR-4 and
-// executed on the Python side by conformance/tests/test_canonical_selftest.py
-// — through the TS canonicalizer. Dispatch per case `kind` follows the
-// selftest file's own `$comment` prescription: `value`/`error`/`interactions`
-// compare canonical strings, `headers` compares the match verdict, `reject`
-// expects CanonicalizationError. Every case's `input_json` is parsed with
-// the LOSSLESS loader so raw number tokens survive (D6 rule 3 — plain
-// `JSON.parse` would collapse `18.0` to `18` and fail the float-token cases
-// by design).
+// The shared canonical-selftest.json contract (authored on the Python side,
+// executed there by conformance/tests/test_canonical_selftest.py) replayed
+// through the TS canonicalizer; inputs load losslessly so raw number tokens
+// survive.
+
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
@@ -130,7 +123,7 @@ const CASE_CHECKS: Readonly<Record<string, (testCase: SelftestCase) => void>> =
   };
 
 describe(`canonical-selftest.json (${DOCUMENT.cases.length} cases from ${SELFTEST_PATH})`, () => {
-  it("carries the ~40-case coverage the design mandates (D6)", () => {
+  it("carries the ~40-case coverage the canonical-form rules mandate", () => {
     expect(DOCUMENT.cases.length).toBeGreaterThanOrEqual(40);
   });
 

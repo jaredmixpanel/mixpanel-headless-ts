@@ -1,5 +1,6 @@
-// Loader tests (src/loader.ts, task TS-4): full-snapshot enumeration plus
-// integrity-check unit tests over synthetic mini-corpora.
+// Loader (src/loader.ts): full-snapshot enumeration plus integrity checks
+// over synthetic mini-corpora.
+
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -84,7 +85,7 @@ function makeMiniCorpus(options?: {
  * Write one authored bundle (`authored/bundle.jsonl`) into a mini corpus.
  *
  * Every vector line carries `origin: "authored"` so the bundle stays
- * outside the manifest `counts.total` reconciliation (design D13/D3.1).
+ * outside the manifest `counts.total` reconciliation.
  *
  * @param dir - The corpus directory returned by makeMiniCorpus.
  * @param header - `$bundle` header fields merged over the declared count
@@ -115,7 +116,7 @@ function addAuthoredBundle(
   writeFileSync(join(dir, "authored", "bundle.jsonl"), `${lines.join("\n")}\n`);
 }
 
-describe("loadCorpus on the committed snapshot (TS-4 done criterion)", () => {
+describe("loadCorpus on the committed snapshot", () => {
   const config = loadCorpusConfig(PACKAGE_DIR);
   const corpus = loadCorpus(
     resolve(PACKAGE_DIR, config.vectorsPath),
@@ -125,7 +126,7 @@ describe("loadCorpus on the committed snapshot (TS-4 done criterion)", () => {
 
   /**
    * Extracted (record-pipeline) vectors only: manifest counts cover the
-   * extraction, not the hand-authored D13/D3.1 additions.
+   * extraction, not the hand-authored additions.
    */
   const extracted = corpus.vectors.filter(
     (vector) => vector.origin !== "authored",
@@ -159,7 +160,7 @@ describe("loadCorpus on the committed snapshot (TS-4 done criterion)", () => {
     }
   });
 
-  it("preserves raw number tokens (lossless loading, D6 rule 3)", () => {
+  it("preserves raw number tokens (lossless loading)", () => {
     const containsToken = (value: unknown): boolean => {
       if (value instanceof JsonNumber) {
         return true;
@@ -187,7 +188,7 @@ describe("loadCorpus integrity checks (synthetic corpora)", () => {
     expect(corpus.bundles[0]?.sourceFile).toBe("tests/unit/test_a.py");
   });
 
-  it("refuses a source-commit pin mismatch (D12 drift protection)", () => {
+  it("refuses a source-commit pin mismatch", () => {
     expect(() => loadCorpus(makeMiniCorpus(), "b".repeat(40))).toThrow(
       CorpusIntegrityError,
     );

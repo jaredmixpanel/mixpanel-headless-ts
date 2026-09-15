@@ -1,9 +1,6 @@
-// B8-ARB-B unit table for the shared pydantic datetime twins
-// (`b8-reviewB-resolution.md` findings F1/F2). Every expected value in
-// the lax table below was LIVE-PROBED against CPython 3.14.6 /
-// pydantic v2 (`OAuthTokens.model_validate({... expires_at: X})`) and
-// is recorded in the resolution file; the formatter rows mirror the
-// `model_dump(mode="json")` / `datetime.isoformat()` probe outputs.
+// coerceLaxExpiresAt and the two writer formatters. Every expected value was
+// probed against CPython 3.14.6 / pydantic v2 (`OAuthTokens.model_validate`,
+// `model_dump(mode="json")`, `datetime.isoformat()`).
 
 import { describe, expect, it } from "vitest";
 

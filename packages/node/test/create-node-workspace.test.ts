@@ -1,15 +1,6 @@
-// QA follow-up (2026-08-17, post-Phase-3 live QA report): Python's
-// `Workspace()` wires the on-disk token resolver, `/me` cache, and file
-// reader automatically (`workspace.py`); the TS node package
-// shipped only the pieces (`createNodeWorkspaceSources`,
-// `createNodeAuthEffects`, `MeCache`, `nodeReadFile`) with no composed
-// constructor — so the README's OAuth quick start failed on first query
-// with `TokenResolver is required`. `createNodeWorkspace()` is the
-// parity twin of Python's zero-config `Workspace()` construction.
-//
-// Fixture pattern per `workspace-bridge-materialization.test.ts`:
-// isolated `$HOME` tmp dir, `MP_*` env scrub, 0o600/0o700 modes on
-// POSIX.
+// createNodeWorkspace(): the zero-config twin of Python's `Workspace()`
+// construction, composing the on-disk token resolver, `/me` cache and file
+// reader. Runs over an isolated HOME with the MP_* env scrubbed.
 
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -27,24 +18,16 @@ import { makeTempDir, scrubMpEnv } from "./helpers.js";
 const POSIX = process.platform !== "win32";
 
 const cleanups: Array<() => void> = [];
-let restoreEnv: () => void = () => undefined;
-let savedHome: string | undefined;
 let home = "";
 
 beforeEach(() => {
-  restoreEnv = scrubMpEnv();
-  savedHome = process.env["HOME"];
+  scrubMpEnv();
   home = makeTempDir(cleanups);
-  process.env["HOME"] = home;
+  vi.stubEnv("HOME", home);
 });
 
 afterEach(() => {
-  if (savedHome === undefined) {
-    delete process.env["HOME"];
-  } else {
-    process.env["HOME"] = savedHome;
-  }
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }

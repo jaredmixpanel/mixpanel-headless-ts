@@ -1,16 +1,7 @@
-// NEW Layer-3 lock — CRED-F3 serialization round-trip (b8-packets.md
-// §2.3 last row; B7-ARB-B ruling, `b7-reviewB-resolution.md:245-252`).
-//
-// `Secret.toJSON()` returns the redaction mask, so any on-disk writer
-// routed through a generic serializer would persist literal asterisks —
-// silent credential corruption discovered only at next auth. The TOML
-// account writer (`_account_to_block` twin, config.ts) must call
-// `reveal()` at exactly its designated site. This suite locks:
-//
-//   1. write→read reveal equality for a Secret-bearing SA account AND a
-//      Secret-bearing oauth_token account;
-//   2. the on-disk TOML contains the REAL values;
-//   3. the on-disk TOML does NOT contain the `**********` mask.
+// Secret round trip through the TOML account writer: `Secret.toJSON()`
+// returns the redaction mask, so the writer must `reveal()` at exactly its
+// designated site. Locks write→read equality for Secret-bearing accounts,
+// real values on disk, and no `**********` mask on disk. No Python twin.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -33,7 +24,7 @@ afterEach(() => {
   }
 });
 
-describe("CRED-F3 secret round-trip lock", () => {
+describe("secret round trip", () => {
   it("SA secret and OT token round-trip revealed, unmasked on disk", () => {
     const dir = makeTempDir(cleanups);
     const configPath = join(dir, "config.toml");

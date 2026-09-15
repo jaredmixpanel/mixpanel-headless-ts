@@ -1,28 +1,9 @@
-// C8(b) entity-model golden tests (phase2-design C5 item 5 / C8b scope
-// extension, packet P2-7).
-//
-// Source of goldens: entity/data-governance wire vectors' plain
-// `expect.result` payloads — the recorder's `tagged_models=False`
-// field walk of the returned Pydantic model (every declared field
-// under its Python attribute name, computed fields appended) —
-// selected via `corpus/contract/model-coverage.json`: the test is
-// ARTIFACT-DRIVEN. Every model the artifact marks `entity_golden`
-// must have a handler row below, and every listed vector id must
-// resolve in the snapshot; a handler for a model the artifact does
-// NOT mark golden is a stale row and fails.
-//
-// Test body per model: decode the payload through the codec registry
-// ($type datetime/float children), `fromDict(...)` through the REAL
-// class, re-encode the full field walk (`toVectorPayload()`), and
-// diff against the ORIGINAL raw payload.
-//
-// Anti-vacuity (design C8b, arbiter V3): every golden adds (i) an
-// `instanceof` check on the decode product, (ii) an unknown-key
-// mutation probe — `extra='forbid'` models must throw
-// ResponseValidationError; lax models must DROP the unknown key from
-// `toJSON()` (so an echo implementation cannot pass), and (iii) an
-// `Object.keys(toJSON())` equality check against the class's declared
-// field list (+ computed fields).
+// Entity-model goldens, driven by corpus/contract/model-coverage.json: each
+// `entity_golden` model decodes its wire payload through the real class and
+// re-encodes the full field walk back to the original. Anti-vacuity per
+// golden: `instanceof`, an unknown-key probe (forbid → throw, lax → drop),
+// and `Object.keys(toJSON())` against the declared field list.
+
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -68,7 +49,7 @@ interface CoverageRow {
   readonly authored_fixture: string | null;
 }
 
-/** Parsed shape of the P2-1 model-coverage artifact. */
+/** Parsed shape of the model-coverage artifact. */
 interface ModelCoverage {
   readonly models: Readonly<Record<string, CoverageRow>>;
 }
@@ -158,8 +139,7 @@ const workspaceRefHandler: GoldenHandler = {
 };
 
 /**
- * The hand-maintained model -> handler table (reviewed in the P2-10
- * mini-audit). Keys must equal the artifact's `entity_golden` set —
+ * The hand-maintained model -> handler table. Keys must equal the artifact's `entity_golden` set —
  * both directions are asserted below.
  */
 const HANDLERS: Readonly<Record<string, GoldenHandler>> = {
@@ -218,7 +198,7 @@ function extractPayloads(result: JsonValue): readonly JsonValue[] {
   return Array.isArray(result) ? result : [result];
 }
 
-describe("model-coverage accounting (P2-7 done-criterion)", () => {
+describe("model-coverage accounting", () => {
   it("no model remains unresolved — every row is golden/tag/fixture/deferral", () => {
     for (const [name, row] of Object.entries(coverage.models)) {
       expect(
@@ -264,7 +244,7 @@ function unknownKeyOutcome(
   }
 }
 
-describe("C8(b) entity-model goldens", () => {
+describe("entity-model goldens", () => {
   it("handler table matches the artifact's entity_golden set exactly", () => {
     expect(Object.keys(HANDLERS).sort()).toStrictEqual(goldenModels);
   });

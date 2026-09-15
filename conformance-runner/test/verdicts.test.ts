@@ -1,5 +1,5 @@
-// Verdict/report tests (src/verdicts.ts, task TS-5): D12 report shape and
-// failure classification.
+// Verdicts (src/verdicts.ts): report shape and failure classification.
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -9,7 +9,7 @@ import {
 } from "../src/verdicts.js";
 
 describe("isFailingVerdict", () => {
-  it("classifies the taxonomy per design D12", () => {
+  it("classifies every verdict of the taxonomy", () => {
     expect(isFailingVerdict("PASS")).toBe(false);
     expect(isFailingVerdict("UNPORTED")).toBe(false);
     expect(isFailingVerdict("FAIL_OUTPUT")).toBe(true);
@@ -21,7 +21,7 @@ describe("isFailingVerdict", () => {
 });
 
 describe("summarizeResults", () => {
-  it("produces the D12 JSON report shape", () => {
+  it("produces the JSON report shape", () => {
     const results: VectorResult[] = [
       { id: "compat/z/a", capability: "compat", verdict: "PASS" },
       { id: "filters/f/b", capability: "filters", verdict: "UNPORTED" },

@@ -1,25 +1,22 @@
-// B8-N1 seam locks for the two thin node wirings (b8-packets.md §2.1
-// rows 3-4): `createNodeEnv` (call-time `process.env` reads — packet §7
-// caution 16) and `nodeReadFile` (the W7-D1 `Path(...).read_bytes()`
-// twin, `workspace.py` — plain read, NO credential hardening: a
-// user-supplied CSV, not a credential file).
+// The two thin node wirings: `createNodeEnv` (process.env read at call time)
+// and `nodeReadFile` (the plain `Path(...).read_bytes()` twin — a
+// user-supplied CSV, not a credential file, so no hardening).
 
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createNodeEnv } from "../src/env.js";
 import { nodeReadFile } from "../src/fs-seams.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const cleanups: Array<() => void> = [];
-let restoreEnv: () => void = () => {};
 beforeEach(() => {
-  restoreEnv = scrubMpEnv();
+  scrubMpEnv();
 });
 afterEach(() => {
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }
@@ -29,21 +26,21 @@ describe("createNodeEnv", () => {
   it("reads MP_* fields at CALL time, not at bag construction", () => {
     const env = createNodeEnv();
     expect(env.MP_USERNAME).toBeUndefined();
-    process.env["MP_USERNAME"] = "late-set";
+    vi.stubEnv("MP_USERNAME", "late-set");
     expect(env.MP_USERNAME).toBe("late-set");
-    delete process.env["MP_USERNAME"];
+    vi.stubEnv("MP_USERNAME", undefined);
     expect(env.MP_USERNAME).toBeUndefined();
   });
 
   it("covers all six resolver MP_* members plus generic get()", () => {
     const env = createNodeEnv();
-    process.env["MP_USERNAME"] = "u";
-    process.env["MP_SECRET"] = "s";
-    process.env["MP_PROJECT_ID"] = "123";
-    process.env["MP_REGION"] = "eu";
-    process.env["MP_OAUTH_TOKEN"] = "tok";
-    process.env["MP_WORKSPACE_ID"] = "42";
-    process.env["MP_CUSTOM"] = "generic";
+    vi.stubEnv("MP_USERNAME", "u");
+    vi.stubEnv("MP_SECRET", "s");
+    vi.stubEnv("MP_PROJECT_ID", "123");
+    vi.stubEnv("MP_REGION", "eu");
+    vi.stubEnv("MP_OAUTH_TOKEN", "tok");
+    vi.stubEnv("MP_WORKSPACE_ID", "42");
+    vi.stubEnv("MP_CUSTOM", "generic");
     expect(env.MP_USERNAME).toBe("u");
     expect(env.MP_SECRET).toBe("s");
     expect(env.MP_PROJECT_ID).toBe("123");
@@ -56,15 +53,15 @@ describe("createNodeEnv", () => {
 
   it("returns raw values — empty string stays the CALLER's problem", () => {
     // Falsiness is owned by the resolver core (resolver.ts); the bag
-    // never coerces (packet §2.1 env-wiring row).
+    // never coerces.
     const env = createNodeEnv();
-    process.env["MP_REGION"] = "";
+    vi.stubEnv("MP_REGION", "");
     expect(env.MP_REGION).toBe("");
     expect(env.get("MP_REGION")).toBe("");
   });
 });
 
-describe("nodeReadFile (W7-D1)", () => {
+describe("nodeReadFile", () => {
   it("reads bytes from a user-supplied path", async () => {
     const dir = makeTempDir(cleanups);
     const path = join(dir, "table.csv");

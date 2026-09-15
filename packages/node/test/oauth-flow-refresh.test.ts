@@ -1,20 +1,9 @@
-// Layer-3 translation of the REFRESH classes of
-// `tests/unit/test_auth_flow.py` (b8-packets.md §3.3 row 5):
-// `TestOAuthFlowRefresh`, the REFRESH member of
-// `TestTokenPayloadRedaction` (FIX-2, bug (d) — exchange members are
-// in `oauth-flow-login.test.ts`), `TestOAuthFlowGetValidToken`,
-// the refresh/timeout members of `TestOAuthFlowNetworkErrors` (:802 —
-// the exchange-op members are N3's, header-cited split), and
-// `TestOAuthFlowRegionValidation` (:984 — lands with the N2 class
-// skeleton per the packet row).
-//
-// Python's `httpx.MockTransport` fixtures translate to an injected
-// `fetchImpl` returning web-standard `Response` objects; transport
-// failures reject, and the R2.10 adapter path
-// (`createRequestExecutor`) normalizes them exactly as the B0 client
-// does. The `tmp_path` storage fixture translates to `makeTempDir`.
+// OAuthFlow refresh, getValidToken, refresh network errors and region
+// validation. Mirrors the refresh classes of tests/unit/test_auth_flow.py
+// (the login/exchange classes live in oauth-flow-login.test.ts);
+// httpx.MockTransport fixtures translate to an injected `fetchImpl`.
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   cpLength,
@@ -31,14 +20,13 @@ import { OAuthStorage } from "../src/auth/storage.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const cleanups: Array<() => void> = [];
-let restoreEnv: () => void = () => undefined;
 
 beforeEach(() => {
-  restoreEnv = scrubMpEnv();
+  scrubMpEnv();
 });
 
 afterEach(() => {
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }
@@ -143,8 +131,10 @@ function expiredTokens(options?: {
   });
 }
 
-describe("TestOAuthFlowRefresh (test_auth_flow.py:490)", () => {
-  it("test_refresh_posts_correct_params", async () => {
+describe("OAuthFlow.refreshTokens", () => {
+  // python: test_auth_flow.py::TestOAuthFlowRefresh
+  it("posts the refresh_token grant as form params in insertion order", async () => {
+    // python: test_refresh_posts_correct_params
     const { fetchImpl, captured } = mockTransport(() =>
       jsonResponse(200, makeTokenResponse()),
     );
@@ -156,7 +146,7 @@ describe("TestOAuthFlowRefresh (test_auth_flow.py:490)", () => {
     expect(body).toContain("grant_type=refresh_token");
     expect(body).toContain("refresh_token=old-refresh");
     expect(body).toContain("client_id=cid");
-    // Body is form-encoded IN INSERTION ORDER (packet §3.2 item 1).
+    // Body is form-encoded in insertion order.
     expect(body).toBe(
       "grant_type=refresh_token&refresh_token=old-refresh&client_id=cid",
     );
@@ -165,7 +155,8 @@ describe("TestOAuthFlowRefresh (test_auth_flow.py:490)", () => {
     expect(newTokens.access_token.reveal()).toBe("access-tok-123");
   });
 
-  it("test_refresh_invalid_grant_raises_revoked", async () => {
+  it("maps invalid_grant to OAUTH_REFRESH_REVOKED with a login hint", async () => {
+    // python: test_refresh_invalid_grant_raises_revoked
     const { fetchImpl } = mockTransport(() =>
       jsonResponse(400, { error: "invalid_grant" }),
     );
@@ -185,7 +176,8 @@ describe("TestOAuthFlowRefresh (test_auth_flow.py:490)", () => {
     expect(caught?.message).toContain("mp account login personal");
   });
 
-  it("test_refresh_transient_5xx_raises_generic_error", async () => {
+  it("raises the generic refresh error on a 5xx", async () => {
+    // python: test_refresh_transient_5xx_raises_generic_error
     const { fetchImpl } = mockTransport(
       () => new Response("Service Unavailable", { status: 503 }),
     );
@@ -197,7 +189,8 @@ describe("TestOAuthFlowRefresh (test_auth_flow.py:490)", () => {
     });
   });
 
-  it("test_refresh_without_refresh_token_raises", async () => {
+  it("refuses before any request when there is no refresh token", async () => {
+    // python: test_refresh_without_refresh_token_raises
     const { fetchImpl, captured } = mockTransport(() =>
       jsonResponse(200, makeTokenResponse()),
     );
@@ -207,17 +200,16 @@ describe("TestOAuthFlowRefresh (test_auth_flow.py:490)", () => {
     await expect(flow.refreshTokens(tokens, "cid")).rejects.toMatchObject({
       code: "OAUTH_REFRESH_ERROR",
     });
-    // The refusal fires BEFORE any request (packet §3.2 item 2).
+    // The refusal fires before any request.
     expect(captured).toHaveLength(0);
   });
 
-  it("test_refresh_missing_fields_error_redacts_token_material", async () => {
-    // TestTokenPayloadRedaction refresh member (Python FIX-2;
-    // fix-of-record docs/history/phase3/bug-reports/
-    // python-oauth-error-details-token-payload.md; exchange members in
-    // `oauth-flow-login.test.ts`, header-cited split). Also
-    // vector-locked: auth/oauth_flow.refresh_tokens/...-
-    // testtokenpayloadredaction-... pins the exact response_data string.
+  it("redacts token material when required fields are missing", async () => {
+    // python: test_refresh_missing_fields_error_redacts_token_material
+    // TestTokenPayloadRedaction refresh member (exchange members in
+    // `oauth-flow-login.test.ts`). Also vector-locked:
+    // auth/oauth_flow.refresh_tokens/...-testtokenpayloadredaction-... pins
+    // the exact response_data string.
     const { fetchImpl } = mockTransport(() =>
       jsonResponse(200, {
         access_token: "SECRET_AT",
@@ -250,7 +242,8 @@ describe("TestOAuthFlowRefresh (test_auth_flow.py:490)", () => {
     );
   });
 
-  it("test_refresh_non_dict_200_body_raises_oauth_error", async () => {
+  it("raises OAUTH_REFRESH_ERROR with a fixed placeholder for a non-object 200 body", async () => {
+    // python: test_refresh_non_dict_200_body_raises_oauth_error
     // ARB-A F1: refresh path shares `postTokenRequest`, so the
     // non-record-200 guard is locked on the refresh error code too
     // (Python twin: TestTokenPayloadRedaction::
@@ -266,13 +259,14 @@ describe("TestOAuthFlowRefresh (test_auth_flow.py:490)", () => {
     }
     expect(caught).toBeInstanceOf(OAuthError);
     expect(caught?.code).toBe("OAUTH_REFRESH_ERROR");
-    // ARB-B F-B3: fixed placeholder, never a verbatim rendering — the
-    // value itself can be the credential.
+    // Fixed placeholder, never a verbatim rendering — the value itself can
+    // be the credential.
     expect(caught?.details["response_data"]).toBe("<redacted non-object body>");
   });
 
-  it("test_refresh_non_json_200_body_not_embedded", async () => {
-    // ARB-B F-B1: a 200 body that fails JSON parsing can still BE the
+  it("never embeds a non-JSON 200 body; keeps only content type and length", async () => {
+    // python: test_refresh_non_json_200_body_not_embedded
+    // A 200 body that fails JSON parsing can still be the
     // token payload (valid token JSON + trailing proxy garbage). It is
     // never embedded — only content-type and code-point length survive
     // (Python twin: TestTokenPayloadRedaction::
@@ -306,8 +300,10 @@ describe("TestOAuthFlowRefresh (test_auth_flow.py:490)", () => {
   });
 });
 
-describe("TestOAuthFlowGetValidToken (test_auth_flow.py:610)", () => {
-  it("test_returns_current_token_if_not_expired", async () => {
+describe("OAuthFlow.getValidToken", () => {
+  // python: test_auth_flow.py::TestOAuthFlowGetValidToken
+  it("returns the stored token while it is valid", async () => {
+    // python: test_returns_current_token_if_not_expired
     const { fetchImpl } = mockTransport(
       () => new Response("should not be called", { status: 500 }),
     );
@@ -327,7 +323,8 @@ describe("TestOAuthFlowGetValidToken (test_auth_flow.py:610)", () => {
     await expect(flow.getValidToken("us")).resolves.toBe("valid-access-token");
   });
 
-  it("test_auto_refreshes_expired_token", async () => {
+  it("refreshes an expired token automatically", async () => {
+    // python: test_auto_refreshes_expired_token
     const { fetchImpl } = mockTransport(() =>
       jsonResponse(200, makeTokenResponse()),
     );
@@ -338,7 +335,8 @@ describe("TestOAuthFlowGetValidToken (test_auth_flow.py:610)", () => {
     await expect(flow.getValidToken("us")).resolves.toBe("access-tok-123");
   });
 
-  it("test_persists_refreshed_tokens", async () => {
+  it("persists the refreshed tokens", async () => {
+    // python: test_persists_refreshed_tokens
     const { fetchImpl } = mockTransport(() =>
       jsonResponse(200, makeTokenResponse()),
     );
@@ -352,7 +350,8 @@ describe("TestOAuthFlowGetValidToken (test_auth_flow.py:610)", () => {
     expect(reloaded?.access_token.reveal()).toBe("access-tok-123");
   });
 
-  it("test_raises_revoked_if_refresh_fails_invalid_grant", async () => {
+  it("raises OAUTH_REFRESH_REVOKED when the refresh gets invalid_grant", async () => {
+    // python: test_raises_revoked_if_refresh_fails_invalid_grant
     const { fetchImpl } = mockTransport(() =>
       jsonResponse(400, { error: "invalid_grant" }),
     );
@@ -365,7 +364,8 @@ describe("TestOAuthFlowGetValidToken (test_auth_flow.py:610)", () => {
     });
   });
 
-  it("test_raises_oauth_error_if_no_tokens_exist", async () => {
+  it("raises OAuthError when no tokens are stored", async () => {
+    // python: test_raises_oauth_error_if_no_tokens_exist
     const { fetchImpl } = mockTransport(
       () => new Response("should not be called", { status: 500 }),
     );
@@ -376,7 +376,8 @@ describe("TestOAuthFlowGetValidToken (test_auth_flow.py:610)", () => {
     });
   });
 
-  it("test_raises_oauth_error_if_no_client_info_for_refresh", async () => {
+  it("raises OAuthError when no client info is stored for the refresh", async () => {
+    // python: test_raises_oauth_error_if_no_client_info_for_refresh
     const { fetchImpl } = mockTransport(() =>
       jsonResponse(200, makeTokenResponse()),
     );
@@ -390,8 +391,10 @@ describe("TestOAuthFlowGetValidToken (test_auth_flow.py:610)", () => {
   });
 });
 
-describe("TestOAuthFlowNetworkErrors — refresh member (test_auth_flow.py:945; exchange members → N3, header-cited split)", () => {
-  it("test_refresh_tokens_timeout", async () => {
+describe("OAuthFlow.refreshTokens network errors", () => {
+  // python: test_auth_flow.py::TestOAuthFlowNetworkErrors
+  it("wraps a transport timeout into OAUTH_REFRESH_ERROR carrying the token URL", async () => {
+    // python: test_refresh_tokens_timeout
     const fetchImpl = ((): Promise<Response> =>
       Promise.reject(
         new DOMException("test timeout", "TimeoutError"),
@@ -412,8 +415,10 @@ describe("TestOAuthFlowNetworkErrors — refresh member (test_auth_flow.py:945; 
   });
 });
 
-describe("TestOAuthFlowRegionValidation (test_auth_flow.py:984)", () => {
-  it("test_invalid_region_raises_oauth_error", () => {
+describe("OAuthFlow region validation", () => {
+  // python: test_auth_flow.py::TestOAuthFlowRegionValidation
+  it("rejects an unknown region with OAUTH_CONFIG_ERROR", () => {
+    // python: test_invalid_region_raises_oauth_error
     const storage = new OAuthStorage({ storageDir: makeTempDir(cleanups) });
     let caught: OAuthError | null = null;
     try {
@@ -426,14 +431,16 @@ describe("TestOAuthFlowRegionValidation (test_auth_flow.py:984)", () => {
     expect(caught?.message).toContain("uk");
   });
 
-  it("test_uppercase_region_raises_oauth_error", () => {
+  it("rejects an upper-case region", () => {
+    // python: test_uppercase_region_raises_oauth_error
     const storage = new OAuthStorage({ storageDir: makeTempDir(cleanups) });
     const error = expectThrows(() => new OAuthFlow({ region: "US", storage }));
     expect(error).toBeInstanceOf(OAuthError);
     expect((error as OAuthError).code).toBe("OAUTH_CONFIG_ERROR");
   });
 
-  it("test_empty_region_raises_oauth_error", () => {
+  it("rejects an empty region", () => {
+    // python: test_empty_region_raises_oauth_error
     const storage = new OAuthStorage({ storageDir: makeTempDir(cleanups) });
     const error = expectThrows(
       () => new OAuthFlow({ region: "", storage }),
@@ -442,12 +449,10 @@ describe("TestOAuthFlowRegionValidation (test_auth_flow.py:984)", () => {
     expect((error as OAuthError).code).toBe("OAUTH_CONFIG_ERROR");
   });
 
-  it.each([["us"], ["eu"], ["in"]])(
-    "test_valid_regions_accepted[%s]",
-    (region) => {
-      const storage = new OAuthStorage({ storageDir: makeTempDir(cleanups) });
-      const flow = new OAuthFlow({ region, storage });
-      expect(flow.region).toBe(region);
-    },
-  );
+  it.each([["us"], ["eu"], ["in"]])("accepts region %s", (region) => {
+    // python: test_valid_regions_accepted
+    const storage = new OAuthStorage({ storageDir: makeTempDir(cleanups) });
+    const flow = new OAuthFlow({ region, storage });
+    expect(flow.region).toBe(region);
+  });
 });

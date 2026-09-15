@@ -1,16 +1,8 @@
-// Browser-bundle recipe gate (heads spec 04 §3, "Vendoring the headless
-// bundle") — proves `scripts/build-browser-bundle.mjs` produces a pinned,
-// reproducible, Node-free pair of artifacts plus a provenance manifest.
-//
-// The desktop app commits the built bundle under
-// `vendor/mixpanel-headless/` and re-verifies it against the manifest
-// (`tests/headless-vendor.test.ts` over there). This repo owns the recipe:
-// the script and the manifest schema are committed here, the artifacts are
-// not (`dist/` is git-ignored).
-//
-// Everything here goes through the CLI — the same entry point the desktop
-// vendoring script and `npm run smoke:browser` call — so the contract under
-// test is the shipped one, not an internal helper.
+// Browser-bundle recipe gate: `scripts/build-browser-bundle.mjs` produces a
+// pinned, reproducible, Node-free artifact pair plus a provenance manifest.
+// The desktop app vendors the built bundle and re-verifies it against the
+// manifest; this repo owns the recipe. Everything goes through the CLI so
+// the contract under test is the shipped one.
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
