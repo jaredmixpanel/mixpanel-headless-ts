@@ -24,12 +24,12 @@
 import { describe, expect, it } from "vitest";
 
 import { validateUserParams } from "../../src/query/user-validators.js";
+import { validateQueryArgs } from "../../src/query/validation-args.js";
 import {
   validateBookmark,
   validateFlowBookmark,
-  validateQueryArgs,
   validateSortingBlock,
-} from "../../src/query/validation.js";
+} from "../../src/query/validation-bookmark.js";
 import { CohortMetric, Filter } from "../../src/types/index.js";
 
 /**
