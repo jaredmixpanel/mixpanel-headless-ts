@@ -1,0 +1,707 @@
+/*
+ * Playground styles, scoped under `.mp-demo`. Colours come from the theme's
+ * `--vp-c-*` / `--mp-*` variables (theme/mixpanel.css), so light and dark
+ * mode need no separate rules except where an alpha-shaded fill is built.
+ * Loaded only with the playground chunk; the skeleton the page markup
+ * carries is hidden as soon as this file arrives.
+ */
+
+.mp-demo-skeleton {
+  display: none;
+}
+
+.mp-demo {
+  --mp-demo-radius: 8px;
+  margin: 24px 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--vp-c-text-1);
+}
+
+.mp-demo h2,
+.mp-demo h3 {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--vp-c-text-2);
+}
+
+.mp-demo p {
+  margin: 0 0 8px;
+  color: var(--vp-c-text-1);
+}
+
+.mp-demo code {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.92em;
+}
+
+.mp-muted {
+  color: var(--vp-c-text-3);
+}
+
+.mp-num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* --- Mode bar, intro, footer -------------------------------------------- */
+
+.mp-modebar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: var(--mp-demo-radius);
+  background: var(--vp-c-bg-soft);
+}
+
+.mp-modebar-text {
+  margin: 0;
+}
+
+.mp-intro {
+  padding: 20px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: var(--mp-demo-radius);
+  background: var(--vp-c-bg-soft);
+}
+
+.mp-intro-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  margin: 12px 0;
+}
+
+.mp-notice {
+  padding: 8px 12px;
+  border-left: 3px solid var(--vp-c-brand-1);
+  background: var(--vp-c-brand-soft);
+}
+
+.mp-details summary {
+  cursor: pointer;
+  color: var(--vp-c-text-2);
+}
+
+.mp-footnote {
+  margin: 16px 0 0;
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+}
+
+/* --- Grid ---------------------------------------------------------------- */
+
+.mp-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(0, 2.2fr) minmax(0, 1.8fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+@media (max-width: 959px) {
+  .mp-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.mp-col {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: var(--mp-demo-radius);
+  background: var(--vp-c-bg);
+}
+
+.mp-col-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+  margin: 0 0 8px;
+}
+
+.mp-col-left .mp-col-head:not(:first-child) {
+  margin-top: 20px;
+  padding-top: 12px;
+  border-top: 1px solid var(--vp-c-divider);
+}
+
+/* --- Controls ------------------------------------------------------------ */
+
+.mp-btn {
+  padding: 5px 12px;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 6px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.mp-btn:hover:not(:disabled) {
+  border-color: var(--vp-c-brand-1);
+  color: var(--vp-c-brand-1);
+}
+
+.mp-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.mp-btn:focus-visible,
+.mp-select:focus-visible,
+.mp-event:focus-visible,
+.mp-code:focus-visible,
+.mp-chart svg:focus-visible,
+.mp-tip-anchor:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 2px;
+}
+
+.mp-btn-brand {
+  border-color: var(--vp-button-brand-border);
+  background: var(--vp-button-brand-bg);
+  color: #fff;
+}
+
+.mp-btn-brand:hover:not(:disabled) {
+  border-color: var(--vp-button-brand-hover-border);
+  background: var(--vp-button-brand-hover-bg);
+  color: #fff;
+}
+
+.mp-btn-small {
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+.mp-btn-icon {
+  padding: 3px 8px;
+  line-height: 1;
+}
+
+.mp-btn-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--vp-c-brand-1);
+  font-size: 12px;
+}
+
+.mp-select {
+  max-width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 6px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+  font: inherit;
+  font-size: 13px;
+}
+
+.mp-segmented {
+  display: inline-flex;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.mp-seg {
+  border: 0;
+  border-radius: 0;
+  border-right: 1px solid var(--vp-c-border);
+}
+
+.mp-seg:last-child {
+  border-right: 0;
+}
+
+.mp-seg[aria-pressed="true"] {
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-1);
+  font-weight: 600;
+}
+
+.mp-field {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--vp-c-text-2);
+}
+
+.mp-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  margin: 8px 0 12px;
+}
+
+.mp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+  font-size: 12px;
+}
+
+.mp-chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-1);
+}
+
+/* --- Event list ---------------------------------------------------------- */
+
+/* The default theme styles every list inside `.vp-doc`; these are controls. */
+.vp-doc .mp-demo :is(ul, ol) {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vp-doc .mp-demo li,
+.vp-doc .mp-demo li + li {
+  margin: 0;
+}
+
+.mp-event {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: stretch;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--vp-c-text-1);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mp-event:hover {
+  background: var(--vp-c-bg-soft);
+}
+
+.mp-event-active {
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-1);
+  font-weight: 600;
+}
+
+.mp-event-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mp-event-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--vp-c-text-2);
+}
+
+.mp-up {
+  color: var(--mp-green);
+}
+
+.mp-down {
+  color: var(--mp-red);
+}
+
+/* --- Builders ------------------------------------------------------------ */
+
+.mp-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.mp-builder .mp-select {
+  width: 100%;
+}
+
+.mp-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  counter-reset: step;
+}
+
+.mp-steps li {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  counter-increment: step;
+}
+
+.mp-steps .mp-select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.mp-steps li::before {
+  content: counter(step);
+  flex-shrink: 0;
+  width: 1.4em;
+  font-size: 12px;
+  color: var(--vp-c-text-3);
+}
+
+/* --- Result -------------------------------------------------------------- */
+
+.mp-result-title {
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+
+.mp-result-body {
+  position: relative;
+  min-height: 120px;
+  overflow-x: auto;
+  transition: opacity 0.15s ease;
+}
+
+.mp-loading {
+  opacity: 0.45;
+}
+
+.mp-skeleton-chart,
+.mp-skeleton-row {
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--vp-c-bg-soft) 25%,
+    var(--vp-c-bg-alt) 50%,
+    var(--vp-c-bg-soft) 75%
+  );
+  background-size: 200% 100%;
+  animation: mp-shimmer 1.2s linear infinite;
+}
+
+.mp-skeleton-chart {
+  aspect-ratio: 640 / 240;
+}
+
+.mp-skeleton-row {
+  height: 28px;
+  margin: 4px 0;
+}
+
+@keyframes mp-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mp-skeleton-chart,
+  .mp-skeleton-row {
+    animation: none;
+  }
+}
+
+.mp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0;
+}
+
+.mp-tip-anchor {
+  position: relative;
+  display: inline-block;
+}
+
+.mp-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
+  display: none;
+  width: min(380px, 80vw);
+  padding: 8px 10px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 6px;
+  background: var(--vp-c-bg-elv);
+  box-shadow: var(--vp-shadow-2);
+  font-size: 12px;
+  color: var(--vp-c-text-1);
+}
+
+.mp-tip code {
+  overflow-wrap: anywhere;
+}
+
+.mp-tip-anchor:hover .mp-tip,
+.mp-tip-anchor:focus-within .mp-tip,
+.mp-tip-anchor:focus .mp-tip {
+  display: block;
+}
+
+/* --- Chart --------------------------------------------------------------- */
+
+.mp-chart {
+  margin: 0;
+}
+
+.mp-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  font-family: var(--vp-font-family-base);
+}
+
+.mp-chart-grid {
+  stroke: var(--vp-c-divider);
+  stroke-width: 1;
+}
+
+.mp-chart-tick {
+  fill: var(--vp-c-text-3);
+  font-size: 11px;
+}
+
+.mp-chart-line {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.mp-chart-dot {
+  fill: currentcolor;
+  opacity: 0.85;
+}
+
+.mp-chart-cross {
+  stroke: var(--vp-c-text-3);
+  stroke-dasharray: 3 3;
+}
+
+.mp-chart-box {
+  fill: var(--vp-c-bg-elv);
+  stroke: var(--vp-c-divider);
+}
+
+.mp-chart-box-title {
+  fill: var(--vp-c-text-1);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.mp-chart-box-row {
+  font-size: 11px;
+}
+
+.mp-chart-hover {
+  pointer-events: none;
+}
+
+.mp-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.mp-legend-item::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 3px;
+  margin-right: 5px;
+  vertical-align: middle;
+  background: currentcolor;
+}
+
+/* --- Bars ---------------------------------------------------------------- */
+
+.mp-bar-row {
+  margin: 0 0 10px;
+}
+
+.mp-bar-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mp-bar-step {
+  font-weight: 600;
+}
+
+.mp-bar-track {
+  height: 14px;
+  margin: 4px 0;
+  border-radius: 4px;
+  background: var(--vp-c-bg-soft);
+  overflow: hidden;
+}
+
+.mp-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--vp-c-brand-1);
+  transition: width 0.3s ease;
+}
+
+.mp-bar-meta {
+  font-size: 12px;
+  color: var(--vp-c-text-2);
+}
+
+/* --- Tables (result rows, retention grid) -------------------------------- */
+
+.mp-table-wrap {
+  max-height: 320px;
+  margin-top: 8px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 6px;
+  overflow: auto;
+}
+
+.mp-demo table {
+  display: table;
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mp-demo th,
+.mp-demo td {
+  padding: 4px 8px;
+  border: 0;
+  border-bottom: 1px solid var(--vp-c-divider);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.mp-demo thead th {
+  position: sticky;
+  top: 0;
+  background: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+  font-weight: 600;
+}
+
+.mp-demo tr:last-child td {
+  border-bottom: 0;
+}
+
+.mp-table-foot {
+  margin: 0;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--vp-c-text-3);
+}
+
+.mp-retention {
+  margin-top: 8px;
+}
+
+.mp-cell {
+  background: rgba(79, 68, 224, var(--mp-cell-alpha, 0));
+}
+
+.dark .mp-cell {
+  background: rgba(120, 86, 255, var(--mp-cell-alpha, 0));
+}
+
+.mp-cell-inverse {
+  color: #fff;
+}
+
+/* --- Code panel ---------------------------------------------------------- */
+
+.mp-codepanel {
+  min-width: 0;
+}
+
+.mp-code {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 6px;
+  background: var(--vp-code-block-bg);
+  font-family: var(--vp-font-family-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--vp-code-color);
+}
+
+.mp-code span {
+  color: var(--shiki-light, inherit);
+}
+
+.dark .mp-code span {
+  color: var(--shiki-dark, inherit);
+}
+
+.mp-code-result {
+  margin-top: 12px;
+}
+
+.mp-code-result h3 {
+  margin-bottom: 6px;
+}
+
+/* --- Errors -------------------------------------------------------------- */
+
+.mp-error {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--mp-red);
+  border-radius: 4px;
+  background: var(--vp-c-bg-soft);
+  font-size: 13px;
+}
+
+.mp-error-details {
+  max-height: 200px;
+  margin: 8px 0 0;
+  padding: 8px;
+  border-radius: 4px;
+  background: var(--vp-code-block-bg);
+  font-size: 11px;
+  overflow: auto;
+}
+
+/* --- Callback page ------------------------------------------------------- */
+
+.mp-callback {
+  padding: 24px 0;
+}
