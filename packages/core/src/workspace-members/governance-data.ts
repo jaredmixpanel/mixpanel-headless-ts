@@ -96,6 +96,7 @@
 
 import type { MixpanelClient } from "../client/client.js";
 import { isPlainRecord } from "../client/internals.js";
+import { toNativeJson } from "../client/json-value.js";
 import {
   validateResponseModel,
   validateResponseModels,
@@ -126,7 +127,6 @@ import {
   EventDefinition,
   type UpdateEventDefinitionParams,
 } from "../types/entities/lexicon.js";
-import { native, nativeInt64 } from "./shared.js";
 
 // ---------------------------------------------------------------------------
 // Options bags (R3.3/R3.8 — keyword-only tails; keys keep the Python
@@ -265,7 +265,7 @@ export async function listDropFilters(
   const rawList = await client.listDropFilters();
   return validateResponseModels(
     DropFilter,
-    rawList.map((item) => native(item)),
+    rawList.map((item) => toNativeJson(item)),
     {
       endpoint: "list_drop_filters",
     },
@@ -289,7 +289,7 @@ export async function createDropFilter(
   const rawList = await client.createDropFilter(params.modelDumpExcludeNone());
   return validateResponseModels(
     DropFilter,
-    rawList.map((item) => native(item)),
+    rawList.map((item) => toNativeJson(item)),
     {
       endpoint: "create_drop_filter",
     },
@@ -313,7 +313,7 @@ export async function updateDropFilter(
   const rawList = await client.updateDropFilter(params.modelDumpExcludeNone());
   return validateResponseModels(
     DropFilter,
-    rawList.map((item) => native(item)),
+    rawList.map((item) => toNativeJson(item)),
     {
       endpoint: "update_drop_filter",
     },
@@ -336,7 +336,7 @@ export async function deleteDropFilter(
   const rawList = await client.deleteDropFilter(dropFilterId);
   return validateResponseModels(
     DropFilter,
-    rawList.map((item) => native(item)),
+    rawList.map((item) => toNativeJson(item)),
     {
       endpoint: "delete_drop_filter",
     },
@@ -355,7 +355,7 @@ export async function getDropFilterLimits(
   client: MixpanelClient,
 ): Promise<DropFilterLimitsResponse> {
   const raw = await client.getDropFilterLimits();
-  return validateResponseModel(DropFilterLimitsResponse, native(raw), {
+  return validateResponseModel(DropFilterLimitsResponse, toNativeJson(raw), {
     endpoint: "get_drop_filter_limits",
   });
 }
@@ -418,7 +418,7 @@ export async function listCustomProperties(
   }
   return validateResponseModels(
     CustomProperty,
-    rawList.map((item) => native(item)),
+    rawList.map((item) => toNativeJson(item)),
     {
       endpoint: "list_custom_properties",
     },
@@ -442,7 +442,7 @@ export async function createCustomProperty(
   const raw = await client.createCustomProperty(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return validateResponseModel(CustomProperty, native(raw), {
+  return validateResponseModel(CustomProperty, toNativeJson(raw), {
     endpoint: "create_custom_property",
   });
 }
@@ -461,7 +461,7 @@ export async function getCustomProperty(
   propertyId: string,
 ): Promise<CustomProperty> {
   const raw = await client.getCustomProperty(propertyId);
-  return validateResponseModel(CustomProperty, native(raw), {
+  return validateResponseModel(CustomProperty, toNativeJson(raw), {
     endpoint: "get_custom_property",
   });
 }
@@ -486,7 +486,7 @@ export async function updateCustomProperty(
     propertyId,
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return validateResponseModel(CustomProperty, native(raw), {
+  return validateResponseModel(CustomProperty, toNativeJson(raw), {
     endpoint: "update_custom_property",
   });
 }
@@ -528,7 +528,7 @@ export async function validateCustomProperty(
   const raw = await client.validateCustomProperty(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------
@@ -551,11 +551,11 @@ export async function listLookupTables(
   const rawList = await client.listLookupTables({
     data_group_id: options.data_group_id ?? null,
   });
-  // `nativeInt64`, not `native`: `LookupTable.id` is a signed int64 that
+  // `unsafeIntegers: "bigint"`: `LookupTable.id` is a signed int64 that
   // a double would round (e.g. `-8644926364725811123`).
   return validateResponseModels(
     LookupTable,
-    rawList.map((item) => nativeInt64(item)),
+    rawList.map((item) => toNativeJson(item, { unsafeIntegers: "bigint" })),
     {
       endpoint: "list_lookup_tables",
     },
@@ -591,9 +591,9 @@ async function pollLookupUpload(
     // R2.12: seconds in the Python-named option, milliseconds at the
     // ONE conversion point.
     await seams.sleep(pollInterval * 1000);
-    const status = nativeInt64(
-      await client.getLookupUploadStatus(uploadId),
-    ) as Record<string, unknown>;
+    const status = toNativeJson(await client.getLookupUploadStatus(uploadId), {
+      unsafeIntegers: "bigint",
+    }) as Record<string, unknown>;
     // `status.get("uploadStatus", "UNKNOWN")` — the default fires on
     // ABSENCE only (an explicit `null` stays `null`), R4.8.
     const uploadStatus = Object.hasOwn(status, "uploadStatus")
@@ -699,7 +699,9 @@ export async function uploadLookupTable(
     formData["data-group-id"] = pythonStr(params.data_group_id);
   }
 
-  let raw: unknown = nativeInt64(await client.registerLookupTable(formData));
+  let raw: unknown = toNativeJson(await client.registerLookupTable(formData), {
+    unsafeIntegers: "bigint",
+  });
 
   // `{"uploadId": "..."}` marks async (Celery) processing for files
   // >= 5 MB. Python guards the read with `isinstance(raw, dict)`
@@ -760,9 +762,13 @@ export async function markLookupTableReady(
     formData["data-group-id"] = pythonStr(params.data_group_id);
   }
   const raw = await client.markLookupTableReady(formData);
-  return validateResponseModel(LookupTable, nativeInt64(raw), {
-    endpoint: "mark_lookup_table_ready",
-  });
+  return validateResponseModel(
+    LookupTable,
+    toNativeJson(raw, { unsafeIntegers: "bigint" }),
+    {
+      endpoint: "mark_lookup_table_ready",
+    },
+  );
 }
 
 /**
@@ -780,7 +786,7 @@ export async function getLookupUploadUrl(
   contentType = "text/csv",
 ): Promise<LookupTableUploadUrl> {
   const raw = await client.getLookupUploadUrl(contentType);
-  return validateResponseModel(LookupTableUploadUrl, native(raw), {
+  return validateResponseModel(LookupTableUploadUrl, toNativeJson(raw), {
     endpoint: "get_lookup_upload_url",
   });
 }
@@ -802,7 +808,7 @@ export async function getLookupUploadStatus(
   uploadId: string,
 ): Promise<Record<string, unknown>> {
   const raw = await client.getLookupUploadStatus(uploadId);
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
 /**
@@ -826,9 +832,13 @@ export async function updateLookupTable(
     dataGroupId,
     params.modelDumpExcludeNone(),
   );
-  return validateResponseModel(LookupTable, nativeInt64(raw), {
-    endpoint: "update_lookup_table",
-  });
+  return validateResponseModel(
+    LookupTable,
+    toNativeJson(raw, { unsafeIntegers: "bigint" }),
+    {
+      endpoint: "update_lookup_table",
+    },
+  );
 }
 
 /**
@@ -909,7 +919,7 @@ export async function createCustomEvent(
   params: CreateCustomEventParams,
 ): Promise<CustomEvent> {
   const raw = await client.createCustomEvent(params.toFormBody());
-  return validateResponseModel(CustomEvent, native(raw), {
+  return validateResponseModel(CustomEvent, toNativeJson(raw), {
     endpoint: "create_custom_event",
   });
 }
@@ -928,7 +938,7 @@ export async function listCustomEvents(
   const rawList = await client.listCustomEvents();
   return validateResponseModels(
     EventDefinition,
-    rawList.map((item) => native(item)),
+    rawList.map((item) => toNativeJson(item)),
     {
       endpoint: "list_custom_events",
     },
@@ -961,7 +971,7 @@ export async function updateCustomEvent(
     customEventId,
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return validateResponseModel(EventDefinition, native(raw), {
+  return validateResponseModel(EventDefinition, toNativeJson(raw), {
     endpoint: "update_custom_event",
   });
 }

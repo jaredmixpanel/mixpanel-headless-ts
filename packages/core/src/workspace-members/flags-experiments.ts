@@ -49,6 +49,7 @@
  */
 
 import type { MixpanelClient } from "../client/client.js";
+import { toNativeJson } from "../client/json-value.js";
 import {
   validateResponseModel,
   validateResponseModels,
@@ -70,7 +71,7 @@ import {
   type SetTestUsersParams,
   type UpdateFeatureFlagParams,
 } from "../types/entities/feature-flags.js";
-import { native, requireResponse } from "./shared.js";
+import { requireResponse } from "./shared.js";
 
 /** Options bag of `Workspace.listFeatureFlags` (keyword-only in Python). */
 export interface WorkspaceListFeatureFlagsOptions {
@@ -123,7 +124,7 @@ export async function listFeatureFlags(
   });
   return validateResponseModels(
     FeatureFlag,
-    raw.map((item) => native(item)),
+    raw.map((item) => toNativeJson(item)),
     {
       endpoint: "list_feature_flags",
     },
@@ -149,7 +150,7 @@ export async function createFeatureFlag(
   );
   return validateResponseModel(
     FeatureFlag,
-    native(requireResponse(raw, "create_feature_flag")),
+    toNativeJson(requireResponse(raw, "create_feature_flag")),
     { endpoint: "create_feature_flag" },
   );
 }
@@ -171,7 +172,7 @@ export async function getFeatureFlag(
   const raw: unknown = await client.getFeatureFlag(flagId);
   return validateResponseModel(
     FeatureFlag,
-    native(requireResponse(raw, "get_feature_flag")),
+    toNativeJson(requireResponse(raw, "get_feature_flag")),
     { endpoint: "get_feature_flag" },
   );
 }
@@ -198,7 +199,7 @@ export async function updateFeatureFlag(
   );
   return validateResponseModel(
     FeatureFlag,
-    native(requireResponse(raw, "update_feature_flag")),
+    toNativeJson(requireResponse(raw, "update_feature_flag")),
     { endpoint: "update_feature_flag" },
   );
 }
@@ -251,7 +252,7 @@ export async function restoreFeatureFlag(
   flagId: string,
 ): Promise<FeatureFlag> {
   const raw = await client.restoreFeatureFlag(flagId);
-  return validateResponseModel(FeatureFlag, native(raw), {
+  return validateResponseModel(FeatureFlag, toNativeJson(raw), {
     endpoint: "restore_feature_flag",
   });
 }
@@ -270,7 +271,7 @@ export async function duplicateFeatureFlag(
   flagId: string,
 ): Promise<FeatureFlag> {
   const raw = await client.duplicateFeatureFlag(flagId);
-  return validateResponseModel(FeatureFlag, native(raw), {
+  return validateResponseModel(FeatureFlag, toNativeJson(raw), {
     endpoint: "duplicate_feature_flag",
   });
 }
@@ -333,7 +334,7 @@ export async function getFlagHistory(
   const raw = await client.getFlagHistory(flagId, {
     params: Object.keys(queryParams).length > 0 ? queryParams : null,
   });
-  return validateResponseModel(FlagHistoryResponse, native(raw), {
+  return validateResponseModel(FlagHistoryResponse, toNativeJson(raw), {
     endpoint: "get_flag_history",
   });
 }
@@ -350,7 +351,7 @@ export async function getFlagLimits(
   client: MixpanelClient,
 ): Promise<FlagLimitsResponse> {
   const raw = await client.getFlagLimits();
-  return validateResponseModel(FlagLimitsResponse, native(raw), {
+  return validateResponseModel(FlagLimitsResponse, toNativeJson(raw), {
     endpoint: "get_flag_limits",
   });
 }
@@ -377,7 +378,7 @@ export async function listExperiments(
   });
   return validateResponseModels(
     Experiment,
-    raw.map((item) => native(item)),
+    raw.map((item) => toNativeJson(item)),
     {
       endpoint: "list_experiments",
     },
@@ -403,7 +404,7 @@ export async function createExperiment(
   );
   return validateResponseModel(
     Experiment,
-    native(requireResponse(raw, "create_experiment")),
+    toNativeJson(requireResponse(raw, "create_experiment")),
     { endpoint: "create_experiment" },
   );
 }
@@ -425,7 +426,7 @@ export async function getExperiment(
   const raw: unknown = await client.getExperiment(experimentId);
   return validateResponseModel(
     Experiment,
-    native(requireResponse(raw, "get_experiment")),
+    toNativeJson(requireResponse(raw, "get_experiment")),
     { endpoint: "get_experiment" },
   );
 }
@@ -452,7 +453,7 @@ export async function updateExperiment(
   );
   return validateResponseModel(
     Experiment,
-    native(requireResponse(raw, "update_experiment")),
+    toNativeJson(requireResponse(raw, "update_experiment")),
     { endpoint: "update_experiment" },
   );
 }
@@ -490,7 +491,7 @@ export async function launchExperiment(
   experimentId: string,
 ): Promise<Experiment> {
   const raw = await client.launchExperiment(experimentId);
-  return validateResponseModel(Experiment, native(raw), {
+  return validateResponseModel(Experiment, toNativeJson(raw), {
     endpoint: "launch_experiment",
   });
 }
@@ -515,7 +516,7 @@ export async function concludeExperiment(
   const body: Record<string, unknown> =
     params === null ? {} : params.modelDumpExcludeNone();
   const raw = await client.concludeExperiment(experimentId, body);
-  return validateResponseModel(Experiment, native(raw), {
+  return validateResponseModel(Experiment, toNativeJson(raw), {
     endpoint: "conclude_experiment",
   });
 }
@@ -540,7 +541,7 @@ export async function decideExperiment(
     experimentId,
     params.modelDumpExcludeNone(),
   );
-  return validateResponseModel(Experiment, native(raw), {
+  return validateResponseModel(Experiment, toNativeJson(raw), {
     endpoint: "decide_experiment",
   });
 }
@@ -578,7 +579,7 @@ export async function restoreExperiment(
   experimentId: string,
 ): Promise<Experiment> {
   const raw = await client.restoreExperiment(experimentId);
-  return validateResponseModel(Experiment, native(raw), {
+  return validateResponseModel(Experiment, toNativeJson(raw), {
     endpoint: "restore_experiment",
   });
 }
@@ -601,7 +602,7 @@ export async function duplicateExperiment(
 ): Promise<Experiment> {
   const body = params.modelDumpExcludeNone();
   const raw = await client.duplicateExperiment(experimentId, body);
-  return validateResponseModel(Experiment, native(raw), {
+  return validateResponseModel(Experiment, toNativeJson(raw), {
     endpoint: "duplicate_experiment",
   });
 }
@@ -618,5 +619,7 @@ export async function listErfExperiments(
   client: MixpanelClient,
 ): Promise<Array<Record<string, unknown>>> {
   const raw = await client.listErfExperiments();
-  return raw.map((item) => native(item)) as Array<Record<string, unknown>>;
+  return raw.map((item) => toNativeJson(item)) as Array<
+    Record<string, unknown>
+  >;
 }

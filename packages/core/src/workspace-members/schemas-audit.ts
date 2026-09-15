@@ -77,7 +77,7 @@
 
 import type { MixpanelClient } from "../client/client.js";
 import { isPlainRecord } from "../client/internals.js";
-import type { JsonValue } from "../client/json-value.js";
+import { type JsonValue, toNativeJson } from "../client/json-value.js";
 import {
   validateResponseModel,
   validateResponseModels,
@@ -103,7 +103,6 @@ import {
   type UpdateAnomalyParams,
   type UpdateSchemaEnforcementParams,
 } from "../types/entities/schemas.js";
-import { native } from "./shared.js";
 
 // ---------------------------------------------------------------------------
 // Options bags (R3.3/R3.8 — keyword-only tails; keys keep the Python
@@ -169,7 +168,7 @@ export async function listSchemaRegistry(
   });
   return validateResponseModels(
     SchemaEntry,
-    rawList.map((item) => native(item)),
+    rawList.map((item) => toNativeJson(item)),
     {
       endpoint: "list_schema_registry",
     },
@@ -196,7 +195,7 @@ export async function createSchema(
   schemaJson: Readonly<Record<string, unknown>>,
 ): Promise<Record<string, unknown>> {
   const raw = await client.createSchema(entityType, entityName, schemaJson);
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
 /**
@@ -216,7 +215,7 @@ export async function createSchemasBulk(
   const raw = await client.createSchemasBulk(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return validateResponseModel(BulkCreateSchemasResponse, native(raw), {
+  return validateResponseModel(BulkCreateSchemasResponse, toNativeJson(raw), {
     endpoint: "create_schemas_bulk",
   });
 }
@@ -239,7 +238,7 @@ export async function updateSchema(
   schemaJson: Readonly<Record<string, unknown>>,
 ): Promise<Record<string, unknown>> {
   const raw = await client.updateSchema(entityType, entityName, schemaJson);
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
 /**
@@ -261,7 +260,7 @@ export async function updateSchemasBulk(
   );
   return validateResponseModels(
     BulkPatchResult,
-    rawList.map((item) => native(item)),
+    rawList.map((item) => toNativeJson(item)),
     {
       endpoint: "update_schemas_bulk",
     },
@@ -296,7 +295,7 @@ export async function deleteSchemas(
     entity_type: entityType,
     entity_name: entityName,
   });
-  return validateResponseModel(DeleteSchemasResponse, native(raw), {
+  return validateResponseModel(DeleteSchemasResponse, toNativeJson(raw), {
     endpoint: "delete_schemas",
   });
 }
@@ -321,7 +320,7 @@ export async function getSchemaEnforcement(
   const raw = await client.getSchemaEnforcement({
     fields: options.fields ?? null,
   });
-  return validateResponseModel(SchemaEnforcementConfig, native(raw), {
+  return validateResponseModel(SchemaEnforcementConfig, toNativeJson(raw), {
     endpoint: "get_schema_enforcement",
   });
 }
@@ -343,7 +342,7 @@ export async function initSchemaEnforcement(
   const raw = await client.initSchemaEnforcement(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
 /**
@@ -364,7 +363,7 @@ export async function updateSchemaEnforcement(
   const raw = await client.updateSchemaEnforcement(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
 /**
@@ -385,7 +384,7 @@ export async function replaceSchemaEnforcement(
   const raw = await client.replaceSchemaEnforcement(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
 /**
@@ -400,7 +399,7 @@ export async function deleteSchemaEnforcement(
   client: MixpanelClient,
 ): Promise<Record<string, unknown>> {
   const raw = await client.deleteSchemaEnforcement();
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------
@@ -442,7 +441,7 @@ function auditResponseFrom(
   }
   const violations = validateResponseModels(
     AuditViolation,
-    head.map((item) => native(item)),
+    head.map((item) => toNativeJson(item)),
     {
       endpoint,
     },
@@ -451,7 +450,7 @@ function auditResponseFrom(
   // prototype discrimination, never `typeof` (watchlist #13).
   const second = raw[1];
   const metadata = isPlainRecord(second)
-    ? (native(second) as Record<string, unknown>)
+    ? (toNativeJson(second) as Record<string, unknown>)
     : {};
   return new AuditResponse({
     violations,
@@ -517,7 +516,7 @@ export async function listDataVolumeAnomalies(
   });
   return validateResponseModels(
     DataVolumeAnomaly,
-    rawList.map((item) => native(item)),
+    rawList.map((item) => toNativeJson(item)),
     {
       endpoint: "list_data_volume_anomalies",
     },
@@ -539,7 +538,7 @@ export async function updateAnomaly(
   params: UpdateAnomalyParams,
 ): Promise<Record<string, unknown>> {
   const raw = await client.updateAnomaly(params.modelDump({ byAlias: true }));
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
 /**
@@ -559,7 +558,7 @@ export async function bulkUpdateAnomalies(
   const raw = await client.bulkUpdateAnomalies(
     params.modelDump({ byAlias: true }),
   );
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------
@@ -580,7 +579,7 @@ export async function listDeletionRequests(
   const rawList = await client.listDeletionRequests();
   return validateResponseModels(
     EventDeletionRequest,
-    rawList.map((item) => native(item)),
+    rawList.map((item) => toNativeJson(item)),
     {
       endpoint: "list_deletion_requests",
     },
@@ -606,7 +605,7 @@ export async function createDeletionRequest(
   );
   return validateResponseModels(
     EventDeletionRequest,
-    rawList.map((item) => native(item)),
+    rawList.map((item) => toNativeJson(item)),
     {
       endpoint: "create_deletion_request",
     },
@@ -630,7 +629,7 @@ export async function cancelDeletionRequest(
   const rawList = await client.cancelDeletionRequest(requestId);
   return validateResponseModels(
     EventDeletionRequest,
-    rawList.map((item) => native(item)),
+    rawList.map((item) => toNativeJson(item)),
     {
       endpoint: "cancel_deletion_request",
     },
@@ -655,5 +654,7 @@ export async function previewDeletionFilters(
   const rawList = await client.previewDeletionFilters(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return rawList.map((item) => native(item)) as Array<Record<string, unknown>>;
+  return rawList.map((item) => toNativeJson(item)) as Array<
+    Record<string, unknown>
+  >;
 }

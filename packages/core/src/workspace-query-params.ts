@@ -60,9 +60,10 @@ import {
 import { toNativeJson } from "./client/json-value.js";
 import { parseLossless } from "./client/lossless-json.js";
 import { ValueError } from "./compat/python-builtins.js";
+import { dateTodayIso, isLeapYear } from "./compat/python-dates.js";
 import { isPythonDict } from "./compat/python-dict.js";
 import { pythonJsonDumps } from "./compat/python-json-dumps.js";
-import { pythonRepr } from "./compat/python-str.js";
+import { isPythonValue, pythonRepr, pythonStrOf } from "./compat/python-str.js";
 import {
   BookmarkValidationError,
   ParamValidationError,
@@ -94,6 +95,7 @@ import {
   scanCustomProperties,
 } from "./query/validation-shared.js";
 import type { FlowMode } from "./services/live-query-transforms.js";
+import type { QueryTimeUnit } from "./types/literals.js";
 import {
   type CohortBreakdown,
   CohortDefinition,
@@ -155,18 +157,15 @@ export type FilterWhereInput = Filter | readonly Filter[] | null;
 export type TodayFn = () => string;
 
 /**
- * Today's LOCAL calendar date as `YYYY-MM-DD` — the default of the
- * {@link resolveAndBuildFlowParams} clock seam, mirroring the B2/B3
- * `today` precedent (`bookmark_builders.py:115` twin).
+ * `repr(value)` for a JSON-derived value whose static type is `unknown`
+ * (a `Filter.in_cohort()` payload): exact CPython `repr` when the value is
+ * in the Python domain, else the loose `str` rendering.
  *
- * @returns Today's date as `YYYY-MM-DD`.
+ * @param value - The value to render.
+ * @returns The Python text.
  */
-function defaultToday(): string {
-  const now = new Date();
-  const year = String(now.getFullYear()).padStart(4, "0");
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+function reprOf(value: unknown): string {
+  return isPythonValue(value) ? pythonRepr(value) : pythonStrOf(value);
 }
 
 /**
@@ -544,7 +543,9 @@ export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
     from_date,
     to_date: toDate,
     last,
-    unit: unit as never,
+    // Forwarded verbatim, as Python does; the bookmark schema validation
+    // downstream is what rejects an unknown unit.
+    unit: unit as QueryTimeUnit,
     ...(options.today === undefined ? {} : { today: options.today }),
   });
 
@@ -782,7 +783,7 @@ export function resolveAndBuildParams(
     data_group_id,
   });
   // CP1-CP6: Custom property validation for where filters
-  argErrors.push(...scanCustomProperties({ where: where as never }));
+  argErrors.push(...scanCustomProperties({ where }));
   if (anyError(argErrors)) {
     throw new BookmarkValidationError(argErrors);
   }
@@ -973,7 +974,9 @@ export function buildFunnelParams(
     from_date,
     to_date: toDate,
     last,
-    unit: unit as never,
+    // Forwarded verbatim, as Python does; the bookmark schema validation
+    // downstream is what rejects an unknown unit.
+    unit: unit as QueryTimeUnit,
     ...(options.today === undefined ? {} : { today: options.today }),
   });
   const filterSection = patchCustomPropertyFiltersForTransform(
@@ -1291,7 +1294,9 @@ export function buildRetentionParams(
     from_date,
     to_date: toDate,
     last,
-    unit: unit as never,
+    // Forwarded verbatim, as Python does; the bookmark schema validation
+    // downstream is what rejects an unknown unit.
+    unit: unit as QueryTimeUnit,
     ...(options.today === undefined ? {} : { today: options.today }),
   });
   const filterSection = patchCustomPropertyFiltersForTransform(
@@ -1682,7 +1687,7 @@ export function resolveAndBuildFlowParams(
   // Default to_date to today when from_date is set alone, so the
   // absolute date isn't silently ignored by build_date_range().
   if (from_date !== null && toDate === null) {
-    toDate = (options.today ?? defaultToday)();
+    toDate = (options.today ?? dateTodayIso)();
   }
 
   // Layer 1: Argument validation — use the effective direction values
@@ -2100,7 +2105,7 @@ export function resolveAndBuildUserParams(
       params["filter_by_cohort"] = pythonJsonDumps({ id: cohort });
     } else if (cohort instanceof CohortDefinition) {
       params["filter_by_cohort"] = pythonJsonDumps({
-        raw_cohort: sanitizeRawCohort(cohort.toDict()) as never,
+        raw_cohort: sanitizeRawCohort(cohort.toDict()),
       });
     }
   } else if (cohortFromFilter !== null) {
@@ -2133,7 +2138,7 @@ export function resolveAndBuildUserParams(
         new ValidationError(
           "where",
           "Filter.in_cohort() value missing 'cohort' " +
-            `key: ${pythonRepr(firstItem as never)}`,
+            `key: ${reprOf(firstItem)}`,
           "U_COHORT",
         ),
       ]);
@@ -2141,18 +2146,18 @@ export function resolveAndBuildUserParams(
     const cohortWrapper = firstItem["cohort"] as Record<string, unknown>;
     if (Object.hasOwn(cohortWrapper, "id")) {
       params["filter_by_cohort"] = pythonJsonDumps({
-        id: cohortWrapper["id"] as never,
+        id: cohortWrapper["id"],
       });
     } else if (Object.hasOwn(cohortWrapper, "raw_cohort")) {
       params["filter_by_cohort"] = pythonJsonDumps({
-        raw_cohort: cohortWrapper["raw_cohort"] as never,
+        raw_cohort: cohortWrapper["raw_cohort"],
       });
     } else {
       throw new BookmarkValidationError([
         new ValidationError(
           "where",
           "Filter.in_cohort() value has no 'id' or " +
-            `'raw_cohort' key: ${pythonRepr(cohortWrapper as never)}`,
+            `'raw_cohort' key: ${reprOf(cohortWrapper)}`,
           "U_COHORT",
         ),
       ]);
@@ -2258,16 +2263,6 @@ function pythonNumberText(value: number | null | undefined): string {
   if (value === null || value === undefined) {
     return "None";
   }
-  return pythonReprNumber(value);
-}
-
-/**
- * CPython `repr()` of a float/int, reusing the shared renderer.
- *
- * @param value - The number.
- * @returns The rendered text.
- */
-function pythonReprNumber(value: number): string {
   return pythonRepr(value);
 }
 
@@ -2332,16 +2327,6 @@ function daysInMonth(year: number, month: number): number {
     return 29;
   }
   return defined(lengths[month - 1], "month length");
-}
-
-/**
- * Proleptic-Gregorian leap-year rule.
- *
- * @param year - The year.
- * @returns Whether the year is a leap year.
- */
-function isLeapYear(year: number): boolean {
-  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 }
 
 /**

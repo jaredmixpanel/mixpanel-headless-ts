@@ -37,10 +37,12 @@ import {
 } from "../bookmarks/schema.js";
 import { validateWithPydantic } from "../bookmarks/schema-sorting.js";
 import type { MixpanelClient } from "../client/client.js";
+import { toNativeJson } from "../client/json-value.js";
 import {
   validateResponseModel,
   validateResponseModels,
 } from "../client/response-validation.js";
+import { setOwn } from "../compat/python-dict.js";
 import {
   BookmarkValidationError,
   MixpanelHeadlessError,
@@ -60,7 +62,7 @@ import {
   type CreateCohortParams,
   type UpdateCohortParams,
 } from "../types/entities/cohorts.js";
-import { native, requireResponse } from "./shared.js";
+import { requireResponse } from "./shared.js";
 
 /** The `logger.warning(...)` sink the two validating members use (R9.5). */
 export interface BookmarkWarningLogger {
@@ -144,7 +146,7 @@ export function validateBookmarkParamsSchema(
   const rawNoSorting: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(raw)) {
     if (key !== "sorting") {
-      rawNoSorting[key] = value;
+      setOwn(rawNoSorting, key, value);
     }
   }
 
@@ -217,7 +219,7 @@ export async function listBookmarksV2(
   });
   return validateResponseModels(
     Bookmark,
-    raw.map((item) => native(item)),
+    raw.map((item) => toNativeJson(item)),
     {
       endpoint: "list_bookmarks_v2",
     },
@@ -275,7 +277,7 @@ export async function createBookmark(
   );
   const bookmark = validateResponseModel(
     Bookmark,
-    native(requireResponse(raw, "create_bookmark")),
+    toNativeJson(requireResponse(raw, "create_bookmark")),
     { endpoint: "create_bookmark" },
   );
 
@@ -304,7 +306,7 @@ export async function getBookmark(
   const raw: unknown = await client.getBookmark(bookmarkId);
   return validateResponseModel(
     Bookmark,
-    native(requireResponse(raw, "get_bookmark")),
+    toNativeJson(requireResponse(raw, "get_bookmark")),
     { endpoint: "get_bookmark" },
   );
 }
@@ -344,7 +346,7 @@ export async function updateBookmark(
   );
   return validateResponseModel(
     Bookmark,
-    native(requireResponse(raw, "update_bookmark")),
+    toNativeJson(requireResponse(raw, "update_bookmark")),
     { endpoint: "update_bookmark" },
   );
 }
@@ -409,7 +411,7 @@ export async function bookmarkLinkedDashboardIds(
   bookmarkId: number,
 ): Promise<number[]> {
   const raw = await client.bookmarkLinkedDashboardIds(bookmarkId);
-  return raw.map((item) => native(item)) as number[];
+  return raw.map((item) => toNativeJson(item)) as number[];
 }
 
 /**
@@ -432,7 +434,7 @@ export async function getBookmarkHistory(
     cursor: options.cursor ?? null,
     page_size: options.page_size ?? null,
   });
-  return validateResponseModel(BookmarkHistoryResponse, native(raw), {
+  return validateResponseModel(BookmarkHistoryResponse, toNativeJson(raw), {
     endpoint: "get_bookmark_history",
   });
 }
@@ -457,7 +459,7 @@ export async function listCohortsFull(
   });
   return validateResponseModels(
     Cohort,
-    raw.map((item) => native(item)),
+    raw.map((item) => toNativeJson(item)),
     {
       endpoint: "list_cohorts_full",
     },
@@ -481,7 +483,7 @@ export async function getCohort(
   const raw: unknown = await client.getCohort(cohortId);
   return validateResponseModel(
     Cohort,
-    native(requireResponse(raw, "get_cohort")),
+    toNativeJson(requireResponse(raw, "get_cohort")),
     { endpoint: "get_cohort" },
   );
 }
@@ -504,7 +506,7 @@ export async function createCohort(
   const raw: unknown = await client.createCohort(params.modelDumpExcludeNone());
   return validateResponseModel(
     Cohort,
-    native(requireResponse(raw, "create_cohort")),
+    toNativeJson(requireResponse(raw, "create_cohort")),
     { endpoint: "create_cohort" },
   );
 }
@@ -531,7 +533,7 @@ export async function updateCohort(
   );
   return validateResponseModel(
     Cohort,
-    native(requireResponse(raw, "update_cohort")),
+    toNativeJson(requireResponse(raw, "update_cohort")),
     { endpoint: "update_cohort" },
   );
 }

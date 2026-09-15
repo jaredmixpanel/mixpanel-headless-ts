@@ -31,6 +31,7 @@
 
 import type { MixpanelClient } from "../client/client.js";
 import { isPlainRecord } from "../client/internals.js";
+import { toNativeJson } from "../client/json-value.js";
 import {
   validateResponseModel,
   validateResponseModels,
@@ -48,7 +49,7 @@ import {
   type UpdateReportLinkParams,
   type UpdateTextCardParams,
 } from "../types/entities/dashboards.js";
-import { native, requireResponse } from "./shared.js";
+import { requireResponse } from "./shared.js";
 
 /** Options bag of `Workspace.listDashboards` (`ids` is keyword-only). */
 export interface WorkspaceListDashboardsOptions {
@@ -62,8 +63,8 @@ export interface WorkspaceListBlueprintTemplatesOptions {
   readonly include_reports?: boolean | undefined;
 }
 
-// `requireResponse` / `native` moved to `./shared.js` at B6-W3 so the
-// W3–W8 member modules consume ONE implementation (R10.8).
+// `requireResponse` lives in `./shared.js` so every member module
+// consumes ONE implementation; the native view is `toNativeJson` itself.
 
 /**
  * List dashboards for the current project/workspace
@@ -84,7 +85,7 @@ export async function listDashboards(
   const raw = await client.listDashboards({ ids: options.ids ?? null });
   return validateResponseModels(
     Dashboard,
-    raw.map((item) => native(item)),
+    raw.map((item) => toNativeJson(item)),
     {
       endpoint: "list_dashboards",
     },
@@ -110,7 +111,7 @@ export async function createDashboard(
   );
   return validateResponseModel(
     Dashboard,
-    native(requireResponse(raw, "create_dashboard")),
+    toNativeJson(requireResponse(raw, "create_dashboard")),
     { endpoint: "create_dashboard" },
   );
 }
@@ -132,7 +133,7 @@ export async function getDashboard(
   const raw: unknown = await client.getDashboard(dashboardId);
   return validateResponseModel(
     Dashboard,
-    native(requireResponse(raw, "get_dashboard")),
+    toNativeJson(requireResponse(raw, "get_dashboard")),
     { endpoint: "get_dashboard" },
   );
 }
@@ -159,7 +160,7 @@ export async function updateDashboard(
   );
   return validateResponseModel(
     Dashboard,
-    native(requireResponse(raw, "update_dashboard")),
+    toNativeJson(requireResponse(raw, "update_dashboard")),
     { endpoint: "update_dashboard" },
   );
 }
@@ -268,7 +269,7 @@ export async function removeReportFromDashboard(
   bookmarkId: number,
 ): Promise<Dashboard> {
   const raw = await client.removeReportFromDashboard(dashboardId, bookmarkId);
-  return validateResponseModel(Dashboard, native(raw), {
+  return validateResponseModel(Dashboard, toNativeJson(raw), {
     endpoint: "remove_report_from_dashboard",
   });
 }
@@ -298,11 +299,11 @@ export async function addReportToDashboard(
     throw new MixpanelHeadlessError(
       `Unexpected response from add_report_to_dashboard: ` +
         `expected dashboard dict with 'id', got ${pythonRepr(
-          native(raw) as PythonValue,
+          toNativeJson(raw) as PythonValue,
         )}`,
     );
   }
-  return validateResponseModel(Dashboard, native(raw), {
+  return validateResponseModel(Dashboard, toNativeJson(raw), {
     endpoint: "add_report_to_dashboard",
   });
 }
@@ -325,7 +326,7 @@ export async function listBlueprintTemplates(
   });
   return validateResponseModels(
     BlueprintTemplate,
-    raw.map((item) => native(item)),
+    raw.map((item) => toNativeJson(item)),
     {
       endpoint: "list_blueprint_templates",
     },
@@ -349,7 +350,7 @@ export async function createBlueprint(
   const raw: unknown = await client.createBlueprint(templateType);
   return validateResponseModel(
     Dashboard,
-    native(requireResponse(raw, "create_blueprint")),
+    toNativeJson(requireResponse(raw, "create_blueprint")),
     { endpoint: "create_blueprint" },
   );
 }
@@ -371,7 +372,7 @@ export async function getBlueprintConfig(
   const raw: unknown = await client.getBlueprintConfig(dashboardId);
   return validateResponseModel(
     BlueprintConfig,
-    native(requireResponse(raw, "get_blueprint_config")),
+    toNativeJson(requireResponse(raw, "get_blueprint_config")),
     { endpoint: "get_blueprint_config" },
   );
 }
@@ -409,7 +410,7 @@ export async function finalizeBlueprint(
   const raw: unknown = await client.finalizeBlueprint(body);
   return validateResponseModel(
     Dashboard,
-    native(requireResponse(raw, "finalize_blueprint")),
+    toNativeJson(requireResponse(raw, "finalize_blueprint")),
     { endpoint: "finalize_blueprint" },
   );
 }
@@ -433,7 +434,7 @@ export async function createRcaDashboard(
   const raw: unknown = await client.createRcaDashboard(body);
   return validateResponseModel(
     Dashboard,
-    native(requireResponse(raw, "create_rca_dashboard")),
+    toNativeJson(requireResponse(raw, "create_rca_dashboard")),
     { endpoint: "create_rca_dashboard" },
   );
 }
@@ -452,7 +453,7 @@ export async function getBookmarkDashboardIds(
   bookmarkId: number,
 ): Promise<number[]> {
   const raw = await client.getBookmarkDashboardIds(bookmarkId);
-  return raw.map((item) => native(item)) as number[];
+  return raw.map((item) => toNativeJson(item)) as number[];
 }
 
 /**
@@ -468,7 +469,7 @@ export async function getDashboardErf(
   dashboardId: number,
 ): Promise<Record<string, unknown>> {
   const raw = await client.getDashboardErf(dashboardId);
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
 /**

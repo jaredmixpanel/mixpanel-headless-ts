@@ -192,12 +192,13 @@ export interface ToNativeJsonOptions {
  * lookup-table members use it because Mixpanel's `data_group_id`s are
  * negative int64s (`-8644926364725811123`) that a double would round.
  *
- * @param value - The parsed tree ({@link JsonNumber} tokens intact).
+ * @param value - The parsed tree ({@link JsonNumber} tokens intact); typed
+ *   `unknown` because the facade layer receives client payloads untyped.
  * @param options - `unsafeIntegers`: `"round"` (default) or `"bigint"`.
  * @returns The native-valued tree.
  */
 export function toNativeJson(
-  value: JsonValue,
+  value: unknown,
   options: ToNativeJsonOptions = {},
 ): unknown {
   if (value instanceof JsonNumber) {

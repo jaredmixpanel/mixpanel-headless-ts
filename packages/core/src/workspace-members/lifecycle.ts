@@ -15,6 +15,7 @@ import type { Account } from "../auth/account.js";
 import type { Session } from "../auth/session.js";
 import type { JsonValue } from "../client/json-value.js";
 import { compareCodepoints } from "../compat/codepoint.js";
+import { pythonRepr } from "../compat/python-str.js";
 import {
   BusinessContextValidationError,
   ConfigError,
@@ -240,21 +241,10 @@ export type BusinessContextLevel = "organization" | "project";
 export function validateBusinessContextLevel(level: string): void {
   if (level !== "organization" && level !== "project") {
     throw new ParamValidationError(
-      `level must be 'organization' or 'project', got ${pyRepr(level)}`,
+      `level must be 'organization' or 'project', got ${pythonRepr(level)}`,
       "WS2_INVALID_LEVEL",
     );
   }
-}
-
-/**
- * Python's `repr()` of a plain string, for the WS2 message.
- *
- * @param value - The string.
- * @returns The single-quoted spelling.
- * @internal
- */
-function pyRepr(value: string): string {
-  return `'${value}'`;
 }
 
 /** The facade slice the business-context members read. */
@@ -318,8 +308,8 @@ export async function resolveOrganizationId(
   const available = [...me.organizations.keys()].sort(compareCodepoints);
   throw new WorkspaceScopeError(
     `Cannot auto-resolve organization for project ` +
-      `${pyRepr(host.projectId)}. Pass organization_id explicitly. ` +
-      `Available organizations: [${available.map((org) => pyRepr(org)).join(", ")}]`,
+      `${pythonRepr(host.projectId)}. Pass organization_id explicitly. ` +
+      `Available organizations: [${available.map((org) => pythonRepr(org)).join(", ")}]`,
     "ORGANIZATION_AMBIGUOUS",
     {
       project_id: host.projectId,
@@ -374,7 +364,7 @@ export function requireStrField(
 ): string {
   if (!Object.hasOwn(raw, key)) {
     throw new MixpanelHeadlessError(
-      `Unexpected response from ${method}: missing required field ${pyRepr(key)}`,
+      `Unexpected response from ${method}: missing required field ${pythonRepr(key)}`,
       "UNKNOWN_ERROR",
       { missing_field: key, response: raw },
     );
@@ -382,7 +372,7 @@ export function requireStrField(
   const value = raw[key];
   if (typeof value !== "string") {
     throw new MixpanelHeadlessError(
-      `Unexpected response from ${method}: field ${pyRepr(key)} ` +
+      `Unexpected response from ${method}: field ${pythonRepr(key)} ` +
         `is ${pyTypeName(value)}, expected str`,
       "UNKNOWN_ERROR",
       { field: key, response: raw },

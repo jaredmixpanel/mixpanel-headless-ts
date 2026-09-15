@@ -64,6 +64,7 @@
  */
 
 import type { MixpanelClient } from "../client/client.js";
+import { toNativeJson } from "../client/json-value.js";
 import {
   validateResponseModel,
   validateResponseModels,
@@ -79,7 +80,6 @@ import {
   type UpdatePropertyDefinitionParams,
   type UpdateTagParams,
 } from "../types/entities/lexicon.js";
-import { native } from "./shared.js";
 
 // ---------------------------------------------------------------------------
 // Options bags (R3.3/R3.8 — keyword-only tails; keys keep the Python
@@ -145,7 +145,7 @@ export async function getEventDefinitions(
   const raw = await client.getEventDefinitions(options.names);
   return validateResponseModels(
     EventDefinition,
-    raw.map((item) => native(item)),
+    raw.map((item) => toNativeJson(item)),
     {
       endpoint: "get_event_definitions",
     },
@@ -172,7 +172,7 @@ export async function updateEventDefinition(
     eventName,
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return validateResponseModel(EventDefinition, native(raw), {
+  return validateResponseModel(EventDefinition, toNativeJson(raw), {
     endpoint: "update_event_definition",
   });
 }
@@ -213,7 +213,7 @@ export async function bulkUpdateEventDefinitions(
   );
   return validateResponseModels(
     EventDefinition,
-    raw.map((item) => native(item)),
+    raw.map((item) => toNativeJson(item)),
     {
       endpoint: "bulk_update_event_definitions",
     },
@@ -245,7 +245,7 @@ export async function getPropertyDefinitions(
   );
   return validateResponseModels(
     PropertyDefinition,
-    raw.map((item) => native(item)),
+    raw.map((item) => toNativeJson(item)),
     {
       endpoint: "get_property_definitions",
     },
@@ -272,7 +272,7 @@ export async function updatePropertyDefinition(
     propertyName,
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return validateResponseModel(PropertyDefinition, native(raw), {
+  return validateResponseModel(PropertyDefinition, toNativeJson(raw), {
     endpoint: "update_property_definition",
   });
 }
@@ -296,7 +296,7 @@ export async function bulkUpdatePropertyDefinitions(
   );
   return validateResponseModels(
     PropertyDefinition,
-    raw.map((item) => native(item)),
+    raw.map((item) => toNativeJson(item)),
     {
       endpoint: "bulk_update_property_definitions",
     },
@@ -334,7 +334,7 @@ export async function listLexiconTags(
       result.push(new LexiconTag({ id: 0, name: entry }));
     } else {
       result.push(
-        validateResponseModel(LexiconTag, native(entry), {
+        validateResponseModel(LexiconTag, toNativeJson(entry), {
           endpoint: "list_lexicon_tags",
         }),
       );
@@ -358,7 +358,7 @@ export async function createLexiconTag(
   params: CreateTagParams,
 ): Promise<LexiconTag> {
   const raw = await client.createLexiconTag(params.modelDumpExcludeNone());
-  return validateResponseModel(LexiconTag, native(raw), {
+  return validateResponseModel(LexiconTag, toNativeJson(raw), {
     endpoint: "create_lexicon_tag",
   });
 }
@@ -383,7 +383,7 @@ export async function updateLexiconTag(
     tagId,
     params.modelDumpExcludeNone(),
   );
-  return validateResponseModel(LexiconTag, native(raw), {
+  return validateResponseModel(LexiconTag, toNativeJson(raw), {
     endpoint: "update_lexicon_tag",
   });
 }
@@ -425,7 +425,7 @@ export async function getTrackingMetadata(
   eventName: string,
 ): Promise<Record<string, unknown>> {
   const raw = await client.getTrackingMetadata(eventName);
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
 
 /**
@@ -443,7 +443,9 @@ export async function getEventHistory(
   eventName: string,
 ): Promise<Array<Record<string, unknown>>> {
   const raw = await client.getEventHistory(eventName);
-  return raw.map((item) => native(item)) as Array<Record<string, unknown>>;
+  return raw.map((item) => toNativeJson(item)) as Array<
+    Record<string, unknown>
+  >;
 }
 
 /**
@@ -464,7 +466,9 @@ export async function getPropertyHistory(
   entityType: string,
 ): Promise<Array<Record<string, unknown>>> {
   const raw = await client.getPropertyHistory(propertyName, entityType);
-  return raw.map((item) => native(item)) as Array<Record<string, unknown>>;
+  return raw.map((item) => toNativeJson(item)) as Array<
+    Record<string, unknown>
+  >;
 }
 
 /**
@@ -485,5 +489,5 @@ export async function exportLexicon(
   options: WorkspaceExportLexiconOptions = {},
 ): Promise<Record<string, unknown>> {
   const raw = await client.exportLexicon(options.export_types ?? null);
-  return native(raw) as Record<string, unknown>;
+  return toNativeJson(raw) as Record<string, unknown>;
 }
