@@ -541,7 +541,7 @@ describe("filterToSelector between bounds (TestFilterToSelectorBetweenBoundsVali
 
     // Python: `pytest.raises(ValueError, match="int or float for lower bound")`
     // — class + code twin (R5.4).
-    expect(() => filterToSelector(f)).toThrowError(ParamValidationError);
+    expect(() => filterToSelector(f)).toThrow(ParamValidationError);
     const error = expectThrows(() => filterToSelector(f));
     expect((error as ParamValidationError).code).toBe(
       "ES11_BETWEEN_LOWER_NOT_NUMBER",
@@ -551,7 +551,7 @@ describe("filterToSelector between bounds (TestFilterToSelectorBetweenBoundsVali
   it("string upper bound is rejected", () => {
     const f = rawFilter("prop", "is between", [0, "high"]);
 
-    expect(() => filterToSelector(f)).toThrowError(ParamValidationError);
+    expect(() => filterToSelector(f)).toThrow(ParamValidationError);
     const error = expectThrows(() => filterToSelector(f));
     expect((error as ParamValidationError).code).toBe(
       "ES12_BETWEEN_UPPER_NOT_NUMBER",

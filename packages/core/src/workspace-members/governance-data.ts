@@ -263,9 +263,13 @@ export async function listDropFilters(
   client: MixpanelClient,
 ): Promise<DropFilter[]> {
   const rawList = await client.listDropFilters();
-  return validateResponseModels(DropFilter, rawList.map(native), {
-    endpoint: "list_drop_filters",
-  });
+  return validateResponseModels(
+    DropFilter,
+    rawList.map((item) => native(item)),
+    {
+      endpoint: "list_drop_filters",
+    },
+  );
 }
 
 /**
@@ -283,9 +287,13 @@ export async function createDropFilter(
   params: CreateDropFilterParams,
 ): Promise<DropFilter[]> {
   const rawList = await client.createDropFilter(params.modelDumpExcludeNone());
-  return validateResponseModels(DropFilter, rawList.map(native), {
-    endpoint: "create_drop_filter",
-  });
+  return validateResponseModels(
+    DropFilter,
+    rawList.map((item) => native(item)),
+    {
+      endpoint: "create_drop_filter",
+    },
+  );
 }
 
 /**
@@ -303,9 +311,13 @@ export async function updateDropFilter(
   params: UpdateDropFilterParams,
 ): Promise<DropFilter[]> {
   const rawList = await client.updateDropFilter(params.modelDumpExcludeNone());
-  return validateResponseModels(DropFilter, rawList.map(native), {
-    endpoint: "update_drop_filter",
-  });
+  return validateResponseModels(
+    DropFilter,
+    rawList.map((item) => native(item)),
+    {
+      endpoint: "update_drop_filter",
+    },
+  );
 }
 
 /**
@@ -322,9 +334,13 @@ export async function deleteDropFilter(
   dropFilterId: number,
 ): Promise<DropFilter[]> {
   const rawList = await client.deleteDropFilter(dropFilterId);
-  return validateResponseModels(DropFilter, rawList.map(native), {
-    endpoint: "delete_drop_filter",
-  });
+  return validateResponseModels(
+    DropFilter,
+    rawList.map((item) => native(item)),
+    {
+      endpoint: "delete_drop_filter",
+    },
+  );
 }
 
 /**
@@ -400,9 +416,13 @@ export async function listCustomProperties(
     }
     throw error;
   }
-  return validateResponseModels(CustomProperty, rawList.map(native), {
-    endpoint: "list_custom_properties",
-  });
+  return validateResponseModels(
+    CustomProperty,
+    rawList.map((item) => native(item)),
+    {
+      endpoint: "list_custom_properties",
+    },
+  );
 }
 
 /**
@@ -533,9 +553,13 @@ export async function listLookupTables(
   });
   // `nativeInt64`, not `native`: `LookupTable.id` is a signed int64 that
   // a double would round (e.g. `-8644926364725811123`).
-  return validateResponseModels(LookupTable, rawList.map(nativeInt64), {
-    endpoint: "list_lookup_tables",
-  });
+  return validateResponseModels(
+    LookupTable,
+    rawList.map((item) => nativeInt64(item)),
+    {
+      endpoint: "list_lookup_tables",
+    },
+  );
 }
 
 /**
@@ -902,9 +926,13 @@ export async function listCustomEvents(
   client: MixpanelClient,
 ): Promise<EventDefinition[]> {
   const rawList = await client.listCustomEvents();
-  return validateResponseModels(EventDefinition, rawList.map(native), {
-    endpoint: "list_custom_events",
-  });
+  return validateResponseModels(
+    EventDefinition,
+    rawList.map((item) => native(item)),
+    {
+      endpoint: "list_custom_events",
+    },
+  );
 }
 
 /**

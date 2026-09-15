@@ -312,30 +312,34 @@ export class OnDiskTokenResolver implements TokenResolver {
    * @throws OAuthError - `token_env` set but the env var is unset or
    *   empty (R11.7 falsiness on strings: empty = absent).
    */
-  async getStaticToken(account: OAuthTokenAccount): Promise<string> {
+  getStaticToken(account: OAuthTokenAccount): Promise<string> {
     if (account.token !== null && account.token !== undefined) {
-      return account.token.reveal();
+      return Promise.resolve(account.token.reveal());
     }
     const envName = account.token_env;
     if (envName === null || envName === undefined) {
       // Model invariant (`token XOR token_env`) — explicit raise so it
       // survives without assertions (`token_resolver.py:267-272`).
-      throw new OAuthError(
-        `OAuth account '${account.name}' has neither \`token\` nor ` +
-          "`token_env`.",
-        "OAUTH_TOKEN_ERROR",
-        { account_name: account.name },
+      return Promise.reject(
+        new OAuthError(
+          `OAuth account '${account.name}' has neither \`token\` nor ` +
+            "`token_env`.",
+          "OAUTH_TOKEN_ERROR",
+          { account_name: account.name },
+        ),
       );
     }
     const value = this.#env(envName);
     if (value === undefined || value === "") {
-      throw new OAuthError(
-        `OAuth account '${account.name}' references env var ` +
-          `\`${envName}\`, but it is not set or is empty.`,
-        "OAUTH_TOKEN_ERROR",
-        { account_name: account.name, env_var: envName },
+      return Promise.reject(
+        new OAuthError(
+          `OAuth account '${account.name}' references env var ` +
+            `\`${envName}\`, but it is not set or is empty.`,
+          "OAUTH_TOKEN_ERROR",
+          { account_name: account.name, env_var: envName },
+        ),
       );
     }
-    return value;
+    return Promise.resolve(value);
   }
 }

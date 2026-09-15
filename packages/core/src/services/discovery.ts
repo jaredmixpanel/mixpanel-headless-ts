@@ -36,7 +36,12 @@
 import type { MixpanelClient } from "../client/client.js";
 import { type JsonValue, toNativeJson } from "../client/json-value.js";
 import { LosslessJsonError, parseLossless } from "../client/lossless-json.js";
-import { compareCodepoints, sortedByCodepoint } from "../compat/codepoint.js";
+import {
+  codepoints,
+  compareCodepoints,
+  cpLength,
+  sortedByCodepoint,
+} from "../compat/codepoint.js";
 import { pythonStr, type PythonValue } from "../compat/index.js";
 import { setOwn } from "../compat/python-dict.js";
 import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
@@ -510,7 +515,7 @@ function splitWords(text: string): string[] {
     ch === "_" ||
     ch === "-" ||
     PYTHON_STR_WHITESPACE.has(ch.codePointAt(0) as number);
-  const chars = [...text];
+  const chars = codepoints(text);
   const parts: string[] = [];
   let current = "";
   let index = 0;
@@ -899,7 +904,11 @@ export class DiscoveryService {
     options: DiscoveryServiceOptions = {},
   ) {
     this.apiClient = apiClient;
-    this.#warn = options.warn ?? ((): void => {});
+    this.#warn =
+      options.warn ??
+      ((): void => {
+        // No sink injected: warnings are dropped (CLEANUP-PLAN.md §12 8.8).
+      });
     this.#logger = options.logger;
   }
 
@@ -997,7 +1006,7 @@ export class DiscoveryService {
     if (substringMatches.length > 0) {
       // Sort by length (shorter = more specific match). Python's
       // `sorted` is stable and `len()` counts CODE POINTS.
-      return stableSortBy(substringMatches, (e) => cpLengthOf(e)).slice(0, 5);
+      return stableSortBy(substringMatches, (e) => cpLength(e)).slice(0, 5);
     }
 
     // 3. Word overlap matches
@@ -1020,7 +1029,7 @@ export class DiscoveryService {
       // Sort by overlap count (descending), then by name length.
       const ordered = stableSortMulti(wordMatches, (entry) => [
         -entry[1],
-        cpLengthOf(entry[0]),
+        cpLength(entry[0]),
       ]);
       return ordered.slice(0, 5).map(([e]) => e);
     }
@@ -1381,22 +1390,6 @@ export function isoUtc(when: Date): string {
  */
 function toNativeRecord(value: JsonValue): Record<string, unknown> {
   return toNativeJson(value) as Record<string, unknown>;
-}
-
-/**
- * Python `len(text)` in code points (R11.6) — the `key=lambda x: len(x)`
- * sort key of `_find_similar_events`.
- *
- * @param text - The string.
- * @returns The code-point count.
- */
-function cpLengthOf(text: string): number {
-  let count = 0;
-  for (const _ch of text) {
-    void _ch;
-    count += 1;
-  }
-  return count;
 }
 
 /**

@@ -47,7 +47,7 @@ export class CustomEventAlternative extends EntityModel {
       name: "event",
       required: true,
       kind: "str",
-      check: (value, path) => {
+      check: (value: unknown, path: string): void => {
         if (typeof value === "string" && codepointLength(value) < 1)
           modelFail(path, "min_length 1");
         if (Array.isArray(value) && value.length === 0)
@@ -194,7 +194,7 @@ export class CreateCustomEventParams extends EntityModel {
       name: "name",
       required: true,
       kind: "str",
-      check: (value, path) => {
+      check: (value: unknown, path: string): void => {
         if (typeof value === "string" && codepointLength(value) < 1)
           modelFail(path, "min_length 1");
         if (Array.isArray(value) && value.length === 0)
@@ -207,7 +207,7 @@ export class CreateCustomEventParams extends EntityModel {
       // Field(min_length=1) + the Python `_validate_alternatives`
       // field validator: no empty/whitespace-only entries, no
       // duplicates.
-      check: (value, path) => {
+      check: (value: unknown, path: string): void => {
         if (!Array.isArray(value) || value.length === 0) {
           modelFail(path, "min_length 1");
         }
@@ -1391,7 +1391,7 @@ export class UploadLookupTableParams extends EntityModel {
       required: true,
       kind: "str",
       // Python: Field(min_length=1, max_length=255) — codepoint-counted.
-      check: (value, path) => {
+      check: (value: unknown, path: string): void => {
         if (typeof value === "string" && codepointLength(value) < 1) {
           modelFail(path, "min_length 1");
         }

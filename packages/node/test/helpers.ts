@@ -51,21 +51,19 @@ export function assertNotUnderHome(path: string): void {
  */
 export function scrubMpEnv(): () => void {
   const saved = new Map<string, string>();
-  for (const key of Object.keys(process.env)) {
+  for (const [key, value] of Object.entries(process.env)) {
     if (!key.startsWith("MP_")) {
       continue;
     }
-
-    const value = process.env[key];
     if (value !== undefined) {
       saved.set(key, value);
     }
-    delete process.env[key];
+    Reflect.deleteProperty(process.env, key);
   }
   return () => {
     for (const key of Object.keys(process.env)) {
       if (key.startsWith("MP_")) {
-        delete process.env[key];
+        Reflect.deleteProperty(process.env, key);
       }
     }
     for (const [key, value] of saved) {

@@ -173,7 +173,9 @@ class RawParser {
     if (this.atEnd()) {
       throw new RawJsonError("unexpected end of input", this.pos);
     }
-    const ch = this.text[this.pos];
+    // `charAt` (not indexing): `atEnd()` above guarantees a character, and
+    // `charAt` is typed `string`, so the switch is over a closed set.
+    const ch = this.text.charAt(this.pos);
     switch (ch) {
       case "{": {
         return this.parseObject();
@@ -417,11 +419,11 @@ export function serializeAsciiJson(value: SerializableValue): string {
     return `[${value.map((item) => serializeAsciiJson(item)).join(", ")}]`;
   }
   if (value instanceof RawObject) {
-    const members = value.entries.map(
+    const rawMembers = value.entries.map(
       ([key, member]) =>
         `${serializeAsciiString(key)}: ${serializeAsciiJson(member)}`,
     );
-    return `{${members.join(", ")}}`;
+    return `{${rawMembers.join(", ")}}`;
   }
   if (typeof value === "object" && !isPlainObject(value)) {
     throw new Error(

@@ -100,7 +100,7 @@ describe.each<[string, () => CredentialStore]>([
 /* eslint-enable vitest/prefer-expect-resolves */
 
 describe("LocalStorageCredentialStore specifics (§2.1 / §2.6)", () => {
-  it("uses ONLY the injected StorageLike — no global touch", async () => {
+  it("uses ONLY the injected StorageLike — no global touch", () => {
     const { storage, map } = fakeStorage();
     const store = new LocalStorageCredentialStore(storage);
     store.set("mp.tokens.us", "injected");
@@ -170,12 +170,14 @@ describe("LocalStorageCredentialStore specifics (§2.1 / §2.6)", () => {
     ]);
   });
 
-  it("FB-11 (pair-B): backend failures re-throw as coded OAUTH_CONFIG_ERROR (never a bare DOMException)", async () => {
+  it("FB-11 (pair-B): backend failures re-throw as coded OAUTH_CONFIG_ERROR (never a bare DOMException)", () => {
     // b9-reviewB-e2e.md F5: Safari-private/quota failures escaped as
     // uncoded DOMExceptions, inconsistent with R5 and with the
     // constructor's own OAUTH_CONFIG_ERROR posture.
-    const quotaError = new Error("quota exceeded");
-    quotaError.name = "QuotaExceededError";
+    class QuotaExceededError extends Error {
+      override readonly name = "QuotaExceededError";
+    }
+    const quotaError = new QuotaExceededError("quota exceeded");
     const store = new LocalStorageCredentialStore({
       getItem: (): string | null => {
         throw quotaError;

@@ -650,9 +650,9 @@ export class RetentionResult {
         cohort_date: cohort.date,
         cohort_size: cohort.size,
       };
-      cohort.retention.forEach((retention_value, i) => {
+      for (const [i, retention_value] of cohort.retention.entries()) {
         row[`period_${String(i)}`] = retention_value;
-      });
+      }
       return row;
     });
   }
@@ -1792,9 +1792,9 @@ export class FrequencyResult {
     const rows: Row[] = [];
     for (const [date_str, counts] of Object.entries(this.data)) {
       const row: Row = { date: date_str };
-      counts.forEach((count, index) => {
+      for (const [index, count] of counts.entries()) {
         row[`period_${String(index + 1)}`] = count;
-      });
+      }
       rows.push(row);
     }
     return rows;

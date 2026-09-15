@@ -133,7 +133,7 @@ const isMain =
 if (isMain) {
   const rendered = await renderFromDisk();
   if (process.argv.includes("--check")) {
-    let committed = null;
+    let committed;
     try {
       committed = readFileSync(OUTPUT_PATH, "utf8");
     } catch {

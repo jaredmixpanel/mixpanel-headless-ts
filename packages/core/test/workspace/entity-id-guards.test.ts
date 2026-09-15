@@ -141,7 +141,7 @@ describe("requireEntityId", () => {
       } catch (error) {
         return error as ParamValidationError;
       }
-      return undefined;
+      return;
     })();
     expect(objErr?.message).not.toContain("sk-live");
     const long = "x".repeat(200);
@@ -151,7 +151,7 @@ describe("requireEntityId", () => {
       } catch (error) {
         return error as ParamValidationError;
       }
-      return undefined;
+      return;
     })();
     expect(strErr?.message).toContain(`"${"x".repeat(40)}"`);
     expect(strErr?.message).not.toContain("x".repeat(41));

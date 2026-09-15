@@ -45,6 +45,7 @@ import {
   UnsupportedReportLinkError,
   WorkspaceScopeError,
 } from "./errors.js";
+import { toError } from "./invariant.js";
 import { KeyError } from "./query/python-builtins.js";
 import { transformProfile } from "./query/transforms.js";
 import { RrwebAnalyzer } from "./replays/rrweb-analyzer.js";
@@ -1491,8 +1492,8 @@ export class Workspace {
     const target = options.target ?? null;
 
     let newAccount: Account | null = null;
-    let newProject: Project | null = null;
-    let newWorkspace: WorkspaceRef | null = null;
+    let newProject: Project | null;
+    let newWorkspace: WorkspaceRef | null;
 
     if (target !== null) {
       // Route through the same resolver as construction so
@@ -1944,11 +1945,11 @@ export class Workspace {
    * @returns Bookmark params with `sections` and `displayOptions`.
    * @throws BookmarkValidationError - Argument or bookmark validation.
    */
-  async buildParams(
+  buildParams(
     events: EventsInput,
     options: WorkspaceQueryOptions = {},
   ): Promise<ParamsDict> {
-    return this.#resolveQueryParams(events, options);
+    return asPromise(() => this.#resolveQueryParams(events, options));
   }
 
   /**
@@ -2053,11 +2054,11 @@ export class Workspace {
    * @returns Bookmark params with `sections` and `displayOptions`.
    * @throws BookmarkValidationError - Argument or bookmark validation.
    */
-  async buildFunnelParams(
+  buildFunnelParams(
     steps: ReadonlyArray<string | FunnelStep>,
     options: WorkspaceFunnelQueryOptions = {},
   ): Promise<ParamsDict> {
-    return this.#resolveFunnelParams(steps, options);
+    return asPromise(() => this.#resolveFunnelParams(steps, options));
   }
 
   /**
@@ -2166,11 +2167,11 @@ export class Workspace {
    * @returns The FLAT flow bookmark params dict.
    * @throws BookmarkValidationError - Argument or bookmark validation.
    */
-  async buildFlowParams(
+  buildFlowParams(
     event: string | FlowStep | ReadonlyArray<string | FlowStep>,
     options: WorkspaceFlowQueryOptions = {},
   ): Promise<ParamsDict> {
-    return this.#resolveFlowParams(event, options);
+    return asPromise(() => this.#resolveFlowParams(event, options));
   }
 
   /**
@@ -2281,12 +2282,14 @@ export class Workspace {
    *   `sorting` and `columnWidths`.
    * @throws BookmarkValidationError - Argument or bookmark validation.
    */
-  async buildRetentionParams(
+  buildRetentionParams(
     bornEvent: string | RetentionEvent,
     returnEvent: string | RetentionEvent,
     options: WorkspaceRetentionQueryOptions = {},
   ): Promise<ParamsDict> {
-    return this.#resolveRetentionParams(bornEvent, returnEvent, options);
+    return asPromise(() =>
+      this.#resolveRetentionParams(bornEvent, returnEvent, options),
+    );
   }
 
   /**
@@ -2394,14 +2397,18 @@ export class Workspace {
     const workers = options.workers ?? 5;
 
     if (Object.hasOwn(params, "action")) {
-      const [aggregateData, total, computedAt, meta] =
-        await this.#executeUserAggregate(params);
+      const [
+        aggregateData,
+        aggregateTotal,
+        aggregateComputedAt,
+        aggregateMeta,
+      ] = await this.#executeUserAggregate(params);
       return new UserQueryResult({
-        computed_at: computedAt,
-        total,
+        computed_at: aggregateComputedAt,
+        total: aggregateTotal,
         profiles: [],
         params,
-        meta,
+        meta: aggregateMeta,
         mode: "aggregate",
         aggregate_data: aggregateData,
       });
@@ -2444,10 +2451,10 @@ export class Workspace {
    * @returns The engage params dict.
    * @throws BookmarkValidationError - Argument or param validation.
    */
-  async buildUserParams(
+  buildUserParams(
     options: WorkspaceUserQueryOptions = {},
   ): Promise<ParamsDict> {
-    return this.#resolveUserParams(options);
+    return asPromise(() => this.#resolveUserParams(options));
   }
 
   /**
@@ -2698,10 +2705,15 @@ export class Workspace {
     // Bounded-concurrency scheduler: the TS twin of
     // `ThreadPoolExecutor(max_workers=capped)` + `as_completed`.
     let next = 1;
-    let aborted: unknown = null;
+    // Boxed rather than a bare `let`: the workers assign it inside a
+    // closure, which TS's flow analysis does not track for a local.
+    const abort: {
+      error:
+        AuthenticationError | RateLimitError | ServerError | QueryError | null;
+    } = { error: null };
     const runWorker = async (): Promise<void> => {
       for (;;) {
-        if (aborted !== null) {
+        if (abort.error !== null) {
           return;
         }
         const pageNum = next;
@@ -2721,7 +2733,7 @@ export class Workspace {
           ) {
             // Python cancels the queued futures and re-raises out of
             // the `with` block (running futures still finish).
-            aborted = error;
+            abort.error = error;
             return;
           }
           this.#logger?.warning?.(
@@ -2739,12 +2751,12 @@ export class Workspace {
         runWorker(),
       ),
     );
-    if (aborted !== null) {
-      throw aborted;
+    if (abort.error !== null) {
+      throw abort.error;
     }
 
-    for (const p of [...pageResults.keys()].sort((a, b) => a - b)) {
-      allProfiles.push(...pageResults.get(p)!);
+    for (const [, profiles] of [...pageResults].sort((a, b) => a[0] - b[0])) {
+      allProfiles.push(...profiles);
     }
 
     allProfiles = limit === null ? allProfiles : allProfiles.slice(0, limit);
@@ -2932,10 +2944,11 @@ export class Workspace {
    * never been created there is nothing to clear and NO service is
    * constructed as a side effect.
    */
-  async clearDiscoveryCache(): Promise<void> {
+  clearDiscoveryCache(): Promise<void> {
     if (this.#discovery !== null) {
       this.#discovery.clearCache();
     }
+    return Promise.resolve();
   }
 
   /**
@@ -3353,7 +3366,7 @@ export class Workspace {
     // each fetch runs with include_mixpanel_events=false here regardless
     // of the caller's flag.
     const results = new Map<number, Replay>();
-    const failures: Array<[string, unknown]> = [];
+    const failures: Array<[string, Error]> = [];
     let cursor = 0;
     const worker = async (): Promise<void> => {
       for (;;) {
@@ -3383,7 +3396,7 @@ export class Workspace {
             `fetch_replays: skipping replay ${rid} — ` +
               `${error instanceof Error ? error.name : typeof error}: ${String(error)}`,
           );
-          failures.push([rid, error]);
+          failures.push([rid, toError(error)]);
         }
       }
     };
@@ -3392,14 +3405,15 @@ export class Workspace {
         worker(),
       ),
     );
-    if (results.size === 0 && failures.length > 0) {
+    const firstFailure = failures[0];
+    if (results.size === 0 && firstFailure !== undefined) {
       // Every replay failed — surface the first underlying error rather
       // than a generic wrapper, preserving its type for callers that
       // branch on it. Python's `failures[0]` is completion-ordered
       // (`as_completed`); the port keeps INPUT order, which is the
       // deterministic reading of the same rule (recorded in
       // `B5-S3-notes.md` §2).
-      throw failures[0]?.[1];
+      throw firstFailure[1];
     }
     let ordered = [...results]
       .sort((a, b) => a[0] - b[0])
@@ -3800,7 +3814,7 @@ export class Workspace {
    * @internal
    */
   #businessContextHost(): BusinessContextHost {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    // eslint-disable-next-line @typescript-eslint/no-this-alias, unicorn/no-this-assignment -- the object-literal getters below need the facade's `this`, not the literal's
     const facade = this;
     return {
       client: facade.client,
@@ -6354,6 +6368,11 @@ export class Workspace {
       ? response["created_at"]
       : undefined;
 
+    let createdAt: string | null = null;
+    if (created !== undefined && created !== null) {
+      createdAt =
+        typeof created === "string" ? created : jsonValuePythonStr(created);
+    }
     return new ReportLink({
       url,
       slug,
@@ -6363,12 +6382,7 @@ export class Workspace {
       name,
       description,
       bookmark_id: bookmarkId,
-      created_at:
-        created !== undefined && created !== null
-          ? typeof created === "string"
-            ? created
-            : jsonValuePythonStr(created)
-          : null,
+      created_at: createdAt,
     });
   }
 
@@ -6548,8 +6562,7 @@ export class Workspace {
     const region = this.#session.account.region;
     const projectId = this.#projectId();
     const pinned = this.#session.workspace ?? null;
-    const workspaceId =
-      parsed.workspace_id ?? (pinned === null ? null : pinned.id);
+    const workspaceId = parsed.workspace_id ?? pinned?.id ?? null;
 
     if (parsed.kind === "slug") {
       const raw = await this.client.getBookmarkUrl(parsed.slug as string);
@@ -6837,7 +6850,7 @@ export class Workspace {
     const normalized = reportType === "funnel" ? "funnels" : reportType;
     const pinned = this.#session.workspace ?? null;
     const explicit = options.workspace_id ?? null;
-    const wid = explicit ?? (pinned === null ? null : pinned.id);
+    const wid = explicit ?? pinned?.id ?? null;
     return buildBookmarkUrl({
       region: this.#session.account.region,
       project_id: this.#projectId(),
@@ -6915,6 +6928,23 @@ function replaceReplayEvents(
 }
 
 /**
+ * Run a synchronous builder and hand back its result as a Promise — or its
+ * throw as a rejection — exactly as the `async` wrapper it replaces did.
+ * The `build*Params` members are synchronous in Python; the TS surface
+ * keeps the Promise shape for symmetry with `query*`, and callers rely on
+ * validation errors arriving as rejections (`.rejects` / `.catch`), never
+ * as synchronous throws.
+ *
+ * @param compute - The synchronous builder.
+ * @returns A promise settled from `compute()`.
+ */
+function asPromise<T>(compute: () => T): Promise<T> {
+  return new Promise((resolve) => {
+    resolve(compute());
+  });
+}
+
+/**
  * `Mapping.get(key)` over the optional retention / distinct-id maps,
  * which callers may hand in as a `Map` OR a plain record.
  *
@@ -6927,7 +6957,10 @@ function mapGet<T>(
   key: string,
 ): T | undefined {
   if (source instanceof Map) {
-    return source.get(key);
+    // Declared type, not the `instanceof` intersection (whose `Map<any,
+    // any>` half would make `get` return `any`).
+    const map: ReadonlyMap<string, T> = source;
+    return map.get(key);
   }
   const record = source as Readonly<Record<string, T>>;
   return Object.hasOwn(record, key) ? record[key] : undefined;

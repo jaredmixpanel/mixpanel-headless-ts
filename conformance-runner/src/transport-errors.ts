@@ -162,10 +162,27 @@ export function createTransportRejection(
   // Python replay transport re-raises `cls(recorded_message)` and
   // `str(e)` flows into `details_contain.error`, so the TS cause must
   // carry the same text for the wire error diff to reproduce it.
-  const cause = new Error(message ?? spec.causeMessage) as Error & {
-    code: string;
-  };
-  cause.name = spec.causeName;
-  cause.code = spec.causeCode;
+  const cause = new RecordedTransportCause(
+    message ?? spec.causeMessage,
+    spec.causeName,
+    spec.causeCode,
+  );
   return new TypeError("fetch failed", { cause });
+}
+
+/**
+ * The undici-shaped `cause` of a replayed transport failure: a plain
+ * `Error` carrying the recorded `name` and `code` (what
+ * `MixpanelHttpError` classification reads).
+ */
+class RecordedTransportCause extends Error {
+  override readonly name: string;
+  /** The undici error code (`UND_ERR_*` / `ECONNREFUSED` …). */
+  readonly code: string;
+
+  constructor(message: string, name: string, code: string) {
+    super(message);
+    this.name = name;
+    this.code = code;
+  }
 }

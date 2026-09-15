@@ -115,7 +115,8 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  */
 function deepCopy<T>(value: T): T {
   if (Array.isArray(value)) {
-    return value.map((item) => deepCopy(item)) as unknown as T;
+    const items: readonly unknown[] = value;
+    return items.map((item) => deepCopy(item)) as unknown as T;
   }
   if (isPlainObject(value)) {
     const out: Record<string, unknown> = {};

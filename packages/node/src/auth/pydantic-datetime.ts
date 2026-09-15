@@ -101,7 +101,7 @@ export function coerceLaxExpiresAt(value: unknown): string {
   }
   if (typeof value === "string") {
     if (NUMERIC_STRING.test(value)) {
-      return epochToIso(Number.parseFloat(value));
+      return epochToIso(Number(value));
     }
     if (Number.isNaN(Date.parse(value))) {
       throw new ParamValidationError(

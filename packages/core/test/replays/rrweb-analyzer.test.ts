@@ -255,16 +255,16 @@ function byAction(
 
 describe("analyze_events() convenience function (TestAnalyzeEventsWrapper)", () => {
   it("test_empty_raises_value_error", () => {
-    expect(() => analyzeEvents([])).toThrowError(ValueError);
-    expect(() => analyzeEvents([])).toThrowError(/cannot be empty/);
+    expect(() => analyzeEvents([])).toThrow(ValueError);
+    expect(() => analyzeEvents([])).toThrow(/cannot be empty/);
   });
 
   it("test_non_list_raises_value_error", () => {
     // Python passes the string "not a list": non-empty and non-list, so
     // the emptiness guard passes and the list guard fires.
     const notAList = "not a list" as unknown as readonly Dict[];
-    expect(() => analyzeEvents(notAList)).toThrowError(ValueError);
-    expect(() => analyzeEvents(notAList)).toThrowError(/must be a list/);
+    expect(() => analyzeEvents(notAList)).toThrow(ValueError);
+    expect(() => analyzeEvents(notAList)).toThrow(/must be a list/);
   });
 
   it("test_returns_string", () => {

@@ -27,7 +27,7 @@ import ts from "typescript";
 export const BANNED_TOKENS = Object.freeze([
   {
     name: "batch-id",
-    re: /\bB\d+(?:-[A-Z]\d+|-R\d+|-W\d+|-S\d+|-N\d+|-K\d+|-M\d+|-ARB|-BIND|-MAPFIX)?\b/g,
+    re: /\bB\d+(?:-[A-Z]\d+|-ARB|-BIND|-MAPFIX)?\b/g,
   },
   { name: "requirement-id", re: /\bR\d+\.\d+\b/g },
   { name: "packet-id", re: /\bP\d-\d+\b/g },
@@ -239,10 +239,10 @@ function literalTitle(arg) {
   if (ts.isTemplateExpression(arg)) {
     return [arg.head.text, ...arg.templateSpans.map((s) => s.literal.text)]
       .join(" ")
-      .replace(/\s+/g, " ")
+      .replaceAll(/\s+/g, " ")
       .trim();
   }
-  return undefined;
+  return;
 }
 
 /**
@@ -392,7 +392,7 @@ const ORPHAN_ANYWHERE_RE = /`:\d+|[,/;]\s*:\d+/;
 // A backticked identifier, a snake_case call, or a dotted path with at least
 // two characters per segment (so "e.g." / "i.e." do not count as symbols).
 const SYMBOL_NEARBY_RE =
-  /`[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*(?:\(\))?`|\b[A-Za-z_]\w*_\w*\(|\b[A-Za-z_]\w+\.(?!py\b|md\b|json\b|ts\b|mjs\b|js\b)[A-Za-z_]\w+\b/;
+  /`[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*(?:\(\))?`|\b[A-Za-z_][\dA-Za-z]*_\w*\(|\b[A-Za-z_]\w+\.(?!py\b|md\b|json\b|ts\b|mjs\b|js\b)[A-Za-z_]\w+\b/;
 
 function hasSymbolNearby(text) {
   return SYMBOL_NEARBY_RE.test(text);
@@ -467,9 +467,10 @@ export function fixPyLineRefs(line) {
   return { line: out, count };
 }
 
+// eslint-disable-next-line regexp/no-super-linear-backtracking -- audit-only regex over one trusted source line at a time; a linear-time rewrite would change which banner titles it accepts
 const MARKER_RE = /^(\s*)\/\/\s*(?:={3,}|-{3,})\s*(.*?)\s*(?:={3,}|-{3,})\s*$/;
 const OWNERSHIP_PART_RE = new RegExp(
-  String.raw`^(?:\S+\s+owns|owns|append-only|read-only|owned by \S+|${ID_ALTERNATION})$`,
+  String.raw`^(?:\S+\s+owns|owns|append-only|read-only|owned by \S+)$|^${ID_ALTERNATION}$`,
   "i",
 );
 
@@ -502,13 +503,13 @@ export function fixOwnershipMarker(line) {
       return { line, changed: false, deleted: false };
     }
   }
-  label = label.replace(/\([^()]*\)/g, " ");
+  label = label.replaceAll(/\([^()]*\)/g, " ");
   for (const hit of findBannedTokens(label).reverse()) {
     label = `${label.slice(0, hit.index)} ${label.slice(hit.index + hit.length)}`;
   }
   label = label
-    .replace(/\s+/g, " ")
-    .replace(/^[\s:;,\-–—]+|[\s:;,\-–—]+$/g, "")
+    .replaceAll(/\s+/g, " ")
+    .replaceAll(/^[\s:;,\-–—]+|[\s:;,\-–—]+$/g, "")
     .trim();
   if (!/[A-Za-z]/.test(label)) {
     return { line: null, changed: true, deleted: true };
@@ -639,12 +640,11 @@ function tidyEmptied(records, kind, originals) {
   const out = [];
   for (const rec of kept) {
     const blank = isBlankContent(rec.line, kind);
-    const prevBlank =
-      out.length > 0 && isBlankContent(out[out.length - 1].line, kind);
+    const prevBlank = out.length > 0 && isBlankContent(out.at(-1).line, kind);
     if (blank && (out.length === 0 || prevBlank)) continue;
     out.push(rec);
   }
-  while (out.length > 0 && isBlankContent(out[out.length - 1].line, kind)) {
+  while (out.length > 0 && isBlankContent(out.at(-1).line, kind)) {
     out.pop();
   }
   return out;
@@ -706,7 +706,6 @@ export function rewriteSource(text, options = {}) {
         items: [c],
         lastLine: startLine,
       };
-      groups.push(current);
     } else {
       current = {
         kind: c.kind,
@@ -714,8 +713,8 @@ export function rewriteSource(text, options = {}) {
         items: [c],
         lastLine: lineNumber(c.end),
       };
-      groups.push(current);
     }
+    groups.push(current);
   }
 
   for (const g of groups) {
@@ -729,7 +728,7 @@ export function rewriteSource(text, options = {}) {
       if (g.standalone) {
         const kept = tidyEmptied(records, "line", originals);
         const first = g.items[0];
-        const last = g.items[g.items.length - 1];
+        const last = g.items.at(-1);
         const start = lineStartOf(text, first.pos);
         let end = lineEndOf(text, last.end);
         const hasNewline = end < text.length;
@@ -801,7 +800,7 @@ export function rewriteSource(text, options = {}) {
       const interior = records.slice(1, -1);
       const interiorOriginals = originals.slice(1, -1);
       const tidied = tidyEmptied(interior, c.kind, interiorOriginals);
-      kept = [records[0], ...tidied, records[records.length - 1]];
+      kept = [records[0], ...tidied, records.at(-1)];
     }
     let replacement = kept.map((r) => r.line).join("\n");
     const contentLeft = kept.some((r) => !isBlankContent(r.line, c.kind));
@@ -815,18 +814,19 @@ export function rewriteSource(text, options = {}) {
     }
     if (!contentLeft) {
       for (const ch of changes) ch.after = null;
+      let start;
+      let end;
       if (g.standalone) {
-        const start = lineStartOf(text, c.pos);
-        let end = lineEndOf(text, c.end);
+        start = lineStartOf(text, c.pos);
+        end = lineEndOf(text, c.end);
         if (end < text.length) end += 1;
-        edits.push({ start, end, replacement: "", changes });
       } else {
-        let start = c.pos;
-        let end = c.end;
+        start = c.pos;
+        end = c.end;
         if (start > 0 && text[start - 1] === " ") start--;
         else if (text[end] === " ") end++;
-        edits.push({ start, end, replacement: "", changes });
       }
+      edits.push({ start, end, replacement: "", changes });
       continue;
     }
     if (lines.length > 1 && kept.length === 2) {

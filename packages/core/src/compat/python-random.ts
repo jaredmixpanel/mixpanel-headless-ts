@@ -174,30 +174,34 @@ export class PythonRandom {
     const mt = this.#mt;
     if (this.#index >= N) {
       for (let kk = 0; kk < N - M; kk += 1) {
-        const y =
+        const twist =
           (((mt[kk] as number) & UPPER_MASK) |
             ((mt[kk + 1] as number) & LOWER_MASK)) >>>
           0;
         mt[kk] =
-          ((mt[kk + M] as number) ^ (y >>> 1) ^ (y & 1 ? MATRIX_A : 0)) >>> 0;
+          ((mt[kk + M] as number) ^
+            (twist >>> 1) ^
+            (twist & 1 ? MATRIX_A : 0)) >>>
+          0;
       }
       for (let kk = N - M; kk < N - 1; kk += 1) {
-        const y =
+        const twist =
           (((mt[kk] as number) & UPPER_MASK) |
             ((mt[kk + 1] as number) & LOWER_MASK)) >>>
           0;
         mt[kk] =
           ((mt[kk + (M - N)] as number) ^
-            (y >>> 1) ^
-            (y & 1 ? MATRIX_A : 0)) >>>
+            (twist >>> 1) ^
+            (twist & 1 ? MATRIX_A : 0)) >>>
           0;
       }
-      const y =
+      const tail =
         (((mt[N - 1] as number) & UPPER_MASK) |
           ((mt[0] as number) & LOWER_MASK)) >>>
         0;
       mt[N - 1] =
-        ((mt[M - 1] as number) ^ (y >>> 1) ^ (y & 1 ? MATRIX_A : 0)) >>> 0;
+        ((mt[M - 1] as number) ^ (tail >>> 1) ^ (tail & 1 ? MATRIX_A : 0)) >>>
+        0;
       this.#index = 0;
     }
 

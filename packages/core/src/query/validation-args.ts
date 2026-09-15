@@ -442,10 +442,8 @@ export function validateFunnelArgs(
     reentry_mode = null,
     data_group_id = null,
   } = options;
-  const errors: ValidationError[] = [];
-
   // DG1: data_group_id must be positive if provided
-  errors.push(..._validateDataGroupId(data_group_id));
+  const errors: ValidationError[] = [..._validateDataGroupId(data_group_id)];
 
   // F1: At least 2 steps required
   if (steps.length < 2) {
@@ -734,13 +732,13 @@ export function validateFunnelArgs(
   }
 
   // F5: Time argument validation (delegated)
-  errors.push(...validateTimeArgs({ from_date, to_date, last }));
-
   // F6: GroupBy validation (delegated)
-  errors.push(...validateGroupByArgs({ group_by }));
-
   // CP1-CP6: Custom property validation (group_by and per-step filters)
-  errors.push(..._scanCustomProperties({ group_by, funnel_steps: steps }));
+  errors.push(
+    ...validateTimeArgs({ from_date, to_date, last }),
+    ...validateGroupByArgs({ group_by }),
+    ..._scanCustomProperties({ group_by, funnel_steps: steps }),
+  );
 
   // F12: reentry_mode validation
   if (reentry_mode !== null && !VALID_FUNNEL_REENTRY_MODES.has(reentry_mode)) {
@@ -835,10 +833,8 @@ export function validateRetentionArgs(
     unbounded_mode = null,
     data_group_id = null,
   } = options;
-  const errors: ValidationError[] = [];
-
   // DG1: data_group_id must be positive if provided
-  errors.push(..._validateDataGroupId(data_group_id));
+  const errors: ValidationError[] = [..._validateDataGroupId(data_group_id)];
 
   // R1: born_event must be non-empty string
   if (pythonStrip(born_event) === "") {
@@ -905,10 +901,11 @@ export function validateRetentionArgs(
   }
 
   // R3: Time argument validation (delegated)
-  errors.push(...validateTimeArgs({ from_date, to_date, last }));
-
   // R4: GroupBy validation (delegated)
-  errors.push(...validateGroupByArgs({ group_by }));
+  errors.push(
+    ...validateTimeArgs({ from_date, to_date, last }),
+    ...validateGroupByArgs({ group_by }),
+  );
 
   // R5: bucket_sizes values must be positive integers
   let allValidInts = true;
@@ -1166,10 +1163,8 @@ export function validateFlowArgs(
     time_comparison = null,
     data_group_id = null,
   } = options;
-  const errors: ValidationError[] = [];
-
   // DG1: data_group_id must be positive if provided
-  errors.push(..._validateDataGroupId(data_group_id));
+  const errors: ValidationError[] = [..._validateDataGroupId(data_group_id)];
 
   // Flows do not support time comparison
   if (time_comparison !== null && time_comparison !== undefined) {
@@ -1448,10 +1443,8 @@ export function validateQueryArgs(
     formulas = null,
     data_group_id = null,
   } = options;
-  const errors: ValidationError[] = [];
-
   // DG1: data_group_id must be positive if provided
-  errors.push(..._validateDataGroupId(data_group_id));
+  const errors: ValidationError[] = [..._validateDataGroupId(data_group_id)];
 
   // V0: At least one event required
   if (events.length === 0) {
@@ -1718,13 +1711,13 @@ export function validateQueryArgs(
   }
 
   // V7-V10, V15, V20: Time argument validation (delegated)
-  errors.push(...validateTimeArgs({ from_date, to_date, last }));
-
   // V11-V12, V18, V24: GroupBy validation (delegated)
-  errors.push(...validateGroupByArgs({ group_by }));
-
   // CP1-CP6: Custom property validation
-  errors.push(..._scanCustomProperties({ group_by, where: null, events }));
+  errors.push(
+    ...validateTimeArgs({ from_date, to_date, last }),
+    ...validateGroupByArgs({ group_by }),
+    ..._scanCustomProperties({ group_by, where: null, events }),
+  );
 
   // V13-V14: Per-Metric validation
   for (const [idx, item] of events.entries()) {

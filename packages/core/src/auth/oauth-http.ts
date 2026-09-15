@@ -26,6 +26,7 @@ import { isPlainRecord, MixpanelHttpError } from "../client/internals.js";
 import { toNativeJson } from "../client/json-value.js";
 import { parseLossless } from "../client/lossless-json.js";
 import { createRequestExecutor, urlEncodePairs } from "../client/transport.js";
+import { cpLength } from "../compat/codepoint.js";
 import { pythonStr } from "../compat/python-str.js";
 import { MixpanelHeadlessError, OAuthError } from "../errors.js";
 import { DEFAULT_SCOPE, OAUTH_BASE_URLS } from "./oauth-constants.js";
@@ -313,7 +314,7 @@ export async function postTokenRequest(
       errorCode,
       {
         content_type: response.header("content-type") ?? "unknown",
-        body_length: Array.from(response.text).length,
+        body_length: cpLength(response.text),
       },
       { cause: error },
     );

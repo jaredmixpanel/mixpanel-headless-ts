@@ -36,6 +36,7 @@ import {
 import {
   type CannedResponse,
   createMockClient,
+  drain,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 
@@ -137,12 +138,7 @@ describe("TestPaginateAll (server-deadline half)", () => {
         },
       }),
     );
-    for await (const item of paginateAll(
-      client,
-      "/projects/12345/dashboards",
-    )) {
-      void item;
-    }
+    await drain(paginateAll(client, "/projects/12345/dashboards"));
     expect(capturedTimeouts[0]).toBeDefined();
     expect(capturedTimeouts[0]).toBe(DEFAULT_APP_TIMEOUT_S);
   });

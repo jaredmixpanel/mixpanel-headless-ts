@@ -469,7 +469,7 @@ describe("TestTokenResolverMalformed (test_042_edge_cases.py:240 — inbound b6-
     }
     const resolver = new OnDiskTokenResolver();
     await expect(resolver.getBrowserToken("x", "us")).rejects.toThrow(
-      new RegExp(p.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)),
+      new RegExp(p.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)),
     );
   });
 

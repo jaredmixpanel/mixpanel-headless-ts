@@ -4,6 +4,8 @@
  * first; no other module re-derives these semantics.
  */
 
+import { codepoints } from "./codepoint.js";
+
 /**
  * Zero-fill a string to `width` codepoints with Python `str.zfill` semantics.
  *
@@ -37,12 +39,12 @@ export function zfill(value: string, width: number): string {
   if (!Number.isInteger(width)) {
     throw new TypeError(`zfill width must be an integer, got ${String(width)}`);
   }
-  const codepoints = [...value];
-  if (codepoints.length >= width) {
+  const points = codepoints(value);
+  if (points.length >= width) {
     return value;
   }
-  const padding = "0".repeat(width - codepoints.length);
-  const first = codepoints[0];
+  const padding = "0".repeat(width - points.length);
+  const first = points[0];
   if (first === "+" || first === "-") {
     return first + padding + value.slice(first.length);
   }

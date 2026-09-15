@@ -292,12 +292,14 @@ function liveExportOrigins(): ReadonlySet<string> {
  * @returns The origin, or `null`.
  */
 function requestOrigin(input: RequestInfo | URL): string | null {
-  const url =
-    input instanceof Request
-      ? input.url
-      : input instanceof URL
-        ? input.href
-        : input;
+  let url: string;
+  if (input instanceof Request) {
+    url = input.url;
+  } else if (input instanceof URL) {
+    url = input.href;
+  } else {
+    url = input;
+  }
   try {
     return new URL(url).origin;
   } catch {

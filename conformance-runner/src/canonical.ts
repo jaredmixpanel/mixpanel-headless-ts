@@ -33,6 +33,8 @@
  * Python twin's `headers_match` / `canonicalize_interactions` exactly.
  */
 
+import { codepoints } from "@mixpanel-headless/core";
+
 import { JsonNumber, type JsonValue } from "./json-value.js";
 
 /** Error raised when a value cannot be canonicalized (illegal per D6). */
@@ -428,7 +430,7 @@ const PYTHON_FLOAT =
  *   `ValueError`.
  */
 function parsePythonFloat(text: string): number | undefined {
-  const trimmed = text.replace(PYTHON_TRIM, "");
+  const trimmed = text.replaceAll(PYTHON_TRIM, "");
   if (trimmed === "") {
     return undefined;
   }
@@ -442,7 +444,7 @@ function parsePythonFloat(text: string): number | undefined {
   if (!PYTHON_FLOAT.test(trimmed)) {
     return undefined;
   }
-  return Number(trimmed.replace(/_/g, ""));
+  return Number(trimmed.replaceAll("_", ""));
 }
 
 /**
@@ -484,8 +486,8 @@ function escapeJsonString(value: string): string {
  * @returns Negative, zero, or positive per standard comparator contract.
  */
 function compareCodePoints(a: string, b: string): number {
-  const aPoints = Array.from(a);
-  const bPoints = Array.from(b);
+  const aPoints = codepoints(a);
+  const bPoints = codepoints(b);
   const length = Math.min(aPoints.length, bPoints.length);
   for (let i = 0; i < length; i += 1) {
     const ac = (aPoints[i] as string).codePointAt(0) as number;
@@ -609,9 +611,9 @@ export function canonicalizeInteractions(interactions: JsonValue[]): string {
       .sort((a, b) =>
         compareCodePoints(interactionSortKey(a), interactionSortKey(b)),
       );
-    positions.forEach((position, index) => {
+    for (const [index, position] of positions.entries()) {
       result[position] = members[index] as JsonValue;
-    });
+    }
   }
   return canonicalize(result);
 }

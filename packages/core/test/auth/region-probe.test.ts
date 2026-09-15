@@ -111,9 +111,9 @@ const unauthHandler: Handler = () => ({ status: 401, text: "Unauthorized" });
  * @returns A `MixpanelHttpError` with the undici-style cause chain.
  */
 function networkError(message: string): MixpanelHttpError {
-  const inner = new Error(message) as Error & { code: string };
-  inner.name = "Error";
-  inner.code = "ECONNREFUSED";
+  const inner: Error & { code: string } = Object.assign(new Error(message), {
+    code: "ECONNREFUSED",
+  });
   const fetchFailure = new TypeError("fetch failed", { cause: inner });
   return new MixpanelHttpError(message, { cause: fetchFailure });
 }
@@ -379,8 +379,8 @@ describe("TestProbeRegionResponseBodyCap", () => {
       (error: unknown) => error,
     );
     expect(thrown).toBeInstanceOf(RegionProbeError);
-    for (const [, , body] of (thrown as RegionProbeError).attempts) {
-      expect(body.length).toBeLessThanOrEqual(4096);
+    for (const attempt of (thrown as RegionProbeError).attempts) {
+      expect(attempt[2].length).toBeLessThanOrEqual(4096);
     }
   });
 
@@ -397,8 +397,8 @@ describe("TestProbeRegionResponseBodyCap", () => {
       (error: unknown) => error,
     );
     expect(thrown).toBeInstanceOf(RegionProbeError);
-    for (const [, , body] of (thrown as RegionProbeError).attempts) {
-      expect(body).toBe(smallBody);
+    for (const attempt of (thrown as RegionProbeError).attempts) {
+      expect(attempt[2]).toBe(smallBody);
     }
   });
 });
@@ -481,8 +481,10 @@ describe("probe_region_for_credential guards (docstring contract)", () => {
 
 // Type-level exhaustiveness anchor: RegionProbeResult stays the
 // two-field shape the corpus encodes.
-const _shapeCheck: RegionProbeResult = {
-  region: "us",
-  attempts: [["us", 200]],
-};
-void _shapeCheck;
+it("RegionProbeResult keeps the two-field corpus shape", () => {
+  const shape: RegionProbeResult = {
+    region: "us",
+    attempts: [["us", 200]],
+  };
+  expect(Object.keys(shape)).toEqual(["region", "attempts"]);
+});

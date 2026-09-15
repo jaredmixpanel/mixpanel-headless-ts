@@ -280,7 +280,11 @@ export class ReplaysService {
     this.queryFn = options.queryFn ?? null;
     this.logger = options.logger;
     this.#fetchImpl = options.fetchImpl;
-    this.#warn = options.warn ?? ((): void => {});
+    this.#warn =
+      options.warn ??
+      ((): void => {
+        // No sink injected: warnings are dropped (CLEANUP-PLAN.md §12 8.8).
+      });
     this.#now = options.now ?? ((): number => Date.now() / 1000);
   }
 

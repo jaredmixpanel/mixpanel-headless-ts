@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 
 import { JsonNumber } from "@mixpanel-headless/conformance-runner";
+import { codepoints } from "@mixpanel-headless/core";
 
 import {
   parseRawJson,
@@ -162,7 +163,7 @@ describe("oracle.info / oracle.shutdown / framing", () => {
     );
     expect(line).not.toBeNull();
     expect(line).not.toContain("\n");
-    expect([...line!].every((ch) => ch.charCodeAt(0) < 128)).toBe(true);
+    expect(codepoints(line!).every((ch) => ch.charCodeAt(0) < 128)).toBe(true);
     const envelope = JSON.parse(line!) as Envelope;
     expect(envelope.result?.["output"]).toBe("\u{1F40D}");
   });
@@ -433,7 +434,7 @@ describe("oracle.call: scope, skips, and protocol errors", () => {
 });
 
 describe("raw-json: ordered lossless model", () => {
-  it("preserves member order and number tokens", async () => {
+  it("preserves member order and number tokens", () => {
     const value = parseRawJson('{"1": 18.0, "0": null}');
     expect(value).toBeInstanceOf(RawObject);
     const entries = (value as RawObject).entries;
@@ -442,7 +443,7 @@ describe("raw-json: ordered lossless model", () => {
     expect((entries[0]?.[1] as JsonNumber).raw).toBe("18.0");
   });
 
-  it("flattens to JsonValue for codec/canonicalizer consumers", async () => {
+  it("flattens to JsonValue for codec/canonicalizer consumers", () => {
     const flat = toJsonValue(parseRawJson('{"a": [1, "x"], "b": true}'));
     expect(flat).toStrictEqual({
       a: [new JsonNumber("1"), "x"],
@@ -450,21 +451,21 @@ describe("raw-json: ordered lossless model", () => {
     });
   });
 
-  it("serializes ASCII-safe lines with lone surrogates escaped", async () => {
+  it("serializes ASCII-safe lines with lone surrogates escaped", () => {
     const text = serializeAsciiJson({
       astral: "\u{1F40D}",
       lone: "\uD800",
       token: new JsonNumber("18.0"),
       big: 123456789012345678901n,
     });
-    expect([...text].every((ch) => ch.charCodeAt(0) < 128)).toBe(true);
+    expect(codepoints(text).every((ch) => ch.charCodeAt(0) < 128)).toBe(true);
     expect(text).toContain(String.raw`\ud83d\udc0d`);
     expect(text).toContain(String.raw`\ud800`);
     expect(text).toContain("18.0");
     expect(text).toContain("123456789012345678901");
   });
 
-  it("rejects trailing content and malformed tokens", async () => {
+  it("rejects trailing content and malformed tokens", () => {
     expect(() => parseRawJson('{"a": 1} extra')).toThrow(
       "unexpected trailing content",
     );
@@ -476,7 +477,7 @@ describe("raw-json: ordered lossless model", () => {
 });
 
 describe("Phase-2 types.* surface (protocol §8 scope note, P2-9)", () => {
-  it("reports protocol_version 1.1 (the codec.roundtrip addendum)", async () => {
+  it("reports protocol_version 1.1 (the codec.roundtrip addendum)", () => {
     expect(PROTOCOL_VERSION).toBe("1.1");
   });
 

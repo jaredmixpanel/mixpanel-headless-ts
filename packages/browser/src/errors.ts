@@ -49,21 +49,4 @@ export const BROWSER_NO_PENDING_LOGIN = "BROWSER_NO_PENDING_LOGIN";
  * R9.3 (names what was received, why it is refused, and what to use
  * instead); programs must key on {@link MixpanelHeadlessError.code}.
  */
-export class BrowserUnsupportedError extends MixpanelHeadlessError {
-  /**
-   * Initialize the refusal error.
-   *
-   * @param message - Human-readable explanation (out of contract, R5.4).
-   * @param code - One of the `BROWSER_*` codes above.
-   * @param details - Additional structured data (snake_case keys).
-   * @param options - Standard `ErrorOptions` (`cause` threading).
-   */
-  constructor(
-    message: string,
-    code: string,
-    details?: Readonly<Record<string, unknown>> | null,
-    options?: ErrorOptions,
-  ) {
-    super(message, code, details, options);
-  }
-}
+export class BrowserUnsupportedError extends MixpanelHeadlessError {}

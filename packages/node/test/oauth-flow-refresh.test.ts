@@ -17,6 +17,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  cpLength,
   type OAuthClientInfo,
   OAuthError,
   OAuthTokens,
@@ -118,7 +119,7 @@ function mockTransport(respond: () => Response): {
 
 /** JSON `Response` helper. */
 function jsonResponse(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
+  return Response.json(body, {
     status,
     headers: { "content-type": "application/json" },
   });
@@ -301,7 +302,7 @@ describe("TestOAuthFlowRefresh (test_auth_flow.py:490)", () => {
     expect(serialized).not.toContain("SECRET_GARB");
     expect(caught?.details).not.toHaveProperty("response_body");
     expect(caught?.details["content_type"]).toBe("application/json");
-    expect(caught?.details["body_length"]).toBe(Array.from(body).length);
+    expect(caught?.details["body_length"]).toBe(cpLength(body));
   });
 });
 

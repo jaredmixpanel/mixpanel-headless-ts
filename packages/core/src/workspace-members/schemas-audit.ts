@@ -167,9 +167,13 @@ export async function listSchemaRegistry(
   const rawList = await client.listSchemaRegistry({
     entity_type: options.entity_type ?? null,
   });
-  return validateResponseModels(SchemaEntry, rawList.map(native), {
-    endpoint: "list_schema_registry",
-  });
+  return validateResponseModels(
+    SchemaEntry,
+    rawList.map((item) => native(item)),
+    {
+      endpoint: "list_schema_registry",
+    },
+  );
 }
 
 /**
@@ -255,9 +259,13 @@ export async function updateSchemasBulk(
   const rawList = await client.updateSchemasBulk(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return validateResponseModels(BulkPatchResult, rawList.map(native), {
-    endpoint: "update_schemas_bulk",
-  });
+  return validateResponseModels(
+    BulkPatchResult,
+    rawList.map((item) => native(item)),
+    {
+      endpoint: "update_schemas_bulk",
+    },
+  );
 }
 
 /**
@@ -432,12 +440,16 @@ function auditResponseFrom(
         `got ${pythonTypeNameOf(head)}`,
     );
   }
-  const violations = validateResponseModels(AuditViolation, head.map(native), {
-    endpoint,
-  });
+  const violations = validateResponseModels(
+    AuditViolation,
+    head.map((item) => native(item)),
+    {
+      endpoint,
+    },
+  );
   // `raw[1] if len(raw) > 1 and isinstance(raw[1], dict) else {}` —
   // prototype discrimination, never `typeof` (watchlist #13).
-  const second = raw.length > 1 ? raw[1] : undefined;
+  const second = raw[1];
   const metadata = isPlainRecord(second)
     ? (native(second) as Record<string, unknown>)
     : {};
@@ -503,9 +515,13 @@ export async function listDataVolumeAnomalies(
   const rawList = await client.listDataVolumeAnomalies({
     query_params: options.query_params ?? null,
   });
-  return validateResponseModels(DataVolumeAnomaly, rawList.map(native), {
-    endpoint: "list_data_volume_anomalies",
-  });
+  return validateResponseModels(
+    DataVolumeAnomaly,
+    rawList.map((item) => native(item)),
+    {
+      endpoint: "list_data_volume_anomalies",
+    },
+  );
 }
 
 /**
@@ -562,9 +578,13 @@ export async function listDeletionRequests(
   client: MixpanelClient,
 ): Promise<EventDeletionRequest[]> {
   const rawList = await client.listDeletionRequests();
-  return validateResponseModels(EventDeletionRequest, rawList.map(native), {
-    endpoint: "list_deletion_requests",
-  });
+  return validateResponseModels(
+    EventDeletionRequest,
+    rawList.map((item) => native(item)),
+    {
+      endpoint: "list_deletion_requests",
+    },
+  );
 }
 
 /**
@@ -584,9 +604,13 @@ export async function createDeletionRequest(
   const rawList = await client.createDeletionRequest(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return validateResponseModels(EventDeletionRequest, rawList.map(native), {
-    endpoint: "create_deletion_request",
-  });
+  return validateResponseModels(
+    EventDeletionRequest,
+    rawList.map((item) => native(item)),
+    {
+      endpoint: "create_deletion_request",
+    },
+  );
 }
 
 /**
@@ -604,9 +628,13 @@ export async function cancelDeletionRequest(
   requestId: number,
 ): Promise<EventDeletionRequest[]> {
   const rawList = await client.cancelDeletionRequest(requestId);
-  return validateResponseModels(EventDeletionRequest, rawList.map(native), {
-    endpoint: "cancel_deletion_request",
-  });
+  return validateResponseModels(
+    EventDeletionRequest,
+    rawList.map((item) => native(item)),
+    {
+      endpoint: "cancel_deletion_request",
+    },
+  );
 }
 
 /**
@@ -627,5 +655,5 @@ export async function previewDeletionFilters(
   const rawList = await client.previewDeletionFilters(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return rawList.map(native) as Array<Record<string, unknown>>;
+  return rawList.map((item) => native(item)) as Array<Record<string, unknown>>;
 }

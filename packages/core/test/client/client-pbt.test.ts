@@ -29,8 +29,12 @@ import {
   type EndpointKind,
   type Region,
 } from "../../src/client/url.js";
+import { codepoints } from "../../src/compat/codepoint.js";
 import { pythonStrip } from "../../src/compat/index.js";
-import { makeSession } from "../../test-support/client-test-helpers.js";
+import {
+  asyncIterableOf,
+  makeSession,
+} from "../../test-support/client-test-helpers.js";
 
 /** Decode a base64 payload to UTF-8 text (the tests' b64decode+decode). */
 function decodeBase64Utf8(encoded: string): string {
@@ -183,10 +187,12 @@ describe("TestBackoffProperties", () => {
 // with non-ASCII L/N members (é Ω ٤ ㅎ) and the non-BMP 𝒳 (category L),
 // drawn per CODE POINT so surrogate halves never split.
 const URL_PATH_ALPHABET = [
-  ..."abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-  ..."éΩ٤ㅎ",
+  ...codepoints(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+  ),
+  ...codepoints("éΩ٤ㅎ"),
   "𝒳",
-  ..."/-_.",
+  ...codepoints("/-_."),
 ];
 
 const urlPathArb = fc
@@ -264,11 +270,13 @@ describe("TestUrlBuildProperties", () => {
  * per the strategy-shape rule.
  */
 const LINE_ALPHABET = [
-  ..."abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-  ..."!#$%&'()*+-./;<=>?@\\^_`|~",
-  ..."§±éΩ",
+  ...codepoints(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+  ),
+  ...codepoints("!#$%&'()*+-./;<=>?@\\^_`|~"),
+  ...codepoints("§±éΩ"),
   "𝒳",
-  ...'{}[]":, ',
+  ...codepoints('{}[]":, '),
 ];
 
 const jsonLineContent = fc
@@ -311,11 +319,7 @@ function splitBytesAtPositions(
 async function collectLinesFromChunks(
   chunks: readonly Uint8Array[],
 ): Promise<string[]> {
-  const source = (async function* (): AsyncIterable<Uint8Array> {
-    for (const chunk of chunks) {
-      yield chunk;
-    }
-  })();
+  const source = asyncIterableOf(chunks);
   const lines: string[] = [];
   for await (const line of iterJsonlLines(source)) {
     lines.push(line);

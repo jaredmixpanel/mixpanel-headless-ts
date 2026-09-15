@@ -16,6 +16,7 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
+import { compareStrings } from "../lib/compare-strings.mjs";
 import {
   BANNED_TOKENS,
   FIX_RULES,
@@ -136,7 +137,7 @@ function walk(dir, out) {
   } catch {
     return;
   }
-  entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  entries.sort((a, b) => compareStrings(a.name, b.name));
   for (const e of entries) {
     const full = join(dir, e.name);
     if (e.isDirectory()) {
@@ -155,7 +156,7 @@ function expandRoot(root, pattern) {
     const next = [];
     for (const d of dirs) {
       if (part === "*") {
-        let entries = [];
+        let entries;
         try {
           entries = readdirSync(d, { withFileTypes: true });
         } catch {

@@ -263,7 +263,7 @@ export class MeCache implements MeCacheStore {
       )) {
         if (wsData !== null && typeof wsData === "object") {
           for (const key of STRIP_FROM_WORKSPACES) {
-            delete (wsData as Record<string, unknown>)[key];
+            Reflect.deleteProperty(wsData, key);
           }
         }
       }
@@ -336,8 +336,8 @@ function mapDump(
 function stringifyOrdered(value: unknown, depth: number): string {
   const pad = "  ".repeat(depth + 1);
   const close = "  ".repeat(depth);
-  if (value instanceof Map) {
-    const entries = [...(value as Map<string, unknown>)];
+  const entries = orderedEntriesOf(value);
+  if (entries !== null) {
     if (entries.length === 0) {
       return "{}";
     }
@@ -358,18 +358,29 @@ function stringifyOrdered(value: unknown, depth: number): string {
       .join(",\n");
     return `[\n${body}\n${close}]`;
   }
-  if (value !== null && typeof value === "object") {
-    return stringifyOrdered(
-      new Map(Object.entries(value as Record<string, unknown>)),
-      depth,
-    );
-  }
   // lib.d.ts types `JSON.stringify` as `string`, but functions/symbols
   // really do come back `undefined` at runtime (an `as`, since a typed
   // `const` would narrow straight back).
   const text = JSON.stringify(value === undefined ? null : value) as
     string | undefined;
   return text ?? "null";
+}
+
+/**
+ * The ordered members of a Map or plain object (a plain object reads in
+ * its own insertion order), or `null` for anything else.
+ *
+ * @param value - The candidate container.
+ * @returns Key/value pairs in order, or `null`.
+ */
+function orderedEntriesOf(value: unknown): Array<[string, unknown]> | null {
+  if (value instanceof Map) {
+    return [...(value as Map<string, unknown>)];
+  }
+  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    return Object.entries(value as Record<string, unknown>);
+  }
+  return null;
 }
 
 /**

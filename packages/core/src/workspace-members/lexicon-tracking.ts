@@ -143,9 +143,13 @@ export async function getEventDefinitions(
   options: WorkspaceGetEventDefinitionsOptions,
 ): Promise<EventDefinition[]> {
   const raw = await client.getEventDefinitions(options.names);
-  return validateResponseModels(EventDefinition, raw.map(native), {
-    endpoint: "get_event_definitions",
-  });
+  return validateResponseModels(
+    EventDefinition,
+    raw.map((item) => native(item)),
+    {
+      endpoint: "get_event_definitions",
+    },
+  );
 }
 
 /**
@@ -207,9 +211,13 @@ export async function bulkUpdateEventDefinitions(
   const raw = await client.bulkUpdateEventDefinitions(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return validateResponseModels(EventDefinition, raw.map(native), {
-    endpoint: "bulk_update_event_definitions",
-  });
+  return validateResponseModels(
+    EventDefinition,
+    raw.map((item) => native(item)),
+    {
+      endpoint: "bulk_update_event_definitions",
+    },
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -235,9 +243,13 @@ export async function getPropertyDefinitions(
     options.names,
     options.resource_type ?? null,
   );
-  return validateResponseModels(PropertyDefinition, raw.map(native), {
-    endpoint: "get_property_definitions",
-  });
+  return validateResponseModels(
+    PropertyDefinition,
+    raw.map((item) => native(item)),
+    {
+      endpoint: "get_property_definitions",
+    },
+  );
 }
 
 /**
@@ -282,9 +294,13 @@ export async function bulkUpdatePropertyDefinitions(
   const raw = await client.bulkUpdatePropertyDefinitions(
     params.modelDumpExcludeNone({ byAlias: true }),
   );
-  return validateResponseModels(PropertyDefinition, raw.map(native), {
-    endpoint: "bulk_update_property_definitions",
-  });
+  return validateResponseModels(
+    PropertyDefinition,
+    raw.map((item) => native(item)),
+    {
+      endpoint: "bulk_update_property_definitions",
+    },
+  );
 }
 
 // ---------------------------------------------------------------------------

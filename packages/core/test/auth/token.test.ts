@@ -78,8 +78,9 @@ describe("parseOAuthTokens", () => {
 
   it("rejects missing/malformed required fields", () => {
     for (const field of ["access_token", "expires_at", "scope", "token_type"]) {
-      const broken: Record<string, unknown> = { ...TOKENS_PAYLOAD };
-      delete broken[field];
+      const broken: Record<string, unknown> = Object.fromEntries(
+        Object.entries(TOKENS_PAYLOAD).filter(([key]) => key !== field),
+      );
       expect(() => parseOAuthTokens(broken)).toThrow(ResponseValidationError);
     }
     expect(() =>

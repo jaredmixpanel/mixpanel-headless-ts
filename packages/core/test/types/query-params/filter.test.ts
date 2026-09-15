@@ -457,14 +457,14 @@ describe("property-spec helper types", () => {
     // match Python; tsc-typed callers are unaffected.
     expect(
       () => new PropertyInput(undefined as unknown as { name: string }),
-    ).toThrowError(
+    ).toThrow(
       new TypeError(
         "PropertyInput.__init__() missing 1 required positional argument: 'name'",
       ),
     );
     expect(
       () => new PropertyInput({ property: "x" } as unknown as { name: string }),
-    ).toThrowError(
+    ).toThrow(
       new TypeError(
         "PropertyInput.__init__() missing 1 required positional argument: 'name'",
       ),
@@ -482,12 +482,12 @@ describe("property-spec helper types", () => {
   });
 
   it("InlineCustomProperty defaults + numeric factory", () => {
-    const inline = new InlineCustomProperty({
+    const prop = new InlineCustomProperty({
       formula: "A * B",
       inputs: { A: new PropertyInput({ name: "price", type: "number" }) },
     });
-    expect(inline.property_type).toBeNull();
-    expect(inline.resource_type).toBe("events");
+    expect(prop.property_type).toBeNull();
+    expect(prop.resource_type).toBe("events");
     const numeric = InlineCustomProperty.numeric("A * B", {
       A: "price",
       B: "quantity",
@@ -906,7 +906,7 @@ describe("Filter direct construction (PR #236 operator validation)", () => {
 
   it("every alias key is a public factory name (camelized) or 'is equal to'", () => {
     const camel = (name: string): string =>
-      name.replace(/_([a-z])/g, (_m, c: string) => c.toUpperCase());
+      name.replaceAll(/_([a-z])/g, (_m, c: string) => c.toUpperCase());
     for (const key of Object.keys(FILTER_OPERATOR_ALIASES)) {
       if (key === "is equal to") continue;
       expect(

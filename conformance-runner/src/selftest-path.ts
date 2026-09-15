@@ -56,7 +56,7 @@ export function resolveSelftestPath(): string {
       return candidate;
     }
   }
-  return candidates[candidates.length - 1] as string;
+  return candidates.at(-1) as string;
 }
 
 /**

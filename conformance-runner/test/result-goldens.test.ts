@@ -274,9 +274,9 @@ function diffPlain(actual: unknown, expected: JsonValue, path: string): void {
     expect(Array.isArray(actual), path).toBe(true);
     const actualArray = actual as readonly unknown[];
     expect(actualArray, path).toHaveLength(expected.length);
-    expected.forEach((item, index) => {
+    for (const [index, item] of expected.entries()) {
       diffPlain(actualArray[index], item, `${path}[${String(index)}]`);
-    });
+    }
     return;
   }
   expect(typeof actual === "object" && actual !== null, path).toBe(true);

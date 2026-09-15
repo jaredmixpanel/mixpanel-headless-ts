@@ -486,7 +486,7 @@ export function meFetch(
   payload: Record<string, unknown> | (() => Record<string, unknown>),
   status = 200,
 ): typeof fetch {
-  return async (): Promise<Response> => {
+  return (): Promise<Response> => {
     const body = typeof payload === "function" ? payload() : payload;
     // The app-API envelope: `appRequest` unwraps `results` (matching
     // Python's `api_client.me()`, which the monkeypatched `_fake_me`
@@ -495,10 +495,12 @@ export function meFetch(
       status === 200 && !Object.hasOwn(body, "results")
         ? { results: body }
         : body;
-    return new Response(JSON.stringify(wrapped), {
-      status,
-      headers: { "content-type": "application/json" },
-    });
+    return Promise.resolve(
+      Response.json(wrapped, {
+        status,
+        headers: { "content-type": "application/json" },
+      }),
+    );
   };
 }
 
@@ -585,9 +587,9 @@ export function makeEffects(options: MakeEffectsOptions = {}): EffectsBundle {
           // Mirror OnDiskTokenResolver.get_browser_token: serve the
           // persisted per-account tokens (the fake store here), else
           // the actionable missing-tokens error.
-          const persisted = tokenStore.written.get(name);
-          if (persisted !== undefined) {
-            return Promise.resolve(persisted.access_token.reveal());
+          const written = tokenStore.written.get(name);
+          if (written !== undefined) {
+            return Promise.resolve(written.access_token.reveal());
           }
           return Promise.reject(
             new OAuthError(
@@ -651,9 +653,8 @@ export function makeEffects(options: MakeEffectsOptions = {}): EffectsBundle {
     },
     fetchImpl:
       options.fetchImpl ??
-      (async (): Promise<Response> => {
-        throw new TypeError("fetch failed (no fetchImpl stubbed)");
-      }),
+      ((): Promise<Response> =>
+        Promise.reject(new TypeError("fetch failed (no fetchImpl stubbed)"))),
     now: (): number => Date.now(),
   };
 
@@ -682,7 +683,7 @@ export function setEnv(
   value: string | undefined,
 ): void {
   if (value === undefined) {
-    delete bundle.envBag[name];
+    Reflect.deleteProperty(bundle.envBag, name);
     return;
   }
   bundle.envBag[name] = value;

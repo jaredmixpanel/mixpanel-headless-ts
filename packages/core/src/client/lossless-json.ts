@@ -140,7 +140,9 @@ class Parser {
     if (this.atEnd()) {
       throw new LosslessJsonError("unexpected end of input", this.pos);
     }
-    const ch = this.text[this.pos];
+    // `charAt` (not indexing): `atEnd()` above guarantees a character, and
+    // `charAt` is typed `string`, so the switch is over a closed set.
+    const ch = this.text.charAt(this.pos);
     switch (ch) {
       case "{": {
         return this.parseObject();

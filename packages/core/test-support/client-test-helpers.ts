@@ -195,12 +195,47 @@ export function createMockClient(
   const client = createMixpanelClient({
     session,
     fetch: transport.fetch,
-    sleep: async (ms: number): Promise<void> => {
+    sleep: (ms: number): Promise<void> => {
       sleeps.push(ms);
+      return Promise.resolve();
     },
     random: () => 0,
     tokenResolver: staticTokenResolver(),
     ...extra,
   });
   return { client, transport, sleeps };
+}
+
+/**
+ * Lift a synchronous iterable into an `AsyncIterable` — the test twin of
+ * an `async function*` that has nothing to await (a fresh iterator per
+ * `for await`, so a generator function's result can be re-iterated by
+ * calling the function again, as the streaming stubs do).
+ *
+ * @param items - The synchronous source.
+ * @returns An async iterable yielding the same items in order.
+ */
+export function asyncIterableOf<T>(items: Iterable<T>): AsyncIterable<T> {
+  return {
+    [Symbol.asyncIterator]: (): AsyncIterator<T> => {
+      const inner = items[Symbol.iterator]();
+      return {
+        next: (): Promise<IteratorResult<T>> => Promise.resolve(inner.next()),
+      };
+    },
+  };
+}
+
+/**
+ * Drain an async iterable into an array (Python's `list(...)`).
+ *
+ * @param source - The async iterable.
+ * @returns Every yielded item, in order.
+ */
+export async function drain<T>(source: AsyncIterable<T>): Promise<T[]> {
+  const out: T[] = [];
+  for await (const item of source) {
+    out.push(item);
+  }
+  return out;
 }

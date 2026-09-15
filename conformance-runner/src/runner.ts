@@ -481,11 +481,11 @@ async function replayVector(
 
   const contextFor = (
     api: string,
-    kwargs: Record<string, unknown>,
+    callKwargs: Record<string, unknown>,
     rawInput: Readonly<Record<string, JsonValue>>,
   ): InvocationContext => ({
     api,
-    kwargs,
+    kwargs: callKwargs,
     rawInput,
     shims,
     ...(harness === undefined ? {} : { fetch: harness.fetch }),
@@ -511,8 +511,8 @@ async function replayVector(
   // Execute call.setup[] in order (D2): state mutators and prerequisite
   // calls whose transport traffic is part of expect.interactions[].
   for (const entry of vector.setup) {
-    const implementation = deps.implementations.get(entry.api);
-    if (implementation === undefined) {
+    const setupImplementation = deps.implementations.get(entry.api);
+    if (setupImplementation === undefined) {
       // Defensive: gateApis already short-circuited unbound names.
       const gated = unboundVerdict(
         entry.api,
@@ -525,9 +525,11 @@ async function replayVector(
         ...(gated.diff === undefined ? {} : { diff: gated.diff }),
       };
     }
-    const kwargs = deps.codecs.decodeInputKwargs(entry.input);
+    const setupKwargs = deps.codecs.decodeInputKwargs(entry.input);
     try {
-      await implementation(contextFor(entry.api, kwargs, entry.input));
+      await setupImplementation(
+        contextFor(entry.api, setupKwargs, entry.input),
+      );
     } catch {
       // Setup returns/raises are NOT diffed (design D2 logged
       // limitation, Python runner execute.py:532-541): earlier test

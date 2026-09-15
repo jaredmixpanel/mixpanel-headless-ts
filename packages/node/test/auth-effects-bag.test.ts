@@ -72,7 +72,10 @@ afterEach(() => {
  * @returns The bag plus the tmp config path.
  */
 function tmpBag(
-  extra: Omit<Parameters<typeof createNodeAuthEffects>[0], "configPath"> = {},
+  extra: Omit<
+    NonNullable<Parameters<typeof createNodeAuthEffects>[0]>,
+    "configPath"
+  > = {},
 ): {
   effects: ReturnType<typeof createNodeAuthEffects>;
   configPath: string;
@@ -245,30 +248,31 @@ describe("§4.4 seam-closure sweep — zero UNPORTED throws over the real bag", 
   });
 
   it("oauthFlow.login runs the REAL flow (injected flowSeams, fake DCR/exchange fetch)", async () => {
-    const { effects: baseEffects } = tmpBag();
-    void baseEffects;
-    const storageDir = process.env["MP_OAUTH_STORAGE_DIR"]!;
+    tmpBag(); // points MP_OAUTH_STORAGE_DIR at a fresh tmp root
     const openedUrls: string[] = [];
     const fetchImpl = ((input: RequestInfo | URL): Promise<Response> => {
       const url = input instanceof Request ? input.url : String(input);
       if (url.endsWith("/oauth/mcp/register/")) {
         return Promise.resolve(
-          new Response(JSON.stringify({ client_id: "sweep-client" }), {
-            status: 201,
-            headers: { "content-type": "application/json" },
-          }),
+          Response.json(
+            { client_id: "sweep-client" },
+            {
+              status: 201,
+              headers: { "content-type": "application/json" },
+            },
+          ),
         );
       }
       if (url.endsWith("/oauth/token/")) {
         return Promise.resolve(
-          new Response(
-            JSON.stringify({
+          Response.json(
+            {
               access_token: "sweep-tok",
               refresh_token: "sweep-refresh",
               expires_in: 3600,
               scope: "projects",
               token_type: "Bearer",
-            }),
+            },
             { status: 200, headers: { "content-type": "application/json" } },
           ),
         );
@@ -298,11 +302,6 @@ describe("§4.4 seam-closure sweep — zero UNPORTED throws over the real bag", 
     expect(tokens.access_token.reveal()).toBe("sweep-tok");
     expect(openedUrls).toHaveLength(1);
     expect(openedUrls[0] ?? "").toContain("code_challenge_method=S256");
-    // The DCR client persisted to the tmp storage root (never ~/.mp).
-    const manager = new ConfigManager({
-      configPath: join(storageDir, "unused.toml"),
-    });
-    void manager; // (path sanity only — the guard lives in helpers)
   });
 });
 
@@ -319,9 +318,9 @@ describe("TestPersist (test_workspace_use.py:190) — REAL node bag swap-in (pac
     effects: ReturnType<typeof createNodeAuthEffects>;
   } {
     const { effects, configPath } = tmpBag();
-    const accounts = createAccountsNamespace(effects);
-    // Namespace-level add: FR-045 promotes the first account.
-    void accounts; // adds below go through config to keep both sync.
+    // Namespace-level add: FR-045 promotes the first account; the adds
+    // below go through config to keep both in sync.
+    createAccountsNamespace(effects);
     effects.config.addAccount("team", {
       type: "service_account",
       region: "us",

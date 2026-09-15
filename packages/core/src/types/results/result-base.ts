@@ -312,11 +312,11 @@ export function expectStrArray(
   cls: string,
 ): readonly string[] {
   const value = expectArray(raw, field, cls);
-  value.forEach((item, index) => {
+  for (const [index, item] of value.entries()) {
     if (typeof item !== "string") {
       decodeFail(cls, `${field}[${String(index)}]`, "string", item);
     }
-  });
+  }
   return value as readonly string[];
 }
 
@@ -337,11 +337,11 @@ export function expectRecordArray(
   cls: string,
 ): ReadonlyArray<Readonly<Record<string, unknown>>> {
   const value = expectArray(raw, field, cls);
-  value.forEach((item, index) => {
+  for (const [index, item] of value.entries()) {
     if (!isPlainRecord(item)) {
       decodeFail(cls, `${field}[${String(index)}]`, "object", item);
     }
-  });
+  }
   return value as ReadonlyArray<Readonly<Record<string, unknown>>>;
 }
 

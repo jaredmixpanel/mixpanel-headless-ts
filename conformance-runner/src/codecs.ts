@@ -221,7 +221,7 @@ export interface RichTagEncoder {
 
 /** Matches a lone (unpaired) UTF-16 surrogate anywhere in a string. */
 const LONE_SURROGATE =
-  /(?:[\uD800-\uDBFF](?![\uDC00-\uDFFF]))|(?:(?<![\uD800-\uDBFF])[\uDC00-\uDFFF])/;
+  /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
 
 /**
  * Reject strings containing lone surrogates (D6 rule 2).
@@ -372,7 +372,7 @@ export class CodecRegistry {
           return encoder.encode(candidate, (child) => this.encodeValue(child));
         }
       }
-      return undefined;
+      return;
     });
   }
 

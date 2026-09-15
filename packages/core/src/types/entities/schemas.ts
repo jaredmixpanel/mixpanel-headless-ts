@@ -1522,7 +1522,7 @@ export class EventDeletionRequest extends EntityModel {
       nullable: true,
       // Python `_normalize_filters` (mode="before"): `[]` from the API
       // coerces to None; a non-empty list wraps as {"items": [...]}.
-      before: (value) => {
+      before: (value: unknown): unknown => {
         if (!Array.isArray(value)) {
           return value;
         }

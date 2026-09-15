@@ -60,8 +60,10 @@
  * @internal
  */
 
+import { codepoints } from "../compat/codepoint.js";
 import { PYTHON_NUMERIC_WHITESPACE } from "../compat/whitespace.gen.js";
 import { ValidationError } from "../errors.js";
+import { defined } from "../invariant.js";
 // R10.8: the PyFloat-carrier duck check has exactly one implementation in
 // the port (landed by B2 shard V1a). Importing it here keeps the sorting
 // slice carrier-aware WITHOUT asking the (b′) binding to unwrap floats on
@@ -169,7 +171,7 @@ export function sortingCodeMapper(
   errType: string,
   loc: ReadonlyArray<string | number>,
 ): string {
-  const last = loc.length > 0 ? loc[loc.length - 1] : null;
+  const last = loc.length > 0 ? loc.at(-1) : null;
   // One switch over `errType` (source-order branches preserved); a case
   // that matches the type but not the path falls through to the default
   // mapping exactly as the Python if-chain does.
@@ -262,11 +264,11 @@ export function locToJsonPath(
       continue;
     }
     if (typeof item === "number") {
-      if (parts.length === 0) {
+      const last = parts.length - 1;
+      if (last < 0) {
         parts.push(`[${String(item)}]`);
       } else {
-        parts[parts.length - 1] =
-          `${parts[parts.length - 1]!}[${String(item)}]`;
+        parts[last] = `${parts[last] ?? ""}[${String(item)}]`;
       }
     } else {
       parts.push(item);
@@ -314,18 +316,18 @@ function translatePydanticError(
  * @returns The trimmed string.
  */
 function pydanticTrim(text: string): string {
-  const cps = [...text];
+  const cps = codepoints(text);
   let start = 0;
   let end = cps.length;
   while (start < end) {
-    const cp = cps[start]!.codePointAt(0);
+    const cp = cps[start]?.codePointAt(0);
     if (cp === undefined || !PYTHON_NUMERIC_WHITESPACE.has(cp)) {
       break;
     }
     start += 1;
   }
   while (end > start) {
-    const cp = cps[end - 1]!.codePointAt(0);
+    const cp = cps[end - 1]?.codePointAt(0);
     if (cp === undefined || !PYTHON_NUMERIC_WHITESPACE.has(cp)) {
       break;
     }
@@ -368,8 +370,10 @@ function pydanticIntFromString(text: string): boolean {
 function asciiLower(text: string): string {
   let out = "";
   for (const ch of text) {
-    const cp = ch.codePointAt(0)!;
-    out += cp >= 0x41 && cp <= 0x5a ? String.fromCodePoint(cp + 0x20) : ch;
+    // Single-code-point strings compare by code point here: only the
+    // ASCII range "A".."Z" folds (a Python `str.lower()` twin would be
+    // wrong — this is the ASCII-only fold pydantic-core applies).
+    out += ch >= "A" && ch <= "Z" ? ch.toLowerCase() : ch;
   }
   return out;
 }
@@ -388,8 +392,8 @@ function underscoresWellPlaced(text: string): boolean {
     if (text[i] !== "_") {
       continue;
     }
-    const prev = i > 0 ? text[i - 1]! : "";
-    const next = i + 1 < text.length ? text[i + 1]! : "";
+    const prev = text[i - 1] ?? "";
+    const next = text[i + 1] ?? "";
     if (!digits.includes(prev) || !digits.includes(next)) {
       return false;
     }
@@ -985,7 +989,7 @@ export function validateFieldValue(
       // `1`/`0` and `1.0` matches `1`; strings never coerce
       // (probe `lit-int/*`).
       const numeric =
-        typeof value === "boolean" ? (value ? 1 : 0) : numericValue(value);
+        typeof value === "boolean" ? Number(value) : numericValue(value);
       if (numeric !== undefined && type.values.includes(numeric)) {
         return;
       }
@@ -1138,9 +1142,9 @@ export function validateFieldValue(
         });
         return;
       }
-      value.forEach((item, index) => {
+      for (const [index, item] of value.entries()) {
         validateFieldValue(item, type.item, [...loc, index], out);
-      });
+      }
       return;
     }
     case "dict": {
@@ -1177,17 +1181,17 @@ export function validateFieldValue(
         });
         return;
       }
-      type.items.forEach((itemType, index) => {
+      for (const [index, itemType] of type.items.entries()) {
         if (index >= value.length) {
           out.push({
             type: "missing",
             loc: [...loc, index],
             msg: "Field required",
           });
-          return;
+          continue;
         }
         validateFieldValue(value[index], itemType, [...loc, index], out);
-      });
+      }
       return;
     }
     case "model": {
@@ -1233,10 +1237,9 @@ export function validateFieldValue(
  * @returns The message pydantic emits.
  */
 function literalMessage(quoted: readonly string[]): string {
+  const last = defined(quoted.at(-1), "literal alternative");
   const rendered =
-    quoted.length === 1
-      ? quoted[0]!
-      : `${quoted.slice(0, -1).join(", ")} or ${quoted[quoted.length - 1]!}`;
+    quoted.length === 1 ? last : `${quoted.slice(0, -1).join(", ")} or ${last}`;
   return `Input should be ${rendered}`;
 }
 

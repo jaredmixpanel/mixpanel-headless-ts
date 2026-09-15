@@ -31,6 +31,7 @@
  */
 
 import {
+  codepoints,
   compareCodepoints,
   cpSlice,
   sortedByCodepoint,
@@ -39,6 +40,7 @@ import { pythonInt } from "../compat/python-int.js";
 import { pythonRepr, pythonStr } from "../compat/python-str.js";
 import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
 import { QueryError } from "../errors.js";
+import { defined } from "../invariant.js";
 import { AttributeError, ValueError } from "../query/python-builtins.js";
 import { fromTimestampUtcIso, timestampNumber } from "../query/transforms.js";
 import { isPythonDict, pythonTypeName } from "../query/validation-shared.js";
@@ -176,6 +178,26 @@ function dictGetRecord(
 }
 
 /**
+ * Python `a or b or fallback` — the first truthy candidate, else the
+ * fallback.
+ *
+ * @param candidates - The operands, in order.
+ * @param fallback - Returned when every candidate is falsy.
+ * @returns The first Python-truthy candidate, or `fallback`.
+ */
+function firstPyTruthy(
+  candidates: readonly unknown[],
+  fallback: unknown,
+): unknown {
+  for (const candidate of candidates) {
+    if (pyTruthy(candidate)) {
+      return candidate;
+    }
+  }
+  return fallback;
+}
+
+/**
  * CPython's binary `+` over the JSON value domain
  * (`existing + count`, `live_query.py:127` — B5-ARB FID-F1: the raw
  * values are stored and the coercion happens AT the operator site).
@@ -197,7 +219,9 @@ function pyAdd(a: unknown, b: unknown): unknown {
     return a + b;
   }
   if (Array.isArray(a) && Array.isArray(b)) {
-    return [...a, ...b];
+    const left: readonly unknown[] = a;
+    const right: readonly unknown[] = b;
+    return [...left, ...right];
   }
   throw new TypeError(
     `unsupported operand type(s) for +: '${pythonTypeNameOf(a)}' and '${pythonTypeNameOf(b)}'`,
@@ -287,7 +311,7 @@ function pyIter(value: unknown): readonly unknown[] {
     return value;
   }
   if (typeof value === "string") {
-    return [...value];
+    return codepoints(value);
   }
   if (isPythonDict(value)) {
     return Object.keys(asRecord(value));
@@ -471,10 +495,16 @@ export function transformFunnel(
   // operator TypeErrors exactly where Python does (FID-F1).
   const steps: FunnelResultStep[] = [];
   let prevCount: unknown = 0;
-  for (const idx of [...aggregatedCounts.keys()].sort((a, b) => a - b)) {
-    const [event, count] = aggregatedCounts.get(idx)!;
-    const convRate =
-      idx === 0 ? 1.0 : pyGtZero(prevCount) ? pyDiv(count, prevCount) : 0.0;
+  const orderedSteps = [...aggregatedCounts].sort((a, b) => a[0] - b[0]);
+  for (const [idx, [event, count]] of orderedSteps) {
+    let convRate: number;
+    if (idx === 0) {
+      convRate = 1.0;
+    } else if (pyGtZero(prevCount)) {
+      convRate = pyDiv(count, prevCount);
+    } else {
+      convRate = 0.0;
+    }
     steps.push(
       new FunnelResultStep({
         event: passthrough(event),
@@ -487,9 +517,9 @@ export function transformFunnel(
 
   // Overall conversion rate: last step / first step
   let overallRate: number;
-  if (steps.length > 0) {
-    const first = steps[0]!;
-    const last = steps[steps.length - 1]!;
+  const first = steps[0];
+  const last = steps.at(-1);
+  if (first !== undefined && last !== undefined) {
     overallRate = pyGtZero(first.count) ? pyDiv(last.count, first.count) : 0.0;
   } else {
     overallRate = 0.0;
@@ -678,8 +708,8 @@ export function transformQueryResult(
  *   so they sort last.
  */
 function stepSortKey(name: string): [number, string] {
-  const m = STEP_PREFIX_RE.exec(name);
-  return m ? [pythonInt(m[1]!), name] : [2 ** 31, name];
+  const digits = STEP_PREFIX_RE.exec(name)?.[1];
+  return digits === undefined ? [2 ** 31, name] : [pythonInt(digits), name];
 }
 
 /**
@@ -813,8 +843,7 @@ export function extractFunnelStepsFromSeries(
   // Build step dicts
   const result: Array<Record<string, unknown>> = [];
   for (const stepName of stepNames) {
-    const match = STEP_PREFIX_RE.exec(stepName);
-    const event = match ? match[2]! : stepName;
+    const event = STEP_PREFIX_RE.exec(stepName)?.[2] ?? stepName;
 
     result.push({
       event,
@@ -999,7 +1028,7 @@ export function transformRetentionResult(
     }
     if (!found) {
       // No dict value found — the metric key maps to a non-dict
-      const metricKey = seriesKeys[0]!;
+      const metricKey = defined(seriesKeys[0], "retention series key");
       throw new QueryError(
         `Retention series value for key ${pythonRepr(metricKey)} is not a ` +
           `dict (got ${pythonTypeNameOf(seriesDict[metricKey])}). ` +
@@ -1197,7 +1226,7 @@ export function transformSavedReport(
         ? sortedByCodepoint(Object.keys(pyMapping(data, "keys")))
         : [];
       fromDate = dateKeys.length > 0 ? dateKeys[0] : "";
-      toDate = dateKeys.length > 0 ? dateKeys[dateKeys.length - 1] : "";
+      toDate = dateKeys.length > 0 ? dateKeys.at(-1) : "";
       headers = ["$funnel"]; // Synthetic header for type detection
       series = data;
 
@@ -1208,7 +1237,7 @@ export function transformSavedReport(
       computedAt = ""; // Not provided by retention API
       const dateKeys = pyTruthy(raw) ? sortedByCodepoint(Object.keys(raw)) : [];
       fromDate = dateKeys.length > 0 ? dateKeys[0] : "";
-      toDate = dateKeys.length > 0 ? dateKeys[dateKeys.length - 1] : "";
+      toDate = dateKeys.length > 0 ? dateKeys.at(-1) : "";
       headers = ["$retention"]; // Synthetic header for type detection
       series = raw; // Entire response is the data
 
@@ -1331,7 +1360,7 @@ export function transformFlowResult(
 
   // Determine the result mode literal
   const resultMode: FlowMode =
-    mode === "tree" ? "tree" : mode === "paths" ? "paths" : "sankey";
+    mode === "tree" || mode === "paths" ? mode : "sankey";
 
   return new FlowQueryResult({
     computed_at: passthrough(computedAt),
@@ -1404,16 +1433,14 @@ export function parseTreeNode(raw: unknown): FlowTreeNode {
   // Time percentiles: camelCase or snake_case, may be null
   const tpStartRaw = dictGet(rawMap, "timePercentilesFromStart", null);
   const tpPrevRaw = dictGet(rawMap, "timePercentilesFromPrev", null);
-  const tpStart = pyTruthy(tpStartRaw)
-    ? tpStartRaw
-    : pyTruthy(dictGet(rawMap, "time_percentiles_from_start", null))
-      ? dictGet(rawMap, "time_percentiles_from_start", null)
-      : {};
-  const tpPrev = pyTruthy(tpPrevRaw)
-    ? tpPrevRaw
-    : pyTruthy(dictGet(rawMap, "time_percentiles_from_prev", null))
-      ? dictGet(rawMap, "time_percentiles_from_prev", null)
-      : {};
+  const tpStart = firstPyTruthy(
+    [tpStartRaw, dictGet(rawMap, "time_percentiles_from_start", null)],
+    {},
+  );
+  const tpPrev = firstPyTruthy(
+    [tpPrevRaw, dictGet(rawMap, "time_percentiles_from_prev", null)],
+    {},
+  );
 
   return new FlowTreeNode({
     event: passthrough(dictGet(step, "event", "")),

@@ -377,12 +377,14 @@ describe("AIE-926 — the export guard evaluates the EFFECTIVE endpoint table", 
 
   it("relative / unparseable URLs pass through to the inner fetch untouched", async () => {
     const seen: unknown[] = [];
-    const rawFetch = (async (input: RequestInfo | URL): Promise<Response> => {
+    const rawFetch = ((input: RequestInfo | URL): Promise<Response> => {
       seen.push(input);
-      return new Response("{}", {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      });
+      return Promise.resolve(
+        new Response("{}", {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
     }) as typeof fetch;
     const ws = createBrowserWorkspace({
       token: "tok-123",

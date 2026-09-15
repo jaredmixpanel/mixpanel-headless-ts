@@ -71,7 +71,7 @@ describe("ensureBrowserClientRegistered", () => {
 
     // Persisted under the region key in the R11.9 pydantic-JSON shape
     // (`Z` suffix — client_{region}.json twin, §2.1).
-    const raw = await store.get(CREDENTIAL_KEYS.clientInfo("us"));
+    const raw = store.get(CREDENTIAL_KEYS.clientInfo("us"));
     expect(raw).not.toBeNull();
     const payload = JSON.parse(raw!) as Record<string, unknown>;
     expect(payload["client_id"]).toBe("dcr-client-123");

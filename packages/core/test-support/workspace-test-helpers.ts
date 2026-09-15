@@ -221,8 +221,10 @@ export function makeRawProfile(
   lastSeen = "2025-01-15T10:00:00",
   extraProps: Readonly<Record<string, unknown>> = {},
 ): Record<string, unknown> {
-  const props: Record<string, unknown> = { $last_seen: lastSeen };
-  Object.assign(props, extraProps);
+  const props: Record<string, unknown> = {
+    $last_seen: lastSeen,
+    ...extraProps,
+  };
   return { $distinct_id: distinctId, $properties: props };
 }
 

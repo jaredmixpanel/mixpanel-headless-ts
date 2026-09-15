@@ -140,13 +140,15 @@ function parseFileNum(url: string): number {
  * @returns The fetch implementation.
  */
 function cdnFetch(handler: CdnHandler): typeof fetch {
-  return async (input: string | URL | Request): Promise<Response> => {
-    const url =
-      typeof input === "string"
-        ? input
-        : input instanceof URL
-          ? input.href
-          : input.url;
+  return (input: string | URL | Request): Promise<Response> => {
+    let url: string;
+    if (typeof input === "string") {
+      url = input;
+    } else if (input instanceof URL) {
+      url = input.href;
+    } else {
+      url = input.url;
+    }
     const canned = handler(url);
     const headers = new Headers(canned.headers ?? {});
     let body: string | null = null;
@@ -156,7 +158,9 @@ function cdnFetch(handler: CdnHandler): typeof fetch {
     } else if (canned.text !== undefined) {
       body = canned.text;
     }
-    return new Response(body, { status: canned.status, headers });
+    return Promise.resolve(
+      new Response(body, { status: canned.status, headers }),
+    );
   };
 }
 
@@ -442,9 +446,9 @@ describe("credential redaction on transport errors (TestFetchFilesCredentialReda
       // A fetch rejection is the `httpx.ConnectError` analog (R2.10
       // normalizes it to MixpanelHttpError); the message embeds the
       // credentialed URL exactly as httpx's does.
-      fetchImpl: async (input: string | URL | Request): Promise<Response> => {
+      fetchImpl: (input: string | URL | Request): Promise<Response> => {
         const url = input instanceof Request ? input.url : String(input);
-        throw new TypeError(`connection failed for ${url}`);
+        return Promise.reject(new TypeError(`connection failed for ${url}`));
       },
     });
 
@@ -530,9 +534,9 @@ describe("discover without query_fn (TestDiscoverNoQueryFn)", () => {
     const { client } = mockApiClient();
     const calls: unknown[] = [];
     const service = new ReplaysService(client, {
-      queryFn: async (events, options) => {
+      queryFn: (events, options) => {
         calls.push([events, options]);
-        return { series: {} };
+        return Promise.resolve({ series: {} });
       },
     });
     const result = await service.discover({ replayIds: [] });
@@ -629,9 +633,9 @@ function serviceWithSeries(
   );
   const calls: QueryCall[] = [];
   const service = new ReplaysService(client, {
-    queryFn: async (events, queryOptions) => {
+    queryFn: (events, queryOptions) => {
       calls.push({ events, options: queryOptions });
-      return { series };
+      return Promise.resolve({ series });
     },
     ...(options.warn === undefined ? {} : { warn: options.warn }),
   });
@@ -677,7 +681,9 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
   it("test_missing_retention_defaults_30_with_warning", async () => {
     const warnings: string[] = [];
     const { service } = serviceWithSeries(DISCOVERY_SERIES_NO_RETENTION, {
-      warn: (message) => warnings.push(message),
+      warn: (message) => {
+        warnings.push(message);
+      },
     });
     const out = await service.discover({
       distinctId: "u-1",
@@ -715,7 +721,9 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
       },
     };
     const { service } = serviceWithSeries(series, {
-      warn: (message) => warnings.push(message),
+      warn: (message) => {
+        warnings.push(message);
+      },
     });
     const out = await service.discover({
       distinctId: "u-1",
@@ -766,7 +774,9 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
   it("test_missing_retention_warning_has_no_doubled_prefix", async () => {
     const warnings: string[] = [];
     const { service } = serviceWithSeries(DISCOVERY_SERIES_NO_RETENTION, {
-      warn: (message) => warnings.push(message),
+      warn: (text) => {
+        warnings.push(text);
+      },
     });
     await service.discover({
       distinctId: "u-1",

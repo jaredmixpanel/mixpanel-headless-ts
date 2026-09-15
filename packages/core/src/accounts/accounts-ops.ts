@@ -148,8 +148,8 @@ export async function fetchMe(
     tokenResolver: options.tokenResolver ?? effects.tokenResolver,
     // PR #235: `/me` honours `MP_API_BASE_URL` / `MP_APP_BASE_URL`, read
     // per request through the injected env bag (never `process.env`).
-    endpointOverrides: endpointOverridesFromEnv((name) =>
-      effects.env.get(name),
+    endpointOverrides: endpointOverridesFromEnv((variable) =>
+      effects.env.get(variable),
     ),
   });
   try {
@@ -648,8 +648,8 @@ export async function accountsTest(
     session: probeSession,
     fetch: effects.fetchImpl,
     tokenResolver: effects.tokenResolver,
-    endpointOverrides: endpointOverridesFromEnv((name) =>
-      effects.env.get(name),
+    endpointOverrides: endpointOverridesFromEnv((variable) =>
+      effects.env.get(variable),
     ),
   });
   try {

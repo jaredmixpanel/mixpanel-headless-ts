@@ -319,7 +319,7 @@ export async function resolveOrganizationId(
   throw new WorkspaceScopeError(
     `Cannot auto-resolve organization for project ` +
       `${pyRepr(host.projectId)}. Pass organization_id explicitly. ` +
-      `Available organizations: [${available.map(pyRepr).join(", ")}]`,
+      `Available organizations: [${available.map((org) => pyRepr(org)).join(", ")}]`,
     "ORGANIZATION_AMBIGUOUS",
     {
       project_id: host.projectId,
@@ -416,8 +416,21 @@ function pyTypeName(value: unknown): string {
     case "string": {
       return "str";
     }
-    default: {
+    case "object": {
       return "dict";
+    }
+    case "bigint":
+    case "function":
+    case "symbol":
+    case "undefined": {
+      // Not producible from a JSON response body; name the JS type rather
+      // than mislabel it as a dict (CLEANUP-PLAN.md §12 row 8.9).
+      return typeof value;
+    }
+    default: {
+      // Every `typeof` result is listed; TS cannot subtract them from
+      // `unknown`, so it still wants a terminal arm.
+      throw new TypeError(`unexpected typeof result: ${typeof value}`);
     }
   }
 }
@@ -444,12 +457,12 @@ export async function getBusinessContext(
       host,
       options.organization_id ?? null,
     );
-    const raw = await host.client.getBusinessContext({
+    const orgRaw = await host.client.getBusinessContext({
       organization_id: orgId,
     });
     return new BusinessContext({
       level: "organization",
-      content: requireStrField(raw, "content", "get_business_context"),
+      content: requireStrField(orgRaw, "content", "get_business_context"),
       organization_id: orgId,
     });
   }
@@ -496,12 +509,12 @@ export async function setBusinessContext(
       host,
       options.organization_id ?? null,
     );
-    const raw = await host.client.setBusinessContext(content, {
+    const orgRaw = await host.client.setBusinessContext(content, {
       organization_id: orgId,
     });
     return new BusinessContext({
       level: "organization",
-      content: requireStrField(raw, "content", "set_business_context"),
+      content: requireStrField(orgRaw, "content", "set_business_context"),
       organization_id: orgId,
     });
   }

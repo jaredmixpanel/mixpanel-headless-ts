@@ -92,7 +92,9 @@ describe("TestEventExport", () => {
     const batchCounts: number[] = [];
     await drain(
       client.exportEvents("2024-01-01", "2024-01-31", {
-        onBatch: (count) => batchCounts.push(count),
+        onBatch: (count) => {
+          batchCounts.push(count);
+        },
       }),
     );
     expect(batchCounts).toContain(1000);
@@ -203,7 +205,9 @@ describe("TestRetryStateResetRegression", () => {
     });
     await drain(
       client.exportEvents("2024-01-01", "2024-01-31", {
-        onBatch: (count) => currentAttemptCounts.push(count),
+        onBatch: (count) => {
+          currentAttemptCounts.push(count);
+        },
       }),
     );
     if (currentAttemptCounts.length > 0) {
@@ -236,7 +240,9 @@ describe("TestRetryStateResetRegression", () => {
     });
     const profiles = await drain(
       client.exportProfiles({
-        onBatch: (count) => currentAttemptCounts.push(count),
+        onBatch: (count) => {
+          currentAttemptCounts.push(count);
+        },
       }),
     );
     expect(profiles).toHaveLength(1);
@@ -308,8 +314,8 @@ describe("TestNonQueryHostsUnaffected (C1 hand-off)", () => {
     const captured: CapturedFetchRequest[] = [];
     const { client } = createMockClient(
       makeSession({ workspaceId: 777 }),
-      (request) => {
-        captured.push(request);
+      (incoming) => {
+        captured.push(incoming);
         return { status: 200, text: '{"event":"A","properties":{"time":1}}\n' };
       },
     );

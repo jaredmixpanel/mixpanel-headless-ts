@@ -78,7 +78,7 @@ export async function ensureBrowserClientRegistered(
   // validation, Python order).
   const raw = await store.get(key);
   if (raw !== null) {
-    let cached: OAuthClientInfo | null = null;
+    let cached: OAuthClientInfo | null;
     try {
       cached = parseOAuthClientInfo(JSON.parse(raw));
     } catch {

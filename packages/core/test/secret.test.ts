@@ -57,7 +57,7 @@ describe("Secret", () => {
     const s = new Secret("value");
     expect(Object.keys(s)).toStrictEqual([]);
     expect(Object.entries(s)).toStrictEqual([]);
-    expect({ ...s }).toStrictEqual({});
+    expect({ ...(s as object) }).toStrictEqual({}); // deliberate: spreading a Secret leaks nothing
   });
 
   it("property #1: Secret never leaks the wrapped value on any surface", () => {
@@ -83,7 +83,7 @@ describe("Secret", () => {
         expect(Object.keys(secret)).toStrictEqual([]);
         expect(Object.entries(secret)).toStrictEqual([]);
         expect(Object.getOwnPropertyNames(secret)).toStrictEqual([]);
-        expect({ ...secret }).toStrictEqual({});
+        expect({ ...(secret as object) }).toStrictEqual({}); // deliberate: spreading a Secret leaks nothing
         expect(String(secret)).toBe(MASK);
       }),
     );

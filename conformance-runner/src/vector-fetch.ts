@@ -338,9 +338,7 @@ export function createVectorFetch(
     const captured: CapturedRequest = { ...preliminary, slotIndex };
     captures.push(captured);
     if (slotIndex === null) {
-      throw new VectorFetchSequenceError(
-        violations[violations.length - 1] as string,
-      );
+      throw new VectorFetchSequenceError(violations.at(-1) as string);
     }
     consumed[slotIndex] = true;
     const slot = interactions[slotIndex] as ParsedInteraction;
@@ -359,11 +357,11 @@ export function createVectorFetch(
     violations,
     unservedSlots(): number[] {
       const unserved: number[] = [];
-      consumed.forEach((used, index) => {
+      for (const [index, used] of consumed.entries()) {
         if (!used) {
           unserved.push(index);
         }
-      });
+      }
       return unserved;
     },
   };

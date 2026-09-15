@@ -33,6 +33,7 @@
 
 import { DECIMAL_DIGIT_RUNS } from "../compat/decimal-digits.gen.js";
 import {
+  codepoints,
   cpLength,
   isPythonDict,
   pythonFloat,
@@ -358,7 +359,7 @@ export function requireHashable(value: unknown): void {
  */
 export function pythonIterableElements(value: unknown): unknown[] | null {
   if (typeof value === "string") {
-    return [...value];
+    return codepoints(value);
   }
   if (Array.isArray(value)) {
     return [...(value as unknown[])];
@@ -525,7 +526,7 @@ function isDecimalDigit(cp: number): boolean {
  */
 export function matchesDateRe(s: string): boolean {
   const core = s.endsWith("\n") ? s.slice(0, -1) : s;
-  const cps = Array.from(core);
+  const cps = codepoints(core);
   if (cps.length !== 10) {
     return false;
   }
@@ -612,8 +613,8 @@ function asciiDigitsToInt(digits: string): number {
  * @returns True when Python would evaluate `a > b`.
  */
 export function codepointGreater(a: string, b: string): boolean {
-  const as = Array.from(a);
-  const bs = Array.from(b);
+  const as = codepoints(a);
+  const bs = codepoints(b);
   const n = Math.min(as.length, bs.length);
   for (let i = 0; i < n; i++) {
     const ca = (as[i] as string).codePointAt(0) as number;
@@ -691,7 +692,7 @@ class SequenceMatcher {
    * @param a - Candidate string.
    */
   setSeq1(a: string): void {
-    this.a = Array.from(a);
+    this.a = codepoints(a);
     this.matchingBlocks = null;
   }
 
@@ -704,7 +705,7 @@ class SequenceMatcher {
    * @param b - Query string.
    */
   setSeq2(b: string): void {
-    this.b = Array.from(b);
+    this.b = codepoints(b);
     this.matchingBlocks = null;
     this.fullbcount = null;
     const b2j = new Map<string, number[]>();
@@ -875,8 +876,8 @@ class SequenceMatcher {
    */
   ratio(): number {
     let matches = 0;
-    for (const [, , size] of this.getMatchingBlocks()) {
-      matches += size;
+    for (const block of this.getMatchingBlocks()) {
+      matches += block[2];
     }
     return SequenceMatcher.calculateRatio(
       matches,
@@ -892,11 +893,11 @@ class SequenceMatcher {
    */
   quickRatio(): number {
     if (this.fullbcount === null) {
-      const fullbcount = new Map<string, number>();
+      const counts = new Map<string, number>();
       for (const elt of this.b) {
-        fullbcount.set(elt, (fullbcount.get(elt) ?? 0) + 1);
+        counts.set(elt, (counts.get(elt) ?? 0) + 1);
       }
-      this.fullbcount = fullbcount;
+      this.fullbcount = counts;
     }
     const fullbcount = this.fullbcount;
     const avail = new Map<string, number>();

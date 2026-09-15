@@ -201,7 +201,7 @@ function isIpv6Literal(text: string): boolean {
     for (let i = 0; i < groups.length; i += 1) {
       const group = groups[i] as string;
       if (i === groups.length - 1 && group.includes(".")) {
-        if (!/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/u.test(group)) {
+        if (!/^\d{1,3}(?:\.\d{1,3}){3}$/u.test(group)) {
           return null;
         }
         if (group.split(".").some((octet) => Number(octet) > 255)) {
@@ -444,7 +444,7 @@ export function urljoin(base: string, url: string): string {
   }
 
   const baseParts = b.path.split("/");
-  if (baseParts[baseParts.length - 1] !== "") {
+  if (baseParts.at(-1) !== "") {
     baseParts.pop();
   }
   let segments: string[];
@@ -462,13 +462,11 @@ export function urljoin(base: string, url: string): string {
   for (const seg of segments) {
     if (seg === "..") {
       resolved.pop();
-    } else if (seg === ".") {
-      continue;
-    } else {
+    } else if (seg !== ".") {
       resolved.push(seg);
     }
   }
-  const last = segments[segments.length - 1];
+  const last = segments.at(-1);
   if (last === "." || last === "..") {
     resolved.push("");
   }

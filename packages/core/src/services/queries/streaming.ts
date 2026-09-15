@@ -38,6 +38,7 @@ import {
   parseLossless,
 } from "../../client/lossless-json.js";
 import { normalizedAbortError } from "../../client/transport.js";
+import { codepoints } from "../../compat/codepoint.js";
 import { cpSlice, pythonJsonDumps } from "../../compat/index.js";
 import {
   AuthenticationError,
@@ -240,14 +241,16 @@ async function* guardedByteSource(
  * @returns The error text.
  */
 function httpStatusText(status: number, url: string): string {
-  const category =
-    status < 200
-      ? "Informational response"
-      : status < 400
-        ? "Redirect response"
-        : status < 500
-          ? "Client error"
-          : "Server error";
+  let category: string;
+  if (status < 200) {
+    category = "Informational response";
+  } else if (status < 400) {
+    category = "Redirect response";
+  } else if (status < 500) {
+    category = "Client error";
+  } else {
+    category = "Server error";
+  }
   return `${category} '${status}' for url '${url}'`;
 }
 
@@ -299,7 +302,7 @@ function pyIterate(results: JsonValue): readonly JsonValue[] {
   }
   if (typeof results === "string") {
     // Python iterates a str by CODE POINT.
-    return Array.from(results);
+    return codepoints(results);
   }
   if (isPlainRecord(results)) {
     // A truthy dict: Python `for x in dict` yields KEYS.
@@ -541,7 +544,7 @@ export function createStreamingMethods(core: ClientCore): StreamingMethods {
     // Deduplicate, preserving order (`dict.fromkeys`; string ids — a
     // JS Set is the same key discipline for the string domain).
     if (distinctIds !== null) {
-      distinctIds = Array.from(new Set(distinctIds));
+      distinctIds = [...new Set(distinctIds)];
     }
 
     const url = core.buildUrl("engage", "");

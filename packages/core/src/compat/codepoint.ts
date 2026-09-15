@@ -32,6 +32,24 @@ export function cpLength(text: string): number {
 }
 
 /**
+ * Python `list(text)` — the string split into code points (surrogate
+ * pairs stay whole). The deliberate spelling of the `[...text]` idiom:
+ * the spread is correct for code points too, but reads as ambiguous
+ * intent, so every code-point split goes through here.
+ *
+ * @param text - The string to split.
+ * @returns One element per code point, in order.
+ * @example
+ * ```typescript
+ * codepoints("a𝒳b"); // ["a", "𝒳", "b"]  ("a𝒳b".split("") would give 4)
+ * ```
+ */
+export function codepoints(text: string): string[] {
+  // eslint-disable-next-line @typescript-eslint/no-misused-spread -- this IS the code-point split (String's iterator yields code points); every other site routes here
+  return [...text];
+}
+
+/**
  * Normalize one Python slice bound against a length.
  *
  * @param index - The raw bound (may be negative or out of range).
@@ -74,7 +92,7 @@ function normalizeBound(index: number, length: number): number {
  * ```
  */
 export function cpSlice(text: string, start?: number, end?: number): string {
-  const points = Array.from(text);
+  const points = codepoints(text);
   const from = start === undefined ? 0 : normalizeBound(start, points.length);
   const to =
     end === undefined ? points.length : normalizeBound(end, points.length);
@@ -113,6 +131,27 @@ export function compareCodepoints(a: string, b: string): number {
     return 0;
   }
   return remainingA < remainingB ? -1 : 1;
+}
+
+/**
+ * JS default string order — UTF-16 code units, i.e. what `a < b` does.
+ * The counterpart of {@link compareCodepoints} for sort sites that keep
+ * the engine's native order (they differ only where a surrogate pair
+ * meets a BMP character above U+D7FF); consolidating those sites onto
+ * one comparator is a Phase 6 item (CLEANUP-PLAN.md §10.8).
+ *
+ * @param a - Left operand.
+ * @param b - Right operand.
+ * @returns Negative when `a < b`, positive when `a > b`, `0` when equal.
+ */
+export function compareCodeUnits(a: string, b: string): number {
+  if (a < b) {
+    return -1;
+  }
+  if (a > b) {
+    return 1;
+  }
+  return 0;
 }
 
 /**

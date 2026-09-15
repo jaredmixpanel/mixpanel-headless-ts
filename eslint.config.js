@@ -290,6 +290,14 @@ const config = defineConfig([
       // cannot tell them from a mistaken default import.
       "import-x/no-named-as-default-member": "off",
 
+      // `() => undefined` is the typed no-op for `() => T | undefined` seams
+      // and for "replaced later" resolver slots; the rule's `() => {}`
+      // rewrite returns `void` and does not type-check against them.
+      "unicorn/no-useless-undefined": [
+        "error",
+        { checkArrowFunctionBody: false },
+      ],
+
       // --- unicorn: off (with reasons) -----------------------------------
       // Identifier vocabulary is a style choice this codebase does not make.
       "unicorn/prevent-abbreviations": "off",
@@ -721,6 +729,17 @@ const config = defineConfig([
     },
   },
   {
+    name: "repo/rig/error-classes",
+    files: ["conformance-runner/**/*.ts", "differential/**/*.ts"],
+    rules: {
+      // The rig and the oracle report a thrown error's class name to the
+      // Python side ("TS raised TypeError" must pair with Python's
+      // TypeError). A harness-invariant failure therefore stays a bare
+      // `Error`, so it can never satisfy a vector that expects TypeError.
+      "unicorn/prefer-type-error": "off",
+    },
+  },
+  {
     name: "repo/boundary/rig",
     files: [
       "conformance-runner/**/*.ts",
@@ -880,75 +899,6 @@ const config = defineConfig([
   // Each block lists the rules it owns and sets them `off`; the full rule
   // configuration lives above, so landing a lane is "delete the block".
   // -------------------------------------------------------------------------
-
-  // --- Phase 4 lane L3: exhaustiveness, throw/async hygiene, misc — pending; delete this block when the lane lands ---
-  ...lane("L3", {
-    rules: {
-      "@typescript-eslint/switch-exhaustiveness-check": "off",
-      "@typescript-eslint/only-throw-error": "off",
-      "@typescript-eslint/no-misused-spread": "off",
-      "@typescript-eslint/unbound-method": "off",
-      "@typescript-eslint/require-array-sort-compare": "off",
-      "@typescript-eslint/no-unsafe-assignment": "off",
-      "@typescript-eslint/no-unsafe-argument": "off",
-      "@typescript-eslint/no-unsafe-call": "off",
-      "@typescript-eslint/no-unsafe-member-access": "off",
-      "@typescript-eslint/no-unsafe-return": "off",
-      "@typescript-eslint/require-await": "off",
-      "@typescript-eslint/await-thenable": "off",
-      "@typescript-eslint/no-floating-promises": "off",
-      "@typescript-eslint/prefer-promise-reject-errors": "off",
-      "@typescript-eslint/no-deprecated": "off",
-      "@typescript-eslint/no-shadow": "off",
-      "@typescript-eslint/no-non-null-assertion": "off",
-      "no-nested-ternary": "off",
-      "@typescript-eslint/no-dynamic-delete": "off",
-      "@typescript-eslint/no-empty-function": "off",
-      "@typescript-eslint/no-extraneous-class": "off",
-      "@typescript-eslint/no-useless-constructor": "off",
-      "@typescript-eslint/no-generated-empty-object-type": "off",
-      "@typescript-eslint/explicit-module-boundary-types": "off",
-      "@typescript-eslint/explicit-function-return-type": "off",
-      "no-useless-assignment": "off",
-      "@typescript-eslint/prefer-readonly": "off",
-      "@typescript-eslint/no-useless-default-assignment": "off",
-      "unicorn/no-array-callback-reference": "off",
-      "unicorn/no-return-array-push": "off",
-      "unicorn/no-useless-recursion": "off",
-      "unicorn/no-error-property-assignment": "off",
-      "unicorn/no-unreadable-array-destructuring": "off",
-      "unicorn/no-this-assignment": "off",
-      "unicorn/no-object-as-default-parameter": "off",
-      "unicorn/no-unsafe-string-replacement": "off",
-      "unicorn/relative-url-style": "off",
-      "unicorn/prefer-number-coercion": "off",
-      "unicorn/prefer-hoisting-branch-code": "off",
-      "unicorn/no-immediate-mutation": "off",
-      "unicorn/prefer-single-call": "off",
-      "@typescript-eslint/no-meaningless-void-operator": "off",
-      "unicorn/no-useless-continue": "off",
-      "regexp/no-super-linear-backtracking": "off",
-      "regexp/no-dupe-disjunctions": "off",
-      "regexp/no-unused-capturing-group": "off",
-      "regexp/no-useless-non-capturing-group": "off",
-    },
-  }),
-
-  // --- Phase 4 lane L3b: semantics-sensitive autofixers — pending; L3 applies these one rule at a time against the corpus ---
-  ...lane("L3b", {
-    rules: {
-      "unicorn/prefer-spread": "off",
-      "unicorn/no-for-each": "off",
-      "unicorn/prefer-string-replace-all": "off",
-      "unicorn/no-useless-undefined": "off",
-      "unicorn/prefer-at": "off",
-      "unicorn/prefer-number-properties": "off",
-      "unicorn/prefer-string-slice": "off",
-      "unicorn/prefer-response-static-json": "off",
-      "unicorn/prefer-type-error": "off",
-      "unicorn/prefer-math-min-max": "off",
-    },
-  }),
 
   // --- Phase 4 lane L5: jsdoc/tsdoc content — pending; lands at the end of Phase 5 (its acceptance criteria) ---
   ...lane("L5", {

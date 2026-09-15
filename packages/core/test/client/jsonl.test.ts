@@ -17,6 +17,7 @@
 import { describe, expect, it } from "vitest";
 
 import { iterJsonlLines } from "../../src/client/jsonl.js";
+import { asyncIterableOf } from "../../test-support/client-test-helpers.js";
 
 const encoder = new TextEncoder();
 
@@ -26,12 +27,14 @@ const encoder = new TextEncoder();
  * @param chunks - Chunks in arrival order (strings are UTF-8 encoded).
  * @returns An async iterable yielding each chunk once.
  */
-async function* chunkSource(
+function chunkSource(
   chunks: ReadonlyArray<string | Uint8Array>,
 ): AsyncIterable<Uint8Array> {
-  for (const chunk of chunks) {
-    yield typeof chunk === "string" ? encoder.encode(chunk) : chunk;
-  }
+  return asyncIterableOf(
+    chunks.map((chunk) =>
+      typeof chunk === "string" ? encoder.encode(chunk) : chunk,
+    ),
+  );
 }
 
 /**

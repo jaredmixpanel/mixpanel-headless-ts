@@ -828,7 +828,7 @@ export class ConfigManager {
       if (referenced.length > 0 && options.force !== true) {
         throw new AccountInUseError(name, referenced);
       }
-      delete accountsBlock[name];
+      Reflect.deleteProperty(accountsBlock, name);
       // If the removed account was the active one, drop both axes
       // (`config.py:683-689` — the workspace ID is meaningless without
       // its account).
@@ -1071,7 +1071,7 @@ export class ConfigManager {
       if (!Object.hasOwn(targetsBlock, name)) {
         throw new ConfigError(`Target '${name}' not found.`);
       }
-      delete targetsBlock[name];
+      Reflect.deleteProperty(targetsBlock, name);
     });
   }
 

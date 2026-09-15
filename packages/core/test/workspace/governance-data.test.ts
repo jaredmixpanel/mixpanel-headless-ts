@@ -254,7 +254,7 @@ function stubClient(
  * @param error - The rejection value.
  * @returns The stub cast to the client type.
  */
-function throwingClient(method: string, error: unknown): MixpanelClient {
+function throwingClient(method: string, error: Error): MixpanelClient {
   return {
     [method]: (): Promise<never> => Promise.reject(error),
   } as unknown as MixpanelClient;
@@ -683,8 +683,9 @@ describe("TestUploadLookupTable", () => {
   function uploadHandler(
     registerResult: unknown,
     statusResults: readonly unknown[] = [],
-    log: { requests: number; polls: number } = { requests: 0, polls: 0 },
+    counters?: { requests: number; polls: number },
   ): Handler {
+    const log = counters ?? { requests: 0, polls: 0 };
     return (request: CapturedFetchRequest): CannedResponse => {
       log.requests += 1;
       const url = request.url;

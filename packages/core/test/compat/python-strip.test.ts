@@ -4,6 +4,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
+import { codepoints } from "../../src/compat/codepoint.js";
 import { pythonStrip } from "../../src/compat/python-strip.js";
 import { PYTHON_STR_WHITESPACE } from "../../src/compat/whitespace.gen.js";
 
@@ -60,7 +61,7 @@ describe("pythonStrip — properties (fast-check)", () => {
         expect(s.includes(stripped)).toBe(true);
         fc.pre(stripped.length > 0);
         const first = stripped.codePointAt(0)!;
-        const last = [...stripped].at(-1)!;
+        const last = codepoints(stripped).at(-1)!;
         expect(PYTHON_STR_WHITESPACE.has(first)).toBe(false);
         expect(PYTHON_STR_WHITESPACE.has(last.codePointAt(0)!)).toBe(false);
       }),

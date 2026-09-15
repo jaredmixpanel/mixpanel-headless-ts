@@ -182,7 +182,7 @@ export async function buildBrowserBundles(options = {}) {
 
   const [iifeBytes, esmBytes] = await Promise.all([
     bundleOne("iife", GLOBAL_NAME),
-    bundleOne("esm", undefined),
+    bundleOne("esm"),
   ]);
 
   const iifeText = iifeBytes.toString("utf8");

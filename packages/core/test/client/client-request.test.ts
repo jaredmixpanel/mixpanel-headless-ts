@@ -284,8 +284,8 @@ describe("TestAppRequestFormBody (B4-C1 deferral slice)", () => {
     const captured: CapturedFetchRequest[] = [];
     const { client } = createMockClient(
       makeSession({ oauthToken: "test-oauth-token" }),
-      (request) => {
-        captured.push(request);
+      (incoming) => {
+        captured.push(incoming);
         return { status: 200, json: { status: "ok", results: { id: 1 } } };
       },
     );

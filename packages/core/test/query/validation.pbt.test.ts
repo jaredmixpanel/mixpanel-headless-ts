@@ -22,7 +22,11 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
-import { pythonStrip, sortedByCodepoint } from "../../src/compat/index.js";
+import {
+  codepoints,
+  pythonStrip,
+  sortedByCodepoint,
+} from "../../src/compat/index.js";
 import { validateTimeArgs } from "../../src/query/validation-args.js";
 import {
   _suggest,
@@ -101,7 +105,10 @@ function stringFrom(
 
 /** Port of `valid_sets` (frozensets of 1-30 L/N strings, 1-15 chars). */
 const validSetsArb: fc.Arbitrary<ReadonlySet<string>> = fc
-  .array(stringFrom([...LN_ALPHABET], 1, 15), { minLength: 1, maxLength: 30 })
+  .array(stringFrom(codepoints(LN_ALPHABET), 1, 15), {
+    minLength: 1,
+    maxLength: 30,
+  })
   .map((items) => new Set(items));
 
 /**
@@ -119,7 +126,7 @@ const uppercaseKeysArb = fc.constantFrom(
 );
 
 /** Port of `property_names` (1-30 chars, categories L/N). */
-const propertyNamesArb = stringFrom([...LN_ALPHABET], 1, 30);
+const propertyNamesArb = stringFrom(codepoints(LN_ALPHABET), 1, 30);
 
 /**
  * Port of `nonempty_formulas` (full-Unicode `st.text()` 1-100 filtered
@@ -227,7 +234,7 @@ describe("TestContainsControlChars", () => {
   it("test_detects_embedded_control_chars", () => {
     // Python draws prefix/suffix from categories L/N/P; the port uses an
     // explicit representative alphabet over the same categories.
-    const safeAlphabet = [...`${LN_ALPHABET}.,;:!?-_()[]{}'"/@#`];
+    const safeAlphabet = codepoints(`${LN_ALPHABET}.,;:!?-_()[]{}'"/@#`);
     fc.assert(
       fc.property(
         stringFrom(safeAlphabet, 0, 20),
@@ -249,7 +256,9 @@ describe("TestContainsControlChars", () => {
     // Representative L/N/P/Z/S alphabet with the control set excluded
     // (see the file-header fidelity note).
     const cleanAlphabet = [
-      ...`${LN_ALPHABET}.,;:!?-_()[]{}'"/@# +<=>|~$^\u00A0\u2003€é中`,
+      ...codepoints(
+        `${LN_ALPHABET}.,;:!?-_()[]{}'"/@# +<=>|~$^\u00A0\u2003€é中`,
+      ),
       "\u{1F600}",
     ];
     fc.assert(
@@ -368,9 +377,9 @@ describe("TestInlineCustomPropertyValidation", () => {
         fc.array(propertyNamesArb, { minLength: 5, maxLength: 5 }),
         (formula, keys, names) => {
           const inputs: Record<string, PropertyInput> = {};
-          keys.forEach((k, i) => {
+          for (const [i, k] of keys.entries()) {
             inputs[k] = new PropertyInput({ name: names[i]! });
-          });
+          }
           const prop = new InlineCustomProperty({ formula, inputs });
           const errors = _validateCustomProperty(prop, "test");
           expect(
@@ -390,9 +399,9 @@ describe("TestInlineCustomPropertyValidation", () => {
         fc.array(propertyNamesArb, { minLength: 3, maxLength: 3 }),
         (keys, names) => {
           const inputs: Record<string, PropertyInput> = {};
-          keys.forEach((k, i) => {
+          for (const [i, k] of keys.entries()) {
             inputs[k] = new PropertyInput({ name: names[i]! });
-          });
+          }
           const prop = new InlineCustomProperty({
             formula: " ".repeat(3),
             inputs,

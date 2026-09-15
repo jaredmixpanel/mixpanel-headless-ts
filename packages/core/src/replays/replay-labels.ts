@@ -37,7 +37,7 @@ import { pyTruthy } from "../types/results/result-base.js";
  * survive. Verbatim twin of Python's `_NUMERIC_OR_HEX`
  * (`replay_labels.py:36`).
  */
-const NUMERIC_OR_HEX = /^([0-9]+|[0-9a-f]{8,}|[0-9a-fA-F-]{8,})$/;
+const NUMERIC_OR_HEX = /^(?:[0-9]+|[0-9a-f]{8,}|[0-9a-fA-F-]{8,})$/;
 
 /**
  * Normalize a URL into a path template suitable for label aggregation

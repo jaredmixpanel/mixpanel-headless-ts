@@ -70,7 +70,7 @@ function jsonResponse(
   body: unknown,
   headers?: Record<string, string>,
 ): Response {
-  return new Response(JSON.stringify(body), {
+  return Response.json(body, {
     status,
     headers: { "content-type": "application/json", ...headers },
   });

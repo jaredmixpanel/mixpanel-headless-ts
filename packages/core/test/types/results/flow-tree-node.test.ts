@@ -255,15 +255,13 @@ describe("FlowTreeNode.all_paths (TestFlowTreeNodeAllPaths)", () => {
 
   it("test_paths_end_with_leaves", () => {
     for (const path of sampleTree().allPaths()) {
-      expect(path[path.length - 1]?.children).toStrictEqual([]);
+      expect(path.at(-1)?.children).toStrictEqual([]);
     }
   });
 
   it("test_paths_contain_node_chain", () => {
     const paths = sampleTree().allPaths();
-    const purchase_paths = paths.filter(
-      (p) => p[p.length - 1]?.event === "Purchase",
-    );
+    const purchase_paths = paths.filter((p) => p.at(-1)?.event === "Purchase");
     expect(purchase_paths).toHaveLength(2);
     const search_purchase = purchase_paths.find(
       (p) => p[1]?.event === "Search",

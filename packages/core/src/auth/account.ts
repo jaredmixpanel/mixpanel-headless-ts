@@ -27,6 +27,7 @@
  * stay data-only and the exhaustive `switch` lives in one place.
  */
 
+import { cpLength } from "../compat/codepoint.js";
 import {
   MixpanelHeadlessError,
   ParamTypeError,
@@ -288,8 +289,8 @@ function parseAccountBase(
   // Codepoint-counted length per R11.6 (the pattern is ASCII-only, so the
   // counts coincide for VALID names — the guard order still mirrors the
   // constraint set: length + pattern are one Pydantic error boundary).
-  const codepoints = [...name].length;
-  if (codepoints < 1 || codepoints > 64 || !NAME_PATTERN.test(name)) {
+  const codepointCount = cpLength(name);
+  if (codepointCount < 1 || codepointCount > 64 || !NAME_PATTERN.test(name)) {
     parseFail(
       "Account.name must match ^[a-zA-Z0-9_-]+$ (1-64 characters)",
       options,

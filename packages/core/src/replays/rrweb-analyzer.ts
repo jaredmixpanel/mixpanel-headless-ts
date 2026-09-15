@@ -38,7 +38,7 @@
  * (`replays.py:129-133`).
  */
 
-import { cpLength, cpSlice } from "../compat/codepoint.js";
+import { codepoints, cpLength, cpSlice } from "../compat/codepoint.js";
 import { pythonIntCoerce } from "../compat/python-int.js";
 import {
   pythonStr,
@@ -1478,7 +1478,7 @@ function iterList(value: unknown): readonly unknown[] {
  * @returns The capitalized text.
  */
 function capitalize(text: string): string {
-  const chars = Array.from(text);
+  const chars = codepoints(text);
   if (chars.length === 0) {
     return text;
   }

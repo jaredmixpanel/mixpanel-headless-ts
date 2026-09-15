@@ -1231,8 +1231,8 @@ export function createMixpanelClient(
       // extras win on collision (`api_client.py:963-965`).
       const headers: Record<string, string> = {
         Authorization: await getAuthHeader(),
+        ...requestOptions.headers,
       };
-      Object.assign(headers, requestOptions.headers ?? {});
       return executeWithRetry(executeDeps(requestOptions.signal), {
         method,
         url,
@@ -1314,11 +1314,13 @@ export function createMixpanelClient(
     },
     isHttpOpen: (): boolean => httpHandle !== null,
     httpHandle: ensureHttp,
-    close: async (): Promise<void> => {
+    close: (): Promise<void> => {
       httpHandle = null;
+      return Promise.resolve();
     },
-    [Symbol.asyncDispose]: async (): Promise<void> => {
+    [Symbol.asyncDispose]: (): Promise<void> => {
       httpHandle = null;
+      return Promise.resolve();
     },
   };
 

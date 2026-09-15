@@ -54,13 +54,13 @@ describe("pythonSample matches CPython random.Random(seed).sample", () => {
   );
 
   it("rejects k > n with the CPython range code", () => {
-    expect(() => pythonSample(["a", "b"], 3, 42)).toThrowError(
+    expect(() => pythonSample(["a", "b"], 3, 42)).toThrow(
       /Sample larger than population/,
     );
   });
 
   it("rejects a negative k", () => {
-    expect(() => pythonSample(["a", "b"], -1, 42)).toThrowError(
+    expect(() => pythonSample(["a", "b"], -1, 42)).toThrow(
       /Sample larger than population/,
     );
   });

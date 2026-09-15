@@ -111,25 +111,23 @@ function installStubService(ws: Workspace): StubService {
     eventsForResult: new Map(),
   };
   const impl = {
-    discover: async (...args: unknown[]): Promise<ReplaySummary[]> => {
+    discover: (...args: unknown[]): Promise<ReplaySummary[]> => {
       stub.calls.push({ method: "discover", args });
-      return stub.discoverResult;
+      return Promise.resolve(stub.discoverResult);
     },
-    sign: async (...args: unknown[]): Promise<SignedReplay[]> => {
+    sign: (...args: unknown[]): Promise<SignedReplay[]> => {
       stub.calls.push({ method: "sign", args });
-      return stub.signResult;
+      return Promise.resolve(stub.signResult);
     },
-    fetchFiles: async (
+    fetchFiles: (
       ...args: unknown[]
     ): Promise<Array<Record<string, unknown>>> => {
       stub.calls.push({ method: "fetchFiles", args });
-      return stub.fetchFilesResult;
+      return Promise.resolve(stub.fetchFilesResult);
     },
-    eventsFor: async (
-      ...args: unknown[]
-    ): Promise<Map<string, ReplayEvent[]>> => {
+    eventsFor: (...args: unknown[]): Promise<Map<string, ReplayEvent[]>> => {
       stub.calls.push({ method: "eventsFor", args });
-      return stub.eventsForResult;
+      return Promise.resolve(stub.eventsForResult);
     },
   };
   ws.replaysService = impl as unknown as ReplaysService;
@@ -317,9 +315,9 @@ describe("list_replays → discover kwargs (TestListReplaysQueryCall)", () => {
     const ws = makeWorkspace();
     const calls: Array<[string, Readonly<Record<string, unknown>>]> = [];
     ws.replaysService = new ReplaysService(ws.client, {
-      queryFn: async (events, options) => {
+      queryFn: (events, options) => {
         calls.push([events, options]);
-        return { series: {} };
+        return Promise.resolve({ series: {} });
       },
     });
 
@@ -345,9 +343,9 @@ describe("list_replays → discover kwargs (TestListReplaysQueryCall)", () => {
     const ws = makeWorkspace();
     const calls: Array<Readonly<Record<string, unknown>>> = [];
     ws.replaysService = new ReplaysService(ws.client, {
-      queryFn: async (_events, options) => {
+      queryFn: (_events, options) => {
         calls.push(options);
-        return { series: {} };
+        return Promise.resolve({ series: {} });
       },
     });
 
@@ -367,17 +365,24 @@ describe("list_replays → discover kwargs (TestListReplaysQueryCall)", () => {
 describe("missing retention defaults to 30 with a warning (TestRetentionWarning)", () => {
   it("test_missing_retention_emits_userwarning", async () => {
     const recorded: string[] = [];
-    const ws = makeWorkspace({ warn: (message) => recorded.push(message) });
+    const ws = makeWorkspace({
+      warn: (message) => {
+        recorded.push(message);
+      },
+    });
     ws.replaysService = new ReplaysService(ws.client, {
-      queryFn: async () => ({
-        series: {
-          "Session Recording Checkpoint [Minimum Time]": {
-            $overall: { all: 1716810000 },
-            "r-1": { $overall: { all: 1716810000 } },
+      queryFn: () =>
+        Promise.resolve({
+          series: {
+            "Session Recording Checkpoint [Minimum Time]": {
+              $overall: { all: 1716810000 },
+              "r-1": { $overall: { all: 1716810000 } },
+            },
           },
-        },
-      }),
-      warn: (message) => recorded.push(message),
+        }),
+      warn: (message) => {
+        recorded.push(message);
+      },
     });
 
     const result = await ws.listReplays({
@@ -643,14 +648,16 @@ describe("events window passthrough (TestEventsForReplaysWindow)", () => {
 describe("fetch_replays per-replay isolation (TestFetchReplaysResilience)", () => {
   it("test_one_failure_does_not_sink_the_bundle", async () => {
     const ws = makeWorkspace();
-    ws.fetchReplay = async (replayId: string): Promise<Replay> => {
+    ws.fetchReplay = (replayId: string): Promise<Replay> => {
       if (replayId === "r-bad") {
-        throw new ReplayNotFoundError("gone", {
-          details: { replay_id: replayId },
-          statusCode: 404,
-        });
+        return Promise.reject(
+          new ReplayNotFoundError("gone", {
+            details: { replay_id: replayId },
+            statusCode: 404,
+          }),
+        );
       }
-      return makeReplay(replayId);
+      return Promise.resolve(makeReplay(replayId));
     };
     const bundle = await ws.fetchReplays(["r-1", "r-bad", "r-2"]);
     expect(new Set(bundle.replays.map((r) => r.replay_id))).toStrictEqual(
@@ -660,9 +667,10 @@ describe("fetch_replays per-replay isolation (TestFetchReplaysResilience)", () =
 
   it("test_all_failures_raise_first_underlying_error", async () => {
     const ws = makeWorkspace();
-    ws.fetchReplay = async (): Promise<Replay> => {
-      throw new ReplayNotFoundError("gone", { details: {}, statusCode: 404 });
-    };
+    ws.fetchReplay = (): Promise<Replay> =>
+      Promise.reject(
+        new ReplayNotFoundError("gone", { details: {}, statusCode: 404 }),
+      );
     let caught: unknown;
     try {
       await ws.fetchReplays(["r-1", "r-2"]);
@@ -670,6 +678,23 @@ describe("fetch_replays per-replay isolation (TestFetchReplaysResilience)", () =
       caught = error;
     }
     expect(caught).toBeInstanceOf(ReplayNotFoundError);
+  });
+
+  it("a non-Error rejection is re-raised wrapped, with the value as cause", async () => {
+    // Python can only raise BaseException; the port wraps anything else
+    // (CLEANUP-PLAN.md §12 row 8.10) so `throw` always throws an Error.
+    const ws = makeWorkspace();
+    // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- a non-Error rejection is the point of this test
+    ws.fetchReplay = (): Promise<Replay> => Promise.reject("boom");
+    let caught: unknown;
+    try {
+      await ws.fetchReplays(["r-1"]);
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(Error);
+    expect((caught as Error).message).toBe("boom");
+    expect((caught as Error).cause).toBe("boom");
   });
 });
 
@@ -702,12 +727,12 @@ describe("fetch_replays retention threading + batching (TestFetchReplaysBatching
   it("test_retention_by_id_passed_to_each_fetch", async () => {
     const ws = makeWorkspace();
     const seen = new Map<string, unknown>();
-    ws.fetchReplay = async (
+    ws.fetchReplay = (
       rid: string,
-      opts: { retention_days?: number | null } = {},
+      opts: { retention_days?: number | null },
     ): Promise<Replay> => {
       seen.set(rid, opts.retention_days);
-      return makeReplay(rid);
+      return Promise.resolve(makeReplay(rid));
     };
     await ws.fetchReplays(["r-1", "r-2"], {
       retention_by_id: new Map([
@@ -721,30 +746,32 @@ describe("fetch_replays retention threading + batching (TestFetchReplaysBatching
   it("test_events_joined_in_one_batched_call", async () => {
     const ws = makeWorkspace();
     const fetchOpts: Array<Record<string, unknown>> = [];
-    ws.fetchReplay = async (
+    ws.fetchReplay = (
       rid: string,
-      opts: Record<string, unknown> = {},
+      opts: Record<string, unknown>,
     ): Promise<Replay> => {
       fetchOpts.push(opts);
-      return makeReplay(rid);
+      return Promise.resolve(makeReplay(rid));
     };
     const eventsCalls: unknown[][] = [];
-    ws.eventsForReplays = async (
+    ws.eventsForReplays = (
       ids: readonly string[],
     ): Promise<Map<string, ReplayEvent[]>> => {
       eventsCalls.push([ids]);
-      return new Map([
-        [
-          "r-1",
+      return Promise.resolve(
+        new Map([
           [
-            new ReplayEvent({
-              replay_id: "r-1",
-              event_name: "Login",
-              event_time: 1716810002,
-            }),
+            "r-1",
+            [
+              new ReplayEvent({
+                replay_id: "r-1",
+                event_name: "Login",
+                event_time: 1716810002,
+              }),
+            ],
           ],
-        ],
-      ]);
+        ]),
+      );
     };
     const bundle = await ws.fetchReplays(["r-1", "r-2"], {
       include_mixpanel_events: true,
@@ -769,11 +796,12 @@ describe("fetch_replays retention threading + batching (TestFetchReplaysBatching
 
   it("test_no_events_call_when_flag_off", async () => {
     const ws = makeWorkspace();
-    ws.fetchReplay = async (rid: string): Promise<Replay> => makeReplay(rid);
+    ws.fetchReplay = (rid: string): Promise<Replay> =>
+      Promise.resolve(makeReplay(rid));
     let called = 0;
-    ws.eventsForReplays = async (): Promise<Map<string, ReplayEvent[]>> => {
+    ws.eventsForReplays = (): Promise<Map<string, ReplayEvent[]>> => {
       called += 1;
-      return new Map();
+      return Promise.resolve(new Map());
     };
     await ws.fetchReplays(["r-1"]);
     expect(called).toBe(0);
@@ -789,12 +817,14 @@ describe("replays_for_user threads retention (TestReplaysForUserThreadsRetention
       summary("r-2", { retentionDays: 90 }),
     ];
     const fetchCalls: Array<Record<string, unknown>> = [];
-    ws.fetchReplays = async (
+    ws.fetchReplays = (
       _ids: readonly string[],
-      opts: Record<string, unknown> = {},
+      opts: Record<string, unknown>,
     ): Promise<ReplayBundle> => {
       fetchCalls.push(opts);
-      return new ReplayBundle({ replays: [], project_id: 12345 });
+      return Promise.resolve(
+        new ReplayBundle({ replays: [], project_id: 12345 }),
+      );
     };
     await ws.replaysForUser("u-42", {
       from_date: "2026-05-20",

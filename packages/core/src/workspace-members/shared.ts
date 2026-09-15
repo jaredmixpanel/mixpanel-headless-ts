@@ -95,14 +95,17 @@ function describeReceived(value: unknown): string {
     case "string": {
       return `string "${value.slice(0, 40)}"`;
     }
-    case "number":
     case "bigint":
     case "boolean":
-    case "symbol": {
+    case "number":
+    case "symbol":
+    case "undefined": {
       return `${typeof value} ${String(value).slice(0, 40)}`;
     }
     default: {
-      return typeof value;
+      // Every `typeof` result is listed; TS cannot subtract them from
+      // `unknown`, so it still wants a terminal arm.
+      throw new TypeError(`unexpected typeof result: ${typeof value}`);
     }
   }
 }

@@ -66,6 +66,7 @@ import {
   ParamValidationError,
   ValidationError,
 } from "./errors.js";
+import { defined } from "./invariant.js";
 import { ValueError } from "./query/python-builtins.js";
 import { buildSegfilterEntry } from "./query/segfilter.js";
 import {
@@ -1439,8 +1440,7 @@ export function buildFlowParams(options: BuildFlowParamsOptions): ParamsDict {
     steps: stepDicts,
     date_range: buildDateRange({ from_date, to_date, last }),
     chartType: mode === "paths" ? "top-paths" : "sankey",
-    flows_merge_type:
-      mode === "tree" ? "tree" : mode === "paths" ? "list" : "graph",
+    flows_merge_type: flowsMergeType(mode),
     count_type,
     cardinality_threshold: cardinality,
     version: 2,
@@ -1619,8 +1619,10 @@ export function resolveAndBuildFlowParams(
   for (const [i, s] of steps.entries()) {
     const spath = `steps[${i}]`;
     // Per-step forward/reverse type + range checks
-    stepErrors.push(...checkStepDirection(s.forward, "forward", spath));
-    stepErrors.push(...checkStepDirection(s.reverse, "reverse", spath));
+    stepErrors.push(
+      ...checkStepDirection(s.forward, "forward", spath),
+      ...checkStepDirection(s.reverse, "reverse", spath),
+    );
     // Per-step filters_combinator must be "all" or "any"
     // Runtime guard for untyped callers (the type already says
     // "all" | "any"; Python raises for anything else).
@@ -1751,11 +1753,12 @@ export function resolveAndBuildFlowParams(
  *   `max() iterable argument is empty`).
  */
 function pyMax(values: readonly number[]): number {
-  if (values.length === 0) {
+  const [first, ...rest] = values;
+  if (first === undefined) {
     throw new ValueError("max() iterable argument is empty");
   }
-  let best = values[0]!;
-  for (const v of values.slice(1)) {
+  let best = first;
+  for (const v of rest) {
     if (v > best) {
       best = v;
     }
@@ -2301,6 +2304,22 @@ function timegmFromIsoDate(value: string): number {
 }
 
 /**
+ * The `flows_merge_type` bookmark literal for a flows `mode`.
+ *
+ * @param mode - The flows mode (`tree` / `paths` / anything else = sankey).
+ * @returns The bookmark literal.
+ */
+function flowsMergeType(mode: string): "tree" | "list" | "graph" {
+  if (mode === "tree") {
+    return "tree";
+  }
+  if (mode === "paths") {
+    return "list";
+  }
+  return "graph";
+}
+
+/**
  * Days in a proleptic-Gregorian month.
  *
  * @param year - The year.
@@ -2312,7 +2331,7 @@ function daysInMonth(year: number, month: number): number {
   if (month === 2 && isLeapYear(year)) {
     return 29;
   }
-  return lengths[month - 1]!;
+  return defined(lengths[month - 1], "month length");
 }
 
 /**

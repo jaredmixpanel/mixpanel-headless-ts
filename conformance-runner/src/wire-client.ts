@@ -573,7 +573,7 @@ export function registerApiClientCoreBindings(
     });
   });
 
-  implementations.register("api_client.set_workspace_id", async (context) => {
+  implementations.register("api_client.set_workspace_id", (context) => {
     const client = clientFromSession(context);
     const value = requireWireKwarg(context, "workspace_id");
     client.setWorkspaceId(value === null ? null : (value as number));

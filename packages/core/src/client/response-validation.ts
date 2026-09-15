@@ -211,7 +211,8 @@ function nullNotAllowedError(
         input: null,
       };
     }
-    default: {
+    case undefined: {
+      // No scalar kind declared — a nested-model field.
       return {
         type: "model_type",
         loc,

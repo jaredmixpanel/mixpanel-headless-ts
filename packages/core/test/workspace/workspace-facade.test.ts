@@ -75,6 +75,7 @@ import {
   type CannedResponse,
   type CapturedFetchRequest,
   createMockClient,
+  drain,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 import { expectRejects, expectThrows } from "../../test-support/raises.js";
@@ -429,29 +430,29 @@ describe("TestContextManager (test_workspace.py:712)", () => {
 describe("TestLimitValidation (test_workspace.py:754)", () => {
   it("streamEvents rejects a limit over 100000", async () => {
     const { ws } = makeWorkspace();
-    await expect(async () => {
-      for await (const _event of ws.streamEvents({
-        from_date: "2024-01-01",
-        to_date: "2024-01-31",
-        limit: 100001,
-      })) {
-        void _event;
-      }
-    }).rejects.toThrow(/limit must be at most 100000/);
+    await expect(
+      drain(
+        ws.streamEvents({
+          from_date: "2024-01-01",
+          to_date: "2024-01-31",
+          limit: 100001,
+        }),
+      ),
+    ).rejects.toThrow(/limit must be at most 100000/);
     await ws.close();
   });
 
   it("streamEvents rejects a zero or negative limit", async () => {
     const { ws } = makeWorkspace();
-    await expect(async () => {
-      for await (const _event of ws.streamEvents({
-        from_date: "2024-01-01",
-        to_date: "2024-01-31",
-        limit: 0,
-      })) {
-        void _event;
-      }
-    }).rejects.toThrow(/limit must be at least 1/);
+    await expect(
+      drain(
+        ws.streamEvents({
+          from_date: "2024-01-01",
+          to_date: "2024-01-31",
+          limit: 0,
+        }),
+      ),
+    ).rejects.toThrow(/limit must be at least 1/);
     await ws.close();
   });
 });
@@ -558,15 +559,17 @@ describe("TestCodedWorkspaceGuardCodes (test_workspace.py:919)", () => {
 
   it("WR2: streamEvents surfaces the code for a negative limit", async () => {
     const { ws } = makeWorkspace();
-    const error = await expectRejects(async () => {
-      for await (const _event of ws.streamEvents({
-        from_date: "2024-01-01",
-        to_date: "2024-01-31",
-        limit: -5,
-      })) {
-        void _event;
-      }
-    }, "stream must throw");
+    const error = await expectRejects(
+      () =>
+        drain(
+          ws.streamEvents({
+            from_date: "2024-01-01",
+            to_date: "2024-01-31",
+            limit: -5,
+          }),
+        ),
+      "stream must throw",
+    );
     expect(error).toBeInstanceOf(ParamValidationError);
     expect((error as ParamValidationError).code).toBe("WR2_LIMIT_TOO_SMALL");
     await ws.close();
@@ -582,15 +585,17 @@ describe("TestCodedWorkspaceGuardCodes (test_workspace.py:919)", () => {
 
   it("WR3: streamEvents surfaces the code for an oversized limit", async () => {
     const { ws } = makeWorkspace();
-    const error = await expectRejects(async () => {
-      for await (const _event of ws.streamEvents({
-        from_date: "2024-01-01",
-        to_date: "2024-01-31",
-        limit: 200_000,
-      })) {
-        void _event;
-      }
-    }, "stream must throw");
+    const error = await expectRejects(
+      () =>
+        drain(
+          ws.streamEvents({
+            from_date: "2024-01-01",
+            to_date: "2024-01-31",
+            limit: 200_000,
+          }),
+        ),
+      "stream must throw",
+    );
     expect((error as ParamValidationError).code).toBe("WR3_LIMIT_TOO_LARGE");
     await ws.close();
   });

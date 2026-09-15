@@ -49,6 +49,7 @@ import {
   coerceInt64,
   coerceStr,
 } from "../../coerce.js";
+import { cpLength } from "../../compat/codepoint.js";
 import { isPythonDict } from "../../compat/python-dict.js";
 import { ResponseValidationError } from "../../errors.js";
 
@@ -216,7 +217,7 @@ export function modelFail(path: string, message: string): never {
  * @internal
  */
 export function codepointLength(text: string): number {
-  return [...text].length;
+  return cpLength(text);
 }
 
 /**
@@ -366,15 +367,16 @@ function reconstructNested(
     // Python-dict-order container (see the EntityFieldSpec.container
     // doc): Map input keeps its order; plain-object input reads the
     // lossless key-order sidecar via `orderedEntries`.
-    const entries: Array<[string, unknown]> =
-      value instanceof Map
-        ? [...(value as ReadonlyMap<unknown, unknown>)].map(([k, item]) => [
-            String(k),
-            item,
-          ])
-        : isPlainObject(value)
-          ? orderedEntries(value)
-          : modelFail(path, "expected an object");
+    let entries: Array<[string, unknown]>;
+    if (value instanceof Map) {
+      entries = [...(value as ReadonlyMap<unknown, unknown>)].map(
+        ([k, item]) => [String(k), item],
+      );
+    } else if (isPlainObject(value)) {
+      entries = orderedEntries(value);
+    } else {
+      modelFail(path, "expected an object");
+    }
     const out = new Map<string, unknown>();
     for (const [key, item] of entries) {
       out.set(key, one(item, `${path}.${key}`));

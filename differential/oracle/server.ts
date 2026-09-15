@@ -878,14 +878,14 @@ export class OracleServer {
     }
     const kwargs = this.decodeKwargs(rawInput);
     if (api === "compat.zfill") {
-      const value = kwargs["value"];
+      const text = kwargs["value"];
       const width = kwargs["width"];
-      if (typeof value !== "string" || typeof width !== "number") {
+      if (typeof text !== "string" || typeof width !== "number") {
         throw new TypeError(
           "zfill() requires (value: str, width: int) per the Python reference",
         );
       }
-      return zfill(value, width);
+      return zfill(text, width);
     }
     // compat.python_float_str — the only remaining surface member.
     const value = kwargs["value"];

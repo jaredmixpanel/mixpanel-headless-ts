@@ -97,8 +97,18 @@ function describe(value: unknown): string {
     case "undefined": {
       return "undefined";
     }
+    case "object": {
+      return Array.isArray(value) ? "array" : "object";
+    }
+    case "bigint":
+    case "function":
+    case "symbol": {
+      return typeof value;
+    }
     default: {
-      return Array.isArray(value) ? "array" : typeof value;
+      // Every `typeof` result is listed; TS cannot subtract them from
+      // `unknown`, so it still wants a terminal arm.
+      throw new TypeError(`unexpected typeof result: ${typeof value}`);
     }
   }
 }
@@ -141,7 +151,7 @@ export function coerceInt(value: unknown, options: CoerceOptions = {}): number {
     const trimmed = value.trim();
     if (INT_STRING.test(trimmed)) {
       const integerPart = trimmed.split(".", 1)[0] ?? trimmed;
-      return Number(integerPart.replace(/_/g, ""));
+      return Number(integerPart.replaceAll("_", ""));
     }
   }
   fail("int", value, options);
@@ -203,7 +213,7 @@ export function coerceInt64(
     const trimmed = value.trim();
     if (INT_STRING.test(trimmed)) {
       const integerPart = trimmed.split(".", 1)[0] ?? trimmed;
-      return narrowInt64(BigInt(integerPart.replace(/_/g, "")));
+      return narrowInt64(BigInt(integerPart.replaceAll("_", "")));
     }
     fail("int", value, options);
   }
@@ -244,7 +254,7 @@ export function coerceFloat(
       return negative ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY;
     }
     if (FLOAT_STRING.test(trimmed)) {
-      return Number(trimmed.replace(/_/g, ""));
+      return Number(trimmed.replaceAll("_", ""));
     }
   }
   fail("float", value, options);
