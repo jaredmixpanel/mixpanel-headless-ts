@@ -543,9 +543,10 @@ await pipeline(
 
 `Workspace` implements `Symbol.asyncDispose`, so `await using` closes the HTTP pool for you — the twin of Python's `with mp.Workspace() as ws:`:
 
-```ts
+```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
-
+declare function process(event: unknown): void;
+// ---cut---
 {
   await using ws = createNodeWorkspace();
   for await (const event of ws.streamEvents({
