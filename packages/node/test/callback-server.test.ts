@@ -1,9 +1,13 @@
 // Layer-3 translation of `tests/unit/test_auth_callback.py`
 // (b8-packets.md §4.3 row 3): `TestCallbackResult` (:33),
 // `TestStartCallbackServer` (:49), `TestCallbackHtmlSecurity` (:281) —
-// all 12 tests. Real 127.0.0.1 binds on the fixed ports exactly as
-// Python does (packet §7 caution 17 — a local bind, not network); the
-// port-conflict cases occupy 19284 first and assert fallback.
+// all 12 tests. Real 127.0.0.1 binds (packet §7 caution 17 — a local
+// bind, not network). Python binds the fixed ports throughout; here
+// only the two port-SCAN cases do (they occupy 19284… first and assert
+// fallback / exhaustion — the scan is the behaviour under test). Every
+// other case binds `port: 0` and reads the bound port back through the
+// TS-only `onListening` seam (plan 7.4), so parallel vitest workers and
+// a developer's own `mp login` cannot collide with this suite.
 //
 // Python's background-thread + `httpx.get` fixture translates to the
 // returned promise + a global-`fetch` GET with a short bind-retry loop
@@ -69,6 +73,42 @@ async function getWithRetry(url: string): Promise<Response> {
   throw new Error(`callback server never came up: ${String(lastError)}`);
 }
 
+/**
+ * Start the callback server on an ephemeral port (`port: 0`) and hand
+ * back both the pending result promise and the port actually bound.
+ *
+ * @param options - `state` / `timeoutSeconds` for the server.
+ * @returns The server promise plus the bound port.
+ */
+async function startEphemeral(options: {
+  readonly state: string;
+  readonly timeoutSeconds?: number;
+}): Promise<{
+  readonly serverPromise: Promise<readonly [CallbackResult, number]>;
+  readonly port: number;
+}> {
+  let announce: (port: number) => void = () => undefined;
+  const bound = new Promise<number>((resolve) => {
+    announce = resolve;
+  });
+  const serverPromise = startCallbackServer({
+    state: options.state,
+    timeoutSeconds: options.timeoutSeconds ?? 10,
+    port: 0,
+    onListening: (port) => {
+      announce(port);
+    },
+  });
+  // Surface a bind failure instead of hanging on `bound`.
+  const port = await Promise.race([
+    bound,
+    serverPromise.then(() => {
+      throw new Error("callback server settled before it was bound");
+    }),
+  ]);
+  return { serverPromise, port };
+}
+
 describe("TestCallbackResult (test_auth_callback.py:33)", () => {
   it("test_fields_accessible", () => {
     const result = new CallbackResult({ code: "abc123", state: "xyz789" });
@@ -89,25 +129,39 @@ describe("TestCallbackResult (test_auth_callback.py:33)", () => {
 describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
   it("test_returns_code_and_state_from_query_params", async () => {
     const state = "test-state-123";
-    const serverPromise = startCallbackServer({ state, timeoutSeconds: 10 });
+    const { serverPromise, port } = await startEphemeral({ state });
 
     const resp = await getWithRetry(
-      `http://localhost:19284/callback?code=auth-code-456&state=${state}`,
+      `http://localhost:${port}/callback?code=auth-code-456&state=${state}`,
     );
 
-    const [cbResult, port] = await serverPromise;
+    const [cbResult, boundPort] = await serverPromise;
     expect(cbResult.code).toBe("auth-code-456");
     expect(cbResult.state).toBe(state);
-    expect(port).toBe(19284);
+    expect(boundPort).toBe(port);
     expect(resp.status).toBe(200);
+  });
+
+  it("port 0 binds an ephemeral port and reports the bound port, not 0 (plan 7.4)", async () => {
+    const state = "ephemeral-port";
+    const { serverPromise, port } = await startEphemeral({ state });
+    expect(port).not.toBe(0);
+    expect(CALLBACK_PORTS).not.toContain(port);
+
+    await getWithRetry(
+      `http://localhost:${port}/callback?code=c&state=${state}`,
+    );
+
+    const [, boundPort] = await serverPromise;
+    expect(boundPort).toBe(port);
   });
 
   it("test_html_response_sent_to_browser", async () => {
     const state = "html-test";
-    const serverPromise = startCallbackServer({ state, timeoutSeconds: 10 });
+    const { serverPromise, port } = await startEphemeral({ state });
 
     const resp = await getWithRetry(
-      `http://localhost:19284/callback?code=code1&state=${state}`,
+      `http://localhost:${port}/callback?code=code1&state=${state}`,
     );
 
     await serverPromise;
@@ -117,9 +171,8 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
   });
 
   it("test_state_mismatch_raises_oauth_error", async () => {
-    const serverPromise = startCallbackServer({
+    const { serverPromise, port } = await startEphemeral({
       state: "expected-state",
-      timeoutSeconds: 10,
     });
     const settled = serverPromise.then(
       () => null,
@@ -127,7 +180,7 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
     );
 
     await getWithRetry(
-      "http://localhost:19284/callback?code=code1&state=wrong-state",
+      `http://localhost:${port}/callback?code=code1&state=wrong-state`,
     );
 
     const error = await settled;
@@ -136,9 +189,8 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
   });
 
   it("test_error_param_raises_oauth_error", async () => {
-    const serverPromise = startCallbackServer({
+    const { serverPromise, port } = await startEphemeral({
       state: "error-test",
-      timeoutSeconds: 10,
     });
     const settled = serverPromise.then(
       () => null,
@@ -146,7 +198,7 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
     );
 
     await getWithRetry(
-      "http://localhost:19284/callback?error=access_denied" +
+      `http://localhost:${port}/callback?error=access_denied` +
         "&error_description=User+denied+access",
     );
 
@@ -159,6 +211,7 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
     const serverPromise = startCallbackServer({
       state: "timeout-test",
       timeoutSeconds: 0.5,
+      port: 0,
     });
 
     const error = await serverPromise.then(
@@ -204,14 +257,32 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
     });
   });
 
+  it("answers 404 to a stray GET without consuming the one-shot, then accepts /callback (CLEANUP-PLAN 8.2)", async () => {
+    const state = "stray-get";
+    const { serverPromise, port } = await startEphemeral({ state });
+
+    const stray = await getWithRetry(`http://localhost:${port}/favicon.ico`);
+    expect(stray.status).toBe(404);
+    const root = await getWithRetry(`http://localhost:${port}/`);
+    expect(root.status).toBe(404);
+
+    const resp = await getWithRetry(
+      `http://localhost:${port}/callback?code=after-stray&state=${state}`,
+    );
+    expect(resp.status).toBe(200);
+    const [cbResult, boundPort] = await serverPromise;
+    expect(cbResult.code).toBe("after-stray");
+    expect(boundPort).toBe(port);
+  });
+
   it("test_redirect_uri_uses_localhost", async () => {
     // OAuth providers require consistent redirect URIs: `localhost` in
     // the redirect URI while binding 127.0.0.1.
     const state = "localhost-test";
-    const serverPromise = startCallbackServer({ state, timeoutSeconds: 10 });
+    const { serverPromise, port } = await startEphemeral({ state });
 
     const resp = await getWithRetry(
-      `http://localhost:19284/callback?code=local-code&state=${state}`,
+      `http://localhost:${port}/callback?code=local-code&state=${state}`,
     );
 
     const [cbResult] = await serverPromise;
@@ -223,14 +294,14 @@ describe("TestStartCallbackServer (test_auth_callback.py:49)", () => {
 describe("TestCallbackHtmlSecurity (test_auth_callback.py:281)", () => {
   it("test_state_mismatch_does_not_leak_expected_state", async () => {
     const state = "secret-csrf-state-12345";
-    const serverPromise = startCallbackServer({ state, timeoutSeconds: 10 });
+    const { serverPromise, port } = await startEphemeral({ state });
     const settled = serverPromise.then(
       () => null,
       (error: unknown) => error,
     );
 
     const resp = await getWithRetry(
-      "http://localhost:19284/callback?code=code1&state=wrong-state",
+      `http://localhost:${port}/callback?code=code1&state=wrong-state`,
     );
 
     await settled;
@@ -243,10 +314,30 @@ describe("TestCallbackHtmlSecurity (test_auth_callback.py:281)", () => {
     ).toBe(true);
   });
 
+  it("state mismatch error details carry received_state but never expected_state (CLEANUP-PLAN 8.3)", async () => {
+    const state = "secret-csrf-state-67890";
+    const { serverPromise, port } = await startEphemeral({ state });
+    const settled = serverPromise.then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+    await getWithRetry(
+      `http://localhost:${port}/callback?code=code1&state=wrong-state`,
+    );
+
+    const error = await settled;
+    expect(error).toBeInstanceOf(OAuthError);
+    const details = (error as OAuthError).details;
+    expect(details).toEqual({ received_state: "wrong-state" });
+    expect(details).not.toHaveProperty("expected_state");
+    // The serialised form hosts log must not carry the nonce either.
+    expect(JSON.stringify((error as OAuthError).toDict())).not.toContain(state);
+  });
+
   it("test_provider_error_description_is_html_escaped", async () => {
-    const serverPromise = startCallbackServer({
+    const { serverPromise, port } = await startEphemeral({
       state: "escape-test",
-      timeoutSeconds: 10,
     });
     const settled = serverPromise.then(
       () => null,
@@ -255,7 +346,7 @@ describe("TestCallbackHtmlSecurity (test_auth_callback.py:281)", () => {
 
     const xssPayload = encodeURIComponent('<script>alert("xss")</script>');
     const resp = await getWithRetry(
-      "http://localhost:19284/callback?error=server_error" +
+      `http://localhost:${port}/callback?error=server_error` +
         `&error_description=${xssPayload}`,
     );
 

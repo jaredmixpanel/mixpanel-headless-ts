@@ -193,6 +193,51 @@ export async function findAvailablePort(): Promise<number | null> {
   return null;
 }
 
+/** A platform browser-launch command, ready for `spawn(command, args)`. */
+export interface BrowserLaunchArgv {
+  /** The executable to spawn. */
+  readonly command: string;
+  /** Its argv (the URL is always exactly one element, verbatim). */
+  readonly args: readonly string[];
+}
+
+/**
+ * Pure argv builder behind {@link OAuthFlowOptions.openBrowser}'s
+ * default (the `webbrowser.open` twin per platform). Exported so the
+ * command shape is unit-testable on every platform from one host.
+ *
+ * win32 goes through ShellExecute via `rundll32 url.dll,FileProtocolHandler`
+ * — the `os.startfile` path CPython's `webbrowser` takes on Windows.
+ * Never `cmd /c start "" <url>`: `spawn()` (no `shell`) passes a
+ * whitespace-free argument verbatim and cmd.exe then splits it at every
+ * `&` (and expands `%`), so the authorize URL reached the browser
+ * truncated to `?response_type=code` and the remaining query pairs ran
+ * as commands (CLEANUP-PLAN 8.1).
+ *
+ * @param platform - `process.platform`.
+ * @param url - The authorize URL to open.
+ * @returns The command and argv to spawn.
+ */
+export function browserLaunchArgv(
+  platform: NodeJS.Platform,
+  url: string,
+): BrowserLaunchArgv {
+  switch (platform) {
+    case "darwin": {
+      return { command: "open", args: [url] };
+    }
+    case "win32": {
+      return {
+        command: "rundll32",
+        args: ["url.dll,FileProtocolHandler", url],
+      };
+    }
+    default: {
+      return { command: "xdg-open", args: [url] };
+    }
+  }
+}
+
 /**
  * Best-effort platform browser launcher (the `webbrowser.open` twin).
  * Launch failures after spawn are swallowed like `webbrowser.open`
@@ -201,12 +246,7 @@ export async function findAvailablePort(): Promise<number | null> {
  * @param url - The authorize URL to open.
  */
 function defaultOpenBrowser(url: string): void {
-  const [command, args]: readonly [string, readonly string[]] =
-    process.platform === "darwin"
-      ? ["open", [url]]
-      : process.platform === "win32"
-        ? ["cmd", ["/c", "start", "", url]]
-        : ["xdg-open", [url]];
+  const { command, args } = browserLaunchArgv(process.platform, url);
   const child = spawn(command, [...args], {
     stdio: "ignore",
     detached: true,
@@ -431,6 +471,13 @@ export class OAuthFlow {
       );
     }
 
+    // `localhost` on purpose, not RFC 8252 §7.3's loopback literal
+    // (`127.0.0.1`): Mixpanel's redirect_uri allow-list is
+    // `http://localhost:<port>/`, DCR registrations are keyed on this
+    // exact string, and Python pins it (test_redirect_uri_uses_localhost).
+    // The server binds 127.0.0.1 only; nothing listens on ::1, so an
+    // IPv6-first browser gets a refused connect and falls back at once —
+    // no stall (CLEANUP-PLAN 8.4: verified, kept).
     const redirectUri = `http://localhost:${boundPort}/callback`;
 
     // Step 3: ensure client registration (`flow.py:282-288`).

@@ -34,7 +34,7 @@ import {
 
 import { ConfigManager } from "../src/config.js";
 import { atomicWriteBytes } from "../src/io-utils.js";
-import { makeTempDir } from "./helpers.js";
+import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const POSIX = process.platform !== "win32";
 
@@ -717,6 +717,49 @@ describe("TestConfigManagerEdgeCases (test_042_edge_cases.py:459)", () => {
     cm.setActive({ account: "team" });
     expect(cm.getActive().account).toBe("team");
   });
+});
+
+// TS-only (CLEANUP-PLAN 8.5): the parent-dir 0o700 tighten applies to
+// the default `~/.mp` only; a custom `configPath` parent keeps its mode.
+describe("parent directory mode on write (CLEANUP-PLAN 8.5)", () => {
+  it.skipIf(!POSIX)(
+    "writeRaw leaves a custom parent directory's mode alone; file is still 0o600",
+    () => {
+      const custom = join(makeTempDir(cleanups), "shared-config");
+      mkdirSync(custom);
+      chmodSync(custom, 0o755);
+      const cm = new ConfigManager({ configPath: join(custom, "mp.toml") });
+      addSa(cm, "team");
+      expect(statSync(custom).mode & 0o777).toBe(0o755);
+      expect(statSync(cm.configPath).mode & 0o7777).toBe(0o600);
+    },
+  );
+
+  it.skipIf(!POSIX)(
+    "writeRaw still tightens the default ~/.mp parent to 0o700",
+    () => {
+      const restoreEnv = scrubMpEnv();
+      const savedHome = process.env["HOME"];
+      const home = makeTempDir(cleanups);
+      process.env["HOME"] = home;
+      cleanups.push(() => {
+        restoreEnv();
+        if (savedHome === undefined) {
+          delete process.env["HOME"];
+        } else {
+          process.env["HOME"] = savedHome;
+        }
+      });
+      const mpDir = join(home, ".mp");
+      mkdirSync(mpDir);
+      chmodSync(mpDir, 0o755);
+      const cm = new ConfigManager();
+      expect(cm.configPath).toBe(join(mpDir, "config.toml"));
+      addSa(cm, "team");
+      expect(statSync(mpDir).mode & 0o777).toBe(0o700);
+      expect(statSync(cm.configPath).mode & 0o7777).toBe(0o600);
+    },
+  );
 });
 
 // B8-ARB-A SEM-F6 (b8-reviewA-resolution.md): Python `_read_raw` wraps
