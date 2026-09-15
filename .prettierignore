@@ -11,7 +11,7 @@ package-lock.json
 # Vendored / snapshot / generated — byte-frozen, never reformatted.
 vendor/
 conformance-runner/corpus/
-context/
+docs/history/
 conformance-runner/src/api-map.gen.ts
 conformance-runner/bridge-allowlist.gen.json
 packages/core/src/errors-codes.gen.ts

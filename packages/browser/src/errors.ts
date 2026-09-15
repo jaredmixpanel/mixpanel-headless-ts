@@ -3,7 +3,7 @@
  * browser-build policy surfaces with NO Python twin by construction,
  * so they are NOT added to `errors-codes.gen.ts` (that file is
  * generated from the Python contract artifact and hand-edit-tripwired
- * — `scripts/gen-error-codes.mjs`); they live here as exported
+ * — `scripts/generate-error-codes.mjs`); they live here as exported
  * constants instead. R5: assertions and docs key on the CODE, never
  * message text.
  */

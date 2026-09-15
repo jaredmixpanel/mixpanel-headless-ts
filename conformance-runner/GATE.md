@@ -1,3 +1,39 @@
+# Conformance gate — current status
+
+**Corpus pin:** `0dde50608a6af026e94cdb75bacbcebe5ce105db` (Python `main`
+2026-09-11, library `0.2.2`; `corpus.config.json` `sourceCommit`, record
+epoch `2026-01-15T12:00:00Z`).
+**Result (2026-09-14):** `3453 vectors — 3453 passed, 0 failed, 0 unported`.
+
+Reproduce:
+
+```
+npm run conformance -- --report json          # summary on stderr, JSON report on stdout
+npx vitest run conformance-runner/test/corpus.test.ts   # the same corpus as vitest assertions
+```
+
+`npm run check` (and CI on Node 22 and 24) replays the whole corpus on every
+run; CI additionally uploads the JSON report as an artifact. Verdict
+taxonomy and what the corpus does and does not prove:
+[`PORTING.md`](../PORTING.md). Refresh procedure:
+[`CONTRIBUTING.md`](../CONTRIBUTING.md#refreshing-the-corpus). The
+differential-oracle record is [`differential/oracle/RUN.md`](../differential/oracle/RUN.md).
+
+Pin history (source commit the snapshot was extracted from; totals where a
+full run was recorded):
+
+| Date       | Pin       | Totals                                     | Note                                                                         |
+| ---------- | --------- | ------------------------------------------ | ---------------------------------------------------------------------------- |
+| 2026-08-14 | `5269674` | 2,603 vectors — 42 live, 2,561 unported    | Phase-1 gate (the historical record below)                                   |
+| 2026-08-15 | `8ae7631` | —                                          | Phase-2 contract layer                                                       |
+| 2026-08-21 | `390c6e7` | —                                          | Python PR #215 (`schema_graph` timeouts)                                     |
+| 2026-09-03 | `c9991d1` | —                                          | Python PR #223 (report links); provenance repair                             |
+| 2026-09-14 | `0dde506` | 3,453 — 3,453 passed, 0 failed, 0 unported | Python PRs #225 / #235 / #236 (`Filter` constructor validation); current pin |
+
+<!-- TODO(final-pass): add a row if the corpus is re-pinned before the branch merges; the intermediate totals above were not recorded in this repo. -->
+
+---
+
 # Phase-1 TS Gate Run (design D13, task TS-6)
 
 Date: 2026-08-14. This file records the six D13 pass criteria — the

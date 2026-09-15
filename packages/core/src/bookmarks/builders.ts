@@ -2,7 +2,7 @@
  * Reusable builder functions for bookmark JSON sections — whole-file TS
  * twin of `src/mixpanel_headless/_internal/bookmark_builders.py`
  * (904 LOC; Python revision: `ts-port/phase2-contract-support` HEAD).
- * Batch B3, shard K2 (`context/phase3/design/b3-packets.md` §"Packet K2").
+ * Batch B3, shard K2 (`docs/history/phase3/design/b3-packets.md` §"Packet K2").
  *
  * Each function produces a fragment of the Mixpanel bookmark `params`
  * JSON structure. Python keeps the whole module `_internal`; this file
@@ -352,7 +352,7 @@ export function patchCustomPropertyFiltersForTransform(
  *   threaded into `dataGroupId` fields on the entries that carry one,
  *   coerced to a string at emission (the bookmark contract types
  *   clause-level `dataGroupId` as `string | null` — fix-of-record
- *   `context/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md`).
+ *   `docs/history/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md`).
  * @returns Array of group-entry dicts (possibly empty).
  * @throws ParamTypeError - `BB1_GROUP_BY_ELEMENT_TYPE` when an element
  *   is none of the four accepted shapes.
@@ -524,7 +524,7 @@ export function buildGroupSection(
  *   threaded into both `data_group_id` (cohort entries) and
  *   `dataGroupId` (the group entry), coerced to a string (the bookmark
  *   contract types both slots `string | null` — fix-of-record
- *   `context/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md`).
+ *   `docs/history/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md`).
  * @returns Group-entry dict carrying a `cohorts` array of one or two
  *   entries depending on `include_negated`.
  * @example
@@ -885,7 +885,7 @@ export function buildFlowCohortFilter(
  * @param options - Optional bag: `data_group_id` (default `null`),
  *   coerced to a string at emission (the bookmark contract types
  *   `dataGroupId` as `string | null` — fix-of-record
- *   `context/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md`).
+ *   `docs/history/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md`).
  * @returns Group-entry dict with `behaviorType` nested inside
  *   `behavior`, `event` as a `{label, value}` object, and bucket
  *   configuration under `customBucket` with camelCase keys.
@@ -940,8 +940,8 @@ export function buildFrequencyGroupEntry(
  * `"$frequency"` marker nested under `behavior.behaviorType` (the old
  * `customProperty`-nested clause the query engine 500'd on — the R10.7
  * bug-compat twin — retired with the Python-first fix; fix-of-record:
- * `context/phase1/addendum/frequency-filter-probe.md` +
- * `context/phase1/bug-reports/mixpanel-headless-frequency-filter-clause-shape.md`).
+ * `docs/history/phase1/addendum/frequency-filter-probe.md` +
+ * `docs/history/phase1/bug-reports/mixpanel-headless-frequency-filter-clause-shape.md`).
  * Conditionals ported verbatim: the lookback `dateRange` renders as an
  * `"in the last"` range with a `window` offset only when BOTH
  * `date_range_value` and `date_range_unit` are non-null; event filters

@@ -25,7 +25,7 @@
 // `executeWithRetry`/`handleResponse` directly, with httpx.MockTransport
 // replaced by an injected request executor and `recorded_sleeps` by the
 // injected sleep seam. Deferred-to-B4 tests are listed in
-// context/phase3/notes/B0-notes.md (deviation 3).
+// docs/history/phase3/notes/B0-notes.md (deviation 3).
 import { describe, expect, it } from "vitest";
 
 import { QUERY_ORIGIN } from "../../src/client/headers.js";
@@ -519,7 +519,7 @@ describe("TestSensitiveDataMapping (403 branch — R10.8 founding example)", () 
 // applies uniform substring semantics across dict/list/scalar bodies —
 // the old R10.7 element-membership / TypeError twins retired with the
 // Python-first fix (fix-of-record:
-// context/phase3/bug-reports/python-handle-response-403-typeerror.md).
+// docs/history/phase3/bug-reports/python-handle-response-403-typeerror.md).
 describe("TestSensitiveData403BodyShapes (bug (c) fix)", () => {
   it("403 LIST body: uniform SUBSTRING semantics (exact element AND substring match)", async () => {
     // Python post-FIX-2 serializes every non-str body for the sniff —
@@ -539,7 +539,7 @@ describe("TestSensitiveData403BodyShapes (bug (c) fix)", () => {
   it("403 truthy scalar body raises QueryError, never TypeError (bug (c) fix)", async () => {
     // Python post-FIX-2: `json.dumps(42)` → "42" → no flag → QueryError
     // (TestSensitiveData403BodyShapes truthy-scalar twins; fix-of-record
-    // context/phase3/bug-reports/python-handle-response-403-typeerror.md).
+    // docs/history/phase3/bug-reports/python-handle-response-403-typeerror.md).
     for (const raw of ["42", "1.5", "true"]) {
       const h = harness([res(403, raw)]);
       const error = (await run(h).catch(

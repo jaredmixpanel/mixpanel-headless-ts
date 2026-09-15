@@ -38,7 +38,7 @@
 // NO STANDING DISCLOSURES (R10.7 four-bug batch, 2026-08-17): the
 // dataGroupId int-threading + off-contract `sections.dataGroupId`
 // disclosure pins (B3/B5 gates; fix-of-record
-// `context/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md`)
+// `docs/history/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md`)
 // RETIRED with the Python-first fix and the corpus re-pin @ 700db99 —
 // every fed vector must now be accepted; any REJECT is a new finding.
 import { resolve } from "node:path";

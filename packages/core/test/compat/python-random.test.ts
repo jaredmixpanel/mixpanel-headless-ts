@@ -1,7 +1,7 @@
 // CPython `random.Random` parity lock (packet B5-S3 decision S3-D1,
 // `b5-packets.md:529-540`). The probe matrix is GENERATED — regenerate
 // from the Python repo with the snippet recorded in
-// `context/phase3/notes/B5-S3-notes.md` §S3-D1 and copy
+// `docs/history/phase3/notes/B5-S3-notes.md` §S3-D1 and copy
 // `conformance/goldens/rrweb/python-random-probe.json` here.
 //
 // There is no Python test file behind this suite: it is the pinned

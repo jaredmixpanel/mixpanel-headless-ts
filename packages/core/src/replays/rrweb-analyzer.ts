@@ -2,7 +2,7 @@
  * rrweb event-stream analyzer — TS port of
  * `mixpanel_headless/_internal/replays/rrweb_analyzer.py` (969 lines,
  * whole file, pure stdlib) for Phase-3 batch B5, shard S3
- * (`context/phase3/design/b5-packets.md` §5).
+ * (`docs/history/phase3/design/b5-packets.md` §5).
  *
  * Walks the raw rrweb event stream, maintains DOM state, and emits two
  * parallel outputs from a single pass: a list of `UserAction` records

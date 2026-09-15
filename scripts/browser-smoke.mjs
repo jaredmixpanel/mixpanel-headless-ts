@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // Browser-bundle smoke test (R9.1 / D11; two-entry promotion B9-R1,
 // b9-packets.md §2.5).
 //

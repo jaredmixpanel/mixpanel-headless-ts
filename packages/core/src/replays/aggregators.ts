@@ -2,7 +2,7 @@
  * Bundle-level aggregations over normalized actions — TS port of
  * `mixpanel_headless/_internal/replays/aggregators.py` (172 lines,
  * whole file) for Phase-3 batch B5, shard S3
- * (`context/phase3/design/b5-packets.md` §5).
+ * (`docs/history/phase3/design/b5-packets.md` §5).
  *
  * Python returns `pandas.DataFrame`s; the port returns ROW ARRAYS plus
  * a paired column-list function, exactly like the Phase-2 C6 `toRows()`

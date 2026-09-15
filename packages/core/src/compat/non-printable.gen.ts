@@ -1,5 +1,6 @@
 // GENERATED FILE — do not edit by hand.
 // Source: scripts/generate-non-printable.py (CPython unicodedata is the oracle).
+// Regenerate with: npm run generate:compat-tables
 // Provenance: CPython 3.14.6, Unicode database 16.0.0, 737 ranges.
 //
 // The inclusive [start, end] codepoint ranges CPython str.isprintable()

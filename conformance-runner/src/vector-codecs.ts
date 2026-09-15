@@ -11,7 +11,7 @@
  *
  * The table is wired into the conformance runner by
  * `bindings.ts::registerContractCodecs`. It lives in the rig (moved out of
- * `packages/core/src/types/` at CLEANUP-PLAN §7.3 — the library never
+ * `packages/core/src/types/` at docs/history/cleanup-plan-2026-09.md §7.3 — the library never
  * imports it); the child-codec callbacks are typed structurally
  * (`unknown`) and datetime children are duck-typed on their `iso` field
  * rather than on the runner's `PyDatetime` class.

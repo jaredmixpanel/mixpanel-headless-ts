@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Generate packages/core/src/compat/decimal-digits.gen.ts (R11.3).
 
 Emits the closed-form table of Unicode decimal-digit codepoints (the
@@ -82,6 +83,7 @@ def main() -> int:
     lines = [
         "// GENERATED FILE — do not edit by hand.",
         "// Source: scripts/generate-decimal-digits.py (CPython int() is the oracle).",
+        "// Regenerate with: npm run generate:compat-tables",
         f"// Provenance: CPython {py_version}, Unicode database "
         f"{unicodedata.unidata_version}, {len(runs)} runs / {total} codepoints.",
         "//",

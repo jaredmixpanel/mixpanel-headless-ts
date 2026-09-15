@@ -1,5 +1,6 @@
+#!/usr/bin/env node
 // Codemod: replace cross-workspace RELATIVE imports with the packages' bare
-// specifiers (CLEANUP-PLAN §7.3).
+// specifiers (docs/history/cleanup-plan-2026-09.md §7.3).
 //
 //   ../../core/src/errors.js            → @mixpanel-headless/core
 //   ../../packages/core/src/query/…     → @mixpanel-headless/core/internal

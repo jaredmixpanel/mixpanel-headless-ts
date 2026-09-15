@@ -2,7 +2,7 @@
  * The `Workspace` query-parameter engine — TS port of the private
  * param-building methods of `mixpanel_headless/workspace.py` for
  * Phase-3 batch B5, shard S2
- * (`context/phase3/design/b5-packets.md` §3).
+ * (`docs/history/phase3/design/b5-packets.md` §3).
  *
  * Split out of `workspace.ts` per R7.2 (the facade file already carries
  * the S1/S3/B6 member sections; these ten helpers are ~1,100 lines on
@@ -582,7 +582,7 @@ export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
     // sections-level spelling is `globalDataGroupId: string | null`
     // (`workspace.py` insights/funnel/retention sites post-FIX-1;
     // fix-of-record
-    // context/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md).
+    // docs/history/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md).
     sections["globalDataGroupId"] = String(data_group_id);
   }
 
@@ -1000,7 +1000,7 @@ export function buildFunnelParams(
     // sections-level spelling is `globalDataGroupId: string | null`
     // (`workspace.py` insights/funnel/retention sites post-FIX-1;
     // fix-of-record
-    // context/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md).
+    // docs/history/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md).
     sections["globalDataGroupId"] = String(data_group_id);
   }
 
@@ -1318,7 +1318,7 @@ export function buildRetentionParams(
     // sections-level spelling is `globalDataGroupId: string | null`
     // (`workspace.py` insights/funnel/retention sites post-FIX-1;
     // fix-of-record
-    // context/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md).
+    // docs/history/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md).
     sections["globalDataGroupId"] = String(data_group_id);
   }
 

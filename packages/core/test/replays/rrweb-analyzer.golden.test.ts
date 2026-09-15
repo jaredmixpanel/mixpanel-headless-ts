@@ -1,5 +1,5 @@
 // rrweb-analyzer GOLDEN suite (plan Layer 3,
-// `context/typescript-port-plan.md:351-354`; packet B5-S3 §5
+// `docs/history/typescript-port-plan.md:351-354`; packet B5-S3 §5
 // "Golden-file suite").
 //
 // The goldens under `goldens/` are GENERATED — never hand-edit them.

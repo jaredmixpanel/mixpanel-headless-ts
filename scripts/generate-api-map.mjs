@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // generate-api-map.mjs — write conformance-runner/src/api-map.gen.ts
 // (design D12 / naming-map §5, task TS-4).
 //

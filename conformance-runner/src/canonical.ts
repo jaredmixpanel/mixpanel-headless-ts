@@ -1,7 +1,7 @@
 /**
  * D6 canonicalization algorithm — TS implementation.
  *
- * Normative spec: `context/phase1/design/phase1-design.md` §D6 (Python
+ * Normative spec: `docs/history/phase1/design/phase1-design.md` §D6 (Python
  * twin: `conformance/runner/canonical.py`). Both implementations must be
  * behaviorally identical; parity is verified by the shared
  * `canonical-selftest.json` pairs (D6/D12) executed by both suites.

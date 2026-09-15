@@ -1,11 +1,12 @@
+#!/usr/bin/env node
 // Generates packages/core/src/errors-codes.gen.ts from the synced contract
 // artifact conformance-runner/corpus/contract/error-codes.json (phase2-design
 // C3: the error-code registry is GENERATED, never hand-typed).
 //
 // Usage:
-//   node scripts/gen-error-codes.mjs           # (re)write the .gen.ts file
-//   node scripts/gen-error-codes.mjs --check   # exit 1 if the committed file
-//                                              # differs from a fresh render
+//   npm run generate:error-codes              # (re)write the .gen.ts file
+//   npm run generate:error-codes -- --check   # exit 1 if the committed file
+//                                             # differs from a fresh render
 //
 // Output is prettier-formatted and byte-deterministic (all collections are
 // emitted sorted), so `--check` doubles as the hand-edit tripwire required
@@ -20,16 +21,13 @@ import prettier from "prettier";
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** Path of the synced contract artifact (input). */
-export const ARTIFACT_PATH = resolve(
+const ARTIFACT_PATH = resolve(
   REPO_ROOT,
   "conformance-runner/corpus/contract/error-codes.json",
 );
 
 /** Path of the generated TS module (output). */
-export const OUTPUT_PATH = resolve(
-  REPO_ROOT,
-  "packages/core/src/errors-codes.gen.ts",
-);
+const OUTPUT_PATH = resolve(REPO_ROOT, "packages/core/src/errors-codes.gen.ts");
 
 /**
  * Render the errors-codes.gen.ts module text from the parsed artifact.
@@ -37,7 +35,7 @@ export const OUTPUT_PATH = resolve(
  * @param {object} artifact - Parsed error-codes.json content.
  * @returns {Promise<string>} Prettier-formatted TypeScript source text.
  */
-export async function renderErrorCodesModule(artifact) {
+async function renderErrorCodesModule(artifact) {
   const {
     generated_from: generatedFrom,
     exception_classes: exceptionClasses,
@@ -70,7 +68,7 @@ export async function renderErrorCodesModule(artifact) {
     .join("\n");
 
   const body = `// GENERATED FROM conformance-runner/corpus/contract/error-codes.json @ ${generatedFrom} — DO NOT EDIT
-// Regenerate with: node scripts/gen-error-codes.mjs
+// Regenerate with: npm run generate:error-codes
 //
 // Mirror of the Python-side error-code contract artifact (phase2-design C3):
 // exception class parent edges, per-class default codes, and the coded-guard
@@ -121,7 +119,7 @@ ${twinEntries}
  *
  * @returns {Promise<string>} The rendered module text.
  */
-export async function renderFromDisk() {
+async function renderFromDisk() {
   const artifact = JSON.parse(readFileSync(ARTIFACT_PATH, "utf8"));
   return renderErrorCodesModule(artifact);
 }
@@ -141,14 +139,14 @@ if (isMain) {
     }
     if (committed !== rendered) {
       console.error(
-        `gen-error-codes: ${OUTPUT_PATH} is stale or hand-edited; ` +
-          "run `node scripts/gen-error-codes.mjs` to regenerate.",
+        `generate-error-codes: ${OUTPUT_PATH} is stale or hand-edited; ` +
+          "run `npm run generate:error-codes` to regenerate.",
       );
       process.exit(1);
     }
-    console.log("gen-error-codes: errors-codes.gen.ts is up to date.");
+    console.log("generate-error-codes: errors-codes.gen.ts is up to date.");
   } else {
     writeFileSync(OUTPUT_PATH, rendered);
-    console.log(`gen-error-codes: wrote ${OUTPUT_PATH}`);
+    console.log(`generate-error-codes: wrote ${OUTPUT_PATH}`);
   }
 }

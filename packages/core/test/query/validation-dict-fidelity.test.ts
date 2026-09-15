@@ -12,7 +12,7 @@
  * reconstructed class instances — producing 11 oracle-confirmed
  * divergent output shapes (fidelity review F1, blocker). Every
  * expectation below is the oracle-py output recorded in
- * `context/phase3/design/b2-review-fidelity.md` (spot scripts
+ * `docs/history/phase3/design/b2-review-fidelity.md` (spot scripts
  * `/tmp/b2rev_spot{,2}.py`, run 2026-08-15).
  *
  * TS-only suite: the Python Layer-3 files never place floats or

@@ -213,7 +213,7 @@ describe("TestOAuthFlowRefresh (test_auth_flow.py:490)", () => {
 
   it("test_refresh_missing_fields_error_redacts_token_material", async () => {
     // TestTokenPayloadRedaction refresh member (Python FIX-2;
-    // fix-of-record context/phase3/bug-reports/
+    // fix-of-record docs/history/phase3/bug-reports/
     // python-oauth-error-details-token-payload.md; exchange members in
     // `oauth-flow-login.test.ts`, header-cited split). Also
     // vector-locked: auth/oauth_flow.refresh_tokens/...-

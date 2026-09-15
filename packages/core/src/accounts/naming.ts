@@ -102,7 +102,7 @@ export function slugify(value: string | null | undefined): string {
  * `-1`) and increment monotonically until a unique name is found.
  *
  * ORDER (USER RATIFICATION 2026-08-16,
- * `context/phase3/design/user-ratifications.md:14-22` — supersedes the
+ * `docs/history/phase3/design/user-ratifications.md:14-22` — supersedes the
  * B7-ARB-A R2 exclusion, `b7-reviewA-resolution.md`, and closes
  * playbook Discrepancy #13's result-affecting site): Python's "first
  * organization" is dict INSERTION order (`next(iter(...))`,

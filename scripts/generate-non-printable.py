@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Generate packages/core/src/compat/non-printable.gen.ts (R11.1).
 
 Emits the closed-form table of codepoint ranges CPython's
@@ -63,6 +64,7 @@ def main() -> int:
     body_lines = [
         "// GENERATED FILE — do not edit by hand.",
         "// Source: scripts/generate-non-printable.py (CPython unicodedata is the oracle).",
+        "// Regenerate with: npm run generate:compat-tables",
         f"// Provenance: CPython {py}, Unicode database {unicodedata.unidata_version}, {len(ranges)} ranges.",
         "//",
         "// The inclusive [start, end] codepoint ranges CPython str.isprintable()",

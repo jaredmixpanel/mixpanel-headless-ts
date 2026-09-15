@@ -20,7 +20,7 @@
  * The `type` strings asserted below are the twin's contract keys —
  * they are the `_DEFAULT_CODE_MAP` lookup keys — and every one is
  * pinned to the CPython pydantic probe recorded in
- * `context/phase3/notes/B3-K1-notes.md` §Probe
+ * `docs/history/phase3/notes/B3-K1-notes.md` §Probe
  * (`throwaway/b3-k1/probe-*.py`, run 2026-08-15).
  */
 

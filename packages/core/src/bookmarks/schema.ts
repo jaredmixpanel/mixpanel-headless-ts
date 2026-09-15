@@ -20,7 +20,7 @@
  * semantics of every acceptance decision below are **pydantic-core in
  * LAX mode**, not CPython's `int()`/`float()` and not JS's
  * `parseInt`/`Number()`. Every decision is pinned to the mandatory
- * CPython probe recorded in `context/phase3/notes/B3-K1-notes.md`
+ * CPython probe recorded in `docs/history/phase3/notes/B3-K1-notes.md`
  * §Probe (scripts `throwaway/b3-k1/probe-schema.py`,
  * `probe-grammar.py`, `probe-detail.py`, `probe-order.py`,
  * `probe-bool.py`, run 2026-08-15 against the support-branch pydantic

@@ -1,4 +1,4 @@
-# Dependabot configuration (CLEANUP-PLAN.md §13.2).
+# Dependabot configuration (docs/history/cleanup-plan-2026-09.md §13.2).
 #
 # Both ecosystems use a 7-day cooldown: a release must be at least a week old
 # before Dependabot proposes it. This matches the owner's npm

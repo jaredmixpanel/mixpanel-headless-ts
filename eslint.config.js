@@ -1,7 +1,7 @@
 // ESLint flat config for the mixpanel-headless-ts workspace (ESLint 10,
 // `defineConfig` / `globalIgnores` from "eslint/config").
 //
-// Shape and rule decisions: CLEANUP-PLAN.md §8 (Phase 4). Every rule is
+// Shape and rule decisions: docs/history/cleanup-plan-2026-09.md §8 (Phase 4). Every rule is
 // either enforced (`error`) or `off` with a one-line reason; nothing is ever
 // `warn` (a load-time assertion at the bottom guarantees that). Rules whose
 // fixes are still being hand-applied are configured in full in the main
@@ -158,7 +158,7 @@ const NO_PROCESS_GLOBAL = [
 ];
 
 // ---------------------------------------------------------------------------
-// Naming (D1; CLEANUP-PLAN.md §3 D1 and §8.2)
+// Naming (D1; docs/history/cleanup-plan-2026-09.md §3 D1 and §8.2)
 // ---------------------------------------------------------------------------
 
 /**
@@ -236,7 +236,7 @@ function namingConvention({ snakeCaseProperties = false } = {}) {
 }
 
 // ---------------------------------------------------------------------------
-// Lane blocks (Phase 4 hand-fix categories; CLEANUP-PLAN.md §8.4)
+// Lane blocks (Phase 4 hand-fix categories; docs/history/cleanup-plan-2026-09.md §8.4)
 // ---------------------------------------------------------------------------
 
 const UNPARKED = new Set(
@@ -933,9 +933,20 @@ const config = defineConfig([
     rules: {
       "jsdoc/require-hyphen-before-param-description": ["error", "always"],
       "jsdoc/tag-lines": ["error", "never", { startLines: 1 }],
-      // Phase 9 (§13.1) gives every script a shebang + exec bit; until
-      // then the rule strips the shebangs that already exist.
-      "n/hashbang": "off",
+      // Every CLI under scripts/ carries `#!/usr/bin/env node` and an exec
+      // bit; library modules (scripts/lib/, *-lib.mjs, this config) carry
+      // none. The rule enforces both directions.
+      "n/hashbang": [
+        "error",
+        {
+          additionalExecutables: [
+            "scripts/*.mjs",
+            "scripts/audit/comment-archaeology.mjs",
+            "scripts/codemods/*.mjs",
+          ],
+          executableMap: { ".mjs": "node" },
+        },
+      ],
       // Scripts are CLIs: a non-zero `process.exit` is their contract.
       "n/no-process-exit": "off",
       "unicorn/no-process-exit": "off",

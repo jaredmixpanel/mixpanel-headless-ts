@@ -1,6 +1,6 @@
 /**
  * Known referee payloads — the positive/negative triple proven against the
- * live schema in recon `context/phase1/recon/referee-assets.md` §1 (Python
+ * live schema in recon `docs/history/phase1/recon/referee-assets.md` §1 (Python
  * `jsonschema.Draft202012Validator` transcript, 2026-08-14). The TS referee's
  * unit test replays exactly this triple; any verdict flip means the ajv
  * harness diverges from the proven Python behavior or the vendored schema

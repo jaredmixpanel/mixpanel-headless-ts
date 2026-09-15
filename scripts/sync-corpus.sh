@@ -16,7 +16,7 @@
 #   conformance/schema/canonical-selftest.json -> conformance-runner/corpus/
 #   conformance/contract/*.json                -> conformance-runner/corpus/contract/
 # and, from this repo:
-#   context/typescript-port-api-map.json       -> conformance-runner/corpus/
+#   docs/history/typescript-port-api-map.json  -> conformance-runner/corpus/
 #
 # Rules:
 # - Clean-source: if the Python working tree is dirty in any copied path,
@@ -44,11 +44,10 @@ CONFIG="${REPO_ROOT}/conformance-runner/corpus.config.json"
 # Repo-relative paths this script snapshots (also the dirty-check scope).
 VECTORS_REL="conformance/vectors"
 SELFTEST_REL="conformance/schema/canonical-selftest.json"
-# The api-map moved INTO this repo with the 2026-08-17 context
-# relocation (the port's spec of record lives at context/ here now; the
-# Python repo keeps only conformance/ + bug reports). It is sourced
-# locally, not from the Python checkout.
-API_MAP_LOCAL="${REPO_ROOT}/context/typescript-port-api-map.json"
+# The api-map lives in this repo (under docs/history/, the port's archived
+# process record; the Python repo keeps only conformance/ + bug reports).
+# It is sourced locally, not from the Python checkout.
+API_MAP_LOCAL="${REPO_ROOT}/docs/history/typescript-port-api-map.json"
 CONTRACT_REL="conformance/contract"
 CONTRACT_GLOB="${CONTRACT_REL}/*.json"
 
