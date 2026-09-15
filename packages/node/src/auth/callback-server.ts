@@ -202,18 +202,17 @@ async function handleCallbackRequest(
 
   const receivedState = stateList[0] as string;
   if (receivedState !== expectedState) {
-    // Don't leak the expected state to the browser — details stay in
-    // the server-side exception (`callback_server.py:251-267`).
+    // Don't leak the expected state to the browser — nor into the
+    // server-side exception (`callback_server.py:251-267`): hosts log
+    // `error.toDict()`, and `details` is serialised by it.
+    // Divergence: Python puts `expected_state` in `OAuthError.details` on state mismatch; TS keeps only `received_state` (the attacker-supplied value) so logged errors never carry the nonce.
     const browserMessage = "State parameter mismatch. Authorization failed.";
     await sendHtml(res, errorHtml(htmlEscape(browserMessage)), 400);
     return {
       error: new OAuthError(
         "State mismatch: possible CSRF attack.",
         "OAUTH_TOKEN_ERROR",
-        {
-          expected_state: expectedState,
-          received_state: receivedState,
-        },
+        { received_state: receivedState },
       ),
     };
   }

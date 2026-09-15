@@ -314,6 +314,27 @@ describe("TestCallbackHtmlSecurity (test_auth_callback.py:281)", () => {
     ).toBe(true);
   });
 
+  it("state mismatch error details carry received_state but never expected_state (CLEANUP-PLAN 8.3)", async () => {
+    const state = "secret-csrf-state-67890";
+    const { serverPromise, port } = await startEphemeral({ state });
+    const settled = serverPromise.then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+    await getWithRetry(
+      `http://localhost:${port}/callback?code=code1&state=wrong-state`,
+    );
+
+    const error = await settled;
+    expect(error).toBeInstanceOf(OAuthError);
+    const details = (error as OAuthError).details;
+    expect(details).toEqual({ received_state: "wrong-state" });
+    expect(details).not.toHaveProperty("expected_state");
+    // The serialised form hosts log must not carry the nonce either.
+    expect(JSON.stringify((error as OAuthError).toDict())).not.toContain(state);
+  });
+
   it("test_provider_error_description_is_html_escaped", async () => {
     const { serverPromise, port } = await startEphemeral({
       state: "escape-test",
