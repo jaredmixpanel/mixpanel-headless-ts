@@ -5,157 +5,80 @@
 // (`@see mixpanel_headless.workspace.Workspace.query`; CONTRIBUTING,
 // "Comments and docstrings"). The Python site renders its API with
 // mkdocstrings, whose heading anchors are the identifier exactly as the
-// page's `::: mixpanel_headless.X` directive spells it plus the member
-// path — `#mixpanel_headless.Workspace.query`, `#mixpanel_headless.accounts.add`,
-// `#mixpanel_headless.auth_types.OAuthTokens`. The table below is that
-// directive list per page (source: `docs/api/{workspace,auth,exceptions,types}.md`
-// in the Python repo); refresh it when a page gains or loses a directive.
+// page's `::: mixpanel_headless.X` directive spells it plus the member path
+// (`#mixpanel_headless.Workspace.query`, `#mixpanel_headless.accounts.add`,
+// `#mixpanel_headless.auth_types.OAuthTokens`), and only for the members the
+// directive selects. Which anchors exist is therefore data, not a rule:
+// `python-reference-anchors.gen.json` (scripts/generate-python-reference-anchors.mjs,
+// built from the Python checkout at the corpus pin) lists them per page,
+// and this plugin links nothing that file does not carry.
 //
-// A tag resolves when one of its segments names a directive's object
-// (the first capitalised segment, or for module-level names each segment
-// in turn); module segments the directive omits (`workspace.`, `types.`)
-// are dropped, module segments it keeps (`auth_types.`) stay. Anything
-// else — `_internal` modules, private helpers — is left as plain text, so
-// no link can be dead.
+// Resolution drops the module segments a directive omits (`workspace.`,
+// `types.`) and keeps the ones it spells (`auth_types.`): the first
+// capitalised segment (or, for module-level names, each segment in turn)
+// starts the candidate, and the longest listed prefix wins. A name whose
+// full path is listed links there; one whose object is listed but whose
+// member is not — private helpers, methods the directive's `members:`
+// leaves out — links the object's own anchor; anything else (`_internal`
+// modules, private functions) stays plain text.
 //
 // Registered from `typedoc.json` (`plugin`); runs in `npm run docs:api`
 // and `npm run docs:api:check`.
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { Application } from "typedoc";
 
-const SITE = "https://mixpanel.github.io/mixpanel-headless/api";
+const ANCHORS = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "python-reference-anchors.gen.json",
+);
 const ROOT = "mixpanel_headless";
 
-/** Page → the `::: mixpanel_headless.<id>` directives it carries. */
-const PAGES = {
-  workspace: ["Workspace"],
-  auth: [
-    "ServiceAccount",
-    "OAuthBrowserAccount",
-    "OAuthTokenAccount",
-    "Session",
-    "Project",
-    "WorkspaceRef",
-    "auth_types.ActiveSession",
-    "accounts",
-    "session",
-    "targets",
-    "AccountSummary",
-    "AccountTestResult",
-    "OAuthLoginResult",
-    "Target",
-    "auth_types.BridgeFile",
-    "auth_types.load_bridge",
-    "auth_types.OAuthTokens",
-    "auth_types.OAuthClientInfo",
-    "auth_types.TokenResolver",
-    "auth_types.OnDiskTokenResolver",
-  ],
-  exceptions: [
-    "MixpanelHeadlessError",
-    "APIError",
-    "AuthenticationError",
-    "RateLimitError",
-    "QueryError",
-    "ServerError",
-    "ConfigError",
-    "AccountNotFoundError",
-    "AccountExistsError",
-    "AccountInUseError",
-    "ProjectNotFoundError",
-    "InvalidArgumentError",
-    "OAuthError",
-    "RegionProbeError",
-    "RegionProbeNetworkError",
-    "WorkspaceScopeError",
-    "BusinessContextValidationError",
-    "SessionReplayError",
-    "SessionReplayAccessError",
-    "SignedURLExpiredError",
-    "ReplayNotFoundError",
-    "ReportLinkError",
-    "ReportLinkParseError",
-    "UnsupportedReportLinkError",
-    "ReportLinkNotFoundError",
-    "ReportLinkScopeMismatchError",
-    "ShortLinkResolutionError",
-  ],
-  types: [
-    "PublicWorkspace",
-    "CursorPagination",
-    "PaginatedResponse",
-    "Metric",
-    "Formula",
-    "Filter",
-    "GroupBy",
-    "ListItemGroupMode",
-    "QueryResult",
-    "CohortBreakdown",
-    "CohortMetric",
-    "CustomPropertyRef",
-    "InlineCustomProperty",
-    "PropertyInput",
-    "TimeComparison",
-    "FrequencyBreakdown",
-    "FrequencyFilter",
-    "CohortDefinition",
-    "CohortCriteria",
-    "FunnelStep",
-    "Exclusion",
-    "HoldingConstant",
-    "FunnelQueryResult",
-    "RetentionEvent",
-    "RetentionAlignment",
-    "RetentionMode",
-    "RetentionMathType",
-    "RetentionQueryResult",
-    "FlowStep",
-    "FlowTreeNode",
-    "FlowQueryResult",
-    "ReplaySummary",
-    "SignedReplay",
-    "ReplayEvent",
-    "UserAction",
-    "Replay",
-    "ReplayBundle",
-    "default_label_fn",
-    "selector_label_fn",
-    "url_normalizer",
-  ],
-};
+/** @type {{ site: string, pages: Record<string, string[]> }} */
+const { site, pages } = JSON.parse(readFileSync(ANCHORS, "utf8"));
 
-/** Directive object name → `{ page, id }`. */
-const DIRECTIVES = new Map();
-for (const [page, ids] of Object.entries(PAGES)) {
-  for (const id of ids) {
-    DIRECTIVES.set(id.slice(id.lastIndexOf(".") + 1), { page, id });
-  }
+/** Anchor id → page slug. */
+const PAGE_OF = new Map();
+for (const [page, ids] of Object.entries(pages)) {
+  for (const id of ids) PAGE_OF.set(id, page);
 }
 
 /**
- * The Python reference URL for a dotted `mixpanel_headless.…` name.
+ * Resolve a dotted `mixpanel_headless.…` name against the anchor set.
  *
  * @param {string} dotted - The name as written after `@see`.
- * @returns {string | undefined} The page URL with anchor, or `undefined`
- *   when no documented directive covers the name.
+ * @returns {{ url: string, anchor: string, exact: boolean } | undefined}
+ *   The page URL with fragment and whether the fragment is the name's own
+ *   anchor (`exact`) or its object's; `undefined` when nothing is listed.
  */
-export function pythonReferenceUrl(dotted) {
+export function resolvePythonReference(dotted) {
   const segments = dotted.split(".");
   if (segments.shift() !== ROOT || segments.length === 0) return;
-  // mkdocstrings hides private members and merges `__init__` into the
-  // class heading, so a `_`-prefixed tail has no anchor: link its parent.
-  while (segments.length > 1 && segments.at(-1)?.startsWith("_"))
-    segments.pop();
+  // Candidates start at each module prefix up to the object (the first
+  // capitalised segment); a module-level name tries every segment.
   const capital = segments.findIndex((s) => /^[A-Z]/.test(s));
-  const candidates = capital === -1 ? segments.keys() : [capital];
-  for (const index of candidates) {
-    const hit = DIRECTIVES.get(segments[index]);
-    if (!hit) continue;
-    const anchor = [`${ROOT}.${hit.id}`, ...segments.slice(index + 1)].join(
-      ".",
-    );
-    return `${SITE}/${hit.page}/#${anchor}`;
+  const lastStart = capital === -1 ? segments.length - 1 : capital;
+  let best;
+  for (let start = 0; start <= lastStart; start++) {
+    for (let end = segments.length; end > start; end--) {
+      const anchor = [ROOT, ...segments.slice(start, end)].join(".");
+      const page = PAGE_OF.get(anchor);
+      if (page === undefined) continue;
+      const hit = {
+        url: `${site}/${page}/#${anchor}`,
+        anchor,
+        exact: end === segments.length,
+      };
+      if (hit.exact) return hit;
+      if (!best || end - start > best.depth)
+        best = { ...hit, depth: end - start };
+      break;
+    }
   }
-  return;
+  if (!best) return;
+  return { url: best.url, anchor: best.anchor, exact: false };
 }
 
 /**
@@ -166,6 +89,7 @@ export function pythonReferenceUrl(dotted) {
  */
 export function load(app) {
   app.on(Application.EVENT_PROJECT_REVIVE, (project) => {
+    const counts = { exact: 0, object: 0, plain: 0 };
     for (const id in project.reflections) {
       const comment = project.reflections[id].comment;
       if (!comment) continue;
@@ -175,12 +99,19 @@ export function load(app) {
         if (part.kind !== "text") continue;
         const dotted = part.text.trim();
         if (!dotted.startsWith(`${ROOT}.`) || /\s/.test(dotted)) continue;
-        const url = pythonReferenceUrl(dotted);
-        if (url === undefined) continue;
+        const hit = resolvePythonReference(dotted);
+        if (hit === undefined) {
+          counts.plain += 1;
+          continue;
+        }
+        counts[hit.exact ? "exact" : "object"] += 1;
         tag.content = [
-          { kind: "inline-tag", tag: "@link", text: dotted, target: url },
+          { kind: "inline-tag", tag: "@link", text: dotted, target: hit.url },
         ];
       }
     }
+    app.logger.verbose(
+      `[typedoc-python-see-links] @see tags: ${counts.exact} linked to their own anchor, ${counts.object} to their object's, ${counts.plain} left as text`,
+    );
   });
 }
