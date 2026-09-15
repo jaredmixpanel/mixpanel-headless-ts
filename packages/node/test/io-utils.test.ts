@@ -35,6 +35,8 @@
 import {
   chmodSync,
   mkdirSync,
+  // Delegating open used by the counter-learning spies below.
+  openSync as statSyncOpen,
   readdirSync,
   readFileSync,
   statSync,
@@ -243,9 +245,6 @@ describe("TestAtomicWriteBytes", () => {
     expect(readdirSync(dir)).toEqual([]);
   });
 });
-
-// Delegating open used by the counter-learning spy above.
-import { openSync as statSyncOpen } from "node:fs";
 
 describe("TestAtomicWriteResilience", () => {
   it("test_simulated_kill_between_write_and_replace_preserves_old", () => {

@@ -487,7 +487,7 @@ export function readCappedSecretFromStdin(
         `refusing to truncate. Pipe a single secret, not a key bundle.`,
     );
   }
-  const text = new TextDecoder("utf8", { fatal: true }).decode(
+  const text = new TextDecoder("utf-8", { fatal: true }).decode(
     raw.subarray(0, total),
   );
   const value = pythonStrip(text);

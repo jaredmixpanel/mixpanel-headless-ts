@@ -47,7 +47,7 @@ export const EVENTS_NAMES_WIDE_FROM_DATE = "2000-01-01";
  * no bare `\s`/`\d` grammars in ported code).
  */
 const PY_WS =
-  "[\\t\\n\\x0b\\f\\r\\x1c-\\x1f \\x85\\xa0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000]";
+  "[\\t\\n\\v\\f\\r\\x1c-\\x1f \\x85\\xa0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000]";
 const DATE_GATE_PATTERN = new RegExp(
   `exceeds${PY_WS}+(\\p{Nd}+)${PY_WS}+days`,
   "u",

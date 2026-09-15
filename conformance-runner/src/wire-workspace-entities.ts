@@ -124,7 +124,7 @@ declare global {
      * @returns The branded raw-JSON marker `JSON.stringify` emits
      *   verbatim.
      */
-    rawJSON(text: string): unknown;
+    rawJSON: (text: string) => unknown;
   }
 }
 
