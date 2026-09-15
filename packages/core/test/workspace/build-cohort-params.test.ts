@@ -1,28 +1,8 @@
-// Translated cohort-params tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/test_build_cohort_params.py — ALL 17
-// classes (TestBuildFilterEntryCohort :94, TestBuildFilterSectionMixed
-// :171, TestBuildFlowCohortFilter :206, TestBuildGroupSectionCohort
-// :255, TestBuildGroupSectionMixed :344, TestBuildParamsCohortFilter
-// :375, TestBuildFunnelParamsCohortFilter :399,
-// TestBuildRetentionParamsCohortFilter :426,
-// TestBuildParamsCohortBreakdown :455,
-// TestBuildFunnelParamsCohortBreakdown :481,
-// TestBuildRetentionParamsCohortBreakdown :507,
-// TestBuildParamsCohortMetric :546, TestBuildParamsCohortMetricMixed
-// :621, TestBuildParamsCohortMetricMathIgnored :663,
-// TestQueryFlowCohortFilter :791, TestBuildFlowCohortFilterDirect :841,
-// TestCodedFlowCohortFilterCodes :927).
-//
-// Per the packet: the builder-DIRECT classes (:94-:344, :841-:927)
-// assert B3 functions THROUGH the facade path and stay facade-driven
-// here; B3-K2's corpus-mirror describe block is additive, never a
-// substitute (`B3-K2-notes.md:125-128`). The two classes that call
-// `build_flow_cohort_filter` directly keep doing so (they exercise
-// guards unreachable through the facade).
-//
-// Translation note: `pytest.raises(ValueError, …)` names Python's
-// dual-inheriting `ParamValidationError`; the TS twin carries the same
-// message and `.code`.
+// Cohort filters, breakdowns and metrics through the facade builders
+// (`buildParams` / `buildFunnelParams` / `buildRetentionParams` /
+// `buildFlowParams`) plus the direct `buildFlowCohortFilter` guards. Mirrors
+// all 17 classes of `tests/test_build_cohort_params.py`. Python's
+// `pytest.raises(ValueError)` targets `ParamValidationError` here.
 
 import { describe, expect, it } from "vitest";
 
@@ -43,26 +23,10 @@ import {
   Formula,
   Metric,
 } from "../../src/types/query-params/metric.js";
-import { Workspace } from "../../src/workspace.js";
 import { expectRejects, expectThrows } from "../../test-support/raises.js";
-import {
-  mockWorkspaceClient,
-  TEST_SESSION,
-} from "../../test-support/workspace-test-helpers.js";
+import { makeStubWorkspace } from "../../test-support/workspace-test-helpers.js";
 
-/**
- * The `ws` fixture.
- *
- * @returns The facade under test.
- */
-function makeWs(): Workspace {
-  return new Workspace({
-    session: TEST_SESSION,
-    client: mockWorkspaceClient().client,
-  });
-}
-
-/** `_simple_cohort_def()` (test file :78-87). */
+/** `_simple_cohort_def()`. */
 function simpleCohortDef(): CohortDefinition {
   return new CohortDefinition(
     CohortCriteria.didEvent("Purchase", { at_least: 1, within_days: 30 }),
@@ -97,7 +61,7 @@ function measurementOf(
 
 /**
  * Build a cohort filter with a deliberately malformed `_value`
- * (`_malformed_cohort_filter`, test file :902-918).
+ * (`_malformed_cohort_filter`).
  *
  * @param value - The raw `_value` payload to install.
  * @returns A directly-constructed `$cohorts` filter.
@@ -116,37 +80,38 @@ function malformedCohortFilter(value: unknown): Filter {
 // T003: build_filter_entry — cohort filter JSON
 // ===========================================================================
 
-describe("TestBuildFilterEntryCohort", () => {
+describe("Build filter entry cohort", () => {
+  // python: TestBuildFilterEntryCohort
   it("the filter entry has resourceType='events'", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       where: Filter.inCohort(123, "Power Users"),
     });
     expect(filterEntry(result)["resourceType"]).toBe("events");
   });
 
   it("the filter entry has filterType='list'", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       where: Filter.inCohort(123, "Power Users"),
     });
     expect(filterEntry(result)["filterType"]).toBe("list");
   });
 
   it("the filter entry has value='$cohorts'", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       where: Filter.inCohort(123, "PU"),
     });
     expect(filterEntry(result)["value"]).toBe("$cohorts");
   });
 
   it("in_cohort produces filterOperator='contains'", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       where: Filter.inCohort(123, "PU"),
     });
     expect(filterEntry(result)["filterOperator"]).toBe("contains");
   });
 
   it("filterValue carries the cohort id and name", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       where: Filter.inCohort(123, "Power Users"),
     });
     const fv = filterEntry(result)["filterValue"] as Array<
@@ -161,7 +126,7 @@ describe("TestBuildFilterEntryCohort", () => {
   });
 
   it("an inline CohortDefinition produces raw_cohort in filterValue", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       where: Filter.inCohort(simpleCohortDef(), "Buyers"),
     });
     const fv = filterEntry(result)["filterValue"] as Array<
@@ -174,14 +139,14 @@ describe("TestBuildFilterEntryCohort", () => {
   });
 
   it("not_in_cohort produces filterOperator='does not contain'", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       where: Filter.notInCohort(789, "Bots"),
     });
     expect(filterEntry(result)["filterOperator"]).toBe("does not contain");
   });
 
   it("not_in_cohort sets negated=true in filterValue", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       where: Filter.notInCohort(789, "Bots"),
     });
     const fv = filterEntry(result)["filterValue"] as Array<
@@ -196,16 +161,17 @@ describe("TestBuildFilterEntryCohort", () => {
 // T005: mixed cohort + property filters
 // ===========================================================================
 
-describe("TestBuildFilterSectionMixed", () => {
+describe("Build filter section mixed", () => {
+  // python: TestBuildFilterSectionMixed
   it("a mix produces two filter entries", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       where: [Filter.inCohort(123, "PU"), Filter.equals("country", "US")],
     });
     expect(section(result, "filter")).toHaveLength(2);
   });
 
   it("both the cohort and property filters appear", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       where: [Filter.inCohort(123, "PU"), Filter.equals("country", "US")],
     });
     const values = section(result, "filter").map((e) => e["value"]);
@@ -218,16 +184,17 @@ describe("TestBuildFilterSectionMixed", () => {
 // T006: flow cohort filter (filter_by_cohort)
 // ===========================================================================
 
-describe("TestBuildFlowCohortFilter", () => {
+describe("Build flow cohort filter", () => {
+  // python: TestBuildFlowCohortFilter
   it("build_flow_params produces a filter_by_cohort key", async () => {
-    const result = await makeWs().buildFlowParams("Login", {
+    const result = await makeStubWorkspace().buildFlowParams("Login", {
       where: Filter.inCohort(123, "Power Users"),
     });
     expect(Object.hasOwn(result, "filter_by_cohort")).toBe(true);
   });
 
   it("filter_by_cohort has the correct id", async () => {
-    const result = await makeWs().buildFlowParams("Login", {
+    const result = await makeStubWorkspace().buildFlowParams("Login", {
       where: Filter.inCohort(123, "Power Users"),
     });
     expect((result["filter_by_cohort"] as Record<string, unknown>)["id"]).toBe(
@@ -236,7 +203,7 @@ describe("TestBuildFlowCohortFilter", () => {
   });
 
   it("filter_by_cohort has the correct name", async () => {
-    const result = await makeWs().buildFlowParams("Login", {
+    const result = await makeStubWorkspace().buildFlowParams("Login", {
       where: Filter.inCohort(123, "Power Users"),
     });
     expect(
@@ -245,7 +212,7 @@ describe("TestBuildFlowCohortFilter", () => {
   });
 
   it("filter_by_cohort has negated=false for in_cohort", async () => {
-    const result = await makeWs().buildFlowParams("Login", {
+    const result = await makeStubWorkspace().buildFlowParams("Login", {
       where: Filter.inCohort(123, "PU"),
     });
     expect(
@@ -254,7 +221,7 @@ describe("TestBuildFlowCohortFilter", () => {
   });
 
   it("a property filter produces filter_by_event", async () => {
-    const result = await makeWs().buildFlowParams("Login", {
+    const result = await makeStubWorkspace().buildFlowParams("Login", {
       where: Filter.equals("country", "US"),
     });
     expect(Object.hasOwn(result, "filter_by_event")).toBe(true);
@@ -268,23 +235,24 @@ describe("TestBuildFlowCohortFilter", () => {
 // T020: CohortBreakdown in sections.group
 // ===========================================================================
 
-describe("TestBuildGroupSectionCohort", () => {
+describe("Build group section cohort", () => {
+  // python: TestBuildGroupSectionCohort
   it("produces a non-empty sections.group", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       group_by: new CohortBreakdown({ cohort: 123, name: "Power Users" }),
     });
     expect(section(result, "group").length).toBeGreaterThan(0);
   });
 
   it("the group entry has a 'cohorts' key", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       group_by: new CohortBreakdown({ cohort: 123, name: "Power Users" }),
     });
     expect(Object.hasOwn(section(result, "group")[0]!, "cohorts")).toBe(true);
   });
 
   it("include_negated=true produces two cohort entries", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       group_by: new CohortBreakdown({
         cohort: 123,
         name: "Power Users",
@@ -300,7 +268,7 @@ describe("TestBuildGroupSectionCohort", () => {
   });
 
   it("include_negated=false produces one cohort entry", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       group_by: new CohortBreakdown({
         cohort: 123,
         name: "Power Users",
@@ -315,7 +283,7 @@ describe("TestBuildGroupSectionCohort", () => {
   });
 
   it("the group entry 'value' contains the cohort names", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       group_by: new CohortBreakdown({
         cohort: 123,
         name: "Power Users",
@@ -328,7 +296,7 @@ describe("TestBuildGroupSectionCohort", () => {
   });
 
   it("an inline CohortDefinition uses raw_cohort", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       group_by: new CohortBreakdown({
         cohort: simpleCohortDef(),
         name: "Active",
@@ -341,7 +309,7 @@ describe("TestBuildGroupSectionCohort", () => {
   });
 
   it("the group entry has resourceType='events'", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       group_by: new CohortBreakdown({ cohort: 123, name: "PU" }),
     });
     expect(section(result, "group")[0]!["resourceType"]).toBe("events");
@@ -352,16 +320,17 @@ describe("TestBuildGroupSectionCohort", () => {
 // T021: mixed CohortBreakdown + GroupBy/str
 // ===========================================================================
 
-describe("TestBuildGroupSectionMixed", () => {
+describe("Build group section mixed", () => {
+  // python: TestBuildGroupSectionMixed
   it("a CohortBreakdown plus a string produces two group entries", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       group_by: [new CohortBreakdown({ cohort: 123, name: "PU" }), "country"],
     });
     expect(section(result, "group")).toHaveLength(2);
   });
 
   it("a CohortBreakdown plus a GroupBy produces two group entries", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       group_by: [
         new CohortBreakdown({ cohort: 123, name: "PU" }),
         new GroupBy({ property: "platform" }),
@@ -375,50 +344,67 @@ describe("TestBuildGroupSectionMixed", () => {
 // T009-T011: cohort filters across the three engines
 // ===========================================================================
 
-describe("TestBuildParamsCohortFilter", () => {
+describe("Build params cohort filter", () => {
+  // python: TestBuildParamsCohortFilter
   it("a cohort filter populates sections.filter", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       where: Filter.inCohort(123, "PU"),
     });
     expect(section(result, "filter").length).toBeGreaterThan(0);
   });
 
   it("the filter entry targets $cohorts", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       where: Filter.inCohort(123, "PU"),
     });
     expect(filterEntry(result)["value"]).toBe("$cohorts");
   });
 });
 
-describe("TestBuildFunnelParamsCohortFilter", () => {
+describe("Build funnel params cohort filter", () => {
+  // python: TestBuildFunnelParamsCohortFilter
   it("a cohort filter populates funnel sections.filter", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      where: Filter.inCohort(123, "PU"),
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        where: Filter.inCohort(123, "PU"),
+      },
+    );
     expect(section(result, "filter").length).toBeGreaterThan(0);
   });
 
   it("the funnel filter entry targets $cohorts", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      where: Filter.inCohort(123, "PU"),
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        where: Filter.inCohort(123, "PU"),
+      },
+    );
     expect(filterEntry(result)["value"]).toBe("$cohorts");
   });
 });
 
-describe("TestBuildRetentionParamsCohortFilter", () => {
+describe("Build retention params cohort filter", () => {
+  // python: TestBuildRetentionParamsCohortFilter
   it("a cohort filter populates retention sections.filter", async () => {
-    const result = await makeWs().buildRetentionParams("Signup", "Login", {
-      where: Filter.inCohort(123, "PU"),
-    });
+    const result = await makeStubWorkspace().buildRetentionParams(
+      "Signup",
+      "Login",
+      {
+        where: Filter.inCohort(123, "PU"),
+      },
+    );
     expect(section(result, "filter").length).toBeGreaterThan(0);
   });
 
   it("the retention filter entry targets $cohorts", async () => {
-    const result = await makeWs().buildRetentionParams("Signup", "Login", {
-      where: Filter.inCohort(123, "PU"),
-    });
+    const result = await makeStubWorkspace().buildRetentionParams(
+      "Signup",
+      "Login",
+      {
+        where: Filter.inCohort(123, "PU"),
+      },
+    );
     expect(filterEntry(result)["value"]).toBe("$cohorts");
   });
 });
@@ -427,49 +413,62 @@ describe("TestBuildRetentionParamsCohortFilter", () => {
 // T024-T026: CohortBreakdown across the three engines
 // ===========================================================================
 
-describe("TestBuildParamsCohortBreakdown", () => {
+describe("Build params cohort breakdown", () => {
+  // python: TestBuildParamsCohortBreakdown
   it("a CohortBreakdown appears in sections.group", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       group_by: new CohortBreakdown({ cohort: 123, name: "PU" }),
     });
     expect(section(result, "group").length).toBeGreaterThan(0);
   });
 
   it("the group entry has a cohorts key", async () => {
-    const result = await makeWs().buildParams("Login", {
+    const result = await makeStubWorkspace().buildParams("Login", {
       group_by: new CohortBreakdown({ cohort: 123, name: "PU" }),
     });
     expect(Object.hasOwn(section(result, "group")[0]!, "cohorts")).toBe(true);
   });
 });
 
-describe("TestBuildFunnelParamsCohortBreakdown", () => {
+describe("Build funnel params cohort breakdown", () => {
+  // python: TestBuildFunnelParamsCohortBreakdown
   it("a CohortBreakdown appears in funnel sections.group", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      group_by: new CohortBreakdown({ cohort: 123, name: "PU" }),
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        group_by: new CohortBreakdown({ cohort: 123, name: "PU" }),
+      },
+    );
     expect(section(result, "group").length).toBeGreaterThan(0);
   });
 
   it("the funnel group entry has a cohorts key", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      group_by: new CohortBreakdown({ cohort: 123, name: "PU" }),
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        group_by: new CohortBreakdown({ cohort: 123, name: "PU" }),
+      },
+    );
     expect(Object.hasOwn(section(result, "group")[0]!, "cohorts")).toBe(true);
   });
 });
 
-describe("TestBuildRetentionParamsCohortBreakdown", () => {
+describe("Build retention params cohort breakdown", () => {
+  // python: TestBuildRetentionParamsCohortBreakdown
   it("a CohortBreakdown alone works in retention group_by", async () => {
-    const result = await makeWs().buildRetentionParams("Signup", "Login", {
-      group_by: new CohortBreakdown({ cohort: 123, name: "PU" }),
-    });
+    const result = await makeStubWorkspace().buildRetentionParams(
+      "Signup",
+      "Login",
+      {
+        group_by: new CohortBreakdown({ cohort: 123, name: "PU" }),
+      },
+    );
     expect(section(result, "group").length).toBeGreaterThan(0);
   });
 
   it("CB3: mixing with a GroupBy in retention raises", async () => {
     await expect(
-      makeWs().buildRetentionParams("Signup", "Login", {
+      makeStubWorkspace().buildRetentionParams("Signup", "Login", {
         group_by: [
           new CohortBreakdown({ cohort: 123, name: "PU" }),
           new GroupBy({ property: "platform" }),
@@ -480,7 +479,7 @@ describe("TestBuildRetentionParamsCohortBreakdown", () => {
 
   it("CB3: mixing with a string in retention raises", async () => {
     await expect(
-      makeWs().buildRetentionParams("Signup", "Login", {
+      makeStubWorkspace().buildRetentionParams("Signup", "Login", {
         group_by: [
           new CohortBreakdown({ cohort: 123, name: "PU" }),
           "platform",
@@ -494,10 +493,11 @@ describe("TestBuildRetentionParamsCohortBreakdown", () => {
 // T038: CohortMetric in events
 // ===========================================================================
 
-describe("TestBuildParamsCohortMetric", () => {
+describe("Build params cohort metric", () => {
+  // python: TestBuildParamsCohortMetric
   /** `ws.build_params(CohortMetric(123, "Power Users"))`. */
   async function powerUsers(): Promise<Record<string, unknown>> {
-    return makeWs().buildParams(
+    return makeStubWorkspace().buildParams(
       new CohortMetric({ cohort: 123, name: "Power Users" }),
     );
   }
@@ -549,9 +549,10 @@ describe("TestBuildParamsCohortMetric", () => {
 // T039: CohortMetric mixed with Metric and Formula
 // ===========================================================================
 
-describe("TestBuildParamsCohortMetricMixed", () => {
+describe("Build params cohort metric mixed", () => {
+  // python: TestBuildParamsCohortMetricMixed
   it("a CohortMetric and a Metric produce two show entries", async () => {
-    const result = await makeWs().buildParams([
+    const result = await makeStubWorkspace().buildParams([
       new CohortMetric({ cohort: 123, name: "Power Users" }),
       new Metric({ event: "Login" }),
     ]);
@@ -559,7 +560,7 @@ describe("TestBuildParamsCohortMetricMixed", () => {
   });
 
   it("a CohortMetric and a string event produce two show entries", async () => {
-    const result = await makeWs().buildParams([
+    const result = await makeStubWorkspace().buildParams([
       new CohortMetric({ cohort: 123, name: "PU" }),
       "Login",
     ]);
@@ -567,7 +568,7 @@ describe("TestBuildParamsCohortMetricMixed", () => {
   });
 
   it("a CohortMetric and a Formula work together", async () => {
-    const result = await makeWs().buildParams([
+    const result = await makeStubWorkspace().buildParams([
       new CohortMetric({ cohort: 123, name: "PU" }),
       new Metric({ event: "Login" }),
       new Formula({ expression: "A/B", label: "Rate" }),
@@ -580,9 +581,10 @@ describe("TestBuildParamsCohortMetricMixed", () => {
 // T040: CM3 — math/math_property/per_user ignored for CohortMetric
 // ===========================================================================
 
-describe("TestBuildParamsCohortMetricMathIgnored", () => {
+describe("Build params cohort metric math ignored", () => {
+  // python: TestBuildParamsCohortMetricMathIgnored
   it("math='total' does not change the cohort metric's math", async () => {
-    const result = await makeWs().buildParams(
+    const result = await makeStubWorkspace().buildParams(
       new CohortMetric({ cohort: 123, name: "PU" }),
       { math: "total" },
     );
@@ -590,7 +592,7 @@ describe("TestBuildParamsCohortMetricMathIgnored", () => {
   });
 
   it("math_property does not appear in the cohort measurement", async () => {
-    const result = await makeWs().buildParams(
+    const result = await makeStubWorkspace().buildParams(
       new CohortMetric({ cohort: 123, name: "PU" }),
       { math: "average", math_property: "amount" },
     );
@@ -598,7 +600,7 @@ describe("TestBuildParamsCohortMetricMathIgnored", () => {
   });
 
   it("property-math without math_property is ignored for cohort-only", async () => {
-    const result = await makeWs().buildParams(
+    const result = await makeStubWorkspace().buildParams(
       new CohortMetric({ cohort: 123, name: "PU" }),
       { math: "average" },
     );
@@ -606,7 +608,7 @@ describe("TestBuildParamsCohortMetricMathIgnored", () => {
   });
 
   it("percentile without a value is ignored for cohort-only", async () => {
-    const result = await makeWs().buildParams(
+    const result = await makeStubWorkspace().buildParams(
       new CohortMetric({ cohort: 123, name: "PU" }),
       { math: "percentile" },
     );
@@ -614,7 +616,7 @@ describe("TestBuildParamsCohortMetricMathIgnored", () => {
   });
 
   it("histogram without per_user is ignored for cohort-only", async () => {
-    const result = await makeWs().buildParams(
+    const result = await makeStubWorkspace().buildParams(
       new CohortMetric({ cohort: 123, name: "PU" }),
       { math: "histogram" },
     );
@@ -622,7 +624,7 @@ describe("TestBuildParamsCohortMetricMathIgnored", () => {
   });
 
   it("an incompatible per_user is ignored for cohort-only", async () => {
-    const result = await makeWs().buildParams(
+    const result = await makeStubWorkspace().buildParams(
       new CohortMetric({ cohort: 123, name: "PU" }),
       { math: "unique", per_user: "average" },
     );
@@ -631,7 +633,7 @@ describe("TestBuildParamsCohortMetricMathIgnored", () => {
 
   it("mixed events still validate the top-level math", async () => {
     await expect(
-      makeWs().buildParams(
+      makeStubWorkspace().buildParams(
         [new CohortMetric({ cohort: 123, name: "PU" }), "Login"],
         { math: "average" },
       ),
@@ -639,7 +641,7 @@ describe("TestBuildParamsCohortMetricMathIgnored", () => {
   });
 
   it("per_user does not appear in the cohort measurement", async () => {
-    const result = await makeWs().buildParams([
+    const result = await makeStubWorkspace().buildParams([
       new CohortMetric({ cohort: 123, name: "PU" }),
       new Metric({
         event: "Login",
@@ -659,21 +661,22 @@ describe("TestBuildParamsCohortMetricMathIgnored", () => {
 // T007: query_flow where= — cohort filter
 // ===========================================================================
 
-describe("TestQueryFlowCohortFilter", () => {
+describe("Query flow cohort filter", () => {
+  // python: TestQueryFlowCohortFilter
   it("build_flow_params with a cohort filter produces filter_by_cohort", async () => {
-    const result = await makeWs().buildFlowParams("Login", {
+    const result = await makeStubWorkspace().buildFlowParams("Login", {
       where: Filter.inCohort(123, "PU"),
     });
     expect(Object.hasOwn(result, "filter_by_cohort")).toBe(true);
   });
 
   it("build_flow_params without where= has no filter_by_cohort", async () => {
-    const result = await makeWs().buildFlowParams("Login");
+    const result = await makeStubWorkspace().buildFlowParams("Login");
     expect(Object.hasOwn(result, "filter_by_cohort")).toBe(false);
   });
 
   it("a property filter produces filter_by_event", async () => {
-    const result = await makeWs().buildFlowParams("Login", {
+    const result = await makeStubWorkspace().buildFlowParams("Login", {
       where: Filter.equals("country", "US"),
     });
     expect(Object.hasOwn(result, "filter_by_event")).toBe(true);
@@ -684,7 +687,7 @@ describe("TestQueryFlowCohortFilter", () => {
 
   it("multiple cohort filters raise", async () => {
     await expect(
-      makeWs().buildFlowParams("Login", {
+      makeStubWorkspace().buildFlowParams("Login", {
         where: [Filter.inCohort(123, "A"), Filter.inCohort(456, "B")],
       }),
     ).rejects.toThrow(/query_flow supports a single cohort filter, but 2/);
@@ -695,7 +698,8 @@ describe("TestQueryFlowCohortFilter", () => {
 // build_flow_cohort_filter — direct unit tests
 // ===========================================================================
 
-describe("TestBuildFlowCohortFilterDirect", () => {
+describe("Build flow cohort filter direct", () => {
+  // python: TestBuildFlowCohortFilterDirect
   it("a saved cohort filter produces a dict with the id", () => {
     const result = buildFlowCohortFilter(Filter.inCohort(123, "PU"));
     expect(result).not.toBeNull();
@@ -737,7 +741,8 @@ describe("TestBuildFlowCohortFilterDirect", () => {
 // Coded guard errors (BB4-BB8)
 // ===========================================================================
 
-describe("TestCodedFlowCohortFilterCodes", () => {
+describe("Coded flow cohort filter codes", () => {
+  // python: TestCodedFlowCohortFilterCodes
   /** Assert the thrown guard carries `code`. */
   function expectCode(fn: () => unknown, code: string): void {
     const error = expectThrows(
@@ -791,7 +796,7 @@ describe("TestCodedFlowCohortFilterCodes", () => {
 
   it("BB5 surfaces through the build_flow_params facade seam", async () => {
     const error = await expectRejects(
-      makeWs().buildFlowParams("Login", {
+      makeStubWorkspace().buildFlowParams("Login", {
         where: [Filter.inCohort(123, "A"), Filter.inCohort(456, "B")],
       }),
       "expected ParamValidationError BB5",

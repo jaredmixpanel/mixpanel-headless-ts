@@ -1,27 +1,8 @@
-// Translated Phase-008 LiveQueryService tests (B5-S2, packet §3):
-// assertion-for-assertion port of tests/unit/test_live_query_phase008.py
-// — ALL 8 classes (TestActivityFeedService :68,
-// TestNumericSumService :279, TestNumericAverageService :355,
-// TestFrequencyService :427, TestNumericBucketService :516,
-// TestQuerySavedReportService :597, TestPhase008ServiceErrorHandling
-// :703, TestPhase008EdgeCases :964).
-//
-// Translation notes:
-// - The Python fixture pins a workspace with `client.set_workspace_id(
-//   12345)` so `activity_feed`'s stream/bookmark call resolves without
-//   an unmocked fetch; the TS twin pins it on the SESSION
-//   (`makeSession({workspaceId: 12345})`), which is the same
-//   pin-then-skip-discovery path the B4 client reads.
-// - `UserEvent.time` is a `datetime` in Python and preserved ISO text in
-//   TS (phase2-design watchlist #5), so
-//   `test_activity_feed_converts_timestamps`'s
-//   `.year/.month/.day == 2024/1/1` becomes the exact ISO rendering
-//   `"2024-01-01T00:00:00+00:00"` — a STRICTLY stronger assertion over
-//   the same conversion, and the `isinstance(..., datetime)` check has
-//   no TS analog (recorded in `B5-S2-notes.md` §2).
-// - `.df` asserts translate to `toRows()` / `rowColumns()` (C6).
-// - `pytest.raises(ValueError, match=...)` is the shared
-//   `compat/python-builtins.ts` `ValueError` twin.
+// LiveQueryService phase-008 methods: activity_feed, segmentation sum /
+// average / numeric buckets, frequency and query_saved_report, plus their
+// error propagation and edge cases. Mirrors all eight classes of
+// tests/unit/test_live_query_phase008.py. `UserEvent.time` is preserved ISO
+// text in TS, so the datetime year/month/day asserts become the ISO rendering.
 
 import { describe, expect, it } from "vitest";
 
@@ -38,14 +19,10 @@ import {
   UserEvent,
 } from "../../src/types/results/live-query.js";
 import {
-  type CannedResponse,
-  type CapturedFetchRequest,
+  type CannedHandler,
   createMockClient,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
-
-/** A canned-response handler (the httpx.MockTransport handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
 
 /**
  * The `live_query_factory` fixture.
@@ -53,7 +30,7 @@ type Handler = (request: CapturedFetchRequest) => CannedResponse;
  * @param handler - The canned-response handler.
  * @returns The service under test.
  */
-function liveQueryFactory(handler: Handler): LiveQueryService {
+function liveQueryFactory(handler: CannedHandler): LiveQueryService {
   const { client } = createMockClient(
     makeSession({ workspaceId: 12345 }),
     handler,
@@ -62,10 +39,11 @@ function liveQueryFactory(handler: Handler): LiveQueryService {
 }
 
 // ===========================================================================
-// US1: Activity Feed Tests
+// Activity feed
 // ===========================================================================
 
-describe("TestActivityFeedService", () => {
+describe("Activity feed service", () => {
+  // python: TestActivityFeedService
   it("returns ActivityFeedResult", async () => {
     const live = liveQueryFactory(() => ({
       status: 200,
@@ -202,10 +180,11 @@ describe("TestActivityFeedService", () => {
 });
 
 // ===========================================================================
-// US2: Numeric Sum Tests
+// Numeric sum
 // ===========================================================================
 
-describe("TestNumericSumService", () => {
+describe("Numeric sum service", () => {
+  // python: TestNumericSumService
   it("returns NumericSumResult", async () => {
     const live = liveQueryFactory(() => ({
       status: 200,
@@ -250,10 +229,11 @@ describe("TestNumericSumService", () => {
 });
 
 // ===========================================================================
-// US3: Numeric Average Tests
+// Numeric average
 // ===========================================================================
 
-describe("TestNumericAverageService", () => {
+describe("Numeric average service", () => {
+  // python: TestNumericAverageService
   it("returns NumericAverageResult", async () => {
     const live = liveQueryFactory(() => ({
       status: 200,
@@ -292,10 +272,11 @@ describe("TestNumericAverageService", () => {
 });
 
 // ===========================================================================
-// US4: Frequency Tests
+// Frequency
 // ===========================================================================
 
-describe("TestFrequencyService", () => {
+describe("Frequency service", () => {
+  // python: TestFrequencyService
   it("returns FrequencyResult", async () => {
     const live = liveQueryFactory(() => ({
       status: 200,
@@ -342,10 +323,11 @@ describe("TestFrequencyService", () => {
 });
 
 // ===========================================================================
-// US5: Numeric Bucketing Tests
+// Numeric bucketing
 // ===========================================================================
 
-describe("TestNumericBucketService", () => {
+describe("Numeric bucket service", () => {
+  // python: TestNumericBucketService
   it("returns NumericBucketResult", async () => {
     const live = liveQueryFactory(() => ({
       status: 200,
@@ -401,10 +383,11 @@ describe("TestNumericBucketService", () => {
 });
 
 // ===========================================================================
-// US6: Insights Tests
+// Saved report (insights)
 // ===========================================================================
 
-describe("TestQuerySavedReportService", () => {
+describe("Query saved report service", () => {
+  // python: TestQuerySavedReportService
   it("returns SavedReportResult", async () => {
     const live = liveQueryFactory(() => ({
       status: 200,
@@ -473,10 +456,11 @@ describe("TestQuerySavedReportService", () => {
 });
 
 // ===========================================================================
-// Error Handling Tests
+// Error handling
 // ===========================================================================
 
-describe("TestPhase008ServiceErrorHandling", () => {
+describe("Phase 008 service error handling", () => {
+  // python: TestPhase008ServiceErrorHandling
   // --- Activity Feed ---
 
   it("activity_feed propagates AuthenticationError", async () => {
@@ -641,10 +625,11 @@ describe("TestPhase008ServiceErrorHandling", () => {
 });
 
 // ===========================================================================
-// Edge Case Tests
+// Edge cases
 // ===========================================================================
 
-describe("TestPhase008EdgeCases", () => {
+describe("Phase 008 edge cases", () => {
+  // python: TestPhase008EdgeCases
   it("events with a missing timestamp raise ValueError", async () => {
     const live = liveQueryFactory(() => ({
       status: 200,

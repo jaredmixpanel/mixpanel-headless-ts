@@ -1,22 +1,8 @@
-// B6-W1 Layer-3 translation of `tests/unit/test_workspace_streaming.py`
-// (WHOLE file, 744 lines — packet §3 table): `TestStreamEvents`,
-// `TestStreamProfiles`, `TestNormalizedEventFormat`,
-// `TestRawEventFormat`, `TestNormalizedProfileFormat`,
-// `TestRawProfileFormat`.
-//
-// The members under test are the W1-D3 veneers: `ws.streamEvents` /
-// `ws.streamProfiles` are R6.6 item-level `yield*` wrappers over the
-// B4-C2 `streamEvents`/`streamProfiles` helpers
-// (`services/queries/streaming.ts:708,744`), which in turn wrap the
-// client's `exportEvents`/`exportProfiles`. Python's
-// `MagicMock(spec=MixpanelAPIClient)` becomes a stub client carrying
-// only those two members plus the call log.
-//
-// TRANSLATION NOTE (watchlist #5 / B4-C2 precedent): Python's normalized
-// `event_time` is a `datetime`; the TS transform emits the SAME instant
-// as UTC ISO TEXT (`transforms.ts:443-444`). `isinstance(…, datetime)`
-// therefore translates to the ISO-text spelling assertion, and
-// `event_time.tzinfo == timezone.utc` to the trailing `+00:00`.
+// Workspace.streamEvents / streamProfiles — item-level `yield*` veneers over
+// the streaming helpers and the client's exportEvents / exportProfiles — plus
+// the normalized and raw event/profile formats. Mirrors all six classes of
+// tests/unit/test_workspace_streaming.py. Python's normalized `event_time` is a
+// datetime; TS emits the same instant as UTC ISO text (`+00:00`), asserted as such.
 
 import { describe, expect, it } from "vitest";
 
@@ -25,6 +11,7 @@ import type { JsonValue } from "../../src/client/json-value.js";
 import { Workspace } from "../../src/workspace.js";
 import {
   asyncIterableOf,
+  drain,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 
@@ -102,7 +89,7 @@ function stubClient(): StubClient {
 }
 
 /**
- * Build a raw event in Mixpanel API format (`raw_event`, :71-82).
+ * Build a raw event in Mixpanel API format (`raw_event`).
  *
  * @param name - Event name.
  * @param distinctId - User id.
@@ -128,7 +115,7 @@ function rawEvent(
 }
 
 /**
- * Build a raw profile in Mixpanel API format (`raw_profile`, :85-93).
+ * Build a raw profile in Mixpanel API format (`raw_profile`).
  *
  * @param distinctId - User id.
  * @param lastSeen - `$last_seen` value (omitted when `null`).
@@ -160,24 +147,11 @@ function makeWorkspace(stub: StubClient): Workspace {
   return new Workspace({ session: TEST_SESSION, client: stub.client });
 }
 
-/**
- * Drain an async iterable into an array (Python's `list(...)`).
- *
- * @param source - The async iterable.
- * @returns Every yielded item, in order.
- */
-async function drain<T>(source: AsyncIterable<T>): Promise<T[]> {
-  const out: T[] = [];
-  for await (const item of source) {
-    out.push(item);
-  }
-  return out;
-}
-
 /** Cast helper for the transformed-record assertions. */
 type Rec = Record<string, unknown>;
 
-describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
+describe("Stream events", () => {
+  // python: TestStreamEvents
   it("T006: basic streaming with the default (normalized) format", async () => {
     const stub = stubClient();
     stub.setEvents(function* () {
@@ -368,7 +342,8 @@ describe("TestStreamEvents (test_workspace_streaming.py:106)", () => {
   });
 });
 
-describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
+describe("Stream profiles", () => {
+  // python: TestStreamProfiles
   it("T010: basic streaming with the default (normalized) format", async () => {
     const stub = stubClient();
     stub.setProfiles(function* () {
@@ -523,7 +498,8 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
   });
 });
 
-describe("TestNormalizedEventFormat (test_workspace_streaming.py:622)", () => {
+describe("Normalized event format", () => {
+  // python: TestNormalizedEventFormat
   it("T019: normalized events carry every required field", async () => {
     const stub = stubClient();
     stub.setEvents(function* () {
@@ -555,7 +531,8 @@ describe("TestNormalizedEventFormat (test_workspace_streaming.py:622)", () => {
   });
 });
 
-describe("TestRawEventFormat (test_workspace_streaming.py:659)", () => {
+describe("Raw event format", () => {
+  // python: TestRawEventFormat
   it("T020: raw events keep the Mixpanel API structure", async () => {
     const stub = stubClient();
     stub.setEvents(function* () {
@@ -582,7 +559,8 @@ describe("TestRawEventFormat (test_workspace_streaming.py:659)", () => {
   });
 });
 
-describe("TestNormalizedProfileFormat (test_workspace_streaming.py:689)", () => {
+describe("Normalized profile format", () => {
+  // python: TestNormalizedProfileFormat
   it("T021: normalized profiles carry every required field", async () => {
     const stub = stubClient();
     stub.setProfiles(function* () {
@@ -607,7 +585,8 @@ describe("TestNormalizedProfileFormat (test_workspace_streaming.py:689)", () => 
   });
 });
 
-describe("TestRawProfileFormat (test_workspace_streaming.py:720)", () => {
+describe("Raw profile format", () => {
+  // python: TestRawProfileFormat
   it("T022: raw profiles keep the `$`-prefixed API structure", async () => {
     const stub = stubClient();
     stub.setProfiles(function* () {
@@ -630,7 +609,7 @@ describe("TestRawProfileFormat (test_workspace_streaming.py:720)", () => {
   });
 });
 
-describe("W1-D3 — the streaming veneers stay PROJECT-scoped", () => {
+describe("the streaming veneers stay project-scoped", () => {
   it("a pinned workspace does not leak into the export options", async () => {
     // `workspace.py`: "Raw export streaming remains
     // project-scoped by design."

@@ -1,33 +1,8 @@
-// B6-W8 Layer-3 translation (packet `b6-packets.md` §10) — the WHOLE
-// of `tests/unit/test_workspace_governance.py` (781 lines, 14 classes
-// :194-:781):
-//
-//   enforcement : `TestGetSchemaEnforcement`,
-//     `TestInitSchemaEnforcement`,
-//     `TestUpdateSchemaEnforcement`,
-//     `TestReplaceSchemaEnforcement`,
-//     `TestDeleteSchemaEnforcement`
-//   auditing    : `TestRunAudit`, `TestRunAuditEventsOnly`
-//   anomalies   : `TestListDataVolumeAnomalies`,
-//     `TestUpdateAnomaly`, `TestBulkUpdateAnomalies`
-//   deletion    : `TestListDeletionRequests`,
-//     `TestCreateDeletionRequest`,
-//     `TestCancelDeletionRequest`,
-//     `TestPreviewDeletionFilters`
-//
-// Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
-// becomes `makeWorkspace(handler)`. `temp_dir` has no TS analog and is
-// dropped (the W6/W7 precedent).
-//
-// ADDITIVE sections (clearly headed, never substituting for a
-// translated Python assertion — B5 Caution #13 / packet §0.2): the
-// facade-local branches Python's suite does not reach — the two
-// `run_audit*` composite bodies branch-for-branch
-// (`workspace.py:9050-9067`, `:9088-9104`), the delegation contracts,
-// and the two dump spellings (`model_dump(by_alias=True)` at `:9169`
-// / `:9198` vs `model_dump(exclude_none=True, by_alias=True)`
-// everywhere else).
+// Workspace governance members: schema enforcement (get/init/update/replace/
+// delete), runAudit / runAuditEventsOnly, data-volume anomalies and deletion
+// requests, over the injected fetch seam. Mirrors all 14 classes of
+// tests/unit/test_workspace_governance.py. Additive: the run_audit composite
+// branches, the delegation contracts and the two model_dump spellings.
 
 import { describe, expect, it } from "vitest";
 
@@ -48,7 +23,6 @@ import {
   UpdateAnomalyParams,
   UpdateSchemaEnforcementParams,
 } from "../../src/types/entities/schemas.js";
-import { Workspace } from "../../src/workspace.js";
 import {
   bulkUpdateAnomalies as bulkUpdateAnomaliesMember,
   cancelDeletionRequest as cancelDeletionRequestMember,
@@ -65,59 +39,11 @@ import {
   updateAnomaly as updateAnomalyMember,
   updateSchemaEnforcement as updateSchemaEnforcementMember,
 } from "../../src/workspace-members/schemas-audit.js";
-import {
-  type CannedResponse,
-  type CapturedFetchRequest,
-  createMockClient,
-  type FakeTransport,
-  makeSession,
-} from "../../test-support/client-test-helpers.js";
-
-/** A canned-response handler (the `httpx.MockTransport` handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
-
-/** The OAuth session the mock client is built over (`:62-68`). */
-const CLIENT_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  oauthToken: "test-token",
-});
-
-/** The canonical service-account facade session (`_TEST_SESSION`, :46-55). */
-const FACADE_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  username: "test_user",
-  secret: "test_secret",
-});
+import { ok } from "../../test-support/client-test-helpers.js";
+import { makeFacadeWorkspace } from "../../test-support/workspace-test-helpers.js";
 
 /**
- * Build a Workspace whose client routes through `handler`
- * (`_make_workspace`, :76-93).
- *
- * @param handler - The canned-response handler.
- * @returns The facade plus the transport capture log.
- */
-function makeWorkspace(handler: Handler): {
-  ws: Workspace;
-  transport: FakeTransport;
-} {
-  const { client, transport } = createMockClient(CLIENT_SESSION, handler);
-  return { ws: new Workspace({ session: FACADE_SESSION, client }), transport };
-}
-
-/**
- * The App-API envelope every handler in the Python file returns.
- *
- * @param results - The `results` member.
- * @returns The canned 200 response.
- */
-function ok(results: unknown): CannedResponse {
-  return { status: 200, json: { status: "ok", results } };
-}
-
-/**
- * A minimal enforcement config dict (`_enforcement_json`, :101-116).
+ * A minimal enforcement config dict (`_enforcement_json`).
  *
  * @returns The payload record.
  */
@@ -134,7 +60,7 @@ function enforcementJson(): Record<string, unknown> {
 }
 
 /**
- * A minimal anomaly dict (`_anomaly_json`, :119-153).
+ * A minimal anomaly dict (`_anomaly_json`).
  *
  * @param id - Anomaly ID.
  * @param eventName - Event name.
@@ -171,8 +97,7 @@ function anomalyJson(
 }
 
 /**
- * A minimal deletion request dict (`_deletion_request_json`,
- * :156-186).
+ * A minimal deletion request dict (`_deletion_request_json`).
  *
  * @param id - Request ID.
  * @param eventName - Event name to delete.
@@ -198,13 +123,11 @@ function deletionRequestJson(
   };
 }
 
-// ===========================================================================
-// Schema Enforcement
-// ===========================================================================
+// --- Schema Enforcement ---
 
 describe("Workspace.getSchemaEnforcement", () => {
-  it("returns a SchemaEnforcementConfig (:197)", async () => {
-    const { ws } = makeWorkspace(() => ok(enforcementJson()));
+  it("returns a SchemaEnforcementConfig", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok(enforcementJson()));
 
     const result = await ws.getSchemaEnforcement();
 
@@ -214,8 +137,8 @@ describe("Workspace.getSchemaEnforcement", () => {
     expect(result.id).toBe(1);
   });
 
-  it("returns a partial config with fields=... (:215)", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("returns a partial config with fields=...", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ ruleEvent: "Warn and Accept", state: "ingested" }),
     );
 
@@ -227,8 +150,8 @@ describe("Workspace.getSchemaEnforcement", () => {
 });
 
 describe("Workspace.initSchemaEnforcement", () => {
-  it("returns a dict response (:241)", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("returns a dict response", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ id: 1, ruleEvent: "Warn and Drop", state: "planned" }),
     );
 
@@ -242,8 +165,8 @@ describe("Workspace.initSchemaEnforcement", () => {
 });
 
 describe("Workspace.updateSchemaEnforcement", () => {
-  it("returns a dict response (:269)", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("returns a dict response", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok({
         ruleEvent: "Warn and Hide",
         notificationEmails: ["new@example.com"],
@@ -263,8 +186,8 @@ describe("Workspace.updateSchemaEnforcement", () => {
 });
 
 describe("Workspace.replaceSchemaEnforcement", () => {
-  it("returns a dict response (:299)", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("returns a dict response", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok({
         ruleEvent: "Warn and Drop",
         notificationEmails: ["admin@example.com"],
@@ -290,8 +213,8 @@ describe("Workspace.replaceSchemaEnforcement", () => {
 });
 
 describe("Workspace.deleteSchemaEnforcement", () => {
-  it("returns a dict response (:335)", async () => {
-    const { ws } = makeWorkspace(() => ok({ deleted: true }));
+  it("returns a dict response", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok({ deleted: true }));
 
     const result = await ws.deleteSchemaEnforcement();
 
@@ -300,13 +223,11 @@ describe("Workspace.deleteSchemaEnforcement", () => {
   });
 });
 
-// ===========================================================================
-// Data Auditing
-// ===========================================================================
+// --- Data Auditing ---
 
 describe("Workspace.runAudit", () => {
-  it("returns an AuditResponse with parsed violations (:360)", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("returns an AuditResponse with parsed violations", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok([
         [
           { violation: "Unexpected Event", name: "bad_event", count: 42 },
@@ -334,8 +255,8 @@ describe("Workspace.runAudit", () => {
     expect(result.computed_at).toBe("2026-01-01T00:00:00Z");
   });
 
-  it("handles an empty violations list (:401)", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("handles an empty violations list", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok([[], { computed_at: "2026-01-01T12:00:00Z" }]),
     );
 
@@ -346,8 +267,8 @@ describe("Workspace.runAudit", () => {
     expect(result.computed_at).toBe("2026-01-01T12:00:00Z");
   });
 
-  it("returns an empty AuditResponse for an empty results list (:421)", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+  it("returns an empty AuditResponse for an empty results list", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok([]));
 
     const result = await ws.runAudit();
 
@@ -358,8 +279,8 @@ describe("Workspace.runAudit", () => {
 });
 
 describe("Workspace.runAuditEventsOnly", () => {
-  it("returns an AuditResponse (:446)", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("returns an AuditResponse", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok([
         [{ violation: "Unexpected Event", name: "rogue_event", count: 100 }],
         { computed_at: "2026-01-02T00:00:00Z" },
@@ -375,8 +296,8 @@ describe("Workspace.runAuditEventsOnly", () => {
     expect(result.computed_at).toBe("2026-01-02T00:00:00Z");
   });
 
-  it("returns an empty AuditResponse when empty (:477)", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+  it("returns an empty AuditResponse when empty", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok([]));
 
     const result = await ws.runAuditEventsOnly();
 
@@ -386,13 +307,11 @@ describe("Workspace.runAuditEventsOnly", () => {
   });
 });
 
-// ===========================================================================
-// Data Volume Anomalies
-// ===========================================================================
+// --- Data Volume Anomalies ---
 
 describe("Workspace.listDataVolumeAnomalies", () => {
-  it("returns a list of DataVolumeAnomaly (:507)", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("returns a list of DataVolumeAnomaly", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ anomalies: [anomalyJson(1, "Signup"), anomalyJson(2, "Login")] }),
     );
 
@@ -409,15 +328,15 @@ describe("Workspace.listDataVolumeAnomalies", () => {
     expect(result[1]?.event_name).toBe("Login");
   });
 
-  it("returns an empty list when none exist (:538)", async () => {
-    const { ws } = makeWorkspace(() => ok({ anomalies: [] }));
+  it("returns an empty list when none exist", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok({ anomalies: [] }));
 
     await expect(ws.listDataVolumeAnomalies()).resolves.toStrictEqual([]);
   });
 
-  it("passes query_params filters (:553)", async () => {
+  it("passes query_params filters", async () => {
     const capturedUrls: string[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       capturedUrls.push(request.url);
       return ok({ anomalies: [anomalyJson(1)] });
     });
@@ -432,8 +351,8 @@ describe("Workspace.listDataVolumeAnomalies", () => {
 });
 
 describe("Workspace.updateAnomaly", () => {
-  it("returns a dict response (:578)", async () => {
-    const { ws } = makeWorkspace(() => ok({ updated: true }));
+  it("returns a dict response", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok({ updated: true }));
 
     const result = await ws.updateAnomaly(
       new UpdateAnomalyParams({
@@ -449,8 +368,8 @@ describe("Workspace.updateAnomaly", () => {
 });
 
 describe("Workspace.bulkUpdateAnomalies", () => {
-  it("returns a dict response (:599)", async () => {
-    const { ws } = makeWorkspace(() => ok({ updated: 2 }));
+  it("returns a dict response", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok({ updated: 2 }));
 
     const result = await ws.bulkUpdateAnomalies(
       new BulkUpdateAnomalyParams({
@@ -467,13 +386,11 @@ describe("Workspace.bulkUpdateAnomalies", () => {
   });
 });
 
-// ===========================================================================
-// Event Deletion Requests
-// ===========================================================================
+// --- Event Deletion Requests ---
 
 describe("Workspace.listDeletionRequests", () => {
-  it("returns a list of EventDeletionRequest (:631)", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("returns a list of EventDeletionRequest", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok([
         deletionRequestJson(1, "event_a"),
         deletionRequestJson(2, "event_b"),
@@ -491,16 +408,16 @@ describe("Workspace.listDeletionRequests", () => {
     expect(result[1]?.id).toBe(2);
   });
 
-  it("returns an empty list when none exist (:658)", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+  it("returns an empty list when none exist", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok([]));
 
     await expect(ws.listDeletionRequests()).resolves.toStrictEqual([]);
   });
 });
 
 describe("Workspace.createDeletionRequest", () => {
-  it("returns the updated list of EventDeletionRequest (:677)", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("returns the updated list of EventDeletionRequest", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok([
         deletionRequestJson(1, "existing"),
         deletionRequestJson(2, "new_event"),
@@ -523,8 +440,8 @@ describe("Workspace.createDeletionRequest", () => {
 });
 
 describe("Workspace.cancelDeletionRequest", () => {
-  it("returns the updated list of EventDeletionRequest (:710)", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("returns the updated list of EventDeletionRequest", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok([deletionRequestJson(1, "remaining")]),
     );
 
@@ -537,8 +454,8 @@ describe("Workspace.cancelDeletionRequest", () => {
 });
 
 describe("Workspace.previewDeletionFilters", () => {
-  it("returns a list of filter dicts (:734)", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("returns a list of filter dicts", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok([
         { property: "country", op: "equals", value: "US" },
         { property: "platform", op: "equals", value: "iOS" },
@@ -559,8 +476,8 @@ describe("Workspace.previewDeletionFilters", () => {
     expect(result[1]?.["property"]).toBe("platform");
   });
 
-  it("returns an empty list when no filters match (:763)", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+  it("returns an empty list when no filters match", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok([]));
 
     const result = await ws.previewDeletionFilters(
       new PreviewDeletionFiltersParams({
@@ -574,11 +491,8 @@ describe("Workspace.previewDeletionFilters", () => {
   });
 });
 
-// ===========================================================================
-// ADDITIVE (B5 Caution #13): the `run_audit*` composite branches and the
-// facade-local delegation contracts. These do NOT substitute for any
-// translated Python assertion.
-// ===========================================================================
+// --- Additive: the run_audit composite branches and the facade-local
+// delegation contracts Python's wire suite does not reach ---
 
 /** One recorded delegation call. */
 interface DelegationCall {
@@ -625,7 +539,7 @@ function delegationStub(returns: Readonly<Record<string, unknown>>): {
   return { client: stub as unknown as MixpanelClient, calls };
 }
 
-describe("ADDITIVE: run_audit composite branches (`workspace.py:9050-9067`)", () => {
+describe("ADDITIVE: runAudit composite branches", () => {
   it("raises when the first element is not a list (both members)", async () => {
     const { client } = delegationStub({
       runAudit: [{ computed_at: "x" }],
@@ -658,7 +572,7 @@ describe("ADDITIVE: run_audit composite branches (`workspace.py:9050-9067`)", ()
     expect(result.violations).toStrictEqual([]);
   });
 
-  it("falls back to {} metadata when raw[1] is not a dict (watchlist #13)", async () => {
+  it("falls back to {} metadata when raw[1] is not a dict", async () => {
     const { client } = delegationStub({ runAudit: [[], ["not", "a", "dict"]] });
 
     expect((await runAuditMember(client)).computed_at).toBe("");
@@ -723,7 +637,7 @@ describe("ADDITIVE: delegation contracts", () => {
       { method: "getSchemaEnforcement", args: [{ fields: "ruleEvent" }] },
       { method: "getSchemaEnforcement", args: [{ fields: null }] },
       // `exclude_none=True` drops every unset field; `by_alias=True`
-      // camel-cases what remains (`workspace.py:8940`, `:8970`, `:9002`).
+      // camel-cases what remains.
       {
         method: "initSchemaEnforcement",
         args: [{ ruleEvent: "Warn and Drop" }],
@@ -748,7 +662,7 @@ describe("ADDITIVE: delegation contracts", () => {
     ]);
   });
 
-  it("the anomaly writers use the PLAIN by_alias dump (:9169, :9198)", async () => {
+  it("the anomaly writers use the plain by_alias dump", async () => {
     const { client, calls } = delegationStub({
       listDataVolumeAnomalies: [],
       updateAnomaly: {},
@@ -845,19 +759,19 @@ describe("ADDITIVE: delegation contracts", () => {
   });
 
   it("the model-validating members name their own model on a bad payload", async () => {
-    const anomalies = makeWorkspace(() => ok({ anomalies: [{ id: 1 }] }));
+    const anomalies = makeFacadeWorkspace(() => ok({ anomalies: [{ id: 1 }] }));
     await expect(anomalies.ws.listDataVolumeAnomalies()).rejects.toMatchObject({
       code: "RESPONSE_VALIDATION_ERROR",
       details: { model: "DataVolumeAnomaly" },
     });
 
-    const deletions = makeWorkspace(() => ok([{}]));
+    const deletions = makeFacadeWorkspace(() => ok([{}]));
     await expect(deletions.ws.listDeletionRequests()).rejects.toMatchObject({
       code: "RESPONSE_VALIDATION_ERROR",
       details: { model: "EventDeletionRequest" },
     });
 
-    const enforcement = makeWorkspace(() => ok({ id: "not-an-int" }));
+    const enforcement = makeFacadeWorkspace(() => ok({ id: "not-an-int" }));
     await expect(enforcement.ws.getSchemaEnforcement()).rejects.toMatchObject({
       code: "RESPONSE_VALIDATION_ERROR",
       details: { model: "SchemaEnforcementConfig" },

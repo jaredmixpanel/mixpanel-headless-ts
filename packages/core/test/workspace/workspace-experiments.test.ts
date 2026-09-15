@@ -1,28 +1,11 @@
-// B6-W4 Layer-3 translation (packet `b6-packets.md` §6) of the WHOLE
-// of `tests/unit/test_workspace_experiments.py` (464 lines, 3 classes):
-// `TestWorkspaceExperimentCRUD`,
-// `TestWorkspaceExperimentLifecycle` and
-// `TestWorkspaceExperimentManagement`.
-//
-// Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
-// becomes `makeWorkspace(handler)` — the client is built over the
-// OAuth session (`_make_oauth_credentials`, :56) while the facade
-// carries the service-account `_TEST_SESSION`, exactly as
-// Python does. Unlike the flags module, NO workspace pin is installed:
-// every experiment path is project-scoped (`experiments.ts`, B4-C4).
-// `temp_dir` has no TS analog (no config file is ever touched) and is
-// dropped.
-//
-// ADDITIVE sections (clearly headed, never substituting for a
-// translated Python assertion — B5 Caution #13 / packet §0.2): the
-// three empty-response guards Python's suite never reaches through the
-// wire (`workspace.py:6151`, `:6183`, `:6221`) and the
-// `conclude_experiment` `body or {}` branch (`:6300`).
+// Workspace experiment members (CRUD, lifecycle, management) over the injected
+// fetch seam. Mirrors tests/unit/test_workspace_experiments.py (all three
+// classes); no workspace pin is installed because every experiment path is
+// project-scoped. Additive: the three empty-response guards and the
+// concludeExperiment `body or {}` branch, which Python's wire suite never reaches.
 
 import { describe, expect, it } from "vitest";
 
-import type { MixpanelClient } from "../../src/client/client.js";
 import {
   CreateExperimentParams,
   DuplicateExperimentParams,
@@ -32,57 +15,21 @@ import {
   UpdateExperimentParams,
 } from "../../src/types/entities/experiments.js";
 import { ExperimentStatus } from "../../src/types/enums.js";
-import { Workspace } from "../../src/workspace.js";
 import {
   concludeExperiment as concludeExperimentMember,
   createExperiment as createExperimentMember,
   getExperiment as getExperimentMember,
   updateExperiment as updateExperimentMember,
 } from "../../src/workspace-members/flags-experiments.js";
+import { ok } from "../../test-support/client-test-helpers.js";
 import {
-  type CannedResponse,
-  type CapturedFetchRequest,
-  createMockClient,
-  type FakeTransport,
-  makeSession,
-} from "../../test-support/client-test-helpers.js";
-
-/** A canned-response handler (the `httpx.MockTransport` handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
-
-/** The OAuth session the mock client is built over (`:56-62`). */
-const CLIENT_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  oauthToken: "test-token",
-});
-
-/** The canonical service-account facade session (`_TEST_SESSION`, :40-49). */
-const FACADE_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  username: "test_user",
-  secret: "test_secret",
-});
-
-/**
- * Build a Workspace whose client routes through `handler`
- * (`_make_workspace`, :71-90).
- *
- * @param handler - The canned-response handler.
- * @returns The facade plus the transport capture log.
- */
-function makeWorkspace(handler: Handler): {
-  ws: Workspace;
-  transport: FakeTransport;
-} {
-  const { client, transport } = createMockClient(CLIENT_SESSION, handler);
-  return { ws: new Workspace({ session: FACADE_SESSION, client }), transport };
-}
+  makeFacadeWorkspace,
+  stubClient,
+} from "../../test-support/workspace-test-helpers.js";
 
 /**
  * A minimal experiment dict matching the API shape
- * (`_experiment_json`, :98-117).
+ * (`_experiment_json`).
  *
  * @param id - Experiment UUID.
  * @param name - Experiment name.
@@ -97,45 +44,12 @@ function experimentJson(
   return { id, name, status };
 }
 
-/**
- * A 200 App-API envelope wrapping `results`.
- *
- * @param results - The `results` payload.
- * @returns The canned response.
- */
-function ok(results: unknown): CannedResponse {
-  return { status: 200, json: { status: "ok", results } };
-}
+// --- Workspace experiment CRUD ---
 
-/**
- * A client stub whose single method returns `value`
- * (the additive member-level probes).
- *
- * @param method - The client method name to stub.
- * @param value - The value the stub resolves to.
- * @param calls - Optional log receiving each argument list.
- * @returns The stub cast to the client type.
- */
-function stubClient(
-  method: string,
-  value: unknown,
-  calls: unknown[][] = [],
-): MixpanelClient {
-  return {
-    [method]: (...args: unknown[]): Promise<unknown> => {
-      calls.push(args);
-      return Promise.resolve(value);
-    },
-  } as unknown as MixpanelClient;
-}
-
-// =============================================================================
-// TestWorkspaceExperimentCRUD
-// =============================================================================
-
-describe("TestWorkspaceExperimentCRUD", () => {
-  it("list_experiments() returns list of Experiment objects", async () => {
-    const { ws } = makeWorkspace(() =>
+describe("Workspace experiment CRUD", () => {
+  // python: TestWorkspaceExperimentCRUD
+  it("listExperiments() returns list of Experiment objects", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok([
         experimentJson("abc-123", "Exp A"),
         experimentJson("def-456", "Exp B"),
@@ -151,13 +65,13 @@ describe("TestWorkspaceExperimentCRUD", () => {
     expect(experiments[1]?.name).toBe("Exp B");
   });
 
-  it("list_experiments() returns empty list when no experiments exist", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+  it("listExperiments() returns empty list when no experiments exist", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(ws.listExperiments()).resolves.toStrictEqual([]);
   });
 
   it("list_experiments(include_archived=True) passes param to API", async () => {
-    const { ws, transport } = makeWorkspace(() => ok([experimentJson()]));
+    const { ws, transport } = makeFacadeWorkspace(() => ok([experimentJson()]));
     const experiments = await ws.listExperiments({ include_archived: true });
 
     expect(experiments).toHaveLength(1);
@@ -165,8 +79,8 @@ describe("TestWorkspaceExperimentCRUD", () => {
     expect(transport.captures[0]?.url).toContain("include_archived=true");
   });
 
-  it("create_experiment() returns the created Experiment", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("createExperiment() returns the created Experiment", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok(experimentJson("new-123", "New Experiment")),
     );
     const params = new CreateExperimentParams({ name: "New Experiment" });
@@ -177,8 +91,8 @@ describe("TestWorkspaceExperimentCRUD", () => {
     expect(experiment.name).toBe("New Experiment");
   });
 
-  it("get_experiment() returns the requested Experiment", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("getExperiment() returns the requested Experiment", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok(experimentJson("xyz-456", "Got Experiment")),
     );
     const experiment = await ws.getExperiment("xyz-456");
@@ -188,8 +102,8 @@ describe("TestWorkspaceExperimentCRUD", () => {
     expect(experiment.name).toBe("Got Experiment");
   });
 
-  it("update_experiment() returns the updated Experiment", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("updateExperiment() returns the updated Experiment", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok(experimentJson("xyz-456", "Updated Experiment")),
     );
     const params = new UpdateExperimentParams({ name: "Updated Experiment" });
@@ -200,19 +114,18 @@ describe("TestWorkspaceExperimentCRUD", () => {
     expect(experiment.name).toBe("Updated Experiment");
   });
 
-  it("delete_experiment() returns None on success", async () => {
-    const { ws } = makeWorkspace(() => ({ status: 204 }));
+  it("deleteExperiment() resolves to undefined on success", async () => {
+    const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
     await expect(ws.deleteExperiment("xyz-456")).resolves.toBeUndefined();
   });
 });
 
-// =============================================================================
-// TestWorkspaceExperimentLifecycle
-// =============================================================================
+// --- Workspace experiment lifecycle ---
 
-describe("TestWorkspaceExperimentLifecycle", () => {
-  it("launch_experiment() returns the launched Experiment", async () => {
-    const { ws } = makeWorkspace(() =>
+describe("Workspace experiment lifecycle", () => {
+  // python: TestWorkspaceExperimentLifecycle
+  it("launchExperiment() returns the launched Experiment", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok(experimentJson("xyz-456", "Test Experiment", "active")),
     );
     const experiment = await ws.launchExperiment("xyz-456");
@@ -222,8 +135,8 @@ describe("TestWorkspaceExperimentLifecycle", () => {
     expect(experiment.status).toBe(ExperimentStatus.ACTIVE);
   });
 
-  it("conclude_experiment() without params returns the concluded Experiment", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("concludeExperiment() without params returns the concluded Experiment", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok(experimentJson("xyz-456", "Test Experiment", "concluded")),
     );
     const experiment = await ws.concludeExperiment("xyz-456");
@@ -233,9 +146,9 @@ describe("TestWorkspaceExperimentLifecycle", () => {
     expect(experiment.status).toBe(ExperimentStatus.CONCLUDED);
   });
 
-  it("conclude_experiment() with params passes them to the API", async () => {
+  it("concludeExperiment() with params passes them to the API", async () => {
     const capturedBody: unknown[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       if (request.bodyText !== "") {
         capturedBody.push(JSON.parse(request.bodyText));
       }
@@ -252,8 +165,8 @@ describe("TestWorkspaceExperimentLifecycle", () => {
     );
   });
 
-  it("decide_experiment() returns the decided Experiment", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("decideExperiment() returns the decided Experiment", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok(experimentJson("xyz-456", "Test Experiment", "success")),
     );
     const params = new ExperimentDecideParams({
@@ -268,18 +181,17 @@ describe("TestWorkspaceExperimentLifecycle", () => {
   });
 });
 
-// =============================================================================
-// TestWorkspaceExperimentManagement
-// =============================================================================
+// --- Workspace experiment management ---
 
-describe("TestWorkspaceExperimentManagement", () => {
-  it("archive_experiment() returns None on success", async () => {
-    const { ws } = makeWorkspace(() => ({ status: 204 }));
+describe("Workspace experiment management", () => {
+  // python: TestWorkspaceExperimentManagement
+  it("archiveExperiment() resolves to undefined on success", async () => {
+    const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
     await expect(ws.archiveExperiment("xyz-456")).resolves.toBeUndefined();
   });
 
-  it("restore_experiment() returns the restored Experiment", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("restoreExperiment() returns the restored Experiment", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok(experimentJson("xyz-456", "Restored Experiment", "draft")),
     );
     const experiment = await ws.restoreExperiment("xyz-456");
@@ -289,8 +201,8 @@ describe("TestWorkspaceExperimentManagement", () => {
     expect(experiment.name).toBe("Restored Experiment");
   });
 
-  it("duplicate_experiment() with params returns the duplicated Experiment", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("duplicateExperiment() with params returns the duplicated Experiment", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok(experimentJson("dup-789", "Copy of Test Experiment")),
     );
     const params = new DuplicateExperimentParams({
@@ -303,8 +215,8 @@ describe("TestWorkspaceExperimentManagement", () => {
     expect(experiment.name).toBe("Copy of Test Experiment");
   });
 
-  it("duplicate_experiment() requires params with a name", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("duplicateExperiment() requires params with a name", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok(experimentJson("dup-789", "Auto Copy")),
     );
     const params = new DuplicateExperimentParams({ name: "Auto Copy" });
@@ -315,8 +227,10 @@ describe("TestWorkspaceExperimentManagement", () => {
     expect(experiment.name).toBe("Auto Copy");
   });
 
-  it("list_erf_experiments() returns list of dicts", async () => {
-    const { ws } = makeWorkspace(() => ok([{ id: "erf-1", name: "ERF Exp" }]));
+  it("listErfExperiments() returns list of dicts", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
+      ok([{ id: "erf-1", name: "ERF Exp" }]),
+    );
     const results = await ws.listErfExperiments();
 
     expect(Array.isArray(results)).toBe(true);
@@ -325,13 +239,9 @@ describe("TestWorkspaceExperimentManagement", () => {
   });
 });
 
-// =============================================================================
-// ADDITIVE — facade-local branches Python's suite never reaches through
-// the wire (B5 Caution #13 pattern). NOT substitutes for a translated
-// Python assertion.
-// =============================================================================
+// --- Additive: facade-local branches Python's wire suite never reaches ---
 
-describe("ADDITIVE: conclude_experiment body assembly (`workspace.py:6300`)", () => {
+describe("ADDITIVE: concludeExperiment body assembly", () => {
   it("sends `{}` when no params are supplied", async () => {
     const calls: unknown[][] = [];
     const client = stubClient(

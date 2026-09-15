@@ -1,5 +1,8 @@
-// Unit tests for the lossless JSON parser (D6 rule 3 / D12 hard
-// requirement): raw number tokens must survive loading verbatim.
+// The lossless JSON parser (`parseLossless`) and `toNativeJson`: raw number
+// tokens survive verbatim, `json.loads` grammar parity (duplicate keys,
+// `__proto__`, opt-in NaN/Infinity constants), the source-key-order sidecar
+// read back through `orderedKeys` / `orderedEntries`, and the `unsafeIntegers`
+// bigint opt-out. TS-only: Python's `json.loads` needs none of this.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -87,13 +90,12 @@ describe("parseLossless", () => {
   });
 });
 
-// Arbiter fix F1 (b0-review-resolution): Python `json.loads` (and thus
-// every `response.json()` body-parse site in api_client.py) accepts the
-// three non-finite constants `NaN` / `Infinity` / `-Infinity` — probed
-// live against CPython 3.14: exact case only, no `+Infinity`, no `-NaN`,
-// no case variants. The opt-in `pythonConstants` flag mirrors that
-// grammar for the wire body-parse sites; the DEFAULT stays strict RFC
-// 8259 so vector/selftest JSON keeps D6 rule 5 enforcement.
+// Python `json.loads` (and thus every `response.json()` body-parse site in
+// mixpanel_headless.api_client) accepts the three non-finite constants
+// `NaN` / `Infinity` / `-Infinity` — probed live against CPython 3.14: exact
+// case only, no `+Infinity`, no `-NaN`, no case variants. The opt-in
+// `pythonConstants` flag mirrors that grammar for the wire body-parse sites;
+// the DEFAULT stays strict RFC 8259 so vector/selftest JSON stays strict.
 describe("parseLossless pythonConstants (json.loads non-finite tokens)", () => {
   const opts = { pythonConstants: true } as const;
 
@@ -148,15 +150,12 @@ describe("parseLossless pythonConstants (json.loads non-finite tokens)", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Ordered-entries capability (B8-MAPFIX, user ratification
-// `user-ratifications.md:14-22`): the parser records SOURCE key order
-// wherever the built plain object cannot represent it (out-of-order
-// integer-like keys), read back via `orderedKeys` / `orderedEntries`.
-// Python twin: `json.loads` dict key order.
-// ---------------------------------------------------------------------------
+// --- Ordered entries ---
+// The parser records SOURCE key order wherever the built plain object cannot
+// represent it (out-of-order integer-like keys), read back via `orderedKeys`
+// / `orderedEntries`. Python twin: `json.loads` dict key order.
 
-describe("parseLossless ordered entries (B8-MAPFIX)", () => {
+describe("parseLossless ordered entries", () => {
   it("captures source order for out-of-ascending integer-like keys", () => {
     const value = parseLossless('{"200": 1, "100": 2}') as Record<
       string,
@@ -228,7 +227,7 @@ describe("parseLossless ordered entries (B8-MAPFIX)", () => {
   });
 });
 
-// ADDITIVE: the int64 opt-out of the R4.5 double-rounding narrowing —
+// TS-only: the int64 opt-out of the documented double-rounding narrowing —
 // the carrier for lookup-table ids beyond 2^53.
 describe("toNativeJson unsafeIntegers", () => {
   const TEXT = `{"big": -8644926364725811123, "safe": 7, "edge": 9007199254740991, ${'"first_unsafe": 9007199254740992, "float": 42.0, "list": [1, 2 ** 0]}'.replace(
@@ -236,7 +235,7 @@ describe("toNativeJson unsafeIntegers", () => {
     "-9007199254740993",
   )}`;
 
-  it("rounds by default (the documented R4.5 narrowing)", () => {
+  it("rounds by default (the documented double narrowing)", () => {
     const native = toNativeJson(parseLossless(TEXT)) as Record<string, unknown>;
     expect(native["big"]).toBe(-8644926364725811000);
     expect(native["safe"]).toBe(7);

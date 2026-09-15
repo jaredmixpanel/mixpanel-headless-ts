@@ -1,10 +1,7 @@
-// Layer-3 translation of `tests/unit/test_session_namespace.py` (116
-// lines, 6 tests) — B7-A1 packet §3.4 (`b7-packets.md`).
-//
-// Mechanism substitutions (header-cited per R10.2): the tmp-`$HOME`
-// fixture becomes `makeEffects()`; Python's bare `ValueError` on the
-// target guard asserts as the coded `ParamValidationError`
-// (`WS1_TARGET_MUTUALLY_EXCLUSIVE`, packet Caution #14).
+// The session namespace (`show` / `use`), mirroring
+// `tests/unit/test_session_namespace.py`. The tmp-`$HOME` fixture becomes
+// `makeEffects()`; Python's bare `ValueError` on the target guard asserts
+// as the coded `ParamValidationError` (`WS1_TARGET_MUTUALLY_EXCLUSIVE`).
 
 import { describe, expect, it } from "vitest";
 
@@ -29,7 +26,8 @@ async function seeded(): Promise<EffectsBundle> {
   return bundle;
 }
 
-describe("TestShow (test_session_namespace.py:42)", () => {
+describe("Show", () => {
+  // python: TestShow
   it("show() returns an ActiveSession matching [active]", async () => {
     const bundle = await seeded();
     bundle.config.setActive({ account: "x", workspace: 42 });
@@ -44,7 +42,8 @@ describe("TestShow (test_session_namespace.py:42)", () => {
   });
 });
 
-describe("TestUse (test_session_namespace.py:59)", () => {
+describe("Use", () => {
+  // python: TestUse
   it("updating only the account axis preserves the others", async () => {
     const bundle = await seeded();
     bundle.config.setActive({ workspace: 42 });

@@ -1,11 +1,11 @@
-// `pytest.raises(...)` twins for the vitest suites.
-//
-// Each runs the body, hands back whatever it threw, and fails the test
-// when nothing was thrown — so the assertions on the captured error sit
-// after the call rather than inside a `catch` block (which is what
-// `vitest/no-conditional-expect` forbids: an `expect` inside `catch`
-// silently never runs when the body unexpectedly succeeds).
+// `pytest.raises(...)` twins for the vitest suites: each runs the body,
+// hands back whatever it threw and fails the test when nothing was thrown,
+// so assertions on the captured error sit after the call rather than inside
+// a `catch` (where `vitest/no-conditional-expect` would flag them and an
+// unexpected success would silently skip them).
 import { expect } from "vitest";
+
+import { ParamValidationError } from "../src/errors.js";
 
 /**
  * Run `body` and return what it threw.
@@ -44,4 +44,18 @@ export async function expectRejects(
     return error;
   }
   return expect.unreachable(what);
+}
+
+/**
+ * Assert that `thunk` throws a `ParamValidationError` carrying `code`
+ * (the `pytest.raises(ParamValidationError)` + `exc.code` pair the
+ * query-param guard suites repeat).
+ *
+ * @param thunk - The call expected to throw.
+ * @param code - The expected error code.
+ */
+export function expectGuard(thunk: () => unknown, code: string): void {
+  const thrown = expectThrows(thunk, `expected ${code}`);
+  expect(thrown, `expected ${code}`).toBeInstanceOf(ParamValidationError);
+  expect((thrown as ParamValidationError).code).toBe(code);
 }

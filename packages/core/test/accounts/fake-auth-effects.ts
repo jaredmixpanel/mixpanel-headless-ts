@@ -1,8 +1,7 @@
-// B7-A1 test infrastructure — an in-memory `AuthEffects` fake whose
-// config member implements the `ConfigManager` transaction semantics
-// the interface JSDoc pins (`config.py`), so the Python
-// suites' tmp-`$HOME` fixtures re-express over injected fakes (packet
-// §3.4 header rule; Caution #19: `~/.mp` is NEVER touched by tests).
+// In-memory `AuthEffects` fake for the accounts/auth suites. Its config
+// member implements the `ConfigManager` transaction semantics the
+// interface JSDoc pins (`config.py`), so the Python suites' tmp-`$HOME`
+// fixtures re-express over injected fakes; `~/.mp` is never touched.
 
 import type {
   AddAccountParams,
@@ -165,10 +164,9 @@ function fakeConfig(): FakeConfig {
     getCustomHeader: (): readonly [string, string] | null => state.customHeader,
     addAccount: (name: string, params: AddAccountParams): void => {
       if (state.accounts.has(name)) {
-        // PLAIN ConfigError, matching `ConfigManager._apply_add_account`
-        // (`config.py:446`). `AccountExistsError` is reserved for the
-        // login_unified name-collision path (`accounts.py`) —
-        // B7-ARB-B fix, `b7-reviewB-resolution.md` B-E2E-F1.
+        // PLAIN ConfigError, matching `ConfigManager._apply_add_account`;
+        // `AccountExistsError` is reserved for the login_unified
+        // name-collision path (`accounts.py`).
         throw new ConfigError(`Account '${name}' already exists.`);
       }
       const raw: Record<string, unknown> = {
@@ -218,7 +216,7 @@ function fakeConfig(): FakeConfig {
       const isFirst = state.accounts.size === 0;
       state.accounts.set(name, account);
       if (isFirst) {
-        // FR-045 first-account promotion — same transaction
+        // First-account promotion happens in the same transaction
         // (`accounts.py` / interface JSDoc).
         state.active.account = name;
       }
@@ -475,8 +473,8 @@ function fakeTokenStore(): FakeTokenStore {
 
 /**
  * A fetch stub answering EVERY request with the given JSON payload —
- * the `monkeypatch.setattr(MixpanelAPIClient, "me", …)` twin (packet
- * §3.4 header rule; only `/me` is ever requested by these paths).
+ * the `monkeypatch.setattr(MixpanelAPIClient, "me", …)` twin (only
+ * `/me` is ever requested by these paths).
  *
  * @param payload - The `/me` payload (or a thunk for per-call bodies).
  * @param status - HTTP status (default 200).

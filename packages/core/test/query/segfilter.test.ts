@@ -1,33 +1,8 @@
-/**
- * Layer-3 translation of `tests/unit/test_segfilter.py` (634 LOC, 10
- * classes; Python revision: `ts-port/phase2-contract-support` HEAD),
- * per `b3-packets.md` §"Packet K3" — ALL classes translate here, no
- * deferrals.
- *
- * R10.2 notes (assertion-for-assertion, codes not messages):
- *
- * - Python's `pytest.raises(ValueError, match="Unknown string operator")`
- *   asserts on MESSAGE text, which is explicitly out of contract (R5.4).
- *   Each such assert translates to the exception CLASS
- *   (`ParamValidationError` — the ported twin of Python's
- *   `ParamValidationError(MixpanelHeadlessError, ValueError)`) plus the
- *   registry `.code` that identifies the same guard. No assertion is
- *   dropped: the `match=` string and the `.code` name the same branch.
- * - `test_sg_guards_stay_catchable_as_value_error` asserts Python's dual
- *   inheritance (`except ValueError` reachability). TS has no
- *   `ValueError`; the ported invariant is descent from
- *   `MixpanelHeadlessError` (errors.ts header: "in TS the conformance key
- *   is class name + code, so plain MixpanelHeadlessError descent
- *   suffices"), asserted as such.
- * - Python's `# type: ignore[arg-type]` deliberate-invalid inputs become
- *   `as FilterOperator` / `as FilterPropertyType` casts at the same call
- *   sites.
- * - `isinstance(result["filter"]["operand"], str)` →
- *   `typeof … === "string"`.
- * - `"operator" not in result["filter"]` → `Object.hasOwn(...) === false`
- *   (watchlist #7 — `in` would also see prototype keys).
- */
-
+// `buildSegfilterEntry` / `convertDateFormat` — translation of
+// `tests/unit/test_segfilter.py` (all ten classes). `pytest.raises(..., match=)`
+// message asserts become `ParamValidationError` class + `.code` asserts naming
+// the same guard; "catchable as ValueError" becomes `MixpanelHeadlessError`
+// descent; `"operator" not in result` becomes `Object.hasOwn(...) === false`.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -56,9 +31,7 @@ function propertyOf(entry: Record<string, unknown>): Record<string, unknown> {
   return entry["property"] as Record<string, unknown>;
 }
 
-// =============================================================================
-// String Operators (TestSegfilterStringOperators)
-// =============================================================================
+// --- String Operators (TestSegfilterStringOperators) ---
 
 describe("segfilter string operators", () => {
   it("Filter.equals produces operator '==' with list operand", () => {
@@ -118,9 +91,7 @@ describe("segfilter string operators", () => {
   });
 });
 
-// =============================================================================
-// Number Operators (TestSegfilterNumberOperators)
-// =============================================================================
+// --- Number Operators (TestSegfilterNumberOperators) ---
 
 describe("segfilter number operators", () => {
   it("Filter.greaterThan produces operator '>' with stringified operand", () => {
@@ -282,9 +253,7 @@ describe("segfilter number operators", () => {
   });
 });
 
-// =============================================================================
-// Boolean Operators (TestSegfilterBooleanOperators)
-// =============================================================================
+// --- Boolean Operators (TestSegfilterBooleanOperators) ---
 
 describe("segfilter boolean operators", () => {
   it("Filter.isTrue produces operand 'true' with NO 'operator' key", () => {
@@ -304,9 +273,7 @@ describe("segfilter boolean operators", () => {
   });
 });
 
-// =============================================================================
-// Datetime Operators (TestSegfilterDatetimeOperators)
-// =============================================================================
+// --- Datetime Operators (TestSegfilterDatetimeOperators) ---
 
 describe("segfilter datetime operators", () => {
   it("Filter.on produces operator '==' with MM/DD/YYYY operand", () => {
@@ -399,9 +366,7 @@ describe("segfilter datetime operators", () => {
   });
 });
 
-// =============================================================================
-// Resource Type Mapping (TestSegfilterResourceTypeMapping)
-// =============================================================================
+// --- Resource Type Mapping (TestSegfilterResourceTypeMapping) ---
 
 describe("segfilter resource-type mapping", () => {
   it("resource_type 'events' maps to property.source 'properties'", () => {
@@ -424,9 +389,7 @@ describe("segfilter resource-type mapping", () => {
   });
 });
 
-// =============================================================================
-// Output Structure (TestSegfilterStructure)
-// =============================================================================
+// --- Output Structure (TestSegfilterStructure) ---
 
 describe("segfilter output structure", () => {
   it("output dict has 'property', 'type', 'selected_property_type', 'filter'", () => {
@@ -484,9 +447,7 @@ describe("segfilter output structure", () => {
   });
 });
 
-// =============================================================================
-// Helper Functions (TestConvertDateFormat)
-// =============================================================================
+// --- Helper Functions (TestConvertDateFormat) ---
 
 describe("convertDateFormat", () => {
   it("YYYY-MM-DD converts to MM/DD/YYYY", () => {
@@ -502,9 +463,7 @@ describe("convertDateFormat", () => {
   });
 });
 
-// =============================================================================
-// Edge Cases (TestSegfilterEdgeCases)
-// =============================================================================
+// --- Edge Cases (TestSegfilterEdgeCases) ---
 
 describe("segfilter edge cases", () => {
   it("unknown operator for a property type raises the string guard", () => {
@@ -517,7 +476,7 @@ describe("segfilter edge cases", () => {
     });
 
     expect(() => buildSegfilterEntry(f)).toThrow(ParamValidationError);
-    // R5.4: `match="Unknown string operator"` is message text; the code
+    // `match="Unknown string operator"` is message text; the code
     // names the same guard.
     const error = expectThrows(() => buildSegfilterEntry(f), "expected SG1");
     expect((error as ParamValidationError).code).toBe(
@@ -574,9 +533,7 @@ describe("segfilter edge cases", () => {
   });
 });
 
-// =============================================================================
-// Coded guard errors (TestCodedSegfilterCodes)
-// =============================================================================
+// --- Coded guard errors (TestCodedSegfilterCodes) ---
 
 /**
  * Build a directly-constructed Filter for coded-guard seam tests

@@ -1,13 +1,14 @@
-// TS-2 (D18 B/TS-2): tests written FIRST from R11.4 semantics + the D13 case
-// list. Every expected value below was produced by CPython `str.zfill` (the
-// oracle) on 2026-08-14; see the docstring of `zfill` for the semantics.
+// `zfill` — CPython `str.zfill`: zeros go after a leading sign, width counts
+// codepoints (not UTF-16 units) and a non-integer width is a TypeError.
+// No Python test file behind this suite; the expected values are CPython's
+// and the fast-check properties against a slow reference are TS-only.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
 import { codepoints } from "../../src/compat/codepoint.js";
 import { zfill } from "../../src/compat/zfill.js";
 
-describe("zfill — D13 case list", () => {
+describe("zfill — sign and width rules", () => {
   it('pads a negative number after the sign: ("-1", 3) -> "-01"', () => {
     expect(zfill("-1", 3)).toBe("-01");
   });
@@ -28,7 +29,7 @@ describe("zfill — D13 case list", () => {
     expect(zfill("12345", 3)).toBe("12345");
   });
 
-  it("counts CODEPOINTS, not UTF-16 units, for non-BMP input (R10.9 edge set)", () => {
+  it("counts CODEPOINTS, not UTF-16 units, for non-BMP input", () => {
     // Python len("😀") == 1, so zfill(3) adds TWO zeros; a UTF-16-length
     // implementation would add only one.
     expect(zfill("😀", 3)).toBe("00😀");

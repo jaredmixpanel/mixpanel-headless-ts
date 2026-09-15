@@ -1,21 +1,16 @@
-// Translated QueryResult tests (packet P2-6): assertion-for-assertion
-// port of tests/unit/test_query_types.py (TestQueryResultConstruction,
-// TestQueryResultDataFrame, TestQueryResultSegmentedDataFrame,
-// TestQueryResultToDict) — the four-column-layout per-class row spec
-// of phase2-design C6.
-//
-// Translation notes: `list(df.columns)` -> `rowColumns()`;
-// `df.iloc[n]` -> `toRows()[n]`; pandas boolean-mask row selection ->
-// array `filter`; identity caching -> repeated-call determinism;
-// `qr.params is params` (Python identity) -> reference equality via
-// `toBe`; the frozen-dataclass immutability test is not ported
-// (compile-time `readonly`).
+// QueryResult: construction, the df projection (timeseries, total,
+// segmented, multi-metric) as row arrays, and to_dict. Mirrors
+// tests/unit/test_query_types.py (the four TestQueryResult* classes).
+// `list(df.columns)` → rowColumns(), `df.iloc[n]` → toRows()[n], identity
+// caching → repeated-call determinism; the frozen test is not carried.
 import { describe, expect, it } from "vitest";
 
 import { QueryResult } from "../../../src/types/results/query-engine.js";
 
-describe("QueryResult construction (TestQueryResultConstruction)", () => {
-  it("test_basic_construction", () => {
+describe("QueryResult construction", () => {
+  // python: TestQueryResultConstruction
+  it("basic construction", () => {
+    // python: test_basic_construction
     const qr = new QueryResult({
       computed_at: "2024-01-01T00:00:00Z",
       from_date: "2024-01-01",
@@ -30,7 +25,8 @@ describe("QueryResult construction (TestQueryResultConstruction)", () => {
     expect(qr.to_date).toBe("2024-01-31");
   });
 
-  it("test_params_preserved", () => {
+  it("params preserved", () => {
+    // python: test_params_preserved
     const params = { sections: { show: [] }, displayOptions: {} };
     const qr = new QueryResult({
       computed_at: "",
@@ -42,7 +38,8 @@ describe("QueryResult construction (TestQueryResultConstruction)", () => {
     expect(qr.params).toBe(params);
   });
 
-  it("test_meta_preserved", () => {
+  it("meta preserved", () => {
+    // python: test_meta_preserved
     const meta = { min_sampling_factor: 1.0, is_segmentation_limit_hit: false };
     const qr = new QueryResult({
       computed_at: "",
@@ -55,8 +52,10 @@ describe("QueryResult construction (TestQueryResultConstruction)", () => {
   });
 });
 
-describe("QueryResult.df (TestQueryResultDataFrame)", () => {
-  it("test_timeseries_columns", () => {
+describe("QueryResult.df", () => {
+  // python: TestQueryResultDataFrame
+  it("timeseries columns", () => {
+    // python: test_timeseries_columns
     const qr = new QueryResult({
       computed_at: "",
       from_date: "",
@@ -71,7 +70,8 @@ describe("QueryResult.df (TestQueryResultDataFrame)", () => {
     expect(qr.toRows()).toHaveLength(2);
   });
 
-  it("test_timeseries_values", () => {
+  it("timeseries values", () => {
+    // python: test_timeseries_values
     const qr = new QueryResult({
       computed_at: "",
       from_date: "",
@@ -88,7 +88,8 @@ describe("QueryResult.df (TestQueryResultDataFrame)", () => {
     expect(row0?.["count"]).toBe(100);
   });
 
-  it("test_hourly_timestamps_preserved", () => {
+  it("hourly timestamps preserved", () => {
+    // python: test_hourly_timestamps_preserved
     const qr = new QueryResult({
       computed_at: "",
       from_date: "",
@@ -111,7 +112,8 @@ describe("QueryResult.df (TestQueryResultDataFrame)", () => {
     expect(dates[2]).toBe("2024-01-01T02:00:00");
   });
 
-  it("test_total_mode_columns", () => {
+  it("total mode columns", () => {
+    // python: test_total_mode_columns
     const qr = new QueryResult({
       computed_at: "",
       from_date: "",
@@ -125,7 +127,8 @@ describe("QueryResult.df (TestQueryResultDataFrame)", () => {
     expect(qr.toRows()[0]?.["count"]).toBe(500);
   });
 
-  it("test_empty_series", () => {
+  it("empty series", () => {
+    // python: test_empty_series
     const qr = new QueryResult({
       computed_at: "",
       from_date: "",
@@ -138,7 +141,8 @@ describe("QueryResult.df (TestQueryResultDataFrame)", () => {
     expect(qr.rowColumns()).toContain("date");
   });
 
-  it("test_multi_metric_timeseries", () => {
+  it("multi metric timeseries", () => {
+    // python: test_multi_metric_timeseries
     const qr = new QueryResult({
       computed_at: "",
       from_date: "",
@@ -157,7 +161,8 @@ describe("QueryResult.df (TestQueryResultDataFrame)", () => {
     );
   });
 
-  it("test_df_caching (determinism)", () => {
+  it("df caching (determinism)", () => {
+    // python: test_df_caching
     const qr = new QueryResult({
       computed_at: "",
       from_date: "",
@@ -170,8 +175,10 @@ describe("QueryResult.df (TestQueryResultDataFrame)", () => {
   });
 });
 
-describe("QueryResult.df segmented (TestQueryResultSegmentedDataFrame)", () => {
-  it("test_segmented_total_columns", () => {
+describe("QueryResult.df segmented", () => {
+  // python: TestQueryResultSegmentedDataFrame
+  it("segmented total columns", () => {
+    // python: test_segmented_total_columns
     const qr = new QueryResult({
       computed_at: "",
       from_date: "",
@@ -192,7 +199,8 @@ describe("QueryResult.df segmented (TestQueryResultSegmentedDataFrame)", () => {
     expect(qr.rowColumns()).not.toContain("date");
   });
 
-  it("test_segmented_total_scalar_counts", () => {
+  it("segmented total scalar counts", () => {
+    // python: test_segmented_total_scalar_counts
     const qr = new QueryResult({
       computed_at: "",
       from_date: "",
@@ -215,7 +223,8 @@ describe("QueryResult.df segmented (TestQueryResultSegmentedDataFrame)", () => {
     }
   });
 
-  it("test_segmented_total_values", () => {
+  it("segmented total values", () => {
+    // python: test_segmented_total_values
     const qr = new QueryResult({
       computed_at: "",
       from_date: "",
@@ -238,7 +247,8 @@ describe("QueryResult.df segmented (TestQueryResultSegmentedDataFrame)", () => {
     expect(usRows[0]?.["count"]).toBe(300);
   });
 
-  it("test_segmented_timeseries_columns", () => {
+  it("segmented timeseries columns", () => {
+    // python: test_segmented_timeseries_columns
     const qr = new QueryResult({
       computed_at: "",
       from_date: "",
@@ -261,7 +271,8 @@ describe("QueryResult.df segmented (TestQueryResultSegmentedDataFrame)", () => {
     ]);
   });
 
-  it("test_segmented_timeseries_scalar_counts", () => {
+  it("segmented timeseries scalar counts", () => {
+    // python: test_segmented_timeseries_scalar_counts
     const qr = new QueryResult({
       computed_at: "",
       from_date: "",
@@ -283,7 +294,8 @@ describe("QueryResult.df segmented (TestQueryResultSegmentedDataFrame)", () => {
     }
   });
 
-  it("test_segmented_timeseries_values", () => {
+  it("segmented timeseries values", () => {
+    // python: test_segmented_timeseries_values
     const qr = new QueryResult({
       computed_at: "",
       from_date: "",
@@ -306,7 +318,8 @@ describe("QueryResult.df segmented (TestQueryResultSegmentedDataFrame)", () => {
     expect(usJan1[0]?.["count"]).toBe(60);
   });
 
-  it("test_segmented_timeseries_strips_timezone", () => {
+  it("segmented timeseries strips timezone", () => {
+    // python: test_segmented_timeseries_strips_timezone
     const qr = new QueryResult({
       computed_at: "",
       from_date: "",
@@ -320,7 +333,8 @@ describe("QueryResult.df segmented (TestQueryResultSegmentedDataFrame)", () => {
     expect(qr.toRows()[0]?.["date"]).toBe("2024-01-01T00:00:00");
   });
 
-  it("test_segmented_multi_metric", () => {
+  it("segmented multi metric", () => {
+    // python: test_segmented_multi_metric
     const qr = new QueryResult({
       computed_at: "",
       from_date: "",
@@ -341,8 +355,10 @@ describe("QueryResult.df segmented (TestQueryResultSegmentedDataFrame)", () => {
   });
 });
 
-describe("QueryResult.to_dict (TestQueryResultToDict)", () => {
-  it("test_to_dict_contains_all_fields", () => {
+describe("QueryResult.to_dict", () => {
+  // python: TestQueryResultToDict
+  it("to dict contains all fields", () => {
+    // python: test_to_dict_contains_all_fields
     const qr = new QueryResult({
       computed_at: "ts",
       from_date: "f",

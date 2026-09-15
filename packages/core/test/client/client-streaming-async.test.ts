@@ -1,14 +1,8 @@
-// Dedicated async Layer-3 for B4-C2 (packet C2 §Layer-3 last row —
-// "NEW Vitest suites: streaming chunk behavior across await points,
-// retry timing in the export 429 loop, AsyncIterable early-return()"),
-// plus the `stream_events`/`stream_profiles` facade-wrapper locks (the
-// 3 B4 api-map members land in this shard; the B6 facade re-locks them
-// end-to-end when `Workspace` arrives).
-//
-// These are TS-native locks (no Python source test to translate — the
-// corpus records full-body `body_text` streams, so chunk-boundary and
-// cancellation behavior is Layer-3's job per the packet's
-// expectation-shape note).
+// TS-only async behaviour of the export stream: line reassembly across
+// delayed chunks, lazy yielding, early `return()`, Retry-After timing in the
+// export 429 loop, abort during the backoff sleep, plus the `streamEvents` /
+// `streamProfiles` facade wrappers. No Python source suite: the corpus records
+// full-body streams, so chunk-boundary and cancellation behaviour is locked here.
 import { describe, expect, it } from "vitest";
 
 import { createMixpanelClient } from "../../src/client/client.js";
@@ -168,7 +162,7 @@ describe("retry timing in the export 429 loop", () => {
       events.push(event);
     }
     expect(events).toHaveLength(1);
-    expect(sleeps).toStrictEqual([5000]); // header path, unjittered, R2.12 ms.
+    expect(sleeps).toStrictEqual([5000]); // header path, unjittered, seconds→ms at the seam.
   });
 
   it("normalizes an abort during the backoff sleep to AbortError", async () => {
@@ -211,7 +205,7 @@ describe("retry timing in the export 429 loop", () => {
   });
 });
 
-describe("stream_events / stream_profiles facade wrappers", () => {
+describe("streamEvents / streamProfiles facade wrappers", () => {
   it("raw=true yields undecoded (untransformed) events", async () => {
     const fetchImpl = chunkedFetch([
       '{"event":"A","properties":{"time":1,"distinct_id":"u1"}}\n',

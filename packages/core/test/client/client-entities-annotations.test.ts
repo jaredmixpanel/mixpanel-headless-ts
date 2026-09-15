@@ -1,6 +1,8 @@
-// Layer-3 translation — Phase-3 packet B4-C4 annotation locks.
-// Source: tests/unit/test_api_client_annotations.py (ALL classes —
-// annotation CRUD + annotation tags list/create).
+// Annotation client methods: list (camelCase date params, tags filter),
+// create/get/update/delete, and annotation-tag list/create (paths, methods,
+// params, result unwrapping). Mirrors every class of
+// tests/unit/test_api_client_annotations.py against the mock-transport client.
+
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "../../src/auth/session.js";
@@ -8,6 +10,7 @@ import { toNativeJson } from "../../src/client/json-value.js";
 import {
   createMockClient,
   makeSession,
+  parseBody,
 } from "../../test-support/client-test-helpers.js";
 
 /** The `oauth_credentials` fixture twin. */
@@ -38,13 +41,10 @@ function tagResult(id = 1, name = "releases"): Record<string, unknown> {
   return { id, name };
 }
 
-/** Parse a captured JSON request body (json.loads(request.content)). */
-function parseBody(bodyText: string): unknown {
-  return JSON.parse(bodyText) as unknown;
-}
-
-describe("TestListAnnotations", () => {
-  it("test_returns_annotation_list", async () => {
+describe("List annotations", () => {
+  // python: TestListAnnotations
+  it("returns annotation list", async () => {
+    // python: test_returns_annotation_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -60,7 +60,8 @@ describe("TestListAnnotations", () => {
     expect(result[1]?.["description"]).toBe("Second");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -70,7 +71,8 @@ describe("TestListAnnotations", () => {
     expect(capturedUrls[0]).toContain("/annotations/");
   });
 
-  it("test_from_date_camel_case", async () => {
+  it("from date camel case", async () => {
+    // python: test_from_date_camel_case
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -80,7 +82,8 @@ describe("TestListAnnotations", () => {
     expect(capturedUrls[0]).toContain("fromDate=2026-01-01");
   });
 
-  it("test_to_date_camel_case", async () => {
+  it("to date camel case", async () => {
+    // python: test_to_date_camel_case
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -90,7 +93,8 @@ describe("TestListAnnotations", () => {
     expect(capturedUrls[0]).toContain("toDate=2026-03-31");
   });
 
-  it("test_tags_filter", async () => {
+  it("tags filter", async () => {
+    // python: test_tags_filter
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -103,7 +107,8 @@ describe("TestListAnnotations", () => {
     expect(url).toContain("2");
   });
 
-  it("test_empty_result", async () => {
+  it("empty result", async () => {
+    // python: test_empty_result
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: [] },
@@ -112,7 +117,8 @@ describe("TestListAnnotations", () => {
     expect(result).toStrictEqual([]);
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -123,8 +129,10 @@ describe("TestListAnnotations", () => {
   });
 });
 
-describe("TestCreateAnnotation", () => {
-  it("test_creates_annotation", async () => {
+describe("Create annotation", () => {
+  // python: TestCreateAnnotation
+  it("creates annotation", async () => {
+    // python: test_creates_annotation
     const captured: Array<[string, Record<string, unknown>]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([
@@ -147,7 +155,8 @@ describe("TestCreateAnnotation", () => {
     expect(result["id"]).toBe(1);
   });
 
-  it("test_url_path", async () => {
+  it("URL path", async () => {
+    // python: test_url_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -161,8 +170,10 @@ describe("TestCreateAnnotation", () => {
   });
 });
 
-describe("TestGetAnnotation", () => {
-  it("test_gets_annotation_by_id", async () => {
+describe("Get annotation", () => {
+  // python: TestGetAnnotation
+  it("gets annotation by ID", async () => {
+    // python: test_gets_annotation_by_id
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -179,7 +190,8 @@ describe("TestGetAnnotation", () => {
     expect(result["id"]).toBe(42);
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -193,8 +205,10 @@ describe("TestGetAnnotation", () => {
   });
 });
 
-describe("TestUpdateAnnotation", () => {
-  it("test_updates_annotation", async () => {
+describe("Update annotation", () => {
+  // python: TestUpdateAnnotation
+  it("updates annotation", async () => {
+    // python: test_updates_annotation
     const captured: Array<[string, Record<string, unknown>]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([
@@ -214,7 +228,8 @@ describe("TestUpdateAnnotation", () => {
     expect(result["description"]).toBe("Updated");
   });
 
-  it("test_url_path", async () => {
+  it("URL path", async () => {
+    // python: test_url_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -228,8 +243,10 @@ describe("TestUpdateAnnotation", () => {
   });
 });
 
-describe("TestDeleteAnnotation", () => {
-  it("test_deletes_annotation", async () => {
+describe("Delete annotation", () => {
+  // python: TestDeleteAnnotation
+  it("deletes annotation", async () => {
+    // python: test_deletes_annotation
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -239,7 +256,8 @@ describe("TestDeleteAnnotation", () => {
     expect(capturedMethods[0]).toBe("DELETE");
   });
 
-  it("test_url_path", async () => {
+  it("URL path", async () => {
+    // python: test_url_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -250,8 +268,10 @@ describe("TestDeleteAnnotation", () => {
   });
 });
 
-describe("TestListAnnotationTags", () => {
-  it("test_returns_tag_list", async () => {
+describe("List annotation tags", () => {
+  // python: TestListAnnotationTags
+  it("returns tag list", async () => {
+    // python: test_returns_tag_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -267,7 +287,8 @@ describe("TestListAnnotationTags", () => {
     expect(result[1]?.["name"]).toBe("deployments");
   });
 
-  it("test_url_path", async () => {
+  it("URL path", async () => {
+    // python: test_url_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -277,7 +298,8 @@ describe("TestListAnnotationTags", () => {
     expect(capturedUrls[0]).toContain("/annotations/tags/");
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -288,8 +310,10 @@ describe("TestListAnnotationTags", () => {
   });
 });
 
-describe("TestCreateAnnotationTag", () => {
-  it("test_creates_tag", async () => {
+describe("Create annotation tag", () => {
+  // python: TestCreateAnnotationTag
+  it("creates tag", async () => {
+    // python: test_creates_tag
     const captured: Array<[string, Record<string, unknown>]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([
@@ -310,7 +334,8 @@ describe("TestCreateAnnotationTag", () => {
     expect(result["name"]).toBe("new-tag");
   });
 
-  it("test_url_path", async () => {
+  it("URL path", async () => {
+    // python: test_url_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);

@@ -1,10 +1,7 @@
-// Layer-3 translation of `tests/unit/test_targets_namespace.py` (158
-// lines, 15 tests) — B7-A1 packet §3.4 (`b7-packets.md`).
-//
-// Mechanism substitutions (header-cited per R10.2): the tmp-`$HOME`
-// fixture becomes `makeEffects()`; Pydantic `ValidationError` on
-// direct `Target(...)` construction asserts as the entity-model's
-// `ResponseValidationError`.
+// The targets namespace, mirroring `tests/unit/test_targets_namespace.py`.
+// The tmp-`$HOME` fixture becomes `makeEffects()`; Pydantic
+// `ValidationError` on direct `Target(...)` construction asserts as the
+// entity model's `ResponseValidationError`.
 
 import { describe, expect, it } from "vitest";
 
@@ -29,7 +26,8 @@ async function seeded(): Promise<EffectsBundle> {
   return bundle;
 }
 
-describe("TestAdd (test_targets_namespace.py:42)", () => {
+describe("Add", () => {
+  // python: TestAdd
   it("adding without workspace persists account+project only", async () => {
     const bundle = await seeded();
     const targets = createTargetsNamespace(bundle.effects);
@@ -63,7 +61,8 @@ describe("TestAdd (test_targets_namespace.py:42)", () => {
   });
 });
 
-describe("TestTargetWorkspaceValidation (test_targets_namespace.py:62)", () => {
+describe("Target workspace validation", () => {
+  // python: TestTargetWorkspaceValidation
   it("Target(workspace=0) raises at construction", () => {
     expect(
       () =>
@@ -119,7 +118,8 @@ describe("TestTargetWorkspaceValidation (test_targets_namespace.py:62)", () => {
   });
 });
 
-describe("TestList (test_targets_namespace.py:98)", () => {
+describe("List", () => {
+  // python: TestList
   it("no targets → empty list", async () => {
     const bundle = await seeded();
     const targets = createTargetsNamespace(bundle.effects);
@@ -136,7 +136,8 @@ describe("TestList (test_targets_namespace.py:98)", () => {
   });
 });
 
-describe("TestUse (test_targets_namespace.py:113)", () => {
+describe("Use", () => {
+  // python: TestUse
   it("use writes account+workspace to [active] and project to account", async () => {
     const bundle = await seeded();
     const targets = createTargetsNamespace(bundle.effects);
@@ -158,7 +159,8 @@ describe("TestUse (test_targets_namespace.py:113)", () => {
   });
 });
 
-describe("TestRemove (test_targets_namespace.py:136)", () => {
+describe("Remove", () => {
+  // python: TestRemove
   it("remove deletes the target", async () => {
     const bundle = await seeded();
     const targets = createTargetsNamespace(bundle.effects);
@@ -177,7 +179,8 @@ describe("TestRemove (test_targets_namespace.py:136)", () => {
   });
 });
 
-describe("TestShow (test_targets_namespace.py:151)", () => {
+describe("Show", () => {
+  // python: TestShow
   it("show returns the matching Target", async () => {
     const bundle = await seeded();
     const targets = createTargetsNamespace(bundle.effects);

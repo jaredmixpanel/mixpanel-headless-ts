@@ -1,34 +1,15 @@
-// Guard + factory tests for GroupBy (phase2-design C7, packet P2-5a):
-// translated from tests/unit/test_query_types.py /
-// test_bookmark_builders.py guard cases plus Risk #1 guard-order probes.
+// GroupBy construction and guards (GB1, V12, V18, GB4, GB5) with
+// guard-order probes and the listItem discriminator. Mirrors the GroupBy
+// guard cases of tests/unit/test_query_types.py and
+// tests/unit/test_bookmark_builders.py.
 import { describe, expect, it } from "vitest";
 
-import {
-  type MixpanelHeadlessError,
-  ParamValidationError,
-} from "../../../src/errors.js";
 import {
   CustomPropertyRef,
   ListItemGroupMode,
 } from "../../../src/types/query-params/filter.js";
 import { GroupBy } from "../../../src/types/query-params/group-by.js";
-
-/**
- * Assert a thunk throws the exact guard `{class, code}` pair.
- *
- * @param thunk - The construction under test.
- * @param code - Expected registry code.
- */
-function expectGuard(thunk: () => unknown, code: string): void {
-  let thrown: unknown;
-  try {
-    thunk();
-  } catch (error) {
-    thrown = error;
-  }
-  expect(thrown, `expected ${code}`).toBeInstanceOf(ParamValidationError);
-  expect((thrown as MixpanelHeadlessError).code).toBe(code);
-}
+import { expectGuard } from "../../../test-support/raises.js";
 
 describe("GroupBy guards (__post_init__ parity, source order)", () => {
   it("GB1_EMPTY_PROPERTY on blank string properties", () => {

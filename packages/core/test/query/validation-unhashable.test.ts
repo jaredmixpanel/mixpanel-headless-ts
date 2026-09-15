@@ -1,27 +1,8 @@
-/**
- * R10.7 bug-compatibility locks for the Python `value not in FROZENSET`
- * membership guards in `validation.py`'s Layer-2 validators.
- *
- * CPython hashes the candidate in `x in frozenset`, so a `list`/`dict`
- * value at any of the 16 membership sites raises
- * `TypeError: cannot use 'list' as a set element (unhashable type: …)`
- * instead of returning an enum error. B2-M2 shipped the total-function
- * spelling and flagged the deviation for adjudication
- * (`B2-M2-notes.md` finding 2, the module-header `TODO(port)`); the
- * B2-BIND differential fuzz then hit it as a REAL divergence
- * (`conformance/differential/repros/2026-08-15-validation-validate_bookmark.json`
- * — Python `TypeError` vs TS `ok`), so R10.7 rules: port the raise.
- *
- * TS-only suite (no Python test asserts the raises — the corpus is
- * silent by construction); every case below was probe-verified against
- * CPython 3.14.6 on 2026-08-15 (B2-BIND notes, probe matrix: 16 raise
- * sites + hashable non-raise controls). Python source sites:
- * validation.py :1832 (FLB3), :1845 (FLB4), :2483, :2549,
- * :2618 (B9), :2647 (B11), :2662 (B17), :2674 (B16), :2712 (B5),
- * :2754 (B12), :2767 (B13), :2846 (B16), :2860 (B14), :2873 (B15),
- * :2981 (B17), :2995 (B16).
- */
-
+// Bug-compatibility locks: CPython hashes the candidate in `x in frozenset`,
+// so a list/dict value at any of the 16 membership sites in `validation.py`'s
+// Layer-2 validators (`validateBookmark`, `validateFlowBookmark`) raises
+// `TypeError: unhashable type` instead of producing an enum error, and the
+// port does the same. TS-only suite; every case was probe-verified against CPython 3.14.6.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -112,7 +93,7 @@ function fb(over: Record<string, unknown> = {}): Record<string, unknown> {
   };
 }
 
-describe("validateBookmark unhashable membership candidates (R10.7)", () => {
+describe("validateBookmark unhashable membership candidates", () => {
   const raising: ReadonlyArray<
     readonly [string, () => Record<string, unknown>]
   > = [
@@ -229,7 +210,7 @@ describe("validateBookmark unhashable membership candidates (R10.7)", () => {
   });
 });
 
-describe("validateFlowBookmark unhashable membership candidates (R10.7)", () => {
+describe("validateFlowBookmark unhashable membership candidates", () => {
   it("FLB3 count_type=[] raises TypeError like CPython", () => {
     expect(() => validateFlowBookmark(fb({ count_type: LIST }))).toThrow(
       TypeError,

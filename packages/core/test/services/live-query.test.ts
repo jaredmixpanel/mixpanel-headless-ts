@@ -1,26 +1,8 @@
-// Translated LiveQueryService tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/unit/test_live_query.py — ALL 7
-// classes (TestLiveQueryService :57, TestSegmentation :78, TestFunnel
-// :287, TestExtractStepsFromDateData :528, TestRetention :658,
-// TestEventCounts :845, TestPropertyCounts :1013).
-//
-// Translation notes (applied consistently):
-// - `live_query_factory` -> `liveQueryFactory` over the B4
-//   `createMockClient` httpx.MockTransport analog
-//   (`test-support/client-test-helpers.ts`). Python's explicit
-//   `client.__enter__()` / `__exit__` has no TS twin (R6.2: the TS
-//   client owns no pool that needs opening).
-// - Handlers that `assert` on the captured request assert AFTER the
-//   await via the transport capture log: a throw inside the injected
-//   fetch would be normalized into a transport error by the B4 client
-//   and mask the assertion. Same assertion, same values.
-// - `result.df` asserts (`test_event_counts_df_conversion`,
-//   `test_property_counts_df_conversion`, and the two `len(df) == 0`
-//   cases) become `toRows()` / `rowColumns()` asserts per the C6
-//   pandas convention — the pre-pandas row list IS the frame body.
-// - The private `_extract_steps_from_date_data` is
-//   {@link extractStepsFromDateData} in `services/live-query-transforms.ts`
-//   (R7.2 split of the 2,042-line Python module).
+// LiveQueryService: segmentation, funnel, retention, event counts and
+// property counts, plus the extractStepsFromDateData helper. Mirrors
+// tests/unit/test_live_query.py (all seven classes). Request asserts run
+// after the await via the transport capture log; `.df` asserts become
+// `toRows()` / `rowColumns()`; `__enter__` / `__exit__` has no TS twin.
 
 import { describe, expect, it } from "vitest";
 
@@ -28,15 +10,11 @@ import { AuthenticationError, QueryError } from "../../src/errors.js";
 import { LiveQueryService } from "../../src/services/live-query.js";
 import { extractStepsFromDateData } from "../../src/services/live-query-transforms.js";
 import {
-  type CannedResponse,
-  type CapturedFetchRequest,
+  type CannedHandler,
   createMockClient,
   type FakeTransport,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
-
-/** A canned-response handler (the httpx.MockTransport handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
 
 /**
  * The `live_query_factory` fixture.
@@ -44,7 +22,7 @@ type Handler = (request: CapturedFetchRequest) => CannedResponse;
  * @param handler - The canned-response handler.
  * @returns The service under test plus the transport capture log.
  */
-function liveQueryFactory(handler: Handler): {
+function liveQueryFactory(handler: CannedHandler): {
   live: LiveQueryService;
   transport: FakeTransport;
 } {
@@ -53,7 +31,7 @@ function liveQueryFactory(handler: Handler): {
 }
 
 /** The `success_handler` fixture. */
-const successHandler: Handler = () => ({ status: 200, json: [] });
+const successHandler: CannedHandler = () => ({ status: 200, json: [] });
 
 /**
  * The single captured request URL (the `str(request.url)` the Python
@@ -66,7 +44,8 @@ function firstUrl(transport: FakeTransport): string {
   return transport.captures[0]!.url;
 }
 
-describe("TestLiveQueryService", () => {
+describe("Live query service", () => {
+  // python: TestLiveQueryService
   it("accepts an API client", () => {
     const { client } = createMockClient(makeSession(), successHandler);
     const live = new LiveQueryService(client);
@@ -75,10 +54,11 @@ describe("TestLiveQueryService", () => {
 });
 
 // ===========================================================================
-// User Story 1: Segmentation Tests
+// Segmentation
 // ===========================================================================
 
-describe("TestSegmentation", () => {
+describe("Segmentation", () => {
+  // python: TestSegmentation
   it("returns SegmentationResult with correct data", async () => {
     const { live } = liveQueryFactory(() => ({
       status: 200,
@@ -220,10 +200,11 @@ describe("TestSegmentation", () => {
 });
 
 // ===========================================================================
-// User Story 2: Funnel Tests
+// Funnel
 // ===========================================================================
 
-describe("TestFunnel", () => {
+describe("Funnel", () => {
+  // python: TestFunnel
   it("returns FunnelResult with correct step data", async () => {
     const { live } = liveQueryFactory(() => ({
       status: 200,
@@ -381,10 +362,11 @@ describe("TestFunnel", () => {
 });
 
 // ===========================================================================
-// Funnel Helper Tests
+// Funnel helper
 // ===========================================================================
 
-describe("TestExtractStepsFromDateData", () => {
+describe("Extract steps from date data", () => {
+  // python: TestExtractStepsFromDateData
   it("non-segmented format with 'steps' returns the step list", () => {
     const dateData = {
       steps: [
@@ -461,10 +443,11 @@ describe("TestExtractStepsFromDateData", () => {
 });
 
 // ===========================================================================
-// User Story 3: Retention Tests
+// Retention
 // ===========================================================================
 
-describe("TestRetention", () => {
+describe("Retention", () => {
+  // python: TestRetention
   it("returns RetentionResult with cohort data", async () => {
     const { live } = liveQueryFactory(() => ({
       status: 200,
@@ -588,10 +571,11 @@ describe("TestRetention", () => {
 });
 
 // ===========================================================================
-// User Story 5: Event Counts Tests
+// Event counts
 // ===========================================================================
 
-describe("TestEventCounts", () => {
+describe("Event counts", () => {
+  // python: TestEventCounts
   it("returns EventCountsResult with correct data", async () => {
     const { live } = liveQueryFactory(() => ({
       status: 200,
@@ -700,10 +684,11 @@ describe("TestEventCounts", () => {
 });
 
 // ===========================================================================
-// User Story 6: Property Counts Tests
+// Property counts
 // ===========================================================================
 
-describe("TestPropertyCounts", () => {
+describe("Property counts", () => {
+  // python: TestPropertyCounts
   it("returns PropertyCountsResult with correct data", async () => {
     const { live } = liveQueryFactory(() => ({
       status: 200,

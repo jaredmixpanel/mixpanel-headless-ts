@@ -1,63 +1,8 @@
-/**
- * Layer-3 translation of `tests/test_user_builders.py` (710 LOC, 18
- * classes `:27-710`; Python revision: `ts-port/phase2-contract-support`
- * HEAD), per `b3-packets.md` §"Packet K4" — the WHOLE file translates
- * here, no deferrals.
- *
- * **Split-file citation** (packet K4 Layer-3 table): two classes of
- * `tests/test_query_user_structural.py` also belong to this shard and
- * are appended at the bottom of this file —
- * `TestPbtFormatValueSpecialChars` (`:416`) and
- * `TestFiltersToSelectorOrAndPrecedence` (`:461`). The rest of that
- * file is B5 Layer-3 except its two `transform_profile` classes, which
- * K3 already translated into `transforms.test.ts`.
- * `tests/test_query_user_edge_cases.py` is likewise B5 Layer-3
- * (b2-packets §V2 precedent); its 3 K4 vectors replay at B3 regardless
- * (vectors gate on the api, not on test-file ownership).
- *
- * R10.2 notes (assertion-for-assertion; codes, not messages):
- *
- * - `pytest.raises(ValueError, match="int or float for lower bound")`
- *   asserts on MESSAGE text, which is out of contract (R5.4). Each such
- *   assert translates to the exception CLASS (`ParamValidationError` —
- *   the twin of Python's `ParamValidationError(MixpanelHeadlessError,
- *   ValueError)`) plus the registry `.code` that identifies the same
- *   guard. Nothing is dropped: the `match=` fragment and the `.code`
- *   name the same branch.
- * - EXCEPTION to the line above:
- *   `TestNotEqualsErrorMessage::test_error_references_correct_method_name`
- *   exists specifically to assert that the message names
- *   `Filter.not_equals()` (a PR-review regression guard, not a contract
- *   assert). The TS port carries the message verbatim, so the assert
- *   translates as a real `toContain("Filter.not_equals")` — translating
- *   it to class+code only would be the weakening R10.2 forbids.
- * - `test_es_guards_stay_catchable_as_value_error` asserts Python's dual
- *   inheritance (`except ValueError` reachability). TS has no
- *   `ValueError` in the error hierarchy; the ported invariant is descent
- *   from `MixpanelHeadlessError` (errors.ts header: "in TS the
- *   conformance key is class name + code"), asserted as such alongside
- *   the `instanceof ParamValidationError` + `.code` asserts the Python
- *   test also makes.
- * - Python's `# type: ignore[arg-type]` deliberate-invalid inputs become
- *   `as unknown as X` casts at the same call sites. Python's
- *   `Filter(("tup",), "is set", None)` uses a TUPLE property; the ported
- *   value domain has no tuple, so the twin uses a one-element ARRAY —
- *   the same "not a `str`" ES1 branch, which is what the assert is about.
- * - `assert cohort is cohort_filter` (identity) → `toBe` (reference
- *   equality), the exact JS twin.
- * - `assert remaining == [f1, f2, f3]` compares Filter INSTANCES by
- *   Python `__eq__` (dataclass field equality). The stronger, faithful
- *   twin here is element-wise `toBe` (identity), since
- *   `extract_cohort_filter` forwards the very objects it received —
- *   locked separately by `test_cohort_filter_identity_preserved`.
- * - `TestPbtFormatValueSpecialChars` (Hypothesis) → fast-check twins with
- *   the same alphabets: `st.characters(whitelist_categories=("L","N",
- *   "P","S","Z"), whitelist_characters='"\\' + "\n\r\0")` and the
- *   unrestricted `st.text()` (drawn as `unit: "binary"`, the full
- *   code-point domain incl. non-BMP — an ASCII-only twin would be a
- *   silent narrowing, B2 ASSERT-F1).
- */
-
+// `filterToSelector`, `filtersToSelector`, `extractCohortFilter` and `formatValue`
+// — translation of `tests/test_user_builders.py` (all classes) plus
+// `TestPbtFormatValueSpecialChars` / `TestFiltersToSelectorOrAndPrecedence` from
+// `tests/test_query_user_structural.py`. `match=` message asserts become class +
+// `.code` (except the `Filter.not_equals` message guard); escape-all cases are TS-only.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -110,11 +55,10 @@ function rawFilter(
   });
 }
 
-// =============================================================================
-// filter_to_selector — individual operator mapping
-// =============================================================================
+// --- filter_to_selector — individual operator mapping ---
 
-describe("filterToSelector equals (TestFilterToSelectorEquals)", () => {
+describe("filterToSelector equals", () => {
+  // python: TestFilterToSelectorEquals
   it("single string value", () => {
     const f = Filter.equals("plan", "premium");
     expect(filterToSelector(f)).toBe('properties["plan"] == "premium"');
@@ -144,7 +88,8 @@ describe("filterToSelector equals (TestFilterToSelectorEquals)", () => {
   });
 });
 
-describe("filterToSelector not-equals (TestFilterToSelectorNotEquals)", () => {
+describe("filterToSelector not-equals", () => {
+  // python: TestFilterToSelectorNotEquals
   it("single value", () => {
     const f = Filter.notEquals("plan", "free");
     expect(filterToSelector(f)).toBe('properties["plan"] != "free"');
@@ -160,21 +105,24 @@ describe("filterToSelector not-equals (TestFilterToSelectorNotEquals)", () => {
   });
 });
 
-describe("filterToSelector contains (TestFilterToSelectorContains)", () => {
+describe("filterToSelector contains", () => {
+  // python: TestFilterToSelectorContains
   it("contains string", () => {
     const f = Filter.contains("email", "gmail");
     expect(filterToSelector(f)).toBe('"gmail" in properties["email"]');
   });
 });
 
-describe("filterToSelector not-contains (TestFilterToSelectorNotContains)", () => {
+describe("filterToSelector not-contains", () => {
+  // python: TestFilterToSelectorNotContains
   it("not-contains string", () => {
     const f = Filter.notContains("email", "spam");
     expect(filterToSelector(f)).toBe('not "spam" in properties["email"]');
   });
 });
 
-describe("filterToSelector greater-than (TestFilterToSelectorGreaterThan)", () => {
+describe("filterToSelector greater-than", () => {
+  // python: TestFilterToSelectorGreaterThan
   it("integer value", () => {
     const f = Filter.greaterThan("age", 18);
     expect(filterToSelector(f)).toBe('properties["age"] > 18');
@@ -186,7 +134,8 @@ describe("filterToSelector greater-than (TestFilterToSelectorGreaterThan)", () =
   });
 });
 
-describe("filterToSelector less-than (TestFilterToSelectorLessThan)", () => {
+describe("filterToSelector less-than", () => {
+  // python: TestFilterToSelectorLessThan
   it("integer value", () => {
     const f = Filter.lessThan("age", 65);
     expect(filterToSelector(f)).toBe('properties["age"] < 65');
@@ -198,7 +147,8 @@ describe("filterToSelector less-than (TestFilterToSelectorLessThan)", () => {
   });
 });
 
-describe("filterToSelector between (TestFilterToSelectorBetween)", () => {
+describe("filterToSelector between", () => {
+  // python: TestFilterToSelectorBetween
   it("integer range", () => {
     const f = Filter.between("age", 18, 65);
     expect(filterToSelector(f)).toBe(
@@ -221,7 +171,8 @@ describe("filterToSelector between (TestFilterToSelectorBetween)", () => {
   });
 });
 
-describe("filterToSelector is-set (TestFilterToSelectorIsSet)", () => {
+describe("filterToSelector is-set", () => {
+  // python: TestFilterToSelectorIsSet
   it("is set", () => {
     expect(filterToSelector(Filter.isSet("email"))).toBe(
       'defined(properties["email"])',
@@ -229,7 +180,8 @@ describe("filterToSelector is-set (TestFilterToSelectorIsSet)", () => {
   });
 });
 
-describe("filterToSelector is-not-set (TestFilterToSelectorIsNotSet)", () => {
+describe("filterToSelector is-not-set", () => {
+  // python: TestFilterToSelectorIsNotSet
   it("is not set", () => {
     expect(filterToSelector(Filter.isNotSet("phone"))).toBe(
       'not defined(properties["phone"])',
@@ -237,7 +189,8 @@ describe("filterToSelector is-not-set (TestFilterToSelectorIsNotSet)", () => {
   });
 });
 
-describe("filterToSelector booleans (TestFilterToSelectorBooleans)", () => {
+describe("filterToSelector booleans", () => {
+  // python: TestFilterToSelectorBooleans
   it("is true", () => {
     expect(filterToSelector(Filter.isTrue("verified"))).toBe(
       'properties["verified"] == true',
@@ -251,11 +204,10 @@ describe("filterToSelector booleans (TestFilterToSelectorBooleans)", () => {
   });
 });
 
-// =============================================================================
-// filter_to_selector — value formatting
-// =============================================================================
+// --- filter_to_selector — value formatting ---
 
-describe("filterToSelector value formatting (TestFilterToSelectorValueFormatting)", () => {
+describe("filterToSelector value formatting", () => {
+  // python: TestFilterToSelectorValueFormatting
   it("string value is quoted", () => {
     const f = Filter.equals("city", "New York");
     expect(filterToSelector(f)).toBe('properties["city"] == "New York"');
@@ -302,11 +254,10 @@ describe("filterToSelector value formatting (TestFilterToSelectorValueFormatting
   });
 });
 
-// =============================================================================
-// filter_to_selector — edge cases
-// =============================================================================
+// --- filter_to_selector — edge cases ---
 
-describe("filterToSelector edge cases (TestFilterToSelectorEdgeCases)", () => {
+describe("filterToSelector edge cases", () => {
+  // python: TestFilterToSelectorEdgeCases
   it("dollar-prefixed property name", () => {
     expect(filterToSelector(Filter.equals("$city", "London"))).toBe(
       'properties["$city"] == "London"',
@@ -344,11 +295,10 @@ describe("filterToSelector edge cases (TestFilterToSelectorEdgeCases)", () => {
   });
 });
 
-// =============================================================================
-// filters_to_selector — AND combination
-// =============================================================================
+// --- filters_to_selector — AND combination ---
 
-describe("filtersToSelector (TestFiltersToSelector)", () => {
+describe("filtersToSelector", () => {
+  // python: TestFiltersToSelector
   it("empty list returns empty string", () => {
     expect(filtersToSelector([])).toBe("");
   });
@@ -409,11 +359,10 @@ describe("filtersToSelector (TestFiltersToSelector)", () => {
   });
 });
 
-// =============================================================================
-// extract_cohort_filter
-// =============================================================================
+// --- extract_cohort_filter ---
 
-describe("extractCohortFilter (TestExtractCohortFilter)", () => {
+describe("extractCohortFilter", () => {
+  // python: TestExtractCohortFilter
   it("no cohort filter", () => {
     const filters = [Filter.equals("plan", "premium"), Filter.isSet("email")];
     const [remaining, cohort] = extractCohortFilter(filters);
@@ -515,11 +464,10 @@ describe("extractCohortFilter (TestExtractCohortFilter)", () => {
   });
 });
 
-// =============================================================================
-// PR #118 review fixes — property escaping and between bounds
-// =============================================================================
+// --- PR #118 review fixes — property escaping and between bounds ---
 
-describe("filterToSelector property escaping (TestFilterToSelectorPropertyEscaping)", () => {
+describe("filterToSelector property escaping", () => {
+  // python: TestFilterToSelectorPropertyEscaping
   it("property name containing a double quote is escaped", () => {
     const f = Filter.equals('weird"prop', "val");
     expect(filterToSelector(f)).toBe(
@@ -535,7 +483,8 @@ describe("filterToSelector property escaping (TestFilterToSelectorPropertyEscapi
   });
 });
 
-describe("filterToSelector between bounds (TestFilterToSelectorBetweenBoundsValidation)", () => {
+describe("filterToSelector between bounds", () => {
+  // python: TestFilterToSelectorBetweenBoundsValidation
   it("string lower bound is rejected", () => {
     const f = rawFilter("prop", "is between", ["low", 10]);
 
@@ -559,7 +508,8 @@ describe("filterToSelector between bounds (TestFilterToSelectorBetweenBoundsVali
   });
 });
 
-describe("not-equals error message (TestNotEqualsErrorMessage)", () => {
+describe("not-equals error message", () => {
+  // python: TestNotEqualsErrorMessage
   it("error references Filter.not_equals(), not does_not_equal()", () => {
     const f = rawFilter("prop", "does not equal", [{ nested: true }]);
 
@@ -574,9 +524,7 @@ describe("not-equals error message (TestNotEqualsErrorMessage)", () => {
   });
 });
 
-// =============================================================================
-// Coded guard errors — ES* family (E2 coding pass, design §1.6)
-// =============================================================================
+// --- Coded guard errors — ES* family ---
 
 /**
  * Assert that a thunk raises `ParamValidationError` with `code`.
@@ -590,7 +538,8 @@ function expectCode(thunk: () => unknown, code: string): void {
   expect((error as ParamValidationError).code).toBe(code);
 }
 
-describe("coded engage-selector codes (TestCodedEngageSelectorCodes)", () => {
+describe("coded engage-selector codes", () => {
+  // python: TestCodedEngageSelectorCodes
   it("ES1 direct", () => {
     const f = rawFilter(123, "is set", null);
     expectCode(() => filterToSelector(f), "ES1_PROPERTY_NOT_STRING");
@@ -738,21 +687,18 @@ describe("coded engage-selector codes (TestCodedEngageSelectorCodes)", () => {
   });
 });
 
-// =============================================================================
-// Split-file translations from `tests/test_query_user_structural.py`
-// (packet K4 Layer-3 table): TIER 5 edge cases / PBT.
-// =============================================================================
+// --- Translations from `tests/test_query_user_structural.py` ---
 
 /** Twin of the Python `whitelist_characters='"\\' + "\n\r\0"` set. */
 const SPECIAL_CHARS = ['"', "\\", "\n", "\r", "\0"] as const;
 
 /**
- * Twin of `st.characters(whitelist_categories=("L","N","P","S","Z"),
- * whitelist_characters='"\\' + "\n\r\0")`.
+ * Twin of the Python `st.characters` strategy over categories L/N/P/S/Z
+ * with the five `SPECIAL_CHARS` whitelisted.
  *
  * fast-check has no Unicode-category filter, so the category half is
  * drawn from the full code-point domain (`unit: "binary"`, which is a
- * SUPERSET of L/N/P/S/Z — never a narrowing, B2 ASSERT-F1) and the five
+ * SUPERSET of L/N/P/S/Z — never a narrowing) and the five
  * whitelisted characters are mixed in explicitly so they are reached
  * with high probability, exactly as Hypothesis's whitelist does.
  */
@@ -769,7 +715,8 @@ const specialCharText = fc
   )
   .map((chars) => chars.join(""));
 
-describe("formatValue special characters (TestPbtFormatValueSpecialChars)", () => {
+describe("formatValue special characters", () => {
+  // python: TestPbtFormatValueSpecialChars
   it("never crashes on special characters", () => {
     fc.assert(
       fc.property(specialCharText, (s) => {
@@ -797,18 +744,15 @@ describe("formatValue special characters (TestPbtFormatValueSpecialChars)", () =
   });
 });
 
-// =============================================================================
-// NEW (no Python source test) — watchlist #2 multi-occurrence escaping.
-//
+// --- Multi-occurrence escaping (TS-only, no Python source test) ---
 // Every escaping assert in the Python suite uses a value or property
 // name with exactly ONE backslash / ONE quote, where `str.replace` and
 // `replaceAll` agree. The single riskiest translation in the port would
 // therefore pass its translated tests with a first-occurrence-only
-// `String.prototype.replace`. These cases close that hole; the R10.9
+// `String.prototype.replace`. These cases close that hole; the differential
 // harness's escaping-biased alphabet is the second lock.
-// =============================================================================
 
-describe("formatValue / propRef escape ALL occurrences (NEW)", () => {
+describe("formatValue / propRef escape ALL occurrences", () => {
   it("formatValue escapes every backslash", () => {
     expect(formatValue(String.raw`a\b\c`)).toBe(String.raw`"a\\b\\c"`);
   });
@@ -842,7 +786,7 @@ describe("formatValue / propRef escape ALL occurrences (NEW)", () => {
   });
 });
 
-describe("formatValue escaping round-trips (NEW, PBT)", () => {
+describe("formatValue escaping round-trips (PBT)", () => {
   it("unescaping the quoted body returns the input", () => {
     fc.assert(
       fc.property(fc.string({ maxLength: 60, unit: "binary" }), (s) => {
@@ -859,7 +803,8 @@ describe("formatValue escaping round-trips (NEW, PBT)", () => {
   });
 });
 
-describe("filtersToSelector OR/AND precedence (TestFiltersToSelectorOrAndPrecedence)", () => {
+describe("filtersToSelector OR/AND precedence", () => {
+  // python: TestFiltersToSelectorOrAndPrecedence
   it("multi-value equals stays parenthesized inside an AND chain", () => {
     const f1 = Filter.equals("plan", ["free", "trial"]);
     const f2 = Filter.isSet("email");

@@ -1,21 +1,8 @@
-// B5-ARB regression locks (arbiter-directed remediation of the B5 review
-// pair, `docs/history/phase3/design/b5-review-resolution.md` findings FID-F1,
-// FID-F2, FID-F4 and ASR-F6b — ADDITIVE, substitutes for no Python file;
-// every expectation below is a live-CPython probe result recorded in the
-// resolution document):
-//
-// - FID-F1: `_transform_funnel` / `_transform_retention` store RAW count /
-//   size values and raise only lazily at the `+` / `>` / `/` operator
-//   sites CPython has (`live_query.py:126-147`, `:196`); the pre-fix TS
-//   coerced eagerly at read time and raised where CPython succeeds.
-// - FID-F2: in-annotation (Discrepancy #8 `Any`-interior) CPython
-//   `AttributeError` / `TypeError` raise-emulation at every dict-method /
-//   `in` / iteration site of the live-query transforms; the pre-fix TS
-//   silently succeeded (sometimes with wrong computed numbers).
-// - FID-F4: `_STEP_PREFIX_RE`'s `(.+)` — Python `.` excludes ONLY `\n`;
-//   JS `.` also excludes `\r`, U+2028 and U+2029.
-// - ASR-F6b: `FunnelQueryResult.overall_conversion_rate` string arm is
-//   CPython `float(str)` (R11.7 — `pythonFloat`, never `Number()`).
+// Additive CPython raise-fidelity locks for the live-query transforms (no
+// Python twin; every expectation is a recorded live-CPython probe result):
+// counts / sizes are stored raw and raise only at the operator sites CPython
+// has; dict-method / `in` / iteration sites raise AttributeError / TypeError;
+// STEP_PREFIX_RE `.` excludes only `\n`; overall_conversion_rate is float(x).
 
 import { describe, expect, it } from "vitest";
 
@@ -59,10 +46,10 @@ function serviceReturning(json: unknown): LiveQueryService {
 }
 
 // ---------------------------------------------------------------------------
-// FID-F1 — lazy operator-site coercion (CPython succeeds, stores raw)
+// Lazy operator-site coercion (CPython succeeds, stores raw)
 // ---------------------------------------------------------------------------
 
-describe("FID-F1: transformFunnel stores raw counts, raises lazily", () => {
+describe("transformFunnel stores raw counts, raises lazily", () => {
   it("zero-then-None counts SUCCEED like CPython (guards short-circuit)", () => {
     // CPython: [('A', 0, 1.0), ('B', None, 0.0)], overall 0.0
     const result = transformFunnel(
@@ -186,7 +173,7 @@ describe("FID-F1: transformFunnel stores raw counts, raises lazily", () => {
   });
 });
 
-describe("FID-F1: transformRetention stores raw size, raises lazily", () => {
+describe("transformRetention stores raw size, raises lazily", () => {
   it("str size with EMPTY counts succeeds (no comparison ever runs)", () => {
     // CPython: CohortInfo(size="5", retention=[])
     const result = transformRetention(
@@ -277,10 +264,10 @@ describe("FID-F1: transformRetention stores raw size, raises lazily", () => {
 });
 
 // ---------------------------------------------------------------------------
-// FID-F2 — AttributeError / TypeError raise-emulation at read sites
+// AttributeError / TypeError raise-emulation at read sites
 // ---------------------------------------------------------------------------
 
-describe("FID-F2: transformSegmentation raise sites", () => {
+describe("transformSegmentation raise sites", () => {
   it("list data raises AttributeError 'list' ... 'get'", () => {
     expect(() =>
       transformSegmentation({ data: [1, 2] }, "e", "f", "t", "day", null),
@@ -332,7 +319,7 @@ describe("FID-F2: transformSegmentation raise sites", () => {
   });
 });
 
-describe("FID-F2: extractStepsFromDateData Python `in` + .get semantics", () => {
+describe("extractStepsFromDateData Python `in` + .get semantics", () => {
   it("a str containing 'steps' passes the substring test then raises at .get", () => {
     // CPython: AttributeError 'str' object has no attribute 'get'
     expect(() => extractStepsFromDateData("my steps here")).toThrow(
@@ -358,7 +345,7 @@ describe("FID-F2: extractStepsFromDateData Python `in` + .get semantics", () => 
   });
 });
 
-describe("FID-F2: remaining transform read sites", () => {
+describe("remaining transform read sites", () => {
   it("transformFunnel: a non-dict step raises AttributeError at step.get", () => {
     expect(() =>
       transformFunnel({ data: { d: { steps: [5] } } }, 1, "a", "b"),
@@ -466,7 +453,7 @@ describe("FID-F2: remaining transform read sites", () => {
   });
 });
 
-describe("FID-F2: LiveQueryService dataValues (event_counts/property_counts)", () => {
+describe("LiveQueryService dataValues (event_counts/property_counts)", () => {
   it("eventCounts: a str data member raises AttributeError, not silent {}", async () => {
     // CPython: raw.get('data', {}).get(...) -> AttributeError 'str' ... 'get'
     const live = serviceReturning({ data: "xx" });
@@ -487,10 +474,10 @@ describe("FID-F2: LiveQueryService dataValues (event_counts/property_counts)", (
 });
 
 // ---------------------------------------------------------------------------
-// FID-F4 — STEP_PREFIX_RE: Python `.` excludes only `\n`
+// STEP_PREFIX_RE: Python `.` excludes only `\n`
 // ---------------------------------------------------------------------------
 
-describe("FID-F4: STEP_PREFIX_RE dot semantics", () => {
+describe("STEP_PREFIX_RE dot semantics", () => {
   it("matches step names containing U+000D CR (CPython dot semantics)", () => {
     // CPython: _STEP_PREFIX_RE.match('1. a\rb').group(2) == 'a\rb'
     const steps = extractFunnelStepsFromSeries(
@@ -519,10 +506,10 @@ describe("FID-F4: STEP_PREFIX_RE dot semantics", () => {
 });
 
 // ---------------------------------------------------------------------------
-// ASR-F6b — overall_conversion_rate string arm is CPython float(str)
+// overall_conversion_rate string arm is CPython float(str)
 // ---------------------------------------------------------------------------
 
-describe("ASR-F6b: FunnelQueryResult.overall_conversion_rate float(str) arm", () => {
+describe("FunnelQueryResult.overall_conversion_rate float(str) arm", () => {
   it("parses CPython float spellings Number() refuses ('inf')", () => {
     const result = new FunnelQueryResult({
       computed_at: "",
@@ -557,13 +544,11 @@ describe("ASR-F6b: FunnelQueryResult.overall_conversion_rate float(str) arm", ()
 });
 
 // ---------------------------------------------------------------------------
-// B6-GATE — overall_conversion_rate NON-string ladder is CPython float(x)
-// (B5-notes.md outbound ledger item 5: the ASR-F6b remediation fixed the
-// string arm only; the non-string arm awaited the `pythonFloatCoerce`
-// compat twin. CPython probes recorded in B6-notes.md.)
+// overall_conversion_rate NON-string ladder is CPython float(x) — the
+// `pythonFloatCoerce` compat twin (the string arm above is `pythonFloat`).
 // ---------------------------------------------------------------------------
 
-describe("B6-GATE: FunnelQueryResult.overall_conversion_rate float(x) non-string ladder", () => {
+describe("FunnelQueryResult.overall_conversion_rate float(x) non-string ladder", () => {
   /**
    * Build a single-step result whose last step carries `value`.
    *

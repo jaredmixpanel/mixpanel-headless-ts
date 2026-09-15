@@ -1,20 +1,9 @@
-// Layer-3 translation — Phase-3 packet B4-C1 client-core locks. Sources:
-//
-// - tests/unit/test_api_client.py::TestClientInit,
-//   ::TestClientLifecycle (:146-168), ::TestAuthHeader (:172-278),
-//   ::TestAPIClientProperties (:1828-1856)
-// - tests/unit/test_api_client_session.py — ALL classes
-//
-// Entry-point substitutions (documented per packet C1 §Layer-3 /
-// B0-notes decision 13): httpx.MockTransport → the injected-fetch fake
-// (`client-test-helpers.ts`); `client._client`/`client._http` identity →
-// the `HttpHandle` pool token (`isHttpOpen()`/`httpHandle()` — the R6.2
-// invariant object); `client._get_auth_header()` /
-// `client.current_auth_header` → `client.currentAuthHeader()` (async
-// per R3.1: TS token resolution is I/O); `client._timeout` etc. →
-// `client.core.timeoutSeconds` etc.; Python `with client:` →
-// `ensureHttpOpen()` + `close()`. Every assertion is otherwise
-// preserved 1:1 (R10.2).
+// Client construction, lifecycle, auth-header resolution, properties and
+// `use()` session switching (transport preserved, stale workspace cleared,
+// OAuth atomicity, fresh bearer per app request). Mirrors TestClientInit,
+// TestClientLifecycle, TestAuthHeader and TestAPIClientProperties from
+// tests/unit/test_api_client.py and all of tests/unit/test_api_client_session.py.
+
 import { describe, expect, it } from "vitest";
 
 import type {
@@ -67,15 +56,18 @@ function decodeBasic(header: string): string {
   return atob(header.replace("Basic ", ""));
 }
 
-describe("TestClientInit", () => {
-  it("test_init_with_credentials", async () => {
+describe("Client init", () => {
+  // python: TestClientInit
+  it("init with credentials", async () => {
+    // python: test_init_with_credentials
     const session = makeSession();
     const client = createMixpanelClient({ session });
     expect(client.session).toBe(session);
     await client.close();
   });
 
-  it("test_init_with_custom_timeout", async () => {
+  it("init with custom timeout", async () => {
+    // python: test_init_with_custom_timeout
     const client = createMixpanelClient({
       session: makeSession(),
       timeoutSeconds: 60.0,
@@ -84,7 +76,8 @@ describe("TestClientInit", () => {
     await client.close();
   });
 
-  it("test_init_with_custom_export_timeout", async () => {
+  it("init with custom export timeout", async () => {
+    // python: test_init_with_custom_export_timeout
     const client = createMixpanelClient({
       session: makeSession(),
       exportTimeoutSeconds: 600.0,
@@ -93,7 +86,8 @@ describe("TestClientInit", () => {
     await client.close();
   });
 
-  it("test_init_with_max_retries", async () => {
+  it("init with max retries", async () => {
+    // python: test_init_with_max_retries
     const client = createMixpanelClient({
       session: makeSession(),
       maxRetries: 5,
@@ -103,21 +97,24 @@ describe("TestClientInit", () => {
   });
 });
 
-describe("TestClientLifecycle", () => {
-  it("test_context_manager", async () => {
+describe("Client lifecycle", () => {
+  // python: TestClientLifecycle
+  it("context manager", async () => {
+    // python: test_context_manager
     const { client } = createMockClient(makeSession(), () => ({
       status: 200,
       json: ["event1"],
     }));
     // `with client:` runs __enter__._ensure_client(); asyncDispose is
-    // the R6.2 exit analog.
+    // the __exit__ analog.
     client.ensureHttpOpen();
     expect(client.isHttpOpen()).toBe(true);
     await client[Symbol.asyncDispose]();
     expect(client.isHttpOpen()).toBe(false);
   });
 
-  it("test_close_releases_resources", async () => {
+  it("close releases resources", async () => {
+    // python: test_close_releases_resources
     const { client } = createMockClient(makeSession(), () => ({
       status: 200,
       json: [],
@@ -129,8 +126,10 @@ describe("TestClientLifecycle", () => {
   });
 });
 
-describe("TestAuthHeader", () => {
-  it("test_auth_header_format", async () => {
+describe("Auth header", () => {
+  // python: TestAuthHeader
+  it("auth header format", async () => {
+    // python: test_auth_header_format
     const client = createMixpanelClient({ session: makeSession() });
     const header = await client.currentAuthHeader();
     expect(header.startsWith("Basic ")).toBe(true);
@@ -138,7 +137,8 @@ describe("TestAuthHeader", () => {
     await client.close();
   });
 
-  it("test_oauth_session_resolves_bearer_per_request", async () => {
+  it("OAuth session resolves bearer per request", async () => {
+    // python: test_oauth_session_resolves_bearer_per_request
     let calls = 0;
     const resolver: TokenResolver = {
       getBrowserToken(): Promise<string> {
@@ -176,7 +176,8 @@ describe("TestAuthHeader", () => {
     }
   });
 
-  it("test_service_account_session_uses_basic_auth_no_resolver_call", async () => {
+  it("service account session uses basic auth no resolver call", async () => {
+    // python: test_service_account_session_uses_basic_auth_no_resolver_call
     const resolver: TokenResolver = {
       getBrowserToken(): Promise<string> {
         throw new Error("browser token path should not run for SA");
@@ -209,20 +210,24 @@ describe("TestAuthHeader", () => {
   });
 });
 
-describe("TestAPIClientProperties", () => {
-  it("test_project_id_property", async () => {
+describe("API client properties", () => {
+  // python: TestAPIClientProperties
+  it("project ID property", async () => {
+    // python: test_project_id_property
     const client = createMixpanelClient({ session: makeSession() });
     expect(client.projectId).toBe("12345");
     await client.close();
   });
 
-  it("test_region_property_us", async () => {
+  it("region property us", async () => {
+    // python: test_region_property_us
     const client = createMixpanelClient({ session: makeSession() });
     expect(client.region).toBe("us");
     await client.close();
   });
 
-  it("test_region_property_eu", async () => {
+  it("region property EU", async () => {
+    // python: test_region_property_eu
     const client = createMixpanelClient({
       session: makeSession({ region: "eu" }),
     });
@@ -230,7 +235,8 @@ describe("TestAPIClientProperties", () => {
     await client.close();
   });
 
-  it("test_region_property_india", async () => {
+  it("region property india", async () => {
+    // python: test_region_property_india
     const client = createMixpanelClient({
       session: makeSession({ region: "in" }),
     });
@@ -239,37 +245,42 @@ describe("TestAPIClientProperties", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// tests/unit/test_api_client_session.py — ALL classes.
-// ---------------------------------------------------------------------------
+// --- Session switching (tests/unit/test_api_client_session.py) ---
 
-describe("TestConstruction", () => {
-  it("test_construct_with_session", () => {
+describe("Construction", () => {
+  // python: TestConstruction
+  it("construct with session", () => {
+    // python: test_construct_with_session
     const client = createMixpanelClient({ session: sessionTeam() });
     expect(client.session.account.name).toBe("team");
     expect(client.session.project.id).toBe("3713224");
   });
 
-  it("test_auth_header_basic", async () => {
+  it("auth header basic", async () => {
+    // python: test_auth_header_basic
     const client = createMixpanelClient({ session: sessionTeam() });
     expect((await client.currentAuthHeader()).startsWith("Basic ")).toBe(true);
   });
 });
 
-describe("TestUse", () => {
-  it("test_use_workspace", async () => {
+describe("Use", () => {
+  // python: TestUse
+  it("use workspace", async () => {
+    // python: test_use_workspace
     const client = createMixpanelClient({ session: sessionTeam() });
     await client.use({ workspace: 42 });
     expect(client.session.workspace).toStrictEqual({ id: 42 });
   });
 
-  it("test_use_project", async () => {
+  it("use project", async () => {
+    // python: test_use_project
     const client = createMixpanelClient({ session: sessionTeam() });
     await client.use({ project: { id: "11111" } });
     expect(client.session.project.id).toBe("11111");
   });
 
-  it("test_use_account_rebuilds_auth_header", async () => {
+  it("use account rebuilds auth header", async () => {
+    // python: test_use_account_rebuilds_auth_header
     const client = createMixpanelClient({ session: sessionTeam() });
     const before = await client.currentAuthHeader();
     await client.use({ account: sessionOther().account });
@@ -278,22 +289,26 @@ describe("TestUse", () => {
   });
 });
 
-describe("TestTransportPreservation", () => {
-  it("test_workspace_switch", async () => {
+describe("Transport preservation", () => {
+  // python: TestTransportPreservation
+  it("workspace switch", async () => {
+    // python: test_workspace_switch
     const client = createMixpanelClient({ session: sessionTeam() });
     const before = client.httpHandle();
     await client.use({ workspace: 42 });
     expect(client.httpHandle()).toBe(before);
   });
 
-  it("test_project_switch", async () => {
+  it("project switch", async () => {
+    // python: test_project_switch
     const client = createMixpanelClient({ session: sessionTeam() });
     const before = client.httpHandle();
     await client.use({ project: { id: "11111" } });
     expect(client.httpHandle()).toBe(before);
   });
 
-  it("test_account_switch", async () => {
+  it("account switch", async () => {
+    // python: test_account_switch
     const client = createMixpanelClient({ session: sessionTeam() });
     const before = client.httpHandle();
     await client.use({ account: sessionOther().account });
@@ -301,8 +316,10 @@ describe("TestTransportPreservation", () => {
   });
 });
 
-describe("TestUseClearsStaleWorkspaceId", () => {
-  it("test_account_swap_clears_workspace_id", async () => {
+describe("Use clears stale workspace ID", () => {
+  // python: TestUseClearsStaleWorkspaceId
+  it("account swap clears workspace ID", async () => {
+    // python: test_account_swap_clears_workspace_id
     const teamWithWs: Session = {
       ...sessionTeam(),
       workspace: { id: 42 },
@@ -313,7 +330,8 @@ describe("TestUseClearsStaleWorkspaceId", () => {
     expect(client.workspaceId).toBeNull();
   });
 
-  it("test_project_swap_clears_workspace_id", async () => {
+  it("project swap clears workspace ID", async () => {
+    // python: test_project_swap_clears_workspace_id
     const teamWithWs: Session = {
       ...sessionTeam(),
       workspace: { id: 42 },
@@ -324,7 +342,8 @@ describe("TestUseClearsStaleWorkspaceId", () => {
     expect(client.workspaceId).toBeNull();
   });
 
-  it("test_account_swap_then_scoped_path_does_not_leak_old_workspace", async () => {
+  it("account swap then scoped path does not leak old workspace", async () => {
+    // python: test_account_swap_then_scoped_path_does_not_leak_old_workspace
     const teamWithWs: Session = {
       ...sessionTeam(),
       workspace: { id: 42 },
@@ -338,7 +357,8 @@ describe("TestUseClearsStaleWorkspaceId", () => {
   });
 });
 
-describe("TestUseOAuthAtomicity", () => {
+describe("Use OAuth atomicity", () => {
+  // python: TestUseOAuthAtomicity
   /** Always fails — simulates a tokenless OAuth account. */
   const failingResolver: TokenResolver = {
     getBrowserToken(): Promise<string> {
@@ -349,7 +369,8 @@ describe("TestUseOAuthAtomicity", () => {
     },
   };
 
-  it("test_use_to_oauth_account_without_token_raises_and_preserves_session", async () => {
+  it("use to OAuth account without token raises and preserves session", async () => {
+    // python: test_use_to_oauth_account_without_token_raises_and_preserves_session
     const client = createMixpanelClient({
       session: sessionTeam(),
       tokenResolver: failingResolver,
@@ -371,7 +392,8 @@ describe("TestUseOAuthAtomicity", () => {
     await expect(client.currentAuthHeader()).resolves.toBe(priorHeader);
   });
 
-  it("test_use_to_oauth_token_account_without_token_raises", async () => {
+  it("use to OAuth token account without token raises", async () => {
+    // python: test_use_to_oauth_token_account_without_token_raises
     const client = createMixpanelClient({
       session: sessionTeam(),
       tokenResolver: failingResolver,
@@ -391,8 +413,10 @@ describe("TestUseOAuthAtomicity", () => {
   });
 });
 
-describe("TestSessionAccountNameDrivesMeCacheScope", () => {
-  it("test_distinct_oauth_browser_accounts_have_distinct_names", () => {
+describe("Session account name drives me cache scope", () => {
+  // python: TestSessionAccountNameDrivesMeCacheScope
+  it("distinct OAuth browser accounts have distinct names", () => {
+    // python: test_distinct_oauth_browser_accounts_have_distinct_names
     const sessionA: Session = {
       account: { type: "oauth_browser", name: "account_a", region: "us" },
       project: { id: "3713224" },
@@ -408,7 +432,8 @@ describe("TestSessionAccountNameDrivesMeCacheScope", () => {
     expect(sessionA.account.name).not.toBe(sessionB.account.name);
   });
 
-  it("test_oauth_token_account_name_drives_cache_scope", () => {
+  it("OAuth token account name drives cache scope", () => {
+    // python: test_oauth_token_account_name_drives_cache_scope
     const session: Session = {
       account: {
         type: "oauth_token",
@@ -423,8 +448,10 @@ describe("TestSessionAccountNameDrivesMeCacheScope", () => {
   });
 });
 
-describe("TestAppRequestUsesFreshAuthHeader", () => {
-  it("test_oauth_browser_app_request_picks_up_refreshed_token", async () => {
+describe("App request uses fresh auth header", () => {
+  // python: TestAppRequestUsesFreshAuthHeader
+  it("OAuth browser app request picks up refreshed token", async () => {
+    // python: test_oauth_browser_app_request_picks_up_refreshed_token
     const capturedHeaders: string[] = [];
     let calls = 0;
     const rotatingResolver: TokenResolver = {
@@ -460,7 +487,8 @@ describe("TestAppRequestUsesFreshAuthHeader", () => {
     ]);
   });
 
-  it("test_oauth_static_token_app_request_uses_resolver", async () => {
+  it("OAuth static token app request uses resolver", async () => {
+    // python: test_oauth_static_token_app_request_uses_resolver
     const capturedHeaders: string[] = [];
     const session: Session = {
       account: {

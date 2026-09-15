@@ -1,24 +1,9 @@
-// Layer-3 translation of `tests/pbt/test_session_pbt.py` (202 lines) —
-// B7-A2 packet §2.4 (`b7-packets.md`): the `replace` properties
-// (:97-155), the TypeAdapter-roundtrip property (:157), and the
-// `auth_header` format property (:168+).
-//
-// Strategy shapes preserved: name alphabet `[a-zA-Z0-9_-]{1,64}`,
-// regions us/eu/in, project `^[1-9][0-9]{0,9}$`, workspace 1..2^31−1,
-// non-empty text 1..64. Mechanism substitutions (header-cited, R10.2):
-// - `Session.replace(**kwargs)` → `sessionReplace` (key-presence
-//   sentinel, `auth/session.ts`);
-// - `model_copy` identity assert (`s2 is not s`) → reference inequality
-//   + deep equality;
-// - `model_dump` → `TypeAdapter.validate_python` roundtrip → feeding
-//   the Session's own parts (plain records + `Secret` instances, the
-//   exact values `model_dump` round-trips) back through `parseSession`,
-//   which re-validates like the TypeAdapter. The example-based parse
-//   coverage in `session.test.ts` is NOT this property (packet §2.4:
-//   "translate unless literally duplicate — header-cite either way").
-// - `st.text()` for username/secret/token draws full Unicode; the fc
-//   twin uses `fc.fullUnicodeString`-equivalent (`fc.string` with
-//   unicode units in fast-check 4).
+// `sessionReplace` / `parseSession` / `sessionAuthHeader` properties mirroring
+// the `replace`, TypeAdapter-roundtrip and `auth_header` properties of
+// `tests/pbt/test_session_pbt.py` with the same strategy shapes. `model_copy`
+// identity → reference inequality + deep equality; `model_dump` roundtrip →
+// re-parsing the Session's own parts; `st.text()` → full-Unicode `fc.string`.
+
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -133,8 +118,9 @@ const sessions: fc.Arbitrary<Session> = fc
     headers: new Map<string, string>(),
   }));
 
-describe("Session.replace PBT (test_session_pbt.py)", () => {
-  it("test_replace_account_preserves_other_axes", () => {
+describe("Session.replace PBT", () => {
+  it("replace account preserves other axes", () => {
+    // python: test_replace_account_preserves_other_axes
     fc.assert(
       fc.property(sessions, accounts, (s, newAccount) => {
         const s2 = sessionReplace(s, { account: newAccount });
@@ -145,7 +131,8 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
     );
   });
 
-  it("test_replace_project_preserves_other_axes", () => {
+  it("replace project preserves other axes", () => {
+    // python: test_replace_project_preserves_other_axes
     fc.assert(
       fc.property(sessions, projects, (s, newProject) => {
         const s2 = sessionReplace(s, { project: newProject });
@@ -156,7 +143,8 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
     );
   });
 
-  it("test_replace_workspace_preserves_other_axes", () => {
+  it("replace workspace preserves other axes", () => {
+    // python: test_replace_workspace_preserves_other_axes
     fc.assert(
       fc.property(sessions, workspaceIds, (s, wsId) => {
         const newWorkspace: WorkspaceRef = { id: wsId };
@@ -168,7 +156,8 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
     );
   });
 
-  it("test_replace_workspace_to_none_clears", () => {
+  it("replace workspace to null clears", () => {
+    // python: test_replace_workspace_to_none_clears
     fc.assert(
       fc.property(sessions, (s) => {
         const s2 = sessionReplace(s, { workspace: null });
@@ -177,7 +166,8 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
     );
   });
 
-  it("test_replace_omitting_workspace_preserves", () => {
+  it("replace omitting workspace preserves it", () => {
+    // python: test_replace_omitting_workspace_preserves
     fc.assert(
       fc.property(sessions, (s) => {
         const s2 = sessionReplace(s, {});
@@ -186,7 +176,8 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
     );
   });
 
-  it("test_replace_returns_new_object", () => {
+  it("replace returns a new object", () => {
+    // python: test_replace_returns_new_object
     fc.assert(
       fc.property(sessions, (s) => {
         const s2 = sessionReplace(s, {});
@@ -196,7 +187,8 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
     );
   });
 
-  it("test_replace_omitting_axes_preserves_all", () => {
+  it("replace omitting axes preserves all", () => {
+    // python: test_replace_omitting_axes_preserves_all
     fc.assert(
       fc.property(sessions, (s) => {
         const s2 = sessionReplace(s, {});
@@ -208,7 +200,8 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
     );
   });
 
-  it("test_session_typeadapter_roundtrip_preserves_equality", () => {
+  it("the TypeAdapter roundtrip preserves equality", () => {
+    // python: test_session_typeadapter_roundtrip_preserves_equality
     fc.assert(
       fc.property(sessions, (s) => {
         // model_dump → validate_python twin: re-parse the session's own
@@ -226,7 +219,8 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
     );
   });
 
-  it("test_session_auth_header_format", async () => {
+  it("the session auth header has the Basic/Bearer format", async () => {
+    // python: test_session_auth_header_format
     // A fake TokenResolver is supplied so the OAuth variants don't
     // need real on-disk tokens.
     const fakeResolver: TokenResolver = {

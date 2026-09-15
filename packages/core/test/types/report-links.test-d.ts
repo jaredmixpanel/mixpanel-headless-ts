@@ -1,10 +1,8 @@
 // Type-level twins of the `test_frozen` assertions in
-// tests/unit/test_types_report_links.py. Python raises on attribute
-// assignment; the TS contract is `readonly`, which only the compiler can
-// check, so these pins live here rather than behind `@ts-expect-error` in
-// the runtime file. `ReportLink` and `ResolvedReport` also freeze at runtime
-// (asserted in report-links.test.ts); `BookmarkUrl` does not — PORTING.md
-// "Runtime immutability" — so for it this file is the whole test.
+// tests/unit/test_types_report_links.py: Python raises on attribute
+// assignment; the TS contract is `readonly`, which only the compiler checks.
+// `ReportLink` / `ResolvedReport` also freeze at runtime (report-links.test.ts);
+// `BookmarkUrl` does not (PORTING.md "Runtime immutability") — this is its test.
 import { describe, expectTypeOf, it } from "vitest";
 
 import type { BookmarkUrl } from "../../src/types/entities/bookmarks.js";
@@ -25,8 +23,10 @@ declare const record: BookmarkUrl;
 declare const link: ReportLink;
 declare const resolved: ResolvedReport;
 
-describe("TestBookmarkUrl", () => {
-  it("test_frozen — fields are readonly (runtime freeze is the open todo)", () => {
+describe("Bookmark URL", () => {
+  // python: TestBookmarkUrl
+  it("frozen — fields are readonly (runtime freeze is the open todo)", () => {
+    // python: test_frozen
     // @ts-expect-error -- `slug` is readonly
     record.slug = "x";
     // @ts-expect-error -- `params` is readonly
@@ -39,8 +39,10 @@ describe("TestBookmarkUrl", () => {
   });
 });
 
-describe("TestReportLink", () => {
-  it("test_frozen — fields are readonly", () => {
+describe("Report link", () => {
+  // python: TestReportLink
+  it("frozen — fields are readonly", () => {
+    // python: test_frozen
     // @ts-expect-error -- `slug` is readonly
     link.slug = "x";
     // @ts-expect-error -- `url` is readonly
@@ -50,8 +52,10 @@ describe("TestReportLink", () => {
   });
 });
 
-describe("TestResolvedReport", () => {
-  it("test_frozen — fields are readonly", () => {
+describe("Resolved report", () => {
+  // python: TestResolvedReport
+  it("frozen — fields are readonly", () => {
+    // python: test_frozen
     // @ts-expect-error -- `params` is readonly
     resolved.params = {};
     expectTypeOf(resolved.source).toEqualTypeOf<"slug" | "bookmark">();
@@ -61,8 +65,10 @@ describe("TestResolvedReport", () => {
   });
 });
 
-describe("TestReportLinkType", () => {
-  it("test_query_result_alias_members", () => {
+describe("Report link type", () => {
+  // python: TestReportLinkType
+  it("query result alias members", () => {
+    // python: test_query_result_alias_members
     expectTypeOf<ReportLinkQueryResult>().toEqualTypeOf<
       QueryResult | FunnelQueryResult | RetentionQueryResult | FlowQueryResult
     >();

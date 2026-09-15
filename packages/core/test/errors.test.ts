@@ -1,14 +1,9 @@
-// Error-shape unit tests (phase2-design C3 lock #3), translated from
-// tests/unit/test_exceptions.py + test_exceptions_session_replay.py.
-//
-// Translation notes (documented exclusions, NOT weakened assertions):
-// - Message-TEXT assertions from the Python suites are deliberately not
-//   carried: error message text is out of contract (R5.4). Everything the
-//   vectors compare — class name, `code`, `details`, `toDict()` key set —
-//   is asserted here.
-// - Python's dual-inheritance assertions (`isinstance(exc, ValueError)`)
-//   have no JS analog (phase2-design C3): the conformance key is class
-//   name + code, asserted via the registry test and the chains below.
+// The error hierarchy's shape: class, `code`, `details`, `toDict()` key set
+// and prototype chains, translated from `tests/unit/test_exceptions.py` and
+// `test_exceptions_session_replay.py`. Message-text assertions are not
+// carried (message text is out of contract); Python's dual-inheritance
+// asserts (`isinstance(exc, ValueError)`) have no JS analog.
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -155,7 +150,7 @@ describe("APIError", () => {
     });
   });
 
-  it("omits detail keys for absent optional context (R4.11 absent-vs-null)", () => {
+  it("omits detail keys for absent optional context (absent-vs-null)", () => {
     const exc = new APIError("minimal", { statusCode: 404 });
     expect(exc.statusCode).toBe(404);
     expect(exc.responseBody).toBeNull();
@@ -234,7 +229,7 @@ describe("config errors", () => {
     expect(exc).toBeInstanceOf(ConfigError);
   });
 
-  it("InvalidArgumentError omits detected_auth_type when absent (R4.11)", () => {
+  it("InvalidArgumentError omits detected_auth_type when absent", () => {
     const exc = new InvalidArgumentError("bad flags", {
       violation: "no_browser_misuse",
     });

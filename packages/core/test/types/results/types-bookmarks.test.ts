@@ -1,12 +1,8 @@
-// Translated result-class tests (packet P2-6): assertion-for-assertion
-// port of tests/unit/test_types_bookmarks.py — the
-// SavedReportResult / FlowsResult per-class row specs (phase2-design
-// C6) and BookmarkInfo's conditional to_dict.
-//
-// Same translation notes as types.test.ts: `.df` -> `toRows()`/
-// `rowColumns()`; identity-caching tests -> repeated-call determinism;
-// frozen-dataclass suites not ported (compile-time `readonly`);
-// `TestTypeAliases` is P2-3 surface (locked by the C8d alias tests).
+// SavedReportResult, FlowsResult and BookmarkInfo: construction,
+// report_type detection, the df projection as row arrays and conditional
+// to_dict. Mirrors tests/unit/test_types_bookmarks.py; `.df` → toRows() /
+// rowColumns(), identity caching → repeated-call determinism, frozen
+// suites not carried; TestTypeAliases is locked by the literal alias tests.
 import { describe, expect, it } from "vitest";
 
 import type { BookmarkType } from "../../../src/types/literals.js";
@@ -16,8 +12,10 @@ import {
   SavedReportResult,
 } from "../../../src/types/results/live-query.js";
 
-describe("SavedReportResult (TestSavedReportResult)", () => {
-  it("test_create_insights_report", () => {
+describe("SavedReportResult", () => {
+  // python: TestSavedReportResult
+  it("create insights report", () => {
+    // python: test_create_insights_report
     const result = new SavedReportResult({
       bookmark_id: 12345,
       computed_at: "2024-01-15T10:30:00",
@@ -46,31 +44,38 @@ describe("SavedReportResult (TestSavedReportResult)", () => {
       series: {},
     });
 
-  it("test_report_type_insights", () => {
+  it("report type insights", () => {
+    // python: test_report_type_insights
     expect(bare(["$event", "Date"]).report_type).toBe("insights");
   });
 
-  it("test_report_type_retention", () => {
+  it("report type retention", () => {
+    // python: test_report_type_retention
     expect(bare(["$retention"]).report_type).toBe("retention");
   });
 
-  it("test_report_type_retention_case_insensitive", () => {
+  it("report type retention case insensitive", () => {
+    // python: test_report_type_retention_case_insensitive
     expect(bare(["$RETENTION"]).report_type).toBe("retention");
   });
 
-  it("test_report_type_funnel", () => {
+  it("report type funnel", () => {
+    // python: test_report_type_funnel
     expect(bare(["$funnel"]).report_type).toBe("funnel");
   });
 
-  it("test_report_type_funnel_case_insensitive", () => {
+  it("report type funnel case insensitive", () => {
+    // python: test_report_type_funnel_case_insensitive
     expect(bare(["$FUNNEL"]).report_type).toBe("funnel");
   });
 
-  it("test_report_type_empty_headers", () => {
+  it("report type empty headers", () => {
+    // python: test_report_type_empty_headers
     expect(bare([]).report_type).toBe("insights");
   });
 
-  it("test_df_property_insights", () => {
+  it("df property insights", () => {
+    // python: test_df_property_insights
     const result = new SavedReportResult({
       bookmark_id: 1,
       computed_at: "2024-01-01T00:00:00",
@@ -88,7 +93,8 @@ describe("SavedReportResult (TestSavedReportResult)", () => {
     );
   });
 
-  it("test_df_property_cached (determinism)", () => {
+  it("df property cached (determinism)", () => {
+    // python: test_df_property_cached
     const result = new SavedReportResult({
       bookmark_id: 1,
       computed_at: "2024-01-01T00:00:00",
@@ -100,14 +106,15 @@ describe("SavedReportResult (TestSavedReportResult)", () => {
     expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
-  it("test_df_property_empty_series", () => {
+  it("df property empty series", () => {
+    // python: test_df_property_empty_series
     const result = bare([]);
     expect(result.toRows()).toHaveLength(0);
     expect(result.rowColumns()).toStrictEqual(["date", "event", "count"]);
   });
 
-  it("non-insights branch returns ONE row whose series cell is the nested dict (C6 per-class row spec)", () => {
-    // The design's F3 respec: the non-insights branch is
+  it("non-insights branch returns ONE row whose series cell is the nested dict", () => {
+    // Python's non-insights branch is
     // `pd.DataFrame([{"series": self.series}])`.
     const series = { cohorts: [1, 2, 3] };
     const result = new SavedReportResult({
@@ -122,7 +129,8 @@ describe("SavedReportResult (TestSavedReportResult)", () => {
     expect(result.rowColumns()).toStrictEqual(["series"]);
   });
 
-  it("test_to_dict", () => {
+  it("to dict", () => {
+    // python: test_to_dict
     const result = new SavedReportResult({
       bookmark_id: 12345,
       computed_at: "2024-01-15T10:30:00",
@@ -142,8 +150,10 @@ describe("SavedReportResult (TestSavedReportResult)", () => {
   });
 });
 
-describe("FlowsResult (TestFlowsResult)", () => {
-  it("test_create_flows_result", () => {
+describe("FlowsResult", () => {
+  // python: TestFlowsResult
+  it("create flows result", () => {
+    // python: test_create_flows_result
     const result = new FlowsResult({
       bookmark_id: 12345,
       computed_at: "2024-01-15T10:30:00",
@@ -163,7 +173,8 @@ describe("FlowsResult (TestFlowsResult)", () => {
     expect(result.metadata).toStrictEqual({ version: "1.0" });
   });
 
-  it("test_df_property", () => {
+  it("df property", () => {
+    // python: test_df_property
     const result = new FlowsResult({
       bookmark_id: 1,
       computed_at: "2024-01-01T00:00:00",
@@ -180,7 +191,8 @@ describe("FlowsResult (TestFlowsResult)", () => {
     expect(result.rowColumns()).toContain("count");
   });
 
-  it("test_df_property_cached (determinism)", () => {
+  it("df property cached (determinism)", () => {
+    // python: test_df_property_cached
     const result = new FlowsResult({
       bookmark_id: 1,
       computed_at: "2024-01-01T00:00:00",
@@ -191,7 +203,8 @@ describe("FlowsResult (TestFlowsResult)", () => {
     expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
-  it("test_df_property_empty_steps", () => {
+  it("df property empty steps", () => {
+    // python: test_df_property_empty_steps
     const result = new FlowsResult({
       bookmark_id: 1,
       computed_at: "2024-01-01T00:00:00",
@@ -200,12 +213,12 @@ describe("FlowsResult (TestFlowsResult)", () => {
       overall_conversion_rate: 0.0,
     });
     expect(result.toRows()).toHaveLength(0);
-    // The Python empty case is a bare pd.DataFrame() — NO column list
-    // (phase2-design C6 per-class row spec).
+    // The Python empty case is a bare pd.DataFrame() — NO column list.
     expect(result.rowColumns()).toStrictEqual([]);
   });
 
-  it("test_to_dict", () => {
+  it("to dict", () => {
+    // python: test_to_dict
     const result = new FlowsResult({
       bookmark_id: 12345,
       computed_at: "2024-01-15T10:30:00",
@@ -223,7 +236,8 @@ describe("FlowsResult (TestFlowsResult)", () => {
     expect(d["metadata"]).toStrictEqual({ key: "value" });
   });
 
-  it("test_default_values", () => {
+  it("default values", () => {
+    // python: test_default_values
     const result = new FlowsResult({
       bookmark_id: 1,
       computed_at: "2024-01-01T00:00:00",
@@ -235,8 +249,10 @@ describe("FlowsResult (TestFlowsResult)", () => {
   });
 });
 
-describe("BookmarkInfo (TestBookmarkInfo)", () => {
-  it("test_create_bookmark_info", () => {
+describe("BookmarkInfo", () => {
+  // python: TestBookmarkInfo
+  it("create bookmark info", () => {
+    // python: test_create_bookmark_info
     const info = new BookmarkInfo({
       id: 12345,
       name: "Weekly Active Users",
@@ -253,7 +269,8 @@ describe("BookmarkInfo (TestBookmarkInfo)", () => {
     expect(info.modified).toBe("2024-01-15T10:30:00");
   });
 
-  it("test_create_with_optional_fields", () => {
+  it("create with optional fields", () => {
+    // python: test_create_with_optional_fields
     const info = new BookmarkInfo({
       id: 12345,
       name: "User Funnel",
@@ -274,7 +291,8 @@ describe("BookmarkInfo (TestBookmarkInfo)", () => {
     expect(info.creator_name).toBe("John Doe");
   });
 
-  it("test_default_optional_fields", () => {
+  it("default optional fields", () => {
+    // python: test_default_optional_fields
     const info = new BookmarkInfo({
       id: 1,
       name: "Test",
@@ -290,7 +308,8 @@ describe("BookmarkInfo (TestBookmarkInfo)", () => {
     expect(info.creator_name).toBeNull();
   });
 
-  it("test_to_dict_minimal", () => {
+  it("to dict minimal", () => {
+    // python: test_to_dict_minimal
     const info = new BookmarkInfo({
       id: 12345,
       name: "Test Report",
@@ -314,7 +333,8 @@ describe("BookmarkInfo (TestBookmarkInfo)", () => {
     expect(Object.hasOwn(d, "creator_name")).toBe(false);
   });
 
-  it("test_to_dict_with_optional_fields", () => {
+  it("to dict with optional fields", () => {
+    // python: test_to_dict_with_optional_fields
     const info = new BookmarkInfo({
       id: 12345,
       name: "Test Report",
@@ -336,7 +356,8 @@ describe("BookmarkInfo (TestBookmarkInfo)", () => {
     expect(d["creator_name"]).toBe("Test User");
   });
 
-  it("test_all_bookmark_types", () => {
+  it("all bookmark types", () => {
+    // python: test_all_bookmark_types
     const bookmarkTypes: readonly BookmarkType[] = [
       "insights",
       "funnels",

@@ -1,21 +1,8 @@
-// Translated result-class tests (phase2-design C6/C8b, packet P2-6):
-// assertion-for-assertion port of tests/unit/test_types.py,
-// `.df` -> `toRows()`/`rowColumns()` per the C6 row contract.
-//
-// Translation notes (applied consistently, see the design's Risk #6):
-// - `df.columns` assertions -> `rowColumns()`; `len(df)` ->
-//   `toRows().length`.
-// - Python `test_df_cached` asserts `df1 is df2` (pandas identity
-//   caching). TS `toRows()` is cheap/pure with NO mandated cache
-//   (phase2-design C6), so the caching tests translate to repeated
-//   calls being deep-equal (determinism — the observable half).
-// - Frozen-dataclass immutability suites have no TS runtime analog
-//   (`readonly` is the compile-time equivalent) and are not ported.
-// - The `TestResultWithDataFrame` base-class suite exercises the
-//   pandas plumbing (`NotImplementedError`, `to_table_dict`) that has
-//   no TS runtime artifact — the TS row contract lives on each class.
-// - `TestCustomEventExports` is a P2-7 entity-surface concern, not
-//   ported here.
+// Result classes of tests/unit/test_types.py: Segmentation / Funnel /
+// Retention / EventCounts / PropertyCounts results, FunnelInfo, SavedCohort,
+// TopEvent, ProfilePageResult (+ pagination) and SubPropertyInfo. `.df` →
+// toRows() / rowColumns(); identity-caching asserts → repeated-call
+// determinism; frozen and pandas-plumbing suites are not carried.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -35,8 +22,10 @@ import {
   SegmentationResult,
 } from "../../../src/types/results/live-query.js";
 
-describe("SegmentationResult (TestSegmentationResult)", () => {
-  it("test_basic_creation", () => {
+describe("SegmentationResult", () => {
+  // python: TestSegmentationResult
+  it("basic creation", () => {
+    // python: test_basic_creation
     const result = new SegmentationResult({
       event: "Purchase",
       from_date: "2024-01-01",
@@ -53,7 +42,8 @@ describe("SegmentationResult (TestSegmentationResult)", () => {
     expect(result.total).toBe(5000);
   });
 
-  it("test_df_has_expected_columns", () => {
+  it("df has expected columns", () => {
+    // python: test_df_has_expected_columns
     const result = new SegmentationResult({
       event: "Purchase",
       from_date: "2024-01-01",
@@ -72,7 +62,8 @@ describe("SegmentationResult (TestSegmentationResult)", () => {
     expect(result.toRows()).toHaveLength(4); // 2 segments x 2 dates
   });
 
-  it("test_df_empty_series", () => {
+  it("df empty series", () => {
+    // python: test_df_empty_series
     const result = new SegmentationResult({
       event: "Purchase",
       from_date: "2024-01-01",
@@ -86,7 +77,8 @@ describe("SegmentationResult (TestSegmentationResult)", () => {
     expect(result.rowColumns()).toContain("date");
   });
 
-  it("test_df_cached (determinism)", () => {
+  it("df cached (determinism)", () => {
+    // python: test_df_cached
     const result = new SegmentationResult({
       event: "Purchase",
       from_date: "2024-01-01",
@@ -99,7 +91,8 @@ describe("SegmentationResult (TestSegmentationResult)", () => {
     expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
-  it("test_to_dict_serializable", () => {
+  it("to dict serializable", () => {
+    // python: test_to_dict_serializable
     const result = new SegmentationResult({
       event: "Purchase",
       from_date: "2024-01-01",
@@ -114,8 +107,10 @@ describe("SegmentationResult (TestSegmentationResult)", () => {
   });
 });
 
-describe("FunnelResult (TestFunnelResult)", () => {
-  it("test_funnel_step_creation", () => {
+describe("FunnelResult", () => {
+  // python: TestFunnelResult
+  it("funnel step creation", () => {
+    // python: test_funnel_step_creation
     const step = new FunnelResultStep({
       event: "Sign Up",
       count: 1000,
@@ -126,7 +121,8 @@ describe("FunnelResult (TestFunnelResult)", () => {
     expect(step.conversion_rate).toBe(1.0);
   });
 
-  it("test_funnel_result_creation", () => {
+  it("funnel result creation", () => {
+    // python: test_funnel_result_creation
     const steps = [
       new FunnelResultStep({
         event: "View",
@@ -158,7 +154,8 @@ describe("FunnelResult (TestFunnelResult)", () => {
     expect(result.steps).toHaveLength(3);
   });
 
-  it("test_steps_iteration", () => {
+  it("steps iteration", () => {
+    // python: test_steps_iteration
     const steps = [
       new FunnelResultStep({ event: "A", count: 100, conversion_rate: 1.0 }),
       new FunnelResultStep({ event: "B", count: 50, conversion_rate: 0.5 }),
@@ -174,7 +171,8 @@ describe("FunnelResult (TestFunnelResult)", () => {
     expect(result.steps.map((step) => step.event)).toStrictEqual(["A", "B"]);
   });
 
-  it("test_df_has_expected_columns", () => {
+  it("df has expected columns", () => {
+    // python: test_df_has_expected_columns
     const steps = [
       new FunnelResultStep({
         event: "View",
@@ -202,7 +200,8 @@ describe("FunnelResult (TestFunnelResult)", () => {
     expect(result.toRows()).toHaveLength(2);
   });
 
-  it("test_df_cached (determinism)", () => {
+  it("df cached (determinism)", () => {
+    // python: test_df_cached
     const steps = [
       new FunnelResultStep({
         event: "View",
@@ -221,7 +220,8 @@ describe("FunnelResult (TestFunnelResult)", () => {
     expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
-  it("test_to_dict_serializable", () => {
+  it("to dict serializable", () => {
+    // python: test_to_dict_serializable
     const steps = [
       new FunnelResultStep({
         event: "View",
@@ -244,8 +244,10 @@ describe("FunnelResult (TestFunnelResult)", () => {
   });
 });
 
-describe("RetentionResult (TestRetentionResult)", () => {
-  it("test_cohort_info_creation", () => {
+describe("RetentionResult", () => {
+  // python: TestRetentionResult
+  it("cohort info creation", () => {
+    // python: test_cohort_info_creation
     const cohort = new CohortInfo({
       date: "2024-01-01",
       size: 1000,
@@ -256,7 +258,8 @@ describe("RetentionResult (TestRetentionResult)", () => {
     expect(cohort.retention).toStrictEqual([1.0, 0.5, 0.3, 0.2]);
   });
 
-  it("test_retention_result_creation", () => {
+  it("retention result creation", () => {
+    // python: test_retention_result_creation
     const cohorts = [
       new CohortInfo({ date: "2024-01-01", size: 1000, retention: [1.0, 0.5] }),
       new CohortInfo({ date: "2024-01-08", size: 800, retention: [1.0, 0.4] }),
@@ -274,7 +277,8 @@ describe("RetentionResult (TestRetentionResult)", () => {
     expect(result.cohorts).toHaveLength(2);
   });
 
-  it("test_df_has_expected_columns", () => {
+  it("df has expected columns", () => {
+    // python: test_df_has_expected_columns
     const cohorts = [
       new CohortInfo({
         date: "2024-01-01",
@@ -297,7 +301,8 @@ describe("RetentionResult (TestRetentionResult)", () => {
     expect(result.rowColumns()).toContain("period_2");
   });
 
-  it("test_df_cached (determinism)", () => {
+  it("df cached (determinism)", () => {
+    // python: test_df_cached
     const cohorts = [
       new CohortInfo({ date: "2024-01-01", size: 1000, retention: [1.0, 0.5] }),
     ];
@@ -312,7 +317,8 @@ describe("RetentionResult (TestRetentionResult)", () => {
     expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
-  it("test_to_dict_serializable", () => {
+  it("to dict serializable", () => {
+    // python: test_to_dict_serializable
     const cohorts = [
       new CohortInfo({ date: "2024-01-01", size: 1000, retention: [1.0, 0.5] }),
     ];
@@ -328,14 +334,17 @@ describe("RetentionResult (TestRetentionResult)", () => {
   });
 });
 
-describe("FunnelInfo (TestFunnelInfo)", () => {
-  it("test_basic_creation", () => {
+describe("FunnelInfo", () => {
+  // python: TestFunnelInfo
+  it("basic creation", () => {
+    // python: test_basic_creation
     const info = new FunnelInfo({ funnel_id: 12345, name: "Checkout Funnel" });
     expect(info.funnel_id).toBe(12345);
     expect(info.name).toBe("Checkout Funnel");
   });
 
-  it("test_to_dict_serializable", () => {
+  it("to dict serializable", () => {
+    // python: test_to_dict_serializable
     const info = new FunnelInfo({ funnel_id: 12345, name: "Checkout Funnel" });
     const data = info.toJSON();
     const jsonStr = JSON.stringify(data);
@@ -346,8 +355,10 @@ describe("FunnelInfo (TestFunnelInfo)", () => {
   });
 });
 
-describe("SavedCohort (TestSavedCohort)", () => {
-  it("test_basic_creation", () => {
+describe("SavedCohort", () => {
+  // python: TestSavedCohort
+  it("basic creation", () => {
+    // python: test_basic_creation
     const cohort = new SavedCohort({
       id: 456,
       name: "Power Users",
@@ -364,7 +375,8 @@ describe("SavedCohort (TestSavedCohort)", () => {
     expect(cohort.is_visible).toBe(true);
   });
 
-  it("test_to_dict_serializable", () => {
+  it("to dict serializable", () => {
+    // python: test_to_dict_serializable
     const cohort = new SavedCohort({
       id: 456,
       name: "Power Users",
@@ -381,8 +393,10 @@ describe("SavedCohort (TestSavedCohort)", () => {
   });
 });
 
-describe("TopEvent (TestTopEvent)", () => {
-  it("test_basic_creation", () => {
+describe("TopEvent", () => {
+  // python: TestTopEvent
+  it("basic creation", () => {
+    // python: test_basic_creation
     const event = new TopEvent({
       event: "Sign Up",
       count: 1500,
@@ -393,7 +407,8 @@ describe("TopEvent (TestTopEvent)", () => {
     expect(event.percent_change).toBe(0.25);
   });
 
-  it("test_negative_percent_change", () => {
+  it("negative percent change", () => {
+    // python: test_negative_percent_change
     const event = new TopEvent({
       event: "Purchase",
       count: 500,
@@ -402,7 +417,8 @@ describe("TopEvent (TestTopEvent)", () => {
     expect(event.percent_change).toBe(-0.15);
   });
 
-  it("test_to_dict_serializable", () => {
+  it("to dict serializable", () => {
+    // python: test_to_dict_serializable
     const event = new TopEvent({
       event: "Sign Up",
       count: 1500,
@@ -415,8 +431,10 @@ describe("TopEvent (TestTopEvent)", () => {
   });
 });
 
-describe("EventCountsResult (TestEventCountsResult)", () => {
-  it("test_basic_creation", () => {
+describe("EventCountsResult", () => {
+  // python: TestEventCountsResult
+  it("basic creation", () => {
+    // python: test_basic_creation
     const result = new EventCountsResult({
       events: ["Sign Up", "Purchase"],
       from_date: "2024-01-01",
@@ -434,7 +452,8 @@ describe("EventCountsResult (TestEventCountsResult)", () => {
     expect(result.type).toBe("general");
   });
 
-  it("test_df_has_expected_columns", () => {
+  it("df has expected columns", () => {
+    // python: test_df_has_expected_columns
     const result = new EventCountsResult({
       events: ["Sign Up", "Purchase"],
       from_date: "2024-01-01",
@@ -452,7 +471,8 @@ describe("EventCountsResult (TestEventCountsResult)", () => {
     expect(result.toRows()).toHaveLength(4); // 2 events x 2 dates
   });
 
-  it("test_df_empty_series", () => {
+  it("df empty series", () => {
+    // python: test_df_empty_series
     const result = new EventCountsResult({
       events: [],
       from_date: "2024-01-01",
@@ -465,7 +485,8 @@ describe("EventCountsResult (TestEventCountsResult)", () => {
     expect(result.rowColumns()).toContain("date");
   });
 
-  it("test_df_cached (determinism)", () => {
+  it("df cached (determinism)", () => {
+    // python: test_df_cached
     const result = new EventCountsResult({
       events: ["Test"],
       from_date: "2024-01-01",
@@ -477,7 +498,8 @@ describe("EventCountsResult (TestEventCountsResult)", () => {
     expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
-  it("test_to_dict_serializable", () => {
+  it("to dict serializable", () => {
+    // python: test_to_dict_serializable
     const result = new EventCountsResult({
       events: ["Sign Up"],
       from_date: "2024-01-01",
@@ -493,8 +515,10 @@ describe("EventCountsResult (TestEventCountsResult)", () => {
   });
 });
 
-describe("PropertyCountsResult (TestPropertyCountsResult)", () => {
-  it("test_basic_creation", () => {
+describe("PropertyCountsResult", () => {
+  // python: TestPropertyCountsResult
+  it("basic creation", () => {
+    // python: test_basic_creation
     const result = new PropertyCountsResult({
       event: "Purchase",
       property_name: "country",
@@ -512,7 +536,8 @@ describe("PropertyCountsResult (TestPropertyCountsResult)", () => {
     expect(result.from_date).toBe("2024-01-01");
   });
 
-  it("test_df_has_expected_columns", () => {
+  it("df has expected columns", () => {
+    // python: test_df_has_expected_columns
     const result = new PropertyCountsResult({
       event: "Purchase",
       property_name: "country",
@@ -531,7 +556,8 @@ describe("PropertyCountsResult (TestPropertyCountsResult)", () => {
     expect(result.toRows()).toHaveLength(4); // 2 values x 2 dates
   });
 
-  it("test_df_empty_series", () => {
+  it("df empty series", () => {
+    // python: test_df_empty_series
     const result = new PropertyCountsResult({
       event: "Purchase",
       property_name: "country",
@@ -545,7 +571,8 @@ describe("PropertyCountsResult (TestPropertyCountsResult)", () => {
     expect(result.rowColumns()).toContain("date");
   });
 
-  it("test_df_cached (determinism)", () => {
+  it("df cached (determinism)", () => {
+    // python: test_df_cached
     const result = new PropertyCountsResult({
       event: "Purchase",
       property_name: "country",
@@ -558,7 +585,8 @@ describe("PropertyCountsResult (TestPropertyCountsResult)", () => {
     expect(result.toRows()).toStrictEqual(result.toRows());
   });
 
-  it("test_to_dict_serializable", () => {
+  it("to dict serializable", () => {
+    // python: test_to_dict_serializable
     const result = new PropertyCountsResult({
       event: "Purchase",
       property_name: "country",
@@ -574,8 +602,10 @@ describe("PropertyCountsResult (TestPropertyCountsResult)", () => {
   });
 });
 
-describe("ProfilePageResult (TestProfilePageResult)", () => {
-  it("test_create_with_profiles", () => {
+describe("ProfilePageResult", () => {
+  // python: TestProfilePageResult
+  it("create with profiles", () => {
+    // python: test_create_with_profiles
     const profiles = [
       { $distinct_id: "user1", $properties: { name: "Alice" } },
       { $distinct_id: "user2", $properties: { name: "Bob" } },
@@ -596,7 +626,8 @@ describe("ProfilePageResult (TestProfilePageResult)", () => {
     expect(result.page_size).toBe(1000);
   });
 
-  it("test_create_last_page", () => {
+  it("create last page", () => {
+    // python: test_create_last_page
     const result = new ProfilePageResult({
       profiles: [{ $distinct_id: "user1" }],
       session_id: null,
@@ -610,7 +641,8 @@ describe("ProfilePageResult (TestProfilePageResult)", () => {
     expect(result.page).toBe(5);
   });
 
-  it("test_to_dict", () => {
+  it("to dict", () => {
+    // python: test_to_dict
     const profiles = [{ $distinct_id: "user1" }, { $distinct_id: "user2" }];
     const result = new ProfilePageResult({
       profiles,
@@ -631,7 +663,8 @@ describe("ProfilePageResult (TestProfilePageResult)", () => {
     expect(data["num_pages"]).toBe(5);
   });
 
-  it("test_to_dict_json_serializable", () => {
+  it("to dict JSON serializable", () => {
+    // python: test_to_dict_json_serializable
     const result = new ProfilePageResult({
       profiles: [
         { $distinct_id: "user1", $properties: { email: "test@example.com" } },
@@ -650,7 +683,8 @@ describe("ProfilePageResult (TestProfilePageResult)", () => {
   });
 });
 
-describe("ProfilePageResult pagination (TestProfilePageResultPagination)", () => {
+describe("ProfilePageResult pagination", () => {
+  // python: TestProfilePageResultPagination
   const base = {
     profiles: [],
     session_id: "session_abc",
@@ -658,7 +692,8 @@ describe("ProfilePageResult pagination (TestProfilePageResultPagination)", () =>
     has_more: true,
   } as const;
 
-  it("test_profile_page_result_includes_total_field", () => {
+  it("profile page result includes total field", () => {
+    // python: test_profile_page_result_includes_total_field
     const result = new ProfilePageResult({
       ...base,
       total: 5000,
@@ -667,7 +702,8 @@ describe("ProfilePageResult pagination (TestProfilePageResultPagination)", () =>
     expect(result.total).toBe(5000);
   });
 
-  it("test_profile_page_result_includes_page_size_field", () => {
+  it("profile page result includes page size field", () => {
+    // python: test_profile_page_result_includes_page_size_field
     const result = new ProfilePageResult({
       ...base,
       total: 5000,
@@ -676,7 +712,8 @@ describe("ProfilePageResult pagination (TestProfilePageResultPagination)", () =>
     expect(result.page_size).toBe(1000);
   });
 
-  it("test_num_pages_property_computes_ceiling", () => {
+  it("num pages property computes ceiling", () => {
+    // python: test_num_pages_property_computes_ceiling
     const result = new ProfilePageResult({
       ...base,
       total: 5432,
@@ -685,7 +722,8 @@ describe("ProfilePageResult pagination (TestProfilePageResultPagination)", () =>
     expect(result.num_pages).toBe(6); // ceil(5432/1000)
   });
 
-  it("test_num_pages_exact_division", () => {
+  it("num pages exact division", () => {
+    // python: test_num_pages_exact_division
     const result = new ProfilePageResult({
       ...base,
       total: 5000,
@@ -694,7 +732,8 @@ describe("ProfilePageResult pagination (TestProfilePageResultPagination)", () =>
     expect(result.num_pages).toBe(5); // 5000 / 1000 exactly
   });
 
-  it("test_num_pages_empty_result_returns_zero", () => {
+  it("num pages empty result returns zero", () => {
+    // python: test_num_pages_empty_result_returns_zero
     const result = new ProfilePageResult({
       profiles: [],
       session_id: null,
@@ -706,7 +745,8 @@ describe("ProfilePageResult pagination (TestProfilePageResultPagination)", () =>
     expect(result.num_pages).toBe(0);
   });
 
-  it("test_num_pages_single_page", () => {
+  it("num pages single page", () => {
+    // python: test_num_pages_single_page
     const result = new ProfilePageResult({
       profiles: [{ $distinct_id: "user1" }],
       session_id: null,
@@ -718,7 +758,8 @@ describe("ProfilePageResult pagination (TestProfilePageResultPagination)", () =>
     expect(result.num_pages).toBe(1); // 500 < 1000
   });
 
-  it("test_to_dict_includes_pagination_fields", () => {
+  it("to dict includes pagination fields", () => {
+    // python: test_to_dict_includes_pagination_fields
     const result = new ProfilePageResult({
       profiles: [{ $distinct_id: "user1" }],
       session_id: "session_abc",
@@ -734,8 +775,10 @@ describe("ProfilePageResult pagination (TestProfilePageResultPagination)", () =>
   });
 });
 
-describe("SubPropertyInfo (TestSubPropertyInfo)", () => {
-  it("test_to_dict_returns_lists_for_sample_values", () => {
+describe("SubPropertyInfo", () => {
+  // python: TestSubPropertyInfo
+  it("to dict returns lists for sample values", () => {
+    // python: test_to_dict_returns_lists_for_sample_values
     const sp = new SubPropertyInfo({
       name: "Brand",
       type: "string",

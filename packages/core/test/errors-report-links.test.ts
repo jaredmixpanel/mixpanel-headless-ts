@@ -1,26 +1,9 @@
-// Report-link exception family unit tests (045-report-links), translated
-// from tests/unit/test_exceptions_report_links.py.
-//
-// One `describe` per Python class, one `it` per Python test (same order,
-// mirrored names); `pytest.mark.parametrize` rows become `it.each`.
-//
-// Translation notes (documented exclusions, NOT weakened assertions):
-// - Message-TEXT assertions are deliberately not carried: error message
-//   text is out of contract (R5.4). `TestCanonicalMessages` in Python
-//   asserts exact wording from contracts/error-messages.md §1-§5 on
-//   exceptions it constructs itself; here each twin constructs the same
-//   exception and asserts the CODE and DETAILS (keys + values) instead,
-//   and — where the raise site is a pure function (`parseReportLink`) —
-//   additionally checks that the real raise site populates the same
-//   code/detail keys. `.message` is asserted only as the round-trip of the
-//   constructor argument, never against canonical wording.
-// - Python's `repr(exc)` convention has no TS contract; the twin asserts
-//   `.name` (class name) and `.code`, which is what `repr` renders.
-// - Python's dual-inheritance assertion (`isinstance(exc, ValueError)`)
-//   has no JS analog (phase2-design C3): the twin asserts
-//   `MixpanelHeadlessError` descent plus the code.
-// - `issubclass` checks translate to prototype-chain checks
-//   (`Sub.prototype instanceof Base`).
+// The report-link exception family, translated from
+// `tests/unit/test_exceptions_report_links.py` (one describe per class, one
+// it per test, parametrize rows as `it.each`). Message text is out of
+// contract, so twins assert code + details (cross-checking `parseReportLink`
+// where pure); `repr` → `.name` + `.code`; `issubclass` → prototype chains.
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -63,8 +46,10 @@ function capture(fn: () => unknown): unknown {
   throw new Error("expected the callable to throw");
 }
 
-describe("TestReportLinkHierarchy", () => {
-  it("test_base_subclasses_mixpanel_headless_error", () => {
+describe("Report link hierarchy", () => {
+  // python: TestReportLinkHierarchy
+  it("the base class subclasses MixpanelHeadlessError", () => {
+    // python: test_base_subclasses_mixpanel_headless_error
     expect(ReportLinkError.prototype instanceof MixpanelHeadlessError).toBe(
       true,
     );
@@ -72,21 +57,23 @@ describe("TestReportLinkHierarchy", () => {
   });
 
   it.each(LEAF_CLASSES)(
-    "test_leaf_subclasses_report_link_error[%s]",
+    "%s subclasses ReportLinkError", // python: test_leaf_subclasses_report_link_error
     (_name, excCls) => {
       expect(excCls.prototype instanceof ReportLinkError).toBe(true);
       expect(excCls.prototype instanceof MixpanelHeadlessError).toBe(true);
     },
   );
 
-  it("test_catchable_as_base", () => {
+  it("leaves are catchable as the base", () => {
+    // python: test_catchable_as_base
     expect(() => {
       throw new ReportLinkParseError("boom");
     }).toThrow(ReportLinkError);
   });
 });
 
-describe("TestDefaultCodes", () => {
+describe("Default codes", () => {
+  // python: TestDefaultCodes
   it.each<[string, ReportLinkErrorClass, string]>([
     ["ReportLinkError", ReportLinkError, "REPORT_LINK_ERROR"],
     ["ReportLinkParseError", ReportLinkParseError, "REPORT_LINK_UNPARSEABLE"],
@@ -110,7 +97,8 @@ describe("TestDefaultCodes", () => {
       ShortLinkResolutionError,
       "SHORT_LINK_RESOLUTION_ERROR",
     ],
-  ])("test_default_code[%s]", (name, excCls, expected) => {
+  ])("%s default code", (name, excCls, expected) => {
+    // python: test_default_code
     const exc = new excCls("msg");
     expect(exc.code).toBe(expected);
     expect(exc.message).toBe("msg");
@@ -186,18 +174,22 @@ describe("TestDefaultCodes", () => {
       "SHORT_LINK_UNEXPECTED_RESPONSE",
     ],
     ["ShortLinkResolutionError", ShortLinkResolutionError, "SHORT_LINK_CHAIN"],
-  ])("test_explicit_code_override[%s-%s]", (_name, excCls, code) => {
+  ])("%s accepts explicit code %s", (_name, excCls, code) => {
+    // python: test_explicit_code_override
     const exc = new excCls("msg", { code });
     expect(exc.code).toBe(code);
   });
 });
 
-describe("TestDetailsAndToDict", () => {
-  it("test_details_default_empty", () => {
+describe("Details and to dict", () => {
+  // python: TestDetailsAndToDict
+  it("details default to empty", () => {
+    // python: test_details_default_empty
     expect(new ReportLinkError("msg").details).toStrictEqual({});
   });
 
-  it("test_details_carry_parsed_fields_and_hint", () => {
+  it("details carry parsed fields and hint", () => {
+    // python: test_details_carry_parsed_fields_and_hint
     const exc = new ReportLinkScopeMismatchError("mismatch", {
       code: "REPORT_LINK_PROJECT_MISMATCH",
       details: {
@@ -217,7 +209,8 @@ describe("TestDetailsAndToDict", () => {
     expect(exc.details["hint"]).toBe("switch project");
   });
 
-  it("test_to_dict_shape", () => {
+  it("toDict shape", () => {
+    // python: test_to_dict_shape
     const exc = new ReportLinkNotFoundError("gone", {
       code: "SHORT_LINK_NOT_FOUND",
       details: { short_code: "AbC123", host: "mixpanel.com" },
@@ -232,15 +225,18 @@ describe("TestDetailsAndToDict", () => {
     expect(() => JSON.stringify(d)).not.toThrow();
   });
 
-  it("test_repr_names_class_and_code", () => {
+  it("name and code stand in for repr", () => {
+    // python: test_repr_names_class_and_code
     const exc = new ShortLinkResolutionError("x", { code: "SHORT_LINK_CHAIN" });
     expect(exc.name).toBe("ShortLinkResolutionError");
     expect(exc.code).toBe("SHORT_LINK_CHAIN");
   });
 });
 
-describe("TestCanonicalMessages", () => {
-  it("test_parse_unparseable", () => {
+describe("Canonical messages", () => {
+  // python: TestCanonicalMessages
+  it("unparseable input: REPORT_LINK_UNPARSEABLE with raw + hint", () => {
+    // python: test_parse_unparseable
     const raw = "not a url at all";
     const hint =
       "Pass a full Mixpanel report URL, a shortlink " +
@@ -264,7 +260,8 @@ describe("TestCanonicalMessages", () => {
     expect(typeof parseExc.details["hint"]).toBe("string");
   });
 
-  it("test_parse_not_mixpanel_host", () => {
+  it("non-Mixpanel host: REPORT_LINK_NOT_MIXPANEL_HOST with host + hint", () => {
+    // python: test_parse_not_mixpanel_host
     const exc = new ReportLinkParseError(
       "Report link host 'example.com' is not a Mixpanel web host.",
       {
@@ -290,7 +287,8 @@ describe("TestCanonicalMessages", () => {
     expect(typeof parseExc.details["hint"]).toBe("string");
   });
 
-  it("test_unsupported_legacy_hash", () => {
+  it("legacy JSURL hash: UNSUPPORTED_LEGACY_HASH with kind + hint", () => {
+    // python: test_unsupported_legacy_hash
     const hint =
       "Open it in a browser (the app re-mints a shareable link " +
       "on load) and copy the new URL.";
@@ -307,7 +305,8 @@ describe("TestCanonicalMessages", () => {
     expect(exc.details["hint"]).toBe(hint);
   });
 
-  it("test_not_found_slug", () => {
+  it("missing slug: REPORT_LINK_SLUG_NOT_FOUND with slug/project/region", () => {
+    // python: test_not_found_slug
     const exc = new ReportLinkNotFoundError(
       "No unsaved report found for slug EBrV5bW2u9Mw in project 3 (us). " +
         "A slug is only readable in the project and region that created it.",
@@ -324,7 +323,8 @@ describe("TestCanonicalMessages", () => {
     });
   });
 
-  it("test_scope_project_mismatch", () => {
+  it("project mismatch: REPORT_LINK_PROJECT_MISMATCH with both ids", () => {
+    // python: test_scope_project_mismatch
     const exc = new ReportLinkScopeMismatchError(
       "Report link belongs to project 3 but the active session is " +
         'project 12345. Switch with ws.use(project="3") ' +
@@ -339,7 +339,8 @@ describe("TestCanonicalMessages", () => {
     expect(exc.details["session_project_id"]).toBe(12345);
   });
 
-  it("test_short_link_chain", () => {
+  it("shortlink chain: SHORT_LINK_CHAIN with short_code/target/hint", () => {
+    // python: test_short_link_chain
     const exc = new ShortLinkResolutionError(
       "Shortlink /s/AbC redirects to another shortlink " +
         "(https://mixpanel.com/s/XyZ). mixpanel-headless follows one " +
@@ -360,26 +361,29 @@ describe("TestCanonicalMessages", () => {
   });
 });
 
-describe("TestBuilderGuardCodes", () => {
+describe("Builder guard codes", () => {
+  // python: TestBuilderGuardCodes
   it.each([
     "RL1_UNKNOWN_REPORT_TYPE",
     "RL2_INVALID_SLUG",
     "RL3_UNKNOWN_REGION",
     "RL4_REPORT_TYPE_CONFLICT",
-  ])("test_registered[%s]", (code) => {
+  ])("%s is registered", (code) => {
+    // python: test_registered
     expect(CODED_GUARD_REGISTRY.has(code)).toBe(true);
   });
 
   // TS-port addition: the two RL codes the port's raise sites also use
   // (`ResolvedReport.__post_init__` and the positive-id guards).
   it.each(["RL5_RESOLVED_REPORT_INCONSISTENT", "RL6_INVALID_ID"])(
-    "test_registered[%s] (port addition)",
+    "%s is registered (port addition)", // python: test_registered
     (code) => {
       expect(CODED_GUARD_REGISTRY.has(code)).toBe(true);
     },
   );
 
-  it("test_param_validation_error_carries_rl_code", () => {
+  it("ParamValidationError carries an RL code", () => {
+    // python: test_param_validation_error_carries_rl_code
     const exc = new ParamValidationError(
       "Unknown region 'jp'. Expected one of: us, eu, in.",
       "RL3_UNKNOWN_REGION",

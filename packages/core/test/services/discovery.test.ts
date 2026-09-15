@@ -1,35 +1,8 @@
-// Translated DiscoveryService tests (B5-S1, packet §4): assertion-for-
-// assertion port of tests/unit/test_discovery.py — ALL 10
-// classes (TestDiscoveryService :62, TestListEvents :95,
-// TestListProperties :236, TestFindSimilarEvents :360,
-// TestListPropertyValues :465, TestClearCache :580, TestListFunnels
-// :661, TestListCohorts :759, TestListTopEvents :930,
-// TestListSubproperties :1080).
-//
-// Translation notes (applied consistently):
-// - `discovery_factory` -> `discoveryFactory` over the B4
-//   `createMockClient` httpx.MockTransport analog
-//   (`test-support/client-test-helpers.ts`); `success_handler` ->
-//   `successHandler`.
-// - Python's `_cache` dict -> the `cache` Map; `== {}` asserts
-//   become `.size === 0`.
-// - Handlers that `assert` on the captured request (`test_list_top_
-//   events_with_type_parameter`, `..._with_limit_parameter`) capture
-//   the params and assert AFTER the await: a throw inside the injected
-//   fetch would be normalized into a transport error by the B4 client
-//   and mask the assertion. Same assertion, same values.
-// - `warnings.catch_warnings(record=True)` -> the injected
-//   {@link WarningSink} collector; `simplefilter("error")` (a warning
-//   FAILS the test) -> a sink that throws.
-// - `test_mixed_warning_stacklevel_points_at_user_frame` has no
-//   TS analog: `warnings.warn(stacklevel=N)` attributes a warning to a
-//   caller frame, and the TS side channel is an injected sink with no
-//   frame attribution. The behaviour it pins (the mixed-type warning
-//   fires through the Workspace -> service -> inference chain) is
-//   asserted by `test_mixed_types_collapse_to_string_with_warning`
-//   here and by the sink-threading case in
-//   `test/workspace/discovery-facade.test.ts`.
-//   Recorded in `B5-S1-notes.md` §2.
+// DiscoveryService: event / property / funnel / cohort / top-event listing,
+// property values, cache behaviour, similar-event suggestions and
+// subproperty inference. Mirrors tests/unit/test_discovery.py (all classes).
+// Python's `warnings` becomes an injected WarningSink; the stacklevel case
+// (test_mixed_warning_stacklevel_points_at_user_frame) has no TS analog.
 
 import { describe, expect, it } from "vitest";
 
@@ -46,14 +19,10 @@ import {
   type WarningSink,
 } from "../../src/services/discovery.js";
 import {
-  type CannedResponse,
-  type CapturedFetchRequest,
+  type CannedHandler,
   createMockClient,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
-
-/** A canned-response handler (the httpx.MockTransport handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
 
 /**
  * The `discovery_factory` fixture.
@@ -63,7 +32,7 @@ type Handler = (request: CapturedFetchRequest) => CannedResponse;
  * @returns The service under test.
  */
 function discoveryFactory(
-  handler: Handler,
+  handler: CannedHandler,
   warn?: WarningSink,
 ): DiscoveryService {
   const { client } = createMockClient(makeSession(), handler);
@@ -74,9 +43,10 @@ function discoveryFactory(
 }
 
 /** The `success_handler` fixture. */
-const successHandler: Handler = () => ({ status: 200, json: [] });
+const successHandler: CannedHandler = () => ({ status: 200, json: [] });
 
-describe("TestDiscoveryService", () => {
+describe("Discovery service", () => {
+  // python: TestDiscoveryService
   it("accepts an API client", () => {
     const { client } = createMockClient(makeSession(), successHandler);
     const discovery = new DiscoveryService(client);
@@ -90,7 +60,8 @@ describe("TestDiscoveryService", () => {
   });
 });
 
-describe("TestListEvents", () => {
+describe("List events", () => {
+  // python: TestListEvents
   it("returns events sorted alphabetically", async () => {
     const discovery = discoveryFactory(() => ({
       status: 200,
@@ -174,7 +145,8 @@ describe("TestListEvents", () => {
   });
 });
 
-describe("TestListProperties", () => {
+describe("List properties", () => {
+  // python: TestListProperties
   it("returns properties sorted alphabetically", async () => {
     const discovery = discoveryFactory(() => ({
       status: 200,
@@ -253,7 +225,8 @@ describe("TestListProperties", () => {
   });
 });
 
-describe("TestFindSimilarEvents", () => {
+describe("Find similar events", () => {
+  // python: TestFindSimilarEvents
   it("finds exact case-insensitive matches first", () => {
     const discovery = discoveryFactory(successHandler);
     const events = ["Sign Up", "Login", "Purchase"];
@@ -314,7 +287,8 @@ describe("TestFindSimilarEvents", () => {
   });
 });
 
-describe("TestListPropertyValues", () => {
+describe("List property values", () => {
+  // python: TestListPropertyValues
   it("returns values from the API", async () => {
     const discovery = discoveryFactory(() => ({
       status: 200,
@@ -393,7 +367,8 @@ describe("TestListPropertyValues", () => {
   });
 });
 
-describe("TestClearCache", () => {
+describe("Clear cache", () => {
+  // python: TestClearCache
   it("clears all cached results", async () => {
     const discovery = discoveryFactory(() => ({
       status: 200,
@@ -434,7 +409,8 @@ describe("TestClearCache", () => {
   });
 });
 
-describe("TestListFunnels", () => {
+describe("List funnels", () => {
+  // python: TestListFunnels
   it("returns a list of FunnelInfo objects", async () => {
     const discovery = discoveryFactory(() => ({
       status: 200,
@@ -486,7 +462,8 @@ describe("TestListFunnels", () => {
   });
 });
 
-describe("TestListCohorts", () => {
+describe("List cohorts", () => {
+  // python: TestListCohorts
   it("returns a list of SavedCohort objects", async () => {
     const discovery = discoveryFactory(() => ({
       status: 200,
@@ -600,7 +577,8 @@ describe("TestListCohorts", () => {
   });
 });
 
-describe("TestListTopEvents", () => {
+describe("List top events", () => {
+  // python: TestListTopEvents
   it("returns a list of TopEvent objects", async () => {
     const discovery = discoveryFactory(() => ({
       status: 200,
@@ -652,6 +630,8 @@ describe("TestListTopEvents", () => {
   });
 
   it("passes the type parameter to the API", async () => {
+    // Asserted after the await: a throw inside the handler would be
+    // normalized into a transport error and mask the failure.
     let seenUrl = "";
     const discovery = discoveryFactory((request) => {
       seenUrl = request.url;
@@ -680,14 +660,15 @@ describe("TestListTopEvents", () => {
   });
 });
 
-describe("TestListSubproperties", () => {
+describe("List subproperties", () => {
+  // python: TestListSubproperties
   /**
    * The `_values_handler` static helper.
    *
    * @param values - The canned property-value strings.
    * @returns A handler always replying with them.
    */
-  const valuesHandler = (values: string[]): Handler => {
+  const valuesHandler = (values: string[]): CannedHandler => {
     return () => ({ status: 200, json: values });
   };
 
@@ -918,7 +899,8 @@ describe("TestListSubproperties", () => {
   });
 });
 
-describe("TestIterDictRows", () => {
+describe("Iter dict rows", () => {
+  // python: TestIterDictRows
   it("reports each unparseable value through logger.debug and keeps the rest", () => {
     const lines: string[] = [];
     const rows = iterDictRows(['{"a": 1}', "not json", '[1, {"b": 2}]', "{"], {

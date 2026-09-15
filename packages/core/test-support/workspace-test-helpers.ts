@@ -1,13 +1,8 @@
-// Shared helpers for the B5-S2 `Workspace` Layer-3 translations: the
-// `_TEST_SESSION` mirror the query-user test files declare, and a
-// `MagicMock(spec=MixpanelAPIClient)` twin — a stub carrying only the
-// client members the facade touches, plus per-member call logs.
-//
-// The Python files wrap every body in `try: ... finally: ws.close()`.
-// `Workspace.close()` is a B6-W1 stub in TS (it throws
-// `UNPORTED_MEMBER`) and the TS client owns no connection pool that
-// needs releasing (R6.2), so the translations DROP the `finally` and
-// record the omission here rather than in every file.
+// Shared helpers for the `Workspace` facade suites: the `_TEST_SESSION`
+// mirror the query-user test files declare, and a
+// `MagicMock(spec=MixpanelAPIClient)` twin carrying only the client members
+// the facade touches, plus per-member call logs. The TS client owns no
+// connection pool, so Python's `try/finally: ws.close()` wrappers are dropped.
 
 import type { Session } from "../src/auth/session.js";
 import type { MixpanelClient } from "../src/client/client.js";
@@ -15,11 +10,19 @@ import type { JsonValue } from "../src/client/json-value.js";
 import { toError } from "../src/invariant.js";
 import { Secret } from "../src/secret.js";
 import { ProfilePageResult } from "../src/types/results/discovery.js";
+import { Workspace } from "../src/workspace.js";
 import type { WorkspaceLogger } from "../src/workspace-members/options.js";
+import {
+  type CannedHandler,
+  CLIENT_SESSION,
+  createMockClient,
+  FACADE_SESSION,
+  type FakeTransport,
+} from "./client-test-helpers.js";
 
 /**
  * The canonical fake Session the query-user test modules declare
- * (`_TEST_SESSION`, e.g. test_workspace_query_user_parallel.py:41-51).
+ * (`_TEST_SESSION` in e.g. `test_workspace_query_user_parallel.py`).
  */
 export const TEST_SESSION: Session = {
   account: {
@@ -87,7 +90,7 @@ export interface MockWorkspaceClient {
  *
  * The stub also carries the `core.now()` clock seam the facade reads
  * for `computed_at`; it is pinned to a fixed instant so the timestamps
- * are deterministic (packet §0.4).
+ * are deterministic.
  *
  * @param now - The pinned clock reading (default 2025-01-15T10:00:00Z).
  * @returns The stub client plus its call logs.
@@ -116,8 +119,8 @@ export function mockWorkspaceClient(
 
   const stub = {
     core: { now: (): Date => now },
-    // B6-W1: the facade constructor wires the /me-backed workspace
-    // resolver (`_install_workspace_resolver`, `workspace.py:775-793`).
+    // The facade constructor wires the /me-backed workspace resolver
+    // (`_install_workspace_resolver`, `workspace.py`).
     // `MagicMock(spec=MixpanelAPIClient)` auto-provides both members in
     // Python; the TS stub declares them.
     hasWorkspaceResolver: false,
@@ -190,7 +193,7 @@ export interface LogCollector extends WorkspaceLogger {
 }
 
 /**
- * Build the `caplog` twin — the facade's injected logger seam (R9.5).
+ * Build the `caplog` twin — the facade's injected logger seam.
  *
  * @returns A logger that records every message.
  */
@@ -324,4 +327,70 @@ export function pageSideEffectFactory(
       has_more: page < numPages - 1,
     });
   };
+}
+
+/**
+ * A `Workspace` over a real client and a fake transport: the mock client
+ * binds `CLIENT_SESSION`, the facade binds `FACADE_SESSION` (the
+ * `_make_workspace` helper of the `test_workspace_*` modules).
+ *
+ * @param handler - The canned-response handler.
+ * @param logger - Optional facade logger (omitted → the facade default).
+ * @returns The facade plus the transport capture log.
+ */
+export function makeFacadeWorkspace(
+  handler: CannedHandler,
+  logger?: WorkspaceLogger,
+): { ws: Workspace; transport: FakeTransport } {
+  const { client, transport } = createMockClient(CLIENT_SESSION, handler);
+  return {
+    ws: new Workspace({
+      session: FACADE_SESSION,
+      client,
+      ...(logger === undefined ? {} : { logger }),
+    }),
+    transport,
+  };
+}
+
+/**
+ * A `Workspace` over the `MagicMock(spec=MixpanelAPIClient)` twin with
+ * `TEST_SESSION` (the `Workspace(session=_TEST_SESSION, client=mock)`
+ * construction of the query-user modules).
+ *
+ * @param mock - The stub client (a fresh one by default).
+ * @param logger - Optional facade logger (omitted → the facade default).
+ * @returns The facade.
+ */
+export function makeStubWorkspace(
+  mock: MockWorkspaceClient = mockWorkspaceClient(),
+  logger?: WorkspaceLogger,
+): Workspace {
+  return new Workspace({
+    session: TEST_SESSION,
+    client: mock.client,
+    ...(logger === undefined ? {} : { logger }),
+  });
+}
+
+/**
+ * A client stub whose single method resolves `value` and records its
+ * arguments — the member-level delegation probe of the facade suites.
+ *
+ * @param method - The client member the facade is expected to call.
+ * @param value - What the member resolves.
+ * @param calls - Receives each call's argument list.
+ * @returns The stub cast to the client type.
+ */
+export function stubClient(
+  method: string,
+  value: unknown,
+  calls: unknown[][] = [],
+): MixpanelClient {
+  return {
+    [method]: (...args: unknown[]): Promise<unknown> => {
+      calls.push(args);
+      return Promise.resolve(value);
+    },
+  } as unknown as MixpanelClient;
 }

@@ -1,23 +1,8 @@
-// Translated `run_flow_params` / `run_user_params` tests (Python PR
-// #225, Linear AIE-924): assertion-for-assertion port of
-// tests/unit/test_run_flow_user_params.py — BOTH classes
-// (TestRunFlowParams :168, TestRunUserParams :409), plus a direct probe
-// of the `_flow_mode_from_params` twin {@link flowModeFromParams}.
-//
-// Translation notes:
-// - `mock_api_client.arb_funnels_query.call_args[0][0]` becomes the
-//   recorded body (`mock.arbFunnelsCalls[i]`); `.call_args.kwargs`
-//   becomes the recorded options bag (`mock.arbFunnelsOptions[i]`).
-// - `test_parallel_path_is_used_when_requested` wraps the private
-//   `_execute_user_query_parallel` with `MagicMock(wraps=...)`; TS
-//   `#private` members cannot be wrapped, so the parallel path is
-//   observed through the `meta` it alone stamps (`parallel: true`,
-//   `workers: 2` — `workspace.py`).
-// - `try: ... finally: ws.close()` is dropped per
-//   `workspace-test-helpers.ts` (the TS facade owns no pool).
-// - The `query_flow` / `build_flow_params` round-trips pin the `today`
-//   clock seam on both sides so the default date window cannot straddle
-//   midnight between the two calls.
+// Workspace.runFlowParams / runUserParams: routing raw params to the flow or
+// user query paths, mode derivation, and parity with queryFlow / queryUser.
+// Mirrors tests/unit/test_run_flow_user_params.py plus a direct probe of the
+// `_flow_mode_from_params` twin flowModeFromParams. The private parallel path
+// cannot be spied on, so it is observed through the meta only it stamps.
 
 import { describe, expect, it } from "vitest";
 
@@ -26,28 +11,15 @@ import {
   FlowQueryResult,
   UserQueryResult,
 } from "../../src/types/results/query-engine.js";
-import { Workspace } from "../../src/workspace.js";
 import { flowModeFromParams } from "../../src/workspace-query-params.js";
 import {
   makePageResult,
+  makeStubWorkspace,
   type MockWorkspaceClient,
   mockWorkspaceClient,
-  TEST_SESSION,
 } from "../../test-support/workspace-test-helpers.js";
 
-// ===========================================================================
-// Fixtures and mock responses (test file :44-165)
-// ===========================================================================
-
-/**
- * The `workspace_factory` fixture (test file :60-86).
- *
- * @param mock - The stub client.
- * @returns The facade under test.
- */
-function workspaceFactory(mock: MockWorkspaceClient): Workspace {
-  return new Workspace({ session: TEST_SESSION, client: mock.client });
-}
+// --- Fixtures and mock responses ---
 
 /** Canonical mock response for a sankey flow query. */
 const MOCK_SANKEY_RESPONSE: Record<string, unknown> = {
@@ -127,9 +99,7 @@ function flowBody(mock: MockWorkspaceClient): Record<string, unknown> {
   return mock.arbFunnelsCalls.at(-1)!;
 }
 
-// ===========================================================================
-// _flow_mode_from_params (docstring examples, workspace.py)
-// ===========================================================================
+// --- _flow_mode_from_params (docstring examples, workspace.py) ---
 
 describe("flowModeFromParams", () => {
   it("reads flows_merge_type first, chartType second, else sankey", () => {
@@ -150,15 +120,14 @@ describe("flowModeFromParams", () => {
   });
 });
 
-// ===========================================================================
-// TestRunFlowParams (test file :168-406)
-// ===========================================================================
+// --- Run flow params ---
 
-describe("TestRunFlowParams", () => {
+describe("Run flow params", () => {
+  // python: TestRunFlowParams
   it("returns a flow result and posts params as bookmark", async () => {
     const mock = mockWorkspaceClient();
     mock.setArbFunnelsResponse(MOCK_SANKEY_RESPONSE);
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
     const params = await ws.buildFlowParams("Login");
     const result = await ws.runFlowParams(params);
 
@@ -172,7 +141,7 @@ describe("TestRunFlowParams", () => {
   it("matches query_flow", async () => {
     const mock = mockWorkspaceClient();
     mock.setArbFunnelsResponse(MOCK_SANKEY_RESPONSE);
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
 
     await ws.queryFlow("Login", { forward: 2, last: 7, today: TODAY });
     const direct = flowBody(mock);
@@ -188,7 +157,7 @@ describe("TestRunFlowParams", () => {
   it("derives paths mode from chart_type", async () => {
     const mock = mockWorkspaceClient();
     mock.setArbFunnelsResponse(MOCK_TOP_PATHS_RESPONSE);
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
     const params = await ws.buildFlowParams("Login", { mode: "paths" });
     expect(params["chartType"]).toBe("top-paths");
 
@@ -201,7 +170,7 @@ describe("TestRunFlowParams", () => {
   it("derives tree mode from flows_merge_type", async () => {
     const mock = mockWorkspaceClient();
     mock.setArbFunnelsResponse(MOCK_TREE_RESPONSE);
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
     const params = await ws.buildFlowParams("Login", { mode: "tree" });
     expect(params["chartType"]).toBe("sankey");
     expect(params["flows_merge_type"]).toBe("tree");
@@ -217,7 +186,7 @@ describe("TestRunFlowParams", () => {
     async (builtMode) => {
       const mock = mockWorkspaceClient();
       mock.setArbFunnelsResponse(MOCK_ANY_MODE_RESPONSE);
-      const ws = workspaceFactory(mock);
+      const ws = makeStubWorkspace(mock);
 
       await ws.queryFlow("Login", { mode: builtMode, today: TODAY });
       const direct = flowBody(mock);
@@ -234,7 +203,7 @@ describe("TestRunFlowParams", () => {
   it("explicit mode overrides params", async () => {
     const mock = mockWorkspaceClient();
     mock.setArbFunnelsResponse(MOCK_TOP_PATHS_RESPONSE);
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
     const params = await ws.buildFlowParams("Login", { mode: "tree" });
 
     const result = await ws.runFlowParams(params, { mode: "paths" });
@@ -262,7 +231,7 @@ describe("TestRunFlowParams", () => {
   ])("chart_type to query_type: %j → %s", async (params, expected) => {
     const mock = mockWorkspaceClient();
     mock.setArbFunnelsResponse(MOCK_ANY_MODE_RESPONSE);
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
     await ws.runFlowParams(params);
     expect(flowBody(mock)["query_type"]).toBe(expected);
   });
@@ -270,21 +239,20 @@ describe("TestRunFlowParams", () => {
   it("forwards workspace_id", async () => {
     const mock = mockWorkspaceClient();
     mock.setArbFunnelsResponse(MOCK_SANKEY_RESPONSE);
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
     await ws.runFlowParams({ steps: [] }, { workspace_id: 99 });
     expect(mock.arbFunnelsOptions.at(-1)!["workspace_id"]).toBe(99);
   });
 });
 
-// ===========================================================================
-// TestRunUserParams (test file :409-544)
-// ===========================================================================
+// --- Run user params ---
 
-describe("TestRunUserParams", () => {
+describe("Run user params", () => {
+  // python: TestRunUserParams
   it("aggregate params route to engage stats", async () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(MOCK_STATS_RESPONSE);
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
     const params = await ws.buildUserParams({ mode: "aggregate" });
     expect(Object.hasOwn(params, "action")).toBe(true);
 
@@ -301,7 +269,7 @@ describe("TestRunUserParams", () => {
   it("aggregate matches query_user", async () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(MOCK_STATS_RESPONSE);
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
 
     await ws.queryUser({ mode: "aggregate", aggregate: "count" });
     const direct = mock.engageStatsCalls.at(-1);
@@ -317,7 +285,7 @@ describe("TestRunUserParams", () => {
   it("profile params route to export", async () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(() => page(RAW_PROFILES));
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
     const params = await ws.buildUserParams({ mode: "profiles" });
     expect(Object.hasOwn(params, "action")).toBe(false);
 
@@ -332,7 +300,7 @@ describe("TestRunUserParams", () => {
   it("profile limit is forwarded", async () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(() => page(RAW_PROFILES));
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
 
     const result = await ws.runUserParams({}, { limit: 2 });
 
@@ -343,7 +311,7 @@ describe("TestRunUserParams", () => {
   it("profiles match query_user", async () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(() => page(RAW_PROFILES));
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
 
     await ws.queryUser({ mode: "profiles", properties: ["$email"], limit: 2 });
     const direct = mock.exportPageCalls.at(-1);
@@ -360,7 +328,7 @@ describe("TestRunUserParams", () => {
   it("parallel path is used when requested", async () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(() => page(RAW_PROFILES));
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
 
     const result = await ws.runUserParams(
       {},
@@ -375,7 +343,7 @@ describe("TestRunUserParams", () => {
   it("parallel is ignored at the default limit of 1", async () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(() => page(RAW_PROFILES));
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
 
     const result = await ws.runUserParams({}, { parallel: true });
 

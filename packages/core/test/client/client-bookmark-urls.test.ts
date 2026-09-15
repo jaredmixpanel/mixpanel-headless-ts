@@ -1,23 +1,9 @@
-// Layer-3 translation — 045-report-links (Python PR #223). Source:
-// tests/unit/test_api_client_bookmark_urls.py (ALL classes):
-// TestCreateBookmarkUrl, TestCreateBookmarkUrlErrors, TestGetBookmarkUrl,
-// TestResolveShortLink. The methods under lock are the
-// `services/entities/bookmark-urls.ts` members mixed into
-// `createMixpanelClient`.
-//
-// Translation notes:
-// - `httpx.MockTransport(handler)` → the injected-fetch `createMockClient`
-//   analog (`client-test-helpers.ts`); `_short_link_client` (max_retries=0)
-//   → `createMockClient(..., { maxRetries: 0 })`.
-// - `patch("...time.sleep")` → the zero-delay `sleep` seam the helper
-//   installs; `sleep.assert_called_once_with(2.0)` becomes an assertion on
-//   the recorded ms sleeps (`[2000]`, R2.12 seconds→ms at the one seam).
-// - Error MESSAGE text is out of contract: `str(exc) == ...` and
-//   `"..." in str(exc)` asserts become class / `.code` / `.statusCode` /
-//   `.details` / `.responseBody` asserts on the same inputs.
-// - `httpx.ConnectError` → a fetch that rejects with a `TypeError`.
-// - `caplog` → an injected `logger` (`MixpanelClientOptions.logger`)
-//   capturing every warning line.
+// Bookmark-URL client methods: `createBookmarkUrl`, `getBookmarkUrl`,
+// `resolveShortLink` (paths, bodies, error mapping, redirect handling).
+// Mirrors tests/unit/test_api_client_bookmark_urls.py. Error message text is
+// out of contract, so `str(exc)` asserts become class / `.code` / `.details`
+// asserts; `time.sleep` seconds become the recorded ms sleeps (`[2000]`).
+
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "../../src/auth/session.js";
@@ -86,8 +72,10 @@ function pathOf(request: CapturedFetchRequest): string {
   return new URL(request.url).pathname;
 }
 
-describe("TestCreateBookmarkUrl", () => {
-  it("test_posts_to_project_scoped_endpoint", async () => {
+describe("Create bookmark URL", () => {
+  // python: TestCreateBookmarkUrl
+  it("posts to project scoped endpoint", async () => {
+    // python: test_posts_to_project_scoped_endpoint
     const seen: CapturedFetchRequest[] = [];
     const { client } = createMockClient(testCredentials(), (request) => {
       seen.push(request);
@@ -104,7 +92,8 @@ describe("TestCreateBookmarkUrl", () => {
     expect(pathOf(seen[0]!)).toBe("/api/app/projects/12345/bookmark-urls/");
   });
 
-  it("test_body_carries_required_and_optional_keys", async () => {
+  it("body carries required and optional keys", async () => {
+    // python: test_body_carries_required_and_optional_keys
     const bodies: unknown[] = [];
     const { client } = createMockClient(testCredentials(), (request) => {
       bodies.push(JSON.parse(request.bodyText));
@@ -131,7 +120,8 @@ describe("TestCreateBookmarkUrl", () => {
     ]);
   });
 
-  it("test_body_never_contains_workspace_id", async () => {
+  it("body never contains workspace ID", async () => {
+    // python: test_body_never_contains_workspace_id
     const bodies: Array<Record<string, unknown>> = [];
     const { client } = createMockClient(testCredentials(), (request) => {
       bodies.push(JSON.parse(request.bodyText) as Record<string, unknown>);
@@ -148,7 +138,8 @@ describe("TestCreateBookmarkUrl", () => {
     expect(bodies[0]?.["slug"]).toBe(SLUG);
   });
 
-  it("test_stays_project_scoped_with_pinned_workspace", async () => {
+  it("stays project scoped with pinned workspace", async () => {
+    // python: test_stays_project_scoped_with_pinned_workspace
     const seen: string[] = [];
     const { client } = createMockClient(testCredentials(), (request) => {
       seen.push(pathOf(request));
@@ -164,7 +155,8 @@ describe("TestCreateBookmarkUrl", () => {
     expect(seen).toStrictEqual(["/api/app/projects/12345/bookmark-urls/"]);
   });
 
-  it("test_unwraps_results_envelope", async () => {
+  it("unwraps results envelope", async () => {
+    // python: test_unwraps_results_envelope
     const { client } = createMockClient(testCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: record() },
@@ -180,7 +172,8 @@ describe("TestCreateBookmarkUrl", () => {
     expect(Object.hasOwn(result, "results")).toBe(false);
   });
 
-  it("test_non_dict_result_raises", async () => {
+  it("non dict result raises", async () => {
+    // python: test_non_dict_result_raises
     const { client } = createMockClient(testCredentials(), () => ({
       status: 200,
       json: { results: [1, 2] },
@@ -198,8 +191,10 @@ describe("TestCreateBookmarkUrl", () => {
   });
 });
 
-describe("TestCreateBookmarkUrlErrors", () => {
-  it("test_400_duplicate_slug_is_query_error", async () => {
+describe("Create bookmark URL errors", () => {
+  // python: TestCreateBookmarkUrlErrors
+  it("400 duplicate slug is query error", async () => {
+    // python: test_400_duplicate_slug_is_query_error
     const { client } = createMockClient(testCredentials(), () => ({
       status: 400,
       json: { error: "slug already exists" },
@@ -217,7 +212,8 @@ describe("TestCreateBookmarkUrlErrors", () => {
     expect(exc.responseBody).toStrictEqual({ error: "slug already exists" });
   });
 
-  it("test_401_is_authentication_error", async () => {
+  it("401 is authentication error", async () => {
+    // python: test_401_is_authentication_error
     const { client } = createMockClient(testCredentials(), () => ({
       status: 401,
       json: { error: "nope" },
@@ -231,7 +227,8 @@ describe("TestCreateBookmarkUrlErrors", () => {
     ).rejects.toBeInstanceOf(AuthenticationError);
   });
 
-  it("test_429_after_retries_is_rate_limit_error", async () => {
+  it("429 after retries is rate limit error", async () => {
+    // python: test_429_after_retries_is_rate_limit_error
     const seen: CapturedFetchRequest[] = [];
     const { client } = createMockClient(testCredentials(), (request) => {
       seen.push(request);
@@ -249,8 +246,10 @@ describe("TestCreateBookmarkUrlErrors", () => {
   });
 });
 
-describe("TestGetBookmarkUrl", () => {
-  it("test_gets_project_scoped_endpoint", async () => {
+describe("Get bookmark URL", () => {
+  // python: TestGetBookmarkUrl
+  it("gets project scoped endpoint", async () => {
+    // python: test_gets_project_scoped_endpoint
     const seen: CapturedFetchRequest[] = [];
     const { client } = createMockClient(testCredentials(), (request) => {
       seen.push(request);
@@ -267,7 +266,8 @@ describe("TestGetBookmarkUrl", () => {
     expect(result["params"]).toStrictEqual(PARAMS);
   });
 
-  it("test_stays_project_scoped_with_pinned_workspace", async () => {
+  it("stays project scoped with pinned workspace", async () => {
+    // python: test_stays_project_scoped_with_pinned_workspace
     const seen: string[] = [];
     const { client } = createMockClient(testCredentials(), (request) => {
       seen.push(pathOf(request));
@@ -281,7 +281,8 @@ describe("TestGetBookmarkUrl", () => {
     ]);
   });
 
-  it("test_404_maps_to_report_link_not_found", async () => {
+  it("404 maps to report link not found", async () => {
+    // python: test_404_maps_to_report_link_not_found
     const { client } = createMockClient(testCredentials(), () => ({
       status: 404,
       json: { error: "Not found" },
@@ -300,7 +301,8 @@ describe("TestGetBookmarkUrl", () => {
     expect(exc.cause).toBeInstanceOf(QueryError);
   });
 
-  it("test_500_passes_through_as_server_error", async () => {
+  it("500 passes through as server error", async () => {
+    // python: test_500_passes_through_as_server_error
     const { client } = createMockClient(
       testCredentials(),
       () => ({ status: 500, json: { error: "boom" } }),
@@ -311,7 +313,8 @@ describe("TestGetBookmarkUrl", () => {
     );
   });
 
-  it("test_403_passes_through_as_query_error", async () => {
+  it("403 passes through as query error", async () => {
+    // python: test_403_passes_through_as_query_error
     const { client } = createMockClient(testCredentials(), () => ({
       status: 403,
       json: { error: "Permission denied" },
@@ -324,7 +327,8 @@ describe("TestGetBookmarkUrl", () => {
     expect((thrown as QueryError).statusCode).toBe(403);
   });
 
-  it("test_non_dict_result_raises", async () => {
+  it("non dict result raises", async () => {
+    // python: test_non_dict_result_raises
     const { client } = createMockClient(testCredentials(), () => ({
       status: 200,
       json: { results: [] },
@@ -370,8 +374,10 @@ async function rejectionOf(promise: Promise<unknown>): Promise<unknown> {
   );
 }
 
-describe("TestResolveShortLink", () => {
-  it("test_single_request_redirects_not_followed", async () => {
+describe("Resolve short link", () => {
+  // python: TestResolveShortLink
+  it("single request redirects not followed", async () => {
+    // python: test_single_request_redirects_not_followed
     const seen: CapturedFetchRequest[] = [];
     const { client } = shortLinkClient(testCredentials(), (request) => {
       seen.push(request);
@@ -385,7 +391,8 @@ describe("TestResolveShortLink", () => {
     expect(seen[0]?.url).toBe(`https://mixpanel.com/s/${CODE}`);
   });
 
-  it("test_request_carries_authorization", async () => {
+  it("request carries authorization", async () => {
+    // python: test_request_carries_authorization
     const seen: CapturedFetchRequest[] = [];
     const { client } = shortLinkClient(testCredentials(), (request) => {
       seen.push(request);
@@ -397,7 +404,8 @@ describe("TestResolveShortLink", () => {
     expect(Object.hasOwn(seen[0]?.headers ?? {}, "user-agent")).toBe(true);
   });
 
-  it("test_relative_location_is_joined", async () => {
+  it("relative location is joined", async () => {
+    // python: test_relative_location_is_joined
     const { client } = shortLinkClient(testCredentials(), () => ({
       status: 302,
       headers: { Location: `/project/12345/app/insights#${SLUG}` },
@@ -410,7 +418,7 @@ describe("TestResolveShortLink", () => {
   });
 
   it.each([301, 303, 307, 308])(
-    "test_other_redirect_statuses[%i]",
+    "other redirect statuses[%i]", // python: test_other_redirect_statuses
     async (status) => {
       const { client } = shortLinkClient(testCredentials(), () => ({
         status,
@@ -420,7 +428,8 @@ describe("TestResolveShortLink", () => {
     },
   );
 
-  it("test_login_redirect_is_authentication_error", async () => {
+  it("login redirect is authentication error", async () => {
+    // python: test_login_redirect_is_authentication_error
     const { client } = shortLinkClient(testCredentials(), () => ({
       status: 302,
       headers: { Location: `/login?next=/s/${CODE}` },
@@ -430,7 +439,8 @@ describe("TestResolveShortLink", () => {
     expect(thrown).toBeInstanceOf(AuthenticationError);
   });
 
-  it("test_200_html_with_location_script", async () => {
+  it("200 HTML with location script", async () => {
+    // python: test_200_html_with_location_script
     const escaped = TARGET.replaceAll("/", String.raw`\/`);
     const body =
       "<html><head><script>\n" +
@@ -444,7 +454,8 @@ describe("TestResolveShortLink", () => {
     await expect(client.resolveShortLink(CODE)).resolves.toBe(TARGET);
   });
 
-  it("test_200_without_script_is_unexpected_response", async () => {
+  it("200 without script is unexpected response", async () => {
+    // python: test_200_without_script_is_unexpected_response
     const { client } = shortLinkClient(testCredentials(), () => ({
       status: 200,
       text: "<html>hello</html>",
@@ -459,7 +470,8 @@ describe("TestResolveShortLink", () => {
     expect(exc.details["short_code"]).toBe(CODE);
   });
 
-  it("test_3xx_without_location", async () => {
+  it("3xx without location", async () => {
+    // python: test_3xx_without_location
     const { client } = shortLinkClient(testCredentials(), () => ({
       status: 302,
     }));
@@ -470,7 +482,8 @@ describe("TestResolveShortLink", () => {
     expect(exc.details["status"]).toBe(302);
   });
 
-  it("test_401", async () => {
+  it("401", async () => {
+    // python: test_401
     const { client } = shortLinkClient(testCredentials(), () => ({
       status: 401,
       json: { error: "nope" },
@@ -480,7 +493,8 @@ describe("TestResolveShortLink", () => {
     );
   });
 
-  it("test_404", async () => {
+  it("404", async () => {
+    // python: test_404
     const { client } = shortLinkClient(testCredentials(), () => ({
       status: 404,
       text: "Not found",
@@ -493,7 +507,8 @@ describe("TestResolveShortLink", () => {
     expect(exc.details["host"]).toBe("mixpanel.com");
   });
 
-  it("test_429", async () => {
+  it("429", async () => {
+    // python: test_429
     const seen: CapturedFetchRequest[] = [];
     const { client, sleeps } = shortLinkClient(testCredentials(), (request) => {
       seen.push(request);
@@ -506,7 +521,8 @@ describe("TestResolveShortLink", () => {
     expect(sleeps).toHaveLength(client.core.maxRetries);
   });
 
-  it("test_429_then_redirect_retries_and_returns_target", async () => {
+  it("429 then redirect retries and returns target", async () => {
+    // python: test_429_then_redirect_retries_and_returns_target
     const responses: CannedResponse[] = [
       { status: 429, headers: { "Retry-After": "2" } },
       { status: 302, headers: { Location: TARGET } },
@@ -521,7 +537,8 @@ describe("TestResolveShortLink", () => {
     expect(sleeps).toStrictEqual([2000]);
   });
 
-  it("test_403_is_query_error", async () => {
+  it("403 is query error", async () => {
+    // python: test_403_is_query_error
     const { client } = shortLinkClient(testCredentials(), () => ({
       status: 403,
       json: { error: "forbidden" },
@@ -539,7 +556,8 @@ describe("TestResolveShortLink", () => {
     "/login",
     "/login/",
     "https://mixpanel.com/login/",
-  ])("test_login_paths_are_authentication_errors[%s]", async (location) => {
+  ])("login paths are authentication errors[%s]", async (location) => {
+    // python: test_login_paths_are_authentication_errors
     const { client } = shortLinkClient(testCredentials(), () => ({
       status: 302,
       headers: { Location: location },
@@ -549,7 +567,8 @@ describe("TestResolveShortLink", () => {
     );
   });
 
-  it("test_login_prefix_lookalike_is_a_target", async () => {
+  it("login prefix lookalike is a target", async () => {
+    // python: test_login_prefix_lookalike_is_a_target
     const { client } = shortLinkClient(testCredentials(), () => ({
       status: 302,
       headers: { Location: "/loginfoo" },
@@ -559,7 +578,8 @@ describe("TestResolveShortLink", () => {
     );
   });
 
-  it("test_200_script_with_non_json_escape_is_unexpected_response", async () => {
+  it("200 script with non JSON escape is unexpected response", async () => {
+    // python: test_200_script_with_non_json_escape_is_unexpected_response
     const body = String.raw`window.location.href = "https://mixpanel.com/project/3\x3f";`;
     const { client } = shortLinkClient(testCredentials(), () => ({
       status: 200,
@@ -575,7 +595,8 @@ describe("TestResolveShortLink", () => {
     );
   });
 
-  it("test_200_script_with_empty_href_is_unexpected_response", async () => {
+  it("200 script with empty href is unexpected response", async () => {
+    // python: test_200_script_with_empty_href_is_unexpected_response
     const { client } = shortLinkClient(testCredentials(), () => ({
       status: 200,
       text: 'window.location.href = "";',
@@ -587,7 +608,8 @@ describe("TestResolveShortLink", () => {
     );
   });
 
-  it("test_200_script_relative_target_is_joined", async () => {
+  it("200 script relative target is joined", async () => {
+    // python: test_200_script_relative_target_is_joined
     const body = `window.location.href = "/project/12345/app/insights#${SLUG}";`;
     const { client } = shortLinkClient(testCredentials(), () => ({
       status: 200,
@@ -600,7 +622,8 @@ describe("TestResolveShortLink", () => {
     );
   });
 
-  it("test_200_script_login_target_is_authentication_error", async () => {
+  it("200 script login target is authentication error", async () => {
+    // python: test_200_script_login_target_is_authentication_error
     const { client } = shortLinkClient(testCredentials(), () => ({
       status: 200,
       text: `window.location.href = "/login?next=/s/${CODE}";`,
@@ -610,7 +633,8 @@ describe("TestResolveShortLink", () => {
     );
   });
 
-  it("test_503", async () => {
+  it("503", async () => {
+    // python: test_503
     const { client } = shortLinkClient(testCredentials(), () => ({
       status: 503,
       text: "down",
@@ -620,7 +644,8 @@ describe("TestResolveShortLink", () => {
     expect((thrown as ServerError).statusCode).toBe(503);
   });
 
-  it("test_other_4xx_is_unexpected_response", async () => {
+  it("other 4xx is unexpected response", async () => {
+    // python: test_other_4xx_is_unexpected_response
     const { client } = shortLinkClient(testCredentials(), () => ({
       status: 418,
       text: "teapot",
@@ -633,7 +658,8 @@ describe("TestResolveShortLink", () => {
     expect(exc.details["status"]).toBe(418);
   });
 
-  it("test_connect_error", async () => {
+  it("connect error", async () => {
+    // python: test_connect_error
     const { client } = shortLinkClient(testCredentials(), () => {
       throw new TypeError("boom");
     });
@@ -642,7 +668,8 @@ describe("TestResolveShortLink", () => {
     expect((thrown as MixpanelHeadlessError).code).toBe("HTTP_ERROR");
   });
 
-  it("test_eu_session_hits_eu_host", async () => {
+  it("EU session hits EU host", async () => {
+    // python: test_eu_session_hits_eu_host
     const seen: string[] = [];
     const { client } = shortLinkClient(euCredentials(), (request) => {
       seen.push(request.url);
@@ -653,7 +680,8 @@ describe("TestResolveShortLink", () => {
     expect(seen).toStrictEqual([`https://eu.mixpanel.com/s/${CODE}`]);
   });
 
-  it("test_no_log_record_contains_authorization", async () => {
+  it("no log record contains authorization", async () => {
+    // python: test_no_log_record_contains_authorization
     const seen: CapturedFetchRequest[] = [];
     const records: string[] = [];
     const { client } = createMockClient(

@@ -1,27 +1,8 @@
-// Report-link public type unit tests (045-report-links), translated from
-// tests/unit/test_types_report_links.py.
-//
-// One `describe` per Python class, one `it` per Python test (same order,
-// mirrored names).
-//
-// Translation notes (documented substitutions, NOT weakened assertions):
-// - `get_args(ReportLinkType)` becomes the runtime membership tuple
-//   `REPORT_LINK_TYPE_VALUES` (literals.ts keeps a tuple per Literal
-//   alias). `ReportLinkQueryResult` is a TS type alias with no runtime
-//   members, so `test_query_result_alias_members` is a compile-time
-//   mutual-assignability check (`tsc` enforces it; the runtime `expect`
-//   only pins the constant).
-// - Pydantic `model_validate` → `BookmarkUrl.fromDict`; keyword
-//   construction → `new BookmarkUrl({...})`; `model_extra` → the
-//   `__extras` bag on `EntityModel`; `model_dump(by_alias=True)` →
-//   `modelDump({ byAlias: true })`.
-// - Dataclass `FrozenInstanceError` → `Object.isFrozen` plus a strict-mode
-//   write (`Object.assign`) that throws `TypeError`; the compile-time
-//   `readonly` contract is pinned in `report-links.test-d.ts`.
-// - `dataclasses.replace(...)` → re-construct from a spread of the field
-//   bag with the overridden keys.
-// - Message-TEXT assertions (`"source='slug'" in str(exc)`) are not
-//   carried; class, `.code` and `.details` are.
+// ReportLinkType, BookmarkUrl, ReportLink and ResolvedReport. Mirrors
+// tests/unit/test_types_report_links.py class for class. `get_args` becomes
+// REPORT_LINK_TYPE_VALUES; `model_validate` → fromDict, `model_dump(by_alias)`
+// → modelDump({ byAlias: true }); FrozenInstanceError → Object.isFrozen plus
+// a throwing strict-mode write; message-text asserts are not carried.
 import { describe, expect, it } from "vitest";
 
 import { ParamValidationError } from "../../src/errors.js";
@@ -29,16 +10,9 @@ import { Bookmark, BookmarkUrl } from "../../src/types/entities/bookmarks.js";
 import { REPORT_LINK_TYPE_VALUES } from "../../src/types/literals.js";
 import {
   ReportLink,
-  type ReportLinkQueryResult,
   ResolvedReport,
   type ResolvedReportFields,
 } from "../../src/types/report-links.js";
-import type {
-  FlowQueryResult,
-  FunnelQueryResult,
-  QueryResult,
-  RetentionQueryResult,
-} from "../../src/types/results/query-engine.js";
 
 const SLUG = "EBrV5bW2u9Mw";
 const PARAMS = {
@@ -46,26 +20,20 @@ const PARAMS = {
   displayOptions: { chartType: "line" },
 } as const;
 
-/** Compile-time `A` ≡ `B` (mutual assignability, tuple-wrapped). */
-type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
-
-describe("TestReportLinkType", () => {
-  it("test_members", () => {
+describe("Report link type", () => {
+  // python: TestReportLinkType
+  it("members", () => {
+    // python: test_members
     expect(new Set(REPORT_LINK_TYPE_VALUES)).toStrictEqual(
       new Set(["insights", "funnels", "retention", "flows"]),
     );
   });
-
-  it("test_query_result_alias_members", () => {
-    type Expected =
-      QueryResult | FunnelQueryResult | RetentionQueryResult | FlowQueryResult;
-    const same: Same<ReportLinkQueryResult, Expected> = true;
-    expect(same).toBe(true);
-  });
 });
 
-describe("TestBookmarkUrl", () => {
-  it("test_parses_server_record_with_type_alias", () => {
+describe("Bookmark URL", () => {
+  // python: TestBookmarkUrl
+  it("parses server record with type alias", () => {
+    // python: test_parses_server_record_with_type_alias
     const record = BookmarkUrl.fromDict({
       slug: SLUG,
       type: "funnels",
@@ -87,12 +55,14 @@ describe("TestBookmarkUrl", () => {
     expect(record.bookmark).toBeNull();
   });
 
-  it("test_params_default_empty_dict", () => {
+  it("params default to an empty dict", () => {
+    // python: test_params_default_empty_dict
     const record = BookmarkUrl.fromDict({ slug: SLUG, type: "insights" });
     expect(record.params).toStrictEqual({});
   });
 
-  it("test_populate_by_name", () => {
+  it("accepts population by field name", () => {
+    // python: test_populate_by_name
     const record = new BookmarkUrl({ slug: SLUG, bookmark_type: "retention" });
     expect(record.bookmark_type).toBe("retention");
     // populate_by_name also applies on the strict decode seam.
@@ -102,7 +72,8 @@ describe("TestBookmarkUrl", () => {
     ).toBe("retention");
   });
 
-  it("test_embedded_bookmark", () => {
+  it("embedded bookmark", () => {
+    // python: test_embedded_bookmark
     const record = BookmarkUrl.fromDict({
       slug: SLUG,
       type: "insights",
@@ -121,7 +92,8 @@ describe("TestBookmarkUrl", () => {
     expect(record.overrides).toStrictEqual({ originDashboard: 555 });
   });
 
-  it("test_extra_keys_kept", () => {
+  it("keeps extra keys", () => {
+    // python: test_extra_keys_kept
     const record = BookmarkUrl.fromDict({
       slug: SLUG,
       type: "insights",
@@ -136,9 +108,10 @@ describe("TestBookmarkUrl", () => {
   // (PORTING.md "Runtime immutability"). Only the compile-time `readonly`
   // contract holds — pinned in `report-links.test-d.ts`. Once `EntityModel`
   // freezes, assert `Object.isFrozen` plus a throwing write here.
-  it.todo("test_frozen");
+  it.todo("frozen"); // python: test_frozen
 
-  it("test_dump_by_alias", () => {
+  it("dumps by alias", () => {
+    // python: test_dump_by_alias
     const record = new BookmarkUrl({ slug: SLUG, bookmark_type: "flows" });
     const dumped = record.modelDump({ byAlias: true });
     expect(dumped["type"]).toBe("flows");
@@ -146,7 +119,8 @@ describe("TestBookmarkUrl", () => {
   });
 });
 
-describe("TestReportLink", () => {
+describe("Report link", () => {
+  // python: TestReportLink
   /**
    * Construct a ReportLink with every field set (`_build`).
    *
@@ -166,7 +140,8 @@ describe("TestReportLink", () => {
     });
   }
 
-  it("test_to_dict_returns_every_field", () => {
+  it("toDict returns every field", () => {
+    // python: test_to_dict_returns_every_field
     const link = build();
     const d = link.toDict();
     expect(d).toStrictEqual({
@@ -183,7 +158,8 @@ describe("TestReportLink", () => {
     expect(() => JSON.stringify(d)).not.toThrow();
   });
 
-  it("test_defaults", () => {
+  it("defaults", () => {
+    // python: test_defaults
     const link = new ReportLink({
       url: `https://mixpanel.com/project/3/app/flows#${SLUG}`,
       slug: SLUG,
@@ -197,14 +173,16 @@ describe("TestReportLink", () => {
     expect(link.created_at).toBeNull();
   });
 
-  it("test_str_is_url", () => {
+  it("renders as its URL", () => {
+    // python: test_str_is_url
     const link = build();
     expect(String(link)).toBe(link.url);
     // eslint-disable-next-line unicorn/no-useless-template-literals, @typescript-eslint/restrict-template-expressions -- test_str_is_url exercises template-literal rendering of a ReportLink
     expect(`${link}`).toBe(link.url);
   });
 
-  it("test_frozen", () => {
+  it("frozen", () => {
+    // python: test_frozen
     const link = build();
     expect(Object.isFrozen(link)).toBe(true);
     // A strict-mode write to a frozen object throws; the compile-time
@@ -214,7 +192,8 @@ describe("TestReportLink", () => {
   });
 });
 
-describe("TestResolvedReport", () => {
+describe("Resolved report", () => {
+  // python: TestResolvedReport
   /**
    * Field bag for a slug-link ResolvedReport (`_build` inputs), so twins of
    * `dataclasses.replace` can spread and override.
@@ -252,7 +231,8 @@ describe("TestResolvedReport", () => {
     return new ResolvedReport(fields(bookmark));
   }
 
-  it("test_to_dict_serializes_bookmark_by_alias", () => {
+  it("toDict serializes the bookmark by alias", () => {
+    // python: test_to_dict_serializes_bookmark_by_alias
     const bookmark = new Bookmark({
       id: 123,
       name: "Weekly",
@@ -267,7 +247,8 @@ describe("TestResolvedReport", () => {
     expect(() => JSON.stringify(d)).not.toThrow();
   });
 
-  it("test_to_dict_passes_none_bookmark_through", () => {
+  it("toDict passes a null bookmark through", () => {
+    // python: test_to_dict_passes_none_bookmark_through
     const d = build(null).toDict();
     expect(d["bookmark"]).toBeNull();
     expect(d["source"]).toBe("slug");
@@ -304,14 +285,16 @@ describe("TestResolvedReport", () => {
     );
   });
 
-  it("test_frozen", () => {
+  it("frozen", () => {
+    // python: test_frozen
     const resolved = build(null);
     expect(Object.isFrozen(resolved)).toBe(true);
     expect(() => Object.assign(resolved, { params: {} })).toThrow(TypeError);
     expect(resolved.params).toStrictEqual(PARAMS);
   });
 
-  it("test_slug_source_requires_slug", () => {
+  it("slug source requires slug", () => {
+    // python: test_slug_source_requires_slug
     let caught: unknown;
     try {
       new ResolvedReport({ ...fields(null), slug: null });
@@ -324,7 +307,8 @@ describe("TestResolvedReport", () => {
     expect(exc.details).toStrictEqual({ source: "slug", missing: "slug" });
   });
 
-  it("test_bookmark_source_requires_bookmark_id", () => {
+  it("bookmark source requires bookmark ID", () => {
+    // python: test_bookmark_source_requires_bookmark_id
     let caught: unknown;
     try {
       new ResolvedReport({ ...fields(null), source: "bookmark", slug: null });
@@ -340,7 +324,8 @@ describe("TestResolvedReport", () => {
     });
   });
 
-  it("test_bookmark_source_with_id_is_fine", () => {
+  it("bookmark source with ID is fine", () => {
+    // python: test_bookmark_source_with_id_is_fine
     const resolved = new ResolvedReport({
       ...fields(null),
       source: "bookmark",

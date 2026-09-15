@@ -1,24 +1,8 @@
-// Translated flow-query tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/unit/test_live_query_flow.py — ALL 6
-// classes (TestArbFunnelsQuery :88, TestTransformFlowResult :134,
-// TestQueryFlow :189, TestParseTreeNode :326,
-// TestTransformFlowResultTree :417, TestQueryFlowTree :455).
-//
-// Translation notes:
-// - Python uses `MagicMock(spec=MixpanelAPIClient)` rather than a
-//   transport mock, so the TS twin is {@link mockClient}: a stub object
-//   carrying ONLY the client members `LiveQueryService.queryFlow`
-//   touches (`arbFunnelsQuery`) plus a call log. The
-//   `assert_called_once_with` / `call_args[0][0]` asserts read that log.
-// - `_transform_flow_result` / `_parse_tree_node` are
-//   {@link transformFlowResult} / {@link parseTreeNode} in
-//   `services/live-query-transforms.ts` (R7.2 split).
-// - Python's `children` is a TUPLE; the TS field is a readonly array, so
-//   `node.children == ()` becomes `toEqual([])`.
-// - `TestArbFunnelsQuery`'s three cases assert on the MagicMock itself
-//   (they never touch library code — `test_query_type_sankey` /
-//   `..._top_paths` are pure dict-literal asserts). They translate
-//   verbatim against the same stub so the class stays complete (A-F2).
+// LiveQueryService.query_flow with transformFlowResult / parseTreeNode
+// (sankey, top-paths and tree modes) and the client's arbFunnelsQuery body.
+// Mirrors tests/unit/test_live_query_flow.py (all six classes). The
+// MagicMock(spec=...) client is a call-recording stub; Python's tuple
+// `children` is a readonly array, so `== ()` becomes `toEqual([])`.
 
 import { describe, expect, it } from "vitest";
 
@@ -191,10 +175,11 @@ function sampleTreeRoot(): Record<string, unknown> {
 }
 
 // ===========================================================================
-// T024: TestArbFunnelsQuery — API client method
+// Arb funnels query (API client method)
 // ===========================================================================
 
-describe("TestArbFunnelsQuery", () => {
+describe("Arb funnels query", () => {
+  // python: TestArbFunnelsQuery
   it("POSTs the body to the /arb_funnels endpoint", async () => {
     const mock = mockClient();
     mock.setReturnValue(sampleSankeyResponse());
@@ -234,10 +219,11 @@ describe("TestArbFunnelsQuery", () => {
 });
 
 // ===========================================================================
-// T026: TestTransformFlowResult
+// Transform flow result
 // ===========================================================================
 
-describe("TestTransformFlowResult", () => {
+describe("Transform flow result", () => {
+  // python: TestTransformFlowResult
   it("sankey response extracts steps, breakdowns, conversion rate", () => {
     const raw = sampleSankeyResponse();
     const bookmark = sampleBookmarkParams();
@@ -287,10 +273,11 @@ describe("TestTransformFlowResult", () => {
 });
 
 // ===========================================================================
-// T027: TestQueryFlow
+// Query flow
 // ===========================================================================
 
-describe("TestQueryFlow", () => {
+describe("Query flow", () => {
+  // python: TestQueryFlow
   it("calls arb_funnels_query with the correct body", async () => {
     const mock = mockClient();
     mock.setReturnValue(sampleSankeyResponse());
@@ -331,10 +318,11 @@ describe("TestQueryFlow", () => {
 });
 
 // ===========================================================================
-// TestParseTreeNode
+// Parse tree node
 // ===========================================================================
 
-describe("TestParseTreeNode", () => {
+describe("Parse tree node", () => {
+  // python: TestParseTreeNode
   it("extracts event, type and counts from the root dict", () => {
     const node = parseTreeNode(sampleTreeRoot());
 
@@ -405,10 +393,11 @@ describe("TestParseTreeNode", () => {
 });
 
 // ===========================================================================
-// TestTransformFlowResultTree
+// Transform flow result (tree mode)
 // ===========================================================================
 
-describe("TestTransformFlowResultTree", () => {
+describe("Transform flow result tree", () => {
+  // python: TestTransformFlowResultTree
   it("tree mode parses trees into a FlowTreeNode list", () => {
     const result = transformFlowResult(
       sampleTreeResponse(),
@@ -445,10 +434,11 @@ describe("TestTransformFlowResultTree", () => {
 });
 
 // ===========================================================================
-// TestQueryFlowTree
+// Query flow (tree mode)
 // ===========================================================================
 
-describe("TestQueryFlowTree", () => {
+describe("Query flow tree", () => {
+  // python: TestQueryFlowTree
   it("tree mode uses query_type='flows'", async () => {
     const mock = mockClient();
     mock.setReturnValue(sampleTreeResponse());

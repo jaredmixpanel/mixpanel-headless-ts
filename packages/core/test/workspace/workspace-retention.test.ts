@@ -1,38 +1,20 @@
-// Translated workspace-retention tests (B5-S2, packet §3): assertion-
-// for-assertion port of tests/test_workspace_retention.py — ALL
-// 4 classes (TestQueryRetentionIntegration :105,
-// TestQueryRetentionWithFilters :219, TestBuildRetentionParams :252,
-// TestQueryRetentionValidationIntegration :319).
-//
-// The Python file also carries a `TestQueryRetentionConfigError` REMOVAL
-// comment — nothing to translate.
-//
-// Translation notes: identical to the sibling `workspace-funnel.test.ts`
-// header (`insights_query.call_args[0][0]` -> `mock.insightsCalls[0]`;
-// `pytest.raises(ValueError, …)` names Python's dual-inheriting
-// `ParamValidationError`).
+// Workspace.queryRetention: integration through the stubbed insights client,
+// filters, buildRetentionParams and validation. Mirrors all four classes of
+// tests/test_workspace_retention.py. `call_args[0][0]` reads become
+// `mock.insightsCalls[0]`; `pytest.raises(ValueError, …)` names the
+// dual-inheriting ParamValidationError.
 
 import { describe, expect, it } from "vitest";
 
 import { Filter } from "../../src/types/query-params/filter.js";
 import { RetentionEvent } from "../../src/types/query-params/retention.js";
 import { RetentionQueryResult } from "../../src/types/results/query-engine.js";
-import { Workspace } from "../../src/workspace.js";
+import type { Workspace } from "../../src/workspace.js";
 import {
+  makeStubWorkspace,
   type MockWorkspaceClient,
   mockWorkspaceClient,
-  TEST_SESSION,
 } from "../../test-support/workspace-test-helpers.js";
-
-/**
- * The `workspace_factory` fixture (test file :52-75).
- *
- * @param mock - The stub client.
- * @returns The facade under test.
- */
-function workspaceFactory(mock: MockWorkspaceClient): Workspace {
-  return new Workspace({ session: TEST_SESSION, client: mock.client });
-}
 
 /** Canonical mock response for a retention query (test file :78). */
 const MOCK_RETENTION_RESPONSE: Record<string, unknown> = {
@@ -55,14 +37,13 @@ const MOCK_RETENTION_RESPONSE: Record<string, unknown> = {
 function retentionWs(): { ws: Workspace; mock: MockWorkspaceClient } {
   const mock = mockWorkspaceClient();
   mock.setInsightsResponse(MOCK_RETENTION_RESPONSE);
-  return { ws: workspaceFactory(mock), mock };
+  return { ws: makeStubWorkspace(mock), mock };
 }
 
-// ===========================================================================
-// T019: workspace integration
-// ===========================================================================
+// --- Workspace integration ---
 
-describe("TestQueryRetentionIntegration", () => {
+describe("Query retention integration", () => {
+  // python: TestQueryRetentionIntegration
   it("sends a body with bookmark, project_id and queryLimits", async () => {
     const { ws, mock } = retentionWs();
     await ws.queryRetention("Signup", "Login");
@@ -113,11 +94,10 @@ describe("TestQueryRetentionIntegration", () => {
   });
 });
 
-// ===========================================================================
-// T-US2: per-event filters
-// ===========================================================================
+// --- Per-event filters ---
 
-describe("TestQueryRetentionWithFilters", () => {
+describe("Query retention with filters", () => {
+  // python: TestQueryRetentionWithFilters
   it("per-event filters appear in the bookmark behaviors", async () => {
     const { ws, mock } = retentionWs();
     const born = new RetentionEvent({
@@ -139,13 +119,12 @@ describe("TestQueryRetentionWithFilters", () => {
   });
 });
 
-// ===========================================================================
-// T-US4: build_retention_params
-// ===========================================================================
+// --- buildRetentionParams ---
 
-describe("TestBuildRetentionParams", () => {
+describe("Build retention params", () => {
+  // python: TestBuildRetentionParams
   it("returns a dict, not a RetentionQueryResult", async () => {
-    const result = await workspaceFactory(
+    const result = await makeStubWorkspace(
       mockWorkspaceClient(),
     ).buildRetentionParams("Signup", "Login");
     expect(typeof result).toBe("object");
@@ -153,7 +132,7 @@ describe("TestBuildRetentionParams", () => {
   });
 
   it("has sections and displayOptions keys", async () => {
-    const result = await workspaceFactory(
+    const result = await makeStubWorkspace(
       mockWorkspaceClient(),
     ).buildRetentionParams("Signup", "Login");
     expect(Object.hasOwn(result, "sections")).toBe(true);
@@ -162,7 +141,7 @@ describe("TestBuildRetentionParams", () => {
 
   it("makes no API call", async () => {
     const mock = mockWorkspaceClient();
-    await workspaceFactory(mock).buildRetentionParams("Signup", "Login");
+    await makeStubWorkspace(mock).buildRetentionParams("Signup", "Login");
     expect(mock.insightsCalls).toHaveLength(0);
   });
 
@@ -177,15 +156,14 @@ describe("TestBuildRetentionParams", () => {
   });
 });
 
-// ===========================================================================
-// T-US5: validation integration
-// ===========================================================================
+// --- Validation integration ---
 
-describe("TestQueryRetentionValidationIntegration", () => {
+describe("Query retention validation integration", () => {
+  // python: TestQueryRetentionValidationIntegration
   it("an empty born_event is caught before the API call", async () => {
     const mock = mockWorkspaceClient();
     await expect(
-      workspaceFactory(mock).queryRetention("", "Login"),
+      makeStubWorkspace(mock).queryRetention("", "Login"),
     ).rejects.toThrow(/RetentionEvent\.event must be a non-empty/);
     expect(mock.insightsCalls).toHaveLength(0);
   });

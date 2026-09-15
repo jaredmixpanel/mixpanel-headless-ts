@@ -1,8 +1,9 @@
-// Unit tests for Session/Project/WorkspaceRef/ActiveSession parse
-// factories + free functions (packet P2-4, phase2-design C4). Extra-key
-// behavior mirrors each Pydantic model_config: Project/WorkspaceRef/
-// Session IGNORE extras (frozen only); ActiveSession is extra='forbid'
-// and rejects `project` by name.
+// Session / Project / WorkspaceRef / ActiveSession parse factories and free
+// functions. Extra-key behavior mirrors each Pydantic model_config:
+// Project/WorkspaceRef/Session IGNORE extras (frozen only); ActiveSession is
+// extra='forbid' and rejects `project` by name. TS unit tests over
+// `session.py`'s documented behaviour; no Python suite is mirrored.
+
 import { describe, expect, it } from "vitest";
 
 import type { TokenResolver } from "../../src/auth/account.js";
@@ -125,7 +126,7 @@ describe("parseSession", () => {
       parseSession({ ...SESSION_PAYLOAD, headers: { "X-N": 5 } }),
     ).toThrow(ResponseValidationError);
     // default_factory fires on ABSENT only — explicit null is an error
-    // (headers is a required Mapping, session.py / R4.12).
+    // (headers is a required Mapping, `session.py`).
     expect(() => parseSession({ ...SESSION_PAYLOAD, headers: null })).toThrow(
       ResponseValidationError,
     );

@@ -1,43 +1,19 @@
-// Guard + construction tests for FunnelStep/Exclusion/HoldingConstant
-// (phase2-design C7, packet P2-5c): translated from
-// tests/test_types_funnel.py (TestFunnelStep / TestExclusion /
-// TestHoldingConstant / TestCodedExclusionCodes /
-// TestCodedHoldingConstantCodes) and
-// conformance/tests/test_coverage_cases.py (TestFunnelStepGuardVectors —
-// the P2-1 coverage-closure cases), plus Risk #1 guard-order probes and
-// a C9 fast-check guard-totality property. (The Python frozen-dataclass
-// immutability tests have no TS runtime analog — `readonly` is the
-// compile-time equivalent.)
+// FunnelStep / Exclusion / HoldingConstant construction and guards (EV1 /
+// EV2, EX1 / EX2, HC1) with guard-order probes and fast-check guard-totality
+// properties. Mirrors tests/test_types_funnel.py (TestFunnelStep,
+// TestExclusion, TestHoldingConstant, coded-error suites) and
+// TestFunnelStepGuardVectors of conformance/tests/test_coverage_cases.py.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
-import {
-  type MixpanelHeadlessError,
-  ParamValidationError,
-} from "../../../src/errors.js";
+import { ParamValidationError } from "../../../src/errors.js";
 import { Filter } from "../../../src/types/query-params/filter.js";
 import {
   Exclusion,
   FunnelStep,
   HoldingConstant,
 } from "../../../src/types/query-params/funnel.js";
-
-/**
- * Assert a thunk throws the exact guard `{class, code}` pair.
- *
- * @param thunk - The construction under test.
- * @param code - Expected registry code.
- */
-function expectGuard(thunk: () => unknown, code: string): void {
-  let thrown: unknown;
-  try {
-    thunk();
-  } catch (error) {
-    thrown = error;
-  }
-  expect(thrown, `expected ${code}`).toBeInstanceOf(ParamValidationError);
-  expect((thrown as MixpanelHeadlessError).code).toBe(code);
-}
+import { expectGuard } from "../../../test-support/raises.js";
 
 describe("FunnelStep construction", () => {
   it("constructs with an event only and applies the Python defaults", () => {
@@ -98,7 +74,7 @@ describe("FunnelStep construction", () => {
   });
 });
 
-describe("FunnelStep guards (P2-1 coverage-closure cases)", () => {
+describe("FunnelStep guards", () => {
   it("EV1_EMPTY_EVENT on empty/blank events", () => {
     for (const event of ["", " ".repeat(3)]) {
       expectGuard(() => new FunnelStep({ event }), "EV1_EMPTY_EVENT");
@@ -224,7 +200,7 @@ describe("HoldingConstant construction + guards", () => {
   });
 });
 
-describe("C9 guard-totality property (fast-check #4)", () => {
+describe("guard-totality properties (fast-check)", () => {
   it("blank-or-control events always raise a registry-coded error", () => {
     fc.assert(
       fc.property(

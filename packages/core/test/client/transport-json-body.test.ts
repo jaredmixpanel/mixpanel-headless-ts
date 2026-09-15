@@ -1,7 +1,8 @@
-// ADDITIVE (no Python twin — Python's `json.dumps` spells any int): the
-// transport's bigint-aware JSON body serializer, the carrier for int64
-// ids beyond 2^53 that `update_lookup_table` / `delete_lookup_tables`
-// send in the JSON body.
+// The transport's bigint-aware JSON body serializer (`stringifyJsonBody`)
+// and its use by `rawFetch`: the carrier for int64 ids beyond 2^53 that
+// `updateLookupTable` / `deleteLookupTables` send in the JSON body.
+// TS-only — Python's `json.dumps` spells any int exactly, so there is no
+// Python twin.
 
 import { afterEach, describe, expect, it } from "vitest";
 

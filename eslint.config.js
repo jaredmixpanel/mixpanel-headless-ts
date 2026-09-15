@@ -1020,13 +1020,13 @@ const config = defineConfig([
     },
   },
 
-  // Test titles in the platform trees are English behaviour statements; the
-  // Python identifier lives in a `// python:` comment (CONTRIBUTING "Tests").
+  // Test titles are English behaviour statements in every test tree; the
+  // Python test name lives in a trailing `// python: test_x` comment, never in
+  // the title (CONTRIBUTING "Tests").
   {
-    name: "repo/tests/platform-titles",
+    name: "repo/tests/english-titles",
     files: [
-      "packages/node/test/**/*.test.ts",
-      "packages/browser/test/**/*.test.ts",
+      "packages/*/test/**/*.test.ts",
       "conformance-runner/test/**/*.test.ts",
       "differential/test/**/*.test.ts",
       "tests/**/*.test.ts",
@@ -1045,7 +1045,7 @@ const config = defineConfig([
               "State the behaviour in English; keep the Python name in a `// python:` comment",
             ],
             describe: [
-              String.raw`^Test[A-Z]|\.py:\d`,
+              String.raw`^Test[A-Z]|^test_|\.py:\d`,
               "Name the unit under test; keep the Python class in a `// python:` comment",
             ],
           },

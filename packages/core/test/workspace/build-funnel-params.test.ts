@@ -1,20 +1,8 @@
-// Translated build_funnel_params tests (B5-S2, packet §3): assertion-
-// for-assertion port of tests/test_build_funnel_params.py — ALL
-// 11 classes (TestBuildFunnelParamsDefaults :68,
-// TestBuildFunnelParamsConfiguration :169,
-// TestBuildFunnelParamsPublicMethod :330,
-// TestBuildFunnelParamsPerStepFilters :392,
-// TestBuildFunnelParamsGlobalFilterGroupBy :528,
-// TestBuildFunnelParamsMixedSteps :587,
-// TestBuildFunnelParamsExclusions :644,
-// TestBuildFunnelParamsHoldingConstant :725,
-// TestBuildFunnelParamsNewMathTypes :800,
-// TestBuildFunnelParamsReentryMode :819,
-// TestDataGroupIdFunnel :868).
-//
-// Translation note: `mock_api_client.request.assert_not_called()`
-// becomes an empty `insightsCalls` log on the shared stub (the facade's
-// only wire path from `build_funnel_params` would be `insights_query`).
+// `Workspace.buildFunnelParams`: default structure, configuration options,
+// per-step filters, exclusions, holding constants, reentry mode and
+// data_group_id. Mirrors all 11 classes of `tests/test_build_funnel_params.py`.
+// `mock_api_client.request.assert_not_called()` becomes an empty
+// `insightsCalls` log on the shared stub (the method's only wire path).
 
 import { describe, expect, it } from "vitest";
 
@@ -25,22 +13,10 @@ import {
   FunnelStep,
   HoldingConstant,
 } from "../../src/types/query-params/funnel.js";
-import { Workspace } from "../../src/workspace.js";
 import {
-  type MockWorkspaceClient,
+  makeStubWorkspace,
   mockWorkspaceClient,
-  TEST_SESSION,
 } from "../../test-support/workspace-test-helpers.js";
-
-/**
- * The `ws` fixture (test file :48-60).
- *
- * @param mock - Optional stub client (for call-log asserts).
- * @returns The facade under test.
- */
-function makeWs(mock: MockWorkspaceClient = mockWorkspaceClient()): Workspace {
-  return new Workspace({ session: TEST_SESSION, client: mock.client });
-}
 
 /** `result["sections"]["show"][0]["behavior"]`. */
 function behaviorOf(result: Record<string, unknown>): Record<string, unknown> {
@@ -79,76 +55,116 @@ function chartTypeOf(result: Record<string, unknown>): unknown {
 // T018: basic bookmark structure
 // ===========================================================================
 
-describe("TestBuildFunnelParamsDefaults", () => {
+describe("Build funnel params defaults", () => {
+  // python: TestBuildFunnelParamsDefaults
   it("behavior.type is 'funnel'", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
+    const result = await makeStubWorkspace().buildFunnelParams([
+      "Signup",
+      "Purchase",
+    ]);
     expect(behaviorOf(result)["type"]).toBe("funnel");
   });
 
   it("behaviors has one entry per step", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
+    const result = await makeStubWorkspace().buildFunnelParams([
+      "Signup",
+      "Purchase",
+    ]);
     expect(behaviorsOf(result)).toHaveLength(2);
   });
 
   it("behavior names match the step events", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
+    const result = await makeStubWorkspace().buildFunnelParams([
+      "Signup",
+      "Purchase",
+    ]);
     const behaviors = behaviorsOf(result);
     expect(behaviors[0]!["name"]).toBe("Signup");
     expect(behaviors[1]!["name"]).toBe("Purchase");
   });
 
   it("the parent behavior has resourceType='events'", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
+    const result = await makeStubWorkspace().buildFunnelParams([
+      "Signup",
+      "Purchase",
+    ]);
     expect(behaviorOf(result)["resourceType"]).toBe("events");
   });
 
   it("the default conversionWindowDuration is 14", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
+    const result = await makeStubWorkspace().buildFunnelParams([
+      "Signup",
+      "Purchase",
+    ]);
     expect(behaviorOf(result)["conversionWindowDuration"]).toBe(14);
   });
 
   it("the default conversionWindowUnit is 'day'", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
+    const result = await makeStubWorkspace().buildFunnelParams([
+      "Signup",
+      "Purchase",
+    ]);
     expect(behaviorOf(result)["conversionWindowUnit"]).toBe("day");
   });
 
   it("the default funnelOrder is 'loose'", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
+    const result = await makeStubWorkspace().buildFunnelParams([
+      "Signup",
+      "Purchase",
+    ]);
     expect(behaviorOf(result)["funnelOrder"]).toBe("loose");
   });
 
   it("the default measurement.math is 'conversion_rate_unique'", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
+    const result = await makeStubWorkspace().buildFunnelParams([
+      "Signup",
+      "Purchase",
+    ]);
     expect(measurementOf(result)["math"]).toBe("conversion_rate_unique");
   });
 
   it("the default chartType is 'funnel-steps'", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
+    const result = await makeStubWorkspace().buildFunnelParams([
+      "Signup",
+      "Purchase",
+    ]);
     expect(chartTypeOf(result)).toBe("funnel-steps");
   });
 
   it("sections.formula is an empty list", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
+    const result = await makeStubWorkspace().buildFunnelParams([
+      "Signup",
+      "Purchase",
+    ]);
     expect(section(result, "formula")).toStrictEqual([]);
   });
 
   it("sections.time is a list", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
+    const result = await makeStubWorkspace().buildFunnelParams([
+      "Signup",
+      "Purchase",
+    ]);
     expect(Array.isArray(section(result, "time"))).toBe(true);
   });
 
   it("sections.filter is a list", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
+    const result = await makeStubWorkspace().buildFunnelParams([
+      "Signup",
+      "Purchase",
+    ]);
     expect(Array.isArray(section(result, "filter"))).toBe(true);
   });
 
   it("sections.group is a list", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
+    const result = await makeStubWorkspace().buildFunnelParams([
+      "Signup",
+      "Purchase",
+    ]);
     expect(Array.isArray(section(result, "group"))).toBe(true);
   });
 
   it("a three-step funnel produces three behaviors", async () => {
-    const result = await makeWs().buildFunnelParams([
+    const result = await makeStubWorkspace().buildFunnelParams([
       "Signup",
       "Add to Cart",
       "Purchase",
@@ -161,7 +177,7 @@ describe("TestBuildFunnelParamsDefaults", () => {
   });
 
   it("FunnelStep objects are accepted alongside strings", async () => {
-    const result = await makeWs().buildFunnelParams([
+    const result = await makeStubWorkspace().buildFunnelParams([
       new FunnelStep({ event: "Signup" }),
       new FunnelStep({ event: "Purchase" }),
     ]);
@@ -176,36 +192,46 @@ describe("TestBuildFunnelParamsDefaults", () => {
 // T019: configuration options
 // ===========================================================================
 
-describe("TestBuildFunnelParamsConfiguration", () => {
+describe("Build funnel params configuration", () => {
+  // python: TestBuildFunnelParamsConfiguration
   it("a custom conversion_window is applied", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      conversion_window: 7,
-      conversion_window_unit: "day",
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        conversion_window: 7,
+        conversion_window_unit: "day",
+      },
+    );
     const behavior = behaviorOf(result);
     expect(behavior["conversionWindowDuration"]).toBe(7);
     expect(behavior["conversionWindowUnit"]).toBe("day");
   });
 
   it("conversion_window_unit='hour' is applied", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      conversion_window: 2,
-      conversion_window_unit: "hour",
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        conversion_window: 2,
+        conversion_window_unit: "hour",
+      },
+    );
     const behavior = behaviorOf(result);
     expect(behavior["conversionWindowDuration"]).toBe(2);
     expect(behavior["conversionWindowUnit"]).toBe("hour");
   });
 
   it("order='any' sets funnelOrder='any'", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      order: "any",
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        order: "any",
+      },
+    );
     expect(behaviorOf(result)["funnelOrder"]).toBe("any");
   });
 
   it("a per-step order override sets funnelOrder on that entry", async () => {
-    const result = await makeWs().buildFunnelParams(
+    const result = await makeStubWorkspace().buildFunnelParams(
       [
         new FunnelStep({ event: "Signup" }),
         new FunnelStep({ event: "Browse" }),
@@ -220,10 +246,13 @@ describe("TestBuildFunnelParamsConfiguration", () => {
   });
 
   it("from_date/to_date produce a 'between' time section", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      from_date: "2025-01-01",
-      to_date: "2025-03-31",
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        from_date: "2025-01-01",
+        to_date: "2025-03-31",
+      },
+    );
     const time = section(result, "time") as Array<Record<string, unknown>>;
     expect(time.length).toBeGreaterThan(0);
     expect(time[0]!["dateRangeType"]).toBe("between");
@@ -231,9 +260,12 @@ describe("TestBuildFunnelParamsConfiguration", () => {
   });
 
   it("last=90 produces a window-based time section", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      last: 90,
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        last: 90,
+      },
+    );
     const time = section(result, "time") as Array<Record<string, unknown>>;
     expect(time.length).toBeGreaterThan(0);
     expect(time[0]!["dateRangeType"]).toBe("in the last");
@@ -243,22 +275,31 @@ describe("TestBuildFunnelParamsConfiguration", () => {
   });
 
   it("math='unique' sets measurement.math", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      math: "unique",
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        math: "unique",
+      },
+    );
     expect(measurementOf(result)["math"]).toBe("unique");
   });
 
   it("measurement.property is null when math_property is absent", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
+    const result = await makeStubWorkspace().buildFunnelParams([
+      "Signup",
+      "Purchase",
+    ]);
     expect(measurementOf(result)["property"]).toBeNull();
   });
 
   it("math_property populates measurement.property", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      math: "average",
-      math_property: "amount",
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        math: "average",
+        math_property: "amount",
+      },
+    );
     expect(measurementOf(result)["property"]).toStrictEqual({
       name: "amount",
       type: "number",
@@ -267,10 +308,13 @@ describe("TestBuildFunnelParamsConfiguration", () => {
   });
 
   it("math_property works with median", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      math: "median",
-      math_property: "duration",
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        math: "median",
+        math_property: "duration",
+      },
+    );
     const measurement = measurementOf(result);
     expect(measurement["math"]).toBe("median");
     expect((measurement["property"] as Record<string, unknown>)["name"]).toBe(
@@ -279,28 +323,37 @@ describe("TestBuildFunnelParamsConfiguration", () => {
   });
 
   it("mode='steps' produces chartType='funnel-steps'", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      mode: "steps",
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        mode: "steps",
+      },
+    );
     expect(chartTypeOf(result)).toBe("funnel-steps");
   });
 
   it("mode='trends' produces chartType='line'", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      mode: "trends",
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        mode: "trends",
+      },
+    );
     expect(chartTypeOf(result)).toBe("line");
   });
 
   it("mode='table' produces chartType='table'", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      mode: "table",
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        mode: "table",
+      },
+    );
     expect(chartTypeOf(result)).toBe("table");
   });
 
   it("multiple configuration options work together", async () => {
-    const result = await makeWs().buildFunnelParams(
+    const result = await makeStubWorkspace().buildFunnelParams(
       ["Signup", "Add to Cart", "Checkout", "Purchase"],
       {
         conversion_window: 7,
@@ -326,42 +379,55 @@ describe("TestBuildFunnelParamsConfiguration", () => {
 // T023: public method surface
 // ===========================================================================
 
-describe("TestBuildFunnelParamsPublicMethod", () => {
+describe("Build funnel params public method", () => {
+  // python: TestBuildFunnelParamsPublicMethod
   it("returns a dict", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
+    const result = await makeStubWorkspace().buildFunnelParams([
+      "Signup",
+      "Purchase",
+    ]);
     expect(typeof result).toBe("object");
   });
 
   it("has a 'sections' key", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
+    const result = await makeStubWorkspace().buildFunnelParams([
+      "Signup",
+      "Purchase",
+    ]);
     expect(Object.hasOwn(result, "sections")).toBe(true);
   });
 
   it("has a 'displayOptions' key", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
+    const result = await makeStubWorkspace().buildFunnelParams([
+      "Signup",
+      "Purchase",
+    ]);
     expect(Object.hasOwn(result, "displayOptions")).toBe(true);
   });
 
   it("makes no API call", async () => {
     const mock = mockWorkspaceClient();
-    await makeWs(mock).buildFunnelParams(["Signup", "Purchase"]);
+    await makeStubWorkspace(mock).buildFunnelParams(["Signup", "Purchase"]);
     expect(mock.insightsCalls).toHaveLength(0);
   });
 
   it("a single-step funnel raises BookmarkValidationError", async () => {
     await expect(
-      makeWs().buildFunnelParams(["OnlyOneStep"]),
+      makeStubWorkspace().buildFunnelParams(["OnlyOneStep"]),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
   });
 
   it("an empty steps list raises BookmarkValidationError", async () => {
-    await expect(makeWs().buildFunnelParams([])).rejects.toBeInstanceOf(
-      BookmarkValidationError,
-    );
+    await expect(
+      makeStubWorkspace().buildFunnelParams([]),
+    ).rejects.toBeInstanceOf(BookmarkValidationError);
   });
 
   it("sections contains show, time, filter, group and formula", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
+    const result = await makeStubWorkspace().buildFunnelParams([
+      "Signup",
+      "Purchase",
+    ]);
     const sections = result["sections"] as Record<string, unknown>;
     for (const key of ["show", "time", "filter", "group", "formula"]) {
       expect(Object.hasOwn(sections, key)).toBe(true);
@@ -369,12 +435,18 @@ describe("TestBuildFunnelParamsPublicMethod", () => {
   });
 
   it("sections.show contains exactly one entry", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
+    const result = await makeStubWorkspace().buildFunnelParams([
+      "Signup",
+      "Purchase",
+    ]);
     expect(section(result, "show") as unknown[]).toHaveLength(1);
   });
 
   it("the show entry has behavior and measurement keys", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
+    const result = await makeStubWorkspace().buildFunnelParams([
+      "Signup",
+      "Purchase",
+    ]);
     const show = section(result, "show") as Array<Record<string, unknown>>;
     expect(Object.hasOwn(show[0]!, "behavior")).toBe(true);
     expect(Object.hasOwn(show[0]!, "measurement")).toBe(true);
@@ -385,7 +457,8 @@ describe("TestBuildFunnelParamsPublicMethod", () => {
 // T031: per-step filters and labels
 // ===========================================================================
 
-describe("TestBuildFunnelParamsPerStepFilters", () => {
+describe("Build funnel params per step filters", () => {
+  // python: TestBuildFunnelParamsPerStepFilters
   /** The two-step list most cases in this class share. */
   function filteredSteps(): Array<string | FunnelStep> {
     return [
@@ -398,19 +471,19 @@ describe("TestBuildFunnelParamsPerStepFilters", () => {
   }
 
   it("a step with no filters produces an empty filters list", async () => {
-    const result = await makeWs().buildFunnelParams(filteredSteps());
+    const result = await makeStubWorkspace().buildFunnelParams(filteredSteps());
     expect(behaviorsOf(result)[0]!["filters"]).toStrictEqual([]);
   });
 
   it("a step with a filter produces a non-empty filters list", async () => {
-    const result = await makeWs().buildFunnelParams(filteredSteps());
+    const result = await makeStubWorkspace().buildFunnelParams(filteredSteps());
     expect(
       (behaviorsOf(result)[1]!["filters"] as unknown[]).length,
     ).toBeGreaterThan(0);
   });
 
   it("the filter entry has value='amount'", async () => {
-    const result = await makeWs().buildFunnelParams(filteredSteps());
+    const result = await makeStubWorkspace().buildFunnelParams(filteredSteps());
     const filters = behaviorsOf(result)[1]!["filters"] as Array<
       Record<string, unknown>
     >;
@@ -418,7 +491,7 @@ describe("TestBuildFunnelParamsPerStepFilters", () => {
   });
 
   it("the filter entry has the correct filterOperator", async () => {
-    const result = await makeWs().buildFunnelParams(filteredSteps());
+    const result = await makeStubWorkspace().buildFunnelParams(filteredSteps());
     const filters = behaviorsOf(result)[1]!["filters"] as Array<
       Record<string, unknown>
     >;
@@ -426,12 +499,12 @@ describe("TestBuildFunnelParamsPerStepFilters", () => {
   });
 
   it("the default filtersDeterminer is 'all'", async () => {
-    const result = await makeWs().buildFunnelParams(filteredSteps());
+    const result = await makeStubWorkspace().buildFunnelParams(filteredSteps());
     expect(behaviorsOf(result)[1]!["filtersDeterminer"]).toBe("all");
   });
 
   it("filters_combinator='any' sets filtersDeterminer='any'", async () => {
-    const result = await makeWs().buildFunnelParams([
+    const result = await makeStubWorkspace().buildFunnelParams([
       new FunnelStep({ event: "Signup" }),
       new FunnelStep({
         event: "Purchase",
@@ -443,7 +516,7 @@ describe("TestBuildFunnelParamsPerStepFilters", () => {
   });
 
   it("FunnelStep.label appears as 'renamed'", async () => {
-    const result = await makeWs().buildFunnelParams([
+    const result = await makeStubWorkspace().buildFunnelParams([
       new FunnelStep({ event: "Signup" }),
       new FunnelStep({ event: "Purchase", label: "High-Value Purchase" }),
     ]);
@@ -451,7 +524,7 @@ describe("TestBuildFunnelParamsPerStepFilters", () => {
   });
 
   it("a step without a label has no 'renamed' key", async () => {
-    const result = await makeWs().buildFunnelParams([
+    const result = await makeStubWorkspace().buildFunnelParams([
       new FunnelStep({ event: "Signup" }),
       new FunnelStep({ event: "Purchase" }),
     ]);
@@ -459,11 +532,11 @@ describe("TestBuildFunnelParamsPerStepFilters", () => {
   });
 
   it("filters=[] matches filters=null", async () => {
-    const resultEmpty = await makeWs().buildFunnelParams([
+    const resultEmpty = await makeStubWorkspace().buildFunnelParams([
       new FunnelStep({ event: "Signup", filters: [] }),
       new FunnelStep({ event: "Purchase", filters: [] }),
     ]);
-    const resultNone = await makeWs().buildFunnelParams([
+    const resultNone = await makeStubWorkspace().buildFunnelParams([
       new FunnelStep({ event: "Signup", filters: null }),
       new FunnelStep({ event: "Purchase", filters: null }),
     ]);
@@ -482,42 +555,58 @@ describe("TestBuildFunnelParamsPerStepFilters", () => {
 // T032: global filter and group-by
 // ===========================================================================
 
-describe("TestBuildFunnelParamsGlobalFilterGroupBy", () => {
+describe("Build funnel params global filter group by", () => {
+  // python: TestBuildFunnelParamsGlobalFilterGroupBy
   it("a where filter populates sections.filter", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      where: [Filter.equals("country", "US")],
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        where: [Filter.equals("country", "US")],
+      },
+    );
     expect((section(result, "filter") as unknown[]).length).toBeGreaterThan(0);
   });
 
   it("group_by populates sections.group", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      group_by: "platform",
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        group_by: "platform",
+      },
+    );
     expect((section(result, "group") as unknown[]).length).toBeGreaterThan(0);
   });
 
   it("where and group_by work together", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      where: [Filter.equals("country", "US")],
-      group_by: "platform",
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        where: [Filter.equals("country", "US")],
+        group_by: "platform",
+      },
+    );
     expect((section(result, "filter") as unknown[]).length).toBeGreaterThan(0);
     expect((section(result, "group") as unknown[]).length).toBeGreaterThan(0);
   });
 
   it("the filter entry references the correct property", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      where: [Filter.equals("country", "US")],
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        where: [Filter.equals("country", "US")],
+      },
+    );
     const filters = section(result, "filter") as Array<Record<string, unknown>>;
     expect(filters[0]!["value"]).toBe("country");
   });
 
   it("the group entry references the correct property", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      group_by: "platform",
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        group_by: "platform",
+      },
+    );
     const groups = section(result, "group") as Array<Record<string, unknown>>;
     expect(groups[0]!["value"]).toBe("platform");
   });
@@ -527,7 +616,8 @@ describe("TestBuildFunnelParamsGlobalFilterGroupBy", () => {
 // T033: mixed steps
 // ===========================================================================
 
-describe("TestBuildFunnelParamsMixedSteps", () => {
+describe("Build funnel params mixed steps", () => {
+  // python: TestBuildFunnelParamsMixedSteps
   /** The mixed list the first three cases share. */
   function mixedSteps(): Array<string | FunnelStep> {
     return [
@@ -540,28 +630,28 @@ describe("TestBuildFunnelParamsMixedSteps", () => {
   }
 
   it("a mixed list produces the right number of behaviors", async () => {
-    const result = await makeWs().buildFunnelParams(mixedSteps());
+    const result = await makeStubWorkspace().buildFunnelParams(mixedSteps());
     expect(behaviorsOf(result)).toHaveLength(2);
   });
 
   it("the string step has empty filters", async () => {
-    const result = await makeWs().buildFunnelParams(mixedSteps());
+    const result = await makeStubWorkspace().buildFunnelParams(mixedSteps());
     expect(behaviorsOf(result)[0]!["filters"]).toStrictEqual([]);
   });
 
   it("the FunnelStep with filters has non-empty filters", async () => {
-    const result = await makeWs().buildFunnelParams(mixedSteps());
+    const result = await makeStubWorkspace().buildFunnelParams(mixedSteps());
     expect(
       (behaviorsOf(result)[1]!["filters"] as unknown[]).length,
     ).toBeGreaterThan(0);
   });
 
   it("filters=[] matches filters=null for a mixed list", async () => {
-    const resultEmpty = await makeWs().buildFunnelParams([
+    const resultEmpty = await makeStubWorkspace().buildFunnelParams([
       "Signup",
       new FunnelStep({ event: "Purchase", filters: [] }),
     ]);
-    const resultNone = await makeWs().buildFunnelParams([
+    const resultNone = await makeStubWorkspace().buildFunnelParams([
       "Signup",
       new FunnelStep({ event: "Purchase", filters: null }),
     ]);
@@ -575,20 +665,27 @@ describe("TestBuildFunnelParamsMixedSteps", () => {
 // T038: exclusions
 // ===========================================================================
 
-describe("TestBuildFunnelParamsExclusions", () => {
+describe("Build funnel params exclusions", () => {
+  // python: TestBuildFunnelParamsExclusions
   it("a string exclusion produces a non-empty exclusions list", async () => {
-    const result = await makeWs().buildFunnelParams(["A", "B", "C"], {
-      exclusions: ["Logout"],
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["A", "B", "C"],
+      {
+        exclusions: ["Logout"],
+      },
+    );
     expect(
       (behaviorOf(result)["exclusions"] as unknown[]).length,
     ).toBeGreaterThan(0);
   });
 
   it("the string exclusion entry has event='Logout'", async () => {
-    const result = await makeWs().buildFunnelParams(["A", "B", "C"], {
-      exclusions: ["Logout"],
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["A", "B", "C"],
+      {
+        exclusions: ["Logout"],
+      },
+    );
     const exclusions = behaviorOf(result)["exclusions"] as Array<
       Record<string, unknown>
     >;
@@ -596,16 +693,22 @@ describe("TestBuildFunnelParamsExclusions", () => {
   });
 
   it("the parent behavior keeps resourceType='events'", async () => {
-    const result = await makeWs().buildFunnelParams(["A", "B", "C"], {
-      exclusions: ["Logout"],
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["A", "B", "C"],
+      {
+        exclusions: ["Logout"],
+      },
+    );
     expect(behaviorOf(result)["resourceType"]).toBe("events");
   });
 
   it("a string exclusion covers all steps (1-indexed)", async () => {
-    const result = await makeWs().buildFunnelParams(["A", "B", "C"], {
-      exclusions: ["Logout"],
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["A", "B", "C"],
+      {
+        exclusions: ["Logout"],
+      },
+    );
     const exclusions = behaviorOf(result)["exclusions"] as Array<
       Record<string, unknown>
     >;
@@ -615,11 +718,14 @@ describe("TestBuildFunnelParamsExclusions", () => {
   });
 
   it("an Exclusion with a step range is 1-indexed", async () => {
-    const result = await makeWs().buildFunnelParams(["A", "B", "C"], {
-      exclusions: [
-        new Exclusion({ event: "Refund", from_step: 1, to_step: 2 }),
-      ],
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["A", "B", "C"],
+      {
+        exclusions: [
+          new Exclusion({ event: "Refund", from_step: 1, to_step: 2 }),
+        ],
+      },
+    );
     const exclusions = behaviorOf(result)["exclusions"] as Array<
       Record<string, unknown>
     >;
@@ -629,9 +735,12 @@ describe("TestBuildFunnelParamsExclusions", () => {
   });
 
   it("an Exclusion with no range covers all steps", async () => {
-    const result = await makeWs().buildFunnelParams(["A", "B", "C", "D"], {
-      exclusions: [new Exclusion({ event: "Cancel" })],
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["A", "B", "C", "D"],
+      {
+        exclusions: [new Exclusion({ event: "Cancel" })],
+      },
+    );
     const exclusions = behaviorOf(result)["exclusions"] as Array<
       Record<string, unknown>
     >;
@@ -641,7 +750,7 @@ describe("TestBuildFunnelParamsExclusions", () => {
   });
 
   it("no exclusions produce an empty list", async () => {
-    const result = await makeWs().buildFunnelParams(["A", "B"]);
+    const result = await makeStubWorkspace().buildFunnelParams(["A", "B"]);
     expect(behaviorOf(result)["exclusions"]).toStrictEqual([]);
   });
 });
@@ -650,9 +759,10 @@ describe("TestBuildFunnelParamsExclusions", () => {
 // T039: holding constant
 // ===========================================================================
 
-describe("TestBuildFunnelParamsHoldingConstant", () => {
+describe("Build funnel params holding constant", () => {
+  // python: TestBuildFunnelParamsHoldingConstant
   it("a string holding_constant produces a non-empty aggregateBy", async () => {
-    const result = await makeWs().buildFunnelParams(["A", "B"], {
+    const result = await makeStubWorkspace().buildFunnelParams(["A", "B"], {
       holding_constant: "platform",
     });
     expect(
@@ -661,7 +771,7 @@ describe("TestBuildFunnelParamsHoldingConstant", () => {
   });
 
   it("the string entry has value='platform'", async () => {
-    const result = await makeWs().buildFunnelParams(["A", "B"], {
+    const result = await makeStubWorkspace().buildFunnelParams(["A", "B"], {
       holding_constant: "platform",
     });
     const agg = behaviorOf(result)["aggregateBy"] as Array<
@@ -671,7 +781,7 @@ describe("TestBuildFunnelParamsHoldingConstant", () => {
   });
 
   it("the string entry defaults to resourceType='events'", async () => {
-    const result = await makeWs().buildFunnelParams(["A", "B"], {
+    const result = await makeStubWorkspace().buildFunnelParams(["A", "B"], {
       holding_constant: "platform",
     });
     const agg = behaviorOf(result)["aggregateBy"] as Array<
@@ -681,7 +791,7 @@ describe("TestBuildFunnelParamsHoldingConstant", () => {
   });
 
   it("HoldingConstant with resource_type='people' is honoured", async () => {
-    const result = await makeWs().buildFunnelParams(["A", "B"], {
+    const result = await makeStubWorkspace().buildFunnelParams(["A", "B"], {
       holding_constant: new HoldingConstant({
         property: "plan_tier",
         resource_type: "people",
@@ -694,7 +804,7 @@ describe("TestBuildFunnelParamsHoldingConstant", () => {
   });
 
   it("a list of holding constants produces multiple entries", async () => {
-    const result = await makeWs().buildFunnelParams(["A", "B"], {
+    const result = await makeStubWorkspace().buildFunnelParams(["A", "B"], {
       holding_constant: [
         new HoldingConstant({ property: "platform" }),
         new HoldingConstant({
@@ -712,7 +822,7 @@ describe("TestBuildFunnelParamsHoldingConstant", () => {
   });
 
   it("no holding_constant produces an empty aggregateBy", async () => {
-    const result = await makeWs().buildFunnelParams(["A", "B"]);
+    const result = await makeStubWorkspace().buildFunnelParams(["A", "B"]);
     expect(behaviorOf(result)["aggregateBy"]).toStrictEqual([]);
   });
 });
@@ -721,12 +831,16 @@ describe("TestBuildFunnelParamsHoldingConstant", () => {
 // T005: new funnel math types
 // ===========================================================================
 
-describe("TestBuildFunnelParamsNewMathTypes", () => {
+describe("Build funnel params new math types", () => {
+  // python: TestBuildFunnelParamsNewMathTypes
   it("math='histogram' is accepted", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      math: "histogram",
-      math_property: "amount",
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        math: "histogram",
+        math_property: "amount",
+      },
+    );
     const measurement = measurementOf(result);
     expect(measurement["math"]).toBe("histogram");
     expect((measurement["property"] as Record<string, unknown>)["name"]).toBe(
@@ -739,18 +853,25 @@ describe("TestBuildFunnelParamsNewMathTypes", () => {
 // T009: reentry_mode
 // ===========================================================================
 
-describe("TestBuildFunnelParamsReentryMode", () => {
+describe("Build funnel params reentry mode", () => {
+  // python: TestBuildFunnelParamsReentryMode
   for (const mode of ["aggressive", "default", "basic", "optimized"]) {
     it(`reentry_mode='${mode}' produces funnelReentryMode`, async () => {
-      const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-        reentry_mode: mode,
-      });
+      const result = await makeStubWorkspace().buildFunnelParams(
+        ["Signup", "Purchase"],
+        {
+          reentry_mode: mode,
+        },
+      );
       expect(behaviorOf(result)["funnelReentryMode"]).toBe(mode);
     });
   }
 
   it("omitting reentry_mode omits the key", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
+    const result = await makeStubWorkspace().buildFunnelParams([
+      "Signup",
+      "Purchase",
+    ]);
     expect(Object.hasOwn(behaviorOf(result), "funnelReentryMode")).toBe(false);
   });
 });
@@ -759,18 +880,25 @@ describe("TestBuildFunnelParamsReentryMode", () => {
 // T032: data_group_id
 // ===========================================================================
 
-describe("TestDataGroupIdFunnel", () => {
+describe("Data group ID funnel", () => {
+  // python: TestDataGroupIdFunnel
   it('data_group_id=5 includes globalDataGroupId: "5" in sections', async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      data_group_id: 5,
-    });
+    const result = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        data_group_id: 5,
+      },
+    );
     expect(section(result, "globalDataGroupId")).toBe("5");
     const sections = result["sections"] as Record<string, unknown>;
     expect(Object.hasOwn(sections, "dataGroupId")).toBe(false);
   });
 
   it("omitting data_group_id omits the key", async () => {
-    const result = await makeWs().buildFunnelParams(["Signup", "Purchase"]);
+    const result = await makeStubWorkspace().buildFunnelParams([
+      "Signup",
+      "Purchase",
+    ]);
     const sections = result["sections"] as Record<string, unknown>;
     expect(Object.hasOwn(sections, "globalDataGroupId")).toBe(false);
     expect(Object.hasOwn(sections, "dataGroupId")).toBe(false);

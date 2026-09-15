@@ -1,16 +1,8 @@
-// Translated FlowQueryResult tests (packet P2-6):
-// assertion-for-assertion port of tests/test_types_flow.py
-// (TestFlowQueryResultConstruction / ToDict / NodesDf / EdgesDf /
-// DfModeAware / TopTransitions / DropOffSummary / TestSafeInt) —
-// R10.2.
-//
-// Not ported: immutability suites (compile-time `readonly`);
-// TestFlowQueryResultGraph (networkx — TODO(port) batch B5, see
-// replays/query-engine module docs); TestRenameVerification
-// (Workspace surface, batch B6); the `warnings.warn` side-channel
-// assertions of TestSafeInt (out of contract — return values are
-// asserted). The FlowStep suites of this file were translated by
-// P2-5c.
+// FlowQueryResult (sankey / paths modes): construction, to_dict, nodes_df /
+// edges_df / mode-aware df as row arrays, top_transitions, drop_off_summary
+// and safeInt. Mirrors tests/test_types_flow.py (the FlowQueryResult and
+// TestSafeInt classes); not carried: immutability suites, the networkx
+// TestFlowQueryResultGraph and TestSafeInt's `warnings.warn` side channel.
 import { describe, expect, it } from "vitest";
 
 import { safeInt } from "../../../src/types/results/flow-graph.js";
@@ -95,8 +87,10 @@ function sampleTopPathsFlows(): ReadonlyArray<Record<string, unknown>> {
   ];
 }
 
-describe("FlowQueryResult construction (TestFlowQueryResultConstruction)", () => {
-  it("test_construct_with_defaults", () => {
+describe("FlowQueryResult construction", () => {
+  // python: TestFlowQueryResultConstruction
+  it("construct with defaults", () => {
+    // python: test_construct_with_defaults
     const r = makeResult();
     expect(r.computed_at).toBe("2025-01-15T10:00:00");
     expect(r.steps).toStrictEqual([]);
@@ -108,7 +102,8 @@ describe("FlowQueryResult construction (TestFlowQueryResultConstruction)", () =>
     expect(r.mode).toBe("sankey");
   });
 
-  it("test_construct_with_overrides", () => {
+  it("construct with overrides", () => {
+    // python: test_construct_with_overrides
     const r = makeResult({
       computed_at: "2025-02-01T12:00:00",
       steps: [{ event: "Login" }],
@@ -129,21 +124,26 @@ describe("FlowQueryResult construction (TestFlowQueryResultConstruction)", () =>
     expect(r.mode).toBe("paths");
   });
 
-  it("test_default_mode_is_sankey", () => {
+  it("default mode is sankey", () => {
+    // python: test_default_mode_is_sankey
     expect(makeResult().mode).toBe("sankey");
   });
 
-  it("test_steps_default_empty_list", () => {
+  it("steps default empty list", () => {
+    // python: test_steps_default_empty_list
     expect(new FlowQueryResult({ computed_at: "" }).steps).toStrictEqual([]);
   });
 
-  it("test_flows_default_empty_list", () => {
+  it("flows default empty list", () => {
+    // python: test_flows_default_empty_list
     expect(new FlowQueryResult({ computed_at: "" }).flows).toStrictEqual([]);
   });
 });
 
-describe("FlowQueryResult.to_dict (TestFlowQueryResultToDict)", () => {
-  it("test_to_dict_contains_all_fields", () => {
+describe("FlowQueryResult.to_dict", () => {
+  // python: TestFlowQueryResultToDict
+  it("to dict contains all fields", () => {
+    // python: test_to_dict_contains_all_fields
     const d = makeResult().toJSON();
     for (const key of [
       "computed_at",
@@ -159,7 +159,8 @@ describe("FlowQueryResult.to_dict (TestFlowQueryResultToDict)", () => {
     }
   });
 
-  it("test_to_dict_values_match_fields", () => {
+  it("to dict values match fields", () => {
+    // python: test_to_dict_values_match_fields
     const r = makeResult();
     const d = r.toJSON();
     expect(d["computed_at"]).toStrictEqual(r.computed_at);
@@ -174,7 +175,8 @@ describe("FlowQueryResult.to_dict (TestFlowQueryResultToDict)", () => {
     expect(d["mode"]).toStrictEqual(r.mode);
   });
 
-  it("test_to_dict_with_populated_data", () => {
+  it("to dict with populated data", () => {
+    // python: test_to_dict_with_populated_data
     const r = makeResult({
       steps: [
         { event: "Login", count: 100 },
@@ -194,7 +196,8 @@ describe("FlowQueryResult.to_dict (TestFlowQueryResultToDict)", () => {
   });
 });
 
-describe("FlowQueryResult.nodes_df (TestFlowQueryResultNodesDf)", () => {
+describe("FlowQueryResult.nodes_df", () => {
+  // python: TestFlowQueryResultNodesDf
   const expectedCols = [
     "step",
     "event",
@@ -205,23 +208,27 @@ describe("FlowQueryResult.nodes_df (TestFlowQueryResultNodesDf)", () => {
     "conversion_rate_change",
   ];
 
-  it("test_nodes_df_columns", () => {
+  it("nodes df columns", () => {
+    // python: test_nodes_df_columns
     const r = makeResult({ steps: sampleSankeySteps() });
     expect(r.nodesRowColumns()).toStrictEqual(expectedCols);
   });
 
-  it("test_nodes_df_row_count", () => {
+  it("nodes df row count", () => {
+    // python: test_nodes_df_row_count
     const r = makeResult({ steps: sampleSankeySteps() });
     expect(r.toNodesRows()).toHaveLength(2);
   });
 
-  it("test_nodes_df_empty_steps", () => {
+  it("nodes df empty steps", () => {
+    // python: test_nodes_df_empty_steps
     const r = makeResult({ steps: [] });
     expect(r.toNodesRows()).toHaveLength(0);
     expect(r.nodesRowColumns()).toStrictEqual(expectedCols);
   });
 
-  it("test_nodes_df_total_count_parsed_as_int", () => {
+  it("nodes df total count parsed as int", () => {
+    // python: test_nodes_df_total_count_parsed_as_int
     const r = makeResult({ steps: sampleSankeySteps() });
     const counts = r.toNodesRows().map((row) => row["count"]);
     expect(counts).toStrictEqual([100, 80]);
@@ -230,13 +237,15 @@ describe("FlowQueryResult.nodes_df (TestFlowQueryResultNodesDf)", () => {
     }
   });
 
-  it("test_nodes_df_cached (determinism)", () => {
+  it("nodes df cached (determinism)", () => {
+    // python: test_nodes_df_cached
     const r = makeResult({ steps: sampleSankeySteps() });
     expect(r.toNodesRows()).toStrictEqual(r.toNodesRows());
   });
 });
 
-describe("FlowQueryResult.edges_df (TestFlowQueryResultEdgesDf)", () => {
+describe("FlowQueryResult.edges_df", () => {
+  // python: TestFlowQueryResultEdgesDf
   const expectedCols = [
     "source_step",
     "source_event",
@@ -246,44 +255,52 @@ describe("FlowQueryResult.edges_df (TestFlowQueryResultEdgesDf)", () => {
     "target_type",
   ];
 
-  it("test_edges_df_columns", () => {
+  it("edges df columns", () => {
+    // python: test_edges_df_columns
     const r = makeResult({ steps: sampleSankeySteps() });
     expect(r.edgesRowColumns()).toStrictEqual(expectedCols);
   });
 
-  it("test_edges_df_row_count", () => {
+  it("edges df row count", () => {
+    // python: test_edges_df_row_count
     const r = makeResult({ steps: sampleSankeySteps() });
     // Login->Search, Login->DROPOFF, Search->Purchase = 3 edges
     expect(r.toEdgesRows()).toHaveLength(3);
   });
 
-  it("test_edges_df_empty_steps", () => {
+  it("edges df empty steps", () => {
+    // python: test_edges_df_empty_steps
     const r = makeResult({ steps: [] });
     expect(r.toEdgesRows()).toHaveLength(0);
     expect(r.edgesRowColumns()).toStrictEqual(expectedCols);
   });
 
-  it("test_edges_df_count_parsed_as_int", () => {
+  it("edges df count parsed as int", () => {
+    // python: test_edges_df_count_parsed_as_int
     const r = makeResult({ steps: sampleSankeySteps() });
     for (const row of r.toEdgesRows()) {
       expect(Number.isInteger(row["count"])).toBe(true);
     }
   });
 
-  it("test_edges_df_cached (determinism)", () => {
+  it("edges df cached (determinism)", () => {
+    // python: test_edges_df_cached
     const r = makeResult({ steps: sampleSankeySteps() });
     expect(r.toEdgesRows()).toStrictEqual(r.toEdgesRows());
   });
 });
 
-describe("FlowQueryResult.df mode-aware (TestFlowQueryResultDfModeAware)", () => {
-  it("test_df_sankey_returns_nodes_df", () => {
+describe("FlowQueryResult.df mode-aware", () => {
+  // python: TestFlowQueryResultDfModeAware
+  it("df sankey returns nodes df", () => {
+    // python: test_df_sankey_returns_nodes_df
     const r = makeResult({ mode: "sankey", steps: sampleSankeySteps() });
     expect(r.toRows()).toStrictEqual(r.toNodesRows());
     expect(r.rowColumns()).toStrictEqual(r.nodesRowColumns());
   });
 
-  it("test_df_paths_returns_paths_dataframe", () => {
+  it("df paths returns paths dataframe", () => {
+    // python: test_df_paths_returns_paths_dataframe
     const r = makeResult({ mode: "paths", flows: sampleTopPathsFlows() });
     const rows = r.toRows();
     expect(rows.length).toBeGreaterThan(0);
@@ -293,14 +310,17 @@ describe("FlowQueryResult.df mode-aware (TestFlowQueryResultDfModeAware)", () =>
     expect(r.rowColumns()).toContain("count");
   });
 
-  it("test_df_paths_empty_flows", () => {
+  it("df paths empty flows", () => {
+    // python: test_df_paths_empty_flows
     const r = makeResult({ mode: "paths", flows: [] });
     expect(r.toRows()).toHaveLength(0);
   });
 });
 
-describe("FlowQueryResult.top_transitions (TestFlowQueryResultTopTransitions)", () => {
-  it("test_returns_list_of_tuples", () => {
+describe("FlowQueryResult.top_transitions", () => {
+  // python: TestFlowQueryResultTopTransitions
+  it("returns list of tuples", () => {
+    // python: test_returns_list_of_tuples
     const transitions = makeResult({
       steps: sampleSankeySteps(),
     }).topTransitions();
@@ -310,7 +330,8 @@ describe("FlowQueryResult.top_transitions (TestFlowQueryResultTopTransitions)", 
     }
   });
 
-  it("test_sorted_by_count_descending", () => {
+  it("sorted by count descending", () => {
+    // python: test_sorted_by_count_descending
     const transitions = makeResult({
       steps: sampleSankeySteps(),
     }).topTransitions();
@@ -318,18 +339,21 @@ describe("FlowQueryResult.top_transitions (TestFlowQueryResultTopTransitions)", 
     expect(counts).toStrictEqual([...counts].sort((a, b) => b - a));
   });
 
-  it("test_respects_n_limit", () => {
+  it("respects n limit", () => {
+    // python: test_respects_n_limit
     const transitions = makeResult({
       steps: sampleSankeySteps(),
     }).topTransitions(1);
     expect(transitions.length).toBeLessThanOrEqual(1);
   });
 
-  it("test_empty_edges_returns_empty_list", () => {
+  it("empty edges returns empty list", () => {
+    // python: test_empty_edges_returns_empty_list
     expect(makeResult({ steps: [] }).topTransitions()).toStrictEqual([]);
   });
 
-  it("test_default_n_is_10", () => {
+  it("default n is 10", () => {
+    // python: test_default_n_is_10
     // Sample data has 3 edges, all should be returned.
     expect(
       makeResult({ steps: sampleSankeySteps() }).topTransitions(),
@@ -337,13 +361,16 @@ describe("FlowQueryResult.top_transitions (TestFlowQueryResultTopTransitions)", 
   });
 });
 
-describe("FlowQueryResult.drop_off_summary (TestFlowQueryResultDropOffSummary)", () => {
-  it("test_returns_dict", () => {
+describe("FlowQueryResult.drop_off_summary", () => {
+  // python: TestFlowQueryResultDropOffSummary
+  it("returns dict", () => {
+    // python: test_returns_dict
     const summary = makeResult({ steps: sampleSankeySteps() }).dropOffSummary();
     expect(typeof summary).toBe("object");
   });
 
-  it("test_per_step_structure", () => {
+  it("per step structure", () => {
+    // python: test_per_step_structure
     const summary = makeResult({ steps: sampleSankeySteps() }).dropOffSummary();
     for (const value of Object.values(summary)) {
       const entry = value as Record<string, unknown>;
@@ -353,7 +380,8 @@ describe("FlowQueryResult.drop_off_summary (TestFlowQueryResultDropOffSummary)",
     }
   });
 
-  it("test_dropoff_count_from_edges_of_non_dropoff_nodes", () => {
+  it("dropoff count from edges of non dropoff nodes", () => {
+    // python: test_dropoff_count_from_edges_of_non_dropoff_nodes
     const summary = makeResult({ steps: sampleSankeySteps() }).dropOffSummary();
     // Step 0: Login ANCHOR has DROPOFF edge count=20
     const step0 = summary["step_0"] as Record<string, unknown>;
@@ -362,54 +390,66 @@ describe("FlowQueryResult.drop_off_summary (TestFlowQueryResultDropOffSummary)",
     expect(step0["rate"]).toBe(20 / 100);
   });
 
-  it("test_empty_steps_returns_empty_dict", () => {
+  it("empty steps returns empty dict", () => {
+    // python: test_empty_steps_returns_empty_dict
     expect(makeResult({ steps: [] }).dropOffSummary()).toStrictEqual({});
   });
 });
 
-describe("safeInt (TestSafeInt)", () => {
-  it("test_valid_string", () => {
+describe("safeInt", () => {
+  // python: TestSafeInt
+  it("valid string", () => {
+    // python: test_valid_string
     expect(safeInt("100")).toBe(100);
   });
 
-  it("test_int_passthrough", () => {
+  it("int passthrough", () => {
+    // python: test_int_passthrough
     expect(safeInt(42)).toBe(42);
   });
 
-  it("test_zero_int", () => {
+  it("zero int", () => {
+    // python: test_zero_int
     expect(safeInt(0)).toBe(0);
   });
 
-  it("test_none_returns_default", () => {
+  it("null returns default", () => {
+    // python: test_none_returns_default
     expect(safeInt(null)).toBe(0);
   });
 
-  it("test_empty_string (default, warning channel not ported)", () => {
+  it("empty string (default, warning channel not ported)", () => {
+    // python: test_empty_string
     expect(safeInt("")).toBe(0);
   });
 
-  it("test_non_numeric_string (default, warning channel not ported)", () => {
+  it("non numeric string (default, warning channel not ported)", () => {
+    // python: test_non_numeric_string
     expect(safeInt("N/A")).toBe(0);
   });
 
-  it("test_float_string (default, warning channel not ported)", () => {
+  it("float string (default, warning channel not ported)", () => {
+    // python: test_float_string
     expect(safeInt("100.5")).toBe(0);
   });
 
-  it("test_bool (rejected, warning channel not ported)", () => {
+  it("bool (rejected, warning channel not ported)", () => {
+    // python: test_bool
     expect(safeInt(true)).toBe(0);
   });
 
-  it("test_custom_default", () => {
+  it("custom default", () => {
+    // python: test_custom_default
     expect(safeInt(null, -1)).toBe(-1);
   });
 
-  it("test_negative_string", () => {
+  it("negative string", () => {
+    // python: test_negative_string
     expect(safeInt("-5")).toBe(-5);
   });
 });
 
-describe("safeInt string branch = CPython int(str) grammar (B0-gate RUN.md 2026-08-15: trim/regex sites replaced with pythonCompat)", () => {
+describe("safeInt string branch follows the CPython int(str) grammar", () => {
   it("accepts underscores between digits like int('1_0')", () => {
     expect(safeInt("1_0")).toBe(10);
     expect(safeInt("100_000")).toBe(100000);
@@ -426,7 +466,7 @@ describe("safeInt string branch = CPython int(str) grammar (B0-gate RUN.md 2026-
   });
 
   it("accepts CPython numeric-whitespace surround incl. U+0085/NBSP", () => {
-    // CPython probe (python-int.test.ts:98 precedent): int("\u008542\u00a0") == 42.
+    // CPython probe (see compat/python-int.test.ts): int("\u008542\u00a0") == 42.
     expect(safeInt("\u008542\u00A0")).toBe(42);
   });
 
@@ -436,11 +476,11 @@ describe("safeInt string branch = CPython int(str) grammar (B0-gate RUN.md 2026-
   });
 
   it("rejects U+001C..1F surround (str.isspace() true but Py_ISSPACE false)", () => {
-    // CPython probe (python-int.test.ts:103-105): int('\x1c42\x1f') raises.
+    // CPython probe (see compat/python-int.test.ts): int('\x1c42\x1f') raises.
     expect(safeInt("\x1C42\x1F")).toBe(0);
   });
 
-  it("magnitude beyond 2^53-1 maps to the default (R4.5 policy; playbook Discrepancy #6 pattern — CPython returns the exact big int, JS number cannot)", () => {
+  it("magnitude beyond 2^53-1 maps to the default (CPython returns the exact big int; a JS number cannot)", () => {
     expect(safeInt("9007199254740993")).toBe(0);
     expect(safeInt("9007199254740991")).toBe(9007199254740991);
   });

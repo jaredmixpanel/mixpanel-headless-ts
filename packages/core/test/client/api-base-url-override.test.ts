@@ -1,33 +1,8 @@
-// Layer-3 translation — Python PR #235:
-// tests/unit/test_api_base_url_override.py (1,091 lines, 11 classes).
-//
-// Python drives the override through `MP_API_BASE_URL` / `MP_APP_BASE_URL`
-// in `os.environ`, read PER REQUEST by `_endpoints_for`. `packages/core`
-// never reads `process.env`, so the TS twin injects the same two
-// values through `MixpanelClientOptions.endpointOverrides` — a static bag
-// or a per-call PROVIDER (the node package wires the `process.env`
-// reader; `packages/node/test/endpoint-overrides.test.ts` covers that
-// half). Mechanism substitutions (R10.2, header-cited):
-//
-// - `monkeypatch.setenv(...)` → the `endpointOverrides` option (a
-//   mutable provider where Python flips the var mid-test).
-// - `httpx.MockTransport` recorder → `createMockClient` over the injected
-//   fetch (`client-test-helpers.ts`); `request.url.params` → the captured
-//   `params` map.
-// - `request.extensions["timeout"]["read"]` → the `timeoutSeconds` the
-//   request executor receives (the `server-deadline.test.ts` vi.mock
-//   pattern).
-// - `_endpoints_for` / `_api_family_for` / `_build_url` → `endpointsFor`
-//   / `apiFamilyFor` / `client.core.buildUrl`; dict equality → Map entry
-//   equality; `is ENDPOINTS[region]` → `toBe(ENDPOINTS.get(region))`.
-// - `TestCliInheritsOverride` (typer CliRunner) has no TS twin — there is
-//   no CLI in this port; the shared-client property it locks is covered
-//   by `TestWorkspaceFacadeHitsOverride`.
-//
-// The 31 override-SET Python tests are corpus-excluded upstream
-// (`env_base_url_override` bucket — host-dependent URLs), so this file is
-// the only lock on the override; the 4 override-UNSET vectors replay in
-// the conformance corpus.
+// The `MP_API_BASE_URL` / `MP_APP_BASE_URL` override: endpoint table
+// resolution, per-request URL building, route-aware timeouts, workspace_id
+// injection and the Workspace facade. Mirrors tests/unit/test_api_base_url_override.py;
+// core never reads `process.env`, so env vars become `endpointOverrides` (a
+// static bag or a provider). `TestCliInheritsOverride` has no twin (no CLI here).
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -51,6 +26,7 @@ import {
   type CannedResponse,
   type CapturedFetchRequest,
   createMockClient,
+  drain,
   fakeTransport,
   makeSession,
   staticTokenResolver,
@@ -136,15 +112,6 @@ function recorder(): (request: CapturedFetchRequest) => CannedResponse {
   };
 }
 
-/** Drain an async generator (the `list(...)` analog). */
-async function drain<T>(source: AsyncIterable<T>): Promise<T[]> {
-  const out: T[] = [];
-  for await (const item of source) {
-    out.push(item);
-  }
-  return out;
-}
-
 /** Strip the query string (Python `str(request.url.copy_with(query=None))`). */
 function urlSansQuery(url: string): string {
   const u = new URL(url);
@@ -155,8 +122,10 @@ function urlSansQuery(url: string): string {
 // _endpoints_for — override vs live table
 // =============================================================================
 
-describe("TestEndpointsForResolver", () => {
-  it("test_unset_returns_live_table_object", () => {
+describe("Endpoints for resolver", () => {
+  // python: TestEndpointsForResolver
+  it("unset returns live table object", () => {
+    // python: test_unset_returns_live_table_object
     for (const region of REGIONS) {
       expect(endpointsFor(region)).toBe(ENDPOINTS.get(region));
       expect(endpointsFor(region, {})).toBe(ENDPOINTS.get(region));
@@ -166,13 +135,15 @@ describe("TestEndpointsForResolver", () => {
     }
   });
 
-  it("test_override_ignores_region", () => {
+  it("override ignores region", () => {
+    // python: test_override_ignores_region
     for (const region of REGIONS) {
       expect(asRecord(endpointsFor(region, OVERRIDE))).toStrictEqual(EXPECTED);
     }
   });
 
-  it("test_trailing_slashes_are_stripped", () => {
+  it("trailing slashes are stripped", () => {
+    // python: test_trailing_slashes_are_stripped
     for (const suffix of ["/", "//", "///"]) {
       expect(
         asRecord(endpointsFor("us", { apiBaseUrl: `${BASE}${suffix}` })),
@@ -180,7 +151,8 @@ describe("TestEndpointsForResolver", () => {
     }
   });
 
-  it("test_empty_or_slash_only_value_means_unset", () => {
+  it("empty or slash only value means unset", () => {
+    // python: test_empty_or_slash_only_value_means_unset
     for (const value of ["", "/", "//"]) {
       expect(endpointsFor("eu", { apiBaseUrl: value })).toBe(
         ENDPOINTS.get("eu"),
@@ -191,7 +163,8 @@ describe("TestEndpointsForResolver", () => {
     }
   });
 
-  it("test_path_prefixed_base_is_preserved", () => {
+  it("path prefixed base is preserved", () => {
+    // python: test_path_prefixed_base_is_preserved
     const table = endpointsFor("us", {
       apiBaseUrl: "https://proxy.example/mp/",
     });
@@ -203,7 +176,8 @@ describe("TestEndpointsForResolver", () => {
     expect(table.get("app")).toBe("https://proxy.example/mp/api/app");
   });
 
-  it("test_live_table_is_never_mutated", () => {
+  it("live table is never mutated", () => {
+    // python: test_live_table_is_never_mutated
     const before = snapshotLive();
     endpointsFor("us", OVERRIDE);
     endpointsFor("eu", OVERRIDE);
@@ -214,7 +188,8 @@ describe("TestEndpointsForResolver", () => {
     );
   });
 
-  it("test_app_base_alone_overrides_only_app_family", () => {
+  it("app base alone overrides only app family", () => {
+    // python: test_app_base_alone_overrides_only_app_family
     const table = endpointsFor("eu", {
       appBaseUrl: "http://app.internal:9000/",
     });
@@ -228,7 +203,8 @@ describe("TestEndpointsForResolver", () => {
     );
   });
 
-  it("test_app_base_wins_over_api_base_for_app_family", () => {
+  it("app base wins over API base for app family", () => {
+    // python: test_app_base_wins_over_api_base_for_app_family
     const table = endpointsFor("us", {
       apiBaseUrl: BASE,
       appBaseUrl: "http://app.internal:9000",
@@ -244,8 +220,10 @@ describe("TestEndpointsForResolver", () => {
 // _build_url — read at request time
 // =============================================================================
 
-describe("TestBuildUrlUnderOverride", () => {
-  it("test_each_family_uses_prefix", () => {
+describe("Build URL under override", () => {
+  // python: TestBuildUrlUnderOverride
+  it("each family uses prefix", () => {
+    // python: test_each_family_uses_prefix
     const client = createMixpanelClient({
       session: makeSession(),
       endpointOverrides: OVERRIDE,
@@ -255,7 +233,8 @@ describe("TestBuildUrlUnderOverride", () => {
     }
   });
 
-  it("test_env_is_read_per_call_not_at_construction", () => {
+  it("env is read per call not at construction", () => {
+    // python: test_env_is_read_per_call_not_at_construction
     // `monkeypatch.setenv` after construction → a mutable provider the
     // client consults on every call (the node package's process.env
     // reader has exactly this shape).
@@ -274,7 +253,8 @@ describe("TestBuildUrlUnderOverride", () => {
     expect(client.core.buildUrl("query", "/segmentation")).toBe(live);
   });
 
-  it("test_eu_session_is_redirected_too", () => {
+  it("EU session is redirected too", () => {
+    // python: test_eu_session_is_redirected_too
     const client = createMixpanelClient({
       session: makeSession({ region: "eu" }),
       endpointOverrides: OVERRIDE,
@@ -289,8 +269,10 @@ describe("TestBuildUrlUnderOverride", () => {
 // Full request URL per family through the client
 // =============================================================================
 
-describe("TestClientRequestsHitOverride", () => {
-  it("test_get_events_hits_query_prefix", async () => {
+describe("Client requests hit override", () => {
+  // python: TestClientRequestsHitOverride
+  it("get events hits query prefix", async () => {
+    // python: test_get_events_hits_query_prefix
     const { client, transport } = createMockClient(makeSession(), recorder(), {
       endpointOverrides: OVERRIDE,
     });
@@ -300,7 +282,8 @@ describe("TestClientRequestsHitOverride", () => {
     ]);
   });
 
-  it("test_export_events_hits_export_prefix", async () => {
+  it("export events hits export prefix", async () => {
+    // python: test_export_events_hits_export_prefix
     const { client, transport } = createMockClient(makeSession(), recorder(), {
       endpointOverrides: OVERRIDE,
     });
@@ -310,7 +293,8 @@ describe("TestClientRequestsHitOverride", () => {
     ]);
   });
 
-  it("test_engage_stats_hits_engage_prefix", async () => {
+  it("engage stats hits engage prefix", async () => {
+    // python: test_engage_stats_hits_engage_prefix
     const { client, transport } = createMockClient(makeSession(), recorder(), {
       endpointOverrides: OVERRIDE,
     });
@@ -320,7 +304,8 @@ describe("TestClientRequestsHitOverride", () => {
     ]);
   });
 
-  it("test_app_request_hits_app_prefix", async () => {
+  it("app request hits app prefix", async () => {
+    // python: test_app_request_hits_app_prefix
     const { client, transport } = createMockClient(makeSession(), recorder(), {
       endpointOverrides: OVERRIDE,
     });
@@ -330,7 +315,8 @@ describe("TestClientRequestsHitOverride", () => {
     ]);
   });
 
-  it("test_trailing_slash_base_yields_clean_urls", async () => {
+  it("trailing slash base yields clean URLs", async () => {
+    // python: test_trailing_slash_base_yields_clean_urls
     const { client, transport } = createMockClient(makeSession(), recorder(), {
       endpointOverrides: { apiBaseUrl: `${BASE}/` },
     });
@@ -351,8 +337,10 @@ describe("TestClientRequestsHitOverride", () => {
 // Route-aware timeout + workspace_id injection under the override
 // =============================================================================
 
-describe("TestTimeoutSelectionUnderOverride", () => {
-  it("test_app_request_keeps_app_timeout", async () => {
+describe("Timeout selection under override", () => {
+  // python: TestTimeoutSelectionUnderOverride
+  it("app request keeps app timeout", async () => {
+    // python: test_app_request_keeps_app_timeout
     const { client } = createMockClient(makeSession(), okResults, {
       endpointOverrides: OVERRIDE,
     });
@@ -360,7 +348,8 @@ describe("TestTimeoutSelectionUnderOverride", () => {
     expect(capturedTimeouts[0]).toBe(DEFAULT_APP_TIMEOUT_S);
   });
 
-  it("test_query_request_keeps_query_timeout", async () => {
+  it("query request keeps query timeout", async () => {
+    // python: test_query_request_keeps_query_timeout
     const { client } = createMockClient(makeSession(), recorder(), {
       endpointOverrides: OVERRIDE,
     });
@@ -370,7 +359,8 @@ describe("TestTimeoutSelectionUnderOverride", () => {
     expect(capturedTimeouts[1]).toBe(DEFAULT_QUERY_TIMEOUT_S);
   });
 
-  it("test_split_app_host_still_selects_app_timeout", async () => {
+  it("split app host still selects app timeout", async () => {
+    // python: test_split_app_host_still_selects_app_timeout
     const { client } = createMockClient(makeSession(), okResults, {
       endpointOverrides: {
         apiBaseUrl: BASE,
@@ -382,11 +372,13 @@ describe("TestTimeoutSelectionUnderOverride", () => {
   });
 });
 
-describe("TestWorkspaceIdInjectionUnderOverride", () => {
+describe("Workspace ID injection under override", () => {
+  // python: TestWorkspaceIdInjectionUnderOverride
   const pinned = (): ReturnType<typeof makeSession> =>
     makeSession({ workspaceId: 777 });
 
-  it("test_pinned_query_request_carries_workspace_id", async () => {
+  it("pinned query request carries workspace ID", async () => {
+    // python: test_pinned_query_request_carries_workspace_id
     const { client, transport } = createMockClient(pinned(), recorder(), {
       endpointOverrides: OVERRIDE,
     });
@@ -396,7 +388,8 @@ describe("TestWorkspaceIdInjectionUnderOverride", () => {
     expect(params["project_id"]).toBe("12345");
   });
 
-  it("test_pinned_app_request_does_not_carry_workspace_id", async () => {
+  it("pinned app request does not carry workspace ID", async () => {
+    // python: test_pinned_app_request_does_not_carry_workspace_id
     const { client, transport } = createMockClient(pinned(), okResults, {
       endpointOverrides: OVERRIDE,
     });
@@ -406,7 +399,8 @@ describe("TestWorkspaceIdInjectionUnderOverride", () => {
     ).toBe(false);
   });
 
-  it("test_unpinned_query_request_has_no_workspace_id", async () => {
+  it("unpinned query request has no workspace ID", async () => {
+    // python: test_unpinned_query_request_has_no_workspace_id
     const { client, transport } = createMockClient(makeSession(), recorder(), {
       endpointOverrides: OVERRIDE,
     });
@@ -421,8 +415,10 @@ describe("TestWorkspaceIdInjectionUnderOverride", () => {
 // _api_family_for — longest-prefix family classification
 // =============================================================================
 
-describe("TestApiFamilyFor", () => {
-  it("test_live_table_classification", () => {
+describe("API family for", () => {
+  // python: TestApiFamilyFor
+  it("live table classification", () => {
+    // python: test_live_table_classification
     const cases: ReadonlyArray<readonly [string, EndpointKind | null]> = [
       ["https://mixpanel.com/api/query/insights", "query"],
       ["https://mixpanel.com/api/query/engage/", "engage"],
@@ -438,7 +434,8 @@ describe("TestApiFamilyFor", () => {
     }
   });
 
-  it("test_longest_prefix_wins_under_collision", () => {
+  it("longest prefix wins under collision", () => {
+    // python: test_longest_prefix_wins_under_collision
     const table = new Map<EndpointKind, string>([
       ["query", "https://proxy/api/query"],
       ["export", "https://proxy/api/2.0"],
@@ -457,7 +454,8 @@ describe("TestApiFamilyFor", () => {
   });
 });
 
-describe("TestPrefixCollisionConfigs", () => {
+describe("Prefix collision configs", () => {
+  // python: TestPrefixCollisionConfigs
   /** App base nested under the query prefix (reviewer config 1). */
   const APP_UNDER_QUERY: EndpointOverrides = {
     apiBaseUrl: "https://proxy",
@@ -496,7 +494,8 @@ describe("TestPrefixCollisionConfigs", () => {
     return { request, timeout: capturedTimeouts[0]! };
   }
 
-  it("test_app_request_is_app_family", async () => {
+  it("app request is app family", async () => {
+    // python: test_app_request_is_app_family
     for (const overrides of CONFIGS) {
       const { request, timeout } = await seenFor("app", overrides);
       expect(
@@ -509,7 +508,8 @@ describe("TestPrefixCollisionConfigs", () => {
     }
   });
 
-  it("test_query_request_is_query_family", async () => {
+  it("query request is query family", async () => {
+    // python: test_query_request_is_query_family
     for (const overrides of CONFIGS) {
       const { request, timeout } = await seenFor("query", overrides);
       expect(
@@ -520,7 +520,8 @@ describe("TestPrefixCollisionConfigs", () => {
     }
   });
 
-  it("test_live_engage_request_still_carries_workspace_id", async () => {
+  it("live engage request still carries workspace ID", async () => {
+    // python: test_live_engage_request_still_carries_workspace_id
     const { client, transport } = createMockClient(
       makeSession({ workspaceId: 777 }),
       recorder(),
@@ -541,7 +542,8 @@ describe("TestPrefixCollisionConfigs", () => {
 // `createNodeWorkspace()` / `createBrowserWorkspace()` take).
 // =============================================================================
 
-describe("TestWorkspaceFacadeHitsOverride", () => {
+describe("Workspace facade hits override", () => {
+  // python: TestWorkspaceFacadeHitsOverride
   const INSIGHTS_BODY = {
     computed_at: "2025-01-15T12:00:00",
     date_range: { from_date: "2025-01-01", to_date: "2025-01-31" },
@@ -575,19 +577,22 @@ describe("TestWorkspaceFacadeHitsOverride", () => {
     };
   }
 
-  it("test_events", async () => {
+  it("events", async () => {
+    // python: test_events
     const { ws, urls } = envWorkspace();
     await expect(ws.events()).resolves.toStrictEqual(["Login"]);
     expect(urls()).toStrictEqual([`${BASE}/api/query/events/names`]);
   });
 
-  it("test_query", async () => {
+  it("query", async () => {
+    // python: test_query
     const { ws, urls } = envWorkspace();
     await ws.query("Login", { last: 30 });
     expect(urls()).toStrictEqual([`${BASE}/api/query/insights`]);
   });
 
-  it("test_stream_events", async () => {
+  it("stream events", async () => {
+    // python: test_stream_events
     const { ws, urls } = envWorkspace();
     const rows = await drain(
       ws.streamEvents({ from_date: "2024-01-01", to_date: "2024-01-31" }),
@@ -601,8 +606,10 @@ describe("TestWorkspaceFacadeHitsOverride", () => {
 // Unset → byte-identical live behaviour
 // =============================================================================
 
-describe("TestUnsetIsLive", () => {
-  it("test_query_url_matches_live_region", async () => {
+describe("Unset is live", () => {
+  // python: TestUnsetIsLive
+  it("query URL matches live region", async () => {
+    // python: test_query_url_matches_live_region
     const cases: ReadonlyArray<readonly [Region, string]> = [
       ["us", "https://mixpanel.com/api/query/events/names"],
       ["eu", "https://eu.mixpanel.com/api/query/events/names"],

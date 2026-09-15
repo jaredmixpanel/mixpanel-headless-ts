@@ -1,27 +1,9 @@
-// Layer-3 translation — Phase-3 packet B4-C1: the CLIENT-SIDE classes of
-// tests/unit/test_query_workspace_scoping.py (issue #198 —
-// explicit-only workspace-pin injection on Query-host requests):
-// TestQueryHostInjectionWhenPinned, TestInjectionOptOut,
-// TestNoWorkspacePinned, TestNonQueryHostsUnaffected,
-// TestPinLifecycle.
-//
-// Header exclusions (packet C1 §Layer-3):
-// - ::TestWorkspaceFacadeScoping (:379) and ::TestDiscoveryCacheAcrossUse
-//   (:401) are facade/service tests → B5/B6.
-// - ::TestNonQueryHostsUnaffected::
-//   test_export_stream_carries_no_workspace_id_param (:300) exercises
-//   `export_events` (a C2-owned method) — DEFERRED to B4-C2 (recorded in
-//   B4-C1-notes.md; C2 must land it).
-//
-// Entry-point substitution (packet C1 boundary): Python drives the thin
-// C2 wrappers `get_events()` / `insights_query()` over `_request`; those
-// public surfaces land at B4-C2, so the pin-injection assertions here
-// drive the SAME `_request` seam (`client.requestQueryHost`) with the
-// SAME Query-host URLs — exactly the seam Python's TestInjectionOptOut
-// and test_caller_supplied_workspace_id already drive directly. C2
-// re-locks the wrappers end-to-end. All assertion content (single
-// request, URL host/path, workspace_id presence/absence/value) is
-// preserved.
+// Explicit-only workspace-pin injection on Query-host requests: pinned
+// GET/POST carry `workspace_id`, `injectWorkspaceId: false` opts out, unpinned
+// sessions trigger no discovery, App API requests are unaffected, `use()`
+// clears the pin. Mirrors the client-side classes of
+// tests/unit/test_query_workspace_scoping.py, driven through `requestQueryHost`.
+
 import { describe, expect, it } from "vitest";
 
 import { buildUrl } from "../../src/client/url.js";
@@ -57,8 +39,10 @@ function unpinnedSession(): ReturnType<typeof makeSession> {
 /** The Query-host GET url `get_events()` issues (`/events/names`). */
 const EVENTS_NAMES_URL = buildUrl("us", "query", "/events/names");
 
-describe("TestQueryHostInjectionWhenPinned", () => {
-  it("test_pinned_workspace_get_includes_workspace_id", async () => {
+describe("Query host injection when pinned", () => {
+  // python: TestQueryHostInjectionWhenPinned
+  it("pinned workspace get includes workspace ID", async () => {
+    // python: test_pinned_workspace_get_includes_workspace_id
     const captured: CapturedFetchRequest[] = [];
     const { client } = createMockClient(pinnedSession(), (incoming) => {
       captured.push(incoming);
@@ -73,14 +57,15 @@ describe("TestQueryHostInjectionWhenPinned", () => {
     expect(request.params["workspace_id"]).toBe(String(PINNED_WORKSPACE_ID));
   });
 
-  it("test_pinned_workspace_post_includes_workspace_id", async () => {
+  it("pinned workspace post includes workspace ID", async () => {
+    // python: test_pinned_workspace_post_includes_workspace_id
     const captured: CapturedFetchRequest[] = [];
     const { client } = createMockClient(pinnedSession(), (incoming) => {
       captured.push(incoming);
       return { status: 200, json: { headers: [], series: {} } };
     });
     // insights_query POSTs to the Query host with the payload as the
-    // JSON body (the C2 wrapper's exact `_request` call shape).
+    // JSON body (the wrapper's exact `_request` call shape).
     await client.requestQueryHost(
       "POST",
       buildUrl("us", "query", "/insights"),
@@ -95,7 +80,8 @@ describe("TestQueryHostInjectionWhenPinned", () => {
     expect(request.params["workspace_id"]).toBe(String(PINNED_WORKSPACE_ID));
   });
 
-  it("test_set_workspace_id_pin_scopes_subsequent_queries", async () => {
+  it("set workspace ID pin scopes subsequent queries", async () => {
+    // python: test_set_workspace_id_pin_scopes_subsequent_queries
     const captured: CapturedFetchRequest[] = [];
     const { client } = createMockClient(unpinnedSession(), (incoming) => {
       captured.push(incoming);
@@ -112,8 +98,10 @@ describe("TestQueryHostInjectionWhenPinned", () => {
   });
 });
 
-describe("TestInjectionOptOut", () => {
-  it("test_inject_workspace_id_false_omits_param_even_when_pinned", async () => {
+describe("Injection opt out", () => {
+  // python: TestInjectionOptOut
+  it("inject workspace ID false omits param even when pinned", async () => {
+    // python: test_inject_workspace_id_false_omits_param_even_when_pinned
     const captured: CapturedFetchRequest[] = [];
     const { client } = createMockClient(pinnedSession(), (incoming) => {
       captured.push(incoming);
@@ -130,8 +118,10 @@ describe("TestInjectionOptOut", () => {
   });
 });
 
-describe("TestNoWorkspacePinned", () => {
-  it("test_unpinned_query_has_no_workspace_id_and_no_discovery", async () => {
+describe("No workspace pinned", () => {
+  // python: TestNoWorkspacePinned
+  it("unpinned query has no workspace ID and no discovery", async () => {
+    // python: test_unpinned_query_has_no_workspace_id_and_no_discovery
     const captured: CapturedFetchRequest[] = [];
     const { client } = createMockClient(unpinnedSession(), (incoming) => {
       captured.push(incoming);
@@ -148,7 +138,8 @@ describe("TestNoWorkspacePinned", () => {
     expect(request.url.includes("/workspaces")).toBe(false);
   });
 
-  it("test_caller_supplied_workspace_id_is_preserved", async () => {
+  it("caller supplied workspace ID is preserved", async () => {
+    // python: test_caller_supplied_workspace_id_is_preserved
     const captured: CapturedFetchRequest[] = [];
     const { client } = createMockClient(pinnedSession(), (incoming) => {
       captured.push(incoming);
@@ -162,8 +153,10 @@ describe("TestNoWorkspacePinned", () => {
   });
 });
 
-describe("TestNonQueryHostsUnaffected", () => {
-  it("test_app_request_carries_no_workspace_id_param", async () => {
+describe("Non query hosts unaffected", () => {
+  // python: TestNonQueryHostsUnaffected
+  it("app request carries no workspace ID param", async () => {
+    // python: test_app_request_carries_no_workspace_id_param
     const captured: CapturedFetchRequest[] = [];
     const { client } = createMockClient(pinnedSession(), (incoming) => {
       captured.push(incoming);
@@ -182,12 +175,14 @@ describe("TestNonQueryHostsUnaffected", () => {
     expect(Object.hasOwn(request.params, "workspace_id")).toBe(false);
   });
 
-  // test_export_stream_carries_no_workspace_id_param → B4-C2 (see the
-  // file header — export_events is C2-owned).
+  // test_export_stream_carries_no_workspace_id_param drives `exportEvents`
+  // and lives in client-export.test.ts.
 });
 
-describe("TestPinLifecycle", () => {
-  it("test_use_project_clears_pin_from_query_params", async () => {
+describe("Pin lifecycle", () => {
+  // python: TestPinLifecycle
+  it("use project clears pin from query params", async () => {
+    // python: test_use_project_clears_pin_from_query_params
     const captured: CapturedFetchRequest[] = [];
     const { client } = createMockClient(pinnedSession(), (incoming) => {
       captured.push(incoming);
@@ -204,7 +199,8 @@ describe("TestPinLifecycle", () => {
     );
   });
 
-  it("test_zero_axis_use_clears_pin_from_query_params", async () => {
+  it("zero axis use clears pin from query params", async () => {
+    // python: test_zero_axis_use_clears_pin_from_query_params
     const captured: CapturedFetchRequest[] = [];
     const { client } = createMockClient(pinnedSession(), (incoming) => {
       captured.push(incoming);

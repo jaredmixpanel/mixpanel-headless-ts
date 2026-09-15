@@ -1,36 +1,8 @@
-// Translated schema-graph tests (B5-S1, packet §4): assertion-for-
-// assertion port of tests/unit/test_schema_graph.py.
-//
-// Owned here: TestApiClientBulkLexicon :274 (client-direct — translated
-// against the B4 client), TestCanonicalResourceType :378,
-// TestDiscoveryGetSchemaGraph :398, and the FACADE half of
-// TestFacadeAndCli :504.
-//
-// Header exclusions:
-// - TestFacadeAndCli's two CLI cases (`test_cli_json` :518,
-//   `test_cli_table_shows_relationships` :530) — the CLI is out of
-//   Phase-3 scope (api-map preamble).
-// - TestSchemaGraphResult :69 was translated in Phase 2
-//   (`test/types/results/schema-graph.test.ts:1-11`) EXCEPT its
-//   `to_graph()` assertions, which that header defers to B5. Those come
-//   alive here with {@link SchemaGraphResult.toGraph}: the six
-//   deferred cases are re-homed in the `TestSchemaGraphResult
-//   (to_graph half)` block below, verbatim.
-//
-// Translation notes:
-// - `networkx` has no vendored TS twin, so `toGraph()` returns the
-//   adjacency object the graph is built from. The three helpers below
-//   express the asserted networkx API: `g.nodes[n]["kind"]`,
-//   `list(g.successors(n))`, `g.edges[u, v]["density_local"]`.
-// - `to_graph() is to_graph()` (pandas/graph identity caching) becomes
-//   repeated-call deep equality — the Phase-2 convention
-//   (`test/types/results/types.test.ts:8-11`); the codec-visible
-//   `_graph_cache` slot stays `null` by design.
-// - `caplog.at_level(DEBUG)` -> the injected {@link DiscoveryLogger}
-//   (R9.5); the assertion on the message substring is unchanged.
-// - `MagicMock()` api clients -> stub objects carrying only the two
-//   lexicon methods, plus a `resource_type` call log for
-//   `test_skip_user_properties`.
+// Schema graph: SchemaGraphResult.toGraph(), the client's bulk lexicon and
+// per-event property calls, canonicalResourceType, DiscoveryService.
+// get_schema_graph and the Workspace facade delegation. Mirrors
+// tests/unit/test_schema_graph.py minus the two CLI cases. networkx has no
+// TS twin: toGraph() returns the adjacency object; caching = deep equality.
 
 import { describe, expect, it } from "vitest";
 
@@ -48,17 +20,13 @@ import {
 } from "../../src/types/results/discovery.js";
 import { Workspace } from "../../src/workspace.js";
 import {
-  type CannedResponse,
-  type CapturedFetchRequest,
+  type CannedHandler,
   createMockClient,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 
-/** A canned-response handler (the httpx.MockTransport handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
-
 /** `_client(handler)` (test_schema_graph.py). */
-function mockClient(handler: Handler): MixpanelClient {
+function mockClient(handler: CannedHandler): MixpanelClient {
   return createMockClient(makeSession(), handler).client;
 }
 
@@ -174,7 +142,7 @@ function lexiconStub(
       return Promise.resolve(perEvent.rows);
     },
     core: { now: (): Date => new Date("2026-06-03T00:00:00.000Z") },
-    // B6-W1: the facade constructor installs the workspace resolver
+    // The facade constructor installs the workspace resolver
     // (`workspace.py`); `MagicMock(spec=…)` covers it in Python.
     hasWorkspaceResolver: false,
     setWorkspaceResolver: (): void => {},
@@ -208,7 +176,8 @@ function defaultMockApi(): LexiconStub {
   );
 }
 
-describe("TestSchemaGraphResult (to_graph half — Phase-2 deferral)", () => {
+describe("Schema graph result (to_graph half)", () => {
+  // python: TestSchemaGraphResult
   it("yields a directed event->property graph with node kinds", () => {
     const g = sampleResult().toGraph();
     expect(nodeKind(g, "Purchase")).toBe("event");
@@ -264,7 +233,8 @@ describe("TestSchemaGraphResult (to_graph half — Phase-2 deferral)", () => {
   });
 });
 
-describe("TestApiClientBulkLexicon", () => {
+describe("API client bulk lexicon", () => {
+  // python: TestApiClientBulkLexicon
   it("adds includeEvents=true and resourceType for include_events", async () => {
     let seen: Record<string, string> = {};
     const client = mockClient((request) => {
@@ -369,7 +339,8 @@ describe("TestApiClientBulkLexicon", () => {
   });
 });
 
-describe("TestApiClientPerEventProperties", () => {
+describe("API client per event properties", () => {
+  // python: TestApiClientPerEventProperties
   // The query-API per-event properties gather (the relationship
   // source). The App API's `includeEvents=true` bulk call computes this
   // same join behind a ~120s gateway deadline it cannot meet on large
@@ -378,7 +349,8 @@ describe("TestApiClientPerEventProperties", () => {
   // `client/server-deadline.test.ts` — it needs the transport-timeout
   // capture seam.)
 
-  it("test_url_params_and_unwrap", async () => {
+  it("URL params and unwrap", async () => {
+    // python: test_url_params_and_unwrap
     let seenUrl = "";
     let seenParams: Record<string, string> = {};
     const client = mockClient((request) => {
@@ -402,7 +374,8 @@ describe("TestApiClientPerEventProperties", () => {
     ]);
   });
 
-  it("test_raises_on_unexpected_shape", async () => {
+  it("raises on unexpected shape", async () => {
+    // python: test_raises_on_unexpected_shape
     const client = mockClient(() => ({
       status: 200,
       json: { results: { unexpected: "shape" } },
@@ -416,7 +389,8 @@ describe("TestApiClientPerEventProperties", () => {
   });
 });
 
-describe("TestCanonicalResourceType", () => {
+describe("Canonical resource type", () => {
+  // python: TestCanonicalResourceType
   it.each([
     ["event", "Event"],
     ["events", "Event"],
@@ -430,7 +404,8 @@ describe("TestCanonicalResourceType", () => {
   });
 });
 
-describe("TestDiscoveryGetSchemaGraph", () => {
+describe("Discovery get schema graph", () => {
+  // python: TestDiscoveryGetSchemaGraph
   it("builds the adjacency maps from the inverted per-event gather", async () => {
     const stub = defaultMockApi();
     const result = await new DiscoveryService(stub.client).getSchemaGraph();
@@ -560,7 +535,8 @@ describe("TestDiscoveryGetSchemaGraph", () => {
   });
 });
 
-describe("TestFacadeAndCli (facade half)", () => {
+describe("Facade and CLI (facade half)", () => {
+  // python: TestFacadeAndCli
   it("delegates Workspace.schema_graph to the discovery service", async () => {
     const stub = lexiconStub([{ name: "Purchase" }], []);
     const ws = new Workspace({ session: makeSession(), client: stub.client });

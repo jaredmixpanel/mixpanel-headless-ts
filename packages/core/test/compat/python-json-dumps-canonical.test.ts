@@ -1,22 +1,8 @@
-// Canonical `json.dumps` twin — heads spec 02 §3.1/§3.3
-// (`mixpanel-desktop-app/docs/specs/heads/02-queryref-and-two-body-identity.md`).
-//
-// The contract under test is CPython
-// `json.dumps(value, sort_keys=True, separators=(",", ":"))` with
-// `ensure_ascii=True`, byte for byte, PLUS the numeric normalization rule
-// (any integral number renders as an integer) and the two refusals the
-// canonical form adds over the default twin: non-finite numbers and
-// magnitudes past 2**53 throw rather than being spelled.
-//
-// Every expected string in the table below was produced by CPython 3.14 on
-// 2026-09-03; the bulk table lives in `fixtures/canonical-fixtures.json`,
-// emitted by `scripts/generate-canonical-fixtures.py` (re-run it and then
-// `npm run fmt` — Prettier owns that file's formatting).
-//
-// Non-ASCII and control characters are written as braced `\u{...}` escapes on
-// purpose: the expected values are byte contracts, and a raw astral or C0
-// character in the source is one editor round-trip away from becoming a
-// different byte sequence.
+// `pythonJsonDumpsCanonical` — CPython `json.dumps(v, sort_keys=True,
+// separators=(",", ":"))` byte for byte, plus the canonical form's own rules:
+// integral floats render as ints; NaN/Infinity and magnitudes past 2**53 throw.
+// No Python test file behind this suite; the bulk table is the generated
+// `fixtures/canonical-fixtures.json`. Expected strings are `\u{...}`-escaped on purpose: they are byte contracts.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 

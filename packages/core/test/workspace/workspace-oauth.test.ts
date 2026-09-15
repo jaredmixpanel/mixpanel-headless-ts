@@ -1,15 +1,8 @@
-// Layer-3 translation of `tests/unit/test_workspace_oauth.py` (274
-// lines): `TestWorkspaceConstructionWithOAuth`,
-// `TestWorkspaceListWorkspaces`, `TestWorkspaceResolveWorkspaceId`
-// (:253) — B7-A1 packet §3.4 / playbook B7 row `:231` (session-bypass
-// construction + injected token resolver; no B8 dependency).
-//
-// Mechanism substitutions (header-cited per R10.2): the httpx
-// MockTransport workspace handler becomes the `createMockClient`
-// canned handler; `make_session(oauth_token=…)` becomes
-// `makeSession({oauthToken})` (the same helper family). The Python
-// `TestWorkspaceSetWorkspaceId` removal note carries over —
-// `set_workspace_id` is gone by design (T050 / FR-038).
+// Workspace over an OAuth session: construction with an injected token
+// resolver, listWorkspaces and resolveWorkspaceId. Mirrors
+// tests/unit/test_workspace_oauth.py; the httpx MockTransport handler becomes
+// the createMockClient canned handler and `make_session(oauth_token=…)`
+// becomes `makeSession({oauthToken})`. `set_workspace_id` is gone by design.
 
 import { describe, expect, it } from "vitest";
 
@@ -69,7 +62,8 @@ function workspaceHandler(request: CapturedFetchRequest): CannedResponse {
   return { status: 404, json: { error: "not found" } };
 }
 
-describe("TestWorkspaceConstructionWithOAuth (test_workspace_oauth.py:157)", () => {
+describe("Workspace construction with OAuth", () => {
+  // python: TestWorkspaceConstructionWithOAuth
   it("an OAuth-typed session resolves through the oauth_token account path", () => {
     const oauthSession = makeSession({
       name: "test_account",
@@ -101,7 +95,8 @@ describe("TestWorkspaceConstructionWithOAuth (test_workspace_oauth.py:157)", () 
   });
 });
 
-describe("TestWorkspaceListWorkspaces (test_workspace_oauth.py:196)", () => {
+describe("Workspace list workspaces", () => {
+  // python: TestWorkspaceListWorkspaces
   it("listWorkspaces() returns PublicWorkspace models", async () => {
     const { client } = createMockClient(TEST_SESSION, workspaceHandler);
     const ws = new Workspace({ session: TEST_SESSION, client });
@@ -127,7 +122,8 @@ describe("TestWorkspaceListWorkspaces (test_workspace_oauth.py:196)", () => {
   });
 });
 
-describe("TestWorkspaceResolveWorkspaceId (test_workspace_oauth.py:253)", () => {
+describe("Workspace resolve workspace ID", () => {
+  // python: TestWorkspaceResolveWorkspaceId
   it("resolveWorkspaceId() returns the default workspace ID", async () => {
     const { client } = createMockClient(TEST_SESSION, workspaceHandler);
     const ws = new Workspace({ session: TEST_SESSION, client });

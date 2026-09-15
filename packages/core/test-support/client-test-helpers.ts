@@ -1,9 +1,8 @@
-// Shared helpers for the B4-C1 client Layer-3 translations: the
-// `tests/conftest.py::make_session` mirror, a static token resolver
-// (the OnDiskTokenResolver inline-token arm the Python tests exercise
-// implicitly), and an httpx.MockTransport analog over the R2.4 injected
-// fetch (entry-point substitution per B0-notes decision 13 — handlers
-// receive the captured request view and return canned responses).
+// Shared helpers for the client test suites: the `tests/conftest.py`
+// `make_session` mirror, a static token resolver (OnDiskTokenResolver's
+// inline-token arm), and an httpx.MockTransport analog over the injected
+// fetch — handlers receive the captured request view and return canned
+// responses.
 
 import type {
   Account,
@@ -33,7 +32,7 @@ export interface MakeSessionOptions {
 }
 
 /**
- * Build a Session for tests with sensible defaults (conftest.py:65-125).
+ * Build a Session for tests with sensible defaults (`conftest.py`).
  *
  * @param options - Overrides.
  * @returns A Session usable for `createMixpanelClient({session})`.
@@ -114,6 +113,9 @@ export interface CannedResponse {
   readonly headers?: Readonly<Record<string, string>>;
 }
 
+/** A canned-response handler (the `httpx.MockTransport` handler twin). */
+export type CannedHandler = (request: CapturedFetchRequest) => CannedResponse;
+
 /** The fake transport: injectable fetch + the capture log. */
 export interface FakeTransport {
   readonly fetch: typeof fetch;
@@ -128,9 +130,7 @@ export interface FakeTransport {
  *   `TypeError` for the fetch-rejection analog of `httpx.ConnectError`).
  * @returns The fake transport.
  */
-export function fakeTransport(
-  handler: (request: CapturedFetchRequest) => CannedResponse,
-): FakeTransport {
+export function fakeTransport(handler: CannedHandler): FakeTransport {
   const captures: CapturedFetchRequest[] = [];
   const fakeFetch = (async (
     input: string | URL | Request,
@@ -177,8 +177,8 @@ export function fakeTransport(
 /**
  * Create a client with a mock transport (create_mock_client analog).
  * Zero-delay sleep and zero RNG keep retry tests instant and
- * deterministic (B0 deviation 5: `_calculate_backoff` monkeypatch pins
- * translate to injected-RNG-deterministic values).
+ * deterministic (the `_calculate_backoff` monkeypatch pins become
+ * injected-RNG-deterministic values).
  *
  * @param session - The session to bind.
  * @param handler - The canned-response handler.
@@ -187,7 +187,7 @@ export function fakeTransport(
  */
 export function createMockClient(
   session: Session,
-  handler: (request: CapturedFetchRequest) => CannedResponse,
+  handler: CannedHandler,
   extra: Partial<MixpanelClientOptions> = {},
 ): { client: MixpanelClient; transport: FakeTransport; sleeps: number[] } {
   const transport = fakeTransport(handler);
@@ -238,4 +238,46 @@ export async function drain<T>(source: AsyncIterable<T>): Promise<T[]> {
     out.push(item);
   }
   return out;
+}
+
+/**
+ * The OAuth-token session the facade suites bind their mock client to
+ * (the `_session()` helper of the `test_workspace_*` modules).
+ */
+export const CLIENT_SESSION: Session = makeSession({
+  projectId: "12345",
+  region: "us",
+  oauthToken: "test-token",
+});
+
+/**
+ * The service-account session the facade suites hand to `Workspace`
+ * (`_TEST_SESSION` of the `test_workspace_*` modules).
+ */
+export const FACADE_SESSION: Session = makeSession({
+  projectId: "12345",
+  region: "us",
+  username: "test_user",
+  secret: "test_secret",
+});
+
+/**
+ * A 200 App-API response wrapping `results` in the `{status: "ok"}`
+ * envelope (the `_ok` helper of the `test_workspace_*` modules).
+ *
+ * @param results - The `results` payload.
+ * @returns The canned response.
+ */
+export function ok(results: unknown): CannedResponse {
+  return { status: 200, json: { status: "ok", results } };
+}
+
+/**
+ * Parse a captured request body as JSON (`json.loads(request.content)`).
+ *
+ * @param bodyText - The captured body text.
+ * @returns The parsed value.
+ */
+export function parseBody(bodyText: string): unknown {
+  return JSON.parse(bodyText) as unknown;
 }

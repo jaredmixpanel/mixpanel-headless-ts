@@ -1,6 +1,7 @@
-// B0-1: tests written FIRST from R11.5/R11.6 semantics. Expected
-// values produced by CPython 3.14.6 `len`/slicing/`sorted` (the oracle)
-// on 2026-08-15.
+// Codepoint-based string helpers (`cpLength`, `codepoints`, `cpSlice`,
+// `sortedByCodepoint`) mirroring Python `len(str)`, `list(str)`, slicing and
+// `sorted()` over strings. No Python test file behind this suite: the expected
+// values were produced by CPython 3.14.6; the fast-check cases are TS-only.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -11,7 +12,7 @@ import {
   sortedByCodepoint,
 } from "../../src/compat/codepoint.js";
 
-describe("cpLength — Python len(str) counts codepoints (R11.6)", () => {
+describe("cpLength — Python len(str) counts codepoints", () => {
   it("counts BMP strings like UTF-16", () => {
     expect(cpLength("")).toBe(0);
     expect(cpLength("abc")).toBe(3);
@@ -31,7 +32,7 @@ describe("codepoints — Python list(str) splits by code point", () => {
   });
 });
 
-describe("cpSlice — Python str slice semantics (R11.6)", () => {
+describe("cpSlice — Python str slice semantics", () => {
   it("slices by codepoint index, never splitting surrogate pairs", () => {
     expect(cpSlice("a𝒳b", 0, 2)).toBe("a𝒳");
     expect(cpSlice("𝒳😀𝒴", 1, 2)).toBe("😀");
@@ -85,7 +86,7 @@ describe("cpSlice — Python str slice semantics (R11.6)", () => {
   });
 });
 
-describe("sortedByCodepoint — Python sorted() string order (R11.5)", () => {
+describe("sortedByCodepoint — Python sorted() string order", () => {
   it("orders by codepoint where UTF-16 unit order disagrees", () => {
     // U+FF61 (｡) < U+1F600 (😀) by codepoint; JS default sort compares
     // UTF-16 units (0xD83D < 0xFF61) and inverts the pair.

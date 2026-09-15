@@ -1,17 +1,8 @@
-// Translated bookmark-method tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/unit/test_live_query_bookmarks.py —
-// BOTH classes (TestQueryFlows :15, TestQuerySavedReportNormalization
-// :151).
-//
-// Translation notes:
-// - Python uses bare `MagicMock()` clients, so the TS twin is
-//   {@link mockClient}: a stub carrying only the two members the tested
-//   methods touch (`querySavedFlows`, `querySavedReport`) plus a call
-//   log. `assert_called_once_with(bookmark_id=..., ...)` reads that log;
-//   Python's kwargs map to the TS positional id + options bag, so the
-//   asserts compare `{bookmarkId, options}` with the same VALUES.
-// - `result.report_type` is the Phase-2 `report_type` getter on
-//   `SavedReportResult`.
+// LiveQueryService.query_flows and query_saved_report: FlowsResult parsing
+// and the per-report-type normalization of saved-report responses (headers,
+// date range, series). Mirrors tests/unit/test_live_query_bookmarks.py
+// (TestQueryFlows, TestQuerySavedReportNormalization). The MagicMock client
+// is a call-recording stub; Python kwargs become the TS id + options bag.
 
 import { describe, expect, it } from "vitest";
 
@@ -75,7 +66,8 @@ function mockClient(): MockApiClient {
   };
 }
 
-describe("TestQueryFlows", () => {
+describe("Query flows", () => {
+  // python: TestQueryFlows
   it("returns FlowsResult", async () => {
     const mock = mockClient();
     mock.setReturnValue({
@@ -215,7 +207,8 @@ describe("TestQueryFlows", () => {
   });
 });
 
-describe("TestQuerySavedReportNormalization", () => {
+describe("Query saved report normalization", () => {
+  // python: TestQuerySavedReportNormalization
   it("insights responses preserve headers and series", async () => {
     const mock = mockClient();
     mock.setReturnValue({

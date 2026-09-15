@@ -1,29 +1,8 @@
-// rrweb-analyzer GOLDEN suite (plan Layer 3,
-// `docs/history/typescript-port-plan.md:351-354`; packet B5-S3 §5
-// "Golden-file suite").
-//
-// The goldens under `goldens/` are GENERATED — never hand-edit them.
-// Regenerate from the Python repo (the behaviour arbiter):
-//
-//   uv run python conformance/goldens/rrweb/generate.py
-//   cp conformance/goldens/rrweb/*.golden.json \
-//      ../mixpanel-headless-ts/packages/core/test/replays/goldens/
-//
-// Fixture provenance:
-// - `sample-replay-001` — copied verbatim from the Python repo's
-//   `tests/fixtures/rrweb/sample-replay-001.json` (the same stream the
-//   `authored-sample-replay-001-golden` corpus vector replays).
-// - `synthetic-mixed-001` — defined in the generator; widens coverage to
-//   selection over a non-BMP text node, ancestor-context descriptions,
-//   the markdown (×N) run collapse, mutation add/remove/text/attribute,
-//   checkbox input, scroll, console-plugin errors, and the two no-op
-//   branches (non-error level, unknown interaction type).
-// - `empty-stream` — the `analyze([])` early return.
-//
-// The READ-ONLY `analytics` repo's `iron/replay-embed/__test__/
-// fixtures.ts` was inspected per packet §5: its builders
-// (`metaEvent`/`fullSnapshotEvent`/`interactionEvent`) produce strictly
-// simpler streams than the two fixtures above, so nothing was extracted.
+// RrwebAnalyzer golden suite: the analyzer's frozen projection of each fixture
+// stream must equal the golden written by the Python repo's
+// `conformance/goldens/rrweb/generate.py`. Goldens are GENERATED — regenerate
+// (`uv run python conformance/goldens/rrweb/generate.py`, then copy the
+// `*.golden.json` files into `./goldens/`), never hand-edit them. Additive.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -71,6 +50,8 @@ function freeze(
 }
 
 describe("rrweb analyzer goldens", () => {
+  // sample-replay-001 is the Python repo's tests/fixtures/rrweb stream;
+  // synthetic-mixed-001 is defined by the generator to widen coverage.
   it.each([
     ["sample-replay-001", sampleEvents, sampleGolden],
     ["synthetic-mixed-001", syntheticMixed001, syntheticGolden],

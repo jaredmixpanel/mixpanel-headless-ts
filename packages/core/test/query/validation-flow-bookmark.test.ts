@@ -1,23 +1,12 @@
-/**
- * Layer-3 translation of the `validate_flow_bookmark` classes of
- * `tests/test_validation_flow.py` (Python revision:
- * `ts-port/phase2-contract-support` HEAD; 1,066 LOC).
- *
- * Scope per b2-packets.md §V1b: `TestValidateFlowBookmarkFLB1` (4),
- * `FLB2` (5), `FLB3` (6), `FLB4` (6), `FLB5` (3), `FLB6` (5) and
- * `TestValidateFlowBookmarkDefaults` (1) — 30 tests, the exact set
- * shard V1a deferred (`validation-flow.test.ts` header). The
- * `validate_flow_args` classes of the same source file were translated
- * by V1a; this sibling file cites the same source per the packet's
- * "or a sibling `validation-flow-bookmark.test.ts`" option.
- *
- * R10.2: assertion-for-assertion.
- */
-
+// `validateFlowBookmark` rules FLB1-FLB6 and the all-defaults case —
+// translation of the `TestValidateFlowBookmarkFLB*` and
+// `TestValidateFlowBookmarkDefaults` classes of `tests/test_validation_flow.py`
+// (the `validate_flow_args` classes are in validation-flow.test.ts).
 import { describe, expect, it } from "vitest";
 
 import type { ValidationError } from "../../src/errors.js";
 import { validateFlowBookmark } from "../../src/query/validation-bookmark.js";
+import { codes } from "../../test-support/error-codes.js";
 
 /** Loose dict, the TS analogue of Python's `dict[str, Any]`. */
 type Dict = Record<string, unknown>;
@@ -46,18 +35,6 @@ function validFlowBookmark(overrides: Dict = {}): Dict {
 }
 
 /**
- * Extract error codes.
- *
- * Port of `_codes`.
- *
- * @param errors - Validation errors.
- * @returns The codes, in emission order.
- */
-function codes(errors: readonly ValidationError[]): string[] {
-  return errors.map((e) => e.code);
-}
-
-/**
  * Filter errors by code equality.
  *
  * @param errors - Validation errors.
@@ -71,29 +48,32 @@ function withCode(
   return errors.filter((e) => e.code === code);
 }
 
-// =============================================================================
-// T018: FLB1 — steps must be present and non-empty
-// =============================================================================
+// --- FLB1 — steps must be present and non-empty ---
 
-describe("TestValidateFlowBookmarkFLB1", () => {
-  it("test_empty_steps_returns_flb1_error", () => {
+describe("Validate flow bookmark FLB1", () => {
+  // python: TestValidateFlowBookmarkFLB1
+  it("empty steps returns FLB1 error", () => {
+    // python: test_empty_steps_returns_flb1_error
     const errors = validateFlowBookmark(validFlowBookmark({ steps: [] }));
     expect(errors.some((e) => e.code === "FLB1_EMPTY_STEPS")).toBe(true);
   });
 
-  it("test_missing_steps_key_returns_flb1_error", () => {
+  it("missing steps key returns FLB1 error", () => {
+    // python: test_missing_steps_key_returns_flb1_error
     const params = validFlowBookmark();
     delete params["steps"];
     const errors = validateFlowBookmark(params);
     expect(errors.some((e) => e.code === "FLB1_EMPTY_STEPS")).toBe(true);
   });
 
-  it("test_valid_steps_no_flb1_error", () => {
+  it("valid steps no FLB1 error", () => {
+    // python: test_valid_steps_no_flb1_error
     const errors = validateFlowBookmark(validFlowBookmark());
     expect(codes(errors)).not.toContain("FLB1_EMPTY_STEPS");
   });
 
-  it("test_flb1_error_path_is_steps", () => {
+  it("FLB1 error path is steps", () => {
+    // python: test_flb1_error_path_is_steps
     const errors = validateFlowBookmark(validFlowBookmark({ steps: [] }));
     const flb1Errors = withCode(errors, "FLB1_EMPTY_STEPS");
     expect(flb1Errors).toHaveLength(1);
@@ -101,19 +81,20 @@ describe("TestValidateFlowBookmarkFLB1", () => {
   });
 });
 
-// =============================================================================
-// T018: FLB2 — step event name must be non-empty
-// =============================================================================
+// --- FLB2 — step event name must be non-empty ---
 
-describe("TestValidateFlowBookmarkFLB2", () => {
-  it("test_empty_event_returns_flb2_error", () => {
+describe("Validate flow bookmark FLB2", () => {
+  // python: TestValidateFlowBookmarkFLB2
+  it("empty event returns FLB2 error", () => {
+    // python: test_empty_event_returns_flb2_error
     const errors = validateFlowBookmark(
       validFlowBookmark({ steps: [{ event: "", forward: 3, reverse: 0 }] }),
     );
     expect(errors.some((e) => e.code === "FLB2_EMPTY_STEP_EVENT")).toBe(true);
   });
 
-  it("test_whitespace_only_event_returns_flb2_error", () => {
+  it("whitespace only event returns FLB2 error", () => {
+    // python: test_whitespace_only_event_returns_flb2_error
     const errors = validateFlowBookmark(
       validFlowBookmark({
         steps: [{ event: " ".repeat(3), forward: 3, reverse: 0 }],
@@ -122,19 +103,22 @@ describe("TestValidateFlowBookmarkFLB2", () => {
     expect(errors.some((e) => e.code === "FLB2_EMPTY_STEP_EVENT")).toBe(true);
   });
 
-  it("test_missing_event_key_returns_flb2_error", () => {
+  it("missing event key returns FLB2 error", () => {
+    // python: test_missing_event_key_returns_flb2_error
     const errors = validateFlowBookmark(
       validFlowBookmark({ steps: [{ forward: 3, reverse: 0 }] }),
     );
     expect(errors.some((e) => e.code === "FLB2_EMPTY_STEP_EVENT")).toBe(true);
   });
 
-  it("test_valid_event_no_flb2_error", () => {
+  it("valid event no FLB2 error", () => {
+    // python: test_valid_event_no_flb2_error
     const errors = validateFlowBookmark(validFlowBookmark());
     expect(codes(errors)).not.toContain("FLB2_EMPTY_STEP_EVENT");
   });
 
-  it("test_flb2_error_path_includes_index", () => {
+  it("FLB2 error path includes index", () => {
+    // python: test_flb2_error_path_includes_index
     const errors = validateFlowBookmark(
       validFlowBookmark({
         steps: [
@@ -149,40 +133,44 @@ describe("TestValidateFlowBookmarkFLB2", () => {
   });
 });
 
-// =============================================================================
-// T018: FLB3 — count_type must be valid
-// =============================================================================
+// --- FLB3 — count_type must be valid ---
 
-describe("TestValidateFlowBookmarkFLB3", () => {
-  it("test_invalid_count_type_returns_flb3_error", () => {
+describe("Validate flow bookmark FLB3", () => {
+  // python: TestValidateFlowBookmarkFLB3
+  it("invalid count type returns FLB3 error", () => {
+    // python: test_invalid_count_type_returns_flb3_error
     const errors = validateFlowBookmark(
       validFlowBookmark({ count_type: "invalid" }),
     );
     expect(errors.some((e) => e.code === "FLB3_INVALID_COUNT_TYPE")).toBe(true);
   });
 
-  it("test_valid_count_type_unique_no_error", () => {
+  it("valid count type unique no error", () => {
+    // python: test_valid_count_type_unique_no_error
     const errors = validateFlowBookmark(
       validFlowBookmark({ count_type: "unique" }),
     );
     expect(codes(errors)).not.toContain("FLB3_INVALID_COUNT_TYPE");
   });
 
-  it("test_valid_count_type_total_no_error", () => {
+  it("valid count type total no error", () => {
+    // python: test_valid_count_type_total_no_error
     const errors = validateFlowBookmark(
       validFlowBookmark({ count_type: "total" }),
     );
     expect(codes(errors)).not.toContain("FLB3_INVALID_COUNT_TYPE");
   });
 
-  it("test_valid_count_type_session_no_error", () => {
+  it("valid count type session no error", () => {
+    // python: test_valid_count_type_session_no_error
     const errors = validateFlowBookmark(
       validFlowBookmark({ count_type: "session" }),
     );
     expect(codes(errors)).not.toContain("FLB3_INVALID_COUNT_TYPE");
   });
 
-  it("test_flb3_close_match_has_suggestion", () => {
+  it("FLB3 close match has suggestion", () => {
+    // python: test_flb3_close_match_has_suggestion
     const errors = validateFlowBookmark(
       validFlowBookmark({ count_type: "uniqe" }),
     );
@@ -192,7 +180,8 @@ describe("TestValidateFlowBookmarkFLB3", () => {
     expect(flb3Errors[0]!.suggestion).toContain("unique");
   });
 
-  it("test_flb3_error_path_is_count_type", () => {
+  it("FLB3 error path is count type", () => {
+    // python: test_flb3_error_path_is_count_type
     const errors = validateFlowBookmark(
       validFlowBookmark({ count_type: "bad" }),
     );
@@ -202,40 +191,44 @@ describe("TestValidateFlowBookmarkFLB3", () => {
   });
 });
 
-// =============================================================================
-// T018: FLB4 — chartType must be valid
-// =============================================================================
+// --- FLB4 — chartType must be valid ---
 
-describe("TestValidateFlowBookmarkFLB4", () => {
-  it("test_invalid_chart_type_returns_flb4_error", () => {
+describe("Validate flow bookmark FLB4", () => {
+  // python: TestValidateFlowBookmarkFLB4
+  it("invalid chart type returns FLB4 error", () => {
+    // python: test_invalid_chart_type_returns_flb4_error
     const errors = validateFlowBookmark(
       validFlowBookmark({ chartType: "invalid" }),
     );
     expect(errors.some((e) => e.code === "FLB4_INVALID_CHART_TYPE")).toBe(true);
   });
 
-  it("test_valid_chart_type_sankey_no_error", () => {
+  it("valid chart type sankey no error", () => {
+    // python: test_valid_chart_type_sankey_no_error
     const errors = validateFlowBookmark(
       validFlowBookmark({ chartType: "sankey" }),
     );
     expect(codes(errors)).not.toContain("FLB4_INVALID_CHART_TYPE");
   });
 
-  it("test_valid_chart_type_top_paths_no_error", () => {
+  it("valid chart type top paths no error", () => {
+    // python: test_valid_chart_type_top_paths_no_error
     const errors = validateFlowBookmark(
       validFlowBookmark({ chartType: "top-paths" }),
     );
     expect(codes(errors)).not.toContain("FLB4_INVALID_CHART_TYPE");
   });
 
-  it("test_valid_chart_type_tree_no_error", () => {
+  it("valid chart type tree no error", () => {
+    // python: test_valid_chart_type_tree_no_error
     const errors = validateFlowBookmark(
       validFlowBookmark({ chartType: "tree" }),
     );
     expect(codes(errors)).not.toContain("FLB4_INVALID_CHART_TYPE");
   });
 
-  it("test_flb4_close_match_has_suggestion", () => {
+  it("FLB4 close match has suggestion", () => {
+    // python: test_flb4_close_match_has_suggestion
     const errors = validateFlowBookmark(
       validFlowBookmark({ chartType: "sanke" }),
     );
@@ -245,7 +238,8 @@ describe("TestValidateFlowBookmarkFLB4", () => {
     expect(flb4Errors[0]!.suggestion).toContain("sankey");
   });
 
-  it("test_flb4_error_path_is_chart_type", () => {
+  it("FLB4 error path is chart type", () => {
+    // python: test_flb4_error_path_is_chart_type
     const errors = validateFlowBookmark(
       validFlowBookmark({ chartType: "bad" }),
     );
@@ -255,24 +249,26 @@ describe("TestValidateFlowBookmarkFLB4", () => {
   });
 });
 
-// =============================================================================
-// T018: FLB5 — date_range must be present
-// =============================================================================
+// --- FLB5 — date_range must be present ---
 
-describe("TestValidateFlowBookmarkFLB5", () => {
-  it("test_missing_date_range_returns_flb5_error", () => {
+describe("Validate flow bookmark FLB5", () => {
+  // python: TestValidateFlowBookmarkFLB5
+  it("missing date range returns FLB5 error", () => {
+    // python: test_missing_date_range_returns_flb5_error
     const params = validFlowBookmark();
     delete params["date_range"];
     const errors = validateFlowBookmark(params);
     expect(errors.some((e) => e.code === "FLB5_MISSING_DATE_RANGE")).toBe(true);
   });
 
-  it("test_present_date_range_no_flb5_error", () => {
+  it("present date range no FLB5 error", () => {
+    // python: test_present_date_range_no_flb5_error
     const errors = validateFlowBookmark(validFlowBookmark());
     expect(codes(errors)).not.toContain("FLB5_MISSING_DATE_RANGE");
   });
 
-  it("test_flb5_error_path_is_date_range", () => {
+  it("FLB5 error path is date range", () => {
+    // python: test_flb5_error_path_is_date_range
     const params = validFlowBookmark();
     delete params["date_range"];
     const errors = validateFlowBookmark(params);
@@ -282,34 +278,38 @@ describe("TestValidateFlowBookmarkFLB5", () => {
   });
 });
 
-// =============================================================================
-// T018: FLB6 — version must be 2
-// =============================================================================
+// --- FLB6 — version must be 2 ---
 
-describe("TestValidateFlowBookmarkFLB6", () => {
-  it("test_version_one_returns_flb6_error", () => {
+describe("Validate flow bookmark FLB6", () => {
+  // python: TestValidateFlowBookmarkFLB6
+  it("version one returns FLB6 error", () => {
+    // python: test_version_one_returns_flb6_error
     const errors = validateFlowBookmark(validFlowBookmark({ version: 1 }));
     expect(errors.some((e) => e.code === "FLB6_INVALID_VERSION")).toBe(true);
   });
 
-  it("test_version_three_returns_flb6_error", () => {
+  it("version three returns FLB6 error", () => {
+    // python: test_version_three_returns_flb6_error
     const errors = validateFlowBookmark(validFlowBookmark({ version: 3 }));
     expect(errors.some((e) => e.code === "FLB6_INVALID_VERSION")).toBe(true);
   });
 
-  it("test_version_two_no_flb6_error", () => {
+  it("version two no FLB6 error", () => {
+    // python: test_version_two_no_flb6_error
     const errors = validateFlowBookmark(validFlowBookmark({ version: 2 }));
     expect(codes(errors)).not.toContain("FLB6_INVALID_VERSION");
   });
 
-  it("test_missing_version_returns_flb6_error", () => {
+  it("missing version returns FLB6 error", () => {
+    // python: test_missing_version_returns_flb6_error
     const params = validFlowBookmark();
     delete params["version"];
     const errors = validateFlowBookmark(params);
     expect(errors.some((e) => e.code === "FLB6_INVALID_VERSION")).toBe(true);
   });
 
-  it("test_flb6_error_path_is_version", () => {
+  it("FLB6 error path is version", () => {
+    // python: test_flb6_error_path_is_version
     const errors = validateFlowBookmark(validFlowBookmark({ version: 1 }));
     const flb6Errors = withCode(errors, "FLB6_INVALID_VERSION");
     expect(flb6Errors).toHaveLength(1);
@@ -317,12 +317,12 @@ describe("TestValidateFlowBookmarkFLB6", () => {
   });
 });
 
-// =============================================================================
-// T018: All defaults pass
-// =============================================================================
+// --- All defaults pass ---
 
-describe("TestValidateFlowBookmarkDefaults", () => {
-  it("test_all_defaults_pass_validation", () => {
+describe("Validate flow bookmark defaults", () => {
+  // python: TestValidateFlowBookmarkDefaults
+  it("all defaults pass validation", () => {
+    // python: test_all_defaults_pass_validation
     const errors = validateFlowBookmark(validFlowBookmark());
     expect(errors).toStrictEqual([]);
   });

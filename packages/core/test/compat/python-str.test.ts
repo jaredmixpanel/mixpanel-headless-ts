@@ -1,7 +1,8 @@
-// TS-2 (D18 B/TS-2): tests written FIRST from R11.1 semantics + the D13 case
-// list (semantic-trap watchlist item 8: str(True)/str(None) -> "True"/"None";
-// bare String() would emit "true"/"null"). Every expected value below was
-// produced by CPython str()/repr() (the oracle) on 2026-08-14.
+// `pythonStr` / `pythonRepr` / `pythonStrOf` — CPython `str()` and `repr()`
+// twins: "True"/"None" spellings (bare `String()` gives "true"/"null"), list
+// and dict repr, the string-repr quoting and escape rules against the pinned
+// CPython printability table, and the `unknown`-typed `pythonStrOf` fallback.
+// No Python test file behind this suite; the expected values are CPython's.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -12,7 +13,7 @@ import {
   type PythonValue,
 } from "../../src/compat/python-str.js";
 
-describe("pythonStr — D13 case list", () => {
+describe("pythonStr — str() spellings", () => {
   it('renders True/False capitalized: str(True) -> "True"', () => {
     expect(pythonStr(true)).toBe("True");
     expect(pythonStr(false)).toBe("False");
@@ -102,7 +103,7 @@ describe("pythonRepr — CPython string repr rules", () => {
   });
 
   it("classifies printability by the pinned CPython table, not the JS engine", () => {
-    // TS-7 differential finding: U+323B0 is assigned in V8's Unicode 17
+    // Differential-fuzz finding: U+323B0 is assigned in V8's Unicode 17
     // database (printable there) but Cn in the target CPython 3.14 /
     // Unicode 16 — CPython escapes it, so the port must too.
     expect(pythonRepr("\u{323B0}")).toBe(String.raw`'\U000323b0'`);
@@ -110,7 +111,7 @@ describe("pythonRepr — CPython string repr rules", () => {
     expect(pythonRepr("\u{323AF}")).toBe("'\u{323AF}'");
   });
 
-  it("keeps printable non-BMP characters verbatim (R10.9 non-BMP edge)", () => {
+  it("keeps printable non-BMP characters verbatim", () => {
     expect(pythonRepr("😀")).toBe("'😀'");
     expect(pythonRepr("\u{1D7D8}")).toBe("'\u{1D7D8}'");
     expect(pythonRepr("mixed😀\x01end")).toBe(String.raw`'mixed😀\x01end'`);
@@ -136,7 +137,7 @@ describe("pythonRepr — CPython string repr rules", () => {
     expect(pythonRepr(dict)).toBe("{'x': {...}}");
   });
 
-  it("rejects undefined — absent is not None (watchlist item 4 tri-state)", () => {
+  it("rejects undefined — absent is not None", () => {
     expect(() => pythonStr(undefined as unknown as PythonValue)).toThrow(
       TypeError,
     );

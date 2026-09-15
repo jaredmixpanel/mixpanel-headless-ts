@@ -1,34 +1,8 @@
-// Translated ReplaysService tests (packet B5-S3, `b5-packets.md` §5):
-// assertion-for-assertion ports of ALL NINE classes of
-//   tests/unit/_internal/test_replays_service.py
-//     TestSignWrapping                 :72
-//     TestFetchFilesHappyPath          :143
-//     TestFetchFilesTermination        :222
-//     TestFetchFiles403Retry           :266
-//     TestFetchFilesCredentialRedaction :336
-//     TestMobileReplayDetection        :366
-//     TestDiscoverNoQueryFn            :397
-//     TestDiscoverParsing              :503
-//     TestEventsForParsing             :647
-//
-// Translation notes:
-// - `MagicMock()` api client → the B4 `createMockClient` transport
-//   analog; `api.sign_replays` assertions become assertions on the
-//   captured POST bodies of `/replays/sign/bulk` (the REAL client
-//   method runs — R10.8 binding honesty: the service must call the
-//   ported client, not a stub of it).
-// - `httpx.MockTransport(handler)` for CDN GETs → the `fetchImpl`
-//   option (the `_async_transport` twin), a plain injected fetch.
-// - `pytest.warns(UserWarning, match=...)` → the injected
-//   {@link WarningSink} collector (R9.5), same wording asserted.
-// - `RuntimeError("… query_fn …")` → `MixpanelHeadlessError` code
-//   `REPLAYS_QUERY_FN_REQUIRED`; Python's `RuntimeError` carries no
-//   registry code, so the port assigns one and the test asserts BOTH
-//   the code and the Python message substring.
-// - `dict[str, list[ReplayEvent]]` → a `Map` (R4.8); `set(out)` →
-//   `new Set(out.keys())`.
-// - `service.fetch_files(...)` is sync in Python (it drives
-//   `asyncio.run`); the port is `async` (R6.1) and every call awaits.
+// ReplaysService: sign(), the fetch_files CDN walker (ordering, 404
+// termination, 403 re-sign, credential redaction, mobile detection) and
+// discover() / events_for() parsing. Mirrors all nine classes of
+// tests/unit/_internal/test_replays_service.py. The real client runs over a
+// canned transport, CDN GETs use the injected `fetchImpl`, warnings a sink.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -41,21 +15,19 @@ import type { WarningSink } from "../../src/services/discovery.js";
 import { ReplaysService } from "../../src/services/replays.js";
 import { SignedReplay } from "../../src/types/results/replay-models.js";
 import {
+  type CannedHandler,
   type CannedResponse,
   type CapturedFetchRequest,
   createMockClient,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 
-/** A canned-response handler (the httpx.MockTransport handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
-
 /** A CDN handler that may also throw (the transport-error path). */
 type CdnHandler = (url: string) => CannedResponse;
 
 /**
- * The `_mock_api_client` fixture —
- * a real B4 client over a canned App-API transport.
+ * The `_mock_api_client` fixture — a real client over a canned App-API
+ * transport, so `api.sign_replays` asserts read the captured POST bodies.
  *
  * @param options - `projectId` (default `"12345"`) and the
  *   `signResponse` served by `POST /replays/sign/bulk`.
@@ -71,7 +43,7 @@ function mockApiClient(
   signCalls: CapturedFetchRequest[];
 } {
   const signCalls: CapturedFetchRequest[] = [];
-  const handler: Handler = (request) => {
+  const handler: CannedHandler = (request) => {
     if (request.url.includes("/replays/sign/bulk")) {
       signCalls.push(request);
       return { status: 200, json: options.signResponse?.() ?? [] };
@@ -202,8 +174,10 @@ function makeCdnHandler(
 // sign()
 // =============================================================================
 
-describe("sign wraps the client call in SignedReplay objects (TestSignWrapping)", () => {
-  it("test_sign_returns_list_of_signed_replay", async () => {
+describe("sign wraps the client call in SignedReplay objects", () => {
+  // python: TestSignWrapping
+  it("sign returns list of signed replay", async () => {
+    // python: test_sign_returns_list_of_signed_replay
     const { client, signCalls } = mockApiClient({
       signResponse: () => [
         {
@@ -244,8 +218,10 @@ describe("sign wraps the client call in SignedReplay objects (TestSignWrapping)"
 // fetch_files() — the CDN walker
 // =============================================================================
 
-describe("buffered fetch concatenates + sorts (TestFetchFilesHappyPath)", () => {
-  it("test_returns_timestamp_sorted_events", async () => {
+describe("buffered fetch concatenates + sorts", () => {
+  // python: TestFetchFilesHappyPath
+  it("returns timestamp sorted events", async () => {
+    // python: test_returns_timestamp_sorted_events
     const fileContents = new Map<
       number,
       ReadonlyArray<Record<string, unknown>> | null
@@ -268,7 +244,8 @@ describe("buffered fetch concatenates + sorts (TestFetchFilesHappyPath)", () => 
     expect(events.map((e) => e["timestamp"])).toStrictEqual([10, 20, 30, 40]);
   });
 
-  it("test_uses_correct_file_naming", async () => {
+  it("uses correct file naming", async () => {
+    // python: test_uses_correct_file_naming
     const callLog: number[] = [];
     const fileContents = new Map<
       number,
@@ -292,7 +269,8 @@ describe("buffered fetch concatenates + sorts (TestFetchFilesHappyPath)", () => 
     expect([...callLog].sort((a, b) => a - b)).toStrictEqual([0, 1, 2]);
   });
 
-  it("test_respects_max_files_bound", async () => {
+  it("respects max files bound", async () => {
+    // python: test_respects_max_files_bound
     const fileContents = new Map<
       number,
       ReadonlyArray<Record<string, unknown>> | null
@@ -317,8 +295,10 @@ describe("buffered fetch concatenates + sorts (TestFetchFilesHappyPath)", () => 
   });
 });
 
-describe("404 termination semantics (TestFetchFilesTermination)", () => {
-  it("test_first_file_404_raises_replay_not_found", async () => {
+describe("404 termination semantics", () => {
+  // python: TestFetchFilesTermination
+  it("first file 404 raises replay not found", async () => {
+    // python: test_first_file_404_raises_replay_not_found
     const { client } = mockApiClient();
     const service = new ReplaysService(client, {
       fetchImpl: cdnFetch(makeCdnHandler()),
@@ -341,7 +321,8 @@ describe("404 termination semantics (TestFetchFilesTermination)", () => {
     expect(String(exc.details["cdn_url_prefix"]).endsWith("/")).toBe(true);
   });
 
-  it("test_mid_walk_404_terminates_cleanly", async () => {
+  it("mid walk 404 terminates cleanly", async () => {
+    // python: test_mid_walk_404_terminates_cleanly
     const fileContents = new Map<
       number,
       ReadonlyArray<Record<string, unknown>> | null
@@ -365,11 +346,13 @@ describe("404 termination semantics (TestFetchFilesTermination)", () => {
   });
 });
 
-describe("403 re-sign retry (TestFetchFiles403Retry)", () => {
-  it("test_403_with_re_sign_succeeds_after_resign", async () => {
+describe("403 re-sign retry", () => {
+  // python: TestFetchFiles403Retry
+  it("403 with re sign succeeds after resign", async () => {
+    // python: test_403_with_re_sign_succeeds_after_resign
     const state = { resigned: false };
     const signCalls: CapturedFetchRequest[] = [];
-    const handler: Handler = (request) => {
+    const handler: CannedHandler = (request) => {
       if (request.url.includes("/replays/sign/bulk")) {
         signCalls.push(request);
         state.resigned = true;
@@ -412,7 +395,8 @@ describe("403 re-sign retry (TestFetchFiles403Retry)", () => {
     expect(events.map((e) => e["timestamp"])).toStrictEqual([0, 10]);
   });
 
-  it("test_403_without_re_sign_raises_expired", async () => {
+  it("403 without re sign raises expired", async () => {
+    // python: test_403_without_re_sign_raises_expired
     const { client, signCalls } = mockApiClient();
     const service = new ReplaysService(client, {
       fetchImpl: cdnFetch(makeCdnHandler({ files403: new Set([0]) })),
@@ -438,12 +422,14 @@ describe("403 re-sign retry (TestFetchFiles403Retry)", () => {
   });
 });
 
-describe("credential redaction on transport errors (TestFetchFilesCredentialRedaction)", () => {
-  it("test_transport_error_redacts_signed_credential", async () => {
+describe("credential redaction on transport errors", () => {
+  // python: TestFetchFilesCredentialRedaction
+  it("transport error redacts signed credential", async () => {
+    // python: test_transport_error_redacts_signed_credential
     const signed = signedFixture();
     const { client } = mockApiClient();
     const service = new ReplaysService(client, {
-      // A fetch rejection is the `httpx.ConnectError` analog (R2.10
+      // A fetch rejection is the `httpx.ConnectError` analog (the client
       // normalizes it to MixpanelHttpError); the message embeds the
       // credentialed URL exactly as httpx's does.
       fetchImpl: (input: string | URL | Request): Promise<Response> => {
@@ -473,8 +459,10 @@ describe("credential redaction on transport errors (TestFetchFilesCredentialReda
 // Mobile-replay detection
 // =============================================================================
 
-describe("mobile-replay detection (TestMobileReplayDetection)", () => {
-  it("test_non_rrweb_first_event_raises_unsupported_format", async () => {
+describe("mobile-replay detection", () => {
+  // python: TestMobileReplayDetection
+  it("non rrweb first event raises unsupported format", async () => {
+    // python: test_non_rrweb_first_event_raises_unsupported_format
     const fileContents = new Map<
       number,
       ReadonlyArray<Record<string, unknown>> | null
@@ -509,8 +497,10 @@ describe("mobile-replay detection (TestMobileReplayDetection)", () => {
 // discover() — no query_fn
 // =============================================================================
 
-describe("discover without query_fn (TestDiscoverNoQueryFn)", () => {
-  it("test_raises_without_query_fn", async () => {
+describe("discover without query_fn", () => {
+  // python: TestDiscoverNoQueryFn
+  it("raises without query fn", async () => {
+    // python: test_raises_without_query_fn
     const { client } = mockApiClient();
     const service = new ReplaysService(client); // no queryFn
     let caught: unknown;
@@ -530,7 +520,8 @@ describe("discover without query_fn (TestDiscoverNoQueryFn)", () => {
     expect((caught as MixpanelHeadlessError).message).toContain("query_fn");
   });
 
-  it("test_empty_replay_ids_returns_empty", async () => {
+  it("empty replay IDs returns empty", async () => {
+    // python: test_empty_replay_ids_returns_empty
     const { client } = mockApiClient();
     const calls: unknown[] = [];
     const service = new ReplaysService(client, {
@@ -564,7 +555,7 @@ const DISCOVERY_SERIES: Record<string, unknown> = {
   },
 };
 
-/** `_DISCOVERY_SERIES_NO_RETENTION` (`:453-461`). */
+/** `_DISCOVERY_SERIES_NO_RETENTION`. */
 const DISCOVERY_SERIES_NO_RETENTION: Record<string, unknown> = {
   "Session Recording Checkpoint [Minimum Time]": {
     $overall: { all: 1779319127 },
@@ -572,7 +563,7 @@ const DISCOVERY_SERIES_NO_RETENTION: Record<string, unknown> = {
   },
 };
 
-/** `_EVENTS_SERIES` (`:463-482`). */
+/** `_EVENTS_SERIES`. */
 const EVENTS_SERIES: Record<string, unknown> = {
   "All Events [Total Events]": {
     $overall: { all: 13 },
@@ -593,7 +584,7 @@ const EVENTS_SERIES: Record<string, unknown> = {
   },
 };
 
-/** `_EVENTS_SERIES_WITH_PROP` (`:484-498`). */
+/** `_EVENTS_SERIES_WITH_PROP`. */
 const EVENTS_SERIES_WITH_PROP: Record<string, unknown> = {
   "All Events [Total Events]": {
     $overall: { all: 1 },
@@ -642,8 +633,10 @@ function serviceWithSeries(
   return { service, calls };
 }
 
-describe("discover parses the min-time series (TestDiscoverParsing)", () => {
-  it("test_one_summary_per_replay", async () => {
+describe("discover parses the min-time series", () => {
+  // python: TestDiscoverParsing
+  it("one summary per replay", async () => {
+    // python: test_one_summary_per_replay
     const { service } = serviceWithSeries(DISCOVERY_SERIES, {
       projectId: "3",
     });
@@ -662,7 +655,8 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
     expect(byId.get("rid-aaa")?.project_id).toBe(3);
   });
 
-  it("test_query_uses_min_time_aggregation", async () => {
+  it("query uses min time aggregation", async () => {
+    // python: test_query_uses_min_time_aggregation
     const { service, calls } = serviceWithSeries(DISCOVERY_SERIES);
     await service.discover({
       distinctId: "u-1",
@@ -678,7 +672,8 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
     ]);
   });
 
-  it("test_missing_retention_defaults_30_with_warning", async () => {
+  it("missing retention defaults 30 with warning", async () => {
+    // python: test_missing_retention_defaults_30_with_warning
     const warnings: string[] = [];
     const { service } = serviceWithSeries(DISCOVERY_SERIES_NO_RETENTION, {
       warn: (message) => {
@@ -698,7 +693,8 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
     expect(out[0]?.start_time).toBe(1779319127 * 1000);
   });
 
-  it("test_empty_series_returns_empty", async () => {
+  it("empty series returns empty", async () => {
+    // python: test_empty_series_returns_empty
     const { service } = serviceWithSeries({});
     await expect(
       service.discover({
@@ -709,7 +705,8 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
     ).resolves.toStrictEqual([]);
   });
 
-  it("test_nonstandard_retention_defaults_30_with_warning", async () => {
+  it("nonstandard retention defaults 30 with warning", async () => {
+    // python: test_nonstandard_retention_defaults_30_with_warning
     const warnings: string[] = [];
     const series: Record<string, unknown> = {
       "Session Recording Checkpoint [Minimum Time]": {
@@ -738,7 +735,8 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
     expect(out[0]?.start_time).toBe(1779322882 * 1000);
   });
 
-  it("test_limit_caps_summaries", async () => {
+  it("limit caps summaries", async () => {
+    // python: test_limit_caps_summaries
     const { service } = serviceWithSeries(DISCOVERY_SERIES);
     const out = await service.discover({
       distinctId: "u-1",
@@ -749,7 +747,8 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
     expect(out).toHaveLength(1);
   });
 
-  it("test_default_window_is_90_day_lookback", async () => {
+  it("default window is 90 day lookback", async () => {
+    // python: test_default_window_is_90_day_lookback
     const { service, calls } = serviceWithSeries({});
     await service.discover({ replayIds: ["rid-aaa"] });
     const kwargs = calls[0]?.options ?? {};
@@ -758,7 +757,8 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
     expect(Object.hasOwn(kwargs, "to_date")).toBe(false);
   });
 
-  it("test_explicit_window_overrides_lookback", async () => {
+  it("explicit window overrides lookback", async () => {
+    // python: test_explicit_window_overrides_lookback
     const { service, calls } = serviceWithSeries(DISCOVERY_SERIES);
     await service.discover({
       distinctId: "u-1",
@@ -771,7 +771,8 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
     expect(Object.hasOwn(kwargs, "last")).toBe(false);
   });
 
-  it("test_missing_retention_warning_has_no_doubled_prefix", async () => {
+  it("missing retention warning has no doubled prefix", async () => {
+    // python: test_missing_retention_warning_has_no_doubled_prefix
     const warnings: string[] = [];
     const { service } = serviceWithSeries(DISCOVERY_SERIES_NO_RETENTION, {
       warn: (text) => {
@@ -789,8 +790,10 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
   });
 });
 
-describe("events_for parses the $all_events series (TestEventsForParsing)", () => {
-  it("test_returns_time_sorted_events_per_replay", async () => {
+describe("events_for parses the $all_events series", () => {
+  // python: TestEventsForParsing
+  it("returns time sorted events per replay", async () => {
+    // python: test_returns_time_sorted_events_per_replay
     const { service } = serviceWithSeries(EVENTS_SERIES);
     const out = await service.eventsFor(["rid-bab"]);
     expect(new Set(out.keys())).toStrictEqual(new Set(["rid-bab"]));
@@ -802,7 +805,8 @@ describe("events_for parses the $all_events series (TestEventsForParsing)", () =
     expect(events[0]?.event_time).toBeLessThan(events[1]?.event_time ?? 0);
   });
 
-  it("test_event_properties_surface", async () => {
+  it("event properties surface", async () => {
+    // python: test_event_properties_surface
     const { service } = serviceWithSeries(EVENTS_SERIES_WITH_PROP);
     const out = await service.eventsFor(["rid-bab"], {
       eventProperties: ["$browser"],
@@ -812,7 +816,8 @@ describe("events_for parses the $all_events series (TestEventsForParsing)", () =
     });
   });
 
-  it("test_issues_all_events_query_shape", async () => {
+  it("issues all events query shape", async () => {
+    // python: test_issues_all_events_query_shape
     const { service, calls } = serviceWithSeries(EVENTS_SERIES);
     await service.eventsFor(["rid-bab"]);
     expect(calls[0]?.events).toBe("$all_events");
@@ -821,12 +826,14 @@ describe("events_for parses the $all_events series (TestEventsForParsing)", () =
     ).toStrictEqual(["$time", "$event_name", "$mp_replay_id"]);
   });
 
-  it("test_empty_series_returns_empty_dict", async () => {
+  it("empty series returns empty dict", async () => {
+    // python: test_empty_series_returns_empty_dict
     const { service } = serviceWithSeries({});
     expect((await service.eventsFor(["rid-bab"])).size).toBe(0);
   });
 
-  it("test_default_window_is_90_day_lookback", async () => {
+  it("default window is 90 day lookback", async () => {
+    // python: test_default_window_is_90_day_lookback
     const { service, calls } = serviceWithSeries({});
     await service.eventsFor(["rid-bab"]);
     const kwargs = calls[0]?.options ?? {};
@@ -835,7 +842,8 @@ describe("events_for parses the $all_events series (TestEventsForParsing)", () =
     expect(Object.hasOwn(kwargs, "to_date")).toBe(false);
   });
 
-  it("test_explicit_window_overrides_lookback", async () => {
+  it("explicit window overrides lookback", async () => {
+    // python: test_explicit_window_overrides_lookback
     const { service, calls } = serviceWithSeries({});
     await service.eventsFor(["rid-bab"], {
       fromDate: "2026-05-20",
@@ -849,14 +857,14 @@ describe("events_for parses the $all_events series (TestEventsForParsing)", () =
 });
 
 // =============================================================================
-// B5-ARB FID-F3 (additive — `b5-review-resolution.md`): the walker's
-// per-file sort key is Python `int(e.get("timestamp", 0))` — an ABSENT
+// Additive (no Python twin): the walker's per-file sort key is Python
+// `int(e.get("timestamp", 0))` — an ABSENT
 // key defaults to 0, an explicit `null` raises `TypeError` (CPython
 // probe), and `sorted(key=...)` computes the key even for single-element
 // files, where a bare JS comparator would never run.
 // =============================================================================
 
-describe("FID-F3: walker per-file sort key null vs absent timestamps", () => {
+describe("walker per-file sort key: null vs absent timestamps", () => {
   it("an explicit null timestamp in a single-event file raises TypeError", async () => {
     const fileContents = new Map<
       number,

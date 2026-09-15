@@ -1,18 +1,8 @@
-/**
- * Layer-3 translation of `tests/unit/_internal/test_expressions.py`
- * (114 LOC, 1 class; Python revision: `ts-port/phase2-contract-support`
- * HEAD), per `b3-packets.md` §"Packet K3". Every test translates; the
- * Hypothesis twin lives in `expressions.pbt.test.ts`.
- *
- * R10.2: assertion-for-assertion. `pytest.mark.parametrize` becomes
- * `it.each`. The escaped expectations are transcribed from the PYTHON
- * literal (Python `'properties["my\\"property"]'` is the 20-character
- * string `properties["my\"property"]`), and the corpus vectors
- * (`segmentation/test_expressions.jsonl`) were re-read to confirm each
- * expected byte sequence — watchlist #2 makes this the file where a
- * mis-transcribed backslash would silently pass a weaker test.
- */
-
+// `normalizeOnExpression` — translation of
+// `tests/unit/_internal/test_expressions.py`; `pytest.mark.parametrize` becomes
+// `it.each`. The escaped expectations are transcribed from the PYTHON literal
+// (Python `'properties["my\\"property"]'` is the 20-character string
+// `properties["my\"property"]`): a mis-transcribed backslash would silently pass.
 import { describe, expect, it } from "vitest";
 
 import { normalizeOnExpression } from "../../src/query/expressions.js";

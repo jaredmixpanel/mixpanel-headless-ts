@@ -1,11 +1,9 @@
-// Layer-3 translation — tests/unit/test_api_client_pbt.py::
-// TestActivityFeedDateRange → fast-check (Phase-3 packet
-// B4-C2; the C1 header exclusion in client-pbt.test.ts pointed here).
-//
-// Strategy shape: Hypothesis `st.dates(2000-01-01 .. 2100-12-31)
-// .map(isoformat)` → an integer day-offset domain mapped through the
-// same civil-date arithmetic the implementation uses; `st.none() | ...`
-// → fc.option.
+// Property test for `buildActivityFeedDateRange`: every (from, to) pair
+// selects the right arm (between / since / relative_after / 30-day between).
+// Mirrors TestActivityFeedDateRange from tests/unit/test_api_client_pbt.py
+// (fast-check for Hypothesis): `st.dates(2000..2100).map(isoformat)` becomes
+// an integer day-offset domain mapped through the implementation's civil-date math.
+
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -54,8 +52,10 @@ function expectedDateRange(
   return { type: "between", from: start, to: toDate };
 }
 
-describe("TestActivityFeedDateRange", () => {
-  it("test_returns_known_type_and_correct_arm", () => {
+describe("Activity feed date range", () => {
+  // python: TestActivityFeedDateRange
+  it("returns known type and correct arm", () => {
+    // python: test_returns_known_type_and_correct_arm
     fc.assert(
       fc.property(optionalFeedDates, optionalFeedDates, (fromDate, toDate) => {
         const result = buildActivityFeedDateRange(fromDate, toDate);

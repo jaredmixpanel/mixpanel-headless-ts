@@ -1,17 +1,8 @@
-// PERMANENT promotion of the B7-A2 R10.9 harness's full-precedence-
-// chain coverage (`throwaway/b7-a2/resolver-truth.ts`, gate-deleted),
-// per the pair-A arbiter ruling `b7-reviewA-resolution.md` ASR-F3:
-// under the no-second-oracle auth posture (playbook Risk 7) the batch
-// must keep a randomized env > param > target > bridge > config lock
-// after gate cleanup. This file is a SPEC-CITED ADDITION, not a Python
-// translation — `tests/pbt/test_resolver_pbt.py` carries only 5 narrow
-// single-source properties (mirrored 1:1 in `resolver.pbt.test.ts`);
-// the exhaustive per-axis bitmaps and the 15-dimension full-chain fuzz
-// below exist only on the TS side as a compensating control.
-//
-// Winner oracle = the independent `firstPresent` mini-model (never the
-// library's own chain code). Seed pinned to the harness RUN record
-// (20260816) for determinism; failures reproduce byte-identically.
+// Full env > param > target > bridge > config precedence lock for the
+// resolver: exhaustive per-axis presence bitmaps plus a 15-dimension
+// randomized full-chain fuzz, each judged by the independent `firstPresent`
+// mini-model, never the library's own chain code. TS addition — the Python
+// `test_resolver_pbt.py` properties live in `resolver.pbt.test.ts`.
 
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
@@ -394,7 +385,7 @@ describe("cross-axis rule locks the exhaustive tables lean on", () => {
     ).toBe("service_account");
   });
 
-  it("pythonInt grammar acceptances reach the workspace axis (R11.7)", () => {
+  it("pythonInt grammar acceptances reach the workspace axis", () => {
     expect(envWorkspaceId({ MP_WORKSPACE_ID: "1_0" })).toBe(10);
     expect(envWorkspaceId({ MP_WORKSPACE_ID: " +42 " })).toBe(42);
     expect(envWorkspaceId({ MP_WORKSPACE_ID: "٤٢" })).toBe(42);

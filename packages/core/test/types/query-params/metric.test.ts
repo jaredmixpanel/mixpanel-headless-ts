@@ -1,16 +1,12 @@
-// Guard + factory tests for Metric/Formula/CohortMetric/TimeComparison
-// (phase2-design C7, packet P2-5a): translated from
-// tests/unit/test_query_types.py guard cases plus Risk #1 guard-order
-// probes and a C9 fast-check guard-totality property. The minimal
-// CohortDefinition shells (pulled forward for the CM5 vectors) are
-// exercised here too.
+// Metric / Formula / CohortMetric / TimeComparison construction and guards
+// (EV1, V13, V26, MT2, FM1, CM1-CM5, TC0-TC3b) with guard-order probes and
+// fast-check guard-totality properties; the minimal CohortDefinition shells
+// used by the CM5 cases are exercised too. Mirrors the guard cases of
+// tests/unit/test_query_types.py.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
-import {
-  type MixpanelHeadlessError,
-  ParamValidationError,
-} from "../../../src/errors.js";
+import { ParamValidationError } from "../../../src/errors.js";
 import {
   CohortCriteria,
   CohortDefinition,
@@ -22,23 +18,7 @@ import {
   Metric,
   TimeComparison,
 } from "../../../src/types/query-params/metric.js";
-
-/**
- * Assert a thunk throws the exact guard `{class, code}` pair.
- *
- * @param thunk - The construction under test.
- * @param code - Expected registry code.
- */
-function expectGuard(thunk: () => unknown, code: string): void {
-  let thrown: unknown;
-  try {
-    thunk();
-  } catch (error) {
-    thrown = error;
-  }
-  expect(thrown, `expected ${code}`).toBeInstanceOf(ParamValidationError);
-  expect((thrown as MixpanelHeadlessError).code).toBe(code);
-}
+import { expectGuard } from "../../../test-support/raises.js";
 
 /** An inline definition for the CM5 cases (corpus CM5 payload shape). */
 function inlineDefinition(): CohortDefinition {
@@ -229,7 +209,7 @@ describe("CohortMetric guards (source order)", () => {
   });
 });
 
-describe("CohortDefinition shells (P2-5a subset)", () => {
+describe("CohortDefinition shells", () => {
   it("CD9_EMPTY_CRITERIA on empty construction", () => {
     expectGuard(() => new CohortDefinition(), "CD9_EMPTY_CRITERIA");
     expectGuard(() => CohortDefinition.allOf(), "CD9_EMPTY_CRITERIA");
@@ -358,7 +338,7 @@ describe("TimeComparison guards (rules TC0-TC3b, source order)", () => {
   });
 });
 
-describe("C9 guard-totality property (fast-check #4)", () => {
+describe("guard-totality properties (fast-check)", () => {
   it("unknown comparison types always raise the TC0 registry code", () => {
     fc.assert(
       fc.property(

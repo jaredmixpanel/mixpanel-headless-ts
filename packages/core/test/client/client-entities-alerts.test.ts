@@ -1,7 +1,8 @@
-// Layer-3 translation — Phase-3 packet B4-C4 alert locks.
-// Source: tests/unit/test_api_client_alerts.py (ALL classes — alert
-// CRUD list/create/get/update/delete/bulk_delete + operations
-// count/history/test/screenshot/validate).
+// Alert client methods: list/create/get/update/delete/bulk-delete plus the
+// count, history, test, screenshot-URL and validate-for-bookmark operations
+// (paths, methods, params, result unwrapping). Mirrors every class of
+// tests/unit/test_api_client_alerts.py against the mock-transport client.
+
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "../../src/auth/session.js";
@@ -9,6 +10,7 @@ import { toNativeJson } from "../../src/client/json-value.js";
 import {
   createMockClient,
   makeSession,
+  parseBody,
 } from "../../test-support/client-test-helpers.js";
 
 /** The `oauth_credentials` fixture twin. */
@@ -35,13 +37,10 @@ function alertResult(id = 1, name = "Test Alert"): Record<string, unknown> {
   };
 }
 
-/** Parse a captured JSON request body (json.loads(request.content)). */
-function parseBody(bodyText: string): unknown {
-  return JSON.parse(bodyText) as unknown;
-}
-
-describe("TestListAlerts", () => {
-  it("test_returns_alert_list", async () => {
+describe("List alerts", () => {
+  // python: TestListAlerts
+  it("returns alert list", async () => {
+    // python: test_returns_alert_list
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -57,7 +56,8 @@ describe("TestListAlerts", () => {
     expect(result[1]?.["name"]).toBe("Alert B");
   });
 
-  it("test_uses_maybe_scoped_path", async () => {
+  it("uses maybe scoped path", async () => {
+    // python: test_uses_maybe_scoped_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -67,7 +67,8 @@ describe("TestListAlerts", () => {
     expect(capturedUrls[0]).toContain("/alerts/custom/");
   });
 
-  it("test_bookmark_id_param", async () => {
+  it("bookmark ID param", async () => {
+    // python: test_bookmark_id_param
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -77,7 +78,8 @@ describe("TestListAlerts", () => {
     expect(capturedUrls[0]).toContain("bookmark_id=42");
   });
 
-  it("test_skip_user_filter_param", async () => {
+  it("skip user filter param", async () => {
+    // python: test_skip_user_filter_param
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -87,7 +89,8 @@ describe("TestListAlerts", () => {
     expect(capturedUrls[0]).toContain("skip_user_filter=true");
   });
 
-  it("test_empty_result", async () => {
+  it("empty result", async () => {
+    // python: test_empty_result
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: { status: "ok", results: [] },
@@ -96,7 +99,8 @@ describe("TestListAlerts", () => {
     expect(result).toStrictEqual([]);
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -107,8 +111,10 @@ describe("TestListAlerts", () => {
   });
 });
 
-describe("TestCreateAlert", () => {
-  it("test_creates_alert", async () => {
+describe("Create alert", () => {
+  // python: TestCreateAlert
+  it("creates alert", async () => {
+    // python: test_creates_alert
     const captured: Array<[string, Record<string, unknown>]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([
@@ -128,7 +134,8 @@ describe("TestCreateAlert", () => {
     expect(result["id"]).toBe(99);
   });
 
-  it("test_url_path", async () => {
+  it("URL path", async () => {
+    // python: test_url_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -139,8 +146,10 @@ describe("TestCreateAlert", () => {
   });
 });
 
-describe("TestGetAlert", () => {
-  it("test_gets_alert_by_id", async () => {
+describe("Get alert", () => {
+  // python: TestGetAlert
+  it("gets alert by ID", async () => {
+    // python: test_gets_alert_by_id
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -157,7 +166,8 @@ describe("TestGetAlert", () => {
     expect(result["id"]).toBe(42);
   });
 
-  it("test_uses_get_method", async () => {
+  it("uses get method", async () => {
+    // python: test_uses_get_method
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -168,8 +178,10 @@ describe("TestGetAlert", () => {
   });
 });
 
-describe("TestUpdateAlert", () => {
-  it("test_updates_alert", async () => {
+describe("Update alert", () => {
+  // python: TestUpdateAlert
+  it("updates alert", async () => {
+    // python: test_updates_alert
     const captured: Array<[string, Record<string, unknown>]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([
@@ -189,7 +201,8 @@ describe("TestUpdateAlert", () => {
     expect(result["name"]).toBe("Updated");
   });
 
-  it("test_url_path", async () => {
+  it("URL path", async () => {
+    // python: test_url_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -200,8 +213,10 @@ describe("TestUpdateAlert", () => {
   });
 });
 
-describe("TestDeleteAlert", () => {
-  it("test_deletes_alert", async () => {
+describe("Delete alert", () => {
+  // python: TestDeleteAlert
+  it("deletes alert", async () => {
+    // python: test_deletes_alert
     const capturedMethods: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedMethods.push(request.method);
@@ -211,7 +226,8 @@ describe("TestDeleteAlert", () => {
     expect(capturedMethods[0]).toBe("DELETE");
   });
 
-  it("test_url_path", async () => {
+  it("URL path", async () => {
+    // python: test_url_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -222,8 +238,10 @@ describe("TestDeleteAlert", () => {
   });
 });
 
-describe("TestBulkDeleteAlerts", () => {
-  it("test_bulk_deletes", async () => {
+describe("Bulk delete alerts", () => {
+  // python: TestBulkDeleteAlerts
+  it("bulk deletes", async () => {
+    // python: test_bulk_deletes
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -234,7 +252,8 @@ describe("TestBulkDeleteAlerts", () => {
     expect(captured[0]?.[1]).toStrictEqual({ alert_ids: [1, 2, 3] });
   });
 
-  it("test_url_path", async () => {
+  it("URL path", async () => {
+    // python: test_url_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -245,8 +264,10 @@ describe("TestBulkDeleteAlerts", () => {
   });
 });
 
-describe("TestGetAlertCount", () => {
-  it("test_gets_count", async () => {
+describe("Get alert count", () => {
+  // python: TestGetAlertCount
+  it("gets count", async () => {
+    // python: test_gets_count
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -266,7 +287,8 @@ describe("TestGetAlertCount", () => {
     expect(result["alert_limit"]).toBe(100);
   });
 
-  it("test_url_path", async () => {
+  it("URL path", async () => {
+    // python: test_url_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -286,7 +308,8 @@ describe("TestGetAlertCount", () => {
     expect(capturedUrls[0]).toContain("/alerts/custom/alert-count/");
   });
 
-  it("test_with_type_param", async () => {
+  it("with type param", async () => {
+    // python: test_with_type_param
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -307,8 +330,10 @@ describe("TestGetAlertCount", () => {
   });
 });
 
-describe("TestGetAlertHistory", () => {
-  it("test_gets_history", async () => {
+describe("Get alert history", () => {
+  // python: TestGetAlertHistory
+  it("gets history", async () => {
+    // python: test_gets_history
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -329,7 +354,8 @@ describe("TestGetAlertHistory", () => {
     );
   });
 
-  it("test_url_path", async () => {
+  it("URL path", async () => {
+    // python: test_url_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -345,7 +371,8 @@ describe("TestGetAlertHistory", () => {
     expect(capturedUrls[0]).toContain("/alerts/custom/42/history/");
   });
 
-  it("test_with_pagination_params", async () => {
+  it("with pagination params", async () => {
+    // python: test_with_pagination_params
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -364,8 +391,10 @@ describe("TestGetAlertHistory", () => {
   });
 });
 
-describe("TestTestAlert", () => {
-  it("test_sends_test", async () => {
+describe("Test alert", () => {
+  // python: TestTestAlert
+  it("sends test", async () => {
+    // python: test_sends_test
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -381,7 +410,8 @@ describe("TestTestAlert", () => {
     expect(result["status"]).toBe("sent");
   });
 
-  it("test_url_path", async () => {
+  it("URL path", async () => {
+    // python: test_url_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -392,8 +422,10 @@ describe("TestTestAlert", () => {
   });
 });
 
-describe("TestGetAlertScreenshotUrl", () => {
-  it("test_gets_url", async () => {
+describe("Get alert screenshot URL", () => {
+  // python: TestGetAlertScreenshotUrl
+  it("gets URL", async () => {
+    // python: test_gets_url
     const { client } = createMockClient(oauthCredentials(), () => ({
       status: 200,
       json: {
@@ -407,7 +439,8 @@ describe("TestGetAlertScreenshotUrl", () => {
     expect(result["signed_url"]).toBe("https://storage.googleapis.com/abc.png");
   });
 
-  it("test_url_path", async () => {
+  it("URL path", async () => {
+    // python: test_url_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);
@@ -422,8 +455,10 @@ describe("TestGetAlertScreenshotUrl", () => {
   });
 });
 
-describe("TestValidateAlertsForBookmark", () => {
-  it("test_validates", async () => {
+describe("Validate alerts for bookmark", () => {
+  // python: TestValidateAlertsForBookmark
+  it("validates", async () => {
+    // python: test_validates
     const captured: Array<[string, unknown]> = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       captured.push([request.method, parseBody(request.bodyText)]);
@@ -446,7 +481,8 @@ describe("TestValidateAlertsForBookmark", () => {
     expect(result["invalid_count"]).toBe(0);
   });
 
-  it("test_url_path", async () => {
+  it("URL path", async () => {
+    // python: test_url_path
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthCredentials(), (request) => {
       capturedUrls.push(request.url);

@@ -1,21 +1,9 @@
-// Layer-3 translation — Phase-3 packet B4-C1 workspace-resolution locks.
-// Sources:
-//
-// - tests/unit/test_app_api_client.py::TestWorkspaceScoping,
-//   ::TestResolveWorkspaceId (:523-609), ::TestListWorkspaces
-//   (:612-663), ::TestResolveWorkspace (:666-749),
-//   ::TestAppApiEdgeCases (:752-784), ::TestListWorkspacesEdgeCases
-// - tests/unit/test_workspace_resolution.py::
-//   TestResolveWorkspaceIdWithResolver and
-//   ::TestProjectsMetadataIndex (:459-608). TestSelectWorkspaceId lives
-//   in me.test.ts; ::TestMeServiceResolveWorkspace is translated
-//   in `test/services/me-service.test.ts` and ::TestFacadeResolverWiring
-//   in `test/workspace/workspace-facade.test.ts` — both landed
-//   at B7-A1 (`b7-packets.md` §3.4; the original "B8"/"B6" assignments
-//   here were STALE post-W1, corrected per packet Caution #17).
-//
-// Entry-point substitutions as in client-core.test.ts; MagicMock
-// resolvers translate to counting closures.
+// Workspace resolution on the client: `maybeScopedPath` / `requireScopedPath`,
+// `resolveWorkspaceId` (explicit pin, resolver hook, public endpoint, metadata
+// index fallback, caching), `listWorkspaces` / `resolveWorkspace` and edge
+// cases. Mirrors the workspace classes of tests/unit/test_app_api_client.py and
+// the client-side classes of tests/unit/test_workspace_resolution.py; MagicMock resolvers are counting closures.
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -56,8 +44,10 @@ function pathOf(request: CapturedFetchRequest): string {
 
 const emptyResults: CannedResponse = { status: 200, json: { results: [] } };
 
-describe("TestWorkspaceScoping", () => {
-  it("test_maybe_scoped_path_without_workspace", () => {
+describe("Workspace scoping", () => {
+  // python: TestWorkspaceScoping
+  it("maybe scoped path without workspace", () => {
+    // python: test_maybe_scoped_path_without_workspace
     const { client } = createMockClient(oauthSession(), () => ({
       status: 200,
       json: {},
@@ -67,7 +57,8 @@ describe("TestWorkspaceScoping", () => {
     );
   });
 
-  it("test_maybe_scoped_path_with_workspace", () => {
+  it("maybe scoped path with workspace", () => {
+    // python: test_maybe_scoped_path_with_workspace
     const { client } = createMockClient(oauthSession(), () => ({
       status: 200,
       json: {},
@@ -78,7 +69,8 @@ describe("TestWorkspaceScoping", () => {
     );
   });
 
-  it("test_maybe_scoped_path_with_workspace_none_resets", () => {
+  it("maybe scoped path with workspace null resets", () => {
+    // python: test_maybe_scoped_path_with_workspace_none_resets
     const { client } = createMockClient(oauthSession(), () => ({
       status: 200,
       json: {},
@@ -90,7 +82,8 @@ describe("TestWorkspaceScoping", () => {
     );
   });
 
-  it("test_require_scoped_path_with_explicit_workspace", async () => {
+  it("require scoped path with explicit workspace", async () => {
+    // python: test_require_scoped_path_with_explicit_workspace
     const { client } = createMockClient(oauthSession(), () => ({
       status: 200,
       json: {},
@@ -101,7 +94,8 @@ describe("TestWorkspaceScoping", () => {
     );
   });
 
-  it("test_require_scoped_path_auto_discovers_workspace", async () => {
+  it("require scoped path auto discovers workspace", async () => {
+    // python: test_require_scoped_path_auto_discovers_workspace
     const { client } = createMockClient(oauthSession(), () => ({
       status: 200,
       json: {
@@ -116,7 +110,8 @@ describe("TestWorkspaceScoping", () => {
     );
   });
 
-  it("test_require_scoped_path_raises_on_no_workspaces", async () => {
+  it("require scoped path raises on no workspaces", async () => {
+    // python: test_require_scoped_path_raises_on_no_workspaces
     const { client } = createMockClient(oauthSession(), () => ({
       status: 200,
       json: { status: "ok", results: [] },
@@ -126,7 +121,8 @@ describe("TestWorkspaceScoping", () => {
     ).rejects.toBeInstanceOf(WorkspaceScopeError);
   });
 
-  it("test_require_scoped_path_caches_resolved_workspace", async () => {
+  it("require scoped path caches resolved workspace", async () => {
+    // python: test_require_scoped_path_caches_resolved_workspace
     let callCount = 0;
     const { client } = createMockClient(oauthSession(), () => {
       callCount += 1;
@@ -147,8 +143,10 @@ describe("TestWorkspaceScoping", () => {
   });
 });
 
-describe("TestResolveWorkspaceId", () => {
-  it("test_returns_explicit_workspace_id", async () => {
+describe("Resolve workspace ID", () => {
+  // python: TestResolveWorkspaceId
+  it("returns explicit workspace ID", async () => {
+    // python: test_returns_explicit_workspace_id
     const { client } = createMockClient(oauthSession(), () => ({
       status: 200,
       json: {},
@@ -157,7 +155,8 @@ describe("TestResolveWorkspaceId", () => {
     await expect(client.resolveWorkspaceId()).resolves.toBe(42);
   });
 
-  it("test_auto_discovers_default_workspace", async () => {
+  it("auto discovers default workspace", async () => {
+    // python: test_auto_discovers_default_workspace
     const { client } = createMockClient(oauthSession(), () => ({
       status: 200,
       json: {
@@ -171,7 +170,8 @@ describe("TestResolveWorkspaceId", () => {
     await expect(client.resolveWorkspaceId()).resolves.toBe(20);
   });
 
-  it("test_falls_back_to_first_workspace", async () => {
+  it("falls back to first workspace", async () => {
+    // python: test_falls_back_to_first_workspace
     const { client } = createMockClient(oauthSession(), () => ({
       status: 200,
       json: {
@@ -185,7 +185,8 @@ describe("TestResolveWorkspaceId", () => {
     await expect(client.resolveWorkspaceId()).resolves.toBe(10);
   });
 
-  it("test_raises_on_empty_workspaces", async () => {
+  it("raises on empty workspaces", async () => {
+    // python: test_raises_on_empty_workspaces
     const { client } = createMockClient(oauthSession(), () => ({
       status: 200,
       json: { status: "ok", results: [] },
@@ -200,7 +201,8 @@ describe("TestResolveWorkspaceId", () => {
     expect((thrown as WorkspaceScopeError).code).toBe("NO_WORKSPACES");
   });
 
-  it("test_caches_resolved_id", async () => {
+  it("caches resolved ID", async () => {
+    // python: test_caches_resolved_id
     let callCount = 0;
     const { client } = createMockClient(oauthSession(), () => {
       callCount += 1;
@@ -222,8 +224,10 @@ describe("TestResolveWorkspaceId", () => {
   });
 });
 
-describe("TestListWorkspaces", () => {
-  it("test_returns_public_workspace_list", async () => {
+describe("List workspaces", () => {
+  // python: TestListWorkspaces
+  it("returns public workspace list", async () => {
+    // python: test_returns_public_workspace_list
     const { client } = createMockClient(oauthSession(), () => ({
       status: 200,
       json: {
@@ -244,7 +248,8 @@ describe("TestListWorkspaces", () => {
     expect(workspaces[1]?.is_default).toBe(false);
   });
 
-  it("test_calls_correct_endpoint", async () => {
+  it("calls correct endpoint", async () => {
+    // python: test_calls_correct_endpoint
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthSession(), (request) => {
       capturedUrls.push(request.url);
@@ -259,8 +264,10 @@ describe("TestListWorkspaces", () => {
   });
 });
 
-describe("TestResolveWorkspace", () => {
-  it("test_calls_correct_endpoint_no_double_prefix", async () => {
+describe("Resolve workspace", () => {
+  // python: TestResolveWorkspace
+  it("calls correct endpoint no double prefix", async () => {
+    // python: test_calls_correct_endpoint_no_double_prefix
     const capturedUrls: string[] = [];
     const { client } = createMockClient(oauthSession(), (request) => {
       capturedUrls.push(request.url);
@@ -281,7 +288,8 @@ describe("TestResolveWorkspace", () => {
     expect(capturedUrls[0]?.includes("/api/app/api/app")).toBe(false);
   });
 
-  it("test_writes_to_resolve_workspace_id_cache", async () => {
+  it("writes to resolve workspace ID cache", async () => {
+    // python: test_writes_to_resolve_workspace_id_cache
     let callCount = 0;
     const { client } = createMockClient(oauthSession(), () => {
       callCount += 1;
@@ -303,8 +311,10 @@ describe("TestResolveWorkspace", () => {
   });
 });
 
-describe("TestAppApiEdgeCases", () => {
-  it("test_set_workspace_id_zero", () => {
+describe("App API edge cases", () => {
+  // python: TestAppApiEdgeCases
+  it("set workspace ID zero", () => {
+    // python: test_set_workspace_id_zero
     const { client } = createMockClient(oauthSession(), () => ({
       status: 200,
       json: {},
@@ -315,7 +325,8 @@ describe("TestAppApiEdgeCases", () => {
     ).toBe(true);
   });
 
-  it("test_set_workspace_id_negative", () => {
+  it("set workspace ID negative", () => {
+    // python: test_set_workspace_id_negative
     const { client } = createMockClient(oauthSession(), () => ({
       status: 200,
       json: {},
@@ -327,8 +338,10 @@ describe("TestAppApiEdgeCases", () => {
   });
 });
 
-describe("TestListWorkspacesEdgeCases", () => {
-  it("test_list_workspaces_string_response", async () => {
+describe("List workspaces edge cases", () => {
+  // python: TestListWorkspacesEdgeCases
+  it("list workspaces string response", async () => {
+    // python: test_list_workspaces_string_response
     const { client } = createMockClient(oauthSession(), () => ({
       status: 200,
       json: { results: "unexpected_string", status: "ok" },
@@ -343,7 +356,8 @@ describe("TestListWorkspacesEdgeCases", () => {
     expect(String(thrown)).toContain("Unexpected response format");
   });
 
-  it("test_list_workspaces_missing_required_fields", async () => {
+  it("list workspaces missing required fields", async () => {
+    // python: test_list_workspaces_missing_required_fields
     const { client } = createMockClient(oauthSession(), () => ({
       status: 200,
       json: { results: [{ name: "missing_id" }], status: "ok" },
@@ -360,7 +374,8 @@ describe("TestListWorkspacesEdgeCases", () => {
     );
   });
 
-  it("test_list_workspaces_missing_name_raises_coded_error", async () => {
+  it("list workspaces missing name raises coded error", async () => {
+    // python: test_list_workspaces_missing_name_raises_coded_error
     const { client } = createMockClient(oauthSession(), () => ({
       status: 200,
       json: { results: [{ id: 1 }], status: "ok" },
@@ -378,12 +393,12 @@ describe("TestListWorkspacesEdgeCases", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// tests/unit/test_workspace_resolution.py — the client-side classes.
-// ---------------------------------------------------------------------------
+// --- Resolver and metadata index (tests/unit/test_workspace_resolution.py) ---
 
-describe("TestResolveWorkspaceIdWithResolver", () => {
-  it("test_resolver_hit_skips_public_endpoint_and_caches", async () => {
+describe("Resolve workspace ID with resolver", () => {
+  // python: TestResolveWorkspaceIdWithResolver
+  it("resolver hit skips public endpoint and caches", async () => {
+    // python: test_resolver_hit_skips_public_endpoint_and_caches
     const calls: string[] = [];
     const { client } = createMockClient(sessionNoWs(), (request) => {
       calls.push(pathOf(request));
@@ -400,7 +415,8 @@ describe("TestResolveWorkspaceIdWithResolver", () => {
     expect(calls.some((p) => p.includes("workspaces/public"))).toBe(false);
   });
 
-  it("test_explicit_workspace_skips_resolver", async () => {
+  it("explicit workspace skips resolver", async () => {
+    // python: test_explicit_workspace_skips_resolver
     let resolverCalls = 0;
     const { client } = createMockClient(sessionNoWs(), () => emptyResults);
     client.setWorkspaceId(4521297);
@@ -412,7 +428,8 @@ describe("TestResolveWorkspaceIdWithResolver", () => {
     expect(resolverCalls).toBe(0);
   });
 
-  it("test_falls_back_to_public_when_resolver_returns_none", async () => {
+  it("falls back to public when resolver returns null", async () => {
+    // python: test_falls_back_to_public_when_resolver_returns_none
     const { client } = createMockClient(sessionNoWs(), (request) => {
       if (pathOf(request).includes("workspaces/public")) {
         return {
@@ -442,7 +459,8 @@ describe("TestResolveWorkspaceIdWithResolver", () => {
     await expect(client.resolveWorkspaceId()).resolves.toBe(11);
   });
 
-  it("test_metadata_fallback_when_public_empty", async () => {
+  it("metadata fallback when public empty", async () => {
+    // python: test_metadata_fallback_when_public_empty
     const { client } = createMockClient(sessionNoWs(), (request) => {
       const path = pathOf(request);
       if (path.includes("workspaces/public")) {
@@ -472,7 +490,8 @@ describe("TestResolveWorkspaceIdWithResolver", () => {
     await expect(client.resolveWorkspaceId()).resolves.toBe(4521297);
   });
 
-  it("test_raises_when_nothing_resolves", async () => {
+  it("raises when nothing resolves", async () => {
+    // python: test_raises_when_nothing_resolves
     const { client } = createMockClient(sessionNoWs(), (request) => {
       if (pathOf(request).includes("metadata/index")) {
         return { status: 200, json: { results: {} } };
@@ -484,7 +503,8 @@ describe("TestResolveWorkspaceIdWithResolver", () => {
     );
   });
 
-  it("test_no_resolver_preserves_public_path", async () => {
+  it("no resolver preserves public path", async () => {
+    // python: test_no_resolver_preserves_public_path
     const { client } = createMockClient(sessionNoWs(), () => ({
       status: 200,
       json: {
@@ -496,7 +516,8 @@ describe("TestResolveWorkspaceIdWithResolver", () => {
     await expect(client.resolveWorkspaceId()).resolves.toBe(55);
   });
 
-  it("test_public_403_falls_through_to_metadata", async () => {
+  it("public 403 falls through to metadata", async () => {
+    // python: test_public_403_falls_through_to_metadata
     const { client } = createMockClient(sessionNoWs(), (request) => {
       const path = pathOf(request);
       if (path.includes("workspaces/public")) {
@@ -525,7 +546,8 @@ describe("TestResolveWorkspaceIdWithResolver", () => {
     await expect(client.resolveWorkspaceId()).resolves.toBe(4521297);
   });
 
-  it("test_public_server_error_propagates", async () => {
+  it("public server error propagates", async () => {
+    // python: test_public_server_error_propagates
     const calls: string[] = [];
     const { client } = createMockClient(
       sessionNoWs(),
@@ -544,7 +566,8 @@ describe("TestResolveWorkspaceIdWithResolver", () => {
     expect(calls.some((p) => p.includes("metadata/index"))).toBe(false);
   });
 
-  it("test_metadata_result_is_cached", async () => {
+  it("metadata result is cached", async () => {
+    // python: test_metadata_result_is_cached
     const calls: string[] = [];
     const { client } = createMockClient(sessionNoWs(), (request) => {
       calls.push(pathOf(request));
@@ -569,7 +592,8 @@ describe("TestResolveWorkspaceIdWithResolver", () => {
     expect(calls.filter((p) => p.includes("metadata/index"))).toHaveLength(1);
   });
 
-  it("test_maybe_scoped_path_stays_project_scoped_without_workspace", () => {
+  it("maybe scoped path stays project scoped without workspace", () => {
+    // python: test_maybe_scoped_path_stays_project_scoped_without_workspace
     const { client } = createMockClient(sessionNoWs(), () => emptyResults);
     expect(client.maybeScopedPath("data-definitions/events/")).toBe(
       "/projects/4025120/data-definitions/events/",
@@ -577,8 +601,10 @@ describe("TestResolveWorkspaceIdWithResolver", () => {
   });
 });
 
-describe("TestProjectsMetadataIndex", () => {
-  it("test_returns_project_keyed_mapping", async () => {
+describe("Projects metadata index", () => {
+  // python: TestProjectsMetadataIndex
+  it("returns project keyed mapping", async () => {
+    // python: test_returns_project_keyed_mapping
     const { client } = createMockClient(sessionNoWs(), () => ({
       status: 200,
       json: { results: { "4025120": { name: "demo" } } },
@@ -588,7 +614,8 @@ describe("TestProjectsMetadataIndex", () => {
     });
   });
 
-  it("test_resolver_prefers_default_when_no_global", async () => {
+  it("resolver prefers default when no global", async () => {
+    // python: test_resolver_prefers_default_when_no_global
     const { client } = createMockClient(sessionNoWs(), (request) => {
       if (pathOf(request).includes("workspaces/public")) {
         return emptyResults;
@@ -610,7 +637,8 @@ describe("TestProjectsMetadataIndex", () => {
     await expect(client.resolveWorkspaceId()).resolves.toBe(2);
   });
 
-  it("test_resolver_none_when_project_absent", async () => {
+  it("resolver null when project absent", async () => {
+    // python: test_resolver_none_when_project_absent
     const { client } = createMockClient(sessionNoWs(), () => ({
       status: 200,
       json: { results: { "9999": { workspaces: {} } } },
@@ -618,7 +646,8 @@ describe("TestProjectsMetadataIndex", () => {
     await expect(client.resolveWorkspaceFromMetadata()).resolves.toBeNull();
   });
 
-  it("test_resolver_none_when_workspaces_missing", async () => {
+  it("resolver null when workspaces missing", async () => {
+    // python: test_resolver_none_when_workspaces_missing
     const { client } = createMockClient(sessionNoWs(), () => ({
       status: 200,
       json: { results: { "4025120": { name: "demo" } } },
@@ -626,7 +655,8 @@ describe("TestProjectsMetadataIndex", () => {
     await expect(client.resolveWorkspaceFromMetadata()).resolves.toBeNull();
   });
 
-  it("test_resolver_skips_non_numeric_ids", async () => {
+  it("resolver skips non numeric IDs", async () => {
+    // python: test_resolver_skips_non_numeric_ids
     const { client } = createMockClient(sessionNoWs(), () => ({
       status: 200,
       json: {
@@ -643,7 +673,8 @@ describe("TestProjectsMetadataIndex", () => {
     await expect(client.resolveWorkspaceFromMetadata()).resolves.toBe(42);
   });
 
-  it("test_resolver_propagates_server_error", async () => {
+  it("resolver propagates server error", async () => {
+    // python: test_resolver_propagates_server_error
     const { client } = createMockClient(
       sessionNoWs(),
       () => ({ status: 500, json: { error: "boom" } }),
@@ -655,7 +686,8 @@ describe("TestProjectsMetadataIndex", () => {
     );
   });
 
-  it("test_resolver_returns_none_on_404", async () => {
+  it("resolver returns null on 404", async () => {
+    // python: test_resolver_returns_none_on_404
     const { client } = createMockClient(sessionNoWs(), () => ({
       status: 404,
       json: { error: "not found" },
@@ -663,7 +695,8 @@ describe("TestProjectsMetadataIndex", () => {
     await expect(client.resolveWorkspaceFromMetadata()).resolves.toBeNull();
   });
 
-  it("test_resolver_propagates_unexpected_query_error", async () => {
+  it("resolver propagates unexpected query error", async () => {
+    // python: test_resolver_propagates_unexpected_query_error
     const { client } = createMockClient(sessionNoWs(), () => ({
       status: 400,
       json: { error: "bad request" },
@@ -673,7 +706,8 @@ describe("TestProjectsMetadataIndex", () => {
     );
   });
 
-  it("test_resolver_none_when_all_ids_invalid", async () => {
+  it("resolver null when all IDs invalid", async () => {
+    // python: test_resolver_none_when_all_ids_invalid
     const { client } = createMockClient(sessionNoWs(), () => ({
       status: 200,
       json: {
@@ -690,7 +724,8 @@ describe("TestProjectsMetadataIndex", () => {
     await expect(client.resolveWorkspaceFromMetadata()).resolves.toBeNull();
   });
 
-  it("test_resolver_propagates_auth_error", async () => {
+  it("resolver propagates auth error", async () => {
+    // python: test_resolver_propagates_auth_error
     const { client } = createMockClient(sessionNoWs(), () => ({
       status: 401,
       json: { error: "unauthorized" },
@@ -700,7 +735,8 @@ describe("TestProjectsMetadataIndex", () => {
     );
   });
 
-  it("test_resolver_propagates_rate_limit_error", async () => {
+  it("resolver propagates rate limit error", async () => {
+    // python: test_resolver_propagates_rate_limit_error
     const { client } = createMockClient(
       sessionNoWs(),
       () => ({ status: 429, json: { error: "slow down" } }),

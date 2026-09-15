@@ -1,26 +1,8 @@
-/**
- * Layer-3 translation of `tests/unit/test_live_query_pbt.py` (B5-S2,
- * packet §3) — BOTH classes: TestTransformFunnelProperties :127,
- * TestTransformRetentionProperties :314.
- *
- * Hypothesis `@settings(max_examples=100)` → fast-check `numRuns: 100`
- * (the un-settinged cases keep Hypothesis's own 100 default).
- *
- * Fidelity notes:
- * - `st.dates().map(strftime("%Y-%m-%d"))` becomes a generated
- *   proleptic-Gregorian `YYYY-MM-DD` string over the same 1..9999 year
- *   span; the values are only ever compared/ordered, never parsed.
- * - `event_names` (`st.characters(categories=("L","N","P","S"))`)
- *   becomes an explicit alphabet spanning Latin / Greek / Cyrillic /
- *   CJK letters, ASCII + non-ASCII digits, punctuation and symbols
- *   (strictly inside the Python categories; the B2 ASSERT-F1
- *   convention).
- * - `dates == sorted(dates)` is CODE-POINT ordered, so the
- *   assertion uses {@link sortedByCodepoint} rather than JS `.sort()`.
- * - `_transform_funnel` / `_transform_retention` are
- *   {@link transformFunnel} / {@link transformRetention} in
- *   `services/live-query-transforms.ts` (R7.2 split).
- */
+// Property tests for transformFunnel / transformRetention (conversion-rate
+// and retention invariants over generated API responses). Mirrors
+// tests/unit/test_live_query_pbt.py (both classes). Hypothesis strategies are
+// fast-check arbitraries over the same value domains; `dates == sorted(dates)`
+// is code-point order, hence sortedByCodepoint rather than JS `.sort()`.
 
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
@@ -51,8 +33,8 @@ const dateStrings: fc.Arbitrary<string> = fc
   });
 
 /**
- * `event_names` — `st.text(alphabet=st.characters(categories=("L","N",
- * "P","S")), min_size=1, max_size=50)`.
+ * `event_names` — `st.text(alphabet=st.characters(categories=("L","N","P","S")),`
+ * `min_size=1, max_size=50)`.
  */
 const eventNames: fc.Arbitrary<string> = fc
   .array(
@@ -166,7 +148,8 @@ const rawRetentionResponse: fc.Arbitrary<Record<string, unknown>> = fc
 // _transform_funnel property tests
 // ===========================================================================
 
-describe("TestTransformFunnelProperties", () => {
+describe("Transform funnel properties", () => {
+  // python: TestTransformFunnelProperties
   it("first step conversion is always 1.0", () => {
     fc.assert(
       fc.property(
@@ -280,7 +263,8 @@ describe("TestTransformFunnelProperties", () => {
 // _transform_retention property tests
 // ===========================================================================
 
-describe("TestTransformRetentionProperties", () => {
+describe("Transform retention properties", () => {
+  // python: TestTransformRetentionProperties
   it("retention values are non-negative", () => {
     fc.assert(
       fc.property(

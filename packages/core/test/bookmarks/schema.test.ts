@@ -1,29 +1,8 @@
-/**
- * Layer-3 translation of `tests/unit/test_bookmark_schema.py` (Python
- * revision: `ts-port/phase2-contract-support` HEAD; 574 LOC, 9
- * classes). B3-K1 owns all nine — the sorting-model classes were NOT
- * translated at B2 (that shard translated only the validator-facing
- * `validate_sorting_block` tests).
- *
- * **Structural-twin caveat (R10.2 honesty).** The TS port has no
- * pydantic: `bookmarks/schema{,-sorting}.ts` reproduces the models as
- * structural VALIDATORS, not parsers. So a Python assert of the form
- * `m = Model.model_validate(raw); assert m.sortBy == "column"` becomes
- * `expect(types(MODEL.validate(raw))).toStrictEqual([])` — the strongest
- * statement the twin can make (there is no `m` to inspect, and the
- * package's only consumer of these models,
- * `Workspace._validate_bookmark_params_schema`, reads the error stream
- * and discards the parsed object). Every `pytest.raises` assert keeps
- * its full strength: the pydantic error `type` string is asserted, not
- * merely "some error".
- *
- * The `type` strings asserted below are the twin's contract keys —
- * they are the `_DEFAULT_CODE_MAP` lookup keys — and every one is
- * pinned to the CPython pydantic probe recorded in
- * `docs/history/phase3/notes/B3-K1-notes.md` §Probe
- * (`throwaway/b3-k1/probe-*.py`, run 2026-08-15).
- */
-
+// The structural bookmark-schema validators in `bookmarks/schema{,-sorting}`
+// — translation of `tests/unit/test_bookmark_schema.py` (all nine classes).
+// The port has no pydantic: `m = Model.model_validate(raw); assert m.x == ...`
+// becomes `expect(types(MODEL.validate(raw))).toStrictEqual([])`, and every
+// `pytest.raises` asserts the pydantic error `type` string, which is the code-map key.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -84,12 +63,12 @@ function locHas(entry: PydanticErrorEntry, needle: string): boolean {
   return entry.loc.includes(needle);
 }
 
-// =============================================================================
-// Sorting models
-// =============================================================================
+// --- Sorting models ---
 
-describe("TestSortByColumnsConfig", () => {
-  it("test_valid_minimal_passes", () => {
+describe("Sort by columns config", () => {
+  // python: TestSortByColumnsConfig
+  it("valid minimal passes", () => {
+    // python: test_valid_minimal_passes
     expect(
       types(
         SORT_BY_COLUMNS_CONFIG_MODEL.validate({
@@ -100,7 +79,8 @@ describe("TestSortByColumnsConfig", () => {
     ).toStrictEqual([]);
   });
 
-  it("test_with_value_field_passes", () => {
+  it("with value field passes", () => {
+    // python: test_with_value_field_passes
     expect(
       types(
         SORT_BY_COLUMNS_CONFIG_MODEL.validate({
@@ -112,14 +92,16 @@ describe("TestSortByColumnsConfig", () => {
     ).toStrictEqual([]);
   });
 
-  it("test_missing_col_sort_attrs_rejected", () => {
+  it("missing col sort attrs rejected", () => {
+    // python: test_missing_col_sort_attrs_rejected
     const errs = SORT_BY_COLUMNS_CONFIG_MODEL.validate({ sortBy: "column" });
     expect(
       errs.some((e) => e.type === "missing" && locHas(e, "colSortAttrs")),
     ).toBe(true);
   });
 
-  it("test_wrong_sort_by_rejected", () => {
+  it("wrong sort by rejected", () => {
+    // python: test_wrong_sort_by_rejected
     expect(
       SORT_BY_COLUMNS_CONFIG_MODEL.validate({
         sortBy: "value",
@@ -128,7 +110,8 @@ describe("TestSortByColumnsConfig", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("test_legacy_sort_order_tolerated", () => {
+  it("legacy sort order tolerated", () => {
+    // python: test_legacy_sort_order_tolerated
     // Python asserts `"sortOrder" not in m.model_dump()`; the twin has
     // no dump surface, so the observable half is "accepted silently".
     expect(
@@ -142,7 +125,8 @@ describe("TestSortByColumnsConfig", () => {
     ).toStrictEqual([]);
   });
 
-  it("test_legacy_view_n_limit_tolerated", () => {
+  it("legacy view n limit tolerated", () => {
+    // python: test_legacy_view_n_limit_tolerated
     expect(
       types(
         SORT_BY_COLUMNS_CONFIG_MODEL.validate({
@@ -154,7 +138,8 @@ describe("TestSortByColumnsConfig", () => {
     ).toStrictEqual([]);
   });
 
-  it("test_unknown_field_rejected", () => {
+  it("unknown field rejected", () => {
+    // python: test_unknown_field_rejected
     const errs = SORT_BY_COLUMNS_CONFIG_MODEL.validate({
       sortBy: "column",
       colSortAttrs: [],
@@ -164,8 +149,10 @@ describe("TestSortByColumnsConfig", () => {
   });
 });
 
-describe("TestSortByValueConfig", () => {
-  it("test_valid_minimal_passes", () => {
+describe("Sort by value config", () => {
+  // python: TestSortByValueConfig
+  it("valid minimal passes", () => {
+    // python: test_valid_minimal_passes
     expect(
       types(
         SORT_BY_VALUE_CONFIG_MODEL.validate({
@@ -176,13 +163,15 @@ describe("TestSortByValueConfig", () => {
     ).toStrictEqual([]);
   });
 
-  it("test_missing_col_sort_attrs_rejected", () => {
+  it("missing col sort attrs rejected", () => {
+    // python: test_missing_col_sort_attrs_rejected
     expect(
       SORT_BY_VALUE_CONFIG_MODEL.validate({ sortBy: "value" }).length,
     ).toBeGreaterThan(0);
   });
 
-  it("test_sort_order_optional", () => {
+  it("sort order optional", () => {
+    // python: test_sort_order_optional
     // Python asserts `m.sortOrder is None`; the twin's observable is
     // that the absent optional produces no error.
     expect(
@@ -195,7 +184,8 @@ describe("TestSortByValueConfig", () => {
     ).toStrictEqual([]);
   });
 
-  it("test_sort_order_when_provided_validated", () => {
+  it("sort order when provided validated", () => {
+    // python: test_sort_order_when_provided_validated
     expect(
       SORT_BY_VALUE_CONFIG_MODEL.validate({
         sortBy: "value",
@@ -205,7 +195,8 @@ describe("TestSortByValueConfig", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("test_deprecated_lift_comparison_value_accepted", () => {
+  it("deprecated lift comparison value accepted", () => {
+    // python: test_deprecated_lift_comparison_value_accepted
     expect(
       types(
         SORT_BY_VALUE_CONFIG_MODEL.validate({
@@ -216,7 +207,8 @@ describe("TestSortByValueConfig", () => {
     ).toStrictEqual([]);
   });
 
-  it("test_extra_segmentation_field_rejected", () => {
+  it("extra segmentation field rejected", () => {
+    // python: test_extra_segmentation_field_rejected
     const errs = SORT_BY_VALUE_CONFIG_MODEL.validate({
       sortBy: "value",
       sortOrder: "asc",
@@ -231,8 +223,10 @@ describe("TestSortByValueConfig", () => {
   });
 });
 
-describe("TestFlatSortConfigs", () => {
-  it("test_flat_label_valid", () => {
+describe("Flat sort configs", () => {
+  // python: TestFlatSortConfigs
+  it("flat label valid", () => {
+    // python: test_flat_label_valid
     expect(
       types(
         FLAT_LABEL_SORT_CONFIG_MODEL.validate({
@@ -243,7 +237,8 @@ describe("TestFlatSortConfigs", () => {
     ).toStrictEqual([]);
   });
 
-  it("test_flat_value_valid", () => {
+  it("flat value valid", () => {
+    // python: test_flat_value_valid
     expect(
       types(
         FLAT_VALUE_SORT_CONFIG_MODEL.validate({
@@ -255,21 +250,25 @@ describe("TestFlatSortConfigs", () => {
     ).toStrictEqual([]);
   });
 
-  it("test_flat_label_missing_sort_order_rejected", () => {
+  it("flat label missing sort order rejected", () => {
+    // python: test_flat_label_missing_sort_order_rejected
     expect(
       FLAT_LABEL_SORT_CONFIG_MODEL.validate({ sortBy: "label" }).length,
     ).toBeGreaterThan(0);
   });
 });
 
-describe("TestInsightsBookmarkSortConfig", () => {
-  it("test_empty_passes", () => {
+describe("Insights bookmark sort config", () => {
+  // python: TestInsightsBookmarkSortConfig
+  it("empty passes", () => {
+    // python: test_empty_passes
     expect(
       types(INSIGHTS_BOOKMARK_SORT_CONFIG_MODEL.validate({})),
     ).toStrictEqual([]);
   });
 
-  it("test_bar_with_columns_config_passes", () => {
+  it("bar with columns config passes", () => {
+    // python: test_bar_with_columns_config_passes
     expect(
       types(
         INSIGHTS_BOOKMARK_SORT_CONFIG_MODEL.validate({
@@ -279,7 +278,8 @@ describe("TestInsightsBookmarkSortConfig", () => {
     ).toStrictEqual([]);
   });
 
-  it("test_funnel_steps_kebab_alias_accepted", () => {
+  it("funnel steps kebab alias accepted", () => {
+    // python: test_funnel_steps_kebab_alias_accepted
     expect(
       types(
         INSIGHTS_BOOKMARK_SORT_CONFIG_MODEL.validate({
@@ -289,7 +289,8 @@ describe("TestInsightsBookmarkSortConfig", () => {
     ).toStrictEqual([]);
   });
 
-  it("test_retention_curve_kebab_alias_accepted", () => {
+  it("retention curve kebab alias accepted", () => {
+    // python: test_retention_curve_kebab_alias_accepted
     expect(
       types(
         INSIGHTS_BOOKMARK_SORT_CONFIG_MODEL.validate({
@@ -299,7 +300,8 @@ describe("TestInsightsBookmarkSortConfig", () => {
     ).toStrictEqual([]);
   });
 
-  it("test_unknown_chart_type_rejected", () => {
+  it("unknown chart type rejected", () => {
+    // python: test_unknown_chart_type_rejected
     expect(
       INSIGHTS_BOOKMARK_SORT_CONFIG_MODEL.validate({
         barz: { sortBy: "column", colSortAttrs: [] },
@@ -307,7 +309,8 @@ describe("TestInsightsBookmarkSortConfig", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("test_invalid_sorting_combinations_collected", () => {
+  it("invalid sorting combinations collected", () => {
+    // python: test_invalid_sorting_combinations_collected
     const bad = {
       bar: { sortBy: "value", sortOrder: "asc", segmentation: "value" },
       "funnel-steps": {
@@ -328,50 +331,57 @@ describe("TestInsightsBookmarkSortConfig", () => {
   });
 });
 
-// =============================================================================
-// Adapter
-// =============================================================================
+// --- Adapter ---
 
-describe("TestPydanticAdapter", () => {
-  it("test_loc_to_jsonpath_top_level", () => {
+describe("Pydantic adapter", () => {
+  // python: TestPydanticAdapter
+  it("loc to jsonpath top level", () => {
+    // python: test_loc_to_jsonpath_top_level
     expect(locToJsonPath(["sortBy"], "")).toBe("sortBy");
   });
 
-  it("test_loc_to_jsonpath_nested_with_index", () => {
+  it("loc to jsonpath nested with index", () => {
+    // python: test_loc_to_jsonpath_nested_with_index
     expect(locToJsonPath(["show", 0, "behavior", "type"], "sections")).toBe(
       "sections.show[0].behavior.type",
     );
   });
 
-  it("test_loc_to_jsonpath_with_prefix", () => {
+  it("loc to jsonpath with prefix", () => {
+    // python: test_loc_to_jsonpath_with_prefix
     expect(locToJsonPath(["bar", "sortBy"], "sorting")).toBe(
       "sorting.bar.sortBy",
     );
   });
 
-  it("test_loc_to_jsonpath_leading_index", () => {
+  it("loc to jsonpath leading index", () => {
+    // python: test_loc_to_jsonpath_leading_index
     expect(locToJsonPath([0, "name"], "")).toBe("[0].name");
   });
 
-  it("test_loc_to_jsonpath_strips_discriminator_tags", () => {
+  it("loc to jsonpath strips discriminator tags", () => {
+    // python: test_loc_to_jsonpath_strips_discriminator_tags
     expect(
       locToJsonPath(["line", "FlatLabelSortConfig", "sortOrder"], "sorting"),
     ).toBe("sorting.line.sortOrder");
   });
 
-  it("test_unmapped_error_falls_through_to_validation_error", () => {
+  it("unmapped error falls through to validation error", () => {
+    // python: test_unmapped_error_falls_through_to_validation_error
     expect(defaultCodeMapper("totally_made_up_type", [])).toBe(
       "VALIDATION_ERROR",
     );
   });
 
-  it("test_default_code_mapper_uses_default_map", () => {
+  it("default code mapper uses default map", () => {
+    // python: test_default_code_mapper_uses_default_map
     expect(defaultCodeMapper("missing", [])).toBe("B0_MISSING_FIELD");
     expect(defaultCodeMapper("extra_forbidden", [])).toBe("S3_UNKNOWN_FIELD");
     expect(defaultCodeMapper("literal_error", [])).toBe("B0_INVALID_LITERAL");
   });
 
-  it("test_sorting_code_mapper_path_disambiguation", () => {
+  it("sorting code mapper path disambiguation", () => {
+    // python: test_sorting_code_mapper_path_disambiguation
     expect(sortingCodeMapper("missing", ["bar", "colSortAttrs"])).toBe(
       "S2_MISSING_COL_SORT_ATTRS",
     );
@@ -383,7 +393,8 @@ describe("TestPydanticAdapter", () => {
     );
   });
 
-  it("test_validate_with_pydantic_uses_code_mapper_when_provided", () => {
+  it("validate with pydantic uses code mapper when provided", () => {
+    // python: test_validate_with_pydantic_uses_code_mapper_when_provided
     const myMapper = (): string => "CUSTOM_CODE";
     const errs = validateWithPydantic(
       SORT_BY_VALUE_CONFIG_MODEL.validate,
@@ -394,7 +405,8 @@ describe("TestPydanticAdapter", () => {
     expect(errs.every((e) => e.code === "CUSTOM_CODE")).toBe(true);
   });
 
-  it("test_validate_with_pydantic_path_prefix_prepended", () => {
+  it("validate with pydantic path prefix prepended", () => {
+    // python: test_validate_with_pydantic_path_prefix_prepended
     const errs = validateWithPydantic(
       SORT_BY_VALUE_CONFIG_MODEL.validate,
       { sortBy: "value" },
@@ -404,7 +416,8 @@ describe("TestPydanticAdapter", () => {
     expect(errs.every((e) => e.path.startsWith("custom.prefix."))).toBe(true);
   });
 
-  it("test_validate_with_pydantic_no_errors_returns_empty", () => {
+  it("validate with pydantic no errors returns empty", () => {
+    // python: test_validate_with_pydantic_no_errors_returns_empty
     expect(
       validateWithPydantic(FLAT_LABEL_SORT_CONFIG_MODEL.validate, {
         sortBy: "label",
@@ -414,11 +427,10 @@ describe("TestPydanticAdapter", () => {
   });
 });
 
-// =============================================================================
-// Enum parity
-// =============================================================================
+// --- Enum parity ---
 
-describe("TestEnumParity", () => {
+describe("Enum parity", () => {
+  // python: TestEnumParity
   const cases: ReadonlyArray<
     readonly [string, readonly string[], ReadonlySet<string>]
   > = [
@@ -439,24 +451,25 @@ describe("TestEnumParity", () => {
   ];
 
   for (const [literalName, literalValues, frozenSet] of cases) {
-    it(`test_literal_matches_frozenset[${literalName}]`, () => {
+    // python: test_literal_matches_frozenset
+    it(`${literalName} literal matches the Python frozenset`, () => {
       expect([...literalValues].sort()).toStrictEqual([...frozenSet].sort());
     });
   }
 });
 
-// =============================================================================
-// CreateBookmarkParams literal tightening
-// =============================================================================
+// --- CreateBookmarkParams literal tightening ---
 
-describe("TestBookmarkTypeLiteral", () => {
+describe("Bookmark type literal", () => {
+  // python: TestBookmarkTypeLiteral
   // NOTE: the Python assert reads pydantic's `literal_error` off
   // `CreateBookmarkParams`; the TS twin of that PUBLIC type is the
-  // Phase-2 `EntityModel` port, whose `oneOf` check raises
+  // `EntityModel` port, whose `oneOf` check raises
   // `ResponseValidationError`. The assertion keeps its strength
   // (constructing with the typo must fail) against the twin's own
   // contract surface.
-  it("test_create_bookmark_params_rejects_unknown_type", () => {
+  it("create bookmark params rejects unknown type", () => {
+    // python: test_create_bookmark_params_rejects_unknown_type
     expect(
       () =>
         new CreateBookmarkParams({
@@ -467,7 +480,8 @@ describe("TestBookmarkTypeLiteral", () => {
     ).toThrow(ResponseValidationError);
   });
 
-  it("test_create_bookmark_params_accepts_canonical_types", () => {
+  it("create bookmark params accepts canonical types", () => {
+    // python: test_create_bookmark_params_accepts_canonical_types
     for (const bt of [
       "insights",
       "funnels",
@@ -487,30 +501,33 @@ describe("TestBookmarkTypeLiteral", () => {
   });
 });
 
-// =============================================================================
-// Math / chartType tightening
-// =============================================================================
+// --- Math / chartType tightening ---
 
-describe("TestMathAndChartTypeTightening", () => {
-  it("test_behavior_measurement_rejects_invalid_math", () => {
+describe("Math and chart type tightening", () => {
+  // python: TestMathAndChartTypeTightening
+  it("behavior measurement rejects invalid math", () => {
+    // python: test_behavior_measurement_rejects_invalid_math
     expect(
       BEHAVIOR_MEASUREMENT_MODEL.validate({ math: "totl" }).length,
     ).toBeGreaterThan(0);
   });
 
-  it("test_behavior_measurement_accepts_valid_math", () => {
+  it("behavior measurement accepts valid math", () => {
+    // python: test_behavior_measurement_accepts_valid_math
     expect(
       types(BEHAVIOR_MEASUREMENT_MODEL.validate({ math: "total" })),
     ).toStrictEqual([]);
   });
 
-  it("test_display_options_rejects_invalid_chart_type", () => {
+  it("display options rejects invalid chart type", () => {
+    // python: test_display_options_rejects_invalid_chart_type
     expect(
       DISPLAY_OPTIONS_MODEL.validate({ chartType: "lien" }).length,
     ).toBeGreaterThan(0);
   });
 
-  it("test_display_options_accepts_valid_chart_type", () => {
+  it("display options accepts valid chart type", () => {
+    // python: test_display_options_accepts_valid_chart_type
     expect(
       types(DISPLAY_OPTIONS_MODEL.validate({ chartType: "bar" })),
     ).toStrictEqual([]);
@@ -521,8 +538,10 @@ describe("TestMathAndChartTypeTightening", () => {
 // Flows
 // =============================================================================
 
-describe("TestFlowsBookmarkParams", () => {
-  it("test_flows_bookmark_params_currently_allows_extras", () => {
+describe("Flows bookmark params", () => {
+  // python: TestFlowsBookmarkParams
+  it("flows bookmark params currently allows extras", () => {
+    // python: test_flows_bookmark_params_currently_allows_extras
     // Pins `extra="allow"`: an unknown key must NOT produce
     // `extra_forbidden` (the `"forbid"` twin would).
     expect(
@@ -536,7 +555,8 @@ describe("TestFlowsBookmarkParams", () => {
     ).toStrictEqual([]);
   });
 
-  it("test_flows_step_bool_op_rejects_invalid", () => {
+  it("flows step bool op rejects invalid", () => {
+    // python: test_flows_step_bool_op_rejects_invalid
     expect(
       FLOWS_BOOKMARK_STEP_MODEL.validate({ event: "X", bool_op: "annd" })
         .length,
@@ -544,14 +564,10 @@ describe("TestFlowsBookmarkParams", () => {
   });
 });
 
-// =============================================================================
-// Probe-pinned shapes (R10.2 additions, not weakenings)
-//
-// These lock the CPython probe findings that the Python unit file never
-// exercised but that the twin's structural machinery must reproduce for
-// the R10.9 differential fuzz to stand a chance. Every expectation is a
-// verbatim transcript row from `throwaway/b3-k1/probe-*.py`.
-// =============================================================================
+// --- Probe-pinned pydantic-core shapes (TS-only additions) ---
+// CPython/pydantic behaviour the Python unit file never exercised but the
+// structural twin must reproduce for the differential fuzz to pass; every
+// expectation is a verbatim CPython transcript row.
 
 describe("probe-pinned pydantic-core shapes", () => {
   it("emits declared-field errors in declaration order, then extras in input order", () => {
@@ -670,7 +686,7 @@ describe("probe-pinned pydantic-core shapes", () => {
   });
 
   it("keeps the i64 window for float->int and float->bool coercion", () => {
-    // probe-bool2.py — R10.9 fuzz finding (seeds 99991 / 20260816):
+    // Differential-fuzz finding:
     // an INTEGRAL float inside the i64 window coerces, one at or past
     // 2**63 does not. Python `int`s have no ceiling, so the guard is
     // keyed on float-ness (PyFloat carrier), never magnitude alone.

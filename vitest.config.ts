@@ -26,16 +26,11 @@ const CORPUS_TEST = "conformance-runner/test/corpus.test.ts";
 function typecheck(pkg: string): {
   enabled: true;
   include: string[];
-  exclude: string[];
   tsconfig: string;
 } {
   return {
     enabled: true,
     include: [`packages/${pkg}/test/**/*.test-d.ts`],
-    // Compile-only cross-check against the vendored contracts: bare type
-    // aliases, no suites, so vitest would report "no test suite found". It
-    // is still type-checked (it is in the tsconfig include and in `tsc -b`).
-    exclude: ["packages/core/test/types/entities/vendored-contracts.test-d.ts"],
     tsconfig: `packages/${pkg}/tsconfig.test-d.json`,
   };
 }

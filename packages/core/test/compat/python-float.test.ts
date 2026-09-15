@@ -1,7 +1,7 @@
-// B0-1: tests written FIRST from R11.3 semantics. Every expected
-// value below was produced by CPython 3.14.6 `float(str)` (the oracle) on
-// 2026-08-15; the parse-grammar probes are recorded in
-// docs/history/phase3/notes/B0-notes.md (Python repo).
+// `pythonFloat` — CPython `float(str)` parse grammar: decimal/exponent forms,
+// inf/nan spellings, digit-group underscores, Unicode digits and the numeric
+// whitespace set. No Python test file behind this suite; the expected values
+// were produced by CPython 3.14.6 and the fast-check properties are TS-only.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -76,7 +76,7 @@ describe("pythonFloat — decimal and exponent grammar (CPython float(str))", ()
     expectRejects("0x5");
     expectRejects("0b1");
     expectRejects("1j");
-    expectRejects("𝒳"); // R10.9 non-BMP edge
+    expectRejects("𝒳"); // non-BMP edge
   });
 });
 

@@ -1,28 +1,8 @@
-// Translated validation-bypass tests (B5-S2, packet §3 + §8): the B2-M2
-// WHOLE-FILE deferral (`B2-M2-notes.md:120-132`,
-// `validation-bookmark.test.ts:14-27` header) — assertion-for-assertion
-// port of tests/test_validation_bypass.py, ALL 8 classes
-// (TestVector1MetricFilterCPFixed :78,
-// TestVector2FunnelStepFilterCPFixed :138,
-// TestVector3InlineCohortDesignChoice :178,
-// TestVector4WarningOnlyEnumDesignChoice :224,
-// TestVector5NegativeCPRefFixed :270, TestVector6EmptyFormulaFixed :301,
-// TestVector7FormulaShowClauseFixed :340, TestCombinedFixes :383).
-//
-// Translation notes:
-// - The `ws` fixture builds a Workspace over the shared stub client; the
-//   Python fixture also builds an unused `MagicMock()` ConfigManager
-//   (dead since the 042 session redesign) which has no TS twin.
-// - `pytest.raises(BookmarkValidationError, match="positive integer")`
-//   translates to a class + message-substring assertion PAIR
-//   (`.rejects.toBeInstanceOf` + `.rejects.toThrow`). The class half
-//   was omitted by the original S2 translation despite this header —
-//   added at B5-ARB (`b5-review-resolution.md` ASR-F1). R5.4 puts
-//   message TEXT out of the VECTOR contract, but these Layer-3 cases
-//   assert on it in Python, so the substrings are matched here too (the
-//   TS messages are transcribed verbatim from Python).
-// - The `params["sections"]["show"][0][...] = X` mutations index the
-//   plain params dict exactly as Python does.
+// Validation-bypass regressions through the Workspace facade: custom-property
+// ids and formulas in metric / funnel-step filters, inline cohorts, warning-only
+// enums and corrupted show clauses. Mirrors tests/test_validation_bypass.py
+// (all eight classes). `pytest.raises(..., match=)` becomes an error-class plus
+// message-substring pair; the TS messages are transcribed verbatim from Python.
 
 import { describe, expect, it } from "vitest";
 
@@ -45,25 +25,9 @@ import {
 } from "../../src/types/query-params/filter.js";
 import { FunnelStep } from "../../src/types/query-params/funnel.js";
 import { Metric } from "../../src/types/query-params/metric.js";
-import { Workspace } from "../../src/workspace.js";
-import {
-  mockWorkspaceClient,
-  TEST_SESSION,
-} from "../../test-support/workspace-test-helpers.js";
+import { makeStubWorkspace } from "../../test-support/workspace-test-helpers.js";
 
-/**
- * The `ws` fixture.
- *
- * @returns A Workspace with mocked dependencies (no network).
- */
-function makeWs(): Workspace {
-  return new Workspace({
-    session: TEST_SESSION,
-    client: mockWorkspaceClient().client,
-  });
-}
-
-/** `_has_error(errors)` (test file :70-72). */
+/** `_has_error(errors)` . */
 function hasError(errors: readonly ValidationError[]): boolean {
   return errors.some((e) => e.severity === "error");
 }
@@ -88,14 +52,13 @@ function groupEntry(
   return group[index]!;
 }
 
-// ===========================================================================
-// FIXED: Vector 1 — CustomPropertyRef(0) in Metric.filters
-// ===========================================================================
+// --- Vector 1 — CustomPropertyRef(0) in Metric.filters ---
 
-describe("TestVector1MetricFilterCPFixed", () => {
+describe("Vector 1 metric filter CP fixed", () => {
+  // python: TestVector1MetricFilterCPFixed
   it("CustomPropertyRef(0) in Metric.filters raises", async () => {
     await expect(
-      makeWs().buildParams(
+      makeStubWorkspace().buildParams(
         new Metric({
           event: "AnyEvent",
           filters: [Filter.isSet(new CustomPropertyRef({ id: 0 }))],
@@ -104,7 +67,7 @@ describe("TestVector1MetricFilterCPFixed", () => {
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams(
+      makeStubWorkspace().buildParams(
         new Metric({
           event: "AnyEvent",
           filters: [Filter.isSet(new CustomPropertyRef({ id: 0 }))],
@@ -116,7 +79,7 @@ describe("TestVector1MetricFilterCPFixed", () => {
 
   it("CustomPropertyRef(-1) in Metric.filters raises", async () => {
     await expect(
-      makeWs().buildParams(
+      makeStubWorkspace().buildParams(
         new Metric({
           event: "AnyEvent",
           filters: [Filter.isSet(new CustomPropertyRef({ id: -1 }))],
@@ -125,7 +88,7 @@ describe("TestVector1MetricFilterCPFixed", () => {
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams(
+      makeStubWorkspace().buildParams(
         new Metric({
           event: "AnyEvent",
           filters: [Filter.isSet(new CustomPropertyRef({ id: -1 }))],
@@ -136,7 +99,7 @@ describe("TestVector1MetricFilterCPFixed", () => {
   });
 
   it("CustomPropertyRef(42) in Metric.filters passes", async () => {
-    const params = await makeWs().buildParams(
+    const params = await makeStubWorkspace().buildParams(
       new Metric({
         event: "AnyEvent",
         filters: [Filter.isSet(new CustomPropertyRef({ id: 42 }))],
@@ -146,8 +109,8 @@ describe("TestVector1MetricFilterCPFixed", () => {
     expect(Object.hasOwn(params, "sections")).toBe(true);
   });
 
-  it("L2 B18b also catches an invalid customPropertyId", async () => {
-    const params = await makeWs().buildParams(
+  it("the bookmark schema layer also catches an invalid customPropertyId", async () => {
+    const params = await makeStubWorkspace().buildParams(
       new Metric({
         event: "AnyEvent",
         filters: [Filter.isSet(new CustomPropertyRef({ id: 42 }))],
@@ -168,14 +131,13 @@ describe("TestVector1MetricFilterCPFixed", () => {
   });
 });
 
-// ===========================================================================
-// FIXED: Vector 2 — CustomPropertyRef(0) in FunnelStep.filters
-// ===========================================================================
+// --- Vector 2 — CustomPropertyRef(0) in FunnelStep.filters ---
 
-describe("TestVector2FunnelStepFilterCPFixed", () => {
+describe("Vector 2 funnel step filter CP fixed", () => {
+  // python: TestVector2FunnelStepFilterCPFixed
   it("CustomPropertyRef(0) in FunnelStep.filters raises", async () => {
     await expect(
-      makeWs().buildFunnelParams(
+      makeStubWorkspace().buildFunnelParams(
         [
           new FunnelStep({
             event: "Step1",
@@ -187,7 +149,7 @@ describe("TestVector2FunnelStepFilterCPFixed", () => {
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildFunnelParams(
+      makeStubWorkspace().buildFunnelParams(
         [
           new FunnelStep({
             event: "Step1",
@@ -201,7 +163,7 @@ describe("TestVector2FunnelStepFilterCPFixed", () => {
   });
 
   it("CustomPropertyRef(42) in FunnelStep.filters passes", async () => {
-    const params = await makeWs().buildFunnelParams(
+    const params = await makeStubWorkspace().buildFunnelParams(
       [
         new FunnelStep({
           event: "Step1",
@@ -215,18 +177,17 @@ describe("TestVector2FunnelStepFilterCPFixed", () => {
   });
 });
 
-// ===========================================================================
-// DESIGN CHOICE: Vector 3 — inline CohortDefinition in CohortBreakdown
-// ===========================================================================
+// --- Vector 3 (design choice) — inline CohortDefinition in CohortBreakdown ---
 
-describe("TestVector3InlineCohortDesignChoice", () => {
+describe("Vector 3 inline cohort design choice", () => {
+  // python: TestVector3InlineCohortDesignChoice
   it("an inline CohortDefinition breakdown passes both layers", async () => {
     const criteria = CohortCriteria.didEvent("FakeEvent", {
       at_least: 1,
       within_days: 30,
     });
     const defn = new CohortDefinition(criteria);
-    const params = await makeWs().buildParams("AnyEvent", {
+    const params = await makeStubWorkspace().buildParams("AnyEvent", {
       group_by: new CohortBreakdown({ cohort: defn, name: "Test Cohort" }),
       last: 7,
     });
@@ -248,7 +209,7 @@ describe("TestVector3InlineCohortDesignChoice", () => {
       within_days: 30,
     });
     const defn = new CohortDefinition(criteria);
-    const params = await makeWs().buildParams("AnyEvent", {
+    const params = await makeStubWorkspace().buildParams("AnyEvent", {
       group_by: new CohortBreakdown({ cohort: defn, name: "Test Cohort" }),
       last: 7,
     });
@@ -261,13 +222,12 @@ describe("TestVector3InlineCohortDesignChoice", () => {
   });
 });
 
-// ===========================================================================
-// DESIGN CHOICE: Vector 4 — warning-only enum severity
-// ===========================================================================
+// --- Vector 4 (design choice) — warning-only enum severity ---
 
-describe("TestVector4WarningOnlyEnumDesignChoice", () => {
+describe("Vector 4 warning only enum design choice", () => {
+  // python: TestVector4WarningOnlyEnumDesignChoice
   it("an invalid resourceType is a warning, not an error", async () => {
-    const params = await makeWs().buildParams("AnyEvent", {
+    const params = await makeStubWorkspace().buildParams("AnyEvent", {
       group_by: "country",
       last: 7,
     });
@@ -281,7 +241,7 @@ describe("TestVector4WarningOnlyEnumDesignChoice", () => {
   });
 
   it("an invalid propertyType is a warning, not an error", async () => {
-    const params = await makeWs().buildParams("AnyEvent", {
+    const params = await makeStubWorkspace().buildParams("AnyEvent", {
       group_by: "country",
       last: 7,
     });
@@ -294,8 +254,10 @@ describe("TestVector4WarningOnlyEnumDesignChoice", () => {
     expect(hasError(errors)).toBe(false);
   });
 
-  it("an invalid behavior.type is a B7 warning", async () => {
-    const params = await makeWs().buildParams("AnyEvent", { last: 7 });
+  it("an invalid behavior.type is a warning, not an error", async () => {
+    const params = await makeStubWorkspace().buildParams("AnyEvent", {
+      last: 7,
+    });
     const behavior = showClause(params, 0)["behavior"] as Record<
       string,
       unknown
@@ -309,14 +271,13 @@ describe("TestVector4WarningOnlyEnumDesignChoice", () => {
   });
 });
 
-// ===========================================================================
-// FIXED: Vector 5 — negative CustomPropertyRef ID
-// ===========================================================================
+// --- Vector 5 — negative CustomPropertyRef ID ---
 
-describe("TestVector5NegativeCPRefFixed", () => {
+describe("Vector 5 negative CP ref fixed", () => {
+  // python: TestVector5NegativeCPRefFixed
   it("CustomPropertyRef(-1) raises", async () => {
     await expect(
-      makeWs().buildParams(
+      makeStubWorkspace().buildParams(
         new Metric({
           event: "AnyEvent",
           filters: [Filter.isSet(new CustomPropertyRef({ id: -1 }))],
@@ -325,7 +286,7 @@ describe("TestVector5NegativeCPRefFixed", () => {
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams(
+      makeStubWorkspace().buildParams(
         new Metric({
           event: "AnyEvent",
           filters: [Filter.isSet(new CustomPropertyRef({ id: -1 }))],
@@ -337,7 +298,7 @@ describe("TestVector5NegativeCPRefFixed", () => {
 
   it("CustomPropertyRef(-999999) raises", async () => {
     await expect(
-      makeWs().buildParams(
+      makeStubWorkspace().buildParams(
         new Metric({
           event: "AnyEvent",
           filters: [Filter.isSet(new CustomPropertyRef({ id: -999999 }))],
@@ -346,7 +307,7 @@ describe("TestVector5NegativeCPRefFixed", () => {
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams(
+      makeStubWorkspace().buildParams(
         new Metric({
           event: "AnyEvent",
           filters: [Filter.isSet(new CustomPropertyRef({ id: -999999 }))],
@@ -357,24 +318,23 @@ describe("TestVector5NegativeCPRefFixed", () => {
   });
 });
 
-// ===========================================================================
-// FIXED: Vector 6 — empty-formula InlineCustomProperty
-// ===========================================================================
+// --- Vector 6 — empty-formula InlineCustomProperty ---
 
-describe("TestVector6EmptyFormulaFixed", () => {
+describe("Vector 6 empty formula fixed", () => {
+  // python: TestVector6EmptyFormulaFixed
   it("an empty formula in a per-metric filter raises", async () => {
     const badCp = new InlineCustomProperty({
       formula: "",
       inputs: { A: new PropertyInput({ name: "$browser" }) },
     });
     await expect(
-      makeWs().buildParams(
+      makeStubWorkspace().buildParams(
         new Metric({ event: "AnyEvent", filters: [Filter.isSet(badCp)] }),
         { last: 7 },
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams(
+      makeStubWorkspace().buildParams(
         new Metric({ event: "AnyEvent", filters: [Filter.isSet(badCp)] }),
         { last: 7 },
       ),
@@ -386,7 +346,7 @@ describe("TestVector6EmptyFormulaFixed", () => {
       formula: "A",
       inputs: { A: new PropertyInput({ name: "$browser" }) },
     });
-    const params = await makeWs().buildParams(
+    const params = await makeStubWorkspace().buildParams(
       new Metric({ event: "AnyEvent", filters: [Filter.isSet(goodCp)] }),
       { last: 7 },
     );
@@ -394,13 +354,14 @@ describe("TestVector6EmptyFormulaFixed", () => {
   });
 });
 
-// ===========================================================================
-// FIXED: Vector 7 — formula show-clause injection
-// ===========================================================================
+// --- Vector 7 — formula show-clause injection ---
 
-describe("TestVector7FormulaShowClauseFixed", () => {
+describe("Vector 7 formula show clause fixed", () => {
+  // python: TestVector7FormulaShowClauseFixed
   it("a hybrid clause (formula + behavior) still validates the behavior", async () => {
-    const params = await makeWs().buildParams("AnyEvent", { last: 7 });
+    const params = await makeStubWorkspace().buildParams("AnyEvent", {
+      last: 7,
+    });
     // Inject a formula key into a valid show clause — creates a hybrid
     showClause(params, 0)["formula"] = "";
 
@@ -409,7 +370,9 @@ describe("TestVector7FormulaShowClauseFixed", () => {
   });
 
   it("a corrupted behavior is detected despite the formula key", async () => {
-    const params = await makeWs().buildParams("AnyEvent", { last: 7 });
+    const params = await makeStubWorkspace().buildParams("AnyEvent", {
+      last: 7,
+    });
     const behavior = showClause(params, 0)["behavior"] as Record<
       string,
       unknown
@@ -421,19 +384,19 @@ describe("TestVector7FormulaShowClauseFixed", () => {
     const errors = validateBookmark(params);
     const b7Errors = errors.filter((e) => e.code.includes("B7"));
     expect(b7Errors.length).toBeGreaterThan(0);
-    // B7 is intentionally severity="warning" (forward compatibility)
+    // The behavior-type rule is intentionally severity="warning" (forward
+    // compatibility).
     expect(b7Errors.every((e) => e.severity === "warning")).toBe(true);
   });
 });
 
-// ===========================================================================
-// FIXED: combined
-// ===========================================================================
+// --- Combined ---
 
-describe("TestCombinedFixes", () => {
+describe("Combined fixes", () => {
+  // python: TestCombinedFixes
   it("an invalid CP ID in Metric.filters is caught alongside other params", async () => {
     await expect(
-      makeWs().buildParams(
+      makeStubWorkspace().buildParams(
         new Metric({
           event: "AnyEvent",
           filters: [Filter.isSet(new CustomPropertyRef({ id: 0 }))],
@@ -442,7 +405,7 @@ describe("TestCombinedFixes", () => {
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams(
+      makeStubWorkspace().buildParams(
         new Metric({
           event: "AnyEvent",
           filters: [Filter.isSet(new CustomPropertyRef({ id: 0 }))],
@@ -458,7 +421,7 @@ describe("TestCombinedFixes", () => {
       inputs: { A: new PropertyInput({ name: "$browser" }) },
     });
     await expect(
-      makeWs().buildFunnelParams(
+      makeStubWorkspace().buildFunnelParams(
         [
           new FunnelStep({ event: "Step1", filters: [Filter.isSet(badCp)] }),
           "Step2",
@@ -467,7 +430,7 @@ describe("TestCombinedFixes", () => {
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildFunnelParams(
+      makeStubWorkspace().buildFunnelParams(
         [
           new FunnelStep({ event: "Step1", filters: [Filter.isSet(badCp)] }),
           "Step2",

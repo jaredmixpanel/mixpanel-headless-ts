@@ -1,17 +1,8 @@
-// Layer-3 translation — tests/pbt/test_workspace_resolution_pbt.py →
-// fast-check (Phase-3 packet B4-C1; same strategy shapes).
-//
-// Translated here: the two PURE selection-ladder properties
-// (`test_select_result_belongs_to_input`,
-// `test_all_project_data_name_chosen_without_global`).
-//
-// Header exclusion (packet C1 §Layer-3 + playbook Discrepancy #5): the
-// three MeService-backed properties
-// (`test_global_workspace_is_chosen_when_present`,
-// `test_resolution_is_deterministic`, `test_never_selects_other_project`)
-// drive `MeService.resolve_workspace` over a warm on-disk MeCache —
-// both are B8-N2 modules; those properties translate at B8 against the
-// real MeService.
+// Property tests for the `selectWorkspaceId` selection ladder: the result
+// always belongs to the input, and an "All Project Data" view wins when no
+// global view exists. Mirrors the two pure properties of
+// tests/pbt/test_workspace_resolution_pbt.py (fast-check for Hypothesis); the
+// three MeService-backed properties belong to the node package's cache/service tests.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -87,8 +78,9 @@ const viewsNoGlobalWithApd: fc.Arbitrary<WorkspaceView[]> = fc
       }),
   );
 
-describe("select_workspace_id precedence (PBT)", () => {
-  it("test_select_result_belongs_to_input", () => {
+describe("selectWorkspaceId precedence (properties)", () => {
+  it("select result belongs to input", () => {
+    // python: test_select_result_belongs_to_input
     fc.assert(
       fc.property(viewsArb, (views) => {
         // For a non-empty input, the chosen id is always one of the
@@ -99,7 +91,8 @@ describe("select_workspace_id precedence (PBT)", () => {
     );
   });
 
-  it("test_all_project_data_name_chosen_without_global", () => {
+  it("all project data name chosen without global", () => {
+    // python: test_all_project_data_name_chosen_without_global
     fc.assert(
       fc.property(viewsNoGlobalWithApd, (views) => {
         // With no global view, an 'All Project Data'-named view wins.

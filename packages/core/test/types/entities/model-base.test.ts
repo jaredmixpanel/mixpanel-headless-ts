@@ -1,9 +1,8 @@
-// Behavioral unit tests for the entity-model base (phase2-design C5,
-// packet P2-7): the Pydantic-boundary semantics every one of the 119
-// entity classes inherits — defaults-on-absent, null vs
-// absent, extra policies, validation-alias acceptance
-// (R3.4 explicit ports), lax coercion, nested reconstruction — plus
-// the five hand-ported Python validators.
+// EntityModel base semantics every entity class inherits: defaults only on
+// absent keys, null vs absent, extra policies, validation-alias acceptance,
+// lax coercion, nested reconstruction, model_dump identity passthrough and
+// the hand-ported Python field validators. TS-only unit tests (no Python
+// twin); the Pydantic behaviours they pin were measured against pydantic v2.
 import { describe, expect, it } from "vitest";
 
 import { ResponseValidationError } from "../../../src/errors.js";
@@ -42,7 +41,7 @@ describe("EntityModel construction semantics", () => {
     expect(explicit.description).toBeNull();
   });
 
-  it("treats undefined as ABSENT (R4.10)", () => {
+  it("treats undefined as ABSENT", () => {
     const dashboard = new Dashboard({
       id: 1,
       title: "t",
@@ -185,11 +184,10 @@ describe("EntityModel construction semantics", () => {
   });
 });
 
-describe("model_dump identity passthrough (B6-BIND fidelity fix, B6-ARB Finding E lock)", () => {
+describe("model_dump identity passthrough", () => {
   // Pydantic v2 `model_dump` keeps arbitrary (non-dict, non-list,
-  // non-model) objects inside `dict[str, Any]` fields BY IDENTITY —
-  // measured live 2026-08-16 (`out['d']['k'] is c`, with and without
-  // `exclude_none`; disclosed in `B6-BIND-notes.md`). The pre-fix
+  // non-model) objects inside `dict[str, Any]` fields BY IDENTITY
+  // (`out['d']['k'] is c`, with and without `exclude_none`). The pre-fix
   // clone-anything walk decomposed a `Uint8Array` into index keys.
 
   /** An arbitrary consumer class (the pydantic probe's `C()`). */
@@ -340,7 +338,7 @@ describe("hand-ported Python validators", () => {
     expect(BUSINESS_CONTEXT_MAX_CHARS).toBe(50_000);
   });
 
-  it("CreateAnnotationParams: description max_length is codepoint-counted (R11.6)", () => {
+  it("CreateAnnotationParams: description max_length is codepoint-counted", () => {
     const astral = "\u{1D4B3}".repeat(512); // 512 codepoints, 1024 UTF-16 units
     const params = CreateAnnotationParams.fromDict({
       date: "2026-01-01 00:00:00",

@@ -1,37 +1,14 @@
-/**
- * Layer-3 translation of the `validate_bookmark` classes of
- * `tests/test_validation_cohort.py` (Python revision:
- * `ts-port/phase2-contract-support` HEAD; 504 LOC).
- *
- * Scope per b2-packets.md §V1b: `TestCohortFilterValidation` (3),
- * `TestCohortGroupValidation` (3), `TestCohortShowValidation` (8) and
- * `TestCohortBehaviorMissingIdentifier` (1) — B22–B26. The
- * `validate_retention_args` class (`TestRetentionCohortMixValidation`,
- * CB3) was translated by shard V1a in `validation-cohort.test.ts`,
- * which cites this split in its own header.
- *
- * R10.2: assertion-for-assertion.
- */
-
+// `validateBookmark` cohort rules — translation of `TestCohortFilterValidation`,
+// `TestCohortGroupValidation`, `TestCohortShowValidation` and
+// `TestCohortBehaviorMissingIdentifier` from `tests/test_validation_cohort.py`
+// (the `validate_retention_args` class is in validation-cohort.test.ts).
 import { describe, expect, it } from "vitest";
 
-import type { ValidationError } from "../../src/errors.js";
 import { validateBookmark } from "../../src/query/validation-bookmark.js";
+import { codes } from "../../test-support/error-codes.js";
 
 /** Loose dict, the TS analogue of Python's `dict[str, Any]`. */
 type Dict = Record<string, unknown>;
-
-/**
- * Extract error codes.
- *
- * Port of `_codes`.
- *
- * @param errors - Validation errors.
- * @returns The codes, in emission order.
- */
-function codes(errors: readonly ValidationError[]): string[] {
-  return errors.map((e) => e.code);
-}
 
 /**
  * Build a valid bookmark dict with a cohort show clause.
@@ -245,19 +222,20 @@ function firstMeasurement(params: Dict): Dict {
   return show[0]!["measurement"] as Dict;
 }
 
-// =============================================================================
-// B25: Cohort filter value must be "$cohorts"
-// =============================================================================
+// --- rule B25: cohort filter value must be "$cohorts" ---
 
-describe("TestCohortFilterValidation", () => {
-  it("test_valid_cohort_filter_no_b25_error", () => {
+describe("Cohort filter validation", () => {
+  // python: TestCohortFilterValidation
+  it("valid cohort filter: no rule B25 error", () => {
+    // python: test_valid_cohort_filter_no_b25_error
     const entry = validCohortFilterEntry();
     const params = bookmarkWithFilter(entry);
     const errors = validateBookmark(params);
     expect(codes(errors)).not.toContain("B25_COHORT_FILTER_VALUE");
   });
 
-  it("test_cohort_filter_with_wrong_value_returns_b25_error", () => {
+  it("cohort filter with wrong value returns a rule B25 error", () => {
+    // python: test_cohort_filter_with_wrong_value_returns_b25_error
     const entry = validCohortFilterEntry();
     entry["value"] = "wrong_property";
     const params = bookmarkWithFilter(entry);
@@ -265,7 +243,8 @@ describe("TestCohortFilterValidation", () => {
     expect(codes(errors)).toContain("B25_COHORT_FILTER_VALUE");
   });
 
-  it("test_non_cohort_list_filter_no_b25_error", () => {
+  it("non-cohort list filter: no rule B25 error", () => {
+    // python: test_non_cohort_list_filter_no_b25_error
     const entry: Dict = {
       resourceType: "events",
       filterType: "string",
@@ -279,19 +258,20 @@ describe("TestCohortFilterValidation", () => {
   });
 });
 
-// =============================================================================
-// B26: Cohort group entry must have non-empty cohorts array
-// =============================================================================
+// --- rule B26: cohort group entry must have a non-empty cohorts array ---
 
-describe("TestCohortGroupValidation", () => {
-  it("test_valid_cohort_group_no_b26_error", () => {
+describe("Cohort group validation", () => {
+  // python: TestCohortGroupValidation
+  it("valid cohort group: no rule B26 error", () => {
+    // python: test_valid_cohort_group_no_b26_error
     const entry = validCohortGroupEntry();
     const params = bookmarkWithGroup(entry);
     const errors = validateBookmark(params);
     expect(codes(errors)).not.toContain("B26_EMPTY_COHORTS");
   });
 
-  it("test_empty_cohorts_array_returns_b26_error", () => {
+  it("empty cohorts array returns a rule B26 error", () => {
+    // python: test_empty_cohorts_array_returns_b26_error
     const entry = validCohortGroupEntry();
     entry["cohorts"] = [];
     const params = bookmarkWithGroup(entry);
@@ -299,7 +279,8 @@ describe("TestCohortGroupValidation", () => {
     expect(codes(errors)).toContain("B26_EMPTY_COHORTS");
   });
 
-  it("test_group_without_cohorts_key_no_b26_error", () => {
+  it("group without cohorts key: no rule B26 error", () => {
+    // python: test_group_without_cohorts_key_no_b26_error
     const entry: Dict = {
       value: "country",
       resourceType: "events",
@@ -311,12 +292,12 @@ describe("TestCohortGroupValidation", () => {
   });
 });
 
-// =============================================================================
-// B22-B24: Cohort show clause validation
-// =============================================================================
+// --- rule B22 / rule B23 / rule B24: cohort show clause validation ---
 
-describe("TestCohortShowValidation", () => {
-  it("test_valid_cohort_show_no_errors", () => {
+describe("Cohort show validation", () => {
+  // python: TestCohortShowValidation
+  it("valid cohort show no errors", () => {
+    // python: test_valid_cohort_show_no_errors
     const params = validCohortShow();
     const errors = validateBookmark(params);
     const cohortCodes = new Set([
@@ -327,21 +308,24 @@ describe("TestCohortShowValidation", () => {
     expect(errors.some((e) => cohortCodes.has(e.code))).toBe(false);
   });
 
-  it("test_b22_negative_id_returns_error", () => {
+  it("rule B22: negative ID returns error", () => {
+    // python: test_b22_negative_id_returns_error
     const params = validCohortShow();
     firstBehavior(params)["id"] = -1;
     const errors = validateBookmark(params);
     expect(codes(errors)).toContain("B22_COHORT_BEHAVIOR_ID");
   });
 
-  it("test_b22_zero_id_returns_error", () => {
+  it("rule B22: zero ID returns error", () => {
+    // python: test_b22_zero_id_returns_error
     const params = validCohortShow();
     firstBehavior(params)["id"] = 0;
     const errors = validateBookmark(params);
     expect(codes(errors)).toContain("B22_COHORT_BEHAVIOR_ID");
   });
 
-  it("test_b22_missing_id_with_raw_cohort_no_error", () => {
+  it("rule B22: missing ID with raw cohort no error", () => {
+    // python: test_b22_missing_id_with_raw_cohort_no_error
     const params = validCohortShow();
     const behavior = firstBehavior(params);
     delete behavior["id"];
@@ -350,39 +334,43 @@ describe("TestCohortShowValidation", () => {
     expect(codes(errors)).not.toContain("B22_COHORT_BEHAVIOR_ID");
   });
 
-  it("test_b23_wrong_resource_type_returns_error", () => {
+  it("rule B23: wrong resource type returns error", () => {
+    // python: test_b23_wrong_resource_type_returns_error
     const params = validCohortShow();
     firstBehavior(params)["resourceType"] = "events";
     const errors = validateBookmark(params);
     expect(codes(errors)).toContain("B23_COHORT_RESOURCE_TYPE");
   });
 
-  it("test_b23_correct_resource_type_no_error", () => {
+  it("rule B23: correct resource type no error", () => {
+    // python: test_b23_correct_resource_type_no_error
     const params = validCohortShow();
     const errors = validateBookmark(params);
     expect(codes(errors)).not.toContain("B23_COHORT_RESOURCE_TYPE");
   });
 
-  it("test_b24_wrong_math_returns_error", () => {
+  it("rule B24: wrong math returns error", () => {
+    // python: test_b24_wrong_math_returns_error
     const params = validCohortShow();
     firstMeasurement(params)["math"] = "total";
     const errors = validateBookmark(params);
     expect(codes(errors)).toContain("B24_COHORT_MATH");
   });
 
-  it("test_b24_correct_math_no_error", () => {
+  it("rule B24: correct math no error", () => {
+    // python: test_b24_correct_math_no_error
     const params = validCohortShow();
     const errors = validateBookmark(params);
     expect(codes(errors)).not.toContain("B24_COHORT_MATH");
   });
 });
 
-// =============================================================================
-// B22: Cohort behavior missing identifier
-// =============================================================================
+// --- rule B22: cohort behavior missing identifier ---
 
-describe("TestCohortBehaviorMissingIdentifier", () => {
-  it("test_missing_both_id_and_raw_cohort", () => {
+describe("Cohort behavior missing identifier", () => {
+  // python: TestCohortBehaviorMissingIdentifier
+  it("missing both ID and raw cohort", () => {
+    // python: test_missing_both_id_and_raw_cohort
     const bookmark: Dict = {
       sections: {
         show: [

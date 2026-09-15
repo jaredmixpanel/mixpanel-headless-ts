@@ -1,25 +1,8 @@
-// B6-W8 Layer-3 translation (packet `b6-packets.md` §10) — the WHOLE
-// of `tests/unit/test_workspace_schemas.py` (877 lines, 6 classes):
-//
-//   `TestListSchemaRegistry`, `TestCreateSchema`,
-//   `TestCreateSchemasBulk`, `TestUpdateSchema`,
-//   `TestUpdateSchemasBulk`, `TestDeleteSchemas`
-//
-// Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
-// becomes `makeWorkspace(handler)` — the client is built over the
-// OAuth session (`_make_oauth_credentials`, :57) while the facade
-// carries the service-account `_TEST_SESSION`, exactly as
-// Python does. `temp_dir` has no TS analog (no config file is ever
-// touched) and is dropped; the W6/W7 precedent.
-//
-// ADDITIVE sections (clearly headed, never substituting for a
-// translated Python assertion — B5 Caution #13 / packet §0.2): the
-// facade-local delegation contracts Python's wire suite cannot see —
-// which client method each member calls, with which arguments, the
-// `model_dump(exclude_none=True, by_alias=True)` body spelling
-// (`workspace.py:8754`, `:8824`), the `validate_response_model(s)`
-// `endpoint=` strings, and the `RESPONSE_VALIDATION_ERROR` seam.
+// Workspace schema-registry members (list, create, bulk create, update, bulk
+// update, delete) over the injected fetch seam. Mirrors all six classes of
+// tests/unit/test_workspace_schemas.py. Additive: the facade-to-client
+// delegation contracts the wire suite cannot see — argument spelling, the
+// exclude_none + by_alias dump, `endpoint=` strings and the response-validation seam.
 
 import { describe, expect, it } from "vitest";
 
@@ -35,7 +18,6 @@ import {
   DeleteSchemasResponse,
   SchemaEntry,
 } from "../../src/types/entities/schemas.js";
-import { Workspace } from "../../src/workspace.js";
 import {
   createSchema as createSchemaMember,
   createSchemasBulk as createSchemasBulkMember,
@@ -45,49 +27,14 @@ import {
   updateSchemasBulk as updateSchemasBulkMember,
 } from "../../src/workspace-members/schemas-audit.js";
 import {
-  type CannedResponse,
   type CapturedFetchRequest,
-  createMockClient,
-  type FakeTransport,
-  makeSession,
+  ok,
 } from "../../test-support/client-test-helpers.js";
-
-/** A canned-response handler (the `httpx.MockTransport` handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
-
-/** The OAuth session the mock client is built over (`:57-63`). */
-const CLIENT_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  oauthToken: "test-token",
-});
-
-/** The canonical service-account facade session (`_TEST_SESSION`, :41-50). */
-const FACADE_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  username: "test_user",
-  secret: "test_secret",
-});
-
-/**
- * Build a Workspace whose client routes through `handler`
- * (`_make_workspace`, :71-88).
- *
- * @param handler - The canned-response handler.
- * @returns The facade plus the transport capture log.
- */
-function makeWorkspace(handler: Handler): {
-  ws: Workspace;
-  transport: FakeTransport;
-} {
-  const { client, transport } = createMockClient(CLIENT_SESSION, handler);
-  return { ws: new Workspace({ session: FACADE_SESSION, client }), transport };
-}
+import { makeFacadeWorkspace } from "../../test-support/workspace-test-helpers.js";
 
 /**
  * A minimal schema entry dict matching the API shape
- * (`_schema_entry_json`, :96-120).
+ * (`_schema_entry_json`).
  *
  * @param entityType - Entity type ("event", "custom_event", "profile").
  * @param name - Entity name.
@@ -115,23 +62,11 @@ function schemaEntryJson(
   return result;
 }
 
-/**
- * The App-API envelope every handler in the Python file returns.
- *
- * @param results - The `results` member.
- * @returns The canned 200 response.
- */
-function ok(results: unknown): CannedResponse {
-  return { status: 200, json: { status: "ok", results } };
-}
-
-// ===========================================================================
-// Tests: list_schema_registry (`TestListSchemaRegistry`, :151-286)
-// ===========================================================================
+// --- listSchemaRegistry (TestListSchemaRegistry) ---
 
 describe("Workspace.listSchemaRegistry", () => {
-  it("returns all schemas as SchemaEntry list (:154)", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("returns all schemas as SchemaEntry list", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok([
         schemaEntryJson("event", "Purchase"),
         schemaEntryJson("event", "Login"),
@@ -150,15 +85,15 @@ describe("Workspace.listSchemaRegistry", () => {
     expect(schemas[2]?.name).toBe("$user");
   });
 
-  it("returns empty list when no schemas exist (:182)", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+  it("returns empty list when no schemas exist", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok([]));
 
     await expect(ws.listSchemaRegistry()).resolves.toStrictEqual([]);
   });
 
-  it("passes the entity_type filter to the API (:194)", async () => {
+  it("passes the entity_type filter to the API", async () => {
     const capturedUrl: string[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       capturedUrl.push(request.url);
       return ok([schemaEntryJson("event", "Purchase")]);
     });
@@ -172,7 +107,7 @@ describe("Workspace.listSchemaRegistry", () => {
     expect(capturedUrl[0]).toContain("schemas/event");
   });
 
-  it("preserves the schemaJson field content (:220)", async () => {
+  it("preserves the schemaJson field content", async () => {
     const customSchema = {
       type: "object",
       properties: {
@@ -181,7 +116,7 @@ describe("Workspace.listSchemaRegistry", () => {
       },
       required: ["amount", "currency"],
     };
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([schemaEntryJson("event", "Purchase", customSchema)]),
     );
 
@@ -191,8 +126,8 @@ describe("Workspace.listSchemaRegistry", () => {
     expect(schemas[0]?.schema_definition).toStrictEqual(customSchema);
   });
 
-  it("preserves the version field (:251)", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("preserves the version field", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok([schemaEntryJson("event", "Purchase", undefined, "2025-03-20")]),
     );
 
@@ -204,7 +139,7 @@ describe("Workspace.listSchemaRegistry", () => {
   it("preserves unknown fields (extra='allow', :271)", async () => {
     const entry = schemaEntryJson("event", "Purchase");
     entry["customField"] = "extra-value";
-    const { ws } = makeWorkspace(() => ok([entry]));
+    const { ws } = makeFacadeWorkspace(() => ok([entry]));
 
     const schemas = await ws.listSchemaRegistry();
 
@@ -213,17 +148,15 @@ describe("Workspace.listSchemaRegistry", () => {
   });
 });
 
-// ===========================================================================
-// Tests: create_schema (`TestCreateSchema`, :298-379)
-// ===========================================================================
+// --- createSchema (TestCreateSchema) ---
 
 describe("Workspace.createSchema", () => {
-  it("returns the raw dict from the API (:301)", async () => {
+  it("returns the raw dict from the API", async () => {
     const schemaDef = {
       properties: { amount: { type: "number" } },
       required: ["amount"],
     };
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ entityType: "event", name: "Purchase", schemaJson: schemaDef }),
     );
 
@@ -234,9 +167,9 @@ describe("Workspace.createSchema", () => {
     expect(result["name"]).toBe("Purchase");
   });
 
-  it("constructs the correct API path (:329)", async () => {
+  it("constructs the correct API path", async () => {
     const captured: CapturedFetchRequest[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       captured.push(request);
       return ok({ entityType: "event", name: "Purchase" });
     });
@@ -250,9 +183,9 @@ describe("Workspace.createSchema", () => {
     expect(captured[0]?.method).toBe("POST");
   });
 
-  it("percent-encodes entity names with special chars (:351)", async () => {
+  it("percent-encodes entity names with special chars", async () => {
     const captured: CapturedFetchRequest[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       captured.push(request);
       return ok({ entityType: "event", name: "My Event / Test" });
     });
@@ -264,13 +197,11 @@ describe("Workspace.createSchema", () => {
   });
 });
 
-// ===========================================================================
-// Tests: create_schemas_bulk (`TestCreateSchemasBulk`, :383-515)
-// ===========================================================================
+// --- createSchemasBulk (TestCreateSchemasBulk) ---
 
 describe("Workspace.createSchemasBulk", () => {
-  it("returns a BulkCreateSchemasResponse (:386)", async () => {
-    const { ws } = makeWorkspace(() => ok({ added: 3, deleted: 0 }));
+  it("returns a BulkCreateSchemasResponse", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok({ added: 3, deleted: 0 }));
     const params = new BulkCreateSchemasParams({
       entries: [
         new SchemaEntry({
@@ -298,8 +229,8 @@ describe("Workspace.createSchemasBulk", () => {
     expect(result.deleted).toBe(0);
   });
 
-  it("reports the deleted count with truncate=True (:425)", async () => {
-    const { ws } = makeWorkspace(() => ok({ added: 2, deleted: 5 }));
+  it("reports the deleted count with truncate=True", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok({ added: 2, deleted: 5 }));
     const params = new BulkCreateSchemasParams({
       entries: [
         new SchemaEntry({
@@ -324,8 +255,8 @@ describe("Workspace.createSchemasBulk", () => {
     expect(result.deleted).toBe(5);
   });
 
-  it("returns zero counts for empty entries (:461)", async () => {
-    const { ws } = makeWorkspace(() => ok({ added: 0, deleted: 0 }));
+  it("returns zero counts for empty entries", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok({ added: 0, deleted: 0 }));
 
     const result = await ws.createSchemasBulk(
       new BulkCreateSchemasParams({ entries: [] }),
@@ -336,9 +267,9 @@ describe("Workspace.createSchemasBulk", () => {
     expect(result.deleted).toBe(0);
   });
 
-  it("sends POST to the schemas endpoint (:482)", async () => {
+  it("sends POST to the schemas endpoint", async () => {
     const captured: CapturedFetchRequest[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       captured.push(request);
       return ok({ added: 1, deleted: 0 });
     });
@@ -361,13 +292,11 @@ describe("Workspace.createSchemasBulk", () => {
   });
 });
 
-// ===========================================================================
-// Tests: update_schema (`TestUpdateSchema`, :519-600)
-// ===========================================================================
+// --- updateSchema (TestUpdateSchema) ---
 
 describe("Workspace.updateSchema", () => {
-  it("returns the raw dict from the API (:522)", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("returns the raw dict from the API", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok({
         entityType: "event",
         name: "Purchase",
@@ -390,9 +319,9 @@ describe("Workspace.updateSchema", () => {
     expect(Object.hasOwn(schemaJson.properties, "tax")).toBe(true);
   });
 
-  it("sends PATCH to the correct path (:553)", async () => {
+  it("sends PATCH to the correct path", async () => {
     const captured: CapturedFetchRequest[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       captured.push(request);
       return ok({ entityType: "event", name: "Purchase" });
     });
@@ -404,9 +333,9 @@ describe("Workspace.updateSchema", () => {
     expect(captured[0]?.url).toContain("schemas/event/Purchase");
   });
 
-  it("percent-encodes $user for profile schemas (:575)", async () => {
+  it("percent-encodes $user for profile schemas", async () => {
     const captured: CapturedFetchRequest[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       captured.push(request);
       return ok({ entityType: "profile", name: "$user" });
     });
@@ -419,13 +348,11 @@ describe("Workspace.updateSchema", () => {
   });
 });
 
-// ===========================================================================
-// Tests: update_schemas_bulk (`TestUpdateSchemasBulk`, :604-742)
-// ===========================================================================
+// --- updateSchemasBulk (TestUpdateSchemasBulk) ---
 
 describe("Workspace.updateSchemasBulk", () => {
-  it("returns a list of BulkPatchResult (:607)", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("returns a list of BulkPatchResult", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok([
         { entityType: "event", name: "Purchase", status: "ok" },
         { entityType: "event", name: "Login", status: "ok" },
@@ -457,8 +384,8 @@ describe("Workspace.updateSchemasBulk", () => {
     expect(results[1]?.status).toBe("ok");
   });
 
-  it("returns error status for failed entries (:656)", async () => {
-    const { ws } = makeWorkspace(() =>
+  it("returns error status for failed entries", async () => {
+    const { ws } = makeFacadeWorkspace(() =>
       ok([
         { entityType: "event", name: "Purchase", status: "ok" },
         {
@@ -493,8 +420,8 @@ describe("Workspace.updateSchemasBulk", () => {
     expect(results[1]?.error).toBe("Entity not found");
   });
 
-  it("returns an empty list for empty entries (:704)", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+  it("returns an empty list for empty entries", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok([]));
 
     const results = await ws.updateSchemasBulk(
       new BulkCreateSchemasParams({ entries: [] }),
@@ -503,9 +430,9 @@ describe("Workspace.updateSchemasBulk", () => {
     expect(results).toStrictEqual([]);
   });
 
-  it("sends PATCH to the schemas endpoint (:720)", async () => {
+  it("sends PATCH to the schemas endpoint", async () => {
     const captured: CapturedFetchRequest[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       captured.push(request);
       return ok([]);
     });
@@ -518,13 +445,11 @@ describe("Workspace.updateSchemasBulk", () => {
   });
 });
 
-// ===========================================================================
-// Tests: delete_schemas (`TestDeleteSchemas`, :746-877)
-// ===========================================================================
+// --- deleteSchemas (TestDeleteSchemas) ---
 
 describe("Workspace.deleteSchemas", () => {
-  it("deletes all and returns the count with no args (:749)", async () => {
-    const { ws } = makeWorkspace(() => ok({ deleteCount: 10 }));
+  it("deletes all and returns the count with no args", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok({ deleteCount: 10 }));
 
     const result = await ws.deleteSchemas();
 
@@ -532,9 +457,9 @@ describe("Workspace.deleteSchemas", () => {
     expect(result.delete_count).toBe(10);
   });
 
-  it("deletes all schemas of one entity type (:768)", async () => {
+  it("deletes all schemas of one entity type", async () => {
     const captured: CapturedFetchRequest[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       captured.push(request);
       return ok({ deleteCount: 5 });
     });
@@ -548,9 +473,9 @@ describe("Workspace.deleteSchemas", () => {
     expect(captured[0]?.method).toBe("DELETE");
   });
 
-  it("deletes a single schema by type + name (:792)", async () => {
+  it("deletes a single schema by type + name", async () => {
     const captured: CapturedFetchRequest[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       captured.push(request);
       return ok({ deleteCount: 1 });
     });
@@ -566,8 +491,8 @@ describe("Workspace.deleteSchemas", () => {
     expect(captured[0]?.url).toContain("schemas/event/Purchase");
   });
 
-  it("returns a zero count when nothing matches (:815)", async () => {
-    const { ws } = makeWorkspace(() => ok({ deleteCount: 0 }));
+  it("returns a zero count when nothing matches", async () => {
+    const { ws } = makeFacadeWorkspace(() => ok({ deleteCount: 0 }));
 
     const result = await ws.deleteSchemas({ entity_type: "custom_event" });
 
@@ -575,9 +500,9 @@ describe("Workspace.deleteSchemas", () => {
     expect(result.delete_count).toBe(0);
   });
 
-  it("sends the DELETE HTTP method (:834)", async () => {
+  it("sends the DELETE HTTP method", async () => {
     const captured: CapturedFetchRequest[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       captured.push(request);
       return ok({ deleteCount: 0 });
     });
@@ -588,15 +513,15 @@ describe("Workspace.deleteSchemas", () => {
     expect(captured[0]?.method).toBe("DELETE");
   });
 
-  it("raises when entity_name is given without entity_type (:855)", async () => {
+  it("raises when entity_name is given without entity_type", async () => {
     const captured: CapturedFetchRequest[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       captured.push(request);
       return ok({ deleteCount: 0 });
     });
 
     // `pytest.raises(MixpanelHeadlessError, match="entity_name requires
-    // entity_type")` — the CLASS is the contract (R5.4); the message is
+    // entity_type")` — the class is the contract; the message is
     // additionally asserted because Python's `match=` does.
     await expect(
       ws.deleteSchemas({ entity_name: "Purchase" }),
@@ -604,18 +529,15 @@ describe("Workspace.deleteSchemas", () => {
     await expect(ws.deleteSchemas({ entity_name: "Purchase" })).rejects.toThrow(
       /entity_name requires entity_type/,
     );
-    // The guard fires BEFORE any request (packet Caution #4 twin).
+    // The guard fires before any request.
     expect(captured).toStrictEqual([]);
   });
 });
 
-// ===========================================================================
-// ADDITIVE (B5 Caution #13): facade-local delegation contracts. These do
-// NOT substitute for any translated Python assertion — they lock the
-// seams Python's wire-level suite cannot observe: which client method
-// each member calls, the request-body dump spelling, the `endpoint=`
-// string carried into `validate_response_model(s)`, and the guard code.
-// ===========================================================================
+// --- Additive: facade-local delegation contracts Python's wire suite cannot
+// observe — which client method each member calls, the request-body dump
+// spelling, the `endpoint=` string carried into `validate_response_model(s)`,
+// and the guard code ---
 
 /** One recorded delegation call. */
 interface DelegationCall {
@@ -682,7 +604,7 @@ describe("ADDITIVE: schema-registry delegation contracts", () => {
     ]);
   });
 
-  it("the bulk writers dump with exclude_none + by_alias (:8754, :8824)", async () => {
+  it("the bulk writers dump with exclude_none + by_alias", async () => {
     const { client, calls } = delegationStub({
       createSchemasBulk: { added: 1, deleted: 0 },
       updateSchemasBulk: [],
@@ -742,7 +664,7 @@ describe("ADDITIVE: schema-registry delegation contracts", () => {
   });
 
   it("malformed 200 payloads surface RESPONSE_VALIDATION_ERROR", async () => {
-    const { ws } = makeWorkspace(() => ok({}));
+    const { ws } = makeFacadeWorkspace(() => ok({}));
 
     await expect(ws.deleteSchemas()).rejects.toBeInstanceOf(
       ResponseValidationError,
@@ -754,13 +676,13 @@ describe("ADDITIVE: schema-registry delegation contracts", () => {
   });
 
   it("list/bulk validation failures name their own model", async () => {
-    const list = makeWorkspace(() => ok([{ name: "no-entity-type" }]));
+    const list = makeFacadeWorkspace(() => ok([{ name: "no-entity-type" }]));
     await expect(list.ws.listSchemaRegistry()).rejects.toMatchObject({
       code: "RESPONSE_VALIDATION_ERROR",
       details: { model: "SchemaEntry" },
     });
 
-    const bulk = makeWorkspace(() => ok([{ name: "x" }]));
+    const bulk = makeFacadeWorkspace(() => ok([{ name: "x" }]));
     await expect(
       bulk.ws.updateSchemasBulk(new BulkCreateSchemasParams({ entries: [] })),
     ).rejects.toMatchObject({
