@@ -94,7 +94,12 @@ export const IMPURITY_NEEDLES = [
   "`node:",
 ];
 
-/** @param {string} text - @returns {string[]} needles actually found */
+/**
+ * Return the impurity needles that occur in `text`.
+ *
+ * @param {string} text - Bundle text to scan.
+ * @returns {string[]} The needles actually found, in `IMPURITY_NEEDLES` order.
+ */
 export function scanNodeReferences(text) {
   return IMPURITY_NEEDLES.filter((needle) => text.includes(needle));
 }
@@ -107,8 +112,8 @@ export function scanNodeReferences(text) {
  * fresh `vm` context starts from a bare `globalThis` with no Node globals
  * at all, so a bundle that secretly needed `process` would throw here.
  *
- * @param {string} iifeText
- * @returns {string[]} sorted export names
+ * @param {string} iifeText - Source of the IIFE bundle.
+ * @returns {string[]} Export names in code-unit order.
  */
 export function iifeGlobalKeys(iifeText) {
   /** @type {Record<string, unknown>} */
@@ -125,6 +130,11 @@ export function iifeGlobalKeys(iifeText) {
   return Object.keys(installed).sort();
 }
 
+/**
+ * Read the commit and cleanliness of the working tree the bundle is built from.
+ *
+ * @returns {{ commit: string, dirty: boolean }} `HEAD` and whether `git status` reports any change.
+ */
 function gitSourceState() {
   const run = (args) =>
     execFileSync("git", args, { cwd: REPO_ROOT, encoding: "utf8" }).trim();
@@ -134,6 +144,13 @@ function gitSourceState() {
   };
 }
 
+/**
+ * Run one esbuild pass over the browser barrel in the given output format.
+ *
+ * @param {"iife" | "esm"} format - esbuild output format; also selects the output file name.
+ * @param {string} [globalName] - Global the IIFE installs; omitted for ESM.
+ * @returns {Promise<Buffer>} The bundled bytes.
+ */
 async function bundleOne(format, globalName) {
   const result = await build({
     entryPoints: [join(REPO_ROOT, ENTRY)],
@@ -168,9 +185,10 @@ async function bundleOne(format, globalName) {
 }
 
 /**
- * Build both artifacts and the manifest.
+ * Build both artifacts and the manifest, verifying browser purity on the way.
  *
- * @param {{ outDir?: string, allowDirty?: boolean, write?: boolean }} [options]
+ * @param {{ outDir?: string, allowDirty?: boolean, write?: boolean }} [options] - `outDir` (default `dist/browser`), `allowDirty` (build from a dirty tree; default false), `write` (write the artifacts and manifest to disk; default true).
+ * @returns {Promise<{ outDir: string, manifest: object, manifestJson: string, artifacts: Array<{ name: string, bytes: Buffer, size: number, gzipSize: number, sha256: string }>, iifeText: string, exports: string[] }>} The output directory, the manifest (object and serialised), per-artifact bytes and sizes, the IIFE text and the exported global keys.
  */
 export async function buildBrowserBundles(options = {}) {
   const {
@@ -248,10 +266,22 @@ export async function buildBrowserBundles(options = {}) {
   return { outDir, manifest, manifestJson, artifacts, iifeText, exports };
 }
 
+/**
+ * Hex sha256 of a byte buffer.
+ *
+ * @param {Buffer} bytes - The bytes to digest.
+ * @returns {string} Lowercase hex digest.
+ */
 function sha256Hex(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
+/**
+ * Parse the CLI arguments (`--out <dir>`, `--allow-dirty`).
+ *
+ * @param {string[]} argv - Arguments after the script path.
+ * @returns {{ outDir: string, allowDirty: boolean }} The resolved output directory and the dirty-tree opt-in.
+ */
 function parseArgv(argv) {
   let outDir = DEFAULT_OUT_DIR;
   let allowDirty = false;

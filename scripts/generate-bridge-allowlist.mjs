@@ -17,9 +17,9 @@
 //   5. scripts/consent-verbs.json — tsMethod -> consent verb phrase (§7.2).
 //   6. scripts/route-verbs.json — "<METHOD> <family> <template>" -> the
 //      phrase for a route whose methods disagree, or that needs its own
-//      wording. Consent is authorised per ROUTE, not per method.
+//      wording. Consent is authorised per route, not per method.
 //
-// The generator FAILS HARD rather than guessing:
+// The generator fails hard rather than guessing:
 //   - an interaction on a host the rules do not name (admitted or export);
 //   - a path outside the /api/query/ and /api/app/ families;
 //   - a template with a placeholder directly under a family root, which
@@ -76,7 +76,12 @@ const OUTPUT_PATH = resolve(RUNNER_DIR, "bridge-allowlist.gen.json");
 /** Route-template placeholder for the workspace segment. */
 const WORKSPACE_PLACEHOLDER = "{workspace_id}";
 
-/** Parse `--flag=value` arguments; bare `--stdout` is a boolean. */
+/**
+ * Parse `--flag=value` arguments; bare `--stdout` is a boolean.
+ *
+ * @param {string[]} argv - Arguments after the script path.
+ * @returns {{ stdout: boolean, generatedAt: string | undefined, headlessCommit: string | undefined, rulesPath: string, verbsPath: string, routeVerbsPath: string }} The options with the committed data files as defaults.
+ */
 function parseArgs(argv) {
   const args = {
     stdout: false,
@@ -106,7 +111,11 @@ function parseArgs(argv) {
   return args;
 }
 
-/** Print the reasons and exit non-zero. Never returns. */
+/**
+ * Print the reasons and exit non-zero. Never returns.
+ *
+ * @param {string[]} reasons - One line per problem.
+ */
 function fail(reasons) {
   console.error(`generate-bridge-allowlist: ${reasons.length} problem(s):`);
   for (const reason of reasons) {
@@ -115,7 +124,12 @@ function fail(reasons) {
   process.exit(1);
 }
 
-/** Read a file and return { text, json, sha256 }. */
+/**
+ * Read and parse one JSON input, stamping it with the sha256 of its bytes.
+ *
+ * @param {string} path - Absolute path of the JSON file.
+ * @returns {{ json: unknown, sha256: string }} The parsed document and the hex digest of the raw text.
+ */
 function loadJson(path) {
   const text = readFileSync(path, "utf8");
   return {
@@ -124,7 +138,12 @@ function loadJson(path) {
   };
 }
 
-/** Every *.jsonl under the corpus, sorted so the walk is deterministic. */
+/**
+ * Every `*.jsonl` under the corpus, sorted so the walk is deterministic.
+ *
+ * @param {string} dir - Directory to walk recursively.
+ * @returns {string[]} Absolute paths in code-unit order per directory.
+ */
 function corpusFiles(dir) {
   const found = [];
   for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
@@ -145,6 +164,9 @@ function corpusFiles(dir) {
  * machine-written with one `"<pythonApi>": {` block per entry and a
  * `tsName: "<name>",` line inside it, so a line scan is exact; anything
  * unexpected in the shape surfaces as a missing name later.
+ *
+ * @param {string} path - Absolute path of api-map.gen.ts.
+ * @returns {Map<string, string>} Python api to TS method name.
  */
 function loadTsMethods(path) {
   const methods = new Map();
@@ -172,6 +194,10 @@ function loadTsMethods(path) {
  * `{param}` path segments (spec §5.3 step 2). Booleans and nulls cannot be
  * path segments and empty strings would match the empty segments a leading
  * or trailing slash produces, so both are dropped.
+ *
+ * @param {unknown} value - Any JSON value; walked recursively.
+ * @param {Set<string>} into - Accumulator the leaves are added to.
+ * @returns {Set<string>} `into`.
  */
 function inputValues(value, into) {
   if (Array.isArray(value)) {
@@ -194,9 +220,14 @@ function inputValues(value, into) {
 
 /**
  * Every scalar carried under one of `keys`, anywhere in `value`, stringified.
- * This is how a segment earns a NAMED placeholder ({workspace_id}) or stays
+ * This is how a segment earns a named placeholder (`{workspace_id}`) or stays
  * literal (a closed-enum route name): the key it arrived under is the
  * evidence, not the shape of the value.
+ *
+ * @param {unknown} value - Any JSON value; walked recursively.
+ * @param {Set<string>} keys - Object keys whose scalar values count.
+ * @param {Set<string>} into - Accumulator the values are added to.
+ * @returns {Set<string>} `into`.
  */
 function keyedValues(value, keys, into) {
   if (Array.isArray(value)) {
@@ -218,7 +249,13 @@ function keyedValues(value, keys, into) {
   return into;
 }
 
-/** Split on "/" FIRST, then percent-decode each segment (spec §5.2). */
+/**
+ * Split on "/" first, then percent-decode each segment (spec §5.2), so an
+ * encoded slash inside a segment cannot create a segment boundary.
+ *
+ * @param {string} path - Request path as recorded.
+ * @returns {string[]} Decoded segments; a segment that fails to decode is kept verbatim.
+ */
 function decodeSegments(path) {
   return path.split("/").map((segment) => {
     try {
@@ -252,6 +289,12 @@ const readPrefixes = rules.access.readPrefixes;
 const writePrefixes = rules.access.writePrefixes;
 const readMethods = new Set(Object.keys(rules.access.readMethods));
 const writeMethods = new Set(Object.keys(rules.access.writeMethods));
+/**
+ * Classify a Python api as read or write by its final method name.
+ *
+ * @param {string} pythonApi - Dotted Python api name.
+ * @returns {{ access?: "read" | "write", error?: string }} The access class, or an error when no rule or both rules reach the method.
+ */
 function classifyAccess(pythonApi) {
   const method = pythonApi.slice(pythonApi.lastIndexOf(".") + 1);
   const isRead =
@@ -267,7 +310,12 @@ function classifyAccess(pythonApi) {
   return { access: isRead ? "read" : "write" };
 }
 
-/** Is this tsMethod one of the bulk operations `{n}` is meant for? */
+/**
+ * Whether a TS method is one of the bulk operations `{n}` is meant for.
+ *
+ * @param {string} tsMethod - TS method name.
+ * @returns {boolean} True when the name carries the bulk prefix or suffix from the rules.
+ */
 function isBulkMethod(tsMethod) {
   return (
     tsMethod.startsWith(rules.consent.bulkMethodPrefix) ||
@@ -276,11 +324,15 @@ function isBulkMethod(tsMethod) {
 }
 
 /**
- * The consent phrase for a write ROUTE (spec §7.2). Consent is authorised per
+ * The consent phrase for a write route (spec §7.2). Consent is authorised per
  * route, not per method: several headless methods can share one route and the
  * server cannot tell them apart, so a phrase drawn from just the primary api
  * could misdescribe what the page is about to do. An explicit route-level
  * phrase always wins; otherwise every api on the route must agree.
+ *
+ * @param {{ method: string, family: string, template: string }} route - The route being shaped.
+ * @param {Array<{ pyApi: string, tsMethod: string }>} apis - Every api recorded on the route.
+ * @returns {{ verb?: string, error?: string }} The phrase, or an error when a verb is missing or the apis disagree.
  */
 function consentVerbFor(route, apis) {
   const key = `${route.method} ${route.family} ${route.template}`;
@@ -315,7 +367,12 @@ function consentVerbFor(route, apis) {
   return { verb: distinct[0] };
 }
 
-/** Write class from the route template (spec §5.3 step 5); first match wins. */
+/**
+ * Write class from the route template (spec §5.3 step 5); first match wins.
+ *
+ * @param {string} template - Route template.
+ * @returns {string | undefined} The write class, or `undefined` when no rule matches.
+ */
 function classifyWrite(template) {
   for (const rule of rules.writeClasses.rules) {
     if (template.includes(rule.contains)) {
@@ -325,7 +382,12 @@ function classifyWrite(template) {
   return;
 }
 
-/** family from scheme_host + path prefix (spec §5.3 step 2). */
+/**
+ * Family from the decoded path prefix (spec §5.3 step 2).
+ *
+ * @param {string} path - Decoded request path.
+ * @returns {string | undefined} The family name, or `undefined` when the path is outside every family.
+ */
 function familyFor(path) {
   for (const rule of rules.families) {
     if (path.startsWith(rule.pathPrefix)) {
@@ -336,7 +398,7 @@ function familyFor(path) {
 }
 
 /**
- * Segment index of the first path element BELOW a family root, e.g. 3 for
+ * Segment index of the first path element below a family root, e.g. 3 for
  * `/api/app/<here>` and 4 for `/api/query/engage/<here>`. A placeholder at
  * that index wildcards the whole family, so the generator refuses it.
  */
@@ -354,10 +416,15 @@ const pinFieldNames = new Set(
 
 /**
  * Which identifier §5.5 can hold this route to, and where that identifier
- * actually appears. §5.5 pins EVERY occurrence, and the query family carries
+ * actually appears. §5.5 pins every occurrence, and the query family carries
  * its project id as a query param or a top-level body field rather than as a
  * path segment — so a template-only rule would report "none" for the whole
  * query family and quietly drop the check there.
+ *
+ * @param {string} template - Route template.
+ * @param {Set<string>} paramNames - Query parameter names seen on the route.
+ * @param {Set<string>} bodyFields - Pin-bearing top-level body keys seen on the route.
+ * @returns {{ pin: string, pinSources: string[] }} The pin kind and where it appears (`path`, `query`, `body`), or the rules' default with no sources.
  */
 function pinFor(template, paramNames, bodyFields) {
   for (const kind of rules.pinRules.kinds) {
@@ -380,6 +447,14 @@ function pinFor(template, paramNames, bodyFields) {
 
 /** The deny rule covering this route, if the rules refuse it (§5.3). */
 const denyRules = rules.deniedRoutes.map((rule) => ({ ...rule, hits: 0 }));
+/**
+ * Find the deny rule for a route, counting the hit for the stale-rule check.
+ *
+ * @param {string} method - HTTP method.
+ * @param {string} family - Route family.
+ * @param {string} template - Route template.
+ * @returns {{ method: string, family: string, template: string, reason: string, hits: number } | undefined} The matching rule, or `undefined` when the route is admitted.
+ */
 function denyRuleFor(method, family, template) {
   for (const rule of denyRules) {
     if (
@@ -701,7 +776,13 @@ if (problems.length > 0) {
   fail(problems);
 }
 
-/** Sorted by (family, template, method) — spec §5.3 step 6. */
+/**
+ * Comparator ordering rows by (family, template, method) — spec §5.3 step 6.
+ *
+ * @param {{ family: string, template: string, method: string }} a - Left row.
+ * @param {{ family: string, template: string, method: string }} b - Right row.
+ * @returns {number} Negative, zero or positive as for `Array#sort`.
+ */
 const byRoute = (a, b) =>
   compareStrings(a.family, b.family) ||
   compareStrings(a.template, b.template) ||

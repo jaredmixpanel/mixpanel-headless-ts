@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Generates packages/core/src/errors-codes.gen.ts from the synced contract
-// artifact conformance-runner/corpus/contract/error-codes.json (phase2-design
-// C3: the error-code registry is GENERATED, never hand-typed).
+// artifact conformance-runner/corpus/contract/error-codes.json. The
+// error-code registry is generated rather than hand-typed so it cannot drift
+// from the contract artifact.
 //
 // Usage:
 //   npm run generate:error-codes              # (re)write the .gen.ts file
@@ -9,8 +10,7 @@
 //                                             # differs from a fresh render
 //
 // Output is prettier-formatted and byte-deterministic (all collections are
-// emitted sorted), so `--check` doubles as the hand-edit tripwire required
-// by phase2-design C5 item 4.
+// emitted sorted), so `--check` doubles as the hand-edit tripwire.
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";

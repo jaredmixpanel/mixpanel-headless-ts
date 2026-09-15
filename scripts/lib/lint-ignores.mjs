@@ -1,5 +1,5 @@
 // Paths that are never linted or formatted: vendored, generated, or
-// byte-frozen snapshots. The ONE list shared by `eslint.config.js`
+// byte-frozen snapshots. The one list shared by `eslint.config.js`
 // (`globalIgnores`) and `.prettierignore`; `tests/ignore-lists.test.ts` fails
 // if the two drift apart. Everything here is either produced by a generator
 // with a byte-exact freshness test (so reformatting would break that test)
@@ -71,7 +71,7 @@ export const LOCAL_PATHS = Object.freeze([
  * so they match at any depth (node_modules, dist, coverage appear inside
  * workspaces too); root-anchored files stay as written.
  *
- * @returns {string[]}
+ * @returns {string[]} The ignore patterns, local trees first.
  */
 export function eslintIgnorePatterns() {
   return [...LOCAL_PATHS, ...FROZEN_PATHS].map(({ path }) =>

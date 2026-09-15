@@ -1,4 +1,4 @@
-// Workspace alias table — the ONE place that maps the published bare
+// Workspace alias table — the one place that maps the published bare
 // specifiers (`@mixpanel-headless/core`, `…/core/internal`, `…/node`,
 // `…/browser`) back to their TypeScript sources.
 //
@@ -36,7 +36,7 @@ export const WORKSPACE_ALIASES = Object.freeze([
  * esbuild `alias` option. esbuild matches the longest alias key first and
  * accepts subpath keys, so the table order is informational here.
  *
- * @returns {Record<string, string>}
+ * @returns {Record<string, string>} Specifier to absolute source path.
  */
 export function esbuildAliases() {
   return Object.fromEntries(WORKSPACE_ALIASES);
@@ -47,7 +47,7 @@ export function esbuildAliases() {
  * `@mixpanel-headless/core` cannot match `@mixpanel-headless/core/internal`
  * (vite tries entries in order and would otherwise rewrite the prefix).
  *
- * @returns {Array<{ find: RegExp, replacement: string }>}
+ * @returns {Array<{ find: RegExp, replacement: string }>} One anchored entry per specifier, in table order.
  */
 export function vitestAliases() {
   return WORKSPACE_ALIASES.map(([specifier, sourcePath]) => ({

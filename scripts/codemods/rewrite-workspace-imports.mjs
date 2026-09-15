@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// Codemod: replace cross-workspace RELATIVE imports with the packages' bare
-// specifiers (docs/history/cleanup-plan-2026-09.md §7.3).
+// Codemod: replace cross-workspace relative imports with the packages' bare
+// specifiers.
 //
 //   ../../core/src/errors.js            → @mixpanel-headless/core
 //   ../../packages/core/src/query/…     → @mixpanel-headless/core/internal
 //   ../../packages/node/src/auth/flow.js → @mixpanel-headless/node
 //   ../../conformance-runner/src/x.js   → @mixpanel-headless/conformance-runner
 //
-// Public vs internal is decided per SYMBOL, by identity: each imported
+// Public vs internal is decided per symbol, by identity: each imported
 // binding's aliased symbol is looked up in the target barrel's export set
 // (`index.ts`, then `internal.ts`). A statement whose bindings split across
 // both barrels becomes two statements. Bindings on neither barrel are
@@ -45,7 +45,7 @@ const SCAN_DIRS = [
 
 /**
  * Target workspace roots → barrels. A relative import that lands inside
- * `dir` from a file OUTSIDE that workspace is rewritten to `specifier`
+ * `dir` from a file outside that workspace is rewritten to `specifier`
  * (or the internal one when the symbol is only on `internal`).
  */
 const TARGETS = [
@@ -71,13 +71,24 @@ const TARGETS = [
   },
 ];
 
-/** Workspace a repo-relative path belongs to (for "is this foreign?"). */
+/**
+ * Workspace a repo-relative path belongs to (for "is this foreign?").
+ *
+ * @param {string} relPath - Repo-relative POSIX path.
+ * @returns {string} `packages/<name>` or the top-level directory.
+ */
 function workspaceOf(relPath) {
   const parts = relPath.split("/");
   if (parts[0] === "packages") return `packages/${parts[1]}`;
   return parts[0];
 }
 
+/**
+ * Every `.ts` file under a directory, excluding `node_modules`.
+ *
+ * @param {string} dir - Absolute directory to walk.
+ * @returns {string[]} Absolute file paths.
+ */
 function listTs(dir) {
   const out = [];
   const walk = (d) => {
@@ -88,7 +99,7 @@ function listTs(dir) {
   return out.filter((f) => !f.includes(`${sep}node_modules${sep}`));
 }
 
-// ── program ────────────────────────────────────────────────────────────
+// --- Program ---
 const base = ts.readConfigFile(
   resolve(REPO_ROOT, "tsconfig.base.json"),
   ts.sys.readFile,
@@ -121,7 +132,12 @@ const program = ts.createProgram({
 });
 const checker = program.getTypeChecker();
 
-/** @returns {Map<ts.Symbol, string>} aliased symbol → exported name */
+/**
+ * Index a barrel's exports by the symbol they alias.
+ *
+ * @param {string} relBarrel - Repo-relative path of the barrel file.
+ * @returns {Map<ts.Symbol, string>} Aliased symbol to exported name (first name wins).
+ */
 function barrelExports(relBarrel) {
   const sf = program.getSourceFile(resolve(REPO_ROOT, relBarrel));
   if (!sf) throw new Error(`barrel not in program: ${relBarrel}`);
@@ -141,7 +157,7 @@ for (const t of TARGETS) {
     : new Map();
 }
 
-// ── per-file rewrite ───────────────────────────────────────────────────
+// --- Per-file rewrite ---
 const unresolved = [];
 const manual = [];
 let changedFiles = 0;
@@ -269,9 +285,9 @@ for (const file of scanFiles) {
  * into the first one. Exports are left alone — barrels group their
  * `export … from` lines by section on purpose.
  *
- * @param {string} fileName
- * @param {string} text
- * @returns {string}
+ * @param {string} fileName - Path used for the parse (diagnostics only).
+ * @param {string} text - Source text after the first pass.
+ * @returns {string} The text with duplicate bare-specifier imports merged.
  */
 function mergeDuplicateImports(fileName, text) {
   const specifiers = new Set(
@@ -324,7 +340,7 @@ function mergeDuplicateImports(fileName, text) {
   return out;
 }
 
-// ── report ─────────────────────────────────────────────────────────────
+// --- Report ---
 const uniq = (xs) => [...new Set(xs)].sort();
 if (unresolved.length > 0) {
   console.error(

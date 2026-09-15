@@ -47,6 +47,11 @@ const SKIP_DIRS = new Set([
 ]);
 const EXTENSIONS = new Set([".ts", ".mts", ".js", ".mjs"]);
 
+/**
+ * Print the usage line (after an optional error) and exit with code 2.
+ *
+ * @param {string} [message] - The error to print first.
+ */
 function usage(message) {
   if (message) process.stderr.write(`comment-archaeology: ${message}\n`);
   process.stderr.write(
@@ -56,6 +61,12 @@ function usage(message) {
   process.exit(2);
 }
 
+/**
+ * Parse the CLI arguments.
+ *
+ * @param {string[]} argv - Arguments after the script path.
+ * @returns {{ mode: "report" | "summary" | "fix", dryRun: boolean, json: string | undefined, root: string, paths: string[] }} The options; `paths` are absolute.
+ */
 function parseArgs(argv) {
   const opts = {
     mode: "report",
@@ -111,6 +122,12 @@ function parseArgs(argv) {
   return opts;
 }
 
+/**
+ * Whether a path is an existing directory.
+ *
+ * @param {string} p - Path to test.
+ * @returns {boolean} False when it does not exist.
+ */
 function isDir(p) {
   try {
     return statSync(p).isDirectory();
@@ -119,17 +136,35 @@ function isDir(p) {
   }
 }
 
+/**
+ * Return the file extension of `name` (with the dot), or "" when there is none.
+ *
+ * @param {string} name - File name or path.
+ * @returns {string} The extension.
+ */
 function extensionOf(name) {
   const dot = name.lastIndexOf(".");
   return dot === -1 ? "" : name.slice(dot);
 }
 
+/**
+ * Whether a file is scanned: a supported extension and not a generated `.gen.ts`.
+ *
+ * @param {string} name - File name or path.
+ * @returns {boolean} True when the file should be scanned.
+ */
 function wantedFile(name) {
   if (!EXTENSIONS.has(extensionOf(name))) return false;
   if (name.endsWith(".gen.ts")) return false;
   return true;
 }
 
+/**
+ * Append every wanted file under `dir` to `out`, skipping `SKIP_DIRS`.
+ *
+ * @param {string} dir - Directory to walk; unreadable directories are ignored.
+ * @param {string[]} out - Accumulator of absolute paths.
+ */
 function walk(dir, out) {
   let entries;
   try {
@@ -149,6 +184,13 @@ function walk(dir, out) {
   }
 }
 
+/**
+ * Expand one scan-root pattern (`*` matches one directory level) under `root`.
+ *
+ * @param {string} root - Repository root.
+ * @param {string} pattern - Slash-separated pattern from `SCAN_ROOTS`.
+ * @returns {string[]} The existing directories the pattern denotes.
+ */
 function expandRoot(root, pattern) {
   const parts = pattern.split("/");
   let dirs = [root];
@@ -176,7 +218,12 @@ function expandRoot(root, pattern) {
   return dirs;
 }
 
-/** Absolute paths of every file to scan, sorted, deduplicated. */
+/**
+ * Absolute paths of every file to scan, sorted, deduplicated.
+ *
+ * @param {{ root: string, paths: string[] }} opts - Parsed options; explicit `paths` replace the default scan roots.
+ * @returns {string[]} The files to scan.
+ */
 function collectFiles(opts) {
   const out = [];
   if (opts.paths.length > 0) {
@@ -198,11 +245,23 @@ function collectFiles(opts) {
   });
 }
 
+/**
+ * Repo-relative POSIX path of a file.
+ *
+ * @param {string} root - Repository root.
+ * @param {string} file - Absolute path.
+ * @returns {string} The relative path with forward slashes.
+ */
 function relPath(root, file) {
   return relative(root, file).split(sep).join("/");
 }
 
-/** Per-directory bucket: packages/<pkg>/<src|test>, <ws>/<sub>, or top dir. */
+/**
+ * Per-directory bucket: `packages/<pkg>/<src|test>`, `<ws>/<sub>`, or top dir.
+ *
+ * @param {string} rel - Repo-relative POSIX path.
+ * @returns {string} The bucket key.
+ */
 function dirKey(rel) {
   const parts = rel.split("/");
   if (parts[0] === "packages") return parts.slice(0, 3).join("/");
@@ -212,6 +271,13 @@ function dirKey(rel) {
   return parts[0];
 }
 
+/**
+ * Scan every file and aggregate the hits per file, token and directory.
+ *
+ * @param {{ root: string }} opts - Parsed options.
+ * @param {string[]} files - Absolute paths to scan.
+ * @returns {{ perFile: object[], byToken: Record<string, number>, byDirectory: Record<string, number>, total: number, filesScanned: number }} The scan result.
+ */
 function scanAll(opts, files) {
   const perFile = [];
   const byToken = {};
@@ -241,10 +307,22 @@ function scanAll(opts, files) {
   return { perFile, byToken, byDirectory, total, filesScanned: files.length };
 }
 
+/**
+ * Left-align a value in a field of `n` characters.
+ *
+ * @param {unknown} s - Value to print.
+ * @param {number} n - Field width.
+ * @returns {string} The padded string.
+ */
 function pad(s, n) {
   return String(s).padEnd(n);
 }
 
+/**
+ * Print the per-token and per-directory tables and the total.
+ *
+ * @param {{ perFile: object[], byToken: Record<string, number>, byDirectory: Record<string, number>, total: number, filesScanned: number }} result - The scan result.
+ */
 function printCounts(result) {
   const tokenRows = Object.entries(result.byToken)
     .filter(([, n]) => n > 0)
@@ -270,10 +348,22 @@ function printCounts(result) {
   );
 }
 
+/**
+ * Cut a string to `n` characters, ending it with an ellipsis when cut.
+ *
+ * @param {string} s - The string.
+ * @param {number} n - Maximum length.
+ * @returns {string} The possibly shortened string.
+ */
 function truncate(s, n) {
   return s.length <= n ? s : `${s.slice(0, n - 1)}…`;
 }
 
+/**
+ * Print every hit with its location, then the count tables.
+ *
+ * @param {{ perFile: Array<{ file: string, hits: object[] }>, byToken: Record<string, number>, byDirectory: Record<string, number>, total: number, filesScanned: number }} result - The scan result.
+ */
 function printReport(result) {
   for (const entry of result.perFile) {
     process.stdout.write(`${entry.file}\n`);
@@ -288,6 +378,12 @@ function printReport(result) {
   printCounts(result);
 }
 
+/**
+ * Run `--report` / `--summary`, optionally writing the JSON payload.
+ *
+ * @param {{ mode: string, json: string | undefined, root: string, paths: string[] }} opts - Parsed options.
+ * @returns {number} Exit code: 0 when clean, 1 when hits were found.
+ */
 function runScan(opts) {
   const files = collectFiles(opts);
   const result = scanAll(opts, files);
@@ -308,6 +404,12 @@ function runScan(opts) {
   return result.total === 0 ? 0 : 1;
 }
 
+/**
+ * Run `--fix`, rewriting files in place or listing the changes for `--dry-run`.
+ *
+ * @param {{ dryRun: boolean, root: string, paths: string[] }} opts - Parsed options.
+ * @returns {number} Exit code, always 0.
+ */
 function runFix(opts) {
   const files = collectFiles(opts);
   const counts = {};
@@ -353,6 +455,7 @@ function runFix(opts) {
   return 0;
 }
 
+/** Parse the arguments, dispatch the mode and exit with its code. */
 function main() {
   const opts = parseArgs(process.argv.slice(2));
   if (!isDir(opts.root)) usage(`--root is not a directory: ${opts.root}`);

@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-// Codemod: move every `EntityModel` subclass onto the generic base
-// (docs/history/cleanup-plan-2026-09.md §10.2, D10).
+// Codemod: move every `EntityModel` subclass onto the generic base.
 //
 // For each `class X extends EntityModel` in the entity-model files:
 //
@@ -66,8 +65,8 @@ const STATICS_TO_UNTAG = new Set([
 /**
  * Collect the text edits for one source file.
  *
- * @param {ts.SourceFile} sf
- * @returns {{ edits: Array<{ start: number, end: number, text: string }>, classes: number, skipped: string[] }}
+ * @param {ts.SourceFile} sf - Parsed entity-model source (with parent pointers).
+ * @returns {{ edits: Array<{ start: number, end: number, text: string }>, classes: number, skipped: string[] }} The text edits, the number of classes migrated and a note per skipped class or member.
  */
 function planFile(sf) {
   const edits = [];
@@ -204,8 +203,8 @@ function planFile(sf) {
 /**
  * Peel `expr as unknown as T` (any depth of `as`) down to `expr`.
  *
- * @param {ts.Expression} node
- * @returns {ts.Expression}
+ * @param {ts.Expression} node - The expression to peel.
+ * @returns {ts.Expression} The innermost operand, unwrapped from parentheses; `node` itself when it is not an `as` expression.
  */
 function stripAsUnknownAs(node) {
   let current = node;
@@ -218,9 +217,9 @@ function stripAsUnknownAs(node) {
 /**
  * Apply edits (non-overlapping, applied back to front).
  *
- * @param {string} text
- * @param {Array<{ start: number, end: number, text: string }>} edits
- * @returns {string}
+ * @param {string} text - Original source text.
+ * @param {Array<{ start: number, end: number, text: string }>} edits - Replacements by character offset; must not overlap.
+ * @returns {string} The rewritten text.
  */
 function applyEdits(text, edits) {
   const sorted = [...edits].sort((a, b) => b.start - a.start);
@@ -238,8 +237,8 @@ function applyEdits(text, edits) {
  * Swap the `type EntityFieldSpec` import specifier for `EntityFieldSpecs` when
  * the singular is no longer referenced; add the plural next to it otherwise.
  *
- * @param {string} text
- * @returns {string}
+ * @param {string} text - Source text after the class edits were applied.
+ * @returns {string} The text with the import specifier adjusted, or unchanged when the plural is not referenced.
  */
 function fixImports(text) {
   const sf = ts.createSourceFile("x.ts", text, ts.ScriptTarget.Latest, true);

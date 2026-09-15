@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# check-vendor-drift.sh — vendored-contract freshness check (phase1-design D15a/D15c).
+# check-vendor-drift.sh — vendored-contract freshness check.
 #
 # 1. Always: verify every file listed in vendor/mixpanel-contracts/PROVENANCE.json
 #    exists and matches its recorded sha256 (self-integrity of the vendored copy).
 # 2. When $ANALYTICS_ROOT points at an analytics checkout: byte-diff each
 #    vendored file against its source_path. Any drift fails with a "re-vendor"
-#    message. The analytics checkout is READ-ONLY: this script only reads
+#    message. The analytics checkout is read-only: this script only reads
 #    from it.
 # 3. When $ANALYTICS_ROOT is unset: skip the drift half and exit 0 (the TS
 #    repo must build without the checkout mounted). When it is set but does
