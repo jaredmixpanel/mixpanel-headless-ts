@@ -1,5 +1,5 @@
 /**
- * Referee (a) — insights bookmark payload validation (phase1-design D15a).
+ * Insights bookmark payload referee.
  *
  * Validates builder-emitted insights bookmark payloads against the vendored
  * generated schema `vendor/mixpanel-contracts/bookmark.json` (root
@@ -11,9 +11,9 @@
  * nonstandard `tsType` keywords (a json2ts extension) that strict mode
  * rejects with "unknown keyword".
  *
- * Scope caveats baked into this referee's contract (recon referee-assets.md):
- * - INSIGHTS ONLY: funnels/flows/retention payloads route to referee (b)
- *   (the Python-side bookmark_parser harness), never through this schema.
+ * Scope caveats baked into this referee's contract:
+ * - Insights only: funnels/flows/retention payloads route to the
+ *   Python-side `bookmark_parser` referee, never through this schema.
  * - `ShowClause` `oneOf` trap: show clauses must carry an explicit `"type"`
  *   (`"metric"` for behavior clauses) or they can multi-match branches and
  *   fail `oneOf`.
@@ -39,8 +39,8 @@ export interface BookmarkRefereeVerdict {
   /** True when the payload validates against `InsightsBookmarkParams`. */
   valid: boolean;
   /**
-   * Human-readable ajv error strings (`<instancePath>: <message>`), empty
-   * when `valid`. Referee comparisons are ACCEPT/REJECT verdicts only —
+   * Human-readable ajv error strings (`instancePath: message`), empty
+   * when `valid`. Referee comparisons are accept/reject verdicts only —
    * error text is diagnostic, never part of the cross-oracle contract.
    */
   errors: string[];
@@ -72,10 +72,10 @@ export function createBookmarkValidator(): ValidateFunction {
       // mode would throw `strict mode: unknown keyword: "tsType"`.
       strict: false,
       // The Pydantic generator emits `"description": null` on 31 enum
-      // definitions, which fails the draft-2020-12 META-schema (description
+      // definitions, which fails the draft-2020-12 meta-schema (description
       // must be a string). Python's jsonschema Draft202012Validator never
-      // meta-validates by default (the recon transcript ran that way), so
-      // parity requires skipping ajv's meta-validation too. The schema is a
+      // meta-validates by default (the verified transcript ran that way),
+      // so parity requires skipping ajv's meta-validation too. The schema is a
       // vendored verbatim artifact — payload validation is unaffected.
       validateSchema: false,
       // Referee verdicts must list every violation, not stop at the first.
@@ -92,7 +92,7 @@ export function createBookmarkValidator(): ValidateFunction {
  *
  * @param payload - The candidate `InsightsBookmarkParams` payload (any JSON
  *   value; non-objects simply fail validation).
- * @returns ACCEPT/REJECT verdict with diagnostic error strings.
+ * @returns Accept/reject verdict with diagnostic error strings.
  */
 export function refereeBookmarkPayload(
   payload: unknown,

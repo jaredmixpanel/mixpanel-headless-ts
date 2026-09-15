@@ -3,12 +3,12 @@
  * family, the funnel/retention/flow/frequency dataclasses and the
  * replay-family constructors.
  *
- * Each adapter is a thin shim: decoded kwargs -> the real core
- * constructor/factory -> encode the result (or wrap the coded guard
- * error). Direct-construction bindings pass the decoded field bag
+ * Each adapter is a thin shim: the decoded kwargs go to the real core
+ * constructor or factory and the result is encoded (or the coded guard
+ * error wrapped). Direct-construction bindings pass the decoded field bag
  * straight through (`kwargsAsFields`) so absent fields take the
  * dataclass defaults and the constructor guards fire exactly like
- * Python's `Cls(**decoded)` replay; factory kwargs the LIBRARY validates
+ * Python's `Cls(**decoded)` replay; factory kwargs the library validates
  * (`quantifier`, `operator`, `date_unit`, ...) are forwarded typed but
  * unchecked (`kwargAs`) for the same reason.
  */
@@ -166,7 +166,7 @@ function didEventOptions(
   );
 }
 
-/** The `types.*` table (each binder runs under {@link runGuarded}). */
+// The `types.*` table; each binder runs under `runGuarded`.
 const QUERY_PARAM_BINDINGS: BindingTable = [
   [
     "types.Filter",
@@ -222,7 +222,7 @@ const QUERY_PARAM_BINDINGS: BindingTable = [
     (context) => {
       // Python signature: (property, *item_filters, quantifier="any",
       // resource_type="events", **equals). The recorder binds the
-      // positional varargs under "item_filters"; EVERY other input key is
+      // positional varargs under "item_filters"; every other input key is
       // an **equals kwarg, in recorded (== Python kwarg) order.
       const named = new Set([
         "property",
@@ -504,6 +504,12 @@ const QUERY_PARAM_BINDINGS: BindingTable = [
  *
  * @param implementations - The registry to extend.
  * @param codecs - The codec registry used to encode returned instances.
+ * @example
+ * ```ts
+ * const implementations = new ImplementationRegistry();
+ * const codecs = new CodecRegistry();
+ * registerQueryParamBindings(implementations, codecs);
+ * ```
  */
 export function registerQueryParamBindings(
   implementations: ImplementationRegistry,

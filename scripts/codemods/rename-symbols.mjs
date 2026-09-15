@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Codemod: rename declared identifiers repo-wide through the TypeScript
-// language service (CLEANUP-PLAN §8.2 naming-convention, D1; Phase 4 lane L6).
+// language service, e.g. to apply the repo naming convention (README
+// "Naming").
 //
 // Given a plan of `{ file, name, newName, members? }` rows, every declaration
 // named `name` in `file` (variables, parameters, functions, type aliases,
@@ -45,7 +46,14 @@ const plan = JSON.parse(readFileSync(resolve(REPO_ROOT, planPath), "utf8"));
 // One program over every referenced project
 // ---------------------------------------------------------------------------
 
-/** Collect root file names of every project reachable from a solution file. */
+/**
+ * Collect root file names of every project reachable from a solution file.
+ *
+ * @param {string} configPath - Absolute path of the tsconfig to start from.
+ * @param {Set<string>} [seen] - Config paths already visited (recursion guard).
+ * @param {Set<string>} [out] - Accumulator the file names are added to.
+ * @returns {Set<string>} `out`, holding every absolute root file name.
+ */
 function projectFiles(configPath, seen = new Set(), out = new Set()) {
   if (seen.has(configPath)) return out;
   seen.add(configPath);
@@ -89,6 +97,12 @@ const compilerOptions = {
 const ALIASES = new Map(WORKSPACE_ALIASES);
 const versions = new Map();
 const contents = new Map();
+/**
+ * Read a file once and serve it from the cache afterwards.
+ *
+ * @param {string} file - Absolute path.
+ * @returns {string} The file text; empty when the file cannot be read.
+ */
 function text(file) {
   if (!contents.has(file)) contents.set(file, ts.sys.readFile(file) ?? "");
   return contents.get(file);
@@ -136,6 +150,11 @@ if (!program) throw new Error("language service produced no program");
  * matched only when the row opts in (`members: true`): a local variable and a
  * contract field often share a snake_case name (`target_node_id`), and the
  * field must never move with the local.
+ *
+ * @param {ts.SourceFile} sourceFile - File to search.
+ * @param {string} name - Identifier text to match.
+ * @param {boolean} members - Whether class fields and methods count.
+ * @returns {ts.Identifier[]} The matching declaration-name nodes.
  */
 function declarationNames(sourceFile, name, members) {
   const hits = [];

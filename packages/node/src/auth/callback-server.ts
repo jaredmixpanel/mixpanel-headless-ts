@@ -1,25 +1,20 @@
 /**
- * OAuth callback server — TS port of
- * `mixpanel_headless/_internal/auth/callback_server.py` (whole file,
- * b8-packets.md §4.1 row 3) over `node:http`.
+ * OAuth callback server over `node:http`. Binds `127.0.0.1` on the
+ * first available port in `[19284, 19285, 19286, 19287]` (or the exact
+ * `port` the caller already probed; the TOCTOU window between probe and
+ * bind is Python's own) and waits for a single request, the
+ * `server.handle_request()` one-shot: the first `GET /callback` is the
+ * one request, the browser gets an HTML page, and the server closes. A
+ * GET to any other path is answered 404 without consuming the one-shot
+ * (see the `// Divergence:` line at the request listener).
  *
- * Binds `127.0.0.1` on the first available port in
- * `[19284, 19285, 19286, 19287]` (or the exact `port` the caller
- * already probed — `flow.py`'s two-phase probe-then-bind, packet §7
- * caution 14: the TOCTOU between probe and bind is Python's own,
- * ported verbatim) and waits for a SINGLE request — the
- * `server.handle_request()` one-shot semantics (`callback_server.py:161`):
- * the first `GET /callback` is the one request, the browser gets an
- * HTML page, and the server closes. A GET to any other path is answered
- * 404 and does NOT consume the one-shot (Python's does — a recorded
- * divergence; see the note at the request listener).
+ * Python's blocking `start_callback_server` returns
+ * `(CallbackResult, port)`; the node twin is async and resolves the same
+ * tuple. A TS-only `signal` option cancels the losing completer in
+ * `OAuthFlow.login`, where Python leaks a daemon thread: node must
+ * release the socket or the event loop never drains.
  *
- * Async substitution (documented): Python's blocking
- * `start_callback_server` returns `(CallbackResult, port)`; the node
- * twin is async and resolves the same tuple. A TS-only `signal` option
- * cancels a LOSING completer in `OAuthFlow.login` — Python leaks the
- * daemon thread instead (dies with the process); node must release the
- * socket or the event loop never drains.
+ * @see mixpanel_headless._internal.auth.callback_server
  */
 
 import { createServer, type Server, type ServerResponse } from "node:http";
@@ -27,10 +22,10 @@ import { createServer, type Server, type ServerResponse } from "node:http";
 import { CallbackResult, OAuthError } from "@mixpanel-headless/core";
 import { parseQs } from "@mixpanel-headless/core/internal";
 
-/** Ports to attempt binding to, in order (`callback_server.py`). */
+/** Ports to attempt binding to, in order. */
 export const CALLBACK_PORTS: readonly number[] = [19284, 19285, 19286, 19287];
 
-/** Success page (`_SUCCESS_HTML`, `callback_server.py`, verbatim). */
+/** Success page (Python's `_SUCCESS_HTML`, verbatim). */
 const SUCCESS_HTML = `<!DOCTYPE html>
 <html>
 <head><title>Authorization Successful</title></head>
@@ -41,10 +36,9 @@ const SUCCESS_HTML = `<!DOCTYPE html>
 </html>`;
 
 /**
- * Render the error page (`_ERROR_HTML.format(message=...)`,
- * `callback_server.py`).
+ * Render the error page (Python's `_ERROR_HTML.format(message=...)`).
  *
- * @param message - The ALREADY-ESCAPED message text.
+ * @param message - The already-escaped message text.
  * @returns The full HTML document.
  */
 function errorHtml(message: string): string {
@@ -60,9 +54,9 @@ function errorHtml(message: string): string {
 }
 
 /**
- * Python `html.escape(s)` twin (default `quote=True`): `&`, `<`, `>`,
- * `"` and `'` — the XSS surface lock (`callback_server.py`,
- * `TestCallbackHtmlSecurity`; packet §7 caution 13).
+ * Escape text like Python's `html.escape(s)` (default `quote=True`):
+ * `&`, `<`, `>`, `"` and `'`. Provider-supplied values reach the
+ * browser page, so this is the XSS boundary.
  *
  * @param text - Provider-supplied text to interpolate into HTML.
  * @returns The escaped text.
@@ -76,17 +70,21 @@ function htmlEscape(text: string): string {
     .replaceAll("'", "&#x27;");
 }
 
-/** Options bag of {@link startCallbackServer} (`callback_server.py`). */
+/** Options bag of {@link startCallbackServer}. */
 export interface StartCallbackServerOptions {
   /** The expected state parameter for CSRF validation. */
   readonly state: string;
-  /** Maximum seconds to wait for the callback (default 300). */
+  /**
+   * Maximum seconds to wait for the callback.
+   *
+   * @defaultValue 300
+   */
   readonly timeoutSeconds?: number | undefined;
   /**
-   * Specific port to bind (no scanning) — the caller already probed
-   * it. `null`/absent scans 19284-19287 in order. `0` binds an
-   * ephemeral port; the resolved tuple (and {@link onListening}) carry
-   * the port actually bound, never the requested `0`.
+   * Specific port to bind, without scanning, because the caller already
+   * probed it. `null` or absent scans 19284-19287 in order. `0` binds an
+   * ephemeral port; the resolved tuple (and `onListening`) carry the
+   * port actually bound, never the requested `0`.
    */
   readonly port?: number | null | undefined;
   /**
@@ -96,9 +94,9 @@ export interface StartCallbackServerOptions {
    */
   readonly onListening?: ((port: number) => void) | undefined;
   /**
-   * TS-only cancellation for the losing login completer (module
-   * header). On abort the server closes and the promise rejects with a
-   * plain `Error` (never an `OAuthError` — the canceller discards it).
+   * TS-only cancellation for the losing login completer. On abort the
+   * server closes and the promise rejects with a plain `Error`, never an
+   * `OAuthError`, because the canceller discards it.
    */
   readonly signal?: AbortSignal | undefined;
 }
@@ -110,7 +108,7 @@ interface HandlerOutcome {
 }
 
 /**
- * Send an HTML response (`_send_html`, `callback_server.py`).
+ * Send an HTML response.
  *
  * @param res - The response to write.
  * @param html - HTML content.
@@ -140,17 +138,17 @@ function sendHtml(
 }
 
 /**
- * Process the single callback request (`_CallbackHandler.do_GET`,
- * `callback_server.py`): provider `error=` param, missing
- * `code`/`state`, state mismatch (CSRF), success — each answers the
- * browser (escaped HTML) and yields the server-side outcome. The path
+ * Process the single callback request: provider `error=` param, missing
+ * `code` or `state`, state mismatch (CSRF), success. Each answers the
+ * browser with escaped HTML and yields the server-side outcome. The path
  * is checked by the request listener (only `/callback` reaches here);
  * this function reads the query only, like Python's `do_GET`.
  *
- * @param url - The raw request URL (path + query).
+ * @param url - The raw request URL (path plus query).
  * @param expectedState - The state generated by this login session.
  * @param res - The response to write the HTML to.
  * @returns The outcome (result, error, or neither for non-GET parity).
+ * @see mixpanel_headless._internal.auth.callback_server._CallbackHandler.do_GET
  */
 async function handleCallbackRequest(
   url: string,
@@ -165,7 +163,6 @@ async function handleCallbackRequest(
   }
   const params = parseQs(query);
 
-  // Check for error from provider (`callback_server.py`).
   const errorParam = params.get("error");
   if (errorParam !== undefined && errorParam.length > 0) {
     const errorDesc = params.get("error_description")?.[0] ?? "";
@@ -184,7 +181,6 @@ async function handleCallbackRequest(
     };
   }
 
-  // Extract code and state (`callback_server.py`).
   const codeList = params.get("code") ?? [];
   const stateList = params.get("state") ?? [];
   if (codeList.length === 0 || stateList.length === 0) {
@@ -194,14 +190,14 @@ async function handleCallbackRequest(
   }
 
   const receivedState = stateList[0] as string;
-  // Plain `!==` on purpose (not constant-time): the server is one-shot
-  // — a mismatch ends the login — so an attacker gets at most one
+  // Plain `!==` on purpose (not constant-time): the server is one-shot,
+  // a mismatch ends the login, so an attacker gets at most one
   // comparison per nonce and no repeated-guess timing oracle exists.
-  // Matches Python's `!=` (`callback_server.py`). CLEANUP-PLAN 8.12.
+  // Matches Python's `!=`.
   if (receivedState !== expectedState) {
-    // Don't leak the expected state to the browser — nor into the
-    // server-side exception (`callback_server.py:251-267`): hosts log
-    // `error.toDict()`, and `details` is serialised by it.
+    // Don't leak the expected state to the browser, nor into the
+    // server-side exception: hosts log `error.toDict()`, and `details`
+    // is serialised by it.
     // Divergence: Python puts `expected_state` in `OAuthError.details` on state mismatch; TS keeps only `received_state` (the attacker-supplied value) so logged errors never carry the nonce.
     const browserMessage = "State parameter mismatch. Authorization failed.";
     await sendHtml(res, errorHtml(htmlEscape(browserMessage)), 400);
@@ -214,7 +210,6 @@ async function handleCallbackRequest(
     };
   }
 
-  // Success (`callback_server.py`).
   await sendHtml(res, SUCCESS_HTML, 200);
   return {
     result: new CallbackResult({
@@ -225,13 +220,13 @@ async function handleCallbackRequest(
 }
 
 /**
- * Bind an HTTP server to `127.0.0.1:port` (`_create_server`,
- * `callback_server.py`).
+ * Bind an HTTP server to `127.0.0.1:port`.
  *
  * @param port - Port to bind.
  * @returns The listening server.
- * @throws Error - The bind failed (EADDRINUSE etc. — the `OSError`
- *   twin the callers classify).
+ * @throws Error - The bind failed (`EADDRINUSE` and friends, the
+ *   `OSError` twin the callers classify).
+ * @see mixpanel_headless._internal.auth.callback_server._create_server
  */
 function bindServer(port: number): Promise<Server> {
   return new Promise((resolve, reject) => {
@@ -245,8 +240,9 @@ function bindServer(port: number): Promise<Server> {
 }
 
 /**
- * The port a listening server is actually bound to (`server.address()`)
- * — differs from the requested port when that was `0`.
+ * Read the port a listening server is actually bound to
+ * (`server.address()`); differs from the requested port when that was
+ * `0`.
  *
  * @param server - A listening TCP server.
  * @returns The bound port.
@@ -279,25 +275,28 @@ function closeServer(server: Server): Promise<void> {
 }
 
 /**
- * Start a local HTTP server to receive the OAuth callback (port of
- * `start_callback_server`, `callback_server.py`).
+ * Start a local HTTP server to receive the OAuth callback.
  *
- * When `port` is provided, binds only that port (no scanning — avoids
- * TOCTOU races when the caller already probed). Otherwise tries ports
- * 19284-19287 in order. Once bound, waits for a single request with
- * `code` and `state` query params; `state` must match (CSRF). An HTML
- * page is returned to the browser either way.
- *
- * @param options - state / timeout / optional exact port / signal.
+ * @remarks
+ * When `port` is provided, binds only that port (no scanning, which
+ * avoids a second TOCTOU race when the caller already probed).
+ * Otherwise tries ports 19284-19287 in order. Once bound, waits for a
+ * single request with `code` and `state` query params; `state` must
+ * match (CSRF). An HTML page is returned to the browser either way.
+ * @param options - State, timeout, optional exact port and signal.
  * @returns `[CallbackResult, boundPort]`.
- * @throws OAuthError - All ports busy or the exact port unavailable
- *   (`OAUTH_PORT_ERROR`), timeout (`OAUTH_TIMEOUT`), provider error /
- *   missing params / state mismatch (`OAUTH_TOKEN_ERROR`).
+ * @throws {@link OAuthError} - All ports busy or the exact port
+ *   unavailable (`OAUTH_PORT_ERROR`), timeout (`OAUTH_TIMEOUT`),
+ *   provider error, missing params or state mismatch
+ *   (`OAUTH_TOKEN_ERROR`).
+ * @throws Error - The `signal` aborted (the losing completer was
+ *   cancelled).
  * @example
- * ```typescript
+ * ```ts
  * const [result, port] = await startCallbackServer({ state: "s" });
  * const redirectUri = `http://localhost:${port}/callback`;
  * ```
+ * @see mixpanel_headless._internal.auth.callback_server.start_callback_server
  */
 export async function startCallbackServer(
   options: StartCallbackServerOptions,
@@ -319,7 +318,6 @@ export async function startCallbackServer(
       }
     }
   } else {
-    // Bind to the exact requested port — no scanning.
     try {
       server = await bindServer(exactPort);
       // Read the port back from the socket: `port: 0` binds an
@@ -354,7 +352,7 @@ export async function startCallbackServer(
     throw error;
   }
 
-  // Wait for ONE request, the timeout, or abort — whichever first.
+  // Wait for one request, the timeout, or abort, whichever comes first.
   type Settled =
     | { readonly kind: "request"; readonly outcome: HandlerOutcome }
     | { readonly kind: "timeout" }
@@ -387,7 +385,7 @@ export async function startCallbackServer(
       }
       if (req.method !== "GET") {
         // BaseHTTPRequestHandler answers 501 for unsupported methods
-        // and `handle_request()` is still consumed — the caller then
+        // and `handle_request()` is still consumed; the caller then
         // reports the no-result (timeout-shaped) error. Ported as-is.
         res.writeHead(501, {
           "Content-Type": "text/plain",
@@ -400,7 +398,7 @@ export async function startCallbackServer(
       }
       const path = (req.url ?? "").split("?", 1)[0] ?? "";
       if (path !== "/callback") {
-        // Divergence: Python's `do_GET` consumes the one-shot on ANY path (`callback_server.py:203-249`); TS answers 404 to non-`/callback` GETs (port probes, a stray tab) and keeps waiting — the registered redirect URI is exactly `/callback`.
+        // Divergence: Python's `_CallbackHandler.do_GET` consumes the one-shot on any path; TS answers 404 to non-`/callback` GETs (port probes, a stray tab) and keeps waiting — the registered redirect URI is exactly `/callback`.
         res.writeHead(404, {
           "Content-Type": "text/plain",
           Connection: "close",
@@ -430,7 +428,7 @@ export async function startCallbackServer(
       return [settled.outcome.result, boundPort] as const;
     }
     // Fall through: request consumed without result or error (non-GET
-    // parity) — Python raises the timeout-shaped error below.
+    // parity); Python raises the timeout-shaped error below.
   }
   throw new OAuthError(
     `OAuth callback timed out after ${timeoutSeconds} seconds. ` +

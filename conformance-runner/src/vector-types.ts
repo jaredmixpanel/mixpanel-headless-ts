@@ -1,12 +1,14 @@
 /**
  * Typed views over loaded conformance vectors (vector.schema.json).
  *
- * The loader (loader.ts) parses vector JSONL losslessly (D6 rule 3), so all
- * payload values are {@link JsonValue} trees with numbers as raw
- * `JsonNumber` tokens. Only the fields the runner dispatches on (`id`,
- * `kind`, `call.api`, `call.setup[].api`) are lifted into typed properties;
- * everything else stays raw for the TS-5 replay/diff pipeline to consume
- * through the codecs and canonicalizer.
+ * The loader (`loader.ts`) parses vector JSONL losslessly, so all payload
+ * values are {@link JsonValue} trees with numbers as raw `JsonNumber`
+ * tokens. Only the fields the runner dispatches on (`id`, `kind`,
+ * `call.api`, `call.setup[].api`) are lifted into typed properties;
+ * everything else stays raw for the replay/diff pipeline to consume through
+ * the codecs and canonicalizer.
+ *
+ * @see conformance.runner.loading.LoadedVector
  */
 
 import type { JsonValue } from "./json-value.js";
@@ -17,7 +19,7 @@ export type VectorKind = "builder" | "wire" | "parse" | "validation-error";
 /** Vector provenance per vector.schema.json (`origin`). */
 export type VectorOrigin = "extracted" | "authored";
 
-/** One ordered `call.setup[]` entry (multi-CALL tests, design D2). */
+/** One ordered `call.setup[]` entry (tests that make several calls). */
 export interface SetupCall {
   /** Python dotted entry-point name. */
   readonly api: string;
@@ -29,7 +31,7 @@ export interface SetupCall {
 export interface ConformanceVector {
   /** Deterministic vector id (`<capability>/<module-or-api>/<slug>...`). */
   readonly id: string;
-  /** Vector kind (dispatch key for the replay model, D7/D12). */
+  /** Vector kind (dispatch key for the replay model). */
   readonly kind: VectorKind;
   /** Corpus capability directory, when stamped. */
   readonly capability?: string;
@@ -41,7 +43,7 @@ export interface ConformanceVector {
   readonly api: string;
   /** Encoded measured-call kwargs (`call.input`). */
   readonly input: Readonly<Record<string, JsonValue>>;
-  /** Ordered setup calls executed before the measured call (D2). */
+  /** Ordered setup calls executed before the measured call. */
   readonly setup: readonly SetupCall[];
   /** The complete raw `call` object (session, client_options, ...). */
   readonly call: Readonly<Record<string, JsonValue>>;
@@ -51,12 +53,12 @@ export interface ConformanceVector {
   readonly bundlePath: string;
 }
 
-/** Metadata from one JSONL bundle's `$bundle` header line (design D3). */
+/** Metadata from one JSONL bundle's `$bundle` header line. */
 export interface BundleInfo {
   /** Corpus-relative bundle path, e.g. `funnels/test_api_client.jsonl`. */
   readonly path: string;
   /**
-   * The bundle's stamped source commit. Extracted bundles MUST match the
+   * The bundle's stamped source commit. Extracted bundles must match the
    * manifest commit; authored bundles keep their authoring-time stamp, and
    * harvest-generated headers (storybook parse corpus) omit it entirely.
    */
@@ -71,15 +73,15 @@ export interface BundleInfo {
   readonly count: number;
 }
 
-/** The manifest fields the TS runner consumes (design D3). */
+/** The manifest fields the TS runner consumes. */
 export interface CorpusManifest {
   /** Full 40-char source commit SHA of the extraction. */
   readonly sourceCommit: string;
-  /** The frozen record clock (design D1.4), ISO-8601. */
+  /** The frozen record clock, ISO-8601. */
   readonly recordEpoch: string;
   /** Vector schema version stamp. */
   readonly schemaVersion: string;
-  /** Externally injected extraction date (design D3). */
+  /** Externally injected extraction date. */
   readonly extractionDate: string;
   /** Total vector count declared by the manifest. */
   readonly total: number;

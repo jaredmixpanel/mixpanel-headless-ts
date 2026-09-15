@@ -1,24 +1,18 @@
 /**
- * Concrete `TokenResolver` — TS port of
- * `mixpanel_headless/_internal/auth/token_resolver.py` (whole file,
- * `token_resolver.py`; b8-packets.md §3.1 row 3).
- *
- * `OnDiskTokenResolver` reads OAuth browser tokens from
- * `~/.mp/accounts/{name}/tokens.json` and static tokens from inline
+ * The on-disk `TokenResolver`: OAuth browser tokens are read from
+ * `~/.mp/accounts/{name}/tokens.json`, static tokens from inline
  * `Secret` fields or environment variables. Browser-token refresh
  * delegates to `OAuthFlow.refreshTokens` and persists the new payload
- * back atomically (`token_payload_bytes`, mode 0o600) — refresh-token
- * ROTATION KEEP included (`token_resolver.py`; packet §7
- * caution 7: dropping it bricks future refreshes).
+ * back atomically (mode 0o600), keeping the previous refresh token when
+ * the IdP does not rotate it (dropping it would brick future refreshes).
  *
- * Persistence world note (packet §7 caution 9): this module owns the
- * PER-ACCOUNT `tokens.json`; the DCR client info it consumes is the
- * REGION-SHARED `~/.mp/oauth/client_{region}.json` via `OAuthStorage`.
- * The two worlds are not unified.
+ * This module owns the per-account `tokens.json`; the DCR client info it
+ * consumes is the region-shared `~/.mp/oauth/client_{region}.json` via
+ * `OAuthStorage`, and the two layouts are not unified. The methods are
+ * async where Python is sync because core's `TokenResolver` interface is
+ * Promise-shaped.
  *
- * Async where Python is sync — the core `TokenResolver` interface
- * (`auth/account.ts:74-91`) is Promise-shaped; R2.9 per-request
- * resolution is enforced by the core call sites.
+ * @see mixpanel_headless._internal.auth.token_resolver
  */
 
 import { existsSync } from "node:fs";
@@ -49,13 +43,17 @@ import { accountDir, OAuthStorage } from "./storage.js";
 import { tokenPayloadBytes } from "./token-payload.js";
 
 /**
- * `<account-dir>/tokens.json` for the given account name (port of
- * `_account_tokens_path`, `token_resolver.py`). Routes through
- * {@link accountDir} so `MP_OAUTH_STORAGE_DIR` is honored.
+ * Return `{accountDir}/tokens.json` for the given account name. Routes
+ * through {@link accountDir} so `MP_OAUTH_STORAGE_DIR` is honoured.
  *
  * @param name - Account name (validated upstream by the Account model;
  *   re-validated by `accountDir` as defense-in-depth).
  * @returns Absolute path to the per-account tokens file.
+ * @example
+ * ```ts
+ * if (existsSync(accountTokensPath("team"))) { ... }
+ * ```
+ * @see mixpanel_headless._internal.auth.token_resolver._account_tokens_path
  */
 export function accountTokensPath(name: string): string {
   return join(accountDir(name), "tokens.json");
@@ -78,32 +76,40 @@ export interface OnDiskTokenResolverOptions {
   /**
    * DCR client-info loader seam — the Python tests' `monkeypatch` of
    * `OAuthStorage.load_client_info`.
-   * Default: a fresh `OAuthStorage` per refresh, exactly as
-   * `_refresh_and_persist` constructs one.
+   *
+   * @defaultValue a fresh `OAuthStorage` per refresh, as `_refresh_and_persist` constructs one
    */
   readonly loadClientInfo?:
     ((region: Region) => OAuthClientInfo | null) | undefined;
   /**
    * Refresh seam — the Python tests' `monkeypatch` of
-   * `OAuthFlow.refresh_tokens`. Default: a real `OAuthFlow` bound to
-   * the region (`token_resolver.py`).
+   * `OAuthFlow.refresh_tokens`.
+   *
+   * @defaultValue a real `OAuthFlow` bound to the region
    */
   readonly refresh?:
     ((args: RefreshSeamArgs) => Promise<OAuthTokens>) | undefined;
   /** Injected fetch for the default refresh flow. */
   readonly fetchImpl?: typeof fetch | undefined;
-  /** Epoch-ms clock seam (expiry checks + `fromTokenResponse`). */
+  /** Epoch-ms clock seam (expiry checks and `fromTokenResponse`). */
   readonly now?: (() => number) | undefined;
   /**
-   * Env reader for `token_env` indirection (default: call-time
-   * `process.env` — `os.environ.get`, `token_resolver.py`).
+   * Env reader for `token_env` indirection (Python's `os.environ.get`).
+   *
+   * @defaultValue call-time `process.env`
    */
   readonly env?: ((name: string) => string | undefined) | undefined;
 }
 
 /**
- * Default resolver: tokens live on disk per account (port of
- * `OnDiskTokenResolver`, `token_resolver.py`).
+ * The default resolver: tokens live on disk per account.
+ *
+ * @example
+ * ```ts
+ * const resolver = new OnDiskTokenResolver({ fetchImpl: fetch });
+ * const bearer = await resolver.getBrowserToken("team", "us");
+ * ```
+ * @see mixpanel_headless._internal.auth.token_resolver.OnDiskTokenResolver
  */
 export class OnDiskTokenResolver implements TokenResolver {
   /** Client-info loader seam. */
@@ -121,8 +127,8 @@ export class OnDiskTokenResolver implements TokenResolver {
   /**
    * Build the resolver.
    *
-   * @param options - Optional test seams (defaults are the real
-   *   on-disk / network paths).
+   * @param options - Optional test seams (defaults are the real on-disk
+   *   and network paths).
    */
   constructor(options: OnDiskTokenResolverOptions = {}) {
     this.#loadClientInfo =
@@ -149,27 +155,24 @@ export class OnDiskTokenResolver implements TokenResolver {
   }
 
   /**
-   * Return a fresh access token for an oauth_browser account (port of
-   * `get_browser_token`, `token_resolver.py`).
+   * Return a fresh access token for an oauth_browser account.
    *
    * @param name - Account name (locates the tokens file).
    * @param region - Mixpanel region (selects the DCR client).
    * @returns The current access token (no `Bearer` prefix).
-   * @throws OAuthError - Missing/malformed/symlinked tokens file,
-   *   expired without refresh token, or refresh failure.
+   * @throws {@link OAuthError} - Missing, malformed or symlinked tokens
+   *   file, expired without refresh token, or refresh failure.
+   * @see mixpanel_headless._internal.auth.token_resolver.OnDiskTokenResolver.get_browser_token
    */
   async getBrowserToken(name: string, region: Region): Promise<string> {
     const path = accountTokensPath(name);
-    // Probe for symlink BEFORE the existence check
-    // (`token_resolver.py:97-111` — a dangling symlink must surface
-    // the attack signal, not masquerade as ENOENT).
+    // Probe for a symlink before the existence check: a dangling symlink
+    // must surface the attack signal, not masquerade as ENOENT.
     try {
       rejectIfSymlink(path);
     } catch (error) {
-      // Python wraps ANY OSError from the probe
-      // (`token_resolver.py` `except OSError`) — errno-bearing
-      // lstat failures included (B8-ARB-A SEM-F6 family,
-      // `b8-reviewA-resolution.md`).
+      // Python wraps any OSError from the probe (`except OSError`),
+      // errno-bearing lstat failures included.
       if (!(error instanceof MixpanelHeadlessError) && !isErrnoError(error)) {
         throw error;
       }
@@ -201,11 +204,10 @@ export class OnDiskTokenResolver implements TokenResolver {
       );
     }
 
-    // Single source of truth for parsing (`token_resolver.py`)
-    // — the OAuthTokens model enforces the tz-aware expiry invariant
-    // and the secret wrapping in one place. Python's read is
-    // Pydantic-LAX, so a numeric epoch `expires_at` is coerced first
-    // (B8-ARB-B F1, `b8-reviewB-resolution.md` — the shared mirror).
+    // The OAuthTokens model is the single source of truth for parsing:
+    // it enforces the tz-aware expiry invariant and the secret wrapping
+    // in one place. Python's read is pydantic-lax, so a numeric epoch
+    // `expires_at` is coerced first through the shared helper.
     let tokens: OAuthTokens;
     try {
       const text = new TextDecoder("utf-8", { fatal: true }).decode(raw);
@@ -254,13 +256,14 @@ export class OnDiskTokenResolver implements TokenResolver {
 
   /**
    * Refresh an expired browser token and rewrite the per-account file
-   * atomically (port of `_refresh_and_persist`,
-   * `token_resolver.py`).
+   * atomically.
    *
-   * @param args - Account name, region, tokens path, parsed tokens.
+   * @param args - Account `name`, Mixpanel `region`, the per-account
+   *   tokens `path` to rewrite, and the parsed (expired) `tokens`.
    * @returns The freshly minted access token.
-   * @throws OAuthError - `OAUTH_REFRESH_ERROR` for missing-client
-   *   cases; `OAUTH_REFRESH_REVOKED` on `invalid_grant`.
+   * @throws {@link OAuthError} - `OAUTH_REFRESH_ERROR` when the DCR
+   *   client info is missing; `OAUTH_REFRESH_REVOKED` on `invalid_grant`.
+   * @see mixpanel_headless._internal.auth.token_resolver.OnDiskTokenResolver._refresh_and_persist
    */
   async #refreshAndPersist(args: {
     name: string;
@@ -286,7 +289,7 @@ export class OnDiskTokenResolver implements TokenResolver {
       region,
     });
     // Refresh tokens may rotate; if the IdP returns no new refresh
-    // token we KEEP the existing one (`token_resolver.py`).
+    // token, keep the existing one.
     if (newTokens.refresh_token === null) {
       newTokens = new OAuthTokens({
         access_token: newTokens.access_token,
@@ -301,13 +304,13 @@ export class OnDiskTokenResolver implements TokenResolver {
   }
 
   /**
-   * Return the static bearer for an oauth_token account (port of
-   * `get_static_token`, `token_resolver.py`).
+   * Return the static bearer for an oauth_token account.
    *
    * @param account - The account whose `token` / `token_env` resolves.
    * @returns The bearer token (no `Bearer` prefix).
-   * @throws OAuthError - `token_env` set but the env var is unset or
-   *   empty (R11.7 falsiness on strings: empty = absent).
+   * @throws {@link OAuthError} - `token_env` set but the env var is
+   *   unset or empty (Python string falsiness: empty means absent).
+   * @see mixpanel_headless._internal.auth.token_resolver.OnDiskTokenResolver.get_static_token
    */
   getStaticToken(account: OAuthTokenAccount): Promise<string> {
     if (account.token !== null && account.token !== undefined) {
@@ -315,8 +318,8 @@ export class OnDiskTokenResolver implements TokenResolver {
     }
     const envName = account.token_env;
     if (envName === null || envName === undefined) {
-      // Model invariant (`token XOR token_env`) — explicit raise so it
-      // survives without assertions (`token_resolver.py`).
+      // Model invariant (`token` xor `token_env`): an explicit raise so
+      // it survives without assertions.
       return Promise.reject(
         new OAuthError(
           `OAuth account '${account.name}' has neither \`token\` nor ` +

@@ -1,5 +1,5 @@
 /**
- * Request-side diffing for wire vectors (design D7/D12).
+ * Request-side diffing for wire vectors.
  *
  * After the measured call, every captured request is compared against the
  * interaction slot that served it (positional for ordered interactions,
@@ -8,18 +8,20 @@
  * per-field mismatches all yield divergence strings; any divergence is the
  * `FAIL_REQUEST` verdict.
  *
- * Field semantics (vector.schema.json `expectedRequest` + D5/D6):
+ * Field semantics (`vector.schema.json` `expectedRequest`):
  * - `method`/`path`: exact equality.
- * - `scheme_host`: asserted only when recorded (D9 S4 observability).
+ * - `scheme_host`: asserted only when recorded.
  * - `params`: full canonical equality of the decoded query-param maps; an
  *   omitted recorded `params` means the captured request must carry none.
  * - `params_absent` / `headers_absent`: the listed keys must be absent.
  * - `headers_contain`: subset match via {@link headersMatch} (lowercased
- *   keys, `{pattern}` regex values for authorization, D5.2/D5.6).
- * - body: exactly one of `json_body` (canonical comparison after LOSSLESS
- *   parsing of the captured bytes — raw-token rule, D6 rule 3),
- *   `body_text` (utf8 equality), `body_base64` (byte equality); when all
- *   are absent the captured body must be empty.
+ *   keys, `{pattern}` regex values for authorization).
+ * - body: exactly one of `json_body` (canonical comparison after lossless
+ *   parsing of the captured bytes, so raw number tokens compare by
+ *   spelling), `body_text` (utf8 equality), `body_base64` (byte equality);
+ *   when all are absent the captured body must be empty.
+ *
+ * @see conformance.runner.execute._compare_request
  */
 
 import { canonicalize, headersMatch } from "./canonical.js";
@@ -171,7 +173,7 @@ function diffBody(
 }
 
 /**
- * Diff the full replay traffic of one wire vector (design D7 mirror).
+ * Diff the full replay traffic of one wire vector.
  *
  * @param interactions - The vector's parsed interactions.
  * @param captures - Captured requests, in arrival order.

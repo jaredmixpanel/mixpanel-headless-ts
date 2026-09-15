@@ -78,6 +78,12 @@ export const WHITELIST = Object.freeze([
 export const RATIONALE_RE =
   /\b(?:because|since|so that|otherwise|intentional(?:ly)?|deliberate(?:ly)?|must|avoid(?:s|ed|ing)?|prevent(?:s|ed|ing)?|rationale|why|note that|workaround|divergen(?:ce|ces|t)|caveat|trade-?offs?)\b/i;
 
+/**
+ * Whether a paragraph carries rationale vocabulary and must be left to a human.
+ *
+ * @param {string} text - Paragraph text with the comment syntax stripped.
+ * @returns {boolean} True when `RATIONALE_RE` matches.
+ */
 export function hasRationale(text) {
   return RATIONALE_RE.test(text);
 }
@@ -89,6 +95,11 @@ const WORD_CHAR = /\w/;
  * such as `mixpanel_headless.workspace.Workspace.list_dashboards` — i.e. it is
  * glued by a `.` to a word character on either side. Such segments are Python
  * provenance by symbol name, which the style guide allows.
+ *
+ * @param {string} text - The line being scanned.
+ * @param {number} start - Offset of the match start.
+ * @param {number} end - Offset one past the match end.
+ * @returns {boolean} True when a dot glues the match to a neighbouring word.
  */
 export function isDottedSegment(text, start, end) {
   const before =
@@ -101,8 +112,11 @@ export function isDottedSegment(text, start, end) {
 /**
  * Find banned-token matches in one line of comment (or title) text.
  * Overlapping matches are reduced to the earliest-starting, longest one so a
- * line naming the packets document does not also count as the bare word. Returns
- * `{ token, index, length, match }` entries in ascending `index` order.
+ * line naming a banned document does not also count as the bare word.
+ *
+ * @param {string} line - One line of comment content or a test title.
+ * @param {{ filePath?: string }} [options] - `filePath` (repo-relative) selects the whitelist rules that apply.
+ * @returns {Array<{ token: string, index: number, length: number, match: string }>} Hits in ascending `index` order.
  */
 export function findBannedTokens(line, options = {}) {
   const filePath = options.filePath ?? "";
@@ -153,12 +167,24 @@ export function findBannedTokens(line, options = {}) {
 // Extraction (TypeScript compiler API)
 // ---------------------------------------------------------------------------
 
-/** Map a file extension to the ScriptKind the parser should use. */
+/**
+ * Map a file extension to the ScriptKind the parser should use.
+ *
+ * @param {string} filePath - Path whose extension decides the kind.
+ * @returns {ts.ScriptKind} `JS` for `.js`/`.mjs`/`.cjs`, else `TS`.
+ */
 export function scriptKindFor(filePath) {
   if (/\.(?:js|mjs|cjs)$/.test(filePath)) return ts.ScriptKind.JS;
   return ts.ScriptKind.TS;
 }
 
+/**
+ * Parse source text without binding parents (the walkers pass the file in).
+ *
+ * @param {string} text - Source text.
+ * @param {ts.ScriptKind} [scriptKind] - Parser mode; defaults to TS.
+ * @returns {ts.SourceFile} The parsed file.
+ */
 function parse(text, scriptKind) {
   return ts.createSourceFile(
     "input.ts",
@@ -169,6 +195,13 @@ function parse(text, scriptKind) {
   );
 }
 
+/**
+ * Classify a comment range as `line`, `jsdoc` or `block`.
+ *
+ * @param {string} text - Source text the range indexes into.
+ * @param {ts.CommentRange} range - The comment range.
+ * @returns {"line" | "jsdoc" | "block"} The comment kind.
+ */
 function commentKind(text, range) {
   if (range.kind === ts.SyntaxKind.SingleLineCommentTrivia) return "line";
   return text.startsWith("/**", range.pos) ? "jsdoc" : "block";
@@ -178,12 +211,23 @@ function commentKind(text, range) {
  * Every comment in `text` as `{ pos, end, kind, text }`, in source order.
  * Walks the full token tree (`getChildren`) so comments inside otherwise
  * empty blocks and before the end-of-file token are found too.
+ *
+ * @param {string} text - Source text.
+ * @param {ts.ScriptKind} [scriptKind] - Parser mode; defaults to TS.
+ * @returns {Array<{ pos: number, end: number, kind: string, text: string }>} Every comment in source order.
  */
 export function extractComments(text, scriptKind) {
   const sf = parse(text, scriptKind);
   return extractCommentsFrom(sf, text);
 }
 
+/**
+ * Collect every comment of an already parsed file, deduplicated by position.
+ *
+ * @param {ts.SourceFile} sf - Parsed file.
+ * @param {string} text - Its source text.
+ * @returns {Array<{ pos: number, end: number, kind: string, text: string }>} Every comment in source order.
+ */
 function extractCommentsFrom(sf, text) {
   const seen = new Set();
   const out = [];
@@ -220,6 +264,12 @@ function extractCommentsFrom(sf, text) {
 
 const TITLE_CALLEES = new Set(["describe", "it", "test"]);
 
+/**
+ * Leftmost identifier of a call or property chain (`it` for `it.skip.each(...)`).
+ *
+ * @param {ts.Expression} expr - The callee expression.
+ * @returns {string | undefined} The identifier text, or `undefined` when the chain does not start with one.
+ */
 function rootIdentifier(expr) {
   let e = expr;
   for (;;) {
@@ -232,6 +282,13 @@ function rootIdentifier(expr) {
   return ts.isIdentifier(e) ? e.text : undefined;
 }
 
+/**
+ * Static text of a title argument; template expressions keep their literal
+ * parts joined by single spaces.
+ *
+ * @param {ts.Expression} arg - The first argument of the call.
+ * @returns {string | undefined} The title text, or `undefined` when it is not a literal.
+ */
 function literalTitle(arg) {
   if (ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg)) {
     return arg.text;
@@ -250,12 +307,22 @@ function literalTitle(arg) {
  * (including `.skip`/`.only`/`.each(...)` chains), as
  * `{ pos, end, text }` where `pos` is the offset of the first title
  * character (inside the quote).
+ *
+ * @param {string} text - Source text.
+ * @param {ts.ScriptKind} [scriptKind] - Parser mode; defaults to TS.
+ * @returns {Array<{ pos: number, end: number, text: string }>} Titles in source order.
  */
 export function extractTestTitles(text, scriptKind) {
   const sf = parse(text, scriptKind);
   return extractTitlesFrom(sf);
 }
 
+/**
+ * Collect the test titles of an already parsed file.
+ *
+ * @param {ts.SourceFile} sf - Parsed file.
+ * @returns {Array<{ pos: number, end: number, text: string }>} Titles in source order.
+ */
 function extractTitlesFrom(sf) {
   const out = [];
   const visit = (node) => {
@@ -283,6 +350,12 @@ function extractTitlesFrom(sf) {
 // Scanning
 // ---------------------------------------------------------------------------
 
+/**
+ * Split text into lines, tracking each line's offset into the text.
+ *
+ * @param {string} text - Text to split on `\n`.
+ * @yields {{ line: string, offset: number }} One record per line.
+ */
 function* linesWithOffsets(text) {
   let offset = 0;
   for (const line of text.split("\n")) {
@@ -292,10 +365,11 @@ function* linesWithOffsets(text) {
 }
 
 /**
- * Scan one source text. Returns `{ hits, comments, titles }` where each hit is
- * `{ line, col, token, kind, text, pos }` (1-based line/col; `kind` is
- * `line` | `block` | `jsdoc` | `title`; `text` is the trimmed comment line or
- * title). Hits are in source order.
+ * Scan one source text for banned tokens in its comments and test titles.
+ *
+ * @param {string} text - Source text.
+ * @param {{ filePath?: string, scriptKind?: ts.ScriptKind }} [options] - `filePath` (repo-relative) selects the whitelist rules and, unless `scriptKind` is given, the parser mode.
+ * @returns {{ hits: Array<{ line: number, col: number, token: string, kind: string, text: string, pos: number }>, comments: object[], titles: object[] }} Hits in source order (1-based line/col; `kind` is `line`, `block`, `jsdoc` or `title`; `text` is the trimmed comment line or title), plus the extracted comments and titles.
  */
 export function scanSource(text, options = {}) {
   const filePath = options.filePath ?? "";
@@ -346,6 +420,11 @@ export function scanSource(text, options = {}) {
 /**
  * Remove `[start, end)` from `line` together with one adjacent space:
  * the preceding one when present, else the following one.
+ *
+ * @param {string} line - The line to edit.
+ * @param {number} start - Start offset of the span.
+ * @param {number} end - Offset one past the span.
+ * @returns {string} The line without the span.
  */
 function spliceOut(line, start, end) {
   let s = start;
@@ -366,7 +445,10 @@ const BARE_ID_PAREN_RE = new RegExp(
 /**
  * Rule `bare-id-parenthetical`: delete `(R<n>.<m>)`, `(TS-<n>)`, `(B<n>-W<n>)`,
  * `(R<n>.<m>/R<n>.<m>)`, `(B<n>, R<n>.<m>)` ... — parentheticals holding
- * nothing but process ids. Returns `{ line, count }`.
+ * nothing but process ids.
+ *
+ * @param {string} line - One comment line.
+ * @returns {{ line: string, count: number }} The rewritten line and how many parentheticals were removed.
  */
 export function fixBareIdParentheticals(line) {
   BARE_ID_PAREN_RE.lastIndex = 0;
@@ -394,6 +476,12 @@ const ORPHAN_ANYWHERE_RE = /`:\d+|[,/;]\s*:\d+/;
 const SYMBOL_NEARBY_RE =
   /`[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*(?:\(\))?`|\b[A-Za-z_][\dA-Za-z]*_\w*\(|\b[A-Za-z_]\w+\.(?!py\b|md\b|json\b|ts\b|mjs\b|js\b)[A-Za-z_]\w+\b/;
 
+/**
+ * Whether a line still names a symbol once a Python line reference is gone.
+ *
+ * @param {string} text - The line with the reference removed.
+ * @returns {boolean} True when `SYMBOL_NEARBY_RE` matches.
+ */
 function hasSymbolNearby(text) {
   return SYMBOL_NEARBY_RE.test(text);
 }
@@ -405,7 +493,10 @@ function hasSymbolNearby(text) {
  *   - bare `workspace.py:<from>-<to>` -> `workspace.py`.
  *   - `(:<from>-<to>)` -> removed.
  * Lines carrying orphan line lists (`types.py:<n>, <m>` / `` `:<n>` ``) are
- * left alone. Returns `{ line, count }`.
+ * left alone.
+ *
+ * @param {string} line - One comment line.
+ * @returns {{ line: string, count: number }} The rewritten line and how many references were rewritten.
  */
 export function fixPyLineRefs(line) {
   if (ORPHAN_ANYWHERE_RE.test(line)) return { line, count: 0 };
@@ -474,6 +565,12 @@ const OWNERSHIP_PART_RE = new RegExp(
   "i",
 );
 
+/**
+ * Whether a parenthetical says nothing but ownership or process ids.
+ *
+ * @param {string} inner - Text between the parentheses.
+ * @returns {boolean} True when every `;`/`,`-separated part is ownership vocabulary or an id.
+ */
 function isOwnershipParenthetical(inner) {
   return inner
     .split(/[;,]/)
@@ -486,8 +583,10 @@ function isOwnershipParenthetical(inner) {
  * Rule `ownership-marker`: a standalone `// === B<n>-W<n> dashboard members
  * (W<n> owns; append-only) ===` line becomes `// --- Dashboard members ---`, or is
  * deleted when nothing but ids remains. Lines whose parentheticals say more
- * than ownership are left for humans. Returns
- * `{ line, changed, deleted }` where `line` is `null` when deleted.
+ * than ownership are left for humans.
+ *
+ * @param {string} line - One line comment, indentation included.
+ * @returns {{ line: string | null, changed: boolean, deleted: boolean }} The rewritten line (`null` when deleted) and what happened to it.
  */
 export function fixOwnershipMarker(line) {
   const m = MARKER_RE.exec(line);
@@ -532,13 +631,24 @@ export const FIX_RULES = Object.freeze([
   "bare-id-parenthetical",
 ]);
 
+/**
+ * A zeroed per-rule counter.
+ *
+ * @returns {Record<string, number>} One zero per entry of `FIX_RULES`.
+ */
 function emptyCounts() {
   const c = {};
   for (const r of FIX_RULES) c[r] = 0;
   return c;
 }
 
-/** Content of a comment line with the comment syntax stripped. */
+/**
+ * Content of a comment line with the comment syntax stripped.
+ *
+ * @param {string} line - The raw line.
+ * @param {string} kind - `line`, `block` or `jsdoc`.
+ * @returns {string} The prose part of the line.
+ */
 function lineContent(line, kind) {
   if (kind === "line") return line.replace(/^\s*\/\/\s?/, "");
   return line
@@ -548,6 +658,13 @@ function lineContent(line, kind) {
     .trim();
 }
 
+/**
+ * Whether a comment line carries no prose.
+ *
+ * @param {string} line - The raw line.
+ * @param {string} kind - `line`, `block` or `jsdoc`.
+ * @returns {boolean} True when only comment syntax and whitespace remain.
+ */
 function isBlankContent(line, kind) {
   return lineContent(line, kind).trim().length === 0;
 }
@@ -555,6 +672,10 @@ function isBlankContent(line, kind) {
 /**
  * Split an ordered list of `{ line }` records into paragraphs: blank comment
  * lines, `@tag` lines and marker lines each start a new paragraph.
+ *
+ * @param {Array<{ line: string }>} records - The comment lines in order.
+ * @param {string} kind - `line`, `block` or `jsdoc`.
+ * @returns {Array<Array<{ line: string }>>} The records grouped into paragraphs.
  */
 function paragraphsOf(records, kind) {
   const groups = [];
@@ -578,6 +699,10 @@ function paragraphsOf(records, kind) {
 /**
  * Apply the fix rules to one paragraph (array of `{ line }` records, mutated
  * in place: `line` becomes the rewritten text or `null` for a deleted line).
+ *
+ * @param {Array<{ line: string | null }>} records - One paragraph of comment lines.
+ * @param {string} kind - `line`, `block` or `jsdoc`.
+ * @param {Record<string, number>} counts - Per-rule counters, incremented in place.
  */
 function fixParagraph(records, kind, counts) {
   const joined = records.map((r) => lineContent(r.line, kind)).join("\n");
@@ -606,6 +731,11 @@ const STRANDED_PUNCT_RE = / [,.;:](?=\s|$)/g;
 /**
  * A rewrite that strands punctuation (`*, and the ...`, `foo , bar`) is not
  * mechanical any more; the line is reverted and left in the report.
+ *
+ * @param {string} before - The original line.
+ * @param {string} after - The rewritten line.
+ * @param {string} kind - `line`, `block` or `jsdoc`.
+ * @returns {boolean} True when the rewrite must be reverted.
  */
 export function looksBroken(before, after, kind) {
   const content = lineContent(after, kind).trim();
@@ -619,6 +749,11 @@ export function looksBroken(before, after, kind) {
  * After rewriting, drop lines that the fixes emptied and collapse the blank
  * comment lines that removal exposed (double blanks, blanks at either end).
  * Only groups where something was emptied are touched.
+ *
+ * @param {Array<{ line: string | null }>} records - The rewritten lines.
+ * @param {string} kind - `line`, `block` or `jsdoc`.
+ * @param {string[]} originals - The lines before rewriting, index-aligned.
+ * @returns {Array<{ line: string | null }>} The records to keep, in order.
  */
 function tidyEmptied(records, kind, originals) {
   const emptied = records.some(
@@ -650,25 +785,46 @@ function tidyEmptied(records, kind, originals) {
   return out;
 }
 
+/**
+ * Offset of the first character of the line containing `pos`.
+ *
+ * @param {string} text - Source text.
+ * @param {number} pos - Offset into `text`.
+ * @returns {number} The line start offset.
+ */
 function lineStartOf(text, pos) {
   const nl = text.lastIndexOf("\n", pos - 1);
   return nl === -1 ? 0 : nl + 1;
 }
 
+/**
+ * Offset of the newline ending the line containing `pos` (or the text end).
+ *
+ * @param {string} text - Source text.
+ * @param {number} pos - Offset into `text`.
+ * @returns {number} The line end offset.
+ */
 function lineEndOf(text, pos) {
   const nl = text.indexOf("\n", pos);
   return nl === -1 ? text.length : nl;
 }
 
+/**
+ * Whether a string is nothing but spaces and tabs.
+ *
+ * @param {string} s - The string to test.
+ * @returns {boolean} True for the empty string too.
+ */
 function isWhitespace(s) {
   return /^[ \t]*$/.test(s);
 }
 
 /**
- * Rewrite `text` with the mechanical fixes. Returns
- * `{ text, counts, changes }` where `changes` is a list of
- * `{ line, before, after }` (1-based line; `after` is `null` for a deleted
- * line) suitable for a dry-run listing.
+ * Rewrite `text` with the mechanical fixes.
+ *
+ * @param {string} text - Source text.
+ * @param {{ filePath?: string, scriptKind?: ts.ScriptKind }} [options] - `filePath` (repo-relative) selects the whitelist rules and, unless `scriptKind` is given, the parser mode.
+ * @returns {{ text: string, counts: Record<string, number>, changes: Array<{ line: number, before: string, after: string | null }> }} The rewritten text, the per-rule counts and a change list (1-based line; `after` is `null` for a deleted line) suitable for a dry-run listing.
  */
 export function rewriteSource(text, options = {}) {
   const filePath = options.filePath ?? "";

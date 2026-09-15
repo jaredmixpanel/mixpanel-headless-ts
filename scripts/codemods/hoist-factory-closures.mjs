@@ -54,7 +54,12 @@ const sf = ts.createSourceFile(
   ts.ScriptKind.TS,
 );
 
-/** Abort without writing. */
+/**
+ * Abort without writing, naming the offending line when a node is given.
+ *
+ * @param {string} message - What the transform could not handle.
+ * @param {ts.Node} [node] - The node the message is about.
+ */
 function fail(message, node) {
   const where = node
     ? `:${sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1}`
@@ -118,12 +123,23 @@ const hoists = [];
 /** @type {ts.ReturnStatement | undefined} */
 let returnStmt;
 
-/** Leading comment text (full ranges) before a node. */
+/**
+ * Leading comment text (full ranges) before a node.
+ *
+ * @param {ts.Node} node - Node whose leading trivia is read.
+ * @returns {string} The comments joined by newlines; empty when there are none.
+ */
 function leadingComments(node) {
   const ranges = ts.getLeadingCommentRanges(source, node.getFullStart()) ?? [];
   return ranges.map((r) => source.slice(r.pos, r.end)).join("\n");
 }
 
+/**
+ * Whether a node is an arrow function, function expression or declaration.
+ *
+ * @param {ts.Node} node - Candidate node.
+ * @returns {boolean} True for the three hoistable function shapes.
+ */
 function isFunctionLike(node) {
   return (
     ts.isArrowFunction(node) ||
@@ -215,7 +231,12 @@ for (const h of hoists) {
 // Dependency analysis: which factory params does each hoisted function need?
 // ---------------------------------------------------------------------------
 
-/** Whether an identifier node is a value reference (not a property name). */
+/**
+ * Whether an identifier node is a value reference (not a property name).
+ *
+ * @param {ts.Identifier} id - Identifier to classify.
+ * @returns {boolean} False when the identifier names a property, parameter, declaration or type.
+ */
 function isValueReference(id) {
   const p = id.parent;
   if (ts.isPropertyAccessExpression(p) && p.name === id) return false;
@@ -230,7 +251,14 @@ function isValueReference(id) {
   return true;
 }
 
-/** Whether the identifier's shadowed by a nested parameter or local. */
+/**
+ * Whether the identifier is shadowed by a nested parameter or local between
+ * its use site and the hoisted function.
+ *
+ * @param {ts.Identifier} id - The reference being resolved.
+ * @param {ts.Node} fnNode - The hoisted function that bounds the search.
+ * @returns {boolean} True when an inner scope redeclares the name.
+ */
 function shadowedWithin(id, fnNode) {
   let cur = id.parent;
   while (cur && cur !== fnNode) {
@@ -312,7 +340,12 @@ while (changed) {
     }
   }
 }
-/** Leading params in factory-parameter order. */
+/**
+ * Leading params in factory-parameter order.
+ *
+ * @param {Hoist} h - The hoisted function.
+ * @returns {Array<{ name: string, text: string }>} The factory parameters it needs, with their declaration text.
+ */
 function leadingOf(h) {
   return factoryParams.filter((p) => h.needs.has(p.name));
 }
@@ -321,7 +354,14 @@ function leadingOf(h) {
 // Emit
 // ---------------------------------------------------------------------------
 
-/** Apply non-overlapping edits `{pos, end, text}` to a source slice. */
+/**
+ * Apply non-overlapping edits to a slice of the source.
+ *
+ * @param {number} start - Slice start offset in `source`.
+ * @param {number} end - Slice end offset in `source`.
+ * @param {Array<{ pos: number, end: number, text: string }>} edits - Replacements inside the slice.
+ * @returns {string} The rewritten slice.
+ */
 function applyEdits(start, end, edits) {
   const sorted = [...edits].sort((a, b) => a.pos - b.pos);
   let out = "";
@@ -334,6 +374,13 @@ function applyEdits(start, end, edits) {
   return out + source.slice(cursor, end);
 }
 
+/**
+ * Render one hoisted function as a module-level declaration, threading the
+ * leading parameters into its calls to other hoisted functions.
+ *
+ * @param {Hoist} h - The hoisted function.
+ * @returns {string} The function declaration text, with its leading comments.
+ */
 function emitHoisted(h) {
   const fn = h.fn;
   const leading = leadingOf(h);
@@ -368,6 +415,12 @@ function emitHoisted(h) {
   return `${comments}${head}${body}\n`;
 }
 
+/**
+ * Render one property of the returned object literal for the reduced factory.
+ *
+ * @param {{ kind: string, name?: string, target?: string, prop: ts.ObjectLiteralElementLike }} plan - How the property is re-emitted.
+ * @returns {string} The property text: verbatim, shorthand, a `bindFirst` call or an explicit arrow.
+ */
 function emitProperty(plan) {
   if (plan.kind === "verbatim")
     return source.slice(plan.prop.getStart(sf), plan.prop.getEnd());

@@ -1,21 +1,21 @@
 /**
- * Types for the generated api-map (design D12 / D4.4, naming-map §5).
+ * Types for the generated api-map.
  *
  * `api-map.gen.ts` (written by `scripts/generate-api-map.mjs`) maps every
  * Python dotted `call.api` in the corpus `api-index.json` to its TS home;
  * this module holds the entry shape so the generated file stays pure data.
  */
 
-/** Registry kind carried through from the corpus `api-index.json` (D4.4). */
+/** Registry kind carried through from the corpus `api-index.json`. */
 export type ApiEntryKind = "wire_api" | "wire_state" | "builder" | "validator";
 
-/** One resolved api-map entry (Python entry point -> TS home + signature). */
+/** One resolved api-map entry (Python entry point to TS home and signature). */
 export interface ApiMapEntry {
   /** The Python dotted name exactly as vectors carry it (`call.api`). */
   readonly pythonApi: string;
-  /** Source Python module import path (from api-index; UNPORTED universe). */
+  /** Source Python module import path (from api-index; the `UNPORTED` universe). */
   readonly pythonModule: string;
-  /** TS module path per naming-map §4, e.g. `core/query/segfilter`. */
+  /** TS module path, e.g. `core/query/segfilter`. */
   readonly tsModule: string;
   /** TS member name, e.g. `buildSegfilterEntry`. */
   readonly tsName: string;
@@ -23,9 +23,9 @@ export interface ApiMapEntry {
   readonly kind: ApiEntryKind;
   /** Corpus capability directory, e.g. `funnels`. */
   readonly capability: string;
-  /** Positional parameter names, Python spelling and order (D4.4/D12). */
+  /** Positional parameter names, Python spelling and order. */
   readonly params: readonly string[];
-  /** Keyword-only parameter names, Python spelling (D4.4/D12). */
+  /** Keyword-only parameter names, Python spelling. */
   readonly kwonly: readonly string[];
 }
 
@@ -37,6 +37,6 @@ export interface ApiMapSourceHashes {
   readonly apiIndexJson: string;
   /** sha256 of `naming-exceptions.json`. */
   readonly namingExceptionsJson: string;
-  /** sha256 of `authored-apis.json` (D13 gate supplement, task TS-6). */
+  /** sha256 of `authored-apis.json` (the hand-written `compat.*`/`wirestub.*` supplement). */
   readonly authoredApisJson: string;
 }

@@ -1,34 +1,31 @@
 #!/usr/bin/env node
-// generate-api-map.mjs — write conformance-runner/src/api-map.gen.ts
-// (design D12 / naming-map §5, task TS-4).
+// generate-api-map.mjs — write conformance-runner/src/api-map.gen.ts, the
+// table that maps every Python dotted call.api in the corpus to its TS home.
 //
-// Four inputs — the three per phase1-design D12 plus the TS-6 authored
-// supplement:
+// Four inputs:
 //   1. conformance-runner/corpus/typescript-port-api-map.json — authority
-//      for WORKSPACE member names/params/kwonly. ts_signature
-//      strings are NON-NORMATIVE sketches and are never consumed
-//      (naming-map §4).
+//      for Workspace member names/params/kwonly. Its ts_signature strings
+//      are non-normative sketches and are never consumed.
 //   2. conformance-runner/corpus/api-index.json — authority for every
-//      non-Workspace entry point and the "module known" UNPORTED universe
-//      (D4.4).
-//   3. conformance-runner/src/naming-exceptions.json — naming-map §4 table
-//      (exact rows first, then `<prefix>.*` module wildcards + the
-//      mechanical §3 snake->camel transform, leading underscore dropped
-//      per R7.6).
+//      non-Workspace entry point and the "module known" UNPORTED universe.
+//   3. conformance-runner/src/naming-exceptions.json — the naming table:
+//      exact rows first, then `<prefix>.*` module wildcards, then the
+//      mechanical snake->camel transform with the leading underscore
+//      dropped.
 //   4. conformance-runner/src/authored-apis.json — api-index-shaped entries
-//      for the hand-authored D13 gate apis (compat.*, wirestub.*), which the
+//      for the hand-authored gate apis (compat.*, wirestub.*), which the
 //      recorded-vector api-index can never carry, plus extra known_modules
-//      for authored adapters left UNPORTED on purpose (task TS-6).
+//      for authored adapters deliberately left UNPORTED.
 //
 // Output is deterministic (sorted keys, sha256 stamps of all four inputs)
 // so re-running on unchanged inputs is byte-identical; the freshness/parity
 // test (test/api-map.test.ts) recomputes every entry through src/naming.ts
 // and fails on drift between this script and the runtime naming module.
 //
-// The generator FAILS HARD when any api-index name resolves through no
-// exception row (silent fuzzy matching is forbidden, naming-map §4) and
-// when a workspace.* signature in api-index disagrees with the api-map.json
-// member (two authorities must agree or the corpus is stale).
+// The generator fails hard when any api-index name resolves through no
+// exception row (silent fuzzy matching is forbidden) and when a workspace.*
+// signature in api-index disagrees with the api-map.json member (two
+// authorities must agree or the corpus is stale).
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -46,7 +43,12 @@ const EXCEPTIONS_PATH = resolve(RUNNER_DIR, "src", "naming-exceptions.json");
 const AUTHORED_APIS_PATH = resolve(RUNNER_DIR, "src", "authored-apis.json");
 const OUTPUT_PATH = resolve(RUNNER_DIR, "src", "api-map.gen.ts");
 
-/** Read a file and return { text, json, sha256 }. */
+/**
+ * Read and parse one JSON input, stamping it with the sha256 of its bytes.
+ *
+ * @param {string} path - Absolute path of the JSON file.
+ * @returns {{ json: unknown, sha256: string }} The parsed document and the hex digest of the raw text.
+ */
 function loadInput(path) {
   const text = readFileSync(path, "utf8");
   return {
@@ -55,7 +57,13 @@ function loadInput(path) {
   };
 }
 
-/** Mechanical snake->camel (naming-map §3; mirror of src/naming.ts). */
+/**
+ * Convert a snake_case Python identifier to camelCase, dropping one leading
+ * underscore (mirror of conformance-runner/src/naming.ts).
+ *
+ * @param {string} name - Python identifier; must be non-empty after the underscore strip and contain no empty segments.
+ * @returns {string} The camelCase identifier.
+ */
 function snakeToCamel(name) {
   let source = name;
   if (source.startsWith("_")) {
@@ -76,7 +84,15 @@ function snakeToCamel(name) {
   return head + rest.map((s) => s[0].toUpperCase() + s.slice(1)).join("");
 }
 
-/** Resolve one dotted python api via the §4 exceptions table. */
+/**
+ * Resolve one dotted Python api to its TS home through the naming-exceptions
+ * rows: an exact row wins, else the module wildcard plus the mechanical
+ * transform.
+ *
+ * @param {string} pythonApi - Dotted Python api name, e.g. `workspace.list_dashboards`.
+ * @param {Array<{ python: string, ts: string }>} apiRows - The `scope === "api"` rows of naming-exceptions.json.
+ * @returns {{ tsModule: string, tsName: string } | undefined} The TS module and member name, or `undefined` when no row covers the name.
+ */
 function resolveTsApiName(pythonApi, apiRows) {
   const exact = apiRows.find((row) => row.python === pythonApi);
   if (exact !== undefined) {
@@ -116,7 +132,7 @@ const workspaceMembers = new Map(
 );
 
 // Merge the authored supplement into the api-index universe.
-// A name in BOTH sources means the supplement went stale after a corpus
+// A name in both sources means the supplement went stale after a corpus
 // re-extraction started recording it — fail hard rather than pick one.
 const universe = { ...apiIndex.json };
 for (const [pythonApi, entry] of Object.entries(authoredApis.json.entries)) {
@@ -136,7 +152,7 @@ for (const pythonApi of Object.keys(universe).sort()) {
   let params = indexEntry.params;
   let kwonly = indexEntry.kwonly;
   if (pythonApi.startsWith("workspace.")) {
-    // api-map.json is the Workspace-member authority (D12 input 1).
+    // api-map.json is the Workspace-member authority (input 1).
     const memberName = pythonApi.slice("workspace.".length);
     const member = workspaceMembers.get(memberName);
     if (member === undefined) {

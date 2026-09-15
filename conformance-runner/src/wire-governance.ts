@@ -1,20 +1,16 @@
 /**
- * B4-C5 wire bindings — the 64 packet-C5 api-index names (schemas +
- * lexicon + drop filters + custom properties + lookup tables + custom
- * events + schema enforcement + audit + anomalies + deletion requests
- * + replays signing), registered inline in the shard commit per the
- * P3-2 b′ fable-batch rule. `get_schemas` doubles as the shard's one
- * setup api (packet setup-owner table).
+ * `api_client.*` wire bindings for data governance: schemas, lexicon,
+ * drop filters, custom properties, lookup tables, custom events, schema
+ * enforcement, audit, anomalies, deletion requests and replay signing.
+ * `get_schemas` also serves as a `call.setup[]` api for other vectors.
  *
- * Binding honesty (P3-5 §3): every binding is memoized
- * `clientFromSession` + ONE client-method call + kwarg passthrough
- * (absent-stays-absent). The only output adaptations are the C1 codec
- * twins (`runWire`/`coreToVectorJson`), the `$type: bytes` encoding on
- * `download_lookup_table` (`encodeExpectValue` — the recorder's own
- * bytes codec), and `null` returns for void Python methods.
- *
- * Oracle note: wire api names have NO oracle `call` surface (P3-2 c/e);
- * registration here is complete.
+ * Every binding is the memoized `clientFromSession` plus one
+ * client-method call and kwarg passthrough (absent stays absent); the
+ * only output adaptations are the `runWire`/`coreToVectorJson` codec
+ * twins, the `$type: bytes` encoding on `download_lookup_table`
+ * (`encodeExpectValue` — the recorder's own bytes codec), and `null`
+ * returns for void Python methods. See `wire-client.ts` for the shared
+ * client-construction and honesty rules.
  */
 
 import type { MixpanelClient } from "@mixpanel-headless/core";
@@ -27,7 +23,7 @@ import type { ImplementationRegistry, InvocationContext } from "./runner.js";
 import { clientFromSession, requireWireKwarg, runWire } from "./wire-client.js";
 
 /**
- * Register the B4-C5 bindings (64 names).
+ * Register the governance wire bindings.
  *
  * @param implementations - The registry to extend.
  */

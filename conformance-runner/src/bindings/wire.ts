@@ -1,5 +1,5 @@
 /**
- * The replay-pipeline gate bindings: `wirestub.*` over the stateless
+ * The replay-pipeline bindings: `wirestub.*` over the stateless
  * {@link WireStubClient} test double, and the shared-client-internal
  * `api_client._iter_jsonl_lines` over the authored chunk vectors.
  */
@@ -43,11 +43,9 @@ function toRequestOptions(
   };
 }
 
-/**
- * The `wirestub.*` table. Each invocation builds a fresh
- * {@link WireStubClient} over the vector's injected fetch — the stub is
- * stateless by design; only the replay pipeline itself is under test.
- */
+// The `wirestub.*` table. Each invocation builds a fresh `WireStubClient`
+// over the vector's injected fetch — the stub is stateless by design; only
+// the replay pipeline itself is under test.
 const WIRE_STUB_BINDINGS: BindingTable = [
   [
     "wirestub.request",
@@ -87,16 +85,13 @@ const WIRE_STUB_BINDINGS: BindingTable = [
   ],
 ];
 
-/**
- * The `api_client._iter_jsonl_lines` binding — mirrors the Python
- * recorder adapter (`conformance.record.adapters.iter_jsonl_lines`):
- * rebuild a boundary-preserving byte stream from the explicit chunks —
- * decompressing when the vector's response headers say
- * `content-encoding: gzip`, exactly as httpx decodes before
- * `iter_bytes()` — and collect the lines the REAL `iterJsonlLines`
- * yields (the library entry point does all the work; the binding only
- * adds the transport shape).
- */
+// The `api_client._iter_jsonl_lines` binding mirrors the Python recorder
+// adapter (`conformance.record.adapters.iter_jsonl_lines`): rebuild a
+// boundary-preserving byte stream from the explicit chunks — decompressing
+// when the vector's response headers say `content-encoding: gzip`, exactly
+// as httpx decodes before `iter_bytes()` — and collect the lines the real
+// `iterJsonlLines` yields (the library entry point does all the work; the
+// binding only adds the transport shape).
 const CLIENT_INTERNALS_BINDINGS: BindingTable = [
   [
     "api_client._iter_jsonl_lines",
@@ -147,7 +142,7 @@ const CLIENT_INTERNALS_BINDINGS: BindingTable = [
 ];
 
 /**
- * Register the `wirestub.*` gate bindings.
+ * Register the `wirestub.*` bindings.
  *
  * @param implementations - The registry to extend.
  */

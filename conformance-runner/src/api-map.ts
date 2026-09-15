@@ -1,14 +1,13 @@
 /**
- * Runtime resolution of Python `call.api` names to their TS homes
- * (design D12 verdict taxonomy, naming-map §5).
+ * Runtime resolution of Python `call.api` names to their TS homes.
  *
  * Resolution never throws: every corpus name lands in exactly one of three
  * buckets — `mapped` (an `api-map.gen.ts` entry exists), `unported` (the
  * name's module prefix is in the api-index universe but the exact name has
  * no entry — counted, never failing, until the module's port batch is
- * declared done per R10.5), or `unmapped` (name in NO mapping source —
- * always failing, `UNMAPPED_API`; silent fuzzy matching is forbidden,
- * naming-map §4).
+ * declared done in `batch-status.ts`), or `unmapped` (name in no mapping
+ * source — always failing, `UNMAPPED_API`). Silent fuzzy matching is
+ * forbidden: a name is either mapped exactly or it fails.
  */
 
 import { API_MAP, KNOWN_PYTHON_MODULES } from "./api-map.gen.js";
@@ -30,7 +29,7 @@ export interface UnportedApi {
   readonly module: string;
 }
 
-/** Name in no mapping source — the `UNMAPPED_API` verdict (naming-map §4). */
+/** Name in no mapping source — the `UNMAPPED_API` verdict. */
 export interface UnmappedApi {
   /** Discriminant. */
   readonly status: "unmapped";
@@ -39,7 +38,7 @@ export interface UnmappedApi {
 /** The three-way resolution outcome for one `call.api` name. */
 export type ApiResolution = MappedApi | UnportedApi | UnmappedApi;
 
-/** O(1) prefix membership for the UNPORTED universe. */
+/** O(1) prefix membership for the `UNPORTED` universe. */
 const KNOWN_MODULE_SET: ReadonlySet<string> = new Set(KNOWN_PYTHON_MODULES);
 
 /**

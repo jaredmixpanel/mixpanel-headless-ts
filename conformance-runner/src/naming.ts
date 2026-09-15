@@ -1,16 +1,16 @@
 /**
- * snake_case -> camelCase naming policy (naming-map.md §3-§4, R7.6).
+ * snake_case to camelCase naming policy for Python api names.
  *
- * Vectors are Python-shaped; all mapping happens at the TS runner boundary
- * (naming-map principle 1). This module implements the mechanical transform
- * (§3) and exception-table resolution (§4) used both by the api-map
- * generator's parity/freshness test and by the runtime kwarg mapping.
- * The reverse transform is never needed: comparison always happens in
- * Python-shaped space (naming-map §3).
+ * Vectors are Python-shaped; all mapping happens at the TS runner boundary.
+ * This module implements the mechanical transform and the
+ * `naming-exceptions.json` resolution used both by the api-map generator's
+ * parity/freshness test and by the runtime kwarg mapping. The reverse
+ * transform is never needed: comparison always happens in Python-shaped
+ * space. The user-facing rule is PORTING.md "Naming".
  */
 
 /**
- * One row of `naming-exceptions.json` (naming-map §4).
+ * One row of `naming-exceptions.json`.
  *
  * `scope: "api"` rows map dotted entry-point names; a trailing `.*` in
  * `python` makes the row a module-relocation wildcard whose `ts` value must
@@ -37,14 +37,13 @@ export interface TsApiName {
 }
 
 /**
- * Mechanically convert one snake_case identifier to camelCase
- * (naming-map §3).
+ * Mechanically convert one snake_case identifier to camelCase.
  *
- * Digits stay attached to their segment (`r2_score` -> `r2Score`); acronyms
- * are never uppercased (`url_normalizer` -> `urlNormalizer`). A single
- * LEADING underscore is dropped first per R7.6 (Python module-privates like
- * `_sanitize_raw_cohort` -> `sanitizeRawCohort`); any other empty segment
- * (`__x`, `a__b`, trailing `_`) is asserted against per §3.
+ * Digits stay attached to their segment (`r2_score` to `r2Score`); acronyms
+ * are never uppercased (`url_normalizer` to `urlNormalizer`). A single
+ * leading underscore is dropped first (Python module-privates like
+ * `_sanitize_raw_cohort` become `sanitizeRawCohort`); any other empty segment
+ * (`__x`, `a__b`, trailing `_`) is rejected rather than guessed at.
  *
  * @param name - The snake_case identifier.
  * @returns The camelCase spelling.
@@ -81,12 +80,12 @@ export function snakeToCamel(name: string): string {
 }
 
 /**
- * Split a `<module path>.<member>` string on its FIRST dot.
+ * Split a `<module path>.<member>` string on its first dot.
  *
  * TS module paths use `/` separators and never contain dots, so the first
  * dot always starts the member part. First-dot (not last-dot) semantics
  * keep class-qualified members intact: `core/types.CohortDefinition.toDict`
- * -> module `core/types`, member `CohortDefinition.toDict`.
+ * splits into module `core/types` and member `CohortDefinition.toDict`.
  *
  * @param dotted - e.g. `core/query/segfilter.buildSegfilterEntry`.
  * @returns The module path and member name.
@@ -104,19 +103,24 @@ function splitTsDotted(dotted: string): TsApiName {
 }
 
 /**
- * Resolve a Python dotted `call.api` name to its TS module + member name
- * (naming-map §4-§5 resolution order).
+ * Resolve a Python dotted `call.api` name to its TS module and member name.
  *
  * Order: (1) exact `scope: "api"` row match; (2) wildcard module row
- * (`<prefix>.*`) with the mechanical §3 transform on the final segment;
- * (3) no match -> `undefined` (callers decide between generator hard-fail
- * and the runner's UNPORTED/UNMAPPED_API classification — silent fuzzy
- * matching is forbidden, naming-map §4).
+ * (`<prefix>.*`) with the mechanical transform on the final segment;
+ * (3) no match yields `undefined` (callers decide between generator
+ * hard-fail and the runner's `UNPORTED`/`UNMAPPED_API` classification —
+ * silent fuzzy matching is forbidden).
  *
  * @param pythonApi - Dotted Python name, e.g. `segfilter.build_segfilter_entry`.
  * @param exceptions - Rows loaded from `naming-exceptions.json`.
  * @returns The TS home, or `undefined` when no rule covers the name.
  * @throws Error - On malformed rows or identifiers.
+ * @example
+ * ```ts
+ * resolveTsApiName("segfilter.build_segfilter_entry", rows);
+ * // { tsModule: "core/query/segfilter", tsName: "buildSegfilterEntry" }
+ * resolveTsApiName("mystery.call", rows); // undefined
+ * ```
  */
 export function resolveTsApiName(
   pythonApi: string,

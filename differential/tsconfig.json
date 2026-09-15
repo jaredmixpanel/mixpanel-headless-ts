@@ -2,9 +2,9 @@
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
-    // DOM libs: this project pulls in conformance-runner/src by relative
-    // import (Phase 3 fixes that), which needs the fetch typing names
-    // (BodyInit, ReadableWritablePair) @types/node does not expose.
+    // DOM libs: the oracle imports the conformance runner, whose fetch
+    // harness uses typing names (BodyInit, ReadableWritablePair) that
+    // @types/node does not expose as globals.
     "lib": [
       "es2023",
       "dom",
@@ -14,6 +14,6 @@
     ],
     "types": ["node"]
   },
-  "include": ["src", "test", "referees", "oracle"],
+  "include": ["test", "referees", "oracle"],
   "references": [{ "path": "../packages/core" }]
 }

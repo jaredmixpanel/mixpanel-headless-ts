@@ -1,10 +1,11 @@
 /**
- * In-place transaction mutators of the config manager — the `_apply_*`
- * / `_validate_raw` / `_validate_workspace_id` statics of Python's
- * `ConfigManager` (`mixpanel_headless/_internal/config.py`) as module
- * functions. Each mutates the live raw document a
- * `ConfigManager.transaction` body received; `ConfigWrites` composes
- * several of them under one transaction.
+ * In-place transaction mutators of the config manager — the `_apply_*`,
+ * `_validate_raw` and `_validate_workspace_id` statics of Python's
+ * `ConfigManager` as module functions. Each mutates the live raw
+ * document a `ConfigManager.transaction` body received; `ConfigWrites`
+ * composes several of them under one transaction.
+ *
+ * @see mixpanel_headless._internal.config.ConfigManager
  */
 
 import {
@@ -43,11 +44,17 @@ export interface ManagerClearActive {
 }
 
 /**
- * Validate every account block in `raw` (`_validate_raw`,
- * `config.py`) — the transaction-exit safety net.
+ * Validate every account block in `raw` — the transaction-exit safety
+ * net.
  *
  * @param raw - Parsed document to validate.
- * @throws ConfigError - Any account block fails schema validation.
+ * @throws {@link ConfigError} - Any account block fails schema validation.
+ * @example
+ * ```ts
+ * const raw = manager.readRaw();
+ * validateRaw(raw); // throws on a corrupted [accounts.NAME] block
+ * ```
+ * @see mixpanel_headless._internal.config.ConfigManager._validate_raw
  */
 export function validateRaw(raw: RawConfig): void {
   const accountsBlock = blockAt(raw, "accounts");
@@ -59,16 +66,21 @@ export function validateRaw(raw: RawConfig): void {
 }
 
 /**
- * In-place `[active]` mutation shared by {@link setActive} and
- * multi-call sites (`_apply_set_active`, `config.py`).
- *
- * Each member is independent: `null`/absent leaves that axis
- * untouched.
+ * Mutate `[active]` in place; shared by `ConfigManager.setActive` and
+ * the multi-call sites. Each member is independent: `null` or absent
+ * leaves that axis untouched.
  *
  * @param raw - Parsed document (mutated in place).
- * @param update - New account / workspace values.
- * @throws ConfigError - Account not configured, or workspace not a
- *   positive integer.
+ * @param update - New account and workspace values.
+ * @throws {@link ConfigError} - Account not configured, or workspace
+ *   not a positive integer.
+ * @example
+ * ```ts
+ * manager.transaction((raw) => {
+ *   applySetActive(raw, { account: "team", workspace: 42 });
+ * });
+ * ```
+ * @see mixpanel_headless._internal.config.ConfigManager._apply_set_active
  */
 export function applySetActive(raw: RawConfig, update: ManagerSetActive): void {
   const activeBlock = setdefaultBlock(raw, "active");
@@ -90,11 +102,17 @@ export function applySetActive(raw: RawConfig, update: ManagerSetActive): void {
 }
 
 /**
- * In-place `[active]` axis removal (`_apply_clear_active`,
- * `config.py`).
+ * Remove `[active]` axes in place; an emptied block is deleted.
  *
  * @param raw - Parsed document (mutated in place).
  * @param axes - Which axes to drop.
+ * @example
+ * ```ts
+ * manager.transaction((raw) => {
+ *   applyClearActive(raw, { workspace: true });
+ * });
+ * ```
+ * @see mixpanel_headless._internal.config.ConfigManager._apply_clear_active
  */
 export function applyClearActive(
   raw: RawConfig,
@@ -115,15 +133,21 @@ export function applyClearActive(
 }
 
 /**
- * In-place per-account mutation (`_apply_update_account`,
- * `config.py`).
+ * Update one account block in place.
  *
  * @param raw - Parsed document (mutated in place).
  * @param name - Account to update (must exist).
  * @param fields - Fields to rewrite (absent members untouched).
  * @returns The updated validated account.
- * @throws ConfigError - Account not found, type-incompatible field,
- *   token/token_env both supplied, or validation failure.
+ * @throws {@link ConfigError} - Account not found, type-incompatible
+ *   field, `token` and `token_env` both supplied, or validation failure.
+ * @example
+ * ```ts
+ * manager.transaction((raw) => {
+ *   applyUpdateAccount(raw, "team", { default_project: "12345" });
+ * });
+ * ```
+ * @see mixpanel_headless._internal.config.ConfigManager._apply_update_account
  */
 // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function applyUpdateAccount(
@@ -204,19 +228,24 @@ export function applyUpdateAccount(
 }
 
 /**
- * In-place `[accounts.NAME]` insertion (`_apply_add_account`,
- * `config.py`). NON-promoting (B-E2E-N1 — the adapter owns
- * the FR-045 promotion).
- *
- * Per 043 FR-001, `default_project` is optional for every type.
+ * Insert an `[accounts.NAME]` block in place. Non-promoting: the
+ * first-account promotion to `[active]` belongs to the `ConfigWrites`
+ * adapter. `default_project` is optional for every type.
  *
  * @param raw - Parsed document (mutated in place).
  * @param name - New account name.
  * @param params - Typed credential fields.
  * @returns The constructed validated account.
- * @throws ConfigError - Duplicate name (PLAIN ConfigError,
- *   `config.py` — never AccountExistsError, B7-ARB-B B-E2E-F1),
- *   missing required field, or validation failure.
+ * @throws {@link ConfigError} - Duplicate name (a plain `ConfigError`,
+ *   never `AccountExistsError`), missing required field, or validation
+ *   failure.
+ * @example
+ * ```ts
+ * manager.transaction((raw) => {
+ *   applyAddAccount(raw, "team", { type: "oauth_browser", region: "us" });
+ * });
+ * ```
+ * @see mixpanel_headless._internal.config.ConfigManager._apply_add_account
  */
 export function applyAddAccount(
   raw: RawConfig,
@@ -272,7 +301,7 @@ export function applyAddAccount(
       break;
     }
     default: {
-      // Literal exhaustiveness twin (`config.py`).
+      // The `Literal` exhaustiveness guard.
       throw new ConfigError(`Unknown account type: '${String(params.type)}'`);
     }
   }
@@ -289,13 +318,17 @@ export function applyAddAccount(
 }
 
 /**
- * Validate a workspace ID (`_validate_workspace_id`,
- * `config.py`) — a VALUE typecheck, not a string parse
- * (packet §7 caution 1: `Number.isInteger && > 0`, never `!w` and
- * never `pythonInt`).
+ * Validate a workspace ID — a value check (`Number.isInteger` and
+ * positive), never a string parse and never a truthiness test.
  *
  * @param workspace - Candidate ID.
- * @throws ConfigError - Not a positive integer.
+ * @throws {@link ConfigError} - Not a positive integer.
+ * @example
+ * ```ts
+ * validateWorkspaceId(42); // ok
+ * validateWorkspaceId(0); // throws ConfigError
+ * ```
+ * @see mixpanel_headless._internal.config.ConfigManager._validate_workspace_id
  */
 export function validateWorkspaceId(workspace: number): void {
   if (!Number.isInteger(workspace) || workspace <= 0) {

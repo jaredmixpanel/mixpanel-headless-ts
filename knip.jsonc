@@ -1,9 +1,8 @@
-// knip — unused files / dependencies / exports gate (docs/history/cleanup-plan-2026-09.md §7.5).
-// Runs as `npm run knip` inside `npm run check`. Plain `knip`, not `--strict`:
-// knip 6's strict mode is a workspace-isolated, direct-production-deps-only
-// analysis that (a) stops reporting unused files/exports and (b) misattributes
-// npm-hoisted workspace dependencies (`smol-toml` in packages/node showed up
-// as unused) — measured 2026-09-14.
+// knip — unused files / dependencies / exports gate, run as `npm run knip`
+// inside `npm run check`. Plain `knip`, not `--strict`: knip 6's strict mode
+// is a workspace-isolated, direct-production-deps-only analysis that (a) stops
+// reporting unused files/exports and (b) misattributes npm-hoisted workspace
+// dependencies (`smol-toml` in packages/node shows up as unused).
 {
   "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
   // No `ignore` block: the generated `*.gen.ts` files are imported (so never
@@ -40,13 +39,8 @@
       "project": ["src/**/*.ts", "test/**/*.ts"],
     },
     "differential": {
-      "entry": ["oracle/main.ts", "src/index.ts"],
-      "project": [
-        "src/**/*.ts",
-        "oracle/**/*.ts",
-        "referees/**/*.ts",
-        "test/**/*.ts",
-      ],
+      "entry": ["oracle/main.ts"],
+      "project": ["oracle/**/*.ts", "referees/**/*.ts", "test/**/*.ts"],
     },
   },
 }

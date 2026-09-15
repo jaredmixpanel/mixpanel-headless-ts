@@ -1,22 +1,22 @@
 /**
- * Corpus snapshot loader (design D12, task TS-4).
+ * Corpus snapshot loader.
  *
  * Loads the committed corpus snapshot (`conformance-runner/corpus/`, written
- * by `scripts/sync-corpus.sh`) into typed vectors:
+ * by `scripts/sync-corpus.sh`) into typed vectors. Every JSONL line is
+ * parsed with the lossless parser so raw number tokens survive as
+ * `JsonNumber` (`18` vs `18.0`, integers above 2^53) — plain `JSON.parse`
+ * is never used for vector payloads. Drift protection:
+ * `manifest.source_commit` must equal the pinned `sourceCommit` from
+ * `corpus.config.json`; every extracted bundle's `$bundle` header must
+ * carry the same commit and an accurate line count; vector ids must be
+ * corpus-unique. Authored bundles (the `authored/` subtree, outside the
+ * record pipeline) keep their authoring-time stamp — or none at all for
+ * storybook harvest headers — and are exempt from the commit equality
+ * (count and id checks still apply). Any violation raises
+ * {@link CorpusIntegrityError}: a stale or hand-edited snapshot must never
+ * silently skew a conformance run.
  *
- * - Every JSONL line is parsed with the LOSSLESS parser (D6 rule 3 hard
- *   requirement): raw number tokens survive as `JsonNumber`, so `18` vs
- *   `18.0` and integers above 2^53 are preserved — plain `JSON.parse` is
- *   never used for vector payloads.
- * - Drift protection: `manifest.source_commit` must equal the pinned
- *   `sourceCommit` (from `corpus.config.json`); every EXTRACTED bundle's
- *   `$bundle` header must carry the same commit and an accurate line
- *   count; vector ids must be corpus-unique. Authored bundles (the
- *   `authored/` subtree, outside the record pipeline) keep their
- *   authoring-time stamp — or none at all for storybook harvest headers —
- *   and are exempt from the commit equality (count and id checks still
- *   apply). Any violation raises {@link CorpusIntegrityError} — a stale
- *   or hand-edited snapshot must never silently skew a conformance run.
+ * @see conformance.runner.loading.load_vectors
  */
 
 import { readdirSync, readFileSync } from "node:fs";
@@ -35,7 +35,15 @@ import type {
   VectorOrigin,
 } from "./vector-types.js";
 
-/** Raised when the snapshot fails a structural or provenance check. */
+/**
+ * Raised when the snapshot fails a structural or provenance check.
+ *
+ * @example
+ * ```ts
+ * loadCorpus(corpusDir, "0000000000000000000000000000000000000000");
+ * // throws CorpusIntegrityError: manifest.source_commit … does not match the pinned sourceCommit
+ * ```
+ */
 export class CorpusIntegrityError extends Error {
   /**
    * Create an integrity error.
@@ -57,13 +65,13 @@ const { asObject, requireString, optionalString } = boundJsonReaders(
   { nonEmpty: true },
 );
 
-/** The pinned corpus configuration (`corpus.config.json`, design D12). */
+/** The pinned corpus configuration (`corpus.config.json`). */
 export interface CorpusConfig {
   /** Snapshot directory, relative to the conformance-runner package. */
   readonly vectorsPath: string;
   /** Pinned full source-commit SHA the snapshot must carry. */
   readonly sourceCommit: string;
-  /** The frozen record clock both runners inject (design D1.4). */
+  /** The frozen record clock both runners inject. */
   readonly recordEpoch: string;
 }
 
@@ -280,7 +288,7 @@ function toVector(
 }
 
 /**
- * Load the full corpus snapshot (design D12).
+ * Load the full corpus snapshot.
  *
  * @param corpusDir - The snapshot directory (usually `<pkg>/corpus`).
  * @param expectedSourceCommit - The pinned SHA (config `sourceCommit`).
@@ -329,12 +337,11 @@ export function loadCorpus(
       headerLine["$bundle"],
       `${bundlePath} $bundle header`,
     );
-    // Authored bundles (corpus `authored/` subtree, design D13/D3.1) sit
-    // outside the record pipeline: their `source_commit` is the
-    // authoring-time stamp (or absent entirely for storybook harvest
-    // headers, which carry `generator`/`source_root` provenance instead),
-    // so only extracted bundles are held to the manifest-commit equality
-    // (D12 drift protection).
+    // Authored bundles (the corpus `authored/` subtree) sit outside the
+    // record pipeline: their `source_commit` is the authoring-time stamp
+    // (or absent entirely for storybook harvest headers, which carry
+    // `generator`/`source_root` provenance instead), so only extracted
+    // bundles are held to the manifest-commit equality.
     const isAuthored = bundlePath.split(/[/\\]/, 1)[0] === "authored";
     const bundleCommit = isAuthored
       ? optionalString(header, "source_commit", `${bundlePath} $bundle`)
@@ -376,9 +383,9 @@ export function loadCorpus(
       vectors.push({ ...vector, bundlePath });
     }
   }
-  // manifest counts.total covers the RECORD-PIPELINE extraction only;
-  // authored vectors (origin "authored", design D13/D3.1) are hand-written
-  // additions outside the manifest's reconciliation scope.
+  // manifest counts.total covers the record-pipeline extraction only;
+  // authored vectors (origin "authored") are hand-written additions outside
+  // the manifest's reconciliation scope.
   const extractedCount = vectors.filter(
     (vector) => vector.origin !== "authored",
   ).length;

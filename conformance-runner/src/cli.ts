@@ -1,18 +1,20 @@
 /**
- * Standalone conformance CLI (design D12 reporting).
+ * Standalone conformance CLI.
  *
  * Invoked as `npm run conformance -- --report json`; loads the committed
  * corpus snapshot, replays every vector through the runner, and prints the
- * D12 JSON report `{total, passed, failed, skipped_unported, failures}` to
+ * JSON report `{total, passed, failed, skipped_unported, failures}` to
  * stdout (a human-readable summary goes to stderr). Exit code 0 when
  * `failed === 0`, 1 otherwise — `UNPORTED` vectors are counted, never
- * failing (R10.5).
+ * failing.
  *
  * Flags:
  * - `--report json` — report format (json is the only format; the flag is
- *   accepted for command-line stability with the design's invocation).
+ *   accepted so the documented invocation stays stable).
  * - `--filter <substring>` — replay only vectors whose id includes the
- *   substring (mirror of the Python runner CLI's `--filter`).
+ *   substring.
+ *
+ * @see conformance.runner.__main__.main
  */
 
 import { dirname, resolve } from "node:path";
@@ -86,8 +88,8 @@ export async function main(argv: readonly string[]): Promise<number> {
     process.stderr.write(`conformance: ${String(error)}\n`);
     return 2;
   }
-  // The bundled CLI lives at <package>/dist/cli.mjs and the source at
-  // <package>/src/cli.ts — the package root is one directory up either way.
+  // The bundled CLI lives at `<package>/dist/cli.mjs` and the source at
+  // `<package>/src/cli.ts` — the package root is one directory up either way.
   const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
   const config = loadCorpusConfig(packageDir);
   const corpus = loadCorpus(

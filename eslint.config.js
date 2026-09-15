@@ -1,13 +1,12 @@
 // ESLint flat config for the mixpanel-headless-ts workspace (ESLint 10,
 // `defineConfig` / `globalIgnores` from "eslint/config").
 //
-// Shape and rule decisions: docs/history/cleanup-plan-2026-09.md §8 (Phase 4). Every rule is
-// either enforced (`error`) or `off` with a one-line reason; nothing is ever
-// `warn` (a load-time assertion at the bottom guarantees that). Rules whose
-// fixes are still being hand-applied are configured in full in the main
-// blocks and parked `off` inside the delimited "Phase 4 lane" blocks near
-// the end — landing a lane means deleting its block. To see a lane's errors
-// before it lands, drop its block for one run:
+// Every rule is either enforced (`error`) or `off` with a one-line reason;
+// nothing is ever `warn` (a load-time assertion at the bottom guarantees
+// that). Rules whose fixes are still being hand-applied are configured in
+// full in the main blocks and parked `off` inside the delimited "Phase 4
+// lane" blocks near the end — landing a lane means deleting its block. To
+// see a lane's errors before it lands, drop its block for one run:
 //
 //     MP_LINT_UNPARK=L2 npx eslint packages/core/src      # one lane
 //     MP_LINT_UNPARK=all npx eslint . -f json              # everything
@@ -66,7 +65,12 @@ const JS_FILES = ["**/*.{js,mjs,cjs}"];
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Upstream presets that still ship `warn`: normalise them to `error`. */
+/**
+ * Normalise an upstream preset that still ships `warn` severities to `error`.
+ *
+ * @param {object} config - One flat-config entry (a preset object with `rules`).
+ * @returns {object} The same entry with every `warn` severity raised to `error`.
+ */
 function errorsOnly(config) {
   return {
     ...config,
@@ -93,10 +97,17 @@ const CROSS_PACKAGE_MESSAGE =
   "specifier (@mixpanel-headless/core, …/core/internal, …/node, …/browser).";
 
 /**
- * `no-restricted-imports` options: forbid relative imports into any other
- * workspace's `src/` (Phase 3 made this zero; `import-x/no-relative-packages`
+ * Build the `no-restricted-imports` entry for one workspace: relative imports
+ * into any other workspace's `src/` are forbidden (`import-x/no-relative-packages`
  * catches the resolved form, this catches the spelling), optionally plus the
  * core/browser purity boundary.
+ *
+ * @param {object} options - Scope of the rule.
+ * @param {string} options.ownPackage - Directory name under `packages/` whose own
+ *   `src/` stays importable (`"core"`, `"node"`, `"browser"`).
+ * @param {boolean} options.purity - Also forbid Node built-ins and `undici` (core and
+ *   browser).
+ * @returns {[string, object]} The rule entry (`["error", { paths, patterns }]`).
  */
 function restrictedImports({ ownPackage, purity }) {
   const otherPackages = ["core", "node", "browser"].filter(
@@ -122,7 +133,15 @@ function restrictedImports({ ownPackage, purity }) {
   return ["error", { paths, patterns }];
 }
 
-/** `import-x/no-extraneous-dependencies` for one workspace (root deps hoist). */
+/**
+ * Build the `import-x/no-extraneous-dependencies` entry for one workspace;
+ * the root `package.json` is always consulted because workspace dependencies
+ * hoist there.
+ *
+ * @param {...string} packageDirs - Workspace directories (relative to the repo root)
+ *   whose `package.json` may declare the imported dependency.
+ * @returns {[string, object]} The rule entry.
+ */
 function noExtraneous(...packageDirs) {
   return [
     "error",
@@ -158,7 +177,7 @@ const NO_PROCESS_GLOBAL = [
 ];
 
 // ---------------------------------------------------------------------------
-// Naming (D1; docs/history/cleanup-plan-2026-09.md §3 D1 and §8.2)
+// Naming (rule D1; the README's "Naming" section is the user-facing rule)
 // ---------------------------------------------------------------------------
 
 /**
@@ -172,6 +191,11 @@ const NO_PROCESS_GLOBAL = [
  * files whose shapes mirror Python data 1:1 (Python underscore-prefixed
  * fields such as `_df_cache` and `Filter._property` are mirrored verbatim,
  * hence the leading-underscore allowance there).
+ *
+ * @param {object} [options] - Scope of the rule.
+ * @param {boolean} [options.snakeCaseProperties] - Allow `snake_case` declared property
+ *   names (contract scopes that mirror Python data). Default `false`.
+ * @returns {[string, ...object[]]} The rule entry.
  */
 function namingConvention({ snakeCaseProperties = false } = {}) {
   const propertyFormats = snakeCaseProperties
@@ -236,7 +260,7 @@ function namingConvention({ snakeCaseProperties = false } = {}) {
 }
 
 // ---------------------------------------------------------------------------
-// Lane blocks (Phase 4 hand-fix categories; docs/history/cleanup-plan-2026-09.md §8.4)
+// Lane blocks (hand-fix categories still being applied)
 // ---------------------------------------------------------------------------
 
 const UNPARKED = new Set(
@@ -246,7 +270,15 @@ const UNPARKED = new Set(
     .filter(Boolean),
 );
 
-/** A lane block is an ordinary config object unless the lane is unparked. */
+/**
+ * Wrap a parked lane block: an ordinary config entry unless the lane is
+ * unparked through `MP_LINT_UNPARK`, in which case it contributes nothing and
+ * the rules it switched off become live.
+ *
+ * @param {string} id - Lane identifier (`"L5"`, …).
+ * @param {object} config - The config entry that parks the lane's rules.
+ * @returns {object[]} Zero or one config entries.
+ */
 function lane(id, config) {
   if (UNPARKED.has("all") || UNPARKED.has(id)) {
     return [];
@@ -399,7 +431,7 @@ const config = defineConfig([
       "unicorn/consistent-class-member-order": "off",
       // Fixture builders and codec tables nest calls legitimately.
       "unicorn/max-nested-calls": "off",
-      // Entity-model statics name the concrete class deliberately (D10);
+      // Entity-model statics name the concrete class deliberately;
       // switching to `this` changes behaviour under subclassing.
       "unicorn/class-reference-in-static-methods": "off",
       // In-place `sort()` / `reverse()` are intentional where used; the

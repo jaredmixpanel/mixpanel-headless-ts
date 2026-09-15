@@ -1,41 +1,27 @@
 /**
- * On-disk TOML configuration manager — TS port of
- * `mixpanel_headless/_internal/config.py` (whole file,
- * `config.py`; b8-packets.md §2.1 row 2). The block conversions
- * live in `./blocks.ts`, the in-place `_apply_*` mutators in
- * `./apply.ts`; `../config.ts` re-exports the public surface.
+ * On-disk TOML configuration manager: owns the single-schema config
+ * file (`~/.mp/config.toml`, or the `MP_CONFIG_PATH` override read at
+ * construction time exactly as Python's `__init__` does) with its
+ * `[active]`, `[accounts.NAME]`, `[targets.NAME]` and `[settings]`
+ * sections. Block conversions live in `./blocks.ts`, the in-place
+ * `_apply_*` mutators in `./apply.ts`; `../config.ts` re-exports the
+ * public surface.
  *
- * Owns the single-schema TOML config file (`~/.mp/config.toml`, or the
- * `MP_CONFIG_PATH` override read at CONSTRUCTION time exactly as
- * Python's `__init__` does, `config.py`) with `[active]`,
- * `[accounts.NAME]`, `[targets.NAME]`, `[settings]` sections.
+ * Every public mutator is one `readRaw`, mutate, `validateRaw`,
+ * `writeRaw` cycle, exposed as {@link ConfigManager.transaction} (the
+ * `_mutate()` context-manager twin, public in TS because the
+ * `ConfigWrites` adapter composes several `apply*` statics under one
+ * transaction). If the body throws, the write is skipped, so partial
+ * mutations never reach disk. Writes route through `atomicWriteBytes`
+ * at mode `0o600` with the parent dir created `0o700`.
  *
- * Transaction contract (`config.py:207-235`): every public mutator is
- * ONE `readRaw → mutate → validateRaw → writeRaw` cycle exposed here as
- * {@link ConfigManager.transaction} (the `_mutate()` context-manager
- * twin — public in TS because the `ConfigWrites` adapter and multi-call
- * namespace sites compose several `apply*` statics under one
- * transaction, `accounts.py:472-489`). If the body throws, the write is
- * skipped — partial mutations never reach disk. Writes route through
- * {@link atomicWriteBytes} at mode `0o600` with the parent dir created
- * `0o700` (`config.py:192-205`).
+ * Python uses `tomllib` / `tomli_w`; the node port uses `smol-toml`
+ * (TOML 1.0 parse and stringify, zero dependencies). Serialization
+ * formatting on disk (whitespace, key order) is out of contract: each
+ * side reads its own writes and both read the same schema, and the
+ * parity locks are read-side over the verbatim Python fixtures.
  *
- * TOML library decision (packet §0.4, recorded in the shard notes):
- * Python uses `tomllib`/`tomli_w`; the node port uses `smol-toml`
- * (pinned 1.7.1) — TOML 1.0 parse + stringify, zero-dep. Serialization
- * FORMATTING (whitespace, key ordering on disk) is out of contract:
- * each side reads its own writes and both read the same schema; the
- * Layer-3 locks are read-side (`TestFixtureLoad` over the verbatim
- * Python fixtures).
- *
- * CRED-F3 (B7-ARB-B, `b7-reviewB-resolution.md:245-252`): the ONE
- * on-disk reveal site in this module is {@link accountToBlock} — the
- * `_account_to_block` twin (`config.py:92-125`), which unwraps
- * {@link Secret} values to plain strings because TOML cannot store an
- * opaque wrapper and `Secret.toJSON()` would persist the redaction
- * mask. Raw in-memory transaction dicts only ever hold the revealed
- * strings this function produced (or strings read back from disk);
- * a `Secret` instance never reaches the TOML serializer.
+ * @see mixpanel_headless._internal.config.ConfigManager
  */
 
 import { chmodSync, existsSync, mkdirSync } from "node:fs";
@@ -87,7 +73,7 @@ import {
   targetFromBlock,
 } from "./blocks.js";
 
-/** `[settings].custom_header` write params (`config.py`). */
+/** `[settings].custom_header` write params. */
 export interface CustomHeaderParams {
   /** Header name (e.g. `X-Mixpanel-Cluster`). */
   readonly name: string;
@@ -98,7 +84,7 @@ export interface CustomHeaderParams {
 /**
  * The injectable atomic-write seam — the
  * `patch("…config.atomic_write_bytes")` monkeypatch twin used by the
- * single-write-per-transaction lock (`test_config.py`).
+ * single-write-per-transaction lock.
  */
 export type ConfigWriteBytes = (
   path: string,
@@ -106,41 +92,47 @@ export type ConfigWriteBytes = (
   options?: AtomicWriteOptions,
 ) => void;
 
-/** Constructor options of {@link ConfigManager} (Python kwonly, R3.8). */
+/** Constructor options of {@link ConfigManager} (Python's keyword-only args). */
 export interface ConfigManagerOptions {
   /**
-   * Path to the TOML config file. Defaults to `$MP_CONFIG_PATH` when
-   * set (read at construction, `config.py`), else
-   * `~/.mp/config.toml`.
+   * Path to the TOML config file. A custom location's parent directory
+   * is the caller's responsibility: it is created `0o700` if absent but
+   * an existing directory's mode is never changed (the config file
+   * itself is always written `0o600`). Only the default `~/.mp` is
+   * tightened to `0o700` on every write.
    *
-   * A custom location's PARENT directory is the caller's responsibility:
-   * it is created `0o700` if absent but an existing directory's mode is
-   * never changed (the config file itself is always written `0o600`).
-   * Only the default `~/.mp` is tightened to `0o700` on every write.
+   * @defaultValue `$MP_CONFIG_PATH` when set (read at construction), else `~/.mp/config.toml`
    */
   readonly configPath?: string | undefined;
   /**
-   * @internal Injected write seam (tests/harness only; defaults to
-   * {@link atomicWriteBytes}).
+   * Injected write seam (tests and the harness only).
+   *
+   * @defaultValue `atomicWriteBytes`
+   * @internal
    */
   readonly writeBytes?: ConfigWriteBytes | undefined;
 }
 
 /**
- * Single-schema configuration manager (`ConfigManager`,
- * `config.py`).
+ * Single-schema configuration manager over one TOML file.
  *
- * Wraps one TOML file. All operations re-read the file from disk, so
- * concurrent edits are safe in the "last write wins" sense (no file
- * locking — single-user workflow by design). File creation enforces
- * mode `0o600` and parent dir `0o700`; the config path is
- * symlink-refused on every read AND every write (via the shared
- * io-utils helpers — `test_config.py::TestSymlinkRejection` lock).
- *
- * Layering note (B7-ARB-B B-E2E-N1): {@link addAccount} does NOT
- * promote the first account to `[active]` — that promotion happens
- * exactly once, in the `ConfigWrites` adapter transaction
- * (`config-writes.ts`, the `accounts.py` twin).
+ * @remarks
+ * All operations re-read the file from disk, so concurrent edits are
+ * safe in the "last write wins" sense (no file locking; single-user
+ * workflow by design). File creation enforces mode `0o600` and parent
+ * dir `0o700`; the config path is symlink-refused on every read and
+ * every write through the shared io-utils helpers.
+ * {@link ConfigManager.addAccount} does not promote the first account to
+ * `[active]`; that promotion happens exactly once, in the
+ * `ConfigWrites` adapter transaction (`config-writes.ts`).
+ * @example
+ * ```ts
+ * const manager = new ConfigManager();
+ * manager.addAccount("team", { type: "oauth_browser", region: "us" });
+ * manager.setActive({ account: "team" });
+ * manager.listAccounts(); // [AccountSummary { name: "team", is_active: true }]
+ * ```
+ * @see mixpanel_headless._internal.config.ConfigManager
  */
 export class ConfigManager {
   /** The resolved config file path. */
@@ -150,9 +142,9 @@ export class ConfigManager {
   readonly #writeBytes: ConfigWriteBytes;
 
   /**
-   * Initialize the manager (`config.py`).
+   * Initialize the manager.
    *
-   * @param options - Optional path override + test-only write seam.
+   * @param options - Optional path override and test-only write seam.
    */
   constructor(options: ConfigManagerOptions = {}) {
     const envPath = process.env["MP_CONFIG_PATH"];
@@ -170,35 +162,40 @@ export class ConfigManager {
       });
   }
 
-  /** The path of the on-disk TOML config (`config.py`). */
+  /**
+   * Read the path of the on-disk TOML config.
+   *
+   * @returns The resolved config file path.
+   */
   get configPath(): string {
     return this.#path;
   }
 
   /**
-   * Whole-file account validation (`_validate_raw`) — the static twin
-   * delegating to {@link validateRaw}.
+   * Validate every account block of a document (delegates to
+   * {@link validateRaw}).
    *
    * @param raw - Parsed document to validate.
+   * @throws {@link ConfigError} - Any account block fails validation.
    */
   static validateRaw(raw: RawConfig): void {
     validateRaw(raw);
   }
 
   /**
-   * In-place `[active]` mutation (`_apply_set_active`) — delegates to
-   * {@link applySetActive}.
+   * Mutate `[active]` in place (delegates to {@link applySetActive}).
    *
    * @param raw - Parsed document (mutated in place).
-   * @param update - New account / workspace values.
+   * @param update - New account and workspace values.
+   * @throws {@link ConfigError} - Unknown account or invalid workspace.
    */
   static applySetActive(raw: RawConfig, update: ManagerSetActive): void {
     applySetActive(raw, update);
   }
 
   /**
-   * In-place `[active]` axis removal (`_apply_clear_active`) — delegates
-   * to {@link applyClearActive}.
+   * Remove `[active]` axes in place (delegates to
+   * {@link applyClearActive}).
    *
    * @param raw - Parsed document (mutated in place).
    * @param axes - Which axes to drop.
@@ -208,13 +205,15 @@ export class ConfigManager {
   }
 
   /**
-   * In-place per-account mutation (`_apply_update_account`) — delegates
-   * to {@link applyUpdateAccount}.
+   * Update one account block in place (delegates to
+   * {@link applyUpdateAccount}).
    *
    * @param raw - Parsed document (mutated in place).
    * @param name - Account to update (must exist).
    * @param fields - Fields to rewrite (absent members untouched).
    * @returns The updated validated account.
+   * @throws {@link ConfigError} - Missing account, type-incompatible
+   *   field, or validation failure.
    */
   static applyUpdateAccount(
     raw: RawConfig,
@@ -225,13 +224,15 @@ export class ConfigManager {
   }
 
   /**
-   * In-place `[accounts.NAME]` insertion (`_apply_add_account`) —
-   * delegates to {@link applyAddAccount}.
+   * Insert an `[accounts.NAME]` block in place (delegates to
+   * {@link applyAddAccount}).
    *
    * @param raw - Parsed document (mutated in place).
    * @param name - New account name.
    * @param params - Typed credential fields.
    * @returns The constructed validated account.
+   * @throws {@link ConfigError} - Duplicate name, missing required
+   *   field, or validation failure.
    */
   static applyAddAccount(
     raw: RawConfig,
@@ -242,36 +243,36 @@ export class ConfigManager {
   }
 
   /**
-   * Workspace-ID value check (`_validate_workspace_id`) — delegates to
-   * {@link validateWorkspaceId}.
+   * Check a workspace ID value (delegates to {@link validateWorkspaceId}).
    *
    * @param workspace - Candidate ID.
+   * @throws {@link ConfigError} - Not a positive integer.
    */
   static validateWorkspaceId(workspace: number): void {
     validateWorkspaceId(workspace);
   }
 
-  // ---- internals ---------------------------------------------------
+  // --- internals ---
 
   /**
-   * Parse the TOML file (`_read_raw`, `config.py`).
+   * Parse the TOML file.
    *
-   * Probes for a symlink BEFORE the existence check — `existsSync`
+   * @remarks
+   * Probes for a symlink before the existence check: `existsSync`
    * follows symlinks and silently returns `false` for dangling links,
-   * hiding the attack signal (`config.py` comment ported).
-   *
+   * hiding the attack signal.
    * @returns The raw parsed document; `{}` when the file is missing.
-   * @throws ConfigError - Symlinked path, unreadable file, or
+   * @throws {@link ConfigError} - Symlinked path, unreadable file, or
    *   malformed TOML (each wrapping the underlying error).
+   * @see mixpanel_headless._internal.config.ConfigManager._read_raw
    */
   readRaw(): RawConfig {
     try {
       rejectIfSymlink(this.#path);
     } catch (error) {
-      // Python wraps ANY OSError from the probe (`config.py`),
-      // so errno-bearing lstat failures (e.g. EACCES on an unreadable
-      // parent) code up exactly like the symlink refusal — B8-ARB-A
-      // SEM-F6 (`b8-reviewA-resolution.md`).
+      // Python wraps any OSError from the probe, so errno-bearing lstat
+      // failures (e.g. EACCES on an unreadable parent) code up exactly
+      // like the symlink refusal.
       if (error instanceof CredentialPathError || isErrnoError(error)) {
         throw wrapAsConfigError(
           `Could not parse config at ${this.#path}`,
@@ -313,48 +314,48 @@ export class ConfigManager {
   }
 
   /**
-   * Serialize `raw` to the config file with restrictive permissions
-   * (`_write_raw`, `config.py`).
-   *
-   * Creates parent dirs (`~/.mp/`) with mode `0o700`, tightens a
-   * pre-existing parent to `0o700` (failures suppressed, as Python's
-   * `contextlib.suppress(OSError)`), and writes atomically at `0o600`.
+   * Serialize `raw` to the config file with restrictive permissions:
+   * parent dirs created with mode `0o700`, the default `~/.mp` parent
+   * tightened to `0o700` (failures suppressed, as Python's
+   * `contextlib.suppress(OSError)`), and an atomic write at `0o600`.
    *
    * @param raw - Document to serialize as TOML.
+   * @see mixpanel_headless._internal.config.ConfigManager._write_raw
    */
   writeRaw(raw: RawConfig): void {
     const dir = dirname(this.#path);
     mkdirSync(dir, { recursive: true, mode: 0o700 });
-    // Divergence: Python chmods the config file's parent to 0o700 on every write whatever the path (`config.py:202-205`); TS tightens only the default `~/.mp` — a custom `configPath`/`MP_CONFIG_PATH` parent (a repo `config/`, `/tmp`) is left alone.
+    // Divergence: Python chmods the config file's parent to 0o700 on every write whatever the path; TS tightens only the default `~/.mp` — a custom `configPath`/`MP_CONFIG_PATH` parent (a repo `config/`, `/tmp`) is left alone.
     if (resolve(dir) === resolve(dirname(defaultConfigPath()))) {
       try {
         chmodSync(dir, 0o700);
       } catch {
-        // suppress(OSError) — best-effort tighten (`config.py`).
+        // Best-effort tighten, as Python's `suppress(OSError)`.
       }
     }
     const text = stringify(raw);
     // tomli_w.dumps always terminates tables with a newline; smol-toml
-    // does not — parity is cosmetic (formatting out of contract §0.4)
-    // but keeps on-disk diffs stable for the fixtures.
+    // does not. Formatting is out of contract, but matching keeps
+    // on-disk diffs against the fixtures stable.
     const body = text.length > 0 && !text.endsWith("\n") ? `${text}\n` : text;
     this.#writeBytes(this.#path, new TextEncoder().encode(body));
   }
 
   /**
    * Run one read-modify-write transaction (the `_mutate()` context
-   * manager twin, `config.py`).
+   * manager twin).
    *
+   * @remarks
    * The document is read once at entry and written once at exit; a
    * throwing body skips the write. Before the write,
    * {@link ConfigManager.validateRaw} runs the whole-file account pass
-   * so an externally-corrupted sibling block is never silently
+   * so an externally corrupted sibling block is never silently
    * rewritten.
-   *
    * @param body - Mutation body; receives the live raw document.
    * @returns The body's return value.
-   * @throws ConfigError - Propagated from read, body, validation, or
-   *   write.
+   * @throws {@link ConfigError} - Propagated from read, body,
+   *   validation, or write.
+   * @see mixpanel_headless._internal.config.ConfigManager._mutate
    */
   transaction<T>(body: (raw: RawConfig) => T): T {
     const raw = this.readRaw();
@@ -364,17 +365,17 @@ export class ConfigManager {
     return result;
   }
 
-  // ---- accounts ----------------------------------------------------
+  // --- accounts ---
 
   /**
-   * List every configured account as a sorted summary
-   * (`list_accounts`, `config.py`).
+   * List every configured account as a sorted summary.
    *
    * @returns Sorted-by-name summaries; `is_active` is `true` iff
    *   `[active].account == name`; `referenced_by_targets` lists the
    *   referencing target names (sorted).
-   * @throws ConfigError - A block fails validation or the file is
-   *   unreadable.
+   * @throws {@link ConfigError} - A block fails validation or the file
+   *   is unreadable.
+   * @see mixpanel_headless._internal.config.ConfigManager.list_accounts
    */
   listAccounts(): AccountSummary[] {
     const raw = this.readRaw();
@@ -417,11 +418,12 @@ export class ConfigManager {
   }
 
   /**
-   * Load one account (`get_account`, `config.py`).
+   * Load one account.
    *
    * @param name - Account name.
    * @returns The validated account.
-   * @throws ConfigError - Unknown name or validation failure.
+   * @throws {@link ConfigError} - Unknown name or validation failure.
+   * @see mixpanel_headless._internal.config.ConfigManager.get_account
    */
   getAccount(name: string): Account {
     const raw = this.readRaw();
@@ -434,40 +436,43 @@ export class ConfigManager {
   }
 
   /**
-   * Add an account block (`add_account`, `config.py`).
-   * NON-promoting — see the class JSDoc layering note.
+   * Add an account block. Non-promoting: the first-account promotion to
+   * `[active]` belongs to the `ConfigWrites` adapter.
    *
    * @param name - Account name (`^[a-zA-Z0-9_-]{1,64}$`).
    * @param params - Typed credential fields.
    * @returns The constructed account.
-   * @throws ConfigError - Duplicate name or validation failure.
+   * @throws {@link ConfigError} - Duplicate name or validation failure.
+   * @see mixpanel_headless._internal.config.ConfigManager.add_account
    */
   addAccount(name: string, params: AddAccountParams): Account {
     return this.transaction((raw) => applyAddAccount(raw, name, params));
   }
 
   /**
-   * Update an existing account in place (`update_account`,
-   * `config.py`). Type cannot change.
+   * Update an existing account in place; the type cannot change.
    *
    * @param name - Account to update.
    * @param fields - Fields to rewrite.
    * @returns The updated account.
-   * @throws ConfigError - Missing account, type-incompatible field, or
-   *   validation failure.
+   * @throws {@link ConfigError} - Missing account, type-incompatible
+   *   field, or validation failure.
+   * @see mixpanel_headless._internal.config.ConfigManager.update_account
    */
   updateAccount(name: string, fields: UpdateAccountFields): Account {
     return this.transaction((raw) => applyUpdateAccount(raw, name, fields));
   }
 
   /**
-   * Remove an account (`remove_account`, `config.py`).
+   * Remove an account.
    *
    * @param name - Account to remove.
-   * @param options - `force` removes even when targets reference it.
+   * @param options - Removal switches; `force` removes the account even
+   *   when targets still reference it.
    * @returns Sorted names of targets that referenced the account.
-   * @throws ConfigError - Unknown account.
-   * @throws AccountInUseError - Referenced and `force` not set.
+   * @throws {@link ConfigError} - Unknown account.
+   * @throws {@link AccountInUseError} - Referenced and `force` not set.
+   * @see mixpanel_headless._internal.config.ConfigManager.remove_account
    */
   removeAccount(
     name: string,
@@ -489,9 +494,8 @@ export class ConfigManager {
         throw new AccountInUseError(name, referenced);
       }
       Reflect.deleteProperty(accountsBlock, name);
-      // If the removed account was the active one, drop both axes
-      // (`config.py` — the workspace ID is meaningless without
-      // its account).
+      // If the removed account was the active one, drop both axes: the
+      // workspace ID is meaningless without its account.
       const activeBlock = blockAt(raw, "active");
       if (activeBlock["account"] === name) {
         applyClearActive(raw, { account: true, workspace: true });
@@ -500,14 +504,14 @@ export class ConfigManager {
     });
   }
 
-  // ---- active ------------------------------------------------------
+  // --- active ---
 
   /**
-   * Read the persisted `[active]` block (`get_active`,
-   * `config.py`).
+   * Read the persisted `[active]` block.
    *
    * @returns The active session (empty when the block is missing).
-   * @throws ConfigError - Malformed `[active]` block.
+   * @throws {@link ConfigError} - Malformed `[active]` block.
+   * @see mixpanel_headless._internal.config.ConfigManager.get_active
    */
   getActive(): ActiveSession {
     const raw = this.readRaw();
@@ -520,13 +524,13 @@ export class ConfigManager {
   }
 
   /**
-   * Update one or more `[active]` axes (`set_active`,
-   * `config.py`). Absent members leave the axis untouched
-   * (use {@link clearActive} to remove keys).
+   * Update one or more `[active]` axes. Absent members leave the axis
+   * untouched (use {@link ConfigManager.clearActive} to remove keys).
    *
-   * @param update - New account / workspace values.
+   * @param update - New account and workspace values.
    * @returns The updated active session.
-   * @throws ConfigError - Unknown account or invalid workspace ID.
+   * @throws {@link ConfigError} - Unknown account or invalid workspace ID.
+   * @see mixpanel_headless._internal.config.ConfigManager.set_active
    */
   setActive(update: ManagerSetActive): ActiveSession {
     this.transaction((raw) => {
@@ -536,11 +540,11 @@ export class ConfigManager {
   }
 
   /**
-   * Remove specific `[active]` axes (`clear_active`,
-   * `config.py`).
+   * Remove specific `[active]` axes.
    *
    * @param axes - Which axes to drop.
    * @returns The updated active session.
+   * @see mixpanel_headless._internal.config.ConfigManager.clear_active
    */
   clearActive(axes: ManagerClearActive): ActiveSession {
     this.transaction((raw) => {
@@ -550,18 +554,18 @@ export class ConfigManager {
   }
 
   /**
-   * Atomically apply per-axis session updates (`apply_session`,
-   * `config.py`). All axes land within ONE transaction;
-   * `project` writes to the explicit `account` (if given) else the
-   * persisted active account.
+   * Atomically apply per-axis session updates. All axes land within one
+   * transaction; `project` writes to the explicit `account` when given,
+   * else to the persisted active account.
    *
    * @param update - The axes to touch.
    * @returns The updated active session.
-   * @throws ParamValidationError - `workspace` and `clear_workspace`
-   *   both supplied (Python's bare `ValueError` twin — R5
-   *   codes-not-messages, the existing VALIDATION_ERROR code).
-   * @throws ConfigError - Unknown account, or `project` supplied with
-   *   no resolvable account.
+   * @throws {@link ParamValidationError} - `workspace` and
+   *   `clear_workspace` both supplied (Python raises a bare
+   *   `ValueError`; the existing `VALIDATION_ERROR` code is reused).
+   * @throws {@link ConfigError} - Unknown account, or `project` supplied
+   *   with no resolvable account.
+   * @see mixpanel_headless._internal.config.ConfigManager.apply_session
    */
   applySession(update: ApplySessionUpdate): ActiveSession {
     const account = update.account ?? null;
@@ -601,13 +605,14 @@ export class ConfigManager {
     return this.getActive();
   }
 
-  // ---- targets -----------------------------------------------------
+  // --- targets ---
 
   /**
-   * List targets sorted by name (`list_targets`, `config.py`).
+   * List targets sorted by name.
    *
    * @returns All configured targets.
-   * @throws ConfigError - A target block fails validation.
+   * @throws {@link ConfigError} - A target block fails validation.
+   * @see mixpanel_headless._internal.config.ConfigManager.list_targets
    */
   listTargets(): Target[] {
     const raw = this.readRaw();
@@ -624,11 +629,12 @@ export class ConfigManager {
   }
 
   /**
-   * Load one target (`get_target`, `config.py`).
+   * Load one target.
    *
    * @param name - Target name.
    * @returns The validated target.
-   * @throws ConfigError - Unknown name or validation failure.
+   * @throws {@link ConfigError} - Unknown name or validation failure.
+   * @see mixpanel_headless._internal.config.ConfigManager.get_target
    */
   getTarget(name: string): Target {
     const raw = this.readRaw();
@@ -641,14 +647,14 @@ export class ConfigManager {
   }
 
   /**
-   * Add a target block (`add_target`, `config.py`).
+   * Add a target block.
    *
    * @param name - Target name (block key).
-   * @param options - account / project / workspace.
+   * @param options - Account, project and workspace axes.
    * @returns The constructed target.
-   * @throws ConfigError - Duplicate name, missing referenced account,
-   *   or validation failure (Target model errors WRAPPED,
-   *   `config.py`).
+   * @throws {@link ConfigError} - Duplicate name, missing referenced
+   *   account, or validation failure (Target model errors are wrapped).
+   * @see mixpanel_headless._internal.config.ConfigManager.add_target
    */
   addTarget(name: string, options: AddTargetOptions): Target {
     return this.transaction((raw) => {
@@ -687,10 +693,11 @@ export class ConfigManager {
   }
 
   /**
-   * Remove a target block (`remove_target`, `config.py`).
+   * Remove a target block.
    *
    * @param name - Target to remove.
-   * @throws ConfigError - Unknown target.
+   * @throws {@link ConfigError} - Unknown target.
+   * @see mixpanel_headless._internal.config.ConfigManager.remove_target
    */
   removeTarget(name: string): void {
     this.transaction((raw) => {
@@ -703,15 +710,16 @@ export class ConfigManager {
   }
 
   /**
-   * Apply a target in a single atomic save (`apply_target`,
-   * `config.py`): `[active]` replaced WHOLESALE (a target
-   * with no workspace clears any prior pin) + the target account's
-   * `default_project` updated to the target's project.
+   * Apply a target in a single atomic save: `[active]` is replaced
+   * wholesale (a target with no workspace clears any prior pin) and the
+   * target account's `default_project` is updated to the target's
+   * project.
    *
    * @param name - Target to apply.
    * @returns The updated active session.
-   * @throws ConfigError - Unknown target OR its referenced account is
-   *   no longer configured.
+   * @throws {@link ConfigError} - Unknown target, or its referenced
+   *   account is no longer configured.
+   * @see mixpanel_headless._internal.config.ConfigManager.apply_target
    */
   applyTarget(name: string): ActiveSession {
     this.transaction((raw) => {
@@ -735,7 +743,6 @@ export class ConfigManager {
         : {};
       accountBlock["default_project"] = target.project;
       accountsBlock[target.account] = accountBlock;
-      // Replace [active] wholesale (`config.py`).
       const activeBlock: Record<string, unknown> = { account: target.account };
       if (target.workspace !== null) {
         activeBlock["workspace"] = target.workspace;
@@ -745,15 +752,15 @@ export class ConfigManager {
     return this.getActive();
   }
 
-  // ---- settings ----------------------------------------------------
+  // --- settings ---
 
   /**
-   * Read `[settings].custom_header` (`get_custom_header`,
-   * `config.py`).
+   * Read `[settings].custom_header`.
    *
    * @returns The `(name, value)` pair, or `null` when unset.
-   * @throws ConfigError - Malformed block (non-table, missing keys, or
-   *   non-string values).
+   * @throws {@link ConfigError} - Malformed block (non-table, missing
+   *   keys, or non-string values).
+   * @see mixpanel_headless._internal.config.ConfigManager.get_custom_header
    */
   getCustomHeader(): readonly [string, string] | null {
     const raw = this.readRaw();
@@ -780,10 +787,10 @@ export class ConfigManager {
   }
 
   /**
-   * Write the custom HTTP header (`set_custom_header`,
-   * `config.py`).
+   * Write the custom HTTP header.
    *
-   * @param params - Header name + value.
+   * @param params - Header name and value.
+   * @see mixpanel_headless._internal.config.ConfigManager.set_custom_header
    */
   setCustomHeader(params: CustomHeaderParams): void {
     this.transaction((raw) => {

@@ -341,6 +341,31 @@ Corrections to existing bullets, for the final pass to apply in place:
   marker; the "(`TODO(port)`)" parentheticals on the pagination, schemas,
   py-dates and replays bullets can be dropped.
 
+<!-- lane 5D -->
+
+### Platform site markers (`@mixpanel-headless/node`, `@mixpanel-headless/browser`)
+
+Marker updates and additions from the platform comment pass; the final pass
+folds them into the sections above.
+
+- `// Divergence:` markers now sit at every node deviation listed under
+  "Node file system and OAuth callback": `defaultConfigPath`
+  (`config/blocks.ts`, the `HOME` capture), the tmp-sibling naming of
+  `atomicWriteBytes` and the lstat→read window of `readCredentialText`
+  (`io-utils.ts`), the `~/.mp` parent chmod scope (`config/manager.ts`) and
+  both callback-server entries (`auth/callback-server.ts`).
+- New: `OAuthStorage` replaces Python's `_fchmod_no_follow` inode pin with an
+  `lstat` probe followed by `chmodSync` by path; the probe→chmod window is
+  the same accepted TOCTOU class as the read path — `auth/storage.ts`.
+- New (not observable): when the callback server and the pasted-redirect
+  reader race during `login`, the loser is cancelled through an
+  `AbortSignal`; Python leaves its daemon thread running. The loser's
+  outcome is discarded in both runtimes — `OAuthFlow.login` (`auth/flow.ts`).
+- Browser: the refresh-grant gap listed under "Browser" is now marked
+  `// Divergence:` in `client.ts` (the store-backed token resolver) and in
+  the `redirect-flow.ts` module header; that entry's `(TODO(port))` tag is
+  stale.
+
 ## What the rig proves — and does not
 
 **Corpus** (`conformance-runner/`, replayed by `corpus.test.ts` and

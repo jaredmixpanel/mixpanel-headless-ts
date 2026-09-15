@@ -1,8 +1,8 @@
 // Repo maintenance scripts (plain ESM `.mjs`). `allowJs` puts them in a
 // project so tooling (typed lint via projectService) can see them.
-// `checkJs` is off: turning it on today yields 79 errors (59 TS7006
-// implicit-any params, mostly generate-bridge-allowlist.mjs) that need
-// JSDoc annotations — deferred to Phase 4 (lint rules) rather than done here.
+// `checkJs` is off: the scripts carry JSDoc for readers, not type
+// annotations for the checker (untyped callback parameters would be
+// implicit-any errors), and the tests under tests/ exercise them.
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": {

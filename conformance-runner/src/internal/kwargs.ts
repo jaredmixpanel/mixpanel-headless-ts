@@ -19,6 +19,11 @@ import type { Guard } from "./guards.js";
  * @param name - The Python kwarg name.
  * @returns The decoded kwarg value.
  * @throws Error - When the kwarg is missing from `call.input`.
+ * @example
+ * ```ts
+ * const filter: unknown = requireKwarg(context, "filter");
+ * // throws Error when call.input has no "filter" key
+ * ```
  */
 export function requireKwarg(
   context: InvocationContext,
@@ -43,6 +48,11 @@ export function requireKwarg(
  * @throws Error - When the kwarg is missing from `call.input`.
  * @throws TypeError - When the kwarg fails `guard` (a corpus bug — the
  *   reference wrappers are typed).
+ * @example
+ * ```ts
+ * const method = kwarg(context, "method", isString, "str");
+ * const requests = kwarg(context, "requests", isArrayOf(isPlainObject), "list[dict]");
+ * ```
  */
 export function kwarg<T>(
   context: InvocationContext,
@@ -71,6 +81,11 @@ export function kwarg<T>(
  * @param expected - Human-readable type name for the error message.
  * @returns The narrowed value, or `undefined` when absent.
  * @throws TypeError - When present but failing `guard`.
+ * @example
+ * ```ts
+ * const limit = optionalKwarg(context, "limit", isNumber, "int");
+ * // number when call.input carries "limit", otherwise undefined
+ * ```
  */
 export function optionalKwarg<T>(
   context: InvocationContext,
@@ -85,12 +100,17 @@ export function optionalKwarg<T>(
 }
 
 /**
- * Copy the PRESENT members of `call.input` into an options bag under
+ * Copy the present members of `call.input` into an options bag under
  * the same Python kwarg names (absent stays absent).
  *
  * @param context - The invocation context.
  * @param names - The kwarg names the method accepts.
  * @returns The options bag.
+ * @example
+ * ```ts
+ * const options = kwargBag(context, ["from_date", "to_date", "unit"]);
+ * // { from_date: "2026-01-01", unit: "day" } when to_date was not recorded
+ * ```
  */
 export function kwargBag(
   context: InvocationContext,
@@ -112,7 +132,7 @@ export function kwargBag(
  * Deliberately unchecked: the constructor's own guards must fire on a
  * malformed bag exactly where Python's `__post_init__` does (the
  * guard-failure vectors depend on it), so no shape check belongs here —
- * the call site names the field type and this is the ONE cast.
+ * the call site names the field type and this is the one cast.
  *
  * @param context - The invocation context.
  * @returns The bag typed as the constructor's field bag.
@@ -145,12 +165,12 @@ export function requireFetch(context: InvocationContext): typeof fetch {
 
 /**
  * Read a required kwarg and forward it under the type the library
- * entry point declares, WITHOUT checking it.
+ * entry point declares, without checking it.
  *
  * This is the typed twin of Python calling the real function with the
  * recorded kwargs: a value the corpus recorded as deliberately wrong
  * (an unknown `quantifier`, a bogus `operator`) must reach the library
- * so ITS guard raises — a binding-side check would turn a recorded
+ * so its guard raises — a binding-side check would turn a recorded
  * `ValidationError` into a rig `TypeError`. Use {@link kwarg} instead
  * wherever the binding itself interprets the value.
  *
@@ -158,6 +178,11 @@ export function requireFetch(context: InvocationContext): typeof fetch {
  * @param name - The Python kwarg name.
  * @returns The value, typed as the callee's parameter.
  * @throws Error - When the kwarg is missing from `call.input`.
+ * @example
+ * ```ts
+ * const property = kwargAs<PropertySpec>(context, "property");
+ * const date = kwargAs<string>(context, "date");
+ * ```
  */
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- T is the callee's parameter type the call site names explicitly; the pass-through is unchecked by design (see doc)
 export function kwargAs<T>(context: InvocationContext, name: string): T {
@@ -171,6 +196,11 @@ export function kwargAs<T>(context: InvocationContext, name: string): T {
  * @param context - The invocation context.
  * @param name - The Python kwarg name.
  * @returns The value typed as the callee's parameter, or `undefined`.
+ * @example
+ * ```ts
+ * const resourceType = optionalKwargAs<"events" | "people">(context, "resource_type");
+ * // undefined when call.input omits it, so the TS default applies
+ * ```
  */
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- T is the callee's parameter type the call site names explicitly; the pass-through is unchecked by design (see doc)
 export function optionalKwargAs<T>(

@@ -1,7 +1,9 @@
 /**
  * On-disk TOML configuration manager — the public surface of `./config/`
- * (`manager.ts` owns the file + transaction, `blocks.ts` the block ↔
- * model conversions, `apply.ts` the in-place `_apply_*` mutators).
+ * (`manager.ts` owns the file and the transaction, `blocks.ts` the block
+ * to model conversions, `apply.ts` the in-place `_apply_*` mutators).
+ *
+ * @see mixpanel_headless._internal.config.ConfigManager
  */
 
 export {

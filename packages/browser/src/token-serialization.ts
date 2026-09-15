@@ -1,33 +1,26 @@
 /**
- * Browser store WRITER shapes (b9-packets.md §2.1, rulebook amendment
- * R11.9 — which explicitly binds "B9's browser CredentialStore"):
- * every writer renders datetimes through the Python-twin formatter.
+ * Browser store writer shapes: the JSON payloads the browser
+ * `CredentialStore` persists, rendered byte-for-byte like Python's
+ * on-disk files. The tokens payload is the `tokens_{region}.json` twin
+ * (`datetime.isoformat()` shape — offset `+00:00`, never `Z`); the
+ * client-info payload is the `client_{region}.json` twin (pydantic JSON
+ * mode — UTC spelled `Z`). Both go through core `pythonUtcIsoformat`;
+ * nothing here imports `packages/node` or copies its
+ * `pydantic-datetime.ts`.
  *
- * - Tokens payload = the `tokens_{region}.json` twin (`save_tokens`,
- *   `storage.py`): `datetime.isoformat()` shape — offset
- *   `+00:00`, NEVER `Z` (B8-ARB-B F2 byte-parity golden,
- *   `b8-reviewB-resolution.md`).
- * - Client-info payload = the `client_{region}.json` twin
- *   (`save_client_info`, `storage.py`): pydantic JSON mode —
- *   UTC spelled `Z` (live probe `2030-01-01T00:00:00Z`).
+ * Closed-loop contract: the browser store only ever writes datetime
+ * text this library produced — `pythonUtcIsoformat` over
+ * integer-millisecond clocks (`Date.now` / an injected `now()`), so no
+ * sub-millisecond text can arise. The renderers re-parse via
+ * `Date.parse` (millisecond precision): foreign text carrying digits
+ * beyond milliseconds (e.g. `.000120`) is outside the write contract
+ * and would lose digits 4–6; text that is not a UTC-suffixed instant
+ * (`Z` / `+00:00` / `-00:00`) passes verbatim, the same out-of-grammar
+ * posture as the node formatters. Read paths are strict
+ * (`parseOAuthTokens` / `parseOAuthClientInfo`); no lax read path
+ * exists here.
  *
- * Both renderings go through core `pythonUtcIsoformat`
- * (`core/src/auth/token.ts` — already core-homed, R11.9's named
- * formatter; no `packages/node` import, and NO copy of node's
- * `pydantic-datetime.ts` — §2.1 forbids it).
- *
- * CLOSED-LOOP CONTRACT (documented narrowing, §2.1): the browser store
- * only ever writes values whose datetime text this library produced —
- * `pythonUtcIsoformat` over integer-millisecond clocks (`Date.now` /
- * injected `now()`), so no sub-millisecond text can arise. The
- * renderers below re-parse via `Date.parse` (millisecond precision):
- * foreign text carrying digits beyond milliseconds (e.g. `.000120`)
- * is OUTSIDE the write contract and would lose digits 4–6; text that
- * is not a UTC-suffixed instant (`Z` / `+00:00` / `-00:00`) passes
- * VERBATIM — the same out-of-grammar posture as the node formatters.
- * Read paths are STRICT (`parseOAuthTokens` / `parseOAuthClientInfo`);
- * no lax-twin read path exists here, so the §2.1 STOP condition does
- * not trigger.
+ * @see mixpanel_headless._internal.auth.storage.OAuthStorage
  */
 
 import {
@@ -41,11 +34,12 @@ const UTC_SUFFIX = /(?:Z|[+-]00:00)$/;
 
 /**
  * Render stored ISO text the way `datetime.isoformat()` does for UTC
- * instants (`+00:00`, 0-or-6 fractional digits) — the tokens.json
- * writer shape (`storage.py`; R11.9 tokens-twin arm).
+ * instants (`+00:00`, 0-or-6 fractional digits) — the tokens-file
+ * writer shape.
  *
  * @param text - Datetime text from the closed loop (see module header).
  * @returns Canonical isoformat text; verbatim when out of grammar.
+ * @see mixpanel_headless._internal.auth.storage.OAuthStorage.save_tokens
  */
 function tokensDatetimeText(text: string): string {
   if (!UTC_SUFFIX.test(text)) {
@@ -60,14 +54,14 @@ function tokensDatetimeText(text: string): string {
 
 /**
  * Render stored ISO text the way pydantic JSON mode does for UTC
- * instants (`Z`, 0-or-6 fractional digits) — the client_{region}.json
- * writer shape (`storage.py`; R11.9 pydantic-JSON-twin arm).
- * Implemented as the isoformat rendering with its UTC offset respelled
- * `Z` (the two Python writers differ ONLY in that suffix for UTC
- * instants — `b8-reviewB-resolution.md` F2 table).
+ * instants (`Z`, 0-or-6 fractional digits) — the `client_{region}.json`
+ * writer shape. Implemented as the isoformat rendering with its UTC
+ * offset respelled `Z`: for UTC instants the two Python writers differ
+ * only in that suffix.
  *
  * @param text - Datetime text from the closed loop (see module header).
  * @returns Canonical pydantic-JSON text; verbatim when out of grammar.
+ * @see mixpanel_headless._internal.auth.storage.OAuthStorage.save_client_info
  */
 function clientInfoDatetimeText(text: string): string {
   if (!UTC_SUFFIX.test(text)) {
@@ -81,12 +75,12 @@ function clientInfoDatetimeText(text: string): string {
 }
 
 /**
- * Serialize a token set for {@link CredentialStore} persistence — the
- * `save_tokens` payload twin: key set
- * `access_token`, `expires_at`, `scope`, `token_type`, plus
- * `refresh_token` ONLY when non-null; `expires_at` in the `+00:00`
- * isoformat shape. CRED designated reveal site — secrets are unwrapped
- * explicitly, never via `JSON.stringify(tokens)`.
+ * Serialize a token set for `CredentialStore` persistence — the
+ * `save_tokens` payload twin: key set `access_token`, `expires_at`,
+ * `scope`, `token_type`, plus `refresh_token` only when non-null;
+ * `expires_at` in the `+00:00` isoformat shape. This is a deliberate
+ * secret reveal site — the secrets are unwrapped explicitly, never via
+ * `JSON.stringify(tokens)`.
  *
  * @param tokens - The tokens to serialize.
  * @returns JSON text (2-space indent, matching the node writer bytes).
@@ -94,6 +88,7 @@ function clientInfoDatetimeText(text: string): string {
  * ```typescript
  * await store.set(CREDENTIAL_KEYS.tokens("us"), serializeTokensPayload(tokens));
  * ```
+ * @see mixpanel_headless._internal.auth.storage.OAuthStorage.save_tokens
  */
 export function serializeTokensPayload(tokens: OAuthTokens): string {
   const data: Record<string, unknown> = {
@@ -109,13 +104,21 @@ export function serializeTokensPayload(tokens: OAuthTokens): string {
 }
 
 /**
- * Serialize DCR client info for {@link CredentialStore} persistence —
- * the `save_client_info` payload twin: key set
- * `client_id`, `region`, `redirect_uri`, `scope`, `created_at`;
- * `created_at` in the pydantic-JSON `Z` shape.
+ * Serialize DCR client info for `CredentialStore` persistence — the
+ * `save_client_info` payload twin: key set `client_id`, `region`,
+ * `redirect_uri`, `scope`, `created_at`; `created_at` in the
+ * pydantic-JSON `Z` shape.
  *
  * @param info - The client registration info to serialize.
  * @returns JSON text (2-space indent, matching the node writer bytes).
+ * @example
+ * ```typescript
+ * await store.set(
+ *   CREDENTIAL_KEYS.clientInfo("us"),
+ *   serializeClientInfoPayload(clientInfo),
+ * );
+ * ```
+ * @see mixpanel_headless._internal.auth.storage.OAuthStorage.save_client_info
  */
 export function serializeClientInfoPayload(info: OAuthClientInfo): string {
   const data: Record<string, unknown> = {
