@@ -53,7 +53,11 @@ export class AlertBookmark extends EntityModel<AlertBookmarkInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<AlertBookmarkInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", kind: "str", nullable: true },
@@ -124,7 +128,11 @@ export class AlertCreator extends EntityModel<AlertCreatorInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<AlertCreatorInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "first_name", kind: "str", nullable: true },
@@ -194,7 +202,11 @@ export class AlertWorkspace extends EntityModel<AlertWorkspaceInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<AlertWorkspaceInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", kind: "str", nullable: true },
@@ -258,7 +270,11 @@ export class AlertProject extends EntityModel<AlertProjectInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<AlertProjectInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", kind: "str", nullable: true },
@@ -362,7 +378,11 @@ export class CustomAlert extends EntityModel<CustomAlertInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<CustomAlertInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", required: true, kind: "str" },
@@ -493,7 +513,11 @@ export class CreateAlertParams extends EntityModel<CreateAlertParamsInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<CreateAlertParamsInit> = [
     { name: "bookmark_id", required: true, kind: "int" },
     {
@@ -598,7 +622,11 @@ export class UpdateAlertParams extends EntityModel<UpdateAlertParamsInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<UpdateAlertParamsInit> = [
     { name: "name", kind: "str", nullable: true },
     { name: "bookmark_id", kind: "int", nullable: true },
@@ -687,7 +715,11 @@ export class AlertCount extends EntityModel<AlertCountInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<AlertCountInit> = [
     { name: "anomaly_alerts_count", required: true, kind: "int" },
     { name: "alert_limit", required: true, kind: "int" },
@@ -758,7 +790,11 @@ export class AlertHistoryPagination extends EntityModel<AlertHistoryPaginationIn
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<AlertHistoryPaginationInit> = [
     { name: "next_cursor", kind: "str", nullable: true },
     { name: "previous_cursor", kind: "str", nullable: true },
@@ -830,7 +866,11 @@ export class AlertHistoryResponse extends EntityModel<AlertHistoryResponseInit> 
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<AlertHistoryResponseInit> = [
     { name: "results", default: () => [] },
     {
@@ -898,7 +938,11 @@ export class AlertScreenshotResponse extends EntityModel<AlertScreenshotResponse
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<AlertScreenshotResponseInit> = [
     { name: "signed_url", required: true, kind: "str" },
   ];
@@ -970,7 +1014,11 @@ export class AlertValidation extends EntityModel<AlertValidationInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<AlertValidationInit> = [
     { name: "alert_id", required: true, kind: "int" },
     { name: "alert_name", required: true, kind: "str" },
@@ -1046,7 +1094,11 @@ export class ValidateAlertsForBookmarkParams extends EntityModel<ValidateAlertsF
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<ValidateAlertsForBookmarkParamsInit> =
     [
       {
@@ -1133,7 +1185,11 @@ export class ValidateAlertsForBookmarkResponse extends EntityModel<ValidateAlert
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<ValidateAlertsForBookmarkResponseInit> =
     [
       {

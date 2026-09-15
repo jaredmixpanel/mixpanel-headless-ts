@@ -65,7 +65,11 @@ export class BusinessContext extends EntityModel<BusinessContextInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<BusinessContextInit> = [
     {
       name: "level",
@@ -82,6 +86,8 @@ export class BusinessContext extends EntityModel<BusinessContextInit> {
    * appended to `toJSON()`/`toVectorPayload()` after the declared
    * fields (the recorder includes computed fields in expect position)
    * and dropped from `fromDict` input.
+   *
+   * @internal
    */
   static readonly computedSpecs: readonly ComputedFieldSpec[] = [
     {
@@ -181,7 +187,11 @@ export class BusinessContextChain extends EntityModel<BusinessContextChainInit> 
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<BusinessContextChainInit> = [
     { name: "organization", required: true, nested: () => BusinessContext },
     { name: "project", required: true, nested: () => BusinessContext },

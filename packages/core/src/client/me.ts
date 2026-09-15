@@ -65,7 +65,11 @@ export class MeOrgInfo extends EntityModel<MeOrgInfoInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<MeOrgInfoInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", required: true, kind: "str" },
@@ -162,6 +166,8 @@ export class MeProjectInfo extends EntityModel<MeProjectInfoInit> {
    * a `str | int | None` union — no single lax-coercion kind applies,
    * so it passes through unvalidated exactly like Pydantic's
    * left-to-right union would accept both member types.
+   *
+   * @internal
    */
   static readonly fieldSpecs: EntityFieldSpecs<MeProjectInfoInit> = [
     { name: "name", required: true, kind: "str" },
@@ -266,7 +272,11 @@ export class MeWorkspaceInfo extends EntityModel<MeWorkspaceInfoInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<MeWorkspaceInfoInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", required: true, kind: "str" },
@@ -395,7 +405,11 @@ export class MeResponse extends EntityModel<MeResponseInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<MeResponseInit> = [
     { name: "user_id", kind: "int", nullable: true },
     { name: "user_email", kind: "str", nullable: true },

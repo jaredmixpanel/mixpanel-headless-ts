@@ -50,7 +50,11 @@ export class CustomEventAlternative extends EntityModel<CustomEventAlternativeIn
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<CustomEventAlternativeInit> = [
     {
       name: "event",
@@ -125,7 +129,11 @@ export class CustomEvent extends EntityModel<CustomEventInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<CustomEventInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", required: true, kind: "str" },
@@ -200,7 +208,11 @@ export class CreateCustomEventParams extends EntityModel<CreateCustomEventParams
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<CreateCustomEventParamsInit> = [
     {
       name: "name",
@@ -342,7 +354,11 @@ export class DropFilter extends EntityModel<DropFilterInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<DropFilterInit> = [
     { name: "id", required: true, kind: "int" },
     {
@@ -433,7 +449,11 @@ export class CreateDropFilterParams extends EntityModel<CreateDropFilterParamsIn
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<CreateDropFilterParamsInit> = [
     { name: "event_name", required: true, kind: "str" },
     // Python `filters: Any` is required but nullable: a bare `Any`
@@ -506,7 +526,11 @@ export class UpdateDropFilterParams extends EntityModel<UpdateDropFilterParamsIn
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<UpdateDropFilterParamsInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "event_name", kind: "str", nullable: true },
@@ -576,7 +600,11 @@ export class DropFilterLimitsResponse extends EntityModel<DropFilterLimitsRespon
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<DropFilterLimitsResponseInit> = [
     {
       name: "filter_limit",
@@ -661,7 +689,11 @@ export class ComposedPropertyValue extends EntityModel<ComposedPropertyValueInit
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<ComposedPropertyValueInit> = [
     { name: "type", kind: "str", nullable: true },
     {
@@ -803,7 +835,11 @@ export class CustomProperty extends EntityModel<CustomPropertyInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<CustomPropertyInit> = [
     {
       name: "custom_property_id",
@@ -989,7 +1025,11 @@ export class CreateCustomPropertyParams extends EntityModel<CreateCustomProperty
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<CreateCustomPropertyParamsInit> =
     [
       { name: "name", required: true, kind: "str" },
@@ -1188,7 +1228,11 @@ export class UpdateCustomPropertyParams extends EntityModel<UpdateCustomProperty
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<UpdateCustomPropertyParamsInit> =
     [
       { name: "name", kind: "str", nullable: true },
@@ -1312,7 +1356,11 @@ export class LookupTable extends EntityModel<LookupTableInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<LookupTableInit> = [
     // int64, not int: live ids exceed 2^53 (see `LookupTableInit.id`).
     { name: "id", required: true, kind: "int64" },
@@ -1420,7 +1468,11 @@ export class UploadLookupTableParams extends EntityModel<UploadLookupTableParams
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<UploadLookupTableParamsInit> = [
     {
       name: "name",
@@ -1510,7 +1562,11 @@ export class MarkLookupTableReadyParams extends EntityModel<MarkLookupTableReady
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<MarkLookupTableReadyParamsInit> =
     [
       { name: "name", required: true, kind: "str" },
@@ -1586,7 +1642,11 @@ export class LookupTableUploadUrl extends EntityModel<LookupTableUploadUrlInit> 
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<LookupTableUploadUrlInit> = [
     { name: "url", required: true, kind: "str" },
     { name: "path", required: true, kind: "str" },
@@ -1651,7 +1711,11 @@ export class UpdateLookupTableParams extends EntityModel<UpdateLookupTableParams
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<UpdateLookupTableParamsInit> = [
     { name: "name", kind: "str", nullable: true },
   ];
