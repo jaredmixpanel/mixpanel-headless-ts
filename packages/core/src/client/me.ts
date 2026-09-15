@@ -1,16 +1,13 @@
 /**
- * Mixpanel `/me` response models and workspace-selection logic — TS port
- * of the PURE half of `mixpanel_headless/_internal/me.py` (`:40-411`):
- * the response models, {@link WorkspaceView}, {@link selectWorkspaceId},
- * and the {@link WorkspaceResolver} interface (Phase-3 packet B4-C1;
- * playbook Discrepancy #5 splits the module — the on-disk `MeCache` and
- * `MeService` halves are B8-N2 and MUST NOT be ported or stubbed here
- * beyond the resolver interface the client consumes).
+ * `/me` response models and workspace-selection logic: the response
+ * models, {@link WorkspaceView}, {@link selectWorkspaceId} and the
+ * {@link WorkspaceResolver} interface the client consumes. The `MeCache`
+ * and `MeService` halves of the Python module are ported elsewhere
+ * (`services/me.ts`, the platform cache stores). The models reuse the
+ * {@link EntityModel} machinery: lax scalar coercion, `extra='allow'`
+ * spillover, `fromDict` alias handling and `toJSON` field walks.
  *
- * The models reuse the Phase-2 {@link EntityModel} machinery (same
- * Pydantic-construction mirror the `types.py` entities use): lax scalar
- * coercion, `extra='allow'` spillover, `fromDict` alias handling, and
- * `toJSON` field walks.
+ * @see mixpanel_headless._internal.me
  */
 
 import { pythonInt } from "../compat/index.js";
@@ -26,7 +23,7 @@ import { JsonNumber } from "./json-value.js";
 
 /**
  * The global "see everything" data view Mixpanel provisions for every
- * workspace-enabled project (`me.py:230`). Preferred during
+ * workspace-enabled project. Preferred during
  * auto-resolution because it is the only view guaranteed to see all of
  * the project's data.
  */
@@ -48,8 +45,8 @@ export interface MeOrgInfoInit {
 }
 
 /**
- * Organization information within a `/me` response (Python `MeOrgInfo`,
- * `me.py`; model_config: `extra='allow'`, `frozen=True`).
+ * Organization information within a `/me` response (Python `MeOrgInfo`;
+ * model_config: `extra='allow'`, `frozen=True`).
  */
 export class MeOrgInfo extends EntityModel<MeOrgInfoInit> {
   /** The Python model name. */
@@ -87,7 +84,7 @@ export class MeOrgInfo extends EntityModel<MeOrgInfoInit> {
 
   /**
    * Pydantic `model_extra` mirror: unknown input keys preserved under
-   * `extra='allow'` (forward compatibility, `me.py` module doc).
+   * `extra='allow'` (forward compatibility).
    *
    * @returns The extra-field bag (empty when none were supplied).
    */
@@ -127,8 +124,8 @@ export interface MeProjectInfoInit {
 }
 
 /**
- * Project information within a `/me` response (Python `MeProjectInfo`,
- * `me.py`; model_config: `extra='allow'`, `frozen=True`).
+ * Project information within a `/me` response (Python `MeProjectInfo`;
+ * model_config: `extra='allow'`, `frozen=True`).
  */
 export class MeProjectInfo extends EntityModel<MeProjectInfoInit> {
   /** The Python model name. */
@@ -223,7 +220,7 @@ export interface MeWorkspaceInfoInit {
 
 /**
  * Workspace information within a `/me` response (Python
- * `MeWorkspaceInfo`, `me.py`; `extra='allow'`, `frozen=True`).
+ * `MeWorkspaceInfo`; `extra='allow'`, `frozen=True`).
  */
 export class MeWorkspaceInfo extends EntityModel<MeWorkspaceInfoInit> {
   /** The Python model name. */
@@ -310,9 +307,9 @@ export interface MeResponseInit {
   /**
    * Accessible organizations, keyed by org ID. A `ReadonlyMap` input
    * preserves caller-supplied insertion order exactly (the Python dict
-   * mirror — user ratification `user-ratifications.md:14-22`); a plain
-   * record is accepted for convenience but JS hoists its integer-like
-   * keys ascending, so order-sensitive callers MUST pass a Map.
+   * mirror); a plain record is accepted for convenience but JS hoists
+   * its integer-like keys ascending, so order-sensitive callers must
+   * pass a Map.
    */
   readonly organizations?:
     | Readonly<Record<string, MeOrgInfo | Readonly<Record<string, unknown>>>>
@@ -339,8 +336,8 @@ export interface MeResponseInit {
 }
 
 /**
- * Model of the Mixpanel `/me` API response (Python `MeResponse`,
- * `me.py`; `extra='allow'`, `frozen=True`). All fields optional;
+ * Model of the Mixpanel `/me` API response (Python `MeResponse`;
+ * `extra='allow'`, `frozen=True`). All fields optional;
  * the three container maps default to `{}`.
  */
 export class MeResponse extends EntityModel<MeResponseInit> {
@@ -355,8 +352,7 @@ export class MeResponse extends EntityModel<MeResponseInit> {
     { name: "user_id", kind: "int", nullable: true },
     { name: "user_email", kind: "str", nullable: true },
     { name: "user_name", kind: "str", nullable: true },
-    // The three container maps are `ordered-dict` fields (B8-MAPFIX,
-    // user ratification `user-ratifications.md:14-22`): Python's
+    // The three container maps are `ordered-dict` fields: Python's
     // `dict[str, …]` preserves `/me` source order, which drives the
     // result-affecting `defaultAccountName` first-org pick and the
     // `resolveWorkspace` tie-breaks — a plain Record cannot hold
@@ -391,8 +387,7 @@ export class MeResponse extends EntityModel<MeResponseInit> {
   declare readonly user_name: string | null;
   /**
    * Accessible organizations, keyed by org ID — insertion-ordered
-   * exactly like the Python `dict` (R4.8 ReadonlyMap; user
-   * ratification `user-ratifications.md:14-22`).
+   * exactly like the Python `dict`.
    */
   declare readonly organizations: ReadonlyMap<string, MeOrgInfo>;
   /** Accessible projects, keyed by project ID (insertion-ordered). */
@@ -460,7 +455,7 @@ export interface WorkspaceView {
 
 /**
  * Build a view from a cached `/me` workspace entry (Python
- * `WorkspaceView.from_me_workspace`, `me.py`).
+ * `WorkspaceView.from_me_workspace`).
  *
  * @param ws - A workspace from the per-account `/me` response.
  * @returns The normalized {@link WorkspaceView}.
@@ -479,7 +474,7 @@ export function workspaceViewFromMeWorkspace(
 
 /**
  * Build a view from a `/workspaces/public` workspace (Python
- * `WorkspaceView.from_public`, `me.py`).
+ * `WorkspaceView.from_public`).
  *
  * @param ws - A workspace returned by
  *   `GET /projects/{pid}/workspaces/public`.
@@ -517,17 +512,16 @@ function triStateFlag(value: unknown): boolean | null {
 
 /**
  * Extract a usable integer workspace id from a raw metadata value —
- * the TS twin of Python's `isinstance(wid, (int, str))` + `int(wid)`
- * (`me.py`).
+ * the TS twin of Python's `isinstance(wid, (int, str))` + `int(wid)`.
  *
- * Python subtleties preserved: `bool` IS an `int` subclass
+ * Python subtleties preserved: `bool` is an `int` subclass
  * (`True → 1`); string ids parse with the CPython `int(str)` grammar
- * (`pythonInt`, R11.7); floats (native or float-token) are neither
- * `int` nor `str` and yield no id. Wire bodies arrive as lossless
+ * (`pythonInt`); floats (native or float-token) are neither `int` nor
+ * `str` and yield no id. Wire bodies arrive as lossless
  * {@link JsonNumber} tokens — an integer token is Python's `int`, a
- * fraction/exponent token is Python's `float`. Integer tokens beyond
- * 2^53−1 read as unusable under the R4.5 numbers policy (Python would
- * return the exact big int; no real workspace id reaches that range).
+ * fraction/exponent token is Python's `float`. Divergence: integer
+ * tokens beyond 2^53−1 read as unusable (`null`); Python returns the
+ * exact big int. No real workspace id reaches that range.
  *
  * @param wid - The raw `id` member.
  * @returns The integer id, or `null` when unusable.
@@ -562,7 +556,7 @@ function metadataWorkspaceId(wid: unknown): number | null {
 
 /**
  * Build a view from a projects-metadata-index workspace entry (Python
- * `WorkspaceView.from_metadata_entry`, `me.py`).
+ * `WorkspaceView.from_metadata_entry`).
  *
  * The metadata index is a raw, loosely-typed payload, so this is the
  * one construction path that defends against shape: a non-mapping
@@ -577,8 +571,8 @@ function metadataWorkspaceId(wid: unknown): number | null {
 export function workspaceViewFromMetadataEntry(
   raw: unknown,
 ): WorkspaceView | null {
-  // Python `isinstance(raw, dict)` — prototype-based dict discrimination
-  // (watchlist #13); parsed wire bodies are plain records.
+  // Python `isinstance(raw, dict)` — prototype-based dict discrimination;
+  // parsed wire bodies are plain records.
   if (!isPythonDict(raw)) {
     return null;
   }
@@ -644,7 +638,7 @@ export function selectWorkspaceId(
     }
   }
   for (const v of views) {
-    // `is not False` is deliberate (me.py:377-380): an unknown (`null`)
+    // `is not False` is deliberate: an unknown (`null`)
     // visibility counts as visible. Do not "simplify" to `=== true` —
     // that would skip views the source simply didn't flag and fall
     // through to `views[0]`.
@@ -656,16 +650,16 @@ export function selectWorkspaceId(
 }
 
 /**
- * Resolve a project's best workspace id from a warm, in-process cache —
- * TS port of the `WorkspaceResolver` Protocol (`me.py`; R6.5).
+ * Resolve a project's best workspace id from a warm, in-process cache
+ * (the Python `WorkspaceResolver` Protocol).
  *
  * The contract the client relies on: the input is a project id as a
  * numeric string; the return is a workspace id, or `null` meaning
- * "can't answer right now" (for example, a cold cache) — NOT an error.
+ * "can't answer right now" (for example, a cold cache) — not an error.
  * Implementations must be cheap and side-effect-free (no network I/O);
  * a returned `null` is what makes the client fall back to
- * `/workspaces/public`. The TS signature admits a promise because B8's
- * MeCache reads may be asynchronous.
+ * `/workspaces/public`. The TS signature admits a promise because
+ * cache-store reads may be asynchronous.
  */
 export type WorkspaceResolver = (
   projectId: string,

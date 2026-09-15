@@ -1,24 +1,20 @@
 /**
- * Optionally workspace-scoped App API path builder — TS port of
- * `MixpanelAPIClient.maybe_scoped_path`
- * (`mixpanel_headless/_internal/api_client.py`) — Phase-3
- * packet B0-2, R10.8.
+ * Optionally workspace-scoped App API path builder: pure string
+ * concatenation over the client's `{projectId, workspaceId}` state. The
+ * network-backed siblings (`requireScopedPath`, `resolveWorkspaceId`) live
+ * in `client.ts` and call this.
  *
- * `require_scoped_path` and `resolve_workspace_id` are NOT here (they do
- * network discovery) — they port in B4 shard C1 and import this module
- * by name.
- *
- * R2.13: template concatenation only.
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.maybe_scoped_path
  */
 
-/** The scope state the B4 client threads into path building. */
+/** The scope state the client threads into path building. */
 export interface PathScope {
   /** Bound project id (`session.project.id` — Mixpanel digit string). */
   readonly projectId: string;
   /**
    * Explicit workspace id (`set_workspace_id` state), or `null` when
-   * unset. The Python guard is `is not None` — id `0` is a VALID
-   * workspace scope (watchlist §8 item 6: never a truthiness check).
+   * unset. The Python guard is `is not None`, so id `0` is a valid
+   * workspace scope — never a truthiness check.
    */
   readonly workspaceId: number | null;
 }

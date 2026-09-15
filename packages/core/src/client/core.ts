@@ -1,17 +1,13 @@
 /**
- * The client-core seam — the `ClientCore` internals interface, the
+ * The client-core seam: the `ClientCore` internals interface, the
  * `HttpHandle` pool token and the per-call request-option bags that the
- * domain-method factories (`services/**`, B4-C2..C5) and the paginator
- * (`pagination.ts`, B4-C6) build on.
+ * domain-method factories (`services/**`) and the paginator build on.
+ * Kept apart from `client.ts` so a service module can name the seam it
+ * receives without importing the module that assembles the client from
+ * those very services (an import cycle); `client.ts` re-exports
+ * everything here.
  *
- * Split out of `client.ts` (CLEANUP-PLAN §10.4) so that a service module
- * can name the seam it receives without importing the module that
- * assembles the client from those very services — `client.ts` imports
- * every `create<Domain>Methods` factory as a value, so the previous
- * `import type { ClientCore } from "./client.js"` edge closed 24
- * type-only import cycles. This module has no dependency on
- * `client.ts`; `client.ts` re-exports everything here so the public
- * barrel and every existing importer resolve unchanged.
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient
  */
 
 import type { Account, TokenResolver } from "../auth/account.js";
@@ -57,10 +53,10 @@ export interface ClientAppRequestOptions {
 
 /**
  * Options of the internal query-host request path (Python `_request`
- * kwargs; R2.8 — public but `@internal`).
+ * kwargs).
  */
 export interface QueryHostRequestOptions {
-  /** Query parameters (MUTATED with injections, like Python). */
+  /** Query parameters (mutated in place by the injections, as in Python). */
   readonly params?: Record<string, unknown> | null | undefined;
   /** JSON request body (Python `data=`). */
   readonly data?: Record<string, unknown> | null | undefined;
@@ -91,8 +87,8 @@ export interface ClientUseOptions {
 
 /**
  * The lazily-created connection-pool token — the TS analog of the
- * `httpx.Client` instance whose IDENTITY the R6.2 connection-reuse
- * invariant tracks (`use()` preserves it; `close()` drops it; the next
+ * `httpx.Client` instance whose identity the connection-reuse invariant
+ * tracks (`use()` preserves it; `close()` drops it; the next
  * request recreates it).
  */
 export interface HttpHandle {
@@ -101,10 +97,9 @@ export interface HttpHandle {
 }
 
 /**
- * The shared internals seam the domain-method factories (B4-C2..C5) and
- * the paginator build on. Everything here is `@internal`
- * surface: public for cross-module access, excluded from the
- * published API docs.
+ * The shared internals seam the domain-method factories and the paginator
+ * build on: public for cross-module access, not part of the semver-stable
+ * API.
  */
 export interface ClientCore {
   /**
@@ -113,8 +108,8 @@ export interface ClientCore {
    */
   readonly timeoutSeconds: number | null;
   /**
-   * Resolve the read timeout for a request to `url` — TS port of
-   * `_default_timeout` (`api_client.py:489-509`). An explicit
+   * Resolve the read timeout for a request to `url`
+   * (`MixpanelAPIClient._default_timeout`). An explicit
    * constructor timeout wins; otherwise the default is route-aware and
    * sized to outlast the server's own read deadline (~120s on App API
    * routes, 488s on query routes), so the server — never this client —
@@ -148,21 +143,21 @@ export interface ClientCore {
   /** @returns The explicit workspace pin, or `null`. */
   workspaceId: () => number | null;
   /**
-   * The CURRENT override bag (the per-request provider's value —
-   * `endpointOverrides` option, PR #235).
+   * The current override bag (the per-request provider's value —
+   * `endpointOverrides` option, Python PR #235).
    *
    * @returns The override bag (frozen empty bag when none).
    */
   endpointOverrides: () => EndpointOverrides;
   /**
    * The family → base-URL table for the current session's region under
-   * the current overrides (`_endpoints_for(region)`, PR #235).
+   * the current overrides (`_endpoints_for(region)`, Python PR #235).
    *
    * @returns The resolved table (the live object when nothing is overridden).
    */
   endpoints: () => ReadonlyMap<EndpointKind, string>;
   /**
-   * Build the full URL for an API family + path (B0 `url.ts` by name).
+   * Build the full URL for an API family + path (`buildUrl` in `url.ts`).
    *
    * @param kind - The API family.
    * @param path - The endpoint path.
@@ -170,16 +165,16 @@ export interface ClientCore {
    */
   buildUrl: (kind: EndpointKind, path: string) => string;
   /**
-   * Resolve the Authorization header PER REQUEST (`_get_auth_header`,
-   * `api_client.py`): service accounts return the cached Basic
+   * Resolve the Authorization header per request (`_get_auth_header`):
+   * service accounts return the cached Basic
    * header; OAuth variants delegate to the bound resolver every call.
    *
    * @returns The header value.
    */
   getAuthHeader: () => Promise<string>;
   /**
-   * The B0 4-layer header merge, pre-bound to the CURRENT session
-   * (`headers.ts` `requestHeaders` by name — never re-merged).
+   * The four-layer header merge, pre-bound to the current session
+   * (`requestHeaders` in `headers.ts`).
    *
    * @param extra - Per-call headers.
    * @returns The merged header set.
@@ -197,7 +192,7 @@ export interface ClientCore {
   closeHttp: () => void;
   /**
    * Build per-call `executeWithRetry` deps with the signal curried into
-   * the transport and sleep closures (R6.7 points 2 and 3).
+   * the transport and sleep closures.
    *
    * @param signal - Optional cancellation signal.
    * @returns The deps.
@@ -212,10 +207,10 @@ export interface ClientCore {
   appDeps: (signal?: AbortSignal) => AppRequestDeps;
   /**
    * Issue one raw (non-buffered) request through the adapter — the
-   * streaming/export seam for B4-C2 and the paginator's raw-transport
-   * path for B4-C6 (per-request auth is the CALLER's job, R2.8).
+   * streaming/export seam and the paginator's raw-transport path
+   * (per-request auth is the caller's job).
    *
-   * @param options - The outbound request (B0 transport shape).
+   * @param options - The outbound request.
    * @param signal - Optional cancellation signal.
    * @returns The raw response wrapper.
    */
@@ -224,7 +219,7 @@ export interface ClientCore {
     signal?: AbortSignal,
   ) => Promise<RawFetchResult>;
   /**
-   * The query-host request path (`_request`, `api_client.py`):
+   * The query-host request path (`MixpanelAPIClient._request`):
    * project-id injection + explicit-only workspace-pin injection, then
    * `executeWithRetry` with a per-request auth header.
    *

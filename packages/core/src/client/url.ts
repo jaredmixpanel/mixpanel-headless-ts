@@ -1,13 +1,10 @@
 /**
- * Regional endpoint table + URL builder — TS port of the module constant
- * `ENDPOINTS` and `MixpanelAPIClient._build_url` from
- * `mixpanel_headless/_internal/api_client.py:151-172` / `:417-432`
- * (Phase-3 packet B0-2, R10.8: ported once, by name; B4 domain shards
- * import — they never re-implement URL assembly).
+ * Regional endpoint table, alternate-host overrides and the URL builder
+ * every request goes through. Pure functions over string concatenation —
+ * never `new URL(path, base)`, which normalizes `//` and drops path
+ * prefixes on an App API that is trailing-slash sensitive.
  *
- * R2.3/R2.13: pure functions, string concatenation ONLY — never
- * `new URL(path, base)` (it normalizes `//` and drops path prefixes; the
- * App API is trailing-slash sensitive).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient._build_url
  */
 
 import { invariant } from "../invariant.js";
@@ -24,7 +21,7 @@ export type EndpointKind = "query" | "export" | "engage" | "app";
  * Regional endpoint configuration (Python `ENDPOINTS`).
  *
  * Each region has separate URLs for query APIs and export/data APIs.
- * A `ReadonlyMap` per R4.8 (Python dict used as a lookup table).
+ * A `ReadonlyMap`, as for every Python dict used as a lookup table.
  */
 export const ENDPOINTS: ReadonlyMap<
   Region,
@@ -59,10 +56,10 @@ export const ENDPOINTS: ReadonlyMap<
   ],
 ]);
 
-// ── Alternate-host override (Python PR #235 / AIE-925) ─────────────────
+// --- Alternate-host override (Python PR #235) ---
 //
 // Python reads `MP_API_BASE_URL` / `MP_APP_BASE_URL` from `os.environ` on
-// EVERY request (`api_client._endpoints_for`). `packages/core` never
+// every request (`_endpoints_for`). `packages/core` never
 // touches `process.env`, so the same two values arrive as an
 // injected {@link EndpointOverrides} bag — either a static object or a
 // per-call provider ({@link EndpointOverridesSource}). `packages/node`
@@ -82,14 +79,14 @@ export const APP_BASE_URL_ENV = "MP_APP_BASE_URL";
  */
 export interface EndpointOverrides {
   /**
-   * Route EVERY API family at one alternate host: `query` →
+   * Route every API family at one alternate host: `query` →
    * `{base}/api/query`, `export` → `{base}/api/2.0`, `engage` →
    * `{base}/api/query/engage`, `app` → `{base}/api/app`. Plain `http://`
    * bases are accepted (local / headless deployments only).
    */
   readonly apiBaseUrl?: string | null | undefined;
   /**
-   * Re-home ONLY the App API family at `{appBase}/api/app` — alone (the
+   * Re-home only the App API family at `{appBase}/api/app` — alone (the
    * other three families stay on the live regional hosts) or on top of
    * {@link apiBaseUrl} (App API moves to the second host).
    */
@@ -172,7 +169,7 @@ export function endpointOverridesProvider(
 /**
  * Build a per-call provider over an injected env reader — the exact
  * twin of Python's per-request `os.environ.get(...)` reads, without
- * `core` touching `process` itself (R9.1/R9.4: the node package passes
+ * `core` touching `process` itself (the node package passes
  * `(name) => process.env[name]`; the auth flows pass `effects.env.get`).
  *
  * @param getEnv - Reads one variable by name (`undefined` when unset).
@@ -215,7 +212,7 @@ function liveEndpoints(region: Region): ReadonlyMap<EndpointKind, string> {
 
 /**
  * Resolve the API-family → base-URL table for `region`, honouring the
- * overrides — TS port of `_endpoints_for` (`api_client.py`, PR #235).
+ * overrides (`_endpoints_for`, Python PR #235).
  *
  * Every read of {@link ENDPOINTS} inside the client goes through this
  * function so the family checks that pick the App-vs-Query timeout and
@@ -224,7 +221,7 @@ function liveEndpoints(region: Region): ReadonlyMap<EndpointKind, string> {
  * @param region - Mixpanel region key.
  * @param overrides - The injected override bag (default: none).
  * @returns With neither member set: the live `ENDPOINTS[region]` object
- *   ITSELF (byte-identical behaviour). With `apiBaseUrl` set: a fresh
+ *   itself (byte-identical behaviour). With `apiBaseUrl` set: a fresh
  *   table of `{base}{prefix}` for every family. With `appBaseUrl` set:
  *   the `app` entry becomes `{appBase}/api/app` on top of whichever
  *   table applies. The live table is never mutated.
@@ -272,8 +269,8 @@ export function appPathPrefix(): string {
 }
 
 /**
- * Classify `url` by the API family whose base is its LONGEST prefix —
- * TS port of `_api_family_for` (`api_client.py`, PR #235).
+ * Classify `url` by the API family whose base is its longest prefix
+ * (`_api_family_for`, Python PR #235).
  *
  * Longest-prefix (rather than first-match) matters in two places: live
  * Engage URLs also start with the Query base, and split overrides can
@@ -315,8 +312,8 @@ export function apiFamilyFor(
 /**
  * Server-side read deadlines Mixpanel's edge enforces per route family
  * (nginx `proxy_read_timeout`), and the route-aware client defaults
- * sized to outlast them — TS port of the `api_client.py`
- * constants. App API routes get ~120s; `/api/query` routes get 488s.
+ * sized to outlast them (twins of the Python module constants). App API
+ * routes get ~120s; `/api/query` routes get 488s.
  * The defaults add a margin so a slow request is always resolved by the
  * server's own answer (success or 5xx with diagnostics) and never
  * pre-empted by a client read timeout. An explicit timeout (constructor
@@ -347,7 +344,7 @@ export const DEFAULT_QUERY_TIMEOUT_S: number =
  *
  * @param region - Data-residency region.
  * @param kind - API family.
- * @param overrides - Alternate-host overrides (PR #235); default none,
+ * @param overrides - Alternate-host overrides (Python PR #235); default none,
  *   which returns the live per-region entry unchanged.
  * @returns The base URL (no trailing slash).
  * @throws MixpanelError - If the table is missing an entry (impossible by
@@ -370,10 +367,10 @@ export function endpointBase(
  * A missing leading `/` on `path` is added, exactly as in Python.
  *
  * @param region - Data-residency region (Python reads
- *   `session.account.region`; the B4 client threads it here).
+ *   `session.account.region`; the client threads it here).
  * @param kind - One of `"query"`, `"export"`, `"engage"`, `"app"`.
  * @param path - API endpoint path (e.g. `"/segmentation"`).
- * @param overrides - Alternate-host overrides (PR #235); the client
+ * @param overrides - Alternate-host overrides (Python PR #235); the client
  *   threads its per-request provider's value here.
  * @returns Full URL for the endpoint.
  * @example

@@ -1,30 +1,22 @@
 /**
- * Per-request header composition + client-identification metadata — TS
- * port of `MixpanelAPIClient._request_headers`
- * (`mixpanel_headless/_internal/api_client.py`) and
- * `_internal/client_metadata.py` (Phase-3 packet B0-2; the
- * `client_metadata` half ports alongside per the packet's
- * `_execute_with_retry` bullet).
+ * Per-request header composition and the User-Agent metadata every
+ * outbound call carries. Owns the four-layer merge (library defaults →
+ * `MP_CUSTOM_HEADER_*` env pair → session headers → per-call extras) that
+ * `executeWithRetry`, `appRequest` and the streaming/replay paths all
+ * import; nothing else in the package merges headers. `core` cannot read
+ * the environment, so the env pair arrives through an injected provider
+ * invoked on every call, mirroring Python's per-request `os.environ` read.
  *
- * R10.8 ownership (playbook FF5/R8): `_request_headers` is consumed by
- * BOTH B0 wire functions (`executeWithRetry`, `appRequest`) and by the
- * B4 streaming/replay call sites — single implementation HERE; B4-C1
- * imports it by name and must not re-implement any header merging.
- *
- * Env boundary: Python reads `MP_CUSTOM_HEADER_NAME` /
- * `MP_CUSTOM_HEADER_VALUE` from `os.environ` on every call; `core` may
- * not touch env, so the pair arrives through the injected
- * {@link RequestHeadersDeps.getCustomHeaderEnv} provider, invoked
- * per-call to mirror Python's per-request read. The `node` package
- * supplies the real `process.env` reader.
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient._request_headers
+ * @see mixpanel_headless._internal.client_metadata
  */
 
 /**
  * Value sent as the `query_origin` parameter on Query API calls.
  *
  * Lets downstream consumers attribute analytics traffic to this library.
- * Byte-identical to Python (`client_metadata.py`) — the value is
- * wire-locked by every Query-host vector's recorded request params.
+ * Byte-identical to Python: the value is wire-locked by every Query-host
+ * vector's recorded request params.
  */
 export const QUERY_ORIGIN = "mixpanel-headless";
 
@@ -43,7 +35,7 @@ export type EntryPoint = "lib" | "cli";
 /**
  * Module-level entry-point state (Python `_entry_point`, default "lib").
  *
- * Deliberately PROCESS-GLOBAL, not a client option: it answers "how was
+ * Deliberately process-global, not a client option: it answers "how was
  * this process launched", one fact per realm that every client's
  * User-Agent shares, exactly like Python's module attribute. A per-client
  * setting would let two clients in one CLI process disagree about it.
@@ -78,12 +70,11 @@ export function getEntryPoint(): EntryPoint {
  * Build the User-Agent string for outbound requests — TS port of
  * `client_metadata.get_user_agent`.
  *
- * Python format: `mixpanel-headless/<version> (entry=<lib|cli>;
- * python/<x.y>)`. The runtime tag becomes `ts` here (the User-Agent is
- * telemetry identification, never vector-byte-locked — vectors assert
- * headers via `headers_contain` subsets; B0-notes decision 8). Re-read
- * on every call so an entry-point change after import is reflected
- * immediately, exactly as in Python.
+ * Python format: `mixpanel-headless/<version> (entry=<lib|cli>; python/<x.y>)`.
+ * The runtime tag becomes `ts` here (the User-Agent is telemetry
+ * identification, never byte-locked by a vector — vectors assert headers
+ * via `headers_contain` subsets). Re-read on every call so an entry-point
+ * change after import is reflected immediately, exactly as in Python.
  *
  * @returns The User-Agent header value.
  * @example
@@ -102,7 +93,7 @@ export function getUserAgent(): string {
  * `self._session.headers`).
  */
 export interface RequestHeadersDeps {
-  /** Layer-1 User-Agent source (defaults to {@link getUserAgent} in B4). */
+  /** Layer-1 User-Agent source (the client defaults it to {@link getUserAgent}). */
   getUserAgent: () => string;
   /**
    * Layer-2 env pair provider — the `MP_CUSTOM_HEADER_NAME` /
@@ -113,7 +104,7 @@ export interface RequestHeadersDeps {
     readonly name?: string | undefined;
     readonly value?: string | undefined;
   };
-  /** Layer-3 session headers (`Session.headers`, FR-014). */
+  /** Layer-3 session headers (`Session.headers`). */
   readonly sessionHeaders: Readonly<Record<string, string>>;
 }
 
@@ -128,8 +119,8 @@ export interface RequestHeadersDeps {
  * 2. `MP_CUSTOM_HEADER_NAME` / `MP_CUSTOM_HEADER_VALUE` env pair (via the
  *    injected provider).
  * 3. `session.headers` (populated from `[settings].custom_header` and
- *    bridge `headers` per FR-014); the resolver merged env into the
- *    session earlier — the final session state is authoritative.
+ *    bridge `headers`); the resolver merged env into the session
+ *    earlier — the final session state is authoritative.
  * 4. `extra` — typically `{Authorization: authHeader}` plus any per-call
  *    `Accept-Encoding` etc. supplied by the caller.
  *

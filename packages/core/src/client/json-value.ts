@@ -1,12 +1,10 @@
 /**
- * JSON value model shared by the lossless JSON loader and the D6
- * canonicalizer.
- *
- * D6 rule 3 defines canonical number rendering over the RAW JSON NUMBER
- * TOKEN, not a parsed double: `18` and `18.0` are distinct contracts, and
- * integer tokens above 2^53 must survive loading without silent rounding.
- * Plain `JSON.parse` destroys both distinctions, so vector/selftest JSON is
- * loaded into this model instead, with every number captured as a
+ * JSON value model shared by the lossless JSON parser and the conformance
+ * canonicalizer. Canonical number rendering is defined over the raw JSON
+ * number token, not a parsed double: `18` and `18.0` are distinct
+ * contracts, and integer tokens above 2^53 must survive loading without
+ * silent rounding. Plain `JSON.parse` destroys both distinctions, so wire
+ * and vector JSON is loaded into this model, every number kept as a
  * {@link JsonNumber} wrapping its verbatim source token.
  */
 
@@ -19,8 +17,8 @@ const JSON_NUMBER_TOKEN = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/;
  * A JSON number captured as its raw source token.
  *
  * Preserves the integer-vs-float distinction (`18` vs `18.0`) and the exact
- * digits of integers too large for a JS double, both of which D6 rule 3 and
- * the `PRECISION_LOSS` verdict (D6/D12) require.
+ * digits of integers too large for a JS double, both of which the
+ * canonicalizer and the `PRECISION_LOSS` verdict require.
  */
 export class JsonNumber {
   /** The verbatim number token as it appeared in the JSON source. */
@@ -42,9 +40,9 @@ export class JsonNumber {
   /**
    * Whether the token is an integer token (no fraction or exponent part).
    *
-   * D6 rule 3: integer tokens render without exponent or fraction; tokens
-   * with a fraction/exponent part render via float rendering even when
-   * their value is integral.
+   * Integer tokens render without exponent or fraction; tokens with a
+   * fraction/exponent part render via float rendering even when their
+   * value is integral.
    *
    * @returns `true` for tokens like `"18"`; `false` for `"18.0"`, `"1e2"`.
    */
@@ -65,8 +63,8 @@ export class JsonNumber {
    * Whether this is an integer token whose value cannot be represented
    * exactly as a JS double (magnitude above 2^53).
    *
-   * This is the loader-side signal behind the `PRECISION_LOSS` verdict
-   * (D6): with plain `JSON.parse` the check would be vacuous.
+   * This is the loader-side signal behind the `PRECISION_LOSS` verdict:
+   * with plain `JSON.parse` the check would be vacuous.
    *
    * @returns `true` when the integer token's exact value differs from its
    *   double rounding; always `false` for float tokens.
@@ -102,14 +100,12 @@ export type JsonValue =
   | { [key: string]: JsonValue };
 
 /**
- * Non-enumerable sidecar recording an object's SOURCE key order where
- * it differs from JS enumeration order (B8-MAPFIX, user ratification
- * `user-ratifications.md:14-22`).
+ * Non-enumerable sidecar recording an object's source key order where
+ * it differs from JS enumeration order.
  *
  * JS plain objects enumerate integer-like keys in ascending numeric
  * order regardless of insertion order, while Python `json.loads`
- * preserves source order — the mechanism behind playbook Discrepancies
- * #9/#10/#13. The lossless parser attaches this symbol (holding
+ * preserves source order. The lossless parser attaches this symbol (holding
  * `readonly string[]`) to any parsed object whose source key order the
  * plain object cannot represent; {@link orderedKeys} /
  * {@link orderedEntries} read it back. Being non-enumerable, the
@@ -140,7 +136,7 @@ export function attachKeyOrder(target: object, keys: readonly string[]): void {
 }
 
 /**
- * An object's keys in SOURCE order: the {@link LOSSLESS_KEY_ORDER}
+ * An object's keys in source order: the {@link LOSSLESS_KEY_ORDER}
  * sidecar when present, else `Object.keys` (which already equals
  * source order for objects without out-of-order integer-like keys).
  *
@@ -153,7 +149,7 @@ export function orderedKeys(value: object): readonly string[] {
 }
 
 /**
- * `Object.entries` in SOURCE order (see {@link orderedKeys}).
+ * `Object.entries` in source order (see {@link orderedKeys}).
  *
  * @param value - Any plain object (parsed or hand-built).
  * @returns `[key, value]` pairs in Python-dict order.
@@ -175,13 +171,13 @@ export interface ToNativeJsonOptions {
 }
 
 /**
- * Convert a lossless-parsed JSON tree to NATIVE JS values — the point
+ * Convert a lossless-parsed JSON tree to native JS values — the point
  * where the TS wire layer matches Python's `json.loads` product
  * (`int`/`float` → `number`, containers recursing).
  *
  * Used by response-model validation paths (`list_workspaces`), where the
  * Pydantic-lax coercion mirror consumes native scalars. Two documented
- * narrowings (R4.5 numbers policy): by default integer tokens beyond
+ * narrowings: by default integer tokens beyond
  * 2^53−1 double-round (Python keeps the exact int), and float-ness of
  * integral tokens is erased (`42.0` → `42`; Pydantic-lax accepts both
  * identically at every consuming field).
@@ -241,9 +237,9 @@ function toNativeJsonValue(
     for (const [key, member] of Object.entries(value)) {
       setOwn(out, key, toNativeJson(member, options));
     }
-    // Key-order sidecar propagates (B8-MAPFIX): the native tree feeds
-    // the ordered-dict model fields (`MeResponse`), which must see the
-    // SOURCE order the parser captured.
+    // The key-order sidecar propagates: the native tree feeds the
+    // ordered-dict model fields (`MeResponse`), which must see the
+    // source order the parser captured.
     const sidecar = (value as KeyOrdered)[LOSSLESS_KEY_ORDER];
     if (sidecar !== undefined) {
       attachKeyOrder(out, sidecar);

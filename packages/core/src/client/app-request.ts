@@ -1,24 +1,14 @@
 /**
- * Authenticated App API request path — TS port of
- * `MixpanelAPIClient.app_request`
- * (`mixpanel_headless/_internal/api_client.py`) — Phase-3
- * packet B0-2, R10.8 (ported once, by name: every entity CRUD wire
- * method (B4-C3..C5), `pagination.paginate` (B4-C6, per-page via a
- * `PageFetcher`-style seam preserving per-request auth, R2.8), and every
- * `create<Entity>Client` factory call THIS function — never a
- * re-implementation).
+ * Authenticated App API request path; every entity CRUD method and the
+ * paginator's per-page fetch call this one function. The Authorization
+ * header is resolved per call through the injected seam so refreshed OAuth
+ * tokens reach App API calls without rebuilding the client, and no
+ * `query_origin` is added because some App API endpoints reject unknown
+ * query parameters. 204 → `{status: "ok"}`; 429 retries over the shared
+ * backoff trio; 422 → `QueryError` with the lossless body; everything else
+ * goes through {@link handleResponse}; a `results` key unwraps unless `raw`.
  *
- * Behavior notes (byte-for-byte from source):
- * - Bearer/Basic auth resolves PER CALL via the injected
- *   {@link AppRequestDeps.getAuthHeader} seam (R2.9 — never captured at
- *   construction) so refreshed OAuth tokens reach App API calls without
- *   rebuilding the client.
- * - NO `query_origin` on App-API params — some App API endpoints reject
- *   unknown query parameters (`api_client.py`).
- * - 204 → `{status: "ok"}`; its own 429 loop (same backoff trio); 422 →
- *   `QueryError` with the lossless body; everything else delegates to
- *   {@link handleResponse}; a `results` key unwraps unless `raw`
- *   (`Object.hasOwn`, R4.8/watchlist §8 item 7).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.app_request
  */
 
 import {
@@ -46,11 +36,11 @@ import {
 import type { JsonValue } from "./json-value.js";
 import { buildUrl, type EndpointOverrides, type Region } from "./url.js";
 
-/** Dependencies of {@link appRequest} (the B4 client wires these). */
+/** Dependencies of {@link appRequest} (the client wires these). */
 export interface AppRequestDeps {
-  /** Transport seam (R2.10/R2.11 contract — see `internals.ts`). */
+  /** Transport seam (the {@link RequestExecutor} contract). */
   readonly request: RequestExecutor;
-  /** Sleep seam in MILLISECONDS. */
+  /** Sleep seam in milliseconds. */
   sleep: (ms: number) => Promise<void>;
   /** Uniform-[0,1) RNG for backoff jitter. */
   readonly random: RandomSource;
@@ -58,7 +48,7 @@ export interface AppRequestDeps {
   readonly maxRetries: number;
   /**
    * Resolve the default request timeout for a URL
-   * (`self._default_timeout(url)`, `api_client.py`): explicit
+   * (`MixpanelAPIClient._default_timeout`): explicit
    * constructor timeout wins, else the route-aware default.
    *
    * @param url - The full request URL.
@@ -66,7 +56,7 @@ export interface AppRequestDeps {
    */
   defaultTimeoutSeconds: (url: string) => number;
   /**
-   * The B0-owned 4-layer header merge, pre-bound to the session.
+   * The four-layer header merge, pre-bound to the session.
    *
    * @param extra - Per-call headers (Authorization etc.).
    * @returns The merged header set.
@@ -77,13 +67,13 @@ export interface AppRequestDeps {
   /** Data-residency region (`session.account.region`). */
   readonly region: Region;
   /**
-   * Alternate-host overrides in force for THIS request (the client
-   * snapshots its per-request provider when it builds the deps — PR
-   * #235). Absent → the live per-region App API host.
+   * Alternate-host overrides in force for this request (the client
+   * snapshots its per-request provider when it builds the deps — Python
+   * PR #235). Absent → the live per-region App API host.
    */
   readonly endpointOverrides?: EndpointOverrides | undefined;
   /**
-   * Per-request Authorization resolver (`_get_auth_header`, R2.9):
+   * Per-request Authorization resolver (`_get_auth_header`):
    * re-resolves refreshed OAuth bearers on every `appRequest` call;
    * async because TS token resolvers may do I/O.
    *
@@ -94,7 +84,7 @@ export interface AppRequestDeps {
   readonly logger?: RetryLogger | undefined;
 }
 
-/** Keyword options of {@link appRequest} (Python kw-only params, R3.8). */
+/** Keyword options of {@link appRequest} (Python kw-only params). */
 export interface AppRequestOptions {
   /** Optional query parameters. */
   readonly params?: Record<string, string> | null | undefined;
@@ -140,7 +130,7 @@ export interface AppRequestOptions {
  *   (400, 404, 422).
  * @throws ServerError - Server-side errors (5xx).
  * @throws MixpanelHeadlessError - Network/connection errors
- *   (`HTTP_ERROR`, R2.10).
+ *   (`HTTP_ERROR`).
  * @example
  * ```typescript
  * const dashboards = await appRequest(deps, "GET", "/projects/12345/dashboards");
@@ -169,7 +159,7 @@ export async function appRequest(
   const url = buildUrl(deps.region, "app", path, deps.endpointOverrides);
   // Re-resolve per request via the getAuthHeader seam so refreshed
   // OAuth tokens (browser refresh / static-token rotation) reach App
-  // API calls without rebuilding the client (api_client.py).
+  // API calls without rebuilding the client.
   const authHeader = await deps.getAuthHeader();
   const headers = deps.requestHeaders({ Authorization: authHeader });
 
@@ -223,15 +213,14 @@ export async function appRequest(
           `Rate limited, retrying in ${waitSeconds.toFixed(1)} seconds ` +
             `(attempt ${attempt + 1}/${deps.maxRetries})`,
         );
-        // R2.12: the ONE seconds→milliseconds conversion point.
+        // The one seconds→milliseconds conversion point.
         await deps.sleep(waitSeconds * 1000);
         continue;
       }
 
       // Handle 422 as QueryError. Body parse mirrors the Python
-      // `response.json()` site: json.loads
-      // non-finite constants accepted (arbiter fix F1), catch scope is
-      // the JSONDecodeError analog only (arbiter fix F3/A2).
+      // `response.json()` site: `json.loads` non-finite constants are
+      // accepted, and only the JSONDecodeError analog is caught.
       if (response.status === 422) {
         const errBody = parseErrorBody(response.text);
         throw new QueryError(errorMessage(errBody, "Unprocessable entity"), {
@@ -254,7 +243,7 @@ export async function appRequest(
       });
 
       // Unwrap results field if present (unless raw requested).
-      // `Object.hasOwn` — never `in` (prototype-chain trap, R4.8/§8.7).
+      // `Object.hasOwn`, never `in`: an inherited `results` must not count.
       if (
         options.raw !== true &&
         isPlainRecord(result) &&
@@ -264,7 +253,7 @@ export async function appRequest(
       }
       return result;
     } catch (error) {
-      // R2.10: `except httpx.HTTPError` → the instanceof filter.
+      // `except httpx.HTTPError` → the instanceof filter.
       if (!(error instanceof MixpanelHttpError)) {
         throw error;
       }
@@ -282,8 +271,8 @@ export async function appRequest(
     }
   }
 
-  // Should not reach here — mirror Python's type-checker-satisfying
-  // raise; reduced constructor shape per FF4.
+  // Should not reach here — mirrors Python's type-checker-satisfying
+  // raise.
   throw new RateLimitError("Rate limit exceeded after max retries", {
     requestMethod: method,
     requestUrl: url,

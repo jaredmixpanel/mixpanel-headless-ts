@@ -1,18 +1,13 @@
 /**
- * Rate-limit retry timing trio — TS port of
- * `MixpanelAPIClient._calculate_backoff`,
- * `_retry_wait_seconds` (`:683-704`), and `_parse_retry_after`
- * (`:1159-1185`) — Phase-3 packet B0-2, R10.8 (ported once, by name;
- * the B0/B4 retry loops import these, never re-derive them).
+ * Rate-limit retry timing — exponential backoff, the Retry-After clamp and
+ * the Retry-After parser — shared by every retry loop in the package.
+ * Everything here speaks Python's seconds; the one seconds→milliseconds
+ * conversion sits at the sleep-seam call sites (`executeWithRetry`,
+ * `appRequest`). The exponential fallback jitters through an injectable
+ * RNG; a server-supplied Retry-After is honoured verbatim (capped) with
+ * no jitter. The conformance bindings inject `random: () => 0`.
  *
- * Units: everything in THIS module speaks Python's seconds — the
- * single seconds→milliseconds conversion happens at the sleep-seam call
- * sites (`sleep(seconds * 1000)` in `executeWithRetry`/`appRequest`).
- *
- * Jitter (rulebook Discrepancy #1, resolved to source truth): the
- * exponential FALLBACK path jitters via an injectable RNG; a
- * server-supplied Retry-After is honored verbatim (capped) with NO
- * jitter. Conformance bindings inject `random: () => 0`.
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient._retry_wait_seconds
  */
 
 import { pythonInt } from "../compat/index.js";
@@ -21,7 +16,7 @@ import { MixpanelHeadlessError } from "../errors.js";
 /**
  * Exponential-backoff bounds shared by {@link calculateBackoff} and the
  * Retry-After clamp (Python `_BACKOFF_BASE_SECONDS` /
- * `_BACKOFF_MAX_SECONDS`, `api_client.py`). A server-supplied
+ * `_BACKOFF_MAX_SECONDS`). A server-supplied
  * Retry-After is honored up to the max; anything larger would park the
  * process for hours.
  */
@@ -30,7 +25,7 @@ const BACKOFF_BASE_SECONDS = 1.0;
 /** See {@link BACKOFF_BASE_SECONDS}. */
 export const BACKOFF_MAX_SECONDS = 60.0;
 
-/** Uniform-[0,1) random source (the `random.uniform` seam, R6.3-style). */
+/** Uniform-[0,1) random source (the `random.uniform` seam). */
 export type RandomSource = () => number;
 
 /** The slice of a response `parseRetryAfter` reads (case-insensitive). */
@@ -111,17 +106,15 @@ export function retryWaitSeconds(
  * usage is `sleep(exc.retry_after or 60)`. HTTP-date form is not
  * supported and also reads as absent.
  *
- * Parsing uses the FULL CPython `int(str)` grammar via `pythonInt`
- * (R11.3): underscores between digits, surrounding Python whitespace,
- * signs, and non-ASCII Nd digits all parse exactly as in Python. The one
- * sanctioned divergence (B0-notes decision 7, arbiter-blessed as
- * playbook Discrepancy #6 — b0-review-resolution F2): a hostile header
- * beyond 2^53 − 1 throws `PY_INT_UNSAFE_INTEGER` inside `pythonInt` and
- * reads as absent here, where CPython parses the raw big int (sleeping
- * the capped 60s and reporting it in `RateLimitError.retry_after`). The
- * 60s cap keeps the sleep path behaviorally inert; the detail-bag delta
- * (`retry_after: null` vs the huge int) exists only in that corner and
- * is never vector-asserted.
+ * Parsing uses the full CPython `int(str)` grammar via `pythonInt`:
+ * underscores between digits, surrounding Python whitespace, signs, and
+ * non-ASCII Nd digits all parse exactly as in Python.
+ *
+ * Divergence: a header beyond 2^53 − 1 reads as absent (`pythonInt`
+ * rejects it with `PY_INT_UNSAFE_INTEGER`), where CPython parses the raw
+ * big int, sleeps the capped 60 s and reports it in
+ * `RateLimitError.retry_after`. The cap keeps the sleep path identical;
+ * only the detail bag differs (`retry_after: null` vs the huge int).
  *
  * @param response - Response carrying the headers.
  * @returns Seconds to wait as a non-negative integer, or `null` when the

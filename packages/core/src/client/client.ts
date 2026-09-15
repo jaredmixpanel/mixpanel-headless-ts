@@ -1,25 +1,17 @@
 /**
- * `createMixpanelClient` — the client-core factory (Phase-3 packet
- * B4-C1): TS port of `MixpanelAPIClient` construction, session axes,
- * scoping, workspace resolution, and the public `request()` escape
- * hatch (`mixpanel_headless/_internal/api_client.py` C1 ranges).
+ * `createMixpanelClient` — the client factory: `MixpanelAPIClient`
+ * construction, session axes, scoping, workspace resolution and the
+ * public `request()` escape hatch, assembled over an injectable transport
+ * rather than a class singleton. Every shared internal (retry loop,
+ * response handler, `appRequest`, header merge, URL builders, path
+ * scoping, backoff) is imported from its own module; the domain methods
+ * arrive as `create<Domain>Methods(core)` factories spread into the
+ * client. Per-call `AbortSignal`s are curried into signal-aware
+ * request/sleep closures at assembly ({@link ClientCore.executeDeps} /
+ * {@link ClientCore.appDeps}); every cancellation exits as an
+ * `AbortError` `DOMException`.
  *
- * R2.9: a factory over an injectable transport, never a class
- * singleton. R10.8: every shared internal is IMPORTED from its B0
- * module by name (`internals.ts` retry/handler, `app-request.ts`,
- * `headers.ts` 4-layer merge, `url.ts` builders, `scope.ts`,
- * `backoff.ts`) — this file re-implements none of them.
- *
- * Domain wire methods land as `create<Domain>Methods(core)` factories
- * (B4-C2..C5) spread into the assembled client at the marked append-only
- * merge point below; `pagination.ts` consumes the same
- * {@link ClientCore} seam.
- *
- * R6.7 (B0-ARB carried item 6a): per-call `AbortSignal`s thread through
- * signal-aware `request`/`sleep` closures built HERE at client assembly
- * ({@link ClientCore.executeDeps} / {@link ClientCore.appDeps}) — the B0
- * module signatures are untouched; every cancellation exit normalizes
- * to `DOMException(..., 'AbortError')`.
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient
  */
 
 import { accountAuthHeader, type TokenResolver } from "../auth/account.js";
@@ -183,22 +175,22 @@ import {
 /**
  * HTTP statuses on a workspace-discovery source that mean "this source
  * can't answer for this credential" rather than a transient failure
- * (`api_client.py`). They let auto-resolution fall through to the
- * next source; 5xx / 401 / 429 / network errors still propagate.
+ * They let auto-resolution fall through to the next source; 5xx / 401 /
+ * 429 / network errors still propagate.
  */
 const FALLBACK_HTTP_STATUSES: ReadonlySet<number> = new Set([403, 404]);
 
 /**
- * The env-pair provider seam for header layer 2 (R9.4: `core` never
- * reads `process.env`; the node package wires the real env source).
+ * The env-pair provider seam for header layer 2 (`core` never reads
+ * `process.env`; the node package wires the real env source).
  */
 export type CustomHeaderEnvSource = () => {
   readonly name?: string | undefined;
   readonly value?: string | undefined;
 };
 
-// Client-core seam types — defined in `core.ts` (§10.4), re-exported
-// here so the public barrel and existing importers resolve unchanged.
+// Client-core seam types — defined in `core.ts`, re-exported here so
+// the public barrel and existing importers resolve unchanged.
 export type {
   ClientAppRequestOptions,
   ClientCore,
@@ -226,25 +218,25 @@ export interface MixpanelClientOptions {
   readonly timeoutSeconds?: number | null | undefined;
   /** Request timeout for export operations (Python default 600). */
   readonly exportTimeoutSeconds?: number | undefined;
-  /**
-   * Maximum retry attempts for rate-limited requests (Python default 3,
-   * `api_client.py`).
-   */
+  /** Maximum retry attempts for rate-limited requests (Python default 3). */
   readonly maxRetries?: number | undefined;
   /**
    * Token resolver for OAuth accounts. Python defaults to the on-disk
-   * resolver; in `core` the default is NONE (the node package supplies
-   * it — R9.1/R9.4), and OAuth auth-header resolution without one
-   * throws the Phase-2 `ParamTypeError`.
+   * resolver; in `core` the default is none (the node package supplies
+   * it), and OAuth auth-header resolution without one throws
+   * `ParamTypeError`.
    */
   readonly tokenResolver?: TokenResolver | null | undefined;
-  /** Injectable transport (R2.4; the TS analog of `_transport`). */
+  /** Injectable transport (the TS analog of `_transport`). */
   readonly fetch?: typeof fetch | undefined;
-  /** Sleep seam in MILLISECONDS (R2.12/R6.3; fake-timer friendly). */
+  /** Sleep seam in milliseconds (fake-timer friendly). */
   readonly sleep?: ((ms: number) => Promise<void>) | undefined;
-  /** Uniform-[0,1) RNG for backoff jitter (playbook Discrepancy #1). */
+  /** Uniform-[0,1) RNG for backoff jitter. */
   readonly random?: RandomSource | undefined;
-  /** Clock seam (unused by C1 paths; threaded for later shards). */
+  /**
+   * Clock seam, read through `ClientCore.now` by the query-host date
+   * defaults, the streaming exports and the discovery service.
+   */
   readonly now?: (() => Date) | undefined;
   /** Optional retry-warning logger. */
   readonly logger?: RetryLogger | undefined;
@@ -252,11 +244,11 @@ export interface MixpanelClientOptions {
   readonly getCustomHeaderEnv?: CustomHeaderEnvSource | undefined;
   /**
    * Alternate-host routing (Python PR #235: `MP_API_BASE_URL` /
-   * `MP_APP_BASE_URL`). `apiBaseUrl` routes EVERY API family at one
+   * `MP_APP_BASE_URL`). `apiBaseUrl` routes every API family at one
    * base (`query` → `/api/query`, `export` → `/api/2.0`, `engage` →
    * `/api/query/engage`, `app` → `/api/app`); `appBaseUrl` re-homes only
    * the App API. Pass a static bag, or a provider that is consulted on
-   * EVERY request (the node package wires a `process.env` reader, the
+   * every request (the node package wires a `process.env` reader, the
    * twin of Python's per-request `os.environ` read). Absent → the live
    * per-region hosts, byte-identical to before.
    */
@@ -264,14 +256,9 @@ export interface MixpanelClientOptions {
 }
 
 /**
- * The assembled Mixpanel API client (C1 core surface; B4-C2..C5 extend
- * this interface with their domain methods at the marked merge point —
- * C2 landed: query-host + engage + streaming/export; C3 landed:
- * dashboards + bookmarks-v2 + cohorts-app entity CRUD; C4 landed:
- * flags + experiments + annotations + webhooks + alerts; C5 landed:
- * schemas + lexicon + drop filters + custom properties + lookup
- * tables + custom events + schema enforcement + audit + anomalies +
- * deletion requests + business context + replays signing).
+ * The assembled Mixpanel API client: the core surface below plus every
+ * domain-method interface (query host, engage, streaming/export and the
+ * entity CRUD families) merged in at assembly.
  */
 export interface MixpanelClient
   extends
@@ -309,13 +296,17 @@ export interface MixpanelClient
   readonly workspaceId: number | null;
   /** Whether a `/me`-backed workspace resolver is installed. */
   readonly hasWorkspaceResolver: boolean;
-  /** @internal The shared internals seam (B4-C2..C6 factories). */
+  /**
+   * The shared internals seam the domain-method factories consume.
+   *
+   * @internal
+   */
   readonly core: ClientCore;
 
   /**
    * The current Authorization header value, computed on every access
-   * (Python `current_auth_header` property; a property doing token I/O
-   * becomes a method per R3.1).
+   * (Python's `current_auth_header` property; a property doing token I/O
+   * becomes a method).
    *
    * @returns The header value (`Basic ...` or `Bearer ...`).
    */
@@ -323,7 +314,7 @@ export interface MixpanelClient
 
   /**
    * Install a `/me`-backed workspace resolver for auto-discovery
-   * (`set_workspace_resolver`, `api_client.py`).
+   * (`set_workspace_resolver`).
    *
    * @param resolver - The resolver, or `null` to clear.
    */
@@ -331,7 +322,7 @@ export interface MixpanelClient
 
   /**
    * Make an authenticated request to any Mixpanel API endpoint — the
-   * escape hatch (`request`, `api_client.py`). No `project_id`
+   * escape hatch (`request`). No `project_id`
    * injection (the caller controls the URL); `query_origin` is injected
    * by the retry core.
    *
@@ -353,7 +344,7 @@ export interface MixpanelClient
   ) => Promise<JsonValue>;
 
   /**
-   * Make an authenticated App API request (`app_request` — the B0
+   * Make an authenticated App API request (`app_request` — the
    * `app-request.ts` implementation reached through this client's
    * per-call deps).
    *
@@ -362,9 +353,10 @@ export interface MixpanelClient
    * @param options - Optional params/body/raw/signal.
    * @returns The `results` field when present (unless `raw`), the full
    *   body otherwise; `{status: "ok"}` for 204.
-   * @throws ParamValidationError - Both body kinds provided (AC1).
+   * @throws ParamValidationError - Both body kinds provided
+   *   (`AC1_BODY_MUTUALLY_EXCLUSIVE`).
    * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError | MixpanelHeadlessError - Per the B0 contract.
+   *   ServerError | MixpanelHeadlessError - As for {@link appRequest}.
    */
   appRequest: (
     method: string,
@@ -373,12 +365,14 @@ export interface MixpanelClient
   ) => Promise<JsonValue>;
 
   /**
-   * @internal The query-host request path (`_request`). See
+   * The query-host request path (`_request`). See
    * {@link ClientCore.requestQueryHost}.
+   *
    * @param method - HTTP method.
    * @param url - Full URL.
    * @param options - Params/body/injection flags.
    * @returns Parsed lossless JSON response.
+   * @internal
    */
   requestQueryHost: (
     method: string,
@@ -388,11 +382,11 @@ export interface MixpanelClient
 
   /**
    * Swap one or more session axes in place, preserving the HTTP
-   * transport (`use`, `api_client.py`; R6.2).
+   * transport (`use`).
    *
-   * Per Research R5: `use(workspace=W)` is in-memory only;
+   * `use(workspace=W)` is in-memory only;
    * `use(project=P)` / `use(account=A)` clear the resolved-workspace
-   * cache; `use(account=A)` rebuilds the auth header ATOMICALLY (the
+   * cache; `use(account=A)` rebuilds the auth header atomically (the
    * prior session/header survive when the new account's token probe
    * fails). Any call that does not supply `workspace` (including a
    * zero-axis `use()`) clears both `session.workspace` and the pin.
@@ -405,7 +399,7 @@ export interface MixpanelClient
 
   /**
    * Return the workspace for the current session, lazy-resolving once
-   * (`resolve_workspace`, `api_client.py`).
+   * (`resolve_workspace`).
    *
    * @returns The session's WorkspaceRef (cached per session lifetime).
    * @throws WorkspaceScopeError - No accessible workspaces.
@@ -414,7 +408,7 @@ export interface MixpanelClient
 
   /**
    * Set or clear the explicit workspace ID for scoped requests
-   * (`set_workspace_id`, `api_client.py`). Clearing also
+   * (`set_workspace_id`). Clearing also
    * drops the cached auto-discovered ID.
    *
    * @param workspaceId - Workspace ID to pin, or `null` to clear.
@@ -423,7 +417,7 @@ export interface MixpanelClient
 
   /**
    * Resolve the workspace ID for scoped requests
-   * (`resolve_workspace_id`, `api_client.py`): explicit pin →
+   * (`resolve_workspace_id`): explicit pin →
    * cached id → injected `/me` resolver → `/workspaces/public` → the
    * projects metadata index → `WorkspaceScopeError`.
    *
@@ -437,8 +431,7 @@ export interface MixpanelClient
   resolveWorkspaceId: () => Promise<number>;
 
   /**
-   * Fetch the projects metadata index (`projects_metadata_index`,
-   * `api_client.py`).
+   * Fetch the projects metadata index (`projects_metadata_index`).
    *
    * @returns The metadata payload keyed by project ID, or `{}` when the
    *   response is not a mapping.
@@ -446,15 +439,17 @@ export interface MixpanelClient
   projectsMetadataIndex: () => Promise<Record<string, JsonValue>>;
 
   /**
-   * @internal Resolve a workspace ID from the metadata index
-   * (`_resolve_workspace_from_metadata`, `api_client.py`).
+   * Resolve a workspace ID from the metadata index
+   * (`_resolve_workspace_from_metadata`).
+   *
    * @returns The chosen id, or `null` when the index can't answer.
+   * @internal
    */
   resolveWorkspaceFromMetadata: () => Promise<number | null>;
 
   /**
    * Build an optionally workspace-scoped API path
-   * (`maybe_scoped_path` — B0 `scope.ts` over this client's pin state).
+   * (`maybe_scoped_path` — `scope.ts` over this client's pin state).
    *
    * @param domainPath - Domain-relative path (e.g. `"dashboards"`).
    * @returns `/workspaces/{wid}/{path}` when pinned, else
@@ -464,7 +459,7 @@ export interface MixpanelClient
 
   /**
    * Build a workspace-scoped API path, auto-discovering if needed
-   * (`require_scoped_path`, `api_client.py`).
+   * (`require_scoped_path`).
    *
    * @param domainPath - Domain-relative path.
    * @returns `/projects/{pid}/workspaces/{wid}/{domainPath}`.
@@ -474,7 +469,7 @@ export interface MixpanelClient
 
   /**
    * Create a new client for a different project, sharing the transport
-   * seams (`with_project`, `api_client.py`).
+   * seams (`with_project`).
    *
    * @param projectId - The project ID to target.
    * @param workspaceId - Optional workspace ID within the new project.
@@ -486,8 +481,7 @@ export interface MixpanelClient
   ) => MixpanelClient;
 
   /**
-   * Call `GET /api/app/me` (`me`, `api_client.py`). Not
-   * project-scoped.
+   * Call `GET /api/app/me` (`me`). Not project-scoped.
    *
    * @returns The raw `/me` payload (a non-mapping result is wrapped as
    *   `{results: ...}`).
@@ -495,8 +489,7 @@ export interface MixpanelClient
   me: () => Promise<Record<string, JsonValue>>;
 
   /**
-   * List public workspaces for the current project (`list_workspaces`,
-   * `api_client.py`).
+   * List public workspaces for the current project (`list_workspaces`).
    *
    * @returns Validated {@link PublicWorkspace} models.
    * @throws ResponseValidationError - A workspace entry fails model
@@ -506,26 +499,34 @@ export interface MixpanelClient
   listWorkspaces: () => Promise<PublicWorkspace[]>;
 
   /**
-   * @internal Force pool-token creation (`_ensure_client` /
-   * `__enter__`); Layer-3 lifecycle tests peek via
-   * {@link isHttpOpen}/{@link httpHandle}.
+   * Force pool-token creation (`_ensure_client` / `__enter__`); the
+   * lifecycle tests peek via {@link isHttpOpen}/{@link httpHandle}.
+   *
+   * @internal
    */
   ensureHttpOpen: () => void;
 
-  /** @internal @returns Whether the pool token exists (`_client is not None`). */
+  /**
+   * Whether the pool token exists (`_client is not None`).
+   *
+   * @returns `true` while the handle is open.
+   * @internal
+   */
   isHttpOpen: () => boolean;
 
   /**
-   * @internal The pool token, lazily created (`_http` property — the
-   * R6.2 identity the transport-preservation tests compare).
+   * The pool token, lazily created (`_http` property — the identity the
+   * transport-preservation tests compare).
+   *
    * @returns The handle.
+   * @internal
    */
   httpHandle: () => HttpHandle;
 
   /** Close the HTTP client and release resources (`close`). */
   close: () => Promise<void>;
 
-  /** R6.2: `async with` ports as `await using` / explicit `close()`. */
+  /** `async with` ports as `await using` / explicit `close()`. */
   [Symbol.asyncDispose]: () => Promise<void>;
 }
 
@@ -538,8 +539,7 @@ function defaultSleep(ms: number): Promise<void> {
 
 /**
  * Wrap the injected sleep so a per-call signal can cancel a backoff
- * wait (R6.7 point 3: "into the backoff sleep"), rejecting with a
- * normalized `AbortError` DOMException.
+ * wait, rejecting with a normalized `AbortError` DOMException.
  *
  * @param sleep - The injected base sleep.
  * @param signal - The per-call signal (absent → base sleep unchanged).
@@ -592,7 +592,7 @@ interface ClientConfig {
   readonly logger: RetryLogger | undefined;
   readonly getCustomHeaderEnv: CustomHeaderEnvSource;
   /**
-   * PR #235: the override SOURCE is kept (not its value) so a provider is
+   * Python PR #235: the override source is kept (not its value) so a provider is
    * consulted on every request — Python's `_endpoints_for` reads
    * `os.environ` per call, never at construction. `withProject` hands
    * the same source to the derived client.
@@ -646,14 +646,14 @@ function ensureHttp(ctx: ClientContext): HttpHandle {
 }
 
 // `_default_timeout`: explicit constructor
-// timeout wins; else route-aware, reading the CURRENT session's region
+// timeout wins; else route-aware, reading the current session's region
 // (an account swap via `use()` re-routes, exactly like Python's
 // `self._session.account.region` read).
 function defaultTimeoutSeconds(ctx: ClientContext, url: string): number {
   if (ctx.config.timeoutSeconds !== null) {
     return ctx.config.timeoutSeconds;
   }
-  // Family classification (longest prefix, PR #235) replaces the old
+  // Family classification (longest prefix, Python PR #235) replaces the old
   // `startswith(app)` check so App routes on an override host — even a
   // split `appBaseUrl` nested under the query prefix — keep the App
   // timeout.
@@ -670,7 +670,7 @@ async function getAuthHeader(ctx: ClientContext): Promise<string> {
     return ctx.state.cachedBasicHeader;
   }
   // OAuth variants re-resolve per call so a refreshed bearer surfaces
-  // without rebuilding the client (`api_client.py`).
+  // without rebuilding the client.
   return accountAuthHeader(account, {
     tokenResolver: ctx.config.tokenResolver,
   });
@@ -719,8 +719,8 @@ function appDeps(ctx: ClientContext, signal?: AbortSignal): AppRequestDeps {
     requestHeaders: bindFirst(ctx, coreRequestHeaders),
     projectId: ctx.state.session.project.id,
     region: ctx.state.session.account.region,
-    // Snapshot of the provider's CURRENT value — `appDeps()` is built per
-    // call, so this is still a per-request read (PR #235).
+    // Snapshot of the provider's current value — `appDeps()` is built per
+    // call, so this is still a per-request read (Python PR #235).
     endpointOverrides: ctx.config.getEndpointOverrides(),
     getAuthHeader: bindFirst(ctx, getAuthHeader),
     logger: ctx.config.logger,
@@ -737,13 +737,13 @@ async function requestQueryHost(
   if (callOptions.injectProjectId !== false) {
     params["project_id"] = ctx.state.session.project.id;
   }
-  // `_WORKSPACE_SCOPED_FAMILIES` (PR #235): query + engage, classified
+  // `_WORKSPACE_SCOPED_FAMILIES` (Python PR #235): query + engage, classified
   // by longest prefix — identical to the old `startswith(query)` on the
   // live table (engage sits under the query prefix) and correct under
   // split overrides.
   const family = apiFamilyFor(url, currentEndpoints(ctx));
-  // Explicit-only pin injection (`api_client.py`): a
-  // caller-supplied workspace_id always wins (setdefault), and no
+  // Explicit-only pin injection: a caller-supplied workspace_id always
+  // wins (setdefault), and no
   // pin means nothing is injected — never an auto-resolution.
   if (
     callOptions.injectWorkspaceId !== false &&
@@ -853,7 +853,7 @@ async function resolveWorkspaceFromMetadata(
   } catch (error) {
     // 403/404 = index genuinely unavailable for this credential — a
     // clean "this source can't answer". Auth / rate-limit / server /
-    // network errors propagate (`api_client.py`).
+    // network errors propagate.
     if (
       error instanceof QueryError &&
       FALLBACK_HTTP_STATUSES.has(error.statusCode)
@@ -906,7 +906,7 @@ async function resolveWorkspaceId(ctx: ClientContext): Promise<number> {
     publicWorkspaces = await listWorkspaces(ctx);
   } catch (error) {
     // A 403/404 means this credential can't read /workspaces/public —
-    // fall through to the metadata index (`api_client.py`).
+    // fall through to the metadata index.
     if (
       error instanceof QueryError &&
       FALLBACK_HTTP_STATUSES.has(error.statusCode)
@@ -982,17 +982,15 @@ async function use(
     typeof workspaceInput === "number"
       ? { id: workspaceInput }
       : workspaceInput;
-  // The workspace axis is ALWAYS passed to replace: a zero-axis use()
-  // clears `session.workspace` (`api_client.py` +
-  // `Session.replace` sentinel semantics).
+  // The workspace axis is always passed to replace: a zero-axis use()
+  // clears `session.workspace` (`Session.replace` sentinel semantics).
   const newSession = sessionReplace(state.session, {
     account,
     project: projectObj,
     workspace: workspaceObj,
   });
-  // Atomic-on-success (`api_client.py`): probe the new
-  // account's header BEFORE swapping anything. A failing probe leaves
-  // the prior session/header intact.
+  // Atomic on success: probe the new account's header before swapping
+  // anything. A failing probe leaves the prior session/header intact.
   let newCachedBasic: string | null;
   if (newSession.account.type === "service_account") {
     newCachedBasic = await accountAuthHeader(newSession.account, {});
@@ -1008,7 +1006,7 @@ async function use(
     state.resolvedWorkspace = newSession.workspace ?? null;
     state.cachedWorkspaceId = null;
   }
-  // Unconditional pin sync (`api_client.py`): without it,
+  // Unconditional pin sync: without it,
   // maybeScopedPath keeps emitting /workspaces/<old>/… and the
   // query-host injection keeps sending a stale workspace_id.
   state.workspaceId = newSession.workspace?.id ?? null;
@@ -1018,9 +1016,8 @@ async function use(
   }
 }
 
-// `require_scoped_path`: shared by the public
-// client member AND the C4 flag factory (feature flags are the
-// require-scoped domain).
+// `require_scoped_path`: shared by the public client member and the
+// feature-flag factory (feature flags are the require-scoped domain).
 async function requireScopedPath(
   ctx: ClientContext,
   domainPath: string,
@@ -1036,7 +1033,7 @@ async function request(
   requestOptions: ClientRequestOptions = {},
 ): Promise<JsonValue> {
   // Python builds {Authorization} then update(headers) — caller
-  // extras win on collision (`api_client.py`).
+  // extras win on collision.
   const headers: Record<string, string> = {
     Authorization: await getAuthHeader(ctx),
     ...requestOptions.headers,
@@ -1071,9 +1068,8 @@ function withProject(
   newWorkspaceId: number | null = null,
 ): MixpanelClient {
   const { config, state } = ctx;
-  // TRUTHY workspace check for the session axis, `is not None` for
-  // the pin — exactly Python's two different guards
-  // (`api_client.py`; watchlist §8 item 6).
+  // Truthy workspace check for the session axis, `is not None` for
+  // the pin — exactly Python's two different guards.
   const newSession = sessionReplace(state.session, {
     project: { id: projectId },
     workspace: newWorkspaceId ? { id: newWorkspaceId } : null,
@@ -1107,7 +1103,7 @@ async function me(ctx: ClientContext): Promise<Record<string, JsonValue>> {
 }
 
 /**
- * Assemble a Mixpanel API client (the R2.9 factory).
+ * Assemble a Mixpanel API client.
  *
  * @param options - Session + seams (see {@link MixpanelClientOptions}).
  * @returns The assembled client.
@@ -1153,8 +1149,7 @@ export function createMixpanelClient(
   const core = buildClientCore(ctx);
 
   const client: MixpanelClient = {
-    // === B4 domain-method merge point (append-only; one spread line
-    // per shard — C2..C5; shards touch disjoint lines here). ===
+    // --- Domain-method factories ---
     ...createQueryHostMethods(core, {
       resolveWorkspaceId: bindFirst(ctx, resolveWorkspaceId),
     }),

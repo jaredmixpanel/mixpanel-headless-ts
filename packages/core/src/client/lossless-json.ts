@@ -1,20 +1,12 @@
 /**
- * Strict, lossless JSON parser (D6 rule 3 / D12 hard requirement).
- *
- * Identical grammar to RFC 8259 `JSON.parse`, except every number is
- * captured as a {@link JsonNumber} wrapping its verbatim source token so
- * that `18` vs `18.0` and integers above 2^53 survive loading. Duplicate
- * object keys follow last-wins semantics, matching both `JSON.parse` and
- * Python `json.loads`.
- *
- * Python's `json.loads` additionally accepts the three non-finite
- * constants `NaN` / `Infinity` / `-Infinity` (exact case, `-` only on
- * `Infinity`). The wire body-parse sites (`parseBody`, the
- * `_handle_response` tail, the 422 branch) opt into that grammar via
- * {@link ParseLosslessOptions.pythonConstants} — arbiter fix F1,
- * `docs/history/phase3/design/b0-review-resolution.md`. The DEFAULT stays
- * strict so vector/selftest JSON keeps D6 rule 5 enforcement (non-finite
- * tokens are barred from vector files).
+ * Strict, lossless JSON parser: the RFC 8259 `JSON.parse` grammar, except
+ * every number is captured as a {@link JsonNumber} wrapping its verbatim
+ * source token so `18` vs `18.0` and integers above 2^53 survive loading.
+ * Duplicate keys are last-wins, as in `JSON.parse` and `json.loads`. The
+ * wire body-parse sites opt into `json.loads`' non-finite constants
+ * (`NaN` / `Infinity` / `-Infinity`, exact case, `-` only on `Infinity`)
+ * via {@link ParseLosslessOptions.pythonConstants}; the default stays
+ * strict so vector JSON, where such tokens are barred, is rejected.
  */
 
 import { setOwn } from "../compat/python-dict.js";
@@ -51,7 +43,7 @@ export interface ParseLosslessOptions {
   /**
    * Accept the `json.loads` non-finite constants `NaN` / `Infinity` /
    * `-Infinity` (exact case only, probed against CPython 3.14), parsed
-   * as NATIVE non-finite `number` values — exactly the `float('nan')` /
+   * as native non-finite `number` values — exactly the `float('nan')` /
    * `float('inf')` Python produces (no raw-token precision concern
    * exists for non-finite values). Default `false` (strict RFC 8259).
    */
@@ -165,7 +157,7 @@ class Parser {
         this.expectLiteral("null");
         return null;
       }
-      // json.loads non-finite constants (arbiter fix F1) — exact case,
+      // json.loads non-finite constants — exact case,
       // sign only on Infinity, exactly CPython's scanner constants.
       case "N": {
         if (this.pythonConstants) {
@@ -214,11 +206,10 @@ class Parser {
   /**
    * Parse a JSON object at the current position.
    *
-   * Duplicate keys: last value wins at the FIRST occurrence's position
+   * Duplicate keys: last value wins at the first occurrence's position
    * — the Python `dict` update rule `json.loads` follows.
    *
-   * Ordered-entries capability (B8-MAPFIX, user ratification
-   * `user-ratifications.md:14-22`): JS plain objects enumerate
+   * Ordered-entries capability: JS plain objects enumerate
    * integer-like keys ascending regardless of source order, so when
    * the source order cannot be represented by the built object, the
    * parser attaches the `LOSSLESS_KEY_ORDER` sidecar (read back via
