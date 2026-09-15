@@ -1,3 +1,5 @@
+// Shared fixtures for the query-param guard suites: the legal guard-code
+// domain and the exact `{class, code}` guard assertion. TS-only test support.
 import { expect } from "vitest";
 
 import {
@@ -6,7 +8,7 @@ import {
   type MixpanelHeadlessError,
 } from "../../../src/errors.js";
 
-/** Every code a P2-5a guard may legally raise (C9 property #4 domain). */
+/** Every code a query-param guard may legally raise (the guard-totality domain). */
 export const LEGAL_CODES: ReadonlySet<string> = new Set([
   ...CODED_GUARD_REGISTRY,
   ...CODED_GUARD_TWIN_CODES,

@@ -1,19 +1,8 @@
-// NEW Layer-3 lock for the user-ratified org-ordering fix
-// (`docs/history/phase3/design/user-ratifications.md:14-22`, 2026-08-16;
-// executed as the early-B8 task B8-MAPFIX per `b8-packets.md` §0.3.1 /
-// §2.3): `MeResponse` container maps parse into an insertion-order-
-// preserving `ReadonlyMap` sourced from the lossless JSON layer, so
-// `defaultAccountName`'s first-org pick matches Python dict insertion
-// order EXACTLY — including when `/me` emits organizations out of
-// ascending-id order. Supersedes the B7-ARB-A R2 exclusion
-// (`b7-reviewA-resolution.md`; playbook Discrepancy #13).
-//
-// Python twins asserted against (behavior arbiter): `json.loads`
-// preserves object key order; `MeResponse.organizations` is a
-// `dict[str, MeOrgInfo]` (insertion-ordered); `default_account_name`
-// picks `next(iter(me.organizations.items()))`;
-// `resolve_workspace` iterates `me.workspaces.values()` in insertion
-// order (`me.py`).
+// Insertion-order guarantee of the `MeResponse` container maps: the wire
+// path parses organizations/workspaces into an order-preserving
+// `ReadonlyMap`, so `defaultAccountName`'s first-org pick and
+// `MeService.resolveWorkspace`'s tie-break match Python dict order even
+// when `/me` lists ids out of ascending order. TS additions; no Python twin.
 
 import { describe, expect, it } from "vitest";
 
@@ -30,8 +19,8 @@ import {
 /**
  * Build a MeResponse through the REAL wire path: lossless parse of the
  * body text (key order captured at the parser), `toNativeJson`
- * normalization, then `MeResponse.fromDict` — exactly the
- * `services/me.ts:283` / `accounts-ops.ts:155` construction.
+ * normalization, then `MeResponse.fromDict` — the same construction
+ * `services/me.ts` and `accounts-ops.ts` perform.
  *
  * @param body - The raw `/me` JSON body text.
  * @returns The parsed response.
@@ -40,7 +29,7 @@ function meFromWireText(body: string): MeResponse {
   return MeResponse.fromDict(toNativeJson(parseLossless(body)));
 }
 
-describe("org-ordering ratification lock (user-ratifications.md:14-22)", () => {
+describe("MeResponse container order follows the wire", () => {
   it("wire path: out-of-ascending org ids pick the FIRST-LISTED org", () => {
     // Python: json.loads preserves ["200", "100"]; first pick is 200.
     const me = meFromWireText(
@@ -87,7 +76,7 @@ describe("org-ordering ratification lock (user-ratifications.md:14-22)", () => {
   it("Map-input construction preserves caller order", () => {
     // A TS caller who NEEDS out-of-ascending order passes a Map — the
     // one JS container that can hold integer-like keys in insertion
-    // order (R4.8 ReadonlyMap).
+    // order.
     const me = new MeResponse({
       organizations: new Map([
         ["200", new MeOrgInfo({ id: 200, name: "Beta Systems" })],

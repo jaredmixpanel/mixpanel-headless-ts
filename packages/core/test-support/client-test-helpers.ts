@@ -1,9 +1,8 @@
-// Shared helpers for the B4-C1 client Layer-3 translations: the
-// `tests/conftest.py::make_session` mirror, a static token resolver
-// (the OnDiskTokenResolver inline-token arm the Python tests exercise
-// implicitly), and an httpx.MockTransport analog over the R2.4 injected
-// fetch (entry-point substitution per B0-notes decision 13 — handlers
-// receive the captured request view and return canned responses).
+// Shared helpers for the client test suites: the `tests/conftest.py`
+// `make_session` mirror, a static token resolver (OnDiskTokenResolver's
+// inline-token arm), and an httpx.MockTransport analog over the injected
+// fetch — handlers receive the captured request view and return canned
+// responses.
 
 import type {
   Account,
@@ -33,7 +32,7 @@ export interface MakeSessionOptions {
 }
 
 /**
- * Build a Session for tests with sensible defaults (conftest.py:65-125).
+ * Build a Session for tests with sensible defaults (`conftest.py`).
  *
  * @param options - Overrides.
  * @returns A Session usable for `createMixpanelClient({session})`.
@@ -178,8 +177,8 @@ export function fakeTransport(handler: CannedHandler): FakeTransport {
 /**
  * Create a client with a mock transport (create_mock_client analog).
  * Zero-delay sleep and zero RNG keep retry tests instant and
- * deterministic (B0 deviation 5: `_calculate_backoff` monkeypatch pins
- * translate to injected-RNG-deterministic values).
+ * deterministic (the `_calculate_backoff` monkeypatch pins become
+ * injected-RNG-deterministic values).
  *
  * @param session - The session to bind.
  * @param handler - The canned-response handler.

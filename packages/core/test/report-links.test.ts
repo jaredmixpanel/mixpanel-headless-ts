@@ -1,26 +1,8 @@
-// Unit tests for the pure report-link module (045-report-links), translated
-// from tests/unit/test_report_links.py: one parametrized case per row of
-// contracts/url-grammar.md §5 (parse table) and §6 (builders), plus
-// `is_slug`, `web_host`, and `generate_slug`.
-//
-// Translation notes (documented exclusions, NOT weakened assertions):
-// - Message-TEXT assertions (`str(exc) == ...`) are deliberately not
-//   carried: error message text is out of contract (R5.4). Class, `code`,
-//   and `details` — everything the conformance canonicalizer compares —
-//   are asserted for every row.
-// - `ParsedReportLink` is a frozen plain object, so `test_frozen` asserts
-//   `Object.isFrozen` + the strict-mode `TypeError` on assignment instead
-//   of Python's `AttributeError`.
-// - `MappingProxyType` read-only tables are `ReadonlyMap`s here:
-//   `test_tables_are_read_only` asserts the type has no `set` member and
-//   the runtime value is a `Map` (the key-set/Literal agreement lives in
-//   the two `TestTableInvariants` siblings).
-// - Python `str.strip()` on the parse-table inputs is `String#trim()`
-//   (every whitespace decoration in the table is ASCII).
-// - A `compat/urllib` block is appended at the end: the parser observes
-//   the RAW CPython `urlsplit` (lower-cased host, port stripped, everything
-//   else verbatim) and `resolve_short_link` echoes `urljoin` targets, so
-//   the twins are pinned here alongside the parser they serve.
+// The pure report-link module minus the parser: constants, `webHost`,
+// `isSlug`, `generateSlug`, the url-grammar builders and table invariants,
+// translated from `tests/unit/test_report_links.py` (parse rows live in
+// `report-links-parse.test.ts`). Message text is out of contract, so builder
+// rows assert `code` + `details`; `MappingProxyType` tables are ReadonlyMaps.
 
 import { describe, expect, it } from "vitest";
 
@@ -77,7 +59,7 @@ describe("Constants", () => {
     }
   });
 
-  it("tables", () => {
+  it("the four lookup tables", () => {
     // python: test_tables
     expect(Object.fromEntries(WEB_HOSTS)).toStrictEqual({
       us: "mixpanel.com",
@@ -113,7 +95,7 @@ describe("Web host", () => {
     ["us", "mixpanel.com"],
     ["eu", "eu.mixpanel.com"],
     ["in", "in.mixpanel.com"],
-  ])("known regions[%s]", (region, host) => {
+  ])("region %s maps to %s", (region, host) => {
     // python: test_known_regions
     expect(webHost(region)).toBe(host);
   });
@@ -134,7 +116,7 @@ describe("Is slug", () => {
     "000000000000",
     "ab_-CD12efGH",
     "____________",
-  ])("positive[%s]", (value) => {
+  ])("%s is a slug", (value) => {
     // python: test_positive
     expect(isSlug(value)).toBe(true);
   });
@@ -149,7 +131,7 @@ describe("Is slug", () => {
     "EBrV5bW2u9Mw\n",
     "report/12345",
     "ÉBrV5bW2u9Mw",
-  ])("negative[%j]", (value) => {
+  ])("%j is not a slug", (value) => {
     // python: test_negative
     expect(isSlug(value)).toBe(false);
   });
@@ -197,7 +179,7 @@ describe("Generate slug", () => {
 
 describe("Builders", () => {
   // python: TestBuilders
-  it("slug us with workspace", () => {
+  it("slug URL: us with workspace", () => {
     // python: test_slug_us_with_workspace
     expect(
       buildSlugUrl({
@@ -210,7 +192,7 @@ describe("Builders", () => {
     ).toBe(`https://mixpanel.com/project/3/view/75/app/insights#${SLUG}`);
   });
 
-  it("slug EU funnels uses insights app", () => {
+  it("slug URL: eu funnels uses the insights app", () => {
     // python: test_slug_eu_funnels_uses_insights_app
     expect(
       buildSlugUrl({
@@ -222,7 +204,7 @@ describe("Builders", () => {
     ).toBe(`https://eu.mixpanel.com/project/3/app/insights#${SLUG}`);
   });
 
-  it("slug in flows", () => {
+  it("slug URL: in flows", () => {
     // python: test_slug_in_flows
     expect(
       buildSlugUrl({
@@ -234,7 +216,7 @@ describe("Builders", () => {
     ).toBe(`https://in.mixpanel.com/project/3/app/flows#${SLUG}`);
   });
 
-  it("slug retention uses insights app", () => {
+  it("slug URL: retention uses the insights app", () => {
     // python: test_slug_retention_uses_insights_app
     expect(
       buildSlugUrl({
@@ -246,7 +228,7 @@ describe("Builders", () => {
     ).toBe(`https://mixpanel.com/project/3/app/insights#${SLUG}`);
   });
 
-  it("bookmark insights", () => {
+  it("bookmark URL: insights", () => {
     // python: test_bookmark_insights
     expect(
       buildBookmarkUrl({
@@ -258,7 +240,7 @@ describe("Builders", () => {
     ).toBe("https://mixpanel.com/project/3/app/insights#report/123");
   });
 
-  it("bookmark funnels with workspace", () => {
+  it("bookmark URL: funnels with workspace", () => {
     // python: test_bookmark_funnels_with_workspace
     expect(
       buildBookmarkUrl({
@@ -275,7 +257,7 @@ describe("Builders", () => {
     ["retention", "retention#report/123"],
     ["flows", "flows#report/123"],
     ["launch-analysis", "impact#report/123"],
-  ])("bookmark other types[%s]", (reportType, tail) => {
+  ])("bookmark URL: %s", (reportType, tail) => {
     // python: test_bookmark_other_types
     expect(
       buildBookmarkUrl({
@@ -339,43 +321,49 @@ describe("Builders", () => {
     [{ project_id: -3 }, "project_id", -3],
     [{ workspace_id: 0 }, "workspace_id", 0],
     [{ workspace_id: -1 }, "workspace_id", -1],
-  ])("slug non positive ID raises RL6[%j]", (kwargs, field, value) => {
-    // python: test_slug_non_positive_id_raises_rl6
-    const exc = catchParamError(() =>
-      buildSlugUrl({
-        region: "us",
-        project_id: 3,
-        slug: SLUG,
-        report_type: "insights",
-        ...kwargs,
-      }),
-    );
-    expect(exc.code).toBe("RL6_INVALID_ID");
-    expect(exc.details).toStrictEqual({ field, value });
-  });
+  ])(
+    "slug builder rejects non-positive %j with RL6",
+    (kwargs, field, value) => {
+      // python: test_slug_non_positive_id_raises_rl6
+      const exc = catchParamError(() =>
+        buildSlugUrl({
+          region: "us",
+          project_id: 3,
+          slug: SLUG,
+          report_type: "insights",
+          ...kwargs,
+        }),
+      );
+      expect(exc.code).toBe("RL6_INVALID_ID");
+      expect(exc.details).toStrictEqual({ field, value });
+    },
+  );
 
   it.each([
     [{ project_id: 0 }, "project_id", 0],
     [{ workspace_id: -1 }, "workspace_id", -1],
     [{ bookmark_id: 0 }, "bookmark_id", 0],
     [{ bookmark_id: -1 }, "bookmark_id", -1],
-  ])("bookmark non positive ID raises RL6[%j]", (kwargs, field, value) => {
-    // python: test_bookmark_non_positive_id_raises_rl6
-    const exc = catchParamError(() =>
-      buildBookmarkUrl({
-        region: "us",
-        project_id: 3,
-        bookmark_id: 123,
-        report_type: "insights",
-        ...kwargs,
-      }),
-    );
-    expect(exc.code).toBe("RL6_INVALID_ID");
-    expect(exc.details).toStrictEqual({ field, value });
-  });
+  ])(
+    "bookmark builder rejects non-positive %j with RL6",
+    (kwargs, field, value) => {
+      // python: test_bookmark_non_positive_id_raises_rl6
+      const exc = catchParamError(() =>
+        buildBookmarkUrl({
+          region: "us",
+          project_id: 3,
+          bookmark_id: 123,
+          report_type: "insights",
+          ...kwargs,
+        }),
+      );
+      expect(exc.code).toBe("RL6_INVALID_ID");
+      expect(exc.details).toStrictEqual({ field, value });
+    },
+  );
 
   it.each(["slug", "bookmark"])(
-    "unknown region raises RL3[%s]", // python: test_unknown_region_raises_rl3
+    "%s builder rejects an unknown region with RL3", // python: test_unknown_region_raises_rl3
     (builder) => {
       const exc = catchParamError(() =>
         builder === "slug"
@@ -418,7 +406,7 @@ describe("Table invariants", () => {
     ["BOOKMARK_HASH_FOR_TYPE", BOOKMARK_HASH_FOR_TYPE],
     ["APP_TO_REPORT_TYPE", APP_TO_REPORT_TYPE],
     ["WEB_HOSTS", WEB_HOSTS],
-  ])("tables are read only[%s]", (_name, table) => {
+  ])("%s is read-only", (_name, table) => {
     // python: test_tables_are_read_only
     // `MappingProxyType` → `ReadonlyMap`: the exported type exposes no
     // mutator (a compile-time fact, pinned here as a type-level assertion)

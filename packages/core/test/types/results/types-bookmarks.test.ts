@@ -1,12 +1,8 @@
-// Translated result-class tests (packet P2-6): assertion-for-assertion
-// port of tests/unit/test_types_bookmarks.py — the
-// SavedReportResult / FlowsResult per-class row specs (phase2-design
-// C6) and BookmarkInfo's conditional to_dict.
-//
-// Same translation notes as types.test.ts: `.df` -> `toRows()`/
-// `rowColumns()`; identity-caching tests -> repeated-call determinism;
-// frozen-dataclass suites not ported (compile-time `readonly`);
-// `TestTypeAliases` is P2-3 surface (locked by the C8d alias tests).
+// SavedReportResult, FlowsResult and BookmarkInfo: construction,
+// report_type detection, the df projection as row arrays and conditional
+// to_dict. Mirrors tests/unit/test_types_bookmarks.py; `.df` → toRows() /
+// rowColumns(), identity caching → repeated-call determinism, frozen
+// suites not carried; TestTypeAliases is locked by the literal alias tests.
 import { describe, expect, it } from "vitest";
 
 import type { BookmarkType } from "../../../src/types/literals.js";
@@ -117,8 +113,8 @@ describe("SavedReportResult", () => {
     expect(result.rowColumns()).toStrictEqual(["date", "event", "count"]);
   });
 
-  it("non-insights branch returns ONE row whose series cell is the nested dict (C6 per-class row spec)", () => {
-    // The design's F3 respec: the non-insights branch is
+  it("non-insights branch returns ONE row whose series cell is the nested dict", () => {
+    // Python's non-insights branch is
     // `pd.DataFrame([{"series": self.series}])`.
     const series = { cohorts: [1, 2, 3] };
     const result = new SavedReportResult({
@@ -217,8 +213,7 @@ describe("FlowsResult", () => {
       overall_conversion_rate: 0.0,
     });
     expect(result.toRows()).toHaveLength(0);
-    // The Python empty case is a bare pd.DataFrame() — NO column list
-    // (phase2-design C6 per-class row spec).
+    // The Python empty case is a bare pd.DataFrame() — NO column list.
     expect(result.rowColumns()).toStrictEqual([]);
   });
 

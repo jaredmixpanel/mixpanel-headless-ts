@@ -1,15 +1,8 @@
-// Layer-3 translation of `tests/pbt/test_naming_pbt.py` (154 lines, 8
-// Hypothesis properties) — B7-A1 packet §3.4 (`b7-packets.md`).
-//
-// Strategy shapes preserved: org names from letters/digits/punctuation/
-// separators up to U+017F (Latin Extended-A), 0..80 chars; org ids
-// digit strings 1..10; existing sets over `[a-z0-9-]{1,64}`, ≤ 20.
-// Fuzz-domain note (packet Caution #12): the alphabet is
-// Latin-1/Latin-Extended by construction, matching the Python
-// strategy — full-Unicode NFKD skew is disclosed in the shard notes.
-// Mechanism substitution (R10.2, header-cited): Hypothesis
-// `st.characters(whitelist_categories=…)` becomes an explicit
-// codepoint filter over the same category set (L, N, P, Z).
+// Property tests for `slugify` / `defaultAccountName`, mirroring
+// `tests/pbt/test_naming_pbt.py` with the same strategy shapes (org names
+// over L/N/P/Z codepoints up to U+017F, 0..80 chars; 1..10-digit org ids;
+// existing sets over `[a-z0-9-]{1,64}`). Hypothesis's category whitelist
+// becomes an explicit codepoint filter; the alphabet stays Latin-range.
 
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
@@ -107,7 +100,7 @@ describe("naming PBT", () => {
     );
   });
 
-  it("default_account_name never returns a name in existing", () => {
+  it("defaultAccountName never returns a name in existing", () => {
     fc.assert(
       fc.property(meResponses, existingSets, (me, existing) => {
         expect(existing.has(defaultAccountName(me, existing))).toBe(false);
@@ -116,7 +109,7 @@ describe("naming PBT", () => {
     );
   });
 
-  it("default_account_name is deterministic", () => {
+  it("defaultAccountName is deterministic", () => {
     fc.assert(
       fc.property(meResponses, existingSets, (me, existing) => {
         expect(defaultAccountName(me, existing)).toBe(

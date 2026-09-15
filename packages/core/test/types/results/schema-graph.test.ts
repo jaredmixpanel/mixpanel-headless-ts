@@ -1,14 +1,8 @@
-// Translated SchemaGraphResult tests (packet P2-6):
-// assertion-for-assertion port of tests/unit/test_schema_graph.py
-// (TestSchemaGraphResult) — R10.2, per-frame suites for the
-// multi-DataFrame surface (phase2-design C6/F3).
-//
-// Not ported: the `to_graph()` assertions (networkx — TODO(port)
-// batch B5; the underlying adjacency IS asserted via
-// event_to_properties/property_to_events); the api_client/
-// DiscoveryService/Workspace/CLI layers of the same file (Phase-3
-// B4/B5/B6). Frame-identity caching translates to repeated-call
-// determinism.
+// SchemaGraphResult: the events / properties / relationships frames as row
+// arrays, convenience accessors, to_dict and drop-count meta. Mirrors
+// tests/unit/test_schema_graph.py (TestSchemaGraphResult); the to_graph()
+// cases live in test/services/schema-graph.test.ts and frame-identity
+// caching translates to repeated-call determinism.
 import { describe, expect, it } from "vitest";
 
 import { SchemaGraphResult } from "../../../src/types/results/discovery.js";

@@ -1,21 +1,8 @@
-// Translated funnel-transform tests (B5-S2, packet §3 + §8): the B3-K3
-// deferral (`B3-K3-notes.md:85-92`) — assertion-for-assertion port of
-// tests/test_transform_funnel.py, BOTH classes
-// (TestExtractFunnelStepsFromSeries :57, TestTransformFunnelResult
-// :338).
-//
-// Translation notes:
-// - `_extract_funnel_steps_from_series` / `_transform_funnel_result` are
-//   {@link extractFunnelStepsFromSeries} / {@link transformFunnelResult}
-//   in `services/live-query-transforms.ts` (R7.2 split). Both take the
-//   `warnings.warn` sink explicitly (R9.5) — the tests pass a collector.
-// - Python `assert result is steps` (IDENTITY) stays identity here
-//   (`toBe`): the pass-through branches must not copy.
-// - `pytest.warns(UserWarning, match="unrecognized format")` becomes an
-//   assertion on the collected sink messages.
-// - `exc_info.value.status_code` / `.response_body` / `.request_body`
-//   are the Phase-2 `statusCode` / `responseBody` / `requestBody`
-//   fields of `QueryError` (`errors.ts:837`).
+// extractFunnelStepsFromSeries / transformFunnelResult: series-shape
+// dispatch (list, steps, $overall, insights nested, trends) and the
+// FunnelQueryResult assembly with its QueryError paths. Mirrors
+// tests/test_transform_funnel.py (both classes) plus additive AttributeError
+// fidelity regressions. Python's `is` identity asserts stay `toBe`.
 
 import { describe, expect, it } from "vitest";
 
@@ -81,7 +68,7 @@ function warnCollector(): { warn: (m: string) => void; messages: string[] } {
 const noWarn = (): void => {};
 
 // ===========================================================================
-// TestExtractFunnelStepsFromSeries (T020b)
+// Extract funnel steps from series
 // ===========================================================================
 
 describe("Extract funnel steps from series", () => {
@@ -307,7 +294,7 @@ describe("Extract funnel steps from series", () => {
 });
 
 // ===========================================================================
-// TestTransformFunnelResult (T020)
+// Transform funnel result
 // ===========================================================================
 
 describe("Transform funnel result", () => {
@@ -526,12 +513,11 @@ describe("Transform funnel result", () => {
 });
 
 // ===========================================================================
-// R10.9 harness regressions (B5-S2): divergences the throwaway
-// differential harness found against the Python arbiter, fixed at the
-// owning layer (`throwaway/b5-s2/RUN.md`, divergence table rows T1/T2).
+// Additive: divergences the differential fuzz found against Python, fixed
+// at the owning layer.
 // ===========================================================================
 
-describe("R10.9: AttributeError fidelity on non-mapping members", () => {
+describe("AttributeError fidelity on non-mapping members", () => {
   it("transform_funnel with data=null raises AttributeError, not TypeError", () => {
     // Python: `raw.get("data", {})` yields `None`, and `None.items()`
     // raises `AttributeError`.

@@ -1,24 +1,8 @@
-// Property-based tests for the pure report-link module (045-report-links),
-// translated from tests/unit/test_report_links_pbt.py — fast-check twins of
-// the Hypothesis strategies covering the seven invariants in
-// contracts/url-grammar.md §7.
-//
-// Strategy mirroring notes (R10.2):
-// - `st.text()` → `fc.string({ unit: "binary" })` (full code-point domain,
-//   not ASCII-only — the B2 ASSERT-F1 precedent).
-// - `st.integers(min_value=1, max_value=10**9)` → `fc.integer({ min: 1,
-//   max: 1e9 })`; `st.none() | st.integers(...)` → `fc.oneof(fc.constant(
-//   null), ...)`; `st.integers(max_value=0)` → `fc.integer({ max: 0 })`
-//   (Python's unbounded negatives shrink to the same `<= 0` guard).
-// - `st.text(alphabet=_SERVER_ALPHABET, min_size=12, max_size=12)` → a
-//   12-element `fc.array(fc.constantFrom(...alphabet))` joined.
-// - `dataclasses.replace(got, raw=base.raw) == base` → object spread +
-//   `toEqual` (`ParsedReportLink` is a frozen plain object).
-// - Totality (§7.5): any exception thrown by the parser MUST be a
-//   `ReportLinkParseError`; the `try/catch` twins assert `instanceof`
-//   before returning, so a foreign throw fails the property.
-// - Hypothesis profile sizes come from `tests/conftest.py`; the default
-//   `max_examples=100` is fast-check's default `numRuns`, kept implicit.
+// Property tests for the pure report-link module, translated from
+// `tests/unit/test_report_links_pbt.py` (the url-grammar invariants).
+// `st.text()` → `fc.string({ unit: "binary" })` (full code-point domain);
+// `dataclasses.replace(got, raw=base.raw) == base` → spread + equality;
+// totality: any parser throw must be a `ReportLinkParseError`.
 
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
@@ -152,7 +136,7 @@ function catchParamError(fn: () => unknown): ParamValidationError {
 
 describe("Slug invariants", () => {
   // python: TestSlugInvariants
-  it("generate slug shape", () => {
+  it("generateSlug output has the slug shape", () => {
     // python: test_generate_slug_shape
     fc.assert(
       fc.property(fc.integer(), () => {
@@ -166,7 +150,7 @@ describe("Slug invariants", () => {
     );
   });
 
-  it("is slug matches server regex", () => {
+  it("isSlug matches the server regex", () => {
     // python: test_is_slug_matches_server_regex
     fc.assert(
       fc.property(anyText, (value) => {
@@ -255,7 +239,7 @@ describe("Round trips", () => {
 
 describe("Non positive IDs", () => {
   // python: TestNonPositiveIds
-  it("slug builder rejects non positive project", () => {
+  it("the slug builder rejects a non-positive project", () => {
     // python: test_slug_builder_rejects_non_positive_project
     fc.assert(
       fc.property(
@@ -278,7 +262,7 @@ describe("Non positive IDs", () => {
     );
   });
 
-  it("bookmark builder rejects non positive workspace", () => {
+  it("the bookmark builder rejects a non-positive workspace", () => {
     // python: test_bookmark_builder_rejects_non_positive_workspace
     fc.assert(
       fc.property(
@@ -303,7 +287,7 @@ describe("Non positive IDs", () => {
     );
   });
 
-  it("bookmark builder rejects non positive bookmark", () => {
+  it("the bookmark builder rejects a non-positive bookmark", () => {
     // python: test_bookmark_builder_rejects_non_positive_bookmark
     fc.assert(
       fc.property(
@@ -329,7 +313,7 @@ describe("Non positive IDs", () => {
 
 describe("Decoration invariance", () => {
   // python: TestDecorationInvariance
-  it("slug URL decorations", () => {
+  it("slug URL decorations parse identically", () => {
     // python: test_slug_url_decorations
     fc.assert(
       fc.property(
@@ -356,7 +340,7 @@ describe("Decoration invariance", () => {
     );
   });
 
-  it("bookmark URL decorations", () => {
+  it("bookmark URL decorations parse identically", () => {
     // python: test_bookmark_url_decorations
     fc.assert(
       fc.property(
@@ -418,7 +402,7 @@ function assertKindFields(parsed: ParsedReportLink): void {
 
 describe("Totality", () => {
   // python: TestTotality
-  it("any text", () => {
+  it("any text either parses or raises ReportLinkParseError", () => {
     // python: test_any_text
     fc.assert(
       fc.property(anyText, (value) => {
@@ -432,7 +416,7 @@ describe("Totality", () => {
     );
   });
 
-  it("mixpanel host with random path and hash", () => {
+  it("a Mixpanel host with random path and hash is total", () => {
     // python: test_mixpanel_host_with_random_path_and_hash
     fc.assert(
       fc.property(
@@ -485,7 +469,8 @@ describe("Totality", () => {
   });
 });
 
-describe("test_decorate_helper_changes_the_string", () => {
+describe("the decorate helper changes the string", () => {
+  // python: test_decorate_helper_changes_the_string
   it.each(VARIANTS)("%s", (variant) => {
     const url = "https://mixpanel.com/project/3/app/insights#EBrV5bW2u9Mw";
     expect(decorate(url, variant)).not.toBe(url);

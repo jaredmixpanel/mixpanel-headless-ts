@@ -1,13 +1,8 @@
-// Translated FlowTreeNode + tree-mode FlowQueryResult tests (packet
-// P2-6): assertion-for-assertion port of tests/test_types_flow_tree.py
-// (R10.2).
-//
-// Not ported: immutability tests (compile-time `readonly`);
-// TestFlowTreeNodeToAnytree and the `anytree` property assertions of
-// TestFlowQueryResultTreeMode (anytree — TODO(port) batch B5, see the
-// query-engine module doc); TestFlowTreeNodeExports (Python `__all__`
-// surface — the TS export is locked by the package barrel + P2-10
-// coverage map). Python tuple children translate to readonly arrays.
+// FlowTreeNode (construction, depth / counts / rates, all_paths, find,
+// flatten, to_dict, render) and tree-mode FlowQueryResult. Mirrors
+// tests/test_types_flow_tree.py; not carried: immutability tests, the
+// anytree suites (TestFlowTreeNodeToAnytree, anytree asserts of
+// TestFlowQueryResultTreeMode) and TestFlowTreeNodeExports. Tuples → arrays.
 import { describe, expect, it } from "vitest";
 
 import { FlowTreeNode } from "../../../src/types/results/flow-tree.js";

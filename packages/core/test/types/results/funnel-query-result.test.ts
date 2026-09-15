@@ -1,8 +1,8 @@
-// Translated FunnelQueryResult tests (packet P2-6):
-// assertion-for-assertion port of tests/test_types_funnel.py
-// (TestFunnelQueryResult) — R10.2. Same translation notes as
-// query-result.test.ts; frozen-immutability tests not ported
-// (compile-time `readonly`).
+// FunnelQueryResult: construction and defaults, overall_conversion_rate,
+// the df projection as row arrays and to_dict. Mirrors
+// tests/test_types_funnel.py (TestFunnelQueryResult); same translation
+// notes as query-result.test.ts; the frozen-immutability tests are not
+// carried (compile-time `readonly`).
 import { describe, expect, it } from "vitest";
 
 import { FunnelQueryResult } from "../../../src/types/results/query-engine.js";

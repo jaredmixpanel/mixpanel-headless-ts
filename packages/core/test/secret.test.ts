@@ -1,7 +1,8 @@
-// Secret wrapper tests including fast-check property #1 from
-// phase2-design C9: for arbitrary strings s, no stringification /
-// serialization / enumeration surface of `new Secret(s)` contains s,
-// and `reveal()` returns s exactly.
+// The `Secret` wrapper: for arbitrary strings s, no stringification /
+// serialization / enumeration surface of `new Secret(s)` contains s, and
+// `reveal()` returns s exactly. Mirrors Pydantic's SecretStr redaction
+// (ten asterisks); TS unit + property tests, no Python suite mirrored.
+
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -10,7 +11,7 @@ import { Secret } from "../src/secret.js";
 /** Pydantic's exact redaction literal (ten asterisks). */
 const MASK = "**********";
 
-/** The Node inspect hook symbol (registered via Symbol.for, R9.1). */
+/** The Node inspect hook symbol (registered via Symbol.for). */
 const INSPECT = Symbol.for("nodejs.util.inspect.custom");
 
 /**
@@ -60,14 +61,14 @@ describe("Secret", () => {
     expect({ ...(s as object) }).toStrictEqual({}); // deliberate: spreading a Secret leaks nothing
   });
 
-  it("property #1: Secret never leaks the wrapped value on any surface", () => {
+  it("property: Secret never leaks the wrapped value on any surface", () => {
     fc.assert(
       fc.property(fc.string(), (raw) => {
         const secret = new Secret(raw);
         expect(secret.reveal()).toBe(raw);
         // Substring checks on the PURE renders (no container syntax).
         // Containment is only meaningful when the raw value is not itself
-        // a substring of the mask (design C9 carve-out: s === mask; the
+        // a substring of the mask (carve-out: s === mask; the
         // empty string / single '*' are contained in every mask render).
         const renders =
           raw.length > 0 && !MASK.includes(raw) ? pureRenders(secret) : [];
@@ -89,7 +90,7 @@ describe("Secret", () => {
     );
   });
 
-  it("property #1 (JSON-escaped payloads): serialized bags never leak", () => {
+  it("property (JSON-escaped payloads): serialized bags never leak", () => {
     // Strings needing JSON escaping (quotes, backslashes, control chars)
     // must not appear even in escaped form: compare the PARSED bag value.
     fc.assert(

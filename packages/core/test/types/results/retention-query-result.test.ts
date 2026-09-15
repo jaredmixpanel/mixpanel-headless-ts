@@ -1,11 +1,8 @@
-// Translated RetentionQueryResult tests (packet P2-6):
-// assertion-for-assertion port of tests/test_types_retention.py
-// (TestRetentionQueryResultConstruction / DataFrame /
-// DataFrameSegmented / ToDict / Average) — R10.2. The RetentionEvent
-// suites of the same file were translated by P2-5c
-// (test/types/query-params/retention.test.ts); TestRetentionMathType
-// is P2-3 alias surface. Immutability suites not ported (compile-time
-// `readonly`).
+// RetentionQueryResult: construction defaults, the df projection (plain and
+// segmented) as row arrays, to_dict and average. Mirrors the
+// TestRetentionQueryResult* classes of tests/test_types_retention.py; the
+// RetentionEvent suites live in query-params/retention.test.ts and the
+// immutability suites are not carried (compile-time `readonly`).
 import { describe, expect, it } from "vitest";
 
 import {

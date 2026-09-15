@@ -1,3 +1,8 @@
+// Filter factories: the constructor's __post_init__ guards, scalar / date /
+// cohort factories and their operator-value-type mapping, listContains
+// guards and order, and the property-spec helper types. Mirrors the Filter
+// suites of tests/unit/test_query_types.py and the guard cases of
+// tests/unit/test_bookmark_builders.py; guard order follows Python source.
 import { describe, expect, it } from "vitest";
 
 import { ParamTypeError, ParamValidationError } from "../../../src/errors.js";
@@ -402,9 +407,9 @@ describe("property-spec helper types", () => {
     // Python twin (frozen dataclass): `PropertyInput()` raises
     // `TypeError: PropertyInput.__init__() missing 1 required
     // positional argument: 'name'` AT CONSTRUCTION. Pre-fix, an
-    // untyped JS caller (e.g. `{ property: "x" }` typo — QA
-    // 2026-08-17 finding #3) sailed through and crashed later, deep
-    // in `compat/python-strip.ts`, at first use. Class and timing now
+    // untyped JS caller (e.g. a `{ property: "x" }` typo) sailed through
+    // and crashed later, deep in `compat/python-strip.ts`, at first use.
+    // Class and timing now
     // match Python; tsc-typed callers are unaffected.
     expect(
       () => new PropertyInput(undefined as unknown as { name: string }),

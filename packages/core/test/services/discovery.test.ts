@@ -1,35 +1,8 @@
-// Translated DiscoveryService tests (B5-S1, packet §4): assertion-for-
-// assertion port of tests/unit/test_discovery.py — ALL 10
-// classes (TestDiscoveryService :62, TestListEvents :95,
-// TestListProperties :236, TestFindSimilarEvents :360,
-// TestListPropertyValues :465, TestClearCache :580, TestListFunnels
-// :661, TestListCohorts :759, TestListTopEvents :930,
-// TestListSubproperties :1080).
-//
-// Translation notes (applied consistently):
-// - `discovery_factory` -> `discoveryFactory` over the B4
-//   `createMockClient` httpx.MockTransport analog
-//   (`test-support/client-test-helpers.ts`); `success_handler` ->
-//   `successHandler`.
-// - Python's `_cache` dict -> the `cache` Map; `== {}` asserts
-//   become `.size === 0`.
-// - Handlers that `assert` on the captured request (`test_list_top_
-//   events_with_type_parameter`, `..._with_limit_parameter`) capture
-//   the params and assert AFTER the await: a throw inside the injected
-//   fetch would be normalized into a transport error by the B4 client
-//   and mask the assertion. Same assertion, same values.
-// - `warnings.catch_warnings(record=True)` -> the injected
-//   {@link WarningSink} collector; `simplefilter("error")` (a warning
-//   FAILS the test) -> a sink that throws.
-// - `test_mixed_warning_stacklevel_points_at_user_frame` has no
-//   TS analog: `warnings.warn(stacklevel=N)` attributes a warning to a
-//   caller frame, and the TS side channel is an injected sink with no
-//   frame attribution. The behaviour it pins (the mixed-type warning
-//   fires through the Workspace -> service -> inference chain) is
-//   asserted by `test_mixed_types_collapse_to_string_with_warning`
-//   here and by the sink-threading case in
-//   `test/workspace/discovery-facade.test.ts`.
-//   Recorded in `B5-S1-notes.md` §2.
+// DiscoveryService: event / property / funnel / cohort / top-event listing,
+// property values, cache behaviour, similar-event suggestions and
+// subproperty inference. Mirrors tests/unit/test_discovery.py (all classes).
+// Python's `warnings` becomes an injected WarningSink; the stacklevel case
+// (test_mixed_warning_stacklevel_points_at_user_frame) has no TS analog.
 
 import { describe, expect, it } from "vitest";
 
@@ -657,6 +630,8 @@ describe("List top events", () => {
   });
 
   it("passes the type parameter to the API", async () => {
+    // Asserted after the await: a throw inside the handler would be
+    // normalized into a transport error and mask the failure.
     let seenUrl = "";
     const discovery = discoveryFactory((request) => {
       seenUrl = request.url;

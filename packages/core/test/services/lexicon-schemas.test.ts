@@ -1,27 +1,8 @@
-// Translated Lexicon-schemas tests (B5-S1, packet §4): assertion-for-
-// assertion port of tests/unit/test_lexicon_schemas.py — ALL 13
-// classes: TestEndpointsApp :44, TestParseLexiconMetadata :68,
-// TestParseLexiconProperty :121, TestParseLexiconDefinition :157,
-// TestParseLexiconSchema :199, TestLexiconMetadata :241,
-// TestLexiconProperty :281, TestLexiconDefinition :307,
-// TestLexiconSchema :333, TestAPIClientGetSchemas :401,
-// TestAPIClientGetSchema :467, TestDiscoveryServiceListSchemas :533,
-// TestDiscoveryServiceGetSchema :644.
-//
-// The three client-direct classes translate HERE by packet assignment:
-// B4-C5's scope did not take this file (`b4-packets.md:862-870`) and
-// the app-endpoint rows are un-asserted in `client/url.test.ts`.
-//
-// Translation notes:
-// - `ENDPOINTS["us"]["app"]` -> the `ReadonlyMap` lookup.
-// - The four `test_frozen` cases (`:244`, `:284`, `:310`, `:336`) have
-//   no TS runtime analog — `readonly` is compile-time only. Same
-//   exclusion (and reason) as the Phase-2 result-class translation,
-//   `test/types/results/types.test.ts:12-13`.
-// - `to_dict()` -> `toJSON()`. Python's `LexiconProperty.to_dict`
-//   drops absent optionals, which the Phase-2 class already mirrors.
-// - `discovery_factory` -> the B4 `createMockClient` transport analog,
-//   as in `discovery.test.ts`.
+// Lexicon schemas: the app endpoints, the _parse_lexicon_* helpers, the
+// LexiconMetadata / Property / Definition / Schema `toJSON()` (Python
+// `to_dict`), the client's get_schemas / get_schema and DiscoveryService's
+// list_schemas / get_schema. Mirrors tests/unit/test_lexicon_schemas.py (all
+// classes); the `test_frozen` cases have no runtime analog (`readonly` only).
 
 import { describe, expect, it } from "vitest";
 

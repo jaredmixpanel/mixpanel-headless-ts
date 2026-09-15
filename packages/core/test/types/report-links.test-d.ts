@@ -1,10 +1,8 @@
 // Type-level twins of the `test_frozen` assertions in
-// tests/unit/test_types_report_links.py. Python raises on attribute
-// assignment; the TS contract is `readonly`, which only the compiler can
-// check, so these pins live here rather than behind `@ts-expect-error` in
-// the runtime file. `ReportLink` and `ResolvedReport` also freeze at runtime
-// (asserted in report-links.test.ts); `BookmarkUrl` does not — PORTING.md
-// "Runtime immutability" — so for it this file is the whole test.
+// tests/unit/test_types_report_links.py: Python raises on attribute
+// assignment; the TS contract is `readonly`, which only the compiler checks.
+// `ReportLink` / `ResolvedReport` also freeze at runtime (report-links.test.ts);
+// `BookmarkUrl` does not (PORTING.md "Runtime immutability") — this is its test.
 import { describe, expectTypeOf, it } from "vitest";
 
 import type { BookmarkUrl } from "../../src/types/entities/bookmarks.js";

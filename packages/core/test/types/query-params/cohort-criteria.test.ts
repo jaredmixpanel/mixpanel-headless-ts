@@ -1,3 +1,8 @@
+// CohortCriteria factories (didEvent / didNotDoEvent, hasProperty /
+// propertyIsSet / propertyIsNotSet, inCohort / notInCohort), their guard
+// codes and order, and aggregation serialization. Mirrors
+// tests/unit/test_cohort_definition.py (TestOperatorMaps and the
+// TestCohortCriteria* classes) and tests/test_types_cohort_behaviors.py.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -354,7 +359,7 @@ describe("CohortCriteria.didEvent guards (source order)", () => {
     );
   });
 
-  it("guard order (Risk #1): CD4 -> CA1 -> CD1 -> CD2 -> CD3 -> CD10 -> CD5/CD6", () => {
+  it("guard order: CD4 -> CA1 -> CD1 -> CD2 -> CD3 -> CD10 -> CD5/CD6", () => {
     // Empty event wins over everything else.
     expectGuard(() => CohortCriteria.didEvent("", {}), "CD4_EMPTY_EVENT");
     // Broken aggregation pair wins over the missing frequency param.
@@ -571,13 +576,13 @@ describe("CohortCriteria aggregation serialization", () => {
   });
 });
 
-describe("CohortCriteria.hasProperty unknown-operator parity (P2-9 gate finding)", () => {
+describe("CohortCriteria.hasProperty unknown-operator parity", () => {
   it("raises KeyError-by-name for operators outside the map", () => {
-    // Python: `_PROPERTY_OPERATOR_MAP[operator]` raises a bare KeyError
-    // (uncoded, R5.5); the pre-fix port silently constructed with an
-    // `undefined` selector operator — a real cross-language divergence
-    // found by the P2-9 differential gate. Class NAME is the comparison
-    // key (oracle-protocol.md §4.1 bare-class encoding).
+    // Python: `_PROPERTY_OPERATOR_MAP[operator]` raises a bare, uncoded
+    // KeyError; the pre-fix port silently constructed with an `undefined`
+    // selector operator — a divergence found by the differential gate.
+    // Class NAME is the comparison key (oracle-protocol.md §4.1 bare-class
+    // encoding).
     let thrown: unknown;
     try {
       CohortCriteria.hasProperty("plan", "premium", {
@@ -592,7 +597,7 @@ describe("CohortCriteria.hasProperty unknown-operator parity (P2-9 gate finding)
   });
 
   it("fires AFTER the CD7 empty-property guard (Python check order)", () => {
-    // types.py ~8952: CD7 raises first; the map lookup comes second.
+    // In Python CD7 raises first; the map lookup comes second.
     let thrown: unknown;
     try {
       CohortCriteria.hasProperty("", "premium", { operator: "junk" as never });

@@ -1,8 +1,9 @@
-// fast-check property #2 (phase2-design C9): Account-union
-// exhaustiveness. For arbitrary VALID variant payloads, `parseAccount`
-// narrows to exactly one `type` and the canonical switch handles it —
-// the property instruments a visited-arm set and asserts the `never`
-// default arm is unreachable.
+// Property test: Account-union exhaustiveness. For arbitrary VALID variant
+// payloads, `parseAccount` narrows to exactly one `type` and the canonical
+// switch handles it — the property instruments a visited-arm set and
+// asserts the `never` default arm is unreachable. TS addition; no Python
+// twin.
+
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -48,7 +49,7 @@ const baseArb = fc.record({
 
 /**
  * Drop `undefined`-valued keys so "absent" really means absent (the
- * parse factories distinguish absent from explicit null, R3.9).
+ * parse factories distinguish absent from explicit null).
  *
  * @param record - A candidate payload with possible undefined values.
  * @returns The same payload without the undefined-valued keys.
@@ -80,7 +81,7 @@ const validPayloadArb = fc.oneof(
     ),
 );
 
-describe("fast-check #2 — Account union exhaustiveness", () => {
+describe("Account union exhaustiveness", () => {
   it("parseAccount narrows every valid payload to exactly one arm", () => {
     fc.assert(
       fc.property(validPayloadArb, (payload) => {

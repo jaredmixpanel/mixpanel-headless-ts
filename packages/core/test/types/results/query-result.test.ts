@@ -1,15 +1,8 @@
-// Translated QueryResult tests (packet P2-6): assertion-for-assertion
-// port of tests/unit/test_query_types.py (TestQueryResultConstruction,
-// TestQueryResultDataFrame, TestQueryResultSegmentedDataFrame,
-// TestQueryResultToDict) — the four-column-layout per-class row spec
-// of phase2-design C6.
-//
-// Translation notes: `list(df.columns)` -> `rowColumns()`;
-// `df.iloc[n]` -> `toRows()[n]`; pandas boolean-mask row selection ->
-// array `filter`; identity caching -> repeated-call determinism;
-// `qr.params is params` (Python identity) -> reference equality via
-// `toBe`; the frozen-dataclass immutability test is not ported
-// (compile-time `readonly`).
+// QueryResult: construction, the df projection (timeseries, total,
+// segmented, multi-metric) as row arrays, and to_dict. Mirrors
+// tests/unit/test_query_types.py (the four TestQueryResult* classes).
+// `list(df.columns)` → rowColumns(), `df.iloc[n]` → toRows()[n], identity
+// caching → repeated-call determinism; the frozen test is not carried.
 import { describe, expect, it } from "vitest";
 
 import { QueryResult } from "../../../src/types/results/query-engine.js";

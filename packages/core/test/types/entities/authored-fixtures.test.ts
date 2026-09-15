@@ -1,21 +1,8 @@
-// C8(b) authored-fixture locks (phase2-design C5 item 5, packet P2-7).
-//
-// The models below have NO corpus `$type` occurrences and NO wire
-// vector whose api returns them (model-coverage.json rows the P2-1
-// generator left `unresolved`): nested sub-models the recorder only
-// ever saw inside their parents, params models with no recorded
-// call, and the account-surface models. Each gets an authored
-// full-field payload — the same `tagged_models=False` walk shape the
-// recorder emits — locked by the identity round-trip
-// `fromDict(payload)` -> `toVectorPayload()` deep-equal, plus the
-// C8(b) anti-vacuity probes (unknown-key mutation + declared-keys
-// equality). `coverage_overrides.json` on the Python support branch
-// points each model's `authored_fixture` at this file.
-//
-// The five auth-family Pydantic models (`ServiceAccount`,
-// `OAuthBrowserAccount`, `OAuthTokenAccount`, `Session`, `Project`)
-// are locked by their P2-4 parse-factory suites instead
-// (`packages/core/test/auth/*.test.ts`) and are not repeated here.
+// Authored full-field fixtures for the entity models the recorded corpus
+// never returns at top level (nested sub-models, params with no recorded
+// call, account-surface models): each must round-trip fromDict() →
+// toVectorPayload() identically and survive the unknown-key probe. TS-only
+// (no Python twin); the auth-family models are locked by test/auth/ instead.
 import { describe, expect, it } from "vitest";
 
 import { ResponseValidationError } from "../../../src/errors.js";
@@ -211,7 +198,7 @@ function unknownKeyOutcome(
   }
 }
 
-describe("C8(b) authored entity fixtures", () => {
+describe("authored entity fixtures", () => {
   describe.each(Object.entries(FIXTURES))("%s", (name, payload) => {
     const cls = (entities as Readonly<Record<string, unknown>>)[
       name

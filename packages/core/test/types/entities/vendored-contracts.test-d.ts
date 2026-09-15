@@ -1,14 +1,8 @@
-// Type-level cross-check of the hand-written entity models against the
-// byte-frozen schema4api files under `vendor/mixpanel-contracts/` (imported
-// `import type` only — nothing here reaches a runtime bundle). Python is the
-// arbiter where the two disagree: each documented divergence (recorded in
-// `vendor/mixpanel-contracts/PROVENANCE.json` `verified_divergences`) is
-// asserted exactly, so silent drift in either direction fails the typecheck.
-// Key sets compare the `*Init` constructor interfaces (their keys are the
-// Python `model_fields` names); instance types carry methods. Areas without
-// a usable vendored contract (cohorts, dashboards, schemas, annotations,
-// lookup tables — PROVENANCE `coverage_holes`) are covered by the runtime
-// goldens instead.
+// Type-level cross-check of the entity `*Init` key sets against the
+// byte-frozen schema4api files under `vendor/mixpanel-contracts/` (type-only
+// imports; nothing reaches a runtime bundle). Python wins where the two
+// disagree: each divergence recorded in the vendored PROVENANCE.json is
+// asserted exactly, so drift in either direction fails the typecheck.
 import { describe, expectTypeOf, it } from "vitest";
 
 import type {

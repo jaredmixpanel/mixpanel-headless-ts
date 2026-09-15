@@ -1,11 +1,9 @@
-// Layer-3 translation of `tests/unit/test_042_edge_cases.py::
-// TestSessionReplaceSentinel` — B7-A2 packet §2.4 (B6 ledger
-// `b6-packets.md:1032` inbound deferral).
-//
-// Mechanism substitution (header-cited per R10.2): Python's
-// `Session.replace(**kwargs)` sentinel (workspace `None` clears vs
-// OMITTED preserves) translates to `sessionReplace`'s key-presence
-// semantics (`Object.hasOwn` — `auth/session.ts:393-424`).
+// `sessionReplace`'s clear-vs-preserve sentinel, mirroring
+// `TestSessionReplaceSentinel` of `tests/unit/test_042_edge_cases.py`.
+// Python's `Session.replace(**kwargs)` sentinel (workspace `None` clears,
+// OMITTED preserves) becomes `sessionReplace`'s key-presence semantics
+// (`Object.hasOwn`, `auth/session.ts`).
+
 import { describe, expect, it } from "vitest";
 
 import { parseAccount } from "../../src/auth/account.js";
@@ -50,7 +48,7 @@ describe("Session replace sentinel", () => {
     expect(s2.workspace).toStrictEqual(base.workspace);
   });
 
-  it("headers empty dict clears", () => {
+  it("an empty headers map clears", () => {
     // python: test_headers_empty_dict_clears
     const s2 = sessionReplace(baseSession(), { headers: new Map() });
     expect([...s2.headers]).toStrictEqual([]);
@@ -62,7 +60,7 @@ describe("Session replace sentinel", () => {
     expect([...s2.headers]).toStrictEqual([["X-Custom", "value"]]);
   });
 
-  it("three call chain distinguishes clear from preserve", () => {
+  it("a three-call chain distinguishes clear from preserve", () => {
     // python: test_three_call_chain_distinguishes_clear_from_preserve
     const base = baseSession();
     const swapped: WorkspaceRef = { id: 99 };

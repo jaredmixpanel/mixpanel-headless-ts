@@ -1,31 +1,8 @@
-/**
- * Layer-3 translation of `tests/unit/test_discovery_pbt.py` (B5-S1,
- * packet §4) — ALL 5 classes: TestParseLexiconMetadataProperties :293,
- * TestParseLexiconPropertyProperties :388,
- * TestParseLexiconSchemaProperties :457,
- * TestParseBookmarkInfoProperties :526,
- * TestInferSubpropertiesInvariants :623.
- *
- * Hypothesis `@settings(max_examples=100)` → fast-check `numRuns: 100`
- * (the three un-settinged cases keep Hypothesis's own 100 default).
- *
- * Fidelity notes:
- * - `st.text()` draws the full Unicode range; the JS port uses
- *   `fc.string({ unit: "binary" })`, the B2 convention for "any
- *   code-point string" (`b2-review-resolution.md` ASSERT-F1).
- * - `st.floats(allow_nan=False, allow_infinity=False)` and
- *   `st.integers()` collapse to one `number` leaf in TS: the int/float
- *   distinction is erased by `json.loads`/`toNativeJson` alike at every
- *   position these strategies reach (the parsers are passthroughs).
- * - `iso_timestamps` (`st.datetimes().map(isoformat)`) becomes a
- *   generated `YYYY-MM-DDTHH:MM:SS[.ffffff]` string — the value is only
- *   ever compared for preservation, never parsed.
- * - `_subkeys` (`st.characters(categories=["L"])`) becomes an explicit
- *   letter alphabet spanning Latin/Greek/Cyrillic/CJK plus a non-BMP
- *   letter (𝒳, U+1D4B3) — strictly inside the Python category.
- * - `warnings.simplefilter("error")` (a warning FAILS the run) becomes
- *   a {@link WarningSink} that throws.
- */
+// Property tests for the Discovery parsers (_parse_lexicon_metadata,
+// _parse_lexicon_property, _parse_lexicon_schema, _parse_bookmark_info) and
+// _infer_subproperties. Mirrors tests/unit/test_discovery_pbt.py (all five
+// classes). Hypothesis strategies become fast-check arbitraries: st.text() is
+// any code-point string, ints and floats collapse to `number`, warnings throw.
 
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
@@ -48,7 +25,7 @@ import { BOOKMARK_TYPE_VALUES } from "../../src/types/literals.js";
 /** `st.text()` — any code-point string. */
 const textArb = fc.string({ unit: "binary" });
 
-/** `json_primitives` (`:37-43`). */
+/** `json_primitives`. */
 const jsonPrimitives: fc.Arbitrary<unknown> = fc.oneof(
   fc.constant(null),
   fc.boolean(),
@@ -57,7 +34,7 @@ const jsonPrimitives: fc.Arbitrary<unknown> = fc.oneof(
   textArb,
 );
 
-/** `json_values` — the recursive JSON tree (`:46-53`). */
+/** `json_values` — the recursive JSON tree. */
 const jsonValues: fc.Arbitrary<unknown> = fc.letrec<{ value: unknown }>(
   (tie) => ({
     value: fc.oneof(
@@ -69,10 +46,10 @@ const jsonValues: fc.Arbitrary<unknown> = fc.letrec<{ value: unknown }>(
   }),
 ).value;
 
-/** `bookmark_types` (`:59`) — `get_args(BookmarkType)`. */
+/** `bookmark_types` — `get_args(BookmarkType)`. */
 const bookmarkTypesArb = fc.constantFrom(...BOOKMARK_TYPE_VALUES);
 
-/** `iso_timestamps` (`:62`). */
+/** `iso_timestamps`. */
 const isoTimestampsArb: fc.Arbitrary<string> = fc
   .tuple(
     fc.integer({ min: 1, max: 9999 }),
@@ -101,7 +78,7 @@ const otherDataArb = (maxKeys: number): fc.Arbitrary<Record<string, unknown>> =>
     { maxKeys },
   );
 
-/** `com_mixpanel_headless()` (`:70-103`) — every field optional. */
+/** `com_mixpanel_headless()` — every field optional. */
 const comMixpanelArb: fc.Arbitrary<Record<string, unknown>> = fc
   .record({
     $source: fc.option(textArb, { nil: undefined }),
@@ -126,7 +103,7 @@ const comMixpanelArb: fc.Arbitrary<Record<string, unknown>> = fc
     return out;
   });
 
-/** `valid_lexicon_metadata_input()` (`:140-158`). */
+/** `valid_lexicon_metadata_input()`. */
 const validLexiconMetadataInputArb: fc.Arbitrary<Record<string, unknown>> = fc
   .tuple(comMixpanelArb, textArb, otherDataArb(3))
   .map(([mpData, fallbackName, otherData]) => {
@@ -138,7 +115,7 @@ const validLexiconMetadataInputArb: fc.Arbitrary<Record<string, unknown>> = fc
     return { "com.mixpanel": mp, ...otherData };
   });
 
-/** `lexicon_metadata_input()` (`:106-137`) — the four-way choice. */
+/** `lexicon_metadata_input()` — the four-way choice. */
 const lexiconMetadataInputArb: fc.Arbitrary<Record<string, unknown> | null> =
   fc.oneof(
     fc.constant(null),
@@ -147,7 +124,7 @@ const lexiconMetadataInputArb: fc.Arbitrary<Record<string, unknown> | null> =
     validLexiconMetadataInputArb,
   );
 
-/** `lexicon_property_input()` (`:161-200`). */
+/** `lexicon_property_input()`. */
 const lexiconPropertyInputArb: fc.Arbitrary<Record<string, unknown>> = fc
   .tuple(
     fc.option(
@@ -186,7 +163,7 @@ const lexiconPropertyInputArb: fc.Arbitrary<Record<string, unknown>> = fc
     return { ...result, ...extra };
   });
 
-/** `lexicon_schema_input()` (`:203-241`). */
+/** `lexicon_schema_input()`. */
 const lexiconSchemaInputArb: fc.Arbitrary<Record<string, unknown>> = fc
   .tuple(
     fc.string({ unit: "binary", minLength: 1 }),
@@ -214,7 +191,7 @@ const lexiconSchemaInputArb: fc.Arbitrary<Record<string, unknown>> = fc
     return { entityType, name, schemaJson };
   });
 
-/** `bookmark_info_input()` (`:244-285`). */
+/** `bookmark_info_input()`. */
 const bookmarkInfoInputArb: fc.Arbitrary<Record<string, unknown>> = fc
   .tuple(
     fc.integer(),
@@ -500,7 +477,7 @@ describe("Parse bookmark info properties", () => {
 // =============================================================================
 
 /**
- * `_subkeys` (`:620`) — `st.characters(categories=["L"])`, 1..10 chars.
+ * `_subkeys` — `st.characters(categories=["L"])`, 1..10 chars.
  * JS has no category generator; the alphabet below spans Latin, Greek,
  * Cyrillic, CJK and a non-BMP mathematical letter, all category L.
  */

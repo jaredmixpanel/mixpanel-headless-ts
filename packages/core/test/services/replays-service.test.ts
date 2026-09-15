@@ -1,34 +1,8 @@
-// Translated ReplaysService tests (packet B5-S3, `b5-packets.md` §5):
-// assertion-for-assertion ports of ALL NINE classes of
-//   tests/unit/_internal/test_replays_service.py
-//     TestSignWrapping                 :72
-//     TestFetchFilesHappyPath          :143
-//     TestFetchFilesTermination        :222
-//     TestFetchFiles403Retry           :266
-//     TestFetchFilesCredentialRedaction :336
-//     TestMobileReplayDetection        :366
-//     TestDiscoverNoQueryFn            :397
-//     TestDiscoverParsing              :503
-//     TestEventsForParsing             :647
-//
-// Translation notes:
-// - `MagicMock()` api client → the B4 `createMockClient` transport
-//   analog; `api.sign_replays` assertions become assertions on the
-//   captured POST bodies of `/replays/sign/bulk` (the REAL client
-//   method runs — R10.8 binding honesty: the service must call the
-//   ported client, not a stub of it).
-// - `httpx.MockTransport(handler)` for CDN GETs → the `fetchImpl`
-//   option (the `_async_transport` twin), a plain injected fetch.
-// - `pytest.warns(UserWarning, match=...)` → the injected
-//   {@link WarningSink} collector (R9.5), same wording asserted.
-// - `RuntimeError("… query_fn …")` → `MixpanelHeadlessError` code
-//   `REPLAYS_QUERY_FN_REQUIRED`; Python's `RuntimeError` carries no
-//   registry code, so the port assigns one and the test asserts BOTH
-//   the code and the Python message substring.
-// - `dict[str, list[ReplayEvent]]` → a `Map` (R4.8); `set(out)` →
-//   `new Set(out.keys())`.
-// - `service.fetch_files(...)` is sync in Python (it drives
-//   `asyncio.run`); the port is `async` (R6.1) and every call awaits.
+// ReplaysService: sign(), the fetch_files CDN walker (ordering, 404
+// termination, 403 re-sign, credential redaction, mobile detection) and
+// discover() / events_for() parsing. Mirrors all nine classes of
+// tests/unit/_internal/test_replays_service.py. The real client runs over a
+// canned transport, CDN GETs use the injected `fetchImpl`, warnings a sink.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -52,8 +26,8 @@ import {
 type CdnHandler = (url: string) => CannedResponse;
 
 /**
- * The `_mock_api_client` fixture —
- * a real B4 client over a canned App-API transport.
+ * The `_mock_api_client` fixture — a real client over a canned App-API
+ * transport, so `api.sign_replays` asserts read the captured POST bodies.
  *
  * @param options - `projectId` (default `"12345"`) and the
  *   `signResponse` served by `POST /replays/sign/bulk`.
@@ -455,7 +429,7 @@ describe("credential redaction on transport errors", () => {
     const signed = signedFixture();
     const { client } = mockApiClient();
     const service = new ReplaysService(client, {
-      // A fetch rejection is the `httpx.ConnectError` analog (R2.10
+      // A fetch rejection is the `httpx.ConnectError` analog (the client
       // normalizes it to MixpanelHttpError); the message embeds the
       // credentialed URL exactly as httpx's does.
       fetchImpl: (input: string | URL | Request): Promise<Response> => {
@@ -581,7 +555,7 @@ const DISCOVERY_SERIES: Record<string, unknown> = {
   },
 };
 
-/** `_DISCOVERY_SERIES_NO_RETENTION` (`:453-461`). */
+/** `_DISCOVERY_SERIES_NO_RETENTION`. */
 const DISCOVERY_SERIES_NO_RETENTION: Record<string, unknown> = {
   "Session Recording Checkpoint [Minimum Time]": {
     $overall: { all: 1779319127 },
@@ -589,7 +563,7 @@ const DISCOVERY_SERIES_NO_RETENTION: Record<string, unknown> = {
   },
 };
 
-/** `_EVENTS_SERIES` (`:463-482`). */
+/** `_EVENTS_SERIES`. */
 const EVENTS_SERIES: Record<string, unknown> = {
   "All Events [Total Events]": {
     $overall: { all: 13 },
@@ -610,7 +584,7 @@ const EVENTS_SERIES: Record<string, unknown> = {
   },
 };
 
-/** `_EVENTS_SERIES_WITH_PROP` (`:484-498`). */
+/** `_EVENTS_SERIES_WITH_PROP`. */
 const EVENTS_SERIES_WITH_PROP: Record<string, unknown> = {
   "All Events [Total Events]": {
     $overall: { all: 1 },
@@ -883,14 +857,14 @@ describe("events_for parses the $all_events series", () => {
 });
 
 // =============================================================================
-// B5-ARB FID-F3 (additive — `b5-review-resolution.md`): the walker's
-// per-file sort key is Python `int(e.get("timestamp", 0))` — an ABSENT
+// Additive (no Python twin): the walker's per-file sort key is Python
+// `int(e.get("timestamp", 0))` — an ABSENT
 // key defaults to 0, an explicit `null` raises `TypeError` (CPython
 // probe), and `sorted(key=...)` computes the key even for single-element
 // files, where a bare JS comparator would never run.
 // =============================================================================
 
-describe("FID-F3: walker per-file sort key null vs absent timestamps", () => {
+describe("walker per-file sort key: null vs absent timestamps", () => {
   it("an explicit null timestamp in a single-event file raises TypeError", async () => {
     const fileContents = new Map<
       number,

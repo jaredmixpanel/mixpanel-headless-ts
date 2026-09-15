@@ -1,20 +1,8 @@
-// Translated label tests (packet B5-S3, `b5-packets.md` §5):
-// assertion-for-assertion ports of the three label classes in
-//   tests/unit/test_replay_bundle.py
-//     TestUrlNormalizer     :97
-//     TestDefaultLabelFn    :118
-//     TestSelectorLabelFn   :135
-//
-// The remaining classes of that file are owned elsewhere: TestRrwebAnalyzer
-// :162 → `rrweb-analyzer.test.ts`; TestReplayBundleAggregations :325 +
-// TestAggregatorFunctions :459 → `aggregators.test.ts`;
-// TestReplayBundleProjections :260, TestReplayBundleFilters :415,
-// TestCodedUserActionCodes :485 and TestCodedReplayBundleCodes :513 were
-// translated in Phase 2 (`test/types/results/replays.test.ts:1-21`) — the
-// four asserts excluded THERE (test_elements_df,
-// test_elements_df_normalizes_urls, test_error_sessions,
-// test_sample_determinism) come alive in `aggregators.test.ts` with the
-// TODO(port) closure.
+// Replay label helpers: url_normalizer, default_label_fn and
+// selector_label_fn. Mirrors tests/unit/test_replay_bundle.py
+// (TestUrlNormalizer, TestDefaultLabelFn, TestSelectorLabelFn); the other
+// classes of that file live in rrweb-analyzer.test.ts, aggregators.test.ts
+// and test/types/results/replays.test.ts. One additive suite (see below).
 import { describe, expect, it } from "vitest";
 
 import {
@@ -120,11 +108,9 @@ describe("selector_label_fn prefers stable attributes when present", () => {
   });
 });
 
-// ADDITIVE (no Python twin): the R10.9 differential harness caught the
-// label forking on a non-`str` metadata value — Python's f-string is
-// `str(candidate)`, so a boolean renders `True`, not `true`. Recorded
-// here because `throwaway/b5-s3/` is deleted at the batch gate
-// (`b5-packets.md` §7.5) and this is the surviving lock.
+// Additive (no Python twin): the differential fuzz caught the label forking
+// on a non-`str` metadata value — Python's f-string is `str(candidate)`, so
+// a boolean renders `True`, not `true`.
 describe("selector_label_fn renders non-str values with PYTHON spelling", () => {
   it.each([
     [true, "True"],

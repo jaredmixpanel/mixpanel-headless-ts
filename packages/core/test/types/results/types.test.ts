@@ -1,21 +1,8 @@
-// Translated result-class tests (phase2-design C6/C8b, packet P2-6):
-// assertion-for-assertion port of tests/unit/test_types.py,
-// `.df` -> `toRows()`/`rowColumns()` per the C6 row contract.
-//
-// Translation notes (applied consistently, see the design's Risk #6):
-// - `df.columns` assertions -> `rowColumns()`; `len(df)` ->
-//   `toRows().length`.
-// - Python `test_df_cached` asserts `df1 is df2` (pandas identity
-//   caching). TS `toRows()` is cheap/pure with NO mandated cache
-//   (phase2-design C6), so the caching tests translate to repeated
-//   calls being deep-equal (determinism — the observable half).
-// - Frozen-dataclass immutability suites have no TS runtime analog
-//   (`readonly` is the compile-time equivalent) and are not ported.
-// - The `TestResultWithDataFrame` base-class suite exercises the
-//   pandas plumbing (`NotImplementedError`, `to_table_dict`) that has
-//   no TS runtime artifact — the TS row contract lives on each class.
-// - `TestCustomEventExports` is a P2-7 entity-surface concern, not
-//   ported here.
+// Result classes of tests/unit/test_types.py: Segmentation / Funnel /
+// Retention / EventCounts / PropertyCounts results, FunnelInfo, SavedCohort,
+// TopEvent, ProfilePageResult (+ pagination) and SubPropertyInfo. `.df` →
+// toRows() / rowColumns(); identity-caching asserts → repeated-call
+// determinism; frozen and pandas-plumbing suites are not carried.
 import { describe, expect, it } from "vitest";
 
 import {

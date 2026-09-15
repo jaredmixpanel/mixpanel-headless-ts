@@ -1,19 +1,8 @@
-// Translated LiveQueryService workspace-passthrough tests — 045-report-links
-// (Python PR #223 review). Source: tests/unit/test_live_query_workspace.py
-// (TestWorkspacePassthrough): the four inline query methods forward
-// `workspace_id` / `inject_workspace_id` to `insights_query` /
-// `arb_funnels_query`.
-//
-// Translation notes:
-// - `MagicMock(spec=MixpanelAPIClient)` → a structural stub cast to
-//   `MixpanelClient` (the `live-query-flow.test.ts` precedent) that
-//   records the options bag each inline call receives.
-// - `call_args.kwargs["workspace_id"]` → the recorded second argument of
-//   `insightsQuery` / `arbFunnelsQuery`. The TS service materializes the
-//   Python defaults (`workspace_id=None`, `inject_workspace_id=True`) so
-//   both keys are always present, exactly as the Python kwargs are.
-// - `getattr(service, method)` parametrization → `it.each` over the three
-//   method names, dispatched through a typed switch.
+// LiveQueryService workspace passthrough: the inline query methods forward
+// `workspace_id` / `inject_workspace_id` to insights_query / arb_funnels_query.
+// Mirrors tests/unit/test_live_query_workspace.py (TestWorkspacePassthrough).
+// The spec'd MagicMock is a stub recording each options bag; the TS service
+// materializes the Python defaults so both keys are always present.
 import { describe, expect, it } from "vitest";
 
 import type { MixpanelClient } from "../../src/client/client.js";

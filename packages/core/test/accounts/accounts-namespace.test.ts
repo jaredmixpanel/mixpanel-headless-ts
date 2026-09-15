@@ -1,32 +1,8 @@
-// Layer-3 translation of `tests/unit/test_accounts_namespace.py`
-// (1,685 lines) — the non-login_unified classes (B7-A1 packet §3.4,
-// `b7-packets.md`); the six `TestLoginUnified*` classes live in
-// `login-unified.test.ts`.
-//
-// Mechanism substitutions (header-cited per R10.2):
-// - the autouse tmp-`$HOME` / `MP_CONFIG_PATH` fixture becomes the
-//   in-memory `makeEffects()` bundle (packet §3.4 row 1: "on-disk
-//   fixtures re-express over injected tokenStore/config fakes");
-// - `monkeypatch.setattr(MixpanelAPIClient, "me", …)` becomes the
-//   injected `meFetch(payload)` fetch answering the REAL client's
-//   `/me` request;
-// - `monkeypatch.setattr(OAuthFlow, "login", …)` becomes an injected
-//   `effects.oauthFlow.login` stub capturing its kwargs;
-// - the `TestTestOAuthBrowser` on-disk token fixtures (missing /
-//   expired / revoked tokens.json) re-express as `tokenResolver`
-//   rejections carrying the same actionable messages (the
-//   OnDiskTokenResolver failure surface — packet §3.4);
-// - `TestLogoutHonorsStorageOverride`'s `MP_OAUTH_STORAGE_DIR`
-//   override assertion re-expresses as "logout removes exactly the
-//   injected store's entry" (path override wiring is B8's).
-//
-// EXCLUDED (decision recorded, packet §3.4 + plan D4):
-// - `TestSummaryTableDynamicWidth` drives the CLI formatter
-//   `cli.commands.account._format_summary_table` — the CLI is out of
-//   the port's scope (plan D4). No library assertion to preserve.
-// - `TestPublicSurface` asserts `accounts_ns.__all__`; the TS
-//   twin asserts the `AccountsNamespace` object exposes all 13
-//   public members (module `__all__` has no TS runtime analog).
+// The accounts namespace, mirroring `tests/unit/test_accounts_namespace.py`
+// minus the `TestLoginUnified*` classes (see `login-unified.test.ts`). The
+// tmp-`$HOME`, `MixpanelAPIClient.me` and `OAuthFlow.login` monkeypatches
+// become `makeEffects()`, `meFetch()` and an injected `oauthFlow` stub; on-disk
+// token failures become `tokenResolver` rejections; CLI-only tests dropped.
 
 import { describe, expect, it } from "vitest";
 
@@ -77,7 +53,7 @@ describe("Add", () => {
     expect(config.getAccount("team").default_project).toBe("3713224");
   });
 
-  it("SA may omit default_project at add-time (043 FR-001)", async () => {
+  it("SA may omit default_project at add-time", async () => {
     const { effects, config } = makeEffects();
     const accounts = createAccountsNamespace(effects);
 
@@ -148,7 +124,7 @@ describe("Add", () => {
     expect(result.type).toBe("oauth_token");
   });
 
-  it("oauth_token may omit default_project (043 FR-001)", async () => {
+  it("oauth_token may omit default_project", async () => {
     const { effects, config } = makeEffects();
     const accounts = createAccountsNamespace(effects);
 
@@ -163,7 +139,7 @@ describe("Add", () => {
     expect(config.getAccount("agent").default_project ?? null).toBeNull();
   });
 
-  it("first account auto-promotes to [active].account (FR-045)", async () => {
+  it("first account auto-promotes to [active].account", async () => {
     const { effects, config } = makeEffects();
     const accounts = createAccountsNamespace(effects);
 
@@ -192,13 +168,12 @@ describe("Add", () => {
     ).rejects.toBeInstanceOf(ConfigError);
   });
 
-  // B7-ARB-B B-E2E-F1 lock (spec-cited ADDITION, R10.2-safe): Python's
-  // duplicate-add path raises PLAIN `ConfigError` (`config.py`,
-  // code CONFIG_ERROR); `AccountExistsError` / ACCOUNT_EXISTS is
-  // reserved for the login_unified name-collision path
-  // (`accounts.py`). R5 makes the CODE the contract — pin it so
-  // B8-N1's real ConfigWrites adapter cannot inherit the stronger
-  // class from the interface JSDoc (`b7-reviewB-resolution.md`).
+  // TS addition. Python's duplicate-add path raises PLAIN `ConfigError`
+  // (`config.py`, code CONFIG_ERROR); `AccountExistsError` /
+  // ACCOUNT_EXISTS is reserved for the login_unified name-collision path
+  // (`accounts.py`). The code is the contract, so pin it: a real
+  // ConfigWrites adapter must not inherit the stronger class from the
+  // interface JSDoc.
   it("duplicate add surfaces plain CONFIG_ERROR, never ACCOUNT_EXISTS", async () => {
     const { effects } = makeEffects();
     const accounts = createAccountsNamespace(effects);
@@ -526,8 +501,7 @@ describe("Test", () => {
   it("library-exception details survive into error_details", async () => {
     // The RegionProbeNetworkError arm can't arise from a wire response;
     // inject it at the token-resolver seam (the same broad-catch path
-    // the Python monkeypatch exercises — mechanism substitution,
-    // header note).
+    // the Python monkeypatch exercises).
     const { effects } = makeEffects({
       tokenResolver: {
         getBrowserToken: () =>
@@ -564,8 +538,7 @@ describe("Test", () => {
     // rejection into the coded HTTP_ERROR wrap (as Python's
     // `except httpx.HTTPError` does, `api_client.py`), so the
     // faithful non-library leak site is the token-resolver seam — a
-    // plain Error rejected there reaches the broad catch unwrapped
-    // (mechanism substitution, header note).
+    // plain Error rejected there reaches the broad catch unwrapped.
     const { effects } = makeEffects({
       tokenResolver: {
         getBrowserToken: () =>
@@ -713,7 +686,7 @@ describe("Login", () => {
 
     // `persist=False` has no TS analog: the flow effect NEVER persists
     // by contract (tokens stay in memory until validation) — the
-    // stronger invariant replaces the kwarg capture (header note).
+    // stronger invariant replaces the kwarg capture.
     expect(captured["open_browser"]).toBe(true); // default — interactive
     // Tokens persisted to the per-account path via the injected store.
     const written = tokenStore.written.get("personal");
@@ -802,15 +775,12 @@ describe("Logout honors storage override", () => {
   });
 });
 
-// TestSummaryTableDynamicWidth — EXCLUDED (CLI formatter; plan
-// D4 — see the file header; exclusion RATIFIED by the pair-A arbiter,
-// `b7-reviewA-resolution.md` ASR-F1).
+// `TestSummaryTableDynamicWidth` is not carried: it drives the CLI
+// formatter, which is out of the port's scope.
 
-// Spec-cited ADDITIONS (not Python translations): empty-string
-// falsiness locks for the Python `or`-defaulting parameter sites the
-// pair-A semantics review found ported as nullish-`??`
-// (`b7-reviewA-resolution.md` SEM-F1; `accounts.py:727`, `:997`).
-describe("B7-ARB-A SEM-F1 falsiness locks (b7-reviewA-resolution.md)", () => {
+// TS additions: empty-string falsiness locks for the parameter sites
+// Python defaults with `or` (not a nullish check) in `accounts.py`.
+describe("Empty-string arguments fall through like Python `or` defaults", () => {
   it('test("") reports account_name "(none)" like Python `name or "(none)"`', async () => {
     const { effects } = makeEffects();
     const accounts = createAccountsNamespace(effects);
@@ -862,16 +832,14 @@ describe("B7-ARB-A SEM-F1 falsiness locks (b7-reviewA-resolution.md)", () => {
   });
 });
 
-// B8-ARB-A ASR-F1 (b8-reviewA-resolution.md): the COMPOSITION half of
-// `test_bridge_export.py::test_export_bridge_attaches_settings_custom_header`
-// — the N2 translation split the Python lock and kept only the
-// effect-level "supplied headers land verbatim" half
-// (packages/node/test/bridge.test.ts `test_export_bridge_attaches_custom_headers`).
-// This locks the joining orchestration: `[settings].custom_header` read
-// via `getCustomHeader()` becomes the one-entry headers bag handed to
-// `effects.bridge.export` (accounts-ops.ts:847-848) — a name/value swap
-// or dropped-header regression there now fails here.
-describe("B8-ARB-A ASR-F1 custom-header export composition lock", () => {
+// The composition half of `test_bridge_export.py`'s
+// `test_export_bridge_attaches_settings_custom_header`; the effect-level
+// "supplied headers land verbatim" half lives in
+// `packages/node/test/bridge.test.ts`. This locks the orchestration in
+// `accounts-ops.ts`: `[settings].custom_header` read via
+// `getCustomHeader()` becomes the one-entry headers bag handed to
+// `effects.bridge.export`, so a name/value swap or a dropped header fails.
+describe("Custom-header export composition", () => {
   it("[settings].custom_header propagates into the exported headers bag through the orchestration", async () => {
     const exportedHeaders: Array<Readonly<Record<string, string>> | null> = [];
     const { effects, config } = makeEffects({

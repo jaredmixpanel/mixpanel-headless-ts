@@ -1,13 +1,8 @@
-// Shared helpers for the B5-S2 `Workspace` Layer-3 translations: the
-// `_TEST_SESSION` mirror the query-user test files declare, and a
-// `MagicMock(spec=MixpanelAPIClient)` twin — a stub carrying only the
-// client members the facade touches, plus per-member call logs.
-//
-// The Python files wrap every body in `try: ... finally: ws.close()`.
-// `Workspace.close()` is a B6-W1 stub in TS (it throws
-// `UNPORTED_MEMBER`) and the TS client owns no connection pool that
-// needs releasing (R6.2), so the translations DROP the `finally` and
-// record the omission here rather than in every file.
+// Shared helpers for the `Workspace` facade suites: the `_TEST_SESSION`
+// mirror the query-user test files declare, and a
+// `MagicMock(spec=MixpanelAPIClient)` twin carrying only the client members
+// the facade touches, plus per-member call logs. The TS client owns no
+// connection pool, so Python's `try/finally: ws.close()` wrappers are dropped.
 
 import type { Session } from "../src/auth/session.js";
 import type { MixpanelClient } from "../src/client/client.js";
@@ -27,7 +22,7 @@ import {
 
 /**
  * The canonical fake Session the query-user test modules declare
- * (`_TEST_SESSION`, e.g. test_workspace_query_user_parallel.py:41-51).
+ * (`_TEST_SESSION` in e.g. `test_workspace_query_user_parallel.py`).
  */
 export const TEST_SESSION: Session = {
   account: {
@@ -95,7 +90,7 @@ export interface MockWorkspaceClient {
  *
  * The stub also carries the `core.now()` clock seam the facade reads
  * for `computed_at`; it is pinned to a fixed instant so the timestamps
- * are deterministic (packet §0.4).
+ * are deterministic.
  *
  * @param now - The pinned clock reading (default 2025-01-15T10:00:00Z).
  * @returns The stub client plus its call logs.
@@ -124,8 +119,8 @@ export function mockWorkspaceClient(
 
   const stub = {
     core: { now: (): Date => now },
-    // B6-W1: the facade constructor wires the /me-backed workspace
-    // resolver (`_install_workspace_resolver`, `workspace.py:775-793`).
+    // The facade constructor wires the /me-backed workspace resolver
+    // (`_install_workspace_resolver`, `workspace.py`).
     // `MagicMock(spec=MixpanelAPIClient)` auto-provides both members in
     // Python; the TS stub declares them.
     hasWorkspaceResolver: false,
@@ -198,7 +193,7 @@ export interface LogCollector extends WorkspaceLogger {
 }
 
 /**
- * Build the `caplog` twin — the facade's injected logger seam (R9.5).
+ * Build the `caplog` twin — the facade's injected logger seam.
  *
  * @returns A logger that records every message.
  */

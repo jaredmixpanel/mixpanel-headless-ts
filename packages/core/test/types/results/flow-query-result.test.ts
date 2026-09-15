@@ -1,16 +1,8 @@
-// Translated FlowQueryResult tests (packet P2-6):
-// assertion-for-assertion port of tests/test_types_flow.py
-// (TestFlowQueryResultConstruction / ToDict / NodesDf / EdgesDf /
-// DfModeAware / TopTransitions / DropOffSummary / TestSafeInt) —
-// R10.2.
-//
-// Not ported: immutability suites (compile-time `readonly`);
-// TestFlowQueryResultGraph (networkx — TODO(port) batch B5, see
-// replays/query-engine module docs); TestRenameVerification
-// (Workspace surface, batch B6); the `warnings.warn` side-channel
-// assertions of TestSafeInt (out of contract — return values are
-// asserted). The FlowStep suites of this file were translated by
-// P2-5c.
+// FlowQueryResult (sankey / paths modes): construction, to_dict, nodes_df /
+// edges_df / mode-aware df as row arrays, top_transitions, drop_off_summary
+// and safeInt. Mirrors tests/test_types_flow.py (the FlowQueryResult and
+// TestSafeInt classes); not carried: immutability suites, the networkx
+// TestFlowQueryResultGraph and TestSafeInt's `warnings.warn` side channel.
 import { describe, expect, it } from "vitest";
 
 import { safeInt } from "../../../src/types/results/flow-graph.js";
@@ -457,7 +449,7 @@ describe("safeInt", () => {
   });
 });
 
-describe("safeInt string branch = CPython int(str) grammar (B0-gate RUN.md 2026-08-15: trim/regex sites replaced with pythonCompat)", () => {
+describe("safeInt string branch follows the CPython int(str) grammar", () => {
   it("accepts underscores between digits like int('1_0')", () => {
     expect(safeInt("1_0")).toBe(10);
     expect(safeInt("100_000")).toBe(100000);
@@ -474,7 +466,7 @@ describe("safeInt string branch = CPython int(str) grammar (B0-gate RUN.md 2026-
   });
 
   it("accepts CPython numeric-whitespace surround incl. U+0085/NBSP", () => {
-    // CPython probe (python-int.test.ts:98 precedent): int("\u008542\u00a0") == 42.
+    // CPython probe (see compat/python-int.test.ts): int("\u008542\u00a0") == 42.
     expect(safeInt("\u008542\u00A0")).toBe(42);
   });
 
@@ -484,11 +476,11 @@ describe("safeInt string branch = CPython int(str) grammar (B0-gate RUN.md 2026-
   });
 
   it("rejects U+001C..1F surround (str.isspace() true but Py_ISSPACE false)", () => {
-    // CPython probe (python-int.test.ts:103-105): int('\x1c42\x1f') raises.
+    // CPython probe (see compat/python-int.test.ts): int('\x1c42\x1f') raises.
     expect(safeInt("\x1C42\x1F")).toBe(0);
   });
 
-  it("magnitude beyond 2^53-1 maps to the default (R4.5 policy; playbook Discrepancy #6 pattern — CPython returns the exact big int, JS number cannot)", () => {
+  it("magnitude beyond 2^53-1 maps to the default (CPython returns the exact big int; a JS number cannot)", () => {
     expect(safeInt("9007199254740993")).toBe(0);
     expect(safeInt("9007199254740991")).toBe(9007199254740991);
   });

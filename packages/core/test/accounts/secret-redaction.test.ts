@@ -1,18 +1,8 @@
-// Layer-3 translation of `tests/unit/test_042_edge_cases.py`
-// `TestSecretLeakage` — the WHOLE class (B7-A1 packet §3.4,
-// `b7-packets.md`; B6 ledger `b6-packets.md:1032`).
-//
-// Mechanism substitutions (header-cited per R10.2):
-// - Python `repr(...)` / `str(...)` redaction asserts translate to
-//   `JSON.stringify` + `String(...)` over the TS account/session
-//   shapes (Secret redacts in `toString` / `toJSON` — the SecretStr
-//   twin, R4.6);
-// - the on-disk token-materialization case (`test_session_to_
-//   credentials_oauth_browser_missing_tokens_raises`) re-expresses
-//   over the injected `tokenResolver` fake: the eager
-//   `current_auth_header` probe becomes the client's per-request
-//   header resolution, which surfaces the same OAuthError on first
-//   use (R2.9 — construction itself succeeds, as Python's does).
+// Secret redaction across account and session shapes, mirroring the
+// `TestSecretLeakage` class of `tests/unit/test_042_edge_cases.py`.
+// Python `repr`/`str` asserts become `JSON.stringify` + `String(...)`
+// (Secret redacts in `toString`/`toJSON`); the missing-tokens case runs
+// through the injected `tokenResolver` and surfaces on first header use.
 
 import { describe, expect, it } from "vitest";
 

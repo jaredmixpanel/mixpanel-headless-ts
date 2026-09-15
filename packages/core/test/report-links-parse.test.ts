@@ -1,26 +1,8 @@
-// Unit tests for the pure report-link module (045-report-links), translated
-// from tests/unit/test_report_links.py: one parametrized case per row of
-// contracts/url-grammar.md §5 (parse table) and §6 (builders), plus
-// `is_slug`, `web_host`, and `generate_slug`.
-//
-// Translation notes (documented exclusions, NOT weakened assertions):
-// - Message-TEXT assertions (`str(exc) == ...`) are deliberately not
-//   carried: error message text is out of contract (R5.4). Class, `code`,
-//   and `details` — everything the conformance canonicalizer compares —
-//   are asserted for every row.
-// - `ParsedReportLink` is a frozen plain object, so `test_frozen` asserts
-//   `Object.isFrozen` + the strict-mode `TypeError` on assignment instead
-//   of Python's `AttributeError`.
-// - `MappingProxyType` read-only tables are `ReadonlyMap`s here:
-//   `test_tables_are_read_only` asserts the type has no `set` member and
-//   the runtime value is a `Map` (the key-set/Literal agreement lives in
-//   the two `TestTableInvariants` siblings).
-// - Python `str.strip()` on the parse-table inputs is `String#trim()`
-//   (every whitespace decoration in the table is ASCII).
-// - A `compat/urllib` block is appended at the end: the parser observes
-//   the RAW CPython `urlsplit` (lower-cased host, port stripped, everything
-//   else verbatim) and `resolve_short_link` echoes `urljoin` targets, so
-//   the twins are pinned here alongside the parser they serve.
+// `parseReportLink` over the url-grammar parse table and the parser
+// tolerance rows, translated from `TestParseTable` / `TestParserTolerance`
+// in `tests/unit/test_report_links.py`. Message text is out of contract, so
+// rows assert class + `code` + `details`; `test_frozen` asserts
+// `Object.isFrozen` + strict-mode TypeError; `str.strip()` is `String#trim()`.
 
 import { describe, expect, it } from "vitest";
 
@@ -330,7 +312,7 @@ const ERROR_ROWS: ReadonlyArray<readonly [string, string]> = [
 
 describe("Parse table", () => {
   // python: TestParseTable
-  it.each(PARSE_ROWS)("row[%j]", (value, expected) => {
+  it.each(PARSE_ROWS)("parses %j", (value, expected) => {
     // python: test_row
     const parsed = parseReportLink(value);
     expectParsedReportLink(parsed);
@@ -342,14 +324,14 @@ describe("Parse table", () => {
     expect(parsed.raw).toBe("raw" in expected ? expected.raw : value.trim());
   });
 
-  it.each(ERROR_ROWS)("error row[%j]", (value, code) => {
+  it.each(ERROR_ROWS)("rejects %j", (value, code) => {
     // python: test_error_row
     const exc = catchParseError(() => parseReportLink(value));
     expect(exc.code).toBe(code);
     expect(exc.details).toHaveProperty("hint");
   });
 
-  it("unparseable message", () => {
+  it("unparseable input carries raw + hint", () => {
     // python: test_unparseable_message
     const exc = catchParseError(() => parseReportLink("not a url at all"));
     expect(exc.code).toBe("REPORT_LINK_UNPARSEABLE");
@@ -360,7 +342,7 @@ describe("Parse table", () => {
     );
   });
 
-  it("not mixpanel host message", () => {
+  it("a non-Mixpanel host carries host + hint", () => {
     // python: test_not_mixpanel_host_message
     const exc = catchParseError(() =>
       parseReportLink("https://example.com/project/3/app/insights#x"),
@@ -372,7 +354,7 @@ describe("Parse table", () => {
     );
   });
 
-  it("unrecognized path message", () => {
+  it("an unrecognized path carries path + hint", () => {
     // python: test_unrecognized_path_message
     const exc = catchParseError(() =>
       parseReportLink("https://mixpanel.com/settings/project/3"),
@@ -382,7 +364,7 @@ describe("Parse table", () => {
     expect(exc.details["hint"]).toContain("/s/{code}");
   });
 
-  it("unrecognized hash message", () => {
+  it("an unrecognized hash carries hash + hint", () => {
     // python: test_unrecognized_hash_message
     const exc = catchParseError(() =>
       parseReportLink("https://mixpanel.com/project/3/app/insights#foo/bar"),
@@ -392,7 +374,7 @@ describe("Parse table", () => {
     expect(exc.details["hint"]).toContain("12-character slug");
   });
 
-  it("empty hash message", () => {
+  it("an empty hash carries app + project_id", () => {
     // python: test_empty_hash_message
     const exc = catchParseError(() =>
       parseReportLink("https://mixpanel.com/project/3/app/funnels#"),
@@ -412,7 +394,7 @@ describe("Parse table", () => {
     expect(exc.details["workspace_id"]).toBe(2);
   });
 
-  it("frozen", () => {
+  it("the parsed link is frozen", () => {
     // python: test_frozen
     const parsed = parseReportLink(SLUG);
     expect(Object.isFrozen(parsed)).toBe(true);
@@ -456,7 +438,7 @@ describe("Parse table", () => {
     expect(exc.code).toBe("REPORT_LINK_UNRECOGNIZED_PATH");
   });
 
-  it("non ascii digits are not IDs", () => {
+  it("non-ASCII digits are not IDs", () => {
     // python: test_non_ascii_digits_are_not_ids
     const exc = catchParseError(() =>
       parseReportLink(`https://mixpanel.com/project/٣/app/insights#${SLUG}`),
@@ -547,7 +529,7 @@ describe("Parser tolerance", () => {
     expect(parsed.overrides_jsurl).toBe("~(a~'x?y/z')/");
   });
 
-  it("slash only hash is empty", () => {
+  it("a slash-only hash is empty", () => {
     // python: test_slash_only_hash_is_empty
     const exc = catchParseError(() =>
       parseReportLink("https://mixpanel.com/project/3/app/insights#/"),
@@ -559,14 +541,14 @@ describe("Parser tolerance", () => {
     `javascript://mixpanel.com/project/3/app/insights#${SLUG}`,
     `ftp://mixpanel.com/project/3/app/insights#${SLUG}`,
     `file://mixpanel.com/project/3/app/insights#${SLUG}`,
-  ])("non HTTP scheme is unparseable[%s]", (url) => {
+  ])("non-HTTP scheme is unparseable: %s", (url) => {
     // python: test_non_http_scheme_is_unparseable
     const exc = catchParseError(() => parseReportLink(url));
     expect(exc.code).toBe("REPORT_LINK_UNPARSEABLE");
   });
 
   it.each(["http", "HTTP", "Https"])(
-    "HTTP schemes parse[%s]", // python: test_http_schemes_parse
+    "scheme %s parses", // python: test_http_schemes_parse
     (scheme) => {
       const parsed = parseReportLink(
         `${scheme}://mixpanel.com/project/3/app/insights#${SLUG}`,
@@ -585,7 +567,7 @@ describe("Parser tolerance", () => {
     expect(parsed.title_segment).toBe("my%2Ftitle");
   });
 
-  it("percent hash lower case", () => {
+  it("percent-encoded hash, lower-case form", () => {
     // python: test_percent_hash_lower_case
     const parsed = parseReportLink(
       `https://mixpanel.com/project/3/app/insights%23${SLUG}`,
@@ -593,7 +575,7 @@ describe("Parser tolerance", () => {
     expect(parsed.slug).toBe(SLUG);
   });
 
-  it("non digit workspace segment is unrecognized path", () => {
+  it("a non-digit workspace segment is an unrecognized path", () => {
     // python: test_non_digit_workspace_segment_is_unrecognized_path
     const exc = catchParseError(() =>
       parseReportLink(
@@ -603,7 +585,7 @@ describe("Parser tolerance", () => {
     expect(exc.code).toBe("REPORT_LINK_UNRECOGNIZED_PATH");
   });
 
-  it("duplicate fragment keys first wins", () => {
+  it("duplicate fragment keys: first wins", () => {
     // python: test_duplicate_fragment_keys_first_wins
     const parsed = parseReportLink(
       "https://mixpanel.com/project/3/app/boards#id=1&id=2",
@@ -612,7 +594,7 @@ describe("Parser tolerance", () => {
     expect(parsed.dashboard_id).toBe(1);
   });
 
-  it("scheme without host is unparseable", () => {
+  it("a scheme without host is unparseable", () => {
     // python: test_scheme_without_host_is_unparseable
     const exc = catchParseError(() => parseReportLink("https://"));
     expect(exc.code).toBe("REPORT_LINK_UNPARSEABLE");

@@ -1,26 +1,8 @@
-// Translated LiveQueryService tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/unit/test_live_query.py — ALL 7
-// classes (TestLiveQueryService :57, TestSegmentation :78, TestFunnel
-// :287, TestExtractStepsFromDateData :528, TestRetention :658,
-// TestEventCounts :845, TestPropertyCounts :1013).
-//
-// Translation notes (applied consistently):
-// - `live_query_factory` -> `liveQueryFactory` over the B4
-//   `createMockClient` httpx.MockTransport analog
-//   (`test-support/client-test-helpers.ts`). Python's explicit
-//   `client.__enter__()` / `__exit__` has no TS twin (R6.2: the TS
-//   client owns no pool that needs opening).
-// - Handlers that `assert` on the captured request assert AFTER the
-//   await via the transport capture log: a throw inside the injected
-//   fetch would be normalized into a transport error by the B4 client
-//   and mask the assertion. Same assertion, same values.
-// - `result.df` asserts (`test_event_counts_df_conversion`,
-//   `test_property_counts_df_conversion`, and the two `len(df) == 0`
-//   cases) become `toRows()` / `rowColumns()` asserts per the C6
-//   pandas convention — the pre-pandas row list IS the frame body.
-// - The private `_extract_steps_from_date_data` is
-//   {@link extractStepsFromDateData} in `services/live-query-transforms.ts`
-//   (R7.2 split of the 2,042-line Python module).
+// LiveQueryService: segmentation, funnel, retention, event counts and
+// property counts, plus the extractStepsFromDateData helper. Mirrors
+// tests/unit/test_live_query.py (all seven classes). Request asserts run
+// after the await via the transport capture log; `.df` asserts become
+// `toRows()` / `rowColumns()`; `__enter__` / `__exit__` has no TS twin.
 
 import { describe, expect, it } from "vitest";
 
@@ -72,7 +54,7 @@ describe("Live query service", () => {
 });
 
 // ===========================================================================
-// User Story 1: Segmentation Tests
+// Segmentation
 // ===========================================================================
 
 describe("Segmentation", () => {
@@ -218,7 +200,7 @@ describe("Segmentation", () => {
 });
 
 // ===========================================================================
-// User Story 2: Funnel Tests
+// Funnel
 // ===========================================================================
 
 describe("Funnel", () => {
@@ -380,7 +362,7 @@ describe("Funnel", () => {
 });
 
 // ===========================================================================
-// Funnel Helper Tests
+// Funnel helper
 // ===========================================================================
 
 describe("Extract steps from date data", () => {
@@ -461,7 +443,7 @@ describe("Extract steps from date data", () => {
 });
 
 // ===========================================================================
-// User Story 3: Retention Tests
+// Retention
 // ===========================================================================
 
 describe("Retention", () => {
@@ -589,7 +571,7 @@ describe("Retention", () => {
 });
 
 // ===========================================================================
-// User Story 5: Event Counts Tests
+// Event counts
 // ===========================================================================
 
 describe("Event counts", () => {
@@ -702,7 +684,7 @@ describe("Event counts", () => {
 });
 
 // ===========================================================================
-// User Story 6: Property Counts Tests
+// Property counts
 // ===========================================================================
 
 describe("Property counts", () => {

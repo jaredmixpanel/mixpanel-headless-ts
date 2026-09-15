@@ -1,27 +1,8 @@
-// Translated Phase-008 LiveQueryService tests (B5-S2, packet §3):
-// assertion-for-assertion port of tests/unit/test_live_query_phase008.py
-// — ALL 8 classes (TestActivityFeedService :68,
-// TestNumericSumService :279, TestNumericAverageService :355,
-// TestFrequencyService :427, TestNumericBucketService :516,
-// TestQuerySavedReportService :597, TestPhase008ServiceErrorHandling
-// :703, TestPhase008EdgeCases :964).
-//
-// Translation notes:
-// - The Python fixture pins a workspace with `client.set_workspace_id(
-//   12345)` so `activity_feed`'s stream/bookmark call resolves without
-//   an unmocked fetch; the TS twin pins it on the SESSION
-//   (`makeSession({workspaceId: 12345})`), which is the same
-//   pin-then-skip-discovery path the B4 client reads.
-// - `UserEvent.time` is a `datetime` in Python and preserved ISO text in
-//   TS (phase2-design watchlist #5), so
-//   `test_activity_feed_converts_timestamps`'s
-//   `.year/.month/.day == 2024/1/1` becomes the exact ISO rendering
-//   `"2024-01-01T00:00:00+00:00"` — a STRICTLY stronger assertion over
-//   the same conversion, and the `isinstance(..., datetime)` check has
-//   no TS analog (recorded in `B5-S2-notes.md` §2).
-// - `.df` asserts translate to `toRows()` / `rowColumns()` (C6).
-// - `pytest.raises(ValueError, match=...)` is the shared
-//   `compat/python-builtins.ts` `ValueError` twin.
+// LiveQueryService phase-008 methods: activity_feed, segmentation sum /
+// average / numeric buckets, frequency and query_saved_report, plus their
+// error propagation and edge cases. Mirrors all eight classes of
+// tests/unit/test_live_query_phase008.py. `UserEvent.time` is preserved ISO
+// text in TS, so the datetime year/month/day asserts become the ISO rendering.
 
 import { describe, expect, it } from "vitest";
 
@@ -58,7 +39,7 @@ function liveQueryFactory(handler: CannedHandler): LiveQueryService {
 }
 
 // ===========================================================================
-// US1: Activity Feed Tests
+// Activity feed
 // ===========================================================================
 
 describe("Activity feed service", () => {
@@ -199,7 +180,7 @@ describe("Activity feed service", () => {
 });
 
 // ===========================================================================
-// US2: Numeric Sum Tests
+// Numeric sum
 // ===========================================================================
 
 describe("Numeric sum service", () => {
@@ -248,7 +229,7 @@ describe("Numeric sum service", () => {
 });
 
 // ===========================================================================
-// US3: Numeric Average Tests
+// Numeric average
 // ===========================================================================
 
 describe("Numeric average service", () => {
@@ -291,7 +272,7 @@ describe("Numeric average service", () => {
 });
 
 // ===========================================================================
-// US4: Frequency Tests
+// Frequency
 // ===========================================================================
 
 describe("Frequency service", () => {
@@ -342,7 +323,7 @@ describe("Frequency service", () => {
 });
 
 // ===========================================================================
-// US5: Numeric Bucketing Tests
+// Numeric bucketing
 // ===========================================================================
 
 describe("Numeric bucket service", () => {
@@ -402,7 +383,7 @@ describe("Numeric bucket service", () => {
 });
 
 // ===========================================================================
-// US6: Insights Tests
+// Saved report (insights)
 // ===========================================================================
 
 describe("Query saved report service", () => {
@@ -475,7 +456,7 @@ describe("Query saved report service", () => {
 });
 
 // ===========================================================================
-// Error Handling Tests
+// Error handling
 // ===========================================================================
 
 describe("Phase 008 service error handling", () => {
@@ -644,7 +625,7 @@ describe("Phase 008 service error handling", () => {
 });
 
 // ===========================================================================
-// Edge Case Tests
+// Edge cases
 // ===========================================================================
 
 describe("Phase 008 edge cases", () => {

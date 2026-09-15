@@ -1,36 +1,8 @@
-// Translated schema-graph tests (B5-S1, packet §4): assertion-for-
-// assertion port of tests/unit/test_schema_graph.py.
-//
-// Owned here: TestApiClientBulkLexicon :274 (client-direct — translated
-// against the B4 client), TestCanonicalResourceType :378,
-// TestDiscoveryGetSchemaGraph :398, and the FACADE half of
-// TestFacadeAndCli :504.
-//
-// Header exclusions:
-// - TestFacadeAndCli's two CLI cases (`test_cli_json` :518,
-//   `test_cli_table_shows_relationships` :530) — the CLI is out of
-//   Phase-3 scope (api-map preamble).
-// - TestSchemaGraphResult :69 was translated in Phase 2
-//   (`test/types/results/schema-graph.test.ts:1-11`) EXCEPT its
-//   `to_graph()` assertions, which that header defers to B5. Those come
-//   alive here with {@link SchemaGraphResult.toGraph}: the six
-//   deferred cases are re-homed in the `TestSchemaGraphResult
-//   (to_graph half)` block below, verbatim.
-//
-// Translation notes:
-// - `networkx` has no vendored TS twin, so `toGraph()` returns the
-//   adjacency object the graph is built from. The three helpers below
-//   express the asserted networkx API: `g.nodes[n]["kind"]`,
-//   `list(g.successors(n))`, `g.edges[u, v]["density_local"]`.
-// - `to_graph() is to_graph()` (pandas/graph identity caching) becomes
-//   repeated-call deep equality — the Phase-2 convention
-//   (`test/types/results/types.test.ts:8-11`); the codec-visible
-//   `_graph_cache` slot stays `null` by design.
-// - `caplog.at_level(DEBUG)` -> the injected {@link DiscoveryLogger}
-//   (R9.5); the assertion on the message substring is unchanged.
-// - `MagicMock()` api clients -> stub objects carrying only the two
-//   lexicon methods, plus a `resource_type` call log for
-//   `test_skip_user_properties`.
+// Schema graph: SchemaGraphResult.toGraph(), the client's bulk lexicon and
+// per-event property calls, canonicalResourceType, DiscoveryService.
+// get_schema_graph and the Workspace facade delegation. Mirrors
+// tests/unit/test_schema_graph.py minus the two CLI cases. networkx has no
+// TS twin: toGraph() returns the adjacency object; caching = deep equality.
 
 import { describe, expect, it } from "vitest";
 
@@ -170,7 +142,7 @@ function lexiconStub(
       return Promise.resolve(perEvent.rows);
     },
     core: { now: (): Date => new Date("2026-06-03T00:00:00.000Z") },
-    // B6-W1: the facade constructor installs the workspace resolver
+    // The facade constructor installs the workspace resolver
     // (`workspace.py`); `MagicMock(spec=…)` covers it in Python.
     hasWorkspaceResolver: false,
     setWorkspaceResolver: (): void => {},
@@ -204,7 +176,7 @@ function defaultMockApi(): LexiconStub {
   );
 }
 
-describe("Schema graph result (to_graph half — Phase-2 deferral)", () => {
+describe("Schema graph result (to_graph half)", () => {
   // python: TestSchemaGraphResult
   it("yields a directed event->property graph with node kinds", () => {
     const g = sampleResult().toGraph();

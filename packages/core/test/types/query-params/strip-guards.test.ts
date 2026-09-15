@@ -1,19 +1,8 @@
-// Regression tests for the B0-gate attempt-1 differential divergence
-// (conformance/differential/oracle/RUN.md, 2026-08-15 entry; shrunken
-// repro 2026-08-15-types-RetentionEvent.json): every emptiness guard in
-// packages/core/src/types/** must use `pythonStrip` (CPython
-// `str.strip()` whitespace set, pinned whitespace.gen.ts), NOT JS
-// `String.trim()`. The two sets differ in both directions:
-//   - Python-only blanks: U+001C..U+001F, U+0085 (str.strip() removes,
-//     .trim() keeps) — these inputs must be REJECTED as blank;
-//   - JS-only blank: U+FEFF (BOM; .trim() removes, str.strip() keeps)
-//     — a FEFF-only input is NON-blank in Python and must be ACCEPTED.
-// Guard order is also locked: the strip-emptiness check precedes the
-// control-char check (Python source order), so a U+001C-only event
-// raises EV1_EMPTY_EVENT, never EV2_CONTROL_CHAR_EVENT.
-// Python counterparts: types.py:9116, 9153, 7129, 10162, 8309, 8231,
-// 8707, 8720, 8953, 8392, 9532, 9644, 4921, and _safe_int (:10548 —
-// covered in flow-query-result.test.ts).
+// Every emptiness guard under src/types must use `pythonStrip` (CPython
+// `str.strip()` whitespace, pinned in whitespace.gen.ts), never JS `trim()`:
+// U+001C..U+001F and U+0085 are Python-only blanks (must be REJECTED), U+FEFF
+// is JS-only blank (must be ACCEPTED); the strip check precedes the
+// control-char check, so a U+001C-only event raises EV1, never EV2. Additive.
 import { describe, expect, it } from "vitest";
 
 import { ResponseValidationError } from "../../../src/errors.js";
@@ -54,7 +43,7 @@ const PY_ONLY_BLANKS = [
 /** JS-blank / Python-nonblank string (the inverse direction). */
 const BOM = "\uFEFF";
 
-describe("pythonStrip emptiness guards (RUN.md 2026-08-15 divergence class)", () => {
+describe("pythonStrip emptiness guards (differential divergence class)", () => {
   it("EV1_EMPTY_EVENT: validateEventName rejects Python-only blanks (the repro class)", () => {
     for (const event of PY_ONLY_BLANKS) {
       expectGuard(() => validateEventName(event, "X"), "EV1_EMPTY_EVENT");

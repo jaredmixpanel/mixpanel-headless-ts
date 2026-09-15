@@ -1,21 +1,8 @@
-// Layer-3 translation of `tests/unit/test_accounts_namespace.py` — the
-// six `TestLoginUnified*` classes (:993-1685; B7-A1 packet §3.4,
-// `b7-packets.md`).
-//
-// Mechanism substitutions (header-cited per R10.2), matching
-// `accounts-namespace.test.ts`:
-// - `monkeypatch.setenv` becomes the bundle's env bag (`setEnv`);
-// - the `MixpanelAPIClient.me` stub becomes `meFetch(payload)`;
-// - the me-cache write assertions (`MeCache(...).get()` against
-//   `~/.mp/accounts/{name}/me.json`) re-express over the injected
-//   `meCache.put` capture map — the on-disk store is B8-N2;
-// - the Python progress CONTEXT MANAGER becomes the
-//   `(msg) => ProgressHandle` factory (enter = call, exit = `end()`;
-//   packet §3.3 "Disposable-style callback");
-// - the `_fetch_me` spy (`monkeypatch.setattr(accounts_mod,
-//   "_fetch_me", …)`) becomes an event recorded INSIDE the injected
-//   fetch — the same "progress CM is open AT the moment /me runs"
-//   ordering lock.
+// `accounts.loginUnified`, mirroring the six `TestLoginUnified*` classes of
+// `tests/unit/test_accounts_namespace.py`. `monkeypatch.setenv` → `setEnv`;
+// the `/me` stub → `meFetch()`; me-cache writes → the `meCache.put` capture;
+// the progress context manager → the `(msg) => ProgressHandle` factory
+// (enter = call, exit = `end()`), with the `_fetch_me` spy inside the fetch.
 
 import { describe, expect, it } from "vitest";
 
@@ -380,7 +367,7 @@ describe("Login unified progress hook", () => {
     expect(events).toStrictEqual(["enter", "fetch", "exit"]);
     expect(messages).toHaveLength(1);
     expect(messages[0]).not.toBe("");
-    // No numeric duration in the message (043 cli-feedback rule).
+    // No numeric duration in the message.
     expect(/\d/.test(messages[0]!)).toBe(false);
   });
 
@@ -521,12 +508,11 @@ describe("Login unified picker sort order", () => {
   });
 });
 
-// Spec-cited ADDITIONS (not Python translations) — pair-A arbiter
-// locks, `b7-reviewA-resolution.md` SEM-F1 / SEM-F2. Expected values
-// live-verified against CPython 2026-08-16 (arbiter probe:
-// `login_unified(token_env="")` with MP_OAUTH_TOKEN set raises
-// ConfigError "--token-env '' is unset; cannot probe region.").
-describe("B7-ARB-A resolution locks (b7-reviewA-resolution.md SEM-F1/SEM-F2)", () => {
+// TS additions with expected values verified against CPython:
+// `login_unified(token_env="")` with MP_OAUTH_TOKEN set fails at the
+// region probe, and the browser flow refuses an orphaned per-account
+// token directory.
+describe("Empty token_env and orphaned-state guards", () => {
   it('token_env="" falls back to MP_OAUTH_TOKEN and fails at the PROBE like Python', async () => {
     const bundle = makeEffects({ env: { MP_OAUTH_TOKEN: "tok-x" } });
     const accounts = createAccountsNamespace(bundle.effects);

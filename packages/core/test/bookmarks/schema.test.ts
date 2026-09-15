@@ -451,7 +451,8 @@ describe("Enum parity", () => {
   ];
 
   for (const [literalName, literalValues, frozenSet] of cases) {
-    it(`test_literal_matches_frozenset[${literalName}]`, () => {
+    // python: test_literal_matches_frozenset
+    it(`${literalName} literal matches the Python frozenset`, () => {
       expect([...literalValues].sort()).toStrictEqual([...frozenSet].sort());
     });
   }

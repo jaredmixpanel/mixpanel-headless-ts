@@ -1,25 +1,8 @@
-// Translated rrweb-analyzer tests (packet B5-S3, `b5-packets.md` §5):
-// assertion-for-assertion ports of ALL NINE classes of
-//   tests/unit/test_rrweb_analyzer.py
-//     TestAnalyzeEventsWrapper   :162
-//     TestConsoleErrors          :199
-//     TestDebouncing             :267
-//     TestMouseInteractions      :349
-//     TestSelectionEvents        :487
-//     TestMutations              :536
-//     TestDescriptionFallbacks   :620
-//     TestDOMTrackerDirect       :708
-//     TestMarkdownReporter       :768
-// plus TestRrwebAnalyzer :162 of tests/unit/test_replay_bundle.py (the
-// sample-fixture pair the packet routes here).
-//
-// The golden-file suite lives in `rrweb-analyzer.golden.test.ts`
-// (plan Layer-3, `typescript-port-plan.md:351-354`).
-//
-// Message-text asserts on the two `analyze_events` ValueErrors keep the
-// Python wording: these are plain CPython `ValueError`s with no registry
-// code, so the substring IS the only available discriminator (R5.4's
-// "code over message" has no code to prefer here).
+// RrwebAnalyzer, DOMTracker and MarkdownReporter: the analyze_events wrapper,
+// console errors, debouncing, mouse / selection / mutation events, description
+// fallbacks and markdown rendering. Mirrors all nine classes of
+// tests/unit/test_rrweb_analyzer.py plus TestRrwebAnalyzer of
+// tests/unit/test_replay_bundle.py. Goldens: rrweb-analyzer.golden.test.ts.
 import { describe, expect, it } from "vitest";
 
 import { ValueError } from "../../src/compat/python-builtins.js";
@@ -255,6 +238,8 @@ function byAction(
 
 describe("analyze_events() convenience function", () => {
   // python: TestAnalyzeEventsWrapper
+  // The two ValueErrors are plain CPython `ValueError`s with no registry
+  // code, so the message substring is the only available discriminator.
   it("empty raises value error", () => {
     // python: test_empty_raises_value_error
     expect(() => analyzeEvents([])).toThrow(ValueError);
@@ -382,7 +367,7 @@ describe("scroll / input / selection debouncing", () => {
     expect(byAction(result.actions, "scroll")).toHaveLength(1);
   });
 
-  it("scroll re fires after gap", () => {
+  it("scroll re-fires after a gap", () => {
     // python: test_scroll_re_fires_after_gap
     const events = [meta(1000, "/x"), scroll(2000), scroll(5000)];
     const result = new RrwebAnalyzer().analyze(events);
@@ -424,7 +409,7 @@ describe("scroll / input / selection debouncing", () => {
     expect(result.markdown_summary).toContain("to checked");
   });
 
-  it("input no text no check modified fallback", () => {
+  it("input with neither text nor checked falls back to 'modified'", () => {
     // python: test_input_no_text_no_check_modified_fallback
     const root = documentRoot(
       elementNode(30, "input", { attributes: { type: "text", id: "foo" } }),
@@ -780,7 +765,7 @@ describe("descriptive-attribute priority ladder", () => {
 
 describe("DOMTracker direct exercises", () => {
   // python: TestDOMTrackerDirect
-  it("sanitize value strips and drops null string", () => {
+  it("sanitizeValue strips whitespace and drops the 'null' string", () => {
     // python: test_sanitize_value_strips_and_drops_none_string
     expect(DOMTracker.sanitizeValue("  ")).toBe("");
     expect(DOMTracker.sanitizeValue("None")).toBe("");

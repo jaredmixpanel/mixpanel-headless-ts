@@ -1,21 +1,8 @@
-// B6-W1 Layer-3 translation of `tests/unit/test_me.py::TestMeService`
-// — the half of `_internal/me.py` that W1 ports
-// (`b6-packets.md` §3.3: models + `WorkspaceView` + `selectWorkspaceId`
-// landed at B4-C1 in `client/me.ts`; `MeService` lands here; the ON-DISK
-// `MeCache` is B8-N2).
-//
-// The packet's §3 Layer-3 table does not name `test_me.py` (it lists the
-// facade suites only), so this file is the shard's own translation of
-// the MeService class — recorded in `B6-W1-notes.md` §Layer-3 so the
-// review pair can see the addition rather than a gap.
-//
-// DEFERRED to B8-N2 (header-cited): `TestMeCache`,
-// `TestMeCacheConcurrency`, `TestMeCacheSymlinkRejection`
-// — all on-disk cache behaviour. The disk-cache leg of
-// `test_fetch_uses_disk_cache` / `test_fetch_stores_in_disk_cache`
-// is translated here against the INJECTED `MeCacheStore` seam
-// (the in-memory default), which is the store-shaped invariant that
-// survives without disk.
+// MeService: fetch through the in-memory and injected MeCacheStore caches,
+// 401/403 error mapping, project / workspace listing and lookup, and the
+// no-network resolveWorkspace path. Mirrors tests/unit/test_me.py
+// (TestMeService) and TestMeServiceResolveWorkspace of
+// tests/unit/test_workspace_resolution.py; on-disk MeCache suites are Node-side.
 
 import { describe, expect, it, vi } from "vitest";
 
@@ -386,7 +373,7 @@ describe("MeService.resolveWorkspace — the dagger path", () => {
 });
 
 describe("MeService cache-store seam", () => {
-  it("exposes the bound account name (workspace.py:875 MeCache twin)", () => {
+  it("exposes the bound account name (MeCache twin)", () => {
     const { service } = makeService();
 
     expect(service.cacheAccountName).toBe("personal");
@@ -407,12 +394,9 @@ describe("MeService cache-store seam", () => {
 });
 
 // ---------------------------------------------------------------------------
-// B7-A1: `TestMeServiceResolveWorkspace` (test_workspace_resolution.py
-// :154) — landed here per `b7-packets.md` §3.4 (the stale B4-C1 "is
-// B8" note in `client-workspace.test.ts` is corrected in that file,
-// packet Caution #17). Three of the class's five cases are LITERAL
-// DUPLICATES of the dagger-path section above and are cited rather
-// than re-translated: `test_no_workspaces_for_project_is_none`
+// TestMeServiceResolveWorkspace (test_workspace_resolution.py). Three of
+// the class's five cases duplicate the resolveWorkspace section above and
+// are not re-translated: `test_no_workspaces_for_project_is_none`
 // ≡ "returns null when the project has no views";
 // `test_non_numeric_project_is_none` ≡ "returns null for a
 // non-numeric project id"; `test_cold_cache_is_none_without_network`

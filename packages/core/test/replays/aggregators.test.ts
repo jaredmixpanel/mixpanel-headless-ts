@@ -1,23 +1,8 @@
-// Translated aggregator tests (packet B5-S3, `b5-packets.md` §5):
-// assertion-for-assertion ports of
-//   tests/unit/test_replay_bundle.py
-//     TestReplayBundleAggregations :325   (all 5)
-//     TestAggregatorFunctions      :459   (all 3)
-// PLUS the four asserts that Phase 2 excluded from
-// `test/types/results/replays.test.ts` pending this shard's TODO(port)
-// closure (that file's headers at :707-710 and :745-748 cite them):
-//     TestReplayBundleProjections::test_elements_df
-//     TestReplayBundleProjections::test_elements_df_normalizes_urls
-//     TestReplayBundleFilters::test_error_sessions
-//     TestReplayBundleFilters::test_sample_determinism
-//
-// pandas frames port as row arrays (C6 `toRows()` precedent), so
-// `df.iloc[0]["count"]` becomes `rows[0].count` and `len(df)` becomes
-// `rows.length`.
-//
-// `sample()`'s CPython parity (decision S3-D1) has its own dedicated
-// probe lock in `test/compat/python-random.test.ts`; the assert here is
-// the Python one (same seed → same sample).
+// ReplayBundle aggregations (top/rage clicks, long pauses), the module-level
+// aggregators, the elements frame, error-session filter and seeded sample().
+// Mirrors tests/unit/test_replay_bundle.py: TestReplayBundleAggregations,
+// TestAggregatorFunctions and the elements_df / error_sessions / sample cases
+// of TestReplayBundleProjections / TestReplayBundleFilters. Frames port as rows.
 import { describe, expect, it } from "vitest";
 
 import {
@@ -291,7 +276,7 @@ describe("module-level aggregators", () => {
   });
 });
 
-describe("elements frame — the Phase-2 deferrals", () => {
+describe("elements frame projections", () => {
   // python: TestReplayBundleProjections
   it("elements df", () => {
     // python: test_elements_df
@@ -333,7 +318,7 @@ describe("elements frame — the Phase-2 deferrals", () => {
   });
 });
 
-describe("error-session + sample filters — the Phase-2 deferrals", () => {
+describe("error-session and sample filters", () => {
   // python: TestReplayBundleFilters
   it("error sessions", () => {
     // python: test_error_sessions

@@ -1,5 +1,6 @@
-// invariant() tests: throws the hierarchy base on violation,
-// narrows the condition type on success.
+// `invariant()`: throws the hierarchy base on violation and narrows the
+// condition type on success. TS-only helper; no Python twin.
+
 import { describe, expect, it } from "vitest";
 
 import { MixpanelHeadlessError } from "../src/errors.js";

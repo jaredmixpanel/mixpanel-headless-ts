@@ -1,26 +1,8 @@
-// Report-link public type unit tests (045-report-links), translated from
-// tests/unit/test_types_report_links.py.
-//
-// One `describe` per Python class, one `it` per Python test (same order,
-// mirrored names).
-//
-// Translation notes (documented substitutions, NOT weakened assertions):
-// - `get_args(ReportLinkType)` becomes the runtime membership tuple
-//   `REPORT_LINK_TYPE_VALUES` (literals.ts keeps a tuple per Literal
-//   alias). `ReportLinkQueryResult` is a TS type alias with no runtime
-//   members, so `test_query_result_alias_members` lives in
-//   `report-links.test-d.ts` as an `expectTypeOf` assertion.
-// - Pydantic `model_validate` → `BookmarkUrl.fromDict`; keyword
-//   construction → `new BookmarkUrl({...})`; `model_extra` → the
-//   `__extras` bag on `EntityModel`; `model_dump(by_alias=True)` →
-//   `modelDump({ byAlias: true })`.
-// - Dataclass `FrozenInstanceError` → `Object.isFrozen` plus a strict-mode
-//   write (`Object.assign`) that throws `TypeError`; the compile-time
-//   `readonly` contract is pinned in `report-links.test-d.ts`.
-// - `dataclasses.replace(...)` → re-construct from a spread of the field
-//   bag with the overridden keys.
-// - Message-TEXT assertions (`"source='slug'" in str(exc)`) are not
-//   carried; class, `.code` and `.details` are.
+// ReportLinkType, BookmarkUrl, ReportLink and ResolvedReport. Mirrors
+// tests/unit/test_types_report_links.py class for class. `get_args` becomes
+// REPORT_LINK_TYPE_VALUES; `model_validate` → fromDict, `model_dump(by_alias)`
+// → modelDump({ byAlias: true }); FrozenInstanceError → Object.isFrozen plus
+// a throwing strict-mode write; message-text asserts are not carried.
 import { describe, expect, it } from "vitest";
 
 import { ParamValidationError } from "../../src/errors.js";
@@ -73,13 +55,13 @@ describe("Bookmark URL", () => {
     expect(record.bookmark).toBeNull();
   });
 
-  it("params default empty dict", () => {
+  it("params default to an empty dict", () => {
     // python: test_params_default_empty_dict
     const record = BookmarkUrl.fromDict({ slug: SLUG, type: "insights" });
     expect(record.params).toStrictEqual({});
   });
 
-  it("populate by name", () => {
+  it("accepts population by field name", () => {
     // python: test_populate_by_name
     const record = new BookmarkUrl({ slug: SLUG, bookmark_type: "retention" });
     expect(record.bookmark_type).toBe("retention");
@@ -110,7 +92,7 @@ describe("Bookmark URL", () => {
     expect(record.overrides).toStrictEqual({ originDashboard: 555 });
   });
 
-  it("extra keys kept", () => {
+  it("keeps extra keys", () => {
     // python: test_extra_keys_kept
     const record = BookmarkUrl.fromDict({
       slug: SLUG,
@@ -128,7 +110,7 @@ describe("Bookmark URL", () => {
   // freezes, assert `Object.isFrozen` plus a throwing write here.
   it.todo("frozen"); // python: test_frozen
 
-  it("dump by alias", () => {
+  it("dumps by alias", () => {
     // python: test_dump_by_alias
     const record = new BookmarkUrl({ slug: SLUG, bookmark_type: "flows" });
     const dumped = record.modelDump({ byAlias: true });
@@ -158,7 +140,7 @@ describe("Report link", () => {
     });
   }
 
-  it("to dict returns every field", () => {
+  it("toDict returns every field", () => {
     // python: test_to_dict_returns_every_field
     const link = build();
     const d = link.toDict();
@@ -191,7 +173,7 @@ describe("Report link", () => {
     expect(link.created_at).toBeNull();
   });
 
-  it("str is URL", () => {
+  it("renders as its URL", () => {
     // python: test_str_is_url
     const link = build();
     expect(String(link)).toBe(link.url);
@@ -249,7 +231,7 @@ describe("Resolved report", () => {
     return new ResolvedReport(fields(bookmark));
   }
 
-  it("to dict serializes bookmark by alias", () => {
+  it("toDict serializes the bookmark by alias", () => {
     // python: test_to_dict_serializes_bookmark_by_alias
     const bookmark = new Bookmark({
       id: 123,
@@ -265,7 +247,7 @@ describe("Resolved report", () => {
     expect(() => JSON.stringify(d)).not.toThrow();
   });
 
-  it("to dict passes null bookmark through", () => {
+  it("toDict passes a null bookmark through", () => {
     // python: test_to_dict_passes_none_bookmark_through
     const d = build(null).toDict();
     expect(d["bookmark"]).toBeNull();

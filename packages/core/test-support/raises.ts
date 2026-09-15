@@ -1,10 +1,8 @@
-// `pytest.raises(...)` twins for the vitest suites.
-//
-// Each runs the body, hands back whatever it threw, and fails the test
-// when nothing was thrown — so the assertions on the captured error sit
-// after the call rather than inside a `catch` block (which is what
-// `vitest/no-conditional-expect` forbids: an `expect` inside `catch`
-// silently never runs when the body unexpectedly succeeds).
+// `pytest.raises(...)` twins for the vitest suites: each runs the body,
+// hands back whatever it threw and fails the test when nothing was thrown,
+// so assertions on the captured error sit after the call rather than inside
+// a `catch` (where `vitest/no-conditional-expect` would flag them and an
+// unexpected success would silently skip them).
 import { expect } from "vitest";
 
 import { ParamValidationError } from "../src/errors.js";

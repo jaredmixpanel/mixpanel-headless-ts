@@ -1,27 +1,9 @@
-// Layer-3 translation of `tests/unit/test_resolver.py` (443 lines, 31
-// tests, 7 classes) + `tests/unit/test_042_edge_cases.py::
-// TestResolverEdgeCases` — B7-A2 packet §2.4
-// (`b7-packets.md`).
-//
-// Mechanism substitutions (header-cited per R10.2 / packet §2.2, §2.4):
-// - The tmp-dir `ConfigManager` fixtures translate to an in-memory
-//   `ResolverConfigSource` fake (`FakeConfig`) — the TS resolver core
-//   takes injected sources and does no I/O (R9.4).
-// - `monkeypatch.setenv` translates to env-bag literals passed in
-//   `ResolverSources.env`; the `_isolated_home` fixture has no TS twin
-//   because the core NEVER loads a default bridge (`bridge` is an
-//   explicit member of the sources bag; B8 wires `load_bridge`).
-// - `TestNoSideEffects.test_does_not_mutate_environ` re-expresses as a
-//   no-source-mutation assert (packet §2.2: "the TS twin cannot mutate
-//   `process.env` by construction, but the sources object must come
-//   back untouched").
-// - Python `ValueError` on the target guard is the coded
-//   `ParamValidationError` `WS1_TARGET_MUTUALLY_EXCLUSIVE` twin (packet
-//   §2.2; R5 codes-not-messages — same code as the W1 guard, no second
-//   code minted).
-// - Pydantic `ValidationError`/`ConfigError` from `ConfigManager` load
-//   paths surface here as the fake's thrown `AccountNotFoundError` /
-//   `ConfigError` (the coded twins config.py already uses).
+// `resolveSession` + env parsers, mirroring `tests/unit/test_resolver.py` and
+// `TestResolverEdgeCases` of `tests/unit/test_042_edge_cases.py`. The tmp-dir
+// `ConfigManager` becomes the in-memory `FakeConfig`; `monkeypatch.setenv`
+// becomes env-bag literals; the core never loads a default bridge (no
+// `_isolated_home` twin); the target guard is `WS1_TARGET_MUTUALLY_EXCLUSIVE`.
+
 import { describe, expect, it } from "vitest";
 
 import { type Account, parseAccount } from "../../src/auth/account.js";
@@ -168,9 +150,9 @@ function sources(
 
 /**
  * Construct a `BridgeView` pointing at a fresh service account (the
- * `TestCrossSourceOrdering._make_bridge` twin).
+ * `TestCrossSourceOrdering._make_bridge` twin); `options` carries the
+ * optional `project` / `workspace` axes, each defaulting to null.
  *
- * @param options - Optional project / workspace axes.
  * @returns The bridge view.
  */
 function makeBridge(options: {
@@ -227,7 +209,7 @@ describe("Account axis priority", () => {
     expect(s.account.name).toBe("team");
   });
 
-  it("env quad synthesizes service account", () => {
+  it("the env quad synthesizes a service account", () => {
     // python: test_env_quad_synthesizes_service_account
     const config = cm();
     config.active = { account: "team" };
@@ -247,7 +229,7 @@ describe("Account axis priority", () => {
     ).toBe("env.user");
   });
 
-  it("OAuth token env synthesizes", () => {
+  it("MP_OAUTH_TOKEN synthesizes an oauth_token account", () => {
     // python: test_oauth_token_env_synthesizes
     const s = resolveSession(
       {},
@@ -260,7 +242,7 @@ describe("Account axis priority", () => {
     expect(s.account.type).toBe("oauth_token");
   });
 
-  it("sa env quad beats OAuth token env", () => {
+  it("the SA env quad beats the OAuth token env", () => {
     // python: test_sa_env_quad_beats_oauth_token_env
     const s = resolveSession(
       {},
@@ -327,7 +309,7 @@ describe("Workspace axis priority", () => {
     expect(s.workspace?.id).toBe(100);
   });
 
-  it("workspace null when unset", () => {
+  it("workspace is null when unset", () => {
     // python: test_workspace_none_when_unset
     const s = resolveSession({}, sources(cmWithActive()));
     expect(s.workspace ?? null).toBeNull();
@@ -380,7 +362,7 @@ describe("Target mutual exclusion", () => {
     ).toThrow(ParamValidationError);
   });
 
-  it("target guard carries the W1 code (packet §2.2 — no second code)", () => {
+  it("the target guard reuses the W1 code — no second code minted", () => {
     const config = cmWithActive();
     addEcom(config);
     const error = expectThrows(() =>
@@ -405,7 +387,7 @@ describe("Target mutual exclusion", () => {
 
 describe("No side effects", () => {
   // python: TestNoSideEffects
-  it("does not mutate environ (re-expressed: sources untouched)", () => {
+  it("leaves the sources bag untouched (Python: environ unchanged)", () => {
     // python: test_does_not_mutate_environ
     const env: ResolverEnv = { MP_PROJECT_ID: "777" };
     const config = cmWithActive();
@@ -439,12 +421,12 @@ describe("No side effects", () => {
 
 describe("Error messages", () => {
   // python: TestErrorMessages
-  it("no account lists options", () => {
+  it("the no-account error lists the options", () => {
     // python: test_no_account_lists_options
     // cm has accounts but no [active].account; no env vars set.
     const error = expectThrows(() => resolveSession({}, sources(cm())));
     expect(error).toBeInstanceOf(ConfigError);
-    // Should mention every fix path (per spec FR-024).
+    // Should mention every fix path.
     expect((error as ConfigError).message.toLowerCase()).toContain("account");
   });
 });
@@ -476,7 +458,7 @@ describe("Cross source ordering", () => {
     expect(s.account.name).toBe("team");
   });
 
-  it("env sa quad beats target", () => {
+  it("the env SA quad beats the target", () => {
     // python: test_env_sa_quad_beats_target
     const config = cmWithActive();
     config.addTarget(
@@ -491,7 +473,7 @@ describe("Cross source ordering", () => {
     expect(s.account.name).not.toBe("team");
   });
 
-  it("env sa quad beats bridge", () => {
+  it("the env SA quad beats the bridge", () => {
     // python: test_env_sa_quad_beats_bridge
     const bridge = makeBridge({ project: "3713224" });
     const s = resolveSession({}, sources(cmWithActive(), SA_QUAD, bridge));
@@ -611,7 +593,7 @@ describe("Cross source ordering", () => {
   });
 });
 
-// ---- test_042_edge_cases.py::TestResolverEdgeCases --------
+// ---- Resolver edge cases (test_042_edge_cases.py) --------------------
 
 describe("Resolver edge cases", () => {
   // python: TestResolverEdgeCases
@@ -625,7 +607,7 @@ describe("Resolver edge cases", () => {
     return new FakeConfig();
   }
 
-  it("partial sa quad no secret falls through", () => {
+  it("a partial SA quad without secret falls through", () => {
     // python: test_partial_sa_quad_no_secret_falls_through
     // No MP_SECRET → quad incomplete → no env account → no fallback →
     // raise.
@@ -641,7 +623,7 @@ describe("Resolver edge cases", () => {
     ).toThrow(ConfigError);
   });
 
-  it("partial sa quad no username falls through", () => {
+  it("a partial SA quad without username falls through", () => {
     // python: test_partial_sa_quad_no_username_falls_through
     expect(() =>
       resolveSession(
@@ -656,7 +638,7 @@ describe("Resolver edge cases", () => {
   });
 
   it.each(["abc", "0", "-1", "1.5"])(
-    "workspace ID invalid raises config error[%s]", // python: test_workspace_id_invalid_raises_config_error
+    "invalid MP_WORKSPACE_ID %s raises ConfigError", // python: test_workspace_id_invalid_raises_config_error
     (badWorkspace) => {
       const error = expectThrows(() =>
         resolveSession(
@@ -676,7 +658,7 @@ describe("Resolver edge cases", () => {
     },
   );
 
-  it("workspace ID empty string treated as unset", () => {
+  it("an empty MP_WORKSPACE_ID is treated as unset", () => {
     // python: test_workspace_id_empty_string_treated_as_unset
     const s = resolveSession(
       {},
@@ -692,12 +674,12 @@ describe("Resolver edge cases", () => {
   });
 });
 
-// ---- packet §2.2 rule locks (no Python-test counterpart; cited) ------
+// ---- Resolver rule locks (TS additions; no Python-test counterpart) ----
 
-describe("packet §2.2 byte-for-byte rules", () => {
+describe("Resolver rule locks", () => {
   it("invalid MP_REGION aborts even with an explicit account param", () => {
-    // Caution #2: the raise position — env-account synthesis runs
-    // before the explicit-param rung and raises unconditionally.
+    // The raise position: env-account synthesis runs before the
+    // explicit-param rung and raises unconditionally.
     const config = cmWithActive();
     const error = expectThrows(() =>
       resolveSession(
@@ -723,7 +705,7 @@ describe("packet §2.2 byte-for-byte rules", () => {
     });
   });
 
-  it("empty-string env values fall through for every var (watchlist #6)", () => {
+  it("empty-string env values fall through for every var", () => {
     const s = resolveSession(
       {},
       sources(cmWithActive(), {
@@ -772,7 +754,7 @@ describe("packet §2.2 byte-for-byte rules", () => {
     expect((error as ConfigError).message).toContain("Invalid project ID");
   });
 
-  it("envWorkspaceId parses via the pythonInt twin (R11.7)", () => {
+  it("envWorkspaceId parses via the pythonInt twin", () => {
     // CPython int() grammar: underscores between digits, surrounding
     // whitespace, sign.
     expect(envWorkspaceId({ MP_WORKSPACE_ID: "1_0" })).toBe(10);
@@ -781,8 +763,8 @@ describe("packet §2.2 byte-for-byte rules", () => {
     expect(envWorkspaceId({})).toBeNull();
     expect(envWorkspaceId({ MP_WORKSPACE_ID: "" })).toBeNull();
     expect(() => envWorkspaceId({ MP_WORKSPACE_ID: "0" })).toThrow(ConfigError);
-    // PY_INT_UNSAFE_INTEGER beyond 2^53−1 maps to the same coded
-    // ConfigError (packet §2.2; Discrepancy #6/#7 family).
+    // Values beyond 2^53−1 (PY_INT_UNSAFE_INTEGER) map to the same
+    // coded ConfigError.
     expect(() =>
       envWorkspaceId({ MP_WORKSPACE_ID: "9007199254740993" }),
     ).toThrow(ConfigError);

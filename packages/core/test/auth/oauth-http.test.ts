@@ -1,21 +1,17 @@
-// Layer-3 suite for the fetch-pure OAuth HTTP helpers hoisted to core
-// at B9-R2 (b9-packets.md §3.1 — second R10.8 ruling: the B8 node
-// bodies moved here mechanically; the untouched node suites are the
-// zero-behavior-change proof). This file adds ONLY the §3.3
-// byte-comparison lock the packet demands in core: the authorize URL
-// for a fixture exercising the `urlencode` vs `URLSearchParams`
-// divergence set (`~`, space, `+`, `/`, `:`, non-ASCII) must equal the
-// recorded CPython `urlencode` output — the B0-1 pinned-table pattern.
+// `buildAuthorizeUrl`, the fetch-pure OAuth HTTP helper hoisted to core
+// from the node package (the node suites cover the rest). TS addition: a
+// byte-comparison lock — the authorize URL for a fixture exercising the
+// `urlencode` vs `URLSearchParams` divergence set (`~`, space, `+`, `/`,
+// `:`, non-ASCII) must equal the recorded CPython `urlencode` output.
 
 import { describe, expect, it } from "vitest";
 
 import { OAUTH_BASE_URLS } from "../../src/auth/oauth-constants.js";
 import { buildAuthorizeUrl } from "../../src/auth/oauth-http.js";
 
-describe("buildAuthorizeUrl (§3.3 CPython urlencode golden)", () => {
+describe("buildAuthorizeUrl (CPython urlencode golden)", () => {
   it("byte-matches the recorded CPython urlencode output", () => {
-    // Golden provenance (b9-packets.md §3.3): generated 2026-08-16 in
-    // the Python repo with
+    // Golden generated in the Python repo with
     //   uv run python -c "from urllib.parse import urlencode; print(
     //     'https://mixpanel.com/oauth/authorize/?' + urlencode({
     //       'response_type': 'code',
@@ -43,9 +39,9 @@ describe("buildAuthorizeUrl (§3.3 CPython urlencode golden)", () => {
   });
 
   it("locks param insertion order and the intentional scope omission", () => {
-    // `flow.py:625-627`: scope is INTENTIONALLY OMITTED — DCR apps have
-    // an empty scope field, so the provider defaults to all scopes.
-    // Param order is Python dict insertion order (`flow.py:606-635`).
+    // `flow.py`: scope is INTENTIONALLY OMITTED — DCR apps have an
+    // empty scope field, so the provider defaults to all scopes. Param
+    // order is Python dict insertion order.
     const url = buildAuthorizeUrl(OAUTH_BASE_URLS["eu"]!, {
       clientId: "cid",
       redirectUri: "https://app.example.com/cb",

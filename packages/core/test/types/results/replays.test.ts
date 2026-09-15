@@ -1,23 +1,8 @@
-// Translated replay-family tests (packet P2-6, phase2-design C6-d):
-// assertion-for-assertion ports of
-//   tests/unit/test_types_replay.py         (Replay convenience + frames)
-//   tests/unit/test_types_replay_summary.py (ReplaySummary)
-//   tests/unit/test_types_replay_event.py   (ReplayEvent)
-//   tests/unit/test_types_signed_replay.py  (SignedReplay)
-//   tests/unit/test_replay_bundle.py        (ReplayBundle projections/
-//                                            filters + UA/RB1 coded guards)
-//
-// Not ported: the parametrized Coded*Codes suites of the four
-// types_replay* files (their guard cases replay verbatim as the 60
-// `types.Replay*`/`types.SignedReplay` corpus vectors — C8(c) lock #2);
-// `summary_markdown` / `elements_df` / aggregations (`top_clicks`,
-// `rage_clicks`, `long_pauses`, `error_sessions`) / `sample`
-// determinism / analyzer + label suites (TODO(port), batch B5 — see
-// the replays.ts module doc); frozen-dataclass immutability suites
-// (compile-time `readonly`). Construction guard tests asserting
-// `pytest.raises(ValueError, match="field")` translate to
-// `{class, code}` assertions (message TEXT is out of contract, R5.4 —
-// the code is the stronger, recorded contract).
+// Replay, ReplaySummary, ReplayEvent, SignedReplay and ReplayBundle
+// (projections, filters, UA / RB coded guards). Mirrors
+// tests/unit/test_types_replay*.py, test_types_signed_replay.py and
+// test_replay_bundle.py. Not carried: Coded*Codes suites (corpus vectors),
+// analyzer-backed cases (see test/replays/), immutability; guards assert code.
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { UserAction } from "../../../src/replays/user-action.js";
@@ -323,8 +308,8 @@ describe("Replay actions default empty", () => {
 
 describe("Replay analyzer accessors, empty actions", () => {
   // python: TestReplayAnalyzerAccessorsEmptyActions
-  // test_summary_markdown_placeholder is NOT ported (summary_markdown
-  // depends on the B5 rrweb analyzer — TODO(port)).
+  // test_summary_markdown_placeholder is not carried here (summaryMarkdown
+  // rides the rrweb analyzer, covered under test/replays/).
 
   it("errors empty", () => {
     // python: test_errors_empty
@@ -749,9 +734,8 @@ describe("SignedReplay validation", () => {
 
 describe("ReplayBundle projections", () => {
   // python: TestReplayBundleProjections
-  // test_elements_df / test_elements_df_normalizes_urls are NOT ported
-  // (elements_df depends on the B5 aggregators + url_normalizer —
-  // TODO(port)).
+  // test_elements_df / test_elements_df_normalizes_urls live in
+  // test/replays/aggregators.test.ts (they ride the aggregators).
 
   it("sessions df", () => {
     // python: test_sessions_df
@@ -792,9 +776,8 @@ describe("ReplayBundle projections", () => {
 
 describe("ReplayBundle filters", () => {
   // python: TestReplayBundleFilters
-  // test_error_sessions and test_sample_determinism are NOT ported
-  // (error_sessions rides the B5 aggregators; sample() requires Python
-  // Mersenne random.Random(seed) parity — TODO(port)).
+  // test_error_sessions and test_sample_determinism live in
+  // test/replays/aggregators.test.ts (aggregators + seeded sample()).
 
   it("filter predicate", () => {
     // python: test_filter_predicate

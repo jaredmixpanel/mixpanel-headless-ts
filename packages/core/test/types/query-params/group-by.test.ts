@@ -1,6 +1,7 @@
-// Guard + factory tests for GroupBy (phase2-design C7, packet P2-5a):
-// translated from tests/unit/test_query_types.py /
-// test_bookmark_builders.py guard cases plus Risk #1 guard-order probes.
+// GroupBy construction and guards (GB1, V12, V18, GB4, GB5) with
+// guard-order probes and the listItem discriminator. Mirrors the GroupBy
+// guard cases of tests/unit/test_query_types.py and
+// tests/unit/test_bookmark_builders.py.
 import { describe, expect, it } from "vitest";
 
 import {

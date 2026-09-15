@@ -1,18 +1,9 @@
-// Layer-3 translation of `tests/unit/test_042_edge_cases.py::
-// TestAccountNameBoundaries` and
-// `::TestOAuthTokenValidatorUnderCopy` — B7-A2 packet §2.4
-// (B6 ledger `b6-packets.md:1032` inbound deferral).
-//
-// Mechanism substitutions (header-cited per R10.2 / packet §2.4):
-// - Pydantic `ValidationError` at construction translates to the parse
-//   factory's `ResponseValidationError` (the Phase-2 default boundary,
-//   `auth/account.ts`).
-// - `model_copy(update=..., deep=True)` translates to object spread —
-//   the packet pin: copy does NOT re-validate; the TS twin pins
-//   spread behavior over the frozen parse-once model.
-// - `TypeAdapter(Account).validate_python(payload)` translates to
-//   `parseAccount(payload)` (the discriminated-union re-validation
-//   escape hatch).
+// Account-name boundaries and the oauth_token XOR validator under copy,
+// mirroring `TestAccountNameBoundaries` / `TestOAuthTokenValidatorUnderCopy`
+// in `tests/unit/test_042_edge_cases.py`. Pydantic `ValidationError` becomes
+// `ResponseValidationError`; `model_copy(update=…)` becomes object spread
+// (no re-validation); `TypeAdapter.validate_python` becomes `parseAccount`.
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -76,7 +67,7 @@ describe("Account name boundaries", () => {
 
 describe("OAuth token validator under copy", () => {
   // python: TestOAuthTokenValidatorUnderCopy
-  it("model copy setting both does not revalidate", () => {
+  it("spreading both token fields onto a copy does not re-validate", () => {
     // python: test_model_copy_setting_both_does_not_revalidate
     // `model_copy(update=...)` bypasses the XOR validator (Pydantic
     // limitation); the TS twin: object spread over the parse-once
@@ -94,7 +85,7 @@ describe("OAuth token validator under copy", () => {
     expect(bad.token_env).toBe("MY_ENV");
   });
 
-  it("validate python round trip enforces xor", () => {
+  it("re-parsing the copy through parseAccount enforces the XOR", () => {
     // python: test_validate_python_round_trip_enforces_xor
     // The escape hatch: round-tripping via the parse factory
     // re-validates (the TypeAdapter.validate_python twin).

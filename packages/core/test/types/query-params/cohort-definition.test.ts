@@ -1,11 +1,8 @@
-// Guard + factory + serialization tests for the cohort family
-// (phase2-design C7, packet P2-5b): translated assertion-for-assertion
-// from tests/unit/test_cohort_definition.py and the CohortBreakdown /
-// _sanitize_raw_cohort suites in tests/test_types_cohort_behaviors.py,
-// plus Risk #1 guard-order probes and C9 fast-check guard-totality
-// properties. (The Python frozen-dataclass immutability tests have no
-// TS runtime analog — `readonly` is the compile-time equivalent — and
-// the CreateCohortParams CRUD-integration tests belong to P2-7.)
+// CohortDefinition composition and toDict (deep-copy isolation),
+// sanitizeRawCohort, CohortBreakdown, buildEventSelector, plus fast-check
+// guard-totality properties. Mirrors tests/unit/test_cohort_definition.py and
+// the CohortBreakdown / _sanitize_raw_cohort suites of
+// tests/test_types_cohort_behaviors.py; frozen-dataclass tests have no analog.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -336,7 +333,7 @@ describe("CohortBreakdown", () => {
     expect(new CohortBreakdown({ cohort: 1 }).cohort).toBe(1);
   });
 
-  it("guard order (Risk #1): CB1 fires before CB2", () => {
+  it("guard order: CB1 fires before CB2", () => {
     expectGuard(
       () => new CohortBreakdown({ cohort: 0, name: "" }),
       "CB1_COHORT_ID_NOT_POSITIVE",
@@ -379,7 +376,7 @@ describe("buildEventSelector edge behavior", () => {
   });
 });
 
-describe("C9 guard-totality property (fast-check #4)", () => {
+describe("guard-totality properties (fast-check)", () => {
   it("blank properties always raise CD7 across the property factories", () => {
     const blank = fc
       .array(fc.constantFrom(" ", "\t", "\n"), { maxLength: 6 })

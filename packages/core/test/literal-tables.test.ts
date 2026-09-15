@@ -1,9 +1,9 @@
-// Colocated runtime backstop for fast-check property list item #7
-// (phase2-design C9): enum/alias membership tables contain no
-// duplicates and match the declared cardinalities. Union⇄tuple drift
-// is impossible by construction (each union in literals.ts is derived
-// from its tuple); the cross-language value lock is the C8(d) artifact
-// test in conformance-runner/test.
+// Runtime backstop for the enum/alias membership tables: no duplicates and
+// the declared cardinalities. Union⇄tuple drift is impossible by
+// construction (each union in literals.ts derives from its tuple); the
+// cross-language value lock is the artifact test in conformance-runner.
+// TS-only; no Python twin.
+
 import { describe, expect, it } from "vitest";
 
 import { BOOKMARK_ENUM_TABLES } from "../src/bookmarks/enums.js";
@@ -16,7 +16,7 @@ import {
   TIME_UNIT_VALUES,
 } from "../src/types/index.js";
 
-describe("literal-alias and enum tables (C9 #7 runtime backstop)", () => {
+describe("literal-alias and enum tables (runtime backstop)", () => {
   it("registers exactly 38 aliases, 8 enums, and 34 bookmark tables", () => {
     expect(LITERAL_ALIAS_VALUES.size).toBe(38);
     expect(ENUM_TABLES.size).toBe(8);

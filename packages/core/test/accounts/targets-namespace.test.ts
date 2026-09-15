@@ -1,10 +1,7 @@
-// Layer-3 translation of `tests/unit/test_targets_namespace.py` (158
-// lines, 15 tests) — B7-A1 packet §3.4 (`b7-packets.md`).
-//
-// Mechanism substitutions (header-cited per R10.2): the tmp-`$HOME`
-// fixture becomes `makeEffects()`; Pydantic `ValidationError` on
-// direct `Target(...)` construction asserts as the entity-model's
-// `ResponseValidationError`.
+// The targets namespace, mirroring `tests/unit/test_targets_namespace.py`.
+// The tmp-`$HOME` fixture becomes `makeEffects()`; Pydantic
+// `ValidationError` on direct `Target(...)` construction asserts as the
+// entity model's `ResponseValidationError`.
 
 import { describe, expect, it } from "vitest";
 

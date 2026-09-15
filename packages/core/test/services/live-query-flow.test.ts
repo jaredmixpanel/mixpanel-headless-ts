@@ -1,24 +1,8 @@
-// Translated flow-query tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/unit/test_live_query_flow.py — ALL 6
-// classes (TestArbFunnelsQuery :88, TestTransformFlowResult :134,
-// TestQueryFlow :189, TestParseTreeNode :326,
-// TestTransformFlowResultTree :417, TestQueryFlowTree :455).
-//
-// Translation notes:
-// - Python uses `MagicMock(spec=MixpanelAPIClient)` rather than a
-//   transport mock, so the TS twin is {@link mockClient}: a stub object
-//   carrying ONLY the client members `LiveQueryService.queryFlow`
-//   touches (`arbFunnelsQuery`) plus a call log. The
-//   `assert_called_once_with` / `call_args[0][0]` asserts read that log.
-// - `_transform_flow_result` / `_parse_tree_node` are
-//   {@link transformFlowResult} / {@link parseTreeNode} in
-//   `services/live-query-transforms.ts` (R7.2 split).
-// - Python's `children` is a TUPLE; the TS field is a readonly array, so
-//   `node.children == ()` becomes `toEqual([])`.
-// - `TestArbFunnelsQuery`'s three cases assert on the MagicMock itself
-//   (they never touch library code — `test_query_type_sankey` /
-//   `..._top_paths` are pure dict-literal asserts). They translate
-//   verbatim against the same stub so the class stays complete (A-F2).
+// LiveQueryService.query_flow with transformFlowResult / parseTreeNode
+// (sankey, top-paths and tree modes) and the client's arbFunnelsQuery body.
+// Mirrors tests/unit/test_live_query_flow.py (all six classes). The
+// MagicMock(spec=...) client is a call-recording stub; Python's tuple
+// `children` is a readonly array, so `== ()` becomes `toEqual([])`.
 
 import { describe, expect, it } from "vitest";
 
@@ -191,7 +175,7 @@ function sampleTreeRoot(): Record<string, unknown> {
 }
 
 // ===========================================================================
-// T024: TestArbFunnelsQuery — API client method
+// Arb funnels query (API client method)
 // ===========================================================================
 
 describe("Arb funnels query", () => {
@@ -235,7 +219,7 @@ describe("Arb funnels query", () => {
 });
 
 // ===========================================================================
-// T026: TestTransformFlowResult
+// Transform flow result
 // ===========================================================================
 
 describe("Transform flow result", () => {
@@ -289,7 +273,7 @@ describe("Transform flow result", () => {
 });
 
 // ===========================================================================
-// T027: TestQueryFlow
+// Query flow
 // ===========================================================================
 
 describe("Query flow", () => {
@@ -334,7 +318,7 @@ describe("Query flow", () => {
 });
 
 // ===========================================================================
-// TestParseTreeNode
+// Parse tree node
 // ===========================================================================
 
 describe("Parse tree node", () => {
@@ -409,7 +393,7 @@ describe("Parse tree node", () => {
 });
 
 // ===========================================================================
-// TestTransformFlowResultTree
+// Transform flow result (tree mode)
 // ===========================================================================
 
 describe("Transform flow result tree", () => {
@@ -450,7 +434,7 @@ describe("Transform flow result tree", () => {
 });
 
 // ===========================================================================
-// TestQueryFlowTree
+// Query flow (tree mode)
 // ===========================================================================
 
 describe("Query flow tree", () => {

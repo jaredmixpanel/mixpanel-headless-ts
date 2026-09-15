@@ -1,16 +1,8 @@
-// Translated UserQueryResult tests (packet P2-6):
-// assertion-for-assertion port of tests/test_types_user_query_result.py
-// — the FIVE-branch `.df` per-class row spec plus the
-// profiles-mode column reorder (phase2-design C6).
-//
-// Translation notes beyond types.test.ts: pandas NaN semantics are a
-// pandas artifact OUT of the TS contract (phase2-design C6) — an
-// explicit `None` property value stays `null` in the row; a property
-// MISSING from a profile is an ABSENT row key (pandas' NaN fill
-// happens at frame construction). `to_table_dict` suites translate to
-// `toRows()` (the pre-pandas rows ARE the table rows). Immutability
-// and `_df_cache`-population suites are not ported (no runtime cache
-// in TS — phase2-design C6 "no caching needed").
+// UserQueryResult: construction, the five-branch df projection (profiles,
+// empty, aggregate, segmented, None) as row arrays, distinct_ids, value,
+// to_dict and to_table_dict. Mirrors tests/test_types_user_query_result.py.
+// pandas NaN is out of the TS contract: an explicit None stays null, a
+// missing property is an absent row key; no runtime df cache in TS.
 import { describe, expect, it } from "vitest";
 
 import { compareCodeUnits } from "../../../src/compat/codepoint.js";

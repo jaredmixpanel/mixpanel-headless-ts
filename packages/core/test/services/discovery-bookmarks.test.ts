@@ -1,16 +1,8 @@
-// Translated DiscoveryService.list_bookmarks tests (B5-S1, packet §4):
-// assertion-for-assertion port of tests/unit/test_discovery_bookmarks.py
-// — TestListBookmarks :28 (the file's only class).
-//
-// Translation notes:
-// - The `MagicMock()` api-client fixture becomes a stub object carrying
-//   only the method under test, cast to `MixpanelClient` (the service
-//   touches nothing else on this path).
-// - `mock_api_client.list_bookmarks.assert_called_once_with(
-//   bookmark_type="insights")` -> the recorded call list; Python's
-//   kwarg becomes the TS positional (`listBookmarks(bookmarkType)`).
-// - `isinstance(result[0], BookmarkInfo)` translates to an
-//   `instanceof` check on the same class.
+// DiscoveryService.list_bookmarks: BookmarkInfo parsing (required and
+// optional fields, explicit nulls, every bookmark type, the nested
+// results.results shape) and the bookmark_type pass-through. Mirrors
+// tests/unit/test_discovery_bookmarks.py (TestListBookmarks). The MagicMock
+// client is a call-recording stub; Python's kwarg is the TS positional.
 
 import { describe, expect, it } from "vitest";
 

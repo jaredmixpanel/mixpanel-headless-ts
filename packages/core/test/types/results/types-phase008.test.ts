@@ -1,11 +1,8 @@
-// Translated result-class tests (packet P2-6): assertion-for-assertion
-// port of tests/unit/test_types_phase008.py.
-//
-// Same translation notes as types.test.ts. Python builds `UserEvent`
-// with tz-aware `datetime` objects; the TS field stores ISO text
-// (phase2-design watchlist #5), so datetime fixtures translate to
-// their `isoformat()` strings. Immutability suites are not ported
-// (compile-time `readonly`).
+// UserEvent, ActivityFeedResult, the NumericSum / NumericAverage /
+// Frequency / NumericBucket results and SavedReportResult: construction,
+// the df projection as row arrays and to_dict. Mirrors
+// tests/unit/test_types_phase008.py. Python builds UserEvent with tz-aware
+// datetimes; the TS field stores ISO text (`isoformat()` strings).
 import { describe, expect, it } from "vitest";
 
 import {

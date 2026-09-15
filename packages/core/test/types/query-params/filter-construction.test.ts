@@ -1,9 +1,8 @@
-// Guard + factory tests for the P2-5a filter family (phase2-design C7):
-// translated from tests/unit/test_query_types.py and
-// tests/unit/test_bookmark_builders.py guard cases, plus Risk #1
-// guard-ORDER probes (multi-invalid inputs must produce the FIRST
-// failing code in Python source order) and a C9 fast-check guard-
-// totality property.
+// Filter construction: ListItemGroupMode guards, direct `new Filter({...})`
+// operator validation and alias normalization, inCohort with an inline
+// CohortDefinition, and filterUnchecked. Mirrors tests/unit/test_query_types.py
+// (TestFilterDirectConstruction, TestFilterUnchecked) and the guard cases of
+// tests/unit/test_bookmark_builders.py, plus fast-check guard-totality.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -27,12 +26,11 @@ import { expectThrows } from "../../../test-support/raises.js";
 import { expectGuard, LEGAL_CODES } from "./filter-fixtures.js";
 
 // ===========================================================================
-// Direct construction (Python PR #236, test_query_types.py::
-// TestFilterDirectConstruction): `new Filter({...})` validates and
-// normalizes `_operator`. Regression coverage for the MP Bench report
-// where the factory-method spelling ("greater_than", "is_set", boolean
-// "equals") was serialized verbatim as filterOperator and rejected by the
-// query API with HTTP 400.
+// Direct construction (test_query_types.py TestFilterDirectConstruction):
+// `new Filter({...})` validates and normalizes `_operator`. Regression
+// coverage for the factory-method spelling ("greater_than", "is_set",
+// boolean "equals") being serialized verbatim as filterOperator and
+// rejected by the query API with HTTP 400.
 // ===========================================================================
 
 /**
@@ -127,7 +125,7 @@ describe("ListItemGroupMode guards", () => {
   });
 });
 
-describe("C9 guard-totality property (fast-check #4)", () => {
+describe("guard-totality properties (fast-check)", () => {
   it("invalid relative quantities always raise the FD1 registry code", () => {
     fc.assert(
       fc.property(fc.integer({ max: 0 }), (quantity) => {
@@ -168,11 +166,11 @@ describe("C9 guard-totality property (fast-check #4)", () => {
   });
 });
 
-describe("Filter.inCohort with an inline CohortDefinition (P2-9 gate finding)", () => {
+describe("Filter.inCohort with an inline CohortDefinition", () => {
   it("embeds the sanitized raw cohort exactly like Python", async () => {
-    // The P2-5a stub threw TODO(port, P2-5b) on this branch; the P2-9
-    // differential gate surfaced it. Expected shape measured on
-    // oracle-py for the shrunken repro input (in_cohort criterion id 1).
+    // The pre-fix port threw on this branch; the differential gate
+    // surfaced it. Expected shape measured on oracle-py for the shrunken
+    // repro input (in_cohort criterion id 1).
     const { CohortCriteria, CohortDefinition } =
       await import("../../../src/types/query-params/cohort.js");
     const definition = CohortDefinition.allOf(CohortCriteria.notInCohort(1));
@@ -212,10 +210,10 @@ describe("Filter.inCohort with an inline CohortDefinition (P2-9 gate finding)", 
   });
 });
 
-describe("Filter direct construction (PR #236 operator validation)", () => {
-  // --- The report's table: factory path == positional path ---
+describe("Filter direct construction (operator validation)", () => {
+  // --- factory path == positional path ---
 
-  it("report row: greater_than alias equals Filter.greaterThan", () => {
+  it("greater_than alias equals Filter.greaterThan", () => {
     const factory = Filter.greaterThan("gold", 10);
     const positional = direct("gold", "greater_than", 10, "number");
     expect(positional).toStrictEqual(factory);
@@ -227,7 +225,7 @@ describe("Filter direct construction (PR #236 operator validation)", () => {
     );
   });
 
-  it("report row: is_set alias equals Filter.isSet", () => {
+  it("is_set alias equals Filter.isSet", () => {
     const factory = Filter.isSet("class");
     const positional = direct("class", "is_set", null);
     expect(positional).toStrictEqual(factory);
@@ -237,7 +235,7 @@ describe("Filter direct construction (PR #236 operator validation)", () => {
     );
   });
 
-  it("report row: boolean equals true collapses to Filter.isTrue", () => {
+  it("boolean equals true collapses to Filter.isTrue", () => {
     const factory = Filter.isTrue("flag");
     const positional = direct("flag", "equals", true, "boolean");
     expect(positional).toStrictEqual(factory);

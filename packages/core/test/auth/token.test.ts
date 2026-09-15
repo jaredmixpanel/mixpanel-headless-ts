@@ -1,6 +1,7 @@
-// Unit tests for OAuthTokens/OAuthClientInfo (packet P2-4, phase2-design
-// C4): parse factories, the tz-aware expiry validator (Fix 25 parity),
-// the 30-second expiry buffer, and fromTokenResponse.
+// OAuthTokens / OAuthClientInfo: parse factories, the tz-aware expiry
+// validator, the 30-second expiry buffer and `fromTokenResponse`. TS unit
+// tests over `token.py`'s documented behaviour; no Python suite is mirrored.
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -54,7 +55,7 @@ describe("parseOAuthTokens", () => {
     expect(tokens.access_token).toBe(secret);
   });
 
-  it("REJECTS naive expires_at (tz-aware validator, Fix 25)", () => {
+  it("REJECTS naive expires_at (tz-aware validator)", () => {
     expect(() =>
       parseOAuthTokens({
         ...TOKENS_PAYLOAD,
@@ -134,7 +135,7 @@ describe("OAuthTokens.fromTokenResponse", () => {
     expect(tokens.isExpired()).toBe(true);
   });
 
-  it("renders non-string members as Python str() would (Phase 8.6)", () => {
+  it("renders non-string members as Python str() would", () => {
     // `token.py` does `str(data[...])`; a JSON object lands as
     // `{'x': 1}` on both sides, never as `[object Object]`.
     const tokens = OAuthTokens.fromTokenResponse({
