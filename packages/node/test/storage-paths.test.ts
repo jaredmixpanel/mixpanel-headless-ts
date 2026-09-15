@@ -27,7 +27,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ParamValidationError } from "@mixpanel-headless/core";
 
@@ -43,21 +43,13 @@ import { makeTempDir, scrubMpEnv } from "./helpers.js";
 const POSIX = process.platform !== "win32";
 
 const cleanups: Array<() => void> = [];
-let restoreEnv: () => void = () => undefined;
-let savedHome: string | undefined;
 
 beforeEach(() => {
-  restoreEnv = scrubMpEnv();
-  savedHome = process.env["HOME"];
+  scrubMpEnv();
 });
 
 afterEach(() => {
-  if (savedHome === undefined) {
-    delete process.env["HOME"];
-  } else {
-    process.env["HOME"] = savedHome;
-  }
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }
@@ -118,7 +110,7 @@ describe("TestAccountDirNameValidation (test_storage.py:26)", () => {
     "test_account_dir_accepts_valid_names[%s]",
     (name) => {
       const tmp = makeTempDir(cleanups);
-      process.env["MP_OAUTH_STORAGE_DIR"] = tmp;
+      vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
       expect(accountDir(name)).toBe(join(tmp, "accounts", name));
     },
   );
@@ -127,23 +119,23 @@ describe("TestAccountDirNameValidation (test_storage.py:26)", () => {
 describe("TestStorageRoot (test_storage.py:76)", () => {
   it("test_env_var_overrides_default", () => {
     const tmp = makeTempDir(cleanups);
-    process.env["MP_OAUTH_STORAGE_DIR"] = tmp;
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
     expect(storageRoot()).toBe(tmp);
   });
 
   it("test_default_is_home_dot_mp", () => {
     const tmp = makeTempDir(cleanups);
-    delete process.env["MP_OAUTH_STORAGE_DIR"];
-    process.env["HOME"] = tmp;
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", undefined);
+    vi.stubEnv("HOME", tmp);
     expect(storageRoot()).toBe(join(tmp, ".mp"));
   });
 
   it("test_resolves_lazily", () => {
     const tmp = makeTempDir(cleanups);
-    delete process.env["MP_OAUTH_STORAGE_DIR"];
-    process.env["HOME"] = tmp;
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", undefined);
+    vi.stubEnv("HOME", tmp);
     const first = storageRoot();
-    process.env["MP_OAUTH_STORAGE_DIR"] = join(tmp, "alt");
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", join(tmp, "alt"));
     const second = storageRoot();
     expect(first).not.toBe(second);
     expect(second).toBe(join(tmp, "alt"));
@@ -153,14 +145,14 @@ describe("TestStorageRoot (test_storage.py:76)", () => {
 describe("TestAccountDirHonorsStorageRoot (test_storage.py:107)", () => {
   it("test_account_dir_under_env_var_root", () => {
     const tmp = makeTempDir(cleanups);
-    process.env["MP_OAUTH_STORAGE_DIR"] = join(tmp, "root");
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", join(tmp, "root"));
     expect(accountDir("foo")).toBe(join(tmp, "root", "accounts", "foo"));
   });
 
   it("test_account_dir_default_under_home_dot_mp", () => {
     const tmp = makeTempDir(cleanups);
-    delete process.env["MP_OAUTH_STORAGE_DIR"];
-    process.env["HOME"] = tmp;
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", undefined);
+    vi.stubEnv("HOME", tmp);
     expect(accountDir("foo")).toBe(join(tmp, ".mp", "accounts", "foo"));
   });
 });
@@ -168,7 +160,7 @@ describe("TestAccountDirHonorsStorageRoot (test_storage.py:107)", () => {
 describe("TestEnsureAccountDir (test_storage.py:126)", () => {
   it.skipIf(!POSIX)("test_creates_with_mode_0o700", () => {
     const tmp = makeTempDir(cleanups);
-    process.env["MP_OAUTH_STORAGE_DIR"] = tmp;
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
     const path = ensureAccountDir("foo");
     const st = statSync(path);
     expect(st.isDirectory()).toBe(true);
@@ -177,7 +169,7 @@ describe("TestEnsureAccountDir (test_storage.py:126)", () => {
 
   it("test_idempotent", () => {
     const tmp = makeTempDir(cleanups);
-    process.env["MP_OAUTH_STORAGE_DIR"] = tmp;
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
     ensureAccountDir("foo");
     const path = ensureAccountDir("foo");
     expect(statSync(path).isDirectory()).toBe(true);
@@ -185,7 +177,7 @@ describe("TestEnsureAccountDir (test_storage.py:126)", () => {
 
   it("test_rejects_invalid_name", () => {
     const tmp = makeTempDir(cleanups);
-    process.env["MP_OAUTH_STORAGE_DIR"] = tmp;
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
     expect(() => ensureAccountDir("../etc")).toThrow(ParamValidationError);
   });
 });
@@ -193,7 +185,7 @@ describe("TestEnsureAccountDir (test_storage.py:126)", () => {
 describe("TestOAuthStorageSymlinkRejection (test_storage.py:158)", () => {
   it.skipIf(!POSIX)("test_read_symlinked_tokens_returns_none_and_warns", () => {
     const tmp = makeTempDir(cleanups);
-    process.env["MP_OAUTH_STORAGE_DIR"] = tmp;
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
     const attacker = join(tmp, "attacker.json");
     mkdirSync(tmp, { recursive: true });
     writeFileSync(attacker, '{"access_token":"stolen"}', { encoding: "utf8" });
@@ -218,7 +210,7 @@ describe("TestOAuthStorageSymlinkRejection (test_storage.py:158)", () => {
     "test_check_and_fix_permissions_does_not_chmod_through_symlink",
     () => {
       const tmp = makeTempDir(cleanups);
-      process.env["MP_OAUTH_STORAGE_DIR"] = tmp;
+      vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
       const attacker = join(tmp, "attacker.json");
       writeFileSync(attacker, "x", { encoding: "utf8" });
       chmodSync(attacker, 0o644);
@@ -237,7 +229,7 @@ describe("TestOAuthStorageSymlinkRejection (test_storage.py:158)", () => {
 
   it.skipIf(!POSIX)("test_dangling_symlink_returns_none_and_warns", () => {
     const tmp = makeTempDir(cleanups);
-    process.env["MP_OAUTH_STORAGE_DIR"] = tmp;
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
     const { logger, lines } = recordingLogger();
     const storage = new OAuthStorage({ logger });
     storage.ensureDir();

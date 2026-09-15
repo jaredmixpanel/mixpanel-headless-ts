@@ -17,7 +17,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { OAuthTokens, Secret } from "@mixpanel-headless/core";
 
@@ -28,17 +28,16 @@ import { expectPosixMode, makeTempDir, scrubMpEnv } from "./helpers.js";
 const POSIX = process.platform !== "win32";
 
 const cleanups: Array<() => void> = [];
-let restoreEnv: () => void = () => undefined;
 let root = "";
 
 beforeEach(() => {
-  restoreEnv = scrubMpEnv();
+  scrubMpEnv();
   root = makeTempDir(cleanups);
-  process.env["MP_OAUTH_STORAGE_DIR"] = root;
+  vi.stubEnv("MP_OAUTH_STORAGE_DIR", root);
 });
 
 afterEach(() => {
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }

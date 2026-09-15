@@ -14,7 +14,7 @@
 // (`createRequestExecutor`) normalizes them exactly as the B0 client
 // does. The `tmp_path` storage fixture translates to `makeTempDir`.
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   cpLength,
@@ -31,14 +31,13 @@ import { OAuthStorage } from "../src/auth/storage.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const cleanups: Array<() => void> = [];
-let restoreEnv: () => void = () => undefined;
 
 beforeEach(() => {
-  restoreEnv = scrubMpEnv();
+  scrubMpEnv();
 });
 
 afterEach(() => {
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }

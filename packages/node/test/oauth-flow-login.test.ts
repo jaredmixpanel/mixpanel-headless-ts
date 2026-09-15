@@ -20,7 +20,7 @@
 // `callback-server.test.ts` running in a parallel worker (disclosed in
 // the shard notes).
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   CallbackResult,
@@ -35,14 +35,13 @@ import { OAuthStorage } from "../src/auth/storage.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const cleanups: Array<() => void> = [];
-let restoreEnv: () => void = () => undefined;
 
 beforeEach(() => {
-  restoreEnv = scrubMpEnv();
+  scrubMpEnv();
 });
 
 afterEach(() => {
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }

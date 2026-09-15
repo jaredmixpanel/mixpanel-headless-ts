@@ -8,7 +8,7 @@
 // `oauth-flow-refresh.test.ts` convention); the `tmp_path` storage
 // fixture translates to `makeTempDir`.
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { OAuthError } from "@mixpanel-headless/core";
 
@@ -17,14 +17,13 @@ import { OAuthStorage } from "../src/auth/storage.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const cleanups: Array<() => void> = [];
-let restoreEnv: () => void = () => undefined;
 
 beforeEach(() => {
-  restoreEnv = scrubMpEnv();
+  scrubMpEnv();
 });
 
 afterEach(() => {
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }

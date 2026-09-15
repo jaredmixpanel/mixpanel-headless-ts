@@ -24,7 +24,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   ConfigError,
@@ -49,29 +49,21 @@ import { makeTempDir, scrubMpEnv } from "./helpers.js";
 const POSIX = process.platform !== "win32";
 
 const cleanups: Array<() => void> = [];
-let restoreEnv: () => void = () => undefined;
-let savedHome: string | undefined;
 let savedCwd = "";
 let home = "";
 
 beforeEach(() => {
-  restoreEnv = scrubMpEnv();
-  savedHome = process.env["HOME"];
+  scrubMpEnv();
   savedCwd = process.cwd();
   home = makeTempDir(cleanups);
-  process.env["HOME"] = home;
-  process.env["MP_CONFIG_PATH"] = join(home, ".mp", "config.toml");
-  delete process.env["MP_AUTH_FILE"];
+  vi.stubEnv("HOME", home);
+  vi.stubEnv("MP_CONFIG_PATH", join(home, ".mp", "config.toml"));
+  vi.stubEnv("MP_AUTH_FILE", undefined);
 });
 
 afterEach(() => {
   process.chdir(savedCwd);
-  if (savedHome === undefined) {
-    delete process.env["HOME"];
-  } else {
-    process.env["HOME"] = savedHome;
-  }
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }
@@ -237,7 +229,7 @@ describe("TestRemoveBridgeFunctional (test_bridge_export.py:210)", () => {
   it("test_default_path_uses_search_order", () => {
     const target = join(makeTempDir(cleanups), "auth.json");
     writeFileSync(target, "{}", "utf8");
-    process.env["MP_AUTH_FILE"] = target;
+    vi.stubEnv("MP_AUTH_FILE", target);
     expect(removeBridge()).toBe(true);
     expect(existsSync(target)).toBe(false);
   });
@@ -300,7 +292,7 @@ describe("TestAccountsNamespaceWiring (test_bridge_export.py:236 — translated 
       project: "3018488",
       headers: { "X-H": "v" },
     });
-    process.env["MP_AUTH_FILE"] = out;
+    vi.stubEnv("MP_AUTH_FILE", out);
     const effects = createNodeBridgeEffects();
     const view = effects.load();
     expect(view).not.toBeNull();
@@ -419,7 +411,7 @@ describe("TestBridgeEdgeCases (test_042_edge_cases.py:394 — inbound b6-packets
   );
 
   it("test_load_bridge_returns_none_for_missing_path", () => {
-    process.env["MP_AUTH_FILE"] = join(home, "nonexistent.json");
+    vi.stubEnv("MP_AUTH_FILE", join(home, "nonexistent.json"));
     // Cwd default search would find a stray mixpanel_auth.json;
     // isolate cwd too (the Python `monkeypatch.chdir` twin).
     process.chdir(home);
@@ -432,7 +424,7 @@ describe("TestBridgeEdgeCases (test_042_edge_cases.py:394 — inbound b6-packets
     if (POSIX) {
       chmodSync(bridgePath, 0o600);
     }
-    process.env["MP_AUTH_FILE"] = bridgePath;
+    vi.stubEnv("MP_AUTH_FILE", bridgePath);
     let caught: ConfigError | null = null;
     try {
       loadBridge();
@@ -483,7 +475,7 @@ describe("B8-ARB-A SEM-F2b/F3/F4/F6 error-class + byte-format locks", () => {
       const bridgePath = join(makeTempDir(cleanups), "bridge.json");
       writeFileSync(bridgePath, Buffer.from([0xff, 0xfe, 0x7b, 0x7d]));
       chmodSync(bridgePath, 0o600);
-      process.env["MP_AUTH_FILE"] = bridgePath;
+      vi.stubEnv("MP_AUTH_FILE", bridgePath);
       let caught: unknown = null;
       try {
         loadBridge();
@@ -686,7 +678,7 @@ describe("B8-ARB-B F1/F2 bridge epoch acceptance + writer datetime shapes", () =
     const bridge = parseBridgeFile(
       browserBridgePayload("2030-01-01T00:00:00Z"),
     );
-    process.env["MP_OAUTH_STORAGE_DIR"] = join(home, ".mp");
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", join(home, ".mp"));
     const written = materializeBridgeTokens(bridge);
     expect(written).not.toBeNull();
     const text = readFileSync(written!, "utf8");

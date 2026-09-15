@@ -20,7 +20,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   AccountInUseError,
@@ -40,6 +40,7 @@ const POSIX = process.platform !== "win32";
 
 const cleanups: Array<() => void> = [];
 afterEach(() => {
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }
@@ -744,18 +745,9 @@ describe("parent directory mode on write (CLEANUP-PLAN 8.5)", () => {
   it.skipIf(!POSIX)(
     "writeRaw still tightens the default ~/.mp parent to 0o700",
     () => {
-      const restoreEnv = scrubMpEnv();
-      const savedHome = process.env["HOME"];
+      scrubMpEnv();
       const home = makeTempDir(cleanups);
-      process.env["HOME"] = home;
-      cleanups.push(() => {
-        restoreEnv();
-        if (savedHome === undefined) {
-          delete process.env["HOME"];
-        } else {
-          process.env["HOME"] = savedHome;
-        }
-      });
+      vi.stubEnv("HOME", home);
       const mpDir = join(home, ".mp");
       mkdirSync(mpDir);
       chmodSync(mpDir, 0o755);

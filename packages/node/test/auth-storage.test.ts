@@ -23,7 +23,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   type OAuthClientInfo,
@@ -38,14 +38,13 @@ import { makeTempDir, scrubMpEnv } from "./helpers.js";
 const POSIX = process.platform !== "win32";
 
 const cleanups: Array<() => void> = [];
-let restoreEnv: () => void = () => undefined;
 
 beforeEach(() => {
-  restoreEnv = scrubMpEnv();
+  scrubMpEnv();
 });
 
 afterEach(() => {
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }
@@ -252,7 +251,7 @@ describe("TestOAuthStorageEnvOverride (test_auth_storage.py:335)", () => {
     const tmp = makeTempDir(cleanups);
     const customRoot = join(tmp, "custom_root");
     mkdirSync(customRoot, { recursive: true });
-    process.env["MP_OAUTH_STORAGE_DIR"] = customRoot;
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", customRoot);
     const storage = new OAuthStorage();
     storage.saveTokens(makeTokens(), "us");
     expect(existsSync(join(customRoot, "oauth", "tokens_us.json"))).toBe(true);
@@ -264,7 +263,7 @@ describe("TestOAuthStorageEnvOverride (test_auth_storage.py:335)", () => {
     const explicitDir = join(tmp, "explicit_dir");
     mkdirSync(envDir);
     mkdirSync(explicitDir);
-    process.env["MP_OAUTH_STORAGE_DIR"] = envDir;
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", envDir);
     const storage = new OAuthStorage({ storageDir: explicitDir });
     storage.saveTokens(makeTokens(), "us");
     expect(existsSync(join(explicitDir, "tokens_us.json"))).toBe(true);

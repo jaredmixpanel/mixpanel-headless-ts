@@ -19,7 +19,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ConfigError, MeResponse } from "@mixpanel-headless/core";
 
@@ -29,21 +29,13 @@ import { makeTempDir, scrubMpEnv } from "./helpers.js";
 const POSIX = process.platform !== "win32";
 
 const cleanups: Array<() => void> = [];
-let restoreEnv: () => void = () => undefined;
-let savedHome: string | undefined;
 
 beforeEach(() => {
-  restoreEnv = scrubMpEnv();
-  savedHome = process.env["HOME"];
+  scrubMpEnv();
 });
 
 afterEach(() => {
-  if (savedHome === undefined) {
-    delete process.env["HOME"];
-  } else {
-    process.env["HOME"] = savedHome;
-  }
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }
@@ -163,7 +155,7 @@ describe("TestMeCache (test_me.py:228)", () => {
 
   it("test_default_storage_dir_resolves_to_per_account_path", () => {
     const tmp = makeTempDir(cleanups);
-    process.env["HOME"] = tmp;
+    vi.stubEnv("HOME", tmp);
     const cache = new MeCache({ accountName: "demo-sa" });
     expect(cache.cachePath()).toBe(
       join(tmp, ".mp", "accounts", "demo-sa", "me.json"),
@@ -227,7 +219,7 @@ describe("TestMeCacheConcurrency (test_me.py:331)", () => {
 describe("TestMeCacheSymlinkRejection (test_me.py:685)", () => {
   it.skipIf(!POSIX)("test_symlinked_cache_returns_none_and_warns", () => {
     const home = makeTempDir(cleanups);
-    process.env["HOME"] = home;
+    vi.stubEnv("HOME", home);
     const accountDir = join(home, ".mp", "accounts", "personal");
     mkdirSync(accountDir, { recursive: true, mode: 0o700 });
     const attacker = join(home, "attacker_me.json");
@@ -251,7 +243,7 @@ describe("TestMeCacheSymlinkRejection (test_me.py:685)", () => {
     "test_dangling_symlink_cache_returns_none_and_warns",
     () => {
       const home = makeTempDir(cleanups);
-      process.env["HOME"] = home;
+      vi.stubEnv("HOME", home);
       const accountDir = join(home, ".mp", "accounts", "personal");
       mkdirSync(accountDir, { recursive: true, mode: 0o700 });
       symlinkSync(join(home, "missing.json"), join(accountDir, "me.json"));

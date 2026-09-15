@@ -25,7 +25,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   type OAuthClientInfo,
@@ -45,24 +45,16 @@ import { expectPosixMode, makeTempDir, scrubMpEnv } from "./helpers.js";
 const POSIX = process.platform !== "win32";
 
 const cleanups: Array<() => void> = [];
-let restoreEnv: () => void = () => undefined;
-let savedHome: string | undefined;
 let home = "";
 
 beforeEach(() => {
-  restoreEnv = scrubMpEnv();
-  savedHome = process.env["HOME"];
+  scrubMpEnv();
   home = makeTempDir(cleanups);
-  process.env["HOME"] = home;
+  vi.stubEnv("HOME", home);
 });
 
 afterEach(() => {
-  if (savedHome === undefined) {
-    delete process.env["HOME"];
-  } else {
-    process.env["HOME"] = savedHome;
-  }
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }
@@ -128,10 +120,7 @@ describe("TestStaticToken (test_token_resolver.py:79)", () => {
   });
 
   it("test_env_var_returned", async () => {
-    process.env["MY_OAUTH_TOK"] = "env-tok-456";
-    cleanups.push(() => {
-      delete process.env["MY_OAUTH_TOK"];
-    });
+    vi.stubEnv("MY_OAUTH_TOK", "env-tok-456");
     const account: OAuthTokenAccount = {
       type: "oauth_token",
       name: "ci",
@@ -145,7 +134,7 @@ describe("TestStaticToken (test_token_resolver.py:79)", () => {
   });
 
   it("test_env_var_missing_raises", async () => {
-    delete process.env["MY_OAUTH_TOK"];
+    vi.stubEnv("MY_OAUTH_TOK", undefined);
     const account: OAuthTokenAccount = {
       type: "oauth_token",
       name: "ci",
@@ -159,10 +148,7 @@ describe("TestStaticToken (test_token_resolver.py:79)", () => {
   });
 
   it("test_env_var_empty_raises", async () => {
-    process.env["MY_OAUTH_TOK"] = "";
-    cleanups.push(() => {
-      delete process.env["MY_OAUTH_TOK"];
-    });
+    vi.stubEnv("MY_OAUTH_TOK", "");
     const account: OAuthTokenAccount = {
       type: "oauth_token",
       name: "ci",

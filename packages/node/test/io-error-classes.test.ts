@@ -49,16 +49,15 @@ vi.mock("../src/io-utils.js", async (importOriginal) => {
 });
 
 const cleanups: Array<() => void> = [];
-let restoreEnv: () => void = () => undefined;
 
 beforeEach(() => {
-  restoreEnv = scrubMpEnv();
+  scrubMpEnv();
   trigger.active = false;
 });
 
 afterEach(() => {
   trigger.active = false;
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }

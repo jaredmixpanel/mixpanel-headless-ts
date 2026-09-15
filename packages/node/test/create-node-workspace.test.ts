@@ -27,24 +27,16 @@ import { makeTempDir, scrubMpEnv } from "./helpers.js";
 const POSIX = process.platform !== "win32";
 
 const cleanups: Array<() => void> = [];
-let restoreEnv: () => void = () => undefined;
-let savedHome: string | undefined;
 let home = "";
 
 beforeEach(() => {
-  restoreEnv = scrubMpEnv();
-  savedHome = process.env["HOME"];
+  scrubMpEnv();
   home = makeTempDir(cleanups);
-  process.env["HOME"] = home;
+  vi.stubEnv("HOME", home);
 });
 
 afterEach(() => {
-  if (savedHome === undefined) {
-    delete process.env["HOME"];
-  } else {
-    process.env["HOME"] = savedHome;
-  }
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }

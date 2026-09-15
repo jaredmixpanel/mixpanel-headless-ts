@@ -10,7 +10,7 @@ import * as os from "node:os";
 import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
 
-import { expect } from "vitest";
+import { expect, vi } from "vitest";
 
 /**
  * Create a temp directory for one test and register cleanup.
@@ -44,32 +44,17 @@ function assertNotUnderHome(path: string): void {
 }
 
 /**
- * Snapshot-and-scrub every `MP_*` env var (the Python conftest scrub
- * twin) so node env wiring reads only what the test sets.
- *
- * @returns A restore thunk (call in afterEach).
+ * Remove every `MP_*` variable from the environment through `vi.stubEnv`,
+ * so the node env wiring reads only what the test sets. The Python
+ * suite's conftest scrub twin; `vi.unstubAllEnvs()` in `afterEach`
+ * restores the originals.
  */
-export function scrubMpEnv(): () => void {
-  const saved = new Map<string, string>();
-  for (const [key, value] of Object.entries(process.env)) {
-    if (!key.startsWith("MP_")) {
-      continue;
+export function scrubMpEnv(): void {
+  for (const key of Object.keys(process.env)) {
+    if (key.startsWith("MP_")) {
+      vi.stubEnv(key, undefined);
     }
-    if (value !== undefined) {
-      saved.set(key, value);
-    }
-    Reflect.deleteProperty(process.env, key);
   }
-  return () => {
-    for (const key of Object.keys(process.env)) {
-      if (key.startsWith("MP_")) {
-        Reflect.deleteProperty(process.env, key);
-      }
-    }
-    for (const [key, value] of saved) {
-      process.env[key] = value;
-    }
-  };
 }
 
 /**

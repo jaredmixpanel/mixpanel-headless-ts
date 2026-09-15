@@ -15,7 +15,7 @@
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { resolveSession, Secret } from "@mixpanel-headless/core";
 
@@ -26,17 +26,16 @@ import { createNodeEnv } from "../src/env.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const cleanups: Array<() => void> = [];
-let restoreEnv: () => void = () => {};
 
 beforeEach(() => {
   // The Python suite's autouse `_isolated_home` + conftest MP_* scrub:
   // node env wiring reads the REAL process.env, so tests scrub MP_*
   // first and restore after (helpers.ts).
-  restoreEnv = scrubMpEnv();
+  scrubMpEnv();
 });
 
 afterEach(() => {
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }
@@ -120,7 +119,7 @@ describe("TestBridgeHeaderAttachment (test_settings_headers.py:97 — B8-N2)", (
     if (process.platform !== "win32") {
       chmodSync(bridgePath, 0o600);
     }
-    process.env["MP_AUTH_FILE"] = bridgePath;
+    vi.stubEnv("MP_AUTH_FILE", bridgePath);
     return bridgePath;
   }
 

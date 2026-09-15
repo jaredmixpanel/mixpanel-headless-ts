@@ -51,14 +51,13 @@ import { ConfigManager } from "../src/config.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const cleanups: Array<() => void> = [];
-let restoreEnv: () => void = () => undefined;
 
 beforeEach(() => {
-  restoreEnv = scrubMpEnv();
+  scrubMpEnv();
 });
 
 afterEach(() => {
-  restoreEnv();
+  vi.unstubAllEnvs();
   while (cleanups.length > 0) {
     cleanups.pop()?.();
   }
@@ -84,9 +83,9 @@ function tmpBag(
   const configDir = makeTempDir(cleanups);
   const bridgeDir = makeTempDir(cleanups);
   const configPath = join(configDir, "config.toml");
-  process.env["MP_OAUTH_STORAGE_DIR"] = storageDir;
-  process.env["MP_AUTH_FILE"] = join(bridgeDir, "auth.json");
-  process.env["MP_CONFIG_PATH"] = configPath;
+  vi.stubEnv("MP_OAUTH_STORAGE_DIR", storageDir);
+  vi.stubEnv("MP_AUTH_FILE", join(bridgeDir, "auth.json"));
+  vi.stubEnv("MP_CONFIG_PATH", configPath);
   return {
     effects: createNodeAuthEffects({ configPath, ...extra }),
     configPath,
@@ -144,10 +143,10 @@ describe("§4.4 seam-closure sweep — zero UNPORTED throws over the real bag", 
     expect(effects.config.getCustomHeader()).toBeNull();
 
     // env (owner N1) — call-time process.env reads.
-    process.env["MP_REGION"] = "eu";
+    vi.stubEnv("MP_REGION", "eu");
     expect(effects.env.MP_REGION).toBe("eu");
     expect(effects.env.get("MP_REGION")).toBe("eu");
-    delete process.env["MP_REGION"];
+    vi.stubEnv("MP_REGION", undefined);
 
     // tokenStore.* (owner N2).
     expect(effects.tokenStore.readTokens("team")).toBeNull();
