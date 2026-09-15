@@ -1,6 +1,6 @@
 ---
 title: The unified query system
-description: Five analytics engines, one TypeScript vocabulary — Filter, GroupBy, where, group_by, time ranges, inline cohorts and the build / inspect / run pattern shared by Insights, Funnels, Retention, Flows and Users.
+description: "Five analytics engines, one TypeScript vocabulary — Filter, GroupBy, where, group_by, time ranges, inline cohorts and the build / inspect / run pattern shared by Insights, Funnels, Retention, Flows and Users."
 ---
 
 # The unified query system
@@ -68,7 +68,7 @@ const flow = await ws.queryFlow("Purchase", {
 });
 ```
 
-Learn `Filter`, `GroupBy`, `where`, `group_by`, `last`, `time_comparison` and `data_group_id` once. Use them across engines (flows has some restrictions — see below).
+Learn [`Filter`](/reference/core/classes/Filter), [`GroupBy`](/reference/core/classes/GroupBy), `where`, `group_by`, `last`, `time_comparison` ([`TimeComparison`](/reference/core/classes/TimeComparison)) and `data_group_id` once. Use them across engines (flows has some restrictions — see below).
 
 ## Strings first, objects when you need them
 
@@ -159,7 +159,7 @@ Mix freely. Strings and objects can appear in the same query.
 
 ## Filters: typed builders, not operator strings
 
-Every filter is a static builder on `Filter`. Autocomplete shows you every option:
+Every filter is a static builder on [`Filter`](/reference/core/classes/Filter). Autocomplete shows you every option:
 
 ```ts twoslash
 import { Filter } from "@mixpanel-headless/core";
@@ -214,7 +214,7 @@ Filters work identically across `query()`, `queryFunnel()`, `queryRetention()` a
 
 ## Results: rows, params and metadata
 
-Insights, funnel and retention results share a common structure:
+Insights, funnel and retention results ([`QueryResult`](/reference/core/classes/QueryResult), [`FunnelQueryResult`](/reference/core/classes/FunnelQueryResult), [`RetentionQueryResult`](/reference/core/classes/RetentionQueryResult)) share a common structure:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -910,7 +910,7 @@ const hourly = await ws.query("Login", { last: 2, unit: "hour" });
 
 ## Validation
 
-Every query is validated **before** the API call. Invalid options throw `BookmarkValidationError` with all errors at once — no "fix one, discover the next" cycle:
+Every query is validated **before** the API call. Invalid options throw [`BookmarkValidationError`](/reference/core/classes/BookmarkValidationError) with all errors at once — no "fix one, discover the next" cycle:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -940,7 +940,7 @@ try {
 }
 ```
 
-Each `ValidationError` carries:
+Each [`ValidationError`](/reference/core/classes/ValidationError) carries:
 
 | Field        | What it is                                                    |
 | ------------ | ------------------------------------------------------------- |
@@ -1290,6 +1290,8 @@ Each has a matching `build*Params()` that returns the validated params object wi
 
 ### Shared options
 
+The option bags are [`WorkspaceQueryOptions`](/reference/core/interfaces/WorkspaceQueryOptions), [`WorkspaceFunnelQueryOptions`](/reference/core/interfaces/WorkspaceFunnelQueryOptions), [`WorkspaceRetentionQueryOptions`](/reference/core/interfaces/WorkspaceRetentionQueryOptions), [`WorkspaceFlowQueryOptions`](/reference/core/interfaces/WorkspaceFlowQueryOptions) and [`WorkspaceUserQueryOptions`](/reference/core/interfaces/WorkspaceUserQueryOptions).
+
 | Option            | Type                                                                  | Default       | Engines                     |
 | ----------------- | --------------------------------------------------------------------- | ------------- | --------------------------- |
 | `where`           | `Filter \| Filter[]` (Insights also `FrequencyFilter`)                | `null`        | All                         |
@@ -1319,13 +1321,13 @@ I = Insights, F = Funnels, R = Retention, Fl = Flows
 
 ### Result types
 
-| Engine    | Result type            | Key members                                                              |
-| --------- | ---------------------- | ------------------------------------------------------------------------ |
-| Insights  | `QueryResult`          | `toRows()`, `series`, `params`, `meta`                                   |
-| Funnels   | `FunnelQueryResult`    | `toRows()`, `overall_conversion_rate`, `steps_data`                      |
-| Retention | `RetentionQueryResult` | `toRows()`, `cohorts`, `average`                                         |
-| Flows     | `FlowQueryResult`      | `toNodesRows()`, `toEdgesRows()`, `graph()`, `trees`, `topTransitions()` |
-| Users     | `UserQueryResult`      | `toRows()`, `total`, `value`, `profiles`, `params`                       |
+| Engine    | Result type                                                            | Key members                                                              |
+| --------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Insights  | [`QueryResult`](/reference/core/classes/QueryResult)                   | `toRows()`, `series`, `params`, `meta`                                   |
+| Funnels   | [`FunnelQueryResult`](/reference/core/classes/FunnelQueryResult)       | `toRows()`, `overall_conversion_rate`, `steps_data`                      |
+| Retention | [`RetentionQueryResult`](/reference/core/classes/RetentionQueryResult) | `toRows()`, `cohorts`, `average`                                         |
+| Flows     | [`FlowQueryResult`](/reference/core/classes/FlowQueryResult)           | `toNodesRows()`, `toEdgesRows()`, `graph()`, `trees`, `topTransitions()` |
+| Users     | [`UserQueryResult`](/reference/core/classes/UserQueryResult)           | `toRows()`, `total`, `value`, `profiles`, `params`                       |
 
 ### Imports
 
@@ -1386,3 +1388,4 @@ import {
 - [Flow queries](/guide/query-flows) — graph helpers, tree traversal, visualization modes
 - [User profile queries](/guide/query-users) — filtering, sorting, property selection, aggregation
 - [API overview](/api/) — packages, entry points, naming, results
+- [`Workspace` reference](/reference/core/classes/Workspace) — every method signature

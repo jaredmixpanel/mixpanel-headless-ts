@@ -1,6 +1,6 @@
 ---
 title: Insights queries
-description: Build typed analytics queries against Mixpanel's Insights engine — the same engine that powers the Mixpanel web UI.
+description: "Build typed analytics queries against Mixpanel's Insights engine — the same engine that powers the Mixpanel web UI."
 ---
 
 # Insights queries
@@ -76,7 +76,7 @@ const q1 = await ws.query("Purchase", {
 });
 ```
 
-Every option lives on `WorkspaceQueryOptions`; the accepted values of `math`, `per_user`, `unit` and `mode` are the `MathType`, `PerUserAggregation`, `QueryTimeUnit` and `InsightsMode` unions exported by `@mixpanel-headless/core` (each with a sibling `*_VALUES` tuple for runtime checks).
+Every option lives on [`WorkspaceQueryOptions`](/reference/core/interfaces/WorkspaceQueryOptions); the accepted values of `math`, `per_user`, `unit` and `mode` are the [`MathType`](/reference/core/type-aliases/MathType), [`PerUserAggregation`](/reference/core/type-aliases/PerUserAggregation), [`QueryTimeUnit`](/reference/core/type-aliases/QueryTimeUnit) and [`InsightsMode`](/reference/core/type-aliases/InsightsMode) unions exported by `@mixpanel-headless/core` (each with a sibling `*_VALUES` tuple for runtime checks).
 
 ## Aggregation
 
@@ -217,7 +217,7 @@ const result = await ws.query(
 
 ### The `Metric` class
 
-When different events need different aggregation settings, use `Metric` objects instead of plain strings:
+When different events need different aggregation settings, use [`Metric`](/reference/core/classes/Metric) objects instead of plain strings:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -280,7 +280,7 @@ await ws.query([
 
 ### Global filters
 
-Apply filters across all metrics with `where`. Construct filters with the `Filter` static builders:
+Apply filters across all metrics with `where`. Construct filters with the [`Filter`](/reference/core/classes/Filter) static builders:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -508,7 +508,7 @@ const byTwo = await ws.query("Purchase", { group_by: ["country", "platform"] });
 
 ### The `GroupBy` class
 
-For numeric bucketing, boolean breakdowns or explicit type annotations, use `GroupBy`:
+For numeric bucketing, boolean breakdowns or explicit type annotations, use [`GroupBy`](/reference/core/classes/GroupBy):
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -605,7 +605,7 @@ When `formula` is set, the underlying metrics are automatically hidden — only 
 
 ### `Formula` class in the events list
 
-For inline formula definitions, pass `Formula` objects alongside events:
+For inline formula definitions, pass [`Formula`](/reference/core/classes/Formula) objects alongside events:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -759,7 +759,7 @@ const total = result.toRows()[0]?.["count"];
 
 ## Period-over-period comparison
 
-Compare the current time range against a previous period with `TimeComparison`:
+Compare the current time range against a previous period with [`TimeComparison`](/reference/core/classes/TimeComparison):
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -802,7 +802,7 @@ Three static builders:
 
 ### Frequency breakdown
 
-Break down results by how often users performed an event with `FrequencyBreakdown`:
+Break down results by how often users performed an event with [`FrequencyBreakdown`](/reference/core/classes/FrequencyBreakdown):
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -834,7 +834,7 @@ Fields (`FrequencyBreakdownFields`):
 
 ### Frequency filter
 
-Filter to users who performed an event a certain number of times with `FrequencyFilter`:
+Filter to users who performed an event a certain number of times with [`FrequencyFilter`](/reference/core/classes/FrequencyFilter):
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -896,7 +896,7 @@ const result = await ws.query("Login", { data_group_id: 42, last: 30 });
 
 ### `QueryResult`
 
-`query()` resolves to a `QueryResult`:
+`query()` resolves to a [`QueryResult`](/reference/core/classes/QueryResult):
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -1006,7 +1006,7 @@ console.log(JSON.stringify(result.params, null, 2));
 
 ## Validation
 
-`query()` validates all option combinations **before** making an API call and throws `BookmarkValidationError` with every finding at once. Each `ValidationError` has a stable `code`:
+`query()` validates all option combinations **before** making an API call and throws [`BookmarkValidationError`](/reference/core/classes/BookmarkValidationError) with every finding at once. Each [`ValidationError`](/reference/core/classes/ValidationError) has a stable `code`:
 
 | Rule                             | Code                              | Message                                                        |
 | -------------------------------- | --------------------------------- | -------------------------------------------------------------- |
@@ -1231,7 +1231,7 @@ Cohort filters work with all five query methods: `query()`, `queryFunnel()`, `qu
 
 ### Cohort breakdowns
 
-Segment results by cohort membership with `CohortBreakdown` in `group_by`:
+Segment results by cohort membership with [`CohortBreakdown`](/reference/core/classes/CohortBreakdown) in `group_by`:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -1318,7 +1318,7 @@ To create and manage custom properties in Mixpanel, see [Data governance](/guide
 
 ### Referencing a saved custom property
 
-Use `CustomPropertyRef` to reference a custom property that already exists in your Mixpanel project by its numeric ID:
+Use [`CustomPropertyRef`](/reference/core/classes/CustomPropertyRef) to reference a custom property that already exists in your Mixpanel project by its numeric ID:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -1353,7 +1353,7 @@ Find custom property IDs with `ws.listCustomProperties()`.
 
 ### Inline custom properties
 
-Use `InlineCustomProperty` to define a computed property at query time — no need to save it to your project first. Formulas reference raw properties through single-letter variables (A–Z), each mapped to a `PropertyInput`:
+Use [`InlineCustomProperty`](/reference/core/classes/InlineCustomProperty) to define a computed property at query time — no need to save it to your project first. Formulas reference raw properties through single-letter variables (A–Z), each mapped to a [`PropertyInput`](/reference/core/classes/PropertyInput):
 
 ```ts twoslash
 import { InlineCustomProperty, PropertyInput } from "@mixpanel-headless/core";
@@ -1577,3 +1577,4 @@ try {
 - [Data discovery](/guide/discovery) — Explore events and properties before querying
 - [Data governance](/guide/data-governance) — Create and manage custom properties
 - [API overview](/api/) — packages, entry points, naming, results
+- [`Workspace.query` reference](/reference/core/classes/Workspace#query) and [`WorkspaceQueryOptions`](/reference/core/interfaces/WorkspaceQueryOptions) — the full signature and every option
