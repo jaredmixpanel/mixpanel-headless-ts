@@ -877,6 +877,3 @@ export {
   urlunsplit,
 } from "./compat/urllib.js";
 export { zfill } from "./compat/zfill.js";
-
-/** Package name constant exercised by the skeleton smoke test. */
-export const CORE_PACKAGE_NAME = "@mixpanel-headless/core";
