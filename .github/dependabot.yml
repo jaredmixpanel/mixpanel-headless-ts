@@ -30,6 +30,15 @@ updates:
       # would type-check APIs that do not exist on the oldest supported runtime.
       - dependency-name: "@types/node"
         update-types: [version-update:semver-major]
+      # TypeDoc is 0.x, so a minor is its breaking bump; its supported
+      # TypeScript range moves per minor (0.28 declares TS 5.0–6.0). Pinned
+      # `~0.28.20`; it moves together with the typescript pin above.
+      - dependency-name: typedoc
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      # VitePress is pinned `~1.6`: 2.x is still alpha and changes the theme
+      # and plugin APIs the docs site is written against.
+      - dependency-name: vitepress
+        update-types: [version-update:semver-major, version-update:semver-minor]
     open-pull-requests-limit: 10
 
   - package-ecosystem: github-actions

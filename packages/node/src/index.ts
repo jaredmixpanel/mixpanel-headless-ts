@@ -76,6 +76,8 @@ export {
   removeBridge,
   type RemoveBridgeOptions,
 } from "./auth/bridge.js";
+export type { StartCallbackServerOptions } from "./auth/callback-server.js";
+export type { EnsureClientRegisteredOptions } from "./auth/client-registration.js";
 export {
   findAvailablePort,
   type LoginOptions,
@@ -101,7 +103,12 @@ export {
   type ManagerSetActive,
   type RawConfig,
 } from "./config.js";
-export { CredentialPathError } from "./io-utils.js";
+export {
+  type AtomicWriteFsOps,
+  type AtomicWriteOptions,
+  CredentialPathError,
+  type StdinReadSync,
+} from "./io-utils.js";
 export {
   createNodeMeCacheEffects,
   MeCache,

@@ -64,7 +64,7 @@ const NON_OBJECT_BODY_PLACEHOLDER = "<redacted non-object body>";
 /**
  * Render a malformed 200 token payload safely for OAuthError details.
  * Every field name stays visible for diagnosis, but only the values of
- * {@link SAFE_TOKEN_DETAIL_KEYS} survive — and only when they are
+ * `SAFE_TOKEN_DETAIL_KEYS` survive — and only when they are
  * primitives. Every other value renders as `"<redacted>"` regardless of
  * nesting, and a non-object body renders as
  * {@link NON_OBJECT_BODY_PLACEHOLDER}, so no value channel can carry
@@ -176,7 +176,7 @@ export interface PostTokenRequestContext {
  * - JSON-object body failing `OAuthTokens.fromTokenResponse`:
  *   `details.response_data` keeps every field name but only the
  *   primitive values of the safe RFC 6749 metadata keys
- *   ({@link SAFE_TOKEN_DETAIL_KEYS}); every other value — any key, any
+ *   (`SAFE_TOKEN_DETAIL_KEYS`); every other value — any key, any
  *   nesting — renders as `"<redacted>"`.
  * - Non-object JSON body: fixed `"<redacted non-object body>"`
  *   placeholder — the value itself can be the credential.

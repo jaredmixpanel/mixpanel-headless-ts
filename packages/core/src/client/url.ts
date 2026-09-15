@@ -179,8 +179,8 @@ export function endpointOverridesProvider(
  * `(name) => process.env[name]`; the auth flows pass `effects.env.get`).
  *
  * @param getEnv - Reads one variable by name (`undefined` when unset).
- * @returns A provider that reads {@link API_BASE_URL_ENV} and
- *   {@link APP_BASE_URL_ENV} on every call.
+ * @returns A provider that reads `MP_API_BASE_URL` and
+ *   `MP_APP_BASE_URL` on every call.
  * @example
  * ```typescript
  * const overrides = endpointOverridesFromEnv((name) => process.env[name]);

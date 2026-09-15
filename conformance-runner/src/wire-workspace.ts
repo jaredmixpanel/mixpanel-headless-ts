@@ -42,9 +42,11 @@ import {
   type BusinessContextScopeOptions,
   createMixpanelClient,
   type EntityType,
+  type EventsInput,
   type FlowStep,
   type FunnelStep,
   JsonNumber as CoreJsonNumber,
+  type LiveActivityFeedOptions,
   type MixpanelClient,
   MixpanelHeadlessError,
   pythonFloatStr,
@@ -81,10 +83,6 @@ import {
   type WorkspaceUserQueryOptions,
   type WorkspaceWorkspacesOptions,
 } from "@mixpanel-headless/core";
-import type {
-  EventsInput,
-  LiveActivityFeedOptions,
-} from "@mixpanel-headless/core/internal";
 
 import {
   type CodecRegistry,

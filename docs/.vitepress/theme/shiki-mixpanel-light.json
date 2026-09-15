@@ -1,0 +1,93 @@
+{
+  "name": "mixpanel-light",
+  "displayName": "Mixpanel Light",
+  "type": "light",
+  "colors": {
+    "editor.background": "#f6f6f6",
+    "editor.foreground": "#626266"
+  },
+  "tokenColors": [
+    {
+      "scope": ["comment", "punctuation.definition.comment", "string.comment"],
+      "settings": { "foreground": "#8f8f91", "fontStyle": "italic" }
+    },
+    {
+      "scope": [
+        "string",
+        "string.quoted",
+        "string.template",
+        "punctuation.definition.string"
+      ],
+      "settings": { "foreground": "#219464" }
+    },
+    {
+      "scope": [
+        "constant.numeric",
+        "constant.language",
+        "constant.language.boolean"
+      ],
+      "settings": { "foreground": "#df7800" }
+    },
+    {
+      "scope": [
+        "keyword",
+        "keyword.operator.new",
+        "keyword.operator.expression",
+        "storage",
+        "storage.type",
+        "storage.modifier"
+      ],
+      "settings": { "foreground": "#e34f2f" }
+    },
+    {
+      "scope": [
+        "entity.name.function",
+        "support.function",
+        "meta.function-call entity.name.function"
+      ],
+      "settings": { "foreground": "#4f44e0" }
+    },
+    {
+      "scope": [
+        "support.class",
+        "support.type",
+        "support.type.builtin",
+        "support.type.primitive",
+        "support.constant"
+      ],
+      "settings": { "foreground": "#463dbb" }
+    },
+    {
+      "scope": [
+        "entity.name.type",
+        "entity.name.class",
+        "entity.other.inherited-class",
+        "entity.name.namespace"
+      ],
+      "settings": { "foreground": "#df7800" }
+    },
+    {
+      "scope": [
+        "entity.name.tag",
+        "entity.other.attribute-name",
+        "meta.object-literal.key",
+        "variable.other.property",
+        "support.type.property-name"
+      ],
+      "settings": { "foreground": "#df7800" }
+    },
+    {
+      "scope": [
+        "variable",
+        "variable.other.readwrite",
+        "variable.parameter",
+        "meta.definition.variable entity.name.function"
+      ],
+      "settings": { "foreground": "#626266" }
+    },
+    {
+      "scope": ["keyword.operator", "punctuation", "meta.brace"],
+      "settings": { "foreground": "#626266" }
+    }
+  ]
+}

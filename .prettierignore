@@ -4,6 +4,9 @@
 node_modules/
 dist/
 coverage/
+docs/reference/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
 .notes/
 .claude/
 # Lockfile: npm owns its formatting.
@@ -18,3 +21,4 @@ packages/core/src/errors-codes.gen.ts
 packages/core/src/compat/non-printable.gen.ts
 packages/core/src/compat/decimal-digits.gen.ts
 packages/core/src/compat/whitespace.gen.ts
+scripts/lib/python-reference-anchors.gen.json

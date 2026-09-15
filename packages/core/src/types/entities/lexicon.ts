@@ -76,7 +76,11 @@ export class EventDefinition extends EntityModel<EventDefinitionInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<EventDefinitionInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", required: true, kind: "str" },
@@ -230,7 +234,11 @@ export class PropertyDefinition extends EntityModel<PropertyDefinitionInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<PropertyDefinitionInit> = [
     { name: "id", kind: "int", nullable: true },
     { name: "name", required: true, kind: "str" },
@@ -355,7 +363,11 @@ export class UpdateEventDefinitionParams extends EntityModel<UpdateEventDefiniti
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<UpdateEventDefinitionParamsInit> =
     [
       { name: "hidden", kind: "bool", nullable: true },
@@ -455,7 +467,11 @@ export class UpdatePropertyDefinitionParams extends EntityModel<UpdatePropertyDe
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<UpdatePropertyDefinitionParamsInit> =
     [
       { name: "hidden", kind: "bool", nullable: true },
@@ -574,7 +590,11 @@ export class BulkEventUpdate extends EntityModel<BulkEventUpdateInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<BulkEventUpdateInit> = [
     { name: "name", kind: "str", nullable: true },
     { name: "id", kind: "int", nullable: true },
@@ -668,7 +688,11 @@ export class BulkUpdateEventsParams extends EntityModel<BulkUpdateEventsParamsIn
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<BulkUpdateEventsParamsInit> = [
     {
       name: "events",
@@ -752,7 +776,11 @@ export class BulkPropertyUpdate extends EntityModel<BulkPropertyUpdateInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<BulkPropertyUpdateInit> = [
     { name: "name", required: true, kind: "str" },
     {
@@ -863,7 +891,11 @@ export class BulkUpdatePropertiesParams extends EntityModel<BulkUpdateProperties
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<BulkUpdatePropertiesParamsInit> =
     [
       {
@@ -932,7 +964,11 @@ export class LexiconTag extends EntityModel<LexiconTagInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "allow" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<LexiconTagInit> = [
     { name: "id", required: true, kind: "int" },
     { name: "name", required: true, kind: "str" },
@@ -994,7 +1030,11 @@ export class CreateTagParams extends EntityModel<CreateTagParamsInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<CreateTagParamsInit> = [
     { name: "name", required: true, kind: "str" },
   ];
@@ -1053,7 +1093,11 @@ export class UpdateTagParams extends EntityModel<UpdateTagParamsInit> {
   /** Pydantic `model_config.extra` mirror. */
   static readonly extraPolicy = "ignore" as const;
 
-  /** Declared fields in Python `model_fields` order. */
+  /**
+   * Declared fields in Python `model_fields` order.
+   *
+   * @internal
+   */
   static readonly fieldSpecs: EntityFieldSpecs<UpdateTagParamsInit> = [
     { name: "name", kind: "str", nullable: true },
   ];

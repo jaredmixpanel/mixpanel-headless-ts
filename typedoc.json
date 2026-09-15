@@ -1,0 +1,34 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "API reference",
+  "entryPointStrategy": "packages",
+  "entryPoints": ["packages/core", "packages/node", "packages/browser"],
+  "packageOptions": {
+    "entryPoints": ["src/index.ts"],
+    "readme": "none",
+    "excludeInternal": true,
+    "excludePrivate": true,
+    "excludeExternals": true,
+    "externalPattern": ["**/node_modules/**", "**/packages/*/dist/**"],
+    "sort": ["source-order"],
+    "sourceLinkTemplate": "https://github.com/jaredmixpanel/mixpanel-headless-ts/blob/{gitRevision}/{path}#L{line}"
+  },
+  "readme": "none",
+  "plugin": [
+    "typedoc-plugin-markdown",
+    "typedoc-vitepress-theme",
+    "typedoc-plugin-mdn-links",
+    "./scripts/lib/typedoc-link-fallbacks.mjs",
+    "./scripts/lib/typedoc-barrel-groups.mjs",
+    "./scripts/lib/typedoc-python-see-links.mjs"
+  ],
+  "out": "docs/reference",
+  "docsRoot": "docs",
+  "excludeScopesInPaths": true,
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "notDocumented": true,
+    "rewrittenLink": true
+  }
+}

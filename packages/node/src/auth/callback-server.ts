@@ -70,7 +70,10 @@ function htmlEscape(text: string): string {
     .replaceAll("'", "&#x27;");
 }
 
-/** Options bag of {@link startCallbackServer}. */
+/**
+ * Options bag of the callback-server seam
+ * ({@link OAuthFlowOptions.startCallbackServer}).
+ */
 export interface StartCallbackServerOptions {
   /** The expected state parameter for CSRF validation. */
   readonly state: string;

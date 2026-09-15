@@ -104,6 +104,7 @@ export interface EngageMethods {
    * @throws {@link ServerError} - 5xx after the retry budget.
    * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
    *   failure or another non-2xx status.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.engage_stats
    */
   engageStats: (options?: EngageStatsOptions) => Promise<JsonValue>;
@@ -123,6 +124,7 @@ export interface EngageMethods {
    * @throws {@link ServerError} - 5xx after the retry budget.
    * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
    *   failure or another non-2xx status.
+   * @internal
    * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.export_profiles_page
    */
   exportProfilesPage: (

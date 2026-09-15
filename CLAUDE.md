@@ -34,8 +34,9 @@ the lefthook hooks (eslint + prettier at commit, typecheck + `test:fast` at push
 
 - `npm run check` — **the repo gate**, in order: `tsc -b` (also the build),
   `pack:check` (publint + attw per tarball), knip (exports/types at error
-  level), eslint, `prettier --check`, `audit:comments -- --summary` (0 process
-  identifiers in comments/titles), `vendor:drift` (sha256 integrity; byte-diff
+  level), eslint, `docs:api:check` (TypeDoc over the three public barrels,
+  warnings as errors), `prettier --check`, `audit:comments -- --summary` (0
+  process identifiers in comments/titles), `vendor:drift` (sha256 integrity; byte-diff
   only with `ANALYTICS_ROOT`), `test:coverage` (every vitest project incl. the
   corpus replay, the `*.test-d.ts` type tests and the pack-and-install test —
   `MP_SKIP_PACK_TEST=1` skips that locally; global v8 floors 88/88/90/82),
@@ -43,7 +44,7 @@ the lefthook hooks (eslint + prettier at commit, typecheck + `test:fast` at push
 - `npm run build` / `typecheck` — both `tsc -b` (packages into gitignored
   `dist/`, every project checked); after toggling a flag in
   `tsconfig.lib.json`, run `npx tsc -b --force` once.
-- `npm run lint` — `eslint . --max-warnings 0` (typed, ~30 s); every rule is
+- `npm run lint` — `eslint . --max-warnings 0` under a 4 GB heap (typed, ~30 s); every rule is
   `error` or `off` with a reason, never `warn`. Ignore list once in `scripts/lib/lint-ignores.mjs`
   (`tests/ignore-lists.test.ts` syncs `.prettierignore`). `npm run knip`; `npm run fmt` / `fmt:check`.
 - `npm test` — all vitest projects (`core`, `node`, `browser`, `rig`, `corpus`,
@@ -57,6 +58,11 @@ the lefthook hooks (eslint + prettier at commit, typecheck + `test:fast` at push
 - Generators: `npm run generate:all` (error-codes, api-map, bridge-allowlist);
   `generate:compat-tables` and `generate:canonical-fixtures` run Python through
   `uv run --python <pin>` (`scripts/compat-python.pin.json`; other interpreters refused).
+- Docs site: `npm run docs:build` (`tsc -b` → `docs:api` = TypeDoc into git-ignored
+  `docs/reference/` → `vitepress build docs`; every ` ```ts twoslash ` block is
+  type-checked against `dist/`, dead links fail); `docs:dev` previews;
+  `docs:api:check` validates the reference (in the gate).
+  Conventions in CONTRIBUTING.md "Documentation".
 - Releasing: `npx changeset` per change to a published package;
   `npm run version` / `release` = `changeset version` / `publish` (run by `release.yml`).
 

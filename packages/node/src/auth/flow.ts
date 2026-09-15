@@ -104,7 +104,7 @@ export interface OAuthFlowOptions {
   /**
    * DCR seam (the `flow.ensure_client_registered` monkeypatch twin).
    *
-   * @defaultValue the real {@link ensureClientRegistered}
+   * @defaultValue the real `ensureClientRegistered`
    */
   readonly registerClient?:
     | ((options: EnsureClientRegisteredOptions) => Promise<OAuthClientInfo>)
@@ -112,7 +112,7 @@ export interface OAuthFlowOptions {
   /**
    * Port-probe seam (`_find_available_port`).
    *
-   * @defaultValue the real bind-and-release probe over {@link CALLBACK_PORTS}
+   * @defaultValue the real bind-and-release probe over `CALLBACK_PORTS`
    */
   readonly findAvailablePort?: (() => Promise<number | null>) | undefined;
   /**
@@ -163,7 +163,7 @@ export interface RefreshTokensOptions {
 }
 
 /**
- * Probe {@link CALLBACK_PORTS} for one that is not currently in use:
+ * Probe `CALLBACK_PORTS` for one that is not currently in use:
  * bind and immediately release each candidate on 127.0.0.1, in port
  * order. Async where Python is sync (see the module header).
  *
