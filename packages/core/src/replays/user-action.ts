@@ -1,18 +1,13 @@
 /**
  * `UserAction` — one normalized user action extracted from a session
- * replay, the TS port of `mixpanel_headless.types.UserAction`, together
- * with the closed action-label union the rrweb analyzer emits.
+ * replay — and the closed action-label union the rrweb analyzer emits.
  *
- * This is the shared leaf of the replay family: the analyzer
- * (`rrweb-analyzer.ts`) constructs actions, the label functions
- * (`replay-labels.ts`) and bundle aggregations (`aggregators.ts`) read
- * them, and the result dataclasses (`types/results/replay-models.ts`,
- * `types/results/replays.ts`) carry them. Keeping it below all of those
- * is what lets the family import in one direction only.
+ * This is the shared leaf of the replay family: the analyzer constructs
+ * actions, the label functions and bundle aggregations read them, and
+ * the result classes carry them. Keeping it below all of those lets the
+ * family import in one direction only.
  *
- * `UserAction` is also a `$type` family member (UA1/UA2 codes); its
- * constructor guards fire exactly as Python's `__post_init__` does, in
- * the same check order, one comment per registry code.
+ * @see mixpanel_headless.types.UserAction
  */
 
 import { ParamValidationError } from "../errors.js";
@@ -29,7 +24,7 @@ import {
 /**
  * Closed set of normalized action labels emitted by the rrweb analyzer
  * — mirror of the module-private Python `_REPLAY_ACTION_LITERAL`
- * (NOT in `__all__`, so not re-exported from the package barrel).
+ * (not in `__all__`, so not re-exported from the package barrel).
  */
 export type ReplayActionLabel =
   | "click"
@@ -61,8 +56,21 @@ export interface UserActionFields {
 }
 
 /**
- * One normalized user action extracted from a replay — TS port of
- * `types.UserAction` (a D4.4 `$type` family member; UA1/UA2 codes).
+ * One normalized user action extracted from a session replay.
+ *
+ * @example
+ * ```ts
+ * const action = new UserAction({
+ *   timestamp: 1_700_000_000_000,
+ *   action: "click",
+ *   target_node_id: 42,
+ *   target_desc: 'button "Sign in"',
+ *   url: "https://app.example.com/login",
+ * });
+ * action.toJSON();
+ * // { timestamp: 1700000000000, action: "click", target_node_id: 42, ... }
+ * ```
+ * @see mixpanel_headless.types.UserAction
  */
 export class UserAction {
   /** Action instant (unix ms). */
@@ -87,13 +95,14 @@ export class UserAction {
   readonly description: string;
 
   /**
-   * Create a user action (guards fire exactly as Python's
-   * `__post_init__`, in source order).
+   * Create a user action; the guards run in the order of Python's
+   * `__post_init__`.
    *
    * @param fields - Declared fields; Python defaults apply to absent
    *   optionals.
-   * @throws ParamValidationError - `UA1_TIMESTAMP_NOT_POSITIVE` or
-   *   `UA2_EMPTY_TARGET_DESC`.
+   * @throws {@link ParamValidationError} - `UA1_TIMESTAMP_NOT_POSITIVE` when
+   *   `timestamp` is not a positive number, `UA2_EMPTY_TARGET_DESC` when
+   *   `target_desc` is empty.
    */
   constructor(fields: UserActionFields) {
     this.timestamp = fields.timestamp;
@@ -141,9 +150,10 @@ export class UserAction {
    * Strictly decode a recorded field-walk payload.
    *
    * @param raw - The payload.
-   * @returns The reconstructed instance (guards fire).
-   * @throws ResponseValidationError - On unknown keys or wrong types.
-   * @throws ParamValidationError - When a constructor guard fires.
+   * @returns The reconstructed instance (constructor guards apply).
+   * @throws {@link ResponseValidationError} - on unknown keys or wrong field
+   *   types.
+   * @throws {@link ParamValidationError} - when a constructor guard fires.
    * @internal
    */
   static fromDict(raw: unknown): UserAction {

@@ -1,29 +1,15 @@
 /**
- * Activity labels for the rrweb action stream — TS port of
- * `mixpanel_headless/replay_labels.py` (145 lines, whole file) for
- * Phase-3 batch B5, shard S3 (`docs/history/phase3/design/b5-packets.md`
- * §5). Closes three of the phase2-audit A1 public-export deferrals
- * ({@link urlNormalizer}, {@link defaultLabelFn},
- * {@link selectorLabelFn}).
+ * Activity labels for the rrweb action stream: the grouping keys the
+ * path / click / transition aggregations on `ReplayBundle` use. Two
+ * `click on button "Sign in"` events from different replays must yield
+ * the same label string or the downstream aggregations fragment, so
+ * URLs are normalized to path templates before they enter a label.
  *
- * A label is the grouping key for the path / click / transition
- * aggregations on `ReplayBundle`. Stable labels are the precondition
- * for any cross-session analysis: two `click on button "Sign in"`
- * events from different replays must produce the same label string, or
- * the downstream aggregations fragment.
+ * `str.split(sep, 1)` has no JS twin (`String.split` with a limit drops
+ * the tail), so the splitting here is `indexOf`-based; the `url`
+ * truthiness guards are explicit empty-string checks.
  *
- * Port notes:
- *
- * - The `_NUMERIC_OR_HEX` pattern is anchored and ports verbatim.
- *   Python's `re.match` anchors at the START only; the pattern already
- *   carries a trailing `$`, so the JS `RegExp` is byte-identical and
- *   `.test()` is the `match(...) is not None` twin.
- * - `str.split(sep, 1)` (maxsplit) has no direct JS twin —
- *   `indexOf`-based splitting reproduces it exactly (R11.x: JS
- *   `String.split` with a limit DROPS the tail rather than keeping it).
- * - Python truthiness on the `url` guards (`if not url`, `if candidate`)
- *   ports through the explicit empty-string checks Python performs on
- *   these `str | None` domains.
+ * @see mixpanel_headless.replay_labels
  */
 
 import { pythonStr, type PythonValue } from "../compat/python-str.js";
@@ -34,14 +20,14 @@ import type { UserAction } from "./user-action.js";
  * Numeric path segments — IDs, version numbers, year/month/day pieces —
  * are replaced with `:id` so URLs collapse across users / instances.
  * Hex IDs (UUIDs, short SHAs) also count as IDs; pure-text segments
- * survive. Verbatim twin of Python's `_NUMERIC_OR_HEX`
- * (`replay_labels.py`).
+ * survive. Anchored at both ends, so `.test()` is the `re.match` twin.
+ *
+ * @see mixpanel_headless.replay_labels._NUMERIC_OR_HEX
  */
 const NUMERIC_OR_HEX = /^(?:[0-9]+|[0-9a-f]{8,}|[0-9a-fA-F-]{8,})$/;
 
 /**
- * Normalize a URL into a path template suitable for label aggregation
- * (`url_normalizer`, `replay_labels.py`).
+ * Normalize a URL into a path template suitable for label aggregation.
  *
  * Strips the query string and replaces numeric / hex path segments with
  * `:id`. The host portion is preserved when present (otherwise the
@@ -57,6 +43,7 @@ const NUMERIC_OR_HEX = /^(?:[0-9]+|[0-9a-f]{8,}|[0-9a-fA-F-]{8,})$/;
  * urlNormalizer("https://app.example.com/orders/abc12345-de00");
  * // 'https://app.example.com/orders/:id'
  * ```
+ * @see mixpanel_headless.replay_labels.url_normalizer
  */
 export function urlNormalizer(url: string): string {
   if (url === "") {
@@ -92,8 +79,7 @@ export function urlNormalizer(url: string): string {
 }
 
 /**
- * Canonical activity label: `"{action}:{tag}@{normalized_url}"`
- * (`default_label_fn`, `replay_labels.py`).
+ * Canonical activity label: `"{action}:{tag}@{normalized_url}"`.
  *
  * `tag` comes from `action.target_desc` (the analyzer's best
  * description of the element — e.g. `'button "Sign in"'`). The URL is
@@ -107,6 +93,7 @@ export function urlNormalizer(url: string): string {
  * defaultLabelFn(action);
  * // 'click:button "Sign in"@/users/:id/profile'
  * ```
+ * @see mixpanel_headless.replay_labels.default_label_fn
  */
 export function defaultLabelFn(action: UserAction): string {
   // Python `action.target_desc or "(unknown)"` — the only falsy value
@@ -121,7 +108,7 @@ export function defaultLabelFn(action: UserAction): string {
 
 /**
  * Build a label-fn that prefers a stable selector attribute when
- * present (`selector_label_fn`, `replay_labels.py`).
+ * present.
  *
  * For instrumented apps, `data-testid` (or your project's equivalent)
  * is the most stable activity identifier — it survives DOM refactors,
@@ -137,6 +124,7 @@ export function defaultLabelFn(action: UserAction): string {
  * const labelFn = selectorLabelFn("data-testid");
  * bundle.findPattern(["click:button@/"], { labelFn });
  * ```
+ * @see mixpanel_headless.replay_labels.selector_label_fn
  */
 export function selectorLabelFn(
   attr = "data-testid",
@@ -163,9 +151,9 @@ export function selectorLabelFn(
           : "(no-url)";
       // The f-string interpolation is CPython `str(candidate)`, and
       // `metadata` is `dict[str, Any]` — a non-str value renders with
-      // PYTHON spelling (`True`, not `true`; `None`, not `null`; a list
-      // as `[1, 2]`). `String()` would silently fork the label
-      // (found by the R10.9 differential harness, 23/520 cases).
+      // Python spelling (`True`, not `true`; `None`, not `null`; a list
+      // as `[1, 2]`). `String()` would silently fork the label; the
+      // differential oracle caught exactly that on real metadata.
       return `${action.action}:${pythonStr(candidate as PythonValue)}@${url}`;
     }
     return defaultLabelFn(action);
