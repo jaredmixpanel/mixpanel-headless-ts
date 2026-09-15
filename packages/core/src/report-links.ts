@@ -445,9 +445,10 @@ export interface BuildBookmarkUrlArgs {
 export function buildBookmarkUrl(args: BuildBookmarkUrlArgs): string {
   const host = webHost(args.region);
   requirePositiveId("bookmark_id", args.bookmark_id);
+  // Replacer function: a string replacement would interpret `$` patterns.
   const tail = lookupType(BOOKMARK_HASH_FOR_TYPE, args.report_type).replace(
     "{id}",
-    String(args.bookmark_id),
+    () => String(args.bookmark_id),
   );
   const path = projectPath(args.project_id, args.workspace_id ?? null);
   return `https://${host}${path}/app/${tail}`;
@@ -529,9 +530,9 @@ function parsePath(segments: readonly string[]): ParsedPath {
   ) {
     return { ...NO_PATH, short_code: segments[1] as string };
   }
-  let pidS: string | null = null;
+  let pidS: string;
   let widS: string | null = null;
-  let app: string | null = null;
+  let app: string;
   if (n === 4 && segments[0] === "project" && segments[2] === "app") {
     pidS = segments[1] as string;
     app = segments[3] as string;

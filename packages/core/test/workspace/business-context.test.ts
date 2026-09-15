@@ -171,6 +171,14 @@ describe("TestGetBusinessContextProject (:146)", () => {
     expect(transport.captures).toHaveLength(0);
   });
 
+  it("a non-string `content` names the offending Python type", async () => {
+    const { ws } = makeWorkspace(() => ok({ content: true }));
+
+    await expect(ws.getBusinessContext({ level: "project" })).rejects.toThrow(
+      /field 'content' is bool, expected str/,
+    );
+  });
+
   it("a response without `content` raises MixpanelHeadlessError", async () => {
     const { ws } = makeWorkspace(() => ok({ unexpected: "shape" }));
 

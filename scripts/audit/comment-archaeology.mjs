@@ -155,7 +155,7 @@ function expandRoot(root, pattern) {
     const next = [];
     for (const d of dirs) {
       if (part === "*") {
-        let entries = [];
+        let entries;
         try {
           entries = readdirSync(d, { withFileTypes: true });
         } catch {

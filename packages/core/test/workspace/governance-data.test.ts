@@ -254,7 +254,7 @@ function stubClient(
  * @param error - The rejection value.
  * @returns The stub cast to the client type.
  */
-function throwingClient(method: string, error: unknown): MixpanelClient {
+function throwingClient(method: string, error: Error): MixpanelClient {
   return {
     [method]: (): Promise<never> => Promise.reject(error),
   } as unknown as MixpanelClient;

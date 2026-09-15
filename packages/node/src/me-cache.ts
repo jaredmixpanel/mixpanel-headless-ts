@@ -263,7 +263,7 @@ export class MeCache implements MeCacheStore {
       )) {
         if (wsData !== null && typeof wsData === "object") {
           for (const key of STRIP_FROM_WORKSPACES) {
-            delete (wsData as Record<string, unknown>)[key];
+            Reflect.deleteProperty(wsData, key);
           }
         }
       }

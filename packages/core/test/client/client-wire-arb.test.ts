@@ -23,6 +23,7 @@ import { describe, expect, it } from "vitest";
 import { createMixpanelClient } from "../../src/client/client.js";
 import type { JsonValue } from "../../src/client/json-value.js";
 import { MixpanelHeadlessError } from "../../src/errors.js";
+import { toError } from "../../src/invariant.js";
 import {
   createMockClient,
   makeSession,
@@ -120,13 +121,13 @@ function hangingFetch(): { fetchImpl: typeof fetch; calls: () => number } {
         return; // hang forever (no signal ever supplied — test fails by timeout)
       }
       if (signal.aborted) {
-        reject(signal.reason);
+        reject(toError(signal.reason));
         return;
       }
       signal.addEventListener(
         "abort",
         () => {
-          reject(signal.reason);
+          reject(toError(signal.reason));
         },
         { once: true },
       );

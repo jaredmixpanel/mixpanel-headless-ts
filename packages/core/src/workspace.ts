@@ -45,6 +45,7 @@ import {
   UnsupportedReportLinkError,
   WorkspaceScopeError,
 } from "./errors.js";
+import { toError } from "./invariant.js";
 import { KeyError } from "./query/python-builtins.js";
 import { transformProfile } from "./query/transforms.js";
 import { RrwebAnalyzer } from "./replays/rrweb-analyzer.js";
@@ -1491,8 +1492,8 @@ export class Workspace {
     const target = options.target ?? null;
 
     let newAccount: Account | null = null;
-    let newProject: Project | null = null;
-    let newWorkspace: WorkspaceRef | null = null;
+    let newProject: Project | null;
+    let newWorkspace: WorkspaceRef | null;
 
     if (target !== null) {
       // Route through the same resolver as construction so
@@ -2709,10 +2710,15 @@ export class Workspace {
     // Bounded-concurrency scheduler: the TS twin of
     // `ThreadPoolExecutor(max_workers=capped)` + `as_completed`.
     let next = 1;
-    let aborted: unknown = null;
+    // Boxed rather than a bare `let`: the workers assign it inside a
+    // closure, which TS's flow analysis does not track for a local.
+    const abort: {
+      error:
+        AuthenticationError | RateLimitError | ServerError | QueryError | null;
+    } = { error: null };
     const runWorker = async (): Promise<void> => {
       for (;;) {
-        if (aborted !== null) {
+        if (abort.error !== null) {
           return;
         }
         const pageNum = next;
@@ -2732,7 +2738,7 @@ export class Workspace {
           ) {
             // Python cancels the queued futures and re-raises out of
             // the `with` block (running futures still finish).
-            aborted = error;
+            abort.error = error;
             return;
           }
           this.#logger?.warning?.(
@@ -2750,12 +2756,12 @@ export class Workspace {
         runWorker(),
       ),
     );
-    if (aborted !== null) {
-      throw aborted;
+    if (abort.error !== null) {
+      throw abort.error;
     }
 
-    for (const p of [...pageResults.keys()].sort((a, b) => a - b)) {
-      allProfiles.push(...pageResults.get(p)!);
+    for (const [, profiles] of [...pageResults].sort((a, b) => a[0] - b[0])) {
+      allProfiles.push(...profiles);
     }
 
     allProfiles = limit === null ? allProfiles : allProfiles.slice(0, limit);
@@ -3365,7 +3371,7 @@ export class Workspace {
     // each fetch runs with include_mixpanel_events=false here regardless
     // of the caller's flag.
     const results = new Map<number, Replay>();
-    const failures: Array<[string, unknown]> = [];
+    const failures: Array<[string, Error]> = [];
     let cursor = 0;
     const worker = async (): Promise<void> => {
       for (;;) {
@@ -3395,7 +3401,7 @@ export class Workspace {
             `fetch_replays: skipping replay ${rid} — ` +
               `${error instanceof Error ? error.name : typeof error}: ${String(error)}`,
           );
-          failures.push([rid, error]);
+          failures.push([rid, toError(error)]);
         }
       }
     };
@@ -3404,14 +3410,15 @@ export class Workspace {
         worker(),
       ),
     );
-    if (results.size === 0 && failures.length > 0) {
+    const firstFailure = failures[0];
+    if (results.size === 0 && firstFailure !== undefined) {
       // Every replay failed — surface the first underlying error rather
       // than a generic wrapper, preserving its type for callers that
       // branch on it. Python's `failures[0]` is completion-ordered
       // (`as_completed`); the port keeps INPUT order, which is the
       // deterministic reading of the same rule (recorded in
       // `B5-S3-notes.md` §2).
-      throw failures[0]?.[1];
+      throw firstFailure[1];
     }
     let ordered = [...results]
       .sort((a, b) => a[0] - b[0])
@@ -6961,7 +6968,10 @@ function mapGet<T>(
   key: string,
 ): T | undefined {
   if (source instanceof Map) {
-    return source.get(key);
+    // Declared type, not the `instanceof` intersection (whose `Map<any,
+    // any>` half would make `get` return `any`).
+    const map: ReadonlyMap<string, T> = source;
+    return map.get(key);
   }
   const record = source as Readonly<Record<string, T>>;
   return Object.hasOwn(record, key) ? record[key] : undefined;

@@ -1524,7 +1524,7 @@ export function filterUnchecked(
   const take = (name: string, fallback?: () => unknown): unknown => {
     if (Object.hasOwn(remaining, name)) {
       const v = remaining[name];
-      delete remaining[name];
+      Reflect.deleteProperty(remaining, name);
       return v;
     }
     if (fallback === undefined) {

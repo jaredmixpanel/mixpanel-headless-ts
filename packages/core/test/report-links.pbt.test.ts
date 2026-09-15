@@ -23,6 +23,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
+import { codepoints } from "../src/compat/codepoint.js";
 import { ParamValidationError, ReportLinkParseError } from "../src/errors.js";
 import {
   BOOKMARK_HASH_FOR_TYPE,
@@ -47,7 +48,7 @@ const workspaceIds = fc.oneof(
   fc.integer({ min: 1, max: 1e9 }),
 );
 const slugs = fc
-  .array(fc.constantFrom(...SERVER_ALPHABET), {
+  .array(fc.constantFrom(...codepoints(SERVER_ALPHABET)), {
     minLength: 12,
     maxLength: 12,
   })
@@ -155,7 +156,9 @@ describe("TestSlugInvariants", () => {
       fc.property(fc.integer(), () => {
         const slug = generateSlug();
         expect(slug).toHaveLength(12);
-        expect([...slug].every((c) => SLUG_ALPHABET.includes(c))).toBe(true);
+        expect(codepoints(slug).every((c) => SLUG_ALPHABET.includes(c))).toBe(
+          true,
+        );
         expect(isSlug(slug)).toBe(true);
       }),
     );
@@ -174,7 +177,8 @@ describe("TestSlugInvariants", () => {
       fc.property(
         anyText.filter(
           (s) =>
-            s.length !== 12 || [...s].some((c) => !SERVER_ALPHABET.includes(c)),
+            s.length !== 12 ||
+            codepoints(s).some((c) => !SERVER_ALPHABET.includes(c)),
         ),
         (value) => {
           expect(isSlug(value)).toBe(false);
@@ -391,8 +395,9 @@ function assertKindFields(parsed: ParsedReportLink): void {
       expect(parsed.dashboard_id).not.toBeNull();
       break;
     }
-    default: {
-      expect(parsed.kind).toBe("legacy_jsurl");
+    case "legacy_jsurl": {
+      // No kind-specific field.
+      break;
     }
   }
 }

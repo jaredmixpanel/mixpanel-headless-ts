@@ -33,6 +33,7 @@
 
 import { DECIMAL_DIGIT_RUNS } from "../compat/decimal-digits.gen.js";
 import {
+  codepoints,
   cpLength,
   isPythonDict,
   pythonFloat,
@@ -358,7 +359,7 @@ export function requireHashable(value: unknown): void {
  */
 export function pythonIterableElements(value: unknown): unknown[] | null {
   if (typeof value === "string") {
-    return [...value];
+    return codepoints(value);
   }
   if (Array.isArray(value)) {
     return [...(value as unknown[])];

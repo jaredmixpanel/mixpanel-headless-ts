@@ -66,6 +66,7 @@ import {
   ParamValidationError,
   ValidationError,
 } from "./errors.js";
+import { defined } from "./invariant.js";
 import { ValueError } from "./query/python-builtins.js";
 import { buildSegfilterEntry } from "./query/segfilter.js";
 import {
@@ -1750,11 +1751,12 @@ export function resolveAndBuildFlowParams(
  *   `max() iterable argument is empty`).
  */
 function pyMax(values: readonly number[]): number {
-  if (values.length === 0) {
+  const [first, ...rest] = values;
+  if (first === undefined) {
     throw new ValueError("max() iterable argument is empty");
   }
-  let best = values[0]!;
-  for (const v of values.slice(1)) {
+  let best = first;
+  for (const v of rest) {
     if (v > best) {
       best = v;
     }
@@ -2311,7 +2313,7 @@ function daysInMonth(year: number, month: number): number {
   if (month === 2 && isLeapYear(year)) {
     return 29;
   }
-  return lengths[month - 1]!;
+  return defined(lengths[month - 1], "month length");
 }
 
 /**

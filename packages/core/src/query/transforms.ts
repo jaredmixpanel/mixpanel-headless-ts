@@ -126,7 +126,7 @@ function dictPop(
     return fallback;
   }
   const value = target[key];
-  delete target[key];
+  Reflect.deleteProperty(target, key);
   return value;
 }
 

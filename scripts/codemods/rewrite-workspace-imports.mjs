@@ -173,7 +173,7 @@ for (const file of scanFiles) {
 
     // Bindings.
     let elements;
-    let statementTypeOnly = false;
+    let statementTypeOnly;
     if (isImport) {
       const clause = stmt.importClause;
       if (

@@ -861,8 +861,11 @@ export function createQueryHostMethods(
     options: QuerySavedReportOptions = {},
   ): Promise<JsonValue> => {
     const bookmarkType = options.bookmark_type ?? "insights";
-    let url: string;
-    let params: Record<string, unknown>;
+    // Python's if/elif chain ends in an insights `else`; start from that
+    // shape so an out-of-contract bookmark type (JS callers bypassing the
+    // literal union) lands there too.
+    let url = core.buildUrl("query", "/insights");
+    let params: Record<string, unknown> = { bookmark_id: bookmarkId };
     switch (bookmarkType) {
       case "funnels": {
         url = core.buildUrl("query", "/funnels");
@@ -922,10 +925,8 @@ export function createQueryHostMethods(
 
         break;
       }
-      default: {
-        // "insights" and the unreachable-fallthrough arm share one shape.
-        url = core.buildUrl("query", "/insights");
-        params = { bookmark_id: bookmarkId };
+      case "insights": {
+        break;
       }
     }
     return core.requestQueryHost("GET", url, {

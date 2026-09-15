@@ -6,6 +6,7 @@
  * P1, P2, P6 and half the semantic-trap watchlist).
  */
 export {
+  codepoints,
   compareCodepoints,
   cpLength,
   cpSlice,

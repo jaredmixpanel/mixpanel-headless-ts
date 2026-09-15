@@ -5,6 +5,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
 import {
+  codepoints,
   cpLength,
   cpSlice,
   sortedByCodepoint,
@@ -20,6 +21,13 @@ describe("cpLength — Python len(str) counts codepoints (R11.6)", () => {
     expect(cpLength("𝒳")).toBe(1);
     expect("𝒳").toHaveLength(2); // the JS contrast
     expect(cpLength("a𝒳b😀")).toBe(4);
+  });
+});
+
+describe("codepoints — Python list(str) splits by code point", () => {
+  it("keeps surrogate pairs whole", () => {
+    expect(codepoints("a\u{1D518}b")).toEqual(["a", "\u{1D518}", "b"]);
+    expect(codepoints("")).toEqual([]);
   });
 });
 
@@ -122,7 +130,7 @@ describe("sortedByCodepoint — Python sorted() string order (R11.5)", () => {
         const result = sortedByCodepoint(values);
         expect([...result].sort()).toEqual([...values].sort());
         // BMP-only strings: codepoint order == UTF-16 order.
-        if (values.every((v) => [...v].every((c) => c.length === 1))) {
+        if (values.every((v) => codepoints(v).every((c) => c.length === 1))) {
           expect(result).toEqual([...values].sort());
         }
       }),
@@ -131,7 +139,7 @@ describe("sortedByCodepoint — Python sorted() string order (R11.5)", () => {
 
   it("output is pairwise ordered under codepoint comparison (fast-check)", () => {
     const cpKey = (s: string): readonly number[] =>
-      [...s].map((c) => c.codePointAt(0) as number);
+      codepoints(s).map((c) => c.codePointAt(0) as number);
     const lessOrEqual = (a: string, b: string): boolean => {
       const ka = cpKey(a);
       const kb = cpKey(b);

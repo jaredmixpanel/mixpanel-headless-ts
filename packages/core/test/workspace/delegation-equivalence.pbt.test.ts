@@ -32,6 +32,7 @@ import {
   VALID_MATH_FUNNELS,
   VALID_MATH_INSIGHTS,
 } from "../../src/bookmarks/enums.js";
+import { codepoints } from "../../src/compat/codepoint.js";
 import { pythonStrip } from "../../src/compat/index.js";
 import type { ValidationError } from "../../src/errors.js";
 import {
@@ -126,10 +127,9 @@ const INVISIBLE_CHARS: readonly string[] = [
  * (`query-validation.pbt.test.ts` header): ASCII letters/digits plus
  * explicit non-ASCII category-L/N members, split on code points.
  */
-const LN_CHARS: readonly string[] = [
-  ...("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" +
-    "éΩж中٤Ⅻ𝒳"),
-];
+const LN_CHARS: readonly string[] = codepoints(
+  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789éΩж中٤Ⅻ𝒳",
+);
 
 /** Port of `safe_text` (max_size=10, categories L/N, :78-81). */
 const safeTextArb: fc.Arbitrary<string> = fc

@@ -97,8 +97,18 @@ function describe(value: unknown): string {
     case "undefined": {
       return "undefined";
     }
+    case "object": {
+      return Array.isArray(value) ? "array" : "object";
+    }
+    case "bigint":
+    case "function":
+    case "symbol": {
+      return typeof value;
+    }
     default: {
-      return Array.isArray(value) ? "array" : typeof value;
+      // Every `typeof` result is listed; TS cannot subtract them from
+      // `unknown`, so it still wants a terminal arm.
+      throw new TypeError(`unexpected typeof result: ${typeof value}`);
     }
   }
 }

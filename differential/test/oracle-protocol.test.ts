@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 
 import { JsonNumber } from "@mixpanel-headless/conformance-runner";
+import { codepoints } from "@mixpanel-headless/core";
 
 import {
   parseRawJson,
@@ -162,9 +163,9 @@ describe("oracle.info / oracle.shutdown / framing", () => {
     );
     expect(line).not.toBeNull();
     expect(line).not.toContain("\n");
-    expect([...(line as string)].every((ch) => ch.charCodeAt(0) < 128)).toBe(
-      true,
-    );
+    expect(
+      codepoints(line as string).every((ch) => ch.charCodeAt(0) < 128),
+    ).toBe(true);
     const envelope = JSON.parse(line as string) as Envelope;
     expect(envelope.result?.["output"]).toBe("\u{1F40D}");
   });
@@ -445,7 +446,7 @@ describe("raw-json: ordered lossless model", () => {
       token: new JsonNumber("18.0"),
       big: 123456789012345678901n,
     });
-    expect([...text].every((ch) => ch.charCodeAt(0) < 128)).toBe(true);
+    expect(codepoints(text).every((ch) => ch.charCodeAt(0) < 128)).toBe(true);
     expect(text).toContain(String.raw`\ud83d\udc0d`);
     expect(text).toContain(String.raw`\ud800`);
     expect(text).toContain("18.0");

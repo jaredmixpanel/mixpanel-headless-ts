@@ -42,3 +42,40 @@ export function invariant(
     throw new MixpanelHeadlessError(message);
   }
 }
+
+/**
+ * Narrow a possibly-missing value, throwing where a `!` assertion would
+ * merely have lied (R6.8 — the runtime check stays). For indexed reads
+ * whose presence a prior length check or loop bound already guarantees.
+ *
+ * @param value - The value to narrow.
+ * @param what - What the value is, for the violation message.
+ * @returns `value`, narrowed to exclude `null` / `undefined`.
+ * @throws MixpanelHeadlessError - When `value` is `null` or `undefined`.
+ */
+export function defined<T>(value: T | null | undefined, what: string): T {
+  if (value === null || value === undefined) {
+    throw new MixpanelHeadlessError(`${what} is unexpectedly missing`);
+  }
+  return value;
+}
+
+/**
+ * Coerce a caught value to an `Error` so it can be re-thrown or stored
+ * where an `Error` is required (Python can only raise `BaseException`;
+ * JS can throw anything). Errors pass through untouched; anything else
+ * is wrapped with the original value as `cause`.
+ *
+ * @param value - The caught value.
+ * @returns `value` itself when it is an `Error`, else a wrapping `Error`.
+ */
+export function toError(value: unknown): Error {
+  if (value instanceof Error) {
+    return value;
+  }
+  const message =
+    typeof value === "string"
+      ? value
+      : `non-Error value thrown: ${typeof value}`;
+  return new Error(message, { cause: value });
+}

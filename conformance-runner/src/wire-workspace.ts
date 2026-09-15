@@ -472,10 +472,11 @@ export function optionsBag<T>(
   positionals: readonly string[],
   withToday = false,
 ): T {
-  const out: Record<string, unknown> = { ...context.kwargs };
-  for (const name of positionals) {
-    delete out[name];
-  }
+  const out: Record<string, unknown> = Object.fromEntries(
+    Object.entries(context.kwargs).filter(
+      ([name]) => !positionals.includes(name),
+    ),
+  );
   if (withToday) {
     out["today"] = (): string => context.shims.today();
   }

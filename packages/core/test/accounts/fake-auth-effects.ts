@@ -685,7 +685,7 @@ export function setEnv(
   value: string | undefined,
 ): void {
   if (value === undefined) {
-    delete bundle.envBag[name];
+    Reflect.deleteProperty(bundle.envBag, name);
     return;
   }
   bundle.envBag[name] = value;

@@ -15,6 +15,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
+import { codepoints } from "../../src/compat/codepoint.js";
 import { ParamValidationError } from "../../src/errors.js";
 import {
   validateGroupByArgs,
@@ -76,10 +77,9 @@ const lastValuesArb = fc.integer({ min: -100, max: 5000 });
  * Full-Unicode cross-language behavior is additionally locked by the
  * Python-side R10.9 fuzz strategies (`_B2_NON_BMP` edges).
  */
-const LN_CHARS: readonly string[] = [
-  ...("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" +
-    "éΩж中٤Ⅻ𝒳"),
-];
+const LN_CHARS: readonly string[] = codepoints(
+  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789éΩж中٤Ⅻ𝒳",
+);
 
 /** Port of `property_names` (min_size=1, max_size=30, categories L/N). */
 const propertyNamesArb: fc.Arbitrary<string> = fc

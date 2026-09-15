@@ -1056,7 +1056,7 @@ function validateFilterClause(
   ) {
     const fvCohort = dictGet(clause, "filterValue");
     if (Array.isArray(fvCohort) && fvCohort.length > 0) {
-      const first = fvCohort[0];
+      const first: unknown = fvCohort[0];
       if (
         isDict(first) &&
         hasKey(first, "cohort") &&

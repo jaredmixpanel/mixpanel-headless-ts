@@ -39,6 +39,7 @@ import {
   type WireResponse,
 } from "../../src/client/internals.js";
 import { JsonNumber } from "../../src/client/json-value.js";
+import { codepoints } from "../../src/compat/codepoint.js";
 import {
   APIError,
   AuthenticationError,
@@ -715,7 +716,7 @@ describe("errorMessage (FF6)", () => {
   it("string body truncates at 200 CODEPOINTS (R11.6, never splits pairs)", () => {
     const body = "𝒳".repeat(300); // non-BMP: 2 UTF-16 units each
     const message = errorMessage(body, "Default");
-    expect([...message]).toHaveLength(200);
+    expect(codepoints(message)).toHaveLength(200);
     expect(message).toBe("𝒳".repeat(200));
   });
 

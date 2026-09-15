@@ -29,6 +29,8 @@
  * (b2-packets.md §V1b TS-homes).
  */
 
+import { sortedByCodepoint } from "../compat/codepoint.js";
+
 /**
  * Python source module these tables mirror (locked against the
  * `source_module` field of the extracted vector file).
@@ -736,7 +738,7 @@ export function bookmarkEnumTablesSnapshot(): Readonly<
   > = {};
   for (const [name, table] of BOOKMARK_ENUM_TABLES) {
     if (table instanceof Set) {
-      snapshot[name] = [...table].sort();
+      snapshot[name] = sortedByCodepoint([...table]);
     } else {
       const entries = [...table.entries()].sort(([a], [b]) =>
         a < b ? -1 : a > b ? 1 : 0,

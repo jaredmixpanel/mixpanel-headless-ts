@@ -673,6 +673,23 @@ describe("fetch_replays per-replay isolation (TestFetchReplaysResilience)", () =
     }
     expect(caught).toBeInstanceOf(ReplayNotFoundError);
   });
+
+  it("a non-Error rejection is re-raised wrapped, with the value as cause", async () => {
+    // Python can only raise BaseException; the port wraps anything else
+    // (CLEANUP-PLAN.md §12 row 8.10) so `throw` always throws an Error.
+    const ws = makeWorkspace();
+    // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- a non-Error rejection is the point of this test
+    ws.fetchReplay = (): Promise<Replay> => Promise.reject("boom");
+    let caught: unknown;
+    try {
+      await ws.fetchReplays(["r-1"]);
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(Error);
+    expect((caught as Error).message).toBe("boom");
+    expect((caught as Error).cause).toBe("boom");
+  });
 });
 
 // =============================================================================

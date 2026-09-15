@@ -128,7 +128,8 @@ function reprValue(value: PythonValue, active: Set<object>): string {
       return "[...]";
     }
     active.add(value);
-    const items = value.map((item) => reprValue(item, active));
+    const elements: readonly PythonValue[] = value;
+    const items = elements.map((item) => reprValue(item, active));
     active.delete(value);
     return `[${items.join(", ")}]`;
   }

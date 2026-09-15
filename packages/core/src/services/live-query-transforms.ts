@@ -31,6 +31,7 @@
  */
 
 import {
+  codepoints,
   compareCodepoints,
   cpSlice,
   sortedByCodepoint,
@@ -39,6 +40,7 @@ import { pythonInt } from "../compat/python-int.js";
 import { pythonRepr, pythonStr } from "../compat/python-str.js";
 import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
 import { QueryError } from "../errors.js";
+import { defined } from "../invariant.js";
 import { AttributeError, ValueError } from "../query/python-builtins.js";
 import { fromTimestampUtcIso, timestampNumber } from "../query/transforms.js";
 import { isPythonDict, pythonTypeName } from "../query/validation-shared.js";
@@ -196,7 +198,9 @@ function pyAdd(a: unknown, b: unknown): unknown {
     return a + b;
   }
   if (Array.isArray(a) && Array.isArray(b)) {
-    return [...a, ...b];
+    const left: readonly unknown[] = a;
+    const right: readonly unknown[] = b;
+    return [...left, ...right];
   }
   throw new TypeError(
     `unsupported operand type(s) for +: '${pythonTypeNameOf(a)}' and '${pythonTypeNameOf(b)}'`,
@@ -286,7 +290,7 @@ function pyIter(value: unknown): readonly unknown[] {
     return value;
   }
   if (typeof value === "string") {
-    return [...value];
+    return codepoints(value);
   }
   if (isPythonDict(value)) {
     return Object.keys(asRecord(value));
@@ -470,8 +474,8 @@ export function transformFunnel(
   // operator TypeErrors exactly where Python does (FID-F1).
   const steps: FunnelResultStep[] = [];
   let prevCount: unknown = 0;
-  for (const idx of [...aggregatedCounts.keys()].sort((a, b) => a - b)) {
-    const [event, count] = aggregatedCounts.get(idx)!;
+  const orderedSteps = [...aggregatedCounts].sort((a, b) => a[0] - b[0]);
+  for (const [idx, [event, count]] of orderedSteps) {
     const convRate =
       idx === 0 ? 1.0 : pyGtZero(prevCount) ? pyDiv(count, prevCount) : 0.0;
     steps.push(
@@ -486,9 +490,9 @@ export function transformFunnel(
 
   // Overall conversion rate: last step / first step
   let overallRate: number;
-  if (steps.length > 0) {
-    const first = steps[0]!;
-    const last = steps[steps.length - 1]!;
+  const first = steps[0];
+  const last = steps.at(-1);
+  if (first !== undefined && last !== undefined) {
     overallRate = pyGtZero(first.count) ? pyDiv(last.count, first.count) : 0.0;
   } else {
     overallRate = 0.0;
@@ -677,8 +681,8 @@ export function transformQueryResult(
  *   so they sort last.
  */
 function stepSortKey(name: string): [number, string] {
-  const m = STEP_PREFIX_RE.exec(name);
-  return m ? [pythonInt(m[1]!), name] : [2 ** 31, name];
+  const digits = STEP_PREFIX_RE.exec(name)?.[1];
+  return digits === undefined ? [2 ** 31, name] : [pythonInt(digits), name];
 }
 
 /**
@@ -812,8 +816,7 @@ export function extractFunnelStepsFromSeries(
   // Build step dicts
   const result: Array<Record<string, unknown>> = [];
   for (const stepName of stepNames) {
-    const match = STEP_PREFIX_RE.exec(stepName);
-    const event = match ? match[2]! : stepName;
+    const event = STEP_PREFIX_RE.exec(stepName)?.[2] ?? stepName;
 
     result.push({
       event,
@@ -1003,7 +1006,7 @@ export function transformRetentionResult(
     }
     if (!found) {
       // No dict value found — the metric key maps to a non-dict
-      const metricKey = seriesKeys[0]!;
+      const metricKey = defined(seriesKeys[0], "retention series key");
       throw new QueryError(
         `Retention series value for key ${pythonRepr(metricKey)} is not a ` +
           `dict (got ${pythonTypeNameOf(seriesDict[metricKey])}). ` +

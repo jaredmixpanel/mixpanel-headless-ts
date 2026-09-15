@@ -24,6 +24,7 @@
 
 import { describe, expect, it } from "vitest";
 
+import { codepoints } from "../src/compat/codepoint.js";
 import {
   urljoin,
   urlsplit,
@@ -229,7 +230,7 @@ describe("TestGenerateSlug", () => {
     const slug = generateSlug();
     expect(slug).toHaveLength(12);
     expect(isSlug(slug)).toBe(true);
-    expect([...slug].every((c) => SLUG_ALPHABET.includes(c))).toBe(true);
+    expect(codepoints(slug).every((c) => SLUG_ALPHABET.includes(c))).toBe(true);
   });
 });
 

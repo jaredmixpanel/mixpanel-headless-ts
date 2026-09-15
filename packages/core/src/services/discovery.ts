@@ -37,6 +37,7 @@ import type { MixpanelClient } from "../client/client.js";
 import { type JsonValue, toNativeJson } from "../client/json-value.js";
 import { LosslessJsonError, parseLossless } from "../client/lossless-json.js";
 import {
+  codepoints,
   compareCodepoints,
   cpLength,
   sortedByCodepoint,
@@ -510,7 +511,7 @@ function splitWords(text: string): string[] {
     ch === "_" ||
     ch === "-" ||
     PYTHON_STR_WHITESPACE.has(ch.codePointAt(0) as number);
-  const chars = [...text];
+  const chars = codepoints(text);
   const parts: string[] = [];
   let current = "";
   let index = 0;
@@ -899,7 +900,11 @@ export class DiscoveryService {
     options: DiscoveryServiceOptions = {},
   ) {
     this.apiClient = apiClient;
-    this.#warn = options.warn ?? ((): void => {});
+    this.#warn =
+      options.warn ??
+      ((): void => {
+        // No sink injected: warnings are dropped (CLEANUP-PLAN.md §12 8.8).
+      });
     this.#logger = options.logger;
   }
 

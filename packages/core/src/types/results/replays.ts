@@ -818,7 +818,8 @@ export class ReplayEvent {
  */
 function deepCloneJson<T>(value: T): T {
   if (Array.isArray(value)) {
-    return value.map((item) => deepCloneJson(item)) as unknown as T;
+    const items: readonly unknown[] = value;
+    return items.map((item) => deepCloneJson(item)) as unknown as T;
   }
   if (isPlainRecord(value)) {
     return Object.fromEntries(

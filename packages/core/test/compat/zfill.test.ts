@@ -4,6 +4,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
+import { codepoints } from "../../src/compat/codepoint.js";
 import { zfill } from "../../src/compat/zfill.js";
 
 describe("zfill — D13 case list", () => {
@@ -79,10 +80,9 @@ describe("zfill — CPython oracle edge cases", () => {
  * @returns The zero-filled string per CPython semantics.
  */
 function referenceZfill(value: string, width: number): string {
-  const codepoints = [...value];
-  const sign =
-    codepoints[0] === "+" || codepoints[0] === "-" ? codepoints[0] : "";
-  const rest = sign === "" ? codepoints : codepoints.slice(1);
+  const points = codepoints(value);
+  const sign = points[0] === "+" || points[0] === "-" ? points[0] : "";
+  const rest = sign === "" ? points : points.slice(1);
   while (sign.length + rest.length < width) {
     rest.unshift("0");
   }
@@ -123,8 +123,8 @@ describe("zfill — fast-check properties", () => {
     it(`output codepoint length is max(len, width) for ${label}`, () => {
       fc.assert(
         fc.property(stringArb, widthArb, (value, width) => {
-          const inputLength = [...value].length;
-          expect([...zfill(value, width)]).toHaveLength(
+          const inputLength = codepoints(value).length;
+          expect(codepoints(zfill(value, width))).toHaveLength(
             Math.max(inputLength, width),
           );
         }),
@@ -135,7 +135,7 @@ describe("zfill — fast-check properties", () => {
     it(`is the identity when width <= codepoint length for ${label}`, () => {
       fc.assert(
         fc.property(stringArb, widthArb, (value, width) => {
-          fc.pre([...value].length >= width);
+          fc.pre(codepoints(value).length >= width);
           expect(zfill(value, width)).toBe(value);
         }),
       );

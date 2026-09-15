@@ -49,6 +49,7 @@ import {
   coerceInt64,
   coerceStr,
 } from "../../coerce.js";
+import { cpLength } from "../../compat/codepoint.js";
 import { isPythonDict } from "../../compat/python-dict.js";
 import { ResponseValidationError } from "../../errors.js";
 
@@ -216,7 +217,7 @@ export function modelFail(path: string, message: string): never {
  * @internal
  */
 export function codepointLength(text: string): number {
-  return [...text].length;
+  return cpLength(text);
 }
 
 /**

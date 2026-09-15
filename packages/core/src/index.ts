@@ -840,6 +840,7 @@ export {
 
 // ── Python-parity helpers (`compat/`) ───────────────────────────────────
 export {
+  codepoints,
   compareCodepoints,
   cpLength,
   cpSlice,

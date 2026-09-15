@@ -400,7 +400,11 @@ export class LiveQueryService {
     options: LiveQueryServiceOptions = {},
   ) {
     this.apiClient = apiClient;
-    this.#warn = options.warn ?? ((): void => {});
+    this.#warn =
+      options.warn ??
+      ((): void => {
+        // No sink injected: warnings are dropped (CLEANUP-PLAN.md §12 8.8).
+      });
   }
 
   /**

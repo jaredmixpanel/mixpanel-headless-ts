@@ -416,8 +416,21 @@ function pyTypeName(value: unknown): string {
     case "string": {
       return "str";
     }
-    default: {
+    case "object": {
       return "dict";
+    }
+    case "bigint":
+    case "function":
+    case "symbol":
+    case "undefined": {
+      // Not producible from a JSON response body; name the JS type rather
+      // than mislabel it as a dict (CLEANUP-PLAN.md §12 row 8.9).
+      return typeof value;
+    }
+    default: {
+      // Every `typeof` result is listed; TS cannot subtract them from
+      // `unknown`, so it still wants a terminal arm.
+      throw new TypeError(`unexpected typeof result: ${typeof value}`);
     }
   }
 }

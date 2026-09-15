@@ -32,6 +32,27 @@ export function cpLength(text: string): number {
 }
 
 /**
+ * Python `list(text)` — the string split into code points (surrogate
+ * pairs stay whole). The deliberate spelling of the `[...text]` idiom:
+ * the spread is correct for code points too, but reads as ambiguous
+ * intent, so every code-point split goes through here.
+ *
+ * @param text - The string to split.
+ * @returns One element per code point, in order.
+ * @example
+ * ```typescript
+ * codepoints("a𝒳b"); // ["a", "𝒳", "b"]  ("a𝒳b".split("") would give 4)
+ * ```
+ */
+export function codepoints(text: string): string[] {
+  const out: string[] = [];
+  for (const ch of text) {
+    out.push(ch);
+  }
+  return out;
+}
+
+/**
  * Normalize one Python slice bound against a length.
  *
  * @param index - The raw bound (may be negative or out of range).

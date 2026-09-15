@@ -419,7 +419,7 @@ describe("TestRequiredFieldRejection", () => {
         fc.constantFrom("displayOptions", "sections"),
         (fieldName) => {
           const params = validMinimalInsights();
-          delete params[fieldName];
+          Reflect.deleteProperty(params, fieldName);
           const errs = validateInsights(params);
           expect(
             errs.some(
@@ -437,7 +437,7 @@ describe("TestRequiredFieldRejection", () => {
     fc.assert(
       fc.property(fc.constantFrom("show", "time"), (fieldName) => {
         const params = validMinimalInsights();
-        delete (params["sections"] as Dict)[fieldName];
+        Reflect.deleteProperty(params["sections"] as Dict, fieldName);
         const errs = validateInsights(params);
         expect(
           errs.some(
