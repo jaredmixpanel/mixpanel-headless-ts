@@ -52,6 +52,7 @@
     "generate:api-map": "node scripts/generate-api-map.mjs",
     "generate:bridge-allowlist": "node scripts/generate-bridge-allowlist.mjs",
     "generate:compat-tables": "uv run --python 3.14.6 --no-project python scripts/generate-non-printable.py && uv run --python 3.14.6 --no-project python scripts/generate-decimal-digits.py && uv run --python 3.14.6 --no-project python scripts/generate-whitespace.py",
+    "generate:python-anchors": "node scripts/generate-python-reference-anchors.mjs",
     "generate:canonical-fixtures": "uv run --python 3.14.6 --no-project python scripts/generate-canonical-fixtures.py && prettier --write packages/core/test/compat/fixtures/canonical-fixtures.json",
     "generate:all": "npm run generate:error-codes && npm run generate:api-map && npm run generate:bridge-allowlist",
     "audit:comments": "node scripts/audit/comment-archaeology.mjs",
