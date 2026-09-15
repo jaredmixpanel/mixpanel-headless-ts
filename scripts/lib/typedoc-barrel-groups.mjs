@@ -17,7 +17,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { Comment, CommentTag, Converter } from "typedoc";
+import { CommentTag, Converter } from "typedoc";
 import ts from "typescript";
 
 const BARREL = resolve(
@@ -99,8 +99,12 @@ export function load(app) {
       const targets = child.comment
         ? [child]
         : (child.getNonIndexSignatures?.().filter((s) => s.comment) ?? []);
+      // Never synthesise a comment: an empty one would count as documentation
+      // and hide the export from the `notDocumented` validation.
       if (targets.length === 0) {
-        child.comment = new Comment([], [tag]);
+        app.logger.warn(
+          `[typedoc-barrel-groups] ${child.name} has no comment to carry its @group`,
+        );
         continue;
       }
       for (const target of targets) target.comment.blockTags.push(tag);
