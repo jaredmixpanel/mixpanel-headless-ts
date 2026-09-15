@@ -1,17 +1,13 @@
 /**
- * OAuth token and client-info models — TS port of
- * `mixpanel_headless/_internal/auth/token.py` (phase2-design C4).
+ * OAuth token and client-registration models (`OAuthTokens`,
+ * `OAuthClientInfo`) with their parse factories and the Python
+ * `datetime.isoformat()` renderer. Datetimes are held as ISO-8601
+ * strings, never `Date`, so recorded text round-trips byte-for-byte
+ * through the conformance codec. The on-disk `tokens.json`
+ * serialization (`token_payload_bytes`) is file I/O and lives in
+ * `@mixpanel-headless/node`.
  *
- * `OAuthTokens` is in Phase-2 scope because `$type: "OAuthTokens"`
- * appears in the corpus (7 occurrences in `auth/test_auth_flow.jsonl`);
- * the codec entry lives in `conformance-runner/src/vector-codecs.ts`. Datetimes are held
- * as ISO-8601 STRINGS (never `Date`) so the recorded `iso` text
- * round-trips byte-for-byte through the codec — exactly the reason the
- * runner's `PyDatetime` wrapper keeps the raw text.
- *
- * `token_payload_bytes` (the on-disk `tokens.json` serialization) is
- * node-side file-I/O plumbing and ships with Phase 3 B8 alongside
- * `BridgeFile`/`load_bridge` (C8 deferral table).
+ * @see mixpanel_headless._internal.auth.token
  */
 
 import { coerceInt } from "../coerce.js";
@@ -24,13 +20,13 @@ import { type ParseAccountOptions, parseFail } from "./shared.js";
 /**
  * Matches a timezone suffix on an ISO-8601 datetime string: `Z`/`z` or a
  * `±HH:MM[:SS[.ffffff]]` offset (Python `isoformat()` emits `+HH:MM` /
- * `+HH:MM:SS`). A string WITHOUT this suffix is a naive datetime.
+ * `+HH:MM:SS`). A string without this suffix is a naive datetime.
  */
 const TZ_AWARE_SUFFIX = /(?:[Zz]|[+-]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)$/;
 
 /**
- * Reject naive `expires_at` values (port of Python's `_require_tz_aware`
- * field validator — Fix 25).
+ * Reject naive `expires_at` values (the `_require_tz_aware` field
+ * validator).
  *
  * @param iso - The candidate ISO-8601 datetime text.
  * @param options - Parse options carrying the boundary kind.
@@ -54,10 +50,9 @@ function requireTzAware(iso: string, options: ParseAccountOptions): string {
 
 /**
  * Render an epoch instant the way Python
- * `datetime.now(timezone.utc).isoformat()` does (B8-N2 core touch,
- * b8-packets.md §0.3.2 — the 7 `oauth_flow.refresh_tokens` wire vectors
- * lock this text): offset is always `+00:00` (never `Z`); NO fractional
- * digits when the microsecond field is 0, else exactly 6.
+ * `datetime.now(timezone.utc).isoformat()` does (the `refresh_tokens`
+ * wire vectors lock this text): offset is always `+00:00` (never `Z`);
+ * no fractional digits when the microsecond field is 0, else exactly 6.
  *
  * @param epochMs - Epoch milliseconds (may carry sub-second precision).
  * @returns The Python-isoformat text, e.g. `"2026-01-15T13:00:00+00:00"`.
@@ -84,9 +79,9 @@ export function pythonUtcIsoformat(epochMs: number): string {
 }
 
 /**
- * Optional injectable clock (B8-N2 core touch, b8-packets.md §0.3.2 —
- * D1.4: the conformance binding and the flow twin freeze `now` at the
- * record epoch; existing callers omit it and get the ambient clock).
+ * Optional injectable clock. The conformance binding and the OAuth flow
+ * freeze `now` at the record epoch; other callers omit it and get the
+ * ambient clock.
  */
 export interface TokenClockOptions {
   /** Epoch-milliseconds clock (default `Date.now`). */
@@ -108,14 +103,13 @@ export interface OAuthTokensFields {
 }
 
 /**
- * Immutable OAuth 2.0 token set with expiry tracking (Python
- * `OAuthTokens`, a frozen Pydantic model — extras IGNORED at parse, no
- * runtime freeze per R4.6).
+ * Immutable OAuth 2.0 token set with expiry tracking (a frozen Pydantic
+ * model in Python — extras ignored at parse, no runtime freeze here).
  *
- * A class (not an interface) so the codec sweep's anti-vacuity
- * `instanceof` probe has a real product to check (phase2-design C8a).
+ * A class rather than an interface so the conformance codec's
+ * `instanceof` check has a real product to test.
  *
- * Example:
+ * @example
  * ```typescript
  * const tokens = parseOAuthTokens({
  *   access_token: "abc",
@@ -125,22 +119,23 @@ export interface OAuthTokensFields {
  * });
  * tokens.isExpired(); // true — 2026-01-15 is in the past
  * ```
+ * @see mixpanel_headless._internal.auth.token.OAuthTokens
  */
 export class OAuthTokens {
-  /** The OAuth access token (redacted in all serialized output, R4.6). */
+  /** The OAuth access token (redacted in all serialized output). */
   readonly access_token: Secret;
 
   /**
    * The OAuth refresh token, if provided (redacted). Python declares
    * `SecretStr | None = None` — the attribute always exists and is
    * `None` when absent, so the TS field normalizes to `null` (the codec
-   * encodes ALL declared fields, `refresh_token: null` included, exactly
+   * encodes all declared fields, `refresh_token: null` included, exactly
    * as Python's `_encode_common` does).
    */
   readonly refresh_token: Secret | null;
 
   /**
-   * UTC expiry instant as timezone-aware ISO-8601 TEXT (Python holds a
+   * UTC expiry instant as timezone-aware ISO-8601 text (Python holds a
    * `datetime`; the string form keeps the recorded `iso` byte-exact
    * through codec round-trips). Naive values are rejected at
    * construction, mirroring the Python field validator.
@@ -170,17 +165,17 @@ export class OAuthTokens {
   }
 
   /**
-   * Check whether the access token is expired or about to expire (port
-   * of Python `is_expired`).
+   * Check whether the access token is expired or about to expire.
    *
    * Uses a 30-second safety buffer to avoid sending tokens that expire
    * during in-flight requests.
    *
-   * @param options - Optional injected clock (B8-N2, packet §0.3.2 —
-   *   Python compares against `datetime.now(timezone.utc)`; the seam
-   *   lets the flow twin and the R10.9 harness freeze it).
+   * @param options - Optional injected clock (Python compares against
+   *   `datetime.now(timezone.utc)`; the seam lets the OAuth flow and the
+   *   conformance harness freeze it).
    * @returns `true` if the token is expired or will expire within 30
    *   seconds of now.
+   * @see mixpanel_headless._internal.auth.token.OAuthTokens.is_expired
    */
   isExpired(options: TokenClockOptions = {}): boolean {
     const now = options.now ?? Date.now;
@@ -188,27 +183,25 @@ export class OAuthTokens {
   }
 
   /**
-   * Create an {@link OAuthTokens} from a raw token-endpoint response
-   * (port of Python `from_token_response`).
+   * Create an {@link OAuthTokens} from a raw token-endpoint response.
    *
    * Computes `expires_at` by adding `expires_in` seconds to the current
    * UTC time and renders it with Python `datetime.isoformat()` semantics
    * ({@link pythonUtcIsoformat} — `+00:00`, no fractional digits at a
-   * whole second; the B8 `oauth_flow.refresh_tokens` wire vectors lock
-   * the text, b8-packets.md §0.3.2 — the Phase-2 rendering deferral
-   * that lived here is CLOSED, not re-scoped).
+   * whole second; the `refresh_tokens` wire vectors lock the text).
    *
    * @param data - Raw JSON response from the token endpoint. Must carry
    *   `access_token`, `expires_in`, `scope`, and `token_type`; may carry
    *   `refresh_token`.
    * @param options - Optional injected clock (default: ambient
    *   `Date.now`; the conformance binding freezes it at the record
-   *   epoch, D1.4).
+   *   epoch).
    * @returns A new token set.
    * @throws ParamValidationError - When required keys are missing or
    *   `expires_in` is not an integer (Python raises
    *   `KeyError`/`ValueError`; the coded twin is the closest TS analog —
-   *   message text out of contract, R5.4).
+   *   message text is out of contract).
+   * @see mixpanel_headless._internal.auth.token.OAuthTokens.from_token_response
    */
   static fromTokenResponse(
     data: Readonly<Record<string, unknown>>,
@@ -229,8 +222,8 @@ export class OAuthTokens {
     });
     const now = options.now ?? Date.now;
     const expiresAt = pythonUtcIsoformat(now() + expiresIn * 1000);
-    // `str(...)` parity (`token.py`): a non-string member renders
-    // as Python would (`{'x': 1}`), never as `[object Object]`.
+    // `str(...)` parity: a non-string member renders as Python would
+    // (`{'x': 1}`), never as `[object Object]`.
     const rawRefresh = data["refresh_token"];
     const refreshToken =
       rawRefresh === undefined || rawRefresh === null
@@ -299,7 +292,7 @@ function requireString(
 
 /**
  * Construct an {@link OAuthTokens} from a raw payload (Pydantic parity:
- * frozen model, extras IGNORED; the tz-aware validator fires).
+ * frozen model, extras ignored; the tz-aware validator fires).
  *
  * @param raw - The raw payload (`access_token`/`refresh_token` as string
  *   or `Secret`; `expires_at` as ISO-8601 text).
@@ -337,11 +330,13 @@ export function parseOAuthTokens(
 }
 
 /**
- * Immutable OAuth client registration metadata (Python
- * `OAuthClientInfo`; Dynamic Client Registration, RFC 7591).
+ * Immutable OAuth client registration metadata (Dynamic Client
+ * Registration, RFC 7591).
  *
- * Note: `region` is a plain `string` in Python (NOT the `Region`
- * literal) — preserved as-is.
+ * `region` is a plain `string` in Python, not the `Region` literal, and
+ * stays so here.
+ *
+ * @see mixpanel_headless._internal.auth.token.OAuthClientInfo
  */
 export interface OAuthClientInfo {
   /** The OAuth client identifier. */
@@ -354,14 +349,14 @@ export interface OAuthClientInfo {
   readonly scope: string;
   /**
    * Registration instant as ISO-8601 text (Python holds a `datetime`
-   * with NO tz-aware validator — naive values are accepted here too).
+   * with no tz-aware validator — naive values are accepted here too).
    */
   readonly created_at: string;
 }
 
 /**
  * Construct an {@link OAuthClientInfo} from a raw payload (Pydantic
- * parity: frozen model, extras IGNORED, no field validators).
+ * parity: frozen model, extras ignored, no field validators).
  *
  * @param raw - The raw payload.
  * @param options - Error-boundary selection (defaults to `'response'`).

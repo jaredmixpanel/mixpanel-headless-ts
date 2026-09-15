@@ -1,30 +1,14 @@
 /**
- * Account discriminated union + `TokenResolver` — TS port of
- * `mixpanel_headless/_internal/auth/account.py` (phase2-design C4,
- * rulebook R4.4/R4.6).
+ * The account discriminated union (`service_account` / `oauth_browser` /
+ * `oauth_token`) and the `TokenResolver` seam. Frozen Pydantic models
+ * port to compile-time `readonly` interfaces (no runtime `Object.freeze`);
+ * {@link parseAccount} replicates the Pydantic invariants (`extra='forbid'`,
+ * name pattern and length, digits-only `default_project`, exactly one
+ * token source) and throws the generic boundary errors rather than
+ * minting new codes. `auth_header()` / `is_long_lived()` port as free
+ * functions so the interfaces stay data-only.
  *
- * The three credential mechanisms are compile-time `readonly` interfaces
- * (frozen Pydantic models port to interfaces, NO runtime `Object.freeze` —
- * R4.6 [ST]) discriminated on the `type` field. Construction goes through
- * {@link parseAccount}, which replicates the Pydantic invariants with
- * coded guards:
- *
- * - `extra='forbid'` — unknown keys are rejected;
- * - `name` pattern `^[a-zA-Z0-9_-]+$`, 1–64 characters (codepoint-counted,
- *   R11.6);
- * - `default_project` digits-only;
- * - `OAuthTokenAccount` exactly-one-of `token` / `token_env`.
- *
- * Guard failures throw the generic R5.5 boundary errors
- * ({@link ResponseValidationError} at the default config/vector-decode
- * seam, {@link ParamValidationError} at the `'param'` boundary) — Pydantic
- * model construction failures are the generic `VALIDATION_ERROR` /
- * `RESPONSE_VALIDATION_ERROR` boundary; NO new registry codes are minted
- * here (the registry is closed for Phase 2).
- *
- * `auth_header()` / `is_long_lived()` port as free functions over the
- * union ({@link accountAuthHeader}, {@link isLongLived}) so the interfaces
- * stay data-only and the exhaustive `switch` lives in one place.
+ * @see mixpanel_headless._internal.auth.account
  */
 
 import { cpLength } from "../compat/codepoint.js";
@@ -37,12 +21,12 @@ import {
 } from "../types/literals.js";
 import { type ParseAccountOptions, parseFail } from "./shared.js";
 
-// ── Phantom-typed identifiers (Python NewType) ──────────────────────────
+// --- Identifier aliases (Python NewType) ---
 //
 // Python's `NewType` is erased at runtime and the public facade
-// deliberately accepts bare `str`, so these port as PLAIN type aliases —
-// NOT branded types (phase2-design C2): brands would force casts at every
-// mechanically translated call site for zero wire-contract gain.
+// deliberately accepts bare `str`, so these port as plain type aliases,
+// not branded types: brands would force casts at every mechanically
+// translated call site for zero wire-contract gain.
 
 /** Identifier for `[accounts.NAME]` config blocks. `string` at runtime. */
 export type AccountName = string;
@@ -57,12 +41,14 @@ export type WorkspaceId = number;
 export type TargetName = string;
 
 /**
- * Produces bearer tokens for OAuth accounts (Python `TokenResolver`
- * Protocol; rulebook R6.5).
+ * Produces bearer tokens for OAuth accounts (the Python `TokenResolver`
+ * Protocol).
  *
- * Token refresh does I/O, so both methods are async (R3.1 scope note in
- * phase2-design C4) — R2.5 already relocates refresh to per-request
- * resolution, so the async signature changes no observable wire behavior.
+ * Token refresh does I/O, so both methods are async; refresh already
+ * happens at per-request resolution time, so the async signature
+ * changes no observable wire behaviour.
+ *
+ * @see mixpanel_headless._internal.auth.account.TokenResolver
  */
 export interface TokenResolver {
   /**
@@ -99,12 +85,12 @@ export interface ServiceAccount {
   readonly region: Region;
   /**
    * Account's home project (numeric string). Resolves the project axis
-   * when no env / param / target / bridge source overrides it (FR-017).
+   * when no env / param / target / bridge source overrides it.
    */
   readonly default_project?: ProjectId | null | undefined;
   /** Service account username (e.g. `sa.demo`). */
   readonly username: string;
-  /** Service account secret (R4.6 wrapper — redacted everywhere). */
+  /** Service account secret (a `Secret` wrapper — redacted everywhere). */
   readonly secret: Secret;
 }
 
@@ -155,7 +141,7 @@ export interface OAuthTokenAccount {
 }
 
 /**
- * Discriminated union over the three account variants (rulebook R4.4).
+ * Discriminated union over the three account variants.
  *
  * Python's `Account = Annotated[..., Field(discriminator="type")]`; use
  * {@link parseAccount} to construct from a raw payload — it dispatches on
@@ -229,7 +215,8 @@ export function forbidExtraKeys(
  * @param payload - The raw payload record (already extra-checked).
  * @param options - Parse options carrying the boundary kind.
  * @returns The validated base fields; `default_project` is present only
- *   when the key was present in the payload (R3.9 absent-vs-null).
+ *   when the key was present in the payload (absent and `null` are
+ *   distinct).
  * @throws ParamValidationError | ResponseValidationError - On any
  *   constraint violation.
  */
@@ -245,9 +232,9 @@ function parseAccountBase(
   if (typeof name !== "string") {
     parseFail("Account.name must be a string", options, { field: "name" });
   }
-  // Codepoint-counted length per R11.6 (the pattern is ASCII-only, so the
-  // counts coincide for VALID names — the guard order still mirrors the
-  // constraint set: length + pattern are one Pydantic error boundary).
+  // Codepoint-counted length (the pattern is ASCII-only, so the counts
+  // coincide for valid names); length + pattern are one Pydantic error
+  // boundary, so they share one guard.
   const codepointCount = cpLength(name);
   if (codepointCount < 1 || codepointCount > 64 || !NAME_PATTERN.test(name)) {
     parseFail(
@@ -352,10 +339,10 @@ const OAUTH_TOKEN_FIELDS: ReadonlySet<string> = new Set([
 
 /**
  * Construct an {@link Account} from a raw payload, replicating every
- * Pydantic invariant of the Python discriminated union (phase2-design C4).
+ * Pydantic invariant of the Python discriminated union.
  *
- * Checks applied (all failures use the generic R5.5 boundary errors —
- * no new registry codes):
+ * Checks applied (all failures use the generic boundary errors — no new
+ * registry codes):
  *
  * - `type` discriminator present and one of the three variants;
  * - `extra='forbid'` per variant;
@@ -364,9 +351,8 @@ const OAUTH_TOKEN_FIELDS: ReadonlySet<string> = new Set([
  * - `ServiceAccount.username` non-empty, `secret` required;
  * - `OAuthTokenAccount` exactly-one-of `token` / `token_env`.
  *
- * Absent optional keys stay ABSENT on the returned object; explicit JSON
- * `null` is preserved as `null` (R3.9/R4.10 — the canonicalizer
- * distinguishes them).
+ * Absent optional keys stay absent on the returned object; explicit JSON
+ * `null` is preserved as `null` (the canonicalizer distinguishes them).
  *
  * @param raw - The raw payload (config block, bridge entry, vector value).
  * @param options - Error-boundary selection (defaults to `'response'`).
@@ -385,6 +371,7 @@ const OAUTH_TOKEN_FIELDS: ReadonlySet<string> = new Set([
  * });
  * // account.type === "service_account"
  * ```
+ * @see mixpanel_headless._internal.auth.account
  */
 export function parseAccount(
   raw: unknown,
@@ -477,13 +464,12 @@ export function parseAccount(
 }
 
 /**
- * UTF-8 encode a string and render it as base64 (no `node:buffer` —
- * R9.1; `btoa` is a Node >= 16 / browser global).
+ * UTF-8 encode a string and render it as base64 (no `node:buffer` in
+ * `core`; `btoa` is a global in every supported runtime).
  *
- * Exported so `auth/region-probe.ts` builds its Basic header
- * over the SAME encoder as {@link accountAuthHeader} — R10.8: one
- * implementation, never a re-derived twin (packet Caution #10: UTF-8
- * bytes then base64, never `btoa` on raw UTF-16).
+ * Exported so `auth/region-probe.ts` builds its Basic header over the
+ * same encoder as {@link accountAuthHeader}: UTF-8 bytes then base64,
+ * never `btoa` on raw UTF-16.
  *
  * @param text - The text to encode (Python `str.encode()` is UTF-8).
  * @returns The base64 rendering.
@@ -501,25 +487,25 @@ export function base64EncodeUtf8(text: string): string {
 export interface AccountAuthHeaderOptions {
   /**
    * Resolver for OAuth accounts. Ignored for `service_account` (signature
-   * parity with Python); REQUIRED for the two OAuth variants.
+   * parity with Python); required for the two OAuth variants.
    */
   readonly tokenResolver?: TokenResolver | null | undefined;
 }
 
 /**
- * Return the `Authorization` header value for an account (port of the
- * per-variant `auth_header` methods as ONE free function — the
- * exhaustive switch lives here, phase2-design C4).
+ * Return the `Authorization` header value for an account (the
+ * per-variant `auth_header` methods as one free function — the
+ * exhaustive switch lives here).
  *
- * Async because OAuth token resolution does I/O (R3.1); the
- * `service_account` arm is synchronous work behind the same signature.
+ * Async because OAuth token resolution does I/O; the `service_account`
+ * arm is synchronous work behind the same signature.
  *
  * @param account - The account to authenticate as.
  * @param options - Carries the {@link TokenResolver} for OAuth variants.
  * @returns The header value (`Basic ...` or `Bearer ...`).
  * @throws ParamTypeError - When an OAuth variant is given no resolver
  *   (Python raises `TypeError`; `ParamTypeError` is its coded twin —
- *   message text out of contract, R5.4).
+ *   message text is out of contract).
  * @throws MixpanelHeadlessError - Never in practice: the `never` default
  *   arm guards against an un-narrowed 4th variant at runtime.
  * @example
@@ -527,6 +513,7 @@ export interface AccountAuthHeaderOptions {
  * const header = await accountAuthHeader(serviceAccount, {});
  * // "Basic c2EudXNlcjpodW50ZXIy"
  * ```
+ * @see mixpanel_headless._internal.auth.account.ServiceAccount.auth_header
  */
 export async function accountAuthHeader(
   account: Account,
@@ -577,6 +564,7 @@ export async function accountAuthHeader(
  *   `oauth_browser` (refresh-token re-issuance); `false` for
  *   `oauth_token` (caller controls rotation, no refresh path).
  * @throws MixpanelHeadlessError - Never in practice (`never` default arm).
+ * @see mixpanel_headless._internal.auth.account.ServiceAccount.is_long_lived
  */
 export function isLongLived(account: Account): boolean {
   switch (account.type) {

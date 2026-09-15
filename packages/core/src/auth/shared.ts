@@ -19,9 +19,10 @@ export interface ParseAccountOptions {
 }
 
 /**
- * Throw the boundary-appropriate parse error (R5.5 generic codes).
+ * Throw the boundary-appropriate parse error (the generic validation
+ * codes; no auth-specific codes exist).
  *
- * @param message - Human-readable description (out of contract, R5.4).
+ * @param message - Human-readable description (out of contract).
  * @param options - Parse options carrying the boundary kind.
  * @param details - Optional structured error data (snake_case keys).
  * @returns Never returns.

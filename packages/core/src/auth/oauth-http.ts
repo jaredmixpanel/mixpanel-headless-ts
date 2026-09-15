@@ -1,25 +1,15 @@
 /**
- * Fetch-pure OAuth HTTP helpers — the B9-R2 core home of the
- * `node:*`-free halves of the B8 flow/DCR modules (b9-packets.md §3.1,
- * the second R10.8 ruling: hoist, don't duplicate — a browser copy
- * would have created second implementations of `flow.py` +
- * `client_registration.py` semantics in the one area with NO
- * second oracle). Node's `OAuthFlow` / `ensureClientRegistered`
- * delegate here (their B8 Layer-3 suites stay green UNCHANGED — the
- * zero-behavior-change proof); the browser redirect flow imports the
- * same names.
+ * Fetch-pure OAuth HTTP: the authorize-URL builder, the token-endpoint
+ * POST with its error classifier and payload redaction, and the Dynamic
+ * Client Registration POST. Node's `OAuthFlow` / `ensureClientRegistered`
+ * and the browser redirect flow all delegate here so the token-endpoint
+ * semantics exist once. Transport runs over an injected `fetchImpl`
+ * through `createRequestExecutor`; bodies parse via `parseLossless`,
+ * never `response.json()`. Caching of registrations stays with the
+ * callers (`OAuthStorage` on Node, `CredentialStore` in the browser).
  *
- * Moved lines keep their `flow.py` / `client_registration.py`
- * citations. Transport runs over the injected `fetchImpl` through the
- * R2.10 adapter (`createRequestExecutor`); bodies parse via
- * `parseLossless` (GATE-R5 — never `response.json()`).
- *
- * HOIST NOTE (recorded in B9-R2-notes.md): the packet's pasted
- * `postTokenRequest` context omits a clock, but the moved body calls
- * `OAuthTokens.fromTokenResponse(data, { now })` (§7 caution 5: thread
- * the seam, never read the ambient clock in tests) — the options bag
- * therefore carries `now?` with the same `Date.now` default the node
- * class supplied. Mechanical parameterization, not a behavior change.
+ * @see mixpanel_headless._internal.auth.flow.OAuthFlow
+ * @see mixpanel_headless._internal.auth.client_registration.ensure_client_registered
  */
 
 import { isPlainRecord, MixpanelHttpError } from "../client/internals.js";
@@ -38,21 +28,22 @@ import {
 } from "./token.js";
 
 /**
- * httpx default total timeout in seconds (`httpx.Client()` default —
- * the Python ctor builds a default client, `flow.py`). Not
- * vector-observable (R2.12 unit spelling kept).
+ * httpx default total timeout in seconds (the Python constructor builds
+ * a default `httpx.Client()`). Not corpus-observable.
  */
 const DEFAULT_TIMEOUT_SECONDS = 5;
 
 /**
  * Token-endpoint response keys whose values are structurally non-secret
- * RFC 6749 §5.1 metadata. ONLY these survive redaction (and only when
- * the value is a primitive) — every OTHER value in a malformed 200
- * token payload is replaced with `"<redacted>"`, whatever its key:
- * pair-B review (ARB-B F-B2/E-1) probe-confirmed that a deny-list over
- * canonical token keys leaks nested envelopes, list values,
- * non-canonical credential keys (`client_secret`) and case-variant
- * keys (`Access_Token`). Twin of `flow.py::_SAFE_TOKEN_DETAIL_KEYS`.
+ * RFC 6749 §5.1 metadata. Only these survive redaction (and only when
+ * the value is a primitive); every other value in a malformed 200 token
+ * payload is replaced with `"<redacted>"`, whatever its key. An
+ * allow-list rather than a deny-list because a deny-list over canonical
+ * token keys leaks nested envelopes, list values, non-canonical
+ * credential keys (`client_secret`) and case-variant keys
+ * (`Access_Token`). Twin of `_SAFE_TOKEN_DETAIL_KEYS`.
+ *
+ * @see mixpanel_headless._internal.auth.flow
  */
 const SAFE_TOKEN_DETAIL_KEYS: ReadonlySet<string> = new Set([
   "token_type",
@@ -64,26 +55,26 @@ const SAFE_TOKEN_DETAIL_KEYS: ReadonlySet<string> = new Set([
 
 /**
  * Rendering for non-object 200 JSON token bodies in error details: the
- * VALUE itself can be the credential (an IdP returning the bare token
- * as a JSON string), so it never renders verbatim (ARB-B F-B3;
- * byte-identical constant in the Python twin, flow.py).
+ * value itself can be the credential (an IdP returning the bare token
+ * as a JSON string), so it never renders verbatim. Byte-identical to
+ * the Python constant.
  */
 const NON_OBJECT_BODY_PLACEHOLDER = "<redacted non-object body>";
 
 /**
- * Render a malformed 200 token payload safely for OAuthError details
- * (twin of `flow.py::_redact_token_payload`, ARB-B hardening of the
- * FIX-2 deny-list). Every field NAME stays visible for diagnosis, but
- * only the values of {@link SAFE_TOKEN_DETAIL_KEYS} survive — and only
- * when they are primitives. Every other value renders as
- * `"<redacted>"` regardless of nesting, and a non-object body renders
- * as {@link NON_OBJECT_BODY_PLACEHOLDER}, so no value channel can
- * carry bearer material into serialized error details.
+ * Render a malformed 200 token payload safely for OAuthError details.
+ * Every field name stays visible for diagnosis, but only the values of
+ * {@link SAFE_TOKEN_DETAIL_KEYS} survive — and only when they are
+ * primitives. Every other value renders as `"<redacted>"` regardless of
+ * nesting, and a non-object body renders as
+ * {@link NON_OBJECT_BODY_PLACEHOLDER}, so no value channel can carry
+ * bearer material into serialized error details.
  *
  * @param data - The parsed 200 token-endpoint JSON body (any value).
  * @returns The `pythonStr` rendering of the redacted mapping
  *   (byte-matching the Python twin's `str()`), or the fixed
  *   placeholder for non-object bodies.
+ * @see mixpanel_headless._internal.auth.flow._redact_token_payload
  */
 function redactTokenPayload(data: unknown): string {
   if (!isPlainRecord(data)) {
@@ -107,19 +98,15 @@ function redactTokenPayload(data: unknown): string {
 }
 
 /**
- * Build the OAuth authorization URL with PKCE parameters (port of
- * `_build_authorize_url`, `flow.py` — lifted from the private
- * `OAuthFlow.#buildAuthorizeUrl` to a module-level pure function at
- * B9-R2; the class method is now a one-line delegate). Param order is
+ * Build the OAuth authorization URL with PKCE parameters. Param order is
  * `urlencode` insertion order, locked: response_type, client_id,
  * redirect_uri, state, code_challenge, code_challenge_method.
  *
- * Scope is intentionally omitted — DCR creates apps with an empty
- * scope field, so the provider defaults to every scope
- * (`flow.py:624-626` comment ported; §3.3: omission is CONTRACT, and
- * the encoder is the core `urlEncodePairs` quote_plus twin — `~` stays
- * bare where `URLSearchParams` would percent-encode it, golden-locked
- * in `oauth-http.test.ts`).
+ * Scope is intentionally omitted — DCR creates apps with an empty scope
+ * field, so the provider defaults to every scope; the omission is part
+ * of the contract. The encoder is the `quote_plus` twin
+ * `urlEncodePairs`: `~` stays bare where `URLSearchParams` would
+ * percent-encode it.
  *
  * @param baseUrl - The region OAuth base URL (trailing slash).
  * @param args - client id / redirect URI / challenge / state.
@@ -133,6 +120,7 @@ function redactTokenPayload(data: unknown): string {
  *   state: "st",
  * });
  * ```
+ * @see mixpanel_headless._internal.auth.flow.OAuthFlow._build_authorize_url
  */
 export function buildAuthorizeUrl(
   baseUrl: string,
@@ -154,7 +142,7 @@ export function buildAuthorizeUrl(
   return `${baseUrl}authorize/?${urlEncodePairs(params)}`;
 }
 
-/** Context bag of {@link postTokenRequest} (the Python kwonly params). */
+/** Context bag of {@link postTokenRequest} (the Python keyword-only parameters). */
 export interface PostTokenRequestContext {
   /** Human-readable operation name for error messages. */
   readonly operation: string;
@@ -163,50 +151,46 @@ export interface PostTokenRequestContext {
   /** Optional account name embedded in recovery hints. */
   readonly accountName?: string | null | undefined;
   /**
-   * Epoch-ms clock seam threaded into `fromTokenResponse` (§7 caution
-   * 5 — see module header hoist note). Default ambient `Date.now`.
+   * Epoch-ms clock seam threaded into `fromTokenResponse` so tests and
+   * the conformance binding never read the ambient clock. Default
+   * `Date.now`.
    */
   readonly now?: (() => number) | undefined;
 }
 
 /**
- * POST form data to the token endpoint and parse the response (port of
- * `_post_token_request`, `flow.py` — lifted from the private
- * `OAuthFlow.#postTokenRequest` at B9-R2; the class method delegates).
- * Shared by node refresh/exchange and the browser `completeLogin`.
+ * POST form data to the token endpoint and parse the response. Shared by
+ * the Node refresh/exchange paths and the browser `completeLogin`.
  *
- * @param fetchImpl - The injected fetch (R2.4 seam).
- * @param baseUrl - The region OAuth base URL (trailing slash).
- * @param formData - Form-encoded body (insertion order preserved).
- * @param context - Operation name, error code, optional account/clock.
- * @returns Parsed tokens from the endpoint response.
- * @throws OAuthError - Every branch of the vector-locked classifier
- *   (transport failure, non-200 incl. the `invalid_grant`→
- *   `OAUTH_REFRESH_REVOKED` refresh-only mapping, non-JSON body,
- *   missing required fields).
- *
- * Security: a 200 token-endpoint body may BE the live token payload
- * even when it is malformed, so no 200-branch error path embeds it
- * (this helper is shared by the node refresh path AND the browser
- * `completeLogin` exchange path, where error-detail exfiltration via
- * telemetry is the default posture):
+ * @remarks
+ * A 200 token-endpoint body may be the live token payload even when it
+ * is malformed, so no 200-branch error path embeds it (the browser
+ * exchange path in particular may ship error details to telemetry):
  *
  * - JSON-object body failing `OAuthTokens.fromTokenResponse`:
  *   `details.response_data` keeps every field name but only the
  *   primitive values of the safe RFC 6749 metadata keys
  *   ({@link SAFE_TOKEN_DETAIL_KEYS}); every other value — any key, any
- *   nesting — renders as `"<redacted>"` (ARB-B F-B2/E-1).
+ *   nesting — renders as `"<redacted>"`.
  * - Non-object JSON body: fixed `"<redacted non-object body>"`
- *   placeholder — the value itself can be the credential (ARB-B F-B3).
+ *   placeholder — the value itself can be the credential.
  * - Body that fails JSON parsing (truncated / proxy-mangled token
  *   JSON): never embedded; only `content_type` and `body_length`
- *   (code points) survive (ARB-B F-B1).
+ *   (code points) survive.
  *
- * Non-200 branches still embed the raw ERROR body in
+ * Non-200 branches still embed the raw error body in
  * `details.response_body` — those are IdP error documents, not token
- * grants, and their shapes are vector-locked. Twin of the Python FIX-2
- * change (+ ARB-B hardening); fix-of-record:
- * docs/history/phase3/bug-reports/python-oauth-error-details-token-payload.md.
+ * grants, and their shapes are corpus-locked.
+ * @param fetchImpl - The injected fetch.
+ * @param baseUrl - The region OAuth base URL (trailing slash).
+ * @param formData - Form-encoded body (insertion order preserved).
+ * @param context - Operation name, error code, optional account/clock.
+ * @returns Parsed tokens from the endpoint response.
+ * @throws OAuthError - Every branch of the corpus-locked classifier
+ *   (transport failure, non-200 incl. the `invalid_grant`→
+ *   `OAUTH_REFRESH_REVOKED` refresh-only mapping, non-JSON body,
+ *   missing required fields).
+ * @see mixpanel_headless._internal.auth.flow.OAuthFlow._post_token_request
  */
 // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export async function postTokenRequest(
@@ -240,8 +224,7 @@ export async function postTokenRequest(
     if (!(error instanceof MixpanelHttpError)) {
       throw error;
     }
-    // Transport failure (`flow.py`) — vector
-    // `test_refresh_tokens_timeout` locks `details_contain.url`.
+    // Transport failure — the corpus locks `details.url`.
     throw new OAuthError(
       `${operation} request failed: ${error.message}`,
       errorCode,
@@ -252,9 +235,9 @@ export async function postTokenRequest(
 
   if (response.status !== 200) {
     // Distinguish a permanently dead refresh token from a transient
-    // failure (`flow.py`). The probe runs ONLY for 400/401
-    // and the REVOKED mapping additionally requires the refresh
-    // operation (B8 caution 6: exchange keeps the generic code).
+    // failure. The `invalid_grant` probe runs only for 400/401, and the
+    // revoked mapping additionally requires the refresh operation (a
+    // code exchange keeps the generic code).
     let invalidGrant = false;
     if (response.status === 400 || response.status === 401) {
       try {
@@ -277,8 +260,8 @@ export async function postTokenRequest(
       throw new OAuthError(
         `Refresh token has been revoked or expired${forAccount}. ${hint}`,
         "OAUTH_REFRESH_REVOKED",
-        // Revoked details ALWAYS carry account_name — null when not
-        // supplied (`flow.py`; vector lock).
+        // Revoked details always carry account_name — null when not
+        // supplied (corpus-locked shape).
         {
           status_code: response.status,
           response_body: response.text,
@@ -289,8 +272,7 @@ export async function postTokenRequest(
     throw new OAuthError(
       `${operation} failed with status ${response.status}: ${response.text}`,
       errorCode,
-      // Generic shape spreads account_name only when supplied
-      // (`flow.py`; B8 caution 5).
+      // Generic shape spreads account_name only when supplied.
       {
         status_code: response.status,
         response_body: response.text,
@@ -305,10 +287,10 @@ export async function postTokenRequest(
   try {
     data = toNativeJson(parseLossless(response.text));
   } catch (error) {
-    // Never embed the body: a 200 that fails JSON parsing can still BE
-    // the token payload (truncated JSON, trailing proxy garbage) —
-    // ARB-B F-B1. body_length counts code points (`Array.from`),
-    // matching the Python twin's `len(response.text)`.
+    // Never embed the body: a 200 that fails JSON parsing can still be
+    // the token payload (truncated JSON, trailing proxy garbage).
+    // body_length counts code points, matching Python's
+    // `len(response.text)`.
     throw new OAuthError(
       `${operation} returned non-JSON response: ${
         response.header("content-type") ?? "unknown"
@@ -335,11 +317,9 @@ export async function postTokenRequest(
       throw error;
     }
     // Redact before embedding: `data` is a live (if malformed) token
-    // payload — see the Security section of the function JSDoc.
-    // `redactTokenPayload` handles the non-record edge (ARB-A F1 guard,
-    // hardened to a placeholder by ARB-B F-B3 — both languages raise
-    // the coded OAuthError) and allowlist-redacts object bodies
-    // (ARB-B F-B2/E-1), mirroring `flow.py::_redact_token_payload`.
+    // payload — see the remarks on this function. `redactTokenPayload`
+    // renders the non-record edge as a placeholder (both languages raise
+    // the coded OAuthError) and allow-list-redacts object bodies.
     throw new OAuthError(
       `${operation} response missing required fields: ${error.message}`,
       errorCode,
@@ -361,21 +341,17 @@ export interface RegisterClientOptions {
 
 /**
  * Register a new OAuth client via Dynamic Client Registration — the
- * POST half of `ensure_client_registered`
- * (`client_registration.py:96-170`: region gate `:97-103`,
- * register-URL build `:104`, body `:106-112`, network-error branch
- * `:114-121`, 429 branch `:123-132`, non-success branch `:134-144`,
- * JSON/`client_id` parse `:146-157`, `OAuthClientInfo` assembly with
- * injected `now` `:159-165`). The cache read/write stays OUTSIDE this
- * hoist (b9-packets.md §3.1 row 6): node's `ensureClientRegistered`
- * keeps its `OAuthStorage` wrapper and delegates the POST here; the
- * browser caches via `CredentialStore`.
+ * POST half of `ensure_client_registered`: region gate, request body,
+ * network-error / 429 / non-2xx branches, `client_id` parse and
+ * `OAuthClientInfo` assembly. The cache read/write stays with the
+ * callers: Node's `ensureClientRegistered` wraps this in `OAuthStorage`,
+ * the browser caches via `CredentialStore`.
  *
- * @param fetchImpl - The injected fetch (R2.4 seam).
+ * @param fetchImpl - The injected fetch.
  * @param region - Mixpanel data residency region (`us`, `eu`, `in`).
  * @param redirectUri - The OAuth redirect URI to register.
  * @param options - Optional clock seam.
- * @returns The freshly registered client info (NOT persisted here).
+ * @returns The freshly registered client info (not persisted here).
  * @throws OAuthError - `OAUTH_REGISTRATION_ERROR` on unknown region,
  *   network failure, 429 rate limit, non-2xx status, or a malformed
  *   response body.
@@ -385,6 +361,7 @@ export interface RegisterClientOptions {
  *   "https://app.example.com/cb");
  * // info.client_id
  * ```
+ * @see mixpanel_headless._internal.auth.client_registration.ensure_client_registered
  */
 export async function registerClient(
   fetchImpl: typeof fetch,
@@ -392,7 +369,6 @@ export async function registerClient(
   redirectUri: string,
   options: RegisterClientOptions = {},
 ): Promise<OAuthClientInfo> {
-  // Register new client (`client_registration.py`).
   if (!Object.hasOwn(OAUTH_BASE_URLS, region)) {
     throw new OAuthError(
       `Unknown region: ${JSON.stringify(region)}. Must be one of: ${Object.keys(
@@ -406,8 +382,7 @@ export async function registerClient(
   const baseUrl = OAUTH_BASE_URLS[region] as string;
   const registerUrl = `${baseUrl}mcp/register/`;
 
-  // Body keys in Python dict insertion order
-  // (`client_registration.py`).
+  // Body keys in Python dict insertion order.
   const body: Record<string, unknown> = {
     redirect_uris: [redirectUri],
     grant_types: ["authorization_code", "refresh_token"],
