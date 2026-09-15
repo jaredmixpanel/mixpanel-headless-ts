@@ -51,9 +51,12 @@ the packages themselves run on >= 22.12. Install with `npm ci` (lockfile-exact).
   `scripts/lib/lint-ignores.mjs` (`tests/ignore-lists.test.ts` syncs `.prettierignore`).
 - `npm run knip` (unused exports/types are warnings until the un-export sweep);
   `npm run fmt` / `fmt:check` — Prettier owns formatting.
-- `npm test` — vitest across all workspaces. One file:
-  `npx vitest run conformance-runner/test/runner.test.ts`; one workspace:
-  `npx vitest run packages/node`.
+- `npm test` — vitest across all workspaces (CI parity, corpus included).
+  `vitest.config.ts` defines one project per tree (`core`, `node`, `browser`,
+  `rig`, `corpus`, `differential`, `repo`): `npm run test:fast` = everything
+  but the corpus replay, `npm run test:corpus` = only it, one workspace:
+  `npx vitest run --project node`, one file:
+  `npx vitest run conformance-runner/test/runner.test.ts`.
 - `npm run conformance -- --report json [--filter "compat/"]` — corpus replay
   CLI (filter = vector-id substring). Run it after any change under
   `packages/core/src` and confirm 0 `FAIL_*`.
