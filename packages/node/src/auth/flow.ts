@@ -53,16 +53,18 @@ import { createInterface } from "node:readline";
 
 import {
   buildAuthorizeUrl,
+  type CallbackResult,
+  OAUTH_BASE_URLS,
   type OAuthClientInfo,
   OAuthError,
   type OAuthTokens,
   parsePastedRedirect,
+  PkceChallenge,
   postTokenRequest,
 } from "@mixpanel-headless/core";
 
 import {
   CALLBACK_PORTS,
-  type CallbackResult,
   startCallbackServer,
   type StartCallbackServerOptions,
 } from "./callback-server.js";
@@ -70,8 +72,6 @@ import {
   ensureClientRegistered,
   type EnsureClientRegisteredOptions,
 } from "./client-registration.js";
-import { OAUTH_BASE_URLS } from "./oauth-constants.js";
-import { PkceChallenge } from "./pkce.js";
 import { OAuthStorage } from "./storage.js";
 
 /** Options bag of {@link OAuthFlow} (`flow.py:137-169` kwargs). */
@@ -156,14 +156,6 @@ export interface RefreshTokensOptions {
    */
   readonly accountName?: string | null | undefined;
 }
-
-// `parsePastedRedirect` moved to core `redirect-parse.ts` at B9-R2
-// (b9-packets.md §3.1 row 3, the fetch-pure hoist — the browser
-// `completeLogin` parses the same redirect-return grammar). Imported
-// above for the paste completer and re-exported here so every existing
-// import path holds; the untouched B8 suites (`TestParsePastedRedirect`
-// rows in `oauth-flow-login.test.ts`) are the zero-behavior-change
-// proof.
 
 /**
  * Probe {@link CALLBACK_PORTS} for one that is not currently in use
@@ -757,13 +749,3 @@ export class OAuthFlow {
     });
   }
 }
-
-/**
- * Re-export of the Python-isoformat renderer for the R10.9 harness and
- * the N3 login half (single mechanism — packet §0.3.2).
- */
-
-export {
-  parsePastedRedirect,
-  pythonUtcIsoformat,
-} from "@mixpanel-headless/core";

@@ -17,11 +17,10 @@ import { createServer, type Server } from "node:net";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { OAuthError } from "@mixpanel-headless/core";
+import { CallbackResult, OAuthError } from "@mixpanel-headless/core";
 
 import {
   CALLBACK_PORTS,
-  CallbackResult,
   startCallbackServer,
 } from "../src/auth/callback-server.js";
 

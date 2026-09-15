@@ -14,8 +14,7 @@
  * `oauth-http.ts` as `registerClient`; this module KEEPS the
  * `OAuthStorage` cache wrapper (`storage.save_client_info` write,
  * `:168` — outside the hoist) and delegates the POST. `DEFAULT_SCOPE`
- * and `OAUTH_BASE_URLS` moved to core `oauth-constants.ts`
- * (re-exported here / via `./oauth-constants.js`). The untouched B8
+ * and `OAUTH_BASE_URLS` live in core `oauth-constants.ts`. The untouched B8
  * suite (`client-registration.test.ts`) is the zero-behavior-change
  * proof.
  */
@@ -23,9 +22,6 @@
 import { type OAuthClientInfo, registerClient } from "@mixpanel-headless/core";
 
 import type { OAuthStorage } from "./storage.js";
-
-// Re-export preserving the B8 import path (`DEFAULT_SCOPE`'s TS home
-// until the B9-R2 hoist).
 
 /** Options bag of {@link ensureClientRegistered} (the Python params). */
 export interface EnsureClientRegisteredOptions {

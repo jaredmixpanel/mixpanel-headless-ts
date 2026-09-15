@@ -27,6 +27,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  CallbackResult,
   createAccountsNamespace,
   createSessionNamespace,
   createTargetsNamespace,
@@ -45,7 +46,6 @@ import {
   createMockClient,
   makeSession,
 } from "../../core/test-support/client-test-helpers.js";
-import { CallbackResult } from "../src/auth/callback-server.js";
 import { createNodeAuthEffects } from "../src/auth-effects.js";
 import { ConfigManager } from "../src/config.js";
 import { makeTempDir, scrubMpEnv } from "./helpers.js";
