@@ -982,6 +982,40 @@ const config = defineConfig([
     },
   },
 
+  // Test titles in the platform trees are English behaviour statements; the
+  // Python identifier lives in a `// python:` comment (CONTRIBUTING "Tests").
+  {
+    name: "repo/tests/platform-titles",
+    files: [
+      "packages/node/test/**/*.test.ts",
+      "packages/browser/test/**/*.test.ts",
+      "conformance-runner/test/**/*.test.ts",
+      "differential/test/**/*.test.ts",
+      "tests/**/*.test.ts",
+    ],
+    rules: {
+      "vitest/valid-title": [
+        "error",
+        {
+          mustNotMatch: {
+            it: [
+              "^test_",
+              "State the behaviour in English; keep the Python name in a `// python:` comment",
+            ],
+            test: [
+              "^test_",
+              "State the behaviour in English; keep the Python name in a `// python:` comment",
+            ],
+            describe: [
+              String.raw`^Test[A-Z]|\.py:\d`,
+              "Name the unit under test; keep the Python class in a `// python:` comment",
+            ],
+          },
+        },
+      ],
+    },
+  },
+
   // -------------------------------------------------------------------------
   // Plain JavaScript (repo scripts, this config): untyped lint
   // -------------------------------------------------------------------------
