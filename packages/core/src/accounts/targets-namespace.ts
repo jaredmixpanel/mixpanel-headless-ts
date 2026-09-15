@@ -1,18 +1,18 @@
 /**
- * The `mp.targets` namespace — TS port of
- * `mixpanel_headless/targets.py` (whole file; B7-A1 packet §3.1,
- * `b7-packets.md`).
+ * Factory for the `targets` namespace. Targets are saved
+ * (account, project, workspace?) triples used as named cursor
+ * positions; `use(name)` writes all three axes to `[active]` in a
+ * single config save. Core exports the factory over the injected
+ * {@link AuthEffects} bag; `@mixpanel-headless/node` exports the
+ * ready-made object bound to on-disk effects.
  *
- * Targets are saved (account, project, workspace?) triples used as
- * named cursor positions; `use(name)` writes all three axes to
- * `[active]` in a single config save. Factory over the injected
- * {@link AuthEffects} bag; B8 exports the ready-made object.
+ * @see mixpanel_headless.targets
  */
 
 import type { Target } from "../types/entities/accounts.js";
 import type { AuthEffects } from "./auth-effects.js";
 
-/** Options bag of {@link TargetsNamespace.add} (Python kwonly, R3.8). */
+/** Options bag of {@link TargetsNamespace.add} (Python keyword-only parameters). */
 export interface TargetsAddOptions {
   /** Referenced account name (must exist). */
   readonly account: string;
@@ -22,18 +22,17 @@ export interface TargetsAddOptions {
   readonly workspace?: number | null | undefined;
 }
 
-/** The `mp.targets` surface (`targets.py` `__all__`). */
+/** The `targets` surface (Python `__all__`). */
 export interface TargetsNamespace {
   /**
-   * Return all configured targets sorted by name (`list`,
-   * `targets.py`).
+   * Return all configured targets sorted by name (Python `list`).
    *
    * @returns Sorted target records.
    */
   list: () => Target[];
 
   /**
-   * Add a new target block (`add`, `targets.py`).
+   * Add a new target block (Python `add`).
    *
    * @param name - Target name (block key).
    * @param options - account / project / optional workspace.
@@ -44,7 +43,7 @@ export interface TargetsNamespace {
   add: (name: string, options: TargetsAddOptions) => Target;
 
   /**
-   * Remove a target block (`remove`, `targets.py`).
+   * Remove a target block (Python `remove`).
    *
    * @param name - Target to remove.
    * @throws ConfigError - Target does not exist.
@@ -53,17 +52,16 @@ export interface TargetsNamespace {
 
   /**
    * Apply the target — write all three axes to `[active]` atomically
-   * (`use`, `targets.py`; ONE `applyTarget` transaction, packet
-   * §3.3).
+   * (Python `use`; one `applyTarget` transaction).
    *
    * @param name - Target to apply.
-   * @throws ConfigError - Target does not exist OR its referenced
+   * @throws ConfigError - Target does not exist, or its referenced
    *   account is gone.
    */
   use: (name: string) => void;
 
   /**
-   * Return the named target (`show`, `targets.py`).
+   * Return the named target (Python `show`).
    *
    * @param name - Target name.
    * @returns The target record.
@@ -73,7 +71,7 @@ export interface TargetsNamespace {
 }
 
 /**
- * Build the `mp.targets` namespace over an effect bag.
+ * Build the `targets` namespace over an effect bag.
  *
  * @param effects - The injected effects (config writes).
  * @returns The namespace object.

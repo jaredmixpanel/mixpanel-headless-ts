@@ -1,20 +1,14 @@
 /**
- * The `mp.accounts` namespace factory — binds the `accounts-ops.ts` /
- * `login-unified.ts` operations to one injected {@link AuthEffects}
- * bag (B7-A1 packet §3.1, `b7-packets.md`).
+ * Factory for the `accounts` namespace: binds the `accounts-ops.ts` /
+ * `login-unified.ts` operations to one injected {@link AuthEffects} bag.
+ * Python exposes module-level functions that build a fresh
+ * `ConfigManager()` per call; core exports this factory and
+ * `@mixpanel-headless/node` exports the ready-made `accounts` object
+ * bound to on-disk effects. Method names are camelCase like the
+ * `Workspace` facade (`exportBridge` ~ `export_bridge`); option-bag keys
+ * keep the Python keyword spelling (`default_project`, `derive_name`, …).
  *
- * Python exposes module-level functions building a fresh
- * `ConfigManager()` per call; the TS core exports this factory and B8
- * exports the ready-made `accounts` object bound to on-disk effects —
- * closing the Phase-2 audit's deferred `__all__` names
- * (`accounts` / `session` / `targets` / `login_unified`, playbook
- * `:74-79`).
- *
- * Naming decision (packet §3.5, B6 Caution-6 precedent, recorded in
- * the shard notes): METHOD names are camelCase like the `Workspace`
- * facade (`exportBridge` ~ `export_bridge`); OPTIONS-BAG keys keep the
- * exact Python kwarg spelling (`default_project`, `token_env`,
- * `derive_name`, `no_browser`, …).
+ * @see mixpanel_headless.accounts
  */
 
 import type {
@@ -43,10 +37,7 @@ import {
 import type { AuthEffects } from "./auth-effects.js";
 import { loginUnified, type LoginUnifiedOptions } from "./login-unified.js";
 
-/**
- * The `mp.accounts` surface (`accounts.py` `__all__:2014-2028` — 13
- * public names).
- */
+/** The `accounts` surface — the 13 names in Python's `__all__`. */
 export interface AccountsNamespace {
   /**
    * Return all configured accounts (`list`).
@@ -162,7 +153,7 @@ export interface AccountsNamespace {
 }
 
 /**
- * Build the `mp.accounts` namespace over an effect bag.
+ * Build the `accounts` namespace over an effect bag.
  *
  * @param effects - The injected effects.
  * @returns The namespace object.

@@ -1,29 +1,13 @@
 /**
- * `AuthEffects` — the B7-defined interface bag for every node effect in
- * `accounts.py` / `session.py` / `targets.py` (B7-A1 packet §3.2,
- * `b7-packets.md`).
+ * The effect bag behind the `accounts` / `session` / `targets`
+ * namespaces: one member for every place the Python modules touch the
+ * environment, the config file, the token store, the browser or stdin.
+ * `core` performs none of that I/O itself — `@mixpanel-headless/node`
+ * supplies the real bag, tests inject in-memory fakes, and
+ * {@link defaultAuthEffects} ships throwing stand-ins coded
+ * `UNPORTED_AUTH_SEAM` so an unwired member fails loudly.
  *
- * R9.4 posture: `packages/core` reads NO env vars and does NO disk /
- * browser / stdin I/O. Every such touch in the Python namespaces
- * becomes a member of this bag; B8 (`packages/node`) implements the
- * real thing, and {@link defaultAuthEffects} ships throwing stubs coded
- * `UNPORTED_AUTH_SEAM` (the W1 `unportedSeam` pattern,
- * `workspace-members/lifecycle.ts:111-122`). The committed
- * {@link UNPORTED_AUTH_SEAMS} constant is the named still-stubbed list
- * the B8 packet consumes BY NAME.
- *
- * SECRET SERIALIZATION RULE for implementors (B7-ARB-B CRED-F3,
- * `b7-reviewB-resolution.md`): `Secret.toJSON()` returns the redaction
- * mask, so routing a `Secret`-bearing bag through `JSON.stringify` (or
- * any generic serializer) PERSISTS literal asterisks — silent
- * credential corruption discovered only at next auth. Every on-disk
- * credential writer ({@link ConfigWrites} members taking
- * {@link AddAccountParams} / {@link UpdateAccountFields},
- * {@link TokenStore.writeTokens}, {@link BridgeEffects.export}) MUST
- * call `reveal()` at its designated write site — the in-memory fakes
- * demonstrate the pattern (`test/accounts/fake-auth-effects.ts`
- * `accountToRaw` / `toText`). B8 adds a Layer-3 write→read round-trip
- * lock over a `Secret`-bearing account.
+ * @see mixpanel_headless.accounts
  */
 
 import type {
@@ -88,12 +72,11 @@ export interface UpdateAccountFields {
 /**
  * Per-axis update of the persisted `[active]` block — the
  * `ConfigManager.set_active` / `clear_active` composition the
- * namespaces drive as ONE transaction.
+ * namespaces drive as one transaction.
  *
- * Semantics (`config.py` + `accounts.py`): an absent /
- * `undefined` member leaves that axis untouched; `workspace: null`
- * CLEARS `[active].workspace` (the `accounts.use` account-swap clear —
- * both writes in a single transaction, never two).
+ * An absent / `undefined` member leaves that axis untouched;
+ * `workspace: null` clears `[active].workspace` (the account-swap clear
+ * in `accounts.use` — both writes in a single transaction, never two).
  */
 export interface SetActiveUpdate {
   /** New active account name (must reference an existing account). */
@@ -104,8 +87,8 @@ export interface SetActiveUpdate {
 
 /**
  * Atomic per-axis session update — the `ConfigManager.apply_session`
- * keyword surface (`config.py`). All axes land in ONE
- * read-modify-write transaction; `project` writes to the explicit
+ * keyword surface. All axes land in one read-modify-write
+ * transaction; `project` writes to the explicit
  * `account` (if given) else the persisted active account and raises a
  * coded `ConfigError` when neither resolves.
  */
@@ -131,42 +114,38 @@ export interface AddTargetOptions {
 }
 
 /**
- * The config WRITE surface the namespaces drive — B8's TOML
- * `ConfigManager` implements it (packet §3.2 row 1, owner B8-N1).
+ * The config write surface the namespaces drive; the TOML
+ * `ConfigManager` in `@mixpanel-headless/node` implements it.
  *
- * Transaction contract: every member is ONE `_mutate()` transaction in
- * Python. In particular {@link addAccount} auto-promotes the FIRST
- * account to `[active].account` inside the same transaction (FR-045).
- * Layering note (B7-ARB-B B-E2E-N1, `b7-reviewB-resolution.md`): that
- * promotion belongs to the `accounts.add` NAMESPACE transaction
- * (`accounts.py:472-489` — `_apply_add_account` + first-account
- * `_apply_set_active` under one `_mutate()`), NOT to
- * `ConfigManager.add_account` itself, which does not promote. B8-N1
- * must implement the promotion exactly ONCE — in its `ConfigWrites`
- * adapter transaction — and keep the underlying `ConfigManager` twin
- * non-promoting (`test_config.py`'s `add_account` asserts are the lock
- * for that layer). {@link applyTarget} replaces `[active]` wholesale
- * (a target with no workspace clears any prior pin,
- * `config.py:951-1002`).
+ * Every member is one `_mutate()` transaction in Python. In particular
+ * {@link ConfigWrites.addAccount} promotes the first account to
+ * `[active].account` inside the same transaction. In Python that
+ * promotion belongs to the `accounts.add` namespace function
+ * (`_apply_add_account` plus `_apply_set_active` under one `_mutate()`),
+ * not to `ConfigManager.add_account`, which does not promote — an
+ * implementor promotes exactly once, in its adapter transaction, and
+ * keeps the underlying `ConfigManager` twin non-promoting.
+ * {@link ConfigWrites.applyTarget} replaces `[active]` wholesale (a
+ * target with no workspace clears any prior pin).
+ *
+ * @see mixpanel_headless._internal.config.ConfigManager
  */
 export interface ConfigWrites {
   /**
    * Add an account block (validating per-type fields), promoting the
-   * first-ever account to `[active].account` in the SAME transaction.
+   * first-ever account to `[active].account` in the same transaction.
    *
    * @param name - Account name (`^[a-zA-Z0-9_-]{1,64}$`).
    * @param params - Typed credential fields.
-   * @throws ConfigError - Duplicate name (PLAIN `ConfigError` /
-   *   CONFIG_ERROR, `config.py` — never `AccountExistsError`,
-   *   which Python reserves for the login_unified name-collision path,
-   *   `accounts.py`; B7-ARB-B B-E2E-F1), missing/incompatible
+   * @throws ConfigError - Duplicate name (a plain `ConfigError` /
+   *   `CONFIG_ERROR` — never `AccountExistsError`, which Python reserves
+   *   for the `login_unified` name collision), missing or incompatible
    *   fields, or validation failure.
    */
   addAccount: (name: string, params: AddAccountParams) => void;
 
   /**
-   * Update fields on an existing account in place
-   * (`config.py`). Type cannot change.
+   * Update fields on an existing account in place. Type cannot change.
    *
    * @param name - Account to update.
    * @param fields - Fields to rewrite.
@@ -176,8 +155,7 @@ export interface ConfigWrites {
   updateAccount: (name: string, fields: UpdateAccountFields) => void;
 
   /**
-   * Remove an account (`config.py`), clearing `[active]` when
-   * it was the active one.
+   * Remove an account, clearing `[active]` when it was the active one.
    *
    * @param name - Account to remove.
    * @param options - `force` removes even when targets reference it.
@@ -191,8 +169,8 @@ export interface ConfigWrites {
   ) => string[];
 
   /**
-   * List account summaries sorted by name (`config.py`), with
-   * `is_active` / `referenced_by_targets` populated.
+   * List account summaries sorted by name, with `is_active` /
+   * `referenced_by_targets` populated.
    *
    * @returns The summaries.
    */
@@ -208,8 +186,7 @@ export interface ConfigWrites {
   setActive: (update: SetActiveUpdate) => void;
 
   /**
-   * Atomically apply per-axis session updates
-   * (`config.py`).
+   * Atomically apply per-axis session updates.
    *
    * @param update - The axes to touch.
    * @throws ConfigError - Unknown account, or `project` with no
@@ -218,29 +195,28 @@ export interface ConfigWrites {
   applySession: (update: ApplySessionUpdate) => void;
 
   /**
-   * Apply a target: `[active]` replaced wholesale + the target
-   * account's `default_project` updated, one transaction
-   * (`config.py`).
+   * Apply a target: `[active]` replaced wholesale and the target
+   * account's `default_project` updated, in one transaction.
    *
    * @param name - Target to apply.
-   * @throws ConfigError - Unknown target OR its account is gone.
+   * @throws ConfigError - Unknown target, or its account is gone.
    */
   applyTarget: (name: string) => void;
 
   /**
-   * Add a target block (`config.py`).
+   * Add a target block.
    *
    * @param name - Target name.
    * @param options - account / project / workspace.
    * @returns The constructed {@link Target}.
    * @throws ConfigError - Duplicate name, missing account, or
-   *   validation failure (Target model errors are WRAPPED in
-   *   ConfigError as `config.py` does).
+   *   validation failure (Target model errors are wrapped in
+   *   `ConfigError`, as Python does).
    */
   addTarget: (name: string, options: AddTargetOptions) => Target;
 
   /**
-   * Remove a target block (`config.py`).
+   * Remove a target block.
    *
    * @param name - Target to remove.
    * @throws ConfigError - Unknown target.
@@ -248,7 +224,7 @@ export interface ConfigWrites {
   removeTarget: (name: string) => void;
 
   /**
-   * List targets sorted by name (`config.py`).
+   * List targets sorted by name.
    *
    * @returns The targets.
    */
@@ -256,8 +232,10 @@ export interface ConfigWrites {
 }
 
 /**
- * The bridge effect surface (`bridge.py` `load_bridge` /
- * `export_bridge` / `remove_bridge` — packet §3.2, owner B8-N2).
+ * The bridge-file effect surface (`load_bridge` / `export_bridge` /
+ * `remove_bridge`).
+ *
+ * @see mixpanel_headless._internal.auth.bridge
  */
 export interface BridgeEffects {
   /**
@@ -294,16 +272,13 @@ export interface BridgeEffects {
 }
 
 /**
- * The per-account token/artifact store (`ensure_account_dir` /
- * `atomic_write_bytes` / `_safe_rmtree_warn` / `_client_info_path`,
- * `accounts.py:878-915`, `:278-303` — packet §3.2, owner B8-N2).
+ * The per-account token and artifact store (`ensure_account_dir` /
+ * `atomic_write_bytes` / `_safe_rmtree_warn` / `_client_info_path`).
+ * `writeTokens` returns the written path and `clientInfoPath` returns a
+ * path rather than an existence flag because `OAuthLoginResult` reports
+ * both; `removeTokens` backs `logout`.
  *
- * Shape note (disclosed, shard notes): the packet's indicative member
- * list spelled `clientInfoExists(region)`; the Python behavior needs
- * the PATHS (for `OAuthLoginResult.tokens_path` / `client_path`) and a
- * `removeTokens` for `logout` — so `writeTokens` returns the written
- * path, `clientInfoPath` replaces the boolean probe, and `removeTokens`
- * is added. B8 implements this exact surface.
+ * @see mixpanel_headless.accounts
  */
 export interface TokenStore {
   /**
@@ -324,8 +299,8 @@ export interface TokenStore {
   writeTokens: (name: string, tokens: OAuthTokens) => string;
 
   /**
-   * Delete the persisted tokens if present (`logout`,
-   * `accounts.py`). Missing file is a no-op.
+   * Delete the persisted tokens if present (Python `logout`). A missing
+   * file is a no-op.
    *
    * @param name - Account name.
    */
@@ -333,15 +308,15 @@ export interface TokenStore {
 
   /**
    * Remove the whole per-account directory, warning (never raising) on
-   * failure (`_safe_rmtree_warn`, `accounts.py`).
+   * failure (Python `_safe_rmtree_warn`).
    *
    * @param name - Account name.
    */
   removeAccountDir: (name: string) => void;
 
   /**
-   * Where the DCR client info for `region` lives
-   * (`_client_info_path`, `accounts.py`).
+   * Where the DCR client info for `region` lives (Python
+   * `_client_info_path`).
    *
    * @param region - Mixpanel region.
    * @returns Absolute path (may not exist yet).
@@ -349,12 +324,11 @@ export interface TokenStore {
   clientInfoPath: (region: Region) => string;
 
   /**
-   * Whether ANY per-account state exists for `name` — the
-   * `account_dir(name).exists()` orphan-directory probe guarding the
-   * browser new-account flow (`accounts.py`; added by the
-   * pair-A arbiter, `b7-reviewA-resolution.md` SEM-F2). B8 checks the
-   * on-disk `~/.mp/accounts/{name}/` directory; in-memory fakes report
-   * whether they hold state for the name.
+   * Whether any per-account state exists for `name` — the
+   * `account_dir(name).exists()` probe that guards the browser
+   * new-account flow against an orphaned directory. The node store
+   * checks `~/.mp/accounts/{name}/`; in-memory fakes report whether they
+   * hold state for the name.
    *
    * @param name - Account name.
    * @returns `true` when the per-account directory (or fake state)
@@ -364,10 +338,11 @@ export interface TokenStore {
 }
 
 /**
- * The PKCE browser-flow effect (`OAuthFlow.login`, `flow.py` — packet
- * §3.2, owner B8-N3). Always called with `persist=False` semantics: the
- * returned tokens stay in memory until the orchestrator validates and
- * persists them via {@link TokenStore.writeTokens}.
+ * The PKCE browser-flow effect. Always called with `persist=False`
+ * semantics: the returned tokens stay in memory until the orchestrator
+ * validates and persists them via {@link TokenStore.writeTokens}.
+ *
+ * @see mixpanel_headless._internal.auth.flow.OAuthFlow.login
  */
 export interface OAuthFlowEffects {
   /**
@@ -375,7 +350,7 @@ export interface OAuthFlowEffects {
    *
    * @param region - The region the flow commits to.
    * @param options - `openBrowser` mirrors Python's `open_browser`.
-   * @returns The freshly minted tokens (NOT persisted).
+   * @returns The freshly minted tokens (not persisted).
    * @throws OAuthError - Any leg of the flow fails.
    */
   login: (
@@ -385,9 +360,9 @@ export interface OAuthFlowEffects {
 }
 
 /**
- * The per-account `/me` cache write (`_persist_me_cache`,
- * `accounts.py` — packet §3.2, owner B8-N2 for the on-disk
- * twin).
+ * The per-account `/me` cache write.
+ *
+ * @see mixpanel_headless.accounts._persist_me_cache
  */
 export interface MeCacheEffects {
   /**
@@ -401,17 +376,26 @@ export interface MeCacheEffects {
 }
 
 /**
- * The complete effect bag. B8 exports a fully-wired instance; B7 tests
- * inject in-memory fakes; {@link defaultAuthEffects} stubs the
- * B8-owned members.
+ * The complete effect bag. `@mixpanel-headless/node` exports a fully
+ * wired instance, tests inject in-memory fakes, and
+ * {@link defaultAuthEffects} stubs every node-owned member.
+ *
+ * @remarks
+ * Secret serialization: `Secret.toJSON()` returns the redaction mask, so
+ * routing a `Secret`-bearing bag through `JSON.stringify` (or any
+ * generic serializer) persists literal asterisks — credential corruption
+ * discovered only at the next auth. Every credential writer
+ * ({@link ConfigWrites.addAccount} / {@link ConfigWrites.updateAccount},
+ * {@link TokenStore.writeTokens}, {@link BridgeEffects.export}) must call
+ * `reveal()` at its write site.
  */
 export interface AuthEffects {
-  /** Config reads + writes (B8-N1: the TOML `ConfigManager`). */
+  /** Config reads and writes (the TOML `ConfigManager` on node). */
   readonly config: ResolverConfigSource & ConfigWrites;
   /**
    * Env reads: the resolver's `MP_*` bag plus the generic `get` used by
-   * `token_env` indirection and the `login_unified` auth-type detection
-   * (`accounts.py`, `region_probe.py`). B8 wires `process.env`.
+   * `token_env` indirection, the `login_unified` auth-type detection and
+   * the region probe. Node wires `process.env`.
    */
   readonly env: ResolverEnv & {
     /**
@@ -430,43 +414,40 @@ export interface AuthEffects {
   readonly oauthFlow: OAuthFlowEffects;
   /** Bridge load/export/remove. */
   readonly bridge: BridgeEffects;
-  /** Per-account `/me` cache writes (B8-N2 on disk). */
+  /** Per-account `/me` cache writes (on disk under node). */
   readonly meCache: MeCacheEffects;
   /**
    * Persist a session's axes to `[active]` in one transaction — the
-   * `ConfigManager.apply_session` twin behind the W1-D1
-   * `ResolverSeams.persistActive` seam. B7
-   * ships the ROUTING ({@link resolverSeamsFromEffects}); the real
-   * write is B8's (`b6-packets.md:1026`).
+   * `ConfigManager.apply_session` twin behind
+   * `ResolverSeams.persistActive`. Core ships the routing
+   * (`resolverSeamsFromEffects` in `resolver-seams.ts`); the write itself
+   * belongs to the host package.
    *
    * @param session - The post-swap session.
    * @returns Nothing (a promise for asynchronous stores).
    */
   persistActive: (session: Session) => void | Promise<void>;
   /**
-   * Read a secret from stdin (`read_capped_secret_from_stdin`,
-   * `io_utils.py` — the `secret_stdin=True` paths,
-   * `accounts.py:1513-1518`, `:1797-1802`). Packet-gap ADDITION to the
-   * §3.2 table (disclosed in the shard notes): stdin is a node effect
-   * the table missed; owner B8.
+   * Read a secret from stdin — the `secret_stdin=True` paths of
+   * `login_unified`
+   * (`mixpanel_headless._internal.io_utils.read_capped_secret_from_stdin`).
    *
    * @returns The secret text.
    */
   readSecretStdin: () => string;
   /**
-   * Single-line progress narration (`_narrate`, `accounts.py`
-   * — a stderr write in Python). Packet-gap ADDITION (disclosed):
-   * stderr is a node effect; the CORE default is a silent no-op (the
-   * messages are out of contract, R5.4), so this member is NOT in
-   * {@link UNPORTED_AUTH_SEAMS}. B8 wires `process.stderr`.
+   * Single-line progress narration (Python `_narrate`, a stderr write).
+   * The core default is a silent no-op — the messages are out of
+   * contract — so this member is not in {@link UNPORTED_AUTH_SEAMS};
+   * node wires `process.stderr`.
    *
    * @param msg - Single-line message (no trailing newline).
    */
   narrate: (msg: string) => void;
-  /** The injected fetch every probe/client runs over (R2.4 — CORE, no stub). */
+  /** The injected fetch every probe/client runs over (a core member, no stub). */
   readonly fetchImpl: typeof fetch;
   /**
-   * Clock seam in epoch milliseconds (R2.4/D1.4 — CORE, no stub).
+   * Clock seam in epoch milliseconds (a core member, no stub).
    *
    * @returns The current time.
    */
@@ -474,8 +455,9 @@ export interface AuthEffects {
 }
 
 /**
- * The named still-stubbed list after B7 (packet §3.2, verbatim + the
- * two disclosed additions) — the B8 packet consumes it BY NAME.
+ * The members {@link defaultAuthEffects} stubs. `@mixpanel-headless/node`
+ * implements every entry, and its test suite checks this list against
+ * the real bag.
  */
 export const UNPORTED_AUTH_SEAMS: readonly string[] = [
   "persistActive", // via config.applySession
@@ -486,7 +468,7 @@ export const UNPORTED_AUTH_SEAMS: readonly string[] = [
   "oauthFlow.login", // PKCE
   "bridge.*",
   "meCache", // on-disk MeCache
-  "readSecretStdin", // packet-gap addition (stdin; disclosed)
+  "readSecretStdin", // stdin read
 ];
 
 /**
@@ -498,10 +480,10 @@ export const UNPORTED_AUTH_SEAMS: readonly string[] = [
  */
 function unportedAuthSeam(name: string): (...args: unknown[]) => never {
   return (): never => {
-    // Core-alone posture: the real implementation of every
-    // `UNPORTED_AUTH_SEAMS` member SHIPS in `packages/node`
-    // (`createNodeAuthEffects()`); this default stays so core without a
-    // wired bag still throws the coded error.
+    // Every `UNPORTED_AUTH_SEAMS` member is implemented in
+    // `@mixpanel-headless/node` (`createNodeAuthEffects()`); this default
+    // keeps core-alone use failing with a coded error rather than a bare
+    // TypeError.
     throw new MixpanelHeadlessError(
       `Auth effect '${name}' has no implementation in @mixpanel-headless/core ` +
         "alone — pass a wired effect bag (packages/node: createNodeAuthEffects())",
@@ -523,7 +505,7 @@ const NON_SEAM_PROPERTIES: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * A bag whose every METHOD throws `UNPORTED_AUTH_SEAM` for
+ * A bag whose every method throws `UNPORTED_AUTH_SEAM` for
  * `${prefix}.${name}` when called.
  *
  * @param prefix - The seam-name prefix (`config`, `tokenStore`, ...).
@@ -545,8 +527,8 @@ function unportedMethodBag<T extends object>(prefix: string): T {
 /**
  * The default {@link AuthEffects} — every node-owned member throws
  * `UNPORTED_AUTH_SEAM` with `{seam: name}`; `narrate` is a silent
- * no-op; `fetchImpl` / `now` are the ambient web-standard globals (CORE
- * members — no stub).
+ * no-op; `fetchImpl` / `now` are the ambient web-standard globals (core
+ * members, no stub).
  *
  * @returns The stubbed bag.
  * @example
@@ -557,7 +539,7 @@ function unportedMethodBag<T extends object>(prefix: string): T {
 export function defaultAuthEffects(): AuthEffects {
   return {
     config: unportedMethodBag<AuthEffects["config"]>("config"),
-    // `env.get` is a method; the `MP_*` members are property READS in the
+    // `env.get` is a method; the `MP_*` members are property reads in the
     // resolver, so they throw on access rather than on call.
     env: new Proxy(Object.freeze({}), {
       get: (_target, property): unknown => {

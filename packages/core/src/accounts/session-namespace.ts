@@ -1,18 +1,18 @@
 /**
- * The `mp.session` namespace — TS port of
- * `mixpanel_headless/session.py` (whole file; B7-A1 packet §3.1,
- * `b7-packets.md`).
+ * Factory for the `session` namespace (`show` / `use` over the persisted
+ * `[active]` block). Python builds a fresh `ConfigManager()` per call;
+ * core exports a factory over the injected {@link AuthEffects} bag and
+ * `@mixpanel-headless/node` exports the ready-made `session` object
+ * bound to on-disk effects.
  *
- * Python builds a fresh `ConfigManager()` per call; the TS core
- * exports a FACTORY over the injected {@link AuthEffects} bag.
- * B8 exports the ready-made `session` object bound to on-disk effects.
+ * @see mixpanel_headless.session
  */
 
 import type { ActiveSession } from "../auth/session.js";
 import { ParamValidationError } from "../errors.js";
 import type { AuthEffects } from "./auth-effects.js";
 
-/** Options bag of {@link SessionNamespace.use} (Python kwonly, R3.8). */
+/** Options bag of {@link SessionNamespace.use} (Python keyword-only parameters). */
 export interface SessionUseOptions {
   /** New active account name. */
   readonly account?: string | null | undefined;
@@ -24,10 +24,10 @@ export interface SessionUseOptions {
   readonly target?: string | null | undefined;
 }
 
-/** The `mp.session` surface (`session.py` `__all__`: show, use). */
+/** The `session` surface (Python `__all__`: `show`, `use`). */
 export interface SessionNamespace {
   /**
-   * Return the persisted `[active]` block (`show`, `session.py`).
+   * Return the persisted `[active]` block (Python `show`).
    *
    * @returns The active session; project lives on the active account
    *   as `default_project`, not here.
@@ -35,16 +35,14 @@ export interface SessionNamespace {
   show: () => ActiveSession;
 
   /**
-   * Update one or more axes in the persisted config (`use`,
-   * `session.py`). All updates land in a SINGLE
-   * `applySession` / `applyTarget` transaction (packet §3.3 atomicity
-   * rule — never two effect calls where Python makes one).
+   * Update one or more axes in the persisted config (Python `use`). All
+   * updates land in a single `applySession` / `applyTarget` transaction
+   * — never two effect calls where Python makes one.
    *
    * @param options - The axes (or a target).
    * @throws ParamValidationError - `target` combined with any axis
-   *   kwarg (Python raises bare `ValueError`; R5 maps it to the
-   *   EXISTING `WS1_TARGET_MUTUALLY_EXCLUSIVE` code, packet Caution
-   *   #14).
+   *   option (Python raises a bare `ValueError`; the port reuses the
+   *   `WS1_TARGET_MUTUALLY_EXCLUSIVE` code).
    * @throws ConfigError - Unknown account/target, or `project` with no
    *   active account.
    */
@@ -52,7 +50,7 @@ export interface SessionNamespace {
 }
 
 /**
- * Build the `mp.session` namespace over an effect bag.
+ * Build the `session` namespace over an effect bag.
  *
  * @param effects - The injected effects (config writes).
  * @returns The namespace object.
@@ -74,6 +72,9 @@ export function createSessionNamespace(effects: AuthEffects): SessionNamespace {
         target !== null &&
         (account !== null || project !== null || workspace !== null)
       ) {
+        // Divergence: Python raises a bare `ValueError` here; the port
+        // raises `ParamValidationError` with the code the `Workspace`
+        // `target` guard already uses.
         throw new ParamValidationError(
           "`target=` is mutually exclusive with `account=`/`project=`/`workspace=`.",
           "WS1_TARGET_MUTUALLY_EXCLUSIVE",

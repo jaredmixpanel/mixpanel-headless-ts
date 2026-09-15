@@ -1,23 +1,14 @@
 /**
- * Core operations of the `mp.accounts` namespace — TS port of
- * `mixpanel_headless/accounts.py` module helpers + the CRUD / probe /
- * bridge functions (`accounts.py`; B7-A1 packet §3.1,
- * `b7-packets.md`). The `login_unified` orchestrator (`:1030-2013`)
- * lives in `login-unified.ts` (R7 file conventions — the packet's
- * ~800-line split rule).
+ * Core operations of the `accounts` namespace — account CRUD, the `/me`
+ * probe, bridge export and token retrieval — as pure functions over the
+ * injected {@link AuthEffects} bag (Python's per-call `ConfigManager()`
+ * is `effects.config`, `os.environ` is `effects.env`, disk and browser
+ * I/O go through the store / flow / bridge members); `login_unified`
+ * lives in `login-unified.ts`. Only two sites reveal a secret —
+ * {@link freshBrowserBearer} and `token()`, Python's documented public
+ * behaviour; secrets never reach thrown messages or error `details`.
  *
- * Every function is pure over the injected {@link AuthEffects} bag
- * (R9.4): Python's fresh `ConfigManager()` per call becomes
- * `effects.config`; `os.environ` becomes `effects.env`; disk and
- * browser I/O route through `effects.tokenStore` / `effects.oauthFlow`
- * / `effects.bridge`.
- *
- * Secret discipline (packet §3.3, pair-B lens): the ONLY reveal sites
- * in this module are (a) {@link freshBrowserBearer} handing the
- * in-memory PKCE bearer to the per-request `TokenResolver` protocol
- * and (b) `token()` returning the plaintext bearer — Python's
- * documented public behavior. Secrets never reach thrown messages or
- * error `details`.
+ * @see mixpanel_headless.accounts
  */
 
 import type {
@@ -48,11 +39,11 @@ import type { AuthEffects } from "./auth-effects.js";
 import { defaultAccountName } from "./naming.js";
 
 /**
- * Picker callback contract (`ProjectPicker`, `accounts.py`). The
- * CLI supplies a TTY-aware implementation; library callers supply
- * their own or pass `null` to fail fast in non-interactive contexts
- * (E-8). Receives the parsed `/me` plus the `(projectId, info)` pairs
- * sorted by (org name, project name), both case-folded.
+ * Picker callback contract (Python `ProjectPicker`). The CLI supplies a
+ * TTY-aware implementation; library callers supply their own or pass
+ * `null` to fail fast in non-interactive contexts. Receives the parsed
+ * `/me` plus the `(projectId, info)` pairs sorted by (org name, project
+ * name), both case-folded.
  */
 export type ProjectPicker = (
   me: MeResponse,
@@ -61,42 +52,42 @@ export type ProjectPicker = (
 
 /**
  * Progress handle returned by a {@link ProgressFactory} — the TS
- * spelling of Python's context manager (`__enter__` = the factory
- * call; `__exit__` = {@link end}; packet §3.3 "port as a
- * Disposable-style callback, JSDoc the mapping").
+ * spelling of Python's context manager (`__enter__` is the factory
+ * call; `__exit__` is {@link ProgressHandle.end}).
  */
 export interface ProgressHandle {
-  /** Close the progress indicator (the CM `__exit__` twin). */
+  /** Close the progress indicator (the context manager's `__exit__`). */
   end: () => void;
 }
 
 /**
- * Progress factory contract (`ProgressFactory`, `accounts.py`).
- * Wrapped around the slow `/me` round-trips so a CLI can render a
- * spinner; library callers leave it `null` and the orchestrator
- * substitutes a no-op (the `contextlib.nullcontext` twin).
+ * Progress factory contract (Python `ProgressFactory`). Wrapped around
+ * the slow `/me` round-trips so a CLI can render a spinner; library
+ * callers leave it `null` and the orchestrator substitutes a no-op (the
+ * `contextlib.nullcontext` twin).
  */
 export type ProgressFactory = (msg: string) => ProgressHandle;
 
 /**
- * The message shown while awaiting `/me`
- * (`_FETCH_ME_PROGRESS_MESSAGE`, `accounts.py:73-81`). Intentionally
- * free of duration estimates (and therefore of digits — the Layer-3
- * suite pins that).
+ * The message shown while awaiting `/me` (Python
+ * `_FETCH_ME_PROGRESS_MESSAGE`). Deliberately free of duration
+ * estimates: `/me` latency depends on how many projects and orgs the
+ * user can see, so it under-promises rather than print a misleading
+ * "this may take 30s" line.
  */
 export const FETCH_ME_PROGRESS_MESSAGE =
   "Fetching your projects from Mixpanel...";
 
 /**
  * One-shot {@link TokenResolver} returning a freshly minted PKCE
- * bearer (`_FreshBrowserBearer`, `accounts.py`).
+ * bearer (Python `_FreshBrowserBearer`).
  *
- * Used to run the post-PKCE `/me` probe BEFORE the access token is
+ * Used to run the post-PKCE `/me` probe before the access token is
  * persisted, so a region-mismatch failure never leaves wrong-region
  * tokens at the user-visible account path.
  *
  * @param accessToken - The plaintext PKCE bearer just returned from
- *   the flow (reveal site — allowed list, packet §3.3).
+ *   the flow (one of this module's two reveal sites).
  * @returns The in-memory resolver.
  */
 export function freshBrowserBearer(accessToken: string): TokenResolver {
@@ -106,7 +97,7 @@ export function freshBrowserBearer(accessToken: string): TokenResolver {
   };
 }
 
-/** Options of {@link fetchMe} (Python kwonly params, R3.8). */
+/** Options of {@link fetchMe} (Python keyword-only parameters). */
 export interface FetchMeOptions {
   /** Override the resolver (the post-PKCE pre-persist case). */
   readonly tokenResolver?: TokenResolver | undefined;
@@ -115,12 +106,11 @@ export interface FetchMeOptions {
 }
 
 /**
- * Run a one-shot `/me` probe against `account` (`_fetch_me`,
- * `accounts.py`).
+ * Run a one-shot `/me` probe against `account` (Python `_fetch_me`).
  *
- * Builds a short-lived REAL wire client (Caution #15: auth header
- * resolved PER REQUEST through the token resolver, never captured)
- * over the injected fetch, always closing it.
+ * Builds a short-lived wire client over the injected fetch — the auth
+ * header is resolved per request through the token resolver, never
+ * captured — and always closes it.
  *
  * @param effects - The effect bag (fetch + default token resolver).
  * @param account - The account to authenticate as.
@@ -147,15 +137,15 @@ export async function fetchMe(
     session: probeSession,
     fetch: effects.fetchImpl,
     tokenResolver: options.tokenResolver ?? effects.tokenResolver,
-    // PR #235: `/me` honours `MP_API_BASE_URL` / `MP_APP_BASE_URL`, read
-    // per request through the injected env bag (never `process.env`).
+    // `/me` honours the `MP_API_BASE_URL` / `MP_APP_BASE_URL` overrides,
+    // read per request through the injected env bag (never `process.env`).
     endpointOverrides: endpointOverridesFromEnv((variable) =>
       effects.env.get(variable),
     ),
   });
   try {
     // Same `toNativeJson` step every model site performs on wire JSON
-    // (lossless-number tokens → native values; `services/me.ts:283`).
+    // (lossless-number tokens → native values), as `MeService` does.
     const raw = await client.me();
     return MeResponse.fromDict(toNativeJson(raw));
   } finally {
@@ -163,10 +153,7 @@ export async function fetchMe(
   }
 }
 
-/**
- * Lookup table for {@link domainToRegion} (`_DOMAIN_TO_REGION`,
- * `accounts.py`).
- */
+/** Lookup table for {@link domainToRegion} (Python `_DOMAIN_TO_REGION`). */
 const DOMAIN_TO_REGION: Readonly<Record<string, Region>> = {
   "mixpanel.com": "us",
   "eu.mixpanel.com": "eu",
@@ -174,8 +161,8 @@ const DOMAIN_TO_REGION: Readonly<Record<string, Region>> = {
 };
 
 /**
- * Map a Mixpanel project `domain` string to its region
- * (`_domain_to_region`, `accounts.py`).
+ * Map a Mixpanel project `domain` string to its region (Python
+ * `_domain_to_region`).
  *
  * @param domain - Project domain string (host, optionally with
  *   protocol / path). Export hosts' `data-` / `data.` prefixes are
@@ -208,8 +195,8 @@ function domainToRegion(domain: string): Region | null {
 }
 
 /**
- * Raise `ConfigError` E-2 when a picked project lives in a different
- * cluster (`_assert_project_region_matches`, `accounts.py`).
+ * Raise `ConfigError` when a picked project lives in a different
+ * cluster (Python `_assert_project_region_matches`).
  *
  * No-op when `chosenProject` is unset, missing from `/me`, or carries
  * no `domain` field (older payloads).
@@ -218,7 +205,7 @@ function domainToRegion(domain: string): Region | null {
  * @param chosenProject - The project ID the orchestrator selected.
  * @param authRegion - The region the credential authenticated against.
  * @throws ConfigError - Mismatch between `authRegion` and the
- *   project's cluster (E-2 catalog wording).
+ *   project's cluster.
  */
 export function assertProjectRegionMatches(
   me: MeResponse,
@@ -252,8 +239,8 @@ export function assertProjectRegionMatches(
 }
 
 /**
- * Build an `AccountTestResult` for a failed `/me` probe
- * (`_build_test_failure_result`, `accounts.py`).
+ * Build an `AccountTestResult` for a failed `/me` probe (Python
+ * `_build_test_failure_result`).
  *
  * Preserves `code` / `details` when the failure was a library error;
  * non-library exceptions carry only the human-readable `error` string.
@@ -286,7 +273,7 @@ function buildTestFailureResult(
 }
 
 /**
- * List all configured accounts (`list`, `accounts.py`).
+ * List all configured accounts (Python `list`).
  *
  * @param effects - The effect bag.
  * @returns Sorted-by-name summaries.
@@ -295,7 +282,7 @@ export function accountsList(effects: AuthEffects): AccountSummary[] {
   return effects.config.listAccounts();
 }
 
-/** Options bag of {@link accountsAdd} (Python kwonly, R3.8). */
+/** Options bag of {@link accountsAdd} (Python keyword-only parameters). */
 export interface AccountsAddOptions {
   /** Account type discriminator. */
   readonly type: AccountType;
@@ -316,18 +303,18 @@ export interface AccountsAddOptions {
 }
 
 /**
- * Add a new account (`add`, `accounts.py`).
+ * Add a new account (Python `add`).
  *
- * Per 043 FR-001 `default_project` is optional for every type; per
- * FR-045 the first account auto-promotes to `[active].account` (inside
- * the config effect's single transaction).
+ * `default_project` is optional for every type; the first account added
+ * is promoted to `[active].account` inside the config effect's single
+ * transaction.
  *
  * @param effects - The effect bag.
  * @param name - Account name; required unless `derive_name` is set.
  * @param options - Typed credential fields + `derive_name`.
  * @returns The new account's summary.
  * @throws ParamTypeError - `derive_name` with explicit `name`, or
- *   neither (the Python `TypeError` twin, R5.5).
+ *   neither (the Python `TypeError` twin).
  * @throws ConfigError - Validation failure, duplicate name,
  *   `region` omitted for a non-browser type, or `derive_name` for
  *   `oauth_browser`.
@@ -349,8 +336,8 @@ export async function accountsAdd(
     throw new ParamTypeError("`name` is required unless `derive_name=True`.");
   }
   const region = options.region ?? null;
-  // Per 043 plan §"Library-First": probing lives in the CLI layer; the
-  // library API refuses to invent a region (`accounts.py`).
+  // Region probing lives in the CLI layer; the library API refuses to
+  // invent a region.
   if (region === null && options.type !== "oauth_browser") {
     throw new ConfigError(
       `Account type '${options.type}' requires \`region\`. Pass region= ` +
@@ -378,13 +365,13 @@ export async function accountsAdd(
   }
   if (resolvedName === null) {
     // Unreachable — both branches above leave the name populated
-    // (the Python `assert name is not None`, `accounts.py`).
+    // (Python's `assert name is not None`).
     throw new ParamTypeError("`name` is required unless `derive_name=True`.");
   }
 
-  // First-account promotion happens INSIDE the config effect's single
-  // transaction (packet §3.3: never two effect calls where Python
-  // makes one `_mutate()` block — `accounts.py`).
+  // First-account promotion happens inside the config effect's single
+  // transaction — never two effect calls where Python makes one
+  // `_mutate()` block.
   effects.config.addAccount(resolvedName, {
     type: options.type,
     region: resolvedRegion,
@@ -397,7 +384,7 @@ export async function accountsAdd(
   return accountsShow(effects, resolvedName);
 }
 
-/** Arguments of {@link deriveAccountNameForCredential} (kwonly, R3.8). */
+/** Arguments of {@link deriveAccountNameForCredential} (Python keyword-only parameters). */
 interface DeriveNameArgs {
   /** `"service_account"` or `"oauth_token"`. */
   readonly account_type: AccountType;
@@ -414,8 +401,8 @@ interface DeriveNameArgs {
 }
 
 /**
- * Build a temporary account, fetch `/me`, derive a unique name
- * (`_derive_account_name_for_credential`, `accounts.py`).
+ * Build a temporary account, fetch `/me`, derive a unique name (Python
+ * `_derive_account_name_for_credential`).
  *
  * @param effects - The effect bag.
  * @param args - Credential material.
@@ -471,7 +458,7 @@ async function deriveAccountNameForCredential(
       };
     }
   } else {
-    // Control-flow invariant (`accounts.py`, pragma no cover):
+    // Control-flow invariant (Python marks it `pragma: no cover`):
     // `accountsAdd` rejects oauth_browser before reaching here.
     throw new ConfigError(
       `derive_name not supported for account type '${args.account_type}'.`,
@@ -485,7 +472,7 @@ async function deriveAccountNameForCredential(
   return defaultAccountName(meResp, existing);
 }
 
-/** Options bag of {@link accountsUpdate} (Python kwonly, R3.8). */
+/** Options bag of {@link accountsUpdate} (Python keyword-only parameters). */
 export interface AccountsUpdateOptions {
   /** New region. */
   readonly region?: Region | null | undefined;
@@ -502,8 +489,8 @@ export interface AccountsUpdateOptions {
 }
 
 /**
- * Update fields on an existing account in place (`update`,
- * `accounts.py`). Type cannot change.
+ * Update fields on an existing account in place (Python `update`). Type
+ * cannot change.
  *
  * @param effects - The effect bag.
  * @param name - Account to update.
@@ -529,7 +516,7 @@ export function accountsUpdate(
 }
 
 /**
- * Remove an account (`remove`, `accounts.py`).
+ * Remove an account (Python `remove`).
  *
  * @param effects - The effect bag.
  * @param name - Account name.
@@ -549,11 +536,11 @@ export function accountsRemove(
 }
 
 /**
- * Switch the active account, clearing any prior workspace pin (`use`,
- * `accounts.py`).
+ * Switch the active account, clearing any prior workspace pin (Python
+ * `use`).
  *
- * Both writes land in the config effect's SINGLE transaction
- * (`workspace: null` clears — packet §3.3 atomicity rule).
+ * Both writes land in the config effect's single transaction
+ * (`workspace: null` clears the pin).
  *
  * @param effects - The effect bag.
  * @param name - Account to make active.
@@ -564,13 +551,12 @@ export function accountsUse(effects: AuthEffects, name: string): void {
 }
 
 /**
- * Return the named account summary, or the active one (`show`,
- * `accounts.py`).
+ * Return the named account summary, or the active one (Python `show`).
  *
  * @param effects - The effect bag.
  * @param name - Account name; `null` means the active account.
  * @returns The summary.
- * @throws ConfigError - Account not found OR no active account.
+ * @throws ConfigError - Account not found, or no active account.
  */
 export function accountsShow(
   effects: AuthEffects,
@@ -594,8 +580,7 @@ export function accountsShow(
 }
 
 /**
- * Probe `/me` for the named account, never raising (`test`,
- * `accounts.py`).
+ * Probe `/me` for the named account, never raising (Python `test`).
  *
  * @param effects - The effect bag.
  * @param name - Account to test; `null` means the active account.
@@ -612,9 +597,8 @@ export async function accountsTest(
   } catch (error) {
     if (error instanceof ConfigError) {
       return new AccountTestResult({
-        // Python `name or "(none)"` (`accounts.py`) — the empty
-        // string ALSO defaults (falsy-`or`, not nullish;
-        // `b7-reviewA-resolution.md` SEM-F1).
+        // Python `name or "(none)"`: the empty string also defaults
+        // (falsy `or`, not nullish).
         account_name: name !== null && name !== "" ? name : "(none)",
         ok: false,
         error: error.message,
@@ -627,8 +611,8 @@ export async function accountsTest(
   try {
     account = effects.config.getAccount(summary.name);
   } catch (error) {
-    // Pragma-no-cover twin (`accounts.py`) — show() already
-    // validated existence.
+    // Unreachable in practice (Python marks it `pragma: no cover`):
+    // `show()` already validated existence.
     if (error instanceof ConfigError) {
       return new AccountTestResult({
         account_name: summary.name,
@@ -659,7 +643,7 @@ export async function accountsTest(
     try {
       meRaw = await client.me();
     } catch (error) {
-      // Broad catch — capture every failure mode (`accounts.py`).
+      // Broad catch — capture every failure mode, as Python does.
       return buildTestFailureResult(summary.name, "/me probe failed", error);
     }
     let meResp: MeResponse;
@@ -688,27 +672,27 @@ export async function accountsTest(
   }
 }
 
-/** Options bag of {@link accountsLogin} (Python kwonly, R3.8). */
+/** Options bag of {@link accountsLogin} (Python keyword-only parameters). */
 export interface AccountsLoginOptions {
   /** Launch the system browser (default `true`). */
   readonly open_browser?: boolean | undefined;
 }
 
 /**
- * Run the OAuth browser flow for an `oauth_browser` account (`login`,
- * `accounts.py`).
+ * Run the OAuth browser flow for an `oauth_browser` account (Python
+ * `login`).
  *
  * Ordering is the atomic-publish discipline: the `/me` probe runs on
- * the IN-MEMORY bearer ({@link freshBrowserBearer}) and tokens persist
- * only after the E-2 cross-check passes — a cross-check failure never
- * leaves wrong-region tokens at the user-visible path
- * (`test_login_region_check.py`).
+ * the in-memory bearer ({@link freshBrowserBearer}) and tokens persist
+ * only after the region cross-check passes — a cross-check failure
+ * never leaves wrong-region tokens at the user-visible path.
  *
  * @param effects - The effect bag.
  * @param name - Account name (must be `oauth_browser`).
  * @param options - `open_browser` toggle.
  * @returns The persistence paths, token expiry, and user identity.
- * @throws ConfigError - Unknown account, wrong type, or E-2 mismatch.
+ * @throws ConfigError - Unknown account, wrong type, or region
+ *   mismatch.
  * @throws OAuthError - Flow failure, or `/me` probe failure
  *   (`OAUTH_TOKEN_ERROR`).
  */
@@ -749,15 +733,14 @@ export async function accountsLogin(
   }
   const projectKeys = [...meResp.projects.keys()];
   if (chosenProject === null && projectKeys.length > 0) {
-    // `next(iter(sorted(me_resp.projects)))` —
-    // default Array.sort is UTF-16 code-UNIT order, which coincides
-    // with Python's codepoint sort for these all-ASCII digit-string
-    // project IDs (`b7-reviewA-resolution.md` SEM-N3).
+    // `next(iter(sorted(me_resp.projects)))` — the default Array.sort
+    // is UTF-16 code-unit order, which coincides with Python's
+    // codepoint sort for these all-ASCII digit-string project IDs.
     chosenProject = [...projectKeys].sort()[0] ?? null;
   }
   assertProjectRegionMatches(meResp, chosenProject, account.region);
 
-  // Validation passed — safe to persist (`accounts.py`).
+  // Validation passed — safe to persist.
   const tokensPath = effects.tokenStore.writeTokens(name, tokens);
   if (chosenProject !== null && chosenProject !== account.default_project) {
     effects.config.updateAccount(name, { default_project: chosenProject });
@@ -773,8 +756,7 @@ export async function accountsLogin(
 }
 
 /**
- * Remove the on-disk OAuth tokens for an account (`logout`,
- * `accounts.py`).
+ * Remove the on-disk OAuth tokens for an account (Python `logout`).
  *
  * @param effects - The effect bag.
  * @param name - Account name.
@@ -786,16 +768,15 @@ export function accountsLogout(effects: AuthEffects, name: string): void {
 }
 
 /**
- * Return the current bearer token for an OAuth account (`token`,
- * `accounts.py`).
+ * Return the current bearer token for an OAuth account (Python `token`).
  *
- * Resolution is PER CALL through the injected {@link TokenResolver}
- * (R2.9 — never captured at construction).
+ * Resolution is per call through the injected {@link TokenResolver},
+ * never captured at construction.
  *
  * @param effects - The effect bag.
  * @param name - Account name; `null` means the active account.
  * @returns `null` for `service_account`; the plaintext bearer for the
- *   OAuth types (a documented reveal site, packet §3.3).
+ *   OAuth types (this module's second reveal site).
  * @throws ConfigError - Account not found.
  * @throws OAuthError - Token cannot be resolved.
  */
@@ -814,7 +795,7 @@ export async function accountsToken(
   return effects.tokenResolver.getStaticToken(account);
 }
 
-/** Options bag of {@link accountsExportBridge} (Python kwonly, R3.8). */
+/** Options bag of {@link accountsExportBridge} (Python keyword-only parameters). */
 export interface ExportBridgeOptions {
   /** Destination path for the bridge file. */
   readonly to: string;
@@ -827,8 +808,8 @@ export interface ExportBridgeOptions {
 }
 
 /**
- * Export the named (or active) account as a v2 bridge file
- * (`export_bridge`, `accounts.py`).
+ * Export the named (or active) account as a v2 bridge file (Python
+ * `export_bridge`).
  *
  * @param effects - The effect bag.
  * @param options - Destination + optional account / pins.
@@ -840,9 +821,8 @@ export async function accountsExportBridge(
   effects: AuthEffects,
   options: ExportBridgeOptions,
 ): Promise<string> {
-  // Python `account or cm.get_active().account` —
-  // an EMPTY-string account also falls through to the active account
-  // (falsy-`or`, not nullish; `b7-reviewA-resolution.md` SEM-F1).
+  // Python `account or cm.get_active().account`: an empty-string account
+  // also falls through to the active account (falsy `or`, not nullish).
   const explicitAccount = options.account ?? null;
   const name =
     explicitAccount !== null && explicitAccount !== ""
@@ -867,7 +847,7 @@ export async function accountsExportBridge(
 }
 
 /**
- * Remove the v2 bridge file (`remove_bridge`, `accounts.py`).
+ * Remove the v2 bridge file (Python `remove_bridge`).
  *
  * @param effects - The effect bag.
  * @param options - `at` overrides the default search paths.

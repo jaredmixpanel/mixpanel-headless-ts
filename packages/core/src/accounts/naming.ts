@@ -1,41 +1,33 @@
 /**
- * Pure-functional account-name derivation from `/me` — TS port of
- * `mixpanel_headless/_internal/auth/naming.py` (whole file, B7-A1
- * packet §3.1, `b7-packets.md`).
+ * Pure account-name derivation from `/me`: {@link slugify} and
+ * {@link defaultAccountName}. No I/O, env, clock or randomness — the
+ * property tests rely on determinism. {@link slugify} runs NFKD on the
+ * engine's Unicode tables where CPython pins its own; no pinned table is
+ * feasible for full NFKD, so the fuzz domain is biased to ASCII, Latin-1
+ * and ligatures. The 32-character truncation happens after the ASCII
+ * fold, so `String.prototype.slice` is a codepoint slice there.
  *
- * Both functions are pure: no I/O, no env access, no clock reads, no
- * random sampling. Determinism is required by the property tests
- * in `test/accounts/naming.pbt.test.ts`.
- *
- * Unicode caveat (packet Caution #12, TS-2 style): {@link slugify} runs
- * NFKD on V8's Unicode tables where CPython pins its own — no pinned
- * table is feasible for full NFKD, so the naming fuzz domain is biased
- * to ASCII/Latin-1/ligatures and residual skew is disclosed in the
- * shard RUN record. The 32-char truncation happens AFTER the ASCII
- * fold (pure ASCII by then), so `String.prototype.slice` is safe — the
- * invariant is asserted in `test/accounts/naming.test.ts` rather than
- * importing `cpSlice`.
+ * @see mixpanel_headless._internal.auth.naming
  */
 
 import type { MeResponse } from "../client/me.js";
 
 /**
- * Upper bound on slug length (`naming.py`). Leaves headroom under
- * the `_AccountBase.name` 64-char ceiling so `-2` collision suffixes
- * never push a derived name over the model constraint.
+ * Upper bound on slug length. Leaves headroom under the
+ * `_AccountBase.name` 64-char ceiling so `-2` collision suffixes never
+ * push a derived name over the model constraint.
  */
 const SLUG_MAX_LEN = 32;
 
 /**
  * Matches any run of characters outside the slug alphabet (lowercase
- * ASCII letters or digits) — replaced with a single `-`
- * (`naming.py`).
+ * ASCII letters or digits) — replaced with a single `-`.
  */
 const NON_SLUG_CHARS = /[^a-z0-9]+/g;
 
 /**
- * Reduce an org name to the `[a-z0-9-]{0,32}` subset (port of
- * `slugify`, `naming.py`).
+ * Reduce an org name to the `[a-z0-9-]{0,32}` subset (Python
+ * `slugify`).
  *
  * Six-step normalization (applied in order):
  *
@@ -53,7 +45,7 @@ const NON_SLUG_CHARS = /[^a-z0-9]+/g;
  *   `null`/`undefined` is treated as the empty string.
  * @returns The slug, matching `^[a-z0-9-]{0,32}$`. Empty string when no
  *   input characters survived normalization (e.g. for `"---"`) —
- *   callers MUST handle that case (typically via the `org-{org_id}`
+ *   callers must handle that case (typically via the `org-{org_id}`
  *   fallback in {@link defaultAccountName}).
  * @example
  * ```typescript
@@ -63,14 +55,17 @@ const NON_SLUG_CHARS = /[^a-z0-9]+/g;
  * ```
  */
 export function slugify(value: string | null | undefined): string {
-  // Python `if not value` — None and "" both fall through (watchlist #6
-  // does not apply: the input is typed string, never a number).
+  // Python `if not value` — None and "" both fall through.
   if (value === undefined || value === null || value === "") {
     return "";
   }
+  // Divergence: NFKD runs on the host engine's Unicode tables, CPython's
+  // `unicodedata` on its own pinned version; a codepoint whose
+  // compatibility decomposition changed between the two can slug
+  // differently.
   const normalized = value.normalize("NFKD");
   // ASCII fold: `normalized.encode("ascii", errors="ignore")` drops
-  // every non-ASCII CODEPOINT; iterate by codepoint so astral chars
+  // every non-ASCII codepoint; iterate by codepoint so astral chars
   // are dropped whole (never split into surrogate halves).
   let folded = "";
   for (const ch of normalized) {
@@ -92,8 +87,8 @@ export function slugify(value: string | null | undefined): string {
 }
 
 /**
- * Pick a default account name from `/me`, suffixing on collision (port
- * of `default_account_name`, `naming.py`).
+ * Pick a default account name from `/me`, suffixing on collision
+ * (Python `default_account_name`).
  *
  * Picks the first organization from `me.organizations` as the slug
  * source. When the slugified org name is empty, falls back to
@@ -101,19 +96,11 @@ export function slugify(value: string | null | undefined): string {
  * to the literal `"account"`. Collision suffixes start at `-2` (never
  * `-1`) and increment monotonically until a unique name is found.
  *
- * ORDER (USER RATIFICATION 2026-08-16,
- * `docs/history/phase3/design/user-ratifications.md:14-22` — supersedes the
- * B7-ARB-A R2 exclusion, `b7-reviewA-resolution.md`, and closes
- * playbook Discrepancy #13's result-affecting site): Python's "first
- * organization" is dict INSERTION order (`next(iter(...))`,
- * `naming.py`), and `MeResponse.organizations` is now an
- * insertion-order-preserving `ReadonlyMap` sourced from the lossless
- * JSON layer's key-order capture, so the first-org pick
- * matches Python exactly — including when `/me` emits organizations
- * out of ascending-id order. The former ascending-id fuzz-domain
- * exclusion is REMOVED (out-of-order org strategies run in
- * `test/accounts/naming-order.test.ts` and the B8-MAPFIX R10.9
- * harness).
+ * Python's "first organization" is dict insertion order
+ * (`next(iter(...))`); `MeResponse.organizations` is an
+ * insertion-ordered `ReadonlyMap` fed by the lossless JSON layer's
+ * key-order capture, so the pick matches Python even when `/me` lists
+ * organizations out of ascending-id order.
  *
  * @param me - Parsed `/me` response.
  * @param existing - Set of already-taken local account names. Treated
