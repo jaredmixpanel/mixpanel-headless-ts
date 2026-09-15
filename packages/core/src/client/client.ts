@@ -143,6 +143,7 @@ import type {
 } from "./core.js";
 import { getUserAgent, requestHeaders } from "./headers.js";
 import {
+  bindFirst,
   executeWithRetry,
   isPlainRecord,
   type RequestExecutor,
@@ -573,6 +574,533 @@ function signalAwareSleep(
   };
 }
 
+/** Options-derived seams, fixed for the client's lifetime. */
+interface ClientConfig {
+  /**
+   * Python `timeout: float | None = None` — `null` means "route-aware
+   * defaults"; an explicit value applies to every request.
+   */
+  readonly timeoutSeconds: number | null;
+  readonly exportTimeoutSeconds: number;
+  readonly maxRetries: number;
+  readonly tokenResolver: TokenResolver | null;
+  readonly fetchImpl: typeof fetch;
+  readonly sleep: (ms: number) => Promise<void>;
+  readonly random: RandomSource;
+  readonly now: () => Date;
+  readonly logger: RetryLogger | undefined;
+  readonly getCustomHeaderEnv: CustomHeaderEnvSource;
+  /**
+   * PR #235: the override SOURCE is kept (not its value) so a provider is
+   * consulted on every request — Python's `_endpoints_for` reads
+   * `os.environ` per call, never at construction. `withProject` hands
+   * the same source to the derived client.
+   */
+  readonly endpointOverridesSource: EndpointOverridesSource | undefined;
+  readonly getEndpointOverrides: ClientCore["endpointOverrides"];
+}
+
+/**
+ * The mutable client state (the Python instance attributes). One bag,
+ * shared by reference between the core and every method, so a `use()`
+ * swap is visible everywhere at once.
+ */
+interface ClientState {
+  session: Session;
+  /**
+   * Python caches the ServiceAccount Basic header at construction; the
+   * TS auth model is async, so the cache fills lazily on first use —
+   * observationally identical (SA header derivation is pure and the
+   * resolver is never consulted for SA, `_get_auth_header`).
+   */
+  cachedBasicHeader: string | null;
+  workspaceId: number | null;
+  cachedWorkspaceId: number | null;
+  resolvedWorkspace: WorkspaceRef | null;
+  meResolver: WorkspaceResolver | null;
+  httpHandle: HttpHandle | null;
+}
+
+/** What every client function receives first (see {@link bindFirst}). */
+interface ClientContext {
+  readonly config: ClientConfig;
+  readonly state: ClientState;
+}
+
+// ----- ClientCore members -----
+
+/** `_endpoints_for(self._session.account.region)` — per call. */
+function currentEndpoints(
+  ctx: ClientContext,
+): ReadonlyMap<EndpointKind, string> {
+  return endpointsFor(
+    ctx.state.session.account.region,
+    ctx.config.getEndpointOverrides(),
+  );
+}
+
+function ensureHttp(ctx: ClientContext): HttpHandle {
+  ctx.state.httpHandle ??= { fetchImpl: ctx.config.fetchImpl };
+  return ctx.state.httpHandle;
+}
+
+// `_default_timeout` (`api_client.py:489-509`): explicit constructor
+// timeout wins; else route-aware, reading the CURRENT session's region
+// (an account swap via `use()` re-routes, exactly like Python's
+// `self._session.account.region` read).
+function defaultTimeoutSeconds(ctx: ClientContext, url: string): number {
+  if (ctx.config.timeoutSeconds !== null) {
+    return ctx.config.timeoutSeconds;
+  }
+  // Family classification (longest prefix, PR #235) replaces the old
+  // `startswith(app)` check so App routes on an override host — even a
+  // split `appBaseUrl` nested under the query prefix — keep the App
+  // timeout.
+  if (apiFamilyFor(url, currentEndpoints(ctx)) === "app") {
+    return DEFAULT_APP_TIMEOUT_S;
+  }
+  return DEFAULT_QUERY_TIMEOUT_S;
+}
+
+async function getAuthHeader(ctx: ClientContext): Promise<string> {
+  const account = ctx.state.session.account;
+  if (account.type === "service_account") {
+    ctx.state.cachedBasicHeader ??= await accountAuthHeader(account, {});
+    return ctx.state.cachedBasicHeader;
+  }
+  // OAuth variants re-resolve per call so a refreshed bearer surfaces
+  // without rebuilding the client (`api_client.py:406-412`).
+  return accountAuthHeader(account, {
+    tokenResolver: ctx.config.tokenResolver,
+  });
+}
+
+function coreRequestHeaders(
+  ctx: ClientContext,
+  extra: Record<string, string>,
+): Record<string, string> {
+  const sessionHeaders: Record<string, string> = Object.fromEntries(
+    ctx.state.session.headers,
+  );
+  return requestHeaders(
+    {
+      getUserAgent,
+      getCustomHeaderEnv: ctx.config.getCustomHeaderEnv,
+      sessionHeaders,
+    },
+    extra,
+  );
+}
+
+function executeDeps(
+  ctx: ClientContext,
+  signal?: AbortSignal,
+): RetryExecutorDeps {
+  return {
+    request: createRequestExecutor(ensureHttp(ctx).fetchImpl, signal),
+    sleep: signalAwareSleep(ctx.config.sleep, signal),
+    random: ctx.config.random,
+    maxRetries: ctx.config.maxRetries,
+    defaultTimeoutSeconds: bindFirst(ctx, defaultTimeoutSeconds),
+    requestHeaders: bindFirst(ctx, coreRequestHeaders),
+    projectId: ctx.state.session.project.id,
+    logger: ctx.config.logger,
+  };
+}
+
+function appDeps(ctx: ClientContext, signal?: AbortSignal): AppRequestDeps {
+  return {
+    request: createRequestExecutor(ensureHttp(ctx).fetchImpl, signal),
+    sleep: signalAwareSleep(ctx.config.sleep, signal),
+    random: ctx.config.random,
+    maxRetries: ctx.config.maxRetries,
+    defaultTimeoutSeconds: bindFirst(ctx, defaultTimeoutSeconds),
+    requestHeaders: bindFirst(ctx, coreRequestHeaders),
+    projectId: ctx.state.session.project.id,
+    region: ctx.state.session.account.region,
+    // Snapshot of the provider's CURRENT value — `appDeps()` is built per
+    // call, so this is still a per-request read (PR #235).
+    endpointOverrides: ctx.config.getEndpointOverrides(),
+    getAuthHeader: bindFirst(ctx, getAuthHeader),
+    logger: ctx.config.logger,
+  };
+}
+
+async function requestQueryHost(
+  ctx: ClientContext,
+  method: string,
+  url: string,
+  callOptions: QueryHostRequestOptions = {},
+): Promise<JsonValue> {
+  const params = callOptions.params ?? {};
+  if (callOptions.injectProjectId !== false) {
+    params["project_id"] = ctx.state.session.project.id;
+  }
+  // `_WORKSPACE_SCOPED_FAMILIES` (PR #235): query + engage, classified
+  // by longest prefix — identical to the old `startswith(query)` on the
+  // live table (engage sits under the query prefix) and correct under
+  // split overrides.
+  const family = apiFamilyFor(url, currentEndpoints(ctx));
+  // Explicit-only pin injection (`api_client.py:893-902`): a
+  // caller-supplied workspace_id always wins (setdefault), and no
+  // pin means nothing is injected — never an auto-resolution.
+  if (
+    callOptions.injectWorkspaceId !== false &&
+    family !== null &&
+    WORKSPACE_SCOPED_FAMILIES.has(family) &&
+    ctx.state.workspaceId !== null &&
+    !Object.hasOwn(params, "workspace_id")
+  ) {
+    params["workspace_id"] = ctx.state.workspaceId;
+  }
+  return executeWithRetry(executeDeps(ctx, callOptions.signal), {
+    method,
+    url,
+    params,
+    jsonData: callOptions.data ?? null,
+    formData: callOptions.formData ?? null,
+    headers: { Authorization: await getAuthHeader(ctx) },
+    timeoutSeconds: callOptions.timeoutSeconds ?? null,
+  });
+}
+
+/** Assemble the {@link ClientCore} seam the domain factories consume. */
+function buildClientCore(ctx: ClientContext): ClientCore {
+  const { config, state } = ctx;
+  return {
+    timeoutSeconds: config.timeoutSeconds,
+    defaultTimeoutSeconds: bindFirst(ctx, defaultTimeoutSeconds),
+    exportTimeoutSeconds: config.exportTimeoutSeconds,
+    maxRetries: config.maxRetries,
+    sleep: config.sleep,
+    random: config.random,
+    now: config.now,
+    tokenResolver: config.tokenResolver,
+    logger: config.logger,
+    session: (): Session => state.session,
+    projectId: (): string => state.session.project.id,
+    region: (): Region => state.session.account.region,
+    workspaceId: (): number | null => state.workspaceId,
+    endpointOverrides: config.getEndpointOverrides,
+    endpoints: bindFirst(ctx, currentEndpoints),
+    buildUrl: (kind: EndpointKind, path: string): string =>
+      buildUrl(
+        state.session.account.region,
+        kind,
+        path,
+        config.getEndpointOverrides(),
+      ),
+    getAuthHeader: bindFirst(ctx, getAuthHeader),
+    requestHeaders: bindFirst(ctx, coreRequestHeaders),
+    http: bindFirst(ctx, ensureHttp),
+    isHttpOpen: (): boolean => state.httpHandle !== null,
+    closeHttp: (): void => {
+      state.httpHandle = null;
+    },
+    executeDeps: bindFirst(ctx, executeDeps),
+    appDeps: bindFirst(ctx, appDeps),
+    rawRequest: (
+      transportOptions: Parameters<RequestExecutor>[0],
+      signal?: AbortSignal,
+    ): Promise<RawFetchResult> =>
+      rawFetch(ensureHttp(ctx).fetchImpl, transportOptions, signal),
+    requestQueryHost: bindFirst(ctx, requestQueryHost),
+  };
+}
+
+// ----- MixpanelClient members -----
+
+async function listWorkspaces(ctx: ClientContext): Promise<PublicWorkspace[]> {
+  const pid = ctx.state.session.project.id;
+  const path = `/projects/${pid}/workspaces/public`;
+  const results = await appRequest(appDeps(ctx), "GET", path);
+  if (!Array.isArray(results)) {
+    throw new MixpanelHeadlessError(
+      `Unexpected response format from list_workspaces: ` +
+        `expected list, got ${typeof results}`,
+    );
+  }
+  return validateResponseModels(
+    PublicWorkspace,
+    results.map((item) => toNativeJson(item)),
+    { endpoint: "list_workspaces" },
+  );
+}
+
+async function projectsMetadataIndex(
+  ctx: ClientContext,
+): Promise<Record<string, JsonValue>> {
+  const payload = await appRequest(
+    appDeps(ctx),
+    "GET",
+    "/projects/metadata/index",
+  );
+  if (!isPlainRecord(payload)) {
+    // Python logs a warning and treats the payload as empty.
+    return {};
+  }
+  return payload;
+}
+
+async function resolveWorkspaceFromMetadata(
+  ctx: ClientContext,
+): Promise<number | null> {
+  const pid = ctx.state.session.project.id;
+  let index: Record<string, JsonValue>;
+  try {
+    index = await projectsMetadataIndex(ctx);
+  } catch (error) {
+    // 403/404 = index genuinely unavailable for this credential — a
+    // clean "this source can't answer". Auth / rate-limit / server /
+    // network errors propagate (`api_client.py:1590-1604`).
+    if (
+      error instanceof QueryError &&
+      FALLBACK_HTTP_STATUSES.has(error.statusCode)
+    ) {
+      return null;
+    }
+    throw error;
+  }
+  const entry = Object.hasOwn(index, pid) ? index[pid] : undefined;
+  if (entry === undefined || !isPlainRecord(entry)) {
+    return null;
+  }
+  const rawWorkspaces = Object.hasOwn(entry, "workspaces")
+    ? entry["workspaces"]
+    : undefined;
+  if (rawWorkspaces === undefined || !isPlainRecord(rawWorkspaces)) {
+    return null;
+  }
+  const views: WorkspaceView[] = [];
+  for (const raw of Object.values(rawWorkspaces)) {
+    const view = workspaceViewFromMetadataEntry(raw);
+    if (view !== null) {
+      views.push(view);
+    }
+  }
+  if (views.length === 0) {
+    return null;
+  }
+  return selectWorkspaceId(views);
+}
+
+async function resolveWorkspaceId(ctx: ClientContext): Promise<number> {
+  const { state } = ctx;
+  if (state.workspaceId !== null) {
+    return state.workspaceId;
+  }
+  if (state.cachedWorkspaceId !== null) {
+    return state.cachedWorkspaceId;
+  }
+  const pid = state.session.project.id;
+  if (state.meResolver !== null) {
+    const resolved = await state.meResolver(pid);
+    if (resolved !== null) {
+      state.cachedWorkspaceId = resolved;
+      return resolved;
+    }
+  }
+  let publicWorkspaces: PublicWorkspace[];
+  try {
+    publicWorkspaces = await listWorkspaces(ctx);
+  } catch (error) {
+    // A 403/404 means this credential can't read /workspaces/public —
+    // fall through to the metadata index (`api_client.py:1483-1498`).
+    if (
+      error instanceof QueryError &&
+      FALLBACK_HTTP_STATUSES.has(error.statusCode)
+    ) {
+      publicWorkspaces = [];
+    } else {
+      throw error;
+    }
+  }
+  const publicId = selectWorkspaceId(
+    publicWorkspaces.map((ws) => workspaceViewFromPublic(ws)),
+  );
+  if (publicId !== null) {
+    state.cachedWorkspaceId = publicId;
+    return publicId;
+  }
+  const metadataId = await resolveWorkspaceFromMetadata(ctx);
+  if (metadataId !== null) {
+    state.cachedWorkspaceId = metadataId;
+    return metadataId;
+  }
+  throw new WorkspaceScopeError(
+    `Could not resolve a workspace for project ` +
+      `'${state.session.project.id}'. No workspace is pinned and none was ` +
+      `discoverable via /me, /workspaces/public, or the projects metadata ` +
+      `index. If the project has workspaces, pass one explicitly ` +
+      `(MP_WORKSPACE_ID or Workspace(workspace=...)).`,
+    "NO_WORKSPACES",
+    { project_id: state.session.project.id },
+  );
+}
+
+async function resolveWorkspace(ctx: ClientContext): Promise<WorkspaceRef> {
+  const { state } = ctx;
+  if (state.resolvedWorkspace !== null) {
+    return state.resolvedWorkspace;
+  }
+  const workspaces = await listWorkspaces(ctx);
+  const chosenId = selectWorkspaceId(
+    workspaces.map((ws) => workspaceViewFromPublic(ws)),
+  );
+  if (chosenId === null) {
+    throw new WorkspaceScopeError(
+      `Project ${state.session.project.id} has no accessible workspaces.`,
+    );
+  }
+  const chosen = workspaces.find((ws) => ws.id === chosenId) as PublicWorkspace;
+  const ref: WorkspaceRef = {
+    id: chosen.id,
+    name: chosen.name,
+    is_default: chosen.is_default,
+  };
+  state.resolvedWorkspace = ref;
+  state.cachedWorkspaceId = ref.id;
+  return ref;
+}
+
+async function use(
+  ctx: ClientContext,
+  useOptions: ClientUseOptions = {},
+): Promise<void> {
+  const { config, state } = ctx;
+  const account = useOptions.account ?? null;
+  const projectInput = useOptions.project ?? null;
+  const workspaceInput = useOptions.workspace ?? null;
+  const projectObj: Project | null =
+    typeof projectInput === "string" ? { id: projectInput } : projectInput;
+  const workspaceObj: WorkspaceRef | null =
+    typeof workspaceInput === "number"
+      ? { id: workspaceInput }
+      : workspaceInput;
+  // The workspace axis is ALWAYS passed to replace: a zero-axis use()
+  // clears `session.workspace` (`api_client.py:1079-1081` +
+  // `Session.replace` sentinel semantics).
+  const newSession = sessionReplace(state.session, {
+    account,
+    project: projectObj,
+    workspace: workspaceObj,
+  });
+  // Atomic-on-success (`api_client.py:1082-1095`): probe the new
+  // account's header BEFORE swapping anything. A failing probe leaves
+  // the prior session/header intact.
+  let newCachedBasic: string | null;
+  if (newSession.account.type === "service_account") {
+    newCachedBasic = await accountAuthHeader(newSession.account, {});
+  } else {
+    await accountAuthHeader(newSession.account, {
+      tokenResolver: config.tokenResolver,
+    });
+    newCachedBasic = null;
+  }
+  state.session = newSession;
+  state.cachedBasicHeader = newCachedBasic;
+  if (account !== null || projectObj !== null) {
+    state.resolvedWorkspace = newSession.workspace ?? null;
+    state.cachedWorkspaceId = null;
+  }
+  // Unconditional pin sync (`api_client.py:1101-1112`): without it,
+  // maybeScopedPath keeps emitting /workspaces/<old>/… and the
+  // query-host injection keeps sending a stale workspace_id.
+  state.workspaceId = newSession.workspace?.id ?? null;
+  if (workspaceObj !== null) {
+    state.workspaceId = workspaceObj.id;
+    state.resolvedWorkspace = workspaceObj;
+  }
+}
+
+// `require_scoped_path` (`api_client.py:1666-1694`): shared by the public
+// client member AND the C4 flag factory (feature flags are the
+// require-scoped domain).
+async function requireScopedPath(
+  ctx: ClientContext,
+  domainPath: string,
+): Promise<string> {
+  const wsId = await resolveWorkspaceId(ctx);
+  return `/projects/${ctx.state.session.project.id}/workspaces/${wsId}/${domainPath}`;
+}
+
+async function request(
+  ctx: ClientContext,
+  method: string,
+  url: string,
+  requestOptions: ClientRequestOptions = {},
+): Promise<JsonValue> {
+  // Python builds {Authorization} then update(headers) — caller
+  // extras win on collision (`api_client.py:963-965`).
+  const headers: Record<string, string> = {
+    Authorization: await getAuthHeader(ctx),
+    ...requestOptions.headers,
+  };
+  return executeWithRetry(executeDeps(ctx, requestOptions.signal), {
+    method,
+    url,
+    params: requestOptions.params ?? null,
+    jsonData: requestOptions.jsonBody ?? null,
+    headers,
+    timeoutSeconds: requestOptions.timeoutSeconds ?? null,
+  });
+}
+
+function clientAppRequest(
+  ctx: ClientContext,
+  method: string,
+  path: string,
+  appOptions: ClientAppRequestOptions = {},
+): Promise<JsonValue> {
+  return appRequest(appDeps(ctx, appOptions.signal), method, path, {
+    params: appOptions.params,
+    jsonBody: appOptions.jsonBody,
+    formBody: appOptions.formBody,
+    raw: appOptions.raw,
+  });
+}
+
+function withProject(
+  ctx: ClientContext,
+  projectId: string,
+  newWorkspaceId: number | null = null,
+): MixpanelClient {
+  const { config, state } = ctx;
+  // TRUTHY workspace check for the session axis, `is not None` for
+  // the pin — exactly Python's two different guards
+  // (`api_client.py:1725-1740`; watchlist §8 item 6).
+  const newSession = sessionReplace(state.session, {
+    project: { id: projectId },
+    workspace: newWorkspaceId ? { id: newWorkspaceId } : null,
+  });
+  const newClient = createMixpanelClient({
+    session: newSession,
+    timeoutSeconds: config.timeoutSeconds,
+    exportTimeoutSeconds: config.exportTimeoutSeconds,
+    maxRetries: config.maxRetries,
+    tokenResolver: config.tokenResolver,
+    fetch: config.fetchImpl,
+    sleep: config.sleep,
+    random: config.random,
+    now: config.now,
+    logger: config.logger,
+    getCustomHeaderEnv: config.getCustomHeaderEnv,
+    endpointOverrides: config.endpointOverridesSource,
+  });
+  if (newWorkspaceId !== null) {
+    newClient.setWorkspaceId(newWorkspaceId);
+  }
+  return newClient;
+}
+
+async function me(ctx: ClientContext): Promise<Record<string, JsonValue>> {
+  const result = await appRequest(appDeps(ctx), "GET", "/me");
+  if (!isPlainRecord(result)) {
+    return { results: result };
+  }
+  return result;
+}
+
 /**
  * Assemble a Mixpanel API client (the R2.9 factory).
  *
@@ -590,403 +1118,50 @@ function signalAwareSleep(
 export function createMixpanelClient(
   options: MixpanelClientOptions,
 ): MixpanelClient {
-  // Python `timeout: float | None = None` — `null` means "route-aware
-  // defaults"; an explicit value applies to every request.
-  const timeoutSeconds: number | null = options.timeoutSeconds ?? null;
-  const exportTimeoutSeconds = options.exportTimeoutSeconds ?? 600.0;
-  const maxRetries = options.maxRetries ?? 3;
-  const tokenResolver = options.tokenResolver ?? null;
-  const fetchImpl = options.fetch ?? fetch;
-  const sleep = options.sleep ?? defaultSleep;
-  const random = options.random ?? Math.random;
-  const now = options.now ?? ((): Date => new Date());
-  const logger = options.logger;
-  const getCustomHeaderEnv: CustomHeaderEnvSource =
-    options.getCustomHeaderEnv ??
-    ((): { name?: string; value?: string } => ({}));
-  // PR #235: the override SOURCE is kept (not its value) so a provider is
-  // consulted on every request — Python's `_endpoints_for` reads
-  // `os.environ` per call, never at construction.
   const endpointOverridesSource = options.endpointOverrides;
-  const getEndpointOverrides = endpointOverridesProvider(
+  const config: ClientConfig = {
+    timeoutSeconds: options.timeoutSeconds ?? null,
+    exportTimeoutSeconds: options.exportTimeoutSeconds ?? 600.0,
+    maxRetries: options.maxRetries ?? 3,
+    tokenResolver: options.tokenResolver ?? null,
+    fetchImpl: options.fetch ?? fetch,
+    sleep: options.sleep ?? defaultSleep,
+    random: options.random ?? Math.random,
+    now: options.now ?? ((): Date => new Date()),
+    logger: options.logger,
+    getCustomHeaderEnv:
+      options.getCustomHeaderEnv ??
+      ((): { name?: string; value?: string } => ({})),
     endpointOverridesSource,
-  );
-  /** `_endpoints_for(self._session.account.region)` — per call. */
-  const currentEndpoints = (): ReadonlyMap<EndpointKind, string> =>
-    endpointsFor(session.account.region, getEndpointOverrides());
-
-  // ----- mutable client state (the Python instance attributes) -----
-  let session = options.session;
-  // Python caches the ServiceAccount Basic header at construction; the
-  // TS auth model is async, so the cache fills lazily on first use —
-  // observationally identical (SA header derivation is pure and the
-  // resolver is never consulted for SA, `_get_auth_header`).
-  let cachedBasicHeader: string | null = null;
-  let workspaceId: number | null = session.workspace?.id ?? null;
-  let cachedWorkspaceId: number | null = null;
-  let resolvedWorkspace: WorkspaceRef | null = session.workspace ?? null;
-  let meResolver: WorkspaceResolver | null = null;
-  let httpHandle: HttpHandle | null = null;
-
-  const ensureHttp = (): HttpHandle => {
-    httpHandle ??= { fetchImpl };
-    return httpHandle;
+    getEndpointOverrides: endpointOverridesProvider(endpointOverridesSource),
   };
-
-  // `_default_timeout` (`api_client.py:489-509`): explicit constructor
-  // timeout wins; else route-aware, reading the CURRENT session's region
-  // (an account swap via `use()` re-routes, exactly like Python's
-  // `self._session.account.region` read).
-  const defaultTimeoutSeconds = (url: string): number => {
-    if (timeoutSeconds !== null) {
-      return timeoutSeconds;
-    }
-    // Family classification (longest prefix, PR #235) replaces the old
-    // `startswith(app)` check so App routes on an override host — even a
-    // split `appBaseUrl` nested under the query prefix — keep the App
-    // timeout.
-    if (apiFamilyFor(url, currentEndpoints()) === "app") {
-      return DEFAULT_APP_TIMEOUT_S;
-    }
-    return DEFAULT_QUERY_TIMEOUT_S;
+  const state: ClientState = {
+    session: options.session,
+    cachedBasicHeader: null,
+    workspaceId: options.session.workspace?.id ?? null,
+    cachedWorkspaceId: null,
+    resolvedWorkspace: options.session.workspace ?? null,
+    meResolver: null,
+    httpHandle: null,
   };
-
-  const getAuthHeader = async (): Promise<string> => {
-    const account = session.account;
-    if (account.type === "service_account") {
-      cachedBasicHeader ??= await accountAuthHeader(account, {});
-      return cachedBasicHeader;
-    }
-    // OAuth variants re-resolve per call so a refreshed bearer surfaces
-    // without rebuilding the client (`api_client.py:406-412`).
-    return accountAuthHeader(account, { tokenResolver });
-  };
-
-  const coreRequestHeaders = (
-    extra: Record<string, string>,
-  ): Record<string, string> => {
-    const sessionHeaders: Record<string, string> = Object.fromEntries(
-      session.headers,
-    );
-    return requestHeaders(
-      { getUserAgent, getCustomHeaderEnv, sessionHeaders },
-      extra,
-    );
-  };
-
-  const executeDeps = (signal?: AbortSignal): RetryExecutorDeps => ({
-    request: createRequestExecutor(ensureHttp().fetchImpl, signal),
-    sleep: signalAwareSleep(sleep, signal),
-    random,
-    maxRetries,
-    defaultTimeoutSeconds,
-    requestHeaders: coreRequestHeaders,
-    projectId: session.project.id,
-    logger,
-  });
-
-  const appDeps = (signal?: AbortSignal): AppRequestDeps => ({
-    request: createRequestExecutor(ensureHttp().fetchImpl, signal),
-    sleep: signalAwareSleep(sleep, signal),
-    random,
-    maxRetries,
-    defaultTimeoutSeconds,
-    requestHeaders: coreRequestHeaders,
-    projectId: session.project.id,
-    region: session.account.region,
-    // Snapshot of the provider's CURRENT value — `appDeps()` is built per
-    // call, so this is still a per-request read (PR #235).
-    endpointOverrides: getEndpointOverrides(),
-    getAuthHeader,
-    logger,
-  });
-
-  const requestQueryHost = async (
-    method: string,
-    url: string,
-    callOptions: QueryHostRequestOptions = {},
-  ): Promise<JsonValue> => {
-    const params = callOptions.params ?? {};
-    if (callOptions.injectProjectId !== false) {
-      params["project_id"] = session.project.id;
-    }
-    // `_WORKSPACE_SCOPED_FAMILIES` (PR #235): query + engage, classified
-    // by longest prefix — identical to the old `startswith(query)` on the
-    // live table (engage sits under the query prefix) and correct under
-    // split overrides.
-    const family = apiFamilyFor(url, currentEndpoints());
-    // Explicit-only pin injection (`api_client.py:893-902`): a
-    // caller-supplied workspace_id always wins (setdefault), and no
-    // pin means nothing is injected — never an auto-resolution.
-    if (
-      callOptions.injectWorkspaceId !== false &&
-      family !== null &&
-      WORKSPACE_SCOPED_FAMILIES.has(family) &&
-      workspaceId !== null &&
-      !Object.hasOwn(params, "workspace_id")
-    ) {
-      params["workspace_id"] = workspaceId;
-    }
-    return executeWithRetry(executeDeps(callOptions.signal), {
-      method,
-      url,
-      params,
-      jsonData: callOptions.data ?? null,
-      formData: callOptions.formData ?? null,
-      headers: { Authorization: await getAuthHeader() },
-      timeoutSeconds: callOptions.timeoutSeconds ?? null,
-    });
-  };
-
-  const core: ClientCore = {
-    timeoutSeconds,
-    defaultTimeoutSeconds,
-    exportTimeoutSeconds,
-    maxRetries,
-    sleep,
-    random,
-    now,
-    tokenResolver,
-    logger,
-    session: (): Session => session,
-    projectId: (): string => session.project.id,
-    region: (): Region => session.account.region,
-    workspaceId: (): number | null => workspaceId,
-    endpointOverrides: getEndpointOverrides,
-    endpoints: currentEndpoints,
-    buildUrl: (kind: EndpointKind, path: string): string =>
-      buildUrl(session.account.region, kind, path, getEndpointOverrides()),
-    getAuthHeader,
-    requestHeaders: coreRequestHeaders,
-    http: ensureHttp,
-    isHttpOpen: (): boolean => httpHandle !== null,
-    closeHttp: (): void => {
-      httpHandle = null;
-    },
-    executeDeps,
-    appDeps,
-    rawRequest: (
-      transportOptions: Parameters<RequestExecutor>[0],
-      signal?: AbortSignal,
-    ): Promise<RawFetchResult> =>
-      rawFetch(ensureHttp().fetchImpl, transportOptions, signal),
-    requestQueryHost,
-  };
-
-  const listWorkspaces = async (): Promise<PublicWorkspace[]> => {
-    const pid = session.project.id;
-    const path = `/projects/${pid}/workspaces/public`;
-    const results = await appRequest(appDeps(), "GET", path);
-    if (!Array.isArray(results)) {
-      throw new MixpanelHeadlessError(
-        `Unexpected response format from list_workspaces: ` +
-          `expected list, got ${typeof results}`,
-      );
-    }
-    return validateResponseModels(
-      PublicWorkspace,
-      results.map((item) => toNativeJson(item)),
-      { endpoint: "list_workspaces" },
-    );
-  };
-
-  const projectsMetadataIndex = async (): Promise<
-    Record<string, JsonValue>
-  > => {
-    const payload = await appRequest(
-      appDeps(),
-      "GET",
-      "/projects/metadata/index",
-    );
-    if (!isPlainRecord(payload)) {
-      // Python logs a warning and treats the payload as empty.
-      return {};
-    }
-    return payload;
-  };
-
-  const resolveWorkspaceFromMetadata = async (): Promise<number | null> => {
-    const pid = session.project.id;
-    let index: Record<string, JsonValue>;
-    try {
-      index = await projectsMetadataIndex();
-    } catch (error) {
-      // 403/404 = index genuinely unavailable for this credential — a
-      // clean "this source can't answer". Auth / rate-limit / server /
-      // network errors propagate (`api_client.py:1590-1604`).
-      if (
-        error instanceof QueryError &&
-        FALLBACK_HTTP_STATUSES.has(error.statusCode)
-      ) {
-        return null;
-      }
-      throw error;
-    }
-    const entry = Object.hasOwn(index, pid) ? index[pid] : undefined;
-    if (entry === undefined || !isPlainRecord(entry)) {
-      return null;
-    }
-    const rawWorkspaces = Object.hasOwn(entry, "workspaces")
-      ? entry["workspaces"]
-      : undefined;
-    if (rawWorkspaces === undefined || !isPlainRecord(rawWorkspaces)) {
-      return null;
-    }
-    const views: WorkspaceView[] = [];
-    for (const raw of Object.values(rawWorkspaces)) {
-      const view = workspaceViewFromMetadataEntry(raw);
-      if (view !== null) {
-        views.push(view);
-      }
-    }
-    if (views.length === 0) {
-      return null;
-    }
-    return selectWorkspaceId(views);
-  };
-
-  const resolveWorkspaceId = async (): Promise<number> => {
-    if (workspaceId !== null) {
-      return workspaceId;
-    }
-    if (cachedWorkspaceId !== null) {
-      return cachedWorkspaceId;
-    }
-    const pid = session.project.id;
-    if (meResolver !== null) {
-      const resolved = await meResolver(pid);
-      if (resolved !== null) {
-        cachedWorkspaceId = resolved;
-        return resolved;
-      }
-    }
-    let publicWorkspaces: PublicWorkspace[];
-    try {
-      publicWorkspaces = await listWorkspaces();
-    } catch (error) {
-      // A 403/404 means this credential can't read /workspaces/public —
-      // fall through to the metadata index (`api_client.py:1483-1498`).
-      if (
-        error instanceof QueryError &&
-        FALLBACK_HTTP_STATUSES.has(error.statusCode)
-      ) {
-        publicWorkspaces = [];
-      } else {
-        throw error;
-      }
-    }
-    const publicId = selectWorkspaceId(
-      publicWorkspaces.map((ws) => workspaceViewFromPublic(ws)),
-    );
-    if (publicId !== null) {
-      cachedWorkspaceId = publicId;
-      return publicId;
-    }
-    const metadataId = await resolveWorkspaceFromMetadata();
-    if (metadataId !== null) {
-      cachedWorkspaceId = metadataId;
-      return metadataId;
-    }
-    throw new WorkspaceScopeError(
-      `Could not resolve a workspace for project ` +
-        `'${session.project.id}'. No workspace is pinned and none was ` +
-        `discoverable via /me, /workspaces/public, or the projects metadata ` +
-        `index. If the project has workspaces, pass one explicitly ` +
-        `(MP_WORKSPACE_ID or Workspace(workspace=...)).`,
-      "NO_WORKSPACES",
-      { project_id: session.project.id },
-    );
-  };
-
-  const resolveWorkspace = async (): Promise<WorkspaceRef> => {
-    if (resolvedWorkspace !== null) {
-      return resolvedWorkspace;
-    }
-    const workspaces = await listWorkspaces();
-    const chosenId = selectWorkspaceId(
-      workspaces.map((ws) => workspaceViewFromPublic(ws)),
-    );
-    if (chosenId === null) {
-      throw new WorkspaceScopeError(
-        `Project ${session.project.id} has no accessible workspaces.`,
-      );
-    }
-    const chosen = workspaces.find(
-      (ws) => ws.id === chosenId,
-    ) as PublicWorkspace;
-    const ref: WorkspaceRef = {
-      id: chosen.id,
-      name: chosen.name,
-      is_default: chosen.is_default,
-    };
-    resolvedWorkspace = ref;
-    cachedWorkspaceId = ref.id;
-    return ref;
-  };
-
-  const use = async (useOptions: ClientUseOptions = {}): Promise<void> => {
-    const account = useOptions.account ?? null;
-    const projectInput = useOptions.project ?? null;
-    const workspaceInput = useOptions.workspace ?? null;
-    const projectObj: Project | null =
-      typeof projectInput === "string" ? { id: projectInput } : projectInput;
-    const workspaceObj: WorkspaceRef | null =
-      typeof workspaceInput === "number"
-        ? { id: workspaceInput }
-        : workspaceInput;
-    // The workspace axis is ALWAYS passed to replace: a zero-axis use()
-    // clears `session.workspace` (`api_client.py:1079-1081` +
-    // `Session.replace` sentinel semantics).
-    const newSession = sessionReplace(session, {
-      account,
-      project: projectObj,
-      workspace: workspaceObj,
-    });
-    // Atomic-on-success (`api_client.py:1082-1095`): probe the new
-    // account's header BEFORE swapping anything. A failing probe leaves
-    // the prior session/header intact.
-    let newCachedBasic: string | null;
-    if (newSession.account.type === "service_account") {
-      newCachedBasic = await accountAuthHeader(newSession.account, {});
-    } else {
-      await accountAuthHeader(newSession.account, { tokenResolver });
-      newCachedBasic = null;
-    }
-    session = newSession;
-    cachedBasicHeader = newCachedBasic;
-    if (account !== null || projectObj !== null) {
-      resolvedWorkspace = newSession.workspace ?? null;
-      cachedWorkspaceId = null;
-    }
-    // Unconditional pin sync (`api_client.py:1101-1112`): without it,
-    // maybeScopedPath keeps emitting /workspaces/<old>/… and the
-    // query-host injection keeps sending a stale workspace_id.
-    workspaceId = newSession.workspace?.id ?? null;
-    if (workspaceObj !== null) {
-      workspaceId = workspaceObj.id;
-      resolvedWorkspace = workspaceObj;
-    }
-  };
-
-  // `require_scoped_path` (`api_client.py:1666-1694`) as a named
-  // closure: shared by the public client member below AND the C4 flag
-  // factory (feature flags are the require-scoped domain).
-  const requireScopedPath = async (domainPath: string): Promise<string> => {
-    const wsId = await resolveWorkspaceId();
-    return `/projects/${session.project.id}/workspaces/${wsId}/${domainPath}`;
-  };
+  const ctx: ClientContext = { config, state };
+  const core = buildClientCore(ctx);
 
   const client: MixpanelClient = {
     // === B4 domain-method merge point (append-only; one spread line
     // per shard — C2..C5; shards touch disjoint lines here). ===
-    ...createQueryHostMethods(core, { resolveWorkspaceId }),
+    ...createQueryHostMethods(core, {
+      resolveWorkspaceId: bindFirst(ctx, resolveWorkspaceId),
+    }),
     ...createEngageMethods(core),
     ...createStreamingMethods(core),
     ...createDashboardMethods(core),
     ...createBookmarkMethods(core),
     ...createBookmarkUrlMethods(core),
     ...createCohortMethods(core),
-    ...createFlagMethods(core, { requireScopedPath }),
+    ...createFlagMethods(core, {
+      requireScopedPath: bindFirst(ctx, requireScopedPath),
+    }),
     ...createExperimentMethods(core),
     ...createAnnotationMethods(core),
     ...createWebhookMethods(core),
@@ -1004,123 +1179,59 @@ export function createMixpanelClient(
     ...createBusinessContextMethods(core),
     ...createReplaysSigningMethods(core),
     get session(): Session {
-      return session;
+      return state.session;
     },
     get projectId(): string {
-      return session.project.id;
+      return state.session.project.id;
     },
     get region(): Region {
-      return session.account.region;
+      return state.session.account.region;
     },
     get workspaceId(): number | null {
-      return workspaceId;
+      return state.workspaceId;
     },
     get hasWorkspaceResolver(): boolean {
-      return meResolver !== null;
+      return state.meResolver !== null;
     },
     core,
-    currentAuthHeader: getAuthHeader,
+    currentAuthHeader: bindFirst(ctx, getAuthHeader),
     setWorkspaceResolver: (resolver: WorkspaceResolver | null): void => {
-      meResolver = resolver;
+      state.meResolver = resolver;
     },
-    request: async (
-      method: string,
-      url: string,
-      requestOptions: ClientRequestOptions = {},
-    ): Promise<JsonValue> => {
-      // Python builds {Authorization} then update(headers) — caller
-      // extras win on collision (`api_client.py:963-965`).
-      const headers: Record<string, string> = {
-        Authorization: await getAuthHeader(),
-        ...requestOptions.headers,
-      };
-      return executeWithRetry(executeDeps(requestOptions.signal), {
-        method,
-        url,
-        params: requestOptions.params ?? null,
-        jsonData: requestOptions.jsonBody ?? null,
-        headers,
-        timeoutSeconds: requestOptions.timeoutSeconds ?? null,
-      });
-    },
-    appRequest: (
-      method: string,
-      path: string,
-      appOptions: ClientAppRequestOptions = {},
-    ): Promise<JsonValue> =>
-      appRequest(appDeps(appOptions.signal), method, path, {
-        params: appOptions.params,
-        jsonBody: appOptions.jsonBody,
-        formBody: appOptions.formBody,
-        raw: appOptions.raw,
-      }),
-    requestQueryHost,
-    use,
-    resolveWorkspace,
+    request: bindFirst(ctx, request),
+    appRequest: bindFirst(ctx, clientAppRequest),
+    requestQueryHost: bindFirst(ctx, requestQueryHost),
+    use: bindFirst(ctx, use),
+    resolveWorkspace: bindFirst(ctx, resolveWorkspace),
     setWorkspaceId: (value: number | null): void => {
-      workspaceId = value;
+      state.workspaceId = value;
       if (value === null) {
-        cachedWorkspaceId = null;
+        state.cachedWorkspaceId = null;
       }
     },
-    resolveWorkspaceId,
-    projectsMetadataIndex,
-    resolveWorkspaceFromMetadata,
+    resolveWorkspaceId: bindFirst(ctx, resolveWorkspaceId),
+    projectsMetadataIndex: bindFirst(ctx, projectsMetadataIndex),
+    resolveWorkspaceFromMetadata: bindFirst(ctx, resolveWorkspaceFromMetadata),
     maybeScopedPath: (domainPath: string): string =>
       maybeScopedPath(domainPath, {
-        projectId: session.project.id,
-        workspaceId,
+        projectId: state.session.project.id,
+        workspaceId: state.workspaceId,
       }),
-    requireScopedPath,
-    withProject: (
-      projectId: string,
-      newWorkspaceId: number | null = null,
-    ): MixpanelClient => {
-      // TRUTHY workspace check for the session axis, `is not None` for
-      // the pin — exactly Python's two different guards
-      // (`api_client.py:1725-1740`; watchlist §8 item 6).
-      const newSession = sessionReplace(session, {
-        project: { id: projectId },
-        workspace: newWorkspaceId ? { id: newWorkspaceId } : null,
-      });
-      const newClient = createMixpanelClient({
-        session: newSession,
-        timeoutSeconds,
-        exportTimeoutSeconds,
-        maxRetries,
-        tokenResolver,
-        fetch: fetchImpl,
-        sleep,
-        random,
-        now,
-        logger,
-        getCustomHeaderEnv,
-        endpointOverrides: endpointOverridesSource,
-      });
-      if (newWorkspaceId !== null) {
-        newClient.setWorkspaceId(newWorkspaceId);
-      }
-      return newClient;
-    },
-    me: async (): Promise<Record<string, JsonValue>> => {
-      const result = await appRequest(appDeps(), "GET", "/me");
-      if (!isPlainRecord(result)) {
-        return { results: result };
-      }
-      return result;
-    },
-    listWorkspaces,
+    requireScopedPath: bindFirst(ctx, requireScopedPath),
+    withProject: bindFirst(ctx, withProject),
+    me: bindFirst(ctx, me),
+    listWorkspaces: bindFirst(ctx, listWorkspaces),
     ensureHttpOpen: (): void => {
-      ensureHttp();
+      ensureHttp(ctx);
     },
-    isHttpOpen: (): boolean => httpHandle !== null,
-    httpHandle: ensureHttp,
+    isHttpOpen: (): boolean => state.httpHandle !== null,
+    httpHandle: bindFirst(ctx, ensureHttp),
     close: (): Promise<void> => {
-      httpHandle = null;
+      state.httpHandle = null;
       return Promise.resolve();
     },
     [Symbol.asyncDispose]: (): Promise<void> => {
-      httpHandle = null;
+      state.httpHandle = null;
       return Promise.resolve();
     },
   };
