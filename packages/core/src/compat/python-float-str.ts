@@ -1,8 +1,5 @@
 /**
- * CPython `repr(float)` / `str(float)` semantics (rulebook R11.2;
- * semantic-trap watchlist item 3). Part of the `pythonCompat` module
- * (rulebook §11): ported once, first; no other module re-derives these
- * semantics.
+ * CPython `repr(float)` / `str(float)` semantics, implemented once here.
  *
  * CPython renders a float from its shortest-round-trip decimal digits and
  * switches to exponent notation exactly when the decimal exponent is
@@ -65,7 +62,7 @@ export function pythonFloatStr(value: number): string {
  *
  * @param magnitude - A finite double with `magnitude > 0`.
  * @returns The CPython rendering of `magnitude` (no sign handling).
- * @throws Error - If `toExponential()` output does not match the expected
+ * @throws {@link Error} - If `toExponential()` output does not match the expected
  *   grammar (unreachable for positive finite doubles; defensive guard).
  */
 function formatPositive(magnitude: number): string {

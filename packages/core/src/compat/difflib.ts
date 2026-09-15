@@ -6,7 +6,7 @@
  * Reference: CPython 3.14 `Lib/difflib.py`. Sequences are codepoint
  * arrays (Python `str` indexing is by codepoint). Autojunk is
  * implemented verbatim — it only activates when the query string is
- * >= 200 codepoints, irrelevant at enum sizes but kept for faithfulness.
+ * at least 200 codepoints, irrelevant at enum sizes but kept for faithfulness.
  *
  * @internal
  */
@@ -18,11 +18,18 @@ import { codepoints, compareCodepoints } from "./codepoint.js";
  * surface `get_close_matches` uses (`isjunk=None`, `autojunk=True`):
  * `set_seq1`/`set_seq2`, `find_longest_match`, `get_matching_blocks`,
  * `ratio`, `quick_ratio`, `real_quick_ratio`. Sequences are codepoint
- * arrays (Python `str` indexing is by codepoint, R11.6).
+ * arrays (Python `str` indexing is by codepoint).
  *
  * Reference: CPython 3.14 `Lib/difflib.py`.
  *
  * @internal
+ * @example
+ * ```ts
+ * const matcher = new SequenceMatcher();
+ * matcher.setSeq2("apple");
+ * matcher.setSeq1("appel");
+ * matcher.ratio(); // 0.8
+ * ```
  */
 class SequenceMatcher {
   /** Sequence 1 (the candidate) as codepoints. */
@@ -37,7 +44,7 @@ class SequenceMatcher {
   /** Autojunk "popular" elements excluded from `b2j`. */
   private bpopular = new Set<string>();
 
-  /** Element → occurrence count over the FULL `b` (for quick_ratio). */
+  /** Element → occurrence count over the full `b` (for quick_ratio). */
   private fullbcount: Map<string, number> | null = null;
 
   /** Cached matching blocks for the current (a, b) pair. */
@@ -289,19 +296,25 @@ class SequenceMatcher {
 }
 
 /**
- * Faithful port of `difflib.get_close_matches(word, possibilities,
- * n, cutoff)` (CPython 3.14), including the `heapq.nlargest` result
- * order: descending `(ratio, candidate)` tuple comparison — ratio
- * first, then candidate string descending by codepoint on ties.
+ * Return the best fuzzy matches for `word` among `possibilities`, exactly
+ * like CPython 3.14 `difflib.get_close_matches` including its
+ * `heapq.nlargest` result order: descending `(ratio, candidate)` tuple
+ * comparison — ratio first, then candidate string descending by codepoint
+ * on ties.
  *
  * @param word - The query word.
  * @param possibilities - Candidate strings, in the caller's order.
- * @param n - Maximum number of close matches (must be > 0).
+ * @param n - Maximum number of close matches (must be positive).
  * @param cutoff - Similarity threshold in [0, 1].
  * @returns The best (at most `n`) matches, best first.
- * @throws RangeError - When `n <= 0` or `cutoff` is outside [0, 1]
+ * @throws {@link RangeError} - when `n` is not positive or `cutoff` is outside [0, 1]
  *   (Python raises `ValueError`; RangeError is the TS analog and no
  *   caller in this module can trigger it).
+ * @example
+ * ```ts
+ * getCloseMatches("uniqe", ["unique", "total", "average"]); // ["unique"]
+ * getCloseMatches("xyz", ["unique", "total"], 3, 0.6); // []
+ * ```
  */
 export function getCloseMatches(
   word: string,

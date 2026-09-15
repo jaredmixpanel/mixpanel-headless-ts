@@ -1,21 +1,21 @@
 /**
  * `urllib.parse` parity slice — TS twins of CPython's `urlsplit`,
  * `urlunsplit`, `urljoin`, and `SplitResult.hostname` for the
- * 045-report-links port (Python PR #223).
+ * report-links port.
  *
- * The WHATWG `URL` class is NOT a substitute here: it percent-encodes,
+ * The WHATWG `URL` class is not a substitute here: it percent-encodes,
  * lowercases and re-serializes as it parses, drops default ports and
  * resolves dot segments differently, whereas `report_links.py` and
- * `api_client.resolve_short_link` observe the RAW CPython split (host
+ * `api_client.resolve_short_link` observe the raw CPython split (host
  * lowercased, everything else verbatim) and echo joined targets back to
  * the caller. Every rule below is copied from CPython 3.12
  * `Lib/urllib/parse.py`; deviations are called out at the code site.
  *
- * Pure per R9.1 — no Node built-ins, no `process`.
+ * Pure: no Node built-ins, no `process` (the core purity boundary).
  */
 
 /**
- * Characters `urlsplit` strips from the LEFT of the url
+ * Characters `urlsplit` strips from the left of the url
  * (`_WHATWG_C0_CONTROL_OR_SPACE`: every C0 control U+0000-U+001F plus
  * the space).
  */
@@ -23,7 +23,7 @@ const WHATWG_C0_CONTROL_OR_SPACE = Array.from({ length: 0x21 }, (_, i) =>
   String.fromCharCode(i),
 ).join("");
 
-/** `_UNSAFE_URL_BYTES_TO_REMOVE` — removed EVERYWHERE before parsing. */
+/** `_UNSAFE_URL_BYTES_TO_REMOVE` — removed everywhere before parsing. */
 const UNSAFE_URL_CHARS = ["\t", "\r", "\n"] as const;
 
 /** `scheme_chars` — the characters a scheme may contain. */
@@ -89,6 +89,15 @@ const USES_NETLOC = new Set([
  * The `ValueError` CPython's `urlsplit` raises for a malformed netloc
  * (an unbalanced IPv6 bracket, an invalid bracketed host, or a netloc
  * whose NFKC normalization introduces a delimiter).
+ *
+ * @example
+ * ```ts
+ * try {
+ *   urlsplit("http://[::1/");
+ * } catch (err) {
+ *   err instanceof UrlSplitError; // true — "Invalid IPv6 URL"
+ * }
+ * ```
  */
 export class UrlSplitError extends Error {
   /**
@@ -161,7 +170,7 @@ function splitNetloc(url: string, start: number): [string, string] {
  * ported (CPython delegates to `ipaddress.ip_address`).
  *
  * @param hostname - The text between `[` and `]`.
- * @throws UrlSplitError - Not a valid IPv6 / IPvFuture host.
+ * @throws {@link UrlSplitError} - Not a valid IPv6 / IPvFuture host.
  */
 function checkBracketedHost(hostname: string): void {
   if (/^v[0-9a-fA-F]+\..+$/u.test(hostname)) {
@@ -233,7 +242,7 @@ function isIpv6Literal(text: string): boolean {
  * introduces a delimiter (e.g. `℀` expanding to `a/c`).
  *
  * @param netloc - The raw netloc.
- * @throws UrlSplitError - Delimiter injected under NFKC.
+ * @throws {@link UrlSplitError} - Delimiter injected under NFKC.
  */
 function checkNetloc(netloc: string): void {
   if (netloc === "" || isAscii(netloc)) {
@@ -289,8 +298,14 @@ function hostnameOf(netloc: string): string | null {
  *
  * @param input - The url text.
  * @returns The split result plus the derived `hostname`.
- * @throws UrlSplitError - The `ValueError` cases (unbalanced `[`/`]`,
+ * @throws {@link UrlSplitError} - The `ValueError` cases (unbalanced `[`/`]`,
  *   invalid bracketed host, NFKC-injected delimiter).
+ * @example
+ * ```ts
+ * urlsplit("https://EU.mixpanel.com/project/1/view/2#report/3?x=1");
+ * // { scheme: "https", netloc: "EU.mixpanel.com", path: "/project/1/view/2",
+ * //   query: "", fragment: "report/3?x=1", hostname: "eu.mixpanel.com" }
+ * ```
  */
 // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function urlsplit(input: string): SplitResult {
@@ -367,8 +382,14 @@ export function urlsplit(input: string): SplitResult {
 /**
  * `urllib.parse.urlunsplit` — reassemble the 5 components.
  *
- * @param parts - The components (`hostname` is ignored).
+ * @param parts - The five components `scheme`, `netloc`, `path`, `query`
+ *   and `fragment`, each `""` when absent; a `hostname` field is ignored.
  * @returns The url text.
+ * @example
+ * ```ts
+ * urlunsplit({ scheme: "https", netloc: "mixpanel.com", path: "/s/abc", query: "", fragment: "" });
+ * // "https://mixpanel.com/s/abc"
+ * ```
  */
 export function urlunsplit(parts: {
   readonly scheme: string;
@@ -404,13 +425,18 @@ export function urlunsplit(parts: {
 /**
  * `urllib.parse.urljoin(base, url)` — TS port of CPython 3.12's
  * RFC-3986-style join. The `;params` split `urlparse` performs on the
- * last path segment is NOT mirrored (the port never joins targets that
+ * last path segment is not mirrored (the port never joins targets that
  * carry path parameters; a `;` stays part of the path here).
  *
  * @param base - The base url.
  * @param url - The possibly-relative url.
  * @returns The joined absolute url.
- * @throws UrlSplitError - Either input fails `urlsplit`.
+ * @throws {@link UrlSplitError} - Either input fails `urlsplit`.
+ * @example
+ * ```ts
+ * urljoin("https://mixpanel.com/s/abc", "/project/1/view/2"); // "https://mixpanel.com/project/1/view/2"
+ * urljoin("https://mixpanel.com/a/b", "../c"); // "https://mixpanel.com/c"
+ * ```
  */
 export function urljoin(base: string, url: string): string {
   if (base === "") {
