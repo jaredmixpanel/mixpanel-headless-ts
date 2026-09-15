@@ -1,13 +1,11 @@
 /**
- * Drop-filter wire methods (App API) — Phase-3 packet B4-C5 port of
- * the `MixpanelAPIClient` drop-filters range
- * (`api_client.py`).
+ * Drop-filter wire methods on the App API
+ * (`data-definitions/events/drop-filters/`, workspace-scoped through
+ * `maybe_scoped_path`). Create, update and delete return the full
+ * post-mutation filter list, not the mutated entity; the port hands back
+ * exactly what `appRequest` unwraps.
  *
- * All methods route through B0 `appRequest` over `maybe_scoped_path`
- * (R10.8). NOTE the create/update/delete mutations return the full
- * post-mutation filter LIST, not the mutated entity (Behavior spine:
- * "no results-unwrap surprises" — port exactly what `appRequest`
- * hands back, Caution #11).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_drop_filters
  */
 
 import { appRequest } from "../../client/app-request.js";
@@ -16,26 +14,26 @@ import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
 import { expectListResult, expectRecordResult } from "./shared.js";
 
-/** The C5 drop-filter method surface (mixed into `MixpanelClient`). */
+/** Drop-filter methods mixed into `MixpanelClient`. */
 export interface DropFilterMethods {
   /**
-   * List drop filters (`list_drop_filters`, `api_client.py`
-   * — GET `data-definitions/events/drop-filters/`).
+   * List drop filters. Sends GET `data-definitions/events/drop-filters/`.
    *
    * @param signal - Optional cancellation signal.
    * @returns The filter list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_drop_filters
    */
   listDropFilters: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
-   * Create a drop filter (`create_drop_filter`, `:7208-7241` — POST;
-   * returns the full post-creation LIST).
+   * Create a drop filter. Sends POST; returns the full post-creation list.
    *
    * @param body - Drop-filter creation parameters.
    * @param signal - Optional cancellation signal.
    * @returns All drop filters after creation.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_drop_filter
    */
   createDropFilter: (
     body: Record<string, unknown>,
@@ -43,13 +41,13 @@ export interface DropFilterMethods {
   ) => Promise<JsonValue[]>;
 
   /**
-   * Update a drop filter (`update_drop_filter`, `:7243-7276` — PATCH;
-   * returns the full post-update LIST).
+   * Update a drop filter. Sends PATCH; returns the full post-update list.
    *
    * @param body - Drop-filter update parameters (id, filters, ...).
    * @param signal - Optional cancellation signal.
    * @returns All drop filters after the update.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_drop_filter
    */
   updateDropFilter: (
     body: Record<string, unknown>,
@@ -57,13 +55,14 @@ export interface DropFilterMethods {
   ) => Promise<JsonValue[]>;
 
   /**
-   * Delete a drop filter by ID (`delete_drop_filter`, `:7278-7309` —
-   * DELETE with JSON body `{id}`; returns the full post-delete LIST).
+   * Delete a drop filter by ID. Sends DELETE with JSON body `{id}`; returns the
+   * full post-delete list.
    *
    * @param dropFilterId - ID of the drop filter to delete.
    * @param signal - Optional cancellation signal.
    * @returns All drop filters after deletion.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_drop_filter
    */
   deleteDropFilter: (
     dropFilterId: number,
@@ -71,12 +70,12 @@ export interface DropFilterMethods {
   ) => Promise<JsonValue[]>;
 
   /**
-   * Get drop-filter usage limits (`get_drop_filter_limits`,
-   * `:7311-7339` — GET `.../drop-filters/limits/`).
+   * Get drop-filter usage limits. Sends GET `.../drop-filters/limits/`.
    *
    * @param signal - Optional cancellation signal.
    * @returns The limits dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_drop_filter_limits
    */
   getDropFilterLimits: (
     signal?: AbortSignal,
@@ -84,13 +83,25 @@ export interface DropFilterMethods {
 }
 
 /**
- * Build the C5 drop-filter methods over the C1 core seam.
+ * Build the drop-filter methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const dropFilters = createDropFilterMethods(core);
+ * const all = await dropFilters.deleteDropFilter(5);
+ * // the remaining drop filters
+ * ```
  */
 export function createDropFilterMethods(core: ClientCore): DropFilterMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
+  /**
+   * Scope a domain path to the project and the workspace pinned at call
+   * time.
+   *
+   * @param domainPath - Path relative to the domain root.
+   * @returns The `/projects/{pid}[/workspaces/{wid}]/{domainPath}` path.
+   */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),

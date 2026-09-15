@@ -1,12 +1,11 @@
 /**
- * Event-deletion-request wire methods (App API) — Phase-3 packet B4-C5
- * port of the `MixpanelAPIClient` deletion-requests range
- * (`api_client.py`).
+ * Event-deletion-request wire methods on the App API
+ * (`data-definitions/events/deletion-requests/`, workspace-scoped through
+ * `maybe_scoped_path`). Create and cancel return the updated full list of
+ * deletion requests, not the mutated entity, and cancel is a DELETE
+ * carrying a JSON `{id}` body — both mirrored as-is.
  *
- * All methods route through B0 `appRequest` over `maybe_scoped_path`
- * (R10.8). NOTE `create`/`cancel` return the updated full LIST of
- * deletion requests (not the mutated entity) and `cancel` is a DELETE
- * with a JSON `{id}` body — port exactly (Caution #11).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_deletion_requests
  */
 
 import { appRequest } from "../../client/app-request.js";
@@ -15,27 +14,27 @@ import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
 import { expectListResult } from "./shared.js";
 
-/** The C5 deletion-request method surface (mixed into `MixpanelClient`). */
+/** Deletion-request methods mixed into `MixpanelClient`. */
 export interface DeletionRequestMethods {
   /**
-   * List deletion requests (`list_deletion_requests`,
-   * `api_client.py` — GET
-   * `data-definitions/events/deletion-requests/`).
+   * List deletion requests. Sends GET
+   * `data-definitions/events/deletion-requests/`.
    *
    * @param signal - Optional cancellation signal.
    * @returns The request list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_deletion_requests
    */
   listDeletionRequests: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
-   * Create a deletion request (`create_deletion_request`,
-   * `:8570-8605` — POST; returns the updated full LIST).
+   * Create a deletion request. Sends POST; returns the updated full list.
    *
    * @param body - Creation payload (eventName, fromDate, toDate, ...).
    * @param signal - Optional cancellation signal.
    * @returns All deletion requests after creation.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_deletion_request
    */
   createDeletionRequest: (
     body: Record<string, unknown>,
@@ -43,14 +42,14 @@ export interface DeletionRequestMethods {
   ) => Promise<JsonValue[]>;
 
   /**
-   * Cancel a pending deletion request (`cancel_deletion_request`,
-   * `:8607-8636` — DELETE with JSON body `{id}`; returns the updated
-   * full LIST).
+   * Cancel a pending deletion request. Sends DELETE with JSON body `{id}`; returns
+   * the updated full list.
    *
    * @param requestId - Deletion request ID to cancel.
    * @param signal - Optional cancellation signal.
    * @returns All deletion requests after cancellation.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.cancel_deletion_request
    */
   cancelDeletionRequest: (
     requestId: number,
@@ -58,13 +57,13 @@ export interface DeletionRequestMethods {
   ) => Promise<JsonValue[]>;
 
   /**
-   * Preview deletion filters (`preview_deletion_filters`,
-   * `:8638-8675` — POST `.../deletion-requests/preview-filters/`).
+   * Preview deletion filters. Sends POST `.../deletion-requests/preview-filters/`.
    *
    * @param body - Preview payload.
    * @param signal - Optional cancellation signal.
    * @returns The expanded/normalized filter list.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.preview_deletion_filters
    */
   previewDeletionFilters: (
     body: Record<string, unknown>,
@@ -73,15 +72,29 @@ export interface DeletionRequestMethods {
 }
 
 /**
- * Build the C5 deletion-request methods over the C1 core seam.
+ * Build the deletion-request methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const deletions = createDeletionRequestMethods(core);
+ * const all = await deletions.createDeletionRequest({
+ *   eventName: "Debug Ping", fromDate: "2026-01-01", toDate: "2026-01-31",
+ * });
+ * // every deletion request, including the new one
+ * ```
  */
 export function createDeletionRequestMethods(
   core: ClientCore,
 ): DeletionRequestMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
+  /**
+   * Scope a domain path to the project and the workspace pinned at call
+   * time.
+   *
+   * @param domainPath - Path relative to the domain root.
+   * @returns The `/projects/{pid}[/workspaces/{wid}]/{domainPath}` path.
+   */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),

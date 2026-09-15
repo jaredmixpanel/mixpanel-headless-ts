@@ -1,18 +1,14 @@
 /**
- * Lexicon data-definition wire methods (App API) — Phase-3 packet
- * B4-C5 port of the `MixpanelAPIClient` lexicon range
- * (`api_client.py`): event/property definitions (with the
- * `_event_definitions`/`_property_definitions` private shared cores —
- * plain `appRequest` GETs with `name[]` filters + bare-list shape
- * validation; measured, NO `paginate_all` involvement), tags, tracking
- * metadata, history, and export.
+ * Lexicon data-definition wire methods on the App API: event and property
+ * definitions (through the private `_event_definitions` /
+ * `_property_definitions` cores — plain GETs with `name[]` filters and
+ * bare-list shape checks, no `paginate_all`), tags, tracking metadata,
+ * history and export. All ride `appRequest` over `maybe_scoped_path`
+ * except `listPerEventProperties`, a query-host request (Python PR #215
+ * moved the schema-graph edge gather off the App API's deadline-bound
+ * `includeEvents` join).
  *
- * All methods route through B0 `appRequest` over `maybe_scoped_path`
- * — except `listPerEventProperties`, which is a query-host
- * request (`_request` twin, Python PR #215: the schema-graph edge
- * gather moved off the App API's deadline-bound `includeEvents` join).
- * Results are returned verbatim after the source's isinstance guards
- * (Caution #11).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_event_definitions
  */
 
 import { appRequest } from "../../client/app-request.js";
@@ -25,10 +21,9 @@ import { pythonTypeNameOf, scopedPath } from "../shared.js";
 import { expectListResult, expectRecordResult, pythonQuote } from "./shared.js";
 
 /**
- * `_RESOURCE_TYPE_CANONICAL`: the App API
- * honors only the camelCase `resourceType` param with a capitalized
- * value; lowercase 400s and snake_case is silently ignored (verified
- * live upstream). Unknown spellings pass through.
+ * Canonical spellings of the `resourceType` param: the App API honors only
+ * the camelCase param with a capitalized value; lowercase returns 400 and
+ * snake_case is silently ignored. Unknown spellings pass through.
  */
 const RESOURCE_TYPE_CANONICAL: Readonly<Record<string, string>> = {
   event: "Event",
@@ -39,12 +34,17 @@ const RESOURCE_TYPE_CANONICAL: Readonly<Record<string, string>> = {
 };
 
 /**
- * Normalize a caller's resource-type spelling to the App API's
- * canonical value (`_canonical_resource_type`, `api_client.py`).
+ * Normalize a caller's resource-type spelling to the App API's canonical value.
  *
  * @param resourceType - A caller-supplied filter ("event", "People", ...).
  * @returns `"Event"` / `"User"` for known spellings; the input
  *   unchanged otherwise.
+ * @example
+ * ```typescript
+ * canonicalResourceType("people"); // "User"
+ * canonicalResourceType("Custom"); // "Custom" (unknown spellings pass through)
+ * ```
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient._canonical_resource_type
  */
 export function canonicalResourceType(resourceType: string): string {
   return RESOURCE_TYPE_CANONICAL[resourceType.toLowerCase()] ?? resourceType;
@@ -55,21 +55,42 @@ export function canonicalResourceType(resourceType: string): string {
  * (Python kw-only params with their source defaults).
  */
 export interface ListPropertyDefinitionsOptions {
-  /** Property family — "Event" or "User" (default "Event"). */
+  /**
+   * Property family, `"Event"` or `"User"` (any spelling
+   * {@link canonicalResourceType} accepts).
+   *
+   * @defaultValue `"Event"`
+   */
   readonly resource_type?: string | undefined;
-  /** Attach the events each property appears on (default false). */
+  /**
+   * Attach the events each property appears on.
+   *
+   * @defaultValue `false`
+   */
   readonly include_events?: boolean | undefined;
-  /** Request property-level density (default false). */
+  /**
+   * Request property-level density.
+   *
+   * @defaultValue `false`
+   */
   readonly include_density?: boolean | undefined;
-  /** Include custom (computed) properties (default true). */
+  /**
+   * Include custom (computed) properties.
+   *
+   * @defaultValue `true`
+   */
   readonly include_custom?: boolean | undefined;
-  /** Include properties with no recorded data (default true). */
+  /**
+   * Include properties with no recorded data.
+   *
+   * @defaultValue `true`
+   */
   readonly include_zero_counts?: boolean | undefined;
   /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The private `_property_definitions` kwargs (`:6669-6678`). */
+/** The private `_property_definitions` kwargs. */
 interface PropertyDefinitionsArgs {
   readonly names?: readonly string[] | null;
   readonly resourceType?: string | null;
@@ -80,17 +101,17 @@ interface PropertyDefinitionsArgs {
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The C5 lexicon method surface (mixed into `MixpanelClient`). */
+/** Lexicon methods mixed into `MixpanelClient`. */
 export interface LexiconMethods {
   /**
-   * Get event definitions by name (`get_event_definitions`,
-   * `api_client.py` — GET `data-definitions/events/` with a
-   * `name[]` filter via the `_event_definitions` shared core).
+   * Get event definitions by name. Sends GET `data-definitions/events/` with a
+   * `name[]` filter via the `_event_definitions` shared core.
    *
    * @param names - Event names to look up.
    * @param signal - Optional cancellation signal.
    * @returns The definition list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_event_definitions
    */
   getEventDefinitions: (
     names: readonly string[],
@@ -98,25 +119,26 @@ export interface LexiconMethods {
   ) => Promise<JsonValue[]>;
 
   /**
-   * List ALL event definitions (`list_event_definitions`,
-   * `:6541-6563` — the shared core without a `name[]` filter).
+   * List all event definitions. Same request as
+   * {@link LexiconMethods.getEventDefinitions} without the `name[]` filter.
    *
    * @param signal - Optional cancellation signal.
    * @returns The definition list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_event_definitions
    */
   listEventDefinitions: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
-   * Update an event definition (`update_event_definition`,
-   * `:6565-6602` — PATCH `data-definitions/events/` with
-   * `{**body, name}`).
+   * Update an event definition. Sends PATCH `data-definitions/events/` with
+   * `{**body, name}`.
    *
    * @param name - Event name to update.
    * @param body - Fields to update.
    * @param signal - Optional cancellation signal.
    * @returns The updated definition dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_event_definition
    */
   updateEventDefinition: (
     name: string,
@@ -125,23 +147,24 @@ export interface LexiconMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete an event definition (`delete_event_definition`,
-   * `:6604-6626` — DELETE with JSON body `{name}`).
+   * Delete an event definition. Sends DELETE with JSON body `{name}`.
    *
    * @param name - Event name to delete.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_event_definition
    */
   deleteEventDefinition: (name: string, signal?: AbortSignal) => Promise<void>;
 
   /**
-   * Bulk-update event definitions (`bulk_update_event_definitions`,
-   * `:6628-6667` — PATCH with the caller's `{events: [...]}` body).
+   * Bulk-update event definitions. Sends PATCH with the caller's `{events: [...]}`
+   * body.
    *
    * @param body - Bulk update payload.
    * @param signal - Optional cancellation signal.
    * @returns The updated definition list.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.bulk_update_event_definitions
    */
   bulkUpdateEventDefinitions: (
     body: Record<string, unknown>,
@@ -149,15 +172,15 @@ export interface LexiconMethods {
   ) => Promise<JsonValue[]>;
 
   /**
-   * Get property definitions by name (`get_property_definitions`,
-   * `:6738-6768` — the `_property_definitions` shared core with a
-   * `name[]` filter and optional normalized `resourceType`).
+   * Get property definitions by name. Sends GET `data-definitions/properties/`
+   * with a `name[]` filter and, when given, the normalized `resourceType`.
    *
    * @param names - Property names to look up.
    * @param resourceType - Optional resource-type filter (normalized).
    * @param signal - Optional cancellation signal.
    * @returns The definition list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_property_definitions
    */
   getPropertyDefinitions: (
     names: readonly string[],
@@ -166,51 +189,50 @@ export interface LexiconMethods {
   ) => Promise<JsonValue[]>;
 
   /**
-   * List all property definitions (`list_property_definitions`,
-   * `:6770-6819` — the shared core, whole-project enumerate; defaults
-   * `resource_type="Event"`, `include_custom=True`,
-   * `include_zero_counts=True`).
+   * List all property definitions for the project. Sends GET
+   * `data-definitions/properties/` with the `include*` toggles.
    *
    * @param options - Optional kw-only toggles + signal.
    * @returns The definition list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_property_definitions
    */
   listPropertyDefinitions: (
     options?: ListPropertyDefinitionsOptions,
   ) => Promise<JsonValue[]>;
 
   /**
-   * List every event with the properties observed on it
-   * (`list_per_event_properties`, `api_client.py` — GET
-   * `{query}/data_definitions/events` with
-   * `fetch_per_event_properties=true`, the internal query-API surface
-   * the Mixpanel Lexicon UI itself uses, unwrapping the `results`
-   * envelope). This is the relationship source for the schema graph:
-   * the App API's `includeEvents=true` bulk call computes the same
-   * event↔property join behind a ~120s gateway deadline it cannot meet
-   * on large projects, while the query-API route permits longer runs,
-   * so this request is sent with the export timeout. A pinned workspace
-   * is injected as `workspace_id` and the server applies its event-name
-   * filters.
+   * List every event with the properties observed on it. Sends GET
+   * `{query}/data_definitions/events` with `fetch_per_event_properties=true`
+   * and unwraps the `results` envelope.
    *
+   * @remarks
+   * This is the relationship source for the schema graph. The App API's
+   * `includeEvents=true` bulk call computes the same event↔property join
+   * behind a ~120 s gateway deadline it cannot meet on large projects; the
+   * query-API route (the one the Lexicon UI itself uses) permits longer
+   * runs, so this request is sent with the export timeout. A pinned
+   * workspace is injected as `workspace_id` and the server applies its
+   * event-name filters.
    * @param signal - Optional cancellation signal.
    * @returns List of event dicts; each carries a `properties` list of
    *   property definition dicts (at minimum `{name: ...}`-shaped).
-   * @throws MixpanelHeadlessError - Non-list `results` payload (plus
-   *   the wire-contract errors of the query-host path).
+   * @throws {@link MixpanelHeadlessError} - Non-list `results` payload (plus the
+   *   wire-contract errors of the query-host path).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_per_event_properties
    */
   listPerEventProperties: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
-   * Update a property definition (`update_property_definition`,
-   * `:6821-6858` — PATCH `data-definitions/properties/` with
-   * `{**body, name}`).
+   * Update a property definition. Sends PATCH `data-definitions/properties/` with
+   * `{**body, name}`.
    *
    * @param name - Property name to update.
    * @param body - Fields to update.
    * @param signal - Optional cancellation signal.
    * @returns The updated definition dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_property_definition
    */
   updatePropertyDefinition: (
     name: string,
@@ -219,14 +241,14 @@ export interface LexiconMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Bulk-update property definitions
-   * (`bulk_update_property_definitions`, `:6860-6899` — PATCH with the
-   * caller's `{properties: [...]}` body).
+   * Bulk-update property definitions. Sends PATCH with the caller's
+   * `{properties: [...]}` body.
    *
    * @param body - Bulk update payload.
    * @param signal - Optional cancellation signal.
    * @returns The updated definition list.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.bulk_update_property_definitions
    */
   bulkUpdatePropertyDefinitions: (
     body: Record<string, unknown>,
@@ -234,23 +256,23 @@ export interface LexiconMethods {
   ) => Promise<JsonValue[]>;
 
   /**
-   * List Lexicon tags (`list_lexicon_tags`, `:6901-6929` — GET
-   * `data-definitions/tags/`).
+   * List Lexicon tags. Sends GET `data-definitions/tags/`.
    *
    * @param signal - Optional cancellation signal.
    * @returns The tag list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_lexicon_tags
    */
   listLexiconTags: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
-   * Create a Lexicon tag (`create_lexicon_tag`, `:6931-6962` — POST
-   * `data-definitions/tags/`).
+   * Create a Lexicon tag. Sends POST `data-definitions/tags/`.
    *
    * @param body - Tag creation parameters (name).
    * @param signal - Optional cancellation signal.
    * @returns The created tag dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_lexicon_tag
    */
   createLexiconTag: (
     body: Record<string, unknown>,
@@ -258,14 +280,15 @@ export interface LexiconMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update a Lexicon tag (`update_lexicon_tag`, `:6964-6996` — PATCH
-   * `data-definitions/tags/{tag_id}/`; INT id, R3-family).
+   * Update a Lexicon tag. Sends PATCH `data-definitions/tags/{tag_id}/`; integer
+   * id.
    *
    * @param tagId - Tag ID (integer).
    * @param body - Fields to update (name).
    * @param signal - Optional cancellation signal.
    * @returns The updated tag dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_lexicon_tag
    */
   updateLexiconTag: (
     tagId: number,
@@ -274,25 +297,27 @@ export interface LexiconMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete a Lexicon tag BY NAME (`delete_lexicon_tag`, `:6998-7020`
-   * — POST `data-definitions/tags/` with `{delete: True, name}`; the
-   * API uses POST, not DELETE, for tag removal).
+   * Delete a Lexicon tag by name. Sends POST `data-definitions/tags/` with
+   * `{delete: True, name}`.
    *
+   * @remarks
+   * The API uses POST, not DELETE, for tag removal.
    * @param name - Name of the tag to delete.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_lexicon_tag
    */
   deleteLexiconTag: (name: string, signal?: AbortSignal) => Promise<void>;
 
   /**
-   * Get tracking metadata for an event (`get_tracking_metadata`,
-   * `:7022-7053` — GET `.../events/tracking-metadata/` with the
-   * `event_name` query param).
+   * Get tracking metadata for an event. Sends GET `.../events/tracking-metadata/`
+   * with the `event_name` query param.
    *
    * @param eventName - Name of the event.
    * @param signal - Optional cancellation signal.
    * @returns The metadata dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_tracking_metadata
    */
   getTrackingMetadata: (
     eventName: string,
@@ -300,13 +325,14 @@ export interface LexiconMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get event definition change history (`get_event_history`,
-   * `:7055-7088` — GET `.../events/{quoted name}/history/`).
+   * Get event definition change history. Sends GET
+   * `.../events/{quoted name}/history/`.
    *
    * @param eventName - Name of the event.
    * @param signal - Optional cancellation signal.
    * @returns The history entry list.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_event_history
    */
   getEventHistory: (
     eventName: string,
@@ -314,15 +340,15 @@ export interface LexiconMethods {
   ) => Promise<JsonValue[]>;
 
   /**
-   * Get property definition change history (`get_property_history`,
-   * `:7090-7126` — GET `.../properties/{quoted name}/history/` with
-   * the `entity_type` query param).
+   * Get property definition change history. Sends GET
+   * `.../properties/{quoted name}/history/` with the `entity_type` query param.
    *
    * @param propertyName - Name of the property.
    * @param entityType - Entity type ("event", "user", ...).
    * @param signal - Optional cancellation signal.
    * @returns The history entry list.
-   * @throws MixpanelHeadlessError - Non-list response.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_property_history
    */
   getPropertyHistory: (
     propertyName: string,
@@ -331,16 +357,16 @@ export interface LexiconMethods {
   ) => Promise<JsonValue[]>;
 
   /**
-   * Export Lexicon data definitions (`export_lexicon`, `:7128-7172` —
-   * GET `data-definitions/export/` with the JSON-encoded
-   * `export_type` param; a plain-string result wraps into
-   * `{status: "pending", message}`).
+   * Export Lexicon data definitions. Sends GET `data-definitions/export/` with the
+   * JSON-encoded `export_type` param; a plain-string result wraps into
+   * `{status: "pending", message}`.
    *
    * @param exportTypes - Optional export-type list (defaults to the
    *   source's two-entry list).
    * @param signal - Optional cancellation signal.
    * @returns The export dict (or the pending wrapper).
-   * @throws MixpanelHeadlessError - Non-dict, non-string response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict, non-string response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.export_lexicon
    */
   exportLexicon: (
     exportTypes?: readonly string[] | null,
@@ -351,10 +377,11 @@ export interface LexiconMethods {
  * `_event_definitions`: the shared core
  * behind the by-name lookup and the bulk enumerate.
  *
+ * @param core - The shared client internals seam.
  * @param names - Optional `name[]` filter values.
  * @param signal - Optional cancellation signal.
  * @returns The definition list.
- * @throws MixpanelHeadlessError - Non-list response (the core's own
+ * @throws {@link MixpanelHeadlessError} - Non-list response (the core's own
  *   message spelling, "event definitions").
  */
 async function eventDefinitions(
@@ -369,7 +396,7 @@ async function eventDefinitions(
   }
   const result = await appRequest(core.appDeps(signal), "GET", path, {
     // Python threads the list through a `dict[str, str]` annotation
-    // with `# type: ignore[arg-type]` (`:6507`); the transport's
+    // with `# type: ignore[arg-type]`; the transport's
     // urlencode(doseq=True) twin serializes list values as repeated
     // keys — the cast is that type-ignore's twin.
     params: params as Record<string, string>,
@@ -384,13 +411,14 @@ async function eventDefinitions(
 }
 
 /**
- * `_property_definitions` (`:6669-6736`): the shared core behind the
+ * `_property_definitions`: the shared core behind the
  * property lookup/enumerate pair — owns the `resourceType` contract
  * and the `include*` toggle wire format.
  *
+ * @param core - The shared client internals seam.
  * @param args - The Python kwargs, faithfully optional.
  * @returns The definition list.
- * @throws MixpanelHeadlessError - Non-list response ("property
+ * @throws {@link MixpanelHeadlessError} - Non-list response ("property
  *   definitions" message spelling).
  */
 async function propertyDefinitions(
@@ -665,7 +693,7 @@ async function exportLexicon(
     params,
   });
   if (typeof result === "string") {
-    // Async export — returns status message (`:7164-7166`).
+    // Async export — the server answers with a status message.
     return { status: "pending", message: result };
   }
   if (!isPlainRecord(result)) {
@@ -678,10 +706,16 @@ async function exportLexicon(
 }
 
 /**
- * Build the C5 lexicon methods over the C1 core seam.
+ * Build the lexicon methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const lexicon = createLexiconMethods(core);
+ * const defs = await lexicon.getEventDefinitions(["Signup", "Purchase"]);
+ * // [{ name: "Signup", description: "...", ... }, { name: "Purchase", ... }]
+ * ```
  */
 export function createLexiconMethods(core: ClientCore): LexiconMethods {
   return {

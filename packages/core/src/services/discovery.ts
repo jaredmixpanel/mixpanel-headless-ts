@@ -1,36 +1,15 @@
 /**
- * Discovery service — TS port of
- * `mixpanel_headless/_internal/services/discovery.py` (920 lines,
- * whole file) for Phase-3 batch B5, shard S1
- * (`docs/history/phase3/design/b5-packets.md` §4).
+ * Discovery service: the Lexicon and bookmark row parsers, subproperty
+ * inference over sampled property values, and {@link DiscoveryService},
+ * whose list-shaped results are cached per instance for its lifetime
+ * (no TTL; `listTopEvents` and `listBookmarks` are deliberately not).
+ * Wire responses arrive as lossless `JsonValue` trees and are converted
+ * with {@link toNativeJson} at each consumption point to match Python's
+ * `json.loads` product; every `sorted(...)` is code-point ordered; the
+ * `_logger.debug` and `warnings.warn` side channels are injected seams
+ * because `core` has no stderr.
  *
- * Contents, in Python source order: the five Lexicon/bookmark parser
- * functions (`:43-142`), the subproperty-inference helpers
- * (`:150-356`), and {@link DiscoveryService} (`:359-920`) with its
- * lifetime in-memory caches (no TTL; `list_top_events` deliberately
- * uncached, `:375`).
- *
- * Port-wide conventions applied here:
- *
- * - R10.8 — the wire calls are the ALREADY-PORTED B4 client methods
- *   (`getEvents`, `getEventProperties`, `getPropertyValues`,
- *   `listFunnels`, `listCohorts`, `listBookmarks`, `getTopEvents`,
- *   `getSchemas`, `getSchema`, `listEventDefinitions`,
- *   `listPropertyDefinitions`, `listPerEventProperties`); nothing is
- *   re-assembled here.
- * - B4 client methods hand back the lossless `JsonValue` tree
- *   (`JsonNumber` tokens intact); every consumption point converts with
- *   {@link toNativeJson} — the documented point where the TS wire layer
- *   matches Python's `json.loads` product.
- * - R4.8 — the tuple-keyed Python caches become `Map`s keyed by the
- *   JSON encoding of the same tuple (prototype-safe; no `in` on a bare
- *   object).
- * - R11.5 — every `sorted(...)` is code-point ordered
- *   ({@link sortedByCodepoint} / {@link compareCodepoints}), never JS
- *   default UTF-16-unit ordering.
- * - R9.5 — the `_logger.debug` site and the `warnings.warn` side channel
- *   are injected seams ({@link DiscoveryLogger} / {@link WarningSink});
- *   `core` never touches `console`.
+ * @see mixpanel_headless._internal.services.discovery
  */
 
 import type { MixpanelClient } from "../client/client.js";
@@ -71,13 +50,13 @@ import { passthrough } from "./shared.js";
 
 /**
  * The `warnings.warn(..., UserWarning)` side channel as an injected
- * seam (R9.5 — `core` has no stderr). Python's default action prints
- * the warning and continues; the TS default is a no-op sink, so the
+ * seam (`core` has no stderr). Python's default action prints the
+ * warning and continues; the TS default is a no-op sink, so the
  * observable behaviour (the call still returns) is preserved and hosts
  * that care (CLI, tests) pass their own sink.
  *
- * @param message - The warning text (out of contract, R5.4 — the tests
- *   that assert on it match Python's wording verbatim).
+ * @param message - The warning text (message text is not contract; the
+ *   tests that assert on it match Python's wording verbatim).
  */
 export type WarningSink = (message: string) => void;
 
@@ -93,39 +72,47 @@ export interface DiscoveryLogger {
 
 /** Construction options of {@link DiscoveryService}. */
 export interface DiscoveryServiceOptions {
-  /** `warnings.warn` sink for {@link inferSubproperties}. */
+  /**
+   * `warnings.warn` sink for {@link inferSubproperties}.
+   *
+   * @defaultValue A no-op sink — `core` has no stderr, so warnings are
+   *   dropped unless a host injects one.
+   */
   readonly warn?: WarningSink | undefined;
-  /** Debug logger for the schema-graph drop summary. */
+  /**
+   * Debug logger for the schema-graph drop summary.
+   *
+   * @defaultValue `undefined` (no debug output)
+   */
   readonly logger?: DiscoveryLogger | undefined;
 }
 
 /**
- * ISO-8601 date or datetime pre-filter (`discovery.py`).
+ * ISO-8601 date or datetime pre-filter, identical to the Python source
+ * character for character.
  *
- * Deliberately identical to the Python source character for character.
- * One documented, behaviour-neutral divergence: Python's `$` also
- * matches just before a trailing newline, so `"2025-04-23\n"` passes
- * the Python pre-filter and is then rejected by
- * {@link isValidIso}; the JS `$` rejects it at the pre-filter. Both
+ * Divergence: Python's `$` also matches just before a trailing newline,
+ * so `"2025-04-23\n"` passes the Python pre-filter and is then rejected
+ * by {@link isValidIso}; the JS `$` rejects it at the pre-filter. Both
  * paths classify the value as `"string"`.
+ *
+ * @see mixpanel_headless._internal.services.discovery._DATE_PATTERN
  */
 const DATE_PATTERN =
   /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\.(\d+))?(?:Z|([+-])(\d{2}):?(\d{2}))?)?$/;
 
-/** Maximum distinct sample values retained per subproperty (`:159`). */
+/** Maximum distinct sample values retained per subproperty. */
 const MAX_SAMPLE_VALUES = 5;
 
-// ---------------------------------------------------------------------------
-// Lexicon schema parser functions (`discovery.py`)
-// ---------------------------------------------------------------------------
+// --- Lexicon schema parsers ---
 
 /**
- * Read a REQUIRED mapping member the way Python's `d[key]` does.
+ * Read a required mapping member the way Python's `d[key]` does.
  *
  * @param data - The mapping.
  * @param key - The key to read.
  * @returns The member.
- * @throws KeyError - When the key is absent (the CPython twin; these
+ * @throws {@link KeyError} - When the key is absent (the CPython twin; these
  *   parsers do no validation, so a malformed API row raises exactly
  *   where Python's subscript does).
  */
@@ -140,12 +127,18 @@ function dictIndex(
 }
 
 /**
- * Parse Lexicon metadata from an API response
- * (`_parse_lexicon_metadata`, `discovery.py`).
+ * Parse Lexicon metadata from an API response.
  *
  * @param data - Raw metadata dict (may carry `com.mixpanel`), or `null`.
  * @returns The metadata when `com.mixpanel` is present and truthy,
  *   `null` otherwise.
+ * @example
+ * ```typescript
+ * parseLexiconMetadata({ "com.mixpanel": { displayName: "Sign Up" } });
+ * // LexiconMetadata { display_name: "Sign Up", tags: [], hidden: false, … }
+ * parseLexiconMetadata({}); // null
+ * ```
+ * @see mixpanel_headless._internal.services.discovery._parse_lexicon_metadata
  * @internal
  */
 export function parseLexiconMetadata(
@@ -172,11 +165,16 @@ export function parseLexiconMetadata(
 }
 
 /**
- * Parse a single Lexicon property (`_parse_lexicon_property`,
- * `discovery.py`).
+ * Parse a single Lexicon property.
  *
  * @param data - Raw property dict.
  * @returns The parsed property (`type` defaults to `"string"`).
+ * @example
+ * ```typescript
+ * parseLexiconProperty({ type: "number", description: "Cart total" }).type;
+ * // "number"
+ * ```
+ * @see mixpanel_headless._internal.services.discovery._parse_lexicon_property
  * @internal
  */
 export function parseLexiconProperty(
@@ -192,11 +190,18 @@ export function parseLexiconProperty(
 }
 
 /**
- * Parse a Lexicon definition (`_parse_lexicon_definition`,
- * `discovery.py`).
+ * Parse a Lexicon definition.
  *
  * @param data - Raw `schemaJson` dict.
  * @returns The parsed definition.
+ * @example
+ * ```typescript
+ * const def = parseLexiconDefinition({
+ *   properties: { total: { type: "number" } },
+ * });
+ * def.properties["total"]?.type; // "number"
+ * ```
+ * @see mixpanel_headless._internal.services.discovery._parse_lexicon_definition
  * @internal
  */
 export function parseLexiconDefinition(
@@ -223,13 +228,21 @@ export function parseLexiconDefinition(
 }
 
 /**
- * Parse a complete Lexicon schema (`_parse_lexicon_schema`,
- * `discovery.py`).
+ * Parse a complete Lexicon schema.
  *
  * @param data - Raw schema dict.
  * @returns The parsed schema.
- * @throws KeyError - Missing `entityType` / `name` / `schemaJson`
+ * @throws {@link KeyError} - Missing `entityType` / `name` / `schemaJson`
  *   (Python subscripts them directly).
+ * @example
+ * ```typescript
+ * parseLexiconSchema({
+ *   entityType: "event",
+ *   name: "Purchase",
+ *   schemaJson: { properties: {} },
+ * }).name; // "Purchase"
+ * ```
+ * @see mixpanel_headless._internal.services.discovery._parse_lexicon_schema
  * @internal
  */
 export function parseLexiconSchema(
@@ -245,13 +258,20 @@ export function parseLexiconSchema(
 }
 
 /**
- * Parse a bookmark row into {@link BookmarkInfo} (`_parse_bookmark_info`,
- * `discovery.py`).
+ * Parse a bookmark row into {@link BookmarkInfo}.
  *
  * @param data - Raw bookmark dict.
  * @returns The parsed bookmark metadata.
- * @throws KeyError - Missing `id` / `name` / `type` / `project_id` /
+ * @throws {@link KeyError} - Missing `id` / `name` / `type` / `project_id` /
  *   `created` / `modified`.
+ * @example
+ * ```typescript
+ * parseBookmarkInfo({
+ *   id: 42, name: "Weekly actives", type: "insights", project_id: 1,
+ *   created: "2024-01-01T00:00:00", modified: "2024-01-02T00:00:00",
+ * }).type; // "insights"
+ * ```
+ * @see mixpanel_headless._internal.services.discovery._parse_bookmark_info
  * @internal
  */
 export function parseBookmarkInfo(
@@ -272,9 +292,7 @@ export function parseBookmarkInfo(
   });
 }
 
-// ---------------------------------------------------------------------------
-// Subproperty inference (`discovery.py`)
-// ---------------------------------------------------------------------------
+// --- Subproperty inference ---
 
 /** Days per month, non-leap (`datetime` calendar validity). */
 const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;
@@ -282,19 +300,18 @@ const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;
 /**
  * Whether `s` parses as a valid ISO-8601 date or datetime — the
  * `datetime.fromisoformat` twin for the strings {@link DATE_PATTERN}
- * admits (`_is_valid_iso`, `discovery.py`).
+ * admits.
  *
  * Because the caller only ever passes pattern-matched strings, the
  * grammar is already fixed and the remaining question is calendar
- * validity. The rules below were probed against the arbiter
- * interpreter (CPython 3.14.6, 2026-08-16):
+ * validity. The rules below were verified against CPython 3.14.6:
  *
  * - year 1..9999 (`0000-01-01` raises — `MINYEAR` is 1),
  * - month 1..12, day 1..days-in-month (proleptic Gregorian leap rule),
  * - hour 0..23, or exactly 24 when minute, second and microsecond are
  *   all zero (`2025-04-23T24:00:00` parses; `T24:00:01` does not),
  * - minute 0..59, second 0..59,
- * - fractional seconds: any digit count, TRUNCATED to 6 digits
+ * - fractional seconds: any digit count, truncated to 6 digits
  *   (`.0000009` → microsecond 0, so it stays legal after `T24:00:00`),
  * - UTC offset: total `±(hh*60 + mm)` minutes strictly inside ±24h
  *   (`+00:60` is legal — the minutes field is not bounded on its own).
@@ -305,6 +322,7 @@ const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;
  *
  * @param s - A string that already matched {@link DATE_PATTERN}.
  * @returns Whether it represents a real calendar date/datetime.
+ * @see mixpanel_headless._internal.services.discovery._is_valid_iso
  * @internal
  */
 // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
@@ -375,20 +393,26 @@ function isValidIso(s: string): boolean {
 export type ScalarSubValue = string | number | boolean;
 
 /**
- * Infer the type of a homogeneous-ish sequence of scalar sub-values
- * (`_infer_scalar_type`, `discovery.py`).
+ * Infer the type of a homogeneous-ish sequence of scalar sub-values.
  *
  * Boolean is checked before number because Python treats `bool` as a
  * subclass of `int` (in TS the two are already disjoint runtime types,
- * but the check ORDER is preserved so a mixed `[True, 1]` list takes
+ * but the check order is preserved so a mixed `[True, 1]` list takes
  * the same third branch and reports `("string", true)`).
  *
  * @param values - All scalar values observed for one subproperty.
  *   Callers filter `None` out upstream.
  * @returns `[inferredType, mixedObserved]`; mixed observations report
  *   `["string", true]` so the caller can warn.
- * @throws ValueError - When `values` is empty (Python guards because
+ * @throws {@link ValueError} - When `values` is empty (Python guards because
  *   `all([])` would silently classify as `boolean`).
+ * @example
+ * ```typescript
+ * inferScalarType([1, 2.5]); // ["number", false]
+ * inferScalarType(["2024-01-01", "2024-02-01"]); // ["datetime", false]
+ * inferScalarType(["a", 1]); // ["string", true]
+ * ```
+ * @see mixpanel_headless._internal.services.discovery._infer_scalar_type
  * @internal
  */
 export function inferScalarType(
@@ -414,23 +438,30 @@ export function inferScalarType(
 }
 
 /**
- * Parse raw property-value strings into dict rows (`_iter_dict_rows`,
- * `discovery.py`).
+ * Parse raw property-value strings into dict rows.
  *
  * Each raw value may be a JSON object (one row), a JSON array of
  * objects (many rows), or anything else (skipped). A value that fails to
  * parse is skipped and reported once through `logger.debug` — the twin
  * of Python's `_logger.debug` for the `TypeError`/`ValueError` it drops
- * from `json.loads` (the text is not contract, R9.5).
+ * from `json.loads` (the text is not contract).
  *
- * Parsing goes through {@link parseLossless} with `pythonConstants`
- * (packet §0.2) so `NaN`/`Infinity` bodies parse rather than raise the
- * way `JSON.parse` would; {@link toNativeJson} then matches
- * `json.loads`'s native product.
+ * Parsing goes through {@link parseLossless} with `pythonConstants` so
+ * `NaN`/`Infinity` bodies parse rather than raise the way `JSON.parse`
+ * would; {@link toNativeJson} then matches `json.loads`'s native
+ * product.
  *
  * @param rawValues - Strings from the property-values endpoint.
  * @param logger - Optional debug sink for the skipped values.
  * @returns Flat list of dict rows, order preserved.
+ * @throws The original error, unchanged, when parsing fails with anything
+ *   other than a {@link LosslessJsonError} (those are skipped).
+ * @example
+ * ```typescript
+ * iterDictRows(['{"sku": 1}', '[{"sku": 2}, 3]', "not json"]);
+ * // [{ sku: 1 }, { sku: 2 }]
+ * ```
+ * @see mixpanel_headless._internal.services.discovery._iter_dict_rows
  * @internal
  */
 export function iterDictRows(
@@ -463,16 +494,15 @@ export function iterDictRows(
 }
 
 /**
- * Split on the Python `re.split(r"[\s_\-]+", text)` grammar
- * (`discovery.py:527,531`).
+ * Split on the Python `re.split(r"[\s_\-]+", text)` grammar of the
+ * `_find_similar_events` word-overlap step.
  *
- * R11.7 forbids a `\s` JS regex here: the two whitespace sets diverge
- * in both directions. The separator set is CPython's
- * {@link PYTHON_STR_WHITESPACE} (probe-verified equal to `re`'s `\s`
- * for `str` patterns, CPython 3.14.6) plus `_` and `-`. Leading and
- * trailing separators produce the empty-string members Python's
- * `re.split` emits — they participate in the overlap count, so they are
- * NOT filtered.
+ * A JS `\s` would be wrong here: the two whitespace sets diverge in both
+ * directions. The separator set is CPython's {@link PYTHON_STR_WHITESPACE}
+ * (verified equal to `re`'s `\s` for `str` patterns on CPython 3.14.6)
+ * plus `_` and `-`. Leading and trailing separators produce the
+ * empty-string members Python's `re.split` emits — they participate in
+ * the overlap count, so they are not filtered.
  *
  * @param text - The already-lowercased string.
  * @returns The split parts, empty members included.
@@ -491,7 +521,7 @@ function splitWords(text: string): string[] {
     if (isSeparator(ch)) {
       parts.push(current);
       current = "";
-      // `[...]+` is greedy: one run of separators is ONE split point.
+      // `[...]+` is greedy: one run of separators is one split point.
       while (index < chars.length && isSeparator(chars[index] as string)) {
         index += 1;
       }
@@ -506,7 +536,7 @@ function splitWords(text: string): string[] {
 
 /**
  * Build a sorted list of {@link SubPropertyInfo} from sampled raw
- * values (`_infer_subproperties`, `discovery.py`).
+ * values.
  *
  * Behaviour (verbatim from the Python docstring):
  *
@@ -521,6 +551,16 @@ function splitWords(text: string): string[] {
  * @param warn - The `warnings.warn` sink.
  * @param logger - Optional debug sink (see {@link iterDictRows}).
  * @returns Code-point-sorted subproperty infos.
+ * @example
+ * ```typescript
+ * const infos = inferSubproperties(
+ *   ['{"sku": "A1", "qty": 2}', '{"sku": "X9", "qty": null}'],
+ *   (message) => console.warn(message),
+ * );
+ * infos.map((info) => [info.name, info.type]);
+ * // [["qty", "number"], ["sku", "string"]]
+ * ```
+ * @see mixpanel_headless._internal.services.discovery._infer_subproperties
  * @internal
  */
 export function inferSubproperties(
@@ -587,8 +627,7 @@ export function inferSubproperties(
       );
     }
     // Distinct sample values, preserving first-seen order, capped.
-    // The membership test is Python's, not `Set`'s — see
-    // {@link pySetKey} (R10.9 finding 1, `B5-S1-notes.md` §3).
+    // The membership test is Python's, not `Set`'s — see `pySetKey`.
     const seen = new Set<string>();
     const samples: ScalarSubValue[] = [];
     let nanCounter = 0;
@@ -621,16 +660,16 @@ export function inferSubproperties(
  * Membership key with CPython `set` semantics for the scalar types
  * `_infer_subproperties` can hold (`str`, `int`, `float`, `bool`).
  *
- * CPython hashes by VALUE across the numeric tower and `bool` is a
+ * CPython hashes by value across the numeric tower and `bool` is a
  * subclass of `int`, so `{0}` already contains `False`, `-0.0` and
  * `0.0`, and `{1}` already contains `True`. A JS `Set` keeps `0`,
  * `-0` (SameValueZero folds this one) and `false` apart, which made
- * `[0, false]` sample as `[0, false]` where Python samples `[0]`
- * (R10.9 differential finding 1, 5/503 cases).
+ * `[0, false]` sample as `[0, false]` where Python samples `[0]` — the
+ * differential fuzzer caught this.
  *
  * `NaN` is handled by the caller: CPython compares it by identity
  * inside `set`, and every parsed `NaN` is a distinct object, so each
- * occurrence is a NEW element.
+ * occurrence is a new element.
  *
  * @param value - One observed scalar.
  * @returns The membership key.
@@ -646,64 +685,112 @@ function pySetKey(value: ScalarSubValue): string {
   return `n:${String(value === 0 ? 0 : value)}`;
 }
 
-// ---------------------------------------------------------------------------
-// DiscoveryService (`discovery.py`)
-// ---------------------------------------------------------------------------
+// --- DiscoveryService ---
 
 /** Options bag of {@link DiscoveryService.listEvents}. */
 export interface ListEventsOptions {
-  /** Maximum events to return; `null`/absent defers to the client. */
+  /**
+   * Maximum events to return; `null`/absent defers to the client.
+   *
+   * @defaultValue `null`
+   */
   readonly limit?: number | null | undefined;
-  /** `YYYY-MM-DD` lower bound; `null`/absent defers to the client. */
+  /**
+   * `YYYY-MM-DD` lower bound; `null`/absent defers to the client.
+   *
+   * @defaultValue `null`
+   */
   readonly from_date?: string | null | undefined;
-  /** `YYYY-MM-DD` upper bound; `null`/absent defers to the client. */
+  /**
+   * `YYYY-MM-DD` upper bound; `null`/absent defers to the client.
+   *
+   * @defaultValue `null`
+   */
   readonly to_date?: string | null | undefined;
 }
 
 /** Options bag of {@link DiscoveryService.listPropertyValues}. */
 export interface ListPropertyValuesOptions {
-  /** Optional event name to scope the query. */
+  /**
+   * Optional event name to scope the query.
+   *
+   * @defaultValue `null`
+   */
   readonly event?: string | null | undefined;
-  /** Maximum number of values to return (Python default 100). */
+  /**
+   * Maximum number of values to return.
+   *
+   * @defaultValue `100`
+   */
   readonly limit?: number | undefined;
 }
 
 /** Options bag of {@link DiscoveryService.listSubproperties}. */
 export interface ListSubpropertiesOptions {
-  /** Optional event name to scope the sample. */
+  /**
+   * Optional event name to scope the sample.
+   *
+   * @defaultValue `null`
+   */
   readonly event?: string | null | undefined;
-  /** Number of raw values to sample (Python default 50). */
+  /**
+   * Number of raw values to sample.
+   *
+   * @defaultValue `50`
+   */
   readonly sample_size?: number | undefined;
 }
 
 /** Options bag of {@link DiscoveryService.listTopEvents}. */
 export interface ListTopEventsOptions {
-  /** Counting method — `"general"`, `"unique"` or `"average"`. */
+  /**
+   * Counting method — `"general"`, `"unique"` or `"average"`.
+   *
+   * @defaultValue `"general"`
+   */
   readonly type?: string | undefined;
-  /** Maximum events to return. */
+  /**
+   * Maximum events to return.
+   *
+   * @defaultValue `null`
+   */
   readonly limit?: number | null | undefined;
 }
 
 /** Options bag of {@link DiscoveryService.listSchemas}. */
 export interface ListSchemasOptions {
-  /** Optional entity-type filter (`"event"` / `"profile"`). */
+  /**
+   * Optional entity-type filter (`"event"` / `"profile"`).
+   *
+   * @defaultValue `null`
+   */
   readonly entity_type?: string | null | undefined;
 }
 
 /** Options bag of {@link DiscoveryService.getSchemaGraph}. */
 export interface GetSchemaGraphOptions {
-  /** Request the property-level `densityLocal`. */
+  /**
+   * Request the property-level `densityLocal`.
+   *
+   * @defaultValue `false`
+   */
   readonly include_density?: boolean | undefined;
-  /** Also gather user properties (Python default `true`). */
+  /**
+   * Also gather user properties.
+   *
+   * @defaultValue `true`
+   */
   readonly include_user_properties?: boolean | undefined;
-  /** Bypass the per-instance cache and re-fetch. */
+  /**
+   * Bypass the per-instance cache and re-fetch.
+   *
+   * @defaultValue `false`
+   */
   readonly force_refresh?: boolean | undefined;
 }
 
 /**
- * Invert per-event property lists into a property→events map — TS port
- * of `_invert_per_event_properties` (`discovery.py`,
- * PR #215).
+ * Invert per-event property lists into a property→events map.
  *
  * Each input row is an event dict carrying a `properties` list (the
  * query-API `fetch_per_event_properties` shape). Rows without an event
@@ -714,6 +801,7 @@ export interface GetSchemaGraphOptions {
  *   list.
  * @returns Map of property name to the ordered list of event names it
  *   appears on.
+ * @see mixpanel_headless._internal.services.discovery._invert_per_event_properties
  */
 function invertPerEventProperties(
   perEventRows: ReadonlyArray<Record<string, unknown>>,
@@ -754,8 +842,8 @@ function invertPerEventProperties(
 type CacheKeyPart = string | number | boolean | null;
 
 /**
- * Encode a Python tuple cache key as a Map key (R4.8 — no bare-object
- * lookup table).
+ * Encode a Python tuple cache key as a `Map` key (a `Map`, not a bare
+ * object, so integer-like and `__proto__` members are safe).
  *
  * @param parts - The tuple members.
  * @returns A collision-free string encoding.
@@ -765,20 +853,20 @@ function cacheKey(parts: readonly CacheKeyPart[]): string {
 }
 
 /**
- * Schema discovery service for Mixpanel projects — TS port of
- * `DiscoveryService`.
+ * Discover a project's events, properties, saved entities and Lexicon
+ * schemas, caching the list-shaped results per instance.
  *
- * Caching behaviour (verbatim): results live in memory for the lifetime
- * of the instance, keyed by the same tuples Python uses —
+ * @remarks
+ * Results live in memory for the lifetime of the instance, keyed by the
+ * same tuples Python uses —
  * `("list_events", limit, from_date, to_date)`,
  * `("list_properties", event)`,
  * `("list_property_values", property, event, limit)`,
  * `("list_funnels",)`, `("list_cohorts",)`, `("list_schemas", entity_type)`,
  * `("get_schema", entity_type, name)` and, in a separate map,
  * `("schema_graph", include_density, include_user_properties)`.
- * `listTopEvents` is NOT cached (real-time data). {@link clearCache}
+ * `listTopEvents` is not cached (real-time data). {@link clearCache}
  * drops both maps.
- *
  * @example
  * ```typescript
  * const discovery = new DiscoveryService(client);
@@ -787,15 +875,28 @@ function cacheKey(parts: readonly CacheKeyPart[]): string {
  * discovery.clearCache();
  * await discovery.listEvents(); // fetches again
  * ```
+ * @see mixpanel_headless._internal.services.discovery.DiscoveryService
  */
 export class DiscoveryService {
-  /** The bound wire client (`self._api_client`). @internal */
+  /**
+   * The bound wire client (`self._api_client`).
+   *
+   * @internal
+   */
   readonly apiClient: MixpanelClient;
 
-  /** List-shaped discovery cache (`self._cache`). @internal */
+  /**
+   * List-shaped discovery cache (`self._cache`).
+   *
+   * @internal
+   */
   readonly cache: Map<string, unknown[]> = new Map();
 
-  /** Schema-graph cache (`self._schema_graph_cache`). @internal */
+  /**
+   * Schema-graph cache (`self._schema_graph_cache`).
+   *
+   * @internal
+   */
   readonly schemaGraphCache: Map<string, SchemaGraphResult> = new Map();
 
   /** The `warnings.warn` sink. */
@@ -805,7 +906,7 @@ export class DiscoveryService {
   readonly #logger: DiscoveryLogger | undefined;
 
   /**
-   * Initialize the discovery service (`__init__`, `discovery.py`).
+   * Initialize the discovery service.
    *
    * @param apiClient - Authenticated Mixpanel client.
    * @param options - Injected warning/debug seams.
@@ -825,18 +926,18 @@ export class DiscoveryService {
   }
 
   /**
-   * List event names in the project (`list_events`,
-   * `discovery.py`).
+   * List event names in the project.
    *
    * Defaults are the client's (`limit=5000`, `from_date=2000-01-01`,
    * `to_date=today`); each `(limit, from_date, to_date)` triple caches
-   * separately. Absent kwargs are NOT forwarded (Python builds the
-   * kwargs dict conditionally, `:446-452`).
+   * separately. Absent kwargs are not forwarded (Python builds the
+   * kwargs dict conditionally).
    *
    * @param options - Optional limit / date bounds.
    * @returns Code-point-sorted event names (a fresh list per call).
-   * @throws AuthenticationError - Invalid credentials.
-   * @throws QueryError - Non-gate 403s and other 4xx errors.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link QueryError} - Non-gate 403s and other 4xx errors.
+   * @see mixpanel_headless._internal.services.discovery.DiscoveryService.list_events
    */
   async listEvents(options: ListEventsOptions = {}): Promise<string[]> {
     const limit = options.limit ?? null;
@@ -858,14 +959,14 @@ export class DiscoveryService {
   }
 
   /**
-   * List all properties for an event (`list_properties`,
-   * `discovery.py`).
+   * List all properties for an event.
    *
    * @param event - Event name.
    * @returns Code-point-sorted property names.
-   * @throws EventNotFoundError - The wire call answered 400; the event
-   *   list is fetched and similar names are attached as suggestions.
-   * @throws QueryError - Any other query failure (re-raised unchanged).
+   * @throws {@link EventNotFoundError} - The wire call answered 400; the
+   *   event list is fetched and similar names are attached as suggestions.
+   * @throws {@link QueryError} - Any other query failure (re-raised unchanged).
+   * @see mixpanel_headless._internal.services.discovery.DiscoveryService.list_properties
    */
   async listProperties(event: string): Promise<string[]> {
     const key = cacheKey(["list_properties", event]);
@@ -890,8 +991,7 @@ export class DiscoveryService {
   }
 
   /**
-   * Find events with similar names for suggestions
-   * (`_find_similar_events`, `discovery.py`).
+   * Find events with similar names for suggestions.
    *
    * Progressive strategy: exact case-insensitive match, then substring
    * matches (shortest first, capped at 5), then word-overlap matches
@@ -900,6 +1000,7 @@ export class DiscoveryService {
    * @param query - The event name that was not found.
    * @param events - Available event names.
    * @returns Up to five suggestions, most relevant first.
+   * @see mixpanel_headless._internal.services.discovery.DiscoveryService._find_similar_events
    * @internal
    */
   findSimilarEvents(query: string, events: readonly string[]): string[] {
@@ -917,7 +1018,7 @@ export class DiscoveryService {
     );
     if (substringMatches.length > 0) {
       // Sort by length (shorter = more specific match). Python's
-      // `sorted` is stable and `len()` counts CODE POINTS.
+      // `sorted` is stable and `len()` counts code points.
       return stableSortBy(substringMatches, (e) => cpLength(e)).slice(0, 5);
     }
 
@@ -950,13 +1051,13 @@ export class DiscoveryService {
   }
 
   /**
-   * List inferred subproperties of a list-of-object property
-   * (`list_subproperties`, `discovery.py`).
+   * List inferred subproperties of a list-of-object property.
    *
    * @param propertyName - Top-level property name (e.g. `"cart"`).
    * @param options - Optional event scope and sample size.
    * @returns Code-point-sorted subproperty infos (possibly empty).
-   * @throws AuthenticationError - Invalid credentials.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @see mixpanel_headless._internal.services.discovery.DiscoveryService.list_subproperties
    */
   async listSubproperties(
     propertyName: string,
@@ -970,13 +1071,14 @@ export class DiscoveryService {
   }
 
   /**
-   * List sample values for a property (`list_property_values`,
-   * `discovery.py`).
+   * List sample values for a property.
    *
    * @param propertyName - Property name.
    * @param options - Optional event scope and limit.
-   * @returns The values, UNSORTED (per research.md), a fresh list.
-   * @throws AuthenticationError - Invalid credentials.
+   * @returns The values in API order (unsorted, as in Python), a fresh
+   *   list.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @see mixpanel_headless._internal.services.discovery.DiscoveryService.list_property_values
    */
   async listPropertyValues(
     propertyName: string,
@@ -999,10 +1101,11 @@ export class DiscoveryService {
   }
 
   /**
-   * List all saved funnels (`list_funnels`, `discovery.py`).
+   * List all saved funnels.
    *
    * @returns Funnels sorted by name (code-point order), a fresh list.
-   * @throws AuthenticationError - Invalid credentials.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @see mixpanel_headless._internal.services.discovery.DiscoveryService.list_funnels
    */
   async listFunnels(): Promise<FunnelInfo[]> {
     const key = cacheKey(["list_funnels"]);
@@ -1026,10 +1129,11 @@ export class DiscoveryService {
   }
 
   /**
-   * List all saved cohorts (`list_cohorts`, `discovery.py`).
+   * List all saved cohorts.
    *
    * @returns Cohorts sorted by name (code-point order), a fresh list.
-   * @throws AuthenticationError - Invalid credentials.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @see mixpanel_headless._internal.services.discovery.DiscoveryService.list_cohorts
    */
   async listCohorts(): Promise<SavedCohort[]> {
     const key = cacheKey(["list_cohorts"]);
@@ -1058,13 +1162,15 @@ export class DiscoveryService {
   }
 
   /**
-   * List saved reports (bookmarks) (`list_bookmarks`,
-   * `discovery.py`). NOT cached — bookmarks change often.
+   * List saved reports (bookmarks).
    *
+   * @remarks
+   * Not cached — bookmarks change often.
    * @param bookmarkType - Optional report-type filter.
    * @returns The bookmark metadata rows.
-   * @throws AuthenticationError - Invalid credentials.
-   * @throws QueryError - Permission denied or invalid type parameter.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link QueryError} - Permission denied or invalid type parameter.
+   * @see mixpanel_headless._internal.services.discovery.DiscoveryService.list_bookmarks
    */
   async listBookmarks(
     bookmarkType: BookmarkType | null = null,
@@ -1084,15 +1190,16 @@ export class DiscoveryService {
   }
 
   /**
-   * Today's top events (`list_top_events`, `discovery.py`).
-   * NOT cached — the data changes throughout the day.
+   * List today's top events.
    *
+   * @remarks
+   * Not cached — the data changes throughout the day.
    * @param options - Counting type and limit.
    * @returns The top events (`amount` mapped onto `count`).
-   * @throws AuthenticationError - Invalid credentials.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @see mixpanel_headless._internal.services.discovery.DiscoveryService.list_top_events
    */
   async listTopEvents(options: ListTopEventsOptions = {}): Promise<TopEvent[]> {
-    // No caching - always fetch fresh data
     const raw = toNativeRecord(
       await this.apiClient.getTopEvents({
         type: options.type ?? "general",
@@ -1111,9 +1218,10 @@ export class DiscoveryService {
   }
 
   /**
-   * Clear all cached discovery results (`clear_cache`,
-   * `discovery.py`) — both the list-shaped cache and the
-   * schema-graph cache.
+   * Clear all cached discovery results — both the list-shaped cache and
+   * the schema-graph cache.
+   *
+   * @see mixpanel_headless._internal.services.discovery.DiscoveryService.clear_cache
    */
   clearCache(): void {
     this.cache.clear();
@@ -1121,11 +1229,12 @@ export class DiscoveryService {
   }
 
   /**
-   * List Lexicon schemas (`list_schemas`, `discovery.py`).
+   * List Lexicon schemas.
    *
    * @param options - Optional entity-type filter.
    * @returns Schemas sorted by `(entity_type, name)`, a fresh list.
-   * @throws AuthenticationError - Invalid credentials.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @see mixpanel_headless._internal.services.discovery.DiscoveryService.list_schemas
    */
   async listSchemas(
     options: ListSchemasOptions = {},
@@ -1148,12 +1257,16 @@ export class DiscoveryService {
   }
 
   /**
-   * Get a single Lexicon schema (`get_schema`, `discovery.py`).
+   * Return one Lexicon schema by entity type and name.
    *
+   * @remarks
+   * Cached as a one-element list so the single list-shaped cache map can
+   * hold it alongside the list results.
    * @param entityType - Entity type (`"event"` / `"profile"`).
    * @param name - Entity name.
    * @returns The schema.
-   * @throws QueryError - Schema not found.
+   * @throws {@link QueryError} - Schema not found.
+   * @see mixpanel_headless._internal.services.discovery.DiscoveryService.get_schema
    */
   async getSchema(entityType: string, name: string): Promise<LexiconSchema> {
     const key = cacheKey(["get_schema", entityType, name]);
@@ -1168,8 +1281,7 @@ export class DiscoveryService {
   }
 
   /**
-   * Gather the full Lexicon schema and the event↔property graph
-   * (`get_schema_graph`, `discovery.py` post-PR-#215).
+   * Gather the full Lexicon schema and the event↔property graph.
    *
    * Three or four bulk calls: event definitions, event properties, and
    * the query-API per-event properties gather always, plus user
@@ -1183,8 +1295,10 @@ export class DiscoveryService {
    *
    * @param options - Density / user-property / refresh switches.
    * @returns The schema graph.
-   * @throws AuthenticationError | QueryError | ServerError -
-   *   Per the wire contract.
+   * @throws {@link AuthenticationError} - Invalid credentials.
+   * @throws {@link QueryError} - A 4xx from any of the bulk calls.
+   * @throws {@link ServerError} - A 5xx from any of the bulk calls.
+   * @see mixpanel_headless._internal.services.discovery.DiscoveryService.get_schema_graph
    */
   async getSchemaGraph(
     options: GetSchemaGraphOptions = {},
@@ -1274,18 +1388,22 @@ export class DiscoveryService {
 }
 
 /**
- * `datetime.now(timezone.utc).isoformat()` over
- * the client's injected clock seam (packet §0.4).
+ * Format a clock reading the way `datetime.now(timezone.utc).isoformat()`
+ * does.
  *
+ * @remarks
  * CPython renders `+00:00` rather than `Z`, and omits the microsecond
- * group entirely when it is zero — both reproduced here.
- *
- * @param when - The clock reading.
+ * group entirely when it is zero — both reproduced here. Exported
+ * because the user-query engine stamps its `computed_at` from the same
+ * expression.
+ * @param when - The clock reading (the client's injected `now()`).
  * @returns The ISO-8601 text.
- *
- * Exported for B5-S2: the query-user engine stamps
- * `computed_at` from the same `datetime.now(timezone.utc).isoformat()`
- * expression (`workspace.py:9711`, `:10112`, `:10051`).
+ * @example
+ * ```typescript
+ * isoUtc(new Date("2026-01-15T12:00:00Z")); // "2026-01-15T12:00:00+00:00"
+ * isoUtc(new Date("2026-01-15T12:00:00.250Z"));
+ * // "2026-01-15T12:00:00.250000+00:00"
+ * ```
  */
 export function isoUtc(when: Date): string {
   const iso = when.toISOString(); // YYYY-MM-DDTHH:mm:ss.sssZ
@@ -1295,7 +1413,7 @@ export function isoUtc(when: Date): string {
 }
 
 /**
- * Python `sorted(items, key=...)` for a single comparable key: STABLE,
+ * Python `sorted(items, key=...)` for a single comparable key: stable,
  * with code-point ordering for strings and numeric ordering for numbers.
  *
  * @param items - The input list (never mutated).
@@ -1310,7 +1428,7 @@ function stableSortBy<T>(
 }
 
 /**
- * Python `sorted(items, key=...)` for a TUPLE key: STABLE, comparing
+ * Python `sorted(items, key=...)` for a tuple key: stable, comparing
  * members left to right (strings by code point, numbers numerically).
  *
  * JS `Array.prototype.sort` is stable per spec, so no index tiebreak is

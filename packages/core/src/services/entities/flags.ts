@@ -1,15 +1,13 @@
 /**
- * Feature-flag CRUD/lifecycle wire methods (App API) — Phase-3 packet
- * B4-C4 port of the `MixpanelAPIClient` feature-flags range
- * (`api_client.py`).
+ * Feature-flag CRUD and lifecycle wire methods on the App API. Flags are
+ * the one domain here on `require_scoped_path`: every path except
+ * `get_flag_limits` is workspace-scoped, auto-discovering the workspace
+ * through the injected {@link FlagPathDeps} seam when nothing is pinned,
+ * while `get_flag_limits` is always project-scoped. Results come back
+ * verbatim after Python's isinstance guard — no `FeatureFlag` model
+ * shaping here.
  *
- * All methods route through B0 `appRequest`. Flags are the one
- * C4 domain on `require_scoped_path` — every path except
- * `get_flag_limits` is workspace-scoped (auto-discovering via the C1
- * `resolveWorkspaceId` seam); `get_flag_limits` is ALWAYS
- * project-scoped (`api_client.py`). Results are returned
- * verbatim after the source's isinstance guard (Caution #11 — no
- * `FeatureFlag` model shaping).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_feature_flags
  */
 
 import { appRequest } from "../../client/app-request.js";
@@ -17,22 +15,26 @@ import type { ClientCore } from "../../client/core.js";
 import type { JsonValue } from "../../client/json-value.js";
 import { expectListResult, expectRecordResult } from "./shared.js";
 
-/** The C1 workspace-scoping seam the flag factory consumes. */
+/** The workspace-scoping seam the flag factory consumes. */
 export interface FlagPathDeps {
   /**
-   * Build a workspace-scoped API path (`self.require_scoped_path`,
-   * `api_client.py` — auto-discovers the workspace when no
-   * pin is set).
+   * Build a workspace-scoped API path. Auto-discovers the workspace when no pin is
+   * set.
    *
    * @param domainPath - Domain-relative path.
    * @returns `/projects/{pid}/workspaces/{wid}/{domainPath}`.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.require_scoped_path
    */
   requireScopedPath: (domainPath: string) => Promise<string>;
 }
 
 /** Options bag of {@link FlagMethods.listFeatureFlags}. */
 export interface ListFeatureFlagsOptions {
-  /** When true, include archived flags (`include_archived`). */
+  /**
+   * Include archived flags (`include_archived` on the wire).
+   *
+   * @defaultValue `false`
+   */
   readonly include_archived?: boolean | undefined;
   /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
@@ -46,29 +48,31 @@ export interface GetFlagHistoryOptions {
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The C4 feature-flag method surface (mixed into `MixpanelClient`). */
+/** Feature-flag methods mixed into `MixpanelClient`. */
 export interface FlagMethods {
   /**
-   * List feature flags (`list_feature_flags`,
-   * `api_client.py` — GET `feature-flags/`,
-   * workspace-scoped).
+   * List feature flags. Sends GET `feature-flags/`, workspace-scoped.
    *
    * @param options - include_archived + signal.
    * @returns The flag list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Per the B0 `appRequest` contract.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @throws {@link AuthenticationError} - Invalid or expired credentials (401).
+   * @throws {@link RateLimitError} - Rate limit still exceeded after the retries
+   *   (429).
+   * @throws {@link QueryError} - Other 4xx responses (400/403/404/422).
+   * @throws {@link ServerError} - Server-side errors (5xx).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_feature_flags
    */
   listFeatureFlags: (options?: ListFeatureFlagsOptions) => Promise<JsonValue[]>;
 
   /**
-   * Create a feature flag (`create_feature_flag`, `:4975-5005` — POST
-   * `feature-flags/`).
+   * Create a feature flag. Sends POST `feature-flags/`.
    *
    * @param body - Flag creation payload (`name` and `key` required).
    * @param signal - Optional cancellation signal.
    * @returns The created flag dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_feature_flag
    */
   createFeatureFlag: (
     body: Record<string, unknown>,
@@ -76,12 +80,13 @@ export interface FlagMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get a feature flag by ID (`get_feature_flag`, `:5007-5037`).
+   * Get a feature flag by ID.
    *
    * @param flagId - Feature flag UUID.
    * @param signal - Optional cancellation signal.
    * @returns The flag dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_feature_flag
    */
   getFeatureFlag: (
     flagId: string,
@@ -89,14 +94,14 @@ export interface FlagMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update a feature flag (`update_feature_flag`, `:5039-5070` — PUT,
-   * full replacement).
+   * Update a feature flag. Sends PUT, full replacement.
    *
    * @param flagId - Feature flag UUID.
    * @param body - Complete flag configuration.
    * @param signal - Optional cancellation signal.
    * @returns The updated flag dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_feature_flag
    */
   updateFeatureFlag: (
     flagId: string,
@@ -105,32 +110,33 @@ export interface FlagMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete a feature flag (`delete_feature_flag`, `:5072-5093`).
+   * Delete a feature flag.
    *
    * @param flagId - Feature flag UUID.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_feature_flag
    */
   deleteFeatureFlag: (flagId: string, signal?: AbortSignal) => Promise<void>;
 
   /**
-   * Archive a feature flag (`archive_feature_flag`, `:5095-5116` —
-   * POST `feature-flags/{id}/archive/`).
+   * Archive a feature flag. Sends POST `feature-flags/{id}/archive/`.
    *
    * @param flagId - Feature flag UUID.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.archive_feature_flag
    */
   archiveFeatureFlag: (flagId: string, signal?: AbortSignal) => Promise<void>;
 
   /**
-   * Restore an archived feature flag (`restore_feature_flag`,
-   * `:5118-5148` — DELETE `feature-flags/{id}/archive/`).
+   * Restore an archived feature flag. Sends DELETE `feature-flags/{id}/archive/`.
    *
    * @param flagId - Feature flag UUID.
    * @param signal - Optional cancellation signal.
    * @returns The restored flag dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.restore_feature_flag
    */
   restoreFeatureFlag: (
     flagId: string,
@@ -138,13 +144,13 @@ export interface FlagMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Duplicate a feature flag (`duplicate_feature_flag`, `:5150-5180` —
-   * POST `feature-flags/{id}/duplicate/`).
+   * Duplicate a feature flag. Sends POST `feature-flags/{id}/duplicate/`.
    *
    * @param flagId - Feature flag UUID.
    * @param signal - Optional cancellation signal.
    * @returns The duplicate flag dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.duplicate_feature_flag
    */
   duplicateFeatureFlag: (
     flagId: string,
@@ -152,13 +158,13 @@ export interface FlagMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Set test-user variant overrides (`set_flag_test_users`,
-   * `:5182-5204` — PUT `feature-flags/{id}/test-users/`).
+   * Set test-user variant overrides. Sends PUT `feature-flags/{id}/test-users/`.
    *
    * @param flagId - Feature flag UUID.
    * @param body - Test user mapping.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.set_flag_test_users
    */
   setFlagTestUsers: (
     flagId: string,
@@ -167,13 +173,14 @@ export interface FlagMethods {
   ) => Promise<void>;
 
   /**
-   * Get flag change history (`get_flag_history`, `:5206-5239` — GET
-   * `feature-flags/{id}/history/`; `params` passed through verbatim).
+   * Get flag change history. Sends GET `feature-flags/{id}/history/`; `params`
+   * passed through verbatim.
    *
    * @param flagId - Feature flag UUID.
    * @param options - params + signal.
    * @returns The history dict (`events` + `count`).
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_flag_history
    */
   getFlagHistory: (
     flagId: string,
@@ -181,23 +188,34 @@ export interface FlagMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Get account-level flag limits (`get_flag_limits`, `:5241-5271` —
-   * GET `/projects/{pid}/feature-flags/limits/`, ALWAYS
-   * project-scoped even with a workspace pinned).
+   * Get account-level flag limits. Sends GET
+   * `/projects/{pid}/feature-flags/limits/`.
    *
+   * @remarks
+   * Always project-scoped, even with a workspace pinned — the one flag
+   * path that never goes through `require_scoped_path`.
    * @param signal - Optional cancellation signal.
    * @returns The limits dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_flag_limits
    */
   getFlagLimits: (signal?: AbortSignal) => Promise<Record<string, JsonValue>>;
 }
 
 /**
- * Build the C4 feature-flag methods over the C1 core seam.
+ * Build the feature-flag methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @param paths - The workspace-scoping seam (`require_scoped_path`).
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const flags = createFlagMethods(core, {
+ *   requireScopedPath: (path) => client.requireScopedPath(path),
+ * });
+ * await flags.listFeatureFlags({ include_archived: true });
+ * // [{ id: "f1...", key: "new-checkout", ... }, ...]
+ * ```
  */
 export function createFlagMethods(
   core: ClientCore,

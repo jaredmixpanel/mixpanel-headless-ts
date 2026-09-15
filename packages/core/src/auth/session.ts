@@ -1,24 +1,16 @@
 /**
- * Session, Project, WorkspaceRef, and ActiveSession value types — TS port
- * of `mixpanel_headless/_internal/auth/session.py` (phase2-design C4).
+ * Session, Project, WorkspaceRef and ActiveSession value types with their
+ * parse factories. A {@link Session} is the in-memory "who am I and what
+ * am I working on" tuple — an {@link Account} plus a {@link Project} and
+ * an optional {@link WorkspaceRef} — held as compile-time `readonly`
+ * interfaces (no runtime `Object.freeze`); axes are swapped with
+ * {@link sessionReplace}. `WorkspaceRef` is the data type; the public
+ * `Workspace` facade class is the operational surface, as in Python.
+ * Extra-key handling mirrors each Pydantic `model_config`: `Project` /
+ * `WorkspaceRef` / `Session` ignore unknown keys, `ActiveSession` rejects
+ * them.
  *
- * A {@link Session} is the in-memory "who am I and what am I working on"
- * tuple — an {@link Account} plus a {@link Project} and an optional
- * {@link WorkspaceRef}. All shapes are compile-time `readonly` interfaces
- * (no runtime `Object.freeze`, R4.6 [ST]); switching axes uses
- * {@link sessionReplace}.
- *
- * Naming: `WorkspaceRef` is the data type held inside a Session, while the
- * public `Workspace` facade class (Phase 3 B6) is the operational surface —
- * the rename avoids the collision, exactly as in Python.
- *
- * Parse-factory extra-key behavior mirrors each Pydantic `model_config`:
- * `Project`/`WorkspaceRef`/`Session` are `frozen=True` WITHOUT
- * `extra='forbid'` (unknown keys are IGNORED, the Pydantic default);
- * `ActiveSession` is `extra='forbid'` and rejects unknown keys — including
- * `project`, which deliberately does not exist on it (project lives on
- * `Account.default_project`; switching accounts implicitly switches
- * projects).
+ * @see mixpanel_headless._internal.auth.session
  */
 
 import { coerceInt, coerceStr } from "../coerce.js";
@@ -37,11 +29,13 @@ import {
 import { type ParseAccountOptions, parseFail } from "./shared.js";
 
 /**
- * Mixpanel project reference (Python `Project`).
+ * Mixpanel project reference.
  *
  * Project IDs come from the Mixpanel API as numeric strings; `name`,
  * `organization_id`, and `timezone` are populated when the resolver has
  * access to a `/me` response.
+ *
+ * @see mixpanel_headless._internal.auth.session.Project
  */
 export interface Project {
   /** Numeric project ID (Mixpanel's wire format is a digit string). */
@@ -55,13 +49,14 @@ export interface Project {
 }
 
 /**
- * Mixpanel workspace reference (Python `WorkspaceRef`; cohort/dashboard
- * scoping unit).
+ * Mixpanel workspace reference (the cohort/dashboard scoping unit).
  *
  * The optional `project_id` lets {@link parseSession} cross-check that the
  * workspace actually belongs to the bound project; left `null`/absent when
  * the workspace was constructed from a bare ID (e.g. `MP_WORKSPACE_ID=N`),
  * in which case the check degrades to "trust the caller".
+ *
+ * @see mixpanel_headless._internal.auth.session.WorkspaceRef
  */
 export interface WorkspaceRef {
   /** Positive integer workspace ID assigned by Mixpanel. */
@@ -75,14 +70,14 @@ export interface WorkspaceRef {
 }
 
 /**
- * Immutable in-memory tuple of (Account, Project, optional WorkspaceRef)
- * (Python `Session`).
+ * Immutable in-memory tuple of (Account, Project, optional WorkspaceRef).
  *
  * `workspace === null` (or absent) lazy-resolves on the first
- * workspace-scoped API call (FR-025). `headers` is REQUIRED — Python
- * declares `headers: Mapping[str, str] = Field(default_factory=dict)`
- * (session.py:145), never `None`; {@link parseSession} fills an empty map
- * when the key is absent.
+ * workspace-scoped API call. `headers` is required — Python declares
+ * `headers: Mapping[str, str] = Field(default_factory=dict)`, never
+ * `None`; {@link parseSession} fills an empty map when the key is absent.
+ *
+ * @see mixpanel_headless._internal.auth.session.Session
  */
 export interface Session {
   /** Resolved account (one of the three discriminated variants). */
@@ -93,22 +88,23 @@ export interface Session {
   readonly workspace?: WorkspaceRef | null | undefined;
   /**
    * Custom HTTP headers attached at resolution time (from
-   * `[settings].custom_header` and/or `bridge.headers`). `ReadonlyMap`
-   * per R4.8 — membership via `.has()`, never prototype-unsafe object
-   * lookups. Compile-time read-only only (no freeze, R4.6).
+   * `[settings].custom_header` and/or `bridge.headers`). A `ReadonlyMap`
+   * so membership is `.has()`, never a prototype-unsafe object lookup.
+   * Compile-time read-only only (no freeze).
    */
   readonly headers: ReadonlyMap<string, string>;
 }
 
 /**
- * Persisted shape of the `[active]` block in `~/.mp/config.toml`
- * (Python `ActiveSession`).
+ * Persisted shape of the `[active]` block in `~/.mp/config.toml`.
  *
- * Only `account` and `workspace` live in `[active]` — there is NO
+ * Only `account` and `workspace` live in `[active]` — there is no
  * `project` field: project lives on the account itself as
  * `Account.default_project`, so switching accounts implicitly switches
  * projects. {@link parseActiveSession} rejects unknown keys (including
  * `project`) per `extra='forbid'`.
+ *
+ * @see mixpanel_headless._internal.auth.session.ActiveSession
  */
 export interface ActiveSession {
   /** Local config name of the active account. */
@@ -132,15 +128,16 @@ function coerceOptions(
 }
 
 /**
- * Read an optional string-or-null field, preserving absent-vs-null
- * (R3.9/R4.10).
+ * Read an optional string-or-null field, preserving absent-vs-null.
  *
  * @param payload - The raw payload record.
  * @param field - Field name.
  * @param options - Parse options carrying the boundary kind.
  * @returns The string, `null`, or `undefined` when absent.
- * @throws ParamValidationError | ResponseValidationError - When present
+ * @throws {@link ParamValidationError} - When present
  *   but not a string.
+ * @throws {@link ResponseValidationError} - The same condition at the
+ *   default `'response'` boundary.
  */
 function readOptionalString(
   payload: Readonly<Record<string, unknown>>,
@@ -157,18 +154,29 @@ function readOptionalString(
   return coerceStr(value, coerceOptions(options, field));
 }
 
-/** `Project.id` constraint: Python `pattern=r"^\d+$"` (Rust-regex `\d`). */
+/**
+ * `Project.id` constraint: Python `pattern=r"^\d+$"`, which pydantic
+ * compiles with the Rust `regex` crate, whose `\d` is Unicode-aware —
+ * `\p{Nd}` is the faithful JS spelling.
+ */
 const PROJECT_ID_PATTERN = /^\p{Nd}+$/u;
 
 /**
  * Construct a {@link Project} from a raw payload (Pydantic parity:
- * `frozen=True`, extras IGNORED, `id` digits-only + non-empty).
+ * `frozen=True`, extras ignored, `id` digits-only + non-empty).
  *
  * @param raw - The raw payload.
  * @param options - Error-boundary selection (defaults to `'response'`).
  * @returns The parsed project; unknown keys are dropped.
- * @throws ParamValidationError | ResponseValidationError - On a missing /
+ * @throws {@link ParamValidationError} - On a missing /
  *   malformed `id` or wrongly typed optional field.
+ * @throws {@link ResponseValidationError} - The same condition at the
+ *   default `'response'` boundary.
+ * @example
+ * ```typescript
+ * parseProject({ id: "12345", name: "Demo", extra: true });
+ * // { id: "12345", name: "Demo" } — unknown keys dropped
+ * ```
  */
 export function parseProject(
   raw: unknown,
@@ -203,14 +211,21 @@ export function parseProject(
 
 /**
  * Construct a {@link WorkspaceRef} from a raw payload (Pydantic parity:
- * `frozen=True`, extras IGNORED, `id` a positive integer via lax
+ * `frozen=True`, extras ignored, `id` a positive integer via lax
  * coercion — `Field(gt=0)`).
  *
  * @param raw - The raw payload.
  * @param options - Error-boundary selection (defaults to `'response'`).
  * @returns The parsed workspace reference; unknown keys are dropped.
- * @throws ParamValidationError | ResponseValidationError - On a missing /
+ * @throws {@link ParamValidationError} - On a missing /
  *   non-positive `id` or wrongly typed optional field.
+ * @throws {@link ResponseValidationError} - The same condition at the
+ *   default `'response'` boundary.
+ * @example
+ * ```typescript
+ * parseWorkspaceRef({ id: 42, is_default: true });
+ * // { id: 42, is_default: true }
+ * ```
  */
 export function parseWorkspaceRef(
   raw: unknown,
@@ -245,12 +260,14 @@ export function parseWorkspaceRef(
 
 /**
  * Enforce the Python session-level model validator: a workspace carrying
- * a `project_id` MUST belong to the bound project.
+ * a `project_id` must belong to the bound project.
  *
  * @param session - The candidate (account, project, workspace) tuple.
  * @param options - Error-boundary selection.
- * @throws ParamValidationError | ResponseValidationError - When
+ * @throws {@link ParamValidationError} - When
  *   `workspace.project_id` is set and differs from `project.id`.
+ * @throws {@link ResponseValidationError} - The same condition at the
+ *   default `'response'` boundary.
  */
 function checkWorkspaceProjectCoupling(
   session: Pick<Session, "project" | "workspace">,
@@ -280,21 +297,31 @@ function checkWorkspaceProjectCoupling(
 
 /**
  * Construct a {@link Session} from a raw payload (Pydantic parity:
- * `frozen=True`, extras IGNORED; nested payloads parse through
+ * `frozen=True`, extras ignored; nested payloads parse through
  * {@link parseAccount} / {@link parseProject} / {@link parseWorkspaceRef};
- * the workspace-project coupling validator runs; an ABSENT `headers` key
+ * the workspace-project coupling validator runs; an absent `headers` key
  * fills an empty map (`default_factory=dict` fires on absent only —
- * explicit `null` is a validation error, R4.12).
+ * explicit `null` is a validation error).
  *
  * Already-parsed nested values (an {@link Account} object, a
- * `ReadonlyMap` for headers) pass through unchanged so Phase-3 callers
- * can assemble sessions from parts.
+ * `ReadonlyMap` for headers) pass through unchanged so callers can
+ * assemble sessions from parts.
  *
  * @param raw - The raw payload.
  * @param options - Error-boundary selection (defaults to `'response'`).
  * @returns The parsed session.
- * @throws ParamValidationError | ResponseValidationError - On any nested
+ * @throws {@link ParamValidationError} - On any nested
  *   parse failure, a `null` `headers`, or a workspace-project mismatch.
+ * @throws {@link ResponseValidationError} - The same condition at the
+ *   default `'response'` boundary.
+ * @example
+ * ```typescript
+ * const session = parseSession({
+ *   account: { type: "oauth_browser", name: "team", region: "us" },
+ *   project: { id: "12345" },
+ * });
+ * // session.workspace === undefined; session.headers.size === 0
+ * ```
  */
 export function parseSession(
   raw: unknown,
@@ -335,15 +362,20 @@ export function parseSession(
 }
 
 /**
- * Return the `Authorization` header for a session (port of Python
- * `Session.auth_header`).
+ * Return the `Authorization` header for a session.
  *
  * @param session - The session whose account authenticates the call.
  * @param options - Carries the `TokenResolver` (required for OAuth
  *   accounts, ignored for `service_account` — exactly Python's rule).
  * @returns The header value (`Basic ...` or `Bearer ...`).
- * @throws ParamTypeError - When the account is an OAuth variant and no
+ * @throws {@link ParamTypeError} - When the account is an OAuth variant and no
  *   resolver was provided (Python raises `TypeError`).
+ * @example
+ * ```typescript
+ * const header = await sessionAuthHeader(session, { tokenResolver });
+ * // "Bearer …" for OAuth accounts, "Basic …" for service accounts
+ * ```
+ * @see mixpanel_headless._internal.auth.session.Session.auth_header
  */
 export async function sessionAuthHeader(
   session: Session,
@@ -367,8 +399,8 @@ export interface SessionReplaceUpdate {
   /** Replacement project; omitted (or `null`) preserves the current one. */
   readonly project?: Project | null | undefined;
   /**
-   * Replacement workspace. Passing `null` CLEARS the workspace
-   * (re-triggering lazy resolution); OMITTING the key preserves the
+   * Replacement workspace. Passing `null` clears the workspace
+   * (re-triggering lazy resolution); omitting the key preserves the
    * current value — Python's sentinel semantics, expressed via key
    * presence (`Object.hasOwn`).
    */
@@ -381,20 +413,25 @@ export interface SessionReplaceUpdate {
 }
 
 /**
- * Return a new {@link Session} with the supplied axes swapped in (port of
- * Python `Session.replace`).
+ * Return a new {@link Session} with the supplied axes swapped in.
  *
- * Fidelity note: Python implements this via `model_copy(update=...)`,
- * which does NOT re-run model validators — so, exactly like Python, this
- * function performs NO re-validation (a replace that introduces a
- * mismatched `workspace.project_id` does not raise; the API surfaces the
- * mismatch at request time).
+ * Python implements this via `model_copy(update=...)`, which does not
+ * re-run model validators — so, exactly like Python, this function
+ * performs no re-validation (a replace that introduces a mismatched
+ * `workspace.project_id` does not raise; the API surfaces the mismatch
+ * at request time).
  *
  * @param session - The source session (never mutated).
  * @param update - The axes to replace (sentinel semantics via key
  *   presence for `workspace`/`headers`, `!= null` for
  *   `account`/`project` — mirroring Python's `is not None` checks).
  * @returns A new session instance.
+ * @example
+ * ```typescript
+ * const next = sessionReplace(session, { workspace: null });
+ * // next.workspace === null (cleared); next.account === session.account
+ * ```
+ * @see mixpanel_headless._internal.auth.session.Session.replace
  */
 export function sessionReplace(
   session: Session,
@@ -426,16 +463,25 @@ const ACTIVE_SESSION_FIELDS: ReadonlySet<string> = new Set([
  * Construct an {@link ActiveSession} from a raw payload (the `[active]`
  * config block).
  *
- * Pydantic parity: `extra='forbid'` — unknown keys are REJECTED,
- * explicitly including `project` (Python's docstring rationale, ported:
- * project lives on `Account.default_project`; switching accounts
- * implicitly switches projects, so `[active]` has no project axis).
+ * Pydantic parity: `extra='forbid'` — unknown keys are rejected,
+ * explicitly including `project` (project lives on
+ * `Account.default_project`; switching accounts implicitly switches
+ * projects, so `[active]` has no project axis).
  *
  * @param raw - The raw payload.
  * @param options - Error-boundary selection (defaults to `'response'`).
  * @returns The parsed active-session block.
- * @throws ParamValidationError | ResponseValidationError - On unknown
+ * @throws {@link ParamValidationError} - On unknown
  *   keys (including `project`) or wrongly typed fields.
+ * @throws {@link ResponseValidationError} - The same condition at the
+ *   default `'response'` boundary.
+ * @example
+ * ```typescript
+ * parseActiveSession({ account: "team", workspace: 42 });
+ * // { account: "team", workspace: 42 }
+ * parseActiveSession({ project: "1" });
+ * // throws ResponseValidationError — `[active]` has no project field
+ * ```
  */
 export function parseActiveSession(
   raw: unknown,

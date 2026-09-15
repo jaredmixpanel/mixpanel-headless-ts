@@ -1,11 +1,11 @@
 /**
- * Engage wire methods — Phase-3 packet B4-C2 port of
- * `MixpanelAPIClient.engage_stats` and
- * `export_profiles_page` (`:2111-2249`).
+ * Engage wire methods: `engageStats` and `exportProfilesPage`, the two
+ * `/engage` POSTs outside the streaming export. Both go through
+ * `core.requestQueryHost` (the `_request` twin), which owns project-id
+ * and workspace-pin injection, retries and `query_origin`; nothing here
+ * re-derives them.
  *
- * Both POST through the C1 `_request` twin (`core.requestQueryHost`) to
- * the engage base (a Query-host URL — project-id/workspace-pin
- * injection and `query_origin` live in the shared core, R10.8).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.engage_stats
  */
 
 import type { ClientCore } from "../../client/core.js";
@@ -20,7 +20,11 @@ import { isSet, pythonTypeNameOf, truthyList, truthyStr } from "../shared.js";
 export interface EngageStatsOptions {
   /** Filter expression (sent as `selector`). */
   readonly where?: string | null | undefined;
-  /** Aggregation expression (default `"count()"`). */
+  /**
+   * Aggregation expression.
+   *
+   * @defaultValue `"count()"`
+   */
   readonly action?: string | undefined;
   /** Pre-encoded JSON cohort filter string. */
   readonly filter_by_cohort?: string | null | undefined;
@@ -31,7 +35,12 @@ export interface EngageStatsOptions {
   readonly group_id?: string | null | undefined;
   /** Unix timestamp for point-in-time query. */
   readonly as_of_timestamp?: number | null | undefined;
-  /** Include non-members in cohort results. */
+  /**
+   * Include non-members in cohort results; sent only alongside
+   * `filter_by_cohort`.
+   *
+   * @defaultValue `false`
+   */
   readonly include_all_users?: boolean | undefined;
   /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
@@ -54,7 +63,12 @@ export interface ExportProfilesPageOptions {
     ReadonlyArray<Record<string, unknown>> | null | undefined;
   /** Unix timestamp for point-in-time query. */
   readonly as_of_timestamp?: number | null | undefined;
-  /** Include non-members in cohort results. */
+  /**
+   * Include non-members in cohort results; sent only when a cohort
+   * filter is set.
+   *
+   * @defaultValue `false`
+   */
   readonly include_all_users?: boolean | undefined;
   /** Sort expression in selector format. */
   readonly sort_key?: string | null | undefined;
@@ -74,29 +88,42 @@ export interface ExportProfilesPageOptions {
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The C2 engage method surface (mixed into `MixpanelClient`). */
+/** Engage methods mixed into `MixpanelClient`. */
 export interface EngageMethods {
   /**
-   * Aggregate statistics from the Engage API (`engage_stats`,
-   * `api_client.py`).
+   * Return aggregate statistics from the Engage API.
    *
-   * @param options - where/action/cohort/segment/group/timestamp knobs.
+   * @param options - The filter (`where`, sent as `selector`), the
+   *   aggregation `action`, cohort filter / segmentation, `group_id`,
+   *   `as_of_timestamp` and `include_all_users`.
    * @returns The raw response dict.
-   * @throws QueryError - Non-dict 200 response (`status_code: 200` with
-   *   the Python `str()` of the body), or API rejections.
-   * @throws AuthenticationError | RateLimitError - Per the retry core.
+   * @throws {@link QueryError} - Non-dict 200 response (`status_code`
+   *   200 with the Python `str()` of the body), or API rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.engage_stats
    */
   engageStats: (options?: EngageStatsOptions) => Promise<JsonValue>;
 
   /**
-   * Fetch a single page of profiles (`export_profiles_page`,
-   * `api_client.py`).
+   * Fetch a single page of profiles.
    *
    * @param page - Zero-based page index.
-   * @param options - session/filter/sort/search/limit knobs.
-   * @returns The page result (profiles + pagination metadata).
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Per the retry core.
+   * @param options - The `session_id` from the previous page, filters
+   *   (`where`, cohort, behaviors, ids), sort, search and `limit`.
+   * @returns The page result (profiles plus pagination metadata).
+   * @throws {@link TypeError} - Non-dict 200 response (the Python
+   *   `AttributeError` analog; no recorded vector reaches it).
+   * @throws {@link QueryError} - API rejections.
+   * @throws {@link AuthenticationError} - Invalid credentials (401).
+   * @throws {@link RateLimitError} - 429 after the retry budget.
+   * @throws {@link ServerError} - 5xx after the retry budget.
+   * @throws {@link MixpanelHeadlessError} - `HTTP_ERROR` on transport
+   *   failure or another non-2xx status.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.export_profiles_page
    */
   exportProfilesPage: (
     page: number,
@@ -105,7 +132,7 @@ export interface EngageMethods {
 }
 
 /**
- * `dict.get(key, default)` over a parsed wire body.
+ * Read a key like `dict.get(key, default)` over a parsed wire body.
  *
  * @param body - The parsed record.
  * @param key - Key to read.
@@ -137,10 +164,19 @@ function toCount(value: JsonValue): number {
 }
 
 /**
- * Build the C2 engage methods over the C1 core seam.
+ * Build the engage methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const engage = createEngageMethods(core);
+ * const stats = await engage.engageStats({
+ *   where: 'properties["$city"] == "Berlin"',
+ * });
+ * const page = await engage.exportProfilesPage(0, { limit: 100 });
+ * // page.has_more, page.session_id, page.profiles
+ * ```
  */
 // eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function createEngageMethods(core: ClientCore): EngageMethods {
@@ -154,8 +190,7 @@ export function createEngageMethods(core: ClientCore): EngageMethods {
         action: options.action ?? "count()",
       };
       if (truthyStr(options.where)) {
-        // The stats endpoint accepts "selector", not "where"
-        // (`api_client.py`).
+        // The stats endpoint accepts "selector", not "where".
         params["selector"] = options.where;
       }
       if (truthyStr(options.filter_by_cohort)) {
@@ -173,8 +208,7 @@ export function createEngageMethods(core: ClientCore): EngageMethods {
         params["as_of_timestamp"] = options.as_of_timestamp;
       }
       if (truthyStr(options.filter_by_cohort)) {
-        // Sent explicitly because the API defaults to True
-        // (`api_client.py:2326-2328`).
+        // Sent explicitly because the API defaults to True.
         params["include_all_users"] = options.include_all_users ?? false;
       }
       const response = await core.requestQueryHost("POST", url, {
@@ -209,8 +243,7 @@ export function createEngageMethods(core: ClientCore): EngageMethods {
       if (truthyStr(options.where)) {
         params["where"] = options.where;
       }
-      // filter_by_cohort takes precedence over cohort_id
-      // (`api_client.py`).
+      // filter_by_cohort takes precedence over cohort_id.
       if (truthyStr(options.filter_by_cohort)) {
         params["filter_by_cohort"] = options.filter_by_cohort;
       } else if (truthyStr(options.cohort_id)) {
@@ -232,7 +265,7 @@ export function createEngageMethods(core: ClientCore): EngageMethods {
       if (isSet(options.as_of_timestamp)) {
         params["as_of_timestamp"] = options.as_of_timestamp;
       }
-      // Sent when either cohort filter is set (`api_client.py`).
+      // Sent when either cohort filter is set.
       if (truthyStr(options.cohort_id) || truthyStr(options.filter_by_cohort)) {
         params["include_all_users"] = options.include_all_users ?? false;
       }
@@ -259,9 +292,9 @@ export function createEngageMethods(core: ClientCore): EngageMethods {
         signal: options.signal,
       });
       if (!isPlainRecord(response)) {
-        // Python `response.get(...)` on a non-dict raises AttributeError
-        // — replicate the failure class shape (R10.7-adjacent; no vector
-        // or Layer-3 lock reaches this arm).
+        // Python `response.get(...)` on a non-dict raises AttributeError;
+        // the closest JS class stands in (no recorded vector reaches
+        // this arm).
         throw new TypeError(
           `'${pythonTypeNameOf(response)}' object has no attribute 'get'`,
         );

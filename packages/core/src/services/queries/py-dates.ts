@@ -1,23 +1,18 @@
 /**
- * Date arithmetic helpers for the B4-C2 query-host methods — twins of
- * the CPython `datetime.strptime(value, "%Y-%m-%d")` /
- * `date.isoformat()` / `timedelta(days=n)` calls the Python client
- * makes (`api_client.py:196-249` activity-feed dates, `:2399-2424`
- * `get_events` date defaulting, `:2954-2967` `query_saved_report`
- * funnel windows).
+ * Civil-date arithmetic for the query-host methods that default or widen
+ * date windows: twins of the `datetime.strptime(value, "%Y-%m-%d")`,
+ * `date.isoformat()` and `timedelta(days=n)` calls in `get_events`,
+ * `query_saved_report` and the activity-feed date helpers. The integer
+ * math is Hinnant's `civil_from_days` / `days_from_civil`, the same
+ * conversions CPython's `datetime` ordinals perform, valid over years
+ * 1..9999.
  *
- * Proleptic-Gregorian civil arithmetic (Hinnant's `civil_from_days` /
- * `days_from_civil`) — the same integer math CPython's `datetime`
- * ordinal conversions perform; valid over the full Python date range
- * (years 1..9999).
+ * Divergence: Python's `date.today()` / `datetime.now()` read the host's
+ * local calendar; these helpers read the injected clock in UTC (the
+ * conformance runners replay under a UTC-frozen clock), so a default
+ * window can differ from CPython by one day near local midnight.
  *
- * Clock note (TODO(port) disclosure, R10.3): Python's `date.today()` /
- * `datetime.now()` read the LOCAL calendar; both conformance runners
- * replay under a UTC-frozen clock shim (design D1.4/D12 — the runner's
- * `shims.today()` is documented "UTC, matching the frozen epoch"), so
- * these helpers derive the calendar date from the injected `now()` in
- * UTC. At real runtime a host west/east of UTC can differ from CPython
- * near local midnight — disclosed, out of vector reach.
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_events
  */
 
 import { pythonInt } from "../../compat/index.js";
@@ -35,10 +30,10 @@ export interface CivilDate {
 
 /**
  * `%Y-%m-%d` digit runs, CPython `_strptime` grammar: `\d{1,4}` year,
- * `\d{1,2}` month/day where `\d` is UNICODE `Nd` (Python compiles its
+ * `\d{1,2}` month/day where `\d` is Unicode `Nd` (Python compiles its
  * strptime regexes without `re.ASCII`); the whole string must match.
- * `\p{Nd}` + `pythonInt` reproduce that exactly (R11.7 — no bare
- * `parseInt`, no ASCII-only `\d`).
+ * `\p{Nd}` plus `pythonInt` reproduce that exactly; a bare `parseInt` or
+ * an ASCII-only `\d` would not.
  */
 const YMD_PATTERN = /^(\p{Nd}{1,4})-(\p{Nd}{1,2})-(\p{Nd}{1,2})$/u;
 
@@ -46,13 +41,18 @@ const YMD_PATTERN = /^(\p{Nd}{1,4})-(\p{Nd}{1,2})-(\p{Nd}{1,2})$/u;
 const MONTH_DAYS = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
 /**
- * Parse a `%Y-%m-%d` date exactly as `datetime.strptime` accepts it
- * (`"2026-5-1"` parses; `"2026/05/01"`, trailing text, month 13, day 32
- * and year 0 do not).
+ * Parse a `%Y-%m-%d` date exactly as `datetime.strptime` accepts it:
+ * `"2026-5-1"` parses; `"2026/05/01"`, trailing text, month 13, day 32
+ * and year 0 do not.
  *
  * @param value - The candidate date string.
- * @returns The civil date, or `null` when CPython would raise
+ * @returns The civil date, or `null` where CPython would raise
  *   `ValueError` (callers map that to their own error classes).
+ * @example
+ * ```typescript
+ * parseYmd("2026-5-1"); // { year: 2026, month: 5, day: 1 }
+ * parseYmd("2026/05/01"); // null
+ * ```
  */
 export function parseYmd(value: string): CivilDate | null {
   const match = YMD_PATTERN.exec(value);
@@ -74,10 +74,15 @@ export function parseYmd(value: string): CivilDate | null {
 }
 
 /**
- * Days since 1970-01-01 for a civil date (Hinnant `days_from_civil`).
+ * Count the whole days from 1970-01-01 to a civil date (Hinnant's
+ * `days_from_civil`).
  *
  * @param date - The civil date.
  * @returns Whole days since the Unix epoch (negative before 1970).
+ * @example
+ * ```typescript
+ * daysFromCivil({ year: 2026, month: 1, day: 1 }); // 20454
+ * ```
  */
 export function daysFromCivil(date: CivilDate): number {
   const y = date.year - (date.month <= 2 ? 1 : 0);
@@ -90,11 +95,15 @@ export function daysFromCivil(date: CivilDate): number {
 }
 
 /**
- * Civil date from a day count since 1970-01-01 (Hinnant
+ * Convert a day count since 1970-01-01 to a civil date (Hinnant's
  * `civil_from_days`).
  *
  * @param days - Whole days since the Unix epoch (may be negative).
  * @returns The civil date.
+ * @example
+ * ```typescript
+ * civilFromDays(20454); // { year: 2026, month: 1, day: 1 }
+ * ```
  */
 export function civilFromDays(days: number): CivilDate {
   const z = days + 719468;
@@ -121,6 +130,10 @@ export function civilFromDays(days: number): CivilDate {
  *
  * @param date - The civil date.
  * @returns The ISO text.
+ * @example
+ * ```typescript
+ * formatYmd({ year: 2026, month: 5, day: 1 }); // "2026-05-01"
+ * ```
  */
 export function formatYmd(date: CivilDate): string {
   const y = String(date.year).padStart(4, "0");
@@ -130,11 +143,17 @@ export function formatYmd(date: CivilDate): string {
 }
 
 /**
- * The calendar date of an instant, read in UTC (see the module-header
- * clock note) — the `date.today()` / `datetime.now().strftime` seam.
+ * Read the calendar date of an instant in UTC — the `date.today()` /
+ * `datetime.now().strftime` seam (see the divergence note in the module
+ * header).
  *
  * @param now - The injected clock's current instant.
  * @returns The civil date.
+ * @example
+ * ```typescript
+ * civilFromInstantUtc(new Date("2026-05-01T23:30:00-07:00"));
+ * // { year: 2026, month: 5, day: 2 } — UTC, not the host's calendar
+ * ```
  */
 export function civilFromInstantUtc(now: Date): CivilDate {
   return {
@@ -145,12 +164,19 @@ export function civilFromInstantUtc(now: Date): CivilDate {
 }
 
 /**
- * `civil + timedelta(days=delta)` with the Python range guard.
+ * Shift a civil date by whole days with Python's range guard
+ * (`civil + timedelta(days=delta)`).
  *
  * @param date - The starting date.
  * @param delta - Whole days to add (may be negative).
  * @returns The shifted date, or `null` where CPython raises
  *   `OverflowError` (result outside years 1..9999).
+ * @example
+ * ```typescript
+ * addDays({ year: 2026, month: 3, day: 1 }, -1);
+ * // { year: 2026, month: 2, day: 28 }
+ * addDays({ year: 9999, month: 12, day: 31 }, 1); // null
+ * ```
  */
 export function addDays(date: CivilDate, delta: number): CivilDate | null {
   const shifted = civilFromDays(daysFromCivil(date) + delta);

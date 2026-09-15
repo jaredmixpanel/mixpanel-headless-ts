@@ -1,13 +1,12 @@
 /**
- * Data-audit wire methods (App API) — Phase-3 packet B4-C5 port of the
- * `MixpanelAPIClient` audit range.
+ * Data-audit wire methods on the App API (`data-definitions/audit/` and
+ * `audit-events-only/`, workspace-scoped through `maybe_scoped_path`).
+ * Both calls are raw-envelope requests whose product is a two-element
+ * `[violations, metadata]` array, reached through one shared branch
+ * ladder: dict with `results` → the inner value must be a list; bare
+ * list → passed through; anything else → error.
  *
- * Both methods use `_raw=True` (the response is a 2-element
- * `[violations, metadata]` array inside the envelope) and share the
- * exact branch ladder: dict-with-`results` → inner must be a list;
- * bare list → pass through; anything else → error. Port exactly —
- * `run_audit`/`run_audit_events_only` return `list[Any]` (Behavior
- * spine).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.run_audit
  */
 
 import { appRequest } from "../../client/app-request.js";
@@ -18,39 +17,52 @@ import { maybeScopedPath } from "../../client/scope.js";
 import { MixpanelHeadlessError } from "../../errors.js";
 import { pythonTypeNameOf } from "../shared.js";
 
-/** The C5 audit method surface (mixed into `MixpanelClient`). */
+/** Audit methods mixed into `MixpanelClient`. */
 export interface AuditMethods {
   /**
-   * Run a full data audit (`run_audit`, `api_client.py` —
-   * GET `data-definitions/audit/` with `_raw=True`).
+   * Run a full data audit. Sends GET `data-definitions/audit/` with `_raw=True`.
    *
    * @param signal - Optional cancellation signal.
    * @returns The raw 2-element `[violations, metadata]` array.
-   * @throws MixpanelHeadlessError - Non-list `results` member, or an
+   * @throws {@link MixpanelHeadlessError} - Non-list `results` member, or an
    *   unexpected response format.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.run_audit
    */
   runAudit: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
-   * Run an events-only audit (`run_audit_events_only`, `:8383-8416` —
-   * GET `data-definitions/audit-events-only/`, same format).
+   * Run an events-only audit. Sends GET `data-definitions/audit-events-only/`,
+   * same format.
    *
    * @param signal - Optional cancellation signal.
    * @returns The raw 2-element `[violations, metadata]` array.
-   * @throws MixpanelHeadlessError - Non-list `results` member, or an
+   * @throws {@link MixpanelHeadlessError} - Non-list `results` member, or an
    *   unexpected response format.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.run_audit_events_only
    */
   runAuditEventsOnly: (signal?: AbortSignal) => Promise<JsonValue[]>;
 }
 
 /**
- * Build the C5 audit methods over the C1 core seam.
+ * Build the audit methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const audit = createAuditMethods(core);
+ * const [violations, metadata] = await audit.runAudit();
+ * // violations: [...], metadata: { ... }
+ * ```
  */
 export function createAuditMethods(core: ClientCore): AuditMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
+  /**
+   * Scope a domain path to the project and the workspace pinned at call
+   * time.
+   *
+   * @param domainPath - Path relative to the domain root.
+   * @returns The `/projects/{pid}[/workspaces/{wid}]/{domainPath}` path.
+   */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),
@@ -58,11 +70,12 @@ export function createAuditMethods(core: ClientCore): AuditMethods {
     });
 
   /**
-   * The shared `_raw=True` branch ladder (`:8368-8381`/`:8404-8416`).
+   * The shared `_raw=True` branch ladder.
    *
    * @param result - The raw envelope product.
    * @returns The audit array.
-   * @throws MixpanelHeadlessError - Per the source's two raise sites.
+   * @throws {@link MixpanelHeadlessError} - Non-list `results` member, or an
+   *   unexpected response format.
    */
   const auditShape = (result: JsonValue): JsonValue[] => {
     if (isPlainRecord(result) && Object.hasOwn(result, "results")) {

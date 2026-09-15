@@ -1,12 +1,11 @@
 /**
- * Business-context wire methods (App API) — Phase-3 packet B4-C5 port
- * of the `MixpanelAPIClient` business-context range
- * (`api_client.py`; all three members are index-absent —
- * R10.5, Layer-3/B6-consumer surface only).
+ * Business-context wire methods on the App API. Paths are built directly
+ * rather than through `maybe_scoped_path`: the endpoint is
+ * project-scoped, never workspace-scoped, and the organization arm swaps
+ * in `/organizations/{org_id}/`. None of the three calls is in the
+ * conformance corpus; the unit tests are their only lock.
  *
- * Paths are constructed DIRECTLY (NOT via `maybe_scoped_path`) —
- * the endpoint is project-scoped, not workspace-scoped; the org arm
- * swaps in `/organizations/{org_id}/`.
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_business_context
  */
 
 import { appRequest } from "../../client/app-request.js";
@@ -22,30 +21,30 @@ export interface BusinessContextScopeOptions {
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The C5 business-context method surface (mixed into `MixpanelClient`). */
+/** Business-context methods mixed into `MixpanelClient`. */
 export interface BusinessContextMethods {
   /**
-   * Fetch business context (`get_business_context`,
-   * `api_client.py` — GET
-   * `/projects/{pid}/business-context` or
-   * `/organizations/{org}/business-context`).
+   * Fetch business context. Sends GET `/projects/{pid}/business-context` or
+   * `/organizations/{org}/business-context`.
    *
    * @param options - Optional `organization_id` scope + signal.
    * @returns `{content: "<markdown>"}` (empty string when unset).
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_business_context
    */
   getBusinessContext: (
     options?: BusinessContextScopeOptions,
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Replace business context (`set_business_context`, `:8737-8793` —
-   * PUT with `{content}`; full replace, empty string clears).
+   * Replace business context. Sends PUT with `{content}`; full replace, empty
+   * string clears.
    *
    * @param content - New markdown content.
    * @param options - Optional `organization_id` scope + signal.
    * @returns `{content: "<saved markdown>"}` echoed by the server.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.set_business_context
    */
   setBusinessContext: (
     content: string,
@@ -53,12 +52,13 @@ export interface BusinessContextMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Fetch org + project context together (`get_business_context_chain`,
-   * `:8795-8831` — GET `/projects/{pid}/business-context/chain`).
+   * Fetch org + project context together. Sends GET
+   * `/projects/{pid}/business-context/chain`.
    *
    * @param signal - Optional cancellation signal.
    * @returns `{org_context, project_context}`.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_business_context_chain
    */
   getBusinessContextChain: (
     signal?: AbortSignal,
@@ -66,15 +66,28 @@ export interface BusinessContextMethods {
 }
 
 /**
- * Build the C5 business-context methods over the C1 core seam.
+ * Build the business-context methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const context = createBusinessContextMethods(core);
+ * await context.setBusinessContext("# Acme\nB2B SaaS, EMEA-first.");
+ * // { content: "# Acme\nB2B SaaS, EMEA-first." }
+ * ```
  */
 export function createBusinessContextMethods(
   core: ClientCore,
 ): BusinessContextMethods {
-  /** The org-vs-project path selector (`:8725-8728`/`:8783-8786`). */
+  /**
+   * Select the organization-level or the project-level business-context
+   * path.
+   *
+   * @param organizationId - Organization id for org scope; `null` /
+   *   `undefined` selects the session project.
+   * @returns The `/organizations/{org}/…` or `/projects/{pid}/…` path.
+   */
   const scopePath = (organizationId: number | null | undefined): string =>
     organizationId !== undefined && organizationId !== null
       ? `/organizations/${organizationId}/business-context`

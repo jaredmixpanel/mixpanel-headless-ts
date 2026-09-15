@@ -1,27 +1,15 @@
 /**
- * `CredentialStore` — the string-keyed credential persistence seam for
- * browser builds (rulebook R9.3: "injectable `CredentialStore`").
- * Interface + key-name table ONLY — plan §4.1 places the interface in
- * core ("`core` defines `TokenResolver` / `CredentialStore`
- * interfaces; `node` and `browser` provide implementations"); the
- * implementations live in `packages/browser/src/credential-store.ts`
- * (b9-packets.md §2.1 — the pasted R10.10 contract, verbatim).
+ * `CredentialStore`, the string-keyed credential persistence seam for
+ * browser builds: the interface and its key-name table only; the
+ * implementations live in `@mixpanel-headless/browser`. There is no
+ * Python twin — Python persists per-account state on disk under
+ * `~/.mp/` — and the browser surface has no account axis, so keys are
+ * scoped per region, mirroring the region component of the on-disk
+ * layout (`client_{region}.json`, `tokens_{region}.json`). Values are
+ * opaque JSON text written through the Python-twin datetime formatters
+ * and read back strictly; the store only ever reads its own writes.
  *
- * NO Python twin exists for this seam: Python persists per-account
- * state on disk (`~/.mp/accounts/{name}/…`, `~/.mp/oauth/…`); the
- * browser has no filesystem, so R9.3 is the contract arbiter.
- * Documented narrowing: browser v1 has no account axis (`oauth_token`
- * + PKCE only), so keys are scoped per REGION — mirroring the region
- * component of Python's on-disk layout (`client_{region}.json`,
- * `tokens_{region}.json`) with the account component dropped.
- *
- * Value payloads are opaque JSON text. Datetime fields inside them
- * follow R11.9: every writer renders through the Python-twin formatter
- * (tokens payload → `datetime.isoformat()` `+00:00` shape; client-info
- * payload → pydantic-JSON `Z` shape — see
- * `packages/browser/src/token-serialization.ts`); read paths are
- * STRICT (`parseOAuthTokens` / `parseOAuthClientInfo` — the store only
- * ever reads its own writes).
+ * @see mixpanel_headless._internal.auth.storage.OAuthStorage
  */
 
 /**
@@ -37,9 +25,8 @@ export interface CredentialStore {
    *
    * @param key - Namespaced key (see {@link CREDENTIAL_KEYS}).
    * @returns The stored string, or `null` when absent (never
-   *   `undefined` — R3.9: an explicit-null contract at seams; mirrors
-   *   the `load_client_info` cache-check shape,
-   *   `client_registration.py`).
+   *   `undefined` — an explicit-null contract at seams, mirroring the
+   *   `load_client_info` cache-check shape).
    */
   get: (key: string) => Promise<string | null> | string | null;
 
@@ -60,12 +47,11 @@ export interface CredentialStore {
 }
 
 /**
- * Key-name table (exported const; single source of the namespace).
+ * Key-name table (single source of the namespace).
  *
- * Per-region keying mirrors Python's on-disk layout (CLAUDE.md config
- * table: `~/.mp/oauth/client_{region}.json`, per-region token files);
- * region is the WHOLE scope in browser v1 (no account axis — R9.3
- * arbiter, documented narrowing in the module header).
+ * Per-region keying mirrors Python's on-disk layout
+ * (`~/.mp/oauth/client_{region}.json`, per-region token files); region
+ * is the whole scope in the browser (no account axis).
  */
 export const CREDENTIAL_KEYS = {
   /**
@@ -89,7 +75,7 @@ export const CREDENTIAL_KEYS = {
   /**
    * Key for the in-flight redirect-login state of a region (state +
    * verifier + client_id + redirect_uri + created_at — substitutes for
-   * Python's in-process locals, `flow.py`; B9-R2 consumer).
+   * the in-process locals of Python's `OAuthFlow.login`).
    *
    * @param region - Mixpanel region.
    * @returns The namespaced key.
@@ -97,11 +83,10 @@ export const CREDENTIAL_KEYS = {
   pendingLogin: (region: string): string => `mp.pending_login.${region}`,
 
   /**
-   * EVERY key family for a region, in table order — the supported
-   * logout/wipe enumeration (pair-B FB-9, `b9-reviewB-resolution.md`:
-   * correct logout previously required the caller to know all three
-   * builders × every region used). Delete each returned key to clear
-   * a region completely.
+   * Every key family for a region, in table order — the supported
+   * logout/wipe enumeration, so a correct logout does not require the
+   * caller to know all three builders. Delete each returned key to
+   * clear a region completely.
    *
    * @param region - Mixpanel region.
    * @returns The three namespaced keys (tokens, client info, pending

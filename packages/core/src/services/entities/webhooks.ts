@@ -1,12 +1,10 @@
 /**
- * Webhook CRUD + connectivity-test wire methods (App API) — Phase-3
- * packet B4-C4 port of the `MixpanelAPIClient` webhooks range
- * (`api_client.py`).
+ * Webhook CRUD and connectivity-test wire methods on the App API
+ * (`webhooks/`, workspace-scoped through `maybe_scoped_path`). Webhook
+ * ids are UUID strings, unlike the integer ids on annotations and
+ * alerts; results come back verbatim after Python's isinstance guard.
  *
- * All methods route through B0 `appRequest` over `maybe_scoped_path`
- * (R10.8). Webhook IDs are UUID STRINGS (R3-family — unlike the int
- * IDs on annotations/alerts). Results are returned verbatim after the
- * source's isinstance guard (Caution #11).
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_webhooks
  */
 
 import { appRequest } from "../../client/app-request.js";
@@ -15,28 +13,31 @@ import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
 import { expectListResult, expectRecordResult } from "./shared.js";
 
-/** The C4 webhook method surface (mixed into `MixpanelClient`). */
+/** Webhook methods mixed into `MixpanelClient`. */
 export interface WebhookMethods {
   /**
-   * List webhooks (`list_webhooks`, `api_client.py` — GET
-   * `webhooks/`).
+   * List webhooks. Sends GET `webhooks/`.
    *
    * @param signal - Optional cancellation signal.
    * @returns The webhook list verbatim.
-   * @throws MixpanelHeadlessError - Non-list response.
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Per the B0 `appRequest` contract.
+   * @throws {@link MixpanelHeadlessError} - Non-list response.
+   * @throws {@link AuthenticationError} - Invalid or expired credentials (401).
+   * @throws {@link RateLimitError} - Rate limit still exceeded after the retries
+   *   (429).
+   * @throws {@link QueryError} - Other 4xx responses (400/403/404/422).
+   * @throws {@link ServerError} - Server-side errors (5xx).
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.list_webhooks
    */
   listWebhooks: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
-   * Create a webhook (`create_webhook`, `:5950-5981` — POST
-   * `webhooks/`).
+   * Create a webhook. Sends POST `webhooks/`.
    *
    * @param body - Webhook creation parameters (name, url, ...).
    * @param signal - Optional cancellation signal.
    * @returns The mutation result dict (id + name).
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.create_webhook
    */
   createWebhook: (
     body: Record<string, unknown>,
@@ -44,14 +45,14 @@ export interface WebhookMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Update a webhook (`update_webhook`, `:5983-6015` — PATCH
-   * `webhooks/{id}/`).
+   * Update a webhook. Sends PATCH `webhooks/{id}/`.
    *
    * @param webhookId - Webhook UUID string.
    * @param body - Fields to update.
    * @param signal - Optional cancellation signal.
    * @returns The mutation result dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_webhook
    */
   updateWebhook: (
     webhookId: string,
@@ -60,22 +61,23 @@ export interface WebhookMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete a webhook (`delete_webhook`, `:6017-6039`).
+   * Delete a webhook.
    *
    * @param webhookId - Webhook UUID string.
    * @param signal - Optional cancellation signal.
    * @returns Nothing.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_webhook
    */
   deleteWebhook: (webhookId: string, signal?: AbortSignal) => Promise<void>;
 
   /**
-   * Test webhook connectivity (`test_webhook`, `:6041-6072` — POST
-   * `webhooks/test/`).
+   * Test webhook connectivity. Sends POST `webhooks/test/`.
    *
    * @param body - Webhook test parameters.
    * @param signal - Optional cancellation signal.
    * @returns The test result dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.test_webhook
    */
   testWebhook: (
     body: Record<string, unknown>,
@@ -84,13 +86,25 @@ export interface WebhookMethods {
 }
 
 /**
- * Build the C4 webhook methods over the C1 core seam.
+ * Build the webhook methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const webhooks = createWebhookMethods(core);
+ * await webhooks.testWebhook({ url: "https://example.com/hook" });
+ * // { ok: true, status_code: 200, ... }
+ * ```
  */
 export function createWebhookMethods(core: ClientCore): WebhookMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
+  /**
+   * Scope a domain path to the project and the workspace pinned at call
+   * time.
+   *
+   * @param domainPath - Path relative to the domain root.
+   * @returns The `/projects/{pid}[/workspaces/{wid}]/{domainPath}` path.
+   */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),

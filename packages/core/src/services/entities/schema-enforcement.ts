@@ -1,13 +1,11 @@
 /**
- * Schema-enforcement wire methods (App API) — Phase-3 packet B4-C5
- * port of the `MixpanelAPIClient` enforcement range
- * (`api_client.py`).
+ * Schema-enforcement wire methods on the App API: one endpoint
+ * (`data-definitions/schema/`, workspace-scoped through
+ * `maybe_scoped_path`), five verbs. Unlike the other deletes in this
+ * directory, `delete_schema_enforcement` takes no arguments and still
+ * returns a dict.
  *
- * One endpoint (`data-definitions/schema/`), five verbs, all through
- * B0 `appRequest` over `maybe_scoped_path`; NOTE
- * `delete_schema_enforcement` takes NO arguments and still returns a
- * dict (unlike C5's void deletes — Behavior spine, "watch
- * delete_schemas vs delete_schema_enforcement").
+ * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_schema_enforcement
  */
 
 import { appRequest } from "../../client/app-request.js";
@@ -24,28 +22,28 @@ export interface GetSchemaEnforcementOptions {
   readonly signal?: AbortSignal | undefined;
 }
 
-/** The C5 schema-enforcement method surface (mixed into `MixpanelClient`). */
+/** Schema-enforcement methods mixed into `MixpanelClient`. */
 export interface SchemaEnforcementMethods {
   /**
-   * Get enforcement configuration (`get_schema_enforcement`,
-   * `api_client.py` — GET `data-definitions/schema/`).
+   * Get enforcement configuration. Sends GET `data-definitions/schema/`.
    *
    * @param options - Optional `fields` filter + signal.
    * @returns The enforcement config dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.get_schema_enforcement
    */
   getSchemaEnforcement: (
     options?: GetSchemaEnforcementOptions,
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Initialize enforcement (`init_schema_enforcement`, `:8208-8242` —
-   * POST).
+   * Initialize enforcement. Sends a POST.
    *
    * @param body - Init payload.
    * @param signal - Optional cancellation signal.
    * @returns The raw response dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.init_schema_enforcement
    */
   initSchemaEnforcement: (
     body: Record<string, unknown>,
@@ -53,13 +51,13 @@ export interface SchemaEnforcementMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Partially update enforcement (`update_schema_enforcement`,
-   * `:8244-8278` — PATCH).
+   * Partially update enforcement. Sends a PATCH.
    *
    * @param body - Partial update payload.
    * @param signal - Optional cancellation signal.
    * @returns The raw response dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.update_schema_enforcement
    */
   updateSchemaEnforcement: (
     body: Record<string, unknown>,
@@ -67,13 +65,13 @@ export interface SchemaEnforcementMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Fully replace enforcement (`replace_schema_enforcement`,
-   * `:8280-8312` — PUT).
+   * Fully replace enforcement. Sends a PUT.
    *
    * @param body - Complete replacement payload.
    * @param signal - Optional cancellation signal.
    * @returns The raw response dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.replace_schema_enforcement
    */
   replaceSchemaEnforcement: (
     body: Record<string, unknown>,
@@ -81,12 +79,12 @@ export interface SchemaEnforcementMethods {
   ) => Promise<Record<string, JsonValue>>;
 
   /**
-   * Delete enforcement configuration (`delete_schema_enforcement`,
-   * `:8314-8339` — DELETE, no arguments, dict return).
+   * Delete enforcement configuration. Sends DELETE, no arguments, dict return.
    *
    * @param signal - Optional cancellation signal.
    * @returns The raw response dict.
-   * @throws MixpanelHeadlessError - Non-dict response.
+   * @throws {@link MixpanelHeadlessError} - Non-dict response.
+   * @see mixpanel_headless._internal.api_client.MixpanelAPIClient.delete_schema_enforcement
    */
   deleteSchemaEnforcement: (
     signal?: AbortSignal,
@@ -94,15 +92,27 @@ export interface SchemaEnforcementMethods {
 }
 
 /**
- * Build the C5 schema-enforcement methods over the C1 core seam.
+ * Build the schema-enforcement methods over the shared client core.
  *
  * @param core - The shared client internals seam.
  * @returns The method bag.
+ * @example
+ * ```typescript
+ * const enforcement = createSchemaEnforcementMethods(core);
+ * await enforcement.getSchemaEnforcement({ fields: "ruleEvent,state" });
+ * // { ruleEvent: "...", state: "enabled" }
+ * ```
  */
 export function createSchemaEnforcementMethods(
   core: ClientCore,
 ): SchemaEnforcementMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
+  /**
+   * Scope a domain path to the project and the workspace pinned at call
+   * time.
+   *
+   * @param domainPath - Path relative to the domain root.
+   * @returns The `/projects/{pid}[/workspaces/{wid}]/{domainPath}` path.
+   */
   const scopedPath = (domainPath: string): string =>
     maybeScopedPath(domainPath, {
       projectId: core.projectId(),

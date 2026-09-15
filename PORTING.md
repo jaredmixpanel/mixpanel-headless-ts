@@ -298,6 +298,49 @@ marked `// Divergence:` at the site.
   (`types/results/discovery.ts`), and `safeInt` now lives in
   `types/results/flow-graph.ts`, not `query-engine.ts`.
 
+<!-- lane 5B (client, services, accounts, auth): merge each bullet into the section named in parentheses -->
+
+### Lane 5B additions
+
+- (Error class or message only) `session.use({ target, … })` combined with
+  any axis option raises `ParamValidationError` /
+  `WS1_TARGET_MUTUALLY_EXCLUSIVE`; Python raises a bare `ValueError` —
+  `createSessionNamespace` (`accounts/session-namespace.ts`) and
+  `resolveSession` (`auth/resolver.ts`).
+- (Error class or message only) `ReplaysService.discover` / `eventsFor` on a
+  service constructed without a `queryFn` raise `MixpanelHeadlessError` /
+  `REPLAYS_QUERY_FN_REQUIRED`; Python raises a bare `RuntimeError` —
+  `ReplaysService` (`services/replays.ts`).
+- (Error class or message only) The "account directory already exists"
+  `ConfigError` in the browser login flow names the account; Python prints
+  the directory path (the in-memory staging seam has no path). Same class
+  and code — `loginUnifiedNewBrowser` (`accounts/login-unified.ts`).
+- (Wire and encoding) `slugify` NFKD-normalizes with the host engine's
+  Unicode tables; CPython 3.14.6 pins Unicode 16.0. A name containing a
+  codepoint whose compatibility decomposition differs between the two may
+  slug differently — `slugify` (`accounts/naming.ts`).
+
+Corrections to existing bullets, for the final pass to apply in place:
+
+- "A non-object schema response body raises a JS `TypeError`…": the TS
+  symbol is `resultDictGet` (`services/entities/schemas.ts`), not `dictGet`.
+- "A `Retry-After` header beyond 2^53 − 1 reads as absent": the behaviour
+  lives in `parseRetryAfter` (`client/backoff.ts`), not `retryWaitSeconds`.
+- "Pydantic / CPython `\d` matches Unicode `Nd`; the JS `/^\d+$/` gates …":
+  `Project.id` (`auth/session.ts`) and `default_project` (`auth/account.ts`)
+  gate with `/^\p{Nd}+$/u` and are not ASCII-only; the entities `ProjectId`
+  pattern (`types/entities/accounts.ts`), the node bridge pin and the date
+  gates still are.
+- "A `/me` organization with `name: null` crashes Python with
+  `AttributeError`; the port sorts it as an empty name": unreachable as
+  stated — `MeOrgInfo.name` is a required `str` in both `me.py` and
+  `client/me.ts`, so a null name is rejected at parse before any sort.
+  Drop the bullet, or restate it as a parse-time error-class difference if
+  one is confirmed.
+- Every `TODO(port)` in these four directories is now a `// Divergence:`
+  marker; the "(`TODO(port)`)" parentheticals on the pagination, schemas,
+  py-dates and replays bullets can be dropped.
+
 ## What the rig proves — and does not
 
 **Corpus** (`conformance-runner/`, replayed by `corpus.test.ts` and

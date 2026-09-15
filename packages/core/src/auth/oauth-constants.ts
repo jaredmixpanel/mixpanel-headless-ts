@@ -1,22 +1,15 @@
 /**
- * OAuth constants shared by the node and browser auth surfaces — the
- * B9-R2 core home (b9-packets.md §3.1 row 1: the fetch-pure hoist,
- * second R10.8 ruling of the packet; supersedes the B8 outbound
- * "copy-with-cite" instruction — both packages now import these names,
- * nothing is duplicated). Python home: `client_registration.py`.
+ * OAuth constants shared by the Node and browser auth surfaces: the
+ * per-region OAuth base URLs, the region gate that validates against
+ * them, and the advisory DCR scope string. Both packages import these
+ * names; nothing is duplicated.
  *
- * Moved MECHANICALLY from `packages/node/src/auth/oauth-constants.ts`
- * (`OAUTH_BASE_URLS`) and `packages/node/src/auth/client-registration.ts`
- * (`DEFAULT_SCOPE`); node re-exports from here (its B8 suites stay
- * green unchanged — the zero-behavior-change proof).
+ * @see mixpanel_headless._internal.auth.client_registration
  */
 
 import { OAuthError } from "../errors.js";
 
-/**
- * OAuth base URLs keyed by region, trailing slash included
- * (`OAUTH_BASE_URLS`, `client_registration.py`).
- */
+/** OAuth base URLs keyed by region, trailing slash included. */
 export const OAUTH_BASE_URLS: Readonly<Record<string, string>> = {
   us: "https://mixpanel.com/oauth/",
   eu: "https://eu.mixpanel.com/oauth/",
@@ -24,14 +17,20 @@ export const OAUTH_BASE_URLS: Readonly<Record<string, string>> = {
 };
 
 /**
- * Validate a region against {@link OAUTH_BASE_URLS} and return its base
- * URL — the `OAuthFlow.__init__` gate shared by the
- * node flow constructor and the browser redirect flow (same code, same
- * message shape).
+ * Return the OAuth base URL for a region, rejecting unknown regions — the
+ * `OAuthFlow.__init__` gate shared by the Node flow constructor and the
+ * browser redirect flow (same code, same message shape).
  *
- * @param region - The caller-supplied region.
- * @returns The region's OAuth base URL (trailing slash).
- * @throws OAuthError - `OAUTH_CONFIG_ERROR` for unknown regions.
+ * @param region - The caller-supplied region (`us`, `eu` or `in`).
+ * @returns The region's OAuth base URL, trailing slash included.
+ * @throws {@link OAuthError} - Code `OAUTH_CONFIG_ERROR` for an unknown
+ *   region.
+ * @example
+ * ```typescript
+ * requireOAuthBaseUrl("eu");
+ * // "https://eu.mixpanel.com/oauth/"
+ * ```
+ * @see mixpanel_headless._internal.auth.flow.OAuthFlow
  */
 export function requireOAuthBaseUrl(region: string): string {
   const baseUrl = OAUTH_BASE_URLS[region];
@@ -50,9 +49,9 @@ export function requireOAuthBaseUrl(region: string): string {
 
 /**
  * Scopes sent in the DCR request body for server-side validation
- * (`_DEFAULT_SCOPE`, `client_registration.py`). Advisory only —
- * DCR does NOT store these on the application model; the created app
- * has an empty scope field, meaning all scopes are allowed.
+ * (`_DEFAULT_SCOPE`). Advisory only — DCR does not store these on the
+ * application model; the created app has an empty scope field, meaning
+ * all scopes are allowed.
  */
 export const DEFAULT_SCOPE: string =
   "projects analysis events insights segmentation retention " +
