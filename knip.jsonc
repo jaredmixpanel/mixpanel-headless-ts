@@ -9,6 +9,9 @@
   // No `ignore` block: the generated `*.gen.ts` files are imported (so never
   // reported) and vendor/, docs/history/ and the corpus hold no analysable source;
   // knip flags such entries as redundant configuration hints.
+  // `uv` runs the CPython-pinned compat-table generators
+  // (`npm run generate:compat-tables`); a system tool, not an npm dependency.
+  "ignoreBinaries": ["uv"],
   "rules": {
     // Phase 6 (§2.7 un-export sweep) turns these back to "error". Until
     // then the 145 unused exports / 126 unused types it will remove are
