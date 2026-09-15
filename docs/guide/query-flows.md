@@ -1,6 +1,6 @@
 ---
 title: Flow queries
-description: Build typed flow path analysis against Mixpanel's Insights engine — define anchor events, control forward/reverse step depth, apply per-step filters, and analyze user paths inline without creating saved reports first.
+description: "Build typed flow path analysis against Mixpanel's Insights engine — define anchor events, control forward/reverse step depth, apply per-step filters, and analyze user paths inline without creating saved reports first."
 ---
 
 # Flow queries
@@ -13,7 +13,7 @@ Build typed flow path analysis against Mixpanel's Insights engine — define anc
 
 ## When to use `queryFlow()`
 
-`queryFlow()` builds flow bookmark params and posts them to the Insights engine. The legacy `querySavedFlows()` method queries a pre-existing saved Flows report by bookmark ID. Use `queryFlow()` when you need any of the capabilities in the right column:
+[`queryFlow()`](/reference/core/classes/Workspace#queryflow) builds flow bookmark params and posts them to the Insights engine. The legacy `querySavedFlows()` method queries a pre-existing saved Flows report by bookmark ID. Use `queryFlow()` when you need any of the capabilities in the right column:
 
 | Capability             | Legacy `querySavedFlows()`            | `queryFlow()`                                                  |
 | ---------------------- | ------------------------------------- | -------------------------------------------------------------- |
@@ -81,6 +81,8 @@ const q1 = await ws.queryFlow("Purchase", {
 });
 ```
 
+Every option is documented on [`WorkspaceFlowQueryOptions`](/reference/core/interfaces/WorkspaceFlowQueryOptions).
+
 ::: info Coming from Python?
 `ws.query_flow("Purchase", forward=3, reverse=1)` becomes `ws.queryFlow("Purchase", { forward: 3, reverse: 1 })`. `result.nodes_df` / `edges_df` / `trees_df` become `toNodesRows()` / `toEdgesRows()` / `toTreesRows()`; the NetworkX `graph` property becomes the `graph()` method returning a plain `{ nodes, edges }` object; `to_anytree()` becomes `toAnytree()` returning parent-linked plain objects. See [Coming from Python](/guide/coming-from-python).
 :::
@@ -106,7 +108,7 @@ Each string becomes an anchor step in the flow — Mixpanel traces user paths fo
 
 ### The `FlowStep` class
 
-For per-step configuration with filters and direction overrides, use `FlowStep` objects:
+For per-step configuration with filters and direction overrides, use [`FlowStep`](/reference/core/classes/FlowStep) objects:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -280,7 +282,7 @@ When a step provides `forward` or `reverse`, that value is used for that step. W
 
 ## Visualization modes
 
-The `mode` option controls how flow data is structured and returned (`FlowChartType`):
+The `mode` option controls how flow data is structured and returned ([`FlowChartType`](/reference/core/type-aliases/FlowChartType)):
 
 | Mode                 | `flows_merge_type` | Use case                                                  |
 | -------------------- | ------------------ | --------------------------------------------------------- |
@@ -344,7 +346,7 @@ const session = await ws.queryFlow("Purchase", {
 });
 ```
 
-The accepted units are the members of `FlowConversionWindowUnit` — a subset of the funnel units (no second, minute or hour):
+The accepted units are the members of [`FlowConversionWindowUnit`](/reference/core/type-aliases/FlowConversionWindowUnit) — a subset of the funnel units (no second, minute or hour):
 
 | Unit              | Max value | Description                 |
 | ----------------- | --------- | --------------------------- |
@@ -355,7 +357,7 @@ The accepted units are the members of `FlowConversionWindowUnit` — a subset of
 
 ## Count type
 
-The `count_type` option controls how users are counted (`FlowCountType`):
+The `count_type` option controls how users are counted ([`FlowCountType`](/reference/core/type-aliases/FlowCountType)):
 
 | Count type           | What it measures                                            |
 | -------------------- | ----------------------------------------------------------- |
@@ -476,7 +478,7 @@ Dates must be in `YYYY-MM-DD` format. When `from_date` is provided without `to_d
 
 ### `FlowQueryResult`
 
-`queryFlow()` returns a `FlowQueryResult` with mode-aware accessors:
+`queryFlow()` returns a [`FlowQueryResult`](/reference/core/classes/FlowQueryResult) with mode-aware accessors:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -644,7 +646,7 @@ This is particularly powerful for AI agents: they can programmatically explore p
 
 ### Tree mode results
 
-When `mode: "tree"`, results include `FlowTreeNode` objects:
+When `mode: "tree"`, results include [`FlowTreeNode`](/reference/core/classes/FlowTreeNode) objects:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -859,7 +861,7 @@ console.log(JSON.stringify(result.params, null, 2));
 
 ## Validation
 
-`queryFlow()` validates all parameter combinations **before** making an API call and throws `BookmarkValidationError` with descriptive messages:
+`queryFlow()` validates all parameter combinations **before** making an API call and throws [`BookmarkValidationError`](/reference/core/classes/BookmarkValidationError) with descriptive messages:
 
 | Rule                               | Error code                            | Error message                                                        |
 | ---------------------------------- | ------------------------------------- | -------------------------------------------------------------------- |
@@ -902,7 +904,7 @@ try {
 }
 ```
 
-Constructing a `FlowStep` with a bad field (an empty event name, `forward`/`reverse` outside 0–5, or a `session_event` that does not match the event name) throws `ParamValidationError` immediately, before any query runs. See [Error handling](/guide/error-handling).
+Constructing a `FlowStep` with a bad field (an empty event name, `forward`/`reverse` outside 0–5, or a `session_event` that does not match the event name) throws [`ParamValidationError`](/reference/core/classes/ParamValidationError) immediately, before any query runs. See [Error handling](/guide/error-handling).
 
 ## Complete examples
 
@@ -1070,7 +1072,7 @@ const tree = await ws.runFlowParams(
 tree.mode; // "tree"
 ```
 
-`runFlowParams()` also takes `workspace_id` to run under a different data view than the session's.
+`runFlowParams()` also takes `workspace_id` ([`WorkspaceRunFlowParamsOptions`](/reference/core/interfaces/WorkspaceRunFlowParamsOptions)) to run under a different data view than the session's.
 
 ## Flow segments
 
@@ -1148,7 +1150,7 @@ const beforeEnd = await ws.queryFlow(
 );
 ```
 
-Values: `"start"` (session start anchor) or `"end"` (session end anchor) — the `FlowSessionEvent` union.
+Values: `"start"` (session start anchor) or `"end"` (session end anchor) — the [`FlowSessionEvent`](/reference/core/type-aliases/FlowSessionEvent) union.
 
 ## Next steps
 
@@ -1157,4 +1159,4 @@ Values: `"start"` (session start anchor) or `"end"` (session end anchor) — the
 - [Funnel queries](/guide/query-funnels) — typed funnel conversion analysis with steps, exclusions, and conversion windows
 - [Retention queries](/guide/query-retention) — typed retention analysis with event pairs and custom buckets
 - [Live analytics](/guide/live-analytics) — legacy saved Flows report method
-- [API reference](/api/) — full method signatures for `Workspace`, `FlowStep`, `FlowTreeNode`, `FlowQueryResult`
+- [API reference](/api/) — [`Workspace`](/reference/core/classes/Workspace), [`WorkspaceFlowQueryOptions`](/reference/core/interfaces/WorkspaceFlowQueryOptions), [`FlowStep`](/reference/core/classes/FlowStep), [`FlowTreeNode`](/reference/core/classes/FlowTreeNode), [`FlowQueryResult`](/reference/core/classes/FlowQueryResult), [`FlowNodeType`](/reference/core/type-aliases/FlowNodeType), [`FlowAnchorType`](/reference/core/type-aliases/FlowAnchorType)

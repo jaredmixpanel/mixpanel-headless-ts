@@ -1,6 +1,6 @@
 ---
 title: Retention queries
-description: Build typed retention analysis against Mixpanel's Insights engine — define born/return event pairs, retention periods, custom buckets, and segmentation inline without creating saved reports first.
+description: "Build typed retention analysis against Mixpanel's Insights engine — define born/return event pairs, retention periods, custom buckets, and segmentation inline without creating saved reports first."
 ---
 
 # Retention queries
@@ -13,7 +13,7 @@ Build typed retention analysis against Mixpanel's Insights engine — define bor
 
 ## When to use `queryRetention()`
 
-`queryRetention()` builds retention bookmark params and posts them to the Insights engine. The legacy `retention()` method queries the older Retention API endpoint. Use `queryRetention()` when you need any of the capabilities in the right column:
+[`queryRetention()`](/reference/core/classes/Workspace#queryretention) builds retention bookmark params and posts them to the Insights engine. The legacy `retention()` method queries the older Retention API endpoint. Use `queryRetention()` when you need any of the capabilities in the right column:
 
 | Capability               | Legacy `retention()`                           | `queryRetention()`                                        |
 | ------------------------ | ---------------------------------------------- | --------------------------------------------------------- |
@@ -78,6 +78,8 @@ const q1 = await ws.queryRetention("Signup", "Login", {
 });
 ```
 
+Every option is documented on [`WorkspaceRetentionQueryOptions`](/reference/core/interfaces/WorkspaceRetentionQueryOptions).
+
 ::: info Coming from Python?
 `ws.query_retention("Signup", "Login", retention_unit="week", last=90)` becomes `ws.queryRetention("Signup", "Login", { retention_unit: "week", last: 90 })` — the two events stay positional, every keyword moves into one `snake_case` options object. See [Coming from Python](/guide/coming-from-python).
 :::
@@ -99,7 +101,7 @@ The first argument is the **born event** (defines cohort membership) and the sec
 
 ### The `RetentionEvent` class
 
-For per-event configuration with filters, use `RetentionEvent` objects:
+For per-event configuration with filters, use [`RetentionEvent`](/reference/core/classes/RetentionEvent) objects:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -183,7 +185,7 @@ See [Insights queries](/guide/query) for the full list of `Filter` builders.
 
 ## Retention unit
 
-Control the retention period granularity with `retention_unit` (`TimeUnit`):
+Control the retention period granularity with `retention_unit` ([`TimeUnit`](/reference/core/type-aliases/TimeUnit)):
 
 | Unit               | Description               |
 | ------------------ | ------------------------- |
@@ -216,7 +218,7 @@ const monthly = await ws.queryRetention("Signup", "Login", {
 
 ## Alignment
 
-The `alignment` option controls how retention periods are anchored (`RetentionAlignment`):
+The `alignment` option controls how retention periods are anchored ([`RetentionAlignment`](/reference/core/type-aliases/RetentionAlignment)):
 
 | Alignment           | Behavior                                                                 |
 | ------------------- | ------------------------------------------------------------------------ |
@@ -261,7 +263,7 @@ Bucket sizes must be:
 
 ## Aggregation
 
-The `math` option controls what metric is computed (`RetentionMathType`):
+The `math` option controls what metric is computed ([`RetentionMathType`](/reference/core/type-aliases/RetentionMathType)):
 
 | Math type                    | What it measures                                   |
 | ---------------------------- | -------------------------------------------------- |
@@ -496,7 +498,7 @@ Dates must be in `YYYY-MM-DD` format.
 
 ## Display modes
 
-The `mode` option controls result presentation (`RetentionMode`):
+The `mode` option controls result presentation ([`RetentionMode`](/reference/core/type-aliases/RetentionMode)):
 
 | Mode                | Chart type      | Use case                              |
 | ------------------- | --------------- | ------------------------------------- |
@@ -524,7 +526,7 @@ const table = await ws.queryRetention("Signup", "Login", { mode: "table" });
 
 ## Unbounded mode
 
-Control how users who perform the return event outside their retention bucket are counted using `unbounded_mode` (`RetentionUnboundedMode`):
+Control how users who perform the return event outside their retention bucket are counted using `unbounded_mode` ([`RetentionUnboundedMode`](/reference/core/type-aliases/RetentionUnboundedMode)):
 
 | Mode                    | Behavior                                                                 |
 | ----------------------- | ------------------------------------------------------------------------ |
@@ -608,7 +610,7 @@ const result = await ws.queryRetention("Signup", "Login", {
 
 ### `RetentionQueryResult`
 
-`queryRetention()` returns a `RetentionQueryResult` with:
+`queryRetention()` returns a [`RetentionQueryResult`](/reference/core/classes/RetentionQueryResult) with:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -667,7 +669,7 @@ result.params; // the full bookmark JSON sent to the API
 
 ### Cohort data structure
 
-Each entry in `result.cohorts` (and each per-segment entry in `result.segments`) is a record with the keys of the exported `RetentionCohortData` type:
+Each entry in `result.cohorts` (and each per-segment entry in `result.segments`) is a record with the keys of the exported [`RetentionCohortData`](/reference/core/interfaces/RetentionCohortData) type:
 
 | Key      | Type                | Description                                             |
 | -------- | ------------------- | ------------------------------------------------------- |
@@ -717,7 +719,7 @@ console.log(JSON.stringify(result.params, null, 2));
 
 ## Validation
 
-`queryRetention()` validates all parameter combinations **before** making an API call and throws `BookmarkValidationError` with descriptive messages:
+`queryRetention()` validates all parameter combinations **before** making an API call and throws [`BookmarkValidationError`](/reference/core/classes/BookmarkValidationError) with descriptive messages:
 
 | Rule                          | Error code                     | Error message                                                        |
 | ----------------------------- | ------------------------------ | -------------------------------------------------------------------- |
@@ -760,7 +762,7 @@ try {
 }
 ```
 
-Constructing a `RetentionEvent` with an empty or control-character event name throws `ParamValidationError` immediately, before any query runs. See [Error handling](/guide/error-handling).
+Constructing a `RetentionEvent` with an empty or control-character event name throws [`ParamValidationError`](/reference/core/classes/ParamValidationError) immediately, before any query runs. See [Error handling](/guide/error-handling).
 
 ## Complete examples
 
@@ -877,7 +879,7 @@ const result = await ws.runRetentionParams(params, { limit: 50_000 });
 console.table(result.toRows().slice(0, 5));
 ```
 
-Both `queryRetention()` and `runRetentionParams()` accept `limit` (1 to 50000, default 3000) to raise the segment cap for high-cardinality breakdowns. Check `result.meta["is_segmentation_limit_hit"]` to see whether the result was still truncated. `runRetentionParams()` also takes `workspace_id` to run under a different data view than the session's.
+Both `queryRetention()` and `runRetentionParams()` accept `limit` (1 to 50000, default 3000) to raise the segment cap for high-cardinality breakdowns. Check `result.meta["is_segmentation_limit_hit"]` to see whether the result was still truncated. `runRetentionParams()` also takes `workspace_id` ([`WorkspaceRunParamsOptions`](/reference/core/interfaces/WorkspaceRunParamsOptions)) to run under a different data view than the session's.
 
 ## Next steps
 
@@ -886,4 +888,4 @@ Both `queryRetention()` and `runRetentionParams()` accept `limit` (1 to 50000, d
 - [Funnel queries](/guide/query-funnels) — typed funnel conversion analysis with steps, exclusions, and conversion windows
 - [Flow queries](/guide/query-flows) — typed flow path analysis with steps, directions, and graph output
 - [Live analytics](/guide/live-analytics) — legacy retention method
-- [API reference](/api/) — full method signatures for `Workspace`, `RetentionEvent`, `RetentionQueryResult`, `RetentionAlignment`, `RetentionMode`, `RetentionMathType`
+- [API reference](/api/) — [`Workspace`](/reference/core/classes/Workspace), [`WorkspaceRetentionQueryOptions`](/reference/core/interfaces/WorkspaceRetentionQueryOptions), [`RetentionEvent`](/reference/core/classes/RetentionEvent), [`RetentionQueryResult`](/reference/core/classes/RetentionQueryResult), [`RetentionAlignment`](/reference/core/type-aliases/RetentionAlignment), [`RetentionMode`](/reference/core/type-aliases/RetentionMode), [`RetentionMathType`](/reference/core/type-aliases/RetentionMathType)

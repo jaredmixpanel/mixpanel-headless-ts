@@ -1,6 +1,6 @@
 ---
 title: User profile queries
-description: Query user profiles from Mixpanel's Engage API — filter by properties, sort, select fields, count matching profiles, and fetch large result sets with parallel pagination. Uses the same Filter vocabulary as all other query engines.
+description: "Query user profiles from Mixpanel's Engage API — filter by properties, sort, select fields, count matching profiles, and fetch large result sets with parallel pagination. Uses the same Filter vocabulary as all other query engines."
 ---
 
 # User profile queries
@@ -13,7 +13,7 @@ Query user profiles from Mixpanel's Engage API — filter by properties, sort, s
 
 ## When to use `queryUser()`
 
-Use `queryUser()` when you need to work with **user profiles** rather than events:
+Use [`queryUser()`](/reference/core/classes/Workspace#queryuser) when you need to work with **user profiles** rather than events:
 
 | Use case                    | Example                                                                                |
 | --------------------------- | -------------------------------------------------------------------------------------- |
@@ -198,6 +198,8 @@ console.table(users.toRows());
 
 ## Other options
 
+The complete bag is [`WorkspaceUserQueryOptions`](/reference/core/interfaces/WorkspaceUserQueryOptions):
+
 | Option               | Type                           | Default        | Description                                                                |
 | -------------------- | ------------------------------ | -------------- | -------------------------------------------------------------------------- |
 | `where`              | `Filter \| Filter[] \| string` | `null`         | Profile filter; a string is a raw Engage selector expression               |
@@ -220,11 +222,11 @@ console.table(users.toRows());
 | `workers`            | `number`                       | `5`            | Maximum concurrent workers, 1–5                                            |
 | `include_all_users`  | `boolean`                      | `false`        | Include non-members in cohort query results                                |
 
-Options marked "profiles mode" are rejected in aggregate mode, and vice versa; every rule is checked before any request and reported through `BookmarkValidationError` — see [Error handling](/guide/error-handling).
+Options marked "profiles mode" are rejected in aggregate mode, and vice versa; every rule is checked before any request and reported through [`BookmarkValidationError`](/reference/core/classes/BookmarkValidationError) — see [Error handling](/guide/error-handling).
 
 ## `UserQueryResult`
 
-All results are returned as a `UserQueryResult` with:
+All results are returned as a [`UserQueryResult`](/reference/core/classes/UserQueryResult) with:
 
 | Member           | Type                                        | Description                                                                                                                                                                               |
 | ---------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -282,7 +284,7 @@ console.log(JSON.stringify(params, null, 2));
 
 ## Running built params
 
-Use `runUserParams()` to execute params that `buildUserParams()` produced (or params you wrote by hand). It returns the same `UserQueryResult` as `queryUser()`. The mode is read from the params: a record with an aggregate `action` key runs as an aggregate query, anything else runs as a profiles query. `limit`, `parallel`, and `workers` are execution settings the builder does not store, so pass them here:
+Use `runUserParams()` to execute params that `buildUserParams()` produced (or params you wrote by hand). It returns the same `UserQueryResult` as `queryUser()`. The mode is read from the params: a record with an aggregate `action` key runs as an aggregate query, anything else runs as a profiles query. `limit`, `parallel`, and `workers` are execution settings the builder does not store, so pass them here ([`WorkspaceRunUserParamsOptions`](/reference/core/interfaces/WorkspaceRunUserParamsOptions)):
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -306,4 +308,4 @@ console.table(result.toRows().slice(0, 5));
 - [Retention queries](/guide/query-retention) — cohort retention
 - [Flow queries](/guide/query-flows) — path analysis
 - [Streaming](/guide/streaming) — raw profile export with `streamProfiles()` (Node.js)
-- [API reference](/api/) — full method signatures for `Workspace` and `UserQueryResult`
+- [API reference](/api/) — [`Workspace`](/reference/core/classes/Workspace), [`WorkspaceUserQueryOptions`](/reference/core/interfaces/WorkspaceUserQueryOptions), [`UserQueryResult`](/reference/core/classes/UserQueryResult), [`UserQueryMode`](/reference/core/type-aliases/UserQueryMode)

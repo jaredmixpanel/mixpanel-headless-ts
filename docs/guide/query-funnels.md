@@ -1,6 +1,6 @@
 ---
 title: Funnel queries
-description: Build typed funnel conversion analysis against Mixpanel's Insights engine — define steps, exclusions, and conversion windows inline without creating saved funnels first.
+description: "Build typed funnel conversion analysis against Mixpanel's Insights engine — define steps, exclusions, and conversion windows inline without creating saved funnels first."
 ---
 
 # Funnel queries
@@ -13,7 +13,7 @@ Build typed funnel conversion analysis against Mixpanel's Insights engine — de
 
 ## When to use `queryFunnel()`
 
-`queryFunnel()` builds funnel bookmark params and posts them to the Insights engine. The legacy `funnel()` method queries pre-saved funnels by ID. Use `queryFunnel()` when you need any of the capabilities in the right column:
+[`queryFunnel()`](/reference/core/classes/Workspace#queryfunnel) builds funnel bookmark params and posts them to the Insights engine. The legacy `funnel()` method queries pre-saved funnels by ID. Use `queryFunnel()` when you need any of the capabilities in the right column:
 
 | Capability                 | Legacy `funnel()`                     | `queryFunnel()`                                              |
 | -------------------------- | ------------------------------------- | ------------------------------------------------------------ |
@@ -70,6 +70,8 @@ const result = await ws.queryFunnel(
 );
 ```
 
+Every option is documented on [`WorkspaceFunnelQueryOptions`](/reference/core/interfaces/WorkspaceFunnelQueryOptions).
+
 ::: info Coming from Python?
 Keyword arguments become one options object whose keys stay `snake_case`: `ws.query_funnel(steps, conversion_window=7, last=90)` is `ws.queryFunnel(steps, { conversion_window: 7, last: 90 })`. Result fields keep their Python spelling (`overall_conversion_rate`); `result.df` becomes `result.toRows()`. See [Coming from Python](/guide/coming-from-python).
 :::
@@ -91,7 +93,7 @@ At least 2 steps are required, up to a maximum of 100.
 
 ### The `FunnelStep` class
 
-For per-step configuration, use `FunnelStep` objects:
+For per-step configuration, use [`FunnelStep`](/reference/core/classes/FunnelStep) objects:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -204,7 +206,7 @@ const month = await ws.queryFunnel(["Signup", "Purchase"], {
 
 ### Conversion window units
 
-The accepted values are the members of the `ConversionWindowUnit` union:
+The accepted values are the members of the [`ConversionWindowUnit`](/reference/core/type-aliases/ConversionWindowUnit) union:
 
 | Unit              | Max value  | Description      |
 | ----------------- | ---------- | ---------------- |
@@ -243,7 +245,7 @@ Session-based conversion requires `conversion_window: 1` and `math: "conversion_
 
 ## Ordering
 
-The `order` option controls how steps must be completed (`FunnelOrder`):
+The `order` option controls how steps must be completed ([`FunnelOrder`](/reference/core/type-aliases/FunnelOrder)):
 
 | Order               | Behavior                                                                          |
 | ------------------- | --------------------------------------------------------------------------------- |
@@ -282,7 +284,7 @@ const result = await ws.queryFunnel(
 
 ## Aggregation
 
-The `math` option controls what metric is computed. Default: `"conversion_rate_unique"`. The 14 accepted values are the members of the `FunnelMathType` union.
+The `math` option controls what metric is computed. Default: `"conversion_rate_unique"`. The 14 accepted values are the members of the [`FunnelMathType`](/reference/core/type-aliases/FunnelMathType) union.
 
 ### Conversion rates
 
@@ -514,7 +516,7 @@ const result = await ws.queryFunnel(["Signup", "Add to Cart", "Purchase"], {
 
 ### The `Exclusion` class
 
-For targeted exclusion between specific steps, use `Exclusion` objects:
+For targeted exclusion between specific steps, use [`Exclusion`](/reference/core/classes/Exclusion) objects:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -570,7 +572,7 @@ const multiple = await ws.queryFunnel(["Signup", "Purchase"], {
 
 ### The `HoldingConstant` class
 
-For user-profile properties, use `HoldingConstant` objects:
+For user-profile properties, use [`HoldingConstant`](/reference/core/classes/HoldingConstant) objects:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -642,7 +644,7 @@ Dates must be in `YYYY-MM-DD` format.
 
 ## Display modes
 
-The `mode` option controls result presentation (`FunnelMode`):
+The `mode` option controls result presentation ([`FunnelMode`](/reference/core/type-aliases/FunnelMode)):
 
 | Mode                | Description                | Use case                        |
 | ------------------- | -------------------------- | ------------------------------- |
@@ -664,7 +666,7 @@ const result = await ws.queryFunnel(["Signup", "Purchase"], {
 
 ## Reentry mode
 
-Control how users re-enter the funnel after conversion using the `reentry_mode` option (`FunnelReentryMode`):
+Control how users re-enter the funnel after conversion using the `reentry_mode` option ([`FunnelReentryMode`](/reference/core/type-aliases/FunnelReentryMode)):
 
 | Mode           | Behavior                                                 |
 | -------------- | -------------------------------------------------------- |
@@ -723,7 +725,7 @@ const result = await ws.queryFunnel(["Signup", "Purchase"], {
 
 ### `FunnelQueryResult`
 
-`queryFunnel()` returns a `FunnelQueryResult` with:
+`queryFunnel()` returns a [`FunnelQueryResult`](/reference/core/classes/FunnelQueryResult) with:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -771,7 +773,7 @@ result.params; // the full bookmark JSON sent to the API
 | `avg_time`            | Average time from previous step (seconds)               |
 | `avg_time_from_start` | Average time from first step (seconds)                  |
 
-Rows are plain objects (`Record<string, unknown>`), ready for `console.table`, a DataFrame library, or `JSON.stringify`. The typed per-step shape is exported as `FunnelStepData`.
+Rows are plain objects (`Record<string, unknown>`), ready for `console.table`, a DataFrame library, or `JSON.stringify`. The typed per-step shape is exported as [`FunnelStepData`](/reference/core/interfaces/FunnelStepData).
 
 ### Persisting as a saved report
 
@@ -813,7 +815,7 @@ console.log(JSON.stringify(result.params, null, 2));
 
 ## Validation
 
-`queryFunnel()` validates all parameter combinations **before** making an API call and throws `BookmarkValidationError` with descriptive messages:
+`queryFunnel()` validates all parameter combinations **before** making an API call and throws [`BookmarkValidationError`](/reference/core/classes/BookmarkValidationError) with descriptive messages:
 
 | Rule                                  | Error code                                | Error message                                                 |
 | ------------------------------------- | ----------------------------------------- | ------------------------------------------------------------- |
@@ -835,7 +837,7 @@ console.log(JSON.stringify(result.params, null, 2));
 | Non-property math given math_property | `F11_MATH_REJECTS_PROPERTY`               | Count/rate math types don't accept math_property              |
 | Invalid reentry mode                  | `F12_INVALID_REENTRY_MODE`                | Must be one of: default, basic, aggressive, optimized         |
 
-Errors are collected — all validation issues are reported at once, not just the first. Each finding is a `ValidationError` with `code`, `path` and `message`:
+Errors are collected — all validation issues are reported at once, not just the first. Each finding is a [`ValidationError`](/reference/core/classes/ValidationError) with `code`, `path` and `message`:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -858,7 +860,7 @@ try {
 }
 ```
 
-Constructing a `FunnelStep`, `Exclusion` or `HoldingConstant` with a bad field (an empty event name, `from_step` below zero, `to_step` before `from_step`) throws `ParamValidationError` immediately, before any query runs. See [Error handling](/guide/error-handling).
+Constructing a `FunnelStep`, `Exclusion` or `HoldingConstant` with a bad field (an empty event name, `from_step` below zero, `to_step` before `from_step`) throws [`ParamValidationError`](/reference/core/classes/ParamValidationError) immediately, before any query runs. See [Error handling](/guide/error-handling).
 
 ## Complete examples
 
@@ -976,7 +978,7 @@ const result = await ws.runFunnelParams(params, { limit: 50_000 });
 console.table(result.toRows().slice(0, 5));
 ```
 
-Both `queryFunnel()` and `runFunnelParams()` accept `limit` (1 to 50000, default 3000) to raise the segment cap for high-cardinality breakdowns. Check `result.meta["is_segmentation_limit_hit"]` to see whether the result was still truncated. `runFunnelParams()` also takes `workspace_id` to run under a different data view than the session's.
+Both `queryFunnel()` and `runFunnelParams()` accept `limit` (1 to 50000, default 3000) to raise the segment cap for high-cardinality breakdowns. Check `result.meta["is_segmentation_limit_hit"]` to see whether the result was still truncated. `runFunnelParams()` also takes `workspace_id` ([`WorkspaceRunParamsOptions`](/reference/core/interfaces/WorkspaceRunParamsOptions)) to run under a different data view than the session's.
 
 ## Next steps
 
@@ -985,4 +987,4 @@ Both `queryFunnel()` and `runFunnelParams()` accept `limit` (1 to 50000, default
 - [Retention queries](/guide/query-retention) — typed retention analysis with event pairs and custom buckets
 - [Flow queries](/guide/query-flows) — typed flow path analysis with steps, directions, and graph output
 - [Live analytics](/guide/live-analytics) — legacy funnel method (saved funnels by ID)
-- [API reference](/api/) — full method signatures for `Workspace`, `FunnelStep`, `Exclusion`, `HoldingConstant`, `FunnelQueryResult`
+- [API reference](/api/) — [`Workspace`](/reference/core/classes/Workspace), [`WorkspaceFunnelQueryOptions`](/reference/core/interfaces/WorkspaceFunnelQueryOptions), [`FunnelStep`](/reference/core/classes/FunnelStep), [`Exclusion`](/reference/core/classes/Exclusion), [`HoldingConstant`](/reference/core/classes/HoldingConstant), [`FunnelQueryResult`](/reference/core/classes/FunnelQueryResult)
