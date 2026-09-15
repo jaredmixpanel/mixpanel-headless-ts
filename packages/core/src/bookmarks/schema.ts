@@ -1,58 +1,36 @@
 /**
- * Structural twin of the NON-sorting half of
- * `src/mixpanel_headless/_internal/bookmark_schema.py` — the insights
- * model tree, the display-option models, the two root params models,
- * the `bookmark_type` → root-model dispatch and
- * `PARTIAL_UPDATE_SUB_MODELS`.
+ * Structural twin of the non-sorting half of `bookmark_schema.py`: the
+ * insights model tree, the display-option models, the two root params
+ * models, the `bookmark_type` → root-model dispatch and
+ * `PARTIAL_UPDATE_SUB_MODELS`. The sorting half and the model-description
+ * machinery live in `./schema-sorting.js`; this file imports them and
+ * never re-implements them.
  *
- * Python ranges ported here (re-read before touching anything):
- * `:38-59` (`_BASE_CONFIG` + the `Ignore[T]` helper), `:333-368`
- * ({@link getRootModelForBookmarkType}), `:369-379` + `:1548-1553`
- * ({@link PARTIAL_UPDATE_SUB_MODELS}), `:695-835` (the non-sorting
- * literal aliases), `:837-1266` (the insights model tree),
- * `:1268-1418` (display options), `:1419-1483`
- * (`InsightsBookmarkParams`), `:1485-1542` (the flows tree).
- * The sorting half (`:61-316`, `:372-680`) lives in
- * `./schema-sorting.js`; per R10.8 this file IMPORTS that machinery and
- * never re-implements it.
+ * TS has no pydantic, so the reference semantics of every acceptance
+ * decision below are pydantic-core in lax mode, measured against the
+ * real thing rather than CPython's `int()`/`float()` or JS's
+ * `parseInt`/`Number()`. The load-bearing findings this file encodes:
  *
- * **R11.7 third-parser carve-out.** TS has no pydantic. The reference
- * semantics of every acceptance decision below are **pydantic-core in
- * LAX mode**, not CPython's `int()`/`float()` and not JS's
- * `parseInt`/`Number()`. Every decision is pinned to the mandatory
- * CPython probe recorded in `docs/history/phase3/notes/B3-K1-notes.md`
- * §Probe (scripts `throwaway/b3-k1/probe-schema.py`,
- * `probe-grammar.py`, `probe-detail.py`, `probe-order.py`,
- * `probe-bool.py`, run 2026-08-15 against the support-branch pydantic
- * pin). The load-bearing findings this file encodes:
- *
- * 1. **`Ignore[T]` is NOT "accept anything"** — it is `T | None` with
- *    a default. `Ignore[JsonValue]` accepts everything, but
+ * 1. `Ignore[T]` is not "accept anything" — it is `T | None` with a
+ *    default. `Ignore[JsonValue]` accepts everything, but
  *    `icon: Ignore[str]` rejects `12345` with `string_type`,
  *    `id: Ignore[int]` rejects `"notanint"` with `int_parsing`, and
- *    `isNewQBEnabled: Ignore[bool]` rejects `2` with `bool_parsing`
- *    (probe `ibp/ignore-*`).
- * 2. **Non-Optional fields that merely carry a DEFAULT reject `null`**
- *    — `forward: int = 0` → `int_type`, `collapse_repeated: bool =
- *    False` → `bool_type`, `conv_first_step: bool = False` →
- *    `bool_type` (probe `fbp/step-forward-null`,
- *    `fbp/collapse_repeated-null`,
- *    `do/funnelStepsSelectedTableColumns-null-field`). Those fields
- *    carry `nullable: false`.
- * 3. **`_show_clause_discriminator` can never fail** — it is a plain
+ *    `isNewQBEnabled: Ignore[bool]` rejects `2` with `bool_parsing`.
+ * 2. Non-Optional fields that merely carry a default reject `null` —
+ *    `forward: int = 0` → `int_type`, `collapse_repeated: bool = False`
+ *    → `bool_type`. Those fields carry `nullable: false`.
+ * 3. `_show_clause_discriminator` can never fail — it is a plain
  *    callable returning one of two Tags, so `union_tag_invalid` /
  *    `union_tag_not_found` (and therefore `B7_INVALID_BEHAVIOR_TYPE`)
- *    are UNREACHABLE through this model tree; a non-dict `show`
- *    element surfaces as `model_type` under the
- *    `BehaviorShowClause` Tag instead (probe
- *    `sections/show-element-not-dict`).
- * 4. **Plain (non-discriminated) unions** short-circuit on the first
- *    member that validates and otherwise emit EVERY member's errors in
- *    declaration order, each tagged with the member name in `loc`
- *    (probe `sections/meas-multiattr-bad-type`, `nesteddict/*`).
- * 5. **`Literal[0..8]` uses Python equality** — `True` matches `1`,
- *    `1.0` matches `1`, `"1"` does not (probe `lit-int/*`).
+ *    are unreachable through this model tree; a non-dict `show` element
+ *    surfaces as `model_type` under the `BehaviorShowClause` Tag.
+ * 4. Plain (non-discriminated) unions short-circuit on the first member
+ *    that validates and otherwise emit every member's errors in
+ *    declaration order, each tagged with the member name in `loc`.
+ * 5. `Literal[0..8]` uses Python equality — `True` matches `1`, `1.0`
+ *    matches `1`, `"1"` does not.
  *
+ * @see mixpanel_headless._internal.bookmark_schema
  * @internal
  */
 
@@ -67,21 +45,18 @@ import {
   type UnionSpec,
 } from "./schema-sorting.js";
 
-// =============================================================================
-// Non-sorting literal aliases (bookmark_schema.py)
+// --- Non-sorting literal aliases ---
 //
 // Value tuples rather than bare `type` aliases: the model specs below
-// consume them through `lit()`, and the `TestEnumParity` port
-// (`test/bookmarks/schema.test.ts`) compares six of them
-// member-for-member against the `bookmark_enums` sets — the Python test
-// reads `typing.get_args(alias)`, which has no TS analogue for a type.
-// Those six are exported; the rest are module-private.
-// =============================================================================
+// consume them through `lit()`, and the enum-parity test compares six of
+// them member-for-member against the `bookmark_enums` sets — the Python
+// test reads `typing.get_args(alias)`, which has no TS analogue for a
+// type. Those six are exported; the rest are module-private.
 
 /** Mirrors show.py `FiltersDeterminer`. */
 export const FILTERS_DETERMINER_LITERAL_VALUES = ["all", "any"] as const;
 
-/** Mirrors show.py `ConversionWindowUnit` (`:698-700`). */
+/** Mirrors show.py `ConversionWindowUnit`. */
 const CONVERSION_WINDOW_UNIT_LITERAL_VALUES = [
   "second",
   "minute",
@@ -92,7 +67,7 @@ const CONVERSION_WINDOW_UNIT_LITERAL_VALUES = [
   "session",
 ] as const;
 
-/** Mirrors show.py `FunnelReentryModeType` (`:703`). */
+/** Mirrors show.py `FunnelReentryModeType`. */
 const FUNNEL_REENTRY_MODE_LITERAL_VALUES = [
   "default",
   "basic",
@@ -100,20 +75,20 @@ const FUNNEL_REENTRY_MODE_LITERAL_VALUES = [
   "optimized",
 ] as const;
 
-/** Mirrors show.py `FunnelOrder` (`:706`). */
+/** Mirrors show.py `FunnelOrder`. */
 const FUNNEL_ORDER_LITERAL_VALUES = ["loose", "any"] as const;
 
-/** Mirrors show.py `RetentionType` (`:709`). */
+/** Mirrors show.py `RetentionType`. */
 const RETENTION_TYPE_LITERAL_VALUES = [
   "compounded",
   "birth",
   "addiction",
 ] as const;
 
-/** Mirrors show.py `RetentionAlignmentType` (`:712`). */
+/** Mirrors show.py `RetentionAlignmentType`. */
 const RETENTION_ALIGNMENT_LITERAL_VALUES = ["birth", "interval_start"] as const;
 
-/** Mirrors show.py `RetentionUnboundedModeType` (`:715-717`). */
+/** Mirrors show.py `RetentionUnboundedModeType`. */
 const RETENTION_UNBOUNDED_MODE_LITERAL_VALUES = [
   "none",
   "carry_back",
@@ -121,10 +96,10 @@ const RETENTION_UNBOUNDED_MODE_LITERAL_VALUES = [
   "consecutive_forward",
 ] as const;
 
-/** Mirrors show.py `COUNT_USERS_ONCE_TYPE` (`:720`). */
+/** Mirrors show.py `COUNT_USERS_ONCE_TYPE`. */
 const SEGMENT_METHOD_LITERAL_VALUES = ["all", "first", "last"] as const;
 
-/** Mirrors show.py `MultiAttributionType` (`:723-734`). */
+/** Mirrors show.py `MultiAttributionType`. */
 const MULTI_ATTRIBUTION_TYPE_LITERAL_VALUES = [
   "first_touch",
   "last_touch",
@@ -138,10 +113,10 @@ const MULTI_ATTRIBUTION_TYPE_LITERAL_VALUES = [
   "session_replay_last",
 ] as const;
 
-/** Mirrors show.py `START_END_TYPE` (`:737`). */
+/** Mirrors show.py `START_END_TYPE`. */
 const START_END_LITERAL_VALUES = ["start", "end"] as const;
 
-/** Mirrors show.py `FiltersOperator` (`:740`). */
+/** Mirrors show.py `FiltersOperator`. */
 const FILTERS_OPERATOR_LITERAL_VALUES = [
   "and",
   "or",
@@ -150,10 +125,10 @@ const FILTERS_OPERATOR_LITERAL_VALUES = [
   "then",
 ] as const;
 
-/** Mirrors show.py `AxisAssignment` (`:743`). */
+/** Mirrors show.py `AxisAssignment`. */
 const AXIS_ASSIGNMENT_LITERAL_VALUES = ["primary", "secondary"] as const;
 
-/** Mirrors common/definitions.py `MetricType` (`:746-761`). */
+/** Mirrors common/definitions.py `MetricType`. */
 export const METRIC_TYPE_LITERAL_VALUES = [
   "cohort",
   "custom-event",
@@ -171,7 +146,7 @@ export const METRIC_TYPE_LITERAL_VALUES = [
   "metric",
 ] as const;
 
-/** Mirrors insights/definitions.py `InsightsResourceType` (`:764-774`). */
+/** Mirrors insights/definitions.py `InsightsResourceType`. */
 export const INSIGHTS_RESOURCE_TYPE_LITERAL_VALUES = [
   "all",
   "cohort",
@@ -184,7 +159,7 @@ export const INSIGHTS_RESOURCE_TYPE_LITERAL_VALUES = [
   "user",
 ] as const;
 
-/** Mirrors common/definitions.py `TimeUnit` (`:777-789`). */
+/** Mirrors common/definitions.py `TimeUnit`. */
 export const TIME_UNIT_LITERAL_VALUES = [
   "hour",
   "day",
@@ -199,7 +174,7 @@ export const TIME_UNIT_LITERAL_VALUES = [
   "day_of_week",
 ] as const;
 
-/** Mirrors common/definitions.py `MATH_TYPE` union (`:795-834`). */
+/** Mirrors common/definitions.py `MATH_TYPE` union. */
 export const MATH_TYPE_LITERAL_VALUES = [
   // Core counting
   "total",
@@ -241,10 +216,10 @@ export const MATH_TYPE_LITERAL_VALUES = [
   "retention_rate",
 ] as const;
 
-/** Mirrors display_options.py `ChartPlotStyle` (`:1268`). */
+/** Mirrors display_options.py `ChartPlotStyle`. */
 const CHART_PLOT_STYLE_LITERAL_VALUES = ["standard", "stacked"] as const;
 
-/** Mirrors display_options.py `AnalysisType` (`:1271`). */
+/** Mirrors display_options.py `AnalysisType`. */
 const ANALYSIS_TYPE_LITERAL_VALUES = [
   "linear",
   "logarithmic",
@@ -252,10 +227,10 @@ const ANALYSIS_TYPE_LITERAL_VALUES = [
   "cumulative",
 ] as const;
 
-/** Mirrors display_options.py `ValueRepresentationType` (`:1274`). */
+/** Mirrors display_options.py `ValueRepresentationType`. */
 const VALUE_REPRESENTATION_LITERAL_VALUES = ["absolute", "relative"] as const;
 
-/** Mirrors display_options.py `TableSummaryAggregation` (`:1277`). */
+/** Mirrors display_options.py `TableSummaryAggregation`. */
 const TABLE_SUMMARY_AGGREGATION_LITERAL_VALUES = [
   "average",
   "sum",
@@ -264,7 +239,7 @@ const TABLE_SUMMARY_AGGREGATION_LITERAL_VALUES = [
   "median",
 ] as const;
 
-/** Mirrors common/definitions.py `ChartType` union (`:1283-1322`). */
+/** Mirrors common/definitions.py `ChartType` union. */
 export const CHART_TYPE_LITERAL_VALUES = [
   // Insights chart types
   "bar",
@@ -306,9 +281,7 @@ export const CHART_TYPE_LITERAL_VALUES = [
   "frequency-curve",
 ] as const;
 
-// =============================================================================
-// Field-type shorthands
-// =============================================================================
+// --- Field-type shorthands ---
 
 /** `str`. */
 const STR: FieldType = { kind: "str" };
@@ -336,7 +309,7 @@ function lit(values: readonly string[]): FieldType {
 /**
  * A nested `BaseModel` field (thunked — the tree is recursive).
  *
- * @param model - Thunk returning the nested model spec.
+ * @param model_ - Thunk returning the nested model spec.
  * @returns The field type.
  */
 function model(model_: () => ModelSpec): FieldType {
@@ -353,9 +326,7 @@ function modelList(model_: () => ModelSpec): FieldType {
   return { kind: "list", item: model(model_) };
 }
 
-// =============================================================================
-// Insights model tree (bookmark_schema.py)
-// =============================================================================
+// --- Insights model tree (bookmark_schema.py) ---
 
 /** Mirrors show.py `RollingMeasurement`. */
 const ROLLING_MEASUREMENT: ModelSpec = {
@@ -363,7 +334,7 @@ const ROLLING_MEASUREMENT: ModelSpec = {
   fields: [{ key: "rollingWindowSize", type: INT, required: false }],
 };
 
-/** Mirrors show.py `MultiAttributionWeights` (`:845-852`). */
+/** Mirrors show.py `MultiAttributionWeights`. */
 const MULTI_ATTRIBUTION_WEIGHTS: ModelSpec = {
   name: "MultiAttributionWeights",
   fields: [
@@ -373,7 +344,7 @@ const MULTI_ATTRIBUTION_WEIGHTS: ModelSpec = {
   ],
 };
 
-/** Mirrors show.py `CustomMultiAttribution` (`:855-862`). */
+/** Mirrors show.py `CustomMultiAttribution`. */
 const CUSTOM_MULTI_ATTRIBUTION: ModelSpec = {
   name: "CustomMultiAttribution",
   fields: [
@@ -387,7 +358,7 @@ const CUSTOM_MULTI_ATTRIBUTION: ModelSpec = {
   ],
 };
 
-/** Mirrors show.py `PredefinedMultiAttribution` (`:865-873`). */
+/** Mirrors show.py `PredefinedMultiAttribution`. */
 const PREDEFINED_MULTI_ATTRIBUTION: ModelSpec = {
   name: "PredefinedMultiAttribution",
   fields: [
@@ -407,7 +378,7 @@ const PREDEFINED_MULTI_ATTRIBUTION: ModelSpec = {
 };
 
 /**
- * Mirrors show.py `MultiAttribution` (`:1090`) — a PLAIN union, not a
+ * Mirrors show.py `MultiAttribution` — a plain union, not a
  * discriminated one, so both members' errors surface when neither
  * validates.
  */
@@ -426,7 +397,7 @@ const MULTI_ATTRIBUTION: FieldType = {
 };
 
 /**
- * Mirrors show.py `StepRange` (`:876-886`). `from` / `to` are the wire
+ * Mirrors show.py `StepRange`. `from` / `to` are the wire
  * aliases; `from_step` / `to_step` the Python names (both accepted,
  * `populate_by_name=True`).
  */
@@ -438,7 +409,7 @@ const STEP_RANGE: ModelSpec = {
   ],
 };
 
-/** Field list of `FunnelStep` (`:889-915`) — reused by the subclass. */
+/** Field list of `FunnelStep` — reused by the subclass. */
 const FUNNEL_STEP_FIELDS = [
   {
     key: "bool_op",
@@ -468,9 +439,9 @@ const FUNNEL_STEP_FIELDS = [
 ] as const;
 
 /**
- * Mirrors show.py `ExclusionFunnelStep` (`:918-921`). Pydantic orders
- * inherited fields FIRST and the subclass's `steps` last — that IS the
- * error emission order (probe `excl/multi`).
+ * Mirrors show.py `ExclusionFunnelStep`. Pydantic orders
+ * inherited fields first and the subclass's `steps` last — that is the
+ * error emission order.
  */
 const EXCLUSION_FUNNEL_STEP: ModelSpec = {
   name: "ExclusionFunnelStep",
@@ -485,7 +456,7 @@ const EXCLUSION_FUNNEL_STEP: ModelSpec = {
   ],
 };
 
-/** Mirrors show.py `MetricDisplay` (`:924-936`). */
+/** Mirrors show.py `MetricDisplay`. */
 const METRIC_DISPLAY: ModelSpec = {
   name: "MetricDisplay",
   fields: [
@@ -504,7 +475,7 @@ const METRIC_DISPLAY: ModelSpec = {
   ],
 };
 
-/** Mirrors insights/definitions.py `Bucket` (`:939-950`). */
+/** Mirrors insights/definitions.py `Bucket`. */
 const BUCKET: ModelSpec = {
   name: "Bucket",
   fields: [
@@ -518,7 +489,7 @@ const BUCKET: ModelSpec = {
   ],
 };
 
-/** Mirrors show.py `Winsorization` (`:953-960`). */
+/** Mirrors show.py `Winsorization`. */
 const WINSORIZATION: ModelSpec = {
   name: "Winsorization",
   fields: [
@@ -528,7 +499,7 @@ const WINSORIZATION: ModelSpec = {
   ],
 };
 
-/** Mirrors show.py `Statsig` (`:963-975`). */
+/** Mirrors show.py `Statsig`. */
 const STATSIG: ModelSpec = {
   name: "Statsig",
   fields: [
@@ -545,7 +516,7 @@ const STATSIG: ModelSpec = {
     {
       key: "exposures",
       // `dict[str, int | dict[str, int]]` — the union members carry
-      // pydantic's rendered type names into `loc` (probe `nesteddict/*`).
+      // pydantic's rendered type names into `loc`.
       type: {
         kind: "dict",
         value: {
@@ -565,7 +536,7 @@ const STATSIG: ModelSpec = {
   ],
 };
 
-/** Mirrors show.py `SRM` (`:978-983`). */
+/** Mirrors show.py `SRM`. */
 const SRM: ModelSpec = {
   name: "SRM",
   fields: [
@@ -578,7 +549,7 @@ const SRM: ModelSpec = {
   ],
 };
 
-/** Mirrors common/definitions.py `Goal` (`:986-998`). */
+/** Mirrors common/definitions.py `Goal`. */
 const GOAL: ModelSpec = {
   name: "Goal",
   fields: [
@@ -594,7 +565,7 @@ const GOAL: ModelSpec = {
       key: "target_type",
       type: lit(["absolute", "relative"]),
       required: false,
-      // `= "absolute"` — a default, NOT `| None`.
+      // `= "absolute"` — a default, not `| None`.
       nullable: false,
     },
     { key: "target_input", type: FLOAT, required: false },
@@ -604,7 +575,7 @@ const GOAL: ModelSpec = {
   ],
 };
 
-/** Mirrors show.py `SubBehavior` (`:1001-1022`) — recursive. */
+/** Mirrors show.py `SubBehavior` — recursive. */
 const SUB_BEHAVIOR: ModelSpec = {
   name: "SubBehavior",
   fields: [
@@ -633,7 +604,7 @@ const SUB_BEHAVIOR: ModelSpec = {
   ],
 };
 
-/** Mirrors show.py `Behavior` (`:1025-1086`). */
+/** Mirrors show.py `Behavior`. */
 const BEHAVIOR: ModelSpec = {
   name: "Behavior",
   fields: [
@@ -726,7 +697,7 @@ const BEHAVIOR: ModelSpec = {
   ],
 };
 
-/** Mirrors show.py `BehaviorMeasurement` (`:1093-1119`). */
+/** Mirrors show.py `BehaviorMeasurement`. */
 const BEHAVIOR_MEASUREMENT: ModelSpec = {
   name: "BehaviorMeasurement",
   fields: [
@@ -755,7 +726,7 @@ const BEHAVIOR_MEASUREMENT: ModelSpec = {
   ],
 };
 
-/** Mirrors show.py `FormulaMeasurement` (`:1122-1129`). */
+/** Mirrors show.py `FormulaMeasurement`. */
 const FORMULA_MEASUREMENT: ModelSpec = {
   name: "FormulaMeasurement",
   fields: [
@@ -765,7 +736,7 @@ const FORMULA_MEASUREMENT: ModelSpec = {
   ],
 };
 
-/** Mirrors show.py `BehaviorShowClause` (`:1132-1165`). */
+/** Mirrors show.py `BehaviorShowClause`. */
 const BEHAVIOR_SHOW_CLAUSE: ModelSpec = {
   name: "BehaviorShowClause",
   fields: [
@@ -799,7 +770,7 @@ const BEHAVIOR_SHOW_CLAUSE: ModelSpec = {
   ],
 };
 
-/** Mirrors show.py `FormulaShowClause` (`:1168-1197`). */
+/** Mirrors show.py `FormulaShowClause`. */
 const FORMULA_SHOW_CLAUSE: ModelSpec = {
   name: "FormulaShowClause",
   fields: [
@@ -836,17 +807,15 @@ const FORMULA_SHOW_CLAUSE: ModelSpec = {
 };
 
 /**
- * Port of `_show_clause_discriminator` (`:1200-1216`).
- *
  * The Python branch on `isinstance(v, dict)` splits key lookup from
  * `getattr`; every value the port can see here is a decoded JSON value,
  * so the non-dict branch is exactly "no `type` attribute, no `formula`
- * attribute" → `BehaviorShowClause` (probe
- * `sections/show-element-not-dict`, `sections/show-element-null`).
- * Watchlist #13: dict-ness is {@link isPythonDict}, never `typeof`.
+ * attribute" → `BehaviorShowClause`.
+ * Dict-ness is {@link isPythonDict}, never `typeof`.
  *
  * @param v - The candidate `show` element.
  * @returns The selected `Tag` name.
+ * @see mixpanel_headless._internal.bookmark_schema._show_clause_discriminator
  */
 function showClauseDiscriminator(v: unknown): string {
   let clauseType: unknown;
@@ -863,7 +832,7 @@ function showClauseDiscriminator(v: unknown): string {
     : "BehaviorShowClause";
 }
 
-/** Mirrors show.py `ShowClause` discriminated union (`:1220-1224`). */
+/** Mirrors show.py `ShowClause` discriminated union. */
 const SHOW_CLAUSE: UnionSpec = {
   discriminate: showClauseDiscriminator,
   variants: new Map([
@@ -872,9 +841,7 @@ const SHOW_CLAUSE: UnionSpec = {
   ]),
 };
 
-// =============================================================================
-// Sections (bookmark_schema.py)
-// =============================================================================
+// --- Sections (bookmark_schema.py) ---
 
 /** Mirrors sections.py `Sections`. */
 const SECTIONS: ModelSpec = {
@@ -897,11 +864,9 @@ const SECTIONS: ModelSpec = {
   ],
 };
 
-// =============================================================================
-// DisplayOptions (bookmark_schema.py)
-// =============================================================================
+// --- DisplayOptions (bookmark_schema.py) ---
 
-/** Mirrors display_options.py `AnnotationOptions` (`:1325-1334`). */
+/** Mirrors display_options.py `AnnotationOptions`. */
 const ANNOTATION_OPTIONS: ModelSpec = {
   name: "AnnotationOptions",
   fields: [
@@ -917,13 +882,13 @@ const ANNOTATION_OPTIONS: ModelSpec = {
   ],
 };
 
-/** Mirrors display_options.py `CommentOptions` (`:1337-1342`). */
+/** Mirrors display_options.py `CommentOptions`. */
 const COMMENT_OPTIONS: ModelSpec = {
   name: "CommentOptions",
   fields: [{ key: "commentsDisabled", type: BOOL, required: false }],
 };
 
-/** Mirrors display_options.py `SegmentId` (`:1345-1352`). */
+/** Mirrors display_options.py `SegmentId`. */
 const SEGMENT_ID: ModelSpec = {
   name: "SegmentId",
   fields: [
@@ -935,8 +900,8 @@ const SEGMENT_ID: ModelSpec = {
 
 /**
  * Mirrors display_options.py `FunnelStepsSelectedTableColumns`
- * (`:1355-1373`). The kebab-case wire keys come from the model's
- * `alias_generator`; every field is `bool = False` — a DEFAULT, not an
+ *. The kebab-case wire keys come from the model's
+ * `alias_generator`; every field is `bool = False` — a default, not an
  * `Optional`, so explicit `null` is rejected with `bool_type`.
  */
 const FUNNEL_STEPS_SELECTED_TABLE_COLUMNS: ModelSpec = {
@@ -981,7 +946,7 @@ const FUNNEL_STEPS_SELECTED_TABLE_COLUMNS: ModelSpec = {
   ],
 };
 
-/** Mirrors display_options.py `DisplayOptions` (`:1376-1403`). */
+/** Mirrors display_options.py `DisplayOptions`. */
 const DISPLAY_OPTIONS: ModelSpec = {
   name: "DisplayOptions",
   fields: [
@@ -1043,14 +1008,12 @@ const DISPLAY_OPTIONS: ModelSpec = {
   ],
 };
 
-// =============================================================================
-// InsightsBookmarkParams root (bookmark_schema.py)
-// =============================================================================
+// --- InsightsBookmarkParams root (bookmark_schema.py) ---
 
 /**
  * The 33 `Ignore[T]` legacy fields of `InsightsBookmarkParams`
- * (`:1441-1473`). Three of them are TYPED (`icon: Ignore[str]`,
- * `id: Ignore[int]`, `isNewQBEnabled: Ignore[bool]`) and DO reject
+ * Three of them are typed (`icon: Ignore[str]`,
+ * `id: Ignore[int]`, `isNewQBEnabled: Ignore[bool]`) and do reject
  * wrong-typed values — see module note 1.
  */
 const INSIGHTS_LEGACY_FIELDS = [
@@ -1088,7 +1051,7 @@ const INSIGHTS_LEGACY_FIELDS = [
   { key: "user_id", type: JSON_VALUE, required: false },
 ] as const;
 
-/** Mirrors bookmark.py `InsightsBookmarkParams` (`:1419-1473`). */
+/** Mirrors bookmark.py `InsightsBookmarkParams`. */
 const INSIGHTS_BOOKMARK_PARAMS: ModelSpec = {
   name: "InsightsBookmarkParams",
   fields: [
@@ -1121,11 +1084,9 @@ const INSIGHTS_BOOKMARK_PARAMS: ModelSpec = {
   ],
 };
 
-// =============================================================================
-// Flows tree (bookmark_schema.py)
-// =============================================================================
+// --- Flows tree (bookmark_schema.py) ---
 
-/** Mirrors mixpanel_mcp/.../bookmark.py `FlowsBookmarkStep` (`:1485-1498`). */
+/** Mirrors mixpanel_mcp/.../bookmark.py `FlowsBookmarkStep`. */
 const FLOWS_BOOKMARK_STEP: ModelSpec = {
   name: "FlowsBookmarkStep",
   fields: [
@@ -1156,18 +1117,14 @@ const FLOWS_BOOKMARK_STEP: ModelSpec = {
 };
 
 /**
- * Mirrors mixpanel_mcp/.../bookmark.py `FlowsBookmarkParams`
- * (`:1501-1541`).
+ * Mirrors mixpanel_mcp/.../bookmark.py `FlowsBookmarkParams`.
  *
- * NOTE `model_config = ConfigDict(populate_by_name=True,
- * extra="allow")` — deliberate, and pinned by
- * `test_flows_bookmark_params_currently_allows_extras`. The Python
- * source carries this TODO verbatim (`:1511-1513`), reproduced here so
- * the twin and its source drift together:
- *
- * > TODO(corpus parity): tighten to extra="forbid" once
- * > `scripts/capture_bookmark_corpus.py` + `scripts/validate_corpus.py`
- * > have enumerated the UI-only fields that need Ignore[T] tolerance.
+ * `extra: "allow"` is deliberate — Python's
+ * `model_config = ConfigDict(populate_by_name=True, extra="allow")` —
+ * and pinned by `test_flows_bookmark_params_currently_allows_extras`.
+ * The Python source carries a `TODO(corpus parity)` to tighten this to
+ * `extra="forbid"` once the UI-only fields that need `Ignore[T]`
+ * tolerance are enumerated; the twin follows the source when that lands.
  */
 const FLOWS_BOOKMARK_PARAMS: ModelSpec = {
   name: "FlowsBookmarkParams",
@@ -1228,9 +1185,7 @@ const FLOWS_BOOKMARK_PARAMS: ModelSpec = {
   ],
 };
 
-// =============================================================================
-// Model handles
-// =============================================================================
+// --- Model handles ---
 
 /** Handle for `Sections`. */
 export const SECTIONS_MODEL: RootModelHandle = modelHandle(SECTIONS);
@@ -1257,9 +1212,7 @@ export const FLOWS_BOOKMARK_STEP_MODEL: RootModelHandle =
 export const BEHAVIOR_MEASUREMENT_MODEL: RootModelHandle =
   modelHandle(BEHAVIOR_MEASUREMENT);
 
-// =============================================================================
-// Root-model dispatch (bookmark_schema.py:333-379, :1548-1553)
-// =============================================================================
+// --- Root-model dispatch ---
 
 /**
  * Dispatch table behind {@link getRootModelForBookmarkType} — the
@@ -1282,15 +1235,20 @@ const ROOT_MODELS: ReadonlyMap<string, RootModelHandle | null> = new Map<
 /**
  * Return the root model for a given `bookmark_type`.
  *
- * Port of `get_root_model_for_bookmark_type`
- * (`bookmark_schema.py`). Funnels and Retention reuse
- * `InsightsBookmarkParams`; user bookmarks have no canonical schema, so
- * the dispatch returns `null` and `validate_bookmark()` no-ops cleanly.
- * An UNKNOWN type also yields `null` — Python's `dict.get()` default.
+ * Funnels and Retention reuse `InsightsBookmarkParams`; user bookmarks
+ * have no canonical schema, so the dispatch returns `null` and
+ * `validate_bookmark()` no-ops cleanly. An unknown type also yields
+ * `null` — Python's `dict.get()` default.
  *
  * @param bookmarkType - The `CreateBookmarkParams.bookmark_type` value.
  * @returns The root-model handle, or `null` when no canonical schema
  *   exists for that type (including unknown types).
+ * @example
+ * ```typescript
+ * getRootModelForBookmarkType("funnels")?.name; // "InsightsBookmarkParams"
+ * getRootModelForBookmarkType("user"); // null
+ * ```
+ * @see mixpanel_headless._internal.bookmark_schema.get_root_model_for_bookmark_type
  */
 export function getRootModelForBookmarkType(
   bookmarkType: string,
@@ -1301,12 +1259,13 @@ export function getRootModelForBookmarkType(
 /**
  * Top-level `UpdateBookmarkParams.params` key → canonical sub-model.
  *
- * Port of `PARTIAL_UPDATE_SUB_MODELS` (`bookmark_schema.py:369` +
- * the module-bottom population at `:1548-1553`) as a `ReadonlyMap`
- * (R4.8). `sorting` is intentionally excluded — callers route it
+ * Python populates the dict at module bottom; here it is a
+ * `ReadonlyMap`. `sorting` is intentionally excluded — callers route it
  * through `validate_sorting_block`, which adds the
  * `S4_UNKNOWN_CHART_TYPE` warning and the chart-type pre-filter on top
  * of the same pydantic mirror.
+ *
+ * @see mixpanel_headless._internal.bookmark_schema.PARTIAL_UPDATE_SUB_MODELS
  */
 export const PARTIAL_UPDATE_SUB_MODELS: ReadonlyMap<string, RootModelHandle> =
   new Map([
@@ -1316,12 +1275,12 @@ export const PARTIAL_UPDATE_SUB_MODELS: ReadonlyMap<string, RootModelHandle> =
 
 /**
  * Every model the conformance `validate_with_pydantic` adapter can
- * name, keyed by the Python CLASS NAME.
+ * name, keyed by the Python class name.
  *
  * The Python rig flattens `validate_with_pydantic(model_cls, …)` to
- * `(model: str, value, path_prefix)` over a fixed name→class map
- * (b3-packets §Binding-plan); this is the TS mirror of that map, so the
- * (b′) binder resolves a name without re-deriving the model set.
+ * `(model: str, value, path_prefix)` over a fixed name→class map; this
+ * is the TS mirror of that map, so the conformance binding resolves a
+ * name without re-deriving the model set.
  */
 export const BOOKMARK_MODEL_HANDLES: ReadonlyMap<string, RootModelHandle> =
   new Map([
