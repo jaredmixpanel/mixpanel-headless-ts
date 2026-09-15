@@ -38,6 +38,7 @@ import { type JsonValue, toNativeJson } from "../client/json-value.js";
 import { LosslessJsonError, parseLossless } from "../client/lossless-json.js";
 import { compareCodepoints, sortedByCodepoint } from "../compat/codepoint.js";
 import { pythonStr, type PythonValue } from "../compat/index.js";
+import { setOwn } from "../compat/python-dict.js";
 import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
 import { EventNotFoundError, QueryError } from "../errors.js";
 import { KeyError, ValueError } from "../query/python-builtins.js";
@@ -228,8 +229,10 @@ export function parseLexiconDefinition(
   >;
   const properties: Record<string, LexiconProperty> = {};
   for (const [key, value] of Object.entries(propertiesRaw)) {
-    properties[key] = parseLexiconProperty(
-      value as Readonly<Record<string, unknown>>,
+    setOwn(
+      properties,
+      key,
+      parseLexiconProperty(value as Readonly<Record<string, unknown>>),
     );
   }
   return new LexiconDefinition({

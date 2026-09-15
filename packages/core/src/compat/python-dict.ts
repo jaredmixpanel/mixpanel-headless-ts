@@ -41,3 +41,46 @@ export function isPythonDict(value: unknown): value is Record<string, unknown> {
   const proto: unknown = Object.getPrototypeOf(value);
   return proto === Object.prototype || proto === null;
 }
+
+/**
+ * Store `value` under `key` as an OWN, enumerable data property of
+ * `record` — the TS analogue of Python `d[key] = value` for records
+ * built from JSON-derived keys.
+ *
+ * A plain `record[key] = value` on an `Object.prototype`-backed object
+ * is NOT a data write when `key === "__proto__"`: it hits the inherited
+ * accessor, which silently re-parents the object (or ignores a
+ * non-object value) and the key never shows up in `Object.keys` /
+ * `Object.entries`. `JSON.parse` and the lossless parser do produce an
+ * own `"__proto__"` key for `{"__proto__": …}` input, exactly as a
+ * Python dict does, so parsers that copy such a mapping key-by-key
+ * must go through this helper or lose the entry
+ * (`discovery.pbt.test.ts` "preserves the property count" caught it).
+ * Every other key takes the ordinary assignment fast path — only
+ * `__proto__` is an accessor on `Object.prototype`; the rest
+ * (`constructor`, `toString`, …) are data properties that a plain
+ * assignment shadows correctly.
+ *
+ * The record keeps its prototype, so it remains a plain object for
+ * `isPythonDict`, `toStrictEqual` and the codecs.
+ *
+ * @param record - The target record (plain object).
+ * @param key - The key to write.
+ * @param value - The value to store.
+ */
+export function setOwn<T>(
+  record: Record<string, T>,
+  key: string,
+  value: T,
+): void {
+  if (key === "__proto__") {
+    Object.defineProperty(record, key, {
+      value,
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+  } else {
+    record[key] = value;
+  }
+}
