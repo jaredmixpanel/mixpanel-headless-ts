@@ -163,7 +163,7 @@ MixpanelHeadlessError                 UNKNOWN_ERROR
 └── WorkspaceScopeError               NO_WORKSPACES
 ```
 
-Every class is exported from `@mixpanel-headless/core` and re-exported from `@mixpanel-headless/node` and `@mixpanel-headless/browser`, so the same `instanceof` works whichever entry point you import from.
+Every class is exported from `@mixpanel-headless/core` and re-exported from `@mixpanel-headless/browser` (so a page needs one import); `@mixpanel-headless/node` does not re-export them — import the error classes from `@mixpanel-headless/core` alongside `createNodeWorkspace`, as the examples on this page do. The classes are the same objects everywhere, so `instanceof` works whichever entry point constructed the workspace.
 
 ## Code reference
 
