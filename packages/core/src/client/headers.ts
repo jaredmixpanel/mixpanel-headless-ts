@@ -25,9 +25,11 @@ export const QUERY_ORIGIN = "mixpanel-headless";
  *
  * Mirrors `packages/core/package.json` `version` (Python reads
  * `mixpanel_headless.__version__`); `core` cannot read files at runtime,
- * so the constant is pinned here and bumped with the package version.
+ * so the constant is pinned here. Changesets does not bump it:
+ * `tests/library-version.test.ts` fails when the two drift, so a release
+ * bump must update this line too.
  */
-const LIBRARY_VERSION = "0.0.0";
+const LIBRARY_VERSION = "0.1.0";
 
 /** How this process entered the library (Python `_EntryPoint`). */
 export type EntryPoint = "lib" | "cli";

@@ -308,8 +308,11 @@ describe("Replay actions default empty", () => {
 
 describe("Replay analyzer accessors, empty actions", () => {
   // python: TestReplayAnalyzerAccessorsEmptyActions
-  // test_summary_markdown_placeholder is not carried here (summaryMarkdown
-  // rides the rrweb analyzer, covered under test/replays/).
+
+  it("summary markdown is a one-line placeholder for an actionless replay", () => {
+    // python: test_summary_markdown_placeholder
+    expect(buildReplay().summaryMarkdown()).toContain("no actions extracted");
+  });
 
   it("errors empty", () => {
     // python: test_errors_empty
