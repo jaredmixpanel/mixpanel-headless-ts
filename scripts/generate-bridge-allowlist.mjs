@@ -318,7 +318,7 @@ function classifyWrite(template) {
       return rule.class;
     }
   }
-  return undefined;
+  return;
 }
 
 /** family from scheme_host + path prefix (spec §5.3 step 2). */
@@ -328,7 +328,7 @@ function familyFor(path) {
       return rule.family;
     }
   }
-  return undefined;
+  return;
 }
 
 /**
@@ -387,7 +387,7 @@ function denyRuleFor(method, family, template) {
       return rule;
     }
   }
-  return undefined;
+  return;
 }
 
 // ---------------------------------------------------------------------------

@@ -93,7 +93,7 @@ function resolveTsApiName(pythonApi, apiRows) {
   const finalSegment = pythonApi.slice(lastDot + 1);
   const wildcard = apiRows.find((row) => row.python === `${moduleKey}.*`);
   if (wildcard === undefined) {
-    return undefined;
+    return;
   }
   if (!wildcard.ts.endsWith(".*")) {
     throw new Error(`wildcard row for ${moduleKey} must end in '.*'`);

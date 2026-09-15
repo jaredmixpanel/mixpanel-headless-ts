@@ -449,7 +449,7 @@ function auditResponseFrom(
   );
   // `raw[1] if len(raw) > 1 and isinstance(raw[1], dict) else {}` —
   // prototype discrimination, never `typeof` (watchlist #13).
-  const second = raw.length > 1 ? raw[1] : undefined;
+  const second = raw[1];
   const metadata = isPlainRecord(second)
     ? (native(second) as Record<string, unknown>)
     : {};

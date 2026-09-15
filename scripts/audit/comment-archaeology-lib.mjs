@@ -244,7 +244,7 @@ function literalTitle(arg) {
       .replaceAll(/\s+/g, " ")
       .trim();
   }
-  return undefined;
+  return;
 }
 
 /**

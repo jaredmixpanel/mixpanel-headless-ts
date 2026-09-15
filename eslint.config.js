@@ -290,6 +290,14 @@ const config = defineConfig([
       // cannot tell them from a mistaken default import.
       "import-x/no-named-as-default-member": "off",
 
+      // `() => undefined` is the typed no-op for `() => T | undefined` seams
+      // and for "replaced later" resolver slots; the rule's `() => {}`
+      // rewrite returns `void` and does not type-check against them.
+      "unicorn/no-useless-undefined": [
+        "error",
+        { checkArrowFunctionBody: false },
+      ],
+
       // --- unicorn: off (with reasons) -----------------------------------
       // Identifier vocabulary is a style choice this codebase does not make.
       "unicorn/prevent-abbreviations": "off",
@@ -925,7 +933,6 @@ const config = defineConfig([
   ...lane("L3b", {
     rules: {
       "unicorn/no-for-each": "off",
-      "unicorn/no-useless-undefined": "off",
     },
   }),
 

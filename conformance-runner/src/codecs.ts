@@ -372,7 +372,7 @@ export class CodecRegistry {
           return encoder.encode(candidate, (child) => this.encodeValue(child));
         }
       }
-      return undefined;
+      return;
     });
   }
 
