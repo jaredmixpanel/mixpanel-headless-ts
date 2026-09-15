@@ -377,9 +377,9 @@ describe("TestInlineCustomPropertyValidation", () => {
         fc.array(propertyNamesArb, { minLength: 5, maxLength: 5 }),
         (formula, keys, names) => {
           const inputs: Record<string, PropertyInput> = {};
-          keys.forEach((k, i) => {
+          for (const [i, k] of keys.entries()) {
             inputs[k] = new PropertyInput({ name: names[i] as string });
-          });
+          }
           const prop = new InlineCustomProperty({ formula, inputs });
           const errors = _validateCustomProperty(prop, "test");
           expect(
@@ -399,9 +399,9 @@ describe("TestInlineCustomPropertyValidation", () => {
         fc.array(propertyNamesArb, { minLength: 3, maxLength: 3 }),
         (keys, names) => {
           const inputs: Record<string, PropertyInput> = {};
-          keys.forEach((k, i) => {
+          for (const [i, k] of keys.entries()) {
             inputs[k] = new PropertyInput({ name: names[i] as string });
-          });
+          }
           const prop = new InlineCustomProperty({
             formula: " ".repeat(3),
             inputs,

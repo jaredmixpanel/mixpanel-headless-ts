@@ -90,7 +90,7 @@ describe("raw-payload retention audit (packages/core/src/types)", () => {
     const violations: string[] = [];
     for (const file of listSources(TYPES_DIR)) {
       const lines = readFileSync(file, "utf8").split("\n");
-      lines.forEach((line, index) => {
+      for (const [index, line] of lines.entries()) {
         for (const rule of RULES) {
           if (rule.pattern.test(line)) {
             violations.push(
@@ -98,7 +98,7 @@ describe("raw-payload retention audit (packages/core/src/types)", () => {
             );
           }
         }
-      });
+      }
     }
     expect(violations).toEqual([]);
   });

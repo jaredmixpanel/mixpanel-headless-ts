@@ -465,7 +465,7 @@ export class SubPropertyInfo {
     if (!Array.isArray(samples)) {
       decodeFail(cls, "sample_values", "array", samples);
     }
-    samples.forEach((item, index) => {
+    for (const [index, item] of samples.entries()) {
       if (
         typeof item !== "string" &&
         typeof item !== "number" &&
@@ -478,7 +478,7 @@ export class SubPropertyInfo {
           item,
         );
       }
-    });
+    }
     return new SubPropertyInfo({
       name: expectStr(payload, "name", cls),
       type: expectStr(payload, "type", cls) as CustomPropertyType,

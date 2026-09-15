@@ -268,9 +268,9 @@ export function validateFlowBookmark(params: Dict): ValidationError[] {
     );
   } else {
     // FLB2: Each step event must be non-empty
-    steps.forEach((step, i) => {
+    for (const [i, step] of steps.entries()) {
       if (!isDict(step)) {
-        return;
+        continue;
       }
 
       const event = dictGet(step, "event");
@@ -283,7 +283,7 @@ export function validateFlowBookmark(params: Dict): ValidationError[] {
           ),
         );
       }
-    });
+    }
   }
 
   // FLB3: count_type validation
@@ -454,9 +454,9 @@ export function validateBookmark(
       ),
     );
   } else {
-    show.forEach((clause, i) => {
+    for (const [i, clause] of show.entries()) {
       errors.push(...validateShowClause(clause, i, bookmarkType));
-    });
+    }
   }
 
   // Validate displayOptions
@@ -468,25 +468,25 @@ export function validateBookmark(
   // Validate time section
   const timeSection = dictGet(sections, "time");
   if (Array.isArray(timeSection)) {
-    timeSection.forEach((t, i) => {
+    for (const [i, t] of timeSection.entries()) {
       errors.push(...validateTimeClause(t, i));
-    });
+    }
   }
 
   // Validate filter section
   const filterSection = dictGet(sections, "filter");
   if (Array.isArray(filterSection)) {
-    filterSection.forEach((f, i) => {
+    for (const [i, f] of filterSection.entries()) {
       errors.push(...validateFilterClause(f, `sections.filter[${String(i)}]`));
-    });
+    }
   }
 
   // Validate group section
   const groupSection = dictGet(sections, "group");
   if (Array.isArray(groupSection)) {
-    groupSection.forEach((g, i) => {
+    for (const [i, g] of groupSection.entries()) {
       errors.push(...validateGroupClause(g, i));
-    });
+    }
   }
 
   // Validate optional top-level sorting block
@@ -665,11 +665,11 @@ function validateShowClause(
   // Validate per-metric behavior.filters[]
   const bfilters = dictGet(behavior, "filters");
   if (Array.isArray(bfilters)) {
-    bfilters.forEach((bf, fi) => {
+    for (const [fi, bf] of bfilters.entries()) {
       errors.push(
         ...validateFilterClause(bf, `${path}.behavior.filters[${String(fi)}]`),
       );
-    });
+    }
   }
 
   // Validate measurement
@@ -1107,7 +1107,7 @@ function validateFilterClause(
       ),
     );
   } else if (Array.isArray(fv)) {
-    fv.forEach((v, vi) => {
+    for (const [vi, v] of fv.entries()) {
       if (isPythonFloat(v) && !_isFinite(v)) {
         errors.push(
           new ValidationError(
@@ -1117,7 +1117,7 @@ function validateFilterClause(
           ),
         );
       }
-    });
+    }
   }
 
   return errors;

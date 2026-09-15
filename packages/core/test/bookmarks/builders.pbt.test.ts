@@ -172,10 +172,10 @@ describe("builder invariants (NEW)", () => {
         (groups) => {
           const section = buildGroupSection(groups);
           expect(section).toHaveLength(groups.length);
-          groups.forEach((g, i) => {
+          for (const [i, g] of groups.entries()) {
             const expected = typeof g === "string" ? g : g.property;
             expect(section[i]!["value"]).toBe(expected);
-          });
+          }
         },
       ),
       { numRuns: 200 },

@@ -357,11 +357,11 @@ export function createVectorFetch(
     violations,
     unservedSlots(): number[] {
       const unserved: number[] = [];
-      consumed.forEach((used, index) => {
+      for (const [index, used] of consumed.entries()) {
         if (!used) {
           unserved.push(index);
         }
-      });
+      }
       return unserved;
     },
   };

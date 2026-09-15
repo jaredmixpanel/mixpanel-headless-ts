@@ -394,13 +394,13 @@ describe("bridge-allowlist pinning and route shape (spec 01 §5.2, §5.5)", () =
     const leaked: string[] = [];
     for (const row of everyRow) {
       const segments = row.template.split("/");
-      segments.forEach((segment, i) => {
-        if (segment !== "workspaces" && segment !== "organizations") return;
+      for (const [i, segment] of segments.entries()) {
+        if (segment !== "workspaces" && segment !== "organizations") continue;
         const next = segments[i + 1];
         if (next === "{int}" || next === "{param}") {
           leaked.push(`${row.method} ${row.template}`);
         }
-      });
+      }
     }
     expect(leaked).toStrictEqual([]);
   });

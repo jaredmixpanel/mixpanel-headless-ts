@@ -1127,9 +1127,9 @@ export function validateFieldValue(
         });
         return;
       }
-      value.forEach((item, index) => {
+      for (const [index, item] of value.entries()) {
         validateFieldValue(item, type.item, [...loc, index], out);
-      });
+      }
       return;
     }
     case "dict": {
@@ -1166,17 +1166,17 @@ export function validateFieldValue(
         });
         return;
       }
-      type.items.forEach((itemType, index) => {
+      for (const [index, itemType] of type.items.entries()) {
         if (index >= value.length) {
           out.push({
             type: "missing",
             loc: [...loc, index],
             msg: "Field required",
           });
-          return;
+          continue;
         }
         validateFieldValue(value[index], itemType, [...loc, index], out);
-      });
+      }
       return;
     }
     case "model": {

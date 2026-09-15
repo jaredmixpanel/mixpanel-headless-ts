@@ -1158,10 +1158,10 @@ export class FlowTreeNode {
       line = `${_prefix}${connector}${this.event} (${String(this.total_count)})\n`;
       child_prefix = _prefix + (_is_last ? " ".repeat(4) : "│   ");
     }
-    this.children.forEach((child, i) => {
+    for (const [i, child] of this.children.entries()) {
       const is_last_child = i === this.children.length - 1;
       line += child.render(child_prefix, is_last_child, false);
-    });
+    }
     return line;
   }
 
@@ -1390,7 +1390,7 @@ export class FlowQueryResult {
   graph(): FlowGraph {
     const nodes: FlowGraphNode[] = [];
     const edges: FlowGraphEdge[] = [];
-    this.steps.forEach((step, step_idx) => {
+    for (const [step_idx, step] of this.steps.entries()) {
       for (const node of FlowQueryResult.#stepNodes(step)) {
         const nodeId = `${String(node["event"] ?? "")}@${String(step_idx)}`;
         nodes.push({
@@ -1414,7 +1414,7 @@ export class FlowQueryResult {
           });
         }
       }
-    });
+    }
     return { nodes, edges };
   }
 
@@ -1456,7 +1456,7 @@ export class FlowQueryResult {
    */
   toNodesRows(): readonly Row[] {
     const rows: Row[] = [];
-    this.steps.forEach((step, step_idx) => {
+    for (const [step_idx, step] of this.steps.entries()) {
       for (const node of FlowQueryResult.#stepNodes(step)) {
         rows.push({
           step: step_idx,
@@ -1468,7 +1468,7 @@ export class FlowQueryResult {
           conversion_rate_change: node["conversionRateChange"] ?? 0.0,
         });
       }
-    });
+    }
     return rows;
   }
 
@@ -1512,7 +1512,7 @@ export class FlowQueryResult {
    */
   toEdgesRows(): readonly Row[] {
     const rows: Row[] = [];
-    this.steps.forEach((step, step_idx) => {
+    for (const [step_idx, step] of this.steps.entries()) {
       for (const node of FlowQueryResult.#stepNodes(step)) {
         for (const edge of FlowQueryResult.#nodeEdges(node)) {
           rows.push({
@@ -1525,7 +1525,7 @@ export class FlowQueryResult {
           });
         }
       }
-    });
+    }
     return rows;
   }
 
@@ -1554,9 +1554,9 @@ export class FlowQueryResult {
    */
   toTreesRows(): readonly Row[] {
     const rows: Row[] = [];
-    this.trees.forEach((tree, tree_idx) => {
+    for (const [tree_idx, tree] of this.trees.entries()) {
       FlowQueryResult.#flattenTreeNode(tree, tree_idx, [], rows);
-    });
+    }
     return rows;
   }
 
@@ -1625,13 +1625,13 @@ export class FlowQueryResult {
       return this.toTreesRows();
     }
     const rows: Row[] = [];
-    this.flows.forEach((flow, path_idx) => {
+    for (const [path_idx, flow] of this.flows.entries()) {
       const flow_steps = flow["flowSteps"];
       const steps: ReadonlyArray<Readonly<Record<string, unknown>>> =
         Array.isArray(flow_steps)
           ? (flow_steps as ReadonlyArray<Readonly<Record<string, unknown>>>)
           : [];
-      steps.forEach((fs, step_idx) => {
+      for (const [step_idx, fs] of steps.entries()) {
         rows.push({
           path_index: path_idx,
           step: step_idx,
@@ -1639,8 +1639,8 @@ export class FlowQueryResult {
           type: fs["type"] ?? "",
           count: safeInt(fs["totalCount"] ?? "0"),
         });
-      });
-    });
+      }
+    }
     return rows;
   }
 
@@ -1693,7 +1693,7 @@ export class FlowQueryResult {
       return {};
     }
     const summary: Record<string, unknown> = {};
-    this.steps.forEach((step, step_idx) => {
+    for (const [step_idx, step] of this.steps.entries()) {
       let total = 0;
       let dropoff = 0;
       for (const node of FlowQueryResult.#stepNodes(step)) {
@@ -1710,7 +1710,7 @@ export class FlowQueryResult {
       }
       const rate = total > 0 ? dropoff / total : 0.0;
       summary[`step_${String(step_idx)}`] = { total, dropoff, rate };
-    });
+    }
     return summary;
   }
 

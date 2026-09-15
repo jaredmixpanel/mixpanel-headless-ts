@@ -202,9 +202,9 @@ export function diffRequestTraffic(
       `interaction[${String(index)}] (${slot.request.method} ${slot.request.path}) was never requested`,
     );
   }
-  captures.forEach((captured, order) => {
+  for (const [order, captured] of captures.entries()) {
     if (captured.slotIndex === null) {
-      return; // Already reported as a serving violation.
+      continue; // Already reported as a serving violation.
     }
     const slot = interactions[captured.slotIndex] as ParsedInteraction;
     problems.push(
@@ -214,6 +214,6 @@ export function diffRequestTraffic(
         `request[${String(order)}]→interaction[${String(captured.slotIndex)}]`,
       ),
     );
-  });
+  }
   return problems;
 }

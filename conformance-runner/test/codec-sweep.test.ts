@@ -121,9 +121,9 @@ const roundTrippable: TaggedNode[] = [];
  */
 function walk(value: JsonValue, vectorId: string, path: string): void {
   if (Array.isArray(value)) {
-    value.forEach((item, index) => {
+    for (const [index, item] of value.entries()) {
       walk(item, vectorId, `${path}[${String(index)}]`);
-    });
+    }
     return;
   }
   if (typeof value !== "object" || value === null) {

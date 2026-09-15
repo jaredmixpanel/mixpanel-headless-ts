@@ -929,13 +929,6 @@ const config = defineConfig([
     },
   }),
 
-  // --- Phase 4 lane L3b: semantics-sensitive autofixers — pending; L3 applies these one rule at a time against the corpus ---
-  ...lane("L3b", {
-    rules: {
-      "unicorn/no-for-each": "off",
-    },
-  }),
-
   // --- Phase 4 lane L4: tests — pending; delete this block when the lane lands ---
   ...lane("L4", {
     files: TEST_FILES,

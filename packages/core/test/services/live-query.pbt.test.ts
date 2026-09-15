@@ -121,7 +121,7 @@ const rawFunnelResponse: fc.Arbitrary<Record<string, unknown>> = fc
   .map(([numDates, numSteps, allDates, allSteps]) => {
     const dates = allDates.slice(0, numDates);
     const data: Record<string, unknown> = {};
-    dates.forEach((date, index) => {
+    for (const [index, date] of dates.entries()) {
       const drawn = allSteps[index] ?? [];
       // Python draws exactly `num_steps` steps per date; the mapped
       // pool is padded/trimmed to the same length.
@@ -132,7 +132,7 @@ const rawFunnelResponse: fc.Arbitrary<Record<string, unknown>> = fc
         );
       }
       data[date] = { steps, analysis: {} };
-    });
+    }
     return { data };
   });
 
@@ -151,14 +151,14 @@ const rawRetentionResponse: fc.Arbitrary<Record<string, unknown>> = fc
   .map(([numCohorts, numPeriods, allDates, sizes, rawCounts]) => {
     const dates = allDates.slice(0, numCohorts);
     const result: Record<string, unknown> = {};
-    dates.forEach((date, index) => {
+    for (const [index, date] of dates.entries()) {
       const cohortSize = sizes[index] ?? 0;
       const cap = Math.max(1, cohortSize * 2);
       const counts = rawCounts
         .slice(0, numPeriods)
         .map((value) => Math.min(value, cap));
       result[date] = { first: cohortSize, counts };
-    });
+    }
     return result;
   });
 
@@ -416,12 +416,12 @@ describe("TestTransformRetentionProperties", () => {
 
           expect(result.cohorts).toHaveLength(1);
           const cohort = result.cohorts[0]!;
-          counts.forEach((count, i) => {
+          for (const [i, count] of counts.entries()) {
             const expected = count / cohortSize;
             expect(Math.abs(cohort.retention[i]! - expected)).toBeLessThan(
               1e-9,
             );
-          });
+          }
         },
       ),
       { numRuns: 100 },

@@ -607,9 +607,9 @@ export function canonicalizeInteractions(interactions: JsonValue[]): string {
       .sort((a, b) =>
         compareCodePoints(interactionSortKey(a), interactionSortKey(b)),
       );
-    positions.forEach((position, index) => {
+    for (const [index, position] of positions.entries()) {
       result[position] = members[index] as JsonValue;
-    });
+    }
   }
   return canonicalize(result);
 }
