@@ -21,7 +21,7 @@ import { resolveSession } from "./auth/resolver.js";
 import type { Project, Session, WorkspaceRef } from "./auth/session.js";
 import { createMixpanelClient, type MixpanelClient } from "./client/client.js";
 import { jsonValuePythonStr } from "./client/internals.js";
-import { type JsonValue, toNativeJson } from "./client/json-value.js";
+import { toNativeJson } from "./client/json-value.js";
 import type { MeResponse } from "./client/me.js";
 import { validateResponseModel } from "./client/response-validation.js";
 import { KeyError } from "./compat/python-builtins.js";
@@ -29,21 +29,17 @@ import { pythonInt, pythonIntCoerce } from "./compat/python-int.js";
 import { pythonRepr } from "./compat/python-str.js";
 import { zfill } from "./compat/zfill.js";
 import {
-  AuthenticationError,
   BookmarkValidationError,
   MixpanelHeadlessError,
   ParamValidationError,
   QueryError,
-  RateLimitError,
   ReportLinkNotFoundError,
   ReportLinkScopeMismatchError,
-  ServerError,
   ShortLinkResolutionError,
   UnsupportedReportLinkError,
   WorkspaceScopeError,
 } from "./errors.js";
 import { toError } from "./invariant.js";
-import { transformProfile } from "./query/transforms.js";
 import { RrwebAnalyzer } from "./replays/rrweb-analyzer.js";
 import {
   BOOKMARK_HASH_FOR_TYPE,
@@ -209,7 +205,6 @@ import type {
   BookmarkInfo,
   FunnelInfo,
   LexiconSchema,
-  ProfilePageResult,
   SavedCohort,
   SchemaGraphResult,
   SubPropertyInfo,
@@ -234,7 +229,7 @@ import {
   FunnelQueryResult,
   QueryResult,
   RetentionQueryResult,
-  UserQueryResult,
+  type UserQueryResult,
 } from "./types/results/query-engine.js";
 import {
   Replay,
@@ -343,9 +338,8 @@ import type {
 } from "./workspace-members/schemas-audit.js";
 import * as schemasAudit from "./workspace-members/schemas-audit.js";
 import { requireEntityId, requireInt64Id } from "./workspace-members/shared.js";
+import * as userQueryEngine from "./workspace-members/user-query-engine.js";
 import {
-  buildPageKwargs,
-  buildStatsKwargs,
   type EventsInput,
   flowModeFromParams,
   type ParamsDict,
@@ -1491,7 +1485,8 @@ export class Workspace {
   ): Promise<UserQueryResult> {
     const limit = options.limit === undefined ? 1 : options.limit;
     const parallel = options.parallel ?? false;
-    const workers = options.workers ?? 5;
+    const workers =
+      options.workers ?? userQueryEngine.DEFAULT_USER_QUERY_WORKERS;
     const params = this.#resolveUserParams(options);
 
     return this.runUserParams(params, { limit, parallel, workers });
@@ -1529,55 +1524,11 @@ export class Workspace {
     params: ParamsDict,
     options: WorkspaceRunUserParamsOptions = {},
   ): Promise<UserQueryResult> {
-    const limit = options.limit === undefined ? 1 : options.limit;
-    const parallel = options.parallel ?? false;
-    const workers = options.workers ?? 5;
-
-    if (Object.hasOwn(params, "action")) {
-      const [
-        aggregateData,
-        aggregateTotal,
-        aggregateComputedAt,
-        aggregateMeta,
-      ] = await this.#executeUserAggregate(params);
-      return new UserQueryResult({
-        computed_at: aggregateComputedAt,
-        total: aggregateTotal,
-        profiles: [],
-        params,
-        meta: aggregateMeta,
-        mode: "aggregate",
-        aggregate_data: aggregateData,
-      });
-    }
-
-    // Profiles mode — choose sequential or parallel
-    let profiles: Array<Record<string, unknown>>;
-    let total: number;
-    let computedAt: string;
-    let meta: Record<string, unknown>;
-    if (parallel && limit !== 1) {
-      [profiles, total, computedAt, meta] =
-        await this.#executeUserQueryParallel(params, limit, workers);
-    } else {
-      if (parallel && limit === 1) {
-        this.#logger.debug(
-          "parallel=True ignored: limit=1 uses sequential path",
-        );
-      }
-      [profiles, total, computedAt, meta] =
-        await this.#executeUserQuerySequential(params, limit);
-    }
-
-    return new UserQueryResult({
-      computed_at: computedAt,
-      total,
-      profiles,
+    return userQueryEngine.runUserParams(
+      this.#userQueryHost(),
       params,
-      meta,
-      mode: "profiles",
-      aggregate_data: null,
-    });
+      options,
+    );
   }
 
   /**
@@ -1620,313 +1571,19 @@ export class Workspace {
       segment_by: options.segment_by ?? null,
       limit: options.limit === undefined ? 1 : options.limit,
       parallel: options.parallel ?? false,
-      workers: options.workers ?? 5,
+      workers: options.workers ?? userQueryEngine.DEFAULT_USER_QUERY_WORKERS,
       include_all_users: options.include_all_users ?? false,
       ...(options.today === undefined ? {} : { today: options.today }),
     });
   }
 
   /**
-   * Execute a user profile query with sequential page fetching
-   * (`_execute_user_query_sequential`, `workspace.py:9629-9720`).
+   * The facade slice the user-query engines read.
    *
-   * @param params - Engage params from the resolver.
-   * @param limit - Maximum profiles to collect (`null` = all).
-   * @returns `[profiles, total, computed_at, meta]`.
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Wire failures.
+   * @returns The host view over this facade.
    */
-  async #executeUserQuerySequential(
-    params: ParamsDict,
-    limit: number | null,
-  ): Promise<[Array<Record<string, unknown>>, number, string, ParamsDict]> {
-    // Reuse buildPageKwargs for params→kwargs translation; pass the
-    // limit server-side for efficient fetching. `total` is
-    // `len(profiles)` — the count in THIS response, not the API's
-    // population total (use mode="aggregate" for that).
-    const apiKwargs = buildPageKwargs(params);
-    apiKwargs["limit"] = limit;
-
-    let result = await this.#exportPage(0, apiKwargs);
-    let profiles: Array<Record<string, unknown>> = result.profiles.map((p) =>
-      transformProfile(p),
-    );
-    const sessionId = result.session_id;
-    let pagesFetched = 1;
-
-    // Check if we already have enough
-    if (limit !== null && profiles.length >= limit) {
-      profiles = profiles.slice(0, limit);
-    } else if (result.has_more && result.profiles.length > 0) {
-      // Paginate for more (guard: stop if a page returns no profiles)
-      let currentPage = 0;
-      while (result.has_more) {
-        if (limit !== null && profiles.length >= limit) {
-          break;
-        }
-        currentPage += 1;
-        result = await this.#exportPage(currentPage, {
-          ...apiKwargs,
-          session_id: sessionId,
-        });
-        if (result.profiles.length === 0) {
-          break;
-        }
-        for (const p of result.profiles) {
-          profiles.push(transformProfile(p));
-        }
-        pagesFetched += 1;
-      }
-
-      // Python `profiles[:None]` returns everything (limit=None case).
-      profiles = limit === null ? profiles : profiles.slice(0, limit);
-    }
-
-    const computedAt = isoUtc(this.client.core.now());
-    const meta: ParamsDict = {
-      session_id: sessionId,
-      pages_fetched: pagesFetched,
-      parallel: false,
-    };
-
-    return [profiles, profiles.length, computedAt, meta];
-  }
-
-  /**
-   * Execute an aggregate query via the Engage stats endpoint
-   * (`_execute_user_aggregate`, `workspace.py:10002-10064`).
-   *
-   * @param params - Engage params from the resolver.
-   * @returns `[aggregate_data, total, computed_at, meta]`.
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Wire failures.
-   */
-  async #executeUserAggregate(
-    params: ParamsDict,
-  ): Promise<
-    [
-      Readonly<Record<string, unknown>> | number | null,
-      number,
-      string,
-      ParamsDict,
-    ]
-  > {
-    // The kwargs block is the exported `buildStatsKwargs` (R7.2 split
-    // of the `self`-free half, `workspace.py:10027-10046`).
-    const statsKwargs = buildStatsKwargs(params);
-
-    const response = (await this.client.engageStats(statsKwargs)) as unknown;
-    const body = toNativeRecord(response);
-
-    const aggregateData = Object.hasOwn(body, "results")
-      ? body["results"]
-      : undefined;
-    const computedAt = Object.hasOwn(body, "computed_at")
-      ? (body["computed_at"] as string)
-      : isoUtc(this.client.core.now());
-    let total: number;
-    if (typeof aggregateData === "number") {
-      // Python: `int(aggregate_data)` — truncation toward zero.
-      total = params["action"] === "count()" ? Math.trunc(aggregateData) : 0;
-    } else {
-      total = 0;
-    }
-
-    const action = Object.hasOwn(params, "action")
-      ? params["action"]
-      : "count()";
-    const segmented = Object.hasOwn(params, "segment_by_cohorts");
-    const meta: ParamsDict = { action, segmented };
-
-    return [
-      (aggregateData ?? null) as
-        Readonly<Record<string, unknown>> | number | null,
-      total,
-      computedAt,
-      meta,
-    ];
-  }
-
-  /**
-   * Fetch profiles with concurrent page retrieval
-   * (`_execute_user_query_parallel`, `workspace.py:10069-10207`).
-   *
-   * Page 0 is fetched first for metadata, then pages `1..n-1` run under
-   * a bounded scheduler with the SAME worker cap Python's
-   * `ThreadPoolExecutor(max_workers=min(workers, 5))` applies. Results
-   * are re-ordered by page number, failed pages are recorded rather
-   * than aborting, and the four CODED wire errors abort the whole
-   * query (Python cancels the queued futures and re-raises; the TS twin
-   * stops scheduling and lets the in-flight pages settle, exactly as
-   * `ThreadPoolExecutor.__exit__` does).
-   *
-   * @param params - Engage params from the resolver.
-   * @param limit - Maximum profiles to return (`null` = all).
-   * @param workers - Requested worker count (capped at 5).
-   * @returns `[profiles, total, computed_at, meta]`.
-   * @throws AuthenticationError | RateLimitError | ServerError |
-   *   QueryError - Propagated from any page.
-   */
-  async #executeUserQueryParallel(
-    params: ParamsDict,
-    limit: number | null,
-    workers: number,
-  ): Promise<[Array<Record<string, unknown>>, number, string, ParamsDict]> {
-    const cappedWorkers = Math.min(workers, 5);
-    const pageKwargs = buildPageKwargs(params);
-
-    // Page 0: get metadata
-    const page0 = await this.#exportPage(0, pageKwargs);
-    const total = page0.total;
-    // Python `page0.page_size or 1000` — 0/None fall back.
-    const pageSize = page0.page_size || 1000;
-    const sessionId = page0.session_id;
-    const computedAt = isoUtc(this.client.core.now());
-
-    let allProfiles: Array<Record<string, unknown>> = page0.profiles.map((p) =>
-      transformProfile(p),
-    );
-
-    let pagesNeeded: number;
-    if (limit === null) {
-      pagesNeeded = Math.ceil(total / pageSize);
-    } else {
-      // Cap by total to avoid fetching empty pages when limit > total
-      const effective = total > 0 ? Math.min(limit, total) : limit;
-      pagesNeeded = Math.ceil(effective / pageSize);
-    }
-
-    // Single page — skip parallel overhead
-    if (pagesNeeded <= 1 || !page0.has_more) {
-      allProfiles = limit === null ? allProfiles : allProfiles.slice(0, limit);
-      return [
-        allProfiles,
-        allProfiles.length,
-        computedAt,
-        {
-          session_id: sessionId,
-          pages_fetched: 1,
-          failed_pages: [],
-          parallel: true,
-          workers: cappedWorkers,
-        },
-      ];
-    }
-
-    if (pagesNeeded > 48) {
-      this.#logger.warning(
-        `Fetching ${pagesNeeded} pages may trigger rate limiting ` +
-          "(engage API allows ~60 queries/hour).",
-      );
-    }
-
-    const failedPages: number[] = [];
-    const pageResults = new Map<number, Array<Record<string, unknown>>>();
-
-    /**
-     * Fetch and normalize a single page (`_fetch_page`, `:10152`).
-     *
-     * @param pageNum - The page index.
-     * @returns The page number and its normalized profiles.
-     */
-    const fetchPage = async (
-      pageNum: number,
-    ): Promise<[number, Array<Record<string, unknown>>]> => {
-      const result = await this.#exportPage(pageNum, {
-        ...pageKwargs,
-        session_id: sessionId,
-      });
-      return [pageNum, result.profiles.map((p) => transformProfile(p))];
-    };
-
-    // Bounded-concurrency scheduler: the TS twin of
-    // `ThreadPoolExecutor(max_workers=capped)` + `as_completed`.
-    let next = 1;
-    // Boxed rather than a bare `let`: the workers assign it inside a
-    // closure, which TS's flow analysis does not track for a local.
-    const abort: {
-      error:
-        AuthenticationError | RateLimitError | ServerError | QueryError | null;
-    } = { error: null };
-    const runWorker = async (): Promise<void> => {
-      for (;;) {
-        if (abort.error !== null) {
-          return;
-        }
-        const pageNum = next;
-        if (pageNum >= pagesNeeded) {
-          return;
-        }
-        next += 1;
-        try {
-          const [pnum, profiles] = await fetchPage(pageNum);
-          pageResults.set(pnum, profiles);
-        } catch (error) {
-          if (
-            error instanceof AuthenticationError ||
-            error instanceof RateLimitError ||
-            error instanceof ServerError ||
-            error instanceof QueryError
-          ) {
-            // Python cancels the queued futures and re-raises out of
-            // the `with` block (running futures still finish).
-            abort.error = error;
-            return;
-          }
-          this.#logger.warning(
-            `Failed to fetch page ${pageNum} (${
-              error instanceof Error ? error.constructor.name : typeof error
-            }: ${String(error)}), continuing with partial results`,
-          );
-          failedPages.push(pageNum);
-        }
-      }
-    };
-
-    await Promise.all(
-      Array.from({ length: Math.min(cappedWorkers, pagesNeeded - 1) }, () =>
-        runWorker(),
-      ),
-    );
-    if (abort.error !== null) {
-      throw abort.error;
-    }
-
-    for (const [, profiles] of [...pageResults].sort((a, b) => a[0] - b[0])) {
-      allProfiles.push(...profiles);
-    }
-
-    allProfiles = limit === null ? allProfiles : allProfiles.slice(0, limit);
-
-    return [
-      allProfiles,
-      allProfiles.length,
-      computedAt,
-      {
-        session_id: sessionId,
-        pages_fetched: pagesNeeded - failedPages.length,
-        failed_pages: [...failedPages].sort((a, b) => a - b),
-        parallel: true,
-        workers: cappedWorkers,
-      },
-    ];
-  }
-
-  /**
-   * `api_client.export_profiles_page(page=..., **kwargs)` with the
-   * dynamic kwargs bag the two engines build.
-   *
-   * @param page - Zero-based page index.
-   * @param kwargs - The dynamic options bag.
-   * @returns The page result.
-   * @throws AuthenticationError | RateLimitError | QueryError |
-   *   ServerError - Wire failures.
-   */
-  async #exportPage(
-    page: number,
-    kwargs: Readonly<Record<string, unknown>>,
-  ): Promise<ProfilePageResult> {
-    return this.client.exportProfilesPage(page, kwargs);
+  #userQueryHost(): userQueryEngine.UserQueryHost {
+    return { client: this.client, logger: this.#logger };
   }
 
   /**
@@ -6171,18 +5828,6 @@ function mapGet<T>(
   }
   const record = source as Readonly<Record<string, T>>;
   return Object.hasOwn(record, key) ? record[key] : undefined;
-}
-
-/**
- * Convert a B4 client response to the native tree Python's
- * `json.loads` produces (the engage-stats body is read with plain
- * `dict.get` in Python).
- *
- * @param value - The lossless response tree.
- * @returns The native-valued record.
- */
-function toNativeRecord(value: unknown): Record<string, unknown> {
-  return toNativeJson(value as JsonValue) as Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------
