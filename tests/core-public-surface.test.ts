@@ -1,17 +1,8 @@
-// Public-surface boundary of @mixpanel-headless/core (docs/history/cleanup-plan-2026-09.md §7.4).
-//
-// The plan's invariant is "anything tagged `@internal` must not be reachable
-// from the package's `"."` entry". `stripInternal` would enforce that by
-// deletion but is not enabled yet (see tsconfig.lib.json for why), so this
-// test states the boundary directly with the TypeScript checker:
-//
-//   1. no symbol exported from `src/index.ts` carries an `@internal` tag;
-//   2. `src/index.ts` and `src/internal.ts` export disjoint name sets — a
-//      name is public or internal, never both;
-//   3. `src/index.ts` contains no `export *` — the public list is explicit.
-//
-// Lives under tests/ (not packages/core/test) because it needs `node:path`
-// and core's purity lint bans Node built-ins anywhere under packages/core.
+// Public-surface boundary of @mixpanel-headless/core, stated with the
+// TypeScript checker since `stripInternal` is off (see tsconfig.lib.json):
+// no `@internal` symbol is exported from src/index.ts, index.ts and
+// internal.ts export disjoint name sets, and index.ts has no `export *`.
+// Lives under tests/ because it needs node:path.
 
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";

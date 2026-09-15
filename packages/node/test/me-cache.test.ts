@@ -1,13 +1,7 @@
-// Layer-3 translation of the MeCache classes of `tests/unit/test_me.py`
-// (b8-packets.md §3.3 row 6): `TestMeCache`,
-// `TestMeCacheConcurrency`, `TestMeCacheSymlinkRejection`.
-// Models landed at B4-C1 (`core/test/client/me.test.ts`) and
-// `TestMeService` at B6 (`core/test/services/me-service.test.ts`)
-// — NOT re-translated (packet row).
-//
-// Python's `time.sleep(1.1)` TTL probe translates to the injected `now`
-// seam (no wall-clock sleeps — D1.4 discipline); the `os.chmod`
-// monkeypatch translates to the injected `chmodSync` fault seam.
+// MeCache. Mirrors the MeCache classes of tests/unit/test_me.py (the models
+// and MeService are covered in core); `time.sleep` becomes the injected
+// `now` seam and the `os.chmod` monkeypatch the `chmodSync` fault seam.
+// Additive: ordered-organizations re-hydration and the decode error class.
 
 import {
   chmodSync,
@@ -66,8 +60,10 @@ function recordingLogger(): { logger: MeCacheLogger; lines: string[] } {
   };
 }
 
-describe("TestMeCache (test_me.py:228)", () => {
-  it("test_put_and_get", () => {
+describe("MeCache", () => {
+  // python: test_me.py::TestMeCache
+  it("stores a response and reads it back", () => {
+    // python: test_put_and_get
     const dir = join(makeTempDir(cleanups), "accounts", "personal");
     mkdirSync(dir, { recursive: true });
     const cache = new MeCache({ accountName: "personal", storageDir: dir });
@@ -78,14 +74,16 @@ describe("TestMeCache (test_me.py:228)", () => {
     expect(result?.projects.get("3713224")?.name).toBe("AI Demo");
   });
 
-  it("test_get_miss", () => {
+  it("returns null on a miss", () => {
+    // python: test_get_miss
     const dir = join(makeTempDir(cleanups), "accounts", "personal");
     mkdirSync(dir, { recursive: true });
     const cache = new MeCache({ accountName: "personal", storageDir: dir });
     expect(cache.get()).toBeNull();
   });
 
-  it("test_ttl_expiry", () => {
+  it("expires the entry after the TTL", () => {
+    // python: test_ttl_expiry
     const dir = join(makeTempDir(cleanups), "accounts", "personal");
     mkdirSync(dir, { recursive: true });
     let nowSeconds = 1_000_000;
@@ -101,7 +99,8 @@ describe("TestMeCache (test_me.py:228)", () => {
     expect(cache.get()).toBeNull();
   });
 
-  it("test_invalidate", () => {
+  it("invalidate drops the entry", () => {
+    // python: test_invalidate
     const dir = join(makeTempDir(cleanups), "accounts", "personal");
     mkdirSync(dir, { recursive: true });
     const cache = new MeCache({ accountName: "personal", storageDir: dir });
@@ -111,7 +110,8 @@ describe("TestMeCache (test_me.py:228)", () => {
     expect(cache.get()).toBeNull();
   });
 
-  it("test_account_name_isolates_cache", () => {
+  it("keeps caches separate per account name", () => {
+    // python: test_account_name_isolates_cache
     const tmp = makeTempDir(cleanups);
     const cacheA = new MeCache({
       accountName: "alice",
@@ -131,7 +131,8 @@ describe("TestMeCache (test_me.py:228)", () => {
     expect(cacheB.get()?.user_id).toBe(99);
   });
 
-  it.skipIf(!POSIX)("test_file_permissions", () => {
+  it.skipIf(!POSIX)("writes the cache file 0o600", () => {
+    // python: test_file_permissions
     const dir = join(makeTempDir(cleanups), "accounts", "personal");
     mkdirSync(dir, { recursive: true });
     const cache = new MeCache({ accountName: "personal", storageDir: dir });
@@ -141,7 +142,8 @@ describe("TestMeCache (test_me.py:228)", () => {
     expect(statSync(cacheFile).mode & 0o7777).toBe(0o600);
   });
 
-  it("test_corrupted_cache_returns_none", () => {
+  it("returns null for a corrupted cache file", () => {
+    // python: test_corrupted_cache_returns_none
     const dir = join(makeTempDir(cleanups), "accounts", "personal");
     mkdirSync(dir, { recursive: true });
     const cacheFile = join(dir, "me.json");
@@ -153,7 +155,8 @@ describe("TestMeCache (test_me.py:228)", () => {
     expect(cache.get()).toBeNull();
   });
 
-  it("test_default_storage_dir_resolves_to_per_account_path", () => {
+  it("defaults the storage dir to the per-account path under HOME", () => {
+    // python: test_default_storage_dir_resolves_to_per_account_path
     const tmp = makeTempDir(cleanups);
     vi.stubEnv("HOME", tmp);
     const cache = new MeCache({ accountName: "demo-sa" });
@@ -163,8 +166,10 @@ describe("TestMeCache (test_me.py:228)", () => {
   });
 });
 
-describe("TestMeCacheConcurrency (test_me.py:331)", () => {
-  it("test_two_writers_racing_same_cache_produce_valid_file", async () => {
+describe("MeCache concurrent writers", () => {
+  // python: test_me.py::TestMeCacheConcurrency
+  it("two racing writers leave one valid cache file", async () => {
+    // python: test_two_writers_racing_same_cache_produce_valid_file
     // Python's two-thread barrier race translates to two concurrent
     // async writers over the pid+counter tmp scheme (§3.3
     // disposition): each `put` derives a distinct tmp filename, so one
@@ -187,37 +192,43 @@ describe("TestMeCacheConcurrency (test_me.py:331)", () => {
     expect([1, 2]).toContain(result?.user_id);
   });
 
-  it.skipIf(!POSIX)("test_chmod_failure_on_dir_raises_config_error", () => {
-    const dir = join(makeTempDir(cleanups), "accounts", "personal");
-    mkdirSync(dir, { recursive: true });
-    const cache = new MeCache({
-      accountName: "personal",
-      storageDir: dir,
-      chmodSync: (path: string): void => {
-        if (path === dir) {
-          throw Object.assign(new Error("Permission denied"), {
-            code: "EACCES",
-          });
-        }
-        chmodSync(path, 0o700);
-      },
-    });
-    const resp = new MeResponse({ user_id: 1, user_email: "a@example.com" });
-    let caught: ConfigError | null = null;
-    try {
-      cache.put(resp);
-    } catch (error) {
-      caught = error as ConfigError;
-    }
-    expect(caught).toBeInstanceOf(ConfigError);
-    // The PII rationale raise names the 0o700 requirement
-    // (me.py:563-575 — packet §7 caution 12).
-    expect(caught?.message).toContain("0o700");
-  });
+  it.skipIf(!POSIX)(
+    "raises ConfigError naming 0o700 when the directory chmod fails",
+    () => {
+      // python: test_chmod_failure_on_dir_raises_config_error
+      const dir = join(makeTempDir(cleanups), "accounts", "personal");
+      mkdirSync(dir, { recursive: true });
+      const cache = new MeCache({
+        accountName: "personal",
+        storageDir: dir,
+        chmodSync: (path: string): void => {
+          if (path === dir) {
+            throw Object.assign(new Error("Permission denied"), {
+              code: "EACCES",
+            });
+          }
+          chmodSync(path, 0o700);
+        },
+      });
+      const resp = new MeResponse({ user_id: 1, user_email: "a@example.com" });
+      let caught: ConfigError | null = null;
+      try {
+        cache.put(resp);
+      } catch (error) {
+        caught = error as ConfigError;
+      }
+      expect(caught).toBeInstanceOf(ConfigError);
+      // The PII rationale raise names the 0o700 requirement
+      // (me.py:563-575 — packet §7 caution 12).
+      expect(caught?.message).toContain("0o700");
+    },
+  );
 });
 
-describe("TestMeCacheSymlinkRejection (test_me.py:685)", () => {
-  it.skipIf(!POSIX)("test_symlinked_cache_returns_none_and_warns", () => {
+describe("MeCache symlink rejection", () => {
+  // python: test_me.py::TestMeCacheSymlinkRejection
+  it.skipIf(!POSIX)("returns null and warns for a symlinked cache file", () => {
+    // python: test_symlinked_cache_returns_none_and_warns
     const home = makeTempDir(cleanups);
     vi.stubEnv("HOME", home);
     const accountDir = join(home, ".mp", "accounts", "personal");
@@ -240,8 +251,9 @@ describe("TestMeCacheSymlinkRejection (test_me.py:685)", () => {
   });
 
   it.skipIf(!POSIX)(
-    "test_dangling_symlink_cache_returns_none_and_warns",
+    "returns null and warns for a dangling cache symlink",
     () => {
+      // python: test_dangling_symlink_cache_returns_none_and_warns
       const home = makeTempDir(cleanups);
       vi.stubEnv("HOME", home);
       const accountDir = join(home, ".mp", "accounts", "personal");
@@ -262,7 +274,7 @@ describe("TestMeCacheSymlinkRejection (test_me.py:685)", () => {
   );
 });
 
-describe("Ordered-organizations re-hydration (packet §3.2 item 10 / §2.2 last bullet — N2 consumes N1's mechanism)", () => {
+describe("ordered organizations re-hydration", () => {
   it("out-of-ascending org keys survive the on-disk round-trip", () => {
     // The write must encode map insertion order and the read must
     // recover it through N1's lossless ordered-entries path — the
@@ -296,7 +308,7 @@ describe("Ordered-organizations re-hydration (packet §3.2 item 10 / §2.2 last 
 // UnicodeDecodeError RAW (live CPython probe in the resolution). The
 // TS twin is the TextDecoder fatal-mode TypeError, which must
 // propagate rather than degrade to the corrupt-file `null`.
-describe("B8-ARB-A SEM-F2c decode error-class lock", () => {
+describe("decode error class", () => {
   it.skipIf(!POSIX)(
     "invalid-UTF-8 me.json (0600) raises the RAW decode TypeError, not null",
     () => {

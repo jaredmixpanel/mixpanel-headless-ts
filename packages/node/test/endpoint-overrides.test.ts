@@ -1,19 +1,8 @@
-// Python PR #235 — the node half of the `MP_API_BASE_URL` /
-// `MP_APP_BASE_URL` alternate-host override. Python reads both variables
-// from `os.environ` on EVERY request (`api_client._endpoints_for`); the
-// core client takes an injected provider, and `createNodeEndpointOverrides`
-// is that provider over `process.env`, read at call time (the `env.ts`
-// module rule: never at construction, never at module load).
-//
-// Sources: tests/unit/test_api_base_url_override.py::
-// TestBuildUrlUnderOverride::test_env_is_read_per_call_not_at_construction
-// (the per-request semantics lock), TestEndpointsForResolver (env-value
-// normalisation through the real `process.env` path), and the
-// `env_workspace` fixture (Workspace built from env inherits the
-// override with no extra flag) — here via `createNodeWorkspace()`.
-//
-// Fixture pattern per `create-node-workspace.test.ts`: isolated `$HOME`,
-// `MP_*` env scrub.
+// createNodeEndpointOverrides: the MP_API_BASE_URL / MP_APP_BASE_URL provider
+// over process.env, read per call. Mirrors
+// tests/unit/test_api_base_url_override.py (per-call semantics, value
+// normalisation, and the env-built Workspace inheriting the override via
+// `createNodeWorkspace()`).
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -95,7 +84,8 @@ describe("createNodeEndpointOverrides", () => {
     });
   });
 
-  it("test_env_is_read_per_call_not_at_construction", () => {
+  it("reads the env var per call, not at construction", () => {
+    // python: test_env_is_read_per_call_not_at_construction
     // Python: `MixpanelAPIClient(session)` built BEFORE the var is set
     // still redirects the next `_build_url`; unsetting restores live.
     const client = createMixpanelClient({
@@ -128,7 +118,8 @@ describe("createNodeEndpointOverrides", () => {
     }
   });
 
-  it("test_empty_or_slash_only_value_means_unset", () => {
+  it("treats an empty or slash-only value as unset", () => {
+    // python: test_empty_or_slash_only_value_means_unset
     const client = createMixpanelClient({
       session: usSession(),
       endpointOverrides: createNodeEndpointOverrides(),

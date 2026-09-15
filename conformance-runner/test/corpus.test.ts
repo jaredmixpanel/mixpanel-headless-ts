@@ -1,12 +1,7 @@
-// Full-corpus vitest harness (task TS-5, design D12 reporting): one
-// dynamic `describe` per capability, one `it` per vector id.
-//
-// Verdict handling per D12: `UNPORTED` vectors are SKIPPED (counted, never
-// failing, until their module's port batch is declared done per R10.5);
-// every other non-PASS verdict fails its test. At TS-5 the snapshot
-// contains no authored compat vectors (Python PR-7 had not landed at
-// sync time), so every vector skips as UNPORTED; TS-6 re-syncs the corpus
-// and flips the compat vectors to live PASS assertions.
+// Full-corpus vitest harness: one `describe` per capability, one `it` per
+// vector id. UNPORTED vectors skip (counted); every other non-PASS verdict
+// fails its test.
+
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 

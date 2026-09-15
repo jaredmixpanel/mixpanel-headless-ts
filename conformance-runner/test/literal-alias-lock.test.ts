@@ -1,22 +1,8 @@
-// C8(d) literal-alias/enum lock (phase2-design C2): the hand-written
-// packages/core/src/types/{literals,enums}.ts tables must stay in sync
-// with the generated Python-side contract artifact
-// conformance-runner/corpus/contract/literal-aliases.json.
-//
-// 1. Alias-name set equality: the TS registry keys exactly the
-//    artifact's 38 distinct alias names (a new/renamed Python alias
-//    fails here, telling you exactly which alias drifted).
-// 2. Per-alias member SET equality (member order is contractual for
-//    nothing — C2).
-// 3. Enum-class set equality: names, kind (str/int), and exact
-//    member-name → member-value records.
-// 4. Runtime backstop for fast-check property #7 (C9): no duplicate
-//    members in any TS tuple or artifact list (the compile-time
-//    `satisfies` + coverage-proof types handle union⇄tuple drift).
-//
-// The artifact's `newtypes` section has no runtime artifact on the TS
-// side (plain type aliases, phase2-design C2) — it is asserted for
-// shape only so P2-4 inherits a verified list.
+// Literal-alias / enum lock: the hand-written types/{literals,enums}.ts
+// tables against corpus/contract/literal-aliases.json — alias-name set,
+// per-alias member sets, enum classes (name, kind, member records) and a
+// no-duplicate-member backstop. `newtypes` is asserted for shape only.
+
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -55,7 +41,7 @@ const artifact = JSON.parse(
   readFileSync(ARTIFACT_PATH, "utf8"),
 ) as LiteralAliasesArtifact;
 
-describe("C8(d) literal-alias lock", () => {
+describe("literal-alias lock", () => {
   it("artifact carries provenance and the measured cardinalities", () => {
     expect(artifact.generated_from).toMatch(/^[0-9a-f]{40}$/);
     expect(Object.keys(artifact.literal_aliases)).toHaveLength(38);
@@ -97,7 +83,7 @@ describe("C8(d) literal-alias lock", () => {
   });
 });
 
-describe("C8(d) enum-class lock", () => {
+describe("enum-class lock", () => {
   it("TS enum tables key exactly the artifact's enum class names", () => {
     const artifactNames = Object.keys(artifact.enums).sort();
     const tsNames = [...ENUM_TABLES.keys()].sort();

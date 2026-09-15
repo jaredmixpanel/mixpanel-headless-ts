@@ -1,9 +1,9 @@
-// Protocol-conformance tests for oracle-ts (design D14; the normative
-// spec is conformance/schema/oracle-protocol.md in the Python repo).
-// Mirrors the oracle-py suite (conformance/tests/test_oracle_protocol.py)
-// so both bridges are pinned to the same observable behavior, plus the
-// TS-specific raw-token traps: nested integral floats and integer-like
-// dict-key ordering, which only this side can get wrong.
+// Protocol conformance for oracle-ts (normative spec:
+// conformance/schema/oracle-protocol.md in the Python repo). Mirrors the
+// oracle-py suite so both bridges pin the same observable behaviour, plus
+// the TS-specific raw-token traps (nested integral floats, integer-like
+// dict-key ordering).
+
 import { describe, expect, it } from "vitest";
 
 import { JsonNumber } from "@mixpanel-headless/conformance-runner";
@@ -151,7 +151,7 @@ describe("oracle.info / oracle.shutdown / framing", () => {
     expect(envelope.error?.code).toBe(JSONRPC_METHOD_NOT_FOUND);
   });
 
-  it("frames responses as single ASCII lines (D14 ensure_ascii parity)", async () => {
+  it("frames responses as single ASCII lines (ensure_ascii parity)", async () => {
     const server = makeServer();
     const line = await server.handleLine(
       JSON.stringify({
@@ -260,7 +260,7 @@ describe("oracle.call: compat surface", () => {
     });
   });
 
-  it("returns R10.9 edge outputs matching CPython", async () => {
+  it("returns compat.python_str and compat.zfill edge outputs matching CPython", async () => {
     const server = makeServer();
     await expect(
       call(server, "compat.python_str", { value: true }),
@@ -297,7 +297,7 @@ describe("oracle.call: compat surface", () => {
     ).resolves.toStrictEqual({ ok: true, output: "00\u{1F40D}" });
   });
 
-  it("returns thrown library errors as bare-class DATA (R5.4)", async () => {
+  it("returns thrown library errors as bare-class data", async () => {
     // Wrong argument types are library errors, not protocol errors —
     // "Python raised TypeError / TS raised TypeError" stays comparable.
     const result = await call(makeServer(), "compat.zfill", { value: "5" });
@@ -344,7 +344,7 @@ describe("oracle.call: scope, skips, and protocol errors", () => {
     });
   });
 
-  it("answers UNPORTED for the wirestub gate apis (protocol §4.2)", async () => {
+  it("answers UNPORTED for the wirestub gate apis", async () => {
     const server = makeServer();
     const envelope = await serve(server, "oracle.call", {
       api: "wirestub.request",
@@ -423,7 +423,7 @@ describe("oracle.call: scope, skips, and protocol errors", () => {
     expect(withSession.result).toStrictEqual({ ok: true, output: "005" });
   });
 
-  it("answers -32000 when the output fails D6 canonicalization", async () => {
+  it("answers -32000 when the output fails canonicalization", async () => {
     // A lone-surrogate input arrives via a JSON escape; python_str's
     // OUTPUT then carries the surrogate, which the D6 encoder rejects —
     // a protocol-level error, never a hang or crash (design D14).
@@ -476,7 +476,7 @@ describe("raw-json: ordered lossless model", () => {
   });
 });
 
-describe("Phase-2 types.* surface (protocol §8 scope note, P2-9)", () => {
+describe("types.* surface", () => {
   it("reports protocol_version 1.1 (the codec.roundtrip addendum)", () => {
     expect(PROTOCOL_VERSION).toBe("1.1");
   });
@@ -501,7 +501,7 @@ describe("Phase-2 types.* surface (protocol §8 scope note, P2-9)", () => {
     });
   });
 
-  it("returns coded guard failures as {class, code} DATA (R5.4)", async () => {
+  it("returns coded guard failures as {class, code} data", async () => {
     const result = await call(makeServer(), "types.Filter.in_the_last", {
       property: "p",
       quantity: 0,
@@ -516,7 +516,7 @@ describe("Phase-2 types.* surface (protocol §8 scope note, P2-9)", () => {
     });
   });
 
-  it("preserves integral-float kwargs via the raw token (D13/Risk #3)", async () => {
+  it("preserves integral-float kwargs via the raw token", async () => {
     // 18.0 must construct as a FLOAT (PyFloat) and render back as the
     // raw token 18.0, exactly like Python's json.loads/json.dumps pair.
     const server = makeServer();
@@ -572,7 +572,7 @@ describe("Phase-2 types.* surface (protocol §8 scope note, P2-9)", () => {
   });
 });
 
-describe("codec.roundtrip (protocol 1.1 addendum, §8)", () => {
+describe("codec.roundtrip", () => {
   /**
    * Execute one `codec.roundtrip` and return its result payload.
    *
@@ -607,7 +607,7 @@ describe("codec.roundtrip (protocol 1.1 addendum, §8)", () => {
     });
   });
 
-  it("round-trips SecretStr to the REVEALED value (C8a anti-vacuity)", async () => {
+  it("round-trips SecretStr to the revealed value", async () => {
     await expect(
       roundtrip(makeServer(), { $type: "SecretStr", value: "s3cr3t" }),
     ).resolves.toStrictEqual({

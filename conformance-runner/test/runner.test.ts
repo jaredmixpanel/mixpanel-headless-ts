@@ -1,10 +1,7 @@
-// Runner tests (src/runner.ts, task TS-5): kind dispatch, call.setup[]
-// execution, and the full verdict taxonomy (design D12, D7 mirror).
-//
-// Stub implementations are bound to REAL corpus api names (api_client.*,
-// workspace.*) so the api-map gate exercises the production resolution
-// path; the stubs themselves are replay-pipeline test doubles in the D13
-// wirestub spirit.
+// Runner: kind dispatch, call.setup[] execution and the full verdict
+// taxonomy. Stubs are bound to real corpus api names so the api-map gate
+// exercises the production resolution path.
+
 import { describe, expect, it } from "vitest";
 
 import { createRunnerDeps, registerContractCodecs } from "../src/bindings.js";
@@ -219,7 +216,7 @@ describe("runVector — builder kind", () => {
     expect(preserved.verdict).toBe("PASS");
   });
 
-  it("PASS is key-order independent (D6 rule 1)", async () => {
+  it("PASS is key-order independent", async () => {
     const vector = makeVector({
       expect: '{"output": {"a": 1, "b": [true, null]}}',
     });
@@ -270,7 +267,7 @@ describe("runVector — builder kind", () => {
   });
 });
 
-describe("runVector — PRECISION_LOSS (D6)", () => {
+describe("runVector — PRECISION_LOSS", () => {
   const EXPECT = '{"output": {"id": 9007199254740993}}'; // 2^53 + 1
 
   it("flags a double-rounded >2^53 integer as PRECISION_LOSS, not FAIL_OUTPUT", async () => {
@@ -304,7 +301,7 @@ describe("runVector — validation-error kind", () => {
     '"code": "BOOKMARK_VALIDATION_ERROR", ' +
     '"errors": [{"path": "$.events[0]", "code": "B1_MISSING_EVENTS", "severity": "error"}]}}';
 
-  it("PASS on a structural error match with messages stripped (R5.4)", async () => {
+  it("PASS on a structural error match with messages stripped", async () => {
     const vector = makeVector({
       kind: "validation-error",
       expect: EXPECT_ERROR,
@@ -330,7 +327,7 @@ describe("runVector — validation-error kind", () => {
     expect((await runVector(vector, deps)).verdict).toBe("PASS");
   });
 
-  it("FAIL_ERROR when the code or severity differs (strict, D4.3)", async () => {
+  it("FAIL_ERROR when the code or severity differs", async () => {
     const vector = makeVector({
       kind: "validation-error",
       expect: EXPECT_ERROR,
@@ -527,7 +524,7 @@ describe("runVector — wire kind", () => {
     expect((await runVector(vector, deps)).verdict).toBe("PASS");
   });
 
-  it("swallows a raising setup call (D2 limitation, execute.py:532-541)", async () => {
+  it("swallows a raising setup call, as the Python executor does", async () => {
     // The Python runner deliberately ignores setup returns/raises —
     // earlier test calls may have raised under pytest.raises at record
     // time too (e.g. a recorded 400 on a get_event_properties setup).
@@ -550,7 +547,7 @@ describe("runVector — wire kind", () => {
     expect(result.verdict).toBe("PASS");
   });
 
-  it("surfaces a transport error the port wraps into its taxonomy (R2.10)", async () => {
+  it("surfaces a transport error the port wraps into its taxonomy", async () => {
     const vector = makeVector({
       kind: "wire",
       api: "api_client.get_events",
@@ -584,7 +581,7 @@ describe("runVector — wire kind", () => {
     expect((await runVector(vector, deps)).verdict).toBe("PASS");
   });
 
-  it("diffs callback call logs against expect.callback_calls (D4.4)", async () => {
+  it("diffs callback call logs against expect.callback_calls", async () => {
     const input = '{"on_batch": {"$type": "callback", "name": "on_batch"}}';
     const expectJson = `{
       "interactions": [
@@ -636,7 +633,7 @@ describe("runVector — wire kind", () => {
     expect(bad.diff).toContain("on_batch");
   });
 
-  it("exposes call.session on the invocation context (D5.1)", async () => {
+  it("exposes call.session on the invocation context", async () => {
     const vector = makeVector({
       kind: "wire",
       api: "api_client.get_events",
@@ -656,7 +653,7 @@ describe("runVector — wire kind", () => {
 });
 
 describe("runVector — parse kind", () => {
-  it("diffs only the result side (request path is synthetic, D7)", async () => {
+  it("diffs only the result side (the request path is synthetic)", async () => {
     const vector = makeVector({
       kind: "parse",
       api: "api_client.get_events",

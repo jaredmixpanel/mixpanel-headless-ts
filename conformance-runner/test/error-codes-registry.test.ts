@@ -1,16 +1,8 @@
-// C8(c) exception/code registry-equality lock (phase2-design C3):
-//
-// 1. `errors.ts` exports EXACTLY the 34 exception class names in the
-//    synced contract artifact, with the same parent-edge set (verified by
-//    walking `Object.getPrototypeOf` chains).
-// 2. The TS `CODED_GUARD_REGISTRY` / `CODED_GUARD_TWIN_CODES` sets
-//    (re-exported from the generated errors-codes.gen.ts) equal the
-//    artifact's sets.
-// 3. Per-class default codes match (each class instantiated with minimal
-//    args; `.code` compared against the artifact's `default_codes`).
-// 4. errors-codes.gen.ts is FRESH: `node scripts/generate-error-codes.mjs
-//    --check` regenerates from the artifact and diffs byte-for-byte
-//    (hand-edit tripwire, phase2-design C5 item 4).
+// Exception/code registry equality against the synced contract artifact:
+// the 34 class names and parent edges, the coded-guard sets re-exported from
+// errors-codes.gen.ts, per-class default codes, and byte-exact freshness of
+// errors-codes.gen.ts.
+
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -115,7 +107,7 @@ const INSTANTIATION_TABLE: Readonly<
   ShortLinkResolutionError: () => new errors.ShortLinkResolutionError("m"),
 };
 
-describe("C8(c) registry equality vs corpus/contract/error-codes.json", () => {
+describe("registry equality vs corpus/contract/error-codes.json", () => {
   it("artifact sanity: 34 classes, 126 registry codes, 9 twin codes", () => {
     expect(Object.keys(artifact.exception_classes)).toHaveLength(34);
     expect(Object.keys(artifact.default_codes)).toHaveLength(34);

@@ -1,46 +1,9 @@
-// Referee (a) runner feed — B3 gate (playbook P3-7 / phase1-design D15a),
-// extended at the B5 gate (b5-packets.md §7.4): `workspace.build_params`
-// EMITS full insights bookmark params (all 115 output vectors are exactly
-// `{displayOptions, sections}` — the schema's root shape), so P3-7's
-// "if a B5 module emits a bookmark payload anyway, its gate adds the
-// referees" clause fires and its TS-built outputs are fed AS-IS (no
-// skeleton wrap — the D15b routing-table row `workspace.build_params →
-// insights, as-is`, `conformance/referee_bookmark_parser/README.md`).
-//
-// D15a's feed rule: pipe builder-kind vector outputs that are
-// INSIGHTS-SHAPED through the ajv bookmark.json referee as a secondary
-// assert. This suite is that feed: for every insights-shaped B3
-// `bookmark_builders.*` output vector it executes the SAME binding the
-// conformance runner replays (binding-honesty: the real ported builder),
-// injects the TS-BUILT fragment into the recon-proven minimal valid
-// `InsightsBookmarkParams` skeleton at the api's section slot, and
-// requires an ajv ACCEPT.
-//
-// Scope (D15a "INSIGHTS-SHAPED ONLY"):
-// - `build_filter_entry` / `build_frequency_filter_entry` →
-//   `sections.filter` entries; `build_filter_section` → the whole
-//   `sections.filter` array. (Schema power is limited: `Sections.filter`
-//   items are `JsonValue` — root/sections `additionalProperties` and the
-//   skeleton contract still apply.)
-// - `build_group_section` → `sections.group` (`GroupClause` items with
-//   `additionalProperties: false` — the discriminating slot).
-// - `build_time_section` → `sections.time` (items are `JsonValue`).
-// - EXCLUDED, per the referee-(b) routing table
-//   (`conformance/referee_bookmark_parser/README.md`): `build_date_range`
-//   outputs are COMMON-shaped (`{from_date, to_date, type}` — no insights
-//   section hosts them; the Python structural oracle covers them wrapped
-//   as `{"date_range": …}`), and `build_flow_*` outputs are FLOWS-shaped
-//   (feeding either to the insights root would reject correct output —
-//   the D15a dead-weight trap).
-//
-// Error-expectation vectors carry no output and are skipped (counted).
-//
-// NO STANDING DISCLOSURES (R10.7 four-bug batch, 2026-08-17): the
-// dataGroupId int-threading + off-contract `sections.dataGroupId`
-// disclosure pins (B3/B5 gates; fix-of-record
-// `docs/history/phase3/bug-reports/mixpanel-headless-datagroupid-int-clause.md`)
-// RETIRED with the Python-first fix and the corpus re-pin @ 700db99 —
-// every fed vector must now be accepted; any REJECT is a new finding.
+// Referee feed: every insights-shaped `bookmark_builders.*` output is built
+// through the same binding the runner replays, injected into the minimal
+// valid InsightsBookmarkParams skeleton at its section slot, and must pass
+// the ajv bookmark.json referee; `workspace.build_params` outputs are fed
+// as-is. Common-shaped date ranges and flows-shaped builders are excluded.
+
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -114,7 +77,7 @@ function wrapFragment(api: string, output: unknown): JsonObject {
   return payload;
 }
 
-describe("referee (a) feed — insights-shaped B3 builder outputs", () => {
+describe("referee feed — insights-shaped builder outputs", () => {
   const packageDir = resolve(
     fileURLToPath(new URL(".", import.meta.url)),
     "../../conformance-runner",

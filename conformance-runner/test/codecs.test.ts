@@ -1,6 +1,6 @@
-// Unit tests for the $type codec mirror (src/codecs.ts, design D4.4,
-// task TS-4). The table must stay in lockstep with
-// conformance/record/codecs.py in the Python repo.
+// The $type codec mirror (src/codecs.ts). The table must stay in lockstep
+// with conformance/record/codecs.py in the Python repo.
+
 import { describe, expect, it } from "vitest";
 
 import { GroupBy } from "@mixpanel-headless/core";
@@ -19,7 +19,7 @@ import {
 import { JsonNumber } from "../src/json-value.js";
 import { parseLossless } from "../src/lossless-json.js";
 
-describe("CodecRegistry built-in tags (D4.4)", () => {
+describe("CodecRegistry built-in tags", () => {
   const registry = new CodecRegistry();
 
   it("decodes $type datetime and date to lossless ISO wrappers", () => {
@@ -34,7 +34,7 @@ describe("CodecRegistry built-in tags (D4.4)", () => {
     expect((d as PyDate).iso).toBe("2026-01-15");
   });
 
-  it("decodes $type SecretStr to the real core Secret (D5.5, C7/V4)", () => {
+  it("decodes $type SecretStr to the real core Secret", () => {
     const secret = registry.decodeValue({
       $type: "SecretStr",
       value: "test_secret",
@@ -137,7 +137,7 @@ describe("CodecRegistry registration surface", () => {
   });
 });
 
-describe("encodeExpectValue (D6 rules 2/5 at the output boundary)", () => {
+describe("encodeExpectValue at the output boundary", () => {
   it("rejects non-finite numbers", () => {
     expect(() => encodeExpectValue(Number.NaN)).toThrow(UnencodableValueError);
     expect(() => encodeExpectValue(Number.POSITIVE_INFINITY)).toThrow(
@@ -155,7 +155,7 @@ describe("encodeExpectValue (D6 rules 2/5 at the output boundary)", () => {
     expect(encodeExpectValue("ok 😀")).toBe("ok 😀");
   });
 
-  it("drops undefined object properties (absent, not null — R3.5)", () => {
+  it("drops undefined object properties (absent, not null)", () => {
     expect(encodeExpectValue({ a: 1, b: undefined })).toStrictEqual({ a: 1 });
   });
 
@@ -195,7 +195,7 @@ describe("encodeExpectValue (D6 rules 2/5 at the output boundary)", () => {
   });
 });
 
-describe("GroupBy contract codec float-carrier buckets (B2-BIND)", () => {
+describe("GroupBy contract codec float-carrier buckets", () => {
   // Python `GroupBy(bucket_min=0.0, bucket_max=100.0)` is constructible
   // (0.0 >= 100.0 is False) and records with `$type: float` children
   // (P2-5a integral-float tagging). Decoding those children as PyFloat

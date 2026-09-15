@@ -1,13 +1,7 @@
-// Layer-3 suite for the browser DCR wrapper (b9-packets.md §3.2 row 3
-// / §3.4 `test_auth_registration.py` row): CredentialStore-cached
-// Dynamic Client Registration over the core `registerClient` POST half
-// (§3.1 hoist of `client_registration.py`). Cache-hit rule
-// identical to Python: the cached client is returned ONLY when its
-// `redirect_uri` matches. Error
-// branches (network / 429 / non-success / bad JSON / missing
-// client_id) ride the hoisted core body — canned here, node's B8
-// `client-registration.test.ts` stays the exhaustive lock. R5:
-// assertions key on error CODES.
+// The browser DCR wrapper: CredentialStore-cached registration over the core
+// `registerClient` POST. Cache-hit rule as in Python (the cached client is
+// returned only when its `redirect_uri` matches); the error branches are
+// canned here and locked exhaustively in node's client-registration.test.ts.
 
 import { describe, expect, it } from "vitest";
 
@@ -99,7 +93,7 @@ describe("ensureBrowserClientRegistered", () => {
     expect(second.client_id).toBe(first.client_id);
   });
 
-  it("re-registers when the cached redirect_uri differs (`client_registration.py:92-93`)", async () => {
+  it("re-registers when the cached redirect_uri differs", async () => {
     const transport = registrationTransport();
     const store = new InMemoryCredentialStore();
     await ensureBrowserClientRegistered({

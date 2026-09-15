@@ -1,9 +1,6 @@
-// B8-N1 shared FS-test helpers — the Python-suite real-home guard
-// discipline (b8-packets.md §7 caution 3; `b7-packets.md` §6.19
-// precedent): every test builds under `fs.mkdtempSync(os.tmpdir())`,
-// points modules there via explicit paths / env overrides, and asserts
-// no resolved path is under `os.homedir()` before any write. `~/.mp`
-// is NEVER touched by tests.
+// Shared node test helpers: every test builds under a fresh tmp dir, points
+// modules there through explicit paths or stubbed env, and refuses any path
+// under the real home directory. `~/.mp` is never touched by tests.
 
 import { mkdtempSync, rmSync, statSync } from "node:fs";
 import * as os from "node:os";

@@ -1,5 +1,6 @@
-// Shim tests (src/shims.ts, task TS-5): frozen clock, deterministic UUID
-// stream, and VIRTUAL sleep semantics per design D1.4/D12.
+// Shims (src/shims.ts): frozen clock, deterministic UUID stream and virtual
+// sleep semantics.
+
 import { describe, expect, it } from "vitest";
 
 import { createShims } from "../src/shims.js";

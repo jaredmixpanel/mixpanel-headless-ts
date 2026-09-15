@@ -1,12 +1,7 @@
-// B8-N2 locks for the REAL node `TokenStore` (auth-effects.ts:305-362;
-// b8-packets.md §3.1 row 6). There is no single Python test file — the
-// store abstracts `_persist_browser_tokens`,
-// `logout`, `_safe_rmtree_warn`
-// (`accounts.py:278-303`), `_client_info_path` (`accounts.py:894-915`)
-// and the B7-ARB-A SEM-F2 `account_dir(name).exists()` orphan probe
-// (`accounts.py`; `b7-reviewA-resolution.md:239-241`). Each
-// lock below cites its Python range; the B7 in-memory fake
-// (`core/test/accounts/fake-auth-effects.ts`) is the shape precedent.
+// The real node TokenStore (auth-effects.ts). No single Python twin: it
+// abstracts `_persist_browser_tokens`, `logout`, `_safe_rmtree_warn`,
+// `_client_info_path` and the `account_dir(name).exists()` orphan probe from
+// mixpanel_headless.accounts. Additive: lax `expires_at` on read.
 
 import {
   chmodSync,
@@ -56,8 +51,8 @@ function makeTokens(access = "acc-1"): OAuthTokens {
   });
 }
 
-describe("TokenStore — real node implementation (packet §3.1)", () => {
-  it("writeTokens persists atomically at the per-account path and returns it (accounts.py:878-893)", () => {
+describe("TokenStore (node implementation)", () => {
+  it("writeTokens persists atomically at the per-account path and returns it", () => {
     const store = createNodeTokenStore();
     const path = store.writeTokens("me", makeTokens());
     expect(path).toBe(join(root, "accounts", "me", "tokens.json"));
@@ -83,7 +78,7 @@ describe("TokenStore — real node implementation (packet §3.1)", () => {
     expect(read?.access_token.reveal()).toBe("acc-2");
   });
 
-  it("removeTokens deletes the file; missing file is a no-op (accounts.py:916-929)", () => {
+  it("removeTokens deletes the file; a missing file is a no-op", () => {
     const store = createNodeTokenStore();
     const path = store.writeTokens("me", makeTokens());
     expect(existsSync(path)).toBe(true);
@@ -92,7 +87,7 @@ describe("TokenStore — real node implementation (packet §3.1)", () => {
     expect(() => store.removeTokens("me")).not.toThrow();
   });
 
-  it("removeAccountDir removes the whole dir; failures warn, never raise (accounts.py:278-303)", () => {
+  it("removeAccountDir removes the whole dir; failures warn, never raise", () => {
     const store = createNodeTokenStore();
     store.writeTokens("me", makeTokens());
     const dir = accountDir("me");
@@ -103,14 +98,14 @@ describe("TokenStore — real node implementation (packet §3.1)", () => {
     expect(() => store.removeAccountDir("me")).not.toThrow();
   });
 
-  it("clientInfoPath honors the storage root override (accounts.py:894-915)", () => {
+  it("clientInfoPath honors the storage root override", () => {
     const store = createNodeTokenStore();
     expect(store.clientInfoPath("eu")).toBe(
       join(root, "oauth", "client_eu.json"),
     );
   });
 
-  it("accountDirExists is the SEM-F2 orphan-directory probe (accounts.py:1704-1708)", () => {
+  it("accountDirExists is the orphan-directory probe", () => {
     const store = createNodeTokenStore();
     expect(store.accountDirExists("ghost")).toBe(false);
     mkdirSync(join(root, "accounts", "ghost"), {
@@ -140,7 +135,7 @@ describe("TokenStore — real node implementation (packet §3.1)", () => {
 // the SAME per-account tokens.json the OnDiskTokenResolver serves — it
 // takes the same pydantic-lax expires_at mirror so the two readers of
 // one file can never disagree.
-describe("B8-ARB-B F1 readTokens pydantic-lax expires_at", () => {
+describe("readTokens lax expires_at", () => {
   it("numeric epoch-seconds expires_at parses instead of degrading to null", () => {
     const store = createNodeTokenStore();
     const dir = accountDir("me");

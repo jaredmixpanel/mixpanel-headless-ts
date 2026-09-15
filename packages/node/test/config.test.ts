@@ -1,14 +1,8 @@
-// Layer-3 translation of `tests/unit/test_config.py` (821 lines, 51
-// tests; ALL 12 classes translated — b8-packets.md §2.3 row 2) plus
-// `tests/unit/test_042_edge_cases.py::TestConfigManagerEdgeCases` :459
-// (inbound deferral, b7-packets.md §7 / b6-packets.md:1032).
-//
-// Python's tmp-dir `config_path` fixtures translate to `mkdtempSync`
-// dirs (NEVER `~/.mp` — packet §7 caution 3; `helpers.ts` guard).
-// One ADDED lock beyond the Python file: the explicit non-promoting
-// `add_account` assert (B7-ARB-B B-E2E-N1 — the FR-045 promotion lives
-// in the `ConfigWrites` ADAPTER transaction, `config-writes.ts`; the
-// manager twin must NOT promote).
+// ConfigManager. Mirrors tests/unit/test_config.py (all twelve classes) plus
+// test_042_edge_cases.py::TestConfigManagerEdgeCases; the tmp-dir
+// `config_path` fixtures become `makeTempDir`. Additive: the manager never
+// promotes the first account to active (the ConfigWrites adapter does),
+// parent-directory modes on write, and errno wrapping at the symlink probe.
 
 import {
   chmodSync,
@@ -67,8 +61,10 @@ function addSa(
   });
 }
 
-describe("TestLoadEmptyOrMissing", () => {
-  it("test_load_missing_file", () => {
+describe("ConfigManager load with an empty or missing file", () => {
+  // python: TestLoadEmptyOrMissing
+  it("loads an empty account list when the config file is missing", () => {
+    // python: test_load_missing_file
     const cm = freshCm();
     expect(cm.listAccounts()).toStrictEqual([]);
     expect(cm.listTargets()).toStrictEqual([]);
@@ -77,7 +73,8 @@ describe("TestLoadEmptyOrMissing", () => {
     expect(active.workspace ?? null).toBeNull();
   });
 
-  it("test_load_empty_file", () => {
+  it("loads an empty account list from an empty config file", () => {
+    // python: test_load_empty_file
     const dir = makeTempDir(cleanups);
     const p = join(dir, "config.toml");
     writeFileSync(p, "");
@@ -91,8 +88,10 @@ describe("TestLoadEmptyOrMissing", () => {
   });
 });
 
-describe("TestAddAccount", () => {
-  it("test_service_account", () => {
+describe("ConfigManager.addAccount", () => {
+  // python: TestAddAccount
+  it("persists a service account and reads it back", () => {
+    // python: test_service_account
     const cm = freshCm();
     cm.addAccount("team", {
       type: "service_account",
@@ -114,7 +113,8 @@ describe("TestAddAccount", () => {
     expect(loaded.default_project).toBe("3713224");
   });
 
-  it("test_oauth_browser_account", () => {
+  it("persists an oauth_browser account with no default project", () => {
+    // python: test_oauth_browser_account
     const cm = freshCm();
     cm.addAccount("personal", { type: "oauth_browser", region: "eu" });
     const cm2 = new ConfigManager({ configPath: cm.configPath });
@@ -124,7 +124,8 @@ describe("TestAddAccount", () => {
     expect(loaded.default_project ?? null).toBeNull();
   });
 
-  it("test_oauth_token_with_inline", () => {
+  it("persists an oauth_token account with an inline token", () => {
+    // python: test_oauth_token_with_inline
     const cm = freshCm();
     cm.addAccount("ci", {
       type: "oauth_token",
@@ -140,7 +141,8 @@ describe("TestAddAccount", () => {
     expect(loaded.default_project).toBe("3713224");
   });
 
-  it("test_oauth_token_with_env", () => {
+  it("persists an oauth_token account that names a token env var", () => {
+    // python: test_oauth_token_with_env
     const cm = freshCm();
     cm.addAccount("agent", {
       type: "oauth_token",
@@ -154,7 +156,8 @@ describe("TestAddAccount", () => {
     expect(loaded.token_env).toBe("MP_OAUTH_TOKEN");
   });
 
-  it("test_service_account_without_default_project_succeeds", () => {
+  it("accepts a service account without a default project", () => {
+    // python: test_service_account_without_default_project_succeeds
     const cm = freshCm();
     cm.addAccount("team", {
       type: "service_account",
@@ -165,7 +168,8 @@ describe("TestAddAccount", () => {
     expect(cm.getAccount("team").default_project ?? null).toBeNull();
   });
 
-  it("test_oauth_token_without_default_project_succeeds", () => {
+  it("accepts an oauth_token account without a default project", () => {
+    // python: test_oauth_token_without_default_project_succeeds
     const cm = freshCm();
     cm.addAccount("ci", {
       type: "oauth_token",
@@ -175,7 +179,8 @@ describe("TestAddAccount", () => {
     expect(cm.getAccount("ci").default_project ?? null).toBeNull();
   });
 
-  it("test_duplicate_name_raises", () => {
+  it("raises a plain ConfigError for a duplicate account name", () => {
+    // python: test_duplicate_name_raises
     const cm = freshCm();
     addSa(cm);
     let error: unknown;
@@ -191,7 +196,8 @@ describe("TestAddAccount", () => {
     expect((error as ConfigError).name).toBe("ConfigError");
   });
 
-  it("test_invalid_name_raises", () => {
+  it("raises ConfigError for an invalid account name", () => {
+    // python: test_invalid_name_raises
     const cm = freshCm();
     expect(() =>
       cm.addAccount("bad name", {
@@ -204,7 +210,7 @@ describe("TestAddAccount", () => {
     ).toThrow(ConfigError);
   });
 
-  it("test_add_account_does_not_promote_to_active (B-E2E-N1 lock)", () => {
+  it("never promotes the first account to active", () => {
     // ADDED lock (header note): the MANAGER layer never promotes; the
     // FR-045 first-account promotion happens exactly once, in the
     // `ConfigWrites.addAccount` adapter transaction (config-writes.ts).
@@ -214,29 +220,34 @@ describe("TestAddAccount", () => {
   });
 });
 
-describe("TestUpdateAccount", () => {
-  it("test_update_default_project", () => {
+describe("ConfigManager.updateAccount", () => {
+  // python: TestUpdateAccount
+  it("updates an account's default project", () => {
+    // python: test_update_default_project
     const cm = freshCm();
     addSa(cm, "team");
     cm.updateAccount("team", { default_project: "9999999" });
     expect(cm.getAccount("team").default_project).toBe("9999999");
   });
 
-  it("test_update_region", () => {
+  it("updates an account's region", () => {
+    // python: test_update_region
     const cm = freshCm();
     cm.addAccount("personal", { type: "oauth_browser", region: "us" });
     cm.updateAccount("personal", { region: "eu" });
     expect(cm.getAccount("personal").region).toBe("eu");
   });
 
-  it("test_update_missing_account_raises", () => {
+  it("raises ConfigError when the account does not exist", () => {
+    // python: test_update_missing_account_raises
     const cm = freshCm();
     expect(() => cm.updateAccount("ghost", { default_project: "1" })).toThrow(
       ConfigError,
     );
   });
 
-  it("test_update_username_on_browser_raises", () => {
+  it("raises ConfigError when setting a username on an oauth_browser account", () => {
+    // python: test_update_username_on_browser_raises
     const cm = freshCm();
     cm.addAccount("personal", { type: "oauth_browser", region: "us" });
     expect(() => cm.updateAccount("personal", { username: "u" })).toThrow(
@@ -245,8 +256,10 @@ describe("TestUpdateAccount", () => {
   });
 });
 
-describe("TestSetActive", () => {
-  it("test_set_account_only", () => {
+describe("ConfigManager.setActive", () => {
+  // python: TestSetActive
+  it("sets the active account and leaves the workspace unset", () => {
+    // python: test_set_account_only
     const cm = freshCm();
     addSa(cm);
     cm.setActive({ account: "x" });
@@ -255,7 +268,8 @@ describe("TestSetActive", () => {
     expect(active.workspace ?? null).toBeNull();
   });
 
-  it("test_set_workspace_only", () => {
+  it("sets the active workspace and leaves the account unset", () => {
+    // python: test_set_workspace_only
     const cm = freshCm();
     cm.setActive({ workspace: 8 });
     const active = cm.getActive();
@@ -263,7 +277,8 @@ describe("TestSetActive", () => {
     expect(active.workspace).toBe(8);
   });
 
-  it("test_set_both", () => {
+  it("sets the active account and workspace together", () => {
+    // python: test_set_both
     const cm = freshCm();
     addSa(cm);
     cm.setActive({ account: "x", workspace: 8 });
@@ -272,18 +287,21 @@ describe("TestSetActive", () => {
     expect(active.workspace).toBe(8);
   });
 
-  it("test_account_must_exist", () => {
+  it("raises ConfigError for an unknown account", () => {
+    // python: test_account_must_exist
     const cm = freshCm();
     expect(() => cm.setActive({ account: "nonexistent" })).toThrow(ConfigError);
   });
 
-  it("test_workspace_must_be_positive", () => {
+  it("raises ConfigError for a non-positive workspace id", () => {
+    // python: test_workspace_must_be_positive
     const cm = freshCm();
     expect(() => cm.setActive({ workspace: 0 })).toThrow(ConfigError);
     expect(() => cm.setActive({ workspace: -5 })).toThrow(ConfigError);
   });
 
-  it("test_partial_update_preserves_other_axis", () => {
+  it("keeps the other axis when only one is updated", () => {
+    // python: test_partial_update_preserves_other_axis
     const cm = freshCm();
     addSa(cm);
     cm.setActive({ account: "x" });
@@ -294,7 +312,8 @@ describe("TestSetActive", () => {
   });
 });
 
-describe("TestApplySession", () => {
+describe("ConfigManager.applySession", () => {
+  // python: TestApplySession
   /** Seed a SA named `name` with default_project 100. */
   function seed(cm: ConfigManager, name = "x"): void {
     cm.addAccount(name, {
@@ -306,7 +325,8 @@ describe("TestApplySession", () => {
     });
   }
 
-  it("test_atomic_three_axis_write", () => {
+  it("writes account, project and workspace in one call", () => {
+    // python: test_atomic_three_axis_write
     const cm = freshCm();
     seed(cm);
     cm.applySession({ account: "x", project: "200", workspace: 42 });
@@ -316,7 +336,8 @@ describe("TestApplySession", () => {
     expect(cm.getAccount("x").default_project).toBe("200");
   });
 
-  it("test_clear_workspace_drops_active_workspace_axis", () => {
+  it("drops the active workspace when clear_workspace is set", () => {
+    // python: test_clear_workspace_drops_active_workspace_axis
     const cm = freshCm();
     seed(cm);
     cm.setActive({ account: "x", workspace: 99 });
@@ -326,7 +347,8 @@ describe("TestApplySession", () => {
     expect(active.workspace ?? null).toBeNull();
   });
 
-  it("test_workspace_and_clear_workspace_mutually_exclusive", () => {
+  it("rejects workspace together with clear_workspace", () => {
+    // python: test_workspace_and_clear_workspace_mutually_exclusive
     const cm = freshCm();
     seed(cm);
     // Python raises bare ValueError; the coded twin is
@@ -345,14 +367,16 @@ describe("TestApplySession", () => {
     ).toThrow(ParamValidationError);
   });
 
-  it("test_project_without_active_or_explicit_account_raises", () => {
+  it("raises when a project is given with no active or explicit account", () => {
+    // python: test_project_without_active_or_explicit_account_raises
     const cm = freshCm();
     expect(() => cm.applySession({ project: "100" })).toThrow(
       /no active account/,
     );
   });
 
-  it("test_project_writes_to_explicit_account_not_active", () => {
+  it("writes the project to the explicit account, not the active one", () => {
+    // python: test_project_writes_to_explicit_account_not_active
     const cm = freshCm();
     seed(cm, "x");
     seed(cm, "y");
@@ -362,7 +386,8 @@ describe("TestApplySession", () => {
     expect(cm.getAccount("x").default_project).toBe("100");
   });
 
-  it("test_partial_update_preserves_untouched_axes", () => {
+  it("leaves untouched axes alone on a partial update", () => {
+    // python: test_partial_update_preserves_untouched_axes
     const cm = freshCm();
     seed(cm);
     cm.setActive({ account: "x", workspace: 10 });
@@ -374,8 +399,10 @@ describe("TestApplySession", () => {
   });
 });
 
-describe("TestTargets", () => {
-  it("test_add_target_minimal", () => {
+describe("ConfigManager targets", () => {
+  // python: TestTargets
+  it("adds a target with account and project only", () => {
+    // python: test_add_target_minimal
     const cm = freshCm();
     addSa(cm);
     cm.addTarget("ecom", { account: "x", project: "3018488" });
@@ -387,21 +414,24 @@ describe("TestTargets", () => {
     expect(targets[0]?.workspace).toBeNull();
   });
 
-  it("test_add_target_with_workspace", () => {
+  it("adds a target with a workspace", () => {
+    // python: test_add_target_with_workspace
     const cm = freshCm();
     addSa(cm);
     cm.addTarget("ecom", { account: "x", project: "3018488", workspace: 42 });
     expect(cm.getTarget("ecom").workspace).toBe(42);
   });
 
-  it("test_add_target_referencing_missing_account_raises", () => {
+  it("raises ConfigError when the target references an unknown account", () => {
+    // python: test_add_target_referencing_missing_account_raises
     const cm = freshCm();
     expect(() =>
       cm.addTarget("ecom", { account: "nonexistent", project: "3018488" }),
     ).toThrow(ConfigError);
   });
 
-  it("test_remove_target", () => {
+  it("removes a target", () => {
+    // python: test_remove_target
     const cm = freshCm();
     addSa(cm);
     cm.addTarget("ecom", { account: "x", project: "3018488" });
@@ -409,7 +439,8 @@ describe("TestTargets", () => {
     expect(() => cm.getTarget("ecom")).toThrow(ConfigError);
   });
 
-  it("test_apply_target_writes_account_workspace_and_default_project", () => {
+  it("applyTarget sets the active account, workspace and default project", () => {
+    // python: test_apply_target_writes_account_workspace_and_default_project
     const cm = freshCm();
     addSa(cm);
     cm.addTarget("ecom", { account: "x", project: "3018488", workspace: 8 });
@@ -420,7 +451,8 @@ describe("TestTargets", () => {
     expect(cm.getAccount("x").default_project).toBe("3018488");
   });
 
-  it("test_apply_target_missing_workspace_clears_workspace", () => {
+  it("applyTarget clears the active workspace when the target has none", () => {
+    // python: test_apply_target_missing_workspace_clears_workspace
     const cm = freshCm();
     addSa(cm);
     cm.setActive({ account: "x", workspace: 99 });
@@ -430,14 +462,17 @@ describe("TestTargets", () => {
     expect(cm.getAccount("x").default_project).toBe("3018488");
   });
 
-  it("test_apply_missing_target_raises", () => {
+  it("applyTarget raises ConfigError for an unknown target", () => {
+    // python: test_apply_missing_target_raises
     const cm = freshCm();
     expect(() => cm.applyTarget("ghost")).toThrow(ConfigError);
   });
 });
 
-describe("TestListAccounts", () => {
-  it("test_returns_summary_objects", () => {
+describe("ConfigManager.listAccounts", () => {
+  // python: TestListAccounts
+  it("returns AccountSummary instances", () => {
+    // python: test_returns_summary_objects
     const cm = freshCm();
     addSa(cm, "team");
     cm.addAccount("personal", { type: "oauth_browser", region: "eu" });
@@ -449,7 +484,8 @@ describe("TestListAccounts", () => {
     ]);
   });
 
-  it("test_is_active_flag", () => {
+  it("flags only the active account", () => {
+    // python: test_is_active_flag
     const cm = freshCm();
     addSa(cm, "team");
     cm.addAccount("personal", { type: "oauth_browser", region: "us" });
@@ -459,7 +495,8 @@ describe("TestListAccounts", () => {
     expect(byName.get("personal")?.is_active).toBe(false);
   });
 
-  it("test_referenced_by_targets", () => {
+  it("lists the targets that reference each account", () => {
+    // python: test_referenced_by_targets
     const cm = freshCm();
     addSa(cm);
     cm.addTarget("ecom", { account: "x", project: "3018488" });
@@ -472,22 +509,26 @@ describe("TestListAccounts", () => {
   });
 });
 
-describe("TestRemoveAccount", () => {
-  it("test_remove_unused", () => {
+describe("ConfigManager.removeAccount", () => {
+  // python: TestRemoveAccount
+  it("removes an unreferenced account and returns no orphans", () => {
+    // python: test_remove_unused
     const cm = freshCm();
     addSa(cm);
     expect(cm.removeAccount("x")).toStrictEqual([]);
     expect(cm.listAccounts()).toStrictEqual([]);
   });
 
-  it("test_remove_referenced_without_force_raises", () => {
+  it("raises AccountInUseError when targets reference the account", () => {
+    // python: test_remove_referenced_without_force_raises
     const cm = freshCm();
     addSa(cm);
     cm.addTarget("ecom", { account: "x", project: "3018488" });
     expect(() => cm.removeAccount("x")).toThrow(AccountInUseError);
   });
 
-  it("test_remove_with_force_returns_orphans", () => {
+  it("returns the orphaned target names when forced", () => {
+    // python: test_remove_with_force_returns_orphans
     const cm = freshCm();
     addSa(cm);
     cm.addTarget("ecom", { account: "x", project: "3018488" });
@@ -498,7 +539,8 @@ describe("TestRemoveAccount", () => {
     ]);
   });
 
-  it("test_remove_active_account_clears_active_block", () => {
+  it("clears the active block when the active account is removed", () => {
+    // python: test_remove_active_account_clears_active_block
     const cm = freshCm();
     addSa(cm);
     cm.setActive({ account: "x", workspace: 42 });
@@ -509,7 +551,8 @@ describe("TestRemoveAccount", () => {
     expect(active.workspace ?? null).toBeNull();
   });
 
-  it("test_remove_non_active_account_preserves_active_block", () => {
+  it("keeps the active block when another account is removed", () => {
+    // python: test_remove_non_active_account_preserves_active_block
     const cm = freshCm();
     cm.addAccount("active_one", {
       type: "service_account",
@@ -534,7 +577,8 @@ describe("TestRemoveAccount", () => {
   });
 });
 
-describe("TestFixtureLoad", () => {
+describe("ConfigManager loading the fixture configs", () => {
+  // python: TestFixtureLoad
   // Fixture TOML carried VERBATIM from tests/fixtures/configs/ (packet
   // §0.4 — read-side locks over the exact Python bytes).
   function loadFixture(name: string): ConfigManager {
@@ -548,7 +592,8 @@ describe("TestFixtureLoad", () => {
     return new ConfigManager({ configPath: dst });
   }
 
-  it("test_simple", () => {
+  it("reads the single-account fixture", () => {
+    // python: test_simple
     const cm = loadFixture("simple.toml");
     const accounts = cm.listAccounts();
     expect(accounts).toHaveLength(1);
@@ -559,7 +604,8 @@ describe("TestFixtureLoad", () => {
     expect(cm.getAccount("demo-sa").default_project).toBe("3713224");
   });
 
-  it("test_multi", () => {
+  it("reads the multi-account fixture with targets", () => {
+    // python: test_multi
     const cm = loadFixture("multi.toml");
     const accounts = new Map(cm.listAccounts().map((a) => [a.name, a]));
     expect(accounts.get("team")?.type).toBe("service_account");
@@ -571,8 +617,10 @@ describe("TestFixtureLoad", () => {
   });
 });
 
-describe("TestSettingsCustomHeader", () => {
-  it("test_custom_header_round_trip", () => {
+describe("ConfigManager custom header setting", () => {
+  // python: TestSettingsCustomHeader
+  it("round-trips the custom header through the file", () => {
+    // python: test_custom_header_round_trip
     const cm = freshCm();
     cm.setCustomHeader({ name: "X-Mixpanel-Cluster", value: "internal-1" });
     const cm2 = new ConfigManager({ configPath: cm.configPath });
@@ -582,14 +630,17 @@ describe("TestSettingsCustomHeader", () => {
     ]);
   });
 
-  it("test_get_custom_header_when_absent", () => {
+  it("returns null when no custom header is set", () => {
+    // python: test_get_custom_header_when_absent
     const cm = freshCm();
     expect(cm.getCustomHeader()).toBeNull();
   });
 });
 
-describe("TestMutateTransaction", () => {
-  it("test_single_write_per_transaction", () => {
+describe("ConfigManager.transaction", () => {
+  // python: TestMutateTransaction
+  it("writes the file once per transaction", () => {
+    // python: test_single_write_per_transaction
     const dir = makeTempDir(cleanups);
     const path = join(dir, "config.toml");
     let writes = 0;
@@ -614,7 +665,8 @@ describe("TestMutateTransaction", () => {
     expect(writes).toBe(1);
   });
 
-  it("test_aborted_transaction_does_not_write", () => {
+  it("leaves the file untouched when the transaction throws", () => {
+    // python: test_aborted_transaction_does_not_write
     const cm = freshCm();
     addSa(cm);
     const original = readFileSync(cm.configPath);
@@ -628,7 +680,8 @@ describe("TestMutateTransaction", () => {
     expect(cm.getActive().account ?? null).toBeNull();
   });
 
-  it("test_multi_call_atomicity_on_validation_failure", () => {
+  it("rolls back every step when a later step fails validation", () => {
+    // python: test_multi_call_atomicity_on_validation_failure
     const cm = freshCm();
     cm.addAccount("x", {
       type: "service_account",
@@ -649,7 +702,8 @@ describe("TestMutateTransaction", () => {
     expect(cm2.getAccount("x").default_project).toBe("123");
   });
 
-  it("test_legacy_v2_blocks_block_writes_no_partial_persist", () => {
+  it("refuses to write over legacy v2 account blocks", () => {
+    // python: test_legacy_v2_blocks_block_writes_no_partial_persist
     const dir = makeTempDir(cleanups);
     const p = join(dir, "config.toml");
     writeFileSync(
@@ -668,20 +722,26 @@ describe("TestMutateTransaction", () => {
   });
 });
 
-describe("TestSymlinkRejection", () => {
-  it.skipIf(!POSIX)("test_symlink_config_raises_configerror", () => {
-    const dir = makeTempDir(cleanups);
-    const attacker = join(dir, "attacker.toml");
-    writeFileSync(attacker, '[active]\naccount = "evil"\n');
-    chmodSync(attacker, 0o600);
-    const link = join(dir, "config.toml");
-    symlinkSync(attacker, link);
-    const cm = new ConfigManager({ configPath: link });
-    expect(() => cm.listAccounts()).toThrow(ConfigError);
-    expect(() => cm.listAccounts()).toThrow(/symlink/);
-  });
+describe("ConfigManager symlink rejection", () => {
+  // python: TestSymlinkRejection
+  it.skipIf(!POSIX)(
+    "raises ConfigError when the config path is a symlink",
+    () => {
+      // python: test_symlink_config_raises_configerror
+      const dir = makeTempDir(cleanups);
+      const attacker = join(dir, "attacker.toml");
+      writeFileSync(attacker, '[active]\naccount = "evil"\n');
+      chmodSync(attacker, 0o600);
+      const link = join(dir, "config.toml");
+      symlinkSync(attacker, link);
+      const cm = new ConfigManager({ configPath: link });
+      expect(() => cm.listAccounts()).toThrow(ConfigError);
+      expect(() => cm.listAccounts()).toThrow(/symlink/);
+    },
+  );
 
-  it.skipIf(!POSIX)("test_dangling_symlink_config_still_rejected", () => {
+  it.skipIf(!POSIX)("raises ConfigError for a dangling config symlink", () => {
+    // python: test_dangling_symlink_config_still_rejected
     const dir = makeTempDir(cleanups);
     const link = join(dir, "config.toml");
     symlinkSync(join(dir, "does-not-exist.toml"), link);
@@ -693,8 +753,10 @@ describe("TestSymlinkRejection", () => {
 
 // tests/unit/test_042_edge_cases.py::TestConfigManagerEdgeCases :459
 // (inbound deferral — translated against the real node ConfigManager).
-describe("TestConfigManagerEdgeCases (test_042_edge_cases.py:459)", () => {
-  it("test_legacy_v2_config_no_longer_decodes_as_accounts", () => {
+describe("ConfigManager edge cases", () => {
+  // python: test_042_edge_cases.py::TestConfigManagerEdgeCases
+  it("reads a legacy config_version = 2 file as having no accounts", () => {
+    // python: test_legacy_v2_config_no_longer_decodes_as_accounts
     const dir = makeTempDir(cleanups);
     const p = join(dir, "config.toml");
     writeFileSync(p, "config_version = 2\n");
@@ -705,7 +767,8 @@ describe("TestConfigManagerEdgeCases (test_042_edge_cases.py:459)", () => {
     expect(cm.listAccounts()).toStrictEqual([]);
   });
 
-  it.skipIf(!POSIX)("test_file_permissions_under_loose_umask", () => {
+  it.skipIf(!POSIX)("writes the config 0o600 under a loose umask", () => {
+    // python: test_file_permissions_under_loose_umask
     const oldUmask = process.umask(0o022);
     try {
       const dir = makeTempDir(cleanups);
@@ -717,7 +780,8 @@ describe("TestConfigManagerEdgeCases (test_042_edge_cases.py:459)", () => {
     }
   });
 
-  it("test_set_active_idempotent", () => {
+  it("setActive is idempotent", () => {
+    // python: test_set_active_idempotent
     const cm = freshCm();
     addSa(cm, "team");
     cm.setActive({ account: "team" });
@@ -728,7 +792,7 @@ describe("TestConfigManagerEdgeCases (test_042_edge_cases.py:459)", () => {
 
 // TS-only (CLEANUP-PLAN 8.5): the parent-dir 0o700 tighten applies to
 // the default `~/.mp` only; a custom `configPath` parent keeps its mode.
-describe("parent directory mode on write (CLEANUP-PLAN 8.5)", () => {
+describe("parent directory mode on write", () => {
   it.skipIf(!POSIX)(
     "writeRaw leaves a custom parent directory's mode alone; file is still 0o600",
     () => {
@@ -765,7 +829,7 @@ describe("parent directory mode on write (CLEANUP-PLAN 8.5)", () => {
 // (`config.py` `except OSError`); the pre-fix TS `readRaw`
 // rethrew errno-bearing probe failures uncoded (only
 // CredentialPathError was wrapped).
-describe("B8-ARB-A SEM-F6 probe errno-wrap lock", () => {
+describe("ConfigManager symlink-probe errno wrapping", () => {
   it.skipIf(!POSIX || process.getuid?.() === 0)(
     "config under an unreadable parent dir raises ConfigError, not a raw errno error",
     () => {

@@ -1,10 +1,6 @@
-// B9-R2 (b9-packets.md §1.3 item 4 / §3.5.2): re-run of the PKCE RFC
-// 7636 Appendix-B vector + the 86/43 length locks THROUGH THE BROWSER
-// ENTRY POINT (`packages/browser/src/index.ts`) — locks the re-export
-// chain per the B8 outbound row "PKCE RFC 7636 vector rows re-translate
-// against WebCrypto". The exhaustive 10-assertion suite lives once, at
-// the core-owned node path (`packages/node/test/pkce.test.ts` —
-// single implementation ⇒ single exhaustive lock, R10.8).
+// PKCE through the browser entry point: the RFC 7636 Appendix B vector and
+// the 86/43 length locks over the re-export chain. The exhaustive suite
+// lives once, in packages/node/test/pkce.test.ts.
 
 import { describe, expect, it } from "vitest";
 

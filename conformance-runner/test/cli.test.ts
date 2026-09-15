@@ -1,5 +1,5 @@
-// CLI tests (src/cli.ts, task TS-5): argument parsing and a full-corpus
-// smoke run of main() (design D12 reporting CLI).
+// CLI (src/cli.ts): argument parsing and a full-corpus smoke run of main().
+
 import { describe, expect, it, vi } from "vitest";
 
 import { main, parseArgs } from "../src/cli.js";
@@ -27,7 +27,7 @@ describe("parseArgs", () => {
 });
 
 describe("main", () => {
-  it("replays the committed snapshot: full corpus green — zero failures, ZERO UNPORTED (B8 gate terminal checkpoint)", async () => {
+  it("replays the committed snapshot with zero failures and zero UNPORTED", async () => {
     const stdout: string[] = [];
     const outSpy = vi
       .spyOn(process.stdout, "write")

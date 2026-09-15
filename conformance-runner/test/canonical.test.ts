@@ -1,6 +1,6 @@
-// Unit tests for the D6 canonicalizer. These pin the TS implementation to
-// the normative D6 rules; cross-language parity is verified separately by
-// the shared canonical-selftest.json suite (canonical-selftest.test.ts).
+// Unit tests for the canonicalizer; cross-language parity is verified
+// separately by the shared canonical-selftest.json suite.
+
 import { describe, expect, it } from "vitest";
 
 import {

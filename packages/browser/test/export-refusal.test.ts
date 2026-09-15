@@ -1,12 +1,7 @@
-// Layer-3 suite for the Export-API browser exclusion (b9-packets.md
-// §2.4; contract arbiter plan §4.3 tier table: "Export is Node-only" —
-// the D2 spike found data.mixpanel.com / data-eu / data-in serve NO
-// CORS headers, so browser calls are dead on arrival). The exclusion
-// is enforced at the TRANSPORT: the factory wraps the injected fetch
-// with a guard that refuses any request to an export-host origin with
-// a coded BrowserUnsupportedError BEFORE any network attempt — one
-// documented error instead of an opaque CORS TypeError.
-// R5: assertions key on the CODE.
+// Export API exclusion in the browser: the export hosts serve no CORS
+// headers, so the factory wraps the injected fetch with a guard that refuses
+// export-host origins with a coded BrowserUnsupportedError before any
+// network attempt. No Python twin; assertions key on the code.
 
 import { describe, expect, it } from "vitest";
 
@@ -48,7 +43,7 @@ const EXPORT_ORIGINS: string[] = [...ENDPOINTS.values()].map(
   (table) => new URL(table.get("export")!).origin,
 );
 
-describe("§2.4 (b) — every export host is refused with BROWSER_EXPORT_UNSUPPORTED", () => {
+describe("every export host is refused with BROWSER_EXPORT_UNSUPPORTED", () => {
   it("the region table yields the three known export origins", () => {
     expect(EXPORT_ORIGINS).toHaveLength(3);
     expect(new Set(EXPORT_ORIGINS)).toStrictEqual(
@@ -81,7 +76,7 @@ describe("§2.4 (b) — every export host is refused with BROWSER_EXPORT_UNSUPPO
   );
 });
 
-describe("§2.4 (a) — Query-host and App-host requests pass through untouched", () => {
+describe("Query-host and App-host requests pass through untouched", () => {
   it("Query-host traffic flows (getEvents)", async () => {
     const transport = fakeTransport(() => ({ status: 200, json: [] }));
     const ws = makeWorkspace(transport);
@@ -103,7 +98,7 @@ describe("§2.4 (a) — Query-host and App-host requests pass through untouched"
   });
 });
 
-describe("§2.4 (c) — the guard wraps WHATEVER fetch the caller injected (R2.4 preserved)", () => {
+describe("the guard wraps whatever fetch the caller injected", () => {
   it("allowed requests reach the injected double; refused ones never do", async () => {
     const transport = fakeTransport(() => ({ status: 200, json: [] }));
     const ws = makeWorkspace(transport);
@@ -180,7 +175,7 @@ async function requestError(
   }
 }
 
-describe("AIE-926 — the export guard evaluates the EFFECTIVE endpoint table", () => {
+describe("the export guard evaluates the effective endpoint table", () => {
   it("no overrides: the effective export base IS a live origin and is refused", async () => {
     const transport = fakeTransport(() => ({ status: 200, json: {} }));
     const ws = makeWorkspace(transport);

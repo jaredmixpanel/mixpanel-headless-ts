@@ -1,12 +1,6 @@
-// Layer-3 suite for the service-account Basic-auth runtime refusal —
-// EVERY enumerated ingress path (b9-packets.md §2.3 table; contract
-// arbiter R9.3: "Service-account Basic auth refused at runtime in
-// browser builds with an explanatory error"). No Python twin exists —
-// Python happily serves service accounts everywhere; the refusal is a
-// browser-build policy (plan §4.3 Tier C note: Basic credentials are
-// long-lived secrets that must not ship to a browser origin, even
-// though CORS would technically permit the calls).
-// R5: every assertion keys on the CODE, never message text.
+// Service-account Basic auth is refused at runtime on every browser ingress
+// path (browser-only policy: long-lived secrets must not ship to a browser
+// origin). No Python twin; every assertion keys on the error code.
 
 import { describe, expect, it } from "vitest";
 
@@ -45,7 +39,7 @@ function serviceAccountSession(): Session {
   };
 }
 
-describe("§2.3 path 1 — createBrowserWorkspace({session}) with an SA session", () => {
+describe("createBrowserWorkspace({session}) with a service-account session", () => {
   it("throws BROWSER_SERVICE_ACCOUNT_REFUSED before any client construction", () => {
     const transport = fakeTransport(() => ({ status: 200, json: {} }));
     let thrown: unknown;
@@ -75,7 +69,7 @@ describe("§2.3 path 1 — createBrowserWorkspace({session}) with an SA session"
 // completeLogin take no Account at all) is type-level too and is documented
 // in the redirect-flow module header; no fixture here.
 
-describe("§2.3 path 3 — createBrowserWorkspaceFromStore over a store holding SA creds", () => {
+describe("createBrowserWorkspaceFromStore over a store holding service-account credentials", () => {
   it("refuses a persisted record whose type is service_account (out-of-band write)", async () => {
     const store = new InMemoryCredentialStore();
     store.set(
@@ -101,7 +95,7 @@ describe("§2.3 path 3 — createBrowserWorkspaceFromStore over a store holding 
   });
 });
 
-describe("§2.3 path 4 — session switching on a browser-built facade", () => {
+describe("session switching on a browser-built facade", () => {
   it("client.use({account: SA}) is refused by the browser guard (in-memory replacement path)", async () => {
     const transport = fakeTransport(() => ({ status: 200, json: {} }));
     const ws = createBrowserWorkspace({
@@ -129,7 +123,7 @@ describe("§2.3 path 4 — session switching on a browser-built facade", () => {
     expect(ws.client.projectId).toBe("67890");
   });
 
-  it("Workspace.use({account}) cannot fetch a config SA — resolver seams stay unported in browser (R9.4)", async () => {
+  it("Workspace.use({account}) cannot fetch a config service account: resolver seams stay unported in the browser", async () => {
     // The browser factory passes NO sources/seams: `use(account=...)`
     // re-resolution hits the UNPORTED_RESOLVER_SEAM defaults and can
     // never produce a service account (b9-packets.md §2.3 row 4
@@ -148,7 +142,7 @@ describe("§2.3 path 4 — session switching on a browser-built facade", () => {
   });
 });
 
-describe("§2.3 path 6 (pair-B FB-1) — clients DERIVED via withProject keep the SA guard", () => {
+describe("clients derived via withProject keep the service-account guard", () => {
   // Pair-B blind review (b9-reviewB-threat.md F1 / b9-reviewB-e2e.md F1,
   // both reproduced by the arbiter): `withProject` returns a fresh core
   // client, so without recursion the §2.3 path-4 guard is bypassed and
@@ -201,7 +195,7 @@ describe("§2.3 path 6 (pair-B FB-1) — clients DERIVED via withProject keep th
   });
 });
 
-describe("§2.3 path 7 (pair-B FB-2) — no raw Workspace constructor in the browser entry", () => {
+describe("no raw Workspace constructor in the browser entry", () => {
   // Pair-B blind review (b9-reviewB-threat.md F2, reproduced): a VALUE
   // re-export of core `Workspace` let `new Workspace({session: SA})`
   // bypass both the SA gate and the export-refusing fetch wrap. The

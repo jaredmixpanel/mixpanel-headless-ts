@@ -1,25 +1,8 @@
-// Layer-3 translation of
-// `tests/unit/test_workspace_init.py::TestBridgeTokenMaterialization`
-// — the inbound B7 deferral (`b7-packets.md` §7; b8-packets.md
-// §3.3 row 8).
-//
-// HOME DEVIATION FROM THE PACKET ROW (disclosed, shard notes): the
-// packet places this in `packages/core/test/workspace/
-// workspace-init.test.ts`, but the repo's eslint core-purity boundary
-// (`eslint.config.js:47-75`) covers ALL of `packages/core/**/*.ts`
-// including tests — the on-disk fixture setup (node:fs, process.env)
-// cannot live there. The class is translated HERE over the REAL node
-// bridge/env/config wiring; the core file's deferral-header row is
-// dropped and now cites this home (header rule: zero open deferrals).
-//
-// Python's `Workspace()` constructor performs the bridge-token
-// materialization side effect (`workspace.py`); the node twin
-// is `loadBridgeForStartup()` (bridge.ts), composed into the SHIPPED
-// startup sources by `createNodeWorkspaceSources()` (auth-effects.ts —
-// B8-ARB-A SEM-F1 fix, b8-reviewA-resolution.md). The first class
-// drives the mechanism directly; the SEM-F1 class below locks the
-// default composition end-to-end through the REAL resolver chain
-// (`OnDiskTokenResolver`).
+// Bridge token materialization on node startup. Mirrors
+// tests/unit/test_workspace_init.py::TestBridgeTokenMaterialization over the
+// real bridge/env/config wiring (it needs node:fs, so it lives here rather
+// than in core); additive: the default `createNodeWorkspaceSources()`
+// composition materializes end-to-end through the real resolver chain.
 
 import {
   chmodSync,
@@ -72,8 +55,10 @@ function isoIn(hours: number): string {
     .replace(/\.\d{3}Z$/, "+00:00");
 }
 
-describe("TestBridgeTokenMaterialization (test_workspace_init.py:167)", () => {
-  it("test_bridge_overwrites_stale_on_disk_tokens", () => {
+describe("bridge token materialization", () => {
+  // python: test_workspace_init.py::TestBridgeTokenMaterialization
+  it("overwrites stale on-disk tokens with the bridge's", () => {
+    // python: test_bridge_overwrites_stale_on_disk_tokens
     const accountName = "personal";
     const accountsDir = join(home, ".mp", "accounts", accountName);
     mkdirSync(accountsDir, { recursive: true, mode: 0o700 });
@@ -145,7 +130,7 @@ describe("TestBridgeTokenMaterialization (test_workspace_init.py:167)", () => {
     expect(onDisk["expires_at"]).toBe(freshExpires);
   });
 
-  it("materialized payload flows through the REAL resolver chain (packet §3.3 row 8)", async () => {
+  it("the materialized payload flows through the real resolver chain", async () => {
     // The bearer downstream of materialization comes from
     // OnDiskTokenResolver over the freshly-written per-account file —
     // the Cowork courier contract end-to-end.
@@ -195,7 +180,7 @@ describe("TestBridgeTokenMaterialization (test_workspace_init.py:167)", () => {
 // construction); `createNodeResolverSources()` stays PURE (in-session
 // `use()` re-resolution must never clobber tokens refreshed mid-session
 // with a stale bridge payload — B8-N2-notes.md disclosure #1).
-describe("B8-ARB-A SEM-F1: default node workspace composition materializes bridge tokens", () => {
+describe("default node workspace composition materializes bridge tokens", () => {
   /** Write a fresh oauth_browser bridge and point MP_AUTH_FILE at it. */
   function seedBridge(accountName: string): string {
     const bridgePath = join(home, "bridge.json");
@@ -247,7 +232,7 @@ describe("B8-ARB-A SEM-F1: default node workspace composition materializes bridg
     );
   });
 
-  it("createNodeResolverSources() stays PURE — no materialization side effect (N2 disclosure #1 split)", () => {
+  it("createNodeResolverSources() stays pure with no materialization side effect", () => {
     const tokensPath = seedBridge("personal");
 
     const sources = createNodeResolverSources({

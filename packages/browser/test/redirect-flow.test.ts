@@ -1,20 +1,8 @@
-// Layer-3 suite for the browser redirect PKCE flow (b9-packets.md
-// §3.2 / §3.4). Contract arbiters: `flow.py` for every twinned
-// behavior (region gate `flow.py`; exchange form fields
-// `flow.py`; network-error rows `test_auth_flow.py`;
-// region URLs `test_auth_flow.py:759` + validation `:984`), and
-// R9.3 / plan §4.3 for the redirect-shape adaptation (begin/complete
-// split, pending record, ALWAYS-persist posture) — no Python twin
-// exists for those branches, headers cite the contract instead
-// (phase2-audit A2 style).
-//
-// Browser-inapplicable Python classes are EXCLUDED here with cites
-// (§3.4 dispositions): TestOAuthFlowLogin and
-// TestOAuthFlowPasteFallback — callback server / port probing /
-// webbrowser / stdin are node-only surfaces, translated at B8;
-// TestOAuthFlowRefresh and TestOAuthFlowGetValidToken —
-// browser v1 has no refresh surface (§2.2 disposition, Phase-4 ledger
-// row 8).
+// The browser redirect PKCE flow (beginLogin / completeLogin). Where a
+// Python twin exists, mixpanel_headless._internal.auth.flow rules (region
+// gate, exchange form fields, network-error and region-URL rows of
+// tests/unit/test_auth_flow.py); the pending-record and always-persist
+// branches are browser-only contract. Login/paste/refresh classes are node-only.
 
 import { describe, expect, it } from "vitest";
 
@@ -134,7 +122,7 @@ describe("beginLogin", () => {
     },
   );
 
-  it("persists the pending record with the R11.9 tokens-twin created_at shape", async () => {
+  it("persists the pending record with the tokens.json created_at shape", async () => {
     const store = new InMemoryCredentialStore();
     const result = await begin(store, cannedIdp());
     const raw = store.get(CREDENTIAL_KEYS.pendingLogin("us"));
@@ -216,7 +204,7 @@ describe("beginLogin", () => {
 });
 
 describe("completeLogin", () => {
-  it("exchanges the code with the five verbatim form fields (`flow.py:428-434`)", async () => {
+  it("exchanges the code with the five verbatim form fields", async () => {
     const store = new InMemoryCredentialStore();
     const transport = cannedIdp();
     const { state } = await begin(store, transport);
@@ -252,7 +240,7 @@ describe("completeLogin", () => {
     expect(tokens.expires_at).toBe("2026-01-15T11:30:00+00:00");
   });
 
-  it("ALWAYS persists tokens under the region key in the R11.9 writer shape", async () => {
+  it("always persists tokens under the region key in the tokens.json writer shape", async () => {
     const store = new InMemoryCredentialStore();
     const transport = cannedIdp();
     const { state } = await begin(store, transport);
@@ -271,7 +259,7 @@ describe("completeLogin", () => {
     expect(payload["expires_at"]).toBe("2026-01-15T11:30:00+00:00");
   });
 
-  it("round-trips into createBrowserWorkspaceFromStore (§3.6 R1+R2 integration lock)", async () => {
+  it("round-trips into createBrowserWorkspaceFromStore", async () => {
     const store = new InMemoryCredentialStore();
     const transport = cannedIdp();
     const { state } = await begin(store, transport);
@@ -382,8 +370,8 @@ describe("completeLogin", () => {
     },
   );
 
-  describe("pair-B fixes (b9-reviewB-resolution.md — blind-review findings)", () => {
-    it("FB-8: accepts `location.href` with a hash-router fragment (code-first ordering)", async () => {
+  describe("review hardening: fragments, pending-record lifetime, concurrent completion", () => {
+    it("accepts location.href with a hash-router fragment (code-first ordering)", async () => {
       // b9-reviewB-threat.md F8 / b9-reviewB-e2e.md F4: the shared core
       // parser folds the fragment into the last query value (CPython
       // parse_qs parity); the browser adapter must strip the fragment
@@ -401,7 +389,7 @@ describe("completeLogin", () => {
       expect(tokens.token_type).toBe("Bearer");
     });
 
-    it("FB-8: fragment content is NEVER transmitted to the token endpoint (state-first ordering)", async () => {
+    it("never transmits fragment content to the token endpoint (state-first ordering)", async () => {
       const store = new InMemoryCredentialStore();
       const transport = cannedIdp();
       const { state } = await begin(store, transport);
@@ -419,7 +407,7 @@ describe("completeLogin", () => {
       expect(tokenRequest?.body).not.toContain("%23session");
     });
 
-    it("FB-5: a pending record older than the default 30-minute lifetime is refused AND consumed", async () => {
+    it("refuses and consumes a pending record older than the default 30-minute lifetime", async () => {
       // b9-reviewB-threat.md F5 / b9-reviewB-e2e.md F6: created_at was
       // written but never read — no TTL.
       const store = new InMemoryCredentialStore();
@@ -444,7 +432,7 @@ describe("completeLogin", () => {
       ).toHaveLength(0);
     });
 
-    it("FB-5: a record within the default lifetime still completes", async () => {
+    it("completes a record within the default lifetime", async () => {
       const store = new InMemoryCredentialStore();
       const transport = cannedIdp();
       const { state } = await begin(store, transport);
@@ -458,7 +446,7 @@ describe("completeLogin", () => {
       expect(tokens.token_type).toBe("Bearer");
     });
 
-    it("FB-5: maxPendingAgeMs is an overridable seam", async () => {
+    it("maxPendingAgeMs is an overridable seam", async () => {
       const store = new InMemoryCredentialStore();
       const transport = cannedIdp();
       const { state } = await begin(store, transport);
@@ -474,7 +462,7 @@ describe("completeLogin", () => {
       ).rejects.toMatchObject({ code: "BROWSER_NO_PENDING_LOGIN" });
     });
 
-    it("FB-6: two concurrent completeLogin calls with the same returnUrl share ONE exchange (React StrictMode twin)", async () => {
+    it("two concurrent completeLogin calls with the same returnUrl share one exchange (React StrictMode)", async () => {
       // b9-reviewB-e2e.md F2: load→parse→delete spans awaits, so both
       // concurrent calls redeemed the code (2 token POSTs; one rejects
       // against a single-use-code IdP).
@@ -500,7 +488,7 @@ describe("completeLogin", () => {
       ).toHaveLength(1);
     });
 
-    it("FB-6: a concurrent call with a DIFFERENT returnUrl waits, then fails clean (no second exchange)", async () => {
+    it("a concurrent call with a different returnUrl waits, then fails clean without a second exchange", async () => {
       const store = new InMemoryCredentialStore();
       const transport = cannedIdp();
       const { state } = await begin(store, transport);
@@ -531,7 +519,8 @@ describe("completeLogin", () => {
     });
   });
 
-  describe("network-error rows (test_auth_flow.py:802 exchange rows)", () => {
+  describe("network errors", () => {
+    // python: test_auth_flow.py::TestOAuthFlowNetworkErrors
     /**
      * Begin a login and complete it against the given token-endpoint
      * behavior.

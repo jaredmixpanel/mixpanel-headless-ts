@@ -1,20 +1,8 @@
-// B8-ARB-A SEM-F2a (b8-reviewA-resolution.md): Python
-// `OAuthStorage._read_file` catches only the ValueError family
-// (`json.JSONDecodeError, ValueError, UnicodeDecodeError`) plus
-// `CredentialPathError` — an OSError from the
-// credential read (e.g. EACCES on a root-owned 0600 file) PROPAGATES
-// (live CPython probe in the resolution: `load_tokens` on an
-// unreadable file raises PermissionError). The pre-fix TS `#readFile`
-// swallowed every non-CredentialPathError as the corrupt-JSON path,
-// silently reading a permission problem as "no tokens".
-//
-// Mechanism substitution (header-cited): the reachable EACCES fixture
-// (a root-owned file) cannot be built by an unprivileged test, and the
-// permission fixer repairs any non-0600 mode we could set ourselves —
-// so the errno error is injected at the module seam via `vi.mock`
-// (partial: everything else is the real io-utils). This mirrors what a
-// Python `monkeypatch.setattr(io_utils, "read_credential_text", …)`
-// would do.
+// OAuthStorage read path: an errno error from the credential read (for
+// example EACCES) propagates instead of being read as "no tokens" — only the
+// JSON/decode family and CredentialPathError mean "corrupt". No Python twin;
+// an unprivileged test cannot build a root-owned fixture, so the error is
+// injected at the io-utils module seam with `vi.mock`.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -63,7 +51,7 @@ afterEach(() => {
   }
 });
 
-describe("B8-ARB-A SEM-F2a: storage read-path errno errors propagate", () => {
+describe("storage read-path errno errors propagate", () => {
   it("loadTokens: EACCES from the credential read PROPAGATES (never the corrupt-JSON null)", () => {
     const dir = makeTempDir(cleanups);
     const storage = new OAuthStorage({ storageDir: dir });

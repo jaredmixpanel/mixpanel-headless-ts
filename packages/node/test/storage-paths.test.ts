@@ -1,22 +1,8 @@
-// Layer-3 translation of `tests/unit/test_storage.py` (327 lines, 15
-// tests; all 5 classes covered — 13/15 members translated, 2
-// Python-only members cited below — b8-packets.md §3.3 row 2; header
-// wording corrected per B8-ARB-A ASR-F3, `b8-reviewA-resolution.md`).
-//
-// Python's `monkeypatch.setenv("HOME", ...)` isolation translates to a
-// saved/restored `process.env.HOME` (node `os.homedir()` reads `$HOME`
-// at call time on POSIX); every path lives under `mkdtempSync` tmp dirs
-// (packet §7 caution 3 — the real-home guard in `helpers.ts`).
-//
-// PYTHON-ONLY members (header-cited per §3.3 / §2.1 drop):
-// - `TestOAuthStorageSymlinkRejection::
-//   test_check_and_fix_permissions_uses_fchmod_not_chmod` —
-//   fd-flag mechanism probe (fd-flag hardening dropped per plan §4.2 /
-//   R9.2); its lstat-expressible siblings are translated below.
-// - `test_windows_skip_does_not_crash` — probes a
-//   `monkeypatch.delattr(os, "O_NOFOLLOW")` platform shim with no node
-//   analog (the TS no-op branch keys on `process.platform`) — same
-//   citation.
+// storageRoot / accountDir / ensureAccountDir and OAuthStorage symlink
+// rejection. Mirrors tests/unit/test_storage.py; the two fd-flag members
+// (`test_check_and_fix_permissions_uses_fchmod_not_chmod`,
+// `test_windows_skip_does_not_crash`) probe mechanisms node has no analogue
+// for and are not ported.
 
 import {
   chmodSync,
@@ -69,7 +55,8 @@ function recordingLogger(): { logger: StorageLogger; lines: string[] } {
   };
 }
 
-describe("TestAccountDirNameValidation (test_storage.py:26)", () => {
+describe("accountDir name validation", () => {
+  // python: test_storage.py::TestAccountDirNameValidation
   const malicious = [
     "../etc",
     "a/b",
@@ -89,8 +76,9 @@ describe("TestAccountDirNameValidation (test_storage.py:26)", () => {
   ];
 
   it.each(malicious.map((name) => [JSON.stringify(name), name]))(
-    "test_account_dir_rejects_invalid_names[%s]",
+    "rejects %s",
     (_label, name) => {
+      // python: test_account_dir_rejects_invalid_names
       expect(() => accountDir(name)).toThrow(ParamValidationError);
     },
   );
@@ -106,31 +94,33 @@ describe("TestAccountDirNameValidation (test_storage.py:26)", () => {
     "MIXED_Case-123",
   ];
 
-  it.each(valid.map((name) => [name]))(
-    "test_account_dir_accepts_valid_names[%s]",
-    (name) => {
-      const tmp = makeTempDir(cleanups);
-      vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
-      expect(accountDir(name)).toBe(join(tmp, "accounts", name));
-    },
-  );
+  it.each(valid.map((name) => [name]))("accepts %s", (name) => {
+    // python: test_account_dir_accepts_valid_names
+    const tmp = makeTempDir(cleanups);
+    vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
+    expect(accountDir(name)).toBe(join(tmp, "accounts", name));
+  });
 });
 
-describe("TestStorageRoot (test_storage.py:76)", () => {
-  it("test_env_var_overrides_default", () => {
+describe("storageRoot", () => {
+  // python: test_storage.py::TestStorageRoot
+  it("MP_OAUTH_STORAGE_DIR overrides the default", () => {
+    // python: test_env_var_overrides_default
     const tmp = makeTempDir(cleanups);
     vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
     expect(storageRoot()).toBe(tmp);
   });
 
-  it("test_default_is_home_dot_mp", () => {
+  it("defaults to ~/.mp", () => {
+    // python: test_default_is_home_dot_mp
     const tmp = makeTempDir(cleanups);
     vi.stubEnv("MP_OAUTH_STORAGE_DIR", undefined);
     vi.stubEnv("HOME", tmp);
     expect(storageRoot()).toBe(join(tmp, ".mp"));
   });
 
-  it("test_resolves_lazily", () => {
+  it("resolves on every call", () => {
+    // python: test_resolves_lazily
     const tmp = makeTempDir(cleanups);
     vi.stubEnv("MP_OAUTH_STORAGE_DIR", undefined);
     vi.stubEnv("HOME", tmp);
@@ -142,14 +132,17 @@ describe("TestStorageRoot (test_storage.py:76)", () => {
   });
 });
 
-describe("TestAccountDirHonorsStorageRoot (test_storage.py:107)", () => {
-  it("test_account_dir_under_env_var_root", () => {
+describe("accountDir under the storage root", () => {
+  // python: test_storage.py::TestAccountDirHonorsStorageRoot
+  it("lives under the MP_OAUTH_STORAGE_DIR root", () => {
+    // python: test_account_dir_under_env_var_root
     const tmp = makeTempDir(cleanups);
     vi.stubEnv("MP_OAUTH_STORAGE_DIR", join(tmp, "root"));
     expect(accountDir("foo")).toBe(join(tmp, "root", "accounts", "foo"));
   });
 
-  it("test_account_dir_default_under_home_dot_mp", () => {
+  it("defaults to ~/.mp/accounts/<name>", () => {
+    // python: test_account_dir_default_under_home_dot_mp
     const tmp = makeTempDir(cleanups);
     vi.stubEnv("MP_OAUTH_STORAGE_DIR", undefined);
     vi.stubEnv("HOME", tmp);
@@ -157,8 +150,10 @@ describe("TestAccountDirHonorsStorageRoot (test_storage.py:107)", () => {
   });
 });
 
-describe("TestEnsureAccountDir (test_storage.py:126)", () => {
-  it.skipIf(!POSIX)("test_creates_with_mode_0o700", () => {
+describe("ensureAccountDir", () => {
+  // python: test_storage.py::TestEnsureAccountDir
+  it.skipIf(!POSIX)("creates the directory 0o700", () => {
+    // python: test_creates_with_mode_0o700
     const tmp = makeTempDir(cleanups);
     vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
     const path = ensureAccountDir("foo");
@@ -167,7 +162,8 @@ describe("TestEnsureAccountDir (test_storage.py:126)", () => {
     expect(st.mode & 0o7777).toBe(0o700);
   });
 
-  it("test_idempotent", () => {
+  it("is idempotent", () => {
+    // python: test_idempotent
     const tmp = makeTempDir(cleanups);
     vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
     ensureAccountDir("foo");
@@ -175,40 +171,49 @@ describe("TestEnsureAccountDir (test_storage.py:126)", () => {
     expect(statSync(path).isDirectory()).toBe(true);
   });
 
-  it("test_rejects_invalid_name", () => {
+  it("rejects an invalid account name", () => {
+    // python: test_rejects_invalid_name
     const tmp = makeTempDir(cleanups);
     vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
     expect(() => ensureAccountDir("../etc")).toThrow(ParamValidationError);
   });
 });
 
-describe("TestOAuthStorageSymlinkRejection (test_storage.py:158)", () => {
-  it.skipIf(!POSIX)("test_read_symlinked_tokens_returns_none_and_warns", () => {
-    const tmp = makeTempDir(cleanups);
-    vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
-    const attacker = join(tmp, "attacker.json");
-    mkdirSync(tmp, { recursive: true });
-    writeFileSync(attacker, '{"access_token":"stolen"}', { encoding: "utf8" });
-    chmodSync(attacker, 0o600);
-    const { logger, lines } = recordingLogger();
-    const storage = new OAuthStorage({ logger });
-    storage.ensureDir();
-    const target = storage.tokensPath("us");
-    symlinkSync(attacker, target);
+describe("OAuthStorage symlink rejection", () => {
+  // python: test_storage.py::TestOAuthStorageSymlinkRejection
+  it.skipIf(!POSIX)(
+    "loadTokens returns null and warns for a symlinked tokens file",
+    () => {
+      // python: test_read_symlinked_tokens_returns_none_and_warns
+      const tmp = makeTempDir(cleanups);
+      vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
+      const attacker = join(tmp, "attacker.json");
+      mkdirSync(tmp, { recursive: true });
+      writeFileSync(attacker, '{"access_token":"stolen"}', {
+        encoding: "utf8",
+      });
+      chmodSync(attacker, 0o600);
+      const { logger, lines } = recordingLogger();
+      const storage = new OAuthStorage({ logger });
+      storage.ensureDir();
+      const target = storage.tokensPath("us");
+      symlinkSync(attacker, target);
 
-    expect(storage.loadTokens("us")).toBeNull();
-    expect(
-      lines.some(
-        (line) =>
-          line.toLowerCase().includes("symlink") ||
-          line.toLowerCase().includes("refusing"),
-      ),
-    ).toBe(true);
-  });
+      expect(storage.loadTokens("us")).toBeNull();
+      expect(
+        lines.some(
+          (line) =>
+            line.toLowerCase().includes("symlink") ||
+            line.toLowerCase().includes("refusing"),
+        ),
+      ).toBe(true);
+    },
+  );
 
   it.skipIf(!POSIX)(
-    "test_check_and_fix_permissions_does_not_chmod_through_symlink",
+    "does not chmod through a symlink when fixing permissions",
     () => {
+      // python: test_check_and_fix_permissions_does_not_chmod_through_symlink
       const tmp = makeTempDir(cleanups);
       vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
       const attacker = join(tmp, "attacker.json");
@@ -227,24 +232,28 @@ describe("TestOAuthStorageSymlinkRejection (test_storage.py:158)", () => {
     },
   );
 
-  it.skipIf(!POSIX)("test_dangling_symlink_returns_none_and_warns", () => {
-    const tmp = makeTempDir(cleanups);
-    vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
-    const { logger, lines } = recordingLogger();
-    const storage = new OAuthStorage({ logger });
-    storage.ensureDir();
-    const target = storage.tokensPath("us");
-    symlinkSync(join(tmp, "missing.json"), target);
+  it.skipIf(!POSIX)(
+    "loadTokens returns null and warns for a dangling symlink",
+    () => {
+      // python: test_dangling_symlink_returns_none_and_warns
+      const tmp = makeTempDir(cleanups);
+      vi.stubEnv("MP_OAUTH_STORAGE_DIR", tmp);
+      const { logger, lines } = recordingLogger();
+      const storage = new OAuthStorage({ logger });
+      storage.ensureDir();
+      const target = storage.tokensPath("us");
+      symlinkSync(join(tmp, "missing.json"), target);
 
-    expect(storage.loadTokens("us")).toBeNull();
-    expect(
-      lines.some(
-        (line) =>
-          line.toLowerCase().includes("symlink") ||
-          line.toLowerCase().includes("refusing"),
-      ),
-    ).toBe(true);
-  });
+      expect(storage.loadTokens("us")).toBeNull();
+      expect(
+        lines.some(
+          (line) =>
+            line.toLowerCase().includes("symlink") ||
+            line.toLowerCase().includes("refusing"),
+        ),
+      ).toBe(true);
+    },
+  );
 
   // PYTHON-ONLY (fd-flag hardening dropped, plan §4.2 / packet §2.1):
   // test_check_and_fix_permissions_uses_fchmod_not_chmod — the

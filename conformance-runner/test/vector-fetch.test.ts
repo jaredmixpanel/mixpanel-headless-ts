@@ -1,7 +1,7 @@
-// VectorFetch tests (src/vector-fetch.ts, task TS-5): ordered serving,
-// keyed unordered_group serving (each-consumable-once), transport-error
-// native rejection, body_stream chunk-boundary preservation (design
-// D2/D7/D12).
+// VectorFetch (src/vector-fetch.ts): ordered serving, keyed unordered_group
+// serving (each consumable once), transport-error native rejection and
+// body_stream chunk-boundary preservation.
+
 import { describe, expect, it } from "vitest";
 
 import { parseInteractions } from "../src/interactions.js";
@@ -105,7 +105,7 @@ describe("createVectorFetch — unordered groups (keyed serving)", () => {
      "response": {"status": 200, "body": {"file": "b"}}}
   ]`;
 
-  it("serves by (method, path, params) key, not position (D2/D7)", async () => {
+  it("serves by (method, path, params) key, not position", async () => {
     const harness = createVectorFetch(interactionsOf(GROUP_JSON));
     // Request the SECOND recorded member first: keyed serving must hand
     // each URL its own body under async scheduling.

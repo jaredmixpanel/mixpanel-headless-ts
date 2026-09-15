@@ -1,19 +1,9 @@
-// C8(a) corpus-wide codec round-trip sweep — FINAL form (phase2-design
-// C8(a), packet P2-8: the interim not-yet-ported allowlist mechanism is
-// REMOVED — every rich tag in the corpus must be registered and must
-// round-trip; the only exemption left is the named DECODE_GAP below).
-//
-// For every `$type`-tagged object found anywhere in a corpus vector
-// (recursive descent through `call` and `expect`, including inside
-// arrays/objects/nested tags): decode through the codec registry into
-// the real TS instance, encode back, canonical-diff against the
-// original subtree (RAW subtree — no operand normalization, Risk #4).
-//
-// Anti-vacuity (mandatory, arbiter V3): the decoded product must be an
-// `instanceof` the registered core class, and `SecretStr` round-trips
-// must preserve the REVEALED value — a `'**********'` mask appearing in
-// encoded output is a FAIL. The companion raw-payload-retention audit
-// lives in `raw-payload-audit.test.ts`.
+// Corpus-wide codec round-trip sweep: every `$type`-tagged object in any
+// vector decodes through the registry into the real TS instance and
+// re-encodes to a canonical-equal subtree; `instanceof` and revealed-Secret
+// checks keep the sweep from passing vacuously. The only exemption is the
+// named DECODE_GAP below.
+
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -308,7 +298,7 @@ function assertRealInstance(entry: TaggedNode, decoded: unknown): void {
   }
 }
 
-describe("C8(a) codec round-trip sweep", () => {
+describe("codec round-trip sweep", () => {
   it("finds tagged payloads to exercise (sweep is not vacuous)", () => {
     expect(roundTrippable.length).toBeGreaterThan(0);
     // The two P2-4 behavioral targets are exercised, per the corpus

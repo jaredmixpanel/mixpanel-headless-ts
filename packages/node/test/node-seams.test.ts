@@ -1,8 +1,6 @@
-// B8-N1 seam locks for the two thin node wirings (b8-packets.md §2.1
-// rows 3-4): `createNodeEnv` (call-time `process.env` reads — packet §7
-// caution 16) and `nodeReadFile` (the W7-D1 `Path(...).read_bytes()`
-// twin, `workspace.py` — plain read, NO credential hardening: a
-// user-supplied CSV, not a credential file).
+// The two thin node wirings: `createNodeEnv` (process.env read at call time)
+// and `nodeReadFile` (the plain `Path(...).read_bytes()` twin — a
+// user-supplied CSV, not a credential file, so no hardening).
 
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -63,7 +61,7 @@ describe("createNodeEnv", () => {
   });
 });
 
-describe("nodeReadFile (W7-D1)", () => {
+describe("nodeReadFile", () => {
   it("reads bytes from a user-supplied path", async () => {
     const dir = makeTempDir(cleanups);
     const path = join(dir, "table.csv");
