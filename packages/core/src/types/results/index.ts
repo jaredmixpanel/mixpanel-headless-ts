@@ -38,6 +38,7 @@ export {
   TopEvent,
   type TopEventFields,
 } from "./discovery.js";
+export { FlowTreeNode, type FlowTreeNodeFields } from "./flow-tree.js";
 export {
   ActivityFeedResult,
   type ActivityFeedResultFields,
@@ -73,8 +74,6 @@ export {
 export {
   FlowQueryResult,
   type FlowQueryResultFields,
-  FlowTreeNode,
-  type FlowTreeNodeFields,
   FunnelQueryResult,
   type FunnelQueryResultFields,
   QueryResult,

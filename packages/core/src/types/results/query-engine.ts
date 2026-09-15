@@ -9,24 +9,26 @@
  * layouts; `UserQueryResult` five branches + post-frame column
  * reorder; `FlowQueryResult` mode-aware frames + auxiliary
  * `nodes_df`/`edges_df`/`trees_df`).
+ *
+ * `FlowTreeNode` lives in `./flow-tree.ts` and the flow frame builders
+ * in `./flow-graph.ts`; `FlowQueryResult` delegates to them.
  */
 
+import { compareCodeUnits, pythonFloatCoerce } from "../../compat/index.js";
+import type { FlowChartType } from "../literals.js";
 import {
-  compareCodeUnits,
-  pythonFloatCoerce,
-  pythonInt,
-  pythonStrOf,
-} from "../../compat/index.js";
-import { MixpanelHeadlessError } from "../../errors.js";
-import type {
-  FlowAnchorType,
-  FlowChartType,
-  FlowNodeType,
-} from "../literals.js";
+  buildFlowGraph,
+  flowDropOffSummary,
+  flowEdgesRows,
+  type FlowGraph,
+  flowNodesRows,
+  flowTreesRows,
+  safeInt,
+} from "./flow-graph.js";
+import { type AnyTreeNode, FlowTreeNode } from "./flow-tree.js";
 import {
   decodeFail,
   expectArray,
-  expectBool,
   expectFloat,
   expectInt,
   expectNullCache,
@@ -43,49 +45,20 @@ import {
   type Row,
 } from "./result-base.js";
 
-/**
- * Parse a value to int, returning `default_` on failure — mirror of
- * `types._safe_int` (the flows API returns `totalCount` as a string).
- * Python's `warnings.warn` side channel is not ported (out of
- * contract).
- *
- * @param value - Value to parse (typically a numeric string).
- * @param default_ - Fallback when parsing fails. Default: `0`.
- * @returns Parsed integer, or `default_`.
- * @internal
- */
-export function safeInt(value: unknown, default_ = 0): number {
-  if (typeof value === "number" && Number.isInteger(value)) {
-    return value;
-  }
-  if (typeof value === "boolean") {
-    // Python: bool is excluded from the int fast path and warned on.
-    return default_;
-  }
-  if (typeof value === "string") {
-    // Python: try int(value) except ValueError -> default. `pythonInt`
-    // IS the CPython int(str) grammar (underscores, non-ASCII Nd
-    // digits, the CPython numeric-whitespace surround) — the previous
-    // `\s`-regex + parseInt pair diverged on all three plus U+FEFF
-    // (B0-gate RUN.md 2026-08-15). PY_INT_UNSAFE_INTEGER (>2^53-1,
-    // where CPython returns the exact big int) also maps to the
-    // default: R4.5 leaves no faithful numeric representation (the
-    // playbook Discrepancy #6 pattern; the old parseInt path returned
-    // an IMPRECISE number there, which was no more faithful).
-    try {
-      return pythonInt(value);
-    } catch (error) {
-      // Guarded catch (b0-review-resolution F3/A2 pattern): only the
-      // coded parse rejections are the ValueError analog; anything
-      // else propagates.
-      if (error instanceof MixpanelHeadlessError) {
-        return default_;
-      }
-      throw error;
-    }
-  }
-  return default_;
-}
+// TODO(Ω): shim — `FlowTreeNode`/`AnyTreeNode` moved to `./flow-tree.ts`,
+// the graph types and `safeInt` to `./flow-graph.ts`; the frozen root
+// barrel and the translated tests still read them from here.
+export {
+  type FlowGraph,
+  type FlowGraphEdge,
+  type FlowGraphNode,
+  safeInt,
+} from "./flow-graph.js";
+export {
+  type AnyTreeNode,
+  FlowTreeNode,
+  type FlowTreeNodeFields,
+} from "./flow-tree.js";
 
 /**
  * Strip timezone offsets from ISO timestamps — mirror of
@@ -808,451 +781,6 @@ export class RetentionQueryResult {
 }
 
 // ---------------------------------------------------------------------------
-// FlowTreeNode
-// ---------------------------------------------------------------------------
-
-/** Declared fields of {@link FlowTreeNode} (Python field order). */
-export interface FlowTreeNodeFields {
-  /** Event name at this node. */
-  readonly event: string;
-  /** Node type. */
-  readonly type: FlowNodeType;
-  /** Zero-based step number. */
-  readonly step_number: number;
-  /** Users reaching this node. */
-  readonly total_count: number;
-  /** Users dropping off at this node. Default: `0`. */
-  readonly drop_off_count?: number;
-  /** Users converting from this node. Default: `0`. */
-  readonly converted_count?: number;
-  /** Anchor type. Default: `"NORMAL"`. */
-  readonly anchor_type?: FlowAnchorType;
-  /** Whether the node was computed (vs observed). Default: `false`. */
-  readonly is_computed?: boolean;
-  /** Child nodes (Python tuple → ReadonlyArray). Default: `[]`. */
-  readonly children?: readonly FlowTreeNode[];
-  /** Time percentiles from flow start. Default: `{}`. */
-  readonly time_percentiles_from_start?: Readonly<Record<string, unknown>>;
-  /** Time percentiles from the previous step. Default: `{}`. */
-  readonly time_percentiles_from_prev?: Readonly<Record<string, unknown>>;
-}
-
-/** One node of the {@link FlowQueryResult.graph} adjacency object. */
-export interface FlowGraphNode {
-  /** `"{event}@{step}"` — Python's networkx node key. */
-  readonly id: string;
-  /** Zero-based step index. */
-  readonly step: number;
-  /** Event name (`""` when absent). */
-  readonly event: unknown;
-  /** Node type (`""` when absent). */
-  readonly type: unknown;
-  /** `_safe_int(node["totalCount"])`. */
-  readonly count: number;
-  /** Anchor classification (`""` when absent). */
-  readonly anchor_type: unknown;
-}
-
-/** One edge of the {@link FlowQueryResult.graph} adjacency object. */
-export interface FlowGraphEdge {
-  /** Source node id. */
-  readonly source: string;
-  /** Target node id (`"{event}@{targetStep}"`). */
-  readonly target: string;
-  /** `_safe_int(edge["totalCount"])`. */
-  readonly count: number;
-  /** Edge type (`""` when absent). */
-  readonly type: unknown;
-}
-
-/**
- * The plain adjacency object {@link FlowQueryResult.graph} emits — the
- * stand-in for `networkx.DiGraph` (B5-S2 closure of the Phase-2
- * TODO(port)).
- */
-export interface FlowGraph {
-  /** Nodes, in Python's `add_node` order. */
-  readonly nodes: readonly FlowGraphNode[];
-  /** Edges, in Python's `add_edge` order. */
-  readonly edges: readonly FlowGraphEdge[];
-}
-
-/**
- * The parent-linked node {@link FlowTreeNode.toAnytree} emits — the
- * plain-object stand-in for `anytree.AnyNode` (B5-S2 closure of the
- * Phase-2 TODO(port)).
- */
-export interface AnyTreeNode {
-  /** Parent node, or `null` at the root. */
-  readonly parent: AnyTreeNode | null;
-  /** Event name at this node. */
-  readonly event: string;
-  /** Node type. */
-  readonly type: FlowNodeType;
-  /** Zero-based step number. */
-  readonly step_number: number;
-  /** Users reaching this node. */
-  readonly total_count: number;
-  /** Users dropping off at this node. */
-  readonly drop_off_count: number;
-  /** Users converting from this node. */
-  readonly converted_count: number;
-  /** Anchor classification. */
-  readonly anchor_type: string;
-  /** Whether the node is computed. */
-  readonly is_computed: boolean;
-  /** Child nodes (populated during the walk). */
-  readonly children: AnyTreeNode[];
-}
-
-/**
- * One node of a tree-mode flow query — TS port of
- * `types.FlowTreeNode`. `to_anytree()` IS ported (B5-S2) as
- * {@link FlowTreeNode.toAnytree}, emitting the plain
- * {@link AnyTreeNode} tree rather than `anytree.AnyNode` objects.
- */
-export class FlowTreeNode {
-  /** Event name at this node. */
-  readonly event: string;
-
-  /** Node type. */
-  readonly type: FlowNodeType;
-
-  /** Zero-based step number. */
-  readonly step_number: number;
-
-  /** Users reaching this node. */
-  readonly total_count: number;
-
-  /** Users dropping off at this node. */
-  readonly drop_off_count: number;
-
-  /** Users converting from this node. */
-  readonly converted_count: number;
-
-  /** Anchor type. */
-  readonly anchor_type: FlowAnchorType;
-
-  /** Whether the node was computed (vs observed). */
-  readonly is_computed: boolean;
-
-  /** Child nodes (Python tuple → ReadonlyArray). */
-  readonly children: readonly FlowTreeNode[];
-
-  /** Time percentiles from flow start. */
-  readonly time_percentiles_from_start: Readonly<Record<string, unknown>>;
-
-  /** Time percentiles from the previous step. */
-  readonly time_percentiles_from_prev: Readonly<Record<string, unknown>>;
-
-  /**
-   * Create a flow tree node.
-   *
-   * @param fields - Declared fields; Python defaults apply to absent
-   *   optionals.
-   */
-  constructor(fields: FlowTreeNodeFields) {
-    this.event = fields.event;
-    this.type = fields.type;
-    this.step_number = fields.step_number;
-    this.total_count = fields.total_count;
-    this.drop_off_count = fields.drop_off_count ?? 0;
-    this.converted_count = fields.converted_count ?? 0;
-    this.anchor_type = fields.anchor_type ?? "NORMAL";
-    this.is_computed = fields.is_computed ?? false;
-    this.children = fields.children ?? [];
-    this.time_percentiles_from_start = fields.time_percentiles_from_start ?? {};
-    this.time_percentiles_from_prev = fields.time_percentiles_from_prev ?? {};
-  }
-
-  /**
-   * Longest child chain below this node (`0` for a leaf).
-   *
-   * @returns The depth.
-   */
-  get depth(): number {
-    if (this.children.length === 0) {
-      return 0;
-    }
-    return 1 + Math.max(...this.children.map((c) => c.depth));
-  }
-
-  /**
-   * Total nodes in this subtree (including this node).
-   *
-   * @returns The node count.
-   */
-  get node_count(): number {
-    return 1 + this.children.reduce((sum, c) => sum + c.node_count, 0);
-  }
-
-  /**
-   * Leaves in this subtree (`1` for a leaf).
-   *
-   * @returns The leaf count.
-   */
-  get leaf_count(): number {
-    if (this.children.length === 0) {
-      return 1;
-    }
-    return this.children.reduce((sum, c) => sum + c.leaf_count, 0);
-  }
-
-  /**
-   * The parent-linked tree view — TS twin of Python `to_anytree()`
-   * (`types.py:10985-11037`), closed at B5-S2 per the packet §3
-   * instruction ("implement `FlowTreeNode.toAnytree()`-equivalent as a
-   * PLAIN nested-object tree").
-   *
-   * `anytree.AnyNode` has no vendored TS library, so the port emits
-   * {@link AnyTreeNode}: the SAME eight attributes Python copies onto
-   * each `AnyNode`, plus the `parent` back-reference and `children`
-   * array that make the anytree navigation surface (`node.parent`,
-   * `node.children`, `node.path`) reproducible in plain TS.
-   * `RenderTree` and `findall` are library helpers, not data, and have
-   * no twin.
-   *
-   * @returns The root of the parallel tree (`parent === null`).
-   * @example
-   * ```typescript
-   * const at = root.toAnytree();
-   * at.children[0]?.parent === at; // true
-   * ```
-   */
-  toAnytree(): AnyTreeNode {
-    return this.#buildAnytreeNode(null);
-  }
-
-  /**
-   * Recursively build the parallel tree (`_build_anytree_node`,
-   * `types.py:11013-11037`).
-   *
-   * @param parent - The parent node, or `null` for the root.
-   * @returns The node with its children attached.
-   */
-  #buildAnytreeNode(parent: AnyTreeNode | null): AnyTreeNode {
-    const node: AnyTreeNode = {
-      parent,
-      event: this.event,
-      type: this.type,
-      step_number: this.step_number,
-      total_count: this.total_count,
-      drop_off_count: this.drop_off_count,
-      converted_count: this.converted_count,
-      anchor_type: this.anchor_type,
-      is_computed: this.is_computed,
-      children: [],
-    };
-    for (const child of this.children) {
-      // Python attaches by passing `parent=node`; anytree mutates the
-      // parent's `children` tuple. The TS twin pushes explicitly.
-      node.children.push(child.#buildAnytreeNode(node));
-    }
-    return node;
-  }
-
-  /**
-   * `converted_count / total_count` (`0.0` when `total_count == 0`).
-   *
-   * @returns The conversion rate.
-   */
-  get conversion_rate(): number {
-    if (this.total_count === 0) {
-      return 0.0;
-    }
-    return this.converted_count / this.total_count;
-  }
-
-  /**
-   * `drop_off_count / total_count` (`0.0` when `total_count == 0`).
-   *
-   * @returns The drop-off rate.
-   */
-  get drop_off_rate(): number {
-    if (this.total_count === 0) {
-      return 0.0;
-    }
-    return this.drop_off_count / this.total_count;
-  }
-
-  /**
-   * Every root-to-leaf path through this subtree.
-   *
-   * @returns Paths as node lists (a single `[this]` path for a leaf).
-   */
-  allPaths(): ReadonlyArray<readonly FlowTreeNode[]> {
-    if (this.children.length === 0) {
-      return [[this]];
-    }
-    const paths: FlowTreeNode[][] = [];
-    for (const child of this.children) {
-      for (const childPath of child.allPaths()) {
-        paths.push([this, ...childPath]);
-      }
-    }
-    return paths;
-  }
-
-  /**
-   * Every node in this subtree whose event matches.
-   *
-   * @param event - Event name to match.
-   * @returns Matching nodes in preorder.
-   */
-  find(event: string): readonly FlowTreeNode[] {
-    const results: FlowTreeNode[] = [];
-    if (this.event === event) {
-      results.push(this);
-    }
-    for (const child of this.children) {
-      results.push(...child.find(event));
-    }
-    return results;
-  }
-
-  /**
-   * All nodes of this subtree in preorder.
-   *
-   * @returns The flattened node list.
-   */
-  flatten(): readonly FlowTreeNode[] {
-    const result: FlowTreeNode[] = [this];
-    for (const child of this.children) {
-      result.push(...child.flatten());
-    }
-    return result;
-  }
-
-  /**
-   * Serialize for JSON output — byte-shape of Python `to_dict()`
-   * (recursive over `children`).
-   *
-   * @returns The plain dict shape.
-   */
-  toJSON(): Record<string, unknown> {
-    return {
-      event: this.event,
-      type: this.type,
-      step_number: this.step_number,
-      total_count: this.total_count,
-      drop_off_count: this.drop_off_count,
-      converted_count: this.converted_count,
-      anchor_type: this.anchor_type,
-      is_computed: this.is_computed,
-      children: this.children.map((c) => c.toJSON()),
-      time_percentiles_from_start: this.time_percentiles_from_start,
-      time_percentiles_from_prev: this.time_percentiles_from_prev,
-    };
-  }
-
-  /**
-   * ASCII-art rendering of this subtree, byte-identical to Python's
-   * `render()` (box-drawing connectors, `event (total_count)` lines).
-   *
-   * @param _prefix - Accumulated indentation (internal recursion).
-   * @param _isLast - Whether this node is its parent's last child.
-   * @param _isRoot - Whether this node is the render root.
-   * @returns The rendered text (trailing newline included).
-   */
-  render(_prefix = "", _isLast = true, _isRoot = true): string {
-    let line: string;
-    let childPrefix: string;
-    if (_isRoot) {
-      line = `${this.event} (${String(this.total_count)})\n`;
-      childPrefix = "";
-    } else {
-      const connector = _isLast ? "└── " : "├── ";
-      line = `${_prefix}${connector}${this.event} (${String(this.total_count)})\n`;
-      childPrefix = _prefix + (_isLast ? " ".repeat(4) : "│   ");
-    }
-    for (const [i, child] of this.children.entries()) {
-      const isLastChild = i === this.children.length - 1;
-      line += child.render(childPrefix, isLastChild, false);
-    }
-    return line;
-  }
-
-  /**
-   * Strictly decode a recorded payload (recursive over `children`).
-   *
-   * @param raw - The payload.
-   * @returns The reconstructed instance.
-   * @throws ResponseValidationError - On unknown keys or wrong types.
-   * @internal
-   */
-  static fromDict(raw: unknown): FlowTreeNode {
-    const cls = "FlowTreeNode";
-    const payload = expectPayload(raw, cls);
-    rejectUnknownKeys(
-      payload,
-      new Set([
-        "event",
-        "type",
-        "step_number",
-        "total_count",
-        "drop_off_count",
-        "converted_count",
-        "anchor_type",
-        "is_computed",
-        "children",
-        "time_percentiles_from_start",
-        "time_percentiles_from_prev",
-      ]),
-      cls,
-    );
-    return new FlowTreeNode({
-      event: expectStr(payload, "event", cls),
-      type: expectStr(payload, "type", cls) as FlowNodeType,
-      step_number: expectInt(payload, "step_number", cls),
-      total_count: expectInt(payload, "total_count", cls),
-      ...(Object.hasOwn(payload, "drop_off_count")
-        ? { drop_off_count: expectInt(payload, "drop_off_count", cls) }
-        : {}),
-      ...(Object.hasOwn(payload, "converted_count")
-        ? { converted_count: expectInt(payload, "converted_count", cls) }
-        : {}),
-      ...(Object.hasOwn(payload, "anchor_type")
-        ? {
-            anchor_type: expectStr(
-              payload,
-              "anchor_type",
-              cls,
-            ) as FlowAnchorType,
-          }
-        : {}),
-      ...(Object.hasOwn(payload, "is_computed")
-        ? { is_computed: expectBool(payload, "is_computed", cls) }
-        : {}),
-      ...(Object.hasOwn(payload, "children")
-        ? {
-            children: expectArray(payload, "children", cls).map((item) =>
-              FlowTreeNode.fromDict(item),
-            ),
-          }
-        : {}),
-      ...(Object.hasOwn(payload, "time_percentiles_from_start")
-        ? {
-            time_percentiles_from_start: expectRecord(
-              payload,
-              "time_percentiles_from_start",
-              cls,
-            ),
-          }
-        : {}),
-      ...(Object.hasOwn(payload, "time_percentiles_from_prev")
-        ? {
-            time_percentiles_from_prev: expectRecord(
-              payload,
-              "time_percentiles_from_prev",
-              cls,
-            ),
-          }
-        : {}),
-    });
-  }
-}
-
-// ---------------------------------------------------------------------------
 // FlowQueryResult
 // ---------------------------------------------------------------------------
 
@@ -1370,21 +898,13 @@ export class FlowQueryResult {
   }
 
   /**
-   * The directed flow graph — TS twin of Python's `graph` property
-   * (`types.py:11203-11255`), closed at B5-S2 per the packet §3
-   * instruction ("`FlowQueryResult.graph` as a plain adjacency object
-   * (nodes/edges arrays mirroring what Python feeds networkx)").
-   *
-   * `networkx.DiGraph` has no vendored TS library, so the port emits
-   * the adjacency data Python hands to `add_node` / `add_edge`, in the
-   * same order and with the same per-key defaults: node ids are
-   * `"{event}@{step}"`, node attributes are `step` / `event` / `type` /
-   * `count` / `anchor_type`, and edge attributes are `count` / `type`
-   * with the `step_idx + 1` target-step fallback.
+   * The directed flow graph — TS twin of Python's `graph` property, as
+   * the plain `{nodes, edges}` adjacency object {@link buildFlowGraph}
+   * emits in place of `networkx.DiGraph`.
    *
    * Python caches into `_graph_cache`; the TS build is pure and
-   * deterministic, so the codec-visible slot stays `null` (the
-   * Phase-2 caching convention: repeated calls are equal).
+   * deterministic, so the codec-visible slot stays `null` (repeated
+   * calls are equal).
    *
    * @returns The `{nodes, edges}` adjacency object (empty arrays when
    *   `steps` is empty).
@@ -1395,31 +915,7 @@ export class FlowQueryResult {
    * ```
    */
   graph(): FlowGraph {
-    const nodes: FlowGraphNode[] = [];
-    const edges: FlowGraphEdge[] = [];
-    for (const [stepIdx, step] of this.steps.entries()) {
-      for (const node of FlowQueryResult.#stepNodes(step)) {
-        const nodeId = `${pythonStrOf(node["event"] ?? "")}@${String(stepIdx)}`;
-        nodes.push({
-          id: nodeId,
-          step: stepIdx,
-          event: node["event"] ?? "",
-          type: node["type"] ?? "",
-          count: safeInt(node["totalCount"] ?? "0"),
-          anchor_type: node["anchorType"] ?? "",
-        });
-        for (const edge of FlowQueryResult.#nodeEdges(node)) {
-          const targetStep = safeInt(edge["step"] ?? stepIdx + 1, stepIdx + 1);
-          edges.push({
-            source: nodeId,
-            target: `${pythonStrOf(edge["event"] ?? "")}@${String(targetStep)}`,
-            count: safeInt(edge["totalCount"] ?? "0"),
-            type: edge["type"] ?? "",
-          });
-        }
-      }
-    }
-    return { nodes, edges };
+    return buildFlowGraph(this.steps);
   }
 
   /**
@@ -1437,21 +933,6 @@ export class FlowQueryResult {
   }
 
   /**
-   * Nodes of one sankey step dict (`step.get("nodes", [])`).
-   *
-   * @param step - The step dict.
-   * @returns The node dicts.
-   */
-  static #stepNodes(
-    step: Readonly<Record<string, unknown>>,
-  ): ReadonlyArray<Readonly<Record<string, unknown>>> {
-    const nodes = step["nodes"];
-    return Array.isArray(nodes)
-      ? (nodes as ReadonlyArray<Readonly<Record<string, unknown>>>)
-      : [];
-  }
-
-  /**
    * Pre-pandas rows of the Python `nodes_df` body: one row per sankey
    * node with Python's per-key defaults (`totalCount` string parsed
    * via `_safe_int`).
@@ -1459,21 +940,7 @@ export class FlowQueryResult {
    * @returns The rows list.
    */
   toNodesRows(): readonly Row[] {
-    const rows: Row[] = [];
-    for (const [stepIdx, step] of this.steps.entries()) {
-      for (const node of FlowQueryResult.#stepNodes(step)) {
-        rows.push({
-          step: stepIdx,
-          event: node["event"] ?? "",
-          type: node["type"] ?? "",
-          count: safeInt(node["totalCount"] ?? "0"),
-          anchor_type: node["anchorType"] ?? "",
-          is_custom_event: node["isCustomEvent"] ?? false,
-          conversion_rate_change: node["conversionRateChange"] ?? 0.0,
-        });
-      }
-    }
-    return rows;
+    return flowNodesRows(this.steps);
   }
 
   /**
@@ -1494,43 +961,13 @@ export class FlowQueryResult {
   }
 
   /**
-   * Edges of one node dict (`node.get("edges", [])`).
-   *
-   * @param node - The node dict.
-   * @returns The edge dicts.
-   */
-  static #nodeEdges(
-    node: Readonly<Record<string, unknown>>,
-  ): ReadonlyArray<Readonly<Record<string, unknown>>> {
-    const edges = node["edges"];
-    return Array.isArray(edges)
-      ? (edges as ReadonlyArray<Readonly<Record<string, unknown>>>)
-      : [];
-  }
-
-  /**
    * Pre-pandas rows of the Python `edges_df` body: one row per
    * (node, edge) pair.
    *
    * @returns The rows list.
    */
   toEdgesRows(): readonly Row[] {
-    const rows: Row[] = [];
-    for (const [stepIdx, step] of this.steps.entries()) {
-      for (const node of FlowQueryResult.#stepNodes(step)) {
-        for (const edge of FlowQueryResult.#nodeEdges(node)) {
-          rows.push({
-            source_step: stepIdx,
-            source_event: node["event"] ?? "",
-            target_step: safeInt(edge["step"] ?? stepIdx + 1, stepIdx + 1),
-            target_event: edge["event"] ?? "",
-            count: safeInt(edge["totalCount"] ?? "0"),
-            target_type: edge["type"] ?? "",
-          });
-        }
-      }
-    }
-    return rows;
+    return flowEdgesRows(this.steps);
   }
 
   /**
@@ -1557,11 +994,7 @@ export class FlowQueryResult {
    * @returns The rows list.
    */
   toTreesRows(): readonly Row[] {
-    const rows: Row[] = [];
-    for (const [treeIdx, tree] of this.trees.entries()) {
-      FlowQueryResult.#flattenTreeNode(tree, treeIdx, [], rows);
-    }
-    return rows;
+    return flowTreesRows(this.trees);
   }
 
   /**
@@ -1581,38 +1014,6 @@ export class FlowQueryResult {
       "drop_off_count",
       "converted_count",
     ];
-  }
-
-  /**
-   * Preorder tree flattening — mirror of Python
-   * `FlowQueryResult._flatten_tree_node`.
-   *
-   * @param node - Current node.
-   * @param treeIndex - Root index.
-   * @param ancestors - Ancestor event names.
-   * @param rows - Output row accumulator.
-   */
-  static #flattenTreeNode(
-    node: FlowTreeNode,
-    treeIndex: number,
-    ancestors: readonly string[],
-    rows: Row[],
-  ): void {
-    const pathParts = [...ancestors, node.event];
-    rows.push({
-      tree_index: treeIndex,
-      depth: ancestors.length,
-      path: pathParts.join(" > "),
-      event: node.event,
-      type: node.type,
-      step_number: node.step_number,
-      total_count: node.total_count,
-      drop_off_count: node.drop_off_count,
-      converted_count: node.converted_count,
-    });
-    for (const child of node.children) {
-      FlowQueryResult.#flattenTreeNode(child, treeIndex, pathParts, rows);
-    }
   }
 
   /**
@@ -1693,29 +1094,7 @@ export class FlowQueryResult {
    *   no steps).
    */
   dropOffSummary(): Record<string, unknown> {
-    if (this.steps.length === 0) {
-      return {};
-    }
-    const summary: Record<string, unknown> = {};
-    for (const [stepIdx, step] of this.steps.entries()) {
-      let total = 0;
-      let dropoff = 0;
-      for (const node of FlowQueryResult.#stepNodes(step)) {
-        const count = safeInt(node["totalCount"] ?? "0");
-        const nodeType = node["type"] ?? "";
-        total += count;
-        if (nodeType !== "DROPOFF") {
-          for (const edge of FlowQueryResult.#nodeEdges(node)) {
-            if (edge["type"] === "DROPOFF") {
-              dropoff += safeInt(edge["totalCount"] ?? "0");
-            }
-          }
-        }
-      }
-      const rate = total > 0 ? dropoff / total : 0.0;
-      summary[`step_${String(stepIdx)}`] = { total, dropoff, rate };
-    }
-    return summary;
+    return flowDropOffSummary(this.steps);
   }
 
   /**
