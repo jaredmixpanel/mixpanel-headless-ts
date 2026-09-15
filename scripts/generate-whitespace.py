@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate packages/core/src/compat/whitespace.gen.ts (R11.3 / pythonStrip).
+"""Generate packages/core/src/compat/whitespace.gen.ts (the ``pythonStrip`` tables).
 
 Emits two pinned codepoint tables, generated from CPython itself (the
 reference implementation is the oracle):

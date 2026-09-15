@@ -31,7 +31,7 @@ number whose value is integral renders as an integer — ``2.0`` -> ``2``,
 needs a pre-pass (``normalize_numbers`` below, ``float.is_integer()`` ->
 ``int``); JavaScript gets it free, having one number type. The rule closes
 a **reachable** divergence, not a theoretical one: Python
-``bookmark_builders.py:514`` emits ``"filterValue"`` verbatim and
+``mixpanel_headless._internal.bookmark_builders.build_filter_entry`` emits ``"filterValue"`` verbatim and
 ``GroupBy.bucket_size`` accepts a float, so ``Filter.greater_than("age",
 1e15)`` puts a genuine float in params. ``REQUIRED_CORPUS_VECTORS`` pins
 the corpus vector that does exactly that, so the case can never fall out
