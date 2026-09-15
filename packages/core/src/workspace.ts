@@ -1,19 +1,13 @@
 /**
- * The `Workspace` facade — TS port of `mixpanel_headless/workspace.py`.
+ * The `Workspace` facade — one class carrying every public operation of
+ * the Python `Workspace`: queries, discovery, session replays, lifecycle
+ * and `/me`, and the entity CRUD families. The class owns the session,
+ * the wire client and the lazily built services; each member is a thin
+ * delegation into `workspace-members/*` (entity bodies) or
+ * `workspace-query-params.ts` (the param builders), never a
+ * re-implementation of what the client or a service already does.
  *
- * Phase-3 batch B5 splits this file three ways
- * (`docs/history/phase3/design/b5-packets.md` §2): the class skeleton plus
- * the 22 query members (S2), the 12 discovery/lexicon members (S1) and
- * the 10 session-replay members (S3). Each shard owns ONE marked,
- * append-only section; B6 appends its own below them.
- *
- * SEQUENCING NOTE (B5-S1, recorded in `B5-S1-notes.md` §0): the packet
- * assigns the skeleton below to S2, but the orchestrator dispatched S1
- * first against the Phase-1 placeholder. S1 therefore built the §2
- * skeleton to the packet's contract, verbatim, and filled only its own
- * section. S2 EXTENDS this file — its marker is already in place — and
- * owns the `_live_query_service` accessor plus the `query`-bound
- * `_replays_service` accessor that S3 needs.
+ * @see mixpanel_headless.workspace.Workspace
  */
 
 import type { Account } from "./auth/account.js";
@@ -319,25 +313,33 @@ import {
 const DEFAULT_QUERY_LAST_DAYS = 30;
 
 /**
- * Main facade for Mixpanel operations — TS port of
- * `workspace.Workspace` (`workspace.py+`).
+ * Main facade for Mixpanel operations, bound to one resolved
+ * {@link Session}.
  *
- * The B5 constructor takes a RESOLVED {@link Session} only. Python's
- * `account` / `project` / `workspace` / `target` kwargs
- * (`workspace.py`) are the resolver axes, which are batch B7;
- * `use()` is B6-W1.
- *
+ * @remarks
+ * Construct it either with a pre-built `session` (the resolver bypass)
+ * or with the resolver axes `account` / `project` / `workspace` /
+ * `target` plus injected {@link WorkspaceOptions.sources}; the core
+ * package never reads config files or the environment itself, so the
+ * Python-equivalent `Workspace()` with on-disk defaults lives in
+ * `@mixpanel-headless/node`. {@link Workspace.use} swaps axes in place.
  * @example
  * ```typescript
  * const ws = new Workspace({ session });
  * const events = await ws.events();
+ * await ws.use({ project: "123456" });
  * ```
+ * @see mixpanel_headless.workspace.Workspace
  */
 export class Workspace {
   /** The resolved session bound to this facade (`self._session`). */
   #session: Session;
 
-  /** The bound wire client (Python `self._api_client`). @internal */
+  /**
+   * The bound wire client (Python `self._api_client`).
+   *
+   * @internal
+   */
   readonly client: MixpanelClient;
 
   /** Lazily-created discovery service (`self._discovery`). */
@@ -355,28 +357,24 @@ export class Workspace {
   /** `self._account_name` — the MeCache scope, refreshed on `use()`. */
   #accountName: string;
 
-  // NOTE (W1-D2): Python also carries `self._initial_workspace_id`
-  // (`workspace.py:522`), whose ONLY reader is the client-recreation
-  // arm of `_get_api_client()` (`:757-766`) — the arm this port does
-  // not have, because `close()` releases the pool IN PLACE and the
-  // `readonly client` keeps its own pin (R6.2 identity). The field is
-  // therefore deliberately absent rather than dead
-  // (`B6-W1-notes.md` §W1-D2).
+  // Python also carries `self._initial_workspace_id`, read only by the
+  // client-recreation arm of `_get_api_client()`. This port has no such
+  // arm: `close()` releases the pool in place and the `readonly client`
+  // keeps its own pin, so the field is deliberately absent rather than
+  // dead.
 
-  /** The W1-D1 resolution seams (B7 replaces the defaults). */
+  /** The resolution seams `use()` consumes (see {@link ResolverSeams}). */
   readonly #seams: ResolverSeams;
 
   /** Factory for the `/me` cache store handed to each MeService. */
   readonly #meCacheFactory: (accountName: string) => MeCacheStore;
 
   /**
-   * Per-account memo of cache STORES (B7-A1): Python's
-   * `MeCache(account_name=…)` re-reads the same per-account disk file
-   * however many times the lazy `MeService` is rebuilt, so a
-   * `use(project=…)` swap keeps the warm cache
-   * (`TestFacadeResolverWiring::test_resolver_follows_project_swap`).
-   * The in-memory default must share state the same way — the factory
-   * runs once per account name per facade.
+   * Per-account memo of cache stores. Python's `MeCache(account_name=…)`
+   * re-reads the same per-account disk file however many times the lazy
+   * `MeService` is rebuilt, so a `use(project=…)` swap keeps the warm
+   * cache; the in-memory default must share state the same way, so the
+   * factory runs once per account name per facade.
    */
   readonly #meCacheStores = new Map<string, MeCacheStore>();
 
@@ -385,43 +383,41 @@ export class Workspace {
 
   /** The log seam; {@link NOOP_LOGGER} unless the host injected one. */
   readonly #logger: ResolvedWorkspaceLogger;
-  /** The `generate_slug` seam (045-report-links). */
+  /** The `generate_slug` seam of `createReportLink`. */
   readonly #generateSlug: () => string;
 
-  // --- B6-W7 seams (W7 owns; see `WorkspaceOptions.readFile`/`monotonic`) ---
-
-  /** `Path(...).read_bytes()` seam of `uploadLookupTable` (W7-D1). */
+  /** `Path(...).read_bytes()` seam of `uploadLookupTable`. */
   readonly #readFile: (path: string) => Promise<Uint8Array>;
 
-  /** `time.monotonic()` seam (seconds) of the upload poll (W7-D2). */
+  /** `time.monotonic()` seam (seconds) of the upload poll. */
   readonly #monotonic: () => number;
 
   /**
    * Create a workspace facade.
    *
-   * @param options - The resolved session plus the optional injected
-   *   client / seams.
+   * @param options - A resolved session, or the resolver axes plus
+   *   injected sources; optionally an injected client and seams.
+   * @throws {@link ParamValidationError} - `WS1_TARGET_MUTUALLY_EXCLUSIVE`
+   *   when `target` is combined with `account` / `project` / `workspace`.
+   * @throws {@link MixpanelHeadlessError} - `UNPORTED_AUTH_SEAM` when
+   *   neither `session` nor `sources` is given.
+   * @throws {@link ConfigError} - The account or project axis cannot be
+   *   resolved from the sources.
+   * @see mixpanel_headless.workspace.Workspace.__init__
    */
   constructor(options: WorkspaceOptions) {
-    // The WS1 constructor guard fires BEFORE the session/resolver
-    // branch (`workspace.py` — packet §14 Caution 4 order).
+    // The exclusivity guard fires before any resolution side effect, as
+    // in Python.
     guardTargetExclusivity(options);
     let session: Session;
     if (options.session === undefined) {
-      // B7-A1: the resolver constructor kwargs (`workspace.py`)
-      // resolve through `resolveSession(...)` over injected sources
-      // (R9.4). The bridge-token materialization side effect
-      // is B8's (`TestBridgeTokenMaterialization`
-      // stays deferred, `b7-packets.md` §3.4).
       const sources = options.sources;
       if (sources === undefined) {
-        // Core-alone posture (b8-packets.md §4.4): the on-disk default
-        // wiring ships in `packages/node` — Python's `Workspace()` twin
-        // is `new Workspace({ sources: createNodeWorkspaceSources() })`
-        // (the STARTUP sources incl. the `workspace.py`
-        // bridge-token materialization side effect; B8-ARB-A SEM-F1,
-        // `b8-reviewA-resolution.md`). Core stays runtime-agnostic, so
-        // sessionless construction here requires injected sources.
+        // Python's bare `Workspace()` reads the bridge file and config
+        // from disk (and materializes bridge tokens as a side effect).
+        // Core is runtime-agnostic, so that wiring ships in
+        // `@mixpanel-headless/node` (`createNodeWorkspaceSources()`)
+        // and sessionless construction here requires injected sources.
         throw new MixpanelHeadlessError(
           "Workspace construction without `session` requires injected " +
             "`sources` in @mixpanel-headless/core (packages/node: " +
@@ -455,15 +451,17 @@ export class Workspace {
     this.#warn = options.warn;
     this.#logger = resolveWorkspaceLogger(options.logger);
     this.#generateSlug = options.generateSlug ?? ((): string => generateSlug());
-    // B6-W7 seams (W7 owns these two lines).
     this.#readFile = options.readFile ?? unportedReadFile;
     this.#monotonic = options.monotonic ?? defaultMonotonic;
     this.#installWorkspaceResolver();
   }
 
   /**
-   * The resolved session bound to this facade (`session` property,
-   * `workspace.py`). Read-only: `use()` swaps it in place.
+   * The resolved session bound to this facade. Read-only: `use()` swaps
+   * it in place.
+   *
+   * @returns The current session.
+   * @see mixpanel_headless.workspace.Workspace.session
    */
   get session(): Session {
     return this.#session;
@@ -471,14 +469,11 @@ export class Workspace {
 
   /**
    * Wire the facade's `/me` cache into the client's workspace
-   * auto-resolver.
+   * auto-resolver. The closure reads {@link meService} on every call, so
+   * it keeps pointing at the current service across `use()` cache
+   * clears; a resolver already installed on an injected client is left
+   * in place.
    *
-   * The closure reads {@link meService} on every call, so it keeps
-   * pointing at the CURRENT service across `use()` cache clears. A
-   * resolver already installed on an INJECTED client is left in place
-   * (`workspace.py`).
-   *
-   * @internal
    * @see mixpanel_headless.workspace.Workspace._install_workspace_resolver
    */
   #installWorkspaceResolver(): void {
@@ -491,11 +486,11 @@ export class Workspace {
   }
 
   /**
-   * Get or create the discovery service (lazy initialization —
-   * `workspace.py`).
+   * Get or create the discovery service.
    *
    * @returns The memoized service.
    * @internal
+   * @see mixpanel_headless.workspace.Workspace._discovery_service
    */
   get discoveryService(): DiscoveryService {
     if (this.#discovery === null) {
@@ -508,26 +503,24 @@ export class Workspace {
   }
 
   /**
-   * Swap one or more session axes in place; returns `this` for
+   * Swap one or more session axes in place and return `this` for
    * chaining.
    *
-   * `target=` is mutually exclusive with
-   * `account=`/`project=`/`workspace=`. The wire client — and with it
-   * the connection pool — is PRESERVED across every switch: the
-   * swap is delegated to {@link MixpanelClient.use}, which rebuilds the
-   * auth header in place. Every lazy service is then discarded so
-   * subsequent reads observe the new session.
-   *
-   * `use(workspace: N)` pins App-API and Query-host scoping; raw export
-   * streaming stays project-scoped by design (W1-D3).
-   *
+   * @remarks
+   * `target` is mutually exclusive with `account` / `project` /
+   * `workspace`. The wire client — and with it the connection pool — is
+   * preserved across every switch: the swap is delegated to
+   * {@link MixpanelClient.use}, which rebuilds the auth header in place,
+   * and every lazy service is then discarded so subsequent reads observe
+   * the new session. `use({ workspace })` pins App-API and Query-host
+   * scoping; raw export streaming stays project-scoped by design.
    * @param options - The axes to swap plus `persist`.
    * @returns `this`.
    * @throws {@link ParamValidationError} - `WS1_TARGET_MUTUALLY_EXCLUSIVE`.
-   * @throws {@link MixpanelHeadlessError} - `UNPORTED_RESOLVER_SEAM` while the
-   *   B7 seams are unimplemented (the `target=` / `account=` /
-   *   `persist=true` branches).
-   * @throws {@link ConfigError} - `account=` swap resolves no project axis.
+   * @throws {@link MixpanelHeadlessError} - `UNPORTED_RESOLVER_SEAM` when
+   *   the `target` / `account` / `persist: true` branches run on a facade
+   *   built without resolver seams.
+   * @throws {@link ConfigError} - An `account` swap resolves no project.
    * @example
    * ```typescript
    * for (const project of await ws.projects()) {
@@ -550,7 +543,7 @@ export class Workspace {
 
     if (target !== null) {
       // Route through the same resolver as construction so
-      // env > param > target > bridge > config applies (FR-017).
+      // env > param > target > bridge > config applies.
       const resolved = await this.#seams.resolveSession({ target });
       newAccount = resolved.account;
       newProject = resolved.project;
@@ -559,9 +552,9 @@ export class Workspace {
       newProject = project === null ? null : { id: project };
       newWorkspace = workspace === null ? null : { id: workspace };
     } else {
-      // Explicit account swap (FR-033): the project re-resolves against
-      // the NEW account; the workspace axis is cleared unless supplied
-      // explicitly or by MP_WORKSPACE_ID.
+      // Explicit account swap: the project re-resolves against the new
+      // account; the workspace axis is cleared unless supplied explicitly
+      // or by MP_WORKSPACE_ID.
       newAccount = await this.#seams.getAccount(account);
       const projectId = await this.#seams.resolveProjectAxis({
         explicit: project,
@@ -588,7 +581,7 @@ export class Workspace {
     this.#session = this.client.session;
 
     // Clear the lazy services so subsequent reads observe the new
-    // session rather than the prior one (`workspace.py`).
+    // session rather than the prior one.
     this.#accountName = this.#session.account.name;
     this.#discovery = null;
     this.#liveQuery = null;
@@ -603,24 +596,22 @@ export class Workspace {
   }
 
   /**
-   * Close all resources.
+   * Close the HTTP resources. Idempotent and safe to call repeatedly; a
+   * later call on the facade reopens them.
    *
-   * Idempotent and safe to call repeatedly.
-   *
-   * W1-D2 (arbiter-visible): Python nulls `self._api_client` and lets
-   * `_get_api_client()` build a REPLACEMENT on the next call; TS keeps
-   * the `readonly client` the R6.2 identity assertions track and closes
-   * the pool IN PLACE — the client's own `close()` drops the pool
-   * token and `ensureHttp()` recreates it on the next request, so a
-   * post-close call behaves as Python's recreated client does. The one
-   * divergence (recorded in `B6-W1-notes.md`): Python's replacement
-   * client forgets a runtime `set_workspace_id()` pin and re-applies
-   * `_initial_workspace_id`, while the TS client keeps its current pin.
-   *
+   * @remarks
+   * Python nulls `self._api_client` and lets `_get_api_client()` build a
+   * replacement on the next call; this port keeps the `readonly client`
+   * and closes the pool in place — the client's own `close()` drops the
+   * pool and `ensureHttp()` recreates it on the next request, so a
+   * post-close call behaves as Python's recreated client does.
    * @returns Nothing.
    * @see mixpanel_headless.workspace.Workspace.close
    */
   async close(): Promise<void> {
+    // Divergence: Python's recreated client forgets a runtime
+    // `set_workspace_id()` pin and re-applies the initial one; the kept
+    // client retains its current pin (PORTING.md).
     await this.client.close();
   }
 
@@ -637,11 +628,11 @@ export class Workspace {
   // --- Query members ---
 
   /**
-   * Get or create the live query service (lazy initialization —
-   * `workspace.py`).
+   * Get or create the live query service.
    *
    * @returns The memoized service.
    * @internal
+   * @see mixpanel_headless.workspace.Workspace._live_query_service
    */
   get liveQueryService(): LiveQueryService {
     if (this.#liveQuery === null) {
@@ -651,13 +642,6 @@ export class Workspace {
     }
     return this.#liveQuery;
   }
-
-  // Placement note (B5-ARB, resolving the stale S2 TODO): the
-  // `_replays_service` accessor was assigned
-  // to this section by packet §2, but S3 landed it in the S3 section
-  // below (`replaysService` get/set, memoized in `#replays`) with the
-  // packet-specified `query_fn` DI. Behavior is per spec; only the
-  // placement differs. See `b5-review-resolution.md` ASR-F5.
 
   /**
    * Run a segmentation query against the Mixpanel API.
