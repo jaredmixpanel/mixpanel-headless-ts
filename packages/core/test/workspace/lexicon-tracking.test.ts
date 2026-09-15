@@ -20,7 +20,7 @@
 //
 // Python's `httpx.MockTransport` handler becomes the injected-fetch
 // `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
-// becomes `makeWorkspace(handler)` — the client is built over the
+// becomes `makeFacadeWorkspace(handler)` — the client is built over the
 // OAuth session (`_make_oauth_credentials`, :82) while the facade
 // carries the service-account `_TEST_SESSION`, exactly as
 // Python does. `temp_dir` has no TS analog (no config file is ever
@@ -38,7 +38,6 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { MixpanelClient } from "../../src/client/client.js";
 import {
   BulkEventUpdate,
   BulkPropertyUpdate,
@@ -52,7 +51,6 @@ import {
   UpdatePropertyDefinitionParams,
   UpdateTagParams,
 } from "../../src/types/entities/lexicon.js";
-import { Workspace } from "../../src/workspace.js";
 import {
   bulkUpdateEventDefinitions as bulkUpdateEventDefinitionsMember,
   bulkUpdatePropertyDefinitions as bulkUpdatePropertyDefinitionsMember,
@@ -72,44 +70,12 @@ import {
 } from "../../src/workspace-members/lexicon-tracking.js";
 import {
   type CannedResponse,
-  type CapturedFetchRequest,
-  createMockClient,
-  type FakeTransport,
-  makeSession,
+  ok,
 } from "../../test-support/client-test-helpers.js";
-
-/** A canned-response handler (the `httpx.MockTransport` handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
-
-/** The OAuth session the mock client is built over (`:82-95`). */
-const CLIENT_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  oauthToken: "test-token",
-});
-
-/** The canonical service-account facade session (`_TEST_SESSION`, :64-72). */
-const FACADE_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  username: "test_user",
-  secret: "test_secret",
-});
-
-/**
- * Build a Workspace whose client routes through `handler`
- * (`_make_workspace`, :97-110).
- *
- * @param handler - The canned-response handler.
- * @returns The facade plus the transport capture log.
- */
-function makeWorkspace(handler: Handler): {
-  ws: Workspace;
-  transport: FakeTransport;
-} {
-  const { client, transport } = createMockClient(CLIENT_SESSION, handler);
-  return { ws: new Workspace({ session: FACADE_SESSION, client }), transport };
-}
+import {
+  makeFacadeWorkspace,
+  stubClient,
+} from "../../test-support/workspace-test-helpers.js";
 
 /**
  * A minimal event definition dict matching the API shape
@@ -160,16 +126,6 @@ function tagJson(id = 1, name = "core-metrics"): Record<string, unknown> {
 }
 
 /**
- * A 200 App-API envelope wrapping `results`.
- *
- * @param results - The `results` payload.
- * @returns The canned response.
- */
-function ok(results: unknown): CannedResponse {
-  return { status: 200, json: { status: "ok", results } };
-}
-
-/**
  * A 200 App-API envelope with NO `results` key (the Python
  * `{"status": "ok"}` delete responses).
  *
@@ -179,35 +135,13 @@ function okBare(): CannedResponse {
   return { status: 200, json: { status: "ok" } };
 }
 
-/**
- * A client stub whose single method returns `value` (the additive
- * delegation probes).
- *
- * @param method - The client method name to stub.
- * @param value - The value the stub resolves to.
- * @param calls - Optional log receiving each argument list.
- * @returns The stub cast to the client type.
- */
-function stubClient(
-  method: string,
-  value: unknown,
-  calls: unknown[][] = [],
-): MixpanelClient {
-  return {
-    [method]: (...args: unknown[]): Promise<unknown> => {
-      calls.push(args);
-      return Promise.resolve(value);
-    },
-  } as unknown as MixpanelClient;
-}
-
 // =============================================================================
 // US1: Data Definitions — Events
 // =============================================================================
 
 describe("TestGetEventDefinitions", () => {
   it("get_event_definitions() returns list of EventDefinition objects", async () => {
-    const { ws } = makeWorkspace(() => ok([eventDefJson()]));
+    const { ws } = makeFacadeWorkspace(() => ok([eventDefJson()]));
     const result = await ws.getEventDefinitions({ names: ["Purchase"] });
 
     expect(result).toHaveLength(1);
@@ -216,7 +150,7 @@ describe("TestGetEventDefinitions", () => {
   });
 
   it("get_event_definitions() handles multiple events", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([eventDefJson(1, "Purchase"), eventDefJson(2, "Signup")]),
     );
     const result = await ws.getEventDefinitions({
@@ -229,7 +163,7 @@ describe("TestGetEventDefinitions", () => {
   });
 
   it("get_event_definitions() returns empty list when no matches", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+    const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(
       ws.getEventDefinitions({ names: ["NonExistent"] }),
     ).resolves.toStrictEqual([]);
@@ -238,7 +172,7 @@ describe("TestGetEventDefinitions", () => {
 
 describe("TestUpdateEventDefinition", () => {
   it("update_event_definition() returns the updated EventDefinition", async () => {
-    const { ws } = makeWorkspace(() => ok(eventDefJson(1, "Purchase")));
+    const { ws } = makeFacadeWorkspace(() => ok(eventDefJson(1, "Purchase")));
     const params = new UpdateEventDefinitionParams({
       description: "Updated description",
       verified: true,
@@ -252,14 +186,14 @@ describe("TestUpdateEventDefinition", () => {
 
 describe("TestDeleteEventDefinition", () => {
   it("delete_event_definition() returns None on success", async () => {
-    const { ws } = makeWorkspace(() => okBare());
+    const { ws } = makeFacadeWorkspace(() => okBare());
     await expect(ws.deleteEventDefinition("OldEvent")).resolves.toBeUndefined();
   });
 });
 
 describe("TestBulkUpdateEventDefinitions", () => {
   it("bulk_update_event_definitions() returns list of EventDefinition", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([eventDefJson(1, "E1"), eventDefJson(2, "E2")]),
     );
     const params = new BulkUpdateEventsParams({
@@ -283,7 +217,7 @@ describe("TestBulkUpdateEventDefinitions", () => {
 
 describe("TestGetPropertyDefinitions", () => {
   it("get_property_definitions() returns list of PropertyDefinition", async () => {
-    const { ws } = makeWorkspace(() => ok([propertyDefJson()]));
+    const { ws } = makeFacadeWorkspace(() => ok([propertyDefJson()]));
     const result = await ws.getPropertyDefinitions({ names: ["$browser"] });
 
     expect(result).toHaveLength(1);
@@ -293,7 +227,7 @@ describe("TestGetPropertyDefinitions", () => {
 
   it("get_property_definitions() passes resource_type to API", async () => {
     const capturedUrls: string[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       capturedUrls.push(request.url);
       return ok([propertyDefJson()]);
     });
@@ -310,7 +244,7 @@ describe("TestGetPropertyDefinitions", () => {
   });
 
   it("get_property_definitions() returns empty list when no matches", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+    const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(
       ws.getPropertyDefinitions({ names: ["nonexistent"] }),
     ).resolves.toStrictEqual([]);
@@ -319,7 +253,9 @@ describe("TestGetPropertyDefinitions", () => {
 
 describe("TestUpdatePropertyDefinition", () => {
   it("update_property_definition() returns the updated PropertyDefinition", async () => {
-    const { ws } = makeWorkspace(() => ok(propertyDefJson(1, "$browser")));
+    const { ws } = makeFacadeWorkspace(() =>
+      ok(propertyDefJson(1, "$browser")),
+    );
     const params = new UpdatePropertyDefinitionParams({ sensitive: true });
     const result = await ws.updatePropertyDefinition("$browser", params);
 
@@ -330,7 +266,7 @@ describe("TestUpdatePropertyDefinition", () => {
 
 describe("TestBulkUpdatePropertyDefinitions", () => {
   it("bulk_update_property_definitions() returns list of PropertyDefinition", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([propertyDefJson(1, "$browser"), propertyDefJson(2, "$city")]),
     );
     const params = new BulkUpdatePropertiesParams({
@@ -362,7 +298,7 @@ describe("TestBulkUpdatePropertyDefinitions", () => {
 
 describe("TestListLexiconTags", () => {
   it("list_lexicon_tags() returns list of LexiconTag objects", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([
         { id: 1, name: "core-metrics" },
         { id: 2, name: "growth" },
@@ -379,14 +315,14 @@ describe("TestListLexiconTags", () => {
   });
 
   it("list_lexicon_tags() returns empty list when no tags exist", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+    const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(ws.listLexiconTags()).resolves.toStrictEqual([]);
   });
 });
 
 describe("TestCreateLexiconTag", () => {
   it("create_lexicon_tag() returns the created LexiconTag", async () => {
-    const { ws } = makeWorkspace(() => ok(tagJson(99, "new-tag")));
+    const { ws } = makeFacadeWorkspace(() => ok(tagJson(99, "new-tag")));
     const tag = await ws.createLexiconTag(
       new CreateTagParams({ name: "new-tag" }),
     );
@@ -399,7 +335,7 @@ describe("TestCreateLexiconTag", () => {
 
 describe("TestUpdateLexiconTag", () => {
   it("update_lexicon_tag() returns the updated LexiconTag", async () => {
-    const { ws } = makeWorkspace(() => ok(tagJson(1, "renamed-tag")));
+    const { ws } = makeFacadeWorkspace(() => ok(tagJson(1, "renamed-tag")));
     const tag = await ws.updateLexiconTag(
       1,
       new UpdateTagParams({ name: "renamed-tag" }),
@@ -412,7 +348,7 @@ describe("TestUpdateLexiconTag", () => {
 
 describe("TestDeleteLexiconTag", () => {
   it("delete_lexicon_tag() returns None on success", async () => {
-    const { ws } = makeWorkspace(() => okBare());
+    const { ws } = makeFacadeWorkspace(() => okBare());
     await expect(ws.deleteLexiconTag("core-metrics")).resolves.toBeUndefined();
   });
 });
@@ -423,7 +359,7 @@ describe("TestDeleteLexiconTag", () => {
 
 describe("TestGetTrackingMetadata", () => {
   it("get_tracking_metadata() returns an opaque dict", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ last_seen: "2026-01-01", platforms: ["web", "ios"] }),
     );
     const result = await ws.getTrackingMetadata("Purchase");
@@ -436,7 +372,7 @@ describe("TestGetTrackingMetadata", () => {
 
 describe("TestGetEventHistory", () => {
   it("get_event_history() returns a list of history dicts", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([
         { action: "created", timestamp: "2026-01-01" },
         { action: "updated", timestamp: "2026-02-01" },
@@ -450,14 +386,14 @@ describe("TestGetEventHistory", () => {
   });
 
   it("get_event_history() returns empty list when no history", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+    const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(ws.getEventHistory("Purchase")).resolves.toStrictEqual([]);
   });
 });
 
 describe("TestGetPropertyHistory", () => {
   it("get_property_history() returns a list of history dicts", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([{ action: "hidden", timestamp: "2026-03-01" }]),
     );
     const result = await ws.getPropertyHistory("$browser", "event");
@@ -474,7 +410,7 @@ describe("TestGetPropertyHistory", () => {
 
 describe("TestExportLexicon", () => {
   it("export_lexicon() returns an opaque dict with export data", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ events: [eventDefJson()], properties: [propertyDefJson()] }),
     );
     const result = await ws.exportLexicon();
@@ -486,7 +422,7 @@ describe("TestExportLexicon", () => {
 
   it("export_lexicon(export_types=['events']) passes filter to API", async () => {
     const capturedUrls: string[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       capturedUrls.push(request.url);
       return ok({ events: [eventDefJson()] });
     });
@@ -500,7 +436,7 @@ describe("TestExportLexicon", () => {
   });
 
   it("export_lexicon() with no filter returns all types", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ events: [], properties: [], tags: [] }),
     );
     const result = await ws.exportLexicon();

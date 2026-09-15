@@ -12,6 +12,7 @@ import { MixpanelHeadlessError, QueryError } from "../../src/errors.js";
 import {
   createMockClient,
   makeSession,
+  parseBody,
 } from "../../test-support/client-test-helpers.js";
 
 /** The `oauth_credentials` fixture twin. */
@@ -21,11 +22,6 @@ function oauthCredentials(): Session {
     region: "us",
     oauthToken: "test-oauth-token",
   });
-}
-
-/** Parse a captured JSON request body (json.loads(request.content)). */
-function parseBody(bodyText: string): unknown {
-  return JSON.parse(bodyText) as unknown;
 }
 
 /** `urllib.parse.parse_qs` analog over a form-encoded body. */

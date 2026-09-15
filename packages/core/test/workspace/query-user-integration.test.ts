@@ -49,25 +49,15 @@ import {
 import { Filter } from "../../src/types/query-params/filter.js";
 import type { ProfilePageResult } from "../../src/types/results/discovery.js";
 import { UserQueryResult } from "../../src/types/results/query-engine.js";
-import { Workspace } from "../../src/workspace.js";
+import { codesOf } from "../../test-support/error-codes.js";
 import { expectRejects } from "../../test-support/raises.js";
 import {
   makePageResult,
   makeRawProfile,
+  makeStubWorkspace,
   type MockWorkspaceClient,
   mockWorkspaceClient,
-  TEST_SESSION,
 } from "../../test-support/workspace-test-helpers.js";
-
-/**
- * The `workspace_factory` fixture (test file :141-168).
- *
- * @param mock - The stub client.
- * @returns The facade under test.
- */
-function workspaceFactory(mock: MockWorkspaceClient): Workspace {
-  return new Workspace({ session: TEST_SESSION, client: mock.client });
-}
 
 /**
  * Install a fixed page result.
@@ -80,11 +70,6 @@ function returnValue(
   result: ProfilePageResult,
 ): void {
   mock.setPageHandler(() => result);
-}
-
-/** Read the collected `BookmarkValidationError` codes. */
-function codesOf(exc: unknown): string[] {
-  return (exc as BookmarkValidationError).errors.map((e) => e.code);
 }
 
 /** Parse the recorded `filter_by_cohort` JSON text. */
@@ -127,7 +112,7 @@ describe("TestBehavioralFilteringAllOf", () => {
       CohortCriteria.didEvent("Purchase", { at_least: 3, within_days: 30 }),
     );
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort,
       limit: 1,
@@ -150,7 +135,7 @@ describe("TestBehavioralFilteringAllOf", () => {
       CohortCriteria.didEvent("Purchase", { at_least: 1, within_days: 7 }),
     );
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort,
       limit: 1,
@@ -179,7 +164,7 @@ describe("TestBehavioralFilteringAllOf", () => {
       CohortCriteria.hasProperty("plan", "premium"),
     );
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort,
       limit: 1,
@@ -208,7 +193,7 @@ describe("TestBehavioralFilteringAnyOf", () => {
       CohortCriteria.hasProperty("plan", "premium"),
     );
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort,
       limit: 2,
@@ -228,7 +213,7 @@ describe("TestBehavioralFilteringAnyOf", () => {
       CohortCriteria.hasProperty("plan", "premium"),
     );
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort,
       limit: 1,
@@ -247,7 +232,7 @@ describe("TestBehavioralFilteringAnyOf", () => {
       CohortCriteria.didEvent("Signup", { at_least: 1, within_days: 7 }),
     );
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort,
       limit: 1,
@@ -268,7 +253,7 @@ describe("TestBehavioralFilteringSavedCohort", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort: 12345,
       limit: 1,
@@ -284,7 +269,7 @@ describe("TestBehavioralFilteringSavedCohort", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort: 99999,
       limit: 1,
@@ -297,7 +282,7 @@ describe("TestBehavioralFilteringSavedCohort", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort: 12345,
       limit: 1,
@@ -318,7 +303,7 @@ describe("TestBehavioralFilteringCombinedCohortAndWhere", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort: 12345,
       where: Filter.equals("plan", "premium", { resource_type: "people" }),
@@ -337,7 +322,7 @@ describe("TestBehavioralFilteringCombinedCohortAndWhere", () => {
       CohortCriteria.didEvent("Purchase", { at_least: 1, within_days: 30 }),
     );
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort,
       where: Filter.equals("plan", "premium", { resource_type: "people" }),
@@ -352,7 +337,7 @@ describe("TestBehavioralFilteringCombinedCohortAndWhere", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort: 12345,
       where: [
@@ -374,7 +359,7 @@ describe("TestBehavioralFilteringCombinedCohortAndWhere", () => {
 
 describe("TestBehavioralFilteringCohortPlusInCohortError", () => {
   it("cohort param + Filter.in_cohort raises U2", async () => {
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.queryUser({
         mode: "profiles",
@@ -391,7 +376,7 @@ describe("TestBehavioralFilteringCohortPlusInCohortError", () => {
     const cohort = CohortDefinition.allOf(
       CohortCriteria.didEvent("Purchase", { at_least: 1, within_days: 30 }),
     );
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.queryUser({
         mode: "profiles",
@@ -405,7 +390,7 @@ describe("TestBehavioralFilteringCohortPlusInCohortError", () => {
   });
 
   it("the U2 message mentions mutual exclusivity", async () => {
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.queryUser({
         mode: "profiles",
@@ -437,7 +422,7 @@ describe("TestBehavioralFilteringCohortSerializationError", () => {
       throw new PyRuntimeError("serialization failed");
     };
 
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.queryUser({ mode: "profiles", cohort: brokenCohort, limit: 1 }),
       "expected BookmarkValidationError",
@@ -453,7 +438,7 @@ describe("TestBehavioralFilteringCohortSerializationError", () => {
       throw new PyValueError("bad selector node");
     };
 
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.queryUser({ mode: "profiles", cohort: brokenCohort, limit: 1 }),
       "expected BookmarkValidationError",
@@ -481,7 +466,7 @@ describe("TestCrossEngineDistinctIds", () => {
       ),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 3,
     });
@@ -502,7 +487,7 @@ describe("TestCrossEngineDistinctIds", () => {
       }),
     );
 
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
     const result1 = await ws.queryUser({ mode: "profiles", limit: 2 });
     const ids = result1.distinct_ids;
 
@@ -523,7 +508,9 @@ describe("TestCrossEngineDistinctIds", () => {
       makePageResult([], { total: 0, has_more: false, session_id: null }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     expect(result.distinct_ids).toStrictEqual([]);
     expect(Array.isArray(result.distinct_ids)).toBe(true);
@@ -539,7 +526,7 @@ describe("TestCrossEngineDistinctIds", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 2,
     });
@@ -568,7 +555,7 @@ describe("TestCrossEngineDataFrameComposition", () => {
       ),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 4,
     });
@@ -593,7 +580,7 @@ describe("TestCrossEngineDataFrameComposition", () => {
       ),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 3,
     });
@@ -615,7 +602,7 @@ describe("TestCrossEngineDataFrameComposition", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 2,
     });
@@ -653,7 +640,7 @@ describe("TestCrossEngineDataFrameComposition", () => {
       ),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 3,
     });
@@ -667,7 +654,9 @@ describe("TestCrossEngineDataFrameComposition", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     expect(Array.isArray(result.toRows())).toBe(true);
   });
@@ -682,7 +671,7 @@ describe("TestCrossEngineFilterConsistency", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       where: Filter.equals("plan", "premium", { resource_type: "people" }),
       limit: 1,
@@ -696,7 +685,7 @@ describe("TestCrossEngineFilterConsistency", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       where: [
         Filter.equals("plan", "premium", { resource_type: "people" }),
@@ -709,7 +698,7 @@ describe("TestCrossEngineFilterConsistency", () => {
   });
 
   it("Filter.equals is valid for build_user_params", async () => {
-    const params = await workspaceFactory(
+    const params = await makeStubWorkspace(
       mockWorkspaceClient(),
     ).buildUserParams({
       where: Filter.equals("plan", "premium", { resource_type: "people" }),
@@ -720,7 +709,7 @@ describe("TestCrossEngineFilterConsistency", () => {
   });
 
   it("a Filter list is valid for build_user_params", async () => {
-    const params = await workspaceFactory(
+    const params = await makeStubWorkspace(
       mockWorkspaceClient(),
     ).buildUserParams({
       where: [
@@ -737,7 +726,7 @@ describe("TestCrossEngineFilterConsistency", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       where: Filter.equals("plan", "premium", { resource_type: "people" }),
       limit: 1,
@@ -764,7 +753,7 @@ describe("TestCrossEngineCohortIdFromFunnel", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort: 42,
       limit: 100_000,
@@ -785,7 +774,7 @@ describe("TestCrossEngineCohortIdFromFunnel", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort: 42,
       limit: 100_000,
@@ -807,7 +796,7 @@ describe("TestCrossEngineCohortIdFromFunnel", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort: 42,
       limit: 100_000,
@@ -826,7 +815,7 @@ describe("TestCrossEngineCohortIdFromFunnel", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_PREMIUM], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       cohort: 42,
       limit: 1,
@@ -848,7 +837,7 @@ describe("TestUFilterWrapPreservation", () => {
       _value: ["low", 10] as never,
     });
 
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.buildUserParams({ where: [bad] }),
       "expected BookmarkValidationError",

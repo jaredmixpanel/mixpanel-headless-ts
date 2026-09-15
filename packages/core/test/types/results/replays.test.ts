@@ -20,10 +20,6 @@
 // the code is the stronger, recorded contract).
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  type MixpanelHeadlessError,
-  ParamValidationError,
-} from "../../../src/errors.js";
 import { UserAction } from "../../../src/replays/user-action.js";
 import {
   Replay,
@@ -35,23 +31,7 @@ import {
   type SignedReplayFields,
 } from "../../../src/types/results/replay-models.js";
 import { ReplayBundle } from "../../../src/types/results/replays.js";
-
-/**
- * Assert a thunk throws the exact guard `{class, code}` pair.
- *
- * @param thunk - The construction under test.
- * @param code - Expected registry code.
- */
-function expectGuard(thunk: () => unknown, code: string): void {
-  let thrown: unknown;
-  try {
-    thunk();
-  } catch (error) {
-    thrown = error;
-  }
-  expect(thrown, `expected ${code}`).toBeInstanceOf(ParamValidationError);
-  expect((thrown as MixpanelHeadlessError).code).toBe(code);
-}
+import { expectGuard } from "../../../test-support/raises.js";
 
 // ---------------------------------------------------------------------------
 // Fixtures (Python helpers, translated verbatim)

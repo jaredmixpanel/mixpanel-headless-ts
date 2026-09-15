@@ -7,29 +7,9 @@
 // compile-time equivalent.)
 import { describe, expect, it } from "vitest";
 
-import {
-  type MixpanelHeadlessError,
-  ParamValidationError,
-} from "../../../src/errors.js";
 import { Filter } from "../../../src/types/query-params/filter.js";
 import { RetentionEvent } from "../../../src/types/query-params/retention.js";
-
-/**
- * Assert a thunk throws the exact guard `{class, code}` pair.
- *
- * @param thunk - The construction under test.
- * @param code - Expected registry code.
- */
-function expectGuard(thunk: () => unknown, code: string): void {
-  let thrown: unknown;
-  try {
-    thunk();
-  } catch (error) {
-    thrown = error;
-  }
-  expect(thrown, `expected ${code}`).toBeInstanceOf(ParamValidationError);
-  expect((thrown as MixpanelHeadlessError).code).toBe(code);
-}
+import { expectGuard } from "../../../test-support/raises.js";
 
 describe("RetentionEvent construction", () => {
   it("constructs with an event only and applies the Python defaults", () => {

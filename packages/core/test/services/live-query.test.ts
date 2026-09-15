@@ -28,15 +28,11 @@ import { AuthenticationError, QueryError } from "../../src/errors.js";
 import { LiveQueryService } from "../../src/services/live-query.js";
 import { extractStepsFromDateData } from "../../src/services/live-query-transforms.js";
 import {
-  type CannedResponse,
-  type CapturedFetchRequest,
+  type CannedHandler,
   createMockClient,
   type FakeTransport,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
-
-/** A canned-response handler (the httpx.MockTransport handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
 
 /**
  * The `live_query_factory` fixture.
@@ -44,7 +40,7 @@ type Handler = (request: CapturedFetchRequest) => CannedResponse;
  * @param handler - The canned-response handler.
  * @returns The service under test plus the transport capture log.
  */
-function liveQueryFactory(handler: Handler): {
+function liveQueryFactory(handler: CannedHandler): {
   live: LiveQueryService;
   transport: FakeTransport;
 } {
@@ -53,7 +49,7 @@ function liveQueryFactory(handler: Handler): {
 }
 
 /** The `success_handler` fixture. */
-const successHandler: Handler = () => ({ status: 200, json: [] });
+const successHandler: CannedHandler = () => ({ status: 200, json: [] });
 
 /**
  * The single captured request URL (the `str(request.url)` the Python

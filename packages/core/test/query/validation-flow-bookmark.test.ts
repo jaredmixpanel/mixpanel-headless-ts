@@ -18,6 +18,7 @@ import { describe, expect, it } from "vitest";
 
 import type { ValidationError } from "../../src/errors.js";
 import { validateFlowBookmark } from "../../src/query/validation-bookmark.js";
+import { codes } from "../../test-support/error-codes.js";
 
 /** Loose dict, the TS analogue of Python's `dict[str, Any]`. */
 type Dict = Record<string, unknown>;
@@ -43,18 +44,6 @@ function validFlowBookmark(overrides: Dict = {}): Dict {
     version: 2,
   };
   return { ...defaults, ...overrides };
-}
-
-/**
- * Extract error codes.
- *
- * Port of `_codes`.
- *
- * @param errors - Validation errors.
- * @returns The codes, in emission order.
- */
-function codes(errors: readonly ValidationError[]): string[] {
-  return errors.map((e) => e.code);
 }
 
 /**

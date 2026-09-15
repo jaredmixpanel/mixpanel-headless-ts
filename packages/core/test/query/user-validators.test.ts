@@ -44,20 +44,11 @@ import {
   CohortDefinition,
   Filter,
 } from "../../src/types/index.js";
+import { codes } from "../../test-support/error-codes.js";
 
 // =============================================================================
 // Helpers (port of the Python module helpers, :30-76)
 // =============================================================================
-
-/**
- * Extract error codes from a list of ValidationError objects.
- *
- * @param errors - List of validation errors.
- * @returns List of error code strings.
- */
-function codes(errors: readonly ValidationError[]): string[] {
-  return errors.map((e) => e.code);
-}
 
 /**
  * Check whether a specific error code appears in the error list.

@@ -9,10 +9,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
-import {
-  type MixpanelHeadlessError,
-  ParamValidationError,
-} from "../../../src/errors.js";
+import { ParamValidationError } from "../../../src/errors.js";
 import {
   buildEventSelector,
   CohortBreakdown,
@@ -23,23 +20,7 @@ import {
 } from "../../../src/types/query-params/cohort.js";
 import { Filter } from "../../../src/types/query-params/filter.js";
 import { sanitizeRawCohort } from "../../../src/types/query-params/guards.js";
-
-/**
- * Assert a thunk throws the exact guard `{class, code}` pair.
- *
- * @param thunk - The construction under test.
- * @param code - Expected registry code.
- */
-function expectGuard(thunk: () => unknown, code: string): void {
-  let thrown: unknown;
-  try {
-    thunk();
-  } catch (error) {
-    thrown = error;
-  }
-  expect(thrown, `expected ${code}`).toBeInstanceOf(ParamValidationError);
-  expect((thrown as MixpanelHeadlessError).code).toBe(code);
-}
+import { expectGuard } from "../../../test-support/raises.js";
 
 /** Read a nested plain-object path from a serialized cohort payload. */
 function at(value: unknown, ...path: Array<string | number>): unknown {

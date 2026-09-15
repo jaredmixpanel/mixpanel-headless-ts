@@ -23,23 +23,7 @@ import {
 import { FlowStep } from "../../src/types/query-params/flow.js";
 import { Metric } from "../../src/types/query-params/metric.js";
 import { RetentionEvent } from "../../src/types/query-params/retention.js";
-import { Workspace } from "../../src/workspace.js";
-import {
-  mockWorkspaceClient,
-  TEST_SESSION,
-} from "../../test-support/workspace-test-helpers.js";
-
-/**
- * The `ws` fixture.
- *
- * @returns A Workspace with mocked dependencies (no network).
- */
-function makeWs(): Workspace {
-  return new Workspace({
-    session: TEST_SESSION,
-    client: mockWorkspaceClient().client,
-  });
-}
+import { makeStubWorkspace } from "../../test-support/workspace-test-helpers.js";
 
 // ===========================================================================
 // FIXED: R2-V1 — FlowStep.filters custom-property scanning
@@ -48,7 +32,7 @@ function makeWs(): Workspace {
 describe("TestR2V1FlowStepFiltersCPFixed", () => {
   it("CustomPropertyRef(0) in FlowStep.filters raises", async () => {
     await expect(
-      makeWs().buildFlowParams(
+      makeStubWorkspace().buildFlowParams(
         new FlowStep({
           event: "Purchase",
           filters: [Filter.isSet(new CustomPropertyRef({ id: 0 }))],
@@ -57,7 +41,7 @@ describe("TestR2V1FlowStepFiltersCPFixed", () => {
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildFlowParams(
+      makeStubWorkspace().buildFlowParams(
         new FlowStep({
           event: "Purchase",
           filters: [Filter.isSet(new CustomPropertyRef({ id: 0 }))],
@@ -69,7 +53,7 @@ describe("TestR2V1FlowStepFiltersCPFixed", () => {
 
   it("CustomPropertyRef(-1) in FlowStep.filters raises", async () => {
     await expect(
-      makeWs().buildFlowParams(
+      makeStubWorkspace().buildFlowParams(
         new FlowStep({
           event: "Purchase",
           filters: [Filter.isSet(new CustomPropertyRef({ id: -1 }))],
@@ -78,7 +62,7 @@ describe("TestR2V1FlowStepFiltersCPFixed", () => {
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildFlowParams(
+      makeStubWorkspace().buildFlowParams(
         new FlowStep({
           event: "Purchase",
           filters: [Filter.isSet(new CustomPropertyRef({ id: -1 }))],
@@ -94,13 +78,13 @@ describe("TestR2V1FlowStepFiltersCPFixed", () => {
       inputs: { A: new PropertyInput({ name: "$browser" }) },
     });
     await expect(
-      makeWs().buildFlowParams(
+      makeStubWorkspace().buildFlowParams(
         new FlowStep({ event: "Purchase", filters: [Filter.isSet(badCp)] }),
         { last: 7 },
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildFlowParams(
+      makeStubWorkspace().buildFlowParams(
         new FlowStep({ event: "Purchase", filters: [Filter.isSet(badCp)] }),
         { last: 7 },
       ),
@@ -108,7 +92,7 @@ describe("TestR2V1FlowStepFiltersCPFixed", () => {
   });
 
   it("a valid CustomPropertyRef(42) passes", async () => {
-    const params = await makeWs().buildFlowParams(
+    const params = await makeStubWorkspace().buildFlowParams(
       new FlowStep({
         event: "Purchase",
         filters: [Filter.isSet(new CustomPropertyRef({ id: 42 }))],
@@ -126,7 +110,7 @@ describe("TestR2V1FlowStepFiltersCPFixed", () => {
 describe("TestR2V2RetentionEventFiltersCPFixed", () => {
   it("CustomPropertyRef(0) in the born event raises", async () => {
     await expect(
-      makeWs().buildRetentionParams(
+      makeStubWorkspace().buildRetentionParams(
         new RetentionEvent({
           event: "Signup",
           filters: [Filter.isSet(new CustomPropertyRef({ id: 0 }))],
@@ -136,7 +120,7 @@ describe("TestR2V2RetentionEventFiltersCPFixed", () => {
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildRetentionParams(
+      makeStubWorkspace().buildRetentionParams(
         new RetentionEvent({
           event: "Signup",
           filters: [Filter.isSet(new CustomPropertyRef({ id: 0 }))],
@@ -149,7 +133,7 @@ describe("TestR2V2RetentionEventFiltersCPFixed", () => {
 
   it("CustomPropertyRef(0) in the return event raises", async () => {
     await expect(
-      makeWs().buildRetentionParams(
+      makeStubWorkspace().buildRetentionParams(
         "Signup",
         new RetentionEvent({
           event: "Login",
@@ -159,7 +143,7 @@ describe("TestR2V2RetentionEventFiltersCPFixed", () => {
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildRetentionParams(
+      makeStubWorkspace().buildRetentionParams(
         "Signup",
         new RetentionEvent({
           event: "Login",
@@ -176,14 +160,14 @@ describe("TestR2V2RetentionEventFiltersCPFixed", () => {
       inputs: { A: new PropertyInput({ name: "$browser" }) },
     });
     await expect(
-      makeWs().buildRetentionParams(
+      makeStubWorkspace().buildRetentionParams(
         new RetentionEvent({ event: "Signup", filters: [Filter.isSet(badCp)] }),
         "Login",
         { last: 7 },
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildRetentionParams(
+      makeStubWorkspace().buildRetentionParams(
         new RetentionEvent({ event: "Signup", filters: [Filter.isSet(badCp)] }),
         "Login",
         { last: 7 },
@@ -192,7 +176,7 @@ describe("TestR2V2RetentionEventFiltersCPFixed", () => {
   });
 
   it("a valid CustomPropertyRef(42) passes", async () => {
-    const params = await makeWs().buildRetentionParams(
+    const params = await makeStubWorkspace().buildRetentionParams(
       new RetentionEvent({
         event: "Signup",
         filters: [Filter.isSet(new CustomPropertyRef({ id: 42 }))],
@@ -211,13 +195,13 @@ describe("TestR2V2RetentionEventFiltersCPFixed", () => {
 describe("TestR2V3NaNFilterFixed", () => {
   it("NaN in a where filter raises", async () => {
     await expect(
-      makeWs().buildParams("AnyEvent", {
+      makeStubWorkspace().buildParams("AnyEvent", {
         where: Filter.greaterThan("age", Number.NaN),
         last: 7,
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams("AnyEvent", {
+      makeStubWorkspace().buildParams("AnyEvent", {
         where: Filter.greaterThan("age", Number.NaN),
         last: 7,
       }),
@@ -226,7 +210,7 @@ describe("TestR2V3NaNFilterFixed", () => {
 
   it("NaN in Metric.filters raises", async () => {
     await expect(
-      makeWs().buildParams(
+      makeStubWorkspace().buildParams(
         new Metric({
           event: "AnyEvent",
           filters: [Filter.greaterThan("age", Number.NaN)],
@@ -235,7 +219,7 @@ describe("TestR2V3NaNFilterFixed", () => {
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams(
+      makeStubWorkspace().buildParams(
         new Metric({
           event: "AnyEvent",
           filters: [Filter.greaterThan("age", Number.NaN)],
@@ -246,7 +230,7 @@ describe("TestR2V3NaNFilterFixed", () => {
   });
 
   it("normal finite values still pass", async () => {
-    const params = await makeWs().buildParams("AnyEvent", {
+    const params = await makeStubWorkspace().buildParams("AnyEvent", {
       where: Filter.greaterThan("age", 18),
       last: 7,
     });
@@ -261,13 +245,13 @@ describe("TestR2V3NaNFilterFixed", () => {
 describe("TestR2V4InfFilterFixed", () => {
   it("Inf in a where filter raises", async () => {
     await expect(
-      makeWs().buildParams("AnyEvent", {
+      makeStubWorkspace().buildParams("AnyEvent", {
         where: Filter.greaterThan("age", Infinity),
         last: 7,
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams("AnyEvent", {
+      makeStubWorkspace().buildParams("AnyEvent", {
         where: Filter.greaterThan("age", Infinity),
         last: 7,
       }),
@@ -276,13 +260,13 @@ describe("TestR2V4InfFilterFixed", () => {
 
   it("negative infinity also raises", async () => {
     await expect(
-      makeWs().buildParams("AnyEvent", {
+      makeStubWorkspace().buildParams("AnyEvent", {
         where: Filter.greaterThan("age", -Infinity),
         last: 7,
       }),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildParams("AnyEvent", {
+      makeStubWorkspace().buildParams("AnyEvent", {
         where: Filter.greaterThan("age", -Infinity),
         last: 7,
       }),
@@ -290,7 +274,7 @@ describe("TestR2V4InfFilterFixed", () => {
   });
 
   it("large but finite values still pass", async () => {
-    const params = await makeWs().buildParams("AnyEvent", {
+    const params = await makeStubWorkspace().buildParams("AnyEvent", {
       where: Filter.greaterThan("age", 1e15),
       last: 7,
     });
@@ -305,7 +289,7 @@ describe("TestR2V4InfFilterFixed", () => {
 describe("TestR2CombinedFixes", () => {
   it("a FlowStep CP error is caught at L1 (before the L2 NaN check)", async () => {
     await expect(
-      makeWs().buildFlowParams(
+      makeStubWorkspace().buildFlowParams(
         new FlowStep({
           event: "Purchase",
           filters: [
@@ -317,7 +301,7 @@ describe("TestR2CombinedFixes", () => {
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildFlowParams(
+      makeStubWorkspace().buildFlowParams(
         new FlowStep({
           event: "Purchase",
           filters: [
@@ -332,7 +316,7 @@ describe("TestR2CombinedFixes", () => {
 
   it("a RetentionEvent CP error is caught", async () => {
     await expect(
-      makeWs().buildRetentionParams(
+      makeStubWorkspace().buildRetentionParams(
         new RetentionEvent({
           event: "Signup",
           filters: [Filter.isSet(new CustomPropertyRef({ id: -1 }))],
@@ -342,7 +326,7 @@ describe("TestR2CombinedFixes", () => {
       ),
     ).rejects.toBeInstanceOf(BookmarkValidationError);
     await expect(
-      makeWs().buildRetentionParams(
+      makeStubWorkspace().buildRetentionParams(
         new RetentionEvent({
           event: "Signup",
           filters: [Filter.isSet(new CustomPropertyRef({ id: -1 }))],

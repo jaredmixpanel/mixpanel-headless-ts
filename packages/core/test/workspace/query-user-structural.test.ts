@@ -36,25 +36,13 @@
 import { describe, expect, it } from "vitest";
 
 import { UserQueryResult } from "../../src/types/results/query-engine.js";
-import { Workspace } from "../../src/workspace.js";
 import {
   makePageResult,
   makeProfilesBatch,
   makeRawProfile,
-  type MockWorkspaceClient,
+  makeStubWorkspace,
   mockWorkspaceClient,
-  TEST_SESSION,
 } from "../../test-support/workspace-test-helpers.js";
-
-/**
- * The `workspace_factory` fixture (test file :131-158).
- *
- * @param mock - The stub client.
- * @returns The facade under test.
- */
-function workspaceFactory(mock: MockWorkspaceClient): Workspace {
-  return new Workspace({ session: TEST_SESSION, client: mock.client });
-}
 
 // ===========================================================================
 // TIER 4: structural / behavioural correctness
@@ -82,7 +70,7 @@ describe("TestParallelPageOrderingPreserved", () => {
       });
     });
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -111,7 +99,7 @@ describe("TestParallelLimit1FallsBackToSequential", () => {
       ),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 1,
@@ -137,7 +125,7 @@ describe("TestParallelPageSizeZeroFallback", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -162,7 +150,7 @@ describe("TestParallelPageSizeNoneFallback", () => {
     (pageResult as unknown as { page_size: number | null }).page_size = null;
     mock.setPageHandler(() => pageResult);
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -182,7 +170,7 @@ describe("TestAggregateComputedAtFromAPI", () => {
       computed_at: "2025-01-01T00:00:00Z",
     });
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
     });
 
@@ -195,7 +183,7 @@ describe("TestAggregateComputedAtFallback", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats({ results: 42, status: "ok" }); // no computed_at
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
     });
 

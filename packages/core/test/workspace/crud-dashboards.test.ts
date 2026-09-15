@@ -8,7 +8,7 @@
 //
 // Python's `httpx.MockTransport` handler becomes the injected-fetch
 // `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
-// becomes `makeWorkspace(handler)` — the client is built over the
+// becomes `makeFacadeWorkspace(handler)` — the client is built over the
 // OAuth session (`_make_oauth_credentials`, :67) while the facade
 // carries the service-account `_TEST_SESSION`, exactly as
 // Python does. `temp_dir` has no TS analog (no config file is ever
@@ -49,7 +49,6 @@ import {
   UpdateReportLinkParams,
   UpdateTextCardParams,
 } from "../../src/types/entities/dashboards.js";
-import { Workspace } from "../../src/workspace.js";
 import {
   createBlueprint as createBlueprintMember,
   createDashboard as createDashboardMember,
@@ -60,44 +59,10 @@ import {
   updateDashboard as updateDashboardMember,
 } from "../../src/workspace-members/dashboards.js";
 import {
-  type CannedResponse,
-  type CapturedFetchRequest,
-  createMockClient,
   type FakeTransport,
-  makeSession,
+  ok,
 } from "../../test-support/client-test-helpers.js";
-
-/**
- * The OAuth session the mock client is built over
- * (`_make_oauth_credentials`, :67-74).
- */
-const CLIENT_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  oauthToken: "test-token",
-});
-
-/** The canonical service-account facade session (`_TEST_SESSION`, :50-59). */
-const FACADE_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  username: "test_user",
-  secret: "test_secret",
-});
-
-/**
- * Build a Workspace whose client routes through `handler`
- * (`_make_workspace`, :80-97).
- *
- * @param handler - The canned-response handler.
- * @returns The facade plus the transport capture log.
- */
-function makeWorkspace(
-  handler: (request: CapturedFetchRequest) => CannedResponse,
-): { ws: Workspace; transport: FakeTransport } {
-  const { client, transport } = createMockClient(CLIENT_SESSION, handler);
-  return { ws: new Workspace({ session: FACADE_SESSION, client }), transport };
-}
+import { makeFacadeWorkspace } from "../../test-support/workspace-test-helpers.js";
 
 /**
  * A minimal dashboard dict matching the API shape (`_dashboard_json`,
@@ -128,16 +93,6 @@ function dashboardJson(
     is_shared_with_project: true,
     ancestors: [],
   };
-}
-
-/**
- * A 200 App-API envelope wrapping `results`.
- *
- * @param results - The `results` payload.
- * @returns The canned response.
- */
-function ok(results: unknown): CannedResponse {
-  return { status: 200, json: { status: "ok", results } };
 }
 
 /**
@@ -184,7 +139,7 @@ function nullClient(member: string, value: unknown): MixpanelClient {
 
 describe("TestWorkspaceDashboardCRUD (:189)", () => {
   it("list_dashboards() returns list of Dashboard objects", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([dashboardJson(1, "Dash A"), dashboardJson(2, "Dash B")]),
     );
 
@@ -199,13 +154,13 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
   });
 
   it("list_dashboards() returns empty list when no dashboards exist", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+    const { ws } = makeFacadeWorkspace(() => ok([]));
 
     await expect(ws.listDashboards()).resolves.toStrictEqual([]);
   });
 
   it("list_dashboards(ids=[1, 2]) passes filter to API", async () => {
-    const { ws, transport } = makeWorkspace(() =>
+    const { ws, transport } = makeFacadeWorkspace(() =>
       ok([dashboardJson(1, "Dash A"), dashboardJson(2, "Dash B")]),
     );
 
@@ -217,7 +172,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
   });
 
   it("create_dashboard() returns the created Dashboard", async () => {
-    const { ws, transport } = makeWorkspace(() =>
+    const { ws, transport } = makeFacadeWorkspace(() =>
       ok(dashboardJson(10, "New Dashboard")),
     );
 
@@ -233,7 +188,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
   });
 
   it("create_dashboard() sends description when provided", async () => {
-    const { ws, transport } = makeWorkspace(() =>
+    const { ws, transport } = makeFacadeWorkspace(() =>
       ok({
         ...dashboardJson(11, "Described"),
         description: "A test dashboard",
@@ -255,7 +210,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
   });
 
   it("create_dashboard() can create a private dashboard", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ ...dashboardJson(12, "Private"), is_private: true }),
     );
 
@@ -267,7 +222,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
   });
 
   it("get_dashboard() returns a single Dashboard by ID", async () => {
-    const { ws, transport } = makeWorkspace(() =>
+    const { ws, transport } = makeFacadeWorkspace(() =>
       ok(dashboardJson(1, "My Dashboard")),
     );
 
@@ -282,7 +237,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
   });
 
   it("get_dashboard() preserves extra fields from the API", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({
         ...dashboardJson(5, "Detailed"),
         description: "Full details",
@@ -297,7 +252,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
   });
 
   it("update_dashboard() returns the updated Dashboard", async () => {
-    const { ws, transport } = makeWorkspace(() =>
+    const { ws, transport } = makeFacadeWorkspace(() =>
       ok(dashboardJson(1, "Updated Title")),
     );
 
@@ -315,7 +270,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
   });
 
   it("update_dashboard() can update description", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ ...dashboardJson(1, "Same Title"), description: "New description" }),
     );
 
@@ -328,7 +283,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
   });
 
   it("update_dashboard() can toggle privacy", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ ...dashboardJson(1, "Toggle"), is_private: true }),
     );
 
@@ -341,7 +296,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
   });
 
   it("delete_dashboard() returns None on success (204)", async () => {
-    const { ws, transport } = makeWorkspace(() => ({ status: 204 }));
+    const { ws, transport } = makeFacadeWorkspace(() => ({ status: 204 }));
 
     await expect(ws.deleteDashboard(1)).resolves.toBeUndefined();
     expect(seenOf(transport)).toStrictEqual([
@@ -350,13 +305,13 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
   });
 
   it("delete_dashboard() handles 200 response too", async () => {
-    const { ws } = makeWorkspace(() => ok({}));
+    const { ws } = makeFacadeWorkspace(() => ok({}));
 
     await expect(ws.deleteDashboard(1)).resolves.toBeUndefined();
   });
 
   it("bulk_delete_dashboards() returns None on success", async () => {
-    const { ws, transport } = makeWorkspace(() => ({ status: 204 }));
+    const { ws, transport } = makeFacadeWorkspace(() => ({ status: 204 }));
 
     await expect(ws.bulkDeleteDashboards([1, 2])).resolves.toBeUndefined();
     expect(seenOf(transport)).toStrictEqual([
@@ -365,13 +320,13 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
   });
 
   it("bulk_delete_dashboards() works with a single ID", async () => {
-    const { ws } = makeWorkspace(() => ({ status: 204 }));
+    const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
 
     await expect(ws.bulkDeleteDashboards([42])).resolves.toBeUndefined();
   });
 
   it("list_dashboards() preserves the API response order", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([
         dashboardJson(3, "Third"),
         dashboardJson(1, "First"),
@@ -385,7 +340,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
   });
 
   it("create_dashboard() supports duplicate parameter", async () => {
-    const { ws, transport } = makeWorkspace(() =>
+    const { ws, transport } = makeFacadeWorkspace(() =>
       ok(dashboardJson(20, "Copy of Dash")),
     );
 
@@ -401,7 +356,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
   });
 
   it("get_dashboard() result has correct boolean field types", async () => {
-    const { ws } = makeWorkspace(() => ok(dashboardJson(1, "Booleans")));
+    const { ws } = makeFacadeWorkspace(() => ok(dashboardJson(1, "Booleans")));
 
     const dashboard = await ws.getDashboard(1);
 
@@ -413,7 +368,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
   });
 
   it("bulk_delete_dashboards() sends multiple IDs", async () => {
-    const { ws, transport } = makeWorkspace(() => ({ status: 204 }));
+    const { ws, transport } = makeFacadeWorkspace(() => ({ status: 204 }));
 
     await ws.bulkDeleteDashboards([10, 20, 30]);
 
@@ -428,7 +383,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
 
 describe("TestWorkspaceBlueprintCohorts (:1763)", () => {
   it("update_blueprint_cohorts() delegates to API client", async () => {
-    const { ws, transport } = makeWorkspace(() => ({ status: 204 }));
+    const { ws, transport } = makeFacadeWorkspace(() => ({ status: 204 }));
 
     await ws.updateBlueprintCohorts([
       { placeholder: "new_users", cohort_id: 42 },
@@ -446,7 +401,7 @@ describe("TestWorkspaceBlueprintCohorts (:1763)", () => {
 
 describe("TestRemoveReportFromDashboard (:1785)", () => {
   it("remove_report_from_dashboard() sends PATCH and returns updated dashboard", async () => {
-    const { ws, transport } = makeWorkspace(() =>
+    const { ws, transport } = makeFacadeWorkspace(() =>
       ok({ id: 1, title: "Updated Dashboard" }),
     );
 
@@ -467,7 +422,7 @@ describe("TestRemoveReportFromDashboard (:1785)", () => {
 
 describe("TestAddReportToDashboard (:1812)", () => {
   it("add_report_to_dashboard() sends PATCH and returns updated dashboard", async () => {
-    const { ws, transport } = makeWorkspace(() =>
+    const { ws, transport } = makeFacadeWorkspace(() =>
       ok({ id: 1, title: "Updated Dashboard" }),
     );
 
@@ -488,7 +443,7 @@ describe("TestAddReportToDashboard (:1812)", () => {
   it("add_report_to_dashboard() raises for a non-dashboard response", async () => {
     // 204 → the client's `{status: "ok"}` envelope, which carries no
     // `id`, so the FACADE guard fires.
-    const { ws } = makeWorkspace(() => ({ status: 204 }));
+    const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
 
     await expect(ws.addReportToDashboard(1, 42)).rejects.toMatchObject({
       name: "MixpanelHeadlessError",
@@ -498,7 +453,7 @@ describe("TestAddReportToDashboard (:1812)", () => {
   });
 
   it("add_report_to_dashboard() raises when the response dict lacks 'id'", async () => {
-    const { ws } = makeWorkspace(() => ok({ title: "No ID Dashboard" }));
+    const { ws } = makeFacadeWorkspace(() => ok({ title: "No ID Dashboard" }));
 
     await expect(ws.addReportToDashboard(1, 42)).rejects.toMatchObject({
       name: "MixpanelHeadlessError",
@@ -516,7 +471,7 @@ describe("TestAddReportToDashboard (:1812)", () => {
 
 describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => {
   it("favorite_dashboard() POSTs the favorites path and returns undefined", async () => {
-    const { ws, transport } = makeWorkspace(() => ({ status: 204 }));
+    const { ws, transport } = makeFacadeWorkspace(() => ({ status: 204 }));
 
     await expect(ws.favoriteDashboard(7)).resolves.toBeUndefined();
     expect(seenOf(transport)).toStrictEqual([
@@ -525,7 +480,7 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
   });
 
   it("unfavorite_dashboard() DELETEs the favorites path", async () => {
-    const { ws, transport } = makeWorkspace(() => ({ status: 204 }));
+    const { ws, transport } = makeFacadeWorkspace(() => ({ status: 204 }));
 
     await expect(ws.unfavoriteDashboard(7)).resolves.toBeUndefined();
     expect(seenOf(transport)).toStrictEqual([
@@ -534,7 +489,7 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
   });
 
   it("pin_dashboard() POSTs the pin path", async () => {
-    const { ws, transport } = makeWorkspace(() => ({ status: 204 }));
+    const { ws, transport } = makeFacadeWorkspace(() => ({ status: 204 }));
 
     await expect(ws.pinDashboard(7)).resolves.toBeUndefined();
     expect(seenOf(transport)).toStrictEqual([
@@ -543,7 +498,7 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
   });
 
   it("unpin_dashboard() DELETEs the pin path", async () => {
-    const { ws, transport } = makeWorkspace(() => ({ status: 204 }));
+    const { ws, transport } = makeFacadeWorkspace(() => ({ status: 204 }));
 
     await expect(ws.unpinDashboard(7)).resolves.toBeUndefined();
     expect(seenOf(transport)).toStrictEqual([
@@ -552,7 +507,7 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
   });
 
   it("list_blueprint_templates() flattens the templates envelope into models", async () => {
-    const { ws, transport } = makeWorkspace(() =>
+    const { ws, transport } = makeFacadeWorkspace(() =>
       ok({
         templates: {
           company_kpis: {
@@ -579,7 +534,7 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
   });
 
   it("list_blueprint_templates(include_reports=True) forwards the flag", async () => {
-    const { ws, transport } = makeWorkspace(() => ok({ templates: {} }));
+    const { ws, transport } = makeFacadeWorkspace(() => ok({ templates: {} }));
 
     await expect(
       ws.listBlueprintTemplates({ include_reports: true }),
@@ -588,7 +543,7 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
   });
 
   it("create_blueprint() POSTs the template type and returns a Dashboard", async () => {
-    const { ws, transport } = makeWorkspace(() =>
+    const { ws, transport } = makeFacadeWorkspace(() =>
       ok(dashboardJson(31, "From blueprint")),
     );
 
@@ -603,7 +558,7 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
   });
 
   it("get_blueprint_config() returns a BlueprintConfig", async () => {
-    const { ws, transport } = makeWorkspace(() =>
+    const { ws, transport } = makeFacadeWorkspace(() =>
       ok({ variables: { metric: "signups" } }),
     );
 
@@ -617,7 +572,7 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
   });
 
   it("get_bookmark_dashboard_ids() returns the ID list verbatim", async () => {
-    const { ws, transport } = makeWorkspace(() => ok([4, 5, 6]));
+    const { ws, transport } = makeFacadeWorkspace(() => ok([4, 5, 6]));
 
     await expect(ws.getBookmarkDashboardIds(42)).resolves.toStrictEqual([
       4, 5, 6,
@@ -628,7 +583,7 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
   });
 
   it("get_dashboard_erf() returns the ERF dict verbatim", async () => {
-    const { ws, transport } = makeWorkspace(() =>
+    const { ws, transport } = makeFacadeWorkspace(() =>
       ok({ metrics: { views: 3 } }),
     );
 
@@ -641,7 +596,7 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
   });
 
   it("update_text_card() PATCHes the exclude-none body", async () => {
-    const { ws, transport } = makeWorkspace(() => ({ status: 204 }));
+    const { ws, transport } = makeFacadeWorkspace(() => ({ status: 204 }));
 
     await expect(
       ws.updateTextCard(
@@ -655,7 +610,7 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
     ]);
     expect(bodyOf(transport)).toStrictEqual({ markdown: "# Hello" });
     // `exclude_none=True` — an unset `markdown` sends `{}`.
-    const empty = makeWorkspace(() => ({ status: 204 }));
+    const empty = makeFacadeWorkspace(() => ({ status: 204 }));
     await empty.ws.updateTextCard(1, 2, new UpdateTextCardParams({}));
     expect(bodyOf(empty.transport)).toStrictEqual({});
   });
@@ -669,7 +624,9 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
 
 describe("ADDITIVE: by_alias request bodies", () => {
   it("finalize_blueprint() serializes card_type as 'type' (nested)", async () => {
-    const { ws, transport } = makeWorkspace(() => ok(dashboardJson(1, "X")));
+    const { ws, transport } = makeFacadeWorkspace(() =>
+      ok(dashboardJson(1, "X")),
+    );
 
     const dashboard = await ws.finalizeBlueprint(
       new BlueprintFinishParams({
@@ -689,7 +646,9 @@ describe("ADDITIVE: by_alias request bodies", () => {
   });
 
   it("create_rca_dashboard() serializes source_type as 'type'", async () => {
-    const { ws, transport } = makeWorkspace(() => ok(dashboardJson(1, "RCA")));
+    const { ws, transport } = makeFacadeWorkspace(() =>
+      ok(dashboardJson(1, "RCA")),
+    );
 
     const dashboard = await ws.createRcaDashboard(
       new CreateRcaDashboardParams({
@@ -709,7 +668,7 @@ describe("ADDITIVE: by_alias request bodies", () => {
   });
 
   it("update_report_link() serializes link_type as 'type'", async () => {
-    const { ws, transport } = makeWorkspace(() => ({ status: 204 }));
+    const { ws, transport } = makeFacadeWorkspace(() => ({ status: 204 }));
 
     await expect(
       ws.updateReportLink(
@@ -812,7 +771,7 @@ describe("ADDITIVE: empty-response guards (member seam)", () => {
 
 describe("ADDITIVE: response-validation codes", () => {
   it("list_dashboards() raises a coded ResponseValidationError for an invalid item", async () => {
-    const { ws } = makeWorkspace(() => ok([{}]));
+    const { ws } = makeFacadeWorkspace(() => ok([{}]));
 
     await expect(ws.listDashboards()).rejects.toMatchObject({
       name: "ResponseValidationError",
@@ -822,7 +781,7 @@ describe("ADDITIVE: response-validation codes", () => {
   });
 
   it("create_dashboard() raises for an empty `{}` results payload", async () => {
-    const { ws } = makeWorkspace(() => ok({}));
+    const { ws } = makeFacadeWorkspace(() => ok({}));
 
     const error = await ws
       .createDashboard(new CreateDashboardParams({ title: "X" }))

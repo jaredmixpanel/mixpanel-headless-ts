@@ -37,26 +37,15 @@ import {
   QueryResult,
   RetentionQueryResult,
 } from "../../src/types/results/query-engine.js";
-import { Workspace } from "../../src/workspace.js";
 import {
+  makeStubWorkspace,
   type MockWorkspaceClient,
   mockWorkspaceClient,
-  TEST_SESSION,
 } from "../../test-support/workspace-test-helpers.js";
 
 // ===========================================================================
 // Fixtures and mock responses (test file :36-147)
 // ===========================================================================
-
-/**
- * The `workspace_factory` fixture (test file :53-79).
- *
- * @param mock - The stub client.
- * @returns The facade under test.
- */
-function workspaceFactory(mock: MockWorkspaceClient): Workspace {
-  return new Workspace({ session: TEST_SESSION, client: mock.client });
-}
 
 /** Expected message for every rejected `limit` (`LIMIT_ERROR`). */
 const LIMIT_ERROR = /limit must be an integer between 1 and 50000/;
@@ -282,7 +271,7 @@ describe("TestWorkspaceLimitPassthrough", () => {
   it("query forwards limit", async () => {
     const mock = mockWorkspaceClient();
     mock.setInsightsResponse(MOCK_INSIGHTS_RESPONSE);
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
     await ws.query("Login", { limit: 50_000 });
     expect(sentLimit(mock)).toBe(50_000);
   });
@@ -290,7 +279,7 @@ describe("TestWorkspaceLimitPassthrough", () => {
   it("query default is unchanged", async () => {
     const mock = mockWorkspaceClient();
     mock.setInsightsResponse(MOCK_INSIGHTS_RESPONSE);
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
     await ws.query("Login");
     expect(sentLimit(mock)).toBe(3000);
   });
@@ -298,7 +287,7 @@ describe("TestWorkspaceLimitPassthrough", () => {
   it("query_funnel forwards limit", async () => {
     const mock = mockWorkspaceClient();
     mock.setInsightsResponse(MOCK_FUNNEL_RESPONSE);
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
     await ws.queryFunnel(["Signup", "Purchase"], { limit: 12_345 });
     expect(sentLimit(mock)).toBe(12_345);
   });
@@ -306,14 +295,14 @@ describe("TestWorkspaceLimitPassthrough", () => {
   it("query_retention forwards limit", async () => {
     const mock = mockWorkspaceClient();
     mock.setInsightsResponse(MOCK_RETENTION_RESPONSE);
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
     await ws.queryRetention("Signup", "Login", { limit: 42 });
     expect(sentLimit(mock)).toBe(42);
   });
 
   it("out-of-range limit raises", async () => {
     const mock = mockWorkspaceClient();
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
     await expect(ws.query("Login", { limit: 0 })).rejects.toThrow(ValueError);
     await expect(ws.query("Login", { limit: 0 })).rejects.toThrow(LIMIT_ERROR);
     expect(mock.insightsCalls).toHaveLength(0);
@@ -323,7 +312,7 @@ describe("TestWorkspaceLimitPassthrough", () => {
   // leak it into the params dict (Python's `build_*_params` signatures
   // never received it).
   it("build_params ignores limit", async () => {
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const withLimit = await ws.buildParams("Login", {
       limit: 50_000,
       today: TODAY,
@@ -342,7 +331,7 @@ describe("TestRunParams", () => {
   it("run_params returns a query result", async () => {
     const mock = mockWorkspaceClient();
     mock.setInsightsResponse(MOCK_INSIGHTS_RESPONSE);
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
     const params = await ws.buildParams("Login");
     const result = await ws.runParams(params);
 
@@ -356,7 +345,7 @@ describe("TestRunParams", () => {
   it("run_params matches query", async () => {
     const mock = mockWorkspaceClient();
     mock.setInsightsResponse(MOCK_INSIGHTS_RESPONSE);
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
 
     await ws.query("Login", { last: 7, today: TODAY });
     const direct = lastBody(mock);
@@ -372,7 +361,7 @@ describe("TestRunParams", () => {
   it("run_params forwards limit", async () => {
     const mock = mockWorkspaceClient();
     mock.setInsightsResponse(MOCK_INSIGHTS_RESPONSE);
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
     await ws.runParams({ sections: {} }, { limit: 50_000 });
     expect(sentLimit(mock)).toBe(50_000);
   });
@@ -380,7 +369,7 @@ describe("TestRunParams", () => {
   it("run_params forwards workspace_id", async () => {
     const mock = mockWorkspaceClient();
     mock.setInsightsResponse(MOCK_INSIGHTS_RESPONSE);
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
     await ws.runParams({ sections: {} }, { workspace_id: 99 });
     expect(mock.insightsOptions.at(-1)!["workspace_id"]).toBe(99);
   });
@@ -388,7 +377,7 @@ describe("TestRunParams", () => {
   it("run_funnel_params returns a funnel result", async () => {
     const mock = mockWorkspaceClient();
     mock.setInsightsResponse(MOCK_FUNNEL_RESPONSE);
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
     const params = await ws.buildFunnelParams(["Signup", "Purchase"]);
     const result = await ws.runFunnelParams(params, { limit: 7000 });
 
@@ -400,7 +389,7 @@ describe("TestRunParams", () => {
   it("run_retention_params returns a retention result", async () => {
     const mock = mockWorkspaceClient();
     mock.setInsightsResponse(MOCK_RETENTION_RESPONSE);
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
     const params = await ws.buildRetentionParams("Signup", "Login");
     const result = await ws.runRetentionParams(params, { limit: 7000 });
 
@@ -413,7 +402,7 @@ describe("TestRunParams", () => {
     "out-of-range limit raises: %s",
     async (method) => {
       const mock = mockWorkspaceClient();
-      const ws = workspaceFactory(mock);
+      const ws = makeStubWorkspace(mock);
       await expect(
         ws[method]({ sections: {} }, { limit: 50_001 }),
       ).rejects.toThrow(ValueError);

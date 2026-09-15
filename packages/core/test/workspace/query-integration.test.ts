@@ -33,20 +33,10 @@ import {
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 import {
+  makeStubWorkspace,
   type MockWorkspaceClient,
   mockWorkspaceClient,
-  TEST_SESSION,
 } from "../../test-support/workspace-test-helpers.js";
-
-/**
- * The `ws` fixture (test file :47-52).
- *
- * @param mock - The stub client.
- * @returns The facade under test.
- */
-function workspaceFactory(mock: MockWorkspaceClient): Workspace {
-  return new Workspace({ session: TEST_SESSION, client: mock.client });
-}
 
 const TIMESERIES_RESPONSE: Record<string, unknown> = {
   computed_at: "2024-01-31T12:00:00+00:00",
@@ -129,7 +119,7 @@ function wsWith(response: unknown): {
 } {
   const mock = mockWorkspaceClient();
   mock.setInsightsResponse(response);
-  return { ws: workspaceFactory(mock), mock };
+  return { ws: makeStubWorkspace(mock), mock };
 }
 
 /** Read `params.sections.show`. */

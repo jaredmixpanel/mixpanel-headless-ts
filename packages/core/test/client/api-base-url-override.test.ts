@@ -51,6 +51,7 @@ import {
   type CannedResponse,
   type CapturedFetchRequest,
   createMockClient,
+  drain,
   fakeTransport,
   makeSession,
   staticTokenResolver,
@@ -134,15 +135,6 @@ function recorder(): (request: CapturedFetchRequest) => CannedResponse {
     }
     return okResults();
   };
-}
-
-/** Drain an async generator (the `list(...)` analog). */
-async function drain<T>(source: AsyncIterable<T>): Promise<T[]> {
-  const out: T[] = [];
-  for await (const item of source) {
-    out.push(item);
-  }
-  return out;
 }
 
 /** Strip the query string (Python `str(request.url.copy_with(query=None))`). */

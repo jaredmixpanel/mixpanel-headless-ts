@@ -13,12 +13,12 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { ValidationError } from "../../src/errors.js";
 import {
   validateRetentionArgs,
   type ValidateRetentionArgsOptions,
 } from "../../src/query/validation-args.js";
 import { GroupBy } from "../../src/types/index.js";
+import { codes } from "../../test-support/error-codes.js";
 
 // =============================================================================
 // Helpers (test_validation_retention.py)
@@ -48,16 +48,6 @@ function validRetentionArgs(
     group_by: null,
     ...overrides,
   };
-}
-
-/**
- * Extract error codes — port of the module helper `_codes(errors)`.
- *
- * @param errors - Validation errors.
- * @returns The codes, in emission order.
- */
-function codes(errors: readonly ValidationError[]): string[] {
-  return errors.map((e) => e.code);
 }
 
 /** Group-by rule codes asserted absent by the R4 delegation tests. */

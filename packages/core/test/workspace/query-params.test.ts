@@ -42,29 +42,13 @@ import {
 } from "../../src/types/query-params/frequency.js";
 import { GroupBy } from "../../src/types/query-params/group-by.js";
 import { Formula, Metric } from "../../src/types/query-params/metric.js";
-import { Workspace } from "../../src/workspace.js";
 import {
   buildQueryParams,
   type BuildQueryParamsOptions,
   type ParamsDict,
 } from "../../src/workspace-query-params.js";
 import { expectThrows } from "../../test-support/raises.js";
-import {
-  mockWorkspaceClient,
-  TEST_SESSION,
-} from "../../test-support/workspace-test-helpers.js";
-
-/**
- * The `ws` fixture (test file :36-41).
- *
- * @returns The facade under test.
- */
-function makeWs(): Workspace {
-  return new Workspace({
-    session: TEST_SESSION,
-    client: mockWorkspaceClient().client,
-  });
-}
+import { makeStubWorkspace } from "../../test-support/workspace-test-helpers.js";
 
 /** The keyword-only bag every Python `_build_query_params` call spells. */
 const BASE = {
@@ -634,14 +618,14 @@ describe("TestFormulaObjectParams", () => {
 
 describe("TestBuildParams", () => {
   it("returns a dict with sections and displayOptions", async () => {
-    const result = await makeWs().buildParams("Login");
+    const result = await makeStubWorkspace().buildParams("Login");
     expect(typeof result).toBe("object");
     expect(Object.hasOwn(result, "sections")).toBe(true);
     expect(Object.hasOwn(result, "displayOptions")).toBe(true);
   });
 
   it("accepts the full query() signature", async () => {
-    const result = await makeWs().buildParams(
+    const result = await makeStubWorkspace().buildParams(
       [
         new Metric({ event: "Login", math: "unique" }),
         new Metric({ event: "Purchase" }),
@@ -663,7 +647,7 @@ describe("TestBuildParams", () => {
   });
 
   it("output matches _build_query_params for the same input", async () => {
-    const buildResult = await makeWs().buildParams("Login", {
+    const buildResult = await makeStubWorkspace().buildParams("Login", {
       math: "unique",
       last: 7,
       unit: "day",
@@ -708,7 +692,7 @@ describe("TestDateFilterParams", () => {
   });
 
   it("a date filter works in the where clause", async () => {
-    const params = await makeWs().buildParams("Login", {
+    const params = await makeStubWorkspace().buildParams("Login", {
       where: Filter.inTheLast("created", 7, "day"),
     });
     const filt = section(params, "filter")[0]!;
@@ -742,7 +726,7 @@ describe("TestDateFilterParams", () => {
 
 describe("TestMultiFormulaParams", () => {
   it("two Formulas in the events list produce two entries", async () => {
-    const params = await makeWs().buildParams([
+    const params = await makeStubWorkspace().buildParams([
       new Metric({ event: "Signup", math: "unique" }),
       new Metric({ event: "Purchase", math: "unique" }),
       new Formula({ expression: "B / A", label: "Conv Rate" }),
@@ -759,7 +743,7 @@ describe("TestMultiFormulaParams", () => {
   });
 
   it("all metrics get isHidden with multiple formulas", async () => {
-    const params = await makeWs().buildParams([
+    const params = await makeStubWorkspace().buildParams([
       new Metric({ event: "A" }),
       new Metric({ event: "B" }),
       new Formula({ expression: "A+B" }),
@@ -772,7 +756,7 @@ describe("TestMultiFormulaParams", () => {
   });
 
   it("three formulas with three events all produce entries", async () => {
-    const params = await makeWs().buildParams([
+    const params = await makeStubWorkspace().buildParams([
       new Metric({ event: "A", math: "unique" }),
       new Metric({ event: "B", math: "unique" }),
       new Metric({ event: "C", math: "unique" }),
@@ -792,7 +776,7 @@ describe("TestMultiFormulaParams", () => {
 
 describe("TestPercentileParams", () => {
   it("math='percentile' maps to 'custom_percentile'", async () => {
-    const params = await makeWs().buildParams("Login", {
+    const params = await makeStubWorkspace().buildParams("Login", {
       math: "percentile",
       math_property: "duration",
       percentile_value: 95,
@@ -804,7 +788,7 @@ describe("TestPercentileParams", () => {
   });
 
   it("Metric(math='percentile') maps to custom_percentile", async () => {
-    const params = await makeWs().buildParams(
+    const params = await makeStubWorkspace().buildParams(
       new Metric({
         event: "Login",
         math: "percentile",
@@ -818,7 +802,7 @@ describe("TestPercentileParams", () => {
   });
 
   it("a float percentile value is supported", async () => {
-    const params = await makeWs().buildParams("Login", {
+    const params = await makeStubWorkspace().buildParams("Login", {
       math: "percentile",
       math_property: "duration",
       percentile_value: 99.9,
@@ -833,7 +817,7 @@ describe("TestPercentileParams", () => {
 
 describe("TestHistogramParams", () => {
   it("math='histogram' maps directly", async () => {
-    const params = await makeWs().buildParams("Purchase", {
+    const params = await makeStubWorkspace().buildParams("Purchase", {
       math: "histogram",
       math_property: "amount",
       per_user: "total",
@@ -845,7 +829,7 @@ describe("TestHistogramParams", () => {
   });
 
   it("Metric(math='histogram') maps correctly", async () => {
-    const params = await makeWs().buildParams(
+    const params = await makeStubWorkspace().buildParams(
       new Metric({
         event: "Purchase",
         math: "histogram",
@@ -865,14 +849,16 @@ describe("TestHistogramParams", () => {
 
 describe("TestNewMathTypesInBuildParams", () => {
   it("math='cumulative_unique' reaches the measurement", async () => {
-    const params = await makeWs().buildParams("Login", {
+    const params = await makeStubWorkspace().buildParams("Login", {
       math: "cumulative_unique",
     });
     expect(measurementOf(params)["math"]).toBe("cumulative_unique");
   });
 
   it("math='sessions' reaches the measurement", async () => {
-    const params = await makeWs().buildParams("Login", { math: "sessions" });
+    const params = await makeStubWorkspace().buildParams("Login", {
+      math: "sessions",
+    });
     expect(measurementOf(params)["math"]).toBe("sessions");
   });
 
@@ -884,7 +870,7 @@ describe("TestNewMathTypesInBuildParams", () => {
     "numeric_summary",
   ]) {
     it(`property-requiring math '${mathType}' reaches the measurement`, async () => {
-      const params = await makeWs().buildParams("Purchase", {
+      const params = await makeStubWorkspace().buildParams("Purchase", {
         math: mathType,
         math_property: "amount",
       });
@@ -901,26 +887,28 @@ describe("TestNewMathTypesInBuildParams", () => {
 
 describe("TestSegmentMethodInBuildParams", () => {
   it("segment_method='first' produces segmentMethod='first'", async () => {
-    const params = await makeWs().buildParams(
+    const params = await makeStubWorkspace().buildParams(
       new Metric({ event: "Login", segment_method: "first" }),
     );
     expect(measurementOf(params)["segmentMethod"]).toBe("first");
   });
 
   it("segment_method='all' produces segmentMethod='all'", async () => {
-    const params = await makeWs().buildParams(
+    const params = await makeStubWorkspace().buildParams(
       new Metric({ event: "Login", segment_method: "all" }),
     );
     expect(measurementOf(params)["segmentMethod"]).toBe("all");
   });
 
   it("a Metric without segment_method omits the key", async () => {
-    const params = await makeWs().buildParams(new Metric({ event: "Login" }));
+    const params = await makeStubWorkspace().buildParams(
+      new Metric({ event: "Login" }),
+    );
     expect(Object.hasOwn(measurementOf(params), "segmentMethod")).toBe(false);
   });
 
   it("a plain string event omits segmentMethod", async () => {
-    const params = await makeWs().buildParams("Login");
+    const params = await makeStubWorkspace().buildParams("Login");
     expect(Object.hasOwn(measurementOf(params), "segmentMethod")).toBe(false);
   });
 });
@@ -931,7 +919,7 @@ describe("TestSegmentMethodInBuildParams", () => {
 
 describe("TestFrequencyBreakdownInBuildParams", () => {
   it("produces a frequency group entry", async () => {
-    const params = await makeWs().buildParams("Login", {
+    const params = await makeStubWorkspace().buildParams("Login", {
       group_by: new FrequencyBreakdown({ event: "Purchase" }),
     });
     const group = section(params, "group");
@@ -946,7 +934,7 @@ describe("TestFrequencyBreakdownInBuildParams", () => {
   });
 
   it("a labeled FrequencyBreakdown puts the label in `value`", async () => {
-    const params = await makeWs().buildParams("Login", {
+    const params = await makeStubWorkspace().buildParams("Login", {
       group_by: new FrequencyBreakdown({
         event: "Purchase",
         label: "Buy Freq",
@@ -956,7 +944,7 @@ describe("TestFrequencyBreakdownInBuildParams", () => {
   });
 
   it("a mixed string + FrequencyBreakdown list works", async () => {
-    const params = await makeWs().buildParams("Login", {
+    const params = await makeStubWorkspace().buildParams("Login", {
       group_by: ["country", new FrequencyBreakdown({ event: "Purchase" })],
     });
     const group = section(params, "group");
@@ -967,7 +955,7 @@ describe("TestFrequencyBreakdownInBuildParams", () => {
   });
 
   it("existing GroupBy usage still works", async () => {
-    const params = await makeWs().buildParams("Login", {
+    const params = await makeStubWorkspace().buildParams("Login", {
       group_by: new GroupBy({ property: "country" }),
     });
     const group = section(params, "group");
@@ -982,7 +970,7 @@ describe("TestFrequencyBreakdownInBuildParams", () => {
 
 describe("TestFrequencyFilterInBuildParams", () => {
   it("produces a frequency filter entry", async () => {
-    const params = await makeWs().buildParams("Login", {
+    const params = await makeStubWorkspace().buildParams("Login", {
       where: new FrequencyFilter({ event: "Login", value: 5 }),
     });
     const filt = section(params, "filter");
@@ -994,7 +982,7 @@ describe("TestFrequencyFilterInBuildParams", () => {
   });
 
   it("a mixed Filter + FrequencyFilter list works", async () => {
-    const params = await makeWs().buildParams("Login", {
+    const params = await makeStubWorkspace().buildParams("Login", {
       where: [
         Filter.equals("country", "US"),
         new FrequencyFilter({ event: "Login", value: 5 }),
@@ -1009,7 +997,7 @@ describe("TestFrequencyFilterInBuildParams", () => {
   });
 
   it("existing Filter usage still works", async () => {
-    const params = await makeWs().buildParams("Login", {
+    const params = await makeStubWorkspace().buildParams("Login", {
       where: Filter.equals("country", "US"),
     });
     const filt = section(params, "filter");
@@ -1024,7 +1012,9 @@ describe("TestFrequencyFilterInBuildParams", () => {
 
 describe("TestDataGroupIdInsights", () => {
   it('build_params with data_group_id=5 emits globalDataGroupId: "5"', async () => {
-    const params = await makeWs().buildParams("Login", { data_group_id: 5 });
+    const params = await makeStubWorkspace().buildParams("Login", {
+      data_group_id: 5,
+    });
     const sections = params["sections"] as Record<string, unknown>;
     expect(sections["globalDataGroupId"]).toBe("5");
     // The old off-contract sections-level spelling must not appear (bug (b)).
@@ -1032,7 +1022,7 @@ describe("TestDataGroupIdInsights", () => {
   });
 
   it("build_params without data_group_id omits the key", async () => {
-    const params = await makeWs().buildParams("Login");
+    const params = await makeStubWorkspace().buildParams("Login");
     const sections = params["sections"] as Record<string, unknown>;
     expect(Object.hasOwn(sections, "globalDataGroupId")).toBe(false);
     expect(Object.hasOwn(sections, "dataGroupId")).toBe(false);

@@ -34,24 +34,14 @@ import { BookmarkValidationError } from "../../src/errors.js";
 import { filterUnchecked } from "../../src/types/query-params/filter.js";
 import type { ProfilePageResult } from "../../src/types/results/discovery.js";
 import { UserQueryResult } from "../../src/types/results/query-engine.js";
-import { Workspace } from "../../src/workspace.js";
+import type { Workspace } from "../../src/workspace.js";
 import {
   makePageResult,
   makeRawProfile,
+  makeStubWorkspace,
   type MockWorkspaceClient,
   mockWorkspaceClient,
-  TEST_SESSION,
 } from "../../test-support/workspace-test-helpers.js";
-
-/**
- * The `workspace_factory` fixture (test file :125-146).
- *
- * @param mock - The stub client.
- * @returns The facade under test.
- */
-function workspaceFactory(mock: MockWorkspaceClient): Workspace {
-  return new Workspace({ session: TEST_SESSION, client: mock.client });
-}
 
 /**
  * Install a fixed page result (`mock.export_profiles_page.return_value`).
@@ -116,7 +106,9 @@ describe("TestQueryUserDefaultLimit", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     expect(result).toBeInstanceOf(UserQueryResult);
     expect(result.mode).toBe("profiles");
@@ -131,7 +123,9 @@ describe("TestQueryUserDefaultLimit", () => {
       makePageResult([RAW_PROFILE_1], { total: 5432, has_more: true }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     expect(result.total).toBe(1);
     expect(result.total).toBe(result.profiles.length);
@@ -147,7 +141,7 @@ describe("TestQueryUserDefaultLimit", () => {
       }),
     );
 
-    await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    await makeStubWorkspace(mock).queryUser({ mode: "profiles" });
 
     expect(mock.exportPageCalls).toHaveLength(1);
   });
@@ -168,7 +162,7 @@ describe("TestQueryUserExplicitLimit", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 2,
     });
@@ -202,7 +196,7 @@ describe("TestQueryUserExplicitLimit", () => {
       }),
     ]);
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 3,
     });
@@ -223,7 +217,7 @@ describe("TestQueryUserExplicitLimit", () => {
       }),
     ]);
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 2,
     });
@@ -252,7 +246,7 @@ describe("TestQueryUserExplicitLimit", () => {
       }),
     ]);
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 100_000,
     });
@@ -271,7 +265,7 @@ describe("TestQueryUserPropertySelection", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       properties: ["$email", "plan"],
     });
@@ -285,7 +279,7 @@ describe("TestQueryUserPropertySelection", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       properties: null,
     });
@@ -305,7 +299,7 @@ describe("TestQueryUserSorting", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       sort_by: "$last_seen",
     });
@@ -319,7 +313,7 @@ describe("TestQueryUserSorting", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       sort_by: "revenue",
       sort_order: "ascending",
@@ -332,7 +326,7 @@ describe("TestQueryUserSorting", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       sort_by: "$last_seen",
     });
@@ -344,7 +338,7 @@ describe("TestQueryUserSorting", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       sort_by: 'weird"prop',
     });
@@ -358,7 +352,7 @@ describe("TestQueryUserSorting", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       sort_by: String.raw`back\slash`,
     });
@@ -378,7 +372,7 @@ describe("TestQueryUserSearch", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       search: "alice",
     });
@@ -390,7 +384,7 @@ describe("TestQueryUserSearch", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    await makeStubWorkspace(mock).queryUser({ mode: "profiles" });
 
     expect(mock.exportPageCalls[0]!.options["search"] ?? null).toBeNull();
   });
@@ -411,7 +405,7 @@ describe("TestQueryUserDistinctId", () => {
       ),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       distinct_id: "user_target",
     });
@@ -433,7 +427,7 @@ describe("TestQueryUserDistinctIds", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       distinct_ids: ["user_001", "user_002"],
       limit: 100_000,
@@ -461,7 +455,7 @@ describe("TestQueryUserGroupId", () => {
       ),
     );
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       group_id: "companies",
     });
@@ -479,7 +473,7 @@ describe("TestQueryUserAsOf", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       as_of: 1704067200,
     });
@@ -493,7 +487,7 @@ describe("TestQueryUserAsOf", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       as_of: "2024-01-01",
     });
@@ -516,7 +510,9 @@ describe("TestQueryUserTotalCount", () => {
       makePageResult([RAW_PROFILE_1], { total: 99999, has_more: true }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     expect(result.total).toBe(1);
     expect(result.total).toBe(result.profiles.length);
@@ -532,7 +528,7 @@ describe("TestQueryUserTotalCount", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 2,
     });
@@ -551,7 +547,7 @@ describe("TestQueryUserTotalCount", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 100_000,
     });
@@ -570,7 +566,9 @@ describe("TestQueryUserDataFrame", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     expect(result.rowColumns()[0]).toBe("distinct_id");
   });
@@ -579,7 +577,9 @@ describe("TestQueryUserDataFrame", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     expect(result.rowColumns()[1]).toBe("last_seen");
   });
@@ -599,7 +599,9 @@ describe("TestQueryUserDataFrame", () => {
       ),
     );
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     const columns = result.rowColumns();
     expect(columns).toContain("email");
@@ -624,7 +626,9 @@ describe("TestQueryUserDataFrame", () => {
       ),
     );
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     const columns = [...result.rowColumns()];
     expect(columns[0]).toBe("distinct_id");
@@ -643,7 +647,7 @@ describe("TestQueryUserDataFrame", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 2,
     });
@@ -670,7 +674,9 @@ describe("TestQueryUserEmptyResult", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, emptyPage());
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     expect(result.profiles).toHaveLength(0);
     expect(result.total).toBe(0);
@@ -681,7 +687,9 @@ describe("TestQueryUserEmptyResult", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, emptyPage());
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     expect(result.rowColumns()).toContain("distinct_id");
     expect(result.rowColumns()).toContain("last_seen");
@@ -691,7 +699,9 @@ describe("TestQueryUserEmptyResult", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, emptyPage());
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     expect(result.distinct_ids).toStrictEqual([]);
   });
@@ -706,7 +716,9 @@ describe("TestQueryUserConfigError", () => {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
 
-    const result = await workspaceFactory(mock).queryUser({ mode: "profiles" });
+    const result = await makeStubWorkspace(mock).queryUser({
+      mode: "profiles",
+    });
 
     expect(result).toBeInstanceOf(UserQueryResult);
   });
@@ -721,7 +733,7 @@ describe("TestQueryUserResultMetadata", () => {
   function oneProfileWs(): Workspace {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
-    return workspaceFactory(mock);
+    return makeStubWorkspace(mock);
   }
 
   it("returns a UserQueryResult", async () => {
@@ -767,7 +779,7 @@ describe("TestQueryUserProfileNormalization", () => {
   function oneProfileWs(): Workspace {
     const mock = mockWorkspaceClient();
     returnValue(mock, makePageResult([RAW_PROFILE_1], { total: 1 }));
-    return workspaceFactory(mock);
+    return makeStubWorkspace(mock);
   }
 
   it("profiles carry 'distinct_id' (not '$distinct_id')", async () => {
@@ -828,7 +840,7 @@ describe("TestQueryUserPaginationSessionId", () => {
     const mock = mockWorkspaceClient();
     twoPages(mock, "sess_first");
 
-    await workspaceFactory(mock).queryUser({ mode: "profiles", limit: 2 });
+    await makeStubWorkspace(mock).queryUser({ mode: "profiles", limit: 2 });
 
     expect(mock.exportPageCalls[0]!.page).toBe(0);
   });
@@ -837,7 +849,7 @@ describe("TestQueryUserPaginationSessionId", () => {
     const mock = mockWorkspaceClient();
     twoPages(mock, "sess_paginate");
 
-    await workspaceFactory(mock).queryUser({ mode: "profiles", limit: 2 });
+    await makeStubWorkspace(mock).queryUser({ mode: "profiles", limit: 2 });
 
     expect(mock.exportPageCalls[1]!.options["session_id"]).toBe(
       "sess_paginate",
@@ -859,7 +871,7 @@ describe("TestQueryUserValueErrorWrapping", () => {
       _operator: "unsupported_op",
       _value: "val",
     });
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
 
     await expect(
       ws.queryUser({ mode: "profiles", where: f }),
@@ -872,7 +884,7 @@ describe("TestQueryUserAggregatePropertyEscaping", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats({ results: 42 });
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "extremes",
       aggregate_property: 'has"quote',

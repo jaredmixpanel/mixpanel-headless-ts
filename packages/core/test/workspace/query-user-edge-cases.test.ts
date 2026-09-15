@@ -24,10 +24,7 @@
 import { describe, expect, it } from "vitest";
 
 import { LosslessJsonError } from "../../src/client/lossless-json.js";
-import {
-  type BookmarkValidationError,
-  ParamValidationError,
-} from "../../src/errors.js";
+import { ParamValidationError } from "../../src/errors.js";
 import { filterToSelector } from "../../src/query/user-builders.js";
 import {
   validateUserArgs,
@@ -38,35 +35,20 @@ import {
   filterUnchecked,
 } from "../../src/types/query-params/filter.js";
 import { UserQueryResult } from "../../src/types/results/query-engine.js";
-import { Workspace } from "../../src/workspace.js";
+import type { Workspace } from "../../src/workspace.js";
 import {
   buildPageKwargs,
   buildStatsKwargs,
 } from "../../src/workspace-query-params.js";
+import { codesOf } from "../../test-support/error-codes.js";
 import { expectRejects } from "../../test-support/raises.js";
 import {
   makePageResult,
   makeProfilesBatch,
   makeRawProfile,
-  type MockWorkspaceClient,
+  makeStubWorkspace,
   mockWorkspaceClient,
-  TEST_SESSION,
 } from "../../test-support/workspace-test-helpers.js";
-
-/**
- * The `workspace_factory` fixture (test file :141-163).
- *
- * @param mock - The stub client.
- * @returns The facade under test.
- */
-function workspaceFactory(mock: MockWorkspaceClient): Workspace {
-  return new Workspace({ session: TEST_SESSION, client: mock.client });
-}
-
-/** Read the collected `BookmarkValidationError` codes. */
-function codesOf(exc: unknown): string[] {
-  return (exc as BookmarkValidationError).errors.map((e) => e.code);
-}
 
 // ===========================================================================
 // TIER 1 — data corruption / silent wrong results
@@ -89,7 +71,7 @@ describe("TestTier1DataCorruption", () => {
       });
     });
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       sort_by: "ltv",
       parallel: true,
@@ -145,7 +127,7 @@ describe("TestTier1DataCorruption", () => {
       });
     });
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -177,7 +159,7 @@ describe("TestTier1DataCorruption", () => {
       });
     });
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -232,7 +214,7 @@ describe("TestTier1DataCorruption", () => {
       });
     });
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 100_000,
     });
@@ -252,7 +234,7 @@ describe("TestTier1DataCorruption", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       limit: 1000,
     });
@@ -277,7 +259,7 @@ describe("TestTier1DataCorruption", () => {
       });
     });
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -306,7 +288,7 @@ describe("TestTier2CrashPaths", () => {
       _property_type: "list",
     });
 
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.buildUserParams({ where: malformedFilter }),
       "expected BookmarkValidationError",
@@ -376,7 +358,7 @@ describe("TestTier2CrashPaths", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats({ status: "ok" });
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
     });
 
@@ -392,7 +374,7 @@ describe("TestTier2CrashPaths", () => {
 describe("TestTier3ValidationGaps", () => {
   /** The `ws` the Tier-3 cases build. */
   function makeWs(): Workspace {
-    return workspaceFactory(mockWorkspaceClient());
+    return makeStubWorkspace(mockWorkspaceClient());
   }
 
   it("T3.01: a double quote in sort_by is escaped", async () => {

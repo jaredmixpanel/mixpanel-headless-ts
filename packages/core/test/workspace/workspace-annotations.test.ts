@@ -5,7 +5,7 @@
 //
 // Python's `httpx.MockTransport` handler becomes the injected-fetch
 // `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
-// becomes `makeWorkspace(handler)` — the client is built over the
+// becomes `makeFacadeWorkspace(handler)` — the client is built over the
 // OAuth session (`_make_oauth_credentials`, :50) while the facade
 // carries the service-account `_TEST_SESSION`, exactly as
 // Python does. `temp_dir` has no TS analog (no config file is ever
@@ -27,7 +27,6 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { MixpanelClient } from "../../src/client/client.js";
 import {
   Annotation,
   AnnotationTag,
@@ -35,7 +34,6 @@ import {
   CreateAnnotationTagParams,
   UpdateAnnotationParams,
 } from "../../src/types/entities/annotations.js";
-import { Workspace } from "../../src/workspace.js";
 import {
   createAnnotation as createAnnotationMember,
   createAnnotationTag as createAnnotationTagMember,
@@ -45,46 +43,11 @@ import {
   listAnnotationTags as listAnnotationTagsMember,
   updateAnnotation as updateAnnotationMember,
 } from "../../src/workspace-members/annotations-webhooks-alerts.js";
+import { ok } from "../../test-support/client-test-helpers.js";
 import {
-  type CannedResponse,
-  type CapturedFetchRequest,
-  createMockClient,
-  type FakeTransport,
-  makeSession,
-} from "../../test-support/client-test-helpers.js";
-
-/** A canned-response handler (the `httpx.MockTransport` handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
-
-/** The OAuth session the mock client is built over (`:50-56`). */
-const CLIENT_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  oauthToken: "test-token",
-});
-
-/** The canonical service-account facade session (`_TEST_SESSION`, :35-43). */
-const FACADE_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  username: "test_user",
-  secret: "test_secret",
-});
-
-/**
- * Build a Workspace whose client routes through `handler`
- * (`_make_workspace`, :65-82).
- *
- * @param handler - The canned-response handler.
- * @returns The facade plus the transport capture log.
- */
-function makeWorkspace(handler: Handler): {
-  ws: Workspace;
-  transport: FakeTransport;
-} {
-  const { client, transport } = createMockClient(CLIENT_SESSION, handler);
-  return { ws: new Workspace({ session: FACADE_SESSION, client }), transport };
-}
+  makeFacadeWorkspace,
+  stubClient,
+} from "../../test-support/workspace-test-helpers.js";
 
 /**
  * A minimal annotation dict matching the API shape
@@ -118,45 +81,13 @@ function tagJson(id = 1, name = "releases"): Record<string, unknown> {
   return { id, name };
 }
 
-/**
- * A 200 App-API envelope wrapping `results`.
- *
- * @param results - The `results` payload.
- * @returns The canned response.
- */
-function ok(results: unknown): CannedResponse {
-  return { status: 200, json: { status: "ok", results } };
-}
-
-/**
- * A client stub whose single method returns `value` (the additive
- * delegation probes).
- *
- * @param method - The client method name to stub.
- * @param value - The value the stub resolves to.
- * @param calls - Optional log receiving each argument list.
- * @returns The stub cast to the client type.
- */
-function stubClient(
-  method: string,
-  value: unknown,
-  calls: unknown[][] = [],
-): MixpanelClient {
-  return {
-    [method]: (...args: unknown[]): Promise<unknown> => {
-      calls.push(args);
-      return Promise.resolve(value);
-    },
-  } as unknown as MixpanelClient;
-}
-
 // =============================================================================
 // TestWorkspaceAnnotationCRUD
 // =============================================================================
 
 describe("TestWorkspaceAnnotationCRUD", () => {
   it("list_annotations() returns list of Annotation objects", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([annotationJson(1, "First"), annotationJson(2, "Second")]),
     );
     const annotations = await ws.listAnnotations();
@@ -169,12 +100,12 @@ describe("TestWorkspaceAnnotationCRUD", () => {
   });
 
   it("list_annotations() returns empty list when no annotations exist", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+    const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(ws.listAnnotations()).resolves.toStrictEqual([]);
   });
 
   it("list_annotations() passes filter params to API", async () => {
-    const { ws, transport } = makeWorkspace(() => ok([annotationJson()]));
+    const { ws, transport } = makeFacadeWorkspace(() => ok([annotationJson()]));
     const annotations = await ws.listAnnotations({
       from_date: "2026-01-01",
       to_date: "2026-03-31",
@@ -188,7 +119,7 @@ describe("TestWorkspaceAnnotationCRUD", () => {
   });
 
   it("create_annotation() returns the created Annotation", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok(annotationJson(10, "New annotation")),
     );
     const params = new CreateAnnotationParams({
@@ -203,7 +134,7 @@ describe("TestWorkspaceAnnotationCRUD", () => {
   });
 
   it("create_annotation() sends optional fields when provided", async () => {
-    const { ws } = makeWorkspace(() => {
+    const { ws } = makeFacadeWorkspace(() => {
       const data = annotationJson(10, "Tagged");
       data["tags"] = [{ id: 1, name: "releases" }];
       return ok(data);
@@ -221,7 +152,9 @@ describe("TestWorkspaceAnnotationCRUD", () => {
   });
 
   it("get_annotation() returns a single Annotation by ID", async () => {
-    const { ws } = makeWorkspace(() => ok(annotationJson(42, "Found it")));
+    const { ws } = makeFacadeWorkspace(() =>
+      ok(annotationJson(42, "Found it")),
+    );
     const annotation = await ws.getAnnotation(42);
 
     expect(annotation).toBeInstanceOf(Annotation);
@@ -230,7 +163,7 @@ describe("TestWorkspaceAnnotationCRUD", () => {
   });
 
   it("get_annotation() preserves extra fields from the API", async () => {
-    const { ws } = makeWorkspace(() => {
+    const { ws } = makeFacadeWorkspace(() => {
       const data = annotationJson();
       data["custom_field"] = "extra_value";
       return ok(data);
@@ -241,7 +174,9 @@ describe("TestWorkspaceAnnotationCRUD", () => {
   });
 
   it("update_annotation() returns the updated Annotation", async () => {
-    const { ws } = makeWorkspace(() => ok(annotationJson(42, "Updated text")));
+    const { ws } = makeFacadeWorkspace(() =>
+      ok(annotationJson(42, "Updated text")),
+    );
     const params = new UpdateAnnotationParams({ description: "Updated text" });
     const annotation = await ws.updateAnnotation(42, params);
 
@@ -250,13 +185,13 @@ describe("TestWorkspaceAnnotationCRUD", () => {
   });
 
   it("delete_annotation() returns None on success", async () => {
-    const { ws } = makeWorkspace(() => ({ status: 204 }));
+    const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
     // Should not raise.
     await expect(ws.deleteAnnotation(42)).resolves.toBeUndefined();
   });
 
   it("delete_annotation() handles 200 response too", async () => {
-    const { ws } = makeWorkspace(() => ok({}));
+    const { ws } = makeFacadeWorkspace(() => ok({}));
     // Should not raise.
     await expect(ws.deleteAnnotation(42)).resolves.toBeUndefined();
   });
@@ -268,7 +203,7 @@ describe("TestWorkspaceAnnotationCRUD", () => {
 
 describe("TestWorkspaceAnnotationTags", () => {
   it("list_annotation_tags() returns list of AnnotationTag objects", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([tagJson(1, "releases"), tagJson(2, "deployments")]),
     );
     const tags = await ws.listAnnotationTags();
@@ -280,12 +215,12 @@ describe("TestWorkspaceAnnotationTags", () => {
   });
 
   it("list_annotation_tags() returns empty list when no tags exist", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+    const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(ws.listAnnotationTags()).resolves.toStrictEqual([]);
   });
 
   it("create_annotation_tag() returns the created AnnotationTag", async () => {
-    const { ws } = makeWorkspace(() => ok(tagJson(3, "new-tag")));
+    const { ws } = makeFacadeWorkspace(() => ok(tagJson(3, "new-tag")));
     const params = new CreateAnnotationTagParams({ name: "new-tag" });
     const tag = await ws.createAnnotationTag(params);
 

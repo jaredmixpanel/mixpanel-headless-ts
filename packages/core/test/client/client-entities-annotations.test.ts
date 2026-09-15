@@ -8,6 +8,7 @@ import { toNativeJson } from "../../src/client/json-value.js";
 import {
   createMockClient,
   makeSession,
+  parseBody,
 } from "../../test-support/client-test-helpers.js";
 
 /** The `oauth_credentials` fixture twin. */
@@ -36,11 +37,6 @@ function annotationResult(
 /** The `_tag_result` helper twin. */
 function tagResult(id = 1, name = "releases"): Record<string, unknown> {
   return { id, name };
-}
-
-/** Parse a captured JSON request body (json.loads(request.content)). */
-function parseBody(bodyText: string): unknown {
-  return JSON.parse(bodyText) as unknown;
 }
 
 describe("TestListAnnotations", () => {

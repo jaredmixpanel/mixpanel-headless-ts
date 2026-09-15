@@ -26,7 +26,6 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { MixpanelClient } from "../../src/client/client.js";
 import {
   CreateFeatureFlagParams,
   FeatureFlag,
@@ -48,30 +47,14 @@ import {
   updateFeatureFlag as updateFeatureFlagMember,
 } from "../../src/workspace-members/flags-experiments.js";
 import {
-  type CannedResponse,
-  type CapturedFetchRequest,
+  type CannedHandler,
+  CLIENT_SESSION,
   createMockClient,
+  FACADE_SESSION,
   type FakeTransport,
-  makeSession,
+  ok,
 } from "../../test-support/client-test-helpers.js";
-
-/** A canned-response handler (the `httpx.MockTransport` handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
-
-/** The OAuth session the mock client is built over (`:56-62`). */
-const CLIENT_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  oauthToken: "test-token",
-});
-
-/** The canonical service-account facade session (`_TEST_SESSION`, :40-49). */
-const FACADE_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  username: "test_user",
-  secret: "test_secret",
-});
+import { stubClient } from "../../test-support/workspace-test-helpers.js";
 
 /**
  * Build a Workspace whose client routes through `handler`
@@ -80,7 +63,7 @@ const FACADE_SESSION = makeSession({
  * @param handler - The canned-response handler.
  * @returns The facade plus the transport capture log.
  */
-function makeWorkspace(handler: Handler): {
+function makeWorkspace(handler: CannedHandler): {
   ws: Workspace;
   transport: FakeTransport;
 } {
@@ -115,38 +98,6 @@ function flagJson(
     created: "2026-01-01T00:00:00Z",
     modified: "2026-01-01T00:00:00Z",
   };
-}
-
-/**
- * A 200 App-API envelope wrapping `results`.
- *
- * @param results - The `results` payload.
- * @returns The canned response.
- */
-function ok(results: unknown): CannedResponse {
-  return { status: 200, json: { status: "ok", results } };
-}
-
-/**
- * A client stub whose single method returns `value`
- * (the additive member-level probes).
- *
- * @param method - The client method name to stub.
- * @param value - The value the stub resolves to.
- * @param calls - Optional log receiving each argument list.
- * @returns The stub cast to the client type.
- */
-function stubClient(
-  method: string,
-  value: unknown,
-  calls: unknown[][] = [],
-): MixpanelClient {
-  return {
-    [method]: (...args: unknown[]): Promise<unknown> => {
-      calls.push(args);
-      return Promise.resolve(value);
-    },
-  } as unknown as MixpanelClient;
 }
 
 // =============================================================================

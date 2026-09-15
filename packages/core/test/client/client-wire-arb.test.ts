@@ -26,18 +26,10 @@ import { MixpanelHeadlessError } from "../../src/errors.js";
 import { toError } from "../../src/invariant.js";
 import {
   createMockClient,
+  drain,
   makeSession,
   staticTokenResolver,
 } from "../../test-support/client-test-helpers.js";
-
-/** Drain an async generator into an array (`list(...)`). */
-async function drain<T>(source: AsyncIterable<T>): Promise<T[]> {
-  const out: T[] = [];
-  for await (const item of source) {
-    out.push(item);
-  }
-  return out;
-}
 
 /** Read the `event` member of a yielded export line. */
 function eventName(value: unknown): unknown {

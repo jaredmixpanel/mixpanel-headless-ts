@@ -5,7 +5,7 @@
 //
 // Python's `httpx.MockTransport` handler becomes the injected-fetch
 // `fakeTransport` seam; `_make_workspace(temp_dir, handler)` becomes
-// `makeWorkspace(handler)` — the client is built over the OAuth
+// `makeFacadeWorkspace(handler)` — the client is built over the OAuth
 // session while the facade carries the service-account `_TEST_SESSION`,
 // exactly as Python does. `temp_dir` has no TS analog and is dropped.
 //
@@ -17,7 +17,6 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { MixpanelClient } from "../../src/client/client.js";
 import {
   CreateWebhookParams,
   ProjectWebhook,
@@ -27,7 +26,6 @@ import {
   WebhookTestResult,
 } from "../../src/types/entities/webhooks.js";
 import { WebhookAuthType } from "../../src/types/enums.js";
-import { Workspace } from "../../src/workspace.js";
 import {
   createWebhook as createWebhookMember,
   deleteWebhook as deleteWebhookMember,
@@ -35,46 +33,11 @@ import {
   testWebhook as testWebhookMember,
   updateWebhook as updateWebhookMember,
 } from "../../src/workspace-members/annotations-webhooks-alerts.js";
+import { ok } from "../../test-support/client-test-helpers.js";
 import {
-  type CannedResponse,
-  type CapturedFetchRequest,
-  createMockClient,
-  type FakeTransport,
-  makeSession,
-} from "../../test-support/client-test-helpers.js";
-
-/** A canned-response handler (the `httpx.MockTransport` handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
-
-/** The OAuth session the mock client is built over. */
-const CLIENT_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  oauthToken: "test-token",
-});
-
-/** The canonical service-account facade session (`_TEST_SESSION`). */
-const FACADE_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  username: "test_user",
-  secret: "test_secret",
-});
-
-/**
- * Build a Workspace whose client routes through `handler`
- * (`_make_workspace`).
- *
- * @param handler - The canned-response handler.
- * @returns The facade plus the transport capture log.
- */
-function makeWorkspace(handler: Handler): {
-  ws: Workspace;
-  transport: FakeTransport;
-} {
-  const { client, transport } = createMockClient(CLIENT_SESSION, handler);
-  return { ws: new Workspace({ session: FACADE_SESSION, client }), transport };
-}
+  makeFacadeWorkspace,
+  stubClient,
+} from "../../test-support/workspace-test-helpers.js";
 
 /**
  * A minimal webhook dict matching the API shape (`_webhook_json`,
@@ -115,45 +78,13 @@ function mutationJson(
   return { id, name };
 }
 
-/**
- * A 200 App-API envelope wrapping `results`.
- *
- * @param results - The `results` payload.
- * @returns The canned response.
- */
-function ok(results: unknown): CannedResponse {
-  return { status: 200, json: { status: "ok", results } };
-}
-
-/**
- * A client stub whose single method returns `value` (the additive
- * delegation probes).
- *
- * @param method - The client method name to stub.
- * @param value - The value the stub resolves to.
- * @param calls - Optional log receiving each argument list.
- * @returns The stub cast to the client type.
- */
-function stubClient(
-  method: string,
-  value: unknown,
-  calls: unknown[][] = [],
-): MixpanelClient {
-  return {
-    [method]: (...args: unknown[]): Promise<unknown> => {
-      calls.push(args);
-      return Promise.resolve(value);
-    },
-  } as unknown as MixpanelClient;
-}
-
 // =============================================================================
 // TestWorkspaceWebhookCRUD
 // =============================================================================
 
 describe("TestWorkspaceWebhookCRUD", () => {
   it("list_webhooks() returns list of ProjectWebhook objects", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([webhookJson("id-1", "Hook A"), webhookJson("id-2", "Hook B")]),
     );
     const webhooks = await ws.listWebhooks();
@@ -166,12 +97,14 @@ describe("TestWorkspaceWebhookCRUD", () => {
   });
 
   it("list_webhooks() returns empty list when no webhooks exist", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+    const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(ws.listWebhooks()).resolves.toStrictEqual([]);
   });
 
   it("create_webhook() returns WebhookMutationResult", async () => {
-    const { ws } = makeWorkspace(() => ok(mutationJson("new-id", "New Hook")));
+    const { ws } = makeFacadeWorkspace(() =>
+      ok(mutationJson("new-id", "New Hook")),
+    );
     const params = new CreateWebhookParams({
       name: "New Hook",
       url: "https://example.com",
@@ -184,7 +117,9 @@ describe("TestWorkspaceWebhookCRUD", () => {
   });
 
   it("create_webhook() sends auth fields when provided", async () => {
-    const { ws } = makeWorkspace(() => ok(mutationJson("new-id", "Secured")));
+    const { ws } = makeFacadeWorkspace(() =>
+      ok(mutationJson("new-id", "Secured")),
+    );
     const params = new CreateWebhookParams({
       name: "Secured",
       url: "https://example.com",
@@ -199,7 +134,7 @@ describe("TestWorkspaceWebhookCRUD", () => {
   });
 
   it("update_webhook() returns WebhookMutationResult", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok(mutationJson("wh-uuid-123", "Renamed")),
     );
     const params = new UpdateWebhookParams({ name: "Renamed" });
@@ -210,12 +145,12 @@ describe("TestWorkspaceWebhookCRUD", () => {
   });
 
   it("delete_webhook() returns None on success", async () => {
-    const { ws } = makeWorkspace(() => ({ status: 204 }));
+    const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
     await expect(ws.deleteWebhook("wh-uuid-123")).resolves.toBeUndefined();
   });
 
   it("delete_webhook() handles 200 response too", async () => {
-    const { ws } = makeWorkspace(() => ok({}));
+    const { ws } = makeFacadeWorkspace(() => ok({}));
     await expect(ws.deleteWebhook("wh-uuid-123")).resolves.toBeUndefined();
   });
 });
@@ -226,7 +161,7 @@ describe("TestWorkspaceWebhookCRUD", () => {
 
 describe("TestWorkspaceWebhookTest", () => {
   it("test_webhook() returns WebhookTestResult on success", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ success: true, status_code: 200, message: "OK" }),
     );
     const params = new WebhookTestParams({ url: "https://example.com/hook" });
@@ -239,7 +174,7 @@ describe("TestWorkspaceWebhookTest", () => {
   });
 
   it("test_webhook() returns failure result when test fails", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ success: false, status_code: 500, message: "Connection refused" }),
     );
     const params = new WebhookTestParams({ url: "https://bad.example.com" });

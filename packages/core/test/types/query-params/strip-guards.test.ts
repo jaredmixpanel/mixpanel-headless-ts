@@ -16,11 +16,7 @@
 // covered in flow-query-result.test.ts).
 import { describe, expect, it } from "vitest";
 
-import {
-  type MixpanelHeadlessError,
-  ParamValidationError,
-  ResponseValidationError,
-} from "../../../src/errors.js";
+import { ResponseValidationError } from "../../../src/errors.js";
 import { CreateCustomEventParams } from "../../../src/types/entities/data-governance.js";
 import { CohortCriteria } from "../../../src/types/query-params/cohort.js";
 import {
@@ -39,6 +35,7 @@ import {
 } from "../../../src/types/query-params/guards.js";
 import { Formula } from "../../../src/types/query-params/metric.js";
 import { RetentionEvent } from "../../../src/types/query-params/retention.js";
+import { expectGuard } from "../../../test-support/raises.js";
 
 /**
  * Python-blank / JS-trim-nonblank strings: each is `""` under CPython
@@ -56,23 +53,6 @@ const PY_ONLY_BLANKS = [
 
 /** JS-blank / Python-nonblank string (the inverse direction). */
 const BOM = "\uFEFF";
-
-/**
- * Assert a thunk throws the exact guard `{class, code}` pair.
- *
- * @param thunk - The construction under test.
- * @param code - Expected registry code.
- */
-function expectGuard(thunk: () => unknown, code: string): void {
-  let thrown: unknown;
-  try {
-    thunk();
-  } catch (error) {
-    thrown = error;
-  }
-  expect(thrown, `expected ${code}`).toBeInstanceOf(ParamValidationError);
-  expect((thrown as MixpanelHeadlessError).code).toBe(code);
-}
 
 describe("pythonStrip emptiness guards (RUN.md 2026-08-15 divergence class)", () => {
   it("EV1_EMPTY_EVENT: validateEventName rejects Python-only blanks (the repro class)", () => {

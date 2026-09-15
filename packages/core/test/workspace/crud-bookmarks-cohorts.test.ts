@@ -6,7 +6,7 @@
 //
 // Python's `httpx.MockTransport` handler becomes the injected-fetch
 // `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
-// becomes `makeWorkspace(handler)` — the client is built over the
+// becomes `makeFacadeWorkspace(handler)` — the client is built over the
 // OAuth session (`_make_oauth_credentials`, :66) while the facade
 // carries the service-account `_TEST_SESSION`, exactly as
 // Python does. `temp_dir` has no TS analog (no config file is ever
@@ -40,63 +40,19 @@ import {
   CreateCohortParams,
   UpdateCohortParams,
 } from "../../src/types/entities/cohorts.js";
-import { Workspace } from "../../src/workspace.js";
 import {
-  type CannedResponse,
   type CapturedFetchRequest,
-  createMockClient,
   type FakeTransport,
-  makeSession,
+  ok,
 } from "../../test-support/client-test-helpers.js";
 import {
-  type LogCollector,
   logCollector,
+  makeFacadeWorkspace,
 } from "../../test-support/workspace-test-helpers.js";
 import {
   MINIMAL_FUNNEL_PARAMS,
   MINIMAL_INSIGHTS_PARAMS,
 } from "./bookmark-fixtures.js";
-
-/** A canned-response handler (the `httpx.MockTransport` handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
-
-/** The OAuth session the mock client is built over (`:66-72`). */
-const CLIENT_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  oauthToken: "test-token",
-});
-
-/** The canonical service-account facade session (`_TEST_SESSION`, :50-59). */
-const FACADE_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  username: "test_user",
-  secret: "test_secret",
-});
-
-/**
- * Build a Workspace whose client routes through `handler`
- * (`_make_workspace`, :81-100).
- *
- * @param handler - The canned-response handler.
- * @param logger - Optional `caplog` twin.
- * @returns The facade plus the transport capture log.
- */
-function makeWorkspace(
-  handler: Handler,
-  logger?: LogCollector,
-): { ws: Workspace; transport: FakeTransport } {
-  const { client, transport } = createMockClient(CLIENT_SESSION, handler);
-  return {
-    ws: new Workspace({
-      session: FACADE_SESSION,
-      client,
-      ...(logger === undefined ? {} : { logger }),
-    }),
-    transport,
-  };
-}
 
 /**
  * A minimal dashboard dict matching the API shape (`_dashboard_json`,
@@ -159,16 +115,6 @@ function cohortJson(id = 1, name = "Test Cohort"): Record<string, unknown> {
 }
 
 /**
- * A 200 App-API envelope wrapping `results`.
- *
- * @param results - The `results` payload.
- * @returns The canned response.
- */
-function ok(results: unknown): CannedResponse {
-  return { status: 200, json: { status: "ok", results } };
-}
-
-/**
  * Parse a captured request body as JSON.
  *
  * @param transport - The capture log.
@@ -185,7 +131,7 @@ function bodyOf(transport: FakeTransport, index = 0): unknown {
 
 describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
   it("list_bookmarks_v2() returns list of Bookmark objects (:533)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([
         bookmarkJson(1, "Bookmark A", "insights"),
         bookmarkJson(2, "Bookmark B", "funnels"),
@@ -202,13 +148,13 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
   });
 
   it("list_bookmarks_v2() returns empty list when none exist (:559)", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+    const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(ws.listBookmarksV2()).resolves.toStrictEqual([]);
   });
 
   it("list_bookmarks_v2(bookmark_type='funnels') passes filter (:571)", async () => {
     const capturedUrl: string[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       capturedUrl.push(request.url);
       return ok([bookmarkJson(1, "Funnel", "funnels")]);
     });
@@ -219,7 +165,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
   });
 
   it("list_bookmarks_v2() preserves the API response order (:592)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([bookmarkJson(5, "E"), bookmarkJson(3, "C"), bookmarkJson(1, "A")]),
     );
     const bookmarks = await ws.listBookmarksV2();
@@ -227,7 +173,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
   });
 
   it("create_bookmark() returns the created Bookmark (:614)", async () => {
-    const { ws } = makeWorkspace((request) =>
+    const { ws } = makeFacadeWorkspace((request) =>
       ok(
         request.method === "PATCH"
           ? dashboardJson(99)
@@ -249,7 +195,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
   });
 
   it("create_bookmark() sends description when provided (:644)", async () => {
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       if (request.method === "PATCH") {
         return ok(dashboardJson(99));
       }
@@ -272,7 +218,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
   });
 
   it("create_bookmark() can associate with a dashboard (:669)", async () => {
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       if (request.method === "PATCH") {
         return ok(dashboardJson(99));
       }
@@ -294,7 +240,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
   });
 
   it("create_bookmark() PATCHes the report into the dashboard layout (:693)", async () => {
-    const { ws, transport } = makeWorkspace((request) => {
+    const { ws, transport } = makeFacadeWorkspace((request) => {
       if (request.method === "POST" && request.url.includes("bookmarks")) {
         return ok({
           ...bookmarkJson(42, "Auto Add", "insights"),
@@ -330,7 +276,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
 
   it("create_bookmark() raises when dashboard_id is missing (:734)", async () => {
     const calls: CapturedFetchRequest[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       calls.push(request);
       return ok({});
     });
@@ -351,7 +297,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
 
   it("create_bookmark() rejects malformed sorting before any API call (:750)", async () => {
     const calls: CapturedFetchRequest[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       calls.push(request);
       return ok({});
     });
@@ -383,7 +329,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
 
   it("update_bookmark() rejects malformed sorting before the API call (:792)", async () => {
     const calls: CapturedFetchRequest[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       calls.push(request);
       return ok({});
     });
@@ -399,7 +345,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
 
   it("update_bookmark() rejects malformed displayOptions (:810)", async () => {
     const calls: CapturedFetchRequest[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       calls.push(request);
       return ok({});
     });
@@ -421,7 +367,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
 
   it("update_bookmark() name-only partial does not false-reject (:839)", async () => {
     const calls: CapturedFetchRequest[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       calls.push(request);
       return ok(bookmarkJson(1, "Renamed", "insights"));
     });
@@ -431,7 +377,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
 
   it("update_bookmark() with warning-only errors does NOT raise (:864)", async () => {
     const calls: CapturedFetchRequest[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       calls.push(request);
       return ok(bookmarkJson(1, "X", "insights"));
     });
@@ -445,7 +391,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
 
   it("create_bookmark() logs warnings instead of dropping them (:890)", async () => {
     const logger = logCollector();
-    const { ws } = makeWorkspace(
+    const { ws } = makeFacadeWorkspace(
       (request) =>
         ok(
           request.method === "PATCH"
@@ -473,7 +419,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
   });
 
   it("create_bookmark() accepts the canonical valid sorting block (:927)", async () => {
-    const { ws } = makeWorkspace((request) =>
+    const { ws } = makeFacadeWorkspace((request) =>
       ok(
         request.method === "PATCH"
           ? dashboardJson(99)
@@ -503,7 +449,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
   });
 
   it("get_bookmark() returns a single Bookmark by ID (:967)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok(bookmarkJson(1, "My Bookmark", "retention")),
     );
     const bookmark = await ws.getBookmark(1);
@@ -515,7 +461,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
   });
 
   it("get_bookmark() preserves extra fields (:988)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({
         ...bookmarkJson(5, "Detailed", "insights"),
         creator_name: "Bob",
@@ -529,7 +475,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
   });
 
   it("update_bookmark() returns the updated Bookmark (:1004)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok(bookmarkJson(1, "Updated Name", "insights")),
     );
     const bookmark = await ws.updateBookmark(
@@ -542,7 +488,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
   });
 
   it("update_bookmark() can update description (:1024)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ ...bookmarkJson(1, "Same", "insights"), description: "New desc" }),
     );
     const bookmark = await ws.updateBookmark(
@@ -553,7 +499,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
   });
 
   it("update_bookmark() can update query params (:1039)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({
         ...bookmarkJson(1, "Same", "insights"),
         params: { events: [{ event: "Login" }] },
@@ -567,33 +513,33 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
   });
 
   it("delete_bookmark() returns None on success (:1054)", async () => {
-    const { ws } = makeWorkspace(() => ({ status: 204 }));
+    const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
     await expect(ws.deleteBookmark(1)).resolves.toBeUndefined();
   });
 
   it("delete_bookmark() handles a 200 response (:1064)", async () => {
-    const { ws } = makeWorkspace(() => ok({}));
+    const { ws } = makeFacadeWorkspace(() => ok({}));
     await expect(ws.deleteBookmark(1)).resolves.toBeUndefined();
   });
 
   it("bulk_delete_bookmarks() returns None on success (:1074)", async () => {
-    const { ws } = makeWorkspace(() => ({ status: 204 }));
+    const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
     await expect(ws.bulkDeleteBookmarks([1, 2])).resolves.toBeUndefined();
   });
 
   it("bulk_delete_bookmarks() works with a single ID (:1084)", async () => {
-    const { ws } = makeWorkspace(() => ({ status: 204 }));
+    const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
     await expect(ws.bulkDeleteBookmarks([42])).resolves.toBeUndefined();
   });
 
   it("bulk_delete_bookmarks() sends multiple IDs (:1094)", async () => {
-    const { ws, transport } = makeWorkspace(() => ({ status: 204 }));
+    const { ws, transport } = makeFacadeWorkspace(() => ({ status: 204 }));
     await ws.bulkDeleteBookmarks([10, 20, 30]);
     expect(transport.captures).toHaveLength(1);
   });
 
   it("bulk_update_bookmarks() returns None on success (:1108)", async () => {
-    const { ws } = makeWorkspace(() => ok({}));
+    const { ws } = makeFacadeWorkspace(() => ok({}));
     await expect(
       ws.bulkUpdateBookmarks([
         new BulkUpdateBookmarkEntry({ id: 1, name: "Updated A" }),
@@ -602,7 +548,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
   });
 
   it("bulk_update_bookmarks() handles multiple entries (:1119)", async () => {
-    const { ws } = makeWorkspace(() => ok({}));
+    const { ws } = makeFacadeWorkspace(() => ok({}));
     await expect(
       ws.bulkUpdateBookmarks([
         new BulkUpdateBookmarkEntry({ id: 1, name: "A" }),
@@ -613,7 +559,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
   });
 
   it("bulk_update_bookmarks() can update query params (:1134)", async () => {
-    const { ws } = makeWorkspace(() => ok({}));
+    const { ws } = makeFacadeWorkspace(() => ok({}));
     await expect(
       ws.bulkUpdateBookmarks([
         new BulkUpdateBookmarkEntry({
@@ -625,24 +571,24 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
   });
 
   it("bookmark_linked_dashboard_ids() returns list of int (:1147)", async () => {
-    const { ws } = makeWorkspace(() => ok([10, 20, 30]));
+    const { ws } = makeFacadeWorkspace(() => ok([10, 20, 30]));
     await expect(ws.bookmarkLinkedDashboardIds(1)).resolves.toStrictEqual([
       10, 20, 30,
     ]);
   });
 
   it("bookmark_linked_dashboard_ids() returns [] when none linked (:1162)", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+    const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(ws.bookmarkLinkedDashboardIds(1)).resolves.toStrictEqual([]);
   });
 
   it("bookmark_linked_dashboard_ids() works with a single ID (:1174)", async () => {
-    const { ws } = makeWorkspace(() => ok([42]));
+    const { ws } = makeFacadeWorkspace(() => ok([42]));
     await expect(ws.bookmarkLinkedDashboardIds(1)).resolves.toStrictEqual([42]);
   });
 
   it("get_bookmark_history() returns BookmarkHistoryResponse (:1186)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({
         results: [
           { action: "created", timestamp: "2024-01-01" },
@@ -665,7 +611,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
   });
 
   it("get_bookmark_history() handles empty history (:1216)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ results: [], pagination: { page_size: 20 } }),
     );
     const history = await ws.getBookmarkHistory(1);
@@ -675,7 +621,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
   });
 
   it("get_bookmark_history() preserves pagination metadata (:1238)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({
         results: [{ action: "created" }],
         pagination: {
@@ -693,7 +639,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
   });
 
   it("list_bookmarks_v2() maps 'type' to bookmark_type (:1265)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([{ id: 1, name: "F", type: "flows", params: {} }]),
     );
     const bookmarks = await ws.listBookmarksV2();
@@ -701,7 +647,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
   });
 
   it("create_bookmark() works with the funnel bookmark type (:1285)", async () => {
-    const { ws } = makeWorkspace((request) =>
+    const { ws } = makeFacadeWorkspace((request) =>
       ok(
         request.method === "PATCH"
           ? dashboardJson(99)
@@ -726,7 +672,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
 
 describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
   it("list_cohorts_full() returns list of Cohort objects (:1322)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([cohortJson(1, "Cohort A"), cohortJson(2, "Cohort B")]),
     );
     const cohorts = await ws.listCohortsFull();
@@ -739,13 +685,13 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
   });
 
   it("list_cohorts_full() returns empty list when none exist (:1347)", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+    const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(ws.listCohortsFull()).resolves.toStrictEqual([]);
   });
 
   it("list_cohorts_full(data_group_id='abc') passes filter (:1359)", async () => {
     const capturedUrl: string[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       capturedUrl.push(request.url);
       return ok([cohortJson(1, "Filtered")]);
     });
@@ -754,7 +700,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
   });
 
   it("list_cohorts_full() preserves API response order (:1379)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([cohortJson(3, "C"), cohortJson(1, "A"), cohortJson(2, "B")]),
     );
     const cohorts = await ws.listCohortsFull();
@@ -762,7 +708,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
   });
 
   it("get_cohort() returns a single Cohort by ID (:1401)", async () => {
-    const { ws } = makeWorkspace(() => ok(cohortJson(1, "My Cohort")));
+    const { ws } = makeFacadeWorkspace(() => ok(cohortJson(1, "My Cohort")));
     const cohort = await ws.getCohort(1);
 
     expect(cohort).toBeInstanceOf(Cohort);
@@ -771,7 +717,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
   });
 
   it("get_cohort() preserves extra fields (:1421)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({
         ...cohortJson(5, "Detailed"),
         description: "A detailed cohort",
@@ -785,14 +731,14 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
   });
 
   it("get_cohort() preserves the count field (:1437)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ ...cohortJson(1, "Counted"), count: 42 }),
     );
     expect((await ws.getCohort(1)).count).toBe(42);
   });
 
   it("create_cohort() returns the created Cohort (:1451)", async () => {
-    const { ws } = makeWorkspace(() => ok(cohortJson(10, "New Cohort")));
+    const { ws } = makeFacadeWorkspace(() => ok(cohortJson(10, "New Cohort")));
     const cohort = await ws.createCohort(
       new CreateCohortParams({ name: "New Cohort" }),
     );
@@ -803,7 +749,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
   });
 
   it("create_cohort() sends description when provided (:1472)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ ...cohortJson(11, "Described"), description: "A test cohort" }),
     );
     const cohort = await ws.createCohort(
@@ -816,7 +762,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
   });
 
   it("create_cohort() sends definition when provided (:1487)", async () => {
-    const { ws } = makeWorkspace(() => ok(cohortJson(12, "Defined")));
+    const { ws } = makeFacadeWorkspace(() => ok(cohortJson(12, "Defined")));
     const cohort = await ws.createCohort(
       new CreateCohortParams({
         name: "Defined",
@@ -827,7 +773,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
   });
 
   it("create_cohort() sends data_group_id when provided (:1509)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ ...cohortJson(13, "Grouped"), data_group_id: "group-x" }),
     );
     const cohort = await ws.createCohort(
@@ -837,7 +783,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
   });
 
   it("update_cohort() returns the updated Cohort (:1524)", async () => {
-    const { ws } = makeWorkspace(() => ok(cohortJson(1, "Updated Name")));
+    const { ws } = makeFacadeWorkspace(() => ok(cohortJson(1, "Updated Name")));
     const cohort = await ws.updateCohort(
       1,
       new UpdateCohortParams({ name: "Updated Name" }),
@@ -848,7 +794,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
   });
 
   it("update_cohort() can update description (:1544)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ ...cohortJson(1, "Same"), description: "New desc" }),
     );
     const cohort = await ws.updateCohort(
@@ -859,7 +805,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
   });
 
   it("update_cohort() can toggle visibility (:1559)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ ...cohortJson(1, "Toggle"), is_visible: false }),
     );
     const cohort = await ws.updateCohort(
@@ -870,7 +816,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
   });
 
   it("update_cohort() can update the definition (:1574)", async () => {
-    const { ws } = makeWorkspace(() => ok(cohortJson(1, "Redefined")));
+    const { ws } = makeFacadeWorkspace(() => ok(cohortJson(1, "Redefined")));
     const cohort = await ws.updateCohort(
       1,
       new UpdateCohortParams({ definition: { filter: { event: "Purchase" } } }),
@@ -879,33 +825,33 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
   });
 
   it("delete_cohort() returns None on success (:1593)", async () => {
-    const { ws } = makeWorkspace(() => ({ status: 204 }));
+    const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
     await expect(ws.deleteCohort(1)).resolves.toBeUndefined();
   });
 
   it("delete_cohort() handles a 200 response (:1603)", async () => {
-    const { ws } = makeWorkspace(() => ok({}));
+    const { ws } = makeFacadeWorkspace(() => ok({}));
     await expect(ws.deleteCohort(1)).resolves.toBeUndefined();
   });
 
   it("bulk_delete_cohorts() returns None on success (:1613)", async () => {
-    const { ws } = makeWorkspace(() => ({ status: 204 }));
+    const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
     await expect(ws.bulkDeleteCohorts([1, 2])).resolves.toBeUndefined();
   });
 
   it("bulk_delete_cohorts() works with a single ID (:1623)", async () => {
-    const { ws } = makeWorkspace(() => ({ status: 204 }));
+    const { ws } = makeFacadeWorkspace(() => ({ status: 204 }));
     await expect(ws.bulkDeleteCohorts([42])).resolves.toBeUndefined();
   });
 
   it("bulk_delete_cohorts() sends multiple IDs (:1633)", async () => {
-    const { ws, transport } = makeWorkspace(() => ({ status: 204 }));
+    const { ws, transport } = makeFacadeWorkspace(() => ({ status: 204 }));
     await ws.bulkDeleteCohorts([10, 20, 30]);
     expect(transport.captures).toHaveLength(1);
   });
 
   it("bulk_update_cohorts() returns None on success (:1647)", async () => {
-    const { ws } = makeWorkspace(() => ok({}));
+    const { ws } = makeFacadeWorkspace(() => ok({}));
     await expect(
       ws.bulkUpdateCohorts([
         new BulkUpdateCohortEntry({ id: 1, name: "Updated A" }),
@@ -914,7 +860,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
   });
 
   it("bulk_update_cohorts() handles multiple entries (:1658)", async () => {
-    const { ws } = makeWorkspace(() => ok({}));
+    const { ws } = makeFacadeWorkspace(() => ok({}));
     await expect(
       ws.bulkUpdateCohorts([
         new BulkUpdateCohortEntry({ id: 1, name: "A" }),
@@ -925,7 +871,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
   });
 
   it("bulk_update_cohorts() can update definitions (:1673)", async () => {
-    const { ws } = makeWorkspace(() => ok({}));
+    const { ws } = makeFacadeWorkspace(() => ok({}));
     await expect(
       ws.bulkUpdateCohorts([
         new BulkUpdateCohortEntry({
@@ -937,7 +883,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
   });
 
   it("list_cohorts_full() preserves count on each cohort (:1686)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([
         { ...cohortJson(1, "Small"), count: 10 },
         { ...cohortJson(2, "Large"), count: 10000 },
@@ -949,7 +895,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
   });
 
   it("get_cohort() result has correct field types (:1708)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({
         ...cohortJson(1, "Typed"),
         is_visible: true,
@@ -966,7 +912,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
   });
 
   it("create_cohort() can create a locked cohort (:1727)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ ...cohortJson(14, "Locked"), is_locked: true }),
     );
     const cohort = await ws.createCohort(
@@ -976,7 +922,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
   });
 
   it("update_cohort() can toggle lock state (:1742)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ ...cohortJson(1, "Unlocked"), is_locked: false }),
     );
     const cohort = await ws.updateCohort(

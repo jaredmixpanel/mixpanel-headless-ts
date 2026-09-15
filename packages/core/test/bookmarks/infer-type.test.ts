@@ -15,24 +15,7 @@ import { inferBookmarkType } from "../../src/bookmarks/infer-type.js";
 import { FlowStep } from "../../src/types/query-params/flow.js";
 import { Metric } from "../../src/types/query-params/metric.js";
 import { RetentionEvent } from "../../src/types/query-params/retention.js";
-import { Workspace } from "../../src/workspace.js";
-import {
-  mockWorkspaceClient,
-  TEST_SESSION,
-} from "../../test-support/workspace-test-helpers.js";
-
-/**
- * A Workspace with mocked dependencies — the builders are pure, so no
- * request is ever made.
- *
- * @returns The fixture workspace.
- */
-function makeWs(): Workspace {
-  return new Workspace({
-    session: TEST_SESSION,
-    client: mockWorkspaceClient().client,
-  });
-}
+import { makeStubWorkspace } from "../../test-support/workspace-test-helpers.js";
 
 describe("inferBookmarkType — real builder output", () => {
   const cases: Array<
@@ -45,13 +28,13 @@ describe("inferBookmarkType — real builder output", () => {
     [
       "buildParams, single event",
       "insights",
-      () => makeWs().buildParams("Login"),
+      () => makeStubWorkspace().buildParams("Login"),
     ],
     [
       "buildParams, several events with a breakdown",
       "insights",
       () =>
-        makeWs().buildParams(["Login", "Purchase"], {
+        makeStubWorkspace().buildParams(["Login", "Purchase"], {
           group_by: ["$city"],
           last: 7,
         }),
@@ -60,31 +43,33 @@ describe("inferBookmarkType — real builder output", () => {
       "buildParams, unique-count math on a Metric",
       "insights",
       () =>
-        makeWs().buildParams(new Metric({ event: "Purchase", math: "unique" })),
+        makeStubWorkspace().buildParams(
+          new Metric({ event: "Purchase", math: "unique" }),
+        ),
     ],
     [
       "buildFunnelParams, two steps",
       "funnels",
-      () => makeWs().buildFunnelParams(["Signup", "Purchase"]),
+      () => makeStubWorkspace().buildFunnelParams(["Signup", "Purchase"]),
     ],
     [
       "buildFunnelParams, three steps with a breakdown",
       "funnels",
       () =>
-        makeWs().buildFunnelParams(["Signup", "View", "Purchase"], {
+        makeStubWorkspace().buildFunnelParams(["Signup", "View", "Purchase"], {
           group_by: ["$os"],
         }),
     ],
     [
       "buildRetentionParams, born + return event",
       "retention",
-      () => makeWs().buildRetentionParams("Signup", "Login"),
+      () => makeStubWorkspace().buildRetentionParams("Signup", "Login"),
     ],
     [
       "buildRetentionParams, RetentionEvent objects",
       "retention",
       () =>
-        makeWs().buildRetentionParams(
+        makeStubWorkspace().buildRetentionParams(
           new RetentionEvent({ event: "Signup" }),
           new RetentionEvent({ event: "Login" }),
         ),
@@ -92,12 +77,15 @@ describe("inferBookmarkType — real builder output", () => {
     [
       "buildFlowParams, single event",
       "flows",
-      () => makeWs().buildFlowParams("Purchase"),
+      () => makeStubWorkspace().buildFlowParams("Purchase"),
     ],
     [
       "buildFlowParams, FlowStep list",
       "flows",
-      () => makeWs().buildFlowParams([new FlowStep({ event: "Signup" })]),
+      () =>
+        makeStubWorkspace().buildFlowParams([
+          new FlowStep({ event: "Signup" }),
+        ]),
     ],
   ];
 
@@ -108,7 +96,7 @@ describe("inferBookmarkType — real builder output", () => {
   }
 
   it("classifies every builder family distinctly (no two collide)", async () => {
-    const ws = makeWs();
+    const ws = makeStubWorkspace();
     const seen = [
       inferBookmarkType(await ws.buildParams("Login")),
       inferBookmarkType(await ws.buildFunnelParams(["A", "B"])),
@@ -120,10 +108,10 @@ describe("inferBookmarkType — real builder output", () => {
   });
 
   it("is unaffected by key insertion order (it reads members, not order)", async () => {
-    const params = (await makeWs().buildFunnelParams(["A", "B"])) as Record<
-      string,
-      unknown
-    >;
+    const params = (await makeStubWorkspace().buildFunnelParams([
+      "A",
+      "B",
+    ])) as Record<string, unknown>;
     const reordered = Object.fromEntries(Object.entries(params).reverse());
     expect(inferBookmarkType(reordered)).toBe("funnels");
   });

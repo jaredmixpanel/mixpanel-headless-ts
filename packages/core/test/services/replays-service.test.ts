@@ -41,14 +41,12 @@ import type { WarningSink } from "../../src/services/discovery.js";
 import { ReplaysService } from "../../src/services/replays.js";
 import { SignedReplay } from "../../src/types/results/replay-models.js";
 import {
+  type CannedHandler,
   type CannedResponse,
   type CapturedFetchRequest,
   createMockClient,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
-
-/** A canned-response handler (the httpx.MockTransport handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
 
 /** A CDN handler that may also throw (the transport-error path). */
 type CdnHandler = (url: string) => CannedResponse;
@@ -71,7 +69,7 @@ function mockApiClient(
   signCalls: CapturedFetchRequest[];
 } {
   const signCalls: CapturedFetchRequest[] = [];
-  const handler: Handler = (request) => {
+  const handler: CannedHandler = (request) => {
     if (request.url.includes("/replays/sign/bulk")) {
       signCalls.push(request);
       return { status: 200, json: options.signResponse?.() ?? [] };
@@ -369,7 +367,7 @@ describe("403 re-sign retry (TestFetchFiles403Retry)", () => {
   it("test_403_with_re_sign_succeeds_after_resign", async () => {
     const state = { resigned: false };
     const signCalls: CapturedFetchRequest[] = [];
-    const handler: Handler = (request) => {
+    const handler: CannedHandler = (request) => {
       if (request.url.includes("/replays/sign/bulk")) {
         signCalls.push(request);
         state.resigned = true;

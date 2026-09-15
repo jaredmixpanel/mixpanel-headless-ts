@@ -13,12 +13,12 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { ValidationError } from "../../src/errors.js";
 import {
   validateFlowArgs,
   type ValidateFlowArgsOptions,
 } from "../../src/query/validation-args.js";
 import { TimeComparison } from "../../src/types/index.js";
+import { codes } from "../../test-support/error-codes.js";
 
 // =============================================================================
 // Helpers (test_validation_flow.py)
@@ -46,16 +46,6 @@ function validFlowArgs(
     last: 30,
     ...overrides,
   };
-}
-
-/**
- * Extract error codes — port of the module helper `_codes(errors)`.
- *
- * @param errors - Validation errors.
- * @returns The codes, in emission order.
- */
-function codes(errors: readonly ValidationError[]): string[] {
-  return errors.map((e) => e.code);
 }
 
 // =============================================================================

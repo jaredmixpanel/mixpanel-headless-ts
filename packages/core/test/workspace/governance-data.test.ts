@@ -82,30 +82,15 @@ import {
 } from "../../src/workspace-members/governance-data.js";
 import type { WorkspaceOptions } from "../../src/workspace-members/options.js";
 import {
+  type CannedHandler,
   type CannedResponse,
   type CapturedFetchRequest,
+  CLIENT_SESSION,
   createMockClient,
+  FACADE_SESSION,
   type FakeTransport,
-  makeSession,
+  ok,
 } from "../../test-support/client-test-helpers.js";
-
-/** A canned-response handler (the `httpx.MockTransport` handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
-
-/** The OAuth session the mock client is built over (`:82-88`). */
-const CLIENT_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  oauthToken: "test-token",
-});
-
-/** The canonical service-account facade session (`_TEST_SESSION`, :66-75). */
-const FACADE_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  username: "test_user",
-  secret: "test_secret",
-});
 
 /**
  * Build a Workspace whose client routes through `handler`
@@ -117,7 +102,7 @@ const FACADE_SESSION = makeSession({
  * @returns The facade plus the transport capture log.
  */
 function makeWorkspace(
-  handler: Handler,
+  handler: CannedHandler,
   options: Partial<WorkspaceOptions> = {},
   sleep?: (ms: number) => Promise<void>,
 ): { ws: Workspace; transport: FakeTransport } {
@@ -130,16 +115,6 @@ function makeWorkspace(
     ws: new Workspace({ session: FACADE_SESSION, client, ...options }),
     transport,
   };
-}
-
-/**
- * A 200 App-API envelope wrapping `results`.
- *
- * @param results - The `results` payload.
- * @returns The canned response.
- */
-function ok(results: unknown): CannedResponse {
-  return { status: 200, json: { status: "ok", results } };
 }
 
 /**
@@ -684,7 +659,7 @@ describe("TestUploadLookupTable", () => {
     registerResult: unknown,
     statusResults: readonly unknown[] = [],
     counters?: { requests: number; polls: number },
-  ): Handler {
+  ): CannedHandler {
     const log = counters ?? { requests: 0, polls: 0 };
     return (request: CapturedFetchRequest): CannedResponse => {
       log.requests += 1;

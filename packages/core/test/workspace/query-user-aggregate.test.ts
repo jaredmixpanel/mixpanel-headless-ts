@@ -32,23 +32,12 @@ import { describe, expect, it } from "vitest";
 
 import { BookmarkValidationError } from "../../src/errors.js";
 import { UserQueryResult } from "../../src/types/results/query-engine.js";
-import { Workspace } from "../../src/workspace.js";
+import { codesOf } from "../../test-support/error-codes.js";
 import { expectRejects } from "../../test-support/raises.js";
 import {
-  type MockWorkspaceClient,
+  makeStubWorkspace,
   mockWorkspaceClient,
-  TEST_SESSION,
 } from "../../test-support/workspace-test-helpers.js";
-
-/**
- * The `workspace_factory` fixture (test file :62-81).
- *
- * @param mock - The stub client.
- * @returns The facade under test.
- */
-function workspaceFactory(mock: MockWorkspaceClient): Workspace {
-  return new Workspace({ session: TEST_SESSION, client: mock.client });
-}
 
 /**
  * Build a mock `engage_stats()` response (`_make_stats_response`).
@@ -66,11 +55,6 @@ function makeStatsResponse(
   return { results, status, computed_at: computedAt };
 }
 
-/** Read the collected `BookmarkValidationError` codes. */
-function codesOf(exc: unknown): string[] {
-  return (exc as BookmarkValidationError).errors.map((e) => e.code);
-}
-
 // ===========================================================================
 // Count aggregate returns a scalar value
 // ===========================================================================
@@ -80,7 +64,7 @@ describe("TestAggregateCount", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse(42));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "count",
     });
@@ -94,7 +78,7 @@ describe("TestAggregateCount", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse(100));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "count",
     });
@@ -106,7 +90,7 @@ describe("TestAggregateCount", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse(256));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "count",
     });
@@ -118,7 +102,7 @@ describe("TestAggregateCount", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse(10));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "count",
     });
@@ -131,7 +115,7 @@ describe("TestAggregateCount", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse(5));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "count",
       where: 'properties["plan"] == "premium"',
@@ -144,7 +128,7 @@ describe("TestAggregateCount", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse(42, "2025-06-01T12:00:00"));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "count",
     });
@@ -164,7 +148,7 @@ describe("TestAggregateWithProperty", () => {
     const extremesResult = { max: 99999.99, min: 10.0, nth_percentile: 500.0 };
     mock.setEngageStats(makeStatsResponse(extremesResult));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "extremes",
       aggregate_property: "revenue",
@@ -188,7 +172,7 @@ describe("TestAggregateWithProperty", () => {
     };
     mock.setEngageStats(makeStatsResponse(summaryResult));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "numeric_summary",
       aggregate_property: "ltv",
@@ -206,7 +190,7 @@ describe("TestAggregateWithProperty", () => {
     const percentileResult = { percentile: 50, result: 35.0 };
     mock.setEngageStats(makeStatsResponse(percentileResult));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "percentile",
       aggregate_property: "age",
@@ -224,7 +208,7 @@ describe("TestAggregateWithProperty", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse({ percentile: 99.5, result: 980.0 }));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "percentile",
       aggregate_property: "score",
@@ -241,7 +225,7 @@ describe("TestAggregateWithProperty", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse({ max: 500.0, min: 1.0 }));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "extremes",
       aggregate_property: "revenue",
@@ -261,7 +245,7 @@ describe("TestAggregateWithProperty", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "numeric_summary",
       aggregate_property: "score",
@@ -284,7 +268,7 @@ describe("TestAggregateSegmented", () => {
     const segmented = { "123": 145.0, "456": 320.5 };
     mock.setEngageStats(makeStatsResponse(segmented));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "count",
       segment_by: [123, 456],
@@ -298,7 +282,7 @@ describe("TestAggregateSegmented", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse({ "123": 145.0, "456": 320.5 }));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "count",
       segment_by: [123, 456],
@@ -313,7 +297,7 @@ describe("TestAggregateSegmented", () => {
       makeStatsResponse({ cohort_123: 145.0, cohort_456: 320.5 }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "count",
       segment_by: [123, 456],
@@ -327,7 +311,7 @@ describe("TestAggregateSegmented", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse({ "100": 10, "200": 20, "300": 30 }));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "count",
       segment_by: [100, 200, 300],
@@ -340,7 +324,7 @@ describe("TestAggregateSegmented", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse({ "123": 10, "456": 20 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "count",
       segment_by: [123, 456],
@@ -353,7 +337,7 @@ describe("TestAggregateSegmented", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse({ "123": 10 }));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "extremes",
       aggregate_property: "revenue",
@@ -371,7 +355,7 @@ describe("TestAggregateSegmented", () => {
 describe("TestValidationU14AggregatePropertyRequired", () => {
   for (const aggFunc of ["extremes", "percentile", "numeric_summary"]) {
     it(`non-count aggregate '${aggFunc}' without a property raises U14`, async () => {
-      const ws = workspaceFactory(mockWorkspaceClient());
+      const ws = makeStubWorkspace(mockWorkspaceClient());
       const error = await expectRejects(
         ws.queryUser({ mode: "aggregate", aggregate: aggFunc }),
         "expected BookmarkValidationError",
@@ -382,7 +366,7 @@ describe("TestValidationU14AggregatePropertyRequired", () => {
   }
 
   it("the U14 message mentions aggregate_property", async () => {
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.queryUser({ mode: "aggregate", aggregate: "extremes" }),
       "expected BookmarkValidationError",
@@ -401,7 +385,7 @@ describe("TestValidationU14AggregatePropertyRequired", () => {
 
 describe("TestValidationU15AggregatePropertyProhibited", () => {
   it("count with aggregate_property raises U15", async () => {
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.queryUser({
         mode: "aggregate",
@@ -414,7 +398,7 @@ describe("TestValidationU15AggregatePropertyProhibited", () => {
   });
 
   it("the U15 message mentions count", async () => {
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.queryUser({
         mode: "aggregate",
@@ -437,7 +421,7 @@ describe("TestValidationU15AggregatePropertyProhibited", () => {
 
 describe("TestValidationU16SegmentByRequiresAggregate", () => {
   it("segment_by with mode='profiles' raises U16", async () => {
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.queryUser({ mode: "profiles", segment_by: [123] }),
       "expected BookmarkValidationError",
@@ -449,7 +433,7 @@ describe("TestValidationU16SegmentByRequiresAggregate", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse({ "123": 10 }));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "count",
       segment_by: [123],
@@ -465,7 +449,7 @@ describe("TestValidationU16SegmentByRequiresAggregate", () => {
 
 describe("TestValidationU18ParallelProfilesOnly", () => {
   it("parallel=true with mode='aggregate' raises U18", async () => {
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.queryUser({
         mode: "aggregate",
@@ -480,7 +464,7 @@ describe("TestValidationU18ParallelProfilesOnly", () => {
 
 describe("TestValidationU19SortByProfilesOnly", () => {
   it("sort_by with mode='aggregate' raises U19", async () => {
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.queryUser({
         mode: "aggregate",
@@ -495,7 +479,7 @@ describe("TestValidationU19SortByProfilesOnly", () => {
 
 describe("TestValidationU20SearchProfilesOnly", () => {
   it("search with mode='aggregate' raises U20", async () => {
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.queryUser({
         mode: "aggregate",
@@ -510,7 +494,7 @@ describe("TestValidationU20SearchProfilesOnly", () => {
 
 describe("TestValidationU21DistinctIdProfilesOnly", () => {
   it("distinct_id with mode='aggregate' raises U21", async () => {
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.queryUser({
         mode: "aggregate",
@@ -523,7 +507,7 @@ describe("TestValidationU21DistinctIdProfilesOnly", () => {
   });
 
   it("distinct_ids with mode='aggregate' raises U21", async () => {
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.queryUser({
         mode: "aggregate",
@@ -538,7 +522,7 @@ describe("TestValidationU21DistinctIdProfilesOnly", () => {
 
 describe("TestValidationU22PropertiesProfilesOnly", () => {
   it("properties with mode='aggregate' raises U22", async () => {
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.queryUser({
         mode: "aggregate",
@@ -557,7 +541,7 @@ describe("TestValidationU22PropertiesProfilesOnly", () => {
 
 describe("TestValidationMultipleErrors", () => {
   it("multiple profile-only params produce multiple errors", async () => {
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.queryUser({
         mode: "aggregate",
@@ -576,7 +560,7 @@ describe("TestValidationMultipleErrors", () => {
   });
 
   it("a missing property AND invalid profile params are all reported", async () => {
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.queryUser({
         mode: "aggregate",
@@ -601,7 +585,7 @@ describe("TestEngageStatsCallParameters", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse(10));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "count",
     });
@@ -613,7 +597,7 @@ describe("TestEngageStatsCallParameters", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse({ max: 500.0, min: 1.0 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "extremes",
       aggregate_property: "revenue",
@@ -628,7 +612,7 @@ describe("TestEngageStatsCallParameters", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse({ count: 10, mean: 25.0 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "numeric_summary",
       aggregate_property: "score",
@@ -643,7 +627,7 @@ describe("TestEngageStatsCallParameters", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse({ percentile: 90, result: 150.0 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "percentile",
       aggregate_property: "age",
@@ -659,7 +643,7 @@ describe("TestEngageStatsCallParameters", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse({ percentile: 95.5, result: 200.0 }));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "percentile",
       aggregate_property: "ltv",
@@ -675,7 +659,7 @@ describe("TestEngageStatsCallParameters", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse(50));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "count",
       group_id: "companies",
@@ -686,7 +670,7 @@ describe("TestEngageStatsCallParameters", () => {
 
   it("as_of in aggregate mode is rejected by validation (U30)", async () => {
     const mock = mockWorkspaceClient();
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
     const error = await expectRejects(
       ws.queryUser({
         mode: "aggregate",
@@ -704,7 +688,7 @@ describe("TestEngageStatsCallParameters", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse(100));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "count",
       cohort: 42,
@@ -724,7 +708,7 @@ describe("TestAggregateResultMetadata", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse(42));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "count",
     });
@@ -736,7 +720,7 @@ describe("TestAggregateResultMetadata", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse(42));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "count",
     });
@@ -749,7 +733,7 @@ describe("TestAggregateResultMetadata", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse(42));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "count",
     });
@@ -761,7 +745,7 @@ describe("TestAggregateResultMetadata", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse(1500));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "count",
     });
@@ -773,7 +757,7 @@ describe("TestAggregateResultMetadata", () => {
     const mock = mockWorkspaceClient();
     mock.setEngageStats(makeStatsResponse(42));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
       aggregate: "count",
     });

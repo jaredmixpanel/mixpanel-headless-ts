@@ -38,6 +38,7 @@ import {
   type CannedResponse,
   type CapturedFetchRequest,
   createMockClient,
+  drain,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 
@@ -48,15 +49,6 @@ function oauthCredentials(): Session {
     region: "us",
     oauthToken: "test-oauth-token",
   });
-}
-
-/** Drain an async generator into an array (the `list(...)` analog). */
-async function drain<T>(source: AsyncIterable<T>): Promise<T[]> {
-  const out: T[] = [];
-  for await (const item of source) {
-    out.push(item);
-  }
-  return out;
 }
 
 /** Native-JSON view of drained page items (JsonNumber tokens folded). */

@@ -25,6 +25,7 @@ import type { JsonValue } from "../../src/client/json-value.js";
 import { Workspace } from "../../src/workspace.js";
 import {
   asyncIterableOf,
+  drain,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 
@@ -158,20 +159,6 @@ function rawProfile(
  */
 function makeWorkspace(stub: StubClient): Workspace {
   return new Workspace({ session: TEST_SESSION, client: stub.client });
-}
-
-/**
- * Drain an async iterable into an array (Python's `list(...)`).
- *
- * @param source - The async iterable.
- * @returns Every yielded item, in order.
- */
-async function drain<T>(source: AsyncIterable<T>): Promise<T[]> {
-  const out: T[] = [];
-  for await (const item of source) {
-    out.push(item);
-  }
-  return out;
 }
 
 /** Cast helper for the transformed-record assertions. */

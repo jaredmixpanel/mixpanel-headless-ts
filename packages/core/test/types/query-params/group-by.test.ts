@@ -4,31 +4,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  type MixpanelHeadlessError,
-  ParamValidationError,
-} from "../../../src/errors.js";
-import {
   CustomPropertyRef,
   ListItemGroupMode,
 } from "../../../src/types/query-params/filter.js";
 import { GroupBy } from "../../../src/types/query-params/group-by.js";
-
-/**
- * Assert a thunk throws the exact guard `{class, code}` pair.
- *
- * @param thunk - The construction under test.
- * @param code - Expected registry code.
- */
-function expectGuard(thunk: () => unknown, code: string): void {
-  let thrown: unknown;
-  try {
-    thunk();
-  } catch (error) {
-    thrown = error;
-  }
-  expect(thrown, `expected ${code}`).toBeInstanceOf(ParamValidationError);
-  expect((thrown as MixpanelHeadlessError).code).toBe(code);
-}
+import { expectGuard } from "../../../test-support/raises.js";
 
 describe("GroupBy guards (__post_init__ parity, source order)", () => {
   it("GB1_EMPTY_PROPERTY on blank string properties", () => {

@@ -34,23 +34,11 @@ import { FlowStep } from "../../src/types/query-params/flow.js";
 import { GroupBy } from "../../src/types/query-params/group-by.js";
 import { FlowTreeNode } from "../../src/types/results/flow-tree.js";
 import { FlowQueryResult } from "../../src/types/results/query-engine.js";
-import { Workspace } from "../../src/workspace.js";
 import { buildFlowParams } from "../../src/workspace-query-params.js";
 import {
-  type MockWorkspaceClient,
+  makeStubWorkspace,
   mockWorkspaceClient,
-  TEST_SESSION,
 } from "../../test-support/workspace-test-helpers.js";
-
-/**
- * The `workspace_factory` fixture (test file :56-68).
- *
- * @param mock - Optional stub client.
- * @returns The facade under test.
- */
-function makeWs(mock: MockWorkspaceClient = mockWorkspaceClient()): Workspace {
-  return new Workspace({ session: TEST_SESSION, client: mock.client });
-}
 
 /** The keyword-only defaults every `_build_flow_params` case shares. */
 const BASE_BUILD = {
@@ -276,7 +264,7 @@ describe("TestWorkspaceFlowPublicMethods", () => {
     const mock = mockWorkspaceClient();
     mock.setArbFunnelsResponse(SANKEY_OK);
 
-    const result = await makeWs(mock).queryFlow("Login");
+    const result = await makeStubWorkspace(mock).queryFlow("Login");
 
     expect(result).toBeInstanceOf(FlowQueryResult);
     expect(result.computed_at).toBe("2025-01-15T10:00:00");
@@ -289,7 +277,7 @@ describe("TestWorkspaceFlowPublicMethods", () => {
 
   it("build_flow_params returns a dict without an API call", async () => {
     const mock = mockWorkspaceClient();
-    const params = await makeWs(mock).buildFlowParams("Login");
+    const params = await makeStubWorkspace(mock).buildFlowParams("Login");
 
     expect(typeof params).toBe("object");
     expect(Object.hasOwn(params, "steps")).toBe(true);
@@ -310,7 +298,7 @@ describe("TestWorkspaceFlowPublicMethods", () => {
       metadata: {},
     });
 
-    const result = await makeWs(mock).queryFlow(
+    const result = await makeStubWorkspace(mock).queryFlow(
       new FlowStep({ event: "Login", forward: 5, reverse: 2 }),
     );
 
@@ -329,9 +317,12 @@ describe("TestWorkspaceFlowPublicMethods", () => {
       metadata: {},
     });
 
-    const result = await makeWs(mock).queryFlow(["Login", "Purchase"], {
-      mode: "paths",
-    });
+    const result = await makeStubWorkspace(mock).queryFlow(
+      ["Login", "Purchase"],
+      {
+        mode: "paths",
+      },
+    );
 
     expect(result).toBeInstanceOf(FlowQueryResult);
     expect(mock.arbFunnelsCalls[0]!["query_type"]).toBe("flows_top_paths");
@@ -345,7 +336,7 @@ describe("TestWorkspaceFlowPublicMethods", () => {
 
 describe("TestMultiStepNormalization", () => {
   it("a list of strings produces N steps with the defaults", async () => {
-    const params = await makeWs().buildFlowParams(["A", "B"]);
+    const params = await makeStubWorkspace().buildFlowParams(["A", "B"]);
     const steps = stepsOf(params);
     expect(steps).toHaveLength(2);
     expect(steps[0]!["event"]).toBe("A");
@@ -358,7 +349,7 @@ describe("TestMultiStepNormalization", () => {
   });
 
   it("a list of FlowSteps preserves per-step forward/reverse", async () => {
-    const params = await makeWs().buildFlowParams([
+    const params = await makeStubWorkspace().buildFlowParams([
       new FlowStep({ event: "A", forward: 3 }),
       new FlowStep({ event: "B", reverse: 2 }),
     ]);
@@ -371,7 +362,7 @@ describe("TestMultiStepNormalization", () => {
   });
 
   it("a mixed list works correctly", async () => {
-    const params = await makeWs().buildFlowParams([
+    const params = await makeStubWorkspace().buildFlowParams([
       "A",
       new FlowStep({ event: "B", forward: 1 }),
     ]);
@@ -385,14 +376,14 @@ describe("TestMultiStepNormalization", () => {
   });
 
   it("a single string wraps into a one-element list", async () => {
-    const params = await makeWs().buildFlowParams("Purchase");
+    const params = await makeStubWorkspace().buildFlowParams("Purchase");
     const steps = stepsOf(params);
     expect(steps).toHaveLength(1);
     expect(steps[0]!["event"]).toBe("Purchase");
   });
 
   it("a single FlowStep wraps into a one-element list", async () => {
-    const params = await makeWs().buildFlowParams(
+    const params = await makeStubWorkspace().buildFlowParams(
       new FlowStep({ event: "A", forward: 3 }),
     );
     const steps = stepsOf(params);
@@ -402,7 +393,7 @@ describe("TestMultiStepNormalization", () => {
   });
 
   it("string steps inherit the top-level defaults", async () => {
-    const params = await makeWs().buildFlowParams(["X", "Y"], {
+    const params = await makeStubWorkspace().buildFlowParams(["X", "Y"], {
       forward: 5,
       reverse: 2,
     });
@@ -413,7 +404,7 @@ describe("TestMultiStepNormalization", () => {
   });
 
   it("explicit FlowStep values override the top-level defaults", async () => {
-    const params = await makeWs().buildFlowParams(
+    const params = await makeStubWorkspace().buildFlowParams(
       new FlowStep({ event: "A", forward: 5, reverse: 4 }),
       { forward: 3, reverse: 0 },
     );
@@ -423,7 +414,7 @@ describe("TestMultiStepNormalization", () => {
   });
 
   it("a FlowStep with null values inherits the defaults", async () => {
-    const params = await makeWs().buildFlowParams(
+    const params = await makeStubWorkspace().buildFlowParams(
       new FlowStep({ event: "A" }),
       { forward: 5, reverse: 2 },
     );
@@ -439,7 +430,7 @@ describe("TestMultiStepNormalization", () => {
 
 describe("TestMultiStepAnchorPosition", () => {
   it("anchor_position is 1", async () => {
-    const params = await makeWs().buildFlowParams("Login");
+    const params = await makeStubWorkspace().buildFlowParams("Login");
     expect(params["anchor_position"]).toBe(1);
   });
 });
@@ -450,7 +441,7 @@ describe("TestMultiStepAnchorPosition", () => {
 
 describe("TestPerStepDirectionValidation", () => {
   it("a per-step forward override is not rejected when top-level is 0", async () => {
-    const params = await makeWs().buildFlowParams(
+    const params = await makeStubWorkspace().buildFlowParams(
       new FlowStep({ event: "Login", forward: 3 }),
       { forward: 0, reverse: 0 },
     );
@@ -461,7 +452,7 @@ describe("TestPerStepDirectionValidation", () => {
 
   it("FL5 still rejects when no step has a non-zero direction", async () => {
     await expect(
-      makeWs().buildFlowParams(new FlowStep({ event: "Login" }), {
+      makeStubWorkspace().buildFlowParams(new FlowStep({ event: "Login" }), {
         forward: 0,
         reverse: 0,
       }),
@@ -472,7 +463,7 @@ describe("TestPerStepDirectionValidation", () => {
     // The type says "all" | "any"; the guard exists for untyped callers
     // (Python raises for anything else) and must survive the lint sweep.
     await expect(
-      makeWs().buildFlowParams(
+      makeStubWorkspace().buildFlowParams(
         new FlowStep({
           event: "Login",
           forward: 3,
@@ -485,7 +476,7 @@ describe("TestPerStepDirectionValidation", () => {
   });
 
   it("mixed per-step overrides pass when one direction is > 0", async () => {
-    const params = await makeWs().buildFlowParams(
+    const params = await makeStubWorkspace().buildFlowParams(
       [
         new FlowStep({ event: "A", forward: 3 }),
         new FlowStep({ event: "B", reverse: 2 }),
@@ -506,7 +497,7 @@ describe("TestPerStepDirectionValidation", () => {
 
 describe("TestFlowStepDatetimeFilters", () => {
   it("Filter.before produces segfilter operator '>'", async () => {
-    const params = await makeWs().buildFlowParams(
+    const params = await makeStubWorkspace().buildFlowParams(
       new FlowStep({
         event: "Login",
         filters: [Filter.before("$time", "2026-01-15")],
@@ -521,7 +512,7 @@ describe("TestFlowStepDatetimeFilters", () => {
   });
 
   it("Filter.in_the_last produces operator, operand and unit", async () => {
-    const params = await makeWs().buildFlowParams(
+    const params = await makeStubWorkspace().buildFlowParams(
       new FlowStep({
         event: "Login",
         filters: [Filter.inTheLast("$time", 7, "day")],
@@ -587,7 +578,9 @@ describe("TestQueryFlowTreeIntegration", () => {
     const mock = mockWorkspaceClient();
     mock.setArbFunnelsResponse(sampleTreeApiResponse());
 
-    const result = await makeWs(mock).queryFlow("Login", { mode: "tree" });
+    const result = await makeStubWorkspace(mock).queryFlow("Login", {
+      mode: "tree",
+    });
 
     expect(result).toBeInstanceOf(FlowQueryResult);
     expect(result.mode).toBe("tree");
@@ -632,14 +625,14 @@ describe("TestQueryFlowTreeIntegration", () => {
 
 describe("TestDataGroupIdFlow", () => {
   it("data_group_id=5 is emitted snake_case for flows", async () => {
-    const result = await makeWs().buildFlowParams("Login", {
+    const result = await makeStubWorkspace().buildFlowParams("Login", {
       data_group_id: 5,
     });
     expect(result["data_group_id"]).toBe(5);
   });
 
   it("omitting data_group_id omits the key", async () => {
-    const result = await makeWs().buildFlowParams("Login");
+    const result = await makeStubWorkspace().buildFlowParams("Login");
     expect(Object.hasOwn(result, "data_group_id")).toBe(false);
   });
 });
@@ -650,21 +643,21 @@ describe("TestDataGroupIdFlow", () => {
 
 describe("TestFlowSessionEvent", () => {
   it("session_event='start' is emitted in the step dict", async () => {
-    const params = await makeWs().buildFlowParams(
+    const params = await makeStubWorkspace().buildFlowParams(
       new FlowStep({ event: "$session_start", session_event: "start" }),
     );
     expect(stepsOf(params)[0]!["session_event"]).toBe("start");
   });
 
   it("session_event='end' is emitted in the step dict", async () => {
-    const params = await makeWs().buildFlowParams(
+    const params = await makeStubWorkspace().buildFlowParams(
       new FlowStep({ event: "$session_end", session_event: "end" }),
     );
     expect(stepsOf(params)[0]!["session_event"]).toBe("end");
   });
 
   it("a regular FlowStep omits the session_event key", async () => {
-    const params = await makeWs().buildFlowParams("Login");
+    const params = await makeStubWorkspace().buildFlowParams("Login");
     expect(Object.hasOwn(stepsOf(params)[0]!, "session_event")).toBe(false);
   });
 });
@@ -675,7 +668,7 @@ describe("TestFlowSessionEvent", () => {
 
 describe("TestFlowSegments", () => {
   it("segments=GroupBy('country') produces segments", async () => {
-    const params = await makeWs().buildFlowParams("Login", {
+    const params = await makeStubWorkspace().buildFlowParams("Login", {
       segments: new GroupBy({ property: "country" }),
     });
     expect(Object.hasOwn(params, "segments")).toBe(true);
@@ -686,7 +679,7 @@ describe("TestFlowSegments", () => {
   });
 
   it("segments='country' (string shorthand) produces segments", async () => {
-    const params = await makeWs().buildFlowParams("Login", {
+    const params = await makeStubWorkspace().buildFlowParams("Login", {
       segments: "country",
     });
     expect(Object.hasOwn(params, "segments")).toBe(true);
@@ -694,7 +687,7 @@ describe("TestFlowSegments", () => {
   });
 
   it("a list of GroupBy produces multiple segments", async () => {
-    const params = await makeWs().buildFlowParams("Login", {
+    const params = await makeStubWorkspace().buildFlowParams("Login", {
       segments: [
         new GroupBy({ property: "country" }),
         new GroupBy({ property: "platform" }),
@@ -704,7 +697,7 @@ describe("TestFlowSegments", () => {
   });
 
   it("no segments omits the key", async () => {
-    const params = await makeWs().buildFlowParams("Login");
+    const params = await makeStubWorkspace().buildFlowParams("Login");
     expect(Object.hasOwn(params, "segments")).toBe(false);
   });
 });
@@ -715,21 +708,21 @@ describe("TestFlowSegments", () => {
 
 describe("TestFlowExclusions", () => {
   it("a single exclusion produces the exclusions list", async () => {
-    const params = await makeWs().buildFlowParams("Login", {
+    const params = await makeStubWorkspace().buildFlowParams("Login", {
       exclusions: ["Error Event"],
     });
     expect(params["exclusions"]).toStrictEqual(["Error Event"]);
   });
 
   it("multiple exclusions all appear", async () => {
-    const params = await makeWs().buildFlowParams("Login", {
+    const params = await makeStubWorkspace().buildFlowParams("Login", {
       exclusions: ["Error", "Debug", "Test"],
     });
     expect(params["exclusions"]).toStrictEqual(["Error", "Debug", "Test"]);
   });
 
   it("no exclusions produce an empty list", async () => {
-    const params = await makeWs().buildFlowParams("Login");
+    const params = await makeStubWorkspace().buildFlowParams("Login");
     expect(params["exclusions"]).toStrictEqual([]);
   });
 });
@@ -740,7 +733,7 @@ describe("TestFlowExclusions", () => {
 
 describe("TestFlowPropertyFilters", () => {
   it("where=Filter.equals produces filter_by_event", async () => {
-    const params = await makeWs().buildFlowParams("Login", {
+    const params = await makeStubWorkspace().buildFlowParams("Login", {
       where: Filter.equals("country", "US"),
     });
     expect(Object.hasOwn(params, "filter_by_event")).toBe(true);
@@ -754,7 +747,7 @@ describe("TestFlowPropertyFilters", () => {
   });
 
   it("a list of property filters produces a children array", async () => {
-    const params = await makeWs().buildFlowParams("Login", {
+    const params = await makeStubWorkspace().buildFlowParams("Login", {
       where: [Filter.equals("country", "US"), Filter.greaterThan("age", 18)],
     });
     const fbe = params["filter_by_event"] as Record<string, unknown>;
@@ -762,7 +755,7 @@ describe("TestFlowPropertyFilters", () => {
   });
 
   it("a cohort filter still produces filter_by_cohort", async () => {
-    const params = await makeWs().buildFlowParams("Login", {
+    const params = await makeStubWorkspace().buildFlowParams("Login", {
       where: Filter.inCohort(123, "Power Users"),
     });
     expect(Object.hasOwn(params, "filter_by_cohort")).toBe(true);
@@ -770,7 +763,7 @@ describe("TestFlowPropertyFilters", () => {
   });
 
   it("no where produces neither filter key", async () => {
-    const params = await makeWs().buildFlowParams("Login");
+    const params = await makeStubWorkspace().buildFlowParams("Login");
     expect(Object.hasOwn(params, "filter_by_event")).toBe(false);
     expect(Object.hasOwn(params, "filter_by_cohort")).toBe(false);
   });

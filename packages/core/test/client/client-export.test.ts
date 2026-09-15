@@ -37,17 +37,9 @@ import {
   type CannedResponse,
   type CapturedFetchRequest,
   createMockClient,
+  drain,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
-
-/** Drain an async generator into an array (the `list(...)` analog). */
-async function drain<T>(source: AsyncIterable<T>): Promise<T[]> {
-  const out: T[] = [];
-  for await (const item of source) {
-    out.push(item);
-  }
-  return out;
-}
 
 /** Read the `event` member of a yielded export line. */
 function eventName(value: JsonValue): unknown {

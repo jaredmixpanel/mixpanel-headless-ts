@@ -46,14 +46,10 @@ import {
   type WarningSink,
 } from "../../src/services/discovery.js";
 import {
-  type CannedResponse,
-  type CapturedFetchRequest,
+  type CannedHandler,
   createMockClient,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
-
-/** A canned-response handler (the httpx.MockTransport handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
 
 /**
  * The `discovery_factory` fixture.
@@ -63,7 +59,7 @@ type Handler = (request: CapturedFetchRequest) => CannedResponse;
  * @returns The service under test.
  */
 function discoveryFactory(
-  handler: Handler,
+  handler: CannedHandler,
   warn?: WarningSink,
 ): DiscoveryService {
   const { client } = createMockClient(makeSession(), handler);
@@ -74,7 +70,7 @@ function discoveryFactory(
 }
 
 /** The `success_handler` fixture. */
-const successHandler: Handler = () => ({ status: 200, json: [] });
+const successHandler: CannedHandler = () => ({ status: 200, json: [] });
 
 describe("TestDiscoveryService", () => {
   it("accepts an API client", () => {
@@ -687,7 +683,7 @@ describe("TestListSubproperties", () => {
    * @param values - The canned property-value strings.
    * @returns A handler always replying with them.
    */
-  const valuesHandler = (values: string[]): Handler => {
+  const valuesHandler = (values: string[]): CannedHandler => {
     return () => ({ status: 200, json: values });
   };
 

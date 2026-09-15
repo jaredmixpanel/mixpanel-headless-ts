@@ -30,23 +30,7 @@ import {
 } from "../../src/types/query-params/filter.js";
 import { GroupBy } from "../../src/types/query-params/group-by.js";
 import { Metric } from "../../src/types/query-params/metric.js";
-import { Workspace } from "../../src/workspace.js";
-import {
-  mockWorkspaceClient,
-  TEST_SESSION,
-} from "../../test-support/workspace-test-helpers.js";
-
-/**
- * The `ws` fixture.
- *
- * @returns The facade under test.
- */
-function makeWs(): Workspace {
-  return new Workspace({
-    session: TEST_SESSION,
-    client: mockWorkspaceClient().client,
-  });
-}
+import { makeStubWorkspace } from "../../test-support/workspace-test-helpers.js";
 
 /** `result["sections"][name]` as an array of records. */
 function section(
@@ -70,7 +54,7 @@ function measurementOf(
 
 describe("TestGroupByCustomPropertyE2E", () => {
   it("build_params with a CustomPropertyRef in group_by", async () => {
-    const params = await makeWs().buildParams("Purchase", {
+    const params = await makeStubWorkspace().buildParams("Purchase", {
       group_by: new GroupBy({
         property: new CustomPropertyRef({ id: 42 }),
         property_type: "number",
@@ -84,7 +68,7 @@ describe("TestGroupByCustomPropertyE2E", () => {
 
   it("build_params with an InlineCustomProperty in group_by", async () => {
     const icp = InlineCustomProperty.numeric("A * B", { A: "price", B: "qty" });
-    const params = await makeWs().buildParams("Purchase", {
+    const params = await makeStubWorkspace().buildParams("Purchase", {
       group_by: new GroupBy({ property: icp, property_type: "number" }),
     });
 
@@ -96,12 +80,15 @@ describe("TestGroupByCustomPropertyE2E", () => {
   });
 
   it("build_funnel_params with a CustomPropertyRef in group_by", async () => {
-    const params = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      group_by: new GroupBy({
-        property: new CustomPropertyRef({ id: 42 }),
-        property_type: "number",
-      }),
-    });
+    const params = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        group_by: new GroupBy({
+          property: new CustomPropertyRef({ id: 42 }),
+          property_type: "number",
+        }),
+      },
+    );
 
     const group = section(params, "group");
     expect(group).toHaveLength(1);
@@ -109,12 +96,16 @@ describe("TestGroupByCustomPropertyE2E", () => {
   });
 
   it("build_retention_params with a CustomPropertyRef in group_by", async () => {
-    const params = await makeWs().buildRetentionParams("Signup", "Login", {
-      group_by: new GroupBy({
-        property: new CustomPropertyRef({ id: 42 }),
-        property_type: "number",
-      }),
-    });
+    const params = await makeStubWorkspace().buildRetentionParams(
+      "Signup",
+      "Login",
+      {
+        group_by: new GroupBy({
+          property: new CustomPropertyRef({ id: 42 }),
+          property_type: "number",
+        }),
+      },
+    );
 
     const group = section(params, "group");
     expect(group).toHaveLength(1);
@@ -128,7 +119,7 @@ describe("TestGroupByCustomPropertyE2E", () => {
 
 describe("TestFilterCustomPropertyE2E", () => {
   it("build_params with a CustomPropertyRef in the filter", async () => {
-    const params = await makeWs().buildParams("Purchase", {
+    const params = await makeStubWorkspace().buildParams("Purchase", {
       where: Filter.greaterThan(new CustomPropertyRef({ id: 42 }), 100),
     });
 
@@ -140,7 +131,7 @@ describe("TestFilterCustomPropertyE2E", () => {
 
   it("build_params with an InlineCustomProperty in the filter", async () => {
     const icp = InlineCustomProperty.numeric("A * B", { A: "price", B: "qty" });
-    const params = await makeWs().buildParams("Purchase", {
+    const params = await makeStubWorkspace().buildParams("Purchase", {
       where: Filter.greaterThan(icp, 1000),
     });
 
@@ -158,7 +149,7 @@ describe("TestFilterCustomPropertyE2E", () => {
 
 describe("TestMeasurementCustomPropertyE2E", () => {
   it("T038: Metric(property=CustomPropertyRef(...))", async () => {
-    const params = await makeWs().buildParams(
+    const params = await makeStubWorkspace().buildParams(
       new Metric({
         event: "Purchase",
         math: "average",
@@ -176,7 +167,7 @@ describe("TestMeasurementCustomPropertyE2E", () => {
       A: "price",
       B: "quantity",
     });
-    const params = await makeWs().buildParams(
+    const params = await makeStubWorkspace().buildParams(
       new Metric({ event: "Purchase", math: "average", property: icp }),
     );
 
@@ -188,10 +179,13 @@ describe("TestMeasurementCustomPropertyE2E", () => {
   });
 
   it("T040: funnels keep the plain-string math_property path", async () => {
-    const params = await makeWs().buildFunnelParams(["Signup", "Purchase"], {
-      math: "average",
-      math_property: "amount",
-    });
+    const params = await makeStubWorkspace().buildFunnelParams(
+      ["Signup", "Purchase"],
+      {
+        math: "average",
+        math_property: "amount",
+      },
+    );
 
     const prop = measurementOf(params)["property"] as Record<string, unknown>;
     expect(prop["name"]).toBe("amount");
@@ -205,7 +199,7 @@ describe("TestMeasurementCustomPropertyE2E", () => {
 describe("TestCombinedPositions", () => {
   it("T044: a ref in group_by plus an inline in where", async () => {
     const icp = InlineCustomProperty.numeric("A * B", { A: "price", B: "qty" });
-    const params = await makeWs().buildParams("Purchase", {
+    const params = await makeStubWorkspace().buildParams("Purchase", {
       group_by: new GroupBy({
         property: new CustomPropertyRef({ id: 42 }),
         property_type: "number",
@@ -224,7 +218,7 @@ describe("TestCombinedPositions", () => {
       A: "price",
       B: "qty",
     });
-    const params = await makeWs().buildParams(
+    const params = await makeStubWorkspace().buildParams(
       new Metric({
         event: "Purchase",
         math: "average",
@@ -266,7 +260,7 @@ describe("TestCombinedPositions", () => {
 
 describe("TestMeasurementPropertyBuilder", () => {
   it("T034: a plain-string Metric.property is unchanged", async () => {
-    const params = await makeWs().buildParams(
+    const params = await makeStubWorkspace().buildParams(
       new Metric({ event: "Purchase", math: "average", property: "amount" }),
     );
     expect(measurementOf(params)["property"]).toStrictEqual({
@@ -276,7 +270,7 @@ describe("TestMeasurementPropertyBuilder", () => {
   });
 
   it("T035: a CustomPropertyRef produces customPropertyId", async () => {
-    const params = await makeWs().buildParams(
+    const params = await makeStubWorkspace().buildParams(
       new Metric({
         event: "Purchase",
         math: "average",
@@ -296,7 +290,7 @@ describe("TestMeasurementPropertyBuilder", () => {
       A: "price",
       B: "quantity",
     });
-    const params = await makeWs().buildParams(
+    const params = await makeStubWorkspace().buildParams(
       new Metric({ event: "Purchase", math: "average", property: icp }),
     );
     const prop = measurementOf(params)["property"] as Record<string, unknown>;
@@ -310,7 +304,7 @@ describe("TestMeasurementPropertyBuilder", () => {
   });
 
   it("T037: a top-level string math_property is unchanged", async () => {
-    const params = await makeWs().buildParams("Purchase", {
+    const params = await makeStubWorkspace().buildParams("Purchase", {
       math: "average",
       math_property: "amount",
     });

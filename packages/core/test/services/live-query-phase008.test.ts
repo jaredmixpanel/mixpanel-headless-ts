@@ -38,14 +38,10 @@ import {
   UserEvent,
 } from "../../src/types/results/live-query.js";
 import {
-  type CannedResponse,
-  type CapturedFetchRequest,
+  type CannedHandler,
   createMockClient,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
-
-/** A canned-response handler (the httpx.MockTransport handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
 
 /**
  * The `live_query_factory` fixture.
@@ -53,7 +49,7 @@ type Handler = (request: CapturedFetchRequest) => CannedResponse;
  * @param handler - The canned-response handler.
  * @returns The service under test.
  */
-function liveQueryFactory(handler: Handler): LiveQueryService {
+function liveQueryFactory(handler: CannedHandler): LiveQueryService {
   const { client } = createMockClient(
     makeSession({ workspaceId: 12345 }),
     handler,

@@ -48,46 +48,13 @@ import { CreateTagParams } from "../../src/types/entities/lexicon.js";
 import { CreateWebhookParams } from "../../src/types/entities/webhooks.js";
 import { Workspace } from "../../src/workspace.js";
 import {
-  type CannedResponse,
-  type CapturedFetchRequest,
+  CLIENT_SESSION,
   createMockClient,
-  type FakeTransport,
-  makeSession,
+  FACADE_SESSION,
+  ok,
 } from "../../test-support/client-test-helpers.js";
+import { makeFacadeWorkspace } from "../../test-support/workspace-test-helpers.js";
 import { MINIMAL_FUNNEL_PARAMS } from "./bookmark-fixtures.js";
-
-/** A canned-response handler (the `httpx.MockTransport` handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
-
-/** The OAuth session the mock client is built over (`_make_creds`, :59). */
-const CLIENT_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  oauthToken: "test-token",
-});
-
-/** The canonical service-account facade session (`_TEST_SESSION`, :47-56). */
-const FACADE_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  username: "test_user",
-  secret: "test_secret",
-});
-
-/**
- * Build a Workspace with a mock HTTP transport (`_make_workspace`,
- * :73-89).
- *
- * @param handler - The canned-response handler.
- * @returns The facade plus the transport capture log.
- */
-function makeWorkspace(handler: Handler): {
-  ws: Workspace;
-  transport: FakeTransport;
-} {
-  const { client, transport } = createMockClient(CLIENT_SESSION, handler);
-  return { ws: new Workspace({ session: FACADE_SESSION, client }), transport };
-}
 
 /**
  * Build a Workspace whose transport always returns `results`
@@ -115,16 +82,6 @@ function makeResultsWorkspace(
 }
 
 /**
- * The 200 App-API envelope wrapping `results`.
- *
- * @param results - The `results` payload.
- * @returns The canned response.
- */
-function ok(results: unknown): CannedResponse {
-  return { status: 200, json: { status: "ok", results } };
-}
-
-/**
  * Assert the generic response-validation contract (`_assert_coded`,
  * :423-429) — class + `.code` only, never message text (R5.4).
  *
@@ -149,7 +106,7 @@ async function assertCoded(call: Promise<unknown>): Promise<void> {
 describe("TestRequestBodySerialization (test_workspace_crud_edge.py:92)", () => {
   it("create_bookmark serializes bookmark_type as 'type' (:95)", async () => {
     const captured: Record<string, unknown> = {};
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       if (request.method === "POST" && request.url.includes("bookmarks")) {
         captured["body"] = JSON.parse(request.bodyText);
         return ok({ id: 1, name: "X", type: "funnels", params: {} });
@@ -177,7 +134,7 @@ describe("TestRequestBodySerialization (test_workspace_crud_edge.py:92)", () => 
 
   it("create_cohort flattens definition into the body (:141)", async () => {
     const captured: Record<string, unknown> = {};
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       if (request.method === "POST" && request.url.includes("cohorts")) {
         captured["body"] = JSON.parse(request.bodyText);
         return ok({ id: 1, name: "X" });
@@ -199,7 +156,7 @@ describe("TestRequestBodySerialization (test_workspace_crud_edge.py:92)", () => 
 
   it("finalize_blueprint serializes card_type as 'type' (:170)", async () => {
     const captured: Record<string, unknown> = {};
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       if (request.method === "POST" && request.url.includes("blueprints")) {
         captured["body"] = JSON.parse(request.bodyText);
         return ok({ id: 1, title: "X" });
@@ -221,7 +178,7 @@ describe("TestRequestBodySerialization (test_workspace_crud_edge.py:92)", () => 
 
   it("create_rca_dashboard serializes source_type as 'type' (:199)", async () => {
     const captured: Record<string, unknown> = {};
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       if (request.method === "POST" && request.url.includes("rca")) {
         captured["body"] = JSON.parse(request.bodyText);
         return ok({ id: 1, title: "RCA" });
@@ -245,7 +202,7 @@ describe("TestRequestBodySerialization (test_workspace_crud_edge.py:92)", () => 
 
   it("update_report_link serializes link_type as 'type' (:228)", async () => {
     const captured: Record<string, unknown> = {};
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       if (request.method === "PATCH" && request.url.includes("report-links")) {
         captured["body"] = JSON.parse(request.bodyText);
         return { status: 204 };
@@ -271,19 +228,19 @@ describe("TestRequestBodySerialization (test_workspace_crud_edge.py:92)", () => 
 
 describe("TestEmptyResponseHandling (test_workspace_crud_edge.py:247)", () => {
   it("create_dashboard raises ResponseValidationError on {} (:250)", async () => {
-    const { ws } = makeWorkspace(() => ok({}));
+    const { ws } = makeFacadeWorkspace(() => ok({}));
     await assertCoded(
       ws.createDashboard(new CreateDashboardParams({ title: "X" })),
     );
   });
 
   it("get_bookmark raises ResponseValidationError on {} (:268)", async () => {
-    const { ws } = makeWorkspace(() => ok({}));
+    const { ws } = makeFacadeWorkspace(() => ok({}));
     await assertCoded(ws.getBookmark(1));
   });
 
   it("list_dashboards returns [] on an empty results list (:286)", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+    const { ws } = makeFacadeWorkspace(() => ok([]));
     await expect(ws.listDashboards()).resolves.toStrictEqual([]);
   });
 });
@@ -295,7 +252,7 @@ describe("TestEmptyResponseHandling (test_workspace_crud_edge.py:247)", () => {
 describe("TestWorkspaceMethodDelegation (test_workspace_crud_edge.py:298)", () => {
   it("bulk_update_bookmarks sends entries with no None fields (:301)", async () => {
     const captured: Record<string, unknown> = {};
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       if (
         request.method === "POST" &&
         request.url.includes("bookmarks/bulk-update")
@@ -317,7 +274,7 @@ describe("TestWorkspaceMethodDelegation (test_workspace_crud_edge.py:298)", () =
 
   it("bulk_update_cohorts flattens definition into each entry (:318)", async () => {
     const captured: Record<string, unknown> = {};
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       if (
         request.method === "POST" &&
         request.url.includes("cohorts/bulk-update")
@@ -343,7 +300,7 @@ describe("TestWorkspaceMethodDelegation (test_workspace_crud_edge.py:298)", () =
 
   it("update_dashboard sends only non-None fields (:342)", async () => {
     const captured: Record<string, unknown> = {};
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       if (request.method === "PATCH" && request.url.includes("dashboards")) {
         captured["body"] = JSON.parse(request.bodyText);
         return ok({ id: 1, title: "New" });
@@ -358,7 +315,7 @@ describe("TestWorkspaceMethodDelegation (test_workspace_crud_edge.py:298)", () =
 
   it("list_bookmarks_v2 with no args sends no type/ids params (:365)", async () => {
     const captured: Record<string, unknown> = {};
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       if (request.url.includes("/bookmarks")) {
         captured["url"] = request.url;
       }

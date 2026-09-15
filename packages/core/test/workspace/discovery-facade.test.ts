@@ -29,18 +29,14 @@ import {
 } from "../../src/types/results/discovery.js";
 import { Workspace } from "../../src/workspace.js";
 import {
-  type CannedResponse,
-  type CapturedFetchRequest,
+  type CannedHandler,
   createMockClient,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 
-/** A canned-response handler (the httpx.MockTransport handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
-
 /** Build a facade over the mock transport. */
 function workspaceWith(
-  handler: Handler,
+  handler: CannedHandler,
   extra: { warn?: (message: string) => void } = {},
 ): { ws: Workspace; client: MixpanelClient } {
   const { client } = createMockClient(makeSession(), handler);

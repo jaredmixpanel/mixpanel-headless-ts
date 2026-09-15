@@ -14,6 +14,7 @@ import { toNativeJson } from "../../src/client/json-value.js";
 import {
   createMockClient,
   makeSession,
+  parseBody,
 } from "../../test-support/client-test-helpers.js";
 
 /** The `us_credentials` fixture twin (:29-37 — service account, US). */
@@ -24,11 +25,6 @@ function usCredentials(): Session {
     projectId: "12345",
     region: "us",
   });
-}
-
-/** Parse a captured JSON request body (json.loads(request.content)). */
-function parseBody(bodyText: string): unknown {
-  return JSON.parse(bodyText) as unknown;
 }
 
 describe("TestSignReplaysRequest", () => {

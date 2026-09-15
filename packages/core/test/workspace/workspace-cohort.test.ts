@@ -26,22 +26,10 @@ import {
   Formula,
   Metric,
 } from "../../src/types/query-params/metric.js";
-import { Workspace } from "../../src/workspace.js";
 import {
-  type MockWorkspaceClient,
+  makeStubWorkspace,
   mockWorkspaceClient,
-  TEST_SESSION,
 } from "../../test-support/workspace-test-helpers.js";
-
-/**
- * The `workspace_factory` fixture.
- *
- * @param mock - The stub client.
- * @returns The facade under test.
- */
-function workspaceFactory(mock: MockWorkspaceClient): Workspace {
-  return new Workspace({ session: TEST_SESSION, client: mock.client });
-}
 
 /** `_simple_cohort_def()` (test file :95-105). */
 function simpleCohortDef(): CohortDefinition {
@@ -62,14 +50,14 @@ function section(params: Record<string, unknown>, name: string): unknown[] {
 
 describe("TestQueryFlowWhere", () => {
   it("build_flow_params accepts a cohort filter in where=", async () => {
-    const result = await workspaceFactory(
+    const result = await makeStubWorkspace(
       mockWorkspaceClient(),
     ).buildFlowParams("Login", { where: Filter.inCohort(123, "Power Users") });
     expect(Object.hasOwn(result, "filter_by_cohort")).toBe(true);
   });
 
   it("filter_by_cohort has the correct cohort id", async () => {
-    const result = await workspaceFactory(
+    const result = await makeStubWorkspace(
       mockWorkspaceClient(),
     ).buildFlowParams("Login", { where: Filter.inCohort(456, "Active") });
     const fbc = result["filter_by_cohort"] as Record<string, unknown>;
@@ -77,7 +65,7 @@ describe("TestQueryFlowWhere", () => {
   });
 
   it("filter_by_cohort has the correct cohort name", async () => {
-    const result = await workspaceFactory(
+    const result = await makeStubWorkspace(
       mockWorkspaceClient(),
     ).buildFlowParams("Login", { where: Filter.inCohort(456, "Active") });
     const fbc = result["filter_by_cohort"] as Record<string, unknown>;
@@ -85,7 +73,7 @@ describe("TestQueryFlowWhere", () => {
   });
 
   it("not_in_cohort sets negated=true", async () => {
-    const result = await workspaceFactory(
+    const result = await makeStubWorkspace(
       mockWorkspaceClient(),
     ).buildFlowParams("Login", { where: Filter.notInCohort(789, "Bots") });
     const fbc = result["filter_by_cohort"] as Record<string, unknown>;
@@ -93,7 +81,7 @@ describe("TestQueryFlowWhere", () => {
   });
 
   it("a property filter produces filter_by_event", async () => {
-    const result = await workspaceFactory(
+    const result = await makeStubWorkspace(
       mockWorkspaceClient(),
     ).buildFlowParams("Login", { where: Filter.equals("country", "US") });
     expect(Object.hasOwn(result, "filter_by_event")).toBe(true);
@@ -103,7 +91,7 @@ describe("TestQueryFlowWhere", () => {
   });
 
   it("mixed cohort + property filters produce both keys", async () => {
-    const result = await workspaceFactory(
+    const result = await makeStubWorkspace(
       mockWorkspaceClient(),
     ).buildFlowParams("Login", {
       where: [Filter.inCohort(123, "PU"), Filter.equals("country", "US")],
@@ -117,7 +105,7 @@ describe("TestQueryFlowWhere", () => {
   });
 
   it("no where= produces no filter_by_cohort key", async () => {
-    const result = await workspaceFactory(
+    const result = await makeStubWorkspace(
       mockWorkspaceClient(),
     ).buildFlowParams("Login");
     expect(Object.hasOwn(result, "filter_by_cohort")).toBe(false);
@@ -125,7 +113,7 @@ describe("TestQueryFlowWhere", () => {
 
   it("build_flow_params makes no API call", async () => {
     const mock = mockWorkspaceClient();
-    await workspaceFactory(mock).buildFlowParams("Login", {
+    await makeStubWorkspace(mock).buildFlowParams("Login", {
       where: Filter.inCohort(123),
     });
     expect(mock.arbFunnelsCalls).toHaveLength(0);
@@ -139,7 +127,7 @@ describe("TestQueryFlowWhere", () => {
 
 describe("TestResolveAndBuildParamsCohortMetric", () => {
   it("a CohortMetric alone produces a valid params dict", async () => {
-    const result = await workspaceFactory(mockWorkspaceClient()).buildParams(
+    const result = await makeStubWorkspace(mockWorkspaceClient()).buildParams(
       new CohortMetric({ cohort: 123, name: "Power Users" }),
     );
     expect(typeof result).toBe("object");
@@ -148,14 +136,14 @@ describe("TestResolveAndBuildParamsCohortMetric", () => {
   });
 
   it("a CohortMetric produces a non-empty sections.show", async () => {
-    const result = await workspaceFactory(mockWorkspaceClient()).buildParams(
+    const result = await makeStubWorkspace(mockWorkspaceClient()).buildParams(
       new CohortMetric({ cohort: 123, name: "PU" }),
     );
     expect(section(result, "show").length).toBeGreaterThan(0);
   });
 
   it("the show entry has behavior.type='cohort'", async () => {
-    const result = await workspaceFactory(mockWorkspaceClient()).buildParams(
+    const result = await makeStubWorkspace(mockWorkspaceClient()).buildParams(
       new CohortMetric({ cohort: 123, name: "PU" }),
     );
     const show = section(result, "show") as Array<Record<string, unknown>>;
@@ -164,7 +152,7 @@ describe("TestResolveAndBuildParamsCohortMetric", () => {
   });
 
   it("a CohortMetric in a sequence with a string event is accepted", async () => {
-    const result = await workspaceFactory(mockWorkspaceClient()).buildParams([
+    const result = await makeStubWorkspace(mockWorkspaceClient()).buildParams([
       new CohortMetric({ cohort: 123, name: "PU" }),
       "Login",
     ]);
@@ -172,7 +160,7 @@ describe("TestResolveAndBuildParamsCohortMetric", () => {
   });
 
   it("a CohortMetric in a sequence with a Metric is accepted", async () => {
-    const result = await workspaceFactory(mockWorkspaceClient()).buildParams([
+    const result = await makeStubWorkspace(mockWorkspaceClient()).buildParams([
       new CohortMetric({ cohort: 123, name: "PU" }),
       new Metric({ event: "Login", math: "unique" }),
     ]);
@@ -180,7 +168,7 @@ describe("TestResolveAndBuildParamsCohortMetric", () => {
   });
 
   it("a CohortMetric with a Formula in the sequence is accepted", async () => {
-    const result = await workspaceFactory(mockWorkspaceClient()).buildParams([
+    const result = await makeStubWorkspace(mockWorkspaceClient()).buildParams([
       new CohortMetric({ cohort: 123, name: "PU" }),
       new Metric({ event: "Login" }),
       new Formula({ expression: "A/B", label: "Ratio" }),
@@ -190,7 +178,7 @@ describe("TestResolveAndBuildParamsCohortMetric", () => {
 
   it("build_params with a CohortMetric makes no API call", async () => {
     const mock = mockWorkspaceClient();
-    await workspaceFactory(mock).buildParams(
+    await makeStubWorkspace(mock).buildParams(
       new CohortMetric({ cohort: 123, name: "PU" }),
     );
     expect(mock.insightsCalls).toHaveLength(0);
@@ -204,7 +192,7 @@ describe("TestResolveAndBuildParamsCohortMetric", () => {
   });
 
   it("a CohortMetric with group_by produces both show and group", async () => {
-    const result = await workspaceFactory(mockWorkspaceClient()).buildParams(
+    const result = await makeStubWorkspace(mockWorkspaceClient()).buildParams(
       new CohortMetric({ cohort: 123, name: "PU" }),
       { group_by: "platform" },
     );
@@ -213,7 +201,7 @@ describe("TestResolveAndBuildParamsCohortMetric", () => {
   });
 
   it("a CohortMetric with where= produces both show and filter", async () => {
-    const result = await workspaceFactory(mockWorkspaceClient()).buildParams(
+    const result = await makeStubWorkspace(mockWorkspaceClient()).buildParams(
       new CohortMetric({ cohort: 123, name: "PU" }),
       { where: Filter.inCohort(456, "Other") },
     );
@@ -222,7 +210,7 @@ describe("TestResolveAndBuildParamsCohortMetric", () => {
   });
 
   it("a CohortMetric with a CohortBreakdown produces both show and group", async () => {
-    const result = await workspaceFactory(mockWorkspaceClient()).buildParams(
+    const result = await makeStubWorkspace(mockWorkspaceClient()).buildParams(
       new CohortMetric({ cohort: 123, name: "PU" }),
       { group_by: new CohortBreakdown({ cohort: 456, name: "Other Cohort" }) },
     );

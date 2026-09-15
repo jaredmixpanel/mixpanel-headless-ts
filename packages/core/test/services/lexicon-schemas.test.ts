@@ -41,17 +41,13 @@ import {
   LexiconSchema,
 } from "../../src/types/results/discovery.js";
 import {
-  type CannedResponse,
-  type CapturedFetchRequest,
+  type CannedHandler,
   createMockClient,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 
-/** A canned-response handler (the httpx.MockTransport handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
-
 /** The `discovery_factory` fixture. */
-function discoveryFactory(handler: Handler): DiscoveryService {
+function discoveryFactory(handler: CannedHandler): DiscoveryService {
   const { client } = createMockClient(makeSession(), handler);
   return new DiscoveryService(client);
 }

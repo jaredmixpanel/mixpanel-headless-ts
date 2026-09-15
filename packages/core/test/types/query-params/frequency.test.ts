@@ -11,33 +11,14 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
 import { VALID_FREQUENCY_FILTER_OPERATORS } from "../../../src/bookmarks/enums.js";
-import {
-  type MixpanelHeadlessError,
-  ParamValidationError,
-} from "../../../src/errors.js";
+import { ParamValidationError } from "../../../src/errors.js";
 import type { FrequencyFilterOperator } from "../../../src/types/literals.js";
 import { Filter } from "../../../src/types/query-params/filter.js";
 import {
   FrequencyBreakdown,
   FrequencyFilter,
 } from "../../../src/types/query-params/frequency.js";
-
-/**
- * Assert a thunk throws the exact guard `{class, code}` pair.
- *
- * @param thunk - The construction under test.
- * @param code - Expected registry code.
- */
-function expectGuard(thunk: () => unknown, code: string): void {
-  let thrown: unknown;
-  try {
-    thunk();
-  } catch (error) {
-    thrown = error;
-  }
-  expect(thrown, `expected ${code}`).toBeInstanceOf(ParamValidationError);
-  expect((thrown as MixpanelHeadlessError).code).toBe(code);
-}
+import { expectGuard } from "../../../test-support/raises.js";
 
 describe("FrequencyBreakdown construction", () => {
   it("applies the Python bucket defaults", () => {

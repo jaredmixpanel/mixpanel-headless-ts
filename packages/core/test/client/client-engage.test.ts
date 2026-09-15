@@ -25,17 +25,9 @@ import { ProfilePageResult } from "../../src/types/results/discovery.js";
 import {
   type CannedResponse,
   createMockClient,
+  drain,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
-
-/** Drain an async generator into an array (`list(...)`). */
-async function drain<T>(source: AsyncIterable<T>): Promise<T[]> {
-  const out: T[] = [];
-  for await (const item of source) {
-    out.push(item);
-  }
-  return out;
-}
 
 /** Parse the captured JSON request body. */
 function parseBody(bodyText: string): Record<string, unknown> {

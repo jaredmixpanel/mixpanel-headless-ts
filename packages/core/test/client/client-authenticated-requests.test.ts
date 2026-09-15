@@ -30,19 +30,11 @@ import {
 import { AuthenticationError } from "../../src/errors.js";
 import {
   createMockClient,
+  drain,
   fakeTransport,
   makeSession,
   staticTokenResolver,
 } from "../../test-support/client-test-helpers.js";
-
-/** Drain an async generator into an array (`list(...)`). */
-async function drain<T>(source: AsyncIterable<T>): Promise<T[]> {
-  const out: T[] = [];
-  for await (const item of source) {
-    out.push(item);
-  }
-  return out;
-}
 
 /** The `eu_credentials` fixture. */
 function euCredentials(): ReturnType<typeof makeSession> {

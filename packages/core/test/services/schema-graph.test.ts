@@ -48,17 +48,13 @@ import {
 } from "../../src/types/results/discovery.js";
 import { Workspace } from "../../src/workspace.js";
 import {
-  type CannedResponse,
-  type CapturedFetchRequest,
+  type CannedHandler,
   createMockClient,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 
-/** A canned-response handler (the httpx.MockTransport handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
-
 /** `_client(handler)` (test_schema_graph.py). */
-function mockClient(handler: Handler): MixpanelClient {
+function mockClient(handler: CannedHandler): MixpanelClient {
   return createMockClient(makeSession(), handler).client;
 }
 

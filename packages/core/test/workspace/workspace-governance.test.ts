@@ -17,7 +17,7 @@
 //
 // Python's `httpx.MockTransport` handler becomes the injected-fetch
 // `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
-// becomes `makeWorkspace(handler)`. `temp_dir` has no TS analog and is
+// becomes `makeFacadeWorkspace(handler)`. `temp_dir` has no TS analog and is
 // dropped (the W6/W7 precedent).
 //
 // ADDITIVE sections (clearly headed, never substituting for a
@@ -48,7 +48,6 @@ import {
   UpdateAnomalyParams,
   UpdateSchemaEnforcementParams,
 } from "../../src/types/entities/schemas.js";
-import { Workspace } from "../../src/workspace.js";
 import {
   bulkUpdateAnomalies as bulkUpdateAnomaliesMember,
   cancelDeletionRequest as cancelDeletionRequestMember,
@@ -65,56 +64,8 @@ import {
   updateAnomaly as updateAnomalyMember,
   updateSchemaEnforcement as updateSchemaEnforcementMember,
 } from "../../src/workspace-members/schemas-audit.js";
-import {
-  type CannedResponse,
-  type CapturedFetchRequest,
-  createMockClient,
-  type FakeTransport,
-  makeSession,
-} from "../../test-support/client-test-helpers.js";
-
-/** A canned-response handler (the `httpx.MockTransport` handler twin). */
-type Handler = (request: CapturedFetchRequest) => CannedResponse;
-
-/** The OAuth session the mock client is built over (`:62-68`). */
-const CLIENT_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  oauthToken: "test-token",
-});
-
-/** The canonical service-account facade session (`_TEST_SESSION`, :46-55). */
-const FACADE_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  username: "test_user",
-  secret: "test_secret",
-});
-
-/**
- * Build a Workspace whose client routes through `handler`
- * (`_make_workspace`, :76-93).
- *
- * @param handler - The canned-response handler.
- * @returns The facade plus the transport capture log.
- */
-function makeWorkspace(handler: Handler): {
-  ws: Workspace;
-  transport: FakeTransport;
-} {
-  const { client, transport } = createMockClient(CLIENT_SESSION, handler);
-  return { ws: new Workspace({ session: FACADE_SESSION, client }), transport };
-}
-
-/**
- * The App-API envelope every handler in the Python file returns.
- *
- * @param results - The `results` member.
- * @returns The canned 200 response.
- */
-function ok(results: unknown): CannedResponse {
-  return { status: 200, json: { status: "ok", results } };
-}
+import { ok } from "../../test-support/client-test-helpers.js";
+import { makeFacadeWorkspace } from "../../test-support/workspace-test-helpers.js";
 
 /**
  * A minimal enforcement config dict (`_enforcement_json`, :101-116).
@@ -204,7 +155,7 @@ function deletionRequestJson(
 
 describe("Workspace.getSchemaEnforcement", () => {
   it("returns a SchemaEnforcementConfig (:197)", async () => {
-    const { ws } = makeWorkspace(() => ok(enforcementJson()));
+    const { ws } = makeFacadeWorkspace(() => ok(enforcementJson()));
 
     const result = await ws.getSchemaEnforcement();
 
@@ -215,7 +166,7 @@ describe("Workspace.getSchemaEnforcement", () => {
   });
 
   it("returns a partial config with fields=... (:215)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ ruleEvent: "Warn and Accept", state: "ingested" }),
     );
 
@@ -228,7 +179,7 @@ describe("Workspace.getSchemaEnforcement", () => {
 
 describe("Workspace.initSchemaEnforcement", () => {
   it("returns a dict response (:241)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ id: 1, ruleEvent: "Warn and Drop", state: "planned" }),
     );
 
@@ -243,7 +194,7 @@ describe("Workspace.initSchemaEnforcement", () => {
 
 describe("Workspace.updateSchemaEnforcement", () => {
   it("returns a dict response (:269)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({
         ruleEvent: "Warn and Hide",
         notificationEmails: ["new@example.com"],
@@ -264,7 +215,7 @@ describe("Workspace.updateSchemaEnforcement", () => {
 
 describe("Workspace.replaceSchemaEnforcement", () => {
   it("returns a dict response (:299)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({
         ruleEvent: "Warn and Drop",
         notificationEmails: ["admin@example.com"],
@@ -291,7 +242,7 @@ describe("Workspace.replaceSchemaEnforcement", () => {
 
 describe("Workspace.deleteSchemaEnforcement", () => {
   it("returns a dict response (:335)", async () => {
-    const { ws } = makeWorkspace(() => ok({ deleted: true }));
+    const { ws } = makeFacadeWorkspace(() => ok({ deleted: true }));
 
     const result = await ws.deleteSchemaEnforcement();
 
@@ -306,7 +257,7 @@ describe("Workspace.deleteSchemaEnforcement", () => {
 
 describe("Workspace.runAudit", () => {
   it("returns an AuditResponse with parsed violations (:360)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([
         [
           { violation: "Unexpected Event", name: "bad_event", count: 42 },
@@ -335,7 +286,7 @@ describe("Workspace.runAudit", () => {
   });
 
   it("handles an empty violations list (:401)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([[], { computed_at: "2026-01-01T12:00:00Z" }]),
     );
 
@@ -347,7 +298,7 @@ describe("Workspace.runAudit", () => {
   });
 
   it("returns an empty AuditResponse for an empty results list (:421)", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+    const { ws } = makeFacadeWorkspace(() => ok([]));
 
     const result = await ws.runAudit();
 
@@ -359,7 +310,7 @@ describe("Workspace.runAudit", () => {
 
 describe("Workspace.runAuditEventsOnly", () => {
   it("returns an AuditResponse (:446)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([
         [{ violation: "Unexpected Event", name: "rogue_event", count: 100 }],
         { computed_at: "2026-01-02T00:00:00Z" },
@@ -376,7 +327,7 @@ describe("Workspace.runAuditEventsOnly", () => {
   });
 
   it("returns an empty AuditResponse when empty (:477)", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+    const { ws } = makeFacadeWorkspace(() => ok([]));
 
     const result = await ws.runAuditEventsOnly();
 
@@ -392,7 +343,7 @@ describe("Workspace.runAuditEventsOnly", () => {
 
 describe("Workspace.listDataVolumeAnomalies", () => {
   it("returns a list of DataVolumeAnomaly (:507)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok({ anomalies: [anomalyJson(1, "Signup"), anomalyJson(2, "Login")] }),
     );
 
@@ -410,14 +361,14 @@ describe("Workspace.listDataVolumeAnomalies", () => {
   });
 
   it("returns an empty list when none exist (:538)", async () => {
-    const { ws } = makeWorkspace(() => ok({ anomalies: [] }));
+    const { ws } = makeFacadeWorkspace(() => ok({ anomalies: [] }));
 
     await expect(ws.listDataVolumeAnomalies()).resolves.toStrictEqual([]);
   });
 
   it("passes query_params filters (:553)", async () => {
     const capturedUrls: string[] = [];
-    const { ws } = makeWorkspace((request) => {
+    const { ws } = makeFacadeWorkspace((request) => {
       capturedUrls.push(request.url);
       return ok({ anomalies: [anomalyJson(1)] });
     });
@@ -433,7 +384,7 @@ describe("Workspace.listDataVolumeAnomalies", () => {
 
 describe("Workspace.updateAnomaly", () => {
   it("returns a dict response (:578)", async () => {
-    const { ws } = makeWorkspace(() => ok({ updated: true }));
+    const { ws } = makeFacadeWorkspace(() => ok({ updated: true }));
 
     const result = await ws.updateAnomaly(
       new UpdateAnomalyParams({
@@ -450,7 +401,7 @@ describe("Workspace.updateAnomaly", () => {
 
 describe("Workspace.bulkUpdateAnomalies", () => {
   it("returns a dict response (:599)", async () => {
-    const { ws } = makeWorkspace(() => ok({ updated: 2 }));
+    const { ws } = makeFacadeWorkspace(() => ok({ updated: 2 }));
 
     const result = await ws.bulkUpdateAnomalies(
       new BulkUpdateAnomalyParams({
@@ -473,7 +424,7 @@ describe("Workspace.bulkUpdateAnomalies", () => {
 
 describe("Workspace.listDeletionRequests", () => {
   it("returns a list of EventDeletionRequest (:631)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([
         deletionRequestJson(1, "event_a"),
         deletionRequestJson(2, "event_b"),
@@ -492,7 +443,7 @@ describe("Workspace.listDeletionRequests", () => {
   });
 
   it("returns an empty list when none exist (:658)", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+    const { ws } = makeFacadeWorkspace(() => ok([]));
 
     await expect(ws.listDeletionRequests()).resolves.toStrictEqual([]);
   });
@@ -500,7 +451,7 @@ describe("Workspace.listDeletionRequests", () => {
 
 describe("Workspace.createDeletionRequest", () => {
   it("returns the updated list of EventDeletionRequest (:677)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([
         deletionRequestJson(1, "existing"),
         deletionRequestJson(2, "new_event"),
@@ -524,7 +475,7 @@ describe("Workspace.createDeletionRequest", () => {
 
 describe("Workspace.cancelDeletionRequest", () => {
   it("returns the updated list of EventDeletionRequest (:710)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([deletionRequestJson(1, "remaining")]),
     );
 
@@ -538,7 +489,7 @@ describe("Workspace.cancelDeletionRequest", () => {
 
 describe("Workspace.previewDeletionFilters", () => {
   it("returns a list of filter dicts (:734)", async () => {
-    const { ws } = makeWorkspace(() =>
+    const { ws } = makeFacadeWorkspace(() =>
       ok([
         { property: "country", op: "equals", value: "US" },
         { property: "platform", op: "equals", value: "iOS" },
@@ -560,7 +511,7 @@ describe("Workspace.previewDeletionFilters", () => {
   });
 
   it("returns an empty list when no filters match (:763)", async () => {
-    const { ws } = makeWorkspace(() => ok([]));
+    const { ws } = makeFacadeWorkspace(() => ok([]));
 
     const result = await ws.previewDeletionFilters(
       new PreviewDeletionFiltersParams({
@@ -845,19 +796,19 @@ describe("ADDITIVE: delegation contracts", () => {
   });
 
   it("the model-validating members name their own model on a bad payload", async () => {
-    const anomalies = makeWorkspace(() => ok({ anomalies: [{ id: 1 }] }));
+    const anomalies = makeFacadeWorkspace(() => ok({ anomalies: [{ id: 1 }] }));
     await expect(anomalies.ws.listDataVolumeAnomalies()).rejects.toMatchObject({
       code: "RESPONSE_VALIDATION_ERROR",
       details: { model: "DataVolumeAnomaly" },
     });
 
-    const deletions = makeWorkspace(() => ok([{}]));
+    const deletions = makeFacadeWorkspace(() => ok([{}]));
     await expect(deletions.ws.listDeletionRequests()).rejects.toMatchObject({
       code: "RESPONSE_VALIDATION_ERROR",
       details: { model: "EventDeletionRequest" },
     });
 
-    const enforcement = makeWorkspace(() => ok({ id: "not-an-int" }));
+    const enforcement = makeFacadeWorkspace(() => ok({ id: "not-an-int" }));
     await expect(enforcement.ws.getSchemaEnforcement()).rejects.toMatchObject({
       code: "RESPONSE_VALIDATION_ERROR",
       details: { model: "SchemaEnforcementConfig" },

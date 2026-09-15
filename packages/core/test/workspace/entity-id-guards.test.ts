@@ -29,24 +29,10 @@ import {
 import {
   type CannedResponse,
   type CapturedFetchRequest,
+  CLIENT_SESSION,
   createMockClient,
-  makeSession,
+  FACADE_SESSION,
 } from "../../test-support/client-test-helpers.js";
-
-/** The OAuth session the mock client is built over. */
-const CLIENT_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  oauthToken: "test-token",
-});
-
-/** The service-account facade session (`_TEST_SESSION`). */
-const FACADE_SESSION = makeSession({
-  projectId: "12345",
-  region: "us",
-  username: "test_user",
-  secret: "test_secret",
-});
 
 /**
  * Build a Workspace whose transport records every request and answers

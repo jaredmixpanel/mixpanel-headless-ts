@@ -37,41 +37,17 @@ import {
   ServerError,
 } from "../../src/errors.js";
 import { UserQueryResult } from "../../src/types/results/query-engine.js";
-import { Workspace } from "../../src/workspace.js";
+import { codesOf } from "../../test-support/error-codes.js";
 import { expectRejects } from "../../test-support/raises.js";
 import {
-  type LogCollector,
   logCollector,
   makePageResult,
   makeProfilesBatch,
+  makeStubWorkspace,
   type MockWorkspaceClient,
   mockWorkspaceClient,
   pageSideEffectFactory,
-  TEST_SESSION,
 } from "../../test-support/workspace-test-helpers.js";
-
-/**
- * The `workspace_factory` fixture (test file :209-236).
- *
- * @param mock - The stub client.
- * @param logger - Optional log collector (the caplog twin).
- * @returns The facade under test.
- */
-function workspaceFactory(
-  mock: MockWorkspaceClient,
-  logger?: LogCollector,
-): Workspace {
-  return new Workspace({
-    session: TEST_SESSION,
-    client: mock.client,
-    ...(logger === undefined ? {} : { logger }),
-  });
-}
-
-/** Read the collected `BookmarkValidationError` codes. */
-function codesOf(exc: unknown): string[] {
-  return (exc as BookmarkValidationError).errors.map((e) => e.code);
-}
 
 // ===========================================================================
 // Single-page result skips parallel overhead
@@ -91,7 +67,7 @@ describe("TestParallelSinglePageSkip", () => {
       }),
     );
 
-    const ws = workspaceFactory(mock);
+    const ws = makeStubWorkspace(mock);
     const result = await ws.queryUser({
       mode: "profiles",
       parallel: true,
@@ -116,7 +92,7 @@ describe("TestParallelSinglePageSkip", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -137,7 +113,7 @@ describe("TestParallelSinglePageSkip", () => {
       }),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -156,7 +132,7 @@ describe("TestParallelMultiPageFetch", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(250, 100));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -170,7 +146,7 @@ describe("TestParallelMultiPageFetch", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(250, 100));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 250,
@@ -183,7 +159,7 @@ describe("TestParallelMultiPageFetch", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(200, 100));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -196,7 +172,7 @@ describe("TestParallelMultiPageFetch", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(500, 100));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 500,
@@ -209,7 +185,7 @@ describe("TestParallelMultiPageFetch", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(200, 100, "sess_keepme"));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -222,7 +198,7 @@ describe("TestParallelMultiPageFetch", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(300, 100, "sess_shared"));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -238,7 +214,7 @@ describe("TestParallelMultiPageFetch", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(200, 100));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -256,7 +232,7 @@ describe("TestParallelMultiPageFetch", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(200, 100));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -277,7 +253,7 @@ describe("TestParallelLimitAwareDispatch", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(500, 100));
 
-    await workspaceFactory(mock).queryUser({
+    await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 150,
@@ -290,7 +266,7 @@ describe("TestParallelLimitAwareDispatch", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(500, 100));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 150,
@@ -303,7 +279,7 @@ describe("TestParallelLimitAwareDispatch", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(5000, 1000));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100,
@@ -317,7 +293,7 @@ describe("TestParallelLimitAwareDispatch", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(5000, 1000));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 1000,
@@ -332,7 +308,7 @@ describe("TestParallelLimitAwareDispatch", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(5000, 1000));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 1001,
@@ -347,7 +323,7 @@ describe("TestParallelLimitAwareDispatch", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(350, 100));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 350,
@@ -369,7 +345,7 @@ describe("TestParallelFailedPageHandling", () => {
       pageSideEffectFactory(300, 100, "sess_parallel", new Set([1])),
     );
 
-    const result = await workspaceFactory(mock, logCollector()).queryUser({
+    const result = await makeStubWorkspace(mock, logCollector()).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -385,7 +361,7 @@ describe("TestParallelFailedPageHandling", () => {
       pageSideEffectFactory(300, 100, "sess_parallel", new Set([2])),
     );
 
-    const result = await workspaceFactory(mock, logCollector()).queryUser({
+    const result = await makeStubWorkspace(mock, logCollector()).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -402,7 +378,7 @@ describe("TestParallelFailedPageHandling", () => {
       pageSideEffectFactory(500, 100, "sess_parallel", failPages),
     );
 
-    const result = await workspaceFactory(mock, logCollector()).queryUser({
+    const result = await makeStubWorkspace(mock, logCollector()).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -421,7 +397,7 @@ describe("TestParallelFailedPageHandling", () => {
     );
     const log = logCollector();
 
-    await workspaceFactory(mock, log).queryUser({
+    await makeStubWorkspace(mock, log).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -442,7 +418,7 @@ describe("TestParallelFailedPageHandling", () => {
       pageSideEffectFactory(200, 100, "sess_parallel", new Set([1])),
     );
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -455,7 +431,7 @@ describe("TestParallelFailedPageHandling", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(200, 100));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -471,7 +447,7 @@ describe("TestParallelFailedPageHandling", () => {
       pageSideEffectFactory(300, 100, "sess_parallel", new Set([1])),
     );
 
-    const result = await workspaceFactory(mock, logCollector()).queryUser({
+    const result = await makeStubWorkspace(mock, logCollector()).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -487,7 +463,7 @@ describe("TestParallelFailedPageHandling", () => {
 
 describe("TestParallelWorkerCap", () => {
   it("workers > 5 triggers validation error U23", async () => {
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.queryUser({
         mode: "profiles",
@@ -502,7 +478,7 @@ describe("TestParallelWorkerCap", () => {
   });
 
   it("workers = 0 triggers validation error U23", async () => {
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.queryUser({
         mode: "profiles",
@@ -516,7 +492,7 @@ describe("TestParallelWorkerCap", () => {
   });
 
   it("negative workers triggers validation error U23", async () => {
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.queryUser({
         mode: "profiles",
@@ -533,7 +509,7 @@ describe("TestParallelWorkerCap", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(50, 1000));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       workers: 5,
@@ -547,7 +523,7 @@ describe("TestParallelWorkerCap", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(50, 1000));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       workers: 1,
@@ -569,7 +545,7 @@ describe("TestParallelRateLimitWarning", () => {
     mock.setPageHandler(pageSideEffectFactory(4900, 100));
     const log = logCollector();
 
-    await workspaceFactory(mock, log).queryUser({
+    await makeStubWorkspace(mock, log).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -588,7 +564,7 @@ describe("TestParallelRateLimitWarning", () => {
     mock.setPageHandler(pageSideEffectFactory(4800, 100));
     const log = logCollector();
 
-    await workspaceFactory(mock, log).queryUser({
+    await makeStubWorkspace(mock, log).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 4800,
@@ -606,7 +582,7 @@ describe("TestParallelRateLimitWarning", () => {
     const log = logCollector();
 
     // limit=100 -> ceil(100/100) = 1 page -> no warning
-    await workspaceFactory(mock, log).queryUser({
+    await makeStubWorkspace(mock, log).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100,
@@ -625,7 +601,7 @@ describe("TestParallelRateLimitWarning", () => {
 
 describe("TestParallelAggregateValidation", () => {
   it("parallel + aggregate raises U18", async () => {
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.queryUser({ parallel: true, mode: "aggregate" }),
       "expected BookmarkValidationError",
@@ -635,7 +611,7 @@ describe("TestParallelAggregateValidation", () => {
   });
 
   it("the U18 message mentions profiles mode", async () => {
-    const ws = workspaceFactory(mockWorkspaceClient());
+    const ws = makeStubWorkspace(mockWorkspaceClient());
     const error = await expectRejects(
       ws.queryUser({ parallel: true, mode: "aggregate" }),
       "expected BookmarkValidationError",
@@ -655,7 +631,7 @@ describe("TestParallelAggregateValidation", () => {
       computed_at: "2025-01-15T10:00:00",
     });
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "aggregate",
     });
 
@@ -672,7 +648,7 @@ describe("TestParallelEarlyExitOnLimit", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(500, 100));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 250,
@@ -685,7 +661,7 @@ describe("TestParallelEarlyExitOnLimit", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(5000, 1000));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 50,
@@ -702,7 +678,7 @@ describe("TestParallelEarlyExitOnLimit", () => {
     const log = logCollector();
 
     // Default limit=1 routes to the SEQUENTIAL path (parallel ignored)
-    const result = await workspaceFactory(mock, log).queryUser({
+    const result = await makeStubWorkspace(mock, log).queryUser({
       mode: "profiles",
       parallel: true,
     });
@@ -715,7 +691,7 @@ describe("TestParallelEarlyExitOnLimit", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(500, 100));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 350,
@@ -730,7 +706,7 @@ describe("TestParallelEarlyExitOnLimit", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(150, 100));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 500,
@@ -750,7 +726,7 @@ describe("TestParallelResultStructure", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(200, 100));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -764,7 +740,7 @@ describe("TestParallelResultStructure", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(200, 100));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -778,7 +754,7 @@ describe("TestParallelResultStructure", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(200, 100));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -793,7 +769,7 @@ describe("TestParallelResultStructure", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(250, 100));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -806,7 +782,7 @@ describe("TestParallelResultStructure", () => {
     const mock = mockWorkspaceClient();
     mock.setPageHandler(pageSideEffectFactory(150, 100));
 
-    const result = await workspaceFactory(mock).queryUser({
+    const result = await makeStubWorkspace(mock).queryUser({
       mode: "profiles",
       parallel: true,
       limit: 100_000,
@@ -858,7 +834,7 @@ describe("TestParallelErrorPropagation", () => {
     );
 
     await expect(
-      workspaceFactory(mock).queryUser({
+      makeStubWorkspace(mock).queryUser({
         mode: "profiles",
         parallel: true,
         limit: 5000,
@@ -876,7 +852,7 @@ describe("TestParallelErrorPropagation", () => {
     );
 
     await expect(
-      workspaceFactory(mock).queryUser({
+      makeStubWorkspace(mock).queryUser({
         mode: "profiles",
         parallel: true,
         limit: 5000,
@@ -894,7 +870,7 @@ describe("TestParallelErrorPropagation", () => {
     );
 
     await expect(
-      workspaceFactory(mock).queryUser({
+      makeStubWorkspace(mock).queryUser({
         mode: "profiles",
         parallel: true,
         limit: 5000,
@@ -912,7 +888,7 @@ describe("TestParallelErrorPropagation", () => {
     );
 
     await expect(
-      workspaceFactory(mock).queryUser({
+      makeStubWorkspace(mock).queryUser({
         mode: "profiles",
         parallel: true,
         limit: 5000,

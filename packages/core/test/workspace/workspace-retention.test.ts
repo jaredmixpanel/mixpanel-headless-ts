@@ -17,22 +17,12 @@ import { describe, expect, it } from "vitest";
 import { Filter } from "../../src/types/query-params/filter.js";
 import { RetentionEvent } from "../../src/types/query-params/retention.js";
 import { RetentionQueryResult } from "../../src/types/results/query-engine.js";
-import { Workspace } from "../../src/workspace.js";
+import type { Workspace } from "../../src/workspace.js";
 import {
+  makeStubWorkspace,
   type MockWorkspaceClient,
   mockWorkspaceClient,
-  TEST_SESSION,
 } from "../../test-support/workspace-test-helpers.js";
-
-/**
- * The `workspace_factory` fixture (test file :52-75).
- *
- * @param mock - The stub client.
- * @returns The facade under test.
- */
-function workspaceFactory(mock: MockWorkspaceClient): Workspace {
-  return new Workspace({ session: TEST_SESSION, client: mock.client });
-}
 
 /** Canonical mock response for a retention query (test file :78). */
 const MOCK_RETENTION_RESPONSE: Record<string, unknown> = {
@@ -55,7 +45,7 @@ const MOCK_RETENTION_RESPONSE: Record<string, unknown> = {
 function retentionWs(): { ws: Workspace; mock: MockWorkspaceClient } {
   const mock = mockWorkspaceClient();
   mock.setInsightsResponse(MOCK_RETENTION_RESPONSE);
-  return { ws: workspaceFactory(mock), mock };
+  return { ws: makeStubWorkspace(mock), mock };
 }
 
 // ===========================================================================
@@ -145,7 +135,7 @@ describe("TestQueryRetentionWithFilters", () => {
 
 describe("TestBuildRetentionParams", () => {
   it("returns a dict, not a RetentionQueryResult", async () => {
-    const result = await workspaceFactory(
+    const result = await makeStubWorkspace(
       mockWorkspaceClient(),
     ).buildRetentionParams("Signup", "Login");
     expect(typeof result).toBe("object");
@@ -153,7 +143,7 @@ describe("TestBuildRetentionParams", () => {
   });
 
   it("has sections and displayOptions keys", async () => {
-    const result = await workspaceFactory(
+    const result = await makeStubWorkspace(
       mockWorkspaceClient(),
     ).buildRetentionParams("Signup", "Login");
     expect(Object.hasOwn(result, "sections")).toBe(true);
@@ -162,7 +152,7 @@ describe("TestBuildRetentionParams", () => {
 
   it("makes no API call", async () => {
     const mock = mockWorkspaceClient();
-    await workspaceFactory(mock).buildRetentionParams("Signup", "Login");
+    await makeStubWorkspace(mock).buildRetentionParams("Signup", "Login");
     expect(mock.insightsCalls).toHaveLength(0);
   });
 
@@ -185,7 +175,7 @@ describe("TestQueryRetentionValidationIntegration", () => {
   it("an empty born_event is caught before the API call", async () => {
     const mock = mockWorkspaceClient();
     await expect(
-      workspaceFactory(mock).queryRetention("", "Login"),
+      makeStubWorkspace(mock).queryRetention("", "Login"),
     ).rejects.toThrow(/RetentionEvent\.event must be a non-empty/);
     expect(mock.insightsCalls).toHaveLength(0);
   });
