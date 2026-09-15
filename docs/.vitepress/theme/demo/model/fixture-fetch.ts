@@ -223,6 +223,41 @@ interface DayRange {
   readonly last: number;
 }
 
+/** The one filter shape the fixtures answer: `Filter.equals(property, value)`. */
+interface EqualsFilter {
+  readonly property: string;
+  readonly value: string;
+}
+
+/**
+ * Read the equality filter out of `sections.filter`, in the shape
+ * `buildFilterEntry` writes for `Filter.equals` on a plain property
+ * (`filterOperator: "equals"`, `value: <property>`, `filterValue: [<one>]`).
+ * Anything else the fixtures cannot answer, so it is a miss.
+ *
+ * @param filters - `sections.filter` of the bookmark.
+ * @returns The filter, or `null` when the section is empty.
+ */
+function equalsFilter(filters: unknown): EqualsFilter | null {
+  if (!Array.isArray(filters) || filters.length === 0) {
+    return null;
+  }
+  const [entry] = filters as readonly unknown[];
+  const property = pick(entry, "value");
+  const values = pick(entry, "filterValue");
+  if (
+    filters.length !== 1 ||
+    pick(entry, "filterOperator") !== "equals" ||
+    typeof property !== "string" ||
+    !Array.isArray(values) ||
+    values.length !== 1 ||
+    typeof values[0] !== "string"
+  ) {
+    return miss(`filter ${JSON.stringify(filters)}`);
+  }
+  return { property, value: values[0] };
+}
+
 /** Routes plus the envelope builders; one instance per `fixtureFetch`. */
 class FixtureServer {
   readonly #fixtures: DemoFixtures;
@@ -332,6 +367,7 @@ class FixtureServer {
           String(pick(behavior, "name")),
           String(pick(bookmark, "sections", "show", 0, "measurement", "math")),
           pick(bookmark, "sections", "group", 0, "propertyName"),
+          equalsFilter(pick(bookmark, "sections", "filter")),
           range,
         );
       }
@@ -405,29 +441,62 @@ class FixtureServer {
     return out;
   }
 
+  /**
+   * The insights envelope for a trend, broken down and/or filtered. The
+   * fixtures hold each property's marginal per event and math (segments
+   * sum to the trend), so a filter on one property selects that segment's
+   * series — an unknown value is a series of zeros, as Mixpanel would
+   * report — and a breakdown by another property is scaled day by day to
+   * the filtered share of the total, the closest answer marginals allow.
+   *
+   * @param event - Event name.
+   * @param math - Insights math.
+   * @param property - Breakdown property, when any.
+   * @param where - Equality filter, when any.
+   * @param range - Time range.
+   * @returns The envelope.
+   */
   #trend(
     event: string,
     math: string,
     property: unknown,
+    where: EqualsFilter | null,
     range: DayRange,
   ): Json {
     const f = this.#fixtures;
-    if (typeof property === "string") {
-      const breakdownKey = FIXTURE_KEYS.breakdown(event, math, property);
-      const segments = f.breakdowns[breakdownKey] ?? miss(breakdownKey);
-      const bySegment: Json = {};
-      for (const [segment, segmentSeries] of Object.entries(segments)) {
-        bySegment[segment] = this.#dated(segmentSeries, range);
-      }
-      return this.#envelope(range, ["$event", property], {
-        [event]: bySegment,
+    const trendKey = FIXTURE_KEYS.trend(event, math);
+    const total = f.trends[trendKey] ?? miss(trendKey);
+    const segmentsOf = (
+      name: string,
+    ): Readonly<Record<string, readonly number[]>> => {
+      const key = FIXTURE_KEYS.breakdown(event, math, name);
+      return f.breakdowns[key] ?? miss(key);
+    };
+    const filtered =
+      where === null
+        ? total
+        : (segmentsOf(where.property)[where.value] ?? total.map(() => 0));
+    if (typeof property !== "string") {
+      return this.#envelope(range, ["$event"], {
+        [event]: this.#dated(filtered, range),
       });
     }
-    const trendKey = FIXTURE_KEYS.trend(event, math);
-    const series = f.trends[trendKey] ?? miss(trendKey);
-    return this.#envelope(range, ["$event"], {
-      [event]: this.#dated(series, range),
-    });
+    const bySegment: Json = {};
+    if (where !== null && where.property === property) {
+      bySegment[where.value] = this.#dated(filtered, range);
+    } else {
+      const share = (day: number): number => {
+        const all = total[day] ?? 0;
+        return all === 0 ? 0 : (filtered[day] ?? 0) / all;
+      };
+      for (const [segment, series] of Object.entries(segmentsOf(property))) {
+        bySegment[segment] = this.#dated(
+          series.map((n, day) => Math.round(n * share(day))),
+          range,
+        );
+      }
+    }
+    return this.#envelope(range, ["$event", property], { [event]: bySegment });
   }
 
   /**

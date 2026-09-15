@@ -1,18 +1,23 @@
 // The playground's single-source-of-truth rule (docs/.vitepress/theme/demo/
 // model/call.ts, query-spec.ts): the TypeScript the code panel shows is
 // the call that ran. Re-parses every rendered argument list back into the
-// `Call`, pins the read-only method allowlist and the option-key order,
-// and snapshots every rendered block so a change to the printer is a
+// `Call` (expressions as their tag plus arguments), pins the read-only
+// method allowlist, the closed expression table and the option-key order,
+// checks the import merge that keeps a copied block compiling, and
+// snapshots every rendered block so a change to the printer is a
 // reviewable diff. Also covers the tokenizer that colours those blocks.
 
 import { describe, expect, it } from "vitest";
 
+import { Filter } from "@mixpanel-headless/browser";
 import { MATH_TYPE_VALUES } from "@mixpanel-headless/core";
 
 import {
   type Call,
   type CallArg,
+  EXPR_NAMES,
   isBindingRef,
+  isExprArg,
   printArgs,
   READ_METHODS,
   renderCall,
@@ -28,7 +33,14 @@ import {
   toCall,
   topEventsCall,
   TREND_MATHS,
+  type TrendSpec,
+  withWhere,
 } from "../docs/.vitepress/theme/demo/model/query-spec.js";
+import {
+  LIVE_SETUP,
+  OFFLINE_SETUP,
+  withImports,
+} from "../docs/.vitepress/theme/demo/model/setup-snippets.js";
 
 /** A property that is not an identifier, so its key must print quoted. */
 const QUOTED_KEY_SPEC: QuerySpec = {
@@ -37,6 +49,15 @@ const QUOTED_KEY_SPEC: QuerySpec = {
   math: "total",
   last: 30,
   groupBy: "$browser",
+};
+
+/** The filtered query the playground page's third twoslash block shows. */
+const FILTERED_SPEC: TrendSpec = {
+  kind: "trend",
+  event: "Note Saved",
+  math: "total",
+  last: 30,
+  where: { property: "platform", value: "iOS" },
 };
 
 const SPECS: ReadonlyArray<readonly [string, QuerySpec]> = [
@@ -59,6 +80,18 @@ const SPECS: ReadonlyArray<readonly [string, QuerySpec]> = [
     },
   ],
   ["trend with a quoted-key property", QUOTED_KEY_SPEC],
+  ["trend, filtered", FILTERED_SPEC],
+  [
+    "trend, broken down and filtered on another property",
+    {
+      kind: "trend",
+      event: "Note Saved",
+      math: "unique",
+      last: 7,
+      groupBy: "plan",
+      where: { property: "platform", value: "Android" },
+    },
+  ],
   [
     "funnel, three steps, default window",
     {
@@ -114,16 +147,28 @@ const ALL: ReadonlyArray<readonly [string, Call]> = [
   ...DISCOVERY,
 ];
 
+/** Matches `Name.member(<args>)` for every expression the table knows. */
+const EXPRESSION_CALL = new RegExp(
+  String.raw`\b(${EXPR_NAMES.map((name) => name.replaceAll(".", String.raw`\.`)).join("|")})\(([^()]*)\)`,
+  "gu",
+);
+
 /**
- * Turn the printed argument list back into JSON: quote identifier keys,
- * drop trailing commas, and quote the bare identifiers binding refs print
- * as, so `JSON.parse` yields the original `args` (refs as their names).
+ * Turn the printed argument list back into JSON: rewrite an expression
+ * call as its tag object, quote identifier keys, drop trailing commas, and
+ * quote the bare identifiers binding refs print as, so `JSON.parse` yields
+ * the original `args` (refs as their names, expressions as themselves).
  *
  * @param call - The call whose arguments were printed.
  * @returns The parsed arguments.
  */
 function reparse(call: Call): unknown[] {
   let text = printArgs(call.args)
+    .replaceAll(
+      EXPRESSION_CALL,
+      (_match, name: string, args: string) =>
+        `{"$expr":"${name}","args":[${args}]}`,
+    )
     .replaceAll(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/gu, '$1"$2":')
     .replaceAll(/,(\s*[}\]])/gu, "$1");
   for (const arg of call.args) {
@@ -165,21 +210,122 @@ describe("renderCall round trip", () => {
   it("prints a quoted key when the property is not an identifier", () => {
     expect(renderCall(toCall(QUOTED_KEY_SPEC))).toContain('"$browser"');
   });
+
+  it("prints a filter as the Filter.equals call that runs", () => {
+    expect(renderCall(toCall(FILTERED_SPEC))).toBe(
+      `const result = await ws.query("Note Saved", {
+  math: "total",
+  last: 30,
+  where: Filter.equals("platform", "iOS"),
+});`,
+    );
+  });
+
+  it("holds no class instance in args, only the expression tag", () => {
+    const options = toCall(FILTERED_SPEC).args[1] as Record<string, CallArg>;
+    expect(isExprArg(options["where"] as CallArg)).toBe(true);
+    expect(options["where"]).toStrictEqual({
+      $expr: "Filter.equals",
+      args: ["platform", "iOS"],
+    });
+  });
+});
+
+describe("imports", () => {
+  it("a filtered query declares Filter; every other call declares nothing", () => {
+    for (const [, call] of ALL) {
+      const filtered = renderCall(call).includes("Filter.equals(");
+      expect(call.imports).toStrictEqual(filtered ? ["Filter"] : []);
+    }
+  });
+
+  it("merges a name into the offline setup's one-line import", () => {
+    expect(withImports(OFFLINE_SETUP, ["Filter"]).split("\n", 1)[0]).toBe(
+      'import { createBrowserWorkspace, Filter } from "@mixpanel-headless/browser";',
+    );
+  });
+
+  it("merges a name into the live setup's multi-line import in sorted order", () => {
+    expect(withImports(LIVE_SETUP, ["Filter"]).split("\n", 5)).toStrictEqual([
+      "import {",
+      "  createBrowserWorkspaceFromStore,",
+      "  Filter,",
+      "  InMemoryCredentialStore,",
+      '} from "@mixpanel-headless/browser";',
+    ]);
+  });
+
+  it("leaves the setup alone for no names or names already present", () => {
+    expect(withImports(OFFLINE_SETUP, [])).toBe(OFFLINE_SETUP);
+    expect(withImports(OFFLINE_SETUP, ["createBrowserWorkspace"])).toBe(
+      OFFLINE_SETUP,
+    );
+    expect(
+      withImports(withImports(OFFLINE_SETUP, ["Filter"]), ["Filter"]),
+    ).toBe(withImports(OFFLINE_SETUP, ["Filter"]));
+  });
+
+  it("refuses a setup without the browser import line", () => {
+    expect(() => withImports("const x = 1;\n", ["Filter"])).toThrow(
+      "no browser import line",
+    );
+  });
+});
+
+describe("withWhere", () => {
+  const base: TrendSpec = {
+    kind: "trend",
+    event: "E",
+    math: "total",
+    last: 30,
+  };
+
+  it("sets, replaces and removes the filter without leaving the key behind", () => {
+    const ios = withWhere(base, { property: "platform", value: "iOS" });
+    expect(ios).toStrictEqual({
+      ...base,
+      where: { property: "platform", value: "iOS" },
+    });
+    expect(
+      withWhere(ios, { property: "plan", value: "pro" }).where,
+    ).toStrictEqual({ property: "plan", value: "pro" });
+    expect(withWhere(ios, null)).toStrictEqual(base);
+    expect(Object.keys(withWhere(ios, null))).not.toContain("where");
+  });
+
+  it("keeps the breakdown when the filter is on another property", () => {
+    const spec = withWhere(
+      { ...base, groupBy: "plan" },
+      { property: "platform", value: "iOS" },
+    );
+    expect(spec.groupBy).toBe("plan");
+    expect(toCall(spec).imports).toStrictEqual(["Filter"]);
+  });
 });
 
 describe("option key order", () => {
-  it("trend options are math, last, group_by", () => {
+  it("trend options are math, last, group_by, where", () => {
     const call = toCall({
       kind: "trend",
       event: "E",
       math: "unique",
       last: 7,
       groupBy: "plan",
+      where: { property: "platform", value: "iOS" },
     });
     expect(Object.keys(call.args[1] as object)).toStrictEqual([
       "math",
       "last",
       "group_by",
+      "where",
+    ]);
+  });
+
+  it("a filter without a breakdown gives math, last, where", () => {
+    expect(Object.keys(toCall(FILTERED_SPEC).args[1] as object)).toStrictEqual([
+      "math",
+      "last",
+      "where",
     ]);
   });
 
@@ -242,6 +388,7 @@ describe("method allowlist", () => {
       method: "createBookmark",
       args: [],
       binding: "x",
+      imports: [],
     } as unknown as Call;
     const ws = { createBookmark: () => Promise.resolve("written") };
     await expect(
@@ -274,6 +421,56 @@ describe("method allowlist", () => {
       { result: marker },
     );
     expect(seen).toStrictEqual([marker, { name: "x" }]);
+  });
+});
+
+describe("expression table", () => {
+  it("is closed: Filter.equals only", () => {
+    expect([...EXPR_NAMES]).toStrictEqual(["Filter.equals"]);
+  });
+
+  it("runCall evaluates Filter.equals into the library's Filter", async () => {
+    const seen: unknown[] = [];
+    const ws = {
+      query: (...args: unknown[]) => {
+        seen.push(...args);
+        return Promise.resolve("rows");
+      },
+    };
+    await runCall(
+      ws as unknown as Parameters<typeof runCall>[0],
+      toCall(FILTERED_SPEC),
+    );
+    const options = seen[1] as { where: unknown };
+    expect(seen[0]).toBe("Note Saved");
+    expect(options.where).toBeInstanceOf(Filter);
+    expect(options.where).toStrictEqual(Filter.equals("platform", "iOS"));
+  });
+
+  it("runCall refuses an expression outside the table", async () => {
+    const ws = { query: () => Promise.resolve("rows") };
+    const call = {
+      method: "query",
+      args: ["E", { where: { $expr: "Filter.contains", args: ["p", "v"] } }],
+      binding: "result",
+      imports: ["Filter"],
+    } as unknown as Call;
+    await expect(
+      runCall(ws as unknown as Parameters<typeof runCall>[0], call),
+    ).rejects.toThrow("expression Filter.contains is not allowed");
+  });
+
+  it("runCall refuses malformed Filter.equals arguments", async () => {
+    const ws = { query: () => Promise.resolve("rows") };
+    const call = {
+      method: "query",
+      args: ["E", { where: { $expr: "Filter.equals", args: ["p"] } }],
+      binding: "result",
+      imports: ["Filter"],
+    } as unknown as Call;
+    await expect(
+      runCall(ws as unknown as Parameters<typeof runCall>[0], call),
+    ).rejects.toThrow("Filter.equals takes (property, value) strings");
   });
 });
 

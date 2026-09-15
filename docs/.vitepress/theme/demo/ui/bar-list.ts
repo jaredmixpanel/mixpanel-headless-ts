@@ -1,6 +1,8 @@
 // Funnel result as horizontal bars: the bar width is the overall conversion
 // ratio, the label the step-to-step one, so a drop between adjacent steps
-// is visible at a glance.
+// is visible at a glance. `role="list"` is explicit because the theme
+// removes the list markers, which makes some screen readers drop the
+// list semantics with them.
 
 import { defineComponent, h, type PropType } from "vue";
 
@@ -16,7 +18,11 @@ export default defineComponent({
     return () =>
       h(
         "ol",
-        { class: "mp-bars" },
+        {
+          class: "mp-bars",
+          role: "list",
+          "aria-label": `Funnel, ${props.bars.length} steps`,
+        },
         props.bars.map((bar, i) =>
           h("li", { key: `${i}-${bar.event}`, class: "mp-bar-row" }, [
             h("div", { class: "mp-bar-head" }, [

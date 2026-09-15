@@ -39,7 +39,8 @@ export default defineComponent({
   },
   setup(props) {
     return () =>
-      h("div", { class: "mp-table-wrap" }, [
+      // The id lets the chart name these rows as its long description.
+      h("div", { class: "mp-table-wrap", id: "mp-result-table" }, [
         h("table", { class: "mp-table" }, [
           h("thead", [
             h(

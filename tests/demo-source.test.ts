@@ -10,9 +10,12 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { renderCall } from "../docs/.vitepress/theme/demo/model/call.js";
+import { toCall } from "../docs/.vitepress/theme/demo/model/query-spec.js";
 import {
   LIVE_SETUP,
   OFFLINE_SETUP,
+  withImports,
 } from "../docs/.vitepress/theme/demo/model/setup-snippets.js";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -140,8 +143,8 @@ describe("playground source: setup snippets", () => {
     );
   }
 
-  it("the page has the offline and the live setup block", () => {
-    expect(pageSnippets().length).toBeGreaterThanOrEqual(2);
+  it("the page has the offline, the live and the filtered-query block", () => {
+    expect(pageSnippets().length).toBeGreaterThanOrEqual(3);
   });
 
   it("OFFLINE_SETUP is the page's first twoslash block", () => {
@@ -150,6 +153,18 @@ describe("playground source: setup snippets", () => {
 
   it("LIVE_SETUP is the page's second twoslash block", () => {
     expect(LIVE_SETUP.trimEnd()).toBe(pageSnippets()[1]);
+  });
+
+  it("the filtered query with its merged import is the page's third twoslash block", () => {
+    const call = toCall({
+      kind: "trend",
+      event: "Note Saved",
+      math: "total",
+      last: 30,
+      where: { property: "platform", value: "iOS" },
+    });
+    const program = `${withImports(OFFLINE_SETUP, call.imports).trimEnd()}\n${renderCall(call)}`;
+    expect(program).toBe(pageSnippets()[2]);
   });
 });
 

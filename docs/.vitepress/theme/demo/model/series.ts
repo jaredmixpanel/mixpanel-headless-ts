@@ -55,6 +55,14 @@ export interface RetentionGrid {
   readonly unit: string;
 }
 
+/** How a retention cell is shaded: fill alpha on the brand colour, and whether the text is white. */
+export interface CellShade {
+  /** Alpha of the brand-coloured fill, 0–1. */
+  readonly alpha: number;
+  /** Whether the cell text is white rather than the body colour. */
+  readonly inverse: boolean;
+}
+
 /** Lines drawn before the rest collapses into "Other". */
 export const MAX_SERIES = 6;
 
@@ -104,6 +112,50 @@ export function formatCount(value: number): string {
  */
 export function formatPct(ratio: number): string {
   return PCT_FORMAT.format(ratio);
+}
+
+/**
+ * Whether every point of every line is zero — the result has rows but
+ * nothing happened, so the chart shows a flat line with a caption instead
+ * of an axis over nothing.
+ *
+ * @param series - The lines the chart would draw.
+ * @returns `true` when there is at least one point and none is non-zero.
+ */
+export function allZero(series: readonly TrendLine[]): boolean {
+  const points = series.flatMap((line) => line.points);
+  return points.length > 0 && points.every((point) => point.value === 0);
+}
+
+/** Rates up to this shade keep the body text colour; above it the text is white. */
+const INVERSE_ABOVE = 0.55;
+/**
+ * The lowest fill alpha a white-text cell uses. On the light background,
+ * white on the brand blue reaches 4.5:1 only from alpha 0.83, and the body
+ * text holds 4.5:1 only up to alpha 0.65, so a fill that followed the rate
+ * linearly would fail both between them; the white band therefore starts
+ * here and the rate spreads over what is left.
+ */
+const INVERSE_MIN_ALPHA = 0.85;
+
+/**
+ * Shade for one retention cell: the fill alpha follows the rate below the
+ * text switch and jumps to a band that keeps white text readable above it,
+ * so the contrast stays at or above 4.5:1 in both colour schemes.
+ *
+ * @param rate - The cell's retention rate, 0–1 (clamped).
+ * @returns The fill alpha and whether the text is white.
+ */
+export function cellShade(rate: number): CellShade {
+  const clamped = Math.min(Math.max(rate, 0), 1);
+  if (clamped <= INVERSE_ABOVE) {
+    return { alpha: clamped, inverse: false };
+  }
+  const span = (clamped - INVERSE_ABOVE) / (1 - INVERSE_ABOVE);
+  return {
+    alpha: INVERSE_MIN_ALPHA + span * (1 - INVERSE_MIN_ALPHA),
+    inverse: true,
+  };
 }
 
 /**

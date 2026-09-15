@@ -1,9 +1,11 @@
 // Dependency-free trend chart: one `<path>` per series inside a fixed
 // viewBox, so it scales with the column without a resize observer. The
-// hover crosshair is keyboard-reachable (arrow keys move the index) and
-// every point also carries a `<title>` for assistive technology. No chart
-// library: the origin rule forbids third-party script and the page already
-// pays for the library chunk.
+// `<svg>` is one image to assistive technology (`role="img"` with a summary
+// label, described by the result table), and the crosshair is keyboard
+// driven: Left/Right step the day, Home/End jump, and a polite live region
+// reads the values out. Every point also carries a `<title>` for mouse
+// tooltips. No chart library: the origin rule forbids third-party script
+// and the page already pays for the library chunk.
 
 import {
   computed,
@@ -14,7 +16,7 @@ import {
   type VNode,
 } from "vue";
 
-import { formatCount, type TrendLine } from "../model/series.js";
+import { allZero, formatCount, type TrendLine } from "../model/series.js";
 
 const WIDTH = 640;
 const HEIGHT = 240;
@@ -23,10 +25,6 @@ const PLOT_W = WIDTH - PAD.left - PAD.right;
 const PLOT_H = HEIGHT - PAD.top - PAD.bottom;
 /** Target tick count; the 1-2-5 step then rounds the axis top up. */
 const TICKS = 5;
-const KEY_DELTA: Readonly<Record<string, number>> = {
-  ArrowRight: 1,
-  ArrowLeft: -1,
-};
 const ANCHORS = ["start", "middle", "end"] as const;
 
 /** Series colours, in order; all defined in theme/mixpanel.css. */
@@ -52,15 +50,55 @@ function niceStep(max: number): number {
   return candidate * magnitude;
 }
 
+/**
+ * The index a navigation key moves the crosshair to, or `null` for any
+ * other key.
+ *
+ * @param key - `KeyboardEvent.key`.
+ * @param current - The highlighted index (`null` before the first key).
+ * @param length - Number of days.
+ * @returns The clamped next index, or `null`.
+ */
+function nextIndex(
+  key: string,
+  current: number | null,
+  length: number,
+): number | null {
+  const last = length - 1;
+  switch (key) {
+    case "ArrowRight": {
+      return Math.min((current ?? -1) + 1, last);
+    }
+    case "ArrowLeft": {
+      return Math.max((current ?? length) - 1, 0);
+    }
+    case "Home": {
+      return 0;
+    }
+    case "End": {
+      return last;
+    }
+    default: {
+      return null;
+    }
+  }
+}
+
 /** Trend line chart. */
 export default defineComponent({
   name: "DemoLineChart",
   props: {
     series: { type: Array as PropType<readonly TrendLine[]>, required: true },
     unit: { type: String, required: true },
+    /** The event queried; names the chart when the series are segments. */
+    event: { type: String, default: "" },
+    /** The breakdown property, when there is one. */
+    groupBy: { type: String as PropType<string | null>, default: null },
   },
   setup(props) {
     const hover = ref<number | null>(null);
+    /** What the live region reads; set by the keyboard only, never the mouse. */
+    const announcement = ref("");
     const length = computed(() =>
       Math.max(...props.series.map((s) => s.points.length), 0),
     );
@@ -86,6 +124,31 @@ export default defineComponent({
     const dates = computed(
       () => props.series[0]?.points.map((p) => p.date) ?? [],
     );
+    const eventName = computed(
+      () => props.event || props.series[0]?.name || "",
+    );
+    const flat = computed(() => allZero(props.series));
+    /** Per-day totals across the drawn lines, for the summary. */
+    const totals = computed(() =>
+      Array.from({ length: length.value }, (_, i) =>
+        props.series.reduce((sum, s) => sum + (s.points[i]?.value ?? 0), 0),
+      ),
+    );
+    const summary = computed(() => {
+      const first = dates.value[0] ?? "";
+      const last = dates.value.at(-1) ?? "";
+      const peak = Math.max(...totals.value, 0);
+      const peakDay = dates.value[totals.value.indexOf(peak)] ?? first;
+      const breakdown =
+        props.series.length > 1
+          ? `${props.series.length} lines by ${props.groupBy ?? "segment"}, `
+          : "";
+      return `${eventName.value}: ${props.unit} per day, ${first} to ${last}. ${breakdown}first ${formatCount(totals.value[0] ?? 0)}, last ${formatCount(totals.value.at(-1) ?? 0)}, peak ${formatCount(peak)} on ${peakDay}. Use the arrow keys to step through the days.`;
+    });
+    const rowsAt = (i: number): string[] =>
+      props.series.map(
+        (s) => `${s.name}: ${formatCount(s.points[i]?.value ?? 0)}`,
+      );
 
     const moveHover = (clientX: number, svg: SVGSVGElement): void => {
       const rect = svg.getBoundingClientRect();
@@ -94,13 +157,17 @@ export default defineComponent({
       hover.value = Math.min(Math.max(index, 0), length.value - 1);
     };
     const onKeydown = (event: KeyboardEvent): void => {
-      const delta = KEY_DELTA[event.key];
-      if (delta === undefined) {
+      const next = nextIndex(event.key, hover.value, length.value);
+      if (next === null || length.value === 0) {
         return;
       }
       event.preventDefault();
-      const next = (hover.value ?? 0) + delta;
-      hover.value = Math.min(Math.max(next, 0), length.value - 1);
+      hover.value = next;
+      announcement.value = `${dates.value[next] ?? ""}: ${rowsAt(next).join(", ")}`;
+    };
+    const leave = (): void => {
+      hover.value = null;
+      announcement.value = "";
     };
 
     const axis = (): VNode[] =>
@@ -194,9 +261,7 @@ export default defineComponent({
       if (i === null || i >= length.value) {
         return null;
       }
-      const rows = props.series.map(
-        (s) => `${s.name}: ${formatCount(s.points[i]?.value ?? 0)}`,
-      );
+      const rows = rowsAt(i);
       const boxW = 180;
       const left = x(i) + boxW + 16 > WIDTH ? x(i) - boxW - 8 : x(i) + 8;
       return h("g", { class: "mp-chart-hover" }, [
@@ -235,14 +300,49 @@ export default defineComponent({
       ]);
     };
 
-    return () =>
-      h("figure", { class: "mp-chart" }, [
+    const legend = (): VNode | null =>
+      props.series.length > 1
+        ? h(
+            "figcaption",
+            { class: "mp-chart-legend" },
+            props.series.map((s, k) =>
+              h(
+                "span",
+                {
+                  key: s.name,
+                  class: "mp-legend-item",
+                  style: { color: SERIES_COLOURS[k % SERIES_COLOURS.length] },
+                },
+                s.name,
+              ),
+            ),
+          )
+        : null;
+
+    const noEvents = (): string => `No ${eventName.value} events in this range`;
+
+    return () => {
+      // A breakdown with no segments, or a result with no rows at all:
+      // nothing to draw, so the caption says which of the two it is.
+      if (props.series.length === 0) {
+        return h("figure", { class: "mp-chart mp-chart-empty" }, [
+          h(
+            "figcaption",
+            { class: "mp-empty", role: "status" },
+            props.groupBy === null
+              ? noEvents()
+              : `No values recorded for ${props.groupBy}`,
+          ),
+        ]);
+      }
+      return h("figure", { class: "mp-chart" }, [
         h(
           "svg",
           {
             viewBox: `0 0 ${WIDTH} ${HEIGHT}`,
             role: "img",
-            "aria-label": `${props.unit} per day, ${props.series.length} series`,
+            "aria-label": summary.value,
+            "aria-describedby": "mp-result-table",
             tabindex: 0,
             onMousemove: (event: MouseEvent) =>
               moveHover(event.clientX, event.currentTarget as SVGSVGElement),
@@ -250,29 +350,19 @@ export default defineComponent({
               hover.value = null;
             },
             onKeydown,
-            onBlur: () => {
-              hover.value = null;
-            },
+            onBlur: leave,
           },
           [...axis(), ...xLabels(), ...lines(), crosshair()],
         ),
-        props.series.length > 1
-          ? h(
-              "figcaption",
-              { class: "mp-chart-legend" },
-              props.series.map((s, k) =>
-                h(
-                  "span",
-                  {
-                    key: s.name,
-                    class: "mp-legend-item",
-                    style: { color: SERIES_COLOURS[k % SERIES_COLOURS.length] },
-                  },
-                  s.name,
-                ),
-              ),
-            )
-          : null,
+        h(
+          "div",
+          { class: "mp-visually-hidden", "aria-live": "polite" },
+          announcement.value,
+        ),
+        flat.value
+          ? h("figcaption", { class: "mp-empty", role: "status" }, noEvents())
+          : legend(),
       ]);
+    };
   },
 });

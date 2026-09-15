@@ -35,18 +35,74 @@
   color: var(--vp-c-text-1);
 }
 
+/*
+ * The theme paints every `.vp-doc` cell and list item in the body colour
+ * (`.vp-doc :is(p, li, td)`), which is fixed for light mode and would sit
+ * under white text in the retention grid; the playground's cells and items
+ * take their colour from their own rules instead.
+ */
+.vp-doc .mp-demo :is(td, li) {
+  color: inherit;
+}
+
+/*
+ * Text-only tints. The brand green and red are fill colours: as 12 px text
+ * on the page background they reach only 3.8:1 in light mode and 4.1:1 in
+ * dark, so the change indicators use a darker (light) or lighter (dark)
+ * shade of each that clears 4.5:1.
+ */
+.mp-demo {
+  --mp-up: #1b7a52;
+  --mp-down: #c23a1c;
+}
+
+.dark .mp-demo {
+  --mp-up: #3fb37f;
+  --mp-down: #f0735a;
+}
+
 .mp-demo code {
   font-family: var(--vp-font-family-mono);
   font-size: 0.92em;
 }
 
-.mp-muted {
-  color: var(--vp-c-text-3);
+/* Secondary copy; `--vp-c-text-3` is a placeholder tint under 4.5:1 on white. */
+.vp-doc .mp-demo .mp-muted {
+  color: var(--vp-c-text-2);
 }
 
 .mp-num {
   font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+/* Present to assistive technology only (live regions, table captions). */
+.mp-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Empty-state copy under a heading or in place of a visualisation. */
+.mp-empty {
+  margin: 8px 0;
+  color: var(--vp-c-text-2);
+}
+
+.mp-chart-empty .mp-empty {
+  display: flex;
+  align-items: center;
+  min-height: 120px;
+  padding: 0 12px;
+  border: 1px dashed var(--vp-c-divider);
+  border-radius: 6px;
 }
 
 /* --- Mode bar, intro, footer -------------------------------------------- */
@@ -163,12 +219,15 @@
   opacity: 0.55;
 }
 
+/* One ring for every focusable thing on the page, keyboard focus only. */
 .mp-btn:focus-visible,
 .mp-select:focus-visible,
 .mp-event:focus-visible,
 .mp-code:focus-visible,
 .mp-chart svg:focus-visible,
-.mp-tip-anchor:focus-visible {
+.mp-tip-anchor:focus-visible,
+.mp-demo a:focus-visible,
+.mp-demo summary:focus-visible {
   outline: 2px solid var(--vp-c-brand-1);
   outline-offset: 2px;
 }
@@ -323,11 +382,11 @@
 }
 
 .mp-up {
-  color: var(--mp-green);
+  color: var(--mp-up);
 }
 
 .mp-down {
-  color: var(--mp-red);
+  color: var(--mp-down);
 }
 
 /* --- Builders ------------------------------------------------------------ */
@@ -368,7 +427,7 @@
   flex-shrink: 0;
   width: 1.4em;
   font-size: 12px;
-  color: var(--vp-c-text-3);
+  color: var(--vp-c-text-2);
 }
 
 /* --- Result -------------------------------------------------------------- */
@@ -421,10 +480,17 @@
   }
 }
 
+/*
+ * Reduced motion: no shimmer, no fades, no bar growth, and nothing a later
+ * rule adds either — hence the wildcard and `!important`, so the switch
+ * cannot be undone by a more specific transition declared further down.
+ */
 @media (prefers-reduced-motion: reduce) {
-  .mp-skeleton-chart,
-  .mp-skeleton-row {
-    animation: none;
+  .mp-demo *,
+  .mp-demo *::before,
+  .mp-demo *::after {
+    animation: none !important;
+    transition: none !important;
   }
 }
 
@@ -486,7 +552,7 @@
 }
 
 .mp-chart-tick {
-  fill: var(--vp-c-text-3);
+  fill: var(--vp-c-text-2);
   font-size: 11px;
 }
 
@@ -625,7 +691,7 @@
   margin: 0;
   padding: 4px 8px;
   font-size: 11px;
-  color: var(--vp-c-text-3);
+  color: var(--vp-c-text-2);
 }
 
 .mp-retention {
@@ -640,7 +706,7 @@
   background: rgba(120, 86, 255, var(--mp-cell-alpha, 0));
 }
 
-.mp-cell-inverse {
+.vp-doc .mp-demo td.mp-cell-inverse {
   color: #fff;
 }
 
@@ -760,4 +826,47 @@
 
 .mp-callback .mp-intro-actions a.mp-btn {
   text-decoration: none;
+}
+
+/* --- where filter --- */
+
+.mp-chips[role="group"] {
+  align-items: center;
+}
+
+button.mp-chip-toggle {
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+button.mp-chip-toggle:hover {
+  border-color: var(--vp-c-brand-1);
+}
+
+button.mp-chip-toggle[aria-pressed="true"] {
+  background: var(--vp-c-brand-1);
+  color: var(--vp-c-white);
+  font-weight: 600;
+}
+
+.mp-filter-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+}
+
+.mp-filter-line code {
+  font-size: 12px;
+}
+
+.mp-filter-clear {
+  padding: 0 8px;
+  line-height: 1.6;
 }

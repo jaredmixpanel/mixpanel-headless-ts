@@ -1,14 +1,16 @@
 // The offline transport (docs/.vitepress/theme/demo/model/fixture-fetch.ts):
 // its route table (unknown routes and keys throw, never a silent 200), the
 // facade-visible errors it produces, date materialisation relative to the
-// frozen clock, both time-section shapes, and the chart adapters
-// (model/series.ts) over the results the real library builds from it.
+// frozen clock, both time-section shapes, the `where` filter read from the
+// bookmark's filter section, and the chart adapters (model/series.ts) over
+// the results the real library builds from it.
 
 import { describe, expect, it } from "vitest";
 
 import {
   createBrowserWorkspace,
   EventNotFoundError,
+  Filter,
 } from "@mixpanel-headless/browser";
 
 import { DEMO_FIXTURES } from "../docs/.vitepress/theme/demo/fixtures/demo-project.gen.js";
@@ -18,6 +20,8 @@ import {
   fixtureFetch,
 } from "../docs/.vitepress/theme/demo/model/fixture-fetch.js";
 import {
+  allZero,
+  cellShade,
   formatCount,
   formatPct,
   funnelBars,
@@ -30,13 +34,23 @@ import {
 const today = (): Date => new Date(2026, 8, 15);
 const BASE = "https://mixpanel.com";
 
+const LAST_7 = {
+  dateRangeType: "in the last",
+  unit: "day",
+  window: { unit: "day", value: 7 },
+};
+
 /**
  * An insights request body with one trend clause and the given time entry.
  *
  * @param time - `sections.time[0]`.
+ * @param filter - `sections.filter`.
  * @returns The body text.
  */
-function insightsBody(time: Record<string, unknown>): string {
+function insightsBody(
+  time: Record<string, unknown>,
+  filter: readonly unknown[] = [],
+): string {
   return JSON.stringify({
     bookmark: {
       sections: {
@@ -48,7 +62,7 @@ function insightsBody(time: Record<string, unknown>): string {
           },
         ],
         time: [time],
-        filter: [],
+        filter,
         group: [],
       },
     },
@@ -61,20 +75,32 @@ function insightsBody(time: Record<string, unknown>): string {
  *
  * @param fetchImpl - The transport.
  * @param time - The time entry.
+ * @param filter - The filter section.
  * @returns The parsed envelope.
  */
 async function insights(
   fetchImpl: typeof fetch,
   time: Record<string, unknown>,
+  filter: readonly unknown[] = [],
 ): Promise<Record<string, unknown>> {
   const response = await fetchImpl(
     `${BASE}/api/query/insights?workspace_id=1`,
     {
       method: "POST",
-      body: insightsBody(time),
+      body: insightsBody(time, filter),
     },
   );
   return (await response.json()) as Record<string, unknown>;
+}
+
+/**
+ * Counts of a result's rows, in row order.
+ *
+ * @param rows - `toRows()` output.
+ * @returns The `count` column.
+ */
+function counts(rows: ReadonlyArray<Record<string, unknown>>): number[] {
+  return rows.map((row) => row["count"] as number);
 }
 
 const ws = createBrowserWorkspace({
@@ -257,6 +283,115 @@ describe("fixtureFetch: time sections", () => {
   });
 });
 
+describe("fixtureFetch: where filter", () => {
+  const fetchImpl = fixtureFetch(DEMO_FIXTURES, { today });
+  const stored = DEMO_FIXTURES.breakdowns["Note Saved|total|platform"] ?? {};
+  const lastWeek = (series: readonly number[] | undefined): number[] =>
+    (series ?? []).slice(-7);
+
+  it("serves the filtered segment's series for Filter.equals through the facade", async () => {
+    const result = await ws.query("Note Saved", {
+      math: "total",
+      last: 7,
+      where: Filter.equals("platform", "iOS"),
+    });
+    expect(result.rowColumns()).toStrictEqual(["date", "event", "count"]);
+    expect(counts(result.toRows())).toStrictEqual(lastWeek(stored["iOS"]));
+  });
+
+  it("keeps only the filtered segment when broken down by the same property", async () => {
+    const result = await ws.query("Note Saved", {
+      math: "total",
+      last: 7,
+      group_by: "platform",
+      where: Filter.equals("platform", "Android"),
+    });
+    const rows = result.toRows();
+    expect(new Set(rows.map((row) => row["segment"]))).toStrictEqual(
+      new Set(["Android"]),
+    );
+    expect(counts(rows)).toStrictEqual(lastWeek(stored["Android"]));
+  });
+
+  it("scales another property's segments to the filtered share", async () => {
+    const result = await ws.query("Note Saved", {
+      math: "total",
+      last: 7,
+      group_by: "plan",
+      where: Filter.equals("platform", "Web"),
+    });
+    const rows = result.toRows();
+    expect(new Set(rows.map((row) => row["segment"]))).toStrictEqual(
+      new Set(
+        Object.keys(DEMO_FIXTURES.breakdowns["Note Saved|total|plan"] ?? {}),
+      ),
+    );
+    const byDay = new Map<string, number>();
+    for (const row of rows) {
+      const date = row["date"] as string;
+      byDay.set(date, (byDay.get(date) ?? 0) + (row["count"] as number));
+    }
+    const expected = lastWeek(stored["Web"]);
+    for (const [i, sum] of [...byDay.values()].entries()) {
+      // Per-segment rounding may move a day's sum by at most one per segment.
+      expect(Math.abs(sum - (expected[i] ?? 0))).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it("answers zeros for a value the project never recorded", async () => {
+    const result = await ws.query("Note Saved", {
+      math: "total",
+      last: 7,
+      where: Filter.equals("platform", "Symbian"),
+    });
+    expect(counts(result.toRows())).toStrictEqual([0, 0, 0, 0, 0, 0, 0]);
+  });
+
+  it("reads the filter from the shape the bookmark builder writes", async () => {
+    const envelope = await insights(fetchImpl, LAST_7, [
+      {
+        resourceType: "events",
+        filterType: "string",
+        defaultType: "string",
+        filterValue: ["iOS"],
+        filterOperator: "equals",
+        value: "platform",
+      },
+    ]);
+    const series = envelope["series"] as Record<string, Record<string, number>>;
+    expect(Object.values(series["Note Saved"] ?? {})).toStrictEqual(
+      lastWeek(stored["iOS"]),
+    );
+  });
+
+  it("throws on a filter the fixtures cannot answer", async () => {
+    await expect(
+      ws.query("Note Saved", {
+        math: "total",
+        last: 7,
+        where: Filter.contains("platform", "i"),
+      }),
+    ).rejects.toThrow("demo fixture miss: filter ");
+    await expect(
+      ws.query("Note Saved", {
+        math: "total",
+        last: 7,
+        where: [Filter.equals("platform", "iOS"), Filter.equals("plan", "pro")],
+      }),
+    ).rejects.toThrow("demo fixture miss: filter ");
+  });
+
+  it("throws when the filtered property has no breakdown for the event", async () => {
+    await expect(
+      ws.query("Note Saved", {
+        math: "total",
+        last: 7,
+        where: Filter.equals("country", "US"),
+      }),
+    ).rejects.toThrow("demo fixture miss: Note Saved|total|country");
+  });
+});
+
 describe("fixtureCoverage", () => {
   const coverage = fixtureCoverage(DEMO_FIXTURES);
 
@@ -355,5 +490,63 @@ describe("series adapters", () => {
     expect(formatPct(0.6098)).toBe("61%");
     expect(formatPct(0.2316)).toBe("23.2%");
     expect(formatPct(1)).toBe("100%");
+  });
+});
+
+describe("empty states and cell shading", () => {
+  it("reports a series as all-zero only when it has points and none is non-zero", () => {
+    const day = (value: number): { date: string; value: number } => ({
+      date: "2026-09-09",
+      value,
+    });
+    expect(allZero([])).toBe(false);
+    expect(allZero([{ name: "Signup", points: [] }])).toBe(false);
+    expect(allZero([{ name: "Signup", points: [day(0), day(0)] }])).toBe(true);
+    expect(
+      allZero([
+        { name: "iOS", points: [day(0)] },
+        { name: "Web", points: [day(0), day(3)] },
+      ]),
+    ).toBe(false);
+  });
+
+  it("shades a live zero-row trend as flat", async () => {
+    const result = await ws.query("Note Saved", { math: "total", last: 7 });
+    const zeroed = result.toRows().map((row) => ({ ...row, count: 0 }));
+    const lines = trendSeries({
+      toRows: () => zeroed,
+    } as unknown as typeof result);
+    expect(lines).toHaveLength(1);
+    expect(allZero(lines)).toBe(true);
+    expect(allZero(trendSeries(result))).toBe(false);
+  });
+
+  it("keeps body text up to 0.55 and white text from alpha 0.85 upward", () => {
+    expect(cellShade(0)).toStrictEqual({ alpha: 0, inverse: false });
+    expect(cellShade(0.3)).toStrictEqual({ alpha: 0.3, inverse: false });
+    expect(cellShade(0.55)).toStrictEqual({ alpha: 0.55, inverse: false });
+    const above = cellShade(0.56);
+    expect(above.inverse).toBe(true);
+    expect(above.alpha).toBeGreaterThanOrEqual(0.85);
+    expect(cellShade(1)).toStrictEqual({ alpha: 1, inverse: true });
+    // Clamped, and monotonic across the switch.
+    expect(cellShade(-1)).toStrictEqual({ alpha: 0, inverse: false });
+    expect(cellShade(2)).toStrictEqual({ alpha: 1, inverse: true });
+    const alphas = [0.1, 0.5, 0.55, 0.6, 0.8, 0.99].map(
+      (r) => cellShade(r).alpha,
+    );
+    expect([...alphas].sort((a, b) => a - b)).toStrictEqual(alphas);
+  });
+
+  it("never lets the fill alpha land where neither text colour reaches 4.5:1", () => {
+    // On the light background the body text fails above 0.65 and white
+    // fails below 0.83 (measured against theme/mixpanel.css); no rate may
+    // produce a fill in between.
+    for (let rate = 0; rate <= 1; rate += 0.01) {
+      const { alpha, inverse } = cellShade(rate);
+      expect(inverse ? alpha >= 0.83 : alpha <= 0.65, `rate ${rate}`).toBe(
+        true,
+      );
+    }
   });
 });

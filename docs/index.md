@@ -22,6 +22,10 @@ hero:
       link: https://github.com/jaredmixpanel/mixpanel-headless-ts
 
 features:
+  - title: Try it in your browser
+    details: The playground runs the browser package against a synthetic demo project — no account, no network — and shows the exact TypeScript call beside every result. Sign in with PKCE to run the same queries on your own project, read-only.
+    link: /demo/
+    linkText: Open the playground
   - title: Five composable query engines
     details: Insights (query), funnels (queryFunnel), retention (queryRetention), flows (queryFlow), and user profiles (queryUser) share one Filter vocabulary, inline cohort definitions, and uniform tabular results.
     link: /guide/unified-query-system

@@ -14,6 +14,7 @@ import {
 
 import { type Call, renderCall } from "../model/call.js";
 import { tokenize } from "../model/code-highlight.js";
+import { withImports } from "../model/setup-snippets.js";
 
 /** Token colours: the values of the two theme/shiki-mixpanel-*.json files. */
 const COLOURS: Readonly<
@@ -28,14 +29,19 @@ const COLOURS: Readonly<
 };
 
 /**
- * Build the program the panel shows: the setup, a blank line, then the calls.
+ * Build the program the panel shows: the setup (its import line extended
+ * with whatever the calls need), a blank line, then the calls.
  *
  * @param setup - The mode's setup snippet.
  * @param calls - The calls, in order.
  * @returns The program text.
  */
 export function programText(setup: string, calls: readonly Call[]): string {
-  return `${setup.trimEnd()}\n\n${calls.map((call) => renderCall(call)).join("\n")}\n`;
+  const prefix = withImports(
+    setup,
+    calls.flatMap((call) => call.imports),
+  ).trimEnd();
+  return `${prefix}\n\n${calls.map((call) => renderCall(call)).join("\n")}\n`;
 }
 
 /**

@@ -40,7 +40,25 @@ const me = await ws.me();
 await ws.use({ project: "12345", workspace: 67 });
 ```
 
-Pick an event, flip the controls, and the code on the right is the call that produced the result — copy it into your own page.
+Pick an event, flip the controls, and the code on the right is the call that produced the result — copy it into your own page. A value chip under a breakdown becomes a `where` filter, built with the same `Filter` the library exports:
+
+```ts twoslash
+import { createBrowserWorkspace, Filter } from "@mixpanel-headless/browser";
+declare const demoFetch: typeof fetch; // recorded responses; drop this line to talk to Mixpanel
+const ws = createBrowserWorkspace({
+  token: "demo",
+  projectId: "3141592",
+  region: "us",
+  workspaceId: 1,
+  fetch: demoFetch,
+});
+// ---cut---
+const result = await ws.query("Note Saved", {
+  math: "total",
+  last: 30,
+  where: Filter.equals("platform", "iOS"),
+});
+```
 
 <div class="mp-demo-skeleton">Loading the library (about 140 KB)…</div>
 <DemoPlayground />

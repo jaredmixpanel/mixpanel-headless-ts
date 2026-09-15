@@ -29,7 +29,12 @@ import { DEMO_FIXTURES } from "../fixtures/demo-project.gen.js";
 import { describeError, type ErrorContext } from "../model/errors.js";
 import { fixtureCoverage, fixtureFetch } from "../model/fixture-fetch.js";
 import { toMarkdown } from "../model/markdown-table.js";
-import type { QuerySpec, TimeRange, TrendSpec } from "../model/query-spec.js";
+import {
+  type QuerySpec,
+  type TimeRange,
+  type TrendSpec,
+  withWhere,
+} from "../model/query-spec.js";
 import {
   type DemoError,
   type DemoState,
@@ -196,20 +201,19 @@ export default defineComponent({
     });
 
     const run = (spec: QuerySpec): void => void query.run(spec);
-    // Selecting an event keeps its math and range when it is already shown;
-    // `groupBy` `null` clears the breakdown, `undefined` leaves it alone.
+    // Selecting an event keeps its math, range and filter when it is
+    // already shown (a new event starts unfiltered); `groupBy` `null` clears
+    // the breakdown, `undefined` leaves it alone.
     const trend = (event: string, groupBy?: string | null): void => {
       const current = query.spec.value;
       const base: TrendSpec =
         current?.kind === "trend" && current.event === event
           ? current
           : { kind: "trend", event, math: "total", last: last.value };
-      const next: TrendSpec = {
-        kind: "trend",
-        event,
-        math: base.math,
-        last: base.last,
-      };
+      const next: TrendSpec = withWhere(
+        { kind: "trend", event, math: base.math, last: base.last },
+        base.where ?? null,
+      );
       const chosen = groupBy === undefined ? base.groupBy : groupBy;
       run(
         chosen === null || chosen === undefined
@@ -469,7 +473,9 @@ export default defineComponent({
           })),
           selected: selectedEvent.value,
           loading: query.topLoading.value,
+          names: query.allEvents.value,
           onSelect: (event: string) => trend(event),
+          onMoreEvents: () => void query.loadAllEvents(),
         }),
         h("div", { class: "mp-col-head" }, [h("h2", "Funnel")]),
         h(FunnelBuilder, {
@@ -521,6 +527,12 @@ export default defineComponent({
               }
             },
             onValues: (property) => void query.showValues(property),
+            onWhere: (where) => {
+              const current = query.spec.value;
+              if (current?.kind === "trend") {
+                run(withWhere(current, where));
+              }
+            },
           },
           {
             actions: () =>

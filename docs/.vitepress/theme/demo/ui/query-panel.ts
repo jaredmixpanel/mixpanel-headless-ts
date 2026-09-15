@@ -1,7 +1,8 @@
 // The middle column: the controls that edit the current spec (math, time
-// range, breakdown) and the result they produced — chart, bars or grid,
-// then the raw rows. Every control emits; the playground rebuilds the spec
-// and runs it, so this component never touches the facade.
+// range, breakdown, a value chip as a `where` filter) and the result they
+// produced — chart, bars or grid, then the raw rows. Every control emits;
+// the playground rebuilds the spec and runs it, so this component never
+// touches the facade.
 
 import { defineComponent, h, type PropType, type VNode } from "vue";
 
@@ -11,6 +12,7 @@ import {
   type TimeRange,
   TREND_MATHS,
   type TrendMath,
+  type WhereFilter,
 } from "../model/query-spec.js";
 import { funnelBars, retentionGrid, trendSeries } from "../model/series.js";
 import type { DemoError } from "../model/session-state.js";
@@ -44,7 +46,12 @@ const MATH_LABEL: Readonly<Record<TrendMath, string>> = {
 function resultTitle(spec: QuerySpec, result: AnyResult | null): string {
   switch (spec.kind) {
     case "trend": {
-      return `${spec.event} — ${spec.math}${spec.groupBy === undefined ? "" : ` by ${spec.groupBy}`}, last ${spec.last} days`;
+      const by = spec.groupBy === undefined ? "" : ` by ${spec.groupBy}`;
+      const where =
+        spec.where === undefined
+          ? ""
+          : ` where ${spec.where.property} = ${spec.where.value}`;
+      return `${spec.event} — ${spec.math}${by}${where}, last ${spec.last} days`;
     }
     case "funnel": {
       const rate =
@@ -79,6 +86,8 @@ export default defineComponent({
     breakdownOpen: () => true,
     groupBy: (property: string | null) => property === null || property !== "",
     values: (property: string) => property !== "",
+    where: (where: WhereFilter | null) =>
+      where === null || where.property !== "",
   },
   setup(props, { emit, slots }) {
     const trendControls = (spec: QuerySpec & { kind: "trend" }): VNode =>
@@ -113,26 +122,51 @@ export default defineComponent({
             ),
       ]);
 
-    const chips = (): VNode | null =>
-      props.values === null
-        ? null
-        : h(
-            "div",
+    // A chip is a toggle: pressing the active one clears the filter.
+    const chips = (spec: QuerySpec & { kind: "trend" }): VNode | null => {
+      const values = props.values;
+      if (values === null) {
+        return null;
+      }
+      const isActive = (v: string): boolean =>
+        spec.where?.property === values.property && spec.where.value === v;
+      return h(
+        "div",
+        {
+          class: "mp-chips",
+          role: "group",
+          "aria-label": `Filter by ${values.property}`,
+        },
+        values.values.map((v) =>
+          button(
+            v,
+            () =>
+              emit(
+                "where",
+                isActive(v) ? null : { property: values.property, value: v },
+              ),
             {
-              class: "mp-chips",
-              "aria-label": `Values of ${props.values.property}`,
+              key: v,
+              class: "mp-chip mp-chip-toggle",
+              "aria-pressed": isActive(v),
             },
-            [
-              ...props.values.values.map((v) =>
-                h("span", { key: v, class: "mp-chip" }, v),
-              ),
-              h(
-                "span",
-                { class: "mp-muted" },
-                " (informational — filters arrive later)",
-              ),
-            ],
-          );
+          ),
+        ),
+      );
+    };
+
+    const filterLine = (where: WhereFilter): VNode =>
+      h("p", { class: "mp-filter-line" }, [
+        "filtered by ",
+        h("code", where.property),
+        " = ",
+        h("code", where.value),
+        button("×", () => emit("where", null), {
+          class: "mp-btn mp-btn-small mp-filter-clear",
+          "aria-label": `Clear the ${where.property} filter`,
+          title: "Clear filter",
+        }),
+      ]);
 
     const body = (spec: QuerySpec, result: AnyResult): VNode => {
       switch (spec.kind) {
@@ -140,6 +174,8 @@ export default defineComponent({
           return h(LineChart, {
             series: trendSeries(result as QueryResult),
             unit: MATH_LABEL[spec.math],
+            event: spec.event,
+            groupBy: spec.groupBy ?? null,
           });
         }
         case "funnel": {
@@ -185,7 +221,10 @@ export default defineComponent({
           ]),
           h("p", { class: "mp-result-title" }, resultTitle(spec, result)),
           spec.kind === "trend" ? trendControls(spec) : null,
-          chips(),
+          spec.kind === "trend" && spec.where !== undefined
+            ? filterLine(spec.where)
+            : null,
+          spec.kind === "trend" ? chips(spec) : null,
           props.error === null ? null : h(ErrorBlock, { error: props.error }),
           h(
             "div",

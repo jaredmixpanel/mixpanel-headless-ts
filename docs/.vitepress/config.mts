@@ -47,6 +47,8 @@ const origin = process.env["DOCS_ORIGIN"];
 // `docs:dev` port locally — `beginLogin` accepts `http:` only on loopback.
 const demoOrigin = origin ?? "http://localhost:5173";
 const DEMO_REDIRECT_URI = `${demoOrigin}${base}demo/callback`;
+/** The playground page, which carries its own social image. */
+const DEMO_PAGE = "demo/index.md";
 
 // VitePress 1.x pins Vite 5, shiki 2 and its own markdown-it, while the
 // root hoists newer copies for vitest, twoslash and the tabs plugin. The
@@ -290,9 +292,21 @@ export default defineConfig({
           "Typed Mixpanel analytics queries, schema discovery, entity management, streaming extraction, and session replay analysis for Node.js and browsers.",
       },
     ],
-    ["meta", { property: "og:image", content: `${origin ?? ""}${base}og.png` }],
     ["meta", { name: "twitter:card", content: "summary_large_image" }],
   ],
+  // The social image needs the absolute origin, which a page's frontmatter
+  // cannot see; the playground gets its screenshot, every other page the
+  // brand card.
+  transformHead({ pageData }) {
+    const image =
+      pageData.relativePath === DEMO_PAGE ? "playground.png" : "og.png";
+    return [
+      [
+        "meta",
+        { property: "og:image", content: `${origin ?? ""}${base}${image}` },
+      ],
+    ];
+  },
 
   markdown: {
     theme: {

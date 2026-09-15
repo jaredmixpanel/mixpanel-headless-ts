@@ -1,12 +1,17 @@
 // Retention as a cohort × bucket grid shaded by rate. Cells sit on the brand
-// blue with an alpha that follows the rate; above 0.55 the text switches to
-// white so the contrast stays at or above 4.5:1 in both colour schemes.
+// colour with an alpha that follows the rate; the text switches to white
+// above 0.55, and `cellShade` keeps the fill out of the alpha band where
+// neither colour reaches 4.5:1. A real table with scoped headers and a
+// caption, so the grid reads row by row to assistive technology.
 
 import { defineComponent, h, type PropType } from "vue";
 
-import { formatCount, formatPct, type RetentionGrid } from "../model/series.js";
-
-const WHITE_TEXT_ABOVE = 0.55;
+import {
+  cellShade,
+  formatCount,
+  formatPct,
+  type RetentionGrid,
+} from "../model/series.js";
 
 /** Retention grid. */
 export default defineComponent({
@@ -21,12 +26,21 @@ export default defineComponent({
         0,
       );
       return h("table", { class: "mp-retention" }, [
+        h(
+          "caption",
+          { class: "mp-visually-hidden" },
+          `Retention by cohort: share of each cohort returning per ${props.grid.unit}, ${props.grid.cohorts.length} cohorts`,
+        ),
         h("thead", [
           h("tr", [
-            h("th", "Cohort"),
-            h("th", { class: "mp-num" }, "Size"),
+            h("th", { scope: "col" }, "Cohort"),
+            h("th", { scope: "col", class: "mp-num" }, "Size"),
             ...Array.from({ length: buckets }, (_, i) =>
-              h("th", { key: i, class: "mp-num" }, `${props.grid.unit} ${i}`),
+              h(
+                "th",
+                { key: i, scope: "col", class: "mp-num" },
+                `${props.grid.unit} ${i}`,
+              ),
             ),
           ]),
         ]),
@@ -36,24 +50,23 @@ export default defineComponent({
             h("tr", { key: cohort.date }, [
               h("th", { scope: "row" }, cohort.date),
               h("td", { class: "mp-num" }, formatCount(cohort.size)),
-              ...cohort.rates.map((rate, i) =>
-                h(
+              ...cohort.rates.map((rate, i) => {
+                const shade = cellShade(rate);
+                return h(
                   "td",
                   {
                     key: i,
                     class: [
                       "mp-num",
                       "mp-cell",
-                      rate > WHITE_TEXT_ABOVE ? "mp-cell-inverse" : "",
+                      shade.inverse ? "mp-cell-inverse" : "",
                     ],
-                    style: {
-                      "--mp-cell-alpha": String(Math.min(Math.max(rate, 0), 1)),
-                    },
+                    style: { "--mp-cell-alpha": shade.alpha.toFixed(3) },
                     title: `${cohort.date}, ${props.grid.unit} ${i}: ${formatPct(rate)}`,
                   },
                   formatPct(rate),
-                ),
-              ),
+                );
+              }),
             ]),
           ),
         ),

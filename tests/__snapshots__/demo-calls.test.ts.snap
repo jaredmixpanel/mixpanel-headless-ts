@@ -34,10 +34,21 @@ exports[`rendered blocks > match their snapshots 1`] = `
   last: 30,
   group_by: "$browser",
 });",
+  "trend, broken down and filtered on another property": "const result = await ws.query("Note Saved", {
+  math: "unique",
+  last: 7,
+  group_by: "plan",
+  where: Filter.equals("platform", "Android"),
+});",
   "trend, dau, 90 days, broken down": "const result = await ws.query("Note Saved", {
   math: "dau",
   last: 90,
   group_by: "platform",
+});",
+  "trend, filtered": "const result = await ws.query("Note Saved", {
+  math: "total",
+  last: 30,
+  where: Filter.equals("platform", "iOS"),
 });",
   "trend, total, 30 days": "const result = await ws.query("Note Saved", {
   math: "total",
