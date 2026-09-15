@@ -159,7 +159,7 @@ export default defineConfig({
       }) as unknown as CodeTransformer,
     ],
     config(md) {
-      md.use(tabsMarkdownPlugin as unknown);
+      md.use(tabsMarkdownPlugin as unknown as MarkdownPlugin);
     },
   },
 
