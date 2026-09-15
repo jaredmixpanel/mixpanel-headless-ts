@@ -20,33 +20,10 @@ import type { Account } from "./auth/account.js";
 import { resolveSession } from "./auth/resolver.js";
 import type { Project, Session, WorkspaceRef } from "./auth/session.js";
 import { createMixpanelClient, type MixpanelClient } from "./client/client.js";
-import { jsonValuePythonStr } from "./client/internals.js";
-import { toNativeJson } from "./client/json-value.js";
 import type { MeResponse } from "./client/me.js";
-import { validateResponseModel } from "./client/response-validation.js";
 import { pythonInt } from "./compat/python-int.js";
-import { pythonRepr } from "./compat/python-str.js";
-import {
-  BookmarkValidationError,
-  MixpanelHeadlessError,
-  ParamValidationError,
-  QueryError,
-  ReportLinkNotFoundError,
-  ReportLinkScopeMismatchError,
-  ShortLinkResolutionError,
-  UnsupportedReportLinkError,
-  WorkspaceScopeError,
-} from "./errors.js";
-import {
-  BOOKMARK_HASH_FOR_TYPE,
-  buildBookmarkUrl,
-  buildSlugUrl,
-  generateSlug,
-  type ParsedReportLink,
-  parsedReportLink,
-  parseReportLink,
-  SLUG_APP_FOR_TYPE,
-} from "./report-links.js";
+import { MixpanelHeadlessError } from "./errors.js";
+import { generateSlug } from "./report-links.js";
 import { DiscoveryService, type WarningSink } from "./services/discovery.js";
 import {
   type LiveActivityFeedOptions,
@@ -82,13 +59,12 @@ import type {
   CreateAnnotationTagParams,
   UpdateAnnotationParams,
 } from "./types/entities/annotations.js";
-import {
-  type Bookmark,
-  type BookmarkHistoryResponse,
-  BookmarkUrl,
-  type BulkUpdateBookmarkEntry,
-  type CreateBookmarkParams,
-  type UpdateBookmarkParams,
+import type {
+  Bookmark,
+  BookmarkHistoryResponse,
+  BulkUpdateBookmarkEntry,
+  CreateBookmarkParams,
+  UpdateBookmarkParams,
 } from "./types/entities/bookmarks.js";
 import type {
   BusinessContext,
@@ -180,17 +156,13 @@ import type {
   WebhookTestParams,
   WebhookTestResult,
 } from "./types/entities/webhooks.js";
-import type {
-  BookmarkType,
-  EntityType,
-  ReportLinkType,
-} from "./types/literals.js";
+import type { BookmarkType, EntityType } from "./types/literals.js";
 import type { FlowStep } from "./types/query-params/flow.js";
 import type { FunnelStep } from "./types/query-params/funnel.js";
 import type { RetentionEvent } from "./types/query-params/retention.js";
-import {
+import type {
   ReportLink,
-  type ReportLinkQueryResult,
+  ReportLinkQueryResult,
   ResolvedReport,
 } from "./types/report-links.js";
 import type {
@@ -216,12 +188,12 @@ import type {
   SavedReportResult,
   SegmentationResult,
 } from "./types/results/live-query.js";
-import {
+import type {
   FlowQueryResult,
   FunnelQueryResult,
   QueryResult,
   RetentionQueryResult,
-  type UserQueryResult,
+  UserQueryResult,
 } from "./types/results/query-engine.js";
 import type {
   Replay,
@@ -237,13 +209,12 @@ import type {
   WorkspaceListAnnotationsOptions,
 } from "./workspace-members/annotations-webhooks-alerts.js";
 import * as annotationsWebhooksAlerts from "./workspace-members/annotations-webhooks-alerts.js";
-import * as bookmarksCohorts from "./workspace-members/bookmarks-cohorts.js";
-import {
-  validateBookmarkParamsSchema,
-  type WorkspaceGetBookmarkHistoryOptions,
-  type WorkspaceListBookmarksV2Options,
-  type WorkspaceListCohortsFullOptions,
+import type {
+  WorkspaceGetBookmarkHistoryOptions,
+  WorkspaceListBookmarksV2Options,
+  WorkspaceListCohortsFullOptions,
 } from "./workspace-members/bookmarks-cohorts.js";
+import * as bookmarksCohorts from "./workspace-members/bookmarks-cohorts.js";
 import type {
   WorkspaceListBlueprintTemplatesOptions,
   WorkspaceListDashboardsOptions,
@@ -323,6 +294,7 @@ import {
   type WorkspaceWorkspacesOptions,
 } from "./workspace-members/options.js";
 import * as replayMethods from "./workspace-members/replay-methods.js";
+import * as reportLinkMethods from "./workspace-members/report-link-methods.js";
 import type {
   WorkspaceDeleteSchemasOptions,
   WorkspaceGetSchemaEnforcementOptions,
@@ -4851,35 +4823,25 @@ export class Workspace {
   // LINKS section, AIE-561/562) ===
 
   /**
-   * Choose the workspace id a created report link embeds
-   * (`_report_link_workspace_id`): explicit, else the pinned session
-   * workspace, else `resolveWorkspaceId()`, else `null` (project-only).
+   * The facade slice the report-link members read; session, project id
+   * and the live-query service stay lazy (thunks) so they resolve where
+   * Python reads them, and the public members are dispatched through the
+   * instance.
    *
-   * @param explicit - Caller-supplied workspace id, or `null`.
-   * @returns The workspace id to embed, or `null`.
+   * @returns The host view over this facade.
    */
-  async #reportLinkWorkspaceId(
-    explicit: number | null,
-  ): Promise<number | null> {
-    if (explicit !== null) {
-      return explicit;
-    }
-    const pinned = this.#session.workspace ?? null;
-    if (pinned !== null) {
-      return pinned.id;
-    }
-    try {
-      return await this.resolveWorkspaceId();
-    } catch (error) {
-      if (!(error instanceof WorkspaceScopeError)) {
-        throw error;
-      }
-      this.#logger.debug(
-        `report link: no workspace resolved for project ` +
-          `${this.#session.project.id}; emitting project-only URL`,
-      );
-      return null;
-    }
+  #reportLinkHost(): reportLinkMethods.ReportLinkHost {
+    return {
+      client: this.client,
+      logger: this.#logger,
+      session: () => this.#session,
+      projectId: () => this.#projectId(),
+      generateSlug: () => this.#generateSlug(),
+      liveQueryService: () => this.liveQueryService,
+      resolveWorkspaceId: () => this.resolveWorkspaceId(),
+      getBookmark: (bookmarkId) => this.getBookmark(bookmarkId),
+      resolveReportLink: (link) => this.resolveReportLink(link),
+    };
   }
 
   /**
@@ -4924,198 +4886,11 @@ export class Workspace {
     params: ReportLinkParamsInput,
     options: WorkspaceCreateReportLinkOptions = {},
   ): Promise<ReportLink> {
-    const { rawParams, reportType: resolvedType } = reportLinkInputs(
+    return reportLinkMethods.createReportLink(
+      this.#reportLinkHost(),
       params,
-      options.report_type ?? null,
+      options,
     );
-    const name = options.name ?? "";
-    const description = options.description ?? "";
-    const bookmarkId = options.bookmark_id ?? null;
-
-    if (options.validate ?? true) {
-      const schemaErrors = validateBookmarkParamsSchema(
-        rawParams,
-        resolvedType,
-      );
-      if (schemaErrors.some((e) => e.severity === "error")) {
-        throw new BookmarkValidationError(schemaErrors);
-      }
-      for (const w of schemaErrors) {
-        if (w.severity === "warning") {
-          this.#logger.warning(
-            `create_report_link validation warning: ${w.message} [${w.code}]`,
-          );
-        }
-      }
-    }
-
-    const slug = this.#generateSlug();
-    const wid = await this.#reportLinkWorkspaceId(options.workspace_id ?? null);
-    const projectId = this.#projectId();
-    // Build the URL before the POST so every local input guard (RL1,
-    // RL3, RL6) fires before a record exists on the server.
-    const url = buildSlugUrl({
-      region: this.#session.account.region,
-      project_id: projectId,
-      slug,
-      report_type: resolvedType,
-      workspace_id: wid,
-    });
-
-    const body: Record<string, unknown> = {
-      slug,
-      type: resolvedType,
-      params: rawParams,
-    };
-    // Python `if name:` / `if description:` — empty strings stay absent.
-    if (name !== "") {
-      body["name"] = name;
-    }
-    if (description !== "") {
-      body["description"] = description;
-    }
-    if (bookmarkId !== null) {
-      body["bookmark_id"] = bookmarkId;
-    }
-
-    const response = await this.client.createBookmarkUrl(body);
-    const created = Object.hasOwn(response, "created_at")
-      ? response["created_at"]
-      : undefined;
-
-    let createdAt: string | null = null;
-    if (created !== undefined && created !== null) {
-      createdAt =
-        typeof created === "string" ? created : jsonValuePythonStr(created);
-    }
-    return new ReportLink({
-      url,
-      slug,
-      report_type: resolvedType,
-      project_id: projectId,
-      workspace_id: wid,
-      name,
-      description,
-      bookmark_id: bookmarkId,
-      created_at: createdAt,
-    });
-  }
-
-  /**
-   * Reject a link whose region, project, or workspace differs from the
-   * session (`_check_report_link_scope`). Runs before the record fetch.
-   * For a shortlink the region check runs before the redirect GET and
-   * the project and workspace checks run on the expanded target, after
-   * it. A bare slug carries none of the three values and so skips every
-   * check. The workspace check applies only when the session has a
-   * pinned workspace **and** the link names one.
-   *
-   * @param parsed - The parsed link (or a {@link ResolvedReport}
-   *   projected onto one by {@link queryReportLink}).
-   * @throws ReportLinkScopeMismatchError - `REPORT_LINK_REGION_MISMATCH`,
-   *   `REPORT_LINK_PROJECT_MISMATCH`, or `REPORT_LINK_WORKSPACE_MISMATCH`.
-   */
-  #checkReportLinkScope(parsed: ParsedReportLink): void {
-    const sessionRegion = this.#session.account.region;
-    if (parsed.region !== null && parsed.region !== sessionRegion) {
-      throw new ReportLinkScopeMismatchError(
-        `Report link is on the ${parsed.region} region but the active ` +
-          `account is on ${sessionRegion}.`,
-        {
-          code: "REPORT_LINK_REGION_MISMATCH",
-          details: {
-            ...reportLinkDetails(parsed),
-            link_region: parsed.region,
-            session_region: sessionRegion,
-            hint:
-              `Switch to an account on the ${parsed.region} region with ` +
-              `ws.use(account="<name>") (CLI: mp --account <name> ...) ` +
-              `and retry.`,
-          },
-        },
-      );
-    }
-    const sessionProject = this.#projectId();
-    if (parsed.project_id !== null && parsed.project_id !== sessionProject) {
-      throw new ReportLinkScopeMismatchError(
-        `Report link belongs to project ${String(parsed.project_id)} but the ` +
-          `active session is project ${String(sessionProject)}.`,
-        {
-          code: "REPORT_LINK_PROJECT_MISMATCH",
-          details: {
-            ...reportLinkDetails(parsed),
-            link_project_id: parsed.project_id,
-            session_project_id: sessionProject,
-            hint:
-              `Switch with ws.use(project="${String(parsed.project_id)}") ` +
-              `(CLI: mp --project ${String(parsed.project_id)} ...) and retry.`,
-          },
-        },
-      );
-    }
-    const pinned = this.#session.workspace ?? null;
-    if (
-      pinned !== null &&
-      parsed.workspace_id !== null &&
-      parsed.workspace_id !== pinned.id
-    ) {
-      throw new ReportLinkScopeMismatchError(
-        `Report link belongs to workspace ${String(parsed.workspace_id)} but the ` +
-          `active session is pinned to workspace ${String(pinned.id)}.`,
-        {
-          code: "REPORT_LINK_WORKSPACE_MISMATCH",
-          details: {
-            ...reportLinkDetails(parsed),
-            link_workspace_id: parsed.workspace_id,
-            session_workspace_id: pinned.id,
-            hint:
-              `Switch with ws.use(workspace=${String(parsed.workspace_id)}) ` +
-              `(CLI: mp --workspace ${String(parsed.workspace_id)} ...) and retry.`,
-          },
-        },
-      );
-    }
-  }
-
-  /**
-   * Follow a shortlink once and parse its target (`_expand_short_link`).
-   *
-   * @param parsed - A parsed link with `kind === "short_link"`.
-   * @returns `[parsedTarget, expandedUrl]`.
-   * @throws ReportLinkScopeMismatchError - `REPORT_LINK_REGION_MISMATCH`
-   *   when the shortlink host is on another region (before the GET).
-   * @throws ShortLinkResolutionError - `SHORT_LINK_CHAIN` when the target
-   *   is another shortlink, plus the transport codes from
-   *   {@link MixpanelClient.resolveShortLink}.
-   * @throws ReportLinkParseError - The expanded target is not a
-   *   recognizable Mixpanel report link.
-   * @throws AuthenticationError - The server redirected to the login page.
-   */
-  async #expandShortLink(
-    parsed: ParsedReportLink,
-  ): Promise<[ParsedReportLink, string]> {
-    const shortCode = parsed.short_code as string;
-    // The shortlink host names a region; a mismatch is knowable before
-    // the redirect GET, so check it first (FR-020: no HTTP call on
-    // mismatch).
-    this.#checkReportLinkScope(parsed);
-    const target = await this.client.resolveShortLink(shortCode);
-    const parsedTarget = parseReportLink(target);
-    if (parsedTarget.kind === "short_link") {
-      throw new ShortLinkResolutionError(
-        `Shortlink /s/${shortCode} redirects to another shortlink ` +
-          `(${target}). mixpanel-headless follows one redirect only.`,
-        {
-          code: "SHORT_LINK_CHAIN",
-          details: {
-            ...reportLinkDetails(parsed),
-            target,
-            hint: "Resolve the target shortlink directly.",
-          },
-        },
-      );
-    }
-    return [parsedTarget, target];
   }
 
   /**
@@ -5165,160 +4940,7 @@ export class Workspace {
    * ```
    */
   async resolveReportLink(link: string): Promise<ResolvedReport> {
-    let parsed = parseReportLink(link);
-    let expandedUrl: string | null = null;
-    if (parsed.kind === "short_link") {
-      [parsed, expandedUrl] = await this.#expandShortLink(parsed);
-    }
-
-    rejectUnsupportedReportLink(parsed);
-    this.#checkReportLinkScope(parsed);
-
-    const region = this.#session.account.region;
-    const projectId = this.#projectId();
-    const pinned = this.#session.workspace ?? null;
-    const workspaceId = parsed.workspace_id ?? pinned?.id ?? null;
-
-    if (parsed.kind === "slug") {
-      const raw = await this.client.getBookmarkUrl(parsed.slug as string);
-      const record = validateResponseModel(BookmarkUrl, toNativeJson(raw), {
-        endpoint: "get_bookmark_url",
-      });
-      const embedded = record.bookmark;
-      // The server accepts four slug types today. If it ever returns
-      // another, keep the record resolvable and fall back to the app
-      // the URL was opened under (or insights for a bare slug) rather
-      // than raising RL1 from the builder.
-      let slugUrlType = record.bookmark_type;
-      if (!SLUG_APP_FOR_TYPE.has(slugUrlType)) {
-        const hintType = parsed.report_type_hint;
-        slugUrlType =
-          hintType !== null && SLUG_APP_FOR_TYPE.has(hintType)
-            ? hintType
-            : "insights";
-        this.#logger.warning(
-          `slug ${record.slug} has unknown report type ` +
-            `${pythonRepr(record.bookmark_type)}; the canonical URL uses ` +
-            `the ${SLUG_APP_FOR_TYPE.get(slugUrlType) as string} app and may ` +
-            `not open it correctly`,
-        );
-      }
-      return new ResolvedReport({
-        source: "slug",
-        report_type: record.bookmark_type,
-        params: { ...record.params },
-        project_id: projectId,
-        workspace_id: workspaceId,
-        region,
-        url: buildSlugUrl({
-          region,
-          project_id: projectId,
-          slug: record.slug,
-          report_type: slugUrlType,
-          workspace_id: workspaceId,
-        }),
-        input: link,
-        expanded_url: expandedUrl,
-        slug: record.slug,
-        bookmark_id: embedded === null ? record.bookmark_id : embedded.id,
-        bookmark: embedded,
-        name: record.name,
-        description: record.description,
-        overrides: record.overrides,
-      });
-    }
-
-    // `parsed.kind === "bookmark"` (every other kind was rejected above).
-    const bookmarkId = parsed.bookmark_id as number;
-    let bookmark: Bookmark;
-    try {
-      bookmark = await this.getBookmark(bookmarkId);
-    } catch (error) {
-      if (error instanceof QueryError && error.statusCode === 404) {
-        // get_bookmark is workspace-scoped when a workspace is pinned,
-        // so a report in a sibling workspace of the same project also
-        // 404s. Say so, instead of "not in this project".
-        if (pinned !== null) {
-          throw new ReportLinkNotFoundError(
-            `No saved report found with id ${String(bookmarkId)} in ` +
-              `project ${String(projectId)} (${region}) under the pinned ` +
-              `workspace ${String(pinned.id)}.`,
-            {
-              code: "REPORT_LINK_BOOKMARK_NOT_FOUND",
-              details: {
-                ...reportLinkDetails(parsed),
-                session_workspace_id: pinned.id,
-                hint:
-                  "The saved report may live in another workspace " +
-                  "of this project. Switch with " +
-                  "ws.use(workspace=<id>) (CLI: mp --workspace " +
-                  "<id> ...) or unpin the workspace and retry.",
-              },
-              cause: error,
-            },
-          );
-        }
-        throw new ReportLinkNotFoundError(
-          `No saved report found with id ${String(bookmarkId)} in ` +
-            `project ${String(projectId)} (${region}).`,
-          {
-            code: "REPORT_LINK_BOOKMARK_NOT_FOUND",
-            details: {
-              ...reportLinkDetails(parsed),
-              hint:
-                "Check the saved report id, or switch to the project " +
-                "and region that own it (ws.use(project=...); CLI: " +
-                "mp --project ...) and retry.",
-            },
-            cause: error,
-          },
-        );
-      }
-      throw error;
-    }
-    if (parsed.overrides_jsurl !== null) {
-      this.#logger.warning(
-        `ignoring URL overrides ${pythonRepr(parsed.overrides_jsurl)}; ` +
-          `running the saved report's base params`,
-      );
-    }
-    const reportType = bookmark.bookmark_type;
-    let urlType = reportType;
-    if (!BOOKMARK_HASH_FOR_TYPE.has(urlType)) {
-      // Python `parsed.report_type_hint or "insights"` (truthiness).
-      urlType =
-        parsed.report_type_hint !== null && parsed.report_type_hint !== ""
-          ? parsed.report_type_hint
-          : "insights";
-      this.#logger.warning(
-        `saved report ${String(bookmark.id)} has unknown report type ` +
-          `${pythonRepr(reportType)}; the canonical URL uses the ` +
-          `${String(parsed.app)} app and may not open it correctly`,
-      );
-    }
-    return new ResolvedReport({
-      source: "bookmark",
-      report_type: reportType,
-      params: { ...bookmark.params },
-      project_id: projectId,
-      workspace_id: workspaceId,
-      region,
-      url: buildBookmarkUrl({
-        region,
-        project_id: projectId,
-        bookmark_id: bookmark.id,
-        report_type: urlType,
-        workspace_id: workspaceId,
-      }),
-      input: link,
-      expanded_url: expandedUrl,
-      slug: null,
-      bookmark_id: bookmark.id,
-      bookmark,
-      name: bookmark.name,
-      description: bookmark.description,
-      overrides: null,
-    });
+    return reportLinkMethods.resolveReportLink(this.#reportLinkHost(), link);
   }
 
   /**
@@ -5365,72 +4987,10 @@ export class Workspace {
     link: string | ResolvedReport,
     options: WorkspaceQueryReportLinkOptions = {},
   ): Promise<ReportLinkQueryResult> {
-    let resolved: ResolvedReport;
-    if (typeof link === "string") {
-      resolved = await this.resolveReportLink(link);
-    } else {
-      resolved = link;
-      // A ResolvedReport records the scope it was resolved in. If the
-      // caller kept it across `use({project})` or handed it to another
-      // Workspace, refuse rather than run its params against an
-      // unrelated project (same rule as resolveReportLink).
-      this.#checkReportLinkScope(
-        parsedReportLink({
-          kind: resolved.source,
-          raw: resolved.input,
-          region: resolved.region,
-          project_id: resolved.project_id,
-          workspace_id: resolved.workspace_id,
-          slug: resolved.slug,
-          bookmark_id: resolved.bookmark_id,
-        }),
-      );
-    }
-    const projectId = this.#projectId();
-    const service = this.liveQueryService;
-    const reportType = resolved.report_type;
-    // The report records the scope it was resolved in; run under
-    // exactly that scope. The pin is never injected here, so a pin that
-    // was cleared or set since resolve time cannot change the data view.
-    const scope = {
-      workspace_id: resolved.workspace_id,
-      inject_workspace_id: false,
-    };
-    if (reportType === "insights") {
-      return service.query(resolved.params, projectId, scope);
-    }
-    if (reportType === "funnels") {
-      return service.queryFunnel(resolved.params, projectId, scope);
-    }
-    if (reportType === "retention") {
-      return service.queryRetention(resolved.params, projectId, scope);
-    }
-    if (reportType === "flows") {
-      const mode = options.mode ?? null;
-      let derived: string = mode ?? "sankey";
-      if (mode === null) {
-        const chartType = Object.hasOwn(resolved.params, "chartType")
-          ? resolved.params["chartType"]
-          : undefined;
-        if (
-          chartType === "sankey" ||
-          chartType === "paths" ||
-          chartType === "tree"
-        ) {
-          derived = chartType;
-        }
-      }
-      return service.queryFlow(resolved.params, projectId, derived, scope);
-    }
-    throw new UnsupportedReportLinkError(
-      `Report type ${pythonRepr(reportType)} cannot be run through mixpanel-headless.`,
-      {
-        code: "UNSUPPORTED_REPORT_TYPE",
-        details: {
-          report_type: reportType,
-          hint: "Supported types are insights, funnels, retention, and flows.",
-        },
-      },
+    return reportLinkMethods.queryReportLink(
+      this.#reportLinkHost(),
+      link,
+      options,
     );
   }
 
@@ -5460,19 +5020,11 @@ export class Workspace {
     bookmarkId: number,
     options: WorkspaceSavedReportLinkOptions = {},
   ): string {
-    requireEntityId("bookmark_id", bookmarkId);
-    const reportType = options.report_type ?? "insights";
-    const normalized = reportType === "funnel" ? "funnels" : reportType;
-    const pinned = this.#session.workspace ?? null;
-    const explicit = options.workspace_id ?? null;
-    const wid = explicit ?? pinned?.id ?? null;
-    return buildBookmarkUrl({
-      region: this.#session.account.region,
-      project_id: this.#projectId(),
-      bookmark_id: bookmarkId,
-      report_type: normalized,
-      workspace_id: wid,
-    });
+    return reportLinkMethods.savedReportLink(
+      this.#reportLinkHost(),
+      bookmarkId,
+      options,
+    );
   }
 }
 
@@ -5491,122 +5043,4 @@ function asPromise<T>(compute: () => T): Promise<T> {
   return new Promise((resolve) => {
     resolve(compute());
   });
-}
-
-// ---------------------------------------------------------------------------
-// 045 report-link helpers (Python `Workspace` staticmethods, PR #223).
-// ---------------------------------------------------------------------------
-
-/**
- * Split a `createReportLink` input into raw params and a type
- * (`_report_link_inputs`). A dict with no type is `insights`.
- *
- * @param params - A raw params dict or a typed query result.
- * @param reportType - Caller-supplied type, or `null` to infer.
- * @returns The raw params and the resolved type.
- * @throws ParamValidationError - `RL4_REPORT_TYPE_CONFLICT` when an
- *   explicit type contradicts the type inferred from a typed result.
- */
-function reportLinkInputs(
-  params: ReportLinkParamsInput,
-  reportType: ReportLinkType | null,
-): { rawParams: Record<string, unknown>; reportType: ReportLinkType } {
-  let inferred: ReportLinkType;
-  let resultClass: string;
-  if (params instanceof QueryResult) {
-    inferred = "insights";
-    resultClass = "QueryResult";
-  } else if (params instanceof FunnelQueryResult) {
-    inferred = "funnels";
-    resultClass = "FunnelQueryResult";
-  } else if (params instanceof RetentionQueryResult) {
-    inferred = "retention";
-    resultClass = "RetentionQueryResult";
-  } else if (params instanceof FlowQueryResult) {
-    inferred = "flows";
-    resultClass = "FlowQueryResult";
-  } else {
-    return {
-      rawParams: params,
-      reportType: reportType ?? "insights",
-    };
-  }
-  if (reportType !== null && reportType !== inferred) {
-    throw new ParamValidationError(
-      `report_type=${pythonRepr(reportType)} contradicts the ` +
-        `${resultClass} result, which is ${pythonRepr(inferred)}. ` +
-        `Omit report_type or pass a plain params dict.`,
-      "RL4_REPORT_TYPE_CONFLICT",
-      { given: reportType, inferred, result_class: resultClass },
-    );
-  }
-  return { rawParams: { ...params.params }, reportType: inferred };
-}
-
-/**
- * Collect the parsed link fields that are set, for error `details`
- * (`_report_link_details`).
- *
- * @param parsed - The parsed link.
- * @returns `kind` plus every non-`null` id field.
- */
-function reportLinkDetails(parsed: ParsedReportLink): Record<string, unknown> {
-  const details: Record<string, unknown> = { kind: parsed.kind };
-  const fields = [
-    "region",
-    "project_id",
-    "workspace_id",
-    "slug",
-    "bookmark_id",
-    "dashboard_id",
-    "short_code",
-  ] as const;
-  for (const name of fields) {
-    const value = parsed[name];
-    if (value !== null) {
-      details[name] = value;
-    }
-  }
-  return details;
-}
-
-/**
- * Throw for link kinds that headless recognizes but cannot resolve
- * (`_reject_unsupported_report_link`).
- *
- * @param parsed - The parsed link.
- * @throws UnsupportedReportLinkError - `UNSUPPORTED_DASHBOARD_LINK` or
- *   `UNSUPPORTED_LEGACY_HASH`.
- */
-function rejectUnsupportedReportLink(parsed: ParsedReportLink): void {
-  if (parsed.kind === "dashboard") {
-    const did = String(parsed.dashboard_id);
-    throw new UnsupportedReportLinkError(
-      `This link points at dashboard ${did}, not at a single report.`,
-      {
-        code: "UNSUPPORTED_DASHBOARD_LINK",
-        details: {
-          ...reportLinkDetails(parsed),
-          hint:
-            `Use ws.get_dashboard(${did}) (CLI: mp dashboards get ${did}) ` +
-            `to list its reports, then resolve one report link.`,
-        },
-      },
-    );
-  }
-  if (parsed.kind === "legacy_jsurl") {
-    throw new UnsupportedReportLinkError(
-      "This link uses the legacy JSURL hash format, which " +
-        "mixpanel-headless cannot decode.",
-      {
-        code: "UNSUPPORTED_LEGACY_HASH",
-        details: {
-          ...reportLinkDetails(parsed),
-          hint:
-            "Open it in a browser (the app re-mints a shareable link " +
-            "on load) and copy the new URL.",
-        },
-      },
-    );
-  }
 }
