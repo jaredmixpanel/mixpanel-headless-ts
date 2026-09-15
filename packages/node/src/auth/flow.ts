@@ -344,6 +344,7 @@ export class OAuthFlow {
    */
   constructor(options: OAuthFlowOptions = {}) {
     const region = options.region ?? "us";
+    // TODO(Ω): replace this gate + the `#baseUrl` read with core `requireOAuthBaseUrl(region)` once internal.ts exports it (frozen during Phase 6).
     if (!Object.hasOwn(OAUTH_BASE_URLS, region)) {
       throw new OAuthError(
         `Unknown region: ${JSON.stringify(region)}. Must be one of: ${Object.keys(

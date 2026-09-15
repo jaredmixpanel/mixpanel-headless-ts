@@ -373,6 +373,7 @@ function readBrowserTokens(name: string): OAuthTokens {
     access_token: new Secret(accessToken),
     refresh_token: refreshToken,
     expires_at: expiresRaw,
+    // TODO(Ω): replace the `as PythonValue` casts with core `isPythonValue` once internal.ts exports it (frozen during Phase 6).
     // JSON-decoded values are inside the PythonValue domain by
     // construction (the cast is a typing formality).
     scope: pythonStr((record["scope"] ?? "") as PythonValue),
