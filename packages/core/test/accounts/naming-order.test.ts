@@ -125,7 +125,7 @@ describe("org-ordering ratification lock (user-ratifications.md:14-22)", () => {
     };
     const svc = new MeService(client, inMemoryMeCache("personal"), "us");
     await svc.fetch();
-    expect(await svc.resolveWorkspace("1")).toBe(902);
+    await expect(svc.resolveWorkspace("1")).resolves.toBe(902);
     expect(
       [...(await svc.peek())!.workspaces.values()].map((ws) => ws.id),
     ).toStrictEqual([902, 450]);

@@ -28,6 +28,7 @@ import {
   transformRetention,
 } from "../../src/services/live-query-transforms.js";
 import { FunnelQueryResult } from "../../src/types/results/query-engine.js";
+import { expectThrows } from "../../test-support/raises.js";
 
 // ===========================================================================
 // Shared fixtures (test_transform_funnel.py:20-48)
@@ -393,34 +394,31 @@ describe("TestTransformFunnelResult", () => {
 
   it("QueryError from an error response has statusCode 200", () => {
     const errorResponse: Record<string, unknown> = { error: "bad params" };
-    try {
-      transformFunnelResult(errorResponse, BOOKMARK_PARAMS, noWarn);
-      expect.unreachable("expected QueryError");
-    } catch (error) {
-      expect(error).toBeInstanceOf(QueryError);
-      expect((error as QueryError).statusCode).toBe(200);
-    }
+    const error = expectThrows(
+      () => transformFunnelResult(errorResponse, BOOKMARK_PARAMS, noWarn),
+      "expected QueryError",
+    );
+    expect(error).toBeInstanceOf(QueryError);
+    expect((error as QueryError).statusCode).toBe(200);
   });
 
   it("QueryError includes the raw response as responseBody", () => {
     const errorResponse: Record<string, unknown> = { error: "timeout" };
-    try {
-      transformFunnelResult(errorResponse, BOOKMARK_PARAMS, noWarn);
-      expect.unreachable("expected QueryError");
-    } catch (error) {
-      expect((error as QueryError).responseBody).toStrictEqual(errorResponse);
-    }
+    const error = expectThrows(
+      () => transformFunnelResult(errorResponse, BOOKMARK_PARAMS, noWarn),
+      "expected QueryError",
+    );
+    expect((error as QueryError).responseBody).toStrictEqual(errorResponse);
   });
 
   it("QueryError includes bookmark_params as requestBody", () => {
     const errorResponse: Record<string, unknown> = { error: "bad filter" };
     const params = { sections: { filters: "invalid" } };
-    try {
-      transformFunnelResult(errorResponse, params, noWarn);
-      expect.unreachable("expected QueryError");
-    } catch (error) {
-      expect((error as QueryError).requestBody).toStrictEqual(params);
-    }
+    const error = expectThrows(
+      () => transformFunnelResult(errorResponse, params, noWarn),
+      "expected QueryError",
+    );
+    expect((error as QueryError).requestBody).toStrictEqual(params);
   });
 
   it("missing date_range defaults from_date and to_date to empty strings", () => {

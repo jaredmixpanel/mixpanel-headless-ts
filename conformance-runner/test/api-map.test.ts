@@ -165,11 +165,10 @@ describe("workspace member authority (D12 input 1)", () => {
 describe("resolveApi verdict buckets (D12)", () => {
   it("maps names present in the generated map", () => {
     const resolution = resolveApi("workspace.build_funnel_params");
-    expect(resolution.status).toBe("mapped");
-    if (resolution.status === "mapped") {
-      expect(resolution.entry.tsModule).toBe("core/workspace");
-      expect(resolution.entry.tsName).toBe("buildFunnelParams");
-    }
+    expect(resolution).toMatchObject({
+      status: "mapped",
+      entry: { tsModule: "core/workspace", tsName: "buildFunnelParams" },
+    });
   });
 
   it("classifies unmapped names in known modules as UNPORTED", () => {

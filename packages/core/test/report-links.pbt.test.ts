@@ -420,11 +420,16 @@ describe("TestTotality", () => {
         (host, path, fragment) => {
           const value = `https://${host}/${path}#${fragment}`;
           const result = parseTotal(value);
-          if (result instanceof ReportLinkParseError) {
-            expect(result.code.startsWith("REPORT_LINK_")).toBe(true);
-            return;
+          // A parse error carries a REPORT_LINK_* code; a parsed link has
+          // consistent kind fields (asserted by the helper).
+          const code =
+            result instanceof ReportLinkParseError
+              ? result.code
+              : "REPORT_LINK_";
+          expect(code.startsWith("REPORT_LINK_")).toBe(true);
+          if (!(result instanceof ReportLinkParseError)) {
+            assertKindFields(result);
           }
-          assertKindFields(result);
         },
       ),
     );

@@ -68,6 +68,7 @@ import {
   PropertyInput,
   TimeComparison,
 } from "../../src/types/index.js";
+import { expectThrows } from "../../test-support/raises.js";
 
 /**
  * Frozen `today` seam used wherever Python patches
@@ -1470,37 +1471,34 @@ describe("GroupBy.listItem → buildGroupSection", () => {
 
 describe("coded guards — buildGroupSection (BB1)", () => {
   it("bb1 scalar element raises coded error", () => {
-    try {
-      buildGroupSection(123 as never);
-      expect.unreachable("expected ParamTypeError");
-    } catch (error) {
-      expect(error).toBeInstanceOf(ParamTypeError);
-      expect((error as ParamTypeError).code).toBe("BB1_GROUP_BY_ELEMENT_TYPE");
-    }
+    const error = expectThrows(
+      () => buildGroupSection(123 as never),
+      "expected ParamTypeError",
+    );
+    expect(error).toBeInstanceOf(ParamTypeError);
+    expect((error as ParamTypeError).code).toBe("BB1_GROUP_BY_ELEMENT_TYPE");
   });
 
   it("bb1 invalid element in list raises coded error", () => {
-    try {
-      buildGroupSection(["country", 42] as never);
-      expect.unreachable("expected ParamTypeError");
-    } catch (error) {
-      expect(error).toBeInstanceOf(ParamTypeError);
-      expect((error as ParamTypeError).code).toBe("BB1_GROUP_BY_ELEMENT_TYPE");
-    }
+    const error = expectThrows(
+      () => buildGroupSection(["country", 42] as never),
+      "expected ParamTypeError",
+    );
+    expect(error).toBeInstanceOf(ParamTypeError);
+    expect((error as ParamTypeError).code).toBe("BB1_GROUP_BY_ELEMENT_TYPE");
   });
 
   it("bb1 stays catchable as type error", () => {
     // Python: `pytest.raises(TypeError)` + `isinstance(exc, ParamTypeError)`.
     // TS twin: ParamTypeError IS the ported TypeError analogue; the
     // base-class half of the assert is `instanceof Error`.
-    try {
-      buildGroupSection([null] as never);
-      expect.unreachable("expected ParamTypeError");
-    } catch (error) {
-      expect(error).toBeInstanceOf(Error);
-      expect(error).toBeInstanceOf(ParamTypeError);
-      expect((error as ParamTypeError).code).toBe("BB1_GROUP_BY_ELEMENT_TYPE");
-    }
+    const error = expectThrows(
+      () => buildGroupSection([null] as never),
+      "expected ParamTypeError",
+    );
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(ParamTypeError);
+    expect((error as ParamTypeError).code).toBe("BB1_GROUP_BY_ELEMENT_TYPE");
   });
 });
 
@@ -1510,28 +1508,26 @@ describe("coded guards — buildGroupSection (BB1)", () => {
 
 describe("coded guards — buildFlowPropertyFilter (BB2/BB3)", () => {
   it("bb2 empty list raises coded error", () => {
-    try {
-      buildFlowPropertyFilter([]);
-      expect.unreachable("expected ParamValidationError");
-    } catch (error) {
-      expect(error).toBeInstanceOf(ParamValidationError);
-      expect((error as ParamValidationError).code).toBe(
-        "BB2_FLOW_PROPERTY_FILTER_EMPTY",
-      );
-    }
+    const error = expectThrows(
+      () => buildFlowPropertyFilter([]),
+      "expected ParamValidationError",
+    );
+    expect(error).toBeInstanceOf(ParamValidationError);
+    expect((error as ParamValidationError).code).toBe(
+      "BB2_FLOW_PROPERTY_FILTER_EMPTY",
+    );
   });
 
   it("bb2 stays catchable as value error", () => {
-    try {
-      buildFlowPropertyFilter([]);
-      expect.unreachable("expected ParamValidationError");
-    } catch (error) {
-      expect(error).toBeInstanceOf(Error);
-      expect(error).toBeInstanceOf(ParamValidationError);
-      expect((error as ParamValidationError).code).toBe(
-        "BB2_FLOW_PROPERTY_FILTER_EMPTY",
-      );
-    }
+    const error = expectThrows(
+      () => buildFlowPropertyFilter([]),
+      "expected ParamValidationError",
+    );
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(ParamValidationError);
+    expect((error as ParamValidationError).code).toBe(
+      "BB2_FLOW_PROPERTY_FILTER_EMPTY",
+    );
   });
 
   it("bb3 custom property ref raises coded error", () => {
@@ -1542,15 +1538,14 @@ describe("coded guards — buildFlowPropertyFilter (BB2/BB3)", () => {
       _property_type: "string",
       _resource_type: "events",
     });
-    try {
-      buildFlowPropertyFilter([f]);
-      expect.unreachable("expected ParamTypeError");
-    } catch (error) {
-      expect(error).toBeInstanceOf(ParamTypeError);
-      expect((error as ParamTypeError).code).toBe(
-        "BB3_FLOW_PROPERTY_FILTER_TYPE",
-      );
-    }
+    const error = expectThrows(
+      () => buildFlowPropertyFilter([f]),
+      "expected ParamTypeError",
+    );
+    expect(error).toBeInstanceOf(ParamTypeError);
+    expect((error as ParamTypeError).code).toBe(
+      "BB3_FLOW_PROPERTY_FILTER_TYPE",
+    );
   });
 
   it("bb3 inline custom property raises coded error", () => {
@@ -1565,15 +1560,14 @@ describe("coded guards — buildFlowPropertyFilter (BB2/BB3)", () => {
       _property_type: "string",
       _resource_type: "events",
     });
-    try {
-      buildFlowPropertyFilter([f]);
-      expect.unreachable("expected ParamTypeError");
-    } catch (error) {
-      expect(error).toBeInstanceOf(ParamTypeError);
-      expect((error as ParamTypeError).code).toBe(
-        "BB3_FLOW_PROPERTY_FILTER_TYPE",
-      );
-    }
+    const error = expectThrows(
+      () => buildFlowPropertyFilter([f]),
+      "expected ParamTypeError",
+    );
+    expect(error).toBeInstanceOf(ParamTypeError);
+    expect((error as ParamTypeError).code).toBe(
+      "BB3_FLOW_PROPERTY_FILTER_TYPE",
+    );
   });
 });
 
@@ -1909,41 +1903,43 @@ describe("buildFlowCohortFilter (NEW — corpus-vector mirrors)", () => {
   });
 
   it("BB4 — a non-cohort property filter raises", () => {
-    try {
-      buildFlowCohortFilter([Filter.equals("country", "US")]);
-      expect.unreachable("expected ParamValidationError");
-    } catch (error) {
-      expect(error).toBeInstanceOf(ParamValidationError);
-      expect((error as ParamValidationError).code).toBe(
-        "BB4_FLOW_COHORT_FILTER_TYPE",
-      );
-    }
+    const error = expectThrows(
+      () => buildFlowCohortFilter([Filter.equals("country", "US")]),
+      "expected ParamValidationError",
+    );
+    expect(error).toBeInstanceOf(ParamValidationError);
+    expect((error as ParamValidationError).code).toBe(
+      "BB4_FLOW_COHORT_FILTER_TYPE",
+    );
   });
 
   it("BB4 fires before BB5 (guard order is Python source order)", () => {
     // Python loops all filters for BB4 BEFORE the len>1 BB5 check.
-    try {
-      buildFlowCohortFilter([
-        Filter.inCohort(1, "A"),
-        Filter.equals("country", "US"),
-      ]);
-      expect.unreachable("expected ParamValidationError");
-    } catch (error) {
-      expect((error as ParamValidationError).code).toBe(
-        "BB4_FLOW_COHORT_FILTER_TYPE",
-      );
-    }
+    const error = expectThrows(
+      () =>
+        buildFlowCohortFilter([
+          Filter.inCohort(1, "A"),
+          Filter.equals("country", "US"),
+        ]),
+      "expected ParamValidationError",
+    );
+    expect((error as ParamValidationError).code).toBe(
+      "BB4_FLOW_COHORT_FILTER_TYPE",
+    );
   });
 
   it("BB5 — two cohort filters raise", () => {
-    try {
-      buildFlowCohortFilter([Filter.inCohort(1, "A"), Filter.inCohort(2, "B")]);
-      expect.unreachable("expected ParamValidationError");
-    } catch (error) {
-      expect((error as ParamValidationError).code).toBe(
-        "BB5_FLOW_MULTIPLE_COHORT_FILTERS",
-      );
-    }
+    const error = expectThrows(
+      () =>
+        buildFlowCohortFilter([
+          Filter.inCohort(1, "A"),
+          Filter.inCohort(2, "B"),
+        ]),
+      "expected ParamValidationError",
+    );
+    expect((error as ParamValidationError).code).toBe(
+      "BB5_FLOW_MULTIPLE_COHORT_FILTERS",
+    );
   });
 
   it("BB6 — non-list _value raises", () => {
@@ -1954,14 +1950,13 @@ describe("buildFlowCohortFilter (NEW — corpus-vector mirrors)", () => {
       _property_type: "list",
       _resource_type: "events",
     });
-    try {
-      buildFlowCohortFilter(f);
-      expect.unreachable("expected ParamValidationError");
-    } catch (error) {
-      expect((error as ParamValidationError).code).toBe(
-        "BB6_COHORT_VALUE_NOT_LIST",
-      );
-    }
+    const error = expectThrows(
+      () => buildFlowCohortFilter(f),
+      "expected ParamValidationError",
+    );
+    expect((error as ParamValidationError).code).toBe(
+      "BB6_COHORT_VALUE_NOT_LIST",
+    );
   });
 
   it("BB6 — empty-list _value raises (len check, not truthiness)", () => {
@@ -1972,14 +1967,13 @@ describe("buildFlowCohortFilter (NEW — corpus-vector mirrors)", () => {
       _property_type: "list",
       _resource_type: "events",
     });
-    try {
-      buildFlowCohortFilter(f);
-      expect.unreachable("expected ParamValidationError");
-    } catch (error) {
-      expect((error as ParamValidationError).code).toBe(
-        "BB6_COHORT_VALUE_NOT_LIST",
-      );
-    }
+    const error = expectThrows(
+      () => buildFlowCohortFilter(f),
+      "expected ParamValidationError",
+    );
+    expect((error as ParamValidationError).code).toBe(
+      "BB6_COHORT_VALUE_NOT_LIST",
+    );
   });
 
   it("BB7 — non-dict first item raises (isPythonDict, watchlist #13)", () => {
@@ -1991,14 +1985,13 @@ describe("buildFlowCohortFilter (NEW — corpus-vector mirrors)", () => {
         _property_type: "list",
         _resource_type: "events",
       });
-      try {
-        buildFlowCohortFilter(f);
-        expect.unreachable("expected ParamValidationError");
-      } catch (error) {
-        expect((error as ParamValidationError).code).toBe(
-          "BB7_COHORT_VALUE_NOT_DICT",
-        );
-      }
+      const error = expectThrows(
+        () => buildFlowCohortFilter(f),
+        "expected ParamValidationError",
+      );
+      expect((error as ParamValidationError).code).toBe(
+        "BB7_COHORT_VALUE_NOT_DICT",
+      );
     }
   });
 
@@ -2011,14 +2004,13 @@ describe("buildFlowCohortFilter (NEW — corpus-vector mirrors)", () => {
         _property_type: "list",
         _resource_type: "events",
       });
-      try {
-        buildFlowCohortFilter(f);
-        expect.unreachable("expected ParamValidationError");
-      } catch (error) {
-        expect((error as ParamValidationError).code).toBe(
-          "BB8_COHORT_KEY_MISSING",
-        );
-      }
+      const error = expectThrows(
+        () => buildFlowCohortFilter(f),
+        "expected ParamValidationError",
+      );
+      expect((error as ParamValidationError).code).toBe(
+        "BB8_COHORT_KEY_MISSING",
+      );
     }
   });
 

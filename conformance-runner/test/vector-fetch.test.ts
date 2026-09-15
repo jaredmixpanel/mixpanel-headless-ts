@@ -38,7 +38,7 @@ describe("createVectorFetch — ordered serving", () => {
       { headers: { authorization: "Basic dGVzdA==" } },
     );
     expect(first.status).toBe(200);
-    expect(await first.json()).toStrictEqual({ data: { values: {} } });
+    await expect(first.json()).resolves.toStrictEqual({ data: { values: {} } });
     const second = await harness.fetch("https://mixpanel.com/api/app/me", {
       method: "POST",
       body: JSON.stringify({ a: 1 }),
@@ -110,9 +110,9 @@ describe("createVectorFetch — unordered groups (keyed serving)", () => {
     // Request the SECOND recorded member first: keyed serving must hand
     // each URL its own body under async scheduling.
     const b = await harness.fetch("https://cdn.mixpanel.com/cdn/file-b");
-    expect(await b.json()).toStrictEqual({ file: "b" });
+    await expect(b.json()).resolves.toStrictEqual({ file: "b" });
     const a = await harness.fetch("https://cdn.mixpanel.com/cdn/file-a");
-    expect(await a.json()).toStrictEqual({ file: "a" });
+    await expect(a.json()).resolves.toStrictEqual({ file: "a" });
     expect(harness.captures[0]?.slotIndex).toBe(1);
     expect(harness.captures[1]?.slotIndex).toBe(0);
     expect(harness.unservedSlots()).toStrictEqual([]);
@@ -205,7 +205,7 @@ describe("createVectorFetch — response bodies", () => {
       method: "POST",
       body: "col_a,col_b",
     });
-    expect(await text.text()).toBe("ok,done");
+    await expect(text.text()).resolves.toBe("ok,done");
     const binary = await harness.fetch("https://gcs.example.com/download");
     expect(new Uint8Array(await binary.arrayBuffer())).toStrictEqual(
       new TextEncoder().encode("hello"),
@@ -253,6 +253,6 @@ describe("createVectorFetch — response bodies", () => {
     );
     const response = await harness.fetch("https://mixpanel.com/nums");
     // The canned body must carry the raw token, not JSON.parse's collapse.
-    expect(await response.text()).toBe('{"value":18.0}');
+    await expect(response.text()).resolves.toBe('{"value":18.0}');
   });
 });

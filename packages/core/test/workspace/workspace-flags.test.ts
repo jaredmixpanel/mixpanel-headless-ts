@@ -173,7 +173,7 @@ describe("TestWorkspaceFeatureFlagCRUD", () => {
 
   it("list_feature_flags() returns empty list when no flags exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listFeatureFlags()).toStrictEqual([]);
+    await expect(ws.listFeatureFlags()).resolves.toStrictEqual([]);
   });
 
   it("list_feature_flags(include_archived=True) passes param to API", async () => {

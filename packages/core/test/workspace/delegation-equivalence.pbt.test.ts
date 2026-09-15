@@ -291,21 +291,17 @@ describe("TestMathPropertyMatrix (test_delegation_equivalence_pbt.py:204)", () =
         );
 
         // V1: property-requiring math without property
-        if (MATH_REQUIRING_PROPERTY.has(math) && !hasProperty) {
-          expect(codes.has("V1_MATH_REQUIRES_PROPERTY")).toBe(true);
-        } else {
-          expect(codes.has("V1_MATH_REQUIRES_PROPERTY")).toBe(false);
-        }
+        expect(codes.has("V1_MATH_REQUIRES_PROPERTY")).toBe(
+          MATH_REQUIRING_PROPERTY.has(math) && !hasProperty,
+        );
 
         // V2: non-property math with property
         const rejectsProperty =
           !MATH_REQUIRING_PROPERTY.has(math) &&
           !MATH_PROPERTY_OPTIONAL.has(math);
-        if (rejectsProperty && hasProperty) {
-          expect(codes.has("V2_MATH_REJECTS_PROPERTY")).toBe(true);
-        } else {
-          expect(codes.has("V2_MATH_REJECTS_PROPERTY")).toBe(false);
-        }
+        expect(codes.has("V2_MATH_REJECTS_PROPERTY")).toBe(
+          rejectsProperty && hasProperty,
+        );
       }),
       { numRuns: 100 },
     );
@@ -338,21 +334,17 @@ describe("TestMathPropertyMatrix (test_delegation_equivalence_pbt.py:204)", () =
         );
 
         // F10: property-requiring math without property
-        if (MATH_REQUIRING_PROPERTY.has(math) && !hasProperty) {
-          expect(codes.has("F10_MATH_MISSING_PROPERTY")).toBe(true);
-        } else {
-          expect(codes.has("F10_MATH_MISSING_PROPERTY")).toBe(false);
-        }
+        expect(codes.has("F10_MATH_MISSING_PROPERTY")).toBe(
+          MATH_REQUIRING_PROPERTY.has(math) && !hasProperty,
+        );
 
         // F11: non-property math with property
         const rejectsProperty =
           !MATH_REQUIRING_PROPERTY.has(math) &&
           !MATH_PROPERTY_OPTIONAL.has(math);
-        if (rejectsProperty && hasProperty) {
-          expect(codes.has("F11_MATH_REJECTS_PROPERTY")).toBe(true);
-        } else {
-          expect(codes.has("F11_MATH_REJECTS_PROPERTY")).toBe(false);
-        }
+        expect(codes.has("F11_MATH_REJECTS_PROPERTY")).toBe(
+          rejectsProperty && hasProperty,
+        );
       }),
       { numRuns: 100 },
     );

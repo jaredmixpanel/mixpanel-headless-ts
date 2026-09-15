@@ -44,6 +44,7 @@ import {
 } from "../../src/query/segfilter.js";
 import { Filter } from "../../src/types/index.js";
 import { filterUnchecked } from "../../src/types/query-params/filter.js";
+import { expectThrows } from "../../test-support/raises.js";
 
 /** Narrow the `filter` sub-dict of a segfilter entry for assertions. */
 function filterOf(entry: Record<string, unknown>): Record<string, unknown> {
@@ -518,14 +519,10 @@ describe("segfilter edge cases", () => {
     expect(() => buildSegfilterEntry(f)).toThrow(ParamValidationError);
     // R5.4: `match="Unknown string operator"` is message text; the code
     // names the same guard.
-    try {
-      buildSegfilterEntry(f);
-      expect.unreachable("expected SG1");
-    } catch (error) {
-      expect((error as ParamValidationError).code).toBe(
-        "SG1_UNKNOWN_STRING_OPERATOR",
-      );
-    }
+    const error = expectThrows(() => buildSegfilterEntry(f), "expected SG1");
+    expect((error as ParamValidationError).code).toBe(
+      "SG1_UNKNOWN_STRING_OPERATOR",
+    );
   });
 
   it("unknown number operator raises the number guard", () => {
@@ -538,14 +535,10 @@ describe("segfilter edge cases", () => {
     });
 
     expect(() => buildSegfilterEntry(f)).toThrow(ParamValidationError);
-    try {
-      buildSegfilterEntry(f);
-      expect.unreachable("expected SG2");
-    } catch (error) {
-      expect((error as ParamValidationError).code).toBe(
-        "SG2_UNKNOWN_NUMBER_OPERATOR",
-      );
-    }
+    const error = expectThrows(() => buildSegfilterEntry(f), "expected SG2");
+    expect((error as ParamValidationError).code).toBe(
+      "SG2_UNKNOWN_NUMBER_OPERATOR",
+    );
   });
 
   it("unknown datetime operator raises the datetime guard", () => {
@@ -558,14 +551,10 @@ describe("segfilter edge cases", () => {
     });
 
     expect(() => buildSegfilterEntry(f)).toThrow(ParamValidationError);
-    try {
-      buildSegfilterEntry(f);
-      expect.unreachable("expected SG3");
-    } catch (error) {
-      expect((error as ParamValidationError).code).toBe(
-        "SG3_UNKNOWN_DATETIME_OPERATOR",
-      );
-    }
+    const error = expectThrows(() => buildSegfilterEntry(f), "expected SG3");
+    expect((error as ParamValidationError).code).toBe(
+      "SG3_UNKNOWN_DATETIME_OPERATOR",
+    );
   });
 
   it("unknown property type raises the property-type guard", () => {
@@ -578,14 +567,10 @@ describe("segfilter edge cases", () => {
     });
 
     expect(() => buildSegfilterEntry(f)).toThrow(ParamValidationError);
-    try {
-      buildSegfilterEntry(f);
-      expect.unreachable("expected SG4");
-    } catch (error) {
-      expect((error as ParamValidationError).code).toBe(
-        "SG4_UNSUPPORTED_PROPERTY_TYPE",
-      );
-    }
+    const error = expectThrows(() => buildSegfilterEntry(f), "expected SG4");
+    expect((error as ParamValidationError).code).toBe(
+      "SG4_UNSUPPORTED_PROPERTY_TYPE",
+    );
   });
 });
 
@@ -622,100 +607,81 @@ describe("coded segfilter guards", () => {
   it.each(["magical_unicorn", "was on"])(
     "buildStringFilter with unknown operator %s raises SG1",
     (operator) => {
-      try {
-        buildStringFilter(operator, "y");
-        expect.unreachable("expected SG1");
-      } catch (error) {
-        expect(error).toBeInstanceOf(ParamValidationError);
-        expect((error as ParamValidationError).code).toBe(
-          "SG1_UNKNOWN_STRING_OPERATOR",
-        );
-      }
+      const error = expectThrows(
+        () => buildStringFilter(operator, "y"),
+        "expected SG1",
+      );
+      expect(error).toBeInstanceOf(ParamValidationError);
+      expect((error as ParamValidationError).code).toBe(
+        "SG1_UNKNOWN_STRING_OPERATOR",
+      );
     },
   );
 
   it("buildSegfilterEntry surfaces SG1 for unknown string operators", () => {
     const f = filterWith("magical_unicorn", "y", "string");
-    try {
-      buildSegfilterEntry(f);
-      expect.unreachable("expected SG1");
-    } catch (error) {
-      expect(error).toBeInstanceOf(ParamValidationError);
-      expect((error as ParamValidationError).code).toBe(
-        "SG1_UNKNOWN_STRING_OPERATOR",
-      );
-    }
+    const error = expectThrows(() => buildSegfilterEntry(f), "expected SG1");
+    expect(error).toBeInstanceOf(ParamValidationError);
+    expect((error as ParamValidationError).code).toBe(
+      "SG1_UNKNOWN_STRING_OPERATOR",
+    );
   });
 
   it.each(["magical_unicorn", "contains"])(
     "buildNumberFilter with unknown operator %s raises SG2",
     (operator) => {
-      try {
-        buildNumberFilter(operator, 1);
-        expect.unreachable("expected SG2");
-      } catch (error) {
-        expect(error).toBeInstanceOf(ParamValidationError);
-        expect((error as ParamValidationError).code).toBe(
-          "SG2_UNKNOWN_NUMBER_OPERATOR",
-        );
-      }
+      const error = expectThrows(
+        () => buildNumberFilter(operator, 1),
+        "expected SG2",
+      );
+      expect(error).toBeInstanceOf(ParamValidationError);
+      expect((error as ParamValidationError).code).toBe(
+        "SG2_UNKNOWN_NUMBER_OPERATOR",
+      );
     },
   );
 
   it("buildSegfilterEntry surfaces SG2 for unknown number operators", () => {
     const f = filterWith("magical_unicorn", 1, "number");
-    try {
-      buildSegfilterEntry(f);
-      expect.unreachable("expected SG2");
-    } catch (error) {
-      expect(error).toBeInstanceOf(ParamValidationError);
-      expect((error as ParamValidationError).code).toBe(
-        "SG2_UNKNOWN_NUMBER_OPERATOR",
-      );
-    }
+    const error = expectThrows(() => buildSegfilterEntry(f), "expected SG2");
+    expect(error).toBeInstanceOf(ParamValidationError);
+    expect((error as ParamValidationError).code).toBe(
+      "SG2_UNKNOWN_NUMBER_OPERATOR",
+    );
   });
 
   it.each(["magical_unicorn", "is at least"])(
     "buildDatetimeFilter with unknown operator %s raises SG3",
     (operator) => {
-      try {
-        buildDatetimeFilter(operator, "2026-01-01", null);
-        expect.unreachable("expected SG3");
-      } catch (error) {
-        expect(error).toBeInstanceOf(ParamValidationError);
-        expect((error as ParamValidationError).code).toBe(
-          "SG3_UNKNOWN_DATETIME_OPERATOR",
-        );
-      }
+      const error = expectThrows(
+        () => buildDatetimeFilter(operator, "2026-01-01", null),
+        "expected SG3",
+      );
+      expect(error).toBeInstanceOf(ParamValidationError);
+      expect((error as ParamValidationError).code).toBe(
+        "SG3_UNKNOWN_DATETIME_OPERATOR",
+      );
     },
   );
 
   it("buildSegfilterEntry surfaces SG3 for unknown datetime operators", () => {
     const f = filterWith("magical_unicorn", "2026-01-01", "datetime");
-    try {
-      buildSegfilterEntry(f);
-      expect.unreachable("expected SG3");
-    } catch (error) {
-      expect(error).toBeInstanceOf(ParamValidationError);
-      expect((error as ParamValidationError).code).toBe(
-        "SG3_UNKNOWN_DATETIME_OPERATOR",
-      );
-    }
+    const error = expectThrows(() => buildSegfilterEntry(f), "expected SG3");
+    expect(error).toBeInstanceOf(ParamValidationError);
+    expect((error as ParamValidationError).code).toBe(
+      "SG3_UNKNOWN_DATETIME_OPERATOR",
+    );
   });
 
   it.each(["list", "object"])(
     "buildSegfilterEntry raises SG4 for unsupported property type %s",
     (propertyType) => {
       const f = filterWith("equals", "y", propertyType);
-      try {
-        buildSegfilterEntry(f);
-        expect.unreachable("expected SG4");
-      } catch (error) {
-        expect(error).toBeInstanceOf(ParamValidationError);
-        expect((error as ParamValidationError).code).toBe(
-          "SG4_UNSUPPORTED_PROPERTY_TYPE",
-        );
-      }
+      const error = expectThrows(() => buildSegfilterEntry(f), "expected SG4");
+      expect(error).toBeInstanceOf(ParamValidationError);
+      expect((error as ParamValidationError).code).toBe(
+        "SG4_UNSUPPORTED_PROPERTY_TYPE",
+      );
     },
   );
 
@@ -724,15 +690,11 @@ describe("coded segfilter guards", () => {
     // ParamValidationError)` — the dual-inheritance reachability assert.
     // TS twin: descent from `MixpanelHeadlessError` (errors.ts header).
     const f = filterWith("equals", "y", "object");
-    try {
-      buildSegfilterEntry(f);
-      expect.unreachable("expected SG4");
-    } catch (error) {
-      expect(error).toBeInstanceOf(MixpanelHeadlessError);
-      expect(error).toBeInstanceOf(ParamValidationError);
-      expect((error as ParamValidationError).code).toBe(
-        "SG4_UNSUPPORTED_PROPERTY_TYPE",
-      );
-    }
+    const error = expectThrows(() => buildSegfilterEntry(f), "expected SG4");
+    expect(error).toBeInstanceOf(MixpanelHeadlessError);
+    expect(error).toBeInstanceOf(ParamValidationError);
+    expect((error as ParamValidationError).code).toBe(
+      "SG4_UNSUPPORTED_PROPERTY_TYPE",
+    );
   });
 });

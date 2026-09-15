@@ -48,6 +48,7 @@ import {
   type BuildQueryParamsOptions,
   type ParamsDict,
 } from "../../src/workspace-query-params.js";
+import { expectThrows } from "../../test-support/raises.js";
 import {
   mockWorkspaceClient,
   TEST_SESSION,
@@ -534,15 +535,14 @@ describe("TestPerMetricFilters", () => {
 
 describe("TestGroupByTypeError", () => {
   it("a non-str, non-GroupBy element raises", () => {
-    try {
-      build({ group_by: [42] as never });
-      expect.unreachable("expected ParamTypeError");
-    } catch (error) {
-      expect(error).toBeInstanceOf(ParamTypeError);
-      expect((error as ParamTypeError).message).toContain(
-        "group_by elements must be str, GroupBy, CohortBreakdown, or FrequencyBreakdown",
-      );
-    }
+    const error = expectThrows(
+      () => build({ group_by: [42] as never }),
+      "expected ParamTypeError",
+    );
+    expect(error).toBeInstanceOf(ParamTypeError);
+    expect((error as ParamTypeError).message).toContain(
+      "group_by elements must be str, GroupBy, CohortBreakdown, or FrequencyBreakdown",
+    );
   });
 });
 

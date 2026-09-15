@@ -284,7 +284,7 @@ describe("TestEmptyResponseHandling (test_workspace_crud_edge.py:247)", () => {
 
   it("list_dashboards returns [] on an empty results list (:286)", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listDashboards()).toStrictEqual([]);
+    await expect(ws.listDashboards()).resolves.toStrictEqual([]);
   });
 });
 

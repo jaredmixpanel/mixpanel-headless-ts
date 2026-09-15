@@ -66,13 +66,13 @@ describe("Workspace discovery members", () => {
       Object.assign(seen, request.params);
       return { status: 200, json: ["b", "a"] };
     });
-    expect(
-      await ws.events({
+    await expect(
+      ws.events({
         limit: 3,
         from_date: "2024-01-01",
         to_date: "2024-01-31",
       }),
-    ).toStrictEqual(["a", "b"]);
+    ).resolves.toStrictEqual(["a", "b"]);
     expect(seen["limit"]).toBe("3");
     expect(seen["from_date"]).toBe("2024-01-01");
     expect(seen["to_date"]).toBe("2024-01-31");
@@ -94,7 +94,7 @@ describe("Workspace discovery members", () => {
       status: 200,
       json: { b: 1, a: 1 },
     }));
-    expect(await ws.properties("Purchase")).toStrictEqual(["a", "b"]);
+    await expect(ws.properties("Purchase")).resolves.toStrictEqual(["a", "b"]);
   });
 
   it("propertyValues() delegates with event + limit", async () => {
@@ -103,9 +103,9 @@ describe("Workspace discovery members", () => {
       Object.assign(seen, request.params);
       return { status: 200, json: ["US", "CA"] };
     });
-    expect(
-      await ws.propertyValues("country", { event: "Purchase", limit: 7 }),
-    ).toStrictEqual(["US", "CA"]);
+    await expect(
+      ws.propertyValues("country", { event: "Purchase", limit: 7 }),
+    ).resolves.toStrictEqual(["US", "CA"]);
     expect(seen["event"]).toBe("Purchase");
     expect(seen["limit"]).toBe("7");
   });
@@ -293,7 +293,7 @@ describe("Workspace discovery members", () => {
   // no-throw zero-axis swap and `close()` resolves (idempotently).
   it("the lifecycle pair is live (B6-W1 replaced the UNPORTED stubs)", async () => {
     const { ws } = workspaceWith(() => ({ status: 200, json: [] }));
-    expect(await ws.use()).toBe(ws);
+    await expect(ws.use()).resolves.toBe(ws);
     await expect(ws.close()).resolves.toBeUndefined();
     await expect(ws.close()).resolves.toBeUndefined();
   });

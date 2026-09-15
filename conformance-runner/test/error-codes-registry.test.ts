@@ -136,14 +136,12 @@ describe("C8(c) registry equality vs corpus/contract/error-codes.json", () => {
       const cls = exportedClasses.get(name);
       expect(cls, `class ${name} missing from errors.ts`).toBeDefined();
       const parent = Object.getPrototypeOf(cls) as ErrorClass;
-      if (parentName === null) {
-        // Hierarchy root: parent is the platform Error, not a library class.
-        expect(parent, `${name} must extend Error directly`).toBe(Error);
-      } else {
-        expect(parent, `${name} must extend ${parentName}`).toBe(
-          exportedClasses.get(parentName),
-        );
-      }
+      // Hierarchy root (null parent): the platform Error, not a library class.
+      const expectedParent =
+        parentName === null ? Error : exportedClasses.get(parentName);
+      expect(parent, `${name} must extend ${parentName ?? "Error"}`).toBe(
+        expectedParent,
+      );
     }
   });
 
@@ -192,10 +190,12 @@ describe("C8(c) registry equality vs corpus/contract/error-codes.json", () => {
   it("(d) errors-codes.gen.ts is freshly generated (regenerate-and-diff)", () => {
     // Exits non-zero (throws) if the committed file differs from a fresh
     // render of the artifact — catches hand edits and stale re-syncs.
-    execFileSync(
-      process.execPath,
-      [resolve(REPO_ROOT, "scripts/gen-error-codes.mjs"), "--check"],
-      { stdio: "pipe" },
-    );
+    expect(() =>
+      execFileSync(
+        process.execPath,
+        [resolve(REPO_ROOT, "scripts/gen-error-codes.mjs"), "--check"],
+        { stdio: "pipe" },
+      ),
+    ).not.toThrow();
   });
 });

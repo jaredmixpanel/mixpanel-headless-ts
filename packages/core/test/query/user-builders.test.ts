@@ -78,6 +78,7 @@ import {
   type FilterFields,
 } from "../../src/types/index.js";
 import { filterUnchecked } from "../../src/types/query-params/filter.js";
+import { expectThrows } from "../../test-support/raises.js";
 
 /**
  * Build a Filter straight from its fields — the twin of Python's
@@ -541,28 +542,20 @@ describe("filterToSelector between bounds (TestFilterToSelectorBetweenBoundsVali
     // Python: `pytest.raises(ValueError, match="int or float for lower bound")`
     // — class + code twin (R5.4).
     expect(() => filterToSelector(f)).toThrowError(ParamValidationError);
-    try {
-      filterToSelector(f);
-      expect.unreachable();
-    } catch (error) {
-      expect((error as ParamValidationError).code).toBe(
-        "ES11_BETWEEN_LOWER_NOT_NUMBER",
-      );
-    }
+    const error = expectThrows(() => filterToSelector(f));
+    expect((error as ParamValidationError).code).toBe(
+      "ES11_BETWEEN_LOWER_NOT_NUMBER",
+    );
   });
 
   it("string upper bound is rejected", () => {
     const f = rawFilter("prop", "is between", [0, "high"]);
 
     expect(() => filterToSelector(f)).toThrowError(ParamValidationError);
-    try {
-      filterToSelector(f);
-      expect.unreachable();
-    } catch (error) {
-      expect((error as ParamValidationError).code).toBe(
-        "ES12_BETWEEN_UPPER_NOT_NUMBER",
-      );
-    }
+    const error = expectThrows(() => filterToSelector(f));
+    expect((error as ParamValidationError).code).toBe(
+      "ES12_BETWEEN_UPPER_NOT_NUMBER",
+    );
   });
 });
 
@@ -570,18 +563,14 @@ describe("not-equals error message (TestNotEqualsErrorMessage)", () => {
   it("error references Filter.not_equals(), not does_not_equal()", () => {
     const f = rawFilter("prop", "does not equal", [{ nested: true }]);
 
-    try {
-      filterToSelector(f);
-      expect.unreachable();
-    } catch (error) {
-      // The message text is out of contract (R5.4) but ported verbatim;
-      // this Python test exists ONLY to assert the method name in it, so
-      // the assert translates literally rather than being weakened.
-      expect((error as Error).message).toContain("Filter.not_equals");
-      expect((error as ParamValidationError).code).toBe(
-        "ES5_NOT_EQUALS_NO_TERMS",
-      );
-    }
+    const error = expectThrows(() => filterToSelector(f));
+    // The message text is out of contract (R5.4) but ported verbatim;
+    // this Python test exists ONLY to assert the method name in it, so
+    // the assert translates literally rather than being weakened.
+    expect((error as Error).message).toContain("Filter.not_equals");
+    expect((error as ParamValidationError).code).toBe(
+      "ES5_NOT_EQUALS_NO_TERMS",
+    );
   });
 });
 
@@ -596,13 +585,9 @@ describe("not-equals error message (TestNotEqualsErrorMessage)", () => {
  * @param code - The expected registry code.
  */
 function expectCode(thunk: () => unknown, code: string): void {
-  try {
-    thunk();
-    expect.unreachable(`expected ${code}`);
-  } catch (error) {
-    expect(error).toBeInstanceOf(ParamValidationError);
-    expect((error as ParamValidationError).code).toBe(code);
-  }
+  const error = expectThrows(() => thunk(), `expected ${code}`);
+  expect(error).toBeInstanceOf(ParamValidationError);
+  expect((error as ParamValidationError).code).toBe(code);
 }
 
 describe("coded engage-selector codes (TestCodedEngageSelectorCodes)", () => {
@@ -741,19 +726,15 @@ describe("coded engage-selector codes (TestCodedEngageSelectorCodes)", () => {
   it("ES* guards stay catchable as the shared base error", () => {
     const f = rawFilter("p", "was frobnicated", null);
 
-    try {
-      filterToSelector(f);
-      expect.unreachable();
-    } catch (error) {
-      // Python: `pytest.raises(ValueError)` + isinstance
-      // ParamValidationError. TS twin: descent from the shared base
-      // (`MixpanelHeadlessError`) + the same class + the same code.
-      expect(error).toBeInstanceOf(MixpanelHeadlessError);
-      expect(error).toBeInstanceOf(ParamValidationError);
-      expect((error as ParamValidationError).code).toBe(
-        "ES13_UNSUPPORTED_OPERATOR",
-      );
-    }
+    const error = expectThrows(() => filterToSelector(f));
+    // Python: `pytest.raises(ValueError)` + isinstance
+    // ParamValidationError. TS twin: descent from the shared base
+    // (`MixpanelHeadlessError`) + the same class + the same code.
+    expect(error).toBeInstanceOf(MixpanelHeadlessError);
+    expect(error).toBeInstanceOf(ParamValidationError);
+    expect((error as ParamValidationError).code).toBe(
+      "ES13_UNSUPPORTED_OPERATOR",
+    );
   });
 });
 

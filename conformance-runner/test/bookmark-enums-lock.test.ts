@@ -68,11 +68,10 @@ describe("C8(d) bookmark-enum lock", () => {
 
   it("frozensets ported as ReadonlySet and the dict as ReadonlyMap (R4.8)", () => {
     for (const [name, table] of BOOKMARK_ENUM_TABLES) {
-      if (name === "MAX_CONVERSION_WINDOW") {
-        expect(table).toBeInstanceOf(Map);
-      } else {
-        expect(table, `${name} must be a Set`).toBeInstanceOf(Set);
-      }
+      const expected = name === "MAX_CONVERSION_WINDOW" ? Map : Set;
+      expect(table, `${name} must be a ${expected.name}`).toBeInstanceOf(
+        expected,
+      );
     }
   });
 

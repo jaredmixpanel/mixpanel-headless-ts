@@ -418,7 +418,7 @@ describe("TestResolveShortLink", () => {
         status,
         headers: { Location: TARGET },
       }));
-      expect(await client.resolveShortLink(CODE)).toBe(TARGET);
+      await expect(client.resolveShortLink(CODE)).resolves.toBe(TARGET);
     },
   );
 
@@ -443,7 +443,7 @@ describe("TestResolveShortLink", () => {
       text: body,
       headers: { "Content-Type": "text/html" },
     }));
-    expect(await client.resolveShortLink(CODE)).toBe(TARGET);
+    await expect(client.resolveShortLink(CODE)).resolves.toBe(TARGET);
   });
 
   it("test_200_without_script_is_unexpected_response", async () => {
@@ -557,7 +557,7 @@ describe("TestResolveShortLink", () => {
       status: 302,
       headers: { Location: "/loginfoo" },
     }));
-    expect(await client.resolveShortLink(CODE)).toBe(
+    await expect(client.resolveShortLink(CODE)).resolves.toBe(
       "https://mixpanel.com/loginfoo",
     );
   });

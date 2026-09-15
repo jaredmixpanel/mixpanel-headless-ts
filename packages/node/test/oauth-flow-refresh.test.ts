@@ -23,6 +23,7 @@ import {
   Secret,
 } from "@mixpanel-headless/core";
 
+import { expectThrows } from "../../core/test-support/raises.js";
 import { OAuthFlow } from "../src/auth/flow.js";
 import { OAUTH_BASE_URLS } from "../src/auth/oauth-constants.js";
 import { OAuthStorage } from "../src/auth/storage.js";
@@ -426,22 +427,18 @@ describe("TestOAuthFlowRegionValidation (test_auth_flow.py:984)", () => {
 
   it("test_uppercase_region_raises_oauth_error", () => {
     const storage = new OAuthStorage({ storageDir: makeTempDir(cleanups) });
-    expect(() => new OAuthFlow({ region: "US", storage })).toThrow(OAuthError);
-    try {
-      new OAuthFlow({ region: "US", storage });
-    } catch (error) {
-      expect((error as OAuthError).code).toBe("OAUTH_CONFIG_ERROR");
-    }
+    const error = expectThrows(() => new OAuthFlow({ region: "US", storage }));
+    expect(error).toBeInstanceOf(OAuthError);
+    expect((error as OAuthError).code).toBe("OAUTH_CONFIG_ERROR");
   });
 
   it("test_empty_region_raises_oauth_error", () => {
     const storage = new OAuthStorage({ storageDir: makeTempDir(cleanups) });
-    try {
-      new OAuthFlow({ region: "", storage });
-      expect.unreachable("empty region must raise");
-    } catch (error) {
-      expect((error as OAuthError).code).toBe("OAUTH_CONFIG_ERROR");
-    }
+    const error = expectThrows(
+      () => new OAuthFlow({ region: "", storage }),
+      "empty region must raise",
+    );
+    expect((error as OAuthError).code).toBe("OAUTH_CONFIG_ERROR");
   });
 
   it.each([["us"], ["eu"], ["in"]])(

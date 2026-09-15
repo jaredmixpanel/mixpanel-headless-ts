@@ -224,6 +224,7 @@ describe("§4.4 seam-closure sweep — zero UNPORTED throws over the real bag", 
     // Core seam-bag routing over the real bag (readFile is W7-D1 —
     // N1's nodeReadFile; not in the auth constant but same duty).
     const seams = resolverSeamsFromEffects(effects);
+    // eslint-disable-next-line vitest/prefer-expect-resolves -- resolver seams are MaybePromise; `.resolves` would throw on a synchronous seam
     expect(await seams.envWorkspaceId()).toBeNull();
 
     // The constant itself stays committed in core — every name above

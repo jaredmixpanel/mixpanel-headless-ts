@@ -138,12 +138,11 @@ describe("TestSuggestInvariants", () => {
     fc.assert(
       fc.property(queryStringsArb, validSetsArb, (value, valid) => {
         const result = _suggest(value, valid);
-        if (result !== null) {
-          expect(
-            result.every((r) => valid.has(r)),
-            `Suggestions ${JSON.stringify(result)} not subset of valid`,
-          ).toBe(true);
-        }
+        // `null` (no suggestion) is vacuously a subset.
+        expect(
+          (result ?? []).every((r) => valid.has(r)),
+          `Suggestions ${JSON.stringify(result)} not subset of valid`,
+        ).toBe(true);
       }),
       { numRuns: 100 },
     );
@@ -157,12 +156,11 @@ describe("TestSuggestInvariants", () => {
         fc.integer({ min: 1, max: 10 }),
         (value, valid, n) => {
           const result = _suggest(value, valid, n);
-          if (result !== null) {
-            expect(
-              result.length,
-              `Got ${String(result.length)} suggestions but n=${String(n)}`,
-            ).toBeLessThanOrEqual(n);
-          }
+          const count = result === null ? 0 : result.length;
+          expect(
+            count,
+            `Got ${String(count)} suggestions but n=${String(n)}`,
+          ).toBeLessThanOrEqual(n);
         },
       ),
       { numRuns: 100 },

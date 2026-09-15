@@ -519,7 +519,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
     stub.setProfiles(async function* () {});
     const ws = makeWorkspace(stub);
 
-    expect(await drain(ws.streamProfiles())).toStrictEqual([]);
+    await expect(drain(ws.streamProfiles())).resolves.toStrictEqual([]);
     await ws.close();
   });
 });

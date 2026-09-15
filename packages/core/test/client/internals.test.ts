@@ -247,7 +247,7 @@ describe("TestPublicRequest (B0-observable subset)", () => {
     const h = harness([
       res(200, { data: { events: ["A", "B"] }, status: "ok" }),
     ]);
-    expect(await run(h)).toStrictEqual({
+    await expect(run(h)).resolves.toStrictEqual({
       data: { events: ["A", "B"] },
       status: "ok",
     });
@@ -347,7 +347,7 @@ describe("TestRetryAfterHardening (execute_with_retry half)", () => {
       [res(429, "", { "Retry-After": "-5" }), res(200, ["event1"])],
       { maxRetries: 2 },
     );
-    expect(await run(h)).toStrictEqual(["event1"]);
+    await expect(run(h)).resolves.toStrictEqual(["event1"]);
     expect(h.sleepsMs).toStrictEqual([1000]);
   });
 
@@ -356,7 +356,7 @@ describe("TestRetryAfterHardening (execute_with_retry half)", () => {
       [res(429, "", { "Retry-After": "86400" }), res(200, ["event1"])],
       { maxRetries: 2 },
     );
-    expect(await run(h)).toStrictEqual(["event1"]);
+    await expect(run(h)).resolves.toStrictEqual(["event1"]);
     expect(h.sleepsMs).toStrictEqual([60000]);
   });
 
@@ -365,7 +365,7 @@ describe("TestRetryAfterHardening (execute_with_retry half)", () => {
       [res(429, "", { "Retry-After": "soon" }), res(200, ["event1"])],
       { maxRetries: 2 },
     );
-    expect(await run(h)).toStrictEqual(["event1"]);
+    await expect(run(h)).resolves.toStrictEqual(["event1"]);
     expect(h.sleepsMs).toStrictEqual([1000]);
   });
 
@@ -525,9 +525,9 @@ describe("TestSensitiveData403BodyShapes (bug (c) fix)", () => {
     // element-membership retired (test_api_client_sign_replays.py::
     // TestSensitiveData403BodyShapes list-exact + list-substring twins).
     const h1 = harness([res(403, ["SESSION_RECORDING_SENSITIVE_DATA"])]);
-    expect(await run(h1).catch((error_: unknown) => error_)).toBeInstanceOf(
-      SessionReplayAccessError,
-    );
+    await expect(
+      run(h1).catch((error_: unknown) => error_),
+    ).resolves.toBeInstanceOf(SessionReplayAccessError);
     const h2 = harness([
       res(403, ["error: SESSION_RECORDING_SENSITIVE_DATA is set"]),
     ]);
@@ -613,10 +613,10 @@ describe("_handle_response fallthrough tail (FF3)", () => {
 
   it("(ii) 2xx object/array bodies return as-is", async () => {
     // Numbers surface as lossless JsonNumber tokens (GATE-R5).
-    expect(await run(harness([res(200, { a: 1 })]))).toStrictEqual({
+    await expect(run(harness([res(200, { a: 1 })]))).resolves.toStrictEqual({
       a: new JsonNumber("1"),
     });
-    expect(await run(harness([res(200, [1, 2])]))).toStrictEqual([
+    await expect(run(harness([res(200, [1, 2])]))).resolves.toStrictEqual([
       new JsonNumber("1"),
       new JsonNumber("2"),
     ]);
@@ -624,17 +624,17 @@ describe("_handle_response fallthrough tail (FF3)", () => {
 
   it("(iii) 2xx JSON scalars are RETURNED as the result", async () => {
     // Verified against httpx: Response(200, b"42").json() → 42.
-    expect(await run(harness([res(200, "42")]))).toStrictEqual(
+    await expect(run(harness([res(200, "42")]))).resolves.toStrictEqual(
       new JsonNumber("42"),
     );
-    expect(await run(harness([res(200, '"ok"')]))).toBe("ok");
-    expect(await run(harness([res(200, "true")]))).toBe(true);
-    expect(await run(harness([res(200, "null")]))).toBeNull();
+    await expect(run(harness([res(200, '"ok"')]))).resolves.toBe("ok");
+    await expect(run(harness([res(200, "true")]))).resolves.toBe(true);
+    await expect(run(harness([res(200, "null")]))).resolves.toBeNull();
     // R10.9 edge floats survive losslessly (GATE-R5 parseLossless).
-    expect(await run(harness([res(200, "18.0")]))).toStrictEqual(
+    await expect(run(harness([res(200, "18.0")]))).resolves.toStrictEqual(
       new JsonNumber("18.0"),
     );
-    expect(await run(harness([res(200, "1.5")]))).toStrictEqual(
+    await expect(run(harness([res(200, "1.5")]))).resolves.toStrictEqual(
       new JsonNumber("1.5"),
     );
   });
@@ -721,13 +721,10 @@ describe("errorMessage (FF6)", () => {
     expect(message).toBe("𝒳".repeat(200));
   });
 
-  it(
-    String.raw`blank-after-PYTHON-strip falls back to default (\x1c is stripped)`,
-    () => {
-      expect(errorMessage("\x1C \x1F", "Default")).toBe("Default");
-      expect(errorMessage({ error: "  " }, "Default")).toBe("Default");
-    },
-  );
+  it("blank-after-PYTHON-strip falls back to default (U+001C is stripped)", () => {
+    expect(errorMessage("\x1C \x1F", "Default")).toBe("Default");
+    expect(errorMessage({ error: "  " }, "Default")).toBe("Default");
+  });
 
   it("null / non-dict-non-str bodies → default", () => {
     expect(errorMessage(null, "Default")).toBe("Default");
@@ -752,7 +749,7 @@ describe("json.loads non-finite body tokens (arbiter fix F1)", () => {
   });
 
   it("200 bare NaN scalar body is RETURNED (httpx .json() parity)", async () => {
-    expect(await run(harness([res(200, "NaN")]))).toBeNaN();
+    await expect(run(harness([res(200, "NaN")]))).resolves.toBeNaN();
   });
 
   it("400 body with a non-finite member keeps DICT shape and error message", async () => {

@@ -238,11 +238,9 @@ describe("Session.replace PBT (test_session_pbt.py)", () => {
         const header = await sessionAuthHeader(s, {
           tokenResolver: fakeResolver,
         });
-        if (s.account.type === "service_account") {
-          expect(header.startsWith("Basic ")).toBe(true);
-        } else {
-          expect(header.startsWith("Bearer ")).toBe(true);
-        }
+        const expectedScheme =
+          s.account.type === "service_account" ? "Basic " : "Bearer ";
+        expect(header.startsWith(expectedScheme)).toBe(true);
         // Whichever prefix, the value after the space is non-empty.
         const spaceIndex = header.indexOf(" ");
         const prefix = header.slice(0, spaceIndex);

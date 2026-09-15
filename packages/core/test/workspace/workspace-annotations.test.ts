@@ -170,7 +170,7 @@ describe("TestWorkspaceAnnotationCRUD", () => {
 
   it("list_annotations() returns empty list when no annotations exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listAnnotations()).toStrictEqual([]);
+    await expect(ws.listAnnotations()).resolves.toStrictEqual([]);
   });
 
   it("list_annotations() passes filter params to API", async () => {
@@ -281,7 +281,7 @@ describe("TestWorkspaceAnnotationTags", () => {
 
   it("list_annotation_tags() returns empty list when no tags exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listAnnotationTags()).toStrictEqual([]);
+    await expect(ws.listAnnotationTags()).resolves.toStrictEqual([]);
   });
 
   it("create_annotation_tag() returns the created AnnotationTag", async () => {

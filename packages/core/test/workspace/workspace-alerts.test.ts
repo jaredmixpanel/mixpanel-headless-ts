@@ -163,7 +163,7 @@ describe("TestWorkspaceAlertCRUD", () => {
 
   it("list_alerts() returns empty list when no alerts exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listAlerts()).toStrictEqual([]);
+    await expect(ws.listAlerts()).resolves.toStrictEqual([]);
   });
 
   it("list_alerts(bookmark_id=42) passes param to API", async () => {

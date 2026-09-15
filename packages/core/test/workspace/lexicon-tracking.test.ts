@@ -230,9 +230,9 @@ describe("TestGetEventDefinitions", () => {
 
   it("get_event_definitions() returns empty list when no matches", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(
-      await ws.getEventDefinitions({ names: ["NonExistent"] }),
-    ).toStrictEqual([]);
+    await expect(
+      ws.getEventDefinitions({ names: ["NonExistent"] }),
+    ).resolves.toStrictEqual([]);
   });
 });
 
@@ -311,9 +311,9 @@ describe("TestGetPropertyDefinitions", () => {
 
   it("get_property_definitions() returns empty list when no matches", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(
-      await ws.getPropertyDefinitions({ names: ["nonexistent"] }),
-    ).toStrictEqual([]);
+    await expect(
+      ws.getPropertyDefinitions({ names: ["nonexistent"] }),
+    ).resolves.toStrictEqual([]);
   });
 });
 
@@ -380,7 +380,7 @@ describe("TestListLexiconTags", () => {
 
   it("list_lexicon_tags() returns empty list when no tags exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listLexiconTags()).toStrictEqual([]);
+    await expect(ws.listLexiconTags()).resolves.toStrictEqual([]);
   });
 });
 
@@ -451,7 +451,7 @@ describe("TestGetEventHistory", () => {
 
   it("get_event_history() returns empty list when no history", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.getEventHistory("Purchase")).toStrictEqual([]);
+    await expect(ws.getEventHistory("Purchase")).resolves.toStrictEqual([]);
   });
 });
 

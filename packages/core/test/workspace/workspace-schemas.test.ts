@@ -153,7 +153,7 @@ describe("Workspace.listSchemaRegistry", () => {
   it("returns empty list when no schemas exist (:182)", async () => {
     const { ws } = makeWorkspace(() => ok([]));
 
-    expect(await ws.listSchemaRegistry()).toStrictEqual([]);
+    await expect(ws.listSchemaRegistry()).resolves.toStrictEqual([]);
   });
 
   it("passes the entity_type filter to the API (:194)", async () => {

@@ -147,7 +147,7 @@ function showOf(
 describe("TestQueryTimeseries", () => {
   it("returns a QueryResult", async () => {
     const { ws } = wsWith(TIMESERIES_RESPONSE);
-    expect(await ws.query("Login")).toBeInstanceOf(QueryResult);
+    await expect(ws.query("Login")).resolves.toBeInstanceOf(QueryResult);
   });
 
   it("carries computed_at from the response", async () => {

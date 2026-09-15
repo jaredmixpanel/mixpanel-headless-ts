@@ -32,6 +32,7 @@ import {
   type MeClient,
   MeService,
 } from "../../src/services/me.js";
+import { expectRejects } from "../../test-support/raises.js";
 
 /** The `_make_me_response_dict()` twin (`test_me.py:412-456`). */
 function meResponseDict(): Record<string, JsonValue> {
@@ -169,7 +170,7 @@ describe("MeService.fetch (test_me.py:487-532)", () => {
   it("peek() never calls the API", async () => {
     const { service, calls } = makeService();
 
-    expect(await service.peek()).toBeNull();
+    await expect(service.peek()).resolves.toBeNull();
     expect(calls).toHaveLength(0);
   });
 });
@@ -183,17 +184,13 @@ describe("MeService.fetch error handling (test_me.py:534-597)", () => {
         ),
     });
 
-    try {
-      await service.fetch();
-      expect.unreachable("401 must raise");
-    } catch (error) {
-      expect(error).toBeInstanceOf(ConfigError);
-      const err = error as ConfigError;
-      expect(err.message).toMatch(/invalid \(401\)/);
-      expect(err.message).toContain("mp account login");
-      expect(err.details["status_code"]).toBe(401);
-      expect(err.details["account_name"]).toBe("personal");
-    }
+    const error = await expectRejects(service.fetch(), "401 must raise");
+    expect(error).toBeInstanceOf(ConfigError);
+    const err = error as ConfigError;
+    expect(err.message).toMatch(/invalid \(401\)/);
+    expect(err.message).toContain("mp account login");
+    expect(err.details["status_code"]).toBe(401);
+    expect(err.details["account_name"]).toBe("personal");
   });
 
   it("403 on a service account surfaces the E-10 scope hint", async () => {
@@ -205,20 +202,16 @@ describe("MeService.fetch error handling (test_me.py:534-597)", () => {
         ),
     });
 
-    try {
-      await service.fetch();
-      expect.unreachable("403 must raise");
-    } catch (error) {
-      const err = error as ConfigError;
-      expect(err.message).toBe(
-        "Service account 'personal' is missing the `user_details` scope.\n\n" +
-          "Re-mint the SA in Mixpanel Settings → Service Accounts with " +
-          "that scope checked,\n" +
-          "or pass --project ID explicitly to skip the /me lookup.",
-      );
-      expect(err.details["status_code"]).toBe(403);
-      expect(err.details["account_name"]).toBe("personal");
-    }
+    const error = await expectRejects(service.fetch(), "403 must raise");
+    const err = error as ConfigError;
+    expect(err.message).toBe(
+      "Service account 'personal' is missing the `user_details` scope.\n\n" +
+        "Re-mint the SA in Mixpanel Settings → Service Accounts with " +
+        "that scope checked,\n" +
+        "or pass --project ID explicitly to skip the /me lookup.",
+    );
+    expect(err.details["status_code"]).toBe(403);
+    expect(err.details["account_name"]).toBe("personal");
   });
 
   it("403 without an account type uses the generic message", async () => {
@@ -229,15 +222,11 @@ describe("MeService.fetch error handling (test_me.py:534-597)", () => {
         ),
     });
 
-    try {
-      await service.fetch();
-      expect.unreachable("403 must raise");
-    } catch (error) {
-      const err = error as ConfigError;
-      expect(err.message).toMatch(/lacks \/me permission/);
-      expect(err.message).toContain("--project");
-      expect(err.details["status_code"]).toBe(403);
-    }
+    const error = await expectRejects(service.fetch(), "403 must raise");
+    const err = error as ConfigError;
+    expect(err.message).toMatch(/lacks \/me permission/);
+    expect(err.message).toContain("--project");
+    expect(err.details["status_code"]).toBe(403);
   });
 
   it("non-401/403 errors propagate unchanged", async () => {
@@ -280,7 +269,7 @@ describe("MeService.listProjects / findProject (test_me.py:601-630)", () => {
   it("returns null for a missing project", async () => {
     const { service } = makeService();
 
-    expect(await service.findProject("999999")).toBeNull();
+    await expect(service.findProject("999999")).resolves.toBeNull();
   });
 });
 
@@ -288,7 +277,7 @@ describe("MeService.listWorkspaces (test_me.py:633-658)", () => {
   it("lists every workspace across projects", async () => {
     const { service } = makeService();
 
-    expect(await service.listWorkspaces()).toHaveLength(3);
+    await expect(service.listWorkspaces()).resolves.toHaveLength(3);
   });
 
   it("filters by project id", async () => {
@@ -318,9 +307,9 @@ describe("MeService.listWorkspaces (test_me.py:633-658)", () => {
   it("returns empty for an unknown project", async () => {
     const { service } = makeService();
 
-    expect(
-      await service.listWorkspaces({ project_id: "999999" }),
-    ).toStrictEqual([]);
+    await expect(
+      service.listWorkspaces({ project_id: "999999" }),
+    ).resolves.toStrictEqual([]);
   });
 
   it("a non-numeric project id raises ConfigError (me.py:833-840)", async () => {
@@ -359,7 +348,7 @@ describe("MeService.findDefaultWorkspace (test_me.py:660-682)", () => {
     );
     const { service } = makeService({ cache });
 
-    expect(await service.findDefaultWorkspace("555")).toBeNull();
+    await expect(service.findDefaultWorkspace("555")).resolves.toBeNull();
   });
 });
 
@@ -367,7 +356,7 @@ describe("MeService.resolveWorkspace (me.py:869-915) — the dagger path", () =>
   it("returns null on a cold cache WITHOUT calling the API", async () => {
     const { service, calls } = makeService();
 
-    expect(await service.resolveWorkspace("3713224")).toBeNull();
+    await expect(service.resolveWorkspace("3713224")).resolves.toBeNull();
     expect(calls).toHaveLength(0);
   });
 
@@ -385,14 +374,14 @@ describe("MeService.resolveWorkspace (me.py:869-915) — the dagger path", () =>
     const { service } = makeService();
     await service.fetch();
 
-    expect(await service.resolveWorkspace("abc")).toBeNull();
+    await expect(service.resolveWorkspace("abc")).resolves.toBeNull();
   });
 
   it("returns null when the project has no views", async () => {
     const { service } = makeService();
     await service.fetch();
 
-    expect(await service.resolveWorkspace("111")).toBeNull();
+    await expect(service.resolveWorkspace("111")).resolves.toBeNull();
   });
 });
 
@@ -412,6 +401,7 @@ describe("MeService cache-store seam", () => {
 
     expect(put).toHaveBeenCalledTimes(1);
     await cache.invalidate();
+    // eslint-disable-next-line vitest/prefer-expect-resolves -- MeCacheStore.get is a MaybePromise seam; `.resolves` would throw on a synchronous store
     expect(await cache.get()).toBeNull();
   });
 });
@@ -457,7 +447,7 @@ describe("TestMeServiceResolveWorkspace (test_workspace_resolution.py:154)", () 
     const { service } = makeService({ behaviour: () => Promise.resolve(raw) });
     await service.fetch(); // warm, as the Python fixture does
 
-    expect(await service.resolveWorkspace("4025120")).toBe(2);
+    await expect(service.resolveWorkspace("4025120")).resolves.toBe(2);
   });
 
   it("only workspaces of the requested project are considered (:186)", async () => {
@@ -487,6 +477,6 @@ describe("TestMeServiceResolveWorkspace (test_workspace_resolution.py:154)", () 
     const { service } = makeService({ behaviour: () => Promise.resolve(raw) });
     await service.fetch();
 
-    expect(await service.resolveWorkspace("4025120")).toBe(2);
+    await expect(service.resolveWorkspace("4025120")).resolves.toBe(2);
   });
 });

@@ -132,7 +132,7 @@ describe("TestListEvents", () => {
 
   it("returns an empty list when no events exist", async () => {
     const discovery = discoveryFactory(() => ({ status: 200, json: [] }));
-    expect(await discovery.listEvents()).toStrictEqual([]);
+    await expect(discovery.listEvents()).resolves.toStrictEqual([]);
   });
 
   it("caches per (limit, from_date, to_date) triple", async () => {
@@ -246,7 +246,9 @@ describe("TestListProperties", () => {
 
   it("returns an empty list when the event has no properties", async () => {
     const discovery = discoveryFactory(() => ({ status: 200, json: {} }));
-    expect(await discovery.listProperties("EmptyEvent")).toStrictEqual([]);
+    await expect(discovery.listProperties("EmptyEvent")).resolves.toStrictEqual(
+      [],
+    );
   });
 });
 
@@ -318,12 +320,9 @@ describe("TestListPropertyValues", () => {
       json: ["US", "CA", "GB", "DE"],
     }));
     // Note: values are NOT sorted per research.md
-    expect(await discovery.listPropertyValues("country")).toStrictEqual([
-      "US",
-      "CA",
-      "GB",
-      "DE",
-    ]);
+    await expect(
+      discovery.listPropertyValues("country"),
+    ).resolves.toStrictEqual(["US", "CA", "GB", "DE"]);
   });
 
   it("passes the event parameter to the API", async () => {
@@ -332,11 +331,11 @@ describe("TestListPropertyValues", () => {
         ? { status: 200, json: ["credit_card", "paypal"] }
         : { status: 200, json: ["all_values"] },
     );
-    expect(
-      await discovery.listPropertyValues("payment_method", {
+    await expect(
+      discovery.listPropertyValues("payment_method", {
         event: "Purchase",
       }),
-    ).toStrictEqual(["credit_card", "paypal"]);
+    ).resolves.toStrictEqual(["credit_card", "paypal"]);
   });
 
   it("passes the limit parameter to the API", async () => {
@@ -345,9 +344,9 @@ describe("TestListPropertyValues", () => {
         ? { status: 200, json: ["v1", "v2", "v3"] }
         : { status: 200, json: ["all_values"] },
     );
-    expect(
-      await discovery.listPropertyValues("country", { limit: 10 }),
-    ).toStrictEqual(["v1", "v2", "v3"]);
+    await expect(
+      discovery.listPropertyValues("country", { limit: 10 }),
+    ).resolves.toStrictEqual(["v1", "v2", "v3"]);
   });
 
   it("caches per (property, event, limit)", async () => {
@@ -387,9 +386,9 @@ describe("TestListPropertyValues", () => {
 
   it("returns an empty list when no values exist", async () => {
     const discovery = discoveryFactory(() => ({ status: 200, json: [] }));
-    expect(
-      await discovery.listPropertyValues("nonexistent_property"),
-    ).toStrictEqual([]);
+    await expect(
+      discovery.listPropertyValues("nonexistent_property"),
+    ).resolves.toStrictEqual([]);
   });
 });
 
@@ -482,7 +481,7 @@ describe("TestListFunnels", () => {
 
   it("returns an empty list when no funnels exist", async () => {
     const discovery = discoveryFactory(() => ({ status: 200, json: [] }));
-    expect(await discovery.listFunnels()).toStrictEqual([]);
+    await expect(discovery.listFunnels()).resolves.toStrictEqual([]);
   });
 });
 
@@ -596,7 +595,7 @@ describe("TestListCohorts", () => {
 
   it("returns an empty list when no cohorts exist", async () => {
     const discovery = discoveryFactory(() => ({ status: 200, json: [] }));
-    expect(await discovery.listCohorts()).toStrictEqual([]);
+    await expect(discovery.listCohorts()).resolves.toStrictEqual([]);
   });
 });
 
@@ -676,7 +675,7 @@ describe("TestListTopEvents", () => {
       status: 200,
       json: { events: [], type: "general" },
     }));
-    expect(await discovery.listTopEvents()).toStrictEqual([]);
+    await expect(discovery.listTopEvents()).resolves.toStrictEqual([]);
   });
 });
 
@@ -816,9 +815,9 @@ describe("TestListSubproperties", () => {
 
   it("returns an empty list for no values", async () => {
     const discovery = discoveryFactory(valuesHandler([]));
-    expect(
-      await discovery.listSubproperties("cart", { event: "X" }),
-    ).toStrictEqual([]);
+    await expect(
+      discovery.listSubproperties("cart", { event: "X" }),
+    ).resolves.toStrictEqual([]);
   });
 
   it("treats a JSON list of dicts as one row per dict", async () => {

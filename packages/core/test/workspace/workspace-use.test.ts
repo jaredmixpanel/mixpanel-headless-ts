@@ -97,7 +97,7 @@ describe("TestUseWorkspace (test_workspace_use.py:56)", () => {
   it("use() returns self for fluent chaining", async () => {
     const { ws } = makeWorkspace();
 
-    expect(await ws.use({ workspace: 42 })).toBe(ws);
+    await expect(ws.use({ workspace: 42 })).resolves.toBe(ws);
   });
 });
 

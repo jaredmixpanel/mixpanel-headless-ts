@@ -25,6 +25,7 @@ import { sortedByCodepoint } from "../../src/compat/codepoint.js";
 import { QueryError } from "../../src/errors.js";
 import { transformRetentionResult } from "../../src/services/live-query-transforms.js";
 import { RetentionQueryResult } from "../../src/types/results/query-engine.js";
+import { expectThrows } from "../../test-support/raises.js";
 
 // ===========================================================================
 // Shared fixtures (test_transform_retention.py:13-52)
@@ -144,23 +145,21 @@ describe("TestTransformRetentionErrors", () => {
 
   it("QueryError from an error response has statusCode 200", () => {
     const errorResponse: Record<string, unknown> = { error: "bad params" };
-    try {
-      transformRetentionResult(errorResponse, BOOKMARK_PARAMS);
-      expect.unreachable("expected QueryError");
-    } catch (error) {
-      expect(error).toBeInstanceOf(QueryError);
-      expect((error as QueryError).statusCode).toBe(200);
-    }
+    const error = expectThrows(
+      () => transformRetentionResult(errorResponse, BOOKMARK_PARAMS),
+      "expected QueryError",
+    );
+    expect(error).toBeInstanceOf(QueryError);
+    expect((error as QueryError).statusCode).toBe(200);
   });
 
   it("QueryError includes the raw response as responseBody", () => {
     const errorResponse: Record<string, unknown> = { error: "timeout" };
-    try {
-      transformRetentionResult(errorResponse, BOOKMARK_PARAMS);
-      expect.unreachable("expected QueryError");
-    } catch (error) {
-      expect((error as QueryError).responseBody).toStrictEqual(errorResponse);
-    }
+    const error = expectThrows(
+      () => transformRetentionResult(errorResponse, BOOKMARK_PARAMS),
+      "expected QueryError",
+    );
+    expect((error as QueryError).responseBody).toStrictEqual(errorResponse);
   });
 
   it("QueryError includes bookmark_params as requestBody", () => {
@@ -168,12 +167,11 @@ describe("TestTransformRetentionErrors", () => {
     const params: Record<string, unknown> = {
       sections: { filters: "invalid" },
     };
-    try {
-      transformRetentionResult(errorResponse, params);
-      expect.unreachable("expected QueryError");
-    } catch (error) {
-      expect((error as QueryError).requestBody).toStrictEqual(params);
-    }
+    const error = expectThrows(
+      () => transformRetentionResult(errorResponse, params),
+      "expected QueryError",
+    );
+    expect((error as QueryError).requestBody).toStrictEqual(params);
   });
 
   it("missing series raises QueryError", () => {

@@ -192,7 +192,7 @@ describe("createNodeWorkspace inherits the override (env_workspace twin)", () =>
     });
     // Region resolved from env is `eu`; the URL is region-independent.
     expect(ws.session.account.region).toBe("eu");
-    expect(await ws.events()).toStrictEqual(["Login"]);
+    await expect(ws.events()).resolves.toStrictEqual(["Login"]);
     expect(urls).toStrictEqual([`${BASE}/api/query/events/names`]);
     // Flip mid-life: the same facade follows the current value.
     // (`ws.events()` is cached by the discovery service — go through the

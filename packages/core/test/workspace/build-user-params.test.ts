@@ -29,6 +29,7 @@ import {
 } from "../../src/types/query-params/cohort.js";
 import { Filter } from "../../src/types/query-params/filter.js";
 import { Workspace } from "../../src/workspace.js";
+import { expectRejects } from "../../test-support/raises.js";
 import {
   mockWorkspaceClient,
   TEST_SESSION,
@@ -446,100 +447,91 @@ describe("TestRawStringWhere", () => {
 
 describe("TestValidationErrors", () => {
   it("distinct_id + distinct_ids raises U1", async () => {
-    try {
-      await makeWs().buildUserParams({
+    const error = await expectRejects(
+      makeWs().buildUserParams({
         distinct_id: "user_1",
         distinct_ids: ["user_2"],
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U1");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U1");
   });
 
   it("cohort + Filter.in_cohort raises U2", async () => {
-    try {
-      await makeWs().buildUserParams({
+    const error = await expectRejects(
+      makeWs().buildUserParams({
         cohort: 123,
         where: Filter.inCohort(456),
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U2");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U2");
   });
 
   it("an empty sort_by raises U5", async () => {
-    try {
-      await makeWs().buildUserParams({ sort_by: "" });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U5");
-    }
+    const error = await expectRejects(
+      makeWs().buildUserParams({ sort_by: "" }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U5");
   });
 
   it("an invalid as_of date raises U6", async () => {
-    try {
-      await makeWs().buildUserParams({ as_of: "not-a-date" });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U6");
-    }
+    const error = await expectRejects(
+      makeWs().buildUserParams({ as_of: "not-a-date" }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U6");
   });
 
   it("include_all_users without a cohort raises U7", async () => {
-    try {
-      await makeWs().buildUserParams({ include_all_users: true });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U7");
-    }
+    const error = await expectRejects(
+      makeWs().buildUserParams({ include_all_users: true }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U7");
   });
 
   it("Filter.not_in_cohort in where raises U12", async () => {
-    try {
-      await makeWs().buildUserParams({ where: Filter.notInCohort(123) });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U12");
-    }
+    const error = await expectRejects(
+      makeWs().buildUserParams({ where: Filter.notInCohort(123) }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U12");
   });
 
   it("multiple Filter.in_cohort entries raise U13", async () => {
-    try {
-      await makeWs().buildUserParams({
+    const error = await expectRejects(
+      makeWs().buildUserParams({
         where: [Filter.inCohort(100), Filter.inCohort(200)],
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U13");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U13");
   });
 
   it("an empty distinct_ids list raises U4", async () => {
-    try {
-      await makeWs().buildUserParams({ distinct_ids: [] });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U4");
-    }
+    const error = await expectRejects(
+      makeWs().buildUserParams({ distinct_ids: [] }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U4");
   });
 
   it("multiple violations are collected into one error", async () => {
-    try {
-      await makeWs().buildUserParams({
+    const error = await expectRejects(
+      makeWs().buildUserParams({
         distinct_id: "user_1",
         distinct_ids: ["user_2"],
         sort_by: "",
         include_all_users: true,
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      const codes = codesOf(error);
-      expect(codes).toContain("U1");
-      expect(codes).toContain("U5");
-      expect(codes).toContain("U7");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    const codes = codesOf(error);
+    expect(codes).toContain("U1");
+    expect(codes).toContain("U5");
+    expect(codes).toContain("U7");
   });
 });
 
@@ -582,28 +574,26 @@ describe("TestAggregateModeParams", () => {
   });
 
   it("a non-count aggregate without a property raises U14", async () => {
-    try {
-      await makeWs().buildUserParams({
+    const error = await expectRejects(
+      makeWs().buildUserParams({
         mode: "aggregate",
         aggregate: "extremes",
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U14");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U14");
   });
 
   it("count with a property raises U15", async () => {
-    try {
-      await makeWs().buildUserParams({
+    const error = await expectRejects(
+      makeWs().buildUserParams({
         mode: "aggregate",
         aggregate: "count",
         aggregate_property: "ltv",
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U15");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U15");
   });
 
   it("segment_by maps to segment_by_cohorts", async () => {
@@ -615,12 +605,11 @@ describe("TestAggregateModeParams", () => {
   });
 
   it("segment_by with mode='profiles' raises U16", async () => {
-    try {
-      await makeWs().buildUserParams({ mode: "profiles", segment_by: [123] });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U16");
-    }
+    const error = await expectRejects(
+      makeWs().buildUserParams({ mode: "profiles", segment_by: [123] }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U16");
   });
 });
 
@@ -630,45 +619,41 @@ describe("TestAggregateModeParams", () => {
 
 describe("TestModeSpecificValidation", () => {
   it("sort_by with mode='aggregate' raises U19", async () => {
-    try {
-      await makeWs().buildUserParams({ mode: "aggregate", sort_by: "ltv" });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U19");
-    }
+    const error = await expectRejects(
+      makeWs().buildUserParams({ mode: "aggregate", sort_by: "ltv" }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U19");
   });
 
   it("search with mode='aggregate' raises U20", async () => {
-    try {
-      await makeWs().buildUserParams({ mode: "aggregate", search: "alice" });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U20");
-    }
+    const error = await expectRejects(
+      makeWs().buildUserParams({ mode: "aggregate", search: "alice" }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U20");
   });
 
   it("distinct_id with mode='aggregate' raises U21", async () => {
-    try {
-      await makeWs().buildUserParams({
+    const error = await expectRejects(
+      makeWs().buildUserParams({
         mode: "aggregate",
         distinct_id: "user_1",
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U21");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U21");
   });
 
   it("properties with mode='aggregate' raises U22", async () => {
-    try {
-      await makeWs().buildUserParams({
+    const error = await expectRejects(
+      makeWs().buildUserParams({
         mode: "aggregate",
         properties: ["$email"],
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U22");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U22");
   });
 });
 
@@ -738,13 +723,15 @@ describe("TestCombinedScenarios", () => {
   });
 
   it("valid parameter combinations complete without raising", async () => {
-    await makeWs().buildUserParams({
-      mode: "profiles",
-      where: Filter.equals("plan", "premium"),
-      properties: ["$email"],
-      sort_by: "ltv",
-      sort_order: "ascending",
-    });
+    await expect(
+      makeWs().buildUserParams({
+        mode: "profiles",
+        where: Filter.equals("plan", "premium"),
+        properties: ["$email"],
+        sort_by: "ltv",
+        sort_order: "ascending",
+      }),
+    ).resolves.toBeDefined();
   });
 
   it("an empty call returns a dict", async () => {

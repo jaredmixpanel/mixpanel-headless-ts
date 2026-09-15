@@ -176,9 +176,9 @@ describe("TestTransformFunnelProperties", () => {
         dateStrings,
         (raw, funnelId, fromDate, toDate) => {
           const result = transformFunnel(raw, funnelId, fromDate, toDate);
-          if (result.steps.length > 0) {
-            expect(result.steps[0]!.conversion_rate).toBe(1.0);
-          }
+          expect(result.steps.at(0)?.conversion_rate).toBe(
+            result.steps.length > 0 ? 1.0 : undefined,
+          );
         },
       ),
       { numRuns: 100 },
@@ -213,20 +213,14 @@ describe("TestTransformFunnelProperties", () => {
         dateStrings,
         (raw, funnelId, fromDate, toDate) => {
           const result = transformFunnel(raw, funnelId, fromDate, toDate);
-          if (result.steps.length > 0) {
-            const firstCount = result.steps[0]!.count;
-            const lastCount = result.steps[result.steps.length - 1]!.count;
-            if (firstCount > 0) {
-              const expected = lastCount / firstCount;
-              expect(Math.abs(result.conversion_rate - expected)).toBeLessThan(
-                1e-9,
-              );
-            } else {
-              expect(result.conversion_rate).toBe(0.0);
-            }
-          } else {
-            expect(result.conversion_rate).toBe(0.0);
-          }
+          const firstCount = result.steps.at(0)?.count ?? 0;
+          const lastCount = result.steps.at(-1)?.count ?? 0;
+          const expected = firstCount > 0 ? lastCount / firstCount : 0.0;
+          expect(Math.abs(result.conversion_rate - expected)).toBeLessThan(
+            1e-9,
+          );
+          // The no-steps / zero-first-count arms are exact, not merely close.
+          expect(firstCount > 0 ? 0.0 : result.conversion_rate).toBe(0.0);
         },
       ),
       { numRuns: 100 },
@@ -242,9 +236,10 @@ describe("TestTransformFunnelProperties", () => {
         dateStrings,
         (raw, funnelId, fromDate, toDate) => {
           const result = transformFunnel(raw, funnelId, fromDate, toDate);
-          if (result.steps.length === 0) {
-            expect(result.conversion_rate).toBe(0.0);
-          }
+          // With no steps the rate must be exactly 0.0 (vacuous otherwise).
+          expect(result.steps.length === 0 ? result.conversion_rate : 0.0).toBe(
+            0.0,
+          );
         },
       ),
       { numRuns: 100 },
@@ -271,9 +266,9 @@ describe("TestTransformFunnelProperties", () => {
           const raw = { data: { [date]: { steps, analysis: {} } } };
           const result = transformFunnel(raw, funnelId, fromDate, toDate);
 
-          if (zeroStepIdx + 1 < result.steps.length) {
-            expect(result.steps[zeroStepIdx + 1]!.conversion_rate).toBe(0.0);
-          }
+          expect(result.steps.at(zeroStepIdx + 1)?.conversion_rate).toBe(
+            zeroStepIdx + 1 < result.steps.length ? 0.0 : undefined,
+          );
         },
       ),
       { numRuns: 100 },

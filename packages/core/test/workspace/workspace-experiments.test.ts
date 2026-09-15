@@ -153,7 +153,7 @@ describe("TestWorkspaceExperimentCRUD", () => {
 
   it("list_experiments() returns empty list when no experiments exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listExperiments()).toStrictEqual([]);
+    await expect(ws.listExperiments()).resolves.toStrictEqual([]);
   });
 
   it("list_experiments(include_archived=True) passes param to API", async () => {

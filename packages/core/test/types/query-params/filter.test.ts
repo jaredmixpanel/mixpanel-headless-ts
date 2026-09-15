@@ -27,6 +27,7 @@ import {
   ListItemGroupMode,
   PropertyInput,
 } from "../../../src/types/query-params/filter.js";
+import { expectThrows } from "../../../test-support/raises.js";
 
 /** Every code a P2-5a guard may legally raise (C9 property #4 domain). */
 const LEGAL_CODES: ReadonlySet<string> = new Set([
@@ -859,14 +860,13 @@ describe("Filter direct construction (PR #236 operator validation)", () => {
   );
 
   it("the construction guard is a plain ValueError, not a coded guard", () => {
-    try {
-      direct("gold", "bigger_than", 10, "number");
-      expect.unreachable("expected ValueError");
-    } catch (error) {
-      expect(error).toBeInstanceOf(ValueError);
-      expect(error).not.toBeInstanceOf(MixpanelHeadlessError);
-      expect((error as { code?: unknown }).code).toBeUndefined();
-    }
+    const error = expectThrows(
+      () => direct("gold", "bigger_than", 10, "number"),
+      "expected ValueError",
+    );
+    expect(error).toBeInstanceOf(ValueError);
+    expect(error).not.toBeInstanceOf(MixpanelHeadlessError);
+    expect((error as { code?: unknown }).code).toBeUndefined();
   });
 
   // --- Already-valid inputs are untouched ---

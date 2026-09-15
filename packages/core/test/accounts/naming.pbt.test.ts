@@ -80,9 +80,8 @@ describe("naming PBT (test_naming_pbt.py)", () => {
     fc.assert(
       fc.property(orgNames, (value) => {
         const result = slugify(value);
-        if (result !== "") {
-          expect(result).toMatch(SLUG_PATTERN);
-        }
+        fc.pre(result !== "");
+        expect(result).toMatch(SLUG_PATTERN);
       }),
       { numRuns: 100 },
     );
@@ -92,10 +91,8 @@ describe("naming PBT (test_naming_pbt.py)", () => {
     fc.assert(
       fc.property(orgNames, (value) => {
         const result = slugify(value);
-        if (result !== "") {
-          expect(result.startsWith("-")).toBe(false);
-          expect(result.endsWith("-")).toBe(false);
-        }
+        expect(result.startsWith("-")).toBe(false);
+        expect(result.endsWith("-")).toBe(false);
       }),
       { numRuns: 100 },
     );

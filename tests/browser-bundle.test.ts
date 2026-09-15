@@ -255,13 +255,16 @@ describe("browser bundle recipe", () => {
       failure = error instanceof Error ? error.message : String(error);
     }
 
-    if (treeIsDirty) {
-      expect(failure).toBeDefined();
-      expect(existsSync(join(out, MANIFEST_NAME))).toBe(false);
-    } else {
-      expect(failure).toBeUndefined();
-      expect(readManifest(out).dirty).toBeUndefined();
-    }
+    // A dirty tree fails before any manifest is written; a clean tree
+    // succeeds with an honest (undirtied) manifest.
+    expect(failure !== undefined, failure ?? "build succeeded").toBe(
+      treeIsDirty,
+    );
+    const manifest = existsSync(join(out, MANIFEST_NAME))
+      ? readManifest(out)
+      : null;
+    expect(manifest === null).toBe(treeIsDirty);
+    expect(manifest?.dirty).toBeUndefined();
   }, 120_000);
 
   it("marks a dirty build in the manifest so provenance never lies", () => {

@@ -343,7 +343,7 @@ describe("TestAPIClientGetSchemas", () => {
       status: 200,
       json: { results: [] },
     }));
-    expect(await client.getSchemas()).toStrictEqual([]);
+    await expect(client.getSchemas()).resolves.toStrictEqual([]);
   });
 });
 

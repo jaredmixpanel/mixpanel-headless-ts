@@ -190,36 +190,60 @@ const FIXTURES: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {
   },
 };
 
+/**
+ * The observable outcome of decoding a payload that carries an unknown
+ * key: the surviving serialized keys, or `rejected` when the decode threw
+ * {@link ResponseValidationError} (any other throw propagates).
+ *
+ * @param decode - Decode-and-serialize thunk.
+ * @returns The outcome record compared against the model's extra policy.
+ */
+function unknownKeyOutcome(
+  decode: () => object,
+): { rejected: true } | { keys: string[] } {
+  try {
+    return { keys: Object.keys(decode()) };
+  } catch (error) {
+    if (error instanceof ResponseValidationError) {
+      return { rejected: true };
+    }
+    throw error;
+  }
+}
+
 describe("C8(b) authored entity fixtures", () => {
-  for (const [name, payload] of Object.entries(FIXTURES)) {
+  describe.each(Object.entries(FIXTURES))("%s", (name, payload) => {
     const cls = (entities as Readonly<Record<string, unknown>>)[
       name
     ] as EntityModelStatics;
 
-    describe(name, () => {
-      it("is a real exported entity class", () => {
-        expect(typeof cls).toBe("function");
-      });
-
-      it("round-trips the authored payload identically", () => {
-        const instance = cls.fromDict(payload);
-        expect(instance).toBeInstanceOf(cls as unknown as CallableFunction);
-        expect(instance).toBeInstanceOf(EntityModel);
-        expect(instance.toVectorPayload()).toStrictEqual(payload);
-      });
-
-      it("survives the unknown-key mutation probe", () => {
-        const mutated = { ...payload, __p2_7_unknown__: true };
-        if (cls.extraPolicy === "forbid") {
-          expect(() => cls.fromDict(mutated)).toThrow(ResponseValidationError);
-        } else {
-          const instance = cls.fromDict(mutated);
-          expect(Object.keys(instance.toJSON())).toStrictEqual([
-            ...cls.fieldSpecs.map((spec) => spec.name),
-            ...(cls.computedSpecs ?? []).map((spec) => spec.name),
-          ]);
-        }
-      });
+    it("is a real exported entity class", () => {
+      expect(typeof cls).toBe("function");
     });
-  }
+
+    it("round-trips the authored payload identically", () => {
+      const instance = cls.fromDict(payload);
+      expect(instance).toBeInstanceOf(cls as unknown as CallableFunction);
+      expect(instance).toBeInstanceOf(EntityModel);
+      expect(instance.toVectorPayload()).toStrictEqual(payload);
+    });
+
+    it("survives the unknown-key mutation probe", () => {
+      const mutated = { ...payload, __p2_7_unknown__: true };
+      // Forbid models reject; lax models absorb the key but must DROP
+      // it from the serialized walk (declared keys only).
+      expect(
+        unknownKeyOutcome(() => cls.fromDict(mutated).toJSON()),
+      ).toStrictEqual(
+        cls.extraPolicy === "forbid"
+          ? { rejected: true }
+          : {
+              keys: [
+                ...cls.fieldSpecs.map((spec) => spec.name),
+                ...(cls.computedSpecs ?? []).map((spec) => spec.name),
+              ],
+            },
+      );
+    });
+  });
 });

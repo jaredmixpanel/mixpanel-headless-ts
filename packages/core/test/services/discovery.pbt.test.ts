@@ -290,11 +290,9 @@ describe("TestParseLexiconMetadataProperties", () => {
           Object.keys(data).length === 0 ||
           !Object.hasOwn(data, "com.mixpanel") ||
           Object.keys(mp as Record<string, unknown>).length === 0;
-        if (shouldBeNone) {
-          expect(result).toBeNull();
-        } else {
-          expect(result).not.toBeNull();
-        }
+        expect(result === null, `shouldBeNone=${String(shouldBeNone)}`).toBe(
+          shouldBeNone,
+        );
       }),
       { numRuns: 100 },
     );
@@ -332,20 +330,17 @@ describe("TestParseLexiconMetadataProperties", () => {
         const result = parseLexiconMetadata(data);
         expect(result).not.toBeNull();
         const mp = data["com.mixpanel"] as Record<string, unknown>;
-        if (Object.hasOwn(mp, "$source")) {
-          expect(result?.source).toStrictEqual(mp["$source"]);
-        }
-        if (Object.hasOwn(mp, "displayName")) {
-          expect(result?.display_name).toStrictEqual(mp["displayName"]);
-        }
-        if (Object.hasOwn(mp, "tags")) {
-          expect(result?.tags).toStrictEqual(mp["tags"]);
-        }
-        if (Object.hasOwn(mp, "hidden")) {
-          expect(result?.hidden).toStrictEqual(mp["hidden"]);
-        }
-        if (Object.hasOwn(mp, "dropped")) {
-          expect(result?.dropped).toStrictEqual(mp["dropped"]);
+        const fields = [
+          ["$source", result?.source],
+          ["displayName", result?.display_name],
+          ["tags", result?.tags],
+          ["hidden", result?.hidden],
+          ["dropped", result?.dropped],
+        ] as const;
+        // Every field the input carries is preserved verbatim.
+        const present = fields.filter(([key]) => Object.hasOwn(mp, key));
+        for (const [raw, parsed] of present) {
+          expect(parsed).toStrictEqual(mp[raw]);
         }
       }),
       { numRuns: 100 },
@@ -375,11 +370,9 @@ describe("TestParseLexiconPropertyProperties", () => {
     fc.assert(
       fc.property(lexiconPropertyInputArb, (data) => {
         const result = parseLexiconProperty(data);
-        if (Object.hasOwn(data, "type")) {
-          expect(result.type).toStrictEqual(data["type"]);
-        } else {
-          expect(result.type).toBe("string");
-        }
+        expect(result.type).toStrictEqual(
+          Object.hasOwn(data, "type") ? data["type"] : "string",
+        );
       }),
       { numRuns: 100 },
     );
@@ -389,11 +382,9 @@ describe("TestParseLexiconPropertyProperties", () => {
     fc.assert(
       fc.property(lexiconPropertyInputArb, (data) => {
         const result = parseLexiconProperty(data);
-        if (Object.hasOwn(data, "description")) {
-          expect(result.description).toStrictEqual(data["description"]);
-        } else {
-          expect(result.description).toBeNull();
-        }
+        expect(result.description).toStrictEqual(
+          Object.hasOwn(data, "description") ? data["description"] : null,
+        );
       }),
       { numRuns: 100 },
     );
@@ -472,11 +463,9 @@ describe("TestParseBookmarkInfoProperties", () => {
           ["creator_id", result.creator_id],
           ["creator_name", result.creator_name],
         ] as const) {
-          if (Object.hasOwn(data, field)) {
-            expect(value).toStrictEqual(data[field]);
-          } else {
-            expect(value).toBeNull();
-          }
+          expect(value).toStrictEqual(
+            Object.hasOwn(data, field) ? data[field] : null,
+          );
         }
       }),
       { numRuns: 100 },

@@ -428,7 +428,7 @@ describe("TestToken (test_accounts_namespace.py:416)", () => {
     const accounts = createAccountsNamespace(effects);
     await accounts.add("team", SA_OPTS);
 
-    expect(await accounts.token("team")).toBeNull();
+    await expect(accounts.token("team")).resolves.toBeNull();
   });
 
   it("oauth_token inline returns the plaintext bearer", async () => {
@@ -441,7 +441,7 @@ describe("TestToken (test_accounts_namespace.py:416)", () => {
       token: new Secret("ey.tok-123"),
     });
 
-    expect(await accounts.token("ci")).toBe("ey.tok-123");
+    await expect(accounts.token("ci")).resolves.toBe("ey.tok-123");
   });
 });
 

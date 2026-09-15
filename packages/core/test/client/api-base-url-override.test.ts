@@ -579,7 +579,7 @@ describe("TestWorkspaceFacadeHitsOverride", () => {
 
   it("test_events", async () => {
     const { ws, urls } = envWorkspace();
-    expect(await ws.events()).toStrictEqual(["Login"]);
+    await expect(ws.events()).resolves.toStrictEqual(["Login"]);
     expect(urls()).toStrictEqual([`${BASE}/api/query/events/names`]);
   });
 

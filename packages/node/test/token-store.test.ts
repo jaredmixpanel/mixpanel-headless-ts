@@ -13,7 +13,6 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
-  statSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
@@ -24,7 +23,7 @@ import { OAuthTokens, Secret } from "@mixpanel-headless/core";
 
 import { accountDir } from "../src/auth/storage.js";
 import { createNodeTokenStore } from "../src/auth/token-store.js";
-import { makeTempDir, scrubMpEnv } from "./helpers.js";
+import { expectPosixMode, makeTempDir, scrubMpEnv } from "./helpers.js";
 
 const POSIX = process.platform !== "win32";
 
@@ -72,10 +71,8 @@ describe("TokenStore — real node implementation (packet §3.1)", () => {
     expect(payload["access_token"]).toBe("acc-1");
     expect(payload["refresh_token"]).toBe("ref-1");
     expect(String(payload["access_token"])).not.toContain("*");
-    if (POSIX) {
-      expect(statSync(path).mode & 0o7777).toBe(0o600);
-      expect(statSync(join(root, "accounts", "me")).mode & 0o7777).toBe(0o700);
-    }
+    expectPosixMode(path, 0o600);
+    expectPosixMode(join(root, "accounts", "me"), 0o700);
   });
 
   it("readTokens returns the persisted set, null when none exist", () => {

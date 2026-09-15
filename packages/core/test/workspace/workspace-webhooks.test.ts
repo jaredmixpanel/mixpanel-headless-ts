@@ -167,7 +167,7 @@ describe("TestWorkspaceWebhookCRUD", () => {
 
   it("list_webhooks() returns empty list when no webhooks exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listWebhooks()).toStrictEqual([]);
+    await expect(ws.listWebhooks()).resolves.toStrictEqual([]);
   });
 
   it("create_webhook() returns WebhookMutationResult", async () => {

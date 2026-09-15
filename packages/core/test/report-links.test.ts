@@ -493,9 +493,9 @@ describe("TestParseTable", () => {
     for (const name of Object.keys(expected) as Array<keyof ParsedReportLink>) {
       expect(parsed[name], name).toBe(expected[name]);
     }
-    if (!("raw" in expected)) {
-      expect(parsed.raw).toBe(value.trim());
-    }
+    // Rows that pin `raw` were checked in the loop; the rest default to
+    // the trimmed input.
+    expect(parsed.raw).toBe("raw" in expected ? expected.raw : value.trim());
   });
 
   it.each(ERROR_ROWS)("test_error_row[%j]", (value, code) => {

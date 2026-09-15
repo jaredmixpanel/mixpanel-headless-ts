@@ -64,7 +64,7 @@ import {
   rejectIfSymlink,
   SECRET_STDIN_MAX_BYTES,
 } from "../src/io-utils.js";
-import { makeTempDir } from "./helpers.js";
+import { expectPosixMode, makeTempDir } from "./helpers.js";
 
 const POSIX = process.platform !== "win32";
 
@@ -104,9 +104,7 @@ describe("TestAtomicWriteBytes", () => {
     const target = join(dir, "config.toml");
     atomicWriteBytes(target, utf8("hello world"));
     expect(readFileSync(target, "utf8")).toBe("hello world");
-    if (POSIX) {
-      expect(fileMode(target)).toBe(0o600);
-    }
+    expectPosixMode(target, 0o600);
   });
 
   it.skipIf(!POSIX)("test_writes_bytes_with_owner_only_mode", () => {
@@ -494,12 +492,12 @@ describe("TestRejectIfSymlink", () => {
   it("test_regular_file_is_noop", () => {
     const dir = makeTempDir(cleanups);
     const target = writeOwnerOnly(join(dir, "creds.json"), "x");
-    rejectIfSymlink(target); // no throw
+    expect(() => rejectIfSymlink(target)).not.toThrow();
   });
 
   it("test_missing_path_is_noop", () => {
     const dir = makeTempDir(cleanups);
-    rejectIfSymlink(join(dir, "nothing-here.json")); // no throw
+    expect(() => rejectIfSymlink(join(dir, "nothing-here.json"))).not.toThrow();
   });
 });
 

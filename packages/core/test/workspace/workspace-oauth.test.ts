@@ -123,7 +123,7 @@ describe("TestWorkspaceListWorkspaces (test_workspace_oauth.py:196)", () => {
     }));
     const ws = new Workspace({ session: TEST_SESSION, client });
 
-    expect(await ws.listWorkspaces()).toStrictEqual([]);
+    await expect(ws.listWorkspaces()).resolves.toStrictEqual([]);
   });
 });
 
@@ -132,6 +132,6 @@ describe("TestWorkspaceResolveWorkspaceId (test_workspace_oauth.py:253)", () => 
     const { client } = createMockClient(TEST_SESSION, workspaceHandler);
     const ws = new Workspace({ session: TEST_SESSION, client });
 
-    expect(await ws.resolveWorkspaceId()).toBe(100); // the default view
+    await expect(ws.resolveWorkspaceId()).resolves.toBe(100); // the default view
   });
 });

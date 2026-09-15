@@ -22,6 +22,7 @@ import {
   ParamValidationError,
   ResponseValidationError,
 } from "../src/errors.js";
+import { expectThrows } from "../test-support/raises.js";
 
 describe("coerceInt", () => {
   it("accepts the R4.12 table: 42 / 42.0 / '42'", () => {
@@ -64,15 +65,13 @@ describe("coerceInt", () => {
   });
 
   it("throws ParamValidationError at the 'param' boundary with field detail", () => {
-    try {
-      coerceInt("nope", { kind: "param", field: "project_id" });
-      expect.unreachable();
-    } catch (error) {
-      expect(error).toBeInstanceOf(ParamValidationError);
-      const err = error as ParamValidationError;
-      expect(err.code).toBe("VALIDATION_ERROR");
-      expect(err.details["field"]).toBe("project_id");
-    }
+    const error = expectThrows(() =>
+      coerceInt("nope", { kind: "param", field: "project_id" }),
+    );
+    expect(error).toBeInstanceOf(ParamValidationError);
+    const err = error as ParamValidationError;
+    expect(err.code).toBe("VALIDATION_ERROR");
+    expect(err.details["field"]).toBe("project_id");
   });
 
   it("property #5: integral numbers pass, fractional numbers throw", () => {
@@ -210,9 +209,7 @@ describe("coerceFloat", () => {
         expect(coerceFloat(n)).toBe(n);
         // String(-0) is "0" in JS, so the string leg loses the sign bit;
         // JSON cannot encode -0 either, so the boundary never sees it.
-        if (!Object.is(n, -0)) {
-          expect(coerceFloat(String(n))).toBe(n);
-        }
+        expect(coerceFloat(String(n))).toBe(Object.is(n, -0) ? 0 : n);
       }),
     );
   });
@@ -297,13 +294,23 @@ describe("coerceBool", () => {
   it("property #5: strings outside the two sets always throw", () => {
     const members = new Set([...TRUE_SET, ...FALSE_SET]);
     fc.assert(
-      fc.property(fc.string(), (s) => {
-        if (members.has(s.toLowerCase())) {
-          expect(typeof coerceBool(s)).toBe("boolean");
-        } else {
+      fc.property(
+        fc.string().filter((s) => !members.has(s.toLowerCase())),
+        (s) => {
           expect(() => coerceBool(s)).toThrow(ResponseValidationError);
-        }
-      }),
+        },
+      ),
+    );
+  });
+
+  it("property #5b: members of either set coerce to a boolean in any casing", () => {
+    fc.assert(
+      fc.property(
+        fc.mixedCase(fc.constantFrom(...TRUE_SET, ...FALSE_SET)),
+        (s) => {
+          expect(typeof coerceBool(s)).toBe("boolean");
+        },
+      ),
     );
   });
 });

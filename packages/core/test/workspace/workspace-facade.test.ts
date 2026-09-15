@@ -77,6 +77,7 @@ import {
   createMockClient,
   makeSession,
 } from "../../test-support/client-test-helpers.js";
+import { expectRejects, expectThrows } from "../../test-support/raises.js";
 import { makeEffects } from "../accounts/fake-auth-effects.js";
 
 /** The `_TEST_SESSION` twin (`test_workspace.py:38-46`). */
@@ -547,18 +548,17 @@ describe("TestProjectsMethod (test_workspace.py:861)", () => {
 
 describe("TestCodedWorkspaceGuardCodes (test_workspace.py:919)", () => {
   it("WR2: validateLimit below the minimum raises the coded error", () => {
-    try {
-      validateLimit(0);
-      expect.unreachable("validateLimit(0) must throw");
-    } catch (error) {
-      expect(error).toBeInstanceOf(ParamValidationError);
-      expect((error as ParamValidationError).code).toBe("WR2_LIMIT_TOO_SMALL");
-    }
+    const error = expectThrows(
+      () => validateLimit(0),
+      "validateLimit(0) must throw",
+    );
+    expect(error).toBeInstanceOf(ParamValidationError);
+    expect((error as ParamValidationError).code).toBe("WR2_LIMIT_TOO_SMALL");
   });
 
   it("WR2: streamEvents surfaces the code for a negative limit", async () => {
     const { ws } = makeWorkspace();
-    try {
+    const error = await expectRejects(async () => {
       for await (const _event of ws.streamEvents({
         from_date: "2024-01-01",
         to_date: "2024-01-31",
@@ -566,26 +566,23 @@ describe("TestCodedWorkspaceGuardCodes (test_workspace.py:919)", () => {
       })) {
         void _event;
       }
-      expect.unreachable("stream must throw");
-    } catch (error) {
-      expect(error).toBeInstanceOf(ParamValidationError);
-      expect((error as ParamValidationError).code).toBe("WR2_LIMIT_TOO_SMALL");
-    }
+    }, "stream must throw");
+    expect(error).toBeInstanceOf(ParamValidationError);
+    expect((error as ParamValidationError).code).toBe("WR2_LIMIT_TOO_SMALL");
     await ws.close();
   });
 
   it("WR3: validateLimit above the maximum raises the coded error", () => {
-    try {
-      validateLimit(100_001);
-      expect.unreachable("validateLimit(100001) must throw");
-    } catch (error) {
-      expect((error as ParamValidationError).code).toBe("WR3_LIMIT_TOO_LARGE");
-    }
+    const error = expectThrows(
+      () => validateLimit(100_001),
+      "validateLimit(100001) must throw",
+    );
+    expect((error as ParamValidationError).code).toBe("WR3_LIMIT_TOO_LARGE");
   });
 
   it("WR3: streamEvents surfaces the code for an oversized limit", async () => {
     const { ws } = makeWorkspace();
-    try {
+    const error = await expectRejects(async () => {
       for await (const _event of ws.streamEvents({
         from_date: "2024-01-01",
         to_date: "2024-01-31",
@@ -593,10 +590,8 @@ describe("TestCodedWorkspaceGuardCodes (test_workspace.py:919)", () => {
       })) {
         void _event;
       }
-      expect.unreachable("stream must throw");
-    } catch (error) {
-      expect((error as ParamValidationError).code).toBe("WR3_LIMIT_TOO_LARGE");
-    }
+    }, "stream must throw");
+    expect((error as ParamValidationError).code).toBe("WR3_LIMIT_TOO_LARGE");
     await ws.close();
   });
 
@@ -617,13 +612,12 @@ describe("TestCodedWorkspaceGuardCodes (test_workspace.py:919)", () => {
   });
 
   it("WS2: the level validator rejects a non-literal level", () => {
-    try {
-      validateBusinessContextLevel("org");
-      expect.unreachable("validateBusinessContextLevel('org') must throw");
-    } catch (error) {
-      expect(error).toBeInstanceOf(ParamValidationError);
-      expect((error as ParamValidationError).code).toBe("WS2_INVALID_LEVEL");
-    }
+    const error = expectThrows(
+      () => validateBusinessContextLevel("org"),
+      "validateBusinessContextLevel('org') must throw",
+    );
+    expect(error).toBeInstanceOf(ParamValidationError);
+    expect((error as ParamValidationError).code).toBe("WS2_INVALID_LEVEL");
   });
 
   it("WS2: getBusinessContext surfaces the code before any client call", async () => {
@@ -652,6 +646,8 @@ describe("MeService construction (workspace.py:866-885)", () => {
   });
 
   it("the in-memory cache store round-trips a response", async () => {
+    /* eslint-disable vitest/prefer-expect-resolves -- MeCacheStore.get is a
+       MaybePromise seam; `.resolves` would throw on a synchronous store. */
     const cache = inMemoryMeCache("team");
     expect(cache.accountName).toBe("team");
     expect(await cache.get()).toBeNull();
@@ -660,6 +656,7 @@ describe("MeService construction (workspace.py:866-885)", () => {
     expect(await cache.get()).toBe(response);
     await cache.invalidate();
     expect(await cache.get()).toBeNull();
+    /* eslint-enable vitest/prefer-expect-resolves */
   });
 });
 
@@ -737,7 +734,7 @@ describe("TestFacadeResolverWiring (test_workspace_resolution.py:611)", () => {
     const ws = new Workspace({ session, client });
 
     await ws.me(); // warm the per-account /me cache (as `mp login` would)
-    expect(await ws.api.resolveWorkspaceId()).toBe(2);
+    await expect(ws.api.resolveWorkspaceId()).resolves.toBe(2);
     expect(calls.some((p) => p.includes("workspaces/public"))).toBe(false);
     await ws.close();
   });
@@ -772,9 +769,9 @@ describe("TestFacadeResolverWiring (test_workspace_resolution.py:611)", () => {
     const ws = new Workspace({ session, client });
 
     await ws.me();
-    expect(await ws.api.resolveWorkspaceId()).toBe(2);
+    await expect(ws.api.resolveWorkspaceId()).resolves.toBe(2);
     await ws.use({ project: "777" });
-    expect(await ws.api.resolveWorkspaceId()).toBe(3);
+    await expect(ws.api.resolveWorkspaceId()).resolves.toBe(3);
     await ws.close();
   });
 
@@ -841,9 +838,9 @@ describe("TestFacadeResolverWiring (test_workspace_resolution.py:611)", () => {
     });
 
     await ws.me(); // warm acct_a's /me cache
-    expect(await ws.api.resolveWorkspaceId()).toBe(11);
+    await expect(ws.api.resolveWorkspaceId()).resolves.toBe(11);
     await ws.use({ account: "acct_b" }); // acct_b's /me cache is cold
-    expect(await ws.api.resolveWorkspaceId()).toBe(22);
+    await expect(ws.api.resolveWorkspaceId()).resolves.toBe(22);
     await ws.close();
   });
 
@@ -864,7 +861,7 @@ describe("TestFacadeResolverWiring (test_workspace_resolution.py:611)", () => {
     new Workspace({ session, client });
 
     // Facade left the caller's resolver in place.
-    expect(await client.resolveWorkspaceId()).toBe(99);
+    await expect(client.resolveWorkspaceId()).resolves.toBe(99);
     expect(custom).toHaveBeenCalledTimes(1);
   });
 });

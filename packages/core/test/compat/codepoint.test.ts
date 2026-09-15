@@ -122,9 +122,8 @@ describe("sortedByCodepoint — Python sorted() string order (R11.5)", () => {
         const result = sortedByCodepoint(values);
         expect([...result].sort()).toStrictEqual([...values].sort());
         // BMP-only strings: codepoint order == UTF-16 order.
-        if (values.every((v) => [...v].every((c) => c.length === 1))) {
-          expect(result).toStrictEqual([...values].sort());
-        }
+        fc.pre(values.every((v) => [...v].every((c) => c.length === 1)));
+        expect(result).toStrictEqual([...values].sort());
       }),
     );
   });

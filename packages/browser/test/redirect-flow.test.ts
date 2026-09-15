@@ -362,10 +362,10 @@ describe("completeLogin", () => {
       fetch: transport.fetch,
       now: () => FROZEN_NOW_MS,
     });
-    expect(await store.get(CREDENTIAL_KEYS.pendingLogin("eu"))).toBeNull();
-    expect(await store.get(CREDENTIAL_KEYS.pendingLogin("us"))).not.toBeNull();
-    expect(await store.get(CREDENTIAL_KEYS.tokens("eu"))).not.toBeNull();
-    expect(await store.get(CREDENTIAL_KEYS.tokens("us"))).toBeNull();
+    expect(store.get(CREDENTIAL_KEYS.pendingLogin("eu"))).toBeNull();
+    expect(store.get(CREDENTIAL_KEYS.pendingLogin("us"))).not.toBeNull();
+    expect(store.get(CREDENTIAL_KEYS.tokens("eu"))).not.toBeNull();
+    expect(store.get(CREDENTIAL_KEYS.tokens("us"))).toBeNull();
   });
 
   it.each([["uk"], ["US"], [""]])(
@@ -437,7 +437,7 @@ describe("completeLogin", () => {
       ).rejects.toMatchObject({ code: "BROWSER_NO_PENDING_LOGIN" });
       // Expiry consumes the record (the stale verifier does not stay
       // redeemable at rest).
-      expect(await store.get(CREDENTIAL_KEYS.pendingLogin("us"))).toBeNull();
+      expect(store.get(CREDENTIAL_KEYS.pendingLogin("us"))).toBeNull();
       // Nothing reached the token endpoint.
       expect(
         transport.captures.filter((request) => request.url.endsWith("token/")),

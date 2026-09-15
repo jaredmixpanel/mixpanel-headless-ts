@@ -984,13 +984,11 @@ const config = defineConfig([
     files: TEST_FILES,
     rules: {
       "vitest/prefer-strict-equal": "off",
-      "vitest/no-conditional-expect": "off",
       "vitest/expect-expect": "off",
       "vitest/no-standalone-expect": "off",
       "vitest/valid-title": "off",
       "vitest/no-conditional-tests": "off",
       "vitest/require-to-throw-message": "off",
-      "vitest/prefer-expect-resolves": "off",
       "vitest/no-disabled-tests": "off",
       "vitest/prefer-hooks-on-top": "off",
       "vitest/consistent-test-filename": "off",

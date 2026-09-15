@@ -203,7 +203,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
 
   it("list_bookmarks_v2() returns empty list when none exist (:559)", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listBookmarksV2()).toStrictEqual([]);
+    await expect(ws.listBookmarksV2()).resolves.toStrictEqual([]);
   });
 
   it("list_bookmarks_v2(bookmark_type='funnels') passes filter (:571)", async () => {
@@ -620,17 +620,19 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
 
   it("bookmark_linked_dashboard_ids() returns list of int (:1147)", async () => {
     const { ws } = makeWorkspace(() => ok([10, 20, 30]));
-    expect(await ws.bookmarkLinkedDashboardIds(1)).toStrictEqual([10, 20, 30]);
+    await expect(ws.bookmarkLinkedDashboardIds(1)).resolves.toStrictEqual([
+      10, 20, 30,
+    ]);
   });
 
   it("bookmark_linked_dashboard_ids() returns [] when none linked (:1162)", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.bookmarkLinkedDashboardIds(1)).toStrictEqual([]);
+    await expect(ws.bookmarkLinkedDashboardIds(1)).resolves.toStrictEqual([]);
   });
 
   it("bookmark_linked_dashboard_ids() works with a single ID (:1174)", async () => {
     const { ws } = makeWorkspace(() => ok([42]));
-    expect(await ws.bookmarkLinkedDashboardIds(1)).toStrictEqual([42]);
+    await expect(ws.bookmarkLinkedDashboardIds(1)).resolves.toStrictEqual([42]);
   });
 
   it("get_bookmark_history() returns BookmarkHistoryResponse (:1186)", async () => {
@@ -730,7 +732,7 @@ describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {
 
   it("list_cohorts_full() returns empty list when none exist (:1347)", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listCohortsFull()).toStrictEqual([]);
+    await expect(ws.listCohortsFull()).resolves.toStrictEqual([]);
   });
 
   it("list_cohorts_full(data_group_id='abc') passes filter (:1359)", async () => {

@@ -141,8 +141,8 @@ describe("ensureBrowserClientRegistered", () => {
     expect(transport.captures[1]?.url).toBe(
       "https://eu.mixpanel.com/oauth/mcp/register/",
     );
-    expect(await store.get(CREDENTIAL_KEYS.clientInfo("us"))).not.toBeNull();
-    expect(await store.get(CREDENTIAL_KEYS.clientInfo("eu"))).not.toBeNull();
+    expect(store.get(CREDENTIAL_KEYS.clientInfo("us"))).not.toBeNull();
+    expect(store.get(CREDENTIAL_KEYS.clientInfo("eu"))).not.toBeNull();
   });
 
   it.each([

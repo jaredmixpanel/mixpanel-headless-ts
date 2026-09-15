@@ -68,10 +68,10 @@ describe("Secret", () => {
         // Containment is only meaningful when the raw value is not itself
         // a substring of the mask (design C9 carve-out: s === mask; the
         // empty string / single '*' are contained in every mask render).
-        if (raw.length > 0 && !MASK.includes(raw)) {
-          for (const rendered of pureRenders(secret)) {
-            expect(rendered).not.toContain(raw);
-          }
+        const renders =
+          raw.length > 0 && !MASK.includes(raw) ? pureRenders(secret) : [];
+        for (const rendered of renders) {
+          expect(rendered).not.toContain(raw);
         }
         // Container/enumeration surfaces: exact-shape equality (immune to
         // structural-character false positives), so the secret cannot

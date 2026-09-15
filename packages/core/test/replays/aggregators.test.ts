@@ -286,12 +286,11 @@ describe("module-level aggregators (TestAggregatorFunctions)", () => {
 describe("elements frame — the Phase-2 deferrals (TestReplayBundleProjections)", () => {
   it("test_elements_df", () => {
     const rows = sampleBundle().toElementsRows();
-    if (rows.length > 0) {
-      expect(sampleBundle().elementsRowColumns()).toContain("n_clicks");
-      const row = rows.find((r) => r["target_desc"] === "button.signin");
-      // 1 click from r1 + 3 from r2 = 4
-      expect(row?.["n_clicks"]).toBe(4);
-    }
+    expect(rows.length).toBeGreaterThan(0);
+    expect(sampleBundle().elementsRowColumns()).toContain("n_clicks");
+    const row = rows.find((r) => r["target_desc"] === "button.signin");
+    // 1 click from r1 + 3 from r2 = 4
+    expect(row?.["n_clicks"]).toBe(4);
   });
 
   it("test_elements_df_normalizes_urls", () => {

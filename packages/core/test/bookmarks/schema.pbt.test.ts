@@ -559,14 +559,14 @@ describe("TestDispatchConsistency", () => {
       fc.property(
         fc.constantFrom("insights", "funnels", "retention", "flows", "user"),
         (bt) => {
-          const m = getRootModelForBookmarkType(bt);
-          if (bt === "insights" || bt === "funnels" || bt === "retention") {
-            expect(m).toBe(INSIGHTS_BOOKMARK_PARAMS_MODEL);
-          } else if (bt === "flows") {
-            expect(m).toBe(FLOWS_BOOKMARK_PARAMS_MODEL);
-          } else {
-            expect(m).toBeNull();
-          }
+          const expected = {
+            insights: INSIGHTS_BOOKMARK_PARAMS_MODEL,
+            funnels: INSIGHTS_BOOKMARK_PARAMS_MODEL,
+            retention: INSIGHTS_BOOKMARK_PARAMS_MODEL,
+            flows: FLOWS_BOOKMARK_PARAMS_MODEL,
+            user: null,
+          }[bt];
+          expect(getRootModelForBookmarkType(bt)).toBe(expected);
         },
       ),
       { numRuns: 5 },

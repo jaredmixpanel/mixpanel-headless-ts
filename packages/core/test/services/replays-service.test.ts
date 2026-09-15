@@ -694,13 +694,13 @@ describe("discover parses the min-time series (TestDiscoverParsing)", () => {
 
   it("test_empty_series_returns_empty", async () => {
     const { service } = serviceWithSeries({});
-    expect(
-      await service.discover({
+    await expect(
+      service.discover({
         distinctId: "u-1",
         fromDate: "2026-05-20",
         toDate: "2026-05-27",
       }),
-    ).toStrictEqual([]);
+    ).resolves.toStrictEqual([]);
   });
 
   it("test_nonstandard_retention_defaults_30_with_warning", async () => {

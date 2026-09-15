@@ -201,7 +201,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
   it("list_dashboards() returns empty list when no dashboards exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
 
-    expect(await ws.listDashboards()).toStrictEqual([]);
+    await expect(ws.listDashboards()).resolves.toStrictEqual([]);
   });
 
   it("list_dashboards(ids=[1, 2]) passes filter to API", async () => {
@@ -581,9 +581,9 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
   it("list_blueprint_templates(include_reports=True) forwards the flag", async () => {
     const { ws, transport } = makeWorkspace(() => ok({ templates: {} }));
 
-    expect(
-      await ws.listBlueprintTemplates({ include_reports: true }),
-    ).toStrictEqual([]);
+    await expect(
+      ws.listBlueprintTemplates({ include_reports: true }),
+    ).resolves.toStrictEqual([]);
     expect(transport.captures[0]?.params["include_reports"]).toBe("true");
   });
 
@@ -619,7 +619,9 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
   it("get_bookmark_dashboard_ids() returns the ID list verbatim", async () => {
     const { ws, transport } = makeWorkspace(() => ok([4, 5, 6]));
 
-    expect(await ws.getBookmarkDashboardIds(42)).toStrictEqual([4, 5, 6]);
+    await expect(ws.getBookmarkDashboardIds(42)).resolves.toStrictEqual([
+      4, 5, 6,
+    ]);
     expect(seenOf(transport)).toStrictEqual([
       "GET /api/app/projects/12345/dashboards/bookmarks/42/dashboard-ids",
     ]);
@@ -630,7 +632,7 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
       ok({ metrics: { views: 3 } }),
     );
 
-    expect(await ws.getDashboardErf(12345)).toStrictEqual({
+    await expect(ws.getDashboardErf(12345)).resolves.toStrictEqual({
       metrics: { views: 3 },
     });
     expect(seenOf(transport)).toStrictEqual([

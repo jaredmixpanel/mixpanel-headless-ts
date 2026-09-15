@@ -451,11 +451,13 @@ describe("TestEmptyEventsValidation", () => {
   it("V0: a non-empty events list passes validation", async () => {
     // Any error other than the V0 one is acceptable (the stub response
     // is not a valid insights body, so the transform raises).
-    try {
-      await makeWs().query(["Login"]);
-    } catch (error) {
-      expect(String(error)).not.toContain("At least one event is required");
-    }
+    const error = await makeWs()
+      .query(["Login"])
+      .then(
+        () => null,
+        (error_: unknown) => error_,
+      );
+    expect(String(error)).not.toContain("At least one event is required");
   });
 });
 

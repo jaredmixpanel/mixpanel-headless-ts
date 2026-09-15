@@ -175,7 +175,7 @@ describe("TestListBookmarks (test_workspace_bookmarks.py:61)", () => {
       listBookmarks: vi.fn().mockResolvedValue([]),
     } as never);
 
-    expect(await ws.listBookmarks()).toStrictEqual([]);
+    await expect(ws.listBookmarks()).resolves.toStrictEqual([]);
     await ws.close();
   });
 
@@ -331,7 +331,9 @@ describe("TestQuerySavedReport (test_workspace_bookmarks.py:210)", () => {
       ),
     } as never);
 
-    expect(await ws.querySavedReport(12345)).toBeInstanceOf(SavedReportResult);
+    await expect(ws.querySavedReport(12345)).resolves.toBeInstanceOf(
+      SavedReportResult,
+    );
     await ws.close();
   });
 
@@ -485,7 +487,9 @@ describe("TestQueryFlows (test_workspace_bookmarks.py:450)", () => {
       ),
     } as never);
 
-    expect(await ws.querySavedFlows(12345)).toBeInstanceOf(FlowsResult);
+    await expect(ws.querySavedFlows(12345)).resolves.toBeInstanceOf(
+      FlowsResult,
+    );
     await ws.close();
   });
 

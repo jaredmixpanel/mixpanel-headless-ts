@@ -38,6 +38,7 @@ import {
 } from "../../src/errors.js";
 import { UserQueryResult } from "../../src/types/results/query-engine.js";
 import { Workspace } from "../../src/workspace.js";
+import { expectRejects } from "../../test-support/raises.js";
 import {
   type LogCollector,
   logCollector,
@@ -472,48 +473,45 @@ describe("TestParallelFailedPageHandling", () => {
 describe("TestParallelWorkerCap", () => {
   it("workers > 5 triggers validation error U23", async () => {
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({
+    const error = await expectRejects(
+      ws.queryUser({
         mode: "profiles",
         parallel: true,
         workers: 10,
         limit: 100_000,
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(error).toBeInstanceOf(BookmarkValidationError);
-      expect(codesOf(error)).toContain("U23");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(error).toBeInstanceOf(BookmarkValidationError);
+    expect(codesOf(error)).toContain("U23");
   });
 
   it("workers = 0 triggers validation error U23", async () => {
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({
+    const error = await expectRejects(
+      ws.queryUser({
         mode: "profiles",
         parallel: true,
         workers: 0,
         limit: 100_000,
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U23");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U23");
   });
 
   it("negative workers triggers validation error U23", async () => {
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({
+    const error = await expectRejects(
+      ws.queryUser({
         mode: "profiles",
         parallel: true,
         workers: -1,
         limit: 100_000,
-      });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(codesOf(error)).toContain("U23");
-    }
+      }),
+      "expected BookmarkValidationError",
+    );
+    expect(codesOf(error)).toContain("U23");
   });
 
   it("workers = 5 (the maximum) is accepted", async () => {
@@ -613,27 +611,25 @@ describe("TestParallelRateLimitWarning", () => {
 describe("TestParallelAggregateValidation", () => {
   it("parallel + aggregate raises U18", async () => {
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({ parallel: true, mode: "aggregate" });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      expect(error).toBeInstanceOf(BookmarkValidationError);
-      expect(codesOf(error)).toContain("U18");
-    }
+    const error = await expectRejects(
+      ws.queryUser({ parallel: true, mode: "aggregate" }),
+      "expected BookmarkValidationError",
+    );
+    expect(error).toBeInstanceOf(BookmarkValidationError);
+    expect(codesOf(error)).toContain("U18");
   });
 
   it("the U18 message mentions profiles mode", async () => {
     const ws = workspaceFactory(mockWorkspaceClient());
-    try {
-      await ws.queryUser({ parallel: true, mode: "aggregate" });
-      expect.unreachable("expected BookmarkValidationError");
-    } catch (error) {
-      const u18 = (error as BookmarkValidationError).errors.filter(
-        (e) => e.code === "U18",
-      );
-      expect(u18).toHaveLength(1);
-      expect(u18[0]!.message.toLowerCase()).toContain("profiles");
-    }
+    const error = await expectRejects(
+      ws.queryUser({ parallel: true, mode: "aggregate" }),
+      "expected BookmarkValidationError",
+    );
+    const u18 = (error as BookmarkValidationError).errors.filter(
+      (e) => e.code === "U18",
+    );
+    expect(u18).toHaveLength(1);
+    expect(u18[0]!.message.toLowerCase()).toContain("profiles");
   });
 
   it("parallel=false with aggregate is accepted", async () => {

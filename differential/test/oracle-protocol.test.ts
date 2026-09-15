@@ -124,8 +124,8 @@ describe("oracle.info / oracle.shutdown / framing", () => {
 
   it("ignores blank input lines", async () => {
     const server = makeServer();
-    expect(await server.handleLine("")).toBeNull();
-    expect(await server.handleLine("   \t ")).toBeNull();
+    await expect(server.handleLine("")).resolves.toBeNull();
+    await expect(server.handleLine("   \t ")).resolves.toBeNull();
   });
 
   it("answers id null with -32700 for unparseable lines", async () => {
@@ -186,9 +186,9 @@ describe("oracle.info / oracle.shutdown / framing", () => {
 
 describe("oracle.call: compat surface", () => {
   it("returns ok output for compat.zfill", async () => {
-    expect(
-      await call(makeServer(), "compat.zfill", { value: "-1", width: 3 }),
-    ).toStrictEqual({ ok: true, output: "-01" });
+    await expect(
+      call(makeServer(), "compat.zfill", { value: "-1", width: 3 }),
+    ).resolves.toStrictEqual({ ok: true, output: "-01" });
   });
 
   // Raw request lines mirror Python json.dumps tokens exactly — JS
@@ -263,39 +263,39 @@ describe("oracle.call: compat surface", () => {
 
   it("returns R10.9 edge outputs matching CPython", async () => {
     const server = makeServer();
-    expect(
-      await call(server, "compat.python_str", { value: true }),
-    ).toStrictEqual({
+    await expect(
+      call(server, "compat.python_str", { value: true }),
+    ).resolves.toStrictEqual({
       ok: true,
       output: "True",
     });
-    expect(
-      await call(server, "compat.python_str", { value: null }),
-    ).toStrictEqual({
+    await expect(
+      call(server, "compat.python_str", { value: null }),
+    ).resolves.toStrictEqual({
       ok: true,
       output: "None",
     });
-    expect(
-      await call(server, "compat.python_str", { value: [] }),
-    ).toStrictEqual({
+    await expect(
+      call(server, "compat.python_str", { value: [] }),
+    ).resolves.toStrictEqual({
       ok: true,
       output: "[]",
     });
-    expect(
-      await call(server, "compat.python_str", { value: "" }),
-    ).toStrictEqual({
+    await expect(
+      call(server, "compat.python_str", { value: "" }),
+    ).resolves.toStrictEqual({
       ok: true,
       output: "",
     });
-    expect(
-      await call(server, "compat.zfill", { value: "", width: 2 }),
-    ).toStrictEqual({
+    await expect(
+      call(server, "compat.zfill", { value: "", width: 2 }),
+    ).resolves.toStrictEqual({
       ok: true,
       output: "00",
     });
-    expect(
-      await call(server, "compat.zfill", { value: "\u{1F40D}", width: 3 }),
-    ).toStrictEqual({ ok: true, output: "00\u{1F40D}" });
+    await expect(
+      call(server, "compat.zfill", { value: "\u{1F40D}", width: 3 }),
+    ).resolves.toStrictEqual({ ok: true, output: "00\u{1F40D}" });
   });
 
   it("returns thrown library errors as bare-class DATA (R5.4)", async () => {
@@ -602,16 +602,16 @@ describe("codec.roundtrip (protocol 1.1 addendum, §8)", () => {
       _list_item_filters: null,
       _list_item_quantifier: null,
     };
-    expect(await roundtrip(makeServer(), payload)).toStrictEqual({
+    await expect(roundtrip(makeServer(), payload)).resolves.toStrictEqual({
       ok: true,
       output: payload,
     });
   });
 
   it("round-trips SecretStr to the REVEALED value (C8a anti-vacuity)", async () => {
-    expect(
-      await roundtrip(makeServer(), { $type: "SecretStr", value: "s3cr3t" }),
-    ).toStrictEqual({
+    await expect(
+      roundtrip(makeServer(), { $type: "SecretStr", value: "s3cr3t" }),
+    ).resolves.toStrictEqual({
       ok: true,
       output: { $type: "SecretStr", value: "s3cr3t" },
     });
@@ -640,7 +640,7 @@ describe("codec.roundtrip (protocol 1.1 addendum, §8)", () => {
       _list_item_filters: null,
       _list_item_quantifier: null,
     };
-    expect(await roundtrip(makeServer(), payload)).toStrictEqual({
+    await expect(roundtrip(makeServer(), payload)).resolves.toStrictEqual({
       ok: true,
       output: payload,
     });

@@ -322,7 +322,7 @@ describe("TestListDropFilters", () => {
 
   it("list_drop_filters() returns empty list when none exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listDropFilters()).toStrictEqual([]);
+    await expect(ws.listDropFilters()).resolves.toStrictEqual([]);
   });
 });
 
@@ -396,7 +396,7 @@ describe("TestListCustomProperties", () => {
 
   it("list_custom_properties() returns empty list when none exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listCustomProperties()).toStrictEqual([]);
+    await expect(ws.listCustomProperties()).resolves.toStrictEqual([]);
   });
 });
 
@@ -555,7 +555,7 @@ describe("TestListCustomEvents", () => {
 
   it("list_custom_events() returns empty list when none exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listCustomEvents()).toStrictEqual([]);
+    await expect(ws.listCustomEvents()).resolves.toStrictEqual([]);
   });
 });
 
@@ -651,7 +651,7 @@ describe("TestListLookupTables", () => {
 
   it("list_lookup_tables() returns empty list when none exist", async () => {
     const { ws } = makeWorkspace(() => ok([]));
-    expect(await ws.listLookupTables()).toStrictEqual([]);
+    await expect(ws.listLookupTables()).resolves.toStrictEqual([]);
   });
 
   it("list_lookup_tables(data_group_id=5) passes param to API", async () => {

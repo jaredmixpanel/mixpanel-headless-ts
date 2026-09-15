@@ -169,7 +169,7 @@ describe("TestAuthHeader", () => {
       expect(second).toBe("Bearer tok-2");
       expect(calls).toBe(2);
       // current_auth_header (public) routes through the same path.
-      expect(await client.currentAuthHeader()).toBe("Bearer tok-3");
+      await expect(client.currentAuthHeader()).resolves.toBe("Bearer tok-3");
       expect(calls).toBe(3);
     } finally {
       await client.close();
@@ -273,7 +273,7 @@ describe("TestUse", () => {
     const client = createMixpanelClient({ session: sessionTeam() });
     const before = await client.currentAuthHeader();
     await client.use({ account: sessionOther().account });
-    expect(await client.currentAuthHeader()).not.toBe(before);
+    await expect(client.currentAuthHeader()).resolves.not.toBe(before);
     expect(client.session.account.name).toBe("other");
   });
 });
@@ -368,7 +368,7 @@ describe("TestUseOAuthAtomicity", () => {
 
     // Atomicity: the prior session and auth header survive.
     expect(client.session).toBe(priorSession);
-    expect(await client.currentAuthHeader()).toBe(priorHeader);
+    await expect(client.currentAuthHeader()).resolves.toBe(priorHeader);
   });
 
   it("test_use_to_oauth_token_account_without_token_raises", async () => {

@@ -67,7 +67,7 @@ describe("main", () => {
       .spyOn(process.stderr, "write")
       .mockImplementation(() => true);
     try {
-      expect(await main(["--report", "xml"])).toBe(2);
+      await expect(main(["--report", "xml"])).resolves.toBe(2);
     } finally {
       errSpy.mockRestore();
     }

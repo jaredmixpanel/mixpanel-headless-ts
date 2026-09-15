@@ -299,7 +299,7 @@ describe("TestApiClientBulkLexicon", () => {
       status: 200,
       json: [{ name: "Purchase" }],
     }));
-    expect(await client.listEventDefinitions()).toStrictEqual([
+    await expect(client.listEventDefinitions()).resolves.toStrictEqual([
       { name: "Purchase" },
     ]);
   });

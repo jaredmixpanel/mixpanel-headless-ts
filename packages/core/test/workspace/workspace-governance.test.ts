@@ -412,7 +412,7 @@ describe("Workspace.listDataVolumeAnomalies", () => {
   it("returns an empty list when none exist (:538)", async () => {
     const { ws } = makeWorkspace(() => ok({ anomalies: [] }));
 
-    expect(await ws.listDataVolumeAnomalies()).toStrictEqual([]);
+    await expect(ws.listDataVolumeAnomalies()).resolves.toStrictEqual([]);
   });
 
   it("passes query_params filters (:553)", async () => {
@@ -494,7 +494,7 @@ describe("Workspace.listDeletionRequests", () => {
   it("returns an empty list when none exist (:658)", async () => {
     const { ws } = makeWorkspace(() => ok([]));
 
-    expect(await ws.listDeletionRequests()).toStrictEqual([]);
+    await expect(ws.listDeletionRequests()).resolves.toStrictEqual([]);
   });
 });
 
