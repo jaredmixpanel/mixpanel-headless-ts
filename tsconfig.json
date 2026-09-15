@@ -12,6 +12,7 @@
     { "path": "conformance-runner" },
     { "path": "differential" },
     { "path": "scripts" },
-    { "path": "tsconfig.tests.json" }
+    { "path": "tsconfig.tests.json" },
+    { "path": "docs/.vitepress" }
   ]
 }

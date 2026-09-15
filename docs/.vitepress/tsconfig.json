@@ -1,0 +1,14 @@
+// The documentation site's config (Node) and theme (browser) share one
+// project so eslint's typed rules and `tsc -b` see them under the repo's
+// strict flags. `vite/client` supplies the `*.css` module shims; `*.vue`
+// is declared in theme/shims.d.ts.
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "lib": ["es2023", "dom", "dom.iterable"],
+    "types": ["node", "vite/client"]
+  },
+  "include": ["**/*.ts", "**/*.mts"],
+  "exclude": ["cache", "dist"]
+}
