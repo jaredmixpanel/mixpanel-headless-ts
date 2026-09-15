@@ -8,7 +8,7 @@
  * injection and `query_origin` live in the shared core, R10.8).
  */
 
-import type { ClientCore } from "../../client/client.js";
+import type { ClientCore } from "../../client/core.js";
 import { isPlainRecord, jsonValuePythonStr } from "../../client/internals.js";
 import { JsonNumber, type JsonValue } from "../../client/json-value.js";
 import { pythonJsonDumps } from "../../compat/index.js";

@@ -33,9 +33,9 @@ type Bag = readonly [module: string, name: string];
 const CONFIG_BAGS: readonly Bag[] = [
   ["packages/core/src/workspace.ts", "WorkspaceOptions"],
   ["packages/core/src/client/client.ts", "MixpanelClientOptions"],
-  ["packages/core/src/client/client.ts", "ClientRequestOptions"],
-  ["packages/core/src/client/client.ts", "ClientAppRequestOptions"],
-  ["packages/core/src/client/client.ts", "QueryHostRequestOptions"],
+  ["packages/core/src/client/core.ts", "ClientRequestOptions"],
+  ["packages/core/src/client/core.ts", "ClientAppRequestOptions"],
+  ["packages/core/src/client/core.ts", "QueryHostRequestOptions"],
   ["packages/core/src/client/internals.ts", "TransportRequestOptions"],
   ["packages/core/src/client/app-request.ts", "AppRequestOptions"],
   ["packages/core/src/client/json-value.ts", "ToNativeJsonOptions"],

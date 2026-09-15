@@ -13,7 +13,7 @@
  * parsed bodies verbatim — result shaping is B5 (Caution #11).
  */
 
-import type { ClientCore } from "../../client/client.js";
+import type { ClientCore } from "../../client/core.js";
 import { isPlainRecord, jsonValuePythonStr } from "../../client/internals.js";
 import type { JsonValue } from "../../client/json-value.js";
 import { pythonInt, pythonJsonDumps } from "../../compat/index.js";

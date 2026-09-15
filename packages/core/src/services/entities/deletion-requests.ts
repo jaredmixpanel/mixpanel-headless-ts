@@ -10,7 +10,7 @@
  */
 
 import { appRequest } from "../../client/app-request.js";
-import type { ClientCore } from "../../client/client.js";
+import type { ClientCore } from "../../client/core.js";
 import type { JsonValue } from "../../client/json-value.js";
 import { maybeScopedPath } from "../../client/scope.js";
 import { expectListResult } from "./shared.js";

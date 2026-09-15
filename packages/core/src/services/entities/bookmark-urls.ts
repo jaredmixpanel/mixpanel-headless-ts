@@ -21,7 +21,7 @@
 
 import { appRequest } from "../../client/app-request.js";
 import { parseRetryAfter, retryWaitSeconds } from "../../client/backoff.js";
-import type { ClientCore } from "../../client/client.js";
+import type { ClientCore } from "../../client/core.js";
 import {
   errorMessage,
   MixpanelHttpError,

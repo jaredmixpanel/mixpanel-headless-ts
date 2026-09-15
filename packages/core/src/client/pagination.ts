@@ -47,7 +47,7 @@ import {
   RateLimitError,
   ServerError,
 } from "../errors.js";
-import type { ClientCore } from "./client.js";
+import type { ClientCore } from "./core.js";
 import {
   isPlainRecord,
   MixpanelHttpError,
