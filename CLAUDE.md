@@ -61,7 +61,7 @@ the lefthook hooks (eslint + prettier at commit, typecheck + `test:fast` at push
 - Docs site: `npm run docs:build` (`tsc -b` → `docs:api` = TypeDoc into git-ignored
   `docs/reference/` → `vitepress build docs`; every ` ```ts twoslash ` block is
   type-checked against `dist/`, dead links fail); `docs:dev` previews;
-  `docs:api:check` validates the reference (not in the gate until it is warning-free).
+  `docs:api:check` validates the reference (in the gate).
   Conventions in CONTRIBUTING.md "Documentation".
 - Releasing: `npx changeset` per change to a published package;
   `npm run version` / `release` = `changeset version` / `publish` (run by `release.yml`).
