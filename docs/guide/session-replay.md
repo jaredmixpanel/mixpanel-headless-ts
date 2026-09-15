@@ -1,6 +1,6 @@
 ---
 title: Session Replay
-description: Discover a user's Mixpanel Session Replay recordings, fetch the raw rrweb event stream from the signed CDN, and project the sessions into analysis-ready rows plus an LLM-friendly action timeline.
+description: "Discover a user's Mixpanel Session Replay recordings, fetch the raw rrweb event stream from the signed CDN, and project the sessions into analysis-ready rows plus an LLM-friendly action timeline."
 ---
 
 # Session Replay
@@ -51,7 +51,7 @@ console.log(bundle.replays[0]?.summaryMarkdown());
 
 ## Discovery
 
-`listReplays` issues a single Insights query against `$mp_session_record` and returns lightweight `ReplaySummary` handles (no bytes fetched). Discover by user and date window, or hydrate an explicit list of IDs:
+`listReplays` issues a single Insights query against `$mp_session_record` and returns lightweight [`ReplaySummary`](/reference/core/classes/ReplaySummary) handles (no bytes fetched). Discover by user and date window, or hydrate an explicit list of IDs:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -122,7 +122,7 @@ Set `re_sign_on_expiry: false` to fail with `SignedURLExpiredError` instead of r
 
 ### Fetching many replays
 
-`fetchReplays` materializes a list of IDs in parallel (`concurrency`, default `4`, across replays; `cdn_concurrency` within each) and returns a `ReplayBundle`. A replay that 404s, stalls, or fails to parse is skipped and recorded on `bundle.failures`; only an all-fail batch throws.
+`fetchReplays` materializes a list of IDs in parallel (`concurrency`, default `4`, across replays; `cdn_concurrency` within each) and returns a `ReplayBundle`. A replay that 404s, stalls, or fails to parse is skipped and recorded on `bundle.failures` ([`ReplayFetchFailure`](/reference/core/interfaces/ReplayFetchFailure)); only an all-fail batch throws.
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -140,7 +140,7 @@ for (const { replay_id, error } of bundle.failures) {
 
 ## Row Projections
 
-A `ReplayBundle` (and a single `Replay`) exposes long-format projections keyed by `replay_id`. Where Python exposes a pandas frame (`sessions_df`, `actions_df`, …) the port exposes a `to…Rows()` method returning plain objects plus a `…RowColumns()` method with the frame's column contract. `bundle.toRows()` defaults to the sessions rows.
+A [`ReplayBundle`](/reference/core/classes/ReplayBundle) (and a single [`Replay`](/reference/core/classes/Replay)) exposes long-format projections keyed by `replay_id`. Where Python exposes a pandas frame (`sessions_df`, `actions_df`, …) the port exposes a `to…Rows()` method returning plain objects plus a `…RowColumns()` method with the frame's column contract. `bundle.toRows()` defaults to the sessions rows.
 
 | Projection         | Grain                                       | Key columns                                                                                                                                                                                          |
 | ------------------ | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -172,7 +172,7 @@ The `description` column on the actions rows is the analyzer's full human-readab
 
 ### UserAction
 
-Each entry of `replay.actions` is a `UserAction`:
+Each entry of `replay.actions` is a [`UserAction`](/reference/core/classes/UserAction):
 
 ```ts
 action.timestamp; // Unix milliseconds
@@ -263,7 +263,7 @@ const converters = await ws.replaysForUser("user-99", {
 console.table(bundle.compareRows(converters)); // action | self_count | other_count | delta
 ```
 
-`where(...)` accepts `distinct_id`, `contains_url`, `has_event`, `min_duration_s`, and `max_duration_s`. `head(n)` keeps the first `n` replays. `findPattern` accepts a `labelFn` override — `defaultLabelFn`, `selectorLabelFn` and `urlNormalizer` are exported from `@mixpanel-headless/core`:
+`where(...)` accepts `distinct_id`, `contains_url`, `has_event`, `min_duration_s`, and `max_duration_s`. `head(n)` keeps the first `n` replays. `findPattern` accepts a `labelFn` override — [`defaultLabelFn`](/reference/core/functions/defaultLabelFn), [`selectorLabelFn`](/reference/core/functions/selectorLabelFn) and [`urlNormalizer`](/reference/core/functions/urlNormalizer) are exported from `@mixpanel-headless/core`:
 
 ```ts twoslash
 import { selectorLabelFn } from "@mixpanel-headless/core";
@@ -300,7 +300,7 @@ const bundle = await ws.replaysForUser("user-42", {
 console.table(bundle.toMixpanelRows()); // replay_id | t | event_name | properties
 ```
 
-For a single replay or an explicit ID list, use `eventsForReplay(replayId)` / `eventsForReplays(replayIds)`; the batched form returns a `Map` from `replay_id` to its `ReplayEvent[]`:
+For a single replay or an explicit ID list, use `eventsForReplay(replayId)` / `eventsForReplays(replayIds)`; the batched form returns a `Map` from `replay_id` to its [`ReplayEvent`](/reference/core/classes/ReplayEvent) list:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -330,9 +330,9 @@ More than 5 `event_properties` throws `ParamValidationError` before any request.
 
 Replay files live behind a time-bounded signed CDN URL (≈5-minute TTL). The query string is a **bearer credential**:
 
-- `SignedReplay.toString()` masks the credential (`query_string='<redacted N chars>'`), and the library **never logs it** at any level.
+- [`SignedReplay`](/reference/core/classes/SignedReplay)`.toString()` masks the credential (`query_string='<redacted N chars>'`), and the library **never logs it** at any level.
 - `signReplay` / `signReplays` return the handles; `fetchReplay` signs and fetches in one step.
-- A 403 indicating the project's `SESSION_RECORDING_SENSITIVE_DATA` flag throws `SessionReplayAccessError` with the missing permission in `details`. An expired URL throws `SignedURLExpiredError`; a replay absent from the CDN throws `ReplayNotFoundError`. All three extend `SessionReplayError`.
+- A 403 indicating the project's `SESSION_RECORDING_SENSITIVE_DATA` flag throws [`SessionReplayAccessError`](/reference/core/classes/SessionReplayAccessError) with the missing permission in `details`. An expired URL throws [`SignedURLExpiredError`](/reference/core/classes/SignedURLExpiredError); a replay absent from the CDN throws [`ReplayNotFoundError`](/reference/core/classes/ReplayNotFoundError). All three extend [`SessionReplayError`](/reference/core/classes/SessionReplayError).
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -354,4 +354,5 @@ The analyzer's `target_desc` and `description` fields surface text that rrweb ca
 
 - [Streaming Data](/guide/streaming) — the other Node-only extraction surface
 - [Error Handling](/guide/error-handling) — the `SessionReplayError` family and its codes
-- [API Reference](/api/) — `Workspace`, `ReplayBundle`, `Replay`, `UserAction`
+- Reference: [`Workspace`](/reference/core/classes/Workspace), [`ReplayBundle`](/reference/core/classes/ReplayBundle), [`Replay`](/reference/core/classes/Replay), [`ReplaySummary`](/reference/core/classes/ReplaySummary), [`ReplayEvent`](/reference/core/classes/ReplayEvent), [`SignedReplay`](/reference/core/classes/SignedReplay), [`UserAction`](/reference/core/classes/UserAction)
+- Option bags: [`WorkspaceReplaysForUserOptions`](/reference/core/interfaces/WorkspaceReplaysForUserOptions), [`WorkspaceListReplaysOptions`](/reference/core/interfaces/WorkspaceListReplaysOptions), [`WorkspaceFetchReplayOptions`](/reference/core/interfaces/WorkspaceFetchReplayOptions), [`WorkspaceFetchReplaysOptions`](/reference/core/interfaces/WorkspaceFetchReplaysOptions), [`WorkspaceStreamReplayOptions`](/reference/core/interfaces/WorkspaceStreamReplayOptions), [`WorkspaceEventsForReplayOptions`](/reference/core/interfaces/WorkspaceEventsForReplayOptions), [`WorkspaceSignReplayOptions`](/reference/core/interfaces/WorkspaceSignReplayOptions)

@@ -1,6 +1,6 @@
 ---
 title: Data Discovery
-description: Explore your Mixpanel project's schema before writing queries. Discovery results are cached for the session.
+description: "Explore your Mixpanel project's schema before writing queries. Discovery results are cached for the session."
 ---
 
 # Data Discovery
@@ -49,7 +49,7 @@ const properties = await ws.properties("Purchase");
 console.log(properties); // ['amount', 'country', 'product_id', ...]
 ```
 
-Properties include both event-specific and common properties, sorted alphabetically. An unknown event name throws `EventNotFoundError`, whose message suggests close matches.
+Properties include both event-specific and common properties, sorted alphabetically. An unknown event name throws [`EventNotFoundError`](/reference/core/classes/EventNotFoundError), whose message suggests close matches.
 
 ## Property Values
 
@@ -101,7 +101,7 @@ Results are alphabetically sorted by `name`. Subproperties whose values are them
 
 The discovered names and types feed directly into `Filter.listContains` and `GroupBy.listItem` for filtering and breaking down by subproperty values — see [Insights Queries](/guide/query).
 
-### SubPropertyInfo
+### [SubPropertyInfo](/reference/core/classes/SubPropertyInfo)
 
 ```ts
 sp.name; // "Brand"
@@ -125,7 +125,7 @@ for (const f of funnels) {
 }
 ```
 
-### FunnelInfo
+### [FunnelInfo](/reference/core/classes/FunnelInfo)
 
 ```ts
 f.funnel_id; // 12345
@@ -149,7 +149,7 @@ for (const c of cohorts) {
 }
 ```
 
-### SavedCohort
+### [SavedCohort](/reference/core/classes/SavedCohort)
 
 ```ts
 c.id; // 12345
@@ -179,7 +179,7 @@ const insights = await ws.listBookmarks("insights");
 const flows = await ws.listBookmarks("flows");
 ```
 
-### BookmarkInfo
+### [BookmarkInfo](/reference/core/classes/BookmarkInfo)
 
 ```ts
 b.id; // 98765
@@ -232,7 +232,7 @@ for (const [prop, info] of Object.entries(schema.schema_json.properties)) {
 }
 ```
 
-### LexiconSchema
+### [LexiconSchema](/reference/core/classes/LexiconSchema)
 
 ```ts
 s.entity_type; // "event", "profile", or other API-returned types
@@ -240,7 +240,7 @@ s.name; // "Purchase"
 s.schema_json; // LexiconDefinition
 ```
 
-### LexiconDefinition
+### [LexiconDefinition](/reference/core/classes/LexiconDefinition)
 
 ```ts
 s.schema_json.description; // "User completes a purchase"
@@ -248,7 +248,7 @@ s.schema_json.properties; // Record<string, LexiconProperty>
 s.schema_json.metadata; // LexiconMetadata | null
 ```
 
-### LexiconProperty
+### [LexiconProperty](/reference/core/classes/LexiconProperty)
 
 ```ts
 const prop = s.schema_json.properties["amount"];
@@ -257,7 +257,7 @@ prop.description; // "Purchase amount in USD"
 prop.metadata; // LexiconMetadata | null
 ```
 
-### LexiconMetadata
+### [LexiconMetadata](/reference/core/classes/LexiconMetadata)
 
 ```ts
 const meta = s.schema_json.metadata;
@@ -305,7 +305,7 @@ Python returns a `networkx.DiGraph` from `to_graph()`; the port has no graph lib
 
 The relationships come from the query API's per-event properties gather — one pass for the whole project rather than a schema lookup per entity; on very large projects it can still take minutes. Group properties are not gathered (headless has no data-groups listing to enumerate them).
 
-### SchemaGraphResult
+### [SchemaGraphResult](/reference/core/classes/SchemaGraphResult)
 
 ```ts
 schema.events; // raw event definitions
@@ -348,7 +348,7 @@ for (const event of top) {
 const avg = await ws.topEvents({ type: "average", limit: 5 });
 ```
 
-### TopEvent
+### [TopEvent](/reference/core/classes/TopEvent)
 
 ```ts
 event.event; // "Login"
@@ -433,4 +433,5 @@ console.table(result.toRows());
 
 - [Live Analytics](/guide/live-analytics) — Segmentation, funnels, retention and the activity feed
 - [Streaming Data](/guide/streaming) — Stream events and profiles
-- [API Reference](/api/) — Complete API documentation
+- [API Reference](/api/) — Complete API documentation; every method on this page is a member of [`Workspace`](/reference/core/classes/Workspace)
+- Option bags: [`WorkspaceEventsOptions`](/reference/core/interfaces/WorkspaceEventsOptions), [`WorkspacePropertyValuesOptions`](/reference/core/interfaces/WorkspacePropertyValuesOptions), [`WorkspaceSubpropertiesOptions`](/reference/core/interfaces/WorkspaceSubpropertiesOptions), [`WorkspaceTopEventsOptions`](/reference/core/interfaces/WorkspaceTopEventsOptions), [`WorkspaceLexiconSchemasOptions`](/reference/core/interfaces/WorkspaceLexiconSchemasOptions), [`WorkspaceSchemaGraphOptions`](/reference/core/interfaces/WorkspaceSchemaGraphOptions)

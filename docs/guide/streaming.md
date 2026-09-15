@@ -1,6 +1,6 @@
 ---
 title: Streaming Data
-description: Stream events and user profiles directly from Mixpanel. Ideal for ETL pipelines, data processing, exports, and Unix-style piping.
+description: "Stream events and user profiles directly from Mixpanel. Ideal for ETL pipelines, data processing, exports, and Unix-style piping."
 ---
 
 # Streaming Data
@@ -561,7 +561,7 @@ import { createNodeWorkspace } from "@mixpanel-headless/node";
 
 ## Method Signatures
 
-### `streamEvents()`
+### [`streamEvents()`](/reference/core/classes/Workspace#streamevents)
 
 ```ts
 streamEvents(options: StreamEventsOptions): AsyncGenerator<unknown, void, undefined>
@@ -578,7 +578,7 @@ streamEvents(options: StreamEventsOptions): AsyncGenerator<unknown, void, undefi
 | `uuid`      | `() => string`     | `insert_id` generator for events missing one |
 | `signal`    | `AbortSignal`      | Cancellation signal                          |
 
-### `streamProfiles()`
+### [`streamProfiles()`](/reference/core/classes/Workspace#streamprofiles)
 
 ```ts
 streamProfiles(options?: StreamProfilesOptions): AsyncGenerator<unknown, void, undefined>
@@ -611,3 +611,4 @@ Event export is project-scoped by design: a pinned workspace (`ws.use({ workspac
 
 - [Live Analytics](/guide/live-analytics) — Real-time Mixpanel reports
 - [User Profiles](/guide/query-users) — Typed profile queries with cohorts and aggregation
+- Reference: [`Workspace.streamEvents()`](/reference/core/classes/Workspace#streamevents), [`Workspace.streamProfiles()`](/reference/core/classes/Workspace#streamprofiles), [`createNodeWorkspace()`](/reference/node/functions/createNodeWorkspace), [`ParamValidationError`](/reference/core/classes/ParamValidationError)

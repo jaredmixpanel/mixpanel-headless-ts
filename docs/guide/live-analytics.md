@@ -1,6 +1,6 @@
 ---
 title: Live Analytics
-description: Query Mixpanel's analytics APIs directly for real-time data.
+description: "Query Mixpanel's analytics APIs directly for real-time data."
 ---
 
 # Live Analytics
@@ -63,7 +63,7 @@ console.table(result.toRows());
 
 Bare property names passed to `on` are normalized to `properties["…"]` for you.
 
-### SegmentationResult
+### [SegmentationResult](/reference/core/classes/SegmentationResult)
 
 ```ts
 result.event; // "Purchase"
@@ -120,7 +120,7 @@ for (const step of result.steps) {
 
 A funnel id that is not a positive integer is rejected with `ParamValidationError` before any request.
 
-### FunnelResult
+### [FunnelResult](/reference/core/classes/FunnelResult)
 
 ```ts
 result.funnel_id; // 12345
@@ -166,7 +166,7 @@ for (const cohort of result.cohorts) {
 
 Other knobs: `return_where` filters the return event, `interval` (default `1`) and `interval_count` (default `10`) shape the retention buckets.
 
-### RetentionResult
+### [RetentionResult](/reference/core/classes/RetentionResult)
 
 ```ts
 result.born_event; // "Signup"
@@ -284,7 +284,7 @@ while (page.sentinel_event !== null) {
 }
 ```
 
-### ActivityFeedResult
+### [ActivityFeedResult](/reference/core/classes/ActivityFeedResult)
 
 ```ts
 result.distinct_ids; // ["user_123", "user_456"]
@@ -353,7 +353,7 @@ const funnel = await ws.querySavedReport(98766, {
 
 `bookmark_type` routes the query (`"insights"` by default, or `"funnels"`, `"retention"`, `"flows"`).
 
-### SavedReportResult
+### [SavedReportResult](/reference/core/classes/SavedReportResult)
 
 ```ts
 result.bookmark_id; // 98765
@@ -394,7 +394,7 @@ for (const step of result.steps) {
 }
 ```
 
-### FlowsResult
+### [FlowsResult](/reference/core/classes/FlowsResult)
 
 ```ts
 result.bookmark_id; // 54321
@@ -485,7 +485,7 @@ All three accept `unit: "hour" | "day"` and `where`. A non-numeric property is r
 
 ## API Escape Hatch
 
-For Mixpanel APIs not covered by the `Workspace` class, use the `api` property to make authenticated requests directly:
+For Mixpanel APIs not covered by the `Workspace` class, use the [`api`](/reference/core/classes/Workspace#api) property — a [`MixpanelClient`](/reference/core/interfaces/MixpanelClient) — to make authenticated requests directly:
 
 ```ts twoslash
 import { createNodeWorkspace } from "@mixpanel-headless/node";
@@ -529,7 +529,7 @@ client.appRequest("POST", "/projects/3/annotations", {
 
 Authentication is handled automatically — the client adds the proper `Authorization` header to all requests, retries rate limits, and maps failures to the same error classes as the rest of the library (`AuthenticationError`, `RateLimitError`, `QueryError`, `ServerError`).
 
-Both methods return the parsed JSON as a `JsonValue` — a lossless tree that preserves integers beyond 2⁵³. Narrow it yourself, or pass it through `toNativeJson()` from `@mixpanel-headless/core` to get plain JavaScript values.
+Both methods return the parsed JSON as a [`JsonValue`](/reference/core/type-aliases/JsonValue) — a lossless tree that preserves integers beyond 2⁵³. Narrow it yourself, or pass it through [`toNativeJson()`](/reference/core/functions/toNativeJson) from `@mixpanel-headless/core` to get plain JavaScript values. The option bags are [`ClientRequestOptions`](/reference/core/interfaces/ClientRequestOptions) and [`ClientAppRequestOptions`](/reference/core/interfaces/ClientAppRequestOptions).
 
 The client also exposes `projectId`, `region` and `workspaceId`, which are useful when constructing URLs for APIs that require these values in the path.
 
@@ -541,4 +541,6 @@ The client also exposes `projectId`, `region` and `workspaceId`, which are usefu
 
 - [Report Links](/guide/report-links) — Share a query as a URL, or resolve a URL back into a query
 - [Data Discovery](/guide/discovery) — Explore your event schema
-- [API Reference](/api/) — Complete API documentation
+- [API Reference](/api/) — Complete API documentation; every method on this page is a member of [`Workspace`](/reference/core/classes/Workspace)
+- Option bags: [`WorkspaceSegmentationOptions`](/reference/core/interfaces/WorkspaceSegmentationOptions), [`WorkspaceFunnelOptions`](/reference/core/interfaces/WorkspaceFunnelOptions), [`WorkspaceRetentionOptions`](/reference/core/interfaces/WorkspaceRetentionOptions), [`WorkspaceEventCountsOptions`](/reference/core/interfaces/WorkspaceEventCountsOptions), [`WorkspacePropertyCountsOptions`](/reference/core/interfaces/WorkspacePropertyCountsOptions), [`WorkspaceFrequencyOptions`](/reference/core/interfaces/WorkspaceFrequencyOptions), [`WorkspaceSegmentationNumericOptions`](/reference/core/interfaces/WorkspaceSegmentationNumericOptions), [`WorkspaceNumericOptions`](/reference/core/interfaces/WorkspaceNumericOptions)
+- Result classes not shown above: [`FunnelResultStep`](/reference/core/classes/FunnelResultStep), [`CohortInfo`](/reference/core/classes/CohortInfo), [`EventCountsResult`](/reference/core/classes/EventCountsResult), [`PropertyCountsResult`](/reference/core/classes/PropertyCountsResult), [`UserEvent`](/reference/core/classes/UserEvent), [`FrequencyResult`](/reference/core/classes/FrequencyResult), [`NumericBucketResult`](/reference/core/classes/NumericBucketResult), [`NumericSumResult`](/reference/core/classes/NumericSumResult), [`NumericAverageResult`](/reference/core/classes/NumericAverageResult)
