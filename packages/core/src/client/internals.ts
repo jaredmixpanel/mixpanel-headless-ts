@@ -23,6 +23,7 @@ import {
   pythonStr,
   pythonStrip,
   type PythonValue,
+  setOwn,
 } from "../compat/index.js";
 import {
   AuthenticationError,
@@ -242,7 +243,7 @@ function toPythonValue(value: JsonValue): PythonValue {
   if (isPlainRecord(value)) {
     const out: Record<string, PythonValue> = {};
     for (const [key, member] of Object.entries(value)) {
-      out[key] = toPythonValue(member);
+      setOwn(out, key, toPythonValue(member));
     }
     return out;
   }
