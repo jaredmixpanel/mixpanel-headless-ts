@@ -14,6 +14,7 @@ import { JsonNumber, type JsonValue } from "../../client/json-value.js";
 import { pythonJsonDumps } from "../../compat/index.js";
 import { QueryError } from "../../errors.js";
 import { ProfilePageResult } from "../../types/results/index.js";
+import { isSet, pythonTypeNameOf, truthyList, truthyStr } from "../shared.js";
 
 /** Options bag of {@link EngageMethods.engageStats}. */
 export interface EngageStatsOptions {
@@ -101,21 +102,6 @@ export interface EngageMethods {
     page: number,
     options?: ExportProfilesPageOptions,
   ) => Promise<ProfilePageResult>;
-}
-
-/** Python truthiness for optional strings. */
-function truthyStr(value: string | null | undefined): value is string {
-  return value !== undefined && value !== null && value !== "";
-}
-
-/** Python truthiness for optional lists. */
-function truthyList(value: readonly unknown[] | null | undefined): boolean {
-  return value !== undefined && value !== null && value.length > 0;
-}
-
-/** `is not None`. */
-function isSet<T>(value: T | null | undefined): value is T {
-  return value !== undefined && value !== null;
 }
 
 /**
@@ -294,36 +280,4 @@ export function createEngageMethods(core: ClientCore): EngageMethods {
       });
     },
   };
-}
-
-/**
- * Python `type(x).__name__` over a parsed wire value (message text
- * only — out of contract per R5.4).
- *
- * @param value - The parsed value.
- * @returns The CPython type name of the `json.loads` product.
- */
-function pythonTypeNameOf(value: JsonValue): string {
-  if (value === null) {
-    return "NoneType";
-  }
-  if (typeof value === "boolean") {
-    return "bool";
-  }
-  if (typeof value === "string") {
-    return "str";
-  }
-  if (typeof value === "bigint") {
-    return "int";
-  }
-  if (value instanceof JsonNumber) {
-    return value.isIntegerToken() ? "int" : "float";
-  }
-  if (typeof value === "number") {
-    return Number.isInteger(value) ? "int" : "float";
-  }
-  if (Array.isArray(value)) {
-    return "list";
-  }
-  return "dict";
 }

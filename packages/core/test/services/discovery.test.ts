@@ -42,6 +42,7 @@ import {
 import {
   DiscoveryService,
   inferScalarType,
+  iterDictRows,
   type WarningSink,
 } from "../../src/services/discovery.js";
 import {
@@ -914,5 +915,29 @@ describe("TestListSubproperties", () => {
     const [inferred, mixed] = inferScalarType([true, 1]);
     expect(inferred).toBe("string");
     expect(mixed).toBe(true);
+  });
+});
+
+describe("TestIterDictRows", () => {
+  it("reports each unparseable value through logger.debug and keeps the rest", () => {
+    const lines: string[] = [];
+    const rows = iterDictRows(['{"a": 1}', "not json", '[1, {"b": 2}]', "{"], {
+      debug: (message) => {
+        lines.push(message);
+      },
+    });
+    expect(rows.map((row) => JSON.stringify(row))).toStrictEqual([
+      '{"a":1}',
+      '{"b":2}',
+    ]);
+    expect(lines).toHaveLength(2);
+    for (const line of lines) {
+      expect(line).toMatch(/^Skipping unparseable property value: /);
+    }
+  });
+
+  it("drops unparseable values without a logger", () => {
+    const rows = iterDictRows(["not json", '{"a": 1}']);
+    expect(rows.map((row) => JSON.stringify(row))).toStrictEqual(['{"a":1}']);
   });
 });

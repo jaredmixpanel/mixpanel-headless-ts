@@ -21,18 +21,19 @@
 import { appRequest } from "../../client/app-request.js";
 import type { ClientCore } from "../../client/core.js";
 import {
+  bindFirst,
   handleResponse,
   isPlainRecord,
   MixpanelHttpError,
 } from "../../client/internals.js";
-import type { JsonValue } from "../../client/json-value.js";
+import { type JsonValue, toNativeJson } from "../../client/json-value.js";
 import {
   LosslessJsonError,
   parseLossless,
 } from "../../client/lossless-json.js";
-import { maybeScopedPath } from "../../client/scope.js";
-import { cpSlice, pythonStr } from "../../compat/index.js";
+import { cpSlice, pythonStr, pythonStrOf } from "../../compat/index.js";
 import { MixpanelHeadlessError } from "../../errors.js";
+import { scopedPath } from "../shared.js";
 import {
   expectListResult,
   expectRecordResult,
@@ -222,48 +223,255 @@ export interface LookupTableMethods {
     signal?: AbortSignal,
   ) => Promise<string>;
 }
-
-/**
- * Build the C5 lookup-table methods over the C1 core seam.
- *
- * @param core - The shared client internals seam.
- * @returns The method bag.
- */
-export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
-  const scopedPath = (domainPath: string): string =>
-    maybeScopedPath(domainPath, {
-      projectId: core.projectId(),
-      workspaceId: core.workspaceId(),
-    });
-
-  const registerLookupTable = async (
-    formData: Record<string, string>,
-    signal?: AbortSignal,
-  ): Promise<Record<string, JsonValue>> => {
-    const path = scopedPath("data-definitions/lookup-tables/");
-    const url = core.buildUrl("app", path);
-    const authHeader = await core.getAuthHeader();
-    const { response, release } = await core.rawRequest(
+async function registerLookupTable(
+  core: ClientCore,
+  formData: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(core, "data-definitions/lookup-tables/");
+  const url = core.buildUrl("app", path);
+  const authHeader = await core.getAuthHeader();
+  const { response, release } = await core.rawRequest(
+    {
+      method: "POST",
+      url,
+      params: {},
+      jsonBody: null,
+      formBody: formData,
+      headers: core.requestHeaders({ Authorization: authHeader }),
+      timeoutSeconds: core.defaultTimeoutSeconds(url),
+    },
+    signal,
+  );
+  let text: string;
+  try {
+    // Buffered read under the request-timeout clock (B4-ARB W-F2).
+    text = await response.text();
+  } finally {
+    release();
+  }
+  if (response.status >= 400) {
+    handleResponse(
       {
-        method: "POST",
-        url,
-        params: {},
-        jsonBody: null,
-        formBody: formData,
-        headers: core.requestHeaders({ Authorization: authHeader }),
-        timeoutSeconds: core.defaultTimeoutSeconds(url),
+        status: response.status,
+        text,
+        header: (name) => response.headers.get(name),
       },
-      signal,
+      {
+        projectId: core.projectId(),
+        requestMethod: "POST",
+        requestUrl: url,
+        requestParams: null,
+        requestBody: formData,
+      },
     );
-    let text: string;
-    try {
-      // Buffered read under the request-timeout clock (B4-ARB W-F2).
-      text = await response.text();
-    } finally {
-      release();
+  }
+  let body: JsonValue;
+  try {
+    // Python `response.json()` — json.loads on wire data (GATE-R5).
+    body = parseLossless(text, { pythonConstants: true });
+  } catch (error) {
+    if (!(error instanceof LosslessJsonError)) {
+      throw error; // RangeError etc. propagates (B0-ARB F3).
     }
+    throw new MixpanelHeadlessError(
+      `register_lookup_table returned non-JSON response ` +
+        `(status ${response.status}): ${cpSlice(text, 0, 500)}`,
+      "INVALID_RESPONSE",
+      null,
+      { cause: error },
+    );
+  }
+  let unwrapped: JsonValue = body;
+  if (isPlainRecord(unwrapped) && Object.hasOwn(unwrapped, "results")) {
+    unwrapped = unwrapped["results"] as JsonValue;
+  }
+  if (!isPlainRecord(unwrapped)) {
+    throw new MixpanelHeadlessError(
+      `Unexpected response from register_lookup_table: ` +
+        `expected dict, got ${pythonTypeNameOf(unwrapped)}`,
+    );
+  }
+  return unwrapped;
+}
+
+async function listLookupTables(
+  core: ClientCore,
+  options: ListLookupTablesOptions = {},
+): Promise<JsonValue[]> {
+  const path = scopedPath(core, "data-definitions/lookup-tables/");
+  const params: Record<string, string> = {};
+  if (options.data_group_id !== undefined && options.data_group_id !== null) {
+    params["data-group-id"] = pythonStr(options.data_group_id);
+  }
+  const result = await appRequest(core.appDeps(options.signal), "GET", path, {
+    params: paramsOrNone(params) ?? null,
+  });
+  return expectListResult(result, "list_lookup_tables");
+}
+
+async function getLookupUploadUrl(
+  core: ClientCore,
+  contentType = "text/csv",
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(core, "data-definitions/lookup-tables/upload-url/");
+  const result = await appRequest(core.appDeps(signal), "GET", path, {
+    params: { "content-type": contentType },
+  });
+  const record = expectRecordResult(result, "get_lookup_upload_url");
+  for (const requiredKey of ["url", "path", "key"]) {
+    if (!Object.hasOwn(record, requiredKey)) {
+      throw new MixpanelHeadlessError(
+        `get_lookup_upload_url response missing required ` +
+          `field '${requiredKey}': ${pythonStrOf(toNativeJson(record))}`,
+        "MISSING_FIELD",
+      );
+    }
+  }
+  return record;
+}
+
+async function uploadToSignedUrl(
+  core: ClientCore,
+  url: string,
+  csvBytes: Uint8Array,
+  signal?: AbortSignal,
+): Promise<void> {
+  // Fresh-request semantics (`:7647-7657`): the injected fetch IS
+  // the transport analog, but the request carries ONLY the
+  // Content-Type header — no auth, no 4-layer merge (a stray
+  // header breaks GCS signature validation).
+  const fetchImpl = core.http().fetchImpl;
+  let response: Response;
+  try {
+    response = await fetchImpl(url, {
+      method: "PUT",
+      headers: { "Content-Type": "text/csv" },
+      body: csvBytes as BodyInit,
+      redirect: "manual",
+      ...(signal === undefined ? {} : { signal }),
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error; // R6.7 cancellation passthrough.
+    }
+    if (
+      error instanceof MixpanelHttpError ||
+      error instanceof TypeError ||
+      error instanceof DOMException
+    ) {
+      // The `except httpx.HTTPError` arm (`:7664-7669`) — this
+      // call site maps transport failures straight to
+      // UPLOAD_ERROR (not the retry loop's HTTP_ERROR). The
+      // classification set mirrors the R2.10 adapter guards; no
+      // bare catch.
+      throw new MixpanelHeadlessError(
+        `Upload to signed URL failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        "UPLOAD_ERROR",
+        { url },
+        { cause: error },
+      );
+    }
+    throw error;
+  }
+  if (response.status >= 300) {
+    const text = await response.text();
+    throw new MixpanelHeadlessError(
+      `Upload to signed URL failed with status ` +
+        `${response.status}: ${cpSlice(text, 0, 500)}`,
+      "UPLOAD_ERROR",
+      { status_code: response.status, url },
+    );
+  }
+}
+
+function markLookupTableReady(
+  core: ClientCore,
+  formData: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  return registerLookupTable(core, formData, signal);
+}
+
+async function getLookupUploadStatus(
+  core: ClientCore,
+  uploadId: string,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(
+    core,
+    "data-definitions/lookup-tables/upload-status/",
+  );
+  const result = await appRequest(core.appDeps(signal), "GET", path, {
+    params: { "upload-id": uploadId },
+  });
+  return expectRecordResult(result, "get_lookup_upload_status");
+}
+
+async function updateLookupTable(
+  core: ClientCore,
+  dataGroupId: number | bigint,
+  body: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(core, "data-definitions/lookup-tables/");
+  // A bigint id reaches the wire as an exact integer token via the
+  // transport's bigint-aware body serializer (`stringifyJsonBody`).
+  const payload = { ...body, "data-group-id": dataGroupId };
+  const result = await appRequest(core.appDeps(signal), "PATCH", path, {
+    jsonBody: payload,
+  });
+  return expectRecordResult(result, "update_lookup_table");
+}
+
+async function deleteLookupTables(
+  core: ClientCore,
+  dataGroupIds: ReadonlyArray<number | bigint>,
+  signal?: AbortSignal,
+): Promise<void> {
+  const path = scopedPath(core, "data-definitions/lookup-tables/");
+  await appRequest(core.appDeps(signal), "DELETE", path, {
+    jsonBody: { "data-group-ids": dataGroupIds },
+  });
+}
+
+async function downloadLookupTable(
+  core: ClientCore,
+  dataGroupId: number | bigint,
+  options: DownloadLookupTableOptions = {},
+): Promise<Uint8Array> {
+  const path = scopedPath(core, "data-definitions/lookup-tables/download/");
+  const url = core.buildUrl("app", path);
+  const authHeader = await core.getAuthHeader();
+  const params: Record<string, string> = {
+    "data-group-id": pythonStr(dataGroupId),
+  };
+  if (options.file_name !== undefined && options.file_name !== null) {
+    params["file-name"] = options.file_name;
+  }
+  if (options.limit !== undefined && options.limit !== null) {
+    params["limit"] = pythonStr(options.limit);
+  }
+  const { response, release } = await core.rawRequest(
+    {
+      method: "GET",
+      url,
+      params,
+      jsonBody: null,
+      formBody: null,
+      headers: core.requestHeaders({ Authorization: authHeader }),
+      timeoutSeconds: core.defaultTimeoutSeconds(url),
+    },
+    options.signal,
+  );
+  try {
+    // Buffered read under the request-timeout clock (B4-ARB W-F2).
     if (response.status >= 400) {
+      const text = await response.text();
+      // Delegate error handling (`:7926-7934`).
       handleResponse(
         {
           status: response.status,
@@ -272,286 +480,72 @@ export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
         },
         {
           projectId: core.projectId(),
-          requestMethod: "POST",
+          requestMethod: "GET",
           requestUrl: url,
-          requestParams: null,
-          requestBody: formData,
+          requestParams: params,
+          requestBody: null,
         },
       );
     }
-    let body: JsonValue;
-    try {
-      // Python `response.json()` — json.loads on wire data (GATE-R5).
-      body = parseLossless(text, { pythonConstants: true });
-    } catch (error) {
-      if (!(error instanceof LosslessJsonError)) {
-        throw error; // RangeError etc. propagates (B0-ARB F3).
-      }
-      throw new MixpanelHeadlessError(
-        `register_lookup_table returned non-JSON response ` +
-          `(status ${response.status}): ${cpSlice(text, 0, 500)}`,
-        "INVALID_RESPONSE",
-        null,
-        { cause: error },
-      );
+    return new Uint8Array(await response.arrayBuffer());
+  } finally {
+    release();
+  }
+}
+
+async function getLookupDownloadUrl(
+  core: ClientCore,
+  dataGroupId: number | bigint,
+  signal?: AbortSignal,
+): Promise<string> {
+  const path = scopedPath(core, "data-definitions/lookup-tables/download-url/");
+  const result = await appRequest(core.appDeps(signal), "GET", path, {
+    params: { "data-group-id": pythonStr(dataGroupId) },
+  });
+  if (isPlainRecord(result)) {
+    const record = result;
+    // `result.get("url") or result.get("download_url", "")` —
+    // Python truthiness picks the fallback for None/""/0 members.
+    const primary = Object.hasOwn(record, "url") ? record["url"] : undefined;
+    const fallback = Object.hasOwn(record, "download_url")
+      ? record["download_url"]
+      : "";
+    const urlValue = jsonTruthy(primary) ? primary : fallback;
+    if (typeof urlValue === "string" && urlValue !== "") {
+      return urlValue;
     }
-    let unwrapped: JsonValue = body;
-    if (isPlainRecord(unwrapped) && Object.hasOwn(unwrapped, "results")) {
-      unwrapped = unwrapped["results"] as JsonValue;
-    }
-    if (!isPlainRecord(unwrapped)) {
-      throw new MixpanelHeadlessError(
-        `Unexpected response from register_lookup_table: ` +
-          `expected dict, got ${pythonTypeNameOf(unwrapped)}`,
-      );
-    }
-    return unwrapped;
-  };
-
-  return {
-    listLookupTables: async (
-      options: ListLookupTablesOptions = {},
-    ): Promise<JsonValue[]> => {
-      const path = scopedPath("data-definitions/lookup-tables/");
-      const params: Record<string, string> = {};
-      if (
-        options.data_group_id !== undefined &&
-        options.data_group_id !== null
-      ) {
-        params["data-group-id"] = pythonStr(options.data_group_id);
-      }
-      const result = await appRequest(
-        core.appDeps(options.signal),
-        "GET",
-        path,
-        {
-          params: paramsOrNone(params) ?? null,
-        },
-      );
-      return expectListResult(result, "list_lookup_tables");
-    },
-
-    getLookupUploadUrl: async (
-      contentType = "text/csv",
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const path = scopedPath("data-definitions/lookup-tables/upload-url/");
-      const result = await appRequest(core.appDeps(signal), "GET", path, {
-        params: { "content-type": contentType },
-      });
-      const record = expectRecordResult(result, "get_lookup_upload_url");
-      for (const requiredKey of ["url", "path", "key"]) {
-        if (!Object.hasOwn(record, requiredKey)) {
-          throw new MixpanelHeadlessError(
-            `get_lookup_upload_url response missing required ` +
-              `field '${requiredKey}': ${pythonStrOfRecord(record)}`,
-            "MISSING_FIELD",
-          );
-        }
-      }
-      return record;
-    },
-
-    uploadToSignedUrl: async (
-      url: string,
-      csvBytes: Uint8Array,
-      signal?: AbortSignal,
-    ): Promise<void> => {
-      // Fresh-request semantics (`:7647-7657`): the injected fetch IS
-      // the transport analog, but the request carries ONLY the
-      // Content-Type header — no auth, no 4-layer merge (a stray
-      // header breaks GCS signature validation).
-      const fetchImpl = core.http().fetchImpl;
-      let response: Response;
-      try {
-        response = await fetchImpl(url, {
-          method: "PUT",
-          headers: { "Content-Type": "text/csv" },
-          body: csvBytes as BodyInit,
-          redirect: "manual",
-          ...(signal === undefined ? {} : { signal }),
-        });
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          throw error; // R6.7 cancellation passthrough.
-        }
-        if (
-          error instanceof MixpanelHttpError ||
-          error instanceof TypeError ||
-          error instanceof DOMException
-        ) {
-          // The `except httpx.HTTPError` arm (`:7664-7669`) — this
-          // call site maps transport failures straight to
-          // UPLOAD_ERROR (not the retry loop's HTTP_ERROR). The
-          // classification set mirrors the R2.10 adapter guards; no
-          // bare catch.
-          throw new MixpanelHeadlessError(
-            `Upload to signed URL failed: ${
-              error instanceof Error ? error.message : String(error)
-            }`,
-            "UPLOAD_ERROR",
-            { url },
-            { cause: error },
-          );
-        }
-        throw error;
-      }
-      if (response.status >= 300) {
-        const text = await response.text();
-        throw new MixpanelHeadlessError(
-          `Upload to signed URL failed with status ` +
-            `${response.status}: ${cpSlice(text, 0, 500)}`,
-          "UPLOAD_ERROR",
-          { status_code: response.status, url },
-        );
-      }
-    },
-
-    registerLookupTable,
-
-    markLookupTableReady: (
-      formData: Record<string, string>,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> =>
-      registerLookupTable(formData, signal),
-
-    getLookupUploadStatus: async (
-      uploadId: string,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const path = scopedPath("data-definitions/lookup-tables/upload-status/");
-      const result = await appRequest(core.appDeps(signal), "GET", path, {
-        params: { "upload-id": uploadId },
-      });
-      return expectRecordResult(result, "get_lookup_upload_status");
-    },
-
-    updateLookupTable: async (
-      dataGroupId: number | bigint,
-      body: Record<string, unknown>,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const path = scopedPath("data-definitions/lookup-tables/");
-      // A bigint id reaches the wire as an exact integer token via the
-      // transport's bigint-aware body serializer (`stringifyJsonBody`).
-      const payload = { ...body, "data-group-id": dataGroupId };
-      const result = await appRequest(core.appDeps(signal), "PATCH", path, {
-        jsonBody: payload,
-      });
-      return expectRecordResult(result, "update_lookup_table");
-    },
-
-    deleteLookupTables: async (
-      dataGroupIds: ReadonlyArray<number | bigint>,
-      signal?: AbortSignal,
-    ): Promise<void> => {
-      const path = scopedPath("data-definitions/lookup-tables/");
-      await appRequest(core.appDeps(signal), "DELETE", path, {
-        jsonBody: { "data-group-ids": dataGroupIds },
-      });
-    },
-
-    downloadLookupTable: async (
-      dataGroupId: number | bigint,
-      options: DownloadLookupTableOptions = {},
-    ): Promise<Uint8Array> => {
-      const path = scopedPath("data-definitions/lookup-tables/download/");
-      const url = core.buildUrl("app", path);
-      const authHeader = await core.getAuthHeader();
-      const params: Record<string, string> = {
-        "data-group-id": pythonStr(dataGroupId),
-      };
-      if (options.file_name !== undefined && options.file_name !== null) {
-        params["file-name"] = options.file_name;
-      }
-      if (options.limit !== undefined && options.limit !== null) {
-        params["limit"] = pythonStr(options.limit);
-      }
-      const { response, release } = await core.rawRequest(
-        {
-          method: "GET",
-          url,
-          params,
-          jsonBody: null,
-          formBody: null,
-          headers: core.requestHeaders({ Authorization: authHeader }),
-          timeoutSeconds: core.defaultTimeoutSeconds(url),
-        },
-        options.signal,
-      );
-      try {
-        // Buffered read under the request-timeout clock (B4-ARB W-F2).
-        if (response.status >= 400) {
-          const text = await response.text();
-          // Delegate error handling (`:7926-7934`).
-          handleResponse(
-            {
-              status: response.status,
-              text,
-              header: (name) => response.headers.get(name),
-            },
-            {
-              projectId: core.projectId(),
-              requestMethod: "GET",
-              requestUrl: url,
-              requestParams: params,
-              requestBody: null,
-            },
-          );
-        }
-        return new Uint8Array(await response.arrayBuffer());
-      } finally {
-        release();
-      }
-    },
-
-    getLookupDownloadUrl: async (
-      dataGroupId: number | bigint,
-      signal?: AbortSignal,
-    ): Promise<string> => {
-      const path = scopedPath("data-definitions/lookup-tables/download-url/");
-      const result = await appRequest(core.appDeps(signal), "GET", path, {
-        params: { "data-group-id": pythonStr(dataGroupId) },
-      });
-      if (isPlainRecord(result)) {
-        const record = result;
-        // `result.get("url") or result.get("download_url", "")` —
-        // Python truthiness picks the fallback for None/""/0 members.
-        const primary = Object.hasOwn(record, "url")
-          ? record["url"]
-          : undefined;
-        const fallback = Object.hasOwn(record, "download_url")
-          ? record["download_url"]
-          : "";
-        const urlValue = jsonTruthy(primary) ? primary : fallback;
-        if (typeof urlValue === "string" && urlValue !== "") {
-          return urlValue;
-        }
-        throw new MixpanelHeadlessError(
-          "No download URL found in response",
-          "MISSING_URL",
-          { response: record },
-        );
-      }
-      if (typeof result === "string") {
-        return result;
-      }
-      throw new MixpanelHeadlessError(
-        `Unexpected response from get_lookup_download_url: ` +
-          `expected dict or str, got ${pythonTypeNameOf(result)}`,
-      );
-    },
-  };
+    throw new MixpanelHeadlessError(
+      "No download URL found in response",
+      "MISSING_URL",
+      { response: record },
+    );
+  }
+  if (typeof result === "string") {
+    return result;
+  }
+  throw new MixpanelHeadlessError(
+    `Unexpected response from get_lookup_download_url: ` +
+      `expected dict or str, got ${pythonTypeNameOf(result)}`,
+  );
 }
 
 /**
- * Spell a parsed record the way Python interpolates a dict into an
- * f-string (message text only — out of contract per R5.4; used by the
- * MISSING_FIELD message).
+ * Build the C5 lookup-table methods over the C1 core seam.
  *
- * @param record - The parsed record.
- * @returns An approximate `str(dict)` spelling.
+ * @param core - The shared client internals seam.
+ * @returns The method bag.
  */
-function pythonStrOfRecord(record: Record<string, JsonValue>): string {
-  return JSON.stringify(record);
+export function createLookupTableMethods(core: ClientCore): LookupTableMethods {
+  return {
+    listLookupTables: bindFirst(core, listLookupTables),
+    getLookupUploadUrl: bindFirst(core, getLookupUploadUrl),
+    uploadToSignedUrl: bindFirst(core, uploadToSignedUrl),
+    registerLookupTable: bindFirst(core, registerLookupTable),
+    markLookupTableReady: bindFirst(core, markLookupTableReady),
+    getLookupUploadStatus: bindFirst(core, getLookupUploadStatus),
+    updateLookupTable: bindFirst(core, updateLookupTable),
+    deleteLookupTables: bindFirst(core, deleteLookupTables),
+    downloadLookupTable: bindFirst(core, downloadLookupTable),
+    getLookupDownloadUrl: bindFirst(core, getLookupDownloadUrl),
+  };
 }

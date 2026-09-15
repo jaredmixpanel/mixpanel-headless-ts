@@ -45,12 +45,13 @@ const YMD_PATTERN = /^(\p{Nd}{1,4})-(\p{Nd}{1,2})-(\p{Nd}{1,2})$/u;
 const MONTH_DAYS = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
 /**
- * Whether a proleptic-Gregorian year is a leap year.
+ * Whether a proleptic-Gregorian year is a leap year (CPython
+ * `calendar.isleap`).
  *
  * @param year - The year.
  * @returns `true` for leap years.
  */
-function isLeap(year: number): boolean {
+export function isLeapYear(year: number): boolean {
   return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
 }
 
@@ -74,7 +75,8 @@ export function parseYmd(value: string): CivilDate | null {
   if (year < 1 || month < 1 || month > 12 || day < 1) {
     return null;
   }
-  const cap = month === 2 && isLeap(year) ? 29 : (MONTH_DAYS[month] as number);
+  const cap =
+    month === 2 && isLeapYear(year) ? 29 : (MONTH_DAYS[month] as number);
   if (day > cap) {
     return null;
   }

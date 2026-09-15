@@ -15,38 +15,7 @@ import { isPlainRecord } from "../../client/internals.js";
 import { JsonNumber, type JsonValue } from "../../client/json-value.js";
 import { pythonStr, type PythonValue } from "../../compat/python-str.js";
 import { MixpanelHeadlessError } from "../../errors.js";
-
-/**
- * Python `type(x).__name__` over a parsed wire value (message text
- * only — out of contract per R5.4; B4-C2 `engage.ts` twin).
- *
- * @param value - The parsed value.
- * @returns The CPython type name of the `json.loads` product.
- */
-export function pythonTypeNameOf(value: JsonValue): string {
-  if (value === null) {
-    return "NoneType";
-  }
-  if (typeof value === "boolean") {
-    return "bool";
-  }
-  if (typeof value === "string") {
-    return "str";
-  }
-  if (typeof value === "bigint") {
-    return "int";
-  }
-  if (value instanceof JsonNumber) {
-    return value.isIntegerToken() ? "int" : "float";
-  }
-  if (typeof value === "number") {
-    return Number.isInteger(value) ? "int" : "float";
-  }
-  if (Array.isArray(value)) {
-    return "list";
-  }
-  return "dict";
-}
+import { pythonTypeNameOf } from "../shared.js";
 
 /**
  * Enforce the `isinstance(result, dict)` guard shared by every
@@ -91,28 +60,6 @@ export function expectListResult(
     );
   }
   return result;
-}
-
-/**
- * Python truthiness for optional strings (`if bookmark_type:`).
- *
- * @param value - The optional string.
- * @returns Whether Python would take the branch.
- */
-export function truthyStr(value: string | null | undefined): value is string {
-  return value !== undefined && value !== null && value !== "";
-}
-
-/**
- * Python truthiness for optional lists (`if ids:`).
- *
- * @param value - The optional list.
- * @returns Whether Python would take the branch.
- */
-export function truthyList(
-  value: readonly unknown[] | null | undefined,
-): boolean {
-  return value !== undefined && value !== null && value.length > 0;
 }
 
 /**
@@ -250,3 +197,7 @@ export function pyIntEquals(
   }
   return false;
 }
+
+// TODO(Ω): shim — the entity factories and workspace members still import
+// these three from here; repoint them to services/shared.ts and drop this.
+export { pythonTypeNameOf, truthyList, truthyStr } from "../shared.js";

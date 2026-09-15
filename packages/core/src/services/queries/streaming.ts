@@ -23,6 +23,7 @@ import {
 } from "../../client/backoff.js";
 import type { ClientCore } from "../../client/core.js";
 import {
+  bindFirst,
   errorMessage,
   isPlainRecord,
   MixpanelHttpError,
@@ -311,31 +312,255 @@ function pyIterate(results: JsonValue): readonly JsonValue[] {
   // Numbers / booleans / tokens: `'int' object is not iterable`.
   throw new TypeError("'object' is not iterable");
 }
+async function* exportEvents(
+  core: ClientCore,
+  fromDate: string,
+  toDate: string,
+  options: ExportEventsOptions = {},
+): AsyncGenerator<JsonValue, void, undefined> {
+  const url = core.buildUrl("export", "/export");
+  const params: Record<string, unknown> = {
+    project_id: core.projectId(),
+    from_date: fromDate,
+    to_date: toDate,
+  };
+  if (
+    options.events !== undefined &&
+    options.events !== null &&
+    options.events.length > 0
+  ) {
+    params["event"] = pythonJsonDumps(options.events);
+  }
+  if (
+    options.where !== undefined &&
+    options.where !== null &&
+    options.where !== ""
+  ) {
+    params["where"] = options.where;
+  }
+  if (options.limit !== undefined && options.limit !== null) {
+    params["limit"] = options.limit;
+  }
+  const onBatch = options.onBatch ?? null;
+  // Ensure the pool token exists (`self._ensure_client()`); the auth
+  // header + 4-layer merge are captured ONCE before the retry loop,
+  // exactly like Python (`api_client.py:1861-1867`).
+  const headers = core.requestHeaders({
+    Authorization: await core.getAuthHeader(),
+    "Accept-Encoding": "gzip",
+  });
+  // Signal-aware sleep from the C1 closures (R6.7 point 3) — the
+  // executor member is unused; streaming reads the RAW response.
+  const sleep = core.executeDeps(options.signal).sleep;
 
-/**
- * Build the C2 streaming methods over the C1 core seam.
- *
- * @param core - The shared client internals seam.
- * @returns The method bag.
- */
-export function createStreamingMethods(core: ClientCore): StreamingMethods {
-  async function* exportEvents(
-    fromDate: string,
-    toDate: string,
-    options: ExportEventsOptions = {},
-  ): AsyncGenerator<JsonValue, void, undefined> {
-    const url = core.buildUrl("export", "/export");
+  for (let attempt = 0; attempt <= core.maxRetries; attempt += 1) {
+    let batchCount = 0; // Reset on each attempt (deviation-3 lock).
+    let releaseRaw: (() => void) | null = null;
+    try {
+      const { response, stopTimeout, release } = await core.rawRequest(
+        {
+          method: "GET",
+          url,
+          params,
+          jsonBody: null,
+          formBody: null,
+          headers,
+          timeoutSeconds: core.exportTimeoutSeconds,
+        },
+        options.signal,
+      );
+      releaseRaw = release;
+      // Headers are in: stop the export-timeout clock. Body reads are
+      // not clock-bounded (D-B4ARB-1 — httpx read-timeouts are
+      // per-read; a total clock would kill healthy long exports).
+      // Caller-signal forwarding stays live for the stream.
+      stopTimeout();
+      const headerCarrier = {
+        header: (name: string): string | null => response.headers.get(name),
+      };
+      if (response.status === 429) {
+        if (attempt >= core.maxRetries) {
+          const retryAfter = parseRetryAfter(headerCarrier);
+          // FF4 `:1883-1891`: carries project_id; omits response_body.
+          throw new RateLimitError("Rate limit exceeded after max retries", {
+            retryAfter,
+            statusCode: response.status,
+            requestMethod: "GET",
+            requestUrl: url,
+            requestParams: params,
+            projectId: core.projectId(),
+          });
+        }
+        const waitSeconds = retryWaitSeconds(
+          parseRetryAfter(headerCarrier),
+          attempt,
+          core.random,
+        );
+        await sleep(waitSeconds * 1000); // R2.12 seconds→ms seam.
+        continue;
+      }
+      if (response.status === 401) {
+        throw new AuthenticationError(
+          "Invalid credentials. Check username, secret, and project_id.",
+          {
+            statusCode: response.status,
+            requestMethod: "GET",
+            requestUrl: url,
+            requestParams: params,
+          },
+        );
+      }
+      if (response.status === 400) {
+        const bodyText = await response.text();
+        let responseBody: JsonValue | null;
+        try {
+          responseBody = parseLossless(bodyText, { pythonConstants: true });
+        } catch (error) {
+          if (!(error instanceof LosslessJsonError)) {
+            throw error;
+          }
+          // Python: `body.decode()[:500] if body else None` (codepoint
+          // slice, R11.6).
+          responseBody = bodyText === "" ? null : cpSlice(bodyText, 0, 500);
+        }
+        throw new QueryError(errorMessage(responseBody, "Unknown error"), {
+          statusCode: response.status,
+          responseBody,
+          requestMethod: "GET",
+          requestUrl: url,
+          requestParams: params,
+        });
+      }
+      if (response.status < 200 || response.status >= 300) {
+        // httpx `response.raise_for_status()` raises HTTPStatusError —
+        // an httpx.HTTPError subclass, so it lands in the retry catch
+        // below (R2.11: 3xx is an error here too).
+        throw new MixpanelHttpError(httpStatusText(response.status, url));
+      }
+      for await (const line of iterJsonlLines(
+        guardedByteSource(response.body, options.signal),
+      )) {
+        let event: JsonValue;
+        try {
+          event = parseLossless(line, { pythonConstants: true });
+        } catch (error) {
+          if (!(error instanceof LosslessJsonError)) {
+            throw error;
+          }
+          // Python logs a warning and skips the malformed line
+          // (`api_client.py:1936-1937`); log text is out of contract.
+          continue;
+        }
+        yield event;
+        batchCount += 1;
+        if (onBatch !== null && batchCount % 1000 === 0) {
+          onBatch(batchCount);
+        }
+      }
+      if (onBatch !== null && batchCount % 1000 !== 0) {
+        onBatch(batchCount);
+      }
+      return; // Success, exit retry loop.
+    } catch (error) {
+      // `except httpx.HTTPError` — the transport-error class filter
+      // (R2.10); library errors and AbortError pass through.
+      if (!(error instanceof MixpanelHttpError)) {
+        throw error;
+      }
+      if (attempt >= core.maxRetries) {
+        throw new MixpanelHeadlessError(
+          `HTTP error during export: ${error.message}`,
+          "HTTP_ERROR",
+          { error: error.message },
+          { cause: error },
+        );
+      }
+      await sleep(calculateBackoff(attempt, core.random) * 1000);
+    } finally {
+      // Detach the attempt's signal forwarding once its body is done
+      // (success, retryable failure, or consumer return()).
+      releaseRaw?.();
+    }
+  }
+}
+
+async function* exportProfiles(
+  core: ClientCore,
+  options: ExportProfilesOptions = {},
+): AsyncGenerator<JsonValue, void, undefined> {
+  const distinctId = options.distinct_id ?? null;
+  let distinctIds = options.distinct_ids ?? null;
+  const behaviors = options.behaviors ?? null;
+  const cohortId = options.cohort_id ?? null;
+  const includeAllUsers = options.include_all_users ?? false;
+  const asOfTimestamp = options.as_of_timestamp ?? null;
+  // AC guards in Python source order (`api_client.py:2012-2049`).
+  if (distinctId !== null && distinctIds !== null) {
+    throw new ParamValidationError(
+      "distinct_id and distinct_ids are mutually exclusive. " +
+        "Provide only one to fetch specific profiles.",
+      "AC2_DISTINCT_ID_CONFLICT",
+    );
+  }
+  if (behaviors !== null && cohortId !== null) {
+    throw new ParamValidationError(
+      "behaviors and cohort_id are mutually exclusive. " +
+        "Use behaviors for behavioral filtering or cohort_id for cohort membership.",
+      "AC3_BEHAVIORS_COHORT_CONFLICT",
+    );
+  }
+  if (includeAllUsers && cohortId === null) {
+    throw new ParamValidationError(
+      "include_all_users requires cohort_id. " +
+        "This parameter is only valid for cohort membership queries.",
+      "AC4_INCLUDE_ALL_USERS_REQUIRES_COHORT",
+    );
+  }
+  if (behaviors !== null && !Array.isArray(behaviors)) {
+    throw new ParamValidationError(
+      "behaviors must be a list of behavioral filter dictionaries.",
+      "AC5_BEHAVIORS_NOT_LIST",
+    );
+  }
+  if (asOfTimestamp !== null) {
+    const currentTime = Math.floor(core.now().getTime() / 1000);
+    if (asOfTimestamp > currentTime) {
+      throw new ParamValidationError(
+        "as_of_timestamp cannot be in the future. " +
+          "Provide a Unix timestamp in the past to query historical profile state.",
+        "AC6_AS_OF_TIMESTAMP_FUTURE",
+      );
+    }
+  }
+  // Empty distinct_ids: return early without an API call.
+  if (distinctIds !== null && distinctIds.length === 0) {
+    return;
+  }
+  // Deduplicate, preserving order (`dict.fromkeys`; string ids — a
+  // JS Set is the same key discipline for the string domain).
+  if (distinctIds !== null) {
+    distinctIds = [...new Set(distinctIds)];
+  }
+
+  const url = core.buildUrl("engage", "");
+  let sessionId: JsonValue = null;
+  let page = 0;
+  let totalCount = 0;
+  const onBatch = options.onBatch ?? null;
+
+  for (;;) {
     const params: Record<string, unknown> = {
       project_id: core.projectId(),
-      from_date: fromDate,
-      to_date: toDate,
+      page,
     };
-    if (
-      options.events !== undefined &&
-      options.events !== null &&
-      options.events.length > 0
-    ) {
-      params["event"] = pythonJsonDumps(options.events);
+    // `if session_id:` — Python truthiness; the value threads into
+    // the next page's JSON body VERBATIM (B4-ARB W-F5: an int stays
+    // an int — no stringification). Lossless tokens fold to native
+    // via toNativeJson for JSON.stringify (an unsafe-int session_id
+    // would round through a JS double — disclosed residual, see
+    // b4-review-resolution.md W-F5).
+    if (pyTruthyJson(sessionId)) {
+      params["session_id"] = toNativeJson(sessionId);
     }
     if (
       options.where !== undefined &&
@@ -344,310 +569,88 @@ export function createStreamingMethods(core: ClientCore): StreamingMethods {
     ) {
       params["where"] = options.where;
     }
-    if (options.limit !== undefined && options.limit !== null) {
-      params["limit"] = options.limit;
+    if (cohortId !== null && cohortId !== "") {
+      params["filter_by_cohort"] = pythonJsonDumps({ id: cohortId });
     }
-    const onBatch = options.onBatch ?? null;
-    // Ensure the pool token exists (`self._ensure_client()`); the auth
-    // header + 4-layer merge are captured ONCE before the retry loop,
-    // exactly like Python (`api_client.py:1861-1867`).
-    const headers = core.requestHeaders({
-      Authorization: await core.getAuthHeader(),
-      "Accept-Encoding": "gzip",
-    });
-    // Signal-aware sleep from the C1 closures (R6.7 point 3) — the
-    // executor member is unused; streaming reads the RAW response.
-    const sleep = core.executeDeps(options.signal).sleep;
-
-    for (let attempt = 0; attempt <= core.maxRetries; attempt += 1) {
-      let batchCount = 0; // Reset on each attempt (deviation-3 lock).
-      let releaseRaw: (() => void) | null = null;
-      try {
-        const { response, stopTimeout, release } = await core.rawRequest(
-          {
-            method: "GET",
-            url,
-            params,
-            jsonBody: null,
-            formBody: null,
-            headers,
-            timeoutSeconds: core.exportTimeoutSeconds,
-          },
-          options.signal,
-        );
-        releaseRaw = release;
-        // Headers are in: stop the export-timeout clock. Body reads are
-        // not clock-bounded (D-B4ARB-1 — httpx read-timeouts are
-        // per-read; a total clock would kill healthy long exports).
-        // Caller-signal forwarding stays live for the stream.
-        stopTimeout();
-        const headerCarrier = {
-          header: (name: string): string | null => response.headers.get(name),
-        };
-        if (response.status === 429) {
-          if (attempt >= core.maxRetries) {
-            const retryAfter = parseRetryAfter(headerCarrier);
-            // FF4 `:1883-1891`: carries project_id; omits response_body.
-            throw new RateLimitError("Rate limit exceeded after max retries", {
-              retryAfter,
-              statusCode: response.status,
-              requestMethod: "GET",
-              requestUrl: url,
-              requestParams: params,
-              projectId: core.projectId(),
-            });
-          }
-          const waitSeconds = retryWaitSeconds(
-            parseRetryAfter(headerCarrier),
-            attempt,
-            core.random,
-          );
-          await sleep(waitSeconds * 1000); // R2.12 seconds→ms seam.
-          continue;
-        }
-        if (response.status === 401) {
-          throw new AuthenticationError(
-            "Invalid credentials. Check username, secret, and project_id.",
-            {
-              statusCode: response.status,
-              requestMethod: "GET",
-              requestUrl: url,
-              requestParams: params,
-            },
-          );
-        }
-        if (response.status === 400) {
-          const bodyText = await response.text();
-          let responseBody: JsonValue | null;
-          try {
-            responseBody = parseLossless(bodyText, { pythonConstants: true });
-          } catch (error) {
-            if (!(error instanceof LosslessJsonError)) {
-              throw error;
-            }
-            // Python: `body.decode()[:500] if body else None` (codepoint
-            // slice, R11.6).
-            responseBody = bodyText === "" ? null : cpSlice(bodyText, 0, 500);
-          }
-          throw new QueryError(errorMessage(responseBody, "Unknown error"), {
-            statusCode: response.status,
-            responseBody,
-            requestMethod: "GET",
-            requestUrl: url,
-            requestParams: params,
-          });
-        }
-        if (response.status < 200 || response.status >= 300) {
-          // httpx `response.raise_for_status()` raises HTTPStatusError —
-          // an httpx.HTTPError subclass, so it lands in the retry catch
-          // below (R2.11: 3xx is an error here too).
-          throw new MixpanelHttpError(httpStatusText(response.status, url));
-        }
-        for await (const line of iterJsonlLines(
-          guardedByteSource(response.body, options.signal),
-        )) {
-          let event: JsonValue;
-          try {
-            event = parseLossless(line, { pythonConstants: true });
-          } catch (error) {
-            if (!(error instanceof LosslessJsonError)) {
-              throw error;
-            }
-            // Python logs a warning and skips the malformed line
-            // (`api_client.py:1936-1937`); log text is out of contract.
-            continue;
-          }
-          yield event;
-          batchCount += 1;
-          if (onBatch !== null && batchCount % 1000 === 0) {
-            onBatch(batchCount);
-          }
-        }
-        if (onBatch !== null && batchCount % 1000 !== 0) {
-          onBatch(batchCount);
-        }
-        return; // Success, exit retry loop.
-      } catch (error) {
-        // `except httpx.HTTPError` — the transport-error class filter
-        // (R2.10); library errors and AbortError pass through.
-        if (!(error instanceof MixpanelHttpError)) {
-          throw error;
-        }
-        if (attempt >= core.maxRetries) {
-          throw new MixpanelHeadlessError(
-            `HTTP error during export: ${error.message}`,
-            "HTTP_ERROR",
-            { error: error.message },
-            { cause: error },
-          );
-        }
-        await sleep(calculateBackoff(attempt, core.random) * 1000);
-      } finally {
-        // Detach the attempt's signal forwarding once its body is done
-        // (success, retryable failure, or consumer return()).
-        releaseRaw?.();
-      }
+    if (
+      options.output_properties !== undefined &&
+      options.output_properties !== null &&
+      options.output_properties.length > 0
+    ) {
+      params["output_properties"] = pythonJsonDumps(options.output_properties);
     }
-  }
-
-  async function* exportProfiles(
-    options: ExportProfilesOptions = {},
-  ): AsyncGenerator<JsonValue, void, undefined> {
-    const distinctId = options.distinct_id ?? null;
-    let distinctIds = options.distinct_ids ?? null;
-    const behaviors = options.behaviors ?? null;
-    const cohortId = options.cohort_id ?? null;
-    const includeAllUsers = options.include_all_users ?? false;
-    const asOfTimestamp = options.as_of_timestamp ?? null;
-    // AC guards in Python source order (`api_client.py:2012-2049`).
-    if (distinctId !== null && distinctIds !== null) {
-      throw new ParamValidationError(
-        "distinct_id and distinct_ids are mutually exclusive. " +
-          "Provide only one to fetch specific profiles.",
-        "AC2_DISTINCT_ID_CONFLICT",
-      );
+    if (distinctId !== null && distinctId !== "") {
+      params["distinct_id"] = distinctId;
     }
-    if (behaviors !== null && cohortId !== null) {
-      throw new ParamValidationError(
-        "behaviors and cohort_id are mutually exclusive. " +
-          "Use behaviors for behavioral filtering or cohort_id for cohort membership.",
-        "AC3_BEHAVIORS_COHORT_CONFLICT",
-      );
+    if (distinctIds !== null && distinctIds.length > 0) {
+      params["distinct_ids"] = pythonJsonDumps(distinctIds);
     }
-    if (includeAllUsers && cohortId === null) {
-      throw new ParamValidationError(
-        "include_all_users requires cohort_id. " +
-          "This parameter is only valid for cohort membership queries.",
-        "AC4_INCLUDE_ALL_USERS_REQUIRES_COHORT",
-      );
+    if (
+      options.group_id !== undefined &&
+      options.group_id !== null &&
+      options.group_id !== ""
+    ) {
+      params["data_group_id"] = options.group_id;
     }
-    if (behaviors !== null && !Array.isArray(behaviors)) {
-      throw new ParamValidationError(
-        "behaviors must be a list of behavioral filter dictionaries.",
-        "AC5_BEHAVIORS_NOT_LIST",
-      );
+    if (Array.isArray(behaviors) && behaviors.length > 0) {
+      params["behaviors"] = pythonJsonDumps(behaviors);
     }
     if (asOfTimestamp !== null) {
-      const currentTime = Math.floor(core.now().getTime() / 1000);
-      if (asOfTimestamp > currentTime) {
-        throw new ParamValidationError(
-          "as_of_timestamp cannot be in the future. " +
-            "Provide a Unix timestamp in the past to query historical profile state.",
-          "AC6_AS_OF_TIMESTAMP_FUTURE",
-        );
-      }
+      params["as_of_timestamp"] = asOfTimestamp;
     }
-    // Empty distinct_ids: return early without an API call.
-    if (distinctIds !== null && distinctIds.length === 0) {
-      return;
-    }
-    // Deduplicate, preserving order (`dict.fromkeys`; string ids — a
-    // JS Set is the same key discipline for the string domain).
-    if (distinctIds !== null) {
-      distinctIds = [...new Set(distinctIds)];
+    // Sent explicitly because the API defaults to True
+    // (`api_client.py:2088-2091`).
+    if (cohortId !== null && cohortId !== "") {
+      params["include_all_users"] = includeAllUsers;
     }
 
-    const url = core.buildUrl("engage", "");
-    let sessionId: JsonValue = null;
-    let page = 0;
-    let totalCount = 0;
-    const onBatch = options.onBatch ?? null;
-
-    for (;;) {
-      const params: Record<string, unknown> = {
-        project_id: core.projectId(),
-        page,
-      };
-      // `if session_id:` — Python truthiness; the value threads into
-      // the next page's JSON body VERBATIM (B4-ARB W-F5: an int stays
-      // an int — no stringification). Lossless tokens fold to native
-      // via toNativeJson for JSON.stringify (an unsafe-int session_id
-      // would round through a JS double — disclosed residual, see
-      // b4-review-resolution.md W-F5).
-      if (pyTruthyJson(sessionId)) {
-        params["session_id"] = toNativeJson(sessionId);
-      }
-      if (
-        options.where !== undefined &&
-        options.where !== null &&
-        options.where !== ""
-      ) {
-        params["where"] = options.where;
-      }
-      if (cohortId !== null && cohortId !== "") {
-        params["filter_by_cohort"] = pythonJsonDumps({ id: cohortId });
-      }
-      if (
-        options.output_properties !== undefined &&
-        options.output_properties !== null &&
-        options.output_properties.length > 0
-      ) {
-        params["output_properties"] = pythonJsonDumps(
-          options.output_properties,
-        );
-      }
-      if (distinctId !== null && distinctId !== "") {
-        params["distinct_id"] = distinctId;
-      }
-      if (distinctIds !== null && distinctIds.length > 0) {
-        params["distinct_ids"] = pythonJsonDumps(distinctIds);
-      }
-      if (
-        options.group_id !== undefined &&
-        options.group_id !== null &&
-        options.group_id !== ""
-      ) {
-        params["data_group_id"] = options.group_id;
-      }
-      if (Array.isArray(behaviors) && behaviors.length > 0) {
-        params["behaviors"] = pythonJsonDumps(behaviors);
-      }
-      if (asOfTimestamp !== null) {
-        params["as_of_timestamp"] = asOfTimestamp;
-      }
-      // Sent explicitly because the API defaults to True
-      // (`api_client.py:2088-2091`).
-      if (cohortId !== null && cohortId !== "") {
-        params["include_all_users"] = includeAllUsers;
-      }
-
-      const response = await core.requestQueryHost("POST", url, {
-        data: params,
-        signal: options.signal,
-      });
-      if (!isPlainRecord(response)) {
-        // Python `response.get(...)` on a non-dict raises
-        // AttributeError (no lock reaches this arm).
-        throw new TypeError("'object' has no attribute 'get'");
-      }
-      const record: Record<string, JsonValue> = response;
-      const results = Object.hasOwn(record, "results")
-        ? (record["results"] as JsonValue)
-        : [];
-      // `if not results: break` — Python truthiness over parsed JSON.
-      if (!pyTruthyJson(results)) {
-        break;
-      }
-      for (const profile of pyIterate(results)) {
-        yield profile;
-        totalCount += 1;
-      }
-      if (onBatch !== null) {
-        onBatch(totalCount);
-      }
-      const nextSession = Object.hasOwn(record, "session_id")
-        ? (record["session_id"] as JsonValue)
-        : null;
-      // `if not session_id: break` — same truthiness discipline.
-      if (!pyTruthyJson(nextSession)) {
-        break;
-      }
-      sessionId = nextSession;
-      page += 1;
+    const response = await core.requestQueryHost("POST", url, {
+      data: params,
+      signal: options.signal,
+    });
+    if (!isPlainRecord(response)) {
+      // Python `response.get(...)` on a non-dict raises
+      // AttributeError (no lock reaches this arm).
+      throw new TypeError("'object' has no attribute 'get'");
     }
+    const record: Record<string, JsonValue> = response;
+    const results = Object.hasOwn(record, "results")
+      ? (record["results"] as JsonValue)
+      : [];
+    // `if not results: break` — Python truthiness over parsed JSON.
+    if (!pyTruthyJson(results)) {
+      break;
+    }
+    for (const profile of pyIterate(results)) {
+      yield profile;
+      totalCount += 1;
+    }
+    if (onBatch !== null) {
+      onBatch(totalCount);
+    }
+    const nextSession = Object.hasOwn(record, "session_id")
+      ? (record["session_id"] as JsonValue)
+      : null;
+    // `if not session_id: break` — same truthiness discipline.
+    if (!pyTruthyJson(nextSession)) {
+      break;
+    }
+    sessionId = nextSession;
+    page += 1;
   }
+}
 
-  return { exportEvents, exportProfiles };
+/**
+ * Build the C2 streaming methods over the C1 core seam.
+ *
+ * @param core - The shared client internals seam.
+ * @returns The method bag.
+ */
+export function createStreamingMethods(core: ClientCore): StreamingMethods {
+  return {
+    exportEvents: bindFirst(core, exportEvents),
+    exportProfiles: bindFirst(core, exportProfiles),
+  };
 }
 
 /** Options bag of {@link streamEvents} (`workspace.stream_events`). */

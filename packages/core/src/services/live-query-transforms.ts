@@ -37,7 +37,7 @@ import {
   sortedByCodepoint,
 } from "../compat/codepoint.js";
 import { AttributeError, ValueError } from "../compat/python-builtins.js";
-import { isPythonDict } from "../compat/python-dict.js";
+import { isPythonDict, setOwn } from "../compat/python-dict.js";
 import { pythonInt } from "../compat/python-int.js";
 import { pythonRepr, pythonStr } from "../compat/python-str.js";
 import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
@@ -71,6 +71,7 @@ import {
 } from "../types/results/query-engine.js";
 import { pyTruthy } from "../types/results/result-base.js";
 import type { WarningSink } from "./discovery.js";
+import { dictGet, passthrough, pythonTypeNameOf } from "./shared.js";
 
 /** Bookmark types `query_saved_report` normalizes (`live_query.py:1626`). */
 export type SavedReportBookmarkType =
@@ -83,37 +84,6 @@ export type FlowMode = "sankey" | "paths" | "tree";
 // Small CPython-shaped helpers (module-local, mirroring the precedent in
 // `query/transforms.ts:104`, `services/discovery.ts:117`)
 // ---------------------------------------------------------------------------
-
-/**
- * Read a mapping member the way Python's `dict.get(key, default)` does.
- *
- * @param data - The mapping.
- * @param key - The key to read.
- * @param fallback - Python's default.
- * @returns The member or the fallback.
- */
-function dictGet(
-  data: Readonly<Record<string, unknown>>,
-  key: string,
-  fallback: unknown,
-): unknown {
-  return Object.hasOwn(data, key) ? data[key] : fallback;
-}
-
-/**
- * Hand an unvalidated API value to a Phase-2 result field.
- *
- * The Python transforms are passthroughs — they never type-check what
- * the API sent — so re-typing here (rather than running a Phase-2
- * `expect*` guard) is what keeps the TS behaviour identical.
- *
- * @param value - The raw API value.
- * @returns The same value at the declared field type.
- */
-// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- a deliberate cast-in-disguise: T is inferred from the declared field type at each call site (see the docstring)
-function passthrough<T>(value: unknown): T {
-  return value as T;
-}
 
 /**
  * Narrow an unknown to the `Record` shape Python's `dict` methods need.
@@ -1060,9 +1030,9 @@ export function transformRetentionResult(
         continue;
       }
       const [segCohorts, segAvg] = extractCohortsAndAverage(asRecord(segValue));
-      segments[segKey] = segCohorts;
+      setOwn(segments, segKey, segCohorts);
       if (pyTruthy(segAvg)) {
-        segmentAverages[segKey] = segAvg;
+        setOwn(segmentAverages, segKey, segAvg);
       }
     }
   } else {
@@ -1081,32 +1051,6 @@ export function transformRetentionResult(
     segments: passthrough(segments),
     segment_averages: passthrough(segmentAverages),
   });
-}
-
-/**
- * CPython `type(x).__name__` for the JSON value domain the retention
- * error messages interpolate.
- *
- * @param value - The value.
- * @returns The Python type name.
- */
-function pythonTypeNameOf(value: unknown): string {
-  if (value === null) {
-    return "NoneType";
-  }
-  if (typeof value === "boolean") {
-    return "bool";
-  }
-  if (typeof value === "string") {
-    return "str";
-  }
-  if (typeof value === "number") {
-    return Number.isInteger(value) ? "int" : "float";
-  }
-  if (Array.isArray(value)) {
-    return "list";
-  }
-  return "dict";
 }
 
 // ---------------------------------------------------------------------------

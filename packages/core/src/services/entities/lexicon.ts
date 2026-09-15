@@ -17,11 +17,11 @@
 
 import { appRequest } from "../../client/app-request.js";
 import type { ClientCore } from "../../client/core.js";
-import { isPlainRecord } from "../../client/internals.js";
+import { bindFirst, isPlainRecord } from "../../client/internals.js";
 import type { JsonValue } from "../../client/json-value.js";
-import { maybeScopedPath } from "../../client/scope.js";
 import { pythonJsonDumps } from "../../compat/index.js";
 import { MixpanelHeadlessError } from "../../errors.js";
+import { scopedPath } from "../shared.js";
 import {
   expectListResult,
   expectRecordResult,
@@ -352,6 +352,335 @@ export interface LexiconMethods {
     signal?: AbortSignal,
   ) => Promise<Record<string, JsonValue>>;
 }
+/**
+ * `_event_definitions` (`api_client.py:6480-6513`): the shared core
+ * behind the by-name lookup and the bulk enumerate.
+ *
+ * @param names - Optional `name[]` filter values.
+ * @param signal - Optional cancellation signal.
+ * @returns The definition list.
+ * @throws MixpanelHeadlessError - Non-list response (the core's own
+ *   message spelling, "event definitions").
+ */
+async function eventDefinitions(
+  core: ClientCore,
+  names?: readonly string[] | null,
+  signal?: AbortSignal,
+): Promise<JsonValue[]> {
+  const path = scopedPath(core, "data-definitions/events/");
+  const params: Record<string, string | readonly string[]> = {};
+  if (names !== undefined && names !== null) {
+    params["name[]"] = names;
+  }
+  const result = await appRequest(core.appDeps(signal), "GET", path, {
+    // Python threads the list through a `dict[str, str]` annotation
+    // with `# type: ignore[arg-type]` (`:6507`); the transport's
+    // urlencode(doseq=True) twin serializes list values as repeated
+    // keys — the cast is that type-ignore's twin.
+    params: params as Record<string, string>,
+  });
+  if (!Array.isArray(result)) {
+    throw new MixpanelHeadlessError(
+      `Unexpected response from event definitions: ` +
+        `expected list, got ${pythonTypeNameOf(result)}`,
+    );
+  }
+  return result;
+}
+
+/**
+ * `_property_definitions` (`:6669-6736`): the shared core behind the
+ * property lookup/enumerate pair — owns the `resourceType` contract
+ * and the `include*` toggle wire format.
+ *
+ * @param args - The Python kwargs, faithfully optional.
+ * @returns The definition list.
+ * @throws MixpanelHeadlessError - Non-list response ("property
+ *   definitions" message spelling).
+ */
+async function propertyDefinitions(
+  core: ClientCore,
+  args: PropertyDefinitionsArgs,
+): Promise<JsonValue[]> {
+  const path = scopedPath(core, "data-definitions/properties/");
+  const params: Record<string, string | readonly string[]> = {};
+  if (args.names !== undefined && args.names !== null) {
+    params["name[]"] = args.names;
+  }
+  if (args.resourceType !== undefined && args.resourceType !== null) {
+    params["resourceType"] = canonicalResourceType(args.resourceType);
+  }
+  if (args.includeEvents === true) {
+    params["includeEvents"] = "true";
+  }
+  if (args.includeDensity === true) {
+    params["includeDensity"] = "true";
+  }
+  if (args.includeCustom !== undefined && args.includeCustom !== null) {
+    params["includeCustom"] = args.includeCustom ? "true" : "false";
+  }
+  if (args.includeZeroCounts !== undefined && args.includeZeroCounts !== null) {
+    params["includeZeroCounts"] = args.includeZeroCounts ? "true" : "false";
+  }
+  const result = await appRequest(core.appDeps(args.signal), "GET", path, {
+    params: params as Record<string, string>,
+  });
+  if (!Array.isArray(result)) {
+    throw new MixpanelHeadlessError(
+      `Unexpected response from property definitions: ` +
+        `expected list, got ${pythonTypeNameOf(result)}`,
+    );
+  }
+  return result;
+}
+
+function getEventDefinitions(
+  core: ClientCore,
+  names: readonly string[],
+  signal?: AbortSignal,
+): Promise<JsonValue[]> {
+  return eventDefinitions(core, names, signal);
+}
+
+function listEventDefinitions(
+  core: ClientCore,
+  signal?: AbortSignal,
+): Promise<JsonValue[]> {
+  return eventDefinitions(core, undefined, signal);
+}
+
+async function updateEventDefinition(
+  core: ClientCore,
+  name: string,
+  body: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(core, "data-definitions/events/");
+  const payload = { ...body, name };
+  const result = await appRequest(core.appDeps(signal), "PATCH", path, {
+    jsonBody: payload,
+  });
+  return expectRecordResult(result, "update_event_definition");
+}
+
+async function deleteEventDefinition(
+  core: ClientCore,
+  name: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const path = scopedPath(core, "data-definitions/events/");
+  await appRequest(core.appDeps(signal), "DELETE", path, {
+    jsonBody: { name },
+  });
+}
+
+async function bulkUpdateEventDefinitions(
+  core: ClientCore,
+  body: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<JsonValue[]> {
+  const path = scopedPath(core, "data-definitions/events/");
+  const result = await appRequest(core.appDeps(signal), "PATCH", path, {
+    jsonBody: body,
+  });
+  return expectListResult(result, "bulk_update_event_definitions");
+}
+
+function getPropertyDefinitions(
+  core: ClientCore,
+  names: readonly string[],
+  resourceType?: string | null,
+  signal?: AbortSignal,
+): Promise<JsonValue[]> {
+  return propertyDefinitions(core, {
+    names,
+    resourceType: resourceType ?? null,
+    ...(signal === undefined ? {} : { signal }),
+  });
+}
+
+function listPropertyDefinitions(
+  core: ClientCore,
+  options: ListPropertyDefinitionsOptions = {},
+): Promise<JsonValue[]> {
+  return propertyDefinitions(core, {
+    resourceType: options.resource_type ?? "Event",
+    includeEvents: options.include_events ?? false,
+    includeDensity: options.include_density ?? false,
+    includeCustom: options.include_custom ?? true,
+    includeZeroCounts: options.include_zero_counts ?? true,
+    ...(options.signal === undefined ? {} : { signal: options.signal }),
+  });
+}
+
+async function listPerEventProperties(
+  core: ClientCore,
+  signal?: AbortSignal,
+): Promise<JsonValue[]> {
+  const url = core.buildUrl("query", "/data_definitions/events");
+  const result = await core.requestQueryHost("GET", url, {
+    params: { fetch_per_event_properties: "true" },
+    timeoutSeconds: core.exportTimeoutSeconds,
+    ...(signal === undefined ? {} : { signal }),
+  });
+  // Python `result.get("results") if isinstance(result, dict) else
+  // result` — a missing key reads as None (`.get` default).
+  let rows: JsonValue | null = result;
+  if (isPlainRecord(result)) {
+    // noUncheckedIndexedAccess: hasOwn guarantees presence and the
+    // lossless JSON model carries no undefined members.
+    rows = Object.hasOwn(result, "results")
+      ? (result["results"] ?? null)
+      : null;
+  }
+  if (!Array.isArray(rows)) {
+    throw new MixpanelHeadlessError(
+      `Unexpected response from per-event properties: ` +
+        `expected list, got ${pythonTypeNameOf(rows)}`,
+    );
+  }
+  return rows;
+}
+
+async function updatePropertyDefinition(
+  core: ClientCore,
+  name: string,
+  body: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(core, "data-definitions/properties/");
+  const payload = { ...body, name };
+  const result = await appRequest(core.appDeps(signal), "PATCH", path, {
+    jsonBody: payload,
+  });
+  return expectRecordResult(result, "update_property_definition");
+}
+
+async function bulkUpdatePropertyDefinitions(
+  core: ClientCore,
+  body: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<JsonValue[]> {
+  const path = scopedPath(core, "data-definitions/properties/");
+  const result = await appRequest(core.appDeps(signal), "PATCH", path, {
+    jsonBody: body,
+  });
+  return expectListResult(result, "bulk_update_property_definitions");
+}
+
+async function listLexiconTags(
+  core: ClientCore,
+  signal?: AbortSignal,
+): Promise<JsonValue[]> {
+  const path = scopedPath(core, "data-definitions/tags/");
+  const result = await appRequest(core.appDeps(signal), "GET", path);
+  return expectListResult(result, "list_lexicon_tags");
+}
+
+async function createLexiconTag(
+  core: ClientCore,
+  body: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(core, "data-definitions/tags/");
+  const result = await appRequest(core.appDeps(signal), "POST", path, {
+    jsonBody: body,
+  });
+  return expectRecordResult(result, "create_lexicon_tag");
+}
+
+async function updateLexiconTag(
+  core: ClientCore,
+  tagId: number,
+  body: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(core, `data-definitions/tags/${tagId}/`);
+  const result = await appRequest(core.appDeps(signal), "PATCH", path, {
+    jsonBody: body,
+  });
+  return expectRecordResult(result, "update_lexicon_tag");
+}
+
+async function deleteLexiconTag(
+  core: ClientCore,
+  name: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const path = scopedPath(core, "data-definitions/tags/");
+  await appRequest(core.appDeps(signal), "POST", path, {
+    jsonBody: { delete: true, name },
+  });
+}
+
+async function getTrackingMetadata(
+  core: ClientCore,
+  eventName: string,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(core, "data-definitions/events/tracking-metadata/");
+  const result = await appRequest(core.appDeps(signal), "GET", path, {
+    params: { event_name: eventName },
+  });
+  return expectRecordResult(result, "get_tracking_metadata");
+}
+
+async function getEventHistory(
+  core: ClientCore,
+  eventName: string,
+  signal?: AbortSignal,
+): Promise<JsonValue[]> {
+  const path = scopedPath(
+    core,
+    `data-definitions/events/${pythonQuote(eventName)}/history/`,
+  );
+  const result = await appRequest(core.appDeps(signal), "GET", path);
+  return expectListResult(result, "get_event_history");
+}
+
+async function getPropertyHistory(
+  core: ClientCore,
+  propertyName: string,
+  entityType: string,
+  signal?: AbortSignal,
+): Promise<JsonValue[]> {
+  const path = scopedPath(
+    core,
+    `data-definitions/properties/${pythonQuote(propertyName)}/history/`,
+  );
+  const result = await appRequest(core.appDeps(signal), "GET", path, {
+    params: { entity_type: entityType },
+  });
+  return expectListResult(result, "get_property_history");
+}
+
+async function exportLexicon(
+  core: ClientCore,
+  exportTypes?: readonly string[] | null,
+  signal?: AbortSignal,
+): Promise<Record<string, JsonValue>> {
+  const path = scopedPath(core, "data-definitions/export/");
+  const defaultTypes = [
+    "All Events and Properties",
+    "All User Profile Properties",
+  ];
+  const typesToExport = exportTypes ?? defaultTypes;
+  const params = { export_type: pythonJsonDumps([...typesToExport]) };
+  const result = await appRequest(core.appDeps(signal), "GET", path, {
+    params,
+  });
+  if (typeof result === "string") {
+    // Async export — returns status message (`:7164-7166`).
+    return { status: "pending", message: result };
+  }
+  if (!isPlainRecord(result)) {
+    throw new MixpanelHeadlessError(
+      `Unexpected response from export_lexicon: ` +
+        `expected dict, got ${pythonTypeNameOf(result)}`,
+    );
+  }
+  return result;
+}
 
 /**
  * Build the C5 lexicon methods over the C1 core seam.
@@ -360,314 +689,27 @@ export interface LexiconMethods {
  * @returns The method bag.
  */
 export function createLexiconMethods(core: ClientCore): LexiconMethods {
-  /** `self.maybe_scoped_path(...)` over the CURRENT pin (call-time). */
-  const scopedPath = (domainPath: string): string =>
-    maybeScopedPath(domainPath, {
-      projectId: core.projectId(),
-      workspaceId: core.workspaceId(),
-    });
-
-  /**
-   * `_event_definitions` (`api_client.py:6480-6513`): the shared core
-   * behind the by-name lookup and the bulk enumerate.
-   *
-   * @param names - Optional `name[]` filter values.
-   * @param signal - Optional cancellation signal.
-   * @returns The definition list.
-   * @throws MixpanelHeadlessError - Non-list response (the core's own
-   *   message spelling, "event definitions").
-   */
-  const eventDefinitions = async (
-    names?: readonly string[] | null,
-    signal?: AbortSignal,
-  ): Promise<JsonValue[]> => {
-    const path = scopedPath("data-definitions/events/");
-    const params: Record<string, string | readonly string[]> = {};
-    if (names !== undefined && names !== null) {
-      params["name[]"] = names;
-    }
-    const result = await appRequest(core.appDeps(signal), "GET", path, {
-      // Python threads the list through a `dict[str, str]` annotation
-      // with `# type: ignore[arg-type]` (`:6507`); the transport's
-      // urlencode(doseq=True) twin serializes list values as repeated
-      // keys — the cast is that type-ignore's twin.
-      params: params as Record<string, string>,
-    });
-    if (!Array.isArray(result)) {
-      throw new MixpanelHeadlessError(
-        `Unexpected response from event definitions: ` +
-          `expected list, got ${pythonTypeNameOf(result)}`,
-      );
-    }
-    return result;
-  };
-
-  /**
-   * `_property_definitions` (`:6669-6736`): the shared core behind the
-   * property lookup/enumerate pair — owns the `resourceType` contract
-   * and the `include*` toggle wire format.
-   *
-   * @param args - The Python kwargs, faithfully optional.
-   * @returns The definition list.
-   * @throws MixpanelHeadlessError - Non-list response ("property
-   *   definitions" message spelling).
-   */
-  const propertyDefinitions = async (
-    args: PropertyDefinitionsArgs,
-  ): Promise<JsonValue[]> => {
-    const path = scopedPath("data-definitions/properties/");
-    const params: Record<string, string | readonly string[]> = {};
-    if (args.names !== undefined && args.names !== null) {
-      params["name[]"] = args.names;
-    }
-    if (args.resourceType !== undefined && args.resourceType !== null) {
-      params["resourceType"] = canonicalResourceType(args.resourceType);
-    }
-    if (args.includeEvents === true) {
-      params["includeEvents"] = "true";
-    }
-    if (args.includeDensity === true) {
-      params["includeDensity"] = "true";
-    }
-    if (args.includeCustom !== undefined && args.includeCustom !== null) {
-      params["includeCustom"] = args.includeCustom ? "true" : "false";
-    }
-    if (
-      args.includeZeroCounts !== undefined &&
-      args.includeZeroCounts !== null
-    ) {
-      params["includeZeroCounts"] = args.includeZeroCounts ? "true" : "false";
-    }
-    const result = await appRequest(core.appDeps(args.signal), "GET", path, {
-      params: params as Record<string, string>,
-    });
-    if (!Array.isArray(result)) {
-      throw new MixpanelHeadlessError(
-        `Unexpected response from property definitions: ` +
-          `expected list, got ${pythonTypeNameOf(result)}`,
-      );
-    }
-    return result;
-  };
-
   return {
-    getEventDefinitions: (
-      names: readonly string[],
-      signal?: AbortSignal,
-    ): Promise<JsonValue[]> => eventDefinitions(names, signal),
-
-    listEventDefinitions: (signal?: AbortSignal): Promise<JsonValue[]> =>
-      eventDefinitions(undefined, signal),
-
-    updateEventDefinition: async (
-      name: string,
-      body: Record<string, unknown>,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const path = scopedPath("data-definitions/events/");
-      const payload = { ...body, name };
-      const result = await appRequest(core.appDeps(signal), "PATCH", path, {
-        jsonBody: payload,
-      });
-      return expectRecordResult(result, "update_event_definition");
-    },
-
-    deleteEventDefinition: async (
-      name: string,
-      signal?: AbortSignal,
-    ): Promise<void> => {
-      const path = scopedPath("data-definitions/events/");
-      await appRequest(core.appDeps(signal), "DELETE", path, {
-        jsonBody: { name },
-      });
-    },
-
-    bulkUpdateEventDefinitions: async (
-      body: Record<string, unknown>,
-      signal?: AbortSignal,
-    ): Promise<JsonValue[]> => {
-      const path = scopedPath("data-definitions/events/");
-      const result = await appRequest(core.appDeps(signal), "PATCH", path, {
-        jsonBody: body,
-      });
-      return expectListResult(result, "bulk_update_event_definitions");
-    },
-
-    getPropertyDefinitions: (
-      names: readonly string[],
-      resourceType?: string | null,
-      signal?: AbortSignal,
-    ): Promise<JsonValue[]> =>
-      propertyDefinitions({
-        names,
-        resourceType: resourceType ?? null,
-        ...(signal === undefined ? {} : { signal }),
-      }),
-
-    listPropertyDefinitions: (
-      options: ListPropertyDefinitionsOptions = {},
-    ): Promise<JsonValue[]> =>
-      propertyDefinitions({
-        resourceType: options.resource_type ?? "Event",
-        includeEvents: options.include_events ?? false,
-        includeDensity: options.include_density ?? false,
-        includeCustom: options.include_custom ?? true,
-        includeZeroCounts: options.include_zero_counts ?? true,
-        ...(options.signal === undefined ? {} : { signal: options.signal }),
-      }),
-
-    listPerEventProperties: async (
-      signal?: AbortSignal,
-    ): Promise<JsonValue[]> => {
-      const url = core.buildUrl("query", "/data_definitions/events");
-      const result = await core.requestQueryHost("GET", url, {
-        params: { fetch_per_event_properties: "true" },
-        timeoutSeconds: core.exportTimeoutSeconds,
-        ...(signal === undefined ? {} : { signal }),
-      });
-      // Python `result.get("results") if isinstance(result, dict) else
-      // result` — a missing key reads as None (`.get` default).
-      let rows: JsonValue | null = result;
-      if (isPlainRecord(result)) {
-        // noUncheckedIndexedAccess: hasOwn guarantees presence and the
-        // lossless JSON model carries no undefined members.
-        rows = Object.hasOwn(result, "results")
-          ? (result["results"] ?? null)
-          : null;
-      }
-      if (!Array.isArray(rows)) {
-        throw new MixpanelHeadlessError(
-          `Unexpected response from per-event properties: ` +
-            `expected list, got ${pythonTypeNameOf(rows)}`,
-        );
-      }
-      return rows;
-    },
-
-    updatePropertyDefinition: async (
-      name: string,
-      body: Record<string, unknown>,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const path = scopedPath("data-definitions/properties/");
-      const payload = { ...body, name };
-      const result = await appRequest(core.appDeps(signal), "PATCH", path, {
-        jsonBody: payload,
-      });
-      return expectRecordResult(result, "update_property_definition");
-    },
-
-    bulkUpdatePropertyDefinitions: async (
-      body: Record<string, unknown>,
-      signal?: AbortSignal,
-    ): Promise<JsonValue[]> => {
-      const path = scopedPath("data-definitions/properties/");
-      const result = await appRequest(core.appDeps(signal), "PATCH", path, {
-        jsonBody: body,
-      });
-      return expectListResult(result, "bulk_update_property_definitions");
-    },
-
-    listLexiconTags: async (signal?: AbortSignal): Promise<JsonValue[]> => {
-      const path = scopedPath("data-definitions/tags/");
-      const result = await appRequest(core.appDeps(signal), "GET", path);
-      return expectListResult(result, "list_lexicon_tags");
-    },
-
-    createLexiconTag: async (
-      body: Record<string, unknown>,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const path = scopedPath("data-definitions/tags/");
-      const result = await appRequest(core.appDeps(signal), "POST", path, {
-        jsonBody: body,
-      });
-      return expectRecordResult(result, "create_lexicon_tag");
-    },
-
-    updateLexiconTag: async (
-      tagId: number,
-      body: Record<string, unknown>,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const path = scopedPath(`data-definitions/tags/${tagId}/`);
-      const result = await appRequest(core.appDeps(signal), "PATCH", path, {
-        jsonBody: body,
-      });
-      return expectRecordResult(result, "update_lexicon_tag");
-    },
-
-    deleteLexiconTag: async (
-      name: string,
-      signal?: AbortSignal,
-    ): Promise<void> => {
-      const path = scopedPath("data-definitions/tags/");
-      await appRequest(core.appDeps(signal), "POST", path, {
-        jsonBody: { delete: true, name },
-      });
-    },
-
-    getTrackingMetadata: async (
-      eventName: string,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const path = scopedPath("data-definitions/events/tracking-metadata/");
-      const result = await appRequest(core.appDeps(signal), "GET", path, {
-        params: { event_name: eventName },
-      });
-      return expectRecordResult(result, "get_tracking_metadata");
-    },
-
-    getEventHistory: async (
-      eventName: string,
-      signal?: AbortSignal,
-    ): Promise<JsonValue[]> => {
-      const path = scopedPath(
-        `data-definitions/events/${pythonQuote(eventName)}/history/`,
-      );
-      const result = await appRequest(core.appDeps(signal), "GET", path);
-      return expectListResult(result, "get_event_history");
-    },
-
-    getPropertyHistory: async (
-      propertyName: string,
-      entityType: string,
-      signal?: AbortSignal,
-    ): Promise<JsonValue[]> => {
-      const path = scopedPath(
-        `data-definitions/properties/${pythonQuote(propertyName)}/history/`,
-      );
-      const result = await appRequest(core.appDeps(signal), "GET", path, {
-        params: { entity_type: entityType },
-      });
-      return expectListResult(result, "get_property_history");
-    },
-
-    exportLexicon: async (
-      exportTypes?: readonly string[] | null,
-      signal?: AbortSignal,
-    ): Promise<Record<string, JsonValue>> => {
-      const path = scopedPath("data-definitions/export/");
-      const defaultTypes = [
-        "All Events and Properties",
-        "All User Profile Properties",
-      ];
-      const typesToExport = exportTypes ?? defaultTypes;
-      const params = { export_type: pythonJsonDumps([...typesToExport]) };
-      const result = await appRequest(core.appDeps(signal), "GET", path, {
-        params,
-      });
-      if (typeof result === "string") {
-        // Async export — returns status message (`:7164-7166`).
-        return { status: "pending", message: result };
-      }
-      if (!isPlainRecord(result)) {
-        throw new MixpanelHeadlessError(
-          `Unexpected response from export_lexicon: ` +
-            `expected dict, got ${pythonTypeNameOf(result)}`,
-        );
-      }
-      return result;
-    },
+    getEventDefinitions: bindFirst(core, getEventDefinitions),
+    listEventDefinitions: bindFirst(core, listEventDefinitions),
+    updateEventDefinition: bindFirst(core, updateEventDefinition),
+    deleteEventDefinition: bindFirst(core, deleteEventDefinition),
+    bulkUpdateEventDefinitions: bindFirst(core, bulkUpdateEventDefinitions),
+    getPropertyDefinitions: bindFirst(core, getPropertyDefinitions),
+    listPropertyDefinitions: bindFirst(core, listPropertyDefinitions),
+    listPerEventProperties: bindFirst(core, listPerEventProperties),
+    updatePropertyDefinition: bindFirst(core, updatePropertyDefinition),
+    bulkUpdatePropertyDefinitions: bindFirst(
+      core,
+      bulkUpdatePropertyDefinitions,
+    ),
+    listLexiconTags: bindFirst(core, listLexiconTags),
+    createLexiconTag: bindFirst(core, createLexiconTag),
+    updateLexiconTag: bindFirst(core, updateLexiconTag),
+    deleteLexiconTag: bindFirst(core, deleteLexiconTag),
+    getTrackingMetadata: bindFirst(core, getTrackingMetadata),
+    getEventHistory: bindFirst(core, getEventHistory),
+    getPropertyHistory: bindFirst(core, getPropertyHistory),
+    exportLexicon: bindFirst(core, exportLexicon),
   };
 }

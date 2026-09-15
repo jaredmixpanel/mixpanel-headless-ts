@@ -148,6 +148,26 @@ export interface ResponseContext {
 }
 
 /**
+ * Fix the leading argument of a module-level method implementation.
+ *
+ * The client factories keep their methods as plain functions whose first
+ * parameter is the shared client core (or the assembled client context)
+ * and re-attach them to the method bag they return with
+ * `{ listDashboards: bindFirst(core, listDashboards) }` — no closure per
+ * method, so nothing can be captured by accident.
+ *
+ * @param first - The value bound as `method`'s first argument.
+ * @param method - A function taking that value first.
+ * @returns `method` with its first parameter fixed.
+ */
+export function bindFirst<First, Args extends unknown[], Result>(
+  first: First,
+  method: (first: First, ...args: Args) => Result,
+): (...args: Args) => Result {
+  return (...args: Args): Result => method(first, ...args);
+}
+
+/**
  * Whether a parsed JSON value is a plain record (Python `dict`).
  *
  * `JsonNumber` instances are objects but NOT dicts — they are the
@@ -380,18 +400,21 @@ export function handleResponse(
   const requestUrl = context.requestUrl ?? null;
   const requestParams = context.requestParams ?? null;
   const requestBody = context.requestBody ?? null;
+  // One provenance bag for every throw site below: each error class
+  // carries the same request/response context.
+  const httpContext = {
+    statusCode: response.status,
+    responseBody,
+    requestMethod,
+    requestUrl,
+    requestParams,
+    requestBody,
+  };
 
   if (response.status === 401) {
     throw new AuthenticationError(
       "Invalid credentials. Check username, secret, and project_id.",
-      {
-        statusCode: response.status,
-        responseBody,
-        requestMethod,
-        requestUrl,
-        requestParams,
-        requestBody,
-      },
+      httpContext,
     );
   }
   if (response.status === 403) {
@@ -429,68 +452,40 @@ export function handleResponse(
             flag: "SESSION_RECORDING_SENSITIVE_DATA",
             permission_required: "sensitive_data_replay",
           },
-          statusCode: response.status,
-          responseBody,
-          requestMethod,
-          requestUrl,
-          requestParams,
-          requestBody,
+          ...httpContext,
         },
       );
     }
-    throw new QueryError(errorMessage(responseBody, "Permission denied"), {
-      statusCode: response.status,
-      responseBody,
-      requestMethod,
-      requestUrl,
-      requestParams,
-      requestBody,
-    });
+    throw new QueryError(
+      errorMessage(responseBody, "Permission denied"),
+      httpContext,
+    );
   }
   if (response.status === 400) {
-    throw new QueryError(errorMessage(responseBody, "Unknown error"), {
-      statusCode: response.status,
-      responseBody,
-      requestMethod,
-      requestUrl,
-      requestParams,
-      requestBody,
-    });
+    throw new QueryError(
+      errorMessage(responseBody, "Unknown error"),
+      httpContext,
+    );
   }
   if (response.status === 404) {
-    throw new QueryError(errorMessage(responseBody, "Resource not found"), {
-      statusCode: response.status,
-      responseBody,
-      requestMethod,
-      requestUrl,
-      requestParams,
-      requestBody,
-    });
+    throw new QueryError(
+      errorMessage(responseBody, "Resource not found"),
+      httpContext,
+    );
   }
   if (response.status >= 400 && response.status < 500) {
     // Any other 4xx (e.g. 412 Precondition Failed) — preserve the
     // response body and status as a QueryError instead of letting it
     // fall through to a generic HTTP error in executeWithRetry.
-    throw new QueryError(errorMessage(responseBody, "Request failed"), {
-      statusCode: response.status,
-      responseBody,
-      requestMethod,
-      requestUrl,
-      requestParams,
-      requestBody,
-    });
+    throw new QueryError(
+      errorMessage(responseBody, "Request failed"),
+      httpContext,
+    );
   }
   if (response.status >= 500) {
     throw new ServerError(
       `Server error: ${errorMessage(responseBody, String(response.status))}`,
-      {
-        statusCode: response.status,
-        responseBody,
-        requestMethod,
-        requestUrl,
-        requestParams,
-        requestBody,
-      },
+      httpContext,
     );
   }
   // Fallthrough tail in EXACT source order (api_client.py:652-662 /

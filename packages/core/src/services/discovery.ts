@@ -42,7 +42,7 @@ import {
   cpLength,
   sortedByCodepoint,
 } from "../compat/codepoint.js";
-import { pythonStr, type PythonValue } from "../compat/index.js";
+import { pythonRepr, pythonStrOf } from "../compat/index.js";
 import { KeyError, ValueError } from "../compat/python-builtins.js";
 import { isPythonDict, setOwn } from "../compat/python-dict.js";
 import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
@@ -61,6 +61,8 @@ import {
   TopEvent,
 } from "../types/results/discovery.js";
 import { pyTruthy } from "../types/results/result-base.js";
+import { isLeapYear } from "./queries/py-dates.js";
+import { dictGet, passthrough } from "./shared.js";
 
 /**
  * The `warnings.warn(..., UserWarning)` side channel as an injected
@@ -113,23 +115,6 @@ const MAX_SAMPLE_VALUES = 5;
 // ---------------------------------------------------------------------------
 
 /**
- * Read a mapping member the way Python's `dict.get(key, default)` does
- * — absent keys yield the default, an explicit `null` yields `null`.
- *
- * @param data - The mapping.
- * @param key - The key to read.
- * @param fallback - Python's default.
- * @returns The member or the fallback.
- */
-function dictGet(
-  data: Readonly<Record<string, unknown>>,
-  key: string,
-  fallback: unknown,
-): unknown {
-  return Object.hasOwn(data, key) ? data[key] : fallback;
-}
-
-/**
  * Read a REQUIRED mapping member the way Python's `d[key]` does.
  *
  * @param data - The mapping.
@@ -147,22 +132,6 @@ function dictIndex(
     throw new KeyError(key);
   }
   return data[key];
-}
-
-/**
- * Hand an unvalidated API value to a Phase-2 result field.
- *
- * The Python parsers below are pure passthroughs — they never validate
- * — so re-typing here (rather than running a Phase-2 `expect*` guard)
- * is what keeps the TS behaviour identical: a malformed row builds a
- * malformed result object in both languages instead of raising in one.
- *
- * @param value - The raw API value.
- * @returns The same value at the declared field type.
- */
-// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- a deliberate cast-in-disguise: T is inferred from the declared field type at each call site (see the docstring)
-function passthrough<T>(value: unknown): T {
-  return value as T;
 }
 
 /**
@@ -306,16 +275,6 @@ export function parseBookmarkInfo(
 const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;
 
 /**
- * Proleptic-Gregorian leap-year test (CPython `calendar.isleap`).
- *
- * @param year - Four-digit year.
- * @returns Whether February has 29 days.
- */
-function isLeapYear(year: number): boolean {
-  return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
-}
-
-/**
  * Whether `s` parses as a valid ISO-8601 date or datetime — the
  * `datetime.fromisoformat` twin for the strings {@link DATE_PATTERN}
  * admits (`_is_valid_iso`, `discovery.py:174-194`).
@@ -453,10 +412,10 @@ export function inferScalarType(
  * `discovery.py:237-267`).
  *
  * Each raw value may be a JSON object (one row), a JSON array of
- * objects (many rows), or anything else (skipped). Parse failures are
- * dropped silently, exactly as Python drops `TypeError`/`ValueError`
- * from `json.loads` (Python logs at debug; the log text is not
- * contract, R9.5, and no caller observes it).
+ * objects (many rows), or anything else (skipped). A value that fails to
+ * parse is skipped and reported once through `logger.debug` — the twin
+ * of Python's `_logger.debug` for the `TypeError`/`ValueError` it drops
+ * from `json.loads` (the text is not contract, R9.5).
  *
  * Parsing goes through {@link parseLossless} with `pythonConstants`
  * (packet §0.2) so `NaN`/`Infinity` bodies parse rather than raise the
@@ -464,11 +423,13 @@ export function inferScalarType(
  * `json.loads`'s native product.
  *
  * @param rawValues - Strings from the property-values endpoint.
+ * @param logger - Optional debug sink for the skipped values.
  * @returns Flat list of dict rows, order preserved.
  * @internal
  */
 export function iterDictRows(
   rawValues: readonly string[],
+  logger?: DiscoveryLogger,
 ): Array<Record<string, unknown>> {
   const rows: Array<Record<string, unknown>> = [];
   for (const raw of rawValues) {
@@ -479,6 +440,7 @@ export function iterDictRows(
       if (!(error instanceof LosslessJsonError)) {
         throw error;
       }
+      logger?.debug(`Skipping unparseable property value: ${error.message}`);
       continue;
     }
     if (isPythonDict(parsed)) {
@@ -551,14 +513,16 @@ function splitWords(text: string): string[] {
  *
  * @param rawValues - Raw strings from the property-values endpoint.
  * @param warn - The `warnings.warn` sink (R9.5).
+ * @param logger - Optional debug sink (see {@link iterDictRows}).
  * @returns Code-point-sorted subproperty infos.
  * @internal
  */
 export function inferSubproperties(
   rawValues: readonly string[],
   warn: WarningSink,
+  logger?: DiscoveryLogger,
 ): SubPropertyInfo[] {
-  const rows = iterDictRows(rawValues);
+  const rows = iterDictRows(rawValues, logger);
   if (rows.length === 0) {
     return [];
   }
@@ -592,13 +556,13 @@ export function inferSubproperties(
 
   for (const name of sortedByCodepoint(mixedShape)) {
     warn(
-      `Subproperty ${pyReprStr(name)} observed with both scalar and ` +
+      `Subproperty ${pythonRepr(name)} observed with both scalar and ` +
         `nested-object shapes across sampled rows; reporting the scalar form`,
     );
   }
   for (const name of sortedByCodepoint(nullOnly)) {
     warn(
-      `Subproperty ${pyReprStr(name)} observed but all sampled values were ` +
+      `Subproperty ${pythonRepr(name)} observed but all sampled values were ` +
         `null; not classifiable`,
     );
   }
@@ -612,7 +576,7 @@ export function inferSubproperties(
     const [inferred, mixed] = inferScalarType(values);
     if (mixed) {
       warn(
-        `Subproperty ${pyReprStr(name)} has mixed value types across ` +
+        `Subproperty ${pythonRepr(name)} has mixed value types across ` +
           `sampled rows; reporting as 'string'`,
       );
     }
@@ -676,52 +640,6 @@ function pySetKey(value: ScalarSubValue): string {
   return `n:${String(value === 0 ? 0 : value)}`;
 }
 
-/**
- * CPython `repr()` of a subproperty name for the warning texts
- * (`{name!r}`) — single-quoted unless the name contains a single quote
- * and no double quote.
- *
- * @param text - The name.
- * @returns The `repr` spelling.
- */
-function pyReprStr(text: string): string {
-  const quote = text.includes("'") && !text.includes('"') ? '"' : "'";
-  let body = "";
-  for (const ch of text) {
-    switch (ch) {
-      case "\\": {
-        body += "\\\\";
-
-        break;
-      }
-      case quote: {
-        body += `\\${ch}`;
-
-        break;
-      }
-      case "\n": {
-        body += String.raw`\n`;
-
-        break;
-      }
-      case "\r": {
-        body += String.raw`\r`;
-
-        break;
-      }
-      case "\t": {
-        body += String.raw`\t`;
-
-        break;
-      }
-      default: {
-        body += ch;
-      }
-    }
-  }
-  return `${quote}${body}${quote}`;
-}
-
 // ---------------------------------------------------------------------------
 // DiscoveryService (`discovery.py:359-920`)
 // ---------------------------------------------------------------------------
@@ -777,18 +695,6 @@ export interface GetSchemaGraphOptions {
 }
 
 /**
- * Python `str(x)` for names in the per-event inversion (identity for
- * strings; the compat port for scalar non-strings) — the same twin the
- * SchemaGraphResult node builder applies.
- *
- * @param value - A payload value that passed a truthiness check.
- * @returns The Python string form.
- */
-function pyStr(value: unknown): string {
-  return typeof value === "string" ? value : pythonStr(value as PythonValue);
-}
-
-/**
  * Invert per-event property lists into a property→events map — TS port
  * of `_invert_per_event_properties` (`discovery.py:359-385`,
  * PR #215).
@@ -826,13 +732,13 @@ function invertPerEventProperties(
         continue;
       }
 
-      const key = pyStr(prop["name"]);
+      const key = pythonStrOf(prop["name"]);
       let attached = propertyToEvents.get(key);
       if (attached === undefined) {
         attached = [];
         propertyToEvents.set(key, attached);
       }
-      attached.push(pyStr(eventName));
+      attached.push(pythonStrOf(eventName));
     }
   }
   return propertyToEvents;
@@ -906,7 +812,8 @@ export class DiscoveryService {
     this.#warn =
       options.warn ??
       ((): void => {
-        // No sink injected: warnings are dropped (CLEANUP-PLAN.md §12 8.8).
+        // No sink injected: core has no stderr, so warnings are dropped
+        // here; the node/browser entry points inject their own sink.
       });
     this.#logger = options.logger;
   }
@@ -1053,7 +960,7 @@ export class DiscoveryService {
       ...(options.event === undefined ? {} : { event: options.event }),
       limit: options.sample_size ?? 50,
     });
-    return inferSubproperties(raw, this.#warn);
+    return inferSubproperties(raw, this.#warn, this.#logger);
   }
 
   /**
@@ -1311,7 +1218,7 @@ export class DiscoveryService {
     const properties = flatProperties.map((row) => ({
       ...row,
       events: (pyTruthy(row["name"])
-        ? (propertyToEvents.get(pyStr(row["name"])) ?? [])
+        ? (propertyToEvents.get(pythonStrOf(row["name"])) ?? [])
         : []
       ).map((eventName) => ({ name: eventName })),
     }));
@@ -1383,6 +1290,9 @@ export function isoUtc(when: Date): string {
 
 /**
  * Convert one wire row to Python's `json.loads` product.
+ *
+ * TODO(Ω): the typed twin of {@link toNativeJson} — `workspace.ts` carries
+ * an `unknown`-typed copy; home both as one export in `client/json-value.ts`.
  *
  * @param value - The lossless row.
  * @returns The native record.
