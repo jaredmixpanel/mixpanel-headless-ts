@@ -1,18 +1,18 @@
 /**
- * Pydantic-v2-lax coercion module (rulebook R4.12, phase2-design C1).
+ * Pydantic-v2-lax coercion at the decode and parse boundaries.
  *
  * One shared module replicates Pydantic v2's lax coercion at decode/parse
- * boundaries. The NORMATIVE contract is the R4.12 table:
+ * boundaries. The normative contract is this table:
  *
  * - `coerceInt` accepts `42` / `42.0` / `"42"`, rejects `42.5` and booleans;
  * - `coerceInt64` is the same table without the double's 2^53 ceiling:
  *   it also takes a `bigint` or a lossless `JsonNumber` token and yields a
  *   `bigint` only when the exact value is not a safe integer;
- * - `coerceStr` does NOT coerce numbers/booleans to string;
+ * - `coerceStr` does not coerce numbers/booleans to string;
  * - `coerceBool` accepts exactly the `true|t|yes|y|on|1` /
  *   `false|f|no|n|off|0` string sets (case-insensitive) plus `0`/`1`
  *   numerics;
- * - `default_factory` semantics: a default fires only on an ABSENT key —
+ * - `default_factory` semantics: a default fires only on an absent key —
  *   an explicit `null` flows through to validation (see
  *   {@link resolveWithDefault}).
  *
@@ -20,21 +20,21 @@
  * acceptance (whitespace trim, sign, digit-group underscores, integral
  * `"42.0"` for int, exponent/`inf`/`nan` for float) — verified against
  * pydantic v2 on 2026-08-15. One documented divergence: pydantic's
- * PYTHON-object lax mode accepts `True → 1` for int/float (bool is an int
- * subclass in Python); its JSON mode and the R4.12 table both REJECT
+ * Python-object lax mode accepts `True → 1` for int/float (bool is an int
+ * subclass in Python); its JSON mode and the table above both reject
  * booleans, and JSON is the only cross-language boundary, so booleans are
  * rejected here.
  *
  * Failures throw {@link ParamValidationError} (kind `'param'`) or
- * {@link ResponseValidationError} (kind `'response'`, the default — R4.12
- * is a response-parsing rule) with the generic R5.5 codes; message text is
- * out of contract.
+ * {@link ResponseValidationError} (kind `'response'`, the default: coercion
+ * is a response-parsing rule) with the generic validation codes; message text
+ * is out of contract.
  */
 
 import { JsonNumber } from "./client/json-value.js";
 import { ParamValidationError, ResponseValidationError } from "./errors.js";
 
-/** Which R5.5 boundary a failed coercion belongs to. */
+/** Which validation boundary a failed coercion belongs to. */
 export type CoerceKind = "param" | "response";
 
 /** Options accepted by every coercion function. */
@@ -76,8 +76,8 @@ function fail(expected: string, value: unknown, options: CoerceOptions): never {
 }
 
 /**
- * Render a short description of a value for error messages (R5.4:
- * display only, never asserted).
+ * Render a short description of a value for error messages (display only,
+ * never asserted by the conformance corpus).
  *
  * @param value - Any value.
  * @returns A short human-readable description.

@@ -1,10 +1,9 @@
 /**
- * Secret wrapper — the TS port of Pydantic's `SecretStr` (rulebook R4.6,
- * phase2-design C4).
+ * Secret wrapper, the port of Pydantic's `SecretStr`.
  *
  * Every serialization/stringification surface renders the fixed Pydantic
  * redaction literal (`'**********'`, exactly ten asterisks) so that any
- * string that DOES leak into a serialized bag diffs identically against
+ * string that does leak into a serialized bag diffs identically against
  * Python's output. The wrapped value is only reachable through the explicit
  * {@link Secret.reveal} call.
  *
