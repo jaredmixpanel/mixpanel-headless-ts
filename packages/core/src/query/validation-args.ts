@@ -38,29 +38,37 @@ import {
   VALID_RETENTION_UNBOUNDED_MODES,
   VALID_RETENTION_UNITS,
 } from "../bookmarks/enums.js";
-import { pythonRepr, pythonStrip, sortedByCodepoint } from "../compat/index.js";
+import {
+  codepointGreater,
+  isPythonFloat,
+  isPythonInt,
+  pythonListRepr,
+  pythonNumberStr,
+  pythonRepr,
+  pythonStrip,
+  pythonStrLoose,
+  pythonTypeName,
+  sortedByCodepoint,
+} from "../compat/index.js";
 import { ValidationError } from "../errors.js";
 import {
   CohortBreakdown,
   CohortDefinition,
-  CohortMetric,
-  type Exclusion,
-  Formula,
-  FunnelStep,
-  GroupBy,
-  HoldingConstant,
-  Metric,
-} from "../types/index.js";
+} from "../types/query-params/cohort.js";
 import {
-  codepointGreater,
+  type Exclusion,
+  FunnelStep,
+  HoldingConstant,
+} from "../types/query-params/funnel.js";
+import { GroupBy } from "../types/query-params/group-by.js";
+import { CohortMetric, Formula, Metric } from "../types/query-params/metric.js";
+import {
   containsControlChars,
   enumError,
   FLOW_MAX_WINDOW,
   FORMULA_POSITION_RE,
   isFiniteNumber,
   isInvisibleOnly,
-  isPythonFloat,
-  isPythonInt,
   isValidDate,
   matchesDateRe,
   MAX_FLOW_CARDINALITY,
@@ -68,10 +76,6 @@ import {
   MAX_LAST_DAYS,
   MAX_RETENTION_BUCKETS,
   MAX_ROLLING,
-  pythonListRepr,
-  pythonNumberStr,
-  pythonStrLoose,
-  pythonTypeName,
   scanCustomProperties,
   SESSION_MATH,
   suggest,

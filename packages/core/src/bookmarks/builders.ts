@@ -36,28 +36,31 @@
  * @internal
  */
 
-import { pythonRepr } from "../compat/index.js";
-import { isPythonDict } from "../compat/python-dict.js";
+import { isPythonDict, pythonRepr, pythonTypeName } from "../compat/index.js";
 import { ParamTypeError, ParamValidationError } from "../errors.js";
-import { pythonTypeName } from "../query/validation-shared.js";
-import {
-  CohortBreakdown,
-  CustomPropertyRef,
-  Filter,
-  FrequencyBreakdown,
-  FrequencyFilter,
-  GroupBy,
-  InlineCustomProperty,
-  type PropertyInput,
-  type TimeComparison,
-} from "../types/index.js";
+import { defaultToday } from "../query/validation-shared.js";
 import type { QueryTimeUnit } from "../types/literals.js";
 // `sanitizeRawCohort` and `isPyIntOrBool` are module-level `@internal`
 // exports that the query-params barrel deliberately does not re-export
 // (see `types/query-params/index.ts`); import them by name from their
 // owning modules — never re-derive (R10.8).
-import { sanitizeRawCohort } from "../types/query-params/cohort.js";
+import {
+  CohortBreakdown,
+  sanitizeRawCohort,
+} from "../types/query-params/cohort.js";
+import {
+  CustomPropertyRef,
+  Filter,
+  InlineCustomProperty,
+  type PropertyInput,
+} from "../types/query-params/filter.js";
+import {
+  FrequencyBreakdown,
+  FrequencyFilter,
+} from "../types/query-params/frequency.js";
+import { GroupBy } from "../types/query-params/group-by.js";
 import { isPyIntOrBool } from "../types/query-params/guards.js";
+import type { TimeComparison } from "../types/query-params/metric.js";
 
 /**
  * A bookmark JSON fragment — the ported twin of Python's
@@ -110,24 +113,6 @@ function reprForMessage(value: unknown): string {
     }
   }
   return `<${pythonTypeName(value)} object>`;
-}
-
-/**
- * Today's LOCAL calendar date as `YYYY-MM-DD` — the library default of
- * the {@link buildTimeSection} clock seam, mirroring Python
- * `date.today().isoformat()` (`bookmark_builders.py:115`).
- *
- * Watchlist #5: the clock is READ here and immediately rendered; no
- * date string is ever PARSED through `Date`.
- *
- * @returns Today's date as `YYYY-MM-DD`.
- */
-function defaultToday(): string {
-  const now = new Date();
-  const year = String(now.getFullYear()).padStart(4, "0");
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 /**

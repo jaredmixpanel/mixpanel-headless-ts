@@ -32,20 +32,28 @@
 
 import { LosslessJsonError, parseLossless } from "../client/lossless-json.js";
 import { DECIMAL_DIGIT_RUNS } from "../compat/decimal-digits.gen.js";
-import { pythonRepr, pythonStrip, zfill } from "../compat/index.js";
+import {
+  isPythonDict,
+  pythonNumberStr,
+  pythonRepr,
+  pythonStrip,
+  pythonTypeName,
+  zfill,
+} from "../compat/index.js";
 import {
   RuntimeError as PyRuntimeError,
   ValueError as PyValueError,
 } from "../compat/python-builtins.js";
 import { PYTHON_STR_WHITESPACE } from "../compat/whitespace.gen.js";
 import { ParamValidationError, ValidationError } from "../errors.js";
-import { CohortDefinition, Filter } from "../types/index.js";
-import { isCohortFilter, isPythonDict } from "./user-builders.js";
+import { CohortDefinition } from "../types/query-params/cohort.js";
+import { Filter } from "../types/query-params/filter.js";
+import { isCohortFilter } from "./user-builders.js";
 import {
+  asciiDigitsToInt,
+  defaultToday,
   isValidDate,
   matchesDateRe,
-  pythonNumberStr,
-  pythonTypeName,
 } from "./validation-shared.js";
 
 // =============================================================================
@@ -127,26 +135,8 @@ function matchesActionRe(action: string): boolean {
 }
 
 // =============================================================================
-// Clock seam (rule U8 reads `date.today()`)
+// Calendar comparison for rule U8 (the `date.today()` seam is `defaultToday`)
 // =============================================================================
-
-/**
- * Today's LOCAL calendar date rendered `YYYY-MM-DD` — the default
- * behaviour of Python's `date.today()`.
- *
- * Watchlist #5: the clock is READ here, never used to PARSE a date
- * string; `as_of` grammar checking is a pure calendar computation
- * ({@link matchesDateRe} + {@link isValidDate}).
- *
- * @returns Today's date as `YYYY-MM-DD`.
- */
-function defaultToday(): string {
-  const now = new Date();
-  return (
-    `${zfill(String(now.getFullYear()), 4)}-` +
-    `${zfill(String(now.getMonth() + 1), 2)}-${zfill(String(now.getDate()), 2)}`
-  );
-}
 
 /**
  * Compare two canonical `YYYY-MM-DD` strings as calendar dates
@@ -184,21 +174,6 @@ function isoParts(iso: string): [number, number, number] {
     asciiDigitsToInt(iso.slice(5, 7)),
     asciiDigitsToInt(iso.slice(8, 10)),
   ];
-}
-
-/**
- * Convert a run of ASCII digits to a number (R11.7 forbids `parseInt`
- * / `Number(...)`; the input is `[0-9]+` by construction).
- *
- * @param digits - ASCII digit string.
- * @returns The base-10 integer value.
- */
-function asciiDigitsToInt(digits: string): number {
-  let value = 0;
-  for (let i = 0; i < digits.length; i++) {
-    value = value * 10 + (digits.charCodeAt(i) - 0x30);
-  }
-  return value;
 }
 
 // =============================================================================

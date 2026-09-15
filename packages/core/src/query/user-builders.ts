@@ -63,19 +63,17 @@
  */
 
 import {
-  pythonFloatStr,
-  pythonRepr,
-  type PythonValue,
-} from "../compat/index.js";
-import { isPythonDict } from "../compat/python-dict.js";
-import { ParamValidationError } from "../errors.js";
-import type { Filter } from "../types/index.js";
-import {
   floatCarrierValue,
   isFloatCarrier,
+  isPythonDict,
+  pythonFloatStr,
+  pythonRepr,
   pythonStrValue,
   pythonTypeName,
-} from "./validation-shared.js";
+  type PythonValue,
+} from "../compat/index.js";
+import { ParamValidationError } from "../errors.js";
+import type { Filter } from "../types/query-params/filter.js";
 
 // R10.8 / B2 arbiter fix F1 (b2-review-resolution.md, 2026-08-15): the
 // `isinstance(x, dict)` discrimination now has exactly ONE
@@ -508,5 +506,3 @@ export function extractCohortFilter(
   }
   return [remaining, cohort];
 }
-
-export { isPythonDict } from "../compat/python-dict.js";

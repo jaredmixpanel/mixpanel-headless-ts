@@ -68,13 +68,10 @@ import { codepoints } from "../compat/codepoint.js";
 // below. `query/validation-shared.ts` imports nothing from `bookmarks/`,
 // so this direction is acyclic.
 import { isPythonDict } from "../compat/python-dict.js";
+import { floatCarrierValue, isFloatCarrier } from "../compat/python-values.js";
 import { PYTHON_NUMERIC_WHITESPACE } from "../compat/whitespace.gen.js";
 import { ValidationError } from "../errors.js";
 import { defined } from "../invariant.js";
-import {
-  floatCarrierValue,
-  isFloatCarrier,
-} from "../query/validation-shared.js";
 
 // =============================================================================
 // Pydantic error shape
@@ -457,19 +454,6 @@ const PYDANTIC_BOOL_STRINGS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * True for the TS analogue of a Python `dict` — delegates to the
- * shared {@link isPythonDict} discrimination (B2 arbiter fix F1):
- * PyFloat carriers (Python floats) and reconstructed class instances
- * are NOT dicts, exactly as pydantic sees them.
- *
- * @param value - Candidate value.
- * @returns True when Python's `isinstance(value, dict)` would hold.
- */
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return isPythonDict(value);
-}
-
-/**
  * `2**63` — pydantic-core converts a float to an integer through Rust's
  * `i64`, so an INTEGRAL float at or beyond this magnitude does not
  * reach the int/bool coercion paths at all (probe `probe-bool2.py`:
@@ -512,7 +496,7 @@ function numericValue(value: unknown): number | undefined {
  * @param numeric - Its numeric view.
  * @returns True for Python-float semantics.
  */
-function isPythonFloat(value: unknown, numeric: number): boolean {
+function isPydanticFloat(value: unknown, numeric: number): boolean {
   return isFloatCarrier(value) || !Number.isInteger(numeric);
 }
 
@@ -696,7 +680,7 @@ const FLAT_VALUE_SORT_CONFIG: ModelSpec = {
  */
 function flatSortDiscriminator(value: unknown): string {
   const sortBy =
-    isPlainObject(value) && Object.hasOwn(value, "sortBy")
+    isPythonDict(value) && Object.hasOwn(value, "sortBy")
       ? value["sortBy"]
       : undefined;
   if (sortBy === "label") {
@@ -769,7 +753,7 @@ const SORT_BY_VALUE_CONFIG: ModelSpec = {
  */
 function sortConfigDiscriminator(value: unknown): string {
   const sortBy =
-    isPlainObject(value) && Object.hasOwn(value, "sortBy")
+    isPythonDict(value) && Object.hasOwn(value, "sortBy")
       ? value["sortBy"]
       : undefined;
   if (sortBy === "column") {
@@ -826,7 +810,7 @@ const OLD_TABLE_SORT_BY_VALUE: ModelSpec = {
 function flatOrColumnSortDiscriminator(value: unknown): string {
   let sortBy: unknown;
   let hasCols: boolean;
-  if (isPlainObject(value)) {
+  if (isPythonDict(value)) {
     sortBy = Object.hasOwn(value, "sortBy") ? value["sortBy"] : undefined;
     const cols = Object.hasOwn(value, "colSortAttrs")
       ? value["colSortAttrs"]
@@ -872,7 +856,7 @@ const FLAT_OR_COLUMN_SORT_CONFIG: UnionSpec = {
 function tableSortDiscriminator(value: unknown): string {
   let sortBy: unknown;
   let hasSortColumn: boolean;
-  if (isPlainObject(value)) {
+  if (isPythonDict(value)) {
     sortBy = Object.hasOwn(value, "sortBy") ? value["sortBy"] : undefined;
     hasSortColumn = Object.hasOwn(value, "sortColumn");
   } else {
@@ -1029,7 +1013,7 @@ export function validateFieldValue(
             loc,
             msg: "Input should be a finite number",
           });
-        } else if (isPythonFloat(value, numeric)) {
+        } else if (isPydanticFloat(value, numeric)) {
           if (Math.abs(numeric) >= I64_LIMIT) {
             out.push({
               type: "int_parsing_size",
@@ -1148,7 +1132,7 @@ export function validateFieldValue(
       return;
     }
     case "dict": {
-      if (!isPlainObject(value)) {
+      if (!isPythonDict(value)) {
         out.push({
           type: "dict_type",
           loc,
@@ -1292,7 +1276,7 @@ export function validateModel(
   loc: ReadonlyArray<string | number>,
   out: PydanticErrorEntry[],
 ): void {
-  if (!isPlainObject(value)) {
+  if (!isPythonDict(value)) {
     out.push({
       type: "model_type",
       loc,

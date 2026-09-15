@@ -64,19 +64,22 @@ import {
   validateInsightsBookmarkSortConfig,
   validateWithPydantic,
 } from "../bookmarks/schema-sorting.js";
-import { pythonStrip } from "../compat/index.js";
-import { ValidationError } from "../errors.js";
 import {
-  enumError,
+  dictGet,
   floatCarrierValue,
-  isFiniteNumber,
   isFloatCarrier,
   isPythonDict,
   isPythonFloat,
   isPythonInt,
-  MAX_FILTER_VALUES,
+  pythonStrip,
   pythonStrLoose,
   requireHashable,
+} from "../compat/index.js";
+import { ValidationError } from "../errors.js";
+import {
+  enumError,
+  isFiniteNumber,
+  MAX_FILTER_VALUES,
 } from "./validation-shared.js";
 
 // =============================================================================
@@ -110,18 +113,6 @@ function isDict(value: unknown): value is Dict {
  */
 function hasKey(obj: Dict, key: string): boolean {
   return Object.hasOwn(obj, key);
-}
-
-/**
- * TS analogue of `mapping.get(key)` — `undefined` (the local stand-in
- * for Python `None`) for absent keys, never a prototype member.
- *
- * @param obj - The dict.
- * @param key - The key to read.
- * @returns The own value, or `undefined`.
- */
-function dictGet(obj: Dict, key: string): unknown {
-  return Object.hasOwn(obj, key) ? obj[key] : undefined;
 }
 
 /**

@@ -42,16 +42,19 @@
  * @internal
  */
 
-import { pythonFloatStr, pythonStrOf, zfill } from "../compat/index.js";
-import { OverflowError, ValueError } from "../compat/python-builtins.js";
 import {
+  dictGet,
   floatCarrierValue,
   isFloatCarrier,
   isPythonDict,
+  pythonFloatStr,
   pythonIterableElements,
+  pythonStrOf,
   pythonTypeName,
   requireHashable,
-} from "./validation-shared.js";
+  zfill,
+} from "../compat/index.js";
+import { OverflowError, ValueError } from "../compat/python-builtins.js";
 
 /** A normalized event / profile dict — twin of `dict[str, Any]`. */
 export type TransformedRecord = Record<string, unknown>;
@@ -91,23 +94,6 @@ export const RESERVED_PROFILE_KEYS: ReadonlySet<string> = new Set([
 // =============================================================================
 // Python-semantics helpers
 // =============================================================================
-
-/**
- * Python `dict.get(key, default)` over a plain-object dict.
- *
- * @param source - The dict being read.
- * @param key - Key to look up.
- * @param fallback - Value returned when the key is ABSENT (a present
- *   `null` is returned as `null`, exactly like Python).
- * @returns The stored value or the fallback.
- */
-function dictGet(
-  source: Readonly<Record<string, unknown>>,
-  key: string,
-  fallback: unknown,
-): unknown {
-  return Object.hasOwn(source, key) ? source[key] : fallback;
-}
 
 /**
  * Python `dict.pop(key, default)` over a mutable plain-object dict.
