@@ -18,6 +18,7 @@ import {
   type Session,
 } from "@mixpanel-headless/core";
 
+import { fakeTransport } from "../../core/test-support/client-test-helpers.js";
 import {
   browserSession,
   createBrowserWorkspace,
@@ -25,7 +26,6 @@ import {
   CREDENTIAL_KEYS,
   InMemoryCredentialStore,
 } from "../src/index.js";
-import { fakeTransport } from "./helpers.js";
 
 describe("browserSession (§2.2) — real parseAccount/parseSession output", () => {
   it("builds an oauth_token account with default name 'browser' (field spellings per R7.6)", () => {

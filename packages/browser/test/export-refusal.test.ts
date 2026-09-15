@@ -17,11 +17,14 @@ import {
 } from "@mixpanel-headless/core";
 
 import {
+  type FakeTransport,
+  fakeTransport,
+} from "../../core/test-support/client-test-helpers.js";
+import {
   BROWSER_EXPORT_UNSUPPORTED,
   BrowserUnsupportedError,
   createBrowserWorkspace,
 } from "../src/index.js";
-import { type FakeTransport, fakeTransport } from "./helpers.js";
 
 /**
  * Build a workspace over a canned transport.

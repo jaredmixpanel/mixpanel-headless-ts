@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
 
 import { Secret, type Session } from "@mixpanel-headless/core";
 
+import { fakeTransport } from "../../core/test-support/client-test-helpers.js";
 import * as browserEntry from "../src/index.js";
 import {
   BROWSER_SERVICE_ACCOUNT_REFUSED,
@@ -21,7 +22,6 @@ import {
   CREDENTIAL_KEYS,
   InMemoryCredentialStore,
 } from "../src/index.js";
-import { fakeTransport } from "./helpers.js";
 
 /**
  * Hand-build a service-account Session (the out-of-band ingress the
