@@ -1,23 +1,20 @@
 /**
- * B4-C2 wire bindings — the 24 packet-C2 api-index names
- * (query-host + engage + streaming/export), registered inline in the
- * shard commit per the P3-2 b′ fable-batch rule.
+ * `api_client.*` wire bindings for the query host, engage and
+ * streaming/export calls.
  *
- * Binding honesty (P3-5 §3): every binding is memoized
- * `clientFromSession` + ONE client-method call + kwarg passthrough
- * (absent-stays-absent). The only output adaptations are the C1 codec
- * twins (`runWire`/`coreToVectorJson`) plus:
- * - streaming generators drained to arrays (the recorder measured
- *   `list(client.export_events(...))` — D4 iterator encoding);
- * - `$type: callback` kwargs served by the shared `RecordingCallback`
+ * Every binding is the memoized `clientFromSession` plus one
+ * client-method call and kwarg passthrough (absent stays absent); see
+ * `wire-client.ts` for the shared client-construction and honesty rules.
+ * Beyond the `runWire`/`coreToVectorJson` codec twins, three output
+ * adaptations:
+ * - streaming generators are drained to arrays (the recorder measured
+ *   `list(client.export_events(...))`);
+ * - `$type: callback` kwargs are served by the shared `RecordingCallback`
  *   stubs (`on_batch` → the method's `onBatch` seam; the runner diffs
- *   the recorded call log, D4.4);
- * - `export_profiles_page` results re-encoded via
+ *   the recorded call log);
+ * - `export_profiles_page` results re-encode via
  *   `ProfilePageResult.toVectorPayload()` (the recorder's dataclass
  *   field walk).
- *
- * Oracle note: wire api names have NO oracle `call` surface (P3-2 c/e);
- * registration here is complete.
  */
 
 import type { MixpanelClient } from "@mixpanel-headless/core";
@@ -59,7 +56,7 @@ async function drainAsync(source: AsyncIterable<unknown>): Promise<unknown[]> {
 }
 
 /**
- * Register the B4-C2 bindings (24 names).
+ * Register the query wire bindings.
  *
  * @param implementations - The registry to extend.
  */

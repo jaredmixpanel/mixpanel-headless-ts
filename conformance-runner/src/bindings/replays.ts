@@ -1,16 +1,18 @@
 /**
- * B5 (b′) binding module — the replays family (b5-packets.md §6.3):
- * five `replays.*` wire names bound to a REAL `ReplaysService` over the
- * shared vector client + the harness fetch as the CDN seam (mirroring
- * `conformance/runner/targets.py::make_replays_service`), and the four
- * builder names (`replay_labels.*` ×3 + `rrweb_analyzer.analyze`) bound
- * to the real public helpers — the oracle-servable subset.
+ * The replays-family bindings: five `replays.*` wire names bound to a
+ * real `ReplaysService` over the shared vector client with the harness
+ * fetch as the CDN seam, and the four builder names (`replay_labels.*`
+ * ×3 + `rrweb_analyzer.analyze`) bound to the real public helpers — the
+ * oracle-servable subset.
  *
- * Binding honesty (P3-5 rule 3): every wire binding calls the service
- * method by name; `selector_label_fn` mirrors the recorder's flattening
- * adapter (`conformance/record/adapters.py` — `(attr, action) →
- * label`, the closure applied immediately); `rrweb_analyzer.analyze`
- * mirrors `adapters.py::analyze_rrweb` (`RrwebAnalyzer().analyze`).
+ * Every wire binding calls the service method by name (see
+ * `wire-client.ts` for the shared honesty rules); `selector_label_fn`
+ * mirrors the recorder's flattening adapter (`(attr, action)` to a
+ * label, the closure applied immediately) and `rrweb_analyzer.analyze`
+ * mirrors `conformance.record.adapters.analyze_rrweb`
+ * (`RrwebAnalyzer().analyze`).
+ *
+ * @see conformance.runner.targets.make_replays_service
  */
 
 import {
@@ -39,8 +41,9 @@ import { clientForContext, encodeFacadeValue } from "../wire-workspace.js";
 /**
  * A replays-path core error with the recorder's float-detail spelling:
  * `signed_at` / `expired_at` details are Python `float`s
- * (`time.time()` at `replays.py` and `+300` arithmetic at
- * `_build_expired_error`), so the recorded `details_contain` carries
+ * (`time.time()` in `mixpanel_headless._internal.services.replays` and
+ * the `+300` arithmetic in its `_build_expired_error`), so the recorded
+ * `details_contain` carries
  * raw float tokens (`1716810000.0`) that the base encoding's native
  * numbers would miss.
  */
@@ -80,12 +83,11 @@ class ReplaysWireError extends WireCoreError {
 }
 
 /**
- * Construct the replay `ReplaysService` for one call — the
- * `targets.py::make_replays_service` twin (a FRESH service per call,
- * exactly like the Python dispatch at `execute.py`; the CLIENT
- * stays the vector-shared instance). The CDN seam is the vector
- * harness fetch; the `time.time()` seam is the frozen
- * shims clock (the Python runner freezes it via freezegun, D1.4).
+ * Construct the `ReplaysService` for one call, as
+ * `conformance.runner.targets.make_replays_service` does: a fresh
+ * service per call while the client stays the vector-shared instance.
+ * The CDN seam is the vector harness fetch; the `time.time()` seam is
+ * the frozen shims clock (the Python runner freezes it via freezegun).
  *
  * @param context - The invocation context.
  * @returns The service with both seams bound.
@@ -131,7 +133,7 @@ async function runReplays(
 /**
  * Build the `WalkCdnOptions` bag from the Python kwarg spellings
  * (`retention_days` required; `max_files`/`concurrency`/
- * `re_sign_on_expiry` optional — absent stays absent, R3.5).
+ * `re_sign_on_expiry` optional — absent stays absent).
  *
  * @param context - The invocation context.
  * @returns The camelCase options bag.
@@ -151,13 +153,19 @@ function walkOptions(context: InvocationContext): WalkCdnOptions {
 }
 
 /**
- * Register the replays-family bindings (b5-packets.md §6.3): the five
- * registered `replays.*` wire names (only `fetch_files` has vectors at
- * this pin — the rest bind for the straggler ratchet) plus the four
- * oracle-servable builder names.
+ * Register the replays-family bindings: the five `replays.*` wire names
+ * (only `fetch_files` has corpus vectors at the pinned revision; the
+ * rest are bound so new vectors replay without a registry change) plus
+ * the four oracle-servable builder names.
  *
  * @param implementations - The registry to extend.
  * @param codecs - The codec registry (rich inputs + output encoding).
+ * @example
+ * ```ts
+ * const implementations = new ImplementationRegistry();
+ * const codecs = new CodecRegistry();
+ * registerReplaysBindings(implementations, codecs);
+ * ```
  */
 export function registerReplaysBindings(
   implementations: ImplementationRegistry,
@@ -187,7 +195,7 @@ export function registerReplaysBindings(
   implementations.register("replays.walk_cdn_async", async (context) => {
     const service = replaysServiceFor(context);
     // Generator members replay as their item list (the Python runner's
-    // `isinstance(result, Iterator)` branch, `execute.py`).
+    // `isinstance(result, Iterator)` branch in `conformance.runner.execute`).
     return runReplays(codecs, async () => {
       const items: unknown[] = [];
       for await (const item of service.walkCdnAsync(
@@ -220,9 +228,10 @@ export function registerReplaysBindings(
       ...(toDate === undefined ? {} : { toDate: toDate as string | null }),
       ...(limit === undefined ? {} : { limit: limit as number }),
     };
-    // targets.py::make_replays_service binds NO query_fn — `discover`
-    // replays the RuntimeError-twin branch unless a future recorder
-    // change adopts one; port that construction verbatim.
+    // `conformance.runner.targets.make_replays_service` binds no
+    // `query_fn` — `discover` replays the RuntimeError-twin branch unless
+    // a future recorder change adopts one; the construction is ported
+    // verbatim.
     return runReplays(codecs, () => service.discover(options));
   });
 
@@ -248,13 +257,11 @@ export function registerReplaysBindings(
     );
   });
 
-  // -------------------------------------------------------------------
-  // Builder names (oracle-servable — the §7.3 probe subset). Coded
-  // library errors wrap as {@link WireCoreError} so the oracle/runner
-  // error diff sees `{class, code}` — a raw `MixpanelHeadlessError`
-  // would encode as bare class only (the UA1 constructor guards inside
-  // the analyzer are reachable from these entry points).
-  // -------------------------------------------------------------------
+  // --- Builder names (oracle-servable) ---
+  // Coded library errors wrap as WireCoreError so the oracle/runner error
+  // diff sees `{class, code}` — a raw MixpanelHeadlessError would encode
+  // as bare class only (the constructor guards inside the analyzer are
+  // reachable from these entry points).
 
   implementations.register("replay_labels.url_normalizer", (context) =>
     runBuilder(() => urlNormalizer(requireWireKwarg(context, "url") as string)),
@@ -267,9 +274,9 @@ export function registerReplaysBindings(
   );
 
   implementations.register("replay_labels.selector_label_fn", (context) =>
-    // The recorder flattens the closure factory to `(attr, action) →
-    // label` (`adapters.py`); the binding mirrors that adapter
-    // over the REAL public factory.
+    // The recorder flattens the closure factory to `(attr, action)` → label
+    // (`conformance.record.adapters.selector_label_fn`); the binding
+    // mirrors that adapter over the real public factory.
     runBuilder(() =>
       selectorLabelFn(requireWireKwarg(context, "attr") as string)(
         requireWireKwarg(context, "action") as UserAction,
@@ -278,16 +285,16 @@ export function registerReplaysBindings(
   );
 
   implementations.register("rrweb_analyzer.analyze", (context) => {
-    // adapters.py::analyze_rrweb twin: RrwebAnalyzer().analyze(events),
-    // AnalyzerResult encoded to its plain to-dict shape. The events
-    // tree is Python-side plain `json.loads` data — the oracle's
-    // integral-float input re-tag (executeBound `tagIntegralFloatTokens`,
-    // a fidelity mechanism for CARRIER-AWARE modules) is unwound back to
+    // Twin of `conformance.record.adapters.analyze_rrweb`:
+    // `RrwebAnalyzer().analyze(events)`, AnalyzerResult encoded to its
+    // plain to-dict shape. The events tree is Python-side plain
+    // `json.loads` data — the oracle's integral-float input re-tag
+    // (`tagIntegralFloatTokens` in the oracle server's `executeBound`, a
+    // fidelity mechanism for carrier-aware modules) is unwound back to
     // natives here, matching the runner's own decode of the recorded
     // rrweb-seed vectors (raw tokens → native numbers). Behaviorally
     // safe: the analyzer consumes timestamps through the CPython `int()`
-    // ladder and never stringifies non-str payload members (S3 R10.9
-    // record, 520 cases).
+    // ladder and never stringifies non-str payload members.
     const events = unwrapCarriersDeep(
       requireWireKwarg(context, "events"),
     ) as ReadonlyArray<Record<string, unknown>>;

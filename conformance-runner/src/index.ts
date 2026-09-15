@@ -1,11 +1,14 @@
 /**
- * conformance-runner — replays the Python-extracted conformance corpus
- * against the TS port (design D12). Loader/codecs/api-map are TS-4;
- * VectorFetch + runner + reporting land in TS-5.
+ * Replay the Python-extracted conformance corpus against the port.
+ *
+ * The corpus (`corpus/`) is a committed snapshot pinned by
+ * `corpus.config.json`. `runner.ts` dispatches vectors to the bindings; the
+ * verdict taxonomy lives in `verdicts.ts`; equality goes through
+ * `canonical.ts` and the order-preserving `lossless-json.ts`. Consumed by
+ * `test/corpus.test.ts` and the `npm run conformance` CLI (`cli.ts`).
+ *
+ * @packageDocumentation
  */
-
-/** Package name constant exercised by the skeleton smoke test. */
-export const RUNNER_PACKAGE_NAME = "@mixpanel-headless/conformance-runner";
 
 export * from "./api-map.js";
 export type * from "./api-map-types.js";

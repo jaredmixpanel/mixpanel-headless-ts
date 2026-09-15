@@ -1,35 +1,31 @@
 /**
- * Virtual clock, deterministic UUID stream, and virtual sleep (design
- * D12, mirroring the Python record/replay shims in
- * `conformance/record/clock.py` and design D1.4/D7).
+ * Virtual clock, deterministic UUID stream, and virtual sleep.
  *
- * Both runners replay under the SAME frozen instant (`RECORD_EPOCH`, from
+ * Both runners replay under the same frozen instant (`RECORD_EPOCH`, from
  * the corpus manifest) so date-defaulting code paths (`to_date=today`,
  * 30-day funnel windows, ...) reproduce the recorded payloads exactly.
- * Sleep is VIRTUAL, not a plain no-op: `sleep(d)` advances the frozen
- * clock (wall AND monotonic) by `d` and resolves immediately, so
+ * Sleep is virtual, not a plain no-op: `sleep(d)` advances the frozen
+ * clock (wall and monotonic) by `d` and resolves immediately, so
  * wall-clock-deadline poll loops terminate after a deterministic,
  * machine-independent number of iterations and backoff vectors replay
- * instantly (D1.4).
+ * instantly. The UUID stream is counter-seeded
+ * (`00000000-0000-4000-8000-{seq:012d}` in call order, starting at 0) and
+ * reset per vector: a fresh {@link RunnerShims} is created for every run.
  *
- * The UUID stream mirrors `DeterministicUuidStream`: counter-seeded
- * `00000000-0000-4000-8000-{seq:012d}` values in call order, starting at
- * sequence 0, reset per vector (a fresh {@link RunnerShims} is created for
- * every vector run).
+ * @see conformance.record.clock
  */
 
-/** Template for the deterministic UUID stream (D1.4). */
+/** Template for the deterministic UUID stream. */
 const UUID_TEMPLATE_PREFIX = "00000000-0000-4000-8000-";
 
 /**
  * The injectable clock/UUID/sleep surface handed to TS entry points at
- * replay (design D12: the TS client takes injectable `now()`/`today()`/
- * `uuid()`; the runner injects the record epoch and the deterministic
- * UUID stream).
+ * replay (the TS client takes injectable `now()`/`today()`/`uuid()`; the
+ * runner injects the record epoch and the deterministic UUID stream).
  */
 export interface RunnerShims {
   /**
-   * The current VIRTUAL instant.
+   * The current virtual instant.
    *
    * @returns A `Date` at the record epoch plus all virtually slept time.
    */
@@ -67,7 +63,7 @@ export interface RunnerShims {
 }
 
 /**
- * Create fresh per-vector shims (design D1.4/D7/D12).
+ * Create fresh per-vector shims.
  *
  * @param recordEpoch - The frozen record instant, ISO-8601 (the corpus
  *   manifest's `record_epoch`, e.g. `"2026-01-15T12:00:00Z"`).

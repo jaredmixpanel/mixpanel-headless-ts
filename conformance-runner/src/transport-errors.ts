@@ -1,24 +1,34 @@
 /**
- * httpx-class → native-fetch-rejection table (design D12).
+ * httpx-class to native-fetch-rejection table.
  *
- * Vectors record transport failures as the httpx exception CLASS NAME the
+ * Vectors record transport failures as the httpx exception class name the
  * mock handler raised (`interaction.response.transport_error`, schema
  * `$defs.transportError`). At replay, `VectorFetch` must reject the way
- * NATIVE fetch rejects — a `TypeError` whose `cause` carries the underlying
- * network error, exactly as undici/browser fetch produce — and NEVER a
- * pre-mapped library error: R2.10 puts the adapter's fetch-rejection →
- * error-taxonomy mapping UNDER TEST (e.g. the `upload_to_signed_url` port
- * must itself wrap transport failures into `UPLOAD_ERROR`; rejecting with
- * the mapped error would bypass exactly that code and risk double-wrapping).
+ * native fetch rejects — a `TypeError` whose `cause` carries the underlying
+ * network error, exactly as undici/browser fetch produce — and never a
+ * pre-mapped library error: the adapter's fetch-rejection to
+ * error-taxonomy mapping is itself under test (e.g. the
+ * `upload_to_signed_url` port must wrap transport failures into
+ * `UPLOAD_ERROR`; rejecting with the mapped error would bypass exactly that
+ * code and risk double-wrapping). The table covers the full httpx
+ * `TransportError` family so future extractions cannot silently outgrow
+ * it; the current corpus uses `ConnectError` and `TimeoutException`. Cause
+ * shapes mirror undici's (Node 20 and later native fetch): a
+ * `TypeError("fetch failed")` with an Error cause carrying a `code` such as
+ * `ECONNREFUSED` or `UND_ERR_*`.
  *
- * The table below covers the full httpx `TransportError` family so future
- * extractions cannot silently outgrow it; the current corpus uses
- * `ConnectError` and `TimeoutException`. Cause shapes mirror undici's
- * (Node >= 20 native fetch): a `TypeError("fetch failed")` with an Error
- * cause carrying a `code` such as `ECONNREFUSED` or `UND_ERR_*`.
+ * @see conformance.runner.transport.build_transport_error
  */
 
-/** Raised when a vector names an httpx class this table does not cover. */
+/**
+ * Raised when a vector names an httpx class this table does not cover.
+ *
+ * @example
+ * ```ts
+ * createTransportRejection("NotAnHttpxClass");
+ * // throws UnknownTransportErrorClass: transport-errors.ts has no entry for httpx class "NotAnHttpxClass"
+ * ```
+ */
 export class UnknownTransportErrorClass extends Error {
   /**
    * Create an unknown-class error.
@@ -45,7 +55,7 @@ interface RejectionSpec {
 }
 
 /**
- * The committed httpx → native-fetch rejection table (design D12).
+ * The committed httpx to native-fetch rejection table.
  *
  * Keys are httpx exception class names exactly as vectors carry them.
  * Values describe the `cause` attached to the `TypeError("fetch failed")`
@@ -139,9 +149,11 @@ export function knownTransportErrorClass(httpxClass: string): boolean {
  *
  * @param httpxClass - The httpx exception class name from the vector
  *   (`interaction.response.transport_error`).
+ * @param message - The recorded exception message, when the vector
+ *   captured one; overrides the table's default cause message.
  * @returns A fresh `TypeError("fetch failed")` whose `cause` is an `Error`
  *   with the table's name/message and a `code` property — the shape the
- *   library's fetch adapter must classify itself (R2.10).
+ *   library's fetch adapter must classify itself.
  * @throws UnknownTransportErrorClass - When the class is not in the table.
  * @example
  * ```typescript
@@ -158,8 +170,8 @@ export function createTransportRejection(
   if (spec === undefined) {
     throw new UnknownTransportErrorClass(httpxClass);
   }
-  // The recorded exception message wins when present (B4-C1): the
-  // Python replay transport re-raises `cls(recorded_message)` and
+  // The recorded exception message wins when present: the Python replay
+  // transport re-raises `cls(recorded_message)` and
   // `str(e)` flows into `details_contain.error`, so the TS cause must
   // carry the same text for the wire error diff to reproduce it.
   const cause = new RecordedTransportCause(

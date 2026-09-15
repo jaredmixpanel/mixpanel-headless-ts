@@ -1,15 +1,14 @@
 /**
- * B5 (b′) binding module — the 44 `workspace.<member>` api names
- * (b5-packets.md §6.1/§6.2) — plus, since B6-BIND, the 11 B6-W1
- * lifecycle/me/business-context names (b6-packets.md §11.3: W1 names
- * fold in beside `workspaceFromSession`; the W2–W8 entity names live
- * in the sibling module `wire-workspace-entities.ts`).
+ * `workspace.<member>` facade bindings: the query, discovery/lexicon and
+ * session-replay members plus the lifecycle, `/me` and business-context
+ * members, together with the facade plumbing (`workspaceFromSession`,
+ * `runFacade`, `optionsBag`, `encodeFacadeValue`) the entity sibling
+ * `wire-workspace-entities.ts` shares.
  *
- * Contract (P3-5, mirrored from the Python runner
- * `conformance/runner/execute.py::_ReplayContext.get_workspace` /
- * `targets.py::make_workspace`):
+ * Mirrors the Python runner's `_ReplayContext.get_workspace` /
+ * `make_workspace`:
  *
- * 1. `workspaceFromSession(context)` builds the ONE facade instance per
+ * 1. `workspaceFromSession(context)` builds one facade instance per
  *    vector, memoized in `context.state` under {@link WORKSPACE_STATE_KEY}
  *    so `call.setup[]` entries and the measured call share it. The
  *    underlying client is the shared `clientFromSession` instance
@@ -17,23 +16,25 @@
  *    entries mutate the same client the facade uses.
  * 2. The facade session is `call.workspace_session` when present, else
  *    `call.session`, else the synthetic builder session
- *    (`targets.py::_DEFAULT_SESSION_VALUES`). Builder-kind vectors carry
- *    no session AND no fetch — they get the synthetic session over an
- *    EMPTY `VectorFetch`, so any accidental network attempt fails the
- *    vector loudly (D5.1).
- * 3. Binding honesty (P3-5 rule 3): every binding calls the REAL
- *    `Workspace` member the recorder wrapped — never the underlying
- *    client method, never a re-derived transform. The only adaptations
- *    are kwarg plumbing, the U8 `today` clock seam
- *    (`context.shims.today()` — the recorder ran under the frozen
- *    epoch), and the recorder output-codec twins below.
- * 4. Output codec twins: results encode exactly like the Python
- *    recorder's `encode_expect_value` field walk
- *    — dataclass instances to their declared-field shape (the S-shards'
- *    `toVectorPayload()` where present), Python-`float`-typed fields as
+ *    (`_DEFAULT_SESSION_VALUES`). Builder-kind vectors carry no session
+ *    and no fetch — they get the synthetic session over an empty
+ *    `VectorFetch`, so any accidental network attempt fails the vector
+ *    loudly.
+ * 3. Every binding calls the real `Workspace` member the recorder
+ *    wrapped — never the underlying client method, never a re-derived
+ *    transform. The only adaptations are kwarg plumbing, the `today`
+ *    clock seam (`context.shims.today()` — the recorder ran under the
+ *    frozen epoch), and the recorder output-codec twins below (see
+ *    `wire-client.ts` for the shared client-construction and honesty
+ *    rules).
+ * 4. Results encode exactly like the recorder's `encode_expect_value`
+ *    field walk: dataclass instances to their declared-field shape
+ *    (`toVectorPayload()` where present), Python-`float`-typed fields as
  *    raw float tokens even when integral ({@link floatToken} — the
  *    recorder writes `1.0`, not `1`; the affected fields are cited at
  *    each twin), and `$type` tags for datetime members.
+ *
+ * @see conformance.runner.execute._ReplayContext.get_workspace
  */
 
 import {
@@ -105,14 +106,14 @@ import {
   WireCoreError,
 } from "./wire-client.js";
 
-/** The ONE well-known `context.state` key for the memoized facade. */
+/** The well-known `context.state` key for the memoized facade. */
 const WORKSPACE_STATE_KEY = "workspace";
 
 /**
- * The synthetic session for builder-kind facade replays — the exact
- * `targets.py::_DEFAULT_SESSION_VALUES` mirror (builder vectors carry no
- * session; `Workspace` construction requires one; requests can never
- * escape because the client binds an EMPTY `VectorFetch`).
+ * The synthetic session for builder-kind facade replays, mirroring
+ * `conformance.runner.targets._DEFAULT_SESSION_VALUES` (builder vectors
+ * carry no session; `Workspace` construction requires one; requests can
+ * never escape because the client binds an empty `VectorFetch`).
  */
 const DEFAULT_BUILDER_SESSION: JsonValue = {
   type: "service_account",
@@ -124,16 +125,17 @@ const DEFAULT_BUILDER_SESSION: JsonValue = {
 };
 
 /**
- * Return (building + memoizing lazily) the vector's ONE client — the
- * `_ReplayContext.get_client` twin.
+ * Return the vector's single client, building and memoizing it on first
+ * use (the `_ReplayContext.get_client` twin).
  *
- * Session present → the shared B4 `clientFromSession` path. Session
- * absent → the synthetic builder session over the vector fetch when one
- * exists (wire vectors measured on session-free targets), else an EMPTY
- * `VectorFetch` (builder-kind: any network attempt fails loudly).
+ * With a session present this is the shared `clientFromSession` path.
+ * Without one, the synthetic builder session is used over the vector
+ * fetch when one exists (wire vectors measured on session-free targets),
+ * else over an empty `VectorFetch` (builder-kind: any network attempt
+ * fails loudly).
  *
  * @param context - The invocation context.
- * @returns The vector's ONE `MixpanelClient` instance.
+ * @returns The vector's single `MixpanelClient` instance.
  */
 export function clientForContext(context: InvocationContext): MixpanelClient {
   const existing = context.state.get(CLIENT_STATE_KEY);
@@ -148,7 +150,7 @@ export function clientForContext(context: InvocationContext): MixpanelClient {
     session,
     fetch: context.fetch ?? createVectorFetch([]).fetch,
     sleep: async (): Promise<void> => {
-      /* zero-delay (P3-5 §2) */
+      /* zero-delay */
     },
     random: () => 0,
     now: (): Date => context.shims.now(),
@@ -158,8 +160,8 @@ export function clientForContext(context: InvocationContext): MixpanelClient {
 }
 
 /**
- * Return (building + memoizing lazily) the vector's ONE `Workspace`
- * facade — the `_ReplayContext.get_workspace` twin.
+ * Return the vector's single `Workspace` facade, building and memoizing
+ * it on first use (the `_ReplayContext.get_workspace` twin).
  *
  * @param context - The invocation context.
  * @returns The facade bound to the vector's shared client.
@@ -178,17 +180,17 @@ export function workspaceFromSession(context: InvocationContext): Workspace {
   return workspace;
 }
 
-/** Rich `$type` tags the Python EXPECT encoder strips (B3 precedent). */
+/** Rich `$type` tags the Python expect encoder strips. */
 const RICH_MODEL_TAGS: ReadonlySet<string> = new Set(
   CONTRACT_TAG_CODECS.keys(),
 );
 
 /**
- * Re-encode one already-encoded codec tree in Python's EXPECT encoding
- * (the `toBuilderExpectOutput` twin, kept local per the wire-module
- * self-containment precedent): rich model tags drop, finite
- * `$type: float` payloads become raw `JsonNumber` tokens, non-finite
- * spellings stay tagged.
+ * Re-encode one already-encoded codec tree in Python's expect encoding
+ * (a local twin of `toBuilderExpectOutput` in `bindings/builders.ts`,
+ * kept here so the wire modules stay self-contained): rich model tags
+ * drop, finite `$type: float` payloads become raw `JsonNumber` tokens,
+ * non-finite spellings stay tagged.
  *
  * @param value - A vector-JSON tree from `CodecRegistry.encodeValue`.
  * @returns The expect-encoded tree.
@@ -236,10 +238,10 @@ function stripRichTags(value: JsonValue): JsonValue {
  *   finishes the walk and rejects non-finite numbers);
  * - core `JsonNumber` tokens become runner tokens (raw spelling kept);
  * - `PyFloat` carriers become raw float tokens (expect position keeps
- *   the recorded `18.0` spelling — D6 rule 3);
+ *   the recorded `18.0` spelling);
  * - `Map`s become plain objects (Python `dict` results);
- * - instances with `toVectorPayload()` (the S-shard recorder twins)
- *   encode through it; contract-tagged classes encode through the
+ * - instances with `toVectorPayload()` (the recorder twins on result
+ *   dataclasses) encode through it; contract-tagged classes encode through the
  *   shared codec table with rich tags stripped; `toJSON()` is the last
  *   instance fallback.
  *
@@ -247,6 +249,12 @@ function stripRichTags(value: JsonValue): JsonValue {
  * @param value - The live library return value.
  * @returns The expect-encoded vector-JSON tree.
  * @throws Error - When a value has no encoding (a binding bug).
+ * @example
+ * ```ts
+ * const result = await ws.funnel(funnelId, options);
+ * const encoded = encodeFacadeValue(codecs, result);
+ * // dataclass fields under their Python names, floats as raw tokens
+ * ```
  */
 // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function encodeFacadeValue(
@@ -429,8 +437,7 @@ function tagFloatDictValues(tree: JsonValue, key: string): void {
 /**
  * Invoke a facade member, encode its return for the runner, and wrap
  * coded library errors as {@link WireCoreError} (whose `toExpectError`
- * carries the `BookmarkValidationError` `errors[]` triples — packet
- * §6.5).
+ * carries the `BookmarkValidationError` `errors[]` triples).
  *
  * @param codecs - The codec registry.
  * @param invoke - Thunk performing the real facade call.
@@ -438,6 +445,13 @@ function tagFloatDictValues(tree: JsonValue, key: string): void {
  * @throws WireCoreError - When the call raises a core exception.
  * @throws unknown - Anything else, unchanged (harness sequence errors
  *   and runner/infra bugs must reach the runner intact).
+ * @example
+ * ```ts
+ * const ws = workspaceFromSession(context);
+ * return runFacade(codecs, () =>
+ *   ws.propertyValues(propertyName, optionsBag(context, ["property_name"])),
+ * );
+ * ```
  */
 export async function runFacade(
   codecs: CodecRegistry,
@@ -455,9 +469,9 @@ export async function runFacade(
 
 /**
  * Build the options bag for a member: every decoded kwarg except the
- * positional names (Python kwonly names ARE the TS option keys), plus
- * the U8 `today` clock seam when requested (the recorder and both
- * oracles run under the frozen record epoch).
+ * positional names (Python kwonly names are the TS option keys), plus
+ * the `today` clock seam when requested (the recorder and both oracles
+ * run under the frozen record epoch).
  *
  * @param context - The invocation context.
  * @param positionals - Kwarg names consumed positionally.
@@ -465,6 +479,11 @@ export async function runFacade(
  * @returns The options bag, asserted to the member's option type (the
  *   recorder guarantees the kwarg names — a bad bag is a vector bug and
  *   surfaces as the member's own validation error).
+ * @example
+ * ```ts
+ * // kwargs {event, unit, where} → positional `event` + {unit, where, today}
+ * const options = optionsBag<WorkspaceQueryOptions>(context, ["event"], true);
+ * ```
  */
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- a deliberate cast-in-disguise: the return-only T names the member's option type at each of the ~66 binding sites
 export function optionsBag<T>(
@@ -484,31 +503,33 @@ export function optionsBag<T>(
 }
 
 /**
- * Register all 44 B5 `workspace.<member>` bindings (b5-packets.md §6.1).
+ * Register the `workspace.<member>` query, discovery, session-replay,
+ * lifecycle, `/me` and business-context bindings.
  *
  * The five `build_*params` members are builder-kind (oracle-servable
  * through this same registry — the oracle server executes bound names
- * directly); `clear_discovery_cache` is wire_state; the rest wire_api.
- *
- * B6-BIND extension (b6-packets.md §11): the 11 B6-W1 names register
- * here too — `use`/`close` are wire_state (`registry.py`; no
- * return-shape contract, the `clear_discovery_cache` precedent), and
- * binding `workspace.me` closes the B4 dagger holdback (§11.2): the
- * carried `api_client.resolve_workspace_id` vector's `workspace.me`
- * setup now executes over the SHARED `clientFromSession` client, whose
- * workspace resolver is installed at `Workspace` construction.
+ * directly); `use`, `close` and `clear_discovery_cache` are wire_state
+ * (`conformance.record.registry`; no return-shape contract); the rest
+ * are wire_api. `workspace.me` must be bound here because the
+ * `api_client.resolve_workspace_id` vector runs it as setup over the
+ * shared `clientFromSession` client, whose workspace resolver is
+ * installed at `Workspace` construction.
  *
  * @param implementations - The registry to extend.
  * @param codecs - The codec registry (output encoding + rich inputs).
+ * @example
+ * ```ts
+ * const implementations = new ImplementationRegistry();
+ * const codecs = new CodecRegistry();
+ * registerWorkspaceBindings(implementations, codecs);
+ * ```
  */
 // eslint-disable-next-line max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function registerWorkspaceBindings(
   implementations: ImplementationRegistry,
   codecs: CodecRegistry,
 ): void {
-  // -------------------------------------------------------------------
-  // S2 — live-query / query-engine members (22)
-  // -------------------------------------------------------------------
+  // --- Live-query / query-engine members ---
 
   implementations.register("workspace.segmentation", async (context) => {
     const ws = workspaceFromSession(context);
@@ -529,8 +550,8 @@ export function registerWorkspaceBindings(
       ),
     );
     // Recorder float twin: `FunnelResult.conversion_rate` and each
-    // step's `conversion_rate` are Python `float`s (division /
-    // literal 1.0 — `live_query.py`).
+    // step's `conversion_rate` are Python `float`s (division / literal
+    // 1.0; `mixpanel_headless.types.FunnelResult`).
     tagFloatMember(encoded, "conversion_rate");
     for (const step of arrayMember(encoded, "steps")) {
       tagFloatMember(step, "conversion_rate");
@@ -544,7 +565,7 @@ export function registerWorkspaceBindings(
       ws.retention(optionsBag<WorkspaceRetentionOptions>(context, [])),
     );
     // Recorder float twin: `RetentionCohort.retention` is `list[float]`
-    // (rate division, `live_query.py` — `0.0` stays `0.0`).
+    // (rate division — `0.0` stays `0.0`).
     for (const cohort of arrayMember(encoded, "cohorts")) {
       if (
         typeof cohort !== "object" ||
@@ -615,8 +636,7 @@ export function registerWorkspaceBindings(
     );
     // Recorder float twin: `FlowsResult.overall_conversion_rate` is a
     // Python float whenever the body carried a JSON number (or the 0.0
-    // default, `live_query.py`); string bodies (`"NaN"`) pass
-    // through untouched.
+    // default); string bodies (`"NaN"`) pass through untouched.
     tagFloatMember(encoded, "overall_conversion_rate");
     return encoded;
   });
@@ -651,7 +671,8 @@ export function registerWorkspaceBindings(
     );
     // Recorder float twin: `NumericSumResult.results` is
     // `dict[str, float]` — sum-endpoint values are Python floats
-    // (`types.py` annotation; the recorded corpus agrees).
+    // (`mixpanel_headless.types.NumericSumResult`; the recorded corpus
+    // agrees).
     tagFloatDictValues(encoded, "results");
     return encoded;
   });
@@ -787,9 +808,7 @@ export function registerWorkspaceBindings(
     );
   });
 
-  // -------------------------------------------------------------------
-  // S1 — discovery / lexicon members (12)
-  // -------------------------------------------------------------------
+  // --- Discovery / lexicon members ---
 
   implementations.register("workspace.events", async (context) => {
     const ws = workspaceFromSession(context);
@@ -855,7 +874,7 @@ export function registerWorkspaceBindings(
     "workspace.clear_discovery_cache",
     async (context) => {
       const ws = workspaceFromSession(context);
-      // wire_state (D1.2): no return contract — replays as setup only.
+      // wire_state: no return contract — replays as setup only.
       await ws.clearDiscoveryCache();
       return null;
     },
@@ -887,9 +906,7 @@ export function registerWorkspaceBindings(
     );
   });
 
-  // -------------------------------------------------------------------
-  // S3 — session-replay members (10)
-  // -------------------------------------------------------------------
+  // --- Session-replay members ---
 
   implementations.register("workspace.list_replays", async (context) => {
     const ws = workspaceFromSession(context);
@@ -951,7 +968,7 @@ export function registerWorkspaceBindings(
   implementations.register("workspace.stream_replay", async (context) => {
     const ws = workspaceFromSession(context);
     // Iterator members replay as their item list (the Python runner's
-    // `isinstance(result, Iterator)` branch, `execute.py`).
+    // `isinstance(result, Iterator)` branch in `conformance.runner.execute`).
     return runFacade(codecs, async () => {
       const items: unknown[] = [];
       for await (const item of ws.streamReplay(
@@ -991,13 +1008,11 @@ export function registerWorkspaceBindings(
     );
   });
 
-  // -------------------------------------------------------------------
-  // B6-W1 — lifecycle / /me trio / business context (11)
-  // -------------------------------------------------------------------
+  // --- Lifecycle, /me and business context ---
 
   implementations.register("workspace.use", async (context) => {
     const ws = workspaceFromSession(context);
-    // wire_state (registry.py): setup-only replay, no
+    // wire_state (`conformance.record.registry`): setup-only replay, no
     // return-shape contract — Python returns `self`, which has no
     // vector encoding (the `clear_discovery_cache` precedent).
     return runFacade(codecs, async () => {

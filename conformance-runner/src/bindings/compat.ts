@@ -41,7 +41,7 @@ import { type BindingTable, guardCompat, registerTable } from "./shared.js";
 
 /**
  * Encode one `pythonFloat` result exactly as the Python reference wrapper
- * does (the wrapper IS the recorded api, so the binding mirrors its two
+ * does (the wrapper is the recorded api, so the binding mirrors its two
  * output translations verbatim):
  *
  * - non-finite results become the `repr` sentinel strings (`"inf"` /
@@ -65,7 +65,7 @@ function encodePythonFloatResult(value: number): JsonValue {
   return new JsonNumber(pythonFloatStr(value));
 }
 
-/** The `compat.*` table (each binder runs under {@link guardCompat}). */
+// The `compat.*` table; each binder runs under `guardCompat`.
 const COMPAT_BINDINGS: BindingTable = [
   [
     "compat.zfill",
@@ -134,10 +134,10 @@ const COMPAT_BINDINGS: BindingTable = [
   [
     "compat.cp_slice",
     (context) => {
-      // Tri-state note (rig api): `start`/`end` absent and explicit-null
-      // both spell Python None (the open slice end) for this reference
-      // wrapper — cp_slice(value, start=None) IS the default; `cpSlice`
-      // treats `undefined` the same way.
+      // `start`/`end` absent and explicit null both spell Python `None`
+      // (the open slice end) for this reference wrapper —
+      // `cp_slice(value, start=None)` is the default; `cpSlice` treats
+      // `undefined` the same way.
       const bound = (name: string): number | undefined =>
         optionalKwarg(context, name, isNullable(isNumber), "int | None") ??
         undefined;

@@ -1,5 +1,5 @@
 /**
- * Resolution of the shared `canonical-selftest.json` location (D6/D12).
+ * Resolution of the shared `canonical-selftest.json` location.
  *
  * The selftest file is the cross-language contract artifact for the two
  * canonicalizer implementations. Its home in this repo is the committed
@@ -17,7 +17,7 @@ const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
 /** The `conformance-runner` package root. */
 const PACKAGE_DIR = resolve(MODULE_DIR, "..");
 
-/** Selftest file name as written by Python task PR-4 (D6). */
+/** Selftest file name as written by the Python side (`conformance/schema/`). */
 const SELFTEST_FILENAME = "canonical-selftest.json";
 
 /** Shape of the optional `corpus.config.json` fields used here. */
@@ -32,8 +32,8 @@ interface CorpusConfig {
  * Resolution order:
  * 1. `MP_CANONICAL_SELFTEST` environment variable (explicit override).
  * 2. `corpus.config.json`'s `vectorsPath` directory (the committed corpus
- *    snapshot; `sync-corpus.sh` copies the selftest alongside the vectors
- *    per D12) — used when the file exists there.
+ *    snapshot; `sync-corpus.sh` copies the selftest alongside the vectors)
+ *    — used when the file exists there.
  * 3. The default snapshot location `conformance-runner/corpus/`.
  *
  * @returns An absolute path. The last candidate is returned even when the

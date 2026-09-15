@@ -1,23 +1,27 @@
 /**
- * B4 wire-enablement seam (P3-5 §1-§3, landed with shard C1):
- * `clientFromSession` — the ONE shared client-construction helper every
- * B4 wire binding uses — plus the wire error/result codec twins and the
- * C1 client-core binding registrations.
+ * Shared client construction for every wire binding
+ * (`clientFromSession`), the wire error/result codec twins, and the
+ * `api_client.*` client-core bindings (`request`, `app_request`, `close`,
+ * `use`, workspace resolution, `list_workspaces`,
+ * `projects_metadata_index`).
  *
- * Contract (b4-packets.md §Wire enablement, binding on every B4 shard):
- * 1. `call.session` (D5 canonical fake session) → `parseAccount`
- *    (Phase-2 C4 factory) → `Session` → `createMixpanelClient` — auth
- *    headers are built by the REAL Phase-2 auth model and diffed
- *    byte-exactly against recorded headers.
- * 2. The constructed client is MEMOIZED in `context.state` under
- *    {@link CLIENT_STATE_KEY} so `call.setup[]` entries and the measured
- *    call operate on the SAME instance (`runner.ts` shares one state map
- *    per vector).
- * 3. Determinism seams: `fetch` = the vector harness, zero-delay sleep,
- *    `random: () => 0`, `now` = the frozen record epoch.
- * 4. Binding honesty (P3-5 §3): every binding calls the ported client
- *    method by name and NOTHING else — kwarg plumbing and output-codec
- *    twins only, no request assembly, no path derivation.
+ * Rules every `wire-*.ts` module relies on:
+ *
+ * 1. `call.session` is rebuilt through the real `parseAccount` →
+ *    `Session` → `createMixpanelClient` path, so auth headers come from
+ *    the real auth model and are diffed byte-exactly against the
+ *    recorded headers.
+ * 2. The constructed client is memoized in `context.state` under
+ *    {@link CLIENT_STATE_KEY}, so `call.setup[]` entries and the measured
+ *    call operate on one instance (`runner.ts` shares one state map per
+ *    vector).
+ * 3. Determinism seams: `fetch` is the vector harness, sleep is
+ *    zero-delay, `random` returns 0, `now` is the frozen record epoch.
+ * 4. Binding honesty: every binding calls the ported client method by
+ *    name and nothing else — kwarg plumbing and output-codec twins only,
+ *    no request assembly, no path derivation.
+ *
+ * @see conformance.runner.targets
  */
 
 import {
@@ -43,17 +47,21 @@ import type { ExpectErrorConvertible } from "./internal/guards.js";
 import { JsonNumber, type JsonValue } from "./json-value.js";
 import type { ImplementationRegistry, InvocationContext } from "./runner.js";
 
-/** The ONE well-known `context.state` key for the memoized client. */
+/** The well-known `context.state` key for the memoized client. */
 export const CLIENT_STATE_KEY = "api_client";
 
 /**
- * Read a required kwarg (local twin of the bindings.ts helper — kept
- * here so the wire module stays self-contained for the B4 shards).
+ * Read a required kwarg of a wire vector.
  *
  * @param context - The invocation context.
  * @param name - The Python kwarg name.
  * @returns The decoded kwarg value.
  * @throws Error - When the kwarg is missing from `call.input`.
+ * @example
+ * ```ts
+ * const dashboardId = requireWireKwarg(context, "dashboard_id") as number;
+ * const body = requireWireKwarg(context, "body") as Record<string, unknown>;
+ * ```
  */
 export function requireWireKwarg(
   context: InvocationContext,
@@ -84,7 +92,7 @@ function requireWireFetch(context: InvocationContext): typeof fetch {
 }
 
 /**
- * Convert one raw D5 session scalar to a plain JS value (session
+ * Convert one raw `call.session` scalar to a plain JS value (session
  * objects are lossless-loaded, so numeric members ride as
  * {@link JsonNumber} tokens).
  *
@@ -107,15 +115,14 @@ function sessionScalar(
 }
 
 /**
- * Rebuild a `Session` from a vector `call.session` object — the TS twin
- * of the Python runner's `targets.py::build_session`: fake
- * credentials verbatim, D5.6 custom headers, `workspace_id` →
- * WorkspaceRef.
+ * Rebuild a `Session` from a vector `call.session` object: fake
+ * credentials verbatim, custom headers, `workspace_id` → `WorkspaceRef`.
  *
  * @param raw - The raw session object.
- * @returns The reconstructed session plus the adopted browser bearer
- *   (D5.2), when the account is `oauth_browser`.
+ * @returns The reconstructed session plus the adopted browser bearer,
+ *   when the account is `oauth_browser`.
  * @throws Error - On an unknown account type or unreplayable shape.
+ * @see conformance.runner.targets.build_session
  */
 // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function buildReplaySession(raw: JsonValue): {
@@ -215,7 +222,8 @@ export function buildReplaySession(raw: JsonValue): {
 
 /**
  * The replay token resolver: `oauth_browser` serves the vector-adopted
- * bearer (D5.2 — `targets.py::_StaticTokenResolver`); `oauth_token`
+ * bearer (the one the recorder observed through its resolver;
+ * `conformance.runner.targets._StaticTokenResolver`); `oauth_token`
  * serves the inline account token (the OnDiskTokenResolver inline arm).
  *
  * @param browserToken - The adopted bearer, or `null`.
@@ -247,11 +255,11 @@ function replayTokenResolver(browserToken: string | null): TokenResolver {
 }
 
 /**
- * Build (or fetch the memoized) client for a wire vector — P3-5 §1/§2.
+ * Build, or return the memoized, client for a wire vector.
  *
  * @param context - The invocation context (session + fetch + shims +
  *   the shared per-vector state map).
- * @returns The vector's ONE client instance.
+ * @returns The vector's single client instance.
  * @throws Error - When the vector carries no session (a corpus bug for
  *   an `api_client.*` name).
  */
@@ -264,8 +272,8 @@ export function clientFromSession(context: InvocationContext): MixpanelClient {
     throw new Error(`${context.api}: wire vector carries no call.session`);
   }
   const { session, browserToken } = buildReplaySession(context.session);
-  // Recorded non-default constructor kwargs (schema extension 12; the
-  // Python runner reads exactly `max_retries` — execute.py).
+  // Recorded non-default constructor kwargs: the Python runner reads
+  // exactly `max_retries` (`conformance.runner.targets`).
   let maxRetries: number | undefined;
   const clientOptions = context.clientOptions;
   if (
@@ -284,7 +292,7 @@ export function clientFromSession(context: InvocationContext): MixpanelClient {
   const client = createMixpanelClient({
     session,
     fetch: requireWireFetch(context),
-    // P3-5 §2 determinism seams: zero-delay sleep (durations are not
+    // Determinism seams: zero-delay sleep (durations are not
     // vector-observable), zero RNG (kills jitter variance), frozen now.
     sleep: async (): Promise<void> => {
       /* zero-delay */
@@ -299,17 +307,16 @@ export function clientFromSession(context: InvocationContext): MixpanelClient {
 }
 
 /**
- * Convert a CORE JsonValue tree (library output — core `JsonNumber`
- * tokens, native scalars) into the RUNNER's vector-JSON domain so
- * `encodeExpectValue`/`canonicalize` can compare it (the two JsonNumber
- * classes are distinct — packet C1 notes decision 2). Raw number tokens
- * are preserved verbatim, keeping the recorded `18.0`-vs-`18`
- * distinction intact (D6 rule 3).
+ * Convert a core `JsonValue` tree (library output — core `JsonNumber`
+ * tokens, native scalars) into the runner's vector-JSON domain so
+ * `encodeExpectValue`/`canonicalize` can compare it (the two `JsonNumber`
+ * classes are distinct). Raw number tokens are preserved verbatim,
+ * keeping the recorded `18.0`-vs-`18` distinction intact.
  *
  * @param value - The core-domain value.
  * @returns The runner-domain value.
- * @throws UnencodableValueError - Non-finite native numbers (D6 rule 5
- *   — mirrors the recorder's `_reject_bad_float`).
+ * @throws UnencodableValueError - Non-finite native numbers (mirrors the
+ *   recorder's `conformance.record.codecs._reject_bad_float`).
  */
 function coreToVectorJson(value: unknown): JsonValue {
   if (value === null || value === undefined) {
@@ -349,12 +356,23 @@ function coreToVectorJson(value: unknown): JsonValue {
 }
 
 /**
- * A wire-path library error re-thrown in vector `expect.error` form —
- * the TS twin of the recorder/replay shared `emit._encode_error`
- * (:749-794): `{class, code}` plus `details_contain` carrying EVERY
- * encodable detail except the advisory keys (full structural equality
- * at `canonicalizeError`, exactly like the Python runner's
- * `_diff_error`).
+ * A wire-path library error re-thrown in vector `expect.error` form:
+ * `{class, code}` plus `details_contain` carrying every encodable detail
+ * except the advisory keys (full structural equality at
+ * `canonicalizeError`, exactly like the Python runner's `_diff_error`).
+ *
+ * @example
+ * ```ts
+ * try {
+ *   return coreToVectorJson(await client.getDashboard(id));
+ * } catch (error) {
+ *   if (error instanceof MixpanelHeadlessError) {
+ *     throw new WireCoreError(error); // runner diffs toExpectError()
+ *   }
+ *   throw error;
+ * }
+ * ```
+ * @see conformance.record.emit._encode_error
  */
 export class WireCoreError extends Error implements ExpectErrorConvertible {
   /** The original core exception. */
@@ -376,6 +394,9 @@ export class WireCoreError extends Error implements ExpectErrorConvertible {
    *
    * @returns `{class, code, errors?}` for BookmarkValidationError,
    *   `{class, code, details_contain?}` for every other core error.
+   * @throws {@link Error} - Rethrown unchanged when a detail fails to
+   *   encode for a reason other than encodability (a runner bug, never
+   *   the library's).
    */
   toExpectError(): JsonValue {
     if (this.original instanceof BookmarkValidationError) {
@@ -441,7 +462,7 @@ export async function runWire(
 }
 
 /**
- * Read an optional string-record kwarg (absent stays absent — R3.5).
+ * Read an optional string-record kwarg (absent stays absent).
  *
  * @param context - The invocation context.
  * @param name - The kwarg name.
@@ -476,20 +497,16 @@ function encodeWorkspaceRef(ref: WorkspaceRef): JsonValue {
 }
 
 /**
- * Register the B4-C1 client-core bindings — the 11 packet-C1 api-index
- * names (`app_request`†, `close`, `maybe_scoped_path`†, `request`,
- * `require_scoped_path`, `resolve_workspace`, `resolve_workspace_id`,
- * `set_workspace_id`, `use`, `list_workspaces`,
- * `projects_metadata_index`; † = B0-owned modules reached through the
- * client by name, R10.8).
+ * Register the `api_client.*` client-core bindings: `app_request`,
+ * `close`, `maybe_scoped_path`, `request`, `require_scoped_path`,
+ * `resolve_workspace`, `resolve_workspace_id`, `set_workspace_id`, `use`,
+ * `list_workspaces` and `projects_metadata_index`.
  *
- * Binding honesty (P3-5 §3): each binding is memoized
- * `clientFromSession` + ONE client-method call + kwarg passthrough; the
- * only output adaptations are the codec twins ({@link coreToVectorJson},
- * {@link encodeWorkspaceRef}, `PublicWorkspace.toJSON`).
- *
- * Oracle note: wire api names have NO oracle `call` surface (P3-2 c/e —
- * exempt from the both-bridge probe); registration here is complete.
+ * Each binding is the memoized `clientFromSession` plus one
+ * client-method call and kwarg passthrough; the only output adaptations
+ * are the codec twins ({@link coreToVectorJson},
+ * {@link encodeWorkspaceRef}, `PublicWorkspace.toJSON`). Wire api names
+ * have no oracle `call` surface, so registration here is complete.
  *
  * @param implementations - The registry to extend.
  */

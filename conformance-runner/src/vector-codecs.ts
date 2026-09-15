@@ -1,24 +1,18 @@
 /**
- * Contract-layer `$type` tag codecs (phase2-design C7 item 1).
+ * Contract-layer `$type` tag codecs for the rich corpus tags.
  *
- * One {@link ContractTagCodec} entry per Phase-2 rich tag: `decode`
- * reconstructs the REAL core instance through its constructor/factory
- * (guards FIRE on decode — a vector carrying an invalid payload is a
- * vector bug and must fail loudly, mirroring Python's
- * `_decode_dataclass`/`_decode_model`), and `encode` performs the
- * field-level walk of Python `_encode_common(tagged_models=True)`: ALL
- * declared fields, `$type` first, `null` for Python `None`.
+ * One {@link ContractTagCodec} entry per rich tag: `decode` reconstructs
+ * the real core instance through its constructor/factory, so guards fire
+ * on decode (a vector carrying an invalid payload is a vector bug and must
+ * fail loudly), and `encode` performs the field-level walk of Python
+ * `_encode_common(tagged_models=True)`: all declared fields, `$type`
+ * first, `null` for Python `None`. The table is wired into the runner by
+ * `bindings.ts::registerContractCodecs`. It lives in the rig, not in core,
+ * because the library never imports it; child-codec callbacks are typed
+ * structurally (`unknown`) and datetime children are duck-typed on their
+ * `iso` field rather than on the runner's `PyDatetime` class.
  *
- * The table is wired into the conformance runner by
- * `bindings.ts::registerContractCodecs`. It lives in the rig (moved out of
- * `packages/core/src/types/` at docs/history/cleanup-plan-2026-09.md §7.3 — the library never
- * imports it); the child-codec callbacks are typed structurally
- * (`unknown`) and datetime children are duck-typed on their `iso` field
- * rather than on the runner's `PyDatetime` class.
- *
- * P2-4 seeds the table with `OAuthTokens` (the one auth-model corpus
- * tag); P2-5a..c, P2-6, and P2-7 extend it with the query-param, result,
- * and entity tags.
+ * @see conformance.record.codecs._encode_common
  */
 
 import {
@@ -127,7 +121,7 @@ import {
 } from "@mixpanel-headless/core/internal";
 
 /**
- * One registered rich-tag codec (phase2-design C7 `TagCodec`).
+ * One registered rich-tag codec.
  *
  * @internal
  */
@@ -145,8 +139,8 @@ export interface ContractTagCodec {
   ) => unknown;
 
   /**
-   * Anti-vacuity probe + encode-dispatch predicate: whether a live value
-   * is an instance of this tag's core class (C8a — a decode-to-plain-
+   * Anti-vacuity probe and encode-dispatch predicate: whether a live
+   * value is an instance of this tag's core class (a decode-to-plain-
    * object codec must be impossible to register).
    *
    * @param value - A live TS value.
@@ -169,7 +163,7 @@ export interface ContractTagCodec {
 
 /**
  * Reject payload keys outside the declared field set (mirror of Python
- * `_decode_model`'s unknown-field guard — the CODEC is strict even where
+ * `_decode_model`'s unknown-field guard — the codec is strict even where
  * the Pydantic model ignores extras).
  *
  * @param payload - The tagged payload.
@@ -199,7 +193,7 @@ const OAUTH_TOKENS_FIELDS: readonly string[] = [
   "token_type",
 ];
 
-/** The `OAuthTokens` tag codec (phase2-design C4/C7). */
+/** The `OAuthTokens` tag codec. */
 const oauthTokensCodec: ContractTagCodec = {
   decode: (payload, decodeChild) => {
     rejectUnknownFields(payload, new Set(OAUTH_TOKENS_FIELDS), "OAuthTokens");
@@ -220,7 +214,7 @@ const oauthTokensCodec: ContractTagCodec = {
   matches: (value) => value instanceof OAuthTokens,
   encode: (instance, encodeChild) => {
     const tokens = instance as OAuthTokens;
-    // Field-level walk, ALL declared fields, $type first (mirror of
+    // Field-level walk, all declared fields, $type first (mirror of
     // Python `_encode_common(tagged_models=True)`): `refresh_token`
     // emits `null` when unset, `expires_at` re-tags the preserved iso
     // text byte-for-byte.
@@ -247,14 +241,14 @@ const oauthTokensCodec: ContractTagCodec = {
 interface DataclassCodecSpec {
   /** Declared field names, in Python `dataclasses.fields` order. */
   readonly fields: readonly string[];
-  /** Field names REQUIRED by the Python constructor (no default). */
+  /** Field names required by the Python constructor (no default). */
   readonly required: readonly string[];
   /**
    * Construct the real instance from decoded present-field values
    * (constructor guards fire here, mirroring `_decode_dataclass`).
    */
   readonly construct: (bag: Readonly<Record<string, unknown>>) => unknown;
-  /** The C8(a) anti-vacuity `instanceof` probe. */
+  /** The anti-vacuity `instanceof` probe. */
   readonly matches: (value: unknown) => boolean;
 }
 
@@ -265,7 +259,7 @@ interface DataclassCodecSpec {
  * Deliberately unchecked, like the kwargs twin in `internal/kwargs.ts`:
  * the constructor's own guards must fire on a malformed bag exactly
  * where Python's `__post_init__` does, so no shape check belongs here —
- * the call site names the field type and this is the ONE cast.
+ * the call site names the field type and this is the one cast.
  *
  * @param bag - The decoded (child-decoded) field bag.
  * @returns The same bag typed as the constructor's field bag.
@@ -283,7 +277,7 @@ export function fieldsFromBag<F>(bag: Readonly<Record<string, unknown>>): F {
  * Build a {@link ContractTagCodec} from a dataclass spec — the TS twin
  * of Python's generic dataclass codec path: unknown payload fields are
  * rejected, absent fields fall back to the constructor defaults,
- * present fields decode recursively, and encode walks ALL declared
+ * present fields decode recursively, and encode walks all declared
  * fields in declaration order with `$type` first.
  *
  * @param tag - The `$type` name exactly as vectors carry it.
@@ -366,7 +360,7 @@ const cohortDefinitionCodec: ContractTagCodec = {
 };
 
 /**
- * The P2-5a/P2-5b/P2-5c dataclass codec rows (field lists in Python
+ * The query-param dataclass codec rows (field lists in Python
  * `dataclasses.fields` order).
  */
 const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
@@ -384,10 +378,10 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
         "_list_item_quantifier",
       ],
       required: ["_property", "_operator", "_value"],
-      // Python PR #236: the codec rehydrates through `_filter_unchecked`,
-      // not `Filter(**kwargs)` — recorded Filters must reach the builder
-      // under test with their fields exactly as captured (SG1/SG2/SG3 and
-      // ES13 vectors carry operators the constructor now rejects).
+      // The Python codec rehydrates through `_filter_unchecked`, not
+      // `Filter(**kwargs)`: recorded Filters must reach the builder under
+      // test with their fields exactly as captured (segfilter and
+      // expression vectors carry operators the constructor now rejects).
       construct: (bag) => filterUnchecked(bag),
       matches: (value) => value instanceof Filter,
     },
@@ -512,7 +506,7 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
       matches: (value) => value instanceof CohortCriteria,
     },
   ],
-  // P2-5b cohort-family addition.
+  // Cohort family.
   [
     "CohortBreakdown",
     {
@@ -525,7 +519,7 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
       matches: (value) => value instanceof CohortBreakdown,
     },
   ],
-  // P2-5c funnel/retention/flow/frequency family.
+  // Funnel/retention/flow/frequency family.
   [
     "FunnelStep",
     {
@@ -623,9 +617,8 @@ const GROUP_BY_BUCKET_FIELDS = [
 ] as const;
 
 /**
- * Decode-time float-ness memory for {@link groupByCodec} (B2 gate
- * remediation, RUN.md 2026-08-15 B2-attempt-1 divergence): maps each
- * decoded `GroupBy` instance to the set of bucket fields that ARRIVED
+ * Decode-time float-ness memory for {@link groupByCodec}: maps each
+ * decoded `GroupBy` instance to the set of bucket fields that arrived
  * as `$type: float` carriers, so encode can re-tag exactly those.
  * WeakMap keying keeps the memory garbage-collectable with the
  * instance and invisible to library consumers.
@@ -651,25 +644,24 @@ const GROUP_BY_SPEC: DataclassCodecSpec = {
   ],
   required: ["property"],
   construct: (bag) => {
-    // B2-BIND (B2-M1 carrier table): `$type: float` bucket children
-    // decode as PyFloat carriers, but Python's GroupBy holds real
-    // floats whose ctor guard (V18 `bucket_min >= bucket_max`) and
-    // validator arithmetic compare NUMERICALLY — a carrier object
-    // string-compares under JS `>=` and inverts the guard. Unwrap
-    // the three bucket fields to native numbers before construction
-    // (the SignedReplay `signed_at` unwrap precedent below), and
-    // REMEMBER which fields were float-spelled so the encode half can
-    // restore the carrier (B2 gate remediation — Python's buckets are
+    // `$type: float` bucket children decode as PyFloat carriers, but
+    // Python's GroupBy holds real floats whose constructor guard
+    // (`bucket_min >= bucket_max`) and validator arithmetic compare
+    // numerically — a carrier object string-compares under JS `>=` and
+    // inverts the guard. Unwrap the three bucket fields to native numbers
+    // before construction (as the SignedReplay `signed_at` unwrap below
+    // does), and remember which fields were float-spelled so the encode
+    // half can restore the carrier: Python's buckets are
     // `int | float | None`, so a plain TS number cannot carry the
-    // int-vs-float distinction by itself).
+    // int-vs-float distinction by itself.
     const unwrapped: Record<string, unknown> = { ...bag };
     const floatFields = new Set<string>();
     for (const field of GROUP_BY_BUCKET_FIELDS) {
       const value = unwrapped[field];
       if (isFloatCarrier(value)) {
-        // R11.7 rig-internal exemption: the spelling is the rig's
-        // canonical PyFloat token (constructor-validated), same as
-        // the SignedReplay `signed_at` unwrap below — not user input.
+        // `Number()` is safe here: the spelling is the rig's canonical
+        // PyFloat token (constructor-validated), same as the SignedReplay
+        // `signed_at` unwrap below — not user input.
         unwrapped[field] = Number(value.spelling);
         floatFields.add(field);
       }
@@ -695,10 +687,10 @@ const groupByBaseCodec: ContractTagCodec = dataclassCodec(
 
 /**
  * The `GroupBy` tag codec — custom encode paired with the decode-side
- * carrier unwrap (B2 gate remediation): a bucket field remembered in
+ * carrier unwrap: a bucket field remembered in
  * {@link GROUP_BY_FLOAT_BUCKETS} re-tags as
  * `{$type: "float", value: pythonFloatStr(v)}` (mirroring Python
- * `_encode_common`, which tags INTEGRAL floats inside rich payloads);
+ * `_encode_common`, which tags integral floats inside rich payloads);
  * every other field takes the generic declared-field walk. Python's
  * bucket annotation is `int | float | None`, so — unlike
  * {@link signedReplayCodec}'s always-float `signed_at` — the re-tag
@@ -737,9 +729,9 @@ const groupByCodec: ContractTagCodec = {
 };
 
 /**
- * The `SignedReplay` tag codec (phase2-design C6-d) — custom because
- * its Python `signed_at` field is a FLOAT: integral values ride the
- * corpus as `$type: float` spellings (D6 rule 3), which the generic
+ * The `SignedReplay` tag codec — custom because its Python `signed_at`
+ * field is a float: integral values ride the corpus as `$type: float`
+ * spellings (canonicalization rule 3), which the generic
  * dataclass walk cannot reproduce from a plain TS number. Decode
  * unwraps the runner's PyFloat duck-shape; encode re-tags integral
  * values with the canonical Python repr via `pythonFloatStr`.
@@ -783,7 +775,7 @@ const signedReplayCodec: ContractTagCodec = {
 };
 
 /**
- * The P2-6 replay-family dataclass codec rows (`UserAction` and
+ * The replay-family dataclass codec rows (`UserAction` and
  * `Replay` — the two remaining replay tags observed in the corpus;
  * `ReplaySummary`/`ReplayEvent`/`ReplayBundle` have no corpus `$type`
  * occurrences and stay unregistered so the sweep's
@@ -857,23 +849,18 @@ const REPLAY_DATACLASS_CODECS: ReadonlyArray<
   ],
 ];
 
-// Re-exported so the runner's SecretStr built-in swap and the codec-sweep
-// anti-vacuity probes have a single import site alongside the table.
-
-// ---------------------------------------------------------------------------
-// P2-7 entity-model tags (the 56 corpus `$type` tags of the C5 models).
-// ---------------------------------------------------------------------------
+// --- Entity-model tags (the 56 corpus `$type` tags of the entity models) ---
 
 /**
  * Build a {@link ContractTagCodec} for one entity-model class — the TS
  * twin of Python's generic BaseModel codec path (`_decode_model` /
  * the BaseModel arm of `_encode_common(tagged_models=True)`): unknown
- * payload fields are rejected BEFORE construction (the codec is strict
+ * payload fields are rejected before construction (the codec is strict
  * even where the Pydantic model allows extras), present fields decode
  * recursively and reconstruct through the real validating `fromDict`,
- * and encode walks ALL declared `model_fields` in declaration order
+ * and encode walks all declared `model_fields` in declaration order
  * with `$type` first (datetime fields re-tag their preserved iso
- * text; computed fields are EXCLUDED — the tagged walk skips them,
+ * text; computed fields are excluded — the tagged walk skips them,
  * mirroring `tagged_models=True`).
  *
  * @param cls - The entity-model class statics.
@@ -928,9 +915,9 @@ function entityModelCodec(cls: EntityModelStatics): ContractTagCodec {
 /**
  * The 56 entity-model classes whose names occur as corpus `$type`
  * tags (`tag-universe.json` rich set minus the query-param/result/
- * auth families registered above). Models WITHOUT corpus tags are
- * deliberately not registered: the C8(a) sweep asserts every
- * registered rich tag is exercised at least once.
+ * auth families registered above). Models without corpus tags are
+ * deliberately not registered: the codec sweep asserts every registered
+ * rich tag is exercised at least once.
  */
 const ENTITY_MODEL_CLASSES: readonly EntityModelStatics[] = [
   // dashboards
@@ -967,7 +954,7 @@ const ENTITY_MODEL_CLASSES: readonly EntityModelStatics[] = [
   CreateWebhookParams,
   UpdateWebhookParams,
   WebhookTestParams,
-  // alerts (E4: shapes derive from the Python models + wire vectors)
+  // alerts
   CreateAlertParams,
   UpdateAlertParams,
   ValidateAlertsForBookmarkParams,
@@ -1003,9 +990,10 @@ const ENTITY_MODEL_CLASSES: readonly EntityModelStatics[] = [
 ];
 
 /**
- * The P2-7 entity-model tag-codec rows, keyed by `$type` name.
+ * The entity-model tag-codec rows, keyed by `$type` name.
  *
- * @internal Merged into {@link CONTRACT_TAG_CODECS}.
+ * @remarks Merged into {@link CONTRACT_TAG_CODECS}.
+ * @internal
  */
 export const ENTITY_TAG_CODECS: ReadonlyMap<string, ContractTagCodec> = new Map<
   string,
@@ -1018,9 +1006,9 @@ export const ENTITY_TAG_CODECS: ReadonlyMap<string, ContractTagCodec> = new Map<
 );
 
 /**
- * The Phase-2 contract tag-codec table, keyed by `$type` name — the
- * P2-4 auth tag, the P2-5a..c query-param family, the P2-6 replay
- * family, and the P2-7 entity-model rows.
+ * The full contract tag-codec table, keyed by `$type` name — the auth
+ * tag, the query-param family, the replay family, and the entity-model
+ * rows.
  *
  * @internal
  */

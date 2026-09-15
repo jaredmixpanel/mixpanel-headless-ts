@@ -1,6 +1,5 @@
 /**
- * Vector replay engine: kind dispatch, `call.setup[]` execution, verdicts
- * (design D12, mirroring the Python runner's D7 execution model).
+ * Vector replay engine: kind dispatch, `call.setup[]` execution, verdicts.
  *
  * Execution per kind:
  * - `builder` / `validation-error`: decode `call.input` through the codec
@@ -13,18 +12,20 @@
  *   recorded sequence (multiset semantics inside `unordered_group`s), (b)
  *   the returned/raised value against `expect.result` / `expect.error`,
  *   and (c) recorded-callback call logs against `expect.callback_calls`.
- * - `parse`: same as wire but only the result side is diffed (D7).
+ * - `parse`: same as wire but only the result side is diffed.
  *
  * Verdict resolution (see `verdicts.ts` for the taxonomy): API names that
  * resolve to no mapping source are `UNMAPPED_API` (fail-fast); mapped or
  * module-known names without a bound TS implementation are `UNPORTED`
- * (counted, never failing) — UNLESS the name's port batch is declared
+ * (counted, never failing) — unless the name's port batch is declared
  * `'done'` in `batch-status.ts`, in which case the missing binding is a
- * straggler and the verdict is `FAIL_ERROR` (R10.5 — no silent skips);
+ * straggler and the verdict is `FAIL_ERROR` (no silent skips);
  * request-side divergence is `FAIL_REQUEST`; error-contract divergence is
- * `FAIL_ERROR`; value divergence is `FAIL_OUTPUT` — unless the ONLY
+ * `FAIL_ERROR`; value divergence is `FAIL_OUTPUT` — unless the only
  * divergence is double-rounding of integer tokens above 2^53, which is the
- * distinct `PRECISION_LOSS` verdict (D6).
+ * distinct `PRECISION_LOSS` verdict.
+ *
+ * @see conformance.runner.execute.run_vector
  */
 
 import { resolveApi } from "./api-map.js";
@@ -58,7 +59,7 @@ import type { VectorResult, Verdict } from "./verdicts.js";
  * The `state` map is shared across a vector's `call.setup[]` entries and
  * its measured call, so state-mutating setup calls (`set_workspace_id`,
  * `workspace.use`, ...) can build/configure the client instance the
- * measured call then uses — the D2 replay model re-executes public calls,
+ * measured call then uses — the replay model re-executes public calls,
  * never snapshots private attributes.
  */
 export interface InvocationContext {
@@ -67,28 +68,28 @@ export interface InvocationContext {
   /** Decoded keyword arguments (codec-reconstructed rich values). */
   readonly kwargs: Readonly<Record<string, unknown>>;
   /**
-   * The UNDECODED `call.input` values (lossless-loaded, `JsonNumber`
+   * The undecoded `call.input` values (lossless-loaded, `JsonNumber`
    * tokens intact).
    *
-   * Needed where Python-side argument TYPE information survives only in
+   * Needed where Python-side argument type information survives only in
    * the raw JSON token: `18.0` and `18` both decode to the JS number
    * `18`, but a binding whose Python contract branches on float-vs-int
-   * (the D13 `compat.python_str` gate slice) must consult the token.
+   * (the `compat.python_str` vectors) must consult the token.
    */
   readonly rawInput: Readonly<Record<string, JsonValue>>;
-  /** Per-vector clock/UUID/virtual-sleep shims (D1.4/D12). */
+  /** Per-vector clock/UUID/virtual-sleep shims. */
   readonly shims: RunnerShims;
   /** The injected replay fetch (wire/parse vectors only). */
   readonly fetch?: typeof fetch;
-  /** The raw `call.session` object, when recorded (D5.1). */
+  /** The raw `call.session` object, when recorded. */
   readonly session?: JsonValue;
-  /** The raw `call.workspace_session` object, when recorded (D5.1). */
+  /** The raw `call.workspace_session` object, when recorded. */
   readonly workspaceSession?: JsonValue;
   /**
-   * The raw `call.client_options` object, when recorded (schema
-   * extension 12 — non-default client constructor kwargs such as
-   * `max_retries`; mirror of the Python runner's
-   * `execute.py` plumb into `make_api_client`).
+   * The raw `call.client_options` object, when recorded: non-default
+   * client constructor kwargs such as `max_retries`, plumbed into the
+   * client factory the way `conformance.runner.execute._ReplayContext`
+   * feeds `make_api_client`.
    */
   readonly clientOptions?: JsonValue;
   /** Mutable per-vector state shared across setup + measured calls. */
@@ -101,9 +102,17 @@ export type Implementation = (context: InvocationContext) => unknown;
 /**
  * The bindings from Python dotted api names to TS implementations.
  *
- * Empty at TS-5 time (no modules with corpus presence are ported); each
- * port batch registers its entry points, flipping those vectors from
- * `UNPORTED` to live replay.
+ * `bindings.ts` registers every entry point; a name without a binding
+ * replays as `UNPORTED` (or `FAIL_ERROR` once its batch is declared done).
+ *
+ * @example
+ * ```ts
+ * const implementations = new ImplementationRegistry();
+ * implementations.register("segfilter.build_segfilter_entry", (context) =>
+ *   buildSegfilterEntry(kwargAs<Filter>(context, "filter")),
+ * );
+ * implementations.has("segfilter.build_segfilter_entry"); // true
+ * ```
  */
 export class ImplementationRegistry {
   /** Bound implementations, keyed by the Python dotted api name. */
@@ -114,7 +123,7 @@ export class ImplementationRegistry {
    *
    * @param pythonApi - The Python dotted name exactly as vectors carry it.
    * @param implementation - The invoker.
-   * @throws Error - On duplicate registration (a batch wiring bug).
+   * @throws Error - On duplicate registration (a binding wiring bug).
    */
   register(pythonApi: string, implementation: Implementation): void {
     if (this.bindings.has(pythonApi)) {
@@ -148,18 +157,17 @@ export class ImplementationRegistry {
 
 /** Dependencies for {@link runVector} / {@link runCorpus}. */
 export interface RunnerDeps {
-  /** The api-name → TS-implementation bindings. */
+  /** The api-name to TS-implementation bindings. */
   readonly implementations: ImplementationRegistry;
-  /** The `$type` codec table (rich tags registered per port batch). */
+  /** The `$type` codec table (built-ins plus the registered rich tags). */
   readonly codecs: CodecRegistry;
   /** The frozen record instant (corpus manifest `record_epoch`). */
   readonly recordEpoch: string;
   /**
-   * The api-prefix → batch-status table (defaults to the shipped
+   * The api-prefix to batch-status table (defaults to the shipped
    * {@link BATCH_STATUS}). Injectable so tests can exercise the
-   * `UNPORTED` gate path with a SYNTHETIC pending table now that the
-   * shipped table is terminal — zero pending entries after the B8 gate
-   * flip (b8-packets.md §5.3 UNPORTED-probe re-anchor).
+   * `UNPORTED` gate path with a synthetic pending table — the shipped
+   * table has no pending entries.
    */
   readonly batchStatuses?: ReadonlyMap<string, BatchStatus>;
 }
@@ -179,12 +187,12 @@ export function vectorCapability(vector: ConformanceVector): string {
 }
 
 /**
- * Replace every unsafe integer token (|value| > 2^53) with its
+ * Replace every unsafe integer token (magnitude above 2^53) with its
  * double-rounded native number.
  *
  * Used by the `PRECISION_LOSS` check: when re-canonicalizing the expected
- * value after this rounding makes it equal to the live output, the ONLY
- * divergence was precision (D6).
+ * value after this rounding makes it equal to the live output, the only
+ * divergence was precision.
  *
  * @param value - The expected value tree (lossless-loaded).
  * @returns The rounded tree and whether any unsafe token was found.
@@ -255,7 +263,7 @@ function diffReturnedValue(
 }
 
 /**
- * Diff recorded-callback call logs against `expect.callback_calls` (D4.4).
+ * Diff recorded-callback call logs against `expect.callback_calls`.
  *
  * @param kwargs - The measured call's decoded kwargs (recording stubs
  *   in place of `$type: callback` values).
@@ -297,7 +305,8 @@ function diffCallbackCalls(
 }
 
 /**
- * Diff a thrown error against `expect.error` (R5.2/R5.4, D6 rule 6).
+ * Diff a thrown error against `expect.error` (advisory keys stripped,
+ * canonicalization rule 6).
  *
  * @param thrown - The thrown value.
  * @param expectedError - The vector's `expect.error` object.
@@ -322,14 +331,13 @@ function diffThrownError(
  * The verdict for a mapped api name that has no bound implementation.
  *
  * Consults the declarative batch table (`batch-status.ts`): a name whose
- * port batch is declared `'done'` is a straggler and FAILS — `UNPORTED`
- * is only admissible while the batch is `'pending'` (R10.5, phase2-design
- * C7 item 4).
+ * port batch is declared `'done'` is a straggler and fails — `UNPORTED`
+ * is only admissible while the batch is `'pending'`.
  *
  * @param api - The unbound Python dotted api name.
  * @param statuses - The batch-status table (shipped table by default;
  *   injectable via {@link RunnerDeps.batchStatuses} for the synthetic
- *   pending-table tests — the shipped table is terminal post-B8).
+ *   pending-table tests — the shipped table has no pending entries).
  * @returns The short-circuit gate result.
  */
 function unboundVerdict(
@@ -382,7 +390,7 @@ function gateApis(
 }
 
 /**
- * Replay one vector and produce its verdict (design D12).
+ * Replay one vector and produce its verdict.
  *
  * @param vector - The loaded vector.
  * @param deps - Implementations, codecs, and the record epoch.
@@ -477,8 +485,8 @@ async function replayVector(
     diff,
   });
 
-  // Execute call.setup[] in order (D2): state mutators and prerequisite
-  // calls whose transport traffic is part of expect.interactions[].
+  // Execute call.setup[] in order: state mutators and prerequisite calls
+  // whose transport traffic is part of expect.interactions[].
   for (const entry of vector.setup) {
     const setupImplementation = deps.implementations.get(entry.api);
     if (setupImplementation === undefined) {
@@ -500,12 +508,12 @@ async function replayVector(
         contextFor(entry.api, setupKwargs, entry.input),
       );
     } catch {
-      // Setup returns/raises are NOT diffed (design D2 logged
-      // limitation, Python runner execute.py:532-541): earlier test
-      // calls may have raised under pytest.raises at record time too.
-      // Their request sides stay fully diffed via interactions[];
-      // divergence surfaces there (found by the first B4-C2 replay —
-      // a recorded 400 on a get_event_properties SETUP call).
+      // Setup returns/raises are not diffed, mirroring
+      // conformance.runner.execute._run_wire: earlier test calls may have
+      // raised under pytest.raises at record time too (a recorded 400 on
+      // a get_event_properties setup call is real corpus data). Their
+      // request sides stay fully diffed via interactions[]; divergence
+      // surfaces there.
       continue;
     }
   }
@@ -526,7 +534,7 @@ async function replayVector(
   }
 
   // (a) Request-side diff — wire only; parse vectors diff the result only
-  // (D7: their request side is a fixed synthetic GET).
+  // (their request side is a fixed synthetic GET).
   if (vector.kind === "wire" && harness !== undefined) {
     const problems = diffRequestTraffic(
       interactions,
@@ -589,7 +597,7 @@ async function replayVector(
     }
   }
 
-  // (c) Recorded-callback call logs (D4.4).
+  // (c) Recorded-callback call logs.
   const callbackProblems = diffCallbackCalls(
     kwargs,
     vector.expect["callback_calls"],

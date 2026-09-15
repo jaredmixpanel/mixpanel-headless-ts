@@ -1,16 +1,16 @@
 /**
  * Central wiring of ported TS entry points into the conformance runner.
  *
- * This is the ONE place port batches register their bindings: an
- * {@link ImplementationRegistry} entry per Python dotted api name and a
- * {@link CodecRegistry} decoder per rich `$type` tag their signatures
- * consume. Both the vitest corpus harness and the standalone
- * `npm run conformance` CLI build their dependencies here, so the two
- * entry points can never disagree about what is ported.
+ * Every binding module registers here: one {@link ImplementationRegistry}
+ * entry per Python dotted api name and one {@link CodecRegistry} decoder
+ * per rich `$type` tag the bound signatures consume. Both the vitest
+ * corpus harness and the standalone `npm run conformance` CLI build their
+ * dependencies through {@link createRunnerDeps}, so the two entry points
+ * cannot disagree about what is ported.
  *
  * The binding tables themselves live in `bindings/` (compat, wire
  * stubs, `types.*` constructors, validators, builders, replays) and the
- * `wire-*.ts` modules; this façade assembles them.
+ * `wire-*.ts` modules; this façade only assembles them.
  */
 
 import { registerBuilderBindings } from "./bindings/builders.js";
@@ -77,7 +77,7 @@ export function registerContractCodecs(codecs: CodecRegistry): void {
 }
 
 /**
- * Build the runner dependencies with every current port-batch binding.
+ * Build the runner dependencies with every registered binding.
  *
  * @param recordEpoch - The frozen record instant (corpus config /
  *   manifest `record_epoch`).

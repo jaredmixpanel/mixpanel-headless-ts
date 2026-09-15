@@ -1,33 +1,19 @@
 /**
- * Auth wire bindings:
+ * Auth wire bindings: `region_probe.probe_region` and
+ * `oauth_flow.refresh_tokens`.
  *
- * - B7-A2: the `region_probe.probe_region` name (14 vectors,
- *   `corpus/auth/test_region_probe.jsonl`), registered inline in the
- *   shard commit per the P3-2 b′ fable-batch rule (`b7-packets.md`
- *   §2.7).
- * - B8-N2: the `oauth_flow.refresh_tokens` name (7 vectors,
- *   `corpus/auth/test_auth_flow.jsonl` — THE LAST pending corpus api;
- *   b8-packets.md §3.4). The runner executes in a node context, so the
- *   binding imports the REAL `packages/node` `OAuthFlow` exactly as
- *   wire bindings import core. Binding honesty (P3-5 §3): it calls the
- *   real exported `refreshTokens` — it never POSTs, never classifies
- *   statuses, never builds form bodies; the return-value walk below is
- *   the recorder's `_encode_common` output-codec twin only. NO
- *   batch-status flip here: `oauth_flow.` stays `pending` until the B8
- *   gate (bound-while-pending, the designed B4 pattern).
- *
- * Binding honesty (P3-5 §3): the binding calls the REAL exported
- * `probeRegion` with the REAL `probeClientFromFetch` — it never issues
- * fetches itself, never classifies errors itself, never assembles
- * attempts. The `$type: callback` kwarg is served by the shared
- * `RecordingCallback` stub; the recorded scheme_host is
- * `https://test.invalid` on all 14 vectors (mirrors the Python fixture
- * `_client` base_url, `test_region_probe.py`).
- *
- * Determinism seams: none needed — no sleep/random/now in the probe
- * path (timeout is not vector-observable). NO batch-status flip here:
- * `region_probe.` stays `pending` until the B7 gate (§4) —
- * bound-name-while-pending is the designed B4 pattern.
+ * The runner executes in a Node context, so `refresh_tokens` imports the
+ * real `packages/node` `OAuthFlow` exactly as the wire bindings import
+ * core. Both bindings call the real exported entry point
+ * (`refreshTokens`; `probeRegion` with `probeClientFromFetch`) and never
+ * POST, classify statuses or assemble attempts themselves; the
+ * return-value walks below are output-codec twins of the recorder's
+ * `_encode_common` only (see `wire-client.ts` for the shared honesty
+ * rules). The probe's `$type: callback` kwarg is served by the shared
+ * `RecordingCallback` stub, and its recorded scheme_host is
+ * `https://test.invalid` on every vector (the Python fixture's `_client`
+ * base_url). No sleep/random/now seams are needed on the probe path —
+ * the timeout is not vector-observable.
  */
 
 import { tmpdir } from "node:os";
@@ -47,13 +33,13 @@ import { PyDatetime, RecordingCallback } from "./codecs.js";
 import type { ImplementationRegistry, InvocationContext } from "./runner.js";
 import { runWire, WireCoreError } from "./wire-client.js";
 
-/** The Python fixture's placeholder base URL (all 14 vectors). */
+/** The Python fixture's placeholder base URL (every recorded vector). */
 const PROBE_SCHEME_HOST = "https://test.invalid";
 
 /**
  * Rebuild the recorded `client_factory` callback: log the region on the
  * shared stub (diffed against `expect.callback_calls.client_factory`),
- * then hand back the REAL fetch-backed probe client.
+ * then hand back the real fetch-backed probe client.
  *
  * @param context - The invocation context (carries the replay fetch).
  * @returns The composed client factory.
@@ -80,7 +66,7 @@ function rebuildClientFactory(context: InvocationContext): ClientFactory {
 }
 
 /**
- * Register the auth wire bindings (2 names).
+ * Register the auth wire bindings.
  *
  * @param implementations - The registry to extend.
  */
@@ -103,11 +89,11 @@ export function registerAuthWireBindings(
         );
       }
       const clientId = context.kwargs["client_id"] as string;
-      // Construction per packet §3.4: region "us" (the recorded
-      // scheme_host is OAUTH_BASE_URLS.us — no base-URL override),
-      // frozen record-epoch clock (D1.4; drives the vector-locked
-      // Python-isoformat `expires_at` text), and a tmp-dir storage stub
-      // that refresh_tokens never consults.
+      // Flow construction: region "us" (the recorded scheme_host is
+      // `OAUTH_BASE_URLS.us` — no base-URL override), the frozen
+      // record-epoch clock (drives the vector-locked Python-isoformat
+      // `expires_at` text), and a tmp-dir storage stub that
+      // `refreshTokens` never consults.
       const flow = new OAuthFlow({
         region: "us",
         fetchImpl,
@@ -116,7 +102,7 @@ export function registerAuthWireBindings(
           storageDir: join(tmpdir(), "b8-n2-refresh-unused"),
         }),
       });
-      // Absent `account_name` stays absent (library default, R3.5).
+      // Absent `account_name` stays absent (library default).
       const options = Object.hasOwn(context.kwargs, "account_name")
         ? { accountName: context.kwargs["account_name"] as string }
         : {};
@@ -144,8 +130,8 @@ export function registerAuthWireBindings(
     runWire(async () => {
       const factory = rebuildClientFactory(context);
       const headers = context.kwargs["headers"] as Record<string, string>;
-      // Standard snake→camel kwarg mapping (packet §2.7): absent kwargs
-      // stay absent so the library defaults apply.
+      // snake_case → camelCase kwarg mapping; absent kwargs stay absent
+      // so the library defaults apply.
       const options: {
         timeoutSeconds?: number;
         order?: readonly Region[];

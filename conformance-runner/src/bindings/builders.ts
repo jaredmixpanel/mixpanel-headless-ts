@@ -6,7 +6,7 @@
  * point (`bookmarks/builders.ts`, `bookmarks/schema.ts`,
  * `query/{segfilter,expressions,transforms,user-builders}.ts`). The only
  * adaptations are kwarg plumbing (decoded kwargs pass through
- * UNCONVERTED and unchecked — the modules are carrier-aware and own
+ * unconverted and unchecked — the modules are carrier-aware and own
  * their guards; only codec-decoded `Filter` instances are asserted), the
  * `today`/`uuid`
  * determinism seams, the shared error wrap, and the recorder
@@ -18,18 +18,18 @@
  * `validation_errors` encoder for `validate_with_pydantic`.
  *
  * The builtin-exception twins (`ValueError`/`OverflowError`/
- * `AttributeError`, `compat/python-builtins.ts`) are NOT
+ * `AttributeError`, `compat/python-builtins.ts`) are not
  * `MixpanelHeadlessError` descendants, so {@link runGuarded} rethrows
  * them raw; the oracle's `errorPayload` encodes their `constructor.name`,
  * matching oracle-py's bare-class encoding. No corpus vector reaches
  * them.
  *
  * Oracle note: oracle-ts serves every name registered here through the
- * same registry, so this registration IS the oracle surface.
+ * same registry, so this registration is the oracle surface.
  * `transforms.transform_event`,
  * `bookmark_schema.get_root_model_for_bookmark_type` and
  * `bookmark_schema.validate_with_pydantic` have zero corpus vectors but
- * are bound for the gate's mechanical `oracle.call` probe.
+ * are bound so the oracle's mechanical `call` probe can reach them.
  */
 
 import { Filter, FrequencyFilter } from "@mixpanel-headless/core";
@@ -86,7 +86,7 @@ const isFilter = isInstanceOf(Filter);
 const isFilterList = isArrayOf(isFilter);
 
 /**
- * The rich (dataclass/model) `$type` tags whose members Python's EXPECT
+ * The rich (dataclass/model) `$type` tags whose members Python's expect
  * encoder drops (`_encode_common(tagged_models=False)`), as opposed to
  * the built-in value tags (`datetime`, `date`, `bytes`, `SecretStr`,
  * `float`), which appear in expect encodings too. Derived from the
@@ -98,11 +98,11 @@ const RICH_MODEL_TAGS: ReadonlySet<string> = new Set(
 );
 
 /**
- * Re-encode one `codecs.encodeValue` product in Python's EXPECT
+ * Re-encode one `codecs.encodeValue` product in Python's expect
  * encoding.
  *
  * The runner's `diffReturnedValue` canonicalizes the binding's return
- * with NO rich-tag hook and the canonicalizer does not normalize
+ * without a rich-tag hook and the canonicalizer does not normalize
  * `$type: float` payloads, so builder bindings emit expect-position
  * encodings themselves: rich model tags are dropped (Python
  * `encode_expect_value` serializes dataclasses to their plain to-dict
@@ -146,7 +146,7 @@ function toBuilderExpectOutput(value: JsonValue): JsonValue {
   return value;
 }
 
-/** The builder table (each binder runs under {@link runGuarded} + expect encoding). */
+// The builder table; each binder runs under `runGuarded` + expect encoding.
 const BUILDER_BINDINGS: BindingTable = [
   // ----- bookmark_builders -----
   [
@@ -244,7 +244,7 @@ const BUILDER_BINDINGS: BindingTable = [
       return {
         ...transformed,
         // Python returns a datetime; the library twin returns Python
-        // isoformat TEXT. Wrap it so encode emits
+        // isoformat text. Wrap it so encode emits
         // `{"$type": "datetime", "iso": ...}` byte-matching Python
         // `isoformat()`.
         event_time: new PyDatetime(transformed["event_time"] as string),
@@ -260,7 +260,7 @@ const BUILDER_BINDINGS: BindingTable = [
   ],
 
   // ----- user_builders selector path -----
-  // `selector_str` codec twin: the returned string is emitted VERBATIM
+  // `selector_str` codec twin: the returned string is emitted verbatim
   // (strings pass through the expect walk untouched; no trimming, no
   // normalization).
   [
@@ -275,7 +275,7 @@ const BUILDER_BINDINGS: BindingTable = [
       ),
   ],
   // Tuple twin: a 2-element JSON array — element 0 the remaining Filters,
-  // element 1 the first cohort Filter or null. The SAME decoded Filter
+  // element 1 the first cohort Filter or null. The same decoded Filter
   // instances flow through (identity semantics); the expect walk
   // serializes them to their Python-spelled `_`-field dicts.
   [
@@ -287,7 +287,7 @@ const BUILDER_BINDINGS: BindingTable = [
   ],
 
   // ----- bookmark_schema -----
-  // `model_name` output codec twin: the root model HANDLE serializes as
+  // `model_name` output codec twin: the root model handle serializes as
   // its Python class name, `None` as null.
   [
     "bookmark_schema.get_root_model_for_bookmark_type",
@@ -297,13 +297,11 @@ const BUILDER_BINDINGS: BindingTable = [
   ],
 ];
 
-/**
- * `bookmark_schema.validate_with_pydantic` — mirror of the Python
- * name-resolving adapter (`conformance.record.adapters.validate_with_pydantic`):
- * resolve the model NAME over the fixed five-entry map and forward with
- * the DEFAULT code mapper. Output is the `validation_errors` encoding,
- * not the builder expect encoding.
- */
+// `bookmark_schema.validate_with_pydantic` mirrors the Python
+// name-resolving adapter (`conformance.record.adapters.validate_with_pydantic`):
+// resolve the model name over the fixed five-entry map and forward with
+// the default code mapper. Output is the `validation_errors` encoding,
+// not the builder expect encoding.
 const VALIDATE_WITH_PYDANTIC: BindingTable = [
   [
     "bookmark_schema.validate_with_pydantic",
@@ -332,6 +330,12 @@ const VALIDATE_WITH_PYDANTIC: BindingTable = [
  *
  * @param implementations - The registry to extend.
  * @param codecs - The codec registry used to encode returned values.
+ * @example
+ * ```ts
+ * const implementations = new ImplementationRegistry();
+ * const codecs = new CodecRegistry();
+ * registerBuilderBindings(implementations, codecs);
+ * ```
  */
 export function registerBuilderBindings(
   implementations: ImplementationRegistry,

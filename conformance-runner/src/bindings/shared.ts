@@ -18,17 +18,36 @@ import type { ImplementationRegistry, InvocationContext } from "../runner.js";
 /** One bound entry point, before the module's output/error wrapping. */
 export type Binder = (context: InvocationContext) => unknown;
 
-/** A binding module's registrations: Python dotted api name → binder. */
+/**
+ * A binding module's registrations: Python dotted api name → binder.
+ *
+ * @remarks
+ * Tables are introduced by a line comment rather than a doc block: the
+ * jsdoc lint rules attribute a doc block on the table constant to every
+ * arrow binder inside it and then demand `@param`/`@returns` on each.
+ */
 export type BindingTable = ReadonlyArray<readonly [string, Binder]>;
 
 /**
  * A ported-library error re-thrown in vector `expect.error` form.
  *
  * Core exceptions cannot implement the runner's
- * {@link ExpectErrorConvertible} themselves (dependency direction:
- * runner -> core, never the reverse), so the binding layer wraps any
+ * {@link ExpectErrorConvertible} themselves (the runner depends on
+ * core, never the reverse), so the binding layer wraps any
  * thrown `MixpanelHeadlessError` into this adapter; the runner then
  * diffs `{class, code}` structurally (messages stripped).
+ *
+ * @example
+ * ```ts
+ * try {
+ *   return zfill(value, width);
+ * } catch (error) {
+ *   if (error instanceof MixpanelHeadlessError) {
+ *     throw new CoreLibraryError(error); // runner diffs toExpectError()
+ *   }
+ *   throw error;
+ * }
+ * ```
  */
 export class CoreLibraryError extends Error implements ExpectErrorConvertible {
   /** The original core exception. */
@@ -48,8 +67,8 @@ export class CoreLibraryError extends Error implements ExpectErrorConvertible {
   /**
    * Encode this error as a vector `expect.error` value.
    *
-   * @returns `{class: <Python exception class name>, code: <registry
-   *   code>}` — TS class names equal the Python ones by construction.
+   * @returns `{class, code}` — the Python exception class name (TS class
+   *   names equal the Python ones by construction) and the registry code.
    *   `BookmarkValidationError` additionally carries its `errors[]`
    *   `{path, code, severity}` triples so the facade bypass/build
    *   vectors' `expect.error` comparisons see them.
@@ -99,6 +118,12 @@ export function guardCompat<T>(invoke: () => T): T {
  * @returns The vector-JSON encoding of the returned instance.
  * @throws CoreLibraryError - When the call raises a core exception.
  * @throws unknown - Anything else, unchanged (a runner/infra bug).
+ * @example
+ * ```ts
+ * const encoded = runGuarded(codecs, () =>
+ *   new Filter(kwargsAsFields<FilterFields>(context)),
+ * );
+ * ```
  */
 export function runGuarded(
   codecs: CodecRegistry,
@@ -113,7 +138,7 @@ export function runGuarded(
  * (`conformance.record.codecs._encode_validation_errors`): one
  * `{path, code, severity}` object per error, emission order preserved.
  * `message`/`suggestion`/`fix` never enter the encoding — the runner's
- * `diffReturnedValue` does NOT strip advisory keys from
+ * `diffReturnedValue` does not strip advisory keys from
  * `expect.output`, so serializing them would fail every vector.
  *
  * @param returned - The validator's return value.
@@ -146,6 +171,14 @@ export function encodeValidationErrors(returned: unknown): JsonValue {
  * @param wrap - Adapter applied around each binder (output encoding +
  *   error wrapping); identity when the binder already returns
  *   vector-JSON.
+ * @example
+ * ```ts
+ * registerTable(
+ *   implementations,
+ *   COMPAT_BINDINGS,
+ *   (binder) => (context) => guardCompat(() => binder(context)),
+ * );
+ * ```
  */
 export function registerTable(
   implementations: ImplementationRegistry,

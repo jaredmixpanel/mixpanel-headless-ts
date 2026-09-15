@@ -1,5 +1,5 @@
 /**
- * `VectorFetch` — the injected-fetch replay seam (design D12, R2.4).
+ * `VectorFetch` — the injected-fetch replay seam.
  *
  * A factory takes a vector's parsed `expect.interactions[]` and returns a
  * fetch implementation that:
@@ -7,24 +7,25 @@
  * - captures every outgoing request (method/url/headers/body) for the
  *   runner's request diff;
  * - serves the canned recorded response for the request's slot — ordered
- *   interactions are served POSITIONALLY (field mismatches are the
+ *   interactions are served positionally (field mismatches are the
  *   runner's diff to report, not a serve-time crash), while interactions
- *   inside an `unordered_group` are served BY KEY on the canonical
- *   `(method, path, params)` triple, each consumable once (D2/D7: the
- *   i-th replay request need not be the i-th recorded request under async
- *   scheduling);
- * - rejects `transport_error` slots the way NATIVE fetch rejects — a
+ *   inside an `unordered_group` are served by key on the canonical
+ *   `(method, path, params)` triple, each consumable once (the i-th replay
+ *   request need not be the i-th recorded request under async scheduling);
+ * - rejects `transport_error` slots the way native fetch rejects — a
  *   `TypeError` with `cause` from the committed table in
  *   `transport-errors.ts`, never a pre-mapped library error;
  * - rebuilds `body_stream` chunks into a `ReadableStream` that preserves
- *   the recorded chunk boundaries (D2 — gzip/JSONL chunk reassembly is a
- *   named port target).
+ *   the recorded chunk boundaries (gzip/JSONL chunk reassembly is under
+ *   test).
  *
  * Sequence violations (a request beyond the recorded count, or no key
- * match inside an unordered group) both THROW a
- * {@link VectorFetchSequenceError} into the library AND record the
+ * match inside an unordered group) both throw a
+ * {@link VectorFetchSequenceError} into the library and record the
  * violation on the harness, so a library that swallows the throw still
  * fails the vector with `FAIL_REQUEST`.
+ *
+ * @see conformance.runner.transport
  */
 
 import { canonicalize } from "./canonical.js";
@@ -32,7 +33,16 @@ import type { GivenResponse, ParsedInteraction } from "./interactions.js";
 import { JsonNumber, type JsonValue } from "./json-value.js";
 import { createTransportRejection } from "./transport-errors.js";
 
-/** Raised into the library when replay traffic diverges from the record. */
+/**
+ * Raised into the library when replay traffic diverges from the record.
+ *
+ * @example
+ * ```ts
+ * const harness = createVectorFetch([]); // nothing recorded
+ * await harness.fetch("https://mixpanel.com/api/app/me");
+ * // rejects with VectorFetchSequenceError: request 1 (GET /api/app/me) arrived after all 0 recorded interactions were served
+ * ```
+ */
 export class VectorFetchSequenceError extends Error {
   /**
    * Create a sequence error.
@@ -65,7 +75,7 @@ export interface CapturedRequest {
 
 /** The replay harness returned by {@link createVectorFetch}. */
 export interface VectorFetchHarness {
-  /** The injectable fetch implementation (R2.4 seam). */
+  /** The injectable fetch implementation. */
   readonly fetch: typeof fetch;
   /** Captured requests, in arrival order. */
   readonly captures: readonly CapturedRequest[];
@@ -104,7 +114,7 @@ export function paramsToJson(
 }
 
 /**
- * Compute the canonical `(method, path, params)` serving key (D2/D7).
+ * Compute the canonical `(method, path, params)` serving key.
  *
  * @param method - HTTP method.
  * @param path - URL path.
@@ -135,28 +145,12 @@ function chunkBytes(encoding: "utf8" | "base64", data: string): Uint8Array {
 }
 
 /**
- * Build the canned `Response` for one recorded `givenResponse`.
- *
- * Body precedence follows the schema's mutually exclusive fields: `body`
- * (compact JSON text in STORED key order — see {@link storedJsonText}),
- * `body_text`, `body_base64`, or `body_stream`
- * (a `ReadableStream` enqueuing each recorded chunk as its own
- * `Uint8Array`, preserving boundaries per D2). When a JSON `body` is
- * present and the recorded headers carry no `content-type`,
- * `application/json` is defaulted (httpx MockTransport's `json=` behavior
- * at record time).
- *
- * @param given - The parsed recorded response.
- * @returns A fresh `Response`.
- */
-/**
- * Serialize a recorded JSON `body` EXACTLY as the Python replay
- * transport does (`conformance/runner/transport.py` —
- * `json.dumps(body, separators=(",", ":"), ensure_ascii=False)`):
- * compact separators, stored KEY ORDER preserved (never canonicalized —
+ * Serialize a recorded JSON `body` exactly as the Python replay transport
+ * does (`json.dumps(body, separators=(",", ":"), ensure_ascii=False)`):
+ * compact separators, stored key order preserved (never canonicalized —
  * key order is observable to order-sensitive consumers like
- * `get_event_properties`'s `list(response.keys())`, found by the first
- * B4-C2 replay), lossless number tokens verbatim.
+ * `get_event_properties`'s `list(response.keys())`), lossless number
+ * tokens verbatim (`conformance.runner.transport.build_response`).
  *
  * @param value - The loaded body value.
  * @returns The serialized text.
@@ -188,6 +182,21 @@ function storedJsonText(value: JsonValue): string {
     .join(",")}}`;
 }
 
+/**
+ * Build the canned `Response` for one recorded `givenResponse`.
+ *
+ * Body precedence follows the schema's mutually exclusive fields: `body`
+ * (compact JSON text in stored key order — see {@link storedJsonText}),
+ * `body_text`, `body_base64`, or `body_stream` (a `ReadableStream`
+ * enqueuing each recorded chunk as its own `Uint8Array`, preserving the
+ * recorded boundaries). When a JSON `body` is present and the recorded
+ * headers carry no `content-type`, `application/json` is defaulted (httpx
+ * MockTransport's `json=` behavior at record time).
+ *
+ * @param given - The parsed recorded response.
+ * @returns A fresh `Response`.
+ * @see conformance.runner.transport.build_response
+ */
 export function buildResponse(given: GivenResponse): Response {
   const headers = new Headers(given.headers);
   let body: BodyInit | null = null;
@@ -253,8 +262,7 @@ async function captureRequest(
 }
 
 /**
- * Create the injected-fetch replay harness for one wire/parse vector
- * (design D12).
+ * Create the injected-fetch replay harness for one wire/parse vector.
  *
  * @param interactions - The vector's parsed `expect.interactions[]`.
  * @returns The {@link VectorFetchHarness}: an injectable `fetch`, the
@@ -294,8 +302,8 @@ export function createVectorFetch(
     if (nextSlot.unorderedGroup === undefined) {
       return nextIndex;
     }
-    // Keyed serving within the unordered group (D2/D7): match by the
-    // canonical (method, path, params) triple, each slot consumable once.
+    // Keyed serving within the unordered group: match by the canonical
+    // (method, path, params) triple, each slot consumable once.
     const group = nextSlot.unorderedGroup;
     const incomingKey = servingKey(
       captured.method,

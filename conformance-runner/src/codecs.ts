@@ -1,31 +1,39 @@
 /**
- * `$type` value codecs — TS mirror of `conformance/record/codecs.py`
- * (design D4.4; vector.schema.json `taggedValue`).
+ * `$type` value codecs for vector payloads (`vector.schema.json`
+ * `taggedValue`).
  *
  * Decode side (replay): vector `call.input` values reconstruct rich
  * arguments. The non-dataclass built-ins (`datetime`, `date`, `SecretStr`,
- * `bytes`, `callback`) are always available; dataclass/model tags
- * (`Filter`, `FunnelStep`, `CreateAnnotationParams`, ...) are registered by
- * each port batch through {@link CodecRegistry.register} as their TS types
- * come into existence — an unknown tag throws {@link UndecodableValueError}
- * loudly (a committed vector that fails decode is a codec-table or vector
- * bug, mirroring the Python rule), it never silently degrades.
+ * `bytes`, `callback`, `float`) are always available; dataclass/model tags
+ * (`Filter`, `FunnelStep`, `CreateAnnotationParams`, ...) are registered
+ * through {@link CodecRegistry.register}. An unknown tag throws
+ * {@link UndecodableValueError} loudly — a committed vector that fails
+ * decode is a codec-table or vector bug, never something to degrade around.
  *
- * Encode side (diff prep for TS-5): live TS outputs are converted to
- * vector-JSON shape before canonicalization — `Uint8Array` -> `$type:
- * bytes`, wrapper types back to their tags — with lone surrogates and
- * non-finite floats rejected at the boundary per D6 rules 2 and 5.
+ * Encode side (diff preparation): live TS outputs are converted to
+ * vector-JSON shape before canonicalization — `Uint8Array` to
+ * `$type: bytes`, wrapper types back to their tags — with lone surrogates and
+ * non-finite floats rejected at the boundary (canonicalization rules 2
+ * and 5). Decoded `JsonNumber` tokens become JS `number`s; integer tokens
+ * whose exact value exceeds 2^53 become `bigint`, never silently rounded,
+ * because the `PRECISION_LOSS` verdict depends on the distinction.
  *
- * Numbers: decoded `JsonNumber` tokens become JS `number`s; integer tokens
- * whose exact value exceeds 2^53 become `bigint` (never silently rounded —
- * the D6 `PRECISION_LOSS` machinery depends on the distinction).
+ * @see conformance.record.codecs
  */
 
 import { pythonFloatStr, Secret } from "@mixpanel-headless/core";
 
 import { JsonNumber, type JsonValue } from "./json-value.js";
 
-/** Raised when a vector value cannot be decoded back to a TS value. */
+/**
+ * Raised when a vector value cannot be decoded back to a TS value.
+ *
+ * @example
+ * ```ts
+ * new CodecRegistry().decodeValue({ $type: "Mystery", value: 1 });
+ * // throws UndecodableValueError: no codec for $type "Mystery"
+ * ```
+ */
 export class UndecodableValueError extends Error {
   /**
    * Create a decode error.
@@ -38,7 +46,15 @@ export class UndecodableValueError extends Error {
   }
 }
 
-/** Raised when a live TS value cannot be encoded into vector JSON. */
+/**
+ * Raised when a live TS value cannot be encoded into vector JSON.
+ *
+ * @example
+ * ```ts
+ * encodeExpectValue(() => undefined);
+ * // throws UnencodableValueError: no encoding for function in output position
+ * ```
+ */
 export class UnencodableValueError extends Error {
   /**
    * Create an encode error.
@@ -54,14 +70,23 @@ export class UnencodableValueError extends Error {
 /**
  * Historical name for the decoded `SecretStr` product.
  *
- * @deprecated The `$type: SecretStr` built-in now decodes to the REAL
- * core {@link Secret} wrapper (phase2-design C7 / arbiter V4 respec) —
- * the placeholder class is gone; this alias survives only so older call
- * sites keep typechecking. Read the revealed value via `.reveal()`.
+ * @deprecated The `$type: SecretStr` built-in decodes to the real core
+ * {@link Secret} wrapper; the placeholder class is gone and this alias
+ * survives only so older call sites keep typechecking. Read the revealed
+ * value via `.reveal()`.
  */
 export type SecretValue = Secret;
 
-/** Decoded `$type: datetime` — the ISO string, kept lossless. */
+/**
+ * Decoded `$type: datetime` — the ISO string, kept lossless.
+ *
+ * @example
+ * ```ts
+ * const when = new PyDatetime("2026-01-15T12:00:00+00:00");
+ * encodeExpectValue(when);
+ * // { $type: "datetime", iso: "2026-01-15T12:00:00+00:00" }
+ * ```
+ */
 export class PyDatetime {
   /** ISO-8601 text exactly as Python `datetime.isoformat()` emitted it. */
   readonly iso: string;
@@ -79,14 +104,19 @@ export class PyDatetime {
 /**
  * Decoded `$type: float` — the canonical spelling, kept lossless.
  *
- * P2-5a codec amendment (Risk #3, see the Python twin's
- * `conformance/record/EXTRACTION-LEDGER.md`): the recorder tags
- * INTEGRAL-valued floats inside rich payloads (`1716810000.0` cannot
- * survive a double-only decode as a raw token — it collapses to the
- * integer and the C8(a) sweep diffs), and the authored validation
- * vectors carry the non-finite spellings (`Infinity`/`-Infinity`/`NaN`).
- * The wrapper preserves the spelling so encode re-emits the tagged form
- * byte-for-byte.
+ * The recorder tags integral-valued floats inside rich payloads because
+ * `1716810000.0` cannot survive a double-only decode as a raw token (it
+ * collapses to the integer and the round-trip diffs), and the authored
+ * validation vectors carry the non-finite spellings
+ * (`Infinity`/`-Infinity`/`NaN`). The wrapper preserves the spelling so
+ * encode re-emits the tagged form byte-for-byte.
+ *
+ * @example
+ * ```ts
+ * new PyFloat("18.0").toNumber(); // 18
+ * new PyFloat("Infinity").toNumber(); // Infinity
+ * new PyFloat("18.5"); // throws UndecodableValueError (must stay a raw token)
+ * ```
  */
 export class PyFloat {
   /** The canonical spelling exactly as the tagged payload carried it. */
@@ -98,7 +128,8 @@ export class PyFloat {
    * @param spelling - `Infinity`, `-Infinity`, `NaN`, or the canonical
    *   Python `repr` of an integral float (e.g. `"18.0"`, `"1e+16"`).
    * @throws UndecodableValueError - On any other spelling (non-integral
-   *   finite floats must stay raw JSON number tokens — design D6 rule 3).
+   *   finite floats must stay raw JSON number tokens — canonicalization
+   *   rule 3).
    */
   constructor(spelling: string) {
     if (!["Infinity", "-Infinity", "NaN"].includes(spelling)) {
@@ -129,7 +160,16 @@ export class PyFloat {
   }
 }
 
-/** Decoded `$type: date` — the ISO date string, kept lossless. */
+/**
+ * Decoded `$type: date` — the ISO date string, kept lossless.
+ *
+ * @example
+ * ```ts
+ * const day = new PyDate("2026-01-15");
+ * encodeExpectValue(day);
+ * // { $type: "date", iso: "2026-01-15" }
+ * ```
+ */
 export class PyDate {
   /** ISO-8601 date text exactly as Python `date.isoformat()` emitted it. */
   readonly iso: string;
@@ -145,11 +185,19 @@ export class PyDate {
 }
 
 /**
- * Replay stub for `$type: callback` kwargs (design D4.4).
+ * Replay stub for `$type: callback` kwargs.
  *
  * Both runners inject one per callback-tagged kwarg; {@link fn} is passed
  * to the library, and the recorded {@link calls} log (positional args,
- * encoded) is diffed against `expect.callback_calls[<kwarg>]` in TS-5.
+ * encoded) is diffed against `expect.callback_calls[<kwarg>]`.
+ *
+ * @example
+ * ```ts
+ * const stub = new RecordingCallback("progress");
+ * stub.fn(3, "loading");
+ * stub.calls; // [[3, "loading"]]
+ * ```
+ * @see conformance.record.codecs.RecordingCallback
  */
 export class RecordingCallback {
   /** The kwarg name the stub replaces. */
@@ -187,11 +235,11 @@ export type TagDecoder = (
 ) => unknown;
 
 /**
- * Encoder callback for one registered rich `$type` tag (phase2-design C7
- * item 1 — the encode half of a `TagCodec`).
+ * Encoder callback for one registered rich `$type` tag (the encode half
+ * of a tag codec).
  *
- * `matches` doubles as the C8(a) anti-vacuity `instanceof` probe: it must
- * be true ONLY for instances of the tag's real core class, so a
+ * `matches` doubles as an anti-vacuity `instanceof` probe: it must be true
+ * only for instances of the tag's real core class, so a
  * decode-to-plain-object codec can never round-trip through it.
  */
 export interface RichTagEncoder {
@@ -205,7 +253,7 @@ export interface RichTagEncoder {
 
   /**
    * Serialize the instance back to its tagged vector-JSON shape
-   * (`$type` first, ALL declared fields — mirror of Python
+   * (`$type` first, all declared fields — mirror of Python
    * `_encode_common(tagged_models=True)`).
    *
    * @param value - A value for which {@link RichTagEncoder.matches}
@@ -224,7 +272,7 @@ const LONE_SURROGATE =
   /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
 
 /**
- * Reject strings containing lone surrogates (D6 rule 2).
+ * Reject strings containing lone surrogates (canonicalization rule 2).
  *
  * @param value - Candidate string.
  * @returns The same string when well-formed.
@@ -300,11 +348,20 @@ function requireTagString(
 }
 
 /**
- * The decode-side codec table (design D4.4 mirror).
+ * The decode-side codec table.
  *
  * Built-in tags are always available; rich dataclass/model tags are
- * registered per port batch. One registry instance is expected per runner
+ * registered on top. One registry instance is expected per runner
  * process; tests may build isolated instances.
+ *
+ * @example
+ * ```ts
+ * const registry = new CodecRegistry();
+ * registry.registerTagCodec("Filter", codec.decode, codec);
+ * registry.decodeValue({ $type: "date", iso: "2026-01-15" }); // PyDate
+ * registry.encodeValue(new Uint8Array([104, 105]));
+ * // { $type: "bytes", encoding: "base64", data: "aGk=" }
+ * ```
  */
 export class CodecRegistry {
   /** Registered rich-tag decoders, keyed by `$type` name. */
@@ -337,8 +394,8 @@ export class CodecRegistry {
   }
 
   /**
-   * Register a full rich-tag codec: decoder + encoder (phase2-design C7
-   * item 2 — the `registerContractCodecs` wiring point uses this).
+   * Register a full rich-tag codec: decoder plus encoder (the
+   * `registerContractCodecs` wiring point uses this).
    *
    * @param tag - The `$type` name exactly as vectors carry it.
    * @param decoder - The reconstruction callback.
@@ -387,7 +444,7 @@ export class CodecRegistry {
   }
 
   /**
-   * Decode one vector JSON value into a TS value (design D12 replay side).
+   * Decode one vector JSON value into a TS value.
    *
    * Plain JSON passes through; `JsonNumber` tokens become `number` (or
    * `bigint` above 2^53); `$type`-tagged objects dispatch through the
@@ -432,9 +489,9 @@ export class CodecRegistry {
    * Decode a vector `call.input` object into named arguments.
    *
    * @param input - The vector's `call.input` mapping.
-   * @returns Decoded values keyed by the PYTHON parameter names (kwarg
+   * @returns Decoded values keyed by the Python parameter names (kwarg
    *   camelization for options-bag calls is applied later, at invocation
-   *   binding, per naming-map §2 — this layer only reconstructs values).
+   *   binding — this layer only reconstructs values).
    * @throws UndecodableValueError - If any value fails to decode.
    */
   decodeInputKwargs(
@@ -467,9 +524,8 @@ export class CodecRegistry {
         return new PyDate(requireTagString(payload, "iso", tag));
       }
       case "SecretStr": {
-        // The REAL core Secret, not a runner placeholder — the
-        // C8(a) sweep asserts the round-trip preserves the REVEALED
-        // value (phase2-design C7 / arbiter V4 respec).
+        // The real core Secret, not a runner placeholder: the round-trip
+        // must preserve the revealed value, not a mask.
         return new Secret(requireTagString(payload, "value", tag));
       }
       case "bytes": {
@@ -511,28 +567,37 @@ const BUILTIN_TAGS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Encode a live TS value into vector-JSON shape for diffing (D6/D4.4).
+ * Encode a live TS value into vector-JSON shape for diffing.
  *
- * Mirror of Python `encode_expect_value`: bytes and datetime wrappers stay
- * `$type`-tagged; `JsonNumber`/`bigint` pass through for the canonicalizer's
- * raw-token rules; lone surrogates and non-finite floats are rejected.
+ * Bytes and datetime wrappers stay `$type`-tagged; `JsonNumber`/`bigint`
+ * pass through for the canonicalizer's raw-token rules; lone surrogates and
+ * non-finite floats are rejected.
  *
  * `undefined` follows ECMAScript JSON semantics — the least surprising rule
- * under R3.5's absent-vs-null discipline: an object property whose value is
- * `undefined` is treated as ABSENT (dropped, like `JSON.stringify`), while
- * a bare/array-item `undefined` encodes as `null` (a void TS return is the
- * analog of Python's `None` return).
+ * given that absent and `null` compare distinctly: an object property whose
+ * value is `undefined` is treated as absent (dropped, like
+ * `JSON.stringify`), while a bare/array-item `undefined` encodes as `null`
+ * (a void TS return is the analog of Python's `None` return).
  *
  * @param value - A value produced by the TS library under test (or a
  *   callback-argument capture).
- * @param encodeRich - Optional hook for registered rich-tag instances
- *   (phase2-design C7): consulted for any object no built-in branch
- *   handles, BEFORE the final throw; returning `undefined` means "not
- *   mine". {@link CodecRegistry.encodeValue} supplies the
- *   registered-encoder lookup; direct calls omit it (built-ins only).
+ * @param encodeRich - Optional hook for registered rich-tag instances:
+ *   consulted for any object no built-in branch handles, before the final
+ *   throw; returning `undefined` means "not mine".
+ *   {@link CodecRegistry.encodeValue} supplies the registered-encoder
+ *   lookup; direct calls omit it (built-ins only).
  * @returns A vector-JSON structure ready for canonicalization.
  * @throws UnencodableValueError - If the value has no encoding (functions,
- *   symbols, unknown class instances) or violates D6 rules 2/5.
+ *   symbols, unknown class instances) or violates canonicalization rules
+ *   2 or 5.
+ * @example
+ * ```ts
+ * encodeExpectValue({ a: 1n, b: undefined, c: [undefined] });
+ * // { a: 1n, c: [null] } — `b` is absent, the array hole is null
+ * encodeExpectValue(new Secret("s3cret"));
+ * // { $type: "SecretStr", value: "s3cret" }
+ * ```
+ * @see conformance.record.codecs.encode_expect_value
  */
 // eslint-disable-next-line complexity -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function encodeExpectValue(
@@ -572,9 +637,9 @@ export function encodeExpectValue(
     return { $type: "float", value: value.spelling };
   }
   if (value instanceof Secret) {
-    // NEVER `toJSON()` — its `'**********'` mask in an encoded vector
-    // would make mask-vs-mask comparisons vacuously equal (a FAIL per
-    // phase2-design C7); the encoded form carries the revealed value.
+    // Never `toJSON()`: its `'**********'` mask in an encoded vector would
+    // make mask-vs-mask comparisons vacuously equal, so the encoded form
+    // carries the revealed value.
     return { $type: "SecretStr", value: rejectBadString(value.reveal()) };
   }
   if (Array.isArray(value)) {
@@ -587,7 +652,7 @@ export function encodeExpectValue(
     const out: Record<string, JsonValue> = {};
     for (const [key, item] of Object.entries(value)) {
       if (item === undefined) {
-        continue; // absent, not null (R3.5 / JSON.stringify semantics)
+        continue; // absent, not null (JSON.stringify semantics)
       }
       out[rejectBadString(key)] = encodeExpectValue(item, encodeRich);
     }

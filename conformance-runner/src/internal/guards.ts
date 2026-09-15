@@ -1,9 +1,8 @@
 /**
  * Value guards shared across the conformance rig and the differential
- * oracle — the single home for the predicates the loader, interaction
- * parser, canonicalizer, wire modules, runner and oracle each used to
- * carry a private copy of (plain-object detection, the `expect.error`
- * duck type, the JSON-object/string field readers).
+ * oracle: plain-object detection, the `expect.error` duck type, the
+ * JSON-object/string field readers, and the guard combinators the binding
+ * modules decode kwargs with.
  *
  * Every reader takes a `fail` factory rather than throwing a fixed
  * class: the loader raises `CorpusIntegrityError`, the interaction
@@ -22,7 +21,7 @@ export type Guard<T> = (value: unknown) => value is T;
  * Whether a value is a plain object (JSON object shape).
  *
  * Class instances (`Date`, `Map`, `JsonNumber`, reconstructed core
- * models, ...) are NOT plain objects: their data does not live in
+ * models, ...) are not plain objects: their data does not live in
  * enumerable own properties, so treating them as JSON objects would
  * silently drop it.
  *
@@ -79,6 +78,13 @@ export function isExpectErrorConvertible(
  * @param fail - Error factory of the calling boundary.
  * @returns The object.
  * @throws Error - `fail(...)` when the value is not a plain object.
+ * @example
+ * ```ts
+ * const fail = (message: string) => new CorpusIntegrityError(message);
+ * asJsonObject(record["call"], "vector call", fail); // the object
+ * asJsonObject("nope", "vector call", fail);
+ * // throws CorpusIntegrityError: vector call: expected a JSON object
+ * ```
  */
 export function asJsonObject(
   value: JsonValue | undefined,
@@ -105,6 +111,12 @@ export function asJsonObject(
  * @param fail - Error factory of the calling boundary.
  * @returns The string value.
  * @throws Error - `fail(...)` when absent, empty or not a string.
+ * @example
+ * ```ts
+ * requireString({ api: "workspace.me" }, "api", "call", fail); // "workspace.me"
+ * requireString({ api: "" }, "api", "call", fail);
+ * // throws fail("call: missing string field \"api\"")
+ * ```
  */
 export function requireString(
   record: Readonly<Record<string, JsonValue>>,
@@ -126,10 +138,19 @@ export function requireString(
  * @param key - The field name.
  * @param context - Location for the error message.
  * @param fail - Error factory of the calling boundary.
- * @param options - `nonEmpty` additionally rejects `""` (the corpus
- *   manifest fields); interaction fields accept any string.
+ * @param options - Acceptance options; `nonEmpty` additionally rejects
+ *   `""` (the corpus manifest fields), while interaction fields accept any
+ *   string.
  * @returns The string, or `undefined` when the field is absent.
  * @throws Error - `fail(...)` when present but not an acceptable string.
+ * @example
+ * ```ts
+ * optionalString({}, "body_text", "response", fail); // undefined
+ * optionalString({ body_text: "" }, "body_text", "response", fail); // ""
+ * optionalString({ body_text: "" }, "body_text", "response", fail, {
+ *   nonEmpty: true,
+ * }); // throws fail("response: field \"body_text\" must be a non-empty string")
+ * ```
  */
 export function optionalString(
   record: Readonly<Record<string, JsonValue>>,
@@ -273,8 +294,17 @@ export interface BoundJsonReaders {
  * sites read `asObject(value, context)` without repeating the factory.
  *
  * @param fail - Error factory of the calling boundary.
- * @param options - Forwarded to {@link optionalString}.
+ * @param options - Forwarded to {@link optionalString}; `nonEmpty` makes
+ *   it reject `""`.
  * @returns The bound readers.
+ * @example
+ * ```ts
+ * const { asObject, requireString } = boundJsonReaders(
+ *   (message) => new MalformedInteractionError(message),
+ * );
+ * const request = asObject(raw["request"], "interactions[0]");
+ * const method = requireString(request, "method", "interactions[0].request");
+ * ```
  */
 export function boundJsonReaders(
   fail: FailFactory,

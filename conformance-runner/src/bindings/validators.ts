@@ -9,9 +9,9 @@
  * the returned list.
  *
  * Oracle note: oracle-ts serves every name registered here through the
- * same registry, so this registration IS the oracle surface.
+ * same registry, so this registration is the oracle surface.
  * `validation.validate_sorting_block` has zero corpus vectors but is
- * bound for the gate's mechanical `oracle.call` probe.
+ * bound so the oracle's mechanical `call` probe can reach it.
  */
 
 import {
@@ -54,7 +54,7 @@ type ValidatorBinder = (context: InvocationContext) => ValidationError[];
 /**
  * Unwrap one finite-integral `PyFloat` carrier to its native number.
  *
- * Applied ONLY at the kwarg positions measured as pure NUMERIC
+ * Applied only at the kwarg positions measured as pure numeric
  * comparisons in the Python source: there Python's `30.0` compares
  * equal to `30`, so the TS twin needs the native number. Positions with
  * `isinstance(int/float)` semantics keep the carrier — the ported
@@ -70,14 +70,14 @@ function unwrapCarrierNumber(value: unknown): unknown {
 }
 
 /**
- * Deep-unwrap NON-FINITE `PyFloat` carriers to native non-finite
+ * Deep-unwrap non-finite `PyFloat` carriers to native non-finite
  * numbers ("non-finite spellings always unwrap", the `vector-codecs.ts`
  * SignedReplay precedent). Finite carriers stay carriers — that is what
  * makes `isinstance(x, int)` fail in TS exactly where it fails in
  * CPython. The walk covers plain dicts/lists only; reconstructed core
  * instances pass through untouched. Behavior-neutral for the
  * carrier-aware sorting surface (its classifiers treat native
- * non-finite numbers identically) — this is NOT a `params.sorting`
+ * non-finite numbers identically) — this is not a `params.sorting`
  * unwrap rule.
  *
  * @param value - A decoded kwarg value.
@@ -111,7 +111,7 @@ function unwrapNonFiniteDeep(value: unknown): unknown {
  * ({@link unwrapCarrierNumber}). Absent kwargs stay absent — the TS
  * validators' destructuring defaults mirror the Python kwonly defaults,
  * which is also why the bag is handed over typed as the validator's
- * options without a shape check (the ONE cast; `GroupBy` bucket fields
+ * options without a shape check (the one cast; `GroupBy` bucket fields
  * are unwrapped by the GroupBy contract codec itself, so decoded
  * `group_by` values arrive here already native).
  *
@@ -152,7 +152,7 @@ function requireParamsDict(
   >;
 }
 
-/** The validator table (`validation.*` + `user_validators.*`). */
+// The validator table (`validation.*` + `user_validators.*`).
 const VALIDATOR_BINDINGS: ReadonlyArray<readonly [string, ValidatorBinder]> = [
   [
     "validation.validate_time_args",
@@ -229,9 +229,10 @@ const VALIDATOR_BINDINGS: ReadonlyArray<readonly [string, ValidatorBinder]> = [
   [
     "user_validators.validate_user_args",
     (context) => {
-      // Carrier table: `limit`/`percentile`/`workers` and the ELEMENTS of
+      // Carrier table: `limit`/`percentile`/`workers` and the elements of
       // `segment_by` are pure numeric comparisons in Python (no
-      // isinstance(int/float) anywhere in user_validators.py);
+      // `isinstance(int/float)` check anywhere in
+      // `mixpanel_headless._internal.query.user_validators`);
       // `cohort`/`as_of` keep carriers (isinstance-only reads).
       const options = validatorKwargs<Record<string, unknown>>(context, [
         "limit",

@@ -1,16 +1,13 @@
 /**
- * B4-C4 wire bindings — the 46 packet-C4 api-index names (feature
- * flags + experiments + annotations + webhooks + alerts), registered
- * inline in the shard commit per the P3-2 b′ fable-batch rule.
+ * `api_client.*` wire bindings for feature flags, experiments,
+ * annotations, webhooks and alerts.
  *
- * Binding honesty (P3-5 §3): every binding is memoized
- * `clientFromSession` + ONE client-method call + kwarg passthrough
- * (absent-stays-absent). The only output adaptations are the C1 codec
- * twins (`runWire`/`coreToVectorJson`); void Python methods return
- * `null` (the recorder's `None`).
- *
- * Oracle note: wire api names have NO oracle `call` surface (P3-2 c/e);
- * registration here is complete.
+ * Every binding is the memoized `clientFromSession` plus one
+ * client-method call and kwarg passthrough (absent stays absent); the
+ * only output adaptations are the `runWire`/`coreToVectorJson` codec
+ * twins, and void Python methods return `null` (the recorder's `None`).
+ * See `wire-client.ts` for the shared client-construction and honesty
+ * rules.
  */
 
 import type { MixpanelClient } from "@mixpanel-headless/core";
@@ -21,7 +18,7 @@ import type { ImplementationRegistry, InvocationContext } from "./runner.js";
 import { clientFromSession, requireWireKwarg, runWire } from "./wire-client.js";
 
 /**
- * Read an OPTIONAL positional dict argument (the
+ * Read an optional positional dict argument (the
  * `conclude_experiment`/`duplicate_experiment` `body=None` default —
  * absent stays absent so the TS default applies).
  *
@@ -40,7 +37,7 @@ function optionalBody(
 }
 
 /**
- * Register the B4-C4 bindings (46 names).
+ * Register the lifecycle wire bindings.
  *
  * @param implementations - The registry to extend.
  */
