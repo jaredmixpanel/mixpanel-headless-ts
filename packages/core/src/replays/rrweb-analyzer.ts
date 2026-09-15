@@ -48,10 +48,7 @@ import {
   type PythonValue,
 } from "../compat/python-str.js";
 import { pythonStrip } from "../compat/python-strip.js";
-import {
-  type ReplayActionLabel,
-  UserAction,
-} from "../types/results/replays.js";
+import { type ReplayActionLabel, UserAction } from "./user-action.js";
 
 /** Any JSON-shaped mapping the analyzer reads off the event stream. */
 type Dict = Readonly<Record<string, unknown>>;

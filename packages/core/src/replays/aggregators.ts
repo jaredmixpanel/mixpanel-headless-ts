@@ -23,8 +23,21 @@
  */
 
 import { compareCodepoints } from "../compat/codepoint.js";
-import type { Replay, ReplayBundle } from "../types/results/replays.js";
+import type { Replay } from "../types/results/replay-models.js";
 import type { Row } from "../types/results/result-base.js";
+
+/**
+ * The slice of `ReplayBundle` the aggregations read — stated
+ * structurally because the bundle's methods delegate here, so this
+ * module has to sit below `types/results/replays.ts` in the import
+ * graph.
+ */
+export interface ReplayCollection {
+  /** Replays in the bundle. */
+  readonly replays: readonly Replay[];
+  /** The bundle `actions_df` projection (replay-id prefixed action rows). */
+  readonly toActionsRows: () => readonly Row[];
+}
 
 /**
  * Genuine clicks from an `actions_df` row list — drops focus-only
@@ -95,7 +108,7 @@ export function topClicksRowColumns(): readonly string[] {
  * @returns Rows with `target_desc` / `count`, sorted descending by
  *   count.
  */
-export function topClicks(bundle: ReplayBundle, n = 10): TopClickRow[] {
+export function topClicks(bundle: ReplayCollection, n = 10): TopClickRow[] {
   const clicks = realClicks(bundle.toActionsRows());
   if (clicks.length === 0) {
     return [];
@@ -156,7 +169,7 @@ export function rageClicksRowColumns(): readonly string[] {
  * @returns One row per rage burst.
  */
 export function rageClicks(
-  bundle: ReplayBundle,
+  bundle: ReplayCollection,
   options: { threshold?: number; windowMs?: number } = {},
 ): RageClickRow[] {
   const threshold = options.threshold ?? 3;
@@ -227,7 +240,7 @@ export function longPausesRowColumns(): readonly string[] {
  * @returns One row per qualifying gap.
  */
 export function longPauses(
-  bundle: ReplayBundle,
+  bundle: ReplayCollection,
   thresholdS = 10,
 ): LongPauseRow[] {
   // Python `int(threshold_s * 1000)` — truncation toward zero on the
@@ -260,7 +273,7 @@ export function longPauses(
  * @returns Replay IDs in input order. Empty when the bundle has no
  *   console errors.
  */
-export function errorSessions(bundle: ReplayBundle): string[] {
+export function errorSessions(bundle: ReplayCollection): string[] {
   return bundle.replays
     .filter((replay: Replay) =>
       replay.actions.some((a) => a.action === "console_error"),
