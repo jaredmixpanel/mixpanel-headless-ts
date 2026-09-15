@@ -4,11 +4,11 @@
  * every writer renders datetimes through the Python-twin formatter.
  *
  * - Tokens payload = the `tokens_{region}.json` twin (`save_tokens`,
- *   `storage.py:451-478`): `datetime.isoformat()` shape — offset
+ *   `storage.py`): `datetime.isoformat()` shape — offset
  *   `+00:00`, NEVER `Z` (B8-ARB-B F2 byte-parity golden,
  *   `b8-reviewB-resolution.md`).
  * - Client-info payload = the `client_{region}.json` twin
- *   (`save_client_info`, `storage.py:526-543`): pydantic JSON mode —
+ *   (`save_client_info`, `storage.py`): pydantic JSON mode —
  *   UTC spelled `Z` (live probe `2030-01-01T00:00:00Z`).
  *
  * Both renderings go through core `pythonUtcIsoformat`
@@ -42,7 +42,7 @@ const UTC_SUFFIX = /(?:Z|[+-]00:00)$/;
 /**
  * Render stored ISO text the way `datetime.isoformat()` does for UTC
  * instants (`+00:00`, 0-or-6 fractional digits) — the tokens.json
- * writer shape (`storage.py:471`; R11.9 tokens-twin arm).
+ * writer shape (`storage.py`; R11.9 tokens-twin arm).
  *
  * @param text - Datetime text from the closed loop (see module header).
  * @returns Canonical isoformat text; verbatim when out of grammar.
@@ -61,7 +61,7 @@ function tokensDatetimeText(text: string): string {
 /**
  * Render stored ISO text the way pydantic JSON mode does for UTC
  * instants (`Z`, 0-or-6 fractional digits) — the client_{region}.json
- * writer shape (`storage.py:541`; R11.9 pydantic-JSON-twin arm).
+ * writer shape (`storage.py`; R11.9 pydantic-JSON-twin arm).
  * Implemented as the isoformat rendering with its UTC offset respelled
  * `Z` (the two Python writers differ ONLY in that suffix for UTC
  * instants — `b8-reviewB-resolution.md` F2 table).
@@ -82,7 +82,7 @@ function clientInfoDatetimeText(text: string): string {
 
 /**
  * Serialize a token set for {@link CredentialStore} persistence — the
- * `save_tokens` payload twin (`storage.py:451-478`): key set
+ * `save_tokens` payload twin: key set
  * `access_token`, `expires_at`, `scope`, `token_type`, plus
  * `refresh_token` ONLY when non-null; `expires_at` in the `+00:00`
  * isoformat shape. CRED designated reveal site — secrets are unwrapped
@@ -110,7 +110,7 @@ export function serializeTokensPayload(tokens: OAuthTokens): string {
 
 /**
  * Serialize DCR client info for {@link CredentialStore} persistence —
- * the `save_client_info` payload twin (`storage.py:526-543`): key set
+ * the `save_client_info` payload twin: key set
  * `client_id`, `region`, `redirect_uri`, `scope`, `created_at`;
  * `created_at` in the pydantic-JSON `Z` shape.
  *

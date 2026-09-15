@@ -4,7 +4,7 @@
 // `b6-packets.md:1032`) and the B7-ARB-A ASR-F4c NAMED RE-TAKE of
 // `test_042_edge_cases.py::
 // test_session_to_credentials_oauth_browser_missing_tokens_raises`
-// (:655) — the B7 translation ran over an injected fake resolver; this
+// — the B7 translation ran over an injected fake resolver; this
 // one runs the REAL `OnDiskTokenResolver`.
 //
 // The Python `isolated_home` fixture (monkeypatch HOME) translates to a
@@ -74,7 +74,7 @@ function isoIn(hours: number): string {
   return iso.replace(/\.\d{3}Z$/, "+00:00");
 }
 
-/** The `_write_tokens_file` fixture twin (test_token_resolver.py:43). */
+/** The `_write_tokens_file` fixture twin. */
 function writeTokensFile(options: {
   name: string;
   accessToken: string;
@@ -520,13 +520,13 @@ describe("ASR-F4c re-take (test_042_edge_cases.py:655 — b7-reviewA-resolution.
     const resolver = new OnDiskTokenResolver();
     await expect(resolver.getBrowserToken("me", "us")).resolves.toBe("ok");
     // The DCR-store seam reads the same storage root override world
-    // (`token_resolver.py:211-227` — region-shared client info).
+    // (`token_resolver.py` — region-shared client info).
     expect(new OAuthStorage().storageDir).toBe(join(home, ".mp", "oauth"));
   });
 });
 
 // B8-ARB-A SEM-F6 family ripple (b8-reviewA-resolution.md): Python's
-// symlink-probe catch is `except OSError` (`token_resolver.py:104-111`)
+// symlink-probe catch is `except OSError` (`token_resolver.py`)
 // — errno-bearing lstat failures wrap into the coded OAuthError exactly
 // like the symlink refusal; pre-fix TS rethrew them uncoded.
 describe("B8-ARB-A SEM-F6 probe errno-wrap lock (token_resolver.py:104-111)", () => {
@@ -553,7 +553,7 @@ describe("B8-ARB-A SEM-F6 probe errno-wrap lock (token_resolver.py:104-111)", ()
 });
 
 // B8-ARB-B F1 (b8-reviewB-resolution.md): the per-account read path is
-// `OAuthTokens.model_validate_json` in Python (`token_resolver.py:134-148`)
+// `OAuthTokens.model_validate_json` in Python
 // — Pydantic-LAX, so numeric epoch-seconds `expires_at` (and its
 // numeric-string spelling) is ACCEPTED and converted to an aware UTC
 // datetime (live probe: 1893456000 → 2030-01-01T00:00:00+00:00). The

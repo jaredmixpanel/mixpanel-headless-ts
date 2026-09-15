@@ -1,18 +1,18 @@
 /**
  * The `login_unified` orchestrator — TS port of
- * `mixpanel_headless/accounts.py:1030-2013` (B7-A1 packet §3.1/§3.3,
+ * `mixpanel_headless/accounts.py` (B7-A1 packet §3.1/§3.3,
  * `b7-packets.md`; split out of `accounts-ops.ts` per the packet's
  * ~800-line R7 file rule).
  *
  * Composes auth-type detection, the A2 region probe, `/me`-driven
  * project resolution and name derivation, and the re-login state
- * machine — all over the injected {@link AuthEffects} bag (R9.4).
+ * machine — all over the injected {@link AuthEffects} bag.
  *
  * Mechanism substitution (disclosed in the shard notes, header-cited
  * by the Layer-3 files): Python's oauth_browser new-account flow
  * writes PKCE tokens to a hidden `.tmp-{nonce}/` placeholder directory
  * and publishes it with `os.rename` after validation
- * (`accounts.py:1616-1750`). The TS core keeps the tokens IN MEMORY
+ * (`accounts.py`). The TS core keeps the tokens IN MEMORY
  * until the E-2 cross-check + name resolution succeed, then persists
  * via `tokenStore.writeTokens` — the observable contract (no tokens at
  * the user-visible path on failure; tokens present after success;
@@ -48,7 +48,7 @@ import {
 import type { AuthEffects } from "./auth-effects.js";
 import { defaultAccountName } from "./naming.js";
 
-/** Account-name constraint (the `account_dir` guard twin, `accounts.py:1697-1703`). */
+/** Account-name constraint (the `account_dir` guard twin, `accounts.py`). */
 const ACCOUNT_NAME_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
 
 /** Options bag of {@link loginUnified} (Python kwonly, R3.8). */
@@ -77,7 +77,7 @@ export interface LoginUnifiedOptions {
 
 /**
  * Resolve which auth flow to drive (`_detect_login_type`,
- * `accounts.py:1392-1413`).
+ * `accounts.py`).
  *
  * Priority: explicit `account_type` → `token_env` → the
  * `MP_USERNAME`+`MP_SECRET` env pair → `MP_OAUTH_TOKEN` env →
@@ -115,7 +115,7 @@ function detectLoginType(
 
 /**
  * Apply the project-selection priority chain (`_resolve_project`,
- * `accounts.py:1913-2011`).
+ * `accounts.py`).
  *
  * Priority: explicit `project` → `MP_PROJECT_ID` env (hard-fail when
  * stale) → single-project auto-pick → picker callback (E-8 when
@@ -140,7 +140,7 @@ function resolveProjectForLogin(
 ): string | null {
   const projects = me.projects;
   // Insertion-order keys (the Python dict iteration) — the ReadonlyMap
-  // preserves `/me` source order (B8-MAPFIX), so the "Accessible
+  // preserves `/me` source order, so the "Accessible
   // projects:" listings below match Python's line order exactly.
   const projectKeys = [...projects.keys()];
 
@@ -212,7 +212,7 @@ function resolveProjectForLogin(
   };
   // Stable sort over insertion-order entries: picker-list tie order
   // for case-folded (org, name) collisions now matches Python's
-  // `sorted(...)` stability over dict order (B8-MAPFIX).
+  // `sorted(...)` stability over dict order.
   const sortedProjects = [...projects]
     .map(([pid, info]) => [pid, info] as const)
     .sort((a, b) => {
@@ -225,7 +225,7 @@ function resolveProjectForLogin(
 
 /**
  * Return a copy of `summary` with `/me`-derived fields filled in
- * (`_summary_with_me`, `accounts.py:1357-1389`).
+ * (`_summary_with_me`, `accounts.py`).
  *
  * @param summary - The base summary from `add` / `show`.
  * @param me - Parsed `/me` response.
@@ -280,7 +280,7 @@ async function withProgress<T>(
 
 /**
  * Add and activate a Mixpanel account in one orchestrated call
- * (`login_unified`, `accounts.py:1030-1272`).
+ * (`login_unified`, `accounts.py`).
  *
  * See the Python docstring for the full state machine; branch-level
  * locks live in packet §3.3 and the Layer-3 files.
@@ -314,7 +314,7 @@ export async function loginUnified(
   const projectPicker = options.project_picker ?? null;
 
   // Fold the CLI's --service-account flag into `account_type`
-  // (`accounts.py:1165-1190`).
+  // (`accounts.py`).
   if (serviceAccount) {
     if (accountType !== null && accountType !== "service_account") {
       throw new InvalidArgumentError(
@@ -340,7 +340,7 @@ export async function loginUnified(
 
   const detectedType = detectLoginType(effects, accountType, tokenEnv);
 
-  // Per-flag misuse — fail fast before any I/O (`accounts.py:1194-1210`).
+  // Per-flag misuse — fail fast before any I/O (`accounts.py`).
   if (noBrowser && detectedType !== "oauth_browser") {
     throw new InvalidArgumentError(
       `--no-browser is only meaningful for the oauth_browser auth ` +
@@ -356,7 +356,7 @@ export async function loginUnified(
     );
   }
 
-  // Default progress to the nullcontext twin (`accounts.py:1215-1216`).
+  // Default progress to the nullcontext twin (`accounts.py`).
   const progress: ProgressFactory =
     options.progress ??
     ((): ProgressHandle => ({
@@ -411,7 +411,7 @@ export async function loginUnified(
   }
 
   // Activate (new or refreshed) so library callers see the documented
-  // "Add and activate" semantics (`accounts.py:1265-1271`).
+  // "Add and activate" semantics (`accounts.py`).
   accountsUse(effects, summary.name);
   return summary;
 }
@@ -430,7 +430,7 @@ interface ReloginArgs {
 
 /**
  * Refresh an existing account's credentials per the re-login state
- * machine (`_login_unified_relogin`, `accounts.py:1416-1574`).
+ * machine (`_login_unified_relogin`, `accounts.py`).
  *
  * @param effects - The effect bag.
  * @param args - The re-login inputs.
@@ -512,7 +512,7 @@ async function loginUnifiedRelogin(
     });
   } else {
     // oauth_token: preserve the persisted storage MODE unless the
-    // caller explicitly re-points it (`accounts.py:1527-1563`).
+    // caller explicitly re-points it (`accounts.py`).
     const existingTokenEnv =
       existingAccount.type === "oauth_token"
         ? (existingAccount.token_env ?? null)
@@ -541,7 +541,7 @@ async function loginUnifiedRelogin(
     }
   }
 
-  // /me refresh + cache write (`accounts.py:1565-1574`).
+  // /me refresh + cache write (`accounts.py`).
   const refreshed = effects.config.getAccount(name);
   const meResp = await withProgress(
     args.progress,
@@ -565,7 +565,7 @@ interface NewBrowserArgs {
 
 /**
  * The oauth_browser new-account flow (`_login_unified_new_browser`,
- * `accounts.py:1577-1750`; see the module header for the disclosed
+ * `accounts.py`; see the module header for the disclosed
  * placeholder-dir → in-memory mechanism substitution).
  *
  * @param effects - The effect bag.
@@ -619,7 +619,7 @@ async function loginUnifiedNewBrowser(
     throw new AccountExistsError(finalName);
   }
   // Path-safety twin of the `account_dir()` validation
-  // (`accounts.py:1697-1703`) — reject before any persistence.
+  // (`accounts.py`) — reject before any persistence.
   if (!ACCOUNT_NAME_PATTERN.test(finalName)) {
     throw new ConfigError(
       `Invalid account name '${finalName}': must match ` +
@@ -627,7 +627,7 @@ async function loginUnifiedNewBrowser(
     );
   }
 
-  // Orphan-state guard (`accounts.py:1704-1708`; restored per
+  // Orphan-state guard (`accounts.py`; restored per
   // `b7-reviewA-resolution.md` SEM-F2): per-account state exists WITHOUT
   // a config record (the config collision already raised
   // AccountExistsError above) → refuse rather than silently overwrite.
@@ -643,7 +643,7 @@ async function loginUnifiedNewBrowser(
 
   // Validation passed — persist tokens, then the account record; a
   // failure inside add()/cache rolls the published dir back
-  // (`accounts.py:1726-1741`).
+  // (`accounts.py`).
   effects.tokenStore.writeTokens(finalName, tokens);
   try {
     const summary = await accountsAdd(effects, finalName, {
@@ -673,7 +673,7 @@ interface NewCredentialArgs {
 
 /**
  * The SA / oauth_token new-account flow
- * (`_login_unified_new_credential`, `accounts.py:1753-1910`).
+ * (`_login_unified_new_credential`, `accounts.py`).
  *
  * @param effects - The effect bag.
  * @param args - The flow inputs.
@@ -686,7 +686,7 @@ async function loginUnifiedNewCredential(
   effects: AuthEffects,
   args: NewCredentialArgs,
 ): Promise<AccountSummary> {
-  // Credential collection (`accounts.py:1783-1822`).
+  // Credential collection (`accounts.py`).
   let username: string | null = null;
   let secret: Secret | null = null;
   let token: Secret | null = null;
@@ -713,11 +713,11 @@ async function loginUnifiedNewCredential(
     }
     secret = new Secret(secretRaw);
   } else {
-    // Python `token_env or "MP_OAUTH_TOKEN"` (`accounts.py:1812`) —
+    // Python `token_env or "MP_OAUTH_TOKEN"` (`accounts.py`) —
     // the empty string ALSO falls back (falsy-`or`, not nullish;
     // `b7-reviewA-resolution.md` SEM-F1). `resolvedTokenEnv` below
     // keeps the `is not None` check: `token_env=""` still records the
-    // empty pointer, exactly like Python (:1819-1822).
+    // empty pointer, exactly like Python.
     const envName =
       args.token_env !== null && args.token_env !== ""
         ? args.token_env
@@ -736,7 +736,7 @@ async function loginUnifiedNewCredential(
     }
   }
 
-  // Region resolution — probe when omitted (`accounts.py:1828-1843`,
+  // Region resolution — probe when omitted (`accounts.py`,
   // via the A2 `probeRegionForCredential`).
   let resolvedRegion: Region;
   if (args.region === null) {
@@ -757,7 +757,7 @@ async function loginUnifiedNewCredential(
   }
 
   // /me lookup via a temporary credentialed account
-  // (`accounts.py:1845-1875`).
+  // (`accounts.py`).
   const placeholderName = "_tmp_login_unified_";
   let tempAccount: Account;
   if (args.detected_type === "service_account") {
@@ -800,7 +800,7 @@ async function loginUnifiedNewCredential(
     args.project_picker,
   );
 
-  // Resolve final name (`accounts.py:1883-1893`).
+  // Resolve final name (`accounts.py`).
   let finalName: string;
   if (args.name === null) {
     const existingNames = new Set(

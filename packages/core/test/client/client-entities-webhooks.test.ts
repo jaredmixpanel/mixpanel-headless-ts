@@ -10,7 +10,7 @@ import {
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 
-/** The `oauth_credentials` fixture twin (test_api_client_webhooks.py:27-30). */
+/** The `oauth_credentials` fixture twin. */
 function oauthCredentials(): Session {
   return makeSession({
     projectId: "12345",
@@ -19,7 +19,7 @@ function oauthCredentials(): Session {
   });
 }
 
-/** The `_webhook_result` helper twin (:52-75). */
+/** The `_webhook_result` helper twin. */
 function webhookResult(
   id = "wh-uuid-123",
   name = "Test Webhook",
@@ -36,7 +36,7 @@ function webhookResult(
   };
 }
 
-/** The `_mutation_result` helper twin (:78-91). */
+/** The `_mutation_result` helper twin. */
 function mutationResult(
   id = "wh-uuid-123",
   name = "Test Webhook",

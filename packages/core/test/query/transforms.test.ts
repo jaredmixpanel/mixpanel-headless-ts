@@ -24,7 +24,7 @@
  * **`transformEvent` has NO Python unit-test file** (only workspace
  * streaming tests, B4/B6 scope) and ZERO corpus vectors. Per the packet
  * the cases below are NEW, locked by the module docstring example
- * (`transforms.py:36-55`) and by the mandatory CPython
+ * (`transforms.py`) and by the mandatory CPython
  * `datetime.fromtimestamp` probe recorded in
  * `docs/history/phase3/notes/B3-K3-notes.md` §probe (CPython 3.14.6). Each
  * such case is marked `// NEW`.
@@ -67,7 +67,7 @@ describe("transformProfile", () => {
     expect(result["properties"]).toStrictEqual({});
   });
 
-  // NEW (no Python source test; docstring `transforms.py:101-117` locked)
+  // NEW (no Python source test; docstring `transforms.py` locked)
   it("promotes $last_seen out of $properties and keeps the rest", () => {
     const raw = {
       $distinct_id: "user123",
@@ -104,7 +104,7 @@ describe("transformProfile", () => {
   });
 
   // NEW — `RESERVED_PROFILE_KEYS` is exported for parity
-  // (`transforms.py:85`).
+  // (`transforms.py`).
   it("exports the reserved profile key set", () => {
     expect([...RESERVED_PROFILE_KEYS]).toStrictEqual(["$last_seen"]);
   });
@@ -115,7 +115,7 @@ describe("transformProfile", () => {
 // =============================================================================
 
 describe("transformEvent", () => {
-  // NEW — module docstring example (`transforms.py:36-55`).
+  // NEW — module docstring example (`transforms.py`).
   it("normalizes the docstring example", () => {
     const raw = {
       event: "Sign Up",
@@ -152,7 +152,7 @@ describe("transformEvent", () => {
   });
 
   // NEW — `$insert_id: None` takes the uuid branch
-  // (`transforms.py:70-72`); an EXPLICIT null, not just an absent key.
+  // (`transforms.py`); an EXPLICIT null, not just an absent key.
   it("fills insert_id when $insert_id is present but null", () => {
     const result = transformEvent(
       { event: "E", properties: { $insert_id: null, time: 0 } },
@@ -163,7 +163,7 @@ describe("transformEvent", () => {
   });
 
   // NEW — the caller's properties dict is shallow-copied
-  // (`transforms.py:60`).
+  // (`transforms.py`).
   it("does not mutate the caller's properties dict", () => {
     const properties: Record<string, unknown> = {
       distinct_id: "u",
@@ -296,7 +296,7 @@ describe("transformEvent", () => {
   });
 
   // NEW — `RESERVED_EVENT_KEYS` is exported for parity
-  // (`transforms.py:18`; consumers land at B4).
+  // (`transforms.py`; consumers land at B4).
   it("exports the reserved event key set", () => {
     expect([...RESERVED_EVENT_KEYS].sort()).toStrictEqual([
       "$insert_id",

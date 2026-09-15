@@ -1,6 +1,6 @@
 /**
  * Data-audit wire methods (App API) — Phase-3 packet B4-C5 port of the
- * `MixpanelAPIClient` audit range (`api_client.py:8345-8416`).
+ * `MixpanelAPIClient` audit range.
  *
  * Both methods use `_raw=True` (the response is a 2-element
  * `[violations, metadata]` array inside the envelope) and share the
@@ -21,7 +21,7 @@ import { pythonTypeNameOf } from "../shared.js";
 /** The C5 audit method surface (mixed into `MixpanelClient`). */
 export interface AuditMethods {
   /**
-   * Run a full data audit (`run_audit`, `api_client.py:8345-8381` —
+   * Run a full data audit (`run_audit`, `api_client.py` —
    * GET `data-definitions/audit/` with `_raw=True`).
    *
    * @param signal - Optional cancellation signal.

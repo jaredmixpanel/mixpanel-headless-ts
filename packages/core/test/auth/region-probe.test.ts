@@ -22,7 +22,7 @@
 //   received — same observable (the probe plumbs the value per request).
 //
 // No assertion dropped; the network-error body assert keeps Python's own
-// loosened OR form (`test_region_probe.py:167`).
+// loosened OR form (`test_region_probe.py`).
 import { describe, expect, it } from "vitest";
 
 import type { Region } from "../../src/auth/account.js";
@@ -216,7 +216,7 @@ describe("TestProbeRegionErrorPaths", () => {
     expect(attempts[0]?.[0]).toBe("us");
     expect(attempts[0]?.[1]).toBe(0);
     // Body carries the network error reason for diagnostic use
-    // (Python's own loosened OR assert, test_region_probe.py:167).
+    // (Python's own loosened OR assert, test_region_probe.py).
     const body = attempts[0]?.[2] ?? "";
     expect(
       body.includes("DNS lookup failed") || body.includes("ConnectError"),

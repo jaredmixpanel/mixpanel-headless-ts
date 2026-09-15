@@ -534,7 +534,7 @@ describe("B7-ARB-A resolution locks (b7-reviewA-resolution.md SEM-F1/SEM-F2)", (
     // NOT the `Env var '' is unset` collection error — the bearer read
     // falls back to MP_OAUTH_TOKEN (`token_env or "MP_OAUTH_TOKEN"`),
     // then the region probe rejects the EMPTY token_env pointer
-    // exactly as Python does (`region_probe.py:252-256`).
+    // exactly as Python does (`region_probe.py`).
     expect(caught).toBeInstanceOf(ConfigError);
     expect((caught as ConfigError).message).toBe(
       "--token-env '' is unset; cannot probe region.",

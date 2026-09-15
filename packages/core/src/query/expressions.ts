@@ -6,7 +6,7 @@
  * (`docs/history/phase3/design/b3-packets.md` §"Packet K3").
  *
  * **Watchlist #2 — escaping is char-for-char contract.** The escape
- * order is backslash FIRST, then double quote (`expressions.py:51`);
+ * order is backslash FIRST, then double quote (`expressions.py`);
  * reversing it double-escapes the backslash. Python `str.replace`
  * replaces ALL occurrences, so both passes use `replaceAll` — a
  * `String.prototype.replace` with a string pattern would rewrite only
@@ -16,7 +16,7 @@
  *
  * Python keeps this module `_internal`; the TS twin is likewise NOT
  * exported from the package barrel. Its only importer is
- * `services/live_query.py`'s segmentation family (B5-S2).
+ * `services/live_query.py`'s segmentation family.
  *
  * @module query/expressions
  * @internal
@@ -24,10 +24,10 @@
 
 /**
  * Accessor patterns that indicate a full filter expression
- * (`expressions.py:12`).
+ * (`expressions.py`).
  *
  * These are the three accessor types supported by Mixpanel's filter
- * expression syntax. `readonly [...]` mirrors the Python tuple (R4.8).
+ * expression syntax. `readonly [...]` mirrors the Python tuple.
  */
 const FILTER_EXPR_ACCESSORS: readonly string[] = [
   'properties["',
@@ -63,7 +63,7 @@ export function normalizeOnExpression(on: string): string {
   }
   // Escape backslashes first, then double quotes, to produce valid
   // syntax. Order matters: escaping quotes first would double-escape
-  // the backslash (`expressions.py:49-51`).
+  // the backslash (`expressions.py`).
   const escaped = on.replaceAll("\\", "\\\\").replaceAll('"', String.raw`\"`);
   return `properties["${escaped}"]`;
 }

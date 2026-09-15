@@ -1,9 +1,9 @@
 /**
  * Cowork credential bridge (v2 schema) — TS port of
  * `mixpanel_headless/_internal/auth/bridge.py` (whole file,
- * `bridge.py:1-409`; b8-packets.md §3.1 row 4), plus the Workspace
+ * `bridge.py`; b8-packets.md §3.1 row 4), plus the Workspace
  * constructor's bridge-token materialization side effect
- * (`workspace.py:476-513` — the inbound
+ * (`workspace.py` — the inbound
  * `TestBridgeTokenMaterialization` duty, packet §3.3 row 8).
  *
  * Bridge file search order (first existing wins):
@@ -56,7 +56,7 @@ import { tokenPayloadBytes } from "./token-payload.js";
 
 /**
  * Parsed v2 bridge file (the `BridgeFile` Pydantic model twin,
- * `bridge.py:61-117` — `frozen=True`, `extra="forbid"`).
+ * `bridge.py` — `frozen=True`, `extra="forbid"`).
  */
 export interface BridgeFile {
   /** Bridge schema version — always `2`. */
@@ -85,7 +85,7 @@ const BRIDGE_KEYS = new Set([
 
 /**
  * Default bridge file paths in priority order (port of
- * `default_bridge_search_paths`, `bridge.py:119-136`). `MP_AUTH_FILE`
+ * `default_bridge_search_paths`, `bridge.py`). `MP_AUTH_FILE`
  * is consulted by CALLERS before any default path.
  *
  * @returns Candidate paths (Cowork default first, then cwd fallback).
@@ -100,7 +100,7 @@ export function defaultBridgeSearchPaths(): readonly string[] {
 /**
  * Validate a raw payload against the v2 bridge schema (the
  * `BridgeFile.model_validate` twin — the 042 edge-case class drives it
- * directly, `test_042_edge_cases.py:394`).
+ * directly, `test_042_edge_cases.py`).
  *
  * @param raw - The parsed JSON payload.
  * @returns The validated bridge.
@@ -114,7 +114,7 @@ export function parseBridgeFile(raw: unknown): BridgeFile {
   }
   for (const key of Object.keys(raw)) {
     if (!BRIDGE_KEYS.has(key)) {
-      // `extra="forbid"` (`bridge.py:83`).
+      // `extra="forbid"` (`bridge.py`).
       throw new ParamValidationError(`Extra inputs are not permitted: ${key}`);
     }
   }
@@ -197,7 +197,7 @@ export function parseBridgeFile(raw: unknown): BridgeFile {
       headers[key] = value;
     }
   }
-  // Model validator (`bridge.py:103-116`): oauth_browser requires
+  // Model validator (`bridge.py`): oauth_browser requires
   // tokens.
   if (account.type === "oauth_browser" && tokens === null) {
     throw new ParamValidationError(
@@ -209,7 +209,7 @@ export function parseBridgeFile(raw: unknown): BridgeFile {
 
 /**
  * Load and validate a v2 bridge file from disk (port of `load_bridge`,
- * `bridge.py:137-194`).
+ * `bridge.py`).
  *
  * @param path - Optional explicit bridge path (else `$MP_AUTH_FILE`,
  *   else the default search paths — first existing wins).
@@ -229,7 +229,7 @@ export function loadBridge(path?: string | null): BridgeFile | null {
   }
 
   for (const candidate of candidates) {
-    // Symlink probe BEFORE the existence check (`bridge.py:166-176`).
+    // Symlink probe BEFORE the existence check (`bridge.py`).
     // Python wraps ANY OSError from the probe (`except OSError`) —
     // errno-bearing lstat failures code up like the symlink refusal
     // (B8-ARB-A SEM-F6 family, `b8-reviewA-resolution.md`).
@@ -253,7 +253,7 @@ export function loadBridge(path?: string | null): BridgeFile | null {
       payload = JSON.parse(readCredentialText(candidate));
     } catch (error) {
       // Python wraps `(OSError, json.JSONDecodeError)` only
-      // (`bridge.py:181`); a UnicodeDecodeError escapes RAW — the TS
+      // (`bridge.py`); a UnicodeDecodeError escapes RAW — the TS
       // twin (TextDecoder fatal-mode TypeError) propagates unchanged
       // (B8-ARB-A SEM-F2b, live CPython probe in the resolution).
       if (
@@ -288,7 +288,7 @@ export function loadBridge(path?: string | null): BridgeFile | null {
 /**
  * Load on-disk OAuth tokens for an oauth_browser account — snapshot
  * semantics, NO refresh attempt (port of `_read_browser_tokens`,
- * `bridge.py:197-275`).
+ * `bridge.py`).
  *
  * @param name - Account name (locates the per-account tokens file).
  * @returns The parsed tokens.
@@ -296,7 +296,7 @@ export function loadBridge(path?: string | null): BridgeFile | null {
  */
 function readBrowserTokens(name: string): OAuthTokens {
   const path = join(accountDir(name), "tokens.json");
-  // Python wraps ANY OSError from the probe (`bridge.py:221-227`
+  // Python wraps ANY OSError from the probe (`bridge.py`
   // `except OSError`) — errno-bearing lstat failures included
   // (B8-ARB-A SEM-F6 family, `b8-reviewA-resolution.md`).
   try {
@@ -325,7 +325,7 @@ function readBrowserTokens(name: string): OAuthTokens {
     payload = JSON.parse(readCredentialText(path));
   } catch (error) {
     // Python wraps `(OSError, json.JSONDecodeError)` only
-    // (`bridge.py:235-242`); the UnicodeDecodeError twin (TextDecoder
+    // (`bridge.py`); the UnicodeDecodeError twin (TextDecoder
     // fatal-mode TypeError) propagates RAW (B8-ARB-A SEM-F2 family).
     if (
       !(error instanceof CredentialPathError) &&
@@ -382,7 +382,7 @@ function readBrowserTokens(name: string): OAuthTokens {
 
 /**
  * Serialize a bridge to UTF-8 JSON bytes with secrets UNWRAPPED (port
- * of `_serialize_bridge`, `bridge.py:278-311` — the CRED-F3 reveal
+ * of `_serialize_bridge`, `bridge.py` — the CRED-F3 reveal
  * site; `exclude_none` + `sort_keys=True` + 2-space indent).
  *
  * @param bridge - Validated bridge.
@@ -420,7 +420,7 @@ function serializeBridge(bridge: BridgeFile): Uint8Array {
   if (bridge.tokens !== null) {
     const tokens: Record<string, unknown> = {
       access_token: bridge.tokens.access_token.reveal(),
-      // Pydantic JSON mode spells UTC with `Z` (`bridge.py:292`
+      // Pydantic JSON mode spells UTC with `Z` (`bridge.py`
       // `model_dump(mode="json")` — B8-ARB-B F2 byte-parity lock).
       expires_at: pydanticJsonDatetimeText(bridge.tokens.expires_at),
       scope: bridge.tokens.scope,
@@ -465,7 +465,7 @@ function sortKeys(value: unknown): unknown {
   return value;
 }
 
-/** Kwonly options of {@link exportBridge} (R3.8). */
+/** Kwonly options of {@link exportBridge}. */
 export interface ExportBridgeOptions {
   /** Destination path for the bridge file. */
   readonly to: string;
@@ -479,7 +479,7 @@ export interface ExportBridgeOptions {
 
 /**
  * Write a v2 bridge file embedding the account's full record (port of
- * `export_bridge`, `bridge.py:314-369`). For oauth_browser accounts
+ * `export_bridge`, `bridge.py`). For oauth_browser accounts
  * the current on-disk tokens are embedded (snapshot; no refresh).
  * Atomic 0o600 write — a consumer never observes a half-written file,
  * and a failed export leaves nothing behind.
@@ -487,14 +487,14 @@ export interface ExportBridgeOptions {
  * @param account - Account to embed (secrets inline by design, B3).
  * @param options - Destination + optional pins. (The Python
  *   `token_resolver` kwarg is signature parity only — the on-disk
- *   reader is used directly, `bridge.py:321`; the `BridgeEffects`
+ *   reader is used directly, `bridge.py`; the `BridgeEffects`
  *   adapter accepts and ignores it the same way.)
  * @returns The path written (same as `options.to`).
  * @throws OAuthError - oauth_browser account with missing/malformed
  *   on-disk tokens.
  * @throws ParamValidationError - Bad project format / non-positive
  *   workspace, RAW (Python's pydantic ValidationError escapes
- *   `export_bridge` unwrapped, `bridge.py:357-364` — B8-ARB-A SEM-F3;
+ *   `export_bridge` unwrapped, `bridge.py` — B8-ARB-A SEM-F3;
  *   the Python docstring's ConfigError claim is wrong in Python too).
  */
 export function exportBridge(
@@ -507,7 +507,7 @@ export function exportBridge(
   }
   // Invalid pins propagate the model's ParamValidationError RAW —
   // Python builds `BridgeFile(...)` with no try/except
-  // (`bridge.py:357-364`; the pydantic ValidationError escapes
+  // (`bridge.py`; the pydantic ValidationError escapes
   // unwrapped, matching the established validation-error convention).
   // B8-ARB-A SEM-F3, `b8-reviewA-resolution.md`.
   const bridge: BridgeFile = {
@@ -565,7 +565,7 @@ function validatedWorkspace(workspace: number | null): number | null {
   return workspace;
 }
 
-/** Kwonly options of {@link removeBridge} (R3.8). */
+/** Kwonly options of {@link removeBridge}. */
 export interface RemoveBridgeOptions {
   /** Explicit bridge path (else `$MP_AUTH_FILE`, else defaults). */
   readonly at?: string | null | undefined;
@@ -573,7 +573,7 @@ export interface RemoveBridgeOptions {
 
 /**
  * Delete the bridge file at the resolved path (port of
- * `remove_bridge`, `bridge.py:372-400`). Idempotent.
+ * `remove_bridge`, `bridge.py`). Idempotent.
  *
  * @param options - Optional explicit path.
  * @returns `true` if a file was deleted; `false` if none was found.
@@ -644,7 +644,7 @@ export function materializeBridgeTokens(bridge: BridgeFile): string | null {
 }
 
 /**
- * The `Workspace()` startup composition (`workspace.py:476-513`):
+ * The `Workspace()` startup composition:
  * `load_bridge()` + the materialization side effect. The SHIPPED
  * caller is `createNodeWorkspaceSources()` (auth-effects.ts — the
  * facade-construction sources; B8-ARB-A SEM-F1,

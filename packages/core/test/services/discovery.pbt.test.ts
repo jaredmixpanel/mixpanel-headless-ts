@@ -42,7 +42,7 @@ import {
 import { BOOKMARK_TYPE_VALUES } from "../../src/types/literals.js";
 
 // =============================================================================
-// Strategies (test_discovery_pbt.py:32-285)
+// Strategies (test_discovery_pbt.py)
 // =============================================================================
 
 /** `st.text()` — any code-point string. */
@@ -549,7 +549,7 @@ describe("TestInferSubpropertiesInvariants", () => {
           }
           // Names are alphabetically sorted. Python's `sorted(names)`
           // is CODE-POINT order; a bare JS `.sort()` here would compare
-          // UTF-16 units and invert e.g. ["ｱa", "𝒳"] (R11.5).
+          // UTF-16 units and invert e.g. ["ｱa", "𝒳"].
           const names = subs.map((sp) => sp.name);
           expect(names).toStrictEqual(sortedByCodepoint(names));
           // Sample values are distinct and capped at 5

@@ -1,4 +1,4 @@
-// coerce.ts tests (R4.12) including fast-check property #5 from
+// coerce.ts tests including fast-check property #5 from
 // phase2-design C9: R4.12 table parity for coerceInt/coerceStr/coerceBool
 // and default_factory-on-absent-only semantics.
 //

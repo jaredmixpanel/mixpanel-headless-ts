@@ -35,13 +35,13 @@ import type { UserAction } from "./user-action.js";
  * are replaced with `:id` so URLs collapse across users / instances.
  * Hex IDs (UUIDs, short SHAs) also count as IDs; pure-text segments
  * survive. Verbatim twin of Python's `_NUMERIC_OR_HEX`
- * (`replay_labels.py:36`).
+ * (`replay_labels.py`).
  */
 const NUMERIC_OR_HEX = /^(?:[0-9]+|[0-9a-f]{8,}|[0-9a-fA-F-]{8,})$/;
 
 /**
  * Normalize a URL into a path template suitable for label aggregation
- * (`url_normalizer`, `replay_labels.py:39-84`).
+ * (`url_normalizer`, `replay_labels.py`).
  *
  * Strips the query string and replaces numeric / hex path segments with
  * `:id`. The host portion is preserved when present (otherwise the
@@ -93,7 +93,7 @@ export function urlNormalizer(url: string): string {
 
 /**
  * Canonical activity label: `"{action}:{tag}@{normalized_url}"`
- * (`default_label_fn`, `replay_labels.py:86-112`).
+ * (`default_label_fn`, `replay_labels.py`).
  *
  * `tag` comes from `action.target_desc` (the analyzer's best
  * description of the element — e.g. `'button "Sign in"'`). The URL is
@@ -121,7 +121,7 @@ export function defaultLabelFn(action: UserAction): string {
 
 /**
  * Build a label-fn that prefers a stable selector attribute when
- * present (`selector_label_fn`, `replay_labels.py:114-145`).
+ * present (`selector_label_fn`, `replay_labels.py`).
  *
  * For instrumented apps, `data-testid` (or your project's equivalent)
  * is the most stable activity identifier — it survives DOM refactors,

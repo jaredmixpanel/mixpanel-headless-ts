@@ -1,7 +1,7 @@
 /**
  * Per-request header composition + client-identification metadata — TS
  * port of `MixpanelAPIClient._request_headers`
- * (`mixpanel_headless/_internal/api_client.py:452-481`) and
+ * (`mixpanel_headless/_internal/api_client.py`) and
  * `_internal/client_metadata.py` (Phase-3 packet B0-2; the
  * `client_metadata` half ports alongside per the packet's
  * `_execute_with_retry` bullet).
@@ -11,11 +11,11 @@
  * B4 streaming/replay call sites — single implementation HERE; B4-C1
  * imports it by name and must not re-implement any header merging.
  *
- * Env boundary (R9.1/R9.4): Python reads `MP_CUSTOM_HEADER_NAME` /
+ * Env boundary: Python reads `MP_CUSTOM_HEADER_NAME` /
  * `MP_CUSTOM_HEADER_VALUE` from `os.environ` on every call; `core` may
  * not touch env, so the pair arrives through the injected
  * {@link RequestHeadersDeps.getCustomHeaderEnv} provider, invoked
- * per-call to mirror Python's per-request read. The `node` package (B8)
+ * per-call to mirror Python's per-request read. The `node` package
  * supplies the real `process.env` reader.
  */
 
@@ -23,7 +23,7 @@
  * Value sent as the `query_origin` parameter on Query API calls.
  *
  * Lets downstream consumers attribute analytics traffic to this library.
- * Byte-identical to Python (`client_metadata.py:13`) — the value is
+ * Byte-identical to Python (`client_metadata.py`) — the value is
  * wire-locked by every Query-host vector's recorded request params.
  */
 export const QUERY_ORIGIN = "mixpanel-headless";
@@ -119,7 +119,7 @@ export interface RequestHeadersDeps {
 
 /**
  * Compose the per-request header set: defaults → env → session → caller —
- * TS port of `MixpanelAPIClient._request_headers` (`api_client.py:452-481`).
+ * TS port of `MixpanelAPIClient._request_headers`.
  *
  * Each later layer overrides the prior on header-name collision:
  *

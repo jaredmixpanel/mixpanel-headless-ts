@@ -2,8 +2,8 @@
  * Fetch-pure OAuth HTTP helpers — the B9-R2 core home of the
  * `node:*`-free halves of the B8 flow/DCR modules (b9-packets.md §3.1,
  * the second R10.8 ruling: hoist, don't duplicate — a browser copy
- * would have created second implementations of `flow.py:395-635` +
- * `client_registration.py:96-170` semantics in the one area with NO
+ * would have created second implementations of `flow.py` +
+ * `client_registration.py` semantics in the one area with NO
  * second oracle). Node's `OAuthFlow` / `ensureClientRegistered`
  * delegate here (their B8 Layer-3 suites stay green UNCHANGED — the
  * zero-behavior-change proof); the browser redirect flow imports the
@@ -39,7 +39,7 @@ import {
 
 /**
  * httpx default total timeout in seconds (`httpx.Client()` default —
- * the Python ctor builds a default client, `flow.py:168`). Not
+ * the Python ctor builds a default client, `flow.py`). Not
  * vector-observable (R2.12 unit spelling kept).
  */
 const DEFAULT_TIMEOUT_SECONDS = 5;
@@ -108,7 +108,7 @@ function redactTokenPayload(data: unknown): string {
 
 /**
  * Build the OAuth authorization URL with PKCE parameters (port of
- * `_build_authorize_url`, `flow.py:606-635` — lifted from the private
+ * `_build_authorize_url`, `flow.py` — lifted from the private
  * `OAuthFlow.#buildAuthorizeUrl` to a module-level pure function at
  * B9-R2; the class method is now a one-line delegate). Param order is
  * `urlencode` insertion order, locked: response_type, client_id,
@@ -171,7 +171,7 @@ export interface PostTokenRequestContext {
 
 /**
  * POST form data to the token endpoint and parse the response (port of
- * `_post_token_request`, `flow.py:500-605` — lifted from the private
+ * `_post_token_request`, `flow.py` — lifted from the private
  * `OAuthFlow.#postTokenRequest` at B9-R2; the class method delegates).
  * Shared by node refresh/exchange and the browser `completeLogin`.
  *
@@ -240,7 +240,7 @@ export async function postTokenRequest(
     if (!(error instanceof MixpanelHttpError)) {
       throw error;
     }
-    // Transport failure (`flow.py:535-540`) — vector
+    // Transport failure (`flow.py`) — vector
     // `test_refresh_tokens_timeout` locks `details_contain.url`.
     throw new OAuthError(
       `${operation} request failed: ${error.message}`,
@@ -252,7 +252,7 @@ export async function postTokenRequest(
 
   if (response.status !== 200) {
     // Distinguish a permanently dead refresh token from a transient
-    // failure (`flow.py:542-585`). The probe runs ONLY for 400/401
+    // failure (`flow.py`). The probe runs ONLY for 400/401
     // and the REVOKED mapping additionally requires the refresh
     // operation (B8 caution 6: exchange keeps the generic code).
     let invalidGrant = false;
@@ -278,7 +278,7 @@ export async function postTokenRequest(
         `Refresh token has been revoked or expired${forAccount}. ${hint}`,
         "OAUTH_REFRESH_REVOKED",
         // Revoked details ALWAYS carry account_name — null when not
-        // supplied (`flow.py:570-575`; vector lock).
+        // supplied (`flow.py`; vector lock).
         {
           status_code: response.status,
           response_body: response.text,
@@ -290,7 +290,7 @@ export async function postTokenRequest(
       `${operation} failed with status ${response.status}: ${response.text}`,
       errorCode,
       // Generic shape spreads account_name only when supplied
-      // (`flow.py:580-584`; B8 caution 5).
+      // (`flow.py`; B8 caution 5).
       {
         status_code: response.status,
         response_body: response.text,
@@ -392,7 +392,7 @@ export async function registerClient(
   redirectUri: string,
   options: RegisterClientOptions = {},
 ): Promise<OAuthClientInfo> {
-  // Register new client (`client_registration.py:96-104`).
+  // Register new client (`client_registration.py`).
   if (!Object.hasOwn(OAUTH_BASE_URLS, region)) {
     throw new OAuthError(
       `Unknown region: ${JSON.stringify(region)}. Must be one of: ${Object.keys(
@@ -407,7 +407,7 @@ export async function registerClient(
   const registerUrl = `${baseUrl}mcp/register/`;
 
   // Body keys in Python dict insertion order
-  // (`client_registration.py:106-112`).
+  // (`client_registration.py`).
   const body: Record<string, unknown> = {
     redirect_uris: [redirectUri],
     grant_types: ["authorization_code", "refresh_token"],
@@ -456,7 +456,7 @@ export async function registerClient(
     );
   }
 
-  // httpx `is_success` = 2xx (`client_registration.py:134-144`).
+  // httpx `is_success` = 2xx.
   if (response.status < 200 || response.status >= 300) {
     throw new OAuthError(
       `Client registration failed with status ${response.status}: ${

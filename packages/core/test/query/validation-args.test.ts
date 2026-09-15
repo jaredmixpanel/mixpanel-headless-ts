@@ -27,7 +27,7 @@ import { suggest } from "../../src/query/validation-shared.js";
 import { GroupBy, Metric } from "../../src/types/index.js";
 
 // =============================================================================
-// Helpers (test_validation.py:26-41)
+// Helpers (test_validation.py)
 // =============================================================================
 
 /**
@@ -57,7 +57,7 @@ function validArgs(
 }
 
 // =============================================================================
-// Fuzzy matching (test_validation.py:182-205)
+// Fuzzy matching (test_validation.py)
 // =============================================================================
 
 describe("TestFuzzyMatching", () => {
@@ -82,7 +82,7 @@ describe("TestFuzzyMatching", () => {
 });
 
 // =============================================================================
-// Layer 1: validate_query_args (test_validation.py:208-385)
+// Layer 1: validate_query_args (test_validation.py)
 // =============================================================================
 
 describe("TestValidateQueryArgsLayer1", () => {
@@ -298,7 +298,7 @@ describe("TestValidateQueryArgsLayer1", () => {
 });
 
 // =============================================================================
-// T036: data_group_id validation for insights (test_validation.py:723-759)
+// T036: data_group_id validation for insights (test_validation.py)
 // =============================================================================
 
 describe("TestDataGroupIdValidationInsights", () => {

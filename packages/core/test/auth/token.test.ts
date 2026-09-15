@@ -135,7 +135,7 @@ describe("OAuthTokens.fromTokenResponse", () => {
   });
 
   it("renders non-string members as Python str() would (Phase 8.6)", () => {
-    // `token.py:145-148` does `str(data[...])`; a JSON object lands as
+    // `token.py` does `str(data[...])`; a JSON object lands as
     // `{'x': 1}` on both sides, never as `[object Object]`.
     const tokens = OAuthTokens.fromTokenResponse({
       access_token: 12345,

@@ -142,7 +142,7 @@ function workspaceRefToPayload(ref: WorkspaceRef): Record<string, unknown> {
 
 /**
  * The custom handler for `WorkspaceRef` — an auth-family interface +
- * parse factory (P2-4), not an {@link EntityModel} subclass. The
+ * parse factory, not an {@link EntityModel} subclass. The
  * mutation probe uses the lax arm: `parseWorkspaceRef` ignores unknown
  * keys and the serializer emits exactly the four declared fields, so
  * an echo cannot pass the declared-keys check.

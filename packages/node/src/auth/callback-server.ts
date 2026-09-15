@@ -27,10 +27,10 @@ import { createServer, type Server, type ServerResponse } from "node:http";
 import { CallbackResult, OAuthError } from "@mixpanel-headless/core";
 import { parseQs } from "@mixpanel-headless/core/internal";
 
-/** Ports to attempt binding to, in order (`callback_server.py:32`). */
+/** Ports to attempt binding to, in order (`callback_server.py`). */
 export const CALLBACK_PORTS: readonly number[] = [19284, 19285, 19286, 19287];
 
-/** Success page (`_SUCCESS_HTML`, `callback_server.py:34-41`, verbatim). */
+/** Success page (`_SUCCESS_HTML`, `callback_server.py`, verbatim). */
 const SUCCESS_HTML = `<!DOCTYPE html>
 <html>
 <head><title>Authorization Successful</title></head>
@@ -42,7 +42,7 @@ const SUCCESS_HTML = `<!DOCTYPE html>
 
 /**
  * Render the error page (`_ERROR_HTML.format(message=...)`,
- * `callback_server.py:43-51`).
+ * `callback_server.py`).
  *
  * @param message - The ALREADY-ESCAPED message text.
  * @returns The full HTML document.
@@ -61,7 +61,7 @@ function errorHtml(message: string): string {
 
 /**
  * Python `html.escape(s)` twin (default `quote=True`): `&`, `<`, `>`,
- * `"` and `'` — the XSS surface lock (`callback_server.py:226`,
+ * `"` and `'` — the XSS surface lock (`callback_server.py`,
  * `TestCallbackHtmlSecurity`; packet §7 caution 13).
  *
  * @param text - Provider-supplied text to interpolate into HTML.
@@ -76,7 +76,7 @@ function htmlEscape(text: string): string {
     .replaceAll("'", "&#x27;");
 }
 
-/** Options bag of {@link startCallbackServer} (`callback_server.py:79-83`). */
+/** Options bag of {@link startCallbackServer} (`callback_server.py`). */
 export interface StartCallbackServerOptions {
   /** The expected state parameter for CSRF validation. */
   readonly state: string;
@@ -110,7 +110,7 @@ interface HandlerOutcome {
 }
 
 /**
- * Send an HTML response (`_send_html`, `callback_server.py:277-289`).
+ * Send an HTML response (`_send_html`, `callback_server.py`).
  *
  * @param res - The response to write.
  * @param html - HTML content.
@@ -141,7 +141,7 @@ function sendHtml(
 
 /**
  * Process the single callback request (`_CallbackHandler.do_GET`,
- * `callback_server.py:203-275`): provider `error=` param, missing
+ * `callback_server.py`): provider `error=` param, missing
  * `code`/`state`, state mismatch (CSRF), success — each answers the
  * browser (escaped HTML) and yields the server-side outcome. The path
  * is checked by the request listener (only `/callback` reaches here);
@@ -165,7 +165,7 @@ async function handleCallbackRequest(
   }
   const params = parseQs(query);
 
-  // Check for error from provider (`callback_server.py:216-234`).
+  // Check for error from provider (`callback_server.py`).
   const errorParam = params.get("error");
   if (errorParam !== undefined && errorParam.length > 0) {
     const errorDesc = params.get("error_description")?.[0] ?? "";
@@ -184,7 +184,7 @@ async function handleCallbackRequest(
     };
   }
 
-  // Extract code and state (`callback_server.py:236-249`).
+  // Extract code and state (`callback_server.py`).
   const codeList = params.get("code") ?? [];
   const stateList = params.get("state") ?? [];
   if (codeList.length === 0 || stateList.length === 0) {
@@ -197,7 +197,7 @@ async function handleCallbackRequest(
   // Plain `!==` on purpose (not constant-time): the server is one-shot
   // — a mismatch ends the login — so an attacker gets at most one
   // comparison per nonce and no repeated-guess timing oracle exists.
-  // Matches Python's `!=` (`callback_server.py:252`). CLEANUP-PLAN 8.12.
+  // Matches Python's `!=` (`callback_server.py`). CLEANUP-PLAN 8.12.
   if (receivedState !== expectedState) {
     // Don't leak the expected state to the browser — nor into the
     // server-side exception (`callback_server.py:251-267`): hosts log
@@ -214,7 +214,7 @@ async function handleCallbackRequest(
     };
   }
 
-  // Success (`callback_server.py:270-275`).
+  // Success (`callback_server.py`).
   await sendHtml(res, SUCCESS_HTML, 200);
   return {
     result: new CallbackResult({
@@ -226,7 +226,7 @@ async function handleCallbackRequest(
 
 /**
  * Bind an HTTP server to `127.0.0.1:port` (`_create_server`,
- * `callback_server.py:180-193`).
+ * `callback_server.py`).
  *
  * @param port - Port to bind.
  * @returns The listening server.
@@ -280,7 +280,7 @@ function closeServer(server: Server): Promise<void> {
 
 /**
  * Start a local HTTP server to receive the OAuth callback (port of
- * `start_callback_server`, `callback_server.py:79-177`).
+ * `start_callback_server`, `callback_server.py`).
  *
  * When `port` is provided, binds only that port (no scanning — avoids
  * TOCTOU races when the caller already probed). Otherwise tries ports

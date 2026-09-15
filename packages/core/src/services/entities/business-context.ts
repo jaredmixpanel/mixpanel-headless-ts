@@ -1,7 +1,7 @@
 /**
  * Business-context wire methods (App API) — Phase-3 packet B4-C5 port
  * of the `MixpanelAPIClient` business-context range
- * (`api_client.py:8681-8831`; all three members are index-absent —
+ * (`api_client.py`; all three members are index-absent —
  * R10.5, Layer-3/B6-consumer surface only).
  *
  * Paths are constructed DIRECTLY (NOT via `maybe_scoped_path`) —
@@ -18,7 +18,7 @@ import { expectRecordResult } from "./shared.js";
 export interface BusinessContextScopeOptions {
   /** Org-level scope; omitted → the session project's scope. */
   readonly organization_id?: number | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -26,7 +26,7 @@ export interface BusinessContextScopeOptions {
 export interface BusinessContextMethods {
   /**
    * Fetch business context (`get_business_context`,
-   * `api_client.py:8681-8735` — GET
+   * `api_client.py` — GET
    * `/projects/{pid}/business-context` or
    * `/organizations/{org}/business-context`).
    *

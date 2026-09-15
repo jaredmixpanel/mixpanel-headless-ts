@@ -2,7 +2,7 @@
 // (b9-packets.md §3.4 NEW browser-contract suites — no Python twin for
 // the pending-record branches; R9.3 / plan §4.3 are the contract
 // arbiters. The parser semantics themselves are Python-twinned:
-// `_parse_pasted_redirect`, `flow.py:51-117`, codes verbatim —
+// `_parse_pasted_redirect`, `flow.py`, codes verbatim —
 // OAUTH_PASTE_ERROR / OAUTH_AUTH_DENIED / OAUTH_STATE_MISMATCH).
 // R5: every assertion keys on the error CODE.
 

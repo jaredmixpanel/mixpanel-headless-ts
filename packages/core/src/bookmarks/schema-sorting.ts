@@ -4,10 +4,10 @@
  * pydantic-error → `ValidationError` adapter that sits on top of them.
  *
  * Python ranges ported here (re-read before touching anything):
- * `bookmark_schema.py:61-316` (the adapter: `_DEFAULT_CODE_MAP`,
+ * `bookmark_schema.py` (the adapter: `_DEFAULT_CODE_MAP`,
  * `_default_code_mapper`, `_sorting_code_mapper`, `validate_with_pydantic`,
  * `_translate_pydantic_error`, `_DISCRIMINATOR_TAGS`, `_loc_to_jsonpath`)
- * and `bookmark_schema.py:372-680` (the sorting models
+ * and `bookmark_schema.py` (the sorting models
  * `FlatLabelSortConfig`, `FlatValueSortConfig`, `SortByColumnsConfig`,
  * `SortByValueConfig`, `OldTableSortByValue`, the four discriminator
  * callables and `InsightsBookmarkSortConfig`).
@@ -79,7 +79,7 @@ import { defined } from "../invariant.js";
 
 /**
  * One entry of `pydantic.ValidationError.errors()` — the subset
- * `_translate_pydantic_error` reads (`bookmark_schema.py:223-254`).
+ * `_translate_pydantic_error` reads.
  */
 export interface PydanticErrorEntry {
   /** Pydantic error `type` string, e.g. `"missing"`, `"literal_error"`. */
@@ -93,7 +93,7 @@ export interface PydanticErrorEntry {
 /**
  * Path-aware code mapper: `(pydantic_error_type, loc) -> package_code`.
  *
- * Port of the `CodeMapper` alias (`bookmark_schema.py:98-107`).
+ * Port of the `CodeMapper` alias.
  */
 type CodeMapper = (
   errType: string,
@@ -101,13 +101,13 @@ type CodeMapper = (
 ) => string;
 
 // =============================================================================
-// Adapter tables (bookmark_schema.py:71-167)
+// Adapter tables (bookmark_schema.py)
 // =============================================================================
 
 /**
  * Maps pydantic v2 `error['type']` strings to the package's stable
  * `B*` / `S*` codes. Port of `_DEFAULT_CODE_MAP`
- * (`bookmark_schema.py:71-95`) as a `ReadonlyMap` (R4.8).
+ * as a `ReadonlyMap`.
  */
 export const DEFAULT_CODE_MAP: ReadonlyMap<string, string> = new Map([
   // Missing required field
@@ -138,7 +138,7 @@ export const DEFAULT_CODE_MAP: ReadonlyMap<string, string> = new Map([
 /**
  * Default `CodeMapper` — ignores `loc`, falls back to
  * {@link DEFAULT_CODE_MAP}. Port of `_default_code_mapper`
- * (`bookmark_schema.py:110-121`).
+ * (`bookmark_schema.py`).
  *
  * @param errType - Pydantic error `type`.
  * @param _loc - Unused by the default mapper (protocol requirement).
@@ -155,7 +155,7 @@ export function defaultCodeMapper(
 /**
  * Path-aware code mapper for sorting-block validation errors.
  *
- * Port of `_sorting_code_mapper` (`bookmark_schema.py:124-167`),
+ * Port of `_sorting_code_mapper`,
  * branch-for-branch in source order.
  *
  * @param errType - Pydantic error `type`.
@@ -220,7 +220,7 @@ export function sortingCodeMapper(
 /**
  * Tag names that discriminated-union annotations insert into `loc`.
  *
- * Port of `_DISCRIMINATOR_TAGS` (`bookmark_schema.py:257-271`) —
+ * Port of `_DISCRIMINATOR_TAGS` —
  * including the two `ShowClause` tags, which belong to the B3-K1 half
  * of the module but are part of the same frozenset in Python.
  */
@@ -241,7 +241,7 @@ const DISCRIMINATOR_TAGS: ReadonlySet<string> = new Set([
 /**
  * Convert a pydantic `loc` tuple to a dotted JSONPath string.
  *
- * Port of `_loc_to_jsonpath` (`bookmark_schema.py:274-315`).
+ * Port of `_loc_to_jsonpath`.
  *
  * @param loc - Pydantic location tuple.
  * @param prefix - Optional dotted prefix (without trailing dot).
@@ -276,7 +276,7 @@ export function locToJsonPath(
 /**
  * Convert one pydantic error entry to a package `ValidationError`.
  *
- * Port of `_translate_pydantic_error` (`bookmark_schema.py:223-250`).
+ * Port of `_translate_pydantic_error`.
  *
  * @param err - A single pydantic error entry.
  * @param codeMapper - Path-aware mapper to a package code.
@@ -500,7 +500,7 @@ function isPydanticFloat(value: unknown, numeric: number): boolean {
 }
 
 // =============================================================================
-// Model description tables (bookmark_schema.py:390-680)
+// Model description tables (bookmark_schema.py)
 // =============================================================================
 
 /**
@@ -580,7 +580,7 @@ export interface ModelSpec {
   /**
    * `model_config.extra`. Defaults to `"forbid"` (`_BASE_CONFIG`);
    * only `FlowsBookmarkParams` declares `"allow"`
-   * (`bookmark_schema.py:1514`, pinned by
+   * (`bookmark_schema.py`, pinned by
    * `test_flows_bookmark_params_currently_allows_extras`).
    */
   readonly extra?: "forbid" | "allow";
@@ -631,7 +631,7 @@ export function modelHandle(spec: ModelSpec): RootModelHandle {
 /** Mirrors sorting.py `SortOrder`. */
 export const SORT_ORDER_LITERAL = ["asc", "desc"] as const;
 
-/** Mirrors sorting.py `FlatLabelSortConfig` (`bookmark_schema.py:390-401`). */
+/** Mirrors sorting.py `FlatLabelSortConfig`. */
 const FLAT_LABEL_SORT_CONFIG: ModelSpec = {
   name: "FlatLabelSortConfig",
   fields: [
@@ -650,7 +650,7 @@ const FLAT_LABEL_SORT_CONFIG: ModelSpec = {
   ],
 };
 
-/** Mirrors sorting.py `FlatValueSortConfig` (`bookmark_schema.py:404-422`). */
+/** Mirrors sorting.py `FlatValueSortConfig`. */
 const FLAT_VALUE_SORT_CONFIG: ModelSpec = {
   name: "FlatValueSortConfig",
   fields: [
@@ -672,7 +672,7 @@ const FLAT_VALUE_SORT_CONFIG: ModelSpec = {
 /**
  * Discriminator callable for `FlatSortConfig` (`colSortAttrs[i]`).
  *
- * Port of `_flat_sort_discriminator` (`bookmark_schema.py:425-444`).
+ * Port of `_flat_sort_discriminator`.
  *
  * @param value - The candidate value.
  * @returns The `Tag` name of the selected variant.
@@ -688,7 +688,7 @@ function flatSortDiscriminator(value: unknown): string {
   return "FlatValueSortConfig";
 }
 
-/** Mirrors sorting.py `FlatSortConfig` (`bookmark_schema.py:448-452`). */
+/** Mirrors sorting.py `FlatSortConfig`. */
 const FLAT_SORT_CONFIG: UnionSpec = {
   discriminate: flatSortDiscriminator,
   variants: new Map([
@@ -697,7 +697,7 @@ const FLAT_SORT_CONFIG: UnionSpec = {
   ]),
 };
 
-/** Mirrors sorting.py `SortByColumnsConfig` (`bookmark_schema.py:455-474`). */
+/** Mirrors sorting.py `SortByColumnsConfig`. */
 const SORT_BY_COLUMNS_CONFIG: ModelSpec = {
   name: "SortByColumnsConfig",
   fields: [
@@ -718,7 +718,7 @@ const SORT_BY_COLUMNS_CONFIG: ModelSpec = {
   ],
 };
 
-/** Mirrors sorting.py `SortByValueConfig` (`bookmark_schema.py:477-497`). */
+/** Mirrors sorting.py `SortByValueConfig`. */
 const SORT_BY_VALUE_CONFIG: ModelSpec = {
   name: "SortByValueConfig",
   fields: [
@@ -745,7 +745,7 @@ const SORT_BY_VALUE_CONFIG: ModelSpec = {
 /**
  * Discriminator callable for `SortConfig` (per-chart-type sort).
  *
- * Port of `_sort_config_discriminator` (`bookmark_schema.py:500-519`).
+ * Port of `_sort_config_discriminator`.
  *
  * @param value - The candidate value.
  * @returns The `Tag` name of the selected variant.
@@ -761,7 +761,7 @@ function sortConfigDiscriminator(value: unknown): string {
   return "SortByValueConfig";
 }
 
-/** Mirrors sorting.py `SortConfig` (`bookmark_schema.py:523-527`). */
+/** Mirrors sorting.py `SortConfig`. */
 const SORT_CONFIG: UnionSpec = {
   discriminate: sortConfigDiscriminator,
   variants: new Map([
@@ -770,7 +770,7 @@ const SORT_CONFIG: UnionSpec = {
   ]),
 };
 
-/** Mirrors sorting.py `OldTableSortByValue` (`bookmark_schema.py:530-544`). */
+/** Mirrors sorting.py `OldTableSortByValue`. */
 const OLD_TABLE_SORT_BY_VALUE: ModelSpec = {
   name: "OldTableSortByValue",
   fields: [
@@ -801,7 +801,7 @@ const OLD_TABLE_SORT_BY_VALUE: ModelSpec = {
  * Discriminator callable for the line-chart `FlatOrColumnSortConfig`.
  *
  * Port of `_flat_or_column_sort_discriminator`
- * (`bookmark_schema.py:547-592`).
+ * (`bookmark_schema.py`).
  *
  * @param value - The candidate value.
  * @returns The `Tag` name of the selected variant.
@@ -831,7 +831,7 @@ function flatOrColumnSortDiscriminator(value: unknown): string {
   return "FlatValueSortConfig";
 }
 
-/** Mirrors sorting.py `FlatOrColumnSortConfig` (`bookmark_schema.py:600-606`). */
+/** Mirrors sorting.py `FlatOrColumnSortConfig`. */
 const FLAT_OR_COLUMN_SORT_CONFIG: UnionSpec = {
   discriminate: flatOrColumnSortDiscriminator,
   variants: new Map([
@@ -845,7 +845,7 @@ const FLAT_OR_COLUMN_SORT_CONFIG: UnionSpec = {
 /**
  * Discriminator callable for `InsightsBookmarkSortConfig.table`.
  *
- * Port of `_table_sort_discriminator` (`bookmark_schema.py:609-635`).
+ * Port of `_table_sort_discriminator`.
  * Note the asymmetry with the other discriminators: `sortColumn` is
  * tested with `in` (key PRESENCE, `null` included), not `is not None`.
  *
@@ -871,7 +871,7 @@ function tableSortDiscriminator(value: unknown): string {
   return "SortByValueConfig";
 }
 
-/** Mirrors sorting.py `TableSortConfig` (`bookmark_schema.py:640-645`). */
+/** Mirrors sorting.py `TableSortConfig`. */
 const TABLE_SORT_CONFIG: UnionSpec = {
   discriminate: tableSortDiscriminator,
   variants: new Map([
@@ -883,7 +883,7 @@ const TABLE_SORT_CONFIG: UnionSpec = {
 
 /**
  * Mirrors sorting.py `InsightsBookmarkSortConfig`
- * (`bookmark_schema.py:648-679`). Field order below IS the error
+ * (`bookmark_schema.py`). Field order below IS the error
  * emission order; the kebab-case keys come from the model's
  * `alias_generator`, the snake_case ones from `populate_by_name=True`.
  */
@@ -1350,7 +1350,7 @@ export function validateInsightsBookmarkSortConfig(
 }
 
 // =============================================================================
-// Model handles (B3-K1) — the TS stand-ins for the pydantic classes
+// Model handles — the TS stand-ins for the pydantic classes
 // =============================================================================
 
 /** Handle for `FlatLabelSortConfig`. */

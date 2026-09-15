@@ -1,7 +1,7 @@
 /**
  * Secure local storage for OAuth tokens and client registration info —
  * TS port of `mixpanel_headless/_internal/auth/storage.py` (whole file,
- * `storage.py:1-635`; b8-packets.md §3.1 row 1).
+ * `storage.py`; b8-packets.md §3.1 row 1).
  *
  * Persists OAuth tokens and client metadata as JSON files in a
  * permission-restricted directory (`~/.mp/oauth/` by default; the
@@ -12,7 +12,7 @@
  *
  * **Sanctioned R9.2 deviation (plan §4.2; packet §2.1 drop, carried
  * from N1's `io-utils.ts` header)**: Python's `_fchmod_no_follow`
- * repair (`storage.py:143-192`) pins the inode via an
+ * repair (`storage.py`) pins the inode via an
  * `O_NOFOLLOW`-opened fd before `fchmod`. The node port substitutes an
  * `lstat` probe (symlink → warn, no chmod) followed by a plain
  * `chmodSync` — the TOCTOU window between probe and chmod is the
@@ -86,12 +86,12 @@ const SILENT_LOGGER: StorageLogger = {
   debug: (): void => undefined,
 };
 
-/** Account-name pattern (`storage.py:50` — `^[a-zA-Z0-9_-]{1,64}$`). */
+/** Account-name pattern (`storage.py` — `^[a-zA-Z0-9_-]{1,64}$`). */
 const ACCOUNT_NAME_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
 
 /**
  * Root directory under which every on-disk artifact lives (port of
- * `_storage_root`, `storage.py:53-76`). Resolved at EVERY call so
+ * `_storage_root`, `storage.py`). Resolved at EVERY call so
  * `$HOME` / `MP_OAUTH_STORAGE_DIR` test isolation takes effect.
  *
  * @returns `$MP_OAUTH_STORAGE_DIR` if set (non-empty — Python `if
@@ -107,7 +107,7 @@ export function storageRoot(): string {
 
 /**
  * The directory holding every per-account state directory (port of
- * `accounts_root`, `storage.py:77-90`). Not created by this call.
+ * `accounts_root`, `storage.py`). Not created by this call.
  *
  * @returns `<storage-root>/accounts`.
  */
@@ -117,7 +117,7 @@ export function accountsRoot(): string {
 
 /**
  * The per-account directory for `name` (port of `account_dir`,
- * `storage.py:91-115`). Does not create the directory.
+ * `storage.py`). Does not create the directory.
  *
  * @param name - Account name; validated against
  *   `^[a-zA-Z0-9_-]{1,64}$` as a defense-in-depth path-traversal check.
@@ -137,7 +137,7 @@ export function accountDir(name: string): string {
 
 /**
  * Create `<root>/accounts/{name}/` (and parents) with mode `0o700`
- * (port of `ensure_account_dir`, `storage.py:116-142`). Idempotent; a
+ * (port of `ensure_account_dir`, `storage.py`). Idempotent; a
  * pre-existing dir with looser permissions gets locked down.
  *
  * @param name - Account name (validated by {@link accountDir}).
@@ -165,7 +165,7 @@ export interface OAuthStorageOptions {
 
 /**
  * Secure file-based storage for OAuth tokens and client info (port of
- * `OAuthStorage`, `storage.py:193-635`).
+ * `OAuthStorage`, `storage.py`).
  *
  * Each region gets its own pair of files (`tokens_{region}.json` and
  * `client_{region}.json` — THE DCR persistence path). Directory
@@ -180,7 +180,7 @@ export class OAuthStorage {
 
   /**
    * Return the default OAuth storage path, resolved lazily (port of
-   * `_default_storage_dir`, `storage.py:212-224`).
+   * `_default_storage_dir`, `storage.py`).
    *
    * @returns `<storage-root>/oauth` resolved at call time.
    */
@@ -189,7 +189,7 @@ export class OAuthStorage {
   }
 
   /**
-   * Initialize OAuthStorage (`storage.py:225-243`).
+   * Initialize OAuthStorage (`storage.py`).
    *
    * @param options - Optional `storageDir` override (wins over the
    *   `MP_OAUTH_STORAGE_DIR` env default) and log sink.
@@ -200,7 +200,7 @@ export class OAuthStorage {
   }
 
   /**
-   * The storage directory path (`storage.py:244-251`).
+   * The storage directory path (`storage.py`).
    *
    * @returns The resolved storage directory.
    */
@@ -210,7 +210,7 @@ export class OAuthStorage {
 
   /**
    * Validate that a region string is safe for file paths (port of
-   * `_validate_region`, `storage.py:253-276` — exactly two lowercase
+   * `_validate_region`, `storage.py` — exactly two lowercase
    * ASCII letters).
    *
    * @param region - The region string to validate.
@@ -240,7 +240,7 @@ export class OAuthStorage {
 
   /**
    * Check and repair file/directory permissions (port of
-   * `_check_and_fix_permissions`, `storage.py:289-365`, under the
+   * `_check_and_fix_permissions`, `storage.py`, under the
    * module-header lstat substitution). Symlinked dirs/files are never
    * chmodded — the read path rejects them separately. Windows: no-op.
    *
@@ -297,7 +297,7 @@ export class OAuthStorage {
 
   /**
    * Atomically write JSON data with mode `0o600` (port of
-   * `_write_file`, `storage.py:366-381`).
+   * `_write_file`, `storage.py`).
    *
    * @param path - Destination file.
    * @param data - JSON-serializable record.
@@ -312,7 +312,7 @@ export class OAuthStorage {
 
   /**
    * Read JSON data from a file (port of `_read_file`,
-   * `storage.py:382-428`): symlink probe BEFORE existence check,
+   * `storage.py`): symlink probe BEFORE existence check,
    * permission check-and-fix, then a strict credential read. Corrupt /
    * non-object JSON degrades to `null` with a warning.
    *
@@ -341,7 +341,7 @@ export class OAuthStorage {
     } catch (error) {
       if (error instanceof CredentialPathError) {
         // Symlink or lax mode rejected by the read helper — WARNING,
-        // not the lower-severity corrupt-JSON path (`storage.py:408`).
+        // not the lower-severity corrupt-JSON path (`storage.py`).
         this.#logger.warning(
           `Refusing to read credential file ${path}: ${error.message}`,
         );
@@ -384,7 +384,7 @@ export class OAuthStorage {
 
   /**
    * Client-info file path for a region — THE DCR persistence path
-   * (port of `_client_path`, `storage.py:440-450`).
+   * (port of `_client_path`, `storage.py`).
    *
    * @param region - Mixpanel region.
    * @returns `<dir>/client_{region}.json`.
@@ -395,7 +395,7 @@ export class OAuthStorage {
 
   /**
    * Persist OAuth tokens to disk (port of `save_tokens`,
-   * `storage.py:451-478`). CRED-F3: a DESIGNATED reveal site — secrets
+   * `storage.py`). CRED-F3: a DESIGNATED reveal site — secrets
    * are unwrapped explicitly, never via `JSON.stringify(tokens)`.
    *
    * @param tokens - The tokens to save.
@@ -406,7 +406,7 @@ export class OAuthStorage {
     OAuthStorage.validateRegion(region);
     const data: Record<string, unknown> = {
       access_token: tokens.access_token.reveal(),
-      // `datetime.isoformat()` twin (`storage.py:471` — B8-ARB-B F2:
+      // `datetime.isoformat()` twin (`storage.py` — B8-ARB-B F2:
       // never echo a foreign `Z` spelling into the written file).
       expires_at: pythonIsoformatDatetimeText(tokens.expires_at),
       scope: tokens.scope,
@@ -420,7 +420,7 @@ export class OAuthStorage {
 
   /**
    * Load OAuth tokens from disk (port of `load_tokens`,
-   * `storage.py:479-525`). Missing / corrupt / schema-invalid files
+   * `storage.py`). Missing / corrupt / schema-invalid files
    * degrade to `null` exactly as Python's KeyError/TypeError/ValueError
    * catch does.
    *
@@ -448,7 +448,7 @@ export class OAuthStorage {
         throw new ParamValidationError("missing scope/token_type");
       }
       return new OAuthTokens({
-        // The `str()` coercion mirror of `storage.py:511-517`.
+        // The `str()` coercion mirror of `storage.py`.
         access_token: new Secret(
           jsonPythonStr(data["access_token"], "access_token"),
         ),
@@ -474,7 +474,7 @@ export class OAuthStorage {
 
   /**
    * Persist OAuth client registration info (port of
-   * `save_client_info`, `storage.py:526-543`).
+   * `save_client_info`, `storage.py`).
    *
    * @param info - The client registration info (its `region` field
    *   selects the file).
@@ -487,7 +487,7 @@ export class OAuthStorage {
       region: info.region,
       redirect_uri: info.redirect_uri,
       scope: info.scope,
-      // Pydantic JSON mode spells UTC with `Z` (`storage.py:541`
+      // Pydantic JSON mode spells UTC with `Z` (`storage.py`
       // `model_dump(mode="json")` — B8-ARB-B F2 byte-parity lock).
       created_at: pydanticJsonDatetimeText(info.created_at),
     };
@@ -496,7 +496,7 @@ export class OAuthStorage {
 
   /**
    * Load OAuth client registration info (port of `load_client_info`,
-   * `storage.py:544-574`). Missing / corrupt files degrade to `null`.
+   * `storage.py`). Missing / corrupt files degrade to `null`.
    *
    * @param region - Mixpanel region.
    * @returns The loaded info, or `null`.
@@ -509,7 +509,7 @@ export class OAuthStorage {
       return null;
     }
     try {
-      // Pydantic-LAX twin for `created_at` (`storage.py:566`
+      // Pydantic-LAX twin for `created_at` (`storage.py`
       // `OAuthClientInfo.model_validate` — B8-ARB-B F1 sibling: a
       // numeric epoch coerces; unparseable text degrades to null).
       let payload: Record<string, unknown> = data;
@@ -534,7 +534,7 @@ export class OAuthStorage {
 
   /**
    * Delete stored tokens for a region (port of `delete_tokens`,
-   * `storage.py:575-593`). Missing file is a no-op.
+   * `storage.py`). Missing file is a no-op.
    *
    * @param region - Mixpanel region.
    * @throws ParamValidationError - Invalid region.
@@ -549,7 +549,7 @@ export class OAuthStorage {
 
   /**
    * Delete all stored `*.json` files, preserving the directory (port
-   * of `delete_all`, `storage.py:594-611`).
+   * of `delete_all`, `storage.py`).
    */
   deleteAll(): void {
     if (!existsSync(this.#storageDir)) {
@@ -564,7 +564,7 @@ export class OAuthStorage {
 
   /**
    * Remove all legacy `me_*.json` cache files (port of
-   * `clear_me_cache`, `storage.py:612-635`).
+   * `clear_me_cache`, `storage.py`).
    *
    * @returns Number of cache files removed.
    */
@@ -588,5 +588,5 @@ export class OAuthStorage {
 // NOTE (B8-ARB-B, `b8-reviewB-resolution.md` F1): the former private
 // `coerceStoredExpiresAt` helper moved to `./pydantic-datetime.ts` as
 // `coerceLaxExpiresAt` — ONE pydantic-lax mirror shared by every
-// credential read path (R10.8), now covering the numeric-STRING epoch
+// credential read path, now covering the numeric-STRING epoch
 // spelling and the speedate seconds/milliseconds watershed too.

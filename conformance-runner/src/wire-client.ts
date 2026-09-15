@@ -108,7 +108,7 @@ function sessionScalar(
 
 /**
  * Rebuild a `Session` from a vector `call.session` object — the TS twin
- * of the Python runner's `targets.py::build_session` (:48-125): fake
+ * of the Python runner's `targets.py::build_session`: fake
  * credentials verbatim, D5.6 custom headers, `workspace_id` →
  * WorkspaceRef.
  *
@@ -265,7 +265,7 @@ export function clientFromSession(context: InvocationContext): MixpanelClient {
   }
   const { session, browserToken } = buildReplaySession(context.session);
   // Recorded non-default constructor kwargs (schema extension 12; the
-  // Python runner reads exactly `max_retries` — execute.py:243-245).
+  // Python runner reads exactly `max_retries` — execute.py).
   let maxRetries: number | undefined;
   const clientOptions = context.clientOptions;
   if (

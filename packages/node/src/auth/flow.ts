@@ -2,13 +2,13 @@
  * OAuth 2.0 flow orchestrator — TS port of
  * `mixpanel_headless/_internal/auth/flow.py`. The refresh half landed
  * at B8-N2 (b8-packets.md §3.1 row 2 / §0.2 mapping note): constructor
- * + region validation (`flow.py:118-179`), `get_valid_token`
+ * + region validation, `get_valid_token`
  * (`flow.py:180-226`), `refresh_tokens` (`flow.py:442-499`) and
- * `_post_token_request` (`flow.py:500-605`). B8-N3 (packet §4.1 row 4)
+ * `_post_token_request`. B8-N3 (packet §4.1 row 4)
  * extends THIS file with the interactive-login half: `login`
  * (`flow.py:227-394`), `exchange_code` (`flow.py:395-441`),
- * `_parse_pasted_redirect` (`flow.py:51-117`), `_build_authorize_url`
- * (`flow.py:606-637`) and `_find_available_port` (`flow.py:638-654`).
+ * `_parse_pasted_redirect`, `_build_authorize_url`
+ * and `_find_available_port`.
  *
  * Login substitutions (all header-documented, R10.7):
  * - Python's module monkeypatch surfaces (`flow.webbrowser`,
@@ -77,7 +77,7 @@ import {
 } from "./client-registration.js";
 import { OAuthStorage } from "./storage.js";
 
-/** Options bag of {@link OAuthFlow} (`flow.py:137-169` kwargs). */
+/** Options bag of {@link OAuthFlow} (`flow.py` kwargs). */
 export interface OAuthFlowOptions {
   /** Mixpanel data residency region (default `"us"`). */
   readonly region?: string | undefined;
@@ -120,25 +120,25 @@ export interface OAuthFlowOptions {
   readonly findAvailablePort?: (() => Promise<number | null>) | undefined;
   /**
    * Stdin paste-reader seam (`sys.stdin.readline()`,
-   * `flow.py:321-330`). Resolves one line; the `signal` aborts the
+   * `flow.py`). Resolves one line; the `signal` aborts the
    * read when the other completer wins. Default: `process.stdin`.
    */
   readonly readStdinLine?:
     ((signal: AbortSignal) => Promise<string>) | undefined;
   /**
    * Stderr writer for the `open_browser=False` URL banner
-   * (`flow.py:349-361` `print(..., file=sys.stderr)`). Default:
+   * (`flow.py` `print(..., file=sys.stderr)`). Default:
    * `process.stderr.write`.
    */
   readonly stderr?: ((text: string) => void) | undefined;
 }
 
-/** Kwonly options of {@link OAuthFlow.login} (`flow.py:227`). */
+/** Kwonly options of {@link OAuthFlow.login}. */
 export interface LoginOptions {
   /**
    * When `true`, persist the resulting tokens to the LEGACY v2 layout
    * (`~/.mp/oauth/tokens_{region}.json` via `OAuthStorage.saveTokens`
-   * — `flow.py:389-391`; the two-persistence-worlds rule, packet §7
+   * — `flow.py`; the two-persistence-worlds rule, packet §7
    * caution 9). Default `false`: the v3 orchestrator persists via
    * `TokenStore.writeTokens` itself.
    */
@@ -151,7 +151,7 @@ export interface LoginOptions {
   readonly openBrowser?: boolean | undefined;
 }
 
-/** Kwonly options of {@link OAuthFlow.refreshTokens} (R3.8). */
+/** Kwonly options of {@link OAuthFlow.refreshTokens}. */
 export interface RefreshTokensOptions {
   /**
    * When supplied, embedded in error messages/details so the user
@@ -162,7 +162,7 @@ export interface RefreshTokensOptions {
 
 /**
  * Probe {@link CALLBACK_PORTS} for one that is not currently in use
- * (port of `_find_available_port`, `flow.py:638-654`): binds and
+ * (port of `_find_available_port`, `flow.py`): binds and
  * immediately releases each candidate on 127.0.0.1, in port order.
  * Async where Python is sync (module header substitution note).
  *
@@ -274,7 +274,7 @@ function defaultReadStdinLine(signal: AbortSignal): Promise<string> {
 }
 
 /**
- * Millisecond sleep (the `time.sleep(0.1)` twin, `flow.py:338`).
+ * Millisecond sleep (the `time.sleep(0.1)` twin, `flow.py`).
  *
  * @param ms - Milliseconds to wait.
  * @returns Resolves after the delay.
@@ -338,11 +338,11 @@ export class OAuthFlow {
   readonly #stderr: (text: string) => void;
 
   /**
-   * Initialize the flow orchestrator (`flow.py:137-169`).
+   * Initialize the flow orchestrator (`flow.py`).
    *
    * @param options - Region + injected seams.
    * @throws OAuthError - `OAUTH_CONFIG_ERROR` for a region outside
-   *   `OAUTH_BASE_URLS` (`flow.py:160-165`).
+   *   `OAUTH_BASE_URLS`.
    */
   constructor(options: OAuthFlowOptions = {}) {
     const region = options.region ?? "us";
@@ -366,7 +366,7 @@ export class OAuthFlow {
   }
 
   /**
-   * Mixpanel data residency region (`flow.py:171-178`).
+   * Mixpanel data residency region (`flow.py`).
    *
    * @returns The region string (`us`, `eu`, or `in`).
    */
@@ -376,7 +376,7 @@ export class OAuthFlow {
 
   /**
    * Return a valid access token, refreshing if expired (port of
-   * `get_valid_token`, `flow.py:180-226`). Persists refreshed tokens
+   * `get_valid_token`, `flow.py`). Persists refreshed tokens
    * via the LEGACY v2 region path (`storage.save_tokens` — packet §3.2
    * item 7: two persistence worlds, not unified).
    *
@@ -414,7 +414,7 @@ export class OAuthFlow {
 
   /**
    * Execute the full interactive OAuth PKCE login flow (port of
-   * `login`, `flow.py:227-393`). Step order locked (packet §4.2):
+   * `login`, `flow.py`). Step order locked (packet §4.2):
    * PKCE + state → port probe → DCR → authorize URL → the two racing
    * completers (callback server always; stdin paste reader only when
    * `openBrowser` is `false`) → exchange → optional persist.
@@ -444,7 +444,7 @@ export class OAuthFlow {
     const state = randomBytes(32).toString("base64url");
 
     // Step 2: find an available callback port by probing before
-    // binding (`flow.py:272-278`).
+    // binding (`flow.py`).
     const boundPort = await this.#findAvailablePort();
     if (boundPort === null) {
       throw new OAuthError(
@@ -462,7 +462,7 @@ export class OAuthFlow {
     // no stall (CLEANUP-PLAN 8.4: verified, kept).
     const redirectUri = `http://localhost:${boundPort}/callback`;
 
-    // Step 3: ensure client registration (`flow.py:282-288`).
+    // Step 3: ensure client registration (`flow.py`).
     const clientInfo = await this.#registerClient({
       fetchImpl: this.#fetchImpl,
       region: this.#region,
@@ -471,7 +471,7 @@ export class OAuthFlow {
       now: this.#now,
     });
 
-    // Step 4: build the authorize URL (`flow.py:290-296`).
+    // Step 4: build the authorize URL (`flow.py`).
     const authorizeUrl = this.#buildAuthorizeUrl({
       clientId: clientInfo.client_id,
       redirectUri,
@@ -480,12 +480,12 @@ export class OAuthFlow {
     });
 
     // Step 5: two completers race on a shared result slot
-    // (`flow.py:298-334`): the callback server (always) and the stdin
+    // (`flow.py`): the callback server (always) and the stdin
     // paste reader (only when `openBrowser` is false). Whichever
     // produces a valid (code, state) first wins; the PKCE verifier
     // stays in this process. First completer ERROR is retained but
     // only surfaced after the result wait expires — Python's
-    // `error_q` consultation order (`flow.py:363-379`).
+    // `error_q` consultation order.
     const abort = new AbortController();
     let firstError: unknown = NO_ERROR;
     const recordError = (exc: unknown): void => {
@@ -518,7 +518,7 @@ export class OAuthFlow {
     }
 
     // Small delay so the callback server is listening before the
-    // browser opens / the URL prints (`flow.py:336-338`).
+    // browser opens / the URL prints (`flow.py`).
     await sleep(100);
 
     if (openBrowser) {
@@ -546,7 +546,7 @@ export class OAuthFlow {
     }
 
     // Step 6: wait for whichever completer produces first, capped at
-    // 310s (`flow.py:363-379`).
+    // 310s (`flow.py`).
     // `null` = the 310s result wait expired (the `queue.Empty` twin).
     const winner = await new Promise<CallbackResult | null>((resolve) => {
       const timer = setTimeout(() => {
@@ -579,7 +579,7 @@ export class OAuthFlow {
     // Python leaks the daemon thread instead).
     abort.abort();
 
-    // Step 7: exchange code for tokens (`flow.py:381-387`).
+    // Step 7: exchange code for tokens (`flow.py`).
     const tokens = await this.exchangeCode(
       winner.code,
       pkce.verifier,
@@ -588,7 +588,7 @@ export class OAuthFlow {
     );
 
     // Step 8: save tokens (v2 layout) when the caller opts in
-    // (`flow.py:389-391`).
+    // (`flow.py`).
     if (persist) {
       this.#storage.saveTokens(tokens, this.#region);
     }
@@ -598,7 +598,7 @@ export class OAuthFlow {
 
   /**
    * Exchange an authorization code for OAuth tokens (port of
-   * `exchange_code`, `flow.py:395-440`).
+   * `exchange_code`, `flow.py`).
    *
    * @param code - The authorization code from the callback.
    * @param verifier - The PKCE code verifier.
@@ -625,7 +625,7 @@ export class OAuthFlow {
     clientId: string,
     redirectUri: string,
   ): Promise<OAuthTokens> {
-    // Form body in Python dict INSERTION ORDER (`flow.py:429-435`).
+    // Form body in Python dict INSERTION ORDER (`flow.py`).
     const formData: Record<string, string> = {
       grant_type: "authorization_code",
       code,
@@ -642,7 +642,7 @@ export class OAuthFlow {
 
   /**
    * Build the OAuth authorization URL with PKCE parameters (port of
-   * `_build_authorize_url`, `flow.py:606-635` — urlencode param order
+   * `_build_authorize_url`, `flow.py` — urlencode param order
    * locked: response_type, client_id, redirect_uri, state,
    * code_challenge, code_challenge_method).
    *
@@ -666,7 +666,7 @@ export class OAuthFlow {
 
   /**
    * Refresh OAuth tokens using a refresh token (port of
-   * `refresh_tokens`, `flow.py:442-499`).
+   * `refresh_tokens`, `flow.py`).
    *
    * @param tokens - Current tokens carrying the refresh token.
    * @param clientId - The OAuth client ID.
@@ -691,7 +691,7 @@ export class OAuthFlow {
       throw new OAuthError(
         `Cannot refresh: no refresh token available. ${hint}`,
         "OAUTH_REFRESH_ERROR",
-        // Two detail shapes, port verbatim (`flow.py:485`; caution 5).
+        // Two detail shapes, port verbatim (`flow.py`; caution 5).
         accountName !== null && accountName !== ""
           ? { account_name: accountName }
           : {},
@@ -713,7 +713,7 @@ export class OAuthFlow {
 
   /**
    * POST form data to the token endpoint and parse the response (port
-   * of `_post_token_request`, `flow.py:500-605` — shared by refresh
+   * of `_post_token_request`, `flow.py` — shared by refresh
    * and, at N3, exchange).
    *
    * @param formData - Form-encoded body (insertion order preserved).

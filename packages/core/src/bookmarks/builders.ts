@@ -87,7 +87,7 @@ type FilterSectionElement = Filter | FrequencyFilter;
 
 /**
  * Render a value the way a Python `{x!r}` conversion would — display
- * only, never contract (R5.4).
+ * only, never contract.
  *
  * `pythonRepr` rejects class instances and `undefined`; the BB1 guard
  * can be handed literally anything, so those shapes degrade to a
@@ -123,7 +123,7 @@ function reprForMessage(value: unknown): string {
 /**
  * Convert a `PropertyInput` mapping to bookmark `composedProperties`
  * format — port of `_build_composed_properties`
- * (`bookmark_builders.py:32-69`).
+ * (`bookmark_builders.py`).
  *
  * Python builds the result with a dict comprehension, so entries land
  * in `inputs` insertion order; `Object.entries` mirrors that for the
@@ -161,7 +161,7 @@ export function buildComposedProperties(
 
 /**
  * Build the `sections.time` array for bookmark params — port of
- * `build_time_section` (`bookmark_builders.py:72-127`).
+ * `build_time_section`.
  *
  * Three cases: absolute range (both dates), from-only (the `to_date`
  * slot is filled with today — the module's ONLY clock read, `:115`),
@@ -207,7 +207,7 @@ export function buildTimeSection(options: {
 
 /**
  * Build a flat date-range dict for flows — port of `build_date_range`
- * (`bookmark_builders.py:130-170`).
+ * (`bookmark_builders.py`).
  *
  * Flows use a flat `date_range` object rather than the sections-based
  * `sections.time` array. The relative branch emits the LITERAL string
@@ -243,7 +243,7 @@ export function buildDateRange(options: {
 
 /**
  * Build the `sections.filter` array — port of `build_filter_section`
- * (`bookmark_builders.py:173-205`).
+ * (`bookmark_builders.py`).
  *
  * `null` yields `[]`; a single `Filter`/`FrequencyFilter` is wrapped;
  * a list is processed element-by-element. **Elements that are neither
@@ -281,7 +281,7 @@ export function buildFilterSection(
     } else if (f instanceof Filter) {
       result.push(buildFilterEntry(f));
     }
-    // No else: foreign elements are dropped (`bookmark_builders.py:200-204`).
+    // No else: foreign elements are dropped (`bookmark_builders.py`).
   }
   return result;
 }
@@ -289,7 +289,7 @@ export function buildFilterSection(
 /**
  * Add a `value` sentinel to custom-property filters for server compat —
  * port of `patch_custom_property_filters_for_transform`
- * (`bookmark_builders.py:208-239`).
+ * (`bookmark_builders.py`).
  *
  * The server's `transform_insights_filters_to_funnels()` does a hard
  * `f["value"]` access on global `sections.filter` entries; custom
@@ -300,7 +300,7 @@ export function buildFilterSection(
  *
  * Caution 14: the array is mutated IN PLACE and returned; B5 chains
  * `patchCustomPropertyFiltersForTransform(buildFilterSection(where))`
- * (`workspace.py:2897-2899`), so the aliasing is contract.
+ * (`workspace.py`), so the aliasing is contract.
  *
  * Watchlist #7: all three membership tests are KEY-PRESENCE checks
  * (`"value" not in entry`, `"customPropertyId" in entry`,
@@ -328,7 +328,7 @@ export function patchCustomPropertyFiltersForTransform(
 
 /**
  * Build the `sections.group` array — port of `build_group_section`
- * (`bookmark_builders.py:242-403`).
+ * (`bookmark_builders.py`).
  *
  * Dispatch order is Python source order: `str` → `FrequencyBreakdown` →
  * `GroupBy` (itself splitting `CustomPropertyRef` /
@@ -364,7 +364,7 @@ export function buildGroupSection(
   }
   const dataGroupId = options?.data_group_id ?? null;
   // Contract: GroupClause.dataGroupId is string | null — coerce the
-  // int-typed parameter once at emission (`bookmark_builders.py:292-295`
+  // int-typed parameter once at emission (`bookmark_builders.py`
   // post-FIX-1). The RAW value still threads into the frequency/cohort
   // sub-builders, which coerce themselves (mirroring Python).
   const dgid = dataGroupId === null ? null : String(dataGroupId);
@@ -498,7 +498,7 @@ export function buildGroupSection(
 
 /**
  * Build a single cohort group entry for `sections.group[]` — port of
- * `_build_cohort_group_entry` (`bookmark_builders.py:406-466`).
+ * `_build_cohort_group_entry`.
  *
  * Saved (integer) and inline cohorts use DIFFERENT API schemas: saved
  * allows `groups`/`count`/`description`, inline allows
@@ -534,7 +534,7 @@ function buildCohortGroupEntry(
   const dataGroupId = options?.data_group_id ?? null;
   // Contract: GroupByCohort.data_group_id and GroupClause.dataGroupId
   // are both string | null — coerce the int-typed parameter at emission
-  // (`bookmark_builders.py:441-443` post-FIX-1).
+  // (`bookmark_builders.py` post-FIX-1).
   const dgid = dataGroupId === null ? null : String(dataGroupId);
   const name = cb.name ?? "";
 
@@ -580,7 +580,7 @@ function buildCohortGroupEntry(
 
 /**
  * Convert a `Filter` to a bookmark filter dict — port of
- * `build_filter_entry` (`bookmark_builders.py:469-530`).
+ * `build_filter_entry`.
  *
  * **R10.12 site (`:504`)**: `filterValue: f._value` passes numbers,
  * booleans and `null` through NATIVELY. Never stringify.
@@ -644,7 +644,7 @@ export function buildFilterEntry(f: Filter): BookmarkFragment {
 
 /**
  * Build the bookmark entry for a `Filter.listContains` filter — port of
- * `_build_list_contains_entry` (`bookmark_builders.py:533-580`).
+ * `_build_list_contains_entry`.
  *
  * Emits the `listItemFilters` wire structure used to filter on
  * subproperties of objects nested inside a list property. Each inner
@@ -696,7 +696,7 @@ function buildListContainsEntry(f: Filter): BookmarkFragment {
 
 /**
  * Build the `filter_by_event` dict for flow bookmark params — port of
- * `build_flow_property_filter` (`bookmark_builders.py:583-646`).
+ * `build_flow_property_filter`.
  *
  * Guard ORDER is contract: BB2 fires on an empty list; then, per
  * filter, `buildFilterEntry(f)` runs FIRST (`:625`) so any error it
@@ -759,7 +759,7 @@ export function buildFlowPropertyFilter(
 
 /**
  * Build the `filter_by_cohort` dict for flow bookmark params — port of
- * `build_flow_cohort_filter` (`bookmark_builders.py:649-737`).
+ * `build_flow_cohort_filter`.
  *
  * Flows use a legacy `filter_by_cohort` top-level key rather than the
  * `sections.filter` array. Only cohort filters are accepted.
@@ -809,7 +809,7 @@ export function buildFlowCohortFilter(
 
   if (filters.length > 1) {
     throw new ParamValidationError(
-      // Display-only message tail (R5.4). `filters.length` is a JS
+      // Display-only message tail. `filters.length` is a JS
       // integer count, so template interpolation matches Python's
       // `{len(filters)}` exactly — this is NOT an R11.7 `String(x)` on
       // ported value semantics (Caution 5 concerns operand rendering).
@@ -868,7 +868,7 @@ export function buildFlowCohortFilter(
 
 /**
  * Build a single frequency group entry for `sections.group[]` — port of
- * `build_frequency_group_entry` (`bookmark_builders.py:740-802`).
+ * `build_frequency_group_entry`.
  *
  * Watchlist #6: the display label falls back to `"<event> Frequency"`
  * only when `fb.label` **is null** — an empty-string label is emitted
@@ -896,7 +896,7 @@ export function buildFrequencyGroupEntry(
 ): BookmarkFragment {
   const dataGroupId = options?.data_group_id ?? null;
   // Contract: GroupClause.dataGroupId is string | null — coerce the
-  // int-typed parameter at emission (`bookmark_builders.py:793-795`
+  // int-typed parameter at emission (`bookmark_builders.py`
   // post-FIX-1).
   const dgid = dataGroupId === null ? null : String(dataGroupId);
   const displayLabel = fb.label ?? `${fb.event} Frequency`;
@@ -925,7 +925,7 @@ export function buildFrequencyGroupEntry(
 
 /**
  * Build a single frequency filter entry for `sections.filter[]` — port
- * of `build_frequency_filter_entry` (`bookmark_builders.py:820-895`
+ * of `build_frequency_filter_entry` (`bookmark_builders.py`
  * post-FIX-1).
  *
  * Emits the platform-native frequency filter clause: top-level
@@ -1003,7 +1003,7 @@ export function buildFrequencyFilterEntry(
 
 /**
  * Build the `timeComparison` dict for `displayOptions` — port of
- * `build_time_comparison` (`bookmark_builders.py:858-904`).
+ * `build_time_comparison`.
  *
  * For `type="relative"` the value is the comparison unit; for
  * `absolute-start` / `absolute-end` it is the ISO date string.

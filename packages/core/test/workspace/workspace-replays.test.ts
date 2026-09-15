@@ -1,5 +1,5 @@
 // Translated Workspace replay-member tests (packet B5-S3,
-// `b5-packets.md` §5): assertion-for-assertion ports (R10.2) of ALL
+// `b5-packets.md` §5): assertion-for-assertion ports of ALL
 // THIRTEEN classes of
 //   tests/unit/test_workspace_replays.py
 //     TestListReplaysValidation        :97
@@ -75,7 +75,7 @@ interface StubService {
 
 /**
  * Build a `Workspace` bound to a fake session (`_make_workspace`,
- * `test_workspace_replays.py:39-44`).
+ * `test_workspace_replays.py`).
  *
  * @param options - Optional `warn` sink and App-API handler.
  * @returns The workspace under test.
@@ -1005,7 +1005,7 @@ describe("coded replay guards (TestCodedReplayGuardCodes)", () => {
 
 // =============================================================================
 // B5-ARB FID-F5 (additive — `b5-review-resolution.md`): the window
-// derivation is Python `int(ev["timestamp"])` (`workspace.py:10946`) —
+// derivation is Python `int(ev["timestamp"])` (`workspace.py`) —
 // a SUBSCRIPT, not a `.get`, so a missing key raises `KeyError` (the
 // pre-fix TS fell through `pythonIntCoerce(undefined)` to a TypeError
 // naming 'undefined').

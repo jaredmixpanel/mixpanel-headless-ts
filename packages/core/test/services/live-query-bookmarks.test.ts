@@ -1,5 +1,5 @@
 // Translated bookmark-method tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/unit/test_live_query_bookmarks.py (R10.2) —
+// assertion port of tests/unit/test_live_query_bookmarks.py —
 // BOTH classes (TestQueryFlows :15, TestQuerySavedReportNormalization
 // :151).
 //

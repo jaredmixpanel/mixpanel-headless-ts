@@ -1,8 +1,8 @@
 // B6-W1 Layer-3 translation of `tests/unit/test_workspace_streaming.py`
-// (WHOLE file, 744 lines — packet §3 table): `TestStreamEvents` (:106),
-// `TestStreamProfiles` (:369), `TestNormalizedEventFormat` (:622),
-// `TestRawEventFormat` (:659), `TestNormalizedProfileFormat` (:689),
-// `TestRawProfileFormat` (:720).
+// (WHOLE file, 744 lines — packet §3 table): `TestStreamEvents`,
+// `TestStreamProfiles`, `TestNormalizedEventFormat`,
+// `TestRawEventFormat`, `TestNormalizedProfileFormat`,
+// `TestRawProfileFormat`.
 //
 // The members under test are the W1-D3 veneers: `ws.streamEvents` /
 // `ws.streamProfiles` are R6.6 item-level `yield*` wrappers over the
@@ -28,7 +28,7 @@ import {
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 
-/** The `_TEST_SESSION` twin (`test_workspace_streaming.py:21-29`). */
+/** The `_TEST_SESSION` twin. */
 const TEST_SESSION = makeSession({
   name: "test_account",
   projectId: "12345",
@@ -65,7 +65,7 @@ function stubClient(): StubClient {
   const client = {
     // The `MagicMock(spec=MixpanelAPIClient)` twin auto-provides every
     // client member; the facade constructor touches these two
-    // (`_install_workspace_resolver`, `workspace.py:775-793`).
+    // (`_install_workspace_resolver`, `workspace.py`).
     hasWorkspaceResolver: false,
     setWorkspaceResolver: (): void => {},
     close: (): Promise<void> => Promise.resolve(),
@@ -385,7 +385,7 @@ describe("TestStreamProfiles (test_workspace_streaming.py:369)", () => {
     expect((profiles[0]?.["properties"] as Rec)["name"]).toBe("Alice");
     expect(profiles[1]?.["distinct_id"]).toBe("user_2");
     expect((profiles[1]?.["properties"] as Rec)["name"]).toBe("Bob");
-    // Python asserts the full kwargs bag; TS omits absent keys (R3.9)
+    // Python asserts the full kwargs bag; TS omits absent keys
     // so the equivalent lock is "no filter keys were invented".
     expect(stub.exportProfilesCalls).toStrictEqual([{}]);
     await ws.close();
@@ -632,7 +632,7 @@ describe("TestRawProfileFormat (test_workspace_streaming.py:720)", () => {
 
 describe("W1-D3 — the streaming veneers stay PROJECT-scoped", () => {
   it("a pinned workspace does not leak into the export options", async () => {
-    // `workspace.py:566-573`: "Raw export streaming remains
+    // `workspace.py`: "Raw export streaming remains
     // project-scoped by design."
     const stub = stubClient();
     stub.setEvents(function* () {});

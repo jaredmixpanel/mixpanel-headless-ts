@@ -1,5 +1,5 @@
 // Layer-3 translation of tests/unit/test_settings_headers.py::
-// TestSessionHeadersOnOutboundRequests (:156-236) — the B0-owned
+// TestSessionHeadersOnOutboundRequests — the B0-owned
 // `_request_headers` 4-layer merge lock (playbook B0-2 FF5 row). The
 // config/bridge attachment classes of that file (TestSettingsHeaderAttachment,
 // TestBridgeHeaderAttachment, TestNoEnvMutation) stay in B8 per the playbook.
@@ -63,7 +63,7 @@ describe("TestSessionHeadersOnOutboundRequests", () => {
   });
 });
 
-// Merge-order locks derived from api_client.py:452-481 (the docstring's
+// Merge-order locks derived from api_client.py (the docstring's
 // numbered layers) — additive unit coverage for the B0-owned module.
 describe("requestHeaders layer order", () => {
   it("layer 1: User-Agent default is always present", () => {

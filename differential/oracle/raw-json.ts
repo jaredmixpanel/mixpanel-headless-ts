@@ -385,7 +385,7 @@ export type SerializableValue =
   | { readonly [key: string]: SerializableValue };
 
 /**
- * Serialize a response value as single-line, ASCII-safe JSON (D14).
+ * Serialize a response value as single-line, ASCII-safe JSON.
  *
  * Every code unit at or above `U+007F` — including each half of an astral
  * surrogate pair AND lone surrogates — escapes as `\uXXXX`, byte-for-byte

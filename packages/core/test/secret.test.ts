@@ -1,4 +1,4 @@
-// Secret wrapper tests (R4.6) including fast-check property #1 from
+// Secret wrapper tests including fast-check property #1 from
 // phase2-design C9: for arbitrary strings s, no stringification /
 // serialization / enumeration surface of `new Secret(s)` contains s,
 // and `reveal()` returns s exactly.

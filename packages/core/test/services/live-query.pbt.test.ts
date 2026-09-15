@@ -15,7 +15,7 @@
  *   CJK letters, ASCII + non-ASCII digits, punctuation and symbols
  *   (strictly inside the Python categories; the B2 ASSERT-F1
  *   convention).
- * - `dates == sorted(dates)` is CODE-POINT ordered (R11.5), so the
+ * - `dates == sorted(dates)` is CODE-POINT ordered, so the
  *   assertion uses {@link sortedByCodepoint} rather than JS `.sort()`.
  * - `_transform_funnel` / `_transform_retention` are
  *   {@link transformFunnel} / {@link transformRetention} in
@@ -33,7 +33,7 @@ import {
 import type { TimeUnit } from "../../src/types/literals.js";
 
 // ===========================================================================
-// Custom strategies (test_live_query_pbt.py:23-118)
+// Custom strategies (test_live_query_pbt.py)
 // ===========================================================================
 
 /** `date_strings` — `st.dates().map(lambda d: d.strftime("%Y-%m-%d"))`. */

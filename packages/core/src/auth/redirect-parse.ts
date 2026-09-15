@@ -1,6 +1,6 @@
 /**
  * OAuth redirect-return parsing — the core home of
- * `_parse_pasted_redirect` (`flow.py:51-117`) after the B9-R2
+ * `_parse_pasted_redirect` after the B9-R2
  * fetch-pure hoist (b9-packets.md §3.1 row 3; R10.8: shared internals
  * ported once, by name). Moved MECHANICALLY from
  * `packages/node/src/auth/flow.ts`; node re-exports from here and its
@@ -24,7 +24,7 @@ import { parseQs } from "./query-params.js";
 
 /**
  * Result of a successful OAuth callback (port of the frozen dataclass
- * `CallbackResult`, `callback_server.py:54-70`).
+ * `CallbackResult`, `callback_server.py`).
  */
 export class CallbackResult {
   /** The authorization code from the OAuth provider. */

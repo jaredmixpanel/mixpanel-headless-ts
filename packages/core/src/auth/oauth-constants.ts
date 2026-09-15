@@ -15,7 +15,7 @@ import { OAuthError } from "../errors.js";
 
 /**
  * OAuth base URLs keyed by region, trailing slash included
- * (`OAUTH_BASE_URLS`, `client_registration.py:39-44`).
+ * (`OAUTH_BASE_URLS`, `client_registration.py`).
  */
 export const OAUTH_BASE_URLS: Readonly<Record<string, string>> = {
   us: "https://mixpanel.com/oauth/",
@@ -25,7 +25,7 @@ export const OAUTH_BASE_URLS: Readonly<Record<string, string>> = {
 
 /**
  * Validate a region against {@link OAUTH_BASE_URLS} and return its base
- * URL — the `OAuthFlow.__init__` gate (`flow.py:160-165`) shared by the
+ * URL — the `OAuthFlow.__init__` gate shared by the
  * node flow constructor and the browser redirect flow (same code, same
  * message shape).
  *
@@ -50,7 +50,7 @@ export function requireOAuthBaseUrl(region: string): string {
 
 /**
  * Scopes sent in the DCR request body for server-side validation
- * (`_DEFAULT_SCOPE`, `client_registration.py:46-52`). Advisory only —
+ * (`_DEFAULT_SCOPE`, `client_registration.py`). Advisory only —
  * DCR does NOT store these on the application model; the created app
  * has an empty scope field, meaning all scopes are allowed.
  */

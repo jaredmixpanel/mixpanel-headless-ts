@@ -1,17 +1,17 @@
 // B6-W5 Layer-3 translation (packet `b6-packets.md` §7) of the WHOLE
 // of `tests/unit/test_workspace_annotations.py` (387 lines, 2 classes):
-// `TestWorkspaceAnnotationCRUD` (:136) and
-// `TestWorkspaceAnnotationTags` (:329).
+// `TestWorkspaceAnnotationCRUD` and
+// `TestWorkspaceAnnotationTags`.
 //
 // Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)` (:65-82)
+// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
 // becomes `makeWorkspace(handler)` — the client is built over the
 // OAuth session (`_make_oauth_credentials`, :50) while the facade
-// carries the service-account `_TEST_SESSION` (:35-43), exactly as
+// carries the service-account `_TEST_SESSION`, exactly as
 // Python does. `temp_dir` has no TS analog (no config file is ever
 // touched) and is dropped.
 //
-// `annotation.model_extra` (:277) is the Phase-2 `__extras` spillover
+// `annotation.model_extra` is the Phase-2 `__extras` spillover
 // bag (`model-base.ts`, `extra='allow'`).
 //
 // Dates are STRINGS end-to-end (packet Caution #12 / watchlist #5):
@@ -22,7 +22,7 @@
 // translated Python assertion — B5 Caution #13 / packet §0.2): the
 // facade-local delegation contracts Python's wire suite cannot see —
 // which client method each member calls, with which arguments, and the
-// `model_dump(exclude_none=True)` body spelling (`workspace.py:6534`,
+// `model_dump(exclude_none=True)` body spelling (`workspace.py`,
 // `:6596`, `:6674`).
 
 import { describe, expect, it } from "vitest";
@@ -151,7 +151,7 @@ function stubClient(
 }
 
 // =============================================================================
-// TestWorkspaceAnnotationCRUD (:136)
+// TestWorkspaceAnnotationCRUD
 // =============================================================================
 
 describe("TestWorkspaceAnnotationCRUD", () => {
@@ -263,7 +263,7 @@ describe("TestWorkspaceAnnotationCRUD", () => {
 });
 
 // =============================================================================
-// TestWorkspaceAnnotationTags (:329)
+// TestWorkspaceAnnotationTags
 // =============================================================================
 
 describe("TestWorkspaceAnnotationTags", () => {

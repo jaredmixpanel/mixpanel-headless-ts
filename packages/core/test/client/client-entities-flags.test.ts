@@ -18,7 +18,7 @@ import {
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 
-/** The `oauth_credentials` fixture twin (test_api_client_flags.py:28-31). */
+/** The `oauth_credentials` fixture twin. */
 function oauthCredentials(): Session {
   return makeSession({
     projectId: "12345",
@@ -29,7 +29,7 @@ function oauthCredentials(): Session {
 
 /**
  * The flags-file `create_mock_client` twin
- * (test_api_client_flags.py:34-56) — workspace ID pre-set to 100.
+ * (test_api_client_flags.py) — workspace ID pre-set to 100.
  */
 function createFlagsClient(
   handler: (request: CapturedFetchRequest) => CannedResponse,
@@ -40,7 +40,7 @@ function createFlagsClient(
   return { client, transport };
 }
 
-/** The `_flag_result` helper twin (test_api_client_flags.py:59-85). */
+/** The `_flag_result` helper twin. */
 function flagResult(
   id = "abc-123",
   name = "Test Flag",

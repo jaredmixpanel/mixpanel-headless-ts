@@ -480,7 +480,7 @@ export function parseAccount(
  * UTF-8 encode a string and render it as base64 (no `node:buffer` —
  * R9.1; `btoa` is a Node >= 16 / browser global).
  *
- * Exported (B7-A2) so `auth/region-probe.ts` builds its Basic header
+ * Exported so `auth/region-probe.ts` builds its Basic header
  * over the SAME encoder as {@link accountAuthHeader} — R10.8: one
  * implementation, never a re-derived twin (packet Caution #10: UTF-8
  * bytes then base64, never `btoa` on raw UTF-16).

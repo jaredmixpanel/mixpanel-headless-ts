@@ -25,7 +25,7 @@ import {
 import { GroupBy } from "../../src/types/index.js";
 
 // =============================================================================
-// Strategies (test_query_validation_pbt.py:26-84)
+// Strategies (test_query_validation_pbt.py)
 // =============================================================================
 
 /**

@@ -30,11 +30,11 @@
  *   thrown (b3-packets.md §K3 Cautions #9).
  * - **R4.8** — every lookup table is a `ReadonlyMap` / `ReadonlySet`.
  * - Guard order follows Python source order exactly; the SG* codes are
- *   the cross-language contract (R5.3), messages are not (R5.4).
+ *   the cross-language contract, messages are not.
  *
  * Python keeps this module `_internal`; the TS twin is likewise NOT
  * exported from the package barrel. Its only importer is
- * `workspace.py:100` → flow step filters (B5-S2
+ * `workspace.py` → flow step filters (B5-S2
  * `build_flow_params`/`query_flow`).
  *
  * @module query/segfilter
@@ -57,7 +57,7 @@ import type { Filter } from "../types/query-params/filter.js";
 export type SegfilterFragment = Record<string, unknown>;
 
 // =============================================================================
-// Constants (segfilter.py:39-98)
+// Constants (segfilter.py)
 // =============================================================================
 
 /** Maps `Filter._resource_type` to segfilter `property.source`. */
@@ -112,11 +112,11 @@ const DATETIME_OPERATOR_MAP: ReadonlyMap<string, string> = new Map([
 
 /**
  * Operators that take no value (set/unset checks) — shared across
- * string and number types (`segfilter.py:89`).
+ * string and number types (`segfilter.py`).
  */
 const SETNESS_OPS: ReadonlySet<string> = new Set(["is set", "is not set"]);
 
-/** Number operators that take a two-element list (`segfilter.py:92`). */
+/** Number operators that take a two-element list (`segfilter.py`). */
 const NUMBER_RANGE_OPS: ReadonlySet<string> = new Set([
   "is between",
   "between",
@@ -125,14 +125,14 @@ const NUMBER_RANGE_OPS: ReadonlySet<string> = new Set([
 
 /**
  * Datetime operators that use relative time (quantity + unit)
- * (`segfilter.py:95`).
+ * (`segfilter.py`).
  */
 const DATETIME_RELATIVE_OPS: ReadonlySet<string> = new Set([
   "was in the",
   "was not in the",
 ]);
 
-/** Datetime operators that take a two-date range (`segfilter.py:98`). */
+/** Datetime operators that take a two-date range (`segfilter.py`). */
 const DATETIME_RANGE_OPS: ReadonlySet<string> = new Set([
   "was between",
   "was not between",
@@ -162,7 +162,7 @@ const DATETIME_RANGE_OPS: ReadonlySet<string> = new Set([
  */
 function operandStr(value: unknown): string {
   // R10.8 (extracted at B3-K4, the pattern's second ported site —
-  // `user_builders.py:42` `_format_value`): the carrier-aware
+  // `user_builders.py` `_format_value`): the carrier-aware
   // `str(value)` body lives once in `validation-shared.ts`. Behavior is
   // unchanged; this wrapper keeps the R10.11 documentation attached to
   // the positions it governs.
@@ -190,7 +190,7 @@ function pythonIterate(value: unknown): unknown[] {
 
 /**
  * Convert a date string from YYYY-MM-DD to MM/DD/YYYY format
- * (`segfilter.py:106-122`).
+ * (`segfilter.py`).
  *
  * @param dateStr - Date in YYYY-MM-DD format (e.g. `"2026-01-15"`).
  * @returns Date in MM/DD/YYYY format (e.g. `"01/15/2026"`).
@@ -223,7 +223,7 @@ export function convertDateFormat(dateStr: string): string {
 
 /**
  * Build the `filter` dict for a string-typed property
- * (`segfilter.py:130-158`).
+ * (`segfilter.py`).
  *
  * @param operator - The `Filter._operator` value (e.g. `"equals"`).
  * @param value - The `Filter._value` (list, str, or `null`).
@@ -257,7 +257,7 @@ export function buildStringFilter(
 
 /**
  * Build the `filter` dict for a number-typed property
- * (`segfilter.py:161-191`).
+ * (`segfilter.py`).
  *
  * The two operand-rendering positions here are the R10.11 sites (see
  * the module header).
@@ -299,7 +299,7 @@ export function buildNumberFilter(
 
 /**
  * Build the `filter` dict for a boolean-typed property
- * (`segfilter.py:194-205`).
+ * (`segfilter.py`).
  *
  * Boolean segfilters have NO `operator` key — only `operand`, carrying
  * the operator string itself (`"true"` / `"false"`).
@@ -313,7 +313,7 @@ function buildBooleanFilter(operator: string): SegfilterFragment {
 
 /**
  * Build the `filter` dict for a datetime-typed property
- * (`segfilter.py:208-251`).
+ * (`segfilter.py`).
  *
  * Handles three date sub-types: absolute single date (MM/DD/YYYY
  * string), absolute range (two MM/DD/YYYY strings) and relative date
@@ -381,7 +381,7 @@ export function buildDatetimeFilter(
 
 /**
  * Convert a Filter to segfilter format for flows step filters
- * (`segfilter.py:259-323`).
+ * (`segfilter.py`).
  *
  * @param f - A `Filter` instance created via one of its factories
  *   (e.g. `Filter.equals()`, `Filter.greaterThan()`).

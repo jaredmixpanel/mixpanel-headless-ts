@@ -3,10 +3,9 @@
 // tests/unit/test_api_client.py classes the C1 shard dropped without an
 // exclusion header. Sources:
 //
-// - tests/unit/test_api_client.py::TestAuthenticatedRequests (:332-441)
-// - tests/unit/test_api_client.py::TestWithProject (:2885-2973)
+// - tests/unit/test_api_client.py::TestAuthenticatedRequests
+// - tests/unit/test_api_client.py::TestWithProject
 // - tests/unit/test_api_client.py::TestClientIdentificationHeaders
-//   (:2974-3129)
 //
 // Entry-point substitutions (B0-notes decision 13 + packet C1 table):
 // httpx.MockTransport → the injected-fetch fake (client-test-helpers);
@@ -19,7 +18,7 @@
 // `getCustomHeaderEnv` provider (R9.1 env boundary); the Python UA
 // runtime tag `python/<x.y>` → `ts` (B0-notes decision 8 — the UA is
 // telemetry, never vector-byte-locked). Every other assertion is
-// preserved 1:1 (R10.2).
+// preserved 1:1.
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createMixpanelClient } from "../../src/client/client.js";
@@ -45,12 +44,12 @@ async function drain<T>(source: AsyncIterable<T>): Promise<T[]> {
   return out;
 }
 
-/** The `eu_credentials` fixture (test_api_client.py:47-56). */
+/** The `eu_credentials` fixture. */
 function euCredentials(): ReturnType<typeof makeSession> {
   return makeSession({ region: "eu" });
 }
 
-/** The `india_credentials` fixture (test_api_client.py:58-67). */
+/** The `india_credentials` fixture. */
 function indiaCredentials(): ReturnType<typeof makeSession> {
   return makeSession({ region: "in" });
 }
@@ -235,7 +234,7 @@ describe("TestWithProject", () => {
 });
 
 describe("TestClientIdentificationHeaders", () => {
-  // The autouse `_reset_entry_point` fixture (:2981-2996): pin "lib"
+  // The autouse `_reset_entry_point` fixture: pin "lib"
   // for deterministic assertions; restore the prior value on teardown.
   let originalEntryPoint: EntryPoint;
   beforeEach(() => {

@@ -76,7 +76,7 @@ function bm(over: Record<string, unknown> = {}): Record<string, unknown> {
 
 /**
  * Project an error list onto its `{path, code, severity}` triples —
- * the contract surface (R5.3/R5.4); messages stay advisory.
+ * the contract surface; messages stay advisory.
  *
  * @param errors - Result of a validator call.
  * @returns The comparable triples, emission order preserved.

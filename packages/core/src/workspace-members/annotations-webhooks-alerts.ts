@@ -1,11 +1,11 @@
 /**
  * B6-W5 member module — the `Workspace` annotation, webhook and alert
- * members (`workspace.py:6462-7196`: Annotations, Webhook CRUD and
+ * members (`workspace.py`: Annotations, Webhook CRUD and
  * Alert CRUD, Phase 026).
  *
  * Packet contract (`b6-packets.md` §2/§7): the `workspace.ts` B6-W5
  * section holds ONE-LINE delegations into this module; every member
- * here is a THIN facade body — options-bag mapping (R3.3/R3.8), the
+ * here is a THIN facade body — options-bag mapping, the
  * params dump (W1-D4 {@link EntityModel.modelDumpExcludeNone}), the
  * like-named B4-C4 client method
  * (`services/entities/{annotations,webhooks,alerts}.ts`, composed onto
@@ -126,12 +126,12 @@ export interface WorkspaceGetAlertHistoryOptions {
 }
 
 // ---------------------------------------------------------------------------
-// Annotations (Phase 026) — `workspace.py:6466-6679`
+// Annotations (Phase 026) — `workspace.py`
 // ---------------------------------------------------------------------------
 
 /**
  * List timeline annotations for the project (`list_annotations`,
- * `workspace.py:6466-6505`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param options - `from_date` / `to_date` / `tags` (keyword-only in
@@ -162,7 +162,7 @@ export async function listAnnotations(
 
 /**
  * Create a new timeline annotation (`create_annotation`,
- * `workspace.py:6507-6537`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param params - Annotation creation parameters (date, description
@@ -182,7 +182,7 @@ export async function createAnnotation(
 
 /**
  * Get a single annotation by ID (`get_annotation`,
- * `workspace.py:6539-6565`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param annotationId - Annotation ID.
@@ -201,7 +201,7 @@ export async function getAnnotation(
 
 /**
  * Update an annotation, PATCH semantics (`update_annotation`,
- * `workspace.py:6567-6598`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param annotationId - Annotation ID.
@@ -225,7 +225,7 @@ export async function updateAnnotation(
 
 /**
  * Delete an annotation (`delete_annotation`,
- * `workspace.py:6600-6619`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param annotationId - Annotation ID.
@@ -242,7 +242,7 @@ export async function deleteAnnotation(
 
 /**
  * List annotation tags for the project (`list_annotation_tags`,
- * `workspace.py:6621-6647`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @returns The `AnnotationTag` models, in response order.
@@ -263,7 +263,7 @@ export async function listAnnotationTags(
 
 /**
  * Create a new annotation tag (`create_annotation_tag`,
- * `workspace.py:6649-6679`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param params - Tag creation parameters (name required).
@@ -281,12 +281,12 @@ export async function createAnnotationTag(
 }
 
 // ---------------------------------------------------------------------------
-// Webhook CRUD (Phase 026) — `workspace.py:6685-6833`
+// Webhook CRUD (Phase 026) — `workspace.py`
 // ---------------------------------------------------------------------------
 
 /**
  * List all webhooks for the current project (`list_webhooks`,
- * `workspace.py:6685-6711`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @returns The `ProjectWebhook` models, in response order.
@@ -307,7 +307,7 @@ export async function listWebhooks(
 
 /**
  * Create a new webhook (`create_webhook`,
- * `workspace.py:6713-6744`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param params - Webhook creation parameters.
@@ -326,7 +326,7 @@ export async function createWebhook(
 
 /**
  * Update an existing webhook, PATCH semantics (`update_webhook`,
- * `workspace.py:6746-6780`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param webhookId - Webhook UUID string.
@@ -349,7 +349,7 @@ export async function updateWebhook(
 }
 
 /**
- * Delete a webhook (`delete_webhook`, `workspace.py:6782-6801`).
+ * Delete a webhook (`delete_webhook`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param webhookId - Webhook UUID string.
@@ -366,7 +366,7 @@ export async function deleteWebhook(
 
 /**
  * Test webhook connectivity (`test_webhook`,
- * `workspace.py:6803-6833`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param params - Webhook test parameters (`url` required).
@@ -384,12 +384,12 @@ export async function testWebhook(
 }
 
 // ---------------------------------------------------------------------------
-// Alert CRUD (Phase 026) — `workspace.py:6839-7196`
+// Alert CRUD (Phase 026) — `workspace.py`
 // ---------------------------------------------------------------------------
 
 /**
  * List custom alerts for the current project (`list_alerts`,
- * `workspace.py:6839-6874`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param options - `bookmark_id` / `skip_user_filter` (keyword-only in
@@ -417,7 +417,7 @@ export async function listAlerts(
 
 /**
  * Create a new custom alert (`create_alert`,
- * `workspace.py:6876-6912`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param params - Alert creation parameters.
@@ -436,7 +436,7 @@ export async function createAlert(
 
 /**
  * Get a single custom alert by ID (`get_alert`,
- * `workspace.py:6914-6940`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param alertId - Alert ID (integer).
@@ -455,7 +455,7 @@ export async function getAlert(
 
 /**
  * Update a custom alert, PATCH semantics (`update_alert`,
- * `workspace.py:6942-6971`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param alertId - Alert ID (integer).
@@ -475,7 +475,7 @@ export async function updateAlert(
 }
 
 /**
- * Delete a custom alert (`delete_alert`, `workspace.py:6973-6992`).
+ * Delete a custom alert (`delete_alert`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param alertId - Alert ID (integer).
@@ -492,7 +492,7 @@ export async function deleteAlert(
 
 /**
  * Bulk-delete custom alerts (`bulk_delete_alerts`,
- * `workspace.py:6994-7013`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param ids - Alert IDs to delete.
@@ -509,7 +509,7 @@ export async function bulkDeleteAlerts(
 
 /**
  * Get the project's alert count against its limit
- * (`get_alert_count`, `workspace.py:7015-7042`).
+ * (`get_alert_count`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param options - `alert_type` (keyword-only in Python).
@@ -530,7 +530,7 @@ export async function getAlertCount(
 
 /**
  * Get paginated alert trigger history (`get_alert_history`,
- * `workspace.py:7044-7088`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param alertId - Alert ID (integer).
@@ -556,7 +556,7 @@ export async function getAlertHistory(
 
 /**
  * Send a test alert notification (`test_alert`,
- * `workspace.py:7090-7119`) — returned VERBATIM; Python performs no
+ * `workspace.py`) — returned VERBATIM; Python performs no
  * model validation (`return client.test_alert(body)`, `:7119`).
  *
  * @param client - The wire client.
@@ -576,7 +576,7 @@ export async function testAlert(
 
 /**
  * Get a signed URL for an alert screenshot
- * (`get_alert_screenshot_url`, `workspace.py:7121-7149`).
+ * (`get_alert_screenshot_url`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param gcsKey - GCS object key from the alert payload.
@@ -595,7 +595,7 @@ export async function getAlertScreenshotUrl(
 
 /**
  * Validate alerts against a bookmark definition
- * (`validate_alerts_for_bookmark`, `workspace.py:7151-7196`).
+ * (`validate_alerts_for_bookmark`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param params - Alert IDs plus the bookmark type and params.

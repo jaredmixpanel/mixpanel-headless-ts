@@ -1,6 +1,6 @@
 // Translated `limit` / `run_*_params` tests (Python PR #225, Linear
 // AIE-924): assertion-for-assertion port of
-// tests/unit/test_query_limit.py (R10.2) — ALL 4 classes
+// tests/unit/test_query_limit.py — ALL 4 classes
 // (TestQueryLimitsValidator :150, TestServiceLimitPassthrough :215,
 // TestWorkspaceLimitPassthrough :324, TestRunParams :412).
 //

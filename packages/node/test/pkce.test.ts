@@ -1,5 +1,5 @@
 // Layer-3 translation of `tests/unit/test_auth_pkce.py` (b8-packets.md
-// §4.3 row 1): `TestPkceChallenge` (:25) — all 9 tests. RFC 7636 PKCE
+// §4.3 row 1): `TestPkceChallenge` — all 9 tests. RFC 7636 PKCE
 // invariants are runtime-independent.
 //
 // B9-R1 re-point (b9-packets.md §1.3): the import path below is

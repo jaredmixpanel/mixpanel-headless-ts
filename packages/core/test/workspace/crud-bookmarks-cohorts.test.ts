@@ -1,19 +1,19 @@
 // B6-W3 Layer-3 translation (packet `b6-packets.md` §5) of the
 // bookmark/cohort classes of `tests/unit/test_workspace_crud.py`
-// (1,861 lines): `TestWorkspaceBookmarkCRUD` (:530) and
-// `TestWorkspaceCohortCRUD` (:1319). The dashboard classes of the same
+// (1,861 lines): `TestWorkspaceBookmarkCRUD` and
+// `TestWorkspaceCohortCRUD`. The dashboard classes of the same
 // file are W2's (`crud-dashboards.test.ts`).
 //
 // Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)` (:81-100)
+// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
 // becomes `makeWorkspace(handler)` — the client is built over the
 // OAuth session (`_make_oauth_credentials`, :66) while the facade
-// carries the service-account `_TEST_SESSION` (:50-59), exactly as
+// carries the service-account `_TEST_SESSION`, exactly as
 // Python does. `temp_dir` has no TS analog (no config file is ever
 // touched) and is dropped.
 //
 // `caplog.at_level(logging.WARNING, logger="mixpanel_headless.workspace")`
-// becomes the injected `logger` seam (R9.5) — the facade's
+// becomes the injected `logger` seam — the facade's
 // `WorkspaceLogger.warning` sink, whose messages carry the same
 // `"<member> validation warning: <message> [<code>]" `formatting the
 // Python `logger.warning("%s [%s]", …)` call produces.
@@ -180,7 +180,7 @@ function bodyOf(transport: FakeTransport, index = 0): unknown {
 }
 
 // =============================================================================
-// TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)
+// TestWorkspaceBookmarkCRUD (test_workspace_crud.py)
 // =============================================================================
 
 describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
@@ -721,7 +721,7 @@ describe("TestWorkspaceBookmarkCRUD (test_workspace_crud.py:530)", () => {
 });
 
 // =============================================================================
-// TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)
+// TestWorkspaceCohortCRUD (test_workspace_crud.py)
 // =============================================================================
 
 describe("TestWorkspaceCohortCRUD (test_workspace_crud.py:1319)", () => {

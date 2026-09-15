@@ -4,7 +4,7 @@
  * 7 classes) — fast-check twins of the Hypothesis strategies, same
  * shapes, same filters, same example budgets.
  *
- * Strategy mirroring notes (R10.2):
+ * Strategy mirroring notes:
  * - `st.text(min_size=1, max_size=50)` → `fc.string` over the same
  *   size window with `unit: "binary"` so non-BMP code points can be
  *   generated (the B2 ASSERT-F1 narrowing fix).
@@ -43,7 +43,7 @@ import type { ValidationError } from "../../src/errors.js";
 type Dict = Record<string, unknown>;
 
 /**
- * Port of `_valid_minimal_insights` (`test_bookmark_schema_pbt.py:44-57`).
+ * Port of `_valid_minimal_insights`.
  *
  * @returns A fresh minimal valid `InsightsBookmarkParams` dict.
  */

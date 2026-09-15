@@ -13,7 +13,7 @@
  *
  * - step 0 conversion rate is the literal `1.0`; step N is
  *   `count / prev_count` guarded by `prev_count > 0`, else `0.0`
- *   (`live_query.py:135`);
+ *   (`live_query.py`);
  * - the overall rate is `steps[-1].count / steps[0].count` guarded by
  *   `steps[0].count > 0`, else `0.0` (`:145-147`);
  * - retention is `count / size` guarded by `size > 0`, else `0.0`
@@ -73,7 +73,7 @@ import { pyTruthy } from "../types/results/result-base.js";
 import type { WarningSink } from "./discovery.js";
 import { passthrough, pythonTypeNameOf } from "./shared.js";
 
-/** Bookmark types `query_saved_report` normalizes (`live_query.py:1626`). */
+/** Bookmark types `query_saved_report` normalizes. */
 export type SavedReportBookmarkType =
   "insights" | "funnels" | "retention" | "flows";
 
@@ -170,7 +170,7 @@ function firstPyTruthy(
 
 /**
  * CPython's binary `+` over the JSON value domain
- * (`existing + count`, `live_query.py:127` — B5-ARB FID-F1: the raw
+ * (`existing + count`, `live_query.py` — B5-ARB FID-F1: the raw
  * values are stored and the coercion happens AT the operator site).
  *
  * @param a - The left operand.
@@ -200,7 +200,7 @@ function pyAdd(a: unknown, b: unknown): unknown {
 }
 
 /**
- * CPython's `value > 0` (the division guards, `live_query.py:135`,
+ * CPython's `value > 0` (the division guards, `live_query.py`,
  * `:145`, `:196` — B5-ARB FID-F1: evaluated on the RAW stored value).
  *
  * @param value - The left operand.
@@ -244,7 +244,7 @@ function pyDiv(a: unknown, b: unknown): number {
 
 /**
  * CPython's `key in container` for a string key (B5-ARB FID-F2:
- * `"steps" in date_data`, `live_query.py:67-74` — a str container is a
+ * `"steps" in date_data`, `live_query.py` — a str container is a
  * SUBSTRING test, a list is a membership test, everything else raises).
  *
  * @param key - The string key.
@@ -334,7 +334,7 @@ function pyNumber(value: unknown): number {
 
 /**
  * The lazy count stream of `_transform_segmentation`'s `sum(...)`
- * generator (`live_query.py:246-248` — B5-ARB FID-F2: each
+ * generator (`live_query.py` — B5-ARB FID-F2: each
  * `.values()` lookup raises `AttributeError` only when the generator
  * REACHES it, interleaved with the `+` coercions `pySum` applies).
  *
@@ -350,7 +350,7 @@ function* segmentationCounts(values: unknown): Generator {
 
 /**
  * Matches step names like `"1. Signup"` and captures (index, event)
- * (`_STEP_PREFIX_RE`, `live_query.py:48`).
+ * (`_STEP_PREFIX_RE`, `live_query.py`).
  *
  * Two Python-`re` fidelity details are spelled out rather than reusing
  * the JS shorthand classes: `\d` in a Python `str` pattern matches every
@@ -369,13 +369,13 @@ const STEP_PREFIX_RE = new RegExp(
 );
 
 // ---------------------------------------------------------------------------
-// `_extract_steps_from_date_data` (`live_query.py:51-77`)
+// `_extract_steps_from_date_data`
 // ---------------------------------------------------------------------------
 
 /**
  * Extract steps from one date's funnel data, handling the regular and
  * the segmented response formats (`_extract_steps_from_date_data`,
- * `live_query.py:51-77`).
+ * `live_query.py`).
  *
  * API response formats:
  * - without `on`: `{"steps": [step1, step2, ...]}`
@@ -406,12 +406,12 @@ export function extractStepsFromDateData(dateData: unknown): unknown[] {
 }
 
 // ---------------------------------------------------------------------------
-// `_transform_funnel` (`live_query.py:80-156`)
+// `_transform_funnel`
 // ---------------------------------------------------------------------------
 
 /**
  * Transform a raw `/funnels` response into a {@link FunnelResult}
- * (`_transform_funnel`, `live_query.py:80-156`).
+ * (`_transform_funnel`, `live_query.py`).
  *
  * Aggregates step counts across every date, then recomputes conversion
  * rates: step 0 is `1.0`, step N is `count[N] / count[N-1]` (guarded),
@@ -438,7 +438,7 @@ export function transformFunnel(
 
   // Aggregate steps across all dates: step_idx -> (event, total_count).
   // B5-ARB FID-F1: counts are stored RAW — Python coerces only at the
-  // `+` aggregation site (`existing + count`, `live_query.py:127`).
+  // `+` aggregation site (`existing + count`, `live_query.py`).
   const aggregatedCounts = new Map<number, [unknown, unknown]>();
 
   for (const dateData of Object.values(data)) {
@@ -507,12 +507,12 @@ export function transformFunnel(
 }
 
 // ---------------------------------------------------------------------------
-// `_transform_retention` (`live_query.py:159-219`)
+// `_transform_retention`
 // ---------------------------------------------------------------------------
 
 /**
  * Transform a raw `/retention` response into a {@link RetentionResult}
- * (`_transform_retention`, `live_query.py:159-219`).
+ * (`_transform_retention`, `live_query.py`).
  *
  * `retention[i] = counts[i] / cohort_size`, guarded by `size > 0` — a
  * zero-size cohort yields `0.0` for every period (never a division by
@@ -540,10 +540,10 @@ export function transformRetention(
   // Sort by date for consistent ordering
   for (const date of sortedByCodepoint(Object.keys(raw))) {
     // `cohort_data.get("first", 0)` — a non-mapping cohort value is an
-    // `AttributeError` in CPython (`live_query.py:198`; R10.9 row T2).
+    // `AttributeError` in CPython (`live_query.py`; R10.9 row T2).
     const cohortData = pyMapping(raw[date], "get");
     // B5-ARB FID-F1: `size` is stored RAW; Python compares/divides only
-    // inside the per-count comprehension (`live_query.py:196`), so an
+    // inside the per-count comprehension (`live_query.py`), so an
     // empty `counts` never touches it. Iteration is Python `for` —
     // a dict iterates keys, a str its characters (FID-F2).
     const size = dictGet(cohortData, "first", 0);
@@ -568,13 +568,13 @@ export function transformRetention(
 }
 
 // ---------------------------------------------------------------------------
-// `_transform_segmentation` (`live_query.py:222-259`)
+// `_transform_segmentation`
 // ---------------------------------------------------------------------------
 
 /**
  * Transform a raw `/segmentation` response into a
  * {@link SegmentationResult} (`_transform_segmentation`,
- * `live_query.py:222-259`).
+ * `live_query.py`).
  *
  * @param raw - Raw API response.
  * @param event - Event name that was queried.
@@ -617,12 +617,12 @@ export function transformSegmentation(
 }
 
 // ---------------------------------------------------------------------------
-// `_transform_query_result` (`live_query.py:262-310`)
+// `_transform_query_result`
 // ---------------------------------------------------------------------------
 
 /**
  * Transform a raw insights-query response into a {@link QueryResult}
- * (`_transform_query_result`, `live_query.py:262-310`).
+ * (`_transform_query_result`, `live_query.py`).
  *
  * @param raw - Raw API response from the insights query.
  * @param bookmarkParams - The bookmark params dict sent to the API.
@@ -669,12 +669,12 @@ export function transformQueryResult(
 }
 
 // ---------------------------------------------------------------------------
-// `_extract_funnel_steps_from_series` (`live_query.py:313-440`)
+// `_extract_funnel_steps_from_series`
 // ---------------------------------------------------------------------------
 
 /**
  * Sort key of a funnel step name (`_step_sort_key`,
- * `live_query.py:409-411`): the numeric prefix, then the raw name.
+ * `live_query.py`): the numeric prefix, then the raw name.
  *
  * @param name - The step name (e.g. `"10. Purchase"`).
  * @returns The `(index, name)` tuple, with `2**31` for unprefixed names
@@ -688,10 +688,10 @@ function stepSortKey(name: string): [number, string] {
 /**
  * Pivot the metric-keyed insights funnel series into a flat list of
  * step dicts (`_extract_funnel_steps_from_series`,
- * `live_query.py:313-440`).
+ * `live_query.py`).
  *
  * @param series - Raw series data from the insights API response.
- * @param warn - Sink for the unrecognized-format `UserWarning` (R9.5).
+ * @param warn - Sink for the unrecognized-format `UserWarning`.
  * @returns Step dicts with `event`, `count`, `step_conv_ratio`,
  *   `overall_conv_ratio`, `avg_time` and `avg_time_from_start` keys.
  */
@@ -797,7 +797,7 @@ export function extractFunnelStepsFromSeries(
 
   /**
    * Read a metric value for a step, unwrapping the `"all"` segment
-   * (`_get_val`, `live_query.py:416-421`).
+   * (`_get_val`, `live_query.py`).
    *
    * @param metric - The metric name.
    * @param stepName - The step key.
@@ -833,17 +833,17 @@ export function extractFunnelStepsFromSeries(
 }
 
 // ---------------------------------------------------------------------------
-// `_transform_funnel_result` (`live_query.py:443-495`)
+// `_transform_funnel_result`
 // ---------------------------------------------------------------------------
 
 /**
  * Transform a raw insights funnel response into a
  * {@link FunnelQueryResult} (`_transform_funnel_result`,
- * `live_query.py:443-495`).
+ * `live_query.py`).
  *
  * @param raw - Raw API response from the insights query.
  * @param bookmarkParams - The bookmark params dict sent to the API.
- * @param warn - Sink for the unrecognized-format warning (R9.5).
+ * @param warn - Sink for the unrecognized-format warning.
  * @returns The typed result with step data and metadata.
  * @throws QueryError - Error-as-200 or a missing `series` key.
  */
@@ -887,14 +887,14 @@ export function transformFunnelResult(
 
 // ---------------------------------------------------------------------------
 // `_normalize_cohort_date` / `_extract_cohorts_and_average`
-// (`live_query.py:498-534`)
+// (`live_query.py`)
 // ---------------------------------------------------------------------------
 
 /**
  * Normalize an ISO-timestamp cohort key to `YYYY-MM-DD`
- * (`_normalize_cohort_date`, `live_query.py:498-511`).
+ * (`_normalize_cohort_date`, `live_query.py`).
  *
- * The slice is CODE-POINT based (R11.6) — Python's `key[:10]` counts
+ * The slice is CODE-POINT based — Python's `key[:10]` counts
  * code points, not UTF-16 units.
  *
  * @param key - Cohort date key from the API response.
@@ -906,7 +906,7 @@ function normalizeCohortDate(key: string): string {
 
 /**
  * Split a cohort data dict into date-keyed cohorts and `$average`
- * (`_extract_cohorts_and_average`, `live_query.py:514-534`).
+ * (`_extract_cohorts_and_average`, `live_query.py`).
  *
  * @param data - Cohort data dict (date keys + optional `$average`).
  * @returns The `[cohorts, average]` pair.
@@ -927,13 +927,13 @@ function extractCohortsAndAverage(
 }
 
 // ---------------------------------------------------------------------------
-// `_transform_retention_result` (`live_query.py:537-674`)
+// `_transform_retention_result`
 // ---------------------------------------------------------------------------
 
 /**
  * Transform a raw insights retention response into a
  * {@link RetentionQueryResult} (`_transform_retention_result`,
- * `live_query.py:537-674`).
+ * `live_query.py`).
  *
  * Unwraps the single metric-name key, then splits `$overall` and the
  * named segments when the query was segmented.
@@ -1057,13 +1057,13 @@ export function transformRetentionResult(
 }
 
 // ---------------------------------------------------------------------------
-// Phase 008 transforms (`live_query.py:1567-2042`)
+// Phase 008 transforms (`live_query.py`)
 // ---------------------------------------------------------------------------
 
 /**
  * Transform a raw activity-feed response into an
  * {@link ActivityFeedResult} (`_transform_activity_feed`,
- * `live_query.py:1567-1620`).
+ * `live_query.py`).
  *
  * @param raw - Raw API response.
  * @param distinctIds - Queried user identifiers.
@@ -1128,7 +1128,7 @@ export function transformActivityFeed(
 /**
  * Transform a raw saved-report response into a
  * {@link SavedReportResult} (`_transform_saved_report`,
- * `live_query.py:1623-1695`).
+ * `live_query.py`).
  *
  * Normalizes the four endpoint shapes (insights / funnels / retention /
  * flows) into the one result type, inventing the synthetic
@@ -1229,7 +1229,7 @@ export function transformSavedReport(
 /**
  * Transform a raw `arb_funnels` flow response into a
  * {@link FlowQueryResult} (`_transform_flow_result`,
- * `live_query.py:1698-1806`).
+ * `live_query.py`).
  *
  * @param raw - Raw API response from the arb_funnels query.
  * @param bookmarkParams - The bookmark params dict sent to the API.
@@ -1325,7 +1325,7 @@ export function transformFlowResult(
 
 /**
  * Parse a recursive raw dict into a {@link FlowTreeNode}
- * (`_parse_tree_node`, `live_query.py:1809-1876`).
+ * (`_parse_tree_node`, `live_query.py`).
  *
  * Accepts both the live API's camelCase field names and the test
  * fixtures' snake_case twins.
@@ -1409,7 +1409,7 @@ export function parseTreeNode(raw: unknown): FlowTreeNode {
 
 /**
  * Transform a raw saved-flows response into a {@link FlowsResult}
- * (`_transform_flows`, `live_query.py:1879-1907`).
+ * (`_transform_flows`, `live_query.py`).
  *
  * @param raw - Raw API response.
  * @param bookmarkId - Saved flows report identifier.
@@ -1433,7 +1433,7 @@ export function transformFlows(
 
 /**
  * Transform a raw frequency response into a {@link FrequencyResult}
- * (`_transform_frequency`, `live_query.py:1910-1940`).
+ * (`_transform_frequency`, `live_query.py`).
  *
  * @param raw - Raw API response.
  * @param event - Filtered event name (or `null`).
@@ -1465,7 +1465,7 @@ export function transformFrequency(
 /**
  * Transform a raw numeric-bucket response into a
  * {@link NumericBucketResult} (`_transform_numeric_bucket`,
- * `live_query.py:1943-1974`).
+ * `live_query.py`).
  *
  * @param raw - Raw API response.
  * @param event - Event name queried.
@@ -1499,7 +1499,7 @@ export function transformNumericBucket(
 
 /**
  * Transform a raw sum response into a {@link NumericSumResult}
- * (`_transform_numeric_sum`, `live_query.py:1977-2009`).
+ * (`_transform_numeric_sum`, `live_query.py`).
  *
  * @param raw - Raw API response.
  * @param event - Event name queried.
@@ -1535,7 +1535,7 @@ export function transformNumericSum(
 /**
  * Transform a raw average response into a
  * {@link NumericAverageResult} (`_transform_numeric_average`,
- * `live_query.py:2012-2042`).
+ * `live_query.py`).
  *
  * @param raw - Raw API response.
  * @param event - Event name queried.

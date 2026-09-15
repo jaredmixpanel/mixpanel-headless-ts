@@ -1,7 +1,7 @@
 /**
  * Drop-filter wire methods (App API) — Phase-3 packet B4-C5 port of
  * the `MixpanelAPIClient` drop-filters range
- * (`api_client.py:7178-7344`).
+ * (`api_client.py`).
  *
  * All methods route through B0 `appRequest` over `maybe_scoped_path`
  * (R10.8). NOTE the create/update/delete mutations return the full
@@ -19,7 +19,7 @@ import { expectListResult, expectRecordResult } from "./shared.js";
 /** The C5 drop-filter method surface (mixed into `MixpanelClient`). */
 export interface DropFilterMethods {
   /**
-   * List drop filters (`list_drop_filters`, `api_client.py:7178-7206`
+   * List drop filters (`list_drop_filters`, `api_client.py`
    * — GET `data-definitions/events/drop-filters/`).
    *
    * @param signal - Optional cancellation signal.

@@ -1,7 +1,7 @@
 /**
  * Event-deletion-request wire methods (App API) — Phase-3 packet B4-C5
  * port of the `MixpanelAPIClient` deletion-requests range
- * (`api_client.py:8544-8675`).
+ * (`api_client.py`).
  *
  * All methods route through B0 `appRequest` over `maybe_scoped_path`
  * (R10.8). NOTE `create`/`cancel` return the updated full LIST of
@@ -19,7 +19,7 @@ import { expectListResult } from "./shared.js";
 export interface DeletionRequestMethods {
   /**
    * List deletion requests (`list_deletion_requests`,
-   * `api_client.py:8544-8568` — GET
+   * `api_client.py` — GET
    * `data-definitions/events/deletion-requests/`).
    *
    * @param signal - Optional cancellation signal.

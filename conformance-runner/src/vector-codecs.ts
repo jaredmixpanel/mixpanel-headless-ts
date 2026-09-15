@@ -613,7 +613,7 @@ const DATACLASS_CODECS: ReadonlyArray<readonly [string, DataclassCodecSpec]> = [
 
 /**
  * The three GroupBy bucket fields whose Python annotation is
- * `int | float | None` (`types.py:8367-8373`) — the fields the
+ * `int | float | None` (`types.py`) — the fields the
  * {@link groupByCodec} float-ness memory tracks.
  */
 const GROUP_BY_BUCKET_FIELDS = [

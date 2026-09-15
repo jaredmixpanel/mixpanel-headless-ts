@@ -1,11 +1,11 @@
 // Translated workspace-retention tests (B5-S2, packet §3): assertion-
-// for-assertion port of tests/test_workspace_retention.py (R10.2) — ALL
+// for-assertion port of tests/test_workspace_retention.py — ALL
 // 4 classes (TestQueryRetentionIntegration :105,
 // TestQueryRetentionWithFilters :219, TestBuildRetentionParams :252,
 // TestQueryRetentionValidationIntegration :319).
 //
 // The Python file also carries a `TestQueryRetentionConfigError` REMOVAL
-// comment (:205) — nothing to translate.
+// comment — nothing to translate.
 //
 // Translation notes: identical to the sibling `workspace-funnel.test.ts`
 // header (`insights_query.call_args[0][0]` -> `mock.insightsCalls[0]`;

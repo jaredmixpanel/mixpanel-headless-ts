@@ -6,7 +6,7 @@
  * Targets are saved (account, project, workspace?) triples used as
  * named cursor positions; `use(name)` writes all three axes to
  * `[active]` in a single config save. Factory over the injected
- * {@link AuthEffects} bag (R9.4); B8 exports the ready-made object.
+ * {@link AuthEffects} bag; B8 exports the ready-made object.
  */
 
 import type { Target } from "../types/entities/accounts.js";
@@ -26,14 +26,14 @@ export interface TargetsAddOptions {
 export interface TargetsNamespace {
   /**
    * Return all configured targets sorted by name (`list`,
-   * `targets.py:25-31`).
+   * `targets.py`).
    *
    * @returns Sorted target records.
    */
   list: () => Target[];
 
   /**
-   * Add a new target block (`add`, `targets.py:34-57`).
+   * Add a new target block (`add`, `targets.py`).
    *
    * @param name - Target name (block key).
    * @param options - account / project / optional workspace.
@@ -44,7 +44,7 @@ export interface TargetsNamespace {
   add: (name: string, options: TargetsAddOptions) => Target;
 
   /**
-   * Remove a target block (`remove`, `targets.py:60-69`).
+   * Remove a target block (`remove`, `targets.py`).
    *
    * @param name - Target to remove.
    * @throws ConfigError - Target does not exist.
@@ -53,7 +53,7 @@ export interface TargetsNamespace {
 
   /**
    * Apply the target — write all three axes to `[active]` atomically
-   * (`use`, `targets.py:72-81`; ONE `applyTarget` transaction, packet
+   * (`use`, `targets.py`; ONE `applyTarget` transaction, packet
    * §3.3).
    *
    * @param name - Target to apply.
@@ -63,7 +63,7 @@ export interface TargetsNamespace {
   use: (name: string) => void;
 
   /**
-   * Return the named target (`show`, `targets.py:84-96`).
+   * Return the named target (`show`, `targets.py`).
    *
    * @param name - Target name.
    * @returns The target record.

@@ -1,6 +1,6 @@
 // Translated insights params-building tests (B5-S2, packet §3):
 // assertion-for-assertion port of tests/unit/test_query_params.py
-// (R10.2) — ALL 22 classes (TestBasicParams :49,
+// — ALL 22 classes (TestBasicParams :49,
 // TestAggregationParams :214, TestFilterParams :330, TestGroupParams
 // :478, TestMultiEventParams :610, TestFormulaParams :687,
 // TestAnalysisModeParams :766, TestModeParams :837,

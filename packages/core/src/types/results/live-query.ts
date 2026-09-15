@@ -4,7 +4,7 @@
  * `mixpanel_headless/types.py`.
  *
  * Conventions (C6):
- * - Fields keep their EXACT Python names (R3.4), `readonly` (R4.7).
+ * - Fields keep their EXACT Python names, `readonly`.
  * - `toRows()` returns the rows list Python builds before pandas;
  *   `rowColumns()` is the frame's column contract (the Python
  *   empty-frame constant when there are no rows; pandas'

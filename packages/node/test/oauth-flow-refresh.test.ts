@@ -1,8 +1,8 @@
 // Layer-3 translation of the REFRESH classes of
 // `tests/unit/test_auth_flow.py` (b8-packets.md §3.3 row 5):
-// `TestOAuthFlowRefresh` (:490), the REFRESH member of
+// `TestOAuthFlowRefresh`, the REFRESH member of
 // `TestTokenPayloadRedaction` (FIX-2, bug (d) — exchange members are
-// in `oauth-flow-login.test.ts`), `TestOAuthFlowGetValidToken` (:610),
+// in `oauth-flow-login.test.ts`), `TestOAuthFlowGetValidToken`,
 // the refresh/timeout members of `TestOAuthFlowNetworkErrors` (:802 —
 // the exchange-op members are N3's, header-cited split), and
 // `TestOAuthFlowRegionValidation` (:984 — lands with the N2 class
@@ -44,7 +44,7 @@ afterEach(() => {
   }
 });
 
-/** The `_make_token_response` fixture twin (test_auth_flow.py:31). */
+/** The `_make_token_response` fixture twin. */
 function makeTokenResponse(options?: {
   accessToken?: string;
   refreshToken?: string | null;
@@ -65,7 +65,7 @@ function makeTokenResponse(options?: {
   return data;
 }
 
-/** The `_make_client_info` fixture twin (test_auth_flow.py:63). */
+/** The `_make_client_info` fixture twin. */
 function makeClientInfo(): OAuthClientInfo {
   return {
     client_id: "test-client-id",

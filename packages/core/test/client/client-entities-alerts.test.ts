@@ -11,7 +11,7 @@ import {
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 
-/** The `oauth_credentials` fixture twin (test_api_client_alerts.py:27-30). */
+/** The `oauth_credentials` fixture twin. */
 function oauthCredentials(): Session {
   return makeSession({
     projectId: "12345",
@@ -20,7 +20,7 @@ function oauthCredentials(): Session {
   });
 }
 
-/** The `_alert_result` helper twin (:52-75). */
+/** The `_alert_result` helper twin. */
 function alertResult(id = 1, name = "Test Alert"): Record<string, unknown> {
   return {
     id,

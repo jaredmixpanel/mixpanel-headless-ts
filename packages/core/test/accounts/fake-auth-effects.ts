@@ -1,6 +1,6 @@
 // B7-A1 test infrastructure — an in-memory `AuthEffects` fake whose
 // config member implements the `ConfigManager` transaction semantics
-// the interface JSDoc pins (`config.py:494-1002`), so the Python
+// the interface JSDoc pins (`config.py`), so the Python
 // suites' tmp-`$HOME` fixtures re-express over injected fakes (packet
 // §3.4 header rule; Caution #19: `~/.mp` is NEVER touched by tests).
 
@@ -167,7 +167,7 @@ function fakeConfig(): FakeConfig {
       if (state.accounts.has(name)) {
         // PLAIN ConfigError, matching `ConfigManager._apply_add_account`
         // (`config.py:446`). `AccountExistsError` is reserved for the
-        // login_unified name-collision path (`accounts.py:1689`) —
+        // login_unified name-collision path (`accounts.py`) —
         // B7-ARB-B fix, `b7-reviewB-resolution.md` B-E2E-F1.
         throw new ConfigError(`Account '${name}' already exists.`);
       }
@@ -219,7 +219,7 @@ function fakeConfig(): FakeConfig {
       state.accounts.set(name, account);
       if (isFirst) {
         // FR-045 first-account promotion — same transaction
-        // (`accounts.py:472-489` / interface JSDoc).
+        // (`accounts.py` / interface JSDoc).
         state.active.account = name;
       }
     },
@@ -320,7 +320,7 @@ function fakeConfig(): FakeConfig {
       const workspace = update.workspace ?? null;
       const clearWorkspace = update.clear_workspace ?? false;
       if (workspace !== null && clearWorkspace) {
-        // Python raises bare ValueError (`config.py:826-829`).
+        // Python raises bare ValueError (`config.py`).
         throw new ParamValidationError(
           "`workspace=` and `clear_workspace=True` are mutually exclusive.",
         );
@@ -365,7 +365,7 @@ function fakeConfig(): FakeConfig {
       raw["default_project"] = block.project;
       state.accounts.set(block.account, parseAccount(raw));
       // Replace [active] wholesale — a target with no workspace clears
-      // any prior pin (`config.py:995-999`).
+      // any prior pin (`config.py`).
       state.active = { account: block.account };
       if (block.workspace !== null) {
         state.active.workspace = block.workspace;

@@ -1,19 +1,19 @@
 // Layer-3 translation of `tests/unit/test_workspace_init.py`:
-// B6-W1 classes `TestSessionBypass` (:115) and `TestReadOnlyProperties`
+// B6-W1 classes `TestSessionBypass` and `TestReadOnlyProperties`
 // (:151); B7-A1 classes `TestActiveResolution` (:66),
-// `TestExplicitOverrides` (:76), `TestTarget` (:96) — the resolver
+// `TestExplicitOverrides`, `TestTarget` — the resolver
 // constructor kwargs over injected `ResolverSources`
 // (`b7-packets.md` §3.4; the Python `two_accounts` tmp-config fixture
 // re-expresses over the in-memory fake config, header rule).
 //
-// `TestBridgeTokenMaterialization` (:167) is translated at B8-N2 in
+// `TestBridgeTokenMaterialization` is translated at B8-N2 in
 // `packages/node/test/workspace-bridge-materialization.test.ts` (the
 // constructor's bridge-token materialization side effect,
-// `workspace.py:476-513`, needs node:fs — the core-purity eslint
+// `workspace.py`, needs node:fs — the core-purity eslint
 // boundary covers core TEST files too; disclosed relocation, B8-N2
 // notes). ZERO deferrals remain in this header.
 //
-// `TestSessionBypass::test_session_use_chain_equivalence` (:130) is
+// `TestSessionBypass::test_session_use_chain_equivalence` is
 // SPLIT: the W1 chain half runs against stubbed seams below; the FULL
 // `Workspace().use(account=…, project=…)` twin (resolver constructor +
 // real seams) is in the B7 section at the bottom.
@@ -161,7 +161,7 @@ describe("TestReadOnlyProperties (test_workspace_init.py:151)", () => {
 // B7-A1: the resolver constructor (`b7-packets.md` §3.4).
 // ---------------------------------------------------------------------------
 
-/** The `two_accounts` fixture (`test_workspace_init.py:41-63`). */
+/** The `two_accounts` fixture. */
 async function twoAccounts(): Promise<EffectsBundle> {
   const bundle = makeEffects();
   const accounts = createAccountsNamespace(bundle.effects);

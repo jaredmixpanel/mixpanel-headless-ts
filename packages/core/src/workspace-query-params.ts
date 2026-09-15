@@ -178,21 +178,21 @@ function anyError(errors: readonly ValidationError[]): boolean {
   return errors.some((e) => e.severity === "error");
 }
 
-/** Insights `mode` → `displayOptions.chartType` (`workspace.py:2245`). */
+/** Insights `mode` → `displayOptions.chartType`. */
 const INSIGHTS_CHART_TYPE: ReadonlyMap<string, string> = new Map([
   ["timeseries", "line"],
   ["total", "bar"],
   ["table", "table"],
 ]);
 
-/** Funnel `mode` → `chartType` (`workspace.py:2896`). */
+/** Funnel `mode` → `chartType`. */
 const FUNNEL_CHART_TYPE: ReadonlyMap<string, string> = new Map([
   ["steps", "funnel-steps"],
   ["trends", "line"],
   ["table", "table"],
 ]);
 
-/** Retention `mode` → `chartType` (`workspace.py:3434`). */
+/** Retention `mode` → `chartType`. */
 const RETENTION_CHART_TYPE: ReadonlyMap<string, string> = new Map([
   ["curve", "retention-curve"],
   ["trends", "line"],
@@ -200,12 +200,12 @@ const RETENTION_CHART_TYPE: ReadonlyMap<string, string> = new Map([
 ]);
 
 // ===========================================================================
-// `_check_step_direction` (`workspace.py:353-390`)
+// `_check_step_direction`
 // ===========================================================================
 
 /**
  * Validate a per-step `forward`/`reverse` value for type and range
- * (`_check_step_direction`, `workspace.py:353-390`).
+ * (`_check_step_direction`, `workspace.py`).
  *
  * `None` means "inherit the default" and produces no finding. The type
  * check rejects `bool` explicitly (Python's `bool` is an `int`
@@ -249,12 +249,12 @@ function checkStepDirection(
 }
 
 // ===========================================================================
-// `_flow_mode_from_params` (`workspace.py:410-465`)
+// `_flow_mode_from_params`
 // ===========================================================================
 
 /**
  * Maps a flow `flows_merge_type` value to the `query_flow` mode that
- * runs it (`_FLOW_MERGE_TYPE_TO_MODE`, `workspace.py:410`).
+ * runs it (`_FLOW_MERGE_TYPE_TO_MODE`, `workspace.py`).
  *
  * `build_flow_params` writes this key for every mode, so it is the
  * authoritative source when present.
@@ -267,7 +267,7 @@ const FLOW_MERGE_TYPE_TO_MODE: ReadonlyMap<string, FlowMode> = new Map([
 
 /**
  * Maps a flow `chartType` value to the `query_flow` mode that runs it
- * (`_FLOW_CHART_TYPE_TO_MODE`, `workspace.py:422`).
+ * (`_FLOW_CHART_TYPE_TO_MODE`, `workspace.py`).
  *
  * Fallback for params without `flows_merge_type`. `build_flow_params`
  * writes `"top-paths"` for paths mode and `"sankey"` for both sankey and
@@ -283,7 +283,7 @@ const FLOW_CHART_TYPE_TO_MODE: ReadonlyMap<string, FlowMode> = new Map([
 
 /**
  * Derive the flow chart mode from pre-built flow params
- * (`_flow_mode_from_params`, `workspace.py:438-465`).
+ * (`_flow_mode_from_params`, `workspace.py`).
  *
  * `flows_merge_type` wins when present and recognised. `chartType` is
  * the fallback. Anything else runs as sankey.
@@ -315,7 +315,7 @@ export function flowModeFromParams(
 }
 
 // ===========================================================================
-// `_build_query_params` (`workspace.py:2047-2283`)
+// `_build_query_params`
 // ===========================================================================
 
 /** Keyword-only arguments of {@link buildQueryParams}. */
@@ -360,7 +360,7 @@ export interface BuildQueryParamsOptions {
 
 /**
  * Build the insights bookmark params dict from typed arguments
- * (`_build_query_params`, `workspace.py:2047-2283`).
+ * (`_build_query_params`, `workspace.py`).
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns Bookmark params ready for the insights query API.
@@ -591,7 +591,7 @@ export function buildQueryParams(options: BuildQueryParamsOptions): ParamsDict {
 }
 
 // ===========================================================================
-// `_resolve_and_build_params` (`workspace.py:2546-2743`)
+// `_resolve_and_build_params`
 // ===========================================================================
 
 /** Keyword-only arguments of {@link resolveAndBuildParams}. */
@@ -638,7 +638,7 @@ export interface ResolveAndBuildParamsOptions {
 
 /**
  * Normalize, validate and build insights bookmark params
- * (`_resolve_and_build_params`, `workspace.py:2546-2743`).
+ * (`_resolve_and_build_params`, `workspace.py`).
  *
  * Shared implementation of `query` and `build_params`: type guards,
  * event/formula normalization, Layer-1 argument validation, bookmark
@@ -821,7 +821,7 @@ export function resolveAndBuildParams(
 }
 
 // ===========================================================================
-// `_build_funnel_params` (`workspace.py:2746-2927`)
+// `_build_funnel_params`
 // ===========================================================================
 
 /** Keyword-only arguments of {@link buildFunnelParams}. */
@@ -868,7 +868,7 @@ interface BuildFunnelParamsOptions {
 
 /**
  * Build the funnel bookmark params dict (`_build_funnel_params`,
- * `workspace.py:2746-2927`).
+ * `workspace.py`).
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns Bookmark params ready for the insights query API.
@@ -1010,7 +1010,7 @@ function buildFunnelParams(options: BuildFunnelParamsOptions): ParamsDict {
 }
 
 // ===========================================================================
-// `_resolve_and_build_funnel_params` (`workspace.py:2930-3062`)
+// `_resolve_and_build_funnel_params`
 // ===========================================================================
 
 /** Keyword-only arguments of {@link resolveAndBuildFunnelParams}. */
@@ -1058,7 +1058,7 @@ export interface ResolveAndBuildFunnelParamsOptions {
 
 /**
  * Normalize, validate and build funnel bookmark params
- * (`_resolve_and_build_funnel_params`, `workspace.py:2930-3062`).
+ * (`_resolve_and_build_funnel_params`, `workspace.py`).
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The validated bookmark params dict.
@@ -1171,7 +1171,7 @@ export function resolveAndBuildFunnelParams(
 }
 
 // ===========================================================================
-// `_build_retention_params` (`workspace.py:3321-3487`)
+// `_build_retention_params`
 // ===========================================================================
 
 /** Keyword-only arguments of {@link buildRetentionParams}. */
@@ -1216,7 +1216,7 @@ interface BuildRetentionParamsOptions {
 
 /**
  * Build the retention bookmark params dict
- * (`_build_retention_params`, `workspace.py:3321-3487`).
+ * (`_build_retention_params`, `workspace.py`).
  *
  * The trailing `sorting` / `columnWidths` literals are transcribed
  * verbatim — they are part of the emitted contract.
@@ -1354,7 +1354,7 @@ function buildRetentionParams(
 }
 
 // ===========================================================================
-// `_build_flow_params` (`workspace.py:3493-3632`)
+// `_build_flow_params`
 // ===========================================================================
 
 /** Keyword-only arguments of {@link buildFlowParams}. */
@@ -1393,7 +1393,7 @@ export interface BuildFlowParamsOptions {
 
 /**
  * Build the FLAT flow bookmark params dict (`_build_flow_params`,
- * `workspace.py:3493-3632`).
+ * `workspace.py`).
  *
  * Flows use a flat dict (no `sections` / `displayOptions` wrapper).
  *
@@ -1497,7 +1497,7 @@ export function buildFlowParams(options: BuildFlowParamsOptions): ParamsDict {
 }
 
 // ===========================================================================
-// `_resolve_and_build_flow_params` (`workspace.py:3635-3849`)
+// `_resolve_and_build_flow_params`
 // ===========================================================================
 
 /** Keyword-only arguments of {@link resolveAndBuildFlowParams}. */
@@ -1542,7 +1542,7 @@ export interface ResolveAndBuildFlowParamsOptions {
 
 /**
  * Normalize, validate and build flow bookmark params
- * (`_resolve_and_build_flow_params`, `workspace.py:3635-3849`).
+ * (`_resolve_and_build_flow_params`, `workspace.py`).
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The validated flow bookmark params dict.
@@ -1773,7 +1773,7 @@ function pyMax(values: readonly number[]): number {
 }
 
 // ===========================================================================
-// `_resolve_and_build_retention_params` (`workspace.py:4100-4222`)
+// `_resolve_and_build_retention_params`
 // ===========================================================================
 
 /** Keyword-only arguments of {@link resolveAndBuildRetentionParams}. */
@@ -1818,7 +1818,7 @@ export interface ResolveAndBuildRetentionParamsOptions {
 
 /**
  * Normalize, validate and build retention bookmark params
- * (`_resolve_and_build_retention_params`, `workspace.py:4100-4222`).
+ * (`_resolve_and_build_retention_params`, `workspace.py`).
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The validated bookmark params dict.
@@ -1919,7 +1919,7 @@ export function resolveAndBuildRetentionParams(
 }
 
 // ===========================================================================
-// `_resolve_and_build_user_params` (`workspace.py:9336-9627`)
+// `_resolve_and_build_user_params`
 // ===========================================================================
 
 /** Keyword-only arguments of {@link resolveAndBuildUserParams}. */
@@ -1968,7 +1968,7 @@ export interface ResolveAndBuildUserParamsOptions {
 
 /**
  * Validate arguments and build the engage API params dict
- * (`_resolve_and_build_user_params`, `workspace.py:9336-9627`).
+ * (`_resolve_and_build_user_params`, `workspace.py`).
  *
  * @param options - Keyword-only bag mirroring the Python signature.
  * @returns The engage params dict for `export_profiles_page`.
@@ -2074,9 +2074,9 @@ export function resolveAndBuildUserParams(
       } catch (error) {
         // Python's `except ValueError` here catches BOTH the builtin and
         // `ParamValidationError`, which dual-inherits `ValueError`
-        // (`exceptions.py:97`). The converted ES* guards inside
+        // (`exceptions.py`). The converted ES* guards inside
         // `filters_to_selector` raise the latter, and RR-4
-        // (`test_workspace_query_user_integration.py:1116-1152`) pins
+        // (`test_workspace_query_user_integration.py`) pins
         // that they surface here as `U_FILTER` with the guard error as
         // the chained cause. The Phase-2 header note ("`except
         // ValueError` reachability is a Python-side concern only",
@@ -2270,7 +2270,7 @@ function pythonNumberText(value: number | null | undefined): string {
 
 /**
  * `calendar.timegm(date.fromisoformat(s).timetuple())`
- * (`workspace.py:9570`) — midnight UTC of an ISO calendar date.
+ * (`workspace.py`) — midnight UTC of an ISO calendar date.
  *
  * `date.fromisoformat` accepts only `YYYY-MM-DD` in the range this
  * code path can reach (the U8 validator has already rejected malformed
@@ -2350,12 +2350,12 @@ function daysFromCivilDate(y: number, m: number, d: number): number {
 }
 
 // ===========================================================================
-// `_build_page_kwargs` (`workspace.py:10209-10256`)
+// `_build_page_kwargs`
 // ===========================================================================
 
 /**
  * Extract `export_profiles_page` kwargs from the engage params dict
- * (`_build_page_kwargs`, `workspace.py:10209-10256`).
+ * (`_build_page_kwargs`, `workspace.py`).
  *
  * The two JSON-encoded members (`output_properties`, `distinct_ids`)
  * are decoded back to lists when they arrive as strings, exactly as
@@ -2410,15 +2410,15 @@ export function buildPageKwargs(
 
 // ===========================================================================
 // The `engage_stats` kwargs block of `_execute_user_aggregate`
-// (`workspace.py:10027-10046`)
+// (`workspace.py`)
 // ===========================================================================
 
 /**
  * Extract the `engage_stats` kwargs from the engage params dict — the
  * `self`-free block of `_execute_user_aggregate`
- * (`workspace.py:10027-10046`), lifted here for the same R7.2 reason
+ * (`workspace.py`), lifted here for the same R7.2 reason
  * as {@link buildPageKwargs} (and so the Layer-3 malformed-JSON case
- * `test_query_user_edge_cases.py:664` has a reachable seam; the Python
+ * `test_query_user_edge_cases.py` has a reachable seam; the Python
  * test calls the private method directly).
  *
  * `segment_by_cohorts` is decoded back to a dict when it arrives as a

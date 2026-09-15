@@ -7,7 +7,7 @@
  * Layering (B7-ARB-B B-E2E-N1, `auth-effects.ts` interface JSDoc): the
  * FR-045 first-account promotion happens exactly ONCE, in THIS
  * adapter's {@link NodeConfigSource.addAccount} transaction — the
- * `accounts.py:472-489` twin (`_apply_add_account` + first-account
+ * `accounts.py` twin (`_apply_add_account` + first-account
  * `_apply_set_active` under one `_mutate()`). The underlying
  * {@link ConfigManager.addAccount} stays non-promoting
  * (`test_config.py`'s asserts lock that layer).
@@ -74,7 +74,7 @@ export function createNodeConfigSource(
      *
      * @param name - Account name.
      * @returns The account record.
-     * @throws ConfigError - Unknown name (`config.py:549`).
+     * @throws ConfigError - Unknown name (`config.py`).
      */
     getAccount(name: string): Account {
       return manager.getAccount(name);
@@ -114,7 +114,7 @@ export function createNodeConfigSource(
     /**
      * Add an account, promoting the FIRST-ever account to
      * `[active].account` in the SAME transaction (FR-045; the
-     * `accounts.py:472-489` composition).
+     * `accounts.py` composition).
      *
      * @param name - Account name.
      * @param params - Typed credential fields.
@@ -124,7 +124,7 @@ export function createNodeConfigSource(
     addAccount(name: string, params: AddAccountParams): void {
       manager.transaction((raw) => {
         // `is_first = not (raw.get("accounts") or {})` — evaluated
-        // BEFORE the insert (`accounts.py:476`).
+        // BEFORE the insert (`accounts.py`).
         const accounts = raw["accounts"];
         const isFirst =
           !isPythonDict(accounts) || Object.keys(accounts).length === 0;
@@ -136,7 +136,7 @@ export function createNodeConfigSource(
     },
 
     /**
-     * Update fields on an existing account (`config.py:607-650`).
+     * Update fields on an existing account (`config.py`).
      *
      * @param name - Account to update.
      * @param fields - Fields to rewrite.
@@ -148,7 +148,7 @@ export function createNodeConfigSource(
     },
 
     /**
-     * Remove an account (`config.py:652-692`).
+     * Remove an account (`config.py`).
      *
      * @param name - Account to remove.
      * @param removalOptions - `force` removes despite target refs.
@@ -164,7 +164,7 @@ export function createNodeConfigSource(
     },
 
     /**
-     * List account summaries sorted by name (`config.py:494-532`).
+     * List account summaries sorted by name (`config.py`).
      *
      * @returns The summaries.
      */
@@ -195,7 +195,7 @@ export function createNodeConfigSource(
 
     /**
      * Atomically apply per-axis session updates
-     * (`config.py:764-835`).
+     * (`config.py`).
      *
      * @param update - The axes to touch.
      * @throws ParamValidationError - `workspace` with
@@ -210,7 +210,7 @@ export function createNodeConfigSource(
     /**
      * Apply a target: `[active]` replaced wholesale + the target
      * account's `default_project` updated, one transaction
-     * (`config.py:951-1002`).
+     * (`config.py`).
      *
      * @param name - Target to apply.
      * @throws ConfigError - Unknown target OR its account is gone.
@@ -220,7 +220,7 @@ export function createNodeConfigSource(
     },
 
     /**
-     * Add a target block (`config.py:887-934`).
+     * Add a target block (`config.py`).
      *
      * @param name - Target name.
      * @param targetOptions - account / project / workspace.
@@ -233,7 +233,7 @@ export function createNodeConfigSource(
     },
 
     /**
-     * Remove a target block (`config.py:936-949`).
+     * Remove a target block (`config.py`).
      *
      * @param name - Target to remove.
      * @throws ConfigError - Unknown target.
@@ -243,7 +243,7 @@ export function createNodeConfigSource(
     },
 
     /**
-     * List targets sorted by name (`config.py:837-860`).
+     * List targets sorted by name (`config.py`).
      *
      * @returns The targets.
      */

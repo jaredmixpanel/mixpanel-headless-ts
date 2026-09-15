@@ -1,11 +1,11 @@
 /**
  * B6-W2 member module — the `Workspace` dashboard members
- * (`workspace.py:4502-5145`: DASHBOARD CRUD + DASHBOARD ADVANCED
+ * (`workspace.py`: DASHBOARD CRUD + DASHBOARD ADVANCED
  * OPERATIONS, Phase 024).
  *
  * Packet contract (`b6-packets.md` §2/§4): the `workspace.ts` B6-W2
  * section holds ONE-LINE delegations into this module; every member
- * here is a THIN facade body — options-bag mapping (R3.3/R3.8), the
+ * here is a THIN facade body — options-bag mapping, the
  * params dump (W1-D4 {@link EntityModel.modelDumpExcludeNone}), the
  * like-named B4-C3 client method
  * (`services/entities/dashboards.ts`, composed onto the client at
@@ -24,7 +24,7 @@
  *    too; it is ported defensively and locked at the member seam
  *    (`crud-dashboards.test.ts`, `B6-W2-notes.md` §3).
  * 2. `add_report_to_dashboard`'s `not isinstance(raw, dict) or "id" not
- *    in raw` (`workspace.py:4832-4837`) — watchlist #13
+ *    in raw` (`workspace.py`) — watchlist #13
  *    (`isPlainRecord`, never a `typeof` check) + R4.8
  *    (`Object.hasOwn`).
  */
@@ -68,7 +68,7 @@ export interface WorkspaceListBlueprintTemplatesOptions {
 
 /**
  * List dashboards for the current project/workspace
- * (`list_dashboards`, `workspace.py:4506-4536`).
+ * (`list_dashboards`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param options - Optional `ids` filter.
@@ -94,7 +94,7 @@ export async function listDashboards(
 
 /**
  * Create a new dashboard (`create_dashboard`,
- * `workspace.py:4538-4569`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param params - Dashboard creation parameters.
@@ -118,7 +118,7 @@ export async function createDashboard(
 
 /**
  * Get a single dashboard by ID (`get_dashboard`,
- * `workspace.py:4571-4600`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
@@ -140,7 +140,7 @@ export async function getDashboard(
 
 /**
  * Update an existing dashboard (`update_dashboard`,
- * `workspace.py:4602-4638`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
@@ -166,7 +166,7 @@ export async function updateDashboard(
 }
 
 /**
- * Delete a dashboard (`delete_dashboard`, `workspace.py:4640-4659`).
+ * Delete a dashboard (`delete_dashboard`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
@@ -181,7 +181,7 @@ export async function deleteDashboard(
 
 /**
  * Delete multiple dashboards (`bulk_delete_dashboards`,
- * `workspace.py:4661-4680`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param ids - Dashboard IDs to delete.
@@ -196,7 +196,7 @@ export async function bulkDeleteDashboards(
 
 /**
  * Favorite a dashboard (`favorite_dashboard`,
- * `workspace.py:4686-4705`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
@@ -211,7 +211,7 @@ export async function favoriteDashboard(
 
 /**
  * Unfavorite a dashboard (`unfavorite_dashboard`,
- * `workspace.py:4707-4726`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
@@ -225,7 +225,7 @@ export async function unfavoriteDashboard(
 }
 
 /**
- * Pin a dashboard (`pin_dashboard`, `workspace.py:4728-4747`).
+ * Pin a dashboard (`pin_dashboard`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
@@ -239,7 +239,7 @@ export async function pinDashboard(
 }
 
 /**
- * Unpin a dashboard (`unpin_dashboard`, `workspace.py:4749-4768`).
+ * Unpin a dashboard (`unpin_dashboard`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
@@ -254,7 +254,7 @@ export async function unpinDashboard(
 
 /**
  * Remove a report from a dashboard (`remove_report_from_dashboard`,
- * `workspace.py:4770-4800`) — no empty-response guard in Python: the
+ * `workspace.py`) — no empty-response guard in Python: the
  * payload goes straight into validation.
  *
  * @param client - The wire client.
@@ -276,7 +276,7 @@ export async function removeReportFromDashboard(
 
 /**
  * Add a report to a dashboard (`add_report_to_dashboard`,
- * `workspace.py:4802-4841`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
@@ -310,7 +310,7 @@ export async function addReportToDashboard(
 
 /**
  * List available dashboard blueprint templates
- * (`list_blueprint_templates`, `workspace.py:4841-4869`).
+ * (`list_blueprint_templates`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param options - `include_reports` (Python default `False`).
@@ -335,7 +335,7 @@ export async function listBlueprintTemplates(
 
 /**
  * Create a dashboard from a blueprint template (`create_blueprint`,
- * `workspace.py:4871-4900`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param templateType - Blueprint template type identifier.
@@ -357,7 +357,7 @@ export async function createBlueprint(
 
 /**
  * Get the blueprint configuration for a dashboard
- * (`get_blueprint_config`, `workspace.py:4902-4933`).
+ * (`get_blueprint_config`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
@@ -379,7 +379,7 @@ export async function getBlueprintConfig(
 
 /**
  * Update cohorts for blueprint configuration
- * (`update_blueprint_cohorts`, `workspace.py:4935-4954`).
+ * (`update_blueprint_cohorts`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param cohorts - Cohort configuration dicts.
@@ -394,7 +394,7 @@ export async function updateBlueprintCohorts(
 
 /**
  * Finalize a blueprint dashboard with cards (`finalize_blueprint`,
- * `workspace.py:4956-4991`; `by_alias=True` dump at :4985).
+ * `workspace.py`; `by_alias=True` dump at :4985).
  *
  * @param client - The wire client.
  * @param params - Blueprint finalization parameters.
@@ -417,7 +417,7 @@ export async function finalizeBlueprint(
 
 /**
  * Create an RCA (Root Cause Analysis) dashboard
- * (`create_rca_dashboard`, `workspace.py:4993-5028`; `by_alias=True`
+ * (`create_rca_dashboard`, `workspace.py`; `by_alias=True`
  * dump at :5022).
  *
  * @param client - The wire client.
@@ -441,7 +441,7 @@ export async function createRcaDashboard(
 
 /**
  * Dashboard IDs containing a bookmark/report
- * (`get_bookmark_dashboard_ids`, `workspace.py:5030-5052`) — returned
+ * (`get_bookmark_dashboard_ids`, `workspace.py`) — returned
  * verbatim (Python performs no model validation here).
  *
  * @param client - The wire client.
@@ -458,7 +458,7 @@ export async function getBookmarkDashboardIds(
 
 /**
  * ERF data for a dashboard (`get_dashboard_erf`,
- * `workspace.py:5054-5076`) — returned verbatim.
+ * `workspace.py`) — returned verbatim.
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
@@ -474,7 +474,7 @@ export async function getDashboardErf(
 
 /**
  * Update a report link on a dashboard (`update_report_link`,
- * `workspace.py:5078-5110`; `by_alias=True` dump at :5109).
+ * `workspace.py`; `by_alias=True` dump at :5109).
  *
  * @param client - The wire client.
  * @param dashboardId - Dashboard identifier.
@@ -497,7 +497,7 @@ export async function updateReportLink(
 
 /**
  * Update a text card on a dashboard (`update_text_card`,
- * `workspace.py:5112-5145`) — plain `exclude_none` dump (NO
+ * `workspace.py`) — plain `exclude_none` dump (NO
  * `by_alias`, unlike its report-link sibling).
  *
  * @param client - The wire client.

@@ -1,5 +1,5 @@
 // Translated LiveQueryService tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/unit/test_live_query.py (R10.2) — ALL 7
+// assertion port of tests/unit/test_live_query.py — ALL 7
 // classes (TestLiveQueryService :57, TestSegmentation :78, TestFunnel
 // :287, TestExtractStepsFromDateData :528, TestRetention :658,
 // TestEventCounts :845, TestPropertyCounts :1013).
@@ -39,7 +39,7 @@ import {
 type Handler = (request: CapturedFetchRequest) => CannedResponse;
 
 /**
- * The `live_query_factory` fixture (test_live_query.py:21-54).
+ * The `live_query_factory` fixture.
  *
  * @param handler - The canned-response handler.
  * @returns The service under test plus the transport capture log.
@@ -52,7 +52,7 @@ function liveQueryFactory(handler: Handler): {
   return { live: new LiveQueryService(client), transport };
 }
 
-/** The `success_handler` fixture (conftest.py:311-317). */
+/** The `success_handler` fixture. */
 const successHandler: Handler = () => ({ status: 200, json: [] });
 
 /**

@@ -24,7 +24,7 @@ type Dict = Record<string, unknown>;
 /**
  * Extract error codes.
  *
- * Port of `_codes` (`test_validation_cohort.py:33-42`).
+ * Port of `_codes`.
  *
  * @param errors - Validation errors.
  * @returns The codes, in emission order.
@@ -36,7 +36,7 @@ function codes(errors: readonly ValidationError[]): string[] {
 /**
  * Build a valid bookmark dict with a cohort show clause.
  *
- * Port of `_valid_cohort_show` (`test_validation_cohort.py:45-88`).
+ * Port of `_valid_cohort_show`.
  *
  * @returns A fresh params dict.
  */
@@ -82,7 +82,7 @@ function validCohortShow(): Dict {
 /**
  * Build a valid cohort filter entry dict.
  *
- * Port of `_valid_cohort_filter_entry` (`test_validation_cohort.py:91-113`).
+ * Port of `_valid_cohort_filter_entry`.
  *
  * @returns A fresh filter clause dict.
  */
@@ -108,7 +108,7 @@ function validCohortFilterEntry(): Dict {
 /**
  * Build a valid cohort group entry dict.
  *
- * Port of `_valid_cohort_group_entry` (`test_validation_cohort.py:116-148`).
+ * Port of `_valid_cohort_group_entry`.
  *
  * @returns A fresh group clause dict.
  */
@@ -144,7 +144,7 @@ function validCohortGroupEntry(): Dict {
 /**
  * Build a minimal valid bookmark with a single filter entry.
  *
- * Port of `_bookmark_with_filter` (`test_validation_cohort.py:151-188`).
+ * Port of `_bookmark_with_filter`.
  *
  * @param filterEntry - The filter clause dict to include.
  * @returns A complete bookmark dict.
@@ -184,7 +184,7 @@ function bookmarkWithFilter(filterEntry: Dict): Dict {
 /**
  * Build a minimal valid bookmark with a single group entry.
  *
- * Port of `_bookmark_with_group` (`test_validation_cohort.py:191-228`).
+ * Port of `_bookmark_with_group`.
  *
  * @param groupEntry - The group clause dict to include.
  * @returns A complete bookmark dict.

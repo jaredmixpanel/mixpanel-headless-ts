@@ -1,7 +1,7 @@
 // B6-W3 Layer-3 translation (packet `b6-packets.md` §5) of
 // `tests/unit/test_workspace_bookmarks.py` — the WHOLE file:
-// `TestListBookmarks` (:61), `TestQuerySavedReport` (:210) and
-// `TestQueryFlows` (:450).
+// `TestListBookmarks`, `TestQuerySavedReport` and
+// `TestQueryFlows`.
 //
 // Scope note: the three MEMBERS these classes exercise
 // (`list_bookmarks`, `query_saved_report`, `query_saved_flows`) are
@@ -43,7 +43,7 @@ import {
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 
-/** The `_TEST_SESSION` twin (`test_workspace_bookmarks.py:22-31`). */
+/** The `_TEST_SESSION` twin. */
 const TEST_SESSION = makeSession({
   name: "test_account",
   projectId: "12345",

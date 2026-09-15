@@ -14,7 +14,7 @@
  * that declares the packet done.
  */
 
-/** Whether a port batch has been declared complete (R10.5). */
+/** Whether a port batch has been declared complete. */
 export type BatchStatus = "pending" | "done";
 
 /**

@@ -173,8 +173,8 @@ export function createNodeAuthEffects(
       ),
     /**
      * Single-line progress narration (`_narrate`,
-     * `accounts.py:132-148`) — a stderr write; messages are out of
-     * contract (R5.4).
+     * `accounts.py`) — a stderr write; messages are out of
+     * contract.
      *
      * @param msg - Single-line message (no trailing newline).
      */
@@ -190,7 +190,7 @@ export function createNodeAuthEffects(
  * Build the default node {@link ResolverSources} bag (env + on-disk
  * config + bridge file) — the Python `resolve_session(...)` defaults
  * (`config=ConfigManager()` / `bridge=load_bridge()`,
- * `resolver.py:407-408`) made explicit for node (packet §4.1 row 5:
+ * `resolver.py`) made explicit for node (packet §4.1 row 5:
  * closes the Phase-2 `__all__` default-wiring deferral). The bridge is
  * loaded AT CALL TIME — call this next to each `resolveSession` use.
  *
@@ -209,7 +209,7 @@ export function createNodeResolverSources(
 }
 
 /**
- * Build the `Workspace()` STARTUP sources — the `workspace.py:476-513`
+ * Build the `Workspace()` STARTUP sources — the `workspace.py`
  * constructor sequence: `load_bridge()` PLUS the bridge-token
  * materialization side effect (oauth_browser bridge tokens are written
  * to the per-account `tokens.json` so the `OnDiskTokenResolver` can

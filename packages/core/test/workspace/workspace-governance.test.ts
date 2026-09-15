@@ -2,21 +2,21 @@
 // of `tests/unit/test_workspace_governance.py` (781 lines, 14 classes
 // :194-:781):
 //
-//   enforcement : `TestGetSchemaEnforcement` (:194),
-//     `TestInitSchemaEnforcement` (:238),
-//     `TestUpdateSchemaEnforcement` (:266),
-//     `TestReplaceSchemaEnforcement` (:296),
-//     `TestDeleteSchemaEnforcement` (:332)
-//   auditing    : `TestRunAudit` (:357), `TestRunAuditEventsOnly` (:443)
-//   anomalies   : `TestListDataVolumeAnomalies` (:504),
-//     `TestUpdateAnomaly` (:575), `TestBulkUpdateAnomalies` (:596)
-//   deletion    : `TestListDeletionRequests` (:628),
-//     `TestCreateDeletionRequest` (:674),
-//     `TestCancelDeletionRequest` (:707),
-//     `TestPreviewDeletionFilters` (:731)
+//   enforcement : `TestGetSchemaEnforcement`,
+//     `TestInitSchemaEnforcement`,
+//     `TestUpdateSchemaEnforcement`,
+//     `TestReplaceSchemaEnforcement`,
+//     `TestDeleteSchemaEnforcement`
+//   auditing    : `TestRunAudit`, `TestRunAuditEventsOnly`
+//   anomalies   : `TestListDataVolumeAnomalies`,
+//     `TestUpdateAnomaly`, `TestBulkUpdateAnomalies`
+//   deletion    : `TestListDeletionRequests`,
+//     `TestCreateDeletionRequest`,
+//     `TestCancelDeletionRequest`,
+//     `TestPreviewDeletionFilters`
 //
 // Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)` (:76-93)
+// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
 // becomes `makeWorkspace(handler)`. `temp_dir` has no TS analog and is
 // dropped (the W6/W7 precedent).
 //
@@ -199,7 +199,7 @@ function deletionRequestJson(
 }
 
 // ===========================================================================
-// Schema Enforcement (:194-353)
+// Schema Enforcement
 // ===========================================================================
 
 describe("Workspace.getSchemaEnforcement", () => {
@@ -301,7 +301,7 @@ describe("Workspace.deleteSchemaEnforcement", () => {
 });
 
 // ===========================================================================
-// Data Auditing (:357-500)
+// Data Auditing
 // ===========================================================================
 
 describe("Workspace.runAudit", () => {
@@ -387,7 +387,7 @@ describe("Workspace.runAuditEventsOnly", () => {
 });
 
 // ===========================================================================
-// Data Volume Anomalies (:504-621)
+// Data Volume Anomalies
 // ===========================================================================
 
 describe("Workspace.listDataVolumeAnomalies", () => {
@@ -468,7 +468,7 @@ describe("Workspace.bulkUpdateAnomalies", () => {
 });
 
 // ===========================================================================
-// Event Deletion Requests (:628-781)
+// Event Deletion Requests
 // ===========================================================================
 
 describe("Workspace.listDeletionRequests", () => {

@@ -1,12 +1,12 @@
 /**
  * B6-W7 member module — the `Workspace` data-governance members that
- * are NOT Lexicon definitions: drop filters (`workspace.py:7583-7737`),
+ * are NOT Lexicon definitions: drop filters (`workspace.py`),
  * custom properties (`:7739-7952`), lookup tables (`:7954-8361`) and
  * custom events (`:8363-8525`), all Phase 027.
  *
  * Packet contract (`b6-packets.md` §2/§9): the `workspace.ts` B6-W7
  * section holds ONE-LINE delegations into this module; every member
- * here is a THIN facade body — options-bag mapping (R3.3/R3.8), the
+ * here is a THIN facade body — options-bag mapping, the
  * params dump (W1-D4 {@link EntityModel.modelDumpExcludeNone}), the
  * like-named B4-C5 client method
  * (`services/entities/{drop-filters,custom-properties,lookup-tables,custom-events}.ts`,
@@ -66,7 +66,7 @@
  *   `time.monotonic()` (deadline) with `time.sleep()` (`:8099-8102`).
  *   The sleep rides the client's existing injected seam
  *   (`client.core.sleep`, R6.3) with the ONE seconds→ms conversion at
- *   the call site (R2.12); the deadline rides
+ *   the call site; the deadline rides
  *   {@link LookupUploadSeams.monotonic} (SECONDS, Python spelling),
  *   whose default is `Date.now() / 1000`. Sanctioned micro-deviation:
  *   `Date.now()` is a wall clock, so a system-clock adjustment mid-poll
@@ -76,7 +76,7 @@
  *   `max_poll_seconds` keep their Python names AND their SECONDS unit
  *   in the options bag.
  * - **W7-D3 — `CreateCustomEventParams.toFormBody()`.** Python's model
- *   owns the serializer (`types.py:4929-4942`), so the twin lands on
+ *   owns the serializer (`types.py`), so the twin lands on
  *   the Phase-2 model (`types/entities/data-governance.ts`) over
  *   {@link pythonJsonDumps} — CPython `json.dumps` defaults, i.e. a
  *   SPACE after every colon/comma and `ensure_ascii=True`. R10.8: the
@@ -85,7 +85,7 @@
  *   `create_custom_property` (`:7825`) is the facade's ONLY
  *   `mode="json"` dump. For `CreateCustomPropertyParams` the flag has
  *   exactly one Python effect: `resource_type` is a `str`-`Enum`
- *   (`types.py:5333`) that mode="python" would leave as an Enum member.
+ *   (`types.py`) that mode="python" would leave as an Enum member.
  *   The TS port represents that enum as a plain string at runtime
  *   (`types/enums.ts:114-118`), and nested models
  *   (`ComposedPropertyValue`) recurse in BOTH pydantic modes, so the
@@ -133,7 +133,7 @@ import {
 // spelling since the recorder replays kwargs by name).
 // ---------------------------------------------------------------------------
 
-/** Options bag of `Workspace.listLookupTables` (`workspace.py:7957`). */
+/** Options bag of `Workspace.listLookupTables`. */
 export interface WorkspaceListLookupTablesOptions {
   /**
    * Optional filter by data group ID (Python default `None`); a
@@ -142,7 +142,7 @@ export interface WorkspaceListLookupTablesOptions {
   readonly data_group_id?: number | bigint | null | undefined;
 }
 
-/** Options bag of `Workspace.downloadLookupTable` (`workspace.py:8302`). */
+/** Options bag of `Workspace.downloadLookupTable`. */
 export interface WorkspaceDownloadLookupTableOptions {
   /** Optional file name filter (Python default `None`). */
   readonly file_name?: string | null | undefined;
@@ -151,7 +151,7 @@ export interface WorkspaceDownloadLookupTableOptions {
 }
 
 /**
- * Options bag of `Workspace.uploadLookupTable` (`workspace.py:7989-7995`).
+ * Options bag of `Workspace.uploadLookupTable`.
  *
  * Both members stay in SECONDS under their Python names — the single
  * seconds→milliseconds conversion happens at the sleep call site
@@ -173,7 +173,7 @@ export interface WorkspaceUploadLookupTableOptions {
  */
 export interface LookupUploadSeams {
   /**
-   * `Path(file_path).read_bytes()` (`workspace.py:8044`).
+   * `Path(file_path).read_bytes()`.
    *
    * @param path - The local CSV path.
    * @returns The file bytes.
@@ -186,7 +186,7 @@ export interface LookupUploadSeams {
    */
   monotonic: () => number;
   /**
-   * `time.sleep(poll_interval)` (`workspace.py:8102`) — MILLISECONDS
+   * `time.sleep(poll_interval)` — MILLISECONDS
    * (R2.12); the caller converts.
    *
    * @param ms - Milliseconds to wait.
@@ -199,14 +199,14 @@ export interface LookupUploadSeams {
 export interface LookupUploadLogger {
   /**
    * `logger.info(...)` — the async-processing notice
-   * (`workspace.py:8062-8066`).
+   * (`workspace.py`).
    *
    * @param message - The formatted text (never vector-compared).
    */
   info?: (message: string) => void;
   /**
    * `logger.debug(...)` — the per-poll status trace
-   * (`workspace.py:8132-8136`).
+   * (`workspace.py`).
    *
    * @param message - The formatted text (never vector-compared).
    */
@@ -245,12 +245,12 @@ export function defaultMonotonic(): number {
 }
 
 // ---------------------------------------------------------------------------
-// Drop filters (`workspace.py:7583-7737`)
+// Drop filters (`workspace.py`)
 // ---------------------------------------------------------------------------
 
 /**
  * List all drop filters (`list_drop_filters`,
- * `workspace.py:7586-7611`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @returns The `DropFilter` models, in response order.
@@ -274,7 +274,7 @@ export async function listDropFilters(
 
 /**
  * Create a new drop filter (`create_drop_filter`,
- * `workspace.py:7613-7646`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param params - Drop filter creation parameters (dumped WITHOUT
@@ -298,7 +298,7 @@ export async function createDropFilter(
 
 /**
  * Update a drop filter (`update_drop_filter`,
- * `workspace.py:7648-7680`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param params - Update parameters (must include the filter ID);
@@ -322,7 +322,7 @@ export async function updateDropFilter(
 
 /**
  * Delete a drop filter (`delete_drop_filter`,
- * `workspace.py:7682-7709`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param dropFilterId - Drop filter ID (integer).
@@ -345,7 +345,7 @@ export async function deleteDropFilter(
 
 /**
  * Get drop filter usage limits (`get_drop_filter_limits`,
- * `workspace.py:7711-7736`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @returns The `DropFilterLimitsResponse`.
@@ -361,12 +361,12 @@ export async function getDropFilterLimits(
 }
 
 // ---------------------------------------------------------------------------
-// Custom properties (`workspace.py:7739-7952`)
+// Custom properties (`workspace.py`)
 // ---------------------------------------------------------------------------
 
 /**
  * List all custom properties (`list_custom_properties`,
- * `workspace.py:7742-7789`).
+ * `workspace.py`).
  *
  * The shard's server-corruption branch: when the App API fails to
  * serialize a project whose custom property carries an invalid
@@ -427,7 +427,7 @@ export async function listCustomProperties(
 
 /**
  * Create a new custom property (`create_custom_property`,
- * `workspace.py:7791-7829`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param params - Creation parameters; dumped with `by_alias=True`
@@ -449,7 +449,7 @@ export async function createCustomProperty(
 
 /**
  * Get a custom property by ID (`get_custom_property`,
- * `workspace.py:7831-7859`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param propertyId - Custom property ID (string).
@@ -468,7 +468,7 @@ export async function getCustomProperty(
 
 /**
  * Update a custom property (`update_custom_property`,
- * `workspace.py:7861-7895`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param propertyId - Custom property ID (string).
@@ -493,7 +493,7 @@ export async function updateCustomProperty(
 
 /**
  * Delete a custom property (`delete_custom_property`,
- * `workspace.py:7897-7916`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param propertyId - Custom property ID (string).
@@ -510,7 +510,7 @@ export async function deleteCustomProperty(
 
 /**
  * Validate a custom property definition without creating it
- * (`validate_custom_property`, `workspace.py:7918-7951`).
+ * (`validate_custom_property`, `workspace.py`).
  *
  * Opaque passthrough: Python returns the client dict unvalidated.
  *
@@ -532,12 +532,12 @@ export async function validateCustomProperty(
 }
 
 // ---------------------------------------------------------------------------
-// Lookup tables (`workspace.py:7954-8361`)
+// Lookup tables (`workspace.py`)
 // ---------------------------------------------------------------------------
 
 /**
  * List lookup tables (`list_lookup_tables`,
- * `workspace.py:7957-7987`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param options - Optional `data_group_id` filter (keyword-only).
@@ -564,7 +564,7 @@ export async function listLookupTables(
 
 /**
  * Poll for async lookup-table upload completion
- * (`_poll_lookup_upload`, `workspace.py:8077-8144`).
+ * (`_poll_lookup_upload`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param uploadId - Async upload task ID.
@@ -651,7 +651,7 @@ async function pollLookupUpload(
 
 /**
  * Upload a CSV file as a new lookup table (`upload_lookup_table`,
- * `workspace.py:7989-8075`).
+ * `workspace.py`).
  *
  * The shard's orchestrator: signed URL → GCS PUT → register → (for
  * payloads ≥ 5 MB) poll until the async task completes. Every wire hop
@@ -740,7 +740,7 @@ export async function uploadLookupTable(
 
 /**
  * Mark a lookup table as ready after upload
- * (`mark_lookup_table_ready`, `workspace.py:8146-8188`).
+ * (`mark_lookup_table_ready`, `workspace.py`).
  *
  * Builds the form-data dict by hand (no model dump) exactly as Python
  * does at `:8178-8184`.
@@ -774,7 +774,7 @@ export async function markLookupTableReady(
 
 /**
  * Get a signed URL for uploading lookup table data
- * (`get_lookup_upload_url`, `workspace.py:8190-8220`).
+ * (`get_lookup_upload_url`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param contentType - MIME type of the file to upload (Python
@@ -794,7 +794,7 @@ export async function getLookupUploadUrl(
 
 /**
  * Get the processing status of a lookup table upload
- * (`get_lookup_upload_status`, `workspace.py:8222-8245`).
+ * (`get_lookup_upload_status`, `workspace.py`).
  *
  * Opaque passthrough (no model validation).
  *
@@ -814,7 +814,7 @@ export async function getLookupUploadStatus(
 
 /**
  * Update a lookup table (`update_lookup_table`,
- * `workspace.py:8247-8279`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param dataGroupId - Data group ID of the lookup table (signed int64;
@@ -844,7 +844,7 @@ export async function updateLookupTable(
 
 /**
  * Delete one or more lookup tables (`delete_lookup_tables`,
- * `workspace.py:8281-8300`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param dataGroupIds - Data group IDs to delete (signed int64s;
@@ -862,7 +862,7 @@ export async function deleteLookupTables(
 
 /**
  * Download lookup table data as raw CSV bytes
- * (`download_lookup_table`, `workspace.py:8302-8335`).
+ * (`download_lookup_table`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param dataGroupId - Data group ID of the lookup table (signed int64;
@@ -885,7 +885,7 @@ export async function downloadLookupTable(
 
 /**
  * Get a signed download URL for a lookup table
- * (`get_lookup_download_url`, `workspace.py:8337-8360`).
+ * (`get_lookup_download_url`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param dataGroupId - Data group ID of the lookup table (signed int64;
@@ -902,12 +902,12 @@ export async function getLookupDownloadUrl(
 }
 
 // ---------------------------------------------------------------------------
-// Custom events (`workspace.py:8363-8525`)
+// Custom events (`workspace.py`)
 // ---------------------------------------------------------------------------
 
 /**
  * Create a new custom event (`create_custom_event`,
- * `workspace.py:8366-8407`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param params - Creation parameters, serialized by the model's own
@@ -927,7 +927,7 @@ export async function createCustomEvent(
 
 /**
  * List all custom events (`list_custom_events`,
- * `workspace.py:8409-8434`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @returns The `EventDefinition` models for custom events.
@@ -948,7 +948,7 @@ export async function listCustomEvents(
 
 /**
  * Update a custom event's Lexicon entry (`update_custom_event`,
- * `workspace.py:8436-8492`).
+ * `workspace.py`).
  *
  * Identified by `custom_event_id`, never by name — a name-only PATCH
  * makes the server fabricate an orphan lexicon entry. The
@@ -979,7 +979,7 @@ export async function updateCustomEvent(
 
 /**
  * Delete a custom event (`delete_custom_event`,
- * `workspace.py:8494-8524`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param customEventId - Server-assigned custom event ID.

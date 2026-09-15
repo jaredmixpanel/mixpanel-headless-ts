@@ -1,6 +1,6 @@
 // Translated parallel query-user tests (B5-S2, packet §3): assertion-
 // for-assertion port of tests/test_workspace_query_user_parallel.py
-// (R10.2) — ALL 10 classes (TestParallelSinglePageSkip :239,
+// — ALL 10 classes (TestParallelSinglePageSkip :239,
 // TestParallelMultiPageFetch :323, TestParallelLimitAwareDispatch :509,
 // TestParallelFailedPageHandling :651, TestParallelWorkerCap :799,
 // TestParallelRateLimitWarning :899, TestParallelAggregateValidation

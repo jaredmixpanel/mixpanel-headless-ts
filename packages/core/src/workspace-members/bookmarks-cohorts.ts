@@ -1,11 +1,11 @@
 /**
  * B6-W3 member module — the `Workspace` bookmark/report and cohort
- * members (`workspace.py:5146-5748`: BOOKMARK/REPORT CRUD +
+ * members (`workspace.py`: BOOKMARK/REPORT CRUD +
  * COHORT CRUD, Phase 024).
  *
  * Packet contract (`b6-packets.md` §2/§5): the `workspace.ts` B6-W3
  * section holds ONE-LINE delegations into this module; every member
- * here is a THIN facade body — options-bag mapping (R3.3/R3.8), the
+ * here is a THIN facade body — options-bag mapping, the
  * params dump (W1-D4 {@link EntityModel.modelDumpExcludeNone}), the
  * like-named B4-C3 client method
  * (`services/entities/{bookmarks,cohorts}.ts`, composed onto the
@@ -64,7 +64,7 @@ import {
 } from "../types/entities/cohorts.js";
 import { requireResponse } from "./shared.js";
 
-/** The `logger.warning(...)` sink the two validating members use (R9.5). */
+/** The `logger.warning(...)` sink the two validating members use. */
 export interface BookmarkWarningLogger {
   /**
    * Record a warning message.
@@ -110,7 +110,7 @@ export interface ValidateBookmarkParamsSchemaOptions {
 /**
  * Validate a bookmark `params` dict against the canonical schema
  * (`Workspace._validate_bookmark_params_schema`,
- * `workspace.py:5185-5245`).
+ * `workspace.py`).
  *
  * Two modes, exactly as Python: `partial=false` (create path)
  * validates the whole payload (minus `sorting`) against the root model
@@ -177,7 +177,7 @@ export function validateBookmarkParamsSchema(
  *
  * @param schemaErrors - The validator output.
  * @param member - Python member name used in the log line.
- * @param logger - The `logger.warning` sink (R9.5).
+ * @param logger - The `logger.warning` sink.
  * @throws BookmarkValidationError - Any entry has severity `"error"`.
  */
 function gateSchemaErrors(
@@ -199,7 +199,7 @@ function gateSchemaErrors(
 
 /**
  * List bookmarks/reports via the App API v2 endpoint
- * (`list_bookmarks_v2`, `workspace.py:5150-5183`).
+ * (`list_bookmarks_v2`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param options - Optional `bookmark_type` / `ids` filters.
@@ -228,7 +228,7 @@ export async function listBookmarksV2(
 
 /**
  * Create a new bookmark (saved report) (`create_bookmark`,
- * `workspace.py:5247-5324`).
+ * `workspace.py`).
  *
  * Three Python steps, in order: the `dashboard_id is None` guard, the
  * full client-side schema gate, then the create call followed by the
@@ -239,7 +239,7 @@ export async function listBookmarksV2(
  * @param params - Bookmark creation parameters.
  * @param addReportToDashboard - The facade's own
  *   `add_report_to_dashboard` member (`self.` dispatch preserved).
- * @param logger - The `logger.warning` sink (R9.5).
+ * @param logger - The `logger.warning` sink.
  * @returns The newly created `Bookmark`.
  * @throws MixpanelHeadlessError - `dashboard_id` missing, or an empty
  *   response (`UNKNOWN_ERROR`).
@@ -291,7 +291,7 @@ export async function createBookmark(
 
 /**
  * Get a single bookmark by ID (`get_bookmark`,
- * `workspace.py:5326-5355`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param bookmarkId - Bookmark identifier.
@@ -313,13 +313,13 @@ export async function getBookmark(
 
 /**
  * Update an existing bookmark (`update_bookmark`,
- * `workspace.py:5357-5414`) — partial-aware schema gate first, then a
+ * `workspace.py`) — partial-aware schema gate first, then a
  * plain `exclude_none` dump (NO `by_alias`, unlike the create path).
  *
  * @param client - The wire client.
  * @param bookmarkId - Bookmark identifier.
  * @param params - Fields to update.
- * @param logger - The `logger.warning` sink (R9.5).
+ * @param logger - The `logger.warning` sink.
  * @returns The updated `Bookmark`.
  * @throws MixpanelHeadlessError - Empty response (`UNKNOWN_ERROR`).
  * @throws BookmarkValidationError - `params.params` (when supplied)
@@ -352,7 +352,7 @@ export async function updateBookmark(
 }
 
 /**
- * Delete a bookmark (`delete_bookmark`, `workspace.py:5416-5435`).
+ * Delete a bookmark (`delete_bookmark`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param bookmarkId - Bookmark identifier.
@@ -367,7 +367,7 @@ export async function deleteBookmark(
 
 /**
  * Delete multiple bookmarks (`bulk_delete_bookmarks`,
- * `workspace.py:5437-5456`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param ids - Bookmark IDs to delete.
@@ -382,7 +382,7 @@ export async function bulkDeleteBookmarks(
 
 /**
  * Update multiple bookmarks (`bulk_update_bookmarks`,
- * `workspace.py:5458-5479`) — each entry dumped with `exclude_none`.
+ * `workspace.py`) — each entry dumped with `exclude_none`.
  *
  * @param client - The wire client.
  * @param entries - Bookmark update entries.
@@ -399,7 +399,7 @@ export async function bulkUpdateBookmarks(
 
 /**
  * Dashboard IDs linked to a bookmark (`bookmark_linked_dashboard_ids`,
- * `workspace.py:5481-5503`) — returned verbatim (Python performs no
+ * `workspace.py`) — returned verbatim (Python performs no
  * model validation here).
  *
  * @param client - The wire client.
@@ -416,7 +416,7 @@ export async function bookmarkLinkedDashboardIds(
 
 /**
  * Change history for a bookmark (`get_bookmark_history`,
- * `workspace.py:5505-5542`) — no empty-response guard in Python: the
+ * `workspace.py`) — no empty-response guard in Python: the
  * client's re-shaped envelope goes straight into validation.
  *
  * @param client - The wire client.
@@ -441,7 +441,7 @@ export async function getBookmarkHistory(
 
 /**
  * List cohorts via the App API, full detail (`list_cohorts_full`,
- * `workspace.py:5548-5584`) — note the client method is
+ * `workspace.py`) — note the client method is
  * `list_cohorts_app`, not a like-named twin.
  *
  * @param client - The wire client.
@@ -468,7 +468,7 @@ export async function listCohortsFull(
 
 /**
  * Get a single cohort by ID (`get_cohort`,
- * `workspace.py:5586-5615`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param cohortId - Cohort identifier.
@@ -489,9 +489,9 @@ export async function getCohort(
 }
 
 /**
- * Create a new cohort (`create_cohort`, `workspace.py:5617-5648`) —
+ * Create a new cohort (`create_cohort`, `workspace.py`) —
  * the `definition` dict flattens into the top level at dump time
- * (`_DefinitionFlatteningModel.model_dump`, `types.py:2865-2878`).
+ * (`_DefinitionFlatteningModel.model_dump`, `types.py`).
  *
  * @param client - The wire client.
  * @param params - Cohort creation parameters.
@@ -513,7 +513,7 @@ export async function createCohort(
 
 /**
  * Update an existing cohort (`update_cohort`,
- * `workspace.py:5650-5682`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param cohortId - Cohort identifier.
@@ -539,7 +539,7 @@ export async function updateCohort(
 }
 
 /**
- * Delete a cohort (`delete_cohort`, `workspace.py:5684-5703`).
+ * Delete a cohort (`delete_cohort`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param cohortId - Cohort identifier.
@@ -554,7 +554,7 @@ export async function deleteCohort(
 
 /**
  * Delete multiple cohorts (`bulk_delete_cohorts`,
- * `workspace.py:5705-5724`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param ids - Cohort IDs to delete.
@@ -569,7 +569,7 @@ export async function bulkDeleteCohorts(
 
 /**
  * Update multiple cohorts (`bulk_update_cohorts`,
- * `workspace.py:5726-5747`) — each entry dumped with `exclude_none`
+ * `workspace.py`) — each entry dumped with `exclude_none`
  * (definition flattened per entry).
  *
  * @param client - The wire client.

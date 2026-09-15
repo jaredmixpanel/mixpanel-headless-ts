@@ -1,7 +1,7 @@
 /**
  * Optionally workspace-scoped App API path builder — TS port of
  * `MixpanelAPIClient.maybe_scoped_path`
- * (`mixpanel_headless/_internal/api_client.py:1637-1664`) — Phase-3
+ * (`mixpanel_headless/_internal/api_client.py`) — Phase-3
  * packet B0-2, R10.8.
  *
  * `require_scoped_path` and `resolve_workspace_id` are NOT here (they do

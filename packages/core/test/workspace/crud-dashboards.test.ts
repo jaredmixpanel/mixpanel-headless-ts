@@ -1,16 +1,16 @@
 // B6-W2 Layer-3 translation (packet `b6-packets.md` §4) of the
 // dashboard classes of `tests/unit/test_workspace_crud.py` (1,861
-// lines): `TestWorkspaceDashboardCRUD` (:189),
-// `TestWorkspaceBlueprintCohorts` (:1763),
-// `TestRemoveReportFromDashboard` (:1785) and
-// `TestAddReportToDashboard` (:1812). The bookmark/cohort classes of
+// lines): `TestWorkspaceDashboardCRUD`,
+// `TestWorkspaceBlueprintCohorts`,
+// `TestRemoveReportFromDashboard` and
+// `TestAddReportToDashboard`. The bookmark/cohort classes of
 // the same file are W3's (`crud-bookmarks-cohorts.test.ts`).
 //
 // Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)` (:80-97)
+// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
 // becomes `makeWorkspace(handler)` — the client is built over the
 // OAuth session (`_make_oauth_credentials`, :67) while the facade
-// carries the service-account `_TEST_SESSION` (:50-59), exactly as
+// carries the service-account `_TEST_SESSION`, exactly as
 // Python does. `temp_dir` has no TS analog (no config file is ever
 // touched) and is dropped.
 //
@@ -23,7 +23,7 @@
 // `update_text_card`) get delegation-contract tests, and the
 // `by_alias` request-body shapes plus the unreachable-through-the-wire
 // empty-response guards get direct member-function tests. The
-// `TestRequestBodySerialization` (`test_workspace_crud_edge.py:92`)
+// `TestRequestBodySerialization`
 // class that also covers `finalize_blueprint` /
 // `create_rca_dashboard` / `update_report_link` is W3's WHOLE-file
 // translation; the additive coverage here is the W2-local lock that
@@ -179,7 +179,7 @@ function nullClient(member: string, value: unknown): MixpanelClient {
 }
 
 // ===========================================================================
-// TestWorkspaceDashboardCRUD (:189)
+// TestWorkspaceDashboardCRUD
 // ===========================================================================
 
 describe("TestWorkspaceDashboardCRUD (:189)", () => {
@@ -228,7 +228,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
     expect(dashboard).toBeInstanceOf(Dashboard);
     expect(dashboard.id).toBe(10);
     expect(dashboard.title).toBe("New Dashboard");
-    // `model_dump(exclude_none=True)` (`workspace.py:4564`).
+    // `model_dump(exclude_none=True)`.
     expect(bodyOf(transport)).toStrictEqual({ title: "New Dashboard" });
   });
 
@@ -423,7 +423,7 @@ describe("TestWorkspaceDashboardCRUD (:189)", () => {
 });
 
 // ===========================================================================
-// TestWorkspaceBlueprintCohorts (:1763)
+// TestWorkspaceBlueprintCohorts
 // ===========================================================================
 
 describe("TestWorkspaceBlueprintCohorts (:1763)", () => {
@@ -441,7 +441,7 @@ describe("TestWorkspaceBlueprintCohorts (:1763)", () => {
 });
 
 // ===========================================================================
-// TestRemoveReportFromDashboard (:1785)
+// TestRemoveReportFromDashboard
 // ===========================================================================
 
 describe("TestRemoveReportFromDashboard (:1785)", () => {
@@ -462,7 +462,7 @@ describe("TestRemoveReportFromDashboard (:1785)", () => {
 });
 
 // ===========================================================================
-// TestAddReportToDashboard (:1812)
+// TestAddReportToDashboard
 // ===========================================================================
 
 describe("TestAddReportToDashboard (:1812)", () => {
@@ -487,7 +487,7 @@ describe("TestAddReportToDashboard (:1812)", () => {
 
   it("add_report_to_dashboard() raises for a non-dashboard response", async () => {
     // 204 → the client's `{status: "ok"}` envelope, which carries no
-    // `id` (`api_client.py:1300`), so the FACADE guard fires.
+    // `id`, so the FACADE guard fires.
     const { ws } = makeWorkspace(() => ({ status: 204 }));
 
     await expect(ws.addReportToDashboard(1, 42)).rejects.toMatchObject({
@@ -571,10 +571,10 @@ describe("ADDITIVE: zero-vector dashboard members (delegation contract)", () => 
     expect(templates[0]?.title_key).toBe("company_kpis.title");
     expect(templates[0]?.number_of_reports).toBe(4);
     // The client merges the envelope key in as `name`; `extra='allow'`
-    // keeps it (`api_client.py:4082-4099`).
+    // keeps it (`api_client.py`).
     expect(templates[0]?.__extras["name"]).toBe("company_kpis");
     // Python default `include_reports=False` sends no query param
-    // (`api_client.py:4047-4105`).
+    // (`api_client.py`).
     expect(transport.captures[0]?.params["include_reports"]).toBeUndefined();
   });
 
@@ -726,7 +726,7 @@ describe("ADDITIVE: by_alias request bodies", () => {
 });
 
 // ===========================================================================
-// ADDITIVE — the facade's `raw is None` guards (`workspace.py:4563`,
+// ADDITIVE — the facade's `raw is None` guards (`workspace.py`,
 // `:4596`, `:4629`, `:4897`, `:4928`, `:4983`, `:5020`). The real client
 // raises `MixpanelHeadlessError` for a non-dict envelope BEFORE the
 // facade sees `None`, so these branches are unreachable through the

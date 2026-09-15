@@ -48,7 +48,7 @@ describe("literal-alias and enum tables (C9 #7 runtime backstop)", () => {
     ]);
     // String enum: referenced by member NAME, compared by VALUE.
     expect(FeatureFlagStatus.ENABLED).toBe("enabled");
-    // IntEnum port preserves numeric values (R4.3).
+    // IntEnum port preserves numeric values.
     expect(AlertFrequencyPreset.HOURLY).toBe(3600);
     expect(AlertFrequencyPreset.DAILY).toBe(86400);
     expect(AlertFrequencyPreset.WEEKLY).toBe(604800);

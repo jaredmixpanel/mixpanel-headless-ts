@@ -1,4 +1,4 @@
-// invariant() tests (R6.8): throws the hierarchy base on violation,
+// invariant() tests: throws the hierarchy base on violation,
 // narrows the condition type on success.
 import { describe, expect, it } from "vitest";
 

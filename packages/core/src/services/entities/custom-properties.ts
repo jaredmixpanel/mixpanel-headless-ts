@@ -1,7 +1,7 @@
 /**
  * Custom-property wire methods (App API) — Phase-3 packet B4-C5 port
  * of the `MixpanelAPIClient` custom-properties range
- * (`api_client.py:7345-7541`).
+ * (`api_client.py`).
  *
  * All methods route through B0 `appRequest` over `maybe_scoped_path`
  * (R10.8). Custom-property IDs are STRINGS (R3-family). `update` is a
@@ -19,7 +19,7 @@ import { expectListResult, expectRecordResult } from "./shared.js";
 export interface CustomPropertyMethods {
   /**
    * List custom properties (`list_custom_properties`,
-   * `api_client.py:7345-7373` — GET `custom_properties/`).
+   * `api_client.py` — GET `custom_properties/`).
    *
    * @param signal - Optional cancellation signal.
    * @returns The property list verbatim.

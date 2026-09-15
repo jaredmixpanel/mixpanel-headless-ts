@@ -1,4 +1,4 @@
-// Trivial skeleton test (TS-1): proves the vitest harness and NodeNext
+// Trivial skeleton test: proves the vitest harness and NodeNext
 // module resolution work for this package.
 import { describe, expect, it } from "vitest";
 

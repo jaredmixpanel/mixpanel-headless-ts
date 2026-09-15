@@ -1,10 +1,10 @@
 // Layer-3 translation — Phase-3 packet B4-C6 pagination locks.
 // Sources:
 //
-// - tests/unit/test_pagination.py (824) — ALL: TestPaginateAll (:64),
-//   TestPaginateAllRobustness (:335), TestPaginateAllMalformedResults
+// - tests/unit/test_pagination.py (824) — ALL: TestPaginateAll,
+//   TestPaginateAllRobustness, TestPaginateAllMalformedResults
 //   (:519), TestPaginateAllRetryAfter (:702) + the
-//   `run_rate_limited_pagination` driver (:647).
+//   `run_rate_limited_pagination` driver.
 //
 // Translation notes (R10.2 — assertion content preserved):
 // - The Python `patch("mixpanel_headless._internal.pagination.MAX_PAGES",
@@ -41,7 +41,7 @@ import {
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 
-/** The `oauth_credentials` fixture (test_pagination.py:36-39). */
+/** The `oauth_credentials` fixture. */
 function oauthCredentials(): Session {
   return makeSession({
     projectId: "12345",
@@ -365,7 +365,7 @@ describe("TestPaginateAllRobustness", () => {
       drain(paginateAll(client, "/projects/12345/items")),
     ).rejects.toThrow(RateLimitError);
     // Python: `[call.args[0] for call in mock_sleep...] == [30.0] * 3`
-    // (seconds); the TS sleep seam is ms (R2.12).
+    // (seconds); the TS sleep seam is ms.
     expect(sleeps).toStrictEqual([30_000, 30_000, 30_000]);
   });
 
@@ -500,7 +500,7 @@ describe("TestPaginateAllMalformedResults", () => {
 });
 
 /**
- * `run_rate_limited_pagination` (test_pagination.py:647-699): drive a
+ * `run_rate_limited_pagination`: drive a
  * rate-limited walk and capture the sleep durations (ms seam) and any
  * raised error.
  *

@@ -1,9 +1,9 @@
 // Layer-3 suite for the browser DCR wrapper (b9-packets.md §3.2 row 3
 // / §3.4 `test_auth_registration.py` row): CredentialStore-cached
 // Dynamic Client Registration over the core `registerClient` POST half
-// (§3.1 hoist of `client_registration.py:96-170`). Cache-hit rule
+// (§3.1 hoist of `client_registration.py`). Cache-hit rule
 // identical to Python: the cached client is returned ONLY when its
-// `redirect_uri` matches (`client_registration.py:92-93`). Error
+// `redirect_uri` matches. Error
 // branches (network / 429 / non-success / bad JSON / missing
 // client_id) ride the hoisted core body — canned here, node's B8
 // `client-registration.test.ts` stays the exhaustive lock. R5:
@@ -53,7 +53,7 @@ describe("ensureBrowserClientRegistered", () => {
     expect(request?.method).toBe("POST");
     expect(request?.url).toBe("https://mixpanel.com/oauth/mcp/register/");
     // Body keys in Python dict insertion order
-    // (`client_registration.py:106-112`) — byte-compare.
+    // (`client_registration.py`) — byte-compare.
     expect(request?.body).toBe(
       JSON.stringify({
         redirect_uris: [REDIRECT_URI],

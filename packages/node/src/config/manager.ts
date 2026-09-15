@@ -1,13 +1,13 @@
 /**
  * On-disk TOML configuration manager — TS port of
  * `mixpanel_headless/_internal/config.py` (whole file,
- * `config.py:1-1061`; b8-packets.md §2.1 row 2). The block conversions
+ * `config.py`; b8-packets.md §2.1 row 2). The block conversions
  * live in `./blocks.ts`, the in-place `_apply_*` mutators in
  * `./apply.ts`; `../config.ts` re-exports the public surface.
  *
  * Owns the single-schema TOML config file (`~/.mp/config.toml`, or the
  * `MP_CONFIG_PATH` override read at CONSTRUCTION time exactly as
- * Python's `__init__` does, `config.py:141-153`) with `[active]`,
+ * Python's `__init__` does, `config.py`) with `[active]`,
  * `[accounts.NAME]`, `[targets.NAME]`, `[settings]` sections.
  *
  * Transaction contract (`config.py:207-235`): every public mutator is
@@ -87,7 +87,7 @@ import {
   targetFromBlock,
 } from "./blocks.js";
 
-/** `[settings].custom_header` write params (`config.py:1030-1042`). */
+/** `[settings].custom_header` write params (`config.py`). */
 export interface CustomHeaderParams {
   /** Header name (e.g. `X-Mixpanel-Cluster`). */
   readonly name: string;
@@ -98,7 +98,7 @@ export interface CustomHeaderParams {
 /**
  * The injectable atomic-write seam — the
  * `patch("…config.atomic_write_bytes")` monkeypatch twin used by the
- * single-write-per-transaction lock (`test_config.py:676`).
+ * single-write-per-transaction lock (`test_config.py`).
  */
 export type ConfigWriteBytes = (
   path: string,
@@ -110,7 +110,7 @@ export type ConfigWriteBytes = (
 export interface ConfigManagerOptions {
   /**
    * Path to the TOML config file. Defaults to `$MP_CONFIG_PATH` when
-   * set (read at construction, `config.py:150-151`), else
+   * set (read at construction, `config.py`), else
    * `~/.mp/config.toml`.
    *
    * A custom location's PARENT directory is the caller's responsibility:
@@ -128,7 +128,7 @@ export interface ConfigManagerOptions {
 
 /**
  * Single-schema configuration manager (`ConfigManager`,
- * `config.py:126-1057`).
+ * `config.py`).
  *
  * Wraps one TOML file. All operations re-read the file from disk, so
  * concurrent edits are safe in the "last write wins" sense (no file
@@ -140,7 +140,7 @@ export interface ConfigManagerOptions {
  * Layering note (B7-ARB-B B-E2E-N1): {@link addAccount} does NOT
  * promote the first account to `[active]` — that promotion happens
  * exactly once, in the `ConfigWrites` adapter transaction
- * (`config-writes.ts`, the `accounts.py:472-489` twin).
+ * (`config-writes.ts`, the `accounts.py` twin).
  */
 export class ConfigManager {
   /** The resolved config file path. */
@@ -150,7 +150,7 @@ export class ConfigManager {
   readonly #writeBytes: ConfigWriteBytes;
 
   /**
-   * Initialize the manager (`config.py:141-153`).
+   * Initialize the manager (`config.py`).
    *
    * @param options - Optional path override + test-only write seam.
    */
@@ -170,7 +170,7 @@ export class ConfigManager {
       });
   }
 
-  /** The path of the on-disk TOML config (`config.py:155-158`). */
+  /** The path of the on-disk TOML config (`config.py`). */
   get configPath(): string {
     return this.#path;
   }
@@ -254,11 +254,11 @@ export class ConfigManager {
   // ---- internals ---------------------------------------------------
 
   /**
-   * Parse the TOML file (`_read_raw`, `config.py:162-190`).
+   * Parse the TOML file (`_read_raw`, `config.py`).
    *
    * Probes for a symlink BEFORE the existence check — `existsSync`
    * follows symlinks and silently returns `false` for dangling links,
-   * hiding the attack signal (`config.py:176-183` comment ported).
+   * hiding the attack signal (`config.py` comment ported).
    *
    * @returns The raw parsed document; `{}` when the file is missing.
    * @throws ConfigError - Symlinked path, unreadable file, or
@@ -268,7 +268,7 @@ export class ConfigManager {
     try {
       rejectIfSymlink(this.#path);
     } catch (error) {
-      // Python wraps ANY OSError from the probe (`config.py:180-183`),
+      // Python wraps ANY OSError from the probe (`config.py`),
       // so errno-bearing lstat failures (e.g. EACCES on an unreadable
       // parent) code up exactly like the symlink refusal — B8-ARB-A
       // SEM-F6 (`b8-reviewA-resolution.md`).
@@ -314,7 +314,7 @@ export class ConfigManager {
 
   /**
    * Serialize `raw` to the config file with restrictive permissions
-   * (`_write_raw`, `config.py:192-205`).
+   * (`_write_raw`, `config.py`).
    *
    * Creates parent dirs (`~/.mp/`) with mode `0o700`, tightens a
    * pre-existing parent to `0o700` (failures suppressed, as Python's
@@ -330,7 +330,7 @@ export class ConfigManager {
       try {
         chmodSync(dir, 0o700);
       } catch {
-        // suppress(OSError) — best-effort tighten (`config.py:203-204`).
+        // suppress(OSError) — best-effort tighten (`config.py`).
       }
     }
     const text = stringify(raw);
@@ -343,7 +343,7 @@ export class ConfigManager {
 
   /**
    * Run one read-modify-write transaction (the `_mutate()` context
-   * manager twin, `config.py:207-234`).
+   * manager twin, `config.py`).
    *
    * The document is read once at entry and written once at exit; a
    * throwing body skips the write. Before the write,
@@ -368,7 +368,7 @@ export class ConfigManager {
 
   /**
    * List every configured account as a sorted summary
-   * (`list_accounts`, `config.py:494-531`).
+   * (`list_accounts`, `config.py`).
    *
    * @returns Sorted-by-name summaries; `is_active` is `true` iff
    *   `[active].account == name`; `referenced_by_targets` lists the
@@ -417,7 +417,7 @@ export class ConfigManager {
   }
 
   /**
-   * Load one account (`get_account`, `config.py:533-550`).
+   * Load one account (`get_account`, `config.py`).
    *
    * @param name - Account name.
    * @returns The validated account.
@@ -434,7 +434,7 @@ export class ConfigManager {
   }
 
   /**
-   * Add an account block (`add_account`, `config.py:552-605`).
+   * Add an account block (`add_account`, `config.py`).
    * NON-promoting — see the class JSDoc layering note.
    *
    * @param name - Account name (`^[a-zA-Z0-9_-]{1,64}$`).
@@ -448,7 +448,7 @@ export class ConfigManager {
 
   /**
    * Update an existing account in place (`update_account`,
-   * `config.py:607-650`). Type cannot change.
+   * `config.py`). Type cannot change.
    *
    * @param name - Account to update.
    * @param fields - Fields to rewrite.
@@ -461,7 +461,7 @@ export class ConfigManager {
   }
 
   /**
-   * Remove an account (`remove_account`, `config.py:652-690`).
+   * Remove an account (`remove_account`, `config.py`).
    *
    * @param name - Account to remove.
    * @param options - `force` removes even when targets reference it.
@@ -490,7 +490,7 @@ export class ConfigManager {
       }
       Reflect.deleteProperty(accountsBlock, name);
       // If the removed account was the active one, drop both axes
-      // (`config.py:683-689` — the workspace ID is meaningless without
+      // (`config.py` — the workspace ID is meaningless without
       // its account).
       const activeBlock = blockAt(raw, "active");
       if (activeBlock["account"] === name) {
@@ -504,7 +504,7 @@ export class ConfigManager {
 
   /**
    * Read the persisted `[active]` block (`get_active`,
-   * `config.py:694-711`).
+   * `config.py`).
    *
    * @returns The active session (empty when the block is missing).
    * @throws ConfigError - Malformed `[active]` block.
@@ -521,7 +521,7 @@ export class ConfigManager {
 
   /**
    * Update one or more `[active]` axes (`set_active`,
-   * `config.py:713-743`). Absent members leave the axis untouched
+   * `config.py`). Absent members leave the axis untouched
    * (use {@link clearActive} to remove keys).
    *
    * @param update - New account / workspace values.
@@ -537,7 +537,7 @@ export class ConfigManager {
 
   /**
    * Remove specific `[active]` axes (`clear_active`,
-   * `config.py:745-762`).
+   * `config.py`).
    *
    * @param axes - Which axes to drop.
    * @returns The updated active session.
@@ -551,7 +551,7 @@ export class ConfigManager {
 
   /**
    * Atomically apply per-axis session updates (`apply_session`,
-   * `config.py:764-833`). All axes land within ONE transaction;
+   * `config.py`). All axes land within ONE transaction;
    * `project` writes to the explicit `account` (if given) else the
    * persisted active account.
    *
@@ -604,7 +604,7 @@ export class ConfigManager {
   // ---- targets -----------------------------------------------------
 
   /**
-   * List targets sorted by name (`list_targets`, `config.py:837-860`).
+   * List targets sorted by name (`list_targets`, `config.py`).
    *
    * @returns All configured targets.
    * @throws ConfigError - A target block fails validation.
@@ -624,7 +624,7 @@ export class ConfigManager {
   }
 
   /**
-   * Load one target (`get_target`, `config.py:862-885`).
+   * Load one target (`get_target`, `config.py`).
    *
    * @param name - Target name.
    * @returns The validated target.
@@ -641,14 +641,14 @@ export class ConfigManager {
   }
 
   /**
-   * Add a target block (`add_target`, `config.py:887-933`).
+   * Add a target block (`add_target`, `config.py`).
    *
    * @param name - Target name (block key).
    * @param options - account / project / workspace.
    * @returns The constructed target.
    * @throws ConfigError - Duplicate name, missing referenced account,
    *   or validation failure (Target model errors WRAPPED,
-   *   `config.py:915-920`).
+   *   `config.py`).
    */
   addTarget(name: string, options: AddTargetOptions): Target {
     return this.transaction((raw) => {
@@ -687,7 +687,7 @@ export class ConfigManager {
   }
 
   /**
-   * Remove a target block (`remove_target`, `config.py:936-949`).
+   * Remove a target block (`remove_target`, `config.py`).
    *
    * @param name - Target to remove.
    * @throws ConfigError - Unknown target.
@@ -704,7 +704,7 @@ export class ConfigManager {
 
   /**
    * Apply a target in a single atomic save (`apply_target`,
-   * `config.py:951-1000`): `[active]` replaced WHOLESALE (a target
+   * `config.py`): `[active]` replaced WHOLESALE (a target
    * with no workspace clears any prior pin) + the target account's
    * `default_project` updated to the target's project.
    *
@@ -735,7 +735,7 @@ export class ConfigManager {
         : {};
       accountBlock["default_project"] = target.project;
       accountsBlock[target.account] = accountBlock;
-      // Replace [active] wholesale (`config.py:994-999`).
+      // Replace [active] wholesale (`config.py`).
       const activeBlock: Record<string, unknown> = { account: target.account };
       if (target.workspace !== null) {
         activeBlock["workspace"] = target.workspace;
@@ -749,7 +749,7 @@ export class ConfigManager {
 
   /**
    * Read `[settings].custom_header` (`get_custom_header`,
-   * `config.py:1004-1028`).
+   * `config.py`).
    *
    * @returns The `(name, value)` pair, or `null` when unset.
    * @throws ConfigError - Malformed block (non-table, missing keys, or
@@ -781,7 +781,7 @@ export class ConfigManager {
 
   /**
    * Write the custom HTTP header (`set_custom_header`,
-   * `config.py:1030-1042`).
+   * `config.py`).
    *
    * @param params - Header name + value.
    */

@@ -1,7 +1,7 @@
 // Translated query-user edge-case tests (B5-S2, packet §3 + §8): the
 // B2-M3 / B3-K4 file deferral (`B2-M3-notes.md:44`,
 // `B3-K4-notes.md:86`) — assertion-for-assertion port of
-// tests/test_query_user_edge_cases.py (R10.2), ALL 3 classes
+// tests/test_query_user_edge_cases.py, ALL 3 classes
 // (TestTier1DataCorruption :173, TestTier2CrashPaths :593,
 // TestTier3ValidationGaps :768).
 //

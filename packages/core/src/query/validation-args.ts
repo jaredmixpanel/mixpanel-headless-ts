@@ -236,7 +236,7 @@ function pushInvalidChoice(
 }
 
 // =============================================================================
-// validate_time_args (validation.py:511-647)
+// validate_time_args (validation.py)
 // =============================================================================
 
 /** Options bag for {@link validateTimeArgs} (Python is all-kwonly). */
@@ -363,7 +363,7 @@ export function validateTimeArgs(
 }
 
 // =============================================================================
-// validate_group_by_args (validation.py:650-771)
+// validate_group_by_args (validation.py)
 // =============================================================================
 
 /** Options bag for {@link validateGroupByArgs}. */
@@ -494,7 +494,7 @@ export function validateGroupByArgs(
 }
 
 // =============================================================================
-// validate_funnel_args (validation.py:779-1155)
+// validate_funnel_args (validation.py)
 // =============================================================================
 
 /** Options bag for {@link validateFunnelArgs}. */
@@ -886,7 +886,7 @@ export function validateFunnelArgs(
 }
 
 // =============================================================================
-// validate_retention_args (validation.py:1179-1477)
+// validate_retention_args (validation.py)
 // =============================================================================
 
 /** Options bag for {@link validateRetentionArgs}. */
@@ -1194,7 +1194,7 @@ export function validateRetentionArgs(
 }
 
 // =============================================================================
-// validate_flow_args (validation.py:1498-1764)
+// validate_flow_args (validation.py)
 // =============================================================================
 
 /** Options bag for {@link validateFlowArgs}. */
@@ -1494,7 +1494,7 @@ export function validateFlowArgs(
 }
 
 // =============================================================================
-// validate_query_args (validation.py:1885-2280)
+// validate_query_args (validation.py)
 // =============================================================================
 
 /** Options bag for {@link validateQueryArgs}. */

@@ -1,7 +1,7 @@
 /**
  * Data-volume-anomaly wire methods (App API) — Phase-3 packet B4-C5
  * port of the `MixpanelAPIClient` anomalies range
- * (`api_client.py:8422-8538`).
+ * (`api_client.py`).
  *
  * `list_data_volume_anomalies` uses `_raw=True` and digs
  * `results.anomalies` out of the envelope with the source's exact
@@ -20,7 +20,7 @@ import { expectRecordResult } from "./shared.js";
 export interface ListDataVolumeAnomaliesOptions {
   /** Optional filters (status, limit, event_id, ...). */
   readonly query_params?: Record<string, string> | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -28,7 +28,7 @@ export interface ListDataVolumeAnomaliesOptions {
 export interface AnomalyMethods {
   /**
    * List data-volume anomalies (`list_data_volume_anomalies`,
-   * `api_client.py:8422-8467` — GET
+   * `api_client.py` — GET
    * `data-definitions/data-volume-anomalies/` with `_raw=True`;
    * extracts `results.anomalies`).
    *

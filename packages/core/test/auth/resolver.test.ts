@@ -1,6 +1,6 @@
 // Layer-3 translation of `tests/unit/test_resolver.py` (443 lines, 31
 // tests, 7 classes) + `tests/unit/test_042_edge_cases.py::
-// TestResolverEdgeCases` (:325-393) — B7-A2 packet §2.4
+// TestResolverEdgeCases` — B7-A2 packet §2.4
 // (`b7-packets.md`).
 //
 // Mechanism substitutions (header-cited per R10.2 / packet §2.2, §2.4):
@@ -573,7 +573,7 @@ describe("TestCrossSourceOrdering", () => {
   });
 });
 
-// ---- test_042_edge_cases.py::TestResolverEdgeCases (:325-393) --------
+// ---- test_042_edge_cases.py::TestResolverEdgeCases --------
 
 describe("TestResolverEdgeCases (test_042_edge_cases.py)", () => {
   /**

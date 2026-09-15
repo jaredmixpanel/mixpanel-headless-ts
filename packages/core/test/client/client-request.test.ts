@@ -1,6 +1,6 @@
 // Layer-3 translation — Phase-3 packet B4-C1 request-path locks. Sources:
 //
-// - tests/unit/test_api_client.py::TestPublicRequest (:1575-1826) — the
+// - tests/unit/test_api_client.py::TestPublicRequest — the
 //   FULL class, through the REAL assembled client (B0 translated the
 //   observable subset against `executeWithRetry` directly and deferred
 //   the URL/auth-plumbing asserts here; internals.test.ts header).
@@ -10,7 +10,7 @@
 //   ::test_builds_correct_url (:109) — auth headers + URL now recorded
 //   END-TO-END through the real client + Phase-2 auth model — and
 //   ::TestAppRequestFormBody::test_form_body_sent_as_form_encoded
-//   (:316) — the adapter-owned content-type/encoding assertion. The
+//   — the adapter-owned content-type/encoding assertion. The
 //   remaining classes were translated at B0 (app-request.test.ts header;
 //   `b0-review-assertions.md`).
 //

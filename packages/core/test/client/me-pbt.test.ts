@@ -29,7 +29,7 @@ const triState = fc.constantFrom<boolean | null>(null, true, false);
 const shortText = fc.string({ unit: "binary", minLength: 1, maxLength: 8 });
 
 /**
- * The `_views` strategy (:82-95): 1-6 views, unique ids, names biased
+ * The `_views` strategy: 1-6 views, unique ids, names biased
  * toward the global-view name.
  */
 const viewsArb: fc.Arbitrary<WorkspaceView[]> = fc
@@ -55,7 +55,7 @@ const viewsArb: fc.Arbitrary<WorkspaceView[]> = fc
   );
 
 /**
- * `_views_no_global_with_apd` (:98-140): no `is_global === true`
+ * `_views_no_global_with_apd`: no `is_global === true`
  * anywhere; exactly one view (random position) named APD.
  */
 const viewsNoGlobalWithApd: fc.Arbitrary<WorkspaceView[]> = fc

@@ -1426,7 +1426,7 @@ export class SchemaGraphResult {
 
   /**
    * Build the directed event→property relationship graph
-   * (`types.SchemaGraphResult.to_graph`, `types.py:11801-11853`).
+   * (`types.SchemaGraphResult.to_graph`, `types.py`).
    *
    * Event names become nodes with `kind: "event"`, property names nodes
    * with `kind: "property"`, and a directed edge runs from each event to

@@ -1,14 +1,14 @@
 // B6-W4 Layer-3 translation (packet `b6-packets.md` §6) of the WHOLE
 // of `tests/unit/test_workspace_experiments.py` (464 lines, 3 classes):
-// `TestWorkspaceExperimentCRUD` (:125),
-// `TestWorkspaceExperimentLifecycle` (:266) and
-// `TestWorkspaceExperimentManagement` (:367).
+// `TestWorkspaceExperimentCRUD`,
+// `TestWorkspaceExperimentLifecycle` and
+// `TestWorkspaceExperimentManagement`.
 //
 // Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)` (:71-90)
+// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
 // becomes `makeWorkspace(handler)` — the client is built over the
 // OAuth session (`_make_oauth_credentials`, :56) while the facade
-// carries the service-account `_TEST_SESSION` (:40-49), exactly as
+// carries the service-account `_TEST_SESSION`, exactly as
 // Python does. Unlike the flags module, NO workspace pin is installed:
 // every experiment path is project-scoped (`experiments.ts`, B4-C4).
 // `temp_dir` has no TS analog (no config file is ever touched) and is
@@ -130,7 +130,7 @@ function stubClient(
 }
 
 // =============================================================================
-// TestWorkspaceExperimentCRUD (:125)
+// TestWorkspaceExperimentCRUD
 // =============================================================================
 
 describe("TestWorkspaceExperimentCRUD", () => {
@@ -207,7 +207,7 @@ describe("TestWorkspaceExperimentCRUD", () => {
 });
 
 // =============================================================================
-// TestWorkspaceExperimentLifecycle (:266)
+// TestWorkspaceExperimentLifecycle
 // =============================================================================
 
 describe("TestWorkspaceExperimentLifecycle", () => {
@@ -269,7 +269,7 @@ describe("TestWorkspaceExperimentLifecycle", () => {
 });
 
 // =============================================================================
-// TestWorkspaceExperimentManagement (:367)
+// TestWorkspaceExperimentManagement
 // =============================================================================
 
 describe("TestWorkspaceExperimentManagement", () => {

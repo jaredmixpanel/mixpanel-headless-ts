@@ -1,5 +1,5 @@
 // Translated workspace-cohort tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/test_workspace_cohort.py (R10.2) — BOTH
+// assertion port of tests/test_workspace_cohort.py — BOTH
 // classes (TestQueryFlowWhere :114,
 // TestResolveAndBuildParamsCohortMetric :250).
 //

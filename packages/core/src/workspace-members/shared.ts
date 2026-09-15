@@ -12,7 +12,7 @@ import { MixpanelHeadlessError, ParamValidationError } from "../errors.js";
 
 /**
  * `if raw is None: raise MixpanelHeadlessError(...)` — the facade's
- * empty-response guard (e.g. `workspace.py:4565-4568`,
+ * empty-response guard (e.g. `workspace.py`,
  * `:5312-5315`, `:5644-5647`).
  *
  * The B4 client raises for a non-dict envelope BEFORE `None` can reach

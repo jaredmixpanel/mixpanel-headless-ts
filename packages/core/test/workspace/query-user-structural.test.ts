@@ -1,6 +1,6 @@
 // Translated structural query-user tests (B5-S2, packet §3 + §8):
 // assertion-for-assertion port of tests/test_query_user_structural.py
-// (R10.2) — the 8 classes this shard owns:
+// — the 8 classes this shard owns:
 // TestParallelPageOrderingPreserved :171,
 // TestParallelLimit1FallsBackToSequential :241,
 // TestParallelPageSizeZeroFallback :274,
@@ -18,7 +18,7 @@
 //   TestTransformProfileCompletelyEmpty :509 — translated at B3-K3
 //   (`B3-K3-notes.md:93-96`).
 // The Python file also carries a `TestCredentialCheckBeforeValidation`
-// REMOVAL comment (:411) — nothing to translate.
+// REMOVAL comment — nothing to translate.
 //
 // Translation notes:
 // - `page_size=None` (Python `object.__setattr__` on a frozen

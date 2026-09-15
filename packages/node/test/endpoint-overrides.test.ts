@@ -1,4 +1,4 @@
-// Python PR #235 (AIE-925) — the node half of the `MP_API_BASE_URL` /
+// Python PR #235 — the node half of the `MP_API_BASE_URL` /
 // `MP_APP_BASE_URL` alternate-host override. Python reads both variables
 // from `os.environ` on EVERY request (`api_client._endpoints_for`); the
 // core client takes an injected provider, and `createNodeEndpointOverrides`

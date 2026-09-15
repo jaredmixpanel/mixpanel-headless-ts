@@ -540,7 +540,7 @@ describe("filterToSelector between bounds (TestFilterToSelectorBetweenBoundsVali
     const f = rawFilter("prop", "is between", ["low", 10]);
 
     // Python: `pytest.raises(ValueError, match="int or float for lower bound")`
-    // — class + code twin (R5.4).
+    // — class + code twin.
     expect(() => filterToSelector(f)).toThrow(ParamValidationError);
     const error = expectThrows(() => filterToSelector(f));
     expect((error as ParamValidationError).code).toBe(
@@ -564,7 +564,7 @@ describe("not-equals error message (TestNotEqualsErrorMessage)", () => {
     const f = rawFilter("prop", "does not equal", [{ nested: true }]);
 
     const error = expectThrows(() => filterToSelector(f));
-    // The message text is out of contract (R5.4) but ported verbatim;
+    // The message text is out of contract but ported verbatim;
     // this Python test exists ONLY to assert the method name in it, so
     // the assert translates literally rather than being weakened.
     expect((error as Error).message).toContain("Filter.not_equals");

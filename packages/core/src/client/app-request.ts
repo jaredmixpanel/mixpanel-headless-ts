@@ -1,11 +1,11 @@
 /**
  * Authenticated App API request path — TS port of
  * `MixpanelAPIClient.app_request`
- * (`mixpanel_headless/_internal/api_client.py:1191-1387`) — Phase-3
+ * (`mixpanel_headless/_internal/api_client.py`) — Phase-3
  * packet B0-2, R10.8 (ported once, by name: every entity CRUD wire
  * method (B4-C3..C5), `pagination.paginate` (B4-C6, per-page via a
  * `PageFetcher`-style seam preserving per-request auth, R2.8), and every
- * `create<Entity>Client` factory (B6, R2.9) call THIS function — never a
+ * `create<Entity>Client` factory call THIS function — never a
  * re-implementation).
  *
  * Behavior notes (byte-for-byte from source):
@@ -14,7 +14,7 @@
  *   construction) so refreshed OAuth tokens reach App API calls without
  *   rebuilding the client.
  * - NO `query_origin` on App-API params — some App API endpoints reject
- *   unknown query parameters (`api_client.py:1268-1272`).
+ *   unknown query parameters (`api_client.py`).
  * - 204 → `{status: "ok"}`; its own 429 loop (same backoff trio); 422 →
  *   `QueryError` with the lossless body; everything else delegates to
  *   {@link handleResponse}; a `results` key unwraps unless `raw`
@@ -50,7 +50,7 @@ import { buildUrl, type EndpointOverrides, type Region } from "./url.js";
 export interface AppRequestDeps {
   /** Transport seam (R2.10/R2.11 contract — see `internals.ts`). */
   readonly request: RequestExecutor;
-  /** Sleep seam in MILLISECONDS (R2.12/R6.3). */
+  /** Sleep seam in MILLISECONDS. */
   sleep: (ms: number) => Promise<void>;
   /** Uniform-[0,1) RNG for backoff jitter. */
   readonly random: RandomSource;
@@ -58,7 +58,7 @@ export interface AppRequestDeps {
   readonly maxRetries: number;
   /**
    * Resolve the default request timeout for a URL
-   * (`self._default_timeout(url)`, `api_client.py:489-509`): explicit
+   * (`self._default_timeout(url)`, `api_client.py`): explicit
    * constructor timeout wins, else the route-aware default.
    *
    * @param url - The full request URL.
@@ -90,7 +90,7 @@ export interface AppRequestDeps {
    * @returns The Authorization header value.
    */
   getAuthHeader: () => string | Promise<string>;
-  /** Optional retry-warning logger (R9.5). */
+  /** Optional retry-warning logger. */
   readonly logger?: RetryLogger | undefined;
 }
 
@@ -117,7 +117,7 @@ export interface AppRequestOptions {
 
 /**
  * Make an authenticated request to the Mixpanel App API — TS port of
- * `app_request` (`api_client.py:1191-1387`).
+ * `app_request`.
  *
  * Uses Bearer auth (OAuth) or Basic auth depending on the resolved
  * header; builds the URL from the `app` endpoint for the configured
@@ -169,7 +169,7 @@ export async function appRequest(
   const url = buildUrl(deps.region, "app", path, deps.endpointOverrides);
   // Re-resolve per request via the getAuthHeader seam so refreshed
   // OAuth tokens (browser refresh / static-token rotation) reach App
-  // API calls without rebuilding the client (api_client.py:1258-1263).
+  // API calls without rebuilding the client (api_client.py).
   const authHeader = await deps.getAuthHeader();
   const headers = deps.requestHeaders({ Authorization: authHeader });
 
@@ -229,7 +229,7 @@ export async function appRequest(
       }
 
       // Handle 422 as QueryError. Body parse mirrors the Python
-      // `response.json()` site (`api_client.py:1339-1342`): json.loads
+      // `response.json()` site: json.loads
       // non-finite constants accepted (arbiter fix F1), catch scope is
       // the JSONDecodeError analog only (arbiter fix F3/A2).
       if (response.status === 422) {

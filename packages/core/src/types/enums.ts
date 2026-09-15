@@ -100,7 +100,7 @@ export type WebhookAuthType =
 
 /**
  * Preset frequency values for alert check intervals, in seconds.
- * Python `IntEnum` → `const` object + numeric literal union (R4.3),
+ * Python `IntEnum` → `const` object + numeric literal union,
  * preserving the numeric values.
  *
  * Members: `HOURLY` (3600), `DAILY` (86400), `WEEKLY` (604800).

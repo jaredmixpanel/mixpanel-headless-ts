@@ -1,6 +1,6 @@
 // Translated insights-query integration tests (B5-S2, packet §3):
 // assertion-for-assertion port of tests/unit/test_query_integration.py
-// (R10.2) — ALL 9 classes (TestQueryTimeseries :109,
+// — ALL 9 classes (TestQueryTimeseries :109,
 // TestQueryNonExistentEvent :191, TestMultiEventIntegration :233,
 // TestFormulaIntegration :266, TestTotalModeIntegration :290,
 // TestQueryPersistence :310, TestTransformQueryResultValidation :330,

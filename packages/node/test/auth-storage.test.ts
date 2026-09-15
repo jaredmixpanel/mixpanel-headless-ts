@@ -3,11 +3,11 @@
 // `temp_dir` fixture translates to `makeTempDir` (packet §7 caution 3).
 //
 // Class-level notes:
-// - `TestOAuthStorageSecurityHardening` (:87): the lstat/stat-
+// - `TestOAuthStorageSecurityHardening`: the lstat/stat-
 //   expressible subset translates; no `O_*`-flag-specific assert exists
 //   in this class, so all 8 members are translated (the fd-flag members
 //   live in test_storage.py and are excluded THERE — packet §2.1 drop).
-// - `TestOAuthStorageConcurrency` (:748): Python threads translate to
+// - `TestOAuthStorageConcurrency`: Python threads translate to
 //   interleaved sequential writers over the pid+counter tmp scheme plus
 //   a concurrent async race (§3.3 disposition) — JS has no in-process
 //   preemption for sync FS calls, so the "no torn write" contract is
@@ -56,7 +56,7 @@ function futureIso(): string {
   return new Date(Date.now() + 3_600_000).toISOString();
 }
 
-/** The `_make_tokens` fixture twin (test_auth_storage.py:39). */
+/** The `_make_tokens` fixture twin. */
 function makeTokens(options?: {
   accessToken?: string;
   refreshToken?: string | null;
@@ -73,7 +73,7 @@ function makeTokens(options?: {
   });
 }
 
-/** The `_make_client_info` fixture twin (test_auth_storage.py:64). */
+/** The `_make_client_info` fixture twin. */
 function makeClientInfo(options?: {
   clientId?: string;
   region?: string;

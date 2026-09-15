@@ -467,7 +467,7 @@ export class CodecRegistry {
         return new PyDate(requireTagString(payload, "iso", tag));
       }
       case "SecretStr": {
-        // The REAL core Secret (R4.6), not a runner placeholder — the
+        // The REAL core Secret, not a runner placeholder — the
         // C8(a) sweep asserts the round-trip preserves the REVEALED
         // value (phase2-design C7 / arbiter V4 respec).
         return new Secret(requireTagString(payload, "value", tag));

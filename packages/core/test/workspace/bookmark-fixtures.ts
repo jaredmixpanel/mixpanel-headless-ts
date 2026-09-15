@@ -3,7 +3,7 @@
 // pass so they exercise the full create/update path (including the
 // client-side schema mirror) without false-rejection.
 //
-// Values are copied VERBATIM from the Python module (R10.2); the
+// Values are copied VERBATIM from the Python module; the
 // retention fixture is carried over even though no W3 test uses it
 // today, so later shards do not re-derive it.
 

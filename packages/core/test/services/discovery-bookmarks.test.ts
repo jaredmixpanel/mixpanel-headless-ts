@@ -1,6 +1,6 @@
 // Translated DiscoveryService.list_bookmarks tests (B5-S1, packet §4):
 // assertion-for-assertion port of tests/unit/test_discovery_bookmarks.py
-// (R10.2) — TestListBookmarks :28 (the file's only class).
+// — TestListBookmarks :28 (the file's only class).
 //
 // Translation notes:
 // - The `MagicMock()` api-client fixture becomes a stub object carrying
@@ -28,7 +28,7 @@ interface BookmarkStub {
 
 /**
  * Build the `mock_api_client` + `discovery_service` fixture pair
- * (test_discovery_bookmarks.py:16-25).
+ * (test_discovery_bookmarks.py).
  *
  * @returns The service plus the call log and a response setter.
  */

@@ -1,9 +1,9 @@
 // Layer-3 translation — Phase-3 packet B4-C1 client-core locks. Sources:
 //
-// - tests/unit/test_api_client.py::TestClientInit (:118-143),
+// - tests/unit/test_api_client.py::TestClientInit,
 //   ::TestClientLifecycle (:146-168), ::TestAuthHeader (:172-278),
 //   ::TestAPIClientProperties (:1828-1856)
-// - tests/unit/test_api_client_session.py — ALL classes (:56-368)
+// - tests/unit/test_api_client_session.py — ALL classes
 //
 // Entry-point substitutions (documented per packet C1 §Layer-3 /
 // B0-notes decision 13): httpx.MockTransport → the injected-fetch fake
@@ -32,7 +32,7 @@ import {
   staticTokenResolver,
 } from "../../test-support/client-test-helpers.js";
 
-/** The `session_team` fixture (test_api_client_session.py:28-39). */
+/** The `session_team` fixture. */
 function sessionTeam(): Session {
   return {
     account: {
@@ -47,7 +47,7 @@ function sessionTeam(): Session {
   };
 }
 
-/** The `session_other` fixture (test_api_client_session.py:42-53). */
+/** The `session_other` fixture. */
 function sessionOther(): Session {
   return {
     account: {

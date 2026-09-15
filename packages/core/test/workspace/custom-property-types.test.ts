@@ -1,6 +1,6 @@
 // Translated custom-property type + validation tests (B5-S2, packet
 // §3): assertion-for-assertion port of tests/test_custom_property_types.py
-// (R10.2) — 11 of its 12 classes: TestPropertyInput :50,
+// — 11 of its 12 classes: TestPropertyInput :50,
 // TestInlineCustomProperty :101, TestInlineCustomPropertyNumeric :140,
 // TestCustomPropertyRef :173, TestTypeWidening :227,
 // TestCustomPropertyValidationCP1 :304, …CP2 :326, …CP3 :356,

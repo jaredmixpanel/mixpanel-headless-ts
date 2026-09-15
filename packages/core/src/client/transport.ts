@@ -221,14 +221,14 @@ export interface RawFetchResult {
  * normalizes to {@link MixpanelHttpError} and is therefore retried and
  * then wrapped as `HTTP_ERROR` by the B0 loops.
  *
- * @param fetchImpl - The injected fetch (R2.4).
+ * @param fetchImpl - The injected fetch.
  * @param options - The outbound request.
  * @param signal - Optional per-call cancellation signal (R6.7 point 2:
  *   "into the request").
  * @returns The raw response wrapper (plus the timeout/release handles).
- * @throws MixpanelHttpError - Any transport-level failure (R2.10),
+ * @throws MixpanelHttpError - Any transport-level failure,
  *   including a fired request-timeout clock.
- * @throws DOMException - Name `AbortError` on cancellation (R6.7) —
+ * @throws DOMException - Name `AbortError` on cancellation —
  *   EVERY caller-initiated abort exits this way, custom reasons
  *   included (B4-ARB W-F3).
  */
@@ -339,7 +339,7 @@ export async function rawFetch(
  * text-buffering view of {@link rawFetch} that `executeWithRetry` /
  * `appRequest` / `handleResponse` consume.
  *
- * @param fetchImpl - The injected fetch (R2.4).
+ * @param fetchImpl - The injected fetch.
  * @param signal - Optional per-call cancellation signal, curried in at
  *   client assembly (R6.7 without touching B0 signatures — the
  *   B0-ARB carried item 6a mechanism).

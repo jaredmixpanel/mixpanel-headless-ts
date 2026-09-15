@@ -34,7 +34,7 @@ const GLOBAL_WORKSPACE_NAME = "All Project Data";
 
 /**
  * Constructor input for {@link MeOrgInfo} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface MeOrgInfoInit {
   /** Organization ID. */
@@ -49,7 +49,7 @@ export interface MeOrgInfoInit {
 
 /**
  * Organization information within a `/me` response (Python `MeOrgInfo`,
- * `me.py:40-72`; model_config: `extra='allow'`, `frozen=True`).
+ * `me.py`; model_config: `extra='allow'`, `frozen=True`).
  */
 export class MeOrgInfo extends EntityModel<MeOrgInfoInit> {
   /** The Python model name. */
@@ -109,7 +109,7 @@ export class MeOrgInfo extends EntityModel<MeOrgInfoInit> {
 
 /**
  * Constructor input for {@link MeProjectInfo} — absent keys take the
- * Python defaults; `undefined` counts as absent (R4.10).
+ * Python defaults; `undefined` counts as absent.
  */
 export interface MeProjectInfoInit {
   /** Project display name. */
@@ -128,7 +128,7 @@ export interface MeProjectInfoInit {
 
 /**
  * Project information within a `/me` response (Python `MeProjectInfo`,
- * `me.py:73-116`; model_config: `extra='allow'`, `frozen=True`).
+ * `me.py`; model_config: `extra='allow'`, `frozen=True`).
  */
 export class MeProjectInfo extends EntityModel<MeProjectInfoInit> {
   /** The Python model name. */
@@ -198,7 +198,7 @@ export class MeProjectInfo extends EntityModel<MeProjectInfoInit> {
 
 /**
  * Constructor input for {@link MeWorkspaceInfo} — absent keys take the
- * Python defaults; `undefined` counts as absent (R4.10).
+ * Python defaults; `undefined` counts as absent.
  */
 export interface MeWorkspaceInfoInit {
   /** Workspace ID. */
@@ -223,7 +223,7 @@ export interface MeWorkspaceInfoInit {
 
 /**
  * Workspace information within a `/me` response (Python
- * `MeWorkspaceInfo`, `me.py:117-170`; `extra='allow'`, `frozen=True`).
+ * `MeWorkspaceInfo`, `me.py`; `extra='allow'`, `frozen=True`).
  */
 export class MeWorkspaceInfo extends EntityModel<MeWorkspaceInfoInit> {
   /** The Python model name. */
@@ -340,7 +340,7 @@ export interface MeResponseInit {
 
 /**
  * Model of the Mixpanel `/me` API response (Python `MeResponse`,
- * `me.py:171-233`; `extra='allow'`, `frozen=True`). All fields optional;
+ * `me.py`; `extra='allow'`, `frozen=True`). All fields optional;
  * the three container maps default to `{}`.
  */
 export class MeResponse extends EntityModel<MeResponseInit> {
@@ -438,7 +438,7 @@ export class MeResponse extends EntityModel<MeResponseInit> {
 
 /**
  * The workspace fields used to pick a project's default data view —
- * TS port of the frozen dataclass `WorkspaceView` (`me.py:233-337`).
+ * TS port of the frozen dataclass `WorkspaceView`.
  *
  * A normalized view over the differently-shaped sources a workspace can
  * be resolved from (the cached `/me` response, `/workspaces/public`, and
@@ -460,7 +460,7 @@ export interface WorkspaceView {
 
 /**
  * Build a view from a cached `/me` workspace entry (Python
- * `WorkspaceView.from_me_workspace`, `me.py:265-281`).
+ * `WorkspaceView.from_me_workspace`, `me.py`).
  *
  * @param ws - A workspace from the per-account `/me` response.
  * @returns The normalized {@link WorkspaceView}.
@@ -479,7 +479,7 @@ export function workspaceViewFromMeWorkspace(
 
 /**
  * Build a view from a `/workspaces/public` workspace (Python
- * `WorkspaceView.from_public`, `me.py:283-300`).
+ * `WorkspaceView.from_public`, `me.py`).
  *
  * @param ws - A workspace returned by
  *   `GET /projects/{pid}/workspaces/public`.
@@ -518,7 +518,7 @@ function triStateFlag(value: unknown): boolean | null {
 /**
  * Extract a usable integer workspace id from a raw metadata value —
  * the TS twin of Python's `isinstance(wid, (int, str))` + `int(wid)`
- * (`me.py:323-329`).
+ * (`me.py`).
  *
  * Python subtleties preserved: `bool` IS an `int` subclass
  * (`True → 1`); string ids parse with the CPython `int(str)` grammar
@@ -562,7 +562,7 @@ function metadataWorkspaceId(wid: unknown): number | null {
 
 /**
  * Build a view from a projects-metadata-index workspace entry (Python
- * `WorkspaceView.from_metadata_entry`, `me.py:302-336`).
+ * `WorkspaceView.from_metadata_entry`, `me.py`).
  *
  * The metadata index is a raw, loosely-typed payload, so this is the
  * one construction path that defends against shape: a non-mapping
@@ -603,7 +603,7 @@ export function workspaceViewFromMetadataEntry(
 
 /**
  * Pick the best workspace id for auto-resolution from a project's views
- * — TS port of `select_workspace_id` (`me.py:339-382`).
+ * — TS port of `select_workspace_id`.
  *
  * Preference order: the global "see everything" view wins, then the
  * conventionally-named "All Project Data" view, then the project
@@ -657,7 +657,7 @@ export function selectWorkspaceId(
 
 /**
  * Resolve a project's best workspace id from a warm, in-process cache —
- * TS port of the `WorkspaceResolver` Protocol (`me.py:385-411`; R6.5).
+ * TS port of the `WorkspaceResolver` Protocol (`me.py`; R6.5).
  *
  * The contract the client relies on: the input is a project id as a
  * numeric string; the return is a workspace id, or `null` meaning

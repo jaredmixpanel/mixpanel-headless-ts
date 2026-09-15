@@ -4,7 +4,7 @@
  * Hand-written ports of the Pydantic entity models (phase2-design C5,
  * packet P2-7): the PYTHON models are the source of record; vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling (R3.6/R7.6); optionality follows
+ * keep their exact Python spelling; optionality follows
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
@@ -17,7 +17,7 @@ import {
 
 /**
  * Constructor input for {@link EventDefinition} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface EventDefinitionInit {
   /** Server-assigned event ID. */
@@ -55,7 +55,7 @@ export interface EventDefinitionInit {
 /**
  * A Mixpanel event definition from the Lexicon.
  *
- * Mirror of Python `mixpanel_headless.types.EventDefinition` (types.py:4625;
+ * Mirror of Python `mixpanel_headless.types.EventDefinition` (types.py;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
 export class EventDefinition extends EntityModel<EventDefinitionInit> {
@@ -171,7 +171,7 @@ export class EventDefinition extends EntityModel<EventDefinitionInit> {
 
 /**
  * Constructor input for {@link PropertyDefinition} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface PropertyDefinitionInit {
   /** Server-assigned property ID (may be absent for custom properties). */
@@ -201,7 +201,7 @@ export interface PropertyDefinitionInit {
 /**
  * A Mixpanel property definition from the Lexicon.
  *
- * Mirror of Python `mixpanel_headless.types.PropertyDefinition` (types.py:4701;
+ * Mirror of Python `mixpanel_headless.types.PropertyDefinition` (types.py;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
 export class PropertyDefinition extends EntityModel<PropertyDefinitionInit> {
@@ -299,7 +299,7 @@ export class PropertyDefinition extends EntityModel<PropertyDefinitionInit> {
 
 /**
  * Constructor input for {@link UpdateEventDefinitionParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdateEventDefinitionParamsInit {
   /** Whether hidden from UI. */
@@ -321,7 +321,7 @@ export interface UpdateEventDefinitionParamsInit {
 /**
  * Parameters for updating an event definition (PATCH semantics).
  *
- * Mirror of Python `mixpanel_headless.types.UpdateEventDefinitionParams` (types.py:4772;
+ * Mirror of Python `mixpanel_headless.types.UpdateEventDefinitionParams` (types.py;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
 export class UpdateEventDefinitionParams extends EntityModel<UpdateEventDefinitionParamsInit> {
@@ -392,7 +392,7 @@ export class UpdateEventDefinitionParams extends EntityModel<UpdateEventDefiniti
 
 /**
  * Constructor input for {@link UpdatePropertyDefinitionParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdatePropertyDefinitionParamsInit {
   /** Whether hidden from UI. */
@@ -416,7 +416,7 @@ export interface UpdatePropertyDefinitionParamsInit {
 /**
  * Parameters for updating a property definition (PATCH semantics).
  *
- * Mirror of Python `mixpanel_headless.types.UpdatePropertyDefinitionParams` (types.py:4945;
+ * Mirror of Python `mixpanel_headless.types.UpdatePropertyDefinitionParams` (types.py;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
 export class UpdatePropertyDefinitionParams extends EntityModel<UpdatePropertyDefinitionParamsInit> {
@@ -502,7 +502,7 @@ export class UpdatePropertyDefinitionParams extends EntityModel<UpdatePropertyDe
 
 /**
  * Constructor input for {@link BulkEventUpdate} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface BulkEventUpdateInit {
   /** Event name (identifier). */
@@ -530,7 +530,7 @@ export interface BulkEventUpdateInit {
 /**
  * A single event update entry for bulk operations.
  *
- * Mirror of Python `mixpanel_headless.types.BulkEventUpdate` (types.py:5002;
+ * Mirror of Python `mixpanel_headless.types.BulkEventUpdate` (types.py;
  * model_config: extra='ignore').
  */
 export class BulkEventUpdate extends EntityModel<BulkEventUpdateInit> {
@@ -607,7 +607,7 @@ export class BulkEventUpdate extends EntityModel<BulkEventUpdateInit> {
 
 /**
  * Constructor input for {@link BulkUpdateEventsParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface BulkUpdateEventsParamsInit {
   /** List of event update entries. */
@@ -619,7 +619,7 @@ export interface BulkUpdateEventsParamsInit {
 /**
  * Parameters for bulk-updating event definitions.
  *
- * Mirror of Python `mixpanel_headless.types.BulkUpdateEventsParams` (types.py:5064;
+ * Mirror of Python `mixpanel_headless.types.BulkUpdateEventsParams` (types.py;
  * model_config: extra='ignore').
  */
 export class BulkUpdateEventsParams extends EntityModel<BulkUpdateEventsParamsInit> {
@@ -668,7 +668,7 @@ export class BulkUpdateEventsParams extends EntityModel<BulkUpdateEventsParamsIn
 
 /**
  * Constructor input for {@link BulkPropertyUpdate} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface BulkPropertyUpdateInit {
   /** Property name. */
@@ -694,7 +694,7 @@ export interface BulkPropertyUpdateInit {
 /**
  * A single property update entry for bulk operations.
  *
- * Mirror of Python `mixpanel_headless.types.BulkPropertyUpdate` (types.py:5082;
+ * Mirror of Python `mixpanel_headless.types.BulkPropertyUpdate` (types.py;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
 export class BulkPropertyUpdate extends EntityModel<BulkPropertyUpdateInit> {
@@ -786,7 +786,7 @@ export class BulkPropertyUpdate extends EntityModel<BulkPropertyUpdateInit> {
 
 /**
  * Constructor input for {@link BulkUpdatePropertiesParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface BulkUpdatePropertiesParamsInit {
   /** List of property update entries. */
@@ -798,7 +798,7 @@ export interface BulkUpdatePropertiesParamsInit {
 /**
  * Parameters for bulk-updating property definitions.
  *
- * Mirror of Python `mixpanel_headless.types.BulkUpdatePropertiesParams` (types.py:5138;
+ * Mirror of Python `mixpanel_headless.types.BulkUpdatePropertiesParams` (types.py;
  * model_config: extra='ignore').
  */
 export class BulkUpdatePropertiesParams extends EntityModel<BulkUpdatePropertiesParamsInit> {
@@ -850,7 +850,7 @@ export class BulkUpdatePropertiesParams extends EntityModel<BulkUpdateProperties
 
 /**
  * Constructor input for {@link LexiconTag} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface LexiconTagInit {
   /** Server-assigned tag ID. */
@@ -862,7 +862,7 @@ export interface LexiconTagInit {
 /**
  * A Lexicon tag for categorizing event/property definitions.
  *
- * Mirror of Python `mixpanel_headless.types.LexiconTag` (types.py:5156;
+ * Mirror of Python `mixpanel_headless.types.LexiconTag` (types.py;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
 export class LexiconTag extends EntityModel<LexiconTagInit> {
@@ -909,7 +909,7 @@ export class LexiconTag extends EntityModel<LexiconTagInit> {
 
 /**
  * Constructor input for {@link CreateTagParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CreateTagParamsInit {
   /** Tag name. */
@@ -919,7 +919,7 @@ export interface CreateTagParamsInit {
 /**
  * Parameters for creating a Lexicon tag.
  *
- * Mirror of Python `mixpanel_headless.types.CreateTagParams` (types.py:5180;
+ * Mirror of Python `mixpanel_headless.types.CreateTagParams` (types.py;
  * model_config: extra='ignore').
  */
 export class CreateTagParams extends EntityModel<CreateTagParamsInit> {
@@ -963,7 +963,7 @@ export class CreateTagParams extends EntityModel<CreateTagParamsInit> {
 
 /**
  * Constructor input for {@link UpdateTagParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdateTagParamsInit {
   /** New tag name. */
@@ -973,7 +973,7 @@ export interface UpdateTagParamsInit {
 /**
  * Parameters for updating a Lexicon tag.
  *
- * Mirror of Python `mixpanel_headless.types.UpdateTagParams` (types.py:5196;
+ * Mirror of Python `mixpanel_headless.types.UpdateTagParams` (types.py;
  * model_config: extra='ignore').
  */
 export class UpdateTagParams extends EntityModel<UpdateTagParamsInit> {

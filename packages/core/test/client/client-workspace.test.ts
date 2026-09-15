@@ -1,17 +1,16 @@
 // Layer-3 translation — Phase-3 packet B4-C1 workspace-resolution locks.
 // Sources:
 //
-// - tests/unit/test_app_api_client.py::TestWorkspaceScoping (:411-516),
+// - tests/unit/test_app_api_client.py::TestWorkspaceScoping,
 //   ::TestResolveWorkspaceId (:523-609), ::TestListWorkspaces
 //   (:612-663), ::TestResolveWorkspace (:666-749),
 //   ::TestAppApiEdgeCases (:752-784), ::TestListWorkspacesEdgeCases
-//   (:792-870)
 // - tests/unit/test_workspace_resolution.py::
-//   TestResolveWorkspaceIdWithResolver (:228-456) and
+//   TestResolveWorkspaceIdWithResolver and
 //   ::TestProjectsMetadataIndex (:459-608). TestSelectWorkspaceId lives
-//   in me.test.ts; ::TestMeServiceResolveWorkspace (:154) is translated
+//   in me.test.ts; ::TestMeServiceResolveWorkspace is translated
 //   in `test/services/me-service.test.ts` and ::TestFacadeResolverWiring
-//   (:611) in `test/workspace/workspace-facade.test.ts` — both landed
+//   in `test/workspace/workspace-facade.test.ts` — both landed
 //   at B7-A1 (`b7-packets.md` §3.4; the original "B8"/"B6" assignments
 //   here were STALE post-W1, corrected per packet Caution #17).
 //
@@ -36,7 +35,7 @@ import {
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 
-/** oauth_credentials fixture (test_app_api_client.py:40-42). */
+/** oauth_credentials fixture (test_app_api_client.py). */
 function oauthSession(): ReturnType<typeof makeSession> {
   return makeSession({
     projectId: "12345",
@@ -45,7 +44,7 @@ function oauthSession(): ReturnType<typeof makeSession> {
   });
 }
 
-/** `_session_no_ws` (test_workspace_resolution.py:217-225). */
+/** `_session_no_ws`. */
 function sessionNoWs(projectId = "4025120"): ReturnType<typeof makeSession> {
   return makeSession({ name: "demo", projectId });
 }
@@ -649,7 +648,7 @@ describe("TestProjectsMetadataIndex", () => {
       sessionNoWs(),
       () => ({ status: 500, json: { error: "boom" } }),
       // Python's fixture uses the default max_retries=3; 5xx never
-      // retries (R2.5), so the default stays.
+      // retries, so the default stays.
     );
     await expect(client.resolveWorkspaceFromMetadata()).rejects.toBeInstanceOf(
       ServerError,

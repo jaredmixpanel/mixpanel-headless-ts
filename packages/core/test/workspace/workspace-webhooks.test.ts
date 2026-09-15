@@ -1,6 +1,6 @@
 // B6-W5 Layer-3 translation (packet `b6-packets.md` §7) of the WHOLE
 // of `tests/unit/test_workspace_webhooks.py` (326 lines, 2 classes):
-// `TestWorkspaceWebhookCRUD` (:141) and `TestWorkspaceWebhookTest`
+// `TestWorkspaceWebhookCRUD` and `TestWorkspaceWebhookTest`
 // (:274).
 //
 // Python's `httpx.MockTransport` handler becomes the injected-fetch
@@ -148,7 +148,7 @@ function stubClient(
 }
 
 // =============================================================================
-// TestWorkspaceWebhookCRUD (:141)
+// TestWorkspaceWebhookCRUD
 // =============================================================================
 
 describe("TestWorkspaceWebhookCRUD", () => {
@@ -221,7 +221,7 @@ describe("TestWorkspaceWebhookCRUD", () => {
 });
 
 // =============================================================================
-// TestWorkspaceWebhookTest (:274)
+// TestWorkspaceWebhookTest
 // =============================================================================
 
 describe("TestWorkspaceWebhookTest", () => {

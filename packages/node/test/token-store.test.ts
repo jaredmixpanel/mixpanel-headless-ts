@@ -1,10 +1,10 @@
 // B8-N2 locks for the REAL node `TokenStore` (auth-effects.ts:305-362;
 // b8-packets.md §3.1 row 6). There is no single Python test file — the
-// store abstracts `_persist_browser_tokens` (`accounts.py:878-893`),
-// `logout` (`accounts.py:916-929`), `_safe_rmtree_warn`
+// store abstracts `_persist_browser_tokens`,
+// `logout`, `_safe_rmtree_warn`
 // (`accounts.py:278-303`), `_client_info_path` (`accounts.py:894-915`)
 // and the B7-ARB-A SEM-F2 `account_dir(name).exists()` orphan probe
-// (`accounts.py:1704-1708`; `b7-reviewA-resolution.md:239-241`). Each
+// (`accounts.py`; `b7-reviewA-resolution.md:239-241`). Each
 // lock below cites its Python range; the B7 in-memory fake
 // (`core/test/accounts/fake-auth-effects.ts`) is the shape precedent.
 
@@ -66,7 +66,7 @@ describe("TokenStore — real node implementation (packet §3.1)", () => {
       string,
       unknown
     >;
-    // token_payload_bytes shape (token.py:188-212): refresh omitted
+    // token_payload_bytes shape (token.py): refresh omitted
     // only when null; secrets REVEALED on disk (CRED-F3 write site).
     expect(payload["access_token"]).toBe("acc-1");
     expect(payload["refresh_token"]).toBe("ref-1");

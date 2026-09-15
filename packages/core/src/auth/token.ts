@@ -229,7 +229,7 @@ export class OAuthTokens {
     });
     const now = options.now ?? Date.now;
     const expiresAt = pythonUtcIsoformat(now() + expiresIn * 1000);
-    // `str(...)` parity (`token.py:145-148`): a non-string member renders
+    // `str(...)` parity (`token.py`): a non-string member renders
     // as Python would (`{'x': 1}`), never as `[object Object]`.
     const rawRefresh = data["refresh_token"];
     const refreshToken =

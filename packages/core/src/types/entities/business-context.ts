@@ -4,7 +4,7 @@
  * Hand-written ports of the Pydantic entity models (phase2-design C5,
  * packet P2-7): the PYTHON models are the source of record; vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling (R3.6/R7.6); optionality follows
+ * keep their exact Python spelling; optionality follows
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
@@ -28,7 +28,7 @@ export const BUSINESS_CONTEXT_MAX_CHARS = 50_000;
 
 /**
  * Constructor input for {@link BusinessContext} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface BusinessContextInit {
   /** Which scope this context belongs to. */
@@ -44,7 +44,7 @@ export interface BusinessContextInit {
 /**
  * Business context content at a single scope.
  *
- * Mirror of Python `mixpanel_headless.types.BusinessContext` (types.py:12163;
+ * Mirror of Python `mixpanel_headless.types.BusinessContext` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class BusinessContext extends EntityModel<BusinessContextInit> {
@@ -137,7 +137,7 @@ export class BusinessContext extends EntityModel<BusinessContextInit> {
 
 /**
  * Constructor input for {@link BusinessContextChain} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface BusinessContextChainInit {
   /** Organization-level context (``level="organization"``). */
@@ -149,7 +149,7 @@ export interface BusinessContextChainInit {
 /**
  * Both organization and project business context returned together.
  *
- * Mirror of Python `mixpanel_headless.types.BusinessContextChain` (types.py:12240;
+ * Mirror of Python `mixpanel_headless.types.BusinessContextChain` (types.py;
  * model_config: frozen=True, extra='ignore').
  */
 export class BusinessContextChain extends EntityModel<BusinessContextChainInit> {

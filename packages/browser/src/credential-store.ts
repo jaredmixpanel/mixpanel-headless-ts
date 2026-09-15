@@ -201,7 +201,7 @@ export class LocalStorageCredentialStore implements CredentialStore {
    *
    * @param key - Namespaced key.
    * @returns The stored string, or `null` when absent.
-   * @throws OAuthError - `OAUTH_CONFIG_ERROR` on backend failure (FB-11).
+   * @throws OAuthError - `OAUTH_CONFIG_ERROR` on backend failure.
    */
   get(key: string): string | null {
     return this.#guarded("read", () => this.#storage.getItem(key));
@@ -212,7 +212,7 @@ export class LocalStorageCredentialStore implements CredentialStore {
    *
    * @param key - Namespaced key.
    * @param value - Opaque serialized payload.
-   * @throws OAuthError - `OAUTH_CONFIG_ERROR` on backend failure (FB-11).
+   * @throws OAuthError - `OAUTH_CONFIG_ERROR` on backend failure.
    */
   set(key: string, value: string): void {
     this.#guarded("write", () => {
@@ -224,7 +224,7 @@ export class LocalStorageCredentialStore implements CredentialStore {
    * Remove the value stored under `key` (no-op when absent).
    *
    * @param key - Namespaced key.
-   * @throws OAuthError - `OAUTH_CONFIG_ERROR` on backend failure (FB-11).
+   * @throws OAuthError - `OAUTH_CONFIG_ERROR` on backend failure.
    */
   delete(key: string): void {
     this.#guarded("delete", () => {

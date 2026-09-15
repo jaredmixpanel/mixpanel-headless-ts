@@ -28,7 +28,7 @@
  *    (`context.shims.today()` — the recorder ran under the frozen
  *    epoch), and the recorder output-codec twins below.
  * 4. Output codec twins: results encode exactly like the Python
- *    recorder's `encode_expect_value` field walk (`codecs.py:377-393`)
+ *    recorder's `encode_expect_value` field walk
  *    — dataclass instances to their declared-field shape (the S-shards'
  *    `toVectorPayload()` where present), Python-`float`-typed fields as
  *    raw float tokens even when integral ({@link floatToken} — the
@@ -125,7 +125,7 @@ const DEFAULT_BUILDER_SESSION: JsonValue = {
 
 /**
  * Return (building + memoizing lazily) the vector's ONE client — the
- * `_ReplayContext.get_client` twin (`execute.py:170-197`).
+ * `_ReplayContext.get_client` twin.
  *
  * Session present → the shared B4 `clientFromSession` path. Session
  * absent → the synthetic builder session over the vector fetch when one
@@ -159,7 +159,7 @@ export function clientForContext(context: InvocationContext): MixpanelClient {
 
 /**
  * Return (building + memoizing lazily) the vector's ONE `Workspace`
- * facade — the `_ReplayContext.get_workspace` twin (`execute.py:198-217`).
+ * facade — the `_ReplayContext.get_workspace` twin.
  *
  * @param context - The invocation context.
  * @returns The facade bound to the vector's shared client.
@@ -230,7 +230,7 @@ function stripRichTags(value: JsonValue): JsonValue {
 
 /**
  * Encode a facade/service return value exactly as the Python recorder's
- * `encode_expect_value` walk does (`codecs.py:377-393`):
+ * `encode_expect_value` walk does:
  *
  * - primitives pass through (the runner's own `encodeExpectValue`
  *   finishes the walk and rejects non-finite numbers);
@@ -302,7 +302,7 @@ export function encodeFacadeValue(
         for (const [key, member] of Object.entries(current)) {
           // eslint-disable-next-line max-depth -- mirrors the Python nesting; flattening would reorder the guards
           if (member === undefined) {
-            continue; // absent, not null (R3.5)
+            continue; // absent, not null
           }
           out[key] = encodeFacadeValue(codecs, member);
         }
@@ -491,7 +491,7 @@ export function optionsBag<T>(
  * directly); `clear_discovery_cache` is wire_state; the rest wire_api.
  *
  * B6-BIND extension (b6-packets.md §11): the 11 B6-W1 names register
- * here too — `use`/`close` are wire_state (`registry.py:99-104`; no
+ * here too — `use`/`close` are wire_state (`registry.py`; no
  * return-shape contract, the `clear_discovery_cache` precedent), and
  * binding `workspace.me` closes the B4 dagger holdback (§11.2): the
  * carried `api_client.resolve_workspace_id` vector's `workspace.me`
@@ -530,7 +530,7 @@ export function registerWorkspaceBindings(
     );
     // Recorder float twin: `FunnelResult.conversion_rate` and each
     // step's `conversion_rate` are Python `float`s (division /
-    // literal 1.0 — `live_query.py:135-147`).
+    // literal 1.0 — `live_query.py`).
     tagFloatMember(encoded, "conversion_rate");
     for (const step of arrayMember(encoded, "steps")) {
       tagFloatMember(step, "conversion_rate");
@@ -544,7 +544,7 @@ export function registerWorkspaceBindings(
       ws.retention(optionsBag<WorkspaceRetentionOptions>(context, [])),
     );
     // Recorder float twin: `RetentionCohort.retention` is `list[float]`
-    // (rate division, `live_query.py:159-221` — `0.0` stays `0.0`).
+    // (rate division, `live_query.py` — `0.0` stays `0.0`).
     for (const cohort of arrayMember(encoded, "cohorts")) {
       if (
         typeof cohort !== "object" ||
@@ -615,7 +615,7 @@ export function registerWorkspaceBindings(
     );
     // Recorder float twin: `FlowsResult.overall_conversion_rate` is a
     // Python float whenever the body carried a JSON number (or the 0.0
-    // default, `live_query.py:1767`); string bodies (`"NaN"`) pass
+    // default, `live_query.py`); string bodies (`"NaN"`) pass
     // through untouched.
     tagFloatMember(encoded, "overall_conversion_rate");
     return encoded;
@@ -951,7 +951,7 @@ export function registerWorkspaceBindings(
   implementations.register("workspace.stream_replay", async (context) => {
     const ws = workspaceFromSession(context);
     // Iterator members replay as their item list (the Python runner's
-    // `isinstance(result, Iterator)` branch, `execute.py:553-555`).
+    // `isinstance(result, Iterator)` branch, `execute.py`).
     return runFacade(codecs, async () => {
       const items: unknown[] = [];
       for await (const item of ws.streamReplay(
@@ -997,7 +997,7 @@ export function registerWorkspaceBindings(
 
   implementations.register("workspace.use", async (context) => {
     const ws = workspaceFromSession(context);
-    // wire_state (registry.py:99-104): setup-only replay, no
+    // wire_state (registry.py): setup-only replay, no
     // return-shape contract — Python returns `self`, which has no
     // vector encoding (the `clear_discovery_cache` precedent).
     return runFacade(codecs, async () => {

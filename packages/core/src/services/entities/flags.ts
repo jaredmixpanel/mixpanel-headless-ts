@@ -1,13 +1,13 @@
 /**
  * Feature-flag CRUD/lifecycle wire methods (App API) — Phase-3 packet
  * B4-C4 port of the `MixpanelAPIClient` feature-flags range
- * (`api_client.py:4938-5271`).
+ * (`api_client.py`).
  *
- * All methods route through B0 `appRequest` (R10.8). Flags are the one
+ * All methods route through B0 `appRequest`. Flags are the one
  * C4 domain on `require_scoped_path` — every path except
  * `get_flag_limits` is workspace-scoped (auto-discovering via the C1
  * `resolveWorkspaceId` seam); `get_flag_limits` is ALWAYS
- * project-scoped (`api_client.py:5263-5264`). Results are returned
+ * project-scoped (`api_client.py`). Results are returned
  * verbatim after the source's isinstance guard (Caution #11 — no
  * `FeatureFlag` model shaping).
  */
@@ -21,7 +21,7 @@ import { expectListResult, expectRecordResult } from "./shared.js";
 export interface FlagPathDeps {
   /**
    * Build a workspace-scoped API path (`self.require_scoped_path`,
-   * `api_client.py:1666-1694` — auto-discovers the workspace when no
+   * `api_client.py` — auto-discovers the workspace when no
    * pin is set).
    *
    * @param domainPath - Domain-relative path.
@@ -34,7 +34,7 @@ export interface FlagPathDeps {
 export interface ListFeatureFlagsOptions {
   /** When true, include archived flags (`include_archived`). */
   readonly include_archived?: boolean | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -42,7 +42,7 @@ export interface ListFeatureFlagsOptions {
 export interface GetFlagHistoryOptions {
   /** Optional query parameters (page, page_size). */
   readonly params?: Record<string, string> | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -50,7 +50,7 @@ export interface GetFlagHistoryOptions {
 export interface FlagMethods {
   /**
    * List feature flags (`list_feature_flags`,
-   * `api_client.py:4938-4973` — GET `feature-flags/`,
+   * `api_client.py` — GET `feature-flags/`,
    * workspace-scoped).
    *
    * @param options - include_archived + signal.

@@ -2,7 +2,7 @@
 // triple (positive + 2 negative controls) through the ajv Ajv2020 harness.
 // The expected verdicts were proven against the SAME schema bytes with
 // Python jsonschema Draft202012Validator (transcript in the recon file);
-// verdict parity here is the cross-language referee contract (TS-8).
+// verdict parity here is the cross-language referee contract.
 import { describe, expect, it } from "vitest";
 
 import {

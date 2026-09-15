@@ -29,7 +29,7 @@ import type { AuthEffects, ConfigWrites } from "./auth-effects.js";
 /**
  * Build the {@link ResolverSources} bag `resolveSession` consumes from
  * an effect bag (the Python `config=ConfigManager()` /
- * `bridge=load_bridge()` defaults, `resolver.py:407-408`, made
+ * `bridge=load_bridge()` defaults, `resolver.py`, made
  * explicit per R9.4).
  *
  * The bridge is loaded AT CALL TIME (Python loads it per resolution),
@@ -91,7 +91,7 @@ export function resolverSeamsFromEffects(effects: AuthEffects): ResolverSeams {
 
 /**
  * The documented `persistActive` ROUTING — the
- * `Workspace._persist_active` composition (`workspace.py:695-722`)
+ * `Workspace._persist_active` composition
  * over a config-write surface: all three axes land in ONE
  * `applySession` transaction, with `clear_workspace` set when the
  * in-session workspace was cleared (so a stale `[active].workspace`

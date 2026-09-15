@@ -1,14 +1,14 @@
 /**
  * Concrete `TokenResolver` — TS port of
  * `mixpanel_headless/_internal/auth/token_resolver.py` (whole file,
- * `token_resolver.py:1-288`; b8-packets.md §3.1 row 3).
+ * `token_resolver.py`; b8-packets.md §3.1 row 3).
  *
  * `OnDiskTokenResolver` reads OAuth browser tokens from
  * `~/.mp/accounts/{name}/tokens.json` and static tokens from inline
  * `Secret` fields or environment variables. Browser-token refresh
  * delegates to `OAuthFlow.refreshTokens` and persists the new payload
  * back atomically (`token_payload_bytes`, mode 0o600) — refresh-token
- * ROTATION KEEP included (`token_resolver.py:236-241`; packet §7
+ * ROTATION KEEP included (`token_resolver.py`; packet §7
  * caution 7: dropping it bricks future refreshes).
  *
  * Persistence world note (packet §7 caution 9): this module owns the
@@ -50,7 +50,7 @@ import { tokenPayloadBytes } from "./token-payload.js";
 
 /**
  * `<account-dir>/tokens.json` for the given account name (port of
- * `_account_tokens_path`, `token_resolver.py:40-56`). Routes through
+ * `_account_tokens_path`, `token_resolver.py`). Routes through
  * {@link accountDir} so `MP_OAUTH_STORAGE_DIR` is honored.
  *
  * @param name - Account name (validated upstream by the Account model;
@@ -77,16 +77,16 @@ export interface RefreshSeamArgs {
 export interface OnDiskTokenResolverOptions {
   /**
    * DCR client-info loader seam — the Python tests' `monkeypatch` of
-   * `OAuthStorage.load_client_info` (`test_token_resolver.py:237-249`).
+   * `OAuthStorage.load_client_info`.
    * Default: a fresh `OAuthStorage` per refresh, exactly as
-   * `_refresh_and_persist` constructs one (`token_resolver.py:211`).
+   * `_refresh_and_persist` constructs one.
    */
   readonly loadClientInfo?:
     ((region: Region) => OAuthClientInfo | null) | undefined;
   /**
    * Refresh seam — the Python tests' `monkeypatch` of
    * `OAuthFlow.refresh_tokens`. Default: a real `OAuthFlow` bound to
-   * the region (`token_resolver.py:228-234`).
+   * the region (`token_resolver.py`).
    */
   readonly refresh?:
     ((args: RefreshSeamArgs) => Promise<OAuthTokens>) | undefined;
@@ -96,14 +96,14 @@ export interface OnDiskTokenResolverOptions {
   readonly now?: (() => number) | undefined;
   /**
    * Env reader for `token_env` indirection (default: call-time
-   * `process.env` — `os.environ.get`, `token_resolver.py:273`).
+   * `process.env` — `os.environ.get`, `token_resolver.py`).
    */
   readonly env?: ((name: string) => string | undefined) | undefined;
 }
 
 /**
  * Default resolver: tokens live on disk per account (port of
- * `OnDiskTokenResolver`, `token_resolver.py:57-288`).
+ * `OnDiskTokenResolver`, `token_resolver.py`).
  */
 export class OnDiskTokenResolver implements TokenResolver {
   /** Client-info loader seam. */
@@ -150,7 +150,7 @@ export class OnDiskTokenResolver implements TokenResolver {
 
   /**
    * Return a fresh access token for an oauth_browser account (port of
-   * `get_browser_token`, `token_resolver.py:74-172`).
+   * `get_browser_token`, `token_resolver.py`).
    *
    * @param name - Account name (locates the tokens file).
    * @param region - Mixpanel region (selects the DCR client).
@@ -167,7 +167,7 @@ export class OnDiskTokenResolver implements TokenResolver {
       rejectIfSymlink(path);
     } catch (error) {
       // Python wraps ANY OSError from the probe
-      // (`token_resolver.py:104-111` `except OSError`) — errno-bearing
+      // (`token_resolver.py` `except OSError`) — errno-bearing
       // lstat failures included (B8-ARB-A SEM-F6 family,
       // `b8-reviewA-resolution.md`).
       if (!(error instanceof MixpanelHeadlessError) && !isErrnoError(error)) {
@@ -201,7 +201,7 @@ export class OnDiskTokenResolver implements TokenResolver {
       );
     }
 
-    // Single source of truth for parsing (`token_resolver.py:134-148`)
+    // Single source of truth for parsing (`token_resolver.py`)
     // — the OAuthTokens model enforces the tz-aware expiry invariant
     // and the secret wrapping in one place. Python's read is
     // Pydantic-LAX, so a numeric epoch `expires_at` is coerced first
@@ -255,7 +255,7 @@ export class OnDiskTokenResolver implements TokenResolver {
   /**
    * Refresh an expired browser token and rewrite the per-account file
    * atomically (port of `_refresh_and_persist`,
-   * `token_resolver.py:174-243`).
+   * `token_resolver.py`).
    *
    * @param args - Account name, region, tokens path, parsed tokens.
    * @returns The freshly minted access token.
@@ -286,7 +286,7 @@ export class OnDiskTokenResolver implements TokenResolver {
       region,
     });
     // Refresh tokens may rotate; if the IdP returns no new refresh
-    // token we KEEP the existing one (`token_resolver.py:236-241`).
+    // token we KEEP the existing one (`token_resolver.py`).
     if (newTokens.refresh_token === null) {
       newTokens = new OAuthTokens({
         access_token: newTokens.access_token,
@@ -302,7 +302,7 @@ export class OnDiskTokenResolver implements TokenResolver {
 
   /**
    * Return the static bearer for an oauth_token account (port of
-   * `get_static_token`, `token_resolver.py:244-283`).
+   * `get_static_token`, `token_resolver.py`).
    *
    * @param account - The account whose `token` / `token_env` resolves.
    * @returns The bearer token (no `Bearer` prefix).
@@ -316,7 +316,7 @@ export class OnDiskTokenResolver implements TokenResolver {
     const envName = account.token_env;
     if (envName === null || envName === undefined) {
       // Model invariant (`token XOR token_env`) — explicit raise so it
-      // survives without assertions (`token_resolver.py:267-272`).
+      // survives without assertions (`token_resolver.py`).
       return Promise.reject(
         new OAuthError(
           `OAuth account '${account.name}' has neither \`token\` nor ` +

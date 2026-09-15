@@ -1,10 +1,10 @@
 /**
  * Schema-enforcement wire methods (App API) — Phase-3 packet B4-C5
  * port of the `MixpanelAPIClient` enforcement range
- * (`api_client.py:8170-8339`).
+ * (`api_client.py`).
  *
  * One endpoint (`data-definitions/schema/`), five verbs, all through
- * B0 `appRequest` over `maybe_scoped_path` (R10.8); NOTE
+ * B0 `appRequest` over `maybe_scoped_path`; NOTE
  * `delete_schema_enforcement` takes NO arguments and still returns a
  * dict (unlike C5's void deletes — Behavior spine, "watch
  * delete_schemas vs delete_schema_enforcement").
@@ -20,7 +20,7 @@ import { expectRecordResult } from "./shared.js";
 export interface GetSchemaEnforcementOptions {
   /** Comma-separated field names to return (e.g. "ruleEvent,state"). */
   readonly fields?: string | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -28,7 +28,7 @@ export interface GetSchemaEnforcementOptions {
 export interface SchemaEnforcementMethods {
   /**
    * Get enforcement configuration (`get_schema_enforcement`,
-   * `api_client.py:8170-8206` — GET `data-definitions/schema/`).
+   * `api_client.py` — GET `data-definitions/schema/`).
    *
    * @param options - Optional `fields` filter + signal.
    * @returns The enforcement config dict.

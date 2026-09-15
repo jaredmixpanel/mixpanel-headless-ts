@@ -1,6 +1,6 @@
 // Translated build_retention_params tests (B5-S2, packet §3):
 // assertion-for-assertion port of tests/test_build_retention_params.py
-// (R10.2) — ALL 10 classes (TestBuildRetentionParamsDefaults :65,
+// — ALL 10 classes (TestBuildRetentionParamsDefaults :65,
 // TestBuildRetentionParamsTimeSections :162,
 // TestBuildRetentionParamsPerEventFilters :208,
 // TestBuildRetentionParamsGlobalFilters :249,

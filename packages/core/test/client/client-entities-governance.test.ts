@@ -26,7 +26,7 @@ function parseBody(bodyText: string): unknown {
   return JSON.parse(bodyText) as unknown;
 }
 
-/** The `_anomaly_json` helper twin (:556-592). */
+/** The `_anomaly_json` helper twin. */
 function anomalyJson(
   id = 1,
   eventName = "Signup",
@@ -55,7 +55,7 @@ function anomalyJson(
   };
 }
 
-/** The `_deletion_request_json` helper twin (:828-854). */
+/** The `_deletion_request_json` helper twin. */
 function deletionRequestJson(
   id = 1,
   eventName = "bad_event",

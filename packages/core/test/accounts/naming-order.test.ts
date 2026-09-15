@@ -11,9 +11,9 @@
 // Python twins asserted against (behavior arbiter): `json.loads`
 // preserves object key order; `MeResponse.organizations` is a
 // `dict[str, MeOrgInfo]` (insertion-ordered); `default_account_name`
-// picks `next(iter(me.organizations.items()))` (`naming.py:122-124`);
+// picks `next(iter(me.organizations.items()))`;
 // `resolve_workspace` iterates `me.workspaces.values()` in insertion
-// order (`me.py:869-915`).
+// order (`me.py`).
 
 import { describe, expect, it } from "vitest";
 
@@ -112,7 +112,7 @@ describe("org-ordering ratification lock (user-ratifications.md:14-22)", () => {
   it("MeService.resolveWorkspace tie-break follows insertion order", async () => {
     // Neither workspace is global/default/"All Project Data" and both
     // are visible → the selection ladder's "first non-hidden" arm
-    // returns the FIRST view in Python dict order (`me.py:377-380`),
+    // returns the FIRST view in Python dict order (`me.py`),
     // which is workspace 902 here despite 450 sorting first
     // numerically.
     const body =

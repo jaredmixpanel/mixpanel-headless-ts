@@ -685,7 +685,7 @@ describe("TestValidateUserArgsCohortDependency", () => {
     // Python: MagicMock(spec=CohortDefinition) with
     // to_dict.side_effect = ValueError("broken definition").
     // TS twin: a real-prototype instance whose toDict throws the
-    // ValueError analog (ParamValidationError, exceptions.py:97).
+    // ValueError analog (ParamValidationError, exceptions.py).
     const broken = Object.create(
       CohortDefinition.prototype,
     ) as CohortDefinition;

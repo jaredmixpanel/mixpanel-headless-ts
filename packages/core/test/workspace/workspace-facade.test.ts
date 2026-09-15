@@ -1,21 +1,21 @@
 // B6-W1 Layer-3 translation of `tests/unit/test_workspace.py` — the
 // classes the packet assigns to W1 (`b6-packets.md` §3 table):
-// `TestLiveQueries` (:118), `TestDiscovery` (:439), `TestContextManager`
+// `TestLiveQueries`, `TestDiscovery`, `TestContextManager`
 // (:712), `TestLimitValidation` (:754), `TestWorkspacesMethod` (:808),
-// `TestProjectsMethod` (:861), `TestCodedWorkspaceGuardCodes` (:919).
+// `TestProjectsMethod`, `TestCodedWorkspaceGuardCodes`.
 //
 // B7-A1 resolutions (`b7-packets.md` §3.4 — this header now lists ZERO
 // B7 deferrals):
 //
-// - `TestCredentialResolution` (:96): the class body is EMPTY in
+// - `TestCredentialResolution`: the class body is EMPTY in
 //   Python (every case was removed in B1 "Fix 10"); nothing to port —
 //   decision recorded here, no translation exists by construction.
 // - `TestCodedWorkspaceGuardCodes::test_ws1_init_target_with_account`
 //   (:969), `…_with_workspace` (:975) and
-//   `test_ws_guards_stay_catchable_as_value_error` (:1021): the
+//   `test_ws_guards_stay_catchable_as_value_error`: the
 //   CONSTRUCTOR-guard trio is translated in `workspace-init.test.ts`
 //   (B7 constructor section). The `use()` twin (:981, :993) stays here.
-// - `TestFacadeResolverWiring` (test_workspace_resolution.py:611) is
+// - `TestFacadeResolverWiring` is
 //   translated at the BOTTOM of this file (the stale B4-C1 header in
 //   `client-workspace.test.ts` mis-assigned it — packet Caution #17).
 //
@@ -24,16 +24,16 @@
 // claimed the classes whole while translating a subset, an R10.2
 // misclaim):
 //
-// - `TestLiveQueries::test_query_saved_report_delegation` (:293) →
+// - `TestLiveQueries::test_query_saved_report_delegation` →
 //   `workspace-bookmarks.test.ts` `TestQuerySavedReport
-//   (test_workspace_bookmarks.py:210)` (8 tests, delegation + kwargs).
-// - `TestDiscovery` (:439): 9 of 11 cases have twins in the B5
-//   translation `discovery-facade.test.ts` — `property_values` (:478) →
+//   (test_workspace_bookmarks.py)` (8 tests, delegation + kwargs).
+// - `TestDiscovery`: 9 of 11 cases have twins in the B5
+//   translation `discovery-facade.test.ts` — `property_values` →
 //   :99, `subproperties` (:498) → :112/:127, `funnels` (:523) → :137,
-//   `cohorts` (:544) → :147, `top_events` (:572) → :191,
+//   `cohorts` → :147, `top_events` → :191,
 //   `clear_discovery_cache` (:594) → :210/:224, `lexicon_schemas`
-//   (:610) + `…_with_entity_type_filter` (:649) → :233, `lexicon_schema`
-//   (:678) → :255. The `events`/`properties` delegation pair (:442,
+//   + `…_with_entity_type_filter` → :233, `lexicon_schema`
+//   → :255. The `events`/`properties` delegation pair (:442,
 //   :460) is translated below.
 // - The remaining 7 `TestLiveQueries` delegation cases (:210-:431) had
 //   NO Layer-3 twin anywhere and are translated below (B6-ARB fix).
@@ -81,7 +81,7 @@ import {
 import { expectRejects, expectThrows } from "../../test-support/raises.js";
 import { makeEffects } from "../accounts/fake-auth-effects.js";
 
-/** The `_TEST_SESSION` twin (`test_workspace.py:38-46`). */
+/** The `_TEST_SESSION` twin. */
 const TEST_SESSION = makeSession({
   name: "test_account",
   projectId: "12345",
@@ -397,7 +397,7 @@ describe("TestContextManager (test_workspace.py:712)", () => {
   it("`await using` disposal closes the facade (the __enter__ twin)", async () => {
     // Python's `with ws as entered: assert entered is ws` locks that the
     // context manager hands back the SAME object. The TS twin is
-    // `Symbol.asyncDispose` (R6.2) — there is no `__enter__` return
+    // `Symbol.asyncDispose` — there is no `__enter__` return
     // value, so the invariant that survives translation is that
     // disposal runs `close()` on this instance.
     const { ws, client } = makeWorkspace();
@@ -666,7 +666,7 @@ describe("MeService construction (workspace.py:866-885)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// B7-A1: `TestFacadeResolverWiring` (test_workspace_resolution.py:611)
+// B7-A1: `TestFacadeResolverWiring`
 // — the dagger vector's Layer-3 twin, landed here per `b7-packets.md`
 // §3.4 (the stale B4-C1 header orphaned it — Caution #17).
 //
@@ -677,7 +677,7 @@ describe("MeService construction (workspace.py:866-885)", () => {
 // in-memory effects fake + real `resolverSeamsFromEffects`.
 // ---------------------------------------------------------------------------
 
-/** `_me_dict` twin (test_workspace_resolution.py:46-61). */
+/** `_me_dict` twin. */
 function meDict(
   workspaces: Record<string, unknown>,
   projects: Record<string, unknown>,
@@ -690,7 +690,7 @@ function meDict(
   };
 }
 
-/** `_ws` twin (test_workspace_resolution.py:64-93). */
+/** `_ws` twin. */
 function wsEntry(
   wid: number,
   overrides: Record<string, unknown> = {},

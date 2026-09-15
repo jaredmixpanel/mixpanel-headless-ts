@@ -42,7 +42,7 @@ export const BOOKMARK_ENUMS_SOURCE_MODULE =
  * Maximum number of steps allowed in a funnel query.
  *
  * Port of the module-private `_MAX_FUNNEL_STEPS`
- * (`bookmark_enums.py:516`). Landed by the B2 V1a validator shard
+ * (`bookmark_enums.py`). Landed by the B2 V1a validator shard
  * (b2-packets.md §V1b TS-homes coordination note: V1a reached F1
  * first, so V1a adds the constants and V1b imports); consumed by
  * `validateFunnelArgs` rule F1_MAX_STEPS. Exported for intra-package
@@ -56,7 +56,7 @@ export const MAX_FUNNEL_STEPS = 100;
  * Maximum number of holding-constant properties allowed.
  *
  * Port of the module-private `_MAX_HOLDING_CONSTANT`
- * (`bookmark_enums.py:519`). Same landing note as
+ * (`bookmark_enums.py`). Same landing note as
  * {@link MAX_FUNNEL_STEPS}; consumed by `validateFunnelArgs` rule
  * F8_MAX_HOLDING_CONSTANT. Exported for intra-package use only.
  *
@@ -521,7 +521,7 @@ export const VALID_CONVERSION_WINDOW_UNITS: ReadonlySet<string> = new Set([
 /**
  * Maximum conversion window duration per unit (all values correspond
  * to approximately 366 days). Python `dict` lookup table →
- * `ReadonlyMap` (R4.8); sourced from
+ * `ReadonlyMap`; sourced from
  * `analytics/api/version_2_0/arb_funnels/validate.py` `_MAX_LENGTHS`.
  */
 export const MAX_CONVERSION_WINDOW: ReadonlyMap<string, number> = new Map([

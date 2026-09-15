@@ -1,7 +1,7 @@
 /**
  * Custom-event wire methods (App API) — Phase-3 packet B4-C5 port of
  * the `MixpanelAPIClient` custom-events range
- * (`api_client.py:7988-8164`, incl. the index-absent
+ * (`api_client.py`, incl. the index-absent
  * `list_custom_events` `:8038` — R10.5, Layer-3-locked only).
  *
  * All methods route through B0 `appRequest` over `maybe_scoped_path`
@@ -24,7 +24,7 @@ import { expectListResult, expectRecordResult, pyIntEquals } from "./shared.js";
 export interface CustomEventMethods {
   /**
    * Create a custom event (`create_custom_event`,
-   * `api_client.py:7988-8036` — POST `custom_events/` with a
+   * `api_client.py` — POST `custom_events/` with a
    * form-encoded body; unwraps the `{custom_event: ...}` inner
    * envelope after `appRequest`'s `results` unwrap).
    *

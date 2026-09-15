@@ -1,8 +1,8 @@
 // Layer-3 translation of the MeCache classes of `tests/unit/test_me.py`
-// (b8-packets.md §3.3 row 6): `TestMeCache` (:228),
-// `TestMeCacheConcurrency` (:331), `TestMeCacheSymlinkRejection` (:685).
-// Models (:38-227) landed at B4-C1 (`core/test/client/me.test.ts`) and
-// `TestMeService` (:458) at B6 (`core/test/services/me-service.test.ts`)
+// (b8-packets.md §3.3 row 6): `TestMeCache`,
+// `TestMeCacheConcurrency`, `TestMeCacheSymlinkRejection`.
+// Models landed at B4-C1 (`core/test/client/me.test.ts`) and
+// `TestMeService` at B6 (`core/test/services/me-service.test.ts`)
 // — NOT re-translated (packet row).
 //
 // Python's `time.sleep(1.1)` TTL probe translates to the injected `now`
@@ -49,7 +49,7 @@ afterEach(() => {
   }
 });
 
-/** The `sample_response` fixture twin (test_me.py:244). */
+/** The `sample_response` fixture twin. */
 function sampleResponse(): MeResponse {
   return new MeResponse({
     user_id: 42,

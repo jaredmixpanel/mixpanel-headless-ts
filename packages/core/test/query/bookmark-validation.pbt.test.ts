@@ -24,7 +24,7 @@ import { validateBookmark } from "../../src/query/validation-bookmark.js";
 type Dict = Record<string, unknown>;
 
 // =============================================================================
-// Strategies (test_bookmark_validation_pbt.py:29-45)
+// Strategies (test_bookmark_validation_pbt.py)
 // =============================================================================
 
 /** Port of `_all_valid_math`. */
@@ -50,7 +50,7 @@ const invalidChartTypesArb = fc
   .filter((s) => !VALID_CHART_TYPES.has(s));
 
 // =============================================================================
-// Helpers (test_bookmark_validation_pbt.py:53-139)
+// Helpers (test_bookmark_validation_pbt.py)
 // =============================================================================
 
 /**

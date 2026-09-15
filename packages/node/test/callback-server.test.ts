@@ -1,6 +1,6 @@
 // Layer-3 translation of `tests/unit/test_auth_callback.py`
-// (b8-packets.md §4.3 row 3): `TestCallbackResult` (:33),
-// `TestStartCallbackServer` (:49), `TestCallbackHtmlSecurity` (:281) —
+// (b8-packets.md §4.3 row 3): `TestCallbackResult`,
+// `TestStartCallbackServer`, `TestCallbackHtmlSecurity` —
 // all 12 tests. Real 127.0.0.1 binds (packet §7 caution 17 — a local
 // bind, not network). Python binds the fixed ports throughout; here
 // only the two port-SCAN cases do (they occupy 19284… first and assert

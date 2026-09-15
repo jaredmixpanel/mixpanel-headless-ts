@@ -1,6 +1,6 @@
 // Translated Phase-008 LiveQueryService tests (B5-S2, packet §3):
 // assertion-for-assertion port of tests/unit/test_live_query_phase008.py
-// (R10.2) — ALL 8 classes (TestActivityFeedService :68,
+// — ALL 8 classes (TestActivityFeedService :68,
 // TestNumericSumService :279, TestNumericAverageService :355,
 // TestFrequencyService :427, TestNumericBucketService :516,
 // TestQuerySavedReportService :597, TestPhase008ServiceErrorHandling
@@ -48,7 +48,7 @@ import {
 type Handler = (request: CapturedFetchRequest) => CannedResponse;
 
 /**
- * The `live_query_factory` fixture (test_live_query_phase008.py:34-60).
+ * The `live_query_factory` fixture.
  *
  * @param handler - The canned-response handler.
  * @returns The service under test.

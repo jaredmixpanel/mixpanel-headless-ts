@@ -1,4 +1,4 @@
-// B0-1 (P3-4): tests written FIRST from R11.3 semantics. Every expected
+// B0-1: tests written FIRST from R11.3 semantics. Every expected
 // value below was produced by CPython 3.14.6 `float(str)` (the oracle) on
 // 2026-08-15; the parse-grammar probes are recorded in
 // docs/history/phase3/notes/B0-notes.md (Python repo).

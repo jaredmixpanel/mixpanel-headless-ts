@@ -58,7 +58,7 @@ type Dict = Readonly<Record<string, unknown>>;
 // rrweb event-shape enums (R4.3 — const objects, numeric values preserved)
 // =============================================================================
 
-/** RRWeb event types (`EventType`, `rrweb_analyzer.py:52-59`). */
+/** RRWeb event types (`EventType`, `rrweb_analyzer.py`). */
 const EventType = {
   FULL_SNAPSHOT: 2,
   INCREMENTAL_SNAPSHOT: 3,
@@ -68,7 +68,7 @@ const EventType = {
 
 /**
  * RRWeb `IncrementalSnapshot.data.source` discriminators we handle
- * (`IncrementalSource`, `rrweb_analyzer.py:61-69`).
+ * (`IncrementalSource`, `rrweb_analyzer.py`).
  */
 const IncrementalSource = {
   MUTATION: 0,
@@ -80,7 +80,7 @@ const IncrementalSource = {
 
 /**
  * `MouseInteraction.data.type` values we emit actions for
- * (`MouseInteractionType`, `rrweb_analyzer.py:71-79`).
+ * (`MouseInteractionType`, `rrweb_analyzer.py`).
  */
 const MouseInteractionType = {
   CLICK: 2,
@@ -90,7 +90,7 @@ const MouseInteractionType = {
   TOUCH_START: 7,
 } as const;
 
-/** rrweb DOM node types (`NodeType`, `rrweb_analyzer.py:81-86`). */
+/** rrweb DOM node types (`NodeType`, `rrweb_analyzer.py`). */
 const NodeType = {
   ELEMENT: 2,
   TEXT: 3,
@@ -102,7 +102,7 @@ const NodeType = {
 
 /**
  * A single page navigation extracted from Meta events (`PageVisit`,
- * `rrweb_analyzer.py:94-105`).
+ * `rrweb_analyzer.py`).
  */
 interface PageVisit {
   /** Unix ms timestamp of the Meta event. */
@@ -113,7 +113,7 @@ interface PageVisit {
 
 /**
  * A console-error log entry extracted from the rrweb console plugin
- * (`ConsoleError`, `rrweb_analyzer.py:107-120`).
+ * (`ConsoleError`, `rrweb_analyzer.py`).
  */
 interface ConsoleError {
   /** Unix ms timestamp. */
@@ -126,7 +126,7 @@ interface ConsoleError {
 
 /**
  * The full bundle returned by {@link RrwebAnalyzer.analyze}
- * (`AnalyzerResult`, `rrweb_analyzer.py:122-138`).
+ * (`AnalyzerResult`, `rrweb_analyzer.py`).
  */
 export interface AnalyzerResult {
   /** Structured `UserAction` records in timestamp order. */
@@ -139,7 +139,7 @@ export interface AnalyzerResult {
   readonly errors: readonly ConsoleError[];
 }
 
-/** Debug/info log seam for the module's two `log.*` sites (R9.5). */
+/** Debug/info log seam for the module's two `log.*` sites. */
 export interface AnalyzerLogger {
   /**
    * Record a debug message (the `DOMTracker` max-nodes site).
@@ -161,7 +161,7 @@ export interface AnalyzerLogger {
 
 /**
  * Pick the stable `data-*` selector attributes from a node's attrs
- * (`_selector_attrs`, `rrweb_analyzer.py:145-165`).
+ * (`_selector_attrs`, `rrweb_analyzer.py`).
  *
  * These are the test-id-style hooks (`data-testid`, `data-cy`, …) that
  * `selectorLabelFn` reads off `UserAction.metadata`. Capturing every
@@ -203,7 +203,7 @@ export interface TrackedNode {
 
 /** Constructor options of {@link DOMTracker}. */
 export interface DOMTrackerOptions {
-  /** Optional debug sink for the max-nodes site (R9.5). */
+  /** Optional debug sink for the max-nodes site. */
   readonly logger?: AnalyzerLogger | undefined;
   /** Node-map cap; defaults to {@link DOMTracker.DEFAULT_MAX_NODES}. */
   readonly maxNodes?: number | undefined;
@@ -216,7 +216,7 @@ export interface DOMTrackerOptions {
 
 /**
  * Lightweight DOM state tracker (`DOMTracker`,
- * `rrweb_analyzer.py:168-518`).
+ * `rrweb_analyzer.py`).
  *
  * Tracks all nodes with metadata needed for user-action descriptions.
  * Walks `FullSnapshot` roots, applies `Mutation.adds` / removes /
@@ -271,12 +271,12 @@ export class DOMTracker {
   /** Whether the node cap has been hit at least once. */
   reachedMaxNodes = false;
 
-  /** The `log.debug` sink (R9.5). */
+  /** The `log.debug` sink. */
   readonly #logger: AnalyzerLogger | undefined;
 
   /**
    * Initialize an empty node map + description cache (`__init__`,
-   * `rrweb_analyzer.py:203-207`).
+   * `rrweb_analyzer.py`).
    *
    * @param options - Optional debug sink, node-map cap and ancestor bound.
    */
@@ -289,7 +289,7 @@ export class DOMTracker {
 
   /**
    * Strip / drop trivially uninformative string values (empty, `'none'`)
-   * — `_sanitize_value`, `rrweb_analyzer.py:209-217`.
+   * — `_sanitize_value`, `rrweb_analyzer.py`.
    *
    * @param value - The raw attribute / text value.
    * @returns `""` for blank or `"none"`-ish strings, the stripped string
@@ -311,7 +311,7 @@ export class DOMTracker {
 
   /**
    * Walk a FullSnapshot / mutation-add root and record element nodes
-   * (`add_node`, `rrweb_analyzer.py:219-296`).
+   * (`add_node`, `rrweb_analyzer.py`).
    *
    * @param node - The rrweb node dict to ingest.
    * @param parentId - Optional parent rrweb node id for ancestor
@@ -427,7 +427,7 @@ export class DOMTracker {
 
   /**
    * Concatenate direct text-child content for an interactive element
-   * (`_extract_text`, `rrweb_analyzer.py:298-305`).
+   * (`_extract_text`, `rrweb_analyzer.py`).
    *
    * @param node - The element node dict.
    * @returns The space-joined text of its direct text children.
@@ -451,7 +451,7 @@ export class DOMTracker {
 
   /**
    * Drop a node + its cached description (mutation remove —
-   * `remove_node`, `rrweb_analyzer.py:307-310`).
+   * `remove_node`, `rrweb_analyzer.py`).
    *
    * @param nodeId - The rrweb node id.
    */
@@ -462,7 +462,7 @@ export class DOMTracker {
 
   /**
    * Update the text of a node + its interactive ancestor, if any
-   * (`update_text`, `rrweb_analyzer.py:312-328`).
+   * (`update_text`, `rrweb_analyzer.py`).
    *
    * @param nodeId - The rrweb node id.
    * @param text - The new text value.
@@ -498,7 +498,7 @@ export class DOMTracker {
 
   /**
    * Merge new descriptive attributes onto an existing node
-   * (`update_attributes`, `rrweb_analyzer.py:330-346`).
+   * (`update_attributes`, `rrweb_analyzer.py`).
    *
    * @param nodeId - The rrweb node id.
    * @param attributes - The mutation's `{attr: value}` payload.
@@ -535,7 +535,7 @@ export class DOMTracker {
 
   /**
    * Return the node's captured `data-*` selector attributes
-   * (`get_node_selectors`, `rrweb_analyzer.py:348-365`).
+   * (`get_node_selectors`, `rrweb_analyzer.py`).
    *
    * @param nodeId - The rrweb node id.
    * @returns A fresh `{attr: value}` map of the node's `data-*`
@@ -557,7 +557,7 @@ export class DOMTracker {
 
   /**
    * Best-effort human-readable description of a node
-   * (`get_node_description`, `rrweb_analyzer.py:367-390`).
+   * (`get_node_description`, `rrweb_analyzer.py`).
    *
    * @param nodeId - The rrweb node id.
    * @returns A description built from the node's own tag / attributes /
@@ -589,7 +589,7 @@ export class DOMTracker {
 
   /**
    * Build a description from the node's own metadata, if any
-   * (`_build_node_description`, `rrweb_analyzer.py:392-451`). The
+   * (`_build_node_description`, `rrweb_analyzer.py`). The
    * attribute ladder is ORDER-SENSITIVE (packet §9 Caution #11).
    *
    * @param nodeId - The rrweb node id.
@@ -665,7 +665,7 @@ export class DOMTracker {
 
   /**
    * Walk up to {@link maxAncestorDepth} parents for descriptive
-   * context (`_get_ancestor_context`, `rrweb_analyzer.py:453-487`).
+   * context (`_get_ancestor_context`, `rrweb_analyzer.py`).
    *
    * @param nodeId - The rrweb node id.
    * @returns `"{tag} in {parent_description}"` when a describable
@@ -721,7 +721,7 @@ export class DOMTracker {
 /**
  * Maps `MouseInteractionType` to the human-readable verb used in
  * description strings (`_MOUSE_INTERACTION_NAMES`,
- * `rrweb_analyzer.py:496-502`).
+ * `rrweb_analyzer.py`).
  */
 const MOUSE_INTERACTION_NAMES: ReadonlyMap<number, string> = new Map([
   [MouseInteractionType.CLICK, "clicked"],
@@ -733,7 +733,7 @@ const MOUSE_INTERACTION_NAMES: ReadonlyMap<number, string> = new Map([
 
 /**
  * Maps the human-readable verb to the public `UserAction.action`
- * literal (`_INTERACTION_TO_ACTION`, `rrweb_analyzer.py:504-514`). All
+ * literal (`_INTERACTION_TO_ACTION`, `rrweb_analyzer.py`). All
  * click-family interactions collapse to `"click"` so `ReplayBundle`
  * aggregations work uniformly; the original interaction is preserved in
  * `metadata["interaction"]`.
@@ -748,7 +748,7 @@ const INTERACTION_TO_ACTION: ReadonlyMap<string, string> = new Map([
 
 /**
  * Single-pass rrweb event walker emitting structured + textual actions
- * (`EventAnalyzer`, `rrweb_analyzer.py:517-819`).
+ * (`EventAnalyzer`, `rrweb_analyzer.py`).
  *
  * Applies per-source debouncing (scroll / input / selection at 1s each)
  * and plugin-event filtering for `rrweb/console@*` console errors.
@@ -797,7 +797,7 @@ class EventAnalyzer {
 
   /**
    * Initialize the analyzer with an optional pre-seeded DOM tracker
-   * (`__init__`, `rrweb_analyzer.py:532-546`).
+   * (`__init__`, `rrweb_analyzer.py`).
    *
    * @param domTracker - Optional pre-seeded tracker.
    */
@@ -808,7 +808,7 @@ class EventAnalyzer {
   /**
    * Append both a structured `UserAction` and a
    * `(timestamp, description)` line (`_emit`,
-   * `rrweb_analyzer.py:548-582`).
+   * `rrweb_analyzer.py`).
    *
    * @param timestamp - Unix ms.
    * @param action - One of the public `UserAction.action` literals.
@@ -849,7 +849,7 @@ class EventAnalyzer {
 
   /**
    * Dispatch a single rrweb event to its type-specific handler
-   * (`process_event`, `rrweb_analyzer.py:584-597`).
+   * (`process_event`, `rrweb_analyzer.py`).
    *
    * @param event - The raw rrweb event dict.
    */
@@ -891,7 +891,7 @@ class EventAnalyzer {
 
   /**
    * Handle navigations (Meta events) — update current URL + emit
-   * (`_process_meta`, `rrweb_analyzer.py:599-611`).
+   * (`_process_meta`, `rrweb_analyzer.py`).
    *
    * @param timestamp - Unix ms.
    * @param data - The event's `data` payload.
@@ -911,7 +911,7 @@ class EventAnalyzer {
 
   /**
    * Ingest a FullSnapshot root into the DOM tracker; emit no action
-   * (`_process_full_snapshot`, `rrweb_analyzer.py:613-618`).
+   * (`_process_full_snapshot`, `rrweb_analyzer.py`).
    *
    * @param data - The event's `data` payload.
    */
@@ -924,7 +924,7 @@ class EventAnalyzer {
 
   /**
    * Route incremental snapshots by their `data.source` discriminator
-   * (`_process_incremental_snapshot`, `rrweb_analyzer.py:620-633`).
+   * (`_process_incremental_snapshot`, `rrweb_analyzer.py`).
    *
    * @param timestamp - Unix ms.
    * @param data - The event's `data` payload.
@@ -963,7 +963,7 @@ class EventAnalyzer {
 
   /**
    * Apply Mutation adds / removes / texts / attributes to the DOM
-   * tracker (`_process_mutation`, `rrweb_analyzer.py:635-656`).
+   * tracker (`_process_mutation`, `rrweb_analyzer.py`).
    *
    * @param data - The event's `data` payload.
    */
@@ -1014,7 +1014,7 @@ class EventAnalyzer {
 
   /**
    * Emit click-family / focus / touch-start actions for interactions
-   * (`_process_mouse_interaction`, `rrweb_analyzer.py:658-692`).
+   * (`_process_mouse_interaction`, `rrweb_analyzer.py`).
    *
    * @param timestamp - Unix ms.
    * @param data - The event's `data` payload.
@@ -1064,7 +1064,7 @@ class EventAnalyzer {
 
   /**
    * Emit a debounced scroll action (`_process_scroll`,
-   * `rrweb_analyzer.py:694-699`).
+   * `rrweb_analyzer.py`).
    *
    * @param timestamp - Unix ms.
    */
@@ -1077,7 +1077,7 @@ class EventAnalyzer {
 
   /**
    * Emit a debounced input action (per-node) — `_process_input`,
-   * `rrweb_analyzer.py:701-742`.
+   * `rrweb_analyzer.py`.
    *
    * @param timestamp - Unix ms.
    * @param data - The event's `data` payload.
@@ -1112,7 +1112,7 @@ class EventAnalyzer {
 
     const metadata: Record<string, unknown> = {
       // Python `len(text) if isinstance(text, str) else 0` — `len` is
-      // code points (R11.6).
+      // code points.
       text_length: typeof text === "string" ? cpLength(text) : 0,
       is_checked: isChecked === undefined ? null : isChecked,
     };
@@ -1131,7 +1131,7 @@ class EventAnalyzer {
 
   /**
    * Emit a debounced text-selection action (`_process_selection`,
-   * `rrweb_analyzer.py:744-786`).
+   * `rrweb_analyzer.py`).
    *
    * @param timestamp - Unix ms.
    * @param data - The event's `data` payload.
@@ -1193,7 +1193,7 @@ class EventAnalyzer {
 
   /**
    * Emit `console_error` actions for `rrweb/console@*` plugin payloads
-   * (`_process_plugin_event`, `rrweb_analyzer.py:788-819`).
+   * (`_process_plugin_event`, `rrweb_analyzer.py`).
    *
    * @param timestamp - Unix ms.
    * @param data - The event's `data` payload.
@@ -1239,7 +1239,7 @@ class EventAnalyzer {
 
 /**
  * Render `{ts_seconds}: {description}` lines, collapsing runs
- * (`_collapse_timeline`, `rrweb_analyzer.py:820-846`).
+ * (`_collapse_timeline`, `rrweb_analyzer.py`).
  *
  * Consecutive entries with an identical description coalesce into a
  * single line with a `(×N)` suffix. The timestamp shown is the first in
@@ -1272,7 +1272,7 @@ function collapseTimeline(
 
 /**
  * Render `{ts_seconds}: {description}` lines from a description list
- * (`MarkdownReporter`, `rrweb_analyzer.py:849-871`).
+ * (`MarkdownReporter`, `rrweb_analyzer.py`).
  */
 export class MarkdownReporter {
   /** The parallel `(timestamp_ms, description)` pairs. */
@@ -1307,7 +1307,7 @@ export class MarkdownReporter {
 
 /**
  * Convert a raw rrweb event stream into normalized actions + markdown
- * (`RrwebAnalyzer`, `rrweb_analyzer.py:874-921`).
+ * (`RrwebAnalyzer`, `rrweb_analyzer.py`).
  *
  * Stateless across calls: each {@link analyze} invocation constructs its
  * own {@link DOMTracker} + {@link EventAnalyzer}. Inputs are not
@@ -1322,7 +1322,7 @@ export class MarkdownReporter {
  * ```
  */
 export class RrwebAnalyzer {
-  /** The `log.info` sink (R9.5). */
+  /** The `log.info` sink. */
   readonly #logger: AnalyzerLogger | undefined;
 
   /**
@@ -1336,7 +1336,7 @@ export class RrwebAnalyzer {
 
   /**
    * Walk `events` once and produce the {@link AnalyzerResult}
-   * (`analyze`, `rrweb_analyzer.py:892-921`).
+   * (`analyze`, `rrweb_analyzer.py`).
    *
    * @param events - Raw rrweb event dicts. Order doesn't matter — the
    *   analyzer sorts a shallow copy by `timestamp` before walking.
@@ -1387,10 +1387,10 @@ export class RrwebAnalyzer {
 
 /**
  * Convenience entry: walk events + return the markdown string
- * (`analyze_events`, `rrweb_analyzer.py:924-949`).
+ * (`analyze_events`, `rrweb_analyzer.py`).
  *
  * @param rrwebEvents - List of rrweb event dicts.
- * @param logger - Optional log sink (R9.5).
+ * @param logger - Optional log sink.
  * @returns The markdown timeline string.
  * @throws ValueError - `rrwebEvents` is empty or not a list.
  */
@@ -1413,7 +1413,7 @@ export function analyzeEvents(
 
 /**
  * Render a markdown timeline from a structured action list
- * (`_render_markdown`, `rrweb_analyzer.py:952-969`).
+ * (`_render_markdown`, `rrweb_analyzer.py`).
  *
  * Renders each action's full `description` (falling back to
  * `target_desc` when empty) and collapses consecutive duplicates via
@@ -1518,7 +1518,7 @@ function stripQuotes(text: string): string {
 
 /**
  * `urllib.parse.urlparse(href).path` for the `<a href="http…">` branch
- * (`rrweb_analyzer.py:434-443`) — the analyzer only reads `.path`, and
+ * (`rrweb_analyzer.py`) — the analyzer only reads `.path`, and
  * CPython's parser takes everything after the authority up to the
  * first `?` or `#`.
  *

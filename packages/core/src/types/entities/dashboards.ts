@@ -4,7 +4,7 @@
  * Hand-written ports of the Pydantic entity models (phase2-design C5,
  * packet P2-7): the PYTHON models are the source of record; vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling (R3.6/R7.6); optionality follows
+ * keep their exact Python spelling; optionality follows
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
@@ -17,7 +17,7 @@ import {
 
 /**
  * Constructor input for {@link Dashboard} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface DashboardInit {
   /** Unique dashboard identifier. */
@@ -105,7 +105,7 @@ export interface DashboardInit {
 /**
  * A Mixpanel dashboard as returned by the App API.
  *
- * Mirror of Python `mixpanel_headless.types.Dashboard` (types.py:1762;
+ * Mirror of Python `mixpanel_headless.types.Dashboard` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class Dashboard extends EntityModel<DashboardInit> {
@@ -266,7 +266,7 @@ export class Dashboard extends EntityModel<DashboardInit> {
 
 /**
  * Constructor input for {@link DashboardRowContent} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface DashboardRowContentInit {
   /** Type of content: ``"text"`` for text cards, ``"report"`` for reports. */
@@ -278,7 +278,7 @@ export interface DashboardRowContentInit {
 /**
  * A single content item within a dashboard row.
  *
- * Mirror of Python `mixpanel_headless.types.DashboardRowContent` (types.py:1948;
+ * Mirror of Python `mixpanel_headless.types.DashboardRowContent` (types.py;
  * model_config: extra='ignore').
  */
 export class DashboardRowContent extends EntityModel<DashboardRowContentInit> {
@@ -325,7 +325,7 @@ export class DashboardRowContent extends EntityModel<DashboardRowContentInit> {
 
 /**
  * Constructor input for {@link DashboardRow} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface DashboardRowInit {
   /** Content items in this row (max 4). */
@@ -337,7 +337,7 @@ export interface DashboardRowInit {
 /**
  * A row of content items for a dashboard.
  *
- * Mirror of Python `mixpanel_headless.types.DashboardRow` (types.py:1989;
+ * Mirror of Python `mixpanel_headless.types.DashboardRow` (types.py;
  * model_config: extra='ignore').
  */
 export class DashboardRow extends EntityModel<DashboardRowInit> {
@@ -386,7 +386,7 @@ export class DashboardRow extends EntityModel<DashboardRowInit> {
 
 /**
  * Constructor input for {@link CreateDashboardParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CreateDashboardParamsInit {
   /** Dashboard title (required). */
@@ -415,7 +415,7 @@ export interface CreateDashboardParamsInit {
 /**
  * Parameters for creating a new dashboard.
  *
- * Mirror of Python `mixpanel_headless.types.CreateDashboardParams` (types.py:2019;
+ * Mirror of Python `mixpanel_headless.types.CreateDashboardParams` (types.py;
  * model_config: extra='ignore').
  */
 export class CreateDashboardParams extends EntityModel<CreateDashboardParamsInit> {
@@ -488,7 +488,7 @@ export class CreateDashboardParams extends EntityModel<CreateDashboardParamsInit
 
 /**
  * Constructor input for {@link UpdateDashboardParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdateDashboardParamsInit {
   /** New dashboard title. */
@@ -514,7 +514,7 @@ export interface UpdateDashboardParamsInit {
 /**
  * Parameters for updating an existing dashboard.
  *
- * Mirror of Python `mixpanel_headless.types.UpdateDashboardParams` (types.py:2101;
+ * Mirror of Python `mixpanel_headless.types.UpdateDashboardParams` (types.py;
  * model_config: extra='ignore').
  */
 export class UpdateDashboardParams extends EntityModel<UpdateDashboardParamsInit> {
@@ -582,7 +582,7 @@ export class UpdateDashboardParams extends EntityModel<UpdateDashboardParamsInit
 
 /**
  * Constructor input for {@link BlueprintTemplate} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface BlueprintTemplateInit {
   /** Template title key. */
@@ -598,7 +598,7 @@ export interface BlueprintTemplateInit {
 /**
  * A dashboard blueprint template.
  *
- * Mirror of Python `mixpanel_headless.types.BlueprintTemplate` (types.py:2158;
+ * Mirror of Python `mixpanel_headless.types.BlueprintTemplate` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class BlueprintTemplate extends EntityModel<BlueprintTemplateInit> {
@@ -651,7 +651,7 @@ export class BlueprintTemplate extends EntityModel<BlueprintTemplateInit> {
 
 /**
  * Constructor input for {@link BlueprintConfig} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface BlueprintConfigInit {
   /** Template variable mappings. */
@@ -661,7 +661,7 @@ export interface BlueprintConfigInit {
 /**
  * Configuration for a dashboard blueprint.
  *
- * Mirror of Python `mixpanel_headless.types.BlueprintConfig` (types.py:2190;
+ * Mirror of Python `mixpanel_headless.types.BlueprintConfig` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class BlueprintConfig extends EntityModel<BlueprintConfigInit> {
@@ -705,7 +705,7 @@ export class BlueprintConfig extends EntityModel<BlueprintConfigInit> {
 
 /**
  * Constructor input for {@link BlueprintCard} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface BlueprintCardInit {
   /** Card type (serialized as ``"type"``). */
@@ -725,7 +725,7 @@ export interface BlueprintCardInit {
 /**
  * A card in a blueprint dashboard.
  *
- * Mirror of Python `mixpanel_headless.types.BlueprintCard` (types.py:2208;
+ * Mirror of Python `mixpanel_headless.types.BlueprintCard` (types.py;
  * model_config: extra='allow', populate_by_name=True).
  */
 export class BlueprintCard extends EntityModel<BlueprintCardInit> {
@@ -790,7 +790,7 @@ export class BlueprintCard extends EntityModel<BlueprintCardInit> {
 
 /**
  * Constructor input for {@link BlueprintFinishParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface BlueprintFinishParamsInit {
   /** ID of the blueprint dashboard to finalize. */
@@ -804,7 +804,7 @@ export interface BlueprintFinishParamsInit {
 /**
  * Parameters for finalizing a blueprint dashboard.
  *
- * Mirror of Python `mixpanel_headless.types.BlueprintFinishParams` (types.py:2248;
+ * Mirror of Python `mixpanel_headless.types.BlueprintFinishParams` (types.py;
  * model_config: extra='ignore').
  */
 export class BlueprintFinishParams extends EntityModel<BlueprintFinishParamsInit> {
@@ -856,7 +856,7 @@ export class BlueprintFinishParams extends EntityModel<BlueprintFinishParamsInit
 
 /**
  * Constructor input for {@link RcaSourceData} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface RcaSourceDataInit {
   /** Source type (serialized as ``"type"``). */
@@ -870,7 +870,7 @@ export interface RcaSourceDataInit {
 /**
  * Source data for RCA dashboard creation.
  *
- * Mirror of Python `mixpanel_headless.types.RcaSourceData` (types.py:2271;
+ * Mirror of Python `mixpanel_headless.types.RcaSourceData` (types.py;
  * model_config: extra='allow', populate_by_name=True).
  */
 export class RcaSourceData extends EntityModel<RcaSourceDataInit> {
@@ -926,7 +926,7 @@ export class RcaSourceData extends EntityModel<RcaSourceDataInit> {
 
 /**
  * Constructor input for {@link CreateRcaDashboardParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CreateRcaDashboardParamsInit {
   /** Source ID for RCA analysis. */
@@ -938,7 +938,7 @@ export interface CreateRcaDashboardParamsInit {
 /**
  * Parameters for creating an RCA dashboard.
  *
- * Mirror of Python `mixpanel_headless.types.CreateRcaDashboardParams` (types.py:2299;
+ * Mirror of Python `mixpanel_headless.types.CreateRcaDashboardParams` (types.py;
  * model_config: extra='ignore').
  */
 export class CreateRcaDashboardParams extends EntityModel<CreateRcaDashboardParamsInit> {
@@ -987,7 +987,7 @@ export class CreateRcaDashboardParams extends EntityModel<CreateRcaDashboardPara
 
 /**
  * Constructor input for {@link UpdateReportLinkParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdateReportLinkParamsInit {
   /** Link type (serialized as ``"type"``). */
@@ -997,7 +997,7 @@ export interface UpdateReportLinkParamsInit {
 /**
  * Parameters for updating a report link on a dashboard.
  *
- * Mirror of Python `mixpanel_headless.types.UpdateReportLinkParams` (types.py:2322;
+ * Mirror of Python `mixpanel_headless.types.UpdateReportLinkParams` (types.py;
  * model_config: extra='allow', populate_by_name=True).
  */
 export class UpdateReportLinkParams extends EntityModel<UpdateReportLinkParamsInit> {
@@ -1047,7 +1047,7 @@ export class UpdateReportLinkParams extends EntityModel<UpdateReportLinkParamsIn
 
 /**
  * Constructor input for {@link UpdateTextCardParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdateTextCardParamsInit {
   /** Markdown content for the text card. */
@@ -1057,7 +1057,7 @@ export interface UpdateTextCardParamsInit {
 /**
  * Parameters for updating a text card on a dashboard.
  *
- * Mirror of Python `mixpanel_headless.types.UpdateTextCardParams` (types.py:2342;
+ * Mirror of Python `mixpanel_headless.types.UpdateTextCardParams` (types.py;
  * model_config: extra='allow').
  */
 export class UpdateTextCardParams extends EntityModel<UpdateTextCardParamsInit> {

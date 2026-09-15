@@ -1,15 +1,15 @@
 // B6-W8 Layer-3 translation (packet `b6-packets.md` §10) — the WHOLE
 // of `tests/unit/test_workspace_schemas.py` (877 lines, 6 classes):
 //
-//   `TestListSchemaRegistry` (:151), `TestCreateSchema` (:298),
-//   `TestCreateSchemasBulk` (:383), `TestUpdateSchema` (:519),
-//   `TestUpdateSchemasBulk` (:604), `TestDeleteSchemas` (:746)
+//   `TestListSchemaRegistry`, `TestCreateSchema`,
+//   `TestCreateSchemasBulk`, `TestUpdateSchema`,
+//   `TestUpdateSchemasBulk`, `TestDeleteSchemas`
 //
 // Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)` (:71-88)
+// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
 // becomes `makeWorkspace(handler)` — the client is built over the
 // OAuth session (`_make_oauth_credentials`, :57) while the facade
-// carries the service-account `_TEST_SESSION` (:41-50), exactly as
+// carries the service-account `_TEST_SESSION`, exactly as
 // Python does. `temp_dir` has no TS analog (no config file is ever
 // touched) and is dropped; the W6/W7 precedent.
 //

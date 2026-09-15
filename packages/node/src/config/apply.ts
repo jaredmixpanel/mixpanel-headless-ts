@@ -44,7 +44,7 @@ export interface ManagerClearActive {
 
 /**
  * Validate every account block in `raw` (`_validate_raw`,
- * `config.py:236-254`) — the transaction-exit safety net.
+ * `config.py`) — the transaction-exit safety net.
  *
  * @param raw - Parsed document to validate.
  * @throws ConfigError - Any account block fails schema validation.
@@ -60,7 +60,7 @@ export function validateRaw(raw: RawConfig): void {
 
 /**
  * In-place `[active]` mutation shared by {@link setActive} and
- * multi-call sites (`_apply_set_active`, `config.py:256-286`).
+ * multi-call sites (`_apply_set_active`, `config.py`).
  *
  * Each member is independent: `null`/absent leaves that axis
  * untouched.
@@ -91,7 +91,7 @@ export function applySetActive(raw: RawConfig, update: ManagerSetActive): void {
 
 /**
  * In-place `[active]` axis removal (`_apply_clear_active`,
- * `config.py:288-310`).
+ * `config.py`).
  *
  * @param raw - Parsed document (mutated in place).
  * @param axes - Which axes to drop.
@@ -116,7 +116,7 @@ export function applyClearActive(
 
 /**
  * In-place per-account mutation (`_apply_update_account`,
- * `config.py:312-403`).
+ * `config.py`).
  *
  * @param raw - Parsed document (mutated in place).
  * @param name - Account to update (must exist).
@@ -205,7 +205,7 @@ export function applyUpdateAccount(
 
 /**
  * In-place `[accounts.NAME]` insertion (`_apply_add_account`,
- * `config.py:405-490`). NON-promoting (B-E2E-N1 — the adapter owns
+ * `config.py`). NON-promoting (B-E2E-N1 — the adapter owns
  * the FR-045 promotion).
  *
  * Per 043 FR-001, `default_project` is optional for every type.
@@ -215,7 +215,7 @@ export function applyUpdateAccount(
  * @param params - Typed credential fields.
  * @returns The constructed validated account.
  * @throws ConfigError - Duplicate name (PLAIN ConfigError,
- *   `config.py:446` — never AccountExistsError, B7-ARB-B B-E2E-F1),
+ *   `config.py` — never AccountExistsError, B7-ARB-B B-E2E-F1),
  *   missing required field, or validation failure.
  */
 export function applyAddAccount(
@@ -272,7 +272,7 @@ export function applyAddAccount(
       break;
     }
     default: {
-      // Literal exhaustiveness twin (`config.py:478-479`).
+      // Literal exhaustiveness twin (`config.py`).
       throw new ConfigError(`Unknown account type: '${String(params.type)}'`);
     }
   }
@@ -290,7 +290,7 @@ export function applyAddAccount(
 
 /**
  * Validate a workspace ID (`_validate_workspace_id`,
- * `config.py:1043-1056`) — a VALUE typecheck, not a string parse
+ * `config.py`) — a VALUE typecheck, not a string parse
  * (packet §7 caution 1: `Number.isInteger && > 0`, never `!w` and
  * never `pythonInt`).
  *

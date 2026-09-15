@@ -1,7 +1,7 @@
 /**
  * Experiment CRUD/lifecycle wire methods (App API) — Phase-3 packet
  * B4-C4 port of the `MixpanelAPIClient` experiments range
- * (`api_client.py:5277-5668`).
+ * (`api_client.py`).
  *
  * All methods route through B0 `appRequest` over `maybe_scoped_path`
  * (R10.8). Path subtleties locked by Layer-3 + the recorded vectors:
@@ -26,14 +26,14 @@ import {
 export interface ListExperimentsOptions {
   /** When true, include archived experiments (`include_archived`). */
   readonly include_archived?: boolean | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
 /** The C4 experiment method surface (mixed into `MixpanelClient`). */
 export interface ExperimentMethods {
   /**
-   * List experiments (`list_experiments`, `api_client.py:5277-5313` —
+   * List experiments (`list_experiments`, `api_client.py` —
    * GET `experiments/`).
    *
    * @param options - include_archived + signal.

@@ -1,9 +1,9 @@
 /**
  * Cohort CRUD wire methods (App API) — Phase-3 packet B4-C3 port of the
- * `MixpanelAPIClient` cohorts range (`api_client.py:4736-4937`).
+ * `MixpanelAPIClient` cohorts range.
  *
  * All methods route through B0 `appRequest` over `maybe_scoped_path`
- * (R10.8) and return the envelope product verbatim after the source's
+ * and return the envelope product verbatim after the source's
  * isinstance guard (Caution #11 — no `Cohort` model shaping; the
  * recorded request bodies are already-flattened dicts).
  */
@@ -26,7 +26,7 @@ export interface ListCohortsAppOptions {
   readonly data_group_id?: string | null | undefined;
   /** Optional cohort-ID filter (`,`-joined on the wire). */
   readonly ids?: readonly number[] | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -34,7 +34,7 @@ export interface ListCohortsAppOptions {
 export interface CohortMethods {
   /**
    * List cohorts via the App API (`list_cohorts_app`,
-   * `api_client.py:4736-4775`).
+   * `api_client.py`).
    *
    * @param options - data_group_id/ids filters + signal.
    * @returns The cohort list verbatim.

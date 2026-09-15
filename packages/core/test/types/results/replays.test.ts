@@ -1,5 +1,5 @@
 // Translated replay-family tests (packet P2-6, phase2-design C6-d):
-// assertion-for-assertion ports (R10.2) of
+// assertion-for-assertion ports of
 //   tests/unit/test_types_replay.py         (Replay convenience + frames)
 //   tests/unit/test_types_replay_summary.py (ReplaySummary)
 //   tests/unit/test_types_replay_event.py   (ReplayEvent)

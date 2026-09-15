@@ -22,7 +22,7 @@ import {
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 
-/** The `oauth_credentials` fixture twin (test_api_client_crud_edge.py:36-38). */
+/** The `oauth_credentials` fixture twin. */
 function oauthCredentials(): Session {
   return makeSession({
     projectId: "12345",

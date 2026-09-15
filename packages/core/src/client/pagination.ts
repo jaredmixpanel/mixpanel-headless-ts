@@ -68,28 +68,28 @@ const MAX_PAGES = 10000;
 
 /**
  * Maximum number of retries for rate-limited (429) responses per page
- * request (`pagination.py:38`) — per-paginator, independent of the
+ * request (`pagination.py`) — per-paginator, independent of the
  * client's `max_retries`.
  */
 export const MAX_RATE_LIMIT_RETRIES = 3;
 
 /**
  * Base delay in SECONDS for exponential backoff on 429 retries
- * (`_BACKOFF_BASE`, `pagination.py:41`; the Python-seconds value keeps
+ * (`_BACKOFF_BASE`, `pagination.py`; the Python-seconds value keeps
  * a `*_SECONDS` name per R2.12 — ms conversion happens only at the
  * sleep seam).
  */
 const PAGINATION_BACKOFF_BASE_SECONDS = 1.0;
 
 /**
- * Maximum backoff delay in SECONDS (`_BACKOFF_MAX`, `pagination.py:44`).
+ * Maximum backoff delay in SECONDS (`_BACKOFF_MAX`, `pagination.py`).
  */
 export const PAGINATION_BACKOFF_MAX_SECONDS = 60.0;
 
 /**
  * Parse a `Retry-After` header value into a safe number of seconds —
  * the MODULE-LEVEL string-input parser (`_parse_retry_after`,
- * `pagination.py:47-83`), NOT the client's response-based
+ * `pagination.py`), NOT the client's response-based
  * `parseRetryAfter` in `backoff.ts`.
  *
  * Anything that is not a finite, non-negative number is rejected so the
@@ -132,7 +132,7 @@ function parseRetryAfterSeconds(raw: string | null): number | null {
  * `type(x).__name__` over a lossless-parsed wire value — the Python
  * `json.loads` product domain (`NoneType`/`bool`/`int`/`float`/`str`/
  * `list`/`dict`), used for the malformed-`results` error detail
- * (`pagination.py:269-273`; the recorded vectors lock `results_type`).
+ * (`pagination.py`; the recorded vectors lock `results_type`).
  *
  * @param value - The parsed value.
  * @returns The CPython type name.
@@ -194,7 +194,7 @@ function cursorParamValue(cursor: JsonValue): unknown {
  * internals through the C1 {@link ClientCore} seam).
  */
 export interface PaginationClient {
-  /** @internal The shared client-internals seam (B4-C1). */
+  /** @internal The shared client-internals seam. */
   readonly core: ClientCore;
 }
 
@@ -213,13 +213,13 @@ export interface PaginateAllOptions {
    * not a mutable module global.
    */
   readonly maxPages?: number | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
 /**
  * Iterate through all pages of a paginated App API response
- * (`paginate_all`, `pagination.py:85-288`).
+ * (`paginate_all`, `pagination.py`).
  *
  * Makes repeated raw GET requests to the App API path, following the
  * `pagination.next_cursor` field until it is `null`/absent. The
@@ -240,7 +240,7 @@ export interface PaginateAllOptions {
  *   `PAGINATION_LIMIT` (page limit exceeded), `API_ERROR` (other non-2xx
  *   statuses, unfollowed 3xx included), or `INVALID_RESPONSE` (non-JSON
  *   body, or a `results` field that is neither a list nor null).
- * @throws DOMException - Name `AbortError` on cancellation (R6.7).
+ * @throws DOMException - Name `AbortError` on cancellation.
  * @example
  * ```typescript
  * const client = createMixpanelClient({ session });
@@ -291,7 +291,7 @@ export async function* paginateAll(
     // Python dict insertion-order semantics carry over 1:1: page_size
     // first, caller params merged (an existing key keeps its position),
     // cursor, then query_origin set LAST so callers can't override the
-    // canonical telemetry value (`pagination.py:152-158`).
+    // canonical telemetry value (`pagination.py`).
     const requestParams: Record<string, unknown> = {
       page_size: String(pageSize),
     };
@@ -304,7 +304,7 @@ export async function* paginateAll(
     requestParams["query_origin"] = "mixpanel-headless";
 
     const url = core.buildUrl("app", path);
-    // Per-page, per-request auth resolution (`pagination.py:162`; R2.8).
+    // Per-page, per-request auth resolution (`pagination.py`; R2.8).
     // LITERAL header set — no `requestHeaders` merge (`:161-163`).
     const headers = { Authorization: await core.getAuthHeader() };
 
@@ -319,7 +319,7 @@ export async function* paginateAll(
           jsonBody: null,
           formBody: null,
           headers,
-          // `client._default_timeout(url)` (`pagination.py:175`) — never
+          // `client._default_timeout(url)` — never
           // the raw client timeout: a bare None would mean "no timeout
           // at all" in httpx; the route-aware default outlasts the App
           // API's ~120s server deadline instead.
@@ -339,7 +339,7 @@ export async function* paginateAll(
         );
       }
 
-      // Handle 429 with retry/backoff (`pagination.py:185-211`).
+      // Handle 429 with retry/backoff (`pagination.py`).
       if (response.status === 429) {
         const advertised = parseRetryAfterSeconds(
           response.header("Retry-After"),
@@ -390,7 +390,7 @@ export async function* paginateAll(
     }
 
     // httpx `raise_for_status()` raises for every non-2xx status —
-    // unfollowed 3xx included (R2.11) — mapped per `:219-244`.
+    // unfollowed 3xx included — mapped per `:219-244`.
     if (response.status < 200 || response.status >= 300) {
       const status = response.status;
       const body = response.text;
@@ -427,7 +427,7 @@ export async function* paginateAll(
       data = parseLossless(response.text, { pythonConstants: true });
     } catch (error) {
       // Python catches broad `except Exception` at THIS site
-      // (pagination.py:246-254) — unlike the `except json.JSONDecodeError`
+      // — unlike the `except json.JSONDecodeError`
       // sites B0-ARB F3 ruled on — so EVERY parse failure (a RangeError
       // from pathological nesting included) wraps as INVALID_RESPONSE
       // (B4-ARB W-F4 corrected the earlier mis-citation here).
@@ -475,7 +475,7 @@ export async function* paginateAll(
       results = data;
     }
 
-    // `yield from results` — item-level yield* (R6.6).
+    // `yield from results` — item-level yield*.
     yield* results;
 
     // Check for the next page (`:281-288`): only a TRUTHY dict

@@ -75,7 +75,7 @@ afterEach(() => {
   }
 });
 
-/** Return leftover `<name>.tmp.*` siblings of `target` (test_io_utils.py:77). */
+/** Return leftover `<name>.tmp.*` siblings of `target`. */
 function tmpGlob(dir: string, name: string): string[] {
   return readdirSync(dir)
     .filter((entry) => entry.startsWith(`${name}.tmp.`))
@@ -530,7 +530,7 @@ describe("TestSizeCap", () => {
 
 /**
  * Build a read seam over an in-memory payload (the `_stub_stdin`
- * BytesIO twin, test_io_utils.py:757).
+ * BytesIO twin, test_io_utils.py).
  *
  * @param payload - The bytes "piped" to stdin.
  * @returns A readSync-shaped chunk reader.

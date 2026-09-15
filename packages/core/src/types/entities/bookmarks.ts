@@ -4,7 +4,7 @@
  * Hand-written ports of the Pydantic entity models (phase2-design C5,
  * packet P2-7): the PYTHON models are the source of record; vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling (R3.6/R7.6); optionality follows
+ * keep their exact Python spelling; optionality follows
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
@@ -19,7 +19,7 @@ import {
 
 /**
  * Constructor input for {@link BookmarkMetadata} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface BookmarkMetadataInit {
   /** Table display mode setting. */
@@ -41,7 +41,7 @@ export interface BookmarkMetadataInit {
 /**
  * Metadata associated with a bookmark/report.
  *
- * Mirror of Python `mixpanel_headless.types.BookmarkMetadata` (types.py:2372;
+ * Mirror of Python `mixpanel_headless.types.BookmarkMetadata` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class BookmarkMetadata extends EntityModel<BookmarkMetadataInit> {
@@ -103,7 +103,7 @@ export class BookmarkMetadata extends EntityModel<BookmarkMetadataInit> {
 
 /**
  * Constructor input for {@link Bookmark} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface BookmarkInit {
   /** Unique bookmark identifier. */
@@ -168,7 +168,7 @@ export interface BookmarkInit {
 /**
  * A Mixpanel bookmark (saved report) as returned by the App API.
  *
- * Mirror of Python `mixpanel_headless.types.Bookmark` (types.py:2420;
+ * Mirror of Python `mixpanel_headless.types.Bookmark` (types.py;
  * model_config: frozen=True, extra='allow', populate_by_name=True).
  */
 export class Bookmark extends EntityModel<BookmarkInit> {
@@ -299,7 +299,7 @@ export class Bookmark extends EntityModel<BookmarkInit> {
 
 /**
  * Constructor input for {@link CreateBookmarkParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CreateBookmarkParamsInit {
   /** Bookmark name (required). */
@@ -324,7 +324,7 @@ export interface CreateBookmarkParamsInit {
 /**
  * Parameters for creating a new bookmark/report.
  *
- * Mirror of Python `mixpanel_headless.types.CreateBookmarkParams` (types.py:2554;
+ * Mirror of Python `mixpanel_headless.types.CreateBookmarkParams` (types.py;
  * model_config: extra='ignore', populate_by_name=True).
  */
 export class CreateBookmarkParams extends EntityModel<CreateBookmarkParamsInit> {
@@ -396,7 +396,7 @@ export class CreateBookmarkParams extends EntityModel<CreateBookmarkParamsInit> 
 
 /**
  * Constructor input for {@link UpdateBookmarkParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdateBookmarkParamsInit {
   /** New bookmark name. */
@@ -420,7 +420,7 @@ export interface UpdateBookmarkParamsInit {
 /**
  * Parameters for updating an existing bookmark/report.
  *
- * Mirror of Python `mixpanel_headless.types.UpdateBookmarkParams` (types.py:2612;
+ * Mirror of Python `mixpanel_headless.types.UpdateBookmarkParams` (types.py;
  * model_config: extra='ignore').
  */
 export class UpdateBookmarkParams extends EntityModel<UpdateBookmarkParamsInit> {
@@ -485,7 +485,7 @@ export class UpdateBookmarkParams extends EntityModel<UpdateBookmarkParamsInit> 
 
 /**
  * Constructor input for {@link BulkUpdateBookmarkEntry} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface BulkUpdateBookmarkEntryInit {
   /** Bookmark ID to update (required). */
@@ -507,7 +507,7 @@ export interface BulkUpdateBookmarkEntryInit {
 /**
  * Entry for bulk-updating bookmarks.
  *
- * Mirror of Python `mixpanel_headless.types.BulkUpdateBookmarkEntry` (types.py:2660;
+ * Mirror of Python `mixpanel_headless.types.BulkUpdateBookmarkEntry` (types.py;
  * model_config: extra='ignore').
  */
 export class BulkUpdateBookmarkEntry extends EntityModel<BulkUpdateBookmarkEntryInit> {
@@ -571,7 +571,7 @@ export class BulkUpdateBookmarkEntry extends EntityModel<BulkUpdateBookmarkEntry
 
 /**
  * Constructor input for {@link BookmarkHistoryPagination} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface BookmarkHistoryPaginationInit {
   /** Cursor for next page. */
@@ -585,7 +585,7 @@ export interface BookmarkHistoryPaginationInit {
 /**
  * Pagination metadata for bookmark history responses.
  *
- * Mirror of Python `mixpanel_headless.types.BookmarkHistoryPagination` (types.py:2700;
+ * Mirror of Python `mixpanel_headless.types.BookmarkHistoryPagination` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class BookmarkHistoryPagination extends EntityModel<BookmarkHistoryPaginationInit> {
@@ -638,7 +638,7 @@ export class BookmarkHistoryPagination extends EntityModel<BookmarkHistoryPagina
 
 /**
  * Constructor input for {@link BookmarkHistoryResponse} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface BookmarkHistoryResponseInit {
   /** List of history entries. */
@@ -654,7 +654,7 @@ export interface BookmarkHistoryResponseInit {
 /**
  * Response from the bookmark history endpoint.
  *
- * Mirror of Python `mixpanel_headless.types.BookmarkHistoryResponse` (types.py:2726;
+ * Mirror of Python `mixpanel_headless.types.BookmarkHistoryResponse` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class BookmarkHistoryResponse extends EntityModel<BookmarkHistoryResponseInit> {
@@ -707,7 +707,7 @@ export class BookmarkHistoryResponse extends EntityModel<BookmarkHistoryResponse
 
 /**
  * Constructor input for {@link BookmarkUrl} — absent keys take the
- * Python defaults; `undefined` counts as absent (R4.10).
+ * Python defaults; `undefined` counts as absent.
  */
 export interface BookmarkUrlInit {
   /** The 12-character slug. */

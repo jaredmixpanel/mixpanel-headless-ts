@@ -23,9 +23,9 @@
  * WRITE side: Python re-renders the parsed `datetime` per writer — the
  * tokens.json / legacy tokens_{region}.json writers via
  * `datetime.isoformat()` (`+00:00` offset, 0-or-6 fractional digits:
- * `token.py:206`, `storage.py:471`), the bridge + client_{region}.json
+ * `token.py`, `storage.py`), the bridge + client_{region}.json
  * writers via Pydantic JSON mode (`Z` suffix for UTC:
- * `bridge.py:292`, `storage.py:541`). The TS models store ISO TEXT, so
+ * `bridge.py`, `storage.py`). The TS models store ISO TEXT, so
  * echoing it verbatim would leak the SOURCE spelling into the written
  * artifact (pair-B e2e finding F2: a py-written `Z` bridge kept its `Z`
  * through TS materialization where Python writes `+00:00`, and TS
@@ -157,7 +157,7 @@ function splitIso(text: string): IsoParts | null {
 /**
  * Render stored ISO text the way `datetime.isoformat()` does
  * (`+00:00` for UTC, 0-or-6 fractional digits) — the tokens.json /
- * tokens_{region}.json writer shape (`token.py:206`, `storage.py:471`).
+ * tokens_{region}.json writer shape (`token.py`, `storage.py`).
  *
  * @param text - Stored tz-aware ISO text.
  * @returns Canonical isoformat text (verbatim when out of grammar).
@@ -174,7 +174,7 @@ export function pythonIsoformatDatetimeText(text: string): string {
 /**
  * Render stored ISO text the way Pydantic's JSON mode does (`Z` for
  * UTC, 0-or-6 fractional digits) — the bridge / client_{region}.json
- * writer shape (`bridge.py:292`, `storage.py:541`; live probe:
+ * writer shape (`bridge.py`, `storage.py`; live probe:
  * `model_dump(mode="json")` renders `2030-01-01T00:00:00Z`,
  * `...T00:00:00.000120Z`, `...T00:00:00+05:30`).
  *

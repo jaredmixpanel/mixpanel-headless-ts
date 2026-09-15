@@ -52,7 +52,7 @@ interface BookmarkParams extends Dict {
 /**
  * Return a minimal valid bookmark params dict with optional overrides.
  *
- * Port of `_minimal_bookmark` (`test_validation.py:45-71`).
+ * Port of `_minimal_bookmark`.
  *
  * @param overrides - Top-level keys to merge over the defaults.
  * @returns A fresh params dict.
@@ -87,7 +87,7 @@ function minimalBookmark(overrides: Dict = {}): BookmarkParams {
 /**
  * Return a minimal valid funnel bookmark params dict.
  *
- * Port of `_minimal_funnel_bookmark` (`test_validation.py:689-717`).
+ * Port of `_minimal_funnel_bookmark`.
  *
  * @param math - The measurement math to embed.
  * @returns A fresh funnel params dict.

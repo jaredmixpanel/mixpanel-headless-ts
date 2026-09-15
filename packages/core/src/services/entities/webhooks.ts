@@ -1,7 +1,7 @@
 /**
  * Webhook CRUD + connectivity-test wire methods (App API) — Phase-3
  * packet B4-C4 port of the `MixpanelAPIClient` webhooks range
- * (`api_client.py:5920-6072`).
+ * (`api_client.py`).
  *
  * All methods route through B0 `appRequest` over `maybe_scoped_path`
  * (R10.8). Webhook IDs are UUID STRINGS (R3-family — unlike the int
@@ -18,7 +18,7 @@ import { expectListResult, expectRecordResult } from "./shared.js";
 /** The C4 webhook method surface (mixed into `MixpanelClient`). */
 export interface WebhookMethods {
   /**
-   * List webhooks (`list_webhooks`, `api_client.py:5920-5948` — GET
+   * List webhooks (`list_webhooks`, `api_client.py` — GET
    * `webhooks/`).
    *
    * @param signal - Optional cancellation signal.

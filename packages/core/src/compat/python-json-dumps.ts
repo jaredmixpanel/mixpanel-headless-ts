@@ -127,7 +127,7 @@ const DEFAULT_STYLE: JsonDumpsStyle = {
 /**
  * The shared recursive encoder. Both public spellings route through this
  * one body so the escape table, the number rules and the `TypeError`
- * shape can never diverge between them (R10.8).
+ * shape can never diverge between them.
  *
  * @param value - The value to serialize (decoded caller data).
  * @param style - Separator/ordering knobs; see {@link JsonDumpsStyle}.

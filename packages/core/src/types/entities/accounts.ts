@@ -4,7 +4,7 @@
  * Hand-written ports of the Pydantic entity models (phase2-design C5,
  * packet P2-7): the PYTHON models are the source of record; vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling (R3.6/R7.6); optionality follows
+ * keep their exact Python spelling; optionality follows
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
@@ -24,7 +24,7 @@ import {
 
 /**
  * Constructor input for {@link AccountSummary} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AccountSummaryInit {
   /** Local config name (matches the TOML block key). */
@@ -51,7 +51,7 @@ export interface AccountSummaryInit {
 /**
  * Read-only summary of a configured account for ``mp account list``.
  *
- * Mirror of Python `mixpanel_headless.types.AccountSummary` (types.py:12284;
+ * Mirror of Python `mixpanel_headless.types.AccountSummary` (types.py;
  * model_config: frozen=True, extra='ignore').
  */
 export class AccountSummary extends EntityModel<AccountSummaryInit> {
@@ -127,7 +127,7 @@ export class AccountSummary extends EntityModel<AccountSummaryInit> {
 
 /**
  * Constructor input for {@link AccountTestResult} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AccountTestResultInit {
   /** Account that was tested. */
@@ -149,7 +149,7 @@ export interface AccountTestResultInit {
 /**
  * Outcome of ``mp account test NAME`` — captures the ``/me`` probe.
  *
- * Mirror of Python `mixpanel_headless.types.AccountTestResult` (types.py:12364;
+ * Mirror of Python `mixpanel_headless.types.AccountTestResult` (types.py;
  * model_config: frozen=True, extra='ignore').
  */
 export class AccountTestResult extends EntityModel<AccountTestResultInit> {
@@ -233,7 +233,7 @@ export class AccountTestResult extends EntityModel<AccountTestResultInit> {
 
 /**
  * Constructor input for {@link Target} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface TargetInit {
   /** Local target name (matches the TOML block key). */
@@ -249,7 +249,7 @@ export interface TargetInit {
 /**
  * A saved (account, project, workspace?) triple persisted in ``[targets.NAME]``.
  *
- * Mirror of Python `mixpanel_headless.types.Target` (types.py:12434;
+ * Mirror of Python `mixpanel_headless.types.Target` (types.py;
  * model_config: frozen=True, extra='forbid').
  */
 export class Target extends EntityModel<TargetInit> {
@@ -322,7 +322,7 @@ export class Target extends EntityModel<TargetInit> {
 
 /**
  * Constructor input for {@link OAuthLoginResult} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface OAuthLoginResultInit {
   /** Account that was authenticated. */
@@ -340,7 +340,7 @@ export interface OAuthLoginResultInit {
 /**
  * Outcome of ``mp.accounts.login(name)`` — captures the PKCE flow result.
  *
- * Mirror of Python `mixpanel_headless.types.OAuthLoginResult` (types.py:12461;
+ * Mirror of Python `mixpanel_headless.types.OAuthLoginResult` (types.py;
  * model_config: frozen=True, extra='ignore').
  */
 export class OAuthLoginResult extends EntityModel<OAuthLoginResultInit> {

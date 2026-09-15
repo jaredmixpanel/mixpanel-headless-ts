@@ -1,5 +1,5 @@
 // Translated cohort-params tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/test_build_cohort_params.py (R10.2) — ALL 17
+// assertion port of tests/test_build_cohort_params.py — ALL 17
 // classes (TestBuildFilterEntryCohort :94, TestBuildFilterSectionMixed
 // :171, TestBuildFlowCohortFilter :206, TestBuildGroupSectionCohort
 // :255, TestBuildGroupSectionMixed :344, TestBuildParamsCohortFilter
@@ -831,7 +831,7 @@ describe("TestCodedFlowCohortFilterCodes", () => {
 
   it("converted BB* guards stay ParamValidationError instances", () => {
     // Python asserts they remain catchable as bare `ValueError` (the
-    // dual-inheritance); the TS conformance key is class + code (R5.2),
+    // dual-inheritance); the TS conformance key is class + code,
     // so the assertion is the class and the code.
     const error = expectThrows(
       () => buildFlowCohortFilter(Filter.equals("country", "US")),

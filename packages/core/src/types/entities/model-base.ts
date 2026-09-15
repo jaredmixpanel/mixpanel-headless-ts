@@ -62,7 +62,7 @@ import { modelFail, requireIsoText } from "./decode-utils.js";
 export { modelFail } from "./decode-utils.js";
 
 /**
- * Lax scalar coercion kinds (R4.12) applied to non-null present values.
+ * Lax scalar coercion kinds applied to non-null present values.
  *
  * `"int64"` is the `"int"` table without the double's 2^53 ceiling
  * ({@link coerceInt64}): the field materializes as a `number` when the
@@ -74,7 +74,7 @@ export type EntityFieldKind = "int" | "int64" | "str" | "bool" | "float";
 
 /**
  * Options of {@link EntityModel.modelDumpExcludeNone} — the pydantic
- * `model_dump(...)` flags the B6 facade members pass (B6-W2).
+ * `model_dump(...)` flags the B6 facade members pass.
  */
 export interface ModelDumpOptions {
   /**
@@ -124,7 +124,7 @@ export interface EntityFieldSpec<K extends string = string> {
    * serializers; unused in Phase 2 (see module doc).
    */
   readonly wire?: string;
-  /** Lax scalar coercion kind for non-null values (R4.12). */
+  /** Lax scalar coercion kind for non-null values. */
   readonly kind?: EntityFieldKind;
   /**
    * True when the Python annotation admits `None` (`T | None`). An
@@ -150,7 +150,7 @@ export interface EntityFieldSpec<K extends string = string> {
    *
    * `"ordered-dict"` (B8-MAPFIX, user ratification
    * `user-ratifications.md:14-22`) reconstructs into an
-   * insertion-order-preserving `ReadonlyMap<string, Model>` (R4.8):
+   * insertion-order-preserving `ReadonlyMap<string, Model>`:
    * plain-object input reads the lossless layer's key-order sidecar
    * (`orderedEntries`), and `Map` input keeps its own order — the
    * Python-`dict`-order mirror for fields whose integer-like keys a
@@ -166,7 +166,7 @@ export interface EntityFieldSpec<K extends string = string> {
   /**
    * Field-constraint port (Pydantic `Field(min_length=...)` etc.).
    * Throws {@link ResponseValidationError} on violation. String
-   * lengths are CODEPOINT-counted (R11.6).
+   * lengths are CODEPOINT-counted.
    */
   readonly check?: (value: unknown, path: string) => void;
 }
@@ -456,7 +456,7 @@ export abstract class EntityModel<F extends object = never> {
    * @param cls - The concrete class statics (field specs, extra
    *   policy).
    * @param fields - Attribute-name-keyed input values (from a caller
-   *   or `prepareInit`). `undefined` values count as ABSENT (R4.10).
+   *   or `prepareInit`). `undefined` values count as ABSENT.
    * @throws ResponseValidationError - On missing required fields,
    *   unknown keys under `extra='forbid'`, failed coercion, nested
    *   reconstruction failures, or constraint violations.
@@ -569,8 +569,8 @@ export abstract class EntityModel<F extends object = never> {
   /**
    * Pydantic `model_dump(exclude_none=True)` — the request-body dump
    * every entity-CRUD facade member performs on its params model
-   * (e.g. `create_dashboard`, `workspace.py:4564`; `create_cohort`,
-   * `:5643`). W1-D4: ONE implementation for all of B6 (R10.8) — a
+   * (e.g. `create_dashboard`, `workspace.py`; `create_cohort`,
+   * `:5643`). W1-D4: ONE implementation for all of B6 — a
    * shard re-deriving it is a review finding.
    *
    * Semantics measured against pydantic v2 (2026-08-16):
@@ -584,7 +584,7 @@ export abstract class EntityModel<F extends object = never> {
    * - datetimes render as ISO text, exactly as {@link toJSON} does.
    *
    * {@link toJSON} is NOT a substitute: it keeps `None` as `null`, and
-   * absent-vs-null is vector-observable (R3.5).
+   * absent-vs-null is vector-observable.
    *
    * B6-W2 extension (`b6-packets.md` §4; 21 `by_alias=True` dump sites
    * in `workspace.py`, e.g. `finalize_blueprint` :4985,
@@ -614,7 +614,7 @@ export abstract class EntityModel<F extends object = never> {
    * Pydantic `model_dump()` — the PLAIN request-body dump, keeping
    * `None` values as `null`. B6-W8 (`b6-packets.md` §10) added it for
    * the two facade sites that dump WITHOUT `exclude_none`:
-   * `update_anomaly` (`workspace.py:9169`) and
+   * `update_anomaly` and
    * `bulk_update_anomalies` (`:9198`), both
    * `params.model_dump(by_alias=True)`.
    *
@@ -821,7 +821,7 @@ function serializeValue(value: unknown, mode: "json" | "vector"): unknown {
     // the recorder shape. A plain JS object cannot represent
     // out-of-order integer-like keys, so THIS is the one boundary
     // where key order narrows to JS enumeration order; the in-memory
-    // Map keeps the Python order for every consumer (B8-MAPFIX).
+    // Map keeps the Python order for every consumer.
     const out: Record<string, unknown> = {};
     for (const [key, item] of value as ReadonlyMap<unknown, unknown>) {
       setOwn(out, String(key), serializeValue(item, mode));

@@ -362,7 +362,7 @@ export function renderCanonicalFloat(value: number): string {
 
 /**
  * Rule-4 numeric-string normalization for segfilter number-filter
- * operands (R10.11).
+ * operands.
  *
  * Parses the string with the PYTHON float grammar (underscore grouping,
  * optional leading/trailing whitespace, `inf`/`infinity`/`nan`, forms like

@@ -1,6 +1,6 @@
 /**
  * Redirect-based PKCE login flow for browsers — the adaptation of
- * `OAuthFlow.login` (`flow.py:227-393`) to a page-leaving redirect
+ * `OAuthFlow.login` to a page-leaving redirect
  * (b9-packets.md §3.2; contract arbiters: `flow.py` for every twinned
  * behavior, R9.3 / plan §4.3 for the redirect-shape adaptation). The
  * redirect LEAVES the page, so login splits into
@@ -10,18 +10,18 @@
  *
  * | Python `login()` step | Browser twin |
  * |---|---|
- * | PKCE + state generation (`flow.py:268-270`: `PkceChallenge.generate()`, `state = secrets.token_urlsafe(32)`) | `await PkceChallenge.generate()` (core) + `state` = 32 random bytes via `crypto.getRandomValues`, base64url-no-pad (43 chars — same alphabet/length as `token_urlsafe(32)`) |
+ * | PKCE + state generation (`flow.py`: `PkceChallenge.generate()`, `state = secrets.token_urlsafe(32)`) | `await PkceChallenge.generate()` (core) + `state` = 32 random bytes via `crypto.getRandomValues`, base64url-no-pad (43 chars — same alphabet/length as `token_urlsafe(32)`) |
  * | port probe + `redirect_uri = http://localhost:{port}/callback` | caller-supplied `redirectUri` (the app's own https URL) — REQUIRED option, no default |
  * | DCR `ensure_client_registered` | `ensureBrowserClientRegistered` = core `registerClient` + `CredentialStore` caching (cache-hit rule identical to Python) |
  * | `_build_authorize_url` | core `buildAuthorizeUrl` (§3.1 hoist) — byte-identical output |
  * | callback wait / paste race | `completeLogin(returnUrl)` on the return page |
- * | `exchange_code` | `completeLogin` step 4 via core `postTokenRequest` with the verbatim form fields (`flow.py:428-434`) |
+ * | `exchange_code` | `completeLogin` step 4 via core `postTokenRequest` with the verbatim form fields |
  * | persist via `OAuthStorage` when `persist=True` | ALWAYS persists via the injected `CredentialStore` (in-memory default = no durable persistence unless the caller opts into the localStorage adapter — R9.3 posture) |
  *
  * The pending-login record (JSON under
  * `CREDENTIAL_KEYS.pendingLogin(region)`) is `{state, verifier,
  * client_id, redirect_uri, created_at}` — it substitutes for Python's
- * in-process locals (`flow.py:268-306`); `created_at` renders through
+ * in-process locals; `created_at` renders through
  * the R11.9 tokens-twin formatter (`+00:00`). The key set is fixed and
  * non-numeric with no ordering contract (§7 caution 7).
  *
@@ -36,7 +36,7 @@
  * compile-time excluded here.
  *
  * Refresh note (§2.2 disposition / §3.4): browser v1 has NO refresh
- * surface (`flow.py:442-498` stays node-only); the Phase-4 ledger row
+ * surface (`flow.py` stays node-only); the Phase-4 ledger row
  * 8 tracks the D2-ACCEPTED follow-on.
  *
  * D2 spike outcome (b9-packets.md §4.3: **ACCEPTED**): PKCE-in-browser
@@ -89,7 +89,7 @@ export interface BeginLoginOptions {
   /**
    * Mixpanel data residency region — validated against
    * `OAUTH_BASE_URLS` keys; unknown → `OAuthError`
-   * `OAUTH_CONFIG_ERROR` (`flow.py:164` twin — same code).
+   * `OAUTH_CONFIG_ERROR` (`flow.py` twin — same code).
    */
   readonly region: "us" | "eu" | "in";
   /**
@@ -136,7 +136,7 @@ export interface CompleteLoginOptions {
   readonly region: "us" | "eu" | "in";
   /**
    * The redirect-return: a full URL or query string —
-   * `parsePastedRedirect` grammar (`flow.py:51-117`).
+   * `parsePastedRedirect` grammar.
    */
   readonly returnUrl: string;
   /** The store carrying the pending record from {@link beginLogin}. */
@@ -173,7 +173,7 @@ interface PendingLoginRecord {
 
 /**
  * Loopback hostnames for which plain `http:` redirect URIs are legal
- * (RFC 8252 §7.3; the `flow.py:54-58` localhost posture).
+ * (RFC 8252 §7.3; the `flow.py` localhost posture).
  */
 const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
@@ -223,7 +223,7 @@ function validateRedirectUri(redirectUri: string): void {
 
 /**
  * Generate the CSRF state — the `secrets.token_urlsafe(32)` twin
- * (`flow.py:270`): 32 random bytes, base64url without padding
+ * (`flow.py`): 32 random bytes, base64url without padding
  * (43 chars, same alphabet as Python's output).
  *
  * @returns The state string.
@@ -236,7 +236,7 @@ function generateState(): string {
 
 /**
  * Begin the browser redirect PKCE login (b9-packets.md §3.2):
- * 1. region gate + redirect-URI gate (FB-4)  2. DCR (cached)
+ * 1. region gate + redirect-URI gate  2. DCR (cached)
  * 3. PKCE + state  4. persist the pending record under
  * `CREDENTIAL_KEYS.pendingLogin(region)`  5. return the authorize URL
  * (core `buildAuthorizeUrl`).
@@ -257,7 +257,7 @@ function generateState(): string {
  *   redirect URI — FB-4) or `OAUTH_REGISTRATION_ERROR` (DCR failure).
  * @example
  * ```typescript
- * // A store that survives the redirect (FB-7):
+ * // A store that survives the redirect:
  * const store = new LocalStorageCredentialStore(sessionStorage);
  * const { authorizeUrl } = await beginLogin({
  *   region: "us",
@@ -270,12 +270,12 @@ function generateState(): string {
 export async function beginLogin(
   options: BeginLoginOptions,
 ): Promise<BeginLoginResult> {
-  // 1. Region gate (`flow.py:160-165` twin) + redirect-URI gate (FB-4).
+  // 1. Region gate (`flow.py` twin) + redirect-URI gate.
   const baseUrl = requireOAuthBaseUrl(options.region);
   validateRedirectUri(options.redirectUri);
   const now = options.now ?? Date.now;
 
-  // 2. DCR, CredentialStore-cached (`flow.py:282-288` twin).
+  // 2. DCR, CredentialStore-cached (`flow.py` twin).
   const clientInfo = await ensureBrowserClientRegistered({
     fetch: options.fetch,
     region: options.region,
@@ -284,7 +284,7 @@ export async function beginLogin(
     now,
   });
 
-  // 3. PKCE + state (`flow.py:268-270` twin — §3.2 table row 1).
+  // 3. PKCE + state (`flow.py` twin — §3.2 table row 1).
   const pkce = await PkceChallenge.generate();
   const state = generateState();
 
@@ -302,7 +302,7 @@ export async function beginLogin(
     JSON.stringify(pending),
   );
 
-  // 5. Authorize URL (`flow.py:290-296` twin) — the library NEVER
+  // 5. Authorize URL (`flow.py` twin) — the library NEVER
   // navigates.
   return {
     authorizeUrl: buildAuthorizeUrl(baseUrl, {
@@ -401,7 +401,7 @@ const inFlightCompletions = new WeakMap<
  * 3. DELETE the pending record BEFORE the exchange (single-use state —
  * a replay of the same URL hits step 1; a FAILED exchange does not
  * resurrect it either, §6 R2-3: replay after failure is a fresh
- * `beginLogin`)  4. exchange the code (`flow.py:428-434`
+ * `beginLogin`)  4. exchange the code (`flow.py`
  * field-for-field)  5. ALWAYS persist the tokens under
  * `CREDENTIAL_KEYS.tokens(region)` (R11.9 writer shape) and return
  * them. Concurrent duplicate calls share one exchange (FB-6 — see
@@ -528,7 +528,7 @@ async function completeLoginInner(
   // lock — §3.2 step 3).
   await options.store.delete(pendingKey);
 
-  // 4. Exchange (`flow.py:428-434` field-for-field via the §3.1 hoist).
+  // 4. Exchange (`flow.py` field-for-field via the §3.1 hoist).
   const tokens = await postTokenRequest(
     fetchImpl,
     baseUrl,

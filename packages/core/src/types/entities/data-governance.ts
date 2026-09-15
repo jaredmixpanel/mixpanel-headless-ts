@@ -4,7 +4,7 @@
  * Hand-written ports of the Pydantic entity models (phase2-design C5,
  * packet P2-7): the PYTHON models are the source of record; vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling (R3.6/R7.6); optionality follows
+ * keep their exact Python spelling; optionality follows
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
@@ -21,7 +21,7 @@ import {
 
 /**
  * Constructor input for {@link CustomEventAlternative} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CustomEventAlternativeInit {
   /** Name of the underlying event being aliased (must be non-empty). */
@@ -31,7 +31,7 @@ export interface CustomEventAlternativeInit {
 /**
  * An underlying event aliased by a custom event.
  *
- * Mirror of Python `mixpanel_headless.types.CustomEventAlternative` (types.py:4820;
+ * Mirror of Python `mixpanel_headless.types.CustomEventAlternative` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class CustomEventAlternative extends EntityModel<CustomEventAlternativeInit> {
@@ -85,7 +85,7 @@ export class CustomEventAlternative extends EntityModel<CustomEventAlternativeIn
 
 /**
  * Constructor input for {@link CustomEvent} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CustomEventInit {
   /** Server-assigned custom event ID. */
@@ -101,7 +101,7 @@ export interface CustomEventInit {
 /**
  * A Mixpanel custom event composed of one or more underlying events.
  *
- * Mirror of Python `mixpanel_headless.types.CustomEvent` (types.py:4841;
+ * Mirror of Python `mixpanel_headless.types.CustomEvent` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class CustomEvent extends EntityModel<CustomEventInit> {
@@ -156,7 +156,7 @@ export class CustomEvent extends EntityModel<CustomEventInit> {
 
 /**
  * Constructor input for {@link CreateCustomEventParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CreateCustomEventParamsInit {
   /** Display name for the custom event (must be non-empty). */
@@ -168,7 +168,7 @@ export interface CreateCustomEventParamsInit {
 /**
  * Parameters for creating a custom event.
  *
- * Mirror of Python `mixpanel_headless.types.CreateCustomEventParams` (types.py:4876;
+ * Mirror of Python `mixpanel_headless.types.CreateCustomEventParams` (types.py;
  * model_config: frozen=True, extra='ignore').
  */
 export class CreateCustomEventParams extends EntityModel<CreateCustomEventParamsInit> {
@@ -248,7 +248,7 @@ export class CreateCustomEventParams extends EntityModel<CreateCustomEventParams
 
   /**
    * Serialize to the form-encoded body the Mixpanel API expects
-   * (Python `to_form_body`, `types.py:4929-4942` — ported at B6-W7,
+   * (Python `to_form_body`, `types.py` — ported at B6-W7,
    * decision W7-D3: the Python MODEL owns this serializer, so its twin
    * lands here rather than in the facade member module).
    *
@@ -282,7 +282,7 @@ export class CreateCustomEventParams extends EntityModel<CreateCustomEventParams
 
 /**
  * Constructor input for {@link DropFilter} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface DropFilterInit {
   /** Server-assigned filter ID. */
@@ -302,7 +302,7 @@ export interface DropFilterInit {
 /**
  * A drop filter for discarding events at ingestion.
  *
- * Mirror of Python `mixpanel_headless.types.DropFilter` (types.py:5217;
+ * Mirror of Python `mixpanel_headless.types.DropFilter` (types.py;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
 export class DropFilter extends EntityModel<DropFilterInit> {
@@ -373,7 +373,7 @@ export class DropFilter extends EntityModel<DropFilterInit> {
 
 /**
  * Constructor input for {@link CreateDropFilterParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CreateDropFilterParamsInit {
   /** Event name to filter. */
@@ -385,7 +385,7 @@ export interface CreateDropFilterParamsInit {
 /**
  * Parameters for creating a drop filter.
  *
- * Mirror of Python `mixpanel_headless.types.CreateDropFilterParams` (types.py:5257;
+ * Mirror of Python `mixpanel_headless.types.CreateDropFilterParams` (types.py;
  * model_config: extra='ignore').
  */
 export class CreateDropFilterParams extends EntityModel<CreateDropFilterParamsInit> {
@@ -398,7 +398,7 @@ export class CreateDropFilterParams extends EntityModel<CreateDropFilterParamsIn
   /** Declared fields in Python `model_fields` order. */
   static readonly fieldSpecs: EntityFieldSpecs<CreateDropFilterParamsInit> = [
     { name: "event_name", required: true, kind: "str" },
-    // Python `filters: Any` (`types.py:5276`) — REQUIRED but nullable:
+    // Python `filters: Any` (`types.py`) — REQUIRED but nullable:
     // a bare `Any` annotation admits `None` in pydantic v2 (probe
     // 2026-08-16: `CreateDropFilterParams(event_name="e",
     // filters=None)` validates and `exclude_none` then drops the key,
@@ -439,7 +439,7 @@ export class CreateDropFilterParams extends EntityModel<CreateDropFilterParamsIn
 
 /**
  * Constructor input for {@link UpdateDropFilterParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdateDropFilterParamsInit {
   /** Drop filter ID. */
@@ -455,7 +455,7 @@ export interface UpdateDropFilterParamsInit {
 /**
  * Parameters for updating a drop filter.
  *
- * Mirror of Python `mixpanel_headless.types.UpdateDropFilterParams` (types.py:5280;
+ * Mirror of Python `mixpanel_headless.types.UpdateDropFilterParams` (types.py;
  * model_config: extra='ignore').
  */
 export class UpdateDropFilterParams extends EntityModel<UpdateDropFilterParamsInit> {
@@ -508,7 +508,7 @@ export class UpdateDropFilterParams extends EntityModel<UpdateDropFilterParamsIn
 
 /**
  * Constructor input for {@link DropFilterLimitsResponse} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface DropFilterLimitsResponseInit {
   /** Maximum allowed filters. */
@@ -518,7 +518,7 @@ export interface DropFilterLimitsResponseInit {
 /**
  * Response model for drop filter limits.
  *
- * Mirror of Python `mixpanel_headless.types.DropFilterLimitsResponse` (types.py:5308;
+ * Mirror of Python `mixpanel_headless.types.DropFilterLimitsResponse` (types.py;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
 export class DropFilterLimitsResponse extends EntityModel<DropFilterLimitsResponseInit> {
@@ -570,7 +570,7 @@ export class DropFilterLimitsResponse extends EntityModel<DropFilterLimitsRespon
 
 /**
  * Constructor input for {@link ComposedPropertyValue} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface ComposedPropertyValueInit {
   /** Property type. */
@@ -595,7 +595,7 @@ export interface ComposedPropertyValueInit {
 /**
  * A composed property reference within a custom property formula.
  *
- * Mirror of Python `mixpanel_headless.types.ComposedPropertyValue` (types.py:5347;
+ * Mirror of Python `mixpanel_headless.types.ComposedPropertyValue` (types.py;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
 export class ComposedPropertyValue extends EntityModel<ComposedPropertyValueInit> {
@@ -685,7 +685,7 @@ export class ComposedPropertyValue extends EntityModel<ComposedPropertyValueInit
 
 /**
  * Constructor input for {@link CustomProperty} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CustomPropertyInit {
   /** Server-assigned property ID. */
@@ -727,7 +727,7 @@ export interface CustomPropertyInit {
 /**
  * A Mixpanel custom property (computed/formula property).
  *
- * Mirror of Python `mixpanel_headless.types.CustomProperty` (types.py:5396;
+ * Mirror of Python `mixpanel_headless.types.CustomProperty` (types.py;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
 export class CustomProperty extends EntityModel<CustomPropertyInit> {
@@ -864,7 +864,7 @@ export class CustomProperty extends EntityModel<CustomPropertyInit> {
 
 /**
  * Constructor input for {@link CreateCustomPropertyParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CreateCustomPropertyParamsInit {
   /** Property name. */
@@ -903,7 +903,7 @@ export interface CreateCustomPropertyParamsInit {
 /**
  * Parameters for creating a custom property.
  *
- * Mirror of Python `mixpanel_headless.types.CreateCustomPropertyParams` (types.py:5466;
+ * Mirror of Python `mixpanel_headless.types.CreateCustomPropertyParams` (types.py;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
 export class CreateCustomPropertyParams extends EntityModel<CreateCustomPropertyParamsInit> {
@@ -1069,7 +1069,7 @@ export class CreateCustomPropertyParams extends EntityModel<CreateCustomProperty
 
 /**
  * Constructor input for {@link UpdateCustomPropertyParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdateCustomPropertyParamsInit {
   /** Property name. */
@@ -1097,7 +1097,7 @@ export interface UpdateCustomPropertyParamsInit {
 /**
  * Parameters for updating a custom property (PUT — full replacement).
  *
- * Mirror of Python `mixpanel_headless.types.UpdateCustomPropertyParams` (types.py:5564;
+ * Mirror of Python `mixpanel_headless.types.UpdateCustomPropertyParams` (types.py;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
 export class UpdateCustomPropertyParams extends EntityModel<UpdateCustomPropertyParamsInit> {
@@ -1186,7 +1186,7 @@ export class UpdateCustomPropertyParams extends EntityModel<UpdateCustomProperty
 
 /**
  * Constructor input for {@link LookupTable} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface LookupTableInit {
   /**
@@ -1212,7 +1212,7 @@ export interface LookupTableInit {
 /**
  * A Mixpanel lookup table.
  *
- * Mirror of Python `mixpanel_headless.types.LookupTable` (types.py:5609;
+ * Mirror of Python `mixpanel_headless.types.LookupTable` (types.py;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
 export class LookupTable extends EntityModel<LookupTableInit> {
@@ -1295,7 +1295,7 @@ export class LookupTable extends EntityModel<LookupTableInit> {
 
 /**
  * Constructor input for {@link UploadLookupTableParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UploadLookupTableParamsInit {
   /** Table name (1-255 characters). */
@@ -1312,7 +1312,7 @@ export interface UploadLookupTableParamsInit {
 /**
  * Parameters for uploading a lookup table CSV.
  *
- * Mirror of Python `mixpanel_headless.types.UploadLookupTableParams` (types.py:5649;
+ * Mirror of Python `mixpanel_headless.types.UploadLookupTableParams` (types.py;
  * model_config: extra='ignore').
  */
 export class UploadLookupTableParams extends EntityModel<UploadLookupTableParamsInit> {
@@ -1377,7 +1377,7 @@ export class UploadLookupTableParams extends EntityModel<UploadLookupTableParams
 
 /**
  * Constructor input for {@link MarkLookupTableReadyParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface MarkLookupTableReadyParamsInit {
   /** Table name. */
@@ -1394,7 +1394,7 @@ export interface MarkLookupTableReadyParamsInit {
 /**
  * Parameters for marking a lookup table as ready.
  *
- * Mirror of Python `mixpanel_headless.types.MarkLookupTableReadyParams` (types.py:5680;
+ * Mirror of Python `mixpanel_headless.types.MarkLookupTableReadyParams` (types.py;
  * model_config: extra='ignore').
  */
 export class MarkLookupTableReadyParams extends EntityModel<MarkLookupTableReadyParamsInit> {
@@ -1447,7 +1447,7 @@ export class MarkLookupTableReadyParams extends EntityModel<MarkLookupTableReady
 
 /**
  * Constructor input for {@link LookupTableUploadUrl} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface LookupTableUploadUrlInit {
   /** Signed GCS upload URL. */
@@ -1461,7 +1461,7 @@ export interface LookupTableUploadUrlInit {
 /**
  * Response model for lookup table upload URL request.
  *
- * Mirror of Python `mixpanel_headless.types.LookupTableUploadUrl` (types.py:5704;
+ * Mirror of Python `mixpanel_headless.types.LookupTableUploadUrl` (types.py;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
 export class LookupTableUploadUrl extends EntityModel<LookupTableUploadUrlInit> {
@@ -1511,7 +1511,7 @@ export class LookupTableUploadUrl extends EntityModel<LookupTableUploadUrlInit> 
 
 /**
  * Constructor input for {@link UpdateLookupTableParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdateLookupTableParamsInit {
   /** New table name. */
@@ -1521,7 +1521,7 @@ export interface UpdateLookupTableParamsInit {
 /**
  * Parameters for updating a lookup table.
  *
- * Mirror of Python `mixpanel_headless.types.UpdateLookupTableParams` (types.py:5736;
+ * Mirror of Python `mixpanel_headless.types.UpdateLookupTableParams` (types.py;
  * model_config: extra='ignore').
  */
 export class UpdateLookupTableParams extends EntityModel<UpdateLookupTableParamsInit> {

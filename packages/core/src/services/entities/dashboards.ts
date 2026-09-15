@@ -1,7 +1,7 @@
 /**
  * Dashboard CRUD wire methods — Phase-3 packet B4-C3 port of
  * `MixpanelAPIClient` dashboards + blueprints/RCA + dashboard-adjacent
- * ranges (`api_client.py:3650-4426`).
+ * ranges (`api_client.py`).
  *
  * Every method routes through B0 `appRequest` (per-request auth via the
  * C1 `appDeps` seam — R2.9/R10.8) over a `maybe_scoped_path` (B0
@@ -28,7 +28,7 @@ import {
 export interface ListDashboardsOptions {
   /** Optional dashboard-ID filter (`,`-joined on the wire). */
   readonly ids?: readonly number[] | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -36,14 +36,14 @@ export interface ListDashboardsOptions {
 export interface ListBlueprintTemplatesOptions {
   /** Include report details in each template (Python default False). */
   readonly include_reports?: boolean | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
 /** The C3 dashboard method surface (mixed into `MixpanelClient`). */
 export interface DashboardMethods {
   /**
-   * List dashboards (`list_dashboards`, `api_client.py:3650-3687`).
+   * List dashboards (`list_dashboards`, `api_client.py`).
    *
    * @param options - Optional `ids` filter + signal.
    * @returns The dashboard list verbatim.
@@ -495,7 +495,7 @@ async function listBlueprintTemplates(
     params: paramsOrNone(params),
   });
   // The blueprints-all endpoint returns {"templates": {name: data}}
-  // (`api_client.py:4082-4099`).
+  // (`api_client.py`).
   if (isPlainRecord(result) && Object.hasOwn(result, "templates")) {
     const templates = result["templates"] as JsonValue;
     if (isPlainRecord(templates)) {

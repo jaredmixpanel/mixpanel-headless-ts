@@ -4,7 +4,7 @@
  * Hand-written ports of the Pydantic entity models (phase2-design C5,
  * packet P2-7): the PYTHON models are the source of record; vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling (R3.6/R7.6); optionality follows
+ * keep their exact Python spelling; optionality follows
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
@@ -18,7 +18,7 @@ import {
 
 /**
  * Constructor input for {@link AnnotationUser} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AnnotationUserInit {
   /** User ID. */
@@ -32,7 +32,7 @@ export interface AnnotationUserInit {
 /**
  * Nested user info for annotation creator.
  *
- * Mirror of Python `mixpanel_headless.types.AnnotationUser` (types.py:3751;
+ * Mirror of Python `mixpanel_headless.types.AnnotationUser` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class AnnotationUser extends EntityModel<AnnotationUserInit> {
@@ -82,7 +82,7 @@ export class AnnotationUser extends EntityModel<AnnotationUserInit> {
 
 /**
  * Constructor input for {@link AnnotationTag} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AnnotationTagInit {
   /** Tag ID. */
@@ -98,7 +98,7 @@ export interface AnnotationTagInit {
 /**
  * Annotation tag for categorization.
  *
- * Mirror of Python `mixpanel_headless.types.AnnotationTag` (types.py:3777;
+ * Mirror of Python `mixpanel_headless.types.AnnotationTag` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class AnnotationTag extends EntityModel<AnnotationTagInit> {
@@ -151,7 +151,7 @@ export class AnnotationTag extends EntityModel<AnnotationTagInit> {
 
 /**
  * Constructor input for {@link Annotation} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AnnotationInit {
   /** Annotation ID. */
@@ -174,7 +174,7 @@ export interface AnnotationInit {
 /**
  * Response model for a timeline annotation.
  *
- * Mirror of Python `mixpanel_headless.types.Annotation` (types.py:3807;
+ * Mirror of Python `mixpanel_headless.types.Annotation` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class Annotation extends EntityModel<AnnotationInit> {
@@ -238,7 +238,7 @@ export class Annotation extends EntityModel<AnnotationInit> {
 
 /**
  * Constructor input for {@link CreateAnnotationParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CreateAnnotationParamsInit {
   /** Date string in ``%Y-%m-%d %H:%M:%S`` format. */
@@ -254,7 +254,7 @@ export interface CreateAnnotationParamsInit {
 /**
  * Parameters for creating a new annotation.
  *
- * Mirror of Python `mixpanel_headless.types.CreateAnnotationParams` (types.py:3845;
+ * Mirror of Python `mixpanel_headless.types.CreateAnnotationParams` (types.py;
  * model_config: extra='ignore').
  */
 export class CreateAnnotationParams extends EntityModel<CreateAnnotationParamsInit> {
@@ -271,7 +271,7 @@ export class CreateAnnotationParams extends EntityModel<CreateAnnotationParamsIn
       name: "description",
       required: true,
       kind: "str",
-      // Python: Field(max_length=512) — codepoint-counted (R11.6).
+      // Python: Field(max_length=512) — codepoint-counted.
       check: (value: unknown, path: string): void => {
         if (typeof value === "string" && cpLength(value) > 512) {
           modelFail(path, "max_length 512");
@@ -317,7 +317,7 @@ export class CreateAnnotationParams extends EntityModel<CreateAnnotationParamsIn
 
 /**
  * Constructor input for {@link UpdateAnnotationParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdateAnnotationParamsInit {
   /** New description (max 512 characters). */
@@ -329,7 +329,7 @@ export interface UpdateAnnotationParamsInit {
 /**
  * Parameters for updating an annotation (PATCH semantics).
  *
- * Mirror of Python `mixpanel_headless.types.UpdateAnnotationParams` (types.py:3875;
+ * Mirror of Python `mixpanel_headless.types.UpdateAnnotationParams` (types.py;
  * model_config: extra='ignore').
  */
 export class UpdateAnnotationParams extends EntityModel<UpdateAnnotationParamsInit> {
@@ -386,7 +386,7 @@ export class UpdateAnnotationParams extends EntityModel<UpdateAnnotationParamsIn
 
 /**
  * Constructor input for {@link CreateAnnotationTagParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CreateAnnotationTagParamsInit {
   /** Tag name. */
@@ -396,7 +396,7 @@ export interface CreateAnnotationTagParamsInit {
 /**
  * Parameters for creating an annotation tag.
  *
- * Mirror of Python `mixpanel_headless.types.CreateAnnotationTagParams` (types.py:3898;
+ * Mirror of Python `mixpanel_headless.types.CreateAnnotationTagParams` (types.py;
  * model_config: extra='ignore').
  */
 export class CreateAnnotationTagParams extends EntityModel<CreateAnnotationTagParamsInit> {

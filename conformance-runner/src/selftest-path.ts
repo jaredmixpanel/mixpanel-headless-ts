@@ -20,7 +20,7 @@ const PACKAGE_DIR = resolve(MODULE_DIR, "..");
 /** Selftest file name as written by Python task PR-4 (D6). */
 const SELFTEST_FILENAME = "canonical-selftest.json";
 
-/** Shape of the optional `corpus.config.json` fields used here (D12). */
+/** Shape of the optional `corpus.config.json` fields used here. */
 interface CorpusConfig {
   /** Path to the corpus snapshot directory, relative to the package. */
   readonly vectorsPath?: string;

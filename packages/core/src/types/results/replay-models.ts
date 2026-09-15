@@ -961,7 +961,7 @@ export class Replay {
 
   /**
    * Analyzer-produced markdown timeline rendered from `actions`
-   * (Python `summary_markdown` property, `types.py:13187-13205`).
+   * (Python `summary_markdown` property, `types.py`).
    * Closed at B5-S3 — the `_render_markdown` dependency landed with
    * the analyzer.
    *

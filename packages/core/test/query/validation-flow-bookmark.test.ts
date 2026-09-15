@@ -25,7 +25,7 @@ type Dict = Record<string, unknown>;
 /**
  * Build a default-valid params dict for `validateFlowBookmark`.
  *
- * Port of `_valid_flow_bookmark` (`test_validation_flow.py:71-94`).
+ * Port of `_valid_flow_bookmark`.
  *
  * @param overrides - Keys to override in the defaults.
  * @returns A fresh flow bookmark params dict.
@@ -48,7 +48,7 @@ function validFlowBookmark(overrides: Dict = {}): Dict {
 /**
  * Extract error codes.
  *
- * Port of `_codes` (`test_validation_flow.py:97-106`).
+ * Port of `_codes`.
  *
  * @param errors - Validation errors.
  * @returns The codes, in emission order.

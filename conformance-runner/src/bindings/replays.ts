@@ -8,7 +8,7 @@
  *
  * Binding honesty (P3-5 rule 3): every wire binding calls the service
  * method by name; `selector_label_fn` mirrors the recorder's flattening
- * adapter (`conformance/record/adapters.py:65-87` — `(attr, action) →
+ * adapter (`conformance/record/adapters.py` — `(attr, action) →
  * label`, the closure applied immediately); `rrweb_analyzer.analyze`
  * mirrors `adapters.py::analyze_rrweb` (`RrwebAnalyzer().analyze`).
  */
@@ -39,7 +39,7 @@ import { clientForContext, encodeFacadeValue } from "../wire-workspace.js";
 /**
  * A replays-path core error with the recorder's float-detail spelling:
  * `signed_at` / `expired_at` details are Python `float`s
- * (`time.time()` at `replays.py:207` and `+300` arithmetic at
+ * (`time.time()` at `replays.py` and `+300` arithmetic at
  * `_build_expired_error`), so the recorded `details_contain` carries
  * raw float tokens (`1716810000.0`) that the base encoding's native
  * numbers would miss.
@@ -82,9 +82,9 @@ class ReplaysWireError extends WireCoreError {
 /**
  * Construct the replay `ReplaysService` for one call — the
  * `targets.py::make_replays_service` twin (a FRESH service per call,
- * exactly like the Python dispatch at `execute.py:484-486`; the CLIENT
+ * exactly like the Python dispatch at `execute.py`; the CLIENT
  * stays the vector-shared instance). The CDN seam is the vector
- * harness fetch (R2.4/R6.4); the `time.time()` seam is the frozen
+ * harness fetch; the `time.time()` seam is the frozen
  * shims clock (the Python runner freezes it via freezegun, D1.4).
  *
  * @param context - The invocation context.
@@ -187,7 +187,7 @@ export function registerReplaysBindings(
   implementations.register("replays.walk_cdn_async", async (context) => {
     const service = replaysServiceFor(context);
     // Generator members replay as their item list (the Python runner's
-    // `isinstance(result, Iterator)` branch, `execute.py:553-555`).
+    // `isinstance(result, Iterator)` branch, `execute.py`).
     return runReplays(codecs, async () => {
       const items: unknown[] = [];
       for await (const item of service.walkCdnAsync(
@@ -268,7 +268,7 @@ export function registerReplaysBindings(
 
   implementations.register("replay_labels.selector_label_fn", (context) =>
     // The recorder flattens the closure factory to `(attr, action) →
-    // label` (`adapters.py:65-87`); the binding mirrors that adapter
+    // label` (`adapters.py`); the binding mirrors that adapter
     // over the REAL public factory.
     runBuilder(() =>
       selectorLabelFn(requireWireKwarg(context, "attr") as string)(

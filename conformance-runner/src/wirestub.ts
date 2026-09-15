@@ -75,7 +75,7 @@ class WireStubTransportError extends Error implements ExpectErrorConvertible {
 }
 
 /**
- * Classify a fetch rejection the way a real adapter would (R2.10).
+ * Classify a fetch rejection the way a real adapter would.
  *
  * @param cause - The value the injected fetch rejected with.
  * @returns Never — always throws.

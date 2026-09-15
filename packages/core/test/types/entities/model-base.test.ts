@@ -1,7 +1,7 @@
 // Behavioral unit tests for the entity-model base (phase2-design C5,
 // packet P2-7): the Pydantic-boundary semantics every one of the 119
-// entity classes inherits — defaults-on-absent (R4.12), null vs
-// absent (R3.9/R4.10), extra policies, validation-alias acceptance
+// entity classes inherits — defaults-on-absent, null vs
+// absent, extra policies, validation-alias acceptance
 // (R3.4 explicit ports), lax coercion, nested reconstruction — plus
 // the five hand-ported Python validators.
 import { describe, expect, it } from "vitest";

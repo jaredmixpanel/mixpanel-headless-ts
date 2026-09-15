@@ -1,6 +1,6 @@
 // Translated funnel-transform tests (B5-S2, packet §3 + §8): the B3-K3
 // deferral (`B3-K3-notes.md:85-92`) — assertion-for-assertion port of
-// tests/test_transform_funnel.py (R10.2), BOTH classes
+// tests/test_transform_funnel.py, BOTH classes
 // (TestExtractFunnelStepsFromSeries :57, TestTransformFunnelResult
 // :338).
 //
@@ -31,7 +31,7 @@ import { FunnelQueryResult } from "../../src/types/results/query-engine.js";
 import { expectThrows } from "../../test-support/raises.js";
 
 // ===========================================================================
-// Shared fixtures (test_transform_funnel.py:20-48)
+// Shared fixtures (test_transform_funnel.py)
 // ===========================================================================
 
 const SAMPLE_STEPS: Array<Record<string, unknown>> = [
@@ -160,7 +160,7 @@ describe("TestExtractFunnelStepsFromSeries", () => {
   });
 
   // -------------------------------------------------------------------
-  // Insights API nested series format (live_query.py:367-437)
+  // Insights API nested series format (live_query.py)
   // -------------------------------------------------------------------
 
   it("canonical insights format extracts step data correctly", () => {
@@ -532,7 +532,7 @@ describe("TestTransformFunnelResult", () => {
 describe("R10.9: AttributeError fidelity on non-mapping members", () => {
   it("transform_funnel with data=null raises AttributeError, not TypeError", () => {
     // Python: `raw.get("data", {})` yields `None`, and `None.items()`
-    // raises `AttributeError` (`live_query.py:141`).
+    // raises `AttributeError`.
     expect(() =>
       transformFunnel({ data: null }, 42, "2025-01-01", "2025-01-31"),
     ).toThrow(AttributeError);
@@ -546,7 +546,7 @@ describe("R10.9: AttributeError fidelity on non-mapping members", () => {
 
   it("transform_retention with a non-mapping cohort raises AttributeError", () => {
     // Python: `cohort_data.get("first", 0)` on a `str`
-    // (`live_query.py:198`).
+    // (`live_query.py`).
     expect(() =>
       transformRetention(
         { "2025-01-01": "notadict" },

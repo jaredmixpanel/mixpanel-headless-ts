@@ -2,8 +2,8 @@
  * Python `urllib.parse.parse_qs` twin (default flags:
  * `keep_blank_values=False`, `strict_parsing=False`, separator `&`) —
  * shared by the callback server's `do_GET` query parse
- * (`callback_server.py:209-210`) and the redirect/paste parser
- * (`flow.py:92`). One canonical helper (watchlist #13 discipline for
+ * (`callback_server.py`) and the redirect/paste parser
+ * (`flow.py`). One canonical helper (watchlist #13 discipline for
  * query parsing — a second local parser is a per-se finding).
  *
  * B9-R2 HOME NOTE (b9-packets.md §3.1 row 2): moved MECHANICALLY from

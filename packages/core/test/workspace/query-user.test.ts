@@ -1,5 +1,5 @@
 // Translated query_user tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/test_workspace_query_user.py (R10.2) — ALL 18
+// assertion port of tests/test_workspace_query_user.py — ALL 18
 // classes (TestQueryUserDefaultLimit :164, TestQueryUserExplicitLimit
 // :237, TestQueryUserPropertySelection :367, TestQueryUserSorting :417,
 // TestQueryUserSearch :526, TestQueryUserDistinctId :575,

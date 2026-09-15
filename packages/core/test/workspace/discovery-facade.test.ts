@@ -1,5 +1,5 @@
 // B5-S1 facade coverage for the 12 discovery/lexicon `Workspace`
-// members (`workspace.py:1039-1394`).
+// members (`workspace.py`).
 //
 // Provenance: these members carry ZERO corpus vectors (packet §4
 // "Vectors: 0") and Python has no dedicated facade test class for them

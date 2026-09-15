@@ -41,7 +41,7 @@ export interface ReplayCollection {
 
 /**
  * Genuine clicks from an `actions_df` row list — drops focus-only
- * interactions (`real_clicks`, `aggregators.py:26-49`).
+ * interactions (`real_clicks`, `aggregators.py`).
  *
  * A real user click fires BOTH a `focused` and a `clicked` rrweb
  * interaction, and the analyzer maps both to the `click` action
@@ -88,7 +88,7 @@ export interface TopClickRow extends Row {
 
 /**
  * Top-N click targets across the bundle (`top_clicks`,
- * `aggregators.py:52-77`).
+ * `aggregators.py`).
  *
  * Counts genuine clicks only: focus-only interactions are excluded via
  * {@link realClicks} so each user click counts once.
@@ -142,7 +142,7 @@ export interface RageClickRow extends Row {
 
 /**
  * Bursts of ≥ `threshold` clicks on the same target within `windowMs`
- * (`rage_clicks`, `aggregators.py:80-129`).
+ * (`rage_clicks`, `aggregators.py`).
  *
  * @param bundle - The bundle to scan.
  * @param options - `threshold` (default 3) and `windowMs` (default
@@ -205,7 +205,7 @@ export interface LongPauseRow extends Row {
 
 /**
  * Idle stretches between consecutive actions longer than `thresholdS`
- * (`long_pauses`, `aggregators.py:132-155`).
+ * (`long_pauses`, `aggregators.py`).
  *
  * @param bundle - The bundle to scan.
  * @param thresholdS - Minimum pause length in seconds. Default 10.
@@ -239,7 +239,7 @@ export function longPauses(
 
 /**
  * Replay IDs that emitted at least one `console_error` action
- * (`error_sessions`, `aggregators.py:158-172`).
+ * (`error_sessions`, `aggregators.py`).
  *
  * @param bundle - The bundle to scan.
  * @returns Replay IDs in input order. Empty when the bundle has no

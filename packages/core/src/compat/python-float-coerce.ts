@@ -5,7 +5,7 @@
  * once, here; consumed by `FunnelQueryResult.overall_conversion_rate`
  * (the ledgered straggler site) and by any future `float(value)` twin
  * over an `Any`-typed payload value. The STRING arm delegates to
- * `pythonFloat` (R11.3) — no grammar is re-derived here (R10.8).
+ * `pythonFloat` — no grammar is re-derived here.
  *
  * The traps this closes: the pre-fix site used `floatValue(x) ?? 0.0`,
  * which returned `0.0` for `None`/lists/dicts where CPython raises
@@ -23,7 +23,7 @@
  */
 // Import-free leaf module (its only exports are the minted builtin
 // twins), so this compat module may import it without a layering cycle;
-// the OverflowError twin exists ONCE there (R10.8).
+// the OverflowError twin exists ONCE there.
 import { OverflowError } from "./python-builtins.js";
 import { isPythonDict } from "./python-dict.js";
 import { pythonFloat } from "./python-float.js";
@@ -42,7 +42,7 @@ function isSpellingWrapper(value: object): value is { spelling: string } {
 }
 
 /**
- * Coerce a payload value exactly as CPython `float(x)` does (R11.7).
+ * Coerce a payload value exactly as CPython `float(x)` does.
  *
  * Arms, in ladder order:
  * - `number` → returned unchanged (`float(int)` / `float(float)`;

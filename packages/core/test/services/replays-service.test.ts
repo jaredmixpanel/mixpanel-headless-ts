@@ -1,5 +1,5 @@
 // Translated ReplaysService tests (packet B5-S3, `b5-packets.md` §5):
-// assertion-for-assertion ports (R10.2) of ALL NINE classes of
+// assertion-for-assertion ports of ALL NINE classes of
 //   tests/unit/_internal/test_replays_service.py
 //     TestSignWrapping                 :72
 //     TestFetchFilesHappyPath          :143
@@ -54,7 +54,7 @@ type Handler = (request: CapturedFetchRequest) => CannedResponse;
 type CdnHandler = (url: string) => CannedResponse;
 
 /**
- * The `_mock_api_client` fixture (`test_replays_service.py:34-39`) —
+ * The `_mock_api_client` fixture —
  * a real B4 client over a canned App-API transport.
  *
  * @param options - `projectId` (default `"12345"`) and the
@@ -87,7 +87,7 @@ function mockApiClient(
 
 /**
  * Build a `SignedReplay` pointing at the fake CDN host used in the
- * fixtures (`_signed`, `test_replays_service.py:42-51`).
+ * fixtures (`_signed`, `test_replays_service.py`).
  *
  * @param replayId - The replay id (default `"r-1"`).
  * @param env - The environment (default `"prod"`).
@@ -108,7 +108,7 @@ function signedFixture(
 
 /**
  * Build a minimal rrweb-shaped event (`_rrweb_event`,
- * `test_replays_service.py:54-56`).
+ * `test_replays_service.py`).
  *
  * @param timestamp - Unix ms.
  * @param type_ - The rrweb type discriminator (default `3`).
@@ -120,7 +120,7 @@ function rrwebEvent(timestamp: number, type_ = 3): Record<string, unknown> {
 
 /**
  * Pull the NNNN file index out of a CDN URL (`_parse_file_num`,
- * `test_replays_service.py:59-65`).
+ * `test_replays_service.py`).
  *
  * @param url - The full CDN URL.
  * @returns The parsed file number.
@@ -166,7 +166,7 @@ function cdnFetch(handler: CdnHandler): typeof fetch {
 
 /**
  * Build a CDN handler that serves file fixtures (`_make_cdn_handler`,
- * `test_replays_service.py:108-135`).
+ * `test_replays_service.py`).
  *
  * @param options - `fileContents` (file number → events, or `null` for
  *   404), `files403`, and an optional `callLog`.
@@ -549,7 +549,7 @@ describe("discover without query_fn (TestDiscoverNoQueryFn)", () => {
 // discover() / events_for() parsing against the REAL Insights series
 // =============================================================================
 
-/** `_DISCOVERY_SERIES` (`test_replays_service.py:439-451`). */
+/** `_DISCOVERY_SERIES`. */
 const DISCOVERY_SERIES: Record<string, unknown> = {
   "Session Recording Checkpoint [Minimum Time]": {
     $overall: { all: 1779319127 },
@@ -618,7 +618,7 @@ interface QueryCall {
 
 /**
  * Build a service whose `queryFn` returns a canned series
- * (`_series_result`, `test_replays_service.py:429-434`).
+ * (`_series_result`, `test_replays_service.py`).
  *
  * @param series - The `result.series` payload.
  * @param options - `projectId` and the optional warning sink.

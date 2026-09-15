@@ -646,7 +646,7 @@ function trimFragment(fragment: string): string {
  */
 // eslint-disable-next-line complexity, max-lines-per-function -- branch-for-branch port of one Python function (see the docblock); splitting it would scatter the guard order the corpus pins
 export function parseReportLink(value: string): ParsedReportLink {
-  // Python `value.strip()` — the CPython whitespace set (R11.3), not JS `trim()`.
+  // Python `value.strip()` — the CPython whitespace set, not JS `trim()`.
   const raw = pythonStrip(value);
   if (raw === "") {
     throw unparseable(raw);

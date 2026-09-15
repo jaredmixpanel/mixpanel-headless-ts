@@ -16,7 +16,7 @@
  * `TestListContainsRoundTrip` (`:354-394`) IS builder-direct and is
  * translated below.
  *
- * Strategy mirroring notes (R10.2):
+ * Strategy mirroring notes:
  * - `property_names = st.text(min_size=1, max_size=30,
  *   alphabet=st.characters(categories=("L", "N")))` → the same size
  *   window over a letter/number alphabet that INCLUDES non-ASCII and

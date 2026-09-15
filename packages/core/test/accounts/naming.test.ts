@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 import { defaultAccountName, slugify } from "../../src/accounts/naming.js";
 import { MeResponse } from "../../src/client/me.js";
 
-/** `_me_with_org` (`test_naming.py:93-97`). */
+/** `_me_with_org`. */
 function meWithOrg(orgId: string, name: string): MeResponse {
   return new MeResponse({
     organizations: { [orgId]: { id: Number(orgId), name } },

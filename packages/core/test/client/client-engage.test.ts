@@ -1,6 +1,6 @@
 // Layer-3 translation — Phase-3 packet B4-C2 engage locks. Sources:
 //
-// - tests/unit/test_api_client.py::TestProfileExport (:965),
+// - tests/unit/test_api_client.py::TestProfileExport,
 //   ::TestEngageParameterValidation (:1861),
 //   ::TestEngageParameterEdgeCases (:1942),
 //   ::TestEngageDistinctIdParameter (:2042),

@@ -1,7 +1,7 @@
 /**
  * Session-replay signing wire method (App API) — Phase-3 packet B4-C5
  * port of `MixpanelAPIClient.sign_replays`
- * (`api_client.py:8837-8894`).
+ * (`api_client.py`).
  *
  * The method itself is a plain `appRequest` POST with a direct
  * project path; the 403 `SESSION_RECORDING_SENSITIVE_DATA` →

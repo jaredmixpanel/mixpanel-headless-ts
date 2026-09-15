@@ -1,4 +1,4 @@
-// Layer-3 translation — Python PR #235 (AIE-925):
+// Layer-3 translation — Python PR #235:
 // tests/unit/test_api_base_url_override_pbt.py → fast-check.
 //
 // Properties (verbatim from the Python module docstring):

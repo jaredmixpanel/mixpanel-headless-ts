@@ -67,7 +67,7 @@ describe("parseProject", () => {
 describe("parseWorkspaceRef", () => {
   it("parses a positive integer id with lax coercion", () => {
     expect(parseWorkspaceRef({ id: 3448414 }).id).toBe(3448414);
-    // Pydantic lax mode accepts digit strings for int fields (R4.12).
+    // Pydantic lax mode accepts digit strings for int fields.
     expect(parseWorkspaceRef({ id: "42" }).id).toBe(42);
   });
 
@@ -125,7 +125,7 @@ describe("parseSession", () => {
       parseSession({ ...SESSION_PAYLOAD, headers: { "X-N": 5 } }),
     ).toThrow(ResponseValidationError);
     // default_factory fires on ABSENT only — explicit null is an error
-    // (headers is a required Mapping, session.py:145 / R4.12).
+    // (headers is a required Mapping, session.py / R4.12).
     expect(() => parseSession({ ...SESSION_PAYLOAD, headers: null })).toThrow(
       ResponseValidationError,
     );

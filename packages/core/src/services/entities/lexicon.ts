@@ -1,14 +1,14 @@
 /**
  * Lexicon data-definition wire methods (App API) — Phase-3 packet
  * B4-C5 port of the `MixpanelAPIClient` lexicon range
- * (`api_client.py:6480-7177`): event/property definitions (with the
+ * (`api_client.py`): event/property definitions (with the
  * `_event_definitions`/`_property_definitions` private shared cores —
  * plain `appRequest` GETs with `name[]` filters + bare-list shape
  * validation; measured, NO `paginate_all` involvement), tags, tracking
  * metadata, history, and export.
  *
  * All methods route through B0 `appRequest` over `maybe_scoped_path`
- * (R10.8) — except `listPerEventProperties`, which is a query-host
+ * — except `listPerEventProperties`, which is a query-host
  * request (`_request` twin, Python PR #215: the schema-graph edge
  * gather moved off the App API's deadline-bound `includeEvents` join).
  * Results are returned verbatim after the source's isinstance guards
@@ -25,7 +25,7 @@ import { pythonTypeNameOf, scopedPath } from "../shared.js";
 import { expectListResult, expectRecordResult, pythonQuote } from "./shared.js";
 
 /**
- * `_RESOURCE_TYPE_CANONICAL` (`api_client.py:257-263`): the App API
+ * `_RESOURCE_TYPE_CANONICAL`: the App API
  * honors only the camelCase `resourceType` param with a capitalized
  * value; lowercase 400s and snake_case is silently ignored (verified
  * live upstream). Unknown spellings pass through.
@@ -40,7 +40,7 @@ const RESOURCE_TYPE_CANONICAL: Readonly<Record<string, string>> = {
 
 /**
  * Normalize a caller's resource-type spelling to the App API's
- * canonical value (`_canonical_resource_type`, `api_client.py:266-284`).
+ * canonical value (`_canonical_resource_type`, `api_client.py`).
  *
  * @param resourceType - A caller-supplied filter ("event", "People", ...).
  * @returns `"Event"` / `"User"` for known spellings; the input
@@ -65,7 +65,7 @@ export interface ListPropertyDefinitionsOptions {
   readonly include_custom?: boolean | undefined;
   /** Include properties with no recorded data (default true). */
   readonly include_zero_counts?: boolean | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -84,7 +84,7 @@ interface PropertyDefinitionsArgs {
 export interface LexiconMethods {
   /**
    * Get event definitions by name (`get_event_definitions`,
-   * `api_client.py:6515-6539` — GET `data-definitions/events/` with a
+   * `api_client.py` — GET `data-definitions/events/` with a
    * `name[]` filter via the `_event_definitions` shared core).
    *
    * @param names - Event names to look up.
@@ -181,7 +181,7 @@ export interface LexiconMethods {
 
   /**
    * List every event with the properties observed on it
-   * (`list_per_event_properties`, `api_client.py:6884-6929` — GET
+   * (`list_per_event_properties`, `api_client.py` — GET
    * `{query}/data_definitions/events` with
    * `fetch_per_event_properties=true`, the internal query-API surface
    * the Mixpanel Lexicon UI itself uses, unwrapping the `results`
@@ -193,7 +193,7 @@ export interface LexiconMethods {
    * is injected as `workspace_id` and the server applies its event-name
    * filters.
    *
-   * @param signal - Optional cancellation signal (R6.7).
+   * @param signal - Optional cancellation signal.
    * @returns List of event dicts; each carries a `properties` list of
    *   property definition dicts (at minimum `{name: ...}`-shaped).
    * @throws MixpanelHeadlessError - Non-list `results` payload (plus
@@ -348,7 +348,7 @@ export interface LexiconMethods {
   ) => Promise<Record<string, JsonValue>>;
 }
 /**
- * `_event_definitions` (`api_client.py:6480-6513`): the shared core
+ * `_event_definitions`: the shared core
  * behind the by-name lookup and the bulk enumerate.
  *
  * @param names - Optional `name[]` filter values.

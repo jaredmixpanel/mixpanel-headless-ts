@@ -1,5 +1,5 @@
 // Layer-3 translation of tests/unit/test_api_client.py::TestParseRetryAfter
-// (:3499-3551) and ::TestRetryWaitSeconds (:3554-3592) — the B0-2
+// and ::TestRetryWaitSeconds — the B0-2
 // retry/backoff trio unit locks (playbook B0-2 table row; loop-level
 // hardening lives in internals.test.ts / app-request.test.ts).
 //
@@ -113,7 +113,7 @@ describe("TestRetryWaitSeconds", () => {
   });
 });
 
-// calculateBackoff formula lock (api_client.py:664-681):
+// calculateBackoff formula lock (api_client.py):
 // min(1.0 * 2^attempt, 60.0) + uniform(0, delay * 0.1); jitter rides the
 // FALLBACK path only (rulebook Discrepancy #1 resolution — port source
 // truth, injectable RNG).

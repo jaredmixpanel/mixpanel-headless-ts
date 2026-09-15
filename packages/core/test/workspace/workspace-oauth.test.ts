@@ -1,6 +1,6 @@
 // Layer-3 translation of `tests/unit/test_workspace_oauth.py` (274
-// lines): `TestWorkspaceConstructionWithOAuth` (:157),
-// `TestWorkspaceListWorkspaces` (:196), `TestWorkspaceResolveWorkspaceId`
+// lines): `TestWorkspaceConstructionWithOAuth`,
+// `TestWorkspaceListWorkspaces`, `TestWorkspaceResolveWorkspaceId`
 // (:253) — B7-A1 packet §3.4 / playbook B7 row `:231` (session-bypass
 // construction + injected token resolver; no B8 dependency).
 //
@@ -8,7 +8,7 @@
 // MockTransport workspace handler becomes the `createMockClient`
 // canned handler; `make_session(oauth_token=…)` becomes
 // `makeSession({oauthToken})` (the same helper family). The Python
-// `TestWorkspaceSetWorkspaceId` removal note (:273) carries over —
+// `TestWorkspaceSetWorkspaceId` removal note carries over —
 // `set_workspace_id` is gone by design (T050 / FR-038).
 
 import { describe, expect, it } from "vitest";
@@ -22,7 +22,7 @@ import {
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 
-/** The `_TEST_SESSION` twin (`test_workspace_oauth.py:34-43`). */
+/** The `_TEST_SESSION` twin. */
 const TEST_SESSION = makeSession({
   name: "test_account",
   region: "us",
@@ -31,7 +31,7 @@ const TEST_SESSION = makeSession({
   secret: "test_secret",
 });
 
-/** `_workspaces_json` (`test_workspace_oauth.py:89-120`). */
+/** `_workspaces_json`. */
 function workspacesJson(): unknown[] {
   return [
     {
@@ -61,7 +61,7 @@ function workspacesJson(): unknown[] {
   ];
 }
 
-/** `_make_workspace_handler` (`test_workspace_oauth.py:123-148`). */
+/** `_make_workspace_handler`. */
 function workspaceHandler(request: CapturedFetchRequest): CannedResponse {
   if (new URL(request.url).pathname.includes("workspaces/public")) {
     return { status: 200, json: { results: workspacesJson(), status: "ok" } };

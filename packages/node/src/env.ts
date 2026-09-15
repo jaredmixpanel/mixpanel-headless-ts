@@ -24,7 +24,7 @@ export type NodeEnv = ResolverEnv & {
   /**
    * Read one environment variable (the generic `os.environ.get` twin
    * used by `token_env` indirection and login-type detection,
-   * `accounts.py:1409`, `region_probe.py:252`).
+   * `accounts.py`, `region_probe.py`).
    *
    * @param name - Variable name.
    * @returns The raw value, or `undefined` when unset.

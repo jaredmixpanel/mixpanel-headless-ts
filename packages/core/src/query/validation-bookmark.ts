@@ -3,7 +3,7 @@
  * `src/mixpanel_headless/_internal/validation.py` (B2 shard V1b).
  *
  * Python ranges ported here (re-read before touching anything):
- * `validation.py:1772-1877` (`validate_flow_bookmark`, FLB1–FLB6),
+ * `validation.py` (`validate_flow_bookmark`, FLB1–FLB6),
  * `:2288-2415` (`validate_bookmark`, B1–B26 dispatch), `:2423-3018`
  * (the six clause sub-validators) and `:3036-3090`
  * (`validate_sorting_block`). The pydantic mirror the sorting wrapper
@@ -23,7 +23,7 @@
  *   in this file differ on purpose: B18B rejects bools explicitly
  *   (`validation.py:2834`), B22 does NOT (`:2515`), so `id: true`
  *   passes B22 exactly as it does in CPython.
- * - Blank checks go through `pythonStrip` (R11.7) — never `.trim()`.
+ * - Blank checks go through `pythonStrip` — never `.trim()`.
  *
  * R10.7 note (resolved at B2-BIND, 2026-08-15): Python's `value not in
  * FROZENSET` guards raise `TypeError: unhashable type` when the dict
@@ -188,8 +188,8 @@ function pythonEqualsNumber(value: unknown, target: number): boolean {
 
 /**
  * TS analogue of `isinstance(value, int)` WITHOUT the bool exclusion —
- * Python's `bool` is a subclass of `int`, and `validation.py:2515`
- * (B22) relies on that.
+ * Python's `bool` is a subclass of `int`, and `validation.py`
+ * relies on that.
  *
  * @param value - Candidate value.
  * @returns True when Python's `isinstance(value, int)` holds.
@@ -255,19 +255,19 @@ function enumKeyErrors(value: unknown, rule: EnumKeyRule): ValidationError[] {
 }
 
 // =============================================================================
-// Flow bookmark validation (FLB1-FLB6) — validation.py:1772-1877
+// Flow bookmark validation (FLB1-FLB6) — validation.py
 // =============================================================================
 
 /**
  * Validate a flat flow bookmark params dict after construction (Layer 2).
  *
- * Port of `validate_flow_bookmark` (`validation.py:1772-1877`). Flows
+ * Port of `validate_flow_bookmark`. Flows
  * use a flat structure without `sections`/`displayOptions`, so this is
  * a separate function from {@link validateBookmark}.
  *
  * @param params - The flow bookmark params dict (flat structure with
  *   `steps`, `date_range`, `chartType`, `count_type` and `version`
- *   keys). Loosely typed on purpose (R4.9/R10.10): the B5 facade
+ *   keys). Loosely typed on purpose: the B5 facade
  *   forwards raw user input here.
  * @returns List of validation errors. Empty means the bookmark is valid.
  * @example
@@ -319,7 +319,7 @@ export function validateFlowBookmark(params: Dict): ValidationError[] {
     }
   }
 
-  // FLB3 (:1832) / FLB4 (:1845): count_type and chartType — Python
+  // FLB3 / FLB4: count_type and chartType — Python
   // hashes in `not in`
   errors.push(
     ...enumKeyErrors(dictGet(params, "count_type"), {
@@ -363,7 +363,7 @@ export function validateFlowBookmark(params: Dict): ValidationError[] {
 }
 
 // =============================================================================
-// Layer 2: Bookmark structure validation (B1-B26) — validation.py:2288-2415
+// Layer 2: Bookmark structure validation — validation.py
 // =============================================================================
 
 /**
@@ -380,7 +380,7 @@ export interface ValidateBookmarkOptions {
 /**
  * Validate bookmark params dict after construction (Layer 2).
  *
- * Port of `validate_bookmark` (`validation.py:2288-2415`). Validates
+ * Port of `validate_bookmark`. Validates
  * the structural integrity and enum values of a built bookmark params
  * dict before it is sent to the Mixpanel API. Returns all errors found
  * so callers can fix multiple issues at once.
@@ -512,7 +512,7 @@ export function validateBookmark(
 }
 
 // =============================================================================
-// Layer 2: Sub-validators — validation.py:2423-3018
+// Layer 2: Sub-validators — validation.py
 // =============================================================================
 
 /**
@@ -614,7 +614,7 @@ function validateBehavior(behavior: Dict, path: string): ValidationError[] {
     errors.push(...validateCohortBehavior(behavior, `${path}.behavior`));
   }
 
-  // B19: Validate filtersDeterminer (:2549)
+  // B19: Validate filtersDeterminer
   errors.push(
     ...enumKeyErrors(dictGet(behavior, "filtersDeterminer"), {
       path: `${path}.behavior.filtersDeterminer`,
@@ -641,7 +641,7 @@ function validateBehavior(behavior: Dict, path: string): ValidationError[] {
 /**
  * Validate a single `sections.show[]` entry.
  *
- * Port of `_validate_show_clause` (`validation.py:2423-2586`). Handles
+ * Port of `_validate_show_clause`. Handles
  * both multi-metric (behavior+measurement) and formula show clauses.
  *
  * @param clause - The show clause (expected to be a dict).
@@ -723,7 +723,7 @@ function validateShowClause(
 /**
  * Validate a measurement block within a show clause.
  *
- * Port of `_validate_measurement` (`validation.py:2589-2686`).
+ * Port of `_validate_measurement`.
  *
  * @param measurement - The measurement dict.
  * @param showPath - Parent show clause path for error reporting.
@@ -782,7 +782,7 @@ function validateMeasurement(
     );
   }
 
-  // B11: Validate perUserAggregation (:2647)
+  // B11: Validate perUserAggregation
   errors.push(
     ...enumKeyErrors(dictGet(measurement, "perUserAggregation"), {
       path: `${path}.perUserAggregation`,
@@ -795,7 +795,7 @@ function validateMeasurement(
   // Validate measurement.property if present
   const prop = dictGet(measurement, "property");
   if (isDict(prop)) {
-    // B17 (:2662) / B16 (:2674)
+    // B17 / B16
     errors.push(
       ...enumKeyErrors(dictGet(prop, "type"), {
         path: `${path}.property.type`,
@@ -820,7 +820,7 @@ function validateMeasurement(
 /**
  * Validate the displayOptions block.
  *
- * Port of `_validate_display_options` (`validation.py:2689-2723`).
+ * Port of `_validate_display_options`.
  *
  * @param display - The displayOptions dict.
  * @returns List of validation errors.
@@ -830,7 +830,7 @@ function validateDisplayOptions(display: Dict): ValidationError[] {
 
   // B5: chartType is required and must be valid
   const chartType = dictGet(display, "chartType");
-  requireHashable(chartType); // R10.7: Python hashes in `not in` (:2712)
+  requireHashable(chartType); // R10.7: Python hashes in `not in`
   if (isNone(chartType)) {
     errors.push(
       new ValidationError(
@@ -856,7 +856,7 @@ function validateDisplayOptions(display: Dict): ValidationError[] {
   return errors;
 }
 
-/** Valid `dateRangeType` values (inline frozenset, `validation.py:2767-2773`). */
+/** Valid `dateRangeType` values (inline frozenset, `validation.py`). */
 const VALID_DATE_RANGE_TYPES: ReadonlySet<string> = new Set([
   "in the last",
   "between",
@@ -868,7 +868,7 @@ const VALID_DATE_RANGE_TYPES: ReadonlySet<string> = new Set([
 /**
  * Validate a single `sections.time[]` entry.
  *
- * Port of `_validate_time_clause` (`validation.py:2726-2783`).
+ * Port of `_validate_time_clause`.
  *
  * @param clause - The time clause (expected to be a dict).
  * @param index - Index in the time array.
@@ -901,7 +901,7 @@ function validateTimeClause(clause: unknown, index: number): ValidationError[] {
 
   // B13: Validate dateRangeType
   const drt = dictGet(clause, "dateRangeType");
-  requireHashable(drt); // R10.7: Python hashes in `not in` (:2767)
+  requireHashable(drt); // R10.7: Python hashes in `not in`
   if (
     !isNone(drt) &&
     !(typeof drt === "string" && VALID_DATE_RANGE_TYPES.has(drt))
@@ -1072,7 +1072,7 @@ function validateFilterValue(fv: unknown, path: string): ValidationError[] {
 /**
  * Validate a single filter clause.
  *
- * Port of `_validate_filter_clause` (`validation.py:2786-2950`).
+ * Port of `_validate_filter_clause`.
  *
  * @param clause - The filter clause (expected to be a dict).
  * @param path - JSONPath-like location for error reporting.
@@ -1094,7 +1094,7 @@ function validateFilterClause(
 
   const errors = validateFilterPropertyId(clause, path);
 
-  // B16 (:2846) / B14 (:2860) / B15 (:2873) — Python hashes in `not in`
+  // B16 / B14 / B15 — Python hashes in `not in`
   errors.push(
     ...enumKeyErrors(dictGet(clause, "resourceType"), {
       path: `${path}.resourceType`,
@@ -1126,7 +1126,7 @@ function validateFilterClause(
 /**
  * Validate a single `sections.group[]` entry.
  *
- * Port of `_validate_group_clause` (`validation.py:2953-3018`).
+ * Port of `_validate_group_clause`.
  *
  * @param clause - The group clause (expected to be a dict).
  * @param index - Index in the group array.
@@ -1150,7 +1150,7 @@ function validateGroupClause(
     return errors;
   }
 
-  // B17 (:2981) / B16 (:2995) — Python hashes in `not in`
+  // B17 / B16 — Python hashes in `not in`
   errors.push(
     ...enumKeyErrors(dictGet(clause, "propertyType"), {
       path: `${path}.propertyType`,
@@ -1184,7 +1184,7 @@ function validateGroupClause(
 }
 
 // =============================================================================
-// Layer 2: sorting block validator — validation.py:3036-3090
+// Layer 2: sorting block validator — validation.py
 //
 // A thin wrapper over the pydantic mirror in bookmarks/schema-sorting.ts:
 // the FlatOrColumnSortConfig discriminator + extra="forbid" do all the
@@ -1198,7 +1198,7 @@ function validateGroupClause(
 /**
  * Validate the optional `params['sorting']` block.
  *
- * Port of `validate_sorting_block` (`validation.py:3036-3090`). Wraps
+ * Port of `validate_sorting_block`. Wraps
  * the `InsightsBookmarkSortConfig` mirror with a sorting-aware code
  * mapper that recovers the package's stable `S*` codes. Unknown
  * chart-type keys are filtered out and reported as

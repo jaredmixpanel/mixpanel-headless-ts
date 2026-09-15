@@ -1,7 +1,7 @@
 // Translated validation-bypass tests (B5-S2, packet §3 + §8): the B2-M2
 // WHOLE-FILE deferral (`B2-M2-notes.md:120-132`,
 // `validation-bookmark.test.ts:14-27` header) — assertion-for-assertion
-// port of tests/test_validation_bypass.py (R10.2), ALL 8 classes
+// port of tests/test_validation_bypass.py, ALL 8 classes
 // (TestVector1MetricFilterCPFixed :78,
 // TestVector2FunnelStepFilterCPFixed :138,
 // TestVector3InlineCohortDesignChoice :178,
@@ -52,7 +52,7 @@ import {
 } from "../../test-support/workspace-test-helpers.js";
 
 /**
- * The `ws` fixture (test_validation_bypass.py:59-67).
+ * The `ws` fixture.
  *
  * @returns A Workspace with mocked dependencies (no network).
  */

@@ -16,7 +16,7 @@
  * silent by construction); every case below was probe-verified against
  * CPython 3.14.6 on 2026-08-15 (B2-BIND notes, probe matrix: 16 raise
  * sites + hashable non-raise controls). Python source sites:
- * validation.py :1832 (FLB3), :1845 (FLB4), :2483 (B7), :2549 (B19),
+ * validation.py :1832 (FLB3), :1845 (FLB4), :2483, :2549,
  * :2618 (B9), :2647 (B11), :2662 (B17), :2674 (B16), :2712 (B5),
  * :2754 (B12), :2767 (B13), :2846 (B16), :2860 (B14), :2873 (B15),
  * :2981 (B17), :2995 (B16).

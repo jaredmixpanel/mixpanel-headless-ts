@@ -1,11 +1,11 @@
 /**
  * Rate-limit retry timing trio — TS port of
- * `MixpanelAPIClient._calculate_backoff` (`api_client.py:664-681`),
+ * `MixpanelAPIClient._calculate_backoff`,
  * `_retry_wait_seconds` (`:683-704`), and `_parse_retry_after`
  * (`:1159-1185`) — Phase-3 packet B0-2, R10.8 (ported once, by name;
  * the B0/B4 retry loops import these, never re-derive them).
  *
- * Units (R2.12): everything in THIS module speaks Python's seconds — the
+ * Units: everything in THIS module speaks Python's seconds — the
  * single seconds→milliseconds conversion happens at the sleep-seam call
  * sites (`sleep(seconds * 1000)` in `executeWithRetry`/`appRequest`).
  *
@@ -21,7 +21,7 @@ import { MixpanelHeadlessError } from "../errors.js";
 /**
  * Exponential-backoff bounds shared by {@link calculateBackoff} and the
  * Retry-After clamp (Python `_BACKOFF_BASE_SECONDS` /
- * `_BACKOFF_MAX_SECONDS`, `api_client.py:77-78`). A server-supplied
+ * `_BACKOFF_MAX_SECONDS`, `api_client.py`). A server-supplied
  * Retry-After is honored up to the max; anything larger would park the
  * process for hours.
  */

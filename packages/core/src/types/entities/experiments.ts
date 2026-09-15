@@ -4,7 +4,7 @@
  * Hand-written ports of the Pydantic entity models (phase2-design C5,
  * packet P2-7): the PYTHON models are the source of record; vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling (R3.6/R7.6); optionality follows
+ * keep their exact Python spelling; optionality follows
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
@@ -18,7 +18,7 @@ import {
 
 /**
  * Constructor input for {@link ExperimentCreator} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface ExperimentCreatorInit {
   /** Creator's user ID. */
@@ -32,7 +32,7 @@ export interface ExperimentCreatorInit {
 /**
  * Creator metadata for an experiment.
  *
- * Mirror of Python `mixpanel_headless.types.ExperimentCreator` (types.py:3081;
+ * Mirror of Python `mixpanel_headless.types.ExperimentCreator` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class ExperimentCreator extends EntityModel<ExperimentCreatorInit> {
@@ -82,7 +82,7 @@ export class ExperimentCreator extends EntityModel<ExperimentCreatorInit> {
 
 /**
  * Constructor input for {@link Experiment} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface ExperimentInit {
   /** Unique identifier (UUID). */
@@ -140,7 +140,7 @@ export interface ExperimentInit {
 /**
  * A Mixpanel A/B experiment as returned by the App API.
  *
- * Mirror of Python `mixpanel_headless.types.Experiment` (types.py:3473;
+ * Mirror of Python `mixpanel_headless.types.Experiment` (types.py;
  * model_config: frozen=True, extra='allow', populate_by_name=True).
  */
 export class Experiment extends EntityModel<ExperimentInit> {
@@ -256,7 +256,7 @@ export class Experiment extends EntityModel<ExperimentInit> {
 
 /**
  * Constructor input for {@link CreateExperimentParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CreateExperimentParamsInit {
   /** Experiment name (required). */
@@ -276,7 +276,7 @@ export interface CreateExperimentParamsInit {
 /**
  * Parameters for creating a new experiment.
  *
- * Mirror of Python `mixpanel_headless.types.CreateExperimentParams` (types.py:3584;
+ * Mirror of Python `mixpanel_headless.types.CreateExperimentParams` (types.py;
  * model_config: extra='ignore').
  */
 export class CreateExperimentParams extends EntityModel<CreateExperimentParamsInit> {
@@ -335,7 +335,7 @@ export class CreateExperimentParams extends EntityModel<CreateExperimentParamsIn
 
 /**
  * Constructor input for {@link UpdateExperimentParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdateExperimentParamsInit {
   /** Updated name. */
@@ -372,7 +372,7 @@ export interface UpdateExperimentParamsInit {
 /**
  * Parameters for updating an existing experiment (PATCH semantics).
  *
- * Mirror of Python `mixpanel_headless.types.UpdateExperimentParams` (types.py:3622;
+ * Mirror of Python `mixpanel_headless.types.UpdateExperimentParams` (types.py;
  * model_config: extra='ignore').
  */
 export class UpdateExperimentParams extends EntityModel<UpdateExperimentParamsInit> {
@@ -458,7 +458,7 @@ export class UpdateExperimentParams extends EntityModel<UpdateExperimentParamsIn
 
 /**
  * Constructor input for {@link ExperimentConcludeParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface ExperimentConcludeParamsInit {
   /** Override end date (ISO 8601). */
@@ -468,7 +468,7 @@ export interface ExperimentConcludeParamsInit {
 /**
  * Parameters for concluding an experiment.
  *
- * Mirror of Python `mixpanel_headless.types.ExperimentConcludeParams` (types.py:3690;
+ * Mirror of Python `mixpanel_headless.types.ExperimentConcludeParams` (types.py;
  * model_config: extra='ignore').
  */
 export class ExperimentConcludeParams extends EntityModel<ExperimentConcludeParamsInit> {
@@ -514,7 +514,7 @@ export class ExperimentConcludeParams extends EntityModel<ExperimentConcludePara
 
 /**
  * Constructor input for {@link ExperimentDecideParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface ExperimentDecideParamsInit {
   /** Whether the experiment succeeded (required). */
@@ -528,7 +528,7 @@ export interface ExperimentDecideParamsInit {
 /**
  * Parameters for recording an experiment decision.
  *
- * Mirror of Python `mixpanel_headless.types.ExperimentDecideParams` (types.py:3706;
+ * Mirror of Python `mixpanel_headless.types.ExperimentDecideParams` (types.py;
  * model_config: extra='ignore').
  */
 export class ExperimentDecideParams extends EntityModel<ExperimentDecideParamsInit> {
@@ -578,7 +578,7 @@ export class ExperimentDecideParams extends EntityModel<ExperimentDecideParamsIn
 
 /**
  * Constructor input for {@link DuplicateExperimentParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface DuplicateExperimentParamsInit {
   /** Name for the duplicated experiment (required). */
@@ -588,7 +588,7 @@ export interface DuplicateExperimentParamsInit {
 /**
  * Parameters for duplicating an experiment.
  *
- * Mirror of Python `mixpanel_headless.types.DuplicateExperimentParams` (types.py:3730;
+ * Mirror of Python `mixpanel_headless.types.DuplicateExperimentParams` (types.py;
  * model_config: extra='ignore').
  */
 export class DuplicateExperimentParams extends EntityModel<DuplicateExperimentParamsInit> {

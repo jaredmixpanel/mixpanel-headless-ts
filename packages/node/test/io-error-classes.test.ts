@@ -1,7 +1,7 @@
 // B8-ARB-A SEM-F2a (b8-reviewA-resolution.md): Python
 // `OAuthStorage._read_file` catches only the ValueError family
 // (`json.JSONDecodeError, ValueError, UnicodeDecodeError`) plus
-// `CredentialPathError` (`storage.py:405-419`) — an OSError from the
+// `CredentialPathError` — an OSError from the
 // credential read (e.g. EACCES on a root-owned 0600 file) PROPAGATES
 // (live CPython probe in the resolution: `load_tokens` on an
 // unreadable file raises PermissionError). The pre-fix TS `#readFile`

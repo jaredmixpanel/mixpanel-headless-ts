@@ -1,19 +1,19 @@
 // B6-W1 Layer-3 translation of `tests/unit/test_me.py::TestMeService`
-// (:458-682) — the half of `_internal/me.py` that W1 ports
+// — the half of `_internal/me.py` that W1 ports
 // (`b6-packets.md` §3.3: models + `WorkspaceView` + `selectWorkspaceId`
 // landed at B4-C1 in `client/me.ts`; `MeService` lands here; the ON-DISK
-// `MeCache` (`me.py:413-607`) is B8-N2).
+// `MeCache` is B8-N2).
 //
 // The packet's §3 Layer-3 table does not name `test_me.py` (it lists the
 // facade suites only), so this file is the shard's own translation of
 // the MeService class — recorded in `B6-W1-notes.md` §Layer-3 so the
 // review pair can see the addition rather than a gap.
 //
-// DEFERRED to B8-N2 (header-cited): `TestMeCache` (:228),
-// `TestMeCacheConcurrency` (:331), `TestMeCacheSymlinkRejection` (:685)
+// DEFERRED to B8-N2 (header-cited): `TestMeCache`,
+// `TestMeCacheConcurrency`, `TestMeCacheSymlinkRejection`
 // — all on-disk cache behaviour. The disk-cache leg of
-// `test_fetch_uses_disk_cache` (:510) / `test_fetch_stores_in_disk_cache`
-// (:523) is translated here against the INJECTED `MeCacheStore` seam
+// `test_fetch_uses_disk_cache` / `test_fetch_stores_in_disk_cache`
+// is translated here against the INJECTED `MeCacheStore` seam
 // (the in-memory default), which is the store-shaped invariant that
 // survives without disk.
 
@@ -34,7 +34,7 @@ import {
 } from "../../src/services/me.js";
 import { expectRejects } from "../../test-support/raises.js";
 
-/** The `_make_me_response_dict()` twin (`test_me.py:412-456`). */
+/** The `_make_me_response_dict()` twin. */
 function meResponseDict(): Record<string, JsonValue> {
   return {
     user_id: 42,
@@ -412,11 +412,11 @@ describe("MeService cache-store seam", () => {
 // B8" note in `client-workspace.test.ts` is corrected in that file,
 // packet Caution #17). Three of the class's five cases are LITERAL
 // DUPLICATES of the dagger-path section above and are cited rather
-// than re-translated (R10.2): `test_no_workspaces_for_project_is_none`
-// (:196) ≡ "returns null when the project has no views";
-// `test_non_numeric_project_is_none` (:203) ≡ "returns null for a
+// than re-translated: `test_no_workspaces_for_project_is_none`
+// ≡ "returns null when the project has no views";
+// `test_non_numeric_project_is_none` ≡ "returns null for a
 // non-numeric project id"; `test_cold_cache_is_none_without_network`
-// (:208) ≡ "returns null on a cold cache WITHOUT calling the API".
+// ≡ "returns null on a cold cache WITHOUT calling the API".
 // ---------------------------------------------------------------------------
 
 describe("TestMeServiceResolveWorkspace (test_workspace_resolution.py:154)", () => {

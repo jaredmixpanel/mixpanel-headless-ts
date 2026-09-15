@@ -1,7 +1,7 @@
 /**
  * Custom-alert CRUD + operations wire methods (App API) — Phase-3
  * packet B4-C4 port of the `MixpanelAPIClient` alerts range
- * (`api_client.py:6078-6474`).
+ * (`api_client.py`).
  *
  * All methods route through B0 `appRequest` over `maybe_scoped_path`
  * (R10.8). `get_alert_history` is the one `_raw=True` consumer in the
@@ -34,7 +34,7 @@ export interface ListAlertsOptions {
    * explicit `false` IS sent, as `"false"`; `str(x).lower()` twin).
    */
   readonly skip_user_filter?: boolean | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -42,7 +42,7 @@ export interface ListAlertsOptions {
 export interface GetAlertCountOptions {
   /** Optional filter by alert type (wire param `type`). */
   readonly alert_type?: string | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -54,14 +54,14 @@ export interface GetAlertHistoryOptions {
   readonly next_cursor?: string | null | undefined;
   /** Cursor for the previous page. */
   readonly previous_cursor?: string | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
 /** The C4 alert method surface (mixed into `MixpanelClient`). */
 export interface AlertMethods {
   /**
-   * List custom alerts (`list_alerts`, `api_client.py:6078-6120` —
+   * List custom alerts (`list_alerts`, `api_client.py` —
    * GET `alerts/custom/`).
    *
    * @param options - bookmark_id/skip_user_filter filters + signal.
@@ -342,7 +342,7 @@ export function createAlertMethods(core: ClientCore): AlertMethods {
         path,
         { params: paramsOrNone(params), raw: true },
       );
-      // The source's exact branch ladder (`api_client.py:6352-6371`).
+      // The source's exact branch ladder (`api_client.py`).
       if (isPlainRecord(result)) {
         if (!Object.hasOwn(result, "results")) {
           throw new MixpanelHeadlessError(

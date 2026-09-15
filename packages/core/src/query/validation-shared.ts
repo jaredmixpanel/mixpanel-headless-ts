@@ -10,7 +10,7 @@
  * `ts-port/phase2-contract-support` HEAD.
  *
  * Fidelity notes (b2-packets.md Cautions):
- * - §3/§4 (R11.7): `pythonStrip` everywhere Python calls `.strip()`;
+ * - §3/§4: `pythonStrip` everywhere Python calls `.strip()`;
  *   `_INVISIBLE_RE` is built from the pinned
  *   `compat/whitespace.gen.ts` table (Python str-pattern `\s` ==
  *   `str.isspace()` set), never a JS `\s` class.
@@ -19,7 +19,7 @@
  *   duck-shape `{ spelling: string }`; `compat/python-values.ts`
  *   (`isFloatCarrier`, `isPythonFloat`) and {@link isFiniteNumber}
  *   classify both spellings.
- * - §9 (R11.6): `len(str)` bounds count codepoints via `cpLength`.
+ * - §9: `len(str)` bounds count codepoints via `cpLength`.
  * - §6: {@link suggest} is a faithful `difflib.get_close_matches` port
  *   (`compat/difflib.ts`) — candidates from `sortedByCodepoint(valid)`,
  *   n=3, cutoff=0.5, `heapq.nlargest` tie order.
@@ -59,14 +59,14 @@ import type { RetentionEvent } from "../types/query-params/retention.js";
 // Module constants (validation.py:91-92, 338-366, 1162-1176, 1484-1495)
 // =============================================================================
 
-/** Port of `_CP_INPUT_KEY_RE` (`validation.py:91`) — ASCII-only class. */
+/** Port of `_CP_INPUT_KEY_RE` — ASCII-only class. */
 const CP_INPUT_KEY_RE = /^[A-Z]$/;
 
-/** Port of `_CP_MAX_FORMULA_LENGTH` (`validation.py:92`). */
+/** Port of `_CP_MAX_FORMULA_LENGTH`. */
 const CP_MAX_FORMULA_LENGTH = 20_000;
 
 /**
- * Port of `_SESSION_MATH` (`validation.py:338`): session-based math
+ * Port of `_SESSION_MATH`: session-based math
  * types requiring `conversion_window_unit='session'`.
  */
 export const SESSION_MATH: ReadonlySet<string> = new Set([
@@ -74,13 +74,13 @@ export const SESSION_MATH: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Port of `_FORMULA_POSITION_RE` (`validation.py:342`) — ASCII-only
+ * Port of `_FORMULA_POSITION_RE` — ASCII-only
  * class, safe as a JS regex.
  */
 export const FORMULA_POSITION_RE: RegExp = /[A-Z]/g;
 
 /**
- * Codepoint test for the `_CONTROL_CHAR_RE` class (`validation.py:343`,
+ * Codepoint test for the `_CONTROL_CHAR_RE` class (`validation.py`,
  * `[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]`).
  *
  * Ported as an explicit codepoint predicate rather than a JS regex: the
@@ -102,7 +102,7 @@ function isControlCodepoint(cp: number): boolean {
 }
 
 /**
- * The literal extras of `_INVISIBLE_RE` (`validation.py:363`) beyond
+ * The literal extras of `_INVISIBLE_RE` beyond
  * the Python `\s` class: U+200B ZWSP, U+200C ZWNJ, U+200D ZWJ,
  * U+FEFF BOM, U+00AD SOFT HYPHEN, U+2060 WORD JOINER.
  */
@@ -110,14 +110,14 @@ const INVISIBLE_EXTRAS: ReadonlySet<number> = new Set([
   0x200b, 0x200c, 0x200d, 0xfeff, 0x00ad, 0x2060,
 ]);
 
-/** Port of `_MAX_LAST_DAYS` (`validation.py:364`) — 10 years. */
+/** Port of `_MAX_LAST_DAYS` — 10 years. */
 export const MAX_LAST_DAYS = 3650;
 
-/** Port of `_MAX_ROLLING` (`validation.py:365`) — rolling window cap. */
+/** Port of `_MAX_ROLLING` — rolling window cap. */
 export const MAX_ROLLING = 365;
 
 /**
- * Port of `_MAX_FILTER_VALUES` (`validation.py:366`) — server rejects
+ * Port of `_MAX_FILTER_VALUES` — server rejects
  * very large filter value lists. Consumed by the V1b bookmark
  * validators (B20B/B21); declared here with the other module
  * constants exactly as in the Python source.
@@ -125,7 +125,7 @@ export const MAX_ROLLING = 365;
 export const MAX_FILTER_VALUES = 1000;
 
 /**
- * Port of `_VALID_RETENTION_MATH_PUBLIC` (`validation.py:1162-1164`):
+ * Port of `_VALID_RETENTION_MATH_PUBLIC`:
  * public-facing retention math types (Layer 1).
  */
 export const VALID_RETENTION_MATH_PUBLIC: ReadonlySet<string> = new Set([
@@ -136,7 +136,7 @@ export const VALID_RETENTION_MATH_PUBLIC: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Port of `_VALID_RETENTION_MODES` (`validation.py:1172`): valid
+ * Port of `_VALID_RETENTION_MODES`: valid
  * display modes for retention queries.
  */
 export const VALID_RETENTION_MODES: ReadonlySet<string> = new Set([
@@ -145,17 +145,17 @@ export const VALID_RETENTION_MODES: ReadonlySet<string> = new Set([
   "table",
 ]);
 
-/** Port of `_MAX_RETENTION_BUCKETS` (`validation.py:1175`). */
+/** Port of `_MAX_RETENTION_BUCKETS`. */
 export const MAX_RETENTION_BUCKETS = 730;
 
-/** Port of `_MAX_FLOW_STEPS_DIRECTION` (`validation.py:1484`). */
+/** Port of `_MAX_FLOW_STEPS_DIRECTION`. */
 export const MAX_FLOW_STEPS_DIRECTION = 5;
 
-/** Port of `_MAX_FLOW_CARDINALITY` (`validation.py:1487`). */
+/** Port of `_MAX_FLOW_CARDINALITY`. */
 export const MAX_FLOW_CARDINALITY = 50;
 
 /**
- * Port of `_FLOW_MAX_WINDOW` (`validation.py:1490-1494`): maximum
+ * Port of `_FLOW_MAX_WINDOW`: maximum
  * conversion window per unit (366-day equivalent for a leap year).
  * ReadonlyMap per R4.8.
  */
@@ -166,13 +166,13 @@ export const FLOW_MAX_WINDOW: ReadonlyMap<string, number> = new Map([
 ]);
 
 // =============================================================================
-// Character / date / finiteness helpers (validation.py:346-402)
+// Character / date / finiteness helpers (validation.py)
 // =============================================================================
 
 /**
  * Check whether a string contains ASCII control characters.
  *
- * Port of `contains_control_chars` (`validation.py:346-360`): detects
+ * Port of `contains_control_chars`: detects
  * `\x00-\x08`, `\x0b`, `\x0c`, `\x0e-\x1f`, and `\x7f` (DEL).
  *
  * @param s - The string to check.
@@ -226,7 +226,7 @@ function isDecimalDigit(cp: number): boolean {
 }
 
 /**
- * Port of `_DATE_RE.match(s)` truthiness (`validation.py:341`,
+ * Port of `_DATE_RE.match(s)` truthiness (`validation.py`,
  * pattern `^\d{4}-\d{2}-\d{2}$`) with Python `re` semantics:
  *
  * - `\d` matches Unicode decimal digits (category Nd), not just
@@ -263,7 +263,7 @@ const DAYS_IN_MONTH: readonly number[] = [
 /**
  * Check if a YYYY-MM-DD string is a valid calendar date.
  *
- * Port of `_is_valid_date` (`validation.py:369-384`), which defers to
+ * Port of `_is_valid_date`, which defers to
  * `datetime.date.fromisoformat`. Implemented as a PURE calendar check
  * (watchlist #5 — never `new Date(...)`): Gregorian leap rule, month
  * 1-12, day vs month length, year 1-9999 (`date.MINYEAR`).
@@ -318,7 +318,7 @@ export function asciiDigitsToInt(digits: string): number {
 /**
  * Check if a numeric value is finite (not NaN, not Inf).
  *
- * Port of `_is_finite` (`validation.py:387-402`): `None` → true;
+ * Port of `_is_finite`: `None` → true;
  * `float` → `math.isfinite`; anything else (ints included) → true.
  * PyFloat carriers are classified per Caution §8: the non-finite
  * spellings are the only non-finite carriers.
@@ -413,13 +413,13 @@ export function errorCollector(
 }
 
 // =============================================================================
-// Fuzzy matching helpers (validation.py:410-464)
+// Fuzzy matching helpers (validation.py)
 // =============================================================================
 
 /**
  * Find closest matches for a mistyped enum value.
  *
- * Port of `_suggest` (`validation.py:410-428`): candidates are
+ * Port of `_suggest`: candidates are
  * `sorted(valid)` (codepoint sort, R11.5), n=3, cutoff=0.5; `None`
  * when nothing clears the cutoff.
  *
@@ -463,8 +463,8 @@ export interface EnumErrorArgs {
 /**
  * Build a validation error for an invalid enum value with suggestions.
  *
- * Port of `_enum_error` (`validation.py:431-464`). Message text is
- * display-only (R5.4) but ported faithfully, including the
+ * Port of `_enum_error`. Message text is
+ * display-only but ported faithfully, including the
  * `sorted(valid)[:5]` sample list repr in the no-suggestion branch.
  *
  * @param args - The finding: `path` (JSONPath-like location), `field`
@@ -487,7 +487,7 @@ export function enumError(args: EnumErrorArgs): ValidationError {
 }
 
 // =============================================================================
-// data_group_id validation (validation.py:472-508)
+// data_group_id validation (validation.py)
 // =============================================================================
 
 /**
@@ -526,13 +526,13 @@ export function validateDataGroupId(dataGroupId: unknown): ValidationError[] {
 }
 
 // =============================================================================
-// Custom property validation + scanning (validation.py:95-335)
+// Custom property validation + scanning (validation.py)
 // =============================================================================
 
 /**
  * Validate a custom property specification (rules CP1-CP6).
  *
- * Port of `_validate_custom_property` (`validation.py:95-188`).
+ * Port of `_validate_custom_property`.
  * CP5's formula length bound counts CODEPOINTS (`cpLength`, R11.6).
  *
  * @param prop - A `CustomPropertyRef` or `InlineCustomProperty`.
@@ -642,7 +642,7 @@ function isCustomProperty(
  * Scan a list of Filter objects for custom property references.
  *
  * Port of `_scan_filters_for_custom_properties`
- * (`validation.py:191-215`).
+ * (`validation.py`).
  *
  * @param filters - Filter objects to scan.
  * @param basePath - JSONPath prefix for error reporting (e.g.
@@ -857,7 +857,7 @@ function scanRetentionEvents(
 /**
  * Scan all query positions for custom properties and validate.
  *
- * Port of `_scan_custom_properties` (`validation.py:218-335`):
+ * Port of `_scan_custom_properties`:
  * collects `CustomPropertyRef`/`InlineCustomProperty` values from
  * group_by, where, events, funnel/flow steps and retention events,
  * and runs {@link validateCustomProperty} on each, in source order.

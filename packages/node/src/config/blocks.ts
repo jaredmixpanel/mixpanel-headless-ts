@@ -31,7 +31,7 @@ import { wrapAsConfigError } from "../errors.js";
 export type RawConfig = Record<string, unknown>;
 
 /**
- * The default config path — `~/.mp/config.toml` (`config.py:59`).
+ * The default config path — `~/.mp/config.toml`.
  *
  * SANCTIONED DEVIATION (B8-ARB-B F3, `b8-reviewB-resolution.md`;
  * playbook Discrepancy #15): Python freezes `_DEFAULT_CONFIG_PATH` at
@@ -117,7 +117,7 @@ export function credentialText(
 
 /**
  * Construct an {@link Account} variant from a parsed `[accounts.NAME]`
- * block (`_account_from_block`, `config.py:70-90`).
+ * block (`_account_from_block`, `config.py`).
  *
  * @param name - Account name (matches the TOML block key).
  * @param block - Parsed block contents.
@@ -138,7 +138,7 @@ export function accountFromBlock(
 
 /**
  * Serialize an {@link Account} to a TOML-ready plain dict, excluding
- * `name` (`_account_to_block`, `config.py:92-125`).
+ * `name` (`_account_to_block`, `config.py`).
  *
  * **THE designated CRED-F3 reveal site** (packet §2.2): secrets unwrap
  * to plain strings here because TOML cannot store an opaque wrapper —
@@ -147,7 +147,7 @@ export function accountFromBlock(
  * @param account - Validated account to serialize.
  * @returns Plain dict with `type`, `region`, and type-specific fields.
  * @throws ConfigError - `oauth_token` account with neither `token` nor
- *   `token_env` (model invariant guard, `config.py:115-119`).
+ *   `token_env` (model invariant guard, `config.py`).
  */
 export function accountToBlock(account: Account): Record<string, unknown> {
   const out: Record<string, unknown> = {
@@ -168,7 +168,7 @@ export function accountToBlock(account: Account): Record<string, unknown> {
       out["token"] = account.token.reveal();
     } else if (account.token_env === null || account.token_env === undefined) {
       // Model invariant (XOR) — explicit raise, not an assert
-      // (`config.py:115-119`).
+      // (`config.py`).
       throw new ConfigError(
         `OAuthTokenAccount '${account.name}' has neither ` +
           "`token` nor `token_env`.",
@@ -183,7 +183,7 @@ export function accountToBlock(account: Account): Record<string, unknown> {
 
 /**
  * Construct a validated {@link Target} from a `[targets.NAME]`
- * block, wrapping model errors in ConfigError (`config.py:853-859`).
+ * block, wrapping model errors in ConfigError (`config.py`).
  *
  * @param name - Target name (the block key).
  * @param block - Parsed block contents.

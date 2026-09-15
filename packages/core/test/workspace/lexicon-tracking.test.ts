@@ -2,27 +2,27 @@
 // split of `tests/unit/test_workspace_data_governance.py` (1,842 lines)
 // that W6 owns:
 //
-//   lexicon definitions + tags : `TestGetEventDefinitions` (:259),
-//     `TestUpdateEventDefinition` (:315), `TestDeleteEventDefinition`
+//   lexicon definitions + tags : `TestGetEventDefinitions`,
+//     `TestUpdateEventDefinition`, `TestDeleteEventDefinition`
 //     (:341), `TestBulkUpdateEventDefinitions` (:355),
-//     `TestGetPropertyDefinitions` (:394),
-//     `TestUpdatePropertyDefinition` (:450),
-//     `TestBulkUpdatePropertyDefinitions` (:474),
-//     `TestListLexiconTags` (:513), `TestCreateLexiconTag` (:555),
-//     `TestUpdateLexiconTag` (:580), `TestDeleteLexiconTag` (:604)
-//   tracking & history : `TestGetTrackingMetadata` (:1190),
-//     `TestGetEventHistory` (:1217), `TestGetPropertyHistory` (:1256),
-//     `TestExportLexicon` (:1287)
+//     `TestGetPropertyDefinitions`,
+//     `TestUpdatePropertyDefinition`,
+//     `TestBulkUpdatePropertyDefinitions`,
+//     `TestListLexiconTags`, `TestCreateLexiconTag`,
+//     `TestUpdateLexiconTag`, `TestDeleteLexiconTag`
+//   tracking & history : `TestGetTrackingMetadata`,
+//     `TestGetEventHistory`, `TestGetPropertyHistory`,
+//     `TestExportLexicon`
 //
 // The drop-filter / custom-property / custom-event / lookup-table
 // classes in the same Python file belong to W7 (`b6-packets.md` §9)
 // and are deliberately NOT translated here.
 //
 // Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)` (:97-110)
+// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
 // becomes `makeWorkspace(handler)` — the client is built over the
 // OAuth session (`_make_oauth_credentials`, :82) while the facade
-// carries the service-account `_TEST_SESSION` (:64-72), exactly as
+// carries the service-account `_TEST_SESSION`, exactly as
 // Python does. `temp_dir` has no TS analog (no config file is ever
 // touched) and is dropped.
 //

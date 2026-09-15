@@ -1,6 +1,6 @@
 // Translated aggregate query-user tests (B5-S2, packet §3): assertion-
 // for-assertion port of tests/test_workspace_query_user_aggregate.py
-// (R10.2) — ALL 14 classes (TestAggregateCount :121,
+// — ALL 14 classes (TestAggregateCount :121,
 // TestAggregateWithProperty :237, TestAggregateSegmented :417,
 // TestValidationU14AggregatePropertyRequired :577,
 // TestValidationU15AggregatePropertyProhibited :630,
@@ -13,7 +13,7 @@
 // TestValidationMultipleErrors :872, TestEngageStatsCallParameters
 // :928, TestAggregateResultMetadata :1123).
 //
-// The trailing `TestAggregateConfigError` comment (:1214) records a
+// The trailing `TestAggregateConfigError` comment records a
 // class REMOVED in Python B1 — nothing to translate.
 //
 // Translation notes:

@@ -4,7 +4,7 @@
  * Hand-written ports of the Pydantic entity models (phase2-design C5,
  * packet P2-7): the PYTHON models are the source of record; vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling (R3.6/R7.6); optionality follows
+ * keep their exact Python spelling; optionality follows
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
@@ -19,7 +19,7 @@ import {
 
 /**
  * Constructor input for {@link AlertBookmark} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AlertBookmarkInit {
   /** Bookmark ID. */
@@ -33,7 +33,7 @@ export interface AlertBookmarkInit {
 /**
  * Nested bookmark info for an alert.
  *
- * Mirror of Python `mixpanel_headless.types.AlertBookmark` (types.py:4151;
+ * Mirror of Python `mixpanel_headless.types.AlertBookmark` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class AlertBookmark extends EntityModel<AlertBookmarkInit> {
@@ -83,7 +83,7 @@ export class AlertBookmark extends EntityModel<AlertBookmarkInit> {
 
 /**
  * Constructor input for {@link AlertCreator} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AlertCreatorInit {
   /** User ID. */
@@ -99,7 +99,7 @@ export interface AlertCreatorInit {
 /**
  * Nested creator info for an alert.
  *
- * Mirror of Python `mixpanel_headless.types.AlertCreator` (types.py:4177;
+ * Mirror of Python `mixpanel_headless.types.AlertCreator` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class AlertCreator extends EntityModel<AlertCreatorInit> {
@@ -152,7 +152,7 @@ export class AlertCreator extends EntityModel<AlertCreatorInit> {
 
 /**
  * Constructor input for {@link AlertWorkspace} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AlertWorkspaceInit {
   /** Workspace ID. */
@@ -164,7 +164,7 @@ export interface AlertWorkspaceInit {
 /**
  * Nested workspace info for an alert.
  *
- * Mirror of Python `mixpanel_headless.types.AlertWorkspace` (types.py:4207;
+ * Mirror of Python `mixpanel_headless.types.AlertWorkspace` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class AlertWorkspace extends EntityModel<AlertWorkspaceInit> {
@@ -211,7 +211,7 @@ export class AlertWorkspace extends EntityModel<AlertWorkspaceInit> {
 
 /**
  * Constructor input for {@link AlertProject} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AlertProjectInit {
   /** Project ID. */
@@ -223,7 +223,7 @@ export interface AlertProjectInit {
 /**
  * Nested project info for an alert.
  *
- * Mirror of Python `mixpanel_headless.types.AlertProject` (types.py:4229;
+ * Mirror of Python `mixpanel_headless.types.AlertProject` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class AlertProject extends EntityModel<AlertProjectInit> {
@@ -270,7 +270,7 @@ export class AlertProject extends EntityModel<AlertProjectInit> {
 
 /**
  * Constructor input for {@link CustomAlert} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CustomAlertInit {
   /** Alert ID. */
@@ -318,7 +318,7 @@ export interface CustomAlertInit {
 /**
  * Response model for a custom alert.
  *
- * Mirror of Python `mixpanel_headless.types.CustomAlert` (types.py:4251;
+ * Mirror of Python `mixpanel_headless.types.CustomAlert` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class CustomAlert extends EntityModel<CustomAlertInit> {
@@ -414,7 +414,7 @@ export class CustomAlert extends EntityModel<CustomAlertInit> {
 
 /**
  * Constructor input for {@link CreateAlertParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CreateAlertParamsInit {
   /** ID of linked bookmark. */
@@ -437,7 +437,7 @@ export interface CreateAlertParamsInit {
 /**
  * Parameters for creating a new alert.
  *
- * Mirror of Python `mixpanel_headless.types.CreateAlertParams` (types.py:4333;
+ * Mirror of Python `mixpanel_headless.types.CreateAlertParams` (types.py;
  * model_config: extra='ignore').
  */
 export class CreateAlertParams extends EntityModel<CreateAlertParamsInit> {
@@ -454,7 +454,7 @@ export class CreateAlertParams extends EntityModel<CreateAlertParamsInit> {
       name: "name",
       required: true,
       kind: "str",
-      // Python: Field(max_length=50) — codepoint-counted (R11.6).
+      // Python: Field(max_length=50) — codepoint-counted.
       check: (value: unknown, path: string): void => {
         if (typeof value === "string" && cpLength(value) > 50) {
           modelFail(path, "max_length 50");
@@ -513,7 +513,7 @@ export class CreateAlertParams extends EntityModel<CreateAlertParamsInit> {
 
 /**
  * Constructor input for {@link UpdateAlertParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdateAlertParamsInit {
   /** New name. */
@@ -537,7 +537,7 @@ export interface UpdateAlertParamsInit {
 /**
  * Parameters for updating an alert (PATCH semantics).
  *
- * Mirror of Python `mixpanel_headless.types.UpdateAlertParams` (types.py:4385;
+ * Mirror of Python `mixpanel_headless.types.UpdateAlertParams` (types.py;
  * model_config: extra='ignore').
  */
 export class UpdateAlertParams extends EntityModel<UpdateAlertParamsInit> {
@@ -603,7 +603,7 @@ export class UpdateAlertParams extends EntityModel<UpdateAlertParamsInit> {
 
 /**
  * Constructor input for {@link AlertCount} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AlertCountInit {
   /** Current alert count. */
@@ -617,7 +617,7 @@ export interface AlertCountInit {
 /**
  * Response model for alert count and limits.
  *
- * Mirror of Python `mixpanel_headless.types.AlertCount` (types.py:4425;
+ * Mirror of Python `mixpanel_headless.types.AlertCount` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class AlertCount extends EntityModel<AlertCountInit> {
@@ -667,7 +667,7 @@ export class AlertCount extends EntityModel<AlertCountInit> {
 
 /**
  * Constructor input for {@link AlertHistoryPagination} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AlertHistoryPaginationInit {
   /** Next page cursor. */
@@ -681,7 +681,7 @@ export interface AlertHistoryPaginationInit {
 /**
  * Pagination metadata for alert history.
  *
- * Mirror of Python `mixpanel_headless.types.AlertHistoryPagination` (types.py:4453;
+ * Mirror of Python `mixpanel_headless.types.AlertHistoryPagination` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class AlertHistoryPagination extends EntityModel<AlertHistoryPaginationInit> {
@@ -731,7 +731,7 @@ export class AlertHistoryPagination extends EntityModel<AlertHistoryPaginationIn
 
 /**
  * Constructor input for {@link AlertHistoryResponse} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AlertHistoryResponseInit {
   /** History entries. */
@@ -748,7 +748,7 @@ export interface AlertHistoryResponseInit {
 /**
  * Response model for alert history (paginated).
  *
- * Mirror of Python `mixpanel_headless.types.AlertHistoryResponse` (types.py:4479;
+ * Mirror of Python `mixpanel_headless.types.AlertHistoryResponse` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class AlertHistoryResponse extends EntityModel<AlertHistoryResponseInit> {
@@ -799,7 +799,7 @@ export class AlertHistoryResponse extends EntityModel<AlertHistoryResponseInit> 
 
 /**
  * Constructor input for {@link AlertScreenshotResponse} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AlertScreenshotResponseInit {
   /** Signed GCS URL for screenshot. */
@@ -809,7 +809,7 @@ export interface AlertScreenshotResponseInit {
 /**
  * Response model for alert screenshot URL.
  *
- * Mirror of Python `mixpanel_headless.types.AlertScreenshotResponse` (types.py:4503;
+ * Mirror of Python `mixpanel_headless.types.AlertScreenshotResponse` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class AlertScreenshotResponse extends EntityModel<AlertScreenshotResponseInit> {
@@ -855,7 +855,7 @@ export class AlertScreenshotResponse extends EntityModel<AlertScreenshotResponse
 
 /**
  * Constructor input for {@link AlertValidation} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AlertValidationInit {
   /** Alert ID. */
@@ -871,7 +871,7 @@ export interface AlertValidationInit {
 /**
  * Per-alert validation result.
  *
- * Mirror of Python `mixpanel_headless.types.AlertValidation` (types.py:4522;
+ * Mirror of Python `mixpanel_headless.types.AlertValidation` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class AlertValidation extends EntityModel<AlertValidationInit> {
@@ -924,7 +924,7 @@ export class AlertValidation extends EntityModel<AlertValidationInit> {
 
 /**
  * Constructor input for {@link ValidateAlertsForBookmarkParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface ValidateAlertsForBookmarkParamsInit {
   /** Alert IDs to validate (must not be empty). */
@@ -938,7 +938,7 @@ export interface ValidateAlertsForBookmarkParamsInit {
 /**
  * Parameters for validating alerts against a bookmark.
  *
- * Mirror of Python `mixpanel_headless.types.ValidateAlertsForBookmarkParams` (types.py:4552;
+ * Mirror of Python `mixpanel_headless.types.ValidateAlertsForBookmarkParams` (types.py;
  * model_config: extra='ignore').
  */
 export class ValidateAlertsForBookmarkParams extends EntityModel<ValidateAlertsForBookmarkParamsInit> {
@@ -1004,7 +1004,7 @@ export class ValidateAlertsForBookmarkParams extends EntityModel<ValidateAlertsF
 
 /**
  * Constructor input for {@link ValidateAlertsForBookmarkResponse} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface ValidateAlertsForBookmarkResponseInit {
   /** Per-alert validation results. */
@@ -1018,7 +1018,7 @@ export interface ValidateAlertsForBookmarkResponseInit {
 /**
  * Response model for alert-bookmark validation.
  *
- * Mirror of Python `mixpanel_headless.types.ValidateAlertsForBookmarkResponse` (types.py:4580;
+ * Mirror of Python `mixpanel_headless.types.ValidateAlertsForBookmarkResponse` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class ValidateAlertsForBookmarkResponse extends EntityModel<ValidateAlertsForBookmarkResponseInit> {

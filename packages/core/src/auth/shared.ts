@@ -13,7 +13,7 @@ export interface ParseAccountOptions {
    * (`VALIDATION_ERROR`); `'response'` (default — the config/vector-decode
    * seam) throws {@link ResponseValidationError}
    * (`RESPONSE_VALIDATION_ERROR`). Mirrors the shared `coerce.ts`
-   * convention (R4.12/R5.5).
+   * convention.
    */
   readonly boundary?: "param" | "response" | undefined;
 }

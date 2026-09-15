@@ -4,7 +4,7 @@
  * Hand-written ports of the Pydantic entity models (phase2-design C5,
  * packet P2-7): the PYTHON models are the source of record; vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling (R3.6/R7.6); optionality follows
+ * keep their exact Python spelling; optionality follows
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
@@ -16,7 +16,7 @@ import {
 
 /**
  * Constructor input for {@link SchemaEntry} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface SchemaEntryInit {
   /** Entity type: "event", "custom_event", or "profile". */
@@ -32,7 +32,7 @@ export interface SchemaEntryInit {
 /**
  * A schema registry entry for an event, custom event, or profile.
  *
- * Mirror of Python `mixpanel_headless.types.SchemaEntry` (types.py:5757;
+ * Mirror of Python `mixpanel_headless.types.SchemaEntry` (types.py;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
 export class SchemaEntry extends EntityModel<SchemaEntryInit> {
@@ -96,7 +96,7 @@ export class SchemaEntry extends EntityModel<SchemaEntryInit> {
 
 /**
  * Constructor input for {@link BulkCreateSchemasParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface BulkCreateSchemasParamsInit {
   /** Schema entries to create. */
@@ -112,7 +112,7 @@ export interface BulkCreateSchemasParamsInit {
 /**
  * Parameters for bulk-creating schemas in the registry.
  *
- * Mirror of Python `mixpanel_headless.types.BulkCreateSchemasParams` (types.py:5802;
+ * Mirror of Python `mixpanel_headless.types.BulkCreateSchemasParams` (types.py;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
 export class BulkCreateSchemasParams extends EntityModel<BulkCreateSchemasParamsInit> {
@@ -175,7 +175,7 @@ export class BulkCreateSchemasParams extends EntityModel<BulkCreateSchemasParams
 
 /**
  * Constructor input for {@link BulkCreateSchemasResponse} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface BulkCreateSchemasResponseInit {
   /** Number of schemas added. */
@@ -187,7 +187,7 @@ export interface BulkCreateSchemasResponseInit {
 /**
  * Response from a bulk schema creation operation.
  *
- * Mirror of Python `mixpanel_headless.types.BulkCreateSchemasResponse` (types.py:5836;
+ * Mirror of Python `mixpanel_headless.types.BulkCreateSchemasResponse` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class BulkCreateSchemasResponse extends EntityModel<BulkCreateSchemasResponseInit> {
@@ -237,7 +237,7 @@ export class BulkCreateSchemasResponse extends EntityModel<BulkCreateSchemasResp
 
 /**
  * Constructor input for {@link BulkPatchResult} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface BulkPatchResultInit {
   /** Entity type processed. */
@@ -253,7 +253,7 @@ export interface BulkPatchResultInit {
 /**
  * Per-entry result from a bulk schema update operation.
  *
- * Mirror of Python `mixpanel_headless.types.BulkPatchResult` (types.py:5858;
+ * Mirror of Python `mixpanel_headless.types.BulkPatchResult` (types.py;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
 export class BulkPatchResult extends EntityModel<BulkPatchResultInit> {
@@ -312,7 +312,7 @@ export class BulkPatchResult extends EntityModel<BulkPatchResultInit> {
 
 /**
  * Constructor input for {@link DeleteSchemasResponse} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface DeleteSchemasResponseInit {
   /** Number of schemas deleted. */
@@ -322,7 +322,7 @@ export interface DeleteSchemasResponseInit {
 /**
  * Response from a schema deletion operation.
  *
- * Mirror of Python `mixpanel_headless.types.DeleteSchemasResponse` (types.py:5892;
+ * Mirror of Python `mixpanel_headless.types.DeleteSchemasResponse` (types.py;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
 export class DeleteSchemasResponse extends EntityModel<DeleteSchemasResponseInit> {
@@ -372,7 +372,7 @@ export class DeleteSchemasResponse extends EntityModel<DeleteSchemasResponseInit
 
 /**
  * Constructor input for {@link SchemaEnforcementConfig} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface SchemaEnforcementConfigInit {
   /** Config ID. */
@@ -409,7 +409,7 @@ export interface SchemaEnforcementConfigInit {
 /**
  * Schema enforcement configuration for a project.
  *
- * Mirror of Python `mixpanel_headless.types.SchemaEnforcementConfig` (types.py:5917;
+ * Mirror of Python `mixpanel_headless.types.SchemaEnforcementConfig` (types.py;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
 export class SchemaEnforcementConfig extends EntityModel<SchemaEnforcementConfigInit> {
@@ -543,7 +543,7 @@ export class SchemaEnforcementConfig extends EntityModel<SchemaEnforcementConfig
 
 /**
  * Constructor input for {@link InitSchemaEnforcementParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface InitSchemaEnforcementParamsInit {
   /** Enforcement action. */
@@ -553,7 +553,7 @@ export interface InitSchemaEnforcementParamsInit {
 /**
  * Parameters for initializing schema enforcement.
  *
- * Mirror of Python `mixpanel_headless.types.InitSchemaEnforcementParams` (types.py:5986;
+ * Mirror of Python `mixpanel_headless.types.InitSchemaEnforcementParams` (types.py;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
 export class InitSchemaEnforcementParams extends EntityModel<InitSchemaEnforcementParamsInit> {
@@ -606,7 +606,7 @@ export class InitSchemaEnforcementParams extends EntityModel<InitSchemaEnforceme
 
 /**
  * Constructor input for {@link UpdateSchemaEnforcementParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdateSchemaEnforcementParamsInit {
   /** Updated notification recipients. */
@@ -623,7 +623,7 @@ export interface UpdateSchemaEnforcementParamsInit {
 /**
  * Parameters for partially updating schema enforcement.
  *
- * Mirror of Python `mixpanel_headless.types.UpdateSchemaEnforcementParams` (types.py:6005;
+ * Mirror of Python `mixpanel_headless.types.UpdateSchemaEnforcementParams` (types.py;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
 export class UpdateSchemaEnforcementParams extends EntityModel<UpdateSchemaEnforcementParamsInit> {
@@ -692,7 +692,7 @@ export class UpdateSchemaEnforcementParams extends EntityModel<UpdateSchemaEnfor
 
 /**
  * Constructor input for {@link ReplaceSchemaEnforcementParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface ReplaceSchemaEnforcementParamsInit {
   /** Full common property rules. */
@@ -712,7 +712,7 @@ export interface ReplaceSchemaEnforcementParamsInit {
 /**
  * Parameters for fully replacing schema enforcement configuration.
  *
- * Mirror of Python `mixpanel_headless.types.ReplaceSchemaEnforcementParams` (types.py:6038;
+ * Mirror of Python `mixpanel_headless.types.ReplaceSchemaEnforcementParams` (types.py;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
 export class ReplaceSchemaEnforcementParams extends EntityModel<ReplaceSchemaEnforcementParamsInit> {
@@ -805,7 +805,7 @@ export class ReplaceSchemaEnforcementParams extends EntityModel<ReplaceSchemaEnf
 
 /**
  * Constructor input for {@link AuditViolation} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AuditViolationInit {
   /** Violation type. */
@@ -829,7 +829,7 @@ export interface AuditViolationInit {
 /**
  * A single violation found during a data audit.
  *
- * Mirror of Python `mixpanel_headless.types.AuditViolation` (types.py:6089;
+ * Mirror of Python `mixpanel_headless.types.AuditViolation` (types.py;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
 export class AuditViolation extends EntityModel<AuditViolationInit> {
@@ -900,7 +900,7 @@ export class AuditViolation extends EntityModel<AuditViolationInit> {
 
 /**
  * Constructor input for {@link AuditResponse} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface AuditResponseInit {
   /** List of audit violations. */
@@ -914,7 +914,7 @@ export interface AuditResponseInit {
 /**
  * Response from a data audit operation.
  *
- * Mirror of Python `mixpanel_headless.types.AuditResponse` (types.py:6140;
+ * Mirror of Python `mixpanel_headless.types.AuditResponse` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class AuditResponse extends EntityModel<AuditResponseInit> {
@@ -966,7 +966,7 @@ export class AuditResponse extends EntityModel<AuditResponseInit> {
 
 /**
  * Constructor input for {@link DataVolumeAnomaly} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface DataVolumeAnomalyInit {
   /** Anomaly ID. */
@@ -1010,7 +1010,7 @@ export interface DataVolumeAnomalyInit {
 /**
  * A detected data volume anomaly.
  *
- * Mirror of Python `mixpanel_headless.types.DataVolumeAnomaly` (types.py:6175;
+ * Mirror of Python `mixpanel_headless.types.DataVolumeAnomaly` (types.py;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
 export class DataVolumeAnomaly extends EntityModel<DataVolumeAnomalyInit> {
@@ -1170,7 +1170,7 @@ export class DataVolumeAnomaly extends EntityModel<DataVolumeAnomalyInit> {
 
 /**
  * Constructor input for {@link UpdateAnomalyParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdateAnomalyParamsInit {
   /** Anomaly ID. */
@@ -1184,7 +1184,7 @@ export interface UpdateAnomalyParamsInit {
 /**
  * Parameters for updating a single anomaly status.
  *
- * Mirror of Python `mixpanel_headless.types.UpdateAnomalyParams` (types.py:6268;
+ * Mirror of Python `mixpanel_headless.types.UpdateAnomalyParams` (types.py;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
 export class UpdateAnomalyParams extends EntityModel<UpdateAnomalyParamsInit> {
@@ -1240,7 +1240,7 @@ export class UpdateAnomalyParams extends EntityModel<UpdateAnomalyParamsInit> {
 
 /**
  * Constructor input for {@link BulkAnomalyEntry} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface BulkAnomalyEntryInit {
   /** Anomaly ID. */
@@ -1252,7 +1252,7 @@ export interface BulkAnomalyEntryInit {
 /**
  * A single entry in a bulk anomaly update.
  *
- * Mirror of Python `mixpanel_headless.types.BulkAnomalyEntry` (types.py:6296;
+ * Mirror of Python `mixpanel_headless.types.BulkAnomalyEntry` (types.py;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
 export class BulkAnomalyEntry extends EntityModel<BulkAnomalyEntryInit> {
@@ -1305,7 +1305,7 @@ export class BulkAnomalyEntry extends EntityModel<BulkAnomalyEntryInit> {
 
 /**
  * Constructor input for {@link BulkUpdateAnomalyParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface BulkUpdateAnomalyParamsInit {
   /** Anomalies to update. */
@@ -1319,7 +1319,7 @@ export interface BulkUpdateAnomalyParamsInit {
 /**
  * Parameters for bulk-updating anomaly statuses.
  *
- * Mirror of Python `mixpanel_headless.types.BulkUpdateAnomalyParams` (types.py:6318;
+ * Mirror of Python `mixpanel_headless.types.BulkUpdateAnomalyParams` (types.py;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
 export class BulkUpdateAnomalyParams extends EntityModel<BulkUpdateAnomalyParamsInit> {
@@ -1373,7 +1373,7 @@ export class BulkUpdateAnomalyParams extends EntityModel<BulkUpdateAnomalyParams
 
 /**
  * Constructor input for {@link EventDeletionRequest} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface EventDeletionRequestInit {
   /** Request ID. */
@@ -1401,7 +1401,7 @@ export interface EventDeletionRequestInit {
 /**
  * An event deletion request with lifecycle status.
  *
- * Mirror of Python `mixpanel_headless.types.EventDeletionRequest` (types.py:6348;
+ * Mirror of Python `mixpanel_headless.types.EventDeletionRequest` (types.py;
  * model_config: frozen=True, extra='allow', populate_by_name=True, alias_generator=to_camel).
  */
 export class EventDeletionRequest extends EntityModel<EventDeletionRequestInit> {
@@ -1518,7 +1518,7 @@ export class EventDeletionRequest extends EntityModel<EventDeletionRequestInit> 
 
 /**
  * Constructor input for {@link CreateDeletionRequestParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CreateDeletionRequestParamsInit {
   /** Start date (YYYY-MM-DD or datetime). */
@@ -1534,7 +1534,7 @@ export interface CreateDeletionRequestParamsInit {
 /**
  * Parameters for creating an event deletion request.
  *
- * Mirror of Python `mixpanel_headless.types.CreateDeletionRequestParams` (types.py:6423;
+ * Mirror of Python `mixpanel_headless.types.CreateDeletionRequestParams` (types.py;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
 export class CreateDeletionRequestParams extends EntityModel<CreateDeletionRequestParamsInit> {
@@ -1608,7 +1608,7 @@ export class CreateDeletionRequestParams extends EntityModel<CreateDeletionReque
 
 /**
  * Constructor input for {@link PreviewDeletionFiltersParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface PreviewDeletionFiltersParamsInit {
   /** Event name. */
@@ -1624,7 +1624,7 @@ export interface PreviewDeletionFiltersParamsInit {
 /**
  * Parameters for previewing event deletion filters.
  *
- * Mirror of Python `mixpanel_headless.types.PreviewDeletionFiltersParams` (types.py:6457;
+ * Mirror of Python `mixpanel_headless.types.PreviewDeletionFiltersParams` (types.py;
  * model_config: extra='ignore', populate_by_name=True, alias_generator=to_camel).
  */
 export class PreviewDeletionFiltersParams extends EntityModel<PreviewDeletionFiltersParamsInit> {

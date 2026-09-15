@@ -15,7 +15,7 @@
 /** Package name constant exercised by the skeleton smoke test. */
 export const BROWSER_PACKAGE_NAME = "@mixpanel-headless/browser";
 
-// ── Browser implementations (B9-R1) ────────────────────────────────────
+// ── Browser implementations ────────────────────────────────────
 export {
   browserSession,
   type BrowserSessionOptions,

@@ -1,6 +1,6 @@
 // Translated query-user integration tests (B5-S2, packet §3):
 // assertion-for-assertion port of
-// tests/test_workspace_query_user_integration.py (R10.2) — ALL 11
+// tests/test_workspace_query_user_integration.py — ALL 11
 // classes (TestBehavioralFilteringAllOf :182,
 // TestBehavioralFilteringAnyOf :275,
 // TestBehavioralFilteringSavedCohort :359,

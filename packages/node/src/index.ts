@@ -1,5 +1,5 @@
 /**
- * @mixpanel-headless/node — Node-specific surface (R9.2): TOML config,
+ * @mixpanel-headless/node — Node-specific surface: TOML config,
  * token files, localhost OAuth callback, bridge file, env resolution.
  *
  * B8-N3 (b8-packets.md §4.1 row 5) turns the Phase-1 skeleton into the
@@ -7,7 +7,7 @@
  * {@link AuthEffects} bag), `createNodeResolverSources` (default
  * `ResolverSources` wiring — PURE bridge load),
  * `createNodeWorkspaceSources` (the `Workspace()` STARTUP wiring with
- * the bridge-token materialization side effect, `workspace.py:476-513`
+ * the bridge-token materialization side effect, `workspace.py`
  * — B8-ARB-A SEM-F1), and the `accounts` / `session` /
  * `targets` namespaces + `loginUnified` over the real bag — closing
  * the four Phase-2 `__all__` deferrals at node level (Python's
@@ -54,7 +54,7 @@ export {
 // enough).
 export { createNodeWorkspace, type NodeWorkspaceOptions } from "./workspace.js";
 
-// Python PR #235 (AIE-925): `MP_API_BASE_URL` / `MP_APP_BASE_URL` read
+// Python PR #235: `MP_API_BASE_URL` / `MP_APP_BASE_URL` read
 // per request from `process.env` — the node half of the alternate-host
 // override (the core half is `MixpanelClientOptions.endpointOverrides`).
 export {

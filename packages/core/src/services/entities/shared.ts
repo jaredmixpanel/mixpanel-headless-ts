@@ -19,7 +19,7 @@ import { pythonTypeNameOf } from "../shared.js";
 
 /**
  * Enforce the `isinstance(result, dict)` guard shared by every
- * dict-returning CRUD method (e.g. `api_client.py:3717-3722`).
+ * dict-returning CRUD method (e.g. `api_client.py`).
  *
  * @param result - The `app_request` product.
  * @param methodName - The Python method name for the message.
@@ -42,7 +42,7 @@ export function expectRecordResult(
 
 /**
  * Enforce the `isinstance(result, list)` guard shared by every
- * list-returning CRUD method (e.g. `api_client.py:3682-3687`).
+ * list-returning CRUD method (e.g. `api_client.py`).
  *
  * @param result - The `app_request` product.
  * @param methodName - The Python method name for the message.
@@ -64,7 +64,7 @@ export function expectListResult(
 
 /**
  * Python truthiness for optional dicts (`if body:` — B4-C4
- * `duplicate_experiment`, `api_client.py:5632`): `None` and `{}` are
+ * `duplicate_experiment`, `api_client.py`): `None` and `{}` are
  * both falsy.
  *
  * @param value - The optional dict.
@@ -137,7 +137,7 @@ export function pythonQuote(text: string): string {
 /**
  * Python truthiness over a parsed wire value (`if url:` on a
  * `dict.get` product — B4-C5 `get_lookup_download_url`,
- * `api_client.py:7969-7971`): `None`/`False`/`0`/`0.0`/`""`/`[]`/`{}`
+ * `api_client.py`): `None`/`False`/`0`/`0.0`/`""`/`[]`/`{}`
  * are falsy; every other JSON product is truthy.
  *
  * @param value - The parsed value (or `undefined` for an absent key,
@@ -171,7 +171,7 @@ export function jsonTruthy(value: JsonValue | undefined): boolean {
 
 /**
  * The CPython `int == <parsed wire value>` twin for the
- * `update_custom_event` echo check (`api_client.py:8122-8123`):
+ * `update_custom_event` echo check:
  * numeric cross-type equality (`42 == 42.0` is True, `True == 1` is
  * True), never string/int coercion (`"42" != 42`).
  *

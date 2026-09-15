@@ -36,7 +36,7 @@
  *
  * Python keeps this module `_internal`; the TS twin is likewise NOT
  * exported from the package barrel. Importers: `stream_events` /
- * `stream_profiles` (B4-C2) and the `query_user` result paths (B5-S2).
+ * `stream_profiles` and the `query_user` result paths.
  *
  * @module query/transforms
  * @internal
@@ -63,7 +63,7 @@ export type TransformedRecord = Record<string, unknown>;
 export interface TransformEventOptions {
   /**
    * `$insert_id` generator used when the event carries none
-   * (`transforms.py:71` — `str(uuid.uuid4())`).
+   * (`transforms.py` — `str(uuid.uuid4())`).
    *
    * Defaults to `crypto.randomUUID()`.
    */
@@ -72,7 +72,7 @@ export interface TransformEventOptions {
 
 /**
  * Reserved keys that {@link transformEvent} extracts from properties
- * (`transforms.py:18`).
+ * (`transforms.py`).
  *
  * Standard Mixpanel fields promoted to top-level keys during
  * normalization. Exported for parity; consumers land at B4.
@@ -85,7 +85,7 @@ export const RESERVED_EVENT_KEYS: ReadonlySet<string> = new Set([
 
 /**
  * Reserved keys that {@link transformProfile} extracts from properties
- * (`transforms.py:85`).
+ * (`transforms.py`).
  */
 export const RESERVED_PROFILE_KEYS: ReadonlySet<string> = new Set([
   "$last_seen",
@@ -264,7 +264,7 @@ function civilFromDays(days: number): [number, number, number] {
 
 /**
  * `datetime.fromtimestamp(t, tz=timezone.utc).isoformat()` as pure
- * arithmetic (`transforms.py:67`).
+ * arithmetic (`transforms.py`).
  *
  * Mirrors CPython's `datetime._fromtimestamp`: split with `modf`, round
  * the fractional part to microseconds (half-even), carry the ±1 second,
@@ -382,7 +382,7 @@ export function timestampNumber(value: unknown): number {
 // =============================================================================
 
 /**
- * Transform an API event to normalized format (`transforms.py:21-80`).
+ * Transform an API event to normalized format (`transforms.py`).
  *
  * Extracts the standard Mixpanel fields (`distinct_id`, `time`,
  * `$insert_id`) from the properties dict and promotes them to top-level
@@ -456,7 +456,7 @@ function defaultUuid(): string {
 
 /**
  * Transform an API profile to normalized format
- * (`transforms.py:88-130`).
+ * (`transforms.py`).
  *
  * Extracts the standard Mixpanel fields (`$distinct_id`, `$last_seen`)
  * from the profile and promotes them to top-level fields. Pure — no

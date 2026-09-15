@@ -2,32 +2,31 @@
 // split of `tests/unit/test_workspace_data_governance.py` (1,842 lines)
 // that W7 owns:
 //
-//   drop filters      : `TestListDropFilters` (:623),
-//     `TestCreateDropFilter` (:663), `TestUpdateDropFilter` (:694),
-//     `TestDeleteDropFilter` (:720), `TestGetDropFilterLimits` (:743)
-//   custom properties : `TestListCustomProperties` (:771),
-//     `TestCreateCustomProperty` (:811), `TestGetCustomProperty` (:843),
-//     `TestUpdateCustomProperty` (:867), `TestDeleteCustomProperty`
+//   drop filters      : `TestListDropFilters`,
+//     `TestCreateDropFilter`, `TestUpdateDropFilter`,
+//     `TestDeleteDropFilter`, `TestGetDropFilterLimits`
+//   custom properties : `TestListCustomProperties`,
+//     `TestCreateCustomProperty`, `TestGetCustomProperty`,
+//     `TestUpdateCustomProperty`, `TestDeleteCustomProperty`
 //     (:891), `TestValidateCustomProperty` (:905)
-//   custom events     : `TestCreateCustomEvent` (:939),
-//     `TestListCustomEvents` (:1016), `TestUpdateCustomEvent` (:1055),
-//     `TestDeleteCustomEvent` (:1146)
-//   lookup tables     : `TestListLookupTables` (:1363),
-//     `TestUploadLookupTable` (:1423), `TestMarkLookupTableReady`
+//   custom events     : `TestCreateCustomEvent`,
+//     `TestListCustomEvents`, `TestUpdateCustomEvent`,
+//     `TestDeleteCustomEvent`
+//   lookup tables     : `TestListLookupTables`,
+//     `TestUploadLookupTable`, `TestMarkLookupTableReady`
 //     (:1648), `TestGetLookupUploadUrl` (:1672),
-//     `TestGetLookupUploadStatus` (:1723), `TestUpdateLookupTable`
+//     `TestGetLookupUploadStatus`, `TestUpdateLookupTable`
 //     (:1751), `TestDeleteLookupTables` (:1775),
-//     `TestDownloadLookupTable` (:1789), `TestGetLookupDownloadUrl`
-//     (:1822)
+//     `TestDownloadLookupTable`, `TestGetLookupDownloadUrl`
 //
 // The lexicon / tags / tracking-history classes in the same Python file
 // belong to W6 (`b6-packets.md` §8) and are NOT re-translated here.
 //
 // Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)` (:97-116)
+// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
 // becomes `makeWorkspace(handler)` — the client is built over the OAuth
 // session (`_make_oauth_credentials`, :82-88) while the facade carries
-// the service-account `_TEST_SESSION` (:66-75), exactly as Python does.
+// the service-account `_TEST_SESSION`, exactly as Python does.
 // `temp_dir` has no TS analog EXCEPT in `TestUploadLookupTable`, where
 // Python writes a real CSV and the facade reads it with
 // `Path(...).read_bytes()`; the TS twin injects the W7-D1 `readFile`
@@ -37,10 +36,10 @@
 // ADDITIVE sections (clearly headed, never substituting for a
 // translated Python assertion — B5 Caution #13 / packet §0.2): the
 // facade-local branches Python's suite does not cover — the
-// `displayFormula` corruption re-raise (`workspace.py:7766-7786`), the
+// `displayFormula` corruption re-raise, the
 // `to_form_body` JSON spelling, the `readFile` seam default, the
 // `REVOKED` / `NOTFOUND` / non-dict-result poll arms
-// (`workspace.py:8106-8131`) and the per-member delegation contracts
+// (`workspace.py`) and the per-member delegation contracts
 // (which client method, with which arguments).
 
 import { describe, expect, it } from "vitest";
@@ -264,7 +263,7 @@ function throwingClient(method: string, error: Error): MixpanelClient {
 /**
  * A virtual monotonic clock whose `sleep` advances it — the
  * deterministic twin of Python's `time.sleep` + `time.monotonic` in
- * `_poll_lookup_upload` (`workspace.py:8099-8102`). Real timers are
+ * `_poll_lookup_upload`. Real timers are
  * banned in Layer-3 (playbook risk #4).
  *
  * @returns The `monotonic` seam plus the matching client `sleep`.
@@ -788,7 +787,7 @@ describe("TestUploadLookupTable", () => {
     });
     // B6-ARB (assertions Finding C): Python asserts BOTH the class and
     // the message (`pytest.raises(MixpanelHeadlessError, match="timed out")`,
-    // test_workspace_data_governance.py:1594).
+    // test_workspace_data_governance.py).
     await expect(call).rejects.toBeInstanceOf(MixpanelHeadlessError);
     await expect(call).rejects.toThrow(/timed out/);
   });
@@ -811,7 +810,7 @@ describe("TestUploadLookupTable", () => {
     const call = ws.uploadLookupTable(params, { poll_interval: 0.01 });
     // B6-ARB (assertions Finding C): Python asserts BOTH the class and
     // the message (`pytest.raises(MixpanelHeadlessError, match="failed")`,
-    // test_workspace_data_governance.py:1644).
+    // test_workspace_data_governance.py).
     await expect(call).rejects.toBeInstanceOf(MixpanelHeadlessError);
     await expect(call).rejects.toThrow(/failed/);
   });
@@ -952,7 +951,7 @@ describe("ADDITIVE: list_custom_properties displayFormula corruption branch", ()
   /**
    * Build the `QueryError` the App API raises when a project holds a
    * custom property with an invalid `displayFormula`
-   * (`workspace.py:7768-7773`).
+   * (`workspace.py`).
    *
    * @param body - The `response_body` detail.
    * @returns The error.

@@ -1,6 +1,6 @@
 // Layer-3 translation of `tests/unit/test_workspace_report_links.py`
 // (045-report-links, Python PR #223) — the WHOLE file: every class from
-// `TestCreateReportLinkFromDict` (:129) through `TestWorkspaceScope`
+// `TestCreateReportLinkFromDict` through `TestWorkspaceScope`
 // (:1489), one `describe` per Python class, one `it` per test (Python
 // `parametrize` → `it.each`), in source order.
 //
@@ -82,9 +82,9 @@ import {
 const SLUG = "EBrV5bW2u9Mw";
 
 // ---- 042 redesign: canonical fake Session for Workspace({session}) ----
-/** `_PINNED_SESSION` (:58) — `_TEST_SESSION.replace(workspace=WorkspaceRef(id=75))`. */
+/** `_PINNED_SESSION` — `_TEST_SESSION.replace(workspace=WorkspaceRef(id=75))`. */
 const PINNED_SESSION: Session = { ...TEST_SESSION, workspace: { id: 75 } };
-/** `_EU_SESSION` (:59-68). */
+/** `_EU_SESSION`. */
 const EU_SESSION: Session = {
   ...TEST_SESSION,
   account: { ...TEST_SESSION.account, name: "eu_account", region: "eu" },
@@ -98,7 +98,7 @@ interface InlineCall {
   readonly scope: Record<string, unknown> | undefined;
 }
 
-/** The `mock_api_client` fixture twin (:68-78). */
+/** The `mock_api_client` fixture twin. */
 interface MockApiClient {
   /** The stub cast to the client type the facade consumes. */
   readonly client: MixpanelClient;
@@ -276,7 +276,7 @@ function mockApiClient(): MockApiClient {
   };
 }
 
-/** Constructor overrides the `workspace_factory` fixture accepts (:81-108). */
+/** Constructor overrides the `workspace_factory` fixture accepts. */
 interface FactoryOptions {
   /** The session (default `_TEST_SESSION`). */
   readonly session?: Session;
@@ -297,7 +297,7 @@ interface Fixture {
 }
 
 /**
- * The `workspace_factory` + `ws` fixtures (:81-115): a Workspace bound to
+ * The `workspace_factory` + `ws` fixtures: a Workspace bound to
  * `_TEST_SESSION` unless overridden, over a fresh mock client.
  *
  * @param options - Constructor overrides.
@@ -325,7 +325,7 @@ function makeWorkspace(
 const fixedSlug = (): string => SLUG;
 
 /**
- * `_posted_body` (:118-128): the body of the single `create_bookmark_url`
+ * `_posted_body`: the body of the single `create_bookmark_url`
  * call.
  *
  * @param mock - The mocked client.
@@ -710,7 +710,7 @@ const BOOKMARK_RAW = {
 };
 
 /**
- * `_slug_record` (:456-473): a server slug record for `get_bookmark_url`.
+ * `_slug_record`: a server slug record for `get_bookmark_url`.
  *
  * @param extra - Keys merged over the defaults.
  * @returns A record dict.
@@ -1040,7 +1040,7 @@ describe("TestResolveBookmarkLinks (test_workspace_report_links.py:631)", () => 
 
 describe("TestResolveScopeAndUnsupported (test_workspace_report_links.py:812)", () => {
   /**
-   * `_assert_no_client_calls` (:815-823): neither record reader nor the
+   * `_assert_no_client_calls`: neither record reader nor the
    * workspace resolver was called.
    *
    * @param mock - The mocked client.
@@ -1170,7 +1170,7 @@ describe("TestResolveScopeAndUnsupported (test_workspace_report_links.py:812)", 
 // =============================================================================
 
 /**
- * `_resolved` (:929-949) plus the `dataclasses.replace(...)` twin: a
+ * `_resolved` plus the `dataclasses.replace(...)` twin: a
  * ResolvedReport on project 12345 with optional field overrides.
  *
  * @param reportType - The report type to dispatch on.

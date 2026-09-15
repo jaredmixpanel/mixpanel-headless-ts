@@ -13,7 +13,7 @@
  * skeleton to the packet's contract, verbatim, and filled only its own
  * section. S2 EXTENDS this file — its marker is already in place — and
  * owns the `_live_query_service` accessor plus the `query`-bound
- * `_replays_service` accessor (`workspace.py:1012-1033`) that S3 needs.
+ * `_replays_service` accessor that S3 needs.
  */
 
 import type { Account } from "./auth/account.js";
@@ -320,11 +320,11 @@ const DEFAULT_QUERY_LAST_DAYS = 30;
 
 /**
  * Main facade for Mixpanel operations — TS port of
- * `workspace.Workspace` (`workspace.py:274+`).
+ * `workspace.Workspace` (`workspace.py+`).
  *
  * The B5 constructor takes a RESOLVED {@link Session} only. Python's
  * `account` / `project` / `workspace` / `target` kwargs
- * (`workspace.py:427-430`) are the resolver axes, which are batch B7;
+ * (`workspace.py`) are the resolver axes, which are batch B7;
  * `use()` is B6-W1.
  *
  * @example
@@ -404,21 +404,21 @@ export class Workspace {
    */
   constructor(options: WorkspaceOptions) {
     // The WS1 constructor guard fires BEFORE the session/resolver
-    // branch (`workspace.py:455-465` — packet §14 Caution 4 order).
+    // branch (`workspace.py` — packet §14 Caution 4 order).
     guardTargetExclusivity(options);
     let session: Session;
     if (options.session === undefined) {
-      // B7-A1: the resolver constructor kwargs (`workspace.py:427-430`)
+      // B7-A1: the resolver constructor kwargs (`workspace.py`)
       // resolve through `resolveSession(...)` over injected sources
       // (R9.4). The bridge-token materialization side effect
-      // (`workspace.py:479-513`) is B8's (`TestBridgeTokenMaterialization`
+      // is B8's (`TestBridgeTokenMaterialization`
       // stays deferred, `b7-packets.md` §3.4).
       const sources = options.sources;
       if (sources === undefined) {
         // Core-alone posture (b8-packets.md §4.4): the on-disk default
         // wiring ships in `packages/node` — Python's `Workspace()` twin
         // is `new Workspace({ sources: createNodeWorkspaceSources() })`
-        // (the STARTUP sources incl. the `workspace.py:476-513`
+        // (the STARTUP sources incl. the `workspace.py`
         // bridge-token materialization side effect; B8-ARB-A SEM-F1,
         // `b8-reviewA-resolution.md`). Core stays runtime-agnostic, so
         // sessionless construction here requires injected sources.
@@ -463,7 +463,7 @@ export class Workspace {
 
   /**
    * The resolved session bound to this facade (`session` property,
-   * `workspace.py:546-548`). Read-only: `use()` swaps it in place.
+   * `workspace.py`). Read-only: `use()` swaps it in place.
    */
   get session(): Session {
     return this.#session;
@@ -472,12 +472,12 @@ export class Workspace {
   /**
    * Wire the facade's `/me` cache into the client's workspace
    * auto-resolver (`_install_workspace_resolver`,
-   * `workspace.py:775-793`).
+   * `workspace.py`).
    *
    * The closure reads {@link meService} on every call, so it keeps
    * pointing at the CURRENT service across `use()` cache clears. A
    * resolver already installed on an INJECTED client is left in place
-   * (`workspace.py:789-791`).
+   * (`workspace.py`).
    *
    * @internal
    */
@@ -492,7 +492,7 @@ export class Workspace {
 
   /**
    * Get or create the discovery service (lazy initialization —
-   * `workspace.py:1005-1010`).
+   * `workspace.py`).
    *
    * @returns The memoized service.
    * @internal
@@ -509,11 +509,11 @@ export class Workspace {
 
   /**
    * Swap one or more session axes in place; returns `this` for
-   * chaining (`use`, `workspace.py:552-694`).
+   * chaining (`use`, `workspace.py`).
    *
    * `target=` is mutually exclusive with
    * `account=`/`project=`/`workspace=`. The wire client — and with it
-   * the connection pool — is PRESERVED across every switch (R6.2): the
+   * the connection pool — is PRESERVED across every switch: the
    * swap is delegated to {@link MixpanelClient.use}, which rebuilds the
    * auth header in place. Every lazy service is then discarded so
    * subsequent reads observe the new session.
@@ -587,7 +587,7 @@ export class Workspace {
     this.#session = this.client.session;
 
     // Clear the lazy services so subsequent reads observe the new
-    // session rather than the prior one (`workspace.py:679-693`).
+    // session rather than the prior one (`workspace.py`).
     this.#accountName = this.#session.account.name;
     this.#discovery = null;
     this.#liveQuery = null;
@@ -602,7 +602,7 @@ export class Workspace {
   }
 
   /**
-   * Close all resources (`close`, `workspace.py:744-753`).
+   * Close all resources (`close`, `workspace.py`).
    *
    * Idempotent and safe to call repeatedly.
    *
@@ -623,8 +623,8 @@ export class Workspace {
   }
 
   /**
-   * `await using` support (R6.2) — delegates to {@link close}, the
-   * `__exit__` twin (`workspace.py:730-742`).
+   * `await using` support — delegates to {@link close}, the
+   * `__exit__` twin.
    *
    * @returns Nothing.
    */
@@ -632,11 +632,11 @@ export class Workspace {
     return this.close();
   }
 
-  // === B5-S2 query members (S2 owns; append-only) ===
+  // --- Query members ---
 
   /**
    * Get or create the live query service (lazy initialization —
-   * `workspace.py:1012-1017`).
+   * `workspace.py`).
    *
    * @returns The memoized service.
    * @internal
@@ -651,7 +651,7 @@ export class Workspace {
   }
 
   // Placement note (B5-ARB, resolving the stale S2 TODO): the
-  // `_replays_service` accessor (`workspace.py:1019-1033`) was assigned
+  // `_replays_service` accessor was assigned
   // to this section by packet §2, but S3 landed it in the S3 section
   // below (`replaysService` get/set, memoized in `#replays`) with the
   // packet-specified `query_fn` DI. Behavior is per spec; only the
@@ -659,7 +659,7 @@ export class Workspace {
 
   /**
    * Run a segmentation query against the Mixpanel API
-   * (`segmentation`, `workspace.py:1583-1616`).
+   * (`segmentation`, `workspace.py`).
    *
    * @param event - Event name to query.
    * @param options - Required date window plus `on` / `unit` / `where`.
@@ -678,7 +678,7 @@ export class Workspace {
 
   /**
    * Run a funnel analysis query (`funnel`,
-   * `workspace.py:1618-1648`).
+   * `workspace.py`).
    *
    * @param funnelId - ID of the saved funnel.
    * @param options - Required date window plus `unit` / `on`.
@@ -700,7 +700,7 @@ export class Workspace {
 
   /**
    * Run a retention analysis query (`retention`,
-   * `workspace.py:1650-1692`).
+   * `workspace.py`).
    *
    * @param options - Born/return events, the date window and the
    *   interval knobs (all keyword-only in Python).
@@ -724,7 +724,7 @@ export class Workspace {
 
   /**
    * Get counts for multiple events (`event_counts`,
-   * `workspace.py:1694-1724`).
+   * `workspace.py`).
    *
    * @param events - Event names.
    * @param options - Required date window plus `type` / `unit`.
@@ -743,7 +743,7 @@ export class Workspace {
 
   /**
    * Get event counts broken down by property value
-   * (`property_counts`, `workspace.py:1726-1765`).
+   * (`property_counts`, `workspace.py`).
    *
    * @param event - Event name.
    * @param propertyName - Property to break down by.
@@ -771,7 +771,7 @@ export class Workspace {
 
   /**
    * Get the activity feed for specific users (`activity_feed`,
-   * `workspace.py:1767-1844`).
+   * `workspace.py`).
    *
    * Events come back oldest-first within a page; when `limit` is set
    * the most recent events lead and `sentinel_event` pages backward.
@@ -793,7 +793,7 @@ export class Workspace {
 
   /**
    * Query a saved report by bookmark type (`query_saved_report`,
-   * `workspace.py:1846-1880`).
+   * `workspace.py`).
    *
    * @param bookmarkId - ID of the saved report.
    * @param options - `bookmark_type` plus the funnel date window.
@@ -813,7 +813,7 @@ export class Workspace {
 
   /**
    * Query a saved Flows report (`query_saved_flows`,
-   * `workspace.py:1882-1898`).
+   * `workspace.py`).
    *
    * @param bookmarkId - ID of the saved flows report.
    * @returns Steps, breakdowns and the conversion rate.
@@ -829,7 +829,7 @@ export class Workspace {
 
   /**
    * Analyze the event frequency distribution (`frequency`,
-   * `workspace.py:1900-1933`).
+   * `workspace.py`).
    *
    * @param options - Required date window plus `unit` /
    *   `addiction_unit` / `event` / `where`.
@@ -847,7 +847,7 @@ export class Workspace {
 
   /**
    * Bucket events by numeric property ranges
-   * (`segmentation_numeric`, `workspace.py:1935-1971`).
+   * (`segmentation_numeric`, `workspace.py`).
    *
    * @param event - Event name.
    * @param options - Required date window and `on`, plus `unit` /
@@ -872,7 +872,7 @@ export class Workspace {
 
   /**
    * Calculate the sum of a numeric property over time
-   * (`segmentation_sum`, `workspace.py:1973-2006`).
+   * (`segmentation_sum`, `workspace.py`).
    *
    * @param event - Event name.
    * @param options - Required date window and `on`, plus `unit` /
@@ -897,7 +897,7 @@ export class Workspace {
 
   /**
    * Calculate the average of a numeric property over time
-   * (`segmentation_average`, `workspace.py:2008-2041`).
+   * (`segmentation_average`, `workspace.py`).
    *
    * @param event - Event name.
    * @param options - Required date window and `on`, plus `unit` /
@@ -921,11 +921,11 @@ export class Workspace {
   }
 
   // -------------------------------------------------------------------
-  // INSIGHTS QUERY API (Phase 029) — `workspace.py:2043-2743`
+  // INSIGHTS QUERY API (Phase 029) — `workspace.py`
   // -------------------------------------------------------------------
 
   /**
-   * Run a typed insights query (`query`, `workspace.py:2285-2429`).
+   * Run a typed insights query (`query`, `workspace.py`).
    *
    * Builds bookmark params from the arguments, POSTs them inline to
    * `/api/query/insights`, and returns the structured result.
@@ -957,7 +957,7 @@ export class Workspace {
 
   /**
    * Run pre-built insights bookmark params against the Mixpanel API
-   * (`run_params`, `workspace.py:2518-2560`).
+   * (`run_params`, `workspace.py`).
    *
    * The execution half of {@link buildParams}. Use it when the params
    * need editing before they run, or when they express something the
@@ -990,7 +990,7 @@ export class Workspace {
 
   /**
    * Build validated insights bookmark params WITHOUT calling the API
-   * (`build_params`, `workspace.py:2431-2544`).
+   * (`build_params`, `workspace.py`).
    *
    * @param events - Same input union as {@link query}.
    * @param options - The same 17 keyword-only knobs.
@@ -1041,12 +1041,12 @@ export class Workspace {
   }
 
   // -------------------------------------------------------------------
-  // FUNNEL QUERY (Phase 032) — `workspace.py:2744-3320`
+  // FUNNEL QUERY (Phase 032) — `workspace.py`
   // -------------------------------------------------------------------
 
   /**
    * Run a typed funnel query (`query_funnel`,
-   * `workspace.py:3064-3200`).
+   * `workspace.py`).
    *
    * @param steps - Funnel steps (strings or `FunnelStep` objects).
    * @param options - The 17 keyword-only knobs plus `limit` (segments
@@ -1069,7 +1069,7 @@ export class Workspace {
 
   /**
    * Run pre-built funnel bookmark params against the Mixpanel API
-   * (`run_funnel_params`, `workspace.py:3340-3380`).
+   * (`run_funnel_params`, `workspace.py`).
    *
    * The execution half of {@link buildFunnelParams}.
    *
@@ -1099,7 +1099,7 @@ export class Workspace {
 
   /**
    * Build validated funnel bookmark params WITHOUT calling the API
-   * (`build_funnel_params`, `workspace.py:3202-3319`).
+   * (`build_funnel_params`, `workspace.py`).
    *
    * @param steps - Funnel steps (strings or `FunnelStep` objects).
    * @param options - The same 17 keyword-only knobs.
@@ -1150,12 +1150,12 @@ export class Workspace {
   }
 
   // -------------------------------------------------------------------
-  // FLOW QUERY (inline ad-hoc) — `workspace.py:3489-4096`
+  // FLOW QUERY (inline ad-hoc) — `workspace.py`
   // -------------------------------------------------------------------
 
   /**
    * Run a typed flow query (`query_flow`,
-   * `workspace.py:3852-3986`).
+   * `workspace.py`).
    *
    * @param event - Anchor event(s): a string, a `FlowStep`, or a list.
    * @param options - The 16 keyword-only knobs.
@@ -1178,7 +1178,7 @@ export class Workspace {
 
   /**
    * Run pre-built flow bookmark params against the Mixpanel API
-   * (`run_flow_params`, `workspace.py:4170-4216`).
+   * (`run_flow_params`, `workspace.py`).
    *
    * The execution half of {@link buildFlowParams}. The chart mode is
    * read from the params via {@link flowModeFromParams} unless
@@ -1212,7 +1212,7 @@ export class Workspace {
 
   /**
    * Build validated flow bookmark params WITHOUT calling the API
-   * (`build_flow_params`, `workspace.py:3988-4095`).
+   * (`build_flow_params`, `workspace.py`).
    *
    * @param event - Anchor event(s).
    * @param options - The same 16 keyword-only knobs.
@@ -1261,12 +1261,12 @@ export class Workspace {
   }
 
   // -------------------------------------------------------------------
-  // RETENTION QUERY (inline ad-hoc) — `workspace.py:4097-4463`
+  // RETENTION QUERY (inline ad-hoc) — `workspace.py`
   // -------------------------------------------------------------------
 
   /**
    * Run a typed retention query (`query_retention`,
-   * `workspace.py:4225-4347`).
+   * `workspace.py`).
    *
    * @param bornEvent - Event defining cohort membership.
    * @param returnEvent - Event defining return.
@@ -1295,7 +1295,7 @@ export class Workspace {
 
   /**
    * Run pre-built retention bookmark params against the Mixpanel API
-   * (`run_retention_params`, `workspace.py:4584-4625`).
+   * (`run_retention_params`, `workspace.py`).
    *
    * The execution half of {@link buildRetentionParams}.
    *
@@ -1325,7 +1325,7 @@ export class Workspace {
 
   /**
    * Build validated retention bookmark params WITHOUT calling the API
-   * (`build_retention_params`, `workspace.py:4349-4463`).
+   * (`build_retention_params`, `workspace.py`).
    *
    * @param bornEvent - Event defining cohort membership.
    * @param returnEvent - Event defining return.
@@ -1382,12 +1382,12 @@ export class Workspace {
   }
 
   // -------------------------------------------------------------------
-  // USER QUERY ENGINE (Phase 039) — `workspace.py:9336-10256`
+  // USER QUERY ENGINE (Phase 039) — `workspace.py`
   // -------------------------------------------------------------------
 
   /**
    * Query user profiles from Mixpanel's Engage API (`query_user`,
-   * `workspace.py:9722-9881`).
+   * `workspace.py`).
    *
    * Builds the engage params and hands them to {@link runUserParams},
    * which routes on the params: an aggregate `action` key goes to the
@@ -1415,7 +1415,7 @@ export class Workspace {
 
   /**
    * Run pre-built Engage API params against the Mixpanel API
-   * (`run_user_params`, `workspace.py:10141-10230`).
+   * (`run_user_params`, `workspace.py`).
    *
    * The execution half of {@link buildUserParams}. The mode is read
    * from the params: a dict that carries an aggregate `action` key runs
@@ -1454,7 +1454,7 @@ export class Workspace {
 
   /**
    * Build validated engage params WITHOUT calling the API
-   * (`build_user_params`, `workspace.py:9883-9997`).
+   * (`build_user_params`, `workspace.py`).
    *
    * @param options - The same 19 keyword-only knobs.
    * @returns The engage params dict.
@@ -1509,7 +1509,7 @@ export class Workspace {
   }
 
   /**
-   * `int(self._session.project.id)` (`workspace.py:2428`) — the
+   * `int(self._session.project.id)` — the
    * project id every inline query body carries.
    *
    * @returns The numeric project id.
@@ -1520,11 +1520,11 @@ export class Workspace {
     return pythonInt(this.session.project.id);
   }
 
-  // === B5-S1 discovery/lexicon members (append-only; S1 owns) ===
+  // --- Discovery/lexicon members ---
 
   /**
    * List event names in the Mixpanel project (`events`,
-   * `workspace.py:1039-1088`).
+   * `workspace.py`).
    *
    * Defaults to the widest window `/events/names` accepts
    * (`limit=5000`, `from_date=2000-01-01`, `to_date=today`); the wire
@@ -1545,7 +1545,7 @@ export class Workspace {
 
   /**
    * List all property names for an event (`properties`,
-   * `workspace.py:1090-1104`). Cached per event.
+   * `workspace.py`). Cached per event.
    *
    * @param event - Event name.
    * @returns Alphabetically sorted property names.
@@ -1557,7 +1557,7 @@ export class Workspace {
 
   /**
    * Get sample values for a property (`property_values`,
-   * `workspace.py:1106-1130`). Cached per
+   * `workspace.py`). Cached per
    * `(property, event, limit)`.
    *
    * @param propertyName - Property to get values for.
@@ -1574,7 +1574,7 @@ export class Workspace {
 
   /**
    * List inferred subproperties of a list-of-object property
-   * (`subproperties`, `workspace.py:1132-1191`).
+   * (`subproperties`, `workspace.py`).
    *
    * Only SCALAR sub-values (string / number / boolean / ISO datetime
    * string) are reported; nested dicts and lists are skipped because
@@ -1602,7 +1602,7 @@ export class Workspace {
   }
 
   /**
-   * List saved funnels (`funnels`, `workspace.py:1193-1204`). Cached.
+   * List saved funnels (`funnels`, `workspace.py`). Cached.
    *
    * @returns Funnel infos sorted by name.
    * @throws AuthenticationError - Credentials rejected.
@@ -1612,7 +1612,7 @@ export class Workspace {
   }
 
   /**
-   * List saved cohorts (`cohorts`, `workspace.py:1206-1217`). Cached.
+   * List saved cohorts (`cohorts`, `workspace.py`). Cached.
    *
    * @returns Saved cohorts sorted by name.
    * @throws AuthenticationError - Credentials rejected.
@@ -1623,7 +1623,7 @@ export class Workspace {
 
   /**
    * List saved reports (bookmarks) (`list_bookmarks`,
-   * `workspace.py:1219-1241`). NOT cached.
+   * `workspace.py`). NOT cached.
    *
    * @param bookmarkType - Optional report-type filter.
    * @returns Bookmark metadata rows (empty when none exist).
@@ -1637,7 +1637,7 @@ export class Workspace {
 
   /**
    * Today's most active events (`top_events`,
-   * `workspace.py:1243-1271`). NOT cached — real-time data.
+   * `workspace.py`). NOT cached — real-time data.
    *
    * @param options - Counting method and limit.
    * @returns Top events with `event`, `count` and `percent_change`.
@@ -1654,7 +1654,7 @@ export class Workspace {
 
   /**
    * Clear cached discovery results (`clear_discovery_cache`,
-   * `workspace.py:1273-1279`).
+   * `workspace.py`).
    *
    * Mirrors Python's guard exactly: when the discovery service has
    * never been created there is nothing to clear and NO service is
@@ -1669,7 +1669,7 @@ export class Workspace {
 
   /**
    * List Lexicon schemas (`lexicon_schemas`,
-   * `workspace.py:1285-1313`). Cached for the facade's lifetime — the
+   * `workspace.py`). Cached for the facade's lifetime — the
    * Lexicon API allows only 5 requests/minute.
    *
    * @param options - Optional entity-type filter.
@@ -1684,7 +1684,7 @@ export class Workspace {
 
   /**
    * Get one Lexicon schema (`lexicon_schema`,
-   * `workspace.py:1315-1344`). Cached.
+   * `workspace.py`). Cached.
    *
    * @param entityType - Entity type (`"event"` / `"profile"`).
    * @param name - Entity name.
@@ -1700,7 +1700,7 @@ export class Workspace {
 
   /**
    * Gather the full Lexicon schema and the event↔property
-   * relationships (`schema_graph`, `workspace.py:1346-1397`). Cached
+   * relationships (`schema_graph`, `workspace.py`). Cached
    * per `(include_density, include_user_properties)`.
    *
    * The adjacency comes from the query API's per-event properties
@@ -1727,11 +1727,11 @@ export class Workspace {
     return this.discoveryService.getSchemaGraph(options);
   }
 
-  // === B5-S3 session-replay members (append-only; S3 owns) ===
+  // --- Session-replay members ---
 
   /**
    * Get or create the session-replay service (044, lazy
-   * initialization — `_replays_service`, `workspace.py:1019-1033`).
+   * initialization — `_replays_service`, `workspace.py`).
    *
    * Constructed on first access with the BOUND {@link query} so
    * `ReplaysService.discover` / `eventsFor` can issue Insights queries
@@ -1797,7 +1797,7 @@ export class Workspace {
 
   /**
    * List replays for a user, or hydrate summaries for explicit IDs
-   * (`list_replays`, `workspace.py:10679-10755`).
+   * (`list_replays`, `workspace.py`).
    *
    * Exactly one of `distinct_id` or `replay_ids` MUST be provided.
    * When `distinct_id` is set, `from_date` and `to_date` are required.
@@ -1817,7 +1817,7 @@ export class Workspace {
 
   /**
    * Mixpanel events that occurred during a single replay's time window
-   * (`events_for_replay`, `workspace.py:10757-10793`).
+   * (`events_for_replay`, `workspace.py`).
    *
    * @param replayId - The replay to fetch events for.
    * @param options - Extra group keys and the optional window.
@@ -1835,7 +1835,7 @@ export class Workspace {
 
   /**
    * Batched version of {@link eventsForReplay} — single round-trip
-   * (`events_for_replays`, `workspace.py:10795-10830`).
+   * (`events_for_replays`, `workspace.py`).
    *
    * @param replayIds - Replays to fetch events for.
    * @param options - Extra group keys and the optional window.
@@ -1858,7 +1858,7 @@ export class Workspace {
 
   /**
    * Sign a single replay ID; sugar over {@link signReplays}
-   * (`sign_replay`, `workspace.py:10832-10852`).
+   * (`sign_replay`, `workspace.py`).
    *
    * @param replayId - Replay to sign.
    * @param options - `env` (`"prod"` default).
@@ -1876,7 +1876,7 @@ export class Workspace {
 
   /**
    * Sign multiple replays via the bulk endpoint (`sign_replays`,
-   * `workspace.py:10854-10873`).
+   * `workspace.py`).
    *
    * @param replayIds - Replays to sign.
    * @param options - `env` (`"prod"` default).
@@ -1893,7 +1893,7 @@ export class Workspace {
 
   /**
    * Sign, fetch, and assemble a single `Replay` (`fetch_replay`,
-   * `workspace.py:10875-10981`).
+   * `workspace.py`).
    *
    * Runs the vendored rrweb analyzer to populate `Replay.actions`; the
    * raw `rrweb_events` list is also populated for downstream tools.
@@ -1922,7 +1922,7 @@ export class Workspace {
 
   /**
    * Yield raw rrweb events one at a time, batched-parallel under the
-   * hood (`stream_replay`, `workspace.py:10983-11043`).
+   * hood (`stream_replay`, `workspace.py`).
    *
    * R6.6 — item-level `yield*` over the service generator; nothing
    * buffers. Python's private-event-loop plumbing
@@ -1948,7 +1948,7 @@ export class Workspace {
 
   /**
    * Fetch N replays in parallel; return a `ReplayBundle`
-   * (`fetch_replays`, `workspace.py:11045-11184`).
+   * (`fetch_replays`, `workspace.py`).
    *
    * Materializes each replay via {@link fetchReplay} and bundles them.
    * Outer `concurrency` parallelizes across replays; inner
@@ -1981,7 +1981,7 @@ export class Workspace {
 
   /**
    * Discovery + fetch in one call (`replays_for_user`,
-   * `workspace.py:11186-11249`).
+   * `workspace.py`).
    *
    * Composes {@link listReplays} and {@link fetchReplays}. Defaults
    * `include_mixpanel_events` to `true` since this is the "show me what
@@ -2007,7 +2007,7 @@ export class Workspace {
 
   /**
    * Sign + fetch + analyze a replay, returning only the markdown
-   * timeline (`analyze_replay`, `workspace.py:11251-11273`).
+   * timeline (`analyze_replay`, `workspace.py`).
    *
    * @param replayId - The replay to analyze.
    * @returns The markdown timeline (`Replay.summaryMarkdown()`).
@@ -2017,14 +2017,14 @@ export class Workspace {
   async analyzeReplay(replayId: string): Promise<string> {
     return replayMethods.analyzeReplay(this.#replayHost(), replayId);
   }
-  // === B6 members land below in W1–W7 sections (append-only) ===
+  // --- Members land below in W1–W7 sections ---
 
   // === B6-W1 lifecycle / workspace-management / me / business-context
   // members (W1 owns; append-only) ===
 
   /**
    * The resolved account of the current session (`account` property,
-   * `workspace.py:530-533`).
+   * `workspace.py`).
    */
   get account(): Account {
     return this.#session.account;
@@ -2032,7 +2032,7 @@ export class Workspace {
 
   /**
    * The resolved project of the current session (`project` property,
-   * `workspace.py:535-538`).
+   * `workspace.py`).
    */
   get project(): Project {
     return this.#session.project;
@@ -2040,7 +2040,7 @@ export class Workspace {
 
   /**
    * The resolved workspace, or `null` when scoping stays lazy
-   * (`workspace` property, `workspace.py:540-543`).
+   * (`workspace` property, `workspace.py`).
    */
   get workspace(): WorkspaceRef | null {
     return this.#session.workspace ?? null;
@@ -2049,7 +2049,7 @@ export class Workspace {
   /**
    * Direct access to the wire client — the escape hatch for endpoints
    * the facade does not cover (`api` property,
-   * `workspace.py:4464-4501`).
+   * `workspace.py`).
    */
   get api(): MixpanelClient {
     return this.client;
@@ -2057,7 +2057,7 @@ export class Workspace {
 
   /**
    * Get or create the `/me` service (`_me_svc`,
-   * `workspace.py:865-885`).
+   * `workspace.py`).
    *
    * @returns The memoized service, scoped to the CURRENT account.
    * @internal
@@ -2082,7 +2082,7 @@ export class Workspace {
   /**
    * The `/me` service ONLY IF it has already been created — the
    * `self._me_service is None` peek `_cached_organization_id` performs
-   * (`workspace.py:10355-10357`). Never constructs one.
+   * (`workspace.py`). Never constructs one.
    *
    * @internal
    */
@@ -2092,7 +2092,7 @@ export class Workspace {
 
   /**
    * List every public workspace of the current project
-   * (`list_workspaces`, `workspace.py:801-824`).
+   * (`list_workspaces`, `workspace.py`).
    *
    * @returns The project's `PublicWorkspace` models.
    * @throws AuthenticationError | QueryError | ServerError - Wire
@@ -2104,7 +2104,7 @@ export class Workspace {
 
   /**
    * Resolve the workspace ID used for scoped requests
-   * (`resolve_workspace_id`, `workspace.py:827-860`).
+   * (`resolve_workspace_id`, `workspace.py`).
    *
    * @returns The resolved workspace ID.
    * @throws WorkspaceScopeError - No workspace resolvable.
@@ -2115,7 +2115,7 @@ export class Workspace {
 
   /**
    * Get the `/me` response for the current credentials (cached 24h by
-   * the injected store) — `me`, `workspace.py:886-911`.
+   * the injected store) — `me`, `workspace.py`.
    *
    * @param options - `force_refresh` bypasses the caches.
    * @returns The `/me` response.
@@ -2130,7 +2130,7 @@ export class Workspace {
 
   /**
    * List accessible projects via the `/me` API (FR-035; `projects`,
-   * `workspace.py:913-956`).
+   * `workspace.py`).
    *
    * @param options - `refresh` bypasses the `/me` caches first.
    * @returns Projects sorted by name.
@@ -2158,7 +2158,7 @@ export class Workspace {
 
   /**
    * List a project's workspaces via the `/me` API (FR-036;
-   * `workspaces`, `workspace.py:958-1003`).
+   * `workspaces`, `workspace.py`).
    *
    * @param options - `project_id` (defaults to the current project)
    *   and `refresh`.
@@ -2184,7 +2184,7 @@ export class Workspace {
 
   /**
    * Stream events straight from the Export API (`stream_events`,
-   * `workspace.py:1400-1467`) — the W1-D3 R6.6 veneer over the B4-C2
+   * `workspace.py`) — the W1-D3 R6.6 veneer over the B4-C2
    * helper. PROJECT-scoped by design even when a workspace is pinned.
    *
    * @param options - Date window plus filters / `raw`.
@@ -2200,7 +2200,7 @@ export class Workspace {
 
   /**
    * Stream user profiles straight from the Engage API
-   * (`stream_profiles`, `workspace.py:1469-1578`) — the W1-D3 R6.6
+   * (`stream_profiles`, `workspace.py`) — the W1-D3 R6.6
    * veneer over the B4-C2 helper.
    *
    * @param options - Filters plus `raw`.
@@ -2216,7 +2216,7 @@ export class Workspace {
 
   /**
    * Read business context at the given scope
-   * (`get_business_context`, `workspace.py:10405-10479`).
+   * (`get_business_context`, `workspace.py`).
    *
    * @param options - `level` (default `"project"`) and an optional
    *   explicit `organization_id`.
@@ -2233,7 +2233,7 @@ export class Workspace {
 
   /**
    * Replace business context at the given scope
-   * (`set_business_context`, `workspace.py:10481-10566`).
+   * (`set_business_context`, `workspace.py`).
    *
    * @param content - New markdown content (empty string clears).
    * @param options - `level` / `organization_id`.
@@ -2255,7 +2255,7 @@ export class Workspace {
 
   /**
    * Clear business context at the given scope
-   * (`clear_business_context`, `workspace.py:10568-10610`) — the
+   * (`clear_business_context`, `workspace.py`) — the
    * documented alias for `set_business_context("")`.
    *
    * @param options - `level` / `organization_id`.
@@ -2271,7 +2271,7 @@ export class Workspace {
   /**
    * Read organization and project business context together in ONE
    * request (`get_business_context_chain`,
-   * `workspace.py:10612-10674`).
+   * `workspace.py`).
    *
    * @returns Both scopes; `organization.organization_id` stays `null`
    *   when the `/me` cache is cold (single-round-trip guarantee).
@@ -2297,11 +2297,11 @@ export class Workspace {
     };
   }
 
-  // === B6-W2 dashboard members (W2 owns; append-only) ===
+  // --- Dashboard members ---
 
   /**
    * List dashboards for the current project/workspace
-   * (`list_dashboards`, `workspace.py:4506-4536`).
+   * (`list_dashboards`, `workspace.py`).
    *
    * @param options - Optional `ids` filter.
    * @returns The `Dashboard` models, in response order.
@@ -2324,7 +2324,7 @@ export class Workspace {
 
   /**
    * Create a new dashboard (`create_dashboard`,
-   * `workspace.py:4538-4569`).
+   * `workspace.py`).
    *
    * @param params - Dashboard creation parameters.
    * @returns The newly created `Dashboard`.
@@ -2337,7 +2337,7 @@ export class Workspace {
 
   /**
    * Get a single dashboard by ID (`get_dashboard`,
-   * `workspace.py:4571-4600`).
+   * `workspace.py`).
    *
    * @param dashboardId - Dashboard identifier.
    * @returns The `Dashboard`.
@@ -2353,7 +2353,7 @@ export class Workspace {
 
   /**
    * Update an existing dashboard (`update_dashboard`,
-   * `workspace.py:4602-4638`).
+   * `workspace.py`).
    *
    * @param dashboardId - Dashboard identifier.
    * @param params - Fields to update.
@@ -2373,7 +2373,7 @@ export class Workspace {
 
   /**
    * Delete a dashboard (`delete_dashboard`,
-   * `workspace.py:4640-4659`).
+   * `workspace.py`).
    *
    * @param dashboardId - Dashboard identifier.
    * @returns Nothing.
@@ -2389,7 +2389,7 @@ export class Workspace {
 
   /**
    * Delete multiple dashboards (`bulk_delete_dashboards`,
-   * `workspace.py:4661-4680`).
+   * `workspace.py`).
    *
    * @param ids - Dashboard IDs to delete.
    * @returns Nothing.
@@ -2400,7 +2400,7 @@ export class Workspace {
 
   /**
    * Favorite a dashboard (`favorite_dashboard`,
-   * `workspace.py:4686-4705`).
+   * `workspace.py`).
    *
    * @param dashboardId - Dashboard identifier.
    * @returns Nothing.
@@ -2414,7 +2414,7 @@ export class Workspace {
 
   /**
    * Unfavorite a dashboard (`unfavorite_dashboard`,
-   * `workspace.py:4707-4726`).
+   * `workspace.py`).
    *
    * @param dashboardId - Dashboard identifier.
    * @returns Nothing.
@@ -2427,7 +2427,7 @@ export class Workspace {
   }
 
   /**
-   * Pin a dashboard (`pin_dashboard`, `workspace.py:4728-4747`).
+   * Pin a dashboard (`pin_dashboard`, `workspace.py`).
    *
    * @param dashboardId - Dashboard identifier.
    * @returns Nothing.
@@ -2441,7 +2441,7 @@ export class Workspace {
 
   /**
    * Unpin a dashboard (`unpin_dashboard`,
-   * `workspace.py:4749-4768`).
+   * `workspace.py`).
    *
    * @param dashboardId - Dashboard identifier.
    * @returns Nothing.
@@ -2455,7 +2455,7 @@ export class Workspace {
 
   /**
    * Remove a report from a dashboard
-   * (`remove_report_from_dashboard`, `workspace.py:4770-4800`).
+   * (`remove_report_from_dashboard`, `workspace.py`).
    *
    * @param dashboardId - Dashboard identifier.
    * @param bookmarkId - Bookmark/report identifier to remove.
@@ -2479,7 +2479,7 @@ export class Workspace {
 
   /**
    * Add a report to a dashboard (`add_report_to_dashboard`,
-   * `workspace.py:4802-4841`) — clones the bookmark onto the board.
+   * `workspace.py`) — clones the bookmark onto the board.
    *
    * @param dashboardId - Dashboard identifier.
    * @param bookmarkId - Bookmark/report identifier to add.
@@ -2505,7 +2505,7 @@ export class Workspace {
 
   /**
    * List available dashboard blueprint templates
-   * (`list_blueprint_templates`, `workspace.py:4841-4869`).
+   * (`list_blueprint_templates`, `workspace.py`).
    *
    * @param options - `include_reports` (default `false`).
    * @returns The `BlueprintTemplate` models.
@@ -2519,7 +2519,7 @@ export class Workspace {
 
   /**
    * Create a dashboard from a blueprint template
-   * (`create_blueprint`, `workspace.py:4871-4900`).
+   * (`create_blueprint`, `workspace.py`).
    *
    * @param templateType - Blueprint template type identifier.
    * @returns The newly created `Dashboard`.
@@ -2532,7 +2532,7 @@ export class Workspace {
 
   /**
    * Get the blueprint configuration for a dashboard
-   * (`get_blueprint_config`, `workspace.py:4902-4933`).
+   * (`get_blueprint_config`, `workspace.py`).
    *
    * @param dashboardId - Dashboard identifier.
    * @returns The `BlueprintConfig`.
@@ -2548,7 +2548,7 @@ export class Workspace {
 
   /**
    * Update cohorts for blueprint configuration
-   * (`update_blueprint_cohorts`, `workspace.py:4935-4954`).
+   * (`update_blueprint_cohorts`, `workspace.py`).
    *
    * @param cohorts - Cohort configuration dicts.
    * @returns Nothing.
@@ -2561,7 +2561,7 @@ export class Workspace {
 
   /**
    * Finalize a blueprint dashboard with cards
-   * (`finalize_blueprint`, `workspace.py:4956-4991`).
+   * (`finalize_blueprint`, `workspace.py`).
    *
    * @param params - Blueprint finalization parameters.
    * @returns The finalized `Dashboard`.
@@ -2574,7 +2574,7 @@ export class Workspace {
 
   /**
    * Create an RCA (Root Cause Analysis) dashboard
-   * (`create_rca_dashboard`, `workspace.py:4993-5028`).
+   * (`create_rca_dashboard`, `workspace.py`).
    *
    * @param params - RCA dashboard parameters.
    * @returns The newly created `Dashboard`.
@@ -2589,7 +2589,7 @@ export class Workspace {
 
   /**
    * Dashboard IDs containing a bookmark/report
-   * (`get_bookmark_dashboard_ids`, `workspace.py:5030-5052`).
+   * (`get_bookmark_dashboard_ids`, `workspace.py`).
    *
    * @param bookmarkId - Bookmark identifier.
    * @returns The dashboard IDs.
@@ -2603,7 +2603,7 @@ export class Workspace {
 
   /**
    * ERF data for a dashboard (`get_dashboard_erf`,
-   * `workspace.py:5054-5076`).
+   * `workspace.py`).
    *
    * @param dashboardId - Dashboard identifier.
    * @returns The ERF metrics mapping.
@@ -2617,7 +2617,7 @@ export class Workspace {
 
   /**
    * Update a report link on a dashboard (`update_report_link`,
-   * `workspace.py:5078-5110`).
+   * `workspace.py`).
    *
    * @param dashboardId - Dashboard identifier.
    * @param reportLinkId - Report link identifier.
@@ -2643,7 +2643,7 @@ export class Workspace {
 
   /**
    * Update a text card on a dashboard (`update_text_card`,
-   * `workspace.py:5112-5145`).
+   * `workspace.py`).
    *
    * @param dashboardId - Dashboard identifier.
    * @param textCardId - Text card identifier.
@@ -2667,11 +2667,11 @@ export class Workspace {
     );
   }
 
-  // === B6-W3 bookmark/report + cohort members (W3 owns; append-only) ===
+  // --- Bookmark/report + cohort members ---
 
   /**
    * List bookmarks/reports via the App API v2 endpoint
-   * (`list_bookmarks_v2`, `workspace.py:5150-5183`).
+   * (`list_bookmarks_v2`, `workspace.py`).
    *
    * @param options - Optional `bookmark_type` / `ids` filters.
    * @returns The `Bookmark` models, in response order.
@@ -2694,7 +2694,7 @@ export class Workspace {
 
   /**
    * Create a new bookmark (saved report) (`create_bookmark`,
-   * `workspace.py:5247-5324`).
+   * `workspace.py`).
    *
    * @param params - Bookmark creation parameters; `dashboard_id` is
    *   required by the Mixpanel v2 API.
@@ -2717,7 +2717,7 @@ export class Workspace {
 
   /**
    * Get a single bookmark by ID (`get_bookmark`,
-   * `workspace.py:5326-5355`).
+   * `workspace.py`).
    *
    * @param bookmarkId - Bookmark identifier.
    * @returns The `Bookmark`.
@@ -2733,7 +2733,7 @@ export class Workspace {
 
   /**
    * Update an existing bookmark (`update_bookmark`,
-   * `workspace.py:5357-5414`).
+   * `workspace.py`).
    *
    * @param bookmarkId - Bookmark identifier.
    * @param params - Fields to update.
@@ -2759,7 +2759,7 @@ export class Workspace {
   }
 
   /**
-   * Delete a bookmark (`delete_bookmark`, `workspace.py:5416-5435`).
+   * Delete a bookmark (`delete_bookmark`, `workspace.py`).
    *
    * @param bookmarkId - Bookmark identifier.
    * @returns Nothing.
@@ -2775,7 +2775,7 @@ export class Workspace {
 
   /**
    * Delete multiple bookmarks (`bulk_delete_bookmarks`,
-   * `workspace.py:5437-5456`).
+   * `workspace.py`).
    *
    * @param ids - Bookmark IDs to delete.
    * @returns Nothing.
@@ -2786,7 +2786,7 @@ export class Workspace {
 
   /**
    * Update multiple bookmarks (`bulk_update_bookmarks`,
-   * `workspace.py:5458-5479`).
+   * `workspace.py`).
    *
    * @param entries - Bookmark update entries.
    * @returns Nothing.
@@ -2799,7 +2799,7 @@ export class Workspace {
 
   /**
    * Dashboard IDs linked to a bookmark
-   * (`bookmark_linked_dashboard_ids`, `workspace.py:5481-5503`).
+   * (`bookmark_linked_dashboard_ids`, `workspace.py`).
    *
    * @param bookmarkId - Bookmark identifier.
    * @returns The dashboard IDs.
@@ -2813,7 +2813,7 @@ export class Workspace {
 
   /**
    * Change history for a bookmark (`get_bookmark_history`,
-   * `workspace.py:5505-5542`).
+   * `workspace.py`).
    *
    * @param bookmarkId - Bookmark identifier.
    * @param options - `cursor` / `page_size` (keyword-only in Python).
@@ -2836,7 +2836,7 @@ export class Workspace {
 
   /**
    * List cohorts via the App API, full detail (`list_cohorts_full`,
-   * `workspace.py:5548-5584`).
+   * `workspace.py`).
    *
    * @param options - Optional `data_group_id` / `ids` filters.
    * @returns The `Cohort` models, in response order.
@@ -2850,7 +2850,7 @@ export class Workspace {
 
   /**
    * Get a single cohort by ID (`get_cohort`,
-   * `workspace.py:5586-5615`).
+   * `workspace.py`).
    *
    * @param cohortId - Cohort identifier.
    * @returns The `Cohort`.
@@ -2865,7 +2865,7 @@ export class Workspace {
   }
 
   /**
-   * Create a new cohort (`create_cohort`, `workspace.py:5617-5648`).
+   * Create a new cohort (`create_cohort`, `workspace.py`).
    *
    * @param params - Cohort creation parameters.
    * @returns The newly created `Cohort`.
@@ -2878,7 +2878,7 @@ export class Workspace {
 
   /**
    * Update an existing cohort (`update_cohort`,
-   * `workspace.py:5650-5682`).
+   * `workspace.py`).
    *
    * @param cohortId - Cohort identifier.
    * @param params - Fields to update.
@@ -2897,7 +2897,7 @@ export class Workspace {
   }
 
   /**
-   * Delete a cohort (`delete_cohort`, `workspace.py:5684-5703`).
+   * Delete a cohort (`delete_cohort`, `workspace.py`).
    *
    * @param cohortId - Cohort identifier.
    * @returns Nothing.
@@ -2911,7 +2911,7 @@ export class Workspace {
 
   /**
    * Delete multiple cohorts (`bulk_delete_cohorts`,
-   * `workspace.py:5705-5724`).
+   * `workspace.py`).
    *
    * @param ids - Cohort IDs to delete.
    * @returns Nothing.
@@ -2922,7 +2922,7 @@ export class Workspace {
 
   /**
    * Update multiple cohorts (`bulk_update_cohorts`,
-   * `workspace.py:5726-5747`).
+   * `workspace.py`).
    *
    * @param entries - Cohort update entries.
    * @returns Nothing.
@@ -2933,11 +2933,11 @@ export class Workspace {
     return bookmarksCohorts.bulkUpdateCohorts(this.client, entries);
   }
 
-  // === B6-W4 feature-flag + experiment members (W4 owns; append-only) ===
+  // --- Feature-flag + experiment members ---
 
   /**
    * List feature flags for the current project/workspace
-   * (`list_feature_flags`, `workspace.py:5753-5782`).
+   * (`list_feature_flags`, `workspace.py`).
    *
    * @param options - `include_archived` (keyword-only in Python).
    * @returns The `FeatureFlag` models, in response order.
@@ -2960,7 +2960,7 @@ export class Workspace {
 
   /**
    * Create a new feature flag (`create_feature_flag`,
-   * `workspace.py:5784-5815`).
+   * `workspace.py`).
    *
    * @param params - Flag creation parameters.
    * @returns The newly created `FeatureFlag`.
@@ -2981,7 +2981,7 @@ export class Workspace {
 
   /**
    * Get a single feature flag by ID (`get_feature_flag`,
-   * `workspace.py:5817-5846`).
+   * `workspace.py`).
    *
    * @param flagId - Feature flag UUID.
    * @returns The `FeatureFlag`.
@@ -2994,7 +2994,7 @@ export class Workspace {
 
   /**
    * Update a feature flag, full replacement / PUT semantics
-   * (`update_feature_flag`, `workspace.py:5848-5886`).
+   * (`update_feature_flag`, `workspace.py`).
    *
    * @param flagId - Feature flag UUID.
    * @param params - Complete flag configuration.
@@ -3011,7 +3011,7 @@ export class Workspace {
 
   /**
    * Delete a feature flag (`delete_feature_flag`,
-   * `workspace.py:5888-5907`).
+   * `workspace.py`).
    *
    * @param flagId - Feature flag UUID.
    * @returns Nothing.
@@ -3024,7 +3024,7 @@ export class Workspace {
 
   /**
    * Archive a feature flag, a soft delete (`archive_feature_flag`,
-   * `workspace.py:5913-5932`).
+   * `workspace.py`).
    *
    * @param flagId - Feature flag UUID.
    * @returns Nothing.
@@ -3035,7 +3035,7 @@ export class Workspace {
 
   /**
    * Restore an archived feature flag (`restore_feature_flag`,
-   * `workspace.py:5934-5961`).
+   * `workspace.py`).
    *
    * @param flagId - Feature flag UUID.
    * @returns The restored `FeatureFlag`.
@@ -3047,7 +3047,7 @@ export class Workspace {
 
   /**
    * Duplicate a feature flag (`duplicate_feature_flag`,
-   * `workspace.py:5963-5991`).
+   * `workspace.py`).
    *
    * @param flagId - Feature flag UUID.
    * @returns The newly created duplicate `FeatureFlag`.
@@ -3059,7 +3059,7 @@ export class Workspace {
 
   /**
    * Set test-user variant overrides for a feature flag
-   * (`set_flag_test_users`, `workspace.py:5996-6019`).
+   * (`set_flag_test_users`, `workspace.py`).
    *
    * @param flagId - Feature flag UUID.
    * @param params - Test user mapping.
@@ -3074,7 +3074,7 @@ export class Workspace {
 
   /**
    * Get paginated change history for a feature flag
-   * (`get_flag_history`, `workspace.py:6021-6063`).
+   * (`get_flag_history`, `workspace.py`).
    *
    * @param flagId - Feature flag UUID.
    * @param options - `page` / `page_size` (keyword-only in Python).
@@ -3090,7 +3090,7 @@ export class Workspace {
 
   /**
    * Get account-level feature flag limits and usage
-   * (`get_flag_limits`, `workspace.py:6065-6091`).
+   * (`get_flag_limits`, `workspace.py`).
    *
    * @returns The `FlagLimitsResponse`.
    * @throws ResponseValidationError - Malformed payload.
@@ -3101,7 +3101,7 @@ export class Workspace {
 
   /**
    * List experiments for the current project (`list_experiments`,
-   * `workspace.py:6096-6123`).
+   * `workspace.py`).
    *
    * @param options - `include_archived` (keyword-only in Python).
    * @returns The `Experiment` models, in response order.
@@ -3115,7 +3115,7 @@ export class Workspace {
 
   /**
    * Create a new experiment in Draft status (`create_experiment`,
-   * `workspace.py:6125-6156`).
+   * `workspace.py`).
    *
    * @param params - Experiment creation parameters.
    * @returns The newly created `Experiment`.
@@ -3128,7 +3128,7 @@ export class Workspace {
 
   /**
    * Get a single experiment by ID (`get_experiment`,
-   * `workspace.py:6158-6187`).
+   * `workspace.py`).
    *
    * @param experimentId - Experiment UUID.
    * @returns The `Experiment`.
@@ -3141,7 +3141,7 @@ export class Workspace {
 
   /**
    * Update an experiment, PATCH semantics (`update_experiment`,
-   * `workspace.py:6189-6225`).
+   * `workspace.py`).
    *
    * @param experimentId - Experiment UUID.
    * @param params - Fields to update.
@@ -3158,7 +3158,7 @@ export class Workspace {
 
   /**
    * Delete an experiment (`delete_experiment`,
-   * `workspace.py:6227-6246`).
+   * `workspace.py`).
    *
    * @param experimentId - Experiment UUID.
    * @returns Nothing.
@@ -3169,7 +3169,7 @@ export class Workspace {
 
   /**
    * Launch an experiment, Draft → Active (`launch_experiment`,
-   * `workspace.py:6252-6277`).
+   * `workspace.py`).
    *
    * @param experimentId - Experiment UUID.
    * @returns The launched `Experiment` with updated status.
@@ -3181,7 +3181,7 @@ export class Workspace {
 
   /**
    * Conclude an experiment, Active → Concluded
-   * (`conclude_experiment`, `workspace.py:6279-6302`) — always sends a
+   * (`conclude_experiment`, `workspace.py`) — always sends a
    * JSON body, `{}` when no params are supplied.
    *
    * @param experimentId - Experiment UUID.
@@ -3202,7 +3202,7 @@ export class Workspace {
 
   /**
    * Record the experiment decision, Concluded → Success/Fail
-   * (`decide_experiment`, `workspace.py:6304-6337`).
+   * (`decide_experiment`, `workspace.py`).
    *
    * @param experimentId - Experiment UUID.
    * @param params - Decision parameters (success, variant, message).
@@ -3218,7 +3218,7 @@ export class Workspace {
 
   /**
    * Archive an experiment (`archive_experiment`,
-   * `workspace.py:6354-6373`).
+   * `workspace.py`).
    *
    * @param experimentId - Experiment UUID.
    * @returns Nothing.
@@ -3229,7 +3229,7 @@ export class Workspace {
 
   /**
    * Restore an archived experiment (`restore_experiment`,
-   * `workspace.py:6375-6400`).
+   * `workspace.py`).
    *
    * @param experimentId - Experiment UUID.
    * @returns The restored `Experiment`.
@@ -3262,7 +3262,7 @@ export class Workspace {
 
   /**
    * List experiments in ERF (Experiment Results Framework) format
-   * (`list_erf_experiments`, `workspace.py:6441-6461`).
+   * (`list_erf_experiments`, `workspace.py`).
    *
    * @returns The ERF experiment dicts, verbatim.
    */
@@ -3270,11 +3270,11 @@ export class Workspace {
     return flagsExperiments.listErfExperiments(this.client);
   }
 
-  // === B6-W5 annotation + webhook + alert members (W5 owns; append-only) ===
+  // --- Annotation + webhook + alert members ---
 
   /**
    * List timeline annotations for the project (`list_annotations`,
-   * `workspace.py:6466-6505`).
+   * `workspace.py`).
    *
    * @param options - `from_date` / `to_date` / `tags` (keyword-only in
    *   Python). Dates are ISO `YYYY-MM-DD` STRINGS end-to-end.
@@ -3298,7 +3298,7 @@ export class Workspace {
 
   /**
    * Create a new timeline annotation (`create_annotation`,
-   * `workspace.py:6507-6537`).
+   * `workspace.py`).
    *
    * @param params - Annotation creation parameters (date, description
    *   required).
@@ -3320,7 +3320,7 @@ export class Workspace {
 
   /**
    * Get a single annotation by ID (`get_annotation`,
-   * `workspace.py:6539-6565`).
+   * `workspace.py`).
    *
    * @param annotationId - Annotation ID.
    * @returns The `Annotation`.
@@ -3335,7 +3335,7 @@ export class Workspace {
 
   /**
    * Update an annotation, PATCH semantics (`update_annotation`,
-   * `workspace.py:6567-6598`).
+   * `workspace.py`).
    *
    * @param annotationId - Annotation ID.
    * @param params - Fields to update (description, tags).
@@ -3358,7 +3358,7 @@ export class Workspace {
 
   /**
    * Delete an annotation (`delete_annotation`,
-   * `workspace.py:6600-6619`).
+   * `workspace.py`).
    *
    * @param annotationId - Annotation ID.
    * @returns Nothing.
@@ -3377,7 +3377,7 @@ export class Workspace {
 
   /**
    * List annotation tags for the project (`list_annotation_tags`,
-   * `workspace.py:6621-6647`).
+   * `workspace.py`).
    *
    * @returns The `AnnotationTag` models, in response order.
    * @throws ResponseValidationError - Malformed payload.
@@ -3388,7 +3388,7 @@ export class Workspace {
 
   /**
    * Create a new annotation tag (`create_annotation_tag`,
-   * `workspace.py:6649-6679`).
+   * `workspace.py`).
    *
    * @param params - Tag creation parameters (name required).
    * @returns The created `AnnotationTag`.
@@ -3402,7 +3402,7 @@ export class Workspace {
 
   /**
    * List all webhooks for the current project (`list_webhooks`,
-   * `workspace.py:6685-6711`).
+   * `workspace.py`).
    *
    * @returns The `ProjectWebhook` models, in response order.
    * @throws ResponseValidationError - Malformed payload.
@@ -3419,7 +3419,7 @@ export class Workspace {
 
   /**
    * Create a new webhook (`create_webhook`,
-   * `workspace.py:6713-6744`).
+   * `workspace.py`).
    *
    * @param params - Webhook creation parameters.
    * @returns The `WebhookMutationResult` (new webhook id + name).
@@ -3433,7 +3433,7 @@ export class Workspace {
 
   /**
    * Update an existing webhook, PATCH semantics (`update_webhook`,
-   * `workspace.py:6746-6780`).
+   * `workspace.py`).
    *
    * @param webhookId - Webhook UUID string.
    * @param params - Fields to update.
@@ -3452,7 +3452,7 @@ export class Workspace {
   }
 
   /**
-   * Delete a webhook (`delete_webhook`, `workspace.py:6782-6801`).
+   * Delete a webhook (`delete_webhook`, `workspace.py`).
    *
    * @param webhookId - Webhook UUID string.
    * @returns Nothing.
@@ -3465,7 +3465,7 @@ export class Workspace {
 
   /**
    * Test webhook connectivity (`test_webhook`,
-   * `workspace.py:6803-6833`).
+   * `workspace.py`).
    *
    * @param params - Webhook test parameters (`url` required).
    * @returns The `WebhookTestResult` (success, status_code, message).
@@ -3477,7 +3477,7 @@ export class Workspace {
 
   /**
    * List custom alerts for the current project (`list_alerts`,
-   * `workspace.py:6839-6874`).
+   * `workspace.py`).
    *
    * @param options - `bookmark_id` / `skip_user_filter` (keyword-only
    *   in Python).
@@ -3498,7 +3498,7 @@ export class Workspace {
 
   /**
    * Create a new custom alert (`create_alert`,
-   * `workspace.py:6876-6912`).
+   * `workspace.py`).
    *
    * @param params - Alert creation parameters.
    * @returns The created `CustomAlert`.
@@ -3510,7 +3510,7 @@ export class Workspace {
 
   /**
    * Get a single custom alert by ID (`get_alert`,
-   * `workspace.py:6914-6940`).
+   * `workspace.py`).
    *
    * @param alertId - Alert ID (integer).
    * @returns The `CustomAlert`.
@@ -3525,7 +3525,7 @@ export class Workspace {
 
   /**
    * Update a custom alert, PATCH semantics (`update_alert`,
-   * `workspace.py:6942-6971`).
+   * `workspace.py`).
    *
    * @param alertId - Alert ID (integer).
    * @param params - Fields to update.
@@ -3544,7 +3544,7 @@ export class Workspace {
 
   /**
    * Delete a custom alert (`delete_alert`,
-   * `workspace.py:6973-6992`).
+   * `workspace.py`).
    *
    * @param alertId - Alert ID (integer).
    * @returns Nothing.
@@ -3560,7 +3560,7 @@ export class Workspace {
 
   /**
    * Bulk-delete custom alerts (`bulk_delete_alerts`,
-   * `workspace.py:6994-7013`).
+   * `workspace.py`).
    *
    * @param ids - Alert IDs to delete.
    * @returns Nothing.
@@ -3573,7 +3573,7 @@ export class Workspace {
 
   /**
    * Get the project's alert count against its limit
-   * (`get_alert_count`, `workspace.py:7015-7042`).
+   * (`get_alert_count`, `workspace.py`).
    *
    * @param options - `alert_type` (keyword-only in Python).
    * @returns The `AlertCount`.
@@ -3587,7 +3587,7 @@ export class Workspace {
 
   /**
    * Get paginated alert trigger history (`get_alert_history`,
-   * `workspace.py:7044-7088`).
+   * `workspace.py`).
    *
    * @param alertId - Alert ID (integer).
    * @param options - `page_size` / `next_cursor` / `previous_cursor`
@@ -3611,7 +3611,7 @@ export class Workspace {
 
   /**
    * Send a test alert notification (`test_alert`,
-   * `workspace.py:7090-7119`) — the payload is returned VERBATIM;
+   * `workspace.py`) — the payload is returned VERBATIM;
    * Python performs no model validation.
    *
    * @param params - Alert parameters for the test (same shape as
@@ -3626,7 +3626,7 @@ export class Workspace {
 
   /**
    * Get a signed URL for an alert screenshot
-   * (`get_alert_screenshot_url`, `workspace.py:7121-7149`).
+   * (`get_alert_screenshot_url`, `workspace.py`).
    *
    * @param gcsKey - GCS object key from the alert payload.
    * @returns The `AlertScreenshotResponse`.
@@ -3640,7 +3640,7 @@ export class Workspace {
 
   /**
    * Validate alerts against a bookmark definition
-   * (`validate_alerts_for_bookmark`, `workspace.py:7151-7196`).
+   * (`validate_alerts_for_bookmark`, `workspace.py`).
    *
    * @param params - Alert IDs plus the bookmark type and params.
    * @returns The `ValidateAlertsForBookmarkResponse`.
@@ -3655,11 +3655,11 @@ export class Workspace {
     );
   }
 
-  // === B6-W6 lexicon + tracking/history members (W6 owns; append-only) ===
+  // --- Lexicon + tracking/history members ---
 
   /**
    * Get event definitions from Lexicon by name
-   * (`get_event_definitions`, `workspace.py:7201-7233`).
+   * (`get_event_definitions`, `workspace.py`).
    *
    * @param options - `names` (keyword-only and REQUIRED in Python).
    * @returns The `EventDefinition` models, in response order.
@@ -3685,7 +3685,7 @@ export class Workspace {
 
   /**
    * Update an event definition in Lexicon
-   * (`update_event_definition`, `workspace.py:7235-7270`).
+   * (`update_event_definition`, `workspace.py`).
    *
    * @param eventName - Name of the event to update.
    * @param params - Fields to update (hidden, dropped, merged,
@@ -3713,7 +3713,7 @@ export class Workspace {
 
   /**
    * Delete an event definition from Lexicon
-   * (`delete_event_definition`, `workspace.py:7272-7291`).
+   * (`delete_event_definition`, `workspace.py`).
    *
    * @param eventName - Name of the event to delete.
    * @returns Nothing.
@@ -3726,7 +3726,7 @@ export class Workspace {
 
   /**
    * Bulk-update event definitions in Lexicon
-   * (`bulk_update_event_definitions`, `workspace.py:7293-7329`).
+   * (`bulk_update_event_definitions`, `workspace.py`).
    *
    * @param params - Bulk update parameters (a list of event updates:
    *   name + fields to change).
@@ -3741,7 +3741,7 @@ export class Workspace {
 
   /**
    * Get property definitions from Lexicon by name
-   * (`get_property_definitions`, `workspace.py:7331-7373`).
+   * (`get_property_definitions`, `workspace.py`).
    *
    * @param options - `names` (REQUIRED) plus the optional
    *   `resource_type` filter, both keyword-only in Python.
@@ -3763,7 +3763,7 @@ export class Workspace {
 
   /**
    * Update a property definition in Lexicon
-   * (`update_property_definition`, `workspace.py:7375-7410`).
+   * (`update_property_definition`, `workspace.py`).
    *
    * @param propertyName - Name of the property to update.
    * @param params - Fields to update (hidden, dropped, merged,
@@ -3786,7 +3786,7 @@ export class Workspace {
   /**
    * Bulk-update property definitions in Lexicon
    * (`bulk_update_property_definitions`,
-   * `workspace.py:7412-7456`).
+   * `workspace.py`).
    *
    * @param params - Bulk update parameters (a list of property
    *   updates: name + fields to change).
@@ -3802,7 +3802,7 @@ export class Workspace {
 
   /**
    * List all Lexicon tags (`list_lexicon_tags`,
-   * `workspace.py:7460-7500`).
+   * `workspace.py`).
    *
    * The list endpoint may return plain tag-name strings without IDs;
    * those entries come back with `id` set to the `0` sentinel. Do NOT
@@ -3818,7 +3818,7 @@ export class Workspace {
 
   /**
    * Create a new Lexicon tag (`create_lexicon_tag`,
-   * `workspace.py:7502-7528`).
+   * `workspace.py`).
    *
    * @param params - Tag creation parameters (name required).
    * @returns The created `LexiconTag`.
@@ -3830,7 +3830,7 @@ export class Workspace {
 
   /**
    * Update a Lexicon tag (`update_lexicon_tag`,
-   * `workspace.py:7530-7559`).
+   * `workspace.py`).
    *
    * @param tagId - Tag ID (integer).
    * @param params - Fields to update (e.g. name).
@@ -3849,7 +3849,7 @@ export class Workspace {
 
   /**
    * Delete a Lexicon tag BY NAME (`delete_lexicon_tag`,
-   * `workspace.py:7561-7580`).
+   * `workspace.py`).
    *
    * @param tagName - Name of the tag to delete.
    * @returns Nothing.
@@ -3862,7 +3862,7 @@ export class Workspace {
 
   /**
    * Get tracking metadata for an event (`get_tracking_metadata`,
-   * `workspace.py:8530-8556`) — the raw record, unvalidated.
+   * `workspace.py`) — the raw record, unvalidated.
    *
    * @param eventName - Name of the event.
    * @returns The opaque tracking-metadata record.
@@ -3877,7 +3877,7 @@ export class Workspace {
 
   /**
    * Get change history for an event definition
-   * (`get_event_history`, `workspace.py:8558-8583`) — raw records,
+   * (`get_event_history`, `workspace.py`) — raw records,
    * unvalidated.
    *
    * @param eventName - Name of the event.
@@ -3893,7 +3893,7 @@ export class Workspace {
 
   /**
    * Get change history for a property definition
-   * (`get_property_history`, `workspace.py:8585-8614`) — raw records,
+   * (`get_property_history`, `workspace.py`) — raw records,
    * unvalidated.
    *
    * @param propertyName - Name of the property.
@@ -3915,7 +3915,7 @@ export class Workspace {
 
   /**
    * Export Lexicon data definitions (`export_lexicon`,
-   * `workspace.py:8618-8648`) — the raw record, unvalidated.
+   * `workspace.py`) — the raw record, unvalidated.
    *
    * @param options - `export_types` (keyword-only in Python; omit to
    *   let the client apply its default two-entry list).
@@ -3957,7 +3957,7 @@ export class Workspace {
 
   /**
    * List all drop filters (`list_drop_filters`,
-   * `workspace.py:7586-7611`).
+   * `workspace.py`).
    *
    * @returns The `DropFilter` models, in response order.
    * @throws ResponseValidationError - Malformed API response payload
@@ -3977,7 +3977,7 @@ export class Workspace {
 
   /**
    * Create a new drop filter (`create_drop_filter`,
-   * `workspace.py:7613-7646`).
+   * `workspace.py`).
    *
    * @param params - Drop filter creation parameters.
    * @returns The FULL list of `DropFilter` models after creation.
@@ -4000,7 +4000,7 @@ export class Workspace {
 
   /**
    * Update a drop filter (`update_drop_filter`,
-   * `workspace.py:7648-7680`).
+   * `workspace.py`).
    *
    * @param params - Update parameters (must include the filter ID).
    * @returns The FULL list of `DropFilter` models after the update.
@@ -4014,7 +4014,7 @@ export class Workspace {
 
   /**
    * Delete a drop filter (`delete_drop_filter`,
-   * `workspace.py:7682-7709`).
+   * `workspace.py`).
    *
    * @param dropFilterId - Drop filter ID (integer).
    * @returns The FULL list of remaining `DropFilter` models.
@@ -4029,7 +4029,7 @@ export class Workspace {
 
   /**
    * Get drop filter usage limits (`get_drop_filter_limits`,
-   * `workspace.py:7711-7736`).
+   * `workspace.py`).
    *
    * @returns The `DropFilterLimitsResponse`.
    * @throws ResponseValidationError - Malformed payload.
@@ -4040,7 +4040,7 @@ export class Workspace {
 
   /**
    * List all custom properties (`list_custom_properties`,
-   * `workspace.py:7742-7789`).
+   * `workspace.py`).
    *
    * A 400 whose body names `displayFormula` means the project holds a
    * corrupt custom property; that case is re-raised as a `QueryError`
@@ -4058,7 +4058,7 @@ export class Workspace {
 
   /**
    * Create a new custom property (`create_custom_property`,
-   * `workspace.py:7791-7829`).
+   * `workspace.py`).
    *
    * @param params - Creation parameters (`name`, `resource_type` and
    *   one of `display_formula` / `behavior` are required).
@@ -4073,7 +4073,7 @@ export class Workspace {
 
   /**
    * Get a custom property by ID (`get_custom_property`,
-   * `workspace.py:7831-7859`).
+   * `workspace.py`).
    *
    * @param propertyId - Custom property ID (string).
    * @returns The `CustomProperty`.
@@ -4085,7 +4085,7 @@ export class Workspace {
 
   /**
    * Update a custom property (`update_custom_property`,
-   * `workspace.py:7861-7895`).
+   * `workspace.py`).
    *
    * @param propertyId - Custom property ID (string).
    * @param params - Fields to update.
@@ -4101,7 +4101,7 @@ export class Workspace {
 
   /**
    * Delete a custom property (`delete_custom_property`,
-   * `workspace.py:7897-7916`).
+   * `workspace.py`).
    *
    * @param propertyId - Custom property ID (string).
    * @returns Nothing.
@@ -4114,7 +4114,7 @@ export class Workspace {
 
   /**
    * Validate a custom property definition without creating it
-   * (`validate_custom_property`, `workspace.py:7918-7951`).
+   * (`validate_custom_property`, `workspace.py`).
    *
    * @param params - Parameters to validate.
    * @returns The raw validation result.
@@ -4129,7 +4129,7 @@ export class Workspace {
 
   /**
    * List lookup tables (`list_lookup_tables`,
-   * `workspace.py:7957-7987`).
+   * `workspace.py`).
    *
    * @param options - Optional `data_group_id` filter (keyword-only in
    *   Python).
@@ -4148,7 +4148,7 @@ export class Workspace {
 
   /**
    * Upload a CSV file as a new lookup table (`upload_lookup_table`,
-   * `workspace.py:7989-8075`) — signed URL → upload → register, then
+   * `workspace.py`) — signed URL → upload → register, then
    * (for payloads the API processes asynchronously) poll until the
    * task completes.
    *
@@ -4193,7 +4193,7 @@ export class Workspace {
 
   /**
    * Mark a lookup table as ready after upload
-   * (`mark_lookup_table_ready`, `workspace.py:8146-8188`).
+   * (`mark_lookup_table_ready`, `workspace.py`).
    *
    * @param params - Parameters (`name`, `key`, optional
    *   `data_group_id`).
@@ -4208,7 +4208,7 @@ export class Workspace {
 
   /**
    * Get a signed URL for uploading lookup table data
-   * (`get_lookup_upload_url`, `workspace.py:8190-8220`).
+   * (`get_lookup_upload_url`, `workspace.py`).
    *
    * @param contentType - MIME type of the file to upload (positional
    *   in Python; default `"text/csv"`).
@@ -4223,7 +4223,7 @@ export class Workspace {
 
   /**
    * Get the processing status of a lookup table upload
-   * (`get_lookup_upload_status`, `workspace.py:8222-8245`) — the raw
+   * (`get_lookup_upload_status`, `workspace.py`) — the raw
    * record, unvalidated.
    *
    * @param uploadId - Upload ID returned from the upload process.
@@ -4239,7 +4239,7 @@ export class Workspace {
 
   /**
    * Update a lookup table (`update_lookup_table`,
-   * `workspace.py:8247-8279`).
+   * `workspace.py`).
    *
    * @param dataGroupId - Data group ID of the lookup table — a signed
    *   int64: a `number` when it is a safe integer, a `bigint` beyond
@@ -4263,7 +4263,7 @@ export class Workspace {
 
   /**
    * Delete one or more lookup tables (`delete_lookup_tables`,
-   * `workspace.py:8281-8300`).
+   * `workspace.py`).
    *
    * @param dataGroupIds - Data group IDs to delete — signed int64s
    *   (`bigint` beyond 2^53), each sent as an exact integer token.
@@ -4286,7 +4286,7 @@ export class Workspace {
 
   /**
    * Download lookup table data as raw CSV bytes
-   * (`download_lookup_table`, `workspace.py:8302-8335`).
+   * (`download_lookup_table`, `workspace.py`).
    *
    * @param dataGroupId - Data group ID of the lookup table — a signed
    *   int64: a `number` when it is a safe integer, a `bigint` beyond
@@ -4316,7 +4316,7 @@ export class Workspace {
 
   /**
    * Get a signed download URL for a lookup table
-   * (`get_lookup_download_url`, `workspace.py:8337-8360`).
+   * (`get_lookup_download_url`, `workspace.py`).
    *
    * @param dataGroupId - Data group ID of the lookup table — a signed
    *   int64: a `number` when it is a safe integer, a `bigint` beyond
@@ -4336,7 +4336,7 @@ export class Workspace {
 
   /**
    * Create a new custom event (`create_custom_event`,
-   * `workspace.py:8366-8407`).
+   * `workspace.py`).
    *
    * A custom event is a composite alias grouping one or more
    * underlying events under a single name; it appears alongside
@@ -4364,7 +4364,7 @@ export class Workspace {
 
   /**
    * List all custom events (`list_custom_events`,
-   * `workspace.py:8409-8434`).
+   * `workspace.py`).
    *
    * @returns The `EventDefinition` models for custom events.
    * @throws ResponseValidationError - Malformed payload.
@@ -4375,7 +4375,7 @@ export class Workspace {
 
   /**
    * Update a custom event's Lexicon entry
-   * (`update_custom_event`, `workspace.py:8436-8492`).
+   * (`update_custom_event`, `workspace.py`).
    *
    * Identified by `custom_event_id`, never by display name: a
    * name-only PATCH makes the data-definitions endpoint fabricate a
@@ -4402,7 +4402,7 @@ export class Workspace {
 
   /**
    * Delete a custom event (`delete_custom_event`,
-   * `workspace.py:8494-8524`).
+   * `workspace.py`).
    *
    * Identified by `custom_event_id` for the same reason
    * {@link Workspace.updateCustomEvent} is: a name-only DELETE is
@@ -4425,7 +4425,7 @@ export class Workspace {
 
   /**
    * List schema registry entries (`list_schema_registry`,
-   * `workspace.py:8654-8687`).
+   * `workspace.py`).
    *
    * @param options - Optional `entity_type` filter ("event",
    *   "custom_event", "profile"); omit it to return every schema.
@@ -4449,7 +4449,7 @@ export class Workspace {
 
   /**
    * Create a single schema definition (`create_schema`,
-   * `workspace.py:8689-8720`).
+   * `workspace.py`).
    *
    * @param entityType - Entity type ("event", "custom_event", "profile").
    * @param entityName - Entity name (event name or "$user" for profile).
@@ -4479,7 +4479,7 @@ export class Workspace {
 
   /**
    * Bulk create schemas (`create_schemas_bulk`,
-   * `workspace.py:8722-8758`).
+   * `workspace.py`).
    *
    * @param params - Bulk creation parameters (entries plus the
    *   optional `truncate` flag).
@@ -4496,7 +4496,7 @@ export class Workspace {
 
   /**
    * Update a single schema definition, merge semantics
-   * (`update_schema`, `workspace.py:8760-8791`).
+   * (`update_schema`, `workspace.py`).
    *
    * @param entityType - Entity type.
    * @param entityName - Entity name.
@@ -4520,7 +4520,7 @@ export class Workspace {
 
   /**
    * Bulk update schemas, merge semantics per entry
-   * (`update_schemas_bulk`, `workspace.py:8793-8828`).
+   * (`update_schemas_bulk`, `workspace.py`).
    *
    * @param params - Bulk update parameters.
    * @returns Per-entry results with status "ok" or "error".
@@ -4534,7 +4534,7 @@ export class Workspace {
 
   /**
    * Delete schemas by entity type and/or name (`delete_schemas`,
-   * `workspace.py:8830-8874`).
+   * `workspace.py`).
    *
    * With both filters a single schema is deleted; with `entity_type`
    * alone every schema of that type; with neither, ALL schemas.
@@ -4561,7 +4561,7 @@ export class Workspace {
 
   /**
    * Get the current schema-enforcement configuration
-   * (`get_schema_enforcement`, `workspace.py:8879-8911`).
+   * (`get_schema_enforcement`, `workspace.py`).
    *
    * @param options - Optional comma-separated `fields` selector.
    * @returns The enforcement configuration.
@@ -4576,7 +4576,7 @@ export class Workspace {
 
   /**
    * Initialize schema enforcement (`init_schema_enforcement`,
-   * `workspace.py:8913-8941`).
+   * `workspace.py`).
    *
    * @param params - Init parameters carrying `rule_event`.
    * @returns The raw API response.
@@ -4590,7 +4590,7 @@ export class Workspace {
 
   /**
    * Partially update the enforcement configuration
-   * (`update_schema_enforcement`, `workspace.py:8943-8971`).
+   * (`update_schema_enforcement`, `workspace.py`).
    *
    * @param params - Partial update parameters.
    * @returns The raw API response.
@@ -4604,7 +4604,7 @@ export class Workspace {
 
   /**
    * Fully replace the enforcement configuration
-   * (`replace_schema_enforcement`, `workspace.py:8973-9003`).
+   * (`replace_schema_enforcement`, `workspace.py`).
    *
    * @param params - Complete replacement parameters.
    * @returns The raw API response.
@@ -4618,7 +4618,7 @@ export class Workspace {
 
   /**
    * Delete the enforcement configuration
-   * (`delete_schema_enforcement`, `workspace.py:9005-9021`).
+   * (`delete_schema_enforcement`, `workspace.py`).
    *
    * @returns The raw API response.
    * @throws QueryError - No enforcement configured (404).
@@ -4629,7 +4629,7 @@ export class Workspace {
 
   /**
    * Run a full data audit — events plus properties (`run_audit`,
-   * `workspace.py:9029-9067`).
+   * `workspace.py`).
    *
    * @returns The audit response with violations and `computed_at`.
    * @throws MixpanelHeadlessError - Unexpected audit-response shape.
@@ -4649,7 +4649,7 @@ export class Workspace {
 
   /**
    * Run an events-only data audit — faster
-   * (`run_audit_events_only`, `workspace.py:9069-9103`).
+   * (`run_audit_events_only`, `workspace.py`).
    *
    * @returns The audit response with event violations only.
    * @throws MixpanelHeadlessError - Unexpected audit-response shape.
@@ -4662,7 +4662,7 @@ export class Workspace {
 
   /**
    * List detected data-volume anomalies
-   * (`list_data_volume_anomalies`, `workspace.py:9110-9141`).
+   * (`list_data_volume_anomalies`, `workspace.py`).
    *
    * @param options - Optional `query_params` filters (status, limit,
    *   event_id, …).
@@ -4683,7 +4683,7 @@ export class Workspace {
 
   /**
    * Update the status of a single anomaly (`update_anomaly`,
-   * `workspace.py:9143-9169`).
+   * `workspace.py`).
    *
    * @param params - Update parameters (id, status, anomaly_class).
    * @returns The raw API response.
@@ -4697,7 +4697,7 @@ export class Workspace {
 
   /**
    * Bulk update anomaly statuses (`bulk_update_anomalies`,
-   * `workspace.py:9171-9198`).
+   * `workspace.py`).
    *
    * @param params - Bulk update with the anomalies list and target status.
    * @returns The raw API response.
@@ -4711,7 +4711,7 @@ export class Workspace {
 
   /**
    * List all event deletion requests (`list_deletion_requests`,
-   * `workspace.py:9204-9227`).
+   * `workspace.py`).
    *
    * @returns The `EventDeletionRequest` models, in response order.
    * @throws ResponseValidationError - Malformed payload.
@@ -4722,7 +4722,7 @@ export class Workspace {
 
   /**
    * Create a new event deletion request
-   * (`create_deletion_request`, `workspace.py:9229-9266`).
+   * (`create_deletion_request`, `workspace.py`).
    *
    * @param params - Deletion parameters (event name, date range,
    *   optional filters).
@@ -4738,7 +4738,7 @@ export class Workspace {
 
   /**
    * Cancel a pending deletion request
-   * (`cancel_deletion_request`, `workspace.py:9268-9294`).
+   * (`cancel_deletion_request`, `workspace.py`).
    *
    * @param requestId - Deletion request ID to cancel.
    * @returns The updated FULL list of deletion requests.
@@ -4756,7 +4756,7 @@ export class Workspace {
 
   /**
    * Preview what events a deletion filter would match
-   * (`preview_deletion_filters`, `workspace.py:9296-9331`).
+   * (`preview_deletion_filters`, `workspace.py`).
    *
    * Read-only: nothing is modified.
    *

@@ -4,7 +4,7 @@
  * Hand-written ports of the Pydantic entity models (phase2-design C5,
  * packet P2-7): the PYTHON models are the source of record; vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling (R3.6/R7.6); optionality follows
+ * keep their exact Python spelling; optionality follows
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
@@ -16,7 +16,7 @@ import {
 } from "./model-base.js";
 
 /**
- * `_DefinitionFlatteningModel.model_dump` (`types.py:2865-2878`): pop
+ * `_DefinitionFlatteningModel.model_dump`: pop
  * `definition` out of the dump and, when TRUTHY, merge its keys into
  * the top level.
  *
@@ -50,7 +50,7 @@ function flattenDefinition(
 
 /**
  * Constructor input for {@link CohortCreator} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CohortCreatorInit {
   /** Creator user ID. */
@@ -64,7 +64,7 @@ export interface CohortCreatorInit {
 /**
  * Creator information for a cohort.
  *
- * Mirror of Python `mixpanel_headless.types.CohortCreator` (types.py:2753;
+ * Mirror of Python `mixpanel_headless.types.CohortCreator` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class CohortCreator extends EntityModel<CohortCreatorInit> {
@@ -114,7 +114,7 @@ export class CohortCreator extends EntityModel<CohortCreatorInit> {
 
 /**
  * Constructor input for {@link Cohort} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CohortInit {
   /** Unique cohort identifier. */
@@ -151,7 +151,7 @@ export interface CohortInit {
 /**
  * A Mixpanel cohort as returned by the App API.
  *
- * Mirror of Python `mixpanel_headless.types.Cohort` (types.py:2779;
+ * Mirror of Python `mixpanel_headless.types.Cohort` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class Cohort extends EntityModel<CohortInit> {
@@ -234,7 +234,7 @@ export class Cohort extends EntityModel<CohortInit> {
 
 /**
  * Constructor input for {@link CreateCohortParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CreateCohortParamsInit {
   /** Python field `definition`. */
@@ -256,7 +256,7 @@ export interface CreateCohortParamsInit {
 /**
  * Parameters for creating a new cohort.
  *
- * Mirror of Python `mixpanel_headless.types.CreateCohortParams` (types.py:2881;
+ * Mirror of Python `mixpanel_headless.types.CreateCohortParams` (types.py;
  * model_config: extra='ignore').
  */
 export class CreateCohortParams extends EntityModel<CreateCohortParamsInit> {
@@ -313,7 +313,7 @@ export class CreateCohortParams extends EntityModel<CreateCohortParamsInit> {
    */
   /**
    * `model_dump(exclude_none=True)` with `definition` flattened into
-   * the top level (`_DefinitionFlatteningModel`, `types.py:2865-2878`).
+   * the top level (`_DefinitionFlatteningModel`, `types.py`).
    *
    * @param options - Pydantic dump flags (`by_alias`).
    * @returns The flattened payload.
@@ -331,7 +331,7 @@ export class CreateCohortParams extends EntityModel<CreateCohortParamsInit> {
 
 /**
  * Constructor input for {@link UpdateCohortParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdateCohortParamsInit {
   /** Python field `definition`. */
@@ -353,7 +353,7 @@ export interface UpdateCohortParamsInit {
 /**
  * Parameters for updating an existing cohort.
  *
- * Mirror of Python `mixpanel_headless.types.UpdateCohortParams` (types.py:2922;
+ * Mirror of Python `mixpanel_headless.types.UpdateCohortParams` (types.py;
  * model_config: extra='ignore').
  */
 export class UpdateCohortParams extends EntityModel<UpdateCohortParamsInit> {
@@ -410,7 +410,7 @@ export class UpdateCohortParams extends EntityModel<UpdateCohortParamsInit> {
    */
   /**
    * `model_dump(exclude_none=True)` with `definition` flattened into
-   * the top level (`_DefinitionFlatteningModel`, `types.py:2865-2878`).
+   * the top level (`_DefinitionFlatteningModel`, `types.py`).
    *
    * @param options - Pydantic dump flags (`by_alias`).
    * @returns The flattened payload.
@@ -428,7 +428,7 @@ export class UpdateCohortParams extends EntityModel<UpdateCohortParamsInit> {
 
 /**
  * Constructor input for {@link BulkUpdateCohortEntry} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface BulkUpdateCohortEntryInit {
   /** Python field `definition`. */
@@ -444,7 +444,7 @@ export interface BulkUpdateCohortEntryInit {
 /**
  * Entry for bulk-updating cohorts.
  *
- * Mirror of Python `mixpanel_headless.types.BulkUpdateCohortEntry` (types.py:2963;
+ * Mirror of Python `mixpanel_headless.types.BulkUpdateCohortEntry` (types.py;
  * model_config: extra='ignore').
  */
 export class BulkUpdateCohortEntry extends EntityModel<BulkUpdateCohortEntryInit> {
@@ -492,7 +492,7 @@ export class BulkUpdateCohortEntry extends EntityModel<BulkUpdateCohortEntryInit
    */
   /**
    * `model_dump(exclude_none=True)` with `definition` flattened into
-   * the top level (`_DefinitionFlatteningModel`, `types.py:2865-2878`).
+   * the top level (`_DefinitionFlatteningModel`, `types.py`).
    *
    * @param options - Pydantic dump flags (`by_alias`).
    * @returns The flattened payload.

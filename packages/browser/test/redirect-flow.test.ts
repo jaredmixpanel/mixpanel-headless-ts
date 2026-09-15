@@ -1,7 +1,7 @@
 // Layer-3 suite for the browser redirect PKCE flow (b9-packets.md
 // §3.2 / §3.4). Contract arbiters: `flow.py` for every twinned
-// behavior (region gate `flow.py:160-165`; exchange form fields
-// `flow.py:428-434`; network-error rows `test_auth_flow.py:802`;
+// behavior (region gate `flow.py`; exchange form fields
+// `flow.py`; network-error rows `test_auth_flow.py`;
 // region URLs `test_auth_flow.py:759` + validation `:984`), and
 // R9.3 / plan §4.3 for the redirect-shape adaptation (begin/complete
 // split, pending record, ALWAYS-persist posture) — no Python twin
@@ -9,10 +9,10 @@
 // (phase2-audit A2 style).
 //
 // Browser-inapplicable Python classes are EXCLUDED here with cites
-// (§3.4 dispositions): TestOAuthFlowLogin (:88) and
-// TestOAuthFlowPasteFallback (:286) — callback server / port probing /
-// webbrowser / stdin are node-only surfaces (R9.2), translated at B8;
-// TestOAuthFlowRefresh (:490) and TestOAuthFlowGetValidToken (:610) —
+// (§3.4 dispositions): TestOAuthFlowLogin and
+// TestOAuthFlowPasteFallback — callback server / port probing /
+// webbrowser / stdin are node-only surfaces, translated at B8;
+// TestOAuthFlowRefresh and TestOAuthFlowGetValidToken —
 // browser v1 has no refresh surface (§2.2 disposition, Phase-4 ledger
 // row 8).
 
@@ -239,7 +239,7 @@ describe("completeLogin", () => {
       "application/x-www-form-urlencoded",
     );
     // Byte-compare the urlencoded body — field-for-field, insertion
-    // order (`flow.py:428-434`).
+    // order (`flow.py`).
     expect(tokenRequest?.body).toBe(
       "grant_type=authorization_code&code=auth-code&" +
         // quote_plus(REDIRECT_URI) — no space/`+`/`~` chars in the

@@ -29,7 +29,7 @@ export interface ApiMapEntry {
   readonly kwonly: readonly string[];
 }
 
-/** SHA-256 provenance stamps for the four generation inputs (D12/TS-6). */
+/** SHA-256 provenance stamps for the four generation inputs. */
 export interface ApiMapSourceHashes {
   /** sha256 of the snapshotted `typescript-port-api-map.json`. */
   readonly apiMapJson: string;

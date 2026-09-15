@@ -1,7 +1,7 @@
 /**
  * Bookmark (saved report) CRUD wire methods — Phase-3 packet B4-C3 port
  * of the `MixpanelAPIClient` bookmarks-v2 range
- * (`api_client.py:4427-4735`).
+ * (`api_client.py`).
  *
  * All methods route through B0 `appRequest` over `maybe_scoped_path`
  * (R10.8). The v2 wire markers port verbatim: list/get send `v=2` as a
@@ -31,7 +31,7 @@ export interface ListBookmarksV2Options {
   readonly bookmark_type?: string | null | undefined;
   /** Optional bookmark-ID filter (`,`-joined on the wire). */
   readonly ids?: readonly number[] | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -41,7 +41,7 @@ export interface GetBookmarkHistoryOptions {
   readonly cursor?: string | null | undefined;
   /** Maximum entries per page. */
   readonly page_size?: number | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -49,7 +49,7 @@ export interface GetBookmarkHistoryOptions {
 export interface BookmarkMethods {
   /**
    * List bookmarks via the App API (`list_bookmarks_v2`,
-   * `api_client.py:4427-4477`). Unwraps the v2
+   * `api_client.py`). Unwraps the v2
    * `{"results": {"results": [...]}}` envelope.
    *
    * @param options - Type/ids filters + signal.
@@ -207,7 +207,7 @@ export function createBookmarkMethods(core: ClientCore): BookmarkMethods {
       );
       // v2 envelope: {"results": {"results": [...]}} — after the
       // appRequest unwrap the method may still see one more layer
-      // (`api_client.py:4467-4473`).
+      // (`api_client.py`).
       if (isPlainRecord(result) && Object.hasOwn(result, "results")) {
         const inner = result["results"] as JsonValue;
         if (Array.isArray(inner)) {

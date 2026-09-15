@@ -1,10 +1,10 @@
 // Translated workspace-funnel tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/test_workspace_funnel.py (R10.2) — ALL 3
+// assertion port of tests/test_workspace_funnel.py — ALL 3
 // classes (TestQueryFunnelValidation :108, TestQueryFunnelExecution
 // :233, TestBuildFunnelParamsVsQueryFunnel :381).
 //
 // The Python file also carries a `TestQueryFunnelConfigError` REMOVAL
-// comment (:103) — nothing to translate.
+// comment — nothing to translate.
 //
 // Translation notes:
 // - `insights_query.call_args[0][0]` becomes `mock.insightsCalls[0]`.

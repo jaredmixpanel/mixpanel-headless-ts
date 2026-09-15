@@ -14,7 +14,7 @@ import {
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 
-/** The `oauth_credentials` fixture twin (:30-33). */
+/** The `oauth_credentials` fixture twin. */
 function oauthCredentials(): Session {
   return makeSession({
     projectId: "12345",

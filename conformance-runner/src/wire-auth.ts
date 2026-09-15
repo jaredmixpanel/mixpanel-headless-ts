@@ -22,7 +22,7 @@
  * attempts. The `$type: callback` kwarg is served by the shared
  * `RecordingCallback` stub; the recorded scheme_host is
  * `https://test.invalid` on all 14 vectors (mirrors the Python fixture
- * `_client` base_url, `test_region_probe.py:44-47`).
+ * `_client` base_url, `test_region_probe.py`).
  *
  * Determinism seams: none needed — no sleep/random/now in the probe
  * path (timeout is not vector-observable). NO batch-status flip here:
@@ -145,7 +145,7 @@ export function registerAuthWireBindings(
       const factory = rebuildClientFactory(context);
       const headers = context.kwargs["headers"] as Record<string, string>;
       // Standard snake→camel kwarg mapping (packet §2.7): absent kwargs
-      // stay absent so the library defaults apply (R3.5).
+      // stay absent so the library defaults apply.
       const options: {
         timeoutSeconds?: number;
         order?: readonly Region[];

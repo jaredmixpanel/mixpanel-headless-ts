@@ -4,7 +4,7 @@
  * packet §3.1, `b7-packets.md`).
  *
  * Both functions are pure: no I/O, no env access, no clock reads, no
- * random sampling (R9.1). Determinism is required by the property tests
+ * random sampling. Determinism is required by the property tests
  * in `test/accounts/naming.pbt.test.ts`.
  *
  * Unicode caveat (packet Caution #12, TS-2 style): {@link slugify} runs
@@ -20,7 +20,7 @@
 import type { MeResponse } from "../client/me.js";
 
 /**
- * Upper bound on slug length (`naming.py:30`). Leaves headroom under
+ * Upper bound on slug length (`naming.py`). Leaves headroom under
  * the `_AccountBase.name` 64-char ceiling so `-2` collision suffixes
  * never push a derived name over the model constraint.
  */
@@ -29,13 +29,13 @@ const SLUG_MAX_LEN = 32;
 /**
  * Matches any run of characters outside the slug alphabet (lowercase
  * ASCII letters or digits) — replaced with a single `-`
- * (`naming.py:35`).
+ * (`naming.py`).
  */
 const NON_SLUG_CHARS = /[^a-z0-9]+/g;
 
 /**
  * Reduce an org name to the `[a-z0-9-]{0,32}` subset (port of
- * `slugify`, `naming.py:40-83`).
+ * `slugify`, `naming.py`).
  *
  * Six-step normalization (applied in order):
  *
@@ -93,7 +93,7 @@ export function slugify(value: string | null | undefined): string {
 
 /**
  * Pick a default account name from `/me`, suffixing on collision (port
- * of `default_account_name`, `naming.py:85-133`).
+ * of `default_account_name`, `naming.py`).
  *
  * Picks the first organization from `me.organizations` as the slug
  * source. When the slugified org name is empty, falls back to
@@ -106,9 +106,9 @@ export function slugify(value: string | null | undefined): string {
  * B7-ARB-A R2 exclusion, `b7-reviewA-resolution.md`, and closes
  * playbook Discrepancy #13's result-affecting site): Python's "first
  * organization" is dict INSERTION order (`next(iter(...))`,
- * `naming.py:122`), and `MeResponse.organizations` is now an
+ * `naming.py`), and `MeResponse.organizations` is now an
  * insertion-order-preserving `ReadonlyMap` sourced from the lossless
- * JSON layer's key-order capture (B8-MAPFIX), so the first-org pick
+ * JSON layer's key-order capture, so the first-org pick
  * matches Python exactly — including when `/me` emits organizations
  * out of ascending-id order. The former ascending-id fuzz-domain
  * exclusion is REMOVED (out-of-order org strategies run in
@@ -130,8 +130,8 @@ export function defaultAccountName(
   me: MeResponse,
   existing: ReadonlySet<string>,
 ): string {
-  // `next(iter(me.organizations.items()))` (`naming.py:122`) — the
-  // ReadonlyMap iterates in Python-dict insertion order (B8-MAPFIX).
+  // `next(iter(me.organizations.items()))` — the
+  // ReadonlyMap iterates in Python-dict insertion order.
   const first = me.organizations.entries().next();
   let base: string;
   if (first.done === true) {

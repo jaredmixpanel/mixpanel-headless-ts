@@ -1,5 +1,5 @@
 // Translated result-class tests (packet P2-6): assertion-for-assertion
-// port of tests/unit/test_types_bookmarks.py (R10.2) — the
+// port of tests/unit/test_types_bookmarks.py — the
 // SavedReportResult / FlowsResult per-class row specs (phase2-design
 // C6) and BookmarkInfo's conditional to_dict.
 //

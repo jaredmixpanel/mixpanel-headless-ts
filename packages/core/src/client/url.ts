@@ -63,7 +63,7 @@ export const ENDPOINTS: ReadonlyMap<
 //
 // Python reads `MP_API_BASE_URL` / `MP_APP_BASE_URL` from `os.environ` on
 // EVERY request (`api_client._endpoints_for`). `packages/core` never
-// touches `process.env` (R9.1), so the same two values arrive as an
+// touches `process.env`, so the same two values arrive as an
 // injected {@link EndpointOverrides} bag — either a static object or a
 // per-call provider ({@link EndpointOverridesSource}). `packages/node`
 // wires the provider over `process.env` (call-time reads), which keeps
@@ -202,7 +202,7 @@ export function hasApiBaseUrlOverride(overrides: EndpointOverrides): boolean {
 /**
  * The live per-region table (Python `ENDPOINTS[region]`; a `KeyError`
  * there is unreachable — both keys are `Literal`-typed). Guarded with
- * `invariant` (R6.8).
+ * `invariant`.
  *
  * @param region - Data-residency region.
  * @returns The live table object itself (never a copy).
@@ -315,7 +315,7 @@ export function apiFamilyFor(
 /**
  * Server-side read deadlines Mixpanel's edge enforces per route family
  * (nginx `proxy_read_timeout`), and the route-aware client defaults
- * sized to outlast them — TS port of the `api_client.py:186-196`
+ * sized to outlast them — TS port of the `api_client.py`
  * constants. App API routes get ~120s; `/api/query` routes get 488s.
  * The defaults add a margin so a slow request is always resolved by the
  * server's own answer (success or 5xx with diagnostics) and never
@@ -343,7 +343,7 @@ export const DEFAULT_QUERY_TIMEOUT_S: number =
  *
  * Python indexes `ENDPOINTS[region][api_type]` directly (a `KeyError` is
  * unreachable — both keys are `Literal`-typed); the TS table lookup is
- * equally unreachable-by-types and guarded with `invariant` (R6.8).
+ * equally unreachable-by-types and guarded with `invariant`.
  *
  * @param region - Data-residency region.
  * @param kind - API family.
@@ -365,7 +365,7 @@ export function endpointBase(
 
 /**
  * Build the full URL for the given API family and path — TS port of
- * `MixpanelAPIClient._build_url` (`api_client.py:417-432`).
+ * `MixpanelAPIClient._build_url`.
  *
  * A missing leading `/` on `path` is added, exactly as in Python.
  *

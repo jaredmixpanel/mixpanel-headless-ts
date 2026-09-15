@@ -46,7 +46,7 @@ import type { AccountSummary, Target } from "../types/entities/accounts.js";
 
 /**
  * Fields accepted by {@link ConfigWrites.addAccount} — the
- * `ConfigManager.add_account` keyword surface (`config.py:552-605`).
+ * `ConfigManager.add_account` keyword surface.
  */
 export interface AddAccountParams {
   /** Account discriminator (`service_account` / `oauth_browser` / `oauth_token`). */
@@ -67,7 +67,7 @@ export interface AddAccountParams {
 
 /**
  * Fields accepted by {@link ConfigWrites.updateAccount} — the
- * `ConfigManager.update_account` keyword surface (`config.py:607-650`).
+ * `ConfigManager.update_account` keyword surface.
  * Absent/`undefined` members leave the field untouched.
  */
 export interface UpdateAccountFields {
@@ -90,7 +90,7 @@ export interface UpdateAccountFields {
  * `ConfigManager.set_active` / `clear_active` composition the
  * namespaces drive as ONE transaction.
  *
- * Semantics (`config.py:713-763` + `accounts.py:651-676`): an absent /
+ * Semantics (`config.py` + `accounts.py`): an absent /
  * `undefined` member leaves that axis untouched; `workspace: null`
  * CLEARS `[active].workspace` (the `accounts.use` account-swap clear —
  * both writes in a single transaction, never two).
@@ -104,7 +104,7 @@ export interface SetActiveUpdate {
 
 /**
  * Atomic per-axis session update — the `ConfigManager.apply_session`
- * keyword surface (`config.py:764-835`). All axes land in ONE
+ * keyword surface (`config.py`). All axes land in ONE
  * read-modify-write transaction; `project` writes to the explicit
  * `account` (if given) else the persisted active account and raises a
  * coded `ConfigError` when neither resolves.
@@ -120,7 +120,7 @@ export interface ApplySessionUpdate {
   readonly clear_workspace?: boolean | undefined;
 }
 
-/** Options of {@link ConfigWrites.addTarget} (`config.py:887-934`). */
+/** Options of {@link ConfigWrites.addTarget}. */
 export interface AddTargetOptions {
   /** Referenced account name (must exist). */
   readonly account: string;
@@ -157,16 +157,16 @@ export interface ConfigWrites {
    * @param name - Account name (`^[a-zA-Z0-9_-]{1,64}$`).
    * @param params - Typed credential fields.
    * @throws ConfigError - Duplicate name (PLAIN `ConfigError` /
-   *   CONFIG_ERROR, `config.py:446` — never `AccountExistsError`,
+   *   CONFIG_ERROR, `config.py` — never `AccountExistsError`,
    *   which Python reserves for the login_unified name-collision path,
-   *   `accounts.py:1689`; B7-ARB-B B-E2E-F1), missing/incompatible
+   *   `accounts.py`; B7-ARB-B B-E2E-F1), missing/incompatible
    *   fields, or validation failure.
    */
   addAccount: (name: string, params: AddAccountParams) => void;
 
   /**
    * Update fields on an existing account in place
-   * (`config.py:607-650`). Type cannot change.
+   * (`config.py`). Type cannot change.
    *
    * @param name - Account to update.
    * @param fields - Fields to rewrite.
@@ -176,7 +176,7 @@ export interface ConfigWrites {
   updateAccount: (name: string, fields: UpdateAccountFields) => void;
 
   /**
-   * Remove an account (`config.py:652-692`), clearing `[active]` when
+   * Remove an account (`config.py`), clearing `[active]` when
    * it was the active one.
    *
    * @param name - Account to remove.
@@ -191,7 +191,7 @@ export interface ConfigWrites {
   ) => string[];
 
   /**
-   * List account summaries sorted by name (`config.py:494-532`), with
+   * List account summaries sorted by name (`config.py`), with
    * `is_active` / `referenced_by_targets` populated.
    *
    * @returns The summaries.
@@ -209,7 +209,7 @@ export interface ConfigWrites {
 
   /**
    * Atomically apply per-axis session updates
-   * (`config.py:764-835`).
+   * (`config.py`).
    *
    * @param update - The axes to touch.
    * @throws ConfigError - Unknown account, or `project` with no
@@ -220,7 +220,7 @@ export interface ConfigWrites {
   /**
    * Apply a target: `[active]` replaced wholesale + the target
    * account's `default_project` updated, one transaction
-   * (`config.py:951-1002`).
+   * (`config.py`).
    *
    * @param name - Target to apply.
    * @throws ConfigError - Unknown target OR its account is gone.
@@ -228,19 +228,19 @@ export interface ConfigWrites {
   applyTarget: (name: string) => void;
 
   /**
-   * Add a target block (`config.py:887-934`).
+   * Add a target block (`config.py`).
    *
    * @param name - Target name.
    * @param options - account / project / workspace.
    * @returns The constructed {@link Target}.
    * @throws ConfigError - Duplicate name, missing account, or
    *   validation failure (Target model errors are WRAPPED in
-   *   ConfigError as `config.py:915-920` does).
+   *   ConfigError as `config.py` does).
    */
   addTarget: (name: string, options: AddTargetOptions) => Target;
 
   /**
-   * Remove a target block (`config.py:936-949`).
+   * Remove a target block (`config.py`).
    *
    * @param name - Target to remove.
    * @throws ConfigError - Unknown target.
@@ -248,7 +248,7 @@ export interface ConfigWrites {
   removeTarget: (name: string) => void;
 
   /**
-   * List targets sorted by name (`config.py:837-860`).
+   * List targets sorted by name (`config.py`).
    *
    * @returns The targets.
    */
@@ -325,7 +325,7 @@ export interface TokenStore {
 
   /**
    * Delete the persisted tokens if present (`logout`,
-   * `accounts.py:916-929`). Missing file is a no-op.
+   * `accounts.py`). Missing file is a no-op.
    *
    * @param name - Account name.
    */
@@ -333,7 +333,7 @@ export interface TokenStore {
 
   /**
    * Remove the whole per-account directory, warning (never raising) on
-   * failure (`_safe_rmtree_warn`, `accounts.py:278-303`).
+   * failure (`_safe_rmtree_warn`, `accounts.py`).
    *
    * @param name - Account name.
    */
@@ -341,7 +341,7 @@ export interface TokenStore {
 
   /**
    * Where the DCR client info for `region` lives
-   * (`_client_info_path`, `accounts.py:894-914`).
+   * (`_client_info_path`, `accounts.py`).
    *
    * @param region - Mixpanel region.
    * @returns Absolute path (may not exist yet).
@@ -351,7 +351,7 @@ export interface TokenStore {
   /**
    * Whether ANY per-account state exists for `name` — the
    * `account_dir(name).exists()` orphan-directory probe guarding the
-   * browser new-account flow (`accounts.py:1704-1708`; added by the
+   * browser new-account flow (`accounts.py`; added by the
    * pair-A arbiter, `b7-reviewA-resolution.md` SEM-F2). B8 checks the
    * on-disk `~/.mp/accounts/{name}/` directory; in-memory fakes report
    * whether they hold state for the name.
@@ -386,7 +386,7 @@ export interface OAuthFlowEffects {
 
 /**
  * The per-account `/me` cache write (`_persist_me_cache`,
- * `accounts.py:1338-1356` — packet §3.2, owner B8-N2 for the on-disk
+ * `accounts.py` — packet §3.2, owner B8-N2 for the on-disk
  * twin).
  */
 export interface MeCacheEffects {
@@ -411,7 +411,7 @@ export interface AuthEffects {
   /**
    * Env reads: the resolver's `MP_*` bag plus the generic `get` used by
    * `token_env` indirection and the `login_unified` auth-type detection
-   * (`accounts.py:1409`, `region_probe.py:252`). B8 wires `process.env`.
+   * (`accounts.py`, `region_probe.py`). B8 wires `process.env`.
    */
   readonly env: ResolverEnv & {
     /**
@@ -422,20 +422,20 @@ export interface AuthEffects {
      */
     get: (name: string) => string | undefined;
   };
-  /** Per-account token/artifact store (B8-N2). */
+  /** Per-account token/artifact store. */
   readonly tokenStore: TokenStore;
-  /** On-disk token resolver twin (B8-N2); tests inject fakes. */
+  /** On-disk token resolver twin; tests inject fakes. */
   readonly tokenResolver: TokenResolver;
-  /** PKCE flow (B8-N3). */
+  /** PKCE flow. */
   readonly oauthFlow: OAuthFlowEffects;
-  /** Bridge load/export/remove (B8-N2). */
+  /** Bridge load/export/remove. */
   readonly bridge: BridgeEffects;
   /** Per-account `/me` cache writes (B8-N2 on disk). */
   readonly meCache: MeCacheEffects;
   /**
    * Persist a session's axes to `[active]` in one transaction — the
    * `ConfigManager.apply_session` twin behind the W1-D1
-   * `ResolverSeams.persistActive` seam (`workspace.py:696-722`). B7
+   * `ResolverSeams.persistActive` seam. B7
    * ships the ROUTING ({@link resolverSeamsFromEffects}); the real
    * write is B8's (`b6-packets.md:1026`).
    *
@@ -454,7 +454,7 @@ export interface AuthEffects {
    */
   readSecretStdin: () => string;
   /**
-   * Single-line progress narration (`_narrate`, `accounts.py:132-148`
+   * Single-line progress narration (`_narrate`, `accounts.py`
    * — a stderr write in Python). Packet-gap ADDITION (disclosed):
    * stderr is a node effect; the CORE default is a silent no-op (the
    * messages are out of contract, R5.4), so this member is NOT in
@@ -479,13 +479,13 @@ export interface AuthEffects {
  */
 export const UNPORTED_AUTH_SEAMS: readonly string[] = [
   "persistActive", // via config.applySession
-  "config.*", // on-disk TOML writes/reads (B8-N1)
+  "config.*", // on-disk TOML writes/reads
   "env", // process.env wiring
   "tokenStore.*",
-  "tokenResolver", // on-disk twin (B8-N2)
-  "oauthFlow.login", // PKCE (B8-N3)
+  "tokenResolver", // on-disk twin
+  "oauthFlow.login", // PKCE
   "bridge.*",
-  "meCache", // on-disk MeCache (B8-N2)
+  "meCache", // on-disk MeCache
   "readSecretStdin", // packet-gap addition (stdin; disclosed)
 ];
 
@@ -579,7 +579,7 @@ export function defaultAuthEffects(): AuthEffects {
     persistActive: unportedAuthSeam("persistActive"),
     readSecretStdin: unportedAuthSeam("readSecretStdin"),
     narrate: (): void => {
-      // Out-of-contract stderr narration (R5.4) — silent in core.
+      // Out-of-contract stderr narration — silent in core.
     },
     fetchImpl: globalThis.fetch,
     now: (): number => Date.now(),

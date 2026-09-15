@@ -1,5 +1,5 @@
 // Translated Lexicon-schemas tests (B5-S1, packet §4): assertion-for-
-// assertion port of tests/unit/test_lexicon_schemas.py (R10.2) — ALL 13
+// assertion port of tests/unit/test_lexicon_schemas.py — ALL 13
 // classes: TestEndpointsApp :44, TestParseLexiconMetadata :68,
 // TestParseLexiconProperty :121, TestParseLexiconDefinition :157,
 // TestParseLexiconSchema :199, TestLexiconMetadata :241,
@@ -13,12 +13,12 @@
 // the app-endpoint rows are un-asserted in `client/url.test.ts`.
 //
 // Translation notes:
-// - `ENDPOINTS["us"]["app"]` -> the `ReadonlyMap` lookup (R4.8).
+// - `ENDPOINTS["us"]["app"]` -> the `ReadonlyMap` lookup.
 // - The four `test_frozen` cases (`:244`, `:284`, `:310`, `:336`) have
 //   no TS runtime analog — `readonly` is compile-time only. Same
 //   exclusion (and reason) as the Phase-2 result-class translation,
 //   `test/types/results/types.test.ts:12-13`.
-// - `to_dict()` -> `toJSON()` (R4.7). Python's `LexiconProperty.to_dict`
+// - `to_dict()` -> `toJSON()`. Python's `LexiconProperty.to_dict`
 //   drops absent optionals, which the Phase-2 class already mirrors.
 // - `discovery_factory` -> the B4 `createMockClient` transport analog,
 //   as in `discovery.test.ts`.
@@ -50,7 +50,7 @@ import {
 /** A canned-response handler (the httpx.MockTransport handler twin). */
 type Handler = (request: CapturedFetchRequest) => CannedResponse;
 
-/** The `discovery_factory` fixture (test_lexicon_schemas.py:375-398). */
+/** The `discovery_factory` fixture. */
 function discoveryFactory(handler: Handler): DiscoveryService {
   const { client } = createMockClient(makeSession(), handler);
   return new DiscoveryService(client);

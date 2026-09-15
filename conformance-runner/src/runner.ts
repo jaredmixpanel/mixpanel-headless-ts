@@ -88,7 +88,7 @@ export interface InvocationContext {
    * The raw `call.client_options` object, when recorded (schema
    * extension 12 — non-default client constructor kwargs such as
    * `max_retries`; mirror of the Python runner's
-   * `execute.py:529` plumb into `make_api_client`).
+   * `execute.py` plumb into `make_api_client`).
    */
   readonly clientOptions?: JsonValue;
   /** Mutable per-vector state shared across setup + measured calls. */

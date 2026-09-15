@@ -11,7 +11,7 @@
  * The backing store is an ECMAScript `#private` field: invisible to
  * `JSON.stringify`, `Object.keys`, spread, and structured logging. The Node
  * inspect hook is registered via `Symbol.for` so this module stays free of
- * `node:*` imports (R9.1) — browsers simply never look the symbol up.
+ * `node:*` imports — browsers simply never look the symbol up.
  */
 
 /** Pydantic's exact redaction literal: ten asterisks. */
@@ -26,7 +26,7 @@ const INSPECT_CUSTOM: unique symbol = Symbol.for("nodejs.util.inspect.custom");
  *
  * Mirrors Pydantic `SecretStr`: construction stores the raw value privately;
  * `toString()`/`toJSON()`/inspect all render `'**********'`; the raw value
- * is available only via {@link reveal}. No runtime freeze is applied (R4.6).
+ * is available only via {@link reveal}. No runtime freeze is applied.
  *
  * Example:
  * ```ts
@@ -82,7 +82,7 @@ export class Secret {
 
 // Render the redaction mask for Node's `util.inspect` / `console.log`.
 // Registered via `Symbol.for('nodejs.util.inspect.custom')` so no
-// `node:util` import is needed (R9.1); non-Node runtimes ignore it.
+// `node:util` import is needed; non-Node runtimes ignore it.
 // Installed on the prototype (with a class method's attributes) rather
 // than declared in the class body: `isolatedDeclarations` only accepts
 // well-known `Symbol.*` computed names, and the method was never part of

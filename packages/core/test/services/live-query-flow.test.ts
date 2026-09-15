@@ -1,5 +1,5 @@
 // Translated flow-query tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/unit/test_live_query_flow.py (R10.2) — ALL 6
+// assertion port of tests/unit/test_live_query_flow.py — ALL 6
 // classes (TestArbFunnelsQuery :88, TestTransformFlowResult :134,
 // TestQueryFlow :189, TestParseTreeNode :326,
 // TestTransformFlowResultTree :417, TestQueryFlowTree :455).
@@ -32,7 +32,7 @@ import {
 import { FlowQueryResult } from "../../src/types/results/query-engine.js";
 
 // ===========================================================================
-// Fixtures (test_live_query_flow.py:22-79)
+// Fixtures (test_live_query_flow.py)
 // ===========================================================================
 
 /** The `MagicMock(spec=MixpanelAPIClient)` twin plus its call log. */
@@ -46,7 +46,7 @@ interface MockApiClient {
 }
 
 /**
- * The `mock_api_client` fixture (test_live_query_flow.py:27-30).
+ * The `mock_api_client` fixture.
  *
  * @returns The stub client plus its call log.
  */

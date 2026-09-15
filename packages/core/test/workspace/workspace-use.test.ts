@@ -3,10 +3,10 @@
 // `TestHTTPTransportPreservation` :132, `TestTargetMutualExclusion`
 // :169, `TestUseUpdatesSessionAndClearsCaches` :255) plus the B7-A1
 // de-deferred classes (`b7-packets.md` §3.4 / Caution #18 — this
-// header now lists ZERO B7 deferrals): `TestUseAccount` (:89),
-// `TestPersist` (:190), `TestUseAccountEnvVarPriority` (:221),
-// `TestUseTargetEnvOverride` (:346),
-// `TestUseAccountWorkspaceEnvValidation` (:384), and the four
+// header now lists ZERO B7 deferrals): `TestUseAccount`,
+// `TestPersist`, `TestUseAccountEnvVarPriority`,
+// `TestUseTargetEnvOverride`,
+// `TestUseAccountWorkspaceEnvValidation`, and the four
 // previously seam-stubbed cases inside the W1 classes
 // (`test_target_alone_applies_three_axes` :176,
 // `test_use_target_also_clears_caches` :301,
@@ -46,7 +46,7 @@ import {
   setEnv,
 } from "../accounts/fake-auth-effects.js";
 
-/** The `team` account of the `two_accounts` fixture (:33-54). */
+/** The `team` account of the `two_accounts` fixture. */
 const TEAM_SESSION: Session = makeSession({
   name: "team",
   region: "us",
@@ -183,7 +183,7 @@ describe("TestTargetMutualExclusion (test_workspace_use.py:169)", () => {
   });
 
   it("use({target}) alone routes through the resolveSession seam", async () => {
-    // W1 residue of `test_target_alone_applies_three_axes` (:176): the
+    // W1 residue of `test_target_alone_applies_three_axes`: the
     // three axes come from the resolved session; B7 owns the resolution
     // itself (target file I/O + env precedence).
     const resolved: Session = {
@@ -295,7 +295,7 @@ describe("W1-D1 resolver seams (outbound deferral to B7)", () => {
       ws.use({ project: "9999999", persist: true }),
     ).rejects.toMatchObject({ code: "UNPORTED_RESOLVER_SEAM" });
     // The swap itself already happened (Python persists AFTER the swap,
-    // `workspace.py:691-693`).
+    // `workspace.py`).
     expect(ws.project.id).toBe("9999999");
   });
 
@@ -307,7 +307,7 @@ describe("W1-D1 resolver seams (outbound deferral to B7)", () => {
   });
 
   it("an account swap with no resolvable project raises ConfigError", async () => {
-    // `workspace.py:653-654` (`_format_no_project_error`) — FR-033: the
+    // `workspace.py` (`_format_no_project_error`) — FR-033: the
     // prior session's project is NEVER carried forward.
     const { ws } = makeWorkspace({
       getAccount: vi.fn().mockResolvedValue(OTHER_ACCOUNT),
@@ -320,7 +320,7 @@ describe("W1-D1 resolver seams (outbound deferral to B7)", () => {
   });
 
   it("an explicit workspace= on an account swap skips the env seam", async () => {
-    // `workspace.py:661-668`: `if workspace is not None` short-circuits
+    // `workspace.py`: `if workspace is not None` short-circuits
     // `_env_workspace_id()`.
     const envWorkspaceId = vi.fn().mockReturnValue(999);
     const { ws } = makeWorkspace({
@@ -351,7 +351,7 @@ describe("W1-D1 resolver seams (outbound deferral to B7)", () => {
 // (`b7-packets.md` §3.4).
 // ---------------------------------------------------------------------------
 
-/** The `two_accounts` fixture (`test_workspace_use.py:32-53`). */
+/** The `two_accounts` fixture. */
 async function twoAccountsBundle(): Promise<EffectsBundle> {
   const bundle = makeEffects();
   const accounts = createAccountsNamespace(bundle.effects);
@@ -391,7 +391,7 @@ function realSeamWorkspace(
     seams: {
       ...resolverSeamsFromEffects(bundle.effects),
       // Python `_persist_active` routing over the fake config
-      // (`workspace.py:695-722` — the B8-owned effect member is wired
+      // (`workspace.py` — the B8-owned effect member is wired
       // to `persistActiveToConfig` here).
       persistActive: (session) => persistActiveToConfig(bundle.config, session),
     },

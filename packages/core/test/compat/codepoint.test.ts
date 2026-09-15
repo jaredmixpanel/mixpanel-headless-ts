@@ -1,4 +1,4 @@
-// B0-1 (P3-4): tests written FIRST from R11.5/R11.6 semantics. Expected
+// B0-1: tests written FIRST from R11.5/R11.6 semantics. Expected
 // values produced by CPython 3.14.6 `len`/slicing/`sorted` (the oracle)
 // on 2026-08-15.
 import fc from "fast-check";

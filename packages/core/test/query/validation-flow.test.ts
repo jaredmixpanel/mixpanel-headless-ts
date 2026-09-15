@@ -21,7 +21,7 @@ import {
 import { TimeComparison } from "../../src/types/index.js";
 
 // =============================================================================
-// Helpers (test_validation_flow.py:43-110)
+// Helpers (test_validation_flow.py)
 // =============================================================================
 
 /**

@@ -1,4 +1,4 @@
-// Trivial skeleton test (TS-1): proves the vitest harness and NodeNext
+// Trivial skeleton test: proves the vitest harness and NodeNext
 // module resolution work for this package.
 //
 // Extended post-Phase-3 (QA 2026-08-17): the phase2-audit A1 deferral

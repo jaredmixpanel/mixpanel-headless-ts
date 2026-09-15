@@ -1,5 +1,5 @@
 // Translated build_funnel_params tests (B5-S2, packet §3): assertion-
-// for-assertion port of tests/test_build_funnel_params.py (R10.2) — ALL
+// for-assertion port of tests/test_build_funnel_params.py — ALL
 // 11 classes (TestBuildFunnelParamsDefaults :68,
 // TestBuildFunnelParamsConfiguration :169,
 // TestBuildFunnelParamsPublicMethod :330,

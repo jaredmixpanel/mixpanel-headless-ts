@@ -909,7 +909,7 @@ export class OracleServer {
   }
 
   /**
-   * Serialize a thrown library error as comparable DATA (R5.4).
+   * Serialize a thrown library error as comparable DATA.
    *
    * Errors carrying their own `expect.error` encoding use it (class +
    * code + structural `errors[]`, messages stripped); anything else —
@@ -943,7 +943,7 @@ export class OracleServer {
   }
 
   /**
-   * Frame one JSON-RPC response as a single ASCII-safe line (D14).
+   * Frame one JSON-RPC response as a single ASCII-safe line.
    *
    * @param requestId - The request's `id` member (echoed verbatim,
    *   `null` for unparseable requests).

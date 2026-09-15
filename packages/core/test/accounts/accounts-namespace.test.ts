@@ -21,10 +21,10 @@
 //   injected store's entry" (path override wiring is B8's).
 //
 // EXCLUDED (decision recorded, packet §3.4 + plan D4):
-// - `TestSummaryTableDynamicWidth` (:967) drives the CLI formatter
+// - `TestSummaryTableDynamicWidth` drives the CLI formatter
 //   `cli.commands.account._format_summary_table` — the CLI is out of
 //   the port's scope (plan D4). No library assertion to preserve.
-// - `TestPublicSurface` (:914) asserts `accounts_ns.__all__`; the TS
+// - `TestPublicSurface` asserts `accounts_ns.__all__`; the TS
 //   twin asserts the `AccountsNamespace` object exposes all 13
 //   public members (module `__all__` has no TS runtime analog).
 
@@ -192,10 +192,10 @@ describe("TestAdd (test_accounts_namespace.py:46)", () => {
   });
 
   // B7-ARB-B B-E2E-F1 lock (spec-cited ADDITION, R10.2-safe): Python's
-  // duplicate-add path raises PLAIN `ConfigError` (`config.py:446`,
+  // duplicate-add path raises PLAIN `ConfigError` (`config.py`,
   // code CONFIG_ERROR); `AccountExistsError` / ACCOUNT_EXISTS is
   // reserved for the login_unified name-collision path
-  // (`accounts.py:1689`). R5 makes the CODE the contract — pin it so
+  // (`accounts.py`). R5 makes the CODE the contract — pin it so
   // B8-N1's real ConfigWrites adapter cannot inherit the stronger
   // class from the interface JSDoc (`b7-reviewB-resolution.md`).
   it("duplicate add surfaces plain CONFIG_ERROR, never ACCOUNT_EXISTS", async () => {
@@ -554,7 +554,7 @@ describe("TestTest (test_accounts_namespace.py:451)", () => {
     // Python injects a raw OSError below the httpx wrap (a genuine
     // non-library leak). The TS transport normalizes every fetch
     // rejection into the coded HTTP_ERROR wrap (as Python's
-    // `except httpx.HTTPError` does, `api_client.py:801-804`), so the
+    // `except httpx.HTTPError` does, `api_client.py`), so the
     // faithful non-library leak site is the token-resolver seam — a
     // plain Error rejected there reaches the broad catch unwrapped
     // (mechanism substitution, header note).
@@ -752,7 +752,7 @@ describe("TestPublicSurface (test_accounts_namespace.py:914)", () => {
   it("login / test (and every __all__ name) resolve on the namespace", () => {
     const { effects } = makeEffects();
     const accounts = createAccountsNamespace(effects);
-    // `accounts.py` __all__ (:2014-2028) → the camelCase method set
+    // `accounts.py` __all__ → the camelCase method set
     // (naming decision recorded in the module header of namespace.ts).
     const names = [
       "add",
@@ -790,7 +790,7 @@ describe("TestLogoutHonorsStorageOverride (test_accounts_namespace.py:934)", () 
   });
 });
 
-// TestSummaryTableDynamicWidth (:967) — EXCLUDED (CLI formatter; plan
+// TestSummaryTableDynamicWidth — EXCLUDED (CLI formatter; plan
 // D4 — see the file header; exclusion RATIFIED by the pair-A arbiter,
 // `b7-reviewA-resolution.md` ASR-F1).
 
@@ -852,7 +852,7 @@ describe("B7-ARB-A SEM-F1 falsiness locks (b7-reviewA-resolution.md)", () => {
 
 // B8-ARB-A ASR-F1 (b8-reviewA-resolution.md): the COMPOSITION half of
 // `test_bridge_export.py::test_export_bridge_attaches_settings_custom_header`
-// (:274) — the N2 translation split the Python lock and kept only the
+// — the N2 translation split the Python lock and kept only the
 // effect-level "supplied headers land verbatim" half
 // (packages/node/test/bridge.test.ts `test_export_bridge_attaches_custom_headers`).
 // This locks the joining orchestration: `[settings].custom_header` read

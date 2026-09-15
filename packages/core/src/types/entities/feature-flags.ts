@@ -4,7 +4,7 @@
  * Hand-written ports of the Pydantic entity models (phase2-design C5,
  * packet P2-7): the PYTHON models are the source of record; vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling (R3.6/R7.6); optionality follows
+ * keep their exact Python spelling; optionality follows
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
@@ -22,7 +22,7 @@ import {
 
 /**
  * Constructor input for {@link FeatureFlag} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface FeatureFlagInit {
   /** Unique identifier (UUID). */
@@ -86,7 +86,7 @@ export interface FeatureFlagInit {
 /**
  * A Mixpanel feature flag as returned by the App API.
  *
- * Mirror of Python `mixpanel_headless.types.FeatureFlag` (types.py:3107;
+ * Mirror of Python `mixpanel_headless.types.FeatureFlag` (types.py;
  * model_config: frozen=True, extra='allow', populate_by_name=True).
  */
 export class FeatureFlag extends EntityModel<FeatureFlagInit> {
@@ -219,7 +219,7 @@ export class FeatureFlag extends EntityModel<FeatureFlagInit> {
 
 /**
  * Constructor input for {@link CreateFeatureFlagParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CreateFeatureFlagParamsInit {
   /** Flag name (required). */
@@ -243,7 +243,7 @@ export interface CreateFeatureFlagParamsInit {
 /**
  * Parameters for creating a new feature flag.
  *
- * Mirror of Python `mixpanel_headless.types.CreateFeatureFlagParams` (types.py:3249;
+ * Mirror of Python `mixpanel_headless.types.CreateFeatureFlagParams` (types.py;
  * model_config: extra='ignore').
  */
 export class CreateFeatureFlagParams extends EntityModel<CreateFeatureFlagParamsInit> {
@@ -339,7 +339,7 @@ export class CreateFeatureFlagParams extends EntityModel<CreateFeatureFlagParams
 
 /**
  * Constructor input for {@link UpdateFeatureFlagParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdateFeatureFlagParamsInit {
   /** Flag name (required). */
@@ -363,7 +363,7 @@ export interface UpdateFeatureFlagParamsInit {
 /**
  * Parameters for updating an existing feature flag (PUT semantics).
  *
- * Mirror of Python `mixpanel_headless.types.UpdateFeatureFlagParams` (types.py:3324;
+ * Mirror of Python `mixpanel_headless.types.UpdateFeatureFlagParams` (types.py;
  * model_config: extra='ignore').
  */
 export class UpdateFeatureFlagParams extends EntityModel<UpdateFeatureFlagParamsInit> {
@@ -438,7 +438,7 @@ export class UpdateFeatureFlagParams extends EntityModel<UpdateFeatureFlagParams
 
 /**
  * Constructor input for {@link SetTestUsersParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface SetTestUsersParamsInit {
   /** Mapping of variant keys to user distinct IDs. */
@@ -448,7 +448,7 @@ export interface SetTestUsersParamsInit {
 /**
  * Parameters for setting test user variant overrides on a flag.
  *
- * Mirror of Python `mixpanel_headless.types.SetTestUsersParams` (types.py:3380;
+ * Mirror of Python `mixpanel_headless.types.SetTestUsersParams` (types.py;
  * model_config: extra='ignore').
  */
 export class SetTestUsersParams extends EntityModel<SetTestUsersParamsInit> {
@@ -492,7 +492,7 @@ export class SetTestUsersParams extends EntityModel<SetTestUsersParamsInit> {
 
 /**
  * Constructor input for {@link FlagHistoryParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface FlagHistoryParamsInit {
   /** Pagination cursor. */
@@ -504,7 +504,7 @@ export interface FlagHistoryParamsInit {
 /**
  * Parameters for querying feature flag change history.
  *
- * Mirror of Python `mixpanel_headless.types.FlagHistoryParams` (types.py:3396;
+ * Mirror of Python `mixpanel_headless.types.FlagHistoryParams` (types.py;
  * model_config: extra='ignore').
  */
 export class FlagHistoryParams extends EntityModel<FlagHistoryParamsInit> {
@@ -551,7 +551,7 @@ export class FlagHistoryParams extends EntityModel<FlagHistoryParamsInit> {
 
 /**
  * Constructor input for {@link FlagHistoryResponse} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface FlagHistoryResponseInit {
   /** Array of event arrays. */
@@ -563,7 +563,7 @@ export interface FlagHistoryResponseInit {
 /**
  * Paginated change history for a feature flag.
  *
- * Mirror of Python `mixpanel_headless.types.FlagHistoryResponse` (types.py:3416;
+ * Mirror of Python `mixpanel_headless.types.FlagHistoryResponse` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class FlagHistoryResponse extends EntityModel<FlagHistoryResponseInit> {
@@ -610,7 +610,7 @@ export class FlagHistoryResponse extends EntityModel<FlagHistoryResponseInit> {
 
 /**
  * Constructor input for {@link FlagLimitsResponse} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface FlagLimitsResponseInit {
   /** Maximum allowed flags. */
@@ -626,7 +626,7 @@ export interface FlagLimitsResponseInit {
 /**
  * Account-level feature flag usage and limits.
  *
- * Mirror of Python `mixpanel_headless.types.FlagLimitsResponse` (types.py:3439;
+ * Mirror of Python `mixpanel_headless.types.FlagLimitsResponse` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class FlagLimitsResponse extends EntityModel<FlagLimitsResponseInit> {

@@ -1,7 +1,7 @@
 // Layer-3 translation of `tests/unit/test_auth_registration.py`
-// (b8-packets.md §4.3 row 2): `TestEnsureClientRegistered` (:68),
-// `TestEnsureClientRegisteredRobustness` (:371),
-// `TestEnsureClientRegisteredRegionValidation` (:441) — all 13 tests.
+// (b8-packets.md §4.3 row 2): `TestEnsureClientRegistered`,
+// `TestEnsureClientRegisteredRobustness`,
+// `TestEnsureClientRegisteredRegionValidation` — all 13 tests.
 //
 // Python's `httpx.MockTransport` fixtures translate to an injected
 // `fetchImpl` returning web-standard `Response` objects (the N2
@@ -38,7 +38,7 @@ interface CapturedRequest {
 }
 
 /**
- * The `_make_register_transport` twin (test_auth_registration.py:30):
+ * The `_make_register_transport` twin:
  * a fetch stub answering every request while recording it.
  *
  * @param respond - Response builder (throw to simulate transport

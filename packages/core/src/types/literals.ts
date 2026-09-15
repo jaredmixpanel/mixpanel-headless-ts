@@ -10,7 +10,7 @@
  *   `__all__` and gets no TS surface)
  * - `src/mixpanel_headless/_internal/auth/account.py` (via
  *   `auth_types`) — `Region`, `AccountType`; this module is their
- *   canonical TS definition and `auth/account.ts` (P2-4) re-exports
+ *   canonical TS definition and `auth/account.ts` re-exports
  *   them rather than redeclaring
  *
  * Hand-written source, machine-verified sync: the C8(d) lock test

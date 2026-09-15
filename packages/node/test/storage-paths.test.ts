@@ -10,10 +10,10 @@
 //
 // PYTHON-ONLY members (header-cited per §3.3 / §2.1 drop):
 // - `TestOAuthStorageSymlinkRejection::
-//   test_check_and_fix_permissions_uses_fchmod_not_chmod` (:275) —
+//   test_check_and_fix_permissions_uses_fchmod_not_chmod` —
 //   fd-flag mechanism probe (fd-flag hardening dropped per plan §4.2 /
 //   R9.2); its lstat-expressible siblings are translated below.
-// - `test_windows_skip_does_not_crash` (:303) — probes a
+// - `test_windows_skip_does_not_crash` — probes a
 //   `monkeypatch.delattr(os, "O_NOFOLLOW")` platform shim with no node
 //   analog (the TS no-op branch keys on `process.platform`) — same
 //   citation.
@@ -255,13 +255,13 @@ describe("TestOAuthStorageSymlinkRejection (test_storage.py:158)", () => {
   });
 
   // PYTHON-ONLY (fd-flag hardening dropped, plan §4.2 / packet §2.1):
-  // test_check_and_fix_permissions_uses_fchmod_not_chmod (:275) — the
+  // test_check_and_fix_permissions_uses_fchmod_not_chmod — the
   // Path.chmod-patch probe asserts the fchmod-on-fd mechanism itself.
   // The lstat-substituted TS repair path IS Path.chmod-shaped by
   // design; the observable repair behavior is locked in
   // auth-storage.test.ts (TestOAuthStorageSecurityHardening).
   //
-  // PYTHON-ONLY: test_windows_skip_does_not_crash (:303) — probes a
+  // PYTHON-ONLY: test_windows_skip_does_not_crash — probes a
   // `delattr(os, "O_NOFOLLOW")` shim; the TS twin's Windows no-op keys
   // on `process.platform` and has no removable attribute to probe.
 });

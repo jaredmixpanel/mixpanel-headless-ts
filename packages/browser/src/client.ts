@@ -65,7 +65,7 @@ export interface BrowserSessionOptions {
 export interface BrowserWorkspaceOptions {
   /** Pre-built session (must be non-SA — §2.3 path 1). */
   readonly session?: Session;
-  /** Credential store; default `new InMemoryCredentialStore()` (R9.3). */
+  /** Credential store; default `new InMemoryCredentialStore()`. */
   readonly store?: CredentialStore;
   /** Injectable transport (R2.4 seam); default `globalThis.fetch`. */
   readonly fetch?: typeof fetch;
@@ -125,7 +125,7 @@ function serviceAccountRefusal(path: string): BrowserUnsupportedError {
  * can only build inline-token accounts, so the refusal arms are
  * reachable only via a hand-built session). Failure arms carry the
  * Python twin's code + details — `OAUTH_TOKEN_ERROR` with
- * `{account_name, env_var}` (env arm, `token_resolver.py:273-282`) /
+ * `{account_name, env_var}` (env arm, `token_resolver.py`) /
  * `{account_name}` (model-invariant arm, `:267-272`) — so the "static
  * token unresolvable" condition is uniform across runtimes (B9-ARB-A
  * SEM-F1, `b9-reviewA-resolution.md`); only the MESSAGE is
@@ -142,7 +142,7 @@ function staticTokenFromAccount(account: OAuthTokenAccount): Promise<string> {
   const envName = account.token_env;
   if (envName === undefined || envName === null) {
     // Model invariant (`token XOR token_env`) — explicit raise so it
-    // survives without assertions (`token_resolver.py:267-272`).
+    // survives without assertions (`token_resolver.py`).
     return Promise.reject(
       new OAuthError(
         `OAuth account '${account.name}' has neither \`token\` nor ` +
@@ -216,7 +216,7 @@ async function readStoredTokens(
   }
   const tokens = parseOAuthTokens(decoded);
   if (tokens.isExpired({ now })) {
-    // TODO(port): the refresh-token grant (`flow.py:442-498`) is OUT of
+    // TODO(port): the refresh-token grant (`flow.py`) is OUT of
     // browser v1 scope (b9-packets.md §2.2 disposition — an R2
     // follow-on under the D2-ACCEPTED branch, not silently added here).
     const hasRefresh = tokens.refresh_token !== null;

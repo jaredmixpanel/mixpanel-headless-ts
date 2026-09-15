@@ -1,6 +1,6 @@
 // Layer-3 translation of `tests/unit/test_042_edge_cases.py::
-// TestAccountNameBoundaries` (:52-104) and
-// `::TestOAuthTokenValidatorUnderCopy` (:105-167) — B7-A2 packet §2.4
+// TestAccountNameBoundaries` and
+// `::TestOAuthTokenValidatorUnderCopy` — B7-A2 packet §2.4
 // (B6 ledger `b6-packets.md:1032` inbound deferral).
 //
 // Mechanism substitutions (header-cited per R10.2 / packet §2.4):

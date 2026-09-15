@@ -1,12 +1,12 @@
 // Layer-3 translation — Phase-3 packet B4-C1 me-model locks. Sources:
 //
-// - tests/unit/test_me.py — the PURE model half: ::TestMeOrgInfo (:38),
+// - tests/unit/test_me.py — the PURE model half: ::TestMeOrgInfo,
 //   ::TestMeProjectInfo (:71), ::TestMeWorkspaceInfo (:108),
 //   ::TestMeResponse (:149). ::TestMeCache*/:.TestMeService/
 //   ::TestMeCacheSymlinkRejection are B8-N2 (on-disk cache/service —
 //   playbook Discrepancy #5; header exclusion per packet C1 §Layer-3).
 // - tests/unit/test_workspace_resolution.py::TestSelectWorkspaceId
-//   (:96-151) — the shared selection ladder.
+//   — the shared selection ladder.
 //
 // Entry-point substitutions: `model_validate` → `fromDict`;
 // `model_extra` → `modelExtra`; `model_dump_json`/`model_validate_json`
@@ -213,7 +213,7 @@ describe("TestMeResponse", () => {
 // tests/unit/test_workspace_resolution.py::TestSelectWorkspaceId
 // ---------------------------------------------------------------------------
 
-/** `_v` helper (:99-105): a WorkspaceView with sensible defaults. */
+/** `_v` helper: a WorkspaceView with sensible defaults. */
 function v(overrides: Partial<WorkspaceView> & { id: number }): WorkspaceView {
   return {
     name: "v",

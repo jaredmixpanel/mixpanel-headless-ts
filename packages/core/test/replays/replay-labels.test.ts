@@ -1,5 +1,5 @@
 // Translated label tests (packet B5-S3, `b5-packets.md` §5):
-// assertion-for-assertion ports (R10.2) of the three label classes in
+// assertion-for-assertion ports of the three label classes in
 //   tests/unit/test_replay_bundle.py
 //     TestUrlNormalizer     :97
 //     TestDefaultLabelFn    :118
@@ -26,7 +26,7 @@ import { UserAction } from "../../src/replays/user-action.js";
 
 /**
  * Construct a `UserAction` for label tests (Python `_build_action`,
- * `test_replay_bundle.py:49-64`).
+ * `test_replay_bundle.py`).
  *
  * @param overrides - Field overrides applied over the Python defaults.
  * @returns The constructed action.

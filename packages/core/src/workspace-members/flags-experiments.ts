@@ -1,11 +1,11 @@
 /**
  * B6-W4 member module — the `Workspace` feature-flag and experiment
- * members (`workspace.py:5751-6461`: FEATURE FLAG CRUD / LIFECYCLE /
+ * members (`workspace.py`: FEATURE FLAG CRUD / LIFECYCLE /
  * OPERATIONS and EXPERIMENT CRUD / LIFECYCLE / MANAGEMENT, Phase 025).
  *
  * Packet contract (`b6-packets.md` §2/§6): the `workspace.ts` B6-W4
  * section holds ONE-LINE delegations into this module; every member
- * here is a THIN facade body — options-bag mapping (R3.3/R3.8), the
+ * here is a THIN facade body — options-bag mapping, the
  * params dump (W1-D4 {@link EntityModel.modelDumpExcludeNone}), the
  * like-named B4-C4 client method
  * (`services/entities/{flags,experiments}.ts`, composed onto the
@@ -18,7 +18,7 @@
  * branch-for-branch:
  *
  * - {@link getFlagHistory} assembles the optional `page` / `page_size`
- *   query dict exactly as `workspace.py:6053-6060` does — each key is
+ *   query dict exactly as `workspace.py` does — each key is
  *   added only when the kwarg `is not None`, `page_size` is
  *   stringified (`str(page_size)` → `pythonStr`, R11.7), and the whole
  *   dict collapses to `None` when empty (`params=query_params if
@@ -100,12 +100,12 @@ export interface WorkspaceConcludeExperimentOptions {
 }
 
 // ---------------------------------------------------------------------------
-// FEATURE FLAG CRUD (Phase 025) — `workspace.py:5753-5911`
+// FEATURE FLAG CRUD (Phase 025) — `workspace.py`
 // ---------------------------------------------------------------------------
 
 /**
  * List feature flags for the current project/workspace
- * (`list_feature_flags`, `workspace.py:5753-5782`).
+ * (`list_feature_flags`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param options - `include_archived` (keyword-only in Python).
@@ -133,7 +133,7 @@ export async function listFeatureFlags(
 
 /**
  * Create a new feature flag (`create_feature_flag`,
- * `workspace.py:5784-5815`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param params - Flag creation parameters.
@@ -157,7 +157,7 @@ export async function createFeatureFlag(
 
 /**
  * Get a single feature flag by ID (`get_feature_flag`,
- * `workspace.py:5817-5846`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param flagId - Feature flag UUID.
@@ -179,7 +179,7 @@ export async function getFeatureFlag(
 
 /**
  * Update a feature flag, full replacement / PUT semantics
- * (`update_feature_flag`, `workspace.py:5848-5886`).
+ * (`update_feature_flag`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param flagId - Feature flag UUID.
@@ -206,7 +206,7 @@ export async function updateFeatureFlag(
 
 /**
  * Delete a feature flag (`delete_feature_flag`,
- * `workspace.py:5888-5907`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param flagId - Feature flag UUID.
@@ -220,12 +220,12 @@ export async function deleteFeatureFlag(
 }
 
 // ---------------------------------------------------------------------------
-// FEATURE FLAG LIFECYCLE (Phase 025) — `workspace.py:5913-5991`
+// FEATURE FLAG LIFECYCLE (Phase 025) — `workspace.py`
 // ---------------------------------------------------------------------------
 
 /**
  * Archive a feature flag, a soft delete (`archive_feature_flag`,
- * `workspace.py:5913-5932`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param flagId - Feature flag UUID.
@@ -240,7 +240,7 @@ export async function archiveFeatureFlag(
 
 /**
  * Restore an archived feature flag (`restore_feature_flag`,
- * `workspace.py:5934-5961`) — no empty-response guard in Python.
+ * `workspace.py`) — no empty-response guard in Python.
  *
  * @param client - The wire client.
  * @param flagId - Feature flag UUID.
@@ -259,7 +259,7 @@ export async function restoreFeatureFlag(
 
 /**
  * Duplicate a feature flag (`duplicate_feature_flag`,
- * `workspace.py:5963-5991`) — no empty-response guard in Python.
+ * `workspace.py`) — no empty-response guard in Python.
  *
  * @param client - The wire client.
  * @param flagId - Feature flag UUID.
@@ -277,12 +277,12 @@ export async function duplicateFeatureFlag(
 }
 
 // ---------------------------------------------------------------------------
-// FEATURE FLAG OPERATIONS (Phase 025) — `workspace.py:5996-6091`
+// FEATURE FLAG OPERATIONS (Phase 025) — `workspace.py`
 // ---------------------------------------------------------------------------
 
 /**
  * Set test-user variant overrides for a feature flag
- * (`set_flag_test_users`, `workspace.py:5996-6019`).
+ * (`set_flag_test_users`, `workspace.py`).
  *
  * The one bare `model_dump()` in the shard (`:6019`) — `modelDump()`
  * is its exact pydantic twin (W8's `modelDump` JSDoc: `toJSON` is NOT
@@ -306,7 +306,7 @@ export async function setFlagTestUsers(
 
 /**
  * Get paginated change history for a feature flag
- * (`get_flag_history`, `workspace.py:6021-6063`).
+ * (`get_flag_history`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param flagId - Feature flag UUID.
@@ -341,7 +341,7 @@ export async function getFlagHistory(
 
 /**
  * Get account-level feature flag limits and usage
- * (`get_flag_limits`, `workspace.py:6065-6091`).
+ * (`get_flag_limits`, `workspace.py`).
  *
  * @param client - The wire client.
  * @returns The `FlagLimitsResponse`.
@@ -357,12 +357,12 @@ export async function getFlagLimits(
 }
 
 // ---------------------------------------------------------------------------
-// EXPERIMENT CRUD (Phase 025) — `workspace.py:6096-6248`
+// EXPERIMENT CRUD (Phase 025) — `workspace.py`
 // ---------------------------------------------------------------------------
 
 /**
  * List experiments for the current project (`list_experiments`,
- * `workspace.py:6096-6123`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param options - `include_archived` (keyword-only in Python).
@@ -387,7 +387,7 @@ export async function listExperiments(
 
 /**
  * Create a new experiment in Draft status (`create_experiment`,
- * `workspace.py:6125-6156`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param params - Experiment creation parameters.
@@ -411,7 +411,7 @@ export async function createExperiment(
 
 /**
  * Get a single experiment by ID (`get_experiment`,
- * `workspace.py:6158-6187`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param experimentId - Experiment UUID.
@@ -433,7 +433,7 @@ export async function getExperiment(
 
 /**
  * Update an experiment, PATCH semantics (`update_experiment`,
- * `workspace.py:6189-6225`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param experimentId - Experiment UUID.
@@ -460,7 +460,7 @@ export async function updateExperiment(
 
 /**
  * Delete an experiment (`delete_experiment`,
- * `workspace.py:6227-6246`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param experimentId - Experiment UUID.
@@ -474,12 +474,12 @@ export async function deleteExperiment(
 }
 
 // ---------------------------------------------------------------------------
-// EXPERIMENT LIFECYCLE (Phase 025) — `workspace.py:6252-6348`
+// EXPERIMENT LIFECYCLE (Phase 025) — `workspace.py`
 // ---------------------------------------------------------------------------
 
 /**
  * Launch an experiment, Draft → Active (`launch_experiment`,
- * `workspace.py:6252-6277`) — no empty-response guard in Python.
+ * `workspace.py`) — no empty-response guard in Python.
  *
  * @param client - The wire client.
  * @param experimentId - Experiment UUID.
@@ -498,7 +498,7 @@ export async function launchExperiment(
 
 /**
  * Conclude an experiment, Active → Concluded (`conclude_experiment`,
- * `workspace.py:6279-6302`) — ALWAYS sends a JSON body, `{}` when no
+ * `workspace.py`) — ALWAYS sends a JSON body, `{}` when no
  * params are supplied (module header).
  *
  * @param client - The wire client.
@@ -523,7 +523,7 @@ export async function concludeExperiment(
 
 /**
  * Record the experiment decision, Concluded → Success/Fail
- * (`decide_experiment`, `workspace.py:6304-6337`) — no
+ * (`decide_experiment`, `workspace.py`) — no
  * empty-response guard in Python.
  *
  * @param client - The wire client.
@@ -547,12 +547,12 @@ export async function decideExperiment(
 }
 
 // ---------------------------------------------------------------------------
-// EXPERIMENT MANAGEMENT (Phase 025) — `workspace.py:6354-6461`
+// EXPERIMENT MANAGEMENT (Phase 025) — `workspace.py`
 // ---------------------------------------------------------------------------
 
 /**
  * Archive an experiment (`archive_experiment`,
- * `workspace.py:6354-6373`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param experimentId - Experiment UUID.
@@ -567,7 +567,7 @@ export async function archiveExperiment(
 
 /**
  * Restore an archived experiment (`restore_experiment`,
- * `workspace.py:6375-6400`) — no empty-response guard in Python.
+ * `workspace.py`) — no empty-response guard in Python.
  *
  * @param client - The wire client.
  * @param experimentId - Experiment UUID.
@@ -586,7 +586,7 @@ export async function restoreExperiment(
 
 /**
  * Duplicate an experiment (`duplicate_experiment`,
- * `workspace.py:6402-6439`) — `params` is POSITIONAL and REQUIRED
+ * `workspace.py`) — `params` is POSITIONAL and REQUIRED
  * (the API returns an empty body when duplicating without a name).
  *
  * @param client - The wire client.
@@ -609,7 +609,7 @@ export async function duplicateExperiment(
 
 /**
  * List experiments in ERF (Experiment Results Framework) format
- * (`list_erf_experiments`, `workspace.py:6441-6461`) — returned
+ * (`list_erf_experiments`, `workspace.py`) — returned
  * verbatim; Python performs NO model validation here.
  *
  * @param client - The wire client.

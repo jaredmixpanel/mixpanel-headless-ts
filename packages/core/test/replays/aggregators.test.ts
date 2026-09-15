@@ -1,5 +1,5 @@
 // Translated aggregator tests (packet B5-S3, `b5-packets.md` §5):
-// assertion-for-assertion ports (R10.2) of
+// assertion-for-assertion ports of
 //   tests/unit/test_replay_bundle.py
 //     TestReplayBundleAggregations :325   (all 5)
 //     TestAggregatorFunctions      :459   (all 3)
@@ -31,7 +31,7 @@ import { ReplayBundle } from "../../src/types/results/replays.js";
 
 /**
  * Construct a `UserAction` (Python `_build_action`,
- * `test_replay_bundle.py:49-64`).
+ * `test_replay_bundle.py`).
  *
  * @param overrides - Field overrides applied over the Python defaults.
  * @returns The constructed action.
@@ -58,7 +58,7 @@ function buildAction(
 
 /**
  * Build a `Replay` with the given actions (Python `_make_replay`,
- * `test_replay_bundle.py:67-89`).
+ * `test_replay_bundle.py`).
  *
  * @param replayId - The replay id.
  * @param actions - The action list.
@@ -95,7 +95,7 @@ function makeReplay(replayId: string, actions: UserAction[]): Replay {
 
 /**
  * Build the shared aggregation fixture (Python `_sample_bundle`,
- * `test_replay_bundle.py:194-247`).
+ * `test_replay_bundle.py`).
  *
  * @returns The three-replay bundle.
  */

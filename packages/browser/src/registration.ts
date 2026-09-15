@@ -2,11 +2,11 @@
  * Browser Dynamic Client Registration — the `ensure_client_registered`
  * twin over `CredentialStore` caching (b9-packets.md §3.2 row 3):
  * core `registerClient` (the §3.1 hoisted POST half,
- * `client_registration.py:96-170`) + persistence under
+ * `client_registration.py`) + persistence under
  * `CREDENTIAL_KEYS.clientInfo(region)` where node uses `OAuthStorage`.
  * The cache-hit rule is identical to Python: the cached client is
  * returned ONLY when its `redirect_uri` matches
- * (`client_registration.py:92-93`), and the cache check runs BEFORE
+ * (`client_registration.py`), and the cache check runs BEFORE
  * region validation (Python order — the region gate lives inside the
  * core POST half).
  *
@@ -49,7 +49,7 @@ export interface EnsureBrowserClientRegisteredOptions {
 
 /**
  * Ensure a DCR client registration exists for the region (the browser
- * `ensure_client_registered` twin, `client_registration.py:54-170`).
+ * `ensure_client_registered` twin, `client_registration.py`).
  * The cached fast path performs ZERO fetches.
  *
  * @param options - fetch + region + redirect URI + store + clock.
@@ -74,7 +74,7 @@ export async function ensureBrowserClientRegistered(
   const fetchImpl = options.fetch ?? globalThis.fetch;
   const key = CREDENTIAL_KEYS.clientInfo(region);
 
-  // Check cache (`client_registration.py:91-94` — BEFORE region
+  // Check cache (`client_registration.py` — BEFORE region
   // validation, Python order).
   const raw = await store.get(key);
   if (raw !== null) {
@@ -96,7 +96,7 @@ export async function ensureBrowserClientRegistered(
   });
 
   // Cache for future use — persist BEFORE returning (the
-  // `storage.save_client_info` twin, `client_registration.py:168`;
+  // `storage.save_client_info` twin, `client_registration.py`;
   // R11.9 pydantic-JSON `Z` writer shape).
   await store.set(key, serializeClientInfoPayload(clientInfo));
 

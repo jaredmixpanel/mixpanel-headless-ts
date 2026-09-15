@@ -76,7 +76,7 @@ export interface BookmarkUrlMethods {
    * @param body - `{slug, type, params}` plus optional `name`,
    *   `description`, and `bookmark_id`. `type` is one of `insights`,
    *   `funnels`, `retention`, `flows`.
-   * @param signal - Optional cancellation signal (R6.7).
+   * @param signal - Optional cancellation signal.
    * @returns The stored record (`results` unwrapped): `slug`, `type`,
    *   `params`, `project_id`, `created_at` and friends.
    * @throws AuthenticationError - Invalid or expired credentials (401).
@@ -98,7 +98,7 @@ export interface BookmarkUrlMethods {
    * mapped to {@link ReportLinkNotFoundError} with that explanation.
    *
    * @param slug - The 12-character slug.
-   * @param signal - Optional cancellation signal (R6.7).
+   * @param signal - Optional cancellation signal.
    * @returns The record (`results` unwrapped): `slug`, `type`, `params`,
    *   optional `name`, `description`, `overrides`, `bookmark` /
    *   `bookmark_id`, `project_id`, `created_at`.
@@ -123,7 +123,7 @@ export interface BookmarkUrlMethods {
    * both cases. The Authorization header is never logged.
    *
    * @param code - The shortlink code after `/s/`.
-   * @param signal - Optional cancellation signal (R6.7).
+   * @param signal - Optional cancellation signal.
    * @returns The absolute target URL. It is not parsed or validated here.
    * @throws AuthenticationError - 401, or a redirect (header or script)
    *   to `/login`.

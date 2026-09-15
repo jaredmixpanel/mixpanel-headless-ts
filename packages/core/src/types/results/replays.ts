@@ -445,7 +445,7 @@ export class ReplayBundle {
 
   /**
    * One row per `(target_desc, normalized_url)` with click counts
-   * (Python `elements_df` property, `types.py:13512-13547`). Closed at
+   * (Python `elements_df` property, `types.py`). Closed at
    * B5-S3 — the `real_clicks` + `url_normalizer` dependencies landed
    * with the aggregators.
    *
@@ -518,7 +518,7 @@ export class ReplayBundle {
 
   /**
    * Rank the most-clicked targets across every replay in the bundle
-   * (Python `top_clicks`, `types.py:13563-13588`).
+   * (Python `top_clicks`, `types.py`).
    *
    * @param n - Maximum number of click targets to return. Default 10.
    * @returns `{target_desc, count}` rows, descending by count.
@@ -529,7 +529,7 @@ export class ReplayBundle {
 
   /**
    * Find rage-click bursts — repeated clicks on one target in a tight
-   * window (Python `rage_clicks`, `types.py:13590-13613`).
+   * window (Python `rage_clicks`, `types.py`).
    *
    * @param options - `threshold` (default 3) / `windowMs` (default
    *   1000).
@@ -543,7 +543,7 @@ export class ReplayBundle {
 
   /**
    * Find idle stretches between consecutive actions longer than a
-   * threshold (Python `long_pauses`, `types.py:13615-13636`).
+   * threshold (Python `long_pauses`, `types.py`).
    *
    * @param thresholdS - Minimum pause length in seconds. Default 10.
    * @returns `{replay_id, t_start, duration_s}` rows.
@@ -555,7 +555,7 @@ export class ReplayBundle {
   /**
    * New bundle whose action labels contain `actionSequence` as a
    * CONTIGUOUS subsequence (Python `find_pattern`,
-   * `types.py:13718-13756`).
+   * `types.py`).
    *
    * @param actionSequence - Labels to look for, in order. An empty list
    *   matches every replay (returns a full clone).
@@ -589,7 +589,7 @@ export class ReplayBundle {
 
   /**
    * New bundle of only the replays that emitted a console error
-   * (Python `error_sessions`, `types.py:13758-13781`).
+   * (Python `error_sessions`, `types.py`).
    *
    * @returns The filtered bundle; empty when the bundle has no console
    *   errors.
@@ -601,7 +601,7 @@ export class ReplayBundle {
 
   /**
    * New bundle with up to `n` replays, deterministic per `seed`
-   * (Python `sample`, `types.py:13808-13831`). Closed at B5-S3 with
+   * (Python `sample`, `types.py`). Closed at B5-S3 with
    * FULL CPython `random.Random(seed).sample` parity (decision S3-D1,
    * `B5-S3-notes.md`) — the same seed selects the same replays in both
    * runtimes, not merely self-consistently.
@@ -632,7 +632,7 @@ export class ReplayBundle {
 
   /**
    * Markdown rollup of the bundle: header totals plus per-session
-   * timelines (Python `summary_markdown`, `types.py:13857-13886`).
+   * timelines (Python `summary_markdown`, `types.py`).
    *
    * @returns A markdown string; `"# No replays in bundle\n"` when the
    *   bundle is empty.

@@ -913,7 +913,7 @@ export class FlowQueryResult {
 
   /**
    * The parent-linked roots of the tree-mode data — TS twin of
-   * Python's `anytree` property (`types.py:11475-11498`), closed at
+   * Python's `anytree` property, closed at
    * B5-S2 alongside {@link FlowTreeNode.toAnytree}.
    *
    * Python caches into `_anytree_cache`; the TS build is pure, so the

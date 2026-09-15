@@ -193,7 +193,7 @@ describe("TestFormulaValidation", () => {
 });
 
 // =============================================================================
-// Reusable validate_time_args() (US2 shared-infra) — test_query_validation.py:658
+// Reusable validate_time_args() (US2 shared-infra) — test_query_validation.py
 // =============================================================================
 
 describe("TestValidateTimeArgs", () => {

@@ -4,7 +4,7 @@
  * Hand-written ports of the Pydantic entity models (phase2-design C5,
  * packet P2-7): the PYTHON models are the source of record; vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling (R3.6/R7.6); optionality follows
+ * keep their exact Python spelling; optionality follows
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
@@ -18,7 +18,7 @@ import {
 
 /**
  * Constructor input for {@link ProjectWebhook} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface ProjectWebhookInit {
   /** Webhook ID (UUID string). */
@@ -44,7 +44,7 @@ export interface ProjectWebhookInit {
 /**
  * Response model for a project webhook.
  *
- * Mirror of Python `mixpanel_headless.types.ProjectWebhook` (types.py:3929;
+ * Mirror of Python `mixpanel_headless.types.ProjectWebhook` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class ProjectWebhook extends EntityModel<ProjectWebhookInit> {
@@ -112,7 +112,7 @@ export class ProjectWebhook extends EntityModel<ProjectWebhookInit> {
 
 /**
  * Constructor input for {@link CreateWebhookParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CreateWebhookParamsInit {
   /** Webhook name. */
@@ -130,7 +130,7 @@ export interface CreateWebhookParamsInit {
 /**
  * Parameters for creating a webhook.
  *
- * Mirror of Python `mixpanel_headless.types.CreateWebhookParams` (types.py:3979;
+ * Mirror of Python `mixpanel_headless.types.CreateWebhookParams` (types.py;
  * model_config: extra='ignore').
  */
 export class CreateWebhookParams extends EntityModel<CreateWebhookParamsInit> {
@@ -186,7 +186,7 @@ export class CreateWebhookParams extends EntityModel<CreateWebhookParamsInit> {
 
 /**
  * Constructor input for {@link UpdateWebhookParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface UpdateWebhookParamsInit {
   /** New name. */
@@ -206,7 +206,7 @@ export interface UpdateWebhookParamsInit {
 /**
  * Parameters for updating a webhook (PATCH semantics).
  *
- * Mirror of Python `mixpanel_headless.types.UpdateWebhookParams` (types.py:4014;
+ * Mirror of Python `mixpanel_headless.types.UpdateWebhookParams` (types.py;
  * model_config: extra='ignore').
  */
 export class UpdateWebhookParams extends EntityModel<UpdateWebhookParamsInit> {
@@ -265,7 +265,7 @@ export class UpdateWebhookParams extends EntityModel<UpdateWebhookParamsInit> {
 
 /**
  * Constructor input for {@link WebhookTestParams} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface WebhookTestParamsInit {
   /** URL to test. */
@@ -283,7 +283,7 @@ export interface WebhookTestParamsInit {
 /**
  * Parameters for testing webhook connectivity.
  *
- * Mirror of Python `mixpanel_headless.types.WebhookTestParams` (types.py:4050;
+ * Mirror of Python `mixpanel_headless.types.WebhookTestParams` (types.py;
  * model_config: extra='ignore').
  */
 export class WebhookTestParams extends EntityModel<WebhookTestParamsInit> {
@@ -339,7 +339,7 @@ export class WebhookTestParams extends EntityModel<WebhookTestParamsInit> {
 
 /**
  * Constructor input for {@link WebhookTestResult} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface WebhookTestResultInit {
   /** Whether test succeeded. */
@@ -353,7 +353,7 @@ export interface WebhookTestResultInit {
 /**
  * Response model for webhook connectivity test.
  *
- * Mirror of Python `mixpanel_headless.types.WebhookTestResult` (types.py:4082;
+ * Mirror of Python `mixpanel_headless.types.WebhookTestResult` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class WebhookTestResult extends EntityModel<WebhookTestResultInit> {
@@ -403,7 +403,7 @@ export class WebhookTestResult extends EntityModel<WebhookTestResultInit> {
 
 /**
  * Constructor input for {@link WebhookMutationResult} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface WebhookMutationResultInit {
   /** Webhook ID. */
@@ -415,7 +415,7 @@ export interface WebhookMutationResultInit {
 /**
  * Response model for webhook create/update (returns id + name only).
  *
- * Mirror of Python `mixpanel_headless.types.WebhookMutationResult` (types.py:4110;
+ * Mirror of Python `mixpanel_headless.types.WebhookMutationResult` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class WebhookMutationResult extends EntityModel<WebhookMutationResultInit> {

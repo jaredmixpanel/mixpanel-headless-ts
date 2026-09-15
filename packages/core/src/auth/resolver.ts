@@ -19,7 +19,7 @@
  * **R9.4 — injected sources (THE core decision of the shard)**: Python
  * reads `os.environ` inline and defaults `config=ConfigManager()` /
  * `bridge=load_bridge()`. This core takes REQUIRED injected sources —
- * no defaults, no I/O, no `process.env`, no `node:*` (R9.1); B8
+ * no defaults, no I/O, no `process.env`, no `node:*`; B8
  * (`packages/node`) wires `process.env`, the TOML `ConfigManager`, and
  * the bridge loader to these interfaces BY NAME.
  */
@@ -145,13 +145,13 @@ export interface ResolveSessionOptions {
 /**
  * Runtime region set derived from the Phase-2 literal table — never a
  * re-derived list (packet §2.1: the `_VALID_REGIONS` twin,
- * `resolver.py:53`).
+ * `resolver.py`).
  */
 const VALID_REGIONS: ReadonlySet<string> = new Set(REGION_VALUES);
 
 /**
  * Return `MP_REGION` if it's a valid region literal, else `null`
- * (`_env_region`, `resolver.py:56-78`). Empty string = absent
+ * (`_env_region`, `resolver.py`). Empty string = absent
  * (watchlist #6).
  *
  * @param env - The env bag.
@@ -179,7 +179,7 @@ function envRegion(env: ResolverEnv): Region | null {
 
 /**
  * Synthesize a `ServiceAccount` if the full SA env quad is present
- * (`_env_account_from_service_quad`, `resolver.py:81-107`).
+ * (`_env_account_from_service_quad`, `resolver.py`).
  *
  * Evaluation order is byte-for-byte: {@link envRegion} runs BEFORE the
  * completeness guard, so an invalid `MP_REGION` aborts resolution even
@@ -224,7 +224,7 @@ function envAccountFromServiceQuad(env: ResolverEnv): Account | null {
 
 /**
  * Synthesize an `OAuthTokenAccount` from `MP_OAUTH_TOKEN` env
- * (`_env_account_from_oauth_token`, `resolver.py:110-132`). Requires
+ * (`_env_account_from_oauth_token`, `resolver.py`). Requires
  * `MP_OAUTH_TOKEN` + `MP_PROJECT_ID` + `MP_REGION`; the SA quad takes
  * precedence (PR #125 — preserved by {@link resolveAccountAxis}).
  *
@@ -275,7 +275,7 @@ export interface ResolveAccountAxisArgs {
 
 /**
  * Resolve the account axis per the documented priority order (port of
- * `resolve_account_axis`, `resolver.py:135-176`).
+ * `resolve_account_axis`, `resolver.py`).
  *
  * Order: env SA quad first (PR #125), then OAuth-token env, then
  * explicit `account=` (config load), then the target's account, then
@@ -329,7 +329,7 @@ export interface ResolveProjectAxisArgs {
 
 /**
  * Resolve the project axis per the documented priority order (port of
- * `resolve_project_axis`, `resolver.py:179-221`).
+ * `resolve_project_axis`, `resolver.py`).
  *
  * Order (FR-017): env > param > target > bridge >
  * `account.default_project`. There is NO `[active].project` rung —
@@ -386,7 +386,7 @@ export function resolveProjectAxis(
 
 /**
  * Return `MP_WORKSPACE_ID` as a validated positive int, or `null`
- * (port of `env_workspace_id`, `resolver.py:224-253`; consumed by name
+ * (port of `env_workspace_id`, `resolver.py`; consumed by name
  * from the W1-D1 `ResolverSeams.envWorkspaceId` seam).
  *
  * Parsing is the CPython `int(str)` grammar via `pythonInt` (R11.7 —
@@ -441,7 +441,7 @@ interface ResolveWorkspaceAxisArgs {
 
 /**
  * Resolve the workspace axis per the documented priority order (port
- * of `resolve_workspace_axis`, `resolver.py:256-289`).
+ * of `resolve_workspace_axis`, `resolver.py`).
  *
  * Order (FR-017): env > param > target > bridge >
  * `[active].workspace`. `null` is a valid terminal value (lazy
@@ -472,7 +472,7 @@ function resolveWorkspaceAxis(args: ResolveWorkspaceAxisArgs): number | null {
 
 /**
  * Collect custom HTTP headers from settings + bridge (port of
- * `_resolve_headers`, `resolver.py:292-315`).
+ * `_resolve_headers`, `resolver.py`).
  *
  * `[settings].custom_header` contributes a single entry; the bridge
  * contributes a multi-entry map. Bridge wins on collision (packet
@@ -501,8 +501,8 @@ function resolveHeaders(
 
 /**
  * Return the multi-line FR-024 error text for an unresolvable account
- * axis (port of `format_no_account_error`, `resolver.py:318-330`).
- * Message text is out of contract (R5.4) but ported as-is.
+ * axis (port of `format_no_account_error`, `resolver.py`).
+ * Message text is out of contract but ported as-is.
  *
  * @returns The error message body.
  */
@@ -522,7 +522,7 @@ function formatNoAccountError(): string {
 
 /**
  * Return the multi-line FR-024 error text for an unresolvable project
- * axis (port of `format_no_project_error`, `resolver.py:333-359` —
+ * axis (port of `format_no_project_error`, `resolver.py` —
  * two message shapes: with and without a resolved account).
  *
  * @param account - The resolved account (when available) so the error
@@ -555,7 +555,7 @@ function formatNoProjectError(account: Account | null = null): string {
 
 /**
  * Resolve a {@link Session} from per-axis inputs and injected sources
- * (port of `resolve_session`, `resolver.py:362-465`).
+ * (port of `resolve_session`, `resolver.py`).
  *
  * Per FR-016 the three axes resolve independently; per FR-017 each
  * axis consults env → param → target → bridge → config in priority

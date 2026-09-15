@@ -5,7 +5,7 @@
 // Four inputs — the three per phase1-design D12 plus the TS-6 authored
 // supplement:
 //   1. conformance-runner/corpus/typescript-port-api-map.json — authority
-//      for WORKSPACE member names/params/kwonly (R7.3). ts_signature
+//      for WORKSPACE member names/params/kwonly. ts_signature
 //      strings are NON-NORMATIVE sketches and are never consumed
 //      (naming-map §4).
 //   2. conformance-runner/corpus/api-index.json — authority for every
@@ -115,7 +115,7 @@ const workspaceMembers = new Map(
   apiMapJson.json.workspace_members.map((member) => [member.name, member]),
 );
 
-// Merge the authored supplement into the api-index universe (TS-6/D13).
+// Merge the authored supplement into the api-index universe.
 // A name in BOTH sources means the supplement went stale after a corpus
 // re-extraction started recording it — fail hard rather than pick one.
 const universe = { ...apiIndex.json };

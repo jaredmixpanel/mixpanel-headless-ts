@@ -1,7 +1,7 @@
 /**
  * Lookup-table wire methods (App API + external GCS) — Phase-3 packet
  * B4-C5 port of the `MixpanelAPIClient` lookup-tables range
- * (`api_client.py:7546-7982`).
+ * (`api_client.py`).
  *
  * Three wire paths coexist, ported verbatim:
  * - the JSON CRUD (list/upload-url/upload-status/update/delete/
@@ -50,7 +50,7 @@ export interface ListLookupTablesOptions {
    * spells its digits).
    */
   readonly data_group_id?: number | bigint | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -60,7 +60,7 @@ export interface DownloadLookupTableOptions {
   readonly file_name?: string | null | undefined;
   /** Optional row limit. */
   readonly limit?: number | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -68,7 +68,7 @@ export interface DownloadLookupTableOptions {
 export interface LookupTableMethods {
   /**
    * List lookup tables (`list_lookup_tables`,
-   * `api_client.py:7546-7582` — GET `data-definitions/lookup-tables/`).
+   * `api_client.py` — GET `data-definitions/lookup-tables/`).
    *
    * @param options - Optional `data_group_id` filter + signal.
    * @returns The table list verbatim.

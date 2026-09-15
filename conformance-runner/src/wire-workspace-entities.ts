@@ -19,7 +19,7 @@
  * `Uint8Array` results (`download_lookup_table`) encode through the
  * codec registry's `$type: bytes` branch.
  *
- * Kinds: all 143 names are **wire_api** (`registry.py:99-104` — the
+ * Kinds: all 143 names are **wire_api** (`registry.py` — the
  * only `_WORKSPACE_STATE_NAMES` entries are `use`/`close`/
  * `clear_discovery_cache`, none of which live here). B6 adds ZERO
  * builder-kind apis, so there is no oracle-strategy registration in
@@ -134,7 +134,7 @@ declare global {
  * counterpart of the B5 output float twins; Discrepancy #12 mechanics).
  *
  * The recorder tags INTEGRAL floats inside rich (`$type`-tagged model)
- * payloads as `{$type: "float", value: repr}` (`codecs.py:185-207`), and
+ * payloads as `{$type: "float", value: repr}` (`codecs.py`), and
  * the runner decodes those tags to {@link PyFloat} carriers. Python's
  * replay passes a real `float` whose `json.dumps` spelling is exactly
  * that repr (`1.0`, not `1`); a native JS number cannot carry the

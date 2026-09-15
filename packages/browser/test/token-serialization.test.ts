@@ -1,9 +1,9 @@
 // Layer-3 suite for the browser store's WRITER shapes (b9-packets.md
 // §2.1 R11.9 rule + §2.6 row 2). Python twins for the byte shapes:
 // - tokens payload = the tokens_{region}.json twin — `save_tokens`,
-//   `storage.py:451-478` (`datetime.isoformat()` → `+00:00`, never `Z`);
+//   `storage.py` (`datetime.isoformat()` → `+00:00`, never `Z`);
 // - client-info payload = the client_{region}.json twin —
-//   `save_client_info`, `storage.py:526-543` (pydantic JSON mode → `Z`).
+//   `save_client_info`, `storage.py` (pydantic JSON mode → `Z`).
 // Byte-parity goldens copied WITH CITE from the B8 probe/golden set
 // (`b8-reviewB-resolution.md` F2 table: saveTokens renders `+00:00`
 // even from a `Z`-spelled model; saveClientInfo renders `Z` even from

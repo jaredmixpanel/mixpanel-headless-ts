@@ -1,5 +1,5 @@
 // Translated DiscoveryService tests (B5-S1, packet §4): assertion-for-
-// assertion port of tests/unit/test_discovery.py (R10.2) — ALL 10
+// assertion port of tests/unit/test_discovery.py — ALL 10
 // classes (TestDiscoveryService :62, TestListEvents :95,
 // TestListProperties :236, TestFindSimilarEvents :360,
 // TestListPropertyValues :465, TestClearCache :580, TestListFunnels
@@ -11,7 +11,7 @@
 //   `createMockClient` httpx.MockTransport analog
 //   (`test-support/client-test-helpers.ts`); `success_handler` ->
 //   `successHandler`.
-// - Python's `_cache` dict -> the `cache` Map (R4.8); `== {}` asserts
+// - Python's `_cache` dict -> the `cache` Map; `== {}` asserts
 //   become `.size === 0`.
 // - Handlers that `assert` on the captured request (`test_list_top_
 //   events_with_type_parameter`, `..._with_limit_parameter`) capture
@@ -21,7 +21,7 @@
 // - `warnings.catch_warnings(record=True)` -> the injected
 //   {@link WarningSink} collector; `simplefilter("error")` (a warning
 //   FAILS the test) -> a sink that throws.
-// - `test_mixed_warning_stacklevel_points_at_user_frame` (:1410) has no
+// - `test_mixed_warning_stacklevel_points_at_user_frame` has no
 //   TS analog: `warnings.warn(stacklevel=N)` attributes a warning to a
 //   caller frame, and the TS side channel is an injected sink with no
 //   frame attribution. The behaviour it pins (the mixed-type warning
@@ -56,7 +56,7 @@ import {
 type Handler = (request: CapturedFetchRequest) => CannedResponse;
 
 /**
- * The `discovery_factory` fixture (test_discovery.py:26-59).
+ * The `discovery_factory` fixture.
  *
  * @param handler - The canned-response handler.
  * @param warn - Optional warning sink (Python's warnings machinery).
@@ -73,7 +73,7 @@ function discoveryFactory(
   );
 }
 
-/** The `success_handler` fixture (conftest.py:311-317). */
+/** The `success_handler` fixture. */
 const successHandler: Handler = () => ({ status: 200, json: [] });
 
 describe("TestDiscoveryService", () => {
@@ -682,7 +682,7 @@ describe("TestListTopEvents", () => {
 
 describe("TestListSubproperties", () => {
   /**
-   * The `_values_handler` static helper (test_discovery.py:1083-1092).
+   * The `_values_handler` static helper.
    *
    * @param values - The canned property-value strings.
    * @returns A handler always replying with them.

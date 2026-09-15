@@ -72,7 +72,7 @@ import { expectThrows } from "../../test-support/raises.js";
 
 /**
  * Frozen `today` seam used wherever Python patches
- * `bookmark_builders.date` (`test_bookmark_builders.py:56-58`).
+ * `bookmark_builders.date`.
  *
  * @param iso - The date the seam should report.
  * @returns A zero-arg seam function returning `iso`.
@@ -163,7 +163,7 @@ describe("buildTimeSection", () => {
 
   it("relative branch never reads the clock (no `today` seam needed)", () => {
     // NEW (packet §"Clock seam"): the from-only branch is the ONLY
-    // `date.today()` read (`bookmark_builders.py:115`).
+    // `date.today()` read.
     const seam = (): string => {
       throw new Error("clock must not be read on the relative branch");
     };
@@ -554,7 +554,7 @@ describe("patchCustomPropertyFiltersForTransform", () => {
   it("mutates in place and returns the SAME array (caution 14)", () => {
     // NEW: Python returns `filter_entries` itself; B5 consumers chain
     // `patch_custom_property_filters_for_transform(build_filter_section(...))`
-    // (`workspace.py:2897-2899`), so the aliasing is contract.
+    // (`workspace.py`), so the aliasing is contract.
     const entries: Array<Record<string, unknown>> = [
       { customPropertyId: 1, filterOperator: "is set" },
     ];
@@ -1855,7 +1855,7 @@ describe("buildFilterEntry — custom properties", () => {
 });
 
 // =============================================================================
-// NEW — buildFlowCohortFilter (`bookmark_builders.py:649-737`)
+// NEW — buildFlowCohortFilter (`bookmark_builders.py`)
 //
 // `tests/test_build_cohort_params.py` is a B5-owned Layer-3 file (packet
 // §K2 "Layer-3 test translation" defers it), but its 16
@@ -2037,7 +2037,7 @@ describe("buildFlowCohortFilter (NEW — corpus-vector mirrors)", () => {
 
   it("a single Filter (not a list) is wrapped — `isinstance(where, list)`", () => {
     // NOTE the asymmetry with buildFilterSection: this site tests
-    // `list` ONLY (`bookmark_builders.py:683`), not `(list, tuple)`.
+    // `list` ONLY, not `(list, tuple)`.
     expect(buildFlowCohortFilter(Filter.inCohort(5, "X"))).toStrictEqual({
       name: "X",
       negated: false,
@@ -2048,7 +2048,7 @@ describe("buildFlowCohortFilter (NEW — corpus-vector mirrors)", () => {
 
 // =============================================================================
 // NEW — buildCohortGroupEntry reached through buildGroupSection
-// (`bookmark_builders.py:406-466`)
+// (`bookmark_builders.py`)
 // =============================================================================
 
 describe("buildGroupSection — CohortBreakdown entries (NEW)", () => {

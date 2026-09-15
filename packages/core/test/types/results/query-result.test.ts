@@ -2,7 +2,7 @@
 // port of tests/unit/test_query_types.py (TestQueryResultConstruction,
 // TestQueryResultDataFrame, TestQueryResultSegmentedDataFrame,
 // TestQueryResultToDict) — the four-column-layout per-class row spec
-// of phase2-design C6 (R10.2).
+// of phase2-design C6.
 //
 // Translation notes: `list(df.columns)` -> `rowColumns()`;
 // `df.iloc[n]` -> `toRows()[n]`; pandas boolean-mask row selection ->

@@ -3,14 +3,14 @@
  * of the core `TokenStore` seam (`auth-effects.ts:305-362`;
  * b8-packets.md §3.1 row 6). Python twins per member:
  *
- * - `writeTokens` ← `_persist_browser_tokens` (`accounts.py:878-893`);
- * - `removeTokens` ← `logout` (`accounts.py:916-929`);
- * - `removeAccountDir` ← `_safe_rmtree_warn` (`accounts.py:278-303` —
+ * - `writeTokens` ← `_persist_browser_tokens`;
+ * - `removeTokens` ← `logout`;
+ * - `removeAccountDir` ← `_safe_rmtree_warn` (`accounts.py` —
  *   warn, NEVER raise);
- * - `clientInfoPath` ← `_client_info_path` (`accounts.py:894-915` —
+ * - `clientInfoPath` ← `_client_info_path` (`accounts.py` —
  *   honors `MP_OAUTH_STORAGE_DIR`);
  * - `accountDirExists` ← `account_dir(name).exists()` — the B7-ARB-A
- *   SEM-F2 orphan-directory probe (`accounts.py:1704-1708`;
+ *   SEM-F2 orphan-directory probe (`accounts.py`;
  *   `b7-reviewA-resolution.md:239-241`);
  * - `readTokens` ← the storage-read discipline (missing/corrupt →
  *   `null`; the member has no direct Python function — it is the B7

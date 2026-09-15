@@ -1,11 +1,11 @@
 // B6-W1 Layer-3 translation of
 // `tests/unit/test_workspace_business_context.py` (WHOLE file, 583
-// lines — packet §3 table): `TestGetBusinessContextProject` (:146),
-// `TestSetBusinessContextProject` (:230),
-// `TestClearBusinessContextProject` (:324),
-// `TestGetBusinessContextOrganization` (:350),
-// `TestSetBusinessContextOrganization` (:446),
-// `TestGetBusinessContextChain` (:483).
+// lines — packet §3 table): `TestGetBusinessContextProject`,
+// `TestSetBusinessContextProject`,
+// `TestClearBusinessContextProject`,
+// `TestGetBusinessContextOrganization`,
+// `TestSetBusinessContextOrganization`,
+// `TestGetBusinessContextChain`.
 //
 // Python's `httpx.MockTransport` handler becomes the injected-fetch
 // `fakeTransport` seam; `_make_workspace(handler)` becomes
@@ -43,7 +43,7 @@ import {
 } from "../../test-support/client-test-helpers.js";
 import { expectRejects } from "../../test-support/raises.js";
 
-/** The `_session()` helper (:54-61) — project 12345, us, oauth token. */
+/** The `_session()` helper — project 12345, us, oauth token. */
 const SESSION = makeSession({
   projectId: "12345",
   region: "us",
@@ -440,7 +440,7 @@ describe("TestGetBusinessContextChain (:483)", () => {
     });
     // Do NOT stub the MeService — the facade's own service was never
     // constructed, so `_cached_organization_id` returns None
-    // (`workspace.py:10355-10357`).
+    // (`workspace.py`).
 
     const chain = await ws.getBusinessContextChain();
 

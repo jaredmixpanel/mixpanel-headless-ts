@@ -1,9 +1,9 @@
 // Layer-3 translation — Phase-3 packet B0-2 `_handle_response` /
 // `_execute_with_retry` / `_error_message` locks. Sources:
 //
-// - tests/unit/test_api_client.py::TestRateLimiting (:441-549)
-// - tests/unit/test_api_client.py::TestErrorHandling (:1258-1311)
-// - tests/unit/test_api_client.py::TestServerErrors (:1314-1362)
+// - tests/unit/test_api_client.py::TestRateLimiting
+// - tests/unit/test_api_client.py::TestErrorHandling
+// - tests/unit/test_api_client.py::TestServerErrors
 // - tests/unit/test_api_client.py::TestPublicRequest (:1575-1795, the
 //   B0-observable subset: query_origin injection, 401/400 mapping, JSON
 //   return, 429 retry/exhaustion — request() is a thin wrapper over
@@ -11,12 +11,12 @@
 // - tests/unit/test_api_client.py::TestRetryAfterHardening (:3595-3761,
 //   minus the app_request cases → app-request.test.ts and the
 //   export-stream case → B4-C2)
-// - tests/unit/test_api_client.py::TestBlankErrorBodyFallbacks (:3859-3987)
+// - tests/unit/test_api_client.py::TestBlankErrorBodyFallbacks
 // - tests/unit/test_api_client.py::TestErrorContextSymmetry::
-//   test_401_carries_request_body (:3998-4025)
+//   test_401_carries_request_body
 // - tests/unit/_internal/test_api_client_sign_replays.py::
-//   TestSensitiveDataMapping (:150-198) + ::TestOtherHttpErrors
-//   (:206-248) — the 403 SESSION_RECORDING_SENSITIVE_DATA branch is B0
+//   TestSensitiveDataMapping + ::TestOtherHttpErrors
+//   — the 403 SESSION_RECORDING_SENSITIVE_DATA branch is B0
 //   code (R10.8's founding example); sign_replays itself is B4.
 //
 // Entry-point substitution (B0-notes decision 13): Python drives thin B4
@@ -171,7 +171,7 @@ describe("TestRateLimiting", () => {
     expect(h.calls).toHaveLength(2);
     expect(result).toStrictEqual(["event1"]);
     // Fallback path: backoff for attempt 0 = 1s (zero-jitter RNG), in ms
-    // at the sleep seam (R2.12).
+    // at the sleep seam.
     expect(h.sleepsMs).toStrictEqual([1000]);
   });
 
@@ -230,7 +230,7 @@ describe("TestPublicRequest (B0-observable subset)", () => {
   });
 
   it("caller params dict is mutated in place (Python parity)", async () => {
-    // api_client.py:744-746 writes query_origin into the CALLER's dict
+    // api_client.py writes query_origin into the CALLER's dict
     // (B0-notes decision 6 — observable Python behavior, reproduced).
     const params: Record<string, unknown> = { foo: "bar" };
     const h = harness([res(200, {})]);
@@ -598,7 +598,7 @@ describe("TestOtherHttpErrors", () => {
 });
 
 // FF3 fallthrough-tail restatement locks (playbook B0-2 checklist +
-// review-resolution R6): exact source order at api_client.py:652-662.
+// review-resolution R6): exact source order at api_client.py.
 describe("_handle_response fallthrough tail (FF3)", () => {
   it("(i) 3xx with a JSON object body is an ERROR, never a success return", async () => {
     // R2.11: redirect:'manual' makes 3xx reachable; raise_for_status runs
@@ -694,7 +694,7 @@ describe("_execute_with_retry transport-error wrapping (R2.10)", () => {
   });
 });
 
-// _error_message unit lock (api_client.py:81-106 + review-resolution R11:
+// _error_message unit lock (api_client.py + review-resolution R11:
 // `{"error": null}` and an ABSENT error key are indistinguishable to
 // Python's `.get(...) is None` — both yield the default, never "None").
 describe("errorMessage (FF6)", () => {

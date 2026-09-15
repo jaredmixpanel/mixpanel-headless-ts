@@ -104,7 +104,7 @@ function intersection(
 }
 
 describe("TestMathTypeCompleteness", () => {
-  // Port of `USER_FACING_ALIASES` (`test_bookmark_enums.py:49`).
+  // Port of `USER_FACING_ALIASES`.
   const USER_FACING_ALIASES: ReadonlySet<string> = new Set(["percentile"]);
 
   it("test_math_type_literal_subset_of_insights", () => {

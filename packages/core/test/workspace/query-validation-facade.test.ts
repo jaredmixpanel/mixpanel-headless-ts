@@ -2,7 +2,7 @@
 // §8): the B2-M1 deferral named in the
 // `test/query/query-validation.test.ts:5-15` header — assertion-for-
 // assertion port of the FACADE halves of
-// tests/unit/test_query_validation.py (R10.2), ALL 11 classes
+// tests/unit/test_query_validation.py, ALL 11 classes
 // (TestTimeRangeValidation :61, TestAggregationValidation :161,
 // TestPerMetricValidation :287, TestFormulaValidation :344,
 // TestAnalysisModeValidation :377, TestGroupByValidation :405,

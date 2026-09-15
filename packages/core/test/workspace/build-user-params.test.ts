@@ -1,5 +1,5 @@
 // Translated build_user_params tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/test_workspace_build_user_params.py (R10.2) —
+// assertion port of tests/test_workspace_build_user_params.py —
 // ALL 13 classes (TestFilterTranslation :107, TestCohortRouting :226,
 // TestPropertySelection :299, TestSortByTranslation :340,
 // TestAsOfConversion :375, TestDistinctIdHandling :408,

@@ -58,13 +58,13 @@ import type { ResolverSeams } from "./lifecycle.js";
 export interface WorkspaceOptions {
   /**
    * A pre-built RESOLVED session — the full resolver bypass
-   * (`Workspace(session=…)`, `workspace.py:473-474`). When absent, the
+   * (`Workspace(session=…)`, `workspace.py`). When absent, the
    * B7 resolver axes ({@link account} / {@link project} /
    * {@link workspace} / {@link target}) resolve through
    * `resolveSession(...)` over {@link sources}.
    */
   readonly session?: Session | undefined;
-  /** Named account from config (resolver axis, `workspace.py:427`). */
+  /** Named account from config (resolver axis, `workspace.py`). */
   readonly account?: string | null | undefined;
   /** Project ID override (resolver axis, digit string). */
   readonly project?: string | null | undefined;
@@ -73,7 +73,7 @@ export interface WorkspaceOptions {
   /**
    * Apply all three axes from `[targets.NAME]`. Mutually exclusive
    * with `account`/`project`/`workspace`
-   * (`WS1_TARGET_MUTUALLY_EXCLUSIVE`, `workspace.py:455-465`).
+   * (`WS1_TARGET_MUTUALLY_EXCLUSIVE`, `workspace.py`).
    */
   readonly target?: string | null | undefined;
   /**
@@ -85,8 +85,8 @@ export interface WorkspaceOptions {
   readonly sources?: ResolverSources | undefined;
   /**
    * Injected wire client — the test/replay seam mirroring Python's
-   * `_api_client` kwarg (`workspace.py:424-432`; conformance twin
-   * `conformance/runner/targets.py:316-328`). When absent the
+   * `_api_client` kwarg (`workspace.py`; conformance twin
+   * `conformance/runner/targets.py`). When absent the
    * constructor builds one from {@link clientOptions}.
    */
   readonly client?: MixpanelClient | undefined;
@@ -95,7 +95,7 @@ export interface WorkspaceOptions {
    * {@link client} is injected (transport, sleep/RNG/clock seams).
    */
   readonly clientOptions?: Omit<MixpanelClientOptions, "session"> | undefined;
-  /** `warnings.warn` sink threaded into the discovery service (R9.5). */
+  /** `warnings.warn` sink threaded into the discovery service. */
   readonly warn?: WarningSink | undefined;
   /**
    * Debug/warning/info log sink (R9.5 — `core` never touches
@@ -121,13 +121,13 @@ export interface WorkspaceOptions {
   /**
    * The `/me` cache store handed to every {@link MeService} this
    * facade builds (Python `MeCache(account_name=…)`,
-   * `workspace.py:874-876`). Absent → a per-account IN-MEMORY store;
+   * `workspace.py`). Absent → a per-account IN-MEMORY store;
    * B8-N2 injects the on-disk twin from `packages/node`.
    */
   readonly meCache?: ((accountName: string) => MeCacheStore) | undefined;
   /**
    * `Path(file_path).read_bytes()` for {@link Workspace.uploadLookupTable}
-   * (`workspace.py:8044`) — B6-W7 decision W7-D1. `packages/core` is
+   * (`workspace.py`) — B6-W7 decision W7-D1. `packages/core` is
    * runtime-agnostic, so the byte source is injected; the default
    * throws `UNPORTED_FILE_READ_SEAM` until B8 wires `node:fs` in
    * `packages/node`.
@@ -136,13 +136,13 @@ export interface WorkspaceOptions {
   /**
    * `time.monotonic()` in SECONDS, used by the
    * {@link Workspace.uploadLookupTable} poll deadline
-   * (`workspace.py:8099`) — B6-W7 decision W7-D2. Default:
+   * (`workspace.py`) — B6-W7 decision W7-D2. Default:
    * `Date.now() / 1000`.
    */
   readonly monotonic?: (() => number) | undefined;
 }
 
-/** Keyword-only arguments of {@link Workspace.use} (`workspace.py:552-560`). */
+/** Keyword-only arguments of {@link Workspace.use}. */
 export interface WorkspaceUseOptions {
   /** Replacement account name. */
   readonly account?: string | null | undefined;
@@ -193,7 +193,7 @@ export interface WorkspaceLogger extends DiscoveryLogger {
   /**
    * Record an informational message — added at B6-W7 for the single
    * `logger.info` site of the lookup-table upload orchestrator
-   * (`workspace.py:8062-8066`).
+   * (`workspace.py`).
    *
    * @param message - The formatted text (never vector-compared).
    */
@@ -296,7 +296,7 @@ export interface WorkspaceSchemaGraphOptions {
 }
 
 // ---------------------------------------------------------------------------
-// B5-S3 option bags (`workspace.py:10679-11292`)
+// B5-S3 option bags (`workspace.py`)
 // ---------------------------------------------------------------------------
 
 /** Keyword-only arguments of {@link Workspace.listReplays}. */
@@ -481,7 +481,7 @@ export interface WorkspaceNumericOptions extends LiveNumericOptions {
 
 /**
  * Keyword-only arguments shared by {@link Workspace.query} and
- * {@link Workspace.buildParams} (`workspace.py:2285-2340`).
+ * {@link Workspace.buildParams}.
  */
 export interface WorkspaceQueryOptions {
   /** Start date (`YYYY-MM-DD`). Overrides `last` when set. */
@@ -532,7 +532,7 @@ export interface WorkspaceQueryOptions {
 
 /**
  * Keyword-only arguments shared by {@link Workspace.queryFunnel} and
- * {@link Workspace.buildFunnelParams} (`workspace.py:3064-3125`).
+ * {@link Workspace.buildFunnelParams}.
  */
 export interface WorkspaceFunnelQueryOptions {
   /** Conversion window size. Default `14`. */
@@ -585,7 +585,7 @@ export interface WorkspaceFunnelQueryOptions {
 
 /**
  * Keyword-only arguments shared by {@link Workspace.queryFlow} and
- * {@link Workspace.buildFlowParams} (`workspace.py:3852-3877`).
+ * {@link Workspace.buildFlowParams}.
  */
 export interface WorkspaceFlowQueryOptions {
   /** Default forward step count. Default `3`. */
@@ -626,7 +626,7 @@ export interface WorkspaceFlowQueryOptions {
 
 /**
  * Keyword-only arguments shared by {@link Workspace.queryRetention} and
- * {@link Workspace.buildRetentionParams} (`workspace.py:4225-4249`).
+ * {@link Workspace.buildRetentionParams}.
  */
 export interface WorkspaceRetentionQueryOptions {
   /** Retention period unit. Default `"week"`. */
@@ -670,7 +670,7 @@ export interface WorkspaceRetentionQueryOptions {
 
 /**
  * Keyword-only arguments shared by {@link Workspace.queryUser} and
- * {@link Workspace.buildUserParams} (`workspace.py:9722-9745`).
+ * {@link Workspace.buildUserParams}.
  *
  * Python's `build_user_params` orders `limit` after `segment_by` while
  * `query_user` puts it after `sort_order` (packet Caution 8) — the
@@ -723,7 +723,7 @@ export interface WorkspaceUserQueryOptions {
 /**
  * Keyword-only arguments of {@link Workspace.runParams},
  * {@link Workspace.runFunnelParams} and
- * {@link Workspace.runRetentionParams} (`workspace.py:2518-2523`,
+ * {@link Workspace.runRetentionParams} (`workspace.py`,
  * `:3340-3345`, `:4584-4589`).
  */
 export interface WorkspaceRunParamsOptions {
@@ -741,7 +741,7 @@ export interface WorkspaceRunParamsOptions {
 
 /**
  * Keyword-only arguments of {@link Workspace.runFlowParams}
- * (`workspace.py:4170-4175`).
+ * (`workspace.py`).
  */
 export interface WorkspaceRunFlowParamsOptions {
   /**
@@ -762,7 +762,7 @@ export interface WorkspaceRunFlowParamsOptions {
 
 /**
  * Keyword-only arguments of {@link Workspace.runUserParams}
- * (`workspace.py:10141-10148`) — the execution settings
+ * (`workspace.py`) — the execution settings
  * {@link Workspace.buildUserParams} does not store, with the same
  * defaults as {@link Workspace.queryUser}.
  */

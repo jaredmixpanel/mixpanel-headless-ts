@@ -1,5 +1,5 @@
 // Translated rrweb-analyzer tests (packet B5-S3, `b5-packets.md` §5):
-// assertion-for-assertion ports (R10.2) of ALL NINE classes of
+// assertion-for-assertion ports of ALL NINE classes of
 //   tests/unit/test_rrweb_analyzer.py
 //     TestAnalyzeEventsWrapper   :162
 //     TestConsoleErrors          :199
@@ -35,7 +35,7 @@ import type { UserAction } from "../../src/replays/user-action.js";
 type Dict = Record<string, unknown>;
 
 // =============================================================================
-// Tiny event builders (`test_rrweb_analyzer.py:31-152`)
+// Tiny event builders (`test_rrweb_analyzer.py`)
 // =============================================================================
 
 /**

@@ -1,9 +1,9 @@
 // Layer-3 translation — Phase-3 packet B4-C1: the CLIENT-SIDE classes of
 // tests/unit/test_query_workspace_scoping.py (issue #198 —
 // explicit-only workspace-pin injection on Query-host requests):
-// TestQueryHostInjectionWhenPinned (:128), TestInjectionOptOut (:191),
-// TestNoWorkspacePinned (:224), TestNonQueryHostsUnaffected (:273),
-// TestPinLifecycle (:324).
+// TestQueryHostInjectionWhenPinned, TestInjectionOptOut,
+// TestNoWorkspacePinned, TestNonQueryHostsUnaffected,
+// TestPinLifecycle.
 //
 // Header exclusions (packet C1 §Layer-3):
 // - ::TestWorkspaceFacadeScoping (:379) and ::TestDiscoveryCacheAcrossUse
@@ -21,7 +21,7 @@
 // and test_caller_supplied_workspace_id already drive directly. C2
 // re-locks the wrappers end-to-end. All assertion content (single
 // request, URL host/path, workspace_id presence/absence/value) is
-// preserved (R10.2).
+// preserved.
 import { describe, expect, it } from "vitest";
 
 import { buildUrl } from "../../src/client/url.js";
@@ -33,7 +33,7 @@ import {
 
 const PINNED_WORKSPACE_ID = 777;
 
-/** `pinned_session` fixture (:48-63). */
+/** `pinned_session` fixture. */
 function pinnedSession(): ReturnType<typeof makeSession> {
   return makeSession({
     username: "test_user",
@@ -44,7 +44,7 @@ function pinnedSession(): ReturnType<typeof makeSession> {
   });
 }
 
-/** `unpinned_session` fixture (:66-78). */
+/** `unpinned_session` fixture. */
 function unpinnedSession(): ReturnType<typeof makeSession> {
   return makeSession({
     username: "test_user",

@@ -1,6 +1,6 @@
 // Translated `run_flow_params` / `run_user_params` tests (Python PR
 // #225, Linear AIE-924): assertion-for-assertion port of
-// tests/unit/test_run_flow_user_params.py (R10.2) — BOTH classes
+// tests/unit/test_run_flow_user_params.py — BOTH classes
 // (TestRunFlowParams :168, TestRunUserParams :409), plus a direct probe
 // of the `_flow_mode_from_params` twin {@link flowModeFromParams}.
 //
@@ -12,7 +12,7 @@
 //   `_execute_user_query_parallel` with `MagicMock(wraps=...)`; TS
 //   `#private` members cannot be wrapped, so the parallel path is
 //   observed through the `meta` it alone stamps (`parallel: true`,
-//   `workers: 2` — `workspace.py:10180-10185`).
+//   `workers: 2` — `workspace.py`).
 // - `try: ... finally: ws.close()` is dropped per
 //   `workspace-test-helpers.ts` (the TS facade owns no pool).
 // - The `query_flow` / `build_flow_params` round-trips pin the `today`
@@ -128,7 +128,7 @@ function flowBody(mock: MockWorkspaceClient): Record<string, unknown> {
 }
 
 // ===========================================================================
-// _flow_mode_from_params (docstring examples, workspace.py:452-459)
+// _flow_mode_from_params (docstring examples, workspace.py)
 // ===========================================================================
 
 describe("flowModeFromParams", () => {

@@ -11,7 +11,7 @@
  * — never `response.json()` / bare `JSON.parse` — so `18` vs `18.0` and
  * >2^53 integers survive into results and error `response_body` bags.
  *
- * Transport contract (R2.10/R2.11): the injected {@link RequestExecutor}
+ * Transport contract: the injected {@link RequestExecutor}
  * (B4-C1's fetch adapter) normalizes every transport failure to
  * {@link MixpanelHttpError} and sets `redirect: 'manual'`, mirroring
  * httpx (which raises on 3xx instead of silently following).
@@ -53,7 +53,7 @@ import { LosslessJsonError, parseLossless } from "./lossless-json.js";
  * Library callers therefore never observe it directly.
  */
 export class MixpanelHttpError extends Error {
-  /** HTTP status when the failure came from a live response (R2.11). */
+  /** HTTP status when the failure came from a live response. */
   readonly status: number | null;
 
   /**
@@ -232,13 +232,13 @@ function jsonDumpsLike(value: JsonValue): string {
  * `json.loads` product — consumed by `_error_message`'s non-string
  * `error` stringification (message text; out of contract per R5.4) and
  * by B4-C2's `engage_stats` non-dict guard / `get_events` /
- * `get_property_values` `str(e)` element casts (`api_client.py:2339`,
+ * `get_property_values` `str(e)` element casts (`api_client.py`,
  * `:2427`, `:2479` — exported for those R10.8 by-name consumers).
  *
  * Integer `JsonNumber` tokens map to `bigint` (Python `int`, arbitrary
  * precision); float tokens map to `number` — an INTEGRAL float token
  * (`42.0`) therefore renders `"42"` where Python says `"42.0"`, a
- * documented message-text-only approximation (R5.4).
+ * documented message-text-only approximation.
  *
  * @param value - The parsed value.
  * @returns Python's `str()` rendering (containers via `repr`).
@@ -293,7 +293,7 @@ export function parseErrorBody(text: string): JsonValue | null {
 
 /**
  * Extract a human-readable error message from a parsed error body — TS
- * port of `_error_message` (`api_client.py:81-106`).
+ * port of `_error_message`.
  *
  * Mixpanel error bodies are either a JSON object with an `error` key, a
  * plain-text blob, or nothing at all. Any of those can be empty or
@@ -323,7 +323,7 @@ export function errorMessage(
     }
     text = typeof raw === "string" ? raw : jsonValuePythonStr(raw);
   } else if (typeof responseBody === "string") {
-    // Python `body[:200]` counts CODEPOINTS (R11.6).
+    // Python `body[:200]` counts CODEPOINTS.
     text = cpSlice(responseBody, 0, 200);
   } else {
     return defaultMessage;
@@ -359,7 +359,7 @@ function parseBody(text: string): JsonValue | null {
 }
 
 /**
- * Explicit `raise_for_status` port (R2.11): throw a normalized
+ * Explicit `raise_for_status` port: throw a normalized
  * {@link MixpanelHttpError} for any non-2xx status. By the time the
  * `_handle_response` tail runs, only 1xx/3xx remain (2xx pass; every
  * 4xx/5xx raised earlier) — httpx raises `HTTPStatusError` for those,
@@ -385,7 +385,7 @@ function raiseForStatus(
 
 /**
  * Handle an API response, raising appropriate exceptions with full
- * context — TS port of `_handle_response` (`api_client.py:503-662`),
+ * context — TS port of `_handle_response`,
  * every branch in exact source order.
  *
  * Status code handling:
@@ -445,7 +445,7 @@ export function handleResponse(
     // the `sensitive_data_replay` permission. Map to SessionReplayAccessError
     // so callers can branch on it instead of pattern-matching the message.
     //
-    // Python (post-FIX-2, `api_client.py:565-574`): serialize every
+    // Python (post-FIX-2, `api_client.py`): serialize every
     // non-str JSON body for the sniff (None → ""), giving uniform
     // SUBSTRING semantics across dict/list/scalar bodies — no TypeError
     // possible (fix-of-record:
@@ -510,7 +510,7 @@ export function handleResponse(
       httpContext,
     );
   }
-  // Fallthrough tail in EXACT source order (api_client.py:652-662 /
+  // Fallthrough tail in EXACT source order (api_client.py /
   // review-resolution R6): (i) raise_for_status FIRST ...
   raiseForStatus(response, requestUrl);
   // ... (ii) object/array bodies return as-is ...
@@ -598,7 +598,7 @@ export interface ExecuteWithRetryArgs {
 
 /**
  * Execute an HTTP request with retry logic for rate limiting — TS port
- * of `_execute_with_retry` (`api_client.py:706-820`).
+ * of `_execute_with_retry`.
  *
  * The core request-execution path shared by the Query-host methods and
  * the public `request()` escape hatch (both B4). Injects the canonical
@@ -617,7 +617,7 @@ export interface ExecuteWithRetryArgs {
  * @throws QueryError - Invalid parameters (400/403/404/4xx).
  * @throws ServerError - Server-side errors (5xx).
  * @throws MixpanelHeadlessError - Code `HTTP_ERROR` for network /
- *   transport / residual-status errors (R2.10).
+ *   transport / residual-status errors.
  */
 export async function executeWithRetry(
   deps: RetryExecutorDeps,

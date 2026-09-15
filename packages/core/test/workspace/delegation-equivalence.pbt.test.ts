@@ -1,8 +1,8 @@
 /**
  * B6-W3 Layer-3 translation (packet `b6-packets.md` §5) of
  * `tests/unit/test_delegation_equivalence_pbt.py` — the WHOLE file:
- * `TestFunnelDelegation` (:102), `TestRetentionDelegation` (:152),
- * `TestMathPropertyMatrix` (:204) and `TestEventNameConsistency`
+ * `TestFunnelDelegation`, `TestRetentionDelegation`,
+ * `TestMathPropertyMatrix` and `TestEventNameConsistency`
  * (:337).
  *
  * The second CROSS-ENTITY suite W3 owns. It is TIER-INDEPENDENT: every
@@ -45,7 +45,7 @@ import {
 import type { ConversionWindowUnit } from "../../src/types/literals.js";
 
 // =============================================================================
-// Strategies (test_delegation_equivalence_pbt.py:31-95)
+// Strategies (test_delegation_equivalence_pbt.py)
 // =============================================================================
 
 /**
@@ -63,7 +63,7 @@ const validDatesArb: fc.Arbitrary<string> = fc
       `${String(y)}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
   );
 
-/** Port of the `invalid_dates` sampled_from strategy (:39-49). */
+/** Port of the `invalid_dates` sampled_from strategy. */
 const invalidDatesArb: fc.Arbitrary<string> = fc.constantFrom(
   "01/01/2024",
   "Jan 15 2025",
@@ -84,7 +84,7 @@ const maybeDatesArb: fc.Arbitrary<string | null> = fc.oneof(
 /** Port of `last_values = st.integers(min_value=-100, max_value=5000)`. */
 const lastValuesArb = fc.integer({ min: -100, max: 5000 });
 
-/** Port of `TIME_ERROR_CODES` (:54-64). */
+/** Port of `TIME_ERROR_CODES`. */
 const TIME_ERROR_CODES: ReadonlySet<string> = new Set([
   "V7_LAST_POSITIVE",
   "V8_DATE_FORMAT",
@@ -95,7 +95,7 @@ const TIME_ERROR_CODES: ReadonlySet<string> = new Set([
   "V20_LAST_TOO_LARGE",
 ]);
 
-/** Port of `_CONTROL_CHARS` (:67-72) — `_CONTROL_CHAR_RE`'s domain. */
+/** Port of `_CONTROL_CHARS` — `_CONTROL_CHAR_RE`'s domain. */
 const CONTROL_CHARS: readonly string[] = [
   ...Array.from({ length: 0x09 }, (_unused, c) => String.fromCharCode(c)),
   "\x0B",
@@ -106,7 +106,7 @@ const CONTROL_CHARS: readonly string[] = [
   "\x7F",
 ];
 
-/** Port of `_INVISIBLE_CHARS` (:75). */
+/** Port of `_INVISIBLE_CHARS`. */
 const INVISIBLE_CHARS: readonly string[] = [
   " ",
   "\u200B",

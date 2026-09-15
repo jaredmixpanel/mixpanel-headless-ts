@@ -1,6 +1,6 @@
 /**
  * Byte-buffered JSONL line splitter — TS port of `_iter_jsonl_lines`
- * (`mixpanel_headless/_internal/api_client.py:109-148`) — Phase-3 packet
+ * (`mixpanel_headless/_internal/api_client.py`) — Phase-3 packet
  * B0-2, R10.8/R2.6.
  *
  * Python iterates `response.iter_bytes()` — httpx yields DECODED

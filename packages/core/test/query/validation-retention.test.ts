@@ -21,7 +21,7 @@ import {
 import { GroupBy } from "../../src/types/index.js";
 
 // =============================================================================
-// Helpers (test_validation_retention.py:39-78)
+// Helpers (test_validation_retention.py)
 // =============================================================================
 
 /**

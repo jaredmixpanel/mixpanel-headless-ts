@@ -4,7 +4,7 @@
  * Hand-written ports of the Pydantic entity models (phase2-design C5,
  * packet P2-7): the PYTHON models are the source of record; vendored
  * schema4api types are a compile-time cross-check only. Field names
- * keep their exact Python spelling (R3.6/R7.6); optionality follows
+ * keep their exact Python spelling; optionality follows
  * R3.9/R4.10 via the model-base materialization rules.
  */
 
@@ -16,7 +16,7 @@ import {
 
 /**
  * Constructor input for {@link PublicWorkspace} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface PublicWorkspaceInit {
   /** Workspace identifier. */
@@ -44,7 +44,7 @@ export interface PublicWorkspaceInit {
 /**
  * A workspace within a Mixpanel project.
  *
- * Mirror of Python `mixpanel_headless.types.PublicWorkspace` (types.py:1635;
+ * Mirror of Python `mixpanel_headless.types.PublicWorkspace` (types.py;
  * model_config: frozen=True, extra='allow').
  */
 export class PublicWorkspace extends EntityModel<PublicWorkspaceInit> {
@@ -115,7 +115,7 @@ export class PublicWorkspace extends EntityModel<PublicWorkspaceInit> {
 
 /**
  * Constructor input for {@link CursorPagination} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface CursorPaginationInit {
   /** Number of items per page. */
@@ -129,7 +129,7 @@ export interface CursorPaginationInit {
 /**
  * Cursor-based pagination metadata from App API responses.
  *
- * Mirror of Python `mixpanel_headless.types.CursorPagination` (types.py:1696;
+ * Mirror of Python `mixpanel_headless.types.CursorPagination` (types.py;
  * model_config: frozen=True, extra='ignore').
  */
 export class CursorPagination extends EntityModel<CursorPaginationInit> {
@@ -179,7 +179,7 @@ export class CursorPagination extends EntityModel<CursorPaginationInit> {
 
 /**
  * Constructor input for {@link PaginatedResponse} — absent keys take the Python
- * defaults; `undefined` counts as absent (R4.10).
+ * defaults; `undefined` counts as absent.
  */
 export interface PaginatedResponseInit<T> {
   /** Response status (typically "ok"). */
@@ -194,7 +194,7 @@ export interface PaginatedResponseInit<T> {
 /**
  * Paginated App API response wrapper.
  *
- * Mirror of Python `mixpanel_headless.types.PaginatedResponse` (types.py:1723;
+ * Mirror of Python `mixpanel_headless.types.PaginatedResponse` (types.py;
  * model_config: frozen=True, extra='ignore'). Generic over the item
  * type exactly as Python's `PaginatedResponse(BaseModel, Generic[T])`;
  * items are NOT reconstructed here (Python's `list[T]` erases at

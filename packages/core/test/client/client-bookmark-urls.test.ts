@@ -12,7 +12,7 @@
 // - `patch("...time.sleep")` → the zero-delay `sleep` seam the helper
 //   installs; `sleep.assert_called_once_with(2.0)` becomes an assertion on
 //   the recorded ms sleeps (`[2000]`, R2.12 seconds→ms at the one seam).
-// - Error MESSAGE text is out of contract (R5.4): `str(exc) == ...` and
+// - Error MESSAGE text is out of contract: `str(exc) == ...` and
 //   `"..." in str(exc)` asserts become class / `.code` / `.statusCode` /
 //   `.details` / `.responseBody` asserts on the same inputs.
 // - `httpx.ConnectError` → a fetch that rejects with a `TypeError`.
@@ -191,7 +191,7 @@ describe("TestCreateBookmarkUrl", () => {
         () => null,
         (error: unknown) => error,
       );
-    // `match="create_bookmark_url"` is message text (R5.4) — the lock is
+    // `match="create_bookmark_url"` is message text — the lock is
     // the class: a plain MixpanelHeadlessError, not an APIError.
     expect(thrown).toBeInstanceOf(MixpanelHeadlessError);
     expect(thrown).not.toBeInstanceOf(APIError);
@@ -296,7 +296,7 @@ describe("TestGetBookmarkUrl", () => {
     expect(exc.details["slug"]).toBe(SLUG);
     expect(exc.details["project_id"]).toBe(12345);
     expect(exc.details["region"]).toBe("us");
-    // `str(exc) == ...` is message text (R5.4); the cause chain is kept.
+    // `str(exc) == ...` is message text; the cause chain is kept.
     expect(exc.cause).toBeInstanceOf(QueryError);
   });
 
@@ -333,7 +333,7 @@ describe("TestGetBookmarkUrl", () => {
       () => null,
       (error: unknown) => error,
     );
-    // `match="get_bookmark_url"` is message text (R5.4) — see above.
+    // `match="get_bookmark_url"` is message text — see above.
     expect(thrown).toBeInstanceOf(MixpanelHeadlessError);
     expect(thrown).not.toBeInstanceOf(APIError);
   });
@@ -426,7 +426,7 @@ describe("TestResolveShortLink", () => {
       headers: { Location: `/login?next=/s/${CODE}` },
     }));
     const thrown = await rejectionOf(client.resolveShortLink(CODE));
-    // `str(exc) == ...` is message text (R5.4); the class is the lock.
+    // `str(exc) == ...` is message text; the class is the lock.
     expect(thrown).toBeInstanceOf(AuthenticationError);
   });
 

@@ -32,7 +32,7 @@ export const BROWSER_EXPORT_UNSUPPORTED = "BROWSER_EXPORT_UNSUPPORTED";
  * Code for `completeLogin` called with no (or an already-consumed /
  * corrupted) pending-login record for the region (b9-packets.md §3.2
  * step 1). No Python twin by construction: Python holds the login
- * state in-process (`flow.py:268-306` locals) so a "return with no
+ * state in-process (`flow.py` locals) so a "return with no
  * pending state" cannot arise there; R9.3 is the arbiter — this is the
  * replay / expired-tab branch of the browser redirect split. Recovery:
  * a fresh `beginLogin`.

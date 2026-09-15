@@ -15,7 +15,7 @@
  *   scheduling);
  * - rejects `transport_error` slots the way NATIVE fetch rejects — a
  *   `TypeError` with `cause` from the committed table in
- *   `transport-errors.ts`, never a pre-mapped library error (R2.10);
+ *   `transport-errors.ts`, never a pre-mapped library error;
  * - rebuilds `body_stream` chunks into a `ReadableStream` that preserves
  *   the recorded chunk boundaries (D2 — gzip/JSONL chunk reassembly is a
  *   named port target).
@@ -151,7 +151,7 @@ function chunkBytes(encoding: "utf8" | "base64", data: string): Uint8Array {
  */
 /**
  * Serialize a recorded JSON `body` EXACTLY as the Python replay
- * transport does (`conformance/runner/transport.py:188-190` —
+ * transport does (`conformance/runner/transport.py` —
  * `json.dumps(body, separators=(",", ":"), ensure_ascii=False)`):
  * compact separators, stored KEY ORDER preserved (never canonicalized —
  * key order is observable to order-sensitive consumers like

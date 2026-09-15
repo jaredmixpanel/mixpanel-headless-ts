@@ -1,5 +1,5 @@
 // Translated workspace-flow tests (B5-S2, packet §3): assertion-for-
-// assertion port of tests/unit/test_workspace_flow.py (R10.2) — ALL 13
+// assertion port of tests/unit/test_workspace_flow.py — ALL 13
 // classes (TestBuildFlowParams :77, TestBuildFlowParamsFilters :360,
 // TestWorkspaceFlowPublicMethods :490, TestMultiStepNormalization :605,
 // TestMultiStepAnchorPosition :759, TestPerStepDirectionValidation :781,
@@ -9,7 +9,7 @@
 // TestFlowPropertyFilters :1176).
 //
 // The Python file also carries a REMOVAL comment for
-// `test_query_flow_raises_on_no_credentials` (:527) — nothing to
+// `test_query_flow_raises_on_no_credentials` — nothing to
 // translate.
 //
 // Translation notes:

@@ -69,7 +69,7 @@ import {
 } from "./schema-sorting.js";
 
 // =============================================================================
-// Non-sorting literal aliases (bookmark_schema.py:695-835)
+// Non-sorting literal aliases (bookmark_schema.py)
 //
 // Value tuples rather than bare `type` aliases: the model specs below
 // consume them through `lit()`, and the `TestEnumParity` port
@@ -79,7 +79,7 @@ import {
 // Those six are exported; the rest are module-private.
 // =============================================================================
 
-/** Mirrors show.py `FiltersDeterminer` (`bookmark_schema.py:695`). */
+/** Mirrors show.py `FiltersDeterminer`. */
 export const FILTERS_DETERMINER_LITERAL_VALUES = ["all", "any"] as const;
 
 /** Mirrors show.py `ConversionWindowUnit` (`:698-700`). */
@@ -355,10 +355,10 @@ function modelList(model_: () => ModelSpec): FieldType {
 }
 
 // =============================================================================
-// Insights model tree (bookmark_schema.py:837-1266)
+// Insights model tree (bookmark_schema.py)
 // =============================================================================
 
-/** Mirrors show.py `RollingMeasurement` (`bookmark_schema.py:837-842`). */
+/** Mirrors show.py `RollingMeasurement`. */
 const ROLLING_MEASUREMENT: ModelSpec = {
   name: "RollingMeasurement",
   fields: [{ key: "rollingWindowSize", type: INT, required: false }],
@@ -874,7 +874,7 @@ const SHOW_CLAUSE: UnionSpec = {
 };
 
 // =============================================================================
-// Sections (bookmark_schema.py:1238-1256)
+// Sections (bookmark_schema.py)
 // =============================================================================
 
 /** Mirrors sections.py `Sections`. */
@@ -899,7 +899,7 @@ const SECTIONS: ModelSpec = {
 };
 
 // =============================================================================
-// DisplayOptions (bookmark_schema.py:1325-1403)
+// DisplayOptions (bookmark_schema.py)
 // =============================================================================
 
 /** Mirrors display_options.py `AnnotationOptions` (`:1325-1334`). */
@@ -1045,7 +1045,7 @@ const DISPLAY_OPTIONS: ModelSpec = {
 };
 
 // =============================================================================
-// InsightsBookmarkParams root (bookmark_schema.py:1419-1473)
+// InsightsBookmarkParams root (bookmark_schema.py)
 // =============================================================================
 
 /**
@@ -1123,7 +1123,7 @@ const INSIGHTS_BOOKMARK_PARAMS: ModelSpec = {
 };
 
 // =============================================================================
-// Flows tree (bookmark_schema.py:1485-1542)
+// Flows tree (bookmark_schema.py)
 // =============================================================================
 
 /** Mirrors mixpanel_mcp/.../bookmark.py `FlowsBookmarkStep` (`:1485-1498`). */
@@ -1264,8 +1264,8 @@ export const BEHAVIOR_MEASUREMENT_MODEL: RootModelHandle =
 
 /**
  * Dispatch table behind {@link getRootModelForBookmarkType} — the
- * literal `{...}.get(bookmark_type)` of `bookmark_schema.py:353-359`,
- * as a `ReadonlyMap` (R4.8). The `"user"` entry maps to `null`
+ * literal `{...}.get(bookmark_type)` of `bookmark_schema.py`,
+ * as a `ReadonlyMap`. The `"user"` entry maps to `null`
  * explicitly (Python stores `None` in the dict), which is
  * indistinguishable from "absent" through `.get()`.
  */
@@ -1284,7 +1284,7 @@ const ROOT_MODELS: ReadonlyMap<string, RootModelHandle | null> = new Map<
  * Return the root model for a given `bookmark_type`.
  *
  * Port of `get_root_model_for_bookmark_type`
- * (`bookmark_schema.py:333-359`). Funnels and Retention reuse
+ * (`bookmark_schema.py`). Funnels and Retention reuse
  * `InsightsBookmarkParams`; user bookmarks have no canonical schema, so
  * the dispatch returns `null` and `validate_bookmark()` no-ops cleanly.
  * An UNKNOWN type also yields `null` — Python's `dict.get()` default.

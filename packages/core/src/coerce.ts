@@ -28,7 +28,7 @@
  * Failures throw {@link ParamValidationError} (kind `'param'`) or
  * {@link ResponseValidationError} (kind `'response'`, the default — R4.12
  * is a response-parsing rule) with the generic R5.5 codes; message text is
- * out of contract (R5.4).
+ * out of contract.
  */
 
 import { JsonNumber } from "./client/json-value.js";
@@ -128,7 +128,7 @@ const FLOAT_SPECIAL = /^[+-]?(?:inf|infinity|nan)$/i;
  *
  * Accepts integral numbers (`42`, `42.0` — indistinguishable in JS),
  * and integer strings (`"42"`, `" 42 "`, `"+42"`, `"1_000"`, `"42.0"`).
- * Rejects fractional numbers, booleans (R4.12), and everything else.
+ * Rejects fractional numbers, booleans, and everything else.
  *
  * @param value - The raw value to coerce.
  * @param options - Boundary kind + field name for errors.
@@ -263,7 +263,7 @@ export function coerceFloat(
 /**
  * Coerce a JSON value to a string with Pydantic-v2-lax semantics.
  *
- * Pydantic v2 does NOT lax-coerce int/float/bool/None to `str` (R4.12);
+ * Pydantic v2 does NOT lax-coerce int/float/bool/None to `str`;
  * only actual strings pass.
  *
  * @param value - The raw value to coerce.
@@ -305,7 +305,7 @@ const FALSE_STRINGS: ReadonlySet<string> = new Set([
  *
  * Accepts booleans, the numerics `0`/`1` (incl. `0.0`/`1.0`), and exactly
  * the case-insensitive string sets `true|t|yes|y|on|1` and
- * `false|f|no|n|off|0` (R4.12). Everything else is rejected.
+ * `false|f|no|n|off|0`. Everything else is rejected.
  *
  * @param value - The raw value to coerce.
  * @param options - Boundary kind + field name for errors.
@@ -344,7 +344,7 @@ export function coerceBool(
 
 /**
  * Pydantic `default_factory` semantics: the default fires ONLY when the
- * key is ABSENT from the raw object (R4.12). An explicit `null` (or any
+ * key is ABSENT from the raw object. An explicit `null` (or any
  * present value, including an explicit `undefined`, which JSON decoding
  * never produces) is returned as-is for the caller's coercer/validator to
  * accept or reject — Pydantic treats explicit `None` on a non-optional

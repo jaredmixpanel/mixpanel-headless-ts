@@ -22,7 +22,7 @@ export interface MappedApi {
   readonly entry: ApiMapEntry;
 }
 
-/** Module known to the api-index but the exact name is unmapped (D12). */
+/** Module known to the api-index but the exact name is unmapped. */
 export interface UnportedApi {
   /** Discriminant. */
   readonly status: "unported";

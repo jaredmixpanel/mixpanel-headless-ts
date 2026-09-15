@@ -20,7 +20,7 @@
  *   consumption point converts with {@link toNativeJson} — the
  *   documented point where the TS wire layer matches `json.loads`.
  * - Unlike {@link DiscoveryService} this service caches NOTHING
- *   (`live_query.py:679-681`).
+ *   (`live_query.py`).
  */
 
 import type { MixpanelClient } from "../client/client.js";
@@ -80,7 +80,7 @@ export interface LiveQueryServiceOptions {
   /**
    * `warnings.warn` sink for
    * `_extract_funnel_steps_from_series`'s unrecognized-format warning
-   * (`live_query.py:392-397`; R9.5 — `core` has no stderr).
+   * (`live_query.py`; R9.5 — `core` has no stderr).
    */
   readonly warn?: WarningSink | undefined;
 }
@@ -272,7 +272,7 @@ function inlineScope(options: InlineQueryScope): {
 
 /**
  * Segments returned per query when the caller does not ask for more
- * (`DEFAULT_SEGMENTATION_LIMIT`, `live_query.py:50`).
+ * (`DEFAULT_SEGMENTATION_LIMIT`, `live_query.py`).
  *
  * Matches the Mixpanel UI, which truncates a report at 3000 segments.
  */
@@ -280,7 +280,7 @@ export const DEFAULT_SEGMENTATION_LIMIT = 3000;
 
 /**
  * Largest `queryLimits.limit` the query API accepts
- * (`MAX_SEGMENTATION_LIMIT`, `live_query.py:56`).
+ * (`MAX_SEGMENTATION_LIMIT`, `live_query.py`).
  *
  * The cap is enforced server-side. A larger value is rejected with
  * `Query limit exceeds max limit of 50000 (<n> was given)`.
@@ -303,7 +303,7 @@ function reprLimit(value: unknown): string {
 
 /**
  * Build the `queryLimits` body fragment for a query request
- * (`_query_limits`, `live_query.py:64-99`).
+ * (`_query_limits`, `live_query.py`).
  *
  * Python rejects `bool` explicitly because `bool` subclasses `int`; in
  * TS the `typeof` check excludes booleans (and strings) on its own. A
@@ -362,7 +362,7 @@ export interface InlineQueryScopeWithLimit extends InlineQueryScope {
 
 /**
  * Service for executing live queries against the Mixpanel Query API —
- * TS port of `live_query.LiveQueryService` (`live_query.py:677`).
+ * TS port of `live_query.LiveQueryService`.
  *
  * Transforms raw API responses into the typed Phase-2 result objects.
  * Nothing is cached: analytics data changes constantly and queries
@@ -384,10 +384,10 @@ export class LiveQueryService {
 
   /**
    * Initialize the live query service (`__init__`,
-   * `live_query.py:697-704`).
+   * `live_query.py`).
    *
-   * @param apiClient - Authenticated Mixpanel client (B4, R10.8).
-   * @param options - Injected warning seam (R9.5).
+   * @param apiClient - Authenticated Mixpanel client.
+   * @param options - Injected warning seam.
    */
   constructor(
     apiClient: MixpanelClient,
@@ -403,7 +403,7 @@ export class LiveQueryService {
 
   /**
    * Run a segmentation query (`segmentation`,
-   * `live_query.py:705-759`).
+   * `live_query.py`).
    *
    * Bare property names in `on` are normalized to filter-expression
    * syntax before the wire call; the RESULT keeps the caller's
@@ -449,7 +449,7 @@ export class LiveQueryService {
   }
 
   /**
-   * Run a funnel analysis query (`funnel`, `live_query.py:761-810`).
+   * Run a funnel analysis query (`funnel`, `live_query.py`).
    *
    * @param funnelId - Funnel identifier.
    * @param fromDate - Start date (`YYYY-MM-DD`).
@@ -475,7 +475,7 @@ export class LiveQueryService {
 
   /**
    * Run a retention analysis query (`retention`,
-   * `live_query.py:812-874`).
+   * `live_query.py`).
    *
    * NOTE the wire-argument rename Python performs: the service's
    * `return_event` is the client's `event`, and `return_where` is the
@@ -525,7 +525,7 @@ export class LiveQueryService {
 
   /**
    * Query aggregate counts for multiple events (`event_counts`,
-   * `live_query.py:876-930`).
+   * `live_query.py`).
    *
    * @param events - Event names to query.
    * @param fromDate - Start date (`YYYY-MM-DD`).
@@ -560,7 +560,7 @@ export class LiveQueryService {
 
   /**
    * Query aggregate counts by property value (`property_counts`,
-   * `live_query.py:932-1001`).
+   * `live_query.py`).
    *
    * @param event - Event name to query.
    * @param propertyName - Property to segment by.
@@ -605,12 +605,12 @@ export class LiveQueryService {
   }
 
   // =========================================================================
-  // Phase 008: Query Service Enhancements (`live_query.py:1003-1565`)
+  // Phase 008: Query Service Enhancements (`live_query.py`)
   // =========================================================================
 
   /**
    * Query the activity feed for specific users (`activity_feed`,
-   * `live_query.py:1003-1077`).
+   * `live_query.py`).
    *
    * @param distinctIds - User identifiers to query.
    * @param options - Dates / limit / include / exclude / search /
@@ -650,7 +650,7 @@ export class LiveQueryService {
 
   /**
    * Query a saved report by bookmark type (`query_saved_report`,
-   * `live_query.py:1079-1124`).
+   * `live_query.py`).
    *
    * @param bookmarkId - Saved report identifier.
    * @param options - bookmark_type / from_date / to_date.
@@ -674,7 +674,7 @@ export class LiveQueryService {
 
   /**
    * Execute an inline insights query with pre-built bookmark params
-   * (`query`, `live_query.py:1126-1163`).
+   * (`query`, `live_query.py`).
    *
    * @param bookmarkParams - Pre-built bookmark params dict.
    * @param projectId - Mixpanel project ID.
@@ -702,7 +702,7 @@ export class LiveQueryService {
 
   /**
    * Execute an inline funnel query with pre-built bookmark params
-   * (`query_funnel`, `live_query.py:1165-1205`).
+   * (`query_funnel`, `live_query.py`).
    *
    * @param bookmarkParams - Pre-built funnel bookmark params dict.
    * @param projectId - Mixpanel project ID.
@@ -730,7 +730,7 @@ export class LiveQueryService {
 
   /**
    * Execute an inline retention query with pre-built bookmark params
-   * (`query_retention`, `live_query.py:1207-1247`).
+   * (`query_retention`, `live_query.py`).
    *
    * @param bookmarkParams - Pre-built retention bookmark params dict.
    * @param projectId - Mixpanel project ID.
@@ -758,7 +758,7 @@ export class LiveQueryService {
 
   /**
    * Execute an inline flow query with pre-built bookmark params
-   * (`query_flow`, `live_query.py:1249-1303`).
+   * (`query_flow`, `live_query.py`).
    *
    * The `mode` maps to the `/arb_funnels` `query_type` exactly as
    * Python does: `"paths"` → `flows_top_paths`, `"tree"` → `flows`,
@@ -800,7 +800,7 @@ export class LiveQueryService {
 
   /**
    * Query a saved Flows report (`query_saved_flows`,
-   * `live_query.py:1305-1333`).
+   * `live_query.py`).
    *
    * @param bookmarkId - Saved flows report identifier.
    * @returns The typed result with steps, breakdowns and the rate.
@@ -815,7 +815,7 @@ export class LiveQueryService {
 
   /**
    * Query the event frequency distribution (`frequency`,
-   * `live_query.py:1335-1388`).
+   * `live_query.py`).
    *
    * @param fromDate - Start date (`YYYY-MM-DD`).
    * @param toDate - End date (`YYYY-MM-DD`).
@@ -852,7 +852,7 @@ export class LiveQueryService {
 
   /**
    * Query events bucketed by numeric property ranges
-   * (`segmentation_numeric`, `live_query.py:1390-1447`).
+   * (`segmentation_numeric`, `live_query.py`).
    *
    * @param event - Event name to analyze.
    * @param fromDate - Start date (`YYYY-MM-DD`).
@@ -895,7 +895,7 @@ export class LiveQueryService {
 
   /**
    * Query the sum of a numeric property (`segmentation_sum`,
-   * `live_query.py:1449-1503`).
+   * `live_query.py`).
    *
    * @param event - Event name to analyze.
    * @param fromDate - Start date (`YYYY-MM-DD`).
@@ -936,7 +936,7 @@ export class LiveQueryService {
 
   /**
    * Query the average of a numeric property
-   * (`segmentation_average`, `live_query.py:1505-1562`).
+   * (`segmentation_average`, `live_query.py`).
    *
    * @param event - Event name to analyze.
    * @param fromDate - Start date (`YYYY-MM-DD`).

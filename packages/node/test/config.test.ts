@@ -183,7 +183,7 @@ describe("TestAddAccount", () => {
     } catch (error_) {
       error = error_;
     }
-    // PLAIN ConfigError / CONFIG_ERROR (`config.py:446`) — never
+    // PLAIN ConfigError / CONFIG_ERROR (`config.py`) — never
     // AccountExistsError (B7-ARB-B B-E2E-F1).
     expect(error).toBeInstanceOf(ConfigError);
     expect((error as ConfigError).code).toBe("CONFIG_ERROR");
@@ -330,7 +330,7 @@ describe("TestApplySession", () => {
     seed(cm);
     // Python raises bare ValueError; the coded twin is
     // ParamValidationError / VALIDATION_ERROR (fake-auth-effects.ts
-    // precedent over `config.py:826-829`).
+    // precedent over `config.py`).
     expect(() =>
       cm.applySession({
         account: "x",
@@ -770,7 +770,7 @@ describe("parent directory mode on write (CLEANUP-PLAN 8.5)", () => {
 
 // B8-ARB-A SEM-F6 (b8-reviewA-resolution.md): Python `_read_raw` wraps
 // ANY OSError from the symlink probe into ConfigError
-// (`config.py:180-183` `except OSError`); the pre-fix TS `readRaw`
+// (`config.py` `except OSError`); the pre-fix TS `readRaw`
 // rethrew errno-bearing probe failures uncoded (only
 // CredentialPathError was wrapped).
 describe("B8-ARB-A SEM-F6 probe errno-wrap lock", () => {

@@ -1,7 +1,7 @@
 /**
  * Lexicon schema + Schema Registry wire methods — Phase-3 packet B4-C5
  * port of the `MixpanelAPIClient` schemas range
- * (`api_client.py:3294-3649`).
+ * (`api_client.py`).
  *
  * Two wire paths coexist in this range, ported verbatim:
  * - `get_schemas`/`get_schema` (`:3294-3392`) ride the C1 `_request`
@@ -29,7 +29,7 @@ import { expectListResult, expectRecordResult, pythonQuote } from "./shared.js";
 export interface GetSchemasOptions {
   /** Optional entity-type PATH segment ("event", "profile", ...). */
   readonly entity_type?: string | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -37,7 +37,7 @@ export interface GetSchemasOptions {
 export interface ListSchemaRegistryOptions {
   /** Optional entity-type filter ("event", "custom_event", "profile"). */
   readonly entity_type?: string | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -47,7 +47,7 @@ export interface DeleteSchemasOptions {
   readonly entity_type?: string | null | undefined;
   /** Filter by entity name (requires `entity_type`). */
   readonly entity_name?: string | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -83,7 +83,7 @@ function resultDictGet(
 /** The C5 schema method surface (mixed into `MixpanelClient`). */
 export interface SchemaMethods {
   /**
-   * List all Lexicon schemas (`get_schemas`, `api_client.py:3294-3343`
+   * List all Lexicon schemas (`get_schemas`, `api_client.py`
    * — GET `/projects/{pid}/schemas[/{entity_type}]` on the App host
    * via the `_request` twin, `inject_project_id=False`).
    *
@@ -221,7 +221,7 @@ export function createSchemaMethods(core: ClientCore): SchemaMethods {
     getSchemas: async (options: GetSchemasOptions = {}): Promise<JsonValue> => {
       const entityType = options.entity_type;
       // entity_type is a PATH parameter, not a query parameter
-      // (`api_client.py:3319-3323` — interpolated raw, no quote()).
+      // (`api_client.py` — interpolated raw, no quote()).
       const path =
         entityType !== undefined && entityType !== null
           ? `/projects/${core.projectId()}/schemas/${entityType}`

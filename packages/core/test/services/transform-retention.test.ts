@@ -1,6 +1,6 @@
 // Translated retention-transform tests (B5-S2, packet §3 + §8): the
 // B3-K3 deferral (`B3-K3-notes.md:85-92`) — assertion-for-assertion port
-// of tests/test_transform_retention.py (R10.2), ALL 6 classes
+// of tests/test_transform_retention.py, ALL 6 classes
 // (TestTransformRetentionBasic :62, TestTransformRetentionErrors :138,
 // TestTransformRetentionNonDictSeries :321,
 // TestTransformRetentionSegments :407,
@@ -16,7 +16,7 @@
 //   and identical to Python's post-delete dict).
 // - The regex `match=` strings translate verbatim as JS regexes;
 //   `series.*list.*expected dict` relies on the same single-line text.
-// - `sorted(result.segments.keys())` is code-point ordered (R11.5), so
+// - `sorted(result.segments.keys())` is code-point ordered, so
 //   the expected `["Android", "iOS"]` order holds ("A" < "i").
 
 import { describe, expect, it } from "vitest";
@@ -28,7 +28,7 @@ import { RetentionQueryResult } from "../../src/types/results/query-engine.js";
 import { expectThrows } from "../../test-support/raises.js";
 
 // ===========================================================================
-// Shared fixtures (test_transform_retention.py:13-52)
+// Shared fixtures (test_transform_retention.py)
 // ===========================================================================
 
 const BOOKMARK_PARAMS: Record<string, unknown> = {
@@ -38,7 +38,7 @@ const BOOKMARK_PARAMS: Record<string, unknown> = {
 
 /**
  * Build a mock retention API response with sensible defaults
- * (`_mock_response`, test_transform_retention.py:20-52).
+ * (`_mock_response`, test_transform_retention.py).
  *
  * @param overrides - Keys to override in the default response dict.
  * @returns A record mimicking the retention query response shape.

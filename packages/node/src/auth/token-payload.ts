@@ -1,6 +1,6 @@
 /**
  * Canonical on-disk `tokens.json` serialization — TS port of
- * `token_payload_bytes` (`token.py:188-212`; b8-packets.md §3.1).
+ * `token_payload_bytes` (`token.py`; b8-packets.md §3.1).
  *
  * Every site that writes a per-account `tokens.json`
  * (`OnDiskTokenResolver._refresh_and_persist`, `TokenStore.writeTokens`,
@@ -39,7 +39,7 @@ export function tokenPayloadBytes(tokens: OAuthTokens): Uint8Array {
     payload["refresh_token"] = tokens.refresh_token.reveal();
   }
   // `json.dumps(payload)` default separators — `", "` / `": "`
-  // (B8-ARB-B ripple: byte parity with `token.py:212`, probed
+  // (B8-ARB-B ripple: byte parity with `token.py`, probed
   // byte-identical in `b8-reviewB-resolution.md`).
   return new TextEncoder().encode(pythonJsonDumps(payload));
 }

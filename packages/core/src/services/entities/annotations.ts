@@ -1,7 +1,7 @@
 /**
  * Annotation CRUD + tag wire methods (App API) — Phase-3 packet B4-C4
  * port of the `MixpanelAPIClient` annotations range
- * (`api_client.py:5674-5914`).
+ * (`api_client.py`).
  *
  * All methods route through B0 `appRequest` over `maybe_scoped_path`
  * (R10.8). List filters spell camelCase wire params (`fromDate`,
@@ -30,7 +30,7 @@ export interface ListAnnotationsOptions {
   readonly to_date?: string | null | undefined;
   /** Tag IDs to filter by (`,`-joined on the wire). */
   readonly tags?: readonly number[] | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -38,7 +38,7 @@ export interface ListAnnotationsOptions {
 export interface AnnotationMethods {
   /**
    * List timeline annotations (`list_annotations`,
-   * `api_client.py:5674-5720` — GET `annotations/`).
+   * `api_client.py` — GET `annotations/`).
    *
    * @param options - from_date/to_date/tags filters + signal.
    * @returns The annotation list verbatim.

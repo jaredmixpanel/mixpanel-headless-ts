@@ -10,7 +10,7 @@
  * cached fast path performs ZERO fetches.
  *
  * B9-R2 HOIST (b9-packets.md §3.1 row 6, second R10.8 ruling): the
- * fetch-pure POST half (`client_registration.py:96-170`) moved to core
+ * fetch-pure POST half (`client_registration.py`) moved to core
  * `oauth-http.ts` as `registerClient`; this module KEEPS the
  * `OAuthStorage` cache wrapper (`storage.save_client_info` write,
  * `:168` — outside the hoist) and delegates the POST. `DEFAULT_SCOPE`
@@ -43,7 +43,7 @@ export interface EnsureClientRegisteredOptions {
 
 /**
  * Ensure a Dynamic Client Registration exists for the given region
- * (port of `ensure_client_registered`, `client_registration.py:54-170`).
+ * (port of `ensure_client_registered`, `client_registration.py`).
  *
  * Checks the local cache first (BEFORE region validation — Python
  * order); a cached client with a matching `redirect_uri` returns
@@ -73,13 +73,13 @@ export async function ensureClientRegistered(
 ): Promise<OAuthClientInfo> {
   const { region, redirectUri, storage } = options;
 
-  // Check cache (`client_registration.py:91-94`).
+  // Check cache (`client_registration.py`).
   const cached = storage.loadClientInfo(region);
   if (cached !== null && cached.redirect_uri === redirectUri) {
     return cached;
   }
 
-  // Register new client (`client_registration.py:96-165`) — the POST
+  // Register new client (`client_registration.py`) — the POST
   // half delegates to the B9-R2 core hoist (module header).
   const clientInfo: OAuthClientInfo = await registerClient(
     options.fetchImpl,
@@ -89,7 +89,7 @@ export async function ensureClientRegistered(
   );
 
   // Cache for future use — persist BEFORE returning
-  // (`client_registration.py:168`; stays node-homed, outside the hoist).
+  // (`client_registration.py`; stays node-homed, outside the hoist).
   storage.saveClientInfo(clientInfo);
 
   return clientInfo;

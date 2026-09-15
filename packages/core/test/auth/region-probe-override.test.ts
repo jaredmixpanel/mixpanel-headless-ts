@@ -1,11 +1,11 @@
-// Layer-3 translation — Python PR #235 (AIE-925):
+// Layer-3 translation — Python PR #235:
 // tests/unit/test_region_probe.py::TestRegionProbeUnderApiBaseUrlOverride
 // (11 tests) + the `_probe_base_url` docstring examples.
 //
 // Mechanism substitutions (R10.2, header-cited):
 // - `monkeypatch.setenv("MP_API_BASE_URL" | "MP_APP_BASE_URL" |
 //   "MP_REGION", ...)` → the `getEnv` seam `probeRegionForCredential`
-//   already takes (R9.4) — the probe reads the three variables through
+//   already takes — the probe reads the three variables through
 //   it when no explicit `endpointOverrides` / `regionHint` is injected,
 //   exactly where Python reads `os.environ`. The explicit-injection arm
 //   is exercised alongside.

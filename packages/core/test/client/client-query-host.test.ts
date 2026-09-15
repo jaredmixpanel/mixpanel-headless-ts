@@ -1,6 +1,6 @@
 // Layer-3 translation — Phase-3 packet B4-C2 query-host locks. Sources:
 //
-// - tests/unit/test_api_client.py::TestSegmentation (:705),
+// - tests/unit/test_api_client.py::TestSegmentation,
 //   ::TestDiscovery (:765), ::TestFunnelAndRetention (:1119),
 //   ::TestActivityFeed (:3130) — ALL.
 // - tests/unit/test_api_client_phase008.py — ALL classes
@@ -11,7 +11,7 @@
 //
 // Date-defaulting tests inject a FIXED `now` (the D12 clock seam) so
 // `date.today()`-derived params are deterministic; assertion content
-// (param values, retry from_date arithmetic) is preserved (R10.2).
+// (param values, retry from_date arithmetic) is preserved.
 import { describe, expect, it } from "vitest";
 
 import { toNativeJson } from "../../src/client/json-value.js";

@@ -1,7 +1,7 @@
 // B8-N1 seam locks for the two thin node wirings (b8-packets.md §2.1
 // rows 3-4): `createNodeEnv` (call-time `process.env` reads — packet §7
 // caution 16) and `nodeReadFile` (the W7-D1 `Path(...).read_bytes()`
-// twin, `workspace.py:8044` — plain read, NO credential hardening: a
+// twin, `workspace.py` — plain read, NO credential hardening: a
 // user-supplied CSV, not a credential file).
 
 import { writeFileSync } from "node:fs";

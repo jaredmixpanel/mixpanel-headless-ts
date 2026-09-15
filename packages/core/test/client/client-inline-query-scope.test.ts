@@ -2,7 +2,7 @@
 // tests/unit/test_query_workspace_scoping.py — ONLY the two classes added
 // by the report-links work: TestExplicitWorkspaceOnInlineQueries and
 // TestInlineQueriesCanOptOutOfThePin. The older classes of that module
-// are twinned in `client-scoping.test.ts` (B4-C1), whose fixtures this
+// are twinned in `client-scoping.test.ts`, whose fixtures this
 // file mirrors.
 //
 // Translation notes:
@@ -24,7 +24,7 @@ import {
 
 const PINNED_WORKSPACE_ID = 777;
 
-/** `pinned_session` fixture (:48-63). */
+/** `pinned_session` fixture. */
 function pinnedSession(): ReturnType<typeof makeSession> {
   return makeSession({
     username: "test_user",
@@ -35,7 +35,7 @@ function pinnedSession(): ReturnType<typeof makeSession> {
   });
 }
 
-/** `unpinned_session` fixture (:66-78). */
+/** `unpinned_session` fixture. */
 function unpinnedSession(): ReturnType<typeof makeSession> {
   return makeSession({
     username: "test_user",

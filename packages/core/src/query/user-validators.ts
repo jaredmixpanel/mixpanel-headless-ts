@@ -59,7 +59,7 @@ import {
 } from "./validation-shared.js";
 
 // =============================================================================
-// Module tables (user_validators.py:26-34)
+// Module tables (user_validators.py)
 // =============================================================================
 
 /**
@@ -99,7 +99,7 @@ const PY_DIGIT_CLASS = DECIMAL_DIGIT_RUNS.map(([start, , length]) =>
 ).join("");
 
 /**
- * Port of `_ACTION_RE` (`user_validators.py:27-34`).
+ * Port of `_ACTION_RE`.
  *
  * The Python pattern is
  * `^(count\(\)|extremes\(properties\[".+"\]\)|percentile\(properties\[".+"\],\s*[\d.]+\)|numeric_summary\(properties\[".+"\]\))$`
@@ -116,7 +116,7 @@ const PY_DIGIT_CLASS = DECIMAL_DIGIT_RUNS.map(([start, , length]) =>
  * (JS `$` without `m` is strict end-of-input).
  *
  * The `u` flag makes the classes and `[^\n]` operate on codepoints,
- * matching Python's per-codepoint `str` semantics (R11.6).
+ * matching Python's per-codepoint `str` semantics.
  */
 const ACTION_RE = new RegExp(
   `^(${String.raw`count\(\)`}${String.raw`|extremes\(properties\["[^\n]+"\]\)`}${String.raw`|percentile\(properties\["[^\n]+"\],[${PY_SPACE_CLASS}]*[${PY_DIGIT_CLASS}.]+\)`}${String.raw`|numeric_summary\(properties\["[^\n]+"\]\)`})$`,
@@ -179,7 +179,7 @@ function isoParts(iso: string): [number, number, number] {
 }
 
 // =============================================================================
-// _normalize_filters (user_validators.py:37-55)
+// _normalize_filters (user_validators.py)
 // =============================================================================
 
 /**
@@ -212,7 +212,7 @@ function normalizeFilters(
 }
 
 // =============================================================================
-// validate_user_args (user_validators.py:58-476)
+// validate_user_args (user_validators.py)
 // =============================================================================
 
 /** Options bag for {@link validateUserArgs} (Python is all-kwonly). */
@@ -227,7 +227,7 @@ export interface ValidateUserArgsOptions {
   readonly sort_by?: string | null;
   /**
    * Sort direction. Accepted and ignored — Python marks the parameter
-   * `# noqa: ARG001` (`user_validators.py:64`); rule UP1 checks the
+   * `# noqa: ARG001` (`user_validators.py`); rule UP1 checks the
    * built params dict instead.
    */
   readonly sort_order?: "ascending" | "descending";
@@ -241,7 +241,7 @@ export interface ValidateUserArgsOptions {
   readonly distinct_ids?: readonly string[] | null;
   /**
    * Group profile query. Accepted and ignored — Python marks the
-   * parameter `# noqa: ARG001` (`user_validators.py:69`).
+   * parameter `# noqa: ARG001` (`user_validators.py`).
    */
   readonly group_id?: string | null;
   /** Point-in-time query date (`YYYY-MM-DD`) or timestamp. */
@@ -663,7 +663,7 @@ function checkProfilesOnlyArgs(push: PushError, args: ProfilesOnlyArgs): void {
  *
  * Python catches `(ValueError, TypeError, RuntimeError)`, so the TS
  * catch names all three arms plus the dual-inheriting
- * `ParamValidationError` (`exceptions.py:97`): `ValueError` /
+ * `ParamValidationError`: `ValueError` /
  * `RuntimeError` are the `compat/python-builtins.ts` twins and
  * `TypeError` is native. Everything else propagates exactly as Python
  * lets `KeyError` / `AttributeError` / `RecursionError` propagate.
@@ -909,7 +909,7 @@ export function validateUserArgs(
 }
 
 // =============================================================================
-// validate_user_params (user_validators.py:479-580)
+// validate_user_params (user_validators.py)
 // =============================================================================
 
 /**

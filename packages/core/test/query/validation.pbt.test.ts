@@ -40,7 +40,7 @@ import {
 } from "../../src/types/index.js";
 
 // =============================================================================
-// Strategies (test_validation_pbt.py:34-72)
+// Strategies (test_validation_pbt.py)
 // =============================================================================
 
 /** Port of `_CONTROL_CHARS` (the `_CONTROL_CHAR_RE` character set). */
@@ -177,7 +177,7 @@ describe("TestSuggestInvariants", () => {
   it("test_exact_match_always_found", () => {
     fc.assert(
       fc.property(validSetsArb, (valid) => {
-        // Python: `value = sorted(valid)[0]` — codepoint sort (R11.5).
+        // Python: `value = sorted(valid)[0]` — codepoint sort.
         const value = sortedByCodepoint([...valid])[0]!;
         const result = suggest(value, valid);
         expect(

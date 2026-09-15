@@ -8,7 +8,7 @@ import { readFile } from "node:fs/promises";
 
 /**
  * Read a user-supplied file as bytes — the `Path(...).read_bytes()`
- * twin (`workspace.py:8044`) behind `WorkspaceOptions.readFile`
+ * twin behind `WorkspaceOptions.readFile`
  * (`workspace.ts:560`, default throws `UNPORTED_FILE_READ_SEAM`).
  *
  * Deliberately a PLAIN read with NO credential hardening (no symlink

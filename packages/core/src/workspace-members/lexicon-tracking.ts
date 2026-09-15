@@ -1,12 +1,12 @@
 /**
  * B6-W6 member module — the `Workspace` Lexicon data-definition and
- * tracking/history members (`workspace.py:7197-7581` "Data Governance
- * — Data Definitions / Lexicon" and `workspace.py:8526-8648` "Data
+ * tracking/history members (`workspace.py` "Data Governance
+ * — Data Definitions / Lexicon" and `workspace.py` "Data
  * Governance — Tracking & History", both Phase 027).
  *
  * Packet contract (`b6-packets.md` §2/§8): the `workspace.ts` B6-W6
  * section holds ONE-LINE delegations into this module; every member
- * here is a THIN facade body — options-bag mapping (R3.3/R3.8), the
+ * here is a THIN facade body — options-bag mapping, the
  * params dump (W1-D4 {@link EntityModel.modelDumpExcludeNone}), the
  * like-named B4-C5 client method (`services/entities/lexicon.ts`,
  * composed onto the client at `client.ts:1077+`) and result-model
@@ -89,7 +89,7 @@ import {
 
 /**
  * Options bag of `Workspace.getEventDefinitions` — Python's `names` is
- * a REQUIRED keyword-only argument (`workspace.py:7201`), so the bag
+ * a REQUIRED keyword-only argument (`workspace.py`), so the bag
  * itself is required.
  */
 export interface WorkspaceGetEventDefinitionsOptions {
@@ -100,7 +100,7 @@ export interface WorkspaceGetEventDefinitionsOptions {
 /**
  * Options bag of `Workspace.getPropertyDefinitions` — `names` is a
  * REQUIRED keyword-only argument; `resource_type` defaults to `None`
- * (`workspace.py:7331-7336`).
+ * (`workspace.py`).
  */
 export interface WorkspaceGetPropertyDefinitionsOptions {
   /** Property names to look up (keyword-only and required in Python). */
@@ -123,12 +123,12 @@ export interface WorkspaceExportLexiconOptions {
 }
 
 // ---------------------------------------------------------------------------
-// Data Definitions — Events (`workspace.py:7201-7329`)
+// Data Definitions — Events (`workspace.py`)
 // ---------------------------------------------------------------------------
 
 /**
  * Get event definitions from Lexicon by name
- * (`get_event_definitions`, `workspace.py:7201-7233`).
+ * (`get_event_definitions`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param options - `names` (keyword-only and required in Python).
@@ -154,7 +154,7 @@ export async function getEventDefinitions(
 
 /**
  * Update an event definition in Lexicon (`update_event_definition`,
- * `workspace.py:7235-7270`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param eventName - Name of the event to update.
@@ -179,7 +179,7 @@ export async function updateEventDefinition(
 
 /**
  * Delete an event definition from Lexicon
- * (`delete_event_definition`, `workspace.py:7272-7291`).
+ * (`delete_event_definition`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param eventName - Name of the event to delete.
@@ -196,7 +196,7 @@ export async function deleteEventDefinition(
 
 /**
  * Bulk-update event definitions in Lexicon
- * (`bulk_update_event_definitions`, `workspace.py:7293-7329`).
+ * (`bulk_update_event_definitions`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param params - Bulk update parameters (dumped with
@@ -221,12 +221,12 @@ export async function bulkUpdateEventDefinitions(
 }
 
 // ---------------------------------------------------------------------------
-// Data Definitions — Properties (`workspace.py:7331-7456`)
+// Data Definitions — Properties (`workspace.py`)
 // ---------------------------------------------------------------------------
 
 /**
  * Get property definitions from Lexicon by name
- * (`get_property_definitions`, `workspace.py:7331-7373`).
+ * (`get_property_definitions`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param options - `names` (required) and `resource_type` (default
@@ -254,7 +254,7 @@ export async function getPropertyDefinitions(
 
 /**
  * Update a property definition in Lexicon
- * (`update_property_definition`, `workspace.py:7375-7410`).
+ * (`update_property_definition`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param propertyName - Name of the property to update.
@@ -279,7 +279,7 @@ export async function updatePropertyDefinition(
 
 /**
  * Bulk-update property definitions in Lexicon
- * (`bulk_update_property_definitions`, `workspace.py:7412-7456`).
+ * (`bulk_update_property_definitions`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param params - Bulk update parameters (dumped with
@@ -304,12 +304,12 @@ export async function bulkUpdatePropertyDefinitions(
 }
 
 // ---------------------------------------------------------------------------
-// Tags (`workspace.py:7458-7580`)
+// Tags (`workspace.py`)
 // ---------------------------------------------------------------------------
 
 /**
  * List all Lexicon tags (`list_lexicon_tags`,
- * `workspace.py:7460-7500`).
+ * `workspace.py`).
  *
  * The shard's ONE non-forwarding body: the list endpoint may return
  * plain tag-name STRINGS instead of `{id, name}` objects, and Python
@@ -345,7 +345,7 @@ export async function listLexiconTags(
 
 /**
  * Create a new Lexicon tag (`create_lexicon_tag`,
- * `workspace.py:7502-7528`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param params - Tag creation parameters (name required); dumped
@@ -365,7 +365,7 @@ export async function createLexiconTag(
 
 /**
  * Update a Lexicon tag (`update_lexicon_tag`,
- * `workspace.py:7530-7559`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param tagId - Tag ID (integer).
@@ -390,7 +390,7 @@ export async function updateLexiconTag(
 
 /**
  * Delete a Lexicon tag BY NAME (`delete_lexicon_tag`,
- * `workspace.py:7561-7580`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param tagName - Name of the tag to delete.
@@ -406,12 +406,12 @@ export async function deleteLexiconTag(
 }
 
 // ---------------------------------------------------------------------------
-// Tracking & History + Export (`workspace.py:8530-8648`)
+// Tracking & History + Export (`workspace.py`)
 // ---------------------------------------------------------------------------
 
 /**
  * Get tracking metadata for an event (`get_tracking_metadata`,
- * `workspace.py:8530-8556`) — returned VERBATIM; Python performs no
+ * `workspace.py`) — returned VERBATIM; Python performs no
  * model validation (`return client.get_tracking_metadata(...)`).
  *
  * @param client - The wire client.
@@ -430,7 +430,7 @@ export async function getTrackingMetadata(
 
 /**
  * Get change history for an event definition (`get_event_history`,
- * `workspace.py:8558-8583`) — returned VERBATIM, unvalidated.
+ * `workspace.py`) — returned VERBATIM, unvalidated.
  *
  * @param client - The wire client.
  * @param eventName - Name of the event.
@@ -450,7 +450,7 @@ export async function getEventHistory(
 
 /**
  * Get change history for a property definition
- * (`get_property_history`, `workspace.py:8585-8614`) — returned
+ * (`get_property_history`, `workspace.py`) — returned
  * VERBATIM, unvalidated.
  *
  * @param client - The wire client.
@@ -473,7 +473,7 @@ export async function getPropertyHistory(
 
 /**
  * Export Lexicon data definitions (`export_lexicon`,
- * `workspace.py:8618-8648`) — returned VERBATIM, unvalidated. The
+ * `workspace.py`) — returned VERBATIM, unvalidated. The
  * client owns both the default type list and the `{status: "pending"}`
  * wrapper for the async (plain-string) response.
  *

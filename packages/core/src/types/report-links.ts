@@ -6,7 +6,7 @@
  * `literals.ts`; `BookmarkUrl` (a Pydantic model) lives with the entity
  * models in `entities/bookmarks.ts`.
  *
- * Field names keep their Python snake_case spelling (R3.6) — these are
+ * Field names keep their Python snake_case spelling — these are
  * the dataclass twins whose `toDict()` output is JSON-compared.
  */
 

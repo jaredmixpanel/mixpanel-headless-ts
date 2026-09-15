@@ -37,7 +37,7 @@ export interface ClientRequestOptions {
   readonly headers?: Readonly<Record<string, string>> | null | undefined;
   /** Optional request timeout in seconds. */
   readonly timeoutSeconds?: number | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -51,7 +51,7 @@ export interface ClientAppRequestOptions {
   readonly formBody?: Record<string, string> | null | undefined;
   /** Return the full response without unwrapping `results` (Python `_raw`). */
   readonly raw?: boolean | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -75,7 +75,7 @@ export interface QueryHostRequestOptions {
    * default True; explicit opt-out forces a project-scoped query).
    */
   readonly injectWorkspaceId?: boolean | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -102,8 +102,8 @@ export interface HttpHandle {
 
 /**
  * The shared internals seam the domain-method factories (B4-C2..C5) and
- * the paginator (B4-C6) build on. Everything here is `@internal`
- * surface (R2.8): public for cross-module access, excluded from the
+ * the paginator build on. Everything here is `@internal`
+ * surface: public for cross-module access, excluded from the
  * published API docs.
  */
 export interface ClientCore {
@@ -171,7 +171,7 @@ export interface ClientCore {
   buildUrl: (kind: EndpointKind, path: string) => string;
   /**
    * Resolve the Authorization header PER REQUEST (`_get_auth_header`,
-   * `api_client.py:388-416`): service accounts return the cached Basic
+   * `api_client.py`): service accounts return the cached Basic
    * header; OAuth variants delegate to the bound resolver every call.
    *
    * @returns The header value.
@@ -224,7 +224,7 @@ export interface ClientCore {
     signal?: AbortSignal,
   ) => Promise<RawFetchResult>;
   /**
-   * The query-host request path (`_request`, `api_client.py:822-920`):
+   * The query-host request path (`_request`, `api_client.py`):
    * project-id injection + explicit-only workspace-pin injection, then
    * `executeWithRetry` with a per-request auth header.
    *

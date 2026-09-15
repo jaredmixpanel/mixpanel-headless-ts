@@ -1,5 +1,5 @@
 // Layer-3 translation — tests/unit/test_api_client_pbt.py::
-// TestActivityFeedDateRange (:673-705) → fast-check (Phase-3 packet
+// TestActivityFeedDateRange → fast-check (Phase-3 packet
 // B4-C2; the C1 header exclusion in client-pbt.test.ts pointed here).
 //
 // Strategy shape: Hypothesis `st.dates(2000-01-01 .. 2100-12-31)

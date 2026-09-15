@@ -1,5 +1,5 @@
 // Layer-3 translation of tests/unit/test_api_client.py::TestEndpoints
-// (:83-116) and ::TestBuildUrl (:281-325) — Phase-3 packet B0-2.
+// and ::TestBuildUrl — Phase-3 packet B0-2.
 //
 // Entry-point substitution (B0-notes decision 13): Python drives
 // `client._build_url(...)` on a Session-bound client; the TS B0 port is

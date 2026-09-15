@@ -1,5 +1,5 @@
 // Translated schema-graph tests (B5-S1, packet §4): assertion-for-
-// assertion port of tests/unit/test_schema_graph.py (R10.2).
+// assertion port of tests/unit/test_schema_graph.py.
 //
 // Owned here: TestApiClientBulkLexicon :274 (client-direct — translated
 // against the B4 client), TestCanonicalResourceType :378,
@@ -57,7 +57,7 @@ import {
 /** A canned-response handler (the httpx.MockTransport handler twin). */
 type Handler = (request: CapturedFetchRequest) => CannedResponse;
 
-/** `_client(handler)` (test_schema_graph.py:269-271). */
+/** `_client(handler)` (test_schema_graph.py). */
 function mockClient(handler: Handler): MixpanelClient {
   return createMockClient(makeSession(), handler).client;
 }
@@ -85,7 +85,7 @@ function edgeDensity(
   )?.density_local;
 }
 
-/** `_sample_result()` (test_schema_graph.py:50-66). */
+/** `_sample_result()`. */
 function sampleResult(): SchemaGraphResult {
   return new SchemaGraphResult({
     computed_at: "2026-06-03T00:00:00+00:00",
@@ -131,7 +131,7 @@ interface LexiconStub {
 }
 
 /**
- * `TestDiscoveryGetSchemaGraph._mock_api` (test_schema_graph.py:454-479)
+ * `TestDiscoveryGetSchemaGraph._mock_api`
  * generalized over the response triple. The flat property rows carry no
  * `events` lists; the relationship edges come from the query-API
  * per-event gather and are inverted client-side.
@@ -175,7 +175,7 @@ function lexiconStub(
     },
     core: { now: (): Date => new Date("2026-06-03T00:00:00.000Z") },
     // B6-W1: the facade constructor installs the workspace resolver
-    // (`workspace.py:775-793`); `MagicMock(spec=…)` covers it in Python.
+    // (`workspace.py`); `MagicMock(spec=…)` covers it in Python.
     hasWorkspaceResolver: false,
     setWorkspaceResolver: (): void => {},
     close: (): Promise<void> => Promise.resolve(),
@@ -190,7 +190,7 @@ function lexiconStub(
   };
 }
 
-/** The default `_mock_api` payloads (test_schema_graph.py:454-479). */
+/** The default `_mock_api` payloads. */
 function defaultMockApi(): LexiconStub {
   return lexiconStub(
     [{ name: "Purchase", displayName: "Purchase" }, { name: "Login" }],

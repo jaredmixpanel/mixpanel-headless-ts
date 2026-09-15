@@ -1,13 +1,13 @@
 /**
  * B6-W8 member module — the `Workspace` schema-registry, schema-
  * enforcement, data-audit, data-volume-anomaly and event-deletion
- * members (`workspace.py:8651-9331`, all Phase 028: registry
+ * members (`workspace.py`, all Phase 028: registry
  * :8651-8874, enforcement :8876-9024, auditing :9026-9105, anomalies
  * :9107-9199, deletion requests :9201-9331).
  *
  * Packet contract (`b6-packets.md` §2/§10): the `workspace.ts` B6-W8
  * section holds ONE-LINE delegations into this module; every member
- * here is a THIN facade body — options-bag mapping (R3.3/R3.8), the
+ * here is a THIN facade body — options-bag mapping, the
  * params dump (W1-D4 {@link EntityModel.modelDumpExcludeNone} /
  * W8-D1 {@link EntityModel.modelDump}), the like-named B4-C5 client
  * method (`services/entities/{schemas,schema-enforcement,audit,
@@ -143,12 +143,12 @@ export interface WorkspaceListDataVolumeAnomaliesOptions {
 }
 
 // ---------------------------------------------------------------------------
-// Schema Registry CRUD (`workspace.py:8651-8874`)
+// Schema Registry CRUD (`workspace.py`)
 // ---------------------------------------------------------------------------
 
 /**
  * List schema-registry entries (`list_schema_registry`,
- * `workspace.py:8654-8687`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param options - `entity_type` filter (keyword-only in Python;
@@ -177,7 +177,7 @@ export async function listSchemaRegistry(
 
 /**
  * Create a single schema definition (`create_schema`,
- * `workspace.py:8689-8720`) — the response is returned VERBATIM.
+ * `workspace.py`) — the response is returned VERBATIM.
  *
  * @param client - The wire client.
  * @param entityType - Entity type ("event", "custom_event", "profile").
@@ -200,7 +200,7 @@ export async function createSchema(
 
 /**
  * Bulk-create schemas (`create_schemas_bulk`,
- * `workspace.py:8722-8758`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param params - Bulk creation parameters (dumped with
@@ -222,7 +222,7 @@ export async function createSchemasBulk(
 
 /**
  * Update a single schema definition with merge semantics
- * (`update_schema`, `workspace.py:8760-8791`) — response VERBATIM.
+ * (`update_schema`, `workspace.py`) — response VERBATIM.
  *
  * @param client - The wire client.
  * @param entityType - Entity type.
@@ -243,7 +243,7 @@ export async function updateSchema(
 
 /**
  * Bulk-update schemas, merge semantics per entry
- * (`update_schemas_bulk`, `workspace.py:8793-8828`).
+ * (`update_schemas_bulk`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param params - Bulk update parameters (dumped with
@@ -269,7 +269,7 @@ export async function updateSchemasBulk(
 
 /**
  * Delete schemas by entity type and/or name (`delete_schemas`,
- * `workspace.py:8830-8874`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param options - `entity_type` / `entity_name` filters (both
@@ -301,12 +301,12 @@ export async function deleteSchemas(
 }
 
 // ---------------------------------------------------------------------------
-// Schema Enforcement (`workspace.py:8876-9024`)
+// Schema Enforcement (`workspace.py`)
 // ---------------------------------------------------------------------------
 
 /**
  * Get the current schema-enforcement configuration
- * (`get_schema_enforcement`, `workspace.py:8879-8911`).
+ * (`get_schema_enforcement`, `workspace.py`).
  *
  * @param client - The wire client.
  * @param options - `fields` filter (keyword-only in Python).
@@ -327,7 +327,7 @@ export async function getSchemaEnforcement(
 
 /**
  * Initialize schema enforcement (`init_schema_enforcement`,
- * `workspace.py:8913-8941`) — response VERBATIM.
+ * `workspace.py`) — response VERBATIM.
  *
  * @param client - The wire client.
  * @param params - Init parameters (dumped with `exclude_none=True,
@@ -347,7 +347,7 @@ export async function initSchemaEnforcement(
 
 /**
  * Partially update the enforcement configuration
- * (`update_schema_enforcement`, `workspace.py:8943-8971`) — response
+ * (`update_schema_enforcement`, `workspace.py`) — response
  * VERBATIM.
  *
  * @param client - The wire client.
@@ -368,7 +368,7 @@ export async function updateSchemaEnforcement(
 
 /**
  * Fully replace the enforcement configuration
- * (`replace_schema_enforcement`, `workspace.py:8973-9003`) — response
+ * (`replace_schema_enforcement`, `workspace.py`) — response
  * VERBATIM.
  *
  * @param client - The wire client.
@@ -389,7 +389,7 @@ export async function replaceSchemaEnforcement(
 
 /**
  * Delete the enforcement configuration (`delete_schema_enforcement`,
- * `workspace.py:9005-9021`) — response VERBATIM.
+ * `workspace.py`) — response VERBATIM.
  *
  * @param client - The wire client.
  * @returns The raw API response.
@@ -403,7 +403,7 @@ export async function deleteSchemaEnforcement(
 }
 
 // ---------------------------------------------------------------------------
-// Data Auditing (`workspace.py:9026-9105`) — the shard's two composite
+// Data Auditing (`workspace.py`) — the shard's two composite
 // bodies, ported branch-for-branch.
 // ---------------------------------------------------------------------------
 
@@ -464,7 +464,7 @@ function auditResponseFrom(
 
 /**
  * Run a full data audit — events plus properties (`run_audit`,
- * `workspace.py:9029-9067`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @returns The audit response (violations + `computed_at`).
@@ -479,7 +479,7 @@ export async function runAudit(client: MixpanelClient): Promise<AuditResponse> {
 
 /**
  * Run an events-only data audit (`run_audit_events_only`,
- * `workspace.py:9069-9103`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @returns The audit response (event violations only).
@@ -495,12 +495,12 @@ export async function runAuditEventsOnly(
 }
 
 // ---------------------------------------------------------------------------
-// Data Volume Anomalies (`workspace.py:9107-9199`)
+// Data Volume Anomalies (`workspace.py`)
 // ---------------------------------------------------------------------------
 
 /**
  * List detected data-volume anomalies (`list_data_volume_anomalies`,
- * `workspace.py:9110-9141`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @param options - `query_params` filters (keyword-only in Python).
@@ -525,7 +525,7 @@ export async function listDataVolumeAnomalies(
 
 /**
  * Update the status of a single anomaly (`update_anomaly`,
- * `workspace.py:9143-9169`) — response VERBATIM.
+ * `workspace.py`) — response VERBATIM.
  *
  * @param client - The wire client.
  * @param params - Update parameters (the PLAIN `model_dump(
@@ -543,7 +543,7 @@ export async function updateAnomaly(
 
 /**
  * Bulk-update anomaly statuses (`bulk_update_anomalies`,
- * `workspace.py:9171-9198`) — response VERBATIM.
+ * `workspace.py`) — response VERBATIM.
  *
  * @param client - The wire client.
  * @param params - Bulk update parameters (the PLAIN `model_dump(
@@ -562,12 +562,12 @@ export async function bulkUpdateAnomalies(
 }
 
 // ---------------------------------------------------------------------------
-// Event Deletion Requests (`workspace.py:9201-9331`)
+// Event Deletion Requests (`workspace.py`)
 // ---------------------------------------------------------------------------
 
 /**
  * List all event deletion requests (`list_deletion_requests`,
- * `workspace.py:9204-9227`).
+ * `workspace.py`).
  *
  * @param client - The wire client.
  * @returns The `EventDeletionRequest` models, in response order.
@@ -588,7 +588,7 @@ export async function listDeletionRequests(
 
 /**
  * Create a new event deletion request (`create_deletion_request`,
- * `workspace.py:9229-9266`) — the API returns the updated FULL list.
+ * `workspace.py`) — the API returns the updated FULL list.
  *
  * @param client - The wire client.
  * @param params - Deletion parameters (dumped with
@@ -614,7 +614,7 @@ export async function createDeletionRequest(
 
 /**
  * Cancel a pending deletion request (`cancel_deletion_request`,
- * `workspace.py:9268-9294`) — the API returns the updated FULL list.
+ * `workspace.py`) — the API returns the updated FULL list.
  *
  * @param client - The wire client.
  * @param requestId - Deletion request ID to cancel (positional in
@@ -638,7 +638,7 @@ export async function cancelDeletionRequest(
 
 /**
  * Preview what events a deletion filter would match
- * (`preview_deletion_filters`, `workspace.py:9296-9331`) — read-only,
+ * (`preview_deletion_filters`, `workspace.py`) — read-only,
  * and the list is returned VERBATIM (no model validation).
  *
  * @param client - The wire client.

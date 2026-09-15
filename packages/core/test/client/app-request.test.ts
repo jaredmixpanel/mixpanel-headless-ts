@@ -1,7 +1,7 @@
 // Layer-3 translation of tests/unit/test_app_api_client.py::TestAppRequest
 // (:78-303), ::TestAppRequestFormBody (:306-403), ::TestCodedAppRequestCodes
 // (:873-929), plus the app_request halves of
-// tests/unit/test_api_client.py::TestRetryAfterHardening (:3763-3808) and
+// tests/unit/test_api_client.py::TestRetryAfterHardening and
 // ::TestErrorContextSymmetry (:4027-4116), and the appRequest-level
 // re-check of tests/unit/test_settings_headers.py::
 // TestSessionHeadersOnOutboundRequests — Phase-3 packet B0-2.
@@ -169,7 +169,7 @@ describe("TestAppRequest", () => {
 
   it("test_rate_limit_fallthrough_carries_project_id", async () => {
     // max_retries below zero: the loop never runs — the reduced-shape
-    // fallthrough raise (api_client.py:1381-1387, FF4) fires.
+    // fallthrough raise (api_client.py, FF4) fires.
     const h = harness([res(200, { status: "ok", results: [] })], {
       maxRetries: -1,
     });
@@ -264,7 +264,7 @@ describe("TestAppRequest", () => {
   });
 
   it("NO query_origin on App-API params (packet bullet)", async () => {
-    // api_client.py:1268-1272: caller-supplied params only — some App
+    // api_client.py: caller-supplied params only — some App
     // API endpoints reject unknown query parameters.
     const h = harness([res(200, { status: "ok", results: [] })]);
     await appRequest(h.deps, "GET", "/dashboards");
@@ -294,7 +294,7 @@ describe("TestAppRequest", () => {
   });
 
   it("raw: true returns the full envelope without unwrapping", async () => {
-    // Python `_raw=True` (api_client.py:1364-1366).
+    // Python `_raw=True` (api_client.py).
     const h = harness([res(200, { status: "ok", results: [1] })]);
     const result = await appRequest(h.deps, "GET", "/dashboards", {
       raw: true,
@@ -308,7 +308,7 @@ describe("TestAppRequest", () => {
 
 describe("TestAppRequestFormBody", () => {
   it("test_form_body_sent_as_form_encoded (B0 half: formBody threading)", async () => {
-    // The wire content-type assertion is the fetch adapter's (B4); the
+    // The wire content-type assertion is the fetch adapter's; the
     // B0 lock: formBody reaches the transport verbatim, jsonBody stays
     // null, and the method is preserved.
     const h = harness([res(200, { status: "ok", results: { id: 1 } })]);
@@ -507,7 +507,7 @@ describe("app_request 422 with non-JSON body", () => {
 });
 
 // Arbiter fixes F1 + F3/A2 (b0-review-resolution): the 422 body parse is
-// a `response.json()` site in Python (`api_client.py:1339-1342`) — it
+// a `response.json()` site in Python — it
 // accepts json.loads' non-finite constants, and its catch scope is
 // `except json.JSONDecodeError` only (a RecursionError propagates).
 describe("app_request 422 body-parse fidelity (arbiter fixes F1/F3)", () => {

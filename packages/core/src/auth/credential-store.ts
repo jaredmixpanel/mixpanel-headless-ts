@@ -25,7 +25,7 @@
  */
 
 /**
- * String-keyed credential persistence seam (R9.3). Keys are namespaced
+ * String-keyed credential persistence seam. Keys are namespaced
  * by the library (see {@link CREDENTIAL_KEYS}); values are opaque
  * serialized strings. All methods may be sync or async on the
  * implementor side — consumers always `await` (`Promise<...>` | direct
@@ -39,7 +39,7 @@ export interface CredentialStore {
    * @returns The stored string, or `null` when absent (never
    *   `undefined` — R3.9: an explicit-null contract at seams; mirrors
    *   the `load_client_info` cache-check shape,
-   *   `client_registration.py:92-93`).
+   *   `client_registration.py`).
    */
   get: (key: string) => Promise<string | null> | string | null;
 
@@ -89,7 +89,7 @@ export const CREDENTIAL_KEYS = {
   /**
    * Key for the in-flight redirect-login state of a region (state +
    * verifier + client_id + redirect_uri + created_at — substitutes for
-   * Python's in-process locals, `flow.py:268-306`; B9-R2 consumer).
+   * Python's in-process locals, `flow.py`; B9-R2 consumer).
    *
    * @param region - Mixpanel region.
    * @returns The namespaced key.

@@ -4,7 +4,7 @@
  * `b7-packets.md`).
  *
  * Python builds a fresh `ConfigManager()` per call; the TS core
- * exports a FACTORY over the injected {@link AuthEffects} bag (R9.4).
+ * exports a FACTORY over the injected {@link AuthEffects} bag.
  * B8 exports the ready-made `session` object bound to on-disk effects.
  */
 
@@ -27,7 +27,7 @@ export interface SessionUseOptions {
 /** The `mp.session` surface (`session.py` `__all__`: show, use). */
 export interface SessionNamespace {
   /**
-   * Return the persisted `[active]` block (`show`, `session.py:24-32`).
+   * Return the persisted `[active]` block (`show`, `session.py`).
    *
    * @returns The active session; project lives on the active account
    *   as `default_project`, not here.
@@ -36,7 +36,7 @@ export interface SessionNamespace {
 
   /**
    * Update one or more axes in the persisted config (`use`,
-   * `session.py:35-77`). All updates land in a SINGLE
+   * `session.py`). All updates land in a SINGLE
    * `applySession` / `applyTarget` transaction (packet §3.3 atomicity
    * rule — never two effect calls where Python makes one).
    *

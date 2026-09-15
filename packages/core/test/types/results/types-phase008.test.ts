@@ -1,5 +1,5 @@
 // Translated result-class tests (packet P2-6): assertion-for-assertion
-// port of tests/unit/test_types_phase008.py (R10.2).
+// port of tests/unit/test_types_phase008.py.
 //
 // Same translation notes as types.test.ts. Python builds `UserEvent`
 // with tz-aware `datetime` objects; the TS field stores ISO text

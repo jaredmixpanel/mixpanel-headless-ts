@@ -1,6 +1,6 @@
 /**
  * Engage wire methods — Phase-3 packet B4-C2 port of
- * `MixpanelAPIClient.engage_stats` (`api_client.py:2251-2340`) and
+ * `MixpanelAPIClient.engage_stats` and
  * `export_profiles_page` (`:2111-2249`).
  *
  * Both POST through the C1 `_request` twin (`core.requestQueryHost`) to
@@ -33,7 +33,7 @@ export interface EngageStatsOptions {
   readonly as_of_timestamp?: number | null | undefined;
   /** Include non-members in cohort results. */
   readonly include_all_users?: boolean | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -70,7 +70,7 @@ export interface ExportProfilesPageOptions {
   readonly distinct_id?: string | null | undefined;
   /** List of user IDs to fetch. */
   readonly distinct_ids?: readonly string[] | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -78,7 +78,7 @@ export interface ExportProfilesPageOptions {
 export interface EngageMethods {
   /**
    * Aggregate statistics from the Engage API (`engage_stats`,
-   * `api_client.py:2251-2340`).
+   * `api_client.py`).
    *
    * @param options - where/action/cohort/segment/group/timestamp knobs.
    * @returns The raw response dict.
@@ -90,7 +90,7 @@ export interface EngageMethods {
 
   /**
    * Fetch a single page of profiles (`export_profiles_page`,
-   * `api_client.py:2111-2249`).
+   * `api_client.py`).
    *
    * @param page - Zero-based page index.
    * @param options - session/filter/sort/search/limit knobs.
@@ -155,7 +155,7 @@ export function createEngageMethods(core: ClientCore): EngageMethods {
       };
       if (truthyStr(options.where)) {
         // The stats endpoint accepts "selector", not "where"
-        // (`api_client.py:2316`).
+        // (`api_client.py`).
         params["selector"] = options.where;
       }
       if (truthyStr(options.filter_by_cohort)) {
@@ -210,7 +210,7 @@ export function createEngageMethods(core: ClientCore): EngageMethods {
         params["where"] = options.where;
       }
       // filter_by_cohort takes precedence over cohort_id
-      // (`api_client.py:2202-2206`).
+      // (`api_client.py`).
       if (truthyStr(options.filter_by_cohort)) {
         params["filter_by_cohort"] = options.filter_by_cohort;
       } else if (truthyStr(options.cohort_id)) {
@@ -232,7 +232,7 @@ export function createEngageMethods(core: ClientCore): EngageMethods {
       if (isSet(options.as_of_timestamp)) {
         params["as_of_timestamp"] = options.as_of_timestamp;
       }
-      // Sent when either cohort filter is set (`api_client.py:2215-2218`).
+      // Sent when either cohort filter is set (`api_client.py`).
       if (truthyStr(options.cohort_id) || truthyStr(options.filter_by_cohort)) {
         params["include_all_users"] = options.include_all_users ?? false;
       }

@@ -22,7 +22,7 @@
  * `AttributeError` do not, so they are minted here — once (R10.8) —
  * rather than approximated by `RangeError`, whose name would diff.
  *
- * Message text is out of contract (R5.4); the strings below copy
+ * Message text is out of contract; the strings below copy
  * CPython's wording for debuggability only.
  *
  * @module compat/python-builtins
@@ -33,7 +33,7 @@
  * Twin of CPython's `ValueError`.
  *
  * Reached today by `segfilter._convert_date_format`'s 3-way unpack
- * (`segfilter.py:121`) and by `transforms.transform_event`'s
+ * and by `transforms.transform_event`'s
  * `datetime.fromtimestamp` on a NaN or out-of-`datetime`-range
  * timestamp.
  */
@@ -122,8 +122,8 @@ export class AttributeError extends Error {
  *
  * Added at B5-S2: `validate_user_args`'s U24 guard catches
  * `(ValueError, TypeError, RuntimeError)` around
- * `CohortDefinition.to_dict()` (`user_validators.py:463-476`), and
- * `test_workspace_query_user_integration.py:594-618` patches `to_dict`
+ * `CohortDefinition.to_dict()`, and
+ * `test_workspace_query_user_integration.py` patches `to_dict`
  * to raise a `RuntimeError` specifically. Without this twin the TS
  * catch could not name the third arm.
  */

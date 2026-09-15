@@ -1,5 +1,5 @@
 // Layer-3 translation of `tests/unit/test_042_edge_cases.py::
-// TestSessionReplaceSentinel` (:168-239) — B7-A2 packet §2.4 (B6 ledger
+// TestSessionReplaceSentinel` — B7-A2 packet §2.4 (B6 ledger
 // `b6-packets.md:1032` inbound deferral).
 //
 // Mechanism substitution (header-cited per R10.2): Python's

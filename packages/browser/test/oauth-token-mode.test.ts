@@ -110,7 +110,7 @@ describe("createBrowserWorkspace (§2.2) — core Workspace over a guarded trans
 
   // B9-ARB-A SEM-F1 (b9-reviewA-resolution.md): the "static token
   // unresolvable" condition matches the Python twin's code + details
-  // (`OnDiskTokenResolver.get_static_token`, token_resolver.py:273-282
+  // (`OnDiskTokenResolver.get_static_token`, token_resolver.py
   // → OAUTH_TOKEN_ERROR {account_name, env_var}) so the condition is
   // uniform across runtimes; the MESSAGE stays browser-explanatory
   // (env reading is node-only, R9.4 — out of contract per R5.4).

@@ -1,5 +1,5 @@
 /**
- * `MeService` — TS port of `_internal/me.py:609-915` (Phase-3 packet
+ * `MeService` — TS port of `_internal/me.py` (Phase-3 packet
  * B6-W1 §3.3, the completion of the three-way `me.py` split).
  *
  * The other two thirds are already live and MUST NOT be re-derived
@@ -11,8 +11,8 @@
  *
  * The service is what makes the facade's `/me` trio work AND what the
  * client's workspace auto-resolution reads through
- * `setWorkspaceResolver` (`client.ts:1114`; Python `api_client.py:352`,
- * wired at `workspace.py:787`) — {@link MeService.resolveWorkspace} is
+ * `setWorkspaceResolver` (`client.ts:1114`; Python `api_client.py`,
+ * wired at `workspace.py`) — {@link MeService.resolveWorkspace} is
  * the cheap, cache-only arm of that contract.
  */
 
@@ -33,7 +33,7 @@ import { AuthenticationError, ConfigError, QueryError } from "../errors.js";
  * The cache seam behind {@link MeService} — the `MeCache` surface
  * (`me.py:470` `get`, `:546` `put`, `:597` `invalidate`) reduced to the
  * three operations the service calls, plus the account name the 401 /
- * 403 messages embed (`me.py:723`, read there as `cache._account_name`).
+ * 403 messages embed (`me.py`, read there as `cache._account_name`).
  *
  * Every method may return a promise so B8-N2's on-disk twin can do
  * asynchronous I/O without changing this contract.
@@ -83,7 +83,7 @@ export interface MeClient {
 export interface MeServiceOptions {
   /**
    * Account-type discriminator picking the 403 → `ConfigError` wording
-   * (`me.py:735-757`): `"service_account"` gets the 043 catalog E-10
+   * (`me.py`): `"service_account"` gets the 043 catalog E-10
    * text naming the `user_details` scope; anything else (including
    * `null`) gets the generic 042 line.
    */
@@ -131,7 +131,7 @@ export function inMemoryMeCache(accountName: string): MeCacheStore {
 
 /**
  * Orchestration service for `/me` calls with caching — port of
- * `me.py:609-915`.
+ * `me.py`.
  *
  * @example
  * ```typescript
@@ -147,7 +147,7 @@ export class MeService {
   /** The injected cache store. */
   readonly #cache: MeCacheStore;
 
-  /** Data residency region (`me.py:656`; carried, not branched on). */
+  /** Data residency region (`me.py`; carried, not branched on). */
   readonly #region: string;
 
   /** Account-type discriminator for the 403 wording. */
@@ -184,7 +184,7 @@ export class MeService {
 
   /**
    * The bound cache's account name — the Python tests'
-   * `svc._cache._account_name` read (`test_workspace_use.py:325`).
+   * `svc._cache._account_name` read.
    */
   get cacheAccountName(): string {
     return this.#cache.accountName;
@@ -192,7 +192,7 @@ export class MeService {
 
   /**
    * Return the cached `/me` response without any network call
-   * (`peek`, `me.py:661-687`).
+   * (`peek`, `me.py`).
    *
    * Checks the in-memory arm first, then the store. Returns `null`
    * when both miss — it never calls the API, which is what preserves
@@ -214,7 +214,7 @@ export class MeService {
 
   /**
    * Fetch the `/me` response, using the caches when available
-   * (`fetch`, `me.py:689-765`).
+   * (`fetch`, `me.py`).
    *
    * @param options - `force_refresh` bypasses both caches.
    * @returns The response (cached or freshly fetched).
@@ -276,7 +276,7 @@ export class MeService {
     }
 
     // The wire tree carries lossless numbers; Python validates the
-    // PLAIN `json.loads` output (`me.py:762`), so normalize first —
+    // PLAIN `json.loads` output, so normalize first —
     // the same `toNativeJson(...)` step every B4 model site performs
     // (`client.ts:879`).
     const response = MeResponse.fromDict(toNativeJson(raw));
@@ -287,7 +287,7 @@ export class MeService {
 
   /**
    * List accessible projects from the cached `/me` response
-   * (`list_projects`, `me.py:767-786`).
+   * (`list_projects`, `me.py`).
    *
    * @returns `[project_id, MeProjectInfo]` pairs sorted by name.
    * @throws ConfigError - `fetch()` failures.
@@ -303,7 +303,7 @@ export class MeService {
 
   /**
    * Find one project by ID in the cached `/me` response
-   * (`find_project`, `me.py:788-808`).
+   * (`find_project`, `me.py`).
    *
    * @param projectId - The project ID to look up.
    * @returns The info, or `null` when absent.
@@ -316,7 +316,7 @@ export class MeService {
 
   /**
    * List workspaces, optionally filtered by project
-   * (`list_workspaces`, `me.py:810-845`).
+   * (`list_workspaces`, `me.py`).
    *
    * @param options - Optional `project_id` filter.
    * @returns Workspaces sorted by name.
@@ -350,7 +350,7 @@ export class MeService {
 
   /**
    * Find a project's default workspace (`find_default_workspace`,
-   * `me.py:847-867`).
+   * `me.py`).
    *
    * @param projectId - The project ID.
    * @returns The default workspace, or `null` when none is flagged.
@@ -370,7 +370,7 @@ export class MeService {
 
   /**
    * Resolve a project's best workspace id from the WARM cache only
-   * (`resolve_workspace`, `me.py:869-915`) — the
+   * (`resolve_workspace`, `me.py`) — the
    * `setWorkspaceResolver` contract.
    *
    * Never triggers a network call and never writes the cache: a cold

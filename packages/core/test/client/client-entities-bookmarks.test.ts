@@ -7,7 +7,7 @@
 //
 // Date-defaulting tests replace live `datetime.now()` reads with the
 // injected frozen clock (B4-C2 precedent, D12 seam); the assertion
-// content (30-day arithmetic, today cap) is preserved (R10.2).
+// content (30-day arithmetic, today cap) is preserved.
 import { describe, expect, it } from "vitest";
 
 import type { Session } from "../../src/auth/session.js";
@@ -18,7 +18,7 @@ import {
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 
-/** The `test_credentials` fixture twin (test_api_client_bookmarks.py:21-29). */
+/** The `test_credentials` fixture twin. */
 function testCredentials(): Session {
   return makeSession({
     username: "test_user",

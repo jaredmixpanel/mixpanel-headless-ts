@@ -21,7 +21,7 @@
 // - `dataclasses.replace(...)` → re-construct from a spread of the field
 //   bag with the overridden keys.
 // - Message-TEXT assertions (`"source='slug'" in str(exc)`) are not
-//   carried (R5.4); class, `.code` and `.details` are.
+//   carried; class, `.code` and `.details` are.
 import { describe, expect, it } from "vitest";
 
 import { ParamValidationError } from "../../src/errors.js";

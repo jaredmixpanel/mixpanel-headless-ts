@@ -1,5 +1,5 @@
 // Translated result-class tests (phase2-design C6/C8b, packet P2-6):
-// assertion-for-assertion port of tests/unit/test_types.py (R10.2),
+// assertion-for-assertion port of tests/unit/test_types.py,
 // `.df` -> `toRows()`/`rowColumns()` per the C6 row contract.
 //
 // Translation notes (applied consistently, see the design's Risk #6):

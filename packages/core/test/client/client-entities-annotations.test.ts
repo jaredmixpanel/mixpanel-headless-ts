@@ -10,7 +10,7 @@ import {
   makeSession,
 } from "../../test-support/client-test-helpers.js";
 
-/** The `oauth_credentials` fixture twin (test_api_client_annotations.py:27-30). */
+/** The `oauth_credentials` fixture twin. */
 function oauthCredentials(): Session {
   return makeSession({
     projectId: "12345",
@@ -19,7 +19,7 @@ function oauthCredentials(): Session {
   });
 }
 
-/** The `_annotation_result` helper twin (:54-73). */
+/** The `_annotation_result` helper twin. */
 function annotationResult(
   id = 1,
   description = "Test annotation",
@@ -33,7 +33,7 @@ function annotationResult(
   };
 }
 
-/** The `_tag_result` helper twin (:76-89). */
+/** The `_tag_result` helper twin. */
 function tagResult(id = 1, name = "releases"): Record<string, unknown> {
   return { id, name };
 }

@@ -1,9 +1,9 @@
-// Layer-3 translation — Python PR #235 (AIE-925):
+// Layer-3 translation — Python PR #235:
 // tests/unit/test_api_base_url_override.py (1,091 lines, 11 classes).
 //
 // Python drives the override through `MP_API_BASE_URL` / `MP_APP_BASE_URL`
 // in `os.environ`, read PER REQUEST by `_endpoints_for`. `packages/core`
-// never reads `process.env` (R9.1), so the TS twin injects the same two
+// never reads `process.env`, so the TS twin injects the same two
 // values through `MixpanelClientOptions.endpointOverrides` — a static bag
 // or a per-call PROVIDER (the node package wires the `process.env`
 // reader; `packages/node/test/endpoint-overrides.test.ts` covers that

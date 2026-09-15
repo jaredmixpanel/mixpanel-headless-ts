@@ -1,20 +1,20 @@
 // Layer-3 translation — tests/unit/test_api_client_pbt.py → fast-check
 // (Phase-3 packet B4-C1; same strategy shapes). Classes:
 //
-// - ::TestAuthHeaderProperties (:98) — through the real client's
+// - ::TestAuthHeaderProperties — through the real client's
 //   per-request auth path (C1).
-// - ::TestBackoffProperties (:206), ::TestUrlBuildProperties (:336),
+// - ::TestBackoffProperties, ::TestUrlBuildProperties,
 //   ::TestIterJsonlLinesProperties (:537) — these lock B0-owned modules
 //   (`backoff.ts`, `url.ts`, `jsonl.ts`) but were NOT translated at B0
 //   (packet C1 §Layer-3: "translate them HERE against the B0 modules").
-// - ::TestActivityFeedDateRange (:673) → B4-C2 (header exclusion; the
+// - ::TestActivityFeedDateRange → B4-C2 (header exclusion; the
 //   date-range builder is C2 source range).
 //
 // Strategy-shape notes: Hypothesis `st.characters(categories=...)`
 // alphabets translate to explicit alphabets carrying non-ASCII members
 // of the same categories (incl. the non-BMP 𝒳, code-point-safe
 // indexing) — the B2 arbiter M1-PBT precedent; Python `.strip()`
-// filters translate via `pythonStrip` (R11.7).
+// filters translate via `pythonStrip`.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -49,7 +49,7 @@ function decodeBase64Utf8(encoded: string): string {
 /**
  * Header-safe text: no NUL, no lone surrogates (`unit: "binary"` is
  * code-point based), non-blank after Python strip — the `usernames` /
- * `secrets` strategy shape (:45-64).
+ * `secrets` strategy shape.
  */
 const credentialText = fc
   .string({ unit: "binary", minLength: 1, maxLength: 100 })
@@ -183,7 +183,7 @@ describe("TestBackoffProperties", () => {
   });
 });
 
-// `url_paths` alphabet (:80-87): categories L/N plus "/-_." — mirrored
+// `url_paths` alphabet: categories L/N plus "/-_." — mirrored
 // with non-ASCII L/N members (é Ω ٤ ㅎ) and the non-BMP 𝒳 (category L),
 // drawn per CODE POINT so surrogate halves never split.
 const URL_PATH_ALPHABET = [
@@ -265,7 +265,7 @@ describe("TestUrlBuildProperties", () => {
 // ---------------------------------------------------------------------------
 
 /**
- * `json_line_content` alphabet (:514-528): L/N/P/S categories plus
+ * `json_line_content` alphabet: L/N/P/S categories plus
  * '{}[]":, ', minus newlines — mirrored with non-ASCII members (§ ± 𝒳)
  * per the strategy-shape rule.
  */
@@ -293,7 +293,7 @@ const chunkPositions = fc.array(fc.integer({ min: 0, max: 1000 }), {
   maxLength: 20,
 });
 
-/** `_split_bytes_at_positions` (:469-491). */
+/** `_split_bytes_at_positions`. */
 function splitBytesAtPositions(
   data: Uint8Array,
   positions: readonly number[],
@@ -315,7 +315,7 @@ function splitBytesAtPositions(
   return data.length > 0 ? [data] : [new Uint8Array(0)];
 }
 
-/** `_collect_lines_from_chunks` (:494-511) over the B0 splitter. */
+/** `_collect_lines_from_chunks` over the B0 splitter. */
 async function collectLinesFromChunks(
   chunks: readonly Uint8Array[],
 ): Promise<string[]> {

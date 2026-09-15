@@ -14,15 +14,15 @@
  *
  * Sync→async note (§1.1): `crypto.subtle.digest` is Promise-returning,
  * so `generate` / `challengeFor` are async where Python's are sync
- * (`pkce.py:47-73`). Python has no observable-ordering contract around
- * generation (it happens before any I/O in `login`, `flow.py:270`
+ * (`pkce.py`). Python has no observable-ordering contract around
+ * generation (it happens before any I/O in `login`, `flow.py`
  * region), so the asyncification is behavior-preserving at every
  * observation point.
  *
  * SOURCE-OF-TRUTH NOTE (carried from the B8 header, disclosed): the B8
  * packet §4.2 sketch said "verifier = `secrets.token_urlsafe(32)`",
  * but the Python source at HEAD uses `secrets.token_bytes(64)`
- * (`pkce.py:65`) and the Layer-3 suite locks the resulting 86-char
+ * (`pkce.py`) and the Layer-3 suite locks the resulting 86-char
  * verifier — Python is the behavior arbiter, so 64 random bytes it is.
  */
 
@@ -75,7 +75,7 @@ export function base64UrlEncodeBytes(bytes: Uint8Array): string {
 
 /**
  * Immutable PKCE code verifier and challenge pair (port of the frozen
- * dataclass `PkceChallenge`, `pkce.py:25-73`).
+ * dataclass `PkceChallenge`, `pkce.py`).
  *
  * The verifier is 86 characters of base64url-encoded random bytes
  * (64 bytes, no padding). The challenge is the base64url-encoded
@@ -111,12 +111,12 @@ export class PkceChallenge {
 
   /**
    * Generate a new PKCE verifier/challenge pair (port of
-   * `PkceChallenge.generate`, `pkce.py:46-73`).
+   * `PkceChallenge.generate`, `pkce.py`).
    *
    * Creates 64 cryptographically secure random bytes
    * (`crypto.getRandomValues` — the `secrets.token_bytes(64)` twin,
-   * `pkce.py:65`), encodes them as a base64url string (no padding) for
-   * the verifier (`pkce.py:66`), then computes the SHA-256 hash of the
+   * `pkce.py`), encodes them as a base64url string (no padding) for
+   * the verifier (`pkce.py`), then computes the SHA-256 hash of the
    * ASCII verifier encoded as base64url (no padding) for the challenge.
    *
    * @returns A new {@link PkceChallenge} with both fields set.
@@ -139,12 +139,12 @@ export class PkceChallenge {
   /**
    * Compute the S256 challenge for a given verifier —
    * `BASE64URL(SHA256(ASCII(verifier)))`, RFC 7636 §4.2 (the inline
-   * hash of `pkce.py:68-71`, factored so the Layer-3 RFC 7636
+   * hash of `pkce.py`, factored so the Layer-3 RFC 7636
    * Appendix-B vector locks THIS code path).
    *
    * The verifier is ASCII by construction (base64url alphabet ⊂
    * ASCII), so `TextEncoder` UTF-8 output equals Python's
-   * `verifier.encode("ascii")` (`pkce.py:68`).
+   * `verifier.encode("ascii")`.
    *
    * @param verifier - The code verifier text (ASCII).
    * @returns The base64url-encoded challenge (no padding).

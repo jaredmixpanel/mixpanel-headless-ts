@@ -1,5 +1,5 @@
 // Layer-3 translation of tests/unit/test_app_api_client.py::
-// TestWorkspaceScoping's maybe_scoped_path tests (:414-443) and
+// TestWorkspaceScoping's maybe_scoped_path tests and
 // ::TestAppApiEdgeCases (:759-784) — Phase-3 packet B0-2.
 //
 // Entry-point substitution (B0-notes decision 13): Python drives

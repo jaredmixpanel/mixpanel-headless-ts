@@ -1,6 +1,6 @@
 // QA follow-up (2026-08-17, post-Phase-3 live QA report): Python's
 // `Workspace()` wires the on-disk token resolver, `/me` cache, and file
-// reader automatically (`workspace.py:424-513`); the TS node package
+// reader automatically (`workspace.py`); the TS node package
 // shipped only the pieces (`createNodeWorkspaceSources`,
 // `createNodeAuthEffects`, `MeCache`, `nodeReadFile`) with no composed
 // constructor — so the README's OAuth quick start failed on first query

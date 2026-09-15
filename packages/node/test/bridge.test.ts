@@ -4,7 +4,7 @@
 // `b6-packets.md:1032`).
 //
 // SPLIT (header-cited per §3.3 row 4): `TestAccountsNamespaceWiring`
-// (:236) exercises the Python `mp.accounts` namespace over the on-disk
+// exercises the Python `mp.accounts` namespace over the on-disk
 // world; the ready-made node namespaces land at B8-N3 (bag assembly).
 // N2 translates those four tests against `createNodeBridgeEffects()` /
 // the ConfigManager-backed custom-header source DIRECTLY; N3's swap-in
@@ -77,7 +77,7 @@ afterEach(() => {
   }
 });
 
-/** Standard SA fixture (test_bridge_export.py:77). */
+/** Standard SA fixture (test_bridge_export.py). */
 function teamSa(): ServiceAccount {
   return {
     type: "service_account",
@@ -96,7 +96,7 @@ function isoIn(hours: number): string {
     .replace(/\.\d{3}Z$/, "+00:00");
 }
 
-/** The `_seed_browser_tokens` fixture twin (test_bridge_export.py:51). */
+/** The `_seed_browser_tokens` fixture twin. */
 function seedBrowserTokens(name: string): void {
   const dir = join(home, ".mp", "accounts", name);
   mkdirSync(dir, { recursive: true, mode: 0o700 });
@@ -172,8 +172,8 @@ describe("TestExportBridgeFunctional (test_bridge_export.py:72)", () => {
     const bridge = loadBridge(out);
     expect(bridge?.tokens).toBeNull();
     expect(bridge?.account.type).toBe("oauth_token");
-    // Secrets inline by design (B3) — the on-disk JSON carries the RAW
-    // value, never the mask (CRED-F3).
+    // Secrets inline by design — the on-disk JSON carries the RAW
+    // value, never the mask.
     const raw = JSON.parse(readFileSync(out, "utf8")) as {
       account: Record<string, unknown>;
     };
@@ -464,18 +464,18 @@ describe("TestBridgeEdgeCases (test_042_edge_cases.py:394 — inbound b6-packets
 // CLASS and byte-format locks aligning degenerate corners to the
 // Python behavior arbiter:
 // - SEM-F2b: an invalid-UTF-8 bridge file propagates the decode error
-//   RAW (`bridge.py:181` catches only OSError + JSONDecodeError; the
+//   RAW (`bridge.py` catches only OSError + JSONDecodeError; the
 //   CPython probe raises UnicodeDecodeError — the TS twin is the
 //   TextDecoder fatal-mode TypeError).
 // - SEM-F3: invalid export pins propagate the model's
-//   ParamValidationError RAW (`bridge.py:357-364` builds `BridgeFile`
+//   ParamValidationError RAW (`bridge.py` builds `BridgeFile`
 //   with no try/except — pydantic ValidationError escapes unwrapped;
 //   the docstring's ConfigError claim is wrong in Python itself).
 // - SEM-F4: `serializeBridge` sorts keys by CODEPOINT
-//   (`json.dumps(sort_keys=True)`, `bridge.py:311` — R11.5).
+//   (`json.dumps(sort_keys=True)`, `bridge.py` — R11.5).
 // - SEM-F6 family: an errno-bearing lstat failure at the symlink probe
 //   wraps into ConfigError exactly as Python's `except OSError`
-//   (`bridge.py:172-176`).
+//   (`bridge.py`).
 describe("B8-ARB-A SEM-F2b/F3/F4/F6 error-class + byte-format locks", () => {
   it.skipIf(!POSIX)(
     "SEM-F2b: invalid-UTF-8 bridge file (0600) raises the RAW decode TypeError, not ConfigError",
@@ -546,7 +546,7 @@ describe("B8-ARB-A SEM-F2b/F3/F4/F6 error-class + byte-format locks", () => {
 });
 
 // B8-ARB-A SEM-F2/F6 family ripple at `_read_browser_tokens`
-// (`bridge.py:221-242` — arbiter-caught, same clauses as loadBridge):
+// (`bridge.py` — arbiter-caught, same clauses as loadBridge):
 // probe `except OSError` wraps errno failures into the coded
 // OAuthError; the read catch is `(OSError, json.JSONDecodeError)` so
 // the UnicodeDecodeError twin propagates RAW.
@@ -612,7 +612,7 @@ describe("B8-ARB-A readBrowserTokens error-class locks (bridge.py:221-242)", () 
 // mirror before `parseOAuthTokens`.
 //
 // F2: Python's `_serialize_bridge` renders datetimes through Pydantic's
-// JSON mode (`bridge.py:292` `model_dump(mode="json")`) which spells
+// JSON mode (`bridge.py` `model_dump(mode="json")`) which spells
 // UTC instants with a `Z` suffix (live probe recorded in the
 // resolution); the tokens.json writers render through
 // `datetime.isoformat()` (`+00:00`). The TS writers re-render the
@@ -682,7 +682,7 @@ describe("B8-ARB-B F1/F2 bridge epoch acceptance + writer datetime shapes", () =
   it("F2: materialization renders tokens.json expires_at in isoformat +00:00 form even from a Z-text bridge", () => {
     // A py-written bridge carries the pydantic `Z` spelling; Python's
     // materialization re-renders via `datetime.isoformat()` →
-    // `+00:00` (`token_payload_bytes`, `token.py:188-212`).
+    // `+00:00` (`token_payload_bytes`, `token.py`).
     const bridge = parseBridgeFile(
       browserBridgePayload("2030-01-01T00:00:00Z"),
     );
@@ -690,7 +690,7 @@ describe("B8-ARB-B F1/F2 bridge epoch acceptance + writer datetime shapes", () =
     const written = materializeBridgeTokens(bridge);
     expect(written).not.toBeNull();
     const text = readFileSync(written!, "utf8");
-    // `json.dumps` default separators (`token.py:212` — byte parity).
+    // `json.dumps` default separators (`token.py` — byte parity).
     expect(text).toContain('"expires_at": "2030-01-01T00:00:00+00:00"');
     expect(text).not.toContain('Z"');
   });

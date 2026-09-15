@@ -1,6 +1,6 @@
 // Layer-3 translation of
 // `tests/unit/test_workspace_init.py::TestBridgeTokenMaterialization`
-// (:167) — the inbound B7 deferral (`b7-packets.md` §7; b8-packets.md
+// — the inbound B7 deferral (`b7-packets.md` §7; b8-packets.md
 // §3.3 row 8).
 //
 // HOME DEVIATION FROM THE PACKET ROW (disclosed, shard notes): the
@@ -13,7 +13,7 @@
 // dropped and now cites this home (header rule: zero open deferrals).
 //
 // Python's `Workspace()` constructor performs the bridge-token
-// materialization side effect (`workspace.py:476-513`); the node twin
+// materialization side effect (`workspace.py`); the node twin
 // is `loadBridgeForStartup()` (bridge.ts), composed into the SHIPPED
 // startup sources by `createNodeWorkspaceSources()` (auth-effects.ts —
 // B8-ARB-A SEM-F1 fix, b8-reviewA-resolution.md). The first class
@@ -129,7 +129,7 @@ describe("TestBridgeTokenMaterialization (test_workspace_init.py:167)", () => {
 
     // The `Workspace()` twin: startup bridge load (with the
     // materialization side effect) feeding the resolver sources —
-    // exactly the `workspace.py:476-513` sequence.
+    // exactly the `workspace.py` sequence.
     const bridge = loadBridgeForStartup();
     expect(bridge).not.toBeNull();
     const config = createNodeConfigSource({
@@ -186,7 +186,7 @@ describe("TestBridgeTokenMaterialization (test_workspace_init.py:167)", () => {
         "utf8",
       ),
     ) as Record<string, unknown>;
-    // Empty bridge scope → "read" default (workspace.py:499-505).
+    // Empty bridge scope → "read" default (workspace.py).
     expect(written["scope"]).toBe("read");
 
     const resolver = new OnDiskTokenResolver();

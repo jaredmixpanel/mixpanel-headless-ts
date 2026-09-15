@@ -75,7 +75,7 @@ export interface AnyTreeNode {
 
 /**
  * One node of a tree-mode flow query — TS port of
- * `types.FlowTreeNode`. `to_anytree()` IS ported (B5-S2) as
+ * `types.FlowTreeNode`. `to_anytree()` IS ported as
  * {@link FlowTreeNode.toAnytree}, emitting the plain
  * {@link AnyTreeNode} tree rather than `anytree.AnyNode` objects.
  */
@@ -168,7 +168,7 @@ export class FlowTreeNode {
 
   /**
    * The parent-linked tree view — TS twin of Python `to_anytree()`
-   * (`types.py:10985-11037`), closed at B5-S2 per the packet §3
+   * (`types.py`), closed at B5-S2 per the packet §3
    * instruction ("implement `FlowTreeNode.toAnytree()`-equivalent as a
    * PLAIN nested-object tree").
    *
@@ -193,7 +193,7 @@ export class FlowTreeNode {
 
   /**
    * Recursively build the parallel tree (`_build_anytree_node`,
-   * `types.py:11013-11037`).
+   * `types.py`).
    *
    * @param parent - The parent node, or `null` for the root.
    * @returns The node with its children attached.

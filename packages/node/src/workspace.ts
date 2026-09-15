@@ -1,6 +1,6 @@
 /**
  * `createNodeWorkspace()` — the parity twin of Python's zero-config
- * `Workspace()` construction (`workspace.py:424-513`).
+ * `Workspace()` construction.
  *
  * Python's constructor wires four on-disk collaborators implicitly:
  * the resolver sources (env / `~/.mp/config.toml` / bridge file, with
@@ -8,7 +8,7 @@
  * `OnDiskTokenResolver` for oauth_browser bearer refresh, the per-account
  * on-disk `/me` cache (`MeCache`), and filesystem reads for
  * `uploadLookupTable`. The core `Workspace` takes all four as injected
- * seams (R9.4); this factory is the node-side composition that makes
+ * seams; this factory is the node-side composition that makes
  * `createNodeWorkspace()` behave like Python's `Workspace()`.
  *
  * Added post-Phase-3 (QA 2026-08-17): the pieces all shipped in B7/B8
@@ -39,7 +39,7 @@ import { MeCache } from "./me-cache.js";
  * `WorkspaceOptions` plus the node effects seams and client extras.
  */
 export interface NodeWorkspaceOptions extends NodeAuthEffectsOptions {
-  /** Named account from config (resolver axis, `workspace.py:427`). */
+  /** Named account from config (resolver axis, `workspace.py`). */
   readonly account?: string | null | undefined;
   /** Project ID override (resolver axis, digit string). */
   readonly project?: string | null | undefined;
@@ -121,7 +121,7 @@ export function createNodeWorkspace(
   };
   const effects = createNodeAuthEffects(effectsOptions);
   // Startup bridge load WITH the token-materialization side effect
-  // (`workspace.py:476-513`; the B8-ARB-A SEM-F1 composition).
+  // (`workspace.py`; the B8-ARB-A SEM-F1 composition).
   const bridge = loadBridgeForStartup();
 
   const workspaceOptions: WorkspaceOptions = {

@@ -22,7 +22,7 @@ const INT_GRAMMAR = new RegExp(
   `^[${ASCII_NUMERIC_WHITESPACE}]*([+-]?)(${DIGIT_GROUP})[${ASCII_NUMERIC_WHITESPACE}]*$`,
 );
 
-/** The canonicalizer's exact-integer bound (R4.5): 2^53 - 1. */
+/** The canonicalizer's exact-integer bound: 2^53 - 1. */
 const MAX_SAFE = 9007199254740991n;
 
 /**

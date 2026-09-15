@@ -119,7 +119,7 @@ const MAX_EVENT_PROPERTIES = 5;
 
 /**
  * List replays for a user, or hydrate summaries for explicit IDs
- * (`list_replays`, `workspace.py:10679-10755`).
+ * (`list_replays`, `workspace.py`).
  *
  * Exactly one of `distinct_id` or `replay_ids` MUST be provided.
  * When `distinct_id` is set, `from_date` and `to_date` are required.
@@ -142,7 +142,7 @@ export async function listReplays(
   const toDate = options.to_date ?? null;
   const limit = options.limit ?? DEFAULT_LIST_REPLAYS_LIMIT;
 
-  // Guard order is SOURCE order (`workspace.py:10730-10744`); Python's
+  // Guard order is SOURCE order (`workspace.py`); Python's
   // `not replay_ids` is falsiness, so an EMPTY list trips WR4.
   const hasReplayIds = replayIds !== null && replayIds.length > 0;
   if (distinctId === null && !hasReplayIds) {
@@ -176,7 +176,7 @@ export async function listReplays(
 
 /**
  * Mixpanel events that occurred during a single replay's time window
- * (`events_for_replay`, `workspace.py:10757-10793`).
+ * (`events_for_replay`, `workspace.py`).
  *
  * @param host - The facade slice.
  * @param replayId - The replay to fetch events for.
@@ -202,7 +202,7 @@ export async function eventsForReplay(
 
 /**
  * Batched version of {@link eventsForReplay} — single round-trip
- * (`events_for_replays`, `workspace.py:10795-10830`).
+ * (`events_for_replays`, `workspace.py`).
  *
  * @param host - The facade slice.
  * @param replayIds - Replays to fetch events for.
@@ -228,7 +228,7 @@ export async function eventsForReplays(
 
 /**
  * Sign a single replay ID; sugar over {@link signReplays}
- * (`sign_replay`, `workspace.py:10832-10852`).
+ * (`sign_replay`, `workspace.py`).
  *
  * @param host - The facade slice.
  * @param replayId - Replay to sign.
@@ -251,7 +251,7 @@ export async function signReplay(
 
 /**
  * Sign multiple replays via the bulk endpoint (`sign_replays`,
- * `workspace.py:10854-10873`).
+ * `workspace.py`).
  *
  * @param host - The facade slice.
  * @param replayIds - Replays to sign.
@@ -272,7 +272,7 @@ export async function signReplays(
 
 /**
  * Sign, fetch, and assemble a single `Replay` (`fetch_replay`,
- * `workspace.py:10875-10981`).
+ * `workspace.py`).
  *
  * Runs the vendored rrweb analyzer to populate `Replay.actions`; the
  * raw `rrweb_events` list is also populated for downstream tools.
@@ -324,7 +324,7 @@ export async function fetchReplay(
   // `walkCdnAsync` yields in (file-number, in-file timestamp) order
   // with no global merge, so indexing [0]/[-1] would drift if CDN
   // files ever overlap in time.
-  // Python `int(ev["timestamp"])` (`workspace.py:10946`) — a
+  // Python `int(ev["timestamp"])` (`workspace.py`) — a
   // SUBSCRIPT, so a missing key is a KeyError, not the int() ladder's
   // TypeError (B5-ARB FID-F5).
   const eventTimestamps = rrwebEvents.map((ev) => {
@@ -365,7 +365,7 @@ export async function fetchReplay(
 
 /**
  * Yield raw rrweb events one at a time, batched-parallel under the
- * hood (`stream_replay`, `workspace.py:10983-11043`).
+ * hood (`stream_replay`, `workspace.py`).
  *
  * R6.6 — item-level `yield*` over the service generator; nothing
  * buffers. Python's private-event-loop plumbing
@@ -408,7 +408,7 @@ export async function* streamReplay(
 
 /**
  * Fetch N replays in parallel; return a `ReplayBundle`
- * (`fetch_replays`, `workspace.py:11045-11184`).
+ * (`fetch_replays`, `workspace.py`).
  *
  * Materializes each replay via {@link fetchReplay} and bundles them.
  * Outer `concurrency` parallelizes across replays; inner
@@ -547,7 +547,7 @@ export async function fetchReplays(
 
 /**
  * Discovery + fetch in one call (`replays_for_user`,
- * `workspace.py:11186-11249`).
+ * `workspace.py`).
  *
  * Composes {@link listReplays} and {@link fetchReplays}. Defaults
  * `include_mixpanel_events` to `true` since this is the "show me what
@@ -600,7 +600,7 @@ export async function replaysForUser(
 
 /**
  * Sign + fetch + analyze a replay, returning only the markdown
- * timeline (`analyze_replay`, `workspace.py:11251-11273`).
+ * timeline (`analyze_replay`, `workspace.py`).
  *
  * @param host - The facade slice.
  * @param replayId - The replay to analyze.
@@ -617,7 +617,7 @@ export async function analyzeReplay(
 
 /**
  * Resolve a replay's retention window, discovering it when `null`
- * (`_resolve_retention`, `workspace.py:11275-11292`).
+ * (`_resolve_retention`, `workspace.py`).
  *
  * @param host - The facade slice.
  * @param replayId - The replay to look up.

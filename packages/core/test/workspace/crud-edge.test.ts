@@ -1,8 +1,8 @@
 // B6-W3 Layer-3 translation (packet `b6-packets.md` §5) of
 // `tests/unit/test_workspace_crud_edge.py` — the WHOLE file:
-// `TestRequestBodySerialization` (:92), `TestEmptyResponseHandling`
+// `TestRequestBodySerialization`, `TestEmptyResponseHandling`
 // (:247), `TestWorkspaceMethodDelegation` (:298) and
-// `TestCodedResponseValidationCodes` (:416).
+// `TestCodedResponseValidationCodes`.
 //
 // This is one of the two CROSS-ENTITY suites W3 owns (the reason the
 // packet sequences W3 last): its cases are parametrized over members
@@ -18,8 +18,8 @@
 // per P3-3). Zero todos remain.
 //
 // Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)` (:73-89)
-// and `_make_results_workspace(results, workspace_id=…)` (:389-413)
+// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
+// and `_make_results_workspace(results, workspace_id=…)`
 // become the like-named TS helpers. `temp_dir` has no TS analog and is
 // dropped.
 
@@ -143,7 +143,7 @@ async function assertCoded(call: Promise<unknown>): Promise<void> {
 }
 
 // =============================================================================
-// TestRequestBodySerialization (test_workspace_crud_edge.py:92)
+// TestRequestBodySerialization (test_workspace_crud_edge.py)
 // =============================================================================
 
 describe("TestRequestBodySerialization (test_workspace_crud_edge.py:92)", () => {
@@ -266,7 +266,7 @@ describe("TestRequestBodySerialization (test_workspace_crud_edge.py:92)", () => 
 });
 
 // =============================================================================
-// TestEmptyResponseHandling (test_workspace_crud_edge.py:247)
+// TestEmptyResponseHandling (test_workspace_crud_edge.py)
 // =============================================================================
 
 describe("TestEmptyResponseHandling (test_workspace_crud_edge.py:247)", () => {
@@ -289,7 +289,7 @@ describe("TestEmptyResponseHandling (test_workspace_crud_edge.py:247)", () => {
 });
 
 // =============================================================================
-// TestWorkspaceMethodDelegation (test_workspace_crud_edge.py:298)
+// TestWorkspaceMethodDelegation (test_workspace_crud_edge.py)
 // =============================================================================
 
 describe("TestWorkspaceMethodDelegation (test_workspace_crud_edge.py:298)", () => {
@@ -374,7 +374,7 @@ describe("TestWorkspaceMethodDelegation (test_workspace_crud_edge.py:298)", () =
 });
 
 // =============================================================================
-// TestCodedResponseValidationCodes (test_workspace_crud_edge.py:416)
+// TestCodedResponseValidationCodes (test_workspace_crud_edge.py)
 // =============================================================================
 
 describe("TestCodedResponseValidationCodes (test_workspace_crud_edge.py:416)", () => {

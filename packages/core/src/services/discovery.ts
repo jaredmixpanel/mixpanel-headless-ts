@@ -81,7 +81,7 @@ import { passthrough } from "./shared.js";
  */
 export type WarningSink = (message: string) => void;
 
-/** Debug-log seam for the `_logger.debug` site (R9.5). */
+/** Debug-log seam for the `_logger.debug` site. */
 export interface DiscoveryLogger {
   /**
    * Record a debug message.
@@ -100,7 +100,7 @@ export interface DiscoveryServiceOptions {
 }
 
 /**
- * ISO-8601 date or datetime pre-filter (`discovery.py:154-156`).
+ * ISO-8601 date or datetime pre-filter (`discovery.py`).
  *
  * Deliberately identical to the Python source character for character.
  * One documented, behaviour-neutral divergence: Python's `$` also
@@ -116,7 +116,7 @@ const DATE_PATTERN =
 const MAX_SAMPLE_VALUES = 5;
 
 // ---------------------------------------------------------------------------
-// Lexicon schema parser functions (`discovery.py:43-142`)
+// Lexicon schema parser functions (`discovery.py`)
 // ---------------------------------------------------------------------------
 
 /**
@@ -141,7 +141,7 @@ function dictIndex(
 
 /**
  * Parse Lexicon metadata from an API response
- * (`_parse_lexicon_metadata`, `discovery.py:43-68`).
+ * (`_parse_lexicon_metadata`, `discovery.py`).
  *
  * @param data - Raw metadata dict (may carry `com.mixpanel`), or `null`.
  * @returns The metadata when `com.mixpanel` is present and truthy,
@@ -173,7 +173,7 @@ export function parseLexiconMetadata(
 
 /**
  * Parse a single Lexicon property (`_parse_lexicon_property`,
- * `discovery.py:71-84`).
+ * `discovery.py`).
  *
  * @param data - Raw property dict.
  * @returns The parsed property (`type` defaults to `"string"`).
@@ -193,7 +193,7 @@ export function parseLexiconProperty(
 
 /**
  * Parse a Lexicon definition (`_parse_lexicon_definition`,
- * `discovery.py:87-102`).
+ * `discovery.py`).
  *
  * @param data - Raw `schemaJson` dict.
  * @returns The parsed definition.
@@ -224,7 +224,7 @@ export function parseLexiconDefinition(
 
 /**
  * Parse a complete Lexicon schema (`_parse_lexicon_schema`,
- * `discovery.py:105-118`).
+ * `discovery.py`).
  *
  * @param data - Raw schema dict.
  * @returns The parsed schema.
@@ -246,7 +246,7 @@ export function parseLexiconSchema(
 
 /**
  * Parse a bookmark row into {@link BookmarkInfo} (`_parse_bookmark_info`,
- * `discovery.py:121-142`).
+ * `discovery.py`).
  *
  * @param data - Raw bookmark dict.
  * @returns The parsed bookmark metadata.
@@ -273,7 +273,7 @@ export function parseBookmarkInfo(
 }
 
 // ---------------------------------------------------------------------------
-// Subproperty inference (`discovery.py:150-356`)
+// Subproperty inference (`discovery.py`)
 // ---------------------------------------------------------------------------
 
 /** Days per month, non-leap (`datetime` calendar validity). */
@@ -282,7 +282,7 @@ const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;
 /**
  * Whether `s` parses as a valid ISO-8601 date or datetime — the
  * `datetime.fromisoformat` twin for the strings {@link DATE_PATTERN}
- * admits (`_is_valid_iso`, `discovery.py:174-194`).
+ * admits (`_is_valid_iso`, `discovery.py`).
  *
  * Because the caller only ever passes pattern-matched strings, the
  * grammar is already fixed and the remaining question is calendar
@@ -376,7 +376,7 @@ export type ScalarSubValue = string | number | boolean;
 
 /**
  * Infer the type of a homogeneous-ish sequence of scalar sub-values
- * (`_infer_scalar_type`, `discovery.py:197-234`).
+ * (`_infer_scalar_type`, `discovery.py`).
  *
  * Boolean is checked before number because Python treats `bool` as a
  * subclass of `int` (in TS the two are already disjoint runtime types,
@@ -415,7 +415,7 @@ export function inferScalarType(
 
 /**
  * Parse raw property-value strings into dict rows (`_iter_dict_rows`,
- * `discovery.py:237-267`).
+ * `discovery.py`).
  *
  * Each raw value may be a JSON object (one row), a JSON array of
  * objects (many rows), or anything else (skipped). A value that fails to
@@ -506,7 +506,7 @@ function splitWords(text: string): string[] {
 
 /**
  * Build a sorted list of {@link SubPropertyInfo} from sampled raw
- * values (`_infer_subproperties`, `discovery.py:270-356`).
+ * values (`_infer_subproperties`, `discovery.py`).
  *
  * Behaviour (verbatim from the Python docstring):
  *
@@ -518,7 +518,7 @@ function splitWords(text: string): string[] {
  *   warning.
  *
  * @param rawValues - Raw strings from the property-values endpoint.
- * @param warn - The `warnings.warn` sink (R9.5).
+ * @param warn - The `warnings.warn` sink.
  * @param logger - Optional debug sink (see {@link iterDictRows}).
  * @returns Code-point-sorted subproperty infos.
  * @internal
@@ -647,7 +647,7 @@ function pySetKey(value: ScalarSubValue): string {
 }
 
 // ---------------------------------------------------------------------------
-// DiscoveryService (`discovery.py:359-920`)
+// DiscoveryService (`discovery.py`)
 // ---------------------------------------------------------------------------
 
 /** Options bag of {@link DiscoveryService.listEvents}. */
@@ -702,7 +702,7 @@ export interface GetSchemaGraphOptions {
 
 /**
  * Invert per-event property lists into a property→events map — TS port
- * of `_invert_per_event_properties` (`discovery.py:359-385`,
+ * of `_invert_per_event_properties` (`discovery.py`,
  * PR #215).
  *
  * Each input row is an event dict carrying a `properties` list (the
@@ -766,7 +766,7 @@ function cacheKey(parts: readonly CacheKeyPart[]): string {
 
 /**
  * Schema discovery service for Mixpanel projects — TS port of
- * `DiscoveryService` (`discovery.py:359-920`).
+ * `DiscoveryService`.
  *
  * Caching behaviour (verbatim): results live in memory for the lifetime
  * of the instance, keyed by the same tuples Python uses —
@@ -805,10 +805,10 @@ export class DiscoveryService {
   readonly #logger: DiscoveryLogger | undefined;
 
   /**
-   * Initialize the discovery service (`__init__`, `discovery.py:393`).
+   * Initialize the discovery service (`__init__`, `discovery.py`).
    *
-   * @param apiClient - Authenticated Mixpanel client (B4, R10.8).
-   * @param options - Injected warning/debug seams (R9.5).
+   * @param apiClient - Authenticated Mixpanel client.
+   * @param options - Injected warning/debug seams.
    */
   constructor(
     apiClient: MixpanelClient,
@@ -826,7 +826,7 @@ export class DiscoveryService {
 
   /**
    * List event names in the project (`list_events`,
-   * `discovery.py:405-456`).
+   * `discovery.py`).
    *
    * Defaults are the client's (`limit=5000`, `from_date=2000-01-01`,
    * `to_date=today`); each `(limit, from_date, to_date)` triple caches
@@ -859,7 +859,7 @@ export class DiscoveryService {
 
   /**
    * List all properties for an event (`list_properties`,
-   * `discovery.py:458-493`).
+   * `discovery.py`).
    *
    * @param event - Event name.
    * @returns Code-point-sorted property names.
@@ -891,7 +891,7 @@ export class DiscoveryService {
 
   /**
    * Find events with similar names for suggestions
-   * (`_find_similar_events`, `discovery.py:495-541`).
+   * (`_find_similar_events`, `discovery.py`).
    *
    * Progressive strategy: exact case-insensitive match, then substring
    * matches (shortest first, capped at 5), then word-overlap matches
@@ -951,7 +951,7 @@ export class DiscoveryService {
 
   /**
    * List inferred subproperties of a list-of-object property
-   * (`list_subproperties`, `discovery.py:543-585`).
+   * (`list_subproperties`, `discovery.py`).
    *
    * @param propertyName - Top-level property name (e.g. `"cart"`).
    * @param options - Optional event scope and sample size.
@@ -971,7 +971,7 @@ export class DiscoveryService {
 
   /**
    * List sample values for a property (`list_property_values`,
-   * `discovery.py:587-622`).
+   * `discovery.py`).
    *
    * @param propertyName - Property name.
    * @param options - Optional event scope and limit.
@@ -999,7 +999,7 @@ export class DiscoveryService {
   }
 
   /**
-   * List all saved funnels (`list_funnels`, `discovery.py:624-647`).
+   * List all saved funnels (`list_funnels`, `discovery.py`).
    *
    * @returns Funnels sorted by name (code-point order), a fresh list.
    * @throws AuthenticationError - Invalid credentials.
@@ -1026,7 +1026,7 @@ export class DiscoveryService {
   }
 
   /**
-   * List all saved cohorts (`list_cohorts`, `discovery.py:649-682`).
+   * List all saved cohorts (`list_cohorts`, `discovery.py`).
    *
    * @returns Cohorts sorted by name (code-point order), a fresh list.
    * @throws AuthenticationError - Invalid credentials.
@@ -1059,7 +1059,7 @@ export class DiscoveryService {
 
   /**
    * List saved reports (bookmarks) (`list_bookmarks`,
-   * `discovery.py:684-717`). NOT cached — bookmarks change often.
+   * `discovery.py`). NOT cached — bookmarks change often.
    *
    * @param bookmarkType - Optional report-type filter.
    * @returns The bookmark metadata rows.
@@ -1084,7 +1084,7 @@ export class DiscoveryService {
   }
 
   /**
-   * Today's top events (`list_top_events`, `discovery.py:719-749`).
+   * Today's top events (`list_top_events`, `discovery.py`).
    * NOT cached — the data changes throughout the day.
    *
    * @param options - Counting type and limit.
@@ -1112,7 +1112,7 @@ export class DiscoveryService {
 
   /**
    * Clear all cached discovery results (`clear_cache`,
-   * `discovery.py:751-759`) — both the list-shaped cache and the
+   * `discovery.py`) — both the list-shaped cache and the
    * schema-graph cache.
    */
   clearCache(): void {
@@ -1121,7 +1121,7 @@ export class DiscoveryService {
   }
 
   /**
-   * List Lexicon schemas (`list_schemas`, `discovery.py:765-798`).
+   * List Lexicon schemas (`list_schemas`, `discovery.py`).
    *
    * @param options - Optional entity-type filter.
    * @returns Schemas sorted by `(entity_type, name)`, a fresh list.
@@ -1148,7 +1148,7 @@ export class DiscoveryService {
   }
 
   /**
-   * Get a single Lexicon schema (`get_schema`, `discovery.py:800-831`).
+   * Get a single Lexicon schema (`get_schema`, `discovery.py`).
    *
    * @param entityType - Entity type (`"event"` / `"profile"`).
    * @param name - Entity name.
@@ -1169,7 +1169,7 @@ export class DiscoveryService {
 
   /**
    * Gather the full Lexicon schema and the event↔property graph
-   * (`get_schema_graph`, `discovery.py:862-949` post-PR-#215).
+   * (`get_schema_graph`, `discovery.py` post-PR-#215).
    *
    * Three or four bulk calls: event definitions, event properties, and
    * the query-API per-event properties gather always, plus user
@@ -1274,7 +1274,7 @@ export class DiscoveryService {
 }
 
 /**
- * `datetime.now(timezone.utc).isoformat()` (`discovery.py:889`) over
+ * `datetime.now(timezone.utc).isoformat()` over
  * the client's injected clock seam (packet §0.4).
  *
  * CPython renders `+00:00` rather than `Z`, and omits the microsecond
@@ -1283,7 +1283,7 @@ export class DiscoveryService {
  * @param when - The clock reading.
  * @returns The ISO-8601 text.
  *
- * Exported for B5-S2 (R10.8): the query-user engine stamps
+ * Exported for B5-S2: the query-user engine stamps
  * `computed_at` from the same `datetime.now(timezone.utc).isoformat()`
  * expression (`workspace.py:9711`, `:10112`, `:10051`).
  */

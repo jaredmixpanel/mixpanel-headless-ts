@@ -1,10 +1,10 @@
 // Layer-3 translation of the LOGIN classes of
 // `tests/unit/test_auth_flow.py` (b8-packets.md §4.3 row 4):
-// `TestOAuthFlowLogin` (:88), `TestParsePastedRedirect` (:215),
-// `TestOAuthFlowPasteFallback` (:286), `TestOAuthFlowTokenExchange`
+// `TestOAuthFlowLogin`, `TestParsePastedRedirect`,
+// `TestOAuthFlowPasteFallback`, `TestOAuthFlowTokenExchange`
 // (:385), the EXCHANGE members of `TestTokenPayloadRedaction` (FIX-2,
 // bug (d) — refresh member split into `oauth-flow-refresh.test.ts`),
-// `TestOAuthFlowRegionUrls` (:759), and the EXCHANGE-op
+// `TestOAuthFlowRegionUrls`, and the EXCHANGE-op
 // members of `TestOAuthFlowNetworkErrors` (:802 — the refresh/timeout
 // members were N2's, header-cited split in
 // `oauth-flow-refresh.test.ts`).
@@ -48,7 +48,7 @@ afterEach(() => {
   }
 });
 
-/** The `_make_token_response` fixture twin (test_auth_flow.py:31). */
+/** The `_make_token_response` fixture twin. */
 function makeTokenResponse(options?: {
   accessToken?: string;
   refreshToken?: string | null;
@@ -66,7 +66,7 @@ function makeTokenResponse(options?: {
   return data;
 }
 
-/** The `_make_client_info` fixture twin (test_auth_flow.py:63). */
+/** The `_make_client_info` fixture twin. */
 function makeClientInfo(options?: { region?: string }): OAuthClientInfo {
   return {
     client_id: "test-client-id",

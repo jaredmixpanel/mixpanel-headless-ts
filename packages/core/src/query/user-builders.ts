@@ -3,9 +3,9 @@
  * `src/mixpanel_headless/_internal/query/user_builders.py` (322 LOC;
  * Python revision: `ts-port/phase2-contract-support` HEAD).
  *
- * The file is owned by two batches (R10.8). B2 shard V2
+ * The file is owned by two batches. B2 shard V2
  * (`user_validators.py`) needed exactly ONE symbol —
- * the `_is_cohort_filter` shape predicate (`user_builders.py:69-85`) —
+ * the `_is_cohort_filter` shape predicate —
  * so V2 landed {@link isCohortFilter} here under its permanent home.
  * **B3-K4 grew the file with the builders half**
  * (`b3-packets.md` §"Packet K4"): {@link formatValue}, {@link propRef},
@@ -54,7 +54,7 @@
  *   `remaining`) IS ported.
  *
  * Python keeps this module `_internal`; the TS twin is likewise NOT
- * exported from the package barrel. Its importers are `workspace.py:89-90`
+ * exported from the package barrel. Its importers are `workspace.py`
  * (`extract_cohort_filter`/`filters_to_selector` → `query_user`, B5-S2)
  * and `user_validators.py` (B2, `_is_cohort_filter` only).
  *
@@ -159,13 +159,13 @@ function selectorRepr(value: unknown): string {
 
 /**
  * Format a scalar value for use in a selector expression — port of
- * `_format_value` (`user_builders.py:27-42`).
+ * `_format_value`.
  *
  * Strings are wrapped in double quotes with internal backslashes and
  * quotes escaped (backslash pass FIRST, `replaceAll` at both passes —
  * watchlist #2). Everything else renders through Python `str()`
  * semantics: `str(2.0)` is `"2.0"`, `str(True)` is `"True"`,
- * `str(1e16)` is `"1e+16"` (R11.1/R11.2). The result is embedded in the
+ * `str(1e16)` is `"1e+16"`. The result is embedded in the
  * selector VERBATIM, so no `String(...)` may appear here.
  *
  * Module-private in Python; exported for intra-package use and the
@@ -195,7 +195,7 @@ export function formatValue(value: unknown): string {
 
 /**
  * Build the `properties["name"]` reference for a Filter — port of
- * `_prop_ref` (`user_builders.py:45-66`).
+ * `_prop_ref`.
  *
  * The property name is escaped exactly like a value (backslash first,
  * then quote, all occurrences).
@@ -255,7 +255,7 @@ export function isCohortFilter(f: Filter): boolean {
 
 /**
  * Convert a single Filter to an engage-API selector string — port of
- * `filter_to_selector` (`user_builders.py:88-242`).
+ * `filter_to_selector`.
  *
  * Translates the Filter's internal operator to the equivalent engage
  * selector syntax. Each operator maps to a specific selector pattern;
@@ -431,7 +431,7 @@ export function filterToSelector(f: Filter): string {
 
 /**
  * Convert multiple Filters to an AND-combined selector string — port of
- * `filters_to_selector` (`user_builders.py:245-275`).
+ * `filters_to_selector`.
  *
  * Each Filter is translated individually via {@link filterToSelector},
  * then joined with `" and "`.
@@ -464,7 +464,7 @@ export function filtersToSelector(filters: readonly Filter[]): string {
 
 /**
  * Extract a cohort filter from a list of Filters — port of
- * `extract_cohort_filter` (`user_builders.py:278-322`).
+ * `extract_cohort_filter`.
  *
  * Separates `Filter.inCohort()` entries from regular property filters.
  * At most one cohort filter is expected (validated by U13); the FIRST

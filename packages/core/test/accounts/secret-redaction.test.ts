@@ -1,5 +1,5 @@
 // Layer-3 translation of `tests/unit/test_042_edge_cases.py`
-// `TestSecretLeakage` (:615-681) — the WHOLE class (B7-A1 packet §3.4,
+// `TestSecretLeakage` — the WHOLE class (B7-A1 packet §3.4,
 // `b7-packets.md`; B6 ledger `b6-packets.md:1032`).
 //
 // Mechanism substitutions (header-cited per R10.2):
@@ -67,7 +67,7 @@ describe("TestSecretLeakage (test_042_edge_cases.py:615)", () => {
   it("an OAuthBrowserAccount with no tokens fails fast on header resolution", async () => {
     // Python: MixpanelAPIClient construction succeeds; the eager
     // `.current_auth_header` probe raises OAuthError. TS twin: the
-    // per-request `sessionAuthHeader` (R2.9) with a resolver that has
+    // per-request `sessionAuthHeader` with a resolver that has
     // no tokens rejects with the same class.
     const session: Session = {
       account: { type: "oauth_browser", name: "me", region: "us" },

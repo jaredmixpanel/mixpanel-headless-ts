@@ -1,5 +1,5 @@
 // Streaming JSONL splitter unit tests — Phase-3 packet B0-2
-// (`_iter_jsonl_lines`, api_client.py:109-148).
+// (`_iter_jsonl_lines`, api_client.py).
 //
 // Translation sources (header corrected per arbiter fix A1,
 // b0-review-resolution): tests/unit/test_api_client.py::TestIterJsonlLines

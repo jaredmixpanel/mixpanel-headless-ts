@@ -6,7 +6,7 @@
  * Packet contract (`b6-packets.md` §2): the `workspace.ts` sections
  * hold ONE-LINE delegations; everything with a branch lives here, and
  * everything below the facade (the wire client, the entity models, the
- * B4-C2 streaming helpers) is COMPOSED, never re-implemented (R10.8).
+ * B4-C2 streaming helpers) is COMPOSED, never re-implemented.
  *
  * This is the first module of `workspace-members/`; W2–W8 add siblings.
  */
@@ -59,8 +59,8 @@ interface ResolveProjectAxisArgs {
  *
  * Python counterparts: `_resolve_session` + `_load_bridge`
  * (`workspace.py:618-630`), `ConfigManager.get_account` /
- * `_resolve_project_axis` / `_env_workspace_id` (:631-668) and
- * `ConfigManager.apply_session` (:696-722).
+ * `_resolve_project_axis` / `_env_workspace_id` and
+ * `ConfigManager.apply_session`.
  */
 export interface ResolverSeams {
   /**
@@ -115,7 +115,7 @@ export interface ResolverSeams {
 function unportedSeam(name: string): () => never {
   return (): never => {
     // Core-alone posture (b8-packets.md §4.4): the real seams ship via
-    // `resolverSeamsFromEffects(...)` (B7) over the node effect bag
+    // `resolverSeamsFromEffects(...)` over the node effect bag
     // (B8, `createNodeAuthEffects()`); this default stays so a facade
     // built without seams still throws the coded error. Marker retired
     // at the B8 pair-A arbiter (`b8-reviewA-resolution.md` ASR-F2).
@@ -173,7 +173,7 @@ export function mergeResolverSeams(
 }
 
 /**
- * The WS1 guard (`workspace.py:605-611`) — `target=` is mutually
+ * The WS1 guard (`workspace.py`) — `target=` is mutually
  * exclusive with the three axis kwargs, and it fires BEFORE any
  * resolution side effect (packet §14 Caution 4).
  *
@@ -202,7 +202,7 @@ export function guardTargetExclusivity(options: {
 
 /**
  * The `ConfigError` Python raises when an account swap resolves no
- * project (`workspace.py:653-654`, `_format_no_project_error`).
+ * project (`workspace.py`, `_format_no_project_error`).
  *
  * @param account - The account being swapped to.
  * @returns The error to throw.
@@ -210,7 +210,7 @@ export function guardTargetExclusivity(options: {
 export function noProjectError(account: Account): ConfigError {
   // TODO(port): the four-paths-to-fix message body lives in
   // `_format_no_project_error` (`workspace.py`), which reads config
-  // state — B7 owns the wording; the CLASS is the contract here (R5.4).
+  // state — B7 owns the wording; the CLASS is the contract here.
   return new ConfigError(
     `No project could be resolved for account '${account.name}'. ` +
       `Set MP_PROJECT_ID, pass project=, or give the account a ` +
@@ -220,7 +220,7 @@ export function noProjectError(account: Account): ConfigError {
 }
 
 // ---------------------------------------------------------------------------
-// Business context (`workspace.py:10265-10674`).
+// Business context (`workspace.py`).
 // ---------------------------------------------------------------------------
 
 /** The two documented business-context scopes. */
@@ -228,7 +228,7 @@ export type BusinessContextLevel = "organization" | "project";
 
 /**
  * Reject any `level` other than the two documented literals
- * (`_validate_level`, `workspace.py:10265-10287`).
+ * (`_validate_level`, `workspace.py`).
  *
  * Python's `Literal[...]` is erased at runtime; TypeScript's is erased
  * at compile time — a value arriving from JS (or an `as` cast) needs
@@ -283,7 +283,7 @@ export interface BusinessContextScopeOptions {
 
 /**
  * Resolve the organization ID for org-scoped calls
- * (`_resolve_organization_id`, `workspace.py:10289-10337`).
+ * (`_resolve_organization_id`, `workspace.py`).
  *
  * @param host - The facade slice.
  * @param explicit - The explicit `organization_id`, when supplied.
@@ -322,7 +322,7 @@ async function resolveOrganizationId(
 
 /**
  * Return `organization_id` from the cached `/me`, never fetching
- * (`_cached_organization_id`, `workspace.py:10339-10370`).
+ * (`_cached_organization_id`, `workspace.py`).
  *
  * @param host - The facade slice.
  * @returns The cached organization ID, or `null` on a cold cache.
@@ -351,7 +351,7 @@ async function cachedOrganizationId(
 
 /**
  * Read a required string field from an App API response
- * (`_require_str_field`, `workspace.py:10372-10403`).
+ * (`_require_str_field`, `workspace.py`).
  *
  * @param raw - The unwrapped `results` mapping.
  * @param key - The field name.
@@ -429,7 +429,7 @@ function pyTypeName(value: unknown): string {
 
 /**
  * Read business context at the given scope (`get_business_context`,
- * `workspace.py:10405-10479`).
+ * `workspace.py`).
  *
  * @param host - The facade slice.
  * @param options - `level` / `organization_id`.
@@ -468,7 +468,7 @@ export async function getBusinessContext(
 
 /**
  * Replace business context at the given scope (`set_business_context`,
- * `workspace.py:10481-10566`).
+ * `workspace.py`).
  *
  * @param host - The facade slice.
  * @param content - The new markdown content (empty string clears).
@@ -520,7 +520,7 @@ export async function setBusinessContext(
 
 /**
  * Read both scopes in ONE request (`get_business_context_chain`,
- * `workspace.py:10612-10674`).
+ * `workspace.py`).
  *
  * `organization.organization_id` is enriched from the cached `/me`
  * only when free — a cold cache leaves it `null` rather than spending

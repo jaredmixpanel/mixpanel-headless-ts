@@ -1,16 +1,16 @@
 // B6-W5 Layer-3 translation (packet `b6-packets.md` §7) of the WHOLE
 // of `tests/unit/test_workspace_alerts.py` (447 lines, 2 classes):
-// `TestWorkspaceAlertCRUD` (:126) and `TestWorkspaceAlertOperations`
+// `TestWorkspaceAlertCRUD` and `TestWorkspaceAlertOperations`
 // (:278).
 //
 // Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)` (:68-85)
+// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
 // becomes `makeWorkspace(handler)` — the client is built over the
 // OAuth session (`_make_oauth_credentials`, :52) while the facade
-// carries the service-account `_TEST_SESSION` (:37-45), exactly as
+// carries the service-account `_TEST_SESSION`, exactly as
 // Python does. `temp_dir` has no TS analog and is dropped.
 //
-// `test_alert` returns an OPAQUE dict in Python (`workspace.py:7119`
+// `test_alert` returns an OPAQUE dict in Python (`workspace.py`
 // returns `client.test_alert(body)` verbatim — no model validation),
 // so the TS twin returns the native-valued record with no model
 // construction (the `list_erf_experiments` precedent, W4).
@@ -144,7 +144,7 @@ function stubClient(
 }
 
 // =============================================================================
-// TestWorkspaceAlertCRUD (:126)
+// TestWorkspaceAlertCRUD
 // =============================================================================
 
 describe("TestWorkspaceAlertCRUD", () => {
@@ -223,7 +223,7 @@ describe("TestWorkspaceAlertCRUD", () => {
 });
 
 // =============================================================================
-// TestWorkspaceAlertOperations (:278)
+// TestWorkspaceAlertOperations
 // =============================================================================
 
 describe("TestWorkspaceAlertOperations", () => {
@@ -396,7 +396,7 @@ describe("ADDITIVE: alert member delegation contracts", () => {
         subscriptions: [],
       }),
     );
-    // `notification_windows` is None → ABSENT, not null (R3.5).
+    // `notification_windows` is None → ABSENT, not null.
     expect(alertCreateCalls[0]?.[0]).toStrictEqual({
       bookmark_id: 1,
       name: "A",

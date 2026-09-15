@@ -1,7 +1,7 @@
 /**
  * Atomic on-disk write primitive, credential-read helpers, and bounded
  * stdin reader — TS port of `mixpanel_headless/_internal/io_utils.py`
- * (whole file, `io_utils.py:1-545`; b8-packets.md §2.1 row 1).
+ * (whole file, `io_utils.py`; b8-packets.md §2.1 row 1).
  *
  * Every persisted credential / config write goes through
  * {@link atomicWriteBytes} so a crash between open and rename cannot
@@ -13,7 +13,7 @@
  * row; b8-packets.md §2.1)**: Python's fd-flag hardening layer —
  * `_open_credential_fd`'s `O_NOFOLLOW` / `O_CLOEXEC` / dirfd-walk
  * machinery plus the fstat-pinned invariant checks
- * (`io_utils.py:236-435`) — is DROPPED. The node port substitutes an
+ * (`io_utils.py`) — is DROPPED. The node port substitutes an
  * `lstat`-based symlink refusal plus `stat`-based regular-file / mode /
  * size checks. Behavior visible to callers (refusals + successful
  * reads) is preserved; the TOCTOU window between the lstat probe and
@@ -22,7 +22,7 @@
  * (packet §8 outbound row 3).
  *
  * **Tmp-name substitution (packet §2.2)**: Python embeds
- * `<pid>.<tid>` in the tmp sibling name (`io_utils.py:136`). JS has no
+ * `<pid>.<tid>` in the tmp sibling name (`io_utils.py`). JS has no
  * OS thread id in the main thread (`worker_threads.threadId` is 0), so
  * the port embeds `process.pid` plus a monotonically increasing
  * per-process counter — preserving the collision-avoidance intent for
@@ -53,14 +53,14 @@ import {
 
 /**
  * Hard ceiling on a single secret read from stdin
- * (`io_utils.py:56-63`). Real service-account secrets are < 1 KiB and
+ * (`io_utils.py`). Real service-account secrets are < 1 KiB and
  * OAuth bearers are < 8 KiB; a larger payload is almost always the
  * wrong file being piped.
  */
 export const SECRET_STDIN_MAX_BYTES: number = 64 * 1024;
 
 /**
- * Hard ceiling on a credential file's size (`io_utils.py:66-80`).
+ * Hard ceiling on a credential file's size (`io_utils.py`).
  * 1 MiB is 100x the largest realistic file; anything larger is a
  * runaway write, a corrupted file, or an attacker-planted blob.
  */
@@ -68,7 +68,7 @@ export const MAX_CREDENTIAL_BYTES: number = 1 << 20;
 
 /**
  * Render a mode like CPython `oct()` — e.g. `0o644` (message parity
- * with `io_utils.py:131-135`; text out of contract, R5.4).
+ * with `io_utils.py`; text out of contract, R5.4).
  *
  * @param mode - POSIX mode bits.
  * @returns The `0o…` rendering.
@@ -79,7 +79,7 @@ function octal(mode: number): string {
 
 /**
  * A credential file failed a structural safety check — TS twin of
- * Python's `CredentialPathError(OSError)` (`io_utils.py:165-181`).
+ * Python's `CredentialPathError(OSError)` (`io_utils.py`).
  *
  * Python subclasses `OSError` so existing `except OSError` handlers at
  * the credential call sites keep catching it; the TS lineage is
@@ -122,8 +122,8 @@ export class CredentialPathError extends MixpanelHeadlessError {
 /**
  * True for node SYSTEM errors (libuv syscall failures) — the `OSError`
  * class-test twin at every ported `except OSError` boundary
- * (`config.py:186-189`, `bridge.py:172-176`, `storage.py:405-419`).
- * Defined ONCE here (R10.8); consumers import it by name — B8-ARB-A
+ * (`config.py`, `bridge.py`, `storage.py`).
+ * Defined ONCE here; consumers import it by name — B8-ARB-A
  * hoisted it from `config.ts` when the bridge/storage read paths
  * gained the same clause (`b8-reviewA-resolution.md` SEM-F2/F6).
  *
@@ -148,7 +148,7 @@ export function isErrnoError(exc: unknown): exc is NodeJS.ErrnoException {
 /**
  * The injectable FS operation set of {@link atomicWriteBytes} — the
  * `unittest.mock.patch("…io_utils.os.replace")` monkeypatch twin used
- * by the crash-window resilience tests (test_io_utils.py:210-300) and
+ * by the crash-window resilience tests (test_io_utils.py) and
  * the R10.9 harness fault-injection rows (b8-packets.md §2.5 row 1).
  */
 export interface AtomicWriteFsOps {
@@ -204,7 +204,7 @@ export interface AtomicWriteOptions {
 
 /**
  * Atomically write `data` to `path` with the requested file mode (port
- * of `atomic_write_bytes`, `io_utils.py:83-163`).
+ * of `atomic_write_bytes`, `io_utils.py`).
  *
  * Protocol (byte-for-byte with Python):
  *
@@ -267,7 +267,7 @@ export function atomicWriteBytes(
       while (offset < data.length) {
         const written = ops.writeSync(fd, data, offset, data.length - offset);
         if (written <= 0) {
-          // POSIX guarantees > 0 (`io_utils.py:154` pragma).
+          // POSIX guarantees > 0 (`io_utils.py` pragma).
           throw new Error("write returned non-positive count");
         }
         offset += written;
@@ -291,7 +291,7 @@ export function atomicWriteBytes(
 
 /**
  * Raise {@link CredentialPathError} if `path` itself is a symlink
- * (port of `reject_if_symlink`, `io_utils.py:182-235`).
+ * (port of `reject_if_symlink`, `io_utils.py`).
  *
  * `lstat` the path, throw if it's a symlink (dangling or live), return
  * silently otherwise. Missing paths are intentionally a no-op — the
@@ -319,7 +319,7 @@ export function rejectIfSymlink(path: string): void {
 /**
  * Read bytes from `path` while refusing every structural attack the
  * lstat/stat substitution can express (port of `read_credential_bytes`,
- * `io_utils.py:436-496`, under the module-header R9.2 drop).
+ * `io_utils.py`, under the module-header R9.2 drop).
  *
  * Refusals (each a {@link CredentialPathError}):
  *
@@ -332,7 +332,7 @@ export function rejectIfSymlink(path: string): void {
  *
  * A missing non-symlink path throws the node `ENOENT` error verbatim
  * (the `FileNotFoundError` twin) — NOT a {@link CredentialPathError} —
- * preserving the call-site control flow (`io_utils.py:431-434` test
+ * preserving the call-site control flow (`io_utils.py` test
  * contract).
  *
  * @param path - File to read.
@@ -386,7 +386,7 @@ export interface ReadCredentialTextOptions {
 
 /**
  * UTF-8 (by default) wrapper around {@link readCredentialBytes} (port
- * of `read_credential_text`, `io_utils.py:497-516`).
+ * of `read_credential_text`, `io_utils.py`).
  *
  * @param path - File to read.
  * @param options - Optional encoding override.
@@ -452,7 +452,7 @@ export interface ReadSecretStdinOptions {
 /**
  * Read a single secret value from stdin, capped at
  * {@link SECRET_STDIN_MAX_BYTES} (port of
- * `read_capped_secret_from_stdin`, `io_utils.py:517-545`).
+ * `read_capped_secret_from_stdin`, `io_utils.py`).
  *
  * Reads ALL bytes up to the cap, strips surrounding whitespace with
  * Python `str.strip()` semantics ({@link pythonStrip}, R11.7), and

@@ -4,7 +4,7 @@
  *
  * All 28 Python exception classes port as `Error` subclasses preserving
  * names and the parent-edge set; the conformance key is class name +
- * machine `code` (R5.2). Error MESSAGE text is explicitly out of contract
+ * machine `code`. Error MESSAGE text is explicitly out of contract
  * (R5.4): the human-readable strings below are copied from Python for
  * fidelity but are never asserted by vectors.
  *
@@ -121,7 +121,7 @@ export class MixpanelHeadlessError extends Error {
  *
  * Python dual-inherits `ValueError` so converted guard sites stay
  * catchable by `except ValueError`; in TS the conformance key is class
- * name + `code` (R5.2), so plain `MixpanelHeadlessError` descent suffices.
+ * name + `code`, so plain `MixpanelHeadlessError` descent suffices.
  *
  * Example:
  * ```ts
@@ -166,7 +166,7 @@ export class ParamTypeError extends MixpanelHeadlessError {
    *
    * @param message - Human-readable error message (out of contract, R5.4).
    * @param code - Machine-readable registry code for the violated rule.
-   *   Defaults to the generic `VALIDATION_ERROR` (R5.5).
+   *   Defaults to the generic `VALIDATION_ERROR`.
    * @param details - Optional structured, deterministic, codec-encodable
    *   data about the error.
    * @param options - Standard `ErrorOptions` (`cause` threading).
@@ -194,7 +194,7 @@ export class ResponseValidationError extends MixpanelHeadlessError {
    *
    * @param message - Human-readable error message (out of contract, R5.4).
    * @param code - Machine-readable error code. Defaults to the generic
-   *   `RESPONSE_VALIDATION_ERROR` (R5.5).
+   *   `RESPONSE_VALIDATION_ERROR`.
    * @param details - Optional structured data — typically the response
    *   model name and the underlying error list.
    * @param options - Standard `ErrorOptions`; `cause` carries the
@@ -293,7 +293,7 @@ export class APIError extends MixpanelHeadlessError {
     const requestBody = options.requestBody ?? null;
 
     // Mirror Python's sequential conditional inserts (`if x is not None:
-    // details[k] = x`) — keys are ABSENT when the value is None (R4.11).
+    // details[k] = x`) — keys are ABSENT when the value is None.
     const details: Record<string, unknown> = { status_code: statusCode };
     if (responseBody !== null) {
       details["response_body"] = responseBody;
@@ -526,7 +526,7 @@ const VALID_VIOLATIONS: readonly string[] = [
   "secret_stdin_misuse",
 ];
 
-/** Keyword-only options bag for {@link InvalidArgumentError} (R3.8). */
+/** Keyword-only options bag for {@link InvalidArgumentError}. */
 export interface InvalidArgumentErrorOptions {
   /** Discriminator for the kind of misuse. */
   readonly violation: InvalidArgumentViolation;
@@ -566,7 +566,7 @@ export class InvalidArgumentError extends ConfigError {
         `Invalid violation '${violation}'; must be one of ${VALID_VIOLATIONS.join(", ")}.`,
       );
     }
-    // Mirror Python's conditional insert: key absent when None (R4.11).
+    // Mirror Python's conditional insert: key absent when None.
     const details: Record<string, unknown> = { violation };
     if (detectedAuthType !== null) {
       details["detected_auth_type"] = detectedAuthType;
@@ -1010,7 +1010,7 @@ export class OAuthError extends MixpanelHeadlessError {
  */
 export type RegionProbeAttempt = readonly [Region, number, string];
 
-/** Keyword-only options bag for {@link RegionProbeError} (R3.8). */
+/** Keyword-only options bag for {@link RegionProbeError}. */
 export interface RegionProbeErrorOptions {
   /**
    * Ordered list of `(region, statusCode, errorBody)` tuples for every
@@ -1162,7 +1162,7 @@ export type ValidationSeverity = "error" | "warning";
  * NOT an exception — Python defines this as a frozen dataclass; it ports
  * as a plain class (phase2-design C3). It rides inside
  * {@link BookmarkValidationError.errors} and oracle error payloads. There
- * is no `field` attribute — the field list mirrors `exceptions.py:1255+`
+ * is no `field` attribute — the field list mirrors `exceptions.py+`
  * exactly.
  */
 export class ValidationError {

@@ -1,19 +1,19 @@
 // B6-W4 Layer-3 translation (packet `b6-packets.md` §6) of the WHOLE
 // of `tests/unit/test_workspace_flags.py` (533 lines, 3 classes):
-// `TestWorkspaceFeatureFlagCRUD` (:133),
-// `TestWorkspaceFeatureFlagLifecycle` (:355) and
-// `TestWorkspaceFeatureFlagOperations` (:415).
+// `TestWorkspaceFeatureFlagCRUD`,
+// `TestWorkspaceFeatureFlagLifecycle` and
+// `TestWorkspaceFeatureFlagOperations`.
 //
 // Python's `httpx.MockTransport` handler becomes the injected-fetch
-// `fakeTransport` seam; `_make_workspace(temp_dir, handler)` (:71-91)
+// `fakeTransport` seam; `_make_workspace(temp_dir, handler)`
 // becomes `makeWorkspace(handler)` — the client is built over the
 // OAuth session (`_make_oauth_credentials`, :56) and pinned to
 // workspace 100 (`client.set_workspace_id(100)`, :87) while the facade
-// carries the service-account `_TEST_SESSION` (:40-49), exactly as
+// carries the service-account `_TEST_SESSION`, exactly as
 // Python does. `temp_dir` has no TS analog (no config file is ever
 // touched) and is dropped.
 //
-// `flag.model_extra` (:301) is the Phase-2 `__extras` spillover bag
+// `flag.model_extra` is the Phase-2 `__extras` spillover bag
 // (`model-base.ts:396-405`, `extra='allow'`).
 //
 // ADDITIVE sections (clearly headed, never substituting for a
@@ -150,7 +150,7 @@ function stubClient(
 }
 
 // =============================================================================
-// TestWorkspaceFeatureFlagCRUD (:133)
+// TestWorkspaceFeatureFlagCRUD
 // =============================================================================
 
 describe("TestWorkspaceFeatureFlagCRUD", () => {
@@ -287,7 +287,7 @@ describe("TestWorkspaceFeatureFlagCRUD", () => {
 });
 
 // =============================================================================
-// TestWorkspaceFeatureFlagLifecycle (:355)
+// TestWorkspaceFeatureFlagLifecycle
 // =============================================================================
 
 describe("TestWorkspaceFeatureFlagLifecycle", () => {
@@ -321,7 +321,7 @@ describe("TestWorkspaceFeatureFlagLifecycle", () => {
 });
 
 // =============================================================================
-// TestWorkspaceFeatureFlagOperations (:415)
+// TestWorkspaceFeatureFlagOperations
 // =============================================================================
 
 describe("TestWorkspaceFeatureFlagOperations", () => {

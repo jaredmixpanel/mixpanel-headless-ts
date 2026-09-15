@@ -1,13 +1,13 @@
 /**
  * Streaming export methods — Phase-3 packet B4-C2 port of
- * `MixpanelAPIClient.export_events` (`api_client.py:1813-1953`, its own
+ * `MixpanelAPIClient.export_events` (`api_client.py`, its own
  * inline 429 loop and the FF4 reduced-shape RateLimitError raise at
  * `:1883-1891`) and `export_profiles` (`:1954-2110`, session-paged
  * engage export), plus the two B4 api-map facade wrappers
- * `stream_events` / `stream_profiles` (`workspace.py:1381-1578`).
+ * `stream_events` / `stream_profiles`.
  *
  * R2.6/R3.2: Python generators port as `async function*` —
- * item-level `yield` (R6.6), laziness preserved (the AC* guards fire on
+ * item-level `yield`, laziness preserved (the AC* guards fire on
  * FIRST iteration, exactly like Python's generator semantics).
  * GATE-VERDICT R5: every wire line/body parses via `parseLossless`
  * with `{ pythonConstants: true }` (Python `json.loads` at `:1911` and
@@ -70,7 +70,7 @@ export interface ExportEventsOptions {
    * the end for any partial batch.
    */
   readonly onBatch?: ((count: number) => void) | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -96,7 +96,7 @@ export interface ExportProfilesOptions {
   readonly as_of_timestamp?: number | null | undefined;
   /** Include all users and mark cohort membership. */
   readonly include_all_users?: boolean | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -104,7 +104,7 @@ export interface ExportProfilesOptions {
 export interface StreamingMethods {
   /**
    * Stream events from the Export API (`export_events`,
-   * `api_client.py:1813-1953`) — JSONL lines parsed one at a time;
+   * `api_client.py`) — JSONL lines parsed one at a time;
    * malformed lines are skipped, never raised.
    *
    * @param fromDate - Start date (inclusive).
@@ -128,7 +128,7 @@ export interface StreamingMethods {
 
   /**
    * Stream profiles from the Engage API (`export_profiles`,
-   * `api_client.py:1954-2110`) — session-based pagination, one request
+   * `api_client.py`) — session-based pagination, one request
    * per page.
    *
    * @param options - Filters, callbacks, and the AC*-guarded knobs.
@@ -147,7 +147,7 @@ export interface StreamingMethods {
 }
 
 /**
- * `_validate_limit` (`workspace.py:326-351`) — the facade streaming
+ * `_validate_limit` — the facade streaming
  * limit guard.
  *
  * @param limit - Maximum number of events, or absent for no limit.
@@ -346,7 +346,7 @@ async function* exportEvents(
   const onBatch = options.onBatch ?? null;
   // Ensure the pool token exists (`self._ensure_client()`); the auth
   // header + 4-layer merge are captured ONCE before the retry loop,
-  // exactly like Python (`api_client.py:1861-1867`).
+  // exactly like Python (`api_client.py`).
   const headers = core.requestHeaders({
     Authorization: await core.getAuthHeader(),
     "Accept-Encoding": "gzip",
@@ -440,7 +440,7 @@ async function* exportEvents(
             throw error;
           }
           // Python logs a warning and skips the malformed line
-          // (`api_client.py:1936-1937`); log text is out of contract.
+          // (`api_client.py`); log text is out of contract.
           continue;
         }
         yield event;
@@ -487,7 +487,7 @@ async function* exportProfiles(
   const cohortId = options.cohort_id ?? null;
   const includeAllUsers = options.include_all_users ?? false;
   const asOfTimestamp = options.as_of_timestamp ?? null;
-  // AC guards in Python source order (`api_client.py:2012-2049`).
+  // AC guards in Python source order (`api_client.py`).
   if (distinctId !== null && distinctIds !== null) {
     throw new ParamValidationError(
       "distinct_id and distinct_ids are mutually exclusive. " +
@@ -665,7 +665,7 @@ export interface StreamEventsOptions {
    * `crypto.randomUUID` inside `transformEvent`).
    */
   readonly uuid?: (() => string) | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -691,7 +691,7 @@ export interface StreamingClient {
 
 /**
  * Stream events directly from the Mixpanel API — the B4 api-map member
- * `workspace.stream_events` (`workspace.py:1381-1462`) as a standalone
+ * `workspace.stream_events` as a standalone
  * wrapper until the B6 facade lands (packet C2 §TS homes: "facade-level
  * thin wrappers over export_events").
  *
@@ -729,7 +729,7 @@ export async function* streamEvents(
 
 /**
  * Stream user profiles directly from the Mixpanel API — the B4 api-map
- * member `workspace.stream_profiles` (`workspace.py:1469-1578`) as a
+ * member `workspace.stream_profiles` as a
  * standalone wrapper until the B6 facade lands.
  *
  * @param client - The assembled client (or its streaming slice).

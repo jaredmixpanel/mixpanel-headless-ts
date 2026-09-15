@@ -1,6 +1,6 @@
 // Translated UserQueryResult tests (packet P2-6):
 // assertion-for-assertion port of tests/test_types_user_query_result.py
-// (R10.2) — the FIVE-branch `.df` per-class row spec plus the
+// — the FIVE-branch `.df` per-class row spec plus the
 // profiles-mode column reorder (phase2-design C6).
 //
 // Translation notes beyond types.test.ts: pandas NaN semantics are a

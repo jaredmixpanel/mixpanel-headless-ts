@@ -1,15 +1,15 @@
 /**
  * Disk-based per-account `/me` cache — TS port of the MeCache half of
- * `mixpanel_headless/_internal/me.py` (`me.py:413-607`; b8-packets.md
+ * `mixpanel_headless/_internal/me.py` (`me.py`; b8-packets.md
  * §3.1 row 5). Models / `select_workspace_id` / `MeService` are core
- * (B4-C1 / B6) — this module implements the core `MeCacheStore`
+ * — this module implements the core `MeCacheStore`
  * contract (`services/me.ts:41-66`) plus the `MeCacheEffects.put`
- * effect (`_persist_me_cache`, `accounts.py:1338-1356`).
+ * effect (`_persist_me_cache`, `accounts.py`).
  *
  * Layout: one file per account at `~/.mp/accounts/{name}/me.json`
  * (dir `0o700`, file `0o600` atomic; TTL default 86400s). NOTE
  * (verbatim Python): the DEFAULT cache dir reads `Path.home()/.mp`
- * DIRECTLY (`me.py:459`) — it does NOT route through
+ * DIRECTLY (`me.py`) — it does NOT route through
  * `MP_OAUTH_STORAGE_DIR`; the effects wrapper passes
  * `storageDir=accountDir(name)` to honor the override, exactly as
  * `_persist_me_cache` does.
@@ -51,10 +51,10 @@ import {
   rejectIfSymlink,
 } from "./io-utils.js";
 
-/** Cache TTL default in seconds (`me.py:225`). */
+/** Cache TTL default in seconds (`me.py`). */
 const DEFAULT_TTL_SECONDS = 86_400;
 
-/** Workspace payload fields stripped before caching (`me.py:579`). */
+/** Workspace payload fields stripped before caching (`me.py`). */
 const STRIP_FROM_WORKSPACES = new Set(["member_list", "unified_member_list"]);
 
 /** Injected log sink (alias of the storage shape — R9.5). */
@@ -66,7 +66,7 @@ const SILENT_LOGGER: MeCacheLogger = {
   debug: (): void => undefined,
 };
 
-/** Options bag of {@link MeCache} (`me.py:439-460` kwargs + seams). */
+/** Options bag of {@link MeCache} (`me.py` kwargs + seams). */
 export interface MeCacheOptions {
   /** Account name — drives the per-account directory layout. */
   readonly accountName: string;
@@ -90,7 +90,7 @@ export interface MeCacheOptions {
 
 /**
  * Disk-based, per-account cache for `/me` API responses (port of
- * `MeCache`, `me.py:413-607`). Implements the core {@link MeCacheStore}.
+ * `MeCache`, `me.py`). Implements the core {@link MeCacheStore}.
  *
  * Example:
  * ```typescript
@@ -147,7 +147,7 @@ export class MeCache implements MeCacheStore {
 
   /**
    * Retrieve the cached `/me` response (port of `get`,
-   * `me.py:470-544`): symlink probe before the existence check; TTL
+   * `me.py`): symlink probe before the existence check; TTL
    * expiry over the injected clock; corrupt files degrade to `null`;
    * schema drift invalidates the file (unlink + `null`).
    *
@@ -176,14 +176,14 @@ export class MeCache implements MeCacheStore {
     } catch (error) {
       if (error instanceof CredentialPathError) {
         // Structural rejection — WARNING, louder than the corrupt-file
-        // debug path (`me.py:506-513`).
+        // debug path (`me.py`).
         this.#logger.warning(
           `Refusing to read /me cache at ${path}: ${error.message}`,
         );
         return null;
       }
       // Python degrades `(json.JSONDecodeError, OSError)` only
-      // (`me.py:514`) — a UnicodeDecodeError escapes RAW. The TS twin
+      // (`me.py`) — a UnicodeDecodeError escapes RAW. The TS twin
       // (TextDecoder fatal-mode TypeError) propagates unchanged
       // (B8-ARB-A SEM-F2c, live CPython probe in the resolution).
       if (error instanceof TypeError) {
@@ -195,7 +195,7 @@ export class MeCache implements MeCacheStore {
       return null;
     }
 
-    // TTL check (`me.py:518-528`).
+    // TTL check (`me.py`).
     if (data !== null && typeof data === "object" && !Array.isArray(data)) {
       const cachedAt = (data as Record<string, unknown>)["cached_at"];
       if (typeof cachedAt === "number") {
@@ -216,7 +216,7 @@ export class MeCache implements MeCacheStore {
         throw error;
       }
       // Schema drift on disk — WARN, unlink, deterministic refetch
-      // (`me.py:530-544`).
+      // (`me.py`).
       this.#logger.warning(
         `Cached /me response in me.json no longer matches the model ` +
           `(schema drift). Invalidating: ${error.message}`,
@@ -227,7 +227,7 @@ export class MeCache implements MeCacheStore {
   }
 
   /**
-   * Store a `/me` response (port of `put`, `me.py:546-595`): dir
+   * Store a `/me` response (port of `put`, `me.py`): dir
    * `0o700` with the PII chmod-failure RAISE; bulky workspace member
    * lists stripped; `cached_at` stamped; file `0o600` atomic.
    *
@@ -249,7 +249,7 @@ export class MeCache implements MeCacheStore {
     }
 
     const data = response.modelDump();
-    // Strip bulky fields (`me.py:574-584`) — they live in the nested
+    // Strip bulky fields (`me.py`) — they live in the nested
     // workspace records' extras.
     const workspaces = data["workspaces"];
     if (
@@ -271,7 +271,7 @@ export class MeCache implements MeCacheStore {
 
     // Rebuild the three container maps from the MODEL (insertion
     // order) — `modelDump` flattens Maps into plain objects, which
-    // would silently re-hoist integer-like keys ascending (B8-MAPFIX).
+    // would silently re-hoist integer-like keys ascending.
     const ordered = new Map<string, unknown>(Object.entries(data));
     ordered.set(
       "organizations",
@@ -288,7 +288,7 @@ export class MeCache implements MeCacheStore {
   }
 
   /**
-   * Remove the cached response (port of `invalidate`, `me.py:597-606`).
+   * Remove the cached response (port of `invalidate`, `me.py`).
    * Missing file is a no-op.
    */
   invalidate(): void {
@@ -384,7 +384,7 @@ function orderedEntriesOf(value: unknown): Array<[string, unknown]> | null {
 
 /**
  * The real node `MeCacheEffects` — the `_persist_me_cache` twin
- * (`accounts.py:1338-1356`): the cache lands in `accountDir(name)` so
+ * (`accounts.py`): the cache lands in `accountDir(name)` so
  * the `MP_OAUTH_STORAGE_DIR` override is honored, alongside
  * `tokens.json`.
  *

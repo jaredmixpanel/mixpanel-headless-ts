@@ -34,18 +34,18 @@ import {
 
 /**
  * Server-side ceiling on the `/events/names` `limit` parameter
- * (`api_client.py:2348`).
+ * (`api_client.py`).
  */
 const EVENTS_NAMES_MAX_LIMIT = 5000;
 
 /**
- * Widest `from_date` the server accepts (`api_client.py:2355`).
+ * Widest `from_date` the server accepts.
  */
 const EVENTS_NAMES_WIDE_FROM_DATE = "2000-01-01";
 
 /**
  * The `re.search(r"exceeds\s+(\d+)\s+days", ...)` twin
- * (`api_client.py:2420`). Python compiles `\s`/`\d` in Unicode mode:
+ * (`api_client.py`). Python compiles `\s`/`\d` in Unicode mode:
  * `\s` is the CPython str-pattern whitespace class (spelled out below —
  * NOTE it includes `\x1c-\x1f` and `\x85` which JS `\s` lacks, and
  * EXCLUDES U+FEFF which JS `\s` contains), `\d` is `\p{Nd}` (R11.7:
@@ -59,7 +59,7 @@ const DATE_GATE_PATTERN = new RegExp(
 
 /**
  * Parse a `YYYY-MM-DD` activity-feed date, raising QueryError on bad
- * input — `_parse_feed_date` (`api_client.py:175-199`).
+ * input — `_parse_feed_date`.
  *
  * @param value - The date string to parse.
  * @param field - The parameter name for the message.
@@ -78,7 +78,7 @@ function parseFeedDate(value: string, field: string): CivilDate {
 
 /**
  * Build a stream/bookmark `dateRange` object from optional date strings
- * — `_build_activity_feed_date_range` (`api_client.py:202-249`).
+ * — `_build_activity_feed_date_range`.
  *
  * Both dates are validated up front so a malformed value fails the same
  * way regardless of which arm it lands in.
@@ -118,7 +118,7 @@ export function buildActivityFeedDateRange(
     const windowStart = addDays(parsedTo, -30);
     if (windowStart === null) {
       // Python: OverflowError from `parsed_to - timedelta(days=30)` —
-      // re-raised as QueryError (`api_client.py:244-247`).
+      // re-raised as QueryError (`api_client.py`).
       throw new QueryError(
         `to_date ${JSON.stringify(toDate)} is too early to compute a 30-day window`,
       );
@@ -136,7 +136,7 @@ export interface GetEventsOptions {
   readonly from_date?: string | null | undefined;
   /** `YYYY-MM-DD` upper bound (default today). */
   readonly to_date?: string | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -146,7 +146,7 @@ export interface GetPropertyValuesOptions {
   readonly event?: string | null | undefined;
   /** Maximum number of values to return (default 255). */
   readonly limit?: number | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -156,7 +156,7 @@ export interface GetTopEventsOptions {
   readonly type?: string | undefined;
   /** Maximum events to return. */
   readonly limit?: number | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -166,7 +166,7 @@ export interface EventCountsOptions {
   readonly type?: string | undefined;
   /** Time unit. */
   readonly unit?: string | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -180,7 +180,7 @@ export interface PropertyCountsOptions {
   readonly values?: readonly string[] | null | undefined;
   /** Maximum property values to return. */
   readonly limit?: number | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -194,7 +194,7 @@ export interface SegmentationOptions {
   readonly type?: string | undefined;
   /** Filter expression. */
   readonly where?: string | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -210,7 +210,7 @@ export interface FunnelOptions {
   readonly length?: number | null | undefined;
   /** Conversion window unit. */
   readonly length_unit?: string | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -228,7 +228,7 @@ export interface RetentionOptions {
   readonly interval_count?: number | undefined;
   /** Interval unit (day, week, month). */
   readonly unit?: string | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -255,7 +255,7 @@ export interface ActivityFeedOptions {
     ReadonlyArray<Record<string, unknown>> | null | undefined;
   /** Label raw events matching custom-event definitions. */
   readonly use_custom_events?: boolean | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -277,7 +277,7 @@ export interface InlineQueryOptions {
    * query runs project-wide unless `workspace_id` is set.
    */
   readonly inject_workspace_id?: boolean | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -309,7 +309,7 @@ export interface QuerySavedReportOptions {
   readonly from_date?: string | null | undefined;
   /** End date (`YYYY-MM-DD`). */
   readonly to_date?: string | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -323,7 +323,7 @@ export interface FrequencyOptions {
   readonly on?: string | null | undefined;
   /** Maximum segmentation values. */
   readonly limit?: number | null | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -335,7 +335,7 @@ export interface SegmentationNumericOptions {
   readonly where?: string | null | undefined;
   /** Counting method (numeric bucketing only). */
   readonly type?: string | undefined;
-  /** Optional cancellation signal (R6.7). */
+  /** Optional cancellation signal. */
   readonly signal?: AbortSignal | undefined;
 }
 
@@ -343,7 +343,7 @@ export interface SegmentationNumericOptions {
 export interface QueryHostMethods {
   /**
    * List event names in the project (`get_events`,
-   * `api_client.py:2357-2428`) with widest-window defaults and the
+   * `api_client.py`) with widest-window defaults and the
    * one-shot 403 "Date range exceeds N days" retry.
    *
    * @param options - Optional limit/date overrides.
@@ -357,7 +357,7 @@ export interface QueryHostMethods {
 
   /**
    * List properties for a specific event (`get_event_properties`,
-   * `api_client.py:2430-2448`).
+   * `api_client.py`).
    *
    * @param event - Event name.
    * @param signal - Optional cancellation signal.
@@ -371,7 +371,7 @@ export interface QueryHostMethods {
 
   /**
    * List sample values for a property (`get_property_values`,
-   * `api_client.py:2450-2480`).
+   * `api_client.py`).
    *
    * @param propertyName - Property name.
    * @param options - Optional event scope and limit.
@@ -384,7 +384,7 @@ export interface QueryHostMethods {
   ) => Promise<string[]>;
 
   /**
-   * List saved funnels (`list_funnels`, `api_client.py:2482-2496`).
+   * List saved funnels (`list_funnels`, `api_client.py`).
    *
    * @param signal - Optional cancellation signal.
    * @returns Funnel dicts, or `[]` for a non-list response.
@@ -394,7 +394,7 @@ export interface QueryHostMethods {
 
   /**
    * List saved cohorts via POST (`list_cohorts`,
-   * `api_client.py:2498-2515`).
+   * `api_client.py`).
    *
    * @param signal - Optional cancellation signal.
    * @returns Cohort dicts, or `[]` for a non-list response.
@@ -403,7 +403,7 @@ export interface QueryHostMethods {
   listCohorts: (signal?: AbortSignal) => Promise<JsonValue[]>;
 
   /**
-   * Today's top events (`get_top_events`, `api_client.py:2517-2545`).
+   * Today's top events (`get_top_events`, `api_client.py`).
    *
    * @param options - Counting type and limit.
    * @returns The response dict, or `{events: [], type}` for a non-dict.
@@ -413,7 +413,7 @@ export interface QueryHostMethods {
 
   /**
    * Aggregate counts for multiple events (`event_counts`,
-   * `api_client.py:2547-2585`).
+   * `api_client.py`).
    *
    * @param events - Event names (JSON-encoded on the wire).
    * @param fromDate - Start date.
@@ -432,7 +432,7 @@ export interface QueryHostMethods {
 
   /**
    * Aggregate counts by property values (`property_counts`,
-   * `api_client.py:2587-2636`).
+   * `api_client.py`).
    *
    * @param event - Event name.
    * @param propertyName - Property to segment by.
@@ -453,7 +453,7 @@ export interface QueryHostMethods {
 
   /**
    * Run a segmentation query (`segmentation`,
-   * `api_client.py:2642-2685`).
+   * `api_client.py`).
    *
    * @param event - Event name to segment.
    * @param fromDate - Start date.
@@ -471,7 +471,7 @@ export interface QueryHostMethods {
   ) => Promise<JsonValue>;
 
   /**
-   * Run a funnel query (`funnel`, `api_client.py:2687-2736`).
+   * Run a funnel query (`funnel`, `api_client.py`).
    *
    * @param funnelId - Funnel identifier.
    * @param fromDate - Start date.
@@ -513,7 +513,7 @@ export interface QueryHostMethods {
 
   /**
    * Query the activity feed via stream/bookmark (`activity_feed`,
-   * `api_client.py:2800-2909`). Resolves the workspace id (pin or
+   * `api_client.py`). Resolves the workspace id (pin or
    * auto-discovery) into the request body.
    *
    * @param distinctIds - User identifiers to query.
@@ -530,7 +530,7 @@ export interface QueryHostMethods {
 
   /**
    * Query a saved report by bookmark type (`query_saved_report`,
-   * `api_client.py:2911-2988`).
+   * `api_client.py`).
    *
    * @param bookmarkId - Saved report identifier.
    * @param options - bookmark_type and the funnel date window.
@@ -545,7 +545,7 @@ export interface QueryHostMethods {
 
   /**
    * List saved reports (LEGACY query-side listing — `list_bookmarks`,
-   * `api_client.py:2990-3020`; the App-API twin `list_bookmarks_v2` is
+   * `api_client.py`; the App-API twin `list_bookmarks_v2` is
    * shard C3).
    *
    * @param bookmarkType - Optional report-type filter.
@@ -561,7 +561,7 @@ export interface QueryHostMethods {
 
   /**
    * Execute an inline insights query via POST (`insights_query`,
-   * `api_client.py:3022-3052`). The body carries `project_id` itself —
+   * `api_client.py`). The body carries `project_id` itself —
    * no query-param injection.
    *
    * @param body - Request body (bookmark params + project_id).
@@ -577,7 +577,7 @@ export interface QueryHostMethods {
 
   /**
    * Query a saved flows report (`query_saved_flows`,
-   * `api_client.py:3054-3080`).
+   * `api_client.py`).
    *
    * @param bookmarkId - Saved flows report identifier.
    * @param signal - Optional cancellation signal.
@@ -592,7 +592,7 @@ export interface QueryHostMethods {
 
   /**
    * Execute an inline flow/funnel query (`arb_funnels_query`,
-   * `api_client.py:3082-3112` — index-absent, ported for the B5
+   * `api_client.py` — index-absent, ported for the B5
    * LiveQueryService `query_flow` path; Layer-3-locked only).
    *
    * @param body - Request body (bookmark + project_id + query_type).
@@ -608,7 +608,7 @@ export interface QueryHostMethods {
 
   /**
    * Event frequency distribution (`frequency`,
-   * `api_client.py:3114-3162`).
+   * `api_client.py`).
    *
    * @param fromDate - Start date.
    * @param toDate - End date.
@@ -629,7 +629,7 @@ export interface QueryHostMethods {
 
   /**
    * Events bucketed by numeric property ranges (`segmentation_numeric`,
-   * `api_client.py:3164-3206`).
+   * `api_client.py`).
    *
    * @param event - Event name.
    * @param fromDate - Start date.
@@ -650,7 +650,7 @@ export interface QueryHostMethods {
 
   /**
    * Sum of numeric property values (`segmentation_sum`,
-   * `api_client.py:3208-3247`).
+   * `api_client.py`).
    *
    * @param event - Event name.
    * @param fromDate - Start date.
@@ -671,7 +671,7 @@ export interface QueryHostMethods {
 
   /**
    * Average of numeric property values (`segmentation_average`,
-   * `api_client.py:3249-3292`).
+   * `api_client.py`).
    *
    * @param event - Event name.
    * @param fromDate - Start date.
@@ -713,7 +713,7 @@ async function getEvents(
   const toDate = options.to_date;
   const url = core.buildUrl("query", "/events/names");
   // Capture today once so the initial to_date and the retry's
-  // from_date can't diverge across midnight (`api_client.py:2399`).
+  // from_date can't diverge across midnight (`api_client.py`).
   const today = civilFromInstantUtc(core.now());
   const resolvedFrom = fromDate ?? EVENTS_NAMES_WIDE_FROM_DATE;
   const resolvedTo = toDate ?? formatYmd(today);
@@ -853,7 +853,7 @@ async function querySavedReport(
         const parsedTo = parseYmd(toDate);
         if (parsedTo === null) {
           // Python: `datetime.strptime` raises a BARE ValueError that
-          // propagates uncaught (`api_client.py:2960`) — port the same
+          // propagates uncaught (`api_client.py`) — port the same
           // class, CPython's message shape (out of contract, R5.4).
           throw new ValueError(
             `time data '${toDate}' does not match format '%Y-%m-%d'`,
@@ -958,7 +958,7 @@ async function listCohorts(
   core: ClientCore,
   signal?: AbortSignal,
 ): Promise<JsonValue[]> {
-  // POST for a read is unusual but per API spec (`api_client.py:2510`).
+  // POST for a read is unusual but per API spec (`api_client.py`).
   const url = core.buildUrl("query", "/cohorts/list");
   const response = await core.requestQueryHost("POST", url, { signal });
   return Array.isArray(response) ? response : [];
@@ -1116,7 +1116,7 @@ async function retention(
     interval_count: options.interval_count ?? 8,
   };
   // The API rejects `unit` and `interval` together
-  // (`api_client.py:2783-2788`).
+  // (`api_client.py`).
   if (interval === 1) {
     params["unit"] = options.unit ?? "day";
   } else {
