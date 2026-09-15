@@ -72,6 +72,7 @@ import type { Filter } from "../types/index.js";
 import {
   floatCarrierValue,
   isFloatCarrier,
+  isPythonDict,
   pythonStrValue,
   pythonTypeName,
 } from "./validation-shared.js";
@@ -82,8 +83,6 @@ import {
 // this file's consumers: plain object — prototype `Object.prototype`
 // or `null`). Re-exported here so `user-validators.ts` and the B3-K4
 // grower keep their established import site.
-import { isPythonDict } from "./validation-shared.js";
-
 export { isPythonDict };
 
 /**

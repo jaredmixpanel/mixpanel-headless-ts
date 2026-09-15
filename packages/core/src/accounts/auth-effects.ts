@@ -494,7 +494,7 @@ export const UNPORTED_AUTH_SEAMS: readonly string[] = [
  * @returns A thunk that always throws.
  * @internal
  */
-function unportedAuthSeam(name: string): (...args: never[]) => never {
+function unportedAuthSeam(name: string): (...args: unknown[]) => never {
   return (): never => {
     // Core-alone posture (b8-packets.md §4.4): the real implementation
     // of every `UNPORTED_AUTH_SEAMS` member SHIPS in `packages/node`

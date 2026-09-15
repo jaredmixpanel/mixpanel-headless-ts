@@ -396,10 +396,10 @@ export function urlunsplit(parts: {
     url = `${parts.scheme}:${url}`;
   }
   if (parts.query !== "") {
-    url = `${url}?${parts.query}`;
+    url += `?${parts.query}`;
   }
   if (parts.fragment !== "") {
-    url = `${url}#${parts.fragment}`;
+    url += `#${parts.fragment}`;
   }
   return url;
 }

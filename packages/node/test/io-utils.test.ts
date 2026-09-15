@@ -99,7 +99,7 @@ describe("TestAtomicWriteBytes", () => {
     const dir = makeTempDir(cleanups);
     const target = join(dir, "config.toml");
     atomicWriteBytes(target, utf8("hello world"));
-    expect(readFileSync(target, "utf-8")).toBe("hello world");
+    expect(readFileSync(target, "utf8")).toBe("hello world");
     if (POSIX) {
       expect(fileMode(target)).toBe(0o600);
     }
@@ -136,7 +136,7 @@ describe("TestAtomicWriteBytes", () => {
     const target = join(dir, "config.toml");
     writeFileSync(target, "old");
     atomicWriteBytes(target, utf8("new"));
-    expect(readFileSync(target, "utf-8")).toBe("new");
+    expect(readFileSync(target, "utf8")).toBe("new");
   });
 
   it("test_no_tmp_file_left_after_success", () => {
@@ -173,7 +173,7 @@ describe("TestAtomicWriteBytes", () => {
     expect(() => atomicWriteBytes(target, utf8("new"), { fsOps })).toThrow(
       "simulated",
     );
-    expect(readFileSync(target, "utf-8")).toBe("original");
+    expect(readFileSync(target, "utf8")).toBe("original");
     expect(tmpGlob(dir, "config.toml")).toEqual([]);
   });
 
@@ -218,9 +218,9 @@ describe("TestAtomicWriteBytes", () => {
       error = exc;
     }
     expect((error as NodeJS.ErrnoException).code).toBe("EEXIST");
-    expect(readFileSync(target, "utf-8")).toBe("original");
+    expect(readFileSync(target, "utf8")).toBe("original");
     // The FOREIGN stale tmp is left in place (Python leaves it too).
-    expect(readFileSync(staleTmp, "utf-8")).toBe("stale");
+    expect(readFileSync(staleTmp, "utf8")).toBe("stale");
   });
 
   it("test_writes_empty_bytes", () => {
@@ -263,7 +263,7 @@ describe("TestAtomicWriteResilience", () => {
     expect(() =>
       atomicWriteBytes(target, utf8("NEW_CONTENT"), { fsOps }),
     ).toThrow("simulated SIGKILL");
-    expect(readFileSync(target, "utf-8")).toBe("OLD_CONTENT");
+    expect(readFileSync(target, "utf8")).toBe("OLD_CONTENT");
     expect(tmpGlob(dir, "config.toml")).toEqual([]);
   });
 
@@ -279,7 +279,7 @@ describe("TestAtomicWriteResilience", () => {
     expect(() =>
       atomicWriteBytes(target, utf8("NEW_CONTENT"), { fsOps }),
     ).toThrow("disk full");
-    expect(readFileSync(target, "utf-8")).toBe("OLD_CONTENT");
+    expect(readFileSync(target, "utf8")).toBe("OLD_CONTENT");
     expect(tmpGlob(dir, "config.toml")).toEqual([]);
   });
 
@@ -300,7 +300,7 @@ describe("TestAtomicWriteResilience", () => {
     atomicWriteBytes(target, utf8("A".repeat(1024)), { fsOps: spy });
     atomicWriteBytes(target, utf8("B".repeat(1024)), { fsOps: spy });
     expect(new Set(seen).size).toBe(2);
-    const final = readFileSync(target, "utf-8");
+    const final = readFileSync(target, "utf8");
     expect(final === "A".repeat(1024) || final === "B".repeat(1024)).toBe(true);
     expect(tmpGlob(dir, "config.toml")).toEqual([]);
   });

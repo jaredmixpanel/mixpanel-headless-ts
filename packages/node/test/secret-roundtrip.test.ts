@@ -57,7 +57,7 @@ describe("CRED-F3 secret round-trip lock", () => {
     expect(ot.token?.reveal()).toBe("ot-token-sentinel");
 
     // 2) The on-disk TOML carries the REAL values...
-    const text = readFileSync(configPath, "utf-8");
+    const text = readFileSync(configPath, "utf8");
     expect(text).toContain("sa-secret-sentinel");
     expect(text).toContain("ot-token-sentinel");
 
@@ -78,7 +78,7 @@ describe("CRED-F3 secret round-trip lock", () => {
     config.updateAccount("team", { secret: new Secret("rotated-secret") });
     const sa = config.getAccount("team") as ServiceAccount;
     expect(sa.secret.reveal()).toBe("rotated-secret");
-    const text = readFileSync(configPath, "utf-8");
+    const text = readFileSync(configPath, "utf8");
     expect(text).toContain("rotated-secret");
     expect(text).not.toContain("**********");
   });

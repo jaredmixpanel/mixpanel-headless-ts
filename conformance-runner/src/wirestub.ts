@@ -185,7 +185,7 @@ export class WireStubClient {
     }
     let response: Response;
     try {
-      response = await this.fetchImpl(url.toString(), {
+      response = await this.fetchImpl(url.href, {
         method,
         headers,
         ...(body !== undefined ? { body } : {}),
@@ -252,7 +252,7 @@ export class WireStubClient {
     const url = new URL(this.baseUrl + path);
     let response: Response;
     try {
-      response = await this.fetchImpl(url.toString(), {
+      response = await this.fetchImpl(url.href, {
         method,
         headers: new Headers(options.headers ?? {}),
       });

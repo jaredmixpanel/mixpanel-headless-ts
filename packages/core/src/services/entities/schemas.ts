@@ -344,7 +344,7 @@ export function createSchemaMethods(core: ClientCore): SchemaMethods {
       if (entityType !== undefined && entityType !== null) {
         base = `schemas/${pythonQuote(entityType)}`;
         if (entityName !== undefined && entityName !== null) {
-          base = `${base}/${pythonQuote(entityName)}`;
+          base += `/${pythonQuote(entityName)}`;
         }
       }
       const path = scopedPath(base);

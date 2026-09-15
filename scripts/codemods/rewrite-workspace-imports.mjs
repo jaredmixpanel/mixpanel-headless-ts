@@ -316,9 +316,10 @@ function mergeDuplicateImports(fileName, text) {
       edits.push({ start: s.getStart(sf), end, text: "" });
     }
   }
+  let out = text;
   for (const e of edits.sort((a, b) => b.start - a.start))
-    text = text.slice(0, e.start) + e.text + text.slice(e.end);
-  return text;
+    out = out.slice(0, e.start) + e.text + out.slice(e.end);
+  return out;
 }
 
 // ── report ─────────────────────────────────────────────────────────────

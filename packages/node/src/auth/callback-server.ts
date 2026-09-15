@@ -119,7 +119,7 @@ function sendHtml(
   html: string,
   status: number,
 ): Promise<void> {
-  const body = Buffer.from(html, "utf-8");
+  const body = Buffer.from(html, "utf8");
   res.writeHead(status, {
     "Content-Type": "text/html; charset=utf-8",
     "Content-Length": String(body.length),

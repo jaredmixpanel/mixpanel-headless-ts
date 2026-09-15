@@ -862,21 +862,21 @@ describe("TestValidateFunnelArgsF7", () => {
 describe("TestValidateFunnelArgsF1Max", () => {
   it("test_101_steps_returns_f1_max_error", () => {
     const errors = validateFunnelArgs(
-      validFunnelArgs({ steps: Array<string>(101).fill("A") }),
+      validFunnelArgs({ steps: Array.from({ length: 101 }, () => "A") }),
     );
     expect(codes(errors)).toContain("F1_MAX_STEPS");
   });
 
   it("test_100_steps_no_f1_max_error", () => {
     const errors = validateFunnelArgs(
-      validFunnelArgs({ steps: Array<string>(100).fill("A") }),
+      validFunnelArgs({ steps: Array.from({ length: 100 }, () => "A") }),
     );
     expect(codes(errors)).not.toContain("F1_MAX_STEPS");
   });
 
   it("test_2_steps_no_f1_max_error", () => {
     const errors = validateFunnelArgs(
-      validFunnelArgs({ steps: Array<string>(2).fill("A") }),
+      validFunnelArgs({ steps: Array.from({ length: 2 }, () => "A") }),
     );
     expect(codes(errors)).not.toContain("F1_MAX_STEPS");
   });

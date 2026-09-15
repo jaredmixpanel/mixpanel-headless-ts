@@ -24,8 +24,7 @@ import { fileURLToPath } from "node:url";
 // ajv ships CJS; under NodeNext the default import binds the module
 // namespace, so the class is picked off the named `Ajv2020` export (also
 // present at runtime via `module.exports.Ajv2020 = Ajv2020`).
-import ajv2020 from "ajv/dist/2020.js";
-import type { ValidateFunction } from "ajv/dist/2020.js";
+import ajv2020, { type ValidateFunction } from "ajv/dist/2020.js";
 
 const { Ajv2020 } = ajv2020;
 

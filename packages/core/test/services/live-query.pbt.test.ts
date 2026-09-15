@@ -353,7 +353,10 @@ describe("TestTransformRetentionProperties", () => {
         (bornEvent, returnEvent, fromDate, toDate, unit, date, numPeriods) => {
           // Cohort with size 0 but non-zero counts (the edge case)
           const raw = {
-            [date]: { first: 0, counts: Array<number>(numPeriods).fill(10) },
+            [date]: {
+              first: 0,
+              counts: Array.from({ length: numPeriods }, () => 10),
+            },
           };
 
           const result = transformRetention(

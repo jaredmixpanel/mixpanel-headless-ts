@@ -402,7 +402,7 @@ export function readCredentialText(
   path: string,
   options: ReadCredentialTextOptions = {},
 ): string {
-  const decoder = new TextDecoder(options.encoding ?? "utf-8", {
+  const decoder = new TextDecoder(options.encoding ?? "utf8", {
     fatal: true,
   });
   return decoder.decode(readCredentialBytes(path));
@@ -487,7 +487,7 @@ export function readCappedSecretFromStdin(
         `refusing to truncate. Pipe a single secret, not a key bundle.`,
     );
   }
-  const text = new TextDecoder("utf-8", { fatal: true }).decode(
+  const text = new TextDecoder("utf8", { fatal: true }).decode(
     raw.subarray(0, total),
   );
   const value = pythonStrip(text);
