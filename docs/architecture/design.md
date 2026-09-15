@@ -1,6 +1,6 @@
 ---
 title: Design
-description: How the TypeScript port is put together — the core/node/browser split, the isomorphic core with injected seams, the purity boundary, the service layering, the error model, models and serialisation, and how the Python design maps onto it.
+description: "How the TypeScript port is put together — the core/node/browser split, the isomorphic core with injected seams, the purity boundary, the service layering, the error model, models and serialisation, and how the Python design maps onto it."
 ---
 
 # Design
@@ -70,22 +70,22 @@ Every seam has a default that either falls back to a web-standard global or
 throws a coded error naming the seam, so a core-only construction fails
 loudly rather than silently doing the wrong thing.
 
-| Seam                                 | Where it is injected                                                      | Default in core                                          | Supplied by node                                        | Supplied by browser                                       |
-| ------------------------------------ | ------------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------------- |
-| Transport                            | `MixpanelClientOptions.fetch`                                             | the global `fetch`                                       | global `fetch` (or `fetchImpl`)                         | global `fetch` (or `fetch`)                               |
-| Clock                                | `MixpanelClientOptions.now`                                               | `() => new Date()`                                       | `now` option                                            | `now` option                                              |
-| Sleep (retry backoff)                | `MixpanelClientOptions.sleep`                                             | `setTimeout`-backed                                      | same                                                    | same                                                      |
-| Randomness (jitter)                  | `MixpanelClientOptions.random`                                            | `Math.random`                                            | same                                                    | same                                                      |
-| OAuth token resolution               | `MixpanelClientOptions.tokenResolver`                                     | none — OAuth accounts throw `ParamTypeError`             | on-disk resolver with refresh                           | store-backed resolver, no refresh                         |
-| Environment, config file, bridge     | `WorkspaceOptions.sources` (`ResolverSources`: `env`, `config`, `bridge`) | none — axis construction throws `UNPORTED_AUTH_SEAM`     | `process.env`, `ConfigManager`, `loadBridge`            | not exposed; only explicit `token` / `projectId`          |
-| Account and target lookups for `use` | `WorkspaceOptions.seams` (`ResolverSeams`)                                | throw `UNPORTED_RESOLVER_SEAM`                           | real ones from the effects bag                          | core defaults                                             |
-| `/me` cache                          | `WorkspaceOptions.meCache`                                                | per-account in-memory store                              | on-disk `MeCache`                                       | in-memory                                                 |
-| File reads (`uploadLookupTable`)     | `WorkspaceOptions.readFile`                                               | throws `UNPORTED_FILE_READ_SEAM`                         | `node:fs`                                               | core default                                              |
-| Monotonic clock (upload poll)        | `WorkspaceOptions.monotonic`                                              | `Date.now() / 1000`                                      | same                                                    | same                                                      |
-| Logging and warnings                 | `WorkspaceOptions.logger`, `WorkspaceOptions.warn`                        | `NOOP_LOGGER` — every message dropped                    | warnings to stderr, as Python's last-resort handler     | `console.warn`-shaped logger                              |
-| Alternate API hosts                  | `MixpanelClientOptions.endpointOverrides`                                 | the live per-region hosts                                | `MP_API_BASE_URL` / `MP_APP_BASE_URL`, read per request | static bag on the factory options                         |
-| Credential persistence               | `CredentialStore` (browser factories)                                     | —                                                        | —                                                       | `InMemoryCredentialStore` / `LocalStorageCredentialStore` |
-| Account management effects           | `AuthEffects` (namespace factories, `loginUnified`)                       | `defaultAuthEffects` — every member throws its seam code | `createNodeAuthEffects()`                               | —                                                         |
+| Seam                                 | Where it is injected                                                                                                                                                     | Default in core                                          | Supplied by node                                        | Supplied by browser                                       |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------------- |
+| Transport                            | [`MixpanelClientOptions`](/reference/core/interfaces/MixpanelClientOptions)`.fetch`                                                                                      | the global `fetch`                                       | global `fetch` (or `fetchImpl`)                         | global `fetch` (or `fetch`)                               |
+| Clock                                | `MixpanelClientOptions.now`                                                                                                                                              | `() => new Date()`                                       | `now` option                                            | `now` option                                              |
+| Sleep (retry backoff)                | `MixpanelClientOptions.sleep`                                                                                                                                            | `setTimeout`-backed                                      | same                                                    | same                                                      |
+| Randomness (jitter)                  | `MixpanelClientOptions.random`                                                                                                                                           | `Math.random`                                            | same                                                    | same                                                      |
+| OAuth token resolution               | `MixpanelClientOptions.tokenResolver`                                                                                                                                    | none — OAuth accounts throw `ParamTypeError`             | on-disk resolver with refresh                           | store-backed resolver, no refresh                         |
+| Environment, config file, bridge     | [`WorkspaceOptions`](/reference/core/interfaces/WorkspaceOptions)`.sources` ([`ResolverSources`](/reference/core/interfaces/ResolverSources): `env`, `config`, `bridge`) | none — axis construction throws `UNPORTED_AUTH_SEAM`     | `process.env`, `ConfigManager`, `loadBridge`            | not exposed; only explicit `token` / `projectId`          |
+| Account and target lookups for `use` | `WorkspaceOptions.seams` (`ResolverSeams`)                                                                                                                               | throw `UNPORTED_RESOLVER_SEAM`                           | real ones from the effects bag                          | core defaults                                             |
+| `/me` cache                          | `WorkspaceOptions.meCache`                                                                                                                                               | per-account in-memory store                              | on-disk `MeCache`                                       | in-memory                                                 |
+| File reads (`uploadLookupTable`)     | `WorkspaceOptions.readFile`                                                                                                                                              | throws `UNPORTED_FILE_READ_SEAM`                         | `node:fs`                                               | core default                                              |
+| Monotonic clock (upload poll)        | `WorkspaceOptions.monotonic`                                                                                                                                             | `Date.now() / 1000`                                      | same                                                    | same                                                      |
+| Logging and warnings                 | `WorkspaceOptions.logger`, `WorkspaceOptions.warn`                                                                                                                       | `NOOP_LOGGER` — every message dropped                    | warnings to stderr, as Python's last-resort handler     | `console.warn`-shaped logger                              |
+| Alternate API hosts                  | `MixpanelClientOptions.endpointOverrides`                                                                                                                                | the live per-region hosts                                | `MP_API_BASE_URL` / `MP_APP_BASE_URL`, read per request | static bag on the factory options                         |
+| Credential persistence               | [`CredentialStore`](/reference/core/interfaces/CredentialStore) (browser factories)                                                                                      | —                                                        | —                                                       | `InMemoryCredentialStore` / `LocalStorageCredentialStore` |
+| Account management effects           | [`AuthEffects`](/reference/core/interfaces/AuthEffects) (namespace factories, `loginUnified`)                                                                            | `defaultAuthEffects` — every member throws its seam code | `createNodeAuthEffects()`                               | —                                                         |
 
 A core-only `Workspace` is therefore built from a pre-resolved `Session` plus
 whichever seams the caller wants to pin — which is also how the test suites
@@ -118,18 +118,20 @@ const result = await ws.query("Login", { math: "dau", last: 7 });
 console.log(result.rowColumns());
 ```
 
-`createNodeWorkspace()` is exactly this construction with the node seams
-filled in: it builds `ResolverSources` from `process.env`, the TOML file and
+[`createNodeWorkspace()`](/reference/node/functions/createNodeWorkspace) is
+exactly this construction with the node seams filled in: it builds `ResolverSources` from `process.env`, the TOML file and
 the bridge file, wires the on-disk token resolver, the on-disk `/me` cache,
 `node:fs` reads and a stderr logger, then calls `new Workspace(...)`. The
-browser factories do the same with a `CredentialStore`-backed token resolver
+[browser factories](/reference/browser/functions/createBrowserWorkspace) do the same with a `CredentialStore`-backed token resolver
 and no resolver sources at all.
 
 ## Purity boundary and how it is enforced
 
 `packages/core` and `packages/browser` must not import Node built-ins
 (`node:*`, `fs`, `path`, `os`) or `undici`, and must not read the `process`
-global. Configuration is injected. The rule is enforced three times:
+global. Configuration is injected (the contributor-facing statement is the
+[Purity boundary](https://github.com/jaredmixpanel/mixpanel-headless-ts/blob/main/CONTRIBUTING.md#purity-boundary)
+section of `CONTRIBUTING.md`). The rule is enforced three times:
 
 1. **Lint.** `no-restricted-imports` forbids the built-ins and `undici` in
    both packages; `no-restricted-globals` forbids `process`. Every rule in
@@ -150,7 +152,7 @@ symbol up.
 
 ### `Workspace` (facade)
 
-One class carrying every public operation of the Python `Workspace`:
+[One class](/reference/core/classes/Workspace) carrying every public operation of the Python `Workspace`:
 
 - **Session resolution.** Three independent axes — account, project,
   workspace — each resolved through `env → param → target → bridge → config`
@@ -214,11 +216,13 @@ persist })` swaps in a new `Session` and returns the same facade for
 - **Backoff** — exponential backoff with jitter through the injectable RNG,
   a verbatim (capped) `Retry-After`, shared by every retry loop and spoken in
   Python's seconds.
-- **Lossless JSON** — an order-preserving parser (`parseLossless`) whose
-  numbers carry their exact source text (`JsonNumber`), so integers beyond
+- **Lossless JSON** — an order-preserving parser
+  ([`parseLossless`](/reference/core/functions/parseLossless)) whose
+  numbers carry their exact source text
+  ([`JsonNumber`](/reference/core/classes/JsonNumber)), so integers beyond
   2^53 and float spellings such as `18.0` survive the round trip; models
   convert with `toNativeJson` at the point of consumption.
-- **`ConfigManager`** (node) — the TOML file at `~/.mp/config.toml`: account,
+- **[`ConfigManager`](/reference/node/classes/ConfigManager)** (node) — the TOML file at `~/.mp/config.toml`: account,
   target and `[active]` blocks, atomic writes, owner-only permissions. The
   same file and schema as the Python library, so one login serves both.
 
@@ -272,8 +276,9 @@ See [Streaming](/guide/streaming) and [Session replay](/guide/session-replay).
 Each Python exception class ports as an `Error` subclass with the same name,
 the same parent edge and the same machine `code`; the parent edges and
 default codes are generated from the Python-side contract artifact and
-diffed against the live classes by a test. `MixpanelHeadlessError` is the
-root: `code` and `details` are fixed at construction and exposed as
+diffed against the live classes by a test.
+[`MixpanelHeadlessError`](/reference/core/classes/MixpanelHeadlessError) is
+the root: `code` and `details` are fixed at construction and exposed as
 read-only getters, `toDict()` returns `{ code, message, details }`, and the
 runtime `name` is the class name (so a minifying bundler must keep function
 names). Class name plus `code` is the compatibility contract that the
@@ -305,7 +310,7 @@ codes.
 - **Literals** — Python `Literal[...]` aliases become unions plus a
   `*_VALUES` tuple for runtime membership; Python enums become `as const`
   objects. The port uses no TypeScript `enum` or `namespace`.
-- **`Secret`** — the `SecretStr` twin: an ECMAScript private field, invisible
+- **[`Secret`](/reference/core/classes/Secret)** — the `SecretStr` twin: an ECMAScript private field, invisible
   to `JSON.stringify`, spread and structured logging; every stringification
   renders Pydantic's ten-asterisk literal; the value is reachable only through
   `reveal()`.
