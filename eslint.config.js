@@ -629,6 +629,11 @@ const config = defineConfig([
 
       // --- tsdoc / jsdoc ---------------------------------------------------
       "tsdoc/syntax": "error",
+      // TSDoc `@param` names are bare identifiers: a destructured object
+      // parameter is documented once, as prose on the root name, never as
+      // dotted `options.field` tags (tsdoc/syntax rejects those).
+      "jsdoc/require-param": ["error", { checkDestructured: false }],
+      "jsdoc/check-param-names": ["error", { checkDestructured: false }],
       "jsdoc/no-types": "error",
       "jsdoc/require-hyphen-before-param-description": ["error", "always"],
       // One blank line between the description and the first tag, none
