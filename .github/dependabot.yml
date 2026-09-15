@@ -30,6 +30,10 @@ updates:
       # would type-check APIs that do not exist on the oldest supported runtime.
       - dependency-name: "@types/node"
         update-types: [version-update:semver-major]
+      # TypeDoc majors track TypeScript majors (0.28 declares TS 5.0–6.0); it
+      # is pinned `~0.28.20` and moves together with the typescript pin above.
+      - dependency-name: typedoc
+        update-types: [version-update:semver-major]
     open-pull-requests-limit: 10
 
   - package-ecosystem: github-actions

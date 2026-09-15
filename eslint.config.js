@@ -50,7 +50,12 @@ const NODE_FILES = [
   "tests/**/*.ts",
   "vitest.config.ts",
   "eslint.config.js",
+  // The docs site's config runs under Node; its theme (docs/.vitepress/theme)
+  // runs in the browser and is deliberately not listed.
+  "docs/.vitepress/config.mts",
 ];
+// The documentation site (CONTRIBUTING.md "Documentation").
+const DOCS_SITE_FILES = ["docs/.vitepress/**/*.{ts,mts}"];
 const JS_FILES = ["**/*.{js,mjs,cjs}"];
 
 // ---------------------------------------------------------------------------
@@ -151,6 +156,7 @@ function noExtraneous(...packageDirs) {
         "differential/**",
         "eslint.config.js",
         "vitest.config.ts",
+        "docs/.vitepress/**",
       ],
       optionalDependencies: false,
       peerDependencies: false,
@@ -289,6 +295,7 @@ const config = defineConfig([
             "differential/tsconfig.json",
             "scripts/tsconfig.json",
             "tsconfig.tests.json",
+            "docs/.vitepress/tsconfig.json",
           ],
           // The published `exports` maps point at dist/; lint resolves the
           // bare specifiers to src/ through the one shared alias table so a
@@ -871,6 +878,18 @@ const config = defineConfig([
         "conformance-runner",
         "differential",
       ),
+    },
+  },
+
+  {
+    name: "repo/boundary/docs-site",
+    files: DOCS_SITE_FILES,
+    rules: {
+      "no-restricted-imports": restrictedImports({
+        ownPackage: null,
+        purity: false,
+      }),
+      "import-x/no-extraneous-dependencies": noExtraneous(),
     },
   },
 
