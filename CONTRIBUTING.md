@@ -41,6 +41,10 @@ locally). A Python checkout of `mixpanel-headless` next to this repository
   npm, but typescript-eslint's peer range is `<6.1.0`, so a casual
   `npm i -D typescript` would break `npm run lint`. Move the pin when
   typescript-eslint (and TypeDoc) support TS 7.
+- **`typedoc` is pinned `~0.28.20` and `vitepress` `~1.6`.** TypeDoc is 0.x,
+  so a minor is its breaking bump and its TypeScript range moves per minor;
+  VitePress 2 is alpha. Dependabot ignores minors and majors for both
+  (`.github/dependabot.yml`); bump them by hand with a docs build.
 - Everything else floats within its caret range; Dependabot
   (`.github/dependabot.yml`) proposes bumps. The lockfile is authoritative —
   CI fails if `npm ci` rewrites it.
