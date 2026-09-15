@@ -383,7 +383,7 @@ describe("pythonJsonDumpsCanonical — properties (spec §6.4)", () => {
           // Any `", "` / `": "` must be INSIDE a string literal; outside
           // one the canonical form is compact. Stripping every string
           // literal leaves only structure, which must be whitespace-free.
-          const structure = pythonJsonDumpsCanonical(value).replace(
+          const structure = pythonJsonDumpsCanonical(value).replaceAll(
             /"(?:[^"\\]|\\.)*"/g,
             "",
           );

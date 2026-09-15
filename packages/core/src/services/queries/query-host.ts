@@ -901,9 +901,7 @@ export function createQueryHostMethods(
           // Python: `min(computed_to, datetime.now())` — midnight of the
           // derived date vs the live instant; the CALENDAR comparison is
           // what survives strftime, so compare civil dates.
-          const computedIso = formatYmd(computedTo);
-          const nowIso = formatYmd(nowCivil);
-          toDate = computedIso <= nowIso ? computedIso : nowIso;
+          toDate = earlierYmd(formatYmd(computedTo), formatYmd(nowCivil));
         }
         params = {
           funnel_id: bookmarkId,
@@ -1312,4 +1310,19 @@ export function createQueryHostMethods(
       });
     },
   };
+}
+
+/**
+ * The earlier of two `YYYY-MM-DD` dates — lexicographic order is calendar
+ * order for that shape, so this is a string comparison, never `Math.min`.
+ *
+ * @param a - One ISO calendar date.
+ * @param b - Another ISO calendar date.
+ * @returns Whichever is not later.
+ */
+function earlierYmd(a: string, b: string): string {
+  if (a <= b) {
+    return a;
+  }
+  return b;
 }

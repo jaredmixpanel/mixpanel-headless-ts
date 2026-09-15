@@ -915,14 +915,10 @@ const config = defineConfig([
     rules: {
       "unicorn/prefer-spread": "off",
       "unicorn/no-for-each": "off",
-      "unicorn/prefer-string-replace-all": "off",
       "unicorn/no-useless-undefined": "off",
       "unicorn/prefer-at": "off",
-      "unicorn/prefer-number-properties": "off",
-      "unicorn/prefer-string-slice": "off",
       "unicorn/prefer-response-static-json": "off",
       "unicorn/prefer-type-error": "off",
-      "unicorn/prefer-math-min-max": "off",
     },
   }),
 

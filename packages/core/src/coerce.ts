@@ -151,7 +151,7 @@ export function coerceInt(value: unknown, options: CoerceOptions = {}): number {
     const trimmed = value.trim();
     if (INT_STRING.test(trimmed)) {
       const integerPart = trimmed.split(".", 1)[0] ?? trimmed;
-      return Number(integerPart.replace(/_/g, ""));
+      return Number(integerPart.replaceAll("_", ""));
     }
   }
   fail("int", value, options);
@@ -213,7 +213,7 @@ export function coerceInt64(
     const trimmed = value.trim();
     if (INT_STRING.test(trimmed)) {
       const integerPart = trimmed.split(".", 1)[0] ?? trimmed;
-      return narrowInt64(BigInt(integerPart.replace(/_/g, "")));
+      return narrowInt64(BigInt(integerPart.replaceAll("_", "")));
     }
     fail("int", value, options);
   }
@@ -254,7 +254,7 @@ export function coerceFloat(
       return negative ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY;
     }
     if (FLOAT_STRING.test(trimmed)) {
-      return Number(trimmed.replace(/_/g, ""));
+      return Number(trimmed.replaceAll("_", ""));
     }
   }
   fail("float", value, options);

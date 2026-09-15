@@ -899,7 +899,7 @@ describe("Filter direct construction (PR #236 operator validation)", () => {
 
   it("every alias key is a public factory name (camelized) or 'is equal to'", () => {
     const camel = (name: string): string =>
-      name.replace(/_([a-z])/g, (_m, c: string) => c.toUpperCase());
+      name.replaceAll(/_([a-z])/g, (_m, c: string) => c.toUpperCase());
     for (const key of Object.keys(FILTER_OPERATOR_ALIASES)) {
       if (key === "is equal to") continue;
       expect(

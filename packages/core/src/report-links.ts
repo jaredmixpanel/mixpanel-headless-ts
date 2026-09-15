@@ -655,7 +655,7 @@ export function parseReportLink(value: string): ParsedReportLink {
 
   let normalized = raw;
   if (!normalized.includes("#")) {
-    normalized = normalized.replace(PERCENT_HASH_RE, "#");
+    normalized = normalized.replaceAll(PERCENT_HASH_RE, "#");
   }
   if (!SCHEME_RE.test(normalized)) {
     if (!startsWithKnownHost(normalized)) {

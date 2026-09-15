@@ -241,7 +241,7 @@ function literalTitle(arg) {
   if (ts.isTemplateExpression(arg)) {
     return [arg.head.text, ...arg.templateSpans.map((s) => s.literal.text)]
       .join(" ")
-      .replace(/\s+/g, " ")
+      .replaceAll(/\s+/g, " ")
       .trim();
   }
   return undefined;
@@ -505,13 +505,13 @@ export function fixOwnershipMarker(line) {
       return { line, changed: false, deleted: false };
     }
   }
-  label = label.replace(/\([^()]*\)/g, " ");
+  label = label.replaceAll(/\([^()]*\)/g, " ");
   for (const hit of findBannedTokens(label).reverse()) {
     label = `${label.slice(0, hit.index)} ${label.slice(hit.index + hit.length)}`;
   }
   label = label
-    .replace(/\s+/g, " ")
-    .replace(/^[\s:;,\-–—]+|[\s:;,\-–—]+$/g, "")
+    .replaceAll(/\s+/g, " ")
+    .replaceAll(/^[\s:;,\-–—]+|[\s:;,\-–—]+$/g, "")
     .trim();
   if (!/[A-Za-z]/.test(label)) {
     return { line: null, changed: true, deleted: true };

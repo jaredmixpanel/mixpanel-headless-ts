@@ -424,7 +424,7 @@ const PYTHON_FLOAT =
  *   `ValueError`.
  */
 function parsePythonFloat(text: string): number | undefined {
-  const trimmed = text.replace(PYTHON_TRIM, "");
+  const trimmed = text.replaceAll(PYTHON_TRIM, "");
   if (trimmed === "") {
     return undefined;
   }
@@ -438,7 +438,7 @@ function parsePythonFloat(text: string): number | undefined {
   if (!PYTHON_FLOAT.test(trimmed)) {
     return undefined;
   }
-  return Number(trimmed.replace(/_/g, ""));
+  return Number(trimmed.replaceAll("_", ""));
 }
 
 /**

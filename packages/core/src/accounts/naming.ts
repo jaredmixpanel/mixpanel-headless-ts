@@ -81,7 +81,7 @@ export function slugify(value: string | null | undefined): string {
   }
   const lowered = folded.toLowerCase();
   const dashed = lowered
-    .replace(NON_SLUG_CHARS, "-")
+    .replaceAll(NON_SLUG_CHARS, "-")
     .replace(/^-+/, "")
     .replace(/-+$/, "");
   if (dashed.length <= SLUG_MAX_LEN) {
