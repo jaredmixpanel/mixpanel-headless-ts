@@ -73,7 +73,7 @@ jobs:
 
       # Runs in Node's default heap: measured at 3.5 GB RSS for ~890 twoslash
       # blocks with the static hover renderer (CONTRIBUTING.md
-      # "Documentation"); private-repository standard runners have 7 GB.
+      # "Documentation"); private-repository standard runners have 8 GB.
       - name: Build site
         run: npm run docs:build
 
