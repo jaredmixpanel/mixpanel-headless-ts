@@ -1,14 +1,12 @@
 /**
- * B6-W1 member module — the logic behind the `Workspace` lifecycle,
- * workspace-management, `/me` and business-context members
- * (`workspace.py:528-1034` + `:10254-10674`).
- *
- * Packet contract (`b6-packets.md` §2): the `workspace.ts` sections
- * hold ONE-LINE delegations; everything with a branch lives here, and
+ * Lifecycle members of the `Workspace` facade: the resolver seams
+ * `use()` consumes, the target-exclusivity guard, the no-project error,
+ * and the business-context members over the facade slice they read
+ * ({@link BusinessContextHost}). Everything with a branch lives here;
  * everything below the facade (the wire client, the entity models, the
- * B4-C2 streaming helpers) is COMPOSED, never re-implemented.
+ * streaming helpers) is composed, never re-implemented.
  *
- * This is the first module of `workspace-members/`; W2–W8 add siblings.
+ * @see mixpanel_headless.workspace.Workspace
  */
 
 import type { Account } from "../auth/account.js";
@@ -30,9 +28,7 @@ import {
   BusinessContextChain,
 } from "../types/entities/business-context.js";
 
-// ---------------------------------------------------------------------------
-// W1-D1 — the resolver seams (B7 replaces the defaults).
-// ---------------------------------------------------------------------------
+// --- Resolver seams ---
 
 /** Arguments of the {@link ResolverSeams.resolveSession} seam. */
 interface ResolveSessionArgs {
@@ -51,21 +47,24 @@ interface ResolveProjectAxisArgs {
 }
 
 /**
- * The resolution surface `Workspace.use()` consumes — batch B7 owns the
- * implementations (playbook B7 row: "`Workspace.use(...)` (B6, already
- * built) consumes `resolve_session`"), B8 owns the config/bridge I/O
- * underneath them. W1 fixes the SHAPE and ships defaults that throw
- * `UNPORTED_RESOLVER_SEAM`.
+ * The resolution surface `Workspace.use()` consumes.
  *
- * Python counterparts: `_resolve_session` + `_load_bridge`
- * (`workspace.py:618-630`), `ConfigManager.get_account` /
- * `_resolve_project_axis` / `_env_workspace_id` and
- * `ConfigManager.apply_session`.
+ * @remarks
+ * Python's `use()` reaches straight into `ConfigManager` and the bridge
+ * file; `@mixpanel-headless/core` is runtime-agnostic, so those reads are
+ * injected as seams and `@mixpanel-headless/node` supplies them
+ * (`resolverSeamsFromEffects` over its effect bag). A facade built
+ * without seams still fails with the coded `UNPORTED_RESOLVER_SEAM`
+ * rather than a `TypeError`. Python counterparts:
+ * `mixpanel_headless._internal.auth.resolver.resolve_session` /
+ * `resolve_project_axis` / `env_workspace_id`, `ConfigManager.get_account`
+ * and `ConfigManager.apply_session`.
+ * @see mixpanel_headless.workspace.Workspace.use
  */
 export interface ResolverSeams {
   /**
-   * Resolve a full session from a saved target (env > param > target >
-   * bridge > config).
+   * Resolve a full session from a saved target (precedence
+   * `env`, then `param`, then `target`, then `bridge`, then `config`).
    *
    * @param args - The target name.
    * @returns The resolved session.
@@ -97,28 +96,25 @@ export interface ResolverSeams {
 
   /**
    * Persist the session's axes to the `[active]` block in one
-   * transaction (`_persist_active`).
+   * transaction.
    *
    * @param session - The post-swap session.
    * @returns Nothing.
+   * @see mixpanel_headless.workspace.Workspace._persist_active
    */
   persistActive: (session: Session) => void | Promise<void>;
 }
 
 /**
- * Build a seam that throws the W1 placeholder error.
+ * Build a seam that throws the coded placeholder error.
  *
  * @param name - The seam name (recorded in `details.seam`).
  * @returns A thunk that always throws.
- * @internal
+ * @throws {@link MixpanelHeadlessError} - `UNPORTED_RESOLVER_SEAM`, from
+ *   the returned thunk.
  */
 function unportedSeam(name: string): () => never {
   return (): never => {
-    // Core-alone posture (b8-packets.md §4.4): the real seams ship via
-    // `resolverSeamsFromEffects(...)` over the node effect bag
-    // (B8, `createNodeAuthEffects()`); this default stays so a facade
-    // built without seams still throws the coded error. Marker retired
-    // at the B8 pair-A arbiter (`b8-reviewA-resolution.md` ASR-F2).
     throw new MixpanelHeadlessError(
       `Workspace resolver seam '${name}' has no implementation in ` +
         "@mixpanel-headless/core alone — pass `seams` " +
@@ -130,8 +126,8 @@ function unportedSeam(name: string): () => never {
 }
 
 /**
- * The default {@link ResolverSeams} — every member throws
- * `UNPORTED_RESOLVER_SEAM` (B7 outbound deferral, `b6-packets.md` §13).
+ * Build the default {@link ResolverSeams}, every member of which throws
+ * `UNPORTED_RESOLVER_SEAM`.
  *
  * @returns The throwing defaults.
  * @example
@@ -152,8 +148,13 @@ function defaultResolverSeams(): ResolverSeams {
 /**
  * Merge caller-supplied seam overrides over the throwing defaults.
  *
- * @param overrides - Partial seam bag (B7 will supply a full one).
+ * @param overrides - Partial seam bag; absent members keep the throwing
+ *   default.
  * @returns A complete seam bag.
+ * @example
+ * ```typescript
+ * const seams = mergeResolverSeams({ getAccount: (name) => loadAccount(name) });
+ * ```
  */
 export function mergeResolverSeams(
   overrides: Partial<ResolverSeams> | undefined,
@@ -173,12 +174,19 @@ export function mergeResolverSeams(
 }
 
 /**
- * The WS1 guard (`workspace.py`) — `target=` is mutually
- * exclusive with the three axis kwargs, and it fires BEFORE any
- * resolution side effect (packet §14 Caution 4).
+ * Reject `target` combined with any of the three axis options. Runs
+ * before any resolution side effect, as the Python guard does.
  *
- * @param options - The `use()` axes.
+ * @param options - The constructor / `use()` axes: `account` (named
+ *   account), `project` (project id), `workspace` (workspace id) and
+ *   `target` (a `[targets.NAME]` cursor that supplies all three).
  * @throws {@link ParamValidationError} - `WS1_TARGET_MUTUALLY_EXCLUSIVE`.
+ * @example
+ * ```typescript
+ * guardTargetExclusivity({ target: "prod" });                   // ok
+ * guardTargetExclusivity({ target: "prod", project: "123" }); // throws
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.use
  */
 export function guardTargetExclusivity(options: {
   readonly account?: string | null | undefined;
@@ -201,16 +209,20 @@ export function guardTargetExclusivity(options: {
 }
 
 /**
- * The `ConfigError` Python raises when an account swap resolves no
- * project (`workspace.py`, `_format_no_project_error`).
+ * Build the `ConfigError` raised when an account swap resolves no
+ * project (Python: `format_no_project_error`).
  *
  * @param account - The account being swapped to.
  * @returns The error to throw.
+ * @example
+ * ```typescript
+ * throw noProjectError(account); // ConfigError, details.account_name set
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.use
  */
 export function noProjectError(account: Account): ConfigError {
-  // TODO(port): the four-paths-to-fix message body lives in
-  // `_format_no_project_error` (`workspace.py`), which reads config
-  // state — B7 owns the wording; the CLASS is the contract here.
+  // Divergence: Python's message enumerates config-dependent fixes; the
+  // class and code are the contract (PORTING.md).
   return new ConfigError(
     `No project could be resolved for account '${account.name}'. ` +
       `Set MP_PROJECT_ID, pass project=, or give the account a ` +
@@ -219,9 +231,7 @@ export function noProjectError(account: Account): ConfigError {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Business context (`workspace.py`).
-// ---------------------------------------------------------------------------
+// --- Business context ---
 
 /** The two documented business-context scopes. */
 export type BusinessContextLevel = "organization" | "project";
@@ -229,12 +239,17 @@ export type BusinessContextLevel = "organization" | "project";
 /**
  * Reject any `level` other than the two documented literals.
  *
- * Python's `Literal[...]` is erased at runtime; TypeScript's is erased
- * at compile time — a value arriving from JS (or an `as` cast) needs
- * the same explicit check.
- *
+ * @remarks
+ * Python's `Literal[...]` is erased at runtime; TypeScript's is erased at
+ * compile time — a value arriving from JS (or an `as` cast) needs the
+ * same explicit check.
  * @param level - The caller's `level` value.
  * @throws {@link ParamValidationError} - `WS2_INVALID_LEVEL`.
+ * @example
+ * ```typescript
+ * validateBusinessContextLevel("organization"); // ok
+ * validateBusinessContextLevel("team");         // throws WS2_INVALID_LEVEL
+ * ```
  * @see mixpanel_headless.workspace.Workspace._validate_level
  */
 export function validateBusinessContextLevel(level: string): void {
@@ -267,7 +282,7 @@ export interface BusinessContextHost {
    */
   readonly meService: () => MeService;
   /**
-   * The MeService ONLY IF already created (`self._me_service`, which
+   * The MeService only if already created (`self._me_service`, which
    * `_cached_organization_id` reads without constructing one).
    */
   readonly meServiceIfCreated: () => MeService | null;
@@ -275,9 +290,18 @@ export interface BusinessContextHost {
 
 /** Keyword-only arguments of the scope-carrying business-context members. */
 export interface BusinessContextScopeOptions {
-  /** `"project"` (default) or `"organization"`. */
+  /**
+   * The scope to read or write.
+   *
+   * @defaultValue `"project"`
+   */
   readonly level?: BusinessContextLevel | undefined;
-  /** Explicit org ID; only honored when `level="organization"`. */
+  /**
+   * Explicit organization id; honoured only when `level` is
+   * `"organization"`.
+   *
+   * @defaultValue `null` (auto-resolved from `/me`)
+   */
   readonly organization_id?: number | null | undefined;
 }
 
@@ -384,12 +408,15 @@ function requireStrField(
 }
 
 /**
- * Python's `type(value).__name__` for the {@link requireStrField}
- * message (message text is out of contract, R5.4 — the shape is not).
+ * Spell a value's Python type name (`type(value).__name__`) for the
+ * {@link requireStrField} message; the text is outside the contract, the
+ * error shape is not.
  *
  * @param value - The offending value.
  * @returns The Python type name.
- * @internal
+ * @throws {@link TypeError} - Never in practice: the terminal arm exists
+ *   because TypeScript cannot subtract the listed `typeof` results from
+ *   `unknown`.
  */
 function pyTypeName(value: unknown): string {
   if (value === null) {
@@ -416,7 +443,7 @@ function pyTypeName(value: unknown): string {
     case "symbol":
     case "undefined": {
       // Not producible from a JSON response body; name the JS type rather
-      // than mislabel it as a dict (CLEANUP-PLAN.md §12 row 8.9).
+      // than mislabel it as a dict.
       return typeof value;
     }
     default: {
@@ -436,6 +463,11 @@ function pyTypeName(value: unknown): string {
  * @throws {@link ParamValidationError} - `WS2_INVALID_LEVEL`.
  * @throws {@link WorkspaceScopeError} - Org ID could not be auto-resolved.
  * @throws {@link MixpanelHeadlessError} - Response missing `content`.
+ * @example
+ * ```typescript
+ * const ctx = await ws.getBusinessContext({ level: "organization" });
+ * ctx.content;
+ * ```
  * @see mixpanel_headless.workspace.Workspace.get_business_context
  */
 export async function getBusinessContext(
@@ -478,6 +510,10 @@ export async function getBusinessContext(
  *   (client-side, before any HTTP call).
  * @throws {@link WorkspaceScopeError} - Org ID could not be auto-resolved.
  * @throws {@link MixpanelHeadlessError} - Response missing `content`.
+ * @example
+ * ```typescript
+ * await ws.setBusinessContext("# Acme\nB2B SaaS, EU data residency.");
+ * ```
  * @see mixpanel_headless.workspace.Workspace.set_business_context
  */
 export async function setBusinessContext(
@@ -487,7 +523,7 @@ export async function setBusinessContext(
 ): Promise<BusinessContext> {
   const level = options.level ?? "project";
   validateBusinessContextLevel(level);
-  // `len(content)` counts CODEPOINTS in Python (R11.7 family).
+  // Python's `len(content)` counts code points, not UTF-16 units.
   const length = cpLength(content);
   if (length > BUSINESS_CONTEXT_MAX_CHARS) {
     throw new BusinessContextValidationError(
@@ -519,15 +555,20 @@ export async function setBusinessContext(
 }
 
 /**
- * Read both scopes in ONE request.
+ * Read both business-context scopes in one request.
  *
- * `organization.organization_id` is enriched from the cached `/me`
- * only when free — a cold cache leaves it `null` rather than spending
- * a second round-trip.
- *
+ * @remarks
+ * `organization.organization_id` is enriched from the cached `/me` only
+ * when free — a cold cache leaves it `null` rather than spending a
+ * second round-trip.
  * @param host - The facade slice.
  * @returns Both contexts.
  * @throws {@link MixpanelHeadlessError} - Response missing either field.
+ * @example
+ * ```typescript
+ * const chain = await ws.getBusinessContextChain();
+ * chain.project.content;
+ * ```
  * @see mixpanel_headless.workspace.Workspace.get_business_context_chain
  */
 export async function getBusinessContextChain(

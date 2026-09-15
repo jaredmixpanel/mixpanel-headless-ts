@@ -1,11 +1,11 @@
 /**
- * The Engage execution engines behind `Workspace.queryUser` /
- * `Workspace.runUserParams` — `_execute_user_query_sequential`,
- * `_execute_user_aggregate` and `_execute_user_query_parallel`
- * (`mixpanel_headless.workspace.Workspace`), as functions over the facade
- * slice they read ({@link UserQueryHost}). The facade keeps the public
- * members and their validation; everything after "the params are valid"
- * lives here.
+ * Engage execution engines behind `Workspace.queryUser` /
+ * `Workspace.runUserParams` — sequential, aggregate and parallel — as
+ * functions over the facade slice they read ({@link UserQueryHost}). The
+ * facade keeps the public members and their validation; everything after
+ * "the params are valid" lives here.
+ *
+ * @see mixpanel_headless.workspace.Workspace
  */
 
 import type { MixpanelClient } from "../client/client.js";
@@ -46,8 +46,8 @@ export const DEFAULT_USER_QUERY_WORKERS = 5;
 
 /**
  * Cap on concurrent page fetches — Python's
- * `ThreadPoolExecutor(max_workers=min(workers, 5))`; the U23 validator
- * rejects larger requests before the engine runs.
+ * `ThreadPoolExecutor(max_workers=min(workers, 5))`; the `workers`
+ * validator rejects larger requests before the engine runs.
  */
 const MAX_PARALLEL_WORKERS = 5;
 
@@ -73,8 +73,7 @@ type ProfilesEngineResult = [
 ];
 
 /**
- * Run pre-built Engage API params: the body of `run_user_params`
- * (`Workspace.run_user_params`). A dict that carries an aggregate
+ * Run pre-built Engage API params. A dict that carries an aggregate
  * `action` key runs as an aggregate query; any other dict runs as a
  * profiles query, sequentially or in parallel.
  *
@@ -85,7 +84,14 @@ type ProfilesEngineResult = [
  *   {@link DEFAULT_USER_QUERY_WORKERS}).
  * @returns Profiles/aggregate payload with metadata.
  * @throws {@link AuthenticationError} | {@link QueryError} | {@link RateLimitError} |
- *   ServerError - Wire failures.
+ *   {@link ServerError} - Wire failures.
+ * @example
+ * ```typescript
+ * const params = ws.buildUserParams({ where: Filter.equals("plan", "pro") });
+ * const result = await ws.runUserParams(params, { limit: null, parallel: true });
+ * result.profiles.length;
+ * ```
+ * @see mixpanel_headless.workspace.Workspace.run_user_params
  */
 export async function runUserParams(
   host: UserQueryHost,
@@ -145,15 +151,15 @@ export async function runUserParams(
 }
 
 /**
- * Execute a user profile query with sequential page fetching
- * (`Workspace._execute_user_query_sequential`).
+ * Execute a user profile query with sequential page fetching.
  *
  * @param host - The facade slice.
  * @param params - Engage params from the resolver.
  * @param limit - Maximum profiles to collect (`null` = all).
  * @returns `[profiles, total, computed_at, meta]`.
  * @throws {@link AuthenticationError} | {@link RateLimitError} | {@link QueryError} |
- *   ServerError - Wire failures.
+ *   {@link ServerError} - Wire failures.
+ * @see mixpanel_headless.workspace.Workspace._execute_user_query_sequential
  */
 async function executeUserQuerySequential(
   host: UserQueryHost,
@@ -162,7 +168,7 @@ async function executeUserQuerySequential(
 ): Promise<ProfilesEngineResult> {
   // Reuse buildPageKwargs for params→kwargs translation; pass the
   // limit server-side for efficient fetching. `total` is
-  // `len(profiles)` — the count in THIS response, not the API's
+  // `len(profiles)` — the count in this response, not the API's
   // population total (use mode="aggregate" for that).
   const apiKwargs = buildPageKwargs(params);
   apiKwargs["limit"] = limit;
@@ -213,14 +219,14 @@ async function executeUserQuerySequential(
 }
 
 /**
- * Execute an aggregate query via the Engage stats endpoint
- * (`Workspace._execute_user_aggregate`).
+ * Execute an aggregate query via the Engage stats endpoint.
  *
  * @param host - The facade slice.
  * @param params - Engage params from the resolver.
  * @returns `[aggregate_data, total, computed_at, meta]`.
  * @throws {@link AuthenticationError} | {@link RateLimitError} | {@link QueryError} |
- *   ServerError - Wire failures.
+ *   {@link ServerError} - Wire failures.
+ * @see mixpanel_headless.workspace.Workspace._execute_user_aggregate
  */
 async function executeUserAggregate(
   host: UserQueryHost,
@@ -271,18 +277,17 @@ async function executeUserAggregate(
 }
 
 /**
- * Fetch profiles with concurrent page retrieval
- * (`Workspace._execute_user_query_parallel`).
+ * Fetch profiles with concurrent page retrieval.
  *
- * Page 0 is fetched first for metadata, then pages `1..n-1` run under
- * a bounded scheduler with the SAME worker cap Python's
- * `ThreadPoolExecutor(max_workers=min(workers, 5))` applies. Results
- * are re-ordered by page number, failed pages are recorded rather
- * than aborting, and the four CODED wire errors abort the whole
- * query (Python cancels the queued futures and re-raises; the TS twin
- * stops scheduling and lets the in-flight pages settle, exactly as
+ * @remarks
+ * Page 0 is fetched first for metadata, then pages `1..n-1` run under a
+ * bounded scheduler with the same worker cap Python's
+ * `ThreadPoolExecutor(max_workers=min(workers, 5))` applies. Results are
+ * re-ordered by page number, failed pages are recorded rather than
+ * aborting, and the four coded wire errors abort the whole query (Python
+ * cancels the queued futures and re-raises; the port stops scheduling
+ * and lets the in-flight pages settle, exactly as
  * `ThreadPoolExecutor.__exit__` does).
- *
  * @param host - The facade slice.
  * @param params - Engage params from the resolver.
  * @param limit - Maximum profiles to return (`null` = all).
@@ -290,7 +295,8 @@ async function executeUserAggregate(
  *   {@link MAX_PARALLEL_WORKERS}).
  * @returns `[profiles, total, computed_at, meta]`.
  * @throws {@link AuthenticationError} | {@link RateLimitError} | {@link ServerError} |
- *   QueryError - Propagated from any page.
+ *   {@link QueryError} - Propagated from any page.
+ * @see mixpanel_headless.workspace.Workspace._execute_user_query_parallel
  */
 async function executeUserQueryParallel(
   host: UserQueryHost,
@@ -350,10 +356,11 @@ async function executeUserQueryParallel(
   const pageResults = new Map<number, Array<Record<string, unknown>>>();
 
   /**
-   * Fetch and normalize a single page (`_fetch_page`).
+   * Fetch and normalize a single page.
    *
    * @param pageNum - The page index.
    * @returns The page number and its normalized profiles.
+   * @see mixpanel_headless.workspace.Workspace._fetch_page
    */
   const fetchPage = async (
     pageNum: number,
@@ -439,15 +446,15 @@ async function executeUserQueryParallel(
 }
 
 /**
- * `api_client.export_profiles_page(page=..., **kwargs)` with the
- * dynamic kwargs bag the two engines build.
+ * Fetch one Engage export page with the dynamic kwargs bag the two
+ * engines build (`api_client.export_profiles_page(page=..., **kwargs)`).
  *
  * @param client - The wire client.
  * @param page - Zero-based page index.
  * @param kwargs - The dynamic options bag.
  * @returns The page result.
  * @throws {@link AuthenticationError} | {@link RateLimitError} | {@link QueryError} |
- *   ServerError - Wire failures.
+ *   {@link ServerError} - Wire failures.
  */
 function exportPage(
   client: MixpanelClient,

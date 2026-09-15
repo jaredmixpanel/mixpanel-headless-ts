@@ -1,34 +1,14 @@
 /**
- * B6-W3 member module — the `Workspace` bookmark/report and cohort
- * members (`workspace.py`: BOOKMARK/REPORT CRUD +
- * COHORT CRUD, Phase 024).
+ * Bookmark (saved report) and cohort members of the `Workspace` facade:
+ * CRUD, bulk updates, history and dashboard links. Each function is the
+ * body of one facade method — options-bag mapping, the params dump, the
+ * like-named client call and result-model validation with the endpoint
+ * name Python passes; the one member with logic of its own is
+ * {@link validateBookmarkParamsSchema}, the network-free schema gate the
+ * create and update paths run first. No request assembly, header
+ * merging, URL building or status branching happens here.
  *
- * Packet contract (`b6-packets.md` §2/§5): the `workspace.ts` B6-W3
- * section holds ONE-LINE delegations into this module; every member
- * here is a THIN facade body — options-bag mapping, the
- * params dump (W1-D4 {@link EntityModel.modelDumpExcludeNone}), the
- * like-named B4-C3 client method
- * (`services/entities/{bookmarks,cohorts}.ts`, composed onto the
- * client at `client.ts:1077+`) and result-model construction via
- * `validateResponseModel(s)` with the exact `endpoint=` string Python
- * passes. No request assembly, no header merging, no URL building, no
- * status branching (R10.8 — compose, never re-implement).
- *
- * The one more-than-forward body is the private
- * `_validate_bookmark_params_schema` (`workspace.py:5185-5245`),
- * ported here as {@link validateBookmarkParamsSchema}: it composes the
- * ALREADY-LIVE B2/B3 surfaces (`validateSortingBlock`,
- * `getRootModelForBookmarkType`, `PARTIAL_UPDATE_SUB_MODELS`,
- * `validateWithPydantic`) and adds no validation logic of its own.
- * `create_bookmark` / `update_bookmark` gate on it exactly as Python
- * does: raise {@link BookmarkValidationError} when any entry has
- * severity `"error"`, otherwise log each warning through the injected
- * logger seam (R9.5) and continue.
- *
- * Codes, not messages (R5): every code the gate can surface
- * (`S2_MISSING_COL_SORT_ATTRS`, `S3_UNKNOWN_FIELD`,
- * `S4_UNKNOWN_CHART_TYPE`, `B0_MISSING_FIELD`, …) comes from the B2/B3
- * validators unchanged.
+ * @see mixpanel_headless.workspace.Workspace
  */
 
 import {
@@ -76,57 +56,89 @@ export interface BookmarkWarningLogger {
 
 /** Options bag of `Workspace.listBookmarksV2` (both keys keyword-only). */
 export interface WorkspaceListBookmarksV2Options {
-  /** Optional report-type filter, e.g. `"funnels"` (Python default `None`). */
+  /**
+   * Report-type filter, e.g. `"funnels"`.
+   *
+   * @defaultValue `null` (every type)
+   */
   readonly bookmark_type?: string | null | undefined;
-  /** Optional bookmark-ID filter (Python default `None`). */
+  /**
+   * Restrict the listing to these bookmark ids.
+   *
+   * @defaultValue `null` (every bookmark)
+   */
   readonly ids?: readonly number[] | null | undefined;
 }
 
 /** Options bag of `Workspace.getBookmarkHistory` (keyword-only tail). */
 export interface WorkspaceGetBookmarkHistoryOptions {
-  /** Opaque pagination cursor (Python default `None`). */
+  /**
+   * Opaque pagination cursor from a previous page.
+   *
+   * @defaultValue `null` (first page)
+   */
   readonly cursor?: string | null | undefined;
-  /** Maximum entries per page (Python default `None`). */
+  /**
+   * Maximum entries per page.
+   *
+   * @defaultValue `null` (server default)
+   */
   readonly page_size?: number | null | undefined;
 }
 
 /** Options bag of `Workspace.listCohortsFull` (both keys keyword-only). */
 export interface WorkspaceListCohortsFullOptions {
-  /** Optional data-group filter (Python default `None`). */
+  /**
+   * Data-group filter.
+   *
+   * @defaultValue `null` (every data group)
+   */
   readonly data_group_id?: string | null | undefined;
-  /** Optional cohort-ID filter (Python default `None`). */
+  /**
+   * Restrict the listing to these cohort ids.
+   *
+   * @defaultValue `null` (every cohort)
+   */
   readonly ids?: readonly number[] | null | undefined;
 }
 
 /** Keyword-only arguments of {@link validateBookmarkParamsSchema}. */
 export interface ValidateBookmarkParamsSchemaOptions {
   /**
-   * Python `partial`: when `true` run per-key sub-model validation;
-   * when `false` (default) run full root-model validation.
+   * Validate each present top-level key against its sub-model (the
+   * update path) instead of the whole payload against the root model.
+   *
+   * @defaultValue `false`
    */
   readonly partial?: boolean;
 }
 
 /**
- * Validate a bookmark `params` dict against the canonical schema
- * (`Workspace._validate_bookmark_params_schema`,
- * `workspace.py`).
+ * Validate a bookmark `params` dict against the canonical schema without
+ * touching the network.
  *
- * Two modes, exactly as Python: `partial=false` (create path)
- * validates the whole payload (minus `sorting`) against the root model
- * for `bookmarkType` when one exists; `partial=true` (update path)
- * validates each PRESENT top-level key against its canonical
- * sub-model, so legitimate partial updates are not false-rejected.
- * `sorting` always routes through `validateSortingBlock` so
- * `S4_UNKNOWN_CHART_TYPE` surfaces as a warning rather than a hard
- * `S3_UNKNOWN_FIELD`.
- *
+ * @remarks
+ * Two modes, as in Python: `partial: false` (the create path) validates
+ * the whole payload minus `sorting` against the root model of
+ * `bookmarkType` when one exists; `partial: true` (the update path)
+ * validates each present top-level key against its canonical sub-model,
+ * so legitimate partial updates are not falsely rejected. `sorting`
+ * always routes through `validateSortingBlock` so `S4_UNKNOWN_CHART_TYPE`
+ * surfaces as a warning rather than a hard `S3_UNKNOWN_FIELD`. The
+ * function composes the bookmark validators and adds no rules of its
+ * own, so every code it returns is theirs unchanged.
  * @param raw - The bookmark `params` dict to validate.
  * @param bookmarkType - The bookmark type, or `null` when unknown
  *   (e.g. on update calls).
  * @param options - `partial` (keyword-only in Python).
- * @returns Validation errors AND warnings; empty when the payload
+ * @returns Validation errors and warnings; empty when the payload
  *   validates cleanly.
+ * @example
+ * ```typescript
+ * const issues = validateBookmarkParamsSchema(draft.params, "insights");
+ * const blocking = issues.filter((issue) => issue.severity === "error");
+ * ```
+ * @see mixpanel_headless.workspace.Workspace._validate_bookmark_params_schema
  */
 export function validateBookmarkParamsSchema(
   raw: Readonly<Record<string, unknown>>,
@@ -136,9 +148,9 @@ export function validateBookmarkParamsSchema(
   const partial = options.partial ?? false;
   const errors: ValidationError[] = [];
 
-  // Sorting is always validated via the wrapper so unknown chart types
-  // surface as S4 warnings, not S3 errors. Strip from raw so
-  // root/sub-model validation doesn't double-validate it.
+  // Sorting is always validated through the wrapper so unknown chart
+  // types surface as warnings, not errors; it is stripped from `raw` so
+  // root/sub-model validation does not validate it twice.
   const sorting = Object.hasOwn(raw, "sorting") ? raw["sorting"] : undefined;
   if (sorting !== undefined && sorting !== null) {
     errors.push(...validateSortingBlock(sorting));
@@ -172,8 +184,8 @@ export function validateBookmarkParamsSchema(
 }
 
 /**
- * The `any(e.severity == "error" …)` gate the two validating members
- * share (`workspace.py:5299-5306`, `:5399-5406`).
+ * Raise on the first blocking schema issue and log the rest, the
+ * `any(e.severity == "error" …)` gate the two validating members share.
  *
  * @param schemaErrors - The validator output.
  * @param member - Python member name used in the log line.
@@ -206,7 +218,11 @@ function gateSchemaErrors(
  * @throws {@link ResponseValidationError} - Malformed payload
  *   (`RESPONSE_VALIDATION_ERROR`).
  * @throws {@link AuthenticationError} | {@link QueryError} | {@link ServerError} - Wire
- *   failures per the B0 contract.
+ *   failures.
+ * @example
+ * ```typescript
+ * const funnels = await ws.listBookmarksV2({ bookmark_type: "funnels" });
+ * ```
  * @see mixpanel_headless.workspace.Workspace.list_bookmarks_v2
  */
 export async function listBookmarksV2(
@@ -227,24 +243,35 @@ export async function listBookmarksV2(
 }
 
 /**
- * Create a new bookmark (saved report).
+ * Create a new bookmark (saved report) and place it on its dashboard.
  *
- * Three Python steps, in order: the `dashboard_id is None` guard, the
- * full client-side schema gate, then the create call followed by the
- * separate `add_report_to_dashboard` PATCH that puts the new report on
- * the dashboard's visual layout.
- *
+ * @remarks
+ * Three steps, in Python's order: the `dashboard_id` guard, the full
+ * client-side schema gate, then the create call followed by the separate
+ * `add_report_to_dashboard` PATCH — the v2 create endpoint associates the
+ * bookmark with the dashboard but does not add it to the visual layout.
  * @param client - The wire client.
  * @param params - Bookmark creation parameters.
  * @param addReportToDashboard - The facade's own
- *   `add_report_to_dashboard` member (`self.` dispatch preserved).
+ *   `addReportToDashboard` member (Python dispatches through `self`).
  * @param logger - The `logger.warning` sink.
  * @returns The newly created `Bookmark`.
- * @throws {@link MixpanelHeadlessError} - `dashboard_id` missing, or an empty
- *   response (`UNKNOWN_ERROR`).
+ * @throws {@link MixpanelHeadlessError} - `dashboard_id` missing, or an
+ *   empty response (`UNKNOWN_ERROR`).
  * @throws {@link BookmarkValidationError} - `params.params` fails the
  *   client-side schema mirror (raised before any API call).
  * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const bookmark = await ws.createBookmark(
+ *   new CreateBookmarkParams({
+ *     name: "Signups",
+ *     bookmark_type: "insights",
+ *     params,
+ *     dashboard_id: 12,
+ *   }),
+ * );
+ * ```
  * @see mixpanel_headless.workspace.Workspace.create_bookmark
  */
 export async function createBookmark(
@@ -282,21 +309,25 @@ export async function createBookmark(
   );
 
   // The v2 create endpoint associates the bookmark with the dashboard
-  // in the database, but does NOT add it to the dashboard's visual
-  // layout — that requires a separate PATCH call.
+  // in the database but does not add it to the dashboard's visual
+  // layout; that takes a separate PATCH.
   await addReportToDashboard(dashboardId, bookmark.id);
 
   return bookmark;
 }
 
 /**
- * Get a single bookmark by ID.
+ * Fetch a single bookmark by id.
  *
  * @param client - The wire client.
  * @param bookmarkId - Bookmark identifier.
  * @returns The `Bookmark`.
  * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
  * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const bookmark = await ws.getBookmark(987);
+ * ```
  * @see mixpanel_headless.workspace.Workspace.get_bookmark
  */
 export async function getBookmark(
@@ -312,8 +343,8 @@ export async function getBookmark(
 }
 
 /**
- * Update an existing bookmark — partial-aware schema gate first, then a
- * plain `exclude_none` dump (NO `by_alias`, unlike the create path).
+ * Update an existing bookmark: the partial-mode schema gate first, then
+ * a plain `exclude_none` dump (no `by_alias`, unlike the create path).
  *
  * @param client - The wire client.
  * @param bookmarkId - Bookmark identifier.
@@ -321,9 +352,13 @@ export async function getBookmark(
  * @param logger - The `logger.warning` sink.
  * @returns The updated `Bookmark`.
  * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
- * @throws {@link BookmarkValidationError} - `params.params` (when supplied)
- *   fails partial-mode validation (raised before any API call).
+ * @throws {@link BookmarkValidationError} - `params.params` (when
+ *   supplied) fails partial-mode validation (raised before any API call).
  * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * await ws.updateBookmark(987, new UpdateBookmarkParams({ name: "Renamed" }));
+ * ```
  * @see mixpanel_headless.workspace.Workspace.update_bookmark
  */
 export async function updateBookmark(
@@ -357,6 +392,10 @@ export async function updateBookmark(
  * @param client - The wire client.
  * @param bookmarkId - Bookmark identifier.
  * @returns Nothing.
+ * @example
+ * ```typescript
+ * await ws.deleteBookmark(987);
+ * ```
  * @see mixpanel_headless.workspace.Workspace.delete_bookmark
  */
 export async function deleteBookmark(
@@ -372,6 +411,10 @@ export async function deleteBookmark(
  * @param client - The wire client.
  * @param ids - Bookmark IDs to delete.
  * @returns Nothing.
+ * @example
+ * ```typescript
+ * await ws.bulkDeleteBookmarks([987, 988]);
+ * ```
  * @see mixpanel_headless.workspace.Workspace.bulk_delete_bookmarks
  */
 export async function bulkDeleteBookmarks(
@@ -382,11 +425,18 @@ export async function bulkDeleteBookmarks(
 }
 
 /**
- * Update multiple bookmarks — each entry dumped with `exclude_none`.
+ * Update multiple bookmarks in one call; each entry is dumped with
+ * `exclude_none`.
  *
  * @param client - The wire client.
  * @param entries - Bookmark update entries.
  * @returns Nothing.
+ * @example
+ * ```typescript
+ * await ws.bulkUpdateBookmarks([
+ *   new BulkUpdateBookmarkEntry({ id: 987, name: "Renamed" }),
+ * ]);
+ * ```
  * @see mixpanel_headless.workspace.Workspace.bulk_update_bookmarks
  */
 export async function bulkUpdateBookmarks(
@@ -399,12 +449,16 @@ export async function bulkUpdateBookmarks(
 }
 
 /**
- * Dashboard IDs linked to a bookmark — returned verbatim (Python performs no
- * model validation here).
+ * List the ids of the dashboards linked to a bookmark, verbatim (Python
+ * performs no model validation here).
  *
  * @param client - The wire client.
  * @param bookmarkId - Bookmark identifier.
  * @returns The dashboard IDs.
+ * @example
+ * ```typescript
+ * const dashboardIds = await ws.bookmarkLinkedDashboardIds(987);
+ * ```
  * @see mixpanel_headless.workspace.Workspace.bookmark_linked_dashboard_ids
  */
 export async function bookmarkLinkedDashboardIds(
@@ -416,14 +470,19 @@ export async function bookmarkLinkedDashboardIds(
 }
 
 /**
- * Change history for a bookmark — no empty-response guard in Python: the
- * client's re-shaped envelope goes straight into validation.
+ * Fetch a page of a bookmark's change history. There is no
+ * empty-response guard: the client's re-shaped envelope goes straight
+ * into validation.
  *
  * @param client - The wire client.
  * @param bookmarkId - Bookmark identifier.
  * @param options - `cursor` / `page_size` (keyword-only in Python).
  * @returns The `BookmarkHistoryResponse`.
  * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const page = await ws.getBookmarkHistory(987, { page_size: 20 });
+ * ```
  * @see mixpanel_headless.workspace.Workspace.get_bookmark_history
  */
 export async function getBookmarkHistory(
@@ -441,13 +500,17 @@ export async function getBookmarkHistory(
 }
 
 /**
- * List cohorts via the App API, full detail — note the client method is
- * `list_cohorts_app`, not a like-named twin.
+ * List cohorts through the App API with full detail. The client method
+ * is `listCohortsApp`, not a like-named twin.
  *
  * @param client - The wire client.
  * @param options - Optional `data_group_id` / `ids` filters.
  * @returns The `Cohort` models, in response order.
  * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const cohorts = await ws.listCohortsFull({ ids: [5, 6] });
+ * ```
  * @see mixpanel_headless.workspace.Workspace.list_cohorts_full
  */
 export async function listCohortsFull(
@@ -468,13 +531,17 @@ export async function listCohortsFull(
 }
 
 /**
- * Get a single cohort by ID.
+ * Fetch a single cohort by id.
  *
  * @param client - The wire client.
  * @param cohortId - Cohort identifier.
  * @returns The `Cohort`.
  * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
  * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const cohort = await ws.getCohort(5);
+ * ```
  * @see mixpanel_headless.workspace.Workspace.get_cohort
  */
 export async function getCohort(
@@ -490,15 +557,20 @@ export async function getCohort(
 }
 
 /**
- * Create a new cohort —
- * the `definition` dict flattens into the top level at dump time
- * (`_DefinitionFlatteningModel.model_dump`, `types.py`).
+ * Create a new cohort. The `definition` dict flattens into the top level
+ * of the body at dump time.
  *
  * @param client - The wire client.
  * @param params - Cohort creation parameters.
  * @returns The newly created `Cohort`.
  * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
  * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * const cohort = await ws.createCohort(
+ *   new CreateCohortParams({ name: "Power users", definition }),
+ * );
+ * ```
  * @see mixpanel_headless.workspace.Workspace.create_cohort
  */
 export async function createCohort(
@@ -522,6 +594,10 @@ export async function createCohort(
  * @returns The updated `Cohort`.
  * @throws {@link MixpanelHeadlessError} - Empty response (`UNKNOWN_ERROR`).
  * @throws {@link ResponseValidationError} - Malformed payload.
+ * @example
+ * ```typescript
+ * await ws.updateCohort(5, new UpdateCohortParams({ description: "Weekly actives" }));
+ * ```
  * @see mixpanel_headless.workspace.Workspace.update_cohort
  */
 export async function updateCohort(
@@ -546,6 +622,10 @@ export async function updateCohort(
  * @param client - The wire client.
  * @param cohortId - Cohort identifier.
  * @returns Nothing.
+ * @example
+ * ```typescript
+ * await ws.deleteCohort(5);
+ * ```
  * @see mixpanel_headless.workspace.Workspace.delete_cohort
  */
 export async function deleteCohort(
@@ -561,6 +641,10 @@ export async function deleteCohort(
  * @param client - The wire client.
  * @param ids - Cohort IDs to delete.
  * @returns Nothing.
+ * @example
+ * ```typescript
+ * await ws.bulkDeleteCohorts([5, 6]);
+ * ```
  * @see mixpanel_headless.workspace.Workspace.bulk_delete_cohorts
  */
 export async function bulkDeleteCohorts(
@@ -571,12 +655,18 @@ export async function bulkDeleteCohorts(
 }
 
 /**
- * Update multiple cohorts — each entry dumped with `exclude_none`
- * (definition flattened per entry).
+ * Update multiple cohorts in one call; each entry is dumped with
+ * `exclude_none` and its definition flattened.
  *
  * @param client - The wire client.
  * @param entries - Cohort update entries.
  * @returns Nothing.
+ * @example
+ * ```typescript
+ * await ws.bulkUpdateCohorts([
+ *   new BulkUpdateCohortEntry({ id: 5, name: "Renamed" }),
+ * ]);
+ * ```
  * @see mixpanel_headless.workspace.Workspace.bulk_update_cohorts
  */
 export async function bulkUpdateCohorts(
