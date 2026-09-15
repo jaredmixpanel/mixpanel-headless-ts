@@ -486,5 +486,5 @@ it("RegionProbeResult keeps the two-field corpus shape", () => {
     region: "us",
     attempts: [["us", 200]],
   };
-  expect(Object.keys(shape)).toEqual(["region", "attempts"]);
+  expect(Object.keys(shape)).toStrictEqual(["region", "attempts"]);
 });

@@ -222,20 +222,16 @@ export function browserLaunchArgv(
   platform: NodeJS.Platform,
   url: string,
 ): BrowserLaunchArgv {
-  switch (platform) {
-    case "darwin": {
-      return { command: "open", args: [url] };
-    }
-    case "win32": {
-      return {
-        command: "rundll32",
-        args: ["url.dll,FileProtocolHandler", url],
-      };
-    }
-    default: {
-      return { command: "xdg-open", args: [url] };
-    }
+  if (platform === "darwin") {
+    return { command: "open", args: [url] };
   }
+  if (platform === "win32") {
+    return {
+      command: "rundll32",
+      args: ["url.dll,FileProtocolHandler", url],
+    };
+  }
+  return { command: "xdg-open", args: [url] };
 }
 
 /**

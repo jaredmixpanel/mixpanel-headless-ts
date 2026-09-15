@@ -12,6 +12,7 @@
 import type { Session } from "../src/auth/session.js";
 import type { MixpanelClient } from "../src/client/client.js";
 import type { JsonValue } from "../src/client/json-value.js";
+import { toError } from "../src/invariant.js";
 import { Secret } from "../src/secret.js";
 import { ProfilePageResult } from "../src/types/results/discovery.js";
 import type { WorkspaceLogger } from "../src/workspace.js";
@@ -130,7 +131,7 @@ export function mockWorkspaceClient(
       try {
         return Promise.resolve(pageHandler(page, options));
       } catch (error) {
-        return Promise.reject(error);
+        return Promise.reject(toError(error));
       }
     },
     engageStats: (

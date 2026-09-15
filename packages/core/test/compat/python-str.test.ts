@@ -187,7 +187,9 @@ describe("isPythonValue / pythonStrOf — the `unknown`-typed str() twin", () =>
     expect(pythonStrOf(new Date(0))).toBe("<Date>");
     expect(pythonStrOf(() => 1)).toBe("<function>");
     expect(pythonStrOf(Symbol("s"))).toBe("<symbol>");
-    class Widget {}
+    class Widget {
+      readonly kind = "widget";
+    }
     expect(pythonStrOf(new Widget())).toBe("<Widget>");
     expect(pythonStrOf({ nested: new Map() })).toBe("<Object>");
   });

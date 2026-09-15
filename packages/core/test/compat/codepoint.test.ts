@@ -26,8 +26,8 @@ describe("cpLength — Python len(str) counts codepoints (R11.6)", () => {
 
 describe("codepoints — Python list(str) splits by code point", () => {
   it("keeps surrogate pairs whole", () => {
-    expect(codepoints("a\u{1D518}b")).toEqual(["a", "\u{1D518}", "b"]);
-    expect(codepoints("")).toEqual([]);
+    expect(codepoints("a\u{1D518}b")).toStrictEqual(["a", "\u{1D518}", "b"]);
+    expect(codepoints("")).toStrictEqual([]);
   });
 });
 

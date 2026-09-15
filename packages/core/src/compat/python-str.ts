@@ -151,7 +151,14 @@ function inPythonDomain(value: unknown, active: Set<object>): boolean {
       active.delete(value);
       return ok;
     }
+    case "undefined":
+    case "function":
+    case "symbol": {
+      return false;
+    }
     default: {
+      // Every `typeof` result is listed; TS cannot subtract them from
+      // `unknown`, so it still wants a terminal arm.
       return false;
     }
   }

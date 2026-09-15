@@ -381,7 +381,7 @@ describe("cross-axis rule locks the exhaustive tables lean on", () => {
       const partial = Object.fromEntries(
         Object.entries(quad).filter(([key]) => key !== missing),
       );
-      const session = resolveSession({}, src(partial as ResolverEnv, config));
+      const session = resolveSession({}, src(partial, config));
       expect(session.account.name, `missing ${missing}`).toBe("team");
     }
   });

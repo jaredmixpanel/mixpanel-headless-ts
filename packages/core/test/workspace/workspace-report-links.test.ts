@@ -58,6 +58,7 @@ import {
   UnsupportedReportLinkError,
   WorkspaceScopeError,
 } from "../../src/errors.js";
+import { toError } from "../../src/invariant.js";
 import type { BookmarkType, ReportLinkType } from "../../src/types/literals.js";
 import { FunnelStep } from "../../src/types/query-params/funnel.js";
 import {
@@ -182,7 +183,7 @@ function mockApiClient(): MockApiClient {
     try {
       return Promise.resolve(fn());
     } catch (error) {
-      return Promise.reject(error);
+      return Promise.reject(toError(error));
     }
   };
 

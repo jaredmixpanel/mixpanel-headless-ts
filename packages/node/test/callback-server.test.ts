@@ -95,8 +95,8 @@ async function startEphemeral(options: {
     state: options.state,
     timeoutSeconds: options.timeoutSeconds ?? 10,
     port: 0,
-    onListening: (port) => {
-      announce(port);
+    onListening: (boundPort) => {
+      announce(boundPort);
     },
   });
   // Surface a bind failure instead of hanging on `bound`.
@@ -326,13 +326,15 @@ describe("TestCallbackHtmlSecurity (test_auth_callback.py:281)", () => {
       `http://localhost:${port}/callback?code=code1&state=wrong-state`,
     );
 
-    const error = await settled;
-    expect(error).toBeInstanceOf(OAuthError);
-    const details = (error as OAuthError).details;
+    const rejection = await settled;
+    expect(rejection).toBeInstanceOf(OAuthError);
+    const details = (rejection as OAuthError).details;
     expect(details).toStrictEqual({ received_state: "wrong-state" });
     expect(details).not.toHaveProperty("expected_state");
     // The serialised form hosts log must not carry the nonce either.
-    expect(JSON.stringify((error as OAuthError).toDict())).not.toContain(state);
+    expect(JSON.stringify((rejection as OAuthError).toDict())).not.toContain(
+      state,
+    );
   });
 
   it("test_provider_error_description_is_html_escaped", async () => {
