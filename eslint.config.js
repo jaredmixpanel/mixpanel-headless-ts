@@ -714,6 +714,17 @@ const config = defineConfig([
     },
   },
   {
+    name: "repo/rig/error-classes",
+    files: ["conformance-runner/**/*.ts", "differential/**/*.ts"],
+    rules: {
+      // The rig and the oracle report a thrown error's class name to the
+      // Python side ("TS raised TypeError" must pair with Python's
+      // TypeError). A harness-invariant failure therefore stays a bare
+      // `Error`, so it can never satisfy a vector that expects TypeError.
+      "unicorn/prefer-type-error": "off",
+    },
+  },
+  {
     name: "repo/boundary/rig",
     files: [
       "conformance-runner/**/*.ts",
@@ -917,8 +928,6 @@ const config = defineConfig([
       "unicorn/no-for-each": "off",
       "unicorn/no-useless-undefined": "off",
       "unicorn/prefer-at": "off",
-      "unicorn/prefer-response-static-json": "off",
-      "unicorn/prefer-type-error": "off",
     },
   }),
 

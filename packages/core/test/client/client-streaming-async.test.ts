@@ -275,8 +275,8 @@ describe("stream_events / stream_profiles facade wrappers", () => {
   it("normalizes profiles via transformProfile", async () => {
     const fetchImpl = ((): Promise<Response> =>
       Promise.resolve(
-        new Response(
-          JSON.stringify({
+        Response.json(
+          {
             results: [
               {
                 $distinct_id: "u1",
@@ -284,7 +284,7 @@ describe("stream_events / stream_profiles facade wrappers", () => {
               },
             ],
             session_id: null,
-          }),
+          },
           { status: 200, headers: { "content-type": "application/json" } },
         ),
       )) as typeof fetch;

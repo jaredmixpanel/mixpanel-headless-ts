@@ -64,7 +64,7 @@ export function fakeTransport(
     captures.push(captured);
     const canned = handler(captured);
     return Promise.resolve(
-      new Response(JSON.stringify(canned.json ?? null), {
+      Response.json(canned.json ?? null, {
         status: canned.status,
         headers: { "content-type": "application/json" },
       }),

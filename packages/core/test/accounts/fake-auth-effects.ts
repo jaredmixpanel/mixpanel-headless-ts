@@ -496,7 +496,7 @@ export function meFetch(
         ? { results: body }
         : body;
     return Promise.resolve(
-      new Response(JSON.stringify(wrapped), {
+      Response.json(wrapped, {
         status,
         headers: { "content-type": "application/json" },
       }),

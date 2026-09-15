@@ -60,7 +60,7 @@ describe("PaginationAsyncBehavior", () => {
       } else {
         body = page([3], null);
       }
-      return new Response(JSON.stringify(body.json), {
+      return Response.json(body.json, {
         status: 200,
         headers: { "content-type": "application/json" },
       });

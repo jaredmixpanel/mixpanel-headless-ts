@@ -253,22 +253,25 @@ describe("§4.4 seam-closure sweep — zero UNPORTED throws over the real bag", 
       const url = String(input);
       if (url.endsWith("/oauth/mcp/register/")) {
         return Promise.resolve(
-          new Response(JSON.stringify({ client_id: "sweep-client" }), {
-            status: 201,
-            headers: { "content-type": "application/json" },
-          }),
+          Response.json(
+            { client_id: "sweep-client" },
+            {
+              status: 201,
+              headers: { "content-type": "application/json" },
+            },
+          ),
         );
       }
       if (url.endsWith("/oauth/token/")) {
         return Promise.resolve(
-          new Response(
-            JSON.stringify({
+          Response.json(
+            {
               access_token: "sweep-tok",
               refresh_token: "sweep-refresh",
               expires_in: 3600,
               scope: "projects",
               token_type: "Bearer",
-            }),
+            },
             { status: 200, headers: { "content-type": "application/json" } },
           ),
         );
