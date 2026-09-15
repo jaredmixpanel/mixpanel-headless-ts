@@ -20,5 +20,9 @@
   ],
   "scripts": {
     "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@mixpanel-headless/core": "0.1.0",
+    "@mixpanel-headless/node": "0.1.0"
   }
 }

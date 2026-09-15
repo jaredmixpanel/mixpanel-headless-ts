@@ -43,6 +43,17 @@ Install with `npm ci` (lockfile-exact).
   been seen to miss `isolatedDeclarations` diagnostics.
 - `npm run knip` — unused files/deps/exports. Unused exports/types are
   _warnings_ until Phase 6's un-export sweep (`knip.jsonc` `rules`).
+- `npm run lint` — `eslint . --max-warnings 0` (typed, ~20 s). `eslint.config.js`
+  is the exhaustive Phase 4 config (CLEANUP-PLAN.md §8): every rule is `error`
+  or `off` with a reason, never `warn` (asserted at load). Rules whose fixes
+  are still being hand-applied are configured in full but parked `off` in the
+  delimited `// --- Phase 4 lane L<n>` blocks near the end; landing a lane =
+  deleting its block. `MP_LINT_UNPARK=L2` (or `all`) drops a block for one
+  run so a lane can see its own errors (`MP_LINT_UNPARK=L2 npx eslint . --fix`
+  applies that lane's fixers). The generated/vendored ignore list lives once in
+  `scripts/lib/lint-ignores.mjs`; `tests/ignore-lists.test.ts` keeps
+  `.prettierignore` in sync with it. Custom TSDoc tags are declared in
+  `tsdoc.json`.
 - `npm test` — vitest across all workspaces (config in root `vitest.config.ts`).
 - Single test file: `npx vitest run conformance-runner/test/runner.test.ts`
 - Conformance replay CLI: `npm run conformance -- --report json --filter "compat/"`

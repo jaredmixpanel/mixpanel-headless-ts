@@ -9,20 +9,6 @@
   // No `ignore` block: the generated `*.gen.ts` files are imported (so never
   // reported) and vendor/, context/ and the corpus hold no analysable source;
   // knip flags such entries as redundant configuration hints.
-  "ignoreDependencies": [
-    // Phase 4 (§8) configures these ESLint plugins; Phase 1 pinned and
-    // installed them so the lockfile settles early. Remove from this list
-    // as eslint.config.js starts importing each one.
-    "@vitest/eslint-plugin",
-    "eslint-config-prettier",
-    "eslint-plugin-import-x",
-    "eslint-plugin-jsdoc",
-    "eslint-plugin-n",
-    "eslint-plugin-regexp",
-    "eslint-plugin-tsdoc",
-    "eslint-plugin-unicorn",
-    "globals",
-  ],
   "rules": {
     // Phase 6 (§2.7 un-export sweep) turns these back to "error". Until
     // then the 145 unused exports / 126 unused types it will remove are

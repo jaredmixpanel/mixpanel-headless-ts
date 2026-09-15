@@ -7,5 +7,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["tests"]
+  "include": ["tests", "vitest.config.ts"]
 }

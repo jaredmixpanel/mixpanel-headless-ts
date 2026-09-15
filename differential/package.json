@@ -18,5 +18,9 @@
   ],
   "scripts": {
     "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@mixpanel-headless/conformance-runner": "0.0.0",
+    "@mixpanel-headless/core": "0.1.0"
   }
 }
